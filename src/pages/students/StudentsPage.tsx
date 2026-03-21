@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { orgGetStudents, orgGetResults } from '../../lib/api';
-import { Users, Search, X, Trophy, Mail, RefreshCw } from 'lucide-react';
+import { orgGetStudents, orgCreateStudent, orgGetResults } from '../../lib/api';
+import { Users, Search, X, Trophy, Mail, Plus, RefreshCw, Eye, EyeOff } from 'lucide-react';
 import type { UserProfile, ExamAttempt } from '../../types';
 
 const StudentsPage: React.FC = () => {
@@ -13,8 +13,15 @@ const StudentsPage: React.FC = () => {
   const [results, setResults] = useState<ExamAttempt[]>([]);
   const [loadingR, setLoadingR] = useState(false);
   const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
 
-  const load = () => { setLoading(true); orgGetStudents().then(setStudents).catch((e) => setError(e.message || 'Error')).finally(() => setLoading(false)); };
+  // Create modal
+  const [showCreate, setShowCreate] = useState(false);
+  const [form, setForm] = useState({ displayName: '', email: '', password: '', phone: '' });
+  const [saving, setSaving] = useState(false);
+  const [showPw, setShowPw] = useState(false);
+
+  const load = () => { setLoading(true); setError(''); orgGetStudents().then(setStudents).catch((e) => setError(e.message || 'Error')).finally(() => setLoading(false)); };
   useEffect(load, []);
 
   const selectStudent = async (s: UserProfile) => {
@@ -26,15 +33,31 @@ const StudentsPage: React.FC = () => {
   const avgScore = results.length > 0 ? Math.round(results.reduce((s, r) => s + (r.percentage || 0), 0) / results.length) : 0;
   const passRate = results.length > 0 ? Math.round((results.filter(r => r.passed).length / results.length) * 100) : 0;
 
+  const handleCreate = async () => {
+    if (!form.displayName.trim() || !form.email.trim() || !form.password.trim()) return;
+    setSaving(true); setError('');
+    try {
+      const created = await orgCreateStudent(form);
+      setStudents((p) => [created, ...p]);
+      setShowCreate(false); setForm({ displayName: '', email: '', password: '', phone: '' });
+      setSuccess('Student created!'); setTimeout(() => setSuccess(''), 3000);
+    } catch (e: any) { setError(e.message || 'Failed to create student'); }
+    finally { setSaving(false); }
+  };
+
   return (
     <div className="flex gap-0 h-full">
       <div className={`flex-1 min-w-0 ${selected ? 'hidden lg:block' : ''}`}>
         <div className="flex items-center justify-between mb-4">
           <div><h1 className="text-lg font-bold text-slate-900 dark:text-white">{t('nav.students')}</h1><p className="text-[11px] text-slate-500">{students.length} {t('org.students.total')}</p></div>
-          <button onClick={load} className="p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors"><RefreshCw className="w-3.5 h-3.5" /></button>
+          <div className="flex items-center gap-1.5">
+            <button onClick={load} className="p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors"><RefreshCw className="w-3.5 h-3.5" /></button>
+            <button onClick={() => setShowCreate(true)} className="bg-emerald-500 hover:bg-emerald-600 text-white px-3 py-1.5 rounded-lg text-[11px] font-medium flex items-center gap-1 transition-colors"><Plus className="w-3 h-3" />{t('org.students.create')}</button>
+          </div>
         </div>
 
         {error && <div className="mb-3 px-3 py-1.5 bg-red-500/10 border border-red-500/20 rounded-lg text-[11px] text-red-500">{error}</div>}
+        {success && <div className="mb-3 px-3 py-1.5 bg-emerald-500/10 border border-emerald-500/20 rounded-lg text-[11px] text-emerald-500">{success}</div>}
 
         <div className="bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700/50 rounded-xl p-2.5 mb-3">
           <div className="relative max-w-xs">
@@ -73,6 +96,7 @@ const StudentsPage: React.FC = () => {
         )}
       </div>
 
+      {/* Detail Panel */}
       {selected && (
         <div className="w-full lg:w-[340px] bg-white dark:bg-slate-800/90 border-l border-slate-200/80 dark:border-slate-700/40 overflow-y-auto shrink-0">
           <div className="px-4 py-3 border-b border-slate-100 dark:border-slate-700/40 flex items-center gap-2 sticky top-0 bg-white dark:bg-slate-800/90 z-10">
@@ -101,6 +125,36 @@ const StudentsPage: React.FC = () => {
                 {results.length === 0 && <p className="text-[11px] text-slate-400 text-center py-3">{t('org.students.noResults')}</p>}
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* Create Student Modal */}
+      {showCreate && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => setShowCreate(false)}>
+          <div className="bg-white dark:bg-slate-800 rounded-xl p-4 w-full max-w-sm shadow-2xl" onClick={(e) => e.stopPropagation()}>
+            <h2 className="text-sm font-bold text-slate-900 dark:text-white mb-1">{t('org.students.create')}</h2>
+            <p className="text-[10px] text-slate-500 mb-3">{t('org.students.createDesc')}</p>
+            <div className="space-y-2">
+              <input placeholder={t('org.students.namePlaceholder')} value={form.displayName} onChange={(e) => setForm(f => ({ ...f, displayName: e.target.value }))}
+                className="w-full bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-lg px-2.5 py-1.5 text-xs outline-none focus:border-primary-500 text-slate-900 dark:text-white" autoFocus />
+              <input type="email" placeholder="student@example.com" value={form.email} onChange={(e) => setForm(f => ({ ...f, email: e.target.value }))}
+                className="w-full bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-lg px-2.5 py-1.5 text-xs outline-none focus:border-primary-500 text-slate-900 dark:text-white" />
+              <div className="relative">
+                <input type={showPw ? 'text' : 'password'} placeholder={t('org.students.passwordPlaceholder')} value={form.password} onChange={(e) => setForm(f => ({ ...f, password: e.target.value }))}
+                  className="w-full bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-lg px-2.5 py-1.5 pr-8 text-xs outline-none focus:border-primary-500 text-slate-900 dark:text-white" />
+                <button type="button" onClick={() => setShowPw(!showPw)} className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
+                  {showPw ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                </button>
+              </div>
+              <input placeholder={t('org.students.phonePlaceholder')} value={form.phone} onChange={(e) => setForm(f => ({ ...f, phone: e.target.value }))}
+                className="w-full bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-lg px-2.5 py-1.5 text-xs outline-none focus:border-primary-500 text-slate-900 dark:text-white" />
+            </div>
+            <div className="flex justify-end gap-2 mt-3">
+              <button onClick={() => setShowCreate(false)} className="px-2.5 py-1 text-[11px] text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg">{t('common.cancel')}</button>
+              <button onClick={handleCreate} disabled={saving || !form.displayName.trim() || !form.email.trim() || !form.password.trim()}
+                className="bg-emerald-500 hover:bg-emerald-600 text-white px-3 py-1 rounded-lg text-[11px] font-medium disabled:opacity-50">{saving ? '...' : t('common.save')}</button>
+            </div>
           </div>
         </div>
       )}

@@ -3,7 +3,7 @@
  * All data strictly scoped by organizationId.
  */
 import type { Handler, HandlerEvent } from '@netlify/functions';
-import { adminDb } from './utils/firebase-admin';
+import { adminDb, adminAuth } from './utils/firebase-admin';
 import {
   verifyAuth, isStaff, hasRole, getOrgFilter,
   ok, unauthorized, forbidden, badRequest, notFound, jsonResponse,
@@ -161,6 +161,38 @@ const handler: Handler = async (event: HandlerEvent) => {
       return ok(snap.docs.map((d: any) => ({ uid: d.id, ...d.data() })));
     }
 
+    if (action === 'createStudent') {
+      if (!hasRole(user, 'admin')) return forbidden();
+      const body = JSON.parse(event.body || '{}');
+      if (!body.email || !body.displayName || !body.password) return badRequest('email, displayName and password required');
+      try {
+        // Check if user already exists in Firestore
+        const existing = await adminDb.collection('users').where('email', '==', body.email).get();
+        if (!existing.empty) return badRequest('User with this email already exists');
+        // Create Firebase Auth user
+        const authUser = await adminAuth.createUser({
+          email: body.email,
+          password: body.password,
+          displayName: body.displayName,
+        });
+        // Create Firestore user profile
+        const profile = {
+          email: body.email,
+          displayName: body.displayName,
+          role: 'student',
+          organizationId: orgId,
+          phone: body.phone || '',
+          createdAt: now(),
+          updatedAt: now(),
+        };
+        await adminDb.collection('users').doc(authUser.uid).set(profile);
+        return ok({ uid: authUser.uid, ...profile });
+      } catch (e: any) {
+        if (e.code === 'auth/email-already-exists') return badRequest('Email already registered in authentication system');
+        throw e;
+      }
+    }
+
     if (action === 'updateStudent') {
       const err = requireOrgStaff(user); if (err) return err;
       const body = JSON.parse(event.body || '{}');
@@ -179,6 +211,35 @@ const handler: Handler = async (event: HandlerEvent) => {
         .where('organizationId', '==', orgId)
         .where('role', 'in', ['teacher', 'admin']).get();
       return ok(snap.docs.map((d: any) => ({ uid: d.id, ...d.data() })));
+    }
+
+    if (action === 'createTeacher') {
+      if (!hasRole(user, 'admin')) return forbidden();
+      const body = JSON.parse(event.body || '{}');
+      if (!body.email || !body.displayName || !body.password) return badRequest('email, displayName and password required');
+      try {
+        const existing = await adminDb.collection('users').where('email', '==', body.email).get();
+        if (!existing.empty) return badRequest('User with this email already exists');
+        const authUser = await adminAuth.createUser({
+          email: body.email,
+          password: body.password,
+          displayName: body.displayName,
+        });
+        const profile = {
+          email: body.email,
+          displayName: body.displayName,
+          role: 'teacher',
+          organizationId: orgId,
+          phone: body.phone || '',
+          createdAt: now(),
+          updatedAt: now(),
+        };
+        await adminDb.collection('users').doc(authUser.uid).set(profile);
+        return ok({ uid: authUser.uid, ...profile });
+      } catch (e: any) {
+        if (e.code === 'auth/email-already-exists') return badRequest('Email already registered in authentication system');
+        throw e;
+      }
     }
 
     if (action === 'inviteUser') {

@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { orgGetTeachers, orgInviteUser } from '../../lib/api';
-import { UserPlus, Search, Plus, Mail, X, RefreshCw } from 'lucide-react';
+import { orgGetTeachers, orgCreateTeacher } from '../../lib/api';
+import { UserPlus, Search, Plus, Mail, X, RefreshCw, Eye, EyeOff } from 'lucide-react';
 import type { UserProfile } from '../../types';
 
 const TeachersPage: React.FC = () => {
@@ -9,23 +9,29 @@ const TeachersPage: React.FC = () => {
   const [teachers, setTeachers] = useState<UserProfile[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
-  const [showInvite, setShowInvite] = useState(false);
-  const [inviteEmail, setInviteEmail] = useState('');
-  const [inviteRole, setInviteRole] = useState('teacher');
+  const [showCreate, setShowCreate] = useState(false);
   const [saving, setSaving] = useState(false);
   const [selected, setSelected] = useState<UserProfile | null>(null);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [form, setForm] = useState({ displayName: '', email: '', password: '', phone: '' });
+  const [showPw, setShowPw] = useState(false);
 
-  const load = () => { setLoading(true); orgGetTeachers().then(setTeachers).catch((e) => setError(e.message || 'Error')).finally(() => setLoading(false)); };
+  const load = () => { setLoading(true); setError(''); orgGetTeachers().then(setTeachers).catch((e) => setError(e.message || 'Error')).finally(() => setLoading(false)); };
   useEffect(load, []);
 
   const filtered = teachers.filter((t) => t.displayName?.toLowerCase().includes(search.toLowerCase()) || t.email?.toLowerCase().includes(search.toLowerCase()));
 
-  const handleInvite = async () => {
-    if (!inviteEmail.trim()) return; setSaving(true); setError('');
-    try { await orgInviteUser(inviteEmail, inviteRole); setShowInvite(false); setInviteEmail(''); setSuccess('Invite sent!'); setTimeout(() => setSuccess(''), 3000); load(); }
-    catch (e: any) { setError(e.message || 'Error'); } finally { setSaving(false); }
+  const handleCreate = async () => {
+    if (!form.displayName.trim() || !form.email.trim() || !form.password.trim()) return;
+    setSaving(true); setError('');
+    try {
+      const created = await orgCreateTeacher(form);
+      setTeachers((p) => [created, ...p]);
+      setShowCreate(false); setForm({ displayName: '', email: '', password: '', phone: '' });
+      setSuccess('Teacher created!'); setTimeout(() => setSuccess(''), 3000);
+    } catch (e: any) { setError(e.message || 'Failed to create teacher'); }
+    finally { setSaving(false); }
   };
 
   return (
@@ -35,7 +41,7 @@ const TeachersPage: React.FC = () => {
           <div><h1 className="text-lg font-bold text-slate-900 dark:text-white">{t('nav.teachers')}</h1><p className="text-[11px] text-slate-500">{teachers.length} {t('org.teachers.total')}</p></div>
           <div className="flex items-center gap-1.5">
             <button onClick={load} className="p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors"><RefreshCw className="w-3.5 h-3.5" /></button>
-            <button onClick={() => setShowInvite(true)} className="bg-emerald-500 hover:bg-emerald-600 text-white px-3 py-1.5 rounded-lg text-[11px] font-medium flex items-center gap-1 transition-colors"><Plus className="w-3 h-3" />{t('org.teachers.invite')}</button>
+            <button onClick={() => setShowCreate(true)} className="bg-emerald-500 hover:bg-emerald-600 text-white px-3 py-1.5 rounded-lg text-[11px] font-medium flex items-center gap-1 transition-colors"><Plus className="w-3 h-3" />{t('org.teachers.create')}</button>
           </div>
         </div>
 
@@ -81,6 +87,7 @@ const TeachersPage: React.FC = () => {
         )}
       </div>
 
+      {/* Detail Panel */}
       {selected && (
         <div className="w-full lg:w-[340px] bg-white dark:bg-slate-800/90 border-l border-slate-200/80 dark:border-slate-700/40 overflow-y-auto shrink-0">
           <div className="px-4 py-3 border-b border-slate-100 dark:border-slate-700/40 flex items-center gap-2 sticky top-0 bg-white dark:bg-slate-800/90 z-10">
@@ -97,22 +104,31 @@ const TeachersPage: React.FC = () => {
         </div>
       )}
 
-      {showInvite && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => setShowInvite(false)}>
+      {/* Create Teacher Modal */}
+      {showCreate && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => setShowCreate(false)}>
           <div className="bg-white dark:bg-slate-800 rounded-xl p-4 w-full max-w-sm shadow-2xl" onClick={(e) => e.stopPropagation()}>
-            <h2 className="text-sm font-bold text-slate-900 dark:text-white mb-1">{t('org.teachers.invite')}</h2>
-            <p className="text-[10px] text-slate-500 mb-3">Enter email of existing user or send invite</p>
+            <h2 className="text-sm font-bold text-slate-900 dark:text-white mb-1">{t('org.teachers.create')}</h2>
+            <p className="text-[10px] text-slate-500 mb-3">{t('org.teachers.createDesc')}</p>
             <div className="space-y-2">
-              <input type="email" placeholder="teacher@example.com" value={inviteEmail} onChange={(e) => setInviteEmail(e.target.value)}
+              <input placeholder={t('org.teachers.namePlaceholder')} value={form.displayName} onChange={(e) => setForm(f => ({ ...f, displayName: e.target.value }))}
                 className="w-full bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-lg px-2.5 py-1.5 text-xs outline-none focus:border-primary-500 text-slate-900 dark:text-white" autoFocus />
-              <select value={inviteRole} onChange={(e) => setInviteRole(e.target.value)}
-                className="w-full bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-lg px-2.5 py-1.5 text-xs outline-none focus:border-primary-500 text-slate-900 dark:text-white">
-                <option value="teacher">{t('org.teachers.roleTeacher')}</option><option value="admin">{t('org.teachers.roleAdmin')}</option>
-              </select>
+              <input type="email" placeholder="teacher@example.com" value={form.email} onChange={(e) => setForm(f => ({ ...f, email: e.target.value }))}
+                className="w-full bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-lg px-2.5 py-1.5 text-xs outline-none focus:border-primary-500 text-slate-900 dark:text-white" />
+              <div className="relative">
+                <input type={showPw ? 'text' : 'password'} placeholder={t('org.teachers.passwordPlaceholder')} value={form.password} onChange={(e) => setForm(f => ({ ...f, password: e.target.value }))}
+                  className="w-full bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-lg px-2.5 py-1.5 pr-8 text-xs outline-none focus:border-primary-500 text-slate-900 dark:text-white" />
+                <button type="button" onClick={() => setShowPw(!showPw)} className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
+                  {showPw ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                </button>
+              </div>
+              <input placeholder={t('org.teachers.phonePlaceholder')} value={form.phone} onChange={(e) => setForm(f => ({ ...f, phone: e.target.value }))}
+                className="w-full bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-lg px-2.5 py-1.5 text-xs outline-none focus:border-primary-500 text-slate-900 dark:text-white" />
             </div>
             <div className="flex justify-end gap-2 mt-3">
-              <button onClick={() => setShowInvite(false)} className="px-2.5 py-1 text-[11px] text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg">{t('common.cancel')}</button>
-              <button onClick={handleInvite} disabled={saving || !inviteEmail.trim()} className="bg-emerald-500 hover:bg-emerald-600 text-white px-3 py-1 rounded-lg text-[11px] font-medium disabled:opacity-50">{saving ? '...' : t('org.teachers.sendInvite')}</button>
+              <button onClick={() => setShowCreate(false)} className="px-2.5 py-1 text-[11px] text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg">{t('common.cancel')}</button>
+              <button onClick={handleCreate} disabled={saving || !form.displayName.trim() || !form.email.trim() || !form.password.trim()}
+                className="bg-emerald-500 hover:bg-emerald-600 text-white px-3 py-1 rounded-lg text-[11px] font-medium disabled:opacity-50">{saving ? '...' : t('common.save')}</button>
             </div>
           </div>
         </div>

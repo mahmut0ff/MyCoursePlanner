@@ -178,10 +178,12 @@ export const orgDeleteGroup = (id: string) => orgReq('deleteGroup', 'POST', { id
 
 // Students
 export const orgGetStudents = () => orgReq('students');
+export const orgCreateStudent = (data: any) => orgReq('createStudent', 'POST', data);
 export const orgUpdateStudent = (data: any) => orgReq('updateStudent', 'POST', data);
 
 // Teachers
 export const orgGetTeachers = () => orgReq('teachers');
+export const orgCreateTeacher = (data: any) => orgReq('createTeacher', 'POST', data);
 export const orgInviteUser = (email: string, role: string) => orgReq('inviteUser', 'POST', { email, role });
 
 // Materials

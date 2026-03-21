@@ -137,8 +137,8 @@ const ExamEditPage: React.FC = () => {
             <div><label className="label">Pass Score (%)</label><input type="number" value={passScore} onChange={(e) => setPassScore(+e.target.value)} className="input" min={0} max={100} /></div>
             <div><label className="label">Status</label><select value={status} onChange={(e) => setStatus(e.target.value as any)} className="input"><option value="draft">Draft</option><option value="published">Published</option></select></div>
             <div className="flex items-center gap-6">
-              <label className="flex items-center gap-2 cursor-pointer"><input type="checkbox" checked={randomize} onChange={(e) => setRandomize(e.target.checked)} className="w-4 h-4 rounded border-slate-300 text-primary-600 focus:ring-primary-500" /><span className="text-sm text-slate-700">Randomize Questions</span></label>
-              <label className="flex items-center gap-2 cursor-pointer"><input type="checkbox" checked={showResults} onChange={(e) => setShowResults(e.target.checked)} className="w-4 h-4 rounded border-slate-300 text-primary-600 focus:ring-primary-500" /><span className="text-sm text-slate-700">Show Results Immediately</span></label>
+              <label className="flex items-center gap-2 cursor-pointer"><input type="checkbox" checked={randomize} onChange={(e) => setRandomize(e.target.checked)} className="w-4 h-4 rounded border-slate-300 dark:border-slate-600 text-primary-600 focus:ring-primary-500" /><span className="text-sm text-slate-700 dark:text-slate-300">Randomize Questions</span></label>
+              <label className="flex items-center gap-2 cursor-pointer"><input type="checkbox" checked={showResults} onChange={(e) => setShowResults(e.target.checked)} className="w-4 h-4 rounded border-slate-300 dark:border-slate-600 text-primary-600 focus:ring-primary-500" /><span className="text-sm text-slate-700 dark:text-slate-300">Show Results Immediately</span></label>
             </div>
           </div>
         </div>
@@ -190,7 +190,7 @@ const ExamEditPage: React.FC = () => {
                       </div>
                     ))}
                     <button onClick={() => addOption(qIdx)} className="text-sm text-primary-600 hover:text-primary-700 font-medium">+ Add Option</button>
-                    <p className="text-xs text-slate-400 mt-1">
+                    <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">
                       {q.type === 'single_choice' ? 'Select the correct answer' : 'Check all correct answers'}
                     </p>
                   </div>
@@ -200,7 +200,7 @@ const ExamEditPage: React.FC = () => {
                   <div>
                     <label className="label">Keywords (for basic scoring, comma separated)</label>
                     <input value={q.keywords.join(', ')} onChange={(e) => updateQuestion(qIdx, { keywords: e.target.value.split(',').map((k) => k.trim()).filter(Boolean) })} className="input" placeholder="key concept, important term" />
-                    <p className="text-xs text-slate-400 mt-1">If ≥50% keywords match, auto-graded as correct. Otherwise marked for manual review.</p>
+                    <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">If ≥50% keywords match, auto-graded as correct. Otherwise marked for manual review.</p>
                   </div>
                 )}
               </div>

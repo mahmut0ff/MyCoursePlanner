@@ -47,7 +47,7 @@ const AdminAuditLogsPage: React.FC = () => {
 
       <div className="flex flex-wrap gap-3 mb-4">
         <div className="relative flex-1 min-w-[200px]">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 dark:text-slate-500" />
           <input type="text" value={search} onChange={(e) => setSearch(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && load()} className="input pl-9" placeholder="Search actions, actors..." />
         </div>
         <select value={entityFilter} onChange={(e) => setEntityFilter(e.target.value)} className="input w-auto">
@@ -60,43 +60,43 @@ const AdminAuditLogsPage: React.FC = () => {
         <button onClick={load} className="btn-secondary text-sm">Refresh</button>
       </div>
 
-      <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
-        <div className="divide-y">
+      <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl overflow-hidden">
+        <div className="divide-y divide-slate-100 dark:divide-slate-700">
           {filteredLogs.map((log) => {
             const Icon = ENTITY_ICONS[log.entityType] || Activity;
-            const colors = ACTION_COLORS[log.action] || 'text-slate-600 bg-slate-50';
+            const colors = ACTION_COLORS[log.action] || 'text-slate-600 dark:text-slate-400 dark:text-slate-500 bg-slate-50 dark:bg-slate-700/50';
             const isExpanded = expanded === log.id;
 
             return (
               <div key={log.id}>
-                <div className="px-6 py-3 flex items-center gap-4 hover:bg-slate-50 cursor-pointer" onClick={() => setExpanded(isExpanded ? null : log.id)}>
+                <div className="px-6 py-3 flex items-center gap-4 hover:bg-slate-50 dark:bg-slate-700/50 cursor-pointer" onClick={() => setExpanded(isExpanded ? null : log.id)}>
                   <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${colors}`}><Icon className="w-4 h-4" /></div>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm text-slate-900"><span className="font-medium">{log.actorName || 'System'}</span> <span className={`inline-flex px-2 py-0.5 rounded text-xs font-medium ${colors}`}>{log.action?.replace(/_/g, ' ')}</span></p>
-                    <p className="text-xs text-slate-400">{log.entityType} <span className="text-slate-300">·</span> {log.entityId?.slice(0, 20)} <span className="text-slate-300">·</span> {new Date(log.createdAt).toLocaleString()}</p>
+                    <p className="text-xs text-slate-400 dark:text-slate-500">{log.entityType} <span className="text-slate-300">·</span> {log.entityId?.slice(0, 20)} <span className="text-slate-300">·</span> {new Date(log.createdAt).toLocaleString()}</p>
                   </div>
-                  <ChevronDown className={`w-4 h-4 text-slate-400 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
+                  <ChevronDown className={`w-4 h-4 text-slate-400 dark:text-slate-500 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
                 </div>
 
                 {isExpanded && (
-                  <div className="px-6 pb-4 bg-slate-50">
+                  <div className="px-6 pb-4 bg-slate-50 dark:bg-slate-700/50">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
                       {log.before && (
                         <div>
-                          <p className="text-xs font-semibold text-slate-400 mb-1">Before</p>
-                          <pre className="bg-white border rounded-lg p-3 text-xs text-slate-700 overflow-x-auto max-h-32">{JSON.stringify(log.before, null, 2)}</pre>
+                          <p className="text-xs font-semibold text-slate-400 dark:text-slate-500 mb-1">Before</p>
+                          <pre className="bg-white dark:bg-slate-800 border rounded-lg p-3 text-xs text-slate-700 dark:text-slate-300 overflow-x-auto max-h-32">{JSON.stringify(log.before, null, 2)}</pre>
                         </div>
                       )}
                       {log.after && (
                         <div>
-                          <p className="text-xs font-semibold text-slate-400 mb-1">After</p>
-                          <pre className="bg-white border rounded-lg p-3 text-xs text-slate-700 overflow-x-auto max-h-32">{JSON.stringify(log.after, null, 2)}</pre>
+                          <p className="text-xs font-semibold text-slate-400 dark:text-slate-500 mb-1">After</p>
+                          <pre className="bg-white dark:bg-slate-800 border rounded-lg p-3 text-xs text-slate-700 dark:text-slate-300 overflow-x-auto max-h-32">{JSON.stringify(log.after, null, 2)}</pre>
                         </div>
                       )}
                       {log.metadata && (
                         <div className="md:col-span-2">
-                          <p className="text-xs font-semibold text-slate-400 mb-1">Metadata</p>
-                          <pre className="bg-white border rounded-lg p-3 text-xs text-slate-700 overflow-x-auto">{JSON.stringify(log.metadata, null, 2)}</pre>
+                          <p className="text-xs font-semibold text-slate-400 dark:text-slate-500 mb-1">Metadata</p>
+                          <pre className="bg-white dark:bg-slate-800 border rounded-lg p-3 text-xs text-slate-700 dark:text-slate-300 overflow-x-auto">{JSON.stringify(log.metadata, null, 2)}</pre>
                         </div>
                       )}
                     </div>
@@ -105,7 +105,7 @@ const AdminAuditLogsPage: React.FC = () => {
               </div>
             );
           })}
-          {filteredLogs.length === 0 && <div className="text-center py-12 text-slate-400 text-sm">{loading ? 'Loading...' : 'No audit logs found'}</div>}
+          {filteredLogs.length === 0 && <div className="text-center py-12 text-slate-400 dark:text-slate-500 text-sm">{loading ? 'Loading...' : 'No audit logs found'}</div>}
         </div>
       </div>
     </div>

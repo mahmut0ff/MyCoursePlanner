@@ -51,7 +51,7 @@ const LessonViewPage: React.FC = () => {
     return (
       <div className="text-center py-20">
         <BookOpen className="w-12 h-12 text-slate-300 mx-auto mb-3" />
-        <h3 className="text-lg font-medium text-slate-700">Lesson not found</h3>
+        <h3 className="text-lg font-medium text-slate-700 dark:text-slate-300">Lesson not found</h3>
         <Link to="/lessons" className="text-primary-600 hover:text-primary-700 text-sm mt-2 inline-block">Back to lessons</Link>
       </div>
     );
@@ -71,7 +71,7 @@ const LessonViewPage: React.FC = () => {
 
       {/* Hero */}
       {lesson.coverImageUrl && (
-        <div className="rounded-xl overflow-hidden mb-6 h-64 md:h-80">
+        <div className="rounded-2xl overflow-hidden mb-6 h-64 md:h-80">
           <img src={lesson.coverImageUrl} alt={lesson.title} className="w-full h-full object-cover" />
         </div>
       )}
@@ -85,10 +85,10 @@ const LessonViewPage: React.FC = () => {
           ))}
         </div>
 
-        <h1 className="text-3xl font-bold text-slate-900 mb-2">{lesson.title}</h1>
+        <h1 className="text-3xl font-bold text-slate-900 dark:text-white mb-2">{lesson.title}</h1>
         <p className="text-slate-600 mb-4">{lesson.description}</p>
 
-        <div className="flex items-center gap-6 text-sm text-slate-500 mb-8 pb-6 border-b">
+        <div className="flex items-center gap-6 text-sm text-slate-500 dark:text-slate-400 dark:text-slate-500 mb-8 pb-6 border-b">
           <span className="flex items-center gap-1.5"><Clock className="w-4 h-4" />{lesson.duration} minutes</span>
           <span>By {lesson.authorName}</span>
           <span>{formatDate(lesson.createdAt)}</span>

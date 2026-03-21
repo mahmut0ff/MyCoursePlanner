@@ -124,7 +124,7 @@ const ExamTakePage: React.FC = () => {
   };
 
   if (loading) return <div className="flex items-center justify-center min-h-screen"><div className="w-10 h-10 border-4 border-primary-200 border-t-primary-600 rounded-full animate-spin" /></div>;
-  if (!exam || !questions.length) return <div className="text-center py-20"><h3 className="text-lg font-medium text-slate-700">Exam not available</h3></div>;
+  if (!exam || !questions.length) return <div className="text-center py-20"><h3 className="text-lg font-medium text-slate-700 dark:text-slate-300">Exam not available</h3></div>;
 
   const q = questions[currentQ];
   const isLow = timeLeft <= 60;
@@ -134,13 +134,13 @@ const ExamTakePage: React.FC = () => {
   }).length;
 
   return (
-    <div className="min-h-screen bg-slate-50">
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-700/50">
       {/* Fixed Timer Bar */}
-      <div className={`sticky top-0 z-50 border-b ${isLow ? 'bg-red-600 text-white' : 'bg-white text-slate-900'} shadow-sm`}>
+      <div className={`sticky top-0 z-50 border-b ${isLow ? 'bg-red-600 text-white' : 'bg-white dark:bg-slate-800 text-slate-900 dark:text-white'} shadow-sm`}>
         <div className="max-w-4xl mx-auto px-4 py-3 flex items-center justify-between">
           <div>
             <h1 className="font-semibold text-sm">{exam.title}</h1>
-            <p className={`text-xs ${isLow ? 'text-red-200' : 'text-slate-500'}`}>
+            <p className={`text-xs ${isLow ? 'text-red-200' : 'text-slate-500 dark:text-slate-400 dark:text-slate-500'}`}>
               {answeredCount}/{questions.length} answered
             </p>
           </div>
@@ -153,7 +153,7 @@ const ExamTakePage: React.FC = () => {
             onClick={() => { if (confirm('Submit your exam? You cannot change answers after submission.')) handleSubmit(); }}
             disabled={submitting}
             className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium text-sm ${
-              isLow ? 'bg-white text-red-600 hover:bg-red-50' : 'btn-primary'
+              isLow ? 'bg-white dark:bg-slate-800 text-red-600 hover:bg-red-50' : 'btn-primary'
             }`}
           >
             <Send className="w-4 h-4" />
@@ -177,7 +177,7 @@ const ExamTakePage: React.FC = () => {
                     ? 'bg-primary-600 text-white'
                     : answered
                     ? 'bg-primary-100 text-primary-700'
-                    : 'bg-white border border-slate-200 text-slate-600 hover:border-primary-300'
+                    : 'bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 dark:text-slate-500 hover:border-primary-300'
                 }`}
               >
                 {i + 1}
@@ -190,10 +190,10 @@ const ExamTakePage: React.FC = () => {
         <div className="card p-8">
           <div className="flex items-center justify-between mb-4">
             <span className="badge-primary">Question {currentQ + 1} of {questions.length}</span>
-            <span className="text-sm text-slate-500">{q.points} point{q.points !== 1 ? 's' : ''}</span>
+            <span className="text-sm text-slate-500 dark:text-slate-400 dark:text-slate-500">{q.points} point{q.points !== 1 ? 's' : ''}</span>
           </div>
 
-          <h2 className="text-xl font-semibold text-slate-900 mb-6">{q.text}</h2>
+          <h2 className="text-xl font-semibold text-slate-900 dark:text-white mb-6">{q.text}</h2>
 
           {q.type === 'single_choice' && (
             <div className="space-y-3">
@@ -203,7 +203,7 @@ const ExamTakePage: React.FC = () => {
                   className={`flex items-center gap-3 p-4 rounded-lg border-2 cursor-pointer transition-colors ${
                     answers[q.id] === opt
                       ? 'border-primary-500 bg-primary-50'
-                      : 'border-slate-200 hover:border-slate-300'
+                      : 'border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:border-slate-600'
                   }`}
                 >
                   <input
@@ -227,7 +227,7 @@ const ExamTakePage: React.FC = () => {
                   <label
                     key={oi}
                     className={`flex items-center gap-3 p-4 rounded-lg border-2 cursor-pointer transition-colors ${
-                      selected ? 'border-primary-500 bg-primary-50' : 'border-slate-200 hover:border-slate-300'
+                      selected ? 'border-primary-500 bg-primary-50' : 'border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:border-slate-600'
                     }`}
                   >
                     <input
@@ -240,7 +240,7 @@ const ExamTakePage: React.FC = () => {
                   </label>
                 );
               })}
-              <p className="text-xs text-slate-400">Select all correct answers</p>
+              <p className="text-xs text-slate-400 dark:text-slate-500">Select all correct answers</p>
             </div>
           )}
 

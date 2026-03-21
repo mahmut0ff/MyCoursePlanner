@@ -92,12 +92,12 @@ const BillingPage: React.FC = () => {
           <div className="flex items-center justify-between flex-wrap gap-4">
             <div>
               <p className="text-sm text-primary-600 font-medium">Current Plan</p>
-              <p className="text-xl font-bold text-slate-900 capitalize">{currentPlan}
+              <p className="text-xl font-bold text-slate-900 dark:text-white capitalize">{currentPlan}
                 {isTrialing && <span className="ml-2 text-sm font-normal text-amber-600 bg-amber-50 px-2 py-0.5 rounded">Trial</span>}
                 {isCancelled && <span className="ml-2 text-sm font-normal text-red-600 bg-red-50 px-2 py-0.5 rounded">Cancelled</span>}
               </p>
               {isTrialing && subscription.trialEndsAt && (
-                <p className="text-sm text-slate-500 mt-1">Trial ends {new Date(subscription.trialEndsAt).toLocaleDateString()}</p>
+                <p className="text-sm text-slate-500 dark:text-slate-400 dark:text-slate-500 mt-1">Trial ends {new Date(subscription.trialEndsAt).toLocaleDateString()}</p>
               )}
             </div>
             <div>
@@ -124,14 +124,14 @@ const BillingPage: React.FC = () => {
               <div className="p-6">
                 <ul className="space-y-3 mb-6">
                   {plan.features.map((f, i) => (
-                    <li key={i} className="flex items-start gap-2 text-sm text-slate-700">
+                    <li key={i} className="flex items-start gap-2 text-sm text-slate-700 dark:text-slate-300">
                       <Check className="w-4 h-4 text-emerald-500 shrink-0 mt-0.5" />
                       {f}
                     </li>
                   ))}
                 </ul>
                 {isCurrent ? (
-                  <button disabled className="w-full py-2.5 rounded-lg text-sm font-medium bg-slate-100 text-slate-500">Current Plan</button>
+                  <button disabled className="w-full py-2.5 rounded-lg text-sm font-medium bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400 dark:text-slate-500">Current Plan</button>
                 ) : (
                   <button
                     onClick={() => handleChangePlan(plan.id)}

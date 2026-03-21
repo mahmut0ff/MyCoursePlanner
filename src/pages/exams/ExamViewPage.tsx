@@ -46,7 +46,7 @@ const ExamViewPage: React.FC = () => {
   };
 
   if (loading) return <div className="flex items-center justify-center py-20"><div className="w-8 h-8 border-4 border-primary-200 border-t-primary-600 rounded-full animate-spin" /></div>;
-  if (!exam) return <div className="text-center py-20"><h3 className="text-lg font-medium text-slate-700">Exam not found</h3></div>;
+  if (!exam) return <div className="text-center py-20"><h3 className="text-lg font-medium text-slate-700 dark:text-slate-300">Exam not found</h3></div>;
 
   return (
     <div className="max-w-4xl mx-auto">
@@ -68,34 +68,34 @@ const ExamViewPage: React.FC = () => {
           <span className="badge-primary">{exam.subject}</span>
           <span className={exam.status === 'published' ? 'badge-green' : 'badge-yellow'}>{exam.status}</span>
         </div>
-        <h1 className="text-3xl font-bold text-slate-900 mb-2">{exam.title}</h1>
+        <h1 className="text-3xl font-bold text-slate-900 dark:text-white mb-2">{exam.title}</h1>
         <p className="text-slate-600 mb-6">{exam.description}</p>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <div className="bg-slate-50 rounded-lg p-4 text-center">
+          <div className="bg-slate-50 dark:bg-slate-700/50 rounded-lg p-4 text-center">
             <Clock className="w-5 h-5 text-primary-500 mx-auto mb-1" />
-            <p className="text-sm text-slate-500">Duration</p>
+            <p className="text-sm text-slate-500 dark:text-slate-400 dark:text-slate-500">Duration</p>
             <p className="font-semibold text-slate-900">{exam.durationMinutes} min</p>
           </div>
-          <div className="bg-slate-50 rounded-lg p-4 text-center">
+          <div className="bg-slate-50 dark:bg-slate-700/50 rounded-lg p-4 text-center">
             <Target className="w-5 h-5 text-primary-500 mx-auto mb-1" />
-            <p className="text-sm text-slate-500">Pass Score</p>
+            <p className="text-sm text-slate-500 dark:text-slate-400 dark:text-slate-500">Pass Score</p>
             <p className="font-semibold text-slate-900">{exam.passScore}%</p>
           </div>
-          <div className="bg-slate-50 rounded-lg p-4 text-center">
+          <div className="bg-slate-50 dark:bg-slate-700/50 rounded-lg p-4 text-center">
             <HelpCircle className="w-5 h-5 text-primary-500 mx-auto mb-1" />
-            <p className="text-sm text-slate-500">Questions</p>
+            <p className="text-sm text-slate-500 dark:text-slate-400 dark:text-slate-500">Questions</p>
             <p className="font-semibold text-slate-900">{questions.length}</p>
           </div>
-          <div className="bg-slate-50 rounded-lg p-4 text-center">
-            <p className="text-sm text-slate-500 mt-1">Created</p>
-            <p className="font-semibold text-slate-900 text-sm">{formatDate(exam.createdAt)}</p>
+          <div className="bg-slate-50 dark:bg-slate-700/50 rounded-lg p-4 text-center">
+            <p className="text-sm text-slate-500 dark:text-slate-400 dark:text-slate-500 mt-1">Created</p>
+            <p className="font-semibold text-slate-900 dark:text-white text-sm">{formatDate(exam.createdAt)}</p>
           </div>
         </div>
       </div>
 
       {isStaff && questions.length > 0 && (
         <div className="card p-6">
-          <h2 className="font-semibold text-slate-900 mb-4">Question Preview</h2>
+          <h2 className="font-semibold text-slate-900 dark:text-white mb-4">Question Preview</h2>
           <div className="space-y-4">
             {questions.map((q, i) => (
               <div key={q.id} className="border border-slate-100 rounded-lg p-4">
@@ -108,8 +108,8 @@ const ExamViewPage: React.FC = () => {
                     {q.options.map((opt, oi) => (
                       <div key={oi} className={`text-sm px-2 py-1 rounded ${
                         q.type === 'single_choice'
-                          ? opt === q.correctAnswer ? 'bg-emerald-50 text-emerald-700 font-medium' : 'text-slate-600'
-                          : q.correctAnswers.includes(opt) ? 'bg-emerald-50 text-emerald-700 font-medium' : 'text-slate-600'
+                          ? opt === q.correctAnswer ? 'bg-emerald-50 text-emerald-700 font-medium' : 'text-slate-600 dark:text-slate-400 dark:text-slate-500'
+                          : q.correctAnswers.includes(opt) ? 'bg-emerald-50 text-emerald-700 font-medium' : 'text-slate-600 dark:text-slate-400 dark:text-slate-500'
                       }`}>
                         {q.type === 'single_choice' ? '○' : '□'} {opt}
                       </div>
@@ -117,7 +117,7 @@ const ExamViewPage: React.FC = () => {
                   </div>
                 )}
                 {q.type === 'text' && (
-                  <p className="text-sm text-slate-500 ml-6 italic">Text answer {q.keywords.length > 0 ? `(keywords: ${q.keywords.join(', ')})` : '(manual review)'}</p>
+                  <p className="text-sm text-slate-500 dark:text-slate-400 dark:text-slate-500 ml-6 italic">Text answer {q.keywords.length > 0 ? `(keywords: ${q.keywords.join(', ')})` : '(manual review)'}</p>
                 )}
               </div>
             ))}

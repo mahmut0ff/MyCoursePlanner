@@ -29,7 +29,7 @@ const MyResultsPage: React.FC = () => {
       {attempts.length === 0 ? (
         <div className="card p-12 text-center">
           <ClipboardList className="w-12 h-12 text-slate-300 mx-auto mb-3" />
-          <h3 className="text-lg font-medium text-slate-700 mb-1">No results yet</h3>
+          <h3 className="text-lg font-medium text-slate-700 dark:text-slate-300 mb-1">No results yet</h3>
           <p className="text-slate-500 text-sm">Join an exam to see your results here.</p>
           <Link to="/join" className="btn-primary inline-block mt-4">Join an Exam</Link>
         </div>
@@ -41,8 +41,8 @@ const MyResultsPage: React.FC = () => {
                 {a.passed ? <Trophy className="w-6 h-6 text-emerald-600" /> : <XCircle className="w-6 h-6 text-red-500" />}
               </div>
               <div className="flex-1 min-w-0">
-                <h3 className="font-semibold text-slate-900 truncate">{a.examTitle}</h3>
-                <div className="flex items-center gap-3 text-sm text-slate-500 mt-0.5">
+                <h3 className="font-semibold text-slate-900 dark:text-white truncate">{a.examTitle}</h3>
+                <div className="flex items-center gap-3 text-sm text-slate-500 dark:text-slate-400 dark:text-slate-500 mt-0.5">
                   <span>{formatDate(a.submittedAt)}</span>
                   <span className="flex items-center gap-1"><Clock className="w-3.5 h-3.5" />{Math.floor(a.timeSpentSeconds / 60)}m</span>
                 </div>

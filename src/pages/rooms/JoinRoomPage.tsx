@@ -34,7 +34,7 @@ const JoinRoomPage: React.FC = () => {
         <div className="w-16 h-16 bg-primary-50 rounded-2xl flex items-center justify-center mx-auto mb-4">
           <Radio className="w-8 h-8 text-primary-600" />
         </div>
-        <h1 className="text-2xl font-bold text-slate-900 mb-2">Join an Exam</h1>
+        <h1 className="text-2xl font-bold text-slate-900 dark:text-white mb-2">Join an Exam</h1>
         <p className="text-slate-500 mb-6">Enter the room code provided by your teacher</p>
 
         {error && (

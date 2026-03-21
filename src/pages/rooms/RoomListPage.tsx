@@ -37,7 +37,7 @@ const RoomListPage: React.FC = () => {
       {rooms.length === 0 ? (
         <div className="card p-12 text-center">
           <Radio className="w-12 h-12 text-slate-300 mx-auto mb-3" />
-          <h3 className="text-lg font-medium text-slate-700 mb-1">No exam rooms</h3>
+          <h3 className="text-lg font-medium text-slate-700 dark:text-slate-300 mb-1">No exam rooms</h3>
           <p className="text-slate-500 text-sm">Go to an exam and click "Start Exam Room" to create one.</p>
         </div>
       ) : (
@@ -45,13 +45,13 @@ const RoomListPage: React.FC = () => {
           {rooms.map((room) => (
             <Link key={room.id} to={`/rooms/${room.id}`} className="card p-5 hover:shadow-md transition-shadow">
               <div className="flex items-center gap-2 mb-3">
-                <Radio className={`w-4 h-4 ${room.status === 'active' ? 'text-emerald-500' : 'text-slate-400'}`} />
+                <Radio className={`w-4 h-4 ${room.status === 'active' ? 'text-emerald-500' : 'text-slate-400 dark:text-slate-500'}`} />
                 <span className={room.status === 'active' ? 'badge-green' : 'badge-slate'}>{room.status}</span>
                 <span className="font-mono text-sm text-primary-600 ml-auto">{room.code}</span>
               </div>
-              <h3 className="font-semibold text-slate-900 mb-1">{room.examTitle}</h3>
-              <p className="text-sm text-slate-500">Host: {room.hostName}</p>
-              <div className="flex items-center justify-between mt-3 text-xs text-slate-400">
+              <h3 className="font-semibold text-slate-900 dark:text-white mb-1">{room.examTitle}</h3>
+              <p className="text-sm text-slate-500 dark:text-slate-400 dark:text-slate-500">Host: {room.hostName}</p>
+              <div className="flex items-center justify-between mt-3 text-xs text-slate-400 dark:text-slate-500">
                 <span className="flex items-center gap-1"><Users className="w-3.5 h-3.5" />{room.participants.length}</span>
                 <span>{formatDate(room.createdAt)}</span>
               </div>

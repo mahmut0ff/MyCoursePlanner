@@ -26,7 +26,7 @@ const ResultPage: React.FC = () => {
   };
 
   if (loading) return <div className="flex items-center justify-center py-20"><div className="w-8 h-8 border-4 border-primary-200 border-t-primary-600 rounded-full animate-spin" /></div>;
-  if (!attempt) return <div className="text-center py-20"><h3 className="text-lg font-medium text-slate-700">Result not found</h3></div>;
+  if (!attempt) return <div className="text-center py-20"><h3 className="text-lg font-medium text-slate-700 dark:text-slate-300">Result not found</h3></div>;
 
   const mins = Math.floor(attempt.timeSpentSeconds / 60);
   const secs = attempt.timeSpentSeconds % 60;
@@ -50,19 +50,19 @@ const ResultPage: React.FC = () => {
           <div>
             <Target className="w-5 h-5 text-primary-500 mx-auto mb-1" />
             <p className="text-lg font-semibold text-slate-900">{attempt.score}/{attempt.totalPoints}</p>
-            <p className="text-xs text-slate-500">Score</p>
+            <p className="text-xs text-slate-500 dark:text-slate-400 dark:text-slate-500">Score</p>
           </div>
           <div>
             <Clock className="w-5 h-5 text-amber-500 mx-auto mb-1" />
             <p className="text-lg font-semibold text-slate-900">{mins}m {secs}s</p>
-            <p className="text-xs text-slate-500">Time Spent</p>
+            <p className="text-xs text-slate-500 dark:text-slate-400 dark:text-slate-500">Time Spent</p>
           </div>
           <div>
             <CheckCircle className="w-5 h-5 text-emerald-500 mx-auto mb-1" />
             <p className="text-lg font-semibold text-slate-900">
               {attempt.questionResults?.filter((r) => r.isCorrect).length || 0}/{attempt.questionResults?.length || 0}
             </p>
-            <p className="text-xs text-slate-500">Correct</p>
+            <p className="text-xs text-slate-500 dark:text-slate-400 dark:text-slate-500">Correct</p>
           </div>
         </div>
       </div>
@@ -81,19 +81,19 @@ const ResultPage: React.FC = () => {
             {attempt.aiFeedback.strengths?.length > 0 && (
               <div>
                 <h3 className="text-sm font-medium text-emerald-700 mb-1">💪 Strengths</h3>
-                <ul className="text-sm text-slate-600 space-y-1">{attempt.aiFeedback.strengths.map((s, i) => <li key={i}>• {s}</li>)}</ul>
+                <ul className="text-sm text-slate-600 dark:text-slate-400 dark:text-slate-500 space-y-1">{attempt.aiFeedback.strengths.map((s, i) => <li key={i}>• {s}</li>)}</ul>
               </div>
             )}
             {attempt.aiFeedback.weakTopics?.length > 0 && (
               <div>
                 <h3 className="text-sm font-medium text-amber-700 mb-1">📚 Areas to Improve</h3>
-                <ul className="text-sm text-slate-600 space-y-1">{attempt.aiFeedback.weakTopics.map((w, i) => <li key={i}>• {w}</li>)}</ul>
+                <ul className="text-sm text-slate-600 dark:text-slate-400 dark:text-slate-500 space-y-1">{attempt.aiFeedback.weakTopics.map((w, i) => <li key={i}>• {w}</li>)}</ul>
               </div>
             )}
             {attempt.aiFeedback.reviewSuggestions?.length > 0 && (
               <div>
                 <h3 className="text-sm font-medium text-primary-700 mb-1">📝 What to Review</h3>
-                <ul className="text-sm text-slate-600 space-y-1">{attempt.aiFeedback.reviewSuggestions.map((r, i) => <li key={i}>• {r}</li>)}</ul>
+                <ul className="text-sm text-slate-600 dark:text-slate-400 dark:text-slate-500 space-y-1">{attempt.aiFeedback.reviewSuggestions.map((r, i) => <li key={i}>• {r}</li>)}</ul>
               </div>
             )}
           </div>
@@ -110,8 +110,8 @@ const ResultPage: React.FC = () => {
       {/* Question Results */}
       {attempt.questionResults && attempt.questionResults.length > 0 && (
         <div className="card overflow-hidden">
-          <div className="px-6 py-4 border-b bg-slate-50"><h3 className="font-semibold text-slate-900">Question Breakdown</h3></div>
-          <div className="divide-y">
+          <div className="px-6 py-4 border-b bg-slate-50 dark:bg-slate-700/50"><h3 className="font-semibold text-slate-900">Question Breakdown</h3></div>
+          <div className="divide-y divide-slate-100 dark:divide-slate-700">
             {attempt.questionResults.map((qr, i) => (
               <div key={i} className="px-6 py-4">
                 <div className="flex items-start justify-between">
@@ -120,7 +120,7 @@ const ResultPage: React.FC = () => {
                       {qr.status === 'correct' && <CheckCircle className="w-4 h-4 text-emerald-500 shrink-0" />}
                       {qr.status === 'incorrect' && <XCircle className="w-4 h-4 text-red-500 shrink-0" />}
                       {qr.status === 'pending_review' && <HelpCircle className="w-4 h-4 text-amber-500 shrink-0" />}
-                      <span className="font-medium text-slate-900 text-sm">Q{i + 1}: {qr.questionText}</span>
+                      <span className="font-medium text-slate-900 dark:text-white text-sm">Q{i + 1}: {qr.questionText}</span>
                     </div>
                     <div className="ml-6 text-sm space-y-1">
                       <p className="text-slate-600">Your answer: <span className="font-medium">{Array.isArray(qr.studentAnswer) ? qr.studentAnswer.join(', ') : qr.studentAnswer || '(no answer)'}</span></p>
@@ -130,7 +130,7 @@ const ResultPage: React.FC = () => {
                       {qr.status === 'pending_review' && <span className="badge-yellow text-xs">Pending Review</span>}
                     </div>
                   </div>
-                  <span className="text-sm font-medium text-slate-500">{qr.pointsEarned}/{qr.pointsPossible}</span>
+                  <span className="text-sm font-medium text-slate-500 dark:text-slate-400 dark:text-slate-500">{qr.pointsEarned}/{qr.pointsPossible}</span>
                 </div>
               </div>
             ))}

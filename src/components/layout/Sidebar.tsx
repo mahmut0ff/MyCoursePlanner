@@ -83,9 +83,6 @@ const Sidebar: React.FC<{ open: boolean; onClose: () => void }> = ({ open, onClo
               <NavLink to="/admin/feature-flags" className={linkClass} onClick={onClose}>
                 <Zap className="w-4 h-4" />{t('nav.featureFlags')}
               </NavLink>
-              <NavLink to="/admin/settings" className={linkClass} onClick={onClose}>
-                <Settings className="w-4 h-4" />{t('nav.settings')}
-              </NavLink>
             </>
           ) : (
             <>

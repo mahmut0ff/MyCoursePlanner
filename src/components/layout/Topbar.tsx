@@ -7,7 +7,7 @@ import LanguageSwitcher from '../LanguageSwitcher';
 import {
   Menu, Bell, Search, Sun, Moon, X,
   LayoutDashboard, Building2, Users, CreditCard, BarChart3,
-  Activity, Server, Settings, BookOpen, ClipboardList, Radio, Tag, Puzzle, Zap,
+  Activity, Server, BookOpen, ClipboardList, Radio, Tag, Puzzle, Zap,
 } from 'lucide-react';
 
 interface TopbarProps {
@@ -26,7 +26,6 @@ const ADMIN_ITEMS = [
   { icon: Server, label: 'nav.systemHealth', path: '/admin/system-health' },
   { icon: Puzzle, label: 'nav.integrations', path: '/admin/integrations' },
   { icon: Zap, label: 'nav.featureFlags', path: '/admin/feature-flags' },
-  { icon: Settings, label: 'nav.settings', path: '/admin/settings' },
 ];
 
 const USER_ITEMS = [

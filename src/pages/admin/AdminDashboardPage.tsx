@@ -21,22 +21,22 @@ const AdminDashboardPage: React.FC = () => {
   }, []);
 
   if (loading) return <div className="flex items-center justify-center py-20"><div className="w-8 h-8 border-4 border-primary-200 border-t-primary-600 rounded-full animate-spin dark:border-primary-800 dark:border-t-primary-400" /></div>;
-  if (!stats) return <div className="text-center py-20 text-slate-400 dark:text-slate-500">Failed to load</div>;
+  if (!stats) return <div className="text-center py-20 text-slate-400 dark:text-slate-500">{t('admin.health.failedLoad')}</div>;
 
   const metrics = [
-    { label: t('admin.organizations'), value: stats.totalOrganizations, icon: Building2, color: 'bg-primary-500/10 dark:bg-primary-500/20 text-primary-600 dark:text-primary-400', sub: `${stats.activeOrganizations} active` },
-    { label: t('admin.users'), value: stats.totalUsers, icon: Users, color: 'bg-emerald-500/10 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400', sub: `${stats.students} students` },
-    { label: 'MRR', value: `$${stats.mrr}`, icon: DollarSign, color: 'bg-amber-500/10 dark:bg-amber-500/20 text-amber-600 dark:text-amber-400', sub: `ARR: $${stats.arr}` },
-    { label: t('admin.totalExams'), value: stats.totalExams, icon: Zap, color: 'bg-violet-500/10 dark:bg-violet-500/20 text-violet-600 dark:text-violet-400', sub: `${stats.totalAttempts} attempts` },
-    { label: t('admin.activeRooms'), value: stats.activeRooms, icon: Globe, color: 'bg-sky-500/10 dark:bg-sky-500/20 text-sky-600 dark:text-sky-400', sub: `${stats.totalRooms} total` },
-    { label: t('admin.trialOrgs'), value: stats.trialOrgs, icon: TrendingUp, color: 'bg-rose-500/10 dark:bg-rose-500/20 text-rose-600 dark:text-rose-400', sub: `${stats.suspendedOrganizations} suspended` },
+    { label: t('admin.dashboard.organizations'), value: stats.totalOrganizations, icon: Building2, color: 'bg-primary-500/10 dark:bg-primary-500/20 text-primary-600 dark:text-primary-400', sub: `${stats.activeOrganizations} ${t('admin.dashboard.active')}` },
+    { label: t('admin.dashboard.totalUsers'), value: stats.totalUsers, icon: Users, color: 'bg-emerald-500/10 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400', sub: `${stats.students} ${t('admin.dashboard.students')}` },
+    { label: t('admin.dashboard.mrr'), value: `$${stats.mrr}`, icon: DollarSign, color: 'bg-amber-500/10 dark:bg-amber-500/20 text-amber-600 dark:text-amber-400', sub: `${t('admin.dashboard.arr')}: $${stats.arr}` },
+    { label: t('admin.dashboard.totalExams'), value: stats.totalExams, icon: Zap, color: 'bg-violet-500/10 dark:bg-violet-500/20 text-violet-600 dark:text-violet-400', sub: `${stats.totalAttempts} ${t('admin.dashboard.attempts')}` },
+    { label: t('admin.dashboard.activeRooms'), value: stats.activeRooms, icon: Globe, color: 'bg-sky-500/10 dark:bg-sky-500/20 text-sky-600 dark:text-sky-400', sub: `${stats.totalRooms} ${t('admin.dashboard.total')}` },
+    { label: t('admin.dashboard.trialOrgs'), value: stats.trialOrgs, icon: TrendingUp, color: 'bg-rose-500/10 dark:bg-rose-500/20 text-rose-600 dark:text-rose-400', sub: `${stats.suspendedOrganizations} ${t('admin.dashboard.suspended')}` },
   ];
 
   return (
     <div>
       <div className="mb-8">
-        <h1 className="text-2xl font-bold text-slate-900 dark:text-white">{t('admin.dashboard')}</h1>
-        <p className="text-slate-500 dark:text-slate-400 text-sm">{t('admin.platformOverview')}</p>
+        <h1 className="text-2xl font-bold text-slate-900 dark:text-white">{t('admin.dashboard.title')}</h1>
+        <p className="text-slate-500 dark:text-slate-400 text-sm">{t('admin.dashboard.subtitle')}</p>
       </div>
 
       {/* Metric Cards */}
@@ -58,7 +58,7 @@ const AdminDashboardPage: React.FC = () => {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
         {/* Plan Distribution */}
         <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-6">
-          <h3 className="font-semibold text-slate-900 dark:text-white mb-4 flex items-center gap-2"><BarChart3 className="w-4 h-4 text-primary-500" />{t('admin.planDistribution')}</h3>
+          <h3 className="font-semibold text-slate-900 dark:text-white mb-4 flex items-center gap-2"><BarChart3 className="w-4 h-4 text-primary-500" />{t('admin.dashboard.planDistribution')}</h3>
           <div className="space-y-3">
             {[
               { name: 'Starter', price: '$39', count: stats.planDistribution?.starter || 0, color: 'bg-blue-500' },
@@ -83,10 +83,10 @@ const AdminDashboardPage: React.FC = () => {
 
         {/* Growth Trends */}
         <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-6">
-          <h3 className="font-semibold text-slate-900 dark:text-white mb-4 flex items-center gap-2"><TrendingUp className="w-4 h-4 text-primary-500" />Growth (Last 6 Months)</h3>
+          <h3 className="font-semibold text-slate-900 dark:text-white mb-4 flex items-center gap-2"><TrendingUp className="w-4 h-4 text-primary-500" />{t('admin.dashboard.growth')}</h3>
           <div className="space-y-4">
             <div>
-              <p className="text-xs text-slate-500 dark:text-slate-400 mb-2">New Organizations</p>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mb-2">{t('admin.dashboard.newOrganizations')}</p>
               <div className="flex items-end gap-1 h-16">
                 {(stats.orgsByMonth || []).map((m: any, i: number) => (
                   <div key={i} className="flex-1 flex flex-col items-center gap-1">
@@ -97,7 +97,7 @@ const AdminDashboardPage: React.FC = () => {
               </div>
             </div>
             <div>
-              <p className="text-xs text-slate-500 dark:text-slate-400 mb-2">New Users</p>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mb-2">{t('admin.dashboard.newUsers')}</p>
               <div className="flex items-end gap-1 h-16">
                 {(stats.usersByMonth || []).map((m: any, i: number) => (
                   <div key={i} className="flex-1 flex flex-col items-center gap-1">
@@ -113,7 +113,7 @@ const AdminDashboardPage: React.FC = () => {
 
       {/* Recent Activity */}
       <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl overflow-hidden">
-        <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-700"><h3 className="font-semibold text-slate-900 dark:text-white flex items-center gap-2"><Activity className="w-4 h-4 text-primary-500" />{t('admin.recentActivity')}</h3></div>
+        <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-700"><h3 className="font-semibold text-slate-900 dark:text-white flex items-center gap-2"><Activity className="w-4 h-4 text-primary-500" />{t('admin.dashboard.recentActivity')}</h3></div>
         <div className="divide-y divide-slate-100 dark:divide-slate-700">
           {recentLogs.map((log) => (
             <div key={log.id} className="px-6 py-3 flex items-center gap-4 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors">
@@ -124,7 +124,7 @@ const AdminDashboardPage: React.FC = () => {
               </div>
             </div>
           ))}
-          {recentLogs.length === 0 && <div className="text-center py-8 text-slate-400 dark:text-slate-500 text-sm">No recent activity</div>}
+          {recentLogs.length === 0 && <div className="text-center py-8 text-slate-400 dark:text-slate-500 text-sm">{t('admin.dashboard.noActivity')}</div>}
         </div>
       </div>
     </div>

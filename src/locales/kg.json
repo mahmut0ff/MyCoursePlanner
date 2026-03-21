@@ -147,10 +147,20 @@
       "noActivity": "Аракет жок",
       "active": "активдүү",
       "students": "студенттер",
+      "teachers": "мугалимдер",
       "arr": "ARR",
       "attempts": "аракеттер",
       "total": "жалпы",
-      "suspended": "бөгөттөлгөн"
+      "suspended": "бөгөттөлгөн",
+      "today": "Бүгүн",
+      "thisWeek": "Бул жума",
+      "thisMonth": "Бул ай",
+      "lastUpdate": "Акыркы жаңыртуу",
+      "smartInsights": "Аналитика",
+      "insightGrowth": "Колдонуучулардын өсүшү",
+      "insightExams": "Жалпы экзамен аракеттери",
+      "insightMrr": "Айлык кирешe",
+      "platformOverview": "Платформа обзору"
     },
     "orgs": {
       "title": "Уюмдар",

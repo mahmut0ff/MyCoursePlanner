@@ -147,10 +147,20 @@
       "noActivity": "No recent activity",
       "active": "active",
       "students": "students",
+      "teachers": "teachers",
       "arr": "ARR",
       "attempts": "attempts",
       "total": "total",
-      "suspended": "suspended"
+      "suspended": "suspended",
+      "today": "Today",
+      "thisWeek": "This Week",
+      "thisMonth": "This Month",
+      "lastUpdate": "Last update",
+      "smartInsights": "Smart Insights",
+      "insightGrowth": "User growth vs last period",
+      "insightExams": "Total exam attempts",
+      "insightMrr": "Monthly recurring revenue",
+      "platformOverview": "Platform Overview"
     },
     "orgs": {
       "title": "Organizations",

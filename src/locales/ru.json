@@ -147,10 +147,20 @@
       "noActivity": "Нет активности",
       "active": "активных",
       "students": "студентов",
+      "teachers": "преподавателей",
       "arr": "ARR",
       "attempts": "попыток",
       "total": "всего",
-      "suspended": "заблокировано"
+      "suspended": "заблокировано",
+      "today": "Сегодня",
+      "thisWeek": "Эта неделя",
+      "thisMonth": "Этот месяц",
+      "lastUpdate": "Последнее обновление",
+      "smartInsights": "Аналитика",
+      "insightGrowth": "Рост пользователей",
+      "insightExams": "Всего попыток сдачи",
+      "insightMrr": "Ежемесячный доход",
+      "platformOverview": "Обзор платформы"
     },
     "orgs": {
       "title": "Организации",

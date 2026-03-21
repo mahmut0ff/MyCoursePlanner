@@ -109,3 +109,48 @@ export const apiGetSystemLogs = () => apiRequest('api-platform', 'GET', undefine
 // ---- AI Feedback ----
 export const apiGenerateFeedback = (attemptId: string) =>
   apiRequest('ai-feedback', 'POST', { attemptId });
+
+// ============================================================
+// ADMIN API (Super Admin Panel)
+// ============================================================
+
+const adminReq = <T = any>(action: string, method = 'GET', body?: any, extra?: Record<string, string>) =>
+  apiRequest<T>('api-admin', method, body, { action, ...extra });
+
+// Organizations
+export const adminGetOrgs = (filters?: Record<string, string>) => adminReq('orgs', 'GET', undefined, filters);
+export const adminGetOrg = (id: string) => adminReq('org', 'GET', undefined, { id });
+export const adminCreateOrg = (data: any) => adminReq('createOrg', 'POST', data);
+export const adminSuspendOrg = (id: string, reason?: string) => adminReq('suspendOrg', 'POST', { id, reason });
+export const adminActivateOrg = (id: string) => adminReq('activateOrg', 'POST', { id });
+export const adminDeleteOrg = (id: string) => adminReq('deleteOrg', 'POST', { id });
+export const adminUpdateOrg = (data: any) => adminReq('updateOrg', 'POST', data);
+export const adminAddOrgNote = (organizationId: string, note: string) => adminReq('addOrgNote', 'POST', { organizationId, note });
+
+// Users
+export const adminGetUsers = (filters?: Record<string, string>) => adminReq('users', 'GET', undefined, filters);
+export const adminGetUser = (uid: string) => adminReq('user', 'GET', undefined, { uid });
+export const adminUpdateUserRole = (uid: string, role: string) => adminReq('updateUserRole', 'POST', { uid, role });
+export const adminDisableUser = (uid: string) => adminReq('disableUser', 'POST', { uid });
+export const adminEnableUser = (uid: string) => adminReq('enableUser', 'POST', { uid });
+export const adminResetPassword = (email: string) => adminReq('resetPassword', 'POST', { email });
+
+// Billing
+export const adminGetSubscriptions = (filters?: Record<string, string>) => adminReq('subscriptions', 'GET', undefined, filters);
+export const adminChangePlan = (organizationId: string, planId: string) => adminReq('changePlan', 'POST', { organizationId, planId });
+export const adminExtendSubscription = (organizationId: string, days: number) => adminReq('extendSubscription', 'POST', { organizationId, days });
+export const adminCancelSubscription = (organizationId: string) => adminReq('cancelSubscription', 'POST', { organizationId });
+
+// Analytics
+export const adminGetAnalytics = () => adminReq('analytics');
+
+// Audit Logs
+export const adminGetAuditLogs = (filters?: Record<string, string>) => adminReq('auditLogs', 'GET', undefined, filters);
+
+// Feature Flags
+export const adminGetFeatureFlags = () => adminReq('featureFlags');
+export const adminSetFeatureFlag = (key: string, enabled: boolean, description?: string) => adminReq('setFeatureFlag', 'POST', { key, enabled, description });
+export const adminSetOrgOverride = (data: any) => adminReq('setOrgOverride', 'POST', data);
+
+// System Health
+export const adminGetSystemHealth = () => adminReq('systemHealth');

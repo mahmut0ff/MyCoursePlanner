@@ -20,23 +20,29 @@ import ResultPage from './pages/rooms/ResultPage';
 import MyResultsPage from './pages/rooms/MyResultsPage';
 import BillingPage from './pages/billing/BillingPage';
 
+// Admin Pages
+import AdminDashboardPage from './pages/admin/AdminDashboardPage';
+import AdminOrganizationsPage from './pages/admin/AdminOrganizationsPage';
+import AdminUsersPage from './pages/admin/AdminUsersPage';
+import AdminBillingPage from './pages/admin/AdminBillingPage';
+import AdminAuditLogsPage from './pages/admin/AdminAuditLogsPage';
+import AdminFeatureFlagsPage from './pages/admin/AdminFeatureFlagsPage';
+import AdminSystemHealthPage from './pages/admin/AdminSystemHealthPage';
+
 const App: React.FC = () => {
   return (
     <AuthProvider>
       <BrowserRouter>
         <Routes>
-          {/* Public Routes */}
+          {/* Public */}
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
 
-          {/* Exam Taking (full screen, no sidebar) */}
+          {/* Exam Taking (full screen) */}
           <Route path="/take/:roomId" element={<ProtectedRoute><ExamTakePage /></ProtectedRoute>} />
 
-          {/* App Layout Routes */}
-          <Route
-            path="/"
-            element={<ProtectedRoute><AppLayout /></ProtectedRoute>}
-          >
+          {/* App Layout */}
+          <Route path="/" element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
             <Route index element={<Navigate to="/dashboard" replace />} />
             <Route path="dashboard" element={<DashboardPage />} />
 
@@ -64,9 +70,15 @@ const App: React.FC = () => {
             {/* Billing */}
             <Route path="billing" element={<ProtectedRoute allowedRoles={['admin']}><BillingPage /></ProtectedRoute>} />
 
-            {/* Super Admin Platform */}
-            <Route path="platform/organizations" element={<ProtectedRoute allowedRoles={['super_admin']}><DashboardPage /></ProtectedRoute>} />
-            <Route path="platform/users" element={<ProtectedRoute allowedRoles={['super_admin']}><DashboardPage /></ProtectedRoute>} />
+            {/* ═══ Super Admin Panel ═══ */}
+            <Route path="admin" element={<ProtectedRoute allowedRoles={['super_admin']}><AdminDashboardPage /></ProtectedRoute>} />
+            <Route path="admin/organizations" element={<ProtectedRoute allowedRoles={['super_admin']}><AdminOrganizationsPage /></ProtectedRoute>} />
+            <Route path="admin/users" element={<ProtectedRoute allowedRoles={['super_admin']}><AdminUsersPage /></ProtectedRoute>} />
+            <Route path="admin/billing" element={<ProtectedRoute allowedRoles={['super_admin']}><AdminBillingPage /></ProtectedRoute>} />
+            <Route path="admin/analytics" element={<ProtectedRoute allowedRoles={['super_admin']}><AdminDashboardPage /></ProtectedRoute>} />
+            <Route path="admin/audit-logs" element={<ProtectedRoute allowedRoles={['super_admin']}><AdminAuditLogsPage /></ProtectedRoute>} />
+            <Route path="admin/system-health" element={<ProtectedRoute allowedRoles={['super_admin']}><AdminSystemHealthPage /></ProtectedRoute>} />
+            <Route path="admin/feature-flags" element={<ProtectedRoute allowedRoles={['super_admin']}><AdminFeatureFlagsPage /></ProtectedRoute>} />
           </Route>
 
           {/* Fallback */}

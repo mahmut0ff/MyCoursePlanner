@@ -288,7 +288,20 @@
       "connected": "Connected Services",
       "configure": "Configure",
       "noWebhooks": "No webhooks configured",
-      "noApiKeys": "No API keys created"
+      "noApiKeys": "No API keys created",
+      "testConnection": "Test Connection",
+      "googleDesc": "Sign in with Google — social auth for students and teachers",
+      "freedomPayDesc": "Payment processing for Kyrgyzstan — accept cards and wallets",
+      "sendgridDesc": "Transactional email delivery — notifications and templates",
+      "telegramDesc": "Admin notifications and alerts via Telegram bot",
+      "configured": "configured",
+      "addWebhook": "Add New Webhook",
+      "apiKeyWarning": "API keys grant full access to your platform data. Keep them secure and never share publicly.",
+      "created": "Created",
+      "lastUsed": "Last used",
+      "generateKey": "Generate New API Key",
+      "keyNamePlaceholder": "e.g. Production Key",
+      "generate": "Generate"
     },
     "settings": {
       "subtitle": "Platform configuration and global settings",

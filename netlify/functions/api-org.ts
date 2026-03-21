@@ -209,7 +209,7 @@ const handler: Handler = async (event: HandlerEvent) => {
     if (action === 'teachers') {
       const snap = await adminDb.collection('users')
         .where('organizationId', '==', orgId)
-        .where('role', 'in', ['teacher', 'admin']).get();
+        .where('role', '==', 'teacher').get();
       return ok(snap.docs.map((d: any) => ({ uid: d.id, ...d.data() })));
     }
 

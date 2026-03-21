@@ -465,6 +465,11 @@
     "students": {
       "total": "students",
       "empty": "No students found",
+      "create": "Create Student",
+      "createDesc": "Create a new student account for your organization",
+      "namePlaceholder": "Full name",
+      "passwordPlaceholder": "Password (min 6 characters)",
+      "phonePlaceholder": "Phone number (optional)",
       "profile": "Student Profile",
       "examsTaken": "Exams Taken",
       "avgScore": "Avg Score",
@@ -473,11 +478,18 @@
     },
     "teachers": {
       "total": "teachers",
+      "create": "Create Teacher",
+      "createDesc": "Create a new teacher account for your organization",
+      "namePlaceholder": "Full name",
+      "passwordPlaceholder": "Password (min 6 characters)",
+      "phonePlaceholder": "Phone number (optional)",
       "invite": "Invite Teacher",
       "empty": "No teachers yet",
       "roleTeacher": "Teacher",
       "roleAdmin": "Admin",
-      "sendInvite": "Send Invite"
+      "sendInvite": "Send Invite",
+      "courses": "Courses",
+      "groups": "Groups"
     },
     "materials": {
       "subtitle": "Learning materials and resources",

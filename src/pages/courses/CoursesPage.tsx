@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { orgGetCourses, orgCreateCourse, orgDeleteCourse } from '../../lib/api';
-import { FolderOpen, Plus, Search, Trash2, Edit, Eye, BookOpen, Users } from 'lucide-react';
+import { FolderOpen, Plus, Search, Trash2, Edit, BookOpen, Users } from 'lucide-react';
 import type { Course } from '../../types';
 
 const CoursesPage: React.FC = () => {

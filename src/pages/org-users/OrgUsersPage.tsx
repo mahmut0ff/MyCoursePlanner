@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { orgGetUsers, orgUpdateUserRole, orgInviteUser } from '../../lib/api';
-import { Shield, Search, Plus, Mail, ChevronDown } from 'lucide-react';
+import { Search, Plus } from 'lucide-react';
 import type { UserProfile } from '../../types';
 
 const OrgUsersPage: React.FC = () => {

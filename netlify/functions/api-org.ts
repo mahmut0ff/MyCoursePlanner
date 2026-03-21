@@ -44,8 +44,10 @@ const handler: Handler = async (event: HandlerEvent) => {
   try {
     // ═══ COURSES ═══
     if (action === 'courses') {
-      const snap = await orgQuery('courses', orgId).orderBy('createdAt', 'desc').get();
-      return ok(snap.docs.map((d: any) => ({ id: d.id, ...d.data() })));
+      const snap = await orgQuery('courses', orgId).get();
+      const list = snap.docs.map((d: any) => ({ id: d.id, ...d.data() }));
+      list.sort((a: any, b: any) => (b.createdAt || '').localeCompare(a.createdAt || ''));
+      return ok(list);
     }
 
     if (action === 'course') {
@@ -101,8 +103,10 @@ const handler: Handler = async (event: HandlerEvent) => {
     if (action === 'groups') {
       let query = orgQuery('groups', orgId);
       if (params.courseId) query = query.where('courseId', '==', params.courseId) as any;
-      const snap = await query.orderBy('createdAt', 'desc').get();
-      return ok(snap.docs.map((d: any) => ({ id: d.id, ...d.data() })));
+      const snap = await query.get();
+      const list = snap.docs.map((d: any) => ({ id: d.id, ...d.data() }));
+      list.sort((a: any, b: any) => (b.createdAt || '').localeCompare(a.createdAt || ''));
+      return ok(list);
     }
 
     if (action === 'group') {
@@ -207,8 +211,10 @@ const handler: Handler = async (event: HandlerEvent) => {
       let query = orgQuery('materials', orgId);
       if (params.courseId) query = query.where('courseId', '==', params.courseId) as any;
       if (params.lessonId) query = query.where('lessonId', '==', params.lessonId) as any;
-      const snap = await query.orderBy('createdAt', 'desc').get();
-      return ok(snap.docs.map((d: any) => ({ id: d.id, ...d.data() })));
+      const snap = await query.get();
+      const list = snap.docs.map((d: any) => ({ id: d.id, ...d.data() }));
+      list.sort((a: any, b: any) => (b.createdAt || '').localeCompare(a.createdAt || ''));
+      return ok(list);
     }
 
     if (action === 'createMaterial') {
@@ -241,8 +247,10 @@ const handler: Handler = async (event: HandlerEvent) => {
       if (params.from) query = query.where('date', '>=', params.from) as any;
       if (params.to) query = query.where('date', '<=', params.to) as any;
       if (params.groupId) query = query.where('groupId', '==', params.groupId) as any;
-      const snap = await query.orderBy('date', 'asc').get();
-      return ok(snap.docs.map((d: any) => ({ id: d.id, ...d.data() })));
+      const snap = await query.get();
+      const list = snap.docs.map((d: any) => ({ id: d.id, ...d.data() }));
+      list.sort((a: any, b: any) => (a.date || '').localeCompare(b.date || ''));
+      return ok(list);
     }
 
     if (action === 'createEvent') {
@@ -291,8 +299,10 @@ const handler: Handler = async (event: HandlerEvent) => {
       let query: any = adminDb.collection('examAttempts').where('organizationId', '==', orgId);
       if (params.studentId) query = query.where('studentId', '==', params.studentId);
       if (params.examId) query = query.where('examId', '==', params.examId);
-      const snap = await query.orderBy('submittedAt', 'desc').limit(100).get();
-      return ok(snap.docs.map((d: any) => ({ id: d.id, ...d.data() })));
+      const snap = await query.get();
+      const list = snap.docs.map((d: any) => ({ id: d.id, ...d.data() }));
+      list.sort((a: any, b: any) => (b.submittedAt || '').localeCompare(a.submittedAt || ''));
+      return ok(list.slice(0, 100));
     }
 
     // ═══ ORG USERS ═══

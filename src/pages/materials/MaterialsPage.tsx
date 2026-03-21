@@ -1,15 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { orgGetMaterials, orgCreateMaterial, orgDeleteMaterial } from '../../lib/api';
-import { FileText, Plus, Search, Trash2, ExternalLink, Link2, Video, File } from 'lucide-react';
+import { FileText, Plus, Search, Trash2, ExternalLink, RefreshCw } from 'lucide-react';
 import type { Material } from '../../types';
 
-const TYPE_ICONS: Record<string, React.FC<any>> = { link: Link2, video: Video, file: File, document: FileText };
 const TYPE_COLORS: Record<string, string> = {
-  link: 'from-blue-400/20 to-blue-600/20 text-blue-600 dark:text-blue-400',
-  video: 'from-red-400/20 to-red-600/20 text-red-600 dark:text-red-400',
-  file: 'from-amber-400/20 to-amber-600/20 text-amber-600 dark:text-amber-400',
-  document: 'from-emerald-400/20 to-emerald-600/20 text-emerald-600 dark:text-emerald-400',
+  link: 'bg-blue-500/10 text-blue-500', video: 'bg-red-500/10 text-red-500',
+  file: 'bg-amber-500/10 text-amber-500', document: 'bg-emerald-500/10 text-emerald-500',
 };
 
 const MaterialsPage: React.FC = () => {
@@ -22,109 +19,96 @@ const MaterialsPage: React.FC = () => {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
 
-  useEffect(() => {
-    orgGetMaterials()
-      .then(setMaterials)
-      .catch((e) => setError(e.message || 'Failed to load'))
-      .finally(() => setLoading(false));
-  }, []);
+  const load = () => { setLoading(true); orgGetMaterials().then(setMaterials).catch((e) => setError(e.message || 'Error')).finally(() => setLoading(false)); };
+  useEffect(load, []);
 
   const filtered = materials.filter((m) => m.title.toLowerCase().includes(search.toLowerCase()));
 
   const handleCreate = async () => {
-    if (!form.title.trim() || !form.url.trim()) return;
-    setSaving(true); setError('');
-    try {
-      const created = await orgCreateMaterial(form);
-      setMaterials((p) => [created, ...p]);
-      setShowCreate(false); setForm({ title: '', url: '', type: 'link', category: 'general' });
-    } catch (e: any) { setError(e.message || 'Failed to create'); }
-    finally { setSaving(false); }
+    if (!form.title.trim() || !form.url.trim()) return; setSaving(true); setError('');
+    try { const c = await orgCreateMaterial(form); setMaterials((p) => [c, ...p]); setShowCreate(false); setForm({ title: '', url: '', type: 'link', category: 'general' }); }
+    catch (e: any) { setError(e.message || 'Error'); } finally { setSaving(false); }
   };
 
   const handleDelete = async (id: string) => {
     if (!confirm(t('common.confirmDelete'))) return;
-    try {
-      await orgDeleteMaterial(id);
-      setMaterials((p) => p.filter((m) => m.id !== id));
-    } catch (e: any) { setError(e.message); }
+    try { await orgDeleteMaterial(id); setMaterials((p) => p.filter((m) => m.id !== id)); } catch (e: any) { setError(e.message); }
   };
-
-  if (loading) return <div className="flex items-center justify-center py-20"><div className="w-7 h-7 border-[3px] border-slate-200 border-t-primary-500 rounded-full animate-spin dark:border-slate-700 dark:border-t-primary-400" /></div>;
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-5">
-        <div>
-          <h1 className="text-xl font-bold text-slate-900 dark:text-white">{t('nav.materials')}</h1>
-          <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">{t('org.materials.subtitle')}</p>
+      <div className="flex items-center justify-between mb-4">
+        <div><h1 className="text-lg font-bold text-slate-900 dark:text-white">{t('nav.materials')}</h1><p className="text-[11px] text-slate-500">{t('org.materials.subtitle')}</p></div>
+        <div className="flex items-center gap-1.5">
+          <button onClick={load} className="p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors"><RefreshCw className="w-3.5 h-3.5" /></button>
+          <button onClick={() => setShowCreate(true)} className="bg-emerald-500 hover:bg-emerald-600 text-white px-3 py-1.5 rounded-lg text-[11px] font-medium flex items-center gap-1 transition-colors"><Plus className="w-3 h-3" />{t('org.materials.add')}</button>
         </div>
-        <button onClick={() => setShowCreate(true)} className="btn-primary !py-1.5 !px-3 text-xs flex items-center gap-1">
-          <Plus className="w-3.5 h-3.5" />{t('org.materials.add')}
-        </button>
       </div>
 
-      {error && <div className="mb-3 px-3 py-2 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg text-xs text-red-600 dark:text-red-400">{error}</div>}
+      {error && <div className="mb-3 px-3 py-1.5 bg-red-500/10 border border-red-500/20 rounded-lg text-[11px] text-red-500">{error}</div>}
 
-      <div className="relative mb-4">
-        <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
-        <input type="text" value={search} onChange={(e) => setSearch(e.target.value)}
-          placeholder={t('common.search')} className="w-full bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-lg pl-8 pr-3 py-1.5 text-xs text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-all" />
+      <div className="bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700/50 rounded-xl p-2.5 mb-3">
+        <div className="relative max-w-xs">
+          <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3 h-3 text-slate-400" />
+          <input type="text" value={search} onChange={(e) => setSearch(e.target.value)} placeholder={`${t('common.search')}...`}
+            className="w-full bg-transparent border-0 pl-7 pr-2 py-1 text-xs text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none" />
+        </div>
       </div>
 
-      {showCreate && (
-        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => setShowCreate(false)}>
-          <div className="bg-white dark:bg-slate-800 rounded-xl p-5 w-full max-w-sm shadow-2xl border border-slate-200/50 dark:border-slate-700/50" onClick={(e) => e.stopPropagation()}>
-            <h2 className="text-sm font-bold text-slate-900 dark:text-white mb-4">{t('org.materials.add')}</h2>
-            <div className="space-y-2.5">
-              <input placeholder={t('org.materials.titlePlaceholder')} value={form.title}
-                onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
-                className="w-full bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-lg px-3 py-1.5 text-xs focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 outline-none transition-all text-slate-900 dark:text-white" autoFocus />
-              <input placeholder="https://..." value={form.url}
-                onChange={(e) => setForm((f) => ({ ...f, url: e.target.value }))}
-                className="w-full bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-lg px-3 py-1.5 text-xs focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 outline-none transition-all text-slate-900 dark:text-white" />
-              <div className="grid grid-cols-2 gap-2">
-                <select value={form.type} onChange={(e) => setForm((f) => ({ ...f, type: e.target.value }))}
-                  className="bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-lg px-3 py-1.5 text-xs focus:ring-2 focus:ring-primary-500/20 outline-none transition-all text-slate-900 dark:text-white">
-                  <option value="link">Link</option><option value="video">Video</option><option value="document">Document</option><option value="file">File</option>
-                </select>
-                <input placeholder={t('org.materials.categoryPlaceholder')} value={form.category}
-                  onChange={(e) => setForm((f) => ({ ...f, category: e.target.value }))}
-                  className="bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-lg px-3 py-1.5 text-xs focus:ring-2 focus:ring-primary-500/20 outline-none transition-all text-slate-900 dark:text-white" />
-              </div>
-            </div>
-            <div className="flex justify-end gap-2 mt-4">
-              <button onClick={() => setShowCreate(false)} className="px-3 py-1.5 text-xs text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors">{t('common.cancel')}</button>
-              <button onClick={handleCreate} disabled={saving || !form.title.trim() || !form.url.trim()} className="btn-primary !py-1.5 !px-3 text-xs disabled:opacity-50">{saving ? '...' : t('common.save')}</button>
-            </div>
-          </div>
+      {loading ? <div className="flex justify-center py-16"><div className="w-6 h-6 border-2 border-slate-200 border-t-primary-500 rounded-full animate-spin dark:border-slate-700 dark:border-t-primary-400" /></div> : filtered.length === 0 ? (
+        <div className="text-center py-16"><FileText className="w-8 h-8 text-slate-300 dark:text-slate-600 mx-auto mb-2" /><p className="text-xs text-slate-400">{t('org.materials.empty')}</p></div>
+      ) : (
+        <div className="bg-white dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/40 rounded-xl overflow-hidden">
+          <table className="w-full">
+            <thead><tr className="border-b border-slate-100 dark:border-slate-700/50">
+              <th className="text-left text-[10px] font-medium text-slate-500 uppercase tracking-wider px-4 py-2">{t('common.name')}</th>
+              <th className="text-left text-[10px] font-medium text-slate-500 uppercase tracking-wider px-4 py-2">Type</th>
+              <th className="text-left text-[10px] font-medium text-slate-500 uppercase tracking-wider px-4 py-2">Category</th>
+              <th className="text-right text-[10px] font-medium text-slate-500 uppercase tracking-wider px-4 py-2"></th>
+            </tr></thead>
+            <tbody className="divide-y divide-slate-50 dark:divide-slate-700/30">
+              {filtered.map((m) => (
+                <tr key={m.id} className="hover:bg-slate-50/80 dark:hover:bg-slate-700/20 transition-colors group">
+                  <td className="px-4 py-2.5">
+                    <div className="flex items-center gap-2"><FileText className="w-3.5 h-3.5 text-slate-400 shrink-0" /><span className="text-xs font-medium text-slate-900 dark:text-white truncate">{m.title}</span></div>
+                  </td>
+                  <td className="px-4 py-2.5"><span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${TYPE_COLORS[m.type] || TYPE_COLORS.link}`}>{m.type}</span></td>
+                  <td className="px-4 py-2.5 text-[11px] text-slate-500">{m.category}</td>
+                  <td className="px-4 py-2.5 text-right">
+                    <div className="flex items-center justify-end gap-0.5">
+                      <a href={m.url} target="_blank" rel="noreferrer" className="p-1 text-slate-400 hover:text-primary-500 rounded transition-colors"><ExternalLink className="w-3 h-3" /></a>
+                      <button onClick={() => handleDelete(m.id)} className="p-1 text-slate-400 hover:text-red-500 rounded transition-colors opacity-0 group-hover:opacity-100"><Trash2 className="w-3 h-3" /></button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       )}
 
-      {filtered.length === 0 ? (
-        <div className="text-center py-16">
-          <div className="w-14 h-14 bg-slate-100 dark:bg-slate-800 rounded-2xl flex items-center justify-center mx-auto mb-3"><FileText className="w-6 h-6 text-slate-400" /></div>
-          <p className="text-sm text-slate-500">{t('org.materials.empty')}</p>
-        </div>
-      ) : (
-        <div className="bg-white dark:bg-slate-800/80 border border-slate-200/80 dark:border-slate-700/50 rounded-xl overflow-hidden backdrop-blur-sm">
-          <div className="divide-y divide-slate-100 dark:divide-slate-700/50">
-            {filtered.map((m) => {
-              const Icon = TYPE_ICONS[m.type] || FileText;
-              const color = TYPE_COLORS[m.type] || TYPE_COLORS.link;
-              return (
-                <div key={m.id} className="px-4 py-2.5 flex items-center gap-3 hover:bg-slate-50/80 dark:hover:bg-slate-700/30 transition-colors group">
-                  <div className={`w-7 h-7 bg-gradient-to-br ${color} rounded-lg flex items-center justify-center shrink-0`}><Icon className="w-3.5 h-3.5" /></div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-xs font-medium text-slate-900 dark:text-white truncate">{m.title}</p>
-                    <p className="text-[10px] text-slate-400 truncate">{m.url}</p>
-                  </div>
-                  <span className="text-[10px] bg-slate-100 dark:bg-slate-700 text-slate-500 px-1.5 py-0.5 rounded-md">{m.category}</span>
-                  <a href={m.url} target="_blank" rel="noreferrer" className="p-1 text-slate-400 hover:text-primary-500 transition-colors"><ExternalLink className="w-3 h-3" /></a>
-                  <button onClick={() => handleDelete(m.id)} className="p-1 text-slate-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all"><Trash2 className="w-3 h-3" /></button>
-                </div>
-              );
-            })}
+      {showCreate && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => setShowCreate(false)}>
+          <div className="bg-white dark:bg-slate-800 rounded-xl p-4 w-full max-w-sm shadow-2xl" onClick={(e) => e.stopPropagation()}>
+            <h2 className="text-sm font-bold text-slate-900 dark:text-white mb-3">{t('org.materials.add')}</h2>
+            <div className="space-y-2">
+              <input placeholder={t('org.materials.titlePlaceholder')} value={form.title} onChange={(e) => setForm(f => ({ ...f, title: e.target.value }))}
+                className="w-full bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-lg px-2.5 py-1.5 text-xs outline-none focus:border-primary-500 text-slate-900 dark:text-white" autoFocus />
+              <input placeholder="https://..." value={form.url} onChange={(e) => setForm(f => ({ ...f, url: e.target.value }))}
+                className="w-full bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-lg px-2.5 py-1.5 text-xs outline-none focus:border-primary-500 text-slate-900 dark:text-white" />
+              <div className="grid grid-cols-2 gap-2">
+                <select value={form.type} onChange={(e) => setForm(f => ({ ...f, type: e.target.value }))}
+                  className="bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-lg px-2.5 py-1.5 text-xs outline-none focus:border-primary-500 text-slate-900 dark:text-white">
+                  <option value="link">Link</option><option value="video">Video</option><option value="document">Document</option><option value="file">File</option>
+                </select>
+                <input placeholder={t('org.materials.categoryPlaceholder')} value={form.category} onChange={(e) => setForm(f => ({ ...f, category: e.target.value }))}
+                  className="bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-lg px-2.5 py-1.5 text-xs outline-none focus:border-primary-500 text-slate-900 dark:text-white" />
+              </div>
+            </div>
+            <div className="flex justify-end gap-2 mt-3">
+              <button onClick={() => setShowCreate(false)} className="px-2.5 py-1 text-[11px] text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg">{t('common.cancel')}</button>
+              <button onClick={handleCreate} disabled={saving || !form.title.trim() || !form.url.trim()} className="bg-emerald-500 hover:bg-emerald-600 text-white px-3 py-1 rounded-lg text-[11px] font-medium disabled:opacity-50">{saving ? '...' : t('common.save')}</button>
+            </div>
           </div>
         </div>
       )}

@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { orgGetCourses, orgCreateCourse, orgUpdateCourse, orgDeleteCourse } from '../../lib/api';
-import { FolderOpen, Plus, Search, Trash2, Edit, BookOpen, Users, X, ChevronRight } from 'lucide-react';
+import { Plus, Search, Trash2, Edit, X, BookOpen, RefreshCw } from 'lucide-react';
 import type { Course } from '../../types';
 
 const CoursesPage: React.FC = () => {
@@ -17,12 +17,8 @@ const CoursesPage: React.FC = () => {
   const [error, setError] = useState('');
 
   const load = () => {
-    setLoading(true);
-    setError('');
-    orgGetCourses()
-      .then(setCourses)
-      .catch((e) => setError(e.message || 'Failed to load courses'))
-      .finally(() => setLoading(false));
+    setLoading(true); setError('');
+    orgGetCourses().then(setCourses).catch((e) => setError(e.message || 'Error')).finally(() => setLoading(false));
   };
   useEffect(load, []);
 
@@ -30,176 +26,142 @@ const CoursesPage: React.FC = () => {
     c.title.toLowerCase().includes(search.toLowerCase()) || c.subject?.toLowerCase().includes(search.toLowerCase())
   );
 
-  const openCreate = () => {
-    setEditing(null);
-    setForm({ title: '', description: '', subject: '', status: 'draft' });
-    setShowModal(true);
-  };
-
-  const openEdit = (c: Course) => {
-    setEditing(c);
-    setForm({ title: c.title, description: c.description || '', subject: c.subject || '', status: c.status as any || 'draft' });
-    setShowModal(true);
-  };
+  const openCreate = () => { setEditing(null); setForm({ title: '', description: '', subject: '', status: 'draft' }); setShowModal(true); };
+  const openEdit = (c: Course) => { setEditing(c); setForm({ title: c.title, description: c.description || '', subject: c.subject || '', status: c.status as any || 'draft' }); setShowModal(true); };
 
   const handleSave = async () => {
     if (!form.title.trim()) return;
-    setSaving(true);
-    setError('');
+    setSaving(true); setError('');
     try {
-      if (editing) {
-        const updated = await orgUpdateCourse({ id: editing.id, ...form });
-        setCourses((p) => p.map((c) => c.id === editing.id ? { ...c, ...updated } : c));
-        if (detail?.id === editing.id) setDetail({ ...detail, ...updated });
-      } else {
-        const created = await orgCreateCourse(form);
-        setCourses((p) => [created, ...p]);
-      }
+      if (editing) { const u = await orgUpdateCourse({ id: editing.id, ...form }); setCourses((p) => p.map((c) => c.id === editing.id ? { ...c, ...u } : c)); if (detail?.id === editing.id) setDetail({ ...detail, ...u }); }
+      else { const c = await orgCreateCourse(form); setCourses((p) => [c, ...p]); }
       setShowModal(false);
-    } catch (e: any) {
-      setError(e.message || 'Failed to save');
-    } finally { setSaving(false); }
+    } catch (e: any) { setError(e.message || 'Error'); } finally { setSaving(false); }
   };
 
   const handleDelete = async (id: string) => {
     if (!confirm(t('common.confirmDelete'))) return;
-    try {
-      await orgDeleteCourse(id);
-      setCourses((p) => p.filter((c) => c.id !== id));
-      if (detail?.id === id) setDetail(null);
-    } catch (e: any) { setError(e.message); }
+    try { await orgDeleteCourse(id); setCourses((p) => p.filter((c) => c.id !== id)); if (detail?.id === id) setDetail(null); }
+    catch (e: any) { setError(e.message); }
   };
 
-  if (loading) return (
-    <div className="flex items-center justify-center py-20">
-      <div className="w-7 h-7 border-[3px] border-slate-200 border-t-primary-500 rounded-full animate-spin dark:border-slate-700 dark:border-t-primary-400" />
-    </div>
-  );
-
   return (
-    <div className="flex gap-5 h-full">
-      {/* Main Panel */}
+    <div className="flex gap-0 h-full">
       <div className={`flex-1 min-w-0 ${detail ? 'hidden lg:block' : ''}`}>
-        <div className="flex items-center justify-between mb-5">
+        {/* Header */}
+        <div className="flex items-center justify-between mb-4">
           <div>
-            <h1 className="text-xl font-bold text-slate-900 dark:text-white">{t('nav.courses')}</h1>
-            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">{filtered.length} {t('nav.courses').toLowerCase()}</p>
+            <h1 className="text-lg font-bold text-slate-900 dark:text-white">{t('nav.courses')}</h1>
+            <p className="text-[11px] text-slate-500 dark:text-slate-400">{filtered.length} {t('nav.courses').toLowerCase()}</p>
           </div>
-          <button onClick={openCreate} className="btn-primary !py-1.5 !px-3 text-xs flex items-center gap-1">
-            <Plus className="w-3.5 h-3.5" />{t('org.courses.create')}
-          </button>
+          <div className="flex items-center gap-1.5">
+            <button onClick={load} className="p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors"><RefreshCw className="w-3.5 h-3.5" /></button>
+            <button onClick={openCreate} className="bg-emerald-500 hover:bg-emerald-600 text-white px-3 py-1.5 rounded-lg text-[11px] font-medium flex items-center gap-1 transition-colors"><Plus className="w-3 h-3" />{t('org.courses.create')}</button>
+          </div>
         </div>
 
-        {error && <div className="mb-3 px-3 py-2 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg text-xs text-red-600 dark:text-red-400">{error}</div>}
+        {error && <div className="mb-3 px-3 py-1.5 bg-red-500/10 border border-red-500/20 rounded-lg text-[11px] text-red-500">{error}</div>}
 
-        <div className="relative mb-4">
-          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
-          <input type="text" value={search} onChange={(e) => setSearch(e.target.value)}
-            placeholder={t('common.search')} className="w-full bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-lg pl-8 pr-3 py-1.5 text-xs text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-all" />
-        </div>
-
-        {filtered.length === 0 ? (
-          <div className="text-center py-16">
-            <div className="w-14 h-14 bg-slate-100 dark:bg-slate-800 rounded-2xl flex items-center justify-center mx-auto mb-3">
-              <FolderOpen className="w-6 h-6 text-slate-400" />
+        {/* Search bar — compact, styled like reference */}
+        <div className="bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700/50 rounded-xl p-2.5 mb-3">
+          <div className="flex items-center gap-2">
+            <div className="relative flex-1 max-w-xs">
+              <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3 h-3 text-slate-400" />
+              <input type="text" value={search} onChange={(e) => setSearch(e.target.value)} placeholder={`${t('common.search')}...`}
+                className="w-full bg-transparent border-0 pl-7 pr-2 py-1 text-xs text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none" />
             </div>
-            <p className="text-sm text-slate-500 dark:text-slate-400">{t('org.courses.empty')}</p>
+          </div>
+        </div>
+
+        {loading ? <div className="flex justify-center py-16"><div className="w-6 h-6 border-2 border-slate-200 border-t-primary-500 rounded-full animate-spin dark:border-slate-700 dark:border-t-primary-400" /></div> : filtered.length === 0 ? (
+          <div className="text-center py-16">
+            <BookOpen className="w-8 h-8 text-slate-300 dark:text-slate-600 mx-auto mb-2" />
+            <p className="text-xs text-slate-400">{t('org.courses.empty')}</p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
-            {filtered.map((c) => (
-              <div key={c.id} onClick={() => setDetail(c)}
-                className="bg-white dark:bg-slate-800/80 border border-slate-200/80 dark:border-slate-700/50 rounded-xl p-4 hover:shadow-md hover:shadow-primary-500/5 dark:hover:shadow-primary-500/10 hover:border-primary-200 dark:hover:border-primary-800/50 transition-all cursor-pointer group backdrop-blur-sm">
-                <div className="flex items-start justify-between mb-2.5">
-                  <div className="w-8 h-8 bg-gradient-to-br from-primary-400/20 to-primary-600/20 dark:from-primary-400/10 dark:to-primary-600/10 rounded-lg flex items-center justify-center">
-                    <FolderOpen className="w-4 h-4 text-primary-600 dark:text-primary-400" />
-                  </div>
-                  <span className={`text-[10px] px-1.5 py-0.5 rounded-md font-medium ${c.status === 'published' ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400' : 'bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400'}`}>
-                    {c.status === 'published' ? t('common.published') : t('common.draft')}
-                  </span>
-                </div>
-                <h3 className="font-semibold text-sm text-slate-900 dark:text-white mb-0.5 truncate">{c.title}</h3>
-                <p className="text-[11px] text-slate-500 dark:text-slate-400 mb-2">{c.subject || t('org.courses.noSubject')}</p>
-                <p className="text-[11px] text-slate-400 dark:text-slate-500 line-clamp-2 mb-3">{c.description || t('org.courses.noDescription')}</p>
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3 text-[10px] text-slate-400">
-                    <span className="flex items-center gap-0.5"><BookOpen className="w-3 h-3" />{c.lessonIds?.length || 0}</span>
-                    <span className="flex items-center gap-0.5"><Users className="w-3 h-3" />{c.teacherIds?.length || 0}</span>
-                  </div>
-                  <ChevronRight className="w-3.5 h-3.5 text-slate-300 dark:text-slate-600 group-hover:text-primary-500 transition-colors" />
-                </div>
-              </div>
-            ))}
+          /* Table layout like reference */
+          <div className="bg-white dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/40 rounded-xl overflow-hidden">
+            <table className="w-full">
+              <thead><tr className="border-b border-slate-100 dark:border-slate-700/50">
+                <th className="text-left text-[10px] font-medium text-slate-500 uppercase tracking-wider px-4 py-2">{t('common.name')}</th>
+                <th className="text-left text-[10px] font-medium text-slate-500 uppercase tracking-wider px-4 py-2">Subject</th>
+                <th className="text-left text-[10px] font-medium text-slate-500 uppercase tracking-wider px-4 py-2">{t('common.status')}</th>
+                <th className="text-left text-[10px] font-medium text-slate-500 uppercase tracking-wider px-4 py-2">{t('nav.lessons')}</th>
+                <th className="text-right text-[10px] font-medium text-slate-500 uppercase tracking-wider px-4 py-2"></th>
+              </tr></thead>
+              <tbody className="divide-y divide-slate-50 dark:divide-slate-700/30">
+                {filtered.map((c) => (
+                  <tr key={c.id} onClick={() => setDetail(c)} className="hover:bg-slate-50/80 dark:hover:bg-slate-700/20 cursor-pointer transition-colors">
+                    <td className="px-4 py-2.5">
+                      <div className="flex items-center gap-2.5">
+                        <div className="w-7 h-7 bg-gradient-to-br from-primary-400 to-primary-600 rounded-lg flex items-center justify-center text-[10px] text-white font-bold shrink-0">{c.title[0]?.toUpperCase()}</div>
+                        <div className="min-w-0">
+                          <p className="text-xs font-medium text-slate-900 dark:text-white truncate">{c.title}</p>
+                          <p className="text-[10px] text-slate-400 truncate max-w-[200px]">{c.description || t('org.courses.noDescription')}</p>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-4 py-2.5 text-xs text-slate-500 dark:text-slate-400">{c.subject || '—'}</td>
+                    <td className="px-4 py-2.5">
+                      <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${c.status === 'published' ? 'bg-emerald-500/10 text-emerald-500' : 'bg-amber-500/10 text-amber-500'}`}>
+                        {c.status === 'published' ? t('common.published') : t('common.draft')}
+                      </span>
+                    </td>
+                    <td className="px-4 py-2.5 text-xs text-slate-500"><span className="flex items-center gap-1"><BookOpen className="w-3 h-3" />{c.lessonIds?.length || 0}</span></td>
+                    <td className="px-4 py-2.5 text-right">
+                      <div className="flex items-center justify-end gap-0.5 opacity-0 group-hover:opacity-100">
+                        <button onClick={(e) => { e.stopPropagation(); openEdit(c); }} className="p-1 text-slate-400 hover:text-primary-500 rounded transition-colors"><Edit className="w-3 h-3" /></button>
+                        <button onClick={(e) => { e.stopPropagation(); handleDelete(c.id); }} className="p-1 text-slate-400 hover:text-red-500 rounded transition-colors"><Trash2 className="w-3 h-3" /></button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         )}
       </div>
 
-      {/* Detail Side Panel */}
+      {/* Detail Panel */}
       {detail && (
-        <div className="w-full lg:w-80 xl:w-96 bg-white dark:bg-slate-800/90 border border-slate-200/80 dark:border-slate-700/50 rounded-xl overflow-hidden shrink-0 backdrop-blur-sm">
-          <div className="px-4 py-3 border-b border-slate-100 dark:border-slate-700/50 flex items-center justify-between bg-slate-50/50 dark:bg-slate-800">
-            <h3 className="font-semibold text-sm text-slate-900 dark:text-white truncate">{detail.title}</h3>
-            <button onClick={() => setDetail(null)} className="p-1 rounded-md hover:bg-slate-200/60 dark:hover:bg-slate-700 transition-colors"><X className="w-3.5 h-3.5 text-slate-400" /></button>
+        <div className="w-full lg:w-[340px] bg-white dark:bg-slate-800/90 border-l border-slate-200/80 dark:border-slate-700/40 overflow-y-auto shrink-0">
+          <div className="px-4 py-3 border-b border-slate-100 dark:border-slate-700/40 flex items-center gap-2 sticky top-0 bg-white dark:bg-slate-800/90 z-10">
+            <button onClick={() => setDetail(null)} className="p-1 rounded hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"><X className="w-3.5 h-3.5 text-slate-400" /></button>
+            <h3 className="font-semibold text-sm text-slate-900 dark:text-white truncate flex-1">{detail.title}</h3>
+            <button onClick={() => openEdit(detail)} className="text-[10px] text-slate-500 hover:text-primary-500 flex items-center gap-0.5"><Edit className="w-3 h-3" /> {t('common.edit')}</button>
           </div>
-          <div className="p-4 space-y-4">
-            <div>
-              <span className={`text-[10px] px-1.5 py-0.5 rounded-md font-medium ${detail.status === 'published' ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600' : 'bg-amber-50 dark:bg-amber-900/20 text-amber-600'}`}>
-                {detail.status === 'published' ? t('common.published') : t('common.draft')}
-              </span>
-            </div>
-            <div>
-              <p className="text-[10px] text-slate-500 uppercase tracking-wider mb-1">Subject</p>
-              <p className="text-xs text-slate-700 dark:text-slate-300">{detail.subject || '—'}</p>
-            </div>
-            <div>
-              <p className="text-[10px] text-slate-500 uppercase tracking-wider mb-1">Description</p>
-              <p className="text-xs text-slate-700 dark:text-slate-300 leading-relaxed">{detail.description || '—'}</p>
-            </div>
+          <div className="p-4 space-y-3">
+            <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${detail.status === 'published' ? 'bg-emerald-500/10 text-emerald-500' : 'bg-amber-500/10 text-amber-500'}`}>
+              {detail.status === 'published' ? t('common.published') : t('common.draft')}
+            </span>
+            <div><p className="text-[10px] text-slate-500 uppercase tracking-wider mb-0.5">Subject</p><p className="text-xs text-slate-700 dark:text-slate-300">{detail.subject || '—'}</p></div>
+            <div><p className="text-[10px] text-slate-500 uppercase tracking-wider mb-0.5">Description</p><p className="text-xs text-slate-700 dark:text-slate-300 leading-relaxed">{detail.description || '—'}</p></div>
             <div className="grid grid-cols-2 gap-2">
-              <div className="bg-slate-50 dark:bg-slate-700/30 rounded-lg p-2.5 text-center">
-                <p className="text-lg font-bold text-slate-900 dark:text-white">{detail.lessonIds?.length || 0}</p>
-                <p className="text-[10px] text-slate-500">{t('nav.lessons')}</p>
-              </div>
-              <div className="bg-slate-50 dark:bg-slate-700/30 rounded-lg p-2.5 text-center">
-                <p className="text-lg font-bold text-slate-900 dark:text-white">{detail.teacherIds?.length || 0}</p>
-                <p className="text-[10px] text-slate-500">{t('nav.teachers')}</p>
-              </div>
+              <div className="bg-slate-50 dark:bg-slate-700/20 rounded-lg p-2 text-center"><p className="text-base font-bold text-slate-900 dark:text-white">{detail.lessonIds?.length || 0}</p><p className="text-[9px] text-slate-500">{t('nav.lessons')}</p></div>
+              <div className="bg-slate-50 dark:bg-slate-700/20 rounded-lg p-2 text-center"><p className="text-base font-bold text-slate-900 dark:text-white">{detail.teacherIds?.length || 0}</p><p className="text-[9px] text-slate-500">{t('nav.teachers')}</p></div>
             </div>
-            <div className="text-[10px] text-slate-400">
-              Created: {detail.createdAt ? new Date(detail.createdAt).toLocaleDateString() : '—'}
-            </div>
-            <div className="flex gap-2 pt-2 border-t border-slate-100 dark:border-slate-700/50">
-              <button onClick={() => openEdit(detail)} className="flex-1 btn-secondary !py-1.5 text-xs flex items-center justify-center gap-1"><Edit className="w-3 h-3" />{t('common.edit')}</button>
-              <button onClick={() => handleDelete(detail.id)} className="!py-1.5 px-3 text-xs text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"><Trash2 className="w-3 h-3" /></button>
-            </div>
+            <p className="text-[10px] text-slate-400">Created: {detail.createdAt ? new Date(detail.createdAt).toLocaleDateString() : '—'}</p>
+            <button onClick={() => handleDelete(detail.id)} className="text-[11px] text-red-500 hover:text-red-600 flex items-center gap-1"><Trash2 className="w-3 h-3" />{t('common.delete')}</button>
           </div>
         </div>
       )}
 
-      {/* Create/Edit Modal */}
+      {/* Modal */}
       {showModal && (
-        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => setShowModal(false)}>
-          <div className="bg-white dark:bg-slate-800 rounded-xl p-5 w-full max-w-md shadow-2xl border border-slate-200/50 dark:border-slate-700/50" onClick={(e) => e.stopPropagation()}>
-            <h2 className="text-sm font-bold text-slate-900 dark:text-white mb-4">{editing ? t('common.edit') : t('org.courses.create')}</h2>
-            <div className="space-y-2.5">
-              <input placeholder={t('org.courses.titlePlaceholder')} value={form.title}
-                onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
-                className="w-full bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-lg px-3 py-1.5 text-xs focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 outline-none transition-all text-slate-900 dark:text-white" autoFocus />
-              <input placeholder={t('org.courses.subjectPlaceholder')} value={form.subject}
-                onChange={(e) => setForm((f) => ({ ...f, subject: e.target.value }))}
-                className="w-full bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-lg px-3 py-1.5 text-xs focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 outline-none transition-all text-slate-900 dark:text-white" />
-              <textarea placeholder={t('org.courses.descPlaceholder')} value={form.description}
-                onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
-                className="w-full bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-lg px-3 py-1.5 text-xs focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 outline-none transition-all min-h-[60px] text-slate-900 dark:text-white" />
-              <select value={form.status} onChange={(e) => setForm((f) => ({ ...f, status: e.target.value as any }))}
-                className="w-full bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-lg px-3 py-1.5 text-xs focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 outline-none transition-all text-slate-900 dark:text-white">
-                <option value="draft">{t('common.draft')}</option>
-                <option value="published">{t('common.published')}</option>
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => setShowModal(false)}>
+          <div className="bg-white dark:bg-slate-800 rounded-xl p-4 w-full max-w-sm shadow-2xl" onClick={(e) => e.stopPropagation()}>
+            <h2 className="text-sm font-bold text-slate-900 dark:text-white mb-3">{editing ? t('common.edit') : t('org.courses.create')}</h2>
+            <div className="space-y-2">
+              <input placeholder={t('org.courses.titlePlaceholder')} value={form.title} onChange={(e) => setForm(f => ({ ...f, title: e.target.value }))} className="w-full bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-lg px-2.5 py-1.5 text-xs outline-none focus:border-primary-500 text-slate-900 dark:text-white" autoFocus />
+              <input placeholder={t('org.courses.subjectPlaceholder')} value={form.subject} onChange={(e) => setForm(f => ({ ...f, subject: e.target.value }))} className="w-full bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-lg px-2.5 py-1.5 text-xs outline-none focus:border-primary-500 text-slate-900 dark:text-white" />
+              <textarea placeholder={t('org.courses.descPlaceholder')} value={form.description} onChange={(e) => setForm(f => ({ ...f, description: e.target.value }))} className="w-full bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-lg px-2.5 py-1.5 text-xs outline-none focus:border-primary-500 min-h-[50px] text-slate-900 dark:text-white" />
+              <select value={form.status} onChange={(e) => setForm(f => ({ ...f, status: e.target.value as any }))} className="w-full bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-lg px-2.5 py-1.5 text-xs outline-none focus:border-primary-500 text-slate-900 dark:text-white">
+                <option value="draft">{t('common.draft')}</option><option value="published">{t('common.published')}</option>
               </select>
             </div>
-            <div className="flex justify-end gap-2 mt-4">
-              <button onClick={() => setShowModal(false)} className="px-3 py-1.5 text-xs text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors">{t('common.cancel')}</button>
-              <button onClick={handleSave} disabled={saving || !form.title.trim()} className="btn-primary !py-1.5 !px-3 text-xs disabled:opacity-50">{saving ? '...' : t('common.save')}</button>
+            <div className="flex justify-end gap-2 mt-3">
+              <button onClick={() => setShowModal(false)} className="px-2.5 py-1 text-[11px] text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg">{t('common.cancel')}</button>
+              <button onClick={handleSave} disabled={saving || !form.title.trim()} className="bg-emerald-500 hover:bg-emerald-600 text-white px-3 py-1 rounded-lg text-[11px] font-medium disabled:opacity-50">{saving ? '...' : t('common.save')}</button>
             </div>
           </div>
         </div>

@@ -39,8 +39,8 @@ const LanguageSwitcher: React.FC<Props> = ({ compact }) => {
         onClick={() => setOpen(!open)}
         className={`flex items-center gap-2 rounded-lg transition-colors ${
           compact
-            ? 'px-2 py-1.5 text-xs text-slate-500 hover:bg-slate-100'
-            : 'px-3 py-2 text-sm text-slate-600 hover:bg-slate-50 border border-slate-200'
+            ? 'px-2 py-1.5 text-xs text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700'
+            : 'px-3 py-2 text-sm text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700'
         }`}
       >
         <span className="text-base">{current.flag}</span>
@@ -49,15 +49,15 @@ const LanguageSwitcher: React.FC<Props> = ({ compact }) => {
       </button>
 
       {open && (
-        <div className="absolute right-0 top-full mt-1 bg-white border border-slate-200 rounded-xl shadow-lg py-1 min-w-[150px] z-50">
+        <div className="absolute right-0 top-full mt-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-lg py-1 min-w-[150px] z-50">
           {LANGS.map((lang) => (
             <button
               key={lang.code}
               onClick={() => changeLang(lang.code)}
               className={`flex items-center gap-3 px-4 py-2.5 w-full text-sm transition-colors ${
                 lang.code === i18n.language
-                  ? 'bg-primary-50 text-primary-700 font-medium'
-                  : 'text-slate-600 hover:bg-slate-50'
+                  ? 'bg-primary-50 dark:bg-primary-900/20 text-primary-700 dark:text-primary-400 font-medium'
+                  : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700'
               }`}
             >
               <span className="text-base">{lang.flag}</span>

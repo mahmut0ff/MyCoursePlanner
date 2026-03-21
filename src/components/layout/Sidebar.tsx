@@ -2,19 +2,16 @@ import React from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../contexts/AuthContext';
-import { useTheme } from '../../contexts/ThemeContext';
 import { signOut } from '../../services/auth.service';
-import LanguageSwitcher from '../LanguageSwitcher';
 import {
   GraduationCap, LayoutDashboard, BookOpen, ClipboardList, Radio,
   BarChart3, LogOut, CreditCard, Users, Building2, Activity,
-  Settings, Server, Shield, Sun, Moon, Puzzle, Tag, Zap,
+  Settings, Server, Shield, Puzzle, Tag, Zap,
 } from 'lucide-react';
 
 const Sidebar: React.FC<{ open: boolean; onClose: () => void }> = ({ open, onClose }) => {
   const { t } = useTranslation();
   const { profile, role, isSuperAdmin, isStaff } = useAuth();
-  const { isDark, toggle } = useTheme();
   const navigate = useNavigate();
 
   const handleSignOut = async () => {
@@ -126,22 +123,7 @@ const Sidebar: React.FC<{ open: boolean; onClose: () => void }> = ({ open, onClo
         </nav>
 
         {/* ═══ Footer — BigShop style ═══ */}
-        <div className="border-t border-white/5 px-3 py-3 space-y-3">
-          {/* Version + Theme + Lang row */}
-          <div className="flex items-center justify-between px-1">
-            <span className="text-[10px] text-slate-600 font-mono">v1.0.0</span>
-            <div className="flex items-center gap-1">
-              <LanguageSwitcher compact />
-              <button
-                onClick={toggle}
-                className="p-1.5 rounded-lg text-slate-500 hover:text-slate-300 hover:bg-white/5 transition-colors"
-                title={isDark ? 'Light mode' : 'Dark mode'}
-              >
-                {isDark ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
-              </button>
-            </div>
-          </div>
-
+        <div className="border-t border-white/5 px-3 py-3">
           {/* User Card */}
           <div className="flex items-center gap-3 px-1">
             <div className="w-9 h-9 bg-gradient-to-br from-emerald-400 to-cyan-500 rounded-full flex items-center justify-center text-sm font-bold text-white shadow-lg shadow-emerald-500/20 ring-2 ring-white/10">

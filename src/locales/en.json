@@ -6,16 +6,20 @@
   },
   "nav": {
     "dashboard": "Dashboard",
+    "overview": "Overview",
     "management": "Management",
     "organizations": "Organizations",
     "users": "Users",
     "billing": "Billing",
+    "plans": "Plans",
     "insights": "Insights",
     "analytics": "Analytics",
     "auditLogs": "Audit Logs",
     "system": "System",
     "systemHealth": "System Health",
-    "featureFlags": "Feature Flags",
+    "featureFlags": "Features",
+    "integrations": "Integrations",
+    "settings": "Settings",
     "learning": "Learning",
     "lessons": "Lessons",
     "exams": "Exams",
@@ -263,6 +267,31 @@
       "recentErrors": "Recent Errors",
       "noErrors": "No recent errors",
       "failedLoad": "Failed to load health data"
+    },
+    "plans": {
+      "subtitle": "Manage subscription plans and pricing",
+      "addPlan": "Add Plan"
+    },
+    "integrations": {
+      "subtitle": "Manage connected services, webhooks, and API keys",
+      "addIntegration": "Add Integration",
+      "connected": "Connected Services",
+      "configure": "Configure",
+      "noWebhooks": "No webhooks configured",
+      "noApiKeys": "No API keys created"
+    },
+    "settings": {
+      "subtitle": "Platform configuration and global settings",
+      "general": "General",
+      "generalDesc": "Platform name, timezone, and global defaults",
+      "branding": "Branding",
+      "brandingDesc": "Logo, colors, and custom styling",
+      "emailTemplates": "Email Templates",
+      "emailTemplatesDesc": "Customize notification and transactional emails",
+      "localization": "Localization",
+      "localizationDesc": "Languages, date formats, and currency",
+      "security": "Security",
+      "securityDesc": "Authentication, sessions, and access policies"
     }
   },
   "billing": {

@@ -8,7 +8,7 @@ import LanguageSwitcher from '../LanguageSwitcher';
 import {
   GraduationCap, LayoutDashboard, BookOpen, ClipboardList, Radio,
   BarChart3, LogOut, CreditCard, Users, Building2, Activity,
-  Settings, Server, Shield, Sun, Moon,
+  Settings, Server, Shield, Sun, Moon, Puzzle, Tag, Zap,
 } from 'lucide-react';
 
 const Sidebar: React.FC<{ open: boolean; onClose: () => void }> = ({ open, onClose }) => {
@@ -55,11 +55,10 @@ const Sidebar: React.FC<{ open: boolean; onClose: () => void }> = ({ open, onClo
         <nav className="flex-1 px-3 py-2 space-y-0.5 overflow-y-auto">
           {isSuperAdmin ? (
             <>
+              {/* MAIN */}
               <NavLink to="/admin" end className={linkClass} onClick={onClose}>
-                <LayoutDashboard className="w-4 h-4" />{t('nav.dashboard')}
+                <LayoutDashboard className="w-4 h-4" />{t('nav.overview')}
               </NavLink>
-
-              {sectionTitle(t('nav.management'))}
               <NavLink to="/admin/organizations" className={linkClass} onClick={onClose}>
                 <Building2 className="w-4 h-4" />{t('nav.organizations')}
               </NavLink>
@@ -69,21 +68,26 @@ const Sidebar: React.FC<{ open: boolean; onClose: () => void }> = ({ open, onClo
               <NavLink to="/admin/billing" className={linkClass} onClick={onClose}>
                 <CreditCard className="w-4 h-4" />{t('nav.billing')}
               </NavLink>
-
-              {sectionTitle(t('nav.insights'))}
+              <NavLink to="/admin/plans" className={linkClass} onClick={onClose}>
+                <Tag className="w-4 h-4" />{t('nav.plans')}
+              </NavLink>
               <NavLink to="/admin/analytics" className={linkClass} onClick={onClose}>
                 <BarChart3 className="w-4 h-4" />{t('nav.analytics')}
               </NavLink>
               <NavLink to="/admin/audit-logs" className={linkClass} onClick={onClose}>
                 <Activity className="w-4 h-4" />{t('nav.auditLogs')}
               </NavLink>
-
-              {sectionTitle(t('nav.system'))}
               <NavLink to="/admin/system-health" className={linkClass} onClick={onClose}>
                 <Server className="w-4 h-4" />{t('nav.systemHealth')}
               </NavLink>
+              <NavLink to="/admin/integrations" className={linkClass} onClick={onClose}>
+                <Puzzle className="w-4 h-4" />{t('nav.integrations')}
+              </NavLink>
               <NavLink to="/admin/feature-flags" className={linkClass} onClick={onClose}>
-                <Settings className="w-4 h-4" />{t('nav.featureFlags')}
+                <Zap className="w-4 h-4" />{t('nav.featureFlags')}
+              </NavLink>
+              <NavLink to="/admin/settings" className={linkClass} onClick={onClose}>
+                <Settings className="w-4 h-4" />{t('nav.settings')}
               </NavLink>
             </>
           ) : (
@@ -150,6 +154,15 @@ const Sidebar: React.FC<{ open: boolean; onClose: () => void }> = ({ open, onClo
                 {role?.replace('_', ' ')}
               </p>
             </div>
+            {isSuperAdmin && (
+              <NavLink
+                to="/admin/settings"
+                className="p-1.5 rounded-lg text-slate-600 hover:text-slate-300 hover:bg-white/5 transition-colors"
+                title={t('nav.settings')}
+              >
+                <Settings className="w-4 h-4" />
+              </NavLink>
+            )}
             <button
               onClick={handleSignOut}
               className="p-1.5 rounded-lg text-slate-600 hover:text-red-400 hover:bg-white/5 transition-colors"

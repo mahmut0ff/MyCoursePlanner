@@ -29,6 +29,9 @@ import AdminBillingPage from './pages/admin/AdminBillingPage';
 import AdminAuditLogsPage from './pages/admin/AdminAuditLogsPage';
 import AdminFeatureFlagsPage from './pages/admin/AdminFeatureFlagsPage';
 import AdminSystemHealthPage from './pages/admin/AdminSystemHealthPage';
+import AdminPlansPage from './pages/admin/AdminPlansPage';
+import AdminIntegrationsPage from './pages/admin/AdminIntegrationsPage';
+import AdminSettingsPage from './pages/admin/AdminSettingsPage';
 
 const App: React.FC = () => {
   return (
@@ -81,6 +84,9 @@ const App: React.FC = () => {
             <Route path="admin/audit-logs" element={<ProtectedRoute allowedRoles={['super_admin']}><AdminAuditLogsPage /></ProtectedRoute>} />
             <Route path="admin/system-health" element={<ProtectedRoute allowedRoles={['super_admin']}><AdminSystemHealthPage /></ProtectedRoute>} />
             <Route path="admin/feature-flags" element={<ProtectedRoute allowedRoles={['super_admin']}><AdminFeatureFlagsPage /></ProtectedRoute>} />
+            <Route path="admin/plans" element={<ProtectedRoute allowedRoles={['super_admin']}><AdminPlansPage /></ProtectedRoute>} />
+            <Route path="admin/integrations" element={<ProtectedRoute allowedRoles={['super_admin']}><AdminIntegrationsPage /></ProtectedRoute>} />
+            <Route path="admin/settings" element={<ProtectedRoute allowedRoles={['super_admin']}><AdminSettingsPage /></ProtectedRoute>} />
           </Route>
 
           {/* Fallback */}

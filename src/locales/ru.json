@@ -6,16 +6,20 @@
   },
   "nav": {
     "dashboard": "Главная",
+    "overview": "Обзор",
     "management": "Управление",
     "organizations": "Организации",
     "users": "Пользователи",
     "billing": "Биллинг",
+    "plans": "Тарифы",
     "insights": "Аналитика",
     "analytics": "Статистика",
     "auditLogs": "Журнал действий",
     "system": "Система",
     "systemHealth": "Состояние системы",
     "featureFlags": "Функции",
+    "integrations": "Интеграции",
+    "settings": "Настройки",
     "learning": "Обучение",
     "lessons": "Уроки",
     "exams": "Экзамены",
@@ -263,6 +267,31 @@
       "recentErrors": "Последние ошибки",
       "noErrors": "Нет ошибок",
       "failedLoad": "Не удалось загрузить данные"
+    },
+    "plans": {
+      "subtitle": "Управление тарифами и ценами подписок",
+      "addPlan": "Добавить тариф"
+    },
+    "integrations": {
+      "subtitle": "Управление подключёнными сервисами, вебхуками и API ключами",
+      "addIntegration": "Добавить интеграцию",
+      "connected": "Подключённые сервисы",
+      "configure": "Настроить",
+      "noWebhooks": "Вебхуки не настроены",
+      "noApiKeys": "API ключи не созданы"
+    },
+    "settings": {
+      "subtitle": "Конфигурация платформы и глобальные настройки",
+      "general": "Основные",
+      "generalDesc": "Название платформы, часовой пояс и настройки по умолчанию",
+      "branding": "Брендинг",
+      "brandingDesc": "Логотип, цвета и пользовательские стили",
+      "emailTemplates": "Шаблоны писем",
+      "emailTemplatesDesc": "Настройка уведомлений и транзакционных писем",
+      "localization": "Локализация",
+      "localizationDesc": "Языки, форматы дат и валюта",
+      "security": "Безопасность",
+      "securityDesc": "Аутентификация, сессии и политики доступа"
     }
   },
   "billing": {

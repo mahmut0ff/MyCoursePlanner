@@ -1,9 +1,12 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { signIn } from '../../services/auth.service';
 import { GraduationCap, Mail, Lock, Eye, EyeOff } from 'lucide-react';
+import LanguageSwitcher from '../../components/LanguageSwitcher';
 
 const LoginPage: React.FC = () => {
+  const { t } = useTranslation();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -31,20 +34,25 @@ const LoginPage: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-primary-600 via-primary-700 to-primary-900 flex items-center justify-center p-4">
+      {/* Language Switcher — top right */}
+      <div className="fixed top-4 right-4 z-50">
+        <LanguageSwitcher />
+      </div>
+
       <div className="w-full max-w-md">
         {/* Logo */}
         <div className="text-center mb-8">
           <div className="inline-flex items-center justify-center w-16 h-16 bg-white/10 backdrop-blur-sm rounded-2xl mb-4">
             <GraduationCap className="w-9 h-9 text-white" />
           </div>
-          <h1 className="text-3xl font-bold text-white">MyCoursePlan</h1>
+          <h1 className="text-3xl font-bold text-white">{t('app.name')}</h1>
           <p className="text-primary-200 mt-1">Education Management Platform</p>
         </div>
 
         {/* Card */}
         <div className="bg-white rounded-2xl shadow-xl p-8">
-          <h2 className="text-xl font-semibold text-slate-900 mb-1">Welcome back</h2>
-          <p className="text-slate-500 text-sm mb-6">Sign in to your account</p>
+          <h2 className="text-xl font-semibold text-slate-900 mb-1">{t('auth.loginTitle')}</h2>
+          <p className="text-slate-500 text-sm mb-6">{t('auth.loginSubtitle')}</p>
 
           {error && (
             <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm mb-4">
@@ -54,7 +62,7 @@ const LoginPage: React.FC = () => {
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label className="label">Email</label>
+              <label className="label">{t('auth.email')}</label>
               <div className="relative">
                 <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                 <input
@@ -67,7 +75,7 @@ const LoginPage: React.FC = () => {
               </div>
             </div>
             <div>
-              <label className="label">Password</label>
+              <label className="label">{t('auth.password')}</label>
               <div className="relative">
                 <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                 <input
@@ -87,14 +95,14 @@ const LoginPage: React.FC = () => {
               </div>
             </div>
             <button type="submit" disabled={loading} className="btn-primary w-full">
-              {loading ? 'Signing in...' : 'Sign In'}
+              {loading ? t('auth.signingIn') : t('auth.login')}
             </button>
           </form>
 
           <p className="text-center text-sm text-slate-500 mt-6">
-            Don't have an account?{' '}
+            {t('auth.noAccount')}{' '}
             <Link to="/register" className="text-primary-600 font-medium hover:text-primary-700">
-              Sign up
+              {t('auth.register')}
             </Link>
           </p>
         </div>

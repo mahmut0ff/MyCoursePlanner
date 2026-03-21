@@ -1,7 +1,9 @@
 import React from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../contexts/AuthContext';
 import { signOut } from '../../services/auth.service';
+import LanguageSwitcher from '../LanguageSwitcher';
 import {
   GraduationCap, LayoutDashboard, BookOpen, ClipboardList, Radio,
   BarChart3, LogOut, CreditCard, Users, Building2, Activity,
@@ -9,6 +11,7 @@ import {
 } from 'lucide-react';
 
 const Sidebar: React.FC<{ open: boolean; onClose: () => void }> = ({ open, onClose }) => {
+  const { t } = useTranslation();
   const { profile, role, isSuperAdmin, isStaff } = useAuth();
   const navigate = useNavigate();
 
@@ -39,8 +42,8 @@ const Sidebar: React.FC<{ open: boolean; onClose: () => void }> = ({ open, onClo
               <GraduationCap className="w-5 h-5 text-white" />
             </div>
             <div>
-              <span className="font-bold text-base text-slate-900 leading-none">MyCoursePlan</span>
-              {isSuperAdmin && <p className="text-[10px] text-violet-600 font-semibold">SUPER ADMIN</p>}
+              <span className="font-bold text-base text-slate-900 leading-none">{t('app.name')}</span>
+              {isSuperAdmin && <p className="text-[10px] text-violet-600 font-semibold">{t('app.superAdmin')}</p>}
             </div>
           </div>
 
@@ -48,67 +51,65 @@ const Sidebar: React.FC<{ open: boolean; onClose: () => void }> = ({ open, onClo
           <nav className="flex-1 px-3 py-2 space-y-0.5 overflow-y-auto">
             {isSuperAdmin ? (
               <>
-                {/* Super Admin Navigation */}
                 <NavLink to="/admin" end className={linkClass} onClick={onClose}>
-                  <LayoutDashboard className="w-4 h-4" />Dashboard
+                  <LayoutDashboard className="w-4 h-4" />{t('nav.dashboard')}
                 </NavLink>
 
-                {sectionTitle('Management')}
+                {sectionTitle(t('nav.management'))}
                 <NavLink to="/admin/organizations" className={linkClass} onClick={onClose}>
-                  <Building2 className="w-4 h-4" />Organizations
+                  <Building2 className="w-4 h-4" />{t('nav.organizations')}
                 </NavLink>
                 <NavLink to="/admin/users" className={linkClass} onClick={onClose}>
-                  <Users className="w-4 h-4" />Users
+                  <Users className="w-4 h-4" />{t('nav.users')}
                 </NavLink>
                 <NavLink to="/admin/billing" className={linkClass} onClick={onClose}>
-                  <CreditCard className="w-4 h-4" />Billing
+                  <CreditCard className="w-4 h-4" />{t('nav.billing')}
                 </NavLink>
 
-                {sectionTitle('Insights')}
+                {sectionTitle(t('nav.insights'))}
                 <NavLink to="/admin/analytics" className={linkClass} onClick={onClose}>
-                  <BarChart3 className="w-4 h-4" />Analytics
+                  <BarChart3 className="w-4 h-4" />{t('nav.analytics')}
                 </NavLink>
                 <NavLink to="/admin/audit-logs" className={linkClass} onClick={onClose}>
-                  <Activity className="w-4 h-4" />Audit Logs
+                  <Activity className="w-4 h-4" />{t('nav.auditLogs')}
                 </NavLink>
 
-                {sectionTitle('System')}
+                {sectionTitle(t('nav.system'))}
                 <NavLink to="/admin/system-health" className={linkClass} onClick={onClose}>
-                  <Server className="w-4 h-4" />System Health
+                  <Server className="w-4 h-4" />{t('nav.systemHealth')}
                 </NavLink>
                 <NavLink to="/admin/feature-flags" className={linkClass} onClick={onClose}>
-                  <Settings className="w-4 h-4" />Feature Flags
+                  <Settings className="w-4 h-4" />{t('nav.featureFlags')}
                 </NavLink>
               </>
             ) : (
               <>
-                {/* Regular User Navigation */}
                 <NavLink to="/dashboard" className={linkClass} onClick={onClose}>
-                  <LayoutDashboard className="w-4 h-4" />Dashboard
+                  <LayoutDashboard className="w-4 h-4" />{t('nav.dashboard')}
                 </NavLink>
 
-                {sectionTitle('Learning')}
+                {sectionTitle(t('nav.learning'))}
                 <NavLink to="/lessons" className={linkClass} onClick={onClose}>
-                  <BookOpen className="w-4 h-4" />Lessons
+                  <BookOpen className="w-4 h-4" />{t('nav.lessons')}
                 </NavLink>
                 <NavLink to="/exams" className={linkClass} onClick={onClose}>
-                  <ClipboardList className="w-4 h-4" />Exams
+                  <ClipboardList className="w-4 h-4" />{t('nav.exams')}
                 </NavLink>
                 <NavLink to="/rooms" className={linkClass} onClick={onClose}>
-                  <Radio className="w-4 h-4" />Exam Rooms
+                  <Radio className="w-4 h-4" />{t('nav.examRooms')}
                 </NavLink>
 
                 {role === 'student' && (
                   <NavLink to="/my-results" className={linkClass} onClick={onClose}>
-                    <BarChart3 className="w-4 h-4" />My Results
+                    <BarChart3 className="w-4 h-4" />{t('nav.myResults')}
                   </NavLink>
                 )}
 
                 {isStaff && !isSuperAdmin && (
                   <>
-                    {sectionTitle('Organization')}
+                    {sectionTitle(t('nav.organization'))}
                     <NavLink to="/billing" className={linkClass} onClick={onClose}>
-                      <CreditCard className="w-4 h-4" />Billing & Plans
+                      <CreditCard className="w-4 h-4" />{t('nav.billingPlans')}
                     </NavLink>
                   </>
                 )}
@@ -116,8 +117,11 @@ const Sidebar: React.FC<{ open: boolean; onClose: () => void }> = ({ open, onClo
             )}
           </nav>
 
-          {/* User Card */}
+          {/* Language + User Card */}
           <div className="border-t border-slate-100 px-3 py-3">
+            <div className="mb-3 px-2">
+              <LanguageSwitcher compact />
+            </div>
             <div className="flex items-center gap-3 mb-3 px-2">
               <div className="w-9 h-9 bg-gradient-to-br from-primary-400 to-primary-600 rounded-xl flex items-center justify-center text-sm font-bold text-white shadow-sm">
                 {profile?.displayName?.[0]?.toUpperCase() || '?'}
@@ -131,7 +135,7 @@ const Sidebar: React.FC<{ open: boolean; onClose: () => void }> = ({ open, onClo
               </div>
             </div>
             <button onClick={handleSignOut} className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs text-slate-400 hover:text-red-500 hover:bg-red-50 w-full transition-colors">
-              <LogOut className="w-3.5 h-3.5" />Sign out
+              <LogOut className="w-3.5 h-3.5" />{t('app.signOut')}
             </button>
           </div>
         </div>

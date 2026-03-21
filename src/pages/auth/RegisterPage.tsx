@@ -1,11 +1,13 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { signUp } from '../../services/auth.service';
 import { createUser } from '../../services/users.service';
-
 import { GraduationCap, Mail, Lock, User, Eye, EyeOff, Building2 } from 'lucide-react';
+import LanguageSwitcher from '../../components/LanguageSwitcher';
 
 const RegisterPage: React.FC = () => {
+  const { t } = useTranslation();
   const [step, setStep] = useState<'account' | 'org'>('account');
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -31,14 +33,12 @@ const RegisterPage: React.FC = () => {
     setLoading(true);
     try {
       const cred = await signUp(email, password, name);
-      // Create user profile as admin of new org
       const profilePromise = createUser(cred.user.uid, email, name, 'admin');
       const timeoutPromise = new Promise((_, reject) =>
         setTimeout(() => reject(new Error('timeout')), 8000)
       );
       try { await Promise.race([profilePromise, timeoutPromise]); } catch {}
 
-      // Create organization via API
       const token = await cred.user.getIdToken();
       const orgRes = await fetch('/.netlify/functions/api-organizations', {
         method: 'POST',
@@ -63,13 +63,17 @@ const RegisterPage: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-primary-600 via-primary-700 to-primary-900 flex items-center justify-center p-4">
+      <div className="fixed top-4 right-4 z-50">
+        <LanguageSwitcher />
+      </div>
+
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
           <div className="inline-flex items-center justify-center w-16 h-16 bg-white/10 backdrop-blur-sm rounded-2xl mb-4">
             <GraduationCap className="w-9 h-9 text-white" />
           </div>
-          <h1 className="text-3xl font-bold text-white">MyCoursePlan</h1>
-          <p className="text-primary-200 mt-1">Create your organization</p>
+          <h1 className="text-3xl font-bold text-white">{t('app.name')}</h1>
+          <p className="text-primary-200 mt-1">{t('auth.registerSubtitle')}</p>
         </div>
 
         <div className="bg-white rounded-2xl shadow-xl p-8">
@@ -81,65 +85,59 @@ const RegisterPage: React.FC = () => {
 
           {step === 'account' ? (
             <>
-              <h2 className="text-xl font-semibold text-slate-900 mb-1">Create your account</h2>
-              <p className="text-slate-500 text-sm mb-6">Step 1 of 2 — Personal details</p>
+              <h2 className="text-xl font-semibold text-slate-900 mb-1">{t('auth.registerTitle')}</h2>
+              <p className="text-slate-500 text-sm mb-6">{t('auth.step1')}</p>
 
               {error && <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm mb-4">{error}</div>}
 
               <form onSubmit={handleAccountStep} className="space-y-4">
                 <div>
-                  <label className="label">Full Name</label>
+                  <label className="label">{t('auth.fullName')}</label>
                   <div className="relative">
                     <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                     <input type="text" value={name} onChange={(e) => setName(e.target.value)} className="input pl-10" placeholder="John Doe" />
                   </div>
                 </div>
                 <div>
-                  <label className="label">Email</label>
+                  <label className="label">{t('auth.email')}</label>
                   <div className="relative">
                     <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                     <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} className="input pl-10" placeholder="you@example.com" />
                   </div>
                 </div>
                 <div>
-                  <label className="label">Password</label>
+                  <label className="label">{t('auth.password')}</label>
                   <div className="relative">
                     <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                    <input type={showPassword ? 'text' : 'password'} value={password} onChange={(e) => setPassword(e.target.value)} className="input pl-10 pr-10" placeholder="At least 6 characters" />
+                    <input type={showPassword ? 'text' : 'password'} value={password} onChange={(e) => setPassword(e.target.value)} className="input pl-10 pr-10" placeholder="••••••••" />
                     <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
                       {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                     </button>
                   </div>
                 </div>
-                <button type="submit" className="btn-primary w-full">Continue</button>
+                <button type="submit" className="btn-primary w-full">{t('auth.continue')}</button>
               </form>
             </>
           ) : (
             <>
-              <h2 className="text-xl font-semibold text-slate-900 mb-1">Create your organization</h2>
-              <p className="text-slate-500 text-sm mb-6">Step 2 of 2 — Your school or center</p>
+              <h2 className="text-xl font-semibold text-slate-900 mb-1">{t('auth.orgName')}</h2>
+              <p className="text-slate-500 text-sm mb-6">{t('auth.step2')}</p>
 
               {error && <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm mb-4">{error}</div>}
 
               <form onSubmit={handleFinalSubmit} className="space-y-4">
                 <div>
-                  <label className="label">Organization Name</label>
+                  <label className="label">{t('auth.orgName')}</label>
                   <div className="relative">
                     <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                    <input type="text" value={orgName} onChange={(e) => setOrgName(e.target.value)} className="input pl-10" placeholder="My Education Center" />
+                    <input type="text" value={orgName} onChange={(e) => setOrgName(e.target.value)} className="input pl-10" placeholder={t('auth.orgNamePlaceholder')} />
                   </div>
-                  <p className="text-xs text-slate-400 mt-1">This will be your workspace name</p>
-                </div>
-
-                <div className="bg-primary-50 border border-primary-200 rounded-lg p-4 text-sm">
-                  <p className="font-medium text-primary-800 mb-1">🎉 14-day free trial included</p>
-                  <p className="text-primary-600">Start with the Starter plan — upgrade anytime.</p>
                 </div>
 
                 <div className="flex gap-3">
-                  <button type="button" onClick={() => setStep('account')} className="btn-secondary flex-1">Back</button>
+                  <button type="button" onClick={() => setStep('account')} className="btn-secondary flex-1">{t('common.back')}</button>
                   <button type="submit" disabled={loading} className="btn-primary flex-1">
-                    {loading ? 'Creating...' : 'Create Organization'}
+                    {loading ? t('auth.creating') : t('auth.createAccount')}
                   </button>
                 </div>
               </form>
@@ -147,8 +145,8 @@ const RegisterPage: React.FC = () => {
           )}
 
           <p className="text-center text-sm text-slate-500 mt-6">
-            Already have an account?{' '}
-            <Link to="/login" className="text-primary-600 font-medium hover:text-primary-700">Sign in</Link>
+            {t('auth.hasAccount')}{' '}
+            <Link to="/login" className="text-primary-600 font-medium hover:text-primary-700">{t('auth.login')}</Link>
           </p>
         </div>
       </div>

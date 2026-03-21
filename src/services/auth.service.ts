@@ -4,6 +4,8 @@ import {
   signOut as firebaseSignOut,
   onAuthStateChanged,
   updateProfile,
+  GoogleAuthProvider,
+  signInWithPopup,
   type User,
 } from 'firebase/auth';
 import { auth } from '../lib/firebase';
@@ -15,6 +17,11 @@ export const signUp = async (email: string, password: string, displayName: strin
   const cred = await createUserWithEmailAndPassword(auth, email, password);
   await updateProfile(cred.user, { displayName });
   return cred;
+};
+
+export const signInWithGoogle = () => {
+  const provider = new GoogleAuthProvider();
+  return signInWithPopup(auth, provider);
 };
 
 export const signOut = () => firebaseSignOut(auth);

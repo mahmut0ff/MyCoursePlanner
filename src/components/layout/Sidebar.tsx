@@ -6,7 +6,8 @@ import { signOut } from '../../services/auth.service';
 import {
   GraduationCap, LayoutDashboard, BookOpen, ClipboardList, Radio,
   BarChart3, LogOut, CreditCard, Users, Building2, Activity,
-  Settings, Server, Shield, Puzzle, Tag, Zap,
+  Settings, Server, Shield, Puzzle, Tag, Zap, FolderOpen, UsersRound,
+  Calendar, FileText, Trophy, UserPlus,
 } from 'lucide-react';
 
 const Sidebar: React.FC<{ open: boolean; onClose: () => void }> = ({ open, onClose }) => {
@@ -90,28 +91,75 @@ const Sidebar: React.FC<{ open: boolean; onClose: () => void }> = ({ open, onClo
                 <LayoutDashboard className="w-4 h-4" />{t('nav.dashboard')}
               </NavLink>
 
-              {sectionTitle(t('nav.learning'))}
-              <NavLink to="/lessons" className={linkClass} onClick={onClose}>
-                <BookOpen className="w-4 h-4" />{t('nav.lessons')}
-              </NavLink>
-              <NavLink to="/exams" className={linkClass} onClick={onClose}>
-                <ClipboardList className="w-4 h-4" />{t('nav.exams')}
-              </NavLink>
-              <NavLink to="/rooms" className={linkClass} onClick={onClose}>
-                <Radio className="w-4 h-4" />{t('nav.examRooms')}
-              </NavLink>
-
-              {role === 'student' && (
-                <NavLink to="/my-results" className={linkClass} onClick={onClose}>
-                  <BarChart3 className="w-4 h-4" />{t('nav.myResults')}
-                </NavLink>
-              )}
-
               {isStaff && !isSuperAdmin && (
                 <>
+                  {sectionTitle(t('nav.education'))}
+                  <NavLink to="/courses" className={linkClass} onClick={onClose}>
+                    <FolderOpen className="w-4 h-4" />{t('nav.courses')}
+                  </NavLink>
+                  <NavLink to="/groups" className={linkClass} onClick={onClose}>
+                    <UsersRound className="w-4 h-4" />{t('nav.groups')}
+                  </NavLink>
+                  <NavLink to="/lessons" className={linkClass} onClick={onClose}>
+                    <BookOpen className="w-4 h-4" />{t('nav.lessons')}
+                  </NavLink>
+                  <NavLink to="/materials" className={linkClass} onClick={onClose}>
+                    <FileText className="w-4 h-4" />{t('nav.materials')}
+                  </NavLink>
+
+                  {sectionTitle(t('nav.examsSection'))}
+                  <NavLink to="/exams" className={linkClass} onClick={onClose}>
+                    <ClipboardList className="w-4 h-4" />{t('nav.exams')}
+                  </NavLink>
+                  <NavLink to="/rooms" className={linkClass} onClick={onClose}>
+                    <Radio className="w-4 h-4" />{t('nav.examRooms')}
+                  </NavLink>
+                  <NavLink to="/results" className={linkClass} onClick={onClose}>
+                    <Trophy className="w-4 h-4" />{t('nav.results')}
+                  </NavLink>
+
+                  {sectionTitle(t('nav.people'))}
+                  <NavLink to="/students" className={linkClass} onClick={onClose}>
+                    <Users className="w-4 h-4" />{t('nav.students')}
+                  </NavLink>
+                  <NavLink to="/teachers" className={linkClass} onClick={onClose}>
+                    <UserPlus className="w-4 h-4" />{t('nav.teachers')}
+                  </NavLink>
+                  {role === 'admin' && (
+                    <NavLink to="/org-users" className={linkClass} onClick={onClose}>
+                      <Shield className="w-4 h-4" />{t('nav.users')}
+                    </NavLink>
+                  )}
+
                   {sectionTitle(t('nav.organization'))}
+                  <NavLink to="/schedule" className={linkClass} onClick={onClose}>
+                    <Calendar className="w-4 h-4" />{t('nav.schedule')}
+                  </NavLink>
                   <NavLink to="/billing" className={linkClass} onClick={onClose}>
                     <CreditCard className="w-4 h-4" />{t('nav.billingPlans')}
+                  </NavLink>
+                  {role === 'admin' && (
+                    <NavLink to="/org-settings" className={linkClass} onClick={onClose}>
+                      <Settings className="w-4 h-4" />{t('nav.settings')}
+                    </NavLink>
+                  )}
+                </>
+              )}
+
+              {role === 'student' && (
+                <>
+                  {sectionTitle(t('nav.learning'))}
+                  <NavLink to="/lessons" className={linkClass} onClick={onClose}>
+                    <BookOpen className="w-4 h-4" />{t('nav.lessons')}
+                  </NavLink>
+                  <NavLink to="/exams" className={linkClass} onClick={onClose}>
+                    <ClipboardList className="w-4 h-4" />{t('nav.exams')}
+                  </NavLink>
+                  <NavLink to="/rooms" className={linkClass} onClick={onClose}>
+                    <Radio className="w-4 h-4" />{t('nav.examRooms')}
+                  </NavLink>
+                  <NavLink to="/my-results" className={linkClass} onClick={onClose}>
+                    <BarChart3 className="w-4 h-4" />{t('nav.myResults')}
                   </NavLink>
                 </>
               )}

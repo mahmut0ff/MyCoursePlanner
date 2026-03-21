@@ -154,3 +154,63 @@ export const adminSetOrgOverride = (data: any) => adminReq('setOrgOverride', 'PO
 
 // System Health
 export const adminGetSystemHealth = () => adminReq('systemHealth');
+
+// ============================================================
+// ORG API (Organization Admin — tenant-scoped)
+// ============================================================
+
+const orgReq = <T = any>(action: string, method = 'GET', body?: any, extra?: Record<string, string>) =>
+  apiRequest<T>('api-org', method, body, { action, ...extra });
+
+// Courses
+export const orgGetCourses = () => orgReq('courses');
+export const orgGetCourse = (id: string) => orgReq('course', 'GET', undefined, { id });
+export const orgCreateCourse = (data: any) => orgReq('createCourse', 'POST', data);
+export const orgUpdateCourse = (data: any) => orgReq('updateCourse', 'POST', data);
+export const orgDeleteCourse = (id: string) => orgReq('deleteCourse', 'POST', { id });
+
+// Groups
+export const orgGetGroups = (courseId?: string) => orgReq('groups', 'GET', undefined, courseId ? { courseId } : undefined);
+export const orgGetGroup = (id: string) => orgReq('group', 'GET', undefined, { id });
+export const orgCreateGroup = (data: any) => orgReq('createGroup', 'POST', data);
+export const orgUpdateGroup = (data: any) => orgReq('updateGroup', 'POST', data);
+export const orgDeleteGroup = (id: string) => orgReq('deleteGroup', 'POST', { id });
+
+// Students
+export const orgGetStudents = () => orgReq('students');
+export const orgUpdateStudent = (data: any) => orgReq('updateStudent', 'POST', data);
+
+// Teachers
+export const orgGetTeachers = () => orgReq('teachers');
+export const orgInviteUser = (email: string, role: string) => orgReq('inviteUser', 'POST', { email, role });
+
+// Materials
+export const orgGetMaterials = (filters?: Record<string, string>) => orgReq('materials', 'GET', undefined, filters);
+export const orgCreateMaterial = (data: any) => orgReq('createMaterial', 'POST', data);
+export const orgDeleteMaterial = (id: string) => orgReq('deleteMaterial', 'POST', { id });
+
+// Schedule
+export const orgGetSchedule = (from?: string, to?: string, groupId?: string) => {
+  const params: Record<string, string> = {};
+  if (from) params.from = from;
+  if (to) params.to = to;
+  if (groupId) params.groupId = groupId;
+  return orgReq('schedule', 'GET', undefined, Object.keys(params).length ? params : undefined);
+};
+export const orgCreateEvent = (data: any) => orgReq('createEvent', 'POST', data);
+export const orgUpdateEvent = (data: any) => orgReq('updateEvent', 'POST', data);
+export const orgDeleteEvent = (id: string) => orgReq('deleteEvent', 'POST', { id });
+
+// Results
+export const orgGetResults = (filters?: Record<string, string>) => orgReq('results', 'GET', undefined, filters);
+
+// Org Users
+export const orgGetUsers = () => orgReq('orgUsers');
+export const orgUpdateUserRole = (uid: string, role: string) => orgReq('updateUserRole', 'POST', { uid, role });
+
+// Org Settings
+export const orgGetSettings = () => orgReq('orgSettings');
+export const orgUpdateSettings = (data: any) => orgReq('updateOrgSettings', 'POST', data);
+
+// Org Dashboard
+export const orgGetDashboardStats = () => orgReq('dashboardStats');

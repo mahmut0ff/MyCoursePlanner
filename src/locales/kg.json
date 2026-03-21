@@ -26,7 +26,17 @@
     "examRooms": "Экзамен бөлмөлөрү",
     "myResults": "Менин жыйынтыктарым",
     "organization": "Уюм",
-    "billingPlans": "Тарифтер жана пландар"
+    "billingPlans": "Тарифтер жана пландар",
+    "courses": "Курстар",
+    "groups": "Топтор",
+    "materials": "Материалдар",
+    "students": "Студенттер",
+    "teachers": "Мугалимдер",
+    "schedule": "Күн тартиби",
+    "results": "Жыйынтыктар",
+    "education": "Билим берүү",
+    "examsSection": "Экзамендер",
+    "people": "Адамдар"
   },
   "auth": {
     "login": "Кирүү",
@@ -423,9 +433,108 @@
     "next": "Кийинки",
     "yes": "Ооба",
     "no": "Жок",
-    "active": "активдүү",
-    "disabled": "өчүрүлгөн",
+    "active": "Активдүү",
+    "disabled": "Өчүрүлгөн",
+    "name": "Аты",
+    "status": "Статус",
+    "draft": "Каралама",
+    "published": "Жарыяланган",
+    "confirmDelete": "Сиз өчүргүңүз келеби?",
+    "close": "Жабуу",
     "on": "КҮЙҮК",
     "off": "ӨЧҮК"
+  },
+  "org": {
+    "courses": {
+      "subtitle": "Курстарды жана окуу программаларын башкаруу",
+      "create": "Курс түзүү",
+      "titlePlaceholder": "Курстун аталышы",
+      "subjectPlaceholder": "Предмет (мис. Математика, Физика)",
+      "descPlaceholder": "Курстун сүрөттөмөсү...",
+      "empty": "Курстар азырка жок. Биринчи курсту түзүңүз.",
+      "noSubject": "Предмети жок",
+      "noDescription": "Сүрөттөмө жок"
+    },
+    "groups": {
+      "subtitle": "Окуу топторду башкаруу",
+      "create": "Топ түзүү",
+      "namePlaceholder": "Топтун аты (мис. А-21 Топ)",
+      "selectCourse": "Курсту тандаңыз...",
+      "empty": "Топтор азырка жок. Биринчи топту түзүңүз."
+    },
+    "students": {
+      "total": "студент",
+      "empty": "Студенттер табылган жок",
+      "profile": "Студенттин профили",
+      "examsTaken": "Экзамендер тапшырылды",
+      "avgScore": "Орточо балл",
+      "recentResults": "Акыркы жыйынтыктар",
+      "noResults": "Жыйынтыктар азырка жок"
+    },
+    "teachers": {
+      "total": "мугалим",
+      "invite": "Мугалим чакыруу",
+      "empty": "Мугалимдер азырка жок",
+      "roleTeacher": "Мугалим",
+      "roleAdmin": "Администратор",
+      "sendInvite": "Чакыруу жөнөтүү"
+    },
+    "materials": {
+      "subtitle": "Окуу материалдары жана ресурстар",
+      "add": "Материал кошуу",
+      "titlePlaceholder": "Материалдын аталышы",
+      "categoryPlaceholder": "Категория",
+      "empty": "Материалдар азырка жок"
+    },
+    "schedule": {
+      "subtitle": "Сабактардын жана иш-чаралардын күн тартиби",
+      "addEvent": "Иш-чара кошуу",
+      "today": "Бүгүн",
+      "eventTitle": "Иш-чаранын аталышы",
+      "typeLesson": "Сабак",
+      "typeExam": "Экзамен",
+      "typeOther": "Башка"
+    },
+    "results": {
+      "total": "жыйынтык",
+      "export": "CSV экспорт",
+      "totalAttempts": "Бардык аракеттер",
+      "avgScore": "Орточо балл",
+      "passRate": "Өткөндөрдүн пайызы",
+      "empty": "Жыйынтыктар азырка жок",
+      "student": "Студент",
+      "exam": "Экзамен",
+      "score": "Балл",
+      "date": "Күнү",
+      "passed": "Өттү",
+      "failed": "Өтпөдү"
+    },
+    "users": {
+      "total": "колдонуучу",
+      "invite": "Колдонуучу чакыруу",
+      "role": "Роль",
+      "joined": "Катталган күнү",
+      "sendInvite": "Чакыруу жөнөтүү",
+      "roleStudent": "Студент",
+      "roleTeacher": "Мугалим",
+      "roleAdmin": "Администратор"
+    },
+    "settings": {
+      "subtitle": "Уюмдун жөндөөлөрү",
+      "save": "Өзгөртүүлөрдү сактоо",
+      "saved": "Сакталды!",
+      "general": "Жалпы",
+      "orgName": "Уюмдун аты",
+      "timezone": "Убакыт алкагы",
+      "language": "Тил",
+      "academic": "Окуу жөндөөлөрү",
+      "yearStart": "Окуу жылынын башы",
+      "yearEnd": "Окуу жылынын аягы",
+      "gradingScale": "Баалоо системасы",
+      "passingScore": "Өтүү баллы (%)",
+      "scalePercentage": "Пайыздар",
+      "scaleLetter": "Тамга баалоо",
+      "scalePoints": "Баллдар"
+    }
   }
 }

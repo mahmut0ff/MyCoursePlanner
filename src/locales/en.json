@@ -26,7 +26,17 @@
     "examRooms": "Exam Rooms",
     "myResults": "My Results",
     "organization": "Organization",
-    "billingPlans": "Billing & Plans"
+    "billingPlans": "Billing & Plans",
+    "courses": "Courses",
+    "groups": "Groups",
+    "materials": "Materials",
+    "students": "Students",
+    "teachers": "Teachers",
+    "schedule": "Schedule",
+    "results": "Results",
+    "education": "Education",
+    "examsSection": "Exams",
+    "people": "People"
   },
   "auth": {
     "login": "Sign In",
@@ -414,8 +424,9 @@
     "cancel": "Cancel",
     "delete": "Delete",
     "edit": "Edit",
+    "close": "Close",
     "create": "Create",
-    "search": "Search",
+    "search": "Search...",
     "filter": "Filter",
     "noData": "No data",
     "confirm": "Confirm",
@@ -423,9 +434,107 @@
     "next": "Next",
     "yes": "Yes",
     "no": "No",
-    "active": "active",
-    "disabled": "disabled",
+    "name": "Name",
+    "status": "Status",
+    "active": "Active",
+    "disabled": "Disabled",
+    "draft": "Draft",
+    "published": "Published",
+    "confirmDelete": "Are you sure you want to delete?",
     "on": "ON",
     "off": "OFF"
+  },
+  "org": {
+    "courses": {
+      "subtitle": "Manage your courses and curricula",
+      "create": "Create Course",
+      "titlePlaceholder": "Course title",
+      "subjectPlaceholder": "Subject (e.g. Math, Physics)",
+      "descPlaceholder": "Course description...",
+      "empty": "No courses yet. Create your first course.",
+      "noSubject": "No subject",
+      "noDescription": "No description"
+    },
+    "groups": {
+      "subtitle": "Manage student groups",
+      "create": "Create Group",
+      "namePlaceholder": "Group name (e.g. Group A-21)",
+      "selectCourse": "Select course...",
+      "empty": "No groups yet. Create your first group."
+    },
+    "students": {
+      "total": "students",
+      "empty": "No students found",
+      "profile": "Student Profile",
+      "examsTaken": "Exams Taken",
+      "avgScore": "Avg Score",
+      "recentResults": "Recent Results",
+      "noResults": "No results yet"
+    },
+    "teachers": {
+      "total": "teachers",
+      "invite": "Invite Teacher",
+      "empty": "No teachers yet",
+      "roleTeacher": "Teacher",
+      "roleAdmin": "Admin",
+      "sendInvite": "Send Invite"
+    },
+    "materials": {
+      "subtitle": "Learning materials and resources",
+      "add": "Add Material",
+      "titlePlaceholder": "Material title",
+      "categoryPlaceholder": "Category",
+      "empty": "No materials yet"
+    },
+    "schedule": {
+      "subtitle": "Weekly schedule and events",
+      "addEvent": "Add Event",
+      "today": "Today",
+      "eventTitle": "Event title",
+      "typeLesson": "Lesson",
+      "typeExam": "Exam",
+      "typeOther": "Other"
+    },
+    "results": {
+      "total": "results",
+      "export": "Export CSV",
+      "totalAttempts": "Total Attempts",
+      "avgScore": "Average Score",
+      "passRate": "Pass Rate",
+      "empty": "No results yet",
+      "student": "Student",
+      "exam": "Exam",
+      "score": "Score",
+      "date": "Date",
+      "passed": "Passed",
+      "failed": "Failed"
+    },
+    "users": {
+      "total": "users",
+      "invite": "Invite User",
+      "role": "Role",
+      "joined": "Joined",
+      "sendInvite": "Send Invite",
+      "roleStudent": "Student",
+      "roleTeacher": "Teacher",
+      "roleAdmin": "Admin"
+    },
+    "settings": {
+      "subtitle": "Organization settings and preferences",
+      "save": "Save Changes",
+      "saved": "Saved!",
+      "general": "General",
+      "orgName": "Organization Name",
+      "timezone": "Timezone",
+      "language": "Language",
+      "academic": "Academic Settings",
+      "yearStart": "Academic Year Start",
+      "yearEnd": "Academic Year End",
+      "gradingScale": "Grading Scale",
+      "passingScore": "Passing Score (%)",
+      "scalePercentage": "Percentage",
+      "scaleLetter": "Letter Grade",
+      "scalePoints": "Points"
+    }
   }
 }

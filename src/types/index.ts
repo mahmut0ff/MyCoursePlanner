@@ -287,4 +287,98 @@ export interface DashboardStats {
   activeRooms: number;
   totalStudents: number;
   totalAttempts: number;
+  totalCourses?: number;
+  totalGroups?: number;
+  totalTeachers?: number;
+}
+
+// ---- Courses ----
+
+export type CourseStatus = 'draft' | 'published' | 'archived';
+
+export interface Course {
+  id: string;
+  organizationId: string;
+  title: string;
+  description: string;
+  subject: string;
+  teacherIds: string[];
+  lessonIds: string[];
+  status: CourseStatus;
+  coverImageUrl?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// ---- Groups ----
+
+export interface Group {
+  id: string;
+  organizationId: string;
+  courseId: string;
+  courseName?: string;
+  name: string;
+  studentIds: string[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+// ---- Materials ----
+
+export type MaterialType = 'link' | 'file' | 'video' | 'document';
+
+export interface Material {
+  id: string;
+  organizationId: string;
+  title: string;
+  type: MaterialType;
+  url: string;
+  category: string;
+  lessonId?: string;
+  courseId?: string;
+  authorId: string;
+  authorName: string;
+  createdAt: string;
+}
+
+// ---- Schedule Events ----
+
+export type ScheduleEventType = 'lesson' | 'exam' | 'other';
+
+export interface ScheduleEvent {
+  id: string;
+  organizationId: string;
+  type: ScheduleEventType;
+  title: string;
+  groupId?: string;
+  groupName?: string;
+  courseId?: string;
+  courseName?: string;
+  teacherId?: string;
+  teacherName?: string;
+  examId?: string;
+  lessonId?: string;
+  date: string;        // YYYY-MM-DD
+  startTime: string;   // HH:mm
+  endTime: string;     // HH:mm
+  duration: number;    // minutes
+  location?: string;
+  notes?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// ---- Organization Settings ----
+
+export interface OrgSettings {
+  organizationId: string;
+  name: string;
+  logo?: string;
+  timezone: string;
+  locale: string;
+  academicYearStart?: string;
+  academicYearEnd?: string;
+  gradingScale?: 'percentage' | 'letter' | 'points';
+  passingScore: number;
+  updatedAt: string;
 }

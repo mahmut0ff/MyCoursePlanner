@@ -21,6 +21,17 @@ import ResultPage from './pages/rooms/ResultPage';
 import MyResultsPage from './pages/rooms/MyResultsPage';
 import BillingPage from './pages/billing/BillingPage';
 
+// Org Pages
+import CoursesPage from './pages/courses/CoursesPage';
+import GroupsPage from './pages/groups/GroupsPage';
+import StudentsPage from './pages/students/StudentsPage';
+import TeachersPage from './pages/teachers/TeachersPage';
+import MaterialsPage from './pages/materials/MaterialsPage';
+import SchedulePage from './pages/schedule/SchedulePage';
+import OrgResultsPage from './pages/results/ResultsPage';
+import OrgUsersPage from './pages/org-users/OrgUsersPage';
+import OrgSettingsPage from './pages/org-settings/OrgSettingsPage';
+
 // Admin Pages
 import AdminDashboardPage from './pages/admin/AdminDashboardPage';
 import AdminOrganizationsPage from './pages/admin/AdminOrganizationsPage';
@@ -74,6 +85,21 @@ const App: React.FC = () => {
 
             {/* Billing */}
             <Route path="billing" element={<ProtectedRoute allowedRoles={['admin']}><BillingPage /></ProtectedRoute>} />
+
+            {/* ═══ Org Admin: Education ═══ */}
+            <Route path="courses" element={<ProtectedRoute allowedRoles={['admin', 'teacher']}><CoursesPage /></ProtectedRoute>} />
+            <Route path="groups" element={<ProtectedRoute allowedRoles={['admin', 'teacher']}><GroupsPage /></ProtectedRoute>} />
+            <Route path="materials" element={<ProtectedRoute allowedRoles={['admin', 'teacher']}><MaterialsPage /></ProtectedRoute>} />
+
+            {/* ═══ Org Admin: People ═══ */}
+            <Route path="students" element={<ProtectedRoute allowedRoles={['admin', 'teacher']}><StudentsPage /></ProtectedRoute>} />
+            <Route path="teachers" element={<ProtectedRoute allowedRoles={['admin', 'teacher']}><TeachersPage /></ProtectedRoute>} />
+            <Route path="org-users" element={<ProtectedRoute allowedRoles={['admin']}><OrgUsersPage /></ProtectedRoute>} />
+
+            {/* ═══ Org Admin: Organization ═══ */}
+            <Route path="schedule" element={<ProtectedRoute allowedRoles={['admin', 'teacher']}><SchedulePage /></ProtectedRoute>} />
+            <Route path="results" element={<ProtectedRoute allowedRoles={['admin', 'teacher']}><OrgResultsPage /></ProtectedRoute>} />
+            <Route path="org-settings" element={<ProtectedRoute allowedRoles={['admin']}><OrgSettingsPage /></ProtectedRoute>} />
 
             {/* ═══ Super Admin Panel ═══ */}
             <Route path="admin" element={<ProtectedRoute allowedRoles={['super_admin']}><AdminDashboardPage /></ProtectedRoute>} />

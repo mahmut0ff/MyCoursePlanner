@@ -5,7 +5,12 @@
 import type { Handler, HandlerEvent } from '@netlify/functions';
 import { adminDb } from './utils/firebase-admin';
 
-// --- AI Provider ---
+const HEADERS = {
+  'Content-Type': 'application/json',
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+};
 
 async function generateWithGemini(prompt: string): Promise<string> {
   const apiKey = process.env.GEMINI_API_KEY;
@@ -28,26 +33,24 @@ async function generateWithGemini(prompt: string): Promise<string> {
   return data.candidates?.[0]?.content?.parts?.[0]?.text || '';
 }
 
-// --- Handler ---
-
 const handler: Handler = async (event: HandlerEvent) => {
   if (event.httpMethod === 'OPTIONS') {
-    return { statusCode: 204, headers: { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': 'Content-Type', 'Access-Control-Allow-Methods': 'POST' }, body: '' };
+    return { statusCode: 204, headers: HEADERS, body: '' };
   }
 
   if (event.httpMethod !== 'POST') {
-    return { statusCode: 405, body: JSON.stringify({ error: 'Method not allowed' }) };
+    return { statusCode: 405, headers: HEADERS, body: JSON.stringify({ error: 'Method not allowed' }) };
   }
 
   try {
     const { attemptId } = JSON.parse(event.body || '{}');
     if (!attemptId) {
-      return { statusCode: 400, body: JSON.stringify({ error: 'attemptId required' }) };
+      return { statusCode: 400, headers: HEADERS, body: JSON.stringify({ error: 'attemptId required' }) };
     }
 
     const attemptDoc = await adminDb.collection('examAttempts').doc(attemptId).get();
     if (!attemptDoc.exists) {
-      return { statusCode: 404, body: JSON.stringify({ error: 'Attempt not found' }) };
+      return { statusCode: 404, headers: HEADERS, body: JSON.stringify({ error: 'Attempt not found' }) };
     }
 
     const attempt = attemptDoc.data()!;
@@ -91,20 +94,12 @@ Keep feedback constructive, specific, and encouraging.`;
     }
 
     feedback.generatedAt = new Date().toISOString();
-
     await adminDb.collection('examAttempts').doc(attemptId).update({ aiFeedback: feedback });
 
-    return {
-      statusCode: 200,
-      headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
-      body: JSON.stringify({ success: true, feedback }),
-    };
+    return { statusCode: 200, headers: HEADERS, body: JSON.stringify({ success: true, feedback }) };
   } catch (error: any) {
     console.error('AI Feedback error:', error);
-    return {
-      statusCode: 500,
-      body: JSON.stringify({ error: 'Failed to generate feedback', message: error.message }),
-    };
+    return { statusCode: 500, headers: HEADERS, body: JSON.stringify({ error: 'Failed to generate feedback', message: error.message }) };
   }
 };
 

@@ -1,6 +1,6 @@
 /**
  * API client — authenticated HTTP calls to Netlify Functions.
- * Uses Firebase ID tokens for server-side auth verification.
+ * Multi-tenant aware: all requests include Firebase ID token.
  */
 import { auth } from './firebase';
 
@@ -84,6 +84,27 @@ export const apiSaveAttempt = (data: any) => apiRequest('api-attempts', 'POST', 
 
 // ---- Dashboard ----
 export const apiGetDashboard = () => apiRequest('api-dashboard');
+
+// ---- Organizations ----
+export const apiGetOrganizations = () => apiRequest('api-organizations');
+export const apiGetOrganization = (id: string) => apiRequest('api-organizations', 'GET', undefined, { id });
+export const apiCreateOrganization = (data: any) => apiRequest('api-organizations', 'POST', data);
+export const apiUpdateOrganization = (data: any) => apiRequest('api-organizations', 'PUT', data);
+export const apiDeleteOrganization = (id: string) => apiRequest('api-organizations', 'DELETE', undefined, { id });
+
+// ---- Subscriptions ----
+export const apiGetSubscription = (orgId?: string) =>
+  apiRequest('api-subscriptions', 'GET', undefined, orgId ? { orgId } : undefined);
+export const apiChangePlan = (planId: string, organizationId?: string) =>
+  apiRequest('api-subscriptions', 'POST', { planId, organizationId });
+export const apiCancelSubscription = (organizationId?: string) =>
+  apiRequest('api-subscriptions', 'PUT', { action: 'cancel', organizationId });
+export const apiReactivateSubscription = (organizationId?: string) =>
+  apiRequest('api-subscriptions', 'PUT', { action: 'reactivate', organizationId });
+
+// ---- Platform (Super Admin) ----
+export const apiGetPlatformStats = () => apiRequest('api-platform');
+export const apiGetSystemLogs = () => apiRequest('api-platform', 'GET', undefined, { logs: 'true' });
 
 // ---- AI Feedback ----
 export const apiGenerateFeedback = (attemptId: string) =>

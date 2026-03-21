@@ -1,15 +1,9 @@
 /**
- * API: Lessons — CRUD for lesson plans.
- *
- * GET    /api-lessons               → list all lesson plans
- * GET    /api-lessons?id=<id>       → get single lesson
- * POST   /api-lessons               → create lesson (admin/teacher)
- * PUT    /api-lessons               → update lesson (admin/teacher)
- * DELETE /api-lessons?id=<id>       → delete lesson (admin/teacher)
+ * API: Lessons — CRUD (org-scoped).
  */
 import type { Handler, HandlerEvent } from '@netlify/functions';
 import { adminDb } from './utils/firebase-admin';
-import { verifyAuth, hasRole, ok, unauthorized, forbidden, badRequest, notFound, jsonResponse } from './utils/auth';
+import { verifyAuth, isStaff, getOrgFilter, ok, unauthorized, forbidden, badRequest, notFound, jsonResponse } from './utils/auth';
 
 const COLLECTION = 'lessonPlans';
 
@@ -28,27 +22,28 @@ const handler: Handler = async (event: HandlerEvent) => {
       if (!doc.exists) return notFound('Lesson not found');
       return ok({ id: doc.id, ...doc.data() });
     }
-    const snapshot = await adminDb.collection(COLLECTION).orderBy('createdAt', 'desc').get();
-    return ok(snapshot.docs.map((d) => ({ id: d.id, ...d.data() })));
+    const orgFilter = getOrgFilter(user);
+    let snap;
+    if (orgFilter) {
+      snap = await adminDb.collection(COLLECTION).where('organizationId', '==', orgFilter).orderBy('createdAt', 'desc').get();
+    } else {
+      snap = await adminDb.collection(COLLECTION).orderBy('createdAt', 'desc').get();
+    }
+    return ok(snap.docs.map((d: any) => ({ id: d.id, ...d.data() })));
   }
 
-  // Staff-only for writes
-  if (!hasRole(user, 'admin', 'teacher')) return forbidden();
+  if (!isStaff(user)) return forbidden();
 
-  // POST — create
+  // POST
   if (event.httpMethod === 'POST') {
     const body = JSON.parse(event.body || '{}');
     if (!body.title) return badRequest('title required');
     const now = new Date().toISOString();
     const data = {
-      title: body.title,
-      subject: body.subject || '',
-      level: body.level || 'beginner',
-      duration: body.duration || 60,
-      content: body.content || '',
-      coverImage: body.coverImage || '',
+      ...body,
       authorId: user.uid,
       authorName: user.displayName,
+      organizationId: user.organizationId || '',
       status: body.status || 'draft',
       createdAt: now,
       updatedAt: now,
@@ -57,13 +52,10 @@ const handler: Handler = async (event: HandlerEvent) => {
     return ok({ id: ref.id, ...data });
   }
 
-  // PUT — update
+  // PUT
   if (event.httpMethod === 'PUT') {
     const body = JSON.parse(event.body || '{}');
     if (!body.id) return badRequest('id required');
-    const doc = await adminDb.collection(COLLECTION).doc(body.id).get();
-    if (!doc.exists) return notFound('Lesson not found');
-
     const { id, ...updateFields } = body;
     updateFields.updatedAt = new Date().toISOString();
     await adminDb.collection(COLLECTION).doc(id).update(updateFields);
@@ -73,9 +65,8 @@ const handler: Handler = async (event: HandlerEvent) => {
 
   // DELETE
   if (event.httpMethod === 'DELETE') {
-    const id = params.id;
-    if (!id) return badRequest('id required');
-    await adminDb.collection(COLLECTION).doc(id).delete();
+    if (!params.id) return badRequest('id required');
+    await adminDb.collection(COLLECTION).doc(params.id).delete();
     return ok({ deleted: true });
   }
 

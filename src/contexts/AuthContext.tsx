@@ -11,6 +11,9 @@ interface AuthContextType {
   loading: boolean;
   role: UserRole | null;
   configured: boolean;
+  organizationId: string | null;
+  isSuperAdmin: boolean;
+  isStaff: boolean;
 }
 
 const AuthContext = createContext<AuthContextType>({
@@ -19,6 +22,9 @@ const AuthContext = createContext<AuthContextType>({
   loading: true,
   role: null,
   configured: false,
+  organizationId: null,
+  isSuperAdmin: false,
+  isStaff: false,
 });
 
 export const useAuth = () => useContext(AuthContext);
@@ -56,14 +62,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return unsub;
   }, []);
 
+  const role = profile?.role || null;
+
   return (
     <AuthContext.Provider
       value={{
         firebaseUser,
         profile,
         loading,
-        role: profile?.role || null,
+        role,
         configured: isFirebaseConfigured,
+        organizationId: profile?.organizationId || null,
+        isSuperAdmin: role === 'super_admin',
+        isStaff: role === 'super_admin' || role === 'admin' || role === 'teacher',
       }}
     >
       {children}

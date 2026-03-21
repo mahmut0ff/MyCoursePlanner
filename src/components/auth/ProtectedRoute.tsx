@@ -30,21 +30,17 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, allowedRoles 
             <span className="text-3xl">⚠️</span>
           </div>
           <h1 className="text-xl font-bold text-slate-900 mb-2">Firebase Not Configured</h1>
-          <p className="text-slate-600 mb-4">
-            Create a <code className="bg-slate-100 px-1.5 py-0.5 rounded text-sm">.env</code> file in the project root with your Firebase configuration values.
-          </p>
-          <p className="text-slate-500 text-sm">
-            See <code className="bg-slate-100 px-1.5 py-0.5 rounded text-sm">.env.example</code> for the required variables.
-          </p>
+          <p className="text-slate-600 mb-4">Create a <code className="bg-slate-100 px-1.5 py-0.5 rounded text-sm">.env</code> file.</p>
         </div>
       </div>
     );
   }
 
-  if (!firebaseUser) {
-    return <Navigate to="/login" replace />;
-  }
-
+  if (!firebaseUser) return <Navigate to="/login" replace />;
+  
+  // super_admin can access everything
+  if (profile?.role === 'super_admin') return <>{children}</>;
+  
   if (allowedRoles && profile && !allowedRoles.includes(profile.role)) {
     return <Navigate to="/dashboard" replace />;
   }

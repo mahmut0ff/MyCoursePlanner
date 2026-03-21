@@ -18,6 +18,7 @@ import JoinRoomPage from './pages/rooms/JoinRoomPage';
 import ExamTakePage from './pages/rooms/ExamTakePage';
 import ResultPage from './pages/rooms/ResultPage';
 import MyResultsPage from './pages/rooms/MyResultsPage';
+import BillingPage from './pages/billing/BillingPage';
 
 const App: React.FC = () => {
   return (
@@ -29,23 +30,12 @@ const App: React.FC = () => {
           <Route path="/register" element={<RegisterPage />} />
 
           {/* Exam Taking (full screen, no sidebar) */}
-          <Route
-            path="/take/:roomId"
-            element={
-              <ProtectedRoute>
-                <ExamTakePage />
-              </ProtectedRoute>
-            }
-          />
+          <Route path="/take/:roomId" element={<ProtectedRoute><ExamTakePage /></ProtectedRoute>} />
 
           {/* App Layout Routes */}
           <Route
             path="/"
-            element={
-              <ProtectedRoute>
-                <AppLayout />
-              </ProtectedRoute>
-            }
+            element={<ProtectedRoute><AppLayout /></ProtectedRoute>}
           >
             <Route index element={<Navigate to="/dashboard" replace />} />
             <Route path="dashboard" element={<DashboardPage />} />
@@ -68,8 +58,15 @@ const App: React.FC = () => {
 
             {/* Student */}
             <Route path="join" element={<JoinRoomPage />} />
-            <Route path="results" element={<MyResultsPage />} />
+            <Route path="my-results" element={<MyResultsPage />} />
             <Route path="results/:attemptId" element={<ResultPage />} />
+
+            {/* Billing */}
+            <Route path="billing" element={<ProtectedRoute allowedRoles={['admin']}><BillingPage /></ProtectedRoute>} />
+
+            {/* Super Admin Platform */}
+            <Route path="platform/organizations" element={<ProtectedRoute allowedRoles={['super_admin']}><DashboardPage /></ProtectedRoute>} />
+            <Route path="platform/users" element={<ProtectedRoute allowedRoles={['super_admin']}><DashboardPage /></ProtectedRoute>} />
           </Route>
 
           {/* Fallback */}

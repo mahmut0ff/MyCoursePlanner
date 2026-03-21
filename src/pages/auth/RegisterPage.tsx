@@ -2,55 +2,60 @@ import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { signUp } from '../../services/auth.service';
 import { createUser } from '../../services/users.service';
-import type { UserRole } from '../../types';
-import { GraduationCap, Mail, Lock, User, Eye, EyeOff } from 'lucide-react';
+
+import { GraduationCap, Mail, Lock, User, Eye, EyeOff, Building2 } from 'lucide-react';
 
 const RegisterPage: React.FC = () => {
+  const [step, setStep] = useState<'account' | 'org'>('account');
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [role, setRole] = useState<UserRole>('student');
   const [showPassword, setShowPassword] = useState(false);
+  const [orgName, setOrgName] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleAccountStep = (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
-    if (!name || !email || !password) {
-      setError('Please fill in all fields');
-      return;
-    }
-    if (password.length < 6) {
-      setError('Password must be at least 6 characters');
-      return;
-    }
+    if (!name || !email || !password) { setError('Please fill in all fields'); return; }
+    if (password.length < 6) { setError('Password must be at least 6 characters'); return; }
+    setStep('org');
+  };
+
+  const handleFinalSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError('');
+    if (!orgName.trim()) { setError('Organization name is required'); return; }
     setLoading(true);
     try {
       const cred = await signUp(email, password, name);
-      // Write profile to Firestore with a timeout — if Firestore rules block it,
-      // don't hang forever. AuthContext will retry on next load.
-      const profilePromise = createUser(cred.user.uid, email, name, role);
+      // Create user profile as admin of new org
+      const profilePromise = createUser(cred.user.uid, email, name, 'admin');
       const timeoutPromise = new Promise((_, reject) =>
         setTimeout(() => reject(new Error('timeout')), 8000)
       );
-      try {
-        await Promise.race([profilePromise, timeoutPromise]);
-      } catch (profileErr: any) {
-        console.warn('Profile write slow or failed:', profileErr.message);
-        // Still navigate — the auth user was created successfully
+      try { await Promise.race([profilePromise, timeoutPromise]); } catch {}
+
+      // Create organization via API
+      const token = await cred.user.getIdToken();
+      const orgRes = await fetch('/.netlify/functions/api-organizations', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ name: orgName }),
+      });
+
+      if (!orgRes.ok) {
+        const err = await orgRes.json().catch(() => ({}));
+        throw new Error(err.error || 'Failed to create organization');
       }
+
       navigate('/dashboard');
     } catch (err: any) {
       console.error('Registration error:', err);
-      if (err.message?.includes('already')) {
-        setError('Email already in use');
-      } else if (err.message?.includes('permission') || err.message?.includes('PERMISSION_DENIED')) {
-        setError('Firestore permission denied. Check your Firestore security rules.');
-      } else {
-        setError(`Registration failed: ${err.message || 'Please try again.'}`);
-      }
+      if (err.message?.includes('already')) setError('Email already in use');
+      else setError(`Registration failed: ${err.message || 'Please try again.'}`);
     } finally {
       setLoading(false);
     }
@@ -64,88 +69,86 @@ const RegisterPage: React.FC = () => {
             <GraduationCap className="w-9 h-9 text-white" />
           </div>
           <h1 className="text-3xl font-bold text-white">MyCoursePlan</h1>
-          <p className="text-primary-200 mt-1">Create your account</p>
+          <p className="text-primary-200 mt-1">Create your organization</p>
         </div>
 
         <div className="bg-white rounded-2xl shadow-xl p-8">
-          <h2 className="text-xl font-semibold text-slate-900 mb-1">Get started</h2>
-          <p className="text-slate-500 text-sm mb-6">Create a new account</p>
+          {/* Progress */}
+          <div className="flex items-center gap-3 mb-6">
+            <div className={`flex-1 h-1 rounded ${step === 'account' ? 'bg-primary-500' : 'bg-primary-500'}`} />
+            <div className={`flex-1 h-1 rounded ${step === 'org' ? 'bg-primary-500' : 'bg-slate-200'}`} />
+          </div>
 
-          {error && (
-            <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm mb-4">
-              {error}
-            </div>
+          {step === 'account' ? (
+            <>
+              <h2 className="text-xl font-semibold text-slate-900 mb-1">Create your account</h2>
+              <p className="text-slate-500 text-sm mb-6">Step 1 of 2 — Personal details</p>
+
+              {error && <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm mb-4">{error}</div>}
+
+              <form onSubmit={handleAccountStep} className="space-y-4">
+                <div>
+                  <label className="label">Full Name</label>
+                  <div className="relative">
+                    <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                    <input type="text" value={name} onChange={(e) => setName(e.target.value)} className="input pl-10" placeholder="John Doe" />
+                  </div>
+                </div>
+                <div>
+                  <label className="label">Email</label>
+                  <div className="relative">
+                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                    <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} className="input pl-10" placeholder="you@example.com" />
+                  </div>
+                </div>
+                <div>
+                  <label className="label">Password</label>
+                  <div className="relative">
+                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                    <input type={showPassword ? 'text' : 'password'} value={password} onChange={(e) => setPassword(e.target.value)} className="input pl-10 pr-10" placeholder="At least 6 characters" />
+                    <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
+                      {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                  </div>
+                </div>
+                <button type="submit" className="btn-primary w-full">Continue</button>
+              </form>
+            </>
+          ) : (
+            <>
+              <h2 className="text-xl font-semibold text-slate-900 mb-1">Create your organization</h2>
+              <p className="text-slate-500 text-sm mb-6">Step 2 of 2 — Your school or center</p>
+
+              {error && <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm mb-4">{error}</div>}
+
+              <form onSubmit={handleFinalSubmit} className="space-y-4">
+                <div>
+                  <label className="label">Organization Name</label>
+                  <div className="relative">
+                    <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                    <input type="text" value={orgName} onChange={(e) => setOrgName(e.target.value)} className="input pl-10" placeholder="My Education Center" />
+                  </div>
+                  <p className="text-xs text-slate-400 mt-1">This will be your workspace name</p>
+                </div>
+
+                <div className="bg-primary-50 border border-primary-200 rounded-lg p-4 text-sm">
+                  <p className="font-medium text-primary-800 mb-1">🎉 14-day free trial included</p>
+                  <p className="text-primary-600">Start with the Starter plan — upgrade anytime.</p>
+                </div>
+
+                <div className="flex gap-3">
+                  <button type="button" onClick={() => setStep('account')} className="btn-secondary flex-1">Back</button>
+                  <button type="submit" disabled={loading} className="btn-primary flex-1">
+                    {loading ? 'Creating...' : 'Create Organization'}
+                  </button>
+                </div>
+              </form>
+            </>
           )}
-
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div>
-              <label className="label">Full Name</label>
-              <div className="relative">
-                <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                <input
-                  type="text"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  className="input pl-10"
-                  placeholder="John Doe"
-                />
-              </div>
-            </div>
-            <div>
-              <label className="label">Email</label>
-              <div className="relative">
-                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                <input
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="input pl-10"
-                  placeholder="you@example.com"
-                />
-              </div>
-            </div>
-            <div>
-              <label className="label">Password</label>
-              <div className="relative">
-                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                <input
-                  type={showPassword ? 'text' : 'password'}
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="input pl-10 pr-10"
-                  placeholder="At least 6 characters"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
-                >
-                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                </button>
-              </div>
-            </div>
-            <div>
-              <label className="label">Role</label>
-              <select
-                value={role}
-                onChange={(e) => setRole(e.target.value as UserRole)}
-                className="input"
-              >
-                <option value="student">Student</option>
-                <option value="teacher">Teacher</option>
-                <option value="admin">Admin</option>
-              </select>
-            </div>
-            <button type="submit" disabled={loading} className="btn-primary w-full">
-              {loading ? 'Creating account...' : 'Create Account'}
-            </button>
-          </form>
 
           <p className="text-center text-sm text-slate-500 mt-6">
             Already have an account?{' '}
-            <Link to="/login" className="text-primary-600 font-medium hover:text-primary-700">
-              Sign in
-            </Link>
+            <Link to="/login" className="text-primary-600 font-medium hover:text-primary-700">Sign in</Link>
           </p>
         </div>
       </div>

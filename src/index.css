@@ -6,10 +6,11 @@
 
 @layer base {
   * {
-    @apply border-slate-200;
+    @apply border-slate-200 dark:border-slate-700;
   }
   body {
-    @apply bg-slate-50 text-slate-900 font-sans antialiased;
+    @apply bg-slate-50 text-slate-900 font-sans antialiased
+      dark:bg-slate-900 dark:text-slate-100;
   }
 }
 
@@ -18,55 +19,70 @@
     @apply bg-primary-600 text-white px-4 py-2.5 rounded-lg font-medium
       hover:bg-primary-700 active:bg-primary-800 transition-colors
       disabled:opacity-50 disabled:cursor-not-allowed
-      focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2;
+      focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2
+      dark:focus:ring-offset-slate-900;
   }
   .btn-secondary {
     @apply bg-white text-slate-700 px-4 py-2.5 rounded-lg font-medium border border-slate-300
       hover:bg-slate-50 active:bg-slate-100 transition-colors
       disabled:opacity-50 disabled:cursor-not-allowed
-      focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2;
+      focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2
+      dark:bg-slate-800 dark:text-slate-200 dark:border-slate-600
+      dark:hover:bg-slate-700 dark:active:bg-slate-600
+      dark:focus:ring-offset-slate-900;
   }
   .btn-danger {
     @apply bg-red-600 text-white px-4 py-2.5 rounded-lg font-medium
       hover:bg-red-700 active:bg-red-800 transition-colors
       disabled:opacity-50 disabled:cursor-not-allowed
-      focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2;
+      focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2
+      dark:focus:ring-offset-slate-900;
   }
   .btn-ghost {
     @apply text-slate-600 px-4 py-2.5 rounded-lg font-medium
       hover:bg-slate-100 active:bg-slate-200 transition-colors
-      disabled:opacity-50 disabled:cursor-not-allowed;
+      disabled:opacity-50 disabled:cursor-not-allowed
+      dark:text-slate-300 dark:hover:bg-slate-800 dark:active:bg-slate-700;
   }
   .card {
-    @apply bg-white rounded-xl border border-slate-200 shadow-sm;
+    @apply bg-white rounded-xl border border-slate-200 shadow-sm
+      dark:bg-slate-800 dark:border-slate-700;
   }
   .input {
     @apply w-full px-3.5 py-2.5 rounded-lg border border-slate-300 bg-white
       text-slate-900 placeholder:text-slate-400
       focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500
       disabled:bg-slate-100 disabled:cursor-not-allowed
-      transition-colors;
+      transition-colors
+      dark:bg-slate-800 dark:border-slate-600 dark:text-slate-100
+      dark:placeholder:text-slate-500 dark:disabled:bg-slate-700;
   }
   .label {
-    @apply block text-sm font-medium text-slate-700 mb-1.5;
+    @apply block text-sm font-medium text-slate-700 mb-1.5
+      dark:text-slate-300;
   }
   .badge {
     @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium;
   }
   .badge-primary {
-    @apply badge bg-primary-100 text-primary-700;
+    @apply badge bg-primary-100 text-primary-700
+      dark:bg-primary-900/50 dark:text-primary-300;
   }
   .badge-green {
-    @apply badge bg-emerald-100 text-emerald-700;
+    @apply badge bg-emerald-100 text-emerald-700
+      dark:bg-emerald-900/50 dark:text-emerald-300;
   }
   .badge-yellow {
-    @apply badge bg-amber-100 text-amber-700;
+    @apply badge bg-amber-100 text-amber-700
+      dark:bg-amber-900/50 dark:text-amber-300;
   }
   .badge-red {
-    @apply badge bg-red-100 text-red-700;
+    @apply badge bg-red-100 text-red-700
+      dark:bg-red-900/50 dark:text-red-300;
   }
   .badge-slate {
-    @apply badge bg-slate-100 text-slate-600;
+    @apply badge bg-slate-100 text-slate-600
+      dark:bg-slate-700 dark:text-slate-300;
   }
 }
 
@@ -74,25 +90,25 @@
 .tiptap-editor .ProseMirror {
   @apply min-h-[300px] p-4 outline-none;
 }
-.tiptap-editor .ProseMirror h1 { @apply text-2xl font-bold mb-3 text-slate-900; }
-.tiptap-editor .ProseMirror h2 { @apply text-xl font-semibold mb-2 text-slate-900; }
-.tiptap-editor .ProseMirror h3 { @apply text-lg font-semibold mb-2 text-slate-800; }
-.tiptap-editor .ProseMirror p { @apply mb-3 text-slate-700 leading-relaxed; }
+.tiptap-editor .ProseMirror h1 { @apply text-2xl font-bold mb-3 text-slate-900 dark:text-white; }
+.tiptap-editor .ProseMirror h2 { @apply text-xl font-semibold mb-2 text-slate-900 dark:text-white; }
+.tiptap-editor .ProseMirror h3 { @apply text-lg font-semibold mb-2 text-slate-800 dark:text-slate-200; }
+.tiptap-editor .ProseMirror p { @apply mb-3 text-slate-700 leading-relaxed dark:text-slate-300; }
 .tiptap-editor .ProseMirror ul { @apply list-disc pl-6 mb-3 space-y-1; }
 .tiptap-editor .ProseMirror ol { @apply list-decimal pl-6 mb-3 space-y-1; }
-.tiptap-editor .ProseMirror li { @apply text-slate-700; }
-.tiptap-editor .ProseMirror a { @apply text-primary-600 underline hover:text-primary-700; }
+.tiptap-editor .ProseMirror li { @apply text-slate-700 dark:text-slate-300; }
+.tiptap-editor .ProseMirror a { @apply text-primary-600 underline hover:text-primary-700 dark:text-primary-400; }
 .tiptap-editor .ProseMirror img { @apply rounded-lg max-w-full h-auto my-3; }
 .tiptap-editor .ProseMirror blockquote {
-  @apply border-l-4 border-primary-300 pl-4 italic text-slate-600 my-3;
+  @apply border-l-4 border-primary-300 pl-4 italic text-slate-600 my-3 dark:text-slate-400 dark:border-primary-600;
 }
 .tiptap-editor .ProseMirror p.is-editor-empty:first-child::before {
-  @apply text-slate-400 float-left h-0 pointer-events-none;
+  @apply text-slate-400 float-left h-0 pointer-events-none dark:text-slate-600;
   content: attr(data-placeholder);
 }
 
 /* Scrollbar */
 ::-webkit-scrollbar { width: 6px; height: 6px; }
 ::-webkit-scrollbar-track { @apply bg-transparent; }
-::-webkit-scrollbar-thumb { @apply bg-slate-300 rounded-full; }
-::-webkit-scrollbar-thumb:hover { @apply bg-slate-400; }
+::-webkit-scrollbar-thumb { @apply bg-slate-300 rounded-full dark:bg-slate-600; }
+::-webkit-scrollbar-thumb:hover { @apply bg-slate-400 dark:bg-slate-500; }

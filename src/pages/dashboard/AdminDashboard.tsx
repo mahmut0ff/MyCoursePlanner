@@ -41,7 +41,7 @@ const AdminDashboard: React.FC = () => {
       <div className="flex items-center justify-between mb-8">
         <div>
           <h1 className="text-2xl font-bold text-slate-900 dark:text-white">{t('dashboard.title')}</h1>
-          <p className="text-slate-500 dark:text-slate-400 text-sm mt-1">Overview of your educational center</p>
+          <p className="text-slate-500 dark:text-slate-400 text-sm mt-1">{t('dashboard.subtitle')}</p>
         </div>
         <div className="flex gap-2">
           <Link to="/lessons/new" className="btn-primary flex items-center gap-2 !py-2 text-sm"><Plus className="w-4 h-4" />{t('dashboard.createLesson')}</Link>
@@ -70,7 +70,7 @@ const AdminDashboard: React.FC = () => {
         <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl overflow-hidden">
           <div className="px-5 py-4 border-b border-slate-100 dark:border-slate-700 flex items-center justify-between">
             <h2 className="font-semibold text-slate-900 dark:text-white">{t('lessons.title')}</h2>
-            <Link to="/lessons" className="text-sm text-primary-600 dark:text-primary-400 hover:text-primary-700 flex items-center gap-1">View all<ArrowRight className="w-3.5 h-3.5" /></Link>
+            <Link to="/lessons" className="text-sm text-primary-600 dark:text-primary-400 hover:text-primary-700 flex items-center gap-1">{t('dashboard.viewAll')}<ArrowRight className="w-3.5 h-3.5" /></Link>
           </div>
           <div className="divide-y divide-slate-100 dark:divide-slate-700">
             {lessons.slice(0, 5).map((l) => (
@@ -87,16 +87,16 @@ const AdminDashboard: React.FC = () => {
         <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl overflow-hidden">
           <div className="px-5 py-4 border-b border-slate-100 dark:border-slate-700 flex items-center justify-between">
             <h2 className="font-semibold text-slate-900 dark:text-white">{t('exams.title')}</h2>
-            <Link to="/exams" className="text-sm text-primary-600 dark:text-primary-400 hover:text-primary-700 flex items-center gap-1">View all<ArrowRight className="w-3.5 h-3.5" /></Link>
+            <Link to="/exams" className="text-sm text-primary-600 dark:text-primary-400 hover:text-primary-700 flex items-center gap-1">{t('dashboard.viewAll')}<ArrowRight className="w-3.5 h-3.5" /></Link>
           </div>
           <div className="divide-y divide-slate-100 dark:divide-slate-700">
             {exams.slice(0, 5).map((e) => (
               <Link key={e.id} to={`/exams/${e.id}`} className="block px-5 py-3 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors">
                 <div className="flex items-center justify-between">
                   <p className="font-medium text-slate-900 dark:text-white text-sm">{e.title}</p>
-                  <span className={e.status === 'published' ? 'badge-green text-xs' : 'badge-yellow text-xs'}>{e.status}</span>
+                  <span className={e.status === 'published' ? 'badge-green text-xs' : 'badge-yellow text-xs'}>{t(`exams.${e.status}`)}</span>
                 </div>
-                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">{e.subject} · {e.questionCount || 0} questions</p>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">{e.subject} · {e.questionCount || 0} {t('exams.questions')}</p>
               </Link>
             ))}
             {exams.length === 0 && <div className="px-5 py-6 text-center text-slate-400 dark:text-slate-500 text-sm">{t('exams.noExams')}</div>}
@@ -108,7 +108,7 @@ const AdminDashboard: React.FC = () => {
           <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl overflow-hidden">
             <div className="px-5 py-4 border-b border-slate-100 dark:border-slate-700 flex items-center justify-between">
               <h2 className="font-semibold text-slate-900 dark:text-white">{t('rooms.title')}</h2>
-              <Link to="/rooms" className="text-sm text-primary-600 dark:text-primary-400 hover:text-primary-700 flex items-center gap-1">View all<ArrowRight className="w-3.5 h-3.5" /></Link>
+              <Link to="/rooms" className="text-sm text-primary-600 dark:text-primary-400 hover:text-primary-700 flex items-center gap-1">{t('dashboard.viewAll')}<ArrowRight className="w-3.5 h-3.5" /></Link>
             </div>
             <div className="divide-y divide-slate-100 dark:divide-slate-700">
               {rooms.slice(0, 5).map((r) => (
@@ -120,7 +120,7 @@ const AdminDashboard: React.FC = () => {
                     </div>
                     <span className="font-mono text-xs text-primary-600 dark:text-primary-400">{r.code}</span>
                   </div>
-                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 flex items-center gap-1"><Users className="w-3 h-3" />{r.participants.length} participants</p>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 flex items-center gap-1"><Users className="w-3 h-3" />{r.participants.length} {t('dashboard.participants')}</p>
                 </Link>
               ))}
             </div>
@@ -130,7 +130,7 @@ const AdminDashboard: React.FC = () => {
         {/* Recent Results */}
         <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl overflow-hidden">
           <div className="px-5 py-4 border-b border-slate-100 dark:border-slate-700">
-            <h2 className="font-semibold text-slate-900 dark:text-white">Recent Results</h2>
+            <h2 className="font-semibold text-slate-900 dark:text-white">{t('dashboard.recentResults')}</h2>
           </div>
           <div className="divide-y divide-slate-100 dark:divide-slate-700">
             {attempts.slice(0, 5).map((a) => (
@@ -142,12 +142,12 @@ const AdminDashboard: React.FC = () => {
                   </div>
                   <div className="text-right">
                     <p className="font-semibold text-slate-900 dark:text-white">{a.percentage}%</p>
-                    <span className={`text-xs ${a.passed ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-500 dark:text-red-400'}`}>{a.passed ? 'Pass' : 'Fail'}</span>
+                    <span className={`text-xs ${a.passed ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-500 dark:text-red-400'}`}>{a.passed ? t('dashboard.pass') : t('dashboard.fail')}</span>
                   </div>
                 </div>
               </div>
             ))}
-            {attempts.length === 0 && <div className="px-5 py-6 text-center text-slate-400 dark:text-slate-500 text-sm">No results yet</div>}
+            {attempts.length === 0 && <div className="px-5 py-6 text-center text-slate-400 dark:text-slate-500 text-sm">{t('dashboard.noResults')}</div>}
           </div>
         </div>
       </div>

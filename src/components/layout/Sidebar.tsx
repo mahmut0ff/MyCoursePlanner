@@ -3,7 +3,7 @@ import { NavLink, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../contexts/AuthContext';
 import { signOut } from '../../services/auth.service';
-import { apiGetPendingInviteCount, apiLeaveOrganization } from '../../lib/api';
+import { apiGetPendingInviteCount, apiLeaveOrganization, apiGetUnreadCount } from '../../lib/api';
 import {
   GraduationCap, LayoutDashboard, BookOpen, ClipboardList, Radio,
   BarChart3, LogOut, CreditCard, Users, Building2, Activity,
@@ -40,6 +40,16 @@ const Sidebar: React.FC<{ open: boolean; onClose: () => void }> = ({ open, onClo
       .then((data) => setInviteCount(data?.count || 0))
       .catch(() => {});
   }, [isTeacher]);
+
+  // Fetch unread notification count for badge (all roles)
+  const [unreadNotifCount, setUnreadNotifCount] = useState(0);
+  useEffect(() => {
+    if (!profile?.uid) return;
+    const fetchCount = () => apiGetUnreadCount().then(d => setUnreadNotifCount(d?.count || 0)).catch(() => {});
+    fetchCount();
+    const interval = setInterval(fetchCount, 30000);
+    return () => clearInterval(interval);
+  }, [profile?.uid]);
 
   return (
     <>
@@ -143,6 +153,14 @@ const Sidebar: React.FC<{ open: boolean; onClose: () => void }> = ({ open, onClo
               <NavLink to="/org-settings" className={linkClass} onClick={onClose}>
                 <Settings className="w-4 h-4" />{t('nav.settings')}
               </NavLink>
+              <NavLink to="/notifications" className={linkClass} onClick={onClose}>
+                <Bell className="w-4 h-4" />{t('nav.notifications')}
+                {unreadNotifCount > 0 && (
+                  <span className="ml-auto bg-red-500 text-white text-[10px] font-bold min-w-[18px] h-[18px] flex items-center justify-center rounded-full px-1">
+                    {unreadNotifCount}
+                  </span>
+                )}
+              </NavLink>
             </>
           ) : isTeacher ? (
             <>
@@ -197,6 +215,11 @@ const Sidebar: React.FC<{ open: boolean; onClose: () => void }> = ({ open, onClo
               </NavLink>
               <NavLink to="/notifications" className={linkClass} onClick={onClose}>
                 <Bell className="w-4 h-4" />{t('nav.notifications')}
+                {unreadNotifCount > 0 && (
+                  <span className="ml-auto bg-red-500 text-white text-[10px] font-bold min-w-[18px] h-[18px] flex items-center justify-center rounded-full px-1">
+                    {unreadNotifCount}
+                  </span>
+                )}
               </NavLink>
               <NavLink to="/teacher-analytics" className={linkClass} onClick={onClose}>
                 <BarChart3 className="w-4 h-4" />{t('nav.analytics')}
@@ -234,6 +257,14 @@ const Sidebar: React.FC<{ open: boolean; onClose: () => void }> = ({ open, onClo
               </NavLink>
               <NavLink to="/my-results" className={linkClass} onClick={onClose}>
                 <BarChart3 className="w-4 h-4" />{t('nav.myResults')}
+              </NavLink>
+              <NavLink to="/notifications" className={linkClass} onClick={onClose}>
+                <Bell className="w-4 h-4" />{t('nav.notifications')}
+                {unreadNotifCount > 0 && (
+                  <span className="ml-auto bg-red-500 text-white text-[10px] font-bold min-w-[18px] h-[18px] flex items-center justify-center rounded-full px-1">
+                    {unreadNotifCount}
+                  </span>
+                )}
               </NavLink>
             </>
           ) : null}

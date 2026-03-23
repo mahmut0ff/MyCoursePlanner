@@ -96,7 +96,14 @@
     "activeRooms": "Активные комнаты",
     "examAttempts": "Попытки экзаменов",
     "upcomingExams": "Предстоящие экзамены",
-    "noActivity": "Нет активности"
+    "noActivity": "Нет активности",
+    "subtitle": "Обзор вашего образовательного центра",
+    "viewAll": "Все",
+    "participants": "участников",
+    "recentResults": "Последние результаты",
+    "pass": "Сдал",
+    "fail": "Не сдал",
+    "noResults": "Результатов пока нет"
   },
   "lessons": {
     "title": "Уроки",
@@ -846,6 +853,16 @@
     "emptyTitle": "Нет уведомлений",
     "emptyDesc": "Когда что-то произойдёт, вы увидите это здесь",
     "markAllRead": "Прочитать все"
+  },
+  "studentDashboard": {
+    "subtitle": "Ваш обзор обучения",
+    "available": "доступно",
+    "attempts": "попыток",
+    "examsTaken": "Экзаменов сдано",
+    "avgScore": "Средний балл",
+    "passRate": "Процент сдачи",
+    "aiFeedback": "AI-анализ",
+    "noExams": "Вы ещё не сдавали экзамены"
   },
   "teacherSettings": {
     "title": "Настройки",

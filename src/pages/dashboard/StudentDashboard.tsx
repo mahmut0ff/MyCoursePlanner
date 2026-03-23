@@ -19,9 +19,18 @@ const StudentDashboard: React.FC = () => {
 
   useEffect(() => {
     if (profile?.uid) {
-      Promise.all([getLessonPlans(), getAttemptsByStudent(profile.uid)])
-        .then(([l, a]) => { setLessons(l); setAttempts(a); })
-        .finally(() => setLoading(false));
+      const load = async () => {
+        try {
+          const l = await getLessonPlans();
+          setLessons(l);
+        } catch (e) { console.warn('Failed to load lessons:', e); }
+        try {
+          const a = await getAttemptsByStudent(profile.uid);
+          setAttempts(a);
+        } catch (e) { console.warn('Failed to load attempts:', e); }
+        setLoading(false);
+      };
+      load();
     }
   }, [profile?.uid]);
 

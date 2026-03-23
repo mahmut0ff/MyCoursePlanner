@@ -42,7 +42,8 @@
     "invites": "Приглашения",
     "vacancies": "Вакансии",
     "myApplications": "Мои отклики",
-    "notifications": "Уведомления"
+    "notifications": "Уведомления",
+    "profile": "Профиль"
   },
   "auth": {
     "login": "Войти",
@@ -551,7 +552,11 @@
     "off": "ВЫКЛ",
     "clear": "Очистить",
     "notFound": "Не найдено",
-    "created": "Создано"
+    "created": "Создано",
+    "logout": "Выйти",
+    "copy": "Копировать",
+    "refresh": "Обновить",
+    "error": "Произошла ошибка"
   },
   "org": {
     "courses": {

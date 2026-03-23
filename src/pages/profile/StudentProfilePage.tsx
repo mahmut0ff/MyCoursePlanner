@@ -1,11 +1,10 @@
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../contexts/AuthContext';
-import { signOut } from '../../services/auth.service';
 import { updateProfile, updatePassword, EmailAuthProvider, reauthenticateWithCredential } from 'firebase/auth';
 import { auth } from '../../lib/firebase';
 import toast from 'react-hot-toast';
-import { Globe, Lock, LogOut, Save } from 'lucide-react';
+import { Globe, Lock, Save } from 'lucide-react';
 import i18n from '../../i18n';
 
 const StudentProfilePage: React.FC = () => {
@@ -67,7 +66,7 @@ const StudentProfilePage: React.FC = () => {
           <div>
             <h2 className="text-lg font-semibold text-slate-900 dark:text-white">{profile?.displayName}</h2>
             <p className="text-sm text-slate-500 dark:text-slate-400">{profile?.email}</p>
-            <span className="badge-blue text-xs mt-1 inline-block">Student</span>
+            <span className="badge-blue text-xs mt-1 inline-block">{t('studentDashboard.role', 'Student')}</span>
           </div>
         </div>
         <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">{t('profile.displayName')}</label>
@@ -103,7 +102,7 @@ const StudentProfilePage: React.FC = () => {
       </div>
 
       {/* Password */}
-      <div className="card p-6 mb-4">
+      <div className="card p-6">
         <div className="flex items-center gap-2 mb-3">
           <Lock className="w-5 h-5 text-amber-500" />
           <h3 className="font-semibold text-slate-900 dark:text-white">{t('profile.changePassword')}</h3>
@@ -114,13 +113,9 @@ const StudentProfilePage: React.FC = () => {
           <button onClick={handleChangePassword} disabled={pwSaving} className="btn-primary w-full">{pwSaving ? '...' : t('profile.changePassword')}</button>
         </div>
       </div>
-
-      {/* Logout */}
-      <button onClick={() => signOut()} className="w-full card p-4 flex items-center justify-center gap-2 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors">
-        <LogOut className="w-5 h-5" />{t('common.logout')}
-      </button>
     </div>
   );
 };
 
 export default StudentProfilePage;
+

@@ -42,7 +42,8 @@
     "invites": "Invitations",
     "vacancies": "Vacancies",
     "myApplications": "My Applications",
-    "notifications": "Notifications"
+    "notifications": "Notifications",
+    "profile": "Profile"
   },
   "auth": {
     "login": "Sign In",
@@ -516,7 +517,11 @@
     "on": "ON",
     "off": "OFF",
     "saved": "Saved!",
-    "refresh": "Refresh"
+    "refresh": "Refresh",
+    "logout": "Log out",
+    "copy": "Copy",
+    "error": "An error occurred",
+    "notFound": "Not found"
   },
   "org": {
     "courses": {

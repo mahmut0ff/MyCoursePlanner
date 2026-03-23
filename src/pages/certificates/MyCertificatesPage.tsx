@@ -25,14 +25,21 @@ const MyCertificatesPage: React.FC = () => {
 
   useEffect(() => {
     if (profile?.uid) {
-      const q = query(
-        collection(db, 'certificates'),
-        where('studentId', '==', profile.uid),
-        orderBy('issuedAt', 'desc')
-      );
-      getDocs(q).then(snap => {
-        setCerts(snap.docs.map(d => ({ id: d.id, ...d.data() } as Cert)));
-      }).finally(() => setLoading(false));
+      const load = async () => {
+        try {
+          const q = query(
+            collection(db, 'certificates'),
+            where('studentId', '==', profile.uid),
+            orderBy('issuedAt', 'desc')
+          );
+          const snap = await getDocs(q);
+          setCerts(snap.docs.map(d => ({ id: d.id, ...d.data() } as Cert)));
+        } catch (e) {
+          console.warn('Failed to load certificates:', e);
+        }
+        setLoading(false);
+      };
+      load();
     }
   }, [profile?.uid]);
 

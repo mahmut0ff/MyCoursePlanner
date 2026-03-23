@@ -1,0 +1,110 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Users — can read/write own profile, admins can manage org users
+    match /users/{userId} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null && (
+        request.auth.uid == userId ||
+        request.auth.token.role == 'super_admin'
+      );
+    }
+
+    // Organizations
+    match /organizations/{orgId} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null;
+    }
+
+    // Subscriptions
+    match /subscriptions/{subId} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null;
+    }
+
+    // Lesson Plans
+    match /lessonPlans/{lessonId} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null;
+    }
+
+    // Exams + Questions subcollection
+    match /exams/{examId} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null;
+
+      match /questions/{questionId} {
+        allow read: if request.auth != null;
+        allow write: if request.auth != null;
+      }
+    }
+
+    // Exam Rooms
+    match /examRooms/{roomId} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null;
+    }
+
+    // Exam Attempts
+    match /examAttempts/{attemptId} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null;
+    }
+
+    // Certificates
+    match /certificates/{certId} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null;
+    }
+
+    // Gamification profiles
+    match /gamification/{docId} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null;
+    }
+
+    // Payments
+    match /payments/{paymentId} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null;
+    }
+
+    // Notifications
+    match /notifications/{notifId} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null;
+    }
+
+    // Audit Logs
+    match /auditLogs/{logId} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null;
+    }
+
+    // Feature Flags
+    match /featureFlags/{flagId} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null;
+    }
+
+    // Org Overrides
+    match /orgOverrides/{overrideId} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null;
+    }
+
+    // Org Notes
+    match /orgNotes/{noteId} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null;
+    }
+
+    // System Errors
+    match /systemErrors/{errorId} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null;
+    }
+  }
+}

@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { orgGetTeachers, orgInviteUser } from '../../lib/api';
-import { UserPlus, Search, Plus, Mail, RefreshCw, Eye, EyeOff, Send } from 'lucide-react';
+import { UserPlus, Search, Mail, RefreshCw, Send } from 'lucide-react';
 import type { UserProfile } from '../../types';
 
 const TeachersPage: React.FC = () => {
@@ -10,15 +10,12 @@ const TeachersPage: React.FC = () => {
   const [teachers, setTeachers] = useState<UserProfile[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
-  const [showCreate, setShowCreate] = useState(false);
   const [showInvite, setShowInvite] = useState(false);
   const [saving, setSaving] = useState(false);
   const navigate = useNavigate();
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
-  const [form, setForm] = useState({ displayName: '', email: '', password: '', phone: '' });
   const [inviteEmail, setInviteEmail] = useState('');
-  const [showPw, setShowPw] = useState(false);
 
   const load = () => {
     setLoading(true);
@@ -38,17 +35,7 @@ const TeachersPage: React.FC = () => {
 
   const filtered = teachers.filter((t) => t.displayName?.toLowerCase().includes(search.toLowerCase()) || t.email?.toLowerCase().includes(search.toLowerCase()));
 
-  const handleCreate = async () => {
-    if (!form.displayName.trim() || !form.email.trim() || !form.password.trim()) return;
-    setSaving(true); setError('');
-    try {
-      const created = await (await import('../../lib/api')).orgCreateTeacher(form);
-      setTeachers((p) => [created, ...p]);
-      setShowCreate(false); setForm({ displayName: '', email: '', password: '', phone: '' });
-      setSuccess(t('org.teachers.created')); setTimeout(() => setSuccess(''), 3000);
-    } catch (e: any) { setError(e.message || 'Failed to create teacher'); }
-    finally { setSaving(false); }
-  };
+
 
   const handleInvite = async () => {
     if (!inviteEmail.trim()) return;
@@ -69,7 +56,6 @@ const TeachersPage: React.FC = () => {
           <div className="flex items-center gap-1.5">
             <button onClick={load} className="p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors"><RefreshCw className="w-3.5 h-3.5" /></button>
             <button onClick={() => setShowInvite(true)} className="bg-violet-500 hover:bg-violet-600 text-white px-3 py-1.5 rounded-lg text-[11px] font-medium flex items-center gap-1 transition-colors"><Mail className="w-3 h-3" />{t('org.teachers.invite')}</button>
-            <button onClick={() => setShowCreate(true)} className="bg-emerald-500 hover:bg-emerald-600 text-white px-3 py-1.5 rounded-lg text-[11px] font-medium flex items-center gap-1 transition-colors"><Plus className="w-3 h-3" />{t('org.teachers.create')}</button>
           </div>
         </div>
 
@@ -115,35 +101,6 @@ const TeachersPage: React.FC = () => {
         )}
       </div>
 
-      {/* Create Teacher Modal */}
-      {showCreate && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => setShowCreate(false)}>
-          <div className="bg-white dark:bg-slate-800 rounded-xl p-4 w-full max-w-sm shadow-2xl" onClick={(e) => e.stopPropagation()}>
-            <h2 className="text-sm font-bold text-slate-900 dark:text-white mb-1">{t('org.teachers.create')}</h2>
-            <p className="text-[10px] text-slate-500 mb-3">{t('org.teachers.createDesc')}</p>
-            <div className="space-y-2">
-              <input placeholder={t('org.teachers.namePlaceholder')} value={form.displayName} onChange={(e) => setForm(f => ({ ...f, displayName: e.target.value }))}
-                className="w-full bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-lg px-2.5 py-1.5 text-xs outline-none focus:border-primary-500 text-slate-900 dark:text-white" autoFocus />
-              <input type="email" placeholder="teacher@example.com" value={form.email} onChange={(e) => setForm(f => ({ ...f, email: e.target.value }))}
-                className="w-full bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-lg px-2.5 py-1.5 text-xs outline-none focus:border-primary-500 text-slate-900 dark:text-white" />
-              <div className="relative">
-                <input type={showPw ? 'text' : 'password'} placeholder={t('org.teachers.passwordPlaceholder')} value={form.password} onChange={(e) => setForm(f => ({ ...f, password: e.target.value }))}
-                  className="w-full bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-lg px-2.5 py-1.5 pr-8 text-xs outline-none focus:border-primary-500 text-slate-900 dark:text-white" />
-                <button type="button" onClick={() => setShowPw(!showPw)} className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
-                  {showPw ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
-                </button>
-              </div>
-              <input placeholder={t('org.teachers.phonePlaceholder')} value={form.phone} onChange={(e) => setForm(f => ({ ...f, phone: e.target.value }))}
-                className="w-full bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-lg px-2.5 py-1.5 text-xs outline-none focus:border-primary-500 text-slate-900 dark:text-white" />
-            </div>
-            <div className="flex justify-end gap-2 mt-3">
-              <button onClick={() => setShowCreate(false)} className="px-2.5 py-1 text-[11px] text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg">{t('common.cancel')}</button>
-              <button onClick={handleCreate} disabled={saving || !form.displayName.trim() || !form.email.trim() || !form.password.trim()}
-                className="bg-emerald-500 hover:bg-emerald-600 text-white px-3 py-1 rounded-lg text-[11px] font-medium disabled:opacity-50">{saving ? '...' : t('common.save')}</button>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Invite Teacher Modal */}
       {showInvite && (

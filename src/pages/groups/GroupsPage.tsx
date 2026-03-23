@@ -1,12 +1,15 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
+import { useAuth } from '../../contexts/AuthContext';
 import { orgGetGroups, orgCreateGroup, orgDeleteGroup, orgGetCourses } from '../../lib/api';
 import { Users, Plus, Search, Trash2, FolderOpen, RefreshCw } from 'lucide-react';
 import type { Group, Course } from '../../types';
 
 const GroupsPage: React.FC = () => {
   const { t } = useTranslation();
+  const { role } = useAuth();
+  const isAdmin = role === 'admin';
   const [groups, setGroups] = useState<Group[]>([]);
   const [courses, setCourses] = useState<Course[]>([]);
   const [loading, setLoading] = useState(true);
@@ -51,7 +54,7 @@ const GroupsPage: React.FC = () => {
           <div><h1 className="text-lg font-bold text-slate-900 dark:text-white">{t('nav.groups')}</h1><p className="text-[11px] text-slate-500">{groups.length} {t('nav.groups').toLowerCase()}</p></div>
           <div className="flex items-center gap-1.5">
             <button onClick={load} className="p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors"><RefreshCw className="w-3.5 h-3.5" /></button>
-            <button onClick={() => setShowModal(true)} className="bg-emerald-500 hover:bg-emerald-600 text-white px-3 py-1.5 rounded-lg text-[11px] font-medium flex items-center gap-1 transition-colors"><Plus className="w-3 h-3" />{t('org.groups.create')}</button>
+            {isAdmin && <button onClick={() => setShowModal(true)} className="bg-emerald-500 hover:bg-emerald-600 text-white px-3 py-1.5 rounded-lg text-[11px] font-medium flex items-center gap-1 transition-colors"><Plus className="w-3 h-3" />{t('org.groups.create')}</button>}
           </div>
         </div>
 

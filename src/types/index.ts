@@ -404,3 +404,61 @@ export interface OrgSettings {
   passingScore: number;
   updatedAt: string;
 }
+
+// ---- Vacancies ----
+
+export type VacancyStatus = 'draft' | 'published' | 'closed';
+export type VacancyEmploymentType = 'full_time' | 'part_time' | 'contract' | 'freelance';
+export type VacancyApplicationStatus = 'pending' | 'viewed' | 'accepted' | 'rejected';
+
+export interface VacancyLocation {
+  city: string;
+  country: string;
+  address?: string;
+  lat?: number;
+  lng?: number;
+  remote: boolean;
+}
+
+export interface Vacancy {
+  id: string;
+  organizationId: string;
+  organizationName: string;
+  title: string;
+  description: string;
+  requirements: string;
+  responsibilities: string;
+  subject: string;
+  employmentType: VacancyEmploymentType;
+  salaryMin?: number;
+  salaryMax?: number;
+  salaryCurrency: string;
+  location: VacancyLocation;
+  workConditions: string;
+  benefits: string[];
+  photos: string[];
+  contactEmail: string;
+  contactPhone?: string;
+  status: VacancyStatus;
+  applicationsCount: number;
+  createdAt: string;
+  updatedAt: string;
+  closedAt?: string;
+}
+
+export interface VacancyApplication {
+  id: string;
+  vacancyId: string;
+  vacancyTitle: string;
+  organizationName: string;
+  teacherId: string;
+  teacherName: string;
+  teacherEmail: string;
+  coverLetter: string;
+  resumeUrl?: string;
+  status: VacancyApplicationStatus;
+  reviewedAt?: string;
+  reviewedBy?: string;
+  createdAt: string;
+}
+

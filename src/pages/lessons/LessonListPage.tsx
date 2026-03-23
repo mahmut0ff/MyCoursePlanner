@@ -14,7 +14,7 @@ const LessonListPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
 
-  const isStaff = role === 'admin' || role === 'teacher';
+  const isAdmin = role === 'admin';
 
   useEffect(() => {
     getLessonPlans().then(setLessons).catch(console.error).finally(() => setLoading(false));
@@ -38,7 +38,7 @@ const LessonListPage: React.FC = () => {
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
             <input type="text" value={search} onChange={(e) => setSearch(e.target.value)} placeholder={`${t('common.search')}...`} className="input pl-10 w-64" />
           </div>
-          {isStaff && (
+          {isAdmin && (
             <Link to="/lessons/new" className="btn-primary flex items-center gap-2"><Plus className="w-4 h-4" />{t('lessons.create')}</Link>
           )}
         </div>
@@ -48,8 +48,8 @@ const LessonListPage: React.FC = () => {
         <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-12 text-center">
           <BookOpen className="w-12 h-12 text-slate-300 dark:text-slate-600 mx-auto mb-3" />
           <h3 className="text-lg font-medium text-slate-700 dark:text-slate-300 mb-1">{t('lessons.noLessons')}</h3>
-          <p className="text-slate-500 dark:text-slate-400 text-sm">{isStaff ? 'Create your first lesson plan.' : 'No lesson plans available yet.'}</p>
-          {isStaff && (
+          <p className="text-slate-500 dark:text-slate-400 text-sm">{isAdmin ? 'Create your first lesson plan.' : 'No lesson plans available yet.'}</p>
+          {isAdmin && (
             <Link to="/lessons/new" className="btn-primary inline-flex items-center gap-2 mt-4"><Plus className="w-4 h-4" />{t('lessons.create')}</Link>
           )}
         </div>

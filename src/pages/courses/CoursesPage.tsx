@@ -1,12 +1,15 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
+import { useAuth } from '../../contexts/AuthContext';
 import { orgGetCourses, orgCreateCourse, orgUpdateCourse, orgDeleteCourse } from '../../lib/api';
 import { Plus, Search, Trash2, Edit, BookOpen, RefreshCw } from 'lucide-react';
 import type { Course } from '../../types';
 
 const CoursesPage: React.FC = () => {
   const { t } = useTranslation();
+  const { role } = useAuth();
+  const isAdmin = role === 'admin';
   const [courses, setCourses] = useState<Course[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -57,7 +60,7 @@ const CoursesPage: React.FC = () => {
           </div>
           <div className="flex items-center gap-1.5">
             <button onClick={load} className="p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors"><RefreshCw className="w-3.5 h-3.5" /></button>
-            <button onClick={openCreate} className="bg-emerald-500 hover:bg-emerald-600 text-white px-3 py-1.5 rounded-lg text-[11px] font-medium flex items-center gap-1 transition-colors"><Plus className="w-3 h-3" />{t('org.courses.create')}</button>
+            {isAdmin && <button onClick={openCreate} className="bg-emerald-500 hover:bg-emerald-600 text-white px-3 py-1.5 rounded-lg text-[11px] font-medium flex items-center gap-1 transition-colors"><Plus className="w-3 h-3" />{t('org.courses.create')}</button>}
           </div>
         </div>
 

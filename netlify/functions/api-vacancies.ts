@@ -29,8 +29,8 @@ const handler: Handler = async (event: HandlerEvent) => {
   try {
     // Public actions (list, get) don't require auth
     if (action === 'list') {
-      const snap = await adminDb.collection(VACANCIES).where('status', '==', 'published').orderBy('createdAt', 'desc').get();
-      let result = snap.docs.map(d => ({ id: d.id, ...d.data() })) as any[];
+      const snap = await adminDb.collection(VACANCIES).orderBy('createdAt', 'desc').get();
+      let result = snap.docs.map(d => ({ id: d.id, ...d.data() })).filter((v: any) => v.status === 'published') as any[];
 
       if (params.subject) result = result.filter((v: any) => v.subject?.toLowerCase().includes(params.subject!.toLowerCase()));
       if (params.city) result = result.filter((v: any) => v.location?.city?.toLowerCase().includes(params.city!.toLowerCase()));
@@ -187,8 +187,9 @@ const handler: Handler = async (event: HandlerEvent) => {
     // ---- Org Admin: Org's vacancies ----
     if (action === 'orgVacancies') {
       if (!hasRole(auth, 'admin')) return forbidden();
-      const snap = await adminDb.collection(VACANCIES).where('organizationId', '==', auth.organizationId).orderBy('createdAt', 'desc').get();
-      return ok(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+      const snap = await adminDb.collection(VACANCIES).where('organizationId', '==', auth.organizationId).get();
+      const sorted = snap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a: any, b: any) => (b.createdAt || '').localeCompare(a.createdAt || ''));
+      return ok(sorted);
     }
 
     // ---- Org Admin: Review application ----

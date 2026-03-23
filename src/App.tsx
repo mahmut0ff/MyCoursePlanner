@@ -23,8 +23,11 @@ import ResultPage from './pages/rooms/ResultPage';
 import MyResultsPage from './pages/rooms/MyResultsPage';
 import BillingPage from './pages/billing/BillingPage';
 import CertificatePage from './pages/certificates/CertificatePage';
+import MyCertificatesPage from './pages/certificates/MyCertificatesPage';
 import PaymentSuccessPage from './pages/billing/PaymentSuccessPage';
 import PaymentFailurePage from './pages/billing/PaymentFailurePage';
+import StudentProfilePage from './pages/profile/StudentProfilePage';
+import AchievementsPage from './pages/achievements/AchievementsPage';
 
 // Org Pages
 import CoursesPage from './pages/courses/CoursesPage';
@@ -110,6 +113,9 @@ const App: React.FC = () => {
             <Route path="my-results" element={<MyResultsPage />} />
             <Route path="results/:attemptId" element={<ResultPage />} />
             <Route path="certificate/:certId" element={<CertificatePage />} />
+            <Route path="certificates" element={<MyCertificatesPage />} />
+            <Route path="achievements" element={<AchievementsPage />} />
+            <Route path="profile" element={<StudentProfilePage />} />
 
             {/* Billing & Payments */}
             <Route path="billing" element={<ProtectedRoute allowedRoles={['admin']}><BillingPage /></ProtectedRoute>} />

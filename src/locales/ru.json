@@ -1040,5 +1040,19 @@
     "backToBilling": "Назад к тарифам",
     "perMonth": "/мес",
     "currency": "сом"
+  },
+  "profile": {
+    "title": "Профиль",
+    "displayName": "Имя",
+    "save": "Сохранить",
+    "saved": "Сохранено!",
+    "saveFailed": "Ошибка сохранения",
+    "language": "Язык",
+    "changePassword": "Сменить пароль",
+    "currentPassword": "Текущий пароль",
+    "newPassword": "Новый пароль",
+    "passwordChanged": "Пароль изменён!",
+    "passwordFailed": "Ошибка смены пароля. Проверьте текущий пароль.",
+    "passwordMinLength": "Новый пароль должен быть от 6 символов"
   }
 }

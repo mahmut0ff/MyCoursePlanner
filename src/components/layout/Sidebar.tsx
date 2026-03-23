@@ -246,17 +246,20 @@ const Sidebar: React.FC<{ open: boolean; onClose: () => void }> = ({ open, onClo
               <NavLink to="/dashboard" className={linkClass} onClick={onClose}>
                 <LayoutDashboard className="w-4 h-4" />{t('nav.dashboard')}
               </NavLink>
+              <NavLink to="/join" className={linkClass} onClick={onClose}>
+                <Radio className="w-4 h-4" />{t('rooms.join')}
+              </NavLink>
               <NavLink to="/lessons" className={linkClass} onClick={onClose}>
                 <BookOpen className="w-4 h-4" />{t('nav.lessons')}
               </NavLink>
-              <NavLink to="/exams" className={linkClass} onClick={onClose}>
-                <ClipboardList className="w-4 h-4" />{t('nav.exams')}
-              </NavLink>
-              <NavLink to="/rooms" className={linkClass} onClick={onClose}>
-                <Radio className="w-4 h-4" />{t('nav.examRooms')}
-              </NavLink>
               <NavLink to="/my-results" className={linkClass} onClick={onClose}>
                 <BarChart3 className="w-4 h-4" />{t('nav.myResults')}
+              </NavLink>
+              <NavLink to="/certificates" className={linkClass} onClick={onClose}>
+                <Trophy className="w-4 h-4" />{t('certificate.title')}
+              </NavLink>
+              <NavLink to="/achievements" className={linkClass} onClick={onClose}>
+                <Zap className="w-4 h-4" />{t('gamification.badges')}
               </NavLink>
               <NavLink to="/notifications" className={linkClass} onClick={onClose}>
                 <Bell className="w-4 h-4" />{t('nav.notifications')}
@@ -265,6 +268,9 @@ const Sidebar: React.FC<{ open: boolean; onClose: () => void }> = ({ open, onClo
                     {unreadNotifCount}
                   </span>
                 )}
+              </NavLink>
+              <NavLink to="/profile" className={linkClass} onClick={onClose}>
+                <UserCircle2 className="w-4 h-4" />{t('nav.profile')}
               </NavLink>
             </>
           ) : null}

@@ -862,5 +862,19 @@
     "backToBilling": "Back to Plans",
     "perMonth": "/mo",
     "currency": "KGS"
+  },
+  "profile": {
+    "title": "Profile",
+    "displayName": "Display Name",
+    "save": "Save",
+    "saved": "Saved!",
+    "saveFailed": "Failed to save",
+    "language": "Language",
+    "changePassword": "Change Password",
+    "currentPassword": "Current password",
+    "newPassword": "New password",
+    "passwordChanged": "Password changed!",
+    "passwordFailed": "Failed to change password. Check current password.",
+    "passwordMinLength": "New password must be at least 6 characters"
   }
 }

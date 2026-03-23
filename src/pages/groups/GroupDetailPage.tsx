@@ -35,7 +35,7 @@ const GroupDetailPage: React.FC = () => {
 
       {/* Header */}
       <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden mb-6">
-        <div className="bg-gradient-to-r from-emerald-500 via-teal-500 to-cyan-500 h-16" />
+        <div className="bg-slate-700 h-16" />
         <div className="px-6 pb-6 pt-4">
           <h1 className="text-lg font-bold text-slate-900 dark:text-white">{group.name}</h1>
         </div>

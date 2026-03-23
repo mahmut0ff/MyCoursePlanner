@@ -62,7 +62,7 @@ const LessonListPage: React.FC = () => {
                   <img src={lesson.coverImageUrl} alt={lesson.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
                 </div>
               ) : (
-                <div className="h-40 bg-gradient-to-br from-primary-50 to-primary-100 dark:from-primary-900/30 dark:to-primary-800/20 flex items-center justify-center">
+                <div className="h-40 bg-primary-50 dark:bg-primary-900/20 flex items-center justify-center">
                   <BookOpen className="w-10 h-10 text-primary-300 dark:text-primary-600" />
                 </div>
               )}

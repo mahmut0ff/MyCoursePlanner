@@ -54,7 +54,7 @@ const LoginPage: React.FC = () => {
   return (
     <div className="min-h-screen flex">
       {/* ═══ Left Decorative Panel ═══ */}
-      <div className="hidden lg:flex lg:w-[55%] relative bg-gradient-to-br from-[#4e7cf6] via-[#5b8bf7] to-[#7ba4f9] overflow-hidden">
+      <div className="hidden lg:flex lg:w-[55%] relative bg-primary-600 overflow-hidden">
         {/* Abstract shapes */}
         <div className="absolute top-[-80px] right-[-60px] w-[300px] h-[300px] rounded-full bg-white/10" />
         <div className="absolute bottom-[-120px] right-[80px] w-[400px] h-[400px] rounded-full border-[3px] border-white/20" />
@@ -116,7 +116,7 @@ const LoginPage: React.FC = () => {
         <div className="w-full max-w-md">
           {/* Logo */}
           <div className="text-center mb-8">
-            <div className="inline-flex items-center justify-center w-14 h-14 bg-gradient-to-br from-primary-500 to-primary-600 rounded-2xl shadow-lg shadow-primary-200 dark:shadow-primary-900/30 mb-4">
+            <div className="inline-flex items-center justify-center w-14 h-14 bg-primary-600 rounded-2xl shadow-lg shadow-primary-200 dark:shadow-primary-900/30 mb-4">
               <GraduationCap className="w-7 h-7 text-white" />
             </div>
             <h2 className="text-2xl font-bold text-slate-900 dark:text-white">{t('auth.loginTitle')}</h2>

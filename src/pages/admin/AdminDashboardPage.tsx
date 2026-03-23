@@ -401,7 +401,7 @@ const AdminDashboardPage: React.FC = () => {
         <div className="divide-y divide-slate-100 dark:divide-slate-700">
           {recentLogs.map((log) => (
             <div key={log.id} className="px-6 py-3 flex items-center gap-4 hover:bg-slate-50 dark:hover:bg-slate-700/30 transition-colors">
-              <div className="w-8 h-8 bg-gradient-to-br from-primary-400 to-primary-600 rounded-full flex items-center justify-center text-xs font-bold text-white shadow-lg shadow-primary-500/20">
+              <div className="w-8 h-8 bg-primary-600 rounded-full flex items-center justify-center text-xs font-bold text-white shadow-lg shadow-primary-500/20">
                 {log.actorName?.[0]?.toUpperCase() || '?'}
               </div>
               <div className="flex-1 min-w-0">

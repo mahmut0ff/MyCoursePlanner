@@ -71,7 +71,7 @@ const StudentsPage: React.FC = () => {
                 <tr key={s.uid} onClick={() => navigate(`/students/${s.uid}`)} className="hover:bg-slate-50/80 dark:hover:bg-slate-700/20 cursor-pointer transition-colors">
                   <td className="px-4 py-2.5">
                     <div className="flex items-center gap-2">
-                      <div className="w-6 h-6 bg-gradient-to-br from-primary-400 to-primary-600 rounded-md flex items-center justify-center text-[9px] text-white font-bold">{s.displayName?.[0]?.toUpperCase() || '?'}</div>
+                      <div className="w-6 h-6 bg-primary-600 rounded-md flex items-center justify-center text-[9px] text-white font-bold">{s.displayName?.[0]?.toUpperCase() || '?'}</div>
                       <span className="text-xs font-medium text-slate-900 dark:text-white truncate">{s.displayName}</span>
                     </div>
                   </td>

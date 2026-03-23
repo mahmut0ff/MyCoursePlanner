@@ -51,7 +51,7 @@ const Sidebar: React.FC<{ open: boolean; onClose: () => void }> = ({ open, onClo
 
         {/* ═══ Header ═══ */}
         <div className="flex items-center gap-3 px-4 py-4 border-b border-white/5">
-          <div className="w-9 h-9 bg-gradient-to-br from-primary-500 to-primary-600 rounded-xl flex items-center justify-center shadow-lg shadow-primary-500/20">
+          <div className="w-9 h-9 bg-primary-600 rounded-xl flex items-center justify-center shadow-lg shadow-primary-500/20">
             <GraduationCap className="w-5 h-5 text-white" />
           </div>
           <div className="flex-1 min-w-0">
@@ -254,7 +254,7 @@ const Sidebar: React.FC<{ open: boolean; onClose: () => void }> = ({ open, onClo
         {/* ═══ Footer ═══ */}
         <div className="border-t border-white/5 px-3 py-3">
           <div className="flex items-center gap-3 px-1">
-            <div className="w-9 h-9 bg-gradient-to-br from-emerald-400 to-cyan-500 rounded-full flex items-center justify-center text-sm font-bold text-white shadow-lg shadow-emerald-500/20 ring-2 ring-white/10">
+            <div className="w-9 h-9 bg-emerald-600 rounded-full flex items-center justify-center text-sm font-bold text-white shadow-lg shadow-emerald-500/20 ring-2 ring-white/10">
               {profile?.displayName?.[0]?.toUpperCase() || '?'}
             </div>
             <div className="min-w-0 flex-1">

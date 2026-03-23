@@ -47,10 +47,10 @@ const OrgUserDetailPage: React.FC = () => {
 
       {/* Profile */}
       <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden mb-6">
-        <div className="bg-gradient-to-r from-slate-600 via-slate-500 to-slate-400 h-20" />
+        <div className="bg-slate-700 h-20" />
         <div className="px-6 pb-6 -mt-8">
           <div className="flex items-end gap-4 mb-4">
-            <div className="w-16 h-16 bg-gradient-to-br from-slate-400 to-slate-600 rounded-xl flex items-center justify-center text-xl text-white font-bold shadow-lg ring-4 ring-white dark:ring-slate-800">
+            <div className="w-16 h-16 bg-slate-600 rounded-xl flex items-center justify-center text-xl text-white font-bold shadow-lg ring-4 ring-white dark:ring-slate-800">
               {user.displayName?.[0]?.toUpperCase() || '?'}
             </div>
             <div className="pb-1">

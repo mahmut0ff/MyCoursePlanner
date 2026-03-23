@@ -40,7 +40,7 @@ const AdminUserDetailPage: React.FC = () => {
 
       {/* Profile */}
       <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden mb-6">
-        <div className="bg-gradient-to-r from-primary-600 via-primary-500 to-cyan-500 h-20" />
+        <div className="bg-slate-700 h-20" />
         <div className="px-6 pb-6 -mt-8">
           <div className="flex items-end gap-4 mb-4">
             <div className="w-16 h-16 bg-primary-100 rounded-xl flex items-center justify-center text-2xl font-bold text-primary-700 shadow-lg ring-4 ring-white dark:ring-slate-800">

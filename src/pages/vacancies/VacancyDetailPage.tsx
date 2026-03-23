@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../contexts/AuthContext';
-import { vacGetVacancy, vacApplyToVacancy } from '../../lib/api';
+import { vacGetVacancy, vacApplyToVacancy, vacGetMyApplications } from '../../lib/api';
 import {
   ArrowLeft, Briefcase, MapPin, DollarSign, Clock, Building2, Mail,
   Phone, Send, CheckCircle, Wifi, Camera, FileText, Star, Users,
@@ -29,11 +29,23 @@ const VacancyDetailPage: React.FC = () => {
   useEffect(() => {
     if (!id) return;
     setLoading(true);
-    vacGetVacancy(id)
-      .then((data: any) => setVacancy(data))
+    const promises: Promise<any>[] = [
+      vacGetVacancy(id).then((data: any) => setVacancy(data)),
+    ];
+    // Check if teacher already applied
+    if (role === 'teacher') {
+      promises.push(
+        vacGetMyApplications()
+          .then((apps: any[]) => {
+            if (apps.some((a: any) => a.vacancyId === id)) setApplied(true);
+          })
+          .catch(() => {})
+      );
+    }
+    Promise.all(promises)
       .catch(console.error)
       .finally(() => setLoading(false));
-  }, [id]);
+  }, [id, role]);
 
   const handleApply = async () => {
     if (!id || !coverLetter.trim()) return;
@@ -76,7 +88,7 @@ const VacancyDetailPage: React.FC = () => {
 
       {/* Hero */}
       <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden mb-6">
-        <div className="bg-gradient-to-r from-primary-500 via-blue-500 to-violet-500 h-20" />
+        <div className="bg-slate-700 h-20" />
         <div className="px-6 pb-6 -mt-4">
           <div className="flex items-end justify-between gap-4">
             <div>

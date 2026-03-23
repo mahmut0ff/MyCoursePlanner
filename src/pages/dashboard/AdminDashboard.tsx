@@ -30,10 +30,10 @@ const AdminDashboard: React.FC = () => {
   const avgScore = attempts.length > 0 ? Math.round(attempts.reduce((s, a) => s + a.percentage, 0) / attempts.length) : 0;
 
   const stats = [
-    { label: t('dashboard.totalLessons'), value: lessons.length, icon: BookOpen, gradient: 'from-blue-500 to-blue-600', bg: 'bg-blue-500/10 dark:bg-blue-500/20' },
-    { label: t('dashboard.totalExams'), value: exams.length, icon: ClipboardList, gradient: 'from-violet-500 to-violet-600', bg: 'bg-violet-500/10 dark:bg-violet-500/20' },
-    { label: t('dashboard.activeRooms'), value: rooms.length, icon: Radio, gradient: 'from-emerald-500 to-emerald-600', bg: 'bg-emerald-500/10 dark:bg-emerald-500/20' },
-    { label: t('dashboard.examAttempts'), value: `${avgScore}%`, icon: TrendingUp, gradient: 'from-amber-500 to-amber-600', bg: 'bg-amber-500/10 dark:bg-amber-500/20' },
+    { label: t('dashboard.totalLessons'), value: lessons.length, icon: BookOpen, color: 'text-blue-500', bg: 'bg-blue-500/10 dark:bg-blue-500/20' },
+    { label: t('dashboard.totalExams'), value: exams.length, icon: ClipboardList, color: 'text-violet-500', bg: 'bg-violet-500/10 dark:bg-violet-500/20' },
+    { label: t('dashboard.activeRooms'), value: rooms.length, icon: Radio, color: 'text-emerald-500', bg: 'bg-emerald-500/10 dark:bg-emerald-500/20' },
+    { label: t('dashboard.examAttempts'), value: `${avgScore}%`, icon: TrendingUp, color: 'text-amber-500', bg: 'bg-amber-500/10 dark:bg-amber-500/20' },
   ];
 
   return (
@@ -54,7 +54,7 @@ const AdminDashboard: React.FC = () => {
           <div key={s.label} className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-5 hover:shadow-lg hover:shadow-slate-200/50 dark:hover:shadow-slate-900/30 transition-all">
             <div className="flex items-center gap-3">
               <div className={`w-11 h-11 rounded-xl flex items-center justify-center ${s.bg}`}>
-                <s.icon className={`w-5 h-5 bg-gradient-to-r ${s.gradient} bg-clip-text`} style={{color: `var(--tw-gradient-from)`}} />
+                <s.icon className={`w-5 h-5 ${s.color}`} />
               </div>
               <div>
                 <p className="text-2xl font-bold text-slate-900 dark:text-white">{s.value}</p>

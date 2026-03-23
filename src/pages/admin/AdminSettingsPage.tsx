@@ -50,7 +50,7 @@ const ProfileTab: React.FC = () => {
     <div className="space-y-6">
       {/* Profile Header */}
       <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-6 flex items-center gap-4">
-        <div className="w-14 h-14 bg-gradient-to-br from-emerald-400 to-cyan-500 rounded-full flex items-center justify-center text-xl font-bold text-white shadow-lg ring-2 ring-white/10">
+        <div className="w-14 h-14 bg-emerald-600 rounded-full flex items-center justify-center text-xl font-bold text-white shadow-lg ring-2 ring-white/10">
           {profile?.displayName?.[0]?.toUpperCase() || '?'}
         </div>
         <div>

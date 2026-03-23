@@ -123,7 +123,7 @@ const RegisterPage: React.FC = () => {
   return (
     <div className="min-h-screen flex">
       {/* ═══ Left Decorative Panel ═══ */}
-      <div className="hidden lg:flex lg:w-[55%] relative bg-gradient-to-br from-[#4e7cf6] via-[#5b8bf7] to-[#7ba4f9] overflow-hidden">
+      <div className="hidden lg:flex lg:w-[55%] relative bg-primary-600 overflow-hidden">
         <div className="absolute top-[-80px] right-[-60px] w-[300px] h-[300px] rounded-full bg-white/10" />
         <div className="absolute bottom-[-120px] right-[80px] w-[400px] h-[400px] rounded-full border-[3px] border-white/20" />
         <div className="absolute bottom-[-60px] right-[140px] w-[280px] h-[280px] rounded-full border-[3px] border-white/15" />
@@ -162,7 +162,7 @@ const RegisterPage: React.FC = () => {
         <div className="w-full max-w-md">
           {/* Logo */}
           <div className="text-center mb-6">
-            <div className="inline-flex items-center justify-center w-14 h-14 bg-gradient-to-br from-primary-500 to-primary-600 rounded-2xl shadow-lg shadow-primary-200 dark:shadow-primary-900/30 mb-4">
+            <div className="inline-flex items-center justify-center w-14 h-14 bg-primary-600 rounded-2xl shadow-lg shadow-primary-200 dark:shadow-primary-900/30 mb-4">
               <GraduationCap className="w-7 h-7 text-white" />
             </div>
             <h2 className="text-2xl font-bold text-slate-900 dark:text-white">{t('auth.registerTitle')}</h2>
@@ -190,7 +190,7 @@ const RegisterPage: React.FC = () => {
                   onClick={() => handleRoleStep('admin')}
                   className="w-full flex items-center gap-4 p-4 rounded-xl border-2 border-slate-200 dark:border-slate-700 hover:border-primary-500 dark:hover:border-primary-500 bg-white dark:bg-slate-800 hover:bg-primary-50 dark:hover:bg-primary-900/10 transition-all group"
                 >
-                  <div className="w-12 h-12 bg-gradient-to-br from-primary-500 to-primary-600 rounded-xl flex items-center justify-center shrink-0 shadow-lg shadow-primary-200/50 dark:shadow-primary-900/30">
+                  <div className="w-12 h-12 bg-primary-600 rounded-xl flex items-center justify-center shrink-0 shadow-lg shadow-primary-200/50 dark:shadow-primary-900/30">
                     <School className="w-6 h-6 text-white" />
                   </div>
                   <div className="text-left">
@@ -203,7 +203,7 @@ const RegisterPage: React.FC = () => {
                   onClick={() => handleRoleStep('teacher')}
                   className="w-full flex items-center gap-4 p-4 rounded-xl border-2 border-slate-200 dark:border-slate-700 hover:border-violet-500 dark:hover:border-violet-500 bg-white dark:bg-slate-800 hover:bg-violet-50 dark:hover:bg-violet-900/10 transition-all group"
                 >
-                  <div className="w-12 h-12 bg-gradient-to-br from-violet-500 to-purple-600 rounded-xl flex items-center justify-center shrink-0 shadow-lg shadow-violet-200/50 dark:shadow-violet-900/30">
+                  <div className="w-12 h-12 bg-violet-600 rounded-xl flex items-center justify-center shrink-0 shadow-lg shadow-violet-200/50 dark:shadow-violet-900/30">
                     <BookOpenCheck className="w-6 h-6 text-white" />
                   </div>
                   <div className="text-left">

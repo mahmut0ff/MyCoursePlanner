@@ -69,7 +69,7 @@ const OrgUsersPage: React.FC = () => {
                   <tr key={u.uid} onClick={() => navigate(`/org-users/${u.uid}`)} className="hover:bg-slate-50/80 dark:hover:bg-slate-700/20 cursor-pointer transition-colors">
                     <td className="px-4 py-2.5">
                       <div className="flex items-center gap-2">
-                        <div className="w-6 h-6 bg-gradient-to-br from-slate-400 to-slate-600 rounded-md flex items-center justify-center text-[9px] text-white font-bold">{u.displayName?.[0]?.toUpperCase() || '?'}</div>
+                        <div className="w-6 h-6 bg-slate-600 rounded-md flex items-center justify-center text-[9px] text-white font-bold">{u.displayName?.[0]?.toUpperCase() || '?'}</div>
                         <span className="text-xs font-medium text-slate-900 dark:text-white truncate">{u.displayName}</span>
                       </div>
                     </td>

@@ -31,7 +31,7 @@ const CourseDetailPage: React.FC = () => {
 
       {/* Header */}
       <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden mb-6">
-        <div className="bg-gradient-to-r from-primary-500 via-blue-500 to-cyan-500 h-16" />
+        <div className="bg-slate-700 h-16" />
         <div className="px-6 pb-6 -mt-5">
           <div className="flex items-end justify-between">
             <div>

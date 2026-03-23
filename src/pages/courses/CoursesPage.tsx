@@ -98,7 +98,7 @@ const CoursesPage: React.FC = () => {
                   <tr key={c.id} onClick={() => navigate(`/courses/${c.id}`)} className="hover:bg-slate-50/80 dark:hover:bg-slate-700/20 cursor-pointer transition-colors">
                     <td className="px-4 py-2.5">
                       <div className="flex items-center gap-2.5">
-                        <div className="w-7 h-7 bg-gradient-to-br from-primary-400 to-primary-600 rounded-lg flex items-center justify-center text-[10px] text-white font-bold shrink-0">{c.title[0]?.toUpperCase()}</div>
+                        <div className="w-7 h-7 bg-primary-600 rounded-lg flex items-center justify-center text-[10px] text-white font-bold shrink-0">{c.title[0]?.toUpperCase()}</div>
                         <div className="min-w-0">
                           <p className="text-xs font-medium text-slate-900 dark:text-white truncate">{c.title}</p>
                           <p className="text-[10px] text-slate-400 truncate max-w-[200px]">{c.description || t('org.courses.noDescription')}</p>

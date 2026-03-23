@@ -40,7 +40,7 @@ const AdminOrgDetailPage: React.FC = () => {
 
       {/* Header */}
       <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden mb-6">
-        <div className="bg-gradient-to-r from-violet-600 via-purple-500 to-indigo-500 h-20" />
+        <div className="bg-slate-700 h-20" />
         <div className="px-6 pb-6 -mt-6">
           <h1 className="text-lg font-bold text-slate-900 dark:text-white mt-8">{org.name}</h1>
           <p className="text-xs text-slate-500 mt-0.5">{org.ownerEmail}</p>

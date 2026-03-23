@@ -69,15 +69,15 @@ const BillingPage: React.FC = () => {
   };
 
   const planColors: Record<string, string> = {
-    starter: 'from-blue-500 to-blue-600',
-    professional: 'from-violet-500 to-purple-600',
-    enterprise: 'from-amber-500 to-orange-600',
+    starter: 'bg-blue-600',
+    professional: 'bg-violet-600',
+    enterprise: 'bg-amber-600',
   };
 
   return (
     <div>
       <div className="flex items-center gap-3 mb-8">
-        <div className="w-10 h-10 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-lg flex items-center justify-center">
+        <div className="w-10 h-10 bg-emerald-600 rounded-lg flex items-center justify-center">
           <CreditCard className="w-5 h-5 text-white" />
         </div>
         <div>
@@ -88,7 +88,7 @@ const BillingPage: React.FC = () => {
 
       {/* Current Plan Banner */}
       {subscription && (
-        <div className="card p-6 mb-8 bg-gradient-to-r from-primary-50 to-violet-50 border-primary-200">
+        <div className="card p-6 mb-8 bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700">
           <div className="flex items-center justify-between flex-wrap gap-4">
             <div>
               <p className="text-sm text-primary-600 font-medium">Current Plan</p>
@@ -117,7 +117,7 @@ const BillingPage: React.FC = () => {
           const isCurrent = plan.id === currentPlan;
           return (
             <div key={plan.id} className={`card overflow-hidden transition-shadow ${isCurrent ? 'ring-2 ring-primary-500 shadow-lg' : 'hover:shadow-lg'}`}>
-              <div className={`bg-gradient-to-r ${planColors[plan.id]} px-6 py-5 text-white`}>
+              <div className={`${planColors[plan.id]} px-6 py-5 text-white`}>
                 <div className="flex items-center gap-3 mb-2">{planIcons[plan.id]}<h3 className="text-lg font-bold">{plan.name}</h3></div>
                 <p className="text-3xl font-bold">${plan.price}<span className="text-sm font-normal opacity-80">/month</span></p>
               </div>

@@ -6,9 +6,9 @@ const AdminPlansPage: React.FC = () => {
   const { t } = useTranslation();
 
   const plans = [
-    { id: 'starter', name: 'Starter', price: 39, color: 'from-blue-500 to-blue-600', features: ['50 students', '5 teachers', '10 exams', 'Basic analytics'] },
-    { id: 'professional', name: 'Professional', price: 79, color: 'from-violet-500 to-violet-600', features: ['200 students', '20 teachers', '50 exams', 'Advanced analytics', 'AI features'] },
-    { id: 'enterprise', name: 'Enterprise', price: 99, color: 'from-amber-500 to-amber-600', features: ['Unlimited students', 'Unlimited teachers', 'Unlimited exams', 'Full analytics', 'AI features', 'Custom branding', 'Priority support'] },
+    { id: 'starter', name: 'Starter', price: 39, color: 'bg-blue-600', features: ['50 students', '5 teachers', '10 exams', 'Basic analytics'] },
+    { id: 'professional', name: 'Professional', price: 79, color: 'bg-violet-600', features: ['200 students', '20 teachers', '50 exams', 'Advanced analytics', 'AI features'] },
+    { id: 'enterprise', name: 'Enterprise', price: 99, color: 'bg-amber-600', features: ['Unlimited students', 'Unlimited teachers', 'Unlimited exams', 'Full analytics', 'AI features', 'Custom branding', 'Priority support'] },
   ];
 
   return (
@@ -24,7 +24,7 @@ const AdminPlansPage: React.FC = () => {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {plans.map((plan) => (
           <div key={plan.id} className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl overflow-hidden">
-            <div className={`bg-gradient-to-r ${plan.color} px-6 py-5`}>
+            <div className={`${plan.color} px-6 py-5`}>
               <Tag className="w-5 h-5 text-white/80 mb-2" />
               <h3 className="text-lg font-bold text-white">{plan.name}</h3>
               <p className="text-white/80 text-sm">${plan.price}/mo</p>

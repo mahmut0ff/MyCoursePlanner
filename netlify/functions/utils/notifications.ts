@@ -55,9 +55,9 @@ export async function notifyOrgAdmins(
   orgId: string, type: NotificationType, title: string, message: string, link?: string
 ): Promise<void> {
   const snap = await adminDb.collection('users')
-    .where('organizationId', '==', orgId)
-    .where('role', '==', 'admin').get();
-  const promises = snap.docs.map(d =>
+    .where('organizationId', '==', orgId).get();
+  const admins = snap.docs.filter(d => d.data().role === 'admin');
+  const promises = admins.map(d =>
     createNotification({ recipientId: d.id, type, title, message, link })
   );
   await Promise.allSettled(promises);
@@ -70,9 +70,9 @@ export async function notifyOrgStudents(
   orgId: string, type: NotificationType, title: string, message: string, link?: string
 ): Promise<void> {
   const snap = await adminDb.collection('users')
-    .where('organizationId', '==', orgId)
-    .where('role', '==', 'student').get();
-  const promises = snap.docs.map(d =>
+    .where('organizationId', '==', orgId).get();
+  const students = snap.docs.filter(d => d.data().role === 'student');
+  const promises = students.map(d =>
     createNotification({ recipientId: d.id, type, title, message, link })
   );
   await Promise.allSettled(promises);

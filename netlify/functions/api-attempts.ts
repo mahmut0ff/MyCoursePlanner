@@ -57,13 +57,71 @@ const handler: Handler = async (event: HandlerEvent) => {
   if (event.httpMethod === 'POST') {
     const body = JSON.parse(event.body || '{}');
     if (!body.examId || !body.roomId) return badRequest('examId and roomId required');
+
+    // Fix #2: Duplicate attempt guard
+    const existing = await adminDb.collection(COLLECTION)
+      .where('studentId', '==', user.uid)
+      .where('roomId', '==', body.roomId).limit(1).get();
+    if (!existing.empty) return badRequest('You have already submitted this exam');
+
+    // Verify room is active
+    const roomDoc = await adminDb.collection('examRooms').doc(body.roomId).get();
+    if (!roomDoc.exists || roomDoc.data()?.status !== 'active') return badRequest('Room is closed');
+
+    // Fix #4: Server-side score recalculation
+    const questionsSnap = await adminDb.collection('exams').doc(body.examId).collection('questions').orderBy('order').get();
+    const questions = questionsSnap.docs.map((d: any) => ({ id: d.id, ...d.data() }));
+    const examDoc = await adminDb.collection('exams').doc(body.examId).get();
+    const passScore = examDoc.exists ? (examDoc.data()?.passScore || 60) : 60;
+
+    const studentAnswers = body.answers || {};
+    let score = 0;
+    let totalPoints = 0;
+    const questionResults: any[] = [];
+
+    for (const q of questions) {
+      const points = q.points || 1;
+      totalPoints += points;
+      const studentAnswer = studentAnswers[q.id];
+      let isCorrect = false;
+
+      if (q.type === 'multiple_choice' || q.type === 'true_false') {
+        isCorrect = studentAnswer === q.correctAnswer;
+      } else if (q.type === 'multi_select') {
+        const correct = Array.isArray(q.correctAnswer) ? [...q.correctAnswer].sort() : [];
+        const student = Array.isArray(studentAnswer) ? [...studentAnswer].sort() : [];
+        isCorrect = JSON.stringify(correct) === JSON.stringify(student);
+      } else if (q.type === 'short_answer') {
+        isCorrect = String(studentAnswer || '').trim().toLowerCase() === String(q.correctAnswer || '').trim().toLowerCase();
+      } else {
+        // open_ended — needs manual review
+        questionResults.push({
+          questionId: q.id, questionText: q.text || q.question || '',
+          studentAnswer, correctAnswer: q.correctAnswer,
+          isCorrect: false, pointsEarned: 0, pointsPossible: points,
+          status: 'pending_review',
+        });
+        continue;
+      }
+
+      if (isCorrect) score += points;
+      questionResults.push({
+        questionId: q.id, questionText: q.text || q.question || '',
+        studentAnswer, correctAnswer: q.correctAnswer,
+        isCorrect, pointsEarned: isCorrect ? points : 0, pointsPossible: points,
+        status: isCorrect ? 'correct' : 'incorrect',
+      });
+    }
+
+    const percentage = totalPoints > 0 ? Math.round((score / totalPoints) * 100) : 0;
+    const passed = percentage >= passScore;
+
     const now = new Date().toISOString();
     const data = {
       examId: body.examId, examTitle: body.examTitle || '', roomId: body.roomId,
       roomCode: body.roomCode || '', studentId: user.uid, studentName: user.displayName,
-      answers: body.answers || {}, questionResults: body.questionResults || [],
-      score: body.score || 0, totalPoints: body.totalPoints || 0,
-      percentage: body.percentage || 0, passed: body.passed || false,
+      answers: studentAnswers, questionResults,
+      score, totalPoints, percentage, passed,
       organizationId: user.organizationId || '',
       startedAt: body.startedAt || now, submittedAt: now,
       timeSpentSeconds: body.timeSpentSeconds || 0, createdAt: now,

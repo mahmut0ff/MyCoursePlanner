@@ -4,6 +4,7 @@
  */
 import type { Handler, HandlerEvent } from '@netlify/functions';
 import { adminDb } from './utils/firebase-admin';
+import { verifyAuth, isStaff } from './utils/auth';
 
 const HEADERS = {
   'Content-Type': 'application/json',
@@ -42,6 +43,12 @@ const handler: Handler = async (event: HandlerEvent) => {
     return { statusCode: 405, headers: HEADERS, body: JSON.stringify({ error: 'Method not allowed' }) };
   }
 
+  // Auth check
+  const user = await verifyAuth(event);
+  if (!user) {
+    return { statusCode: 401, headers: HEADERS, body: JSON.stringify({ error: 'Unauthorized' }) };
+  }
+
   try {
     const { attemptId } = JSON.parse(event.body || '{}');
     if (!attemptId) {
@@ -54,6 +61,12 @@ const handler: Handler = async (event: HandlerEvent) => {
     }
 
     const attempt = attemptDoc.data()!;
+
+    // Ownership check — only the student who took the exam or staff can request feedback
+    if (attempt.studentId !== user.uid && !isStaff(user)) {
+      return { statusCode: 403, headers: HEADERS, body: JSON.stringify({ error: 'Forbidden' }) };
+    }
+
     const questionResults = attempt.questionResults || [];
     const incorrect = questionResults.filter((r: any) => !r.isCorrect);
     const correct = questionResults.filter((r: any) => r.isCorrect);
@@ -104,3 +117,4 @@ Keep feedback constructive, specific, and encouraging.`;
 };
 
 export { handler };
+

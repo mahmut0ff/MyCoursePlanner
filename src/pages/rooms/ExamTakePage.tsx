@@ -3,16 +3,17 @@ import toast from 'react-hot-toast';
 import { useParams, useNavigate } from 'react-router-dom';
 import { getRoom } from '../../services/rooms.service';
 import { getExam, getQuestions } from '../../services/exams.service';
-import { saveAttempt } from '../../services/attempts.service';
+import { apiSaveAttempt } from '../../lib/api';
+import { auth } from '../../lib/firebase';
 import { useAuth } from '../../contexts/AuthContext';
-import { gradeAttempt, shuffleArray, formatTime } from '../../utils/grading';
+import { shuffleArray, formatTime } from '../../utils/grading';
 import type { ExamRoom, Exam, Question } from '../../types';
 import { Clock, ChevronLeft, ChevronRight, Send, AlertTriangle } from 'lucide-react';
 
 const ExamTakePage: React.FC = () => {
   const { roomId } = useParams<{ roomId: string }>();
   const navigate = useNavigate();
-  const { profile } = useAuth();
+  useAuth();
 
   const [room, setRoom] = useState<ExamRoom | null>(null);
   const [exam, setExam] = useState<Exam | null>(null);
@@ -80,42 +81,33 @@ const ExamTakePage: React.FC = () => {
     if (submitting || submitted) return;
     setSubmitting(true);
     try {
-      const { questionResults, score, totalPoints, percentage } = gradeAttempt(questions, answers);
-      const now = new Date().toISOString();
       const startTime = new Date(startRef.current).getTime();
       const timeSpentSeconds = Math.floor((Date.now() - startTime) / 1000);
 
-      const attemptId = await saveAttempt({
+      // Send to API — server recalculates score
+      const result = await apiSaveAttempt({
         examId: exam!.id,
         examTitle: exam!.title,
         roomId: room!.id,
         roomCode: room!.code,
-        studentId: profile!.uid,
-        studentName: profile!.displayName,
         answers,
-        questionResults,
-        score,
-        totalPoints,
-        percentage,
-        passed: percentage >= (exam!.passScore || 60),
         startedAt: startRef.current,
-        submittedAt: now,
         timeSpentSeconds,
-        createdAt: now,
       });
 
       setSubmitted(true);
 
-      // Trigger AI feedback in background
+      // Trigger AI feedback in background (with auth)
       try {
+        const token = await auth.currentUser?.getIdToken();
         fetch('/.netlify/functions/ai-feedback', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ attemptId }),
+          headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+          body: JSON.stringify({ attemptId: result.id }),
         }).catch(() => {});
       } catch {}
 
-      navigate(`/results/${attemptId}`);
+      navigate(`/results/${result.id}`);
     } catch (e) {
       console.error('Submit failed:', e);
       toast.error('Failed to submit exam. Please try again.');

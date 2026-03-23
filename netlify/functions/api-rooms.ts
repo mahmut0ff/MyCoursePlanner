@@ -60,8 +60,13 @@ const handler: Handler = async (event: HandlerEvent) => {
       const roomRef = adminDb.collection(COLLECTION).doc(body.roomId);
       const roomDoc = await roomRef.get();
       if (!roomDoc.exists) return notFound('Room not found');
-      if (roomDoc.data()?.status !== 'active') return badRequest('Room is closed');
-      const participants: string[] = roomDoc.data()?.participants || [];
+      const roomData = roomDoc.data()!;
+      if (roomData.status !== 'active') return badRequest('Room is closed');
+      // Fix #3: Org membership check
+      if (roomData.organizationId && user.organizationId && roomData.organizationId !== user.organizationId) {
+        return forbidden();
+      }
+      const participants: string[] = roomData.participants || [];
       if (!participants.includes(user.uid)) {
         await roomRef.update({ participants: [...participants, user.uid] });
       }

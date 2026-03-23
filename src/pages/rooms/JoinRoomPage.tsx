@@ -1,8 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { getRoomByCode, joinRoom } from '../../services/rooms.service';
-import { useAuth } from '../../contexts/AuthContext';
+import { apiGetRoomByCode, apiJoinRoom } from '../../lib/api';
 import { Radio, ArrowRight } from 'lucide-react';
 
 const JoinRoomPage: React.FC = () => {
@@ -11,7 +10,6 @@ const JoinRoomPage: React.FC = () => {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
-  const { profile } = useAuth();
 
   const handleJoin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -19,9 +17,9 @@ const JoinRoomPage: React.FC = () => {
     if (!code.trim()) { setError(t('rooms.enterCodeError')); return; }
     setLoading(true);
     try {
-      const room = await getRoomByCode(code.trim().toUpperCase());
+      const room = await apiGetRoomByCode(code.trim().toUpperCase());
       if (!room) { setError(t('rooms.notFound')); setLoading(false); return; }
-      await joinRoom(room.id, profile!.uid);
+      await apiJoinRoom(room.id);
       navigate(`/take/${room.id}`);
     } catch (e: any) {
       setError(e.message || t('rooms.joinFailed'));

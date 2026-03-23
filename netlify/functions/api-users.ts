@@ -78,7 +78,22 @@ const handler: Handler = async (event: HandlerEvent) => {
       return ok({ declined: true });
     }
 
-    // ═══ TEACHER PROFILE (global portfolio) ═══
+    // ═══ LEAVE ORGANIZATION ═══
+    if (action === 'leaveOrganization' && event.httpMethod === 'POST') {
+      if (!user.organizationId) return badRequest('Not in any organization');
+      const orgId = user.organizationId;
+      await adminDb.collection('users').doc(user.uid).update({
+        organizationId: '', organizationName: '', updatedAt: now(),
+      });
+      // Notify org admins
+      notifyOrgAdmins(
+        orgId, 'invite_declined',
+        'Преподаватель покинул организацию',
+        `${user.displayName || user.email} покинул(а) организацию`,
+        '/teachers',
+      ).catch(() => {});
+      return ok({ left: true });
+    }
     if (action === 'teacherProfile') {
       if (event.httpMethod === 'GET') {
         const uid = params.uid || user.uid;

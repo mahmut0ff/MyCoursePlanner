@@ -42,6 +42,8 @@ const VacancyDetailPage: React.FC = () => {
       await vacApplyToVacancy(id, coverLetter.trim());
       setApplied(true);
       setShowApply(false);
+      // Update local count instantly
+      setVacancy(prev => prev ? { ...prev, applicationsCount: (prev.applicationsCount || 0) + 1 } : prev);
     } catch (e: any) {
       setError(e.message || 'Error');
     } finally {

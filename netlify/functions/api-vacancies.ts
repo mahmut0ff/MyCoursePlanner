@@ -173,15 +173,17 @@ const handler: Handler = async (event: HandlerEvent) => {
     // ---- Teacher: My applications ----
     if (action === 'myApplications') {
       if (!hasRole(auth, 'teacher')) return forbidden();
-      const snap = await adminDb.collection(APPLICATIONS).where('teacherId', '==', auth.uid).orderBy('createdAt', 'desc').get();
-      return ok(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+      const snap = await adminDb.collection(APPLICATIONS).where('teacherId', '==', auth.uid).get();
+      const sorted = snap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a: any, b: any) => (b.createdAt || '').localeCompare(a.createdAt || ''));
+      return ok(sorted);
     }
 
     // ---- Org Admin: Vacancy applications ----
     if (action === 'vacancyApplications') {
       if (!hasRole(auth, 'admin')) return forbidden();
-      const snap = await adminDb.collection(APPLICATIONS).where('vacancyId', '==', params.vacancyId).orderBy('createdAt', 'desc').get();
-      return ok(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+      const snap = await adminDb.collection(APPLICATIONS).where('vacancyId', '==', params.vacancyId).get();
+      const sorted = snap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a: any, b: any) => (b.createdAt || '').localeCompare(a.createdAt || ''));
+      return ok(sorted);
     }
 
     // ---- Org Admin: Org's vacancies ----

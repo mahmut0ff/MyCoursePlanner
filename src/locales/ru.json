@@ -586,7 +586,15 @@
     "experiencePlaceholder": "Опишите ваш опыт преподавания...",
     "socialLinks": "Ссылки",
     "noSocialLinks": "Нет ссылок. Добавьте ваши соц. сети или портфолио.",
-    "platformPlaceholder": "Telegram, LinkedIn..."
+    "platformPlaceholder": "Telegram, LinkedIn...",
+    "role": "Преподаватель",
+    "joined": "Дата вступления",
+    "groupsAndCourses": "Группы и курсы",
+    "course": "Курс",
+    "students": "учеников",
+    "noProfileYet": "Преподаватель ещё не заполнил профиль",
+    "leaveOrg": "Покинуть организацию",
+    "leaveOrgConfirm": "Вы уверены, что хотите покинуть организацию? Вы потеряете доступ ко всем данным."
   },
   "invites": {
     "title": "Приглашения",

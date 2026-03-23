@@ -3,12 +3,12 @@ import { NavLink, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../contexts/AuthContext';
 import { signOut } from '../../services/auth.service';
-import { apiGetPendingInviteCount } from '../../lib/api';
+import { apiGetPendingInviteCount, apiLeaveOrganization } from '../../lib/api';
 import {
   GraduationCap, LayoutDashboard, BookOpen, ClipboardList, Radio,
   BarChart3, LogOut, CreditCard, Users, Building2, Activity,
   Settings, Server, Shield, Puzzle, Tag, Zap, FolderOpen, UsersRound,
-  Calendar, FileText, Trophy, UserPlus, MailOpen, UserCircle2, Briefcase,
+  Calendar, FileText, Trophy, UserPlus, MailOpen, UserCircle2, Briefcase, DoorOpen,
 } from 'lucide-react';
 
 const Sidebar: React.FC<{ open: boolean; onClose: () => void }> = ({ open, onClose }) => {
@@ -215,6 +215,18 @@ const Sidebar: React.FC<{ open: boolean; onClose: () => void }> = ({ open, onClo
               <NavLink to="/my-applications" className={linkClass} onClick={onClose}>
                 <Briefcase className="w-4 h-4" />{t('nav.myApplications')}
               </NavLink>
+              {organizationId && (
+                <button
+                  onClick={() => {
+                    if (confirm(t('teacher.leaveOrgConfirm'))) {
+                      apiLeaveOrganization().then(() => window.location.reload());
+                    }
+                  }}
+                  className="flex items-center gap-3 px-3 py-2 text-xs rounded-lg text-red-400 hover:bg-red-500/10 hover:text-red-300 transition-colors w-full mt-2"
+                >
+                  <DoorOpen className="w-4 h-4" />{t('teacher.leaveOrg')}
+                </button>
+              )}
             </>
           ) : role === 'student' ? (
             <>

@@ -229,6 +229,7 @@ export const apiGetPendingInviteCount = () => userReq<{ count: number }>('pendin
 export const apiGetMyInvites = () => userReq('myInvites');
 export const apiAcceptInvite = (inviteId: string) => userReq('acceptInvite', 'POST', { inviteId });
 export const apiDeclineInvite = (inviteId: string) => userReq('declineInvite', 'POST', { inviteId });
+export const apiLeaveOrganization = () => userReq('leaveOrganization', 'POST');
 
 // Teacher Profile
 export const apiGetTeacherProfile = (uid?: string) => userReq('teacherProfile', 'GET', undefined, uid ? { uid } : undefined);

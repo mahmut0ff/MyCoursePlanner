@@ -3,12 +3,15 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { signUp, signInWithGoogle } from '../../services/auth.service';
 import { createUser, getUser } from '../../services/users.service';
-import { GraduationCap, Mail, Lock, User, Eye, EyeOff, Building2 } from 'lucide-react';
+import { GraduationCap, Mail, Lock, User, Eye, EyeOff, Building2, BookOpenCheck, School } from 'lucide-react';
 import LanguageSwitcher from '../../components/LanguageSwitcher';
+
+type RegRole = 'admin' | 'teacher';
 
 const RegisterPage: React.FC = () => {
   const { t } = useTranslation();
-  const [step, setStep] = useState<'account' | 'org'>('account');
+  const [regRole, setRegRole] = useState<RegRole>('admin');
+  const [step, setStep] = useState<'role' | 'account' | 'org'>('role');
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -18,18 +21,46 @@ const RegisterPage: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
+  const totalSteps = regRole === 'admin' ? 3 : 2;
+  const currentStep = step === 'role' ? 1 : step === 'account' ? 2 : 3;
+
+  const handleRoleStep = (role: RegRole) => {
+    setRegRole(role);
+    setStep('account');
+  };
+
   const handleAccountStep = (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
-    if (!name || !email || !password) { setError('Please fill in all fields'); return; }
-    if (password.length < 6) { setError('Password must be at least 6 characters'); return; }
-    setStep('org');
+    if (!name || !email || !password) { setError(t('auth.fillAllFields')); return; }
+    if (password.length < 6) { setError(t('auth.passwordMinLength')); return; }
+    if (regRole === 'admin') {
+      setStep('org');
+    } else {
+      handleTeacherSubmit();
+    }
+  };
+
+  const handleTeacherSubmit = async () => {
+    setError('');
+    setLoading(true);
+    try {
+      const cred = await signUp(email, password, name);
+      await createUser(cred.user.uid, email, name, 'teacher');
+      navigate('/teacher-profile');
+    } catch (err: any) {
+      console.error('Registration error:', err);
+      if (err.message?.includes('already')) setError(t('auth.emailInUse'));
+      else setError(`${t('auth.regFailed')}: ${err.message || ''}`);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleFinalSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
-    if (!orgName.trim()) { setError('Organization name is required'); return; }
+    if (!orgName.trim()) { setError(t('auth.orgRequired')); return; }
     setLoading(true);
     try {
       const cred = await signUp(email, password, name);
@@ -53,8 +84,8 @@ const RegisterPage: React.FC = () => {
       navigate('/dashboard');
     } catch (err: any) {
       console.error('Registration error:', err);
-      if (err.message?.includes('already')) setError('Email already in use');
-      else setError(`Registration failed: ${err.message || 'Please try again.'}`);
+      if (err.message?.includes('already')) setError(t('auth.emailInUse'));
+      else setError(`${t('auth.regFailed')}: ${err.message || ''}`);
     } finally {
       setLoading(false);
     }
@@ -68,30 +99,36 @@ const RegisterPage: React.FC = () => {
       const user = cred.user;
       const existing = await getUser(user.uid);
       if (!existing) {
-        await createUser(user.uid, user.email || '', user.displayName || 'User', 'student');
+        const role = regRole === 'teacher' ? 'teacher' : 'student';
+        await createUser(user.uid, user.email || '', user.displayName || 'User', role);
       }
-      navigate('/dashboard');
+      navigate(regRole === 'teacher' ? '/teacher-profile' : '/dashboard');
     } catch (err: any) {
       if (err.code !== 'auth/popup-closed-by-user') {
-        setError('Google sign-in failed. Please try again.');
+        setError(t('auth.googleFailed'));
       }
     } finally {
       setLoading(false);
     }
   };
 
+  // Decorative left panel text
+  const leftTitle = regRole === 'teacher'
+    ? t('auth.teacherLeftTitle')
+    : t('auth.orgLeftTitle');
+  const leftSubtitle = regRole === 'teacher'
+    ? t('auth.teacherLeftSubtitle')
+    : t('auth.registerSubtitle');
+
   return (
     <div className="min-h-screen flex">
       {/* ═══ Left Decorative Panel ═══ */}
       <div className="hidden lg:flex lg:w-[55%] relative bg-gradient-to-br from-[#4e7cf6] via-[#5b8bf7] to-[#7ba4f9] overflow-hidden">
-        {/* Abstract shapes */}
         <div className="absolute top-[-80px] right-[-60px] w-[300px] h-[300px] rounded-full bg-white/10" />
         <div className="absolute bottom-[-120px] right-[80px] w-[400px] h-[400px] rounded-full border-[3px] border-white/20" />
         <div className="absolute bottom-[-60px] right-[140px] w-[280px] h-[280px] rounded-full border-[3px] border-white/15" />
         <div className="absolute bottom-[40px] right-[60px] w-6 h-6 rounded-full bg-cyan-300/80" />
         <div className="absolute bottom-[120px] right-[320px] w-4 h-4 rounded-full bg-white/40" />
-
-        {/* Dots grid */}
         <div className="absolute top-[80px] left-[40px] grid grid-cols-6 gap-1.5">
           {Array.from({ length: 30 }).map((_, i) => (
             <div key={i} className="w-1 h-1 rounded-full bg-white/25" />
@@ -102,40 +139,25 @@ const RegisterPage: React.FC = () => {
             <div key={i} className="w-1 h-1 rounded-full bg-white/20" />
           ))}
         </div>
-
-        {/* Geometric decorations */}
         <div className="absolute top-[60px] right-[180px]">
           <div className="w-12 h-12 rounded-full border-2 border-white/30 flex items-center justify-center">
             <div className="w-4 h-4 rounded-full bg-white/30" />
           </div>
         </div>
-        <div className="absolute top-[80px] left-[120px]">
-          <div className="flex flex-col gap-1 items-center">
-            <div className="w-6 h-16 rounded-full border-2 border-white/25" />
-            <div className="w-6 h-24 rounded-full border-2 border-white/25" />
-            <div className="w-6 h-20 rounded-full border-2 border-white/25" />
-          </div>
-        </div>
-
         <div className="absolute bottom-[200px] left-[50%] text-white/30 text-2xl font-bold">✕</div>
-
-        {/* Main text */}
         <div className="relative z-10 flex flex-col justify-center px-16">
           <h1 className="text-5xl font-extrabold text-white leading-tight mb-4">
-            Создайте<br/>свою<br/>организацию
+            {leftTitle.split('\n').map((line: string, i: number) => (
+              <React.Fragment key={i}>{line}<br/></React.Fragment>
+            ))}
           </h1>
-          <p className="text-white/70 text-lg max-w-sm">
-            {t('auth.registerSubtitle')}
-          </p>
+          <p className="text-white/70 text-lg max-w-sm">{leftSubtitle}</p>
         </div>
       </div>
 
       {/* ═══ Right Form Panel ═══ */}
       <div className="flex-1 flex items-center justify-center p-6 md:p-12 bg-white dark:bg-slate-900 relative">
-        {/* Language Switcher */}
-        <div className="absolute top-4 right-4">
-          <LanguageSwitcher />
-        </div>
+        <div className="absolute top-4 right-4"><LanguageSwitcher /></div>
 
         <div className="w-full max-w-md">
           {/* Logo */}
@@ -148,8 +170,9 @@ const RegisterPage: React.FC = () => {
 
           {/* Progress */}
           <div className="flex items-center gap-3 mb-6">
-            <div className={`flex-1 h-1.5 rounded-full transition-colors ${step === 'account' ? 'bg-primary-500' : 'bg-primary-500'}`} />
-            <div className={`flex-1 h-1.5 rounded-full transition-colors ${step === 'org' ? 'bg-primary-500' : 'bg-slate-200 dark:bg-slate-700'}`} />
+            {Array.from({ length: totalSteps }).map((_, i) => (
+              <div key={i} className={`flex-1 h-1.5 rounded-full transition-colors ${i < currentStep ? 'bg-primary-500' : 'bg-slate-200 dark:bg-slate-700'}`} />
+            ))}
           </div>
 
           {error && (
@@ -158,10 +181,44 @@ const RegisterPage: React.FC = () => {
             </div>
           )}
 
-          {step === 'account' ? (
+          {/* ═══ Step: Role Selection ═══ */}
+          {step === 'role' && (
+            <>
+              <p className="text-slate-500 dark:text-slate-400 text-sm mb-5 text-center">{t('auth.chooseRole')}</p>
+              <div className="space-y-3">
+                <button
+                  onClick={() => handleRoleStep('admin')}
+                  className="w-full flex items-center gap-4 p-4 rounded-xl border-2 border-slate-200 dark:border-slate-700 hover:border-primary-500 dark:hover:border-primary-500 bg-white dark:bg-slate-800 hover:bg-primary-50 dark:hover:bg-primary-900/10 transition-all group"
+                >
+                  <div className="w-12 h-12 bg-gradient-to-br from-primary-500 to-primary-600 rounded-xl flex items-center justify-center shrink-0 shadow-lg shadow-primary-200/50 dark:shadow-primary-900/30">
+                    <School className="w-6 h-6 text-white" />
+                  </div>
+                  <div className="text-left">
+                    <p className="font-semibold text-slate-900 dark:text-white group-hover:text-primary-600 dark:group-hover:text-primary-400 transition-colors">{t('auth.roleOrgAdmin')}</p>
+                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">{t('auth.roleOrgAdminDesc')}</p>
+                  </div>
+                </button>
+
+                <button
+                  onClick={() => handleRoleStep('teacher')}
+                  className="w-full flex items-center gap-4 p-4 rounded-xl border-2 border-slate-200 dark:border-slate-700 hover:border-violet-500 dark:hover:border-violet-500 bg-white dark:bg-slate-800 hover:bg-violet-50 dark:hover:bg-violet-900/10 transition-all group"
+                >
+                  <div className="w-12 h-12 bg-gradient-to-br from-violet-500 to-purple-600 rounded-xl flex items-center justify-center shrink-0 shadow-lg shadow-violet-200/50 dark:shadow-violet-900/30">
+                    <BookOpenCheck className="w-6 h-6 text-white" />
+                  </div>
+                  <div className="text-left">
+                    <p className="font-semibold text-slate-900 dark:text-white group-hover:text-violet-600 dark:group-hover:text-violet-400 transition-colors">{t('auth.roleTeacher')}</p>
+                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">{t('auth.roleTeacherDesc')}</p>
+                  </div>
+                </button>
+              </div>
+            </>
+          )}
+
+          {/* ═══ Step: Account ═══ */}
+          {step === 'account' && (
             <>
               <p className="text-slate-500 dark:text-slate-400 text-sm mb-5">{t('auth.step1')}</p>
-
               <form onSubmit={handleAccountStep} className="space-y-4">
                 <div>
                   <label className="label">{t('auth.fullName')}</label>
@@ -187,17 +244,20 @@ const RegisterPage: React.FC = () => {
                     </button>
                   </div>
                 </div>
-                <button type="submit" className="btn-primary w-full !py-3 !rounded-xl text-base">{t('auth.continue')}</button>
+                <div className="flex gap-3 pt-1">
+                  <button type="button" onClick={() => setStep('role')} className="btn-secondary flex-1 !py-3 !rounded-xl">{t('common.back')}</button>
+                  <button type="submit" disabled={loading} className="btn-primary flex-1 !py-3 !rounded-xl">
+                    {loading && regRole === 'teacher' ? t('auth.creating') : t('auth.continue')}
+                  </button>
+                </div>
               </form>
 
-              {/* Divider */}
               <div className="flex items-center gap-4 my-5">
                 <div className="flex-1 h-px bg-slate-200 dark:bg-slate-700" />
                 <span className="text-sm text-slate-400">or</span>
                 <div className="flex-1 h-px bg-slate-200 dark:bg-slate-700" />
               </div>
 
-              {/* Google button */}
               <button
                 onClick={handleGoogleRegister}
                 disabled={loading}
@@ -212,10 +272,12 @@ const RegisterPage: React.FC = () => {
                 Google
               </button>
             </>
-          ) : (
+          )}
+
+          {/* ═══ Step: Organization ═══ */}
+          {step === 'org' && (
             <>
               <p className="text-slate-500 dark:text-slate-400 text-sm mb-5">{t('auth.step2')}</p>
-
               <form onSubmit={handleFinalSubmit} className="space-y-4">
                 <div>
                   <label className="label">{t('auth.orgName')}</label>
@@ -224,7 +286,6 @@ const RegisterPage: React.FC = () => {
                     <input type="text" value={orgName} onChange={(e) => setOrgName(e.target.value)} className="input pl-11" placeholder={t('auth.orgNamePlaceholder')} />
                   </div>
                 </div>
-
                 <div className="flex gap-3 pt-2">
                   <button type="button" onClick={() => setStep('account')} className="btn-secondary flex-1 !py-3 !rounded-xl">{t('common.back')}</button>
                   <button type="submit" disabled={loading} className="btn-primary flex-1 !py-3 !rounded-xl">

@@ -216,3 +216,20 @@ export const orgUpdateSettings = (data: any) => orgReq('updateOrgSettings', 'POS
 
 // Org Dashboard
 export const orgGetDashboardStats = () => orgReq('dashboardStats');
+
+// ============================================================
+// TEACHER / INVITES API (via api-users, works without org)
+// ============================================================
+
+const userReq = <T = any>(action: string, method = 'GET', body?: any, extra?: Record<string, string>) =>
+  apiRequest<T>('api-users', method, body, { action, ...extra });
+
+// Invites
+export const apiGetMyInvites = () => userReq('myInvites');
+export const apiAcceptInvite = (inviteId: string) => userReq('acceptInvite', 'POST', { inviteId });
+export const apiDeclineInvite = (inviteId: string) => userReq('declineInvite', 'POST', { inviteId });
+
+// Teacher Profile
+export const apiGetTeacherProfile = (uid?: string) => userReq('teacherProfile', 'GET', undefined, uid ? { uid } : undefined);
+export const apiUpdateTeacherProfile = (data: any) => userReq('teacherProfile', 'PUT', data);
+

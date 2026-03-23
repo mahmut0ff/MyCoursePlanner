@@ -123,6 +123,28 @@ export interface UserProfile {
   updatedAt: string;
 }
 
+export interface TeacherProfile {
+  uid: string;
+  bio: string;
+  specialization: string;
+  experience: string;
+  avatarUrl: string;
+  socialLinks: { platform: string; url: string }[];
+  updatedAt: string;
+}
+
+export interface Invite {
+  id: string;
+  email: string;
+  role: string;
+  organizationId: string;
+  organizationName?: string;
+  invitedBy: string;
+  invitedByName?: string;
+  status: 'pending' | 'accepted' | 'declined';
+  createdAt: string;
+}
+
 // ---- Lesson Plans ----
 
 export interface LessonPlan {

@@ -246,6 +246,9 @@ const handler: Handler = async (event: HandlerEvent) => {
       if (!hasRole(user, 'admin')) return forbidden();
       const body = JSON.parse(event.body || '{}');
       if (!body.email || !body.role) return badRequest('email and role required');
+      // Look up org name
+      const orgDoc = await adminDb.collection('organizations').doc(orgId).get();
+      const organizationName = orgDoc.exists ? orgDoc.data()?.name || '' : '';
       // Check if user already exists
       const existing = await adminDb.collection('users').where('email', '==', body.email).get();
       if (!existing.empty) {
@@ -260,7 +263,8 @@ const handler: Handler = async (event: HandlerEvent) => {
       // Create pending invite record
       const data = {
         email: body.email, role: body.role,
-        organizationId: orgId, invitedBy: user.uid,
+        organizationId: orgId, organizationName,
+        invitedBy: user.uid, invitedByName: user.displayName,
         status: 'pending', createdAt: now(),
       };
       const ref = await adminDb.collection('invites').add(data);

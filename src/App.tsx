@@ -31,6 +31,8 @@ import SchedulePage from './pages/schedule/SchedulePage';
 import OrgResultsPage from './pages/results/ResultsPage';
 import OrgUsersPage from './pages/org-users/OrgUsersPage';
 import OrgSettingsPage from './pages/org-settings/OrgSettingsPage';
+import TeacherProfilePage from './pages/teacher-profile/TeacherProfilePage';
+import TeacherInvitesPage from './pages/invites/TeacherInvitesPage';
 
 // Admin Pages
 import AdminDashboardPage from './pages/admin/AdminDashboardPage';
@@ -95,6 +97,10 @@ const App: React.FC = () => {
             <Route path="students" element={<ProtectedRoute allowedRoles={['admin', 'teacher']}><StudentsPage /></ProtectedRoute>} />
             <Route path="teachers" element={<ProtectedRoute allowedRoles={['admin', 'teacher']}><TeachersPage /></ProtectedRoute>} />
             <Route path="org-users" element={<ProtectedRoute allowedRoles={['admin']}><OrgUsersPage /></ProtectedRoute>} />
+
+            {/* ═══ Teacher (global) ═══ */}
+            <Route path="teacher-profile" element={<ProtectedRoute allowedRoles={['teacher']}><TeacherProfilePage /></ProtectedRoute>} />
+            <Route path="invites" element={<ProtectedRoute allowedRoles={['teacher']}><TeacherInvitesPage /></ProtectedRoute>} />
 
             {/* ═══ Org Admin: Organization ═══ */}
             <Route path="schedule" element={<ProtectedRoute allowedRoles={['admin', 'teacher']}><SchedulePage /></ProtectedRoute>} />

@@ -7,12 +7,12 @@ import {
   GraduationCap, LayoutDashboard, BookOpen, ClipboardList, Radio,
   BarChart3, LogOut, CreditCard, Users, Building2, Activity,
   Settings, Server, Shield, Puzzle, Tag, Zap, FolderOpen, UsersRound,
-  Calendar, FileText, Trophy, UserPlus,
+  Calendar, FileText, Trophy, UserPlus, MailOpen, UserCircle2,
 } from 'lucide-react';
 
 const Sidebar: React.FC<{ open: boolean; onClose: () => void }> = ({ open, onClose }) => {
   const { t } = useTranslation();
-  const { profile, role, isSuperAdmin, isStaff } = useAuth();
+  const { profile, role, isSuperAdmin, isStaff, isTeacher } = useAuth();
   const navigate = useNavigate();
 
   const handleSignOut = async () => {
@@ -143,6 +143,19 @@ const Sidebar: React.FC<{ open: boolean; onClose: () => void }> = ({ open, onClo
                       <Settings className="w-4 h-4" />{t('nav.settings')}
                     </NavLink>
                   )}
+                </>
+              )}
+
+              {/* Teacher without org — show profile & invites */}
+              {isTeacher && (
+                <>
+                  {sectionTitle(t('nav.teacherSection'))}
+                  <NavLink to="/teacher-profile" className={linkClass} onClick={onClose}>
+                    <UserCircle2 className="w-4 h-4" />{t('nav.myProfile')}
+                  </NavLink>
+                  <NavLink to="/invites" className={linkClass} onClick={onClose}>
+                    <MailOpen className="w-4 h-4" />{t('nav.invites')}
+                  </NavLink>
                 </>
               )}
 

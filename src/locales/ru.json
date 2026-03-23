@@ -36,7 +36,10 @@
     "results": "Результаты",
     "education": "Образование",
     "examsSection": "Экзамены",
-    "people": "Люди"
+    "people": "Люди",
+    "teacherSection": "Преподаватель",
+    "myProfile": "Мой профиль",
+    "invites": "Приглашения"
   },
   "auth": {
     "login": "Войти",
@@ -59,7 +62,21 @@
     "creating": "Создание аккаунта...",
     "signingIn": "Вход...",
     "continue": "Продолжить",
-    "createAccount": "Создать аккаунт"
+    "createAccount": "Создать аккаунт",
+    "chooseRole": "Выберите тип аккаунта",
+    "roleOrgAdmin": "Создаю организацию",
+    "roleOrgAdminDesc": "Создайте школу или учебный центр и управляйте преподавателями",
+    "roleTeacher": "Я преподаватель",
+    "roleTeacherDesc": "Создайте профиль и присоединяйтесь к организациям",
+    "fillAllFields": "Заполните все поля",
+    "passwordMinLength": "Пароль должен быть не менее 6 символов",
+    "emailInUse": "Этот email уже используется",
+    "regFailed": "Ошибка регистрации",
+    "orgRequired": "Название организации обязательно",
+    "googleFailed": "Ошибка входа через Google",
+    "orgLeftTitle": "Создайте\nсвою\nорганизацию",
+    "teacherLeftTitle": "Станьте\nпреподавателем",
+    "teacherLeftSubtitle": "Создайте профиль и начните преподавать"
   },
   "dashboard": {
     "title": "Главная",
@@ -489,7 +506,11 @@
       "roleAdmin": "Администратор",
       "sendInvite": "Отправить приглашение",
       "courses": "Курсы",
-      "groups": "Группы"
+      "groups": "Группы",
+      "inviteSent": "Приглашение отправлено!",
+      "inviteDesc": "Отправьте приглашение преподавателю по email",
+      "inviteEmailPlaceholder": "Email преподавателя",
+      "created": "Преподаватель создан!"
     },
     "materials": {
       "subtitle": "Учебные материалы и ресурсы",
@@ -548,5 +569,30 @@
       "scaleLetter": "Буквенная оценка",
       "scalePoints": "Баллы"
     }
+  },
+  "teacher": {
+    "profileTitle": "Мой профиль",
+    "profileSubtitle": "Ваше портфолио — видно организациям",
+    "profileSaved": "Профиль сохранён!",
+    "bio": "О себе",
+    "bioPlaceholder": "Расскажите о себе, вашем опыте и подходе к преподаванию...",
+    "specialization": "Специализация",
+    "specializationPlaceholder": "напр. Математика, Физика, Программирование",
+    "experience": "Опыт работы",
+    "experiencePlaceholder": "Опишите ваш опыт преподавания...",
+    "socialLinks": "Ссылки",
+    "noSocialLinks": "Нет ссылок. Добавьте ваши соц. сети или портфолио.",
+    "platformPlaceholder": "Telegram, LinkedIn..."
+  },
+  "invites": {
+    "title": "Приглашения",
+    "subtitle": "Приглашения от организаций",
+    "empty": "У вас нет приглашений",
+    "accept": "Принять",
+    "decline": "Отклонить",
+    "accepted": "Приглашение принято!",
+    "declined": "Приглашение отклонено",
+    "invitedBy": "Пригласил",
+    "unknownOrg": "Неизвестная организация"
   }
 }

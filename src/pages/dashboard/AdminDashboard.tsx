@@ -9,6 +9,8 @@ import { getAllAttempts } from '../../services/attempts.service';
 import type { LessonPlan, Exam, ExamRoom, ExamAttempt } from '../../types';
 import { formatDate } from '../../utils/grading';
 import { BookOpen, ClipboardList, Radio, Users, TrendingUp, ArrowRight, Plus } from 'lucide-react';
+import { DashboardSkeleton } from '../../components/ui/Skeleton';
+import OnboardingWizard from '../../components/onboarding/OnboardingWizard';
 
 const AdminDashboard: React.FC = () => {
   const { t } = useTranslation();
@@ -25,7 +27,7 @@ const AdminDashboard: React.FC = () => {
       .finally(() => setLoading(false));
   }, []);
 
-  if (loading) return <div className="flex items-center justify-center py-20"><div className="w-8 h-8 border-4 border-primary-200 border-t-primary-600 rounded-full animate-spin dark:border-primary-800 dark:border-t-primary-400" /></div>;
+  if (loading) return <DashboardSkeleton />;
 
   const avgScore = attempts.length > 0 ? Math.round(attempts.reduce((s, a) => s + a.percentage, 0) / attempts.length) : 0;
 
@@ -47,6 +49,9 @@ const AdminDashboard: React.FC = () => {
           <Link to="/lessons/new" className="btn-primary flex items-center gap-2 !py-2 text-sm"><Plus className="w-4 h-4" />{t('dashboard.createLesson')}</Link>
         </div>
       </div>
+
+      {/* Onboarding */}
+      <OnboardingWizard lessonsCount={lessons.length} examsCount={exams.length} />
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">

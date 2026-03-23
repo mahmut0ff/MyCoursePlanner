@@ -781,5 +781,20 @@
     "ctaSubtitle": "Join hundreds of educational organizations",
     "ctaButton": "Create account",
     "rights": "All rights reserved."
+  },
+  "onboarding": {
+    "badge": "Getting Started",
+    "title": "Welcome! Set up your platform",
+    "subtitle": "Complete these steps to get started with MyCoursePlan",
+    "step": "Step",
+    "done": "Done",
+    "step1Title": "Create your first lesson",
+    "step1Desc": "Add materials and content for your students",
+    "step2Title": "Create an exam",
+    "step2Desc": "Set up a test with questions and auto-grading",
+    "step3Title": "Invite a teacher",
+    "step3Desc": "Add teachers to help with lessons",
+    "step4Title": "Add students",
+    "step4Desc": "Create accounts for your learners"
   }
 }

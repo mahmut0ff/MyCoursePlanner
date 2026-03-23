@@ -9,6 +9,7 @@ import {
   BarChart3, LogOut, CreditCard, Users, Building2, Activity,
   Settings, Server, Shield, Puzzle, Tag, Zap, FolderOpen, UsersRound,
   Calendar, FileText, Trophy, UserPlus, MailOpen, UserCircle2, Briefcase, DoorOpen, Bell,
+  Gamepad2,
 } from 'lucide-react';
 
 const Sidebar: React.FC<{ open: boolean; onClose: () => void }> = ({ open, onClose }) => {
@@ -129,6 +130,12 @@ const Sidebar: React.FC<{ open: boolean; onClose: () => void }> = ({ open, onClo
               <NavLink to="/rooms" className={linkClass} onClick={onClose}>
                 <Radio className="w-4 h-4" />{t('nav.examRooms')}
               </NavLink>
+              <NavLink to="/quiz/library" className={linkClass} onClick={onClose}>
+                <Gamepad2 className="w-4 h-4" />{t('nav.quizLibrary')}
+              </NavLink>
+              <NavLink to="/quiz/sessions" className={linkClass} onClick={onClose}>
+                <Radio className="w-4 h-4" />{t('nav.quizSessions')}
+              </NavLink>
               <NavLink to="/results" className={linkClass} onClick={onClose}>
                 <Trophy className="w-4 h-4" />{t('nav.results')}
               </NavLink>
@@ -194,6 +201,12 @@ const Sidebar: React.FC<{ open: boolean; onClose: () => void }> = ({ open, onClo
                   <NavLink to="/schedule" className={linkClass} onClick={onClose}>
                     <Calendar className="w-4 h-4" />{t('nav.schedule')}
                   </NavLink>
+                  <NavLink to="/quiz/library" className={linkClass} onClick={onClose}>
+                    <Gamepad2 className="w-4 h-4" />{t('nav.quizLibrary')}
+                  </NavLink>
+                  <NavLink to="/quiz/sessions" className={linkClass} onClick={onClose}>
+                    <Radio className="w-4 h-4" />{t('nav.quizSessions')}
+                  </NavLink>
                 </>
               )}
               <NavLink to="/teacher-profile" className={linkClass} onClick={onClose}>
@@ -248,6 +261,9 @@ const Sidebar: React.FC<{ open: boolean; onClose: () => void }> = ({ open, onClo
               </NavLink>
               <NavLink to="/join" className={linkClass} onClick={onClose}>
                 <Radio className="w-4 h-4" />{t('rooms.join')}
+              </NavLink>
+              <NavLink to="/quiz/join" className={linkClass} onClick={onClose}>
+                <Gamepad2 className="w-4 h-4" />{t('nav.joinQuiz')}
               </NavLink>
               <NavLink to="/lessons" className={linkClass} onClick={onClose}>
                 <BookOpen className="w-4 h-4" />{t('nav.lessons')}

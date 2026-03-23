@@ -29,6 +29,15 @@ import PaymentFailurePage from './pages/billing/PaymentFailurePage';
 import StudentProfilePage from './pages/profile/StudentProfilePage';
 import AchievementsPage from './pages/achievements/AchievementsPage';
 
+// Quiz Pages
+import QuizLibraryPage from './pages/quiz/QuizLibraryPage';
+import QuizBuilderPage from './pages/quiz/QuizBuilderPage';
+import LiveSessionDashboard from './pages/quiz/LiveSessionDashboard';
+import SessionHistoryPage from './pages/quiz/SessionHistoryPage';
+import SessionAnalyticsPage from './pages/quiz/SessionAnalyticsPage';
+import JoinQuizPage from './pages/quiz/JoinQuizPage';
+import QuizPlayPage from './pages/quiz/QuizPlayPage';
+
 // Org Pages
 import CoursesPage from './pages/courses/CoursesPage';
 import GroupsPage from './pages/groups/GroupsPage';
@@ -115,6 +124,16 @@ const App: React.FC = () => {
             <Route path="certificate/:certId" element={<CertificatePage />} />
             <Route path="certificates" element={<MyCertificatesPage />} />
             <Route path="achievements" element={<AchievementsPage />} />
+
+            {/* ═══ Quiz System ═══ */}
+            <Route path="quiz/library" element={<ProtectedRoute allowedRoles={['admin', 'teacher']}><QuizLibraryPage /></ProtectedRoute>} />
+            <Route path="quiz/new" element={<ProtectedRoute allowedRoles={['admin', 'teacher']}><QuizBuilderPage /></ProtectedRoute>} />
+            <Route path="quiz/:id/edit" element={<ProtectedRoute allowedRoles={['admin', 'teacher']}><QuizBuilderPage /></ProtectedRoute>} />
+            <Route path="quiz/sessions" element={<ProtectedRoute allowedRoles={['admin', 'teacher']}><SessionHistoryPage /></ProtectedRoute>} />
+            <Route path="quiz/sessions/:id" element={<ProtectedRoute allowedRoles={['admin', 'teacher']}><LiveSessionDashboard /></ProtectedRoute>} />
+            <Route path="quiz/analytics/:id" element={<ProtectedRoute allowedRoles={['admin', 'teacher']}><SessionAnalyticsPage /></ProtectedRoute>} />
+            <Route path="quiz/join" element={<JoinQuizPage />} />
+            <Route path="quiz/play/:sessionId" element={<QuizPlayPage />} />
             <Route path="profile" element={<StudentProfilePage />} />
 
             {/* Billing & Payments */}

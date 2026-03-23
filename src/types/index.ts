@@ -500,3 +500,248 @@ export interface AppNotification {
   read: boolean;
   createdAt: string;
 }
+
+// ============================================================
+// QUIZ SYSTEM (Kahoot-like Live Quizzes)
+// ============================================================
+
+// ---- Enums ----
+
+export type QuizVisibility = 'private' | 'organization' | 'platform' | 'public';
+export type QuizStatus = 'draft' | 'published' | 'archived';
+
+export type QuizQuestionType =
+  | 'single_choice'
+  | 'multiple_choice'
+  | 'true_false'
+  | 'multi_select'
+  | 'short_text'
+  | 'poll'
+  | 'ordering'
+  | 'matching'
+  | 'image_question'
+  | 'audio_question'
+  | 'pdf_question'
+  | 'passage_question'
+  | 'info_slide'
+  | 'discussion'
+  | 'puzzle';
+
+export type QuizSessionStatus =
+  | 'draft'
+  | 'scheduled'
+  | 'lobby'
+  | 'in_progress'
+  | 'paused'
+  | 'completed'
+  | 'cancelled';
+
+export type QuizSessionMode = 'competition' | 'practice';
+
+export type QuizDifficulty = 'easy' | 'medium' | 'hard' | 'expert';
+
+export type QuizSharePermission = 'view' | 'copy' | 'edit';
+export type QuizShareType = 'organization' | 'platform' | 'specific_user';
+
+// ---- Quiz ----
+
+export interface Quiz {
+  id: string;
+  title: string;
+  subtitle?: string;
+  description: string;
+  coverImageUrl?: string;
+  tags: string[];
+  subject: string;
+  category?: string;
+  difficulty: QuizDifficulty;
+  estimatedMinutes: number;
+  language: string;
+  visibility: QuizVisibility;
+  status: QuizStatus;
+  questionCount: number;
+
+  // Ownership
+  authorId: string;
+  authorName: string;
+  organizationId?: string;
+
+  // Fork / lineage
+  forkedFromId?: string;
+  originalAuthorId?: string;
+  originalAuthorName?: string;
+
+  // Stats
+  timesPlayed: number;
+  avgScore: number;
+  rating: number;
+  ratingCount: number;
+
+  createdAt: string;
+  updatedAt: string;
+}
+
+// ---- Quiz Question ----
+
+export interface MatchingPair {
+  left: string;
+  right: string;
+}
+
+export interface QuizQuestionOption {
+  id: string;
+  text: string;
+  imageUrl?: string;
+}
+
+export interface QuizQuestion {
+  id: string;
+  quizId: string;
+  type: QuizQuestionType;
+  order: number;
+
+  // Content
+  text: string;
+  helpText?: string;
+  mediaUrl?: string;
+  mediaType?: 'image' | 'audio' | 'pdf' | 'video';
+  passageText?: string;
+
+  // Answers
+  options: QuizQuestionOption[];
+  correctAnswers: string[]; // option IDs or text values
+  distractorExplanations?: Record<string, string>; // optionId → explanation
+  answerExplanation?: string;
+
+  // Matching / Ordering
+  matchingPairs?: MatchingPair[];
+  orderingSequence?: string[]; // correct order of option IDs
+
+  // Scoring
+  timerSeconds: number;
+  points: number;
+  bonusPoints?: number;
+  negativeScore?: number;
+  difficulty?: QuizDifficulty;
+  tags?: string[];
+}
+
+// ---- Quiz Session ----
+
+export interface QuizSessionSettings {
+  randomizeQuestions: boolean;
+  randomizeAnswers: boolean;
+  showLeaderboard: boolean;
+  showAnswerCorrectness: boolean;
+  teamMode: boolean;
+  anonymousMode: boolean;
+  allowedGroupIds?: string[];
+  restrictToOrg: boolean;
+  timerOverride?: number; // override per-question timer (seconds)
+}
+
+export interface QuizSession {
+  id: string;
+  quizId: string;
+  quizTitle: string;
+  hostId: string;
+  hostName: string;
+  code: string; // 6-char join code
+  status: QuizSessionStatus;
+  mode: QuizSessionMode;
+
+  currentQuestionIndex: number;
+  totalQuestions: number;
+  currentQuestionStartedAt?: string;
+
+  settings: QuizSessionSettings;
+
+  participantCount: number;
+  organizationId?: string;
+
+  // Ordered question IDs (may be shuffled)
+  questionOrder: string[];
+
+  startedAt?: string;
+  pausedAt?: string;
+  completedAt?: string;
+  createdAt: string;
+}
+
+// ---- Session Participant ----
+
+export interface SessionParticipant {
+  id: string; // same as participantId (the user uid)
+  sessionId: string;
+  participantId: string;
+  participantName: string;
+
+  score: number;
+  correctCount: number;
+  incorrectCount: number;
+  streakCurrent: number;
+  streakBest: number;
+  rank?: number;
+
+  joinedAt: string;
+  lastActiveAt: string;
+  isConnected: boolean;
+}
+
+// ---- Session Answer ----
+
+export interface SessionAnswer {
+  id: string;
+  sessionId: string;
+  questionId: string;
+  participantId: string;
+  participantName: string;
+
+  answer: string | string[];
+  isCorrect: boolean;
+  pointsEarned: number;
+  speedBonusEarned: number;
+  streakBonusEarned: number;
+  responseTimeMs: number;
+
+  submittedAt: string;
+}
+
+// ---- Quiz Sharing ----
+
+export interface QuizShare {
+  id: string;
+  quizId: string;
+  quizTitle: string;
+  sharedByUserId: string;
+  sharedByUserName: string;
+  shareType: QuizShareType;
+  targetOrganizationId?: string;
+  targetUserId?: string;
+  targetUserName?: string;
+  permissions: QuizSharePermission;
+  createdAt: string;
+}
+
+// ---- Quiz Analytics ----
+
+export interface QuestionStat {
+  questionId: string;
+  questionText: string;
+  correctRate: number;
+  avgResponseTimeMs: number;
+  totalAnswers: number;
+}
+
+export interface QuizAnalytics {
+  quizId: string;
+  totalPlays: number;
+  uniquePlayers: number;
+  avgScore: number;
+  avgCompletionRate: number;
+  hardestQuestionId?: string;
+  easiestQuestionId?: string;
+  questionStats: QuestionStat[];
+  lastPlayedAt?: string;
+  updatedAt: string;
+}

@@ -290,3 +290,80 @@ export const apiMarkNotificationRead = (id: string) => notifReq('markRead', 'POS
 export const apiMarkAllNotificationsRead = () => notifReq('markAllRead', 'POST');
 export const apiSaveFcmToken = (token: string) => notifReq('saveFcmToken', 'POST', { token });
 export const apiRemoveFcmToken = (token: string) => notifReq('removeFcmToken', 'POST', { token });
+
+// ============================================================
+// QUIZ SYSTEM API
+// ============================================================
+
+// ─── Quizzes ───
+export const apiGetQuizzes = (params?: Record<string, string>) =>
+  apiRequest('api-quizzes', 'GET', undefined, params);
+export const apiGetQuiz = (id: string) =>
+  apiRequest('api-quizzes', 'GET', undefined, { id });
+export const apiCreateQuiz = (data: any) =>
+  apiRequest('api-quizzes', 'POST', data);
+export const apiUpdateQuiz = (data: any) =>
+  apiRequest('api-quizzes', 'PUT', data);
+export const apiDeleteQuiz = (id: string) =>
+  apiRequest('api-quizzes', 'DELETE', undefined, { id });
+export const apiDuplicateQuiz = (quizId: string) =>
+  apiRequest('api-quizzes', 'POST', { action: 'duplicate', quizId });
+export const apiPublishQuiz = (quizId: string) =>
+  apiRequest('api-quizzes', 'POST', { action: 'publish', quizId });
+export const apiUnpublishQuiz = (quizId: string) =>
+  apiRequest('api-quizzes', 'POST', { action: 'unpublish', quizId });
+export const apiArchiveQuiz = (quizId: string) =>
+  apiRequest('api-quizzes', 'POST', { action: 'archive', quizId });
+export const apiShareQuiz = (data: any) =>
+  apiRequest('api-quizzes', 'POST', { action: 'share', ...data });
+export const apiSaveQuizQuestions = (quizId: string, questions: any[]) =>
+  apiRequest('api-quizzes', 'POST', { action: 'saveQuestions', quizId, questions });
+
+// ─── Quiz Sessions ───
+export const apiGetQuizSessions = () =>
+  apiRequest('api-quiz-sessions');
+export const apiGetQuizSession = (id: string) =>
+  apiRequest('api-quiz-sessions', 'GET', undefined, { id });
+export const apiGetQuizSessionByCode = (code: string) =>
+  apiRequest('api-quiz-sessions', 'GET', undefined, { code });
+export const apiCreateQuizSession = (data: any) =>
+  apiRequest('api-quiz-sessions', 'POST', { action: 'create', ...data });
+export const apiJoinQuizSession = (data: { sessionId?: string; code?: string }) =>
+  apiRequest('api-quiz-sessions', 'POST', { action: 'join', ...data });
+export const apiStartQuizSession = (sessionId: string) =>
+  apiRequest('api-quiz-sessions', 'POST', { action: 'start', sessionId });
+export const apiNextQuestion = (sessionId: string) =>
+  apiRequest('api-quiz-sessions', 'POST', { action: 'nextQuestion', sessionId });
+export const apiPauseQuizSession = (sessionId: string) =>
+  apiRequest('api-quiz-sessions', 'POST', { action: 'pause', sessionId });
+export const apiResumeQuizSession = (sessionId: string) =>
+  apiRequest('api-quiz-sessions', 'POST', { action: 'resume', sessionId });
+export const apiEndQuizSession = (sessionId: string) =>
+  apiRequest('api-quiz-sessions', 'POST', { action: 'end', sessionId });
+export const apiCancelQuizSession = (sessionId: string) =>
+  apiRequest('api-quiz-sessions', 'POST', { action: 'cancel', sessionId });
+export const apiKickParticipant = (sessionId: string, participantId: string) =>
+  apiRequest('api-quiz-sessions', 'POST', { action: 'kick', sessionId, participantId });
+export const apiLockQuizSession = (sessionId: string) =>
+  apiRequest('api-quiz-sessions', 'POST', { action: 'lock', sessionId });
+export const apiUnlockQuizSession = (sessionId: string) =>
+  apiRequest('api-quiz-sessions', 'POST', { action: 'unlock', sessionId });
+export const apiRestartQuizSession = (sessionId: string) =>
+  apiRequest('api-quiz-sessions', 'POST', { action: 'restart', sessionId });
+
+// ─── Quiz Answers & Leaderboard ───
+export const apiSubmitQuizAnswer = (data: any) =>
+  apiRequest('api-quiz-answers', 'POST', data);
+export const apiGetQuizLeaderboard = (sessionId: string) =>
+  apiRequest('api-quiz-answers', 'GET', undefined, { sessionId, leaderboard: 'true' });
+export const apiGetQuizAnswers = (sessionId: string, questionId?: string) =>
+  apiRequest('api-quiz-answers', 'GET', undefined, { sessionId, ...(questionId ? { questionId } : {}) });
+
+// ─── Quiz Analytics ───
+export const apiGetSessionAnalytics = (sessionId: string) =>
+  apiRequest('api-quiz-analytics', 'GET', undefined, { sessionId });
+export const apiGetQuizAnalytics = (quizId: string) =>
+  apiRequest('api-quiz-analytics', 'GET', undefined, { quizId });
+export const apiExportSessionResults = (sessionId: string) =>
+  apiRequest('api-quiz-analytics', 'POST', { sessionId });
+

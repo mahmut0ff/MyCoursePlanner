@@ -225,6 +225,7 @@ const userReq = <T = any>(action: string, method = 'GET', body?: any, extra?: Re
   apiRequest<T>('api-users', method, body, { action, ...extra });
 
 // Invites
+export const apiGetPendingInviteCount = () => userReq<{ count: number }>('pendingInviteCount');
 export const apiGetMyInvites = () => userReq('myInvites');
 export const apiAcceptInvite = (inviteId: string) => userReq('acceptInvite', 'POST', { inviteId });
 export const apiDeclineInvite = (inviteId: string) => userReq('declineInvite', 'POST', { inviteId });

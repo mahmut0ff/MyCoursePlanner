@@ -249,18 +249,19 @@ const handler: Handler = async (event: HandlerEvent) => {
       // Look up org name
       const orgDoc = await adminDb.collection('organizations').doc(orgId).get();
       const organizationName = orgDoc.exists ? orgDoc.data()?.name || '' : '';
-      // Check if user already exists
+      // Check if user is already in this org
       const existing = await adminDb.collection('users').where('email', '==', body.email).get();
       if (!existing.empty) {
         const existingUser = existing.docs[0];
         if (existingUser.data()?.organizationId === orgId) return badRequest('User already in organization');
-        // Update org assignment
-        await adminDb.collection('users').doc(existingUser.id).update({
-          organizationId: orgId, role: body.role, updatedAt: now(),
-        });
-        return ok({ uid: existingUser.id, invited: true });
       }
-      // Create pending invite record
+      // Check for duplicate pending invite
+      const existingInvite = await adminDb.collection('invites')
+        .where('email', '==', body.email)
+        .where('organizationId', '==', orgId)
+        .where('status', '==', 'pending').get();
+      if (!existingInvite.empty) return badRequest('Invite already sent');
+      // Always create pending invite — teacher must accept
       const data = {
         email: body.email, role: body.role,
         organizationId: orgId, organizationName,

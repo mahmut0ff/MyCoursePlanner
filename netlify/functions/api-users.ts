@@ -18,6 +18,13 @@ const handler: Handler = async (event: HandlerEvent) => {
 
   try {
     // ═══ INVITES (any authenticated user) ═══
+    if (action === 'pendingInviteCount') {
+      const snap = await adminDb.collection('invites')
+        .where('email', '==', user.email)
+        .where('status', '==', 'pending').get();
+      return ok({ count: snap.size });
+    }
+
     if (action === 'myInvites') {
       const snap = await adminDb.collection('invites')
         .where('email', '==', user.email)

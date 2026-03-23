@@ -1,8 +1,9 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../contexts/AuthContext';
 import { signOut } from '../../services/auth.service';
+import { apiGetPendingInviteCount } from '../../lib/api';
 import {
   GraduationCap, LayoutDashboard, BookOpen, ClipboardList, Radio,
   BarChart3, LogOut, CreditCard, Users, Building2, Activity,
@@ -33,6 +34,15 @@ const Sidebar: React.FC<{ open: boolean; onClose: () => void }> = ({ open, onClo
 
   const isAdmin = role === 'admin';
   const teacherWithOrg = isTeacher && !!organizationId;
+
+  // Fetch pending invite count for teacher badge
+  const [inviteCount, setInviteCount] = useState(0);
+  useEffect(() => {
+    if (!isTeacher) return;
+    apiGetPendingInviteCount()
+      .then((data) => setInviteCount(data?.count || 0))
+      .catch(() => {});
+  }, [isTeacher]);
 
   return (
     <>
@@ -193,6 +203,11 @@ const Sidebar: React.FC<{ open: boolean; onClose: () => void }> = ({ open, onClo
               </NavLink>
               <NavLink to="/invites" className={linkClass} onClick={onClose}>
                 <MailOpen className="w-4 h-4" />{t('nav.invites')}
+                {inviteCount > 0 && (
+                  <span className="ml-auto bg-red-500 text-white text-[10px] font-bold min-w-[18px] h-[18px] flex items-center justify-center rounded-full px-1 animate-pulse">
+                    {inviteCount}
+                  </span>
+                )}
               </NavLink>
               <NavLink to="/vacancies" className={linkClass} onClick={onClose}>
                 <Briefcase className="w-4 h-4" />{t('nav.vacancies')}

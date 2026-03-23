@@ -2,9 +2,10 @@ import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { getAttempt } from '../../services/attempts.service';
+import { apiGenerateCertificate } from '../../lib/api';
 import type { ExamAttempt } from '../../types';
 
-import { ArrowLeft, Trophy, XCircle, Clock, Target, Brain, CheckCircle, HelpCircle, RefreshCw } from 'lucide-react';
+import { ArrowLeft, Trophy, XCircle, Clock, Target, Brain, CheckCircle, HelpCircle, RefreshCw, Award } from 'lucide-react';
 
 const ResultPage: React.FC = () => {
   const { t } = useTranslation();
@@ -12,6 +13,7 @@ const ResultPage: React.FC = () => {
   const navigate = useNavigate();
   const [attempt, setAttempt] = useState<ExamAttempt | null>(null);
   const [loading, setLoading] = useState(true);
+  const [certLoading, setCertLoading] = useState(false);
 
   useEffect(() => {
     if (attemptId) {
@@ -67,6 +69,24 @@ const ResultPage: React.FC = () => {
             <p className="text-xs text-slate-500 dark:text-slate-400">{t('results.correct')}</p>
           </div>
         </div>
+
+        {/* Certificate Button */}
+        {attempt.passed && (
+          <button
+            onClick={async () => {
+              setCertLoading(true);
+              try {
+                const cert = await apiGenerateCertificate({ attemptId });
+                navigate(`/certificate/${cert.id}`);
+              } catch { setCertLoading(false); }
+            }}
+            disabled={certLoading}
+            className="mt-5 inline-flex items-center gap-2 bg-gradient-to-r from-indigo-600 to-purple-600 text-white px-6 py-2.5 rounded-xl font-medium hover:opacity-90 transition-opacity disabled:opacity-50"
+          >
+            <Award className="w-5 h-5" />
+            {certLoading ? '...' : t('certificate.getCertificate')}
+          </button>
+        )}
       </div>
 
       {/* AI Feedback */}

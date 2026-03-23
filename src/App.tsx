@@ -22,6 +22,9 @@ import ExamTakePage from './pages/rooms/ExamTakePage';
 import ResultPage from './pages/rooms/ResultPage';
 import MyResultsPage from './pages/rooms/MyResultsPage';
 import BillingPage from './pages/billing/BillingPage';
+import CertificatePage from './pages/certificates/CertificatePage';
+import PaymentSuccessPage from './pages/billing/PaymentSuccessPage';
+import PaymentFailurePage from './pages/billing/PaymentFailurePage';
 
 // Org Pages
 import CoursesPage from './pages/courses/CoursesPage';
@@ -106,9 +109,12 @@ const App: React.FC = () => {
             <Route path="join" element={<JoinRoomPage />} />
             <Route path="my-results" element={<MyResultsPage />} />
             <Route path="results/:attemptId" element={<ResultPage />} />
+            <Route path="certificate/:certId" element={<CertificatePage />} />
 
-            {/* Billing */}
+            {/* Billing & Payments */}
             <Route path="billing" element={<ProtectedRoute allowedRoles={['admin']}><BillingPage /></ProtectedRoute>} />
+            <Route path="payment/success" element={<PaymentSuccessPage />} />
+            <Route path="payment/failure" element={<PaymentFailurePage />} />
 
             {/* ═══ Org Admin: Education ═══ */}
             <Route path="courses" element={<ProtectedRoute allowedRoles={['admin', 'teacher']}><CoursesPage /></ProtectedRoute>} />

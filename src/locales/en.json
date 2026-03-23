@@ -827,5 +827,40 @@
     "noAnswer": "no answer",
     "correctAnswer": "Correct",
     "pendingReview": "Pending Review"
+  },
+  "gamification": {
+    "level": "Level",
+    "streak": "Streak",
+    "passed": "Passed",
+    "badges": "Badges",
+    "earned": "Earned Badges",
+    "xpEarned": "+{xp} XP!",
+    "levelUp": "Level Up!",
+    "newBadge": "New Badge!"
+  },
+  "certificate": {
+    "title": "Certificate",
+    "getCertificate": "Get Certificate",
+    "download": "Download",
+    "share": "Share",
+    "verify": "Verify",
+    "issuedTo": "Issued to",
+    "issuedBy": "Organization",
+    "examTitle": "Exam",
+    "score": "Score",
+    "date": "Issued on",
+    "number": "Certificate No.",
+    "valid": "This certificate is valid",
+    "notFound": "Certificate not found"
+  },
+  "payment": {
+    "pay": "Pay Now",
+    "processing": "Processing payment...",
+    "success": "Payment successful!",
+    "failure": "Payment failed",
+    "tryAgain": "Try Again",
+    "backToBilling": "Back to Plans",
+    "perMonth": "/mo",
+    "currency": "KGS"
   }
 }

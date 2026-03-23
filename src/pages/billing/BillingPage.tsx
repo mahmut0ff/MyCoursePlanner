@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../contexts/AuthContext';
-import { apiGetSubscription, apiChangePlan, apiCancelSubscription, apiReactivateSubscription } from '../../lib/api';
+import { apiGetSubscription, apiCancelSubscription, apiReactivateSubscription, apiCreatePayment } from '../../lib/api';
 import toast from 'react-hot-toast';
 import { PLANS } from '../../types';
 import { Check, Sparkles, Crown, Zap, CreditCard, Star } from 'lucide-react';
@@ -22,8 +22,13 @@ const BillingPage: React.FC = () => {
 
   const handleChangePlan = async (planId: string) => {
     setChangingPlan(planId);
-    try { await apiChangePlan(planId); await loadSubscription(); }
-    catch (e: any) { toast.error(e.message); }
+    try {
+      const kgsPrices: Record<string, number> = { starter: 3500, professional: 7000, enterprise: 9000 };
+      const result = await apiCreatePayment({ planId, amount: kgsPrices[planId] || 3500 });
+      if (result.redirectUrl) {
+        window.location.href = result.redirectUrl;
+      }
+    } catch (e: any) { toast.error(e.message); }
     finally { setChangingPlan(null); }
   };
 
@@ -109,7 +114,7 @@ const BillingPage: React.FC = () => {
                   </div>
                 )}
                 <div className="flex items-center gap-2 mb-2">{meta.icon}<h3 className="text-sm font-bold">{plan.name}</h3></div>
-                <p className="text-3xl font-extrabold">${plan.price}<span className="text-xs font-normal opacity-60 ml-1">/{t('billing.month')}</span></p>
+                <p className="text-3xl font-extrabold">{({ starter: '3 500', professional: '7 000', enterprise: '9 000' } as Record<string, string>)[plan.id] || plan.price} <span className="text-xs font-normal opacity-60 ml-1">{t('payment.currency')}{t('payment.perMonth')}</span></p>
               </div>
 
               {/* Features */}

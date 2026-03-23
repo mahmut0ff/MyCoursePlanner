@@ -1005,5 +1005,40 @@
     "noAnswer": "нет ответа",
     "correctAnswer": "Верный ответ",
     "pendingReview": "На проверке"
+  },
+  "gamification": {
+    "level": "Уровень",
+    "streak": "Серия",
+    "passed": "Сдано",
+    "badges": "Бейджи",
+    "earned": "Полученные бейджи",
+    "xpEarned": "+{xp} XP!",
+    "levelUp": "Новый уровень!",
+    "newBadge": "Новый бейдж!"
+  },
+  "certificate": {
+    "title": "Сертификат",
+    "getCertificate": "Получить сертификат",
+    "download": "Скачать",
+    "share": "Поделиться",
+    "verify": "Проверить",
+    "issuedTo": "Выдан",
+    "issuedBy": "Организация",
+    "examTitle": "Экзамен",
+    "score": "Результат",
+    "date": "Дата выдачи",
+    "number": "Номер сертификата",
+    "valid": "Сертификат действителен",
+    "notFound": "Сертификат не найден"
+  },
+  "payment": {
+    "pay": "Оплатить",
+    "processing": "Обработка платежа...",
+    "success": "Оплата успешна!",
+    "failure": "Оплата не прошла",
+    "tryAgain": "Попробовать снова",
+    "backToBilling": "Назад к тарифам",
+    "perMonth": "/мес",
+    "currency": "сом"
   }
 }

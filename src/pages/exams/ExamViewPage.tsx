@@ -2,12 +2,12 @@ import React, { useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { getExam, getQuestions, deleteExam } from '../../services/exams.service';
+import { getExam, getQuestions, deleteExam, duplicateExam } from '../../services/exams.service';
 import { createRoom } from '../../services/rooms.service';
 import { useAuth } from '../../contexts/AuthContext';
 import type { Exam, Question } from '../../types';
 import { formatDate } from '../../utils/grading';
-import { ArrowLeft, Edit, Trash2, Play, Clock, Target, HelpCircle } from 'lucide-react';
+import { ArrowLeft, Edit, Trash2, Play, Clock, Target, HelpCircle, Copy } from 'lucide-react';
 
 const ExamViewPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -48,6 +48,15 @@ const ExamViewPage: React.FC = () => {
     }
   };
 
+  const handleDuplicate = async () => {
+    if (!id) return;
+    try {
+      const newId = await duplicateExam(id);
+      toast.success(t('exams.duplicated'));
+      navigate(`/exams/${newId}`);
+    } catch { toast.error(t('exams.duplicateFailed')); }
+  };
+
   if (loading) return <div className="flex items-center justify-center py-20"><div className="w-8 h-8 border-4 border-primary-200 border-t-primary-600 rounded-full animate-spin" /></div>;
   if (!exam) return <div className="text-center py-20"><h3 className="text-sm font-medium text-slate-700 dark:text-slate-300">{t('common.notFound')}</h3></div>;
 
@@ -61,6 +70,7 @@ const ExamViewPage: React.FC = () => {
               <Play className="w-3.5 h-3.5" />{starting ? '...' : t('exams.startRoom')}
             </button>
             <Link to={`/exams/${id}/edit`} className="text-xs bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-300 px-2.5 py-1.5 rounded-lg flex items-center gap-1 transition-colors"><Edit className="w-3 h-3" />{t('common.edit')}</Link>
+            <button onClick={handleDuplicate} className="text-xs bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-300 px-2.5 py-1.5 rounded-lg flex items-center gap-1 transition-colors"><Copy className="w-3 h-3" />{t('exams.duplicate')}</button>
             <button onClick={handleDelete} className="text-xs text-red-500 hover:text-red-700 px-2 py-1.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 flex items-center gap-1 transition-colors"><Trash2 className="w-3 h-3" />{t('common.delete')}</button>
           </div>
         )}

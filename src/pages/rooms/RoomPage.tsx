@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { getRoom, closeRoom } from '../../services/rooms.service';
 import { getAttemptsByRoom } from '../../services/attempts.service';
 import { useAuth } from '../../contexts/AuthContext';
@@ -10,6 +11,7 @@ import { ArrowLeft, Copy, Users, XCircle, CheckCircle, Clock, Radio } from 'luci
 const RoomPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { t } = useTranslation();
   useAuth();
   const [room, setRoom] = useState<ExamRoom | null>(null);
   const [attempts, setAttempts] = useState<ExamAttempt[]>([]);
@@ -18,7 +20,7 @@ const RoomPage: React.FC = () => {
 
   useEffect(() => {
     loadRoom();
-    const interval = setInterval(loadRoom, 10000); // poll every 10s
+    const interval = setInterval(loadRoom, 10000);
     return () => clearInterval(interval);
   }, [id]);
 
@@ -42,20 +44,20 @@ const RoomPage: React.FC = () => {
   };
 
   const handleClose = async () => {
-    if (!id || !confirm('Close this exam room? Students will no longer be able to join.')) return;
+    if (!id || !confirm(t('rooms.closeConfirm'))) return;
     await closeRoom(id);
     loadRoom();
   };
 
-  if (loading) return <div className="flex items-center justify-center py-20"><div className="w-8 h-8 border-4 border-primary-200 border-t-primary-600 rounded-full animate-spin" /></div>;
-  if (!room) return <div className="text-center py-20"><h3 className="text-lg font-medium text-slate-700 dark:text-slate-300">Room not found</h3></div>;
+  if (loading) return <div className="flex items-center justify-center py-20"><div className="w-8 h-8 border-4 border-primary-200 border-t-primary-600 rounded-full animate-spin dark:border-primary-800 dark:border-t-primary-400" /></div>;
+  if (!room) return <div className="text-center py-20"><h3 className="text-lg font-medium text-slate-700 dark:text-slate-300">{t('common.notFound')}</h3></div>;
 
   return (
     <div className="max-w-4xl mx-auto">
       <div className="flex items-center justify-between mb-6">
-        <button onClick={() => navigate('/rooms')} className="btn-ghost flex items-center gap-2"><ArrowLeft className="w-4 h-4" />Back</button>
+        <button onClick={() => navigate('/rooms')} className="btn-ghost flex items-center gap-2"><ArrowLeft className="w-4 h-4" />{t('common.back')}</button>
         {room.status === 'active' && (
-          <button onClick={handleClose} className="btn-danger flex items-center gap-2"><XCircle className="w-4 h-4" />Close Room</button>
+          <button onClick={handleClose} className="btn-danger flex items-center gap-2"><XCircle className="w-4 h-4" />{t('rooms.close')}</button>
         )}
       </div>
 
@@ -63,18 +65,18 @@ const RoomPage: React.FC = () => {
       <div className="card p-8 mb-6 text-center">
         <div className="flex items-center justify-center gap-2 mb-2">
           <Radio className={`w-5 h-5 ${room.status === 'active' ? 'text-emerald-500 animate-pulse' : 'text-slate-400 dark:text-slate-500'}`} />
-          <span className={room.status === 'active' ? 'badge-green' : 'badge-slate'}>{room.status}</span>
+          <span className={room.status === 'active' ? 'badge-green' : 'badge-slate'}>{room.status === 'active' ? t('rooms.active') : t('rooms.closed')}</span>
         </div>
-        <h2 className="text-lg text-slate-600 dark:text-slate-400 dark:text-slate-500 mb-2">{room.examTitle}</h2>
+        <h2 className="text-lg text-slate-600 dark:text-slate-400 mb-2">{room.examTitle}</h2>
         <div className="mt-4">
-          <p className="text-sm text-slate-500 dark:text-slate-400 dark:text-slate-500 mb-2">Room Code</p>
+          <p className="text-sm text-slate-500 dark:text-slate-400 mb-2">{t('rooms.roomCode')}</p>
           <div className="flex items-center justify-center gap-3">
-            <span className="text-5xl font-bold tracking-[0.3em] text-primary-600 font-mono">{room.code}</span>
-            <button onClick={handleCopy} className="btn-ghost p-2" title="Copy code">
+            <span className="text-5xl font-bold tracking-[0.3em] text-primary-600 dark:text-primary-400 font-mono">{room.code}</span>
+            <button onClick={handleCopy} className="btn-ghost p-2" title={t('common.copy')}>
               {copied ? <CheckCircle className="w-5 h-5 text-emerald-500" /> : <Copy className="w-5 h-5" />}
             </button>
           </div>
-          <p className="text-sm text-slate-400 dark:text-slate-500 mt-3">Share this code with students to join the exam</p>
+          <p className="text-sm text-slate-400 dark:text-slate-500 mt-3">{t('rooms.shareCode')}</p>
         </div>
       </div>
 
@@ -82,41 +84,41 @@ const RoomPage: React.FC = () => {
       <div className="grid grid-cols-3 gap-4 mb-6">
         <div className="card p-4 text-center">
           <Users className="w-5 h-5 text-primary-500 mx-auto mb-1" />
-          <p className="text-2xl font-bold text-slate-900">{room.participants.length}</p>
-          <p className="text-xs text-slate-500 dark:text-slate-400 dark:text-slate-500">Participants</p>
+          <p className="text-2xl font-bold text-slate-900 dark:text-white">{room.participants.length}</p>
+          <p className="text-xs text-slate-500 dark:text-slate-400">{t('rooms.participants')}</p>
         </div>
         <div className="card p-4 text-center">
           <CheckCircle className="w-5 h-5 text-emerald-500 mx-auto mb-1" />
-          <p className="text-2xl font-bold text-slate-900">{attempts.length}</p>
-          <p className="text-xs text-slate-500 dark:text-slate-400 dark:text-slate-500">Submitted</p>
+          <p className="text-2xl font-bold text-slate-900 dark:text-white">{attempts.length}</p>
+          <p className="text-xs text-slate-500 dark:text-slate-400">{t('rooms.submitted')}</p>
         </div>
         <div className="card p-4 text-center">
           <Clock className="w-5 h-5 text-amber-500 mx-auto mb-1" />
-          <p className="text-2xl font-bold text-slate-900">{room.participants.length - attempts.length}</p>
-          <p className="text-xs text-slate-500 dark:text-slate-400 dark:text-slate-500">In Progress</p>
+          <p className="text-2xl font-bold text-slate-900 dark:text-white">{room.participants.length - attempts.length}</p>
+          <p className="text-xs text-slate-500 dark:text-slate-400">{t('rooms.inProgress')}</p>
         </div>
       </div>
 
       {/* Attempts */}
       {attempts.length > 0 && (
         <div className="card overflow-hidden">
-          <div className="px-6 py-4 border-b bg-slate-50 dark:bg-slate-700/50"><h3 className="font-semibold text-slate-900">Submissions</h3></div>
+          <div className="px-6 py-4 border-b border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-700/50"><h3 className="font-semibold text-slate-900 dark:text-white">{t('rooms.submissions')}</h3></div>
           <table className="w-full">
-            <thead className="border-b"><tr>
-              <th className="text-left px-6 py-3 text-xs font-medium text-slate-500 dark:text-slate-400 dark:text-slate-500 uppercase">Student</th>
-              <th className="text-left px-6 py-3 text-xs font-medium text-slate-500 dark:text-slate-400 dark:text-slate-500 uppercase">Score</th>
-              <th className="text-left px-6 py-3 text-xs font-medium text-slate-500 dark:text-slate-400 dark:text-slate-500 uppercase">Result</th>
-              <th className="text-left px-6 py-3 text-xs font-medium text-slate-500 dark:text-slate-400 dark:text-slate-500 uppercase">Time</th>
-              <th className="text-left px-6 py-3 text-xs font-medium text-slate-500 dark:text-slate-400 dark:text-slate-500 uppercase">Submitted</th>
+            <thead className="border-b border-slate-200 dark:border-slate-700"><tr>
+              <th className="text-left px-6 py-3 text-xs font-medium text-slate-500 dark:text-slate-400 uppercase">{t('rooms.student')}</th>
+              <th className="text-left px-6 py-3 text-xs font-medium text-slate-500 dark:text-slate-400 uppercase">{t('rooms.score')}</th>
+              <th className="text-left px-6 py-3 text-xs font-medium text-slate-500 dark:text-slate-400 uppercase">{t('rooms.result')}</th>
+              <th className="text-left px-6 py-3 text-xs font-medium text-slate-500 dark:text-slate-400 uppercase">{t('results.timeSpent')}</th>
+              <th className="text-left px-6 py-3 text-xs font-medium text-slate-500 dark:text-slate-400 uppercase">{t('rooms.submittedAt')}</th>
             </tr></thead>
             <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
               {attempts.map((a) => (
-                <tr key={a.id} className="hover:bg-slate-50 dark:bg-slate-700/50">
-                  <td className="px-6 py-4 font-medium text-slate-900">{a.studentName}</td>
-                  <td className="px-6 py-4 text-sm">{a.percentage}%</td>
-                  <td className="px-6 py-4"><span className={a.passed ? 'badge-green' : 'badge-red'}>{a.passed ? 'Pass' : 'Fail'}</span></td>
-                  <td className="px-6 py-4 text-sm text-slate-600 dark:text-slate-400 dark:text-slate-500">{Math.floor(a.timeSpentSeconds / 60)}m {a.timeSpentSeconds % 60}s</td>
-                  <td className="px-6 py-4 text-sm text-slate-500 dark:text-slate-400 dark:text-slate-500">{formatDate(a.submittedAt)}</td>
+                <tr key={a.id} className="hover:bg-slate-50 dark:hover:bg-slate-700/50">
+                  <td className="px-6 py-4 font-medium text-slate-900 dark:text-white">{a.studentName}</td>
+                  <td className="px-6 py-4 text-sm text-slate-700 dark:text-slate-300">{a.percentage}%</td>
+                  <td className="px-6 py-4"><span className={a.passed ? 'badge-green' : 'badge-red'}>{a.passed ? t('rooms.passed') : t('rooms.failed')}</span></td>
+                  <td className="px-6 py-4 text-sm text-slate-600 dark:text-slate-400">{Math.floor(a.timeSpentSeconds / 60)}m {a.timeSpentSeconds % 60}s</td>
+                  <td className="px-6 py-4 text-sm text-slate-500 dark:text-slate-400">{formatDate(a.submittedAt)}</td>
                 </tr>
               ))}
             </tbody>

@@ -168,7 +168,11 @@
     "totalQuestions": "Total Questions",
     "totalPoints": "Total Points",
     "published": "Published",
-    "draft": "Draft"
+    "draft": "Draft",
+    "startRoom": "Start Room",
+    "duplicate": "Duplicate",
+    "duplicated": "Exam duplicated!",
+    "duplicateFailed": "Failed to duplicate exam"
   },
   "rooms": {
     "title": "Exam Rooms",
@@ -196,7 +200,16 @@
     "joinFailed": "Failed to join room",
     "joining": "Joining...",
     "joinButton": "Join Exam",
-    "joinSubtitle": "Enter the room code provided by your teacher"
+    "joinSubtitle": "Enter the room code provided by your teacher",
+    "closeConfirm": "Close this room? Students will no longer be able to join.",
+    "shareCode": "Share this code with students to join the exam",
+    "participants": "Participants",
+    "submitted": "Submitted",
+    "inProgress": "In Progress",
+    "submissions": "Submissions",
+    "student": "Student",
+    "submittedAt": "Submitted At",
+    "result": "Result"
   },
   "admin": {
     "dashboard": {

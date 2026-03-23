@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { orgGetUsers, orgUpdateUserRole, orgInviteUser } from '../../lib/api';
-import { Search, Plus, X, Mail, RefreshCw } from 'lucide-react';
+import { orgGetUsers, orgInviteUser } from '../../lib/api';
+import { Search, Plus, RefreshCw } from 'lucide-react';
 import type { UserProfile } from '../../types';
 
 const ROLE_COLORS: Record<string, string> = { admin: 'bg-primary-500/10 text-primary-500', teacher: 'bg-violet-500/10 text-violet-500', student: 'bg-slate-500/10 text-slate-500' };
@@ -15,7 +16,7 @@ const OrgUsersPage: React.FC = () => {
   const [inviteEmail, setInviteEmail] = useState('');
   const [inviteRole, setInviteRole] = useState('student');
   const [saving, setSaving] = useState(false);
-  const [selected, setSelected] = useState<UserProfile | null>(null);
+  const navigate = useNavigate();
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
 
@@ -30,14 +31,11 @@ const OrgUsersPage: React.FC = () => {
     catch (e: any) { setError(e.message || 'Error'); } finally { setSaving(false); }
   };
 
-  const handleRoleChange = async (uid: string, role: string) => {
-    try { await orgUpdateUserRole(uid, role); setUsers((p) => p.map((u) => u.uid === uid ? { ...u, role: role as any } : u)); if (selected?.uid === uid) setSelected({ ...selected, role: role as any }); }
-    catch (e: any) { setError(e.message || 'Error'); }
-  };
+
 
   return (
-    <div className="flex gap-0 h-full">
-      <div className={`flex-1 min-w-0 ${selected ? 'hidden lg:block' : ''}`}>
+    <div>
+      <div>
         <div className="flex items-center justify-between mb-4">
           <div><h1 className="text-lg font-bold text-slate-900 dark:text-white">{t('nav.users')}</h1><p className="text-[11px] text-slate-500">{users.length} {t('org.users.total')}</p></div>
           <div className="flex items-center gap-1.5">
@@ -68,7 +66,7 @@ const OrgUsersPage: React.FC = () => {
               </tr></thead>
               <tbody className="divide-y divide-slate-50 dark:divide-slate-700/30">
                 {filtered.map((u) => (
-                  <tr key={u.uid} onClick={() => setSelected(u)} className="hover:bg-slate-50/80 dark:hover:bg-slate-700/20 cursor-pointer transition-colors">
+                  <tr key={u.uid} onClick={() => navigate(`/org-users/${u.uid}`)} className="hover:bg-slate-50/80 dark:hover:bg-slate-700/20 cursor-pointer transition-colors">
                     <td className="px-4 py-2.5">
                       <div className="flex items-center gap-2">
                         <div className="w-6 h-6 bg-gradient-to-br from-slate-400 to-slate-600 rounded-md flex items-center justify-center text-[9px] text-white font-bold">{u.displayName?.[0]?.toUpperCase() || '?'}</div>
@@ -85,29 +83,6 @@ const OrgUsersPage: React.FC = () => {
           </div>
         )}
       </div>
-
-      {selected && (
-        <div className="w-full lg:w-[340px] bg-white dark:bg-slate-800/90 border-l border-slate-200/80 dark:border-slate-700/40 overflow-y-auto shrink-0">
-          <div className="px-4 py-3 border-b border-slate-100 dark:border-slate-700/40 flex items-center gap-2 sticky top-0 bg-white dark:bg-slate-800/90 z-10">
-            <button onClick={() => setSelected(null)} className="p-1 rounded hover:bg-slate-100 dark:hover:bg-slate-700"><X className="w-3.5 h-3.5 text-slate-400" /></button>
-            <h3 className="font-semibold text-sm text-slate-900 dark:text-white truncate">{selected.displayName}</h3>
-          </div>
-          <div className="p-5 text-center">
-            <div className="w-10 h-10 bg-gradient-to-br from-slate-400 to-slate-600 rounded-xl flex items-center justify-center text-sm text-white font-bold mx-auto mb-2">{selected.displayName?.[0]?.toUpperCase() || '?'}</div>
-            <p className="text-sm font-bold text-slate-900 dark:text-white">{selected.displayName}</p>
-            <p className="text-[10px] text-slate-400 flex items-center justify-center gap-1 mb-3"><Mail className="w-3 h-3" />{selected.email}</p>
-          </div>
-          <div className="px-5 pb-5 space-y-3">
-            <div><p className="text-[10px] text-slate-500 uppercase tracking-wider mb-1">{t('org.users.role')}</p>
-              <select value={selected.role} onChange={(e) => handleRoleChange(selected.uid, e.target.value)}
-                className={`w-full text-xs px-2.5 py-1.5 rounded-lg font-medium cursor-pointer outline-none ${ROLE_COLORS[selected.role] || ROLE_COLORS.student}`}>
-                <option value="student">student</option><option value="teacher">teacher</option><option value="admin">admin</option>
-              </select>
-            </div>
-            <div className="bg-slate-50 dark:bg-slate-700/20 rounded-lg p-2.5"><p className="text-[10px] text-slate-500 uppercase tracking-wider mb-0.5">{t('org.users.joined')}</p><p className="text-xs text-slate-700 dark:text-slate-300">{selected.createdAt ? new Date(selected.createdAt).toLocaleDateString() : '—'}</p></div>
-          </div>
-        </div>
-      )}
 
       {showInvite && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => setShowInvite(false)}>

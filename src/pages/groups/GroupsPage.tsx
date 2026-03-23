@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { orgGetGroups, orgCreateGroup, orgDeleteGroup, orgGetCourses } from '../../lib/api';
-import { Users, Plus, Search, Trash2, X, FolderOpen, RefreshCw } from 'lucide-react';
+import { Users, Plus, Search, Trash2, FolderOpen, RefreshCw } from 'lucide-react';
 import type { Group, Course } from '../../types';
 
 const GroupsPage: React.FC = () => {
@@ -11,7 +12,7 @@ const GroupsPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [showModal, setShowModal] = useState(false);
-  const [detail, setDetail] = useState<Group | null>(null);
+  const navigate = useNavigate();
   const [form, setForm] = useState({ name: '', courseId: '' });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
@@ -39,13 +40,13 @@ const GroupsPage: React.FC = () => {
 
   const handleDelete = async (id: string) => {
     if (!confirm(t('common.confirmDelete'))) return;
-    try { await orgDeleteGroup(id); setGroups((p) => p.filter((g) => g.id !== id)); if (detail?.id === id) setDetail(null); }
+    try { await orgDeleteGroup(id); setGroups((p) => p.filter((g) => g.id !== id)); }
     catch (e: any) { setError(e.message); }
   };
 
   return (
-    <div className="flex gap-0 h-full">
-      <div className={`flex-1 min-w-0 ${detail ? 'hidden lg:block' : ''}`}>
+    <div>
+      <div>
         <div className="flex items-center justify-between mb-4">
           <div><h1 className="text-lg font-bold text-slate-900 dark:text-white">{t('nav.groups')}</h1><p className="text-[11px] text-slate-500">{groups.length} {t('nav.groups').toLowerCase()}</p></div>
           <div className="flex items-center gap-1.5">
@@ -77,7 +78,7 @@ const GroupsPage: React.FC = () => {
               </tr></thead>
               <tbody className="divide-y divide-slate-50 dark:divide-slate-700/30">
                 {filtered.map((g) => (
-                  <tr key={g.id} onClick={() => setDetail(g)} className="hover:bg-slate-50/80 dark:hover:bg-slate-700/20 cursor-pointer transition-colors">
+                  <tr key={g.id} onClick={() => navigate(`/groups/${g.id}`)} className="hover:bg-slate-50/80 dark:hover:bg-slate-700/20 cursor-pointer transition-colors">
                     <td className="px-4 py-2.5">
                       <div className="flex items-center gap-2">
                         <div className="w-6 h-6 bg-blue-500/10 rounded-md flex items-center justify-center"><Users className="w-3 h-3 text-blue-500" /></div>
@@ -96,24 +97,6 @@ const GroupsPage: React.FC = () => {
           </div>
         )}
       </div>
-
-      {detail && (
-        <div className="w-full lg:w-[340px] bg-white dark:bg-slate-800/90 border-l border-slate-200/80 dark:border-slate-700/40 overflow-y-auto shrink-0">
-          <div className="px-4 py-3 border-b border-slate-100 dark:border-slate-700/40 flex items-center gap-2 sticky top-0 bg-white dark:bg-slate-800/90 z-10">
-            <button onClick={() => setDetail(null)} className="p-1 rounded hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"><X className="w-3.5 h-3.5 text-slate-400" /></button>
-            <h3 className="font-semibold text-sm text-slate-900 dark:text-white truncate flex-1">{detail.name}</h3>
-          </div>
-          <div className="p-4 space-y-3">
-            <div><p className="text-[10px] text-slate-500 uppercase tracking-wider mb-0.5">{t('nav.courses')}</p><p className="text-xs font-medium text-slate-700 dark:text-slate-300">{courseName(detail.courseId)}</p></div>
-            <div className="grid grid-cols-2 gap-2">
-              <div className="bg-slate-50 dark:bg-slate-700/20 rounded-lg p-2 text-center"><p className="text-base font-bold text-slate-900 dark:text-white">{detail.studentIds?.length || 0}</p><p className="text-[9px] text-slate-500">{t('nav.students')}</p></div>
-              <div className="bg-slate-50 dark:bg-slate-700/20 rounded-lg p-2 text-center"><p className="text-base font-bold text-slate-900 dark:text-white">—</p><p className="text-[9px] text-slate-500">{t('nav.lessons')}</p></div>
-            </div>
-            <p className="text-[10px] text-slate-400">Created: {detail.createdAt ? new Date(detail.createdAt).toLocaleDateString() : '—'}</p>
-            <button onClick={() => handleDelete(detail.id)} className="text-[11px] text-red-500 hover:text-red-600 flex items-center gap-1"><Trash2 className="w-3 h-3" />{t('common.delete')}</button>
-          </div>
-        </div>
-      )}
 
       {showModal && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => setShowModal(false)}>

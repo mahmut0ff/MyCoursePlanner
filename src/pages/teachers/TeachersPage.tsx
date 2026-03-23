@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { orgGetTeachers, orgInviteUser } from '../../lib/api';
-import { UserPlus, Search, Plus, Mail, X, RefreshCw, Eye, EyeOff, Send } from 'lucide-react';
+import { UserPlus, Search, Plus, Mail, RefreshCw, Eye, EyeOff, Send } from 'lucide-react';
 import type { UserProfile } from '../../types';
 
 const TeachersPage: React.FC = () => {
@@ -12,7 +13,7 @@ const TeachersPage: React.FC = () => {
   const [showCreate, setShowCreate] = useState(false);
   const [showInvite, setShowInvite] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [selected, setSelected] = useState<UserProfile | null>(null);
+  const navigate = useNavigate();
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [form, setForm] = useState({ displayName: '', email: '', password: '', phone: '' });
@@ -61,8 +62,8 @@ const TeachersPage: React.FC = () => {
   };
 
   return (
-    <div className="flex gap-0 h-full">
-      <div className={`flex-1 min-w-0 ${selected ? 'hidden lg:block' : ''}`}>
+    <div>
+      <div>
         <div className="flex items-center justify-between mb-4">
           <div><h1 className="text-lg font-bold text-slate-900 dark:text-white">{t('nav.teachers')}</h1><p className="text-[11px] text-slate-500">{teachers.length} {t('org.teachers.total')}</p></div>
           <div className="flex items-center gap-1.5">
@@ -95,7 +96,7 @@ const TeachersPage: React.FC = () => {
               </tr></thead>
               <tbody className="divide-y divide-slate-50 dark:divide-slate-700/30">
                 {filtered.map((teacher) => (
-                  <tr key={teacher.uid} onClick={() => setSelected(teacher)} className="hover:bg-slate-50/80 dark:hover:bg-slate-700/20 cursor-pointer transition-colors">
+                  <tr key={teacher.uid} onClick={() => navigate(`/teachers/${teacher.uid}`)} className="hover:bg-slate-50/80 dark:hover:bg-slate-700/20 cursor-pointer transition-colors">
                     <td className="px-4 py-2.5">
                       <div className="flex items-center gap-2">
                         <div className="w-6 h-6 bg-gradient-to-br from-violet-400 to-purple-600 rounded-md flex items-center justify-center text-[9px] text-white font-bold">{teacher.displayName?.[0]?.toUpperCase() || '?'}</div>
@@ -113,23 +114,6 @@ const TeachersPage: React.FC = () => {
           </div>
         )}
       </div>
-
-      {/* Detail Panel */}
-      {selected && (
-        <div className="w-full lg:w-[340px] bg-white dark:bg-slate-800/90 border-l border-slate-200/80 dark:border-slate-700/40 overflow-y-auto shrink-0">
-          <div className="px-4 py-3 border-b border-slate-100 dark:border-slate-700/40 flex items-center gap-2 sticky top-0 bg-white dark:bg-slate-800/90 z-10">
-            <button onClick={() => setSelected(null)} className="p-1 rounded hover:bg-slate-100 dark:hover:bg-slate-700"><X className="w-3.5 h-3.5 text-slate-400" /></button>
-            <h3 className="font-semibold text-sm text-slate-900 dark:text-white truncate">{selected.displayName}</h3>
-          </div>
-          <div className="p-5 text-center">
-            <div className="w-12 h-12 bg-gradient-to-br from-violet-400 to-purple-600 rounded-xl flex items-center justify-center text-sm text-white font-bold mx-auto mb-2">{selected.displayName?.[0]?.toUpperCase() || '?'}</div>
-            <p className="text-sm font-bold text-slate-900 dark:text-white">{selected.displayName}</p>
-            <p className="text-[10px] text-slate-400 flex items-center justify-center gap-1 mb-2"><Mail className="w-3 h-3" />{selected.email}</p>
-            <span className="inline-block text-[10px] px-2 py-0.5 rounded-full font-medium bg-violet-500/10 text-violet-500">{t('org.teachers.roleTeacher')}</span>
-          </div>
-          <div className="px-5 pb-5"><div className="bg-slate-50 dark:bg-slate-700/20 rounded-lg p-2.5"><p className="text-[10px] text-slate-500 uppercase tracking-wider mb-0.5">{t('org.users.joined')}</p><p className="text-xs text-slate-700 dark:text-slate-300">{selected.createdAt ? new Date(selected.createdAt).toLocaleDateString() : '—'}</p></div></div>
-        </div>
-      )}
 
       {/* Create Teacher Modal */}
       {showCreate && (

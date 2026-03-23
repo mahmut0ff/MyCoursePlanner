@@ -4,6 +4,7 @@
 import type { Handler, HandlerEvent } from '@netlify/functions';
 import { adminDb } from './utils/firebase-admin';
 import { verifyAuth, isStaff, getOrgFilter, hasRole, ok, unauthorized, forbidden, badRequest, notFound, jsonResponse } from './utils/auth';
+import { createNotification } from './utils/notifications';
 
 const COLLECTION = 'examAttempts';
 
@@ -68,6 +69,13 @@ const handler: Handler = async (event: HandlerEvent) => {
       timeSpentSeconds: body.timeSpentSeconds || 0, createdAt: now,
     };
     const ref = await adminDb.collection(COLLECTION).add(data);
+    // Notify student that result is ready
+    createNotification({
+      recipientId: user.uid, type: 'exam_result_ready',
+      title: 'Результат экзамена',
+      message: `Ваш результат: ${data.percentage}% по «${data.examTitle}»`,
+      link: '/my-results',
+    }).catch(() => {});
     return ok({ id: ref.id, ...data });
   }
 

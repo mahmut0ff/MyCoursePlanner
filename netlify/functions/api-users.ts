@@ -4,6 +4,7 @@
 import type { Handler, HandlerEvent } from '@netlify/functions';
 import { adminDb } from './utils/firebase-admin';
 import { verifyAuth, isSuperAdmin, hasRole, getOrgFilter, ok, unauthorized, forbidden, badRequest, notFound, jsonResponse } from './utils/auth';
+import { createNotification, notifyOrgAdmins } from './utils/notifications';
 
 const now = () => new Date().toISOString();
 
@@ -49,6 +50,13 @@ const handler: Handler = async (event: HandlerEvent) => {
       });
       // Mark invite as accepted
       await adminDb.collection('invites').doc(body.inviteId).update({ status: 'accepted', updatedAt: now() });
+      // Notify org admins
+      notifyOrgAdmins(
+        inv.organizationId, 'invite_accepted',
+        'Приглашение принято',
+        `${user.displayName || user.email} принял(а) приглашение`,
+        '/teachers',
+      ).catch(() => {});
       return ok({ accepted: true, organizationId: inv.organizationId });
     }
 
@@ -60,6 +68,13 @@ const handler: Handler = async (event: HandlerEvent) => {
       const inv = invDoc.data()!;
       if (inv.email !== user.email) return forbidden();
       await adminDb.collection('invites').doc(body.inviteId).update({ status: 'declined', updatedAt: now() });
+      // Notify org admins
+      notifyOrgAdmins(
+        inv.organizationId, 'invite_declined',
+        'Приглашение отклонено',
+        `${user.displayName || user.email} отклонил(а) приглашение`,
+        '/teachers',
+      ).catch(() => {});
       return ok({ declined: true });
     }
 

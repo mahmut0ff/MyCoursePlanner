@@ -9,6 +9,7 @@ import {
   ok, unauthorized, forbidden, badRequest, notFound, jsonResponse,
   type AuthUser,
 } from './utils/auth';
+import { createNotification } from './utils/notifications';
 
 /* ═══════════════════════════════════════════════ */
 /*  Helpers                                        */
@@ -269,6 +270,16 @@ const handler: Handler = async (event: HandlerEvent) => {
         status: 'pending', createdAt: now(),
       };
       const ref = await adminDb.collection('invites').add(data);
+      // Notify teacher (if already registered)
+      if (!existing.empty) {
+        const teacherId = existing.docs[0].id;
+        createNotification({
+          recipientId: teacherId, type: 'invite_received',
+          title: 'Приглашение от организации',
+          message: `${organizationName} приглашает вас`,
+          link: '/invites',
+        }).catch(() => {});
+      }
       return ok({ id: ref.id, ...data });
     }
 

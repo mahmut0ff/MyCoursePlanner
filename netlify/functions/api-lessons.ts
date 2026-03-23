@@ -4,6 +4,7 @@
 import type { Handler, HandlerEvent } from '@netlify/functions';
 import { adminDb } from './utils/firebase-admin';
 import { verifyAuth, isStaff, getOrgFilter, ok, unauthorized, forbidden, badRequest, notFound, jsonResponse } from './utils/auth';
+import { notifyOrgStudents } from './utils/notifications';
 
 const COLLECTION = 'lessonPlans';
 
@@ -49,6 +50,15 @@ const handler: Handler = async (event: HandlerEvent) => {
       updatedAt: now,
     };
     const ref = await adminDb.collection(COLLECTION).add(data);
+    // Notify org students about new lesson
+    if (user.organizationId && data.status === 'published') {
+      notifyOrgStudents(
+        user.organizationId, 'new_lesson',
+        'Новый урок',
+        `Опубликован урок «${body.title}»`,
+        '/lessons',
+      ).catch(() => {});
+    }
     return ok({ id: ref.id, ...data });
   }
 

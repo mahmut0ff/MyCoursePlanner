@@ -4,6 +4,7 @@
 import type { Handler, HandlerEvent } from '@netlify/functions';
 import { adminDb } from './utils/firebase-admin';
 import { verifyAuth, isStaff, getOrgFilter, ok, unauthorized, forbidden, badRequest, notFound, jsonResponse } from './utils/auth';
+import { notifyOrgStudents } from './utils/notifications';
 
 const COLLECTION = 'examRooms';
 
@@ -83,6 +84,15 @@ const handler: Handler = async (event: HandlerEvent) => {
       participants: [], organizationId: user.organizationId || '', createdAt: now,
     };
     const ref = await adminDb.collection(COLLECTION).add(data);
+    // Notify org students about new exam room
+    if (user.organizationId) {
+      notifyOrgStudents(
+        user.organizationId, 'exam_room_created',
+        'Новая комната экзамена',
+        `Комната для «${body.examTitle}» открыта (${data.code})`,
+        '/rooms',
+      ).catch(() => {});
+    }
     return ok({ id: ref.id, ...data });
   }
 

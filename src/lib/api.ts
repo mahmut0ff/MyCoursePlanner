@@ -259,3 +259,14 @@ export const vacApplyToVacancy = (vacancyId: string, coverLetter: string, resume
   vacReq('apply', 'POST', { vacancyId, coverLetter, resumeUrl });
 export const vacGetMyApplications = () => vacReq('myApplications');
 
+// ============================================================
+// NOTIFICATIONS API
+// ============================================================
+
+const notifReq = <T = any>(action: string, method = 'GET', body?: any) =>
+  apiRequest<T>('api-notifications', method, body, { action });
+
+export const apiMarkNotificationRead = (id: string) => notifReq('markRead', 'POST', { id });
+export const apiMarkAllNotificationsRead = () => notifReq('markAllRead', 'POST');
+export const apiSaveFcmToken = (token: string) => notifReq('saveFcmToken', 'POST', { token });
+export const apiRemoveFcmToken = (token: string) => notifReq('removeFcmToken', 'POST', { token });

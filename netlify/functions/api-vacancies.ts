@@ -9,6 +9,7 @@ import {
   ok, unauthorized, forbidden, badRequest, notFound, jsonResponse,
   type AuthUser,
 } from './utils/auth';
+import { createNotification, notifyOrgAdmins } from './utils/notifications';
 
 const VACANCIES = 'vacancies';
 const APPLICATIONS = 'vacancy_applications';
@@ -156,7 +157,16 @@ const handler: Handler = async (event: HandlerEvent) => {
       await adminDb.collection(VACANCIES).doc(body.vacancyId).update({
         applicationsCount: (vacancy.data()?.applicationsCount || 0) + 1,
       });
-
+      // Notify org admins
+      const vacOrgId = vacancy.data()?.organizationId;
+      if (vacOrgId) {
+        notifyOrgAdmins(
+          vacOrgId, 'new_vacancy_application',
+          'Новый отклик на вакансию',
+          `${auth.displayName || auth.email} откликнулся на «${vacancy.data()?.title}»`,
+          '/org-vacancies',
+        ).catch(() => {});
+      }
       return ok(application);
     }
 
@@ -192,6 +202,17 @@ const handler: Handler = async (event: HandlerEvent) => {
         reviewedAt: now(),
         reviewedBy: auth.uid,
       });
+      // Notify teacher about review result
+      const teacherId = appDoc.data()?.teacherId;
+      if (teacherId) {
+        const statusText = body.status === 'accepted' ? 'принят' : body.status === 'rejected' ? 'отклонён' : 'просмотрен';
+        createNotification({
+          recipientId: teacherId, type: 'vacancy_app_reviewed',
+          title: `Отклик ${statusText}`,
+          message: `Ваш отклик на «${appDoc.data()?.vacancyTitle}» ${statusText}`,
+          link: '/my-applications',
+        }).catch(() => {});
+      }
       return ok({ success: true });
     }
 

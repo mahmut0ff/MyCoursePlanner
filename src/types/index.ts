@@ -462,3 +462,28 @@ export interface VacancyApplication {
   createdAt: string;
 }
 
+// ---- Notifications ----
+
+export type NotificationType =
+  | 'invite_received'
+  | 'vacancy_app_reviewed'
+  | 'added_to_group'
+  | 'new_vacancy_application'
+  | 'invite_accepted'
+  | 'invite_declined'
+  | 'exam_room_created'
+  | 'exam_result_ready'
+  | 'new_lesson'
+  | 'new_org_registered';
+
+export interface AppNotification {
+  id: string;
+  recipientId: string;
+  type: NotificationType;
+  title: string;
+  message: string;
+  link?: string;
+  metadata?: Record<string, any>;
+  read: boolean;
+  createdAt: string;
+}

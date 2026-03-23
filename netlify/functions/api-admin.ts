@@ -47,6 +47,7 @@ import type { Handler, HandlerEvent } from '@netlify/functions';
 import { adminDb, adminAuth } from './utils/firebase-admin';
 import { verifyAuth, isSuperAdmin, jsonResponse, unauthorized, forbidden, badRequest, ok, notFound } from './utils/auth';
 import type { AuthUser } from './utils/auth';
+import { notifyAllSuperAdmins } from './utils/notifications';
 
 // ---- Audit Logger ----
 async function auditLog(actor: AuthUser, action: string, entityType: string, entityId: string, before?: any, after?: any, metadata?: any) {
@@ -148,6 +149,13 @@ const handler: Handler = async (event: HandlerEvent) => {
       await adminDb.collection('subscriptions').add({ organizationId: ref.id, planId: orgData.planId, status: 'trial', startDate: now, currentPeriodEnd: trialEnd.toISOString(), trialEndsAt: trialEnd.toISOString(), createdAt: now });
 
       await auditLog(user, 'org_created', 'organization', ref.id, null, orgData);
+      // Notify all super admins
+      notifyAllSuperAdmins(
+        'new_org_registered',
+        'Новая организация',
+        `Создана организация «${body.name}»`,
+        '/admin/organizations',
+      ).catch(() => {});
       return ok({ id: ref.id, ...orgData });
     }
 

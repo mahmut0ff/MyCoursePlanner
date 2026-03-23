@@ -1,8 +1,9 @@
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useContext, useEffect, useState, useRef } from 'react';
 import type { User } from 'firebase/auth';
 import { onAuthChange } from '../services/auth.service';
 import { getUser, createUser } from '../services/users.service';
-import { isFirebaseConfigured } from '../lib/firebase';
+import { isFirebaseConfigured, requestNotificationPermission } from '../lib/firebase';
+import { apiSaveFcmToken, apiRemoveFcmToken } from '../lib/api';
 import type { UserProfile, UserRole } from '../types';
 
 interface AuthContextType {
@@ -39,6 +40,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [firebaseUser, setFirebaseUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
+  const fcmTokenRef = useRef<string | null>(null);
 
   const loadProfile = async (user: User) => {
     try {
@@ -58,6 +60,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (firebaseUser) await loadProfile(firebaseUser);
   };
 
+  // Register FCM push token (best-effort, non-blocking)
+  const registerFcmToken = async () => {
+    try {
+      const token = await requestNotificationPermission();
+      if (token) {
+        fcmTokenRef.current = token;
+        await apiSaveFcmToken(token);
+      }
+    } catch (e) {
+      console.warn('FCM token registration failed:', e);
+    }
+  };
+
   useEffect(() => {
     if (!isFirebaseConfigured) {
       setLoading(false);
@@ -68,7 +83,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setFirebaseUser(user);
       if (user) {
         await loadProfile(user);
+        // Register push notifications (non-blocking)
+        registerFcmToken();
       } else {
+        // Remove FCM token on logout
+        if (fcmTokenRef.current) {
+          apiRemoveFcmToken(fcmTokenRef.current).catch(() => {});
+          fcmTokenRef.current = null;
+        }
         setProfile(null);
       }
       setLoading(false);

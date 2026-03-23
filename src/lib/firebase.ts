@@ -2,6 +2,7 @@ import { initializeApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
+import { getMessaging, getToken, isSupported, type Messaging } from 'firebase/messaging';
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY || '',
@@ -28,4 +29,47 @@ const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 export const db = getFirestore(app);
 export const storage = getStorage(app);
+
+// ---- Firebase Cloud Messaging ----
+
+let messaging: Messaging | null = null;
+
+export async function getMessagingInstance(): Promise<Messaging | null> {
+  if (messaging) return messaging;
+  const supported = await isSupported();
+  if (!supported) return null;
+  messaging = getMessaging(app);
+  return messaging;
+}
+
+/**
+ * Request notification permission and get FCM token.
+ * Returns the token string or null if denied/unsupported.
+ */
+export async function requestNotificationPermission(): Promise<string | null> {
+  try {
+    const permission = await Notification.requestPermission();
+    if (permission !== 'granted') return null;
+
+    const m = await getMessagingInstance();
+    if (!m) return null;
+
+    const vapidKey = import.meta.env.VITE_FIREBASE_VAPID_KEY;
+    if (!vapidKey) {
+      console.warn('⚠️ VITE_FIREBASE_VAPID_KEY is not set. Push notifications disabled.');
+      return null;
+    }
+
+    const token = await getToken(m, {
+      vapidKey,
+      serviceWorkerRegistration: await navigator.serviceWorker.register('/firebase-messaging-sw.js'),
+    });
+
+    return token || null;
+  } catch (err) {
+    console.warn('Push notification setup failed:', err);
+    return null;
+  }
+}
+
 export default app;

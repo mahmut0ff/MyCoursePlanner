@@ -4,8 +4,9 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useTheme } from '../../contexts/ThemeContext';
 import { useNavigate } from 'react-router-dom';
 import LanguageSwitcher from '../LanguageSwitcher';
+import NotificationDropdown from '../notifications/NotificationDropdown';
 import {
-  Menu, Bell, Search, Sun, Moon, X,
+  Menu, Search, Sun, Moon, X,
   LayoutDashboard, Building2, Users, CreditCard, BarChart3,
   Activity, Server, BookOpen, ClipboardList, Radio, Tag, Puzzle, Zap,
 } from 'lucide-react';
@@ -123,10 +124,7 @@ const Topbar: React.FC<TopbarProps> = ({ onMenuClick }) => {
           </button>
 
           {/* Notifications */}
-          <button className="p-2 rounded-lg text-slate-400 hover:text-slate-600 dark:text-slate-500 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors relative">
-            <Bell className="w-5 h-5" />
-            <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-primary-500 rounded-full ring-2 ring-white dark:ring-slate-800" />
-          </button>
+          <NotificationDropdown />
         </div>
       </header>
 

@@ -190,7 +190,13 @@
     "score": "Score",
     "passed": "Passed",
     "failed": "Failed",
-    "viewResults": "View Results"
+    "viewResults": "View Results",
+    "enterCodeError": "Please enter a room code",
+    "notFound": "Room not found or no longer active",
+    "joinFailed": "Failed to join room",
+    "joining": "Joining...",
+    "joinButton": "Join Exam",
+    "joinSubtitle": "Enter the room code provided by your teacher"
   },
   "admin": {
     "dashboard": {
@@ -796,5 +802,30 @@
     "step3Desc": "Add teachers to help with lessons",
     "step4Title": "Add students",
     "step4Desc": "Create accounts for your learners"
+  },
+  "results": {
+    "title": "My Results",
+    "attempts": "attempts",
+    "noResults": "No results yet",
+    "noResultsDesc": "Join an exam to see your results here",
+    "pass": "Pass",
+    "fail": "Fail",
+    "passed": "PASSED",
+    "failed": "FAILED",
+    "allResults": "All Results",
+    "notFound": "Result not found",
+    "score": "Score",
+    "timeSpent": "Time Spent",
+    "correct": "Correct",
+    "aiFeedback": "AI Feedback",
+    "strengths": "Strengths",
+    "areasToImprove": "Areas to Improve",
+    "whatToReview": "What to Review",
+    "aiGenerating": "AI feedback is being generated...",
+    "questionBreakdown": "Question Breakdown",
+    "yourAnswer": "Your answer",
+    "noAnswer": "no answer",
+    "correctAnswer": "Correct",
+    "pendingReview": "Pending Review"
   }
 }

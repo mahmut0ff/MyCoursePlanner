@@ -7,6 +7,7 @@ import { getAttemptsByStudent } from '../../services/attempts.service';
 import type { LessonPlan, ExamAttempt } from '../../types';
 import { formatDate } from '../../utils/grading';
 import { BookOpen, Radio, Trophy, XCircle, ArrowRight, Brain } from 'lucide-react';
+import { DashboardSkeleton } from '../../components/ui/Skeleton';
 
 const StudentDashboard: React.FC = () => {
   const { t } = useTranslation();
@@ -23,7 +24,7 @@ const StudentDashboard: React.FC = () => {
     }
   }, [profile?.uid]);
 
-  if (loading) return <div className="flex items-center justify-center py-20"><div className="w-8 h-8 border-4 border-primary-200 border-t-primary-600 rounded-full animate-spin dark:border-primary-800 dark:border-t-primary-400" /></div>;
+  if (loading) return <DashboardSkeleton />;
 
   const avgScore = attempts.length > 0 ? Math.round(attempts.reduce((s, a) => s + a.percentage, 0) / attempts.length) : 0;
   const passRate = attempts.length > 0 ? Math.round((attempts.filter((a) => a.passed).length / attempts.length) * 100) : 0;

@@ -402,6 +402,19 @@ export interface OrgSettings {
   academicYearEnd?: string;
   gradingScale?: 'percentage' | 'letter' | 'points';
   passingScore: number;
+  // Notifications
+  emailNotifications?: boolean;
+  pushNotifications?: boolean;
+  // Security
+  requireTwoFactor?: boolean;
+  sessionTimeoutMinutes?: number;
+  // Branding
+  primaryColor?: string;
+  description?: string;
+  // Limits (read-only from subscription)
+  maxStudents?: number;
+  maxTeachers?: number;
+  storageUsedMb?: number;
   updatedAt: string;
 }
 

@@ -161,6 +161,10 @@ const ExamTakePage: React.FC = () => {
           </button>
         </div>
       </div>
+      {/* Progress bar */}
+      <div className="h-1 bg-slate-200 dark:bg-slate-700">
+        <div className="h-full bg-primary-500 transition-all" style={{ width: `${(answeredCount / questions.length) * 100}%` }} />
+      </div>
 
       <div className="max-w-4xl mx-auto px-4 py-6">
         {/* Question Navigation Pills */}
@@ -213,7 +217,7 @@ const ExamTakePage: React.FC = () => {
                     onChange={() => setAnswer(q.id, opt)}
                     className="w-4 h-4 text-primary-600"
                   />
-                  <span className="text-slate-800">{opt}</span>
+                  <span className="text-slate-800 dark:text-white">{opt}</span>
                 </label>
               ))}
             </div>
@@ -236,7 +240,7 @@ const ExamTakePage: React.FC = () => {
                       onChange={() => toggleMultiAnswer(q.id, opt)}
                       className="w-4 h-4 rounded text-primary-600"
                     />
-                    <span className="text-slate-800">{opt}</span>
+                    <span className="text-slate-800 dark:text-white">{opt}</span>
                   </label>
                 );
               })}

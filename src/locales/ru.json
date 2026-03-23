@@ -648,7 +648,12 @@
       "limits": "Лимиты и использование",
       "maxStudents": "Макс. студентов",
       "maxTeachers": "Макс. преподавателей",
-      "storageUsed": "Использовано"
+      "storageUsed": "Использовано",
+      "notificationsDesc": "Настройте уведомления для вашей организации",
+      "emailNotificationsDesc": "Получайте уведомления по email о важных событиях",
+      "pushNotificationsDesc": "Получайте push-уведомления в браузере",
+      "requireTwoFactorDesc": "Обязательная 2FA для всех пользователей организации",
+      "limitsDesc": "Лимиты определяются вашим текущим тарифным планом"
     }
   },
   "teacher": {

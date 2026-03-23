@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../contexts/AuthContext';
 import { apiGetSubscription, apiChangePlan, apiCancelSubscription, apiReactivateSubscription } from '../../lib/api';
+import toast from 'react-hot-toast';
 import { PLANS } from '../../types';
 import { Check, Sparkles, Crown, Zap, CreditCard, Star } from 'lucide-react';
 
@@ -22,19 +23,19 @@ const BillingPage: React.FC = () => {
   const handleChangePlan = async (planId: string) => {
     setChangingPlan(planId);
     try { await apiChangePlan(planId); await loadSubscription(); }
-    catch (e: any) { alert(e.message); }
+    catch (e: any) { toast.error(e.message); }
     finally { setChangingPlan(null); }
   };
 
   const handleCancel = async () => {
     if (!confirm(t('billing.confirmCancel'))) return;
     try { await apiCancelSubscription(); await loadSubscription(); }
-    catch (e: any) { alert(e.message); }
+    catch (e: any) { toast.error(e.message); }
   };
 
   const handleReactivate = async () => {
     try { await apiReactivateSubscription(); await loadSubscription(); }
-    catch (e: any) { alert(e.message); }
+    catch (e: any) { toast.error(e.message); }
   };
 
   if (loading) return <div className="flex items-center justify-center py-20"><div className="w-7 h-7 border-[3px] border-slate-200 border-t-primary-500 rounded-full animate-spin dark:border-slate-700 dark:border-t-primary-400" /></div>;

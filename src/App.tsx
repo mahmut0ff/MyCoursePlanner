@@ -1,4 +1,5 @@
 import React from 'react';
+import { Toaster } from 'react-hot-toast';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
 import { ThemeProvider } from './contexts/ThemeContext';
@@ -6,6 +7,7 @@ import ProtectedRoute from './components/auth/ProtectedRoute';
 import AppLayout from './components/layout/AppLayout';
 import LoginPage from './pages/auth/LoginPage';
 import RegisterPage from './pages/auth/RegisterPage';
+import LandingPage from './pages/landing/LandingPage';
 import DashboardPage from './pages/dashboard/DashboardPage';
 import LessonListPage from './pages/lessons/LessonListPage';
 import LessonEditPage from './pages/lessons/LessonEditPage';
@@ -70,10 +72,12 @@ const App: React.FC = () => {
     <ThemeProvider>
     <AuthProvider>
       <BrowserRouter>
+        <Toaster position="top-right" toastOptions={{ duration: 3000, style: { borderRadius: '12px', padding: '12px 16px', fontSize: '14px' } }} />
         <Routes>
           {/* Public */}
-          <Route path="/login" element={<LoginPage />} />
-          <Route path="/register" element={<RegisterPage />} />
+            <Route path="/" element={<LandingPage />} />
+            <Route path="/login" element={<LoginPage />} />
+            <Route path="/register" element={<RegisterPage />} />
 
           {/* Exam Taking (full screen) */}
           <Route path="/take/:roomId" element={<ProtectedRoute><ExamTakePage /></ProtectedRoute>} />

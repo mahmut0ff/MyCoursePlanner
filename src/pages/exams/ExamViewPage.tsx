@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import toast from 'react-hot-toast';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { getExam, getQuestions, deleteExam } from '../../services/exams.service';
@@ -41,7 +42,7 @@ const ExamViewPage: React.FC = () => {
       navigate(`/rooms/${room.id}`);
     } catch (e) {
       console.error('Failed to start room:', e);
-      alert('Failed to start exam room');
+      toast.error('Failed to start exam room');
     } finally {
       setStarting(false);
     }

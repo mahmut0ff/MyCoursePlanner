@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { adminGetUser, adminUpdateUserRole, adminDisableUser, adminEnableUser, adminResetPassword } from '../../lib/api';
+import toast from 'react-hot-toast';
 import { ArrowLeft, Mail, Calendar, Shield, Users, Ban, Check, Key } from 'lucide-react';
 
 const ROLE_COLORS: Record<string, string> = { super_admin: 'bg-red-100 text-red-700', admin: 'bg-violet-100 text-violet-700', teacher: 'bg-blue-100 text-blue-700', student: 'bg-emerald-100 text-emerald-700' };
@@ -26,7 +27,7 @@ const AdminUserDetailPage: React.FC = () => {
   const handleEnable = async () => { await adminEnableUser(uid!); load(); };
   const handleReset = async () => {
     if (!user?.email) return;
-    try { const res = await adminResetPassword(user.email); alert(`Password reset link generated:\n${res.link}`); } catch (e: any) { alert(`Error: ${e.message}`); }
+    try { const res = await adminResetPassword(user.email); toast.success(`Password reset link generated:\n${res.link}`); } catch (e: any) { toast.error(`Error: ${e.message}`); }
   };
 
   if (loading) return <div className="flex justify-center py-20"><div className="w-8 h-8 border-2 border-slate-200 border-t-primary-500 rounded-full animate-spin dark:border-slate-700 dark:border-t-primary-400" /></div>;

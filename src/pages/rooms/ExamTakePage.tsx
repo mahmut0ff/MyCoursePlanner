@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react';
+import toast from 'react-hot-toast';
 import { useParams, useNavigate } from 'react-router-dom';
 import { getRoom } from '../../services/rooms.service';
 import { getExam, getQuestions } from '../../services/exams.service';
@@ -117,7 +118,7 @@ const ExamTakePage: React.FC = () => {
       navigate(`/results/${attemptId}`);
     } catch (e) {
       console.error('Submit failed:', e);
-      alert('Failed to submit exam. Please try again.');
+      toast.error('Failed to submit exam. Please try again.');
     } finally {
       setSubmitting(false);
     }

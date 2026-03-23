@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import toast from 'react-hot-toast';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../contexts/AuthContext';
@@ -61,7 +62,7 @@ const ExamEditPage: React.FC = () => {
   const updateOption = (qIdx: number, oIdx: number, value: string) => { const opts = [...questions[qIdx].options]; opts[oIdx] = value; updateQuestion(qIdx, { options: opts }); };
 
   const handleSave = async () => {
-    if (!title || !subject) { alert(t('exams.titleSubjectRequired')); return; }
+    if (!title || !subject) { toast.error(t('exams.titleSubjectRequired')); return; }
     setSaving(true);
     try {
       const examData = {
@@ -74,7 +75,7 @@ const ExamEditPage: React.FC = () => {
       if (isEdit && id) { await updateExam(id, examData); } else { examId = await createExam(examData as any); }
       await saveQuestions(examId!, questions.map((q, i) => ({ ...q, order: i })));
       navigate(`/exams/${examId}`);
-    } catch (e) { console.error(e); alert(t('exams.saveFailed')); }
+    } catch (e) { console.error(e); toast.error(t('exams.saveFailed')); }
     finally { setSaving(false); }
   };
 

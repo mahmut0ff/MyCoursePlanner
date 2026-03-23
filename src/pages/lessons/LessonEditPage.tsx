@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import toast from 'react-hot-toast';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useEditor, EditorContent } from '@tiptap/react';
@@ -102,7 +103,7 @@ const LessonEditPage: React.FC = () => {
 
   const handleSave = async () => {
     if (!title || !subject) {
-      alert(t('lessons.titleSubjectRequired'));
+      toast.error(t('lessons.titleSubjectRequired'));
       return;
     }
     setSaving(true);
@@ -130,7 +131,7 @@ const LessonEditPage: React.FC = () => {
       }
     } catch (e) {
       console.error('Save failed:', e);
-      alert(t('lessons.saveFailed'));
+      toast.error(t('lessons.saveFailed'));
     } finally {
       setSaving(false);
     }

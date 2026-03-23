@@ -157,7 +157,7 @@ const LoginPage: React.FC = () => {
             <div className="flex items-center justify-between text-sm">
               <label className="flex items-center gap-2 text-slate-500 dark:text-slate-400 cursor-pointer">
                 <input type="checkbox" className="w-4 h-4 rounded border-slate-300 text-primary-600 focus:ring-primary-500" />
-                Remember me
+                {t('auth.rememberMe')}
               </label>
               <a href="#" className="text-primary-600 hover:text-primary-700 font-medium dark:text-primary-400">
                 {t('auth.forgotPassword')}
@@ -172,7 +172,7 @@ const LoginPage: React.FC = () => {
           {/* Divider */}
           <div className="flex items-center gap-4 my-6">
             <div className="flex-1 h-px bg-slate-200 dark:bg-slate-700" />
-            <span className="text-sm text-slate-400">or</span>
+            <span className="text-sm text-slate-400">{t('auth.or')}</span>
             <div className="flex-1 h-px bg-slate-200 dark:bg-slate-700" />
           </div>
 

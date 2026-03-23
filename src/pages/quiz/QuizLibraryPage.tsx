@@ -6,7 +6,7 @@ import { apiGetQuizzes, apiDeleteQuiz, apiPublishQuiz, apiUnpublishQuiz, apiArch
 import type { Quiz } from '../../types';
 import {
   Plus, Search, Play, Copy, Share2, Trash2, Archive,
-  BookOpen, Users, Star, BarChart3, Filter, Zap,
+  BookOpen, Users, Star, Filter, Zap,
   Globe, Lock, Building2, MoreVertical, Eye, EyeOff,
   Gamepad2
 } from 'lucide-react';
@@ -31,7 +31,7 @@ const VISIBILITY_ICONS: Record<string, React.ReactNode> = {
 const QuizLibraryPage: React.FC = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const { profile } = useAuth();
+  useAuth();
   const [quizzes, setQuizzes] = useState<Quiz[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');

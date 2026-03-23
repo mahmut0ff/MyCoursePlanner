@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../contexts/AuthContext';
@@ -13,7 +13,7 @@ import type { QuizSession, SessionParticipant, SessionAnswer } from '../../types
 import {
   Play, Pause, SkipForward, Square, Copy, CheckCircle, Users,
   Lock, Unlock, UserMinus, Radio, BarChart3, ArrowLeft,
-  Trophy, Zap, Clock, RefreshCw, AlertTriangle
+  Trophy, Zap, RefreshCw
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -21,7 +21,7 @@ const LiveSessionDashboard: React.FC = () => {
   const { id: sessionId } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { t } = useTranslation();
-  const { profile } = useAuth();
+  useAuth();
   const [session, setSession] = useState<QuizSession | null>(null);
   const [participants, setParticipants] = useState<SessionParticipant[]>([]);
   const [answers, setAnswers] = useState<SessionAnswer[]>([]);

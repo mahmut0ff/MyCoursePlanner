@@ -1,13 +1,13 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../contexts/AuthContext';
 import { apiGetQuiz, apiCreateQuiz, apiUpdateQuiz, apiSaveQuizQuestions } from '../../lib/api';
-import type { Quiz, QuizQuestion, QuizQuestionOption, QuizQuestionType, QuizDifficulty } from '../../types';
+import type { Quiz, QuizQuestion, QuizQuestionType, QuizDifficulty } from '../../types';
 import {
-  ArrowLeft, Save, Plus, Trash2, GripVertical, Image, Music, FileText,
-  CheckCircle, Circle, type LucideIcon,
-  ChevronDown, ChevronUp, Copy, Eye, Play, Settings, Clock
+  ArrowLeft, Save, Plus, Trash2, GripVertical,
+  CheckCircle, Circle,
+  ChevronDown, ChevronUp, Copy, Settings, Clock
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -55,7 +55,7 @@ const QuizBuilderPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { t } = useTranslation();
-  const { profile } = useAuth();
+  useAuth();
   const isEdit = Boolean(id);
 
   const [quiz, setQuiz] = useState<Partial<Quiz>>({

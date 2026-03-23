@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../contexts/AuthContext';
 import { apiGetTeacherProfile, apiUpdateTeacherProfile } from '../../lib/api';
-import { Save, User, Briefcase, BookOpen, Link2, Plus, X, Loader2, CheckCircle2 } from 'lucide-react';
+import { Save, User, Briefcase, BookOpen, Link2, Plus, X, Loader2, CheckCircle2, Eye, EyeOff, GraduationCap, Award, MapPin, Tag } from 'lucide-react';
 
 interface SocialLink {
   platform: string;
@@ -16,11 +16,17 @@ const TeacherProfilePage: React.FC = () => {
   const [saving, setSaving] = useState(false);
   const [success, setSuccess] = useState('');
   const [error, setError] = useState('');
+  const [previewMode, setPreviewMode] = useState(false);
 
+  const [avatarUrl, setAvatarUrl] = useState('');
   const [bio, setBio] = useState('');
   const [specialization, setSpecialization] = useState('');
   const [experience, setExperience] = useState('');
   const [socialLinks, setSocialLinks] = useState<SocialLink[]>([]);
+  const [education, setEducation] = useState('');
+  const [certificates, setCertificates] = useState('');
+  const [subjects, setSubjects] = useState('');
+  const [city, setCity] = useState('');
 
   useEffect(() => {
     apiGetTeacherProfile()
@@ -29,6 +35,11 @@ const TeacherProfilePage: React.FC = () => {
         setSpecialization(data.specialization || '');
         setExperience(data.experience || '');
         setSocialLinks(data.socialLinks || []);
+        setAvatarUrl(data.avatarUrl || '');
+        setEducation(data.education || '');
+        setCertificates(data.certificates || '');
+        setSubjects(data.subjects || '');
+        setCity(data.city || '');
       })
       .catch((e: any) => setError(e.message))
       .finally(() => setLoading(false));
@@ -38,7 +49,7 @@ const TeacherProfilePage: React.FC = () => {
     setSaving(true);
     setError('');
     try {
-      await apiUpdateTeacherProfile({ bio, specialization, experience, socialLinks });
+      await apiUpdateTeacherProfile({ bio, specialization, experience, socialLinks, avatarUrl, education, certificates, subjects, city });
       setSuccess(t('teacher.profileSaved'));
       setTimeout(() => setSuccess(''), 3000);
     } catch (e: any) {
@@ -64,6 +75,76 @@ const TeacherProfilePage: React.FC = () => {
     );
   }
 
+  const subjectsArr = subjects ? subjects.split(',').map(s => s.trim()).filter(Boolean) : [];
+
+  /* ═════════════════════ PREVIEW MODE ═════════════════════ */
+  if (previewMode) {
+    return (
+      <div className="max-w-3xl mx-auto">
+        <div className="flex items-center justify-between mb-6">
+          <h1 className="text-xl font-bold text-slate-900 dark:text-white">{t('teacher.previewTitle')}</h1>
+          <button onClick={() => setPreviewMode(false)} className="btn-secondary text-sm flex items-center gap-2">
+            <EyeOff className="w-4 h-4" />{t('teacher.exitPreview')}
+          </button>
+        </div>
+
+        <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl overflow-hidden">
+          {/* Header */}
+          <div className="bg-slate-700 h-24 relative">
+            <div className="absolute -bottom-10 left-6">
+              {avatarUrl ? (
+                <img src={avatarUrl} alt="" className="w-20 h-20 rounded-2xl object-cover shadow-lg ring-4 ring-white dark:ring-slate-800" />
+              ) : (
+                <div className="w-20 h-20 bg-primary-600 rounded-2xl flex items-center justify-center text-2xl text-white font-bold shadow-lg ring-4 ring-white dark:ring-slate-800">
+                  {profile?.displayName?.[0]?.toUpperCase() || '?'}
+                </div>
+              )}
+            </div>
+          </div>
+          <div className="pt-14 px-6 pb-6">
+            <h2 className="text-xl font-bold text-slate-900 dark:text-white">{profile?.displayName}</h2>
+            <p className="text-sm text-slate-500 dark:text-slate-400">{specialization || t('teacher.noSpecialization')}</p>
+            {city && <p className="text-xs text-slate-400 flex items-center gap-1 mt-1"><MapPin className="w-3 h-3" />{city}</p>}
+            {subjectsArr.length > 0 && (
+              <div className="flex flex-wrap gap-1.5 mt-3">
+                {subjectsArr.map((s, i) => <span key={i} className="text-[11px] px-2 py-0.5 bg-primary-500/10 text-primary-600 dark:text-primary-400 rounded-full font-medium">{s}</span>)}
+              </div>
+            )}
+            {bio && <p className="text-sm text-slate-600 dark:text-slate-300 mt-4 leading-relaxed">{bio}</p>}
+            {experience && (
+              <div className="mt-4">
+                <h3 className="text-sm font-semibold text-slate-900 dark:text-white mb-1">{t('teacher.experience')}</h3>
+                <p className="text-sm text-slate-600 dark:text-slate-300 whitespace-pre-line">{experience}</p>
+              </div>
+            )}
+            {education && (
+              <div className="mt-4">
+                <h3 className="text-sm font-semibold text-slate-900 dark:text-white mb-1">{t('teacher.education')}</h3>
+                <p className="text-sm text-slate-600 dark:text-slate-300 whitespace-pre-line">{education}</p>
+              </div>
+            )}
+            {certificates && (
+              <div className="mt-4">
+                <h3 className="text-sm font-semibold text-slate-900 dark:text-white mb-1">{t('teacher.certificates')}</h3>
+                <p className="text-sm text-slate-600 dark:text-slate-300 whitespace-pre-line">{certificates}</p>
+              </div>
+            )}
+            {socialLinks.length > 0 && (
+              <div className="mt-4 flex flex-wrap gap-2">
+                {socialLinks.map((l, i) => l.url && (
+                  <a key={i} href={l.url} target="_blank" rel="noreferrer" className="text-xs px-3 py-1.5 bg-slate-100 dark:bg-slate-700 rounded-lg text-primary-600 dark:text-primary-400 hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors">
+                    {l.platform || l.url}
+                  </a>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  /* ═════════════════════ EDIT MODE ═════════════════════ */
   return (
     <div className="max-w-3xl mx-auto">
       {/* Header */}
@@ -72,14 +153,19 @@ const TeacherProfilePage: React.FC = () => {
           <h1 className="text-xl font-bold text-slate-900 dark:text-white">{t('teacher.profileTitle')}</h1>
           <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">{t('teacher.profileSubtitle')}</p>
         </div>
-        <button
-          onClick={handleSave}
-          disabled={saving}
-          className="bg-primary-600 hover:bg-primary-700 text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2 transition-colors disabled:opacity-50"
-        >
-          {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-          {t('common.save')}
-        </button>
+        <div className="flex items-center gap-2">
+          <button onClick={() => setPreviewMode(true)} className="btn-secondary text-sm flex items-center gap-2">
+            <Eye className="w-4 h-4" />{t('teacher.preview')}
+          </button>
+          <button
+            onClick={handleSave}
+            disabled={saving}
+            className="bg-primary-600 hover:bg-primary-700 text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2 transition-colors disabled:opacity-50"
+          >
+            {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+            {t('common.save')}
+          </button>
+        </div>
       </div>
 
       {error && <div className="mb-4 px-4 py-2.5 bg-red-500/10 border border-red-500/20 rounded-lg text-sm text-red-500">{error}</div>}
@@ -89,16 +175,20 @@ const TeacherProfilePage: React.FC = () => {
         </div>
       )}
 
-      {/* Profile Card */}
-      <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden mb-6">
+      {/* Profile Card with Avatar */}
+      <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl overflow-hidden mb-6">
         <div className="bg-slate-700 h-24 relative">
-          <div className="absolute -bottom-8 left-6">
-            <div className="w-16 h-16 bg-primary-600 rounded-xl flex items-center justify-center text-xl text-white font-bold shadow-lg ring-4 ring-white dark:ring-slate-800">
-              {profile?.displayName?.[0]?.toUpperCase() || '?'}
-            </div>
+          <div className="absolute -bottom-10 left-6">
+            {avatarUrl ? (
+              <img src={avatarUrl} alt="" className="w-20 h-20 rounded-2xl object-cover shadow-lg ring-4 ring-white dark:ring-slate-800" />
+            ) : (
+              <div className="w-20 h-20 bg-primary-600 rounded-2xl flex items-center justify-center text-2xl text-white font-bold shadow-lg ring-4 ring-white dark:ring-slate-800">
+                {profile?.displayName?.[0]?.toUpperCase() || '?'}
+              </div>
+            )}
           </div>
         </div>
-        <div className="pt-12 px-6 pb-6">
+        <div className="pt-14 px-6 pb-6">
           <h2 className="text-lg font-bold text-slate-900 dark:text-white">{profile?.displayName}</h2>
           <p className="text-sm text-slate-500 dark:text-slate-400">{profile?.email}</p>
           {profile?.organizationId && profile?.organizationName && (
@@ -106,57 +196,89 @@ const TeacherProfilePage: React.FC = () => {
               {profile.organizationName}
             </span>
           )}
+          <div className="mt-4">
+            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">{t('teacher.avatarUrl')}</label>
+            <input value={avatarUrl} onChange={(e) => setAvatarUrl(e.target.value)} placeholder="https://..." className="w-full bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-lg px-3.5 py-2.5 text-sm outline-none focus:border-primary-500 text-slate-900 dark:text-white placeholder:text-slate-400" />
+          </div>
         </div>
       </div>
 
       {/* Form Sections */}
       <div className="space-y-5">
         {/* Bio */}
-        <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-5">
+        <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-5">
           <div className="flex items-center gap-2 mb-3">
             <User className="w-4 h-4 text-violet-500" />
             <h3 className="text-sm font-semibold text-slate-900 dark:text-white">{t('teacher.bio')}</h3>
           </div>
-          <textarea
-            value={bio}
-            onChange={(e) => setBio(e.target.value)}
-            rows={4}
-            placeholder={t('teacher.bioPlaceholder')}
-            className="w-full bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-lg px-3.5 py-2.5 text-sm outline-none focus:border-primary-500 text-slate-900 dark:text-white placeholder:text-slate-400 resize-none"
-          />
+          <textarea value={bio} onChange={(e) => setBio(e.target.value)} rows={4} placeholder={t('teacher.bioPlaceholder')}
+            className="w-full bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-lg px-3.5 py-2.5 text-sm outline-none focus:border-primary-500 text-slate-900 dark:text-white placeholder:text-slate-400 resize-none" />
         </div>
 
-        {/* Specialization */}
-        <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-5">
+        {/* Specialization + City */}
+        <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-5">
           <div className="flex items-center gap-2 mb-3">
             <BookOpen className="w-4 h-4 text-violet-500" />
             <h3 className="text-sm font-semibold text-slate-900 dark:text-white">{t('teacher.specialization')}</h3>
           </div>
-          <input
-            value={specialization}
-            onChange={(e) => setSpecialization(e.target.value)}
-            placeholder={t('teacher.specializationPlaceholder')}
-            className="w-full bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-lg px-3.5 py-2.5 text-sm outline-none focus:border-primary-500 text-slate-900 dark:text-white placeholder:text-slate-400"
-          />
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <input value={specialization} onChange={(e) => setSpecialization(e.target.value)} placeholder={t('teacher.specializationPlaceholder')}
+              className="w-full bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-lg px-3.5 py-2.5 text-sm outline-none focus:border-primary-500 text-slate-900 dark:text-white placeholder:text-slate-400" />
+            <div className="relative">
+              <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+              <input value={city} onChange={(e) => setCity(e.target.value)} placeholder={t('teacher.cityPlaceholder')}
+                className="w-full bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-lg pl-9 pr-3.5 py-2.5 text-sm outline-none focus:border-primary-500 text-slate-900 dark:text-white placeholder:text-slate-400" />
+            </div>
+          </div>
+        </div>
+
+        {/* Subjects / Tags */}
+        <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-5">
+          <div className="flex items-center gap-2 mb-3">
+            <Tag className="w-4 h-4 text-violet-500" />
+            <h3 className="text-sm font-semibold text-slate-900 dark:text-white">{t('teacher.subjects')}</h3>
+          </div>
+          <input value={subjects} onChange={(e) => setSubjects(e.target.value)} placeholder={t('teacher.subjectsPlaceholder')}
+            className="w-full bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-lg px-3.5 py-2.5 text-sm outline-none focus:border-primary-500 text-slate-900 dark:text-white placeholder:text-slate-400" />
+          {subjectsArr.length > 0 && (
+            <div className="flex flex-wrap gap-1.5 mt-2">
+              {subjectsArr.map((s, i) => <span key={i} className="text-[11px] px-2 py-0.5 bg-primary-500/10 text-primary-600 dark:text-primary-400 rounded-full font-medium">{s}</span>)}
+            </div>
+          )}
         </div>
 
         {/* Experience */}
-        <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-5">
+        <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-5">
           <div className="flex items-center gap-2 mb-3">
             <Briefcase className="w-4 h-4 text-violet-500" />
             <h3 className="text-sm font-semibold text-slate-900 dark:text-white">{t('teacher.experience')}</h3>
           </div>
-          <textarea
-            value={experience}
-            onChange={(e) => setExperience(e.target.value)}
-            rows={3}
-            placeholder={t('teacher.experiencePlaceholder')}
-            className="w-full bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-lg px-3.5 py-2.5 text-sm outline-none focus:border-primary-500 text-slate-900 dark:text-white placeholder:text-slate-400 resize-none"
-          />
+          <textarea value={experience} onChange={(e) => setExperience(e.target.value)} rows={3} placeholder={t('teacher.experiencePlaceholder')}
+            className="w-full bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-lg px-3.5 py-2.5 text-sm outline-none focus:border-primary-500 text-slate-900 dark:text-white placeholder:text-slate-400 resize-none" />
+        </div>
+
+        {/* Education */}
+        <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-5">
+          <div className="flex items-center gap-2 mb-3">
+            <GraduationCap className="w-4 h-4 text-violet-500" />
+            <h3 className="text-sm font-semibold text-slate-900 dark:text-white">{t('teacher.education')}</h3>
+          </div>
+          <textarea value={education} onChange={(e) => setEducation(e.target.value)} rows={3} placeholder={t('teacher.educationPlaceholder')}
+            className="w-full bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-lg px-3.5 py-2.5 text-sm outline-none focus:border-primary-500 text-slate-900 dark:text-white placeholder:text-slate-400 resize-none" />
+        </div>
+
+        {/* Certificates */}
+        <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-5">
+          <div className="flex items-center gap-2 mb-3">
+            <Award className="w-4 h-4 text-violet-500" />
+            <h3 className="text-sm font-semibold text-slate-900 dark:text-white">{t('teacher.certificates')}</h3>
+          </div>
+          <textarea value={certificates} onChange={(e) => setCertificates(e.target.value)} rows={3} placeholder={t('teacher.certificatesPlaceholder')}
+            className="w-full bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-lg px-3.5 py-2.5 text-sm outline-none focus:border-primary-500 text-slate-900 dark:text-white placeholder:text-slate-400 resize-none" />
         </div>
 
         {/* Social Links */}
-        <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-5">
+        <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-5">
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
               <Link2 className="w-4 h-4 text-violet-500" />
@@ -172,18 +294,10 @@ const TeacherProfilePage: React.FC = () => {
             <div className="space-y-2">
               {socialLinks.map((link, i) => (
                 <div key={i} className="flex items-center gap-2">
-                  <input
-                    value={link.platform}
-                    onChange={(e) => updateLink(i, 'platform', e.target.value)}
-                    placeholder={t('teacher.platformPlaceholder')}
-                    className="w-32 bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-lg px-2.5 py-1.5 text-xs outline-none focus:border-primary-500 text-slate-900 dark:text-white"
-                  />
-                  <input
-                    value={link.url}
-                    onChange={(e) => updateLink(i, 'url', e.target.value)}
-                    placeholder="https://..."
-                    className="flex-1 bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-lg px-2.5 py-1.5 text-xs outline-none focus:border-primary-500 text-slate-900 dark:text-white"
-                  />
+                  <input value={link.platform} onChange={(e) => updateLink(i, 'platform', e.target.value)} placeholder={t('teacher.platformPlaceholder')}
+                    className="w-32 bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-lg px-2.5 py-1.5 text-xs outline-none focus:border-primary-500 text-slate-900 dark:text-white" />
+                  <input value={link.url} onChange={(e) => updateLink(i, 'url', e.target.value)} placeholder="https://..."
+                    className="flex-1 bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-lg px-2.5 py-1.5 text-xs outline-none focus:border-primary-500 text-slate-900 dark:text-white" />
                   <button onClick={() => removeLink(i)} className="p-1 text-slate-400 hover:text-red-500"><X className="w-3.5 h-3.5" /></button>
                 </div>
               ))}

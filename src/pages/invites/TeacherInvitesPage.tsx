@@ -64,7 +64,7 @@ const TeacherInvitesPage: React.FC = () => {
           <h1 className="text-xl font-bold text-slate-900 dark:text-white">{t('invites.title')}</h1>
           <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">{t('invites.subtitle')}</p>
         </div>
-        <button onClick={load} className="p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors">
+        <button onClick={load} title={t('common.refresh') || 'Refresh'} className="p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors">
           <RefreshCw className="w-4 h-4" />
         </button>
       </div>

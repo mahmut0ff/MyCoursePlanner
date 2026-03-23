@@ -33,6 +33,9 @@ import OrgUsersPage from './pages/org-users/OrgUsersPage';
 import OrgSettingsPage from './pages/org-settings/OrgSettingsPage';
 import TeacherProfilePage from './pages/teacher-profile/TeacherProfilePage';
 import TeacherInvitesPage from './pages/invites/TeacherInvitesPage';
+import NotificationsPage from './pages/notifications/NotificationsPage';
+import TeacherSettingsPage from './pages/teacher-settings/TeacherSettingsPage';
+import TeacherAnalyticsPage from './pages/teacher-analytics/TeacherAnalyticsPage';
 
 // Detail Pages
 import StudentDetailPage from './pages/students/StudentDetailPage';
@@ -122,6 +125,9 @@ const App: React.FC = () => {
             {/* ═══ Teacher (global) ═══ */}
             <Route path="teacher-profile" element={<ProtectedRoute allowedRoles={['teacher']}><TeacherProfilePage /></ProtectedRoute>} />
             <Route path="invites" element={<ProtectedRoute allowedRoles={['teacher']}><TeacherInvitesPage /></ProtectedRoute>} />
+            <Route path="notifications" element={<ProtectedRoute allowedRoles={['teacher']}><NotificationsPage /></ProtectedRoute>} />
+            <Route path="teacher-settings" element={<ProtectedRoute allowedRoles={['teacher']}><TeacherSettingsPage /></ProtectedRoute>} />
+            <Route path="teacher-analytics" element={<ProtectedRoute allowedRoles={['teacher']}><TeacherAnalyticsPage /></ProtectedRoute>} />
 
             {/* ═══ Vacancies ═══ */}
             <Route path="vacancies" element={<ProtectedRoute allowedRoles={['admin', 'teacher']}><VacanciesPage /></ProtectedRoute>} />

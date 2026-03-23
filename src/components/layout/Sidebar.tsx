@@ -8,7 +8,7 @@ import {
   GraduationCap, LayoutDashboard, BookOpen, ClipboardList, Radio,
   BarChart3, LogOut, CreditCard, Users, Building2, Activity,
   Settings, Server, Shield, Puzzle, Tag, Zap, FolderOpen, UsersRound,
-  Calendar, FileText, Trophy, UserPlus, MailOpen, UserCircle2, Briefcase, DoorOpen,
+  Calendar, FileText, Trophy, UserPlus, MailOpen, UserCircle2, Briefcase, DoorOpen, Bell,
 } from 'lucide-react';
 
 const Sidebar: React.FC<{ open: boolean; onClose: () => void }> = ({ open, onClose }) => {
@@ -194,6 +194,15 @@ const Sidebar: React.FC<{ open: boolean; onClose: () => void }> = ({ open, onClo
               </NavLink>
               <NavLink to="/my-applications" className={linkClass} onClick={onClose}>
                 <Briefcase className="w-4 h-4" />{t('nav.myApplications')}
+              </NavLink>
+              <NavLink to="/notifications" className={linkClass} onClick={onClose}>
+                <Bell className="w-4 h-4" />{t('nav.notifications')}
+              </NavLink>
+              <NavLink to="/teacher-analytics" className={linkClass} onClick={onClose}>
+                <BarChart3 className="w-4 h-4" />{t('nav.analytics')}
+              </NavLink>
+              <NavLink to="/teacher-settings" className={linkClass} onClick={onClose}>
+                <Settings className="w-4 h-4" />{t('nav.settings')}
               </NavLink>
               {organizationId && (
                 <button

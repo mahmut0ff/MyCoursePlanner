@@ -2,6 +2,7 @@ import React from 'react';
 import { Navigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import AdminDashboard from './AdminDashboard';
+import TeacherDashboard from './TeacherDashboard';
 import StudentDashboard from './StudentDashboard';
 
 const DashboardPage: React.FC = () => {
@@ -9,7 +10,8 @@ const DashboardPage: React.FC = () => {
 
   // Super admin has their own dedicated panel
   if (role === 'super_admin') return <Navigate to="/admin" replace />;
-  if (role === 'admin' || role === 'teacher') return <AdminDashboard />;
+  if (role === 'admin') return <AdminDashboard />;
+  if (role === 'teacher') return <TeacherDashboard />;
   return <StudentDashboard />;
 };
 

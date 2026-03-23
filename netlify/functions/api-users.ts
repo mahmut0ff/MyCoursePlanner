@@ -94,6 +94,32 @@ const handler: Handler = async (event: HandlerEvent) => {
       ).catch(() => {});
       return ok({ left: true });
     }
+    // ═══ TEACHER SETTINGS ═══
+    if (action === 'teacherSettings') {
+      if (event.httpMethod === 'GET') {
+        const doc = await adminDb.collection('teacherSettings').doc(user.uid).get();
+        if (!doc.exists) return ok({ uid: user.uid, language: 'ru', emailNotif: true, pushNotif: false, inviteNotif: true, resultNotif: true });
+        return ok({ uid: user.uid, ...doc.data() });
+      }
+      if (event.httpMethod === 'PUT' || event.httpMethod === 'POST') {
+        const body = JSON.parse(event.body || '{}');
+        const settings: any = {
+          language: body.language || 'ru',
+          emailNotif: body.emailNotif ?? true,
+          pushNotif: body.pushNotif ?? false,
+          inviteNotif: body.inviteNotif ?? true,
+          resultNotif: body.resultNotif ?? true,
+          updatedAt: now(),
+        };
+        await adminDb.collection('teacherSettings').doc(user.uid).set(settings, { merge: true });
+        // Also update displayName in users collection if provided
+        if (body.displayName) {
+          await adminDb.collection('users').doc(user.uid).update({ displayName: body.displayName, updatedAt: now() });
+        }
+        return ok({ uid: user.uid, ...settings });
+      }
+    }
+
     if (action === 'teacherProfile') {
       if (event.httpMethod === 'GET') {
         const uid = params.uid || user.uid;
@@ -109,6 +135,10 @@ const handler: Handler = async (event: HandlerEvent) => {
           experience: body.experience || '',
           avatarUrl: body.avatarUrl || '',
           socialLinks: body.socialLinks || [],
+          education: body.education || '',
+          certificates: body.certificates || '',
+          subjects: body.subjects || '',
+          city: body.city || '',
           updatedAt: now(),
         };
         await adminDb.collection('teacherProfiles').doc(user.uid).set(profileData, { merge: true });

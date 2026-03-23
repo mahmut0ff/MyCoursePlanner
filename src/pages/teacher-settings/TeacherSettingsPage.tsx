@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../contexts/AuthContext';
+import { apiGetTeacherSettings, apiUpdateTeacherSettings } from '../../lib/api';
 import {
   User, Globe, Bell, Lock, Save, Loader2, CheckCircle2, Eye, EyeOff,
 } from 'lucide-react';
@@ -12,7 +13,9 @@ const TeacherSettingsPage: React.FC = () => {
   const { profile } = useAuth();
   const [activeTab, setActiveTab] = useState<Tab>('profile');
   const [saving, setSaving] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [success, setSuccess] = useState('');
+  const [error, setError] = useState('');
 
   // Profile
   const [displayName, setDisplayName] = useState(profile?.displayName || '');
@@ -34,13 +37,38 @@ const TeacherSettingsPage: React.FC = () => {
   // Language
   const [language, setLanguage] = useState('ru');
 
-  const handleSave = () => {
+  useEffect(() => {
+    apiGetTeacherSettings()
+      .then((data: any) => {
+        if (data.language) setLanguage(data.language);
+        if (data.emailNotif !== undefined) setEmailNotif(data.emailNotif);
+        if (data.pushNotif !== undefined) setPushNotif(data.pushNotif);
+        if (data.inviteNotif !== undefined) setInviteNotif(data.inviteNotif);
+        if (data.resultNotif !== undefined) setResultNotif(data.resultNotif);
+      })
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, []);
+
+  const handleSave = async () => {
     setSaving(true);
-    setTimeout(() => {
-      setSaving(false);
+    setError('');
+    try {
+      await apiUpdateTeacherSettings({
+        displayName,
+        language,
+        emailNotif,
+        pushNotif,
+        inviteNotif,
+        resultNotif,
+      });
       setSuccess(t('common.saved') || 'Saved');
       setTimeout(() => setSuccess(''), 3000);
-    }, 500);
+    } catch (e: any) {
+      setError(e.message || 'Error');
+    } finally {
+      setSaving(false);
+    }
   };
 
   const tabs: { key: Tab; label: string; icon: React.ReactNode }[] = [
@@ -56,6 +84,8 @@ const TeacherSettingsPage: React.FC = () => {
     </button>
   );
 
+  if (loading) return <div className="flex items-center justify-center py-20"><div className="w-8 h-8 border-4 border-primary-200 border-t-primary-600 rounded-full animate-spin dark:border-primary-800 dark:border-t-primary-400" /></div>;
+
   return (
     <div className="max-w-4xl mx-auto">
       <h1 className="text-xl font-bold text-slate-900 dark:text-white mb-6">{t('teacherSettings.title')}</h1>
@@ -65,6 +95,7 @@ const TeacherSettingsPage: React.FC = () => {
           <CheckCircle2 className="w-4 h-4" />{success}
         </div>
       )}
+      {error && <div className="mb-4 px-4 py-2.5 bg-red-500/10 border border-red-500/20 rounded-lg text-sm text-red-500">{error}</div>}
 
       <div className="flex gap-6">
         {/* Sidebar */}

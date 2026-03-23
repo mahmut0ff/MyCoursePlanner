@@ -19,6 +19,24 @@ const handler: Handler = async (event: HandlerEvent) => {
   const body = event.body ? JSON.parse(event.body) : {};
 
   try {
+    // List notifications for the current user
+    if ((!action || action === 'list') && event.httpMethod === 'GET') {
+      const snap = await adminDb.collection(NOTIFICATIONS)
+        .where('recipientId', '==', user.uid)
+        .orderBy('createdAt', 'desc')
+        .limit(50).get();
+      const notifications = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      return ok(notifications);
+    }
+
+    // Unread count
+    if (action === 'unreadCount' && event.httpMethod === 'GET') {
+      const snap = await adminDb.collection(NOTIFICATIONS)
+        .where('recipientId', '==', user.uid)
+        .where('read', '==', false).get();
+      return ok({ count: snap.size });
+    }
+
     // Mark single notification as read
     if (action === 'markRead' && event.httpMethod === 'POST') {
       if (!body.id) return badRequest('id required');

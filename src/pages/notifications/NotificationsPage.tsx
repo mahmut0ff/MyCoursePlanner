@@ -1,35 +1,73 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Bell, Check } from 'lucide-react';
+import { apiGetNotifications, apiMarkNotificationRead, apiMarkAllNotificationsRead } from '../../lib/api';
+import { Bell, Check, ExternalLink } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 
-interface Notification {
+interface AppNotification {
   id: string;
+  type: string;
   title: string;
   message: string;
   read: boolean;
   createdAt: string;
-  type: 'info' | 'success' | 'warning';
+  link?: string;
 }
 
 const NotificationsPage: React.FC = () => {
   const { t } = useTranslation();
-  const [notifications] = useState<Notification[]>([]);
+  const navigate = useNavigate();
+  const [notifications, setNotifications] = useState<AppNotification[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const load = () => {
+    setLoading(true);
+    apiGetNotifications()
+      .then((data: any) => setNotifications(Array.isArray(data) ? data : []))
+      .catch(() => setNotifications([]))
+      .finally(() => setLoading(false));
+  };
+
+  useEffect(() => { load(); }, []);
+
+  const handleMarkRead = async (id: string) => {
+    await apiMarkNotificationRead(id);
+    setNotifications(prev => prev.map(n => n.id === id ? { ...n, read: true } : n));
+  };
+
+  const handleMarkAllRead = async () => {
+    await apiMarkAllNotificationsRead();
+    setNotifications(prev => prev.map(n => ({ ...n, read: true })));
+  };
+
+  const handleClick = (n: AppNotification) => {
+    if (!n.read) handleMarkRead(n.id);
+    if (n.link) navigate(n.link);
+  };
+
+  const unreadCount = notifications.filter(n => !n.read).length;
 
   return (
     <div className="max-w-2xl mx-auto">
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-xl font-bold text-slate-900 dark:text-white">{t('notifications.title')}</h1>
-          <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">{t('notifications.subtitle')}</p>
+          <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">
+            {unreadCount > 0 ? `${unreadCount} ${t('notifications.unread')}` : t('notifications.subtitle')}
+          </p>
         </div>
-        {notifications.length > 0 && (
-          <button className="text-sm text-primary-600 dark:text-primary-400 hover:text-primary-700 flex items-center gap-1.5 transition-colors">
+        {unreadCount > 0 && (
+          <button onClick={handleMarkAllRead} className="text-sm text-primary-600 dark:text-primary-400 hover:text-primary-700 flex items-center gap-1.5 transition-colors">
             <Check className="w-4 h-4" />{t('notifications.markAllRead')}
           </button>
         )}
       </div>
 
-      {notifications.length === 0 ? (
+      {loading ? (
+        <div className="flex justify-center py-20">
+          <div className="w-8 h-8 border-2 border-slate-200 border-t-primary-500 rounded-full animate-spin dark:border-slate-700 dark:border-t-primary-400" />
+        </div>
+      ) : notifications.length === 0 ? (
         <div className="text-center py-20 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl">
           <div className="w-16 h-16 bg-slate-100 dark:bg-slate-700 rounded-2xl flex items-center justify-center mx-auto mb-4">
             <Bell className="w-8 h-8 text-slate-300 dark:text-slate-500" />
@@ -40,11 +78,18 @@ const NotificationsPage: React.FC = () => {
       ) : (
         <div className="space-y-2">
           {notifications.map((n) => (
-            <div key={n.id} className={`bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-4 transition-all hover:shadow-md ${!n.read ? 'ring-2 ring-primary-500/20' : ''}`}>
+            <div
+              key={n.id}
+              onClick={() => handleClick(n)}
+              className={`bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-4 transition-all hover:shadow-md cursor-pointer ${!n.read ? 'ring-2 ring-primary-500/20' : ''}`}
+            >
               <div className="flex items-start gap-3">
                 <div className={`w-2 h-2 rounded-full mt-2 shrink-0 ${!n.read ? 'bg-primary-500' : 'bg-transparent'}`} />
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-slate-900 dark:text-white">{n.title}</p>
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="text-sm font-medium text-slate-900 dark:text-white">{n.title}</p>
+                    {n.link && <ExternalLink className="w-3.5 h-3.5 text-slate-400 shrink-0" />}
+                  </div>
                   <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">{n.message}</p>
                   <p className="text-[10px] text-slate-400 mt-1">{new Date(n.createdAt).toLocaleString()}</p>
                 </div>

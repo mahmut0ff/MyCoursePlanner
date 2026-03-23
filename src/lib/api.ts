@@ -235,6 +235,10 @@ export const apiLeaveOrganization = () => userReq('leaveOrganization', 'POST');
 export const apiGetTeacherProfile = (uid?: string) => userReq('teacherProfile', 'GET', undefined, uid ? { uid } : undefined);
 export const apiUpdateTeacherProfile = (data: any) => userReq('teacherProfile', 'PUT', data);
 
+// Teacher Settings
+export const apiGetTeacherSettings = () => userReq('teacherSettings');
+export const apiUpdateTeacherSettings = (data: any) => userReq('teacherSettings', 'PUT', data);
+
 // ============================================================
 // VACANCIES API
 // ============================================================
@@ -267,6 +271,8 @@ export const vacGetMyApplications = () => vacReq('myApplications');
 const notifReq = <T = any>(action: string, method = 'GET', body?: any) =>
   apiRequest<T>('api-notifications', method, body, { action });
 
+export const apiGetNotifications = () => notifReq('list');
+export const apiGetUnreadCount = () => notifReq<{ count: number }>('unreadCount');
 export const apiMarkNotificationRead = (id: string) => notifReq('markRead', 'POST', { id });
 export const apiMarkAllNotificationsRead = () => notifReq('markAllRead', 'POST');
 export const apiSaveFcmToken = (token: string) => notifReq('saveFcmToken', 'POST', { token });

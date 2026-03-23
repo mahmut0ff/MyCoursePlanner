@@ -28,9 +28,6 @@ const Sidebar: React.FC<{ open: boolean; onClose: () => void }> = ({ open, onClo
         : 'text-slate-400 hover:bg-white/5 hover:text-slate-200'
     }`;
 
-  const sectionTitle = (text: string) => (
-    <p className="px-3 pt-5 pb-1.5 text-[10px] font-bold text-slate-500 uppercase tracking-wider">{text}</p>
-  );
 
   const isAdmin = role === 'admin';
   const teacherWithOrg = isTeacher && !!organizationId;
@@ -104,8 +101,6 @@ const Sidebar: React.FC<{ open: boolean; onClose: () => void }> = ({ open, onClo
               <NavLink to="/dashboard" className={linkClass} onClick={onClose}>
                 <LayoutDashboard className="w-4 h-4" />{t('nav.dashboard')}
               </NavLink>
-
-              {sectionTitle(t('nav.education'))}
               <NavLink to="/courses" className={linkClass} onClick={onClose}>
                 <FolderOpen className="w-4 h-4" />{t('nav.courses')}
               </NavLink>
@@ -118,8 +113,6 @@ const Sidebar: React.FC<{ open: boolean; onClose: () => void }> = ({ open, onClo
               <NavLink to="/materials" className={linkClass} onClick={onClose}>
                 <FileText className="w-4 h-4" />{t('nav.materials')}
               </NavLink>
-
-              {sectionTitle(t('nav.examsSection'))}
               <NavLink to="/exams" className={linkClass} onClick={onClose}>
                 <ClipboardList className="w-4 h-4" />{t('nav.exams')}
               </NavLink>
@@ -129,8 +122,6 @@ const Sidebar: React.FC<{ open: boolean; onClose: () => void }> = ({ open, onClo
               <NavLink to="/results" className={linkClass} onClick={onClose}>
                 <Trophy className="w-4 h-4" />{t('nav.results')}
               </NavLink>
-
-              {sectionTitle(t('nav.people'))}
               <NavLink to="/students" className={linkClass} onClick={onClose}>
                 <Users className="w-4 h-4" />{t('nav.students')}
               </NavLink>
@@ -140,8 +131,6 @@ const Sidebar: React.FC<{ open: boolean; onClose: () => void }> = ({ open, onClo
               <NavLink to="/org-users" className={linkClass} onClick={onClose}>
                 <Shield className="w-4 h-4" />{t('nav.users')}
               </NavLink>
-
-              {sectionTitle(t('nav.organization'))}
               <NavLink to="/schedule" className={linkClass} onClick={onClose}>
                 <Calendar className="w-4 h-4" />{t('nav.schedule')}
               </NavLink>
@@ -161,11 +150,8 @@ const Sidebar: React.FC<{ open: boolean; onClose: () => void }> = ({ open, onClo
               <NavLink to="/dashboard" className={linkClass} onClick={onClose}>
                 <LayoutDashboard className="w-4 h-4" />{t('nav.dashboard')}
               </NavLink>
-
-              {/* Org-linked sections: only if teacher has organization */}
               {teacherWithOrg && (
                 <>
-                  {sectionTitle(t('nav.education'))}
                   <NavLink to="/courses" className={linkClass} onClick={onClose}>
                     <FolderOpen className="w-4 h-4" />{t('nav.courses')}
                   </NavLink>
@@ -178,8 +164,6 @@ const Sidebar: React.FC<{ open: boolean; onClose: () => void }> = ({ open, onClo
                   <NavLink to="/materials" className={linkClass} onClick={onClose}>
                     <FileText className="w-4 h-4" />{t('nav.materials')}
                   </NavLink>
-
-                  {sectionTitle(t('nav.examsSection'))}
                   <NavLink to="/exams" className={linkClass} onClick={onClose}>
                     <ClipboardList className="w-4 h-4" />{t('nav.exams')}
                   </NavLink>
@@ -189,15 +173,11 @@ const Sidebar: React.FC<{ open: boolean; onClose: () => void }> = ({ open, onClo
                   <NavLink to="/results" className={linkClass} onClick={onClose}>
                     <Trophy className="w-4 h-4" />{t('nav.results')}
                   </NavLink>
-
-                  {sectionTitle(t('nav.organization'))}
                   <NavLink to="/schedule" className={linkClass} onClick={onClose}>
                     <Calendar className="w-4 h-4" />{t('nav.schedule')}
                   </NavLink>
                 </>
               )}
-
-              {sectionTitle(t('nav.teacherSection'))}
               <NavLink to="/teacher-profile" className={linkClass} onClick={onClose}>
                 <UserCircle2 className="w-4 h-4" />{t('nav.myProfile')}
               </NavLink>
@@ -234,7 +214,6 @@ const Sidebar: React.FC<{ open: boolean; onClose: () => void }> = ({ open, onClo
               <NavLink to="/dashboard" className={linkClass} onClick={onClose}>
                 <LayoutDashboard className="w-4 h-4" />{t('nav.dashboard')}
               </NavLink>
-              {sectionTitle(t('nav.learning'))}
               <NavLink to="/lessons" className={linkClass} onClick={onClose}>
                 <BookOpen className="w-4 h-4" />{t('nav.lessons')}
               </NavLink>

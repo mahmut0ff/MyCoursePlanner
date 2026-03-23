@@ -3,7 +3,7 @@ import toast from 'react-hot-toast';
 import { useParams, useNavigate } from 'react-router-dom';
 import { getRoom } from '../../services/rooms.service';
 import { getExam, getQuestions } from '../../services/exams.service';
-import { apiSaveAttempt } from '../../lib/api';
+import { apiSaveAttempt, apiAwardXP } from '../../lib/api';
 import { auth } from '../../lib/firebase';
 import { useAuth } from '../../contexts/AuthContext';
 import { shuffleArray, formatTime } from '../../utils/grading';
@@ -106,6 +106,13 @@ const ExamTakePage: React.FC = () => {
           body: JSON.stringify({ attemptId: result.id }),
         }).catch(() => {});
       } catch {}
+
+      // Award gamification XP in background
+      apiAwardXP({
+        examPassed: result.passed,
+        percentage: result.percentage,
+        timeSpentSeconds,
+      }).catch(() => {});
 
       navigate(`/results/${result.id}`);
     } catch (e) {

@@ -8,6 +8,7 @@ import type { LessonPlan, ExamAttempt } from '../../types';
 import { formatDate } from '../../utils/grading';
 import { BookOpen, Radio, Trophy, XCircle, ArrowRight, Brain } from 'lucide-react';
 import { DashboardSkeleton } from '../../components/ui/Skeleton';
+import GamificationWidget from '../../components/gamification/GamificationWidget';
 
 const StudentDashboard: React.FC = () => {
   const { t } = useTranslation();
@@ -35,6 +36,9 @@ const StudentDashboard: React.FC = () => {
         <h1 className="text-2xl font-bold text-slate-900 dark:text-white">{t('dashboard.welcome')}, {profile?.displayName}!</h1>
         <p className="text-slate-500 dark:text-slate-400 text-sm mt-1">{t('studentDashboard.subtitle')}</p>
       </div>
+
+      {/* Gamification */}
+      <GamificationWidget />
 
       {/* Quick Actions */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">

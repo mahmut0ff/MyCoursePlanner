@@ -82,6 +82,19 @@ export const apiGetAttemptsByRoom = (roomId: string) =>
   apiRequest('api-attempts', 'GET', undefined, { roomId });
 export const apiSaveAttempt = (data: any) => apiRequest('api-attempts', 'POST', data);
 
+// ---- Gamification ----
+export const apiGetGamification = (studentId?: string) =>
+  apiRequest('api-gamification', 'GET', undefined, studentId ? { studentId } : undefined);
+export const apiAwardXP = (data: any) => apiRequest('api-gamification', 'POST', data);
+
+// ---- Certificates ----
+export const apiGenerateCertificate = (data: any) => apiRequest('api-certificates', 'POST', data);
+export const apiGetCertificate = (id: string) => apiRequest('api-certificates', 'GET', undefined, { id });
+
+// ---- Payments ----
+export const apiCreatePayment = (data: any) => apiRequest('api-payments', 'POST', data);
+export const apiCheckPayment = (orderId: string) => apiRequest('api-payments', 'GET', undefined, { status: 'check', orderId });
+
 // ---- Dashboard ----
 export const apiGetDashboard = () => apiRequest('api-dashboard');
 

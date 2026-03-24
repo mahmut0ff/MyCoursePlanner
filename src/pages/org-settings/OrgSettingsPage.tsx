@@ -1,10 +1,12 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../contexts/AuthContext';
 import { orgGetSettings, orgUpdateSettings } from '../../lib/api';
+import { ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { storage } from '../../lib/firebase';
 import {
   Save, Building2, GraduationCap, Check, Bell, Lock, Palette, BarChart3,
-  Globe, Database, User, Shield, Eye, EyeOff,
+  Globe, Database, User, Shield, Eye, EyeOff, Camera, Loader2, MapPin, Phone, Mail, Clock,
 } from 'lucide-react';
 import type { OrgSettings } from '../../types';
 
@@ -196,6 +198,31 @@ const AcademicTab: React.FC<{ settings: OrgSettings; update: (k: string, v: any)
           </div>
         </div>
       </div>
+
+      {/* ── Contact & Info ── */}
+      <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-6">
+        <h3 className="font-semibold text-slate-900 dark:text-white mb-4 flex items-center gap-2"><MapPin className="w-4 h-4" />{t('org.settings.contactInfo', 'Контакты и расположение')}</h3>
+        <div className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1"><span className="flex items-center gap-1"><Mail className="w-3 h-3" />{t('org.settings.contactEmail', 'Email')}</span></label>
+              <input type="email" value={settings.contactEmail || ''} onChange={(e) => update('contactEmail', e.target.value)} className="input" placeholder="info@myschool.kg" />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1"><span className="flex items-center gap-1"><Phone className="w-3 h-3" />{t('org.settings.contactPhone', 'Телефон')}</span></label>
+              <input type="text" value={settings.contactPhone || ''} onChange={(e) => update('contactPhone', e.target.value)} className="input" placeholder="+996 XXX XXX XXX" />
+            </div>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1"><span className="flex items-center gap-1"><MapPin className="w-3 h-3" />{t('org.settings.address', 'Адрес')}</span></label>
+            <input type="text" value={settings.address || ''} onChange={(e) => update('address', e.target.value)} className="input" placeholder="г. Бишкек, ул. ..." />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1"><span className="flex items-center gap-1"><Clock className="w-3 h-3" />{t('org.settings.workingHours', 'Рабочие часы')}</span></label>
+            <input type="text" value={settings.workingHours || ''} onChange={(e) => update('workingHours', e.target.value)} className="input" placeholder="Пн-Пт 09:00-18:00, Сб 10:00-15:00" />
+          </div>
+        </div>
+      </div>
     </div>
   );
 };
@@ -203,22 +230,66 @@ const AcademicTab: React.FC<{ settings: OrgSettings; update: (k: string, v: any)
 /* ════════════════════════════════════ BRANDING ════════════════════════════════════ */
 const BrandingTab: React.FC<{ settings: OrgSettings; update: (k: string, v: any) => void }> = ({ settings, update }) => {
   const { t } = useTranslation();
+  const logoInputRef = useRef<HTMLInputElement>(null);
+  const [uploading, setUploading] = useState(false);
+
+  const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !settings.organizationId) return;
+    setUploading(true);
+    try {
+      const ref = storageRef(storage, `org-logos/${settings.organizationId}`);
+      await uploadBytes(ref, file);
+      const url = await getDownloadURL(ref);
+      update('logo', url);
+    } catch (err) {
+      console.error('Logo upload error:', err);
+    } finally {
+      setUploading(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-6">
         <h3 className="font-semibold text-slate-900 dark:text-white mb-4">{t('org.settings.branding')}</h3>
         <div className="space-y-4">
+          {/* Logo Upload */}
           <div>
-            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">{t('org.settings.logoUrl')}</label>
-            <div className="border-2 border-dashed border-slate-300 dark:border-slate-600 rounded-xl p-8 text-center">
-              {settings.logo ? (
-                <img src={settings.logo} alt="Logo" className="h-16 mx-auto mb-2 object-contain" />
-              ) : (
-                <p className="text-sm text-slate-400 dark:text-slate-500">{t('org.settings.dropLogo')}</p>
-              )}
+            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">{t('org.settings.logoUrl', 'Логотип организации')}</label>
+            <div className="flex items-center gap-6">
+              <div className="relative group">
+                <div className="w-24 h-24 rounded-2xl bg-gradient-to-br from-violet-100 to-indigo-100 dark:from-violet-900/40 dark:to-indigo-900/40 flex items-center justify-center overflow-hidden shadow-lg">
+                  {settings.logo ? (
+                    <img src={settings.logo} alt="Logo" className="w-24 h-24 object-cover rounded-2xl" />
+                  ) : (
+                    <Building2 className="w-10 h-10 text-violet-600 dark:text-violet-400" />
+                  )}
+                </div>
+                <button
+                  onClick={() => logoInputRef.current?.click()}
+                  disabled={uploading}
+                  className="absolute inset-0 bg-black/50 text-white rounded-2xl flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
+                >
+                  {uploading ? <Loader2 className="w-6 h-6 animate-spin" /> : <Camera className="w-6 h-6" />}
+                </button>
+                <input type="file" accept="image/*" ref={logoInputRef} onChange={handleLogoUpload} className="hidden" />
+              </div>
+              <div className="text-sm text-slate-500 dark:text-slate-400">
+                <p className="font-medium text-slate-700 dark:text-slate-300 mb-1">{t('org.settings.uploadLogo', 'Загрузите логотип')}</p>
+                <p className="text-xs">{t('org.settings.logoHint', 'Рекомендуемый размер: 256×256 px, формат PNG или JPG')}</p>
+              </div>
             </div>
-            <input value={settings.logo || ''} onChange={(e) => update('logo', e.target.value)} className="input mt-2" placeholder="https://..." />
           </div>
+
+          {/* Description */}
+          <div>
+            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">{t('org.settings.orgDescription')}</label>
+            <textarea value={settings.description || ''} onChange={(e) => update('description', e.target.value)} className="input min-h-[100px]"
+              placeholder={t('org.settings.orgDescriptionPlaceholder')} />
+          </div>
+
+          {/* Primary Color */}
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">{t('org.settings.primaryColor')}</label>
@@ -227,14 +298,6 @@ const BrandingTab: React.FC<{ settings: OrgSettings; update: (k: string, v: any)
                 <input type="text" value={settings.primaryColor || '#6366f1'} onChange={(e) => update('primaryColor', e.target.value)} className="input text-sm font-mono" />
               </div>
             </div>
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">{t('org.settings.orgDescription')}</label>
-            <textarea value={settings.description || ''} onChange={(e) => update('description', e.target.value)} className="input min-h-[80px]"
-              placeholder={t('org.settings.orgDescriptionPlaceholder')} />
-          </div>
-          <div className="flex justify-end">
-            <button className="btn-primary text-sm flex items-center gap-2"><Save className="w-4 h-4" />{t('org.settings.saveChanges')}</button>
           </div>
         </div>
       </div>

@@ -416,28 +416,53 @@ const handler: Handler = async (event: HandlerEvent) => {
       if (!orgDoc.exists) return notFound();
       const settingsDoc = await adminDb.collection('orgSettings').doc(orgId).get();
       const orgData = orgDoc.data();
+      const sData = settingsDoc.data() || {};
       return ok({
         organizationId: orgId,
         name: orgData?.name || '',
         logo: orgData?.logo || '',
-        timezone: settingsDoc.data()?.timezone || 'Asia/Bishkek',
-        locale: settingsDoc.data()?.locale || 'ru',
-        academicYearStart: settingsDoc.data()?.academicYearStart || '',
-        academicYearEnd: settingsDoc.data()?.academicYearEnd || '',
-        gradingScale: settingsDoc.data()?.gradingScale || 'percentage',
-        passingScore: settingsDoc.data()?.passingScore || 60,
-        updatedAt: settingsDoc.data()?.updatedAt || '',
+        description: orgData?.description || '',
+        isOnline: orgData?.isOnline || false,
+        city: orgData?.city || '',
+        country: orgData?.country || '',
+        address: orgData?.address || '',
+        contactEmail: orgData?.contactEmail || '',
+        contactPhone: orgData?.contactPhone || '',
+        workingHours: orgData?.workingHours || '',
+        photos: orgData?.photos || [],
+        subjects: orgData?.subjects || [],
+        timezone: sData.timezone || 'Asia/Bishkek',
+        locale: sData.locale || 'ru',
+        academicYearStart: sData.academicYearStart || '',
+        academicYearEnd: sData.academicYearEnd || '',
+        gradingScale: sData.gradingScale || 'percentage',
+        passingScore: sData.passingScore || 60,
+        primaryColor: sData.primaryColor || '#6366f1',
+        updatedAt: sData.updatedAt || '',
       });
     }
 
     if (action === 'updateOrgSettings') {
       if (!hasRole(user, 'admin')) return forbidden();
       const body = JSON.parse(event.body || '{}');
-      // Update org name if provided
-      if (body.name) {
-        await adminDb.collection('organizations').doc(orgId).update({ name: body.name, updatedAt: now() });
-      }
-      // Update settings doc
+
+      // Fields that go to the public organizations doc
+      const orgUpdate: Record<string, any> = { updatedAt: now() };
+      if (body.name) orgUpdate.name = body.name;
+      if (body.logo !== undefined) orgUpdate.logo = body.logo;
+      if (body.description !== undefined) orgUpdate.description = body.description;
+      if (body.isOnline !== undefined) orgUpdate.isOnline = body.isOnline;
+      if (body.workingHours !== undefined) orgUpdate.workingHours = body.workingHours;
+      if (body.address !== undefined) orgUpdate.address = body.address;
+      if (body.contactEmail !== undefined) orgUpdate.contactEmail = body.contactEmail;
+      if (body.contactPhone !== undefined) orgUpdate.contactPhone = body.contactPhone;
+      if (body.photos !== undefined) orgUpdate.photos = body.photos;
+      if (body.city !== undefined) orgUpdate.city = body.city;
+      if (body.country !== undefined) orgUpdate.country = body.country;
+      if (body.subjects !== undefined) orgUpdate.subjects = body.subjects;
+      await adminDb.collection('organizations').doc(orgId).update(orgUpdate);
+
+      // Settings doc (academic config)
       const settingsData = {
         timezone: body.timezone, locale: body.locale,
         academicYearStart: body.academicYearStart,

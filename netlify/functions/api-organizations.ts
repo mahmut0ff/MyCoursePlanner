@@ -76,6 +76,16 @@ const handler: Handler = async (event: HandlerEvent) => {
     const data = doc.data()!;
     if (!data.isPublic) return notFound('Organization not found');
 
+    // Fetch org courses for public display
+    const coursesSnap = await adminDb.collection('courses')
+      .where('organizationId', '==', doc.id)
+      .limit(50).get();
+    const courses = coursesSnap.docs.map(c => ({
+      id: c.id,
+      title: c.data().title || c.data().name || '',
+      description: c.data().description || '',
+    }));
+
     return ok({
       id: doc.id,
       name: data.name,
@@ -85,10 +95,14 @@ const handler: Handler = async (event: HandlerEvent) => {
       banner: data.banner || '',
       city: data.city || '',
       country: data.country || '',
+      address: data.address || '',
+      workingHours: data.workingHours || '',
       isOnline: data.isOnline || false,
       subjects: data.subjects || [],
       contactEmail: data.contactEmail || '',
       contactPhone: data.contactPhone || '',
+      photos: data.photos || [],
+      courses,
       studentsCount: data.studentsCount || 0,
       teachersCount: data.teachersCount || 0,
       examsCount: data.examsCount || 0,

@@ -513,6 +513,12 @@ export interface OrgSettings {
   maxTeachers?: number;
   storageUsedMb?: number;
   isOnline?: boolean;
+  // Enrichment fields
+  workingHours?: string;
+  address?: string;
+  contactEmail?: string;
+  contactPhone?: string;
+  photos?: string[];
   updatedAt: string;
 }
 

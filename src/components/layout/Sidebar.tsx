@@ -262,9 +262,13 @@ const Sidebar: React.FC<{ open: boolean; onClose: () => void }> = ({ open, onClo
               className="flex items-center gap-3 flex-1 cursor-pointer hover:bg-white/5 p-1.5 -ml-1.5 rounded-lg transition-colors overflow-hidden"
               title={t('nav.profile')}
             >
-              <div className="w-9 h-9 bg-emerald-600 rounded-full flex items-center justify-center text-sm font-bold text-white shadow-lg shadow-emerald-500/20 ring-2 ring-white/10 shrink-0">
-                {profile?.displayName?.[0]?.toUpperCase() || '?'}
-              </div>
+              {profile?.avatarUrl ? (
+                <img src={profile.avatarUrl} alt="" className="w-9 h-9 rounded-full object-cover shadow-lg shadow-emerald-500/20 ring-2 ring-white/10 shrink-0" />
+              ) : (
+                <div className="w-9 h-9 bg-emerald-600 rounded-full flex items-center justify-center text-sm font-bold text-white shadow-lg shadow-emerald-500/20 ring-2 ring-white/10 shrink-0">
+                  {profile?.displayName?.[0]?.toUpperCase() || '?'}
+                </div>
+              )}
               <div className="min-w-0 flex-1">
                 <p className="text-sm font-semibold text-white truncate">{profile?.displayName}</p>
                 <p className="text-[11px] text-slate-500 capitalize flex items-center gap-1">

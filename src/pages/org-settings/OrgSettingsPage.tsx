@@ -39,9 +39,13 @@ const ProfileTab: React.FC = () => {
     <div className="space-y-6">
       {/* Profile Header */}
       <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-6 flex items-center gap-4">
-        <div className="w-14 h-14 bg-primary-600 rounded-full flex items-center justify-center text-xl font-bold text-white shadow-lg ring-2 ring-white/10">
-          {profile?.displayName?.[0]?.toUpperCase() || '?'}
-        </div>
+        {profile?.avatarUrl ? (
+          <img src={profile.avatarUrl} alt="" className="w-14 h-14 rounded-full object-cover shadow-lg ring-2 ring-white/10" />
+        ) : (
+          <div className="w-14 h-14 bg-primary-600 rounded-full flex items-center justify-center text-xl font-bold text-white shadow-lg ring-2 ring-white/10">
+            {profile?.displayName?.[0]?.toUpperCase() || '?'}
+          </div>
+        )}
         <div>
           <h3 className="text-lg font-bold text-slate-900 dark:text-white">{profile?.displayName}</h3>
           <p className="text-sm text-slate-500 dark:text-slate-400">{profile?.email}</p>

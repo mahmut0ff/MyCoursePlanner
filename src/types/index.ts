@@ -512,6 +512,7 @@ export interface OrgSettings {
   maxStudents?: number;
   maxTeachers?: number;
   storageUsedMb?: number;
+  isOnline?: boolean;
   updatedAt: string;
 }
 

@@ -30,10 +30,10 @@ const handler: Handler = async (event: HandlerEvent) => {
     const snap = await adminDb.collection(COLLECTION)
       .where('isPublic', '==', true)
       .where('status', '==', 'active')
-      .orderBy('createdAt', 'desc')
-      .limit(50).get();
+      .limit(50)
+      .get();
 
-    const orgs = snap.docs.map((d) => {
+    let orgs = snap.docs.map((d) => {
       const data = d.data();
       return {
         id: d.id,
@@ -47,8 +47,12 @@ const handler: Handler = async (event: HandlerEvent) => {
         subjects: data.subjects || [],
         studentsCount: data.studentsCount || 0,
         teachersCount: data.teachersCount || 0,
+        createdAt: data.createdAt || '',
       };
     });
+    
+    orgs.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+    
     return ok(orgs);
   }
 

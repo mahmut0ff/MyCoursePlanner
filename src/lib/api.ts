@@ -49,6 +49,12 @@ export const apiGetUser = (uid: string) => apiRequest('api-users', 'GET', undefi
 export const apiUpdateUser = (data: any) => apiRequest('api-users', 'PUT', data);
 export const apiDeleteUser = (uid: string) => apiRequest('api-users', 'DELETE', undefined, { uid });
 
+// ---- Auth Checks (Username/Email) ----
+export const apiCheckAuthIdentity = (data: { action: 'check'; username?: string; email?: string }) => 
+  apiRequest('api-auth-check', 'POST', data);
+export const apiResolveUsername = (username: string) => 
+  apiRequest('api-auth-check', 'POST', { action: 'resolve', username });
+
 // ---- Lessons ----
 export const apiGetLessons = () => apiRequest('api-lessons');
 export const apiGetLesson = (id: string) => apiRequest('api-lessons', 'GET', undefined, { id });

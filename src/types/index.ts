@@ -131,6 +131,7 @@ export interface UserProfile {
   organizationId?: string;         // @deprecated — use activeOrgId
   organizationName?: string;       // @deprecated — use membership
   // Global identity fields
+  username?: string;
   activeOrgId?: string;            // currently selected org context
   avatarUrl?: string;
   bio?: string;
@@ -205,10 +206,16 @@ export interface GamificationData {
   xp: number;
   totalExams: number;
   passedExams: number;
+  totalLessons?: number;
+  totalQuizzes?: number;
+  totalOrgs?: number;
+  totalPosts?: number;
   streak: number;
   bestStreak: number;
   badges: string[];
   badgeDetails?: { id: string; icon: string; title: string; description: string }[];
+  allBadgeDefs?: Record<string, { icon: string; title: string; description: string }>;
+  orgXpBreakdown?: Record<string, number>;
   level: GamificationLevel;
   levelDefs?: { level: number; xp: number; title: string }[];
 }

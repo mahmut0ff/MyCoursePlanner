@@ -1,9 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { signUp, signInWithGoogle } from '../../services/auth.service';
 import { createUser, getUser } from '../../services/users.service';
-import { Mail, Lock, User, Eye, EyeOff, Building2, BookOpenCheck, School } from 'lucide-react';
+import { apiCheckAuthIdentity } from '../../lib/api';
+import { Mail, Lock, User, Eye, EyeOff, Building2, BookOpenCheck, School, AtSign, CheckCircle2, XCircle, Loader2 } from 'lucide-react';
 import LanguageSwitcher from '../../components/LanguageSwitcher';
 
 type RegRole = 'admin' | 'teacher' | 'student';
@@ -13,13 +14,40 @@ const RegisterPage: React.FC = () => {
   const [regRole, setRegRole] = useState<RegRole>('admin');
   const [step, setStep] = useState<'role' | 'account' | 'org'>('role');
   const [name, setName] = useState('');
+  const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [orgName, setOrgName] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [usernameStatus, setUsernameStatus] = useState<'idle' | 'checking' | 'available' | 'taken'>('idle');
+  const [emailStatus, setEmailStatus] = useState<'idle' | 'checking' | 'available' | 'taken'>('idle');
   const navigate = useNavigate();
+
+  useEffect(() => {
+    if (!username || username.length < 3) return setUsernameStatus('idle');
+    setUsernameStatus('checking');
+    const timer = setTimeout(async () => {
+      try {
+        const res = await apiCheckAuthIdentity({ action: 'check', username });
+        setUsernameStatus(res.username ? 'taken' : 'available');
+      } catch { setUsernameStatus('idle'); }
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [username]);
+
+  useEffect(() => {
+    if (!email || !email.includes('@')) return setEmailStatus('idle');
+    setEmailStatus('checking');
+    const timer = setTimeout(async () => {
+      try {
+        const res = await apiCheckAuthIdentity({ action: 'check', email });
+        setEmailStatus(res.email ? 'taken' : 'available');
+      } catch { setEmailStatus('idle'); }
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [email]);
 
   const totalSteps = regRole === 'admin' ? 3 : 2;
   const currentStep = step === 'role' ? 1 : step === 'account' ? 2 : 3;
@@ -32,8 +60,9 @@ const RegisterPage: React.FC = () => {
   const handleAccountStep = (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
-    if (!name || !email || !password) { setError(t('auth.fillAllFields')); return; }
+    if (!name || !username || !email || !password) { setError(t('auth.fillAllFields')); return; }
     if (password.length < 6) { setError(t('auth.passwordMinLength')); return; }
+    if (usernameStatus === 'taken' || emailStatus === 'taken') { setError(t('auth.identitiesTaken', 'Указанный email или никнейм уже занят.')); return; }
     if (regRole === 'admin') {
       setStep('org');
     } else {
@@ -46,7 +75,7 @@ const RegisterPage: React.FC = () => {
     setLoading(true);
     try {
       const cred = await signUp(email, password, name);
-      await createUser(cred.user.uid, email, name, regRole === 'teacher' ? 'teacher' : 'student');
+      await createUser(cred.user.uid, email, name, regRole === 'teacher' ? 'teacher' : 'student', username);
       navigate(regRole === 'teacher' ? '/teacher-profile' : '/dashboard');
     } catch (err: any) {
       console.error('Registration error:', err);
@@ -64,7 +93,7 @@ const RegisterPage: React.FC = () => {
     setLoading(true);
     try {
       const cred = await signUp(email, password, name);
-      const profilePromise = createUser(cred.user.uid, email, name, 'admin');
+      const profilePromise = createUser(cred.user.uid, email, name, 'admin', username);
       const timeoutPromise = new Promise((_, reject) =>
         setTimeout(() => reject(new Error('timeout')), 8000)
       );
@@ -100,7 +129,7 @@ const RegisterPage: React.FC = () => {
       const existing = await getUser(user.uid);
       if (!existing) {
         const role = regRole === 'teacher' ? 'teacher' : 'student';
-        await createUser(user.uid, user.email || '', user.displayName || 'User', role);
+        await createUser(user.uid, user.email || '', user.displayName || 'User', role, '');
       }
       navigate(regRole === 'teacher' ? '/teacher-profile' : '/dashboard');
     } catch (err: any) {
@@ -243,11 +272,30 @@ const RegisterPage: React.FC = () => {
                   </div>
                 </div>
                 <div>
+                  <label className="label">{t('auth.username', 'Никнейм')}</label>
+                  <div className="relative">
+                    <AtSign className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                    <input type="text" value={username} onChange={(e) => setUsername(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ''))} className="input pl-11 pr-11" placeholder="john_doe" />
+                    <div className="absolute right-3.5 top-1/2 -translate-y-1/2">
+                      {usernameStatus === 'checking' && <Loader2 className="w-4 h-4 text-slate-400 animate-spin" />}
+                      {usernameStatus === 'available' && <CheckCircle2 className="w-4 h-4 text-emerald-500" />}
+                      {usernameStatus === 'taken' && <XCircle className="w-4 h-4 text-red-500" />}
+                    </div>
+                  </div>
+                  {usernameStatus === 'taken' && <p className="text-xs text-red-500 mt-1">{t('auth.usernameTaken', 'Этот никнейм уже занят')}</p>}
+                </div>
+                <div>
                   <label className="label">{t('auth.email')}</label>
                   <div className="relative">
                     <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                    <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} className="input pl-11" placeholder="you@example.com" />
+                    <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} className="input pl-11 pr-11" placeholder="you@example.com" />
+                    <div className="absolute right-3.5 top-1/2 -translate-y-1/2">
+                      {emailStatus === 'checking' && <Loader2 className="w-4 h-4 text-slate-400 animate-spin" />}
+                      {emailStatus === 'available' && <CheckCircle2 className="w-4 h-4 text-emerald-500" />}
+                      {emailStatus === 'taken' && <XCircle className="w-4 h-4 text-red-500" />}
+                    </div>
                   </div>
+                  {emailStatus === 'taken' && <p className="text-xs text-red-500 mt-1">{t('auth.emailTaken', 'Этот email уже зарегистрирован')}</p>}
                 </div>
                 <div>
                   <label className="label">{t('auth.password')}</label>

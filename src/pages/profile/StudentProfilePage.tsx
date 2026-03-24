@@ -6,9 +6,10 @@ import { auth, storage } from '../../lib/firebase';
 import { ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { updateUser } from '../../services/users.service';
 import toast from 'react-hot-toast';
-import { Globe, Lock, Save, Camera } from 'lucide-react';
+import { Globe, Lock, Save, Camera, AtSign, CheckCircle2, XCircle, Loader2 } from 'lucide-react';
 import i18n from '../../i18n';
 import StudentPortfolio from '../../components/portfolio/StudentPortfolio';
+import { apiCheckAuthIdentity } from '../../lib/api';
 
 const StudentProfilePage: React.FC = () => {
   const { t } = useTranslation();
@@ -18,10 +19,24 @@ const StudentProfilePage: React.FC = () => {
 
   // Fields
   const [name, setName] = useState(profile?.displayName || '');
+  const [username, setUsername] = useState(profile?.username || '');
+  const [usernameStatus, setUsernameStatus] = useState<'idle' | 'checking' | 'available' | 'taken'>('idle');
   const [bio, setBio] = useState(profile?.bio || '');
   const [skills, setSkills] = useState(profile?.skills?.join(', ') || '');
   const [avatarUrl, setAvatarUrl] = useState(profile?.avatarUrl || '');
   
+  React.useEffect(() => {
+    if (!username || username === profile?.username || username.length < 3) return setUsernameStatus('idle');
+    setUsernameStatus('checking');
+    const timer = setTimeout(async () => {
+      try {
+        const res = await apiCheckAuthIdentity({ action: 'check', username });
+        setUsernameStatus(res.username ? 'taken' : 'available');
+      } catch { setUsernameStatus('idle'); }
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [username, profile?.username]);
+
   const [saving, setSaving] = useState(false);
   const [avatarLoading, setAvatarLoading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -33,12 +48,17 @@ const StudentProfilePage: React.FC = () => {
 
   const handleUpdateProfile = async () => {
     if (!name.trim() || !auth.currentUser) return;
+    if (usernameStatus === 'taken') {
+      toast.error(t('auth.usernameTaken', 'Этот никнейм уже занят'));
+      return;
+    }
     setSaving(true);
     try {
       const parsedSkills = skills.split(',').map(s => s.trim()).filter(Boolean);
       await updateProfile(auth.currentUser, { displayName: name.trim(), photoURL: avatarUrl || auth.currentUser.photoURL });
       await updateUser(auth.currentUser.uid, { 
         displayName: name.trim(),
+        username: username.trim().toLowerCase(),
         bio: bio.trim(),
         skills: parsedSkills,
         avatarUrl
@@ -144,8 +164,21 @@ const StudentProfilePage: React.FC = () => {
               </div>
               <div className="flex-1">
                 <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">{t('profile.displayName')}</label>
-                <input type="text" value={name} onChange={e => setName(e.target.value)} className="input mb-2" />
-                <p className="text-sm text-slate-500 dark:text-slate-400">{profile?.email}</p>
+                <input type="text" value={name} onChange={e => setName(e.target.value)} className="input mb-4" />
+                
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">{t('auth.username', 'Никнейм')}</label>
+                <div className="relative mb-2">
+                  <AtSign className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                  <input type="text" value={username} onChange={(e) => setUsername(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ''))} className="input pl-11 pr-11" placeholder="john_doe" />
+                  <div className="absolute right-3.5 top-1/2 -translate-y-1/2">
+                    {usernameStatus === 'checking' && <Loader2 className="w-4 h-4 text-slate-400 animate-spin" />}
+                    {usernameStatus === 'available' && <CheckCircle2 className="w-4 h-4 text-emerald-500" />}
+                    {usernameStatus === 'taken' && <XCircle className="w-4 h-4 text-red-500" />}
+                  </div>
+                </div>
+                {usernameStatus === 'taken' && <p className="text-xs text-red-500 mt-1 mb-2">{t('auth.usernameTaken', 'Этот никнейм уже занят')}</p>}
+                
+                <p className="text-sm text-slate-500 dark:text-slate-400 mt-2">{profile?.email}</p>
               </div>
             </div>
             

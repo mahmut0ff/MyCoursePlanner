@@ -1,8 +1,8 @@
 /**
  * API: Gamification — XP, levels, badges, streaks for students.
  *
- * GET  /api-gamification                → get student gamification profile
- * POST /api-gamification                → award XP / badge (internal use)
+ * GET  /api-gamification                → get student gamification profile & full badge definitions
+ * POST /api-gamification                → award XP / badge (supports exams, lessons, quizzes, orgs, posts)
  */
 import type { Handler, HandlerEvent } from '@netlify/functions';
 import { adminDb } from './utils/firebase-admin';
@@ -24,8 +24,9 @@ const LEVELS = [
   { level: 10, xp: 10000, title: 'Легенда' },
 ];
 
-// Badge definitions
+// Badge definitions (20 Global Badges)
 const BADGE_DEFS: Record<string, { icon: string; title: string; description: string }> = {
+  // --- Exams ---
   first_exam: { icon: '🎯', title: 'Первый экзамен', description: 'Сдали свой первый экзамен' },
   perfect_score: { icon: '💎', title: 'Перфекционист', description: 'Получили 100% на экзамене' },
   streak_3: { icon: '🔥', title: 'Серия — 3', description: '3 экзамена подряд сданы' },
@@ -34,6 +35,22 @@ const BADGE_DEFS: Record<string, { icon: string; title: string; description: str
   speed_demon: { icon: '⏱️', title: 'Быстрый ум', description: 'Сдали экзамен менее чем за 5 минут' },
   ten_exams: { icon: '📚', title: 'Десятак', description: 'Сдали 10 экзаменов' },
   fifty_exams: { icon: '🎖️', title: 'Полтинник', description: 'Сдали 50 экзаменов' },
+  // --- Lessons ---
+  first_lesson: { icon: '📖', title: 'Книжный червь', description: 'Изучили первый урок' },
+  five_lessons: { icon: '🧠', title: 'Жажда знаний', description: 'Изучили 5 уроков' },
+  twenty_lessons: { icon: '🎓', title: 'Эрудит', description: 'Изучили 20 уроков' },
+  // --- Quizzes ---
+  first_quiz: { icon: '🎮', title: 'Новый игрок', description: 'Сыграли в свою первую викторину' },
+  quiz_winner: { icon: '🏅', title: 'Чемпион', description: 'Успешно прошли викторину на высокий балл' },
+  five_quizzes: { icon: '🎲', title: 'Азартный ученик', description: 'Завершили 5 викторин' },
+  // --- Organizations & Community ---
+  joined_org: { icon: '🤝', title: 'Часть команды', description: 'Вступили в свой первый учебный центр' },
+  three_orgs: { icon: '🌍', title: 'Сетевик', description: 'Состоите в 3 учебных центрах' },
+  first_post: { icon: '📝', title: 'Спикер', description: 'Опубликовали первую запись в портфолио' },
+  // --- General XP & Levels ---
+  level_5: { icon: '⭐', title: 'Достигатор', description: 'Достигли 5-го уровня' },
+  level_10: { icon: '👑', title: 'Легенда Университета', description: 'Достигли 10-го (максимального) уровня' },
+  night_owl: { icon: '🦉', title: 'Ночная сова', description: 'Учились после полуночи' }
 };
 
 function getLevel(xp: number) {
@@ -59,79 +76,124 @@ const handler: Handler = async (event: HandlerEvent) => {
     const uid = params.studentId || user.uid;
 
     const doc = await adminDb.collection(COLLECTION).doc(uid).get();
+    let data;
+    
     if (!doc.exists) {
       // Initialize profile
-      const initial = {
+      data = {
         uid, xp: 0, totalExams: 0, passedExams: 0, streak: 0, bestStreak: 0,
-        badges: [] as string[], createdAt: new Date().toISOString(),
+        totalLessons: 0, totalQuizzes: 0, totalOrgs: 0, totalPosts: 0,
+        badges: [] as string[], orgXpBreakdown: {}, createdAt: new Date().toISOString(),
       };
-      await adminDb.collection(COLLECTION).doc(uid).set(initial);
-      return ok({ ...initial, level: getLevel(0), badgeDetails: [], levelDefs: LEVELS });
+      await adminDb.collection(COLLECTION).doc(uid).set(data);
+    } else {
+      data = doc.data()!;
     }
 
-    const data = doc.data()!;
     const badgeDetails = (data.badges || []).map((b: string) => ({ id: b, ...BADGE_DEFS[b] }));
-
-    // Get per-org XP breakdown
-    const xpEventsSnap = await adminDb.collection('xpEvents')
-      .where('userId', '==', uid)
-      .orderBy('createdAt', 'desc')
-      .limit(100).get();
-
-    const orgXpMap: Record<string, number> = {};
-    xpEventsSnap.docs.forEach((d: any) => {
-      const ev = d.data();
-      if (ev.organizationId) {
-        orgXpMap[ev.organizationId] = (orgXpMap[ev.organizationId] || 0) + (ev.xp || 0);
-      }
-    });
 
     return ok({
       ...data,
       level: getLevel(data.xp || 0),
       badgeDetails,
       levelDefs: LEVELS,
-      orgXpBreakdown: orgXpMap,
+      allBadgeDefs: BADGE_DEFS, // NEW: send all definitions so frontend doesn't hardcode them
     });
   }
 
   // POST — award XP / badge
   if (event.httpMethod === 'POST') {
     const body = JSON.parse(event.body || '{}');
-    const { studentId, examPassed, percentage, timeSpentSeconds } = body;
+    const type = body.type || 'exam'; // 'exam', 'lesson', 'quiz', 'org', 'post'
+    const { studentId, examPassed, percentage, timeSpentSeconds, organizationId } = body;
     const uid = studentId || user.uid;
 
-    // Get or create profile
     const ref = adminDb.collection(COLLECTION).doc(uid);
     const doc = await ref.get();
-    const data = doc.exists ? doc.data()! : { xp: 0, totalExams: 0, passedExams: 0, streak: 0, bestStreak: 0, badges: [] };
+    const data = doc.exists ? doc.data()! : { 
+      xp: 0, totalExams: 0, passedExams: 0, streak: 0, bestStreak: 0, 
+      totalLessons: 0, totalQuizzes: 0, totalOrgs: 0, totalPosts: 0,
+      badges: [], orgXpBreakdown: {} 
+    };
 
-    // Calculate XP earned
-    let xpEarned = 10; // base XP for taking exam
+    let xpEarned = 0;
     const newBadges: string[] = [];
 
-    if (examPassed) {
-      xpEarned += 20; // passed bonus
-      xpEarned += Math.floor((percentage || 0) / 10); // score bonus (0-10)
-      data.passedExams = (data.passedExams || 0) + 1;
-      data.streak = (data.streak || 0) + 1;
-      if (data.streak > (data.bestStreak || 0)) data.bestStreak = data.streak;
-    } else {
-      data.streak = 0;
+    // Calculate generic XP and stats based on type
+    if (type === 'exam') {
+      xpEarned = 10;
+      if (examPassed) {
+        xpEarned += 20;
+        xpEarned += Math.floor((percentage || 0) / 10);
+        data.passedExams = (data.passedExams || 0) + 1;
+        data.streak = (data.streak || 0) + 1;
+        if (data.streak > (data.bestStreak || 0)) data.bestStreak = data.streak;
+      } else {
+        data.streak = 0;
+      }
+      data.totalExams = (data.totalExams || 0) + 1;
+    } else if (type === 'lesson') {
+      xpEarned = 5;
+      data.totalLessons = (data.totalLessons || 0) + 1;
+    } else if (type === 'quiz') {
+      xpEarned = 15;
+      data.totalQuizzes = (data.totalQuizzes || 0) + 1;
+    } else if (type === 'org') {
+      xpEarned = 50;
+      data.totalOrgs = (data.totalOrgs || 0) + 1;
+    } else if (type === 'post') {
+      xpEarned = 10;
+      data.totalPosts = (data.totalPosts || 0) + 1;
     }
-    data.totalExams = (data.totalExams || 0) + 1;
+
     data.xp = (data.xp || 0) + xpEarned;
+
+    if (organizationId) {
+      data.orgXpBreakdown = data.orgXpBreakdown || {};
+      data.orgXpBreakdown[organizationId] = (data.orgXpBreakdown[organizationId] || 0) + xpEarned;
+    }
 
     // Check badges
     const badges: string[] = data.badges || [];
-    if (data.totalExams === 1 && !badges.includes('first_exam')) { badges.push('first_exam'); newBadges.push('first_exam'); }
-    if (percentage === 100 && !badges.includes('perfect_score')) { badges.push('perfect_score'); newBadges.push('perfect_score'); }
-    if (data.streak >= 3 && !badges.includes('streak_3')) { badges.push('streak_3'); newBadges.push('streak_3'); }
-    if (data.streak >= 7 && !badges.includes('streak_7')) { badges.push('streak_7'); newBadges.push('streak_7'); }
-    if (data.streak >= 30 && !badges.includes('streak_30')) { badges.push('streak_30'); newBadges.push('streak_30'); }
-    if (timeSpentSeconds && timeSpentSeconds < 300 && examPassed && !badges.includes('speed_demon')) { badges.push('speed_demon'); newBadges.push('speed_demon'); }
-    if (data.totalExams >= 10 && !badges.includes('ten_exams')) { badges.push('ten_exams'); newBadges.push('ten_exams'); }
-    if (data.totalExams >= 50 && !badges.includes('fifty_exams')) { badges.push('fifty_exams'); newBadges.push('fifty_exams'); }
+    const checkBadge = (id: string, condition: boolean) => {
+      if (condition && !badges.includes(id)) { badges.push(id); newBadges.push(id); }
+    };
+
+    // Exams
+    checkBadge('first_exam', data.totalExams === 1);
+    checkBadge('perfect_score', type === 'exam' && percentage === 100);
+    checkBadge('streak_3', data.streak >= 3);
+    checkBadge('streak_7', data.streak >= 7);
+    checkBadge('streak_30', data.streak >= 30);
+    checkBadge('speed_demon', type === 'exam' && timeSpentSeconds && timeSpentSeconds < 300 && examPassed);
+    checkBadge('ten_exams', data.totalExams >= 10);
+    checkBadge('fifty_exams', data.totalExams >= 50);
+
+    // Lessons
+    checkBadge('first_lesson', data.totalLessons === 1);
+    checkBadge('five_lessons', data.totalLessons >= 5);
+    checkBadge('twenty_lessons', data.totalLessons >= 20);
+
+    // Quizzes
+    checkBadge('first_quiz', data.totalQuizzes === 1);
+    checkBadge('quiz_winner', type === 'quiz' && percentage >= 90);
+    checkBadge('five_quizzes', data.totalQuizzes >= 5);
+
+    // Orgs
+    checkBadge('joined_org', data.totalOrgs === 1);
+    checkBadge('three_orgs', data.totalOrgs >= 3);
+
+    // Posts
+    checkBadge('first_post', data.totalPosts === 1);
+
+    // Level & Special
+    const currentLevelVal = getLevel(data.xp).level;
+    checkBadge('level_5', currentLevelVal >= 5);
+    checkBadge('level_10', currentLevelVal >= 10);
+    
+    // Night Owl (Midnight to 4 AM local server time, approx check)
+    const hour = new Date().getHours();
+    checkBadge('night_owl', hour >= 0 && hour < 4);
 
     data.badges = badges;
     await ref.set(data, { merge: true });
@@ -139,10 +201,9 @@ const handler: Handler = async (event: HandlerEvent) => {
     // Write XP event to ledger
     await adminDb.collection('xpEvents').add({
       userId: uid,
-      organizationId: body.organizationId || '',
-      examId: body.examId || '',
+      organizationId: organizationId || '',
+      type,
       xp: xpEarned,
-      reason: examPassed ? 'exam_passed' : 'exam_taken',
       createdAt: new Date().toISOString(),
     });
 

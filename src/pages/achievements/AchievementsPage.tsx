@@ -3,17 +3,6 @@ import { useTranslation } from 'react-i18next';
 import { apiGetGamification } from '../../lib/api';
 import { Flame, Star, Trophy, Zap, Lock } from 'lucide-react';
 
-// All badge definitions (must match backend)
-const ALL_BADGES: Record<string, { icon: string }> = {
-  first_exam: { icon: '🎯' },
-  perfect_score: { icon: '💎' },
-  streak_3: { icon: '🔥' },
-  streak_7: { icon: '⚡' },
-  streak_30: { icon: '🏆' },
-  speed_demon: { icon: '⏱️' },
-  ten_exams: { icon: '📚' },
-  fifty_exams: { icon: '🎖️' },
-};
 import type { GamificationData } from '../../types';
 
 const AchievementsPage: React.FC = () => {
@@ -78,26 +67,30 @@ const AchievementsPage: React.FC = () => {
       {/* All Badges */}
       <div className="card p-6">
         <h2 className="font-semibold text-slate-900 dark:text-white mb-4">{t('gamification.earned')}</h2>
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          {Object.entries(ALL_BADGES).map(([id, badge]) => {
-            const earned = earnedSet.has(id);
-            return (
-              <div
-                key={id}
-                className={`relative p-4 rounded-xl text-center transition-all ${
-                  earned
-                    ? 'bg-gradient-to-b from-indigo-50 to-purple-50 dark:from-indigo-900/20 dark:to-purple-900/20 ring-1 ring-indigo-200 dark:ring-indigo-800'
-                    : 'bg-slate-100 dark:bg-slate-700/50 opacity-50'
-                }`}
-              >
-                <span className="text-3xl block mb-2">{badge.icon}</span>
-                <p className="text-xs font-semibold text-slate-900 dark:text-white">{t(`gamification.badgesList.${id}.title`)}</p>
-                <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">{t(`gamification.badgesList.${id}.description`)}</p>
-                {!earned && <Lock className="w-3.5 h-3.5 text-slate-400 absolute top-2 right-2" />}
-              </div>
-            );
-          })}
-        </div>
+        {data.allBadgeDefs ? (
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            {Object.entries(data.allBadgeDefs).map(([id, badge]) => {
+              const earned = earnedSet.has(id);
+              return (
+                <div
+                  key={id}
+                  className={`relative p-4 rounded-xl text-center transition-all ${
+                    earned
+                      ? 'bg-gradient-to-b from-indigo-50 to-purple-50 dark:from-indigo-900/20 dark:to-purple-900/20 ring-1 ring-indigo-200 dark:ring-indigo-800'
+                      : 'bg-slate-100 dark:bg-slate-700/50 opacity-50'
+                  }`}
+                >
+                  <span className="text-3xl block mb-2">{badge.icon}</span>
+                  <p className="text-xs font-semibold text-slate-900 dark:text-white">{badge.title}</p>
+                  <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">{badge.description}</p>
+                  {!earned && <Lock className="w-3.5 h-3.5 text-slate-400 absolute top-2 right-2" />}
+                </div>
+              );
+            })}
+          </div>
+        ) : (
+          <p className="text-sm text-slate-500">{t('common.noData', 'Нет данных о достижениях')}</p>
+        )}
       </div>
     </div>
   );

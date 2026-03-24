@@ -13,10 +13,12 @@ export const createUser = async (
   uid: string,
   email: string,
   displayName: string,
-  role: UserRole = 'student'
+  role: UserRole = 'student',
+  username: string = ''
 ): Promise<void> => {
   await setDoc(doc(db, COLLECTION, uid), {
     uid,
+    username: username.trim().toLowerCase(),
     email,
     displayName,
     role,

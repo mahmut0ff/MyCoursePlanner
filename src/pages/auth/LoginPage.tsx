@@ -3,12 +3,13 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { signIn, signInWithGoogle } from '../../services/auth.service';
 import { createUser, getUser } from '../../services/users.service';
+import { apiResolveUsername } from '../../lib/api';
 import { Mail, Lock, Eye, EyeOff } from 'lucide-react';
 import LanguageSwitcher from '../../components/LanguageSwitcher';
 
 const LoginPage: React.FC = () => {
   const { t } = useTranslation();
-  const [email, setEmail] = useState('');
+  const [identity, setIdentity] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
@@ -18,13 +19,23 @@ const LoginPage: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
-    if (!email || !password) { setError('Please fill in all fields'); return; }
+    if (!identity || !password) { setError(t('auth.fillAllFields', 'Пожалуйста, заполните все поля')); return; }
     setLoading(true);
     try {
-      await signIn(email, password);
+      let loginEmail = identity;
+      if (!identity.includes('@')) {
+        try {
+          const res = await apiResolveUsername(identity);
+          loginEmail = res.email;
+        } catch {
+          throw new Error('User not found');
+        }
+      }
+      await signIn(loginEmail, password);
       navigate('/dashboard');
     } catch (err: any) {
-      setError(err.message?.includes('invalid') ? 'Invalid email or password' : 'Login failed. Please try again.');
+      if (err.message === 'User not found') setError(t('auth.userNotFound', 'Пользователь с таким никнеймом не найден'));
+      else setError(err.message?.includes('invalid') ? t('auth.invalidCreds', 'Неверные данные для входа') : t('auth.loginFailed', 'Ошибка входа'));
     } finally {
       setLoading(false);
     }
@@ -128,12 +139,12 @@ const LoginPage: React.FC = () => {
 
           <form onSubmit={handleSubmit} className="space-y-5">
             <div>
-              <label className="label">{t('auth.email')}</label>
+              <label className="label">{t('auth.emailOrUsername', 'Email или Никнейм')}</label>
               <div className="relative">
                 <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                 <input
-                  type="email" value={email} onChange={(e) => setEmail(e.target.value)}
-                  className="input pl-11" placeholder="you@example.com"
+                  type="text" value={identity} onChange={(e) => setIdentity(e.target.value.toLowerCase().replace(/\s/g, ''))}
+                  className="input pl-11" placeholder="you@example.com или john_doe"
                 />
               </div>
             </div>

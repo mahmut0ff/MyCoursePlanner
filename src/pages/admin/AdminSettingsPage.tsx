@@ -161,7 +161,7 @@ const UsersRolesTab: React.FC = () => {
 /* ════════════════════════════════════════════════ */
 const BrandingTab: React.FC = () => {
   const { t } = useTranslation();
-  const [brand, setBrand] = useState({ name: 'MyCoursePlan', primaryColor: '#6366f1', accentColor: '#10b981' });
+  const [brand, setBrand] = useState({ name: 'Planula', primaryColor: '#6366f1', accentColor: '#10b981' });
 
   return (
     <div className="space-y-6">
@@ -333,7 +333,7 @@ const BillingTab: React.FC = () => {
 const EmailTemplatesTab: React.FC = () => {
   const { t } = useTranslation();
   const templates = [
-    { id: 'welcome', subject: 'Welcome to MyCoursePlan' },
+    { id: 'welcome', subject: 'Welcome to Planula' },
     { id: 'password_reset', subject: 'Password Reset Request' },
     { id: 'exam_invite', subject: 'You\'re Invited to an Exam' },
     { id: 'trial_expiring', subject: 'Your Trial is Expiring Soon' },

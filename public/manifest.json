@@ -1,6 +1,6 @@
 {
-  "name": "MyCoursePlan",
-  "short_name": "MCP",
+  "name": "Planula",
+  "short_name": "Planula",
   "description": "Education Management Platform — Lessons, Exams, AI Feedback",
   "start_url": "/",
   "display": "standalone",

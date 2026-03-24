@@ -2,7 +2,7 @@ const CACHE_NAME = 'mcp-v1';
 const STATIC_ASSETS = [
   '/',
   '/manifest.json',
-  '/favicon.svg',
+  '/icons/logo.png',
 ];
 
 // Install — cache static assets

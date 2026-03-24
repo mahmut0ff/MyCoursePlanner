@@ -1,5 +1,5 @@
 // ============================================================
-// MyCoursePlan — TypeScript Interfaces & Types
+// Planula — TypeScript Interfaces & Types
 // Multi-Tenant SaaS Platform
 // ============================================================
 

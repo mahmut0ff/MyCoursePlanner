@@ -81,7 +81,7 @@ const handler: Handler = async (event: HandlerEvent) => {
       pg_order_id: orderId,
       pg_amount: String(body.amount),
       pg_currency: 'KGS',
-      pg_description: `MyCoursePlan — ${body.planId} plan`,
+      pg_description: `Planula — ${body.planId} plan`,
       pg_salt: salt,
       pg_language: 'ru',
       pg_success_url: `${APP_URL}/payment/success`,

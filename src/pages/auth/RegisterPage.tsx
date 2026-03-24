@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { signUp, signInWithGoogle } from '../../services/auth.service';
 import { createUser, getUser } from '../../services/users.service';
-import { GraduationCap, Mail, Lock, User, Eye, EyeOff, Building2, BookOpenCheck, School } from 'lucide-react';
+import { Mail, Lock, User, Eye, EyeOff, Building2, BookOpenCheck, School } from 'lucide-react';
 import LanguageSwitcher from '../../components/LanguageSwitcher';
 
 type RegRole = 'admin' | 'teacher';
@@ -162,9 +162,7 @@ const RegisterPage: React.FC = () => {
         <div className="w-full max-w-md">
           {/* Logo */}
           <div className="text-center mb-6">
-            <div className="inline-flex items-center justify-center w-14 h-14 bg-primary-600 rounded-2xl shadow-lg shadow-primary-200 dark:shadow-primary-900/30 mb-4">
-              <GraduationCap className="w-7 h-7 text-white" />
-            </div>
+            <img src="/icons/logo.png" alt="Planula" className="w-14 h-14 mx-auto rounded-2xl shadow-lg shadow-primary-200 dark:shadow-primary-900/30 mb-4" />
             <h2 className="text-2xl font-bold text-slate-900 dark:text-white">{t('auth.registerTitle')}</h2>
           </div>
 

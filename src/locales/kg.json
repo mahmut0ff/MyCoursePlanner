@@ -1,6 +1,6 @@
 {
   "app": {
-    "name": "MyCoursePlan",
+    "name": "Planula",
     "superAdmin": "СУПЕР АДМИН",
     "signOut": "Чыгуу"
   },
@@ -51,7 +51,7 @@
     "loginTitle": "Кош келиңиз",
     "loginSubtitle": "Аккаунтуңузга кириңиз",
     "registerTitle": "Аккаунт түзүү",
-    "registerSubtitle": "MyCoursePlan менен баштаңыз",
+    "registerSubtitle": "Planula менен баштаңыз",
     "orgName": "Уюмдун аталышы",
     "orgNamePlaceholder": "Мектебиңиздин же уюмуңуздун атын жазыңыз",
     "step1": "Аккаунт маалыматы",

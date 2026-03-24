@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { signIn, signInWithGoogle } from '../../services/auth.service';
 import { createUser, getUser } from '../../services/users.service';
-import { GraduationCap, Mail, Lock, Eye, EyeOff } from 'lucide-react';
+import { Mail, Lock, Eye, EyeOff } from 'lucide-react';
 import LanguageSwitcher from '../../components/LanguageSwitcher';
 
 const LoginPage: React.FC = () => {
@@ -116,9 +116,7 @@ const LoginPage: React.FC = () => {
         <div className="w-full max-w-md">
           {/* Logo */}
           <div className="text-center mb-8">
-            <div className="inline-flex items-center justify-center w-14 h-14 bg-primary-600 rounded-2xl shadow-lg shadow-primary-200 dark:shadow-primary-900/30 mb-4">
-              <GraduationCap className="w-7 h-7 text-white" />
-            </div>
+            <img src="/icons/logo.png" alt="Planula" className="w-14 h-14 mx-auto rounded-2xl shadow-lg shadow-primary-200 dark:shadow-primary-900/30 mb-4" />
             <h2 className="text-2xl font-bold text-slate-900 dark:text-white">{t('auth.loginTitle')}</h2>
           </div>
 

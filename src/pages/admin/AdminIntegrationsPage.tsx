@@ -77,7 +77,7 @@ const AdminIntegrationsPage: React.FC = () => {
       configFields: [
         { key: 'apiKey', label: 'API Key', type: 'password', placeholder: 'SG.xxxx' },
         { key: 'fromEmail', label: 'From Email', type: 'text', placeholder: 'noreply@yourapp.com' },
-        { key: 'fromName', label: 'From Name', type: 'text', placeholder: 'MyCoursePlan' },
+        { key: 'fromName', label: 'From Name', type: 'text', placeholder: 'Planula' },
       ],
       config: { apiKey: '', fromEmail: '', fromName: '' },
     },

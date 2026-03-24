@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import LanguageSwitcher from '../../components/LanguageSwitcher';
 import {
-  GraduationCap, BookOpen, ClipboardList, Radio, Brain, BarChart3,
+  BookOpen, ClipboardList, Radio, Brain, BarChart3,
   Shield, Zap, Check, ArrowRight, Star, ChevronRight,
   Globe, Sparkles, Crown,
 } from 'lucide-react';
@@ -45,10 +45,8 @@ const LandingPage: React.FC = () => {
       <nav className="fixed top-0 left-0 right-0 z-50 bg-white/80 backdrop-blur-xl border-b border-slate-200/50">
         <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
           <Link to="/" className="flex items-center gap-2.5">
-            <div className="w-9 h-9 bg-primary-600 rounded-xl flex items-center justify-center shadow-lg shadow-primary-500/20">
-              <GraduationCap className="w-5 h-5 text-white" />
-            </div>
-            <span className="font-bold text-lg text-slate-900">MyCoursePlan</span>
+            <img src="/icons/logo.png" alt="Planula" className="w-9 h-9 rounded-xl shadow-lg shadow-primary-500/20" />
+            <span className="font-bold text-lg text-slate-900">Planula</span>
           </Link>
           <div className="hidden md:flex items-center gap-8">
             <a href="#features" className="text-sm text-slate-600 hover:text-slate-900 transition-colors">{t('landing.navFeatures')}</a>
@@ -215,10 +213,10 @@ const LandingPage: React.FC = () => {
       <footer className="border-t border-slate-200 py-10 px-6">
         <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-2">
-            <GraduationCap className="w-5 h-5 text-primary-600" />
-            <span className="font-bold text-slate-900">MyCoursePlan</span>
+            <img src="/icons/logo.png" alt="Planula" className="w-5 h-5" />
+            <span className="font-bold text-slate-900">Planula</span>
           </div>
-          <p className="text-sm text-slate-400">© {new Date().getFullYear()} MyCoursePlan. {t('landing.rights')}</p>
+          <p className="text-sm text-slate-400">© {new Date().getFullYear()} Planula. {t('landing.rights')}</p>
         </div>
       </footer>
     </div>

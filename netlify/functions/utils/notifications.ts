@@ -108,8 +108,8 @@ async function sendPush(userId: string, title: string, body: string, link?: stri
     webpush: {
       fcmOptions: { link: link || '/' },
       notification: {
-        icon: '/favicon.ico',
-        badge: '/favicon.ico',
+        icon: '/icons/logo.png',
+        badge: '/icons/logo.png',
       },
     },
   };

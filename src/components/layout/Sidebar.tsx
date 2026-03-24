@@ -5,7 +5,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { signOut } from '../../services/auth.service';
 import { apiGetPendingInviteCount, apiLeaveOrganization, apiGetUnreadCount } from '../../lib/api';
 import {
-  GraduationCap, LayoutDashboard, BookOpen, ClipboardList, Radio,
+  LayoutDashboard, BookOpen, ClipboardList, Radio,
   BarChart3, LogOut, CreditCard, Users, Building2, Activity,
   Settings, Server, Shield, Puzzle, Tag, Zap, FolderOpen, UsersRound,
   Calendar, FileText, Trophy, UserPlus, MailOpen, UserCircle2, Briefcase, DoorOpen, Bell,
@@ -59,9 +59,7 @@ const Sidebar: React.FC<{ open: boolean; onClose: () => void }> = ({ open, onClo
 
         {/* ═══ Header ═══ */}
         <div className="flex items-center gap-3 px-4 py-4 border-b border-white/5">
-          <div className="w-9 h-9 bg-primary-600 rounded-xl flex items-center justify-center shadow-lg shadow-primary-500/20">
-            <GraduationCap className="w-5 h-5 text-white" />
-          </div>
+          <img src="/icons/logo.png" alt="Planula" className="w-9 h-9 rounded-xl shadow-lg shadow-primary-500/20" />
           <div className="flex-1 min-w-0">
             <span className="font-bold text-[15px] text-white leading-none tracking-tight">{t('app.name')}</span>
             {isSuperAdmin && (

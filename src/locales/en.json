@@ -1,6 +1,6 @@
 {
   "app": {
-    "name": "MyCoursePlan",
+    "name": "Planula",
     "superAdmin": "SUPER ADMIN",
     "signOut": "Sign out"
   },
@@ -61,7 +61,7 @@
     "loginTitle": "Welcome back",
     "loginSubtitle": "Sign in to your account",
     "registerTitle": "Create your account",
-    "registerSubtitle": "Start your journey with MyCoursePlan",
+    "registerSubtitle": "Start your journey with Planula",
     "orgName": "Organization Name",
     "orgNamePlaceholder": "Enter your school or organization name",
     "step1": "Account Details",
@@ -797,7 +797,7 @@
     "reviewsTitle": "What our users say",
     "test1Name": "Aigul K.",
     "test1Role": "School Director, Bishkek",
-    "test1Text": "MyCoursePlan completely changed our approach to exams. Everything is automated now.",
+    "test1Text": "Planula completely changed our approach to exams. Everything is automated now.",
     "test2Name": "Marat T.",
     "test2Role": "Math Teacher",
     "test2Text": "AI exam generation saves me hours of work every week. Excellent product!",
@@ -812,7 +812,7 @@
   "onboarding": {
     "badge": "Getting Started",
     "title": "Welcome! Set up your platform",
-    "subtitle": "Complete these steps to get started with MyCoursePlan",
+    "subtitle": "Complete these steps to get started with Planula",
     "step": "Step",
     "done": "Done",
     "step1Title": "Create your first lesson",

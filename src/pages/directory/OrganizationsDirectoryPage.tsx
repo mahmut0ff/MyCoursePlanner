@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { Search, MapPin, Globe, Users, BookOpen, Building2, Filter, Wifi, WifiOff } from 'lucide-react';
+import { Search, MapPin, Users, BookOpen, Building2, Filter, Wifi, WifiOff } from 'lucide-react';
 import { apiGetOrgDirectory } from '../../lib/api';
 
 interface OrgCard {

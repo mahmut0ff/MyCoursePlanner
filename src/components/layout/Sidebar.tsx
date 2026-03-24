@@ -1,21 +1,27 @@
-import React from 'react';
-import { NavLink } from 'react-router-dom';
+import React, { useEffect, useState } from 'react';
+import { NavLink, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../contexts/AuthContext';
-import { apiLeaveOrganization } from '../../lib/api';
+import { signOut } from '../../services/auth.service';
+import { apiGetPendingInviteCount, apiLeaveOrganization } from '../../lib/api';
 import OrgSwitcher from './OrgSwitcher';
 import {
   LayoutDashboard, BookOpen, ClipboardList, Radio,
   BarChart3, CreditCard, Users, Building2, Activity,
   Server, Shield, Puzzle, Tag, Zap, FolderOpen, UsersRound,
-  Calendar, FileText, Trophy, UserPlus, Briefcase, DoorOpen,
-  Gamepad2,
+  Calendar, FileText, Trophy, UserPlus, MailOpen, UserCircle2, Briefcase, DoorOpen,
+  Gamepad2, Settings, LogOut
 } from 'lucide-react';
 
 const Sidebar: React.FC<{ open: boolean; onClose: () => void }> = ({ open, onClose }) => {
   const { t } = useTranslation();
-  const { role, isSuperAdmin, isTeacher, organizationId } = useAuth();
+  const { profile, role, isSuperAdmin, isTeacher, organizationId } = useAuth();
+  const navigate = useNavigate();
 
+  const handleSignOut = async () => {
+    await signOut();
+    navigate('/login');
+  };
 
   const linkClass = ({ isActive }: { isActive: boolean }) =>
     `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-150 ${
@@ -28,7 +34,14 @@ const Sidebar: React.FC<{ open: boolean; onClose: () => void }> = ({ open, onClo
   const isAdmin = role === 'admin';
   const teacherWithOrg = isTeacher && !!organizationId;
 
-
+  // Fetch pending invite count for teacher badge
+  const [inviteCount, setInviteCount] = useState(0);
+  useEffect(() => {
+    if (!isTeacher) return;
+    apiGetPendingInviteCount()
+      .then((data) => setInviteCount(data?.count || 0))
+      .catch(() => {});
+  }, [isTeacher]);
 
   return (
     <>
@@ -130,8 +143,8 @@ const Sidebar: React.FC<{ open: boolean; onClose: () => void }> = ({ open, onClo
               <NavLink to="/schedule" className={linkClass} onClick={onClose}>
                 <Calendar className="w-4 h-4" />{t('nav.schedule')}
               </NavLink>
-              <NavLink to="/org-vacancies" className={linkClass} onClick={onClose}>
-                <Briefcase className="w-4 h-4" />{t('nav.vacancies')}
+              <NavLink to="/schedule" className={linkClass} onClick={onClose}>
+                <Calendar className="w-4 h-4" />{t('nav.schedule')}
               </NavLink>
             </>
           ) : isTeacher ? (
@@ -174,8 +187,19 @@ const Sidebar: React.FC<{ open: boolean; onClose: () => void }> = ({ open, onClo
                   </NavLink>
                 </>
               )}
-              <NavLink to="/vacancies" className={linkClass} onClick={onClose}>
-                <Briefcase className="w-4 h-4" />{t('nav.vacancies')}
+              <NavLink to="/teacher-profile" className={linkClass} onClick={onClose}>
+                <UserCircle2 className="w-4 h-4" />{t('nav.myProfile')}
+              </NavLink>
+              <NavLink to="/invites" className={linkClass} onClick={onClose}>
+                <MailOpen className="w-4 h-4" />{t('nav.invites')}
+                {inviteCount > 0 && (
+                  <span className="ml-auto bg-red-500 text-white text-[10px] font-bold min-w-[18px] h-[18px] flex items-center justify-center rounded-full px-1 animate-pulse">
+                    {inviteCount}
+                  </span>
+                )}
+              </NavLink>
+              <NavLink to="/my-applications" className={linkClass} onClick={onClose}>
+                <Briefcase className="w-4 h-4" />{t('nav.myApplications')}
               </NavLink>
               <NavLink to="/teacher-analytics" className={linkClass} onClick={onClose}>
                 <BarChart3 className="w-4 h-4" />{t('nav.analytics')}
@@ -217,9 +241,44 @@ const Sidebar: React.FC<{ open: boolean; onClose: () => void }> = ({ open, onClo
               <NavLink to="/achievements" className={linkClass} onClick={onClose}>
                 <Zap className="w-4 h-4" />{t('gamification.badges')}
               </NavLink>
+              <NavLink to="/profile" className={linkClass} onClick={onClose}>
+                <UserCircle2 className="w-4 h-4" />{t('nav.profile')}
+              </NavLink>
             </>
           ) : null}
         </nav>
+
+        {/* ═══ Footer ═══ */}
+        <div className="border-t border-white/5 px-3 py-3">
+          <div className="flex items-center gap-3 px-1">
+            <div className="w-9 h-9 bg-emerald-600 rounded-full flex items-center justify-center text-sm font-bold text-white shadow-lg shadow-emerald-500/20 ring-2 ring-white/10">
+              {profile?.displayName?.[0]?.toUpperCase() || '?'}
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-semibold text-white truncate">{profile?.displayName}</p>
+              <p className="text-[11px] text-slate-500 capitalize flex items-center gap-1">
+                {isSuperAdmin && <Shield className="w-3 h-3 text-primary-400" />}
+                {role?.replace('_', ' ')}
+              </p>
+            </div>
+            {isSuperAdmin && (
+              <NavLink
+                to="/admin/settings"
+                className="p-1.5 rounded-lg text-slate-600 hover:text-slate-300 hover:bg-white/5 transition-colors"
+                title={t('nav.settings')}
+              >
+                <Settings className="w-4 h-4" />
+              </NavLink>
+            )}
+            <button
+              onClick={handleSignOut}
+              className="p-1.5 rounded-lg text-slate-600 hover:text-red-400 hover:bg-white/5 transition-colors"
+              title={t('app.signOut')}
+            >
+              <LogOut className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
       </aside>
     </>
   );

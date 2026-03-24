@@ -223,6 +223,9 @@ const Sidebar: React.FC<{ open: boolean; onClose: () => void }> = ({ open, onClo
               <NavLink to="/dashboard" className={linkClass} onClick={onClose}>
                 <LayoutDashboard className="w-4 h-4" />{t('nav.dashboard')}
               </NavLink>
+              <NavLink to="/directory" className={linkClass} onClick={onClose}>
+                <Building2 className="w-4 h-4" />{t('nav.directory', 'Учебные центры')}
+              </NavLink>
               <NavLink to="/join" className={linkClass} onClick={onClose}>
                 <Radio className="w-4 h-4" />{t('rooms.join')}
               </NavLink>
@@ -232,17 +235,8 @@ const Sidebar: React.FC<{ open: boolean; onClose: () => void }> = ({ open, onClo
               <NavLink to="/lessons" className={linkClass} onClick={onClose}>
                 <BookOpen className="w-4 h-4" />{t('nav.lessons')}
               </NavLink>
-              <NavLink to="/my-results" className={linkClass} onClick={onClose}>
-                <BarChart3 className="w-4 h-4" />{t('nav.myResults')}
-              </NavLink>
               <NavLink to="/certificates" className={linkClass} onClick={onClose}>
                 <Trophy className="w-4 h-4" />{t('certificate.title')}
-              </NavLink>
-              <NavLink to="/achievements" className={linkClass} onClick={onClose}>
-                <Zap className="w-4 h-4" />{t('gamification.badges')}
-              </NavLink>
-              <NavLink to="/profile" className={linkClass} onClick={onClose}>
-                <UserCircle2 className="w-4 h-4" />{t('nav.profile')}
               </NavLink>
             </>
           ) : null}
@@ -250,16 +244,25 @@ const Sidebar: React.FC<{ open: boolean; onClose: () => void }> = ({ open, onClo
 
         {/* ═══ Footer ═══ */}
         <div className="border-t border-white/5 px-3 py-3">
-          <div className="flex items-center gap-3 px-1">
-            <div className="w-9 h-9 bg-emerald-600 rounded-full flex items-center justify-center text-sm font-bold text-white shadow-lg shadow-emerald-500/20 ring-2 ring-white/10">
-              {profile?.displayName?.[0]?.toUpperCase() || '?'}
-            </div>
-            <div className="min-w-0 flex-1">
-              <p className="text-sm font-semibold text-white truncate">{profile?.displayName}</p>
-              <p className="text-[11px] text-slate-500 capitalize flex items-center gap-1">
-                {isSuperAdmin && <Shield className="w-3 h-3 text-primary-400" />}
-                {role?.replace('_', ' ')}
-              </p>
+          <div className="flex items-center gap-2 px-1">
+            <div 
+              onClick={() => {
+                navigate(role === 'teacher' ? '/teacher-profile' : '/profile');
+                if (window.innerWidth < 1024) onClose();
+              }}
+              className="flex items-center gap-3 flex-1 cursor-pointer hover:bg-white/5 p-1.5 -ml-1.5 rounded-lg transition-colors overflow-hidden"
+              title={t('nav.profile')}
+            >
+              <div className="w-9 h-9 bg-emerald-600 rounded-full flex items-center justify-center text-sm font-bold text-white shadow-lg shadow-emerald-500/20 ring-2 ring-white/10 shrink-0">
+                {profile?.displayName?.[0]?.toUpperCase() || '?'}
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-semibold text-white truncate">{profile?.displayName}</p>
+                <p className="text-[11px] text-slate-500 capitalize flex items-center gap-1">
+                  {isSuperAdmin && <Shield className="w-3 h-3 text-primary-400" />}
+                  {role?.replace('_', ' ')}
+                </p>
+              </div>
             </div>
             {isSuperAdmin && (
               <NavLink

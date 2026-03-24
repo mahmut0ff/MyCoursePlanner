@@ -112,11 +112,6 @@ const Topbar: React.FC<TopbarProps> = ({ onMenuClick }) => {
           
           {/* Global Links */}
           <div className="hidden md:flex items-center gap-2 ml-4 pl-4 border-l border-slate-200 dark:border-slate-700/60">
-            {(!isSuperAdmin) && (
-              <NavLink to="/directory" className={({ isActive }) => `px-3 py-2 rounded-lg text-sm font-medium transition-colors ${isActive ? 'bg-slate-100 dark:bg-slate-700 text-slate-900 dark:text-white' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700/50'}`}>
-                {t('nav.directory', 'Учебные центры')}
-              </NavLink>
-            )}
             {(!isSuperAdmin && !role?.includes('student')) && (
               <NavLink to="/vacancies" className={({ isActive }) => `px-3 py-2 rounded-lg text-sm font-medium transition-colors ${isActive ? 'bg-slate-100 dark:bg-slate-700 text-slate-900 dark:text-white' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700/50'}`}>
                 {t('nav.vacancies', 'Вакансии')}
@@ -127,6 +122,18 @@ const Topbar: React.FC<TopbarProps> = ({ onMenuClick }) => {
 
         {/* Right side */}
         <div className="flex items-center gap-2">
+          {/* Student Stats */}
+          {role === 'student' && (
+            <div className="flex items-center gap-1 border-r border-slate-200 dark:border-slate-700/60 pr-2 mr-1">
+              <button onClick={() => navigate('/achievements')} className="p-2 rounded-lg text-amber-500 hover:text-amber-600 dark:text-amber-400 dark:hover:text-amber-300 hover:bg-amber-50 dark:hover:bg-amber-900/20 transition-colors" title={t('gamification.badges')}>
+                <Zap className="w-5 h-5" />
+              </button>
+              <button onClick={() => navigate('/my-results')} className="p-2 rounded-lg text-indigo-500 hover:text-indigo-600 dark:text-indigo-400 dark:hover:text-indigo-300 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 transition-colors" title={t('nav.myResults')}>
+                <BarChart3 className="w-5 h-5" />
+              </button>
+            </div>
+          )}
+
           {/* Language Switcher */}
           <LanguageSwitcher compact />
 

@@ -156,10 +156,15 @@ const handler: Handler = async (event: HandlerEvent) => {
 
     // ═══ STUDENTS (users with role=student in this org) ═══
     if (action === 'students') {
-      const snap = await adminDb.collection('users')
-        .where('organizationId', '==', orgId)
+      const snap = await adminDb.collection('orgMembers').doc(orgId)
+        .collection('members')
+        .where('status', '==', 'active')
         .where('role', '==', 'student').get();
-      return ok(snap.docs.map((d: any) => ({ uid: d.id, ...d.data() })));
+        
+      return ok(snap.docs.map((d: any) => {
+        const data = d.data();
+        return { uid: data.userId, displayName: data.userName, email: data.userEmail, role: data.role };
+      }));
     }
 
     if (action === 'createStudent') {
@@ -208,10 +213,15 @@ const handler: Handler = async (event: HandlerEvent) => {
 
     // ═══ TEACHERS (users with role=teacher in this org) ═══
     if (action === 'teachers') {
-      const snap = await adminDb.collection('users')
-        .where('organizationId', '==', orgId)
-        .where('role', '==', 'teacher').get();
-      return ok(snap.docs.map((d: any) => ({ uid: d.id, ...d.data() })));
+      const snap = await adminDb.collection('orgMembers').doc(orgId)
+        .collection('members')
+        .where('status', '==', 'active')
+        .where('role', 'in', ['teacher', 'admin', 'owner', 'mentor']).get();
+        
+      return ok(snap.docs.map((d: any) => {
+        const data = d.data();
+        return { uid: data.userId, displayName: data.userName, email: data.userEmail, role: data.role };
+      }));
     }
 
     if (action === 'createTeacher') {

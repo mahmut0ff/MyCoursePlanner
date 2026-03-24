@@ -143,6 +143,21 @@ export interface UserProfile {
   updatedAt: string;
 }
 
+// ---- User Posts (Portfolio) ----
+
+export type PostMediaType = 'image' | 'video' | 'text';
+
+export interface UserPost {
+  id: string;
+  authorId: string;
+  authorName: string;
+  type: PostMediaType;
+  text: string;
+  mediaUrl?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 // ---- Memberships (User ↔ Organization) ----
 
 export type MembershipRole = 'student' | 'teacher' | 'mentor' | 'admin' | 'owner';

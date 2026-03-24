@@ -103,7 +103,7 @@ const OrgSwitcher: React.FC<OrgSwitcherProps> = ({ currentOrgId, onSwitch }) => 
             ))}
             <div className="border-t border-white/5 mt-1 pt-1">
               <button
-                onClick={() => { setOpen(false); window.location.href = '/organizations'; }}
+                onClick={() => { setOpen(false); window.location.href = '/directory'; }}
                 className="w-full flex items-center gap-2 px-3 py-2 text-sm text-violet-400 hover:bg-white/5 transition"
               >
                 <Plus className="w-4 h-4" />

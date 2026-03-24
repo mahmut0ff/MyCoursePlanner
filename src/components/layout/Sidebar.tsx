@@ -223,6 +223,15 @@ const Sidebar: React.FC<{ open: boolean; onClose: () => void }> = ({ open, onClo
               <NavLink to="/dashboard" className={linkClass} onClick={onClose}>
                 <LayoutDashboard className="w-4 h-4" />{t('nav.dashboard')}
               </NavLink>
+              <NavLink to="/student/courses" className={linkClass} onClick={onClose}>
+                <FolderOpen className="w-4 h-4" />{t('nav.myCourses', 'Мои курсы')}
+              </NavLink>
+              <NavLink to="/student/groups" className={linkClass} onClick={onClose}>
+                <UsersRound className="w-4 h-4" />{t('nav.myGroups', 'Мои группы')}
+              </NavLink>
+              <NavLink to="/student/teachers" className={linkClass} onClick={onClose}>
+                <UserPlus className="w-4 h-4" />{t('nav.myTeachers', 'Мои преподаватели')}
+              </NavLink>
               <NavLink to="/directory" className={linkClass} onClick={onClose}>
                 <Building2 className="w-4 h-4" />{t('nav.directory', 'Учебные центры')}
               </NavLink>

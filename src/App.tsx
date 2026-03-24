@@ -28,6 +28,9 @@ import PaymentSuccessPage from './pages/billing/PaymentSuccessPage';
 import PaymentFailurePage from './pages/billing/PaymentFailurePage';
 import StudentProfilePage from './pages/profile/StudentProfilePage';
 import AchievementsPage from './pages/achievements/AchievementsPage';
+import StudentCoursesPage from './pages/student/StudentCoursesPage';
+import StudentGroupsPage from './pages/student/StudentGroupsPage';
+import StudentTeachersPage from './pages/student/StudentTeachersPage';
 
 // Quiz Pages
 import QuizLibraryPage from './pages/quiz/QuizLibraryPage';
@@ -130,6 +133,9 @@ const App: React.FC = () => {
             <Route path="certificate/:certId" element={<CertificatePage />} />
             <Route path="certificates" element={<MyCertificatesPage />} />
             <Route path="achievements" element={<AchievementsPage />} />
+            <Route path="student/courses" element={<ProtectedRoute allowedRoles={['student']}><StudentCoursesPage /></ProtectedRoute>} />
+            <Route path="student/groups" element={<ProtectedRoute allowedRoles={['student']}><StudentGroupsPage /></ProtectedRoute>} />
+            <Route path="student/teachers" element={<ProtectedRoute allowedRoles={['student']}><StudentTeachersPage /></ProtectedRoute>} />
 
             {/* ═══ Quiz System ═══ */}
             <Route path="quiz/library" element={<ProtectedRoute allowedRoles={['admin', 'teacher']}><QuizLibraryPage /></ProtectedRoute>} />

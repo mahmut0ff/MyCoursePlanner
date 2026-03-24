@@ -19,6 +19,7 @@ const StudentsPage: React.FC = () => {
   const { profile } = useAuth();
 
   const [activeTab, setActiveTab] = useState<'students' | 'applications'>('students');
+  const [expandedAvatar, setExpandedAvatar] = useState<string | null>(null);
 
   const [students, setStudents] = useState<UserProfile[]>([]);
   const [loading, setLoading] = useState(true);
@@ -164,9 +165,13 @@ const StudentsPage: React.FC = () => {
                   {filteredStudents.map((s) => (
                     <tr key={s.uid} onClick={() => navigate(`/students/${s.uid}`)} className="hover:bg-slate-50/80 dark:hover:bg-slate-700/20 cursor-pointer transition-colors">
                       <td className="px-4 py-2.5">
-                        <div className="flex items-center gap-2">
-                          <div className="w-6 h-6 bg-primary-600 rounded-md flex items-center justify-center text-[9px] text-white font-bold">{s.displayName?.[0]?.toUpperCase() || '?'}</div>
-                          <span className="text-xs font-medium text-slate-900 dark:text-white truncate">{s.displayName}</span>
+                        <div className="flex items-center gap-3">
+                          {s.avatarUrl ? (
+                            <img src={s.avatarUrl} alt="" className="w-8 h-8 rounded-full object-cover shadow-sm bg-slate-100 dark:bg-slate-700 hover:scale-110 transition-transform cursor-pointer" onClick={(e) => { e.stopPropagation(); setExpandedAvatar(s.avatarUrl!); }} />
+                          ) : (
+                            <div className="w-8 h-8 bg-primary-600 rounded-full flex items-center justify-center text-[11px] text-white font-bold shadow-sm">{s.displayName?.[0]?.toUpperCase() || '?'}</div>
+                          )}
+                          <span className="text-sm font-semibold text-slate-900 dark:text-white truncate">{s.displayName}</span>
                         </div>
                       </td>
                       <td className="px-4 py-2.5 text-[11px] text-slate-500 flex items-center gap-1"><Mail className="w-3 h-3" /><span className="truncate max-w-[180px]">{s.email}</span></td>
@@ -249,6 +254,18 @@ const StudentsPage: React.FC = () => {
               <button onClick={handleCreate} disabled={saving || !form.displayName.trim() || !form.email.trim() || !form.password.trim()}
                 className="bg-emerald-500 hover:bg-emerald-600 text-white px-3 py-1 rounded-lg text-[11px] font-medium disabled:opacity-50">{saving ? '...' : t('common.save')}</button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Avatar Full-Screen Modal */}
+      {expandedAvatar && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4" onClick={() => setExpandedAvatar(null)}>
+          <div className="relative max-w-2xl max-h-[90vh] w-full flex justify-center" onClick={e => e.stopPropagation()}>
+            <img src={expandedAvatar} alt="Expanded Avatar" className="max-w-full max-h-[90vh] object-contain rounded-xl shadow-2xl" />
+            <button onClick={() => setExpandedAvatar(null)} className="absolute -top-12 right-0 p-2 text-white/70 hover:text-white transition-colors bg-black/40 hover:bg-black/60 rounded-full">
+              <XCircle className="w-6 h-6" />
+            </button>
           </div>
         </div>
       )}

@@ -84,9 +84,13 @@ const TeachersPage: React.FC = () => {
                 {filtered.map((teacher) => (
                   <tr key={teacher.uid} onClick={() => navigate(`/teachers/${teacher.uid}`)} className="hover:bg-slate-50/80 dark:hover:bg-slate-700/20 cursor-pointer transition-colors">
                     <td className="px-4 py-2.5">
-                      <div className="flex items-center gap-2">
-                        <div className="w-6 h-6 bg-primary-600 rounded-md flex items-center justify-center text-[9px] text-white font-bold">{teacher.displayName?.[0]?.toUpperCase() || '?'}</div>
-                        <span className="text-xs font-medium text-slate-900 dark:text-white truncate">{teacher.displayName}</span>
+                      <div className="flex items-center gap-3">
+                        {teacher.avatarUrl ? (
+                          <img src={teacher.avatarUrl} alt="" className="w-8 h-8 rounded-full object-cover shadow-sm bg-slate-100 dark:bg-slate-700 hover:scale-110 transition-transform" />
+                        ) : (
+                          <div className="w-8 h-8 bg-primary-600 rounded-full flex items-center justify-center text-[11px] text-white font-bold shadow-sm">{teacher.displayName?.[0]?.toUpperCase() || '?'}</div>
+                        )}
+                        <span className="text-sm font-semibold text-slate-900 dark:text-white truncate">{teacher.displayName}</span>
                       </div>
                     </td>
                     <td className="px-4 py-2.5 text-[11px] text-slate-500 truncate max-w-[200px]">{teacher.email}</td>

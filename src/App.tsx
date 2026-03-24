@@ -97,7 +97,7 @@ const App: React.FC = () => {
             <Route path="/" element={<LandingPage />} />
             <Route path="/login" element={<LoginPage />} />
             <Route path="/register" element={<RegisterPage />} />
-            <Route path="/organizations" element={<OrganizationsDirectoryPage />} />
+            <Route path="/directory" element={<OrganizationsDirectoryPage />} />
             <Route path="/org/:slugOrId" element={<PublicOrgProfilePage />} />
 
           {/* Exam Taking (full screen) */}

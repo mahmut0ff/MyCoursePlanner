@@ -67,8 +67,15 @@ const AdminUsersPage: React.FC = () => {
                 <tr key={u.uid} className="hover:bg-slate-50 dark:bg-slate-700/50 cursor-pointer" onClick={() => navigate(`/admin/users/${u.uid}`)}>
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 bg-primary-100 rounded-full flex items-center justify-center text-xs font-bold text-primary-700">{u.displayName?.[0]?.toUpperCase() || '?'}</div>
-                      <div><p className="text-sm font-medium text-slate-900 dark:text-white">{u.displayName}</p><p className="text-xs text-slate-500 dark:text-slate-400">{u.email}</p></div>
+                      {u.avatarUrl ? (
+                         <img src={u.avatarUrl} alt="" className="w-8 h-8 rounded-full object-cover shadow-sm bg-slate-100 dark:bg-slate-700 shrink-0" />
+                      ) : (
+                         <div className="w-8 h-8 bg-primary-100 dark:bg-primary-900/30 rounded-full flex items-center justify-center text-xs font-bold text-primary-700 dark:text-primary-400 shrink-0">{u.displayName?.[0]?.toUpperCase() || '?'}</div>
+                      )}
+                      <div>
+                        <p className="text-sm font-medium text-slate-900 dark:text-white">{u.displayName}</p>
+                        <p className="text-xs text-slate-500 dark:text-slate-400">{u.email}</p>
+                      </div>
                     </div>
                   </td>
                   <td className="px-4 py-3"><span className={`inline-flex px-2 py-0.5 rounded text-xs font-medium ${ROLE_COLORS[u.role] || ''}`}>{u.role}</span></td>

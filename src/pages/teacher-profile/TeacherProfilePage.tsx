@@ -1,8 +1,13 @@
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../contexts/AuthContext';
+import { auth, storage } from '../../lib/firebase';
+import { ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { updateProfile } from 'firebase/auth';
 import { apiGetTeacherProfile, apiUpdateTeacherProfile } from '../../lib/api';
-import { Save, User, Briefcase, BookOpen, Link2, Plus, X, Loader2, CheckCircle2, Eye, EyeOff, GraduationCap, Award, MapPin, Tag } from 'lucide-react';
+import AvatarCropper from '../../components/ui/AvatarCropper';
+import { Save, User, Briefcase, BookOpen, Link2, Plus, X, Loader2, CheckCircle2, Eye, EyeOff, GraduationCap, Award, MapPin, Tag, Camera } from 'lucide-react';
+import toast from 'react-hot-toast';
 
 interface SocialLink {
   platform: string;
@@ -27,6 +32,43 @@ const TeacherProfilePage: React.FC = () => {
   const [certificates, setCertificates] = useState('');
   const [subjects, setSubjects] = useState('');
   const [city, setCity] = useState('');
+
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
+  const [avatarLoading, setAvatarLoading] = useState(false);
+  const [cropImageSrc, setCropImageSrc] = useState<string | null>(null);
+
+  const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !auth.currentUser) return;
+    if (file.size > 2 * 1024 * 1024) {
+       toast.error(t('profile.fileTooLarge', 'File is too large (max 2MB)'));
+       return;
+    }
+    const reader = new FileReader();
+    reader.addEventListener('load', () => setCropImageSrc(reader.result?.toString() || null));
+    reader.readAsDataURL(file);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
+  const handleCropComplete = async (croppedBlob: Blob) => {
+    setCropImageSrc(null);
+    if (!auth.currentUser) return;
+    setAvatarLoading(true);
+    try {
+      const refArea = storageRef(storage, `avatars/teacher_${auth.currentUser.uid}_${Date.now()}`);
+      await uploadBytes(refArea, croppedBlob);
+      const url = await getDownloadURL(refArea);
+      setAvatarUrl(url);
+      await updateProfile(auth.currentUser, { photoURL: url });
+      // Saving to Firestore happens when they click "Save"
+      toast.success(t('profile.avatarUpdated', 'Avatar updated! Click Save below to persist your new profile.'));
+    } catch (err) {
+      console.error(err);
+      toast.error(t('common.error'));
+    } finally {
+      setAvatarLoading(false);
+    }
+  };
 
   useEffect(() => {
     apiGetTeacherProfile()
@@ -179,13 +221,23 @@ const TeacherProfilePage: React.FC = () => {
       <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl overflow-hidden mb-6">
         <div className="bg-slate-700 h-24 relative">
           <div className="absolute -bottom-10 left-6">
-            {avatarUrl ? (
-              <img src={avatarUrl} alt="" className="w-20 h-20 rounded-2xl object-cover shadow-lg ring-4 ring-white dark:ring-slate-800" />
-            ) : (
-              <div className="w-20 h-20 bg-primary-600 rounded-2xl flex items-center justify-center text-2xl text-white font-bold shadow-lg ring-4 ring-white dark:ring-slate-800">
-                {profile?.displayName?.[0]?.toUpperCase() || '?'}
-              </div>
-            )}
+            <div className="relative group">
+              {avatarUrl ? (
+                <img src={avatarUrl} alt="" className="w-20 h-20 rounded-2xl object-cover shadow-lg ring-4 ring-white dark:ring-slate-800" />
+              ) : (
+                <div className="w-20 h-20 bg-primary-600 rounded-2xl flex items-center justify-center text-2xl text-white font-bold shadow-lg ring-4 ring-white dark:ring-slate-800">
+                  {profile?.displayName?.[0]?.toUpperCase() || '?'}
+                </div>
+              )}
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                disabled={avatarLoading}
+                className="absolute inset-0 bg-black/50 text-white rounded-2xl flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer ring-4 ring-white dark:ring-slate-800"
+              >
+                {avatarLoading ? <Loader2 className="w-6 h-6 animate-spin" /> : <Camera className="w-6 h-6" />}
+              </button>
+              <input type="file" accept="image/*" ref={fileInputRef} onChange={handleAvatarChange} className="hidden" />
+            </div>
           </div>
         </div>
         <div className="pt-14 px-6 pb-6">
@@ -196,10 +248,6 @@ const TeacherProfilePage: React.FC = () => {
               {profile.organizationName}
             </span>
           )}
-          <div className="mt-4">
-            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">{t('teacher.avatarUrl')}</label>
-            <input value={avatarUrl} onChange={(e) => setAvatarUrl(e.target.value)} placeholder="https://..." className="w-full bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-lg px-3.5 py-2.5 text-sm outline-none focus:border-primary-500 text-slate-900 dark:text-white placeholder:text-slate-400" />
-          </div>
         </div>
       </div>
 
@@ -305,6 +353,14 @@ const TeacherProfilePage: React.FC = () => {
           )}
         </div>
       </div>
+
+      {cropImageSrc && (
+        <AvatarCropper
+          imageSrc={cropImageSrc}
+          onCropCancel={() => setCropImageSrc(null)}
+          onCropComplete={handleCropComplete}
+        />
+      )}
     </div>
   );
 };

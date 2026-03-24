@@ -10,6 +10,7 @@ import { Globe, Lock, Save, Camera, AtSign, CheckCircle2, XCircle, Loader2 } fro
 import i18n from '../../i18n';
 import StudentPortfolio from '../../components/portfolio/StudentPortfolio';
 import { apiCheckAuthIdentity } from '../../lib/api';
+import AvatarCropper from '../../components/ui/AvatarCropper';
 
 const StudentProfilePage: React.FC = () => {
   const { t } = useTranslation();
@@ -39,6 +40,7 @@ const StudentProfilePage: React.FC = () => {
 
   const [saving, setSaving] = useState(false);
   const [avatarLoading, setAvatarLoading] = useState(false);
+  const [cropImageSrc, setCropImageSrc] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Password
@@ -86,18 +88,26 @@ const StudentProfilePage: React.FC = () => {
     finally { setPwSaving(false); }
   };
 
-  const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || !auth.currentUser) return;
     if (file.size > 2 * 1024 * 1024) {
        toast.error(t('profile.fileTooLarge', 'File is too large (max 2MB)'));
        return;
     }
+    const reader = new FileReader();
+    reader.addEventListener('load', () => setCropImageSrc(reader.result?.toString() || null));
+    reader.readAsDataURL(file);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
 
+  const handleCropComplete = async (croppedBlob: Blob) => {
+    setCropImageSrc(null);
+    if (!auth.currentUser) return;
     setAvatarLoading(true);
     try {
       const ref = storageRef(storage, `avatars/${auth.currentUser.uid}_${Date.now()}`);
-      await uploadBytes(ref, file);
+      await uploadBytes(ref, croppedBlob);
       const url = await getDownloadURL(ref);
       setAvatarUrl(url);
       await updateProfile(auth.currentUser, { photoURL: url });
@@ -108,7 +118,6 @@ const StudentProfilePage: React.FC = () => {
       toast.error(t('common.error'));
     } finally {
       setAvatarLoading(false);
-      if (fileInputRef.current) fileInputRef.current.value = '';
     }
   };
 
@@ -250,6 +259,14 @@ const StudentProfilePage: React.FC = () => {
 
       {activeTab === 'portfolio' && (
         <StudentPortfolio uid={profile?.uid || ''} />
+      )}
+
+      {cropImageSrc && (
+        <AvatarCropper
+          imageSrc={cropImageSrc}
+          onCropCancel={() => setCropImageSrc(null)}
+          onCropComplete={handleCropComplete}
+        />
       )}
     </div>
   );

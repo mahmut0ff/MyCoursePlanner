@@ -42,22 +42,52 @@ const handler: Handler = async (event: HandlerEvent) => {
       const inv = invDoc.data()!;
       if (inv.email !== user.email) return forbidden();
       if (inv.status !== 'pending') return badRequest('Invite already processed');
-      // Assign user to organization
-      await adminDb.collection('users').doc(user.uid).update({
-        organizationId: inv.organizationId,
-        role: inv.role || 'teacher',
-        updatedAt: now(),
-      });
+
+      const orgId = inv.organizationId;
+      const role = inv.role || 'teacher';
+      const ts = now();
+
+      // Create membership (dual-collection)
+      const membershipData = {
+        userId: user.uid,
+        userEmail: user.email,
+        userName: user.displayName,
+        organizationId: orgId,
+        organizationName: inv.organizationName || '',
+        role,
+        status: 'active',
+        joinMethod: 'invited_by_org',
+        joinedAt: ts,
+        createdAt: ts,
+        updatedAt: ts,
+      };
+      await adminDb.collection('users').doc(user.uid)
+        .collection('memberships').doc(orgId).set(membershipData);
+      await adminDb.collection('orgMembers').doc(orgId)
+        .collection('members').doc(user.uid).set(membershipData);
+
+      // Set as active org if user has none
+      const userData = (await adminDb.collection('users').doc(user.uid).get()).data();
+      if (!userData?.activeOrgId) {
+        await adminDb.collection('users').doc(user.uid).update({
+          activeOrgId: orgId,
+          organizationId: orgId,
+          organizationName: inv.organizationName || '',
+          role: role === 'owner' ? 'admin' : role,
+          updatedAt: ts,
+        });
+      }
+
       // Mark invite as accepted
-      await adminDb.collection('invites').doc(body.inviteId).update({ status: 'accepted', updatedAt: now() });
+      await adminDb.collection('invites').doc(body.inviteId).update({ status: 'accepted', updatedAt: ts });
       // Notify org admins
       notifyOrgAdmins(
-        inv.organizationId, 'invite_accepted',
+        orgId, 'invite_accepted',
         'Приглашение принято',
         `${user.displayName || user.email} принял(а) приглашение`,
         '/teachers',
       ).catch(() => {});
-      return ok({ accepted: true, organizationId: inv.organizationId });
+      return ok({ accepted: true, organizationId: orgId });
     }
 
     if (action === 'declineInvite') {
@@ -80,11 +110,32 @@ const handler: Handler = async (event: HandlerEvent) => {
 
     // ═══ LEAVE ORGANIZATION ═══
     if (action === 'leaveOrganization' && event.httpMethod === 'POST') {
-      if (!user.organizationId) return badRequest('Not in any organization');
       const orgId = user.organizationId;
+      if (!orgId) return badRequest('Not in any organization');
+
+      const ts = now();
+      // Update membership status
+      try {
+        await adminDb.collection('users').doc(user.uid)
+          .collection('memberships').doc(orgId).update({ status: 'left', leftAt: ts, updatedAt: ts });
+        await adminDb.collection('orgMembers').doc(orgId)
+          .collection('members').doc(user.uid).update({ status: 'left', leftAt: ts, updatedAt: ts });
+      } catch (e) {
+        // If membership docs don't exist yet (pre-migration), just clear flat fields
+      }
+
+      // Switch to another active org or clear
+      const otherMemberships = await adminDb.collection('users').doc(user.uid)
+        .collection('memberships').where('status', '==', 'active').limit(1).get();
+      const nextOrgId = otherMemberships.empty ? '' : otherMemberships.docs[0].id;
+
       await adminDb.collection('users').doc(user.uid).update({
-        organizationId: '', organizationName: '', updatedAt: now(),
+        activeOrgId: nextOrgId,
+        organizationId: nextOrgId,
+        organizationName: '',
+        updatedAt: ts,
       });
+
       // Notify org admins
       notifyOrgAdmins(
         orgId, 'invite_declined',

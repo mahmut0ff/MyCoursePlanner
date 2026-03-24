@@ -1,6 +1,6 @@
 /**
  * Auth middleware — verifies Firebase ID tokens, extracts user info + org context.
- * Multi-tenant aware: includes organizationId and plan limits.
+ * Multi-tenant aware: resolves role from membership (preferred) or legacy flat field.
  */
 import { adminAuth, adminDb } from './firebase-admin';
 import type { HandlerEvent } from '@netlify/functions';
@@ -16,7 +16,20 @@ export interface AuthUser {
 }
 
 /**
+ * Resolve user's role in a specific org via membership subcollection.
+ */
+export async function resolveOrgRole(uid: string, orgId: string): Promise<string | null> {
+  const doc = await adminDb.collection('users').doc(uid)
+    .collection('memberships').doc(orgId).get();
+  if (!doc.exists) return null;
+  const data = doc.data()!;
+  if (data.status !== 'active') return null;
+  return data.role || null;
+}
+
+/**
  * Verify the Firebase ID token from the Authorization header.
+ * Resolves role from membership (preferred) then falls back to flat user.role.
  */
 export async function verifyAuth(event: HandlerEvent): Promise<AuthUser | null> {
   try {
@@ -29,8 +42,26 @@ export async function verifyAuth(event: HandlerEvent): Promise<AuthUser | null> 
     const userDoc = await adminDb.collection('users').doc(decoded.uid).get();
     const userData = userDoc.exists ? userDoc.data() : null;
 
-    const role = (userData?.role as AuthUser['role']) || 'student';
-    const organizationId = userData?.organizationId || null;
+    // Determine org context: prefer activeOrgId, fall back to legacy organizationId
+    const organizationId = userData?.activeOrgId || userData?.organizationId || null;
+
+    // Resolve role: try membership first, fall back to flat field
+    let role: AuthUser['role'] = (userData?.role as AuthUser['role']) || 'student';
+
+    if (role !== 'super_admin' && organizationId) {
+      const membershipRole = await resolveOrgRole(decoded.uid, organizationId);
+      if (membershipRole) {
+        // Map membership roles to AuthUser roles
+        const roleMap: Record<string, AuthUser['role']> = {
+          owner: 'admin',
+          admin: 'admin',
+          teacher: 'teacher',
+          mentor: 'teacher',
+          student: 'student',
+        };
+        role = roleMap[membershipRole] || role;
+      }
+    }
 
     // Fetch org plan info for feature gating
     let planId: string | null = null;
@@ -96,3 +127,4 @@ export const forbidden = () => jsonResponse(403, { error: 'Forbidden — insuffi
 export const badRequest = (msg: string) => jsonResponse(400, { error: msg });
 export const notFound = (msg = 'Not found') => jsonResponse(404, { error: msg });
 export const ok = (data: any) => jsonResponse(200, data);
+

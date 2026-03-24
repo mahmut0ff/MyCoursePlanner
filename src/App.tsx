@@ -70,6 +70,10 @@ import VacancyCreatePage from './pages/vacancies/VacancyCreatePage';
 import MyApplicationsPage from './pages/vacancies/MyApplicationsPage';
 import OrgVacanciesPage from './pages/vacancies/OrgVacanciesPage';
 
+// Directory Pages (Ecosystem)
+import OrganizationsDirectoryPage from './pages/directory/OrganizationsDirectoryPage';
+import PublicOrgProfilePage from './pages/directory/PublicOrgProfilePage';
+
 // Admin Pages
 import AdminDashboardPage from './pages/admin/AdminDashboardPage';
 import AdminOrganizationsPage from './pages/admin/AdminOrganizationsPage';
@@ -93,6 +97,8 @@ const App: React.FC = () => {
             <Route path="/" element={<LandingPage />} />
             <Route path="/login" element={<LoginPage />} />
             <Route path="/register" element={<RegisterPage />} />
+            <Route path="/organizations" element={<OrganizationsDirectoryPage />} />
+            <Route path="/org/:slugOrId" element={<PublicOrgProfilePage />} />
 
           {/* Exam Taking (full screen) */}
           <Route path="/take/:roomId" element={<ProtectedRoute><ExamTakePage /></ProtectedRoute>} />

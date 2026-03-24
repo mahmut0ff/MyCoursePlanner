@@ -1069,5 +1069,34 @@
     "bestStreak": "best streak",
     "leaderboard": "Leaderboard",
     "backToDashboard": "Back to Dashboard"
+  },
+  "directory": {
+    "badge": "Organization Catalog",
+    "title": "Find Your Learning Center",
+    "subtitle": "Discover the best schools and learning centers in Central Asia",
+    "searchPlaceholder": "Search by name, city, or subject...",
+    "all": "All",
+    "online": "Online",
+    "offline": "Offline",
+    "found": "Found",
+    "noResults": "Nothing found",
+    "empty": "No organizations yet",
+    "students": "students",
+    "teachers": "teachers",
+    "exams": "exams",
+    "notFound": "Organization not found",
+    "backToList": "Back to catalog",
+    "apply": "Apply",
+    "applied": "Application sent",
+    "contactTitle": "Contact"
+  },
+  "membership": {
+    "owner": "Owner",
+    "admin": "Admin",
+    "teacher": "Teacher",
+    "mentor": "Mentor",
+    "student": "Student",
+    "selectOrg": "Select organization",
+    "browseOrgs": "Browse organizations"
   }
 }

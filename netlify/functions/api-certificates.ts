@@ -12,7 +12,7 @@ import * as crypto from 'crypto';
 const COLLECTION = 'certificates';
 
 function generateCertNumber(): string {
-  const prefix = 'MCP';
+  const prefix = 'PLN';
   const year = new Date().getFullYear();
   const rand = crypto.randomBytes(4).toString('hex').toUpperCase();
   return `${prefix}-${year}-${rand}`;
@@ -23,8 +23,20 @@ const handler: Handler = async (event: HandlerEvent) => {
 
   const params = event.queryStringParameters || {};
 
-  // GET — public certificate view
+  // GET — public certificate view or list user's certificates
   if (event.httpMethod === 'GET') {
+    // List all certificates for a user (cross-org)
+    if (params.action === 'myCertificates') {
+      const user = await verifyAuth(event);
+      if (!user) return unauthorized();
+      const uid = params.studentId || user.uid;
+      const snap = await adminDb.collection(COLLECTION)
+        .where('studentId', '==', uid)
+        .orderBy('issuedAt', 'desc').get();
+      return ok(snap.docs.map((d: any) => ({ id: d.id, ...d.data() })));
+    }
+
+    // Single certificate view (public)
     if (!params.id) return badRequest('id required');
     const doc = await adminDb.collection(COLLECTION).doc(params.id).get();
     if (!doc.exists) return notFound('Certificate not found');

@@ -90,6 +90,42 @@ export const apiAwardXP = (data: any) => apiRequest('api-gamification', 'POST', 
 // ---- Certificates ----
 export const apiGenerateCertificate = (data: any) => apiRequest('api-certificates', 'POST', data);
 export const apiGetCertificate = (id: string) => apiRequest('api-certificates', 'GET', undefined, { id });
+export const apiGetMyCertificates = (studentId?: string) =>
+  apiRequest('api-certificates', 'GET', undefined, { action: 'myCertificates', ...(studentId ? { studentId } : {}) });
+
+// ---- Memberships ----
+const memberReq = <T = any>(action: string, method = 'GET', body?: any, extra?: Record<string, string>) =>
+  apiRequest<T>('api-memberships', method, body, { action, ...extra });
+
+export const apiGetMyMemberships = () => memberReq('myMemberships');
+export const apiGetOrgMembers = (orgId: string, status?: string) =>
+  memberReq('orgMembers', 'GET', undefined, { orgId, ...(status ? { status } : {}) });
+export const apiApplyToOrg = (organizationId: string, role?: string) =>
+  memberReq('apply', 'POST', { organizationId, role });
+export const apiInviteToOrg = (email: string, organizationId: string, role?: string) =>
+  memberReq('invite', 'POST', { email, organizationId, role });
+export const apiAcceptMembership = (userId: string, organizationId: string) =>
+  memberReq('accept', 'POST', { userId, organizationId });
+export const apiRejectMembership = (userId: string, organizationId: string) =>
+  memberReq('reject', 'POST', { userId, organizationId });
+export const apiLeaveMembership = (organizationId: string) =>
+  memberReq('leave', 'POST', { organizationId });
+export const apiRemoveMember = (userId: string, organizationId: string) =>
+  memberReq('remove', 'POST', { userId, organizationId });
+export const apiChangeMemberRole = (userId: string, organizationId: string, newRole: string) =>
+  memberReq('changeRole', 'POST', { userId, organizationId, newRole });
+export const apiSwitchOrg = (organizationId: string) =>
+  memberReq('switchOrg', 'POST', { organizationId });
+
+// ---- Organization Directory (public) ----
+export const apiGetOrgDirectory = () =>
+  apiRequest('api-organizations', 'GET', undefined, { action: 'directory' });
+export const apiGetPublicOrgProfile = (id?: string, slug?: string) =>
+  apiRequest('api-organizations', 'GET', undefined, {
+    action: 'publicProfile',
+    ...(id ? { id } : {}),
+    ...(slug ? { slug } : {}),
+  });
 
 // ---- Payments ----
 export const apiCreatePayment = (data: any) => apiRequest('api-payments', 'POST', data);

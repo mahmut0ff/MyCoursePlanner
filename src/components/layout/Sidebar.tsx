@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../contexts/AuthContext';
 import { signOut } from '../../services/auth.service';
 import { apiGetPendingInviteCount, apiLeaveOrganization, apiGetUnreadCount } from '../../lib/api';
+import OrgSwitcher from './OrgSwitcher';
 import {
   LayoutDashboard, BookOpen, ClipboardList, Radio,
   BarChart3, LogOut, CreditCard, Users, Building2, Activity,
@@ -67,6 +68,9 @@ const Sidebar: React.FC<{ open: boolean; onClose: () => void }> = ({ open, onClo
             )}
           </div>
         </div>
+
+        {/* ═══ Org Switcher ═══ */}
+        {!isSuperAdmin && <OrgSwitcher currentOrgId={organizationId || undefined} />}
 
         {/* ═══ Navigation ═══ */}
         <nav className="flex-1 px-3 py-3 space-y-1 overflow-y-auto">

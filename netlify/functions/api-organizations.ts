@@ -20,10 +20,82 @@ function generateSlug(name: string): string {
 const handler: Handler = async (event: HandlerEvent) => {
   if (event.httpMethod === 'OPTIONS') return jsonResponse(204, '');
 
+  const params = event.queryStringParameters || {};
+  const action = params.action || '';
+
+  // ═══ PUBLIC ENDPOINTS (no auth required) ═══
+
+  // Public directory: list all public orgs
+  if (event.httpMethod === 'GET' && action === 'directory') {
+    const snap = await adminDb.collection(COLLECTION)
+      .where('isPublic', '==', true)
+      .where('status', '==', 'active')
+      .orderBy('createdAt', 'desc')
+      .limit(50).get();
+
+    const orgs = snap.docs.map((d) => {
+      const data = d.data();
+      return {
+        id: d.id,
+        name: data.name,
+        slug: data.slug,
+        description: data.description || '',
+        logo: data.logo || '',
+        city: data.city || '',
+        country: data.country || '',
+        isOnline: data.isOnline || false,
+        subjects: data.subjects || [],
+        studentsCount: data.studentsCount || 0,
+        teachersCount: data.teachersCount || 0,
+      };
+    });
+    return ok(orgs);
+  }
+
+  // Public profile: single org details
+  if (event.httpMethod === 'GET' && action === 'publicProfile') {
+    const orgId = params.id || params.slug;
+    if (!orgId) return badRequest('id or slug required');
+
+    let doc;
+    if (params.slug) {
+      const snap = await adminDb.collection(COLLECTION)
+        .where('slug', '==', params.slug).limit(1).get();
+      if (snap.empty) return notFound('Organization not found');
+      doc = snap.docs[0];
+    } else {
+      const d = await adminDb.collection(COLLECTION).doc(orgId).get();
+      if (!d.exists) return notFound('Organization not found');
+      doc = d;
+    }
+
+    const data = doc.data()!;
+    if (!data.isPublic) return notFound('Organization not found');
+
+    return ok({
+      id: doc.id,
+      name: data.name,
+      slug: data.slug,
+      description: data.description || '',
+      logo: data.logo || '',
+      banner: data.banner || '',
+      city: data.city || '',
+      country: data.country || '',
+      isOnline: data.isOnline || false,
+      subjects: data.subjects || [],
+      contactEmail: data.contactEmail || '',
+      contactPhone: data.contactPhone || '',
+      studentsCount: data.studentsCount || 0,
+      teachersCount: data.teachersCount || 0,
+      examsCount: data.examsCount || 0,
+      createdAt: data.createdAt,
+    });
+  }
+
+  // ═══ AUTHENTICATED ENDPOINTS ═══
+
   const user = await verifyAuth(event);
   if (!user) return unauthorized();
-
-  const params = event.queryStringParameters || {};
 
   // GET
   if (event.httpMethod === 'GET') {
@@ -71,8 +143,9 @@ const handler: Handler = async (event: HandlerEvent) => {
       ownerEmail: user.email,
       planId: body.planId || 'starter',
       status: 'active',
+      isPublic: true,
       studentsCount: 0,
-      teachersCount: 0,
+      teachersCount: 1, // owner counts as teacher
       examsCount: 0,
       createdAt: now,
       updatedAt: now,
@@ -94,8 +167,28 @@ const handler: Handler = async (event: HandlerEvent) => {
       createdAt: now,
     });
 
-    // Update user profile with organizationId and admin role
+    // Create owner membership (dual-collection)
+    const membershipData = {
+      userId: user.uid,
+      userEmail: user.email,
+      userName: user.displayName,
+      organizationId: orgId,
+      organizationName: body.name,
+      role: 'owner',
+      status: 'active',
+      joinMethod: 'direct_added',
+      joinedAt: now,
+      createdAt: now,
+      updatedAt: now,
+    };
+    await adminDb.collection('users').doc(user.uid)
+      .collection('memberships').doc(orgId).set(membershipData);
+    await adminDb.collection('orgMembers').doc(orgId)
+      .collection('members').doc(user.uid).set(membershipData);
+
+    // Update user profile with activeOrgId + legacy fields
     await adminDb.collection('users').doc(user.uid).update({
+      activeOrgId: orgId,
       organizationId: orgId,
       organizationName: body.name,
       role: 'admin',

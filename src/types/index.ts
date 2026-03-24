@@ -94,6 +94,17 @@ export interface Organization {
   studentsCount: number;
   teachersCount: number;
   examsCount: number;
+  // Public profile fields
+  description?: string;
+  logo?: string;
+  banner?: string;
+  city?: string;
+  country?: string;
+  isOnline?: boolean;
+  isPublic?: boolean;
+  contactEmail?: string;
+  contactPhone?: string;
+  subjects?: string[];
   createdAt: string;
   updatedAt: string;
 }
@@ -116,11 +127,55 @@ export interface UserProfile {
   uid: string;
   email: string;
   displayName: string;
-  role: UserRole;
-  organizationId?: string; // null for super_admin
-  organizationName?: string;
+  role: UserRole;                  // @deprecated — use membership role
+  organizationId?: string;         // @deprecated — use activeOrgId
+  organizationName?: string;       // @deprecated — use membership
+  // Global identity fields
+  activeOrgId?: string;            // currently selected org context
+  avatarUrl?: string;
+  bio?: string;
+  skills?: string[];
+  experience?: string;
+  city?: string;
+  country?: string;
+  phone?: string;
   createdAt: string;
   updatedAt: string;
+}
+
+// ---- Memberships (User ↔ Organization) ----
+
+export type MembershipRole = 'student' | 'teacher' | 'mentor' | 'admin' | 'owner';
+export type MembershipStatus = 'pending' | 'invited' | 'active' | 'left' | 'removed';
+export type JoinMethod = 'invited_by_org' | 'applied_by_user' | 'direct_added';
+
+export interface Membership {
+  id: string;
+  userId: string;
+  userEmail?: string;
+  userName?: string;
+  organizationId: string;
+  organizationName?: string;
+  role: MembershipRole;
+  status: MembershipStatus;
+  joinMethod: JoinMethod;
+  joinedAt: string;
+  leftAt?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// ---- XP Events (per-org gamification tracking) ----
+
+export interface XpEvent {
+  id: string;
+  userId: string;
+  organizationId?: string;
+  courseId?: string;
+  examId?: string;
+  xp: number;
+  reason: string; // e.g. 'exam_passed', 'perfect_score', 'streak_bonus'
+  createdAt: string;
 }
 
 export interface TeacherProfile {

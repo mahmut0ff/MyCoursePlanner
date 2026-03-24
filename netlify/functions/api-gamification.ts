@@ -71,7 +71,28 @@ const handler: Handler = async (event: HandlerEvent) => {
 
     const data = doc.data()!;
     const badgeDetails = (data.badges || []).map((b: string) => ({ id: b, ...BADGE_DEFS[b] }));
-    return ok({ ...data, level: getLevel(data.xp || 0), badgeDetails, levelDefs: LEVELS });
+
+    // Get per-org XP breakdown
+    const xpEventsSnap = await adminDb.collection('xpEvents')
+      .where('userId', '==', uid)
+      .orderBy('createdAt', 'desc')
+      .limit(100).get();
+
+    const orgXpMap: Record<string, number> = {};
+    xpEventsSnap.docs.forEach((d: any) => {
+      const ev = d.data();
+      if (ev.organizationId) {
+        orgXpMap[ev.organizationId] = (orgXpMap[ev.organizationId] || 0) + (ev.xp || 0);
+      }
+    });
+
+    return ok({
+      ...data,
+      level: getLevel(data.xp || 0),
+      badgeDetails,
+      levelDefs: LEVELS,
+      orgXpBreakdown: orgXpMap,
+    });
   }
 
   // POST — award XP / badge
@@ -114,6 +135,16 @@ const handler: Handler = async (event: HandlerEvent) => {
 
     data.badges = badges;
     await ref.set(data, { merge: true });
+
+    // Write XP event to ledger
+    await adminDb.collection('xpEvents').add({
+      userId: uid,
+      organizationId: body.organizationId || '',
+      examId: body.examId || '',
+      xp: xpEarned,
+      reason: examPassed ? 'exam_passed' : 'exam_taken',
+      createdAt: new Date().toISOString(),
+    });
 
     const newBadgeDetails = newBadges.map(b => ({ id: b, ...BADGE_DEFS[b] }));
     const oldLevel = getLevel(data.xp - xpEarned);

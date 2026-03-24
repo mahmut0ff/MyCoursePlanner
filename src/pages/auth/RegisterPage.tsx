@@ -166,7 +166,7 @@ const RegisterPage: React.FC = () => {
         <div className="w-full max-w-md">
           {/* Logo */}
           <div className="text-center mb-6">
-            <img src="/icons/logo.png" alt="Planula" className="w-14 h-14 mx-auto rounded-2xl shadow-lg shadow-primary-200 dark:shadow-primary-900/30 mb-4" />
+            <img src="/icons/logo.png" alt="Planula" className="h-14 w-auto mx-auto object-contain mb-4" />
             <h2 className="text-2xl font-bold text-slate-900 dark:text-white">{t('auth.registerTitle')}</h2>
           </div>
 

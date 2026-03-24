@@ -9,7 +9,9 @@ import {
   Menu, Search, Sun, Moon, X,
   LayoutDashboard, Building2, Users, CreditCard, BarChart3,
   Activity, Server, BookOpen, ClipboardList, Radio, Tag, Puzzle, Zap,
+  Settings, UserCircle2, MailOpen, Briefcase, LogOut, Shield,
 } from 'lucide-react';
+import { signOut } from '../../services/auth.service';
 
 interface TopbarProps {
   onMenuClick: () => void;
@@ -47,6 +49,28 @@ const Topbar: React.FC<TopbarProps> = ({ onMenuClick }) => {
   const [query, setQuery] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
   const [selectedIdx, setSelectedIdx] = useState(0);
+
+  const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const userMenuRef = useRef<HTMLDivElement>(null);
+  
+  // Close user menu on outside click
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (userMenuRef.current && !userMenuRef.current.contains(event.target as Node)) {
+        setUserMenuOpen(false);
+      }
+    };
+    if (userMenuOpen) document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [userMenuOpen]);
+
+  const { isTeacher, role, profile } = useAuth();
+  const isAdmin = role === 'admin';
+
+  const handleSignOut = async () => {
+    await signOut();
+    navigate('/login');
+  };
 
   const items = isSuperAdmin ? ADMIN_ITEMS : USER_ITEMS;
   const filtered = query.trim()
@@ -125,6 +149,77 @@ const Topbar: React.FC<TopbarProps> = ({ onMenuClick }) => {
 
           {/* Notifications */}
           <NotificationDropdown />
+
+          {/* User Menu Dropdown */}
+          <div className="relative" ref={userMenuRef}>
+            <button
+              onClick={() => setUserMenuOpen(!userMenuOpen)}
+              className="w-9 h-9 ml-2 bg-emerald-600 rounded-full flex items-center justify-center text-sm font-bold text-white shadow-lg shadow-emerald-500/20 ring-2 ring-transparent hover:ring-primary-500/30 transition-all"
+            >
+              {profile?.displayName?.[0]?.toUpperCase() || '?'}
+            </button>
+            
+            {userMenuOpen && (
+              <div className="absolute right-0 mt-2 w-56 bg-white dark:bg-slate-800 rounded-xl shadow-xl border border-slate-100 dark:border-slate-700/60 overflow-hidden z-50 py-2 animate-in fade-in slide-in-from-top-2 duration-200">
+                <div className="px-4 py-2 border-b border-slate-100 dark:border-slate-700/60 mb-1">
+                  <p className="font-semibold text-slate-900 dark:text-white truncate">{profile?.displayName}</p>
+                  <p className="text-xs text-slate-500 truncate flex items-center gap-1">
+                    {isSuperAdmin && <Shield className="w-3 h-3 text-primary-400" />}
+                    {role?.replace('_', ' ')}
+                  </p>
+                </div>
+
+                <div className="max-h-[60vh] overflow-y-auto">
+                  {/* Common or Role-specific profile/settings */}
+                  {isSuperAdmin && (
+                    <button onClick={() => { navigate('/admin/settings'); setUserMenuOpen(false); }} className="w-full flex items-center gap-3 px-4 py-2 text-sm text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700/50">
+                      <Settings className="w-4 h-4" />{t('nav.settings')}
+                    </button>
+                  )}
+                  
+                  {isAdmin && !isSuperAdmin && (
+                    <>
+                      <button onClick={() => { navigate('/billing'); setUserMenuOpen(false); }} className="w-full flex items-center gap-3 px-4 py-2 text-sm text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700/50">
+                        <CreditCard className="w-4 h-4" />{t('nav.billingPlans')}
+                      </button>
+                      <button onClick={() => { navigate('/org-settings'); setUserMenuOpen(false); }} className="w-full flex items-center gap-3 px-4 py-2 text-sm text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700/50">
+                        <Settings className="w-4 h-4" />{t('nav.settings')}
+                      </button>
+                    </>
+                  )}
+
+                  {isTeacher && !isSuperAdmin && (
+                    <>
+                      <button onClick={() => { navigate('/teacher-profile'); setUserMenuOpen(false); }} className="w-full flex items-center gap-3 px-4 py-2 text-sm text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700/50">
+                        <UserCircle2 className="w-4 h-4" />{t('nav.myProfile')}
+                      </button>
+                      <button onClick={() => { navigate('/invites'); setUserMenuOpen(false); }} className="w-full flex items-center gap-3 px-4 py-2 text-sm text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700/50">
+                        <MailOpen className="w-4 h-4" />{t('nav.invites')}
+                      </button>
+                      <button onClick={() => { navigate('/my-applications'); setUserMenuOpen(false); }} className="w-full flex items-center gap-3 px-4 py-2 text-sm text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700/50">
+                        <Briefcase className="w-4 h-4" />{t('nav.myApplications')}
+                      </button>
+                      <button onClick={() => { navigate('/teacher-settings'); setUserMenuOpen(false); }} className="w-full flex items-center gap-3 px-4 py-2 text-sm text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700/50">
+                        <Settings className="w-4 h-4" />{t('nav.settings')}
+                      </button>
+                    </>
+                  )}
+
+                  {role === 'student' && (
+                    <button onClick={() => { navigate('/profile'); setUserMenuOpen(false); }} className="w-full flex items-center gap-3 px-4 py-2 text-sm text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700/50">
+                      <UserCircle2 className="w-4 h-4" />{t('nav.profile')}
+                    </button>
+                  )}
+                </div>
+
+                <div className="border-t border-slate-100 dark:border-slate-700/60 mt-1 pt-1">
+                  <button onClick={handleSignOut} className="w-full flex items-center gap-3 px-4 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/10">
+                    <LogOut className="w-4 h-4" />{t('app.signOut')}
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
       </header>
 

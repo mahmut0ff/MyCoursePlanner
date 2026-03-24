@@ -2,17 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { apiGetGamification } from '../../lib/api';
 import { Flame, Star, Trophy } from 'lucide-react';
-
-interface GamificationData {
-  xp: number;
-  totalExams: number;
-  passedExams: number;
-  streak: number;
-  bestStreak: number;
-  badges: string[];
-  badgeDetails: { id: string; icon: string; title: string; description: string }[];
-  level: { level: number; title: string; xp: number; nextLevelXp: number | null; nextLevelTitle: string | null };
-}
+import type { GamificationData } from '../../types';
 
 const GamificationWidget: React.FC = () => {
   const { t } = useTranslation();
@@ -80,18 +70,18 @@ const GamificationWidget: React.FC = () => {
         <div className="p-4 text-center">
           <div className="flex items-center justify-center gap-1.5 mb-1">
             <Star className="w-4 h-4 text-amber-500" />
-            <span className="text-xl font-bold text-slate-900 dark:text-white">{data.badgeDetails.length}</span>
+            <span className="text-xl font-bold text-slate-900 dark:text-white">{data.badgeDetails?.length || 0}</span>
           </div>
           <p className="text-xs text-slate-500 dark:text-slate-400">{t('gamification.badges')}</p>
         </div>
       </div>
 
       {/* Badges */}
-      {data.badgeDetails.length > 0 && (
+      {(data.badgeDetails?.length || 0) > 0 && (
         <div className="px-5 pb-4 pt-2">
           <p className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">{t('gamification.earned')}</p>
           <div className="flex flex-wrap gap-2">
-            {data.badgeDetails.map((b) => (
+            {data.badgeDetails?.map((b) => (
               <div
                 key={b.id}
                 className="flex items-center gap-1.5 bg-slate-100 dark:bg-slate-700 rounded-full px-3 py-1.5 text-xs"

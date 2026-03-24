@@ -239,7 +239,20 @@
     "submissions": "Ответы",
     "student": "Студент",
     "submittedAt": "Отправлено",
-    "result": "Результат"
+    "result": "Результат",
+    "examNotAvailable": "Экзамен недоступен",
+    "answered": "с ответом",
+    "submitConfirm": "Отправить экзамен? Вы не сможете изменить ответы после отправки.",
+    "submitting": "Отправка...",
+    "submitFailed": "Не удалось отправить экзамен. Пожалуйста, попробуйте еще раз.",
+    "question": "Вопрос",
+    "of": "из",
+    "point": "балл",
+    "points": "баллов",
+    "selectAllCorrect": "Выберите все правильные ответы",
+    "typeAnswerHere": "Введите ваш ответ здесь...",
+    "previous": "Назад",
+    "next": "Далее"
   },
   "admin": {
     "dashboard": {
@@ -1077,11 +1090,45 @@
     "pendingReview": "На проверке"
   },
   "gamification": {
-    "level": "Уровень",
-    "streak": "Серия",
-    "passed": "Сдано",
-    "badges": "Бейджи",
-    "earned": "Полученные бейджи",
+    "badges": "Достижения",
+    "streak": "Текущая серия",
+    "passed": "Экзаменов сдано",
+    "level": "Прогресс уровня",
+    "earned": "Полученные значки",
+    "badgesList": {
+      "first_exam": {
+        "title": "Первый экзамен",
+        "description": "Сдали свой первый экзамен"
+      },
+      "perfect_score": {
+        "title": "Перфекционист",
+        "description": "Получили 100% на экзамене"
+      },
+      "streak_3": {
+        "title": "Серия — 3",
+        "description": "3 экзамена подряд сданы"
+      },
+      "streak_7": {
+        "title": "Серия — 7",
+        "description": "7 экзаменов подряд сданы"
+      },
+      "streak_30": {
+        "title": "Легенда серий",
+        "description": "30 экзаменов подряд сданы"
+      },
+      "speed_demon": {
+        "title": "Быстрый ум",
+        "description": "Сдали экзамен менее чем за 5 минут"
+      },
+      "ten_exams": {
+        "title": "Десятак",
+        "description": "Сдали 10 экзаменов"
+      },
+      "fifty_exams": {
+        "title": "Полтинник",
+        "description": "Сдали 50 экзаменов"
+      }
+    },
     "xpEarned": "+{xp} XP!",
     "levelUp": "Новый уровень!",
     "newBadge": "Новый бейдж!"

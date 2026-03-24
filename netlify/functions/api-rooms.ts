@@ -46,7 +46,9 @@ const handler: Handler = async (event: HandlerEvent) => {
         ? await adminDb.collection(COLLECTION).where('organizationId', '==', orgFilter).orderBy('createdAt', 'desc').get()
         : await adminDb.collection(COLLECTION).orderBy('createdAt', 'desc').get();
     } else {
-      snap = await adminDb.collection(COLLECTION).where('status', '==', 'active').orderBy('createdAt', 'desc').get();
+      snap = orgFilter
+        ? await adminDb.collection(COLLECTION).where('organizationId', '==', orgFilter).where('status', '==', 'active').orderBy('createdAt', 'desc').get()
+        : await adminDb.collection(COLLECTION).where('status', '==', 'active').orderBy('createdAt', 'desc').get();
     }
     return ok(snap.docs.map((d: any) => ({ id: d.id, ...d.data() })));
   }
@@ -62,9 +64,12 @@ const handler: Handler = async (event: HandlerEvent) => {
       if (!roomDoc.exists) return notFound('Room not found');
       const roomData = roomDoc.data()!;
       if (roomData.status !== 'active') return badRequest('Room is closed');
-      // Fix #3: Org membership check
-      if (roomData.organizationId && user.organizationId && roomData.organizationId !== user.organizationId) {
-        return forbidden();
+      // Fix: Secure Org membership check
+      if (roomData.organizationId) {
+        // If room belongs to an org, user MUST belong to the same org
+        if (roomData.organizationId !== user.organizationId) {
+          return forbidden();
+        }
       }
       const participants: string[] = roomData.participants || [];
       if (!participants.includes(user.uid)) {

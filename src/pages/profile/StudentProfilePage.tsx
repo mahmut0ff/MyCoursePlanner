@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../contexts/AuthContext';
 import { updateProfile, updatePassword, EmailAuthProvider, reauthenticateWithCredential } from 'firebase/auth';
 import { auth } from '../../lib/firebase';
+import { updateUser } from '../../services/users.service';
 import toast from 'react-hot-toast';
 import { Globe, Lock, Save } from 'lucide-react';
 import i18n from '../../i18n';
@@ -24,6 +25,7 @@ const StudentProfilePage: React.FC = () => {
     setSaving(true);
     try {
       await updateProfile(auth.currentUser, { displayName: name.trim() });
+      await updateUser(auth.currentUser.uid, { displayName: name.trim() });
       toast.success(t('profile.saved'));
     } catch { toast.error(t('profile.saveFailed')); }
     finally { setSaving(false); }

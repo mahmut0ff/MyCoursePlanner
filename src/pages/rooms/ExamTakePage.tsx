@@ -1,9 +1,8 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react';
 import toast from 'react-hot-toast';
 import { useParams, useNavigate } from 'react-router-dom';
-import { getRoom } from '../../services/rooms.service';
-import { getExam, getQuestions } from '../../services/exams.service';
-import { apiSaveAttempt, apiAwardXP } from '../../lib/api';
+import { useTranslation } from 'react-i18next';
+import { apiGetRoom, apiGetExam, apiSaveAttempt, apiAwardXP } from '../../lib/api';
 import { auth } from '../../lib/firebase';
 import { useAuth } from '../../contexts/AuthContext';
 import { shuffleArray, formatTime } from '../../utils/grading';
@@ -13,6 +12,7 @@ import { Clock, ChevronLeft, ChevronRight, Send, AlertTriangle } from 'lucide-re
 const ExamTakePage: React.FC = () => {
   const { roomId } = useParams<{ roomId: string }>();
   const navigate = useNavigate();
+  const { t } = useTranslation();
   useAuth();
 
   const [room, setRoom] = useState<ExamRoom | null>(null);
@@ -33,13 +33,16 @@ const ExamTakePage: React.FC = () => {
   const loadData = async () => {
     if (!roomId) return;
     try {
-      const r = await getRoom(roomId);
+      const r = await apiGetRoom(roomId);
       if (!r) { navigate('/join'); return; }
       setRoom(r);
-      const e = await getExam(r.examId);
-      if (!e) return;
+      
+      const e = await apiGetExam(r.examId);
+      if (!e) { navigate('/join'); return; }
       setExam(e);
-      let qs = await getQuestions(r.examId);
+
+      // Backend now returns questions populated within the exam response
+      let qs = e.questions || [];
       if (e.randomizeQuestions) qs = shuffleArray(qs);
       setQuestions(qs);
       setTimeLeft(e.durationMinutes * 60);
@@ -109,6 +112,8 @@ const ExamTakePage: React.FC = () => {
 
       // Award gamification XP in background
       apiAwardXP({
+        organizationId: room!.organizationId || '',
+        examId: exam!.id,
         examPassed: result.passed,
         percentage: result.percentage,
         timeSpentSeconds,
@@ -117,14 +122,14 @@ const ExamTakePage: React.FC = () => {
       navigate(`/results/${result.id}`);
     } catch (e) {
       console.error('Submit failed:', e);
-      toast.error('Failed to submit exam. Please try again.');
+      toast.error(t('rooms.submitFailed'));
     } finally {
       setSubmitting(false);
     }
   };
 
   if (loading) return <div className="flex items-center justify-center min-h-screen"><div className="w-10 h-10 border-4 border-primary-200 border-t-primary-600 rounded-full animate-spin" /></div>;
-  if (!exam || !questions.length) return <div className="text-center py-20"><h3 className="text-lg font-medium text-slate-700 dark:text-slate-300">Exam not available</h3></div>;
+  if (!exam || !questions.length) return <div className="text-center py-20"><h3 className="text-lg font-medium text-slate-700 dark:text-slate-300">{t('rooms.examNotAvailable')}</h3></div>;
 
   const q = questions[currentQ];
   const isLow = timeLeft <= 60;
@@ -141,7 +146,7 @@ const ExamTakePage: React.FC = () => {
           <div>
             <h1 className="font-semibold text-sm">{exam.title}</h1>
             <p className={`text-xs ${isLow ? 'text-red-200' : 'text-slate-500 dark:text-slate-400 dark:text-slate-500'}`}>
-              {answeredCount}/{questions.length} answered
+              {answeredCount}/{questions.length} {t('rooms.answered')}
             </p>
           </div>
           <div className="flex items-center gap-2">
@@ -150,14 +155,14 @@ const ExamTakePage: React.FC = () => {
             {isLow && <AlertTriangle className="w-5 h-5 animate-pulse" />}
           </div>
           <button
-            onClick={() => { if (confirm('Submit your exam? You cannot change answers after submission.')) handleSubmit(); }}
+            onClick={() => { if (confirm(t('rooms.submitConfirm'))) handleSubmit(); }}
             disabled={submitting}
             className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium text-sm ${
               isLow ? 'bg-white dark:bg-slate-800 text-red-600 hover:bg-red-50' : 'btn-primary'
             }`}
           >
             <Send className="w-4 h-4" />
-            {submitting ? 'Submitting...' : 'Submit'}
+            {submitting ? t('rooms.submitting') : t('rooms.submit')}
           </button>
         </div>
       </div>
@@ -193,13 +198,13 @@ const ExamTakePage: React.FC = () => {
         {/* Question Card */}
         <div className="card p-8">
           <div className="flex items-center justify-between mb-4">
-            <span className="badge-primary">Question {currentQ + 1} of {questions.length}</span>
-            <span className="text-sm text-slate-500 dark:text-slate-400 dark:text-slate-500">{q.points} point{q.points !== 1 ? 's' : ''}</span>
+            <span className="badge-primary">{t('rooms.question')} {currentQ + 1} {t('rooms.of')} {questions.length}</span>
+            <span className="text-sm text-slate-500 dark:text-slate-400 dark:text-slate-500">{q.points} {q.points !== 1 ? t('rooms.points') : t('rooms.point')}</span>
           </div>
 
           <h2 className="text-xl font-semibold text-slate-900 dark:text-white mb-6">{q.text}</h2>
 
-          {q.type === 'single_choice' && (
+          {q.type === 'multiple_choice' && (
             <div className="space-y-3">
               {q.options.map((opt, oi) => (
                 <label
@@ -223,7 +228,7 @@ const ExamTakePage: React.FC = () => {
             </div>
           )}
 
-          {q.type === 'multiple_choice' && (
+          {q.type === 'multi_select' && (
             <div className="space-y-3">
               {q.options.map((opt, oi) => {
                 const selected = ((answers[q.id] as string[]) || []).includes(opt);
@@ -244,17 +249,17 @@ const ExamTakePage: React.FC = () => {
                   </label>
                 );
               })}
-              <p className="text-xs text-slate-400 dark:text-slate-500">Select all correct answers</p>
+              <p className="text-xs text-slate-400 dark:text-slate-500">{t('rooms.selectAllCorrect')}</p>
             </div>
           )}
 
-          {q.type === 'text' && (
+          {q.type === 'short_answer' && (
             <div>
               <textarea
                 value={(answers[q.id] as string) || ''}
                 onChange={(e) => setAnswer(q.id, e.target.value)}
                 className="input min-h-[150px]"
-                placeholder="Type your answer here..."
+                placeholder={t('rooms.typeAnswerHere')}
               />
             </div>
           )}
@@ -267,14 +272,14 @@ const ExamTakePage: React.FC = () => {
             disabled={currentQ === 0}
             className="btn-secondary flex items-center gap-2"
           >
-            <ChevronLeft className="w-4 h-4" />Previous
+            <ChevronLeft className="w-4 h-4" />{t('rooms.previous')}
           </button>
           <button
             onClick={() => setCurrentQ(Math.min(questions.length - 1, currentQ + 1))}
             disabled={currentQ === questions.length - 1}
             className="btn-secondary flex items-center gap-2"
           >
-            Next<ChevronRight className="w-4 h-4" />
+            {t('rooms.next')}<ChevronRight className="w-4 h-4" />
           </button>
         </div>
       </div>

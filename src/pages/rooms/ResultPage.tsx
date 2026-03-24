@@ -1,8 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { getAttempt } from '../../services/attempts.service';
-import { apiGenerateCertificate } from '../../lib/api';
+import { apiGetAttempt, apiGenerateCertificate } from '../../lib/api';
 import type { ExamAttempt } from '../../types';
 
 import { ArrowLeft, Trophy, XCircle, Clock, Target, Brain, CheckCircle, HelpCircle, RefreshCw, Award } from 'lucide-react';
@@ -17,14 +16,14 @@ const ResultPage: React.FC = () => {
 
   useEffect(() => {
     if (attemptId) {
-      getAttempt(attemptId).then(setAttempt).finally(() => setLoading(false));
+      apiGetAttempt(attemptId).then(setAttempt).finally(() => setLoading(false));
     }
   }, [attemptId]);
 
   // Retry loading AI feedback if not available yet
   const retryFeedback = async () => {
     if (attemptId) {
-      const a = await getAttempt(attemptId);
+      const a = await apiGetAttempt(attemptId);
       setAttempt(a);
     }
   };

@@ -116,20 +116,20 @@ const ExamViewPage: React.FC = () => {
                   <p className="font-medium text-slate-900"><span className="text-primary-600 mr-2">Q{i + 1}.</span>{q.text}</p>
                   <span className="badge-slate text-xs">{q.points} pt{q.points !== 1 ? 's' : ''}</span>
                 </div>
-                {(q.type === 'single_choice' || q.type === 'multiple_choice') && (
+                {(q.type === 'multiple_choice' || q.type === 'multi_select') && (
                   <div className="space-y-1 ml-6">
                     {q.options.map((opt, oi) => (
                       <div key={oi} className={`text-sm px-2 py-1 rounded ${
-                        q.type === 'single_choice'
+                        q.type === 'multiple_choice'
                           ? opt === q.correctAnswer ? 'bg-emerald-50 text-emerald-700 font-medium' : 'text-slate-600 dark:text-slate-400 dark:text-slate-500'
                           : q.correctAnswers.includes(opt) ? 'bg-emerald-50 text-emerald-700 font-medium' : 'text-slate-600 dark:text-slate-400 dark:text-slate-500'
                       }`}>
-                        {q.type === 'single_choice' ? '○' : '□'} {opt}
+                        {q.type === 'multiple_choice' ? '○' : '□'} {opt}
                       </div>
                     ))}
                   </div>
                 )}
-                {q.type === 'text' && (
+                {q.type === 'short_answer' && (
                   <p className="text-sm text-slate-500 dark:text-slate-400 dark:text-slate-500 ml-6 italic">Text answer {q.keywords.length > 0 ? `(keywords: ${q.keywords.join(', ')})` : '(manual review)'}</p>
                 )}
               </div>

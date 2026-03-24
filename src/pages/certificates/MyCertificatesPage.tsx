@@ -2,8 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../contexts/AuthContext';
-import { collection, query, where, orderBy, getDocs } from 'firebase/firestore';
-import { db } from '../../lib/firebase';
+import { apiGetMyCertificates } from '../../lib/api';
 import { Award } from 'lucide-react';
 import EmptyState from '../../components/ui/EmptyState';
 import { ListSkeleton } from '../../components/ui/Skeleton';
@@ -27,13 +26,8 @@ const MyCertificatesPage: React.FC = () => {
     if (profile?.uid) {
       const load = async () => {
         try {
-          const q = query(
-            collection(db, 'certificates'),
-            where('studentId', '==', profile.uid),
-            orderBy('issuedAt', 'desc')
-          );
-          const snap = await getDocs(q);
-          setCerts(snap.docs.map(d => ({ id: d.id, ...d.data() } as Cert)));
+          const data = await apiGetMyCertificates(profile.uid);
+          setCerts(data);
         } catch (e) {
           console.warn('Failed to load certificates:', e);
         }

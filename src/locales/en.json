@@ -213,7 +213,20 @@
     "submissions": "Submissions",
     "student": "Student",
     "submittedAt": "Submitted At",
-    "result": "Result"
+    "result": "Result",
+    "examNotAvailable": "Exam not available",
+    "answered": "answered",
+    "submitConfirm": "Submit your exam? You cannot change answers after submission.",
+    "submitting": "Submitting...",
+    "submitFailed": "Failed to submit exam. Please try again.",
+    "question": "Question",
+    "of": "of",
+    "point": "point",
+    "points": "points",
+    "selectAllCorrect": "Select all correct answers",
+    "typeAnswerHere": "Type your answer here...",
+    "previous": "Previous",
+    "next": "Next"
   },
   "admin": {
     "dashboard": {
@@ -900,11 +913,45 @@
     "pendingReview": "Pending Review"
   },
   "gamification": {
-    "level": "Level",
-    "streak": "Streak",
-    "passed": "Passed",
-    "badges": "Badges",
+    "badges": "Badges & Achievements",
+    "streak": "Current Streak",
+    "passed": "Exams Passed",
+    "level": "Level Progress",
     "earned": "Earned Badges",
+    "badgesList": {
+      "first_exam": {
+        "title": "First Exam",
+        "description": "Passed your first exam"
+      },
+      "perfect_score": {
+        "title": "Perfectionist",
+        "description": "Got 100% on an exam"
+      },
+      "streak_3": {
+        "title": "Streak — 3",
+        "description": "Passed 3 consecutive exams"
+      },
+      "streak_7": {
+        "title": "Streak — 7",
+        "description": "Passed 7 consecutive exams"
+      },
+      "streak_30": {
+        "title": "Streak Legend",
+        "description": "Passed 30 consecutive exams"
+      },
+      "speed_demon": {
+        "title": "Speed Demon",
+        "description": "Passed an exam in under 5 minutes"
+      },
+      "ten_exams": {
+        "title": "Top Ten",
+        "description": "Passed 10 exams"
+      },
+      "fifty_exams": {
+        "title": "Half Century",
+        "description": "Passed 50 exams"
+      }
+    },
     "xpEarned": "+{xp} XP!",
     "levelUp": "Level Up!",
     "newBadge": "New Badge!"

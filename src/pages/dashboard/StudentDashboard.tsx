@@ -2,8 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../contexts/AuthContext';
-import { getLessonPlans } from '../../services/lessons.service';
-import { getAttemptsByStudent } from '../../services/attempts.service';
+import { apiGetDashboard } from '../../lib/api';
 import type { LessonPlan, ExamAttempt } from '../../types';
 import { formatDate } from '../../utils/grading';
 import { BookOpen, Radio, Trophy, XCircle, ArrowRight, Brain } from 'lucide-react';
@@ -21,24 +20,24 @@ const StudentDashboard: React.FC = () => {
     if (profile?.uid) {
       const load = async () => {
         try {
-          const l = await getLessonPlans();
-          setLessons(l);
-        } catch (e) { console.warn('Failed to load lessons:', e); }
-        try {
-          const a = await getAttemptsByStudent(profile.uid);
-          setAttempts(a);
-        } catch (e) { console.warn('Failed to load attempts:', e); }
-        setLoading(false);
+          const data = await apiGetDashboard();
+          setLessons(data.recentLessons || []);
+          setAttempts(data.recentAttempts || []);
+        } catch (e) {
+          console.warn('Failed to load dashboard:', e);
+        } finally {
+          setLoading(false);
+        }
       };
       load();
-    } else {
+    } else if (!profile?.uid) {
       setLoading(false);
     }
   }, [profile?.uid]);
 
   if (loading) return <DashboardSkeleton />;
 
-  const avgScore = attempts.length > 0 ? Math.round(attempts.reduce((s, a) => s + a.percentage, 0) / attempts.length) : 0;
+  const avgScore = attempts.length > 0 ? Math.round(attempts.reduce((s, a) => s + (a.percentage || 0), 0) / attempts.length) : 0;
   const passRate = attempts.length > 0 ? Math.round((attempts.filter((a) => a.passed).length / attempts.length) * 100) : 0;
 
   return (
@@ -103,7 +102,7 @@ const StudentDashboard: React.FC = () => {
             {lessons.slice(0, 5).map((l) => (
               <Link key={l.id} to={`/lessons/${l.id}`} className="block px-5 py-3 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors">
                 <p className="font-medium text-slate-900 dark:text-white text-sm">{l.title}</p>
-                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">{l.subject} · {l.level} · {l.duration}min</p>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">{l.subject} · {l.level}</p>
               </Link>
             ))}
             {lessons.length === 0 && <div className="px-5 py-6 text-center text-slate-400 dark:text-slate-500 text-sm">{t('lessons.noLessons')}</div>}

@@ -10,7 +10,7 @@ import { Save, ArrowLeft, Plus, Trash2 } from 'lucide-react';
 
 const EMPTY_QUESTION = (): Question => ({
   id: generateId(),
-  type: 'single_choice',
+  type: 'multiple_choice',
   text: '',
   options: ['', ''],
   correctAnswer: '',
@@ -135,9 +135,9 @@ const ExamEditPage: React.FC = () => {
                   <div className="flex items-center gap-2">
                     <span className="flex items-center justify-center w-6 h-6 rounded-full bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-400 text-xs font-medium">{qIdx + 1}</span>
                     <select value={q.type} onChange={(e) => updateQuestion(qIdx, { type: e.target.value as QuestionType })} className="input w-auto text-xs !py-1">
-                      <option value="single_choice">{t('exams.singleChoice')}</option>
-                      <option value="multiple_choice">{t('exams.multipleChoice')}</option>
-                      <option value="text">{t('exams.textAnswer')}</option>
+                      <option value="multiple_choice">{t('exams.singleChoice')}</option>
+                      <option value="multi_select">{t('exams.multipleChoice')}</option>
+                      <option value="short_answer">{t('exams.textAnswer')}</option>
                     </select>
                     <input type="number" value={q.points} onChange={(e) => updateQuestion(qIdx, { points: +e.target.value })} className="input w-16 text-xs !py-1" min={1} placeholder={t('exams.points')} />
                   </div>
@@ -148,11 +148,11 @@ const ExamEditPage: React.FC = () => {
                   <textarea value={q.text} onChange={(e) => updateQuestion(qIdx, { text: e.target.value })} className="input min-h-[50px] text-sm" placeholder={t('exams.questionPlaceholder')} />
                 </div>
 
-                {(q.type === 'single_choice' || q.type === 'multiple_choice') && (
+                {(q.type === 'multiple_choice' || q.type === 'multi_select') && (
                   <div className="space-y-1.5">
                     {q.options.map((opt, oIdx) => (
                       <div key={oIdx} className="flex items-center gap-2">
-                        {q.type === 'single_choice' ? (
+                        {q.type === 'multiple_choice' ? (
                           <input type="radio" name={`q-${q.id}`} checked={q.correctAnswer === opt && opt !== ''} onChange={() => updateQuestion(qIdx, { correctAnswer: opt })} className="w-3.5 h-3.5 text-primary-600" />
                         ) : (
                           <input type="checkbox" checked={q.correctAnswers.includes(opt) && opt !== ''} onChange={(e) => {
@@ -168,7 +168,7 @@ const ExamEditPage: React.FC = () => {
                   </div>
                 )}
 
-                {q.type === 'text' && (
+                {q.type === 'short_answer' && (
                   <div>
                     <label className={labelClass}>{t('exams.keywords')}</label>
                     <input value={q.keywords.join(', ')} onChange={(e) => updateQuestion(qIdx, { keywords: e.target.value.split(',').map((k) => k.trim()).filter(Boolean) })} className="input text-xs" placeholder={t('exams.keywordsPlaceholder')} />

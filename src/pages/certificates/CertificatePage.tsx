@@ -17,7 +17,7 @@ interface CertificateData {
 }
 
 const CertificatePage: React.FC = () => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { certId } = useParams<{ certId: string }>();
   const [cert, setCert] = useState<CertificateData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -40,7 +40,7 @@ const CertificatePage: React.FC = () => {
   if (loading) return <div className="flex items-center justify-center min-h-screen"><div className="w-8 h-8 border-4 border-primary-200 border-t-primary-600 rounded-full animate-spin" /></div>;
   if (!cert) return <div className="text-center py-20"><h3 className="text-lg font-medium text-slate-700 dark:text-slate-300">{t('certificate.notFound')}</h3></div>;
 
-  const issuedDate = new Date(cert.issuedAt).toLocaleDateString('ru-RU', { year: 'numeric', month: 'long', day: 'numeric' });
+  const issuedDate = new Date(cert.issuedAt).toLocaleDateString(i18n.language === 'ru' ? 'ru-RU' : 'en-US', { year: 'numeric', month: 'long', day: 'numeric' });
 
   return (
     <div className="max-w-2xl mx-auto py-8 px-4">

@@ -20,6 +20,12 @@ export const createUser = async (
     email,
     displayName,
     role,
+    avatarUrl: '',
+    bio: '',
+    skills: [],
+    city: '',
+    country: '',
+    activeOrgId: '',
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   });

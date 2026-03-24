@@ -16,6 +16,7 @@ interface AuthContextType {
   isSuperAdmin: boolean;
   isStaff: boolean;
   isTeacher: boolean;
+  isStudent: boolean;
   isTeacherWithoutOrg: boolean;
   refreshProfile: () => Promise<void>;
 }
@@ -30,6 +31,7 @@ const AuthContext = createContext<AuthContextType>({
   isSuperAdmin: false,
   isStaff: false,
   isTeacher: false,
+  isStudent: false,
   isTeacherWithoutOrg: false,
   refreshProfile: async () => {},
 });
@@ -100,6 +102,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const role = profile?.role || null;
   const isTeacher = role === 'teacher';
+  const isStudent = role === 'student';
 
   return (
     <AuthContext.Provider
@@ -113,6 +116,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         isSuperAdmin: role === 'super_admin',
         isStaff: role === 'super_admin' || role === 'admin' || role === 'teacher',
         isTeacher,
+        isStudent,
         isTeacherWithoutOrg: isTeacher && !profile?.organizationId,
         refreshProfile,
       }}

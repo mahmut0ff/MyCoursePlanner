@@ -3,149 +3,118 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Users — can read/write own profile, admins can manage org users
+    // 1. Super admin can do everything
+    function isSuperAdmin() {
+      return request.auth != null && request.auth.token.role == 'super_admin';
+    }
+
+    // 2. Users — can read/write own profile, or super admin
     match /users/{userId} {
       allow read: if request.auth != null;
-      allow write: if request.auth != null && (
-        request.auth.uid == userId ||
-        request.auth.token.role == 'super_admin'
-      );
+      allow write: if isSuperAdmin() || request.auth.uid == userId;
+      
+      match /memberships/{orgId} {
+        allow read: if request.auth != null;
+        allow write: if isSuperAdmin();
+      }
     }
 
-    // Organizations
+    // 3. Organizations and Public/Global Data
     match /organizations/{orgId} {
+      allow read: if request.auth != null || resource.data.isPublic == true;
+      allow write: if isSuperAdmin() || (request.auth != null && request.auth.uid == resource.data.ownerId);
+    }
+    
+    match /orgMembers/{orgId}/members/{userId} {
       allow read: if request.auth != null;
-      allow write: if request.auth != null;
+      allow write: if isSuperAdmin();
     }
 
-    // Subscriptions
-    match /subscriptions/{subId} {
-      allow read: if request.auth != null;
-      allow write: if request.auth != null;
-    }
-
-    // Lesson Plans
+    // 4. Exams & Lessons (Read-only for students, edited via backend)
     match /lessonPlans/{lessonId} {
       allow read: if request.auth != null;
-      allow write: if request.auth != null;
+      allow write: if isSuperAdmin();
     }
-
-    // Exams + Questions subcollection
     match /exams/{examId} {
       allow read: if request.auth != null;
-      allow write: if request.auth != null;
-
+      allow write: if isSuperAdmin();
       match /questions/{questionId} {
         allow read: if request.auth != null;
-        allow write: if request.auth != null;
+        allow write: if isSuperAdmin();
       }
     }
-
-    // Exam Rooms
     match /examRooms/{roomId} {
       allow read: if request.auth != null;
-      allow write: if request.auth != null;
+      allow write: if isSuperAdmin();
     }
 
-    // Exam Attempts
+    // 5. Exam Attempts — Strict Isolation
+    // Only the student who took it, or super admin (staff use backend API)
     match /examAttempts/{attemptId} {
-      allow read: if request.auth != null;
-      allow write: if request.auth != null;
+      allow read: if isSuperAdmin() || (request.auth != null && resource.data.studentId == request.auth.uid);
+      allow create: if request.auth != null && request.data.studentId == request.auth.uid;
+      allow update, delete: if isSuperAdmin();
     }
 
-    // Certificates
+    // 6. Certificates — Public if you have the ID, but created via backend
     match /certificates/{certId} {
-      allow read: if request.auth != null;
-      allow write: if request.auth != null;
+      allow read: if true;
+      allow write: if isSuperAdmin();
     }
 
-    // Gamification profiles
+    // 7. Gamification — Strict Isolation
     match /gamification/{docId} {
-      allow read: if request.auth != null;
-      allow write: if request.auth != null;
+      allow read: if isSuperAdmin() || (request.auth != null && docId == request.auth.uid);
+      allow write: if isSuperAdmin(); // Handled exclusively by backend now
+    }
+    match /xpEvents/{eventId} {
+      allow read: if isSuperAdmin() || (request.auth != null && resource.data.userId == request.auth.uid);
+      allow write: if isSuperAdmin(); // Handled exclusively by backend now
     }
 
-    // Payments
-    match /payments/{paymentId} {
-      allow read: if request.auth != null;
-      allow write: if request.auth != null;
-    }
-
-    // Notifications
-    match /notifications/{notifId} {
-      allow read: if request.auth != null;
-      allow write: if request.auth != null;
-    }
-
-    // Audit Logs
-    match /auditLogs/{logId} {
-      allow read: if request.auth != null;
-      allow write: if request.auth != null;
-    }
-
-    // Feature Flags
-    match /featureFlags/{flagId} {
-      allow read: if request.auth != null;
-      allow write: if request.auth != null;
-    }
-
-    // Org Overrides
-    match /orgOverrides/{overrideId} {
-      allow read: if request.auth != null;
-      allow write: if request.auth != null;
-    }
-
-    // Org Notes
-    match /orgNotes/{noteId} {
-      allow read: if request.auth != null;
-      allow write: if request.auth != null;
-    }
-
-    // System Errors
-    match /systemErrors/{errorId} {
-      allow read: if request.auth != null;
-      allow write: if request.auth != null;
-    }
-
-    // ─── Quiz System ───
-
-    // Quizzes + Questions subcollection
+    // 8. Quizzes & Live Sessions
     match /quizzes/{quizId} {
       allow read: if request.auth != null;
-      allow write: if request.auth != null;
-
+      allow write: if isSuperAdmin();
       match /questions/{questionId} {
         allow read: if request.auth != null;
-        allow write: if request.auth != null;
+        allow write: if isSuperAdmin();
       }
     }
-
-    // Quiz Sessions + Participants + Answers subcollections
     match /quizSessions/{sessionId} {
       allow read: if request.auth != null;
-      allow write: if request.auth != null;
-
+      allow write: if isSuperAdmin();
       match /participants/{participantId} {
         allow read: if request.auth != null;
-        allow write: if request.auth != null;
+        allow write: if isSuperAdmin();
       }
-
       match /answers/{answerId} {
-        allow read: if request.auth != null;
-        allow write: if request.auth != null;
+        allow read: if isSuperAdmin() || (request.auth != null && resource.data.studentId == request.auth.uid);
+        allow write: if isSuperAdmin(); // Created via backend
       }
     }
-
-    // Quiz Shares
     match /quizShares/{shareId} {
       allow read: if request.auth != null;
-      allow write: if request.auth != null;
+      allow write: if isSuperAdmin();
+    }
+    match /quizAnalytics/{analyticsId} {
+      allow read: if isSuperAdmin();
+      allow write: if isSuperAdmin();
     }
 
-    // Quiz Analytics
-    match /quizAnalytics/{analyticsId} {
-      allow read: if request.auth != null;
-      allow write: if request.auth != null;
+    // 9. Notifications
+    match /notifications/{notifId} {
+      allow read: if isSuperAdmin() || (request.auth != null && resource.data.recipientId == request.auth.uid);
+      allow write: if isSuperAdmin() || (request.auth != null && resource.data.recipientId == request.auth.uid);
     }
+
+    // 10. System Data (Admins only)
+    match /subscriptions/{subId} { allow read, write: if isSuperAdmin(); }
+    match /payments/{paymentId} { allow read, write: if isSuperAdmin(); }
+    match /auditLogs/{logId} { allow read, write: if isSuperAdmin(); }
+    match /featureFlags/{flagId} { allow read: if true; allow write: if isSuperAdmin(); }
+    match /orgOverrides/{overrideId} { allow read, write: if isSuperAdmin(); }
+    match /orgNotes/{noteId} { allow read, write: if isSuperAdmin(); }
+    match /systemErrors/{errorId} { allow read, write: if isSuperAdmin(); }
   }
 }

@@ -178,6 +178,26 @@ export interface XpEvent {
   createdAt: string;
 }
 
+export interface GamificationLevel {
+  level: number;
+  title: string;
+  xp: number;
+  nextLevelXp: number | null;
+  nextLevelTitle?: string | null;
+}
+
+export interface GamificationData {
+  xp: number;
+  totalExams: number;
+  passedExams: number;
+  streak: number;
+  bestStreak: number;
+  badges: string[];
+  badgeDetails?: { id: string; icon: string; title: string; description: string }[];
+  level: GamificationLevel;
+  levelDefs?: { level: number; xp: number; title: string }[];
+}
+
 export interface TeacherProfile {
   uid: string;
   bio: string;
@@ -233,7 +253,7 @@ export interface LessonContentBlock {
 // ---- Exams ----
 
 export type ExamStatus = 'draft' | 'published' | 'archived';
-export type QuestionType = 'single_choice' | 'multiple_choice' | 'text';
+export type QuestionType = 'multiple_choice' | 'multi_select' | 'short_answer';
 
 export interface Exam {
   id: string;

@@ -20,7 +20,7 @@ export function gradeAttempt(
     let status: QuestionResult['status'] = 'incorrect';
 
     switch (q.type) {
-      case 'single_choice': {
+      case 'multiple_choice': {
         isCorrect = String(studentAnswer) === q.correctAnswer;
         if (isCorrect) {
           pointsEarned = q.points;
@@ -28,7 +28,7 @@ export function gradeAttempt(
         }
         break;
       }
-      case 'multiple_choice': {
+      case 'multi_select': {
         const studentSet = new Set(Array.isArray(studentAnswer) ? studentAnswer : []);
         const correctSet = new Set(q.correctAnswers);
         isCorrect =
@@ -40,7 +40,7 @@ export function gradeAttempt(
         }
         break;
       }
-      case 'text': {
+      case 'short_answer': {
         // Basic keyword matching — if keywords exist, check for matches
         const answer = String(studentAnswer).toLowerCase().trim();
         if (q.keywords && q.keywords.length > 0 && answer) {

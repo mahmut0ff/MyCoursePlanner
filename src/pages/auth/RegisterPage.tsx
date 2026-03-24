@@ -6,7 +6,7 @@ import { createUser, getUser } from '../../services/users.service';
 import { Mail, Lock, User, Eye, EyeOff, Building2, BookOpenCheck, School } from 'lucide-react';
 import LanguageSwitcher from '../../components/LanguageSwitcher';
 
-type RegRole = 'admin' | 'teacher';
+type RegRole = 'admin' | 'teacher' | 'student';
 
 const RegisterPage: React.FC = () => {
   const { t } = useTranslation();
@@ -46,8 +46,8 @@ const RegisterPage: React.FC = () => {
     setLoading(true);
     try {
       const cred = await signUp(email, password, name);
-      await createUser(cred.user.uid, email, name, 'teacher');
-      navigate('/teacher-profile');
+      await createUser(cred.user.uid, email, name, regRole === 'teacher' ? 'teacher' : 'student');
+      navigate(regRole === 'teacher' ? '/teacher-profile' : '/dashboard');
     } catch (err: any) {
       console.error('Registration error:', err);
       if (err.message?.includes('already')) setError(t('auth.emailInUse'));
@@ -112,13 +112,17 @@ const RegisterPage: React.FC = () => {
     }
   };
 
-  // Decorative left panel text
-  const leftTitle = regRole === 'teacher'
-    ? t('auth.teacherLeftTitle')
-    : t('auth.orgLeftTitle');
-  const leftSubtitle = regRole === 'teacher'
-    ? t('auth.teacherLeftSubtitle')
-    : t('auth.registerSubtitle');
+  const leftTitle = React.useMemo(() => {
+    if (regRole === 'teacher') return t('auth.teacherLeftTitle', 'Преподавай\nлучше\nс нами');
+    if (regRole === 'student') return t('auth.loginTitle', 'Обучение\nначинается\nздесь');
+    return t('auth.orgLeftTitle');
+  }, [regRole, t]);
+
+  const leftSubtitle = React.useMemo(() => {
+    if (regRole === 'teacher') return t('auth.teacherLeftSubtitle', 'Инструменты для успешного преподавания');
+    if (regRole === 'student') return t('auth.registerSubtitle', 'Откройте для себя новые знания');
+    return t('auth.registerSubtitle');
+  }, [regRole, t]);
 
   return (
     <div className="min-h-screen flex">
@@ -209,6 +213,19 @@ const RegisterPage: React.FC = () => {
                     <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">{t('auth.roleTeacherDesc')}</p>
                   </div>
                 </button>
+
+                <button
+                  onClick={() => handleRoleStep('student')}
+                  className="w-full flex items-center gap-4 p-4 rounded-xl border-2 border-slate-200 dark:border-slate-700 hover:border-emerald-500 dark:hover:border-emerald-500 bg-white dark:bg-slate-800 hover:bg-emerald-50 dark:hover:bg-emerald-900/10 transition-all group"
+                >
+                  <div className="w-12 h-12 bg-emerald-600 rounded-xl flex items-center justify-center shrink-0 shadow-lg shadow-emerald-200/50 dark:shadow-emerald-900/30">
+                    <User className="w-6 h-6 text-white" />
+                  </div>
+                  <div className="text-left">
+                    <p className="font-semibold text-slate-900 dark:text-white group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">{t('membership.student', 'Студент')}</p>
+                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">{t('dashboard.studentDesc', 'Начни учиться прямо сейчас')}</p>
+                  </div>
+                </button>
               </div>
             </>
           )}
@@ -245,7 +262,7 @@ const RegisterPage: React.FC = () => {
                 <div className="flex gap-3 pt-1">
                   <button type="button" onClick={() => setStep('role')} className="btn-secondary flex-1 !py-3 !rounded-xl">{t('common.back')}</button>
                   <button type="submit" disabled={loading} className="btn-primary flex-1 !py-3 !rounded-xl">
-                    {loading && regRole === 'teacher' ? t('auth.creating') : t('auth.continue')}
+                    {loading && (regRole === 'teacher' || regRole === 'student') ? t('auth.creating') : t('auth.continue')}
                   </button>
                 </div>
               </form>

@@ -4,27 +4,17 @@ import { apiGetGamification } from '../../lib/api';
 import { Flame, Star, Trophy, Zap, Lock } from 'lucide-react';
 
 // All badge definitions (must match backend)
-const ALL_BADGES: Record<string, { icon: string; title: string; description: string }> = {
-  first_exam: { icon: '🎯', title: 'Первый экзамен', description: 'Сдали свой первый экзамен' },
-  perfect_score: { icon: '💎', title: 'Перфекционист', description: 'Получили 100% на экзамене' },
-  streak_3: { icon: '🔥', title: 'Серия — 3', description: '3 экзамена подряд сданы' },
-  streak_7: { icon: '⚡', title: 'Серия — 7', description: '7 экзаменов подряд сданы' },
-  streak_30: { icon: '🏆', title: 'Легенда серий', description: '30 экзаменов подряд сданы' },
-  speed_demon: { icon: '⏱️', title: 'Быстрый ум', description: 'Сдали экзамен менее чем за 5 минут' },
-  ten_exams: { icon: '📚', title: 'Десятак', description: 'Сдали 10 экзаменов' },
-  fifty_exams: { icon: '🎖️', title: 'Полтинник', description: 'Сдали 50 экзаменов' },
+const ALL_BADGES: Record<string, { icon: string }> = {
+  first_exam: { icon: '🎯' },
+  perfect_score: { icon: '💎' },
+  streak_3: { icon: '🔥' },
+  streak_7: { icon: '⚡' },
+  streak_30: { icon: '🏆' },
+  speed_demon: { icon: '⏱️' },
+  ten_exams: { icon: '📚' },
+  fifty_exams: { icon: '🎖️' },
 };
-
-interface GamificationData {
-  xp: number;
-  totalExams: number;
-  passedExams: number;
-  streak: number;
-  bestStreak: number;
-  badges: string[];
-  level: { level: number; title: string; xp: number; nextLevelXp: number | null };
-  levelDefs: { level: number; xp: number; title: string }[];
-}
+import type { GamificationData } from '../../types';
 
 const AchievementsPage: React.FC = () => {
   const { t } = useTranslation();
@@ -101,8 +91,8 @@ const AchievementsPage: React.FC = () => {
                 }`}
               >
                 <span className="text-3xl block mb-2">{badge.icon}</span>
-                <p className="text-xs font-semibold text-slate-900 dark:text-white">{badge.title}</p>
-                <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">{badge.description}</p>
+                <p className="text-xs font-semibold text-slate-900 dark:text-white">{t(`gamification.badgesList.${id}.title`)}</p>
+                <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">{t(`gamification.badgesList.${id}.description`)}</p>
                 {!earned && <Lock className="w-3.5 h-3.5 text-slate-400 absolute top-2 right-2" />}
               </div>
             );

@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { getAttemptsByStudent } from '../../services/attempts.service';
+import { apiGetAttemptsByStudent } from '../../lib/api';
 import { useAuth } from '../../contexts/AuthContext';
 import type { ExamAttempt } from '../../types';
 import { formatDate } from '../../utils/grading';
@@ -17,7 +17,7 @@ const MyResultsPage: React.FC = () => {
 
   useEffect(() => {
     if (profile?.uid) {
-      getAttemptsByStudent(profile.uid).then(setAttempts).finally(() => setLoading(false));
+      apiGetAttemptsByStudent(profile.uid).then(setAttempts).finally(() => setLoading(false));
     } else {
       setLoading(false);
     }

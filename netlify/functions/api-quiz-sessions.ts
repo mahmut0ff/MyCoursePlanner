@@ -39,6 +39,7 @@ const handler: Handler = async (event: HandlerEvent) => {
 
   // ─── GET ───
   if (event.httpMethod === 'GET') {
+    try {
     // Get by ID
     if (params.id) {
       const doc = await adminDb.collection(SESSIONS).doc(params.id).get();
@@ -98,6 +99,14 @@ const handler: Handler = async (event: HandlerEvent) => {
     const snap = await ref.get();
     const sessions = snap.docs.map(d => ({ id: d.id, ...d.data() }));
     return ok(sessions);
+    } catch (err: any) {
+      console.error('api-quiz-sessions GET error:', err);
+      const msg = err?.message || 'Internal error';
+      if (msg.includes('index') || msg.includes('FAILED_PRECONDITION')) {
+        return jsonResponse(500, { error: 'Firestore index required. Check server logs for the index creation link.' });
+      }
+      return jsonResponse(500, { error: msg });
+    }
   }
 
   // ─── POST ───

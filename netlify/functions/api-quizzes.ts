@@ -31,6 +31,7 @@ const handler: Handler = async (event: HandlerEvent) => {
 
   // ─── GET ───
   if (event.httpMethod === 'GET') {
+    try {
     // Single quiz by ID
     if (params.id) {
       const doc = await adminDb.collection(QUIZZES).doc(params.id).get();
@@ -135,6 +136,15 @@ const handler: Handler = async (event: HandlerEvent) => {
     }
 
     return ok(results);
+    } catch (err: any) {
+      console.error('api-quizzes GET error:', err);
+      // Firestore missing index errors include helpful URLs
+      const msg = err?.message || 'Internal error';
+      if (msg.includes('index') || msg.includes('FAILED_PRECONDITION')) {
+        return jsonResponse(500, { error: 'Firestore index required. Check server logs for the index creation link.' });
+      }
+      return jsonResponse(500, { error: msg });
+    }
   }
 
   // ─── POST ───

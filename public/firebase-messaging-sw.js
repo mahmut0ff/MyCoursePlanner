@@ -5,13 +5,16 @@
 importScripts('https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js');
 importScripts('https://www.gstatic.com/firebasejs/10.12.0/firebase-messaging-compat.js');
 
+// NOTE: Service workers cannot access import.meta.env or process.env.
+// These values must be hardcoded or injected at build time.
+// They are safe to expose — Firebase client config is public by design.
 firebase.initializeApp({
-  apiKey: self.__FIREBASE_API_KEY__ || '',
-  authDomain: self.__FIREBASE_AUTH_DOMAIN__ || '',
-  projectId: self.__FIREBASE_PROJECT_ID__ || '',
-  storageBucket: self.__FIREBASE_STORAGE_BUCKET__ || '',
-  messagingSenderId: self.__FIREBASE_MESSAGING_SENDER_ID__ || '',
-  appId: self.__FIREBASE_APP_ID__ || '',
+  apiKey: 'AIzaSyBxc6ziiPSAcJuX7fcbcPTbx3K4nmcyXcQ',
+  authDomain: 'confident-totem-426112-j6.firebaseapp.com',
+  projectId: 'confident-totem-426112-j6',
+  storageBucket: 'confident-totem-426112-j6.firebasestorage.app',
+  messagingSenderId: '646458638686',
+  appId: '1:646458638686:web:deb5d61bb39e6b391fcfcf',
 });
 
 const messaging = firebase.messaging();

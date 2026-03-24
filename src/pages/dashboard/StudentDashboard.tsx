@@ -31,6 +31,8 @@ const StudentDashboard: React.FC = () => {
         setLoading(false);
       };
       load();
+    } else {
+      setLoading(false);
     }
   }, [profile?.uid]);
 

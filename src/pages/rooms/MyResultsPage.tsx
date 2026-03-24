@@ -18,6 +18,8 @@ const MyResultsPage: React.FC = () => {
   useEffect(() => {
     if (profile?.uid) {
       getAttemptsByStudent(profile.uid).then(setAttempts).finally(() => setLoading(false));
+    } else {
+      setLoading(false);
     }
   }, [profile?.uid]);
 

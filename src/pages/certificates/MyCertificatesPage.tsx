@@ -40,6 +40,8 @@ const MyCertificatesPage: React.FC = () => {
         setLoading(false);
       };
       load();
+    } else {
+      setLoading(false);
     }
   }, [profile?.uid]);
 

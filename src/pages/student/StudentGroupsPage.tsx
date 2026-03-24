@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../contexts/AuthContext';
 import { orgGetGroups, orgGetStudents, orgGetCourses } from '../../lib/api';
-import { UsersRound, BookOpen, User, X } from 'lucide-react';
+import { UsersRound, BookOpen, X } from 'lucide-react';
 import type { Group, UserProfile, Course } from '../../types';
 
 const StudentGroupsPage: React.FC = () => {

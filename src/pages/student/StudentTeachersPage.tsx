@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../contexts/AuthContext';
 import { orgGetGroups, orgGetCourses, orgGetTeachers } from '../../lib/api';
 import { UserPlus, BookOpen, Mail, X } from 'lucide-react';
-import type { Group, Course, UserProfile } from '../../types';
+import type { Course, UserProfile } from '../../types';
 
 const StudentTeachersPage: React.FC = () => {
   const { t } = useTranslation();
@@ -37,7 +37,7 @@ const StudentTeachersPage: React.FC = () => {
         const myTeachers = orgTeachers.filter((t: any) => myTeacherIds.includes(t.uid));
 
         const courseMap: Record<string, Course[]> = {};
-        myTeachers.forEach(teacher => {
+        myTeachers.forEach((teacher: UserProfile) => {
           courseMap[teacher.uid] = myCourses.filter((c: any) => c.teacherIds?.includes(teacher.uid));
         });
 

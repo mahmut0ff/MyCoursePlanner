@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../contexts/AuthContext';
 import { orgGetCourses, orgGetGroups } from '../../lib/api';
 import { FolderOpen, Users, BookOpen } from 'lucide-react';
-import type { Course, Group } from '../../types';
+import type { Course } from '../../types';
 
 const StudentCoursesPage: React.FC = () => {
   const { t } = useTranslation();

@@ -7,6 +7,14 @@ import { formatDistanceToNow, isToday, format } from 'date-fns';
 import { ru, enUS } from 'date-fns/locale';
 import CreateGroupModal from './CreateGroupModal';
 
+/** Safely convert Firestore Timestamp or ISO string to Date */
+function toSafeDate(val: any): Date | null {
+  if (!val) return null;
+  if (val.toDate) return val.toDate(); // Firestore Timestamp
+  const d = new Date(val);
+  return isNaN(d.getTime()) ? null : d;
+}
+
 interface ChatRoomListProps {
   rooms: ChatRoom[];
   loading: boolean;
@@ -139,14 +147,17 @@ export default function ChatRoomList({ rooms, loading, error, activeRoomId, onSe
           </div>
         ) : (
           filteredRooms.map(room => {
-            const isUnread = profile ? 
-              (room.lastMessageAt && new Date(room.lastMessageAt) > new Date(room.participants[profile.uid]?.lastReadAt || 0)) 
-              : false;
+            const isUnread = profile ? (() => {
+              const lastMsg = toSafeDate(room.lastMessageAt);
+              const lastRead = toSafeDate(room.participants[profile.uid]?.lastReadAt);
+              return lastMsg && (!lastRead || lastMsg > lastRead);
+            })() : false;
 
-            const timeStr = room.lastMessageAt ? (
-              isToday(new Date(room.lastMessageAt)) 
-                ? format(new Date(room.lastMessageAt), 'HH:mm')
-                : formatDistanceToNow(new Date(room.lastMessageAt), { addSuffix: true, locale: dfLocale })
+            const msgDate = toSafeDate(room.lastMessageAt);
+            const timeStr = msgDate ? (
+              isToday(msgDate) 
+                ? format(msgDate, 'HH:mm')
+                : formatDistanceToNow(msgDate, { addSuffix: true, locale: dfLocale })
             ) : '';
 
             // Derive display title for Direct Messaging (MVP fallback)

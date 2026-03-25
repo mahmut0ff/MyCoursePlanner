@@ -10,6 +10,14 @@ import { apiArchiveChatRoom, apiModerateChatMessage } from '../../lib/api';
 import ChatMessageInput from './ChatMessageInput';
 import ManageGroupModal from './ManageGroupModal';
 
+/** Safely convert Firestore Timestamp or ISO string to Date */
+function toSafeDate(val: any): Date {
+  if (!val) return new Date();
+  if (val.toDate) return val.toDate(); // Firestore Timestamp
+  const d = new Date(val);
+  return isNaN(d.getTime()) ? new Date() : d;
+}
+
 interface ChatRoomViewProps {
   room: ChatRoom;
   onBack: () => void;
@@ -201,8 +209,8 @@ export default function ChatRoomView({ room, onBack }: ChatRoomViewProps) {
             if (index === 0) {
               showDate = true;
             } else {
-              const prevDate = new Date(messages[index - 1].createdAt).toDateString();
-              const currDate = new Date(msg.createdAt).toDateString();
+              const prevDate = toSafeDate(messages[index - 1].createdAt).toDateString();
+              const currDate = toSafeDate(msg.createdAt).toDateString();
               if (prevDate !== currDate) showDate = true;
             }
 
@@ -211,7 +219,7 @@ export default function ChatRoomView({ room, onBack }: ChatRoomViewProps) {
                 {showDate && (
                   <div className="flex justify-center my-6">
                     <span className="px-3 py-1 bg-slate-200/50 dark:bg-slate-800/50 text-slate-500 dark:text-slate-400 text-xs font-medium rounded-full backdrop-blur-sm">
-                      {format(new Date(msg.createdAt), 'dd MMMM yyyy', { locale: dfLocale })}
+                      {format(toSafeDate(msg.createdAt), 'dd MMMM yyyy', { locale: dfLocale })}
                     </span>
                   </div>
                 )}
@@ -263,7 +271,7 @@ export default function ChatRoomView({ room, onBack }: ChatRoomViewProps) {
                         )}
                       </div>
                       <div className={`text-[10px] mt-1 text-slate-400 flex items-center gap-1 ${isMe ? 'justify-end' : 'justify-start'}`}>
-                        {format(new Date(msg.createdAt), 'HH:mm')}
+                        {format(toSafeDate(msg.createdAt), 'HH:mm')}
                         {/* Optimistic "Sending" pseudo-indicator if date is somehow very far in future or if we injected a state */}
                       </div>
                     </div>

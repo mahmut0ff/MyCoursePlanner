@@ -72,9 +72,13 @@ export function useChatRooms(organizationId?: string) {
         // Sort explicitly by lastMessageAt locally since Firestore 
         // requires complex composite index for array-contains + orderBy
         rData.sort((a, b) => {
-          const tA = a.lastMessageAt ? new Date(a.lastMessageAt).getTime() : 0;
-          const tB = b.lastMessageAt ? new Date(b.lastMessageAt).getTime() : 0;
-          return tB - tA; // Descending
+          const parseTime = (v: any) => {
+            if (!v) return 0;
+            if (v.toDate) return v.toDate().getTime();
+            const d = new Date(v);
+            return isNaN(d.getTime()) ? 0 : d.getTime();
+          };
+          return parseTime(b.lastMessageAt) - parseTime(a.lastMessageAt); // Descending
         });
 
         // Optional: Filter out rooms if the user is explicitly "isRemoved" 

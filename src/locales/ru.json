@@ -153,7 +153,28 @@
     "enterLinkUrl": "Введите URL ссылки:",
     "enterYoutubeUrl": "Введите YouTube URL:",
     "titleSubjectRequired": "Название и предмет обязательны",
-    "saveFailed": "Не удалось сохранить урок"
+    "saveFailed": "Не удалось сохранить урок",
+    "attachments": "Вложения",
+    "addFiles": "Добавить файлы",
+    "dropHere": "Отпустите файлы",
+    "dragOrClick": "Перетащите файлы сюда или нажмите для выбора",
+    "uploading": "Загрузка...",
+    "uploaded": "загружен",
+    "files": "файлов",
+    "homework": "Домашнее задание",
+    "addHomework": "Добавить ДЗ",
+    "homeworkTitle": "Название задания",
+    "homeworkTitlePlaceholder": "напр. Решить задачи 1-10",
+    "homeworkDesc": "Описание задания",
+    "homeworkDescPlaceholder": "Подробное описание домашнего задания...",
+    "homeworkDueDate": "Дедлайн",
+    "homeworkPoints": "Баллы",
+    "confirmDelete": "Вы уверены, что хотите удалить этот урок?",
+    "backToList": "Вернуться к урокам",
+    "notFound": "Урок не найден",
+    "contentError": "Не удалось отобразить содержание.",
+    "byAuthor": "Автор",
+    "watchVideo": "Смотреть видео"
   },
   "exams": {
     "title": "Экзамены",
@@ -575,6 +596,8 @@
     "logout": "Выйти",
     "copy": "Копировать",
     "refresh": "Обновить",
+    "all": "Все",
+    "minutes": "мин",
     "error": "Произошла ошибка"
   },
   "org": {

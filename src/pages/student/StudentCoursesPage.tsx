@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../contexts/AuthContext';
 import { orgGetCourses, orgGetGroups } from '../../lib/api';
 import { FolderOpen, Users, BookOpen } from 'lucide-react';
+import StudentOrgFilter from '../../components/ui/StudentOrgFilter';
 import type { Course } from '../../types';
 
 const StudentCoursesPage: React.FC = () => {
@@ -62,6 +63,7 @@ const StudentCoursesPage: React.FC = () => {
             {t('studentCourses.subtitle', 'Курсы, к которым у вас есть доступ')}
           </p>
         </div>
+        <StudentOrgFilter currentOrgId={profile?.activeOrgId} />
       </div>
 
       {error && (

@@ -244,6 +244,25 @@ export interface Invite {
 
 // ---- Lesson Plans ----
 
+export type LessonStatus = 'draft' | 'published';
+
+export interface LessonAttachment {
+  id: string;
+  name: string;
+  url: string;
+  storagePath: string;
+  type: string; // MIME type
+  size: number; // bytes
+  uploadedAt: string;
+}
+
+export interface LessonHomework {
+  title: string;
+  description: string;
+  dueDate?: string;
+  points?: number;
+}
+
 export interface LessonPlan {
   id: string;
   title: string;
@@ -258,6 +277,9 @@ export interface LessonPlan {
   authorId: string;
   authorName: string;
   organizationId?: string;
+  status: LessonStatus;
+  homework?: LessonHomework;
+  attachments?: LessonAttachment[];
   createdAt: string;
   updatedAt: string;
 }

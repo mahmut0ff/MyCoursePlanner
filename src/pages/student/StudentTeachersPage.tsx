@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../contexts/AuthContext';
 import { orgGetGroups, orgGetCourses, orgGetTeachers } from '../../lib/api';
 import { UserPlus, BookOpen, Mail, X } from 'lucide-react';
+import StudentOrgFilter from '../../components/ui/StudentOrgFilter';
 import type { Course, UserProfile } from '../../types';
 
 const StudentTeachersPage: React.FC = () => {
@@ -63,16 +64,19 @@ const StudentTeachersPage: React.FC = () => {
 
   return (
     <div className="max-w-6xl mx-auto space-y-6">
-      <div className="flex items-center gap-3 mb-6">
-        <div className="w-10 h-10 rounded-xl bg-orange-500/10 flex items-center justify-center">
-          <UserPlus className="w-5 h-5 text-orange-600 dark:text-orange-400" />
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-orange-500/10 flex items-center justify-center">
+            <UserPlus className="w-5 h-5 text-orange-600 dark:text-orange-400" />
+          </div>
+          <div>
+            <h1 className="text-2xl font-bold text-slate-900 dark:text-white">{t('nav.myTeachers', 'Мои преподаватели')}</h1>
+            <p className="text-sm text-slate-500 dark:text-slate-400">
+              {t('studentTeachers.subtitle', 'Преподаватели ваших курсов')}
+            </p>
+          </div>
         </div>
-        <div>
-          <h1 className="text-2xl font-bold text-slate-900 dark:text-white">{t('nav.myTeachers', 'Мои преподаватели')}</h1>
-          <p className="text-sm text-slate-500 dark:text-slate-400">
-            {t('studentTeachers.subtitle', 'Преподаватели ваших курсов')}
-          </p>
-        </div>
+        <StudentOrgFilter currentOrgId={profile?.activeOrgId} />
       </div>
 
       {error && (

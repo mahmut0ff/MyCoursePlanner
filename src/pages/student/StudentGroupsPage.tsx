@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../contexts/AuthContext';
 import { orgGetGroups, orgGetStudents, orgGetCourses } from '../../lib/api';
 import { UsersRound, BookOpen, X } from 'lucide-react';
+import StudentOrgFilter from '../../components/ui/StudentOrgFilter';
 import type { Group, UserProfile, Course } from '../../types';
 
 const StudentGroupsPage: React.FC = () => {
@@ -55,16 +56,19 @@ const StudentGroupsPage: React.FC = () => {
 
   return (
     <div className="max-w-6xl mx-auto space-y-6">
-      <div className="flex items-center gap-3 mb-6">
-        <div className="w-10 h-10 rounded-xl bg-emerald-500/10 flex items-center justify-center">
-          <UsersRound className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-emerald-500/10 flex items-center justify-center">
+            <UsersRound className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
+          </div>
+          <div>
+            <h1 className="text-2xl font-bold text-slate-900 dark:text-white">{t('nav.myGroups', 'Мои группы')}</h1>
+            <p className="text-sm text-slate-500 dark:text-slate-400">
+              {t('studentGroups.subtitle', 'Ваши учебные группы и одногруппники')}
+            </p>
+          </div>
         </div>
-        <div>
-          <h1 className="text-2xl font-bold text-slate-900 dark:text-white">{t('nav.myGroups', 'Мои группы')}</h1>
-          <p className="text-sm text-slate-500 dark:text-slate-400">
-            {t('studentGroups.subtitle', 'Ваши учебные группы и одногруппники')}
-          </p>
-        </div>
+        <StudentOrgFilter currentOrgId={profile?.activeOrgId} />
       </div>
 
       {error && (

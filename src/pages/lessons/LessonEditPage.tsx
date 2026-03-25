@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import toast from 'react-hot-toast';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
@@ -10,13 +10,33 @@ import Youtube from '@tiptap/extension-youtube';
 import Placeholder from '@tiptap/extension-placeholder';
 import { useAuth } from '../../contexts/AuthContext';
 import { createLessonPlan, getLessonPlan, updateLessonPlan } from '../../services/lessons.service';
-import { uploadLessonCover } from '../../services/storage.service';
+import { uploadLessonCover, uploadLessonAttachment, deleteLessonAttachment } from '../../services/storage.service';
+import type { LessonAttachment } from '../../types';
 
 import {
   Save, ArrowLeft, Bold, Italic, Strikethrough, Heading1, Heading2, List,
   ListOrdered, LinkIcon, ImageIcon, Youtube as YoutubeIcon, Undo, Redo, Upload,
-  Quote, Code, Minus,
+  Quote, Code, Minus, Paperclip, Trash2, FileText, Film, Image as LucideImage,
+  FileSpreadsheet, ClipboardList, Calendar, Award,
 } from 'lucide-react';
+
+const FILE_ACCEPT = '.pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.jpg,.jpeg,.png,.gif,.webp,.mp4,.webm,.mov,.avi,.zip,.rar,.txt';
+
+const getFileIcon = (type: string) => {
+  if (type.startsWith('image/')) return <LucideImage className="w-4 h-4 text-emerald-500" />;
+  if (type.startsWith('video/')) return <Film className="w-4 h-4 text-violet-500" />;
+  if (type === 'application/pdf') return <FileText className="w-4 h-4 text-red-500" />;
+  if (type.includes('spreadsheet') || type.includes('excel')) return <FileSpreadsheet className="w-4 h-4 text-emerald-600" />;
+  if (type.includes('presentation') || type.includes('powerpoint')) return <FileText className="w-4 h-4 text-amber-500" />;
+  if (type.includes('word') || type.includes('document')) return <FileText className="w-4 h-4 text-blue-500" />;
+  return <FileText className="w-4 h-4 text-slate-400" />;
+};
+
+const formatSize = (bytes: number): string => {
+  if (bytes < 1024) return bytes + ' B';
+  if (bytes < 1048576) return (bytes / 1024).toFixed(1) + ' KB';
+  return (bytes / 1048576).toFixed(1) + ' MB';
+};
 
 const LessonEditPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -24,6 +44,8 @@ const LessonEditPage: React.FC = () => {
   const navigate = useNavigate();
   const { t } = useTranslation();
   const { profile } = useAuth();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const dropZoneRef = useRef<HTMLDivElement>(null);
 
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -34,8 +56,13 @@ const LessonEditPage: React.FC = () => {
   const [videoUrl, setVideoUrl] = useState('');
   const [coverImageUrl, setCoverImageUrl] = useState('');
   const [status, setStatus] = useState<'draft' | 'published'>('draft');
+  const [attachments, setAttachments] = useState<LessonAttachment[]>([]);
+  const [homework, setHomework] = useState({ title: '', description: '', dueDate: '', points: 0 });
+  const [showHomework, setShowHomework] = useState(false);
+  const [uploading, setUploading] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(isEdit);
+  const [isDragging, setIsDragging] = useState(false);
 
   const editor = useEditor({
     extensions: [
@@ -60,13 +87,20 @@ const LessonEditPage: React.FC = () => {
           setTags(lesson.tags?.join(', ') || '');
           setVideoUrl(lesson.videoUrl || '');
           setCoverImageUrl(lesson.coverImageUrl || '');
-          setStatus((lesson as any).status || 'draft');
+          setStatus(lesson.status || 'draft');
+          setAttachments(lesson.attachments || []);
+          if (lesson.homework && lesson.homework.title) {
+            setHomework({
+              title: lesson.homework.title || '',
+              description: lesson.homework.description || '',
+              dueDate: lesson.homework.dueDate || '',
+              points: lesson.homework.points || 0,
+            });
+            setShowHomework(true);
+          }
           if (editor && lesson.content) {
-            try {
-              editor.commands.setContent(lesson.content as any);
-            } catch {
-              editor.commands.setContent('');
-            }
+            try { editor.commands.setContent(lesson.content as any); }
+            catch { editor.commands.setContent(''); }
           }
         }
         setLoading(false);
@@ -86,47 +120,92 @@ const LessonEditPage: React.FC = () => {
     }
   };
 
+  const handleFileUpload = useCallback(async (files: FileList | File[]) => {
+    const lessonId = id || `temp-${Date.now()}`;
+    const fileArray = Array.from(files);
+
+    for (const file of fileArray) {
+      const tempId = `uploading-${Date.now()}-${file.name}`;
+      setUploading((p) => [...p, tempId]);
+      try {
+        const { url, storagePath } = await uploadLessonAttachment(lessonId, file);
+        const attachment: LessonAttachment = {
+          id: `att-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+          name: file.name,
+          url,
+          storagePath,
+          type: file.type || 'application/octet-stream',
+          size: file.size,
+          uploadedAt: new Date().toISOString(),
+        };
+        setAttachments((p) => [...p, attachment]);
+        toast.success(`${file.name} ${t('lessons.uploaded', 'загружен')}`);
+      } catch (err) {
+        console.error('Upload failed:', err);
+        toast.error(`${file.name}: ${t('common.error')}`);
+      } finally {
+        setUploading((p) => p.filter((u) => u !== tempId));
+      }
+    }
+  }, [id, t]);
+
+  const handleDeleteAttachment = async (att: LessonAttachment) => {
+    try {
+      await deleteLessonAttachment(att.storagePath);
+      setAttachments((p) => p.filter((a) => a.id !== att.id));
+    } catch (err) {
+      console.error('Delete failed:', err);
+    }
+  };
+
+  // Drag & drop
+  const handleDragOver = (e: React.DragEvent) => { e.preventDefault(); setIsDragging(true); };
+  const handleDragLeave = (e: React.DragEvent) => { e.preventDefault(); setIsDragging(false); };
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault(); setIsDragging(false);
+    if (e.dataTransfer.files.length > 0) handleFileUpload(e.dataTransfer.files);
+  };
+
   const addImage = () => {
     const url = prompt(t('lessons.enterImageUrl'));
     if (url && editor) editor.chain().focus().setImage({ src: url }).run();
   };
-
   const addLink = () => {
     const url = prompt(t('lessons.enterLinkUrl'));
     if (url && editor) editor.chain().focus().setLink({ href: url }).run();
   };
-
   const addVideo = () => {
     const url = prompt(t('lessons.enterYoutubeUrl'));
     if (url && editor) editor.chain().focus().setYoutubeVideo({ src: url }).run();
   };
 
   const handleSave = async () => {
-    if (!title || !subject) {
-      toast.error(t('lessons.titleSubjectRequired'));
-      return;
-    }
+    if (!title || !subject) { toast.error(t('lessons.titleSubjectRequired')); return; }
     setSaving(true);
     try {
-      const data = {
-        title,
-        description,
-        subject,
-        level,
-        duration,
+      const data: any = {
+        title, description, subject, level, duration,
         tags: tags.split(',').map((t) => t.trim()).filter(Boolean),
-        coverImageUrl,
-        videoUrl,
-        status,
+        coverImageUrl, videoUrl, status, attachments,
         content: editor?.getJSON() as any,
         authorId: profile?.uid || '',
         authorName: profile?.displayName || '',
       };
+      if (showHomework && homework.title.trim()) {
+        data.homework = {
+          title: homework.title.trim(),
+          description: homework.description.trim(),
+          ...(homework.dueDate ? { dueDate: homework.dueDate } : {}),
+          ...(homework.points > 0 ? { points: homework.points } : {}),
+        };
+      } else {
+        data.homework = null;
+      }
       if (isEdit && id) {
         await updateLessonPlan(id, data);
         navigate(`/lessons/${id}`);
       } else {
-        const newId = await createLessonPlan(data as any);
+        const newId = await createLessonPlan(data);
         navigate(`/lessons/${newId}`);
       }
     } catch (e) {
@@ -153,7 +232,6 @@ const LessonEditPage: React.FC = () => {
           <h1 className="text-lg font-bold text-slate-900 dark:text-white">{isEdit ? t('lessons.editLesson') : t('lessons.newLesson')}</h1>
         </div>
         <div className="flex items-center gap-2">
-          {/* Status toggle */}
           <select value={status} onChange={(e) => setStatus(e.target.value as 'draft' | 'published')}
             className="text-xs bg-slate-100 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-lg px-2 py-1.5 text-slate-700 dark:text-slate-300 outline-none">
             <option value="draft">{t('common.draft')}</option>
@@ -243,6 +321,110 @@ const LessonEditPage: React.FC = () => {
           <div className="tiptap-editor">
             <EditorContent editor={editor} />
           </div>
+        </div>
+
+        {/* Attachments */}
+        <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-4">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-sm font-semibold text-slate-900 dark:text-white flex items-center gap-2">
+              <Paperclip className="w-4 h-4 text-primary-500" />
+              {t('lessons.attachments', 'Вложения')}
+              {attachments.length > 0 && <span className="text-xs text-slate-400 font-normal">({attachments.length})</span>}
+            </h3>
+            <button onClick={() => fileInputRef.current?.click()}
+              className="text-xs bg-primary-50 dark:bg-primary-900/20 text-primary-600 dark:text-primary-400 px-2.5 py-1.5 rounded-lg hover:bg-primary-100 dark:hover:bg-primary-900/30 transition-colors flex items-center gap-1.5 font-medium">
+              <Upload className="w-3 h-3" /> {t('lessons.addFiles', 'Добавить файлы')}
+            </button>
+            <input ref={fileInputRef} type="file" multiple accept={FILE_ACCEPT} onChange={(e) => { if (e.target.files) handleFileUpload(e.target.files); e.target.value = ''; }} className="hidden" />
+          </div>
+
+          {/* Drop zone */}
+          <div ref={dropZoneRef} onDragOver={handleDragOver} onDragLeave={handleDragLeave} onDrop={handleDrop}
+            className={`border-2 border-dashed rounded-xl p-6 text-center transition-all cursor-pointer ${isDragging ? 'border-primary-400 bg-primary-50/50 dark:bg-primary-900/10' : 'border-slate-200 dark:border-slate-700 hover:border-primary-300 dark:hover:border-primary-600'}`}
+            onClick={() => fileInputRef.current?.click()}>
+            <Upload className={`w-8 h-8 mx-auto mb-2 ${isDragging ? 'text-primary-500' : 'text-slate-300 dark:text-slate-600'}`} />
+            <p className="text-sm text-slate-500 dark:text-slate-400">
+              {isDragging ? t('lessons.dropHere', 'Отпустите файлы') : t('lessons.dragOrClick', 'Перетащите файлы сюда или нажмите для выбора')}
+            </p>
+            <p className="text-[10px] text-slate-400 dark:text-slate-500 mt-1">PDF, Word, PowerPoint, Excel, изображения, видео</p>
+          </div>
+
+          {/* Upload progress */}
+          {uploading.length > 0 && (
+            <div className="mt-3 space-y-2">
+              {uploading.map((u) => (
+                <div key={u} className="flex items-center gap-3 p-2 bg-primary-50/50 dark:bg-primary-900/10 rounded-lg">
+                  <div className="w-4 h-4 border-2 border-primary-200 border-t-primary-600 rounded-full animate-spin shrink-0" />
+                  <span className="text-xs text-primary-600 dark:text-primary-400 truncate">{t('lessons.uploading', 'Загрузка...')}</span>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* File list */}
+          {attachments.length > 0 && (
+            <div className="mt-3 space-y-1.5">
+              {attachments.map((att) => (
+                <div key={att.id} className="flex items-center gap-3 p-2.5 bg-slate-50 dark:bg-slate-700/30 rounded-lg group hover:bg-slate-100 dark:hover:bg-slate-700/50 transition-colors">
+                  <div className="w-8 h-8 rounded-lg bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 flex items-center justify-center shrink-0">
+                    {getFileIcon(att.type)}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm text-slate-900 dark:text-white truncate font-medium">{att.name}</p>
+                    <p className="text-[10px] text-slate-400">{formatSize(att.size)}</p>
+                  </div>
+                  <button onClick={() => handleDeleteAttachment(att)}
+                    className="p-1.5 text-slate-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20">
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Homework */}
+        <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-4">
+          <div className="flex items-center justify-between">
+            <h3 className="text-sm font-semibold text-slate-900 dark:text-white flex items-center gap-2">
+              <ClipboardList className="w-4 h-4 text-amber-500" />
+              {t('lessons.homework', 'Домашнее задание')}
+            </h3>
+            <button onClick={() => setShowHomework(!showHomework)}
+              className={`text-xs px-2.5 py-1.5 rounded-lg font-medium transition-colors ${showHomework ? 'bg-red-50 dark:bg-red-900/20 text-red-500 hover:bg-red-100' : 'bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400 hover:bg-amber-100'}`}>
+              {showHomework ? t('common.delete') : t('lessons.addHomework', 'Добавить ДЗ')}
+            </button>
+          </div>
+
+          {showHomework && (
+            <div className="mt-3 space-y-3">
+              <div>
+                <label className="block text-[10px] font-medium text-slate-500 uppercase tracking-wider mb-1">{t('lessons.homeworkTitle', 'Название задания')}</label>
+                <input value={homework.title} onChange={(e) => setHomework((h) => ({ ...h, title: e.target.value }))}
+                  className="input text-sm" placeholder={t('lessons.homeworkTitlePlaceholder', 'напр. Решить задачи 1-10')} />
+              </div>
+              <div>
+                <label className="block text-[10px] font-medium text-slate-500 uppercase tracking-wider mb-1">{t('lessons.homeworkDesc', 'Описание задания')}</label>
+                <textarea value={homework.description} onChange={(e) => setHomework((h) => ({ ...h, description: e.target.value }))}
+                  className="input min-h-[80px] text-sm" placeholder={t('lessons.homeworkDescPlaceholder', 'Подробное описание домашнего задания...')} />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[10px] font-medium text-slate-500 uppercase tracking-wider mb-1 flex items-center gap-1">
+                    <Calendar className="w-3 h-3" /> {t('lessons.homeworkDueDate', 'Дедлайн')}
+                  </label>
+                  <input type="date" value={homework.dueDate} onChange={(e) => setHomework((h) => ({ ...h, dueDate: e.target.value }))} className="input text-sm" />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-medium text-slate-500 uppercase tracking-wider mb-1 flex items-center gap-1">
+                    <Award className="w-3 h-3" /> {t('lessons.homeworkPoints', 'Баллы')}
+                  </label>
+                  <input type="number" value={homework.points || ''} onChange={(e) => setHomework((h) => ({ ...h, points: +e.target.value }))}
+                    className="input text-sm" min={0} placeholder="0" />
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>

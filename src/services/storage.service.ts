@@ -28,3 +28,17 @@ export const uploadLessonImage = async (lessonId: string, file: File): Promise<s
   const name = `${Date.now()}-${file.name}`;
   return uploadFile(`lessons/${lessonId}/images/${name}`, file);
 };
+
+export const uploadLessonAttachment = async (
+  lessonId: string,
+  file: File
+): Promise<{ url: string; storagePath: string }> => {
+  const safeName = `${Date.now()}-${file.name.replace(/[^a-zA-Z0-9._-]/g, '_')}`;
+  const storagePath = `lessons/${lessonId}/attachments/${safeName}`;
+  const url = await uploadFile(storagePath, file);
+  return { url, storagePath };
+};
+
+export const deleteLessonAttachment = async (storagePath: string): Promise<void> => {
+  await deleteFile(storagePath);
+};

@@ -13,16 +13,6 @@ interface GradeSchemaConfigProps {
   onSaved: (schema: GradeSchema) => void;
 }
 
-const defaultSchema: GradeSchema = {
-  id: '',
-  courseId: '',
-  organizationId: '',
-  gradingType: 'points',
-  scale: { min: 0, max: 100 },
-  passThreshold: 50,
-  createdAt: '',
-  updatedAt: '',
-};
 
 const GradeSchemaConfig: React.FC<GradeSchemaConfigProps> = ({ courseId, schema, isOpen, onClose, onSaved }) => {
   const { t } = useTranslation();

@@ -6,6 +6,7 @@ import { Search, Plus, ShieldAlert } from 'lucide-react';
 import { formatDistanceToNow, isToday, format } from 'date-fns';
 import { ru, enUS } from 'date-fns/locale';
 import CreateGroupModal from './CreateGroupModal';
+import ChatAvatar from './ChatAvatar';
 
 /** Safely convert Firestore Timestamp or ISO string to Date */
 function toSafeDate(val: any): Date | null {
@@ -33,9 +34,10 @@ interface ChatRoomListProps {
   activeRoomId: string | null;
   onSelectRoom: (roomId: string) => void;
   nameCache?: Record<string, string>;
+  avatarCache?: Record<string, string>;
 }
 
-export default function ChatRoomList({ rooms, loading, error, activeRoomId, onSelectRoom, nameCache }: ChatRoomListProps) {
+export default function ChatRoomList({ rooms, loading, error, activeRoomId, onSelectRoom, nameCache, avatarCache }: ChatRoomListProps) {
   const { t, i18n } = useTranslation();
   const { profile } = useAuth();
   const [search, setSearch] = useState('');
@@ -155,6 +157,15 @@ export default function ChatRoomList({ rooms, loading, error, activeRoomId, onSe
 
             const displayTitle = resolveTitle(room, profile?.uid, nameCache);
 
+            // Resolve avatar for this room
+            let roomAvatarUrl: string | undefined = room.imageUrl || undefined;
+            if (room.type === 'direct' && profile?.uid) {
+              const otherUid = room.participantIds.find(id => id !== profile.uid);
+              if (otherUid) {
+                roomAvatarUrl = room.participants[otherUid]?.avatarUrl || avatarCache?.[otherUid] || undefined;
+              }
+            }
+
             return (
               <button
                 key={room.id}
@@ -164,16 +175,7 @@ export default function ChatRoomList({ rooms, loading, error, activeRoomId, onSe
                 }`}
               >
                 <div className="relative shrink-0">
-                  <div className={`w-12 h-12 rounded-full flex items-center justify-center text-sm font-semibold shrink-0 shadow-sm ${
-                    room.type === 'direct' ? 'bg-indigo-100 text-indigo-700 dark:bg-indigo-500/20 dark:text-indigo-400' 
-                    : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-400'
-                  }`}>
-                    {room.imageUrl ? (
-                      <img src={room.imageUrl} alt="" className="w-full h-full object-cover rounded-full" />
-                    ) : (
-                      <span className="font-bold text-base">{displayTitle[0]?.toUpperCase() || '?'}</span>
-                    )}
-                  </div>
+                  <ChatAvatar src={roomAvatarUrl} name={displayTitle} size="lg" type={room.type === 'direct' ? 'direct' : 'group'} />
                   {isUnread && (
                     <div className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-red-500 border-2 border-white dark:border-slate-900" />
                   )}

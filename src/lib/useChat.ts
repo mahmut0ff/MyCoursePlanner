@@ -61,6 +61,8 @@ export function useChatRooms(organizationId?: string) {
   const [error, setError] = useState<Error | null>(null);
   // Cache: uid -> displayName
   const [nameCache, setNameCache] = useState<Record<string, string>>({});
+  // Cache: uid -> avatarUrl
+  const [avatarCache, setAvatarCache] = useState<Record<string, string>>({});
 
   useEffect(() => {
     const user = auth.currentUser;
@@ -94,20 +96,24 @@ export function useChatRooms(organizationId?: string) {
           }
         }
 
-        // Fetch missing names in parallel
+        // Fetch missing names + avatars in parallel
         if (uidsToResolve.length > 0) {
           const newNames: Record<string, string> = {};
+          const newAvatars: Record<string, string> = {};
           await Promise.all(
             [...new Set(uidsToResolve)].map(async (uid) => {
               try {
                 const uDoc = await getDoc(doc(db, 'users', uid));
-                newNames[uid] = uDoc.data()?.displayName || uDoc.data()?.email || uid;
+                const data = uDoc.data();
+                newNames[uid] = data?.displayName || data?.email || uid;
+                if (data?.avatarUrl) newAvatars[uid] = data.avatarUrl;
               } catch {
                 newNames[uid] = uid;
               }
             })
           );
           setNameCache(prev => ({ ...prev, ...newNames }));
+          setAvatarCache(prev => ({ ...prev, ...newAvatars }));
         }
 
         setRooms(rData);
@@ -123,7 +129,7 @@ export function useChatRooms(organizationId?: string) {
     return () => unsubscribe();
   }, [organizationId, auth.currentUser?.uid]);
 
-  return { rooms, loading, error, nameCache };
+  return { rooms, loading, error, nameCache, avatarCache };
 }
 
 /**

@@ -983,6 +983,7 @@ export interface ChatParticipantDetails {
   isMuted: boolean;
   isRemoved: boolean;
   displayName?: string;
+  avatarUrl?: string;
 }
 
 export interface ChatRoom {

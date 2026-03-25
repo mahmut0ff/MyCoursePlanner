@@ -15,23 +15,43 @@ function resolveRoomTitle(room: ChatRoom, myUid?: string, nameCache?: Record<str
   const otherUid = room.participantIds.find(id => id !== myUid);
   if (!otherUid) return room.title || 'Chat';
   
-  // 1. Check participants map (new rooms have it)
   if (room.participants[otherUid]?.displayName) {
     return room.participants[otherUid].displayName!;
   }
-  // 2. Check nameCache (dynamically fetched)
   if (nameCache?.[otherUid]) {
     return nameCache[otherUid];
   }
-  // 3. Fallback
   return room.title || 'Chat';
+}
+
+/** Resolve avatar URL for a room: DM → other user's avatar, Group → room imageUrl */
+function resolveRoomAvatar(
+  room: ChatRoom, 
+  myUid?: string, 
+  avatarCache?: Record<string, string>
+): string | undefined {
+  if (room.type === 'group') return room.imageUrl || undefined;
+  if (!myUid) return room.imageUrl || undefined;
+
+  const otherUid = room.participantIds.find(id => id !== myUid);
+  if (!otherUid) return undefined;
+
+  // 1. Check participant details (if stored on room doc)
+  if (room.participants[otherUid]?.avatarUrl) {
+    return room.participants[otherUid].avatarUrl;
+  }
+  // 2. Check avatar cache (fetched from /users)
+  if (avatarCache?.[otherUid]) {
+    return avatarCache[otherUid];
+  }
+  return undefined;
 }
 
 export default function ChatWorkspace() {
   const { t } = useTranslation();
   const { profile, organizationId } = useAuth();
   
-  const { rooms, loading, error, nameCache } = useChatRooms(organizationId || undefined);
+  const { rooms, loading, error, nameCache, avatarCache } = useChatRooms(organizationId || undefined);
   const [activeRoomId, setActiveRoomId] = useState<string | null>(null);
 
   if (!profile || !organizationId) {
@@ -44,12 +64,13 @@ export default function ChatWorkspace() {
 
   const activeRoom = activeRoomId ? rooms.find(r => r.id === activeRoomId) : null;
   const activeDisplayTitle = activeRoom ? resolveRoomTitle(activeRoom, profile.uid, nameCache) : '';
+  const activeAvatarUrl = activeRoom ? resolveRoomAvatar(activeRoom, profile.uid, avatarCache) : undefined;
 
   return (
-    <div className="h-full min-h-0 -m-4 sm:-m-6 lg:-m-8 flex bg-white dark:bg-slate-900 border-x border-slate-200 dark:border-slate-800" style={{ minHeight: 'calc(100vh - 4rem)' }}>
+    <div className="h-full flex overflow-hidden bg-white dark:bg-slate-900 border-x border-slate-200 dark:border-slate-800 -m-4 md:-m-6 lg:-m-8">
       
       {/* Left Sidebar: Room List */}
-      <div className={`w-full md:w-80 shrink-0 border-r border-slate-200 dark:border-slate-800 flex flex-col ${activeRoomId ? 'hidden md:flex' : 'flex'}`}>
+      <div className={`w-full md:w-80 shrink-0 border-r border-slate-200 dark:border-slate-800 flex flex-col overflow-hidden ${activeRoomId ? 'hidden md:flex' : 'flex'}`}>
         <ChatRoomList 
           rooms={rooms} 
           loading={loading} 
@@ -57,16 +78,19 @@ export default function ChatWorkspace() {
           activeRoomId={activeRoomId} 
           onSelectRoom={setActiveRoomId}
           nameCache={nameCache}
+          avatarCache={avatarCache}
         />
       </div>
 
       {/* Main Chat Area */}
-      <div className={`flex-1 flex flex-col min-w-0 bg-slate-50 dark:bg-slate-900 overflow-hidden ${!activeRoomId ? 'hidden md:flex' : 'flex'}`}>
+      <div className={`flex-1 flex flex-col min-w-0 min-h-0 bg-slate-50 dark:bg-slate-900 overflow-hidden ${!activeRoomId ? 'hidden md:flex' : 'flex'}`}>
         {activeRoomId && activeRoom ? (
           <ChatRoomView 
             room={activeRoom} 
             onBack={() => setActiveRoomId(null)}
             displayTitle={activeDisplayTitle}
+            avatarUrl={activeAvatarUrl}
+            avatarCache={avatarCache}
           />
         ) : (
           <div className="flex-1 flex items-center justify-center p-8">

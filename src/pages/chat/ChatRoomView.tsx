@@ -10,6 +10,7 @@ import { apiArchiveChatRoom, apiModerateChatMessage } from '../../lib/api';
 import ChatMessageInput from './ChatMessageInput';
 import ManageGroupModal from './ManageGroupModal';
 import ImageLightbox from './ImageLightbox';
+import ChatAvatar from './ChatAvatar';
 
 /** Safely convert Firestore Timestamp or ISO string to Date */
 function toSafeDate(val: any): Date {
@@ -23,9 +24,11 @@ interface ChatRoomViewProps {
   room: ChatRoom;
   onBack: () => void;
   displayTitle: string;
+  avatarUrl?: string;
+  avatarCache?: Record<string, string>;
 }
 
-export default function ChatRoomView({ room, onBack, displayTitle }: ChatRoomViewProps) {
+export default function ChatRoomView({ room, onBack, displayTitle, avatarUrl, avatarCache }: ChatRoomViewProps) {
   const { t, i18n } = useTranslation();
   const { profile } = useAuth();
   const { messages, loading } = useChatMessages(room.id);
@@ -134,9 +137,7 @@ export default function ChatRoomView({ room, onBack, displayTitle }: ChatRoomVie
           >
             <ArrowLeft className="w-5 h-5" />
           </button>
-          <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${room.type === 'direct' ? 'bg-indigo-100 text-indigo-700 dark:bg-indigo-500/20 dark:text-indigo-400' : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-400'}`}>
-             <span className="font-bold text-lg">{displayTitle[0]?.toUpperCase() || '?'}</span>
-          </div>
+          <ChatAvatar src={avatarUrl} name={displayTitle} size="md" type={room.type === 'direct' ? 'direct' : 'group'} />
           <div>
             <h2 className="font-bold text-slate-900 dark:text-white line-clamp-1">{displayTitle}</h2>
             <p className="text-xs text-slate-500 dark:text-slate-400">
@@ -229,11 +230,19 @@ export default function ChatRoomView({ room, onBack, displayTitle }: ChatRoomVie
                   </div>
                 )}
                 <div className={`flex flex-col ${isMe ? 'items-end' : 'items-start'} group/msg relative`}>
-                  {/* Sender name label */}
+                  {/* Sender name label + avatar in groups */}
                   {showSenderName && (
-                    <span className="text-xs font-semibold text-primary-600 dark:text-primary-400 mb-1 ml-1">
-                      {msgSenderName}
-                    </span>
+                    <div className="flex items-center gap-2 mb-1 ml-1">
+                      <ChatAvatar
+                        src={room.participants[msg.senderId]?.avatarUrl || avatarCache?.[msg.senderId]}
+                        name={msgSenderName}
+                        size="sm"
+                        type="direct"
+                      />
+                      <span className="text-xs font-semibold text-primary-600 dark:text-primary-400">
+                        {msgSenderName}
+                      </span>
+                    </div>
                   )}
 
                   {msg.deletedAt ? (

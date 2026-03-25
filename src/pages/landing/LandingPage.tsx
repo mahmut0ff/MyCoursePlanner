@@ -5,7 +5,7 @@ import LanguageSwitcher from '../../components/LanguageSwitcher';
 import {
   BookOpen, ClipboardList, Radio, Brain, BarChart3,
   Shield, Zap, Check, ArrowRight, ChevronDown,
-  Globe, Sparkles, Crown, Menu, X, Users, Play,
+  Globe, Sparkles, Crown, Menu, X, Users,
   MessageCircle, Mail, MapPin, Phone, Award,
   Layers, Lock, FileText, Target, Gamepad2,
   GraduationCap, Building2, Laptop, School,

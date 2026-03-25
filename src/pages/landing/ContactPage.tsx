@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../contexts/AuthContext';
-import { ArrowLeft, GraduationCap, Mail, MapPin, Phone, MessageCircle, Send, CheckCircle } from 'lucide-react';
+import { ArrowLeft, Mail, MapPin, Phone, MessageCircle, Send, CheckCircle } from 'lucide-react';
 import LanguageSwitcher from '../../components/LanguageSwitcher';
 
 const ContactPage: React.FC = () => {
@@ -25,7 +25,11 @@ const ContactPage: React.FC = () => {
           </Link>
           <div className="flex items-center gap-3">
             <LanguageSwitcher />
-            <Link to="/login" className="text-sm font-medium text-slate-600 hover:text-slate-900 px-4 py-2 transition-colors">{t('auth.login')}</Link>
+            {user ? (
+              <Link to="/dashboard" className="text-sm font-semibold text-white bg-primary-600 hover:bg-primary-700 px-5 py-2.5 rounded-xl shadow-lg shadow-primary-500/20 transition-all">{t('nav.dashboard') || 'Dashboard'}</Link>
+            ) : (
+              <Link to="/login" className="text-sm font-medium text-slate-600 hover:text-slate-900 px-4 py-2 transition-colors">{t('auth.login')}</Link>
+            )}
           </div>
         </div>
       </nav>

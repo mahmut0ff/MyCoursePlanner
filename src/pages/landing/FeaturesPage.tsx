@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../contexts/AuthContext';
 import {
-  ArrowLeft, GraduationCap, BookOpen, ClipboardList, Radio,
+  ArrowLeft, BookOpen, ClipboardList, Radio,
   Brain, BarChart3, Shield, Award, Target, Gamepad2,
   MessageCircle, FileText, Globe, Bot, PenTool, LayoutGrid,
   Building2, Lock, Zap, Layers, Users, Crown,

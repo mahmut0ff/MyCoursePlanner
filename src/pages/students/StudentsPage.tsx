@@ -71,7 +71,7 @@ const StudentsPage: React.FC = () => {
       const created = await orgCreateStudent(form);
       setStudents((p) => [created, ...p]);
       setShowCreate(false); setForm({ displayName: '', email: '', password: '', phone: '' });
-      setSuccess('Student created!'); setTimeout(() => setSuccess(''), 3000);
+      setSuccess(t('org.students.created', 'Студент создан!')); setTimeout(() => setSuccess(''), 3000);
     } catch (e: any) { setError(e.message || 'Failed to create student'); }
     finally { setSaving(false); }
   };
@@ -105,7 +105,7 @@ const StudentsPage: React.FC = () => {
         <div>
           <h1 className="text-lg font-bold text-slate-900 dark:text-white">{t('nav.students')}</h1>
           <p className="text-[11px] text-slate-500">
-            {activeTab === 'students' ? `${students.length} ${t('org.students.total')}` : `${applications.length} applications`}
+            {activeTab === 'students' ? `${students.length} ${t('org.students.total')}` : `${applications.length} ${t('org.students.applicationsCount', 'заявок')}`}
           </p>
         </div>
         <div className="flex items-center gap-1.5">
@@ -158,7 +158,7 @@ const StudentsPage: React.FC = () => {
               <table className="w-full">
                 <thead><tr className="border-b border-slate-100 dark:border-slate-700/50">
                   <th className="text-left text-[10px] font-medium text-slate-500 uppercase tracking-wider px-4 py-2">{t('org.results.student')}</th>
-                  <th className="text-left text-[10px] font-medium text-slate-500 uppercase tracking-wider px-4 py-2">Email</th>
+                  <th className="text-left text-[10px] font-medium text-slate-500 uppercase tracking-wider px-4 py-2 hidden sm:table-cell">{t('common.email', 'Email')}</th>
                   <th className="text-left text-[10px] font-medium text-slate-500 uppercase tracking-wider px-4 py-2">{t('common.status')}</th>
                 </tr></thead>
                 <tbody className="divide-y divide-slate-50 dark:divide-slate-700/30">
@@ -174,7 +174,7 @@ const StudentsPage: React.FC = () => {
                           <span className="text-sm font-semibold text-slate-900 dark:text-white truncate">{s.displayName}</span>
                         </div>
                       </td>
-                      <td className="px-4 py-2.5 text-[11px] text-slate-500 flex items-center gap-1"><Mail className="w-3 h-3" /><span className="truncate max-w-[180px]">{s.email}</span></td>
+                      <td className="px-4 py-2.5 text-[11px] text-slate-500 hidden sm:table-cell"><div className="flex items-center gap-1"><Mail className="w-3 h-3" /><span className="truncate max-w-[180px]">{s.email}</span></div></td>
                       <td className="px-4 py-2.5"><span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-500 font-medium">{t('common.active')}</span></td>
                     </tr>
                   ))}
@@ -198,7 +198,7 @@ const StudentsPage: React.FC = () => {
             <table className="w-full">
               <thead><tr className="border-b border-slate-100 dark:border-slate-700/50">
                 <th className="text-left text-[10px] font-medium text-slate-500 uppercase tracking-wider px-4 py-2">{t('org.results.student')}</th>
-                <th className="text-left text-[10px] font-medium text-slate-500 uppercase tracking-wider px-4 py-2">Email</th>
+                <th className="text-left text-[10px] font-medium text-slate-500 uppercase tracking-wider px-4 py-2 hidden sm:table-cell">{t('common.email', 'Email')}</th>
                 <th className="text-left text-[10px] font-medium text-slate-500 uppercase tracking-wider px-4 py-2">{t('common.date')}</th>
                 <th className="text-right text-[10px] font-medium text-slate-500 uppercase tracking-wider px-4 py-2">{t('common.actions')}</th>
               </tr></thead>
@@ -211,7 +211,7 @@ const StudentsPage: React.FC = () => {
                         <span className="text-xs font-medium text-slate-900 dark:text-white truncate">{app.userName}</span>
                       </div>
                     </td>
-                    <td className="px-4 py-2.5 text-[11px] text-slate-500 flex items-center gap-1"><Mail className="w-3 h-3" /><span className="truncate max-w-[180px]">{app.userEmail}</span></td>
+                    <td className="px-4 py-2.5 text-[11px] text-slate-500 hidden sm:table-cell"><div className="flex items-center gap-1"><Mail className="w-3 h-3" /><span className="truncate max-w-[180px]">{app.userEmail}</span></div></td>
                     <td className="px-4 py-2.5 text-[11px] text-slate-500">{new Date(app.createdAt).toLocaleDateString()}</td>
                     <td className="px-4 py-2.5 flex justify-end gap-2">
                       <button onClick={() => handleApprove(app.userId)} className="p-1 text-emerald-600 bg-emerald-50 hover:bg-emerald-100 rounded transition-colors" title={t('common.accept')}>

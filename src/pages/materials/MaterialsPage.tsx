@@ -62,8 +62,8 @@ const MaterialsPage: React.FC = () => {
           <table className="w-full">
             <thead><tr className="border-b border-slate-100 dark:border-slate-700/50">
               <th className="text-left text-[10px] font-medium text-slate-500 uppercase tracking-wider px-4 py-2">{t('common.name')}</th>
-              <th className="text-left text-[10px] font-medium text-slate-500 uppercase tracking-wider px-4 py-2">Type</th>
-              <th className="text-left text-[10px] font-medium text-slate-500 uppercase tracking-wider px-4 py-2">Category</th>
+              <th className="text-left text-[10px] font-medium text-slate-500 uppercase tracking-wider px-4 py-2 hidden sm:table-cell">{t('common.type', 'Тип')}</th>
+              <th className="text-left text-[10px] font-medium text-slate-500 uppercase tracking-wider px-4 py-2 hidden md:table-cell">{t('common.category', 'Категория')}</th>
               <th className="text-right text-[10px] font-medium text-slate-500 uppercase tracking-wider px-4 py-2"></th>
             </tr></thead>
             <tbody className="divide-y divide-slate-50 dark:divide-slate-700/30">
@@ -72,8 +72,8 @@ const MaterialsPage: React.FC = () => {
                   <td className="px-4 py-2.5">
                     <div className="flex items-center gap-2"><FileText className="w-3.5 h-3.5 text-slate-400 shrink-0" /><span className="text-xs font-medium text-slate-900 dark:text-white truncate">{m.title}</span></div>
                   </td>
-                  <td className="px-4 py-2.5"><span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${TYPE_COLORS[m.type] || TYPE_COLORS.link}`}>{m.type}</span></td>
-                  <td className="px-4 py-2.5 text-[11px] text-slate-500">{m.category}</td>
+                  <td className="px-4 py-2.5 hidden sm:table-cell"><span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${TYPE_COLORS[m.type] || TYPE_COLORS.link}`}>{t(`materials.type.${m.type}`, m.type)}</span></td>
+                  <td className="px-4 py-2.5 text-[11px] text-slate-500 hidden md:table-cell">{m.category}</td>
                   <td className="px-4 py-2.5 text-right">
                     <div className="flex items-center justify-end gap-0.5">
                       <a href={m.url} target="_blank" rel="noreferrer" className="p-1 text-slate-400 hover:text-primary-500 rounded transition-colors"><ExternalLink className="w-3 h-3" /></a>
@@ -99,7 +99,7 @@ const MaterialsPage: React.FC = () => {
               <div className="grid grid-cols-2 gap-2">
                 <select value={form.type} onChange={(e) => setForm(f => ({ ...f, type: e.target.value }))}
                   className="bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-lg px-2.5 py-1.5 text-xs outline-none focus:border-primary-500 text-slate-900 dark:text-white">
-                  <option value="link">Link</option><option value="video">Video</option><option value="document">Document</option><option value="file">File</option>
+                  <option value="link">{t('materials.type.link', 'Ссылка')}</option><option value="video">{t('materials.type.video', 'Видео')}</option><option value="document">{t('materials.type.document', 'Документ')}</option><option value="file">{t('materials.type.file', 'Файл')}</option>
                 </select>
                 <input placeholder={t('org.materials.categoryPlaceholder')} value={form.category} onChange={(e) => setForm(f => ({ ...f, category: e.target.value }))}
                   className="bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-lg px-2.5 py-1.5 text-xs outline-none focus:border-primary-500 text-slate-900 dark:text-white" />

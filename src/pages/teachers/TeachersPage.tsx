@@ -77,7 +77,7 @@ const TeachersPage: React.FC = () => {
             <table className="w-full">
               <thead><tr className="border-b border-slate-100 dark:border-slate-700/50">
                 <th className="text-left text-[10px] font-medium text-slate-500 uppercase tracking-wider px-4 py-2">{t('nav.teachers')}</th>
-                <th className="text-left text-[10px] font-medium text-slate-500 uppercase tracking-wider px-4 py-2">Email</th>
+                <th className="text-left text-[10px] font-medium text-slate-500 uppercase tracking-wider px-4 py-2 hidden sm:table-cell">{t('common.email', 'Email')}</th>
                 <th className="text-left text-[10px] font-medium text-slate-500 uppercase tracking-wider px-4 py-2">{t('org.users.role')}</th>
               </tr></thead>
               <tbody className="divide-y divide-slate-50 dark:divide-slate-700/30">
@@ -93,7 +93,7 @@ const TeachersPage: React.FC = () => {
                         <span className="text-sm font-semibold text-slate-900 dark:text-white truncate">{teacher.displayName}</span>
                       </div>
                     </td>
-                    <td className="px-4 py-2.5 text-[11px] text-slate-500 truncate max-w-[200px]">{teacher.email}</td>
+                    <td className="px-4 py-2.5 text-[11px] text-slate-500 truncate max-w-[200px] hidden sm:table-cell">{teacher.email}</td>
                     <td className="px-4 py-2.5">
                       <span className="text-[10px] px-1.5 py-0.5 rounded font-medium bg-violet-500/10 text-violet-500">{t('org.teachers.roleTeacher')}</span>
                     </td>

@@ -6,11 +6,11 @@ import { Briefcase, MapPin, Search, Clock, DollarSign, Wifi, Filter, X } from 'l
 import type { Vacancy, VacancyEmploymentType } from '../../types';
 
 const EMPLOYMENT_LABELS: Record<VacancyEmploymentType, string> = {
-  full_time: 'Полная занятость', part_time: 'Частичная', contract: 'Контракт', freelance: 'Фриланс',
+  full_time: 'vacancies.fullTime', part_time: 'vacancies.partTime', contract: 'vacancies.contract', freelance: 'vacancies.freelance',
 };
 const EMPLOYMENT_COLORS: Record<VacancyEmploymentType, string> = {
-  full_time: 'bg-emerald-500/10 text-emerald-600', part_time: 'bg-blue-500/10 text-blue-600',
-  contract: 'bg-amber-500/10 text-amber-600', freelance: 'bg-violet-500/10 text-violet-600',
+  full_time: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400', part_time: 'bg-blue-500/10 text-blue-600 dark:text-blue-400',
+  contract: 'bg-amber-500/10 text-amber-600 dark:text-amber-400', freelance: 'bg-violet-500/10 text-violet-600 dark:text-violet-400',
 };
 
 const VacanciesPage: React.FC = () => {
@@ -111,7 +111,7 @@ const VacanciesPage: React.FC = () => {
               <select value={filters.employmentType} onChange={(e) => setFilters(f => ({ ...f, employmentType: e.target.value }))}
                 className="w-full bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-lg px-2.5 py-1.5 text-xs outline-none focus:border-primary-500 text-slate-900 dark:text-white">
                 <option value="">{t('vacancies.anyType')}</option>
-                {Object.entries(EMPLOYMENT_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+                {Object.entries(EMPLOYMENT_LABELS).map(([k, v]) => <option key={k} value={k}>{t(v)}</option>)}
               </select>
             </div>
             <div>
@@ -157,11 +157,11 @@ const VacanciesPage: React.FC = () => {
                   <div className="flex items-center gap-2 mb-1.5">
                     <h3 className="font-semibold text-slate-900 dark:text-white group-hover:text-primary-600 dark:group-hover:text-primary-400 transition-colors truncate">{v.title}</h3>
                     <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium shrink-0 ${EMPLOYMENT_COLORS[v.employmentType]}`}>
-                      {EMPLOYMENT_LABELS[v.employmentType]}
+                      {t(EMPLOYMENT_LABELS[v.employmentType])}
                     </span>
                     {v.location?.remote && (
                       <span className="text-[10px] px-2 py-0.5 rounded-full font-medium bg-cyan-500/10 text-cyan-600 shrink-0 flex items-center gap-0.5">
-                        <Wifi className="w-2.5 h-2.5" />Remote
+                        <Wifi className="w-2.5 h-2.5" />{t('vacancies.remote', 'Удалённо')}
                       </span>
                     )}
                   </div>

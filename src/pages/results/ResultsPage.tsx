@@ -19,7 +19,7 @@ const ResultsPage: React.FC = () => {
   const passRate = filtered.length > 0 ? Math.round((filtered.filter((r) => r.passed).length / filtered.length) * 100) : 0;
 
   const exportCSV = () => {
-    const rows = ['Student,Exam,Score,Passed,Date', ...filtered.map((r) => `"${r.studentName}","${r.examTitle}",${r.percentage}%,${r.passed ? 'Yes' : 'No'},${new Date(r.submittedAt).toLocaleDateString()}`)].join('\n');
+    const rows = [`"${t('org.results.student')}","${t('org.results.exam')}","${t('org.results.score')}","${t('common.status')}","${t('org.results.date')}"`, ...filtered.map((r) => `"${r.studentName}","${r.examTitle}",${r.percentage}%,${r.passed ? t('org.results.passed') : t('org.results.failed')},${new Date(r.submittedAt).toLocaleDateString()}`)].join('\n');
     const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([rows], { type: 'text/csv' })); a.download = 'results.csv'; a.click();
   };
 
@@ -60,7 +60,7 @@ const ResultsPage: React.FC = () => {
               <th className="text-left text-[10px] font-medium text-slate-500 uppercase tracking-wider px-4 py-2">{t('org.results.exam')}</th>
               <th className="text-left text-[10px] font-medium text-slate-500 uppercase tracking-wider px-4 py-2">{t('org.results.score')}</th>
               <th className="text-left text-[10px] font-medium text-slate-500 uppercase tracking-wider px-4 py-2">{t('common.status')}</th>
-              <th className="text-left text-[10px] font-medium text-slate-500 uppercase tracking-wider px-4 py-2">{t('org.results.date')}</th>
+              <th className="text-left text-[10px] font-medium text-slate-500 uppercase tracking-wider px-4 py-2 hidden md:table-cell">{t('org.results.date')}</th>
             </tr></thead>
             <tbody className="divide-y divide-slate-50 dark:divide-slate-700/30">
               {filtered.map((r) => (
@@ -69,7 +69,7 @@ const ResultsPage: React.FC = () => {
                   <td className="px-4 py-2 text-slate-500">{r.examTitle}</td>
                   <td className="px-4 py-2"><span className={`font-bold ${r.percentage >= 80 ? 'text-emerald-500' : r.percentage >= 60 ? 'text-amber-500' : 'text-red-500'}`}>{r.percentage}%</span></td>
                   <td className="px-4 py-2"><span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${r.passed ? 'bg-emerald-500/10 text-emerald-500' : 'bg-red-500/10 text-red-500'}`}>{r.passed ? t('org.results.passed') : t('org.results.failed')}</span></td>
-                  <td className="px-4 py-2 text-[10px] text-slate-400">{new Date(r.submittedAt).toLocaleDateString()}</td>
+                  <td className="px-4 py-2 text-[10px] text-slate-400 hidden md:table-cell">{new Date(r.submittedAt).toLocaleDateString()}</td>
                 </tr>
               ))}
             </tbody>

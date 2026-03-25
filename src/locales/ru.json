@@ -46,7 +46,10 @@
     "profile": "Профиль",
     "quizLibrary": "Викторины",
     "quizSessions": "Сессии викторин",
-    "joinQuiz": "Присоединиться к викторине"
+    "joinQuiz": "Присоединиться к викторине",
+    "orgUsers": "Пользователи орг.",
+    "sectionPeople": "ЛЮДИ",
+    "sectionOrg": "ОРГАНИЗАЦИЯ"
   },
   "auth": {
     "login": "Войти",

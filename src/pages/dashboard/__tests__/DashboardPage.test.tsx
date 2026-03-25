@@ -2,7 +2,6 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import DashboardPage from '../DashboardPage';
-import { AuthProvider } from '../../../contexts/AuthContext';
 
 // Mock context correctly
 vi.mock('../../../contexts/AuthContext', () => ({

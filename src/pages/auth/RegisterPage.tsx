@@ -49,7 +49,7 @@ const RegisterPage: React.FC = () => {
     return () => clearTimeout(timer);
   }, [email]);
 
-  const totalSteps = regRole === 'admin' ? 3 : 2;
+  const totalSteps = 3;
   const currentStep = step === 'role' ? 1 : step === 'account' ? 2 : 3;
 
   const handleRoleStep = (role: RegRole) => {
@@ -124,14 +124,9 @@ const RegisterPage: React.FC = () => {
     setError('');
     setLoading(true);
     try {
-      const cred = await signInWithGoogle();
-      const user = cred.user;
-      const existing = await getUser(user.uid);
-      if (!existing) {
-        const role = regRole === 'teacher' ? 'teacher' : 'student';
-        await createUser(user.uid, user.email || '', user.displayName || 'User', role, '');
-      }
-      navigate(regRole === 'teacher' ? '/teacher-profile' : '/dashboard');
+      await signInWithGoogle();
+      // AuthContext and ProtectedRoute will automatically redirect to /onboarding if no profile exists.
+      // Or to /dashboard if profile exists.
     } catch (err: any) {
       if (err.code !== 'auth/popup-closed-by-user') {
         setError(t('auth.googleFailed'));

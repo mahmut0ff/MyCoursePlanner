@@ -37,6 +37,9 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, allowedRoles 
   }
 
   if (!firebaseUser) return <Navigate to="/login" replace />;
+  if (!profile && firebaseUser) {
+    return <Navigate to="/onboarding" replace />;
+  }
   
   // super_admin can access everything
   if (profile?.role === 'super_admin') return <>{children}</>;

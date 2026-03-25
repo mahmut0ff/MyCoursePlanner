@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { signIn, signInWithGoogle } from '../../services/auth.service';
-import { createUser, getUser } from '../../services/users.service';
 import { apiResolveUsername } from '../../lib/api';
 import { Mail, Lock, Eye, EyeOff } from 'lucide-react';
 import LanguageSwitcher from '../../components/LanguageSwitcher';
@@ -45,14 +44,9 @@ const LoginPage: React.FC = () => {
     setError('');
     setLoading(true);
     try {
-      const cred = await signInWithGoogle();
-      const user = cred.user;
-      // Create user profile if doesn't exist
-      const existing = await getUser(user.uid);
-      if (!existing) {
-        await createUser(user.uid, user.email || '', user.displayName || 'User', 'student');
-      }
-      navigate('/dashboard');
+      await signInWithGoogle();
+      // AuthContext and ProtectedRoute will automatically redirect to /onboarding if no profile exists.
+      // Or to /dashboard if profile exists.
     } catch (err: any) {
       if (err.code !== 'auth/popup-closed-by-user') {
         setError('Google sign-in failed. Please try again.');

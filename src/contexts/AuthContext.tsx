@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useEffect, useState, useRef } from 'react';
 import type { User } from 'firebase/auth';
 import { onAuthChange } from '../services/auth.service';
-import { getUser, createUser } from '../services/users.service';
+import { getUser } from '../services/users.service';
 import { isFirebaseConfigured, requestNotificationPermission } from '../lib/firebase';
 import { apiSaveFcmToken, apiRemoveFcmToken } from '../lib/api';
 import type { UserProfile, UserRole } from '../types';
@@ -46,12 +46,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const loadProfile = async (user: User) => {
     try {
-      let p = await getUser(user.uid);
-      if (!p) {
-        await createUser(user.uid, user.email || '', user.displayName || 'User', 'student');
-        p = await getUser(user.uid);
-      }
-      setProfile(p);
+      const p = await getUser(user.uid);
+      setProfile(p || null);
     } catch (e) {
       console.error('Failed to load user profile:', e);
       setProfile(null);

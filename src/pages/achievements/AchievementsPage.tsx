@@ -27,7 +27,7 @@ const AchievementsPage: React.FC = () => {
       <div className="grid grid-cols-4 gap-3 mb-8">
         {[
           { icon: <Zap className="w-5 h-5 text-indigo-500" />, value: data.xp, label: 'XP' },
-          { icon: <Star className="w-5 h-5 text-amber-500" />, value: `Lv.${data.level.level}`, label: data.level.title },
+          { icon: <Star className="w-5 h-5 text-amber-500" />, value: `Lv.${data.level.level}`, label: t(`gamification.levels.${data.level.level}`, data.level.title) },
           { icon: <Flame className="w-5 h-5 text-orange-500" />, value: data.streak, label: t('gamification.streak') },
           { icon: <Trophy className="w-5 h-5 text-emerald-500" />, value: data.passedExams, label: t('gamification.passed') },
         ].map((s, i) => (
@@ -53,7 +53,7 @@ const AchievementsPage: React.FC = () => {
                     {l.level}
                   </div>
                   <div className="flex-1">
-                    <p className={`text-sm font-medium ${isReached ? 'text-slate-900 dark:text-white' : 'text-slate-400 dark:text-slate-500'}`}>{l.title}</p>
+                    <p className={`text-sm font-medium ${isReached ? 'text-slate-900 dark:text-white' : 'text-slate-400 dark:text-slate-500'}`}>{t(`gamification.levels.${l.level}`, l.title)}</p>
                   </div>
                   <span className="text-xs text-slate-400">{l.xp} XP</span>
                   {isReached && <span className="text-emerald-500 text-xs">✓</span>}
@@ -81,8 +81,8 @@ const AchievementsPage: React.FC = () => {
                   }`}
                 >
                   <span className="text-3xl block mb-2">{badge.icon}</span>
-                  <p className="text-xs font-semibold text-slate-900 dark:text-white">{badge.title}</p>
-                  <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">{badge.description}</p>
+                  <p className="text-xs font-semibold text-slate-900 dark:text-white">{t(`gamification.badges.${id}.title`, badge.title)}</p>
+                  <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">{t(`gamification.badges.${id}.description`, badge.description)}</p>
                   {!earned && <Lock className="w-3.5 h-3.5 text-slate-400 absolute top-2 right-2" />}
                 </div>
               );

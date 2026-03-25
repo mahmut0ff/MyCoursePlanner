@@ -64,9 +64,12 @@ const handler: Handler = async (event: HandlerEvent) => {
       .where('roomId', '==', body.roomId).limit(1).get();
     if (!existing.empty) return badRequest('You have already submitted this exam');
 
-    // Verify room is active
+    // Verify room is active and belongs to user organization
     const roomDoc = await adminDb.collection('examRooms').doc(body.roomId).get();
     if (!roomDoc.exists || roomDoc.data()?.status !== 'active') return badRequest('Room is closed');
+    if (roomDoc.data()?.organizationId && user.organizationId && roomDoc.data()?.organizationId !== user.organizationId) {
+      return forbidden('Room belongs to a different organization');
+    }
 
     // Fix #4: Server-side score recalculation
     const questionsSnap = await adminDb.collection('exams').doc(body.examId).collection('questions').orderBy('order').get();

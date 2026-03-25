@@ -8,6 +8,15 @@ service cloud.firestore {
       return request.auth != null && request.auth.token.role == 'super_admin';
     }
 
+    // 1b. Organization Access Check
+    function hasOrgAccess(orgId) {
+      return request.auth != null && (
+        exists(/databases/$(database)/documents/users/$(request.auth.uid)/memberships/$(orgId)) ||
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.organizationId == orgId ||
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.activeOrgId == orgId
+      );
+    }
+
     // 2. Users — can read/write own profile, or super admin
     match /users/{userId} {
       allow read: if request.auth != null;
@@ -30,21 +39,21 @@ service cloud.firestore {
       allow write: if isSuperAdmin();
     }
 
-    // 4. Exams & Lessons (Read-only for students, edited via backend)
+    // 4. Exams & Lessons (Org-scoped read for students, edited via backend)
     match /lessonPlans/{lessonId} {
-      allow read: if request.auth != null;
+      allow read: if isSuperAdmin() || hasOrgAccess(resource.data.organizationId);
       allow write: if isSuperAdmin();
     }
     match /exams/{examId} {
-      allow read: if request.auth != null;
+      allow read: if isSuperAdmin() || hasOrgAccess(resource.data.organizationId);
       allow write: if isSuperAdmin();
       match /questions/{questionId} {
-        allow read: if request.auth != null;
+        allow read: if isSuperAdmin() || hasOrgAccess(get(/databases/$(database)/documents/exams/$(examId)).data.organizationId);
         allow write: if isSuperAdmin();
       }
     }
     match /examRooms/{roomId} {
-      allow read: if request.auth != null;
+      allow read: if isSuperAdmin() || hasOrgAccess(resource.data.organizationId);
       allow write: if isSuperAdmin();
     }
 
@@ -74,18 +83,18 @@ service cloud.firestore {
 
     // 8. Quizzes & Live Sessions
     match /quizzes/{quizId} {
-      allow read: if request.auth != null;
+      allow read: if isSuperAdmin() || hasOrgAccess(resource.data.organizationId);
       allow write: if isSuperAdmin();
       match /questions/{questionId} {
-        allow read: if request.auth != null;
+        allow read: if isSuperAdmin() || hasOrgAccess(get(/databases/$(database)/documents/quizzes/$(quizId)).data.organizationId);
         allow write: if isSuperAdmin();
       }
     }
     match /quizSessions/{sessionId} {
-      allow read: if request.auth != null;
+      allow read: if isSuperAdmin() || hasOrgAccess(resource.data.organizationId);
       allow write: if isSuperAdmin();
       match /participants/{participantId} {
-        allow read: if request.auth != null;
+        allow read: if isSuperAdmin() || hasOrgAccess(get(/databases/$(database)/documents/quizSessions/$(sessionId)).data.organizationId);
         allow write: if isSuperAdmin();
       }
       match /answers/{answerId} {
@@ -94,6 +103,7 @@ service cloud.firestore {
       }
     }
     match /quizShares/{shareId} {
+      // Quiz shares are used for cross-tenant sharing or public joining
       allow read: if request.auth != null;
       allow write: if isSuperAdmin();
     }

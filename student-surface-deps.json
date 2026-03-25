@@ -1,0 +1,370 @@
+{
+  "DashboardPage.tsx": {
+    "api": [],
+    "collections": [],
+    "docs": [],
+    "hooks": [
+      "useAuth"
+    ],
+    "components": [
+      "Navigate",
+      "AdminDashboard",
+      "TeacherDashboard",
+      "StudentDashboard"
+    ]
+  },
+  "StudentCoursesPage.tsx": {
+    "api": [],
+    "collections": [],
+    "docs": [],
+    "hooks": [
+      "useEffect",
+      "useState",
+      "useTranslation",
+      "useAuth"
+    ],
+    "components": [
+      "Course",
+      "FolderOpen",
+      "StudentOrgFilter",
+      "BookOpen",
+      "Users"
+    ]
+  },
+  "StudentGroupsPage.tsx": {
+    "api": [],
+    "collections": [],
+    "docs": [],
+    "hooks": [
+      "useTranslation"
+    ],
+    "components": []
+  },
+  "StudentTeachersPage.tsx": {
+    "api": [],
+    "collections": [],
+    "docs": [],
+    "hooks": [
+      "useTranslation"
+    ],
+    "components": []
+  },
+  "StudentDiaryPage.tsx": {
+    "api": [],
+    "collections": [],
+    "docs": [],
+    "hooks": [
+      "useState",
+      "useEffect",
+      "useMemo",
+      "useTranslation",
+      "useAuth"
+    ],
+    "components": [
+      "Course",
+      "TimelineEvent",
+      "BookOpen",
+      "Filter",
+      "Calendar",
+      "Star",
+      "Icon",
+      "MessageSquare"
+    ]
+  },
+  "StudentProgressPage.tsx": {
+    "api": [],
+    "collections": [],
+    "docs": [],
+    "hooks": [
+      "useState",
+      "useEffect",
+      "useMemo",
+      "useTranslation",
+      "useAuth"
+    ],
+    "components": [
+      "CourseStats",
+      "TrendingUp",
+      "Award",
+      "Star",
+      "UserCheck",
+      "BookOpen",
+      "AlertTriangle"
+    ]
+  },
+  "StudentProfilePage.tsx": {
+    "api": [
+      "apiCheckAuthIdentity"
+    ],
+    "collections": [],
+    "docs": [],
+    "hooks": [
+      "useState",
+      "useRef",
+      "useTranslation",
+      "useAuth",
+      "useEffect"
+    ],
+    "components": [
+      "HTMLInputElement",
+      "Camera",
+      "AtSign",
+      "Loader2",
+      "CheckCircle2",
+      "XCircle",
+      "Save",
+      "Globe",
+      "Lock",
+      "StudentPortfolio",
+      "AvatarCropper"
+    ]
+  },
+  "AchievementsPage.tsx": {
+    "api": [
+      "apiGetGamification"
+    ],
+    "collections": [],
+    "docs": [],
+    "hooks": [
+      "useEffect",
+      "useState",
+      "useTranslation"
+    ],
+    "components": [
+      "GamificationData",
+      "Zap",
+      "Star",
+      "Flame",
+      "Trophy",
+      "Lock"
+    ]
+  },
+  "MyResultsPage.tsx": {
+    "api": [
+      "apiGetAttemptsByStudent"
+    ],
+    "collections": [],
+    "docs": [],
+    "hooks": [
+      "useEffect",
+      "useState",
+      "useTranslation",
+      "useAuth"
+    ],
+    "components": [
+      "ExamAttempt",
+      "ListSkeleton",
+      "EmptyState",
+      "Link",
+      "Trophy",
+      "XCircle",
+      "Clock"
+    ]
+  },
+  "ResultPage.tsx": {
+    "api": [
+      "apiGetAttempt",
+      "apiGenerateCertificate"
+    ],
+    "collections": [],
+    "docs": [],
+    "hooks": [
+      "useEffect",
+      "useState",
+      "useParams",
+      "useNavigate",
+      "useTranslation"
+    ],
+    "components": [
+      "ExamAttempt",
+      "ArrowLeft",
+      "Trophy",
+      "XCircle",
+      "Target",
+      "Clock",
+      "CheckCircle",
+      "Award",
+      "Brain",
+      "RefreshCw",
+      "HelpCircle"
+    ]
+  },
+  "CertificatePage.tsx": {
+    "api": [
+      "apiGetCertificate"
+    ],
+    "collections": [],
+    "docs": [],
+    "hooks": [
+      "useEffect",
+      "useState",
+      "useParams",
+      "useTranslation"
+    ],
+    "components": [
+      "CertificateData",
+      "Award",
+      "CheckCircle",
+      "Share2"
+    ]
+  },
+  "MyCertificatesPage.tsx": {
+    "api": [
+      "apiGetMyCertificates"
+    ],
+    "collections": [],
+    "docs": [],
+    "hooks": [
+      "useEffect",
+      "useState",
+      "useTranslation",
+      "useAuth"
+    ],
+    "components": [
+      "Cert",
+      "ListSkeleton",
+      "EmptyState",
+      "Link",
+      "Award"
+    ]
+  },
+  "ChatWorkspace.tsx": {
+    "api": [],
+    "collections": [],
+    "docs": [],
+    "hooks": [
+      "useState",
+      "useTranslation",
+      "useAuth",
+      "useChatRooms",
+      "useChat"
+    ],
+    "components": [
+      "ChatRoomList",
+      "ChatRoomView",
+      "MessageSquareText"
+    ]
+  },
+  "NotificationsPage.tsx": {
+    "api": [
+      "apiGetNotifications",
+      "apiMarkNotificationRead",
+      "apiMarkAllNotificationsRead"
+    ],
+    "collections": [],
+    "docs": [],
+    "hooks": [
+      "useEffect",
+      "useState",
+      "useTranslation",
+      "useNavigate"
+    ],
+    "components": [
+      "AppNotification",
+      "Check",
+      "Bell",
+      "ExternalLink"
+    ]
+  },
+  "ExamTakePage.tsx": {
+    "api": [
+      "apiGetRoom",
+      "apiGetExam",
+      "apiSaveAttempt",
+      "apiAwardXP"
+    ],
+    "collections": [],
+    "docs": [],
+    "hooks": [
+      "useEffect",
+      "useState",
+      "useCallback",
+      "useRef",
+      "useParams",
+      "useNavigate",
+      "useTranslation",
+      "useAuth"
+    ],
+    "components": [
+      "ExamRoom",
+      "Exam",
+      "Question",
+      "Record",
+      "Clock",
+      "AlertTriangle",
+      "Send",
+      "ChevronLeft",
+      "ChevronRight"
+    ]
+  },
+  "JoinRoomPage.tsx": {
+    "api": [
+      "apiGetRoomByCode",
+      "apiJoinRoom"
+    ],
+    "collections": [],
+    "docs": [],
+    "hooks": [
+      "useState",
+      "useNavigate",
+      "useTranslation"
+    ],
+    "components": [
+      "Radio",
+      "ArrowRight"
+    ]
+  },
+  "JoinQuizPage.tsx": {
+    "api": [
+      "apiJoinQuizSession",
+      "apiGetQuizSessionByCode"
+    ],
+    "collections": [],
+    "docs": [],
+    "hooks": [
+      "useState",
+      "useNavigate",
+      "useTranslation"
+    ],
+    "components": [
+      "Gamepad2",
+      "Loader2",
+      "ArrowRight"
+    ]
+  },
+  "QuizPlayPage.tsx": {
+    "api": [
+      "apiGetQuizSession",
+      "apiSubmitQuizAnswer",
+      "apiJoinQuizSession"
+    ],
+    "collections": [],
+    "docs": [],
+    "hooks": [
+      "useEffect",
+      "useState",
+      "useRef",
+      "useCallback",
+      "useParams",
+      "useNavigate",
+      "useTranslation",
+      "useAuth"
+    ],
+    "components": [
+      "QuizSession",
+      "SessionParticipant",
+      "GamePhase",
+      "ReturnType",
+      "Gamepad2",
+      "Users",
+      "Clock",
+      "Loader2",
+      "CheckCircle",
+      "XCircle",
+      "Zap",
+      "Star",
+      "Trophy",
+      "ArrowLeft"
+    ]
+  }
+}

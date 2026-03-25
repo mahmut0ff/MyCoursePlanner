@@ -13,7 +13,8 @@ const ExamTakePage: React.FC = () => {
   const { roomId } = useParams<{ roomId: string }>();
   const navigate = useNavigate();
   const { t } = useTranslation();
-  useAuth();
+  const { profile } = useAuth();
+  const [errorStr, setErrorStr] = useState('');
 
   const [room, setRoom] = useState<ExamRoom | null>(null);
   const [exam, setExam] = useState<Exam | null>(null);
@@ -34,7 +35,11 @@ const ExamTakePage: React.FC = () => {
     if (!roomId) return;
     try {
       const r = await apiGetRoom(roomId);
-      if (!r) { navigate('/join'); return; }
+      if (!r) { setErrorStr('rooms.errors.notFound'); return; }
+      if (profile?.organizationId && r.organizationId && r.organizationId !== profile.organizationId) {
+        setErrorStr('rooms.errors.notFound');
+        return;
+      }
       setRoom(r);
       
       const e = await apiGetExam(r.examId);
@@ -128,7 +133,8 @@ const ExamTakePage: React.FC = () => {
     }
   };
 
-  if (loading) return <div className="flex items-center justify-center min-h-screen"><div className="w-10 h-10 border-4 border-primary-200 border-t-primary-600 rounded-full animate-spin" /></div>;
+  if (loading) return <div role="status" className="flex items-center justify-center min-h-screen"><div className="w-10 h-10 border-4 border-primary-200 border-t-primary-600 rounded-full animate-spin" /></div>;
+  if (errorStr) return <div className="text-center py-20"><h3 className="text-lg font-medium text-red-500">{t(errorStr)}</h3></div>;
   if (!exam || !questions.length) return <div className="text-center py-20"><h3 className="text-lg font-medium text-slate-700 dark:text-slate-300">{t('rooms.examNotAvailable')}</h3></div>;
 
   const q = questions[currentQ];

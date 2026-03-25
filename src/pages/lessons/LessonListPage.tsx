@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { getLessonPlans } from '../../services/lessons.service';
+import { apiGetLessons } from '../../lib/api';
 import { useAuth } from '../../contexts/AuthContext';
 import type { LessonPlan } from '../../types';
 import { formatDate } from '../../utils/grading';
@@ -22,7 +22,7 @@ const LessonListPage: React.FC = () => {
   const isStaff = role === 'admin' || role === 'teacher';
 
   useEffect(() => {
-    getLessonPlans().then(setLessons).catch(console.error).finally(() => setLoading(false));
+    apiGetLessons().then(setLessons).catch(console.error).finally(() => setLoading(false));
   }, []);
 
   const filtered = lessons.filter((l) => {

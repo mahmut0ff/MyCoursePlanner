@@ -46,9 +46,8 @@ const handler: Handler = async (event: HandlerEvent) => {
         ? await adminDb.collection(COLLECTION).where('organizationId', '==', orgFilter).orderBy('createdAt', 'desc').get()
         : await adminDb.collection(COLLECTION).orderBy('createdAt', 'desc').get();
     } else {
-      snap = orgFilter
-        ? await adminDb.collection(COLLECTION).where('organizationId', '==', orgFilter).where('status', '==', 'active').orderBy('createdAt', 'desc').get()
-        : await adminDb.collection(COLLECTION).where('status', '==', 'active').orderBy('createdAt', 'desc').get();
+      if (!orgFilter) return ok([]);
+      snap = await adminDb.collection(COLLECTION).where('organizationId', '==', orgFilter).where('status', '==', 'active').orderBy('createdAt', 'desc').get();
     }
     return ok(snap.docs.map((d: any) => ({ id: d.id, ...d.data() })));
   }

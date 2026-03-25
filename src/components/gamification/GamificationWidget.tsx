@@ -30,7 +30,7 @@ const GamificationWidget: React.FC = () => {
             </div>
             <div>
               <p className="text-sm text-white/70">{t('gamification.level')} {level.level}</p>
-              <h3 className="text-lg font-bold">{level.title}</h3>
+              <h3 className="text-lg font-bold">{t(`gamification.levels.${level.level}`, level.title)}</h3>
             </div>
           </div>
           <div className="text-right">
@@ -46,7 +46,7 @@ const GamificationWidget: React.FC = () => {
         </div>
         {level.nextLevelXp && (
           <p className="text-xs text-white/60 mt-1.5">
-            {data.xp - level.xp} / {level.nextLevelXp - level.xp} XP → {level.nextLevelTitle}
+            {data.xp - level.xp} / {level.nextLevelXp - level.xp} XP → {t(`gamification.levels.${level.level + 1}`, level.nextLevelTitle || '')}
           </p>
         )}
       </div>
@@ -88,7 +88,7 @@ const GamificationWidget: React.FC = () => {
                 title={b.description}
               >
                 <span>{b.icon}</span>
-                <span className="font-medium text-slate-700 dark:text-slate-300">{b.title}</span>
+                <span className="font-medium text-slate-700 dark:text-slate-300">{t(`gamification.badges.${b.id}.title`, b.title)}</span>
               </div>
             ))}
           </div>

@@ -48,6 +48,7 @@ const LoginPage: React.FC = () => {
       // AuthContext and ProtectedRoute will automatically redirect to /onboarding if no profile exists.
       // Or to /dashboard if profile exists.
     } catch (err: any) {
+      console.error('Google Sign-In Error:', err);
       if (err.code !== 'auth/popup-closed-by-user') {
         setError('Google sign-in failed. Please try again.');
       }

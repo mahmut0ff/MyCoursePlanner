@@ -122,6 +122,8 @@ export const apiChangeMemberRole = (userId: string, organizationId: string, newR
   memberReq('changeRole', 'POST', { userId, organizationId, newRole });
 export const apiSwitchOrg = (organizationId: string) =>
   memberReq('switchOrg', 'POST', { organizationId });
+export const apiPublicJoin = (orgSlug: string) =>
+  memberReq<{ status: string; orgId?: string; orgName?: string }>('publicJoin', 'POST', { orgSlug });
 
 // ---- Organization Directory (public) ----
 export const apiGetOrgDirectory = () =>

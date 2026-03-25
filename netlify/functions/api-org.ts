@@ -420,9 +420,12 @@ const handler: Handler = async (event: HandlerEvent) => {
       return ok({
         organizationId: orgId,
         name: orgData?.name || '',
+        slug: orgData?.slug || '',
         logo: orgData?.logo || '',
         description: orgData?.description || '',
         isOnline: orgData?.isOnline || false,
+        publicProfileEnabled: orgData?.publicProfileEnabled || false,
+        contactLinks: orgData?.contactLinks || {},
         city: orgData?.city || '',
         country: orgData?.country || '',
         address: orgData?.address || '',
@@ -452,6 +455,8 @@ const handler: Handler = async (event: HandlerEvent) => {
       if (body.logo !== undefined) orgUpdate.logo = body.logo;
       if (body.description !== undefined) orgUpdate.description = body.description;
       if (body.isOnline !== undefined) orgUpdate.isOnline = body.isOnline;
+      if (body.publicProfileEnabled !== undefined) orgUpdate.publicProfileEnabled = body.publicProfileEnabled;
+      if (body.contactLinks !== undefined) orgUpdate.contactLinks = body.contactLinks;
       if (body.workingHours !== undefined) orgUpdate.workingHours = body.workingHours;
       if (body.address !== undefined) orgUpdate.address = body.address;
       if (body.contactEmail !== undefined) orgUpdate.contactEmail = body.contactEmail;

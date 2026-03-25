@@ -74,7 +74,7 @@ const handler: Handler = async (event: HandlerEvent) => {
     const orgDoc = await adminDb.collection('organizations').doc(params.orgId).get();
     if (!orgDoc.exists) return notFound('Organization not found');
     const org = orgDoc.data()!;
-    if (!org.isPublic) return forbidden();
+    if (!org.publicProfileEnabled && !org.isPublic) return forbidden();
 
     const snap = await adminDb.collection('orgMembers').doc(params.orgId)
       .collection('members')
@@ -124,6 +124,133 @@ const handler: Handler = async (event: HandlerEvent) => {
       const snap = await query.get();
       const members = snap.docs.map((d: any) => ({ id: d.id, ...d.data() }));
       return ok(members);
+    }
+
+    // ═══ POST: Public Join (QR / visit card flow) ═══
+    if (event.httpMethod === 'POST' && action === 'publicJoin') {
+      const body = JSON.parse(event.body || '{}');
+      if (!body.orgSlug) return badRequest('orgSlug required');
+
+      // Resolve org by slug
+      const orgSnap = await adminDb.collection('organizations')
+        .where('slug', '==', body.orgSlug).limit(1).get();
+      if (orgSnap.empty) {
+        // Audit: invalid slug attempt
+        adminDb.collection('systemLogs').add({
+          action: 'public_join_invalid_slug',
+          actorId: user.uid,
+          metadata: { slug: body.orgSlug },
+          createdAt: now(),
+        }).catch(() => {});
+        return ok({ status: 'org_not_found' });
+      }
+
+      const orgDoc = orgSnap.docs[0];
+      const org = orgDoc.data();
+      const orgId = orgDoc.id;
+
+      // Verify public profile is enabled and org is active
+      if (!org.publicProfileEnabled || org.status !== 'active') {
+        return ok({ status: 'org_unavailable' });
+      }
+
+      // Check existing membership
+      const existing = await getMembership(user.uid, orgId) as any;
+
+      if (existing) {
+        if (existing.status === 'active') {
+          return ok({ status: 'already_member', orgId, orgName: org.name });
+        }
+        if (existing.status === 'pending') {
+          return ok({ status: 'pending', orgId, orgName: org.name });
+        }
+        // Reactivate: user previously left or was removed
+        if (['left', 'removed'].includes(existing.status)) {
+          const ts = now();
+          const reactivate = { status: 'active', role: 'student', joinedAt: ts, updatedAt: ts, joinMethod: 'public_join' };
+          await adminDb.collection('users').doc(user.uid)
+            .collection('memberships').doc(orgId).update(reactivate);
+          await adminDb.collection('orgMembers').doc(orgId)
+            .collection('members').doc(user.uid).update(reactivate);
+
+          // Set active org
+          await adminDb.collection('users').doc(user.uid).update({
+            activeOrgId: orgId,
+            organizationId: orgId,
+            organizationName: org.name,
+            role: 'student',
+            updatedAt: ts,
+          });
+
+          // Audit log
+          adminDb.collection('systemLogs').add({
+            action: 'public_join_reactivated',
+            actorId: user.uid,
+            actorName: user.displayName,
+            targetType: 'org',
+            targetId: orgId,
+            metadata: { slug: body.orgSlug, previousStatus: existing.status },
+            createdAt: ts,
+          }).catch(() => {});
+
+          return ok({ status: 'reactivated', orgId, orgName: org.name });
+        }
+      }
+
+      // Create new membership — directly active (no approval needed for public join)
+      const ts = now();
+      await writeMembership({
+        userId: user.uid,
+        userEmail: user.email,
+        userName: user.displayName,
+        organizationId: orgId,
+        organizationName: org.name,
+        role: 'student',
+        status: 'active',
+        joinMethod: 'public_join',
+      });
+
+      // Set active org
+      await adminDb.collection('users').doc(user.uid).update({
+        activeOrgId: orgId,
+        organizationId: orgId,
+        organizationName: org.name,
+        role: 'student',
+        updatedAt: ts,
+      });
+
+      // Update org member count
+      const activeSnap = await adminDb.collection('orgMembers').doc(orgId)
+        .collection('members').where('status', '==', 'active').get();
+      const studentCount = activeSnap.docs.filter((d: any) => d.data().role === 'student').length;
+      const teacherCount = activeSnap.docs.filter((d: any) =>
+        ['teacher', 'mentor', 'admin', 'owner'].includes(d.data().role)).length;
+      await adminDb.collection('organizations').doc(orgId).update({
+        studentsCount: studentCount,
+        teachersCount: teacherCount,
+        updatedAt: ts,
+      });
+
+      // Audit log
+      adminDb.collection('systemLogs').add({
+        action: 'public_join_success',
+        actorId: user.uid,
+        actorName: user.displayName,
+        targetType: 'org',
+        targetId: orgId,
+        metadata: { slug: body.orgSlug },
+        createdAt: ts,
+      }).catch(() => {});
+
+      // Notify org admins
+      notifyOrgAdmins(
+        orgId, 'new_vacancy_application' as any,
+        'Новый студент через визитку',
+        `${user.displayName || user.email} вступил(а) в организацию через QR/визитку`,
+        '/membership',
+      ).catch(() => {});
+
+      return ok({ status: 'joined', orgId, orgName: org.name });
     }
 
     // ═══ POST: Apply to org ═══

@@ -119,7 +119,7 @@ const App: React.FC = () => {
             <Route path="/register" element={<RegisterPage />} />
             <Route path="/onboarding" element={<OnboardingPage />} />
             <Route path="/directory" element={<OrganizationsDirectoryPage />} />
-            <Route path="/org/:slugOrId" element={<PublicOrgProfilePage />} />
+            <Route path="/org/:slug" element={<PublicOrgProfilePage />} />
 
           {/* Exam Taking (full screen) */}
           <Route path="/take/:roomId" element={<ProtectedRoute><ExamTakePage /></ProtectedRoute>} />

@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { signIn, signInWithGoogle } from '../../services/auth.service';
-import { apiResolveUsername } from '../../lib/api';
+import { apiResolveUsername, apiPublicJoin } from '../../lib/api';
 import { Mail, Lock, Eye, EyeOff } from 'lucide-react';
 import LanguageSwitcher from '../../components/LanguageSwitcher';
 
@@ -14,6 +14,8 @@ const LoginPage: React.FC = () => {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const orgSlug = searchParams.get('orgSlug');
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -31,6 +33,9 @@ const LoginPage: React.FC = () => {
         }
       }
       await signIn(loginEmail, password);
+      if (orgSlug) {
+        try { await apiPublicJoin(orgSlug); } catch {}
+      }
       navigate('/dashboard');
     } catch (err: any) {
       if (err.message === 'User not found') setError(t('auth.userNotFound', 'Пользователь с таким никнеймом не найден'));
@@ -197,7 +202,7 @@ const LoginPage: React.FC = () => {
 
           <p className="text-center text-sm text-slate-500 dark:text-slate-400 mt-8">
             {t('auth.noAccount')}{' '}
-            <Link to="/register" className="text-primary-600 font-semibold hover:text-primary-700 dark:text-primary-400">
+            <Link to={`/register${orgSlug ? `?orgSlug=${orgSlug}` : ''}`} className="text-primary-600 font-semibold hover:text-primary-700 dark:text-primary-400">
               {t('auth.register')}
             </Link>
           </p>

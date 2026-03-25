@@ -83,6 +83,13 @@ export const PLANS: Plan[] = [
 
 // ---- Organizations (Tenants) ----
 
+export interface ContactLinks {
+  telegram?: string;
+  whatsapp?: string;
+  instagram?: string;
+  website?: string;
+}
+
 export interface Organization {
   id: string;
   name: string;
@@ -101,9 +108,10 @@ export interface Organization {
   city?: string;
   country?: string;
   isOnline?: boolean;
-  isPublic?: boolean;
+  publicProfileEnabled?: boolean;
   contactEmail?: string;
   contactPhone?: string;
+  contactLinks?: ContactLinks;
   subjects?: string[];
   createdAt: string;
   updatedAt: string;
@@ -514,6 +522,7 @@ export interface ScheduleEvent {
 export interface OrgSettings {
   organizationId: string;
   name: string;
+  slug?: string;
   logo?: string;
   timezone: string;
   locale: string;
@@ -535,6 +544,9 @@ export interface OrgSettings {
   maxTeachers?: number;
   storageUsedMb?: number;
   isOnline?: boolean;
+  // Public Profile / Visit Card
+  publicProfileEnabled?: boolean;
+  contactLinks?: ContactLinks;
   // Enrichment fields
   workingHours?: string;
   address?: string;

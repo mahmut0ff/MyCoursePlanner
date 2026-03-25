@@ -7,16 +7,19 @@ import { storage } from '../../lib/firebase';
 import {
   Save, Building2, GraduationCap, Check, Bell, Lock, Palette, BarChart3,
   Globe, Database, User, Shield, Eye, EyeOff, Camera, Loader2, MapPin, Phone, Mail, Clock,
+  QrCode, Download, Send, MessageCircle, Printer, Copy, CheckCircle,
 } from 'lucide-react';
 import type { OrgSettings } from '../../types';
+import QRCode from 'qrcode';
 
-type Tab = 'profile' | 'general' | 'academic' | 'branding' | 'notifications' | 'localization' | 'security' | 'data' | 'limits';
+type Tab = 'profile' | 'general' | 'academic' | 'branding' | 'visitcard' | 'notifications' | 'localization' | 'security' | 'data' | 'limits';
 
 const TABS: { id: Tab; icon: React.ElementType; labelKey: string }[] = [
   { id: 'profile', icon: User, labelKey: 'org.settings.profileTab' },
   { id: 'general', icon: Building2, labelKey: 'org.settings.general' },
   { id: 'academic', icon: GraduationCap, labelKey: 'org.settings.academic' },
   { id: 'branding', icon: Palette, labelKey: 'org.settings.branding' },
+  { id: 'visitcard', icon: QrCode, labelKey: 'org.settings.visitCardTab' },
   { id: 'notifications', icon: Bell, labelKey: 'org.settings.notifications' },
   { id: 'localization', icon: Globe, labelKey: 'org.settings.localizationTab' },
   { id: 'security', icon: Lock, labelKey: 'org.settings.security' },
@@ -305,6 +308,178 @@ const BrandingTab: React.FC<{ settings: OrgSettings; update: (k: string, v: any)
   );
 };
 
+/* ════════════════════════════════════ VISIT CARD ════════════════════════════════════ */
+const VisitCardTab: React.FC<{ settings: OrgSettings; update: (k: string, v: any) => void }> = ({ settings, update }) => {
+  const { t } = useTranslation();
+  const [qrDataUrl, setQrDataUrl] = useState<string>('');
+  const [copied, setCopied] = useState(false);
+  const slug = settings.slug || settings.organizationId;
+  const publicUrl = `${typeof window !== 'undefined' ? window.location.origin : ''}/org/${slug}`;
+  const links = settings.contactLinks || {};
+
+  // Generate QR on mount / slug change
+  useEffect(() => {
+    if (!slug) return;
+    QRCode.toDataURL(publicUrl, { width: 400, margin: 2, color: { dark: '#1e293b' } })
+      .then(setQrDataUrl)
+      .catch(() => {});
+  }, [publicUrl, slug]);
+
+  const downloadQR = () => {
+    if (!qrDataUrl) return;
+    const a = document.createElement('a');
+    a.href = qrDataUrl;
+    a.download = `${slug}-qr.png`;
+    a.click();
+  };
+
+  const copyLink = () => {
+    navigator.clipboard.writeText(publicUrl);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  const printPoster = () => {
+    const win = window.open('', '_blank');
+    if (!win) return;
+    win.document.write(`
+      <!DOCTYPE html>
+      <html><head>
+        <title>${settings.name} — QR</title>
+        <style>
+          * { margin: 0; padding: 0; box-sizing: border-box; }
+          body { font-family: 'Inter', -apple-system, sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; padding: 40px; background: white; }
+          .poster { width: 100%; max-width: 500px; text-align: center; }
+          .logo { width: 80px; height: 80px; border-radius: 16px; object-fit: cover; margin: 0 auto 20px; }
+          .logo-placeholder { width: 80px; height: 80px; border-radius: 16px; background: #f1f5f9; display: flex; align-items: center; justify-content: center; margin: 0 auto 20px; font-size: 32px; font-weight: bold; color: #6366f1; }
+          h1 { font-size: 28px; font-weight: 700; color: #1e293b; margin-bottom: 8px; }
+          .desc { font-size: 14px; color: #64748b; margin-bottom: 24px; line-height: 1.5; }
+          .qr { margin: 0 auto 24px; }
+          .qr img { width: 250px; height: 250px; }
+          .url { font-size: 13px; color: #6366f1; word-break: break-all; margin-bottom: 16px; }
+          .cta { font-size: 16px; font-weight: 600; color: #1e293b; padding: 12px 24px; border: 2px solid #e2e8f0; border-radius: 12px; display: inline-block; }
+          @media print {
+            body { padding: 20px; }
+          }
+        </style>
+      </head><body>
+        <div class="poster">
+          ${settings.logo ? `<img src="${settings.logo}" class="logo" />` : `<div class="logo-placeholder">${(settings.name || 'O')[0]}</div>`}
+          <h1>${settings.name || ''}</h1>
+          ${settings.description ? `<p class="desc">${settings.description}</p>` : ''}
+          <div class="qr"><img src="${qrDataUrl}" /></div>
+          <p class="url">${publicUrl}</p>
+          <div class="cta">${t('org.settings.scanToJoin', 'Отсканируйте QR чтобы вступить')}</div>
+        </div>
+      </body></html>
+    `);
+    win.document.close();
+    setTimeout(() => { win.print(); }, 500);
+  };
+
+  return (
+    <div className="space-y-6">
+      {/* Enable Public Profile */}
+      <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h3 className="font-semibold text-slate-900 dark:text-white flex items-center gap-2"><QrCode className="w-4 h-4" />{t('org.settings.visitCard', 'Визитка организации')}</h3>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">{t('org.settings.visitCardDesc', 'Публичная страница для привлечения студентов через QR-код')}</p>
+          </div>
+          <button
+            onClick={() => update('publicProfileEnabled', !settings.publicProfileEnabled)}
+            className={`relative w-11 h-6 rounded-full transition-colors ${settings.publicProfileEnabled ? 'bg-primary-500' : 'bg-slate-300 dark:bg-slate-600'}`}
+          >
+            <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${settings.publicProfileEnabled ? 'left-[22px]' : 'left-0.5'}`} />
+          </button>
+        </div>
+
+        {settings.publicProfileEnabled && (
+          <div className="mt-4 pt-4 border-t border-slate-100 dark:border-slate-700">
+            <div className="flex items-center gap-2 text-sm">
+              <span className="text-slate-500 dark:text-slate-400">{t('org.settings.publicLink', 'Публичная ссылка')}:</span>
+              <a href={publicUrl} target="_blank" rel="noopener noreferrer" className="text-primary-600 dark:text-primary-400 hover:underline truncate">{publicUrl}</a>
+              <button onClick={copyLink} className="ml-1 p-1 rounded hover:bg-slate-100 dark:hover:bg-slate-700 transition">
+                {copied ? <CheckCircle className="w-4 h-4 text-green-500" /> : <Copy className="w-4 h-4 text-slate-400" />}
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {settings.publicProfileEnabled && (
+        <>
+          {/* Social Links */}
+          <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-6">
+            <h3 className="font-semibold text-slate-900 dark:text-white mb-4">{t('org.settings.socialLinks', 'Социальные сети')}</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                  <span className="flex items-center gap-1"><Send className="w-3 h-3 text-blue-500" /> Telegram</span>
+                </label>
+                <input type="text" value={links.telegram || ''}
+                  onChange={(e) => update('contactLinks', { ...links, telegram: e.target.value })}
+                  className="input" placeholder="@username" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                  <span className="flex items-center gap-1"><MessageCircle className="w-3 h-3 text-green-600" /> WhatsApp</span>
+                </label>
+                <input type="text" value={links.whatsapp || ''}
+                  onChange={(e) => update('contactLinks', { ...links, whatsapp: e.target.value })}
+                  className="input" placeholder="+996XXXXXXXXX" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                  <span className="flex items-center gap-1"><svg className="w-3 h-3 text-pink-600" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 100 12.324 6.162 6.162 0 000-12.324zM12 16a4 4 0 110-8 4 4 0 010 8zm6.406-11.845a1.44 1.44 0 100 2.881 1.44 1.44 0 000-2.881z"/></svg> Instagram</span>
+                </label>
+                <input type="text" value={links.instagram || ''}
+                  onChange={(e) => update('contactLinks', { ...links, instagram: e.target.value })}
+                  className="input" placeholder="@username" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                  <span className="flex items-center gap-1"><Globe className="w-3 h-3 text-violet-600" /> {t('org.settings.websiteLabel', 'Веб-сайт')}</span>
+                </label>
+                <input type="text" value={links.website || ''}
+                  onChange={(e) => update('contactLinks', { ...links, website: e.target.value })}
+                  className="input" placeholder="https://example.com" />
+              </div>
+            </div>
+          </div>
+
+          {/* QR Code */}
+          <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-6">
+            <h3 className="font-semibold text-slate-900 dark:text-white mb-4">{t('org.settings.qrCode', 'QR-код')}</h3>
+            <div className="flex flex-col sm:flex-row items-center gap-6">
+              {qrDataUrl ? (
+                <div className="w-48 h-48 bg-white rounded-2xl p-3 shadow-lg border border-slate-200 dark:border-slate-600">
+                  <img src={qrDataUrl} alt="QR" className="w-full h-full" />
+                </div>
+              ) : (
+                <div className="w-48 h-48 bg-slate-100 dark:bg-slate-700 rounded-2xl flex items-center justify-center">
+                  <QrCode className="w-12 h-12 text-slate-400" />
+                </div>
+              )}
+              <div className="space-y-3 text-center sm:text-left">
+                <p className="text-sm text-slate-500 dark:text-slate-400">{t('org.settings.qrDesc', 'Распечатайте этот QR-код и разместите на ресепшене, визитках или баннерах')}</p>
+                <div className="flex flex-wrap gap-2">
+                  <button onClick={downloadQR} disabled={!qrDataUrl} className="btn-primary text-sm flex items-center gap-2">
+                    <Download className="w-4 h-4" /> {t('org.settings.downloadQR', 'Скачать QR')}
+                  </button>
+                  <button onClick={printPoster} disabled={!qrDataUrl} className="btn-secondary text-sm flex items-center gap-2">
+                    <Printer className="w-4 h-4" /> {t('org.settings.printPoster', 'Печать постера')}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </>
+      )}
+    </div>
+  );
+};
+
 /* ════════════════════════════════════ NOTIFICATIONS ════════════════════════════════════ */
 const NotificationsTab: React.FC<{ settings: OrgSettings; update: (k: string, v: any) => void }> = ({ settings, update }) => {
   const { t } = useTranslation();
@@ -528,6 +703,7 @@ const OrgSettingsPage: React.FC = () => {
       case 'general': return <GeneralTab settings={settings} update={update} />;
       case 'academic': return <AcademicTab settings={settings} update={update} />;
       case 'branding': return <BrandingTab settings={settings} update={update} />;
+      case 'visitcard': return <VisitCardTab settings={settings} update={update} />;
       case 'notifications': return <NotificationsTab settings={settings} update={update} />;
       case 'localization': return <LocalizationTab settings={settings} update={update} />;
       case 'security': return <SecurityTab settings={settings} update={update} />;

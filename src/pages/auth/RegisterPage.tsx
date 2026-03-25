@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { signUp, signInWithGoogle } from '../../services/auth.service';
 import { createUser } from '../../services/users.service';
-import { apiCheckAuthIdentity } from '../../lib/api';
+import { apiCheckAuthIdentity, apiPublicJoin } from '../../lib/api';
 import { Mail, Lock, User, Eye, EyeOff, Building2, BookOpenCheck, School, AtSign, CheckCircle2, XCircle, Loader2 } from 'lucide-react';
 import LanguageSwitcher from '../../components/LanguageSwitcher';
 
@@ -24,6 +24,8 @@ const RegisterPage: React.FC = () => {
   const [usernameStatus, setUsernameStatus] = useState<'idle' | 'checking' | 'available' | 'taken'>('idle');
   const [emailStatus, setEmailStatus] = useState<'idle' | 'checking' | 'available' | 'taken'>('idle');
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const orgSlug = searchParams.get('orgSlug');
 
   useEffect(() => {
     if (!username || username.length < 3) return setUsernameStatus('idle');
@@ -53,6 +55,12 @@ const RegisterPage: React.FC = () => {
   const currentStep = step === 'role' ? 1 : step === 'account' ? 2 : 3;
 
   const handleRoleStep = (role: RegRole) => {
+    // If coming from QR/visit card, force student role
+    if (orgSlug) {
+      setRegRole('student');
+      setStep('account');
+      return;
+    }
     setRegRole(role);
     setStep('account');
   };
@@ -76,6 +84,9 @@ const RegisterPage: React.FC = () => {
     try {
       const cred = await signUp(email, password, name);
       await createUser(cred.user.uid, email, name, regRole === 'teacher' ? 'teacher' : 'student', username);
+      if (orgSlug) {
+        try { await apiPublicJoin(orgSlug); } catch {}
+      }
       navigate(regRole === 'teacher' ? '/teacher-profile' : '/dashboard');
     } catch (err: any) {
       console.error('Registration error:', err);

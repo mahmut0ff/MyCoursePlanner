@@ -28,7 +28,7 @@ const handler: Handler = async (event: HandlerEvent) => {
   // Public directory: list all public orgs
   if (event.httpMethod === 'GET' && action === 'directory') {
     const snap = await adminDb.collection(COLLECTION)
-      .where('isPublic', '==', true)
+      .where('publicProfileEnabled', '==', true)
       .where('status', '==', 'active')
       .limit(50)
       .get();
@@ -74,7 +74,7 @@ const handler: Handler = async (event: HandlerEvent) => {
     }
 
     const data = doc.data()!;
-    if (!data.isPublic) return notFound('Organization not found');
+    if (!data.publicProfileEnabled) return notFound('Organization not found');
 
     // Fetch org courses for public display
     const coursesSnap = await adminDb.collection('courses')
@@ -85,6 +85,15 @@ const handler: Handler = async (event: HandlerEvent) => {
       title: c.data().title || c.data().name || '',
       description: c.data().description || '',
     }));
+
+    // Log public profile view
+    adminDb.collection('systemLogs').add({
+      action: 'public_profile_viewed',
+      targetType: 'org',
+      targetId: doc.id,
+      metadata: { slug: data.slug },
+      createdAt: new Date().toISOString(),
+    }).catch(() => {});
 
     return ok({
       id: doc.id,
@@ -101,6 +110,7 @@ const handler: Handler = async (event: HandlerEvent) => {
       subjects: data.subjects || [],
       contactEmail: data.contactEmail || '',
       contactPhone: data.contactPhone || '',
+      contactLinks: data.contactLinks || {},
       photos: data.photos || [],
       courses,
       studentsCount: data.studentsCount || 0,
@@ -162,6 +172,7 @@ const handler: Handler = async (event: HandlerEvent) => {
       planId: body.planId || 'starter',
       status: 'active',
       isPublic: true,
+      publicProfileEnabled: true,
       studentsCount: 0,
       teachersCount: 1, // owner counts as teacher
       examsCount: 0,

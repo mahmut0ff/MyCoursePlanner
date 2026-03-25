@@ -436,3 +436,18 @@ export const apiGetQuizAnalytics = (quizId: string) =>
 export const apiExportSessionResults = (sessionId: string) =>
   apiRequest('api-quiz-analytics', 'POST', { sessionId });
 
+// ============================================================
+// CHAT SYSTEM API
+// ============================================================
+
+export const apiCreateChatRoom = (data: any) =>
+  apiRequest('api-chat', 'POST', data, { action: 'createRoom' });
+
+export const apiUpdateChatParticipants = (roomId: string, addUids?: string[], removeUids?: string[]) =>
+  apiRequest('api-chat', 'POST', { roomId, addUids, removeUids }, { action: 'updateParticipants' });
+
+export const apiArchiveChatRoom = (roomId: string, isArchived: boolean) =>
+  apiRequest('api-chat', 'POST', { roomId, isArchived }, { action: 'archiveRoom' });
+
+export const apiModerateChatMessage = (roomId: string, messageId: string) =>
+  apiRequest('api-chat', 'POST', { roomId, messageId }, { action: 'moderateMessage' });

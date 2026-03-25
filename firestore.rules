@@ -108,7 +108,42 @@ service cloud.firestore {
       allow write: if isSuperAdmin() || (request.auth != null && resource.data.recipientId == request.auth.uid);
     }
 
-    // 10. System Data (Admins only)
+    // 10. Chat System
+    match /chatRooms/{roomId} {
+      allow read: if isSuperAdmin() || (request.auth != null && request.auth.uid in resource.data.participantIds);
+      
+      // Allow participant to update ONLY lastMessageAt, lastMessagePreview, updatedAt, and their own lastReadAt
+      allow update: if isSuperAdmin() || (
+        request.auth != null && 
+        request.auth.uid in resource.data.participantIds &&
+        request.resource.data.diff(resource.data).affectedKeys().hasAny(['lastMessageAt', 'lastMessagePreview', 'updatedAt', 'participants']) &&
+        (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['id', 'organizationId', 'type', 'participantIds', 'isArchived', 'createdBy']))
+      );
+
+      // Create/Delete must go through backend
+      allow create, delete: if isSuperAdmin(); 
+
+      
+      match /messages/{messageId} {
+        allow read: if isSuperAdmin() || (request.auth != null && request.auth.uid in get(/databases/$(database)/documents/chatRooms/$(roomId)).data.participantIds);
+        
+        allow create: if isSuperAdmin() || (
+          request.auth != null && 
+          request.resource.data.senderId == request.auth.uid &&
+          request.auth.uid in get(/databases/$(database)/documents/chatRooms/$(roomId)).data.participantIds
+        );
+        
+        allow update: if isSuperAdmin() || (
+          request.auth != null && 
+          resource.data.senderId == request.auth.uid &&
+          request.resource.data.senderId == resource.data.senderId // Prevent sender spoofing on edit
+        );
+        
+        allow delete: if isSuperAdmin(); // Hard delete only via backend
+      }
+    }
+
+    // 11. System Data (Admins only)
     match /subscriptions/{subId} { allow read, write: if isSuperAdmin(); }
     match /payments/{paymentId} { allow read, write: if isSuperAdmin(); }
     match /auditLogs/{logId} { allow read, write: if isSuperAdmin(); }

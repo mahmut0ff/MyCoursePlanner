@@ -123,7 +123,7 @@ export const jsonResponse = (statusCode: number, body: any) => ({
 });
 
 export const unauthorized = () => jsonResponse(401, { error: 'Unauthorized' });
-export const forbidden = () => jsonResponse(403, { error: 'Forbidden — insufficient role' });
+export const forbidden = (msg = 'Forbidden — insufficient role') => jsonResponse(403, { error: msg });
 export const badRequest = (msg: string) => jsonResponse(400, { error: msg });
 export const notFound = (msg = 'Not found') => jsonResponse(404, { error: msg });
 export const ok = (data: any) => jsonResponse(200, data);

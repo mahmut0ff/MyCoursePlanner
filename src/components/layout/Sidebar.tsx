@@ -12,8 +12,10 @@ import {
   BarChart3, Gamepad2, History, Briefcase, ChevronDown, TableProperties,
   Users, Layers, Database, Activity, Flag, Plug, FolderOpen,
   ClipboardList, MailOpen, Radio, Award, Trophy, LogOut, CreditCard,
-  TrendingUp
+  TrendingUp, MessageSquareText
 } from 'lucide-react';
+
+import { useChatRooms, useUnreadCount } from '../../lib/useChat';
 
 /* ─── Collapsible section ─── */
 const CollapsibleSection: React.FC<{
@@ -75,6 +77,9 @@ const Sidebar: React.FC<{ open: boolean; onClose: () => void }> = ({ open, onClo
       .then((data) => setInviteCount(data?.count || 0))
       .catch(() => {});
   }, [isTeacher]);
+
+  const { rooms } = useChatRooms(organizationId || undefined);
+  const unreadChatCount = useUnreadCount(rooms);
 
   return (
     <>
@@ -147,6 +152,15 @@ const Sidebar: React.FC<{ open: boolean; onClose: () => void }> = ({ open, onClo
                 <LayoutDashboard className="w-4 h-4" />{t('nav.dashboard')}
               </NavLink>
 
+              <NavLink to="/chat" className={linkClass} onClick={onClose}>
+                <MessageSquareText className="w-4 h-4" />{t('nav.chat', 'Чат')}
+                {unreadChatCount > 0 && (
+                  <span className="ml-auto bg-red-500 text-white text-[10px] font-bold min-w-[18px] h-[18px] flex items-center justify-center rounded-full px-1 animate-pulse">
+                    {unreadChatCount}
+                  </span>
+                )}
+              </NavLink>
+
               <CollapsibleSection label={t('nav.sectionEducation', 'Обучение')} icon={GraduationCap} defaultOpen>
                 <NavLink to="/courses" className={linkClass} onClick={onClose}>
                   <FolderOpen className="w-4 h-4" />{t('nav.courses')}
@@ -208,6 +222,15 @@ const Sidebar: React.FC<{ open: boolean; onClose: () => void }> = ({ open, onClo
             <>
               <NavLink to="/dashboard" className={linkClass} onClick={onClose}>
                 <LayoutDashboard className="w-4 h-4" />{t('nav.dashboard')}
+              </NavLink>
+
+              <NavLink to="/chat" className={linkClass} onClick={onClose}>
+                <MessageSquareText className="w-4 h-4" />{t('nav.chat', 'Чат')}
+                {unreadChatCount > 0 && (
+                  <span className="ml-auto bg-red-500 text-white text-[10px] font-bold min-w-[18px] h-[18px] flex items-center justify-center rounded-full px-1 animate-pulse">
+                    {unreadChatCount}
+                  </span>
+                )}
               </NavLink>
 
               {teacherWithOrg && (
@@ -286,6 +309,15 @@ const Sidebar: React.FC<{ open: boolean; onClose: () => void }> = ({ open, onClo
             <>
               <NavLink to="/dashboard" className={linkClass} onClick={onClose}>
                 <LayoutDashboard className="w-4 h-4" />{t('nav.dashboard')}
+              </NavLink>
+
+              <NavLink to="/chat" className={linkClass} onClick={onClose}>
+                <MessageSquareText className="w-4 h-4" />{t('nav.chat', 'Чат')}
+                {unreadChatCount > 0 && (
+                  <span className="ml-auto bg-red-500 text-white text-[10px] font-bold min-w-[18px] h-[18px] flex items-center justify-center rounded-full px-1 animate-pulse">
+                    {unreadChatCount}
+                  </span>
+                )}
               </NavLink>
 
               <CollapsibleSection label={t('nav.sectionEducation', 'Обучение')} icon={GraduationCap} defaultOpen>

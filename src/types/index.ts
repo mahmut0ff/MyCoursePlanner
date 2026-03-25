@@ -969,3 +969,65 @@ export interface AwardedAchievement {
   xpAwarded: number;
   organizationId?: string;
 }
+
+// ---- Chat System ----
+
+export type ChatRoomType = 'group' | 'direct';
+export type ChatMessageType = 'text' | 'image' | 'file' | 'system';
+export type ChatParticipantRole = 'admin' | 'member';
+
+export interface ChatParticipantDetails {
+  role: ChatParticipantRole;
+  joinedAt: string;
+  lastReadAt: string;
+  isMuted: boolean;
+  isRemoved: boolean;
+}
+
+export interface ChatRoom {
+  id: string; // client-generated deterministically for DM, or random for group
+  organizationId: string;
+  type: ChatRoomType;
+  title?: string;
+  description?: string;
+  imageUrl?: string;
+  createdBy: string;
+  participantIds: string[];
+  participants: Record<string, ChatParticipantDetails>;
+  lastMessageAt?: string;
+  lastMessagePreview?: string;
+  isArchived: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface MessageAttachment {
+  id: string;
+  type: 'image' | 'file';
+  fileName: string;
+  mimeType: string;
+  fileSize: number;
+  url: string;
+}
+
+export interface ChatMessage {
+  id: string; // client-generated tempId
+  roomId: string; // Parent collection link
+  organizationId: string;
+  senderId: string;
+  messageType: ChatMessageType;
+  text: string;
+  attachments?: MessageAttachment[];
+  createdAt: string;
+  updatedAt: string;
+  deletedAt?: string;
+  deletedBy?: string;
+}
+
+export interface OrganizationChatSettings {
+  organizationId: string;
+  canMembersDirectMessageEachOther: boolean;
+  allowFileUploads: boolean;
+  allowImageUploads: boolean;
+  maxFileSize: number; // in bytes
+}

@@ -34,8 +34,8 @@ import AchievementsPage from './pages/achievements/AchievementsPage';
 import StudentDiaryPage from './pages/student/StudentDiaryPage';
 import StudentProgressPage from './pages/student/StudentProgressPage';
 import StudentCoursesPage from './pages/student/StudentCoursesPage';
-import StudentGroupsPage from './pages/student/StudentGroupsPage';
 import StudentTeachersPage from './pages/student/StudentTeachersPage';
+import StudentGroupsPage from './pages/student/StudentGroupsPage';
 
 // Quiz Pages
 import QuizLibraryPage from './pages/quiz/QuizLibraryPage';
@@ -45,6 +45,9 @@ import SessionHistoryPage from './pages/quiz/SessionHistoryPage';
 import SessionAnalyticsPage from './pages/quiz/SessionAnalyticsPage';
 import JoinQuizPage from './pages/quiz/JoinQuizPage';
 import QuizPlayPage from './pages/quiz/QuizPlayPage';
+
+// Chat Workspace
+import ChatWorkspace from './pages/chat/ChatWorkspace';
 
 // Org Pages
 import CoursesPage from './pages/courses/CoursesPage';
@@ -159,6 +162,9 @@ const App: React.FC = () => {
             <Route path="quiz/join" element={<JoinQuizPage />} />
             <Route path="quiz/play/:sessionId" element={<QuizPlayPage />} />
             <Route path="profile" element={<StudentProfilePage />} />
+
+            {/* Chat Workspace */}
+            <Route path="chat" element={<ProtectedRoute allowedRoles={['admin', 'teacher', 'student']}><ChatWorkspace /></ProtectedRoute>} />
 
             {/* Billing & Payments */}
             <Route path="billing" element={<ProtectedRoute allowedRoles={['admin']}><BillingPage /></ProtectedRoute>} />

@@ -9,6 +9,9 @@ import LoginPage from './pages/auth/LoginPage';
 import RegisterPage from './pages/auth/RegisterPage';
 import LandingPage from './pages/landing/LandingPage';
 import DashboardPage from './pages/dashboard/DashboardPage';
+import GradebookPage from './pages/gradebook/GradebookPage';
+import JournalPage from './pages/journal/JournalPage';
+import AdminGradebookAnalytics from './pages/admin/AdminGradebookAnalytics';
 import LessonListPage from './pages/lessons/LessonListPage';
 import LessonEditPage from './pages/lessons/LessonEditPage';
 import LessonViewPage from './pages/lessons/LessonViewPage';
@@ -28,6 +31,8 @@ import PaymentSuccessPage from './pages/billing/PaymentSuccessPage';
 import PaymentFailurePage from './pages/billing/PaymentFailurePage';
 import StudentProfilePage from './pages/profile/StudentProfilePage';
 import AchievementsPage from './pages/achievements/AchievementsPage';
+import StudentDiaryPage from './pages/student/StudentDiaryPage';
+import StudentProgressPage from './pages/student/StudentProgressPage';
 import StudentCoursesPage from './pages/student/StudentCoursesPage';
 import StudentGroupsPage from './pages/student/StudentGroupsPage';
 import StudentTeachersPage from './pages/student/StudentTeachersPage';
@@ -110,6 +115,11 @@ const App: React.FC = () => {
           <Route element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
             <Route path="dashboard" element={<DashboardPage />} />
 
+            {/* Smart Journal & Gradebook */}
+            <Route path="gradebook" element={<ProtectedRoute allowedRoles={['admin', 'teacher']}><GradebookPage /></ProtectedRoute>} />
+            <Route path="journal" element={<ProtectedRoute allowedRoles={['admin', 'teacher']}><JournalPage /></ProtectedRoute>} />
+            <Route path="teacher-analytics" element={<ProtectedRoute allowedRoles={['admin', 'teacher']}><AdminGradebookAnalytics /></ProtectedRoute>} />
+
             {/* Lessons */}
             <Route path="lessons" element={<LessonListPage />} />
             <Route path="lessons/new" element={<ProtectedRoute allowedRoles={['admin', 'teacher']}><LessonEditPage /></ProtectedRoute>} />
@@ -136,6 +146,8 @@ const App: React.FC = () => {
             <Route path="student/courses" element={<ProtectedRoute allowedRoles={['student']}><StudentCoursesPage /></ProtectedRoute>} />
             <Route path="student/groups" element={<ProtectedRoute allowedRoles={['student']}><StudentGroupsPage /></ProtectedRoute>} />
             <Route path="student/teachers" element={<ProtectedRoute allowedRoles={['student']}><StudentTeachersPage /></ProtectedRoute>} />
+            <Route path="diary" element={<ProtectedRoute allowedRoles={['student']}><StudentDiaryPage /></ProtectedRoute>} />
+            <Route path="progress" element={<ProtectedRoute allowedRoles={['student']}><StudentProgressPage /></ProtectedRoute>} />
 
             {/* ═══ Quiz System ═══ */}
             <Route path="quiz/library" element={<ProtectedRoute allowedRoles={['admin', 'teacher']}><QuizLibraryPage /></ProtectedRoute>} />

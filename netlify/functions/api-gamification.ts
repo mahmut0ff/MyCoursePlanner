@@ -50,7 +50,11 @@ const BADGE_DEFS: Record<string, { icon: string; title: string; description: str
   // --- General XP & Levels ---
   level_5: { icon: '⭐', title: 'Достигатор', description: 'Достигли 5-го уровня' },
   level_10: { icon: '👑', title: 'Легенда Университета', description: 'Достигли 10-го (максимального) уровня' },
-  night_owl: { icon: '🦉', title: 'Ночная сова', description: 'Учились после полуночи' }
+  night_owl: { icon: '🦉', title: 'Ночная сова', description: 'Учились после полуночи' },
+  // --- Grades & Attendance ---
+  first_grade: { icon: '📝', title: 'Первая оценка', description: 'Получили первую оценку в журнал' },
+  perfect_grade: { icon: '✨', title: 'Отличник', description: 'Получили максимальный балл за задание' },
+  streak_5_attendance: { icon: '📅', title: 'Примерный студент', description: '5 занятий подряд без пропусков' }
 };
 
 function getLevel(xp: number) {
@@ -113,8 +117,29 @@ const handler: Handler = async (event: HandlerEvent) => {
     const data = doc.exists ? doc.data()! : { 
       xp: 0, totalExams: 0, passedExams: 0, streak: 0, bestStreak: 0, 
       totalLessons: 0, totalQuizzes: 0, totalOrgs: 0, totalPosts: 0,
+      attendanceStreak: 0, totalGrades: 0,
       badges: [], orgXpBreakdown: {} 
     };
+
+    const { sourceType, sourceId } = body;
+    
+    // Idempotency Check
+    if (sourceType && sourceId) {
+      const existingEvent = await adminDb.collection('xpEvents')
+        .where('userId', '==', uid)
+        .where('sourceType', '==', sourceType)
+        .where('sourceId', '==', sourceId)
+        .limit(1)
+        .get();
+        
+      if (!existingEvent.empty) {
+        return ok({ 
+          warning: 'XP already awarded for this event', 
+          xpEarned: 0, newBadges: [], leveledUp: false, 
+          newLevel: getLevel(data.xp || 0), streak: data.streak || 0, totalXp: data.xp || 0 
+        });
+      }
+    }
 
     let xpEarned = 0;
     const newBadges: string[] = [];
@@ -144,6 +169,24 @@ const handler: Handler = async (event: HandlerEvent) => {
     } else if (type === 'post') {
       xpEarned = 10;
       data.totalPosts = (data.totalPosts || 0) + 1;
+    } else if (type === 'grade') {
+      xpEarned = 2; // base XP for merely receiving a grade
+      const { scorePct } = body;
+      if (scorePct >= 90) xpEarned += 8;
+      else if (scorePct >= 70) xpEarned += 3;
+      data.totalGrades = (data.totalGrades || 0) + 1;
+    } else if (type === 'attendance') {
+      const { status } = body;
+      if (status === 'present') {
+        xpEarned = 5;
+        data.attendanceStreak = (data.attendanceStreak || 0) + 1;
+      } else if (status === 'late') {
+        xpEarned = 2;
+        data.attendanceStreak = 0;
+      } else {
+        xpEarned = 0;
+        data.attendanceStreak = 0;
+      }
     }
 
     data.xp = (data.xp || 0) + xpEarned;
@@ -186,6 +229,11 @@ const handler: Handler = async (event: HandlerEvent) => {
     // Posts
     checkBadge('first_post', data.totalPosts === 1);
 
+    // Grades & Attendance
+    checkBadge('first_grade', data.totalGrades === 1);
+    checkBadge('perfect_grade', type === 'grade' && body.scorePct === 100);
+    checkBadge('streak_5_attendance', data.attendanceStreak >= 5);
+
     // Level & Special
     const currentLevelVal = getLevel(data.xp).level;
     checkBadge('level_5', currentLevelVal >= 5);
@@ -203,6 +251,8 @@ const handler: Handler = async (event: HandlerEvent) => {
       userId: uid,
       organizationId: organizationId || '',
       type,
+      sourceType: sourceType || null,
+      sourceId: sourceId || null,
       xp: xpEarned,
       createdAt: new Date().toISOString(),
     });

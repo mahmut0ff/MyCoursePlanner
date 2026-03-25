@@ -871,3 +871,101 @@ export interface QuizAnalytics {
   lastPlayedAt?: string;
   updatedAt: string;
 }
+
+// ---- Gradebook / Journal / Achievements ----
+
+export type GradingType = 'points' | 'percent' | 'letter' | 'pass_fail' | 'custom';
+
+export interface GradeScale {
+  min: number;
+  max: number;
+  labels?: Record<string, string>; // e.g. { 'A': '90-100', 'B': '80-89' }
+}
+
+/** Per-course grading configuration */
+export interface GradeSchema {
+  id: string;
+  courseId: string;
+  organizationId: string;
+  gradingType: GradingType;
+  scale: GradeScale;
+  passThreshold: number;
+  rules?: Record<string, any>;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type GradeStatus = 'normal' | 'absent' | 'late' | 'excused' | 'missing';
+
+/**
+ * Individual grade entry.
+ * Idempotent key: (studentId + courseId + lessonId + assignmentId)
+ * Uses `version` field for optimistic locking.
+ */
+export interface GradeEntry {
+  id: string;
+  studentId: string;
+  courseId: string;
+  lessonId?: string;
+  assignmentId?: string;
+  value: number | null;
+  displayValue?: string; // e.g. 'A', '✔', for non-numeric display
+  type: GradingType;
+  maxValue: number;
+  status: GradeStatus;
+  comment?: string;
+  createdBy: string;
+  organizationId: string;
+  version: number; // optimistic locking
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type AttendanceStatus = 'present' | 'absent' | 'late' | 'excused';
+export type ParticipationLevel = 'low' | 'medium' | 'high';
+
+/**
+ * Daily journal entry per student per course.
+ * Idempotent key: (studentId + courseId + date)
+ */
+export interface JournalEntry {
+  id: string;
+  studentId: string;
+  courseId: string;
+  date: string; // YYYY-MM-DD
+  attendance: AttendanceStatus;
+  participation?: ParticipationLevel;
+  note?: string;
+  flags?: string[]; // 'late_submission', 'behavior', etc.
+  createdBy: string;
+  organizationId: string;
+  version: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type AchievementType = 'streak' | 'performance' | 'activity' | 'milestone';
+
+export interface Achievement {
+  id: string;
+  title: string;
+  description: string;
+  icon: string;
+  type: AchievementType;
+  criteria: Record<string, any>; // e.g. { streakDays: 5 }
+  xpReward: number;
+  organizationId?: string; // null = system-wide
+  createdAt: string;
+}
+
+export interface AwardedAchievement {
+  id: string;
+  achievementId: string;
+  achievementTitle?: string;
+  achievementIcon?: string;
+  userId: string;
+  awardedAt: string;
+  source: string; // courseId or 'system'
+  xpAwarded: number;
+  organizationId?: string;
+}

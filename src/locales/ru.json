@@ -48,6 +48,10 @@
     "quizSessions": "Сессии викторин",
     "joinQuiz": "Присоединиться к викторине",
     "orgUsers": "Пользователи орг.",
+    "journal": "Журнал (Переклички)",
+    "diary": "Мой дневник",
+    "progress": "Мой прогресс",
+    "sectionLearning": "Обучение",
     "sectionPeople": "ЛЮДИ",
     "sectionOrg": "ОРГАНИЗАЦИЯ"
   },
@@ -175,6 +179,36 @@
     "contentError": "Не удалось отобразить содержание.",
     "byAuthor": "Автор",
     "watchVideo": "Смотреть видео"
+  },
+  "gradebook": {
+    "subtitle": "Smart Journal + Universal Gradebook",
+    "noCourses": "Нет курсов",
+    "noCoursesDesc": "Создайте курс, чтобы начать вести журнал",
+    "schemaBtn": "Настройка шкалы",
+    "schemaTitle": "Шкала оценивания",
+    "schemaSubtitle": "Настройте систему оценок для этого курса",
+    "typeLabel": "Тип оценивания",
+    "typePoints": "Баллы (Points)",
+    "typePercent": "Проценты (%)",
+    "typeLetter": "Буквенная (A, B, C...)",
+    "typePassFail": "Зачет / Незачет",
+    "typeCustom": "Кастомная",
+    "minLabel": "Минимум",
+    "maxLabel": "Максимум",
+    "passThreshold": "Порог прохождения",
+    "labels": "Символы и диапазоны",
+    "schemaSaved": "Настройки шкалы оценивания сохранены"
+  },
+  "journal": {
+    "subtitle": "Ежедневная перекличка и заметки",
+    "noCourses": "Нет курсов",
+    "noCoursesDesc": "Создайте курс, чтобы начать вести переклички",
+    "markAllPresent": "Отметить всех присутствующими",
+    "allMarkedPresent": "Все студенты отмечены присутствующими",
+    "present": "Присутствует",
+    "absent": "Отсутствует",
+    "late": "Опоздал",
+    "excused": "Уважительная причина"
   },
   "exams": {
     "title": "Экзамены",
@@ -455,8 +489,7 @@
     "settings": {
       "subtitle": "Конфигурация платформы и глобальные настройки",
       "profile": "Настройки профиля",
-      "usersRoles": "Пользователи и роли",
-      "branding": "Брендинг",
+      "supportLink": "Поддержка",
       "notifications": "Уведомления",
       "integrationsTab": "Интеграции",
       "subscriptionBilling": "Подписки и биллинг",

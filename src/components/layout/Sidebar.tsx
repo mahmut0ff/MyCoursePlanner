@@ -6,11 +6,13 @@ import { signOut } from '../../services/auth.service';
 import { apiGetPendingInviteCount } from '../../lib/api';
 import OrgSwitcher from './OrgSwitcher';
 import {
-  LayoutDashboard, BookOpen, ClipboardList, Users, Building2, Activity,
-  FolderOpen, Calendar, Trophy, Settings, LogOut, UserPlus, MailOpen,
-  Briefcase, Radio, Gamepad2, ChevronDown, FileText, Monitor, Award,
-  BarChart3, GraduationCap, UsersRound, Layers, Library, History,
-  Shield, Flag, Plug, CreditCard, Database, Megaphone,
+  Building2, Calendar, FileText, GraduationCap,
+  LayoutDashboard, Library, Monitor, Shield,
+  UsersRound, Settings, BookOpen, UserPlus, Megaphone,
+  BarChart3, Gamepad2, History, Briefcase, ChevronDown, TableProperties,
+  Users, Layers, Database, Activity, Flag, Plug, FolderOpen,
+  ClipboardList, MailOpen, Radio, Award, Trophy, LogOut, CreditCard,
+  TrendingUp
 } from 'lucide-react';
 
 /* ─── Collapsible section ─── */
@@ -211,6 +213,12 @@ const Sidebar: React.FC<{ open: boolean; onClose: () => void }> = ({ open, onClo
               {teacherWithOrg && (
                 <>
                   <CollapsibleSection label={t('nav.sectionEducation', 'Обучение')} icon={GraduationCap} defaultOpen>
+                    <NavLink to="/journal" className={linkClass} onClick={onClose}>
+                      <ClipboardList className="w-4 h-4" />{t('nav.journal', 'Журнал')}
+                    </NavLink>
+                    <NavLink to="/gradebook" className={linkClass} onClick={onClose}>
+                      <TableProperties className="w-4 h-4" />{t('nav.gradebook', 'Оценки')}
+                    </NavLink>
                     <NavLink to="/courses" className={linkClass} onClick={onClose}>
                       <FolderOpen className="w-4 h-4" />{t('nav.courses')}
                     </NavLink>
@@ -281,6 +289,12 @@ const Sidebar: React.FC<{ open: boolean; onClose: () => void }> = ({ open, onClo
               </NavLink>
 
               <CollapsibleSection label={t('nav.sectionEducation', 'Обучение')} icon={GraduationCap} defaultOpen>
+                <NavLink to="/progress" className={linkClass} onClick={onClose}>
+                  <TrendingUp className="w-4 h-4" />{t('nav.progress', 'Мой прогресс')}
+                </NavLink>
+                <NavLink to="/diary" className={linkClass} onClick={onClose}>
+                  <BookOpen className="w-4 h-4" />{t('nav.diary', 'Мой дневник')}
+                </NavLink>
                 <NavLink to="/student/courses" className={linkClass} onClick={onClose}>
                   <FolderOpen className="w-4 h-4" />{t('nav.myCourses', 'Мои курсы')}
                 </NavLink>

@@ -8,6 +8,10 @@ import AppLayout from './components/layout/AppLayout';
 import LoginPage from './pages/auth/LoginPage';
 import RegisterPage from './pages/auth/RegisterPage';
 import LandingPage from './pages/landing/LandingPage';
+import AboutPage from './pages/landing/AboutPage';
+import ContactPage from './pages/landing/ContactPage';
+import FeaturesPage from './pages/landing/FeaturesPage';
+import DocsPage from './pages/landing/DocsPage';
 import DashboardPage from './pages/dashboard/DashboardPage';
 import GradebookPage from './pages/gradebook/GradebookPage';
 import JournalPage from './pages/journal/JournalPage';
@@ -106,6 +110,10 @@ const App: React.FC = () => {
         <Routes>
           {/* Public */}
             <Route path="/" element={<LandingPage />} />
+            <Route path="/features" element={<FeaturesPage />} />
+            <Route path="/about" element={<AboutPage />} />
+            <Route path="/contact" element={<ContactPage />} />
+            <Route path="/docs" element={<DocsPage />} />
             <Route path="/login" element={<LoginPage />} />
             <Route path="/register" element={<RegisterPage />} />
             <Route path="/directory" element={<OrganizationsDirectoryPage />} />

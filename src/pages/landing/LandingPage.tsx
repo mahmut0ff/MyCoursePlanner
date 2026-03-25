@@ -4,63 +4,72 @@ import { useTranslation } from 'react-i18next';
 import LanguageSwitcher from '../../components/LanguageSwitcher';
 import {
   BookOpen, ClipboardList, Radio, Brain, BarChart3,
-  Shield, Zap, Check, ArrowRight, Star, ChevronRight, ChevronDown,
+  Shield, Zap, Check, ArrowRight, ChevronDown,
   Globe, Sparkles, Crown, Menu, X, Users, Play,
-  MessageCircle, Mail, MapPin, Phone,
+  MessageCircle, Mail, MapPin, Phone, Award,
+  Layers, Lock, FileText, Target, Gamepad2,
+  GraduationCap, Building2, Laptop, School,
+  Bot, PenTool, LayoutGrid,
 } from 'lucide-react';
 
-/* ────────────────────────────────────────────────
-   CSS-based dashboard mockup component (hero)
-   ──────────────────────────────────────────────── */
+/* ──────────────────────────────────────────
+   HERO DASHBOARD MOCKUP (CSS-based)
+   ────────────────────────────────────────── */
 const DashboardMockup: React.FC = () => (
-  <div className="relative mx-auto max-w-4xl mt-16 rounded-2xl border border-slate-200/80 bg-white shadow-2xl shadow-slate-300/40 overflow-hidden">
-    {/* Browser chrome */}
-    <div className="h-8 bg-slate-100 border-b border-slate-200 flex items-center px-4 gap-2">
+  <div className="relative mx-auto max-w-5xl mt-16 rounded-2xl border border-slate-200/80 dark:border-slate-700/60 bg-white dark:bg-slate-900 shadow-2xl shadow-slate-300/40 dark:shadow-black/40 overflow-hidden">
+    <div className="h-8 bg-slate-100 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 flex items-center px-4 gap-2">
       <div className="w-3 h-3 rounded-full bg-red-400" />
       <div className="w-3 h-3 rounded-full bg-amber-400" />
       <div className="w-3 h-3 rounded-full bg-emerald-400" />
       <div className="flex-1 mx-8">
-        <div className="h-4 bg-white rounded-md border border-slate-200 mx-auto max-w-xs flex items-center px-2">
-          <span className="text-[9px] text-slate-400 truncate">app.planula.io/dashboard</span>
+        <div className="h-4 bg-white dark:bg-slate-700 rounded-md border border-slate-200 dark:border-slate-600 mx-auto max-w-xs flex items-center px-2">
+          <span className="text-[9px] text-slate-400 truncate">app.mycoursePlan.io/dashboard</span>
         </div>
       </div>
     </div>
     <div className="flex">
-      {/* Mini sidebar */}
-      <div className="w-40 bg-[#0f172a] p-3 hidden sm:block">
-        <div className="flex items-center gap-2 mb-4">
-          <div className="w-6 h-6 rounded-lg bg-primary-600" />
-          <span className="text-[10px] font-bold text-white">Planula</span>
+      <div className="w-44 bg-[#0f172a] p-3 hidden sm:block">
+        <div className="flex items-center gap-2 mb-5">
+          <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-primary-500 to-violet-500" />
+          <span className="text-[10px] font-bold text-white">MyCoursePlan</span>
         </div>
-        {['Dashboard', 'Lessons', 'Exams', 'Rooms', 'Students', 'Analytics'].map((item, i) => (
+        {['Dashboard', 'Courses', 'Exams', 'Rooms', 'Students', 'Quiz', 'Chat', 'Analytics'].map((item, i) => (
           <div key={item} className={`flex items-center gap-2 px-2 py-1.5 rounded-md mb-0.5 ${i === 0 ? 'bg-white/10' : ''}`}>
             <div className={`w-3 h-3 rounded-sm ${i === 0 ? 'bg-primary-400' : 'bg-slate-600'}`} />
             <span className={`text-[9px] ${i === 0 ? 'text-white' : 'text-slate-500'}`}>{item}</span>
           </div>
         ))}
       </div>
-      {/* Main content */}
-      <div className="flex-1 p-4 bg-slate-50 min-h-[220px]">
-        {/* Metric cards */}
+      <div className="flex-1 p-4 bg-slate-50 dark:bg-slate-800/50 min-h-[240px]">
         <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mb-4">
           {[
-            { label: 'Students', value: '1,247', color: 'text-blue-600', bg: 'bg-blue-50' },
-            { label: 'Exams', value: '24', color: 'text-violet-600', bg: 'bg-violet-50' },
-            { label: 'Pass Rate', value: '87%', color: 'text-emerald-600', bg: 'bg-emerald-50' },
-            { label: 'Lessons', value: '156', color: 'text-amber-600', bg: 'bg-amber-50' },
+            { label: 'Students', value: '1,247', color: 'text-blue-600', bg: 'bg-blue-50 dark:bg-blue-500/10' },
+            { label: 'Courses', value: '48', color: 'text-violet-600', bg: 'bg-violet-50 dark:bg-violet-500/10' },
+            { label: 'Pass Rate', value: '87%', color: 'text-emerald-600', bg: 'bg-emerald-50 dark:bg-emerald-500/10' },
+            { label: 'Lessons', value: '312', color: 'text-amber-600', bg: 'bg-amber-50 dark:bg-amber-500/10' },
           ].map((m) => (
-            <div key={m.label} className={`${m.bg} rounded-lg p-2`}>
+            <div key={m.label} className={`${m.bg} rounded-lg p-2.5`}>
               <p className={`text-lg font-extrabold ${m.color}`}>{m.value}</p>
-              <p className="text-[9px] text-slate-500">{m.label}</p>
+              <p className="text-[9px] text-slate-500 dark:text-slate-400">{m.label}</p>
             </div>
           ))}
         </div>
-        {/* Chart placeholder */}
-        <div className="bg-white rounded-lg border border-slate-100 p-3">
-          <p className="text-[9px] font-semibold text-slate-700 mb-2">Performance Trend</p>
-          <div className="flex items-end gap-1.5 h-16">
-            {[40, 55, 45, 70, 65, 80, 75, 90, 85, 95, 88, 92].map((h, i) => (
-              <div key={i} className="flex-1 bg-primary-500/80 rounded-t-sm" style={{ height: `${h}%` }} />
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+          <div className="bg-white dark:bg-slate-900 rounded-lg border border-slate-100 dark:border-slate-700 p-3">
+            <p className="text-[9px] font-semibold text-slate-700 dark:text-slate-300 mb-2">Performance Trend</p>
+            <div className="flex items-end gap-1.5 h-16">
+              {[40, 55, 45, 70, 65, 80, 75, 90, 85, 95, 88, 92].map((h, i) => (
+                <div key={i} className="flex-1 rounded-t-sm bg-gradient-to-t from-primary-600 to-primary-400" style={{ height: `${h}%` }} />
+              ))}
+            </div>
+          </div>
+          <div className="bg-white dark:bg-slate-900 rounded-lg border border-slate-100 dark:border-slate-700 p-3 hidden md:block">
+            <p className="text-[9px] font-semibold text-slate-700 dark:text-slate-300 mb-2">Live Activity</p>
+            {['Exam "Math Q3" — 23 students', 'Quiz "Physics" — Live', 'Certificate issued — #1204'].map((a, i) => (
+              <div key={i} className="flex items-center gap-2 py-1.5 border-b border-slate-50 dark:border-slate-800 last:border-0">
+                <div className={`w-2 h-2 rounded-full ${i === 1 ? 'bg-green-500 animate-pulse' : 'bg-slate-300 dark:bg-slate-600'}`} />
+                <span className="text-[8px] text-slate-500 dark:text-slate-400">{a}</span>
+              </div>
             ))}
           </div>
         </div>
@@ -69,30 +78,122 @@ const DashboardMockup: React.FC = () => (
   </div>
 );
 
-/* ────────────────────────────────────────────────
-   Main Landing Page
-   ──────────────────────────────────────────────── */
+/* ──────────────────────────────────────────
+   MAIN LANDING PAGE
+   ────────────────────────────────────────── */
 const LandingPage: React.FC = () => {
   const { t } = useTranslation();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [openFaqIndex, setOpenFaqIndex] = useState<number | null>(null);
 
-  const features = [
-    { icon: BookOpen, title: t('landing.feat1Title'), desc: t('landing.feat1Desc'), color: 'text-blue-500', bg: 'bg-blue-500/10' },
-    { icon: ClipboardList, title: t('landing.feat2Title'), desc: t('landing.feat2Desc'), color: 'text-violet-500', bg: 'bg-violet-500/10' },
-    { icon: Radio, title: t('landing.feat3Title'), desc: t('landing.feat3Desc'), color: 'text-emerald-500', bg: 'bg-emerald-500/10' },
-    { icon: Brain, title: t('landing.feat4Title'), desc: t('landing.feat4Desc'), color: 'text-amber-500', bg: 'bg-amber-500/10' },
-    { icon: BarChart3, title: t('landing.feat5Title'), desc: t('landing.feat5Desc'), color: 'text-rose-500', bg: 'bg-rose-500/10' },
-    { icon: Globe, title: t('landing.feat6Title'), desc: t('landing.feat6Desc'), color: 'text-cyan-500', bg: 'bg-cyan-500/10' },
+  /* ── Feature categories ── */
+  const featureCategories = [
+    {
+      id: 'core',
+      title: t('landing.catCore'),
+      items: [
+        { icon: Building2, label: t('landing.coreMultiTenant') },
+        { icon: Shield, label: t('landing.coreRbac') },
+        { icon: Zap, label: t('landing.coreBilling') },
+        { icon: Lock, label: t('landing.coreAudit') },
+      ],
+      color: 'from-blue-500 to-indigo-500',
+      bg: 'bg-blue-500/10',
+    },
+    {
+      id: 'learning',
+      title: t('landing.catLearning'),
+      items: [
+        { icon: BookOpen, label: t('landing.learnCourseBuilder') },
+        { icon: PenTool, label: t('landing.learnRichEditor') },
+        { icon: BarChart3, label: t('landing.learnProgress') },
+        { icon: FileText, label: t('landing.learnDiary') },
+      ],
+      color: 'from-emerald-500 to-teal-500',
+      bg: 'bg-emerald-500/10',
+    },
+    {
+      id: 'exams',
+      title: t('landing.catExams'),
+      items: [
+        { icon: ClipboardList, label: t('landing.examBuilder') },
+        { icon: LayoutGrid, label: t('landing.examQuestionTypes') },
+        { icon: Radio, label: t('landing.examRooms') },
+        { icon: Shield, label: t('landing.examAntiCheat') },
+      ],
+      color: 'from-violet-500 to-purple-500',
+      bg: 'bg-violet-500/10',
+    },
+    {
+      id: 'ai',
+      title: t('landing.catAi'),
+      items: [
+        { icon: Bot, label: t('landing.aiGenerateLessons') },
+        { icon: Brain, label: t('landing.aiGenerateTests') },
+        { icon: Sparkles, label: t('landing.aiEvaluate') },
+      ],
+      color: 'from-amber-500 to-orange-500',
+      bg: 'bg-amber-500/10',
+    },
+    {
+      id: 'engagement',
+      title: t('landing.catEngagement'),
+      items: [
+        { icon: Target, label: t('landing.engXpLevels') },
+        { icon: Award, label: t('landing.engBadges') },
+        { icon: Crown, label: t('landing.engLeaderboards') },
+        { icon: Gamepad2, label: t('landing.engQuiz') },
+      ],
+      color: 'from-rose-500 to-pink-500',
+      bg: 'bg-rose-500/10',
+    },
+    {
+      id: 'certificates',
+      title: t('landing.catCertificates'),
+      items: [
+        { icon: FileText, label: t('landing.certPdf') },
+        { icon: Globe, label: t('landing.certQr') },
+        { icon: Layers, label: t('landing.certMultilang') },
+      ],
+      color: 'from-cyan-500 to-blue-500',
+      bg: 'bg-cyan-500/10',
+    },
+    {
+      id: 'communication',
+      title: t('landing.catComm'),
+      items: [
+        { icon: MessageCircle, label: t('landing.commGroup') },
+        { icon: Users, label: t('landing.commDirect') },
+        { icon: Radio, label: t('landing.commRealtime') },
+      ],
+      color: 'from-indigo-500 to-violet-500',
+      bg: 'bg-indigo-500/10',
+    },
+    {
+      id: 'analytics',
+      title: t('landing.catAnalytics'),
+      items: [
+        { icon: BarChart3, label: t('landing.analyticsDashboard') },
+        { icon: Users, label: t('landing.analyticsTeacher') },
+        { icon: Layers, label: t('landing.analyticsSaas') },
+      ],
+      color: 'from-slate-500 to-zinc-500',
+      bg: 'bg-slate-500/10',
+    },
   ];
 
+  /* ── Pricing plans ── */
   const plans = [
     {
       id: 'free', name: t('landing.planFree'), price: 0, popular: false, icon: Zap,
       features: [t('landing.planFreeF1'), t('landing.planFreeF2'), t('landing.planFreeF3'), t('landing.planFreeF4')],
     },
     {
-      id: 'professional', name: t('landing.planPro'), price: 2990, popular: true, icon: Crown,
+      id: 'basic', name: t('landing.planBasic'), price: 1490, popular: false, icon: BookOpen,
+      features: [t('landing.planBasicF1'), t('landing.planBasicF2'), t('landing.planBasicF3'), t('landing.planBasicF4'), t('landing.planBasicF5')],
+    },
+    {
+      id: 'pro', name: t('landing.planPro'), price: 2990, popular: true, icon: Crown,
       features: [t('landing.planProF1'), t('landing.planProF2'), t('landing.planProF3'), t('landing.planProF4'), t('landing.planProF5')],
     },
     {
@@ -101,18 +202,15 @@ const LandingPage: React.FC = () => {
     },
   ];
 
-  const steps = [
-    { icon: Users, title: t('landing.step1Title'), desc: t('landing.step1Desc') },
-    { icon: BookOpen, title: t('landing.step2Title'), desc: t('landing.step2Desc') },
-    { icon: Play, title: t('landing.step3Title'), desc: t('landing.step3Desc') },
+  /* ── Use cases ── */
+  const useCases = [
+    { icon: School, title: t('landing.ucSchools'), desc: t('landing.ucSchoolsDesc') },
+    { icon: GraduationCap, title: t('landing.ucTraining'), desc: t('landing.ucTrainingDesc') },
+    { icon: Building2, title: t('landing.ucCorporate'), desc: t('landing.ucCorporateDesc') },
+    { icon: Laptop, title: t('landing.ucOnline'), desc: t('landing.ucOnlineDesc') },
   ];
 
-  const testimonials = [
-    { name: t('landing.test1Name'), role: t('landing.test1Role'), text: t('landing.test1Text'), rating: 5 },
-    { name: t('landing.test2Name'), role: t('landing.test2Role'), text: t('landing.test2Text'), rating: 4 },
-    { name: t('landing.test3Name'), role: t('landing.test3Role'), text: t('landing.test3Text'), rating: 5 },
-  ];
-
+  /* ── FAQ ── */
   const faqs = [
     { q: t('landing.faq1Q'), a: t('landing.faq1A') },
     { q: t('landing.faq2Q'), a: t('landing.faq2A') },
@@ -128,41 +226,58 @@ const LandingPage: React.FC = () => {
     { value: '99.9%', label: t('landing.statUptime') },
   ];
 
+  const navItems = [
+    { label: t('landing.navFeatures'), href: '#features' },
+    { label: t('landing.navPricing'), href: '#pricing' },
+    { label: t('landing.navFaq'), href: '#faq' },
+  ];
+
+  const navLinks = [
+    { label: t('landing.navFeaturesPage'), to: '/features' },
+    { label: t('landing.navAbout'), to: '/about' },
+    { label: t('landing.navContact'), to: '/contact' },
+  ];
+
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen bg-white dark:bg-slate-950 text-slate-900 dark:text-white transition-colors">
+
       {/* ═══ Navbar ═══ */}
-      <nav className="fixed top-0 left-0 right-0 z-50 bg-white/80 backdrop-blur-xl border-b border-slate-200/50">
+      <nav className="fixed top-0 left-0 right-0 z-50 bg-white/80 dark:bg-slate-950/80 backdrop-blur-xl border-b border-slate-200/50 dark:border-slate-800/50">
         <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
           <Link to="/" className="flex items-center gap-2.5">
-            <img src="/icons/logo.png" alt="Planula" className="h-9 w-auto object-contain" />
-            <span className="font-bold text-lg text-slate-900">Planula</span>
+            <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-primary-500 to-violet-500 flex items-center justify-center">
+              <GraduationCap className="w-4.5 h-4.5 text-white" />
+            </div>
+            <span className="font-bold text-lg">MyCoursePlan</span>
           </Link>
           <div className="hidden md:flex items-center gap-8">
-            <a href="#features" className="text-sm text-slate-600 hover:text-slate-900 transition-colors">{t('landing.navFeatures')}</a>
-            <a href="#how-it-works" className="text-sm text-slate-600 hover:text-slate-900 transition-colors">{t('landing.navHowItWorks')}</a>
-            <a href="#pricing" className="text-sm text-slate-600 hover:text-slate-900 transition-colors">{t('landing.navPricing')}</a>
-            <a href="#faq" className="text-sm text-slate-600 hover:text-slate-900 transition-colors">{t('landing.navFaq')}</a>
+            {navItems.map(item => (
+              <a key={item.href} href={item.href} className="text-sm text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors">{item.label}</a>
+            ))}
+            {navLinks.map(item => (
+              <Link key={item.to} to={item.to} className="text-sm text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors">{item.label}</Link>
+            ))}
           </div>
           <div className="flex items-center gap-3">
             <LanguageSwitcher />
-            <Link to="/login" className="hidden sm:inline-block text-sm font-medium text-slate-600 hover:text-slate-900 px-4 py-2 transition-colors">{t('auth.login')}</Link>
-            <Link to="/register" className="hidden sm:inline-block text-sm font-semibold text-white bg-primary-600 hover:bg-primary-700 px-5 py-2.5 rounded-xl transition-colors shadow-lg shadow-primary-500/20">{t('auth.register')}</Link>
-            {/* Mobile menu toggle */}
-            <button onClick={() => setMobileMenuOpen(!mobileMenuOpen)} className="md:hidden p-2 text-slate-600 hover:text-slate-900">
+            <Link to="/login" className="hidden sm:inline-block text-sm font-medium text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white px-4 py-2 transition-colors">{t('auth.login')}</Link>
+            <Link to="/register" className="hidden sm:inline-block text-sm font-semibold text-white bg-primary-600 hover:bg-primary-700 px-5 py-2.5 rounded-xl transition-colors shadow-lg shadow-primary-500/20">{t('landing.heroCta')}</Link>
+            <button onClick={() => setMobileMenuOpen(!mobileMenuOpen)} className="md:hidden p-2 text-slate-600 dark:text-slate-400">
               {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
             </button>
           </div>
         </div>
-        {/* Mobile menu */}
         {mobileMenuOpen && (
-          <div className="md:hidden bg-white border-t border-slate-200 px-6 py-4 space-y-3">
-            <a href="#features" onClick={() => setMobileMenuOpen(false)} className="block text-sm text-slate-600 py-2">{t('landing.navFeatures')}</a>
-            <a href="#how-it-works" onClick={() => setMobileMenuOpen(false)} className="block text-sm text-slate-600 py-2">{t('landing.navHowItWorks')}</a>
-            <a href="#pricing" onClick={() => setMobileMenuOpen(false)} className="block text-sm text-slate-600 py-2">{t('landing.navPricing')}</a>
-            <a href="#faq" onClick={() => setMobileMenuOpen(false)} className="block text-sm text-slate-600 py-2">{t('landing.navFaq')}</a>
+          <div className="md:hidden bg-white dark:bg-slate-950 border-t border-slate-200 dark:border-slate-800 px-6 py-4 space-y-3">
+            {navItems.map(item => (
+              <a key={item.href} href={item.href} onClick={() => setMobileMenuOpen(false)} className="block text-sm text-slate-600 dark:text-slate-400 py-2">{item.label}</a>
+            ))}
+            {navLinks.map(item => (
+              <Link key={item.to} to={item.to} onClick={() => setMobileMenuOpen(false)} className="block text-sm text-slate-600 dark:text-slate-400 py-2">{item.label}</Link>
+            ))}
             <div className="flex gap-3 pt-2">
-              <Link to="/login" className="flex-1 text-center text-sm font-medium text-slate-600 border border-slate-200 rounded-xl py-2.5">{t('auth.login')}</Link>
-              <Link to="/register" className="flex-1 text-center text-sm font-semibold text-white bg-primary-600 rounded-xl py-2.5">{t('auth.register')}</Link>
+              <Link to="/login" className="flex-1 text-center text-sm font-medium text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700 rounded-xl py-2.5">{t('auth.login')}</Link>
+              <Link to="/register" className="flex-1 text-center text-sm font-semibold text-white bg-primary-600 rounded-xl py-2.5">{t('landing.heroCta')}</Link>
             </div>
           </div>
         )}
@@ -170,33 +285,34 @@ const LandingPage: React.FC = () => {
 
       {/* ═══ Hero ═══ */}
       <section className="pt-32 pb-10 px-6 relative overflow-hidden">
-        <div className="absolute top-20 left-[-200px] w-[500px] h-[500px] rounded-full bg-primary-100/50 blur-3xl" />
-        <div className="absolute bottom-[-100px] right-[-150px] w-[400px] h-[400px] rounded-full bg-violet-100/50 blur-3xl" />
+        <div className="absolute top-20 left-[-200px] w-[500px] h-[500px] rounded-full bg-primary-100/50 dark:bg-primary-500/5 blur-3xl" />
+        <div className="absolute bottom-[-100px] right-[-150px] w-[400px] h-[400px] rounded-full bg-violet-100/50 dark:bg-violet-500/5 blur-3xl" />
 
         <div className="max-w-7xl mx-auto relative z-10">
           <div className="text-center max-w-3xl mx-auto">
-            <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-primary-50 border border-primary-200 rounded-full text-sm font-medium text-primary-700 mb-6">
+            <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-primary-50 dark:bg-primary-500/10 border border-primary-200 dark:border-primary-500/20 rounded-full text-sm font-medium text-primary-700 dark:text-primary-400 mb-6">
               <Sparkles className="w-4 h-4" />
               {t('landing.heroBadge')}
             </div>
-            <h1 className="text-5xl md:text-6xl font-extrabold text-slate-900 leading-tight mb-6 tracking-tight">
+            <h1 className="text-4xl sm:text-5xl md:text-6xl font-extrabold leading-tight mb-6 tracking-tight bg-gradient-to-r from-slate-900 via-slate-800 to-slate-700 dark:from-white dark:via-slate-100 dark:to-slate-300 bg-clip-text text-transparent">
               {t('landing.heroTitle')}
             </h1>
-            <p className="text-lg text-slate-500 mb-10 leading-relaxed max-w-2xl mx-auto">
+            <p className="text-lg text-slate-500 dark:text-slate-400 mb-4 leading-relaxed max-w-2xl mx-auto">
               {t('landing.heroSubtitle')}
+            </p>
+            <p className="text-sm text-slate-400 dark:text-slate-500 mb-10 font-medium tracking-wide">
+              {t('landing.heroStack')}
             </p>
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
               <Link to="/register" className="bg-primary-600 hover:bg-primary-700 text-white font-semibold px-8 py-3.5 rounded-xl text-base shadow-xl shadow-primary-500/25 hover:shadow-primary-500/40 transition-all flex items-center gap-2 group">
                 {t('landing.heroCta')}
                 <ArrowRight className="w-5 h-5 group-hover:translate-x-0.5 transition-transform" />
               </Link>
-              <a href="#how-it-works" className="text-slate-600 hover:text-slate-900 font-medium px-6 py-3.5 rounded-xl border border-slate-200 hover:border-slate-300 transition-all flex items-center gap-2">
-                {t('landing.heroSecondary')}
-              </a>
+              <Link to="/contact" className="text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white font-medium px-6 py-3.5 rounded-xl border border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600 transition-all flex items-center gap-2">
+                {t('landing.heroDemo')}
+              </Link>
             </div>
           </div>
-
-          {/* Dashboard Mockup */}
           <DashboardMockup />
         </div>
       </section>
@@ -205,58 +321,85 @@ const LandingPage: React.FC = () => {
       <section className="py-12 px-6">
         <div className="max-w-7xl mx-auto grid grid-cols-2 md:grid-cols-4 gap-6">
           {stats.map((s) => (
-            <div key={s.label} className="text-center p-6 bg-white rounded-2xl border border-slate-100 shadow-sm">
-              <p className="text-3xl font-extrabold text-slate-900">{s.value}</p>
-              <p className="text-sm text-slate-500 mt-1">{s.label}</p>
+            <div key={s.label} className="text-center p-6 bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm hover:shadow-md transition-shadow">
+              <p className="text-3xl font-extrabold bg-gradient-to-r from-primary-600 to-violet-600 bg-clip-text text-transparent">{s.value}</p>
+              <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">{s.label}</p>
             </div>
           ))}
         </div>
       </section>
 
-      {/* ═══ How It Works ═══ */}
-      <section id="how-it-works" className="py-20 px-6">
+      {/* ═══ Features Grid ═══ */}
+      <section id="features" className="py-20 px-6 bg-slate-50 dark:bg-slate-900/50">
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-16">
-            <h2 className="text-3xl md:text-4xl font-extrabold text-slate-900 mb-4">{t('landing.howItWorksTitle')}</h2>
-            <p className="text-lg text-slate-500 max-w-2xl mx-auto">{t('landing.howItWorksSubtitle')}</p>
+            <h2 className="text-3xl md:text-4xl font-extrabold mb-4">{t('landing.featuresTitle')}</h2>
+            <p className="text-lg text-slate-500 dark:text-slate-400 max-w-2xl mx-auto">{t('landing.featuresSubtitle')}</p>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-4xl mx-auto">
-            {steps.map((step, i) => (
-              <div key={i} className="text-center relative">
-                {i < steps.length - 1 && (
-                  <div className="hidden md:block absolute top-12 left-[60%] w-[80%] h-[2px] bg-gradient-to-r from-primary-300 to-primary-100" />
-                )}
-                <div className="relative z-10">
-                  <div className="w-24 h-24 mx-auto bg-primary-50 rounded-3xl flex items-center justify-center mb-5 border-2 border-primary-100">
-                    <div className="absolute -top-2 -right-2 w-8 h-8 bg-primary-600 rounded-full flex items-center justify-center text-white text-sm font-bold shadow-lg">
-                      {i + 1}
-                    </div>
-                    <step.icon className="w-10 h-10 text-primary-600" />
-                  </div>
-                  <h3 className="text-lg font-bold text-slate-900 mb-2">{step.title}</h3>
-                  <p className="text-sm text-slate-500 leading-relaxed max-w-xs mx-auto">{step.desc}</p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            {featureCategories.map((cat) => (
+              <div key={cat.id} className="bg-white dark:bg-slate-900 rounded-2xl p-6 border border-slate-100 dark:border-slate-800 hover:shadow-xl hover:shadow-slate-200/50 dark:hover:shadow-black/20 transition-all group">
+                <div className={`w-12 h-12 rounded-xl ${cat.bg} flex items-center justify-center mb-4 group-hover:scale-110 transition-transform`}>
+                  <div className={`w-6 h-6 rounded-lg bg-gradient-to-br ${cat.color}`} />
                 </div>
+                <h3 className="text-base font-bold mb-3">{cat.title}</h3>
+                <ul className="space-y-2">
+                  {cat.items.map((item, j) => (
+                    <li key={j} className="flex items-center gap-2 text-sm text-slate-500 dark:text-slate-400">
+                      <item.icon className="w-4 h-4 text-slate-400 dark:text-slate-500 shrink-0" />
+                      {item.label}
+                    </li>
+                  ))}
+                </ul>
               </div>
             ))}
           </div>
         </div>
       </section>
 
-      {/* ═══ Features ═══ */}
-      <section id="features" className="py-20 px-6 bg-slate-50">
+      {/* ═══ Why Us ═══ */}
+      <section className="py-20 px-6">
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-16">
-            <h2 className="text-3xl md:text-4xl font-extrabold text-slate-900 mb-4">{t('landing.featuresTitle')}</h2>
-            <p className="text-lg text-slate-500 max-w-2xl mx-auto">{t('landing.featuresSubtitle')}</p>
+            <h2 className="text-3xl md:text-4xl font-extrabold mb-4">{t('landing.whyUsTitle')}</h2>
+            <p className="text-lg text-slate-500 dark:text-slate-400 max-w-2xl mx-auto">{t('landing.whyUsSubtitle')}</p>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {features.map((f) => (
-              <div key={f.title} className="bg-white rounded-2xl p-6 border border-slate-100 hover:shadow-xl hover:shadow-slate-200/50 transition-all group">
-                <div className={`w-12 h-12 rounded-xl ${f.bg} flex items-center justify-center mb-4 group-hover:scale-110 transition-transform`}>
-                  <f.icon className={`w-6 h-6 ${f.color}`} />
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-5xl mx-auto">
+            {[
+              { icon: Layers, title: t('landing.why1Title'), desc: t('landing.why1Desc'), gradient: 'from-blue-500 to-cyan-500' },
+              { icon: Building2, title: t('landing.why2Title'), desc: t('landing.why2Desc'), gradient: 'from-violet-500 to-purple-500' },
+              { icon: Brain, title: t('landing.why3Title'), desc: t('landing.why3Desc'), gradient: 'from-amber-500 to-orange-500' },
+              { icon: Shield, title: t('landing.why4Title'), desc: t('landing.why4Desc'), gradient: 'from-emerald-500 to-teal-500' },
+              { icon: Zap, title: t('landing.why5Title'), desc: t('landing.why5Desc'), gradient: 'from-rose-500 to-pink-500' },
+              { icon: Globe, title: t('landing.why6Title'), desc: t('landing.why6Desc'), gradient: 'from-indigo-500 to-blue-500' },
+            ].map((item, i) => (
+              <div key={i} className="relative p-6 rounded-2xl bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 hover:shadow-lg transition-shadow group">
+                <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${item.gradient} flex items-center justify-center mb-4 shadow-lg group-hover:scale-110 transition-transform`}>
+                  <item.icon className="w-6 h-6 text-white" />
                 </div>
-                <h3 className="text-lg font-bold text-slate-900 mb-2">{f.title}</h3>
-                <p className="text-sm text-slate-500 leading-relaxed">{f.desc}</p>
+                <h3 className="text-lg font-bold mb-2">{item.title}</h3>
+                <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed">{item.desc}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ═══ Use Cases ═══ */}
+      <section className="py-20 px-6 bg-slate-50 dark:bg-slate-900/50">
+        <div className="max-w-7xl mx-auto">
+          <div className="text-center mb-16">
+            <h2 className="text-3xl md:text-4xl font-extrabold mb-4">{t('landing.useCasesTitle')}</h2>
+            <p className="text-lg text-slate-500 dark:text-slate-400 max-w-2xl mx-auto">{t('landing.useCasesSubtitle')}</p>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 max-w-5xl mx-auto">
+            {useCases.map((uc, i) => (
+              <div key={i} className="text-center p-8 bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 hover:shadow-xl transition-all group">
+                <div className="w-16 h-16 mx-auto bg-primary-50 dark:bg-primary-500/10 rounded-2xl flex items-center justify-center mb-5 group-hover:scale-110 transition-transform">
+                  <uc.icon className="w-8 h-8 text-primary-600 dark:text-primary-400" />
+                </div>
+                <h3 className="text-lg font-bold mb-2">{uc.title}</h3>
+                <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed">{uc.desc}</p>
               </div>
             ))}
           </div>
@@ -267,34 +410,34 @@ const LandingPage: React.FC = () => {
       <section id="pricing" className="py-20 px-6">
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-16">
-            <h2 className="text-3xl md:text-4xl font-extrabold text-slate-900 mb-4">{t('landing.pricingTitle')}</h2>
-            <p className="text-lg text-slate-500 max-w-2xl mx-auto">{t('landing.pricingSubtitle')}</p>
+            <h2 className="text-3xl md:text-4xl font-extrabold mb-4">{t('landing.pricingTitle')}</h2>
+            <p className="text-lg text-slate-500 dark:text-slate-400 max-w-2xl mx-auto">{t('landing.pricingSubtitle')}</p>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-5xl mx-auto">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 max-w-6xl mx-auto">
             {plans.map((plan) => (
-              <div key={plan.id} className={`relative rounded-2xl p-7 border transition-all hover:shadow-xl ${plan.popular ? 'bg-primary-600 border-primary-600 text-white shadow-xl shadow-primary-500/30 scale-[1.02]' : 'bg-white border-slate-200 hover:shadow-slate-200/50'}`}>
+              <div key={plan.id} className={`relative rounded-2xl p-7 border transition-all hover:shadow-xl ${plan.popular ? 'bg-primary-600 border-primary-600 text-white shadow-xl shadow-primary-500/30 scale-[1.02]' : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 hover:shadow-slate-200/50 dark:hover:shadow-black/20'}`}>
                 {plan.popular && (
                   <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-amber-400 text-slate-900 text-xs font-bold px-4 py-1 rounded-full shadow-lg">{t('landing.popular')}</div>
                 )}
                 <div className="flex items-center gap-3 mb-4">
-                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${plan.popular ? 'bg-white/20' : 'bg-slate-100'}`}>
-                    <plan.icon className={`w-5 h-5 ${plan.popular ? 'text-white' : 'text-slate-600'}`} />
+                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${plan.popular ? 'bg-white/20' : 'bg-slate-100 dark:bg-slate-800'}`}>
+                    <plan.icon className={`w-5 h-5 ${plan.popular ? 'text-white' : 'text-slate-600 dark:text-slate-400'}`} />
                   </div>
-                  <h3 className={`text-lg font-bold ${plan.popular ? 'text-white' : 'text-slate-900'}`}>{plan.name}</h3>
+                  <h3 className={`text-lg font-bold ${plan.popular ? 'text-white' : ''}`}>{plan.name}</h3>
                 </div>
                 <div className="mb-6">
                   {plan.price === 0 ? (
-                    <span className={`text-4xl font-extrabold ${plan.popular ? 'text-white' : 'text-slate-900'}`}>{t('landing.free')}</span>
+                    <span className={`text-4xl font-extrabold ${plan.popular ? 'text-white' : ''}`}>{t('landing.free')}</span>
                   ) : (
                     <>
-                      <span className={`text-4xl font-extrabold ${plan.popular ? 'text-white' : 'text-slate-900'}`}>{plan.price.toLocaleString()}</span>
+                      <span className={`text-4xl font-extrabold ${plan.popular ? 'text-white' : ''}`}>{plan.price.toLocaleString()}</span>
                       <span className={`text-sm ${plan.popular ? 'text-white/70' : 'text-slate-400'}`}> {t('landing.currency')}/{t('landing.perMonth')}</span>
                     </>
                   )}
                 </div>
                 <ul className="space-y-3 mb-8">
                   {plan.features.map((f) => (
-                    <li key={f} className={`flex items-center gap-2.5 text-sm ${plan.popular ? 'text-white/90' : 'text-slate-600'}`}>
+                    <li key={f} className={`flex items-center gap-2.5 text-sm ${plan.popular ? 'text-white/90' : 'text-slate-600 dark:text-slate-400'}`}>
                       <Check className={`w-4 h-4 shrink-0 ${plan.popular ? 'text-emerald-300' : 'text-emerald-500'}`} />
                       {f}
                     </li>
@@ -309,56 +452,26 @@ const LandingPage: React.FC = () => {
         </div>
       </section>
 
-      {/* ═══ Testimonials ═══ */}
-      <section id="testimonials" className="py-20 px-6 bg-slate-50">
-        <div className="max-w-7xl mx-auto">
-          <div className="text-center mb-16">
-            <h2 className="text-3xl md:text-4xl font-extrabold text-slate-900 mb-4">{t('landing.reviewsTitle')}</h2>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {testimonials.map((rev, i) => (
-              <div key={i} className="bg-white rounded-2xl p-6 border border-slate-100 shadow-sm">
-                <div className="flex gap-0.5 mb-4">
-                  {Array.from({ length: 5 }).map((_, j) => (
-                    <Star key={j} className={`w-4 h-4 ${j < rev.rating ? 'text-amber-400 fill-amber-400' : 'text-slate-200 fill-slate-200'}`} />
-                  ))}
-                </div>
-                <p className="text-sm text-slate-600 leading-relaxed mb-5">"{rev.text}"</p>
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-primary-500/10 rounded-full flex items-center justify-center text-sm font-bold text-primary-600">
-                    {rev.name[0]}
-                  </div>
-                  <div>
-                    <p className="text-sm font-semibold text-slate-900">{rev.name}</p>
-                    <p className="text-xs text-slate-400">{rev.role}</p>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
       {/* ═══ FAQ ═══ */}
-      <section id="faq" className="py-20 px-6">
+      <section id="faq" className="py-20 px-6 bg-slate-50 dark:bg-slate-900/50">
         <div className="max-w-3xl mx-auto">
           <div className="text-center mb-16">
-            <h2 className="text-3xl md:text-4xl font-extrabold text-slate-900 mb-4">{t('landing.faqTitle')}</h2>
-            <p className="text-lg text-slate-500">{t('landing.faqSubtitle')}</p>
+            <h2 className="text-3xl md:text-4xl font-extrabold mb-4">{t('landing.faqTitle')}</h2>
+            <p className="text-lg text-slate-500 dark:text-slate-400">{t('landing.faqSubtitle')}</p>
           </div>
           <div className="space-y-3">
             {faqs.map((faq, i) => (
-              <div key={i} className="border border-slate-200 rounded-xl overflow-hidden">
+              <div key={i} className="border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden bg-white dark:bg-slate-900">
                 <button
                   onClick={() => setOpenFaqIndex(openFaqIndex === i ? null : i)}
-                  className="w-full flex items-center justify-between px-6 py-4 text-left hover:bg-slate-50 transition-colors"
+                  className="w-full flex items-center justify-between px-6 py-4 text-left hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors"
                 >
-                  <span className="font-semibold text-slate-900 text-sm pr-4">{faq.q}</span>
+                  <span className="font-semibold text-sm pr-4">{faq.q}</span>
                   <ChevronDown className={`w-5 h-5 text-slate-400 shrink-0 transition-transform ${openFaqIndex === i ? 'rotate-180' : ''}`} />
                 </button>
                 {openFaqIndex === i && (
                   <div className="px-6 pb-4">
-                    <p className="text-sm text-slate-500 leading-relaxed">{faq.a}</p>
+                    <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed">{faq.a}</p>
                   </div>
                 )}
               </div>
@@ -369,7 +482,7 @@ const LandingPage: React.FC = () => {
 
       {/* ═══ CTA ═══ */}
       <section className="py-20 px-6">
-        <div className="max-w-4xl mx-auto text-center bg-primary-600 rounded-3xl p-12 md:p-16 relative overflow-hidden">
+        <div className="max-w-4xl mx-auto text-center bg-gradient-to-br from-primary-600 to-violet-600 rounded-3xl p-12 md:p-16 relative overflow-hidden">
           <div className="absolute top-[-50px] right-[-50px] w-[200px] h-[200px] rounded-full bg-white/10" />
           <div className="absolute bottom-[-60px] left-[-40px] w-[180px] h-[180px] rounded-full bg-white/5" />
           <div className="relative z-10">
@@ -377,7 +490,7 @@ const LandingPage: React.FC = () => {
             <p className="text-white/70 text-lg mb-8 max-w-xl mx-auto">{t('landing.ctaSubtitle')}</p>
             <Link to="/register" className="inline-flex items-center gap-2 bg-white text-primary-700 font-semibold px-8 py-3.5 rounded-xl hover:bg-slate-100 transition-colors shadow-xl group">
               {t('landing.ctaButton')}
-              <ChevronRight className="w-5 h-5 group-hover:translate-x-0.5 transition-transform" />
+              <ArrowRight className="w-5 h-5 group-hover:translate-x-0.5 transition-transform" />
             </Link>
           </div>
         </div>
@@ -386,19 +499,21 @@ const LandingPage: React.FC = () => {
       {/* ═══ Footer ═══ */}
       <footer className="bg-[#0f172a] text-white pt-16 pb-8 px-6">
         <div className="max-w-7xl mx-auto">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-10 mb-12">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-10 mb-12">
             {/* Brand */}
             <div className="md:col-span-1">
               <div className="flex items-center gap-2.5 mb-4">
-                <img src="/icons/logo.png" alt="Planula" className="h-8 w-auto object-contain" />
-                <span className="font-bold text-lg">Planula</span>
+                <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-primary-500 to-violet-500 flex items-center justify-center">
+                  <GraduationCap className="w-4.5 h-4.5 text-white" />
+                </div>
+                <span className="font-bold text-lg">MyCoursePlan</span>
               </div>
               <p className="text-sm text-slate-400 leading-relaxed mb-4">{t('landing.footerDesc')}</p>
               <div className="flex gap-3">
-                <a href="https://t.me/planula" target="_blank" rel="noopener noreferrer" className="w-9 h-9 bg-white/10 rounded-lg flex items-center justify-center hover:bg-primary-600 transition-colors">
+                <a href="https://t.me/mycoursePlan" target="_blank" rel="noopener noreferrer" className="w-9 h-9 bg-white/10 rounded-lg flex items-center justify-center hover:bg-primary-600 transition-colors">
                   <MessageCircle className="w-4 h-4" />
                 </a>
-                <a href="mailto:info@planula.io" className="w-9 h-9 bg-white/10 rounded-lg flex items-center justify-center hover:bg-primary-600 transition-colors">
+                <a href="mailto:info@mycoursePlan.io" className="w-9 h-9 bg-white/10 rounded-lg flex items-center justify-center hover:bg-primary-600 transition-colors">
                   <Mail className="w-4 h-4" />
                 </a>
               </div>
@@ -407,40 +522,45 @@ const LandingPage: React.FC = () => {
             <div>
               <h4 className="font-semibold text-sm mb-4">{t('landing.footerProduct')}</h4>
               <ul className="space-y-2.5">
-                <li><a href="#features" className="text-sm text-slate-400 hover:text-white transition-colors">{t('landing.navFeatures')}</a></li>
+                <li><Link to="/features" className="text-sm text-slate-400 hover:text-white transition-colors">{t('landing.navFeatures')}</Link></li>
                 <li><a href="#pricing" className="text-sm text-slate-400 hover:text-white transition-colors">{t('landing.navPricing')}</a></li>
-                <li><a href="#faq" className="text-sm text-slate-400 hover:text-white transition-colors">{t('landing.navFaq')}</a></li>
+                <li><Link to="/docs" className="text-sm text-slate-400 hover:text-white transition-colors">{t('landing.navDocs')}</Link></li>
               </ul>
             </div>
             {/* Company */}
             <div>
               <h4 className="font-semibold text-sm mb-4">{t('landing.footerCompany')}</h4>
               <ul className="space-y-2.5">
-                <li><a href="#" className="text-sm text-slate-400 hover:text-white transition-colors">{t('landing.footerAbout')}</a></li>
-                <li><a href="#" className="text-sm text-slate-400 hover:text-white transition-colors">{t('landing.footerPrivacy')}</a></li>
-                <li><a href="#" className="text-sm text-slate-400 hover:text-white transition-colors">{t('landing.footerTerms')}</a></li>
+                <li><Link to="/about" className="text-sm text-slate-400 hover:text-white transition-colors">{t('landing.footerAbout')}</Link></li>
+                <li><Link to="/contact" className="text-sm text-slate-400 hover:text-white transition-colors">{t('landing.footerContactLink')}</Link></li>
+              </ul>
+            </div>
+            {/* Resources */}
+            <div>
+              <h4 className="font-semibold text-sm mb-4">{t('landing.footerResources')}</h4>
+              <ul className="space-y-2.5">
+                <li><Link to="/docs" className="text-sm text-slate-400 hover:text-white transition-colors">{t('landing.navDocs')}</Link></li>
+                <li><a href="#faq" className="text-sm text-slate-400 hover:text-white transition-colors">{t('landing.navFaq')}</a></li>
               </ul>
             </div>
             {/* Contact */}
             <div>
               <h4 className="font-semibold text-sm mb-4">{t('landing.footerContact')}</h4>
               <ul className="space-y-2.5">
-                <li className="flex items-center gap-2 text-sm text-slate-400">
-                  <Mail className="w-4 h-4 shrink-0" /> info@planula.io
-                </li>
-                <li className="flex items-center gap-2 text-sm text-slate-400">
-                  <Phone className="w-4 h-4 shrink-0" /> +996 555 000 000
-                </li>
-                <li className="flex items-center gap-2 text-sm text-slate-400">
-                  <MapPin className="w-4 h-4 shrink-0" /> {t('landing.footerCity')}
-                </li>
+                <li className="flex items-center gap-2 text-sm text-slate-400"><Mail className="w-4 h-4 shrink-0" /> info@mycoursePlan.io</li>
+                <li className="flex items-center gap-2 text-sm text-slate-400"><Phone className="w-4 h-4 shrink-0" /> +996 555 000 000</li>
+                <li className="flex items-center gap-2 text-sm text-slate-400"><MapPin className="w-4 h-4 shrink-0" /> {t('landing.footerCity')}</li>
               </ul>
             </div>
           </div>
-          {/* Bottom */}
+          {/* Legal */}
           <div className="border-t border-white/10 pt-6 flex flex-col md:flex-row items-center justify-between gap-4">
-            <p className="text-sm text-slate-500">© {new Date().getFullYear()} Planula. {t('landing.rights')}</p>
-            <LanguageSwitcher />
+            <p className="text-sm text-slate-500">&copy; {new Date().getFullYear()} MyCoursePlan. {t('landing.rights')}</p>
+            <div className="flex items-center gap-6">
+              <Link to="/privacy" className="text-sm text-slate-500 hover:text-white transition-colors">{t('landing.footerPrivacy')}</Link>
+              <Link to="/terms" className="text-sm text-slate-500 hover:text-white transition-colors">{t('landing.footerTerms')}</Link>
+              <LanguageSwitcher />
+            </div>
           </div>
         </div>
       </footer>

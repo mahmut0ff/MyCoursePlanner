@@ -177,7 +177,7 @@ export default function ChatRoomList({ rooms, loading, error, activeRoomId, onSe
                 <div className="relative shrink-0">
                   <ChatAvatar src={roomAvatarUrl} name={displayTitle} size="lg" type={room.type === 'direct' ? 'direct' : 'group'} />
                   {isUnread && (
-                    <div className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-red-500 border-2 border-white dark:border-slate-900" />
+                    <div className="absolute top-0 right-0 w-3 h-3 rounded-full bg-red-500 ring-2 ring-white dark:ring-slate-900" />
                   )}
                 </div>
 

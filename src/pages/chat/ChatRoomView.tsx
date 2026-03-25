@@ -49,12 +49,19 @@ export default function ChatRoomView({ room, onBack, displayTitle, avatarUrl, av
   const isRoomAdmin = room.participants[profile?.uid || '']?.role === 'admin';
   const canModerateRoom = isSysAdmin || isRoomAdmin;
 
-  // Mark messages as read when viewing the room
+  // Mark messages as read immediately when opening a room
   useEffect(() => {
-    if (isAtBottom) {
+    updateLastRead(room.id);
+  }, [room.id, updateLastRead]);
+
+  // Also mark as read when new messages arrive and user is at bottom
+  const prevMsgCountRef = useRef(0);
+  useEffect(() => {
+    if (messages.length > prevMsgCountRef.current && isAtBottom) {
       updateLastRead(room.id);
     }
-  }, [messages, isAtBottom, room.id, updateLastRead]);
+    prevMsgCountRef.current = messages.length;
+  }, [messages.length, isAtBottom, room.id, updateLastRead]);
 
   // Scroll tracking logic
   const handleScroll = useCallback(() => {

@@ -22,53 +22,54 @@ const DocsPage: React.FC = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-white dark:bg-slate-950 text-slate-900 dark:text-white">
-      <nav className="fixed top-0 left-0 right-0 z-50 bg-white/80 dark:bg-slate-950/80 backdrop-blur-xl border-b border-slate-200/50 dark:border-slate-800/50">
+    <div className="min-h-screen bg-white text-slate-900">
+      <nav className="fixed top-0 left-0 right-0 z-50 bg-white/80 backdrop-blur-xl border-b border-slate-200/50">
         <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
           <Link to="/" className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-primary-500 to-violet-500 flex items-center justify-center">
+            <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-primary-500 to-violet-500 flex items-center justify-center shrink-0">
               <GraduationCap className="w-4.5 h-4.5 text-white" />
             </div>
-            <span className="font-bold text-lg">MyCoursePlan</span>
+            <span className="font-bold text-lg">Planula</span>
           </Link>
           <div className="flex items-center gap-3">
             <LanguageSwitcher />
-            <Link to="/login" className="text-sm font-medium text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white px-4 py-2">{t('auth.login')}</Link>
-            <Link to="/register" className="text-sm font-semibold text-white bg-primary-600 hover:bg-primary-700 px-5 py-2.5 rounded-xl shadow-lg shadow-primary-500/20">{t('landing.heroCta')}</Link>
+            <Link to="/login" className="text-sm font-medium text-slate-600 hover:text-slate-900 px-4 py-2 transition-colors">{t('auth.login')}</Link>
+            <Link to="/register" className="text-sm font-semibold text-white bg-primary-600 hover:bg-primary-700 px-5 py-2.5 rounded-xl shadow-lg shadow-primary-500/20 transition-all">{t('landing.heroCta')}</Link>
           </div>
         </div>
       </nav>
 
       <main className="pt-28 pb-20 px-6">
         <div className="max-w-5xl mx-auto">
-          <Link to="/" className="inline-flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-900 dark:hover:text-white mb-8 transition-colors">
+          <Link to="/" className="inline-flex items-center gap-1.5 text-sm font-medium text-slate-500 hover:text-primary-600 mb-8 transition-colors">
             <ArrowLeft className="w-4 h-4" /> {t('common.back')}
           </Link>
 
-          <h1 className="text-4xl font-extrabold mb-3">{t('landing.docsPageTitle')}</h1>
-          <p className="text-lg text-slate-500 dark:text-slate-400 mb-12">{t('landing.docsPageSubtitle')}</p>
+          <h1 className="text-4xl font-extrabold mb-3 text-slate-900">{t('landing.docsPageTitle')}</h1>
+          <p className="text-lg text-slate-500 mb-12">{t('landing.docsPageSubtitle')}</p>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
             {sections.map((section, i) => (
-              <div key={i} className="bg-white dark:bg-slate-900 rounded-2xl p-6 border border-slate-100 dark:border-slate-800 hover:shadow-lg transition-shadow group cursor-pointer">
-                <div className="flex items-center gap-3 mb-3">
-                  <div className={`w-10 h-10 rounded-xl ${section.color} flex items-center justify-center`}>
-                    <section.icon className="w-5 h-5 text-white" />
+              <div key={i} className="bg-white rounded-2xl p-6 border border-slate-100 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 group cursor-pointer flex flex-col h-full">
+                <div className="flex items-center gap-4 mb-4">
+                  <div className={`w-12 h-12 rounded-xl ${section.color} flex items-center justify-center shadow-md group-hover:scale-110 transition-transform`}>
+                    <section.icon className="w-6 h-6 text-white" />
                   </div>
-                  <h3 className="text-lg font-bold">{section.title}</h3>
+                  <h3 className="text-xl font-bold text-slate-900">{section.title}</h3>
                 </div>
-                <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed mb-3">{section.desc}</p>
-                <span className="text-sm text-primary-600 dark:text-primary-400 font-medium flex items-center gap-1 group-hover:gap-2 transition-all">
-                  Coming soon <ArrowRight className="w-4 h-4" />
-                </span>
+                <p className="text-slate-600 leading-relaxed mb-6 flex-grow">{section.desc}</p>
+                <div className="pt-4 border-t border-slate-100 flex items-center text-sm font-medium text-primary-600 group-hover:text-primary-700 transition-colors">
+                  Coming soon
+                  <ArrowRight className="w-4 h-4 ml-1.5 opacity-0 -translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all" />
+                </div>
               </div>
             ))}
           </div>
         </div>
       </main>
 
-      <footer className="bg-[#0f172a] text-white py-8 px-6 text-center">
-        <p className="text-sm text-slate-500">&copy; {new Date().getFullYear()} MyCoursePlan. {t('landing.rights')}</p>
+      <footer className="bg-[#0f172a] text-white py-8 px-6 text-center mt-auto">
+        <p className="text-sm text-slate-500">&copy; {new Date().getFullYear()} Planula. {t('landing.rights')}</p>
       </footer>
     </div>
   );

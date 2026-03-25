@@ -67,7 +67,7 @@ export default function ChatWorkspace() {
   const activeAvatarUrl = activeRoom ? resolveRoomAvatar(activeRoom, profile.uid, avatarCache) : undefined;
 
   return (
-    <div className="absolute inset-0 flex overflow-hidden bg-white dark:bg-slate-900 border-x border-slate-200 dark:border-slate-800 z-10">
+    <div className="absolute inset-0 flex overflow-hidden bg-white dark:bg-slate-900 z-10">
       
       {/* Left Sidebar: Room List */}
       <div className={`w-full md:w-80 shrink-0 border-r border-slate-200 dark:border-slate-800 flex flex-col overflow-hidden ${activeRoomId ? 'hidden md:flex' : 'flex'}`}>

@@ -9,7 +9,7 @@ const AppLayout: React.FC = () => {
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-900 flex">
       {/* Sidebar — always dark navy */}
-      <aside className="hidden lg:block w-64 shrink-0" />
+      <aside className="hidden lg:block w-60 shrink-0" />
       <Sidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
       {/* Main content */}

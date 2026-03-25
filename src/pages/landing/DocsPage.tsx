@@ -1,6 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
+import { useAuth } from '../../contexts/AuthContext';
 import {
   ArrowLeft, GraduationCap, Rocket, BookOpen, ClipboardList,
   Brain, Gamepad2, Award, MessageCircle, Code, ArrowRight,
@@ -9,6 +10,7 @@ import LanguageSwitcher from '../../components/LanguageSwitcher';
 
 const DocsPage: React.FC = () => {
   const { t } = useTranslation();
+  const { firebaseUser: user } = useAuth();
 
   const sections = [
     { icon: Rocket, title: t('landing.docsGettingStarted'), desc: t('landing.docsGettingStartedDesc'), color: 'bg-blue-500' },
@@ -26,9 +28,7 @@ const DocsPage: React.FC = () => {
       <nav className="fixed top-0 left-0 right-0 z-50 bg-white/80 backdrop-blur-xl border-b border-slate-200/50">
         <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
           <Link to="/" className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-primary-500 to-violet-500 flex items-center justify-center shrink-0">
-              <GraduationCap className="w-4.5 h-4.5 text-white" />
-            </div>
+            <img src="/icons/logo.png" alt="Planula" className="h-8 w-auto object-contain" />
             <span className="font-bold text-lg">Planula</span>
           </Link>
           <div className="flex items-center gap-3">

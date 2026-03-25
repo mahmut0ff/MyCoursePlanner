@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
+import { useAuth } from '../../contexts/AuthContext';
 import LanguageSwitcher from '../../components/LanguageSwitcher';
 import {
  BookOpen, ClipboardList, Radio, Brain, BarChart3,
@@ -17,6 +18,7 @@ import {
  ────────────────────────────────────────── */
 const LandingPage: React.FC = () => {
  const { t } = useTranslation();
+  const { firebaseUser: user } = useAuth();
  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
  const [openFaqIndex, setOpenFaqIndex] = useState<number | null>(null);
 
@@ -181,9 +183,7 @@ const LandingPage: React.FC = () => {
  <nav className="fixed top-0 left-0 right-0 z-50 bg-white/80 backdrop-blur-xl border-b border-slate-200/50 ">
  <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
  <Link to="/" className="flex items-center gap-2.5">
- <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-primary-500 to-violet-500 flex items-center justify-center shrink-0">
-   <GraduationCap className="w-4.5 h-4.5 text-white" />
- </div>
+ <img src="/icons/logo.png" alt="Planula" className="h-8 w-auto object-contain" />
  <span className="font-bold text-xl tracking-tight">Planula</span>
  </Link>
  <div className="hidden md:flex items-center gap-8">
@@ -196,8 +196,14 @@ const LandingPage: React.FC = () => {
  </div>
  <div className="flex items-center gap-3">
  <LanguageSwitcher />
- <Link to="/login" className="hidden sm:inline-block text-sm font-medium text-slate-600 hover:text-slate-900 px-4 py-2 transition-colors">{t('auth.login')}</Link>
- <Link to="/register" className="hidden sm:inline-block text-sm font-semibold text-white bg-primary-600 hover:bg-primary-700 px-5 py-2.5 rounded-xl transition-colors shadow-lg shadow-primary-500/20">{t('landing.heroCta')}</Link>
+ {user ? (
+            <Link to="/dashboard" className="hidden sm:inline-block text-sm font-semibold text-white bg-primary-600 hover:bg-primary-700 px-5 py-2.5 rounded-xl transition-colors shadow-lg shadow-primary-500/20">{t('nav.dashboard') || 'Dashboard'}</Link>
+          ) : (
+            <>
+              <Link to="/login" className="hidden sm:inline-block text-sm font-medium text-slate-600 hover:text-slate-900 px-4 py-2 transition-colors">{t('auth.login')}</Link>
+              <Link to="/register" className="hidden sm:inline-block text-sm font-semibold text-white bg-primary-600 hover:bg-primary-700 px-5 py-2.5 rounded-xl transition-colors shadow-lg shadow-primary-500/20">{t('landing.heroCta')}</Link>
+            </>
+          )}
  <button onClick={() => setMobileMenuOpen(!mobileMenuOpen)} className="md:hidden p-2 text-slate-600 ">
  {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
  </button>
@@ -212,8 +218,14 @@ const LandingPage: React.FC = () => {
  <Link key={item.to} to={item.to} onClick={() => setMobileMenuOpen(false)} className="block text-sm text-slate-600 py-2">{item.label}</Link>
  ))}
  <div className="flex gap-3 pt-2">
- <Link to="/login" className="flex-1 text-center text-sm font-medium text-slate-600 border border-slate-200 rounded-xl py-2.5">{t('auth.login')}</Link>
- <Link to="/register" className="flex-1 text-center text-sm font-semibold text-white bg-primary-600 rounded-xl py-2.5">{t('landing.heroCta')}</Link>
+ {user ? (
+                <Link to="/dashboard" onClick={() => setMobileMenuOpen(false)} className="flex-1 text-center text-sm font-semibold text-white bg-primary-600 rounded-xl py-2.5 shadow-lg shadow-primary-500/20">{t('nav.dashboard') || 'Dashboard'}</Link>
+              ) : (
+                <>
+                  <Link to="/login" onClick={() => setMobileMenuOpen(false)} className="flex-1 text-center text-sm font-medium text-slate-600 border border-slate-200 rounded-xl py-2.5">{t('auth.login')}</Link>
+                  <Link to="/register" onClick={() => setMobileMenuOpen(false)} className="flex-1 text-center text-sm font-semibold text-white bg-primary-600 rounded-xl py-2.5">{t('landing.heroCta')}</Link>
+                </>
+              )}
  </div>
  </div>
  )}
@@ -240,10 +252,10 @@ const LandingPage: React.FC = () => {
  {t('landing.heroStack')}
  </p>
  <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
- <Link to="/register" className="bg-primary-600 hover:bg-primary-700 text-white font-semibold px-8 py-3.5 rounded-xl text-base shadow-xl shadow-primary-500/25 hover:shadow-primary-500/40 transition-all flex items-center gap-2 group">
- {t('landing.heroCta')}
- <ArrowRight className="w-5 h-5 group-hover:translate-x-0.5 transition-transform" />
- </Link>
+ <Link to={user ? "/dashboard" : "/register"} className="bg-primary-600 hover:bg-primary-700 text-white font-semibold px-8 py-3.5 rounded-xl text-base shadow-xl shadow-primary-500/25 hover:shadow-primary-500/40 transition-all flex items-center gap-2 group">
+                {user ? (t('nav.dashboard') || 'Dashboard') : t('landing.heroCta')}
+                <ArrowRight className="w-5 h-5 group-hover:translate-x-0.5 transition-transform" />
+              </Link>
  <Link to="/contact" className="text-slate-600 hover:text-slate-900 font-medium px-6 py-3.5 rounded-xl border border-slate-200 hover:border-slate-300 transition-all flex items-center gap-2">
  {t('landing.heroDemo')}
  </Link>
@@ -413,10 +425,10 @@ const LandingPage: React.FC = () => {
  <div className="relative z-10">
  <h2 className="text-3xl md:text-4xl font-extrabold text-white mb-4">{t('landing.ctaTitle')}</h2>
  <p className="text-white/70 text-lg mb-8 max-w-xl mx-auto">{t('landing.ctaSubtitle')}</p>
- <Link to="/register" className="inline-flex items-center gap-2 bg-white text-primary-700 font-semibold px-8 py-3.5 rounded-xl hover:bg-slate-100 transition-colors shadow-xl group">
- {t('landing.ctaButton')}
- <ArrowRight className="w-5 h-5 group-hover:translate-x-0.5 transition-transform" />
- </Link>
+ <Link to={user ? "/dashboard" : "/register"} className="inline-flex items-center gap-2 bg-white text-primary-700 font-semibold px-8 py-3.5 rounded-xl hover:bg-slate-100 transition-colors shadow-xl group">
+              {user ? (t('nav.dashboard') || 'Dashboard') : t('landing.ctaButton')}
+              <ArrowRight className="w-5 h-5 group-hover:translate-x-0.5 transition-transform" />
+            </Link>
  </div>
  </div>
  </section>
@@ -428,9 +440,7 @@ const LandingPage: React.FC = () => {
  {/* Brand */}
  <div className="md:col-span-1">
  <div className="flex items-center gap-2.5 mb-4">
- <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-primary-500 to-violet-500 flex items-center justify-center shrink-0">
-   <GraduationCap className="w-4.5 h-4.5 text-white" />
- </div>
+ <img src="/icons/logo.png" alt="Planula" className="h-8 w-auto object-contain" />
  <span className="font-bold text-xl tracking-tight">Planula</span>
  </div>
  <p className="text-sm text-slate-400 leading-relaxed mb-4">{t('landing.footerDesc')}</p>

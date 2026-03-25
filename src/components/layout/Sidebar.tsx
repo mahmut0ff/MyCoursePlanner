@@ -10,7 +10,7 @@ import {
   FolderOpen, Calendar, Trophy, Settings, LogOut, UserPlus, MailOpen,
   Briefcase, Radio, Gamepad2, ChevronDown, FileText, Monitor, Award,
   BarChart3, GraduationCap, UsersRound, Layers, Library, History,
-  Zap, Shield, Flag, Plug, CreditCard, Database, Megaphone,
+  Shield, Flag, Plug, CreditCard, Database, Megaphone,
 } from 'lucide-react';
 
 /* ─── Collapsible section ─── */

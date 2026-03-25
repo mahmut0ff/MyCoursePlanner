@@ -451,3 +451,6 @@ export const apiArchiveChatRoom = (roomId: string, isArchived: boolean) =>
 
 export const apiModerateChatMessage = (roomId: string, messageId: string) =>
   apiRequest('api-chat', 'POST', { roomId, messageId }, { action: 'moderateMessage' });
+
+export const apiNotifyChatMessage = (roomId: string, text: string, senderName: string) =>
+  apiRequest('api-chat', 'POST', { roomId, text, senderName }, { action: 'notifyMessage' });

@@ -2,7 +2,7 @@ import { useState, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../contexts/AuthContext';
 import type { ChatRoom } from '../../types';
-import { Search, Plus, MessageSquare, Hash, ShieldAlert } from 'lucide-react';
+import { Search, Plus, ShieldAlert } from 'lucide-react';
 import { formatDistanceToNow, isToday, format } from 'date-fns';
 import { ru, enUS } from 'date-fns/locale';
 import CreateGroupModal from './CreateGroupModal';
@@ -10,9 +10,20 @@ import CreateGroupModal from './CreateGroupModal';
 /** Safely convert Firestore Timestamp or ISO string to Date */
 function toSafeDate(val: any): Date | null {
   if (!val) return null;
-  if (val.toDate) return val.toDate(); // Firestore Timestamp
+  if (val.toDate) return val.toDate();
   const d = new Date(val);
   return isNaN(d.getTime()) ? null : d;
+}
+
+/** Resolve display title for a room */
+function resolveTitle(room: ChatRoom, myUid?: string, nameCache?: Record<string, string>): string {
+  if (room.type === 'group') return room.title || 'Group Chat';
+  if (!myUid) return room.title || 'Chat';
+  const otherUid = room.participantIds.find(id => id !== myUid);
+  if (!otherUid) return room.title || 'Chat';
+  if (room.participants[otherUid]?.displayName) return room.participants[otherUid].displayName!;
+  if (nameCache?.[otherUid]) return nameCache[otherUid];
+  return room.title || 'Chat';
 }
 
 interface ChatRoomListProps {
@@ -21,19 +32,10 @@ interface ChatRoomListProps {
   error: Error | null;
   activeRoomId: string | null;
   onSelectRoom: (roomId: string) => void;
+  nameCache?: Record<string, string>;
 }
 
-/** For DM rooms, derive the other person's displayName from the participants map */
-function getDmCounterpartName(room: ChatRoom, myUid?: string): string {
-  if (room.type !== 'direct' || !myUid) return room.title || 'Chat';
-  const otherUid = room.participantIds.find(id => id !== myUid);
-  if (otherUid && room.participants[otherUid]?.displayName) {
-    return room.participants[otherUid].displayName;
-  }
-  return room.title || 'Chat';
-}
-
-export default function ChatRoomList({ rooms, loading, error, activeRoomId, onSelectRoom }: ChatRoomListProps) {
+export default function ChatRoomList({ rooms, loading, error, activeRoomId, onSelectRoom, nameCache }: ChatRoomListProps) {
   const { t, i18n } = useTranslation();
   const { profile } = useAuth();
   const [search, setSearch] = useState('');
@@ -41,28 +43,19 @@ export default function ChatRoomList({ rooms, loading, error, activeRoomId, onSe
   const [showCreateModal, setShowCreateModal] = useState(false);
 
   const dfLocale = i18n.language === 'ru' ? ru : enUS;
-
-  // Derive display metadata for each room
-  // In a direct message, we want to show the OTHER person's name as the title, 
-  // but we don't store names globally in ChatRoom to avoid stale data.
-  // MVP assumption: If it's a direct message, `title` might be empty, and we might need to derive it 
-  // from users directory. But for purely decentralized approach without n+1 fetches, 
-  // maybe we show "Direct Message" or wait, we CAN fetch names if we pass them or store them in participants!
-  // *Design choice:* We store role/joinedAt in participants, but we can also store `displayName` and `avatarUrl` there statically (Netlify updates it on join). 
-  // For now, let's just show standard titles or fallback.
   
   const filteredRooms = useMemo(() => {
     return rooms.filter(r => {
       if (filter !== 'all' && r.type !== filter) return false;
       if (search) {
         const query = search.toLowerCase();
-        // If room has title, match it
-        if (r.title && r.title.toLowerCase().includes(query)) return true;
+        const title = resolveTitle(r, profile?.uid, nameCache);
+        if (title.toLowerCase().includes(query)) return true;
         return false;
       }
       return true;
     });
-  }, [rooms, search, filter]);
+  }, [rooms, search, filter, profile?.uid, nameCache]);
 
   if (loading) {
     return (
@@ -160,11 +153,7 @@ export default function ChatRoomList({ rooms, loading, error, activeRoomId, onSe
                 : formatDistanceToNow(msgDate, { addSuffix: true, locale: dfLocale })
             ) : '';
 
-            // Derive display title for Direct Messaging (MVP fallback)
-            // If group, use room.title. If direct, use participant count or custom logic.
-            const displayTitle = room.type === 'direct' 
-              ? getDmCounterpartName(room, profile?.uid)
-              : (room.title || 'Group Chat');
+            const displayTitle = resolveTitle(room, profile?.uid, nameCache);
 
             return (
               <button
@@ -182,7 +171,7 @@ export default function ChatRoomList({ rooms, loading, error, activeRoomId, onSe
                     {room.imageUrl ? (
                       <img src={room.imageUrl} alt="" className="w-full h-full object-cover rounded-full" />
                     ) : (
-                      room.type === 'direct' ? <MessageSquare className="w-5 h-5" /> : <Hash className="w-5 h-5" />
+                      <span className="font-bold text-base">{displayTitle[0]?.toUpperCase() || '?'}</span>
                     )}
                   </div>
                   {isUnread && (

@@ -264,6 +264,47 @@ const handler: Handler = async (event: HandlerEvent) => {
       return ok({ success: true });
     }
 
+    // 5. NOTIFY NEW MESSAGE (creates in-app notifications for other participants)
+    if (action === 'notifyMessage' && event.httpMethod === 'POST') {
+      const body = JSON.parse(event.body || '{}');
+      const { roomId, text, senderName } = body;
+      if (!roomId) return badRequest('roomId required');
+
+      const roomRef = adminDb.collection('chatRooms').doc(roomId);
+      const roomDoc = await roomRef.get();
+      if (!roomDoc.exists) return notFound();
+      
+      const rData = roomDoc.data()!;
+      if (rData.organizationId !== orgId) return forbidden();
+
+      // Create notification for each participant except sender
+      const batch = adminDb.batch();
+      const preview = (text || '📎 Вложение').slice(0, 80);
+      const displayName = senderName || 'User';
+      const roomTitle = rData.title || displayName;
+
+      for (const uid of rData.participantIds) {
+        if (uid === user.uid) continue; // skip sender
+        if (rData.participants[uid]?.isRemoved) continue; // skip removed
+
+        const notifRef = adminDb.collection('notifications').doc();
+        batch.set(notifRef, {
+          id: notifRef.id,
+          recipientId: uid,
+          type: 'chat_message',
+          title: `💬 ${displayName}`,
+          body: preview,
+          data: { roomId, senderId: user.uid },
+          read: false,
+          organizationId: orgId,
+          createdAt: now(),
+        });
+      }
+
+      await batch.commit();
+      return ok({ success: true });
+    }
+
     return badRequest(`Unknown action: ${action}`);
   } catch (err: any) {
     console.error('api-chat error:', err);

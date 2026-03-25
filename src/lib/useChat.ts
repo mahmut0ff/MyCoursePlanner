@@ -7,6 +7,7 @@ import {
   onSnapshot,
   doc,
   setDoc,
+  getDoc,
   serverTimestamp,
   updateDoc,
   limit
@@ -14,6 +15,15 @@ import {
 import { db, auth, storage } from './firebase';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import type { ChatRoom, ChatMessage, MessageAttachment } from '../types';
+import { apiNotifyChatMessage } from './api';
+
+/** Safely extract a numeric timestamp from Firestore Timestamp or ISO string */
+function parseTime(v: any): number {
+  if (!v) return 0;
+  if (v.toDate) return v.toDate().getTime();
+  const d = new Date(v);
+  return isNaN(d.getTime()) ? 0 : d.getTime();
+}
 
 /**
  * Upload an attachment to Firebase Storage for a specific chat room.
@@ -43,11 +53,14 @@ export async function uploadChatAttachment(
 
 /**
  * Hook to subscribe to user's chat rooms within an organization.
+ * Also resolves display names for DM participants from /users collection.
  */
 export function useChatRooms(organizationId?: string) {
   const [rooms, setRooms] = useState<ChatRoom[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
+  // Cache: uid -> displayName
+  const [nameCache, setNameCache] = useState<Record<string, string>>({});
 
   useEffect(() => {
     const user = auth.currentUser;
@@ -57,7 +70,6 @@ export function useChatRooms(organizationId?: string) {
       return;
     }
 
-    // Query rooms where user is a participant AND it belongs to the current org
     const q = query(
       collection(db, 'chatRooms'),
       where('organizationId', '==', organizationId),
@@ -65,25 +77,38 @@ export function useChatRooms(organizationId?: string) {
     );
 
     const unsubscribe = onSnapshot(q, 
-      (snapshot) => {
-        let rData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as ChatRoom));
+      async (snapshot) => {
+        let rData = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as ChatRoom));
         
-        // Filter out archived unless we explicitly want them, or maybe filter in UI.
-        // Sort explicitly by lastMessageAt locally since Firestore 
-        // requires complex composite index for array-contains + orderBy
-        rData.sort((a, b) => {
-          const parseTime = (v: any) => {
-            if (!v) return 0;
-            if (v.toDate) return v.toDate().getTime();
-            const d = new Date(v);
-            return isNaN(d.getTime()) ? 0 : d.getTime();
-          };
-          return parseTime(b.lastMessageAt) - parseTime(a.lastMessageAt); // Descending
-        });
-
-        // Optional: Filter out rooms if the user is explicitly "isRemoved" 
-        // and we want them to hide the room from the list instead of showing history.
+        rData.sort((a, b) => parseTime(b.lastMessageAt) - parseTime(a.lastMessageAt));
         rData = rData.filter(room => !room.participants[user.uid]?.isRemoved);
+
+        // Resolve missing displayNames for DM counterparts
+        const uidsToResolve: string[] = [];
+        for (const room of rData) {
+          if (room.type === 'direct') {
+            const otherUid = room.participantIds.find(id => id !== user.uid);
+            if (otherUid && !room.participants[otherUid]?.displayName && !nameCache[otherUid]) {
+              uidsToResolve.push(otherUid);
+            }
+          }
+        }
+
+        // Fetch missing names in parallel
+        if (uidsToResolve.length > 0) {
+          const newNames: Record<string, string> = {};
+          await Promise.all(
+            [...new Set(uidsToResolve)].map(async (uid) => {
+              try {
+                const uDoc = await getDoc(doc(db, 'users', uid));
+                newNames[uid] = uDoc.data()?.displayName || uDoc.data()?.email || uid;
+              } catch {
+                newNames[uid] = uid;
+              }
+            })
+          );
+          setNameCache(prev => ({ ...prev, ...newNames }));
+        }
 
         setRooms(rData);
         setLoading(false);
@@ -98,7 +123,7 @@ export function useChatRooms(organizationId?: string) {
     return () => unsubscribe();
   }, [organizationId, auth.currentUser?.uid]);
 
-  return { rooms, loading, error };
+  return { rooms, loading, error, nameCache };
 }
 
 /**
@@ -123,9 +148,7 @@ export function useChatMessages(roomId?: string, maxLimit = 100) {
     );
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
-      // Data arrives desc, but we probably want it desc or asc in UI.
-      // Usually, UI renders bottom-up. So we reverse it.
-      const msgs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as ChatMessage));
+      const msgs = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as ChatMessage));
       setMessages(msgs.reverse());
       setLoading(false);
     });
@@ -145,49 +168,62 @@ export function useChatActions() {
     roomId: string, 
     organizationId: string, 
     text: string, 
-    attachments?: MessageAttachment[]
+    attachments?: MessageAttachment[],
+    replyTo?: ChatMessage['replyTo']
   ) => {
     const user = auth.currentUser;
     if (!user) throw new Error('Unauthenticated');
 
-    // Idempotent tempId
+    // Get sender display name
+    let senderName = user.displayName || user.email || 'User';
+    try {
+      const uDoc = await getDoc(doc(db, 'users', user.uid));
+      senderName = uDoc.data()?.displayName || senderName;
+    } catch {}
+
     const tempId = crypto.randomUUID();
     const msgRef = doc(db, 'chatRooms', roomId, 'messages', tempId);
 
-    const msgData: Partial<ChatMessage> = {
+    const msgData: Record<string, any> = {
       id: tempId,
       roomId,
       organizationId,
       senderId: user.uid,
+      senderName,
       messageType: attachments?.length ? (attachments[0].type as any) : 'text',
       text,
       attachments: attachments || [],
-      createdAt: new Date().toISOString(), // Fallback for optimistic UI
+      createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
 
-    // Write the message
+    if (replyTo) {
+      msgData.replyTo = replyTo;
+    }
+
     await setDoc(msgRef, {
       ...msgData,
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(), 
     });
 
-    // Update room metadata (lastMessageAt/Preview) so the room list stays sorted
-    // Wrapped in try/catch: if Firestore rules reject, the message is still sent
+    // Update room metadata
     try {
       const roomRef = doc(db, 'chatRooms', roomId);
       const preview = text
         ? (text.length > 60 ? text.slice(0, 60) + '…' : text)
-        : (attachments?.length ? '📎 Attachment' : '');
+        : (attachments?.length ? '📎 Вложение' : '');
       await updateDoc(roomRef, {
         lastMessageAt: serverTimestamp(),
-        lastMessagePreview: preview,
+        lastMessagePreview: `${senderName}: ${preview}`,
         updatedAt: serverTimestamp(),
       });
     } catch (e) {
       console.warn('Could not update room metadata:', e);
     }
+
+    // Fire-and-forget notification to other participants
+    apiNotifyChatMessage(roomId, text, senderName).catch(() => {});
 
     return tempId;
   }, []);
@@ -196,8 +232,6 @@ export function useChatActions() {
     const user = auth.currentUser;
     if (!user) return;
     
-    // We also need rule permission to update `participants.${user.uid}.lastReadAt`.
-    // Let's assume we'll update firestore.rules for this too, avoiding a heavy network call to Netlify for just a read receipt.
     const roomRef = doc(db, 'chatRooms', roomId);
     try {
       await updateDoc(roomRef, {
@@ -224,10 +258,9 @@ export function useUnreadCount(rooms: ChatRoom[]) {
       const myParticipant = room.participants[user.uid];
       if (!myParticipant) return acc;
       
-      const lastMsg = room.lastMessageAt ? new Date(room.lastMessageAt).getTime() : 0;
-      const lastRead = myParticipant.lastReadAt ? new Date(myParticipant.lastReadAt).getTime() : 0;
+      const lastMsg = parseTime(room.lastMessageAt);
+      const lastRead = parseTime(myParticipant.lastReadAt);
       
-      // If lastMsg > lastRead, room is unread
       if (lastMsg > lastRead) {
         return acc + 1;
       }

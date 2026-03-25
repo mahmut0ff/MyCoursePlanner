@@ -1016,9 +1016,15 @@ export interface ChatMessage {
   roomId: string; // Parent collection link
   organizationId: string;
   senderId: string;
+  senderName?: string; // display name of sender at time of sending
   messageType: ChatMessageType;
   text: string;
   attachments?: MessageAttachment[];
+  replyTo?: {
+    messageId: string;
+    text: string;
+    senderName: string;
+  };
   createdAt: string;
   updatedAt: string;
   deletedAt?: string;

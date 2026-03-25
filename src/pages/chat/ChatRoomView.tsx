@@ -1,19 +1,20 @@
-import { useEffect, useRef, useState, Fragment } from 'react';
+import { useEffect, useRef, useState, Fragment, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ArrowLeft, MoreVertical, ShieldAlert } from 'lucide-react';
+import { ArrowLeft, MoreVertical, ShieldAlert, Reply } from 'lucide-react';
 import { format } from 'date-fns';
 import { ru, enUS } from 'date-fns/locale';
-import type { ChatRoom, MessageAttachment } from '../../types';
+import type { ChatRoom, ChatMessage, MessageAttachment } from '../../types';
 import { useChatMessages, useChatActions, uploadChatAttachment } from '../../lib/useChat';
 import { useAuth } from '../../contexts/AuthContext';
 import { apiArchiveChatRoom, apiModerateChatMessage } from '../../lib/api';
 import ChatMessageInput from './ChatMessageInput';
 import ManageGroupModal from './ManageGroupModal';
+import ImageLightbox from './ImageLightbox';
 
 /** Safely convert Firestore Timestamp or ISO string to Date */
 function toSafeDate(val: any): Date {
   if (!val) return new Date();
-  if (val.toDate) return val.toDate(); // Firestore Timestamp
+  if (val.toDate) return val.toDate();
   const d = new Date(val);
   return isNaN(d.getTime()) ? new Date() : d;
 }
@@ -21,9 +22,10 @@ function toSafeDate(val: any): Date {
 interface ChatRoomViewProps {
   room: ChatRoom;
   onBack: () => void;
+  displayTitle: string;
 }
 
-export default function ChatRoomView({ room, onBack }: ChatRoomViewProps) {
+export default function ChatRoomView({ room, onBack, displayTitle }: ChatRoomViewProps) {
   const { t, i18n } = useTranslation();
   const { profile } = useAuth();
   const { messages, loading } = useChatMessages(room.id);
@@ -36,22 +38,13 @@ export default function ChatRoomView({ room, onBack }: ChatRoomViewProps) {
   const [isAtBottom, setIsAtBottom] = useState(true);
   const [showRoomMenu, setShowRoomMenu] = useState(false);
   const [showManageModal, setShowManageModal] = useState(false);
+  const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
+  const [replyingTo, setReplyingTo] = useState<ChatMessage | null>(null);
 
   // Admin checks
   const isSysAdmin = profile?.role === 'admin' || profile?.role === 'super_admin';
   const isRoomAdmin = room.participants[profile?.uid || '']?.role === 'admin';
   const canModerateRoom = isSysAdmin || isRoomAdmin;
-
-  // Derive Display Title — for DM show the counterpart's name
-  let displayTitle = room.title || 'Новая группа';
-  if (room.type === 'direct') {
-    const otherUid = room.participantIds.find(id => id !== profile?.uid);
-    if (otherUid && room.participants[otherUid]?.displayName) {
-      displayTitle = room.participants[otherUid].displayName;
-    } else {
-      displayTitle = room.title || 'Chat';
-    }
-  }
 
   // Mark messages as read when viewing the room
   useEffect(() => {
@@ -61,14 +54,11 @@ export default function ChatRoomView({ room, onBack }: ChatRoomViewProps) {
   }, [messages, isAtBottom, room.id, updateLastRead]);
 
   // Scroll tracking logic
-  const handleScroll = () => {
+  const handleScroll = useCallback(() => {
     if (!scrollContainerRef.current) return;
     const { scrollTop, scrollHeight, clientHeight } = scrollContainerRef.current;
-    
-    // Check if we are within 100px of the bottom
-    const isBottom = scrollHeight - scrollTop - clientHeight < 100;
-    setIsAtBottom(isBottom);
-  };
+    setIsAtBottom(scrollHeight - scrollTop - clientHeight < 100);
+  }, []);
 
   // Auto-scroll on new message ONLY if at bottom
   useEffect(() => {
@@ -77,7 +67,7 @@ export default function ChatRoomView({ room, onBack }: ChatRoomViewProps) {
     }
   }, [messages, isAtBottom]);
 
-  // Read receipt initial fix -> scroll to bottom automatically when first loaded
+  // Scroll to bottom on first load
   useEffect(() => {
     if (!loading && messagesEndRef.current) {
       messagesEndRef.current.scrollIntoView({ behavior: 'auto' });
@@ -85,7 +75,7 @@ export default function ChatRoomView({ room, onBack }: ChatRoomViewProps) {
     }
   }, [loading, room.id]);
 
-  const handleSendMessage = async (text: string, files?: File[]) => {
+  const handleSendMessage = async (text: string, files?: File[], replyTo?: ChatMessage['replyTo']) => {
     if (!profile || room.participants[profile.uid]?.isRemoved) return;
     
     try {
@@ -96,11 +86,10 @@ export default function ChatRoomView({ room, onBack }: ChatRoomViewProps) {
         );
       }
       
-      await sendMessage(room.id, room.organizationId, text, attachments.length > 0 ? attachments : undefined);
+      await sendMessage(room.id, room.organizationId, text, attachments.length > 0 ? attachments : undefined, replyTo);
     } catch (err) {
       console.error('Failed to send message:', err);
     }
-    // Force scroll to bottom when WE send a message
     setTimeout(() => {
       messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     }, 100);
@@ -127,11 +116,17 @@ export default function ChatRoomView({ room, onBack }: ChatRoomViewProps) {
     }
   };
 
+  // Build a quick lookup for sender names
+  const senderNames: Record<string, string> = {};
+  for (const uid of room.participantIds) {
+    senderNames[uid] = room.participants[uid]?.displayName || uid.slice(0, 8);
+  }
+
   return (
     <div className="flex flex-col h-full overflow-hidden bg-slate-50 dark:bg-slate-900 border-l border-slate-200 dark:border-slate-800">
       
       {/* Header */}
-      <div className="flex items-center justify-between p-4 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm z-10">
+      <div className="flex items-center justify-between p-4 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm z-10 shrink-0">
         <div className="flex items-center gap-3">
           <button 
             onClick={onBack}
@@ -139,8 +134,8 @@ export default function ChatRoomView({ room, onBack }: ChatRoomViewProps) {
           >
             <ArrowLeft className="w-5 h-5" />
           </button>
-          <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${room.type === 'direct' ? 'bg-indigo-100 text-indigo-700' : 'bg-emerald-100 text-emerald-700'}`}>
-             <span className="font-bold text-lg">{displayTitle[0]?.toUpperCase()}</span>
+          <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${room.type === 'direct' ? 'bg-indigo-100 text-indigo-700 dark:bg-indigo-500/20 dark:text-indigo-400' : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-400'}`}>
+             <span className="font-bold text-lg">{displayTitle[0]?.toUpperCase() || '?'}</span>
           </div>
           <div>
             <h2 className="font-bold text-slate-900 dark:text-white line-clamp-1">{displayTitle}</h2>
@@ -190,7 +185,7 @@ export default function ChatRoomView({ room, onBack }: ChatRoomViewProps) {
       <div 
         ref={scrollContainerRef}
         onScroll={handleScroll}
-        className="flex-1 overflow-y-auto p-4 space-y-6"
+        className="flex-1 overflow-y-auto p-4 space-y-4 min-h-0"
       >
         {loading ? (
           <div className="flex items-center justify-center h-full">
@@ -204,7 +199,7 @@ export default function ChatRoomView({ room, onBack }: ChatRoomViewProps) {
           messages.map((msg, index) => {
             const isMe = msg.senderId === profile?.uid;
             
-            // Check if we need to show date separator
+            // Date separator
             let showDate = false;
             if (index === 0) {
               showDate = true;
@@ -214,39 +209,82 @@ export default function ChatRoomView({ room, onBack }: ChatRoomViewProps) {
               if (prevDate !== currDate) showDate = true;
             }
 
+            // Show sender name in group chats for non-consecutive messages from same sender
+            let showSenderName = false;
+            if (room.type === 'group' && !isMe && !msg.deletedAt) {
+              if (index === 0 || messages[index - 1].senderId !== msg.senderId || showDate) {
+                showSenderName = true;
+              }
+            }
+
+            const msgSenderName = msg.senderName || senderNames[msg.senderId] || msg.senderId.slice(0, 8);
+
             return (
               <Fragment key={msg.id}>
                 {showDate && (
-                  <div className="flex justify-center my-6">
+                  <div className="flex justify-center my-4">
                     <span className="px-3 py-1 bg-slate-200/50 dark:bg-slate-800/50 text-slate-500 dark:text-slate-400 text-xs font-medium rounded-full backdrop-blur-sm">
                       {format(toSafeDate(msg.createdAt), 'dd MMMM yyyy', { locale: dfLocale })}
                     </span>
                   </div>
                 )}
                 <div className={`flex flex-col ${isMe ? 'items-end' : 'items-start'} group/msg relative`}>
+                  {/* Sender name label */}
+                  {showSenderName && (
+                    <span className="text-xs font-semibold text-primary-600 dark:text-primary-400 mb-1 ml-1">
+                      {msgSenderName}
+                    </span>
+                  )}
+
                   {msg.deletedAt ? (
                     <div className="max-w-[80%] px-4 py-2 my-1 rounded-2xl bg-white dark:bg-slate-800 border-2 border-dashed border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 text-sm italic">
                       {t('chat.messageDeletedByAdmin', 'Сообщение удалено администратором')}
                     </div>
                   ) : (
                     <div className={`max-w-[80%] md:max-w-[70%] relative group`}>
-                      {(isSysAdmin || isMe) && (
+                      {/* Action buttons: delete + reply */}
+                      <div className={`absolute top-1/2 -translate-y-1/2 flex items-center gap-1 opacity-0 group-hover/msg:opacity-100 transition-opacity z-10 ${isMe ? '-left-20' : '-right-20'}`}>
                         <button
-                          onClick={() => handleDeleteMessage(msg.id)}
-                          className={`absolute top-1/2 -translate-y-1/2 p-1.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-full text-red-500 hover:bg-red-50 dark:hover:bg-red-500/20 opacity-0 group-hover/msg:opacity-100 transition-opacity shadow-sm z-10 ${isMe ? '-left-10' : '-right-10'}`}
-                          title={t('chat.deleteMessage', 'Удалить сообщение')}
+                          onClick={() => setReplyingTo(msg)}
+                          className="p-1.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-full text-slate-500 hover:text-primary-500 hover:bg-primary-50 dark:hover:bg-primary-500/20 shadow-sm"
+                          title={t('chat.reply', 'Ответить')}
                         >
-                          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                          </svg>
+                          <Reply className="w-3.5 h-3.5" />
                         </button>
-                      )}
+                        {(isSysAdmin || isMe) && (
+                          <button
+                            onClick={() => handleDeleteMessage(msg.id)}
+                            className="p-1.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-full text-red-500 hover:bg-red-50 dark:hover:bg-red-500/20 shadow-sm"
+                            title={t('chat.deleteMessage', 'Удалить сообщение')}
+                          >
+                            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                            </svg>
+                          </button>
+                        )}
+                      </div>
                       
                       <div className={`px-4 py-2.5 rounded-2xl shadow-sm text-sm ${
                         isMe 
                           ? 'bg-primary-600 text-white rounded-br-sm' 
                           : 'bg-white dark:bg-slate-800 text-slate-900 dark:text-white border border-slate-100 dark:border-slate-700 rounded-bl-sm'
                       }`}>
+                        {/* Reply quote */}
+                        {msg.replyTo && (
+                          <div className={`border-l-2 pl-2.5 py-1 mb-2 rounded-r text-xs ${
+                            isMe 
+                              ? 'border-white/40 bg-white/10' 
+                              : 'border-primary-400 bg-primary-50/50 dark:bg-primary-500/10'
+                          }`}>
+                            <div className={`font-semibold mb-0.5 ${isMe ? 'text-white/80' : 'text-primary-600 dark:text-primary-400'}`}>
+                              {msg.replyTo.senderName}
+                            </div>
+                            <div className={`line-clamp-2 ${isMe ? 'text-white/60' : 'text-slate-500 dark:text-slate-400'}`}>
+                              {msg.replyTo.text}
+                            </div>
+                          </div>
+                        )}
+
                         {msg.text && <div className="whitespace-pre-wrap break-words leading-relaxed">{msg.text}</div>}
                         
                         {msg.attachments && msg.attachments.length > 0 && (
@@ -254,9 +292,12 @@ export default function ChatRoomView({ room, onBack }: ChatRoomViewProps) {
                             {msg.attachments.map(att => (
                               <div key={att.id} className="rounded-lg overflow-hidden border border-slate-200/50 dark:border-slate-700/50 bg-slate-50/50 dark:bg-slate-900/50">
                                 {att.type === 'image' ? (
-                                  <a href={att.url} target="_blank" rel="noreferrer" className="block max-w-[240px]">
-                                    <img src={att.url} alt="Attachment" className="w-full h-auto object-cover" loading="lazy" />
-                                  </a>
+                                  <button 
+                                    onClick={() => setLightboxUrl(att.url)} 
+                                    className="block max-w-[280px] cursor-zoom-in"
+                                  >
+                                    <img src={att.url} alt="Attachment" className="w-full h-auto object-cover rounded-lg" loading="lazy" />
+                                  </button>
                                 ) : (
                                   <a href={att.url} target="_blank" rel="noreferrer" className={`flex items-center gap-2 p-2 text-xs font-medium ${isMe ? 'text-white hover:text-white/80' : 'text-primary-600 dark:text-primary-400 hover:underline'}`}>
                                     <svg className="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -272,7 +313,6 @@ export default function ChatRoomView({ room, onBack }: ChatRoomViewProps) {
                       </div>
                       <div className={`text-[10px] mt-1 text-slate-400 flex items-center gap-1 ${isMe ? 'justify-end' : 'justify-start'}`}>
                         {format(toSafeDate(msg.createdAt), 'HH:mm')}
-                        {/* Optimistic "Sending" pseudo-indicator if date is somehow very far in future or if we injected a state */}
                       </div>
                     </div>
                   )}
@@ -286,15 +326,25 @@ export default function ChatRoomView({ room, onBack }: ChatRoomViewProps) {
 
       {/* Warning if removed */}
       {isRemoved && (
-        <div className="p-3 bg-red-50 dark:bg-red-500/10 text-red-600 dark:text-red-400 text-sm flex items-center justify-center gap-2">
+        <div className="p-3 bg-red-50 dark:bg-red-500/10 text-red-600 dark:text-red-400 text-sm flex items-center justify-center gap-2 shrink-0">
           <ShieldAlert className="w-4 h-4" />
-          {t('chat.youAreRemoved', 'Вы были удалены из этого чата. Чтение доступно только для исторических сообщений.')}
+          {t('chat.youAreRemoved', 'Вы были удалены из этого чата.')}
         </div>
       )}
 
       {/* Input Area */}
       {!isRemoved && (
-        <ChatMessageInput onSendMessage={handleSendMessage} disabled={isRemoved} />
+        <ChatMessageInput 
+          onSendMessage={handleSendMessage} 
+          disabled={isRemoved}
+          replyingTo={replyingTo}
+          onCancelReply={() => setReplyingTo(null)}
+        />
+      )}
+
+      {/* Image Lightbox */}
+      {lightboxUrl && (
+        <ImageLightbox src={lightboxUrl} onClose={() => setLightboxUrl(null)} />
       )}
 
       {/* Modals */}

@@ -29,7 +29,7 @@ const ExamViewPage: React.FC = () => {
   }, [id]);
 
   const handleDelete = async () => {
-    if (!id || !confirm('Delete this exam?')) return;
+    if (!id || !confirm(t('exams.confirmDelete', 'Удалить этот экзамен?'))) return;
     await deleteExam(id);
     navigate('/exams');
   };
@@ -42,7 +42,7 @@ const ExamViewPage: React.FC = () => {
       navigate(`/rooms/${room.id}`);
     } catch (e) {
       console.error('Failed to start room:', e);
-      toast.error('Failed to start exam room');
+      toast.error(t('exams.startFailed', 'Не удалось запустить комнату'));
     } finally {
       setStarting(false);
     }
@@ -111,10 +111,10 @@ const ExamViewPage: React.FC = () => {
           <h2 className="text-sm font-semibold text-slate-900 dark:text-white mb-3">{t('exams.questionPreview')}</h2>
           <div className="space-y-4">
             {questions.map((q, i) => (
-              <div key={q.id} className="border border-slate-100 rounded-lg p-4">
+              <div key={q.id} className="border border-slate-100 dark:border-slate-700/50 rounded-lg p-4">
                 <div className="flex items-start justify-between mb-2">
-                  <p className="font-medium text-slate-900"><span className="text-primary-600 mr-2">Q{i + 1}.</span>{q.text}</p>
-                  <span className="badge-slate text-xs">{q.points} pt{q.points !== 1 ? 's' : ''}</span>
+                  <p className="font-medium text-slate-900 dark:text-white"><span className="text-primary-600 dark:text-primary-400 mr-2">Q{i + 1}.</span>{q.text}</p>
+                  <span className="badge-slate text-xs">{q.points} {t('exams.pts', 'б.')}</span>
                 </div>
                 {(q.type === 'multiple_choice' || q.type === 'multi_select') && (
                   <div className="space-y-1 ml-6">
@@ -130,7 +130,7 @@ const ExamViewPage: React.FC = () => {
                   </div>
                 )}
                 {q.type === 'short_answer' && (
-                  <p className="text-sm text-slate-500 dark:text-slate-400 dark:text-slate-500 ml-6 italic">Text answer {q.keywords.length > 0 ? `(keywords: ${q.keywords.join(', ')})` : '(manual review)'}</p>
+                  <p className="text-sm text-slate-500 dark:text-slate-400 ml-6 italic">{t('exams.textAnswer', 'Текстовый ответ')} {q.keywords.length > 0 ? `(${t('exams.keywords', 'ключ. слова')}: ${q.keywords.join(', ')})` : `(${t('exams.manualReview', 'ручная проверка')})`}</p>
                 )}
               </div>
             ))}

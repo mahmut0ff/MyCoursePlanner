@@ -504,7 +504,7 @@ const OrgSettingsPage: React.FC = () => {
   useEffect(() => {
     orgGetSettings()
       .then(setSettings)
-      .catch((e) => setError(e.message || 'Failed to load'))
+      .catch((e) => setError(e.message || t('common.loadError', 'Ошибка загрузки')))
       .finally(() => setLoading(false));
   }, []);
 
@@ -516,7 +516,7 @@ const OrgSettingsPage: React.FC = () => {
     try {
       await orgUpdateSettings(settings);
       setSaved(true); setTimeout(() => setSaved(false), 2000);
-    } catch (e: any) { setError(e.message || 'Failed to save'); }
+    } catch (e: any) { setError(e.message || t('common.saveError', 'Ошибка сохранения')); }
     finally { setSaving(false); }
   };
 

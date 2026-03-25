@@ -271,7 +271,7 @@ const LiveSessionDashboard: React.FC = () => {
                   </div>
                   <div className={`w-2 h-2 rounded-full ${p.isConnected ? 'bg-emerald-400' : 'bg-slate-300'}`} title={p.isConnected ? 'Connected' : 'Disconnected'} />
                   {!isCompleted && (
-                    <button onClick={() => { if (confirm(t('quiz.kickConfirm'))) apiKickParticipant(sessionId!, p.participantId).then(() => toast.success('Kicked')); }}
+                    <button onClick={() => { if (confirm(t('quiz.kickConfirm'))) apiKickParticipant(sessionId!, p.participantId).then(() => toast.success(t('quiz.kicked', 'Участник удалён'))); }}
                       className="text-slate-300 hover:text-red-500 p-0.5">
                       <UserMinus className="w-3 h-3" />
                     </button>

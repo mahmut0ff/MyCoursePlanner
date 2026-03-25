@@ -44,7 +44,7 @@ const StudentTeachersPage: React.FC = () => {
         setTeachers(myTeachers);
         setCoursesByTeacher(courseMap);
       } catch (err: any) {
-        setError(err.message || 'Failed to load teachers');
+        setError(err.message || t('common.loadError', 'Ошибка загрузки'));
       } finally {
         setLoading(false);
       }

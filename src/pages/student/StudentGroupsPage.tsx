@@ -36,7 +36,7 @@ const StudentGroupsPage: React.FC = () => {
         setAllStudents(orgStudents);
         setAllCourses(orgCourses);
       } catch (err: any) {
-        setError(err.message || 'Failed to load groups');
+        setError(err.message || t('common.loadError', 'Ошибка загрузки'));
       } finally {
         setLoading(false);
       }

@@ -33,7 +33,7 @@ const StudentCoursesPage: React.FC = () => {
         const myCourses = allCourses.filter((c: any) => myCourseIds.includes(c.id));
         setCourses(myCourses);
       } catch (err: any) {
-        setError(err.message || 'Failed to load courses');
+        setError(err.message || t('common.loadError', 'Ошибка загрузки'));
       } finally {
         setLoading(false);
       }

@@ -51,7 +51,7 @@ const StudentsPage: React.FC = () => {
       const apps = await apiGetOrgMembers(profile.activeOrgId, 'pending');
       setApplications(apps);
     } catch (e: any) {
-      toast.error(e.message || 'Failed to load applications');
+      toast.error(e.message || t('common.loadError', 'Ошибка загрузки'));
     } finally {
       setLoadingApps(false);
     }
@@ -72,7 +72,7 @@ const StudentsPage: React.FC = () => {
       setStudents((p) => [created, ...p]);
       setShowCreate(false); setForm({ displayName: '', email: '', password: '', phone: '' });
       setSuccess(t('org.students.created', 'Студент создан!')); setTimeout(() => setSuccess(''), 3000);
-    } catch (e: any) { setError(e.message || 'Failed to create student'); }
+    } catch (e: any) { setError(e.message || t('common.loadError', 'Ошибка')); }
     finally { setSaving(false); }
   };
 
@@ -80,7 +80,7 @@ const StudentsPage: React.FC = () => {
     if (!profile?.activeOrgId) return;
     try {
       await apiAcceptMembership(userId, profile.activeOrgId);
-      toast.success(t('directory.applicationApproved', 'Zayavka odobrena!'));
+      toast.success(t('directory.applicationApproved', 'Заявка одобрена!'));
       loadApplications();
       loadStudents();
     } catch (e: any) {
@@ -92,7 +92,7 @@ const StudentsPage: React.FC = () => {
     if (!profile?.activeOrgId) return;
     try {
       await apiRejectMembership(userId, profile.activeOrgId);
-      toast.success(t('directory.applicationRejected', 'Zayavka otklonena'));
+      toast.success(t('directory.applicationRejected', 'Заявка отклонена'));
       loadApplications();
     } catch (e: any) {
       toast.error(e.message);

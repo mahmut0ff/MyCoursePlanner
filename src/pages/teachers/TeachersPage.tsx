@@ -44,7 +44,7 @@ const TeachersPage: React.FC = () => {
       await orgInviteUser(inviteEmail.trim(), 'teacher');
       setShowInvite(false); setInviteEmail('');
       setSuccess(t('org.teachers.inviteSent')); setTimeout(() => setSuccess(''), 3000);
-    } catch (e: any) { setError(e.message || 'Failed to send invite'); }
+    } catch (e: any) { setError(e.message || t('common.loadError', 'Ошибка')); }
     finally { setSaving(false); }
   };
 

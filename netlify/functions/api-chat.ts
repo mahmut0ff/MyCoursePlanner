@@ -58,10 +58,15 @@ const handler: Handler = async (event: HandlerEvent) => {
           return ok({ id: deterministicId, ...existingDoc.data() });
         }
 
-        // Create new DM
+        // Create new DM — resolve display names for both participants
         const participantsMap: Record<string, any> = {};
         for (const uid of participantIds) {
-          participantsMap[uid] = { role: 'member', joinedAt: now(), lastReadAt: '1970-01-01T00:00:00.000Z', isMuted: false, isRemoved: false };
+          let displayName = '';
+          try {
+            const uDoc = await adminDb.collection('users').doc(uid).get();
+            displayName = uDoc.data()?.displayName || uDoc.data()?.email || '';
+          } catch (_) {}
+          participantsMap[uid] = { role: 'member', joinedAt: now(), lastReadAt: '1970-01-01T00:00:00.000Z', isMuted: false, isRemoved: false, displayName };
         }
 
         const roomData = {
@@ -91,12 +96,18 @@ const handler: Handler = async (event: HandlerEvent) => {
 
       const participantsMap: Record<string, any> = {};
       for (const uid of participantIds) {
+        let displayName = '';
+        try {
+          const uDoc = await adminDb.collection('users').doc(uid).get();
+          displayName = uDoc.data()?.displayName || uDoc.data()?.email || '';
+        } catch (_) {}
         participantsMap[uid] = { 
           role: uid === user.uid ? 'admin' : 'member', 
           joinedAt: now(), 
           lastReadAt: '1970-01-01T00:00:00.000Z', 
           isMuted: false, 
-          isRemoved: false 
+          isRemoved: false,
+          displayName
         };
       }
 

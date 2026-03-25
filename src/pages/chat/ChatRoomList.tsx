@@ -15,6 +15,16 @@ interface ChatRoomListProps {
   onSelectRoom: (roomId: string) => void;
 }
 
+/** For DM rooms, derive the other person's displayName from the participants map */
+function getDmCounterpartName(room: ChatRoom, myUid?: string): string {
+  if (room.type !== 'direct' || !myUid) return room.title || 'Chat';
+  const otherUid = room.participantIds.find(id => id !== myUid);
+  if (otherUid && room.participants[otherUid]?.displayName) {
+    return room.participants[otherUid].displayName;
+  }
+  return room.title || 'Chat';
+}
+
 export default function ChatRoomList({ rooms, loading, error, activeRoomId, onSelectRoom }: ChatRoomListProps) {
   const { t, i18n } = useTranslation();
   const { profile } = useAuth();
@@ -142,7 +152,7 @@ export default function ChatRoomList({ rooms, loading, error, activeRoomId, onSe
             // Derive display title for Direct Messaging (MVP fallback)
             // If group, use room.title. If direct, use participant count or custom logic.
             const displayTitle = room.type === 'direct' 
-              ? (room.title || `Direct (${room.participantIds.length})`) // In a real app, resolve the other user's name
+              ? getDmCounterpartName(room, profile?.uid)
               : (room.title || 'Group Chat');
 
             return (

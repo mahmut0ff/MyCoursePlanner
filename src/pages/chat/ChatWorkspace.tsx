@@ -13,7 +13,13 @@ export default function ChatWorkspace() {
   const { rooms, loading, error } = useChatRooms(organizationId || undefined);
   const [activeRoomId, setActiveRoomId] = useState<string | null>(null);
 
-  if (!profile || !organizationId) return null;
+  if (!profile || !organizationId) {
+    return (
+      <div className="h-full flex items-center justify-center">
+        <div className="animate-spin w-8 h-8 border-2 border-primary-500 border-t-transparent rounded-full" />
+      </div>
+    );
+  }
 
   const activeRoom = activeRoomId ? rooms.find(r => r.id === activeRoomId) : null;
 

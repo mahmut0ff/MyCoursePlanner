@@ -162,30 +162,28 @@ export function useChatActions() {
       updatedAt: new Date().toISOString(),
     };
 
-    // We use setDoc. The rule `request.auth.uid == senderId` guarantees auth.
-    // The serverTimestamp will replace createdAt on the backend.
+    // Write the message
     await setDoc(msgRef, {
       ...msgData,
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(), 
     });
 
-    // Update the room's lastMessage synchronously in a separate batch or update call,
-    // so it shows up in snippets immediately.
-    // In strict transactional paths, a Cloud Function could do this,
-    // but doing it client-side gives instant UX. Rules should allow updates to `lastMessageAt`.
-    // Actually, our rules state: `allow write: if isSuperAdmin()` on chatRooms!
-    // Wait, this means clients CANNOT update `lastMessagePreview` directly! They must go through Netlify...
-    // BUT we want atomicity. 
-    // Is it better to allow clients to update ONLY `lastMessageAt`, `lastMessagePreview` via rules?
-    // Let's assume we update the rule or use an edge function if rules don't permit it.
-    // For now, if client rules reject, it fails gracefully without throwing error to the UI 
-    // IF we catch it, or we rely on Cloud Functions.
-    // *Self-Correction*: Since we only allow `write: if isSuperAdmin()` on the `chatRooms` document natively, 
-    // the UI cannot update `lastMessageAt` natively. 
-    // We should either update the Firebase Rules to allow partial updates of `lastMessage` by participants,
-    // OR we trigger a backend sync. Updating Rules for partial update is cleaner for real-time.
-    // I will go and update firestore.rules to allow partial update on lastMessage by participants!
+    // Update room metadata (lastMessageAt/Preview) so the room list stays sorted
+    // Wrapped in try/catch: if Firestore rules reject, the message is still sent
+    try {
+      const roomRef = doc(db, 'chatRooms', roomId);
+      const preview = text
+        ? (text.length > 60 ? text.slice(0, 60) + '…' : text)
+        : (attachments?.length ? '📎 Attachment' : '');
+      await updateDoc(roomRef, {
+        lastMessageAt: serverTimestamp(),
+        lastMessagePreview: preview,
+        updatedAt: serverTimestamp(),
+      });
+    } catch (e) {
+      console.warn('Could not update room metadata:', e);
+    }
 
     return tempId;
   }, []);

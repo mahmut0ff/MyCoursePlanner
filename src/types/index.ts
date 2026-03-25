@@ -982,6 +982,7 @@ export interface ChatParticipantDetails {
   lastReadAt: string;
   isMuted: boolean;
   isRemoved: boolean;
+  displayName?: string;
 }
 
 export interface ChatRoom {

@@ -34,10 +34,16 @@ export default function ChatRoomView({ room, onBack }: ChatRoomViewProps) {
   const isRoomAdmin = room.participants[profile?.uid || '']?.role === 'admin';
   const canModerateRoom = isSysAdmin || isRoomAdmin;
 
-  // Derive Display Title
-  const displayTitle = room.type === 'direct' 
-    ? (room.title || `Чат (${room.participantIds.length})`) 
-    : (room.title || 'Новая группа');
+  // Derive Display Title — for DM show the counterpart's name
+  let displayTitle = room.title || 'Новая группа';
+  if (room.type === 'direct') {
+    const otherUid = room.participantIds.find(id => id !== profile?.uid);
+    if (otherUid && room.participants[otherUid]?.displayName) {
+      displayTitle = room.participants[otherUid].displayName;
+    } else {
+      displayTitle = room.title || 'Chat';
+    }
+  }
 
   // Mark messages as read when viewing the room
   useEffect(() => {
@@ -74,14 +80,18 @@ export default function ChatRoomView({ room, onBack }: ChatRoomViewProps) {
   const handleSendMessage = async (text: string, files?: File[]) => {
     if (!profile || room.participants[profile.uid]?.isRemoved) return;
     
-    let attachments: MessageAttachment[] = [];
-    if (files && files.length > 0) {
-      attachments = await Promise.all(
-        files.map(f => uploadChatAttachment(room.organizationId, room.id, f))
-      );
+    try {
+      let attachments: MessageAttachment[] = [];
+      if (files && files.length > 0) {
+        attachments = await Promise.all(
+          files.map(f => uploadChatAttachment(room.organizationId, room.id, f))
+        );
+      }
+      
+      await sendMessage(room.id, room.organizationId, text, attachments.length > 0 ? attachments : undefined);
+    } catch (err) {
+      console.error('Failed to send message:', err);
     }
-    
-    await sendMessage(room.id, room.organizationId, text, attachments.length > 0 ? attachments : undefined);
     // Force scroll to bottom when WE send a message
     setTimeout(() => {
       messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });

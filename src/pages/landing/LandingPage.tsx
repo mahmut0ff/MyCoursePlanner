@@ -13,72 +13,6 @@ import {
 } from 'lucide-react';
 
 /* ──────────────────────────────────────────
-   HERO DASHBOARD MOCKUP (CSS-based)
-   ────────────────────────────────────────── */
-const DashboardMockup: React.FC = () => (
-  <div className="relative mx-auto max-w-5xl mt-16 rounded-2xl border border-slate-200/80 dark:border-slate-700/60 bg-white dark:bg-slate-900 shadow-2xl shadow-slate-300/40 dark:shadow-black/40 overflow-hidden">
-    <div className="h-8 bg-slate-100 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 flex items-center px-4 gap-2">
-      <div className="w-3 h-3 rounded-full bg-red-400" />
-      <div className="w-3 h-3 rounded-full bg-amber-400" />
-      <div className="w-3 h-3 rounded-full bg-emerald-400" />
-      <div className="flex-1 mx-8">
-        <div className="h-4 bg-white dark:bg-slate-700 rounded-md border border-slate-200 dark:border-slate-600 mx-auto max-w-xs flex items-center px-2">
-          <span className="text-[9px] text-slate-400 truncate">app.mycoursePlan.io/dashboard</span>
-        </div>
-      </div>
-    </div>
-    <div className="flex">
-      <div className="w-44 bg-[#0f172a] p-3 hidden sm:block">
-        <div className="flex items-center gap-2 mb-5">
-          <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-primary-500 to-violet-500" />
-          <span className="text-[10px] font-bold text-white">MyCoursePlan</span>
-        </div>
-        {['Dashboard', 'Courses', 'Exams', 'Rooms', 'Students', 'Quiz', 'Chat', 'Analytics'].map((item, i) => (
-          <div key={item} className={`flex items-center gap-2 px-2 py-1.5 rounded-md mb-0.5 ${i === 0 ? 'bg-white/10' : ''}`}>
-            <div className={`w-3 h-3 rounded-sm ${i === 0 ? 'bg-primary-400' : 'bg-slate-600'}`} />
-            <span className={`text-[9px] ${i === 0 ? 'text-white' : 'text-slate-500'}`}>{item}</span>
-          </div>
-        ))}
-      </div>
-      <div className="flex-1 p-4 bg-slate-50 dark:bg-slate-800/50 min-h-[240px]">
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mb-4">
-          {[
-            { label: 'Students', value: '1,247', color: 'text-blue-600', bg: 'bg-blue-50 dark:bg-blue-500/10' },
-            { label: 'Courses', value: '48', color: 'text-violet-600', bg: 'bg-violet-50 dark:bg-violet-500/10' },
-            { label: 'Pass Rate', value: '87%', color: 'text-emerald-600', bg: 'bg-emerald-50 dark:bg-emerald-500/10' },
-            { label: 'Lessons', value: '312', color: 'text-amber-600', bg: 'bg-amber-50 dark:bg-amber-500/10' },
-          ].map((m) => (
-            <div key={m.label} className={`${m.bg} rounded-lg p-2.5`}>
-              <p className={`text-lg font-extrabold ${m.color}`}>{m.value}</p>
-              <p className="text-[9px] text-slate-500 dark:text-slate-400">{m.label}</p>
-            </div>
-          ))}
-        </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-          <div className="bg-white dark:bg-slate-900 rounded-lg border border-slate-100 dark:border-slate-700 p-3">
-            <p className="text-[9px] font-semibold text-slate-700 dark:text-slate-300 mb-2">Performance Trend</p>
-            <div className="flex items-end gap-1.5 h-16">
-              {[40, 55, 45, 70, 65, 80, 75, 90, 85, 95, 88, 92].map((h, i) => (
-                <div key={i} className="flex-1 rounded-t-sm bg-gradient-to-t from-primary-600 to-primary-400" style={{ height: `${h}%` }} />
-              ))}
-            </div>
-          </div>
-          <div className="bg-white dark:bg-slate-900 rounded-lg border border-slate-100 dark:border-slate-700 p-3 hidden md:block">
-            <p className="text-[9px] font-semibold text-slate-700 dark:text-slate-300 mb-2">Live Activity</p>
-            {['Exam "Math Q3" — 23 students', 'Quiz "Physics" — Live', 'Certificate issued — #1204'].map((a, i) => (
-              <div key={i} className="flex items-center gap-2 py-1.5 border-b border-slate-50 dark:border-slate-800 last:border-0">
-                <div className={`w-2 h-2 rounded-full ${i === 1 ? 'bg-green-500 animate-pulse' : 'bg-slate-300 dark:bg-slate-600'}`} />
-                <span className="text-[8px] text-slate-500 dark:text-slate-400">{a}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-);
-
-/* ──────────────────────────────────────────
    MAIN LANDING PAGE
    ────────────────────────────────────────── */
 const LandingPage: React.FC = () => {
@@ -219,12 +153,6 @@ const LandingPage: React.FC = () => {
     { q: t('landing.faq5Q'), a: t('landing.faq5A') },
   ];
 
-  const stats = [
-    { value: '500+', label: t('landing.statOrgs') },
-    { value: '15K+', label: t('landing.statStudents') },
-    { value: '50K+', label: t('landing.statExams') },
-    { value: '99.9%', label: t('landing.statUptime') },
-  ];
 
   const navItems = [
     { label: t('landing.navFeatures'), href: '#features' },
@@ -239,16 +167,14 @@ const LandingPage: React.FC = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-white dark:bg-slate-950 text-slate-900 dark:text-white transition-colors">
+    <div className="min-h-screen bg-white text-slate-900 transition-colors">
 
       {/* ═══ Navbar ═══ */}
       <nav className="fixed top-0 left-0 right-0 z-50 bg-white/80 dark:bg-slate-950/80 backdrop-blur-xl border-b border-slate-200/50 dark:border-slate-800/50">
         <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
           <Link to="/" className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-primary-500 to-violet-500 flex items-center justify-center">
-              <GraduationCap className="w-4.5 h-4.5 text-white" />
-            </div>
-            <span className="font-bold text-lg">MyCoursePlan</span>
+            <img src="/icons/logo.png" alt="Planula" className="h-8 w-auto object-contain" />
+            <span className="font-bold text-xl tracking-tight">Planula</span>
           </Link>
           <div className="hidden md:flex items-center gap-8">
             {navItems.map(item => (
@@ -313,21 +239,10 @@ const LandingPage: React.FC = () => {
               </Link>
             </div>
           </div>
-          <DashboardMockup />
         </div>
       </section>
 
       {/* ═══ Stats ═══ */}
-      <section className="py-12 px-6">
-        <div className="max-w-7xl mx-auto grid grid-cols-2 md:grid-cols-4 gap-6">
-          {stats.map((s) => (
-            <div key={s.label} className="text-center p-6 bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm hover:shadow-md transition-shadow">
-              <p className="text-3xl font-extrabold bg-gradient-to-r from-primary-600 to-violet-600 bg-clip-text text-transparent">{s.value}</p>
-              <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">{s.label}</p>
-            </div>
-          ))}
-        </div>
-      </section>
 
       {/* ═══ Features Grid ═══ */}
       <section id="features" className="py-20 px-6 bg-slate-50 dark:bg-slate-900/50">
@@ -503,10 +418,8 @@ const LandingPage: React.FC = () => {
             {/* Brand */}
             <div className="md:col-span-1">
               <div className="flex items-center gap-2.5 mb-4">
-                <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-primary-500 to-violet-500 flex items-center justify-center">
-                  <GraduationCap className="w-4.5 h-4.5 text-white" />
-                </div>
-                <span className="font-bold text-lg">MyCoursePlan</span>
+                <img src="/icons/logo.png" alt="Planula" className="h-8 w-auto object-contain rounded-xl" />
+                <span className="font-bold text-xl tracking-tight">Planula</span>
               </div>
               <p className="text-sm text-slate-400 leading-relaxed mb-4">{t('landing.footerDesc')}</p>
               <div className="flex gap-3">
@@ -555,7 +468,7 @@ const LandingPage: React.FC = () => {
           </div>
           {/* Legal */}
           <div className="border-t border-white/10 pt-6 flex flex-col md:flex-row items-center justify-between gap-4">
-            <p className="text-sm text-slate-500">&copy; {new Date().getFullYear()} MyCoursePlan. {t('landing.rights')}</p>
+            <p className="text-sm text-slate-500">&copy; {new Date().getFullYear()} Planula. {t('landing.rights')}</p>
             <div className="flex items-center gap-6">
               <Link to="/privacy" className="text-sm text-slate-500 hover:text-white transition-colors">{t('landing.footerPrivacy')}</Link>
               <Link to="/terms" className="text-sm text-slate-500 hover:text-white transition-colors">{t('landing.footerTerms')}</Link>

@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { getLessonPlan, deleteLessonPlan } from '../../services/lessons.service';
+import { deleteLessonPlan } from '../../services/lessons.service';
+import { apiGetLesson } from '../../lib/api';
 import { useAuth } from '../../contexts/AuthContext';
 import type { LessonPlan } from '../../types';
 import { formatDate } from '../../utils/grading';
@@ -55,7 +56,7 @@ const LessonViewPage: React.FC = () => {
 
   useEffect(() => {
     if (id) {
-      getLessonPlan(id)
+      apiGetLesson(id)
         .then(setLesson)
         .finally(() => setLoading(false));
     }

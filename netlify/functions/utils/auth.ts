@@ -128,3 +128,23 @@ export const badRequest = (msg: string) => jsonResponse(400, { error: msg });
 export const notFound = (msg = 'Not found') => jsonResponse(404, { error: msg });
 export const ok = (data: any) => jsonResponse(200, data);
 
+/**
+ * Persists severe security anomalies indicating cross-tenant abuse attempts.
+ */
+export const logSecurityAudit = async (user: AuthUser | null, event: HandlerEvent, action: string, details: any) => {
+  try {
+    await adminDb.collection('auditLogs').add({
+      timestamp: new Date().toISOString(),
+      action,
+      uid: user?.uid || 'anonymous',
+      userRole: user?.role || 'none',
+      organizationId: user?.organizationId || null,
+      method: event.httpMethod,
+      path: event.path,
+      ip: event.headers['client-ip'] || event.headers['x-forwarded-for'] || 'unknown',
+      details
+    });
+  } catch (e) {
+    console.error('Failed to write audit log', e);
+  }
+};

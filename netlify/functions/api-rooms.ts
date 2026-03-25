@@ -3,7 +3,7 @@
  */
 import type { Handler, HandlerEvent } from '@netlify/functions';
 import { adminDb } from './utils/firebase-admin';
-import { verifyAuth, isStaff, getOrgFilter, ok, unauthorized, forbidden, badRequest, notFound, jsonResponse } from './utils/auth';
+import { verifyAuth, isStaff, getOrgFilter, hasRole, ok, unauthorized, forbidden, badRequest, notFound, jsonResponse, logSecurityAudit } from './utils/auth';
 import { notifyOrgStudents } from './utils/notifications';
 
 const COLLECTION = 'examRooms';
@@ -67,6 +67,7 @@ const handler: Handler = async (event: HandlerEvent) => {
       if (roomData.organizationId) {
         // If room belongs to an org, user MUST belong to the same org
         if (roomData.organizationId !== user.organizationId) {
+          logSecurityAudit(user, event, 'join_alien_room', { roomId: body.roomId, roomOrgId: roomData.organizationId });
           return forbidden();
         }
       }

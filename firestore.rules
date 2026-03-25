@@ -61,8 +61,7 @@ service cloud.firestore {
     // Only the student who took it, or super admin (staff use backend API)
     match /examAttempts/{attemptId} {
       allow read: if isSuperAdmin() || (request.auth != null && resource.data.studentId == request.auth.uid);
-      allow create: if request.auth != null && request.data.studentId == request.auth.uid;
-      allow update, delete: if isSuperAdmin();
+      allow write: if isSuperAdmin(); // Created strictly via backend API now
     }
 
     // 6. Certificates — Public if you have the ID, but created via backend

@@ -3,7 +3,7 @@
  */
 import type { Handler, HandlerEvent } from '@netlify/functions';
 import { adminDb } from './utils/firebase-admin';
-import { verifyAuth, isStaff, getOrgFilter, hasRole, ok, unauthorized, forbidden, badRequest, notFound, jsonResponse } from './utils/auth';
+import { verifyAuth, isStaff, getOrgFilter, hasRole, ok, unauthorized, forbidden, badRequest, notFound, jsonResponse, logSecurityAudit } from './utils/auth';
 import { createNotification } from './utils/notifications';
 
 const COLLECTION = 'examAttempts';
@@ -22,12 +22,18 @@ const handler: Handler = async (event: HandlerEvent) => {
       const doc = await adminDb.collection(COLLECTION).doc(params.id).get();
       if (!doc.exists) return notFound('Attempt not found');
       const data = doc.data()!;
-      if (!isStaff(user) && data.studentId !== user.uid) return forbidden();
+      if (!isStaff(user) && data.studentId !== user.uid) {
+        logSecurityAudit(user, event, 'read_alien_attempt', { attemptId: doc.id, ownerId: data.studentId });
+        return forbidden();
+      }
       return ok({ id: doc.id, ...data });
     }
 
     if (params.studentId) {
-      if (!isStaff(user) && params.studentId !== user.uid) return forbidden();
+      if (!isStaff(user) && params.studentId !== user.uid) {
+        logSecurityAudit(user, event, 'list_alien_attempts', { targetStudentId: params.studentId });
+        return forbidden();
+      }
       const snap = await adminDb.collection(COLLECTION)
         .where('studentId', '==', params.studentId).orderBy('submittedAt', 'desc').get();
       return ok(snap.docs.map((d: any) => ({ id: d.id, ...d.data() })));
@@ -68,6 +74,7 @@ const handler: Handler = async (event: HandlerEvent) => {
     const roomDoc = await adminDb.collection('examRooms').doc(body.roomId).get();
     if (!roomDoc.exists || roomDoc.data()?.status !== 'active') return badRequest('Room is closed');
     if (roomDoc.data()?.organizationId && user.organizationId && roomDoc.data()?.organizationId !== user.organizationId) {
+      logSecurityAudit(user, event, 'write_attempt_alien_room', { roomId: body.roomId, roomOrgId: roomDoc.data()?.organizationId });
       return forbidden('Room belongs to a different organization');
     }
 

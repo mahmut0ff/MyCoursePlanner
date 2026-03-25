@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { signUp, signInWithGoogle } from '../../services/auth.service';
-import { createUser, getUser } from '../../services/users.service';
+import { createUser } from '../../services/users.service';
 import { apiCheckAuthIdentity } from '../../lib/api';
 import { Mail, Lock, User, Eye, EyeOff, Building2, BookOpenCheck, School, AtSign, CheckCircle2, XCircle, Loader2 } from 'lucide-react';
 import LanguageSwitcher from '../../components/LanguageSwitcher';

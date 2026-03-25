@@ -81,9 +81,9 @@ const ContactPage: React.FC = () => {
               <h3 className="text-2xl font-bold text-slate-900 mb-6">{t('landing.contactInfo')}</h3>
               <div className="space-y-4">
                 {[
-                  { icon: Mail, label: 'info@planula.io', href: 'mailto:info@planula.io', color: 'bg-blue-50 text-blue-600' },
-                  { icon: Phone, label: '+996 555 000 000', href: 'tel:+996555000000', color: 'bg-emerald-50 text-emerald-600' },
-                  { icon: MessageCircle, label: 'Telegram: @planula', href: 'https://t.me/planula', color: 'bg-sky-50 text-sky-600' },
+                  { icon: Mail, label: 'support@planula.com', href: 'mailto:support@planula.com', color: 'bg-blue-50 text-blue-600' },
+                  { icon: Phone, label: '+996 550 308 078', href: 'tel:+996550308078', color: 'bg-emerald-50 text-emerald-600' },
+                  { icon: MessageCircle, label: 'Telegram: @planula_bot', href: 'https://t.me/planula_bot', color: 'bg-sky-50 text-sky-600' },
                   { icon: MapPin, label: t('landing.footerCity'), href: '', color: 'bg-rose-50 text-rose-600' },
                 ].map((item, i) => (
                   <div key={i} className="flex items-center gap-4 p-5 bg-white rounded-2xl border border-slate-100 shadow-sm hover:shadow-md transition-shadow group">

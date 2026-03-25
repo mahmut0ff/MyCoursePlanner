@@ -445,10 +445,10 @@ const LandingPage: React.FC = () => {
  </div>
  <p className="text-sm text-slate-400 leading-relaxed mb-4">{t('landing.footerDesc')}</p>
  <div className="flex gap-3">
- <a href="https://t.me/planula" target="_blank" rel="noopener noreferrer" className="w-9 h-9 bg-white/10 rounded-lg flex items-center justify-center hover:bg-primary-600 transition-colors">
+ <a href="https://t.me/planula_bot" target="_blank" rel="noopener noreferrer" className="w-9 h-9 bg-white/10 rounded-lg flex items-center justify-center hover:bg-primary-600 transition-colors">
  <MessageCircle className="w-4 h-4" />
  </a>
- <a href="mailto:info@planula.io" className="w-9 h-9 bg-white/10 rounded-lg flex items-center justify-center hover:bg-primary-600 transition-colors">
+ <a href="mailto:support@planula.com" className="w-9 h-9 bg-white/10 rounded-lg flex items-center justify-center hover:bg-primary-600 transition-colors">
  <Mail className="w-4 h-4" />
  </a>
  </div>
@@ -482,8 +482,8 @@ const LandingPage: React.FC = () => {
  <div>
  <h4 className="font-semibold text-sm mb-4">{t('landing.footerContact')}</h4>
  <ul className="space-y-2.5">
- <li className="flex items-center gap-2 text-sm text-slate-400"><Mail className="w-4 h-4 shrink-0" /> info@planula.io</li>
- <li className="flex items-center gap-2 text-sm text-slate-400"><Phone className="w-4 h-4 shrink-0" /> +996 555 000 000</li>
+ <li className="flex items-center gap-2 text-sm text-slate-400"><Mail className="w-4 h-4 shrink-0" /> support@planula.com</li>
+ <li className="flex items-center gap-2 text-sm text-slate-400"><Phone className="w-4 h-4 shrink-0" /> +996 550 308 078</li>
  <li className="flex items-center gap-2 text-sm text-slate-400"><MapPin className="w-4 h-4 shrink-0" /> {t('landing.footerCity')}</li>
  </ul>
  </div>

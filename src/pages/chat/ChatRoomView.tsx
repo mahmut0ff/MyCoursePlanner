@@ -54,14 +54,18 @@ export default function ChatRoomView({ room, onBack, displayTitle, avatarUrl, av
     updateLastRead(room.id);
   }, [room.id, updateLastRead]);
 
-  // Also mark as read when new messages arrive and user is at bottom
+  // Also mark as read when new messages arrive. 
+  // If we receive a message while the chat is actively open, we consider it read.
   const prevMsgCountRef = useRef(0);
   useEffect(() => {
-    if (messages.length > prevMsgCountRef.current && isAtBottom) {
-      updateLastRead(room.id);
+    if (messages.length > prevMsgCountRef.current) {
+      const timer = setTimeout(() => {
+        updateLastRead(room.id);
+      }, 500);
+      return () => clearTimeout(timer);
     }
     prevMsgCountRef.current = messages.length;
-  }, [messages.length, isAtBottom, room.id, updateLastRead]);
+  }, [messages.length, room.id, updateLastRead]);
 
   // Scroll tracking logic
   const handleScroll = useCallback(() => {

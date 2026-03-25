@@ -143,6 +143,7 @@ export default function ChatRoomList({ rooms, loading, error, activeRoomId, onSe
         ) : (
           filteredRooms.map(room => {
             const isUnread = profile ? (() => {
+              if (activeRoomId === room.id) return false;
               const lastMsg = toSafeDate(room.lastMessageAt);
               const lastRead = toSafeDate(room.participants[profile.uid]?.lastReadAt);
               return lastMsg && (!lastRead || lastMsg > lastRead);

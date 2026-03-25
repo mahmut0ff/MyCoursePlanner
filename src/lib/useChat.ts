@@ -223,6 +223,7 @@ export function useChatActions() {
         lastMessageAt: serverTimestamp(),
         lastMessagePreview: `${senderName}: ${preview}`,
         updatedAt: serverTimestamp(),
+        [`participants.${user.uid}.lastReadAt`]: serverTimestamp(),
       });
     } catch (e) {
       console.warn('Could not update room metadata:', e);
@@ -267,7 +268,7 @@ export function useUnreadCount(rooms: ChatRoom[]) {
       const lastMsg = parseTime(room.lastMessageAt);
       const lastRead = parseTime(myParticipant.lastReadAt);
       
-      if (lastMsg > lastRead) {
+      if (lastMsg > 0 && lastMsg > lastRead) {
         return acc + 1;
       }
       return acc;

@@ -55,6 +55,7 @@ export default function ChatMessageInput({ onSendMessage, disabled, replyingTo, 
       onCancelReply?.();
       if (textareaRef.current) {
         textareaRef.current.style.height = 'auto';
+        textareaRef.current.focus();
       }
     } catch (err) {
       console.error('Failed to send message:', err);

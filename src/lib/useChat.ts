@@ -9,8 +9,7 @@ import {
   setDoc,
   serverTimestamp,
   updateDoc,
-  limit,
-  getDocs
+  limit
 } from 'firebase/firestore';
 import { db, auth, storage } from './firebase';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';

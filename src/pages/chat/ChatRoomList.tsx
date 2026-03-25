@@ -2,7 +2,7 @@ import { useState, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../contexts/AuthContext';
 import type { ChatRoom } from '../../types';
-import { Search, Plus, Filter, MessageSquare, Hash, Users, ShieldAlert } from 'lucide-react';
+import { Search, Plus, MessageSquare, Hash, ShieldAlert } from 'lucide-react';
 import { formatDistanceToNow, isToday, format } from 'date-fns';
 import { ru, enUS } from 'date-fns/locale';
 import CreateGroupModal from './CreateGroupModal';

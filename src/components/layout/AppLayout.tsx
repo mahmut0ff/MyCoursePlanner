@@ -13,10 +13,10 @@ const AppLayout: React.FC = () => {
       <Sidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
       {/* Main content */}
-      <div className="flex-1 flex flex-col min-h-screen min-w-0">
+      <div className="flex-1 flex flex-col h-screen min-w-0">
         <Topbar onMenuClick={() => setSidebarOpen(true)} />
-        <main className="flex-1 flex flex-col overflow-hidden">
-          <div className="flex-1 p-4 md:p-6 lg:p-8 overflow-auto">
+        <main className="flex-1 flex flex-col overflow-hidden min-h-0">
+          <div className="flex-1 p-4 md:p-6 lg:p-8 overflow-auto relative">
             <div className="max-w-screen-xl mx-auto w-full h-full page-content">
               <Outlet />
             </div>

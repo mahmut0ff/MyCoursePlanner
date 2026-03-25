@@ -18,7 +18,7 @@ export default function ChatWorkspace() {
   const activeRoom = activeRoomId ? rooms.find(r => r.id === activeRoomId) : null;
 
   return (
-    <div className="h-full -m-4 sm:-m-6 lg:-m-8 flex bg-white dark:bg-slate-900 border-x border-slate-200 dark:border-slate-800">
+    <div className="h-full min-h-0 -m-4 sm:-m-6 lg:-m-8 flex bg-white dark:bg-slate-900 border-x border-slate-200 dark:border-slate-800" style={{ minHeight: 'calc(100vh - 4rem)' }}>
       
       {/* Left Sidebar: Room List */}
       <div className={`w-full md:w-80 shrink-0 border-r border-slate-200 dark:border-slate-800 flex flex-col ${activeRoomId ? 'hidden md:flex' : 'flex'}`}>

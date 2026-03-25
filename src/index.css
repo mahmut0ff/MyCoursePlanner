@@ -17,43 +17,48 @@
 @layer components {
   .btn-primary {
     @apply bg-primary-600 text-white px-4 py-2.5 rounded-lg font-medium
-      hover:bg-primary-700 active:bg-primary-800 transition-colors
+      hover:bg-primary-700 active:bg-primary-800 transition-all
       disabled:opacity-50 disabled:cursor-not-allowed
       focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2
-      dark:focus:ring-offset-slate-900;
+      dark:focus:ring-offset-slate-900
+      hover:shadow-md hover:shadow-primary-500/20 active:scale-[0.98];
   }
   .btn-secondary {
     @apply bg-white text-slate-700 px-4 py-2.5 rounded-lg font-medium border border-slate-300
-      hover:bg-slate-50 active:bg-slate-100 transition-colors
+      hover:bg-slate-50 active:bg-slate-100 transition-all
       disabled:opacity-50 disabled:cursor-not-allowed
       focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2
       dark:bg-slate-800 dark:text-slate-200 dark:border-slate-600
       dark:hover:bg-slate-700 dark:active:bg-slate-600
-      dark:focus:ring-offset-slate-900;
+      dark:focus:ring-offset-slate-900
+      hover:shadow-sm active:scale-[0.98];
   }
   .btn-danger {
     @apply bg-red-600 text-white px-4 py-2.5 rounded-lg font-medium
-      hover:bg-red-700 active:bg-red-800 transition-colors
+      hover:bg-red-700 active:bg-red-800 transition-all
       disabled:opacity-50 disabled:cursor-not-allowed
       focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2
-      dark:focus:ring-offset-slate-900;
+      dark:focus:ring-offset-slate-900
+      hover:shadow-md hover:shadow-red-500/20 active:scale-[0.98];
   }
   .btn-ghost {
     @apply text-slate-600 px-4 py-2.5 rounded-lg font-medium
-      hover:bg-slate-100 active:bg-slate-200 transition-colors
+      hover:bg-slate-100 active:bg-slate-200 transition-all
       disabled:opacity-50 disabled:cursor-not-allowed
-      dark:text-slate-300 dark:hover:bg-slate-800 dark:active:bg-slate-700;
+      dark:text-slate-300 dark:hover:bg-slate-800 dark:active:bg-slate-700
+      active:scale-[0.98];
   }
   .card {
     @apply bg-white rounded-xl border border-slate-200 shadow-sm
-      dark:bg-slate-800 dark:border-slate-700;
+      dark:bg-slate-800 dark:border-slate-700
+      transition-shadow hover:shadow-md;
   }
   .input {
     @apply w-full px-3.5 py-2.5 rounded-lg border border-slate-300 bg-white
       text-slate-900 placeholder:text-slate-400
       focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500
       disabled:bg-slate-100 disabled:cursor-not-allowed
-      transition-colors
+      transition-all
       dark:bg-slate-800 dark:border-slate-600 dark:text-slate-100
       dark:placeholder:text-slate-500 dark:disabled:bg-slate-700;
   }
@@ -84,6 +89,15 @@
     @apply badge bg-slate-100 text-slate-600
       dark:bg-slate-700 dark:text-slate-300;
   }
+}
+
+/* Page enter animation */
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.page-content > div {
+  animation: fadeInUp 0.25s ease-out;
 }
 
 /* TipTap Editor Styles */

@@ -139,13 +139,13 @@ const ExamTakePage: React.FC = () => {
   }).length;
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-700/50">
+    <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-slate-50 to-violet-50 dark:from-slate-900 dark:via-slate-900 dark:to-indigo-950">
       {/* Fixed Timer Bar */}
       <div className={`sticky top-0 z-50 border-b ${isLow ? 'bg-red-600 text-white' : 'bg-white dark:bg-slate-800 text-slate-900 dark:text-white'} shadow-sm`}>
         <div className="max-w-4xl mx-auto px-4 py-3 flex items-center justify-between">
           <div>
             <h1 className="font-semibold text-sm">{exam.title}</h1>
-            <p className={`text-xs ${isLow ? 'text-red-200' : 'text-slate-500 dark:text-slate-400 dark:text-slate-500'}`}>
+            <p className={`text-xs ${isLow ? 'text-red-200' : 'text-slate-500 dark:text-slate-400'}`}>
               {answeredCount}/{questions.length} {t('rooms.answered')}
             </p>
           </div>
@@ -196,7 +196,7 @@ const ExamTakePage: React.FC = () => {
         </div>
 
         {/* Question Card */}
-        <div className="card p-8">
+        <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm p-6 sm:p-8">
           <div className="flex items-center justify-between mb-4">
             <span className="badge-primary">{t('rooms.question')} {currentQ + 1} {t('rooms.of')} {questions.length}</span>
             <span className="text-sm text-slate-500 dark:text-slate-400 dark:text-slate-500">{q.points} {q.points !== 1 ? t('rooms.points') : t('rooms.point')}</span>
@@ -211,8 +211,8 @@ const ExamTakePage: React.FC = () => {
                   key={oi}
                   className={`flex items-center gap-3 p-4 rounded-lg border-2 cursor-pointer transition-colors ${
                     answers[q.id] === opt
-                      ? 'border-primary-500 bg-primary-50'
-                      : 'border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:border-slate-600'
+                      ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/20'
+                      : 'border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600'
                   }`}
                 >
                   <input
@@ -236,7 +236,7 @@ const ExamTakePage: React.FC = () => {
                   <label
                     key={oi}
                     className={`flex items-center gap-3 p-4 rounded-lg border-2 cursor-pointer transition-colors ${
-                      selected ? 'border-primary-500 bg-primary-50' : 'border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:border-slate-600'
+                      selected ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/20' : 'border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600'
                     }`}
                   >
                     <input

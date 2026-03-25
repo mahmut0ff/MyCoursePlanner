@@ -5,7 +5,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { apiGetDashboard } from '../../lib/api';
 import type { LessonPlan, ExamAttempt } from '../../types';
 import { formatDate } from '../../utils/grading';
-import { BookOpen, Radio, Trophy, XCircle, ArrowRight, Brain } from 'lucide-react';
+import { BookOpen, Radio, Trophy, XCircle, ArrowRight, Brain, Target, BarChart3, Flame } from 'lucide-react';
 import { DashboardSkeleton } from '../../components/ui/Skeleton';
 import GamificationWidget from '../../components/gamification/GamificationWidget';
 
@@ -40,58 +40,78 @@ const StudentDashboard: React.FC = () => {
   const avgScore = attempts.length > 0 ? Math.round(attempts.reduce((s, a) => s + (a.percentage || 0), 0) / attempts.length) : 0;
   const passRate = attempts.length > 0 ? Math.round((attempts.filter((a) => a.passed).length / attempts.length) * 100) : 0;
 
+  const hour = new Date().getHours();
+  const greeting = hour < 12 ? '🌅' : hour < 18 ? '☀️' : '🌙';
+
   return (
-    <div>
-      <div className="mb-8">
-        <h1 className="text-2xl font-bold text-slate-900 dark:text-white">{t('dashboard.welcome')}, {profile?.displayName}!</h1>
-        <p className="text-slate-500 dark:text-slate-400 text-sm mt-1">{t('studentDashboard.subtitle')}</p>
+    <div className="space-y-6">
+      {/* ═══ Hero Banner ═══ */}
+      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-rose-500 via-pink-500 to-fuchsia-600 p-6 sm:p-8 text-white">
+        <div className="absolute -top-10 -right-10 w-40 h-40 bg-white/10 rounded-full blur-2xl" />
+        <div className="absolute bottom-0 left-1/3 w-32 h-32 bg-white/5 rounded-full blur-xl" />
+        <div className="relative z-10 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div>
+            <h1 className="text-xl sm:text-2xl font-bold">{greeting} {t('dashboard.welcome')}, {profile?.displayName?.split(' ')[0]}!</h1>
+            <p className="text-white/70 text-sm mt-1 flex items-center gap-1.5">
+              <Flame className="w-4 h-4" />
+              {t('studentDashboard.subtitle')}
+            </p>
+          </div>
+          <Link to="/join" className="inline-flex items-center gap-2 bg-white/20 backdrop-blur-sm hover:bg-white/30 text-white px-4 py-2.5 rounded-xl font-medium text-sm transition-all hover:scale-[1.02] active:scale-[0.98] w-fit">
+            <Radio className="w-4 h-4" />{t('rooms.join')}
+          </Link>
+        </div>
       </div>
 
       {/* Gamification */}
       <GamificationWidget />
 
-      {/* Quick Actions */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
-        <Link to="/join" className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-6 hover:shadow-lg hover:shadow-slate-200/50 dark:hover:shadow-slate-900/30 transition-all group text-center">
-          <div className="w-12 h-12 bg-primary-500/10 dark:bg-primary-500/20 rounded-xl flex items-center justify-center mx-auto mb-3 group-hover:scale-110 transition-transform">
-            <Radio className="w-6 h-6 text-primary-600 dark:text-primary-400" />
+      {/* ═══ Quick Actions ═══ */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
+        <Link to="/join" className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-5 sm:p-6 hover:shadow-lg hover:shadow-slate-200/50 dark:hover:shadow-slate-900/30 transition-all group text-center hover:scale-[1.02] active:scale-[0.98]">
+          <div className="w-12 h-12 bg-primary-500 rounded-xl flex items-center justify-center mx-auto mb-3 group-hover:scale-110 transition-transform">
+            <Radio className="w-6 h-6 text-white" />
           </div>
           <h3 className="font-semibold text-slate-900 dark:text-white mb-1">{t('rooms.join')}</h3>
           <p className="text-xs text-slate-500 dark:text-slate-400">{t('rooms.enterCode')}</p>
         </Link>
-        <Link to="/lessons" className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-6 hover:shadow-lg hover:shadow-slate-200/50 dark:hover:shadow-slate-900/30 transition-all group text-center">
-          <div className="w-12 h-12 bg-violet-500/10 dark:bg-violet-500/20 rounded-xl flex items-center justify-center mx-auto mb-3 group-hover:scale-110 transition-transform">
-            <BookOpen className="w-6 h-6 text-violet-600 dark:text-violet-400" />
+        <Link to="/lessons" className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-5 sm:p-6 hover:shadow-lg hover:shadow-slate-200/50 dark:hover:shadow-slate-900/30 transition-all group text-center hover:scale-[1.02] active:scale-[0.98]">
+          <div className="w-12 h-12 bg-violet-500 rounded-xl flex items-center justify-center mx-auto mb-3 group-hover:scale-110 transition-transform">
+            <BookOpen className="w-6 h-6 text-white" />
           </div>
           <h3 className="font-semibold text-slate-900 dark:text-white mb-1">{t('lessons.title')}</h3>
           <p className="text-xs text-slate-500 dark:text-slate-400">{lessons.length} {t('studentDashboard.available')}</p>
         </Link>
-        <Link to="/my-results" className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-6 hover:shadow-lg hover:shadow-slate-200/50 dark:hover:shadow-slate-900/30 transition-all group text-center">
-          <div className="w-12 h-12 bg-emerald-500/10 dark:bg-emerald-500/20 rounded-xl flex items-center justify-center mx-auto mb-3 group-hover:scale-110 transition-transform">
-            <Trophy className="w-6 h-6 text-emerald-600 dark:text-emerald-400" />
+        <Link to="/my-results" className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-5 sm:p-6 hover:shadow-lg hover:shadow-slate-200/50 dark:hover:shadow-slate-900/30 transition-all group text-center hover:scale-[1.02] active:scale-[0.98]">
+          <div className="w-12 h-12 bg-emerald-500 rounded-xl flex items-center justify-center mx-auto mb-3 group-hover:scale-110 transition-transform">
+            <Trophy className="w-6 h-6 text-white" />
           </div>
           <h3 className="font-semibold text-slate-900 dark:text-white mb-1">{t('nav.myResults')}</h3>
           <p className="text-xs text-slate-500 dark:text-slate-400">{attempts.length} {t('studentDashboard.attempts')}</p>
         </Link>
       </div>
 
-      {/* Stats */}
+      {/* ═══ Stats ═══ */}
       {attempts.length > 0 && (
-        <div className="grid grid-cols-3 gap-4 mb-8">
+        <div className="grid grid-cols-3 gap-3 sm:gap-4">
           {[
-            { label: t('studentDashboard.examsTaken'), value: attempts.length },
-            { label: t('studentDashboard.avgScore'), value: `${avgScore}%` },
-            { label: t('studentDashboard.passRate'), value: `${passRate}%` },
+            { label: t('studentDashboard.examsTaken'), value: attempts.length, icon: Target, iconBg: 'bg-blue-500', bg: 'bg-blue-50 dark:bg-blue-950/30', border: 'border-blue-200/50 dark:border-blue-800/40', text: 'text-blue-600 dark:text-blue-400' },
+            { label: t('studentDashboard.avgScore'), value: `${avgScore}%`, icon: BarChart3, iconBg: 'bg-violet-500', bg: 'bg-violet-50 dark:bg-violet-950/30', border: 'border-violet-200/50 dark:border-violet-800/40', text: 'text-violet-600 dark:text-violet-400' },
+            { label: t('studentDashboard.passRate'), value: `${passRate}%`, icon: Trophy, iconBg: 'bg-emerald-500', bg: 'bg-emerald-50 dark:bg-emerald-950/30', border: 'border-emerald-200/50 dark:border-emerald-800/40', text: 'text-emerald-600 dark:text-emerald-400' },
           ].map((s) => (
-            <div key={s.label} className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-4 text-center">
-              <p className="text-2xl font-bold text-slate-900 dark:text-white">{s.value}</p>
-              <p className="text-xs text-slate-500 dark:text-slate-400">{s.label}</p>
+            <div key={s.label} className={`${s.bg} border ${s.border} rounded-2xl p-4 text-center transition-all hover:shadow-lg hover:scale-[1.02]`}>
+              <div className={`${s.iconBg} w-9 h-9 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center mx-auto mb-2`}>
+                <s.icon className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
+              </div>
+              <p className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white">{s.value}</p>
+              <p className={`text-[10px] sm:text-xs ${s.text} font-medium mt-0.5`}>{s.label}</p>
             </div>
           ))}
         </div>
       )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      {/* ═══ Content ═══ */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
         {/* Available Lessons */}
         <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl overflow-hidden">
           <div className="px-5 py-4 border-b border-slate-100 dark:border-slate-700 flex items-center justify-between">
@@ -105,7 +125,7 @@ const StudentDashboard: React.FC = () => {
                 <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">{l.subject} · {l.level}</p>
               </Link>
             ))}
-            {lessons.length === 0 && <div className="px-5 py-6 text-center text-slate-400 dark:text-slate-500 text-sm">{t('lessons.noLessons')}</div>}
+            {lessons.length === 0 && <div className="px-5 py-8 text-center text-slate-400 dark:text-slate-500 text-sm">{t('lessons.noLessons')}</div>}
           </div>
         </div>
 
@@ -131,7 +151,7 @@ const StudentDashboard: React.FC = () => {
                 </div>
               </Link>
             ))}
-            {attempts.length === 0 && <div className="px-5 py-6 text-center text-slate-400 dark:text-slate-500 text-sm">{t('studentDashboard.noExams')}</div>}
+            {attempts.length === 0 && <div className="px-5 py-8 text-center text-slate-400 dark:text-slate-500 text-sm">{t('studentDashboard.noExams')}</div>}
           </div>
         </div>
       </div>

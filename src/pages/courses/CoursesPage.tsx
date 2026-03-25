@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../contexts/AuthContext';
 import { orgGetCourses, orgCreateCourse, orgUpdateCourse, orgDeleteCourse } from '../../lib/api';
-import { Plus, Search, Trash2, Edit, BookOpen, RefreshCw, Users, Clock } from 'lucide-react';
+import { Plus, Search, Trash2, Edit, BookOpen, RefreshCw } from 'lucide-react';
 import type { Course } from '../../types';
 
 /* Color palette for course card accents */

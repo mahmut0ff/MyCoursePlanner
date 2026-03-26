@@ -1,7 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { Building2, ChevronDown, Check, Plus, Search, LogOut } from 'lucide-react';
+import {
+  Building2, ChevronDown, Check, Plus, Search, LogOut,
+  Users, Settings, BarChart3, Briefcase, MailOpen, Megaphone,
+  FolderOpen, MapPin
+} from 'lucide-react';
 import { apiGetMyMemberships, apiSwitchOrg, apiLeaveMembership } from '../../lib/api';
 
 interface MembershipItem {
@@ -14,10 +18,12 @@ interface MembershipItem {
 
 interface OrgSwitcherProps {
   currentOrgId?: string;
+  userRole?: string | null;
   onSwitch?: () => void;
+  onClose?: () => void;
 }
 
-const OrgSwitcher: React.FC<OrgSwitcherProps> = ({ currentOrgId, onSwitch }) => {
+const OrgSwitcher: React.FC<OrgSwitcherProps> = ({ currentOrgId, userRole, onSwitch, onClose }) => {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const [memberships, setMemberships] = useState<MembershipItem[]>([]);
@@ -39,10 +45,7 @@ const OrgSwitcher: React.FC<OrgSwitcherProps> = ({ currentOrgId, onSwitch }) => 
   const currentMembership = memberships.find((m) => m.organizationId === currentOrgId);
 
   const handleSwitch = async (orgId: string) => {
-    if (orgId === currentOrgId) {
-      setOpen(false);
-      return;
-    }
+    if (orgId === currentOrgId) { setOpen(false); return; }
     setSwitching(true);
     try {
       await apiSwitchOrg(orgId);
@@ -69,38 +72,64 @@ const OrgSwitcher: React.FC<OrgSwitcherProps> = ({ currentOrgId, onSwitch }) => 
     }
   };
 
+  const nav = (path: string) => {
+    setOpen(false);
+    onClose?.();
+    navigate(path);
+  };
+
   const roleLabels: Record<string, string> = {
     owner: t('membership.owner', 'Владелец'),
     admin: t('membership.admin', 'Админ'),
     teacher: t('membership.teacher', 'Преподаватель'),
     mentor: t('membership.mentor', 'Ментор'),
     student: t('membership.student', 'Студент'),
+    manager: t('membership.manager', 'Менеджер'),
   };
 
-  if (!loaded) return null;
+  if (!loaded) return <div className="px-3 py-2"><div className="h-10 bg-white/5 rounded-xl animate-pulse" /></div>;
 
-  // ═══ 0 memberships: CTA to discover organizations ═══
-  if (memberships.length === 0) {
-    return (
-      <div className="px-3 py-2">
-        <button
-          onClick={() => navigate('/directory')}
-          className="w-full flex items-center gap-2 px-3 py-2.5 rounded-xl bg-gradient-to-r from-violet-500/15 to-indigo-500/15 border border-violet-500/25 hover:border-violet-400/40 transition text-left group"
-        >
-          <div className="w-7 h-7 rounded-lg bg-violet-500/20 flex items-center justify-center">
-            <Search className="w-3.5 h-3.5 text-violet-400" />
-          </div>
-          <div className="flex-1 min-w-0">
-            <p className="text-xs text-violet-300 font-medium">{t('membership.findCenter', 'Найти учебный центр')}</p>
-            <p className="text-[10px] text-slate-500">{t('membership.browseOrgs', 'Каталог организаций')}</p>
-          </div>
-          <Plus className="w-3.5 h-3.5 text-violet-500 group-hover:text-violet-300 transition" />
-        </button>
-      </div>
-    );
-  }
+  // ═══════════════════════════════════════════════
+  // Quick Actions per Role
+  // ═══════════════════════════════════════════════
+  const getQuickActions = () => {
+    const actions: { icon: React.ElementType; label: string; onClick: () => void; color?: string }[] = [];
 
-  // ═══ Leave confirmation modal ═══
+    if (userRole === 'admin' && currentOrgId) {
+      actions.push(
+        { icon: Users, label: t('org.users', 'Пользователи'), onClick: () => nav('/org-users') },
+        { icon: Building2, label: t('org.branches', 'Филиалы'), onClick: () => nav('/branches') },
+        { icon: Settings, label: t('org.settings', 'Настройки'), onClick: () => nav('/org-settings') },
+      );
+    }
+
+    if (userRole === 'manager' && currentOrgId) {
+      actions.push(
+        { icon: Users, label: t('org.users', 'Пользователи'), onClick: () => nav('/org-users') },
+        { icon: BarChart3, label: t('nav.analytics', 'Аналитика'), onClick: () => nav('/teacher-analytics') },
+      );
+    }
+
+    if (userRole === 'teacher') {
+      actions.push(
+        { icon: Megaphone, label: t('nav.vacancies', 'Вакансии'), onClick: () => nav('/vacancies'), color: 'text-emerald-400' },
+        { icon: MailOpen, label: t('nav.invites', 'Приглашения'), onClick: () => nav('/invites') },
+        { icon: Briefcase, label: t('nav.myApplications', 'Мои заявки'), onClick: () => nav('/my-applications') },
+      );
+    }
+
+    if (userRole === 'student') {
+      actions.push(
+        { icon: FolderOpen, label: t('nav.directory', 'Каталог'), onClick: () => nav('/directory'), color: 'text-violet-400' },
+      );
+    }
+
+    return actions;
+  };
+
+  // ═══════════════════════════════════════════════
+  // Leave Confirmation Modal
+  // ═══════════════════════════════════════════════
   const leaveModal = confirmLeave && (
     <>
       <div className="fixed inset-0 bg-black/50 z-[60]" onClick={() => setConfirmLeave(null)} />
@@ -110,17 +139,10 @@ const OrgSwitcher: React.FC<OrgSwitcherProps> = ({ currentOrgId, onSwitch }) => 
           {t('membership.leaveConfirmMsg', 'Вы потеряете доступ к курсам, дневнику и чату этой организации.')}
         </p>
         <div className="flex gap-2">
-          <button
-            onClick={() => setConfirmLeave(null)}
-            className="flex-1 px-3 py-2 text-xs rounded-lg bg-white/5 text-slate-300 hover:bg-white/10 transition"
-          >
+          <button onClick={() => setConfirmLeave(null)} className="flex-1 px-3 py-2 text-xs rounded-lg bg-white/5 text-slate-300 hover:bg-white/10 transition">
             {t('common.cancel', 'Отмена')}
           </button>
-          <button
-            onClick={() => handleLeave(confirmLeave)}
-            disabled={switching}
-            className="flex-1 px-3 py-2 text-xs rounded-lg bg-red-500/20 text-red-400 hover:bg-red-500/30 transition font-medium"
-          >
+          <button onClick={() => handleLeave(confirmLeave)} disabled={switching} className="flex-1 px-3 py-2 text-xs rounded-lg bg-red-500/20 text-red-400 hover:bg-red-500/30 transition font-medium">
             {switching ? '...' : t('membership.leaveBtn', 'Покинуть')}
           </button>
         </div>
@@ -128,100 +150,173 @@ const OrgSwitcher: React.FC<OrgSwitcherProps> = ({ currentOrgId, onSwitch }) => 
     </>
   );
 
-  // ═══ 1 membership: show current org + leave option ═══
-  if (memberships.length === 1) {
-    const m = currentMembership || memberships[0];
-    const canLeave = m.role !== 'owner';
+  // ═══════════════════════════════════════════════
+  // 0 Memberships — Role-specific empty state
+  // ═══════════════════════════════════════════════
+  if (memberships.length === 0) {
+    let emptyTitle = t('membership.findCenter', 'Найти учебный центр');
+    let emptySubtitle = t('membership.browseOrgs', 'Каталог организаций');
+    let emptyAction = () => nav('/directory');
+    let EmptyIcon = Search;
+
+    if (userRole === 'admin') {
+      emptyTitle = t('membership.createOrg', 'Создать организацию');
+      emptySubtitle = t('membership.setupFirst', 'Настройте свой первый учебный центр');
+      EmptyIcon = Plus;
+    } else if (userRole === 'teacher') {
+      emptyTitle = t('membership.findWork', 'Найти работу');
+      emptySubtitle = t('membership.browseVacancies', 'Откройте вакансии и подайте заявку');
+      emptyAction = () => nav('/vacancies');
+      EmptyIcon = Briefcase;
+    }
+
     return (
       <div className="px-3 py-2">
-        {leaveModal}
-        <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-white/5">
-          <Building2 className="w-4 h-4 text-violet-400 flex-shrink-0" />
+        <button
+          onClick={emptyAction}
+          className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl bg-gradient-to-r from-violet-500/15 to-indigo-500/15 border border-violet-500/25 hover:border-violet-400/40 transition text-left group"
+        >
+          <div className="w-8 h-8 rounded-lg bg-violet-500/20 flex items-center justify-center shrink-0">
+            <EmptyIcon className="w-4 h-4 text-violet-400" />
+          </div>
           <div className="flex-1 min-w-0">
-            <p className="text-xs text-slate-300 truncate font-medium">{m.organizationName}</p>
-            <p className="text-[10px] text-violet-400 font-medium">{roleLabels[m.role] || m.role}</p>
+            <p className="text-xs text-violet-300 font-semibold">{emptyTitle}</p>
+            <p className="text-[10px] text-slate-500">{emptySubtitle}</p>
           </div>
-          <div className="flex items-center gap-0.5">
-            {canLeave && (
-              <button
-                onClick={() => setConfirmLeave(m.organizationId)}
-                className="p-1 rounded-md hover:bg-red-500/10 text-slate-600 hover:text-red-400 transition"
-                title={t('membership.leave', 'Покинуть')}
-              >
-                <LogOut className="w-3.5 h-3.5" />
-              </button>
-            )}
-            <button
-              onClick={() => navigate('/directory')}
-              className="p-1 rounded-md hover:bg-white/10 text-slate-500 hover:text-violet-400 transition"
-              title={t('membership.findMore', 'Найти ещё')}
-            >
-              <Plus className="w-3.5 h-3.5" />
-            </button>
-          </div>
-        </div>
+          <ChevronDown className="w-3.5 h-3.5 text-violet-500/60 -rotate-90 group-hover:text-violet-300 transition" />
+        </button>
       </div>
     );
   }
 
-  // ═══ 2+ memberships: full dropdown switcher ═══
+  // ═══════════════════════════════════════════════
+  // Has memberships — Main Launcher
+  // ═══════════════════════════════════════════════
+  const quickActions = getQuickActions();
+  const hasManyOrgs = memberships.length > 1;
+  const currentOrg = currentMembership || memberships[0];
+  const isOwner = currentOrg?.role === 'owner' || currentOrg?.role === 'admin';
+
+  // Determine "+" button behavior
+  const getPlusAction = () => {
+    if (userRole === 'admin') return { title: t('org.addBranch', 'Добавить филиал'), action: () => nav('/branches') };
+    if (userRole === 'teacher') return { title: t('membership.findWork', 'Найти работу'), action: () => nav('/vacancies') };
+    return { title: t('membership.findMore', 'Найти ещё'), action: () => nav('/directory') };
+  };
+  const plusAction = getPlusAction();
+
   return (
     <div className="relative px-3 py-2">
       {leaveModal}
+
+      {/* ── Trigger Button ── */}
       <button
         onClick={() => setOpen(!open)}
-        className="w-full flex items-center gap-2 px-3 py-2 rounded-xl bg-white/5 hover:bg-white/10 transition text-left"
+        className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl bg-white/5 hover:bg-white/[0.08] transition text-left group"
       >
-        <Building2 className="w-4 h-4 text-violet-400 flex-shrink-0" />
-        <div className="flex-1 min-w-0">
-          <p className="text-xs text-slate-400 truncate">
-            {currentMembership?.organizationName || t('membership.selectOrg', 'Выберите организацию')}
-          </p>
-          {currentMembership && (
-            <p className="text-[10px] text-violet-400 font-medium">{roleLabels[currentMembership.role] || currentMembership.role}</p>
-          )}
+        <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-violet-500/30 to-indigo-500/30 flex items-center justify-center shrink-0 ring-1 ring-white/10">
+          <Building2 className="w-4 h-4 text-violet-300" />
         </div>
-        <ChevronDown className={`w-3.5 h-3.5 text-slate-500 transition ${open ? 'rotate-180' : ''}`} />
+        <div className="flex-1 min-w-0">
+          <p className="text-[13px] text-white truncate font-semibold leading-tight">
+            {currentOrg?.organizationName || t('membership.selectOrg', 'Выберите организацию')}
+          </p>
+          <p className="text-[10px] text-violet-400/80 font-medium mt-0.5">
+            {roleLabels[currentOrg?.role] || currentOrg?.role}
+          </p>
+        </div>
+        <ChevronDown className={`w-4 h-4 text-slate-500 transition-transform duration-200 ${open ? 'rotate-180' : ''}`} />
       </button>
 
+      {/* ── Dropdown Panel ── */}
       {open && (
         <>
           <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
-          <div className="absolute left-3 right-3 top-full mt-1 bg-[#1a2332] border border-slate-600/30 rounded-xl shadow-xl z-50 py-1 max-h-60 overflow-y-auto">
-            {memberships.map((m) => (
-              <div key={m.organizationId} className="flex items-center hover:bg-white/5 transition">
-                <button
-                  onClick={() => handleSwitch(m.organizationId)}
-                  disabled={switching}
-                  className="flex-1 flex items-center gap-2 px-3 py-2 text-left"
-                >
-                  <Building2 className="w-4 h-4 text-slate-500 flex-shrink-0" />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm text-white truncate">{m.organizationName || m.organizationId}</p>
-                    <p className="text-[10px] text-slate-400">{roleLabels[m.role] || m.role}</p>
-                  </div>
-                  {m.organizationId === currentOrgId && (
-                    <Check className="w-4 h-4 text-green-400 flex-shrink-0" />
-                  )}
-                </button>
-                {m.role !== 'owner' && (
-                  <button
-                    onClick={() => { setOpen(false); setConfirmLeave(m.organizationId); }}
-                    className="p-1.5 mr-2 rounded-md hover:bg-red-500/10 text-slate-600 hover:text-red-400 transition"
-                    title={t('membership.leave', 'Покинуть')}
-                  >
-                    <LogOut className="w-3.5 h-3.5" />
-                  </button>
-                )}
+          <div className="absolute left-3 right-3 top-full mt-1 bg-[#151f2e] border border-slate-600/30 rounded-2xl shadow-2xl z-50 overflow-hidden">
+
+            {/* Quick Actions Grid */}
+            {quickActions.length > 0 && (
+              <div className="p-2 border-b border-white/5">
+                <div className="grid grid-cols-3 gap-1">
+                  {quickActions.map((a, i) => (
+                    <button
+                      key={i}
+                      onClick={a.onClick}
+                      className="flex flex-col items-center gap-1 py-2 px-1 rounded-lg hover:bg-white/5 transition group"
+                    >
+                      <a.icon className={`w-4 h-4 ${a.color || 'text-slate-400'} group-hover:text-white transition`} />
+                      <span className="text-[10px] text-slate-500 group-hover:text-slate-300 text-center leading-tight transition">{a.label}</span>
+                    </button>
+                  ))}
+                </div>
               </div>
-            ))}
-            <div className="border-t border-white/5 mt-1 pt-1">
+            )}
+
+            {/* Org List */}
+            {hasManyOrgs && (
+              <div className="py-1 max-h-44 overflow-y-auto">
+                <p className="px-3 py-1 text-[10px] font-semibold uppercase tracking-wider text-slate-600">
+                  {userRole === 'admin' ? t('org.myBranches', 'Мои филиалы') : t('org.myOrgs', 'Мои организации')}
+                </p>
+                {memberships.map((m) => (
+                  <div key={m.organizationId} className="flex items-center hover:bg-white/5 transition">
+                    <button
+                      onClick={() => handleSwitch(m.organizationId)}
+                      disabled={switching}
+                      className="flex-1 flex items-center gap-2.5 px-3 py-2 text-left"
+                    >
+                      <div className={`w-6 h-6 rounded-md flex items-center justify-center text-[10px] font-bold shrink-0 ${
+                        m.organizationId === currentOrgId
+                          ? 'bg-violet-500/30 text-violet-300 ring-1 ring-violet-400/30'
+                          : 'bg-white/5 text-slate-500'
+                      }`}>
+                        {(m.organizationName || '?')[0].toUpperCase()}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className={`text-xs truncate ${m.organizationId === currentOrgId ? 'text-white font-semibold' : 'text-slate-300'}`}>
+                          {m.organizationName || m.organizationId}
+                        </p>
+                        <p className="text-[10px] text-slate-500">{roleLabels[m.role] || m.role}</p>
+                      </div>
+                      {m.organizationId === currentOrgId && (
+                        <Check className="w-3.5 h-3.5 text-green-400 shrink-0" />
+                      )}
+                    </button>
+                    {m.role !== 'owner' && m.role !== 'admin' && (
+                      <button
+                        onClick={() => { setOpen(false); setConfirmLeave(m.organizationId); }}
+                        className="p-1.5 mr-2 rounded-md hover:bg-red-500/10 text-slate-600 hover:text-red-400 transition"
+                        title={t('membership.leave', 'Покинуть')}
+                      >
+                        <LogOut className="w-3 h-3" />
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Single org — show leave if not owner */}
+            {!hasManyOrgs && currentOrg && currentOrg.role !== 'owner' && currentOrg.role !== 'admin' && (
+              <div className="px-3 py-2 border-t border-white/5">
+                <button
+                  onClick={() => { setOpen(false); setConfirmLeave(currentOrg.organizationId); }}
+                  className="flex items-center gap-2 text-xs text-red-400/70 hover:text-red-400 transition w-full"
+                >
+                  <LogOut className="w-3.5 h-3.5" />
+                  {t('membership.leaveOrg', 'Покинуть организацию')}
+                </button>
+              </div>
+            )}
+
+            {/* Footer: + action */}
+            <div className="border-t border-white/5 px-1 py-1">
               <button
-                onClick={() => { setOpen(false); navigate('/directory'); }}
-                className="w-full flex items-center gap-2 px-3 py-2 text-sm text-violet-400 hover:bg-white/5 transition"
+                onClick={plusAction.action}
+                className="w-full flex items-center gap-2 px-3 py-2 text-xs text-violet-400 hover:bg-white/5 rounded-lg transition font-medium"
               >
-                <Plus className="w-4 h-4" />
-                {t('membership.browseOrgs', 'Найти организации')}
+                <Plus className="w-3.5 h-3.5" />
+                {plusAction.title}
               </button>
             </div>
           </div>

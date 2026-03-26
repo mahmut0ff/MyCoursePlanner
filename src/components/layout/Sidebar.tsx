@@ -1,17 +1,17 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../contexts/AuthContext';
 import { signOut } from '../../services/auth.service';
-import { apiGetPendingInviteCount } from '../../lib/api';
+
 import OrgSwitcher from './OrgSwitcher';
 import {
   Building2, Calendar, FileText, GraduationCap,
   LayoutDashboard, Library, Monitor, Shield,
   UsersRound, Settings, BookOpen, UserPlus, Megaphone,
-  BarChart3, Gamepad2, History, Briefcase, ChevronDown, TableProperties,
+  BarChart3, Gamepad2, History, ChevronDown, TableProperties,
   Users, Layers, Database, Activity, Flag, Plug, FolderOpen,
-  ClipboardList, MailOpen, Radio, Award, Trophy, LogOut, CreditCard,
+  ClipboardList, Radio, Award, Trophy, LogOut, CreditCard,
   TrendingUp, MessageSquareText, Bell
 } from 'lucide-react';
 
@@ -70,14 +70,7 @@ const Sidebar: React.FC<{ open: boolean; onClose: () => void }> = ({ open, onClo
   const teacherWithOrg = isTeacher && !!organizationId;
   const managerWithOrg = isManager && !!organizationId;
 
-  // Invite badge count for teachers
-  const [inviteCount, setInviteCount] = useState(0);
-  useEffect(() => {
-    if (!isTeacher) return;
-    apiGetPendingInviteCount()
-      .then((data) => setInviteCount(data?.count || 0))
-      .catch(() => {});
-  }, [isTeacher]);
+
 
   const { rooms } = useChatRooms(organizationId || undefined);
   const unreadChatCount = useUnreadCount(rooms);
@@ -99,7 +92,7 @@ const Sidebar: React.FC<{ open: boolean; onClose: () => void }> = ({ open, onClo
         </div>
 
         {/* ═══ Org Switcher ═══ */}
-        {!isSuperAdmin && <OrgSwitcher currentOrgId={organizationId || undefined} />}
+        {!isSuperAdmin && <OrgSwitcher currentOrgId={organizationId || undefined} userRole={role} onClose={onClose} />}
 
         {/* ═══ Navigation ═══ */}
         <nav className="flex-1 px-2 py-2 space-y-0.5 overflow-y-auto scrollbar-thin scrollbar-thumb-slate-700">
@@ -205,9 +198,6 @@ const Sidebar: React.FC<{ open: boolean; onClose: () => void }> = ({ open, onClo
                 <NavLink to="/teachers" className={linkClass} onClick={onClose}>
                   <UserPlus className="w-4 h-4" />{t('nav.teachers')}
                 </NavLink>
-                <NavLink to="/org-users" className={linkClass} onClick={onClose}>
-                  <Shield className="w-4 h-4" />{t('nav.orgUsers')}
-                </NavLink>
               </CollapsibleSection>
 
               <CollapsibleSection label={t('nav.sectionOrg', 'Организация')} icon={Building2}>
@@ -291,17 +281,11 @@ const Sidebar: React.FC<{ open: boolean; onClose: () => void }> = ({ open, onClo
                   </CollapsibleSection>
 
                   <CollapsibleSection label={t('nav.sectionOrg', 'Организация')} icon={Building2}>
-                    <NavLink to="/branches" className={linkClass} onClick={onClose}>
-                      <Building2 className="w-4 h-4" />{t('nav.branches', 'Филиалы')}
-                    </NavLink>
                     <NavLink to="/schedule" className={linkClass} onClick={onClose}>
                       <Calendar className="w-4 h-4" />{t('nav.schedule')}
                     </NavLink>
                     <NavLink to="/results" className={linkClass} onClick={onClose}>
                       <BarChart3 className="w-4 h-4" />{t('nav.results')}
-                    </NavLink>
-                    <NavLink to="/teacher-analytics" className={linkClass} onClick={onClose}>
-                      <Activity className="w-4 h-4" />{t('nav.analytics')}
                     </NavLink>
                     <NavLink to="/notifications" className={linkClass} onClick={onClose}>
                       <Bell className="w-4 h-4" />{t('nav.notifications', 'Уведомления')}
@@ -380,22 +364,7 @@ const Sidebar: React.FC<{ open: boolean; onClose: () => void }> = ({ open, onClo
                 </>
               )}
 
-              <CollapsibleSection label={t('nav.sectionCareer', 'Карьера')} icon={Briefcase}>
-                <NavLink to="/invites" className={linkClass} onClick={onClose}>
-                  <MailOpen className="w-4 h-4" />{t('nav.invites')}
-                  {inviteCount > 0 && (
-                    <span className="ml-auto bg-red-500 text-white text-[10px] font-bold min-w-[18px] h-[18px] flex items-center justify-center rounded-full px-1 animate-pulse">
-                      {inviteCount}
-                    </span>
-                  )}
-                </NavLink>
-                <NavLink to="/my-applications" className={linkClass} onClick={onClose}>
-                  <Briefcase className="w-4 h-4" />{t('nav.myApplications')}
-                </NavLink>
-                <NavLink to="/vacancies" className={linkClass} onClick={onClose}>
-                  <Megaphone className="w-4 h-4" />{t('nav.vacancies', 'Вакансии')}
-                </NavLink>
-              </CollapsibleSection>
+
             </>
           )}
 
@@ -457,29 +426,9 @@ const Sidebar: React.FC<{ open: boolean; onClose: () => void }> = ({ open, onClo
                 </NavLink>
               </CollapsibleSection>
 
-              <CollapsibleSection label={t('nav.sectionDiscover', 'Открыть')} icon={Building2}>
-                <NavLink to="/directory" className={linkClass} onClick={onClose}>
-                  <Building2 className="w-4 h-4" />{t('nav.directory', 'Учебные центры')}
-                </NavLink>
-                <NavLink to="/achievements" className={linkClass} onClick={onClose}>
-                  <Trophy className="w-4 h-4" />{t('nav.achievements', 'Достижения')}
-                </NavLink>
-              </CollapsibleSection>
-
-              {/* ── Empty state if no org ── */}
-              {!organizationId && (
-                <div className="mx-2 mt-3 p-3 rounded-xl bg-gradient-to-br from-violet-500/10 to-indigo-500/10 border border-violet-500/20">
-                  <p className="text-xs text-violet-300 font-medium mb-2">{t('student.noOrg', 'Вы ещё не в учебном центре')}</p>
-                  <NavLink
-                    to="/directory"
-                    onClick={onClose}
-                    className="flex items-center gap-2 text-xs text-violet-400 hover:text-white transition font-semibold"
-                  >
-                    <Building2 className="w-3.5 h-3.5" />
-                    {t('student.findOrg', 'Найти учебный центр →')}
-                  </NavLink>
-                </div>
-              )}
+              <NavLink to="/achievements" className={linkClass} onClick={onClose}>
+                <Trophy className="w-4 h-4" />{t('nav.achievements', 'Достижения')}
+              </NavLink>
             </>
           )}
         </nav>

@@ -25,10 +25,9 @@ const handler: Handler = async (event: HandlerEvent) => {
 
   // ═══ PUBLIC ENDPOINTS (no auth required) ═══
 
-  // Public directory: list all public orgs
+  // Public directory: list all active orgs (discoverable by students)
   if (event.httpMethod === 'GET' && action === 'directory') {
     const snap = await adminDb.collection(COLLECTION)
-      .where('publicProfileEnabled', '==', true)
       .where('status', '==', 'active')
       .limit(50)
       .get();

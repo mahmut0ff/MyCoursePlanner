@@ -173,7 +173,16 @@ const OnboardingPage: React.FC = () => {
       </div>
 
       {/* ═══ Right Form Panel ═══ */}
-      <div className="flex-1 flex items-center justify-center p-6 md:p-12 bg-white dark:bg-slate-900 relative">
+      <div className="flex-1 flex flex-col items-center justify-center p-6 md:p-12 bg-white dark:bg-slate-900 relative">
+        {/* Mobile-only branded strip */}
+        <div className="lg:hidden w-full max-w-md mb-6 -mt-2">
+          <div className="bg-gradient-to-r from-primary-500 to-violet-500 rounded-2xl p-5 text-center text-white">
+            <div className="text-3xl mb-2">🎓</div>
+            <h2 className="text-lg font-extrabold">{t('auth.welcomeTitle', 'Добро пожаловать!')}</h2>
+            <p className="text-white/70 text-xs mt-1">{t('auth.welcomeSubtitle', 'Настроим ваш профиль за минуту')}</p>
+          </div>
+        </div>
+
         <div className="absolute top-4 right-4 flex gap-4 items-center">
             <LanguageSwitcher />
         </div>

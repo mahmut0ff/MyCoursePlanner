@@ -375,6 +375,14 @@ const Sidebar: React.FC<{ open: boolean; onClose: () => void }> = ({ open, onClo
                 <LayoutDashboard className="w-4 h-4" />{t('nav.dashboard')}
               </NavLink>
 
+              {/* Always-visible student links */}
+              <NavLink to="/progress" className={linkClass} onClick={onClose}>
+                <TrendingUp className="w-4 h-4" />{t('nav.progress', 'Мой прогресс')}
+              </NavLink>
+              <NavLink to="/diary" className={linkClass} onClick={onClose}>
+                <BookOpen className="w-4 h-4" />{t('nav.diary', 'Мой дневник')}
+              </NavLink>
+
               {/* ── Tenant-specific: only when student has an active org ── */}
               {!!organizationId && (
                 <>
@@ -388,12 +396,6 @@ const Sidebar: React.FC<{ open: boolean; onClose: () => void }> = ({ open, onClo
                   </NavLink>
 
                   <CollapsibleSection label={t('nav.sectionEducation', 'Обучение')} icon={GraduationCap} defaultOpen>
-                    <NavLink to="/progress" className={linkClass} onClick={onClose}>
-                      <TrendingUp className="w-4 h-4" />{t('nav.progress', 'Мой прогресс')}
-                    </NavLink>
-                    <NavLink to="/diary" className={linkClass} onClick={onClose}>
-                      <BookOpen className="w-4 h-4" />{t('nav.diary', 'Мой дневник')}
-                    </NavLink>
                     <NavLink to="/student/courses" className={linkClass} onClick={onClose}>
                       <FolderOpen className="w-4 h-4" />{t('nav.myCourses', 'Мои курсы')}
                     </NavLink>

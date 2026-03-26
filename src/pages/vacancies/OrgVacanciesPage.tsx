@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { vacGetOrgVacancies, vacCloseVacancy, vacDeleteVacancy, vacGetVacancyApplications, vacReviewApplication } from '../../lib/api';
 import { Plus, Briefcase, Trash2, XCircle, Eye, CheckCircle, Users, Clock, Ban, RefreshCw } from 'lucide-react';
+import toast from 'react-hot-toast';
 import type { Vacancy, VacancyApplication, VacancyApplicationStatus } from '../../types';
 
 const STATUS_BADGE: Record<string, string> = {
@@ -44,22 +45,28 @@ const OrgVacanciesPage: React.FC = () => {
   };
 
   const handleReview = async (appId: string, status: string) => {
-    await vacReviewApplication(appId, status);
-    setApplications(prev => prev.map(a => a.id === appId ? { ...a, status: status as VacancyApplicationStatus } : a));
+    try {
+      await vacReviewApplication(appId, status);
+      setApplications(prev => prev.map(a => a.id === appId ? { ...a, status: status as VacancyApplicationStatus } : a));
+    } catch (e: any) { toast.error(e.message || t('common.error')); }
   };
 
   const handleClose = async (id: string) => {
     if (!confirm(t('vacancies.confirmClose'))) return;
-    await vacCloseVacancy(id);
-    load();
-    if (selected?.id === id) setSelected(null);
+    try {
+      await vacCloseVacancy(id);
+      load();
+      if (selected?.id === id) setSelected(null);
+    } catch (e: any) { toast.error(e.message || t('common.error')); }
   };
 
   const handleDelete = async (id: string) => {
     if (!confirm(t('common.confirmDelete'))) return;
-    await vacDeleteVacancy(id);
-    load();
-    if (selected?.id === id) setSelected(null);
+    try {
+      await vacDeleteVacancy(id);
+      load();
+      if (selected?.id === id) setSelected(null);
+    } catch (e: any) { toast.error(e.message || t('common.error')); }
   };
 
   return (

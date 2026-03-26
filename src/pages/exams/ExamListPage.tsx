@@ -13,7 +13,7 @@ const ExamListPage: React.FC = () => {
   const [search, setSearch] = useState('');
 
   useEffect(() => {
-    getExams().then(setExams).finally(() => setLoading(false));
+    getExams().then(setExams).catch(() => setExams([])).finally(() => setLoading(false));
   }, []);
 
   const filtered = exams.filter((e) =>

@@ -52,7 +52,7 @@ const LessonViewPage: React.FC = () => {
   const [lesson, setLesson] = useState<LessonPlan | null>(null);
   const [loading, setLoading] = useState(true);
   const [viewerFile, setViewerFile] = useState<{ name: string; url: string; type: string } | null>(null);
-  const isStaff = role === 'admin' || role === 'teacher';
+  const isStaff = role === 'admin' || role === 'manager' || role === 'teacher';
 
   useEffect(() => {
     if (id) {

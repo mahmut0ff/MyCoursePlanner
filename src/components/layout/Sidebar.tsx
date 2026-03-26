@@ -12,7 +12,7 @@ import {
   BarChart3, Gamepad2, History, Briefcase, ChevronDown, TableProperties,
   Users, Layers, Database, Activity, Flag, Plug, FolderOpen,
   ClipboardList, MailOpen, Radio, Award, Trophy, LogOut, CreditCard,
-  TrendingUp, MessageSquareText
+  TrendingUp, MessageSquareText, Bell
 } from 'lucide-react';
 
 import { useChatRooms, useUnreadCount } from '../../lib/useChat';
@@ -234,6 +234,15 @@ const Sidebar: React.FC<{ open: boolean; onClose: () => void }> = ({ open, onClo
                 <LayoutDashboard className="w-4 h-4" />{t('nav.dashboard')}
               </NavLink>
 
+              <NavLink to="/chat" className={linkClass} onClick={onClose}>
+                <MessageSquareText className="w-4 h-4" />{t('nav.chat', 'Чат')}
+                {unreadChatCount > 0 && (
+                  <span className="ml-auto bg-red-500 text-white text-[10px] font-bold min-w-[18px] h-[18px] flex items-center justify-center rounded-full px-1 animate-pulse">
+                    {unreadChatCount}
+                  </span>
+                )}
+              </NavLink>
+
               {managerWithOrg && (
                 <>
                   <CollapsibleSection label={t('nav.sectionEducation', 'Обучение')} icon={GraduationCap} defaultOpen>
@@ -252,11 +261,23 @@ const Sidebar: React.FC<{ open: boolean; onClose: () => void }> = ({ open, onClo
                     <NavLink to="/lessons" className={linkClass} onClick={onClose}>
                       <BookOpen className="w-4 h-4" />{t('nav.lessons')}
                     </NavLink>
+                    <NavLink to="/materials" className={linkClass} onClick={onClose}>
+                      <FileText className="w-4 h-4" />{t('nav.materials')}
+                    </NavLink>
                     <NavLink to="/exams" className={linkClass} onClick={onClose}>
                       <ClipboardList className="w-4 h-4" />{t('nav.exams')}
                     </NavLink>
                     <NavLink to="/rooms" className={linkClass} onClick={onClose}>
                       <Monitor className="w-4 h-4" />{t('nav.examRooms')}
+                    </NavLink>
+                  </CollapsibleSection>
+
+                  <CollapsibleSection label={t('nav.sectionQuiz', 'Квизы')} icon={Gamepad2}>
+                    <NavLink to="/quiz/library" className={linkClass} onClick={onClose}>
+                      <Library className="w-4 h-4" />{t('nav.quizLibrary')}
+                    </NavLink>
+                    <NavLink to="/quiz/sessions" className={linkClass} onClick={onClose}>
+                      <History className="w-4 h-4" />{t('nav.quizSessions')}
                     </NavLink>
                   </CollapsibleSection>
 
@@ -281,6 +302,9 @@ const Sidebar: React.FC<{ open: boolean; onClose: () => void }> = ({ open, onClo
                     </NavLink>
                     <NavLink to="/teacher-analytics" className={linkClass} onClick={onClose}>
                       <Activity className="w-4 h-4" />{t('nav.analytics')}
+                    </NavLink>
+                    <NavLink to="/notifications" className={linkClass} onClick={onClose}>
+                      <Bell className="w-4 h-4" />{t('nav.notifications', 'Уведомления')}
                     </NavLink>
                   </CollapsibleSection>
                 </>

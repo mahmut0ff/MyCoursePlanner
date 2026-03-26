@@ -19,7 +19,7 @@ const LessonListPage: React.FC = () => {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
 
-  const isStaff = role === 'admin' || role === 'teacher';
+  const isStaff = role === 'admin' || role === 'manager' || role === 'teacher';
 
   useEffect(() => {
     apiGetLessons().then(setLessons).catch(console.error).finally(() => setLoading(false));

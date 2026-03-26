@@ -175,7 +175,7 @@ const CoursesPage: React.FC = () => {
                 <input placeholder={t('org.courses.titlePlaceholder')} value={form.title} onChange={(e) => setForm(f => ({ ...f, title: e.target.value }))} className="input" autoFocus />
               </div>
               <div>
-                <label className="label">Subject</label>
+                <label className="label">{t('org.courses.subject', 'Предмет')}</label>
                 <input placeholder={t('org.courses.subjectPlaceholder')} value={form.subject} onChange={(e) => setForm(f => ({ ...f, subject: e.target.value }))} className="input" />
               </div>
               <div>

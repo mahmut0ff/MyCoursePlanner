@@ -80,7 +80,7 @@ export default function ChatRoomList({ rooms, loading, error, activeRoomId, onSe
     return (
       <div className="p-4 flex flex-col items-center justify-center text-center text-slate-500 h-full">
         <ShieldAlert className="w-8 h-8 text-red-500 mb-2" />
-        <p>Error loading rooms</p>
+        <p>{t('chat.errorLoadingRooms', 'Ошибка загрузки чатов')}</p>
       </div>
     );
   }

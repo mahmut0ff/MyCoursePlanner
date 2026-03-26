@@ -18,7 +18,7 @@ const ExamViewPage: React.FC = () => {
   const [questions, setQuestions] = useState<Question[]>([]);
   const [loading, setLoading] = useState(true);
   const [starting, setStarting] = useState(false);
-  const isStaff = role === 'admin' || role === 'teacher';
+  const isStaff = role === 'admin' || role === 'manager' || role === 'teacher';
 
   useEffect(() => {
     if (id) {

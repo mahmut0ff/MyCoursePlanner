@@ -7,6 +7,7 @@ import { adminDb, adminAuth } from './utils/firebase-admin';
 import {
   verifyAuth, isStaff, hasRole, getOrgFilter,
   ok, unauthorized, forbidden, badRequest, notFound, jsonResponse,
+  resolveBranchFilter,
   type AuthUser,
 } from './utils/auth';
 import { createNotification } from './utils/notifications';
@@ -45,8 +46,16 @@ const handler: Handler = async (event: HandlerEvent) => {
   try {
     // ═══ COURSES ═══
     if (action === 'courses') {
-      const snap = await orgQuery('courses', orgId).get();
-      const list = snap.docs.map((d: any) => ({ id: d.id, ...d.data() }));
+      const branchScope = resolveBranchFilter(user, params.branchId);
+      let query = orgQuery('courses', orgId);
+      if (branchScope === '__DENIED__') return ok([]);
+      if (typeof branchScope === 'string') query = query.where('branchId', '==', branchScope) as any;
+      const snap = await query.get();
+      let list = snap.docs.map((d: any) => ({ id: d.id, ...d.data() }));
+      // For multi-branch array scope, filter in memory
+      if (Array.isArray(branchScope)) {
+        list = list.filter((c: any) => !c.branchId || branchScope.includes(c.branchId));
+      }
       list.sort((a: any, b: any) => (b.createdAt || '').localeCompare(a.createdAt || ''));
       return ok(list);
     }
@@ -64,6 +73,7 @@ const handler: Handler = async (event: HandlerEvent) => {
       if (!body.title) return badRequest('title required');
       const data = {
         organizationId: orgId,
+        branchId: body.branchId || null,
         title: body.title,
         description: body.description || '',
         subject: body.subject || '',
@@ -102,10 +112,16 @@ const handler: Handler = async (event: HandlerEvent) => {
 
     // ═══ GROUPS ═══
     if (action === 'groups') {
+      const branchScope = resolveBranchFilter(user, params.branchId);
       let query = orgQuery('groups', orgId);
       if (params.courseId) query = query.where('courseId', '==', params.courseId) as any;
+      if (branchScope === '__DENIED__') return ok([]);
+      if (typeof branchScope === 'string') query = query.where('branchId', '==', branchScope) as any;
       const snap = await query.get();
-      const list = snap.docs.map((d: any) => ({ id: d.id, ...d.data() }));
+      let list = snap.docs.map((d: any) => ({ id: d.id, ...d.data() }));
+      if (Array.isArray(branchScope)) {
+        list = list.filter((g: any) => !g.branchId || branchScope.includes(g.branchId));
+      }
       list.sort((a: any, b: any) => (b.createdAt || '').localeCompare(a.createdAt || ''));
       return ok(list);
     }
@@ -123,6 +139,7 @@ const handler: Handler = async (event: HandlerEvent) => {
       if (!body.name || !body.courseId) return badRequest('name and courseId required');
       const data = {
         organizationId: orgId,
+        branchId: body.branchId || null,
         courseId: body.courseId,
         courseName: body.courseName || '',
         name: body.name,
@@ -158,15 +175,35 @@ const handler: Handler = async (event: HandlerEvent) => {
 
     // ═══ STUDENTS (users with role=student in this org) ═══
     if (action === 'students') {
-      const snap = await adminDb.collection('orgMembers').doc(orgId)
+      let query: any = adminDb.collection('orgMembers').doc(orgId)
         .collection('members')
         .where('status', '==', 'active')
-        .where('role', '==', 'student').get();
-        
-      return ok(snap.docs.map((d: any) => {
+        .where('role', '==', 'student');
+      
+      // Apply branch filter if requested
+      if (params.branchId) {
+        query = query.where('branchIds', 'array-contains', params.branchId);
+      } else if (hasRole(user, 'manager') && user.branchIds.length > 0) {
+        // Managers auto-scoped to their branches (array-contains supports single value)
+        if (user.branchIds.length === 1) {
+          query = query.where('branchIds', 'array-contains', user.branchIds[0]);
+        }
+      }
+      
+      const snap = await query.get();
+      let students = snap.docs.map((d: any) => {
         const data = d.data();
-        return { uid: data.userId, displayName: data.userName, email: data.userEmail, role: data.role };
-      }));
+        return { uid: data.userId, displayName: data.userName, email: data.userEmail, role: data.role, branchIds: data.branchIds || [], primaryBranchId: data.primaryBranchId || null };
+      });
+
+      // Multi-branch manager: filter in memory
+      if (!params.branchId && hasRole(user, 'manager') && user.branchIds.length > 1) {
+        students = students.filter((s: any) => 
+          s.branchIds.length === 0 || s.branchIds.some((id: string) => user.branchIds.includes(id))
+        );
+      }
+        
+      return ok(students);
     }
 
     if (action === 'createStudent') {
@@ -215,14 +252,19 @@ const handler: Handler = async (event: HandlerEvent) => {
 
     // ═══ TEACHERS (users with role=teacher in this org) ═══
     if (action === 'teachers') {
-      const snap = await adminDb.collection('orgMembers').doc(orgId)
+      let query: any = adminDb.collection('orgMembers').doc(orgId)
         .collection('members')
         .where('status', '==', 'active')
-        .where('role', 'in', ['teacher', 'admin', 'owner', 'mentor']).get();
-        
+        .where('role', 'in', ['teacher', 'admin', 'owner', 'mentor']);
+
+      if (params.branchId) {
+        query = query.where('branchIds', 'array-contains', params.branchId);
+      }
+      
+      const snap = await query.get();
       return ok(snap.docs.map((d: any) => {
         const data = d.data();
-        return { uid: data.userId, displayName: data.userName, email: data.userEmail, role: data.role };
+        return { uid: data.userId, displayName: data.userName, email: data.userEmail, role: data.role, branchIds: data.branchIds || [], primaryBranchId: data.primaryBranchId || null };
       }));
     }
 
@@ -334,12 +376,18 @@ const handler: Handler = async (event: HandlerEvent) => {
 
     // ═══ SCHEDULE ═══
     if (action === 'schedule') {
+      const branchScope = resolveBranchFilter(user, params.branchId);
       let query = orgQuery('scheduleEvents', orgId);
       if (params.from) query = query.where('date', '>=', params.from) as any;
       if (params.to) query = query.where('date', '<=', params.to) as any;
       if (params.groupId) query = query.where('groupId', '==', params.groupId) as any;
+      if (branchScope === '__DENIED__') return ok([]);
+      if (typeof branchScope === 'string') query = query.where('branchId', '==', branchScope) as any;
       const snap = await query.get();
-      const list = snap.docs.map((d: any) => ({ id: d.id, ...d.data() }));
+      let list = snap.docs.map((d: any) => ({ id: d.id, ...d.data() }));
+      if (Array.isArray(branchScope)) {
+        list = list.filter((e: any) => !e.branchId || branchScope.includes(e.branchId));
+      }
       list.sort((a: any, b: any) => (a.date || '').localeCompare(b.date || ''));
       return ok(list);
     }
@@ -350,6 +398,7 @@ const handler: Handler = async (event: HandlerEvent) => {
       if (!body.title || !body.date || !body.startTime) return badRequest('title, date, startTime required');
       const data = {
         organizationId: orgId,
+        branchId: body.branchId || null,
         type: body.type || 'lesson',
         title: body.title,
         groupId: body.groupId || null, groupName: body.groupName || '',

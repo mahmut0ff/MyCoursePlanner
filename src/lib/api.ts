@@ -125,6 +125,12 @@ export const apiSwitchOrg = (organizationId: string) =>
   memberReq('switchOrg', 'POST', { organizationId });
 export const apiPublicJoin = (orgSlug: string) =>
   memberReq<{ status: string; orgId?: string; orgName?: string }>('publicJoin', 'POST', { orgSlug });
+export const apiSetBranchAssignment = (userId: string, organizationId: string, branchIds: string[], primaryBranchId?: string) =>
+  memberReq('setBranchAssignment', 'POST', { userId, organizationId, branchIds, primaryBranchId });
+
+// ---- Dashboard (branch-aware) ----
+export const apiGetBranchAnalytics = () =>
+  apiRequest<any>('api-dashboard', 'GET', undefined, { action: 'branchAnalytics' });
 
 // ---- Organization Directory (public) ----
 export const apiGetOrgDirectory = () =>

@@ -8,9 +8,10 @@ import { getActiveRooms } from '../../services/rooms.service';
 import { getAllAttempts } from '../../services/attempts.service';
 import type { LessonPlan, Exam, ExamRoom, ExamAttempt } from '../../types';
 import { formatDate } from '../../utils/grading';
-import { BookOpen, ClipboardList, Radio, Users, TrendingUp, ArrowRight, Plus, Sparkles } from 'lucide-react';
+import { BookOpen, ClipboardList, Radio, Users, TrendingUp, ArrowRight, Plus, Sparkles, GitBranch, MapPin } from 'lucide-react';
 import { DashboardSkeleton } from '../../components/ui/Skeleton';
 import OnboardingWizard from '../../components/onboarding/OnboardingWizard';
+import { apiGetBranchAnalytics } from '../../lib/api';
 
 const AdminDashboard: React.FC = () => {
   const { t } = useTranslation();
@@ -20,11 +21,14 @@ const AdminDashboard: React.FC = () => {
   const [rooms, setRooms] = useState<ExamRoom[]>([]);
   const [attempts, setAttempts] = useState<ExamAttempt[]>([]);
   const [loading, setLoading] = useState(true);
+  const [branchData, setBranchData] = useState<any>(null);
 
   useEffect(() => {
     Promise.all([getLessonPlans(), getExams(), getActiveRooms(), getAllAttempts()])
       .then(([l, e, r, a]) => { setLessons(l); setExams(e); setRooms(r); setAttempts(a); })
       .finally(() => setLoading(false));
+    // Load branch analytics in parallel
+    apiGetBranchAnalytics().then(setBranchData).catch(() => {});
   }, []);
 
   if (loading) return <DashboardSkeleton />;
@@ -81,6 +85,78 @@ const AdminDashboard: React.FC = () => {
           </div>
         ))}
       </div>
+
+      {/* ═══ Branch Analytics ═══ */}
+      {branchData && branchData.branches && branchData.branches.length > 0 && (
+        <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl overflow-hidden">
+          <div className="px-5 py-4 border-b border-slate-100 dark:border-slate-700 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <GitBranch className="w-5 h-5 text-indigo-500" />
+              <h2 className="font-semibold text-slate-900 dark:text-white">{t('dashboard.branchAnalytics', 'Аналитика по филиалам')}</h2>
+            </div>
+            <span className="text-xs text-slate-400">{branchData.totalBranches} {t('dashboard.branches', 'филиалов')}</span>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr className="border-b border-slate-100 dark:border-slate-700/50">
+                  <th className="text-left text-[10px] font-medium text-slate-500 uppercase tracking-wider px-4 py-2">{t('branches.name', 'Филиал')}</th>
+                  <th className="text-left text-[10px] font-medium text-slate-500 uppercase tracking-wider px-4 py-2">{t('branches.city', 'Город')}</th>
+                  <th className="text-center text-[10px] font-medium text-slate-500 uppercase tracking-wider px-4 py-2">{t('dashboard.students', 'Студенты')}</th>
+                  <th className="text-center text-[10px] font-medium text-slate-500 uppercase tracking-wider px-4 py-2">{t('dashboard.teachers', 'Преподаватели')}</th>
+                  <th className="text-center text-[10px] font-medium text-slate-500 uppercase tracking-wider px-4 py-2">{t('dashboard.courses', 'Курсы')}</th>
+                  <th className="text-center text-[10px] font-medium text-slate-500 uppercase tracking-wider px-4 py-2">{t('dashboard.groups', 'Группы')}</th>
+                  <th className="text-center text-[10px] font-medium text-slate-500 uppercase tracking-wider px-4 py-2">{t('dashboard.exams', 'Экзамены')}</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-50 dark:divide-slate-700/30">
+                {branchData.branches.map((b: any) => (
+                  <tr key={b.branchId} className="hover:bg-slate-50/80 dark:hover:bg-slate-700/20 transition-colors">
+                    <td className="px-4 py-2.5">
+                      <div className="flex items-center gap-2">
+                        <GitBranch className="w-3.5 h-3.5 text-indigo-400" />
+                        <span className="text-sm font-medium text-slate-900 dark:text-white">{b.branchName}</span>
+                      </div>
+                    </td>
+                    <td className="px-4 py-2.5 text-[11px] text-slate-500">
+                      {b.city && <span className="flex items-center gap-0.5"><MapPin className="w-3 h-3" /> {b.city}</span>}
+                    </td>
+                    <td className="px-4 py-2.5 text-center">
+                      <span className="text-sm font-semibold text-slate-900 dark:text-white">{b.students}</span>
+                    </td>
+                    <td className="px-4 py-2.5 text-center">
+                      <span className="text-sm font-semibold text-slate-900 dark:text-white">{b.teachers}</span>
+                    </td>
+                    <td className="px-4 py-2.5 text-center">
+                      <span className="text-sm text-slate-600 dark:text-slate-300">{b.courses}</span>
+                    </td>
+                    <td className="px-4 py-2.5 text-center">
+                      <span className="text-sm text-slate-600 dark:text-slate-300">{b.groups}</span>
+                    </td>
+                    <td className="px-4 py-2.5 text-center">
+                      <span className="text-sm text-slate-600 dark:text-slate-300">{b.exams}</span>
+                    </td>
+                  </tr>
+                ))}
+                {/* Unassigned row */}
+                {branchData.unassigned && (branchData.unassigned.students > 0 || branchData.unassigned.teachers > 0) && (
+                  <tr className="bg-amber-50/50 dark:bg-amber-900/10">
+                    <td className="px-4 py-2.5">
+                      <span className="text-sm font-medium text-amber-700 dark:text-amber-400">{branchData.unassigned.branchName}</span>
+                    </td>
+                    <td className="px-4 py-2.5 text-[11px] text-amber-500">—</td>
+                    <td className="px-4 py-2.5 text-center"><span className="text-sm font-semibold text-amber-700 dark:text-amber-400">{branchData.unassigned.students}</span></td>
+                    <td className="px-4 py-2.5 text-center"><span className="text-sm font-semibold text-amber-700 dark:text-amber-400">{branchData.unassigned.teachers}</span></td>
+                    <td className="px-4 py-2.5 text-center"><span className="text-sm text-amber-600 dark:text-amber-400">{branchData.unassigned.courses}</span></td>
+                    <td className="px-4 py-2.5 text-center"><span className="text-sm text-amber-600 dark:text-amber-400">{branchData.unassigned.groups}</span></td>
+                    <td className="px-4 py-2.5 text-center"><span className="text-sm text-amber-600 dark:text-amber-400">{branchData.unassigned.exams}</span></td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
 
       {/* ═══ Content Grid ═══ */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">

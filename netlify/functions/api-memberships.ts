@@ -504,6 +504,42 @@ const handler: Handler = async (event: HandlerEvent) => {
       return ok({ roleChanged: true, newRole: body.newRole });
     }
 
+    // ═══ POST: Set branch assignment ═══
+    if (event.httpMethod === 'POST' && action === 'setBranchAssignment') {
+      const body = JSON.parse(event.body || '{}');
+      if (!body.userId || !body.organizationId) return badRequest('userId and organizationId required');
+      if (!Array.isArray(body.branchIds)) return badRequest('branchIds must be an array');
+
+      const callerRole = await getOrgRole(user.uid, body.organizationId);
+      if (!isSuperAdmin(user) && !['admin', 'owner'].includes(callerRole || '')) return forbidden();
+
+      // Validate all branchIds belong to this org
+      if (body.branchIds.length > 0) {
+        const branchesSnap = await adminDb.collection('branches')
+          .where('organizationId', '==', body.organizationId)
+          .where('isActive', '==', true).get();
+        const validIds = new Set(branchesSnap.docs.map(d => d.id));
+        const invalid = body.branchIds.filter((id: string) => !validIds.has(id));
+        if (invalid.length > 0) return badRequest(`Invalid branchIds: ${invalid.join(', ')}`);
+      }
+
+      // Validate primaryBranchId is in branchIds
+      const primaryBranchId = body.primaryBranchId || (body.branchIds.length > 0 ? body.branchIds[0] : null);
+      if (primaryBranchId && !body.branchIds.includes(primaryBranchId)) {
+        return badRequest('primaryBranchId must be included in branchIds');
+      }
+
+      const ts = now();
+      const update = { branchIds: body.branchIds, primaryBranchId, updatedAt: ts };
+
+      await adminDb.collection('users').doc(body.userId)
+        .collection('memberships').doc(body.organizationId).update(update);
+      await adminDb.collection('orgMembers').doc(body.organizationId)
+        .collection('members').doc(body.userId).update(update);
+
+      return ok({ updated: true, branchIds: body.branchIds, primaryBranchId });
+    }
+
     // ═══ POST: Switch active org ═══
     if (event.httpMethod === 'POST' && action === 'switchOrg') {
       const body = JSON.parse(event.body || '{}');

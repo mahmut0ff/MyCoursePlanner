@@ -13,18 +13,24 @@ export interface AuthUser {
   organizationId: string | null;
   planId: string | null;
   aiEnabled: boolean;
+  branchIds: string[];               // assigned branches from membership
+  primaryBranchId: string | null;    // default branch context
 }
 
 /**
  * Resolve user's role in a specific org via membership subcollection.
  */
-export async function resolveOrgRole(uid: string, orgId: string): Promise<string | null> {
+export async function resolveOrgRole(uid: string, orgId: string): Promise<{ role: string | null; branchIds: string[]; primaryBranchId: string | null }> {
   const doc = await adminDb.collection('users').doc(uid)
     .collection('memberships').doc(orgId).get();
-  if (!doc.exists) return null;
+  if (!doc.exists) return { role: null, branchIds: [], primaryBranchId: null };
   const data = doc.data()!;
-  if (data.status !== 'active') return null;
-  return data.role || null;
+  if (data.status !== 'active') return { role: null, branchIds: [], primaryBranchId: null };
+  return {
+    role: data.role || null,
+    branchIds: data.branchIds || [],
+    primaryBranchId: data.primaryBranchId || null,
+  };
 }
 
 /**
@@ -45,12 +51,14 @@ export async function verifyAuth(event: HandlerEvent): Promise<AuthUser | null> 
     // Determine org context: prefer activeOrgId, fall back to legacy organizationId
     const organizationId = userData?.activeOrgId || userData?.organizationId || null;
 
-    // Resolve role: try membership first, fall back to flat field
+    // Resolve role + branch context: try membership first, fall back to flat field
     let role: AuthUser['role'] = (userData?.role as AuthUser['role']) || 'student';
+    let branchIds: string[] = [];
+    let primaryBranchId: string | null = null;
 
     if (role !== 'super_admin' && organizationId) {
-      const membershipRole = await resolveOrgRole(decoded.uid, organizationId);
-      if (membershipRole) {
+      const membership = await resolveOrgRole(decoded.uid, organizationId);
+      if (membership.role) {
         // Map membership roles to AuthUser roles
         const roleMap: Record<string, AuthUser['role']> = {
           owner: 'admin',
@@ -60,8 +68,10 @@ export async function verifyAuth(event: HandlerEvent): Promise<AuthUser | null> 
           mentor: 'teacher',
           student: 'student',
         };
-        role = roleMap[membershipRole] || role;
+        role = roleMap[membership.role] || role;
       }
+      branchIds = membership.branchIds;
+      primaryBranchId = membership.primaryBranchId;
     }
 
     // Fetch org plan info for feature gating
@@ -83,6 +93,8 @@ export async function verifyAuth(event: HandlerEvent): Promise<AuthUser | null> 
       organizationId,
       planId,
       aiEnabled,
+      branchIds,
+      primaryBranchId,
     };
   } catch (e) {
     console.error('Auth verification failed:', e);
@@ -153,3 +165,53 @@ export const logSecurityAudit = async (user: AuthUser | null, event: HandlerEven
     console.error('Failed to write audit log', e);
   }
 };
+
+// ---- Branch scope helpers ----
+
+/**
+ * Check if user has access to a specific branch.
+ * Admin/Owner: access all branches. Manager/Teacher: only assigned branches.
+ * Students: only assigned branches (if any).
+ * Users with empty branchIds: treated as org-wide (access all).
+ */
+export function userHasBranchAccess(user: AuthUser, branchId: string): boolean {
+  if (isSuperAdmin(user) || hasRole(user, 'admin')) return true;
+  if (user.branchIds.length === 0) return true; // unassigned = org-wide
+  return user.branchIds.includes(branchId);
+}
+
+/**
+ * Returns forbidden response if user lacks branch access.
+ * Returns null if access is granted.
+ */
+export function requireBranchScope(user: AuthUser, branchId: string | undefined | null): ReturnType<typeof forbidden> | null {
+  if (!branchId) return null; // entity is org-wide, always accessible
+  if (userHasBranchAccess(user, branchId)) return null;
+  return forbidden('Access denied: branch scope violation');
+}
+
+/**
+ * Resolves which branchId filter to apply for list queries.
+ * - admin/owner + no filter requested → null (show all)
+ * - admin/owner + filter requested → requested branchId
+ * - manager/teacher → forced to their branchIds (or requested if subset)
+ * - student → their branchIds if any, else null (org-wide)
+ */
+export function resolveBranchFilter(user: AuthUser, requestedBranchId?: string | null): string | null | string[] {
+  // Admins and super_admins can see everything or filter by choice
+  if (isSuperAdmin(user) || hasRole(user, 'admin')) {
+    return requestedBranchId || null;
+  }
+  // Users with no branch assignments see org-wide data
+  if (user.branchIds.length === 0) {
+    return null;
+  }
+  // If a specific branch was requested, validate access
+  if (requestedBranchId) {
+    if (user.branchIds.includes(requestedBranchId)) return requestedBranchId;
+    return '__DENIED__'; // sentinel: will result in empty query
+  }
+  // Default: scope to user's assigned branches
+  if (user.branchIds.length === 1) return user.branchIds[0];
+  return user.branchIds; // array for multi-branch scope
+}

@@ -206,6 +206,7 @@ export interface Membership {
   status: MembershipStatus;
   joinMethod: JoinMethod;
   branchIds?: string[];              // assigned branch scopes (manager/teacher)
+  primaryBranchId?: string;          // default branch context
   joinedAt: string;
   leftAt?: string;
   createdAt: string;
@@ -308,6 +309,7 @@ export interface LessonPlan {
   authorId: string;
   authorName: string;
   organizationId?: string;
+  branchId?: string;
   status: LessonStatus;
   homework?: LessonHomework;
   attachments?: LessonAttachment[];
@@ -344,6 +346,7 @@ export interface Exam {
   authorId: string;
   authorName: string;
   organizationId?: string;
+  branchId?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -374,6 +377,7 @@ export interface ExamRoom {
   hostName: string;
   participants: string[];
   organizationId?: string;
+  branchId?: string;
   startedAt: string;
   closedAt?: string;
   createdAt: string;
@@ -396,6 +400,7 @@ export interface ExamAttempt {
   percentage: number;
   passed: boolean;
   organizationId?: string;
+  branchId?: string;
   startedAt: string;
   submittedAt: string;
   timeSpentSeconds: number;
@@ -471,6 +476,7 @@ export type CourseStatus = 'draft' | 'published' | 'archived';
 export interface Course {
   id: string;
   organizationId: string;
+  branchId?: string;
   title: string;
   description: string;
   subject: string;
@@ -487,6 +493,7 @@ export interface Course {
 export interface Group {
   id: string;
   organizationId: string;
+  branchId?: string;
   courseId: string;
   courseName?: string;
   name: string;
@@ -520,6 +527,7 @@ export type ScheduleEventType = 'lesson' | 'exam' | 'other';
 export interface ScheduleEvent {
   id: string;
   organizationId: string;
+  branchId?: string;
   type: ScheduleEventType;
   title: string;
   groupId?: string;

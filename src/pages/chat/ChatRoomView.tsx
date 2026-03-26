@@ -26,9 +26,10 @@ interface ChatRoomViewProps {
   displayTitle: string;
   avatarUrl?: string;
   avatarCache?: Record<string, string>;
+  nameCache?: Record<string, string>;
 }
 
-export default function ChatRoomView({ room, onBack, displayTitle, avatarUrl, avatarCache }: ChatRoomViewProps) {
+export default function ChatRoomView({ room, onBack, displayTitle, avatarUrl, avatarCache, nameCache }: ChatRoomViewProps) {
   const { t, i18n } = useTranslation();
   const { profile } = useAuth();
   const { messages, loading } = useChatMessages(room.id);
@@ -130,10 +131,10 @@ export default function ChatRoomView({ room, onBack, displayTitle, avatarUrl, av
     }
   };
 
-  // Build a quick lookup for sender names
+  // Build a quick lookup for sender names (participants map → nameCache → fallback)
   const senderNames: Record<string, string> = {};
   for (const uid of room.participantIds) {
-    senderNames[uid] = room.participants[uid]?.displayName || uid.slice(0, 8);
+    senderNames[uid] = room.participants[uid]?.displayName || nameCache?.[uid] || uid.slice(0, 8) + '...';
   }
 
   return (

@@ -91,6 +91,7 @@ export default function ChatWorkspace() {
             displayTitle={activeDisplayTitle}
             avatarUrl={activeAvatarUrl}
             avatarCache={avatarCache}
+            nameCache={nameCache}
           />
         ) : (
           <div className="flex-1 flex items-center justify-center p-8">

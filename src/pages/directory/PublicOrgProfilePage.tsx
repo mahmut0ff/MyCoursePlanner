@@ -29,13 +29,13 @@ const PublicOrgProfilePage: React.FC = () => {
   }, [slug]);
 
   const handleJoin = async () => {
-    if (!profile) return; // should not happen, CTA guards this
+    if (!profile) return;
     if (!slug) return;
     setJoining(true);
     try {
       const result = await apiPublicJoin(slug);
       setJoinStatus(result.status);
-      if (['joined', 'reactivated', 'already_member'].includes(result.status)) {
+      if (result.status === 'already_member') {
         setTimeout(() => navigate('/dashboard'), 1500);
       }
     } catch (e) {
@@ -75,13 +75,11 @@ const PublicOrgProfilePage: React.FC = () => {
 
   // Join status messages
   const statusMessages: Record<string, { text: string; icon: React.ElementType; color: string }> = {
-    joined: { text: t('directory.joinSuccess', 'Вы вступили! Переходим в приложение...'), icon: CheckCircle, color: 'text-green-600 dark:text-green-400' },
-    already_member: { text: t('directory.alreadyMember', 'Вы уже в этой организации'), icon: CheckCircle, color: 'text-blue-600 dark:text-blue-400' },
-    reactivated: { text: t('directory.reactivated', 'Членство восстановлено!'), icon: CheckCircle, color: 'text-green-600 dark:text-green-400' },
-    pending: { text: t('directory.pending', 'Ваша заявка на рассмотрении'), icon: Clock, color: 'text-amber-600 dark:text-amber-400' },
+    already_member: { text: t('directory.alreadyMember', 'Вы уже в этой организации. Переходим...'), icon: CheckCircle, color: 'text-blue-600 dark:text-blue-400' },
+    pending: { text: t('directory.pending', 'Заявка отправлена! Ожидайте подтверждения от администратора.'), icon: Clock, color: 'text-amber-600 dark:text-amber-400' },
     org_unavailable: { text: t('directory.orgUnavailable', 'Организация временно недоступна'), icon: AlertCircle, color: 'text-red-500' },
     org_not_found: { text: t('directory.orgNotFound', 'Организация не найдена'), icon: AlertCircle, color: 'text-red-500' },
-    error: { text: t('directory.joinError', 'Ошибка при вступлении'), icon: AlertCircle, color: 'text-red-500' },
+    error: { text: t('directory.joinError', 'Ошибка при отправке заявки'), icon: AlertCircle, color: 'text-red-500' },
   };
 
   const renderCTA = () => {
@@ -128,7 +126,7 @@ const PublicOrgProfilePage: React.FC = () => {
         ) : (
           <UserPlus className="w-4 h-4" />
         )}
-        {t('directory.joinOrg', 'Вступить в организацию')}
+        {t('directory.joinOrg', 'Подать заявку')}
       </button>
     );
   };

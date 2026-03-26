@@ -164,27 +164,18 @@ const handler: Handler = async (event: HandlerEvent) => {
         if (existing.status === 'pending') {
           return ok({ status: 'pending', orgId, orgName: org.name });
         }
-        // Reactivate: user previously left or was removed
+        // Re-apply: user previously left or was removed → set pending for approval
         if (['left', 'removed'].includes(existing.status)) {
           const ts = now();
-          const reactivate = { status: 'active', role: 'student', joinedAt: ts, updatedAt: ts, joinMethod: 'public_join' };
+          const reapply = { status: 'pending', role: 'student', updatedAt: ts, joinMethod: 'public_join' };
           await adminDb.collection('users').doc(user.uid)
-            .collection('memberships').doc(orgId).update(reactivate);
+            .collection('memberships').doc(orgId).update(reapply);
           await adminDb.collection('orgMembers').doc(orgId)
-            .collection('members').doc(user.uid).update(reactivate);
-
-          // Set active org
-          await adminDb.collection('users').doc(user.uid).update({
-            activeOrgId: orgId,
-            organizationId: orgId,
-            organizationName: org.name,
-            role: 'student',
-            updatedAt: ts,
-          });
+            .collection('members').doc(user.uid).update(reapply);
 
           // Audit log
           adminDb.collection('systemLogs').add({
-            action: 'public_join_reactivated',
+            action: 'public_join_reapply',
             actorId: user.uid,
             actorName: user.displayName,
             targetType: 'org',
@@ -193,11 +184,19 @@ const handler: Handler = async (event: HandlerEvent) => {
             createdAt: ts,
           }).catch(() => {});
 
-          return ok({ status: 'reactivated', orgId, orgName: org.name });
+          // Notify org admins about pending application
+          notifyOrgAdmins(
+            orgId, 'new_vacancy_application' as any,
+            'Новая заявка на вступление',
+            `${user.displayName || user.email} подал(а) повторную заявку на вступление`,
+            '/org-users',
+          ).catch(() => {});
+
+          return ok({ status: 'pending', orgId, orgName: org.name });
         }
       }
 
-      // Create new membership — directly active (no approval needed for public join)
+      // Create new membership — pending approval by org admin/manager
       const ts = now();
       await writeMembership({
         userId: user.uid,
@@ -206,34 +205,13 @@ const handler: Handler = async (event: HandlerEvent) => {
         organizationId: orgId,
         organizationName: org.name,
         role: 'student',
-        status: 'active',
+        status: 'pending',
         joinMethod: 'public_join',
-      });
-
-      // Set active org
-      await adminDb.collection('users').doc(user.uid).update({
-        activeOrgId: orgId,
-        organizationId: orgId,
-        organizationName: org.name,
-        role: 'student',
-        updatedAt: ts,
-      });
-
-      // Update org member count
-      const activeSnap = await adminDb.collection('orgMembers').doc(orgId)
-        .collection('members').where('status', '==', 'active').get();
-      const studentCount = activeSnap.docs.filter((d: any) => d.data().role === 'student').length;
-      const teacherCount = activeSnap.docs.filter((d: any) =>
-        ['teacher', 'mentor', 'admin', 'owner'].includes(d.data().role)).length;
-      await adminDb.collection('organizations').doc(orgId).update({
-        studentsCount: studentCount,
-        teachersCount: teacherCount,
-        updatedAt: ts,
       });
 
       // Audit log
       adminDb.collection('systemLogs').add({
-        action: 'public_join_success',
+        action: 'public_join_pending',
         actorId: user.uid,
         actorName: user.displayName,
         targetType: 'org',
@@ -242,15 +220,15 @@ const handler: Handler = async (event: HandlerEvent) => {
         createdAt: ts,
       }).catch(() => {});
 
-      // Notify org admins
+      // Notify org admins about new pending student
       notifyOrgAdmins(
         orgId, 'new_vacancy_application' as any,
-        'Новый студент через визитку',
-        `${user.displayName || user.email} вступил(а) в организацию через QR/визитку`,
-        '/membership',
+        'Новая заявка на вступление',
+        `${user.displayName || user.email} подал(а) заявку на вступление в организацию`,
+        '/org-users',
       ).catch(() => {});
 
-      return ok({ status: 'joined', orgId, orgName: org.name });
+      return ok({ status: 'pending', orgId, orgName: org.name });
     }
 
     // ═══ POST: Apply to org ═══

@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { Search, MapPin, Users, BookOpen, Building2, Filter, Wifi, WifiOff } from 'lucide-react';
+import { Search, MapPin, Users, BookOpen, Building2, Filter, Wifi, WifiOff, ArrowLeft } from 'lucide-react';
 import { apiGetOrgDirectory } from '../../lib/api';
 
 interface OrgCard {
@@ -87,6 +87,13 @@ const OrganizationsDirectoryPage: React.FC = () => {
         <div className="absolute -bottom-16 -left-16 w-64 h-64 rounded-full bg-white/5" />
 
         <div className="relative max-w-6xl mx-auto px-4 sm:px-6 py-12 sm:py-16">
+          <button
+            onClick={() => navigate(-1)}
+            className="inline-flex items-center gap-1.5 text-sm text-white/70 hover:text-white transition mb-4 group"
+          >
+            <ArrowLeft className="w-4 h-4 group-hover:-translate-x-0.5 transition-transform" />
+            {t('common.back', 'Назад')}
+          </button>
           <div className="text-center">
             <div className="inline-flex items-center gap-2 px-3 py-1 bg-white/10 rounded-full text-sm text-white/90 mb-4 backdrop-blur-sm">
               <Building2 className="w-3.5 h-3.5" />

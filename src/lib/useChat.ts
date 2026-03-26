@@ -96,20 +96,40 @@ export function useChatRooms(organizationId?: string) {
           }
         }
 
-        // Fetch missing names + avatars in parallel
+        // Fetch missing names + avatars (try /users first, then /orgMembers as fallback)
         if (uidsToResolve.length > 0) {
           const newNames: Record<string, string> = {};
           const newAvatars: Record<string, string> = {};
           await Promise.all(
             [...new Set(uidsToResolve)].map(async (uid) => {
               try {
+                // Primary: try /users collection
                 const uDoc = await getDoc(doc(db, 'users', uid));
                 const data = uDoc.data();
-                newNames[uid] = data?.displayName || data?.email || uid;
-                if (data?.avatarUrl) newAvatars[uid] = data.avatarUrl;
+                if (data?.displayName) {
+                  newNames[uid] = data.displayName;
+                  if (data.avatarUrl) newAvatars[uid] = data.avatarUrl;
+                  return;
+                }
               } catch {
-                newNames[uid] = uid;
+                // Firestore rules may block cross-org user reads
               }
+              
+              // Fallback: try /orgMembers/{orgId}/members/{uid}
+              if (organizationId) {
+                try {
+                  const memberDoc = await getDoc(doc(db, 'orgMembers', organizationId, 'members', uid));
+                  const mData = memberDoc.data();
+                  if (mData?.userName || mData?.userEmail) {
+                    newNames[uid] = mData.userName || mData.userEmail;
+                    if (mData.avatarUrl) newAvatars[uid] = mData.avatarUrl;
+                    return;
+                  }
+                } catch {}
+              }
+              
+              // Last resort: use uid slice
+              newNames[uid] = uid.slice(0, 8) + '...';
             })
           );
           setNameCache(prev => ({ ...prev, ...newNames }));

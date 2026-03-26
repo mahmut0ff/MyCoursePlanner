@@ -80,7 +80,7 @@ const AdminBillingPage: React.FC = () => {
       </div>
 
       {/* Table */}
-      <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl overflow-hidden">
+      <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl overflow-x-auto">
         <table className="w-full">
           <thead className="bg-slate-50 dark:bg-slate-700/50 border-b"><tr>
             <th className="text-left px-4 py-3 text-xs font-medium text-slate-500 dark:text-slate-400 uppercase">{t('admin.billing.organization')}</th>

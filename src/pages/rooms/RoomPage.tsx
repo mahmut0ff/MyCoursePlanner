@@ -81,7 +81,7 @@ const RoomPage: React.FC = () => {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-3 gap-4 mb-6">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
         <div className="card p-4 text-center">
           <Users className="w-5 h-5 text-primary-500 mx-auto mb-1" />
           <p className="text-2xl font-bold text-slate-900 dark:text-white">{room.participants.length}</p>

@@ -221,7 +221,7 @@ const QuizBuilderPage: React.FC = () => {
 
       {/* Quiz Settings Panel */}
       {showSettings && (
-        <div className="card p-4 mb-4 grid grid-cols-2 md:grid-cols-4 gap-3">
+        <div className="card p-4 mb-4 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
           <div>
             <label className="text-[10px] font-medium text-slate-500 dark:text-slate-400 uppercase">{t('quiz.subject')}</label>
             <input value={quiz.subject || ''} onChange={e => setQuiz({ ...quiz, subject: e.target.value })} className="input text-xs mt-1" />
@@ -439,7 +439,7 @@ const QuizBuilderPage: React.FC = () => {
               </div>
 
               {/* Scoring settings */}
-              <div className="grid grid-cols-3 gap-3 pt-3 border-t border-slate-200 dark:border-slate-700">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-3 border-t border-slate-200 dark:border-slate-700">
                 <div>
                   <label className="text-[10px] font-medium text-slate-500 uppercase mb-1 block flex items-center gap-1"><Clock className="w-3 h-3" />{t('quiz.timer')}</label>
                   <select value={currentQ.timerSeconds} onChange={e => updateQuestion(activeQuestion, { timerSeconds: parseInt(e.target.value) })} className="input text-xs">

@@ -182,7 +182,7 @@ const BrandingTab: React.FC = () => {
               <p className="text-sm text-slate-400 dark:text-slate-500">{t('admin.settings.dropLogo')}</p>
             </div>
           </div>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">{t('admin.settings.primaryColor')}</label>
               <div className="flex items-center gap-2">
@@ -300,7 +300,7 @@ const BillingTab: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl overflow-hidden">
+      <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl overflow-x-auto">
         <div className="px-6 py-4 border-b border-slate-200 dark:border-slate-700">
           <h3 className="font-semibold text-slate-900 dark:text-white">{t('admin.settings.planManagement')}</h3>
         </div>
@@ -553,9 +553,33 @@ const AdminSettingsPage: React.FC = () => {
   const ActiveComponent = TAB_COMPONENTS[activeTab];
 
   return (
-    <div className="flex gap-6 min-h-[calc(100vh-8rem)]">
-      {/* Left sidebar tabs */}
-      <div className="w-56 shrink-0">
+    <div className="flex flex-col md:flex-row gap-4 md:gap-6 min-h-[calc(100vh-8rem)]">
+      {/* Mobile: horizontal scrollable tabs */}
+      <div className="md:hidden overflow-x-auto -mx-2 px-2 pb-2">
+        <div className="flex gap-1 min-w-max">
+          {TABS.map((tab) => {
+            const Icon = tab.icon;
+            const isActive = activeTab === tab.id;
+            return (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium whitespace-nowrap transition-all ${
+                  isActive
+                    ? 'bg-primary-50 dark:bg-primary-900/20 text-primary-700 dark:text-primary-400'
+                    : 'text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700/50'
+                }`}
+              >
+                <Icon className="w-3.5 h-3.5" />
+                {t(tab.labelKey)}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Desktop: vertical sidebar tabs */}
+      <div className="hidden md:block w-56 shrink-0">
         <nav className="space-y-0.5 sticky top-4">
           {TABS.map((tab) => {
             const Icon = tab.icon;

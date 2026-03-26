@@ -46,7 +46,7 @@ const CourseDetailPage: React.FC = () => {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-3 gap-3 mb-6">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-6">
         <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-4 text-center">
           <FileText className="w-5 h-5 text-primary-500 mx-auto mb-1" />
           <p className="text-xl font-bold text-slate-900 dark:text-white">{course.lessonIds?.length || 0}</p>

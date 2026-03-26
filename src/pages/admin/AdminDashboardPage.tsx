@@ -363,7 +363,7 @@ const AdminDashboardPage: React.FC = () => {
           <h3 className="font-semibold text-slate-900 dark:text-white mb-4 flex items-center gap-2">
             <Globe className="w-4 h-4 text-primary-500" />{t('admin.dashboard.platformOverview')}
           </h3>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {[
               { label: t('admin.dashboard.activeRooms'), value: stats.activeRooms, total: stats.totalRooms, color: 'text-sky-500', bg: 'bg-sky-500/10' },
               { label: t('admin.dashboard.trialOrgs'), value: stats.trialOrgs, total: stats.totalOrganizations, color: 'text-rose-500', bg: 'bg-rose-500/10' },

@@ -91,7 +91,7 @@ const AdminFeatureFlagsPage: React.FC = () => {
       </div>
 
       {/* Organization Overrides */}
-      <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl overflow-hidden">
+      <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl overflow-x-auto">
         <div className="px-6 py-4 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between">
           <h3 className="font-semibold text-slate-900 dark:text-white flex items-center gap-2"><Building2 className="w-4 h-4" />{t('admin.flags.orgOverrides')}</h3>
           <button onClick={() => setShowOverride(true)} className="btn-secondary text-xs flex items-center gap-1"><Plus className="w-3 h-3" />{t('admin.flags.addOverride')}</button>
@@ -151,7 +151,7 @@ const AdminFeatureFlagsPage: React.FC = () => {
                   {orgs.map(o => <option key={o.id} value={o.id}>{o.name}</option>)}
                 </select>
               </div>
-              <div className="grid grid-cols-3 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div><label className="text-xs font-medium text-slate-500 dark:text-slate-400">{t('admin.flags.maxStudents')}</label><input type="number" value={overrideData.maxStudents} onChange={(e) => setOverrideData({ ...overrideData, maxStudents: e.target.value })} className="input text-sm" /></div>
                 <div><label className="text-xs font-medium text-slate-500 dark:text-slate-400">{t('admin.flags.maxTeachers')}</label><input type="number" value={overrideData.maxTeachers} onChange={(e) => setOverrideData({ ...overrideData, maxTeachers: e.target.value })} className="input text-sm" /></div>
                 <div><label className="text-xs font-medium text-slate-500 dark:text-slate-400">{t('admin.flags.maxExams')}</label><input type="number" value={overrideData.maxExams} onChange={(e) => setOverrideData({ ...overrideData, maxExams: e.target.value })} className="input text-sm" /></div>

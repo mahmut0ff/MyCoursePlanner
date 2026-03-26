@@ -190,7 +190,7 @@ const LiveSessionDashboard: React.FC = () => {
               <p className="text-[10px] text-slate-400 uppercase font-medium mb-1">Q{session.currentQuestionIndex + 1} — {currentQuestion.type?.replace('_', ' ')}</p>
               <h2 className="text-base font-semibold text-slate-900 dark:text-white mb-3">{currentQuestion.text}</h2>
               {/* Answer stats */}
-              <div className="grid grid-cols-3 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div className="text-center p-2 bg-slate-50 dark:bg-slate-700/50 rounded-lg">
                   <p className="text-lg font-bold text-primary-600">{answeredCount}</p>
                   <p className="text-[10px] text-slate-400">{t('quiz.answered')}</p>

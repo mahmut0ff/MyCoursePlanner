@@ -4,7 +4,6 @@ import { useAuth } from '../../contexts/AuthContext';
 import { orgGetCourses, orgGetGrades, orgGetJournal } from '../../lib/api';
 import type { Course, GradeEntry, JournalEntry } from '../../types';
 import { Calendar, BookOpen, Star, Filter, Clock, FileWarning, CheckCircle2, MessageSquare, XCircle, AlertTriangle } from 'lucide-react';
-import toast from 'react-hot-toast';
 
 type TimelineEvent = 
   | { type: 'grade'; date: string; data: GradeEntry; courseTitle: string }

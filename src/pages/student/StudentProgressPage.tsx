@@ -25,7 +25,10 @@ const StudentProgressPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!profile) return;
+    if (!profile?.organizationId) {
+      setLoading(false);
+      return;
+    }
 
     const loadData = async () => {
       try {
@@ -80,6 +83,7 @@ const StudentProgressPage: React.FC = () => {
 
         setStats(newStats);
       } catch (err: any) {
+        console.error('Progress load error:', err);
         toast.error(err.message || 'Ошибка загрузки статистики');
       } finally {
         setLoading(false);
@@ -87,7 +91,7 @@ const StudentProgressPage: React.FC = () => {
     };
 
     loadData();
-  }, [profile]);
+  }, [profile?.uid, profile?.organizationId]);
 
   if (loading) {
     return <div className="flex justify-center py-20"><div className="w-8 h-8 border-2 border-indigo-500 rounded-full animate-spin border-t-transparent" /></div>;
@@ -123,7 +127,13 @@ const StudentProgressPage: React.FC = () => {
         </div>
       </div>
 
-      {stats.length === 0 ? (
+      {!profile?.organizationId ? (
+        <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-12 text-center">
+          <Award className="w-12 h-12 text-slate-300 dark:text-slate-600 mx-auto mb-3" />
+          <h2 className="text-lg font-bold text-slate-900 dark:text-white mb-1">Вы не состоите в организации</h2>
+          <p className="text-slate-500 text-sm">Присоединитесь к учебному центру, чтобы отслеживать свой прогресс.</p>
+        </div>
+      ) : stats.length === 0 ? (
         <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-12 text-center">
           <Award className="w-12 h-12 text-slate-300 dark:text-slate-600 mx-auto mb-3" />
           <h2 className="text-lg font-bold text-slate-900 dark:text-white mb-1">Нет данных</h2>

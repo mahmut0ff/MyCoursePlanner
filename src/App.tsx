@@ -69,7 +69,7 @@ import TeacherProfilePage from './pages/teacher-profile/TeacherProfilePage';
 import TeacherInvitesPage from './pages/invites/TeacherInvitesPage';
 import NotificationsPage from './pages/notifications/NotificationsPage';
 import TeacherSettingsPage from './pages/teacher-settings/TeacherSettingsPage';
-import TeacherAnalyticsPage from './pages/teacher-analytics/TeacherAnalyticsPage';
+// TeacherAnalyticsPage route uses AdminGradebookAnalytics component
 
 // Detail Pages
 import StudentDetailPage from './pages/students/StudentDetailPage';

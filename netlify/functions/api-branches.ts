@@ -16,6 +16,30 @@ function orgQuery(collection: string, orgId: string) {
   return adminDb.collection(collection).where('organizationId', '==', orgId);
 }
 
+async function updateOrgBranchesStats(orgId: string) {
+  const snap = await adminDb.collection('branches')
+    .where('organizationId', '==', orgId)
+    .where('isActive', '==', true)
+    .get();
+
+  const cities = new Set<string>();
+  let count = 0;
+
+  snap.docs.forEach(doc => {
+    count++;
+    const data = doc.data();
+    if (data.city && data.city.trim()) {
+      cities.add(data.city.trim());
+    }
+  });
+
+  await adminDb.collection('organizations').doc(orgId).update({
+    branchesCount: count,
+    branchCities: Array.from(cities).sort()
+  }).catch(e => console.error('Failed to update org branch stats', e));
+}
+
+
 const handler: Handler = async (event: HandlerEvent) => {
   if (event.httpMethod === 'OPTIONS') return jsonResponse(204, '');
 
@@ -68,7 +92,7 @@ const handler: Handler = async (event: HandlerEvent) => {
       if (!hasRole(user, 'admin')) return forbidden('Only admins can create branches');
 
       const body = JSON.parse(event.body || '{}');
-      const { name, slug, city, address, phone, description } = body;
+      const { name, slug, city, address, phone, whatsapp, contactName, description, latitude, longitude } = body;
       if (!name) return badRequest('name required');
 
       // Generate slug from name if not provided
@@ -82,20 +106,29 @@ const handler: Handler = async (event: HandlerEvent) => {
         .where('slug', '==', branchSlug).limit(1).get();
       if (!existing.empty) return badRequest('Branch slug already exists');
 
-      const branchData = {
+      const branchData: any = {
         organizationId: orgId,
         name,
         slug: branchSlug,
         city: city || null,
         address: address || null,
         phone: phone || null,
+        whatsapp: whatsapp || null,
+        contactName: contactName || null,
         description: description || null,
         isActive: true,
         createdAt: now(),
         updatedAt: now(),
       };
+      
+      if (latitude !== undefined) branchData.latitude = latitude;
+      if (longitude !== undefined) branchData.longitude = longitude;
 
       const ref = await adminDb.collection('branches').add(branchData);
+      
+      // Update denormalized stats on org
+      await updateOrgBranchesStats(orgId);
+      
       return ok({ id: ref.id, ...branchData });
     }
 
@@ -104,7 +137,7 @@ const handler: Handler = async (event: HandlerEvent) => {
       if (!hasRole(user, 'admin')) return forbidden('Only admins can update branches');
 
       const body = JSON.parse(event.body || '{}');
-      const { id, name, slug, city, address, phone, description, isActive } = body;
+      const { id, name, slug, city, address, phone, whatsapp, contactName, description, latitude, longitude, isActive } = body;
       if (!id) return badRequest('id required');
 
       const doc = await adminDb.collection('branches').doc(id).get();
@@ -117,10 +150,20 @@ const handler: Handler = async (event: HandlerEvent) => {
       if (city !== undefined) updates.city = city;
       if (address !== undefined) updates.address = address;
       if (phone !== undefined) updates.phone = phone;
+      if (whatsapp !== undefined) updates.whatsapp = whatsapp;
+      if (contactName !== undefined) updates.contactName = contactName;
       if (description !== undefined) updates.description = description;
+      if (latitude !== undefined) updates.latitude = latitude;
+      if (longitude !== undefined) updates.longitude = longitude;
       if (isActive !== undefined) updates.isActive = isActive;
 
       await doc.ref.update(updates);
+      
+      // If city or active status changed, stats might need an update
+      if (city !== undefined || isActive !== undefined) {
+        await updateOrgBranchesStats(orgId);
+      }
+      
       return ok({ id: doc.id, ...doc.data(), ...updates });
     }
 
@@ -136,6 +179,9 @@ const handler: Handler = async (event: HandlerEvent) => {
       if (doc.data()?.organizationId !== orgId) return forbidden();
 
       await doc.ref.update({ isActive: false, updatedAt: now() });
+      
+      await updateOrgBranchesStats(orgId);
+      
       return ok({ archived: true });
     }
 

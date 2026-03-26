@@ -14,6 +14,8 @@ interface OrgCard {
   country: string;
   isOnline: boolean;
   subjects: string[];
+  branchCities?: string[];
+  branchesCount?: number;
   studentsCount: number;
   teachersCount: number;
 }
@@ -48,6 +50,7 @@ const OrganizationsDirectoryPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [filterMode, setFilterMode] = useState<'all' | 'online' | 'offline'>('all');
+  const [selectedCity, setSelectedCity] = useState<string>('all');
 
   useEffect(() => {
     apiGetOrgDirectory()
@@ -55,6 +58,18 @@ const OrganizationsDirectoryPage: React.FC = () => {
       .catch(() => {})
       .finally(() => setLoading(false));
   }, []);
+
+  const uniqueCities = React.useMemo(() => {
+    const cities = new Set<string>();
+    orgs.forEach(o => {
+      if (o.branchCities && o.branchCities.length > 0) {
+        o.branchCities.forEach(c => cities.add(c));
+      } else if (o.city) {
+        cities.add(o.city);
+      }
+    });
+    return Array.from(cities).sort();
+  }, [orgs]);
 
   const filtered = orgs.filter((o) => {
     const q = search.toLowerCase();
@@ -68,7 +83,8 @@ const OrganizationsDirectoryPage: React.FC = () => {
       filterMode === 'all' ? true :
       filterMode === 'online' ? o.isOnline :
       !o.isOnline;
-    return matchSearch && matchMode;
+    const matchCity = selectedCity === 'all' || (o.branchCities?.includes(selectedCity) || o.city === selectedCity);
+    return matchSearch && matchMode && matchCity;
   });
 
   const filterCounts = {
@@ -140,6 +156,31 @@ const OrganizationsDirectoryPage: React.FC = () => {
                 </button>
               ))}
             </div>
+
+            {/* ─── City Filter ─── */}
+            {uniqueCities.length > 0 && (
+              <div className="flex items-center justify-center gap-2 mt-3 flex-wrap">
+                <button
+                  onClick={() => setSelectedCity('all')}
+                  className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all ${
+                    selectedCity === 'all' ? 'bg-white/90 text-violet-800 shadow-sm' : 'bg-white/5 border border-white/10 text-white/70 hover:bg-white/10 hover:text-white'
+                  }`}
+                >
+                  {t('directory.allCities', 'Все города')}
+                </button>
+                {uniqueCities.map(city => (
+                  <button
+                    key={city}
+                    onClick={() => setSelectedCity(city)}
+                    className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all ${
+                      selectedCity === city ? 'bg-white/90 text-violet-800 shadow-sm' : 'bg-white/5 border border-white/10 text-white/70 hover:bg-white/10 hover:text-white'
+                    }`}
+                  >
+                    {city}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -189,9 +230,12 @@ const OrganizationsDirectoryPage: React.FC = () => {
                           {org.name}
                         </h3>
                         <div className="flex items-center gap-2 mt-1">
-                          {org.city && (
+                          {((org.branchCities && org.branchCities.length > 0) ? org.branchCities.join(', ') : org.city) && (
                             <span className="flex items-center gap-1 text-xs text-slate-500 dark:text-slate-400">
-                              <MapPin className="w-3 h-3" />{org.city}
+                              <MapPin className="w-3 h-3 flex-shrink-0" />
+                              <span className="truncate max-w-[140px]" title={org.branchCities?.join(', ') || org.city}>
+                                {org.branchCities?.length ? org.branchCities.join(', ') : org.city}
+                              </span>
                             </span>
                           )}
                           {org.isOnline && (
@@ -226,7 +270,7 @@ const OrganizationsDirectoryPage: React.FC = () => {
                   )}
 
                   {/* Stats */}
-                  <div className="px-5 py-3 border-t border-slate-100 dark:border-gray-700/50 flex items-center gap-5 text-xs text-slate-500 dark:text-slate-400">
+                  <div className="px-5 py-3 border-t border-slate-100 dark:border-gray-700/50 flex flex-wrap items-center gap-4 text-xs text-slate-500 dark:text-slate-400">
                     <span className="flex items-center gap-1.5">
                       <Users className="w-3.5 h-3.5" />
                       <span className="font-medium text-slate-700 dark:text-slate-300">{org.studentsCount}</span> {t('directory.students', 'студентов')}
@@ -235,6 +279,12 @@ const OrganizationsDirectoryPage: React.FC = () => {
                       <BookOpen className="w-3.5 h-3.5" />
                       <span className="font-medium text-slate-700 dark:text-slate-300">{org.teachersCount}</span> {t('directory.teachers', 'преп.')}
                     </span>
+                    {(org.branchesCount ?? 0) > 0 && (
+                      <span className="flex items-center gap-1.5 text-violet-600 dark:text-violet-400 font-medium ml-auto">
+                        <Building2 className="w-3.5 h-3.5" />
+                        {org.branchesCount} {t('directory.branches', 'филиал(а/ов)')}
+                      </span>
+                    )}
                   </div>
                 </div>
               ))}

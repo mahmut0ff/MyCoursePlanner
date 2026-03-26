@@ -45,6 +45,17 @@ const PublicOrgProfilePage: React.FC = () => {
     }
   };
 
+  // Group branches by city
+  const branchesByCity = React.useMemo(() => {
+    if (!org?.branches) return {};
+    return org.branches.reduce((acc: Record<string, any[]>, b: any) => {
+      const city = b.city || t('directory.unknownCity', 'Другие');
+      if (!acc[city]) acc[city] = [];
+      acc[city].push(b);
+      return acc;
+    }, {});
+  }, [org]);
+
   // Social link helpers
   const socialLinks = org?.contactLinks || {};
   const hasSocials = socialLinks.telegram || socialLinks.whatsapp || socialLinks.instagram || socialLinks.website;
@@ -260,6 +271,69 @@ const PublicOrgProfilePage: React.FC = () => {
                   {c.description && (
                     <p className="text-xs text-slate-500 dark:text-slate-400 line-clamp-2">{c.description}</p>
                   )}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* ═══ Branches ═══ */}
+        {Object.keys(branchesByCity).length > 0 && (
+          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-slate-200/60 dark:border-gray-700/50 p-6 mt-5">
+            <h3 className="font-semibold text-slate-900 dark:text-white mb-6 flex items-center gap-2">
+              <Building2 className="w-4 h-4 text-violet-500" /> {t('directory.branches', 'Филиалы')}
+              <span className="bg-violet-100 text-violet-700 dark:bg-violet-900/40 dark:text-violet-300 px-2.5 py-0.5 rounded-full text-xs font-bold ml-1">
+                {org.branches?.length || 0}
+              </span>
+            </h3>
+
+            <div className="space-y-8">
+              {Object.entries(branchesByCity).map(([city, cityBranches]: [string, any]) => (
+                <div key={city}>
+                  <h4 className="text-[13px] font-bold text-slate-400 dark:text-slate-500 mb-3 tracking-wider uppercase flex items-center gap-2">
+                    <MapPin className="w-3.5 h-3.5" /> ФИЛИАЛЫ В: {city}
+                  </h4>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    {cityBranches.map((b: any) => (
+                      <div key={b.id} className="bg-slate-50 dark:bg-gray-700/30 rounded-xl p-5 border border-slate-100 dark:border-gray-600/50 relative overflow-hidden group hover:border-violet-200 dark:hover:border-violet-800 transition-colors">
+                        <div className="flex justify-between items-start mb-2">
+                          <h5 className="font-semibold text-slate-900 dark:text-white text-base">{b.name}</h5>
+                          {b.latitude && b.longitude && (
+                            <a
+                              href={`https://www.google.com/maps/search/?api=1&query=${b.latitude},${b.longitude}`}
+                              target="_blank" rel="noopener noreferrer"
+                              className="text-slate-600 bg-white border border-slate-200 hover:border-violet-300 hover:text-violet-600 dark:bg-gray-800 dark:border-gray-600 dark:text-slate-300 dark:hover:border-violet-500 dark:hover:text-violet-400 px-2 py-1 rounded text-[10px] uppercase font-bold tracking-wider transition-all inline-flex items-center gap-1 shadow-sm"
+                            >
+                              <MapPin className="w-2.5 h-2.5" /> Карта
+                            </a>
+                          )}
+                        </div>
+                        {b.address && <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">{b.address}</p>}
+                        
+                        <div className="space-y-2.5 mt-auto bg-white/60 dark:bg-gray-800/60 p-3 rounded-lg border border-slate-100 dark:border-gray-700/50">
+                          {b.contactName && (
+                            <div className="flex items-center gap-2.5 text-xs text-slate-700 dark:text-slate-300">
+                              <Users className="w-3.5 h-3.5 text-slate-400" /> <span className="font-medium">{b.contactName}</span>
+                            </div>
+                          )}
+                          {b.phone && (
+                            <div className="flex items-center gap-2.5 text-xs text-slate-700 dark:text-slate-300">
+                              <Phone className="w-3.5 h-3.5 text-slate-400" /> 
+                              <a href={`tel:${b.phone}`} className="hover:text-violet-600 transition font-medium">{b.phone}</a>
+                            </div>
+                          )}
+                          {b.whatsapp && (
+                            <div className="flex items-center gap-2.5 text-xs font-medium text-green-600 dark:text-green-400 pt-1">
+                              <MessageCircle className="w-3.5 h-3.5" /> 
+                              <a href={`https://wa.me/${b.whatsapp.replace(/[^0-9]/g, '')}`} target="_blank" rel="noopener noreferrer" className="hover:underline flex items-center gap-1">
+                                WhatsApp <ExternalLink className="w-2.5 h-2.5" />
+                              </a>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               ))}
             </div>

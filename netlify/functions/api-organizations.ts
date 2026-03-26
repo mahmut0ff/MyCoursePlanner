@@ -44,6 +44,8 @@ const handler: Handler = async (event: HandlerEvent) => {
         country: data.country || '',
         isOnline: data.isOnline || false,
         subjects: data.subjects || [],
+        branchCities: data.branchCities || [],
+        branchesCount: data.branchesCount || 0,
         studentsCount: data.studentsCount || 0,
         teachersCount: data.teachersCount || 0,
         createdAt: data.createdAt || '',
@@ -85,6 +87,16 @@ const handler: Handler = async (event: HandlerEvent) => {
       description: c.data().description || '',
     }));
 
+    // Fetch org branches for public display
+    const branchesSnap = await adminDb.collection('branches')
+      .where('organizationId', '==', doc.id)
+      .where('isActive', '==', true)
+      .get();
+    const branches = branchesSnap.docs.map(b => ({
+      id: b.id,
+      ...b.data()
+    }));
+
     // Log public profile view
     adminDb.collection('systemLogs').add({
       action: 'public_profile_viewed',
@@ -112,6 +124,7 @@ const handler: Handler = async (event: HandlerEvent) => {
       contactLinks: data.contactLinks || {},
       photos: data.photos || [],
       courses,
+      branches,
       studentsCount: data.studentsCount || 0,
       teachersCount: data.teachersCount || 0,
       examsCount: data.examsCount || 0,

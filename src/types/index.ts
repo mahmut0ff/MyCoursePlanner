@@ -113,6 +113,8 @@ export interface Organization {
   contactPhone?: string;
   contactLinks?: ContactLinks;
   subjects?: string[];
+  branchCities?: string[];
+  branchesCount?: number;
   createdAt: string;
   updatedAt: string;
 }
@@ -139,7 +141,11 @@ export interface Branch {
   city?: string;
   address?: string;
   phone?: string;
+  whatsapp?: string;
+  contactName?: string;
   description?: string;
+  latitude?: number;
+  longitude?: number;
   isActive: boolean;
   createdAt: string;
   updatedAt: string;

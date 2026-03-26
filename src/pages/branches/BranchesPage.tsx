@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../contexts/AuthContext';
 import { orgListBranches, orgCreateBranch, orgUpdateBranch, orgArchiveBranch } from '../../lib/api';
 import type { Branch } from '../../types';
-import { Building2, Plus, MapPin, Phone, Pencil, Archive, Check, X, Loader2 } from 'lucide-react';
+import { Building2, Plus, MapPin, Phone, Pencil, Archive, Check, X, Loader2, MessageCircle, User } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 const BranchesPage: React.FC = () => {
@@ -16,8 +16,8 @@ const BranchesPage: React.FC = () => {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
-  const [form, setForm] = useState({
-    name: '', slug: '', city: '', address: '', phone: '', description: ''
+  const [form, setForm] = useState<Partial<Branch>>({
+    name: '', slug: '', city: '', address: '', phone: '', whatsapp: '', contactName: '', description: '', latitude: undefined, longitude: undefined
   });
 
   const isAdmin = role === 'admin' || role === 'super_admin';
@@ -36,13 +36,13 @@ const BranchesPage: React.FC = () => {
   useEffect(() => { loadBranches(); }, [loadBranches]);
 
   const resetForm = () => {
-    setForm({ name: '', slug: '', city: '', address: '', phone: '', description: '' });
+    setForm({ name: '', slug: '', city: '', address: '', phone: '', whatsapp: '', contactName: '', description: '', latitude: undefined, longitude: undefined });
     setShowForm(false);
     setEditingId(null);
   };
 
   const handleSave = async () => {
-    if (!form.name.trim()) { toast.error(t('branches.nameRequired', 'Введите название филиала')); return; }
+    if (!form.name?.trim()) { toast.error(t('branches.nameRequired', 'Введите название филиала')); return; }
     setSaving(true);
     try {
       if (editingId) {
@@ -79,7 +79,11 @@ const BranchesPage: React.FC = () => {
       city: branch.city || '',
       address: branch.address || '',
       phone: branch.phone || '',
+      whatsapp: branch.whatsapp || '',
+      contactName: branch.contactName || '',
       description: branch.description || '',
+      latitude: branch.latitude,
+      longitude: branch.longitude,
     });
     setEditingId(branch.id);
     setShowForm(true);
@@ -155,9 +159,57 @@ const BranchesPage: React.FC = () => {
               <label className="block text-xs font-semibold text-slate-500 mb-1">{t('branches.phone', 'Телефон')}</label>
               <input
                 className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm outline-none focus:border-primary-500"
-                value={form.phone}
+                value={form.phone || ''}
                 onChange={e => setForm(f => ({ ...f, phone: e.target.value }))}
+                placeholder="+996..."
               />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-slate-500 mb-1">{t('branches.whatsapp', 'WhatsApp (номер)')}</label>
+              <input
+                className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm outline-none focus:border-green-500"
+                value={form.whatsapp || ''}
+                onChange={e => setForm(f => ({ ...f, whatsapp: e.target.value }))}
+                placeholder="Например, +996700123456"
+              />
+            </div>
+            <div className="md:col-span-2">
+              <label className="block text-xs font-semibold text-slate-500 mb-1">{t('branches.contactName', 'Имя контактного лица (Менеджер)')}</label>
+              <input
+                className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm outline-none focus:border-primary-500"
+                value={form.contactName || ''}
+                onChange={e => setForm(f => ({ ...f, contactName: e.target.value }))}
+                placeholder="Менеджер Айгерим"
+              />
+            </div>
+            <div className="md:col-span-2">
+              <div className="bg-slate-50 dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 p-4">
+                <h4 className="text-xs font-semibold text-slate-700 dark:text-slate-300 mb-3 flex items-center gap-2">
+                  <MapPin className="w-3.5 h-3.5" /> Google Maps Координаты
+                </h4>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs text-slate-500 mb-1">Широта (Latitude)</label>
+                    <input
+                      type="number" step="any"
+                      className="w-full px-3 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm outline-none focus:border-primary-500"
+                      value={form.latitude !== undefined ? form.latitude : ''}
+                      onChange={e => setForm(f => ({ ...f, latitude: e.target.value ? parseFloat(e.target.value) : undefined }))}
+                      placeholder="42.8746"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs text-slate-500 mb-1">Долгота (Longitude)</label>
+                    <input
+                      type="number" step="any"
+                      className="w-full px-3 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm outline-none focus:border-primary-500"
+                      value={form.longitude !== undefined ? form.longitude : ''}
+                      onChange={e => setForm(f => ({ ...f, longitude: e.target.value ? parseFloat(e.target.value) : undefined }))}
+                      placeholder="74.5698"
+                    />
+                  </div>
+                </div>
+              </div>
             </div>
             <div className="md:col-span-2">
               <label className="block text-xs font-semibold text-slate-500 mb-1">{t('branches.address', 'Адрес')}</label>
@@ -231,10 +283,28 @@ const BranchesPage: React.FC = () => {
                   <span>{[branch.city, branch.address].filter(Boolean).join(', ')}</span>
                 </div>
               )}
+              {branch.contactName && (
+                <div className="flex items-center gap-2 text-xs text-slate-500 mb-2">
+                  <User className="w-3 h-3" />
+                  <span className="font-medium text-slate-700 dark:text-slate-300">{branch.contactName}</span>
+                </div>
+              )}
               {branch.phone && (
-                <div className="flex items-center gap-2 text-xs text-slate-500">
+                <div className="flex items-center gap-2 text-xs text-slate-500 mb-1.5">
                   <Phone className="w-3 h-3" />
                   <span>{branch.phone}</span>
+                </div>
+              )}
+              {branch.whatsapp && (
+                <div className="flex items-center gap-2 text-xs text-slate-500">
+                  <MessageCircle className="w-3 h-3 text-green-500" />
+                  <span className="text-green-600 dark:text-green-400">{branch.whatsapp}</span>
+                </div>
+              )}
+              {branch.latitude && branch.longitude && (
+                <div className="flex items-center gap-2 text-xs text-slate-400 mt-2 bg-slate-50 dark:bg-slate-900 px-2 py-1 rounded w-fit border border-slate-100 dark:border-slate-800">
+                  <MapPin className="w-3 h-3" />
+                  <span>{branch.latitude.toFixed(4)}, {branch.longitude.toFixed(4)}</span>
                 </div>
               )}
               {branch.description && (

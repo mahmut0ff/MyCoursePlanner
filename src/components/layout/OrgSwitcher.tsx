@@ -195,7 +195,6 @@ const OrgSwitcher: React.FC<OrgSwitcherProps> = ({ currentOrgId, userRole, onSwi
   const quickActions = getQuickActions();
   const hasManyOrgs = memberships.length > 1;
   const currentOrg = currentMembership || memberships[0];
-  const _isOwner = currentOrg?.role === 'owner' || currentOrg?.role === 'admin';
 
   // Determine "+" button behavior
   const getPlusAction = () => {

@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import {
   Building2, ChevronDown, Check, Plus, Search, LogOut,
   Users, Settings, BarChart3, Briefcase, MailOpen, Megaphone,
-  FolderOpen, MapPin
+  FolderOpen
 } from 'lucide-react';
 import { apiGetMyMemberships, apiSwitchOrg, apiLeaveMembership } from '../../lib/api';
 
@@ -195,7 +195,7 @@ const OrgSwitcher: React.FC<OrgSwitcherProps> = ({ currentOrgId, userRole, onSwi
   const quickActions = getQuickActions();
   const hasManyOrgs = memberships.length > 1;
   const currentOrg = currentMembership || memberships[0];
-  const isOwner = currentOrg?.role === 'owner' || currentOrg?.role === 'admin';
+  const _isOwner = currentOrg?.role === 'owner' || currentOrg?.role === 'admin';
 
   // Determine "+" button behavior
   const getPlusAction = () => {

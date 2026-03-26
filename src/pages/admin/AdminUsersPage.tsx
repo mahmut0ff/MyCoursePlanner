@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { adminGetUsers } from '../../lib/api';
 import { Search } from 'lucide-react';
 
-const ROLE_COLORS: Record<string, string> = { super_admin: 'bg-red-100 text-red-700', admin: 'bg-violet-100 text-violet-700', teacher: 'bg-blue-100 text-blue-700', student: 'bg-emerald-100 text-emerald-700' };
+const ROLE_COLORS: Record<string, string> = { super_admin: 'bg-red-100 text-red-700', admin: 'bg-violet-100 text-violet-700', manager: 'bg-orange-100 text-orange-700', teacher: 'bg-blue-100 text-blue-700', student: 'bg-emerald-100 text-emerald-700' };
 
 const AdminUsersPage: React.FC = () => {
   const { t } = useTranslation();
@@ -47,9 +47,10 @@ const AdminUsersPage: React.FC = () => {
           </div>
           <select value={roleFilter} onChange={(e) => setRoleFilter(e.target.value)} className="input w-auto">
             <option value="">{t('admin.users.allRoles')}</option>
-            <option value="admin">Admin</option>
-            <option value="teacher">Teacher</option>
-            <option value="student">Student</option>
+            <option value="admin">{t('roles.admin', 'Администратор')}</option>
+            <option value="manager">{t('roles.manager', 'Менеджер')}</option>
+            <option value="teacher">{t('roles.teacher', 'Преподаватель')}</option>
+            <option value="student">{t('roles.student', 'Студент')}</option>
           </select>
         </div>
 
@@ -79,9 +80,9 @@ const AdminUsersPage: React.FC = () => {
                     </div>
                   </td>
                   <td className="px-4 py-3"><span className={`inline-flex px-2 py-0.5 rounded text-xs font-medium ${ROLE_COLORS[u.role] || ''}`}>{u.role}</span></td>
-                  <td className="px-4 py-3 text-xs text-slate-500 dark:text-slate-400 dark:text-slate-500">{u.organizationName || '—'}</td>
+                  <td className="px-4 py-3 text-xs text-slate-500 dark:text-slate-400">{u.organizationName || '—'}</td>
                   <td className="px-4 py-3"><span className={`inline-flex px-2 py-0.5 rounded text-xs font-medium ${u.disabled ? 'bg-red-100 text-red-700' : 'bg-emerald-100 text-emerald-700'}`}>{u.disabled ? t('common.disabled') : t('common.active')}</span></td>
-                  <td className="px-4 py-3 text-xs text-slate-500 dark:text-slate-400 dark:text-slate-500">{new Date(u.createdAt).toLocaleDateString()}</td>
+                  <td className="px-4 py-3 text-xs text-slate-500 dark:text-slate-400">{new Date(u.createdAt).toLocaleDateString()}</td>
                 </tr>
               ))}
               {data.users.length === 0 && <tr><td colSpan={5} className="text-center py-12 text-slate-400 dark:text-slate-500 text-sm">{loading ? t('common.loading') : t('admin.users.noUsers')}</td></tr>}

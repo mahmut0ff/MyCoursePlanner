@@ -76,6 +76,10 @@ const handler: Handler = async (event: HandlerEvent) => {
   // DELETE
   if (event.httpMethod === 'DELETE') {
     if (!params.id) return badRequest('id required');
+    const doc = await adminDb.collection(COLLECTION).doc(params.id).get();
+    if (!doc.exists) return notFound('Lesson not found');
+    // Verify org ownership (skip for super_admin)
+    if (user.organizationId && doc.data()?.organizationId !== user.organizationId) return forbidden();
     await adminDb.collection(COLLECTION).doc(params.id).delete();
     return ok({ deleted: true });
   }

@@ -147,6 +147,21 @@ const handler: Handler = async (event: HandlerEvent) => {
     return ok({ id: ref.id, ...data });
   }
 
+  // PUT — update attempt (staff or owning student)
+  if (event.httpMethod === 'PUT') {
+    const body = JSON.parse(event.body || '{}');
+    if (!body.id) return badRequest('id required');
+    const docRef = adminDb.collection(COLLECTION).doc(body.id);
+    const existing = await docRef.get();
+    if (!existing.exists) return notFound('Attempt not found');
+    const existingData = existing.data()!;
+    if (!isStaff(user) && existingData.studentId !== user.uid) return forbidden();
+    const { id, ...updateFields } = body;
+    updateFields.updatedAt = new Date().toISOString();
+    await docRef.update(updateFields);
+    return ok({ id, ...existingData, ...updateFields });
+  }
+
   return jsonResponse(405, { error: 'Method not allowed' });
 };
 

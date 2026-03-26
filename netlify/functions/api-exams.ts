@@ -53,6 +53,33 @@ const handler: Handler = async (event: HandlerEvent) => {
       return ok({ saved: body.questions.length });
     }
 
+    if (body.action === 'duplicate') {
+      if (!body.examId) return badRequest('examId required');
+      const srcDoc = await adminDb.collection(COLLECTION).doc(body.examId).get();
+      if (!srcDoc.exists) return notFound('Exam not found');
+      const srcData = srcDoc.data()!;
+      const now = new Date().toISOString();
+      const newData = {
+        ...srcData,
+        title: `${srcData.title} (Copy)`,
+        status: 'draft',
+        authorId: user.uid,
+        authorName: user.displayName,
+        organizationId: user.organizationId || srcData.organizationId || '',
+        createdAt: now,
+        updatedAt: now,
+      };
+      const newRef = await adminDb.collection(COLLECTION).add(newData);
+      // Copy questions
+      const qSnap = await adminDb.collection(COLLECTION).doc(body.examId).collection('questions').orderBy('order').get();
+      const batch = adminDb.batch();
+      qSnap.docs.forEach((qDoc: any) => {
+        batch.set(adminDb.collection(COLLECTION).doc(newRef.id).collection('questions').doc(qDoc.id), qDoc.data());
+      });
+      await batch.commit();
+      return ok({ id: newRef.id, ...newData });
+    }
+
     if (!body.title) return badRequest('title required');
     const now = new Date().toISOString();
     const data = {

@@ -150,6 +150,8 @@ const handler: Handler = async (event: HandlerEvent) => {
       const err = requireOrgStaff(user); if (err) return err;
       const body = JSON.parse(event.body || '{}');
       if (!body.id) return badRequest('id required');
+      const doc = await adminDb.collection('groups').doc(body.id).get();
+      if (!doc.exists || doc.data()?.organizationId !== orgId) return notFound();
       await adminDb.collection('groups').doc(body.id).delete();
       return ok({ deleted: true });
     }
@@ -324,6 +326,8 @@ const handler: Handler = async (event: HandlerEvent) => {
       const err = requireOrgStaff(user); if (err) return err;
       const body = JSON.parse(event.body || '{}');
       if (!body.id) return badRequest('id required');
+      const doc = await adminDb.collection('materials').doc(body.id).get();
+      if (!doc.exists || doc.data()?.organizationId !== orgId) return notFound();
       await adminDb.collection('materials').doc(body.id).delete();
       return ok({ deleted: true });
     }
@@ -403,7 +407,7 @@ const handler: Handler = async (event: HandlerEvent) => {
       if (!hasRole(user, 'admin')) return forbidden();
       const body = JSON.parse(event.body || '{}');
       if (!body.uid || !body.role) return badRequest('uid and role required');
-      if (!['admin', 'teacher', 'student'].includes(body.role)) return badRequest('Invalid role');
+      if (!['admin', 'manager', 'teacher', 'student'].includes(body.role)) return badRequest('Invalid role');
       const userDoc = await adminDb.collection('users').doc(body.uid).get();
       if (!userDoc.exists || userDoc.data()?.organizationId !== orgId) return notFound();
       await adminDb.collection('users').doc(body.uid).update({ role: body.role, updatedAt: now() });

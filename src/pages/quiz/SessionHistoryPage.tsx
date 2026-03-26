@@ -20,6 +20,7 @@ const SessionHistoryPage: React.FC = () => {
 
   useEffect(() => {
     apiGetQuizSessions().then((data: any) => setSessions(Array.isArray(data) ? data : []))
+      .catch(() => setSessions([]))
       .finally(() => setLoading(false));
   }, []);
 

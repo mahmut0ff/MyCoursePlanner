@@ -12,7 +12,7 @@ type RegRole = 'admin' | 'teacher' | 'student';
 
 const OnboardingPage: React.FC = () => {
   const { t } = useTranslation();
-  const { firebaseUser, profile, refreshProfile } = useAuth();
+  const { firebaseUser, profile, loading: authLoading, refreshProfile } = useAuth();
   const navigate = useNavigate();
 
   const [step, setStep] = useState<'role' | 'details' | 'org'>('role');
@@ -23,6 +23,18 @@ const OnboardingPage: React.FC = () => {
   const [orgName, setOrgName] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+
+  // Wait for auth to finish loading before doing any redirects
+  if (authLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-slate-900">
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-10 h-10 border-4 border-primary-200 border-t-primary-600 rounded-full animate-spin dark:border-slate-700 dark:border-t-primary-400" />
+          <p className="text-slate-500 dark:text-slate-400 text-sm">Загрузка...</p>
+        </div>
+      </div>
+    );
+  }
 
   // If there's no Firebase user, they shouldn't be here
   if (!firebaseUser) {

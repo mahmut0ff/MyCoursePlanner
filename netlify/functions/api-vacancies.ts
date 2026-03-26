@@ -110,6 +110,9 @@ const handler: Handler = async (event: HandlerEvent) => {
     // ---- Org Admin: Close vacancy ----
     if (action === 'close' && event.httpMethod === 'POST') {
       if (!hasRole(auth, 'admin')) return forbidden();
+      if (!body.id) return badRequest('id required');
+      const doc = await adminDb.collection(VACANCIES).doc(body.id).get();
+      if (!doc.exists || doc.data()?.organizationId !== auth.organizationId) return notFound();
       await adminDb.collection(VACANCIES).doc(body.id).update({ status: 'closed', closedAt: now(), updatedAt: now() });
       return ok({ success: true });
     }
@@ -117,6 +120,9 @@ const handler: Handler = async (event: HandlerEvent) => {
     // ---- Org Admin: Delete vacancy ----
     if (action === 'delete' && event.httpMethod === 'POST') {
       if (!hasRole(auth, 'admin')) return forbidden();
+      if (!body.id) return badRequest('id required');
+      const doc = await adminDb.collection(VACANCIES).doc(body.id).get();
+      if (!doc.exists || doc.data()?.organizationId !== auth.organizationId) return notFound();
       await adminDb.collection(VACANCIES).doc(body.id).delete();
       const apps = await adminDb.collection(APPLICATIONS).where('vacancyId', '==', body.id).get();
       const batch = adminDb.batch();
@@ -199,6 +205,9 @@ const handler: Handler = async (event: HandlerEvent) => {
       if (!hasRole(auth, 'admin')) return forbidden();
       const appDoc = await adminDb.collection(APPLICATIONS).doc(body.applicationId).get();
       if (!appDoc.exists) return notFound('Application not found');
+      // Verify the vacancy belongs to this org
+      const vacDoc = await adminDb.collection(VACANCIES).doc(appDoc.data()?.vacancyId).get();
+      if (!vacDoc.exists || vacDoc.data()?.organizationId !== auth.organizationId) return forbidden();
 
       await adminDb.collection(APPLICATIONS).doc(body.applicationId).update({
         status: body.status,

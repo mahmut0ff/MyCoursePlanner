@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { adminGetFeatureFlags, adminSetFeatureFlag, adminSetOrgOverride, adminGetOrgs } from '../../lib/api';
 import { Settings, ToggleLeft, ToggleRight, Plus, Building2 } from 'lucide-react';
+import toast from 'react-hot-toast';
 
 interface FeatureFlag { id: string; key: string; enabled: boolean; description: string; updatedAt: string; }
 interface OrgOverride { id: string; organizationId: string; maxStudents?: number; maxTeachers?: number; maxExams?: number; aiEnabled?: boolean; }
@@ -30,14 +31,19 @@ const AdminFeatureFlagsPage: React.FC = () => {
 
   useEffect(() => { load(); }, []);
 
-  const toggleFlag = async (key: string, current: boolean) => { await adminSetFeatureFlag(key, !current); load(); };
+  const toggleFlag = async (key: string, current: boolean) => {
+    try { await adminSetFeatureFlag(key, !current); load(); }
+    catch (e: any) { toast.error(e.message || t('common.error')); }
+  };
 
   const addFlag = async () => {
     if (!newFlag.key) return;
-    await adminSetFeatureFlag(newFlag.key, true, newFlag.description);
-    setNewFlag({ key: '', description: '' });
-    setShowNewFlag(false);
-    load();
+    try {
+      await adminSetFeatureFlag(newFlag.key, true, newFlag.description);
+      setNewFlag({ key: '', description: '' });
+      setShowNewFlag(false);
+      load();
+    } catch (e: any) { toast.error(e.message || t('common.error')); }
   };
 
   const saveOverride = async () => {
@@ -46,10 +52,12 @@ const AdminFeatureFlagsPage: React.FC = () => {
     if (overrideData.maxTeachers) data.maxTeachers = parseInt(overrideData.maxTeachers);
     if (overrideData.maxExams) data.maxExams = parseInt(overrideData.maxExams);
     if (overrideData.aiEnabled !== 'null') data.aiEnabled = overrideData.aiEnabled === 'true';
-    await adminSetOrgOverride(data);
-    setShowOverride(false);
-    setOverrideData({ organizationId: '', maxStudents: '', maxTeachers: '', maxExams: '', aiEnabled: 'null' });
-    load();
+    try {
+      await adminSetOrgOverride(data);
+      setShowOverride(false);
+      setOverrideData({ organizationId: '', maxStudents: '', maxTeachers: '', maxExams: '', aiEnabled: 'null' });
+      load();
+    } catch (e: any) { toast.error(e.message || t('common.error')); }
   };
 
   return (
@@ -73,7 +81,7 @@ const AdminFeatureFlagsPage: React.FC = () => {
               </button>
               <div className="flex-1">
                 <p className="text-sm font-medium text-slate-900 dark:text-white font-mono">{f.key}</p>
-                <p className="text-xs text-slate-500 dark:text-slate-400 dark:text-slate-500">{f.description || 'No description'}</p>
+                <p className="text-xs text-slate-500 dark:text-slate-400">{f.description || t('admin.flags.noDescription', 'Нет описания')}</p>
               </div>
               <span className={`inline-flex px-2 py-0.5 rounded text-xs font-medium ${f.enabled ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400'}`}>{f.enabled ? t('common.on') : t('common.off')}</span>
             </div>
@@ -102,9 +110,9 @@ const AdminFeatureFlagsPage: React.FC = () => {
               return (
                 <tr key={o.id} className="hover:bg-slate-50 dark:bg-slate-700/50">
                   <td className="px-4 py-3 text-sm font-medium text-slate-900 dark:text-white">{orgName}</td>
-                  <td className="px-4 py-3 text-sm text-slate-600 dark:text-slate-400 dark:text-slate-500">{o.maxStudents ?? '—'}</td>
-                  <td className="px-4 py-3 text-sm text-slate-600 dark:text-slate-400 dark:text-slate-500">{o.maxTeachers ?? '—'}</td>
-                  <td className="px-4 py-3 text-sm text-slate-600 dark:text-slate-400 dark:text-slate-500">{o.maxExams ?? '—'}</td>
+                  <td className="px-4 py-3 text-sm text-slate-600 dark:text-slate-400">{o.maxStudents ?? '—'}</td>
+                  <td className="px-4 py-3 text-sm text-slate-600 dark:text-slate-400">{o.maxTeachers ?? '—'}</td>
+                  <td className="px-4 py-3 text-sm text-slate-600 dark:text-slate-400">{o.maxExams ?? '—'}</td>
                   <td className="px-4 py-3">{o.aiEnabled != null ? (o.aiEnabled ? <span className="text-emerald-600 text-xs font-medium">{t('common.on')}</span> : <span className="text-red-500 text-xs font-medium">{t('common.off')}</span>) : '—'}</td>
                 </tr>
               );

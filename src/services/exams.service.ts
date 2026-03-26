@@ -1,10 +1,14 @@
+/**
+ * Exams Service — uses backend API for mutations, Firestore client for reads.
+ * Firestore rules restrict writes to super_admin, so all mutations go through api-exams.
+ */
 import {
-  collection, doc, addDoc, getDoc, getDocs, updateDoc, deleteDoc,
-  query, orderBy, setDoc
+  collection, doc, getDoc, getDocs,
+  query, orderBy
 } from 'firebase/firestore';
 import { db } from '../lib/firebase';
+import { apiCreateExam, apiUpdateExam, apiDeleteExam, apiSaveQuestions } from '../lib/api';
 import type { Exam, Question } from '../types';
-import { generateId } from '../utils/grading';
 
 const COLLECTION = 'exams';
 
@@ -20,46 +24,21 @@ export const getExam = async (id: string): Promise<Exam | null> => {
 };
 
 export const createExam = async (data: Omit<Exam, 'id' | 'createdAt' | 'updatedAt'>): Promise<string> => {
-  const ref = await addDoc(collection(db, COLLECTION), {
-    ...data,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  });
-  return ref.id;
+  const result = await apiCreateExam(data);
+  return result.id;
 };
 
 export const updateExam = async (id: string, data: Partial<Exam>): Promise<void> => {
-  await updateDoc(doc(db, COLLECTION, id), {
-    ...data,
-    updatedAt: new Date().toISOString(),
-  });
+  await apiUpdateExam({ id, ...data });
 };
 
 export const deleteExam = async (id: string): Promise<void> => {
-  // Delete all questions in subcollection first
-  const qSnap = await getDocs(collection(db, COLLECTION, id, 'questions'));
-  const deletes = qSnap.docs.map(d => deleteDoc(d.ref));
-  await Promise.all(deletes);
-  await deleteDoc(doc(db, COLLECTION, id));
+  await apiDeleteExam(id);
 };
 
 export const duplicateExam = async (id: string): Promise<string> => {
-  const exam = await getExam(id);
-  if (!exam) throw new Error('Exam not found');
-  const questions = await getQuestions(id);
-
-  const { id: _id, createdAt: _c, updatedAt: _u, ...examData } = exam;
-  const newId = await createExam({
-    ...examData,
-    title: `${examData.title} (Copy)`,
-    status: 'draft',
-  } as any);
-
-  for (const q of questions) {
-    const newQ = { ...q, id: generateId() };
-    await setDoc(doc(db, COLLECTION, newId, 'questions', newQ.id), newQ);
-  }
-  return newId;
+  const result = await apiCreateExam({ action: 'duplicate', examId: id });
+  return result.id;
 };
 
 // ---- Questions (subcollection) ----
@@ -71,20 +50,16 @@ export const getQuestions = async (examId: string): Promise<Question[]> => {
 };
 
 export const setQuestion = async (examId: string, question: Question): Promise<void> => {
-  await setDoc(doc(db, COLLECTION, examId, 'questions', question.id), question);
+  await apiSaveQuestions(examId, [question]);
 };
 
 export const deleteQuestion = async (examId: string, questionId: string): Promise<void> => {
-  await deleteDoc(doc(db, COLLECTION, examId, 'questions', questionId));
+  // Get current questions, remove the one to delete, save rest
+  const questions = await getQuestions(examId);
+  const filtered = questions.filter(q => q.id !== questionId);
+  await apiSaveQuestions(examId, filtered);
 };
 
 export const saveQuestions = async (examId: string, questions: Question[]): Promise<void> => {
-  for (const q of questions) {
-    await setDoc(doc(db, COLLECTION, examId, 'questions', q.id), q);
-  }
-  await updateDoc(doc(db, COLLECTION, examId), {
-    questionCount: questions.length,
-    updatedAt: new Date().toISOString(),
-  });
+  await apiSaveQuestions(examId, questions);
 };
-

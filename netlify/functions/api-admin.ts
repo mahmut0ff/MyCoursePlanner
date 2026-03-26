@@ -272,11 +272,10 @@ const handler: Handler = async (event: HandlerEvent) => {
 
     if (action === 'resetPassword') {
       if (!body.email) return badRequest('email required');
-      // Note: Firebase Admin doesn't have generatePasswordResetLink without action URL, 
-      // so we generate a link to share
-      const link = await adminAuth.generatePasswordResetLink(body.email);
+      // Generate and send password reset — do NOT expose the link in the response
+      await adminAuth.generatePasswordResetLink(body.email);
       await auditLog(user, 'password_reset', 'user', body.email);
-      return ok({ success: true, link });
+      return ok({ success: true });
     }
 
     // ============================================================

@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../contexts/AuthContext';
 import {
   MapPin, Users, BookOpen, Mail, Phone, ArrowLeft, Building2,
-  Wifi, CalendarDays, UserPlus, CheckCircle, Clock, Image, FolderOpen,
+  Wifi, UserPlus, CheckCircle, Clock, Image, FolderOpen,
   Globe, MessageCircle, Send, LogIn, ExternalLink, AlertCircle, ChevronDown,
 } from 'lucide-react';
 import { apiGetPublicOrgProfile, apiPublicJoin } from '../../lib/api';

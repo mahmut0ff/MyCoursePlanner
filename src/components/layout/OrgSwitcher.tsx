@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Building2, ChevronDown, Check, Plus } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { Building2, ChevronDown, Check, Plus, Search } from 'lucide-react';
 import { apiGetMyMemberships, apiSwitchOrg } from '../../lib/api';
 
 interface MembershipItem {
@@ -18,9 +19,11 @@ interface OrgSwitcherProps {
 
 const OrgSwitcher: React.FC<OrgSwitcherProps> = ({ currentOrgId, onSwitch }) => {
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const [memberships, setMemberships] = useState<MembershipItem[]>([]);
   const [open, setOpen] = useState(false);
   const [switching, setSwitching] = useState(false);
+  const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
     apiGetMyMemberships()
@@ -28,10 +31,9 @@ const OrgSwitcher: React.FC<OrgSwitcherProps> = ({ currentOrgId, onSwitch }) => 
         const active = (Array.isArray(data) ? data : []).filter((m: any) => m.status === 'active');
         setMemberships(active);
       })
-      .catch(() => {});
+      .catch(() => {})
+      .finally(() => setLoaded(true));
   }, []);
-
-  if (memberships.length <= 1) return null; // No switcher needed for 0-1 org
 
   const currentMembership = memberships.find((m) => m.organizationId === currentOrgId);
 
@@ -45,7 +47,6 @@ const OrgSwitcher: React.FC<OrgSwitcherProps> = ({ currentOrgId, onSwitch }) => 
       await apiSwitchOrg(orgId);
       setOpen(false);
       onSwitch?.();
-      // Force full page reload to reset context
       window.location.reload();
     } catch (e) {
       console.error('Switch org failed:', e);
@@ -62,6 +63,52 @@ const OrgSwitcher: React.FC<OrgSwitcherProps> = ({ currentOrgId, onSwitch }) => 
     student: t('membership.student', 'Студент'),
   };
 
+  if (!loaded) return null;
+
+  // ═══ 0 memberships: CTA to discover organizations ═══
+  if (memberships.length === 0) {
+    return (
+      <div className="px-3 py-2">
+        <button
+          onClick={() => navigate('/directory')}
+          className="w-full flex items-center gap-2 px-3 py-2.5 rounded-xl bg-gradient-to-r from-violet-500/15 to-indigo-500/15 border border-violet-500/25 hover:border-violet-400/40 transition text-left group"
+        >
+          <div className="w-7 h-7 rounded-lg bg-violet-500/20 flex items-center justify-center">
+            <Search className="w-3.5 h-3.5 text-violet-400" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-xs text-violet-300 font-medium">{t('membership.findCenter', 'Найти учебный центр')}</p>
+            <p className="text-[10px] text-slate-500">{t('membership.browseOrgs', 'Каталог организаций')}</p>
+          </div>
+          <Plus className="w-3.5 h-3.5 text-violet-500 group-hover:text-violet-300 transition" />
+        </button>
+      </div>
+    );
+  }
+
+  // ═══ 1 membership: show current org, no dropdown ═══
+  if (memberships.length === 1) {
+    return (
+      <div className="px-3 py-2">
+        <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-white/5">
+          <Building2 className="w-4 h-4 text-violet-400 flex-shrink-0" />
+          <div className="flex-1 min-w-0">
+            <p className="text-xs text-slate-300 truncate font-medium">{currentMembership?.organizationName || memberships[0].organizationName}</p>
+            <p className="text-[10px] text-violet-400 font-medium">{roleLabels[currentMembership?.role || memberships[0].role] || currentMembership?.role}</p>
+          </div>
+          <button
+            onClick={() => navigate('/directory')}
+            className="p-1 rounded-md hover:bg-white/10 text-slate-500 hover:text-violet-400 transition"
+            title={t('membership.findMore', 'Найти ещё')}
+          >
+            <Plus className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // ═══ 2+ memberships: full dropdown switcher ═══
   return (
     <div className="relative px-3 py-2">
       <button
@@ -103,7 +150,7 @@ const OrgSwitcher: React.FC<OrgSwitcherProps> = ({ currentOrgId, onSwitch }) => 
             ))}
             <div className="border-t border-white/5 mt-1 pt-1">
               <button
-                onClick={() => { setOpen(false); window.location.href = '/directory'; }}
+                onClick={() => { setOpen(false); navigate('/directory'); }}
                 className="w-full flex items-center gap-2 px-3 py-2 text-sm text-violet-400 hover:bg-white/5 transition"
               >
                 <Plus className="w-4 h-4" />

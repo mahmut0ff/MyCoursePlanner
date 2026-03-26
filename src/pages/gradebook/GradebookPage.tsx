@@ -79,7 +79,7 @@ const GradebookPage: React.FC = () => {
       const enrolledStudents = (allStudents as UserProfile[]).filter(s => studentIds.has(s.uid));
       setStudents(enrolledStudents);
 
-      const courseLessons = (allLessons as LessonPlan[]).filter(l => course.lessonIds?.includes(l.id));
+      const courseLessons = (allLessons as LessonPlan[]).filter(l => course.lessonIds?.includes(l.id) ?? false);
       setLessons(courseLessons);
 
       setSchema(schemaRes || { ...defaultSchema, courseId });

@@ -8,7 +8,7 @@ import type { HandlerEvent } from '@netlify/functions';
 export interface AuthUser {
   uid: string;
   email: string;
-  role: 'super_admin' | 'admin' | 'teacher' | 'student';
+  role: 'super_admin' | 'admin' | 'manager' | 'teacher' | 'student';
   displayName: string;
   organizationId: string | null;
   planId: string | null;
@@ -55,6 +55,7 @@ export async function verifyAuth(event: HandlerEvent): Promise<AuthUser | null> 
         const roleMap: Record<string, AuthUser['role']> = {
           owner: 'admin',
           admin: 'admin',
+          manager: 'manager',
           teacher: 'teacher',
           mentor: 'teacher',
           student: 'student',
@@ -94,7 +95,11 @@ export function isSuperAdmin(user: AuthUser): boolean {
 }
 
 export function isStaff(user: AuthUser): boolean {
-  return ['super_admin', 'admin', 'teacher'].includes(user.role);
+  return ['super_admin', 'admin', 'manager', 'teacher'].includes(user.role);
+}
+
+export function isManager(user: AuthUser): boolean {
+  return user.role === 'manager';
 }
 
 export function hasRole(user: AuthUser, ...roles: AuthUser['role'][]): boolean {

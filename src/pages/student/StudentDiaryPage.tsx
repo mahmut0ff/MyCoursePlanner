@@ -3,12 +3,22 @@ import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../contexts/AuthContext';
 import { orgGetCourses, orgGetGrades, orgGetJournal } from '../../lib/api';
 import type { Course, GradeEntry, JournalEntry } from '../../types';
-import { Calendar, BookOpen, Star, Filter, Clock, FileWarning, CheckCircle2, MessageSquare, XCircle } from 'lucide-react';
+import { Calendar, BookOpen, Star, Filter, Clock, FileWarning, CheckCircle2, MessageSquare, XCircle, AlertTriangle } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 type TimelineEvent = 
   | { type: 'grade'; date: string; data: GradeEntry; courseTitle: string }
   | { type: 'journal'; date: string; data: JournalEntry; courseTitle: string; noteOnly: boolean };
+
+/** Safe date → ISO string. Returns null if invalid. */
+function safeISODate(raw: any): string | null {
+  if (!raw) return null;
+  try {
+    const d = new Date(raw);
+    if (isNaN(d.getTime())) return null;
+    return d.toISOString();
+  } catch { return null; }
+}
 
 const StudentDiaryPage: React.FC = () => {
   const { t } = useTranslation();
@@ -17,6 +27,7 @@ const StudentDiaryPage: React.FC = () => {
   const [courses, setCourses] = useState<Course[]>([]);
   const [events, setEvents] = useState<TimelineEvent[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   
   const [selectedCourseId, setSelectedCourseId] = useState<string>('all');
 
@@ -26,12 +37,16 @@ const StudentDiaryPage: React.FC = () => {
     const loadData = async () => {
       try {
         const allCourses = await orgGetCourses() as Course[];
-        // Usually student only sees their enrolled courses, assuming orgGetCourses is scoped or we just fetch anyway
         setCourses(allCourses);
 
+        if (allCourses.length === 0) {
+          setEvents([]);
+          return;
+        }
+
         const courseIds = allCourses.map(c => c.id);
-        const gradesPromises = courseIds.map(cId => orgGetGrades(cId));
-        const journalPromises = courseIds.map(cId => orgGetJournal(cId));
+        const gradesPromises = courseIds.map(cId => orgGetGrades(cId).catch(() => []));
+        const journalPromises = courseIds.map(cId => orgGetJournal(cId).catch(() => []));
 
         const gradesRes = await Promise.all(gradesPromises);
         const journalRes = await Promise.all(journalPromises);
@@ -39,21 +54,19 @@ const StudentDiaryPage: React.FC = () => {
         const newEvents: TimelineEvent[] = [];
         
         gradesRes.forEach((courseGrades: any, i) => {
+          if (!Array.isArray(courseGrades)) return;
           courseGrades.forEach((g: GradeEntry) => {
-            // Use updatedAt or createdAt for the grade event date
-            const date = g.updatedAt || g.createdAt || new Date().toISOString();
+            const date = safeISODate(g.updatedAt || g.createdAt);
+            if (!date) return; // skip invalid dates
             newEvents.push({ type: 'grade', date, data: g, courseTitle: allCourses[i].title });
           });
         });
 
         journalRes.forEach((courseJournal: any, i) => {
+          if (!Array.isArray(courseJournal)) return;
           courseJournal.forEach((j: JournalEntry) => {
-            // Journal specifies a date
-            const eventDate = new Date(j.date).toISOString();
-            
-            // If it's just a standard "present" without a note, maybe don't clutter the timeline?
-            // Actually, let's show attendance records but group them visually or just show them.
-            // Let's create an event for the whole day, and if there is a note, highlight it.
+            const eventDate = safeISODate(j.date);
+            if (!eventDate) return; // skip invalid dates
             newEvents.push({ type: 'journal', date: eventDate, data: j, courseTitle: allCourses[i].title, noteOnly: false });
           });
         });
@@ -63,7 +76,12 @@ const StudentDiaryPage: React.FC = () => {
         setEvents(newEvents);
         
       } catch (err: any) {
-        toast.error(err.message || 'Ошибка загрузки дневника');
+        console.error('Diary load error:', err);
+        if (err.message?.includes('403') || err.message?.includes('Forbidden')) {
+          setError(t('common.accessDenied', 'Нет доступа к данным'));
+        } else {
+          setError(err.message || 'Ошибка загрузки дневника');
+        }
       } finally {
         setLoading(false);
       }
@@ -81,6 +99,16 @@ const StudentDiaryPage: React.FC = () => {
     return <div className="flex justify-center py-20"><div className="w-8 h-8 border-2 border-primary-500 rounded-full animate-spin border-t-transparent" /></div>;
   }
 
+  if (error) {
+    return (
+      <div className="max-w-3xl mx-auto py-20 text-center">
+        <AlertTriangle className="w-16 h-16 text-amber-400 mx-auto mb-4" />
+        <h2 className="text-xl font-bold text-slate-900 dark:text-white mb-2">{t('common.error', 'Ошибка')}</h2>
+        <p className="text-slate-500 text-sm">{error}</p>
+      </div>
+    );
+  }
+
   return (
     <div className="max-w-3xl mx-auto space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -93,7 +121,7 @@ const StudentDiaryPage: React.FC = () => {
               {t('nav.diary', 'Мой дневник')}
             </h1>
             <p className="text-sm text-slate-500 dark:text-slate-400">
-              Лента событий: оценки, посещаемость, комментарии
+              {t('diary.subtitle', 'Лента событий: оценки, посещаемость, комментарии')}
             </p>
           </div>
         </div>
@@ -105,7 +133,7 @@ const StudentDiaryPage: React.FC = () => {
             value={selectedCourseId}
             onChange={(e) => setSelectedCourseId(e.target.value)}
           >
-            <option value="all">Все курсы</option>
+            <option value="all">{t('diary.allCourses', 'Все курсы')}</option>
             {courses.map(c => (
               <option key={c.id} value={c.id}>{c.title}</option>
             ))}
@@ -119,7 +147,7 @@ const StudentDiaryPage: React.FC = () => {
         {filteredEvents.length === 0 ? (
           <div className="py-12 text-center">
             <Calendar className="w-12 h-12 text-slate-300 dark:text-slate-600 mx-auto mb-3" />
-            <p className="text-sm text-slate-500 dark:text-slate-400">Нет событий. Начните учиться усерднее!</p>
+            <p className="text-sm text-slate-500 dark:text-slate-400">{t('diary.empty', 'Нет событий. Начните учиться усерднее!')}</p>
           </div>
         ) : (
           <div className="space-y-6">
@@ -140,7 +168,7 @@ const StudentDiaryPage: React.FC = () => {
                       <div className="flex items-start justify-between mb-2">
                         <div>
                           <p className="text-xs font-semibold text-primary-500 mb-0.5 uppercase tracking-wider">{evt.courseTitle}</p>
-                          <h3 className="text-base font-bold text-slate-900 dark:text-white">Новая оценка</h3>
+                          <h3 className="text-base font-bold text-slate-900 dark:text-white">{t('diary.newGrade', 'Новая оценка')}</h3>
                         </div>
                         <div className="text-right">
                           <p className="text-xs font-semibold text-slate-500 bg-slate-100 dark:bg-slate-700/50 px-2 py-0.5 rounded-md inline-block">
@@ -158,7 +186,7 @@ const StudentDiaryPage: React.FC = () => {
                               "{g.comment}"
                             </p>
                           )}
-                          {!g.comment && <p className="text-sm text-slate-400">Преподаватель не оставил комментарий.</p>}
+                          {!g.comment && <p className="text-sm text-slate-400">{t('diary.noComment', 'Преподаватель не оставил комментарий.')}</p>}
                         </div>
                       </div>
                     </div>
@@ -168,20 +196,20 @@ const StudentDiaryPage: React.FC = () => {
                 const j = evt.data as JournalEntry;
                 let Icon = CheckCircle2;
                 let colorClass = 'text-emerald-500 bg-emerald-100 dark:bg-emerald-900/30 border-emerald-50 dark:border-slate-900';
-                let label = 'Был(а) на занятии';
+                let label = t('diary.present', 'Был(а) на занятии');
 
                 if (j.attendance === 'absent') {
                   Icon = XCircle;
                   colorClass = 'text-red-500 bg-red-100 dark:bg-red-900/30 border-red-50 dark:border-slate-900';
-                  label = 'Отсутствие';
+                  label = t('diary.absent', 'Отсутствие');
                 } else if (j.attendance === 'late') {
                   Icon = Clock;
                   colorClass = 'text-amber-500 bg-amber-100 dark:bg-amber-900/30 border-amber-50 dark:border-slate-900';
-                  label = 'Опоздание';
+                  label = t('diary.late', 'Опоздание');
                 } else if (j.attendance === 'excused') {
                   Icon = FileWarning;
                   colorClass = 'text-slate-500 bg-slate-100 dark:bg-slate-800/80 border-slate-50 dark:border-slate-900';
-                  label = 'Уважительная причина';
+                  label = t('diary.excused', 'Уважительная причина');
                 }
 
                 return (
@@ -204,7 +232,7 @@ const StudentDiaryPage: React.FC = () => {
                             j.participation === 'medium' ? 'bg-amber-100 text-amber-600' :
                             'bg-red-100 text-red-600'
                           }`}>
-                            Участие: {j.participation.toUpperCase()}
+                            {t('diary.participation', 'Участие')}: {j.participation.toUpperCase()}
                           </span>
                         )}
                       </div>

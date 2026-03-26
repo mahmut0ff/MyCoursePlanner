@@ -17,6 +17,7 @@ interface AuthContextType {
   isStaff: boolean;
   isTeacher: boolean;
   isStudent: boolean;
+  isManager: boolean;
   isTeacherWithoutOrg: boolean;
   refreshProfile: () => Promise<void>;
 }
@@ -32,6 +33,7 @@ const AuthContext = createContext<AuthContextType>({
   isStaff: false,
   isTeacher: false,
   isStudent: false,
+  isManager: false,
   isTeacherWithoutOrg: false,
   refreshProfile: async () => {},
 });
@@ -110,9 +112,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         configured: isFirebaseConfigured,
         organizationId: profile?.organizationId || null,
         isSuperAdmin: role === 'super_admin',
-        isStaff: role === 'super_admin' || role === 'admin' || role === 'teacher',
+        isStaff: role === 'super_admin' || role === 'admin' || role === 'manager' || role === 'teacher',
         isTeacher,
         isStudent,
+        isManager: role === 'manager',
         isTeacherWithoutOrg: isTeacher && !profile?.organizationId,
         refreshProfile,
       }}

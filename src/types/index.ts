@@ -5,7 +5,7 @@
 
 // ---- Roles ----
 
-export type UserRole = 'super_admin' | 'admin' | 'teacher' | 'student';
+export type UserRole = 'super_admin' | 'admin' | 'manager' | 'teacher' | 'student';
 
 // ---- Billing Plans ----
 
@@ -129,6 +129,22 @@ export interface Subscription {
   createdAt: string;
 }
 
+// ---- Branches / Locations / Campuses ----
+
+export interface Branch {
+  id: string;
+  organizationId: string;
+  name: string;
+  slug: string;
+  city?: string;
+  address?: string;
+  phone?: string;
+  description?: string;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
 // ---- Users ----
 
 export interface UserProfile {
@@ -169,9 +185,9 @@ export interface UserPost {
 
 // ---- Memberships (User ↔ Organization) ----
 
-export type MembershipRole = 'student' | 'teacher' | 'mentor' | 'admin' | 'owner';
+export type MembershipRole = 'student' | 'teacher' | 'mentor' | 'manager' | 'admin' | 'owner';
 export type MembershipStatus = 'pending' | 'invited' | 'active' | 'left' | 'removed';
-export type JoinMethod = 'invited_by_org' | 'applied_by_user' | 'direct_added';
+export type JoinMethod = 'invited_by_org' | 'applied_by_user' | 'direct_added' | 'public_join';
 
 export interface Membership {
   id: string;
@@ -183,6 +199,7 @@ export interface Membership {
   role: MembershipRole;
   status: MembershipStatus;
   joinMethod: JoinMethod;
+  branchIds?: string[];              // assigned branch scopes (manager/teacher)
   joinedAt: string;
   leftAt?: string;
   createdAt: string;

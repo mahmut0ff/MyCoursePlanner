@@ -302,6 +302,23 @@ export const orgBulkAttendance = (courseId: string, date: string, entries: any[]
   gbReq('bulkAttendance', 'POST', { courseId, date, entries });
 
 // ============================================================
+// BRANCHES API (via api-branches)
+// ============================================================
+
+const brReq = <T = any>(action: string, method = 'GET', body?: any, extra?: Record<string, string>) =>
+  apiRequest<T>('api-branches', method, body, { action, ...extra });
+
+export const orgListBranches = () => brReq('list');
+export const orgGetBranch = (branchId: string) => brReq('get', 'GET', undefined, { branchId });
+export const orgCreateBranch = (data: any) => brReq('create', 'POST', data);
+export const orgUpdateBranch = (data: any) => brReq('update', 'POST', data);
+export const orgArchiveBranch = (id: string) => brReq('archive', 'POST', { id });
+export const orgAssignUserToBranch = (userId: string, branchId: string) =>
+  brReq('assignUser', 'POST', { userId, branchId });
+export const orgRemoveUserFromBranch = (userId: string, branchId: string) =>
+  brReq('removeUser', 'POST', { userId, branchId });
+
+// ============================================================
 // TEACHER / INVITES API (via api-users, works without org)
 // ============================================================
 

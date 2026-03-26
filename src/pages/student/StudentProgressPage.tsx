@@ -32,8 +32,8 @@ const StudentProgressPage: React.FC = () => {
         const allCourses = await orgGetCourses() as Course[];
         const courseIds = allCourses.map(c => c.id);
         
-        const gradesPromises = courseIds.map(cId => orgGetGrades(cId));
-        const journalPromises = courseIds.map(cId => orgGetJournal(cId));
+        const gradesPromises = courseIds.map(cId => orgGetGrades(cId).catch(() => []));
+        const journalPromises = courseIds.map(cId => orgGetJournal(cId).catch(() => []));
 
         const gradesRes = await Promise.all(gradesPromises);
         const journalRes = await Promise.all(journalPromises);

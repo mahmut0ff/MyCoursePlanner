@@ -10,7 +10,7 @@ import {
   apiAwardXP
 } from '../../lib/api';
 import type { Course, Group, UserProfile, JournalEntry, AttendanceStatus, ParticipationLevel } from '../../types';
-import { ClipboardList, Calendar, AlertCircle, RefreshCcw, UserCheck, CheckCircle2, XCircle, Clock, FileWarning } from 'lucide-react';
+import { ClipboardList, Calendar, AlertCircle, AlertTriangle, RefreshCcw, UserCheck, CheckCircle2, XCircle, Clock, FileWarning } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 const now = new Date();
@@ -35,18 +35,25 @@ const JournalPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [loadingData, setLoadingData] = useState(false);
   const [bulking, setBulking] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const timersRef = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
 
   useEffect(() => {
     orgGetCourses()
       .then((data: Course[]) => {
-        setCourses(data);
-        if (data.length > 0) {
+        setCourses(Array.isArray(data) ? data : []);
+        if (Array.isArray(data) && data.length > 0) {
           setSelectedCourseId(data[0].id);
         }
       })
-      .catch((e: any) => toast.error(e.message))
+      .catch((e: any) => {
+        if (e.message?.includes('403') || e.message?.includes('Forbidden')) {
+          setError(t('common.accessDenied', 'Нет доступа к данным'));
+        } else {
+          toast.error(e.message);
+        }
+      })
       .finally(() => setLoading(false));
   }, []);
 
@@ -54,12 +61,12 @@ const JournalPage: React.FC = () => {
     setLoadingData(true);
     try {
       const [allGroups, allStudents, journalRes] = await Promise.all([
-        orgGetGroups(),
-        orgGetStudents(),
-        orgGetJournal(courseId)
+        orgGetGroups().catch(() => []),
+        orgGetStudents().catch(() => []),
+        orgGetJournal(courseId).catch(() => [])
       ]);
 
-      const courseGroups = (allGroups as Group[]).filter(g => g.courseId === courseId);
+      const courseGroups = (Array.isArray(allGroups) ? allGroups as Group[] : []).filter(g => g.courseId === courseId);
       const studentIds = new Set<string>();
       courseGroups.forEach(g => g.studentIds.forEach(id => studentIds.add(id)));
       
@@ -76,7 +83,11 @@ const JournalPage: React.FC = () => {
       
       setEntries(entriesMap);
     } catch (e: any) {
-      toast.error(e.message || 'Ошибка загрузки журнала');
+      if (e.message?.includes('403') || e.message?.includes('Forbidden')) {
+        setError(t('common.accessDenied', 'Нет доступа к данным'));
+      } else {
+        toast.error(e.message || t('journal.loadError', 'Ошибка загрузки журнала'));
+      }
     } finally {
       setLoadingData(false);
     }
@@ -181,6 +192,16 @@ const JournalPage: React.FC = () => {
 
   if (loading) {
     return <div className="flex justify-center py-20"><div className="w-8 h-8 border-2 border-primary-500 rounded-full animate-spin border-t-transparent" /></div>;
+  }
+
+  if (error) {
+    return (
+      <div className="max-w-4xl mx-auto py-20 text-center">
+        <AlertTriangle className="w-16 h-16 text-amber-400 mx-auto mb-4" />
+        <h2 className="text-xl font-bold text-slate-900 dark:text-white mb-2">{t('common.error', 'Ошибка')}</h2>
+        <p className="text-slate-500 text-sm">{error}</p>
+      </div>
+    );
   }
 
   if (courses.length === 0) {

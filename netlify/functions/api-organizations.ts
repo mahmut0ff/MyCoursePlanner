@@ -73,7 +73,7 @@ const handler: Handler = async (event: HandlerEvent) => {
     }
 
     const data = doc.data()!;
-    if (!data.publicProfileEnabled) return notFound('Organization not found');
+    if (data.status !== 'active') return notFound('Organization not found');
 
     // Fetch org courses for public display
     const coursesSnap = await adminDb.collection('courses')

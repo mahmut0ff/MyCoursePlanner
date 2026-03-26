@@ -133,72 +133,61 @@ const OrganizationsDirectoryPage: React.FC = () => {
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100 dark:from-gray-950 dark:via-gray-900 dark:to-gray-950">
 
       {/* ═══════════════════════════════════════ */}
-      {/*  HERO + SEARCH + FILTERS                */}
+      {/*  COMPACT HEADER + SEARCH + FILTERS       */}
       {/* ═══════════════════════════════════════ */}
-      <div className="relative overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-br from-violet-600 via-indigo-600 to-purple-700" />
-        <div className="absolute -top-32 -right-32 w-[500px] h-[500px] rounded-full bg-white/5 blur-3xl" />
-        <div className="absolute -bottom-20 -left-20 w-80 h-80 rounded-full bg-white/5 blur-2xl" />
-        <div className="absolute top-1/3 left-1/2 -translate-x-1/2 w-[400px] h-[400px] rounded-full bg-indigo-400/10 blur-3xl" />
-
-        <div className="relative max-w-5xl mx-auto px-4 sm:px-6 pt-12 pb-10 sm:pt-16 sm:pb-14">
-          <div className="text-center mb-8">
-            <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-white/10 rounded-full text-sm text-white/90 mb-4 backdrop-blur-sm font-medium">
-              <Building2 className="w-4 h-4" />
-              {t('directory.badge', 'Каталог организаций')}
+      <div className="bg-white dark:bg-gray-900 border-b border-slate-200 dark:border-gray-800">
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 py-5 sm:py-6">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
+            <div>
+              <h1 className="text-xl sm:text-2xl font-extrabold text-slate-900 dark:text-white tracking-tight">
+                {t('directory.title', 'Найдите свой учебный центр')}
+              </h1>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                {t('directory.subtitle', 'Откройте для себя лучшие школы и учебные центры')}
+              </p>
             </div>
-            <h1 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold text-white tracking-tight">
-              {t('directory.title', 'Найдите свой учебный центр')}
-            </h1>
-            <p className="mt-3 text-violet-200/80 text-base sm:text-lg max-w-lg mx-auto">
-              {t('directory.subtitle', 'Откройте для себя лучшие школы и учебные центры')}
-            </p>
           </div>
 
-          {/* ─── Search bar ─── */}
-          <div className="max-w-2xl mx-auto">
-            <div className="relative">
-              <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-violet-300" />
-              <input
-                type="text"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder={t('directory.searchPlaceholder', 'Поиск по названию, городу или предмету...')}
-                className="w-full pl-12 pr-4 py-4 bg-white/10 backdrop-blur-md border border-white/20 rounded-2xl text-white placeholder:text-violet-300/60 focus:outline-none focus:ring-2 focus:ring-white/30 text-sm font-medium"
-              />
-            </div>
+          {/* Search */}
+          <div className="relative max-w-xl">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+            <input
+              type="text"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder={t('directory.searchPlaceholder', 'Поиск по названию, городу или предмету...')}
+              className="w-full pl-10 pr-4 py-2.5 bg-slate-50 dark:bg-gray-800 border border-slate-200 dark:border-gray-700 rounded-xl text-sm text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-violet-500/30 focus:border-violet-400"
+            />
+          </div>
 
-            {/* ─── City chips ─── */}
-            {uniqueCities.length > 0 && (
-              <div className="flex items-center justify-center gap-2 mt-5 flex-wrap">
+          {/* City chips */}
+          {uniqueCities.length > 0 && (
+            <div className="flex items-center gap-2 mt-3 flex-wrap">
+              <button
+                onClick={() => setSelectedCity('all')}
+                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                  selectedCity === 'all'
+                    ? 'bg-violet-600 text-white shadow-sm'
+                    : 'bg-slate-100 dark:bg-gray-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-gray-700'
+                }`}
+              >
+                {t('directory.allCities', 'Все города')}
+              </button>
+              {uniqueCities.map(city => (
                 <button
-                  onClick={() => setSelectedCity('all')}
-                  className={`px-4 py-2 rounded-full text-xs font-bold tracking-wide transition-all ${
-                    selectedCity === 'all'
-                      ? 'bg-white text-violet-700 shadow-lg shadow-black/10 scale-105'
-                      : 'bg-white/10 text-white/80 hover:bg-white/20 border border-white/10'
+                  key={city}
+                  onClick={() => setSelectedCity(city)}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center gap-1 ${
+                    selectedCity === city
+                      ? 'bg-violet-600 text-white shadow-sm'
+                      : 'bg-slate-100 dark:bg-gray-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-gray-700'
                   }`}
                 >
-                  {t('directory.allCities', 'Все города')}
+                  <MapPin className="w-3 h-3" /> {city}
                 </button>
-                {uniqueCities.map(city => (
-                  <button
-                    key={city}
-                    onClick={() => setSelectedCity(city)}
-                    className={`px-4 py-2 rounded-full text-xs font-bold tracking-wide transition-all ${
-                      selectedCity === city
-                        ? 'bg-white text-violet-700 shadow-lg shadow-black/10 scale-105'
-                        : 'bg-white/10 text-white/80 hover:bg-white/20 border border-white/10'
-                    }`}
-                  >
-                    <span className="flex items-center gap-1">
-                      <MapPin className="w-3 h-3" /> {city}
-                    </span>
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
 

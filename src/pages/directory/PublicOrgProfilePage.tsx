@@ -1,14 +1,51 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../contexts/AuthContext';
 import {
   MapPin, Users, BookOpen, Mail, Phone, ArrowLeft, Building2,
   Wifi, CalendarDays, UserPlus, CheckCircle, Clock, Image, FolderOpen,
-  Globe, MessageCircle, Send, LogIn, ExternalLink, AlertCircle,
+  Globe, MessageCircle, Send, LogIn, ExternalLink, AlertCircle, ChevronDown,
 } from 'lucide-react';
 import { apiGetPublicOrgProfile, apiPublicJoin } from '../../lib/api';
 
+/* ═══════════════════════════════════════════════ */
+/*  Scroll Animation Hook                          */
+/* ═══════════════════════════════════════════════ */
+function useScrollReveal() {
+  const ref = useRef<HTMLDivElement>(null);
+  const [visible, setVisible] = useState(false);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const observer = new IntersectionObserver(
+      ([entry]) => { if (entry.isIntersecting) { setVisible(true); observer.disconnect(); } },
+      { threshold: 0.1, rootMargin: '0px 0px -40px 0px' }
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+
+  return { ref, visible };
+}
+
+function Section({ children, className = '', delay = 0 }: { children: React.ReactNode; className?: string; delay?: number }) {
+  const { ref, visible } = useScrollReveal();
+  return (
+    <div
+      ref={ref}
+      className={`transition-all duration-700 ease-out ${visible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-6'} ${className}`}
+      style={{ transitionDelay: `${delay}ms` }}
+    >
+      {children}
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════════ */
+/*  Page Component                                 */
+/* ═══════════════════════════════════════════════ */
 const PublicOrgProfilePage: React.FC = () => {
   const { t } = useTranslation();
   const { slug } = useParams<{ slug: string }>();
@@ -19,6 +56,7 @@ const PublicOrgProfilePage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [joining, setJoining] = useState(false);
   const [joinStatus, setJoinStatus] = useState<string | null>(null);
+  const [descExpanded, setDescExpanded] = useState(false);
 
   useEffect(() => {
     if (!slug) return;
@@ -28,9 +66,8 @@ const PublicOrgProfilePage: React.FC = () => {
       .finally(() => setLoading(false));
   }, [slug]);
 
-  const handleJoin = async () => {
-    if (!profile) return;
-    if (!slug) return;
+  const handleJoin = useCallback(async () => {
+    if (!profile || !slug) return;
     setJoining(true);
     try {
       const result = await apiPublicJoin(slug);
@@ -38,12 +75,12 @@ const PublicOrgProfilePage: React.FC = () => {
       if (result.status === 'already_member') {
         setTimeout(() => navigate('/dashboard'), 1500);
       }
-    } catch (e) {
+    } catch {
       setJoinStatus('error');
     } finally {
       setJoining(false);
     }
-  };
+  }, [profile, slug, navigate]);
 
   // Group branches by city
   const branchesByCity = React.useMemo(() => {
@@ -54,13 +91,20 @@ const PublicOrgProfilePage: React.FC = () => {
       acc[city].push(b);
       return acc;
     }, {});
+  }, [org, t]);
+
+  // All branches with coords for map
+  const branchesWithCoords = React.useMemo(() => {
+    if (!org?.branches) return [];
+    return org.branches.filter((b: any) => b.latitude && b.longitude);
   }, [org]);
 
-  // Social link helpers
   const socialLinks = org?.contactLinks || {};
   const hasSocials = socialLinks.telegram || socialLinks.whatsapp || socialLinks.instagram || socialLinks.website;
   const hasContacts = org?.contactEmail || org?.contactPhone || hasSocials;
+  const cities = org?.branchCities || [];
 
+  /* ═══ Loading ═══ */
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-gray-950">
@@ -69,6 +113,7 @@ const PublicOrgProfilePage: React.FC = () => {
     );
   }
 
+  /* ═══ Not Found ═══ */
   if (!org) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-slate-50 dark:bg-gray-950 gap-4 p-4">
@@ -84,40 +129,41 @@ const PublicOrgProfilePage: React.FC = () => {
     );
   }
 
-  // Join status messages
-  const statusMessages: Record<string, { text: string; icon: React.ElementType; color: string }> = {
-    already_member: { text: t('directory.alreadyMember', 'Вы уже в этой организации. Переходим...'), icon: CheckCircle, color: 'text-blue-600 dark:text-blue-400' },
-    pending: { text: t('directory.pending', 'Заявка отправлена! Ожидайте подтверждения от администратора.'), icon: Clock, color: 'text-amber-600 dark:text-amber-400' },
-    org_unavailable: { text: t('directory.orgUnavailable', 'Организация временно недоступна'), icon: AlertCircle, color: 'text-red-500' },
-    org_not_found: { text: t('directory.orgNotFound', 'Организация не найдена'), icon: AlertCircle, color: 'text-red-500' },
-    error: { text: t('directory.joinError', 'Ошибка при отправке заявки'), icon: AlertCircle, color: 'text-red-500' },
+  /* ═══ Status Messages ═══ */
+  const statusConfig: Record<string, { text: string; icon: React.ElementType; color: string; bg: string }> = {
+    already_member: { text: t('directory.alreadyMember', 'Вы уже студент ✓'), icon: CheckCircle, color: 'text-emerald-700 dark:text-emerald-400', bg: 'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-800' },
+    pending: { text: t('directory.pending', 'Заявка отправлена ⏳'), icon: Clock, color: 'text-amber-700 dark:text-amber-400', bg: 'bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800' },
+    org_unavailable: { text: t('directory.orgUnavailable', 'Организация временно недоступна'), icon: AlertCircle, color: 'text-red-600', bg: 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800' },
+    org_not_found: { text: t('directory.orgNotFound', 'Организация не найдена'), icon: AlertCircle, color: 'text-red-600', bg: 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800' },
+    error: { text: t('directory.joinError', 'Ошибка при отправке заявки'), icon: AlertCircle, color: 'text-red-600', bg: 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800' },
   };
 
-  const renderCTA = () => {
-    if (joinStatus && statusMessages[joinStatus]) {
-      const status = statusMessages[joinStatus];
-      const Icon = status.icon;
+  /* ═══ CTA Render ═══ */
+  const renderCTA = (sticky = false) => {
+    if (joinStatus && statusConfig[joinStatus]) {
+      const s = statusConfig[joinStatus];
+      const Icon = s.icon;
       return (
-        <div className={`flex items-center gap-2 font-medium ${status.color}`}>
+        <div className={`flex items-center justify-center gap-2.5 px-6 py-3.5 rounded-2xl border font-semibold ${s.bg} ${s.color} ${sticky ? 'w-full' : ''}`}>
           <Icon className="w-5 h-5" />
-          <span className="text-sm">{status.text}</span>
+          <span className="text-sm">{s.text}</span>
         </div>
       );
     }
 
     if (!profile) {
       return (
-        <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+        <div className={`flex flex-col sm:flex-row gap-2.5 ${sticky ? 'w-full' : 'w-full sm:w-auto'}`}>
           <Link
             to={`/register?orgSlug=${slug}`}
-            className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-6 py-3 bg-violet-600 text-white rounded-xl font-medium hover:bg-violet-700 transition text-sm"
+            className="flex-1 flex items-center justify-center gap-2 px-6 py-3.5 bg-gradient-to-r from-violet-600 to-indigo-600 text-white rounded-2xl font-semibold hover:from-violet-700 hover:to-indigo-700 transition-all text-sm shadow-lg shadow-violet-500/25 hover:shadow-violet-500/40 hover:scale-[1.02] active:scale-[0.98]"
           >
             <UserPlus className="w-4 h-4" />
             {t('directory.signUpJoin', 'Зарегистрироваться и вступить')}
           </Link>
           <Link
             to={`/login?orgSlug=${slug}`}
-            className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-6 py-3 bg-white dark:bg-gray-700 text-slate-700 dark:text-white border border-slate-200 dark:border-gray-600 rounded-xl font-medium hover:bg-slate-50 dark:hover:bg-gray-600 transition text-sm"
+            className="flex-1 flex items-center justify-center gap-2 px-6 py-3.5 bg-white dark:bg-gray-700 text-slate-700 dark:text-white border border-slate-200 dark:border-gray-600 rounded-2xl font-semibold hover:bg-slate-50 dark:hover:bg-gray-600 transition-all text-sm hover:scale-[1.02] active:scale-[0.98]"
           >
             <LogIn className="w-4 h-4" />
             {t('directory.loginJoin', 'Войти и вступить')}
@@ -130,318 +176,481 @@ const PublicOrgProfilePage: React.FC = () => {
       <button
         onClick={handleJoin}
         disabled={joining}
-        className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-6 py-3 bg-violet-600 text-white rounded-xl font-semibold hover:bg-violet-700 transition disabled:opacity-50 text-sm"
+        className={`flex items-center justify-center gap-2.5 px-8 py-4 bg-gradient-to-r from-violet-600 to-indigo-600 text-white rounded-2xl font-bold hover:from-violet-700 hover:to-indigo-700 transition-all disabled:opacity-50 text-base shadow-lg shadow-violet-500/25 hover:shadow-violet-500/40 hover:scale-[1.02] active:scale-[0.98] ${sticky ? 'w-full' : ''}`}
       >
         {joining ? (
-          <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+          <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
         ) : (
-          <UserPlus className="w-4 h-4" />
+          <UserPlus className="w-5 h-5" />
         )}
-        {t('directory.joinOrg', 'Подать заявку')}
+        {t('directory.joinOrg', 'Вступить в организацию')}
       </button>
     );
   };
 
+  /* ═══ Google Maps embed URL ═══ */
+  const getMapUrl = () => {
+    if (branchesWithCoords.length === 0) return null;
+    if (branchesWithCoords.length === 1) {
+      const b = branchesWithCoords[0];
+      return `https://www.google.com/maps/embed/v1/place?key=AIzaSyBFw0Qbyq9zTFTd-tUY6dZWTgaQzuU17R8&q=${b.latitude},${b.longitude}&zoom=15`;
+    }
+    // Center on first branch
+    const b = branchesWithCoords[0];
+    return `https://www.google.com/maps/embed/v1/place?key=AIzaSyBFw0Qbyq9zTFTd-tUY6dZWTgaQzuU17R8&q=${b.latitude},${b.longitude}&zoom=12`;
+  };
+
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-gray-950">
-      {/* Banner */}
-      <div className="relative h-48 sm:h-56 bg-gradient-to-r from-violet-600 via-indigo-600 to-purple-600 overflow-hidden">
+
+      {/* ═══════════════════════════════════════ */}
+      {/*  1. HERO BANNER                         */}
+      {/* ═══════════════════════════════════════ */}
+      <div className="relative overflow-hidden">
+        {/* Gradient background */}
+        <div className="absolute inset-0 bg-gradient-to-br from-violet-600 via-indigo-600 to-purple-700" />
         {org.banner && (
-          <img src={org.banner} alt="" className="absolute inset-0 w-full h-full object-cover opacity-40" />
+          <img src={org.banner} alt="" className="absolute inset-0 w-full h-full object-cover opacity-30 mix-blend-overlay" />
         )}
-        <div className="absolute -top-20 -right-16 w-72 h-72 rounded-full bg-white/5" />
-        <div className="absolute -bottom-12 -left-12 w-56 h-56 rounded-full bg-white/5" />
-        <div className="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent" />
-        <div className="absolute top-4 left-4">
-          <button onClick={() => navigate('/directory')} className="flex items-center gap-1 text-white/80 hover:text-white text-sm bg-black/20 px-3 py-1.5 rounded-lg backdrop-blur-sm">
+        {/* Decorative shapes */}
+        <div className="absolute -top-24 -right-24 w-96 h-96 rounded-full bg-white/5 blur-3xl" />
+        <div className="absolute -bottom-16 -left-16 w-80 h-80 rounded-full bg-white/5 blur-2xl" />
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] rounded-full bg-indigo-400/10 blur-3xl" />
+
+        {/* Back button */}
+        <div className="absolute top-4 left-4 z-20">
+          <button onClick={() => navigate('/directory')} className="flex items-center gap-1.5 text-white/80 hover:text-white text-sm bg-black/20 px-3.5 py-2 rounded-xl backdrop-blur-md transition-colors">
             <ArrowLeft className="w-4 h-4" /> {t('common.back', 'Назад')}
           </button>
         </div>
+
+        {/* Hero content */}
+        <div className="relative z-10 max-w-4xl mx-auto px-4 sm:px-6 pt-20 pb-24 sm:pt-24 sm:pb-32 text-center">
+          {/* Logo */}
+          <div className="mx-auto w-24 h-24 sm:w-28 sm:h-28 rounded-3xl bg-white/10 backdrop-blur-lg border border-white/20 flex items-center justify-center overflow-hidden shadow-2xl mb-6">
+            {org.logo ? (
+              <img src={org.logo} alt={org.name} className="w-full h-full object-cover rounded-3xl" />
+            ) : (
+              <Building2 className="w-12 h-12 text-white/80" />
+            )}
+          </div>
+
+          {/* Title */}
+          <h1 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold text-white tracking-tight leading-tight">
+            {org.name}
+          </h1>
+
+          {/* Short description */}
+          {org.description && (
+            <p className="mt-4 text-base sm:text-lg text-white/70 max-w-2xl mx-auto leading-relaxed line-clamp-2">
+              {org.description}
+            </p>
+          )}
+
+          {/* Meta badges */}
+          <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
+            {cities.length > 0 && (
+              <span className="flex items-center gap-1.5 px-4 py-2 bg-white/10 backdrop-blur-md rounded-full text-sm text-white/90 font-medium">
+                <MapPin className="w-4 h-4" /> {cities.join(' • ')}
+              </span>
+            )}
+            {(org.branchesCount || 0) > 0 && (
+              <span className="flex items-center gap-1.5 px-4 py-2 bg-white/10 backdrop-blur-md rounded-full text-sm text-white/90 font-medium">
+                <Building2 className="w-4 h-4" /> {org.branchesCount} {t('directory.branchCount', 'филиалов')}
+              </span>
+            )}
+            {org.isOnline && (
+              <span className="flex items-center gap-1.5 px-4 py-2 bg-emerald-500/20 backdrop-blur-md rounded-full text-sm text-emerald-200 font-medium">
+                <Wifi className="w-4 h-4" /> {t('directory.online', 'Онлайн')}
+              </span>
+            )}
+          </div>
+
+          {/* Stats */}
+          <div className="mt-8 flex items-center justify-center gap-6 sm:gap-10">
+            {[
+              { value: org.studentsCount || 0, label: t('directory.students', 'Студенты'), icon: Users },
+              { value: org.teachersCount || 0, label: t('directory.teachers', 'Преподаватели'), icon: BookOpen },
+              { value: org.courses?.length || 0, label: t('directory.courses', 'Курсы'), icon: FolderOpen },
+            ].map((s, i) => (
+              <div key={i} className="text-center">
+                <p className="text-2xl sm:text-3xl font-extrabold text-white">{s.value}</p>
+                <p className="text-xs text-white/50 mt-0.5 font-medium">{s.label}</p>
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
 
-      {/* Main Content */}
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 -mt-16 relative z-10 pb-16">
-        {/* ═══ Hero Card ═══ */}
-        <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-slate-200/60 dark:border-gray-700/50 overflow-hidden">
-          <div className="p-6 sm:p-8">
-            <div className="flex flex-col sm:flex-row items-start gap-5">
-              <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-violet-100 to-indigo-100 dark:from-violet-900/40 dark:to-indigo-900/40 flex items-center justify-center overflow-hidden flex-shrink-0 shadow-lg">
-                {org.logo ? (
-                  <img src={org.logo} alt={org.name} className="w-20 h-20 object-cover rounded-2xl" />
-                ) : (
-                  <Building2 className="w-10 h-10 text-violet-600 dark:text-violet-400" />
-                )}
-              </div>
-              <div className="flex-1 min-w-0">
-                <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 dark:text-white">{org.name}</h1>
-                <div className="flex flex-wrap items-center gap-3 mt-2 text-sm text-slate-500 dark:text-slate-400">
-                  {org.city && (
-                    <span className="flex items-center gap-1"><MapPin className="w-4 h-4" /> {org.city}{org.country && `, ${org.country}`}</span>
-                  )}
-                  {org.isOnline && (
-                    <span className="flex items-center gap-1 text-green-600 dark:text-green-400"><Wifi className="w-4 h-4" /> {t('directory.online', 'Онлайн')}</span>
-                  )}
-                  {org.createdAt && (
-                    <span className="flex items-center gap-1"><CalendarDays className="w-4 h-4" /> {new Date(org.createdAt).getFullYear()}</span>
-                  )}
-                </div>
-              </div>
-              <div className="flex gap-2 w-full sm:w-auto">
-                {renderCTA()}
-              </div>
-            </div>
-
-            {/* Subjects Tags */}
+      {/* ═══════════════════════════════════════ */}
+      {/*  2. CTA SECTION (main conversion point)  */}
+      {/* ═══════════════════════════════════════ */}
+      <Section className="max-w-4xl mx-auto px-4 sm:px-6 -mt-8 relative z-20">
+        <div className="bg-white dark:bg-gray-800 rounded-3xl shadow-2xl border border-slate-200/60 dark:border-gray-700/50 p-5 sm:p-6">
+          <div className="flex flex-col items-center gap-3">
+            {renderCTA()}
             {org.subjects?.length > 0 && (
-              <div className="mt-5 flex flex-wrap gap-2">
+              <div className="flex flex-wrap items-center justify-center gap-2 mt-1">
                 {org.subjects.map((s: string, i: number) => (
-                  <span key={i} className="px-3 py-1 bg-violet-50 dark:bg-violet-900/20 text-violet-700 dark:text-violet-300 rounded-full text-sm font-medium">
+                  <span key={i} className="px-3 py-1 bg-violet-50 dark:bg-violet-900/20 text-violet-700 dark:text-violet-300 rounded-full text-xs font-semibold">
                     {s}
                   </span>
                 ))}
               </div>
             )}
-
-            {/* Stats Row */}
-            <div className="grid grid-cols-3 gap-4 mt-6">
-              {[
-                { icon: Users, label: t('directory.students', 'Студенты'), value: org.studentsCount },
-                { icon: BookOpen, label: t('directory.teachers', 'Преподаватели'), value: org.teachersCount },
-                { icon: FolderOpen, label: t('directory.courses', 'Курсы'), value: org.courses?.length || 0 },
-              ].map((s, i) => (
-                <div key={i} className="text-center p-3 rounded-xl bg-slate-50 dark:bg-gray-700/30">
-                  <s.icon className="w-5 h-5 text-violet-500 mx-auto mb-1" />
-                  <p className="text-xl font-bold text-slate-900 dark:text-white">{s.value || 0}</p>
-                  <p className="text-xs text-slate-500 dark:text-slate-400">{s.label}</p>
-                </div>
-              ))}
-            </div>
           </div>
         </div>
+      </Section>
 
-        {/* ═══ Description ═══ */}
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 pb-32 space-y-6 mt-6">
+
+        {/* ═══════════════════════════════════════ */}
+        {/*  3. ABOUT SECTION                       */}
+        {/* ═══════════════════════════════════════ */}
         {org.description && (
-          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-slate-200/60 dark:border-gray-700/50 p-6 mt-5">
-            <h3 className="font-semibold text-slate-900 dark:text-white mb-3 flex items-center gap-2">
-              <Building2 className="w-4 h-4 text-violet-500" /> {t('directory.about', 'Об организации')}
-            </h3>
-            <p className="text-slate-600 dark:text-slate-300 leading-relaxed whitespace-pre-line">{org.description}</p>
-          </div>
-        )}
-
-        {/* ═══ Working Hours & Address ═══ */}
-        {(org.workingHours || org.address) && (
-          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-slate-200/60 dark:border-gray-700/50 p-6 mt-5">
-            <h3 className="font-semibold text-slate-900 dark:text-white mb-3 flex items-center gap-2">
-              <Clock className="w-4 h-4 text-violet-500" /> {t('directory.schedule', 'Расписание и адрес')}
-            </h3>
-            <div className="space-y-3">
-              {org.workingHours && (
-                <div className="flex items-start gap-3">
-                  <Clock className="w-4 h-4 text-slate-400 mt-0.5" />
-                  <div>
-                    <p className="text-xs text-slate-500 dark:text-slate-400 font-medium mb-0.5">{t('directory.workingHours', 'Рабочие часы')}</p>
-                    <p className="text-sm text-slate-700 dark:text-slate-300">{org.workingHours}</p>
-                  </div>
-                </div>
+          <Section delay={100}>
+            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-slate-200/60 dark:border-gray-700/50 p-6 sm:p-8">
+              <h2 className="text-lg font-bold text-slate-900 dark:text-white mb-3 flex items-center gap-2">
+                <Building2 className="w-5 h-5 text-violet-500" /> {t('directory.about', 'О нас')}
+              </h2>
+              <p className={`text-slate-600 dark:text-slate-300 leading-relaxed whitespace-pre-line ${!descExpanded ? 'line-clamp-4' : ''}`}>
+                {org.description}
+              </p>
+              {org.description.length > 200 && (
+                <button
+                  onClick={() => setDescExpanded(!descExpanded)}
+                  className="mt-2 text-violet-600 dark:text-violet-400 text-sm font-medium hover:underline flex items-center gap-1"
+                >
+                  {descExpanded ? t('common.less', 'Свернуть') : t('common.more', 'Подробнее')}
+                  <ChevronDown className={`w-4 h-4 transition-transform ${descExpanded ? 'rotate-180' : ''}`} />
+                </button>
               )}
-              {org.address && (
-                <div className="flex items-start gap-3">
-                  <MapPin className="w-4 h-4 text-slate-400 mt-0.5" />
-                  <div>
-                    <p className="text-xs text-slate-500 dark:text-slate-400 font-medium mb-0.5">{t('directory.address', 'Адрес')}</p>
-                    <p className="text-sm text-slate-700 dark:text-slate-300">{org.address}</p>
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-        )}
 
-        {/* ═══ Courses ═══ */}
-        {org.courses?.length > 0 && (
-          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-slate-200/60 dark:border-gray-700/50 p-6 mt-5">
-            <h3 className="font-semibold text-slate-900 dark:text-white mb-4 flex items-center gap-2">
-              <FolderOpen className="w-4 h-4 text-violet-500" /> {t('directory.coursesTitle', 'Программы и курсы')}
-            </h3>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              {org.courses.map((c: any) => (
-                <div key={c.id} className="bg-slate-50 dark:bg-gray-700/30 rounded-xl p-4">
-                  <h4 className="font-medium text-slate-900 dark:text-white text-sm mb-1">{c.title}</h4>
-                  {c.description && (
-                    <p className="text-xs text-slate-500 dark:text-slate-400 line-clamp-2">{c.description}</p>
+              {/* Working hours + address inline */}
+              {(org.workingHours || org.address) && (
+                <div className="mt-5 pt-5 border-t border-slate-100 dark:border-gray-700 flex flex-wrap gap-6">
+                  {org.workingHours && (
+                    <div className="flex items-start gap-2.5">
+                      <Clock className="w-4 h-4 text-violet-400 mt-0.5" />
+                      <div>
+                        <p className="text-[11px] text-slate-400 font-semibold uppercase tracking-wider">{t('directory.workingHours', 'Рабочие часы')}</p>
+                        <p className="text-sm text-slate-700 dark:text-slate-300 mt-0.5">{org.workingHours}</p>
+                      </div>
+                    </div>
+                  )}
+                  {org.address && (
+                    <div className="flex items-start gap-2.5">
+                      <MapPin className="w-4 h-4 text-violet-400 mt-0.5" />
+                      <div>
+                        <p className="text-[11px] text-slate-400 font-semibold uppercase tracking-wider">{t('directory.address', 'Адрес')}</p>
+                        <p className="text-sm text-slate-700 dark:text-slate-300 mt-0.5">{org.address}</p>
+                      </div>
+                    </div>
                   )}
                 </div>
-              ))}
+              )}
             </div>
-          </div>
+          </Section>
         )}
 
-        {/* ═══ Branches ═══ */}
+        {/* ═══════════════════════════════════════ */}
+        {/*  4. COURSES                              */}
+        {/* ═══════════════════════════════════════ */}
+        <Section delay={200}>
+          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-slate-200/60 dark:border-gray-700/50 p-6 sm:p-8">
+            <h2 className="text-lg font-bold text-slate-900 dark:text-white mb-5 flex items-center gap-2">
+              <FolderOpen className="w-5 h-5 text-violet-500" /> {t('directory.coursesTitle', 'Программы и курсы')}
+            </h2>
+            {org.courses?.length > 0 ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                {org.courses.map((c: any, i: number) => (
+                  <div
+                    key={c.id}
+                    className="group bg-gradient-to-br from-slate-50 to-white dark:from-gray-700/40 dark:to-gray-700/20 rounded-xl p-5 border border-slate-100 dark:border-gray-600/50 hover:border-violet-200 dark:hover:border-violet-800 hover:shadow-lg transition-all duration-300 hover:scale-[1.02] cursor-default"
+                    style={{ animationDelay: `${i * 80}ms` }}
+                  >
+                    <div className="w-10 h-10 rounded-xl bg-violet-100 dark:bg-violet-900/30 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
+                      <BookOpen className="w-5 h-5 text-violet-600 dark:text-violet-400" />
+                    </div>
+                    <h4 className="font-semibold text-slate-900 dark:text-white text-sm mb-1.5">{c.title}</h4>
+                    {c.description && (
+                      <p className="text-xs text-slate-500 dark:text-slate-400 line-clamp-2 leading-relaxed">{c.description}</p>
+                    )}
+                    {c.subject && (
+                      <span className="inline-block mt-3 px-2.5 py-0.5 bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 rounded-md text-[10px] font-bold uppercase tracking-wider">
+                        {c.subject}
+                      </span>
+                    )}
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-10 text-slate-400 dark:text-slate-500">
+                <FolderOpen className="w-10 h-10 mx-auto mb-2 opacity-40" />
+                <p className="text-sm">{t('directory.noCourses', 'Курсы скоро появятся')}</p>
+              </div>
+            )}
+          </div>
+        </Section>
+
+        {/* ═══════════════════════════════════════ */}
+        {/*  5. BRANCHES BY CITY                     */}
+        {/* ═══════════════════════════════════════ */}
         {Object.keys(branchesByCity).length > 0 && (
-          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-slate-200/60 dark:border-gray-700/50 p-6 mt-5">
-            <h3 className="font-semibold text-slate-900 dark:text-white mb-6 flex items-center gap-2">
-              <Building2 className="w-4 h-4 text-violet-500" /> {t('directory.branches', 'Филиалы')}
-              <span className="bg-violet-100 text-violet-700 dark:bg-violet-900/40 dark:text-violet-300 px-2.5 py-0.5 rounded-full text-xs font-bold ml-1">
-                {org.branches?.length || 0}
-              </span>
-            </h3>
+          <Section delay={300}>
+            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-slate-200/60 dark:border-gray-700/50 p-6 sm:p-8">
+              <h2 className="text-lg font-bold text-slate-900 dark:text-white mb-6 flex items-center gap-2">
+                <Building2 className="w-5 h-5 text-violet-500" /> {t('directory.branches', 'Филиалы')}
+                <span className="bg-violet-100 text-violet-700 dark:bg-violet-900/40 dark:text-violet-300 px-2.5 py-0.5 rounded-full text-xs font-bold ml-1">
+                  {org.branches?.length || 0}
+                </span>
+              </h2>
 
-            <div className="space-y-8">
-              {Object.entries(branchesByCity).map(([city, cityBranches]: [string, any]) => (
-                <div key={city}>
-                  <h4 className="text-[13px] font-bold text-slate-400 dark:text-slate-500 mb-3 tracking-wider uppercase flex items-center gap-2">
-                    <MapPin className="w-3.5 h-3.5" /> ФИЛИАЛЫ В: {city}
-                  </h4>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    {cityBranches.map((b: any) => (
-                      <div key={b.id} className="bg-slate-50 dark:bg-gray-700/30 rounded-xl p-5 border border-slate-100 dark:border-gray-600/50 relative overflow-hidden group hover:border-violet-200 dark:hover:border-violet-800 transition-colors">
-                        <div className="flex justify-between items-start mb-2">
-                          <h5 className="font-semibold text-slate-900 dark:text-white text-base">{b.name}</h5>
-                          {b.latitude && b.longitude && (
-                            <a
-                              href={`https://www.google.com/maps/search/?api=1&query=${b.latitude},${b.longitude}`}
-                              target="_blank" rel="noopener noreferrer"
-                              className="text-slate-600 bg-white border border-slate-200 hover:border-violet-300 hover:text-violet-600 dark:bg-gray-800 dark:border-gray-600 dark:text-slate-300 dark:hover:border-violet-500 dark:hover:text-violet-400 px-2 py-1 rounded text-[10px] uppercase font-bold tracking-wider transition-all inline-flex items-center gap-1 shadow-sm"
-                            >
-                              <MapPin className="w-2.5 h-2.5" /> Карта
-                            </a>
-                          )}
-                        </div>
-                        {b.address && <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">{b.address}</p>}
-                        
-                        <div className="space-y-2.5 mt-auto bg-white/60 dark:bg-gray-800/60 p-3 rounded-lg border border-slate-100 dark:border-gray-700/50">
-                          {b.contactName && (
-                            <div className="flex items-center gap-2.5 text-xs text-slate-700 dark:text-slate-300">
-                              <Users className="w-3.5 h-3.5 text-slate-400" /> <span className="font-medium">{b.contactName}</span>
-                            </div>
-                          )}
-                          {b.phone && (
-                            <div className="flex items-center gap-2.5 text-xs text-slate-700 dark:text-slate-300">
-                              <Phone className="w-3.5 h-3.5 text-slate-400" /> 
-                              <a href={`tel:${b.phone}`} className="hover:text-violet-600 transition font-medium">{b.phone}</a>
-                            </div>
-                          )}
-                          {b.whatsapp && (
-                            <div className="flex items-center gap-2.5 text-xs font-medium text-green-600 dark:text-green-400 pt-1">
-                              <MessageCircle className="w-3.5 h-3.5" /> 
-                              <a href={`https://wa.me/${b.whatsapp.replace(/[^0-9]/g, '')}`} target="_blank" rel="noopener noreferrer" className="hover:underline flex items-center gap-1">
-                                WhatsApp <ExternalLink className="w-2.5 h-2.5" />
+              <div className="space-y-8">
+                {Object.entries(branchesByCity).map(([city, cityBranches]: [string, any]) => (
+                  <div key={city}>
+                    <div className="flex items-center gap-2 mb-4">
+                      <MapPin className="w-4 h-4 text-violet-500" />
+                      <h3 className="text-sm font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
+                        {city}
+                      </h3>
+                      <span className="text-[11px] text-slate-400 bg-slate-100 dark:bg-gray-700 px-2 py-0.5 rounded-full font-medium">
+                        {cityBranches.length}
+                      </span>
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      {cityBranches.map((b: any, idx: number) => (
+                        <div
+                          key={b.id}
+                          className="group bg-gradient-to-br from-slate-50 to-white dark:from-gray-700/40 dark:to-gray-700/20 rounded-xl p-5 border border-slate-100 dark:border-gray-600/50 hover:border-violet-200 dark:hover:border-violet-800 hover:shadow-lg transition-all duration-300 hover:scale-[1.02]"
+                          style={{ animationDelay: `${idx * 80}ms` }}
+                        >
+                          {/* Branch name + map link */}
+                          <div className="flex justify-between items-start mb-2">
+                            <h4 className="font-bold text-slate-900 dark:text-white">{b.name}</h4>
+                            {b.latitude && b.longitude && (
+                              <a
+                                href={`https://www.google.com/maps/search/?api=1&query=${b.latitude},${b.longitude}`}
+                                target="_blank" rel="noopener noreferrer"
+                                className="flex items-center gap-1 px-2.5 py-1 bg-violet-50 dark:bg-violet-900/20 text-violet-600 dark:text-violet-400 rounded-lg text-[10px] font-bold uppercase tracking-wider hover:bg-violet-100 dark:hover:bg-violet-900/40 transition"
+                              >
+                                <MapPin className="w-3 h-3" /> Карта <ExternalLink className="w-2.5 h-2.5" />
                               </a>
+                            )}
+                          </div>
+
+                          {b.address && (
+                            <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">{b.address}</p>
+                          )}
+
+                          {/* Manager contact card */}
+                          {(b.contactName || b.phone || b.whatsapp) && (
+                            <div className="bg-white dark:bg-gray-800 p-3.5 rounded-xl border border-slate-100 dark:border-gray-700/50 space-y-2">
+                              {b.contactName && (
+                                <div className="flex items-center gap-2 text-sm">
+                                  <div className="w-7 h-7 rounded-lg bg-violet-100 dark:bg-violet-900/30 flex items-center justify-center">
+                                    <Users className="w-3.5 h-3.5 text-violet-600 dark:text-violet-400" />
+                                  </div>
+                                  <span className="font-semibold text-slate-800 dark:text-slate-200">{b.contactName}</span>
+                                  <span className="text-[10px] text-slate-400 uppercase tracking-wider">{t('directory.manager', 'Менеджер')}</span>
+                                </div>
+                              )}
+                              <div className="flex flex-wrap gap-2 mt-1">
+                                {b.phone && (
+                                  <a
+                                    href={`tel:${b.phone}`}
+                                    className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-50 dark:bg-gray-700/40 rounded-lg text-xs font-medium text-slate-700 dark:text-slate-300 hover:bg-violet-50 dark:hover:bg-violet-900/20 hover:text-violet-600 dark:hover:text-violet-400 transition"
+                                  >
+                                    <Phone className="w-3 h-3" /> {t('directory.call', 'Позвонить')}
+                                  </a>
+                                )}
+                                {b.whatsapp && (
+                                  <a
+                                    href={`https://wa.me/${b.whatsapp.replace(/[^0-9]/g, '')}`}
+                                    target="_blank" rel="noopener noreferrer"
+                                    className="flex items-center gap-1.5 px-3 py-1.5 bg-green-50 dark:bg-green-900/20 rounded-lg text-xs font-bold text-green-600 dark:text-green-400 hover:bg-green-100 dark:hover:bg-green-900/40 transition"
+                                  >
+                                    <MessageCircle className="w-3 h-3" /> WhatsApp
+                                  </a>
+                                )}
+                              </div>
                             </div>
                           )}
                         </div>
-                      </div>
-                    ))}
+                      ))}
+                    </div>
                   </div>
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
-          </div>
+          </Section>
         )}
 
-        {/* ═══ Photo Gallery ═══ */}
+        {/* ═══════════════════════════════════════ */}
+        {/*  6. GOOGLE MAP                           */}
+        {/* ═══════════════════════════════════════ */}
+        {branchesWithCoords.length > 0 && (
+          <Section delay={400}>
+            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-slate-200/60 dark:border-gray-700/50 overflow-hidden">
+              <div className="px-6 py-5 border-b border-slate-100 dark:border-gray-700">
+                <h2 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                  <MapPin className="w-5 h-5 text-violet-500" /> {t('directory.map', 'На карте')}
+                </h2>
+              </div>
+              <div className="relative w-full h-[300px] sm:h-[400px]">
+                {getMapUrl() ? (
+                  <iframe
+                    src={getMapUrl()!}
+                    className="absolute inset-0 w-full h-full border-0"
+                    allowFullScreen
+                    loading="lazy"
+                    referrerPolicy="no-referrer-when-downgrade"
+                    title="Branch locations"
+                  />
+                ) : (
+                  <div className="flex items-center justify-center h-full text-slate-400">
+                    <MapPin className="w-8 h-8" />
+                  </div>
+                )}
+              </div>
+              {/* Address list under map */}
+              <div className="p-4 grid grid-cols-1 sm:grid-cols-2 gap-2">
+                {branchesWithCoords.map((b: any) => (
+                  <a
+                    key={b.id}
+                    href={`https://www.google.com/maps/search/?api=1&query=${b.latitude},${b.longitude}`}
+                    target="_blank" rel="noopener noreferrer"
+                    className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-slate-50 dark:hover:bg-gray-700/40 transition text-sm text-slate-600 dark:text-slate-400 hover:text-violet-600 dark:hover:text-violet-400"
+                  >
+                    <MapPin className="w-3.5 h-3.5 flex-shrink-0" />
+                    <span className="truncate">{b.name}{b.address ? ` — ${b.address}` : ''}</span>
+                    <ExternalLink className="w-3 h-3 flex-shrink-0 opacity-40" />
+                  </a>
+                ))}
+              </div>
+            </div>
+          </Section>
+        )}
+
+        {/* ═══════════════════════════════════════ */}
+        {/*  7. PHOTO GALLERY                        */}
+        {/* ═══════════════════════════════════════ */}
         {org.photos?.length > 0 && (
-          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-slate-200/60 dark:border-gray-700/50 p-6 mt-5">
-            <h3 className="font-semibold text-slate-900 dark:text-white mb-4 flex items-center gap-2">
-              <Image className="w-4 h-4 text-violet-500" /> {t('directory.photos', 'Фотогалерея')}
-            </h3>
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-              {org.photos.map((url: string, i: number) => (
-                <img key={i} src={url} alt="" className="w-full h-32 sm:h-40 object-cover rounded-xl shadow-sm" />
-              ))}
+          <Section delay={500}>
+            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-slate-200/60 dark:border-gray-700/50 p-6">
+              <h2 className="text-lg font-bold text-slate-900 dark:text-white mb-4 flex items-center gap-2">
+                <Image className="w-5 h-5 text-violet-500" /> {t('directory.photos', 'Фотогалерея')}
+              </h2>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                {org.photos.map((url: string, i: number) => (
+                  <img key={i} src={url} alt="" className="w-full h-36 sm:h-44 object-cover rounded-xl shadow-sm hover:scale-[1.03] transition-transform duration-300 cursor-pointer" />
+                ))}
+              </div>
             </div>
-          </div>
+          </Section>
         )}
 
-        {/* ═══ Contacts & Social Links ═══ */}
+        {/* ═══════════════════════════════════════ */}
+        {/*  8. CONTACTS                             */}
+        {/* ═══════════════════════════════════════ */}
         {hasContacts && (
-          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-slate-200/60 dark:border-gray-700/50 p-6 mt-5">
-            <h3 className="font-semibold text-slate-900 dark:text-white mb-4 flex items-center gap-2">
-              <Mail className="w-4 h-4 text-violet-500" /> {t('directory.contactTitle', 'Контакты')}
-            </h3>
-            <div className="flex flex-wrap gap-3">
-              {org.contactEmail && (
-                <a href={`mailto:${org.contactEmail}`} className="flex items-center gap-2.5 px-4 py-2.5 bg-slate-50 dark:bg-gray-700/40 rounded-xl text-sm text-slate-700 dark:text-slate-300 hover:bg-violet-50 dark:hover:bg-violet-900/20 transition group">
-                  <div className="w-8 h-8 rounded-lg bg-violet-100 dark:bg-violet-900/30 flex items-center justify-center">
-                    <Mail className="w-4 h-4 text-violet-600 dark:text-violet-400" />
-                  </div>
-                  <span className="group-hover:text-violet-600 dark:group-hover:text-violet-400 transition">{org.contactEmail}</span>
-                </a>
-              )}
-              {org.contactPhone && (
-                <a href={`tel:${org.contactPhone}`} className="flex items-center gap-2.5 px-4 py-2.5 bg-slate-50 dark:bg-gray-700/40 rounded-xl text-sm text-slate-700 dark:text-slate-300 hover:bg-violet-50 dark:hover:bg-violet-900/20 transition group">
-                  <div className="w-8 h-8 rounded-lg bg-green-100 dark:bg-green-900/30 flex items-center justify-center">
-                    <Phone className="w-4 h-4 text-green-600 dark:text-green-400" />
-                  </div>
-                  <span className="group-hover:text-green-600 dark:group-hover:text-green-400 transition">{org.contactPhone}</span>
-                </a>
-              )}
-              {socialLinks.telegram && (
-                <a href={`https://t.me/${socialLinks.telegram.replace(/^@/, '')}`} target="_blank" rel="noopener noreferrer"
-                  className="flex items-center gap-2.5 px-4 py-2.5 bg-slate-50 dark:bg-gray-700/40 rounded-xl text-sm text-slate-700 dark:text-slate-300 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition group">
-                  <div className="w-8 h-8 rounded-lg bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
-                    <Send className="w-4 h-4 text-blue-500" />
-                  </div>
-                  <span className="group-hover:text-blue-500 transition">Telegram</span>
-                  <ExternalLink className="w-3 h-3 opacity-40" />
-                </a>
-              )}
-              {socialLinks.whatsapp && (
-                <a href={`https://wa.me/${socialLinks.whatsapp.replace(/[^0-9]/g, '')}`} target="_blank" rel="noopener noreferrer"
-                  className="flex items-center gap-2.5 px-4 py-2.5 bg-slate-50 dark:bg-gray-700/40 rounded-xl text-sm text-slate-700 dark:text-slate-300 hover:bg-green-50 dark:hover:bg-green-900/20 transition group">
-                  <div className="w-8 h-8 rounded-lg bg-green-100 dark:bg-green-900/30 flex items-center justify-center">
-                    <MessageCircle className="w-4 h-4 text-green-600" />
-                  </div>
-                  <span className="group-hover:text-green-600 transition">WhatsApp</span>
-                  <ExternalLink className="w-3 h-3 opacity-40" />
-                </a>
-              )}
-              {socialLinks.instagram && (
-                <a href={`https://instagram.com/${socialLinks.instagram.replace(/^@/, '')}`} target="_blank" rel="noopener noreferrer"
-                  className="flex items-center gap-2.5 px-4 py-2.5 bg-slate-50 dark:bg-gray-700/40 rounded-xl text-sm text-slate-700 dark:text-slate-300 hover:bg-pink-50 dark:hover:bg-pink-900/20 transition group">
-                  <div className="w-8 h-8 rounded-lg bg-pink-100 dark:bg-pink-900/30 flex items-center justify-center">
-                    <svg className="w-4 h-4 text-pink-600" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 100 12.324 6.162 6.162 0 000-12.324zM12 16a4 4 0 110-8 4 4 0 010 8zm6.406-11.845a1.44 1.44 0 100 2.881 1.44 1.44 0 000-2.881z"/></svg>
-                  </div>
-                  <span className="group-hover:text-pink-600 transition">Instagram</span>
-                  <ExternalLink className="w-3 h-3 opacity-40" />
-                </a>
-              )}
-              {socialLinks.website && (
-                <a href={socialLinks.website.startsWith('http') ? socialLinks.website : `https://${socialLinks.website}`} target="_blank" rel="noopener noreferrer"
-                  className="flex items-center gap-2.5 px-4 py-2.5 bg-slate-50 dark:bg-gray-700/40 rounded-xl text-sm text-slate-700 dark:text-slate-300 hover:bg-violet-50 dark:hover:bg-violet-900/20 transition group">
-                  <div className="w-8 h-8 rounded-lg bg-violet-100 dark:bg-violet-900/30 flex items-center justify-center">
-                    <Globe className="w-4 h-4 text-violet-600 dark:text-violet-400" />
-                  </div>
-                  <span className="group-hover:text-violet-600 dark:group-hover:text-violet-400 transition">{t('directory.website', 'Веб-сайт')}</span>
-                  <ExternalLink className="w-3 h-3 opacity-40" />
-                </a>
-              )}
+          <Section delay={600}>
+            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-slate-200/60 dark:border-gray-700/50 p-6 sm:p-8">
+              <h2 className="text-lg font-bold text-slate-900 dark:text-white mb-5 flex items-center gap-2">
+                <Mail className="w-5 h-5 text-violet-500" /> {t('directory.contactTitle', 'Контакты')}
+              </h2>
+
+              {/* Primary contact actions */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-5">
+                {org.contactPhone && (
+                  <a href={`tel:${org.contactPhone}`}
+                    className="flex items-center gap-3 px-5 py-4 bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/10 border border-green-200 dark:border-green-800/40 rounded-2xl hover:shadow-md hover:scale-[1.02] transition-all group"
+                  >
+                    <div className="w-11 h-11 rounded-xl bg-green-500 flex items-center justify-center shadow-lg shadow-green-500/30">
+                      <Phone className="w-5 h-5 text-white" />
+                    </div>
+                    <div>
+                      <p className="text-xs text-green-600/70 dark:text-green-400/70 font-semibold">{t('directory.call', 'Позвонить')}</p>
+                      <p className="text-sm font-bold text-green-800 dark:text-green-300">{org.contactPhone}</p>
+                    </div>
+                  </a>
+                )}
+                {socialLinks.whatsapp && (
+                  <a href={`https://wa.me/${socialLinks.whatsapp.replace(/[^0-9]/g, '')}`} target="_blank" rel="noopener noreferrer"
+                    className="flex items-center gap-3 px-5 py-4 bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/10 border border-green-200 dark:border-green-800/40 rounded-2xl hover:shadow-md hover:scale-[1.02] transition-all group"
+                  >
+                    <div className="w-11 h-11 rounded-xl bg-green-500 flex items-center justify-center shadow-lg shadow-green-500/30">
+                      <MessageCircle className="w-5 h-5 text-white" />
+                    </div>
+                    <div>
+                      <p className="text-xs text-green-600/70 dark:text-green-400/70 font-semibold">WhatsApp</p>
+                      <p className="text-sm font-bold text-green-800 dark:text-green-300">{t('directory.writeNow', 'Написать сейчас')}</p>
+                    </div>
+                  </a>
+                )}
+              </div>
+
+              {/* Secondary contacts */}
+              <div className="flex flex-wrap gap-3">
+                {org.contactEmail && (
+                  <a href={`mailto:${org.contactEmail}`} className="flex items-center gap-2.5 px-4 py-3 bg-slate-50 dark:bg-gray-700/40 rounded-xl text-sm text-slate-700 dark:text-slate-300 hover:bg-violet-50 dark:hover:bg-violet-900/20 transition group">
+                    <div className="w-8 h-8 rounded-lg bg-violet-100 dark:bg-violet-900/30 flex items-center justify-center">
+                      <Mail className="w-4 h-4 text-violet-600 dark:text-violet-400" />
+                    </div>
+                    <span className="group-hover:text-violet-600 dark:group-hover:text-violet-400 transition">{org.contactEmail}</span>
+                  </a>
+                )}
+                {socialLinks.telegram && (
+                  <a href={`https://t.me/${socialLinks.telegram.replace(/^@/, '')}`} target="_blank" rel="noopener noreferrer"
+                    className="flex items-center gap-2.5 px-4 py-3 bg-slate-50 dark:bg-gray-700/40 rounded-xl text-sm text-slate-700 dark:text-slate-300 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition group"
+                  >
+                    <div className="w-8 h-8 rounded-lg bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
+                      <Send className="w-4 h-4 text-blue-500" />
+                    </div>
+                    <span className="group-hover:text-blue-500 transition">Telegram</span>
+                  </a>
+                )}
+                {socialLinks.instagram && (
+                  <a href={`https://instagram.com/${socialLinks.instagram.replace(/^@/, '')}`} target="_blank" rel="noopener noreferrer"
+                    className="flex items-center gap-2.5 px-4 py-3 bg-slate-50 dark:bg-gray-700/40 rounded-xl text-sm text-slate-700 dark:text-slate-300 hover:bg-pink-50 dark:hover:bg-pink-900/20 transition group"
+                  >
+                    <div className="w-8 h-8 rounded-lg bg-pink-100 dark:bg-pink-900/30 flex items-center justify-center">
+                      <svg className="w-4 h-4 text-pink-600" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 100 12.324 6.162 6.162 0 000-12.324zM12 16a4 4 0 110-8 4 4 0 010 8zm6.406-11.845a1.44 1.44 0 100 2.881 1.44 1.44 0 000-2.881z"/></svg>
+                    </div>
+                    <span className="group-hover:text-pink-600 transition">Instagram</span>
+                  </a>
+                )}
+                {socialLinks.website && (
+                  <a href={socialLinks.website.startsWith('http') ? socialLinks.website : `https://${socialLinks.website}`} target="_blank" rel="noopener noreferrer"
+                    className="flex items-center gap-2.5 px-4 py-3 bg-slate-50 dark:bg-gray-700/40 rounded-xl text-sm text-slate-700 dark:text-slate-300 hover:bg-violet-50 dark:hover:bg-violet-900/20 transition group"
+                  >
+                    <div className="w-8 h-8 rounded-lg bg-violet-100 dark:bg-violet-900/30 flex items-center justify-center">
+                      <Globe className="w-4 h-4 text-violet-600 dark:text-violet-400" />
+                    </div>
+                    <span className="group-hover:text-violet-600 dark:group-hover:text-violet-400 transition">{t('directory.website', 'Веб-сайт')}</span>
+                  </a>
+                )}
+              </div>
             </div>
-          </div>
+          </Section>
         )}
 
-        {/* ═══ Bottom CTA (mobile-friendly sticky) ═══ */}
-        {!joinStatus && !profile && (
-          <div className="fixed bottom-0 left-0 right-0 bg-white/90 dark:bg-gray-900/90 backdrop-blur-lg border-t border-slate-200 dark:border-gray-700 p-4 sm:hidden z-50">
-            <div className="flex gap-2">
-              <Link
-                to={`/register?orgSlug=${slug}`}
-                className="flex-1 flex items-center justify-center gap-2 py-3 bg-violet-600 text-white rounded-xl font-medium text-sm"
-              >
-                <UserPlus className="w-4 h-4" />
-                {t('directory.signUp', 'Регистрация')}
-              </Link>
-              <Link
-                to={`/login?orgSlug=${slug}`}
-                className="flex-1 flex items-center justify-center gap-2 py-3 bg-slate-100 dark:bg-gray-700 text-slate-700 dark:text-white rounded-xl font-medium text-sm"
-              >
-                <LogIn className="w-4 h-4" />
-                {t('directory.login', 'Войти')}
-              </Link>
+        {/* Empty state: no branches, no courses, no contacts */}
+        {!org.courses?.length && Object.keys(branchesByCity).length === 0 && !hasContacts && (
+          <Section delay={200}>
+            <div className="text-center py-16 text-slate-400 dark:text-slate-500">
+              <Building2 className="w-12 h-12 mx-auto mb-3 opacity-30" />
+              <p className="text-sm">{t('directory.noDetails', 'Подробная информация скоро появится')}</p>
             </div>
-          </div>
+          </Section>
         )}
+      </div>
+
+      {/* ═══════════════════════════════════════ */}
+      {/*  STICKY CTA (mobile)                     */}
+      {/* ═══════════════════════════════════════ */}
+      <div className="fixed bottom-0 left-0 right-0 bg-white/95 dark:bg-gray-900/95 backdrop-blur-lg border-t border-slate-200 dark:border-gray-700 p-3 sm:hidden z-50 safe-area-bottom">
+        {renderCTA(true)}
       </div>
     </div>
   );

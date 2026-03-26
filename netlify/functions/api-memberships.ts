@@ -74,7 +74,7 @@ const handler: Handler = async (event: HandlerEvent) => {
     const orgDoc = await adminDb.collection('organizations').doc(params.orgId).get();
     if (!orgDoc.exists) return notFound('Organization not found');
     const org = orgDoc.data()!;
-    if (!org.publicProfileEnabled && !org.isPublic) return forbidden();
+    if (!org.isPublic && org.status !== 'active') return forbidden();
 
     const snap = await adminDb.collection('orgMembers').doc(params.orgId)
       .collection('members')
@@ -149,8 +149,8 @@ const handler: Handler = async (event: HandlerEvent) => {
       const org = orgDoc.data();
       const orgId = orgDoc.id;
 
-      // Verify public profile is enabled and org is active
-      if (!org.publicProfileEnabled || org.status !== 'active') {
+      // Verify org is active
+      if (org.status !== 'active') {
         return ok({ status: 'org_unavailable' });
       }
 

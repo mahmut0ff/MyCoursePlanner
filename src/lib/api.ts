@@ -507,3 +507,16 @@ export const apiUpdatePaymentPlan = (planId: string, data: any) =>
 
 export const apiGetFinanceMetrics = (branchId?: string) =>
   apiRequest('api-finance-metrics', 'GET', undefined, branchId ? { branchId } : undefined);
+
+// ============================================================
+// AI ORGANIZATION MANAGER API
+// ============================================================
+
+export const apiGetAIManagerSettings = (organizationId: string) =>
+  apiRequest('api-ai-org-manager', 'GET', undefined, { action: 'getSettings', organizationId });
+
+export const apiUpdateAIManagerSettings = (data: any) =>
+  apiRequest('api-ai-org-manager', 'POST', data, { action: 'updateSettings' });
+
+export const apiAIManagerChat = (organizationId: string, messages: any[]) =>
+  apiRequest('api-ai-org-manager', 'POST', { messages }, { action: 'chat', organizationId });

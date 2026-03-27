@@ -7,12 +7,13 @@ import { storage } from '../../lib/firebase';
 import {
   Save, Building2, GraduationCap, Check, Bell, Lock, Palette, BarChart3,
   Globe, Database, User, Shield, Eye, EyeOff, Camera, Loader2, MapPin, Phone, Mail, Clock,
-  QrCode, Download, Send, MessageCircle, Printer, Copy, CheckCircle,
+  QrCode, Download, Send, MessageCircle, Printer, Copy, CheckCircle, Bot
 } from 'lucide-react';
 import type { OrgSettings } from '../../types';
 import QRCode from 'qrcode';
+import { AIManagerTab } from './AIManagerTab';
 
-type Tab = 'profile' | 'general' | 'academic' | 'branding' | 'visitcard' | 'notifications' | 'localization' | 'security' | 'data' | 'limits';
+type Tab = 'profile' | 'general' | 'academic' | 'branding' | 'visitcard' | 'notifications' | 'localization' | 'security' | 'data' | 'limits' | 'ai';
 
 const TABS: { id: Tab; icon: React.ElementType; labelKey: string }[] = [
   { id: 'profile', icon: User, labelKey: 'org.settings.profileTab' },
@@ -25,6 +26,7 @@ const TABS: { id: Tab; icon: React.ElementType; labelKey: string }[] = [
   { id: 'security', icon: Lock, labelKey: 'org.settings.security' },
   { id: 'data', icon: Database, labelKey: 'org.settings.dataTab' },
   { id: 'limits', icon: BarChart3, labelKey: 'org.settings.limits' },
+  { id: 'ai', icon: Bot, labelKey: 'AI Manager' },
 ];
 
 /* ════════════════════════════════════ PROFILE ════════════════════════════════════ */
@@ -709,6 +711,7 @@ const OrgSettingsPage: React.FC = () => {
       case 'security': return <SecurityTab settings={settings} update={update} />;
       case 'data': return <DataTab />;
       case 'limits': return <LimitsTab settings={settings} />;
+      case 'ai': return <AIManagerTab organizationId={settings.organizationId} />;
     }
   };
 

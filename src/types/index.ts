@@ -119,6 +119,23 @@ export interface Organization {
   updatedAt: string;
 }
 
+// ---- AI Manager Settings ----
+export interface AIManagerFAQ {
+  question: string;
+  answer: string;
+}
+
+export interface OrgAIManagerSettings {
+  organizationId: string;
+  isActive: boolean;
+  greetingMessage: string;
+  aboutOrganization: string;
+  faq: AIManagerFAQ[];
+  enrollmentPolicy: string;
+  customInstructions: string;
+  updatedAt: string;
+}
+
 export interface Subscription {
   id: string;
   organizationId: string;

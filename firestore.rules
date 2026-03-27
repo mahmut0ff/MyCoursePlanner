@@ -36,6 +36,11 @@ service cloud.firestore {
       allow write: if isSuperAdmin() || (request.auth != null && request.auth.uid == resource.data.ownerId);
     }
     
+    match /organizationAIManager/{orgId} {
+      allow read: if true; // Publicly readable for the chat widget to check isActive
+      allow write: if isSuperAdmin() || (request.auth != null && request.auth.uid == get(/databases/$(database)/documents/organizations/$(orgId)).data.ownerId);
+    }
+    
     match /orgMembers/{orgId}/members/{userId} {
       allow read: if request.auth != null;
       allow write: if isSuperAdmin();

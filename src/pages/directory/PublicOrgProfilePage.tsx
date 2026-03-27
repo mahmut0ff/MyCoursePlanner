@@ -7,7 +7,8 @@ import {
   Wifi, UserPlus, CheckCircle, Clock, Image, FolderOpen,
   Globe, MessageCircle, Send, LogIn, ExternalLink, AlertCircle, ChevronDown,
 } from 'lucide-react';
-import { apiGetPublicOrgProfile, apiPublicJoin } from '../../lib/api';
+import { apiGetPublicOrgProfile, apiPublicJoin, apiGetAIManagerSettings } from '../../lib/api';
+import { AIAssistantChat } from '../../components/ui/AIAssistantChat';
 
 /* ═══════════════════════════════════════════════ */
 /*  Scroll Animation Hook                          */
@@ -57,13 +58,18 @@ const PublicOrgProfilePage: React.FC = () => {
   const [joining, setJoining] = useState(false);
   const [joinStatus, setJoinStatus] = useState<string | null>(null);
   const [descExpanded, setDescExpanded] = useState(false);
+  const [aiSettings, setAiSettings] = useState<any>(null);
 
   useEffect(() => {
     if (!slug) return;
-    apiGetPublicOrgProfile(undefined, slug)
-      .then((data: any) => setOrg(data))
-      .catch(() => {})
-      .finally(() => setLoading(false));
+    Promise.all([
+      apiGetPublicOrgProfile(undefined, slug)
+        .then((data: any) => setOrg(data))
+        .catch(() => {}),
+      apiGetAIManagerSettings(slug)
+        .then((res: any) => setAiSettings(res.data))
+        .catch(() => {})
+    ]).finally(() => setLoading(false));
   }, [slug]);
 
   const handleJoin = useCallback(async () => {
@@ -617,9 +623,13 @@ const PublicOrgProfilePage: React.FC = () => {
       {/* ═══════════════════════════════════════ */}
       {/*  STICKY CTA (mobile)                     */}
       {/* ═══════════════════════════════════════ */}
-      <div className="fixed bottom-0 left-0 right-0 bg-white/95 dark:bg-gray-900/95 backdrop-blur-lg border-t border-slate-200 dark:border-gray-700 p-3 sm:hidden z-50 safe-area-bottom">
+      <div className="fixed bottom-0 left-0 right-0 bg-white/95 dark:bg-gray-900/95 backdrop-blur-lg border-t border-slate-200 dark:border-gray-700 p-3 sm:hidden z-40 safe-area-bottom">
         {renderCTA(true)}
       </div>
+
+      {aiSettings?.isActive && (
+        <AIAssistantChat organizationId={org.id} settings={aiSettings} />
+      )}
     </div>
   );
 };

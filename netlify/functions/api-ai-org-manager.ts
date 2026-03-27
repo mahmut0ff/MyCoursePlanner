@@ -131,13 +131,34 @@ ${branches.length ? branches.join('\n') : 'No public branches listed.'}
 
 Review the Chat History and respond accurately to the final user message.`;
 
-      // Build contents array for Gemini REST API (system instruction + history + latest message)
+      // Dynamic model discovery (same approach as api-ai-generate.ts)
+      let selectedModel = 'gemini-2.0-flash-lite';
+      try {
+        const modelsResponse = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${GEMINI_API_KEY}`);
+        if (modelsResponse.ok) {
+          const modelsData = await modelsResponse.json();
+          if (modelsData?.models) {
+            const supportedModels = modelsData.models.filter((m: any) =>
+              m.supportedGenerationMethods?.includes('generateContent')
+            );
+            const flashModels = supportedModels.filter((m: any) => m.name.includes('flash'));
+            if (flashModels.length > 0) {
+              selectedModel = flashModels[flashModels.length - 1].name.replace('models/', '');
+            } else if (supportedModels.length > 0) {
+              selectedModel = supportedModels[supportedModels.length - 1].name.replace('models/', '');
+            }
+          }
+        }
+      } catch (e) {
+        console.warn('Dynamic model discovery failed, using fallback:', e);
+      }
+
+      console.log('AI Chat: using model:', selectedModel);
+
+      // Build contents array (history + latest message)
       const rawHistory = messages.slice(0, -1).filter((m: any) => m.id !== 'greeting');
       const latestMessage = messages[messages.length - 1].content;
-
       const contents: any[] = [];
-      
-      // Add history (strictly alternating user/model)
       let expectedRole = 'user';
       for (const msg of rawHistory) {
         const mappedRole = msg.role === 'assistant' ? 'model' : 'user';
@@ -146,16 +167,14 @@ Review the Chat History and respond accurately to the final user message.`;
           expectedRole = expectedRole === 'user' ? 'model' : 'user';
         }
       }
-      // If history ends with 'user', drop it (latest message will be user)
       if (contents.length > 0 && contents[contents.length - 1].role === 'user') {
         contents.pop();
       }
-      // Add latest user message
       contents.push({ role: 'user', parts: [{ text: latestMessage }] });
 
-      // Direct REST API call (same pattern as ai-feedback.ts which works)
+      // Direct REST API call
       const geminiResponse = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`,
+        `https://generativelanguage.googleapis.com/v1beta/models/${selectedModel}:generateContent?key=${GEMINI_API_KEY}`,
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },

@@ -3,9 +3,9 @@ import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../contexts/AuthContext';
 import {
-  MapPin, Users, BookOpen, Mail, Phone, ArrowLeft, Building2,
-  Wifi, UserPlus, CheckCircle, Clock, Image, FolderOpen,
-  Globe, MessageCircle, Send, LogIn, ExternalLink, AlertCircle, ChevronDown,
+  MapPin, Mail, Phone, ArrowLeft, Building2,
+  Wifi, UserPlus, CheckCircle, Clock, FolderOpen,
+  Globe, MessageCircle, Send, LogIn, AlertCircle,
 } from 'lucide-react';
 import { apiGetPublicOrgProfile, apiPublicJoin, apiGetAIManagerSettings } from '../../lib/api';
 import { AIAssistantChat } from '../../components/ui/AIAssistantChat';
@@ -312,7 +312,7 @@ const PublicOrgProfilePage: React.FC = () => {
             </h2>
             {org.courses?.length > 0 ? (
               <div className="flex flex-col gap-3">
-                {org.courses.map((c: any, i: number) => (
+                {org.courses.map((c: any) => (
                   <div
                     key={c.id}
                     className="p-5 bg-white dark:bg-gray-800 border border-slate-200 dark:border-gray-700 rounded-lg hover:shadow-sm hover:border-blue-300 dark:hover:border-blue-600 transition-colors"
@@ -352,7 +352,7 @@ const PublicOrgProfilePage: React.FC = () => {
                       {city}
                     </h3>
                     <div className="space-y-5">
-                      {cityBranches.map((b: any, idx: number) => (
+                      {cityBranches.map((b: any) => (
                         <div key={b.id} className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
                           <div className="flex-1">
                             <h4 className="font-semibold text-slate-800 dark:text-slate-200">{b.name}</h4>

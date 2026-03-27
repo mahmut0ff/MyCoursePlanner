@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../contexts/AuthContext';
 import { db } from '../../lib/firebase';
-import { collection, query, where, limit, onSnapshot } from 'firebase/firestore';
+import { collection, query, where, orderBy, limit, onSnapshot } from 'firebase/firestore';
 import { apiMarkNotificationRead, apiMarkAllNotificationsRead } from '../../lib/api';
 import {
   Bell, MailOpen, Briefcase, Users, UserCheck, UserX,
@@ -51,12 +51,12 @@ const NotificationDropdown: React.FC = () => {
     const q = query(
       collection(db, 'notifications'),
       where('recipientId', '==', firebaseUser.uid),
+      orderBy('createdAt', 'desc'),
       limit(50)
     );
     const unsub = onSnapshot(q, (snap) => {
       const items = snap.docs
         .map(d => ({ id: d.id, ...d.data() } as AppNotification))
-        .sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''))
         .slice(0, 30);
       setNotifications(items);
     }, (err) => {

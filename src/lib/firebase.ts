@@ -2,7 +2,7 @@ import { initializeApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
-import { getMessaging, getToken, isSupported, type Messaging } from 'firebase/messaging';
+import { getMessaging, getToken, onMessage, isSupported, type Messaging } from 'firebase/messaging';
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY || '',
@@ -68,6 +68,38 @@ export async function requestNotificationPermission(): Promise<string | null> {
     return token || null;
   } catch (err) {
     console.warn('Push notification setup failed:', err);
+    return null;
+  }
+}
+
+export interface FcmForegroundPayload {
+  title: string;
+  body: string;
+  link?: string;
+}
+
+/**
+ * Subscribe to FCM messages while the app is in the **foreground**.
+ * Without this listener, foreground pushes are silently dropped by design.
+ * Returns an unsubscribe function.
+ */
+export async function setupForegroundMessaging(
+  callback: (payload: FcmForegroundPayload) => void,
+): Promise<(() => void) | null> {
+  try {
+    const m = await getMessagingInstance();
+    if (!m) return null;
+
+    const unsubscribe = onMessage(m, (payload) => {
+      const title = payload.notification?.title || 'Уведомление';
+      const body = payload.notification?.body || '';
+      const link = payload.data?.link;
+      callback({ title, body, link });
+    });
+
+    return unsubscribe;
+  } catch (err) {
+    console.warn('Foreground messaging setup failed:', err);
     return null;
   }
 }

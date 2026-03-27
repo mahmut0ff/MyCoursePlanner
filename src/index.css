@@ -100,6 +100,12 @@
   animation: fadeInUp 0.25s ease-out;
 }
 
+/* FCM toast slide-in */
+@keyframes slideIn {
+  from { opacity: 0; transform: translateX(100%); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
 /* TipTap Editor Styles */
 .tiptap-editor .ProseMirror {
   @apply min-h-[300px] p-4 outline-none;

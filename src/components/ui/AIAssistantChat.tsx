@@ -24,10 +24,15 @@ export const AIAssistantChat: React.FC<Props> = ({ organizationId, settings }) =
   // Initialize with greeting
   useEffect(() => {
     if (messages.length === 0 && settings.greetingMessage) {
+      // Intercept the legacy English default that might be saved in existing database records
+      const greeting = settings.greetingMessage === 'Hello! How can I help you today?' 
+        ? 'Здравствуйте! Чем я могу вам помочь?' 
+        : settings.greetingMessage;
+
       setMessages([{
         id: 'greeting',
         role: 'assistant',
-        content: settings.greetingMessage
+        content: greeting
       }]);
     }
   }, [settings.greetingMessage, messages.length]);

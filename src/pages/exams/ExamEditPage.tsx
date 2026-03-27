@@ -6,7 +6,8 @@ import { useAuth } from '../../contexts/AuthContext';
 import { createExam, getExam, updateExam, saveQuestions, getQuestions } from '../../services/exams.service';
 import type { Question, QuestionType } from '../../types';
 import { generateId } from '../../utils/grading';
-import { Save, ArrowLeft, Plus, Trash2 } from 'lucide-react';
+import { Save, ArrowLeft, Plus, Trash2, Sparkles } from 'lucide-react';
+import { AIGeneratorModal } from '../../components/ui/AIGeneratorModal';
 
 const EMPTY_QUESTION = (): Question => ({
   id: generateId(),
@@ -38,6 +39,33 @@ const ExamEditPage: React.FC = () => {
   const [questions, setQuestions] = useState<Question[]>([EMPTY_QUESTION()]);
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(isEdit);
+  const [showAIGen, setShowAIGen] = useState(false);
+
+  const handleAIGenerateSuccess = (data: any[]) => {
+    const startOrder = questions.length;
+    const newQuestions = data.map((q, i) => {
+      const opts = q.options || [];
+      const correctOpt = opts[q.correctOptionIndex || 0] || '';
+      return {
+        id: generateId(),
+        type: 'multiple_choice' as QuestionType,
+        text: q.question || '',
+        options: opts,
+        correctAnswer: correctOpt,
+        correctAnswers: [],
+        keywords: [],
+        points: q.points || 1,
+        order: startOrder + i,
+      };
+    });
+    
+    // Remove the default empty question if it's the only one and empty
+    if (questions.length === 1 && questions[0].text === '') {
+      setQuestions(newQuestions);
+    } else {
+      setQuestions([...questions, ...newQuestions]);
+    }
+  };
 
   useEffect(() => {
     if (isEdit && id) {
@@ -124,9 +152,14 @@ const ExamEditPage: React.FC = () => {
         <div>
           <div className="flex items-center justify-between mb-3">
             <h2 className="text-sm font-semibold text-slate-900 dark:text-white">{t('exams.questions')} ({questions.length})</h2>
-            <button onClick={addQuestion} className="text-xs bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-300 px-2.5 py-1 rounded-lg flex items-center gap-1 transition-colors">
-              <Plus className="w-3 h-3" />{t('exams.addQuestion')}
-            </button>
+            <div className="flex items-center gap-2">
+              <button onClick={() => setShowAIGen(true)} className="text-xs bg-gradient-to-r from-primary-600 to-violet-600 hover:from-primary-700 hover:to-violet-700 text-white font-medium px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition-all shadow-md shadow-primary-500/20">
+                <Sparkles className="w-3.5 h-3.5" />{t('ai.generateButton', 'Сгенерировать ИИ')}
+              </button>
+              <button onClick={addQuestion} className="text-xs bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-300 px-2.5 py-1.5 rounded-lg flex items-center gap-1 transition-colors">
+                <Plus className="w-3.5 h-3.5" />{t('exams.addQuestion')}
+              </button>
+            </div>
           </div>
           <div className="space-y-3">
             {questions.map((q, qIdx) => (
@@ -180,6 +213,13 @@ const ExamEditPage: React.FC = () => {
           </div>
         </div>
       </div>
+
+      <AIGeneratorModal
+        isOpen={showAIGen}
+        onClose={() => setShowAIGen(false)}
+        onSuccess={handleAIGenerateSuccess}
+        type="exam"
+      />
     </div>
   );
 };

@@ -77,7 +77,12 @@ export const apiGetRoom = (id: string) => apiRequest('api-rooms', 'GET', undefin
 export const apiGetRoomByCode = (code: string) => apiRequest('api-rooms', 'GET', undefined, { code });
 export const apiCreateRoom = (data: any) => apiRequest('api-rooms', 'POST', data);
 export const apiJoinRoom = (roomId: string) => apiRequest('api-rooms', 'POST', { action: 'join', roomId });
+export const apiDeleteAuditLogs = () => apiRequest('api-audit', 'DELETE');
 export const apiCloseRoom = (roomId: string) => apiRequest('api-rooms', 'POST', { action: 'close', roomId });
+
+// ---- AI Generation ----
+export const apiAIGenerate = (data: { prompt?: string; type: 'quiz' | 'exam'; fileUrl?: string }) =>
+  apiRequest('api-ai-generate', 'POST', data);
 
 // ---- Attempts ----
 export const apiGetAttempts = () => apiRequest('api-attempts');

@@ -6,10 +6,11 @@ import { apiGetQuiz, apiCreateQuiz, apiUpdateQuiz, apiSaveQuizQuestions } from '
 import type { Quiz, QuizQuestion, QuizQuestionType, QuizDifficulty } from '../../types';
 import {
   ArrowLeft, Save, Plus, Trash2, GripVertical,
-  CheckCircle, Circle,
+  CheckCircle, Circle, Sparkles,
   ChevronDown, ChevronUp, Copy, Settings, Clock
 } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { AIGeneratorModal } from '../../components/ui/AIGeneratorModal';
 
 const QUESTION_TYPES: { type: QuizQuestionType; label: string; icon: string }[] = [
   { type: 'single_choice', label: 'Single Choice', icon: '🔘' },
@@ -68,8 +69,38 @@ const QuizBuilderPage: React.FC = () => {
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(!!id);
   const [showSettings, setShowSettings] = useState(false);
+  const [showAIGen, setShowAIGen] = useState(false);
   const [tagInput, setTagInput] = useState('');
   const [dragIndex, setDragIndex] = useState<number | null>(null);
+
+  const handleAIGenerateSuccess = (data: any[]) => {
+    const startOrder = questions.length;
+    const newQuestions = data.map((q, i) => {
+      const opts = (q.options || []).map((text: string) => ({ id: generateId(), text }));
+      const correctOpt = opts[q.correctOptionIndex || 0];
+      return {
+        id: generateId(),
+        quizId: id || '',
+        type: 'single_choice' as QuizQuestionType,
+        order: startOrder + i,
+        text: q.question || '',
+        options: opts,
+        correctAnswers: correctOpt ? [correctOpt.id] : [],
+        timerSeconds: 30,
+        points: 1000,
+        difficulty: 'medium' as QuizDifficulty,
+        answerExplanation: q.explanation || '',
+      };
+    });
+    // Remove the default empty question if it's the only one and empty
+    if (questions.length === 1 && questions[0].text === '') {
+      setQuestions(newQuestions);
+      setActiveQuestion(0);
+    } else {
+      setQuestions([...questions, ...newQuestions]);
+      setActiveQuestion(questions.length);
+    }
+  };
 
   useEffect(() => {
     if (id) {
@@ -298,7 +329,13 @@ const QuizBuilderPage: React.FC = () => {
 
             {/* Add question */}
             <div className="p-2 border-t border-slate-200 dark:border-slate-700">
-              <div className="relative group">
+              <div className="flex flex-col gap-2">
+                <button 
+                  onClick={() => setShowAIGen(true)} 
+                  className="w-full flex items-center justify-center gap-1 text-xs font-medium text-white bg-gradient-to-r from-primary-600 to-violet-600 hover:from-primary-700 hover:to-violet-700 py-2 rounded-lg transition-all shadow-md shadow-primary-500/20"
+                >
+                  <Sparkles className="w-3.5 h-3.5" />{t('ai.generateButton', 'Сгенерировать ИИ')}
+                </button>
                 <button onClick={() => addQuestion()} className="w-full flex items-center justify-center gap-1 text-xs text-primary-600 hover:bg-primary-50 dark:hover:bg-primary-900/20 py-1.5 rounded-md transition-colors">
                   <Plus className="w-3 h-3" />{t('quiz.addQuestion')}
                 </button>
@@ -471,6 +508,13 @@ const QuizBuilderPage: React.FC = () => {
           </div>
         )}
       </div>
+
+      <AIGeneratorModal
+        isOpen={showAIGen}
+        onClose={() => setShowAIGen(false)}
+        onSuccess={handleAIGenerateSuccess}
+        type="quiz"
+      />
     </div>
   );
 };

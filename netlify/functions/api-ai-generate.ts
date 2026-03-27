@@ -1,0 +1,108 @@
+import type { Handler, HandlerEvent } from '@netlify/functions';
+import { GoogleGenerativeAI } from '@google/generative-ai';
+import { verifyAuth, isStaff, ok, unauthorized, forbidden, badRequest, jsonResponse } from './utils/auth';
+
+const GEMINI_API_KEY = process.env.GEMINI_API_KEY || '';
+
+const handler: Handler = async (event: HandlerEvent) => {
+  if (event.httpMethod === 'OPTIONS') return jsonResponse(204, '');
+
+  const user = await verifyAuth(event);
+  if (!user) return unauthorized();
+  if (!isStaff(user) && user.role !== 'teacher') return forbidden('Only staff and teachers can use AI tools');
+
+  if (event.httpMethod !== 'POST') return jsonResponse(405, { error: 'Method not allowed' });
+
+  if (!GEMINI_API_KEY) {
+    return jsonResponse(500, { error: 'GEMINI_API_KEY is not configured on the server.' });
+  }
+
+  try {
+    const body = JSON.parse(event.body || '{}');
+    const { prompt, type = 'quiz', fileUrl } = body;
+
+    if (!prompt && !fileUrl) {
+      return badRequest('Either prompt or fileUrl is required');
+    }
+
+    const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
+    const model = genAI.getGenerativeModel({
+      model: 'gemini-1.5-flash',
+      generationConfig: {
+        responseMimeType: 'application/json',
+      },
+    });
+
+    const parts: any[] = [];
+
+    // System instruction injected into the prompt based on the type
+    let systemPrompt = '';
+    if (type === 'quiz') {
+      systemPrompt = `You are an expert educator. Generate a multiple-choice quiz based on the provided material or prompt. 
+Format the response strictly as a JSON array of objects. 
+Each object MUST have:
+- "question": string (the question text)
+- "options": array of 4 strings (the possible answers)
+- "correctOptionIndex": integer (0 to 3, the index of the correct answer)
+- "explanation": string (brief explanation of why the answer is correct)
+Do not include any extra text, only the JSON array. Make the questions engaging and accurate.`;
+    } else {
+      systemPrompt = `You are an expert educator. Generate a multiple-choice exam based on the provided material or prompt. 
+Format the response strictly as a JSON array of objects. 
+Each object MUST have:
+- "question": string (the test question text)
+- "options": array of 4 strings (the possible answers)
+- "correctOptionIndex": integer (0 to 3, the index of the correct answer)
+- "points": integer (suggested weight/points for this question, usually 1 to 5 depending on difficulty)
+- "explanation": string (brief explanation)
+Do not include any extra text, only the JSON array.`;
+    }
+
+    parts.push({ text: systemPrompt });
+
+    if (prompt) {
+      parts.push({ text: `User Request: ${prompt}` });
+    }
+
+    // Process file if provided (e.g., PDF or Image from Firebase Storage)
+    if (fileUrl) {
+      try {
+        const response = await fetch(fileUrl);
+        if (!response.ok) throw new Error(`Failed to fetch file: ${response.statusText}`);
+        
+        const arrayBuffer = await response.arrayBuffer();
+        const buffer = Buffer.from(arrayBuffer);
+        const mimeType = response.headers.get('content-type') || 'application/pdf';
+
+        parts.push({
+          inlineData: {
+            data: buffer.toString('base64'),
+            mimeType,
+          },
+        });
+        parts.push({ text: 'Please analyze the attached document/image.' });
+      } catch (fileErr: any) {
+        console.error('File parsing error in AI API:', fileErr);
+        return badRequest(`Failed to process the attached file: ${fileErr.message}`);
+      }
+    }
+
+    // Call Gemini
+    const result = await model.generateContent(parts);
+    const textResp = result.response.text();
+
+    try {
+      const generatedData = JSON.parse(textResp);
+      return ok({ data: generatedData });
+    } catch (parseErr) {
+      console.error('Failed to parse Gemini JSON output:', textResp);
+      return jsonResponse(500, { error: 'AI returned invalid format', rawOutput: textResp });
+    }
+
+  } catch (err: any) {
+    console.error('AI Generator API Error:', err);
+    return jsonResponse(500, { error: err.message || 'Internal Server Error' });
+  }
+};
+
+export { handler };

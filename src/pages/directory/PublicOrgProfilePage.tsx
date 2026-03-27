@@ -62,14 +62,18 @@ const PublicOrgProfilePage: React.FC = () => {
 
   useEffect(() => {
     if (!slug) return;
-    Promise.all([
-      apiGetPublicOrgProfile(undefined, slug)
-        .then((data: any) => setOrg(data))
-        .catch(() => {}),
-      apiGetAIManagerSettings(slug)
-        .then((res: any) => setAiSettings(res.data))
-        .catch(() => {})
-    ]).finally(() => setLoading(false));
+    apiGetPublicOrgProfile(undefined, slug)
+      .then((data: any) => {
+        setOrg(data);
+        return apiGetAIManagerSettings(data.id);
+      })
+      .then((res: any) => {
+        if (res && res.data) {
+          setAiSettings(res.data);
+        }
+      })
+      .catch(() => {})
+      .finally(() => setLoading(false));
   }, [slug]);
 
   const handleJoin = useCallback(async () => {

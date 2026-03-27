@@ -508,6 +508,7 @@
     "limits": "Limits"
   },
   "common": {
+    "selectFile": "Select File",
     "loading": "Loading...",
     "save": "Save",
     "cancel": "Cancel",

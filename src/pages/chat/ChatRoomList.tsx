@@ -163,7 +163,8 @@ export default function ChatRoomList({ rooms, loading, error, activeRoomId, onSe
             if (room.type === 'direct' && profile?.uid) {
               const otherUid = room.participantIds.find(id => id !== profile.uid);
               if (otherUid) {
-                roomAvatarUrl = room.participants[otherUid]?.avatarUrl || avatarCache?.[otherUid] || undefined;
+                const p = room.participants[otherUid] as any;
+                roomAvatarUrl = p?.avatarUrl || p?.photoURL || avatarCache?.[otherUid] || undefined;
               }
             }
 

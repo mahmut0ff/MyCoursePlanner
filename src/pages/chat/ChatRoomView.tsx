@@ -50,23 +50,25 @@ export default function ChatRoomView({ room, onBack, displayTitle, avatarUrl, av
   const isRoomAdmin = room.participants[profile?.uid || '']?.role === 'admin';
   const canModerateRoom = isSysAdmin || isRoomAdmin;
 
-  // Mark messages as read immediately when opening a room
+  // Mark messages as read ONLY when at the bottom (scrolled into view)
+  const prevMsgCountRef = useRef(messages.length);
   useEffect(() => {
-    updateLastRead(room.id);
-  }, [room.id, updateLastRead]);
-
-  // Also mark as read when new messages arrive. 
-  // If we receive a message while the chat is actively open, we consider it read.
-  const prevMsgCountRef = useRef(0);
-  useEffect(() => {
-    if (messages.length > prevMsgCountRef.current) {
-      const timer = setTimeout(() => {
-        updateLastRead(room.id);
-      }, 500);
-      return () => clearTimeout(timer);
+    if (isAtBottom && messages.length > 0) {
+      const lastMsg = toSafeDate(messages[messages.length - 1].createdAt);
+      const myLastRead = toSafeDate(room.participants[profile?.uid || '']?.lastReadAt);
+      
+      // If the last message is newer than our last read timestamp, update it.
+      // This ensures we only mark as read when the user actually sees the bottom messages.
+      if (lastMsg > myLastRead) {
+        // Debounce slightly to prevent spamming
+        const timer = setTimeout(() => {
+          updateLastRead(room.id);
+        }, 300);
+        return () => clearTimeout(timer);
+      }
     }
     prevMsgCountRef.current = messages.length;
-  }, [messages.length, room.id, updateLastRead]);
+  }, [messages, isAtBottom, room.id, updateLastRead, profile?.uid, room.participants]);
 
   // Scroll tracking logic
   const handleScroll = useCallback(() => {
@@ -222,11 +224,53 @@ export default function ChatRoomView({ room, onBack, displayTitle, avatarUrl, av
               if (prevDate !== currDate) showDate = true;
             }
 
+            // Grouping logic (same minute, same sender)
+            let showTimestamp = true;
+            if (index < messages.length - 1) {
+              const nextMsg = messages[index + 1];
+              const currTime = format(toSafeDate(msg.createdAt), 'HH:mm');
+              const nextTime = format(toSafeDate(nextMsg.createdAt), 'HH:mm');
+              const isSameMinute = currTime === nextTime;
+              const isSameSender = msg.senderId === nextMsg.senderId;
+              
+              const nextDate = toSafeDate(nextMsg.createdAt).toDateString();
+              const currDateObj = toSafeDate(msg.createdAt).toDateString();
+              const isSameDay = nextDate === currDateObj;
+
+              if (isSameSender && isSameMinute && isSameDay && !nextMsg.deletedAt && !msg.deletedAt) {
+                showTimestamp = false; // Hide timestamp, it will be shown on the last message of the group
+              }
+            }
+
             // Show sender name in group chats for non-consecutive messages from same sender
             let showSenderName = false;
+            let showAvatar = false;
             if (room.type === 'group' && !isMe && !msg.deletedAt) {
+              // Show on the first message of a consecutive block
               if (index === 0 || messages[index - 1].senderId !== msg.senderId || showDate) {
                 showSenderName = true;
+              }
+              // Show avatar on the LAST message of a consecutive block (bottom aligned)
+              if (index === messages.length - 1 || messages[index + 1].senderId !== msg.senderId) {
+                showAvatar = true;
+              } else {
+                // If the next message is tomorrow, we also want to show avatar on the last message today
+                const nextDate = toSafeDate(messages[index + 1].createdAt).toDateString();
+                const currDateObj = toSafeDate(msg.createdAt).toDateString();
+                if (nextDate !== currDateObj) showAvatar = true;
+              }
+            }
+
+            // Read receipts (for my messages)
+            let isReadByOther = false;
+            if (isMe && room.type === 'direct') {
+              const otherUid = room.participantIds.find(id => id !== profile?.uid);
+              if (otherUid) {
+                const otherLastRead = toSafeDate(room.participants[otherUid]?.lastReadAt);
+                const msgDate = toSafeDate(msg.createdAt);
+                if (otherLastRead >= msgDate) {
+                  isReadByOther = true;
+                }
               }
             }
 
@@ -242,18 +286,26 @@ export default function ChatRoomView({ room, onBack, displayTitle, avatarUrl, av
                   </div>
                 )}
                 <div className={`flex flex-col ${isMe ? 'items-end' : 'items-start'} group/msg relative`}>
-                  {/* Sender name label + avatar in groups */}
+                  {/* Sender name label in groups */}
                   {showSenderName && (
-                    <div className="flex items-center gap-2 mb-1 ml-1">
-                      <ChatAvatar
-                        src={room.participants[msg.senderId]?.avatarUrl || avatarCache?.[msg.senderId]}
-                        name={msgSenderName}
-                        size="sm"
-                        type="direct"
-                      />
+                    <div className="flex items-center gap-2 mb-0.5 ml-1">
                       <span className="text-xs font-semibold text-primary-600 dark:text-primary-400">
                         {msgSenderName}
                       </span>
+                    </div>
+                  )}
+
+                  {/* Group message avatar (renders next to the message bubble on the left) */}
+                  {!isMe && room.type === 'group' && (
+                    <div className="absolute -left-9 bottom-1">
+                      {showAvatar && (
+                        <ChatAvatar
+                          src={room.participants[msg.senderId]?.avatarUrl || avatarCache?.[msg.senderId]}
+                          name={msgSenderName}
+                          size="sm"
+                          type="direct"
+                        />
+                      )}
                     </div>
                   )}
 
@@ -285,10 +337,10 @@ export default function ChatRoomView({ room, onBack, displayTitle, avatarUrl, av
                         )}
                       </div>
                       
-                      <div className={`px-4 py-2.5 rounded-2xl shadow-sm text-sm ${
+                      <div className={`px-4 py-2 ${showTimestamp ? 'pb-2.5' : 'pb-1.5'} rounded-2xl shadow-sm text-sm ${
                         isMe 
-                          ? 'bg-primary-600 text-white rounded-br-sm' 
-                          : 'bg-white dark:bg-slate-800 text-slate-900 dark:text-white border border-slate-100 dark:border-slate-700 rounded-bl-sm'
+                          ? `bg-primary-600 text-white ${showTimestamp ? 'rounded-br-sm' : 'rounded-r-sm'}` 
+                          : `bg-white dark:bg-slate-800 text-slate-900 dark:text-white border border-slate-100 dark:border-slate-700 ${showTimestamp ? 'rounded-bl-sm' : 'rounded-l-sm'}`
                       }`}>
                         {/* Reply quote */}
                         {msg.replyTo && (
@@ -332,9 +384,17 @@ export default function ChatRoomView({ room, onBack, displayTitle, avatarUrl, av
                           </div>
                         )}
                       </div>
-                      <div className={`text-[10px] mt-1 text-slate-400 flex items-center gap-1 ${isMe ? 'justify-end' : 'justify-start'}`}>
-                        {format(toSafeDate(msg.createdAt), 'HH:mm')}
-                      </div>
+                      
+                      {showTimestamp && (
+                        <div className={`text-[10px] mt-0.5 text-slate-400 flex items-center gap-1 ${isMe ? 'justify-end' : 'justify-start'}`}>
+                          {format(toSafeDate(msg.createdAt), 'HH:mm')}
+                          {isMe && room.type === 'direct' && (
+                            <span className={`text-[11px] leading-none ${isReadByOther ? 'text-primary-500 font-bold tracking-tighter' : 'text-slate-400 font-bold'}`}>
+                              {isReadByOther ? '✓✓' : '✓'}
+                            </span>
+                          )}
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>

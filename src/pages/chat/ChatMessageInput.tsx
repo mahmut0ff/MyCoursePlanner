@@ -1,8 +1,9 @@
 import { useState, useRef, useEffect } from 'react';
 import type { ChangeEvent, FormEvent, KeyboardEvent } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Send, Paperclip, X, File, Image as ImageIcon, Reply } from 'lucide-react';
+import { Send, Paperclip, X, File, Image as ImageIcon, Reply, Smile } from 'lucide-react';
 import type { ChatMessage } from '../../types';
+import EmojiPicker, { Theme } from 'emoji-picker-react';
 
 interface ChatMessageInputProps {
   onSendMessage: (text: string, files?: File[], replyTo?: ChatMessage['replyTo']) => Promise<void>;
@@ -16,8 +17,22 @@ export default function ChatMessageInput({ onSendMessage, disabled, replyingTo, 
   const [text, setText] = useState('');
   const [files, setFiles] = useState<File[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const emojiPickerRef = useRef<HTMLDivElement>(null);
+
+  // Close emoji picker when clicking outside
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (emojiPickerRef.current && !emojiPickerRef.current.contains(event.target as Node)) {
+        setShowEmojiPicker(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   // Auto-resize textarea
   useEffect(() => {
@@ -49,6 +64,7 @@ export default function ChatMessageInput({ onSendMessage, disabled, replyingTo, 
 
     try {
       setIsSubmitting(true);
+      setShowEmojiPicker(false);
       await onSendMessage(cleanText, files.length > 0 ? files : undefined, replyData);
       setText('');
       setFiles([]);
@@ -157,6 +173,36 @@ export default function ChatMessageInput({ onSendMessage, disabled, replyingTo, 
           >
             <Paperclip className="w-5 h-5" />
           </button>
+
+          {/* Emoji Button (Hidden on strict mobile, shown safely on sm and above) */}
+          <div className="relative hidden sm:block" ref={emojiPickerRef}>
+            <button
+              type="button"
+              onClick={() => setShowEmojiPicker(!showEmojiPicker)}
+              disabled={disabled || isSubmitting}
+              className={`p-2 rounded-xl transition-colors shrink-0 disabled:opacity-50 ${
+                showEmojiPicker 
+                  ? 'text-primary-500 bg-primary-50 dark:bg-primary-500/10' 
+                  : 'text-slate-400 hover:text-primary-500 hover:bg-primary-50 dark:hover:bg-primary-500/10'
+              }`}
+            >
+              <Smile className="w-5 h-5" />
+            </button>
+            
+            {showEmojiPicker && (
+              <div className="absolute bottom-full left-0 mb-2 z-50 shadow-xl rounded-2xl overflow-hidden animate-in fade-in slide-in-from-bottom-2">
+                <EmojiPicker
+                  theme={document.documentElement.classList.contains('dark') ? Theme.DARK : Theme.LIGHT}
+                  onEmojiClick={(emojiData) => {
+                    setText((prev) => prev + emojiData.emoji);
+                  }}
+                  searchDisabled={false}
+                  skinTonesDisabled
+                  lazyLoadEmojis
+                />
+              </div>
+            )}
+          </div>
 
           {/* Text Input */}
           <textarea

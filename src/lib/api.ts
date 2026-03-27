@@ -164,6 +164,8 @@ export const apiDeleteOrganization = (id: string) => apiRequest('api-organizatio
 // ---- Subscriptions ----
 export const apiGetSubscription = (orgId?: string) =>
   apiRequest('api-subscriptions', 'GET', undefined, orgId ? { orgId } : undefined);
+export const apiGetBillingHistory = (orgId?: string) =>
+  apiRequest('api-subscriptions', 'GET', undefined, { history: 'true', ...(orgId ? { orgId } : {}) });
 export const apiChangePlan = (planId: string, organizationId?: string) =>
   apiRequest('api-subscriptions', 'POST', { planId, organizationId });
 export const apiCancelSubscription = (organizationId?: string) =>

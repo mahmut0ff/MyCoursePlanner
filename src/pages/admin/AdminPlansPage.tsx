@@ -30,7 +30,7 @@ const AdminPlansPage: React.FC = () => {
         <button className="btn-primary flex items-center gap-2"><Plus className="w-4 h-4" />{t('admin.plans.addPlan')}</button>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-5xl mx-auto">
         {localPlans.map((plan) => (
           <div key={plan.id} className={`relative rounded-3xl p-8 border transition-all hover:shadow-xl ${plan.popular ? 'bg-primary-600 border-primary-600 text-white shadow-2xl shadow-primary-500/30 md:scale-105 z-10' : 'bg-white border-slate-200 hover:shadow-slate-200/50 dark:bg-slate-800 dark:border-slate-700'}`}>
             {plan.popular && (

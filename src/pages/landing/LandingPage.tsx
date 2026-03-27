@@ -521,7 +521,7 @@ const LandingPage: React.FC = () => {
  <h2 className="text-3xl md:text-4xl font-extrabold mb-4">{t('landing.pricingTitle')}</h2>
  <p className="text-lg text-slate-500 max-w-2xl mx-auto">{t('landing.pricingSubtitle')}</p>
  </div>
- <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 max-w-6xl mx-auto">
+ <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-5xl mx-auto">
  {plans.map((plan) => (
  <div key={plan.id} className={`relative rounded-2xl p-7 border transition-all hover:shadow-xl ${plan.popular ? 'bg-primary-600 border-primary-600 text-white shadow-xl shadow-primary-500/30 scale-[1.02]' : 'bg-white border-slate-200 hover:shadow-slate-200/50 '}`}>
  {plan.popular && (

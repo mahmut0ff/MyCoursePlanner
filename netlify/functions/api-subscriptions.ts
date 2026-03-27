@@ -35,7 +35,28 @@ const handler: Handler = async (event: HandlerEvent) => {
 
     if (snap.empty) return notFound('No subscription found');
     const doc = snap.docs[0];
-    return ok({ id: doc.id, ...doc.data() });
+    const subscription = { id: doc.id, ...doc.data() };
+
+    // If billing history requested, also fetch payments
+    if (params.history === 'true') {
+      const paymentsSnap = await adminDb.collection('payments')
+        .where('organizationId', '==', orgId)
+        .orderBy('createdAt', 'desc')
+        .limit(50).get();
+      const payments = paymentsSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+
+      // Also fetch subscription change logs from systemLogs
+      const logsSnap = await adminDb.collection('systemLogs')
+        .where('targetId', '==', orgId)
+        .where('action', 'in', ['plan_changed', 'subscription_cancelled'])
+        .orderBy('createdAt', 'desc')
+        .limit(50).get();
+      const logs = logsSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+
+      return ok({ subscription, payments, logs });
+    }
+
+    return ok(subscription);
   }
 
   // POST — upgrade/change plan

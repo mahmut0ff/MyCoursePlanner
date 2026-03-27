@@ -16,7 +16,10 @@ export type NotificationType =
   | 'exam_room_created'
   | 'exam_result_ready'
   | 'new_lesson'
-  | 'new_org_registered';
+  | 'new_org_registered'
+  | 'trial_reminder'
+  | 'trial_expired'
+  | 'plan_gifted';
 
 interface NotificationPayload {
   recipientId: string;

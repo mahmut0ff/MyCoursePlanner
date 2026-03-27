@@ -525,6 +525,11 @@
     "no": "No",
     "name": "Name",
     "status": "Status",
+    "date": "Date",
+    "passed": "Passed",
+    "failed": "Failed",
+    "phone": "Phone",
+    "city": "City",
     "active": "Active",
     "disabled": "Disabled",
     "draft": "Draft",
@@ -537,6 +542,8 @@
     "logout": "Log out",
     "copy": "Copy",
     "error": "An error occurred",
+    "email": "Email",
+    "optional": "optional",
     "notFound": "Not found"
   },
   "org": {
@@ -571,7 +578,11 @@
       "examsTaken": "Exams Taken",
       "avgScore": "Avg Score",
       "recentResults": "Recent Results",
-      "noResults": "No results yet"
+      "noResults": "No results yet",
+      "passRate": "Pass Rate",
+      "bestScore": "Best Score",
+      "groups": "Groups",
+      "noGroups": "No group"
     },
     "teachers": {
       "total": "teachers",

@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../contexts/AuthContext';
 import { apiGetTeacherSettings, apiUpdateTeacherSettings } from '../../lib/api';
 import {
-  User, Globe, Bell, Lock, Save, Loader2, CheckCircle2, Eye, EyeOff,
+  User, Globe, Bell, Lock, Save, Loader2, CheckCircle2, Eye, EyeOff, Phone,
 } from 'lucide-react';
 
 type Tab = 'profile' | 'language' | 'notifications' | 'security';
@@ -20,6 +20,7 @@ const TeacherSettingsPage: React.FC = () => {
   // Profile
   const [displayName, setDisplayName] = useState(profile?.displayName || '');
   const [email] = useState(profile?.email || '');
+  const [phone, setPhone] = useState(profile?.phone || '');
 
   // Password
   const [currentPw, setCurrentPw] = useState('');
@@ -56,6 +57,7 @@ const TeacherSettingsPage: React.FC = () => {
     try {
       await apiUpdateTeacherSettings({
         displayName,
+        phone: phone.trim(),
         language,
         emailNotif,
         pushNotif,
@@ -121,6 +123,14 @@ const TeacherSettingsPage: React.FC = () => {
                 <div>
                   <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">{t('teacherSettings.emailLabel')}</label>
                   <input value={email} readOnly className="w-full bg-slate-100 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-lg px-3.5 py-2.5 text-sm text-slate-500 dark:text-slate-400 cursor-not-allowed" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1 flex items-center gap-1.5">
+                    <Phone className="w-4 h-4 text-slate-400" />
+                    {t('profile.phone', 'Телефон')}
+                    <span className="text-xs text-slate-400 font-normal">({t('common.optional', 'необязательно')})</span>
+                  </label>
+                  <input type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder={t('profile.phonePlaceholder', '+996 XXX XXX XXX')} className="w-full bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-lg px-3.5 py-2.5 text-sm outline-none focus:border-primary-500 text-slate-900 dark:text-white" />
                 </div>
               </div>
               <button onClick={handleSave} disabled={saving} className="mt-4 bg-primary-600 hover:bg-primary-700 text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2 transition-colors disabled:opacity-50">

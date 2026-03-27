@@ -6,7 +6,7 @@ import { auth, storage } from '../../lib/firebase';
 import { ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { updateUser } from '../../services/users.service';
 import toast from 'react-hot-toast';
-import { Globe, Lock, Save, Camera, AtSign, CheckCircle2, XCircle, Loader2 } from 'lucide-react';
+import { Globe, Lock, Save, Camera, AtSign, CheckCircle2, XCircle, Loader2, Phone } from 'lucide-react';
 import i18n from '../../i18n';
 import StudentPortfolio from '../../components/portfolio/StudentPortfolio';
 import { apiCheckAuthIdentity } from '../../lib/api';
@@ -25,6 +25,7 @@ const StudentProfilePage: React.FC = () => {
   const [bio, setBio] = useState(profile?.bio || '');
   const [skills, setSkills] = useState(profile?.skills?.join(', ') || '');
   const [avatarUrl, setAvatarUrl] = useState(profile?.avatarUrl || '');
+  const [phone, setPhone] = useState(profile?.phone || '');
   
   React.useEffect(() => {
     if (!username || username === profile?.username || username.length < 3) return setUsernameStatus('idle');
@@ -63,7 +64,8 @@ const StudentProfilePage: React.FC = () => {
         username: username.trim().toLowerCase(),
         bio: bio.trim(),
         skills: parsedSkills,
-        avatarUrl
+        avatarUrl,
+        phone: phone.trim()
       });
       toast.success(t('profile.saved'));
     } catch { toast.error(t('profile.saveFailed')); }
@@ -209,6 +211,20 @@ const StudentProfilePage: React.FC = () => {
                   onChange={e => setSkills(e.target.value)}
                   className="input"
                   placeholder="e.g. JavaScript, Design, Python"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1 flex items-center gap-1.5">
+                  <Phone className="w-4 h-4 text-slate-400" />
+                  {t('profile.phone', 'Телефон')}
+                  <span className="text-xs text-slate-400 font-normal">({t('common.optional', 'необязательно')})</span>
+                </label>
+                <input
+                  type="tel"
+                  value={phone}
+                  onChange={e => setPhone(e.target.value)}
+                  className="input"
+                  placeholder={t('profile.phonePlaceholder', '+996 XXX XXX XXX')}
                 />
               </div>
               <div className="pt-4 flex justify-end">

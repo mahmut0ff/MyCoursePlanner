@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { orgGetTeachers, orgInviteUser } from '../../lib/api';
-import { UserPlus, Search, Mail, RefreshCw, Send } from 'lucide-react';
+import { UserPlus, Search, Mail, RefreshCw, Send, Phone } from 'lucide-react';
 import type { UserProfile } from '../../types';
 
 const TeachersPage: React.FC = () => {
@@ -78,6 +78,7 @@ const TeachersPage: React.FC = () => {
               <thead><tr className="border-b border-slate-100 dark:border-slate-700/50">
                 <th className="text-left text-[10px] font-medium text-slate-500 uppercase tracking-wider px-4 py-2">{t('nav.teachers')}</th>
                 <th className="text-left text-[10px] font-medium text-slate-500 uppercase tracking-wider px-4 py-2 hidden sm:table-cell">{t('common.email', 'Email')}</th>
+                <th className="text-left text-[10px] font-medium text-slate-500 uppercase tracking-wider px-4 py-2 hidden md:table-cell">{t('common.phone')}</th>
                 <th className="text-left text-[10px] font-medium text-slate-500 uppercase tracking-wider px-4 py-2">{t('org.users.role')}</th>
               </tr></thead>
               <tbody className="divide-y divide-slate-50 dark:divide-slate-700/30">
@@ -94,6 +95,7 @@ const TeachersPage: React.FC = () => {
                       </div>
                     </td>
                     <td className="px-4 py-2.5 text-[11px] text-slate-500 truncate max-w-[200px] hidden sm:table-cell">{teacher.email}</td>
+                    <td className="px-4 py-2.5 text-[11px] text-slate-500 hidden md:table-cell">{teacher.phone ? <div className="flex items-center gap-1"><Phone className="w-3 h-3" />{teacher.phone}</div> : <span className="text-slate-300 dark:text-slate-600">—</span>}</td>
                     <td className="px-4 py-2.5">
                       <span className="text-[10px] px-1.5 py-0.5 rounded font-medium bg-violet-500/10 text-violet-500">{t('org.teachers.roleTeacher')}</span>
                     </td>

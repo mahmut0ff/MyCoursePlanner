@@ -437,12 +437,19 @@
     "disabled": "Өчүрүлгөн",
     "name": "Аты",
     "status": "Статус",
+    "date": "Күнү",
+    "passed": "Өттү",
+    "failed": "Өтпөдү",
+    "phone": "Телефон",
+    "city": "Шаар",
     "draft": "Каралама",
     "published": "Жарыяланган",
     "confirmDelete": "Сиз өчүргүңүз келеби?",
     "close": "Жабуу",
     "on": "КҮЙҮК",
-    "off": "ӨЧҮК"
+    "off": "ӨЧҮК",
+    "email": "Email",
+    "optional": "милдеттүү эмес"
   },
   "org": {
     "courses": {
@@ -476,7 +483,11 @@
       "examsTaken": "Экзамендер тапшырылды",
       "avgScore": "Орточо балл",
       "recentResults": "Акыркы жыйынтыктар",
-      "noResults": "Жыйынтыктар азырка жок"
+      "noResults": "Жыйынтыктар азырка жок",
+      "passRate": "Өтүү пайызы",
+      "bestScore": "Эң жакшы балл",
+      "groups": "Топтор",
+      "noGroups": "Топто жок"
     },
     "teachers": {
       "total": "мугалим",

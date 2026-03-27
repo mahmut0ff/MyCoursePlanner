@@ -1,9 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { orgGetStudents, orgGetResults } from '../../lib/api';
-import { ArrowLeft, Mail, Trophy, Calendar, BarChart3, Users } from 'lucide-react';
-import type { UserProfile, ExamAttempt } from '../../types';
+import { orgGetStudents, orgGetResults, orgGetGroups } from '../../lib/api';
+import { ArrowLeft, Mail, Trophy, Calendar, BarChart3, Users, Phone, MapPin, BookOpen } from 'lucide-react';
+import type { UserProfile, ExamAttempt, Group } from '../../types';
 
 const StudentDetailPage: React.FC = () => {
   const { uid } = useParams<{ uid: string }>();
@@ -11,6 +11,7 @@ const StudentDetailPage: React.FC = () => {
   const { t } = useTranslation();
   const [student, setStudent] = useState<UserProfile | null>(null);
   const [results, setResults] = useState<ExamAttempt[]>([]);
+  const [groups, setGroups] = useState<Group[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -22,6 +23,9 @@ const StudentDetailPage: React.FC = () => {
         setStudent(found || null);
       }),
       orgGetResults({ studentId: uid }).then(setResults).catch(() => setResults([])),
+      orgGetGroups().then((allGroups: Group[]) => {
+        setGroups(allGroups.filter(g => g.studentIds?.includes(uid!)));
+      }).catch(() => setGroups([])),
     ]).finally(() => setLoading(false));
   }, [uid]);
 
@@ -56,19 +60,37 @@ const StudentDetailPage: React.FC = () => {
               <p className="text-xs text-slate-500 flex items-center gap-1"><Mail className="w-3 h-3" />{student.email}</p>
             </div>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-3">
             <span className="text-[10px] px-2 py-0.5 bg-emerald-500/10 text-emerald-500 rounded-full font-medium">{t('common.active')}</span>
+            {student.phone && (
+              <span className="text-[10px] text-slate-400 flex items-center gap-1"><Phone className="w-3 h-3" />{student.phone}</span>
+            )}
+            {student.city && (
+              <span className="text-[10px] text-slate-400 flex items-center gap-1"><MapPin className="w-3 h-3" />{student.city}</span>
+            )}
             {student.createdAt && (
               <span className="text-[10px] text-slate-400 flex items-center gap-1"><Calendar className="w-3 h-3" />{t('org.users.joined')}: {new Date(student.createdAt).toLocaleDateString()}</span>
             )}
           </div>
+          {/* Groups */}
+          {groups.length > 0 && (
+            <div className="mt-3 flex flex-wrap items-center gap-2">
+              <BookOpen className="w-3 h-3 text-slate-400" />
+              <span className="text-[10px] text-slate-500 font-medium">{t('org.students.groups')}:</span>
+              {groups.map(g => (
+                <span key={g.id} className="text-[10px] px-2 py-0.5 bg-primary-50 dark:bg-primary-900/20 text-primary-600 dark:text-primary-400 rounded-full font-medium">
+                  {g.name}{g.courseName ? ` · ${g.courseName}` : ''}
+                </span>
+              ))}
+            </div>
+          )}
         </div>
       </div>
 
       {/* Stats */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
         {[
-          { label: t('nav.exams'), value: results.length, color: 'text-primary-500' },
+          { label: t('org.students.examsTaken'), value: results.length, color: 'text-primary-500' },
           { label: t('org.students.avgScore'), value: `${avgScore}%`, color: 'text-primary-500' },
           { label: t('org.students.passRate'), value: `${passRate}%`, color: 'text-emerald-500' },
           { label: t('org.students.bestScore'), value: `${best}%`, color: 'text-amber-500' },

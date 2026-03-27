@@ -9,7 +9,7 @@ import {
   apiAcceptMembership,
   apiRejectMembership
 } from '../../lib/api';
-import { Users, Search, Mail, Plus, RefreshCw, Eye, EyeOff, CheckCircle, XCircle, UserPlus } from 'lucide-react';
+import { Users, Search, Mail, Plus, RefreshCw, Eye, EyeOff, CheckCircle, XCircle, UserPlus, Phone } from 'lucide-react';
 import type { UserProfile } from '../../types';
 import toast from 'react-hot-toast';
 
@@ -159,6 +159,7 @@ const StudentsPage: React.FC = () => {
                 <thead><tr className="border-b border-slate-100 dark:border-slate-700/50">
                   <th className="text-left text-[10px] font-medium text-slate-500 uppercase tracking-wider px-4 py-2">{t('org.results.student')}</th>
                   <th className="text-left text-[10px] font-medium text-slate-500 uppercase tracking-wider px-4 py-2 hidden sm:table-cell">{t('common.email', 'Email')}</th>
+                  <th className="text-left text-[10px] font-medium text-slate-500 uppercase tracking-wider px-4 py-2 hidden md:table-cell">{t('common.phone')}</th>
                   <th className="text-left text-[10px] font-medium text-slate-500 uppercase tracking-wider px-4 py-2">{t('common.status')}</th>
                 </tr></thead>
                 <tbody className="divide-y divide-slate-50 dark:divide-slate-700/30">
@@ -175,6 +176,7 @@ const StudentsPage: React.FC = () => {
                         </div>
                       </td>
                       <td className="px-4 py-2.5 text-[11px] text-slate-500 hidden sm:table-cell"><div className="flex items-center gap-1"><Mail className="w-3 h-3" /><span className="truncate max-w-[180px]">{s.email}</span></div></td>
+                      <td className="px-4 py-2.5 text-[11px] text-slate-500 hidden md:table-cell">{s.phone ? <div className="flex items-center gap-1"><Phone className="w-3 h-3" />{s.phone}</div> : <span className="text-slate-300 dark:text-slate-600">—</span>}</td>
                       <td className="px-4 py-2.5"><span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-500 font-medium">{t('common.active')}</span></td>
                     </tr>
                   ))}

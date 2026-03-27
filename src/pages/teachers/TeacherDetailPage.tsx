@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { orgGetTeachers, orgGetGroups } from '../../lib/api';
 import { apiGetTeacherProfile } from '../../lib/api';
-import { ArrowLeft, Mail, Calendar, BookOpen, Briefcase, Link2, UserPlus, Users, FolderOpen } from 'lucide-react';
+import { ArrowLeft, Mail, Calendar, BookOpen, Briefcase, Link2, UserPlus, Users, FolderOpen, Phone } from 'lucide-react';
 import type { UserProfile, TeacherProfile } from '../../types';
 
 const TeacherDetailPage: React.FC = () => {
@@ -58,6 +58,9 @@ const TeacherDetailPage: React.FC = () => {
           </div>
           <div className="flex items-center gap-3 flex-wrap">
             <span className="text-[10px] px-2 py-0.5 bg-violet-500/10 text-violet-500 rounded-full font-medium">{t('teacher.role')}</span>
+            {teacher.phone && (
+              <span className="text-[10px] text-slate-400 flex items-center gap-1"><Phone className="w-3 h-3" />{teacher.phone}</span>
+            )}
             {teacher.createdAt && (
               <span className="text-[10px] text-slate-400 flex items-center gap-1"><Calendar className="w-3 h-3" />{t('teacher.joined')}: {new Date(teacher.createdAt).toLocaleDateString()}</span>
             )}

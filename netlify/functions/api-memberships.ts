@@ -82,12 +82,28 @@ const handler: Handler = async (event: HandlerEvent) => {
       .where('role', 'in', ['teacher', 'mentor', 'owner', 'admin'])
       .get();
 
-    const members = snap.docs.map((d: any) => ({
+    let members = snap.docs.map((d: any) => ({
       id: d.id,
       userId: d.data().userId,
       userName: d.data().userName,
       role: d.data().role,
     }));
+
+    // Enrich with avatarUrl from users collection
+    if (members.length > 0) {
+      const uids = members.map((m: any) => m.userId).filter(Boolean);
+      const profileMap: Record<string, any> = {};
+      for (let i = 0; i < uids.length; i += 10) {
+        const batch = uids.slice(i, i + 10);
+        const profileSnap = await adminDb.collection('users').where('__name__', 'in', batch).get();
+        profileSnap.docs.forEach((d: any) => { profileMap[d.id] = d.data(); });
+      }
+      members = members.map((m: any) => {
+        const p = profileMap[m.userId] || {};
+        return { ...m, avatarUrl: p.avatarUrl || '' };
+      });
+    }
+
     return ok(members);
   }
 
@@ -122,7 +138,23 @@ const handler: Handler = async (event: HandlerEvent) => {
       }
 
       const snap = await query.get();
-      const members = snap.docs.map((d: any) => ({ id: d.id, ...d.data() }));
+      let members = snap.docs.map((d: any) => ({ id: d.id, ...d.data() }));
+
+      // Enrich with avatarUrl, phone from users collection
+      if (members.length > 0) {
+        const uids = members.map((m: any) => m.userId).filter(Boolean);
+        const profileMap: Record<string, any> = {};
+        for (let i = 0; i < uids.length; i += 10) {
+          const batch = uids.slice(i, i + 10);
+          const profileSnap = await adminDb.collection('users').where('__name__', 'in', batch).get();
+          profileSnap.docs.forEach((d: any) => { profileMap[d.id] = d.data(); });
+        }
+        members = members.map((m: any) => {
+          const p = profileMap[m.userId] || {};
+          return { ...m, avatarUrl: p.avatarUrl || '', phone: p.phone || '', city: p.city || '' };
+        });
+      }
+
       return ok(members);
     }
 

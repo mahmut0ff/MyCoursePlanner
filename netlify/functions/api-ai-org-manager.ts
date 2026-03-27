@@ -73,7 +73,9 @@ const handler: Handler = async (event: HandlerEvent) => {
     // --- action: chat ---
     if (action === 'chat') {
       const body = JSON.parse(event.body || '{}');
-      const { organizationId, messages } = body;
+      const { messages } = body;
+      // organizationId comes from query params (frontend sends it there)
+      const organizationId = event.queryStringParameters?.organizationId || body.organizationId;
       
       if (!organizationId) return badRequest('organizationId is required');
       if (!messages || !Array.isArray(messages)) return badRequest('messages array is required');
@@ -110,7 +112,8 @@ YOUR DIRECTIVES:
 1. Be polite, helpful, and concise.
 2. YOU MUST strictly rely ONLY on the data provided below to answer user queries. Do not make up information, prices, schedules, or course names.
 3. If a user asks about a topic not covered by the data (or outside of educational services), tell them politely that you do not have that information and they should contact the organization directly.
-4. ${settingsData.customInstructions || 'No additional custom instructions.'}
+4. ALWAYS respond in the SAME LANGUAGE as the user's message. If the user writes in Russian, respond in Russian. If they write in English, respond in English.
+5. ${settingsData.customInstructions || 'No additional custom instructions.'}
 
 ORGANIZATION DATA:
 - Name: ${org.name || 'Unknown'}

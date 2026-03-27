@@ -132,22 +132,8 @@ ${branches.length ? branches.join('\n') : 'No public branches listed.'}
 
 Review the Chat History and respond accurately to the final user message.`;
 
-      // Fallback model selection
-      let selectedModel = 'gemini-1.5-flash';
-      try {
-        const modelsResponse = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${GEMINI_API_KEY}`);
-        if (modelsResponse.ok) {
-          const modelsData = await modelsResponse.json();
-          if (modelsData?.models) {
-            const flashModels = modelsData.models.filter((m: any) => m.name.includes('flash') && m.supportedGenerationMethods?.includes('generateContentStream'));
-            if (flashModels.length > 0) {
-              selectedModel = flashModels[flashModels.length - 1].name.replace('models/', '');
-            }
-          }
-        }
-      } catch (e) {
-        console.warn('Fallback dynamic models fetch failed', e);
-      }
+      // Model selection — use gemini-2.0-flash (stable, fast, cheap)
+      const selectedModel = 'gemini-2.0-flash';
 
       const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
       const model = genAI.getGenerativeModel({

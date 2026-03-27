@@ -25,9 +25,34 @@ const handler: Handler = async (event: HandlerEvent) => {
       return badRequest('Either prompt or fileUrl is required');
     }
 
+    // Dynamically query available models to prevent 404s if gemini-1.5-flash is deprecated/unavailable
+    let selectedModel = 'gemini-1.5-flash';
+    try {
+      const modelsResponse = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${GEMINI_API_KEY}`);
+      if (modelsResponse.ok) {
+        const modelsData = await modelsResponse.json();
+        if (modelsData && modelsData.models) {
+          const supportedModels = modelsData.models.filter((m: any) => 
+            m.supportedGenerationMethods?.includes('generateContent')
+          );
+          const flashModels = supportedModels.filter((m: any) => m.name.includes('flash'));
+          
+          if (flashModels.length > 0) {
+            // Pick the last flash model (often the newest, or we just grab the first valid one)
+            selectedModel = flashModels[flashModels.length - 1].name.replace('models/', '');
+          } else if (supportedModels.length > 0) {
+            // Fallback to any supported model
+            selectedModel = supportedModels[supportedModels.length - 1].name.replace('models/', '');
+          }
+        }
+      }
+    } catch (e) {
+      console.warn('Failed to dynamically fetch models, falling back to gemini-1.5-flash', e);
+    }
+
     const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
     const model = genAI.getGenerativeModel({
-      model: 'gemini-1.5-flash',
+      model: selectedModel,
       generationConfig: {
         responseMimeType: 'application/json',
       },

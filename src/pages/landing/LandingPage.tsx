@@ -528,8 +528,8 @@ const LandingPage: React.FC = () => {
  <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-amber-400 text-slate-900 text-xs font-bold px-4 py-1 rounded-full shadow-lg">{t('landing.popular')}</div>
  )}
  <div className="flex items-center gap-3 mb-4">
- <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${plan.popular ? 'bg-white/20' : 'bg-slate-100 '}`}>
- <plan.icon className={`w-5 h-5 ${plan.popular ? 'text-white' : 'text-slate-600 '}`} />
+ <div className={`w-12 h-12 rounded-xl flex items-center justify-center shrink-0 ${plan.popular ? 'bg-white/20' : 'bg-slate-100 '}`}>
+ <plan.icon className={`w-6 h-6 ${plan.popular ? 'text-white' : 'text-slate-600 '}`} />
  </div>
  <h3 className={`text-lg font-bold ${plan.popular ? 'text-white' : ''}`}>{plan.name}</h3>
  </div>

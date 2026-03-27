@@ -208,6 +208,7 @@ export const adminResetPassword = (email: string) => adminReq('resetPassword', '
 export const adminGetSubscriptions = (filters?: Record<string, string>) => adminReq('subscriptions', 'GET', undefined, filters);
 export const adminChangePlan = (organizationId: string, planId: string) => adminReq('changePlan', 'POST', { organizationId, planId });
 export const adminExtendSubscription = (organizationId: string, days: number) => adminReq('extendSubscription', 'POST', { organizationId, days });
+export const adminGiftPlan = (organizationId: string, planId: string) => adminReq('giftPlan', 'POST', { organizationId, planId });
 export const adminCancelSubscription = (organizationId: string) => adminReq('cancelSubscription', 'POST', { organizationId });
 
 // Analytics

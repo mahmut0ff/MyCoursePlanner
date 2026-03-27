@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { adminGetOrg, adminSuspendOrg, adminActivateOrg, adminDeleteOrg, adminAddOrgNote, adminChangePlan } from '../../lib/api';
-import { ArrowLeft, Building2, Ban, RotateCcw, Trash2, Calendar, MessageSquare } from 'lucide-react';
+import { adminGetOrg, adminSuspendOrg, adminActivateOrg, adminDeleteOrg, adminAddOrgNote, adminChangePlan, adminGiftPlan } from '../../lib/api';
+import { ArrowLeft, Building2, Ban, RotateCcw, Trash2, Calendar, MessageSquare, Gift } from 'lucide-react';
 
 const PLAN_COLORS: Record<string, string> = { starter: 'bg-blue-100 text-blue-800', professional: 'bg-violet-100 text-violet-800', enterprise: 'bg-amber-100 text-amber-800' };
 const STATUS_COLORS: Record<string, string> = { active: 'bg-emerald-100 text-emerald-700', suspended: 'bg-red-100 text-red-700', trial: 'bg-amber-100 text-amber-700', deleted: 'bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400' };
@@ -14,6 +14,7 @@ const AdminOrgDetailPage: React.FC = () => {
   const [org, setOrg] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [noteText, setNoteText] = useState('');
+  const [giftingPlan, setGiftingPlan] = useState<string | null>(null);
 
   const load = async () => {
     if (!id) return;
@@ -28,6 +29,12 @@ const AdminOrgDetailPage: React.FC = () => {
   const handleDelete = async () => { if (!confirm(t('admin.orgs.confirmDelete'))) return; await adminDeleteOrg(id!); navigate('/admin/organizations'); };
   const handleChangePlan = async (planId: string) => { await adminChangePlan(id!, planId); load(); };
   const handleAddNote = async () => { if (!noteText.trim() || !id) return; await adminAddOrgNote(id, noteText); setNoteText(''); load(); };
+  const handleGiftPlan = async (planId: string) => {
+    if (!confirm(`Подарить тариф «${planId}» бесплатно для организации «${org?.name}»?`)) return;
+    setGiftingPlan(planId);
+    try { await adminGiftPlan(id!, planId); load(); } catch (e) { console.error(e); }
+    finally { setGiftingPlan(null); }
+  };
 
   if (loading) return <div className="flex justify-center py-20"><div className="w-8 h-8 border-2 border-slate-200 border-t-primary-500 rounded-full animate-spin dark:border-slate-700 dark:border-t-primary-400" /></div>;
   if (!org) return <div className="text-center py-20"><Building2 className="w-12 h-12 text-slate-300 dark:text-slate-600 mx-auto mb-3" /><p className="text-sm text-slate-400">{t('common.notFound')}</p><button onClick={() => navigate('/admin/organizations')} className="mt-3 text-primary-500 text-sm hover:underline">{t('common.back')}</button></div>;
@@ -79,6 +86,26 @@ const AdminOrgDetailPage: React.FC = () => {
             <button key={p} disabled={org.planId === p} onClick={() => handleChangePlan(p)}
               className={`flex-1 px-3 py-2.5 rounded-lg text-xs font-medium transition-colors capitalize ${org.planId === p ? 'bg-primary-100 text-primary-700 cursor-not-allowed' : 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-600'}`}>
               {p}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* 🎁 Gift Plan */}
+      <div className="bg-gradient-to-r from-emerald-50 to-teal-50 dark:from-emerald-900/20 dark:to-teal-900/20 border border-emerald-200 dark:border-emerald-800/50 rounded-xl p-5 mb-4">
+        <div className="flex items-center gap-2 mb-3">
+          <Gift className="w-4 h-4 text-emerald-600" />
+          <h2 className="text-sm font-semibold text-slate-900 dark:text-white">Подарить тариф бесплатно</h2>
+          {org.subscription?.status === 'gifted' && (
+            <span className="ml-auto text-[10px] px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300 font-medium">🎁 Подарен</span>
+          )}
+        </div>
+        <p className="text-xs text-slate-500 dark:text-slate-400 mb-3">Организация получит тариф навсегда без оплаты</p>
+        <div className="flex gap-2">
+          {['starter', 'professional', 'enterprise'].map((p) => (
+            <button key={p} disabled={giftingPlan === p} onClick={() => handleGiftPlan(p)}
+              className={`flex-1 px-3 py-2.5 rounded-lg text-xs font-medium transition-colors capitalize ${org.planId === p && org.subscription?.status === 'gifted' ? 'bg-emerald-500 text-white ring-2 ring-emerald-300' : 'bg-white dark:bg-slate-700 text-slate-600 dark:text-slate-400 hover:bg-emerald-100 dark:hover:bg-emerald-900/30 border border-slate-200 dark:border-slate-600'}`}>
+              {giftingPlan === p ? '...' : `🎁 ${p}`}
             </button>
           ))}
         </div>

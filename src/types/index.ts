@@ -30,7 +30,44 @@ export interface PlanLimits {
   prioritySupport: boolean;
   dedicatedSupport: boolean;
   customBranding: boolean;
+  // Feature gating
+  financesEnabled: boolean;
+  gradebookEnabled: boolean;
+  certificatesEnabled: boolean;
+  branchesEnabled: boolean;
+  vacanciesEnabled: boolean;
+  advancedAnalytics: boolean;
 }
+
+/** Canonical feature keys for plan gating */
+export type PlanFeature =
+  | 'finances' | 'gradebook' | 'certificates'
+  | 'branches' | 'vacancies' | 'advancedAnalytics'
+  | 'ai' | 'aiAnalytics';
+
+/** Map PlanFeature → PlanLimits key */
+export const FEATURE_TO_LIMIT: Record<PlanFeature, keyof PlanLimits> = {
+  finances: 'financesEnabled',
+  gradebook: 'gradebookEnabled',
+  certificates: 'certificatesEnabled',
+  branches: 'branchesEnabled',
+  vacancies: 'vacanciesEnabled',
+  advancedAnalytics: 'advancedAnalytics',
+  ai: 'aiEnabled',
+  aiAnalytics: 'aiAnalytics',
+};
+
+/** Minimum plan required per feature (for UpgradeWall display) */
+export const FEATURE_MIN_PLAN: Record<PlanFeature, PlanId> = {
+  finances: 'professional',
+  gradebook: 'professional',
+  certificates: 'professional',
+  vacancies: 'professional',
+  advancedAnalytics: 'professional',
+  branches: 'enterprise',
+  ai: 'enterprise',
+  aiAnalytics: 'enterprise',
+};
 
 export const PLANS: Plan[] = [
   {
@@ -46,7 +83,7 @@ export const PLANS: Plan[] = [
       'Auto-grading',
       'Email support',
     ],
-    limits: { maxStudents: 50, maxTeachers: 5, maxExams: 20, aiEnabled: false, aiAnalytics: false, prioritySupport: false, dedicatedSupport: false, customBranding: false },
+    limits: { maxStudents: 50, maxTeachers: 5, maxExams: 20, aiEnabled: false, aiAnalytics: false, prioritySupport: false, dedicatedSupport: false, customBranding: false, financesEnabled: false, gradebookEnabled: false, certificatesEnabled: false, branchesEnabled: false, vacanciesEnabled: false, advancedAnalytics: false },
   },
   {
     id: 'professional',
@@ -61,7 +98,7 @@ export const PLANS: Plan[] = [
       'Performance analytics',
       'Priority support',
     ],
-    limits: { maxStudents: 200, maxTeachers: 20, maxExams: -1, aiEnabled: true, aiAnalytics: false, prioritySupport: true, dedicatedSupport: false, customBranding: false },
+    limits: { maxStudents: 200, maxTeachers: 20, maxExams: -1, aiEnabled: false, aiAnalytics: false, prioritySupport: true, dedicatedSupport: false, customBranding: false, financesEnabled: true, gradebookEnabled: true, certificatesEnabled: true, branchesEnabled: false, vacanciesEnabled: true, advancedAnalytics: true },
   },
   {
     id: 'enterprise',
@@ -77,7 +114,7 @@ export const PLANS: Plan[] = [
       'Dedicated support manager',
       'API access',
     ],
-    limits: { maxStudents: -1, maxTeachers: -1, maxExams: -1, aiEnabled: true, aiAnalytics: true, prioritySupport: true, dedicatedSupport: true, customBranding: true },
+    limits: { maxStudents: -1, maxTeachers: -1, maxExams: -1, aiEnabled: true, aiAnalytics: true, prioritySupport: true, dedicatedSupport: true, customBranding: true, financesEnabled: true, gradebookEnabled: true, certificatesEnabled: true, branchesEnabled: true, vacanciesEnabled: true, advancedAnalytics: true },
   },
 ];
 

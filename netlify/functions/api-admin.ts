@@ -328,6 +328,40 @@ const handler: Handler = async (event: HandlerEvent) => {
       return ok({ success: true, newEndDate: currentEnd.toISOString() });
     }
 
+    if (action === 'giftPlan') {
+      if (!body.organizationId || !body.planId) return badRequest('organizationId and planId required');
+      const orgDoc = await adminDb.collection('organizations').doc(body.organizationId).get();
+      if (!orgDoc.exists) return notFound('Organization not found');
+      const beforePlan = orgDoc.data()?.planId;
+
+      // Update org plan
+      await adminDb.collection('organizations').doc(body.organizationId).update({ planId: body.planId, updatedAt: new Date().toISOString() });
+
+      // Create or update subscription as gifted (permanent, no expiry)
+      const subSnap = await adminDb.collection('subscriptions').where('organizationId', '==', body.organizationId).limit(1).get();
+      const giftData = {
+        organizationId: body.organizationId,
+        planId: body.planId,
+        status: 'gifted',
+        giftedBy: user.uid,
+        giftedByName: user.displayName || user.email,
+        giftedAt: new Date().toISOString(),
+        startDate: new Date().toISOString(),
+        currentPeriodEnd: null, // permanent — no expiry
+        createdAt: new Date().toISOString(),
+      };
+      if (!subSnap.empty) {
+        await subSnap.docs[0].ref.update(giftData);
+      } else {
+        await adminDb.collection('subscriptions').add(giftData);
+      }
+
+      await auditLog(user, 'plan_gifted', 'subscription', body.organizationId, { planId: beforePlan }, { planId: body.planId, giftedBy: user.uid });
+      // Notify all super admins
+      notifyAllSuperAdmins('plan_gifted', 'Тариф подарен', `Организации «${orgDoc.data()?.name}» подарен тариф ${body.planId}`, '/admin/organizations').catch(() => {});
+      return ok({ success: true });
+    }
+
     if (action === 'cancelSubscription') {
       if (!body.organizationId) return badRequest('organizationId required');
       const subSnap = await adminDb.collection('subscriptions').where('organizationId', '==', body.organizationId).limit(1).get();

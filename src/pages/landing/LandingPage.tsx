@@ -10,7 +10,7 @@ import {
  MessageCircle, Mail, MapPin, Phone, Award,
  Layers, Lock, FileText, Target, Gamepad2,
  GraduationCap, Building2, Laptop, School,
- Bot, PenTool, LayoutGrid,
+ Bot, PenTool, LayoutGrid, Database,
 } from 'lucide-react';
 
 /* ──────────────────────────────────────────
@@ -361,6 +361,86 @@ const LandingPage: React.FC = () => {
 
  {/* ═══ Stats ═══ */}
 
+  {/* ═══ AI Assistant Manager Highlight ═══ */}
+  <section className="py-24 px-6 relative overflow-hidden bg-white border-b border-slate-100">
+    <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-primary-600/5 rounded-full blur-[100px] pointer-events-none" />
+    <div className="absolute bottom-0 left-0 w-[500px] h-[500px] bg-sky-600/5 rounded-full blur-[100px] pointer-events-none" />
+    
+    <div className="max-w-7xl mx-auto relative z-10">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
+        
+        {/* Visual/Card */}
+        <div className="relative mt-8 lg:mt-0 order-2 lg:order-1">
+          <div className="absolute inset-0 bg-gradient-to-tr from-sky-400 to-primary-400 rounded-3xl blur-[40px] opacity-20 animate-pulse" />
+          <div className="relative bg-white border border-slate-200 p-8 rounded-3xl shadow-2xl">
+            <div className="flex items-center gap-3 border-b border-slate-100 pb-5 mb-6">
+              <div className="w-12 h-12 rounded-2xl bg-sky-50 flex items-center justify-center shrink-0 border border-sky-100">
+                 <Bot className="w-6 h-6 text-sky-500" />
+              </div>
+              <div>
+                <h4 className="text-slate-900 font-bold text-sm">AI-менеджер платформы</h4>
+                <p className="text-xs text-emerald-500 flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span> В сети</p>
+              </div>
+            </div>
+            
+            <div className="space-y-4">
+              <div className="flex justify-end">
+                 <div className="bg-primary-600 text-white p-4 rounded-2xl rounded-br-none text-sm max-w-[85%] shadow-sm">
+                    Здравствуйте! Подскажите, когда начинается набор на курс "Frontend Разработчик"? И какая цена?
+                 </div>
+              </div>
+              
+              <div className="flex justify-start">
+                 <div className="bg-slate-50 border border-slate-100 text-slate-700 p-4 rounded-2xl rounded-bl-none text-sm max-w-[90%] space-y-3 shadow-sm">
+                    <p>Привет! 👋</p>
+                    <p>Набор на курс <strong>«Frontend Разработчик»</strong> уже открыт! Ближайшая группа стартует 15-го числа следующего месяца.</p>
+                    <p>Длительность курса — 3 месяца. Стоимость составляет <span className="text-primary-600 font-semibold">120 000 ₸</span> в месяц.</p>
+                    <div className="pt-2 border-t border-slate-200 text-[10px] text-slate-400">Сгенерировано AI на основе ваших данных</div>
+                 </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Text Content */}
+        <div className="order-1 lg:order-2">
+          <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-sky-50 border border-sky-100 rounded-full text-sm font-medium text-sky-600 mb-6">
+            <MessageCircle className="w-4 h-4" />
+            AI Менеджер Организации
+          </div>
+          <h2 className="text-4xl md:text-5xl font-extrabold text-slate-900 mb-6 leading-tight">
+            Освободите время с <span className="bg-gradient-to-r from-sky-500 to-primary-500 bg-clip-text text-transparent">Умным ИИ-Ассистентом</span>
+          </h2>
+          <p className="text-lg text-slate-500 mb-8 leading-relaxed">
+            Поручите работу с клиентами искусственному интеллекту! Ваш персональный ИИ-ассистент работает 24/7 на странице вашей организации и мгновенно отвечает на вопросы будущих учеников.
+          </p>
+          
+          <div className="space-y-6">
+            <div className="flex gap-4">
+              <div className="w-12 h-12 rounded-xl bg-sky-50 flex items-center justify-center shrink-0 border border-sky-100">
+                <Database className="w-6 h-6 text-sky-500" />
+              </div>
+              <div>
+                <h3 className="text-xl font-bold text-slate-900 mb-2">Знает всё о ваших курсах</h3>
+                <p className="text-slate-500 leading-relaxed md:text-sm">ИИ автоматически обучается на базе ваших загруженных курсов, установленных цен, адресов филиалов и расписания. Никаких выдуманных фактов!</p>
+              </div>
+            </div>
+            <div className="flex gap-4">
+              <div className="w-12 h-12 rounded-xl bg-emerald-50 flex items-center justify-center shrink-0 border border-emerald-100">
+                <Shield className="w-6 h-6 text-emerald-500" />
+              </div>
+              <div>
+                <h3 className="text-xl font-bold text-slate-900 mb-2">Безопасность и тотальный контроль</h3>
+                <p className="text-slate-500 leading-relaxed md:text-sm">Вы полностью контролируете поведение бота: задавайте стартовые сообщения, описывайте политику зачисления и редактируйте FAQ. Бот отвечает строго по скрипту.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
  {/* ═══ Features Grid ═══ */}
  <section id="features" className="py-20 px-6 bg-slate-50 ">
  <div className="max-w-7xl mx-auto">
@@ -584,11 +664,11 @@ const LandingPage: React.FC = () => {
  </div>
  </div>
  {/* Legal */}
- <div className="border-t border-white/10 pt-6 flex flex-col md:flex-row items-center justify-between gap-4">
- <p className="text-sm text-slate-500">&copy; {new Date().getFullYear()} Planula. {t('landing.rights')}</p>
- <div className="flex items-center gap-6">
- <Link to="/privacy" className="text-sm text-slate-500 hover:text-white transition-colors">{t('landing.footerPrivacy')}</Link>
- <Link to="/terms" className="text-sm text-slate-500 hover:text-white transition-colors">{t('landing.footerTerms')}</Link>
+ <div className="border-t border-white/10 pt-6 flex flex-col md:flex-row items-center justify-between gap-6">
+ <p className="text-sm text-slate-500 text-center md:text-left">&copy; {new Date().getFullYear()} Planula. {t('landing.rights')}</p>
+ <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-4">
+ <Link to="/privacy" className="text-sm text-slate-500 hover:text-white transition-colors text-center">{t('landing.footerPrivacy')}</Link>
+ <Link to="/terms" className="text-sm text-slate-500 hover:text-white transition-colors text-center">{t('landing.footerTerms')}</Link>
  <LanguageSwitcher />
  </div>
  </div>

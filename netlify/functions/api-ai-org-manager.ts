@@ -92,15 +92,17 @@ const handler: Handler = async (event: HandlerEvent) => {
       // Fetch Context (Org, Courses, Branches)
       const [orgSnap, coursesSnap, branchesSnap] = await Promise.all([
         adminDb.collection('organizations').doc(organizationId).get(),
-        adminDb.collection('courses').where('organizationId', '==', organizationId).where('isPublished', '==', true).get(),
+        adminDb.collection('courses').where('organizationId', '==', organizationId).get(),
         adminDb.collection('branches').where('organizationId', '==', organizationId).get()
       ]);
 
       const org = orgSnap.data() || {};
-      const courses = coursesSnap.docs.map(d => {
-        const c = d.data();
-        return `- ${c.title}${c.price ? ` (Price: ${c.price})` : ''}: ${c.description || ''}`;
-      });
+      const courses = coursesSnap.docs
+        .map(d => d.data())
+        .filter(c => c.isPublished === true)
+        .map(c => {
+          return `- ${c.title}${c.price ? ` (Price: ${c.price})` : ''}: ${c.description || ''}`;
+        });
       const branches = branchesSnap.docs.map(d => {
         const b = d.data();
         return `- ${b.name}: ${b.address || ''} ${b.phone ? `(${b.phone})` : ''}`;

@@ -1,45 +1,64 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
-import { Tag, Plus } from 'lucide-react';
+import { Plus, Check, Crown, BookOpen, Shield } from 'lucide-react';
 
 const AdminPlansPage: React.FC = () => {
   const { t } = useTranslation();
 
-  const plans = [
-    { id: 'starter', name: 'Starter', price: 39, color: 'bg-blue-600', features: ['50 students', '5 teachers', '10 exams', 'Basic analytics'] },
-    { id: 'professional', name: 'Professional', price: 79, color: 'bg-violet-600', features: ['200 students', '20 teachers', '50 exams', 'Advanced analytics', 'AI features'] },
-    { id: 'enterprise', name: 'Enterprise', price: 99, color: 'bg-amber-600', features: ['Unlimited students', 'Unlimited teachers', 'Unlimited exams', 'Full analytics', 'AI features', 'Custom branding', 'Priority support'] },
+  const localPlans = [
+    {
+      id: 'starter', name: t('landing.planBasic'), price: 1990, popular: false, icon: BookOpen,
+      features: [t('landing.planBasicF1'), t('landing.planBasicF2'), t('landing.planBasicF3'), t('landing.planBasicF4')],
+    },
+    {
+      id: 'professional', name: t('landing.planPro'), price: 4990, popular: true, icon: Crown,
+      features: [t('landing.planProF1'), t('landing.planProF2'), t('landing.planProF3'), t('landing.planProF4'), t('landing.planProF5')],
+    },
+    {
+      id: 'enterprise', name: t('landing.planEnt'), price: 14900, popular: false, icon: Shield,
+      features: [t('landing.planEntF1'), t('landing.planEntF2'), t('landing.planEntF3'), t('landing.planEntF4'), t('landing.planEntF5')],
+    },
   ];
 
   return (
-    <div>
-      <div className="flex items-center justify-between mb-6">
+    <div className="max-w-6xl mx-auto">
+      <div className="flex items-center justify-between mb-8">
         <div>
           <h1 className="text-2xl font-bold text-slate-900 dark:text-white">{t('nav.plans')}</h1>
-          <p className="text-slate-500 dark:text-slate-400 text-sm">{t('admin.plans.subtitle')}</p>
+          <p className="text-slate-500 dark:text-slate-400 text-sm mt-1">{t('admin.plans.subtitle')}</p>
         </div>
-        <button className="btn-primary text-sm flex items-center gap-1"><Plus className="w-4 h-4" />{t('admin.plans.addPlan')}</button>
+        <button className="btn-primary flex items-center gap-2"><Plus className="w-4 h-4" />{t('admin.plans.addPlan')}</button>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {plans.map((plan) => (
-          <div key={plan.id} className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl overflow-hidden">
-            <div className={`${plan.color} px-6 py-5`}>
-              <Tag className="w-5 h-5 text-white/80 mb-2" />
-              <h3 className="text-lg font-bold text-white">{plan.name}</h3>
-              <p className="text-white/80 text-sm">${plan.price}/mo</p>
+        {localPlans.map((plan) => (
+          <div key={plan.id} className={`relative rounded-3xl p-8 border transition-all hover:shadow-xl ${plan.popular ? 'bg-primary-600 border-primary-600 text-white shadow-2xl shadow-primary-500/30 md:scale-105 z-10' : 'bg-white border-slate-200 hover:shadow-slate-200/50 dark:bg-slate-800 dark:border-slate-700'}`}>
+            {plan.popular && (
+              <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-amber-400 text-slate-900 text-xs font-bold px-4 py-1 rounded-full shadow-lg">
+                {t('landing.popular')}
+              </div>
+            )}
+            <div className="flex items-center gap-3 mb-6">
+              <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${plan.popular ? 'bg-white/20' : 'bg-slate-100 dark:bg-slate-700'}`}>
+                <plan.icon className={`w-6 h-6 ${plan.popular ? 'text-white' : 'text-slate-600 dark:text-slate-300'}`} />
+              </div>
+              <h3 className={`text-xl font-bold ${plan.popular ? 'text-white' : 'text-slate-900 dark:text-white'}`}>{plan.name}</h3>
             </div>
-            <div className="p-6">
-              <ul className="space-y-2">
-                {plan.features.map((f) => (
-                  <li key={f} className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-400">
-                    <div className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-                    {f}
-                  </li>
-                ))}
-              </ul>
-              <button className="btn-secondary text-sm w-full mt-4">{t('common.edit')}</button>
+            <div className="mb-8">
+              <span className={`text-5xl font-extrabold tracking-tight ${plan.popular ? 'text-white' : 'text-slate-900 dark:text-white'}`}>{plan.price.toLocaleString()}</span>
+              <span className={`text-sm ml-2 ${plan.popular ? 'text-white/70' : 'text-slate-500 dark:text-slate-400'}`}>{t('landing.currency')}/{t('landing.perMonth')}</span>
             </div>
+            <ul className="space-y-4 mb-10">
+              {plan.features.map((f, i) => (
+                <li key={i} className={`flex items-start gap-3 text-sm ${plan.popular ? 'text-white/90' : 'text-slate-600 dark:text-slate-400'}`}>
+                  <Check className={`w-5 h-5 shrink-0 mt-0.5 ${plan.popular ? 'text-emerald-300' : 'text-emerald-500'}`} />
+                  <span>{f}</span>
+                </li>
+              ))}
+            </ul>
+            <button className={`w-full py-3.5 rounded-xl font-semibold text-sm transition-all ${plan.popular ? 'bg-white text-primary-700 hover:bg-slate-50 shadow-lg shadow-white/20' : 'bg-slate-100 text-slate-700 hover:bg-slate-200 dark:bg-slate-700 dark:text-white dark:hover:bg-slate-600'}`}>
+              {t('common.edit')}
+            </button>
           </div>
         ))}
       </div>

@@ -129,19 +129,15 @@ const LandingPage: React.FC = () => {
  /* ── Pricing plans ── */
  const plans = [
  {
- id: 'free', name: t('landing.planFree'), price: 0, popular: false, icon: Zap,
- features: [t('landing.planFreeF1'), t('landing.planFreeF2'), t('landing.planFreeF3'), t('landing.planFreeF4')],
+ id: 'basic', name: t('landing.planBasic'), price: 1990, popular: false, icon: BookOpen,
+ features: [t('landing.planBasicF1'), t('landing.planBasicF2'), t('landing.planBasicF3'), t('landing.planBasicF4')],
  },
  {
- id: 'basic', name: t('landing.planBasic'), price: 1490, popular: false, icon: BookOpen,
- features: [t('landing.planBasicF1'), t('landing.planBasicF2'), t('landing.planBasicF3'), t('landing.planBasicF4'), t('landing.planBasicF5')],
- },
- {
- id: 'pro', name: t('landing.planPro'), price: 2990, popular: true, icon: Crown,
+ id: 'pro', name: t('landing.planPro'), price: 4990, popular: true, icon: Crown,
  features: [t('landing.planProF1'), t('landing.planProF2'), t('landing.planProF3'), t('landing.planProF4'), t('landing.planProF5')],
  },
  {
- id: 'enterprise', name: t('landing.planEnt'), price: 7990, popular: false, icon: Shield,
+ id: 'enterprise', name: t('landing.planEnt'), price: 14900, popular: false, icon: Shield,
  features: [t('landing.planEntF1'), t('landing.planEntF2'), t('landing.planEntF3'), t('landing.planEntF4'), t('landing.planEntF5')],
  },
  ];

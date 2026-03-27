@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { adminGetSubscriptions, adminExtendSubscription, adminCancelSubscription } from '../../lib/api';
 import { CreditCard, DollarSign, Ban, Clock, Search } from 'lucide-react';
 
-const PLAN_PRICES: Record<string, number> = { starter: 39, professional: 79, enterprise: 99 };
+const PLAN_PRICES: Record<string, number> = { starter: 1990, professional: 4990, enterprise: 14900 };
 
 const AdminBillingPage: React.FC = () => {
   const { t } = useTranslation();

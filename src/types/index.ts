@@ -36,7 +36,7 @@ export const PLANS: Plan[] = [
   {
     id: 'starter',
     name: 'Starter',
-    price: 39,
+    price: 1990,
     features: [
       'Up to 50 students',
       'Up to 5 teachers',
@@ -51,7 +51,7 @@ export const PLANS: Plan[] = [
   {
     id: 'professional',
     name: 'Professional',
-    price: 79,
+    price: 4990,
     features: [
       'Up to 200 students',
       'Up to 20 teachers',
@@ -66,7 +66,7 @@ export const PLANS: Plan[] = [
   {
     id: 'enterprise',
     name: 'Enterprise',
-    price: 99,
+    price: 14900,
     features: [
       'Unlimited students',
       'Unlimited teachers',

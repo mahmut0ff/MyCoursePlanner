@@ -3,8 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../contexts/AuthContext';
 import { apiGetSubscription, apiCancelSubscription, apiReactivateSubscription, apiCreatePayment } from '../../lib/api';
 import toast from 'react-hot-toast';
-import { PLANS } from '../../types';
-import { Check, Sparkles, Crown, Zap, CreditCard, Star } from 'lucide-react';
+import { Check, Crown, CreditCard, BookOpen, Shield } from 'lucide-react';
 
 const BillingPage: React.FC = () => {
   const { t } = useTranslation();
@@ -23,8 +22,8 @@ const BillingPage: React.FC = () => {
   const handleChangePlan = async (planId: string) => {
     setChangingPlan(planId);
     try {
-      const kgsPrices: Record<string, number> = { starter: 3500, professional: 7000, enterprise: 9000 };
-      const result = await apiCreatePayment({ planId, amount: kgsPrices[planId] || 3500 });
+      const kgsPrices: Record<string, number> = { starter: 1990, professional: 4990, enterprise: 14900 };
+      const result = await apiCreatePayment({ planId, amount: kgsPrices[planId] || 1990 });
       if (result.redirectUrl) {
         window.location.href = result.redirectUrl;
       }
@@ -49,14 +48,23 @@ const BillingPage: React.FC = () => {
   const isTrialing = subscription?.status === 'trial';
   const isCancelled = subscription?.status === 'cancelled';
 
-  const planMeta: Record<string, { icon: React.ReactNode; accent: string; bg: string; badge?: string }> = {
-    starter: { icon: <Zap className="w-5 h-5" />, accent: 'border-l-blue-500', bg: 'bg-blue-600' },
-    professional: { icon: <Sparkles className="w-5 h-5" />, accent: 'border-l-violet-500', bg: 'bg-violet-600', badge: t('billing.recommended') },
-    enterprise: { icon: <Crown className="w-5 h-5" />, accent: 'border-l-amber-500', bg: 'bg-amber-600' },
-  };
+  const localPlans = [
+    {
+      id: 'starter', name: t('landing.planBasic'), price: 1990, popular: false, icon: BookOpen,
+      features: [t('landing.planBasicF1'), t('landing.planBasicF2'), t('landing.planBasicF3'), t('landing.planBasicF4')],
+    },
+    {
+      id: 'professional', name: t('landing.planPro'), price: 4990, popular: true, icon: Crown,
+      features: [t('landing.planProF1'), t('landing.planProF2'), t('landing.planProF3'), t('landing.planProF4'), t('landing.planProF5')],
+    },
+    {
+      id: 'enterprise', name: t('landing.planEnt'), price: 14900, popular: false, icon: Shield,
+      features: [t('landing.planEntF1'), t('landing.planEntF2'), t('landing.planEntF3'), t('landing.planEntF4'), t('landing.planEntF5')],
+    },
+  ];
 
   return (
-    <div className="max-w-4xl mx-auto">
+    <div className="max-w-6xl mx-auto">
       {/* Header */}
       <div className="flex items-center gap-3 mb-6">
         <div className="w-9 h-9 bg-emerald-600 rounded-xl flex items-center justify-center">
@@ -70,12 +78,12 @@ const BillingPage: React.FC = () => {
 
       {/* Current Plan Banner */}
       {subscription && (
-        <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-5 mb-6">
+        <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-5 mb-8">
           <div className="flex items-center justify-between flex-wrap gap-3">
             <div>
               <p className="text-[10px] text-primary-600 font-semibold uppercase tracking-wider">{t('billing.currentPlan')}</p>
               <p className="text-lg font-bold text-slate-900 dark:text-white capitalize mt-0.5">
-                {currentPlan}
+                {localPlans.find(p => p.id === currentPlan)?.name || currentPlan}
                 {isTrialing && <span className="ml-2 text-xs font-normal text-amber-600 bg-amber-50 dark:bg-amber-900/20 px-2 py-0.5 rounded-full">{t('billing.trial')}</span>}
                 {isCancelled && <span className="ml-2 text-xs font-normal text-red-600 bg-red-50 dark:bg-red-900/20 px-2 py-0.5 rounded-full">{t('billing.cancelled')}</span>}
               </p>
@@ -83,11 +91,11 @@ const BillingPage: React.FC = () => {
                 <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">{t('billing.trialEnds')} {new Date(subscription.trialEndsAt).toLocaleDateString()}</p>
               )}
             </div>
-            <div>
+            <div className="flex gap-3">
               {isCancelled ? (
-                <button onClick={handleReactivate} className="btn-primary text-xs !py-1.5 !px-3">{t('billing.reactivate')}</button>
+                <button onClick={handleReactivate} className="btn-primary text-xs !py-2 !px-4">{t('billing.reactivate')}</button>
               ) : (
-                <button onClick={handleCancel} className="text-xs text-red-500 hover:text-red-700 font-medium">{t('billing.cancelSubscription')}</button>
+                <button onClick={handleCancel} className="text-xs text-red-500 hover:text-red-700 font-medium px-2 py-1">{t('billing.cancelSubscription')}</button>
               )}
             </div>
           </div>
@@ -95,50 +103,45 @@ const BillingPage: React.FC = () => {
       )}
 
       {/* Pricing Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-        {PLANS.map((plan) => {
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        {localPlans.map((plan) => {
           const isCurrent = plan.id === currentPlan;
-          const meta = planMeta[plan.id];
-          const isRecommended = !!meta.badge;
           return (
-            <div key={plan.id}
-              className={`bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden transition-all border-l-4 ${meta.accent} ${
-                isCurrent ? 'ring-2 ring-primary-500 shadow-lg' : isRecommended ? 'shadow-md scale-[1.02]' : 'hover:shadow-md'
-              }`}
-            >
-              {/* Header */}
-              <div className={`${meta.bg} px-5 py-4 text-white relative`}>
-                {meta.badge && (
-                  <div className="absolute top-2 right-2 bg-white/20 backdrop-blur-sm text-white text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full flex items-center gap-1">
-                    <Star className="w-2.5 h-2.5" />{meta.badge}
-                  </div>
-                )}
-                <div className="flex items-center gap-2 mb-2">{meta.icon}<h3 className="text-sm font-bold">{plan.name}</h3></div>
-                <p className="text-3xl font-extrabold">{({ starter: '3 500', professional: '7 000', enterprise: '9 000' } as Record<string, string>)[plan.id] || plan.price} <span className="text-xs font-normal opacity-60 ml-1">{t('payment.currency')}{t('payment.perMonth')}</span></p>
+            <div key={plan.id} className={`relative rounded-3xl p-8 border transition-all hover:shadow-xl ${plan.popular ? 'bg-primary-600 border-primary-600 text-white shadow-2xl shadow-primary-500/30 md:scale-105 z-10' : 'bg-white border-slate-200 hover:shadow-slate-200/50 dark:bg-slate-800 dark:border-slate-700'}`}>
+              {plan.popular && (
+                <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-amber-400 text-slate-900 text-xs font-bold px-4 py-1 rounded-full shadow-lg">
+                  {t('landing.popular')}
+                </div>
+              )}
+              <div className="flex items-center gap-3 mb-6">
+                <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${plan.popular ? 'bg-white/20' : 'bg-slate-100 dark:bg-slate-700'}`}>
+                  <plan.icon className={`w-6 h-6 ${plan.popular ? 'text-white' : 'text-slate-600 dark:text-slate-300'}`} />
+                </div>
+                <h3 className={`text-xl font-bold ${plan.popular ? 'text-white' : 'text-slate-900 dark:text-white'}`}>{plan.name}</h3>
               </div>
-
-              {/* Features */}
-              <div className="p-5">
-                <ul className="space-y-2.5 mb-5">
-                  {plan.features.map((f, i) => (
-                    <li key={i} className="flex items-start gap-2 text-xs text-slate-700 dark:text-slate-300">
-                      <Check className="w-3.5 h-3.5 text-emerald-500 shrink-0 mt-0.5" />
-                      {f}
-                    </li>
-                  ))}
-                </ul>
-                {isCurrent ? (
-                  <button disabled className="w-full py-2 rounded-lg text-xs font-medium bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400">{t('billing.currentPlan')}</button>
-                ) : (
-                  <button
-                    onClick={() => handleChangePlan(plan.id)}
-                    disabled={changingPlan !== null}
-                    className="btn-primary w-full text-xs !py-2"
-                  >
-                    {changingPlan === plan.id ? '...' : (PLANS.findIndex(p => p.id === plan.id) > PLANS.findIndex(p => p.id === currentPlan) ? t('billing.upgrade') : t('billing.downgrade'))}
-                  </button>
-                )}
+              <div className="mb-8">
+                <span className={`text-5xl font-extrabold tracking-tight ${plan.popular ? 'text-white' : 'text-slate-900 dark:text-white'}`}>{plan.price.toLocaleString()}</span>
+                <span className={`text-sm ml-2 ${plan.popular ? 'text-white/70' : 'text-slate-500 dark:text-slate-400'}`}>{t('landing.currency')}/{t('landing.perMonth')}</span>
               </div>
+              <ul className="space-y-4 mb-10">
+                {plan.features.map((f, i) => (
+                  <li key={i} className={`flex items-start gap-3 text-sm ${plan.popular ? 'text-white/90' : 'text-slate-600 dark:text-slate-400'}`}>
+                    <Check className={`w-5 h-5 shrink-0 mt-0.5 ${plan.popular ? 'text-emerald-300' : 'text-emerald-500'}`} />
+                    <span>{f}</span>
+                  </li>
+                ))}
+              </ul>
+              {isCurrent ? (
+                <button disabled className={`w-full py-3.5 rounded-xl font-semibold text-sm transition-all ${plan.popular ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-500 dark:bg-slate-700 dark:text-slate-400'}`}>{t('billing.currentPlan')}</button>
+              ) : (
+                <button
+                  onClick={() => handleChangePlan(plan.id)}
+                  disabled={changingPlan !== null}
+                  className={`w-full py-3.5 rounded-xl font-semibold text-sm transition-all ${plan.popular ? 'bg-white text-primary-700 hover:bg-slate-50 shadow-lg shadow-white/20' : 'bg-primary-600 text-white hover:bg-primary-700 shadow-lg shadow-primary-500/20'}`}
+                >
+                  {changingPlan === plan.id ? '...' : (localPlans.findIndex(p => p.id === plan.id) > localPlans.findIndex(p => p.id === currentPlan) ? t('billing.upgrade') : t('billing.downgrade'))}
+                </button>
+              )}
             </div>
           );
         })}

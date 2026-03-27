@@ -173,9 +173,13 @@ export default function AdminGradebookAnalytics() {
                 <div className="space-y-3 flex-1 overflow-y-auto pr-2">
                   {metrics.atRiskStudents.map(student => (
                     <div key={student.uid} className="flex items-center gap-3 p-3 bg-slate-50 dark:bg-slate-900/50 border border-slate-100 dark:border-slate-700/50 rounded-xl">
-                      <div className="w-10 h-10 rounded-full bg-red-500/10 flex items-center justify-center text-red-600 font-bold shrink-0">
-                        {student.displayName?.[0] || '?'}
-                      </div>
+                      {student.avatarUrl ? (
+                        <img src={student.avatarUrl} alt="" className="w-10 h-10 rounded-full object-cover shrink-0" />
+                      ) : (
+                        <div className="w-10 h-10 rounded-full bg-red-500/10 flex items-center justify-center text-red-600 font-bold shrink-0">
+                          {student.displayName?.[0] || '?'}
+                        </div>
+                      )}
                       <div className="flex-1 min-w-0">
                         <p className="font-semibold text-slate-900 dark:text-white truncate">{student.displayName}</p>
                         <p className="text-xs text-slate-500">{student.email}</p>

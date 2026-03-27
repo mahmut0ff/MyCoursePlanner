@@ -560,6 +560,8 @@
     "students": {
       "total": "students",
       "empty": "No students found",
+      "activeTabs": "Active Students",
+      "applicationsTab": "Applications",
       "create": "Create Student",
       "createDesc": "Create a new student account for your organization",
       "namePlaceholder": "Full name",

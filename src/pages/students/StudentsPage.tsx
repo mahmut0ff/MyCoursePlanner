@@ -207,7 +207,11 @@ const StudentsPage: React.FC = () => {
                   <tr key={app.id} className="hover:bg-slate-50/80 dark:hover:bg-slate-700/20 transition-colors">
                     <td className="px-4 py-2.5">
                       <div className="flex items-center gap-2">
-                        <div className="w-6 h-6 bg-amber-500 rounded-md flex items-center justify-center text-[9px] text-white font-bold">{app.userName?.[0]?.toUpperCase() || '?'}</div>
+                        {(app as any).userAvatarUrl ? (
+                          <img src={(app as any).userAvatarUrl} alt="" className="w-6 h-6 rounded-md object-cover" />
+                        ) : (
+                          <div className="w-6 h-6 bg-amber-500 rounded-md flex items-center justify-center text-[9px] text-white font-bold">{app.userName?.[0]?.toUpperCase() || '?'}</div>
+                        )}
                         <span className="text-xs font-medium text-slate-900 dark:text-white truncate">{app.userName}</span>
                       </div>
                     </td>

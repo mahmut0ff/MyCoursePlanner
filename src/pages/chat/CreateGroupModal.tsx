@@ -177,8 +177,12 @@ export default function CreateGroupModal({ onClose, onCreated }: CreateGroupModa
                         : 'border-transparent hover:bg-slate-50 dark:hover:bg-slate-800'
                     }`}
                   >
-                    <div className="w-10 h-10 rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center shrink-0">
-                      <Users className="w-5 h-5 text-slate-500" />
+                    <div className="w-10 h-10 rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center shrink-0 overflow-hidden">
+                      {m.userAvatarUrl ? (
+                        <img src={m.userAvatarUrl} alt="" className="w-full h-full object-cover" />
+                      ) : (
+                        <span className="text-sm font-bold text-slate-500">{m.userDisplayName?.[0]?.toUpperCase() || <Users className="w-5 h-5 text-slate-500" />}</span>
+                      )}
                     </div>
                     <div className="flex-1 text-left min-w-0">
                       <div className="font-semibold text-sm text-slate-900 dark:text-white truncate">

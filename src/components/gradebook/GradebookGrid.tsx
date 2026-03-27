@@ -86,9 +86,13 @@ const GradebookGrid: React.FC<GradebookGridProps> = ({ students, columns, grades
             <tr key={student.uid} className="border-b border-slate-200 dark:border-slate-700 last:border-b-0 hover:bg-slate-50/50 dark:hover:bg-slate-800/50 group">
               <td className="sticky left-0 bg-white dark:bg-slate-800 group-hover:bg-slate-50 dark:group-hover:bg-slate-800/80 px-4 py-2 border-r border-slate-200 dark:border-slate-700 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] z-10 transition-colors">
                 <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-full bg-primary-100 dark:bg-primary-900/30 flex items-center justify-center text-primary-600 dark:text-primary-400 font-bold text-xs shrink-0">
-                    {student.displayName?.charAt(0).toUpperCase() || '?'}
-                  </div>
+                  {student.avatarUrl ? (
+                    <img src={student.avatarUrl} alt="" className="w-8 h-8 rounded-full object-cover shrink-0" />
+                  ) : (
+                    <div className="w-8 h-8 rounded-full bg-primary-100 dark:bg-primary-900/30 flex items-center justify-center text-primary-600 dark:text-primary-400 font-bold text-xs shrink-0">
+                      {student.displayName?.charAt(0).toUpperCase() || '?'}
+                    </div>
+                  )}
                   <div className="truncate">
                     <p className="font-medium text-slate-900 dark:text-white truncate max-w-[160px]">{student.displayName}</p>
                     <p className="text-[10px] text-slate-500 truncate max-w-[160px]">{student.email}</p>

@@ -44,9 +44,13 @@ const TeacherDetailPage: React.FC = () => {
         <div className="bg-slate-700 h-24" />
         <div className="px-6 pb-6 -mt-10">
           <div className="flex items-end gap-4 mb-4">
-            <div className="w-20 h-20 bg-primary-600 rounded-xl flex items-center justify-center text-2xl text-white font-bold shadow-lg ring-4 ring-white dark:ring-slate-800">
-              {teacher.displayName?.[0]?.toUpperCase() || '?'}
-            </div>
+            {teacher.avatarUrl ? (
+              <img src={teacher.avatarUrl} alt="" className="w-20 h-20 rounded-xl object-cover shadow-lg ring-4 ring-white dark:ring-slate-800" />
+            ) : (
+              <div className="w-20 h-20 bg-primary-600 rounded-xl flex items-center justify-center text-2xl text-white font-bold shadow-lg ring-4 ring-white dark:ring-slate-800">
+                {teacher.displayName?.[0]?.toUpperCase() || '?'}
+              </div>
+            )}
             <div className="pb-1">
               <h1 className="text-lg font-bold text-slate-900 dark:text-white">{teacher.displayName}</h1>
               <p className="text-xs text-slate-500 flex items-center gap-1"><Mail className="w-3 h-3" />{teacher.email}</p>

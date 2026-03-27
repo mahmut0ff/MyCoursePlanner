@@ -310,9 +310,13 @@ const JournalPage: React.FC = () => {
                     <tr key={student.uid} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/50 transition-colors">
                       <td className="px-5 py-3">
                         <div className="flex items-center gap-3">
-                          <div className="w-9 h-9 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-600 dark:text-slate-300 font-bold text-sm shrink-0 border border-slate-200 dark:border-slate-700">
-                            {student.displayName?.charAt(0).toUpperCase() || '?'}
-                          </div>
+                          {student.avatarUrl ? (
+                            <img src={student.avatarUrl} alt="" className="w-9 h-9 rounded-full object-cover shrink-0 border border-slate-200 dark:border-slate-700" />
+                          ) : (
+                            <div className="w-9 h-9 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-600 dark:text-slate-300 font-bold text-sm shrink-0 border border-slate-200 dark:border-slate-700">
+                              {student.displayName?.charAt(0).toUpperCase() || '?'}
+                            </div>
+                          )}
                           <div className="overflow-hidden">
                             <p className="font-bold text-slate-900 dark:text-white truncate" title={student.displayName}>{student.displayName}</p>
                             <p className="text-[11px] text-slate-500 truncate" title={student.email}>{student.email}</p>

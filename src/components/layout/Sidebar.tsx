@@ -201,6 +201,9 @@ const Sidebar: React.FC<{ open: boolean; onClose: () => void }> = ({ open, onClo
               </CollapsibleSection>
 
               <CollapsibleSection label={t('nav.sectionOrg', 'Организация')} icon={Building2}>
+                <NavLink to="/finances" className={linkClass} onClick={onClose}>
+                  <CreditCard className="w-4 h-4" />{t('nav.finances', 'Финансы')}
+                </NavLink>
                 <NavLink to="/schedule" className={linkClass} onClick={onClose}>
                   <Calendar className="w-4 h-4" />{t('nav.schedule')}
                 </NavLink>
@@ -281,6 +284,9 @@ const Sidebar: React.FC<{ open: boolean; onClose: () => void }> = ({ open, onClo
                   </CollapsibleSection>
 
                   <CollapsibleSection label={t('nav.sectionOrg', 'Организация')} icon={Building2}>
+                    <NavLink to="/finances" className={linkClass} onClick={onClose}>
+                      <CreditCard className="w-4 h-4" />{t('nav.finances', 'Финансы')}
+                    </NavLink>
                     <NavLink to="/schedule" className={linkClass} onClick={onClose}>
                       <Calendar className="w-4 h-4" />{t('nav.schedule')}
                     </NavLink>

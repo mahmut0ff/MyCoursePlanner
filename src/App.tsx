@@ -56,6 +56,7 @@ import ChatWorkspace from './pages/chat/ChatWorkspace';
 
 // Org Pages
 import CoursesPage from './pages/courses/CoursesPage';
+import FinancesPage from './pages/finances/FinancesPage';
 import GroupsPage from './pages/groups/GroupsPage';
 import StudentsPage from './pages/students/StudentsPage';
 import TeachersPage from './pages/teachers/TeachersPage';
@@ -186,6 +187,7 @@ const App: React.FC = () => {
             {/* ═══ Org Admin: Education ═══ */}
             <Route path="courses" element={<ProtectedRoute allowedRoles={['admin', 'manager', 'teacher']}><CoursesPage /></ProtectedRoute>} />
             <Route path="courses/:id" element={<ProtectedRoute allowedRoles={['admin', 'manager', 'teacher']}><CourseDetailPage /></ProtectedRoute>} />
+            <Route path="finances" element={<ProtectedRoute allowedRoles={['admin', 'manager']}><FinancesPage /></ProtectedRoute>} />
             <Route path="groups" element={<ProtectedRoute allowedRoles={['admin', 'manager', 'teacher']}><GroupsPage /></ProtectedRoute>} />
             <Route path="groups/:id" element={<ProtectedRoute allowedRoles={['admin', 'manager', 'teacher']}><GroupDetailPage /></ProtectedRoute>} />
             <Route path="materials" element={<ProtectedRoute allowedRoles={['admin', 'manager', 'teacher']}><MaterialsPage /></ProtectedRoute>} />

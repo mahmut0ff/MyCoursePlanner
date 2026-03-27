@@ -484,6 +484,10 @@ export interface Course {
   lessonIds: string[];
   status: CourseStatus;
   coverImageUrl?: string;
+  // Financial Settings
+  price?: number; 
+  paymentFormat?: 'one-time' | 'monthly'; // billing format
+  durationMonths?: number;
   createdAt: string;
   updatedAt: string;
 }
@@ -1081,4 +1085,48 @@ export interface OrganizationChatSettings {
   allowFileUploads: boolean;
   allowImageUploads: boolean;
   maxFileSize: number; // in bytes
+}
+
+// ============================================================
+// Finance Module (SaaS Billing & Debts)
+// ============================================================
+
+export type PaymentFormat = 'one-time' | 'monthly';
+export type PaymentStatus = 'paid' | 'partial' | 'overdue' | 'pending';
+export type TransactionType = 'income' | 'expense';
+
+export interface StudentPaymentPlan {
+  id: string;
+  organizationId: string;
+  branchId?: string;
+  studentId: string;
+  courseId: string;
+  totalAmount: number;   // Expected total payment
+  paidAmount: number;    // Collected amount
+  status: PaymentStatus; // Auto-calculated based on amounts & dates
+  nextDueDate?: string;  // For monthly
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface FinancialTransaction {
+  id: string;
+  organizationId: string;
+  branchId?: string; // Crucial for multi-branch P&L reporting
+  type: TransactionType;
+  amount: number;
+  currency: string; // e.g. 'KZT', 'USD'
+  date: string; // Payment date
+  
+  // Categorization
+  categoryId: string; // e.g. 'course_fee', 'salary', 'rent', 'marketing'
+  
+  // Associated entities for analytics tracing
+  paymentPlanId?: string;
+  studentId?: string;
+  courseId?: string;
+  
+  description: string;
+  createdBy: string;
+  createdAt: string;
 }

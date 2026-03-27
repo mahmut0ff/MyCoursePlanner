@@ -480,3 +480,25 @@ export const apiModerateChatMessage = (roomId: string, messageId: string) =>
 
 export const apiNotifyChatMessage = (roomId: string, text: string, senderName: string) =>
   apiRequest('api-chat', 'POST', { roomId, text, senderName }, { action: 'notifyMessage' });
+
+// ============================================================
+// FINANCE SYSTEM API
+// ============================================================
+
+export const apiGetTransactions = (filters?: { branchId?: string; startDate?: string; endDate?: string }) =>
+  apiRequest('api-finance-transactions', 'GET', undefined, filters as any);
+
+export const apiCreateTransaction = (data: any) =>
+  apiRequest('api-finance-transactions', 'POST', data);
+
+export const apiGetPaymentPlans = (filters?: { branchId?: string; studentId?: string; status?: string }) =>
+  apiRequest('api-finance-plans', 'GET', undefined, filters as any);
+
+export const apiCreatePaymentPlan = (data: any) =>
+  apiRequest('api-finance-plans', 'POST', data);
+
+export const apiUpdatePaymentPlan = (planId: string, data: any) =>
+  apiRequest('api-finance-plans', 'PUT', { planId, ...data });
+
+export const apiGetFinanceMetrics = (branchId?: string) =>
+  apiRequest('api-finance-metrics', 'GET', undefined, branchId ? { branchId } : undefined);

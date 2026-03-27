@@ -29,7 +29,10 @@ const CoursesPage: React.FC = () => {
   const [showModal, setShowModal] = useState(false);
   const [editing, setEditing] = useState<Course | null>(null);
   const navigate = useNavigate();
-  const [form, setForm] = useState({ title: '', description: '', subject: '', status: 'draft' as const });
+  const [form, setForm] = useState<{
+    title: string; description: string; subject: string; status: 'draft' | 'published';
+    price?: number; paymentFormat?: 'one-time' | 'monthly'; durationMonths?: number;
+  }>({ title: '', description: '', subject: '', status: 'draft', price: 0, paymentFormat: 'monthly', durationMonths: 1 });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
 
@@ -43,8 +46,8 @@ const CoursesPage: React.FC = () => {
     c.title.toLowerCase().includes(search.toLowerCase()) || c.subject?.toLowerCase().includes(search.toLowerCase())
   );
 
-  const openCreate = () => { setEditing(null); setForm({ title: '', description: '', subject: '', status: 'draft' }); setShowModal(true); };
-  const openEdit = (c: Course) => { setEditing(c); setForm({ title: c.title, description: c.description || '', subject: c.subject || '', status: c.status as any || 'draft' }); setShowModal(true); };
+  const openCreate = () => { setEditing(null); setForm({ title: '', description: '', subject: '', status: 'draft', price: 0, paymentFormat: 'monthly', durationMonths: 1 }); setShowModal(true); };
+  const openEdit = (c: Course) => { setEditing(c); setForm({ title: c.title, description: c.description || '', subject: c.subject || '', status: c.status as any || 'draft', price: c.price || 0, paymentFormat: c.paymentFormat || 'monthly', durationMonths: c.durationMonths || 1 }); setShowModal(true); };
 
   const handleSave = async () => {
     if (!form.title.trim()) return;
@@ -142,8 +145,16 @@ const CoursesPage: React.FC = () => {
                     </span>
                   </div>
 
-                  {/* Description */}
-                  {c.description && <p className="text-xs text-slate-500 dark:text-slate-400 line-clamp-2 mb-4">{c.description}</p>}
+                  {/* Description & Finances */}
+                  {c.description && <p className="text-xs text-slate-500 dark:text-slate-400 line-clamp-2 mb-2">{c.description}</p>}
+                  {(c.price !== undefined) && (
+                    <div className="flex items-center gap-2 mb-4 text-xs font-semibold text-emerald-600 dark:text-emerald-400">
+                      <span>{c.price.toLocaleString()} ₸</span>
+                      <span className="text-[10px] text-slate-400 font-normal">
+                        ({c.paymentFormat === 'monthly' ? t('common.monthly', 'в месяц') : t('common.oneTime', 'разово')})
+                      </span>
+                    </div>
+                  )}
 
                   {/* Footer */}
                   <div className="flex items-center justify-between">
@@ -187,6 +198,19 @@ const CoursesPage: React.FC = () => {
                 <select value={form.status} onChange={(e) => setForm(f => ({ ...f, status: e.target.value as any }))} className="input">
                   <option value="draft">{t('common.draft')}</option><option value="published">{t('common.published')}</option>
                 </select>
+              </div>
+              <div className="grid grid-cols-2 gap-3 pt-2 border-t border-slate-100 dark:border-slate-700">
+                <div>
+                  <label className="label">{t('org.courses.price', 'Стоимость')}</label>
+                  <input type="number" min="0" placeholder="0" value={form.price} onChange={(e) => setForm(f => ({ ...f, price: Number(e.target.value) }))} className="input" />
+                </div>
+                <div>
+                  <label className="label">{t('org.courses.paymentFormat', 'Формат оплаты')}</label>
+                  <select value={form.paymentFormat} onChange={(e) => setForm(f => ({ ...f, paymentFormat: e.target.value as any }))} className="input">
+                    <option value="monthly">{t('common.monthly', 'Ежемесячно')}</option>
+                    <option value="one-time">{t('common.oneTime', 'Единоразово')}</option>
+                  </select>
+                </div>
               </div>
             </div>
             <div className="flex justify-end gap-3 mt-5">

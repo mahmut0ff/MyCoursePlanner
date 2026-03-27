@@ -3,7 +3,7 @@
  * All data strictly scoped by organizationId.
  */
 import type { Handler, HandlerEvent } from '@netlify/functions';
-import { adminDb, adminAuth } from './utils/firebase-admin';
+import { adminAuth, adminDb } from './utils/firebase-admin';
 import {
   verifyAuth, isStaff, hasRole, getOrgFilter,
   ok, unauthorized, forbidden, badRequest, notFound, jsonResponse,
@@ -22,6 +22,42 @@ function requireOrgStaff(user: AuthUser) {
   if (!user.organizationId) return forbidden();
   if (!isStaff(user)) return forbidden();
   return null;
+}
+
+/**
+ * Helper to auto-generate payment plans for students enrolled in a priced course.
+ */
+async function syncPaymentPlans(orgId: string, branchId: string | null, courseId: string, studentIds: string[]) {
+  if (!studentIds || studentIds.length === 0) return;
+  
+  const courseDoc = await adminDb.collection('courses').doc(courseId).get();
+  if (!courseDoc.exists) return;
+  const courseData = courseDoc.data()!;
+  
+  if (!courseData.price || courseData.price <= 0) return; // Free course
+
+  for (const studentId of studentIds) {
+    const existing = await adminDb.collection('studentPaymentPlans')
+      .where('organizationId', '==', orgId)
+      .where('courseId', '==', courseId)
+      .where('studentId', '==', studentId)
+      .limit(1).get();
+
+    if (existing.empty) {
+      await adminDb.collection('studentPaymentPlans').add({
+        organizationId: orgId,
+        branchId: branchId || null,
+        studentId,
+        courseId,
+        totalAmount: courseData.price,
+        paidAmount: 0,
+        status: 'pending',
+        nextDueDate: courseData.paymentFormat === 'monthly' ? new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString() : null,
+        createdAt: now(),
+        updatedAt: now(),
+      });
+    }
+  }
 }
 
 /** Get org-scoped collection query */
@@ -147,6 +183,10 @@ const handler: Handler = async (event: HandlerEvent) => {
         createdAt: now(), updatedAt: now(),
       };
       const ref = await adminDb.collection('groups').add(data);
+      
+      // Auto-generate payment plans
+      await syncPaymentPlans(orgId, data.branchId, data.courseId, data.studentIds).catch(console.error);
+      
       return ok({ id: ref.id, ...data });
     }
 
@@ -160,7 +200,15 @@ const handler: Handler = async (event: HandlerEvent) => {
       fields.updatedAt = now();
       await adminDb.collection('groups').doc(id).update(fields);
       const updated = await adminDb.collection('groups').doc(id).get();
-      return ok({ id, ...updated.data() });
+      const updatedData = updated.data()!;
+      
+      // Auto-generate payment plans for newly added students
+      if (fields.studentIds) {
+        // Technically syncPaymentPlans handles idempotency, so we can just pass all current studentIds
+        await syncPaymentPlans(orgId, updatedData.branchId || null, updatedData.courseId, fields.studentIds).catch(console.error);
+      }
+
+      return ok({ id, ...updatedData });
     }
 
     if (action === 'deleteGroup') {

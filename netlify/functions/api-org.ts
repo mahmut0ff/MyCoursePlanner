@@ -191,19 +191,38 @@ const handler: Handler = async (event: HandlerEvent) => {
       }
       
       const snap = await query.get();
-      let students = snap.docs.map((d: any) => {
+      const memberDocs = snap.docs.map((d: any) => {
         const data = d.data();
         return { uid: data.userId, displayName: data.userName, email: data.userEmail, role: data.role, branchIds: data.branchIds || [], primaryBranchId: data.primaryBranchId || null };
       });
 
       // Multi-branch manager: filter in memory
+      let filtered = memberDocs;
       if (!params.branchId && hasRole(user, 'manager') && user.branchIds.length > 1) {
-        students = students.filter((s: any) => 
+        filtered = memberDocs.filter((s: any) => 
           s.branchIds.length === 0 || s.branchIds.some((id: string) => user.branchIds.includes(id))
         );
       }
+
+      // Enrich with user profile data (avatarUrl, phone, city, createdAt)
+      if (filtered.length > 0) {
+        const uids = filtered.map((s: any) => s.uid);
+        const batches = [];
+        for (let i = 0; i < uids.length; i += 10) {
+          batches.push(uids.slice(i, i + 10));
+        }
+        const profileMap: Record<string, any> = {};
+        for (const batch of batches) {
+          const profileSnap = await adminDb.collection('users').where('__name__', 'in', batch).get();
+          profileSnap.docs.forEach((d: any) => { profileMap[d.id] = d.data(); });
+        }
+        filtered = filtered.map((s: any) => {
+          const p = profileMap[s.uid] || {};
+          return { ...s, avatarUrl: p.avatarUrl || '', phone: p.phone || '', city: p.city || '', bio: p.bio || '', createdAt: p.createdAt || '' };
+        });
+      }
         
-      return ok(students);
+      return ok(filtered);
     }
 
     if (action === 'createStudent') {
@@ -262,10 +281,31 @@ const handler: Handler = async (event: HandlerEvent) => {
       }
       
       const snap = await query.get();
-      return ok(snap.docs.map((d: any) => {
+      const members = snap.docs.map((d: any) => {
         const data = d.data();
         return { uid: data.userId, displayName: data.userName, email: data.userEmail, role: data.role, branchIds: data.branchIds || [], primaryBranchId: data.primaryBranchId || null };
-      }));
+      });
+
+      // Enrich with user profile data (avatarUrl, phone, city, createdAt)
+      let enriched = members;
+      if (members.length > 0) {
+        const uids = members.map((t: any) => t.uid);
+        const batches = [];
+        for (let i = 0; i < uids.length; i += 10) {
+          batches.push(uids.slice(i, i + 10));
+        }
+        const profileMap: Record<string, any> = {};
+        for (const batch of batches) {
+          const profileSnap = await adminDb.collection('users').where('__name__', 'in', batch).get();
+          profileSnap.docs.forEach((d: any) => { profileMap[d.id] = d.data(); });
+        }
+        enriched = members.map((t: any) => {
+          const p = profileMap[t.uid] || {};
+          return { ...t, avatarUrl: p.avatarUrl || '', phone: p.phone || '', city: p.city || '', bio: p.bio || '', createdAt: p.createdAt || '' };
+        });
+      }
+
+      return ok(enriched);
     }
 
     if (action === 'createTeacher') {

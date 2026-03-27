@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../contexts/AuthContext';
 import { db } from '../../lib/firebase';
@@ -39,11 +39,21 @@ const NotificationDropdown: React.FC = () => {
   const { t } = useTranslation();
   const { firebaseUser } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
   const unreadCount = notifications.filter(n => !n.read).length;
+
+  // Auto-read notifications if we are already on their link page
+  useEffect(() => {
+    if (notifications.length === 0) return;
+    const unreadHere = notifications.filter(n => !n.read && n.link && n.link === location.pathname);
+    unreadHere.forEach(n => {
+      apiMarkNotificationRead(n.id).catch(() => {});
+    });
+  }, [location.pathname, notifications]);
 
   // Real-time Firestore listener
   useEffect(() => {

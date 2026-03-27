@@ -122,7 +122,7 @@ const PublicOrgProfilePage: React.FC = () => {
         </div>
         <h2 className="text-xl font-bold text-slate-700 dark:text-slate-300">{t('directory.notFound', 'Организация не найдена')}</h2>
         <p className="text-sm text-slate-500 dark:text-slate-400 text-center max-w-sm">{t('directory.notFoundDesc', 'Страница недоступна или организация не существует.')}</p>
-        <button onClick={() => navigate('/directory')} className="text-sky-600 hover:underline text-sm mt-2">
+        <button onClick={() => navigate(-1)} className="text-sky-600 hover:underline text-sm mt-2">
           ← {t('directory.backToList', 'Вернуться к каталогу')}
         </button>
       </div>
@@ -209,7 +209,7 @@ const PublicOrgProfilePage: React.FC = () => {
       <div className="bg-white dark:bg-gray-900 border-b border-slate-200 dark:border-gray-800">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 py-5 sm:py-6">
           {/* Back */}
-          <button onClick={() => navigate('/directory')} className="flex items-center gap-1 text-sm text-slate-500 hover:text-sky-600 dark:text-slate-400 dark:hover:text-sky-400 transition mb-4">
+          <button onClick={() => navigate(-1)} className="flex items-center gap-1 text-sm text-slate-500 hover:text-sky-600 dark:text-slate-400 dark:hover:text-sky-400 transition mb-4">
             <ArrowLeft className="w-4 h-4" /> {t('common.back', 'Назад')}
           </button>
 

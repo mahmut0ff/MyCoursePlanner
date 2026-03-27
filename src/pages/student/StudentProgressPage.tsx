@@ -117,6 +117,20 @@ const StudentProgressPage: React.FC = () => {
     loadData();
   }, [profile?.uid, profile?.organizationId]);
 
+  const avgTotalScore = useMemo(() => {
+    const scored = stats.filter(s => s.avgScore !== null);
+    if (scored.length === 0) return 0;
+    return Math.round(scored.reduce((acc, s) => acc + (s.avgScore || 0), 0) / scored.length);
+  }, [stats]);
+
+  const avgTotalAttendance = useMemo(() => {
+    if (stats.length === 0) return 0;
+    return Math.round(stats.reduce((acc, s) => acc + s.attendanceRate, 0) / stats.length);
+  }, [stats]);
+
+  const scoreColor = avgTotalScore >= 80 ? '#10B981' : avgTotalScore >= 60 ? '#F59E0B' : '#EF4444';
+  const attendColor = avgTotalAttendance >= 80 ? '#6366F1' : avgTotalAttendance >= 60 ? '#F59E0B' : '#EF4444';
+
   /* ═══ Loading ═══ */
   if (loading) {
     return (
@@ -131,20 +145,6 @@ const StudentProgressPage: React.FC = () => {
       </div>
     );
   }
-
-  const avgTotalScore = useMemo(() => {
-    const scored = stats.filter(s => s.avgScore !== null);
-    if (scored.length === 0) return 0;
-    return Math.round(scored.reduce((acc, s) => acc + (s.avgScore || 0), 0) / scored.length);
-  }, [stats]);
-
-  const avgTotalAttendance = useMemo(() => {
-    if (stats.length === 0) return 0;
-    return Math.round(stats.reduce((acc, s) => acc + s.attendanceRate, 0) / stats.length);
-  }, [stats]);
-
-  const scoreColor = avgTotalScore >= 80 ? '#10B981' : avgTotalScore >= 60 ? '#F59E0B' : '#EF4444';
-  const attendColor = avgTotalAttendance >= 80 ? '#6366F1' : avgTotalAttendance >= 60 ? '#F59E0B' : '#EF4444';
 
   /* ═══ No Organization ═══ */
   if (!profile?.organizationId) {

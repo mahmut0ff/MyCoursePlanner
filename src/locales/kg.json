@@ -658,5 +658,30 @@
     "footerPrivacy": "Купуялуулук саясаты",
     "footerTerms": "Колдонуу шарттары",
     "footerCity": "Бишкек, Кыргызстан"
+  },
+  "profile": {
+    "title": "Профиль",
+    "displayName": "Аты-жөнү",
+    "save": "Сактоо",
+    "saved": "Сакталды!",
+    "saveFailed": "Сактоодо ката кетти",
+    "language": "Тил",
+    "changePassword": "Сырсөздү өзгөртүү",
+    "currentPassword": "Учурдагы сырсөз",
+    "newPassword": "Жаңы сырсөз",
+    "passwordChanged": "Сырсөз өзгөртүлдү!",
+    "passwordFailed": "Сырсөздү өзгөртүүдө ката кетти. Учурдагы сырсөздү текшериңиз.",
+    "passwordMinLength": "Жаңы сырсөз кеминде 6 белгиден турушу керек",
+    "phone": "Телефон",
+    "phonePlaceholder": "+996 XXX XXX XXX",
+    "bio": "Өзүңүз жөнүндө",
+    "bioPlaceholder": "Өзүңүз жөнүндө кыскача айтып бериңиз...",
+    "skills": "Жөндөмдөр (үтүр менен)",
+    "skillsPlaceholder": "мис. JavaScript, Дизайн, Python",
+    "settings": "Жөндөөлөр",
+    "portfolio": "Портфолио",
+    "change": "Өзгөртүү",
+    "avatarUpdated": "Аватар жаңыртылды!",
+    "fileTooLarge": "Файл өтө чоң (макс 2МБ)"
   }
 }

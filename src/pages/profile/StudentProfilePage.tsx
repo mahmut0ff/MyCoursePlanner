@@ -14,7 +14,7 @@ import AvatarCropper from '../../components/ui/AvatarCropper';
 
 const StudentProfilePage: React.FC = () => {
   const { t } = useTranslation();
-  const { profile } = useAuth();
+  const { profile, loading } = useAuth();
 
   const [activeTab, setActiveTab] = useState<'settings' | 'portfolio'>('settings');
 
@@ -47,6 +47,7 @@ const StudentProfilePage: React.FC = () => {
   // Password
   const [currentPw, setCurrentPw] = useState('');
   const [newPw, setNewPw] = useState('');
+  const [confirmPw, setConfirmPw] = useState('');
   const [pwSaving, setPwSaving] = useState(false);
 
   const handleUpdateProfile = async () => {
@@ -86,6 +87,7 @@ const StudentProfilePage: React.FC = () => {
       toast.success(t('profile.passwordChanged'));
       setCurrentPw('');
       setNewPw('');
+      setConfirmPw('');
     } catch { toast.error(t('profile.passwordFailed')); }
     finally { setPwSaving(false); }
   };
@@ -126,8 +128,11 @@ const StudentProfilePage: React.FC = () => {
   const handleLanguageChange = (lang: string) => {
     i18n.changeLanguage(lang);
     localStorage.setItem('i18nextLng', lang);
-    toast.success(`Language: ${lang === 'ru' ? 'Русский' : 'English'}`);
+    toast.success(`${t('profile.language')}: ${lang === 'ru' ? 'Русский' : lang === 'en' ? 'English' : 'Кыргызча'}`);
   };
+
+  if (loading) return <div className="flex items-center justify-center py-20"><Loader2 className="w-8 h-8 text-primary-600 animate-spin" /></div>;
+  if (!profile) return null;
 
   return (
     <div className="max-w-3xl mx-auto">
@@ -189,28 +194,36 @@ const StudentProfilePage: React.FC = () => {
                 </div>
                 {usernameStatus === 'taken' && <p className="text-xs text-red-500 mt-1 mb-2">{t('auth.usernameTaken', 'Этот никнейм уже занят')}</p>}
                 
-                <p className="text-sm text-slate-500 dark:text-slate-400 mt-2">{profile?.email}</p>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">{t('teacherSettings.emailLabel', 'Email')}</label>
+                <div className="relative">
+                  <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                  <input type="email" value={profile?.email || ''} readOnly className="input pl-11 bg-slate-100 dark:bg-slate-700 cursor-not-allowed text-slate-500 dark:text-slate-400" />
+                </div>
               </div>
             </div>
             
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">{t('profile.bio', 'Bio')}</label>
+                <div className="flex justify-between items-end mb-1">
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">{t('profile.bio', 'О себе')}</label>
+                  <span className="text-xs text-slate-400">{bio.length}/500</span>
+                </div>
                 <textarea
                   value={bio}
                   onChange={e => setBio(e.target.value)}
+                  maxLength={500}
                   className="input min-h-[100px]"
-                  placeholder={t('profile.bioPlaceholder', 'Tell us about yourself...')}
+                  placeholder={t('profile.bioPlaceholder', 'Расскажите немного о себе...')}
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">{t('profile.skills', 'Skills (comma separated)')}</label>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">{t('profile.skills', 'Навыки (через запятую)')}</label>
                 <input
                   type="text"
                   value={skills}
                   onChange={e => setSkills(e.target.value)}
                   className="input"
-                  placeholder="e.g. JavaScript, Design, Python"
+                  placeholder={t('profile.skillsPlaceholder', 'напр. JavaScript, Дизайн, Python')}
                 />
               </div>
               <div>
@@ -242,7 +255,7 @@ const StudentProfilePage: React.FC = () => {
               <h3 className="font-semibold text-slate-900 dark:text-white">{t('profile.language')}</h3>
             </div>
             <div className="flex gap-2">
-              {['ru', 'en'].map(lang => (
+              {['ru', 'en', 'kg'].map(lang => (
                 <button
                   key={lang}
                   onClick={() => handleLanguageChange(lang)}
@@ -252,7 +265,7 @@ const StudentProfilePage: React.FC = () => {
                       : 'bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600'
                   }`}
                 >
-                  {lang === 'ru' ? '🇷🇺 Русский' : '🇬🇧 English'}
+                  {lang === 'ru' ? '🇷🇺 Русский' : lang === 'en' ? '🇬🇧 English' : '🇰🇬 Кыргызча'}
                 </button>
               ))}
             </div>
@@ -267,7 +280,14 @@ const StudentProfilePage: React.FC = () => {
             <div className="space-y-3 max-w-sm">
               <input type="password" placeholder={t('profile.currentPassword')} value={currentPw} onChange={e => setCurrentPw(e.target.value)} className="input" />
               <input type="password" placeholder={t('profile.newPassword')} value={newPw} onChange={e => setNewPw(e.target.value)} className="input" />
-              <button onClick={handleChangePassword} disabled={pwSaving} className="btn-primary w-full">{pwSaving ? '...' : t('profile.changePassword')}</button>
+              <input type="password" placeholder={t('teacherSettings.confirmPw', 'Подтвердите пароль')} value={confirmPw} onChange={e => setConfirmPw(e.target.value)} className="input" />
+              <button 
+                onClick={handleChangePassword} 
+                disabled={pwSaving || !currentPw || !newPw || newPw !== confirmPw} 
+                className="btn-primary w-full"
+              >
+                {pwSaving ? '...' : t('profile.changePassword')}
+              </button>
             </div>
           </div>
         </div>

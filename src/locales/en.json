@@ -1094,7 +1094,18 @@
     "newPassword": "New password",
     "passwordChanged": "Password changed!",
     "passwordFailed": "Failed to change password. Check current password.",
-    "passwordMinLength": "New password must be at least 6 characters"
+    "passwordMinLength": "New password must be at least 6 characters",
+    "phone": "Phone",
+    "phonePlaceholder": "+996 XXX XXX XXX",
+    "bio": "Bio",
+    "bioPlaceholder": "Tell us about yourself...",
+    "skills": "Skills (comma separated)",
+    "skillsPlaceholder": "e.g. JavaScript, Design, Python",
+    "settings": "Settings",
+    "portfolio": "Portfolio",
+    "change": "Change",
+    "avatarUpdated": "Avatar updated!",
+    "fileTooLarge": "File is too large (max 2MB)"
   },
   "quiz": {
     "library": "Quiz Library",

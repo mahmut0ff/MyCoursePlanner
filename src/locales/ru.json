@@ -1334,7 +1334,18 @@
     "newPassword": "Новый пароль",
     "passwordChanged": "Пароль изменён!",
     "passwordFailed": "Ошибка смены пароля. Проверьте текущий пароль.",
-    "passwordMinLength": "Новый пароль должен быть от 6 символов"
+    "passwordMinLength": "Новый пароль должен быть от 6 символов",
+    "phone": "Телефон",
+    "phonePlaceholder": "+996 XXX XXX XXX",
+    "bio": "О себе",
+    "bioPlaceholder": "Расскажите немного о себе...",
+    "skills": "Навыки (через запятую)",
+    "skillsPlaceholder": "напр. JavaScript, Дизайн, Python",
+    "settings": "Настройки",
+    "portfolio": "Портфолио",
+    "change": "Изменить",
+    "avatarUpdated": "Аватар обновлён!",
+    "fileTooLarge": "Файл слишком большой (макс 2MB)"
   },
   "quiz": {
     "library": "Библиотека викторин",

@@ -153,12 +153,29 @@ Review the Chat History and respond accurately to the final user message.`;
         systemInstruction: systemPrompt
       });
 
-      // Format messages for Gemini Chat (excluding system instruction from history since we passed it in `systemInstruction`)
+      // Format messages for Gemini Chat
       // Gemini expects format: { role: "user" | "model", parts: [{ text: "..." }] }
-      const formattedHistory = messages.slice(0, -1).map((m: any) => ({
-        role: m.role === 'assistant' ? 'model' : 'user',
-        parts: [{ text: m.content }]
-      }));
+      // Gemini API WILL THROW 400 error if history doesn't strictly start with 'user' and alternate.
+      const rawHistory = messages.slice(0, -1).filter((m: any) => m.id !== 'greeting');
+      
+      let formattedHistory: any[] = [];
+      let expectedRole = 'user';
+      for (const msg of rawHistory) {
+        const mappedRole = msg.role === 'assistant' ? 'model' : 'user';
+        if (mappedRole === expectedRole) {
+          formattedHistory.push({
+            role: mappedRole,
+            parts: [{ text: msg.content }]
+          });
+          expectedRole = expectedRole === 'user' ? 'model' : 'user';
+        }
+      }
+
+      // Latest message must be from user, so history must end with 'model'.
+      if (formattedHistory.length > 0 && formattedHistory[formattedHistory.length - 1].role === 'user') {
+        formattedHistory.pop();
+      }
+
       const latestMessage = messages[messages.length - 1].content;
 
       const chat = model.startChat({ history: formattedHistory });

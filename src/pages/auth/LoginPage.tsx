@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { signIn, signInWithGoogle } from '../../services/auth.service';
+import { useAuth } from '../../contexts/AuthContext';
 import { apiResolveUsername, apiPublicJoin } from '../../lib/api';
 import { Mail, Lock, Eye, EyeOff } from 'lucide-react';
 import LanguageSwitcher from '../../components/LanguageSwitcher';
@@ -16,6 +17,17 @@ const LoginPage: React.FC = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const orgSlug = searchParams.get('orgSlug');
+  const { firebaseUser, profile, loading: authLoading } = useAuth();
+
+  React.useEffect(() => {
+    if (!authLoading && firebaseUser) {
+      if (profile) {
+        navigate(orgSlug ? `/dashboard?orgSlug=${orgSlug}` : '/dashboard');
+      } else {
+        navigate(orgSlug ? `/onboarding?orgSlug=${orgSlug}` : '/onboarding');
+      }
+    }
+  }, [firebaseUser, profile, authLoading, navigate, orgSlug]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

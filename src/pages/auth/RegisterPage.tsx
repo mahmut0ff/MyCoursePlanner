@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { signUp, signInWithGoogle } from '../../services/auth.service';
+import { useAuth } from '../../contexts/AuthContext';
 import { createUser } from '../../services/users.service';
 import { apiCheckAuthIdentity, apiPublicJoin } from '../../lib/api';
 import { Mail, Lock, User, Eye, EyeOff, Building2, BookOpenCheck, School, AtSign, CheckCircle2, XCircle, Loader2 } from 'lucide-react';
@@ -26,6 +27,17 @@ const RegisterPage: React.FC = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const orgSlug = searchParams.get('orgSlug');
+  const { firebaseUser, profile, loading: authLoading } = useAuth();
+
+  useEffect(() => {
+    if (!authLoading && firebaseUser) {
+      if (profile) {
+        navigate(orgSlug ? `/dashboard?orgSlug=${orgSlug}` : '/dashboard');
+      } else {
+        navigate(orgSlug ? `/onboarding?orgSlug=${orgSlug}` : '/onboarding');
+      }
+    }
+  }, [firebaseUser, profile, authLoading, navigate, orgSlug]);
 
   useEffect(() => {
     if (!username || username.length < 3) return setUsernameStatus('idle');

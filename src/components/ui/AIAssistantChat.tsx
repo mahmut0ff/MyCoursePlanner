@@ -63,12 +63,13 @@ export const AIAssistantChat: React.FC<Props> = ({ organizationId, settings }) =
       };
       setMessages(prev => [...prev, aiMsg]);
       
-    } catch (err) {
+    } catch (err: any) {
       console.error('Chat error:', err);
+      const errorMsg = err?.message || 'Unknown error';
       setMessages(prev => [...prev, {
         id: (Date.now() + 1).toString(),
         role: 'assistant',
-        content: 'I encountered an error connecting to the server. Please try again later.'
+        content: `⚠️ Error: ${errorMsg}`
       }]);
     } finally {
       setIsLoading(false);

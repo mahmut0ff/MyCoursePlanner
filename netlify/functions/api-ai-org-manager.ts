@@ -1,7 +1,6 @@
 import type { Handler, HandlerEvent } from '@netlify/functions';
 import { adminDb } from './utils/firebase-admin';
 import { verifyAuth, jsonResponse, badRequest, unauthorized, forbidden, ok } from './utils/auth';
-import { GoogleGenerativeAI } from '@google/generative-ai';
 
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY || '';
 
@@ -132,45 +131,50 @@ ${branches.length ? branches.join('\n') : 'No public branches listed.'}
 
 Review the Chat History and respond accurately to the final user message.`;
 
-      // Model selection — use gemini-2.0-flash (stable, fast, cheap)
-      const selectedModel = 'gemini-2.0-flash';
-
-      const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
-      const model = genAI.getGenerativeModel({
-        model: selectedModel,
-        systemInstruction: systemPrompt
-      });
-
-      // Format messages for Gemini Chat
-      // Gemini expects format: { role: "user" | "model", parts: [{ text: "..." }] }
-      // Gemini API WILL THROW 400 error if history doesn't strictly start with 'user' and alternate.
+      // Build contents array for Gemini REST API (system instruction + history + latest message)
       const rawHistory = messages.slice(0, -1).filter((m: any) => m.id !== 'greeting');
+      const latestMessage = messages[messages.length - 1].content;
+
+      const contents: any[] = [];
       
-      let formattedHistory: any[] = [];
+      // Add history (strictly alternating user/model)
       let expectedRole = 'user';
       for (const msg of rawHistory) {
         const mappedRole = msg.role === 'assistant' ? 'model' : 'user';
         if (mappedRole === expectedRole) {
-          formattedHistory.push({
-            role: mappedRole,
-            parts: [{ text: msg.content }]
-          });
+          contents.push({ role: mappedRole, parts: [{ text: msg.content }] });
           expectedRole = expectedRole === 'user' ? 'model' : 'user';
         }
       }
+      // If history ends with 'user', drop it (latest message will be user)
+      if (contents.length > 0 && contents[contents.length - 1].role === 'user') {
+        contents.pop();
+      }
+      // Add latest user message
+      contents.push({ role: 'user', parts: [{ text: latestMessage }] });
 
-      // Latest message must be from user, so history must end with 'model'.
-      if (formattedHistory.length > 0 && formattedHistory[formattedHistory.length - 1].role === 'user') {
-        formattedHistory.pop();
+      // Direct REST API call (same pattern as ai-feedback.ts which works)
+      const geminiResponse = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            system_instruction: { parts: [{ text: systemPrompt }] },
+            contents,
+            generationConfig: { temperature: 0.4, maxOutputTokens: 2048 },
+          }),
+        }
+      );
+
+      if (!geminiResponse.ok) {
+        const errBody = await geminiResponse.text();
+        console.error('Gemini API error:', geminiResponse.status, errBody);
+        return jsonResponse(502, { error: `AI service error: ${geminiResponse.status}` });
       }
 
-      const latestMessage = messages[messages.length - 1].content;
-
-      const chat = model.startChat({ history: formattedHistory });
-      
-      // Get AI streaming string or full response (going standard full response for simplicity in Netlify JSON proxy)
-      const result = await chat.sendMessage(latestMessage);
-      const responseText = result.response.text();
+      const geminiData = await geminiResponse.json();
+      const responseText = geminiData.candidates?.[0]?.content?.parts?.[0]?.text || 'Sorry, I could not generate a response.';
 
       return ok({ reply: responseText });
     }

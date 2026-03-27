@@ -27,7 +27,7 @@ const handler: Handler = async (event: HandlerEvent) => {
           data: {
             organizationId,
             isActive: false,
-            greetingMessage: 'Hello! How can I help you today?',
+            greetingMessage: 'Здравствуйте! Чем я могу вам помочь?',
             aboutOrganization: '',
             faq: [],
             enrollmentPolicy: '',

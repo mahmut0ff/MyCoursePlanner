@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Bot, X, Send, Loader2, MessageSquareText } from 'lucide-react';
+import { Sparkles, X, Send, Loader2 } from 'lucide-react';
 import { apiAIManagerChat } from '../../lib/api';
 import type { OrgAIManagerSettings } from '../../types';
 
@@ -69,7 +69,7 @@ export const AIAssistantChat: React.FC<Props> = ({ organizationId, settings }) =
       setMessages(prev => [...prev, {
         id: (Date.now() + 1).toString(),
         role: 'assistant',
-        content: `⚠️ Error: ${errorMsg}`
+        content: '⚠️ Ошибка: ' + errorMsg
       }]);
     } finally {
       setIsLoading(false);
@@ -84,9 +84,9 @@ export const AIAssistantChat: React.FC<Props> = ({ organizationId, settings }) =
   };
 
   const suggestedQuestions = settings.faq?.slice(0, 3).map(f => f.question) || [
-    'What courses do you offer?',
-    'What are your prices?',
-    'Where are you located?'
+    'Какие курсы вы предлагаете?',
+    'Связь с менеджером',
+    'Где вы находитесь?'
   ];
 
   if (!isOpen) {
@@ -94,9 +94,9 @@ export const AIAssistantChat: React.FC<Props> = ({ organizationId, settings }) =
       <button
         onClick={() => setIsOpen(true)}
         className="fixed bottom-6 right-6 w-14 h-14 bg-primary-600 hover:bg-primary-700 text-white rounded-full shadow-2xl flex items-center justify-center transition-transform hover:scale-105 z-50 animate-bounce"
-        aria-label="Open AI Assistant"
+        aria-label="Open Planula AI"
       >
-        <MessageSquareText className="w-7 h-7" />
+        <Sparkles className="w-7 h-7" />
       </button>
     );
   }
@@ -107,17 +107,17 @@ export const AIAssistantChat: React.FC<Props> = ({ organizationId, settings }) =
       {/* ── Header ── */}
       <div className="bg-gradient-to-r from-primary-600 to-indigo-600 p-4 flex items-center justify-between text-white shrink-0">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center backdrop-blur-sm">
-            <Bot className="w-6 h-6 text-white" />
+          <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center backdrop-blur-sm shadow-inner">
+            <Sparkles className="w-5 h-5 text-white" />
           </div>
           <div>
-            <h3 className="font-semibold text-base leading-tight">AI Assistant</h3>
+            <h3 className="font-semibold text-base leading-tight tracking-wide">Planula AI</h3>
             <p className="text-xs text-primary-100 flex items-center gap-1">
               <span className="relative flex h-2 w-2">
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
                 <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
               </span>
-              Online
+              В сети
             </p>
           </div>
         </div>
@@ -198,7 +198,7 @@ export const AIAssistantChat: React.FC<Props> = ({ organizationId, settings }) =
             value={inputValue}
             onChange={(e) => setInputValue(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder="Type your message..."
+            placeholder="Введите сообщение..."
             className="w-full bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-600 rounded-full pl-4 pr-12 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 text-slate-900 dark:text-white"
             disabled={isLoading}
           />
@@ -211,7 +211,7 @@ export const AIAssistantChat: React.FC<Props> = ({ organizationId, settings }) =
           </button>
         </div>
         <div className="text-[10px] text-center text-slate-400 mt-2">
-          AI may produce inaccurate information about the organization.
+          ИИ может допускать неточности. Уточняйте важную информацию у менеджеров.
         </div>
       </div>
     </div>

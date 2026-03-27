@@ -108,7 +108,7 @@ const PublicOrgProfilePage: React.FC = () => {
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-gray-950">
-        <div className="w-8 h-8 border-3 border-violet-500 border-t-transparent rounded-full animate-spin" />
+        <div className="w-8 h-8 border-3 border-sky-500 border-t-transparent rounded-full animate-spin" />
       </div>
     );
   }
@@ -122,7 +122,7 @@ const PublicOrgProfilePage: React.FC = () => {
         </div>
         <h2 className="text-xl font-bold text-slate-700 dark:text-slate-300">{t('directory.notFound', 'Организация не найдена')}</h2>
         <p className="text-sm text-slate-500 dark:text-slate-400 text-center max-w-sm">{t('directory.notFoundDesc', 'Страница недоступна или организация не существует.')}</p>
-        <button onClick={() => navigate('/directory')} className="text-violet-600 hover:underline text-sm mt-2">
+        <button onClick={() => navigate('/directory')} className="text-sky-600 hover:underline text-sm mt-2">
           ← {t('directory.backToList', 'Вернуться к каталогу')}
         </button>
       </div>
@@ -156,7 +156,7 @@ const PublicOrgProfilePage: React.FC = () => {
         <div className={`flex flex-col sm:flex-row gap-2.5 ${sticky ? 'w-full' : 'w-full sm:w-auto'}`}>
           <Link
             to={`/register?orgSlug=${slug}`}
-            className="flex-1 flex items-center justify-center gap-2 px-6 py-3.5 bg-gradient-to-r from-violet-600 to-indigo-600 text-white rounded-2xl font-semibold hover:from-violet-700 hover:to-indigo-700 transition-all text-sm shadow-lg shadow-violet-500/25 hover:shadow-violet-500/40 hover:scale-[1.02] active:scale-[0.98]"
+            className="flex-1 flex items-center justify-center gap-2 px-6 py-3.5 bg-gradient-to-r from-sky-600 to-indigo-600 text-white rounded-2xl font-semibold hover:from-sky-700 hover:to-indigo-700 transition-all text-sm shadow-lg shadow-sky-500/25 hover:shadow-sky-500/40 hover:scale-[1.02] active:scale-[0.98]"
           >
             <UserPlus className="w-4 h-4" />
             {t('directory.signUpJoin', 'Зарегистрироваться и вступить')}
@@ -176,7 +176,7 @@ const PublicOrgProfilePage: React.FC = () => {
       <button
         onClick={handleJoin}
         disabled={joining}
-        className={`flex items-center justify-center gap-2.5 px-8 py-4 bg-gradient-to-r from-violet-600 to-indigo-600 text-white rounded-2xl font-bold hover:from-violet-700 hover:to-indigo-700 transition-all disabled:opacity-50 text-base shadow-lg shadow-violet-500/25 hover:shadow-violet-500/40 hover:scale-[1.02] active:scale-[0.98] ${sticky ? 'w-full' : ''}`}
+        className={`flex items-center justify-center gap-2.5 px-8 py-4 bg-gradient-to-r from-sky-600 to-indigo-600 text-white rounded-2xl font-bold hover:from-sky-700 hover:to-indigo-700 transition-all disabled:opacity-50 text-base shadow-lg shadow-sky-500/25 hover:shadow-sky-500/40 hover:scale-[1.02] active:scale-[0.98] ${sticky ? 'w-full' : ''}`}
       >
         {joining ? (
           <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
@@ -209,17 +209,17 @@ const PublicOrgProfilePage: React.FC = () => {
       <div className="bg-white dark:bg-gray-900 border-b border-slate-200 dark:border-gray-800">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 py-5 sm:py-6">
           {/* Back */}
-          <button onClick={() => navigate('/directory')} className="flex items-center gap-1 text-sm text-slate-500 hover:text-violet-600 dark:text-slate-400 dark:hover:text-violet-400 transition mb-4">
+          <button onClick={() => navigate('/directory')} className="flex items-center gap-1 text-sm text-slate-500 hover:text-sky-600 dark:text-slate-400 dark:hover:text-sky-400 transition mb-4">
             <ArrowLeft className="w-4 h-4" /> {t('common.back', 'Назад')}
           </button>
 
           {/* Logo + Name + Meta */}
           <div className="flex items-start gap-4 sm:gap-5">
-            <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-gradient-to-br from-violet-100 to-indigo-100 dark:from-violet-900/40 dark:to-indigo-900/40 flex items-center justify-center overflow-hidden flex-shrink-0 shadow-md">
+            <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-gradient-to-br from-sky-100 to-blue-100 dark:from-sky-900/30 dark:to-blue-900/30 flex items-center justify-center overflow-hidden flex-shrink-0 shadow-md">
               {org.logo ? (
                 <img src={org.logo} alt={org.name} className="w-full h-full object-cover rounded-2xl" />
               ) : (
-                <Building2 className="w-9 h-9 text-violet-600 dark:text-violet-400" />
+                <Building2 className="w-9 h-9 text-sky-600 dark:text-sky-400" />
               )}
             </div>
             <div className="flex-1 min-w-0">
@@ -239,7 +239,7 @@ const PublicOrgProfilePage: React.FC = () => {
               {org.subjects?.length > 0 && (
                 <div className="flex flex-wrap gap-1.5 mt-2">
                   {org.subjects.map((s: string, i: number) => (
-                    <span key={i} className="px-2.5 py-0.5 bg-violet-50 dark:bg-violet-900/20 text-violet-700 dark:text-violet-300 rounded-md text-[11px] font-semibold">
+                    <span key={i} className="px-2.5 py-0.5 bg-sky-50 dark:bg-sky-900/20 text-sky-700 dark:text-sky-300 rounded-md text-[11px] font-semibold">
                       {s}
                     </span>
                   ))}
@@ -256,7 +256,7 @@ const PublicOrgProfilePage: React.FC = () => {
               { value: org.courses?.length || 0, label: t('directory.courses', 'Курсы'), icon: FolderOpen },
             ].map((s, i) => (
               <div key={i} className="text-center p-2.5 rounded-xl bg-slate-50 dark:bg-gray-800">
-                <s.icon className="w-4 h-4 text-violet-500 mx-auto mb-0.5" />
+                <s.icon className="w-4 h-4 text-sky-500 mx-auto mb-0.5" />
                 <p className="text-lg font-extrabold text-slate-900 dark:text-white">{s.value}</p>
                 <p className="text-[10px] text-slate-400 font-medium">{s.label}</p>
               </div>
@@ -279,7 +279,7 @@ const PublicOrgProfilePage: React.FC = () => {
           <Section delay={100}>
             <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-slate-200/60 dark:border-gray-700/50 p-6 sm:p-8">
               <h2 className="text-lg font-bold text-slate-900 dark:text-white mb-3 flex items-center gap-2">
-                <Building2 className="w-5 h-5 text-violet-500" /> {t('directory.about', 'О нас')}
+                <Building2 className="w-5 h-5 text-sky-500" /> {t('directory.about', 'О нас')}
               </h2>
               <p className={`text-slate-600 dark:text-slate-300 leading-relaxed whitespace-pre-line ${!descExpanded ? 'line-clamp-4' : ''}`}>
                 {org.description}
@@ -287,7 +287,7 @@ const PublicOrgProfilePage: React.FC = () => {
               {org.description.length > 200 && (
                 <button
                   onClick={() => setDescExpanded(!descExpanded)}
-                  className="mt-2 text-violet-600 dark:text-violet-400 text-sm font-medium hover:underline flex items-center gap-1"
+                  className="mt-2 text-sky-600 dark:text-sky-400 text-sm font-medium hover:underline flex items-center gap-1"
                 >
                   {descExpanded ? t('common.less', 'Свернуть') : t('common.more', 'Подробнее')}
                   <ChevronDown className={`w-4 h-4 transition-transform ${descExpanded ? 'rotate-180' : ''}`} />
@@ -299,7 +299,7 @@ const PublicOrgProfilePage: React.FC = () => {
                 <div className="mt-5 pt-5 border-t border-slate-100 dark:border-gray-700 flex flex-wrap gap-6">
                   {org.workingHours && (
                     <div className="flex items-start gap-2.5">
-                      <Clock className="w-4 h-4 text-violet-400 mt-0.5" />
+                      <Clock className="w-4 h-4 text-sky-400 mt-0.5" />
                       <div>
                         <p className="text-[11px] text-slate-400 font-semibold uppercase tracking-wider">{t('directory.workingHours', 'Рабочие часы')}</p>
                         <p className="text-sm text-slate-700 dark:text-slate-300 mt-0.5">{org.workingHours}</p>
@@ -308,7 +308,7 @@ const PublicOrgProfilePage: React.FC = () => {
                   )}
                   {org.address && (
                     <div className="flex items-start gap-2.5">
-                      <MapPin className="w-4 h-4 text-violet-400 mt-0.5" />
+                      <MapPin className="w-4 h-4 text-sky-400 mt-0.5" />
                       <div>
                         <p className="text-[11px] text-slate-400 font-semibold uppercase tracking-wider">{t('directory.address', 'Адрес')}</p>
                         <p className="text-sm text-slate-700 dark:text-slate-300 mt-0.5">{org.address}</p>
@@ -327,18 +327,18 @@ const PublicOrgProfilePage: React.FC = () => {
         <Section delay={200}>
           <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-slate-200/60 dark:border-gray-700/50 p-6 sm:p-8">
             <h2 className="text-lg font-bold text-slate-900 dark:text-white mb-5 flex items-center gap-2">
-              <FolderOpen className="w-5 h-5 text-violet-500" /> {t('directory.coursesTitle', 'Программы и курсы')}
+              <FolderOpen className="w-5 h-5 text-sky-500" /> {t('directory.coursesTitle', 'Программы и курсы')}
             </h2>
             {org.courses?.length > 0 ? (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                 {org.courses.map((c: any, i: number) => (
                   <div
                     key={c.id}
-                    className="group bg-gradient-to-br from-slate-50 to-white dark:from-gray-700/40 dark:to-gray-700/20 rounded-xl p-5 border border-slate-100 dark:border-gray-600/50 hover:border-violet-200 dark:hover:border-violet-800 hover:shadow-lg transition-all duration-300 hover:scale-[1.02] cursor-default"
+                    className="group bg-gradient-to-br from-slate-50 to-white dark:from-gray-700/40 dark:to-gray-700/20 rounded-xl p-5 border border-slate-100 dark:border-gray-600/50 hover:border-sky-200 dark:hover:border-sky-800 hover:shadow-lg transition-all duration-300 hover:scale-[1.02] cursor-default"
                     style={{ animationDelay: `${i * 80}ms` }}
                   >
-                    <div className="w-10 h-10 rounded-xl bg-violet-100 dark:bg-violet-900/30 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
-                      <BookOpen className="w-5 h-5 text-violet-600 dark:text-violet-400" />
+                    <div className="w-10 h-10 rounded-xl bg-sky-100 dark:bg-sky-900/30 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
+                      <BookOpen className="w-5 h-5 text-sky-600 dark:text-sky-400" />
                     </div>
                     <h4 className="font-semibold text-slate-900 dark:text-white text-sm mb-1.5">{c.title}</h4>
                     {c.description && (
@@ -368,8 +368,8 @@ const PublicOrgProfilePage: React.FC = () => {
           <Section delay={300}>
             <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-slate-200/60 dark:border-gray-700/50 p-6 sm:p-8">
               <h2 className="text-lg font-bold text-slate-900 dark:text-white mb-6 flex items-center gap-2">
-                <Building2 className="w-5 h-5 text-violet-500" /> {t('directory.branches', 'Филиалы')}
-                <span className="bg-violet-100 text-violet-700 dark:bg-violet-900/40 dark:text-violet-300 px-2.5 py-0.5 rounded-full text-xs font-bold ml-1">
+                <Building2 className="w-5 h-5 text-sky-500" /> {t('directory.branches', 'Филиалы')}
+                <span className="bg-sky-100 text-sky-700 dark:bg-sky-900/40 dark:text-sky-300 px-2.5 py-0.5 rounded-full text-xs font-bold ml-1">
                   {org.branches?.length || 0}
                 </span>
               </h2>
@@ -378,7 +378,7 @@ const PublicOrgProfilePage: React.FC = () => {
                 {Object.entries(branchesByCity).map(([city, cityBranches]: [string, any]) => (
                   <div key={city}>
                     <div className="flex items-center gap-2 mb-4">
-                      <MapPin className="w-4 h-4 text-violet-500" />
+                      <MapPin className="w-4 h-4 text-sky-500" />
                       <h3 className="text-sm font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
                         {city}
                       </h3>
@@ -390,7 +390,7 @@ const PublicOrgProfilePage: React.FC = () => {
                       {cityBranches.map((b: any, idx: number) => (
                         <div
                           key={b.id}
-                          className="group bg-gradient-to-br from-slate-50 to-white dark:from-gray-700/40 dark:to-gray-700/20 rounded-xl p-5 border border-slate-100 dark:border-gray-600/50 hover:border-violet-200 dark:hover:border-violet-800 hover:shadow-lg transition-all duration-300 hover:scale-[1.02]"
+                          className="group bg-gradient-to-br from-slate-50 to-white dark:from-gray-700/40 dark:to-gray-700/20 rounded-xl p-5 border border-slate-100 dark:border-gray-600/50 hover:border-sky-200 dark:hover:border-sky-800 hover:shadow-lg transition-all duration-300 hover:scale-[1.02]"
                           style={{ animationDelay: `${idx * 80}ms` }}
                         >
                           {/* Branch name + map link */}
@@ -400,7 +400,7 @@ const PublicOrgProfilePage: React.FC = () => {
                               <a
                                 href={`https://www.google.com/maps/search/?api=1&query=${b.latitude},${b.longitude}`}
                                 target="_blank" rel="noopener noreferrer"
-                                className="flex items-center gap-1 px-2.5 py-1 bg-violet-50 dark:bg-violet-900/20 text-violet-600 dark:text-violet-400 rounded-lg text-[10px] font-bold uppercase tracking-wider hover:bg-violet-100 dark:hover:bg-violet-900/40 transition"
+                                className="flex items-center gap-1 px-2.5 py-1 bg-sky-50 dark:bg-sky-900/20 text-sky-600 dark:text-sky-400 rounded-lg text-[10px] font-bold uppercase tracking-wider hover:bg-sky-100 dark:hover:bg-sky-900/40 transition"
                               >
                                 <MapPin className="w-3 h-3" /> Карта <ExternalLink className="w-2.5 h-2.5" />
                               </a>
@@ -416,8 +416,8 @@ const PublicOrgProfilePage: React.FC = () => {
                             <div className="bg-white dark:bg-gray-800 p-3.5 rounded-xl border border-slate-100 dark:border-gray-700/50 space-y-2">
                               {b.contactName && (
                                 <div className="flex items-center gap-2 text-sm">
-                                  <div className="w-7 h-7 rounded-lg bg-violet-100 dark:bg-violet-900/30 flex items-center justify-center">
-                                    <Users className="w-3.5 h-3.5 text-violet-600 dark:text-violet-400" />
+                                  <div className="w-7 h-7 rounded-lg bg-sky-100 dark:bg-sky-900/30 flex items-center justify-center">
+                                    <Users className="w-3.5 h-3.5 text-sky-600 dark:text-sky-400" />
                                   </div>
                                   <span className="font-semibold text-slate-800 dark:text-slate-200">{b.contactName}</span>
                                   <span className="text-[10px] text-slate-400 uppercase tracking-wider">{t('directory.manager', 'Менеджер')}</span>
@@ -427,7 +427,7 @@ const PublicOrgProfilePage: React.FC = () => {
                                 {b.phone && (
                                   <a
                                     href={`tel:${b.phone}`}
-                                    className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-50 dark:bg-gray-700/40 rounded-lg text-xs font-medium text-slate-700 dark:text-slate-300 hover:bg-violet-50 dark:hover:bg-violet-900/20 hover:text-violet-600 dark:hover:text-violet-400 transition"
+                                    className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-50 dark:bg-gray-700/40 rounded-lg text-xs font-medium text-slate-700 dark:text-slate-300 hover:bg-sky-50 dark:hover:bg-sky-900/20 hover:text-sky-600 dark:hover:text-sky-400 transition"
                                   >
                                     <Phone className="w-3 h-3" /> {t('directory.call', 'Позвонить')}
                                   </a>
@@ -462,7 +462,7 @@ const PublicOrgProfilePage: React.FC = () => {
             <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-slate-200/60 dark:border-gray-700/50 overflow-hidden">
               <div className="px-6 py-5 border-b border-slate-100 dark:border-gray-700">
                 <h2 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                  <MapPin className="w-5 h-5 text-violet-500" /> {t('directory.map', 'На карте')}
+                  <MapPin className="w-5 h-5 text-sky-500" /> {t('directory.map', 'На карте')}
                 </h2>
               </div>
               <div className="relative w-full h-[300px] sm:h-[400px]">
@@ -488,7 +488,7 @@ const PublicOrgProfilePage: React.FC = () => {
                     key={b.id}
                     href={`https://www.google.com/maps/search/?api=1&query=${b.latitude},${b.longitude}`}
                     target="_blank" rel="noopener noreferrer"
-                    className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-slate-50 dark:hover:bg-gray-700/40 transition text-sm text-slate-600 dark:text-slate-400 hover:text-violet-600 dark:hover:text-violet-400"
+                    className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-slate-50 dark:hover:bg-gray-700/40 transition text-sm text-slate-600 dark:text-slate-400 hover:text-sky-600 dark:hover:text-sky-400"
                   >
                     <MapPin className="w-3.5 h-3.5 flex-shrink-0" />
                     <span className="truncate">{b.name}{b.address ? ` — ${b.address}` : ''}</span>
@@ -507,7 +507,7 @@ const PublicOrgProfilePage: React.FC = () => {
           <Section delay={500}>
             <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-slate-200/60 dark:border-gray-700/50 p-6">
               <h2 className="text-lg font-bold text-slate-900 dark:text-white mb-4 flex items-center gap-2">
-                <Image className="w-5 h-5 text-violet-500" /> {t('directory.photos', 'Фотогалерея')}
+                <Image className="w-5 h-5 text-sky-500" /> {t('directory.photos', 'Фотогалерея')}
               </h2>
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                 {org.photos.map((url: string, i: number) => (
@@ -525,7 +525,7 @@ const PublicOrgProfilePage: React.FC = () => {
           <Section delay={600}>
             <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-slate-200/60 dark:border-gray-700/50 p-6 sm:p-8">
               <h2 className="text-lg font-bold text-slate-900 dark:text-white mb-5 flex items-center gap-2">
-                <Mail className="w-5 h-5 text-violet-500" /> {t('directory.contactTitle', 'Контакты')}
+                <Mail className="w-5 h-5 text-sky-500" /> {t('directory.contactTitle', 'Контакты')}
               </h2>
 
               {/* Primary contact actions */}
@@ -561,11 +561,11 @@ const PublicOrgProfilePage: React.FC = () => {
               {/* Secondary contacts */}
               <div className="flex flex-wrap gap-3">
                 {org.contactEmail && (
-                  <a href={`mailto:${org.contactEmail}`} className="flex items-center gap-2.5 px-4 py-3 bg-slate-50 dark:bg-gray-700/40 rounded-xl text-sm text-slate-700 dark:text-slate-300 hover:bg-violet-50 dark:hover:bg-violet-900/20 transition group">
-                    <div className="w-8 h-8 rounded-lg bg-violet-100 dark:bg-violet-900/30 flex items-center justify-center">
-                      <Mail className="w-4 h-4 text-violet-600 dark:text-violet-400" />
+                  <a href={`mailto:${org.contactEmail}`} className="flex items-center gap-2.5 px-4 py-3 bg-slate-50 dark:bg-gray-700/40 rounded-xl text-sm text-slate-700 dark:text-slate-300 hover:bg-sky-50 dark:hover:bg-sky-900/20 transition group">
+                    <div className="w-8 h-8 rounded-lg bg-sky-100 dark:bg-sky-900/30 flex items-center justify-center">
+                      <Mail className="w-4 h-4 text-sky-600 dark:text-sky-400" />
                     </div>
-                    <span className="group-hover:text-violet-600 dark:group-hover:text-violet-400 transition">{org.contactEmail}</span>
+                    <span className="group-hover:text-sky-600 dark:group-hover:text-sky-400 transition">{org.contactEmail}</span>
                   </a>
                 )}
                 {socialLinks.telegram && (
@@ -590,12 +590,12 @@ const PublicOrgProfilePage: React.FC = () => {
                 )}
                 {socialLinks.website && (
                   <a href={socialLinks.website.startsWith('http') ? socialLinks.website : `https://${socialLinks.website}`} target="_blank" rel="noopener noreferrer"
-                    className="flex items-center gap-2.5 px-4 py-3 bg-slate-50 dark:bg-gray-700/40 rounded-xl text-sm text-slate-700 dark:text-slate-300 hover:bg-violet-50 dark:hover:bg-violet-900/20 transition group"
+                    className="flex items-center gap-2.5 px-4 py-3 bg-slate-50 dark:bg-gray-700/40 rounded-xl text-sm text-slate-700 dark:text-slate-300 hover:bg-sky-50 dark:hover:bg-sky-900/20 transition group"
                   >
-                    <div className="w-8 h-8 rounded-lg bg-violet-100 dark:bg-violet-900/30 flex items-center justify-center">
-                      <Globe className="w-4 h-4 text-violet-600 dark:text-violet-400" />
+                    <div className="w-8 h-8 rounded-lg bg-sky-100 dark:bg-sky-900/30 flex items-center justify-center">
+                      <Globe className="w-4 h-4 text-sky-600 dark:text-sky-400" />
                     </div>
-                    <span className="group-hover:text-violet-600 dark:group-hover:text-violet-400 transition">{t('directory.website', 'Веб-сайт')}</span>
+                    <span className="group-hover:text-sky-600 dark:group-hover:text-sky-400 transition">{t('directory.website', 'Веб-сайт')}</span>
                   </a>
                 )}
               </div>

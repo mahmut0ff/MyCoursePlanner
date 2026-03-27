@@ -136,20 +136,20 @@ const OrganizationsDirectoryPage: React.FC = () => {
       {/*  E-COMMERCE STYLE HEADER (sticky)        */}
       {/* ═══════════════════════════════════════ */}
       {/* Top bar: branding + search */}
-      <div className="sticky top-0 z-30 bg-violet-600 dark:bg-violet-900 shadow-md">
+      <div className="sticky top-0 z-30 bg-sky-600 dark:bg-sky-800 shadow-md">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 py-2.5 flex items-center gap-4">
           <div className="flex items-center gap-2 flex-shrink-0">
             <Building2 className="w-5 h-5 text-white" />
             <span className="text-white font-bold text-sm hidden sm:inline">{t('directory.badge', 'Каталог')}</span>
           </div>
           <div className="relative flex-1 max-w-2xl">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-violet-300" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-sky-200" />
             <input
               type="text"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder={t('directory.searchPlaceholder', 'Поиск по названию, городу или предмету...')}
-              className="w-full pl-9 pr-4 py-2 bg-white/15 backdrop-blur-sm border border-white/20 rounded-xl text-white text-sm placeholder:text-violet-200/60 focus:outline-none focus:bg-white/20 focus:border-white/40 transition"
+              className="w-full pl-9 pr-4 py-2 bg-white/15 backdrop-blur-sm border border-white/20 rounded-xl text-white text-sm placeholder:text-sky-100/60 focus:outline-none focus:bg-white/20 focus:border-white/40 transition"
             />
           </div>
           <div className="text-white/60 text-xs font-medium flex-shrink-0 hidden sm:block">
@@ -166,7 +166,7 @@ const OrganizationsDirectoryPage: React.FC = () => {
               onClick={() => setSelectedCity('all')}
               className={`flex-shrink-0 px-3.5 py-1.5 rounded-full text-xs font-semibold transition-all whitespace-nowrap ${
                 selectedCity === 'all'
-                  ? 'bg-violet-600 text-white'
+                  ? 'bg-sky-600 text-white'
                   : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-gray-800'
               }`}
             >
@@ -178,7 +178,7 @@ const OrganizationsDirectoryPage: React.FC = () => {
                 onClick={() => setSelectedCity(city)}
                 className={`flex-shrink-0 px-3.5 py-1.5 rounded-full text-xs font-semibold transition-all whitespace-nowrap flex items-center gap-1 ${
                   selectedCity === city
-                    ? 'bg-violet-600 text-white'
+                    ? 'bg-sky-600 text-white'
                     : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-gray-800'
                 }`}
               >
@@ -217,7 +217,7 @@ const OrganizationsDirectoryPage: React.FC = () => {
             {(search || selectedCity !== 'all') && (
               <button
                 onClick={() => { setSearch(''); setSelectedCity('all'); }}
-                className="mt-4 text-violet-600 dark:text-violet-400 text-sm font-medium hover:underline"
+                className="mt-4 text-sky-600 dark:text-sky-400 text-sm font-medium hover:underline"
               >
                 {t('directory.clearFilters', 'Сбросить фильтры')}
               </button>
@@ -229,7 +229,7 @@ const OrganizationsDirectoryPage: React.FC = () => {
             <div className="flex items-center justify-between mb-5">
               <p className="text-sm text-slate-500 dark:text-slate-400">
                 {selectedCity !== 'all' && (
-                  <span className="text-violet-600 dark:text-violet-400 font-semibold">{selectedCity} · </span>
+                  <span className="text-sky-600 dark:text-sky-400 font-semibold">{selectedCity} · </span>
                 )}
                 <span className="font-bold text-slate-800 dark:text-slate-200">{filtered.length}</span>{' '}
                 {t('directory.orgsFound', 'организаций')}
@@ -242,20 +242,20 @@ const OrganizationsDirectoryPage: React.FC = () => {
                 <AnimCard key={org.id} index={i}>
                   <div
                     onClick={() => navigate(`/org/${org.slug || org.id}`)}
-                    className="group bg-white dark:bg-gray-800/60 rounded-2xl border border-slate-200/60 dark:border-gray-700/50 overflow-hidden cursor-pointer hover:shadow-2xl hover:shadow-violet-200/40 dark:hover:shadow-violet-900/30 hover:border-violet-300 dark:hover:border-violet-500/40 transition-all duration-300 hover:scale-[1.02] active:scale-[0.98] h-full flex flex-col"
+                    className="group bg-white dark:bg-gray-800/60 rounded-2xl border border-slate-200/60 dark:border-gray-700/50 overflow-hidden cursor-pointer hover:shadow-2xl hover:shadow-sky-200/30 dark:hover:shadow-sky-900/20 hover:border-sky-300 dark:hover:border-sky-600/40 transition-all duration-300 hover:scale-[1.02] active:scale-[0.98] h-full flex flex-col"
                   >
                     {/* ─── Header: Logo + Name ─── */}
                     <div className="p-5 pb-3">
                       <div className="flex items-start gap-4">
-                        <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-violet-100 to-indigo-100 dark:from-violet-900/40 dark:to-indigo-900/40 flex items-center justify-center flex-shrink-0 overflow-hidden shadow-md group-hover:shadow-lg transition-shadow">
+                        <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-sky-100 to-blue-100 dark:from-sky-900/30 dark:to-blue-900/30 flex items-center justify-center flex-shrink-0 overflow-hidden shadow-md group-hover:shadow-lg transition-shadow">
                           {org.logo ? (
                             <img src={org.logo} alt={org.name} className="w-16 h-16 object-cover rounded-2xl" />
                           ) : (
-                            <Building2 className="w-8 h-8 text-violet-600 dark:text-violet-400" />
+                            <Building2 className="w-8 h-8 text-sky-600 dark:text-sky-400" />
                           )}
                         </div>
                         <div className="flex-1 min-w-0 pt-0.5">
-                          <h3 className="font-bold text-base text-slate-900 dark:text-white truncate group-hover:text-violet-600 dark:group-hover:text-violet-400 transition-colors">
+                          <h3 className="font-bold text-base text-slate-900 dark:text-white truncate group-hover:text-sky-600 dark:group-hover:text-sky-400 transition-colors">
                             {org.name}
                           </h3>
                           {org.isOnline && (
@@ -276,14 +276,14 @@ const OrganizationsDirectoryPage: React.FC = () => {
 
                     {/* ─── Geography (KEY FEATURE) ─── */}
                     <div className="px-5 pb-3">
-                      <div className="flex items-center gap-2 p-2.5 bg-violet-50/80 dark:bg-violet-900/15 rounded-xl border border-violet-100/60 dark:border-violet-800/30">
-                        <MapPin className="w-4 h-4 text-violet-500 flex-shrink-0" />
+                      <div className="flex items-center gap-2 p-2.5 bg-sky-50/80 dark:bg-sky-900/10 rounded-xl border border-sky-100/60 dark:border-sky-800/20">
+                        <MapPin className="w-4 h-4 text-sky-500 flex-shrink-0" />
                         <div className="flex-1 min-w-0">
-                          <p className="text-xs font-bold text-violet-800 dark:text-violet-300 truncate">
+                          <p className="text-xs font-bold text-sky-800 dark:text-sky-300 truncate">
                             {getCityLabel(org)}
                           </p>
                           {(org.branchesCount ?? 0) > 0 && (
-                            <p className="text-[10px] text-violet-500/70 dark:text-violet-400/60 mt-0.5">
+                            <p className="text-[10px] text-sky-500/70 dark:text-sky-400/60 mt-0.5">
                               {org.branchesCount} {t('directory.branchCount', 'филиалов')}
                             </p>
                           )}
@@ -320,7 +320,7 @@ const OrganizationsDirectoryPage: React.FC = () => {
                           <span className="font-bold text-slate-600 dark:text-slate-300">{org.teachersCount || 0}</span>
                         </span>
                       </div>
-                      <span className="flex items-center gap-1 text-xs font-bold text-violet-600 dark:text-violet-400 group-hover:gap-2 transition-all">
+                      <span className="flex items-center gap-1 text-xs font-bold text-sky-600 dark:text-sky-400 group-hover:gap-2 transition-all">
                         {t('directory.details', 'Подробнее')}
                         <ArrowRight className="w-3.5 h-3.5" />
                       </span>

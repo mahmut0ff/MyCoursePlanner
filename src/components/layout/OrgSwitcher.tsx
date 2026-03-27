@@ -97,15 +97,15 @@ const OrgSwitcher: React.FC<OrgSwitcherProps> = ({ currentOrgId, userRole, onSwi
 
     if (userRole === 'admin' && currentOrgId) {
       actions.push(
-        { icon: Users, label: t('org.users', 'Пользователи'), onClick: () => nav('/org-users') },
+        { icon: Users, label: t('nav.orgUsers', 'Пользователи'), onClick: () => nav('/org-users') },
         { icon: Building2, label: t('org.branches', 'Филиалы'), onClick: () => nav('/branches') },
-        { icon: Settings, label: t('org.settings', 'Настройки'), onClick: () => nav('/org-settings') },
+        { icon: Settings, label: t('nav.settings', 'Настройки'), onClick: () => nav('/org-settings') },
       );
     }
 
     if (userRole === 'manager' && currentOrgId) {
       actions.push(
-        { icon: Users, label: t('org.users', 'Пользователи'), onClick: () => nav('/org-users') },
+        { icon: Users, label: t('nav.orgUsers', 'Пользователи'), onClick: () => nav('/org-users') },
         { icon: BarChart3, label: t('nav.analytics', 'Аналитика'), onClick: () => nav('/teacher-analytics') },
       );
     }

@@ -34,7 +34,7 @@ const OverviewTab: React.FC = () => {
             </div>
           </div>
           <h3 className="text-2xl font-bold text-slate-900 dark:text-white">
-            {metrics?.totalIncome?.toLocaleString() || 0} ₸
+            {metrics?.totalIncome?.toLocaleString() || 0} с.
           </h3>
           <p className="text-xs text-slate-400 mt-2">Cash Collected</p>
         </div>
@@ -47,7 +47,7 @@ const OverviewTab: React.FC = () => {
             </div>
           </div>
           <h3 className="text-2xl font-bold text-slate-900 dark:text-white">
-            {metrics?.totalExpense?.toLocaleString() || 0} ₸
+            {metrics?.totalExpense?.toLocaleString() || 0} с.
           </h3>
           <p className="text-xs text-slate-400 mt-2">Operating Costs</p>
         </div>
@@ -60,7 +60,7 @@ const OverviewTab: React.FC = () => {
             </div>
           </div>
           <h3 className="text-2xl font-bold text-slate-900 dark:text-white">
-            {metrics?.netProfit?.toLocaleString() || 0} ₸
+            {metrics?.netProfit?.toLocaleString() || 0} с.
           </h3>
           <p className="text-xs text-slate-400 mt-2">Net Margin</p>
         </div>
@@ -74,7 +74,7 @@ const OverviewTab: React.FC = () => {
             </div>
           </div>
           <h3 className="text-2xl font-bold text-slate-900 dark:text-white relative z-10">
-            {metrics?.outstandingDebt?.toLocaleString() || 0} ₸
+            {metrics?.outstandingDebt?.toLocaleString() || 0} с.
           </h3>
           <p className="text-xs text-amber-600/70 dark:text-amber-500/70 mt-2 relative z-10">Overdue Payments</p>
         </div>

@@ -92,7 +92,7 @@ const IncomeTab: React.FC = () => {
                   </td>
                   <td className="px-6 py-4 font-medium">
                     <span className={p.paidAmount < p.totalAmount ? 'text-amber-500' : 'text-emerald-500'}>
-                      {p.paidAmount?.toLocaleString()} / {p.totalAmount?.toLocaleString()} ₸
+                      {p.paidAmount?.toLocaleString()} / {p.totalAmount?.toLocaleString()} с.
                     </span>
                   </td>
                   <td className="px-6 py-4">

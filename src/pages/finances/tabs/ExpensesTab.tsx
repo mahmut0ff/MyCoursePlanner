@@ -105,7 +105,7 @@ const ExpensesTab: React.FC = () => {
                     </div>
                   </td>
                   <td className="px-6 py-4 font-bold text-rose-500">
-                    -{tx.amount.toLocaleString()} ₸
+                    -{tx.amount.toLocaleString()} с.
                   </td>
                   <td className="px-6 py-4 text-slate-500">
                     <div className="flex items-center gap-2">
@@ -128,7 +128,7 @@ const ExpensesTab: React.FC = () => {
             </div>
             <div className="p-6 space-y-4">
               <div>
-                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Сумма (₸)</label>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Сумма (с.)</label>
                 <input
                   type="number"
                   autoFocus

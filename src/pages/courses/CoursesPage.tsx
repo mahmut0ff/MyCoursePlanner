@@ -149,7 +149,7 @@ const CoursesPage: React.FC = () => {
                   {c.description && <p className="text-xs text-slate-500 dark:text-slate-400 line-clamp-2 mb-2">{c.description}</p>}
                   {(c.price !== undefined) && (
                     <div className="flex items-center gap-2 mb-4 text-xs font-semibold text-emerald-600 dark:text-emerald-400">
-                      <span>{c.price.toLocaleString()} ₸</span>
+                      <span>{c.price.toLocaleString()} с.</span>
                       <span className="text-[10px] text-slate-400 font-normal">
                         ({c.paymentFormat === 'monthly' ? t('common.monthly', 'в месяц') : t('common.oneTime', 'разово')})
                       </span>

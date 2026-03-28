@@ -10,7 +10,7 @@ import type { LessonPlan, Exam, ExamRoom, ExamAttempt } from '../../types';
 import { formatDate } from '../../utils/grading';
 import { BookOpen, ClipboardList, Radio, Users, TrendingUp, ArrowRight, Plus, Sparkles, GitBranch, MapPin } from 'lucide-react';
 import { DashboardSkeleton } from '../../components/ui/Skeleton';
-import OnboardingWizard from '../../components/onboarding/OnboardingWizard';
+import OnboardingWizard, { useOnboardingProgress } from '../../components/onboarding/OnboardingWizard';
 import { apiGetBranchAnalytics } from '../../lib/api';
 
 const AdminDashboard: React.FC = () => {
@@ -45,28 +45,51 @@ const AdminDashboard: React.FC = () => {
   const hour = new Date().getHours();
   const greeting = hour < 12 ? '🌅 ' + t('dashboard.goodMorning', 'Доброе утро') : hour < 18 ? '☀️ ' + t('dashboard.goodAfternoon', 'Добрый день') : '🌙 ' + t('dashboard.goodEvening', 'Добрый вечер');
 
+  const onboarding = useOnboardingProgress({ lessonsCount: lessons.length, examsCount: exams.length });
+
   return (
     <div className="space-y-6">
-      {/* ═══ Hero Banner ═══ */}
+      {/* ═══ Unified Hero Banner ═══ */}
       <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-indigo-600 via-violet-600 to-purple-600 p-6 sm:p-8 text-white">
         {/* Decorative circles */}
         <div className="absolute -top-10 -right-10 w-40 h-40 bg-white/10 rounded-full blur-2xl" />
         <div className="absolute bottom-0 left-1/3 w-32 h-32 bg-white/5 rounded-full blur-xl" />
-        <div className="relative z-10 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <div>
-            <h1 className="text-xl sm:text-2xl font-bold">{greeting}, {profile?.displayName?.split(' ')[0]}!</h1>
-            <p className="text-white/70 text-sm mt-1 flex items-center gap-1.5">
-              <Sparkles className="w-4 h-4" />
-              {t('dashboard.subtitle', 'Управляйте вашим учебным центром')}
-            </p>
+        <div className="relative z-10 flex flex-col gap-5">
+          {/* Top row: greeting + create button */}
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div>
+              <h1 className="text-xl sm:text-2xl font-bold">{greeting}, {profile?.displayName?.split(' ')[0]}!</h1>
+              <p className="text-white/70 text-sm mt-1 flex items-center gap-1.5">
+                <Sparkles className="w-4 h-4" />
+                {t('dashboard.subtitle', 'Управляйте вашим учебным центром')}
+              </p>
+            </div>
+            <Link to="/lessons/new" className="inline-flex items-center gap-2 bg-white/20 backdrop-blur-sm hover:bg-white/30 text-white px-4 py-2.5 rounded-xl font-medium text-sm transition-all hover:scale-[1.02] active:scale-[0.98] w-fit">
+              <Plus className="w-4 h-4" />{t('dashboard.createLesson')}
+            </Link>
           </div>
-          <Link to="/lessons/new" className="inline-flex items-center gap-2 bg-white/20 backdrop-blur-sm hover:bg-white/30 text-white px-4 py-2.5 rounded-xl font-medium text-sm transition-all hover:scale-[1.02] active:scale-[0.98] w-fit">
-            <Plus className="w-4 h-4" />{t('dashboard.createLesson')}
-          </Link>
+
+          {/* Onboarding progress row (shown only if not all steps done) */}
+          {!onboarding.allDone && (
+            <div className="border-t border-white/15 pt-4">
+              <div className="flex items-center gap-2 mb-2">
+                <Sparkles className="w-4 h-4 text-amber-300" />
+                <span className="text-sm font-medium text-white/80">{t('onboarding.badge')}</span>
+              </div>
+              <p className="text-white/90 font-semibold text-base">{t('onboarding.title')}</p>
+              <p className="text-white/60 text-xs mt-0.5">{t('onboarding.subtitle')}</p>
+              <div className="mt-3 flex items-center gap-3">
+                <div className="flex-1 max-w-xs bg-white/20 rounded-full h-2">
+                  <div className="bg-white rounded-full h-2 transition-all duration-500" style={{ width: `${onboarding.progress}%` }} />
+                </div>
+                <span className="text-sm font-semibold">{onboarding.completedCount}/{onboarding.totalSteps}</span>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
-      {/* Onboarding */}
+      {/* Onboarding step cards */}
       <OnboardingWizard lessonsCount={lessons.length} examsCount={exams.length} />
 
       {/* ═══ Stat Cards ═══ */}

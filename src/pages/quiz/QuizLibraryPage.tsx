@@ -2,13 +2,13 @@ import React, { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../contexts/AuthContext';
-import { apiGetQuizzes, apiDeleteQuiz, apiPublishQuiz, apiUnpublishQuiz, apiArchiveQuiz, apiDuplicateQuiz, apiCreateQuizSession } from '../../lib/api';
+import { apiGetQuizzes, apiDeleteQuiz, apiArchiveQuiz, apiDuplicateQuiz, apiCreateQuizSession } from '../../lib/api';
 import type { Quiz } from '../../types';
 import {
-  Plus, Search, Play, Copy, Trash2, Archive,
+  Plus, Search, Play, Copy, Trash2,
   BookOpen, Share2, Filter, Zap,
-  Globe, Lock, Building2, MoreVertical, Eye, EyeOff,
-  Gamepad2, Users, Star
+  Globe, Lock, Building2,
+  Users, Star, Gamepad2
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -33,7 +33,6 @@ const QuizLibraryPage: React.FC = () => {
   const [filterDifficulty, setFilterDifficulty] = useState('');
   const [filterSubject, setFilterSubject] = useState('');
   const [showFilters, setShowFilters] = useState(false);
-  const [activeMenu, setActiveMenu] = useState<string | null>(null);
 
   useEffect(() => { loadQuizzes(); }, [tab, sortBy, filterDifficulty, filterSubject]);
 
@@ -61,11 +60,6 @@ const QuizLibraryPage: React.FC = () => {
 
   const handleDuplicate = async (id: string) => {
     try { const result = await apiDuplicateQuiz(id); toast.success(t('quiz.duplicated')); navigate(`/quiz/${result.id}/edit`); }
-    catch { toast.error(t('common.error')); }
-  };
-
-  const handlePublish = async (id: string, published: boolean) => {
-    try { published ? await apiUnpublishQuiz(id) : await apiPublishQuiz(id); toast.success(published ? t('quiz.unpublished') : t('quiz.published')); loadQuizzes(); }
     catch { toast.error(t('common.error')); }
   };
 
@@ -199,106 +193,113 @@ const QuizLibraryPage: React.FC = () => {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {filtered.map((quiz, idx) => (
-            <div key={quiz.id} className="kahoot-library-card group">
+            <div key={quiz.id} className="kahoot-library-card group bg-white dark:bg-slate-800 rounded-2xl overflow-hidden shadow-sm hover:shadow-xl transition-all border border-slate-200 dark:border-slate-700 flex flex-col h-full">
               {/* Cover */}
               <div
-                className="h-28 flex items-center justify-center relative"
+                className="h-32 flex items-center justify-center relative shrink-0"
                 style={{ background: quiz.coverImageUrl ? undefined : getCardGradient(idx) }}
               >
                 {quiz.coverImageUrl ? (
                   <img src={quiz.coverImageUrl} alt="" className="w-full h-full object-cover" />
                 ) : (
-                  <Gamepad2 className="w-10 h-10 text-white/40" />
+                  <div className="text-center">
+                    <p className="text-white/60 text-xs font-bold uppercase tracking-widest mb-1">{t('quiz.quizId', 'Код квиза')}</p>
+                    <p className="text-3xl font-black text-white tracking-widest drop-shadow-md">
+                      {quiz.id.substring(0, 6).toUpperCase()}
+                    </p>
+                  </div>
                 )}
                 {/* Status badge */}
                 <div className="absolute top-2 right-2">
-                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full shadow-sm ${
                     quiz.status === 'published' ? 'bg-green-500 text-white' :
                     quiz.status === 'draft' ? 'bg-yellow-500 text-white' : 'bg-slate-500 text-white'
                   }`}>
-                    {quiz.status}
+                    {quiz.status === 'published' ? t('quiz.published', 'Опубликован') : t('quiz.draft', 'Черновик')}
                   </span>
                 </div>
                 {/* Question count */}
                 <div className="absolute bottom-2 left-2 bg-black/50 backdrop-blur-sm text-white text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1">
-                  <Zap className="w-2.5 h-2.5" />{quiz.questionCount || 0} {t('quiz.questions', 'Q')}
+                  <Zap className="w-3 h-3 text-yellow-400" />{quiz.questionCount || 0} {t('quiz.questions', 'Вопросов')}
                 </div>
               </div>
 
-              <div className="p-4">
-                <div className="flex items-start justify-between mb-2">
-                  <div className="flex-1 min-w-0">
-                    <Link to={tab === 'my' ? `/quiz/${quiz.id}/edit` : `/quiz/${quiz.id}`}>
-                      <h3 className="text-sm font-bold text-slate-900 dark:text-white group-hover:text-purple-700 dark:group-hover:text-purple-400 transition-colors line-clamp-1">
-                        {quiz.title}
-                      </h3>
-                    </Link>
-                    {quiz.subject && <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">{quiz.subject}</p>}
-                  </div>
-
-                  {/* Actions menu */}
-                  <div className="relative ml-2">
-                    <button onClick={() => setActiveMenu(activeMenu === quiz.id ? null : quiz.id)} className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">
-                      <MoreVertical className="w-4 h-4 text-slate-400" />
-                    </button>
-                    {activeMenu === quiz.id && (
-                      <div className="absolute right-0 top-8 bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-xl shadow-xl py-1.5 z-20 w-44" onMouseLeave={() => setActiveMenu(null)}>
-                        {tab === 'my' && (
-                          <>
-                            <button onClick={() => handlePublish(quiz.id, quiz.status === 'published')} className="w-full text-left px-4 py-2 text-xs hover:bg-slate-50 dark:hover:bg-slate-600 flex items-center gap-2.5 font-medium">
-                              {quiz.status === 'published' ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
-                              {quiz.status === 'published' ? t('quiz.unpublish') : t('quiz.publish')}
-                            </button>
-                            <button onClick={() => handleLaunch(quiz.id)} className="w-full text-left px-4 py-2 text-xs hover:bg-slate-50 dark:hover:bg-slate-600 flex items-center gap-2.5 font-medium" style={{ color: 'var(--kahoot-green)' }}>
-                              <Play className="w-3.5 h-3.5" />{t('quiz.launch')}
-                            </button>
-                          </>
-                        )}
-                        <button onClick={() => handleDuplicate(quiz.id)} className="w-full text-left px-4 py-2 text-xs hover:bg-slate-50 dark:hover:bg-slate-600 flex items-center gap-2.5 font-medium">
-                          <Copy className="w-3.5 h-3.5" />{t('quiz.duplicate')}
-                        </button>
-                        {tab === 'my' && (
-                          <>
-                            <button onClick={() => { setActiveMenu(null); apiArchiveQuiz(quiz.id).then(loadQuizzes); }} className="w-full text-left px-4 py-2 text-xs hover:bg-slate-50 dark:hover:bg-slate-600 flex items-center gap-2.5 font-medium">
-                              <Archive className="w-3.5 h-3.5" />{t('quiz.archive')}
-                            </button>
-                            <button onClick={() => { setActiveMenu(null); handleDelete(quiz.id); }} className="w-full text-left px-4 py-2 text-xs hover:bg-slate-50 dark:hover:bg-slate-600 flex items-center gap-2.5 font-medium text-red-600">
-                              <Trash2 className="w-3.5 h-3.5" />{t('common.delete')}
-                            </button>
-                          </>
-                        )}
-                      </div>
-                    )}
-                  </div>
+              <div className="p-4 flex flex-col flex-1">
+                <div className="mb-3">
+                  <h3 className="text-base font-black text-slate-900 dark:text-white line-clamp-2 leading-tight mb-1">
+                    {quiz.title}
+                  </h3>
+                  {quiz.subject && <p className="text-xs font-bold text-slate-500 dark:text-slate-400">{quiz.subject}</p>}
                 </div>
 
                 {/* Tags row */}
                 <div className="flex items-center gap-2 mb-3 flex-wrap">
                   {quiz.difficulty && (
                     <span
-                      className="text-[10px] font-bold px-2 py-0.5 rounded-full text-white"
+                      className="text-[10px] font-bold px-2 py-0.5 rounded-full text-white shadow-sm"
                       style={{ backgroundColor: DIFFICULTY_LABELS[quiz.difficulty]?.color || '#999' }}
                     >
                       {DIFFICULTY_LABELS[quiz.difficulty]?.label || quiz.difficulty}
                     </span>
                   )}
-                  <span className="text-[10px] text-slate-400 flex items-center gap-0.5">
-                    {quiz.visibility === 'private' ? <Lock className="w-2.5 h-2.5" /> :
-                     quiz.visibility === 'organization' ? <Building2 className="w-2.5 h-2.5" /> :
-                     <Globe className="w-2.5 h-2.5" />}
+                  <span className="text-[10px] font-bold text-slate-500 bg-slate-100 dark:bg-slate-700 dark:text-slate-300 px-2 py-0.5 rounded-full flex items-center gap-1">
+                    {quiz.visibility === 'private' ? <Lock className="w-3 h-3" /> :
+                     quiz.visibility === 'organization' ? <Building2 className="w-3 h-3" /> :
+                     <Globe className="w-3 h-3" />}
                     {quiz.visibility}
                   </span>
                 </div>
 
                 {/* Stats */}
-                <div className="flex items-center gap-4 text-xs text-slate-400 dark:text-slate-500">
-                  <span className="flex items-center gap-1"><Users className="w-3 h-3" />{quiz.timesPlayed || 0} plays</span>
-                  {quiz.rating > 0 && <span className="flex items-center gap-1"><Star className="w-3 h-3 text-yellow-400" />{quiz.rating.toFixed(1)}</span>}
+                <div className="flex items-center gap-4 text-xs font-bold text-slate-400 dark:text-slate-500 mt-1 mb-auto">
+                  <span className="flex items-center gap-1.5"><Users className="w-3.5 h-3.5" />{quiz.timesPlayed || 0} {t('quiz.plays', 'игр')}</span>
+                  {quiz.rating > 0 && <span className="flex items-center gap-1.5"><Star className="w-3.5 h-3.5 text-yellow-400" />{quiz.rating.toFixed(1)}</span>}
                 </div>
 
                 {tab !== 'my' && quiz.authorName && (
-                  <p className="text-[10px] text-slate-400 dark:text-slate-500 mt-2">by {quiz.authorName}</p>
+                  <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 mt-3 pt-3 border-t border-slate-100 dark:border-slate-700 truncate">
+                    {t('quiz.byAuthor', 'Автор:')} {quiz.authorName}
+                  </p>
                 )}
+
+                {/* 3D Action Buttons */}
+                <div className="flex items-center gap-2 mt-4 pt-4 border-t border-slate-100 dark:border-slate-700">
+                  <button onClick={() => handleLaunch(quiz.id)} 
+                    className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl font-bold text-white text-sm transition-all transform active:translate-y-1"
+                    style={{ backgroundColor: 'var(--kahoot-green)', boxShadow: '0 4px 0 rgba(0,0,0,0.2)' }}
+                    title={t('quiz.launch', 'Играть')}
+                  >
+                    <Play className="w-4 h-4 fill-current" /> {t('quiz.play', 'Играть')}
+                  </button>
+                  
+                  {tab === 'my' && (
+                    <>
+                      <Link to={`/quiz/${quiz.id}/edit`} 
+                        className="w-10 h-10 flex items-center justify-center rounded-xl transition-all transform active:translate-y-1 bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:text-blue-600 dark:hover:text-blue-400"
+                        style={{ boxShadow: '0 4px 0 rgba(0,0,0,0.1)' }}
+                        title={t('quiz.edit', 'Редактировать')}
+                      >
+                        <BookOpen className="w-4 h-4" />
+                      </Link>
+                      <button onClick={() => handleDelete(quiz.id)} 
+                        className="w-10 h-10 flex items-center justify-center rounded-xl transition-all transform active:translate-y-1 bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:text-red-600 dark:hover:text-red-400"
+                        style={{ boxShadow: '0 4px 0 rgba(0,0,0,0.1)' }}
+                        title={t('common.delete', 'Удалить')}
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </>
+                  )}
+                  {tab !== 'my' && (
+                    <button onClick={() => handleDuplicate(quiz.id)}
+                      className="w-10 h-10 flex items-center justify-center rounded-xl transition-all transform active:translate-y-1 bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:text-purple-600 dark:hover:text-purple-400"
+                      style={{ boxShadow: '0 4px 0 rgba(0,0,0,0.1)' }}
+                      title={t('quiz.duplicate', 'Копировать')}
+                    >
+                      <Copy className="w-4 h-4" />
+                    </button>
+                  )}
+                </div>
               </div>
             </div>
           ))}

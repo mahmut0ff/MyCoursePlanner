@@ -642,7 +642,7 @@ const LiveSessionDashboard: React.FC = () => {
                 <div className="kahoot-podium-block w-1/3">
                   <p className="text-xl font-bold text-white truncate max-w-[150px] mb-2 drop-shadow-md">{sortedParticipants[1]?.participantName}</p>
                   <p className="text-base text-slate-200 font-black mb-2 px-3 py-1 bg-white/10 rounded-full backdrop-blur-sm border border-white/20">{sortedParticipants[1]?.score} pts</p>
-                  <div className="kahoot-podium-bar silver !rounded-t-3xl shadow-[0_0_30px_rgba(203,213,225,0.4)] border-2 border-slate-300 relative overflow-hidden group">
+                  <div className="kahoot-podium-bar silver !rounded-t-3xl shadow-[0_0_30px_rgba(203,213,225,0.4)] border-2 border-slate-300 relative overflow-hidden group !h-[200px]">
                     <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent" />
                     <span className="text-5xl mt-4 z-10 relative drop-shadow-lg group-hover:scale-110 transition-transform">🥈</span>
                     <span className="font-extrabold text-3xl mt-2 text-slate-800 z-10 relative">2</span>
@@ -650,8 +650,8 @@ const LiveSessionDashboard: React.FC = () => {
                 </div>
               )}
               {/* 1st Place */}
-              <div className="kahoot-podium-block z-20 w-1/3 -mt-16">
-                <div className="absolute -top-10 scale-150 opacity-50 blur-2xl rounded-full bg-yellow-400 w-32 h-32 z-0 animate-pulse" />
+              <div className="kahoot-podium-block z-20 w-1/3 -mt-16 relative">
+                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 opacity-30 blur-[80px] rounded-full bg-yellow-400 w-[350px] h-[350px] z-0 pointer-events-none animate-pulse" />
                 <p className="text-3xl font-black text-white truncate max-w-[180px] mb-2 drop-shadow-[0_2px_4px_rgba(0,0,0,0.5)] z-10 relative">{sortedParticipants[0]?.participantName}</p>
                 <p className="text-lg text-yellow-300 font-black mb-3 px-4 py-1.5 bg-black/30 rounded-full backdrop-blur-md border border-yellow-400/50 shadow-[0_0_15px_rgba(250,204,21,0.3)] z-10 relative">
                   {sortedParticipants[0]?.score} pts
@@ -667,7 +667,7 @@ const LiveSessionDashboard: React.FC = () => {
                 <div className="kahoot-podium-block w-1/3">
                   <p className="text-xl font-bold text-white truncate max-w-[150px] mb-2 drop-shadow-md">{sortedParticipants[2]?.participantName}</p>
                   <p className="text-base text-slate-200 font-black mb-2 px-3 py-1 bg-white/10 rounded-full backdrop-blur-sm border border-white/20">{sortedParticipants[2]?.score} pts</p>
-                  <div className="kahoot-podium-bar bronze !rounded-t-3xl shadow-[0_0_30px_rgba(253,186,116,0.4)] border-2 border-orange-300 relative overflow-hidden group">
+                  <div className="kahoot-podium-bar bronze !rounded-t-3xl shadow-[0_0_30px_rgba(253,186,116,0.4)] border-2 border-orange-300 relative overflow-hidden group !h-[160px]">
                     <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent" />
                     <span className="text-5xl mt-4 z-10 relative drop-shadow-lg group-hover:scale-110 transition-transform">🥉</span>
                     <span className="font-extrabold text-3xl mt-2 text-orange-900 z-10 relative">3</span>

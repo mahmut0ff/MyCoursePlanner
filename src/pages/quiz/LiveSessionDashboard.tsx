@@ -273,7 +273,10 @@ const LiveSessionDashboard: React.FC = () => {
     <div 
       className="w-full h-screen kahoot-font overflow-hidden relative flex flex-col"
       style={{
-        background: 'linear-gradient(135deg, #46178f 0%, #290a59 100%)'
+        backgroundImage: 'url(/classroom_bg.jpg)',
+        backgroundColor: '#46178f',
+        backgroundSize: 'cover',
+        backgroundPosition: 'center'
       }}
     >
       {/* Dark blurred overlay to guarantee text readability against the complex background */}

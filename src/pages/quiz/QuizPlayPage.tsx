@@ -18,7 +18,12 @@ const QuizBackground = () => (
   <>
     <div 
       className="fixed inset-0 z-[-2] bg-cover bg-center bg-no-repeat"
-      style={{ background: 'linear-gradient(135deg, #46178f 0%, #290a59 100%)' }}
+      style={{
+        backgroundImage: 'url(/classroom_bg.jpg)',
+        backgroundColor: '#46178f',
+        backgroundSize: 'cover',
+        backgroundPosition: 'center'
+      }}
     />
     {/* Dark blurred overlay to guarantee text readability */}
     <div className="fixed inset-0 z-[-1] bg-slate-900/70 backdrop-blur-lg" />

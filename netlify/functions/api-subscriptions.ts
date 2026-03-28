@@ -29,29 +29,29 @@ const handler: Handler = async (event: HandlerEvent) => {
     if (orgId !== user.organizationId && !isSuperAdmin(user)) return forbidden();
 
     const snap = await adminDb.collection(COLLECTION)
-      .where('organizationId', '==', orgId)
-      .orderBy('createdAt', 'desc')
-      .limit(1).get();
+      .where('organizationId', '==', orgId).get();
 
     if (snap.empty) return notFound('No subscription found');
-    const doc = snap.docs[0];
-    const subscription = { id: doc.id, ...doc.data() };
+    const allSubs = snap.docs.map((d: any) => ({ id: d.id, ...d.data() }));
+    allSubs.sort((a: any, b: any) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
+    const subscription = allSubs[0];
 
     // If billing history requested, also fetch payments
     if (params.history === 'true') {
       const paymentsSnap = await adminDb.collection('payments')
-        .where('organizationId', '==', orgId)
-        .orderBy('createdAt', 'desc')
-        .limit(50).get();
-      const payments = paymentsSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+        .where('organizationId', '==', orgId).get();
+      let payments = paymentsSnap.docs.map((d: any) => ({ id: d.id, ...d.data() }));
+      payments.sort((a: any, b: any) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
+      payments = payments.slice(0, 50);
 
       // Also fetch subscription change logs from systemLogs
       const logsSnap = await adminDb.collection('systemLogs')
-        .where('targetId', '==', orgId)
-        .where('action', 'in', ['plan_changed', 'subscription_cancelled', 'plan_gifted'])
-        .orderBy('createdAt', 'desc')
-        .limit(50).get();
-      const logs = logsSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+        .where('targetId', '==', orgId).get();
+      let logs = logsSnap.docs.map((d: any) => ({ id: d.id, ...d.data() }));
+      const allowedActions = ['plan_changed', 'subscription_cancelled', 'plan_gifted'];
+      logs = logs.filter((l: any) => allowedActions.includes(l.action));
+      logs.sort((a: any, b: any) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
+      logs = logs.slice(0, 50);
 
       return ok({ subscription, payments, logs });
     }

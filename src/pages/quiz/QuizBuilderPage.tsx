@@ -30,6 +30,9 @@ const QUESTION_TYPES: { type: QuizQuestionType; label: string; icon: string }[] 
   { type: 'puzzle', label: 'Puzzle / Timed', icon: '🧩' },
 ];
 
+const OPTION_COLORS_BG = ['#e21b3c', '#1368ce', '#d89e00', '#26890c', '#864cbf', '#c4162f', '#1057ad', '#b88600'];
+const OPTION_SHAPES = ['▲', '◆', '●', '■', '★', '▲', '◆', '●'];
+
 function generateId(): string {
   return Math.random().toString(36).substring(2, 22);
 }
@@ -92,7 +95,6 @@ const QuizBuilderPage: React.FC = () => {
         answerExplanation: q.explanation || '',
       };
     });
-    // Remove the default empty question if it's the only one and empty
     if (questions.length === 1 && questions[0].text === '') {
       setQuestions(newQuestions);
       setActiveQuestion(0);
@@ -122,7 +124,6 @@ const QuizBuilderPage: React.FC = () => {
         const result = await apiCreateQuiz(quiz);
         quizId = result.id;
       }
-      // Save questions
       const orderedQuestions = questions.map((q, i) => ({ ...q, quizId, order: i }));
       await apiSaveQuizQuestions(quizId!, orderedQuestions);
       toast.success(t('quiz.saved'));
@@ -165,7 +166,6 @@ const QuizBuilderPage: React.FC = () => {
     setActiveQuestion(to);
   };
 
-  // Option management
   const addOption = (qi: number) => {
     const q = questions[qi];
     updateQuestion(qi, { options: [...q.options, { id: generateId(), text: '' }] });
@@ -188,9 +188,7 @@ const QuizBuilderPage: React.FC = () => {
     const q = questions[qi];
     const isMulti = ['multiple_choice', 'multi_select'].includes(q.type);
     if (isMulti) {
-      const next = q.correctAnswers.includes(optId)
-        ? q.correctAnswers.filter(a => a !== optId)
-        : [...q.correctAnswers, optId];
+      const next = q.correctAnswers.includes(optId) ? q.correctAnswers.filter(a => a !== optId) : [...q.correctAnswers, optId];
       updateQuestion(qi, { correctAnswers: next });
     } else {
       updateQuestion(qi, { correctAnswers: [optId] });
@@ -204,33 +202,35 @@ const QuizBuilderPage: React.FC = () => {
     }
   };
 
-  // Drag handlers
   const handleDragStart = (index: number) => setDragIndex(index);
   const handleDragOver = (e: React.DragEvent, index: number) => {
     e.preventDefault();
-    if (dragIndex !== null && dragIndex !== index) {
-      moveQuestion(dragIndex, index);
-      setDragIndex(index);
-    }
+    if (dragIndex !== null && dragIndex !== index) { moveQuestion(dragIndex, index); setDragIndex(index); }
   };
   const handleDragEnd = () => setDragIndex(null);
 
   const currentQ = questions[activeQuestion];
 
-  if (loading) return <div className="flex items-center justify-center py-20"><div className="w-7 h-7 border-[3px] border-slate-200 border-t-primary-500 rounded-full animate-spin dark:border-slate-700 dark:border-t-primary-400" /></div>;
+  if (loading) return (
+    <div className="flex items-center justify-center py-20">
+      <div className="w-8 h-8 border-4 border-purple-200 border-t-purple-600 rounded-full animate-spin dark:border-purple-800 dark:border-t-purple-400" />
+    </div>
+  );
 
   return (
-    <div className="max-w-6xl mx-auto">
-      {/* Header */}
-      <div className="flex items-center justify-between mb-4">
+    <div className="max-w-7xl mx-auto kahoot-font">
+      {/* Top Bar */}
+      <div className="flex items-center justify-between mb-4 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 px-4 py-3 shadow-sm">
         <div className="flex items-center gap-3">
-          <button onClick={() => navigate('/quiz/library')} className="btn-ghost p-2"><ArrowLeft className="w-4 h-4" /></button>
+          <button onClick={() => navigate('/quiz/library')} className="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">
+            <ArrowLeft className="w-4 h-4 text-slate-500" />
+          </button>
           <div>
             <input
               value={quiz.title || ''}
               onChange={e => setQuiz({ ...quiz, title: e.target.value })}
               placeholder={t('quiz.quizTitle')}
-              className="text-xl font-bold text-slate-900 dark:text-white bg-transparent border-none outline-none placeholder-slate-300 dark:placeholder-slate-600 w-full"
+              className="text-lg font-bold text-slate-900 dark:text-white bg-transparent border-none outline-none placeholder-slate-300 dark:placeholder-slate-600 w-full"
             />
             <input
               value={quiz.subtitle || ''}
@@ -241,25 +241,30 @@ const QuizBuilderPage: React.FC = () => {
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <button onClick={() => setShowSettings(!showSettings)} className={`btn-ghost p-2 ${showSettings ? 'text-primary-600' : ''}`}>
+          <button onClick={() => setShowSettings(!showSettings)} className={`p-2.5 rounded-lg transition-colors ${showSettings ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400' : 'hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-500'}`}>
             <Settings className="w-4 h-4" />
           </button>
-          <button onClick={handleSave} disabled={saving} className="bg-primary-600 hover:bg-primary-700 text-white text-xs font-medium px-4 py-2 rounded-lg flex items-center gap-1.5 transition-colors disabled:opacity-50">
-            <Save className="w-3.5 h-3.5" />{saving ? t('common.saving') : t('common.save')}
+          <button
+            onClick={handleSave}
+            disabled={saving}
+            className="flex items-center gap-2 px-5 py-2 rounded-lg font-bold text-white text-sm transition-all disabled:opacity-50 active:scale-[0.98]"
+            style={{ backgroundColor: 'var(--kahoot-green)', boxShadow: '0 3px 10px rgba(38,137,12,0.25)' }}
+          >
+            <Save className="w-4 h-4" />{saving ? t('common.saving') : t('common.save')}
           </button>
         </div>
       </div>
 
-      {/* Quiz Settings Panel */}
+      {/* Quiz Settings */}
       {showSettings && (
-        <div className="card p-4 mb-4 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
+        <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-5 mb-4 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 shadow-sm">
           <div>
-            <label className="text-[10px] font-medium text-slate-500 dark:text-slate-400 uppercase">{t('quiz.subject')}</label>
-            <input value={quiz.subject || ''} onChange={e => setQuiz({ ...quiz, subject: e.target.value })} className="input text-xs mt-1" />
+            <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wide">{t('quiz.subject')}</label>
+            <input value={quiz.subject || ''} onChange={e => setQuiz({ ...quiz, subject: e.target.value })} className="input text-sm mt-1" />
           </div>
           <div>
-            <label className="text-[10px] font-medium text-slate-500 dark:text-slate-400 uppercase">{t('quiz.difficulty')}</label>
-            <select value={quiz.difficulty || 'medium'} onChange={e => setQuiz({ ...quiz, difficulty: e.target.value as QuizDifficulty })} className="input text-xs mt-1">
+            <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wide">{t('quiz.difficulty')}</label>
+            <select value={quiz.difficulty || 'medium'} onChange={e => setQuiz({ ...quiz, difficulty: e.target.value as QuizDifficulty })} className="input text-sm mt-1">
               <option value="easy">{t('quiz.easy')}</option>
               <option value="medium">{t('quiz.medium')}</option>
               <option value="hard">{t('quiz.hard')}</option>
@@ -267,242 +272,237 @@ const QuizBuilderPage: React.FC = () => {
             </select>
           </div>
           <div>
-            <label className="text-[10px] font-medium text-slate-500 dark:text-slate-400 uppercase">{t('quiz.visibility')}</label>
-            <select value={quiz.visibility || 'private'} onChange={e => setQuiz({ ...quiz, visibility: e.target.value as any })} className="input text-xs mt-1">
+            <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wide">{t('quiz.visibility')}</label>
+            <select value={quiz.visibility || 'private'} onChange={e => setQuiz({ ...quiz, visibility: e.target.value as any })} className="input text-sm mt-1">
               <option value="private">{t('quiz.private')}</option>
               <option value="organization">{t('quiz.orgShared')}</option>
               <option value="platform">{t('quiz.platformShared')}</option>
             </select>
           </div>
           <div>
-            <label className="text-[10px] font-medium text-slate-500 dark:text-slate-400 uppercase">{t('quiz.duration')}</label>
-            <input type="number" value={quiz.estimatedMinutes || 10} onChange={e => setQuiz({ ...quiz, estimatedMinutes: parseInt(e.target.value) || 10 })} className="input text-xs mt-1" />
+            <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wide">{t('quiz.duration')}</label>
+            <input type="number" value={quiz.estimatedMinutes || 10} onChange={e => setQuiz({ ...quiz, estimatedMinutes: parseInt(e.target.value) || 10 })} className="input text-sm mt-1" />
           </div>
           <div className="col-span-2">
-            <label className="text-[10px] font-medium text-slate-500 dark:text-slate-400 uppercase">{t('quiz.description')}</label>
-            <textarea value={quiz.description || ''} onChange={e => setQuiz({ ...quiz, description: e.target.value })} className="input text-xs mt-1 h-16" />
+            <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wide">{t('quiz.description')}</label>
+            <textarea value={quiz.description || ''} onChange={e => setQuiz({ ...quiz, description: e.target.value })} className="input text-sm mt-1 h-16" />
           </div>
           <div className="col-span-2">
-            <label className="text-[10px] font-medium text-slate-500 dark:text-slate-400 uppercase">{t('quiz.tags')}</label>
+            <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wide">{t('quiz.tags')}</label>
             <div className="flex items-center gap-1 mt-1 flex-wrap">
               {quiz.tags?.map(tag => (
-                <span key={tag} className="bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-400 text-[10px] px-2 py-0.5 rounded-full flex items-center gap-1">
+                <span key={tag} className="text-[10px] px-2 py-0.5 rounded-full flex items-center gap-1 text-white font-semibold" style={{ backgroundColor: 'var(--kahoot-purple)' }}>
                   {tag}
-                  <button onClick={() => setQuiz({ ...quiz, tags: quiz.tags?.filter(t => t !== tag) })} className="hover:text-red-500">×</button>
+                  <button onClick={() => setQuiz({ ...quiz, tags: quiz.tags?.filter(t => t !== tag) })} className="hover:text-red-200 ml-0.5">×</button>
                 </span>
               ))}
-              <input value={tagInput} onChange={e => setTagInput(e.target.value)} onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), addTag())} placeholder="Add tag..." className="input text-xs w-24 py-0.5 px-2" />
+              <input value={tagInput} onChange={e => setTagInput(e.target.value)} onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), addTag())} placeholder="Add tag..." className="text-xs py-0.5 px-2 border border-slate-200 dark:border-slate-700 rounded-lg bg-transparent dark:text-white w-24 outline-none" />
             </div>
           </div>
         </div>
       )}
 
-      <div className="flex gap-4">
-        {/* Question List (left sidebar) */}
-        <div className="w-56 shrink-0">
-          <div className="card overflow-hidden">
-            <div className="px-3 py-2 border-b border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-700/50">
-              <p className="text-[10px] font-medium text-slate-500 dark:text-slate-400 uppercase">{t('quiz.questions')} ({questions.length})</p>
-            </div>
-            <div className="max-h-[60vh] overflow-y-auto">
-              {questions.map((q, i) => (
-                <div
-                  key={q.id}
-                  draggable
-                  onDragStart={() => handleDragStart(i)}
-                  onDragOver={(e) => handleDragOver(e, i)}
-                  onDragEnd={handleDragEnd}
-                  onClick={() => setActiveQuestion(i)}
-                  className={`flex items-center gap-2 px-3 py-2 cursor-pointer border-b border-slate-100 dark:border-slate-700/50 transition-colors ${
-                    activeQuestion === i ? 'bg-primary-50 dark:bg-primary-900/20 border-l-2 border-l-primary-500' : 'hover:bg-slate-50 dark:hover:bg-slate-700/30'
-                  }`}
-                >
+      {/* Main Builder Layout */}
+      <div className="flex gap-4" style={{ minHeight: '65vh' }}>
+        {/* Left: Slide Navigator */}
+        <div className="kahoot-slide-nav rounded-xl overflow-hidden">
+          <div className="px-3 py-3 border-b border-slate-200 dark:border-slate-700">
+            <p className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wide">{t('quiz.questions')} ({questions.length})</p>
+          </div>
+          <div className="max-h-[55vh] overflow-y-auto py-2">
+            {questions.map((q, i) => (
+              <div
+                key={q.id}
+                draggable
+                onDragStart={() => handleDragStart(i)}
+                onDragOver={(e) => handleDragOver(e, i)}
+                onDragEnd={handleDragEnd}
+                onClick={() => setActiveQuestion(i)}
+                className={`kahoot-slide-item ${activeQuestion === i ? 'active' : ''}`}
+              >
+                <div className="flex items-center gap-2">
                   <GripVertical className="w-3 h-3 text-slate-300 cursor-grab shrink-0" />
                   <div className="flex-1 min-w-0">
-                    <p className="text-[10px] text-slate-400">{QUESTION_TYPES.find(t => t.type === q.type)?.icon} Q{i + 1}</p>
-                    <p className="text-xs text-slate-700 dark:text-slate-300 truncate">{q.text || t('quiz.untitled')}</p>
+                    <div className="flex items-center gap-1">
+                      <span className="text-[10px] font-bold" style={{ color: 'var(--kahoot-purple)' }}>{i + 1}</span>
+                      <span className="text-[10px] text-slate-400">{QUESTION_TYPES.find(t => t.type === q.type)?.icon}</span>
+                    </div>
+                    <p className="text-[11px] text-slate-700 dark:text-slate-300 truncate mt-0.5">{q.text || t('quiz.untitled')}</p>
                   </div>
-                  {q.correctAnswers.length > 0 && <CheckCircle className="w-3 h-3 text-emerald-400 shrink-0" />}
+                  {q.correctAnswers.length > 0 && <CheckCircle className="w-3 h-3 text-green-500 shrink-0" />}
                 </div>
-              ))}
-            </div>
-
-            {/* Add question */}
-            <div className="p-2 border-t border-slate-200 dark:border-slate-700">
-              <div className="flex flex-col gap-2">
-                <button 
-                  onClick={() => setShowAIGen(true)} 
-                  className="w-full flex items-center justify-center gap-1 text-xs font-medium text-white bg-gradient-to-r from-primary-600 to-violet-600 hover:from-primary-700 hover:to-violet-700 py-2 rounded-lg transition-all shadow-md shadow-primary-500/20"
-                >
-                  <Sparkles className="w-3.5 h-3.5" />{t('ai.generateButton', 'Сгенерировать ИИ')}
-                </button>
-                <button onClick={() => addQuestion()} className="w-full flex items-center justify-center gap-1 text-xs text-primary-600 hover:bg-primary-50 dark:hover:bg-primary-900/20 py-1.5 rounded-md transition-colors">
-                  <Plus className="w-3 h-3" />{t('quiz.addQuestion')}
-                </button>
               </div>
-            </div>
+            ))}
+          </div>
+
+          {/* Add question buttons */}
+          <div className="p-3 border-t border-slate-200 dark:border-slate-700">
+            <button
+              onClick={() => setShowAIGen(true)}
+              className="w-full flex items-center justify-center gap-1.5 text-xs font-bold text-white py-2.5 rounded-lg transition-all shadow-md hover:shadow-lg active:scale-[0.98] mb-2"
+              style={{ background: 'linear-gradient(135deg, var(--kahoot-purple) 0%, #864cbf 100%)' }}
+            >
+              <Sparkles className="w-3.5 h-3.5" />{t('ai.generateButton', 'Сгенерировать ИИ')}
+            </button>
+            <button onClick={() => addQuestion()} className="w-full flex items-center justify-center gap-1.5 text-xs font-semibold py-2 rounded-lg transition-colors hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-600 dark:text-slate-400">
+              <Plus className="w-3 h-3" />{t('quiz.addQuestion')}
+            </button>
           </div>
         </div>
 
-        {/* Question Editor (main area) */}
+        {/* Center: Question Editor */}
         {currentQ && (
-          <div className="flex-1">
-            <div className="card p-5">
-              {/* Question type selector */}
-              <div className="flex items-center justify-between mb-4">
-                <select
-                  value={currentQ.type}
-                  onChange={e => updateQuestion(activeQuestion, { type: e.target.value as QuizQuestionType })}
-                  className="input text-xs w-48"
-                >
-                  {QUESTION_TYPES.map(qt => (
-                    <option key={qt.type} value={qt.type}>{qt.icon} {qt.label}</option>
-                  ))}
-                </select>
-                <div className="flex items-center gap-2">
-                  <button onClick={() => moveQuestion(activeQuestion, activeQuestion - 1)} disabled={activeQuestion === 0} className="btn-ghost p-1 disabled:opacity-30"><ChevronUp className="w-4 h-4" /></button>
-                  <button onClick={() => moveQuestion(activeQuestion, activeQuestion + 1)} disabled={activeQuestion === questions.length - 1} className="btn-ghost p-1 disabled:opacity-30"><ChevronDown className="w-4 h-4" /></button>
-                  <button onClick={() => duplicateQuestion(activeQuestion)} className="btn-ghost p-1"><Copy className="w-4 h-4" /></button>
-                  <button onClick={() => deleteQuestion(activeQuestion)} className="btn-ghost p-1 text-red-500 hover:text-red-700"><Trash2 className="w-4 h-4" /></button>
-                </div>
+          <div className="flex-1 flex flex-col gap-4">
+            {/* Question type + actions bar */}
+            <div className="flex items-center justify-between bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 px-4 py-2 shadow-sm">
+              <select
+                value={currentQ.type}
+                onChange={e => updateQuestion(activeQuestion, { type: e.target.value as QuizQuestionType })}
+                className="text-sm font-semibold border-none bg-transparent outline-none dark:text-white cursor-pointer"
+                style={{ color: 'var(--kahoot-purple)' }}
+              >
+                {QUESTION_TYPES.map(qt => (
+                  <option key={qt.type} value={qt.type}>{qt.icon} {qt.label}</option>
+                ))}
+              </select>
+              <div className="flex items-center gap-1">
+                <button onClick={() => moveQuestion(activeQuestion, activeQuestion - 1)} disabled={activeQuestion === 0} className="p-1.5 rounded hover:bg-slate-100 dark:hover:bg-slate-700 disabled:opacity-20 transition-colors"><ChevronUp className="w-4 h-4 text-slate-500" /></button>
+                <button onClick={() => moveQuestion(activeQuestion, activeQuestion + 1)} disabled={activeQuestion === questions.length - 1} className="p-1.5 rounded hover:bg-slate-100 dark:hover:bg-slate-700 disabled:opacity-20 transition-colors"><ChevronDown className="w-4 h-4 text-slate-500" /></button>
+                <button onClick={() => duplicateQuestion(activeQuestion)} className="p-1.5 rounded hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"><Copy className="w-4 h-4 text-slate-500" /></button>
+                <button onClick={() => deleteQuestion(activeQuestion)} className="p-1.5 rounded hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"><Trash2 className="w-4 h-4 text-red-400" /></button>
               </div>
+            </div>
 
-              {/* Question text */}
+            {/* Question text card */}
+            <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-6 shadow-sm">
               <textarea
                 value={currentQ.text}
                 onChange={e => updateQuestion(activeQuestion, { text: e.target.value })}
                 placeholder={t('quiz.questionText')}
-                className="input text-sm w-full h-20 mb-4"
+                className="w-full text-lg font-bold text-center text-slate-900 dark:text-white bg-transparent border-none outline-none placeholder-slate-300 dark:placeholder-slate-600 resize-none h-20"
               />
 
-              {/* Media URL */}
+              {/* Media */}
               {['image_question', 'audio_question', 'pdf_question'].includes(currentQ.type) && (
-                <div className="mb-4">
-                  <label className="text-[10px] font-medium text-slate-500 uppercase mb-1 block">{t('quiz.mediaUrl')}</label>
-                  <input
-                    value={currentQ.mediaUrl || ''}
-                    onChange={e => updateQuestion(activeQuestion, { mediaUrl: e.target.value, mediaType: currentQ.type === 'image_question' ? 'image' : currentQ.type === 'audio_question' ? 'audio' : 'pdf' })}
-                    placeholder="https://..."
-                    className="input text-xs w-full"
-                  />
-                  {currentQ.mediaUrl && currentQ.type === 'image_question' && (
-                    <img src={currentQ.mediaUrl} alt="" className="mt-2 max-h-40 rounded-lg border" />
-                  )}
-                  {currentQ.mediaUrl && currentQ.type === 'audio_question' && (
-                    <audio src={currentQ.mediaUrl} controls className="mt-2 w-full" />
-                  )}
+                <div className="mt-3">
+                  <input value={currentQ.mediaUrl || ''} onChange={e => updateQuestion(activeQuestion, { mediaUrl: e.target.value, mediaType: currentQ.type === 'image_question' ? 'image' : currentQ.type === 'audio_question' ? 'audio' : 'pdf' })} placeholder="https://..." className="input text-xs w-full" />
+                  {currentQ.mediaUrl && currentQ.type === 'image_question' && <img src={currentQ.mediaUrl} alt="" className="mt-2 max-h-32 rounded-lg mx-auto" />}
+                  {currentQ.mediaUrl && currentQ.type === 'audio_question' && <audio src={currentQ.mediaUrl} controls className="mt-2 w-full" />}
                 </div>
               )}
-
-              {/* Passage */}
               {currentQ.type === 'passage_question' && (
-                <div className="mb-4">
-                  <label className="text-[10px] font-medium text-slate-500 uppercase mb-1 block">{t('quiz.passage')}</label>
-                  <textarea
-                    value={currentQ.passageText || ''}
-                    onChange={e => updateQuestion(activeQuestion, { passageText: e.target.value })}
-                    className="input text-xs w-full h-24"
-                    placeholder={t('quiz.passagePlaceholder')}
-                  />
-                </div>
+                <textarea value={currentQ.passageText || ''} onChange={e => updateQuestion(activeQuestion, { passageText: e.target.value })} className="input text-xs w-full h-20 mt-3" placeholder={t('quiz.passagePlaceholder')} />
               )}
+            </div>
 
-              {/* Help text */}
-              <div className="mb-4">
-                <label className="text-[10px] font-medium text-slate-500 uppercase mb-1 block">{t('quiz.helpText')}</label>
-                <input
-                  value={currentQ.helpText || ''}
-                  onChange={e => updateQuestion(activeQuestion, { helpText: e.target.value })}
-                  className="input text-xs w-full"
-                  placeholder={t('quiz.helpTextPlaceholder')}
-                />
-              </div>
-
-              {/* Options (for choice-based questions) */}
-              {['single_choice', 'multiple_choice', 'true_false', 'multi_select', 'poll', 'image_question', 'audio_question', 'pdf_question', 'passage_question', 'puzzle'].includes(currentQ.type) && (
-                <div className="mb-4">
-                  <label className="text-[10px] font-medium text-slate-500 uppercase mb-2 block">{t('quiz.answerOptions')}</label>
-                  <div className="space-y-2">
-                    {currentQ.options.map((opt, oi) => (
-                      <div key={opt.id} className="flex items-center gap-2">
-                        <button
-                          onClick={() => toggleCorrectAnswer(activeQuestion, opt.id)}
-                          className={`shrink-0 transition-colors ${currentQ.correctAnswers.includes(opt.id) ? 'text-emerald-500' : 'text-slate-300 dark:text-slate-600 hover:text-slate-400'}`}
-                        >
-                          {currentQ.correctAnswers.includes(opt.id) ? <CheckCircle className="w-5 h-5" /> : <Circle className="w-5 h-5" />}
-                        </button>
-                        <input
-                          value={opt.text}
-                          onChange={e => updateOption(activeQuestion, opt.id, e.target.value)}
-                          placeholder={`${t('quiz.option')} ${oi + 1}`}
-                          className={`input text-xs flex-1 ${currentQ.correctAnswers.includes(opt.id) ? 'border-emerald-300 dark:border-emerald-700 bg-emerald-50 dark:bg-emerald-900/10' : ''}`}
-                        />
-                        {currentQ.type !== 'true_false' && currentQ.options.length > 2 && (
-                          <button onClick={() => removeOption(activeQuestion, opt.id)} className="text-slate-300 hover:text-red-500 shrink-0"><Trash2 className="w-3.5 h-3.5" /></button>
+            {/* Answer Options — Kahoot 2x2 colored grid */}
+            {['single_choice', 'multiple_choice', 'true_false', 'multi_select', 'poll', 'image_question', 'audio_question', 'pdf_question', 'passage_question', 'puzzle'].includes(currentQ.type) && (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {currentQ.options.map((opt, oi) => {
+                  const isCorrect = currentQ.correctAnswers.includes(opt.id);
+                  return (
+                    <div
+                      key={opt.id}
+                      className="kahoot-builder-option relative"
+                      style={{ backgroundColor: OPTION_COLORS_BG[oi % OPTION_COLORS_BG.length] }}
+                    >
+                      {/* Correct answer toggle */}
+                      <button
+                        onClick={() => toggleCorrectAnswer(activeQuestion, opt.id)}
+                        className="shrink-0 transition-all"
+                      >
+                        {isCorrect ? (
+                          <CheckCircle className="w-6 h-6 text-white drop-shadow-md" />
+                        ) : (
+                          <Circle className="w-6 h-6 text-white/40 hover:text-white/70" />
                         )}
-                      </div>
-                    ))}
-                    {currentQ.type !== 'true_false' && (
-                      <button onClick={() => addOption(activeQuestion)} className="text-xs text-primary-600 hover:underline flex items-center gap-1">
-                        <Plus className="w-3 h-3" />{t('quiz.addOption')}
                       </button>
-                    )}
-                  </div>
-                </div>
-              )}
 
-              {/* Short text correct answers */}
-              {currentQ.type === 'short_text' && (
-                <div className="mb-4">
-                  <label className="text-[10px] font-medium text-slate-500 uppercase mb-1 block">{t('quiz.acceptedAnswers')}</label>
-                  <input
-                    value={currentQ.correctAnswers.join(', ')}
-                    onChange={e => updateQuestion(activeQuestion, { correctAnswers: e.target.value.split(',').map(s => s.trim()).filter(Boolean) })}
-                    placeholder={t('quiz.acceptedAnswersHint')}
-                    className="input text-xs w-full"
-                  />
-                </div>
-              )}
+                      <span className="text-xl opacity-70 shrink-0">{OPTION_SHAPES[oi % OPTION_SHAPES.length]}</span>
 
-              {/* Answer explanation */}
-              <div className="mb-4">
-                <label className="text-[10px] font-medium text-slate-500 uppercase mb-1 block">{t('quiz.explanation')}</label>
+                      <input
+                        value={opt.text}
+                        onChange={e => updateOption(activeQuestion, opt.id, e.target.value)}
+                        placeholder={`${t('quiz.option')} ${oi + 1}`}
+                      />
+
+                      {currentQ.type !== 'true_false' && currentQ.options.length > 2 && (
+                        <button onClick={() => removeOption(activeQuestion, opt.id)} className="text-white/40 hover:text-white shrink-0 transition-colors">
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      )}
+                    </div>
+                  );
+                })}
+                {currentQ.type !== 'true_false' && (
+                  <button
+                    onClick={() => addOption(activeQuestion)}
+                    className="rounded-lg border-2 border-dashed border-slate-300 dark:border-slate-600 flex items-center justify-center gap-2 text-sm font-semibold text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:border-slate-400 dark:hover:border-slate-500 transition-colors py-5"
+                  >
+                    <Plus className="w-4 h-4" />{t('quiz.addOption')}
+                  </button>
+                )}
+              </div>
+            )}
+
+            {/* Short text */}
+            {currentQ.type === 'short_text' && (
+              <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-4 shadow-sm">
+                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wide mb-2 block">{t('quiz.acceptedAnswers')}</label>
                 <input
-                  value={currentQ.answerExplanation || ''}
-                  onChange={e => updateQuestion(activeQuestion, { answerExplanation: e.target.value })}
-                  className="input text-xs w-full"
-                  placeholder={t('quiz.explanationHint')}
+                  value={currentQ.correctAnswers.join(', ')}
+                  onChange={e => updateQuestion(activeQuestion, { correctAnswers: e.target.value.split(',').map(s => s.trim()).filter(Boolean) })}
+                  placeholder={t('quiz.acceptedAnswersHint')}
+                  className="input text-sm w-full"
                 />
               </div>
+            )}
 
-              {/* Scoring settings */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-3 border-t border-slate-200 dark:border-slate-700">
-                <div>
-                  <label className="text-[10px] font-medium text-slate-500 uppercase mb-1 block flex items-center gap-1"><Clock className="w-3 h-3" />{t('quiz.timer')}</label>
-                  <select value={currentQ.timerSeconds} onChange={e => updateQuestion(activeQuestion, { timerSeconds: parseInt(e.target.value) })} className="input text-xs">
-                    <option value={10}>10s</option>
-                    <option value={15}>15s</option>
-                    <option value={20}>20s</option>
-                    <option value={30}>30s</option>
-                    <option value={45}>45s</option>
-                    <option value={60}>60s</option>
-                    <option value={90}>90s</option>
-                    <option value={120}>2min</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="text-[10px] font-medium text-slate-500 uppercase mb-1 block">{t('quiz.points')}</label>
-                  <input type="number" value={currentQ.points} onChange={e => updateQuestion(activeQuestion, { points: parseInt(e.target.value) || 1000 })} className="input text-xs" />
-                </div>
-                <div>
-                  <label className="text-[10px] font-medium text-slate-500 uppercase mb-1 block">{t('quiz.difficulty')}</label>
-                  <select value={currentQ.difficulty || 'medium'} onChange={e => updateQuestion(activeQuestion, { difficulty: e.target.value as QuizDifficulty })} className="input text-xs">
-                    <option value="easy">{t('quiz.easy')}</option>
-                    <option value="medium">{t('quiz.medium')}</option>
-                    <option value="hard">{t('quiz.hard')}</option>
-                    <option value="expert">{t('quiz.expert')}</option>
-                  </select>
-                </div>
+            {/* Help text + Explanation */}
+            <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-4 shadow-sm grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wide mb-1 block">{t('quiz.helpText')}</label>
+                <input value={currentQ.helpText || ''} onChange={e => updateQuestion(activeQuestion, { helpText: e.target.value })} className="input text-xs w-full" placeholder={t('quiz.helpTextPlaceholder')} />
+              </div>
+              <div>
+                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wide mb-1 block">{t('quiz.explanation')}</label>
+                <input value={currentQ.answerExplanation || ''} onChange={e => updateQuestion(activeQuestion, { answerExplanation: e.target.value })} className="input text-xs w-full" placeholder={t('quiz.explanationHint')} />
+              </div>
+            </div>
+
+            {/* Scoring row */}
+            <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-4 shadow-sm flex flex-wrap items-center gap-4">
+              <div className="flex items-center gap-2">
+                <Clock className="w-4 h-4 text-slate-400" />
+                <span className="text-xs font-semibold text-slate-500">{t('quiz.timer')}</span>
+                <select value={currentQ.timerSeconds} onChange={e => updateQuestion(activeQuestion, { timerSeconds: parseInt(e.target.value) })} className="text-sm font-bold border rounded-lg px-2 py-1 bg-transparent dark:text-white outline-none" style={{ borderColor: 'var(--kahoot-purple)', color: 'var(--kahoot-purple)' }}>
+                  <option value={10}>10s</option>
+                  <option value={15}>15s</option>
+                  <option value={20}>20s</option>
+                  <option value={30}>30s</option>
+                  <option value={45}>45s</option>
+                  <option value={60}>60s</option>
+                  <option value={90}>90s</option>
+                  <option value={120}>2min</option>
+                </select>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-semibold text-slate-500">{t('quiz.points')}</span>
+                <select value={currentQ.points} onChange={e => updateQuestion(activeQuestion, { points: parseInt(e.target.value) || 1000 })} className="text-sm font-bold border rounded-lg px-2 py-1 bg-transparent dark:text-white outline-none" style={{ borderColor: 'var(--kahoot-purple)', color: 'var(--kahoot-purple)' }}>
+                  <option value={0}>No points</option>
+                  <option value={500}>500</option>
+                  <option value={1000}>Standard (1000)</option>
+                  <option value={2000}>Double (2000)</option>
+                </select>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-semibold text-slate-500">{t('quiz.difficulty')}</span>
+                <select value={currentQ.difficulty || 'medium'} onChange={e => updateQuestion(activeQuestion, { difficulty: e.target.value as QuizDifficulty })} className="text-sm font-bold border rounded-lg px-2 py-1 bg-transparent dark:text-white outline-none" style={{ borderColor: 'var(--kahoot-purple)', color: 'var(--kahoot-purple)' }}>
+                  <option value="easy">{t('quiz.easy')}</option>
+                  <option value="medium">{t('quiz.medium')}</option>
+                  <option value="hard">{t('quiz.hard')}</option>
+                  <option value="expert">{t('quiz.expert')}</option>
+                </select>
               </div>
             </div>
           </div>

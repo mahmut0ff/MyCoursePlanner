@@ -16,9 +16,7 @@ const JoinQuizPage: React.FC = () => {
     if (cleaned.length < 4) { toast.error(t('quiz.invalidCode')); return; }
     setLoading(true);
     try {
-      // First, look up session by code
       const session = await apiGetQuizSessionByCode(cleaned);
-      // Then join the session
       await apiJoinQuizSession({ sessionId: session.id });
       toast.success(t('quiz.joined'));
       navigate(`/quiz/play/${session.id}`);
@@ -34,46 +32,54 @@ const JoinQuizPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-[70vh] flex items-center justify-center">
-      <div className="w-full max-w-sm text-center">
-        {/* Logo & Animation */}
-        <div className="relative mb-8">
-          <div className="w-20 h-20 mx-auto rounded-2xl bg-gradient-to-br from-primary-500 via-purple-500 to-pink-500 flex items-center justify-center shadow-lg shadow-primary-500/30 animate-[bounce_3s_ease-in-out_infinite]">
-            <Gamepad2 className="w-10 h-10 text-white" />
+    <div className="kahoot-bg kahoot-bg-pattern fixed inset-0 flex items-center justify-center z-50">
+      <div className="w-full max-w-md px-4" style={{ animation: 'kahoot-slide-up 0.5s ease-out' }}>
+        {/* Floating Logo */}
+        <div className="text-center mb-8" style={{ animation: 'kahoot-lobby-float 3s ease-in-out infinite' }}>
+          <div className="w-24 h-24 mx-auto rounded-2xl bg-white/10 backdrop-blur-md flex items-center justify-center mb-4 shadow-2xl border border-white/20">
+            <Gamepad2 className="w-12 h-12 text-white" />
           </div>
-          <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 w-16 h-3 bg-primary-200/40 dark:bg-primary-800/30 rounded-full blur-sm" />
+          <h1 className="kahoot-font text-3xl font-extrabold text-white tracking-tight">Planula Quiz</h1>
         </div>
 
-        <h1 className="text-2xl font-bold text-slate-900 dark:text-white mb-1">{t('quiz.joinTitle')}</h1>
-        <p className="text-sm text-slate-500 dark:text-slate-400 mb-6">{t('quiz.joinSubtitle')}</p>
+        {/* PIN Card */}
+        <div className="bg-white rounded-xl shadow-2xl overflow-hidden">
+          <div className="p-8">
+            <div className="text-center mb-6">
+              <h2 className="kahoot-font text-lg font-bold text-gray-800">{t('quiz.joinTitle')}</h2>
+              <p className="text-sm text-gray-500 mt-1">{t('quiz.joinSubtitle')}</p>
+            </div>
 
-        {/* Code input */}
-        <div className="relative mb-4">
-          <input
-            value={code}
-            onChange={(e) => setCode(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6))}
-            onKeyDown={handleKeyDown}
-            placeholder="ABC123"
-            maxLength={6}
-            className="w-full text-center text-3xl font-bold tracking-[0.4em] py-4 px-6 rounded-xl border-2 border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white placeholder-slate-200 dark:placeholder-slate-700 focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 outline-none transition-all"
-            autoFocus
-            autoComplete="off"
-          />
+            <input
+              value={code}
+              onChange={(e) => setCode(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6))}
+              onKeyDown={handleKeyDown}
+              placeholder="Game PIN"
+              maxLength={6}
+              className="w-full text-center text-3xl font-bold tracking-[0.3em] py-4 px-4 rounded-lg border-2 border-gray-200 bg-gray-50 text-gray-900 placeholder-gray-300 focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 outline-none transition-all kahoot-font"
+              autoFocus
+              autoComplete="off"
+            />
+
+            <button
+              onClick={handleJoin}
+              disabled={loading || code.length < 4}
+              className="w-full mt-4 text-white font-bold py-4 px-6 rounded-lg flex items-center justify-center gap-2 transition-all disabled:opacity-40 disabled:cursor-not-allowed text-lg kahoot-font shadow-lg hover:shadow-xl active:scale-[0.98]"
+              style={{ 
+                backgroundColor: code.length >= 4 ? '#26890c' : '#999',
+                ...(code.length >= 4 ? { boxShadow: '0 4px 14px rgba(38, 137, 12, 0.3)' } : {})
+              }}
+            >
+              {loading ? (
+                <Loader2 className="w-6 h-6 animate-spin" />
+              ) : (
+                <>{t('quiz.joinGame')}<ArrowRight className="w-5 h-5" /></>
+              )}
+            </button>
+          </div>
         </div>
 
-        <button
-          onClick={handleJoin}
-          disabled={loading || code.length < 4}
-          className="w-full bg-gradient-to-r from-primary-600 to-purple-600 hover:from-primary-700 hover:to-purple-700 text-white font-semibold py-3 px-6 rounded-xl flex items-center justify-center gap-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-primary-500/25 hover:shadow-xl hover:shadow-primary-500/30"
-        >
-          {loading ? (
-            <Loader2 className="w-5 h-5 animate-spin" />
-          ) : (
-            <><ArrowRight className="w-5 h-5" />{t('quiz.joinGame')}</>
-          )}
-        </button>
-
-        <p className="text-[10px] text-slate-400 dark:text-slate-500 mt-4">{t('quiz.codeHint')}</p>
+        <p className="text-center text-white/50 text-xs mt-6 kahoot-font">{t('quiz.codeHint')}</p>
       </div>
     </div>
   );

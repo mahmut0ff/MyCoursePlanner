@@ -1,8 +1,380 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800;900&display=swap');
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* ============================================================
+   KAHOOT-STYLE QUIZ DESIGN SYSTEM
+   ============================================================ */
+
+:root {
+  /* Kahoot Brand Colors */
+  --kahoot-purple: #46178f;
+  --kahoot-purple-dark: #2d0a5e;
+  --kahoot-purple-light: #6c34b2;
+  --kahoot-purple-bg: #1a0a3e;
+  /* Answer Option Colors */
+  --kahoot-red: #e21b3c;
+  --kahoot-blue: #1368ce;
+  --kahoot-yellow: #d89e00;
+  --kahoot-green: #26890c;
+  --kahoot-red-hover: #c4162f;
+  --kahoot-blue-hover: #1057ad;
+  --kahoot-yellow-hover: #b88600;
+  --kahoot-green-hover: #1f6f0a;
+  /* Accent */
+  --kahoot-correct: #66bf39;
+  --kahoot-incorrect: #e21b3c;
+  --kahoot-gold: #ffd700;
+  --kahoot-silver: #c0c0c0;
+  --kahoot-bronze: #cd7f32;
+}
+
+/* ---- Kahoot Quiz Utility Classes ---- */
+
+.kahoot-font {
+  font-family: 'Montserrat', 'Inter', system-ui, sans-serif;
+}
+
+.kahoot-bg {
+  background: linear-gradient(135deg, var(--kahoot-purple) 0%, var(--kahoot-purple-dark) 50%, var(--kahoot-purple-bg) 100%);
+  min-height: 100vh;
+  color: white;
+}
+
+.kahoot-bg-pattern {
+  background-image:
+    radial-gradient(ellipse at 20% 50%, rgba(108, 52, 178, 0.3) 0%, transparent 50%),
+    radial-gradient(ellipse at 80% 20%, rgba(70, 23, 143, 0.4) 0%, transparent 50%),
+    radial-gradient(ellipse at 50% 80%, rgba(45, 10, 94, 0.3) 0%, transparent 50%);
+}
+
+/* Answer Option Buttons */
+.kahoot-option {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 20px;
+  border-radius: 8px;
+  color: white;
+  font-weight: 700;
+  font-size: 16px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  border: 4px solid transparent;
+  text-align: left;
+  min-height: 80px;
+  position: relative;
+  overflow: hidden;
+  font-family: 'Montserrat', sans-serif;
+}
+.kahoot-option:hover:not(:disabled) {
+  transform: scale(1.02);
+  filter: brightness(1.1);
+}
+.kahoot-option:active:not(:disabled) {
+  transform: scale(0.98);
+}
+.kahoot-option.selected {
+  border-color: rgba(255,255,255,0.8);
+  box-shadow: 0 0 20px rgba(255,255,255,0.3);
+  transform: scale(1.03);
+}
+.kahoot-option:disabled {
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+.kahoot-option-red { background-color: var(--kahoot-red); }
+.kahoot-option-red:hover:not(:disabled) { background-color: var(--kahoot-red-hover); }
+.kahoot-option-blue { background-color: var(--kahoot-blue); }
+.kahoot-option-blue:hover:not(:disabled) { background-color: var(--kahoot-blue-hover); }
+.kahoot-option-yellow { background-color: var(--kahoot-yellow); }
+.kahoot-option-yellow:hover:not(:disabled) { background-color: var(--kahoot-yellow-hover); }
+.kahoot-option-green { background-color: var(--kahoot-green); }
+.kahoot-option-green:hover:not(:disabled) { background-color: var(--kahoot-green-hover); }
+
+.kahoot-shape {
+  font-size: 24px;
+  line-height: 1;
+  opacity: 0.9;
+  flex-shrink: 0;
+  width: 32px;
+  text-align: center;
+}
+
+/* Timer Bar */
+.kahoot-timer-bar {
+  height: 6px;
+  background: rgba(255,255,255,0.2);
+  border-radius: 3px;
+  overflow: hidden;
+}
+.kahoot-timer-bar-fill {
+  height: 100%;
+  background: white;
+  border-radius: 3px;
+  transition: width 1s linear;
+}
+.kahoot-timer-bar-fill.danger {
+  background: var(--kahoot-red);
+}
+
+/* Timer Circle */
+.kahoot-timer-circle {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.15);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+  font-weight: 800;
+  font-family: 'Montserrat', sans-serif;
+  color: white;
+  backdrop-filter: blur(8px);
+}
+.kahoot-timer-circle.danger {
+  background: rgba(226, 27, 60, 0.3);
+  animation: kahoot-pulse 0.5s ease-in-out infinite alternate;
+}
+
+/* Question Card */
+.kahoot-question-card {
+  background: white;
+  color: #333;
+  border-radius: 8px;
+  padding: 24px 32px;
+  font-size: 20px;
+  font-weight: 700;
+  text-align: center;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+  font-family: 'Montserrat', sans-serif;
+  min-height: 100px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+}
+
+/* Podium */
+.kahoot-podium-container {
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 8px;
+  padding: 0 16px;
+}
+.kahoot-podium-block {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+.kahoot-podium-bar {
+  width: 120px;
+  border-radius: 8px 8px 0 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  padding-top: 16px;
+  font-family: 'Montserrat', sans-serif;
+  animation: podium-rise 0.8s ease-out forwards;
+  transform-origin: bottom;
+}
+.kahoot-podium-bar.gold {
+  background: linear-gradient(180deg, #ffd700 0%, #e6b800 100%);
+  height: 160px;
+  animation-delay: 0.4s;
+  transform: scaleY(0);
+}
+.kahoot-podium-bar.silver {
+  background: linear-gradient(180deg, #c0c0c0 0%, #a8a8a8 100%);
+  height: 120px;
+  animation-delay: 0.2s;
+  transform: scaleY(0);
+}
+.kahoot-podium-bar.bronze {
+  background: linear-gradient(180deg, #cd7f32 0%, #b5692a 100%);
+  height: 90px;
+  animation-delay: 0.6s;
+  transform: scaleY(0);
+}
+
+/* Lobby player chip */
+.kahoot-player-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 16px;
+  background: rgba(255,255,255,0.15);
+  backdrop-filter: blur(8px);
+  border-radius: 24px;
+  font-weight: 600;
+  font-size: 14px;
+  color: white;
+  animation: kahoot-pop-in 0.3s ease-out;
+  font-family: 'Montserrat', sans-serif;
+}
+
+/* Builder Slide Navigator */
+.kahoot-slide-nav {
+  width: 200px;
+  background: #f2f2f2;
+  border-right: 1px solid #e0e0e0;
+  overflow-y: auto;
+  flex-shrink: 0;
+}
+.dark .kahoot-slide-nav {
+  background: #1e1e2e;
+  border-right-color: #333;
+}
+.kahoot-slide-item {
+  padding: 8px 12px;
+  margin: 4px 8px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  border: 2px solid transparent;
+  position: relative;
+}
+.kahoot-slide-item:hover {
+  background: rgba(70, 23, 143, 0.08);
+}
+.kahoot-slide-item.active {
+  border-color: var(--kahoot-purple);
+  background: rgba(70, 23, 143, 0.1);
+}
+.dark .kahoot-slide-item:hover {
+  background: rgba(108, 52, 178, 0.15);
+}
+.dark .kahoot-slide-item.active {
+  border-color: var(--kahoot-purple-light);
+  background: rgba(108, 52, 178, 0.2);
+}
+
+/* Builder Option Input (colored) */
+.kahoot-builder-option {
+  border-radius: 8px;
+  padding: 12px 16px;
+  color: white;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 56px;
+}
+.kahoot-builder-option input {
+  background: transparent;
+  border: none;
+  outline: none;
+  color: white;
+  font-weight: 600;
+  font-size: 14px;
+  flex: 1;
+  font-family: 'Montserrat', sans-serif;
+}
+.kahoot-builder-option input::placeholder {
+  color: rgba(255,255,255,0.5);
+}
+
+/* Pin/Code display */
+.kahoot-pin-display {
+  font-family: 'Montserrat', sans-serif;
+  font-size: 56px;
+  font-weight: 900;
+  letter-spacing: 0.15em;
+  color: white;
+  text-shadow: 0 4px 8px rgba(0,0,0,0.2);
+}
+
+/* Leaderboard Row */
+.kahoot-leaderboard-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  border-bottom: 1px solid rgba(255,255,255,0.1);
+  transition: background 0.15s ease;
+}
+.kahoot-leaderboard-row:hover {
+  background: rgba(255,255,255,0.05);
+}
+.kahoot-leaderboard-row.me {
+  background: rgba(255,215,0,0.1);
+}
+
+/* Library Card */
+.kahoot-library-card {
+  border-radius: 8px;
+  overflow: hidden;
+  background: white;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+  transition: all 0.2s ease;
+  cursor: pointer;
+  border: 1px solid #e5e7eb;
+}
+.dark .kahoot-library-card {
+  background: #1e1e2e;
+  border-color: #333;
+}
+.kahoot-library-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+}
+
+/* ---- Kahoot Keyframe Animations ---- */
+
+@keyframes kahoot-pulse {
+  from { transform: scale(1); }
+  to { transform: scale(1.08); }
+}
+
+@keyframes podium-rise {
+  from { transform: scaleY(0); }
+  to { transform: scaleY(1); }
+}
+
+@keyframes kahoot-pop-in {
+  from { opacity: 0; transform: scale(0.5); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+@keyframes kahoot-correct {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.15); }
+  100% { transform: scale(1); }
+}
+
+@keyframes kahoot-shake {
+  0%, 100% { transform: translateX(0); }
+  20% { transform: translateX(-8px); }
+  40% { transform: translateX(8px); }
+  60% { transform: translateX(-6px); }
+  80% { transform: translateX(6px); }
+}
+
+@keyframes kahoot-confetti {
+  0% { opacity: 1; transform: translateY(0) rotate(0deg); }
+  100% { opacity: 0; transform: translateY(-100px) rotate(720deg); }
+}
+
+@keyframes kahoot-slide-up {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes kahoot-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes kahoot-lobby-float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-8px); }
+}
 
 @layer base {
   * {

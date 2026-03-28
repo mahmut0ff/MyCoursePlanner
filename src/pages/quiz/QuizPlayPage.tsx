@@ -10,22 +10,10 @@ import {
   Loader2, Gamepad2, ArrowLeft
 } from 'lucide-react';
 
-
 type GamePhase = 'lobby' | 'question' | 'answer_feedback' | 'leaderboard' | 'results';
 
-// Color palette for answer options
-const OPTION_COLORS = [
-  'bg-red-500 hover:bg-red-600',
-  'bg-blue-500 hover:bg-blue-600',
-  'bg-amber-500 hover:bg-amber-600',
-  'bg-emerald-500 hover:bg-emerald-600',
-  'bg-purple-500 hover:bg-purple-600',
-  'bg-pink-500 hover:bg-pink-600',
-  'bg-cyan-500 hover:bg-cyan-600',
-  'bg-orange-500 hover:bg-orange-600',
-];
-
-const OPTION_SHAPES = ['◆', '▲', '●', '■', '★', '♦', '♥', '♠'];
+const OPTION_COLORS = ['kahoot-option-red', 'kahoot-option-blue', 'kahoot-option-yellow', 'kahoot-option-green', 'kahoot-option-red', 'kahoot-option-blue', 'kahoot-option-yellow', 'kahoot-option-green'];
+const OPTION_SHAPES = ['▲', '◆', '●', '■', '▲', '◆', '●', '■'];
 
 const QuizPlayPage: React.FC = () => {
   const { sessionId } = useParams<{ sessionId: string }>();
@@ -46,28 +34,20 @@ const QuizPlayPage: React.FC = () => {
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const prevQuestionIndex = useRef<number>(-2);
 
-  // Subscribe to real-time session updates
   useEffect(() => {
     if (!sessionId) return;
-
-    // Ensure joined
     apiJoinQuizSession({ sessionId }).catch(() => {});
-
     const unsubSession = subscribeToSession(sessionId, (s) => {
       setSession(s);
-
-      // Detect phase changes
       if (s.status === 'lobby') setPhase('lobby');
       else if (s.status === 'completed') setPhase('results');
       else if (s.status === 'in_progress' || s.status === 'paused') {
-        // New question detected?
         if (s.currentQuestionIndex !== prevQuestionIndex.current) {
           prevQuestionIndex.current = s.currentQuestionIndex;
           setSelectedAnswer(null);
           setSubmitted(false);
           setAnswerResult(null);
           setPhase('question');
-          // Fetch current question
           apiGetQuizSession(sessionId).then((data: any) => {
             setCurrentQuestion(data.currentQuestion);
             const timer = data.currentQuestion?.timerSeconds || 30;
@@ -77,31 +57,23 @@ const QuizPlayPage: React.FC = () => {
         }
       }
     });
-
     const unsubParts = subscribeToParticipants(sessionId, setParticipants);
-
     return () => { unsubSession(); unsubParts(); };
   }, [sessionId]);
 
-  // Timer countdown
   useEffect(() => {
     if (phase !== 'question' || submitted) return;
     if (timerRef.current) clearInterval(timerRef.current);
-
     timerRef.current = setInterval(() => {
       setTimeLeft(prev => {
         if (prev <= 1) {
           clearInterval(timerRef.current!);
-          // Auto-submit with no answer if time runs out
-          if (!submitted) {
-            handleSubmit(true);
-          }
+          if (!submitted) handleSubmit(true);
           return 0;
         }
         return prev - 1;
       });
     }, 1000);
-
     return () => { if (timerRef.current) clearInterval(timerRef.current); };
   }, [phase, currentQuestion, submitted]);
 
@@ -110,7 +82,6 @@ const QuizPlayPage: React.FC = () => {
     setSubmitting(true);
     setSubmitted(true);
     if (timerRef.current) clearInterval(timerRef.current);
-
     try {
       const responseTimeMs = Date.now() - startTime;
       const answer = timedOut ? '' : (selectedAnswer || '');
@@ -122,8 +93,7 @@ const QuizPlayPage: React.FC = () => {
       });
       setAnswerResult(result);
       setPhase('answer_feedback');
-    } catch (e: any) {
-      // Double-submit or other error — show feedback anyway
+    } catch {
       setPhase('answer_feedback');
     } finally {
       setSubmitting(false);
@@ -134,7 +104,6 @@ const QuizPlayPage: React.FC = () => {
     if (submitted) return;
     const q = currentQuestion;
     if (!q) return;
-
     if (['multiple_choice', 'multi_select'].includes(q.type)) {
       const current = Array.isArray(selectedAnswer) ? selectedAnswer : [];
       const next = current.includes(optId) ? current.filter((a: string) => a !== optId) : [...current, optId];
@@ -150,30 +119,35 @@ const QuizPlayPage: React.FC = () => {
   // ─── LOBBY PHASE ───
   if (phase === 'lobby') {
     return (
-      <div className="min-h-[70vh] flex items-center justify-center">
-        <div className="text-center max-w-md">
-          <div className="w-16 h-16 mx-auto bg-gradient-to-br from-primary-400 to-purple-500 rounded-2xl flex items-center justify-center mb-4 animate-pulse">
-            <Gamepad2 className="w-8 h-8 text-white" />
-          </div>
-          <h2 className="text-xl font-bold text-slate-900 dark:text-white mb-1">{session?.quizTitle || t('quiz.waitingTitle')}</h2>
-          <p className="text-sm text-slate-500 mb-6">{t('quiz.waitingForHost')}</p>
-
-          <div className="card p-4 mb-4">
-            <div className="flex items-center justify-center gap-1.5 mb-2">
-              <Users className="w-4 h-4 text-primary-500" />
-              <span className="text-sm font-medium text-slate-700 dark:text-slate-300">{participants.length} {t('quiz.players')}</span>
+      <div className="kahoot-bg kahoot-bg-pattern fixed inset-0 flex items-center justify-center z-50 overflow-auto">
+        <div className="text-center max-w-lg px-4" style={{ animation: 'kahoot-slide-up 0.5s ease-out' }}>
+          <div className="mb-6" style={{ animation: 'kahoot-lobby-float 3s ease-in-out infinite' }}>
+            <div className="w-20 h-20 mx-auto rounded-2xl bg-white/10 backdrop-blur-md flex items-center justify-center shadow-2xl border border-white/20">
+              <Gamepad2 className="w-10 h-10 text-white" />
             </div>
-            <div className="flex flex-wrap gap-1 justify-center max-h-32 overflow-y-auto">
+          </div>
+          <h2 className="kahoot-font text-2xl font-extrabold text-white mb-2">{session?.quizTitle || t('quiz.waitingTitle')}</h2>
+          <p className="text-white/60 text-sm mb-8 kahoot-font">{t('quiz.waitingForHost')}</p>
+
+          <div className="bg-white/10 backdrop-blur-md rounded-2xl p-6 border border-white/10 mb-6">
+            <div className="flex items-center justify-center gap-2 mb-4">
+              <Users className="w-5 h-5 text-white/80" />
+              <span className="kahoot-font text-lg font-bold text-white">{participants.length} {t('quiz.players')}</span>
+            </div>
+            <div className="flex flex-wrap gap-2 justify-center max-h-40 overflow-y-auto">
               {participants.map(p => (
-                <span key={p.participantId} className={`text-[10px] px-2 py-0.5 rounded-full ${p.participantId === profile?.uid ? 'bg-primary-100 text-primary-700 dark:bg-primary-900/30 dark:text-primary-400 font-semibold' : 'bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-400'}`}>
+                <span
+                  key={p.participantId}
+                  className={`kahoot-player-chip ${p.participantId === profile?.uid ? '!bg-white/30 ring-2 ring-white/50' : ''}`}
+                >
                   {p.participantName}
                 </span>
               ))}
             </div>
           </div>
 
-          <div className="flex items-center justify-center gap-2 text-xs text-slate-400">
-            <div className="w-2 h-2 bg-emerald-400 rounded-full animate-pulse" />
+          <div className="flex items-center justify-center gap-2 text-white/50 text-sm kahoot-font">
+            <div className="w-2.5 h-2.5 bg-green-400 rounded-full animate-pulse" />
             {t('quiz.connected')}
           </div>
         </div>
@@ -186,149 +160,169 @@ const QuizPlayPage: React.FC = () => {
     const isMultiSelect = ['multiple_choice', 'multi_select'].includes(currentQuestion.type);
     const isShortText = currentQuestion.type === 'short_text';
     const isPoll = ['poll', 'discussion', 'info_slide'].includes(currentQuestion.type);
+    const timerPercent = (timeLeft / (currentQuestion.timerSeconds || 30)) * 100;
 
     return (
-      <div className="max-w-2xl mx-auto">
-        {/* Timer & Progress */}
-        <div className="flex items-center justify-between mb-3">
-          <span className="text-xs text-slate-500">Q{(session?.currentQuestionIndex || 0) + 1} / {session?.totalQuestions}</span>
-          <div className={`flex items-center gap-1.5 px-3 py-1 rounded-full font-bold text-sm ${timeLeft <= 5 ? 'bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400 animate-pulse' : 'bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-300'}`}>
-            <Clock className="w-3.5 h-3.5" />{timeLeft}s
+      <div className="kahoot-bg fixed inset-0 z-50 flex flex-col" style={{ animation: 'kahoot-fade-in 0.3s ease-out' }}>
+        {/* Top bar: progress + timer */}
+        <div className="px-4 pt-3 pb-2">
+          <div className="flex items-center justify-between mb-2">
+            <span className="kahoot-font text-sm font-semibold text-white/70">
+              {(session?.currentQuestionIndex || 0) + 1} / {session?.totalQuestions}
+            </span>
+            <div className={`kahoot-timer-circle ${timeLeft <= 5 ? 'danger' : ''}`}>
+              {timeLeft}
+            </div>
           </div>
-        </div>
-
-        {/* Timer bar */}
-        <div className="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-1.5 mb-5">
-          <div className={`h-1.5 rounded-full transition-all duration-1000 ${timeLeft <= 5 ? 'bg-red-500' : 'bg-primary-500'}`}
-            style={{ width: `${(timeLeft / (currentQuestion.timerSeconds || 30)) * 100}%` }} />
+          <div className="kahoot-timer-bar">
+            <div
+              className={`kahoot-timer-bar-fill ${timeLeft <= 5 ? 'danger' : ''}`}
+              style={{ width: `${timerPercent}%` }}
+            />
+          </div>
         </div>
 
         {/* Question */}
-        <div className="card p-5 mb-4">
-          {currentQuestion.mediaUrl && currentQuestion.mediaType === 'image' && (
-            <img src={currentQuestion.mediaUrl} alt="" className="w-full max-h-48 object-contain rounded-lg mb-3" />
-          )}
-          {currentQuestion.mediaUrl && currentQuestion.mediaType === 'audio' && (
-            <audio src={currentQuestion.mediaUrl} controls className="w-full mb-3" />
-          )}
-          {currentQuestion.passageText && (
-            <div className="bg-slate-50 dark:bg-slate-700/50 p-3 rounded-lg mb-3 text-xs text-slate-600 dark:text-slate-400 max-h-32 overflow-y-auto">
-              {currentQuestion.passageText}
-            </div>
-          )}
-          <h2 className="text-lg font-semibold text-slate-900 dark:text-white">{currentQuestion.text}</h2>
-          {currentQuestion.helpText && (
-            <p className="text-xs text-slate-400 mt-1">{currentQuestion.helpText}</p>
-          )}
+        <div className="flex-shrink-0 px-4 py-4">
+          <div className="kahoot-question-card max-w-3xl mx-auto">
+            {currentQuestion.mediaUrl && currentQuestion.mediaType === 'image' && (
+              <img src={currentQuestion.mediaUrl} alt="" className="max-h-40 object-contain rounded-lg mb-3" />
+            )}
+            {currentQuestion.mediaUrl && currentQuestion.mediaType === 'audio' && (
+              <audio src={currentQuestion.mediaUrl} controls className="w-full mb-3" />
+            )}
+            {currentQuestion.passageText && (
+              <div className="bg-gray-50 p-3 rounded-lg mb-3 text-xs text-gray-600 max-h-24 overflow-y-auto text-left w-full">
+                {currentQuestion.passageText}
+              </div>
+            )}
+            <h2>{currentQuestion.text}</h2>
+            {currentQuestion.helpText && (
+              <p className="text-sm text-gray-400 mt-2 font-normal">{currentQuestion.helpText}</p>
+            )}
+          </div>
         </div>
 
-        {/* Short text answer */}
-        {isShortText ? (
-          <div className="mb-4">
-            <input
-              value={typeof selectedAnswer === 'string' ? selectedAnswer : ''}
-              onChange={(e) => setSelectedAnswer(e.target.value)}
-              placeholder={t('quiz.typeAnswer')}
-              className="input text-sm w-full py-3"
-              disabled={submitted}
-              autoFocus
-            />
-          </div>
-        ) : (
-          /* Option buttons */
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-4">
-            {currentQuestion.options?.map((opt: any, i: number) => {
-              const isSelected = Array.isArray(selectedAnswer) ? selectedAnswer.includes(opt.id) : selectedAnswer === opt.id;
-              return (
-                <button
-                  key={opt.id}
-                  onClick={() => handleSelectOption(opt.id)}
-                  disabled={submitted}
-                  className={`relative p-4 rounded-xl text-white font-medium text-sm text-left transition-all ${OPTION_COLORS[i % OPTION_COLORS.length]} ${isSelected ? 'ring-4 ring-white/50 scale-[1.02] shadow-lg' : 'opacity-90 hover:opacity-100 hover:scale-[1.01]'} disabled:cursor-not-allowed`}
-                >
-                  <span className="text-lg mr-2 opacity-60">{OPTION_SHAPES[i % OPTION_SHAPES.length]}</span>
-                  {opt.text}
-                  {opt.imageUrl && <img src={opt.imageUrl} alt="" className="mt-2 max-h-20 rounded" />}
-                </button>
-              );
-            })}
-          </div>
-        )}
+        {/* Answer Options */}
+        <div className="flex-1 px-4 pb-4 flex flex-col justify-end">
+          {isShortText ? (
+            <div className="max-w-xl mx-auto w-full mb-4">
+              <input
+                value={typeof selectedAnswer === 'string' ? selectedAnswer : ''}
+                onChange={(e) => setSelectedAnswer(e.target.value)}
+                placeholder={t('quiz.typeAnswer')}
+                className="w-full text-center text-xl font-bold py-4 px-4 rounded-lg bg-white text-gray-900 placeholder-gray-300 outline-none kahoot-font"
+                disabled={submitted}
+                autoFocus
+              />
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-w-3xl mx-auto w-full">
+              {currentQuestion.options?.map((opt: any, i: number) => {
+                const isSelected = Array.isArray(selectedAnswer) ? selectedAnswer.includes(opt.id) : selectedAnswer === opt.id;
+                return (
+                  <button
+                    key={opt.id}
+                    onClick={() => handleSelectOption(opt.id)}
+                    disabled={submitted}
+                    className={`kahoot-option ${OPTION_COLORS[i % OPTION_COLORS.length]} ${isSelected ? 'selected' : ''}`}
+                  >
+                    <span className="kahoot-shape">{OPTION_SHAPES[i % OPTION_SHAPES.length]}</span>
+                    <span className="flex-1">{opt.text}</span>
+                    {opt.imageUrl && <img src={opt.imageUrl} alt="" className="h-12 rounded" />}
+                  </button>
+                );
+              })}
+            </div>
+          )}
 
-        {/* Submit button */}
-        {!submitted && (
-          <button
-            onClick={() => handleSubmit()}
-            disabled={submitting || (!selectedAnswer && !isShortText && !isPoll)}
-            className="w-full bg-slate-900 dark:bg-white dark:text-slate-900 text-white font-semibold py-3 rounded-xl transition-all disabled:opacity-50 hover:opacity-90"
-          >
-            {submitting ? <Loader2 className="w-5 h-5 animate-spin mx-auto" /> : (isMultiSelect ? t('quiz.submitAnswers') : t('quiz.submit'))}
-          </button>
-        )}
+          {/* Submit */}
+          {!submitted && (
+            <div className="max-w-3xl mx-auto w-full mt-3">
+              <button
+                onClick={() => handleSubmit()}
+                disabled={submitting || (!selectedAnswer && !isShortText && !isPoll)}
+                className="w-full py-4 rounded-lg font-bold text-white text-lg kahoot-font transition-all disabled:opacity-40 active:scale-[0.98]"
+                style={{ backgroundColor: '#333' }}
+              >
+                {submitting ? <Loader2 className="w-5 h-5 animate-spin mx-auto" /> : (isMultiSelect ? t('quiz.submitAnswers') : t('quiz.submit'))}
+              </button>
+            </div>
+          )}
 
-        {/* Waiting after submit */}
-        {submitted && !answerResult && (
-          <div className="text-center py-4">
-            <Loader2 className="w-6 h-6 animate-spin mx-auto text-primary-500 mb-2" />
-            <p className="text-xs text-slate-400">{t('quiz.submitting')}</p>
-          </div>
-        )}
+          {submitted && !answerResult && (
+            <div className="text-center py-4">
+              <Loader2 className="w-6 h-6 animate-spin mx-auto text-white mb-2" />
+              <p className="text-sm text-white/60 kahoot-font">{t('quiz.submitting')}</p>
+            </div>
+          )}
+        </div>
       </div>
     );
   }
 
   // ─── ANSWER FEEDBACK PHASE ───
   if (phase === 'answer_feedback') {
+    const isCorrect = answerResult?.isCorrect;
+
     return (
-      <div className="min-h-[60vh] flex items-center justify-center">
-        <div className="text-center max-w-sm">
-          {answerResult?.isCorrect ? (
+      <div
+        className="fixed inset-0 z-50 flex items-center justify-center"
+        style={{
+          background: isCorrect ? '#66bf39' : '#e21b3c',
+          animation: isCorrect ? 'kahoot-correct 0.5s ease' : 'kahoot-shake 0.5s ease',
+        }}
+      >
+        <div className="text-center max-w-sm px-4" style={{ animation: 'kahoot-slide-up 0.4s ease-out' }}>
+          {isCorrect ? (
             <>
-              <div className="w-20 h-20 mx-auto bg-emerald-100 dark:bg-emerald-900/30 rounded-full flex items-center justify-center mb-4">
-                <CheckCircle className="w-10 h-10 text-emerald-500" />
+              <div className="w-24 h-24 mx-auto bg-white/20 rounded-full flex items-center justify-center mb-4">
+                <CheckCircle className="w-14 h-14 text-white" />
               </div>
-              <h2 className="text-2xl font-bold text-emerald-600 dark:text-emerald-400 mb-2">{t('quiz.correct')}! 🎉</h2>
+              <h2 className="kahoot-font text-3xl font-extrabold text-white mb-2">{t('quiz.correct')}! 🎉</h2>
             </>
           ) : (
             <>
-              <div className="w-20 h-20 mx-auto bg-red-100 dark:bg-red-900/30 rounded-full flex items-center justify-center mb-4">
-                <XCircle className="w-10 h-10 text-red-500" />
+              <div className="w-24 h-24 mx-auto bg-white/20 rounded-full flex items-center justify-center mb-4">
+                <XCircle className="w-14 h-14 text-white" />
               </div>
-              <h2 className="text-2xl font-bold text-red-600 dark:text-red-400 mb-2">{answerResult ? t('quiz.incorrect') : t('quiz.timeUp')} 😔</h2>
+              <h2 className="kahoot-font text-3xl font-extrabold text-white mb-2">
+                {answerResult ? t('quiz.incorrect') : t('quiz.timeUp')} 😔
+              </h2>
             </>
           )}
 
           {answerResult && (
-            <div className="card p-4 mt-4 space-y-2">
-              <div className="flex justify-between text-sm">
-                <span className="text-slate-500">{t('quiz.points')}</span>
-                <span className="font-bold text-primary-600">+{answerResult.pointsEarned || 0}</span>
+            <div className="bg-white/15 backdrop-blur-md rounded-xl p-5 mt-6 text-white border border-white/10">
+              <div className="flex justify-between items-center text-base mb-2">
+                <span className="text-white/80 kahoot-font">{t('quiz.points')}</span>
+                <span className="kahoot-font font-extrabold text-2xl">+{answerResult.pointsEarned || 0}</span>
               </div>
               {answerResult.speedBonusEarned > 0 && (
-                <div className="flex justify-between text-xs">
-                  <span className="text-slate-400 flex items-center gap-1"><Zap className="w-3 h-3" />{t('quiz.speedBonus')}</span>
-                  <span className="text-amber-500">+{answerResult.speedBonusEarned}</span>
+                <div className="flex justify-between text-sm mb-1">
+                  <span className="text-white/60 flex items-center gap-1"><Zap className="w-3 h-3" />{t('quiz.speedBonus')}</span>
+                  <span className="font-bold">+{answerResult.speedBonusEarned}</span>
                 </div>
               )}
               {answerResult.streakBonusEarned > 0 && (
-                <div className="flex justify-between text-xs">
-                  <span className="text-slate-400 flex items-center gap-1"><Star className="w-3 h-3" />{t('quiz.streakBonus')}</span>
-                  <span className="text-orange-500">+{answerResult.streakBonusEarned}</span>
+                <div className="flex justify-between text-sm mb-1">
+                  <span className="text-white/60 flex items-center gap-1"><Star className="w-3 h-3" />{t('quiz.streakBonus')}</span>
+                  <span className="font-bold">+{answerResult.streakBonusEarned}</span>
                 </div>
               )}
-              <div className="flex justify-between text-sm pt-2 border-t border-slate-200 dark:border-slate-700">
-                <span className="text-slate-500">{t('quiz.totalScore')}</span>
-                <span className="font-bold text-slate-900 dark:text-white">{answerResult.totalScore}</span>
+              <div className="flex justify-between text-base pt-3 border-t border-white/20 mt-2">
+                <span className="text-white/80 kahoot-font">{t('quiz.totalScore')}</span>
+                <span className="kahoot-font font-extrabold">{answerResult.totalScore}</span>
               </div>
               {answerResult.answerExplanation && (
-                <p className="text-xs text-slate-500 pt-2 border-t border-slate-200 dark:border-slate-700">
+                <p className="text-sm text-white/70 pt-3 border-t border-white/20 mt-2">
                   💡 {answerResult.answerExplanation}
                 </p>
               )}
             </div>
           )}
 
-          <p className="text-xs text-slate-400 mt-4 flex items-center justify-center gap-1">
+          <p className="text-sm text-white/60 mt-6 flex items-center justify-center gap-1 kahoot-font">
             <Loader2 className="w-3 h-3 animate-spin" />{t('quiz.waitingNextQuestion')}
           </p>
         </div>
@@ -341,77 +335,95 @@ const QuizPlayPage: React.FC = () => {
     const top3 = participants.slice(0, 3);
 
     return (
-      <div className="max-w-lg mx-auto text-center py-8">
-        <h1 className="text-2xl font-bold text-slate-900 dark:text-white mb-1">{t('quiz.gameOver')}! 🏆</h1>
-        <p className="text-sm text-slate-500 mb-6">{session?.quizTitle}</p>
+      <div className="kahoot-bg kahoot-bg-pattern fixed inset-0 z-50 overflow-auto">
+        <div className="max-w-xl mx-auto py-8 px-4" style={{ animation: 'kahoot-slide-up 0.5s ease-out' }}>
+          <h1 className="kahoot-font text-3xl font-extrabold text-white text-center mb-2">{t('quiz.gameOver')}! 🏆</h1>
+          <p className="text-white/60 text-center text-sm kahoot-font mb-8">{session?.quizTitle}</p>
 
-        {/* Podium */}
-        {top3.length >= 1 && (
-          <div className="flex items-end justify-center gap-4 mb-6">
-            {top3.length >= 2 && (
-              <div className="text-center">
-                <div className="w-16 h-16 rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center text-2xl mb-1 mx-auto">🥈</div>
-                <p className="text-xs font-medium text-slate-700 dark:text-slate-300 truncate max-w-[80px] mx-auto">{top3[1]?.participantName}</p>
-                <p className="text-xs text-slate-400">{top3[1]?.score} pts</p>
+          {/* Podium */}
+          {top3.length >= 1 && (
+            <div className="kahoot-podium-container mb-8">
+              {/* 2nd place */}
+              {top3.length >= 2 && (
+                <div className="kahoot-podium-block">
+                  <p className="kahoot-font text-sm font-bold text-white truncate max-w-[100px] mb-2">{top3[1]?.participantName}</p>
+                  <p className="text-white/60 text-xs kahoot-font mb-2">{top3[1]?.score} pts</p>
+                  <div className="kahoot-podium-bar silver">
+                    <span className="text-3xl">🥈</span>
+                    <span className="kahoot-font font-extrabold text-white text-lg mt-1">2</span>
+                  </div>
+                </div>
+              )}
+              {/* 1st place */}
+              <div className="kahoot-podium-block">
+                <p className="kahoot-font text-base font-extrabold text-white truncate max-w-[120px] mb-2">{top3[0]?.participantName}</p>
+                <p className="text-yellow-300 text-sm kahoot-font font-bold mb-2">{top3[0]?.score} pts</p>
+                <div className="kahoot-podium-bar gold">
+                  <span className="text-4xl">🥇</span>
+                  <span className="kahoot-font font-extrabold text-white text-xl mt-1">1</span>
+                </div>
               </div>
-            )}
-            <div className="text-center">
-              <div className="w-20 h-20 rounded-full bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center text-3xl mb-1 mx-auto ring-2 ring-amber-400">🥇</div>
-              <p className="text-sm font-bold text-slate-900 dark:text-white truncate max-w-[100px] mx-auto">{top3[0]?.participantName}</p>
-              <p className="text-xs text-amber-600 font-semibold">{top3[0]?.score} pts</p>
+              {/* 3rd place */}
+              {top3.length >= 3 && (
+                <div className="kahoot-podium-block">
+                  <p className="kahoot-font text-sm font-bold text-white truncate max-w-[100px] mb-2">{top3[2]?.participantName}</p>
+                  <p className="text-white/60 text-xs kahoot-font mb-2">{top3[2]?.score} pts</p>
+                  <div className="kahoot-podium-bar bronze">
+                    <span className="text-3xl">🥉</span>
+                    <span className="kahoot-font font-extrabold text-white text-lg mt-1">3</span>
+                  </div>
+                </div>
+              )}
             </div>
-            {top3.length >= 3 && (
-              <div className="text-center">
-                <div className="w-16 h-16 rounded-full bg-orange-100 dark:bg-orange-900/30 flex items-center justify-center text-2xl mb-1 mx-auto">🥉</div>
-                <p className="text-xs font-medium text-slate-700 dark:text-slate-300 truncate max-w-[80px] mx-auto">{top3[2]?.participantName}</p>
-                <p className="text-xs text-slate-400">{top3[2]?.score} pts</p>
-              </div>
-            )}
-          </div>
-        )}
+          )}
 
-        {/* My result */}
-        {myParticipant && (
-          <div className="card p-5 mb-6 bg-gradient-to-r from-primary-50 to-purple-50 dark:from-primary-900/20 dark:to-purple-900/20 border-primary-200 dark:border-primary-800">
-            <p className="text-xs text-slate-500 mb-1">{t('quiz.yourResult')}</p>
-            <p className="text-3xl font-bold text-primary-600 dark:text-primary-400 mb-1">{myParticipant.score} pts</p>
-            <div className="flex items-center justify-center gap-4 text-xs text-slate-500">
-              <span className="flex items-center gap-1"><Trophy className="w-3 h-3" />#{myRank} {t('quiz.place')}</span>
-              <span className="flex items-center gap-1"><CheckCircle className="w-3 h-3 text-emerald-500" />{myParticipant.correctCount} {t('quiz.correct')}</span>
-              <span className="flex items-center gap-1"><Zap className="w-3 h-3 text-orange-500" />{myParticipant.streakBest} {t('quiz.bestStreak')}</span>
+          {/* My Result */}
+          {myParticipant && (
+            <div className="bg-white/10 backdrop-blur-md rounded-xl p-6 mb-6 border border-white/10 text-center"
+                 style={{ animation: 'kahoot-slide-up 0.6s ease-out' }}>
+              <p className="text-white/60 text-xs kahoot-font mb-1">{t('quiz.yourResult')}</p>
+              <p className="kahoot-font text-4xl font-extrabold text-white mb-2">{myParticipant.score} pts</p>
+              <div className="flex items-center justify-center gap-5 text-sm text-white/70 kahoot-font">
+                <span className="flex items-center gap-1"><Trophy className="w-4 h-4 text-yellow-400" />#{myRank} {t('quiz.place')}</span>
+                <span className="flex items-center gap-1"><CheckCircle className="w-4 h-4 text-green-400" />{myParticipant.correctCount} {t('quiz.correct')}</span>
+                <span className="flex items-center gap-1"><Zap className="w-4 h-4 text-orange-400" />{myParticipant.streakBest} {t('quiz.bestStreak')}</span>
+              </div>
+            </div>
+          )}
+
+          {/* Full Leaderboard */}
+          <div className="bg-white/10 backdrop-blur-md rounded-xl border border-white/10 overflow-hidden">
+            <div className="px-4 py-3 border-b border-white/10">
+              <h3 className="kahoot-font text-sm font-bold text-white">{t('quiz.leaderboard')}</h3>
+            </div>
+            <div className="max-h-64 overflow-y-auto">
+              {participants.map((p, i) => (
+                <div
+                  key={p.participantId}
+                  className={`kahoot-leaderboard-row ${p.participantId === profile?.uid ? 'me' : ''}`}
+                >
+                  <span className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold kahoot-font ${
+                    i === 0 ? 'bg-yellow-400 text-yellow-900' : i === 1 ? 'bg-gray-300 text-gray-700' : i === 2 ? 'bg-orange-400 text-orange-900' : 'bg-white/10 text-white/60'
+                  }`}>{i + 1}</span>
+                  <span className="flex-1 text-sm text-white kahoot-font truncate">{p.participantName}</span>
+                  <span className="kahoot-font font-bold text-white">{p.score}</span>
+                </div>
+              ))}
             </div>
           </div>
-        )}
 
-        {/* Leaderboard */}
-        <div className="card overflow-hidden text-left">
-          <div className="px-4 py-3 border-b border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-700/50">
-            <h3 className="text-xs font-semibold text-slate-700 dark:text-slate-300">{t('quiz.leaderboard')}</h3>
-          </div>
-          <div className="divide-y divide-slate-100 dark:divide-slate-700/50 max-h-64 overflow-y-auto">
-            {participants.map((p, i) => (
-              <div key={p.participantId} className={`flex items-center gap-3 px-4 py-2.5 ${p.participantId === profile?.uid ? 'bg-primary-50 dark:bg-primary-900/10' : ''}`}>
-                <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${
-                  i === 0 ? 'bg-amber-400 text-white' : i === 1 ? 'bg-slate-300 text-white' : i === 2 ? 'bg-orange-400 text-white' : 'bg-slate-100 dark:bg-slate-700 text-slate-500'
-                }`}>{i + 1}</span>
-                <span className="flex-1 text-sm text-slate-700 dark:text-slate-300 truncate">{p.participantName}</span>
-                <span className="text-sm font-bold text-primary-600 dark:text-primary-400">{p.score}</span>
-              </div>
-            ))}
-          </div>
+          <button onClick={() => navigate('/dashboard')} className="mt-6 text-sm text-white/60 hover:text-white flex items-center gap-1 mx-auto kahoot-font transition-colors">
+            <ArrowLeft className="w-4 h-4" />{t('quiz.backToDashboard')}
+          </button>
         </div>
-
-        <button onClick={() => navigate('/dashboard')} className="mt-6 text-sm text-primary-600 hover:underline flex items-center gap-1 mx-auto">
-          <ArrowLeft className="w-4 h-4" />{t('quiz.backToDashboard')}
-        </button>
       </div>
     );
   }
 
   // Loading fallback
   return (
-    <div className="flex items-center justify-center py-20">
-      <div className="w-8 h-8 border-4 border-primary-200 border-t-primary-600 rounded-full animate-spin dark:border-primary-800 dark:border-t-primary-400" />
+    <div className="kahoot-bg fixed inset-0 z-50 flex items-center justify-center">
+      <div className="w-10 h-10 border-4 border-white/20 border-t-white rounded-full animate-spin" />
     </div>
   );
 };

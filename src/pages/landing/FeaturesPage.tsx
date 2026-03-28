@@ -4,11 +4,11 @@ import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../contexts/AuthContext';
 import {
   ArrowLeft, BookOpen, Brain, BarChart3, Shield,
-  Award, Target, Gamepad2, Layers, Users, Building2,
-  Lock, Sparkles, Database, CheckCircle2,
-  Calendar, FileText, FileCheck2, Fingerprint, Map,
+  Gamepad2, Layers, Users, Building2,
+  Sparkles, CheckCircle2,
+  Calendar, FileCheck2,
   MessageCircle, Rocket, Zap, Crown, UserPlus, FileSpreadsheet,
-  Megaphone, Briefcase, Camera, Image, ArrowRight, Bot
+  Briefcase, Image, ArrowRight, Bot, LineChart
 } from 'lucide-react';
 import LanguageSwitcher from '../../components/LanguageSwitcher';
 
@@ -353,5 +353,3 @@ const FeaturesPage: React.FC = () => {
 };
 
 export default FeaturesPage;
-// Include LineChart to fix TS errors
-import { LineChart } from 'lucide-react';

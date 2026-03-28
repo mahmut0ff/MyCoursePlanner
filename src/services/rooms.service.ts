@@ -4,7 +4,7 @@
  * because they lacked the organizationId filter required by hasOrgAccess().
  * Now all reads go through the backend API which properly handles org-scoping.
  */
-import { apiCreateRoom, apiJoinRoom, apiCloseRoom, apiGetRoomByCode, apiGetRoom } from '../lib/api';
+import { apiCreateRoom, apiJoinRoom, apiCloseRoom, apiGetRoomByCode, apiGetRoom, apiGetRooms } from '../lib/api';
 import type { ExamRoom } from '../types';
 
 export const createRoom = async (

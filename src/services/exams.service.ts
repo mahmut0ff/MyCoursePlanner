@@ -7,8 +7,6 @@
 import { apiGetExams, apiGetExam, apiCreateExam, apiUpdateExam, apiDeleteExam, apiSaveQuestions } from '../lib/api';
 import type { Exam, Question } from '../types';
 
-const COLLECTION = 'exams';
-
 export const getExams = async (): Promise<Exam[]> => {
   const data = await apiGetExams();
   return data as Exam[];

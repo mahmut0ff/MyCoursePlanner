@@ -40,9 +40,7 @@ const LeaderboardWidget: React.FC = () => {
     );
   }
 
-  const top3 = users.slice(0, 3);
-  const others = users.slice(3, 10);
-  
+
   // Find my rank
   const myRank = users.findIndex(u => u.uid === profile?.uid) + 1;
 

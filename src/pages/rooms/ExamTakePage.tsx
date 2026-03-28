@@ -7,7 +7,7 @@ import { auth } from '../../lib/firebase';
 import { useAuth } from '../../contexts/AuthContext';
 import { shuffleArray, formatTime } from '../../utils/grading';
 import type { ExamRoom, Exam, Question } from '../../types';
-import { Clock, ChevronLeft, ChevronRight, Send, AlertTriangle, CheckCircle2, Circle } from 'lucide-react';
+import { Clock, ChevronLeft, ChevronRight, Send, AlertTriangle, CheckCircle2 } from 'lucide-react';
 
 const ExamTakePage: React.FC = () => {
   const { roomId } = useParams<{ roomId: string }>();
@@ -73,15 +73,6 @@ const ExamTakePage: React.FC = () => {
     setAnswers((prev) => ({ ...prev, [qId]: value }));
   }, []);
 
-  const toggleMultiAnswer = useCallback((qId: string, option: string) => {
-    setAnswers((prev) => {
-      const current = (prev[qId] as string[]) || [];
-      const next = current.includes(option)
-        ? current.filter((o) => o !== option)
-        : [...current, option];
-      return { ...prev, [qId]: next };
-    });
-  }, []);
 
   const handleSubmit = async () => {
     if (submitting || submitted) return;

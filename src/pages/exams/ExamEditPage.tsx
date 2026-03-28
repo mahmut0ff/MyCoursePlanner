@@ -6,7 +6,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { createExam, getExam, updateExam, saveQuestions, getQuestions } from '../../services/exams.service';
 import type { Question, QuestionType } from '../../types';
 import { generateId } from '../../utils/grading';
-import { Save, ArrowLeft, Plus, Trash2, Sparkles, FileText, Settings, HelpCircle, GripVertical } from 'lucide-react';
+import { Save, ArrowLeft, Plus, Trash2, Sparkles, Settings, HelpCircle, GripVertical } from 'lucide-react';
 import { AIGeneratorModal } from '../../components/ui/AIGeneratorModal';
 
 const EMPTY_QUESTION = (): Question => ({

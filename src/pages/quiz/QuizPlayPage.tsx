@@ -33,6 +33,13 @@ const QuizPlayPage: React.FC = () => {
   const [startTime, setStartTime] = useState<number>(0);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const prevQuestionIndex = useRef<number>(-2);
+  
+  // Audio
+  const plopAudioRef = useRef<HTMLAudioElement | null>(null);
+
+  useEffect(() => {
+    plopAudioRef.current = new Audio('/sounds/plop.mp3');
+  }, []);
 
   useEffect(() => {
     if (!sessionId) return;
@@ -102,6 +109,13 @@ const QuizPlayPage: React.FC = () => {
 
   const handleSelectOption = (optId: string) => {
     if (submitted) return;
+    
+    // Play interaction sound
+    if (plopAudioRef.current) {
+      plopAudioRef.current.currentTime = 0;
+      plopAudioRef.current.play().catch(() => {});
+    }
+
     const q = currentQuestion;
     if (!q) return;
     if (['multiple_choice', 'multi_select'].includes(q.type)) {

@@ -9,6 +9,7 @@ import {
   Trophy, Users, Zap, CheckCircle, XCircle, Star,
   Loader2, Gamepad2, ArrowLeft
 } from 'lucide-react';
+import { playCountdownTick, playDramaticTick, playTimesUpBuzzer, cleanupAudio } from '../../utils/quizSounds';
 
 type GamePhase = 'lobby' | 'question' | 'answer_feedback' | 'leaderboard' | 'results';
 
@@ -36,9 +37,11 @@ const QuizPlayPage: React.FC = () => {
   
   // Audio
   const plopAudioRef = useRef<HTMLAudioElement | null>(null);
+  const lastTickRef = useRef<number>(-1);
 
   useEffect(() => {
     plopAudioRef.current = new Audio('/sounds/plop.mp3');
+    return () => { cleanupAudio(); };
   }, []);
 
   useEffect(() => {
@@ -70,11 +73,13 @@ const QuizPlayPage: React.FC = () => {
 
   useEffect(() => {
     if (phase !== 'question' || submitted) return;
+    lastTickRef.current = -1;
     if (timerRef.current) clearInterval(timerRef.current);
     timerRef.current = setInterval(() => {
       setTimeLeft(prev => {
         if (prev <= 1) {
           clearInterval(timerRef.current!);
+          playTimesUpBuzzer();
           if (!submitted) handleSubmit(true);
           return 0;
         }
@@ -83,6 +88,19 @@ const QuizPlayPage: React.FC = () => {
     }, 1000);
     return () => { if (timerRef.current) clearInterval(timerRef.current); };
   }, [phase, currentQuestion, submitted]);
+
+  // Countdown tick sounds for last 5 seconds
+  useEffect(() => {
+    if (phase !== 'question' || submitted) return;
+    if (timeLeft > 0 && timeLeft <= 5 && timeLeft !== lastTickRef.current) {
+      lastTickRef.current = timeLeft;
+      if (timeLeft <= 3) {
+        playDramaticTick(timeLeft);
+      } else {
+        playCountdownTick();
+      }
+    }
+  }, [timeLeft, phase, submitted]);
 
   const handleSubmit = useCallback(async (timedOut = false) => {
     if (submitted || submitting || !sessionId || !currentQuestion) return;

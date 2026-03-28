@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../contexts/AuthContext';
@@ -13,9 +13,15 @@ import type { QuizSession, SessionParticipant, SessionAnswer } from '../../types
 import {
   Play, Pause, SkipForward, Square, Copy, CheckCircle, Users,
   Lock, Unlock, UserMinus, Radio, BarChart3, ArrowLeft,
-  Trophy, Zap, RefreshCw, Award
+  Trophy, Zap, RefreshCw, Award, Timer
 } from 'lucide-react';
 import toast from 'react-hot-toast';
+import {
+  playGameMusic, stopGameMusic, playCountdownTick, playDramaticTick,
+  playVictoryFanfare, playQuestionTransition, cleanupAudio
+} from '../../utils/quizSounds';
+
+type DashboardPhase = 'lobby' | 'playing' | 'scoreboard' | 'completed';
 
 const LiveSessionDashboard: React.FC = () => {
   const { id: sessionId } = useParams<{ id: string }>();
@@ -28,26 +34,24 @@ const LiveSessionDashboard: React.FC = () => {
   const [currentQuestion, setCurrentQuestion] = useState<any>(null);
   const [copied, setCopied] = useState(false);
   const [actionLoading, setActionLoading] = useState('');
+  const autoAdvanceRef = useRef(false);
 
-  // Audio refs
-  const gameMusicRef = useRef<HTMLAudioElement | null>(null);
-  const victoryMusicRef = useRef<HTMLAudioElement | null>(null);
+  // Timer state for live countdown on teacher screen
+  const [displayTimeLeft, setDisplayTimeLeft] = useState<number>(0);
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const lastTickRef = useRef<number>(-1);
+
+  // Scoreboard phase management
+  const [phase, setPhase] = useState<DashboardPhase>('lobby');
+  const prevQuestionIndex = useRef<number>(-1);
+
+  // Sound state tracking
+  const musicStartedRef = useRef(false);
 
   useEffect(() => {
-    // Initialize audio elements
-    gameMusicRef.current = new Audio('/music/game-music.mp3');
-    gameMusicRef.current.loop = true;
-    victoryMusicRef.current = new Audio('/music/victory.mp3');
-
     return () => {
-      if (gameMusicRef.current) {
-        gameMusicRef.current.pause();
-        gameMusicRef.current = null;
-      }
-      if (victoryMusicRef.current) {
-        victoryMusicRef.current.pause();
-        victoryMusicRef.current = null;
-      }
+      cleanupAudio();
+      if (timerRef.current) clearInterval(timerRef.current);
     };
   }, []);
 
@@ -68,42 +72,128 @@ const LiveSessionDashboard: React.FC = () => {
 
   useEffect(() => {
     if (sessionId && session && (session.status === 'in_progress' || session.status === 'paused')) {
-      apiGetQuizSession(sessionId).then((data: any) => {
-        setCurrentQuestion(data.currentQuestion);
-      }).catch(() => {});
+      if (session.currentQuestionIndex !== prevQuestionIndex.current) {
+        prevQuestionIndex.current = session.currentQuestionIndex;
+        autoAdvanceRef.current = false;
+        setPhase('playing');
+        playQuestionTransition();
+
+        apiGetQuizSession(sessionId).then((data: any) => {
+          setCurrentQuestion(data.currentQuestion);
+          const timer = data.currentQuestion?.timerSeconds || 30;
+          setDisplayTimeLeft(timer);
+          lastTickRef.current = -1;
+          // Start live timer
+          if (timerRef.current) clearInterval(timerRef.current);
+          timerRef.current = setInterval(() => {
+            setDisplayTimeLeft(prev => {
+              if (prev <= 1) {
+                if (timerRef.current) clearInterval(timerRef.current);
+                return 0;
+              }
+              return prev - 1;
+            });
+          }, 1000);
+        }).catch(() => {});
+      }
     }
   }, [session?.currentQuestionIndex, session?.status]);
 
-  // Handle audio playback based on session status
+  // Handle phases based on session status
   useEffect(() => {
     if (!session) return;
-    try {
-      if (session.status === 'in_progress' || session.status === 'paused') {
-        if (victoryMusicRef.current) {
-          victoryMusicRef.current.pause();
-          victoryMusicRef.current.currentTime = 0;
-        }
-        // Play game music if it's not already playing
-        if (gameMusicRef.current && gameMusicRef.current.paused) {
-          gameMusicRef.current.play().catch(() => console.warn('Audio auto-play prevented by browser'));
-        }
-      } else if (session.status === 'completed') {
-        if (gameMusicRef.current) {
-          gameMusicRef.current.pause();
-          gameMusicRef.current.currentTime = 0;
-        }
-        if (victoryMusicRef.current && victoryMusicRef.current.paused) {
-          victoryMusicRef.current.play().catch(() => console.warn('Audio auto-play prevented by browser'));
-        }
-      } else {
-        // Lobby or other states
-        if (gameMusicRef.current) gameMusicRef.current.pause();
-        if (victoryMusicRef.current) victoryMusicRef.current.pause();
+    if (session.status === 'lobby') {
+      setPhase('lobby');
+      stopGameMusic();
+      musicStartedRef.current = false;
+    } else if (session.status === 'in_progress' || session.status === 'paused') {
+      if (!musicStartedRef.current) {
+        playGameMusic();
+        musicStartedRef.current = true;
       }
-    } catch (e) {
-      console.warn('Audio playback error', e);
+    } else if (session.status === 'completed') {
+      setPhase('completed');
+      stopGameMusic();
+      musicStartedRef.current = false;
+      playVictoryFanfare();
     }
   }, [session?.status]);
+
+  // Countdown tick sounds when <= 5 seconds
+  useEffect(() => {
+    if (phase !== 'playing') return;
+    if (displayTimeLeft > 0 && displayTimeLeft <= 5 && displayTimeLeft !== lastTickRef.current) {
+      lastTickRef.current = displayTimeLeft;
+      if (displayTimeLeft <= 3) {
+        playDramaticTick(displayTimeLeft);
+      } else {
+        playCountdownTick();
+      }
+    }
+  }, [displayTimeLeft, phase]);
+
+  // ─── Derive currentQuestionId directly from session document ───
+  const currentQuestionId = session?.status === 'in_progress' || session?.status === 'paused'
+    ? session.questionOrder?.[session.currentQuestionIndex]
+    : null;
+
+  // Metrics
+  const currentQAnswers = currentQuestionId
+    ? answers.filter(a => a.questionId === currentQuestionId)
+    : [];
+  const isCompleted = session?.status === 'completed';
+  const isPlaying = session?.status === 'in_progress';
+  const isPaused = session?.status === 'paused';
+  const isLobby = session?.status === 'lobby';
+
+  const answeredCount = isCompleted ? 0 : currentQAnswers.length;
+  const correctCount = isCompleted ? 0 : currentQAnswers.filter(a => a.isCorrect).length;
+  const waitingCount = Math.max(0, participants.length - answeredCount);
+
+  // ─── AUTO-ADVANCE: show scoreboard first, then move to next question ───
+  const doAutoAdvance = useCallback(async () => {
+    if (!sessionId || autoAdvanceRef.current) return;
+    autoAdvanceRef.current = true;
+
+    // Show scoreboard phase
+    if (timerRef.current) clearInterval(timerRef.current);
+    setPhase('scoreboard');
+
+    // Wait 5 seconds for scoreboard display, then go to next
+    setTimeout(async () => {
+      try {
+        await apiNextQuestion(sessionId);
+      } catch (e: any) {
+        console.warn('Auto-advance failed:', e.message);
+      }
+    }, 5000);
+  }, [sessionId]);
+
+  useEffect(() => {
+    if (
+      isPlaying &&
+      phase === 'playing' &&
+      participants.length > 0 &&
+      answeredCount > 0 &&
+      answeredCount >= participants.length &&
+      !autoAdvanceRef.current
+    ) {
+      const timer = setTimeout(() => {
+        doAutoAdvance();
+      }, 2000);
+      return () => clearTimeout(timer);
+    }
+  }, [isPlaying, phase, participants.length, answeredCount, doAutoAdvance]);
+
+  // Also transition to scoreboard when timer runs out
+  useEffect(() => {
+    if (phase === 'playing' && displayTimeLeft === 0 && currentQuestion && !autoAdvanceRef.current) {
+      const timer = setTimeout(() => {
+        doAutoAdvance();
+      }, 1500);
+      return () => clearTimeout(timer);
+    }
+  }, [displayTimeLeft, phase, currentQuestion, doAutoAdvance]);
 
   const doAction = async (fn: () => Promise<any>, name: string) => {
     setActionLoading(name);
@@ -124,31 +214,27 @@ const LiveSessionDashboard: React.FC = () => {
     doAction(() => apiEndQuizSession(sessionId!), 'end');
   };
 
+  const handleSkipScoreboard = () => {
+    if (!sessionId) return;
+    doAction(() => apiNextQuestion(sessionId), 'next');
+  };
+
   if (!session) return (
     <div className="flex items-center justify-center py-20">
       <div className="w-8 h-8 border-4 border-purple-200 border-t-purple-600 rounded-full animate-spin" />
     </div>
   );
 
-  const isLobby = session.status === 'lobby';
-  const isPlaying = session.status === 'in_progress';
-  const isPaused = session.status === 'paused';
-  const isCompleted = session.status === 'completed';
-
-  // Metrics Logic: ensure we capture real-time updates appropriately
-  const currentQAnswers = answers.filter(a => currentQuestion && a.questionId === currentQuestion.id);
-  const answeredCount = isCompleted ? 0 : currentQAnswers.length;
-  // Calculate correct answers by checking correctOptionIndex from the currentQuestion if a.isCorrect isn't strictly maintained
-  const correctCount = isCompleted ? 0 : currentQAnswers.filter(a => a.isCorrect).length;
-  const waitingCount = Math.max(0, participants.length - answeredCount);
+  // Sorted participants for scoreboard
+  const sortedParticipants = [...participants].sort((a, b) => b.score - a.score);
 
   return (
-    <div className="quiz-bg-image min-h-screen w-full p-4 sm:p-8 kahoot-font overflow-y-auto relative">
-      <div className="max-w-7xl mx-auto relative z-10 drop-shadow-lg flex flex-col min-h-[calc(100vh-4rem)]">
+    <div className="quiz-bg-image w-full h-screen kahoot-font overflow-hidden relative flex flex-col">
+      <div className="max-w-7xl mx-auto relative z-10 drop-shadow-lg flex flex-col h-full w-full px-4 sm:px-6 py-3">
         
-        {/* Header - Lobby State vs Playing State */}
+        {/* Header - Lobby State vs Playing/Scoreboard State */}
         {isLobby ? (
-          <div className="flex items-center justify-between mb-5">
+          <div className="flex items-center justify-between mb-3 shrink-0">
             <div className="flex items-center gap-3">
               <button onClick={() => navigate('/quiz/sessions')} className="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">
                 <ArrowLeft className="w-4 h-4 text-slate-500" />
@@ -163,9 +249,9 @@ const LiveSessionDashboard: React.FC = () => {
             </div>
           </div>
         ) : (
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 mb-3 shrink-0">
             {/* Top Left: Mini PIN Display */}
-            <div className="flex items-center gap-3 bg-white/90 dark:bg-slate-900/90 backdrop-blur-md px-4 py-2 rounded-2xl shadow-sm border border-slate-200/50 dark:border-slate-700/50">
+            <div className="flex items-center gap-3 bg-white/90 dark:bg-slate-900/90 backdrop-blur-md px-4 py-1.5 rounded-2xl shadow-sm border border-slate-200/50 dark:border-slate-700/50">
                <button onClick={() => navigate('/quiz/sessions')} className="p-1 -ml-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
                  <ArrowLeft className="w-4 h-4 text-slate-500" />
                </button>
@@ -179,7 +265,7 @@ const LiveSessionDashboard: React.FC = () => {
             
             {/* Top Right: Game Controls */}
             <div className="flex items-center gap-2">
-              {isPlaying && (
+              {isPlaying && phase !== 'scoreboard' && (
                 <>
                   <button onClick={() => doAction(() => apiPauseQuizSession(sessionId!), 'pause')} disabled={!!actionLoading}
                     className="flex items-center gap-2 px-4 py-2 rounded-xl font-bold text-white text-sm disabled:opacity-50 transition-transform active:scale-95"
@@ -193,6 +279,14 @@ const LiveSessionDashboard: React.FC = () => {
                     <SkipForward className="w-4 h-4 ml-1" />
                   </button>
                 </>
+              )}
+              {phase === 'scoreboard' && (
+                <button onClick={handleSkipScoreboard} disabled={!!actionLoading}
+                  className="flex items-center gap-2 px-6 py-2 rounded-xl font-extrabold text-white text-sm disabled:opacity-50 transition-transform active:scale-95"
+                  style={{ backgroundColor: 'var(--kahoot-blue)', boxShadow: '0 4px 0 rgba(0,0,0,0.2)' }}>
+                  {session.currentQuestionIndex + 1 >= session.totalQuestions ? t('quiz.finish', 'Finish') : t('quiz.nextQuestion', 'Next')}
+                  <SkipForward className="w-4 h-4 ml-1" />
+                </button>
               )}
               {isPaused && (
                 <button onClick={() => doAction(() => apiResumeQuizSession(sessionId!), 'resume')} disabled={!!actionLoading}
@@ -219,8 +313,8 @@ const LiveSessionDashboard: React.FC = () => {
 
         {/* LOBBY INTERFACE */}
         {isLobby && (
-          <div className="flex flex-col items-center flex-1 mt-6">
-            <div className="rounded-3xl p-10 mb-8 text-center text-white relative overflow-hidden w-full max-w-2xl shadow-2xl" style={{ background: 'linear-gradient(135deg, var(--kahoot-purple) 0%, #2f076b 100%)' }}>
+          <div className="flex flex-col items-center flex-1 overflow-auto">
+            <div className="rounded-3xl p-8 mb-6 text-center text-white relative overflow-hidden w-full max-w-2xl shadow-2xl" style={{ background: 'linear-gradient(135deg, var(--kahoot-purple) 0%, #2f076b 100%)' }}>
               <div className="absolute inset-0 opacity-10" style={{ backgroundImage: 'radial-gradient(circle at 30% 30%, rgba(255,255,255,0.2) 0%, transparent 50%), radial-gradient(circle at 70% 70%, rgba(255,255,255,0.15) 0%, transparent 50%)' }} />
               <div className="relative z-10">
                 <p className="text-base font-bold text-white/70 mb-2 uppercase tracking-[0.2em]">{t('quiz.joinCode', 'Join at BIGSHOP with PIN:')}</p>
@@ -233,7 +327,7 @@ const LiveSessionDashboard: React.FC = () => {
               </div>
             </div>
 
-            <div className="w-full flex flex-col sm:flex-row items-center justify-between mb-8 px-4 max-w-4xl gap-4">
+            <div className="w-full flex flex-col sm:flex-row items-center justify-between mb-6 px-4 max-w-4xl gap-4">
               <div className="flex items-center gap-3 bg-white/90 dark:bg-slate-800/90 backdrop-blur-md px-6 py-3 rounded-2xl shadow-sm border border-slate-200/50 dark:border-slate-700/50">
                 <Users className="w-6 h-6 text-slate-800 dark:text-white" />
                 <span className="text-2xl font-black text-slate-900 dark:text-white">{participants.length}</span>
@@ -253,7 +347,7 @@ const LiveSessionDashboard: React.FC = () => {
             </div>
 
             {/* Scattered Participants */}
-            <div className="flex flex-wrap items-center justify-center gap-3 w-full max-w-5xl px-4 pb-20">
+            <div className="flex flex-wrap items-center justify-center gap-3 w-full max-w-5xl px-4 pb-8">
               {participants.length === 0 ? (
                 <div className="mt-10 animate-pulse">
                   <span className="text-2xl font-black text-slate-600/50 dark:text-slate-400/50 uppercase tracking-widest">
@@ -279,91 +373,200 @@ const LiveSessionDashboard: React.FC = () => {
           </div>
         )}
 
-        {/* GAMEPLAY INTERFACE */}
-        {(isPlaying || isPaused) && currentQuestion && (
-          <div className="flex flex-col flex-1 pb-10">
-            {/* The Massive Question Text at the top */}
-            <div className="w-full text-center px-4 mb-6">
-              <h2 className="text-3xl md:text-5xl lg:text-6xl font-black text-slate-900 dark:text-white leading-tight drop-shadow-sm">
+        {/* GAMEPLAY INTERFACE — fits viewport, no scroll */}
+        {(isPlaying || isPaused) && phase === 'playing' && currentQuestion && (
+          <div className="flex flex-col flex-1 min-h-0">
+            {/* Question text — compact */}
+            <div className="w-full text-center px-4 mb-3 shrink-0">
+              <h2 className="text-2xl md:text-3xl lg:text-4xl font-black text-slate-900 dark:text-white leading-tight drop-shadow-sm">
                 {currentQuestion.text}
               </h2>
             </div>
 
-            {/* Main Content Area (For possible PDF/Images) */}
-            <div className="flex-1 w-full max-w-5xl mx-auto flex flex-col items-center justify-center relative">
-               {/* Progress Bar Header */}
-               <div className="w-full mb-6">
-                  <div className="w-full bg-slate-200/80 dark:bg-slate-800/80 rounded-full h-2 shadow-inner overflow-hidden">
-                    <div className="h-full rounded-full transition-all duration-700 ease-out" 
-                         style={{ width: `${((session.currentQuestionIndex + 1) / session.totalQuestions) * 100}%`, backgroundColor: 'var(--kahoot-purple)' }} />
-                  </div>
-                  <div className="flex justify-between items-center mt-2 px-2">
-                    <span className="text-xs font-bold text-slate-500 uppercase tracking-widest">
-                      {currentQuestion.type?.replace('_', ' ')}
-                    </span>
-                    <span className="text-sm font-black text-slate-700 dark:text-slate-300">
-                      {session.currentQuestionIndex + 1} of {session.totalQuestions}
-                    </span>
-                  </div>
-               </div>
+            {/* Main Content Area with PLANULA branding + Timer */}
+            <div className="flex-1 w-full max-w-6xl mx-auto flex flex-col min-h-0">
+              {/* Progress Bar */}
+              <div className="w-full mb-3 shrink-0 px-2">
+                <div className="w-full bg-slate-200/80 dark:bg-slate-800/80 rounded-full h-1.5 shadow-inner overflow-hidden">
+                  <div className="h-full rounded-full transition-all duration-700 ease-out" 
+                       style={{ width: `${((session.currentQuestionIndex + 1) / session.totalQuestions) * 100}%`, backgroundColor: 'var(--kahoot-purple)' }} />
+                </div>
+                <div className="flex justify-between items-center mt-1 px-1">
+                  <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">
+                    {currentQuestion.type?.replace('_', ' ')}
+                  </span>
+                  <span className="text-xs font-black text-slate-700 dark:text-slate-300">
+                    {session.currentQuestionIndex + 1} / {session.totalQuestions}
+                  </span>
+                </div>
+              </div>
 
-               {/* Stats Cards Row directly below center */}
-               <div className="grid grid-cols-3 gap-4 w-full max-w-3xl mt-auto">
-                  <div className="flex flex-col items-center justify-center p-4 rounded-3xl bg-white/90 dark:bg-slate-900/90 backdrop-blur-md border border-slate-200/50 dark:border-slate-800/50 shadow-sm transform transition-all hover:scale-105">
-                    <p className="text-5xl font-black" style={{ color: 'var(--kahoot-blue)' }}>{answeredCount}</p>
-                    <p className="text-xs font-bold text-slate-500 uppercase tracking-widest mt-2">{t('quiz.answered', 'Ответили')}</p>
-                  </div>
-                  <div className="flex flex-col items-center justify-center p-4 rounded-3xl bg-white/90 dark:bg-slate-900/90 backdrop-blur-md border border-slate-200/50 dark:border-slate-800/50 shadow-sm transform transition-all hover:scale-105">
-                    <p className="text-5xl font-black" style={{ color: 'var(--kahoot-green)' }}>{correctCount}</p>
-                    <p className="text-xs font-bold text-slate-500 uppercase tracking-widest mt-2">{t('quiz.correct', 'Правильно')}</p>
-                  </div>
-                  <div className="flex flex-col items-center justify-center p-4 rounded-3xl bg-white/90 dark:bg-slate-900/90 backdrop-blur-md border border-slate-200/50 dark:border-slate-800/50 shadow-sm transform transition-all hover:scale-105">
-                     <p className="text-5xl font-black" style={{ color: 'var(--kahoot-yellow)' }}>{waitingCount}</p>
-                     <p className="text-xs font-bold text-slate-500 uppercase tracking-widest mt-2">{t('quiz.waiting', 'Ожидают')}</p>
-                  </div>
+              {/* ═══════ CENTRAL AREA: Planula! branding + Big Timer ═══════ */}
+              <div className="flex-1 flex flex-col items-center justify-center gap-4 py-4">
+                {/* Planula! Brand Logo */}
+                <div className="planula-brand-container">
+                  <h1 className="planula-brand-text">
+                    Planula<span className="planula-exclamation">!</span>
+                  </h1>
+                  <div className="planula-brand-glow" />
                 </div>
 
-                {/* Redesigned Mini-Cards for Participants Standings */}
-                <div className="w-full mt-10">
-                   <h3 className="text-sm font-bold text-slate-700 dark:text-slate-300 uppercase tracking-widest mb-4 px-2 flex items-center gap-2">
-                     <Award className="w-5 h-5" style={{ color: 'var(--kahoot-purple)' }} /> 
-                     {t('quiz.leaderboard', 'Top Standings')}
-                   </h3>
-                   <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
-                      {participants.slice(0, 6).map((p, i) => (
-                        <div key={p.participantId} className="flex items-center justify-between bg-white dark:bg-slate-800 p-3 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 animate-in fade-in slide-in-from-bottom duration-500" style={{ animationDelay: `${i * 100}ms` }}>
-                           <div className="flex items-center gap-3 truncate">
-                              <span className={`flex items-center justify-center w-8 h-8 rounded-full text-sm font-black text-white ${i === 0 ? 'bg-yellow-400' : i === 1 ? 'bg-slate-300' : i === 2 ? 'bg-orange-400' : 'bg-slate-800 dark:bg-slate-600'}`}>
-                                {i + 1}
-                              </span>
-                              <span className="font-bold text-slate-900 dark:text-white truncate lg:max-w-[120px]">{p.participantName}</span>
-                           </div>
-                           <div className="flex flex-col items-end shrink-0">
-                              <span className="text-sm font-black" style={{ color: 'var(--kahoot-purple)' }}>{p.score}</span>
-                              {p.streakCurrent > 2 && (
-                                <span className="text-[10px] font-bold text-orange-500 flex items-center gap-0.5"><Zap className="w-2.5 h-2.5" />{p.streakCurrent}</span>
-                              )}
-                           </div>
-                        </div>
-                      ))}
-                   </div>
+                {/* Big Timer Display */}
+                <div className={`planula-timer-display ${displayTimeLeft <= 5 ? 'danger' : ''} ${displayTimeLeft <= 3 ? 'critical' : ''}`}>
+                  <Timer className="w-8 h-8 opacity-60" />
+                  <span className="planula-timer-number">{displayTimeLeft}</span>
+                  <span className="planula-timer-label">сек</span>
                 </div>
+              </div>
+
+              {/* Top Section: Participants Standings */}
+              <div className="w-full mb-3 shrink-0 px-2">
+                <h3 className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-widest mb-2 flex items-center gap-2">
+                  <Award className="w-4 h-4" style={{ color: 'var(--kahoot-purple)' }} /> 
+                  {t('quiz.leaderboard', 'Top Standings')}
+                </h3>
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2">
+                  {participants.slice(0, 6).map((p, i) => (
+                    <div key={p.participantId} className="flex items-center justify-between bg-white dark:bg-slate-800 px-3 py-2 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 animate-in fade-in slide-in-from-bottom duration-500" style={{ animationDelay: `${i * 80}ms` }}>
+                      <div className="flex items-center gap-2 truncate">
+                        <span className={`flex items-center justify-center w-6 h-6 rounded-full text-[10px] font-black text-white shrink-0 ${i === 0 ? 'bg-yellow-400' : i === 1 ? 'bg-slate-300' : i === 2 ? 'bg-orange-400' : 'bg-slate-800 dark:bg-slate-600'}`}>
+                          {i + 1}
+                        </span>
+                        <span className="font-bold text-sm text-slate-900 dark:text-white truncate">{p.participantName}</span>
+                      </div>
+                      <div className="flex flex-col items-end shrink-0 ml-2">
+                        <span className="text-xs font-black" style={{ color: 'var(--kahoot-purple)' }}>{p.score}</span>
+                        {p.streakCurrent > 2 && (
+                          <span className="text-[9px] font-bold text-orange-500 flex items-center gap-0.5"><Zap className="w-2 h-2" />{p.streakCurrent}</span>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Stats Cards Row — compact, always visible */}
+              <div className="grid grid-cols-3 gap-3 w-full max-w-3xl mx-auto mt-auto mb-3 shrink-0">
+                <div className="flex flex-col items-center justify-center p-3 rounded-2xl bg-white/90 dark:bg-slate-900/90 backdrop-blur-md border border-slate-200/50 dark:border-slate-800/50 shadow-sm transform transition-all hover:scale-105">
+                  <p className="text-4xl font-black" style={{ color: 'var(--kahoot-blue)' }}>{answeredCount}</p>
+                  <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-1">{t('quiz.answered', 'Ответили')}</p>
+                </div>
+                <div className="flex flex-col items-center justify-center p-3 rounded-2xl bg-white/90 dark:bg-slate-900/90 backdrop-blur-md border border-slate-200/50 dark:border-slate-800/50 shadow-sm transform transition-all hover:scale-105">
+                  <p className="text-4xl font-black" style={{ color: 'var(--kahoot-green)' }}>{correctCount}</p>
+                  <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-1">{t('quiz.correct', 'Правильно')}</p>
+                </div>
+                <div className="flex flex-col items-center justify-center p-3 rounded-2xl bg-white/90 dark:bg-slate-900/90 backdrop-blur-md border border-slate-200/50 dark:border-slate-800/50 shadow-sm transform transition-all hover:scale-105">
+                  <p className="text-4xl font-black" style={{ color: 'var(--kahoot-yellow)' }}>{waitingCount}</p>
+                  <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-1">{t('quiz.waiting', 'Ожидают')}</p>
+                </div>
+              </div>
+
+              {/* Auto-advance indicator */}
+              {isPlaying && participants.length > 0 && answeredCount >= participants.length && (
+                <div className="text-center mb-2 shrink-0 animate-pulse">
+                  <span className="text-sm font-bold text-white bg-green-500/80 px-4 py-1.5 rounded-full">
+                    ✓ {t('quiz.allAnswered', 'Все ответили — переключение...')}
+                  </span>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* ═══════ SCOREBOARD PHASE — After each question ═══════ */}
+        {(isPlaying || isPaused) && phase === 'scoreboard' && (
+          <div className="flex flex-col items-center flex-1 overflow-auto animate-fade-in py-4">
+            <div className="text-center mb-6" style={{ animation: 'kahoot-slide-up 0.5s ease-out' }}>
+              <h2 className="text-3xl md:text-4xl font-black text-slate-900 dark:text-white mb-2 flex items-center justify-center gap-3">
+                <Trophy className="w-8 h-8 text-yellow-500" />
+                {t('quiz.scoreboard', 'Итоги раунда')}
+              </h2>
+              <p className="text-sm text-slate-500 dark:text-slate-400 font-bold">
+                {t('quiz.questionN', 'Вопрос')} {session.currentQuestionIndex + 1} / {session.totalQuestions}
+              </p>
+            </div>
+
+            {/* Scoreboard podium for top 3 */}
+            {sortedParticipants.length >= 1 && (
+              <div className="kahoot-podium-container py-4 max-w-3xl w-full mb-4">
+                {sortedParticipants.length >= 2 && (
+                  <div className="kahoot-podium-block">
+                    <p className="text-lg font-bold text-slate-900 dark:text-white truncate max-w-[120px] mb-2">{sortedParticipants[1]?.participantName}</p>
+                    <p className="text-sm text-slate-500 font-black mb-2">{sortedParticipants[1]?.score} pts</p>
+                    <div className="kahoot-podium-bar silver !rounded-t-3xl shadow-lg border border-slate-200 dark:border-slate-700">
+                      <span className="text-4xl mt-4">🥈</span>
+                      <span className="font-extrabold text-2xl mt-2 text-slate-700">2</span>
+                    </div>
+                  </div>
+                )}
+                <div className="kahoot-podium-block z-10">
+                  <p className="text-2xl font-black text-slate-900 dark:text-white truncate max-w-[150px] mb-2">{sortedParticipants[0]?.participantName}</p>
+                  <p className="text-base text-yellow-600 dark:text-yellow-400 font-black mb-2">{sortedParticipants[0]?.score} pts</p>
+                  <div className="kahoot-podium-bar gold !rounded-t-3xl shadow-xl border border-yellow-400">
+                    <span className="text-5xl mt-4 drop-shadow-md">🥇</span>
+                    <span className="font-extrabold text-4xl mt-2 text-yellow-900">1</span>
+                  </div>
+                </div>
+                {sortedParticipants.length >= 3 && (
+                  <div className="kahoot-podium-block">
+                    <p className="text-lg font-bold text-slate-900 dark:text-white truncate max-w-[120px] mb-2">{sortedParticipants[2]?.participantName}</p>
+                    <p className="text-sm text-slate-500 font-black mb-2">{sortedParticipants[2]?.score} pts</p>
+                    <div className="kahoot-podium-bar bronze !rounded-t-3xl shadow-lg border border-orange-200">
+                      <span className="text-4xl mt-4">🥉</span>
+                      <span className="font-extrabold text-2xl mt-2 text-orange-900">3</span>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Full scoreboard list */}
+            <div className="w-full max-w-2xl bg-white/90 dark:bg-slate-900/90 backdrop-blur-md rounded-2xl border border-slate-200/50 dark:border-slate-700/50 overflow-hidden shadow-lg">
+              <div className="px-5 py-3 border-b border-slate-200/50 dark:border-slate-700/50 flex items-center gap-2">
+                <BarChart3 className="w-4 h-4" style={{ color: 'var(--kahoot-purple)' }} />
+                <h3 className="text-sm font-bold text-slate-700 dark:text-slate-300 uppercase tracking-widest">{t('quiz.standings', 'Таблица лидеров')}</h3>
+              </div>
+              <div className="max-h-64 overflow-y-auto">
+                {sortedParticipants.map((p, i) => (
+                  <div key={p.participantId} className="flex items-center gap-3 px-5 py-3 border-b border-slate-100 dark:border-slate-800 last:border-b-0 transition-all hover:bg-slate-50 dark:hover:bg-slate-800/50"
+                       style={{ animation: 'kahoot-slide-up 0.3s ease-out', animationDelay: `${i * 60}ms`, animationFillMode: 'both' }}>
+                    <span className={`flex items-center justify-center w-8 h-8 rounded-full text-xs font-black text-white shrink-0 ${
+                      i === 0 ? 'bg-yellow-400' : i === 1 ? 'bg-slate-300 text-slate-700' : i === 2 ? 'bg-orange-400' : 'bg-slate-600'
+                    }`}>
+                      {i + 1}
+                    </span>
+                    <span className="flex-1 font-bold text-slate-900 dark:text-white truncate">{p.participantName}</span>
+                    <div className="flex items-center gap-3 shrink-0">
+                      <span className="text-xs font-bold text-green-600">{p.correctCount || 0} ✓</span>
+                      {p.streakCurrent > 1 && <span className="text-xs font-bold text-orange-500 flex items-center gap-0.5"><Zap className="w-3 h-3" />{p.streakCurrent}</span>}
+                      <span className="font-black text-lg" style={{ color: 'var(--kahoot-purple)' }}>{p.score}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Next question countdown */}
+            <div className="mt-4 text-center animate-pulse">
+              <span className="text-sm font-bold text-slate-500 dark:text-slate-400">
+                ⏳ {t('quiz.nextQuestionSoon', 'Следующий вопрос через несколько секунд...')}
+              </span>
             </div>
           </div>
         )}
 
         {/* RESULTS INTERFACE */}
         {isCompleted && participants.length > 0 && (
-          <div className="flex flex-col items-center flex-1 mt-10 animate-fade-in pb-16">
-            <h2 className="text-4xl font-black text-slate-900 dark:text-white mb-10 flex items-center gap-4">
-               <Trophy className="w-10 h-10 text-yellow-500" /> {t('quiz.finalResults', 'Final Results')}
+          <div className="flex flex-col items-center flex-1 overflow-auto animate-fade-in py-4">
+            <h2 className="text-3xl font-black text-slate-900 dark:text-white mb-6 flex items-center gap-4">
+               <Trophy className="w-8 h-8 text-yellow-500" /> {t('quiz.finalResults', 'Final Results')}
             </h2>
             
-            <div className="kahoot-podium-container py-8 max-w-3xl w-full">
-              {participants.length >= 2 && (
+            <div className="kahoot-podium-container py-6 max-w-3xl w-full">
+              {sortedParticipants.length >= 2 && (
                 <div className="kahoot-podium-block">
-                  <p className="text-lg font-bold text-slate-900 dark:text-white truncate max-w-[120px] mb-2">{participants[1]?.participantName}</p>
-                  <p className="text-sm text-slate-500 font-black mb-2">{participants[1]?.score} pts</p>
+                  <p className="text-lg font-bold text-slate-900 dark:text-white truncate max-w-[120px] mb-2">{sortedParticipants[1]?.participantName}</p>
+                  <p className="text-sm text-slate-500 font-black mb-2">{sortedParticipants[1]?.score} pts</p>
                   <div className="kahoot-podium-bar silver !rounded-t-3xl shadow-lg border border-slate-200 dark:border-slate-700">
                     <span className="text-4xl mt-4">🥈</span>
                     <span className="font-extrabold text-2xl mt-2 text-slate-700">2</span>
@@ -371,17 +574,17 @@ const LiveSessionDashboard: React.FC = () => {
                 </div>
               )}
               <div className="kahoot-podium-block z-10">
-                <p className="text-2xl font-black text-slate-900 dark:text-white truncate max-w-[150px] mb-2">{participants[0]?.participantName}</p>
-                <p className="text-base text-yellow-600 dark:text-yellow-400 font-black mb-2">{participants[0]?.score} pts</p>
+                <p className="text-2xl font-black text-slate-900 dark:text-white truncate max-w-[150px] mb-2">{sortedParticipants[0]?.participantName}</p>
+                <p className="text-base text-yellow-600 dark:text-yellow-400 font-black mb-2">{sortedParticipants[0]?.score} pts</p>
                 <div className="kahoot-podium-bar gold !rounded-t-3xl shadow-xl border border-yellow-400">
                   <span className="text-5xl mt-4 drop-shadow-md">🥇</span>
                   <span className="font-extrabold text-4xl mt-2 text-yellow-900">1</span>
                 </div>
               </div>
-              {participants.length >= 3 && (
+              {sortedParticipants.length >= 3 && (
                 <div className="kahoot-podium-block">
-                  <p className="text-lg font-bold text-slate-900 dark:text-white truncate max-w-[120px] mb-2">{participants[2]?.participantName}</p>
-                  <p className="text-sm text-slate-500 font-black mb-2">{participants[2]?.score} pts</p>
+                  <p className="text-lg font-bold text-slate-900 dark:text-white truncate max-w-[120px] mb-2">{sortedParticipants[2]?.participantName}</p>
+                  <p className="text-sm text-slate-500 font-black mb-2">{sortedParticipants[2]?.score} pts</p>
                   <div className="kahoot-podium-bar bronze !rounded-t-3xl shadow-lg border border-orange-200">
                     <span className="text-4xl mt-4">🥉</span>
                     <span className="font-extrabold text-2xl mt-2 text-orange-900">3</span>
@@ -391,7 +594,7 @@ const LiveSessionDashboard: React.FC = () => {
             </div>
 
             <button onClick={() => doAction(() => apiRestartQuizSession(sessionId!), 'restart')} disabled={!!actionLoading}
-              className="mt-12 flex items-center gap-3 px-8 py-4 rounded-2xl font-black text-white text-xl transition-all shadow-xl active:scale-95"
+              className="mt-8 flex items-center gap-3 px-8 py-4 rounded-2xl font-black text-white text-xl transition-all shadow-xl active:scale-95"
               style={{ backgroundColor: 'var(--kahoot-purple)' }}>
               <RefreshCw className="w-6 h-6" /> {t('quiz.restart', 'Play Again')}
             </button>

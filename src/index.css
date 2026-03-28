@@ -1,5 +1,6 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
 @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800;900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Pacifico&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -374,6 +375,130 @@
 @keyframes kahoot-lobby-float {
   0%, 100% { transform: translateY(0); }
   50% { transform: translateY(-8px); }
+}
+
+/* ═══════ PLANULA! BRAND TEXT ═══════ */
+
+.planula-brand-container {
+  position: relative;
+  text-align: center;
+  user-select: none;
+}
+
+.planula-brand-text {
+  font-family: 'Pacifico', cursive;
+  font-size: clamp(3rem, 8vw, 7rem);
+  font-weight: 400;
+  background: linear-gradient(135deg, #a855f7 0%, #ec4899 30%, #f97316 60%, #eab308 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  filter: drop-shadow(0 4px 12px rgba(168, 85, 247, 0.3));
+  letter-spacing: 0.02em;
+  line-height: 1.2;
+  animation: planula-shimmer 3s ease-in-out infinite alternate;
+}
+
+.planula-exclamation {
+  display: inline-block;
+  animation: planula-bounce 2s ease-in-out infinite;
+}
+
+.planula-brand-glow {
+  position: absolute;
+  inset: -20%;
+  background: radial-gradient(circle, rgba(168, 85, 247, 0.08) 0%, transparent 70%);
+  pointer-events: none;
+  animation: planula-glow-pulse 4s ease-in-out infinite alternate;
+}
+
+@keyframes planula-shimmer {
+  0% { filter: drop-shadow(0 4px 12px rgba(168, 85, 247, 0.3)) brightness(1); }
+  100% { filter: drop-shadow(0 4px 20px rgba(236, 72, 153, 0.4)) brightness(1.05); }
+}
+
+@keyframes planula-bounce {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  25% { transform: translateY(-6px) rotate(5deg); }
+  75% { transform: translateY(2px) rotate(-2deg); }
+}
+
+@keyframes planula-glow-pulse {
+  0% { opacity: 0.5; transform: scale(1); }
+  100% { opacity: 1; transform: scale(1.1); }
+}
+
+/* ═══════ LIVE TIMER DISPLAY ═══════ */
+
+.planula-timer-display {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 32px;
+  border-radius: 24px;
+  background: rgba(255, 255, 255, 0.9);
+  backdrop-filter: blur(12px);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+  border: 2px solid rgba(70, 23, 143, 0.15);
+  color: var(--kahoot-purple);
+  transition: all 0.3s ease;
+}
+
+.planula-timer-number {
+  font-family: 'Montserrat', sans-serif;
+  font-size: 3rem;
+  font-weight: 900;
+  line-height: 1;
+  min-width: 80px;
+  text-align: center;
+}
+
+.planula-timer-label {
+  font-family: 'Montserrat', sans-serif;
+  font-size: 0.9rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  opacity: 0.6;
+}
+
+.planula-timer-display.danger {
+  background: rgba(226, 27, 60, 0.1);
+  border-color: rgba(226, 27, 60, 0.4);
+  color: var(--kahoot-red);
+  animation: timer-pulse 0.5s ease-in-out infinite alternate;
+}
+
+.planula-timer-display.critical {
+  background: rgba(226, 27, 60, 0.2);
+  border-color: var(--kahoot-red);
+  animation: timer-shake 0.3s ease-in-out infinite;
+  box-shadow: 0 0 30px rgba(226, 27, 60, 0.3);
+}
+
+.dark .planula-timer-display {
+  background: rgba(15, 23, 42, 0.9);
+  border-color: rgba(108, 52, 178, 0.3);
+}
+
+.dark .planula-timer-display.danger {
+  background: rgba(226, 27, 60, 0.15);
+}
+
+@keyframes timer-pulse {
+  0% { transform: scale(1); }
+  100% { transform: scale(1.05); }
+}
+
+@keyframes timer-shake {
+  0%, 100% { transform: translateX(0) scale(1.05); }
+  25% { transform: translateX(-3px) scale(1.05); }
+  75% { transform: translateX(3px) scale(1.05); }
+}
+
+/* Scoreboard fade-in */
+.animate-fade-in {
+  animation: kahoot-fade-in 0.4s ease-out;
 }
 
 @layer base {

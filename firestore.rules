@@ -104,7 +104,7 @@ service cloud.firestore {
         allow write: if isSuperAdmin();
       }
       match /answers/{answerId} {
-        allow read: if isSuperAdmin() || (request.auth != null && resource.data.studentId == request.auth.uid);
+        allow read: if isSuperAdmin() || hasOrgAccess(get(/databases/$(database)/documents/quizSessions/$(sessionId)).data.organizationId);
         allow write: if isSuperAdmin(); // Created via backend
       }
     }

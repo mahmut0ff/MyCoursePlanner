@@ -106,16 +106,42 @@ const handler: Handler = async (event: HandlerEvent) => {
       if (!doc.exists) return notFound('Organization not found');
       const org = { id: doc.id, ...doc.data() };
 
-      // Get usage stats
-      const [usersSnap, lessonsSnap, examsSnap, roomsSnap, attemptsSnap, subSnap, notesSnap] = await Promise.all([
+      // Get usage stats — orgNotes may fail without composite index, so handle gracefully
+      const [usersSnap, lessonsSnap, examsSnap, roomsSnap, attemptsSnap, subSnap] = await Promise.all([
         adminDb.collection('users').where('organizationId', '==', id).get(),
         adminDb.collection('lessonPlans').where('organizationId', '==', id).get(),
         adminDb.collection('exams').where('organizationId', '==', id).get(),
         adminDb.collection('examRooms').where('organizationId', '==', id).get(),
         adminDb.collection('examAttempts').where('organizationId', '==', id).get(),
         adminDb.collection('subscriptions').where('organizationId', '==', id).limit(1).get(),
-        adminDb.collection('orgNotes').where('organizationId', '==', id).orderBy('createdAt', 'desc').limit(20).get(),
       ]);
+
+      // Notes query uses composite index (where + orderBy) — may not exist yet
+      let notesDocs: any[] = [];
+      try {
+        const notesSnap = await adminDb.collection('orgNotes').where('organizationId', '==', id).orderBy('createdAt', 'desc').limit(20).get();
+        notesDocs = notesSnap.docs;
+      } catch (e) {
+        // Fallback: try without orderBy
+        try {
+          const notesSnap = await adminDb.collection('orgNotes').where('organizationId', '==', id).limit(20).get();
+          notesDocs = notesSnap.docs;
+        } catch { /* ignore — notes are non-critical */ }
+      }
+
+      // Also count via memberships for more accurate counts
+      let memberCounts = { students: 0, teachers: 0, admins: 0, totalUsers: 0 };
+      try {
+        const membersSnap = await adminDb.collection('memberships')
+          .where('organizationId', '==', id)
+          .where('status', '==', 'active')
+          .get();
+        const members = membersSnap.docs.map(d => d.data() as any);
+        memberCounts.students = members.filter(m => m.role === 'student').length;
+        memberCounts.teachers = members.filter(m => m.role === 'teacher').length;
+        memberCounts.admins = members.filter(m => ['admin', 'owner', 'manager'].includes(m.role)).length;
+        memberCounts.totalUsers = membersSnap.size;
+      } catch { /* fallback to users collection counts below */ }
 
       const users = usersSnap.docs.map(d => ({ uid: d.id, ...d.data() }));
       const subscription = subSnap.empty ? null : { id: subSnap.docs[0].id, ...subSnap.docs[0].data() };
@@ -123,10 +149,10 @@ const handler: Handler = async (event: HandlerEvent) => {
       return ok({
         ...org,
         usage: {
-          totalUsers: usersSnap.size,
-          students: users.filter((u: any) => u.role === 'student').length,
-          teachers: users.filter((u: any) => u.role === 'teacher').length,
-          admins: users.filter((u: any) => u.role === 'admin').length,
+          totalUsers: memberCounts.totalUsers || usersSnap.size,
+          students: memberCounts.students || users.filter((u: any) => u.role === 'student').length,
+          teachers: memberCounts.teachers || users.filter((u: any) => u.role === 'teacher').length,
+          admins: memberCounts.admins || users.filter((u: any) => u.role === 'admin').length,
           lessons: lessonsSnap.size,
           exams: examsSnap.size,
           rooms: roomsSnap.size,
@@ -134,7 +160,7 @@ const handler: Handler = async (event: HandlerEvent) => {
         },
         users: users.slice(0, 20),
         subscription,
-        notes: notesSnap.docs.map(d => ({ id: d.id, ...d.data() })),
+        notes: notesDocs.map(d => ({ id: d.id, ...d.data() })),
       });
     }
 

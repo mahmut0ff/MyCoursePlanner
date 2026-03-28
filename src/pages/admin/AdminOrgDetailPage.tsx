@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { adminGetOrg, adminSuspendOrg, adminActivateOrg, adminDeleteOrg, adminAddOrgNote, adminChangePlan, adminGiftPlan } from '../../lib/api';
 import { ArrowLeft, Building2, Ban, RotateCcw, Trash2, Calendar, MessageSquare, Gift } from 'lucide-react';
+import toast from 'react-hot-toast';
 
 const PLAN_COLORS: Record<string, string> = { starter: 'bg-blue-100 text-blue-800', professional: 'bg-violet-100 text-violet-800', enterprise: 'bg-amber-100 text-amber-800' };
 const STATUS_COLORS: Record<string, string> = { active: 'bg-emerald-100 text-emerald-700', suspended: 'bg-red-100 text-red-700', trial: 'bg-amber-100 text-amber-700', deleted: 'bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400' };
@@ -19,16 +20,16 @@ const AdminOrgDetailPage: React.FC = () => {
   const load = async () => {
     if (!id) return;
     setLoading(true);
-    try { setOrg(await adminGetOrg(id)); } catch (e) { console.error(e); }
+    try { setOrg(await adminGetOrg(id)); } catch (e: any) { console.error(e); toast.error(e.message || 'Ошибка загрузки организации'); }
     finally { setLoading(false); }
   };
   useEffect(() => { load(); }, [id]);
 
-  const handleSuspend = async () => { if (!confirm(t('admin.orgs.confirmSuspend'))) return; await adminSuspendOrg(id!); load(); };
-  const handleActivate = async () => { await adminActivateOrg(id!); load(); };
-  const handleDelete = async () => { if (!confirm(t('admin.orgs.confirmDelete'))) return; await adminDeleteOrg(id!); navigate('/admin/organizations'); };
-  const handleChangePlan = async (planId: string) => { await adminChangePlan(id!, planId); load(); };
-  const handleAddNote = async () => { if (!noteText.trim() || !id) return; await adminAddOrgNote(id, noteText); setNoteText(''); load(); };
+  const handleSuspend = async () => { if (!confirm(t('admin.orgs.confirmSuspend'))) return; try { await adminSuspendOrg(id!); toast.success('Организация приостановлена'); load(); } catch (e: any) { toast.error(e.message || 'Ошибка'); } };
+  const handleActivate = async () => { try { await adminActivateOrg(id!); toast.success('Организация активирована'); load(); } catch (e: any) { toast.error(e.message || 'Ошибка'); } };
+  const handleDelete = async () => { if (!confirm(t('admin.orgs.confirmDelete'))) return; try { await adminDeleteOrg(id!); toast.success('Организация удалена'); navigate('/admin/organizations'); } catch (e: any) { toast.error(e.message || 'Ошибка'); } };
+  const handleChangePlan = async (planId: string) => { try { await adminChangePlan(id!, planId); toast.success(`Тариф изменён на ${planId}`); load(); } catch (e: any) { toast.error(e.message || 'Ошибка'); } };
+  const handleAddNote = async () => { if (!noteText.trim() || !id) return; try { await adminAddOrgNote(id, noteText); setNoteText(''); toast.success('Заметка добавлена'); load(); } catch (e: any) { toast.error(e.message || 'Ошибка'); } };
   const handleGiftPlan = async (planId: string) => {
     if (!confirm(`Подарить тариф «${planId}» бесплатно для организации «${org?.name}»?`)) return;
     setGiftingPlan(planId);

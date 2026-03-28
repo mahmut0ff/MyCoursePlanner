@@ -11,24 +11,28 @@ import { formatDate } from '../../utils/grading';
 import { BookOpen, ClipboardList, Radio, Users, TrendingUp, ArrowRight, Plus, Sparkles, GitBranch, MapPin } from 'lucide-react';
 import { DashboardSkeleton } from '../../components/ui/Skeleton';
 import OnboardingWizard, { useOnboardingProgress } from '../../components/onboarding/OnboardingWizard';
-import { apiGetBranchAnalytics } from '../../lib/api';
+import { apiGetBranchAnalytics, apiGetOrganization } from '../../lib/api';
 
 const AdminDashboard: React.FC = () => {
   const { t } = useTranslation();
-  const { profile } = useAuth();
+  const { profile, organizationId } = useAuth();
   const [lessons, setLessons] = useState<LessonPlan[]>([]);
   const [exams, setExams] = useState<Exam[]>([]);
   const [rooms, setRooms] = useState<ExamRoom[]>([]);
   const [attempts, setAttempts] = useState<ExamAttempt[]>([]);
   const [loading, setLoading] = useState(true);
   const [branchData, setBranchData] = useState<any>(null);
+  const [orgData, setOrgData] = useState<any>(null);
 
   useEffect(() => {
     Promise.all([getLessonPlans(), getExams(), getActiveRooms(), getAllAttempts()])
       .then(([l, e, r, a]) => { setLessons(l); setExams(e); setRooms(r); setAttempts(a); })
       .finally(() => setLoading(false));
-    // Load branch analytics in parallel
+    // Load branch analytics + org data in parallel
     apiGetBranchAnalytics().then(setBranchData).catch(() => {});
+    if (organizationId) {
+      apiGetOrganization(organizationId).then(setOrgData).catch(() => {});
+    }
   }, []);
 
   if (loading) return <DashboardSkeleton />;
@@ -45,7 +49,14 @@ const AdminDashboard: React.FC = () => {
   const hour = new Date().getHours();
   const greeting = hour < 12 ? '🌅 ' + t('dashboard.goodMorning', 'Доброе утро') : hour < 18 ? '☀️ ' + t('dashboard.goodAfternoon', 'Добрый день') : '🌙 ' + t('dashboard.goodEvening', 'Добрый вечер');
 
-  const onboarding = useOnboardingProgress({ lessonsCount: lessons.length, examsCount: exams.length });
+  const onboardingProps = {
+    lessonsCount: lessons.length,
+    examsCount: exams.length,
+    studentsCount: orgData?.studentsCount || 0,
+    teachersCount: orgData?.teachersCount || 0,
+    orgCreatedAt: orgData?.createdAt || profile?.createdAt,
+  };
+  const onboarding = useOnboardingProgress(onboardingProps);
 
   return (
     <div className="space-y-6">
@@ -70,7 +81,7 @@ const AdminDashboard: React.FC = () => {
           </div>
 
           {/* Onboarding progress row (shown only if not all steps done) */}
-          {!onboarding.allDone && (
+          {onboarding.visible && (
             <div className="border-t border-white/15 pt-4">
               <div className="flex items-center gap-2 mb-2">
                 <Sparkles className="w-4 h-4 text-amber-300" />
@@ -90,7 +101,7 @@ const AdminDashboard: React.FC = () => {
       </div>
 
       {/* Onboarding step cards */}
-      <OnboardingWizard lessonsCount={lessons.length} examsCount={exams.length} />
+      <OnboardingWizard {...onboardingProps} />
 
       {/* ═══ Stat Cards ═══ */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">

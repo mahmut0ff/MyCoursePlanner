@@ -6,7 +6,7 @@ import { subscribeToSession, subscribeToParticipants } from '../../services/quiz
 import { apiGetQuizSession, apiSubmitQuizAnswer, apiJoinQuizSession } from '../../lib/api';
 import type { QuizSession, SessionParticipant } from '../../types';
 import {
-  Trophy, Users, Zap, CheckCircle, XCircle, Clock, Star,
+  Trophy, Users, Zap, CheckCircle, XCircle, Star,
   Loader2, Gamepad2, ArrowLeft
 } from 'lucide-react';
 

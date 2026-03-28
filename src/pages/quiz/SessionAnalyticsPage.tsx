@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { apiGetQuizSessionAnalytics } from '../../lib/api';
+import { apiGetSessionAnalytics } from '../../lib/api';
 import {
   BarChart3, Users, Trophy, CheckCircle, Clock, ArrowLeft,
   Zap, Target, Medal, Gamepad2
@@ -16,7 +16,7 @@ const SessionAnalyticsPage: React.FC = () => {
 
   useEffect(() => {
     if (id) {
-      apiGetQuizSessionAnalytics(id)
+      apiGetSessionAnalytics(id)
         .then(setAnalytics)
         .catch(() => {})
         .finally(() => setLoading(false));

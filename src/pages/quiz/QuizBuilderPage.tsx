@@ -7,10 +7,13 @@ import type { Quiz, QuizQuestion, QuizQuestionType, QuizDifficulty } from '../..
 import {
   ArrowLeft, Save, Plus, Trash2, GripVertical,
   CheckCircle, Circle, Sparkles,
-  ChevronDown, ChevronUp, Copy, Settings, Clock
+  ChevronDown, ChevronUp, Copy, Settings, Clock,
+  Upload, Maximize2, FileText
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { AIGeneratorModal } from '../../components/ui/AIGeneratorModal';
+import FileViewerModal from '../../components/ui/FileViewerModal';
+import { uploadFile } from '../../services/storage.service';
 
 const QUESTION_TYPES: { type: QuizQuestionType; label: string; icon: string }[] = [
   { type: 'single_choice', label: 'Single Choice', icon: '🔘' },
@@ -75,6 +78,34 @@ const QuizBuilderPage: React.FC = () => {
   const [showAIGen, setShowAIGen] = useState(false);
   const [tagInput, setTagInput] = useState('');
   const [dragIndex, setDragIndex] = useState<number | null>(null);
+  const [uploadingMedia, setUploadingMedia] = useState(false);
+  const [previewFile, setPreviewFile] = useState<{name: string, url: string, type: string} | null>(null);
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!id) {
+      toast.error(t('quiz.saveFirstToUpload', 'Please save the quiz first to enable file uploads'));
+      return;
+    }
+    setUploadingMedia(true);
+    try {
+      const ext = file.name.split('.').pop() || 'tmp';
+      const path = `quizzes/${id}/media/${Date.now()}-${generateId()}.${ext}`;
+      const url = await uploadFile(path, file);
+      
+      const mediaType = 
+        file.type.startsWith('image/') ? 'image' : 
+        file.type.startsWith('audio/') ? 'audio' : 'pdf';
+      updateQuestion(activeQuestion, { mediaUrl: url, mediaType: mediaType as any });
+      toast.success(t('common.uploadSuccess', 'File uploaded successfully'));
+    } catch (err: any) {
+      toast.error(err.message || t('common.error'));
+    } finally {
+      setUploadingMedia(false);
+      e.target.value = '';
+    }
+  };
 
   const handleAIGenerateSuccess = (data: any[]) => {
     const startOrder = questions.length;
@@ -384,10 +415,66 @@ const QuizBuilderPage: React.FC = () => {
 
               {/* Media */}
               {['image_question', 'audio_question', 'pdf_question'].includes(currentQ.type) && (
-                <div className="mt-3">
-                  <input value={currentQ.mediaUrl || ''} onChange={e => updateQuestion(activeQuestion, { mediaUrl: e.target.value, mediaType: currentQ.type === 'image_question' ? 'image' : currentQ.type === 'audio_question' ? 'audio' : 'pdf' })} placeholder="https://..." className="input text-xs w-full" />
-                  {currentQ.mediaUrl && currentQ.type === 'image_question' && <img src={currentQ.mediaUrl} alt="" className="mt-2 max-h-32 rounded-lg mx-auto" />}
-                  {currentQ.mediaUrl && currentQ.type === 'audio_question' && <audio src={currentQ.mediaUrl} controls className="mt-2 w-full" />}
+                <div className="mt-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg p-4">
+                  <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wide mb-2 block">{t('quiz.mediaContent', 'Media Content')}</label>
+                  <div className="flex flex-col sm:flex-row sm:items-center gap-2 mb-3">
+                    <input 
+                      value={currentQ.mediaUrl || ''} 
+                      onChange={e => updateQuestion(activeQuestion, { mediaUrl: e.target.value, mediaType: currentQ.type === 'image_question' ? 'image' : currentQ.type === 'audio_question' ? 'audio' : 'pdf' })} 
+                      placeholder="URL (https://...)" 
+                      className="input text-xs flex-1" 
+                    />
+                    <div className="relative shrink-0 w-full sm:w-auto">
+                      <input
+                        type="file"
+                        accept={currentQ.type === 'image_question' ? 'image/*' : currentQ.type === 'audio_question' ? 'audio/*' : 'application/pdf'}
+                        onChange={handleFileUpload}
+                        disabled={uploadingMedia || !id}
+                        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer disabled:cursor-not-allowed"
+                        title={!id ? t('quiz.saveFirstToUpload', 'Please save the quiz first to enable file uploads') : ''}
+                      />
+                      <button 
+                        disabled={uploadingMedia || !id}
+                        className="w-full sm:w-auto flex items-center justify-center gap-1.5 px-4 py-2 bg-purple-100 hover:bg-purple-200 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300 dark:hover:bg-purple-900/60 rounded-lg text-xs font-semibold transition-colors disabled:opacity-50"
+                      >
+                        {uploadingMedia ? <div className="w-3.5 h-3.5 border-2 border-purple-400 border-t-purple-700 rounded-full animate-spin" /> : <Upload className="w-3.5 h-3.5" />}
+                        {uploadingMedia ? t('common.uploading', 'Uploading...') : t('quiz.uploadFile', 'Upload File')}
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* PREVIEW */}
+                  {currentQ.mediaUrl && (
+                    <div className="mt-2 relative group inline-flex flex-col items-center max-w-full justify-center w-full bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 p-2 overflow-hidden">
+                      {currentQ.type === 'image_question' && <img src={currentQ.mediaUrl} alt="Preview" className="max-h-56 rounded object-contain w-full" />}
+                      {currentQ.type === 'audio_question' && <audio src={currentQ.mediaUrl} controls className="w-full max-w-md my-4" />}
+                      {currentQ.type === 'pdf_question' && (
+                        <div className="flex items-center justify-center gap-3 p-6 w-full max-w-md">
+                           <FileText className="w-10 h-10 text-red-500 shrink-0" />
+                           <div className="min-w-0">
+                             <p className="text-sm font-semibold truncate text-slate-700 dark:text-slate-300">{currentQ.mediaUrl.split('/').pop()?.split('?')[0] || 'Document.pdf'}</p>
+                             <p className="text-xs text-slate-400">PDF Document</p>
+                           </div>
+                        </div>
+                      )}
+                      
+                      {(currentQ.type === 'image_question' || currentQ.type === 'pdf_question') && (
+                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center pointer-events-none rounded">
+                          <button 
+                            onClick={(e) => { e.preventDefault(); setPreviewFile({ 
+                              name: currentQ.mediaUrl?.split('/').pop()?.split('?')[0] || 'Media Preview', 
+                              url: currentQ.mediaUrl!, 
+                              type: currentQ.type === 'image_question' ? 'image/jpeg' : 'application/pdf' 
+                            }); }}
+                            className="pointer-events-auto p-3 bg-white/10 backdrop-blur-md hover:bg-white/20 text-white rounded-xl flex items-center gap-2 text-sm font-bold shadow-2xl transform scale-95 group-hover:scale-100 transition-all border border-white/20"
+                            title="View Fullscreen"
+                          >
+                            <Maximize2 className="w-5 h-5" /> Fullscreen Preview
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
               )}
               {currentQ.type === 'passage_question' && (
@@ -514,6 +601,11 @@ const QuizBuilderPage: React.FC = () => {
         onClose={() => setShowAIGen(false)}
         onSuccess={handleAIGenerateSuccess}
         type="quiz"
+      />
+
+      <FileViewerModal
+        file={previewFile}
+        onClose={() => setPreviewFile(null)}
       />
     </div>
   );

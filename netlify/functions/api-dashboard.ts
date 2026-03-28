@@ -118,6 +118,8 @@ const handler: Handler = async (event: HandlerEvent) => {
   ]);
 
   let attemptsSnap;
+  let hasGroups = true;
+
   if (isStaff(user)) {
     let q: any = orgFilter
       ? adminDb.collection('examAttempts').where('organizationId', '==', orgFilter).orderBy('submittedAt', 'desc').limit(50)
@@ -129,6 +131,12 @@ const handler: Handler = async (event: HandlerEvent) => {
   } else {
     attemptsSnap = await adminDb.collection('examAttempts')
       .where('studentId', '==', user.uid).orderBy('submittedAt', 'desc').get();
+
+    const studentGroupsSnap = await adminDb.collection('groups')
+      .where('organizationId', '==', orgFilter)
+      .where('studentIds', 'array-contains', user.uid)
+      .limit(1).get();
+    hasGroups = !studentGroupsSnap.empty;
   }
 
   let attempts = attemptsSnap.docs.map((d: any) => ({ id: d.id, ...d.data() }));
@@ -149,6 +157,7 @@ const handler: Handler = async (event: HandlerEvent) => {
     activeRoomsCount: roomsSnap.size,
     attemptsCount: attempts.length,
     avgScore,
+    hasGroups,
     recentLessons: lessonsSnap.docs.slice(0, 5).map((d: any) => ({ id: d.id, ...d.data() })),
     recentExams: examsSnap.docs.slice(0, 5).map((d: any) => ({ id: d.id, ...d.data() })),
     activeRooms: roomsSnap.docs.slice(0, 5).map((d: any) => ({ id: d.id, ...d.data() })),

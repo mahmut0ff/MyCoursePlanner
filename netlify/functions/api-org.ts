@@ -11,7 +11,7 @@ import {
   type AuthUser,
 } from './utils/auth';
 import { createNotification } from './utils/notifications';
-
+import { FieldValue } from 'firebase-admin/firestore';
 /* ═══════════════════════════════════════════════ */
 /*  Helpers                                        */
 /* ═══════════════════════════════════════════════ */
@@ -219,6 +219,28 @@ const handler: Handler = async (event: HandlerEvent) => {
       if (!doc.exists || doc.data()?.organizationId !== orgId) return notFound();
       await adminDb.collection('groups').doc(body.id).delete();
       return ok({ deleted: true });
+    }
+
+    if (action === 'enrollInGroup') {
+      // Allow students to enroll themselves in a group
+      const body = JSON.parse(event.body || '{}');
+      if (!body.groupId) return badRequest('groupId required');
+
+      const groupDoc = await adminDb.collection('groups').doc(body.groupId).get();
+      if (!groupDoc.exists || groupDoc.data()?.organizationId !== orgId) return notFound('Group not found');
+      
+      const groupData = groupDoc.data()!;
+      
+      // Update group's studentIds
+      await adminDb.collection('groups').doc(body.groupId).update({
+        studentIds: FieldValue.arrayUnion(user.uid),
+        updatedAt: now()
+      });
+
+      // Synchronize payment plans
+      await syncPaymentPlans(orgId, groupData.branchId || null, groupData.courseId, [user.uid]).catch(console.error);
+
+      return ok({ enrolled: true, groupId: body.groupId });
     }
 
     // ═══ STUDENTS (users with role=student in this org) ═══

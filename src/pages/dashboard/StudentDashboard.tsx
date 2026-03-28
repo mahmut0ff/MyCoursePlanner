@@ -8,6 +8,7 @@ import { formatDate } from '../../utils/grading';
 import { BookOpen, Radio, Trophy, XCircle, ArrowRight, Brain, Target, BarChart3, Flame, Building2, Search, Gamepad2 } from 'lucide-react';
 import { DashboardSkeleton } from '../../components/ui/Skeleton';
 import GamificationWidget from '../../components/gamification/GamificationWidget';
+import StudentEnrollmentOnboarding from './StudentEnrollmentOnboarding';
 
 const StudentDashboard: React.FC = () => {
   const { t } = useTranslation();
@@ -15,6 +16,7 @@ const StudentDashboard: React.FC = () => {
   const [lessons, setLessons] = useState<LessonPlan[]>([]);
   const [attempts, setAttempts] = useState<ExamAttempt[]>([]);
   const [loading, setLoading] = useState(true);
+  const [hasGroups, setHasGroups] = useState(true);
 
   useEffect(() => {
     if (profile?.uid && organizationId) {
@@ -23,6 +25,9 @@ const StudentDashboard: React.FC = () => {
           const data = await apiGetDashboard();
           setLessons(data.recentLessons || []);
           setAttempts(data.recentAttempts || []);
+          if (data.hasGroups === false) {
+            setHasGroups(false);
+          }
         } catch (e) {
           console.warn('Failed to load dashboard:', e);
         } finally {
@@ -94,6 +99,10 @@ const StudentDashboard: React.FC = () => {
 
   // ═══ Has Organization: Normal Dashboard ═══
   if (loading) return <DashboardSkeleton />;
+
+  if (!hasGroups) {
+    return <StudentEnrollmentOnboarding onComplete={() => setHasGroups(true)} />;
+  }
 
   const avgScore = attempts.length > 0 ? Math.round(attempts.reduce((s, a) => s + (a.percentage || 0), 0) / attempts.length) : 0;
   const passRate = attempts.length > 0 ? Math.round((attempts.filter((a) => a.passed).length / attempts.length) * 100) : 0;

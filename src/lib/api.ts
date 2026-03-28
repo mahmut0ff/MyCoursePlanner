@@ -247,6 +247,7 @@ export const orgGetGroup = (id: string) => orgReq('group', 'GET', undefined, { i
 export const orgCreateGroup = (data: any) => orgReq('createGroup', 'POST', data);
 export const orgUpdateGroup = (data: any) => orgReq('updateGroup', 'POST', data);
 export const orgDeleteGroup = (id: string) => orgReq('deleteGroup', 'POST', { id });
+export const orgEnrollInGroup = (groupId: string) => orgReq('enrollInGroup', 'POST', { groupId });
 
 // Students
 export const orgGetStudents = () => orgReq('students');

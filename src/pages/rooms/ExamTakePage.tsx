@@ -226,9 +226,13 @@ const ExamTakePage: React.FC = () => {
               {q.type === 'multiple_choice' && q.options.map((opt, oi) => {
                 const selected = answers[q.id] === opt;
                 return (
-                  <label
+                  <div
                     key={oi}
-                    className={`exam-card-hover flex items-center gap-4 p-5 sm:p-6 rounded-2xl border-2 cursor-pointer transition-all ${
+                    onClick={() => setAnswer(q.id, opt)}
+                    role="button"
+                    tabIndex={0}
+                    onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setAnswer(q.id, opt); } }}
+                    className={`exam-card-hover flex items-center gap-4 p-5 sm:p-6 rounded-2xl border-2 cursor-pointer transition-all select-none ${
                       selected
                         ? 'border-slate-900 bg-slate-50 dark:border-white dark:bg-slate-800/80 shadow-sm'
                         : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 hover:border-slate-300 dark:hover:border-slate-600'
@@ -238,16 +242,34 @@ const ExamTakePage: React.FC = () => {
                       {selected && <div className="w-2.5 h-2.5 rounded-full bg-slate-900 dark:bg-white" />}
                     </div>
                     <span className={`text-lg sm:text-xl font-medium ${selected ? 'text-slate-900 dark:text-white' : 'text-slate-700 dark:text-slate-300'}`}>{opt}</span>
-                  </label>
+                  </div>
                 );
               })}
 
               {q.type === 'multi_select' && q.options.map((opt, oi) => {
-                const selected = ((answers[q.id] as string[]) || []).includes(opt);
+                const currentArr = (answers[q.id] as string[]) || [];
+                const selected = currentArr.includes(opt);
                 return (
-                  <label
+                  <div
                     key={oi}
-                    className={`exam-card-hover flex items-center gap-4 p-5 sm:p-6 rounded-2xl border-2 cursor-pointer transition-all ${
+                    onClick={() => {
+                      const updated = selected
+                        ? currentArr.filter((a) => a !== opt)
+                        : [...currentArr, opt];
+                      setAnswer(q.id, updated);
+                    }}
+                    role="button"
+                    tabIndex={0}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        const updated = selected
+                          ? currentArr.filter((a) => a !== opt)
+                          : [...currentArr, opt];
+                        setAnswer(q.id, updated);
+                      }
+                    }}
+                    className={`exam-card-hover flex items-center gap-4 p-5 sm:p-6 rounded-2xl border-2 cursor-pointer transition-all select-none ${
                       selected ? 'border-slate-900 bg-slate-50 dark:border-white dark:bg-slate-800/80 shadow-sm' : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 hover:border-slate-300 dark:hover:border-slate-600'
                     }`}
                   >
@@ -255,7 +277,7 @@ const ExamTakePage: React.FC = () => {
                       {selected && <CheckCircle2 className="w-4 h-4 text-white dark:text-slate-900" />}
                     </div>
                     <span className={`text-lg sm:text-xl font-medium ${selected ? 'text-slate-900 dark:text-white' : 'text-slate-700 dark:text-slate-300'}`}>{opt}</span>
-                  </label>
+                  </div>
                 );
               })}
 

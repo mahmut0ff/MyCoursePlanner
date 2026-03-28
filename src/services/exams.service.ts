@@ -1,26 +1,26 @@
 /**
- * Exams Service — uses backend API for mutations, Firestore client for reads.
- * Firestore rules restrict writes to super_admin, so all mutations go through api-exams.
+ * Exams Service — uses backend API for all operations.
+ * Client-side Firestore reads were blocked by security rules
+ * because they lacked the organizationId filter required by hasOrgAccess().
+ * Now all reads go through the backend API which properly handles org-scoping.
  */
-import {
-  collection, doc, getDoc, getDocs,
-  query, orderBy
-} from 'firebase/firestore';
-import { db } from '../lib/firebase';
-import { apiCreateExam, apiUpdateExam, apiDeleteExam, apiSaveQuestions } from '../lib/api';
+import { apiGetExams, apiGetExam, apiCreateExam, apiUpdateExam, apiDeleteExam, apiSaveQuestions } from '../lib/api';
 import type { Exam, Question } from '../types';
 
 const COLLECTION = 'exams';
 
 export const getExams = async (): Promise<Exam[]> => {
-  const q = query(collection(db, COLLECTION), orderBy('createdAt', 'desc'));
-  const snap = await getDocs(q);
-  return snap.docs.map(d => ({ id: d.id, ...d.data() } as unknown as Exam));
+  const data = await apiGetExams();
+  return data as Exam[];
 };
 
 export const getExam = async (id: string): Promise<Exam | null> => {
-  const snap = await getDoc(doc(db, COLLECTION, id));
-  return snap.exists() ? ({ id: snap.id, ...snap.data() } as unknown as Exam) : null;
+  try {
+    const data = await apiGetExam(id);
+    return data as Exam;
+  } catch {
+    return null;
+  }
 };
 
 export const createExam = async (data: Omit<Exam, 'id' | 'createdAt' | 'updatedAt'>): Promise<string> => {
@@ -41,12 +41,15 @@ export const duplicateExam = async (id: string): Promise<string> => {
   return result.id;
 };
 
-// ---- Questions (subcollection) ----
+// ---- Questions (via backend API) ----
 
 export const getQuestions = async (examId: string): Promise<Question[]> => {
-  const q = query(collection(db, COLLECTION, examId, 'questions'), orderBy('order', 'asc'));
-  const snap = await getDocs(q);
-  return snap.docs.map(d => ({ id: d.id, ...d.data() } as unknown as Question));
+  try {
+    const exam = await apiGetExam(examId);
+    return (exam as any)?.questions || [];
+  } catch {
+    return [];
+  }
 };
 
 export const setQuestion = async (examId: string, question: Question): Promise<void> => {
@@ -54,7 +57,6 @@ export const setQuestion = async (examId: string, question: Question): Promise<v
 };
 
 export const deleteQuestion = async (examId: string, questionId: string): Promise<void> => {
-  // Get current questions, remove the one to delete, save rest
   const questions = await getQuestions(examId);
   const filtered = questions.filter(q => q.id !== questionId);
   await apiSaveQuestions(examId, filtered);

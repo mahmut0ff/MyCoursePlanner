@@ -462,6 +462,27 @@ const LandingPage: React.FC = () => {
  </div>
  ))}
  </div>
+
+ {/* New Massive CTA to Detail Features Page */}
+ <div className="mt-16 bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 rounded-3xl p-10 md:p-14 border border-slate-700 shadow-2xl relative overflow-hidden group">
+ <div className="absolute top-0 right-0 w-[400px] h-[400px] bg-primary-600/20 rounded-full blur-[80px] group-hover:bg-primary-500/30 transition-colors pointer-events-none" />
+ <div className="absolute bottom-[-100px] left-[-100px] w-[300px] h-[300px] bg-violet-600/20 rounded-full blur-[80px] group-hover:bg-violet-500/30 transition-colors pointer-events-none" />
+ 
+ <div className="relative z-10 flex flex-col items-center text-center gap-8 max-w-3xl mx-auto">
+ <div>
+ <h3 className="text-3xl md:text-5xl font-extrabold text-white mb-6 leading-tight">Безграничные возможности платформы</h3>
+ <p className="text-lg text-slate-400 mb-0 leading-relaxed">Мощное управление учебным центром, передовые технологии ИИ, продвинутая геймификация для студентов и полная оптимизация рабочих процессов. Узнайте всё, на что способен Planula.</p>
+ </div>
+ <div className="shrink-0 relative z-20">
+ <Link to="/features" className="inline-flex items-center gap-3 bg-white text-slate-900 font-bold px-8 py-4 rounded-xl hover:bg-slate-50 transition-all shadow-xl hover:shadow-white/20 hover:scale-[1.02]">
+ <Layers className="w-5 h-5 text-primary-600" />
+ Смотреть весь функционал
+ <ArrowRight className="w-5 h-5 ml-1" />
+ </Link>
+ </div>
+ </div>
+ </div>
+
  </div>
  </section>
 

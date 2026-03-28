@@ -71,6 +71,24 @@ Each object MUST have:
 - "correctOptionIndex": integer (0 to 3, the index of the correct answer)
 - "explanation": string (brief explanation of why the answer is correct)
 Do not include any extra text, only the JSON array. Make the questions engaging and accurate.`;
+    } else if (type === 'lesson_and_quiz') {
+      systemPrompt = `You are an expert educator. Based on the provided prompt or material, generate BOTH a comprehensive lesson module and a multiple-choice quiz (Kahoot style) covering that exact material.
+Format the response strictly as a JSON object containing two keys: "lesson" and "quiz".
+Requirements for "lesson":
+- "title": string (the topic name)
+- "subject": string (short category like History, Programming, etc.)
+- "duration": integer (estimated reading minutes, 5 to 15)
+- "blocks": array of objects representing the lesson content. Each object must have a "type" ("heading", "paragraph", or "bulletList").
+   - If "heading", include "content" (string) and "level" (integer 1 or 2).
+   - If "paragraph", include "content" (string).
+   - If "bulletList", include "items" (array of strings).
+Requirements for "quiz":
+- An array of exactly 10 objects:
+  - "question": string (engaging question)
+  - "options": array of 4 strings
+  - "correctOptionIndex": integer
+  - "explanation": string
+Do not include any extra text, markdown blocks like \`\`\`json, or anything other than the raw JSON object.`;
     } else {
       systemPrompt = `You are an expert educator. Generate a multiple-choice exam based on the provided material or prompt. 
 Format the response strictly as a JSON array of objects. 

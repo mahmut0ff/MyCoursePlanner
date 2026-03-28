@@ -81,7 +81,7 @@ export const apiDeleteAuditLogs = () => apiRequest('api-audit', 'DELETE');
 export const apiCloseRoom = (roomId: string) => apiRequest('api-rooms', 'POST', { action: 'close', roomId });
 
 // ---- AI Generation ----
-export const apiAIGenerate = (data: { prompt?: string; type: 'quiz' | 'exam'; fileUrl?: string }) =>
+export const apiAIGenerate = (data: { prompt?: string; type: 'quiz' | 'exam' | 'lesson_and_quiz'; fileUrl?: string }) =>
   apiRequest('api-ai-generate', 'POST', data);
 
 // ---- Attempts ----
@@ -97,6 +97,14 @@ export const apiUpdateAttempt = (data: any) => apiRequest('api-attempts', 'PUT',
 // ---- Gamification ----
 export const apiGetGamification = (studentId?: string) =>
   apiRequest('api-gamification', 'GET', undefined, studentId ? { studentId } : undefined);
+
+export const apiGetGamificationLeaderboard = (organizationId?: string, limit?: number) =>
+  apiRequest('api-gamification', 'GET', undefined, { 
+    action: 'leaderboard', 
+    ...(organizationId ? { organizationId } : {}),
+    ...(limit ? { limit: limit.toString() } : {})
+  });
+
 export const apiAwardXP = (data: any) => apiRequest('api-gamification', 'POST', data);
 
 // ---- Certificates ----

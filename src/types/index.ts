@@ -218,6 +218,7 @@ export interface UserProfile {
   username?: string;
   activeOrgId?: string;            // currently selected org context
   avatarUrl?: string;
+  pinnedBadges?: string[];         // User's top 3 pinned badges
   bio?: string;
   skills?: string[];
   experience?: string;
@@ -904,6 +905,7 @@ export interface SessionParticipant {
   sessionId: string;
   participantId: string;
   participantName: string;
+  pinnedBadges?: string[]; // display pinned badges on leaderboard
 
   score: number;
   correctCount: number;

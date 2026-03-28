@@ -8,6 +8,7 @@ import { formatDate } from '../../utils/grading';
 import { BookOpen, Radio, Trophy, XCircle, ArrowRight, Brain, Target, BarChart3, Flame, Building2, Search, Gamepad2 } from 'lucide-react';
 import { DashboardSkeleton } from '../../components/ui/Skeleton';
 import GamificationWidget from '../../components/gamification/GamificationWidget';
+import LeaderboardWidget from '../../components/gamification/LeaderboardWidget';
 import StudentEnrollmentOnboarding from './StudentEnrollmentOnboarding';
 
 const StudentDashboard: React.FC = () => {
@@ -127,8 +128,15 @@ const StudentDashboard: React.FC = () => {
         </div>
       </div>
 
-      {/* Gamification */}
-      <GamificationWidget />
+      {/* Gamification Area */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="lg:col-span-2">
+          <GamificationWidget />
+        </div>
+        <div className="lg:col-span-1">
+          <LeaderboardWidget />
+        </div>
+      </div>
 
       {/* ═══ Quick Actions ═══ */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">

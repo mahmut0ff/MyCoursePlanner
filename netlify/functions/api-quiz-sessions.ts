@@ -210,11 +210,16 @@ const handler: Handler = async (event: HandlerEvent) => {
         .collection('participants').doc(user.uid).get();
 
       if (!existingPart.exists) {
+        // Fetch user profile to get pinnedBadges
+        const userDoc = await adminDb.collection('users').doc(user.uid).get();
+        const pinnedBadges = userDoc.exists ? (userDoc.data()?.pinnedBadges || []) : [];
+
         const participantData = {
           id: user.uid,
           sessionId: sId,
           participantId: user.uid,
           participantName: user.displayName,
+          pinnedBadges,
           score: 0,
           correctCount: 0,
           incorrectCount: 0,

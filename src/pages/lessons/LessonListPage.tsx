@@ -5,9 +5,10 @@ import { apiGetLessons } from '../../lib/api';
 import { useAuth } from '../../contexts/AuthContext';
 import type { LessonPlan } from '../../types';
 import { formatDate } from '../../utils/grading';
-import { Plus, BookOpen, Clock, Search, Paperclip, ClipboardList } from 'lucide-react';
+import { Plus, BookOpen, Clock, Search, Paperclip, ClipboardList, Sparkles } from 'lucide-react';
 import EmptyState from '../../components/ui/EmptyState';
 import { ListSkeleton } from '../../components/ui/Skeleton';
+import { AILessonFactoryModal } from '../../components/ui/AILessonFactoryModal';
 
 type StatusFilter = 'all' | 'published' | 'draft';
 
@@ -18,6 +19,7 @@ const LessonListPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
+  const [isAIModalOpen, setIsAIModalOpen] = useState(false);
 
   const isStaff = role === 'admin' || role === 'manager' || role === 'teacher';
 
@@ -54,7 +56,16 @@ const LessonListPage: React.FC = () => {
             <input type="text" value={search} onChange={(e) => setSearch(e.target.value)} placeholder={`${t('common.search')}...`} className="input pl-9 w-44 text-xs" />
           </div>
           {isStaff && (
-            <Link to="/lessons/new" className="btn-primary flex items-center gap-2"><Plus className="w-4 h-4" />{t('lessons.create')}</Link>
+            <>
+              <button 
+                onClick={() => setIsAIModalOpen(true)}
+                className="btn-secondary flex items-center gap-2 border-violet-200 text-violet-700 bg-violet-50 hover:bg-violet-100 hover:border-violet-300 dark:border-violet-500/30 dark:bg-violet-500/10 dark:text-violet-300 dark:hover:bg-violet-500/20"
+              >
+                <Sparkles className="w-4 h-4" /> 
+                <span className="hidden sm:inline">AI Конструктор</span>
+              </button>
+              <Link to="/lessons/new" className="btn-primary flex items-center gap-2"><Plus className="w-4 h-4" />{t('lessons.create')}</Link>
+            </>
           )}
         </div>
       </div>
@@ -125,6 +136,12 @@ const LessonListPage: React.FC = () => {
           ))}
         </div>
       )}
+
+      <AILessonFactoryModal 
+        isOpen={isAIModalOpen} 
+        onClose={() => setIsAIModalOpen(false)} 
+        onSuccess={() => apiGetLessons().then(setLessons)} 
+      />
     </div>
   );
 };

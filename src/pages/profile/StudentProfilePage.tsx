@@ -9,8 +9,9 @@ import toast from 'react-hot-toast';
 import { Globe, Lock, Save, Camera, AtSign, CheckCircle2, XCircle, Loader2, Phone } from 'lucide-react';
 import i18n from '../../i18n';
 import StudentPortfolio from '../../components/portfolio/StudentPortfolio';
-import { apiCheckAuthIdentity } from '../../lib/api';
+import { apiCheckAuthIdentity, apiGetGamification } from '../../lib/api';
 import AvatarCropper from '../../components/ui/AvatarCropper';
+import type { GamificationData } from '../../types';
 
 const StudentProfilePage: React.FC = () => {
   const { t } = useTranslation();
@@ -26,7 +27,15 @@ const StudentProfilePage: React.FC = () => {
   const [skills, setSkills] = useState(profile?.skills?.join(', ') || '');
   const [avatarUrl, setAvatarUrl] = useState(profile?.avatarUrl || '');
   const [phone, setPhone] = useState(profile?.phone || '');
+  const [pinnedBadges, setPinnedBadges] = useState<string[]>(profile?.pinnedBadges || []);
+  const [myBadges, setMyBadges] = useState<GamificationData | null>(null);
   
+  React.useEffect(() => {
+    if (activeTab === 'settings') {
+      apiGetGamification().then(setMyBadges).catch(() => {});
+    }
+  }, [activeTab]);
+
   React.useEffect(() => {
     if (!username || username === profile?.username || username.length < 3) return setUsernameStatus('idle');
     setUsernameStatus('checking');
@@ -66,11 +75,24 @@ const StudentProfilePage: React.FC = () => {
         bio: bio.trim(),
         skills: parsedSkills,
         avatarUrl,
-        phone: phone.trim()
+        phone: phone.trim(),
+        pinnedBadges
       });
       toast.success(t('profile.saved'));
     } catch { toast.error(t('profile.saveFailed')); }
     finally { setSaving(false); }
+  };
+
+  const togglePinBadge = (badgeId: string) => {
+    if (pinnedBadges.includes(badgeId)) {
+      setPinnedBadges(prev => prev.filter(id => id !== badgeId));
+    } else {
+      if (pinnedBadges.length >= 3) {
+        toast.error('Можно закрепить не более 3 бейджей');
+        return;
+      }
+      setPinnedBadges(prev => [...prev, badgeId]);
+    }
   };
 
   const handleChangePassword = async () => {
@@ -247,6 +269,44 @@ const StudentProfilePage: React.FC = () => {
               </div>
             </div>
           </div>
+
+          {/* ----- Pinned Badges ----- */}
+          {myBadges && myBadges.badges.length > 0 && (
+            <div className="card p-6">
+              <h3 className="font-semibold text-slate-900 dark:text-white mb-2">Закрепленные бейджи</h3>
+              <p className="text-sm text-slate-500 mb-4">Выберите до 3 любимых бейджей, чтобы они отображались рядом с вашим аватаром.</p>
+              
+              <div className="flex flex-wrap gap-3">
+                {myBadges.badgeDetails?.map(badge => {
+                  const isPinned = pinnedBadges.includes(badge.id);
+                  return (
+                    <button
+                      key={badge.id}
+                      onClick={() => togglePinBadge(badge.id)}
+                      className={`relative w-14 h-14 rounded-full flex items-center justify-center text-2xl transition-all shadow-sm ${
+                        isPinned 
+                          ? 'ring-4 ring-primary-500 bg-primary-50 dark:bg-primary-900/40 scale-105'
+                          : 'bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 cursor-pointer grayscale-[50%] opacity-80'
+                      }`}
+                      title={badge.title}
+                    >
+                      {badge.icon}
+                      {isPinned && (
+                        <div className="absolute -top-1 -right-1 bg-primary-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-[10px] shadow-sm">
+                           ★
+                        </div>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+              <div className="text-right mt-4">
+                 <button onClick={handleUpdateProfile} disabled={saving} className="btn-primary flex items-center justify-center gap-2 ml-auto">
+                   <Save className="w-4 h-4" /> Сохранить
+                 </button>
+              </div>
+            </div>
+          )}
 
           {/* Language */}
           <div className="card p-6">

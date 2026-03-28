@@ -77,6 +77,54 @@ const handler: Handler = async (event: HandlerEvent) => {
   // GET — get gamification profile
   if (event.httpMethod === 'GET') {
     const params = event.queryStringParameters || {};
+    
+    // FETCH LEADERBOARD 
+    if (params.action === 'leaderboard') {
+      const orgId = params.organizationId || user.organizationId;
+      if (!orgId) return badRequest('organizationId required');
+      
+      try {
+        // 1. Get gamification profiles first (these are small)
+        const gamiSnap = await adminDb.collection(COLLECTION).get();
+        const gamiMap = new Map();
+        gamiSnap.docs.forEach(d => gamiMap.set(d.id, d.data()));
+
+        // 2. Filter for users who have XP in this org or generally (to avoid massive user fetches)
+        const activeIds = Array.from(gamiMap.entries())
+          .filter(([_, g]) => g.orgXpBreakdown?.[orgId] > 0 || g.xp > 0)
+          .map(([k]) => k);
+          
+        if (activeIds.length === 0) return ok([]);
+
+        // 3. Fetch user names (batch chunks of 30 if needed, simplified for <30 here, or just fetch all users in org)
+        const orgUsersSnap = await adminDb.collection('users')
+           .where('activeOrgId', '==', orgId)
+           .get();
+           
+        const leaderboard = orgUsersSnap.docs.map(d => {
+           const u = d.data();
+           const g = gamiMap.get(d.id);
+           const xp = g?.orgXpBreakdown?.[orgId] || g?.xp || 0;
+           return {
+             uid: d.id,
+             displayName: u.displayName || 'Ученик',
+             avatarUrl: u.avatarUrl || '',
+             pinnedBadges: u.pinnedBadges || [],
+             xp,
+             level: getLevel(xp).level,
+             streak: g?.streak || 0
+           };
+        });
+
+        // Sort by XP descending, then streak
+        leaderboard.sort((a, b) => b.xp - a.xp || b.streak - a.streak);
+
+        return ok(leaderboard.slice(0, 50)); 
+      } catch (err: any) {
+        return jsonResponse(500, { error: err.message });
+      }
+    }
+
     const uid = params.studentId || user.uid;
 
     const doc = await adminDb.collection(COLLECTION).doc(uid).get();

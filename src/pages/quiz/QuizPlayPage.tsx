@@ -3,7 +3,9 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../contexts/AuthContext';
 import { subscribeToSession, subscribeToParticipants } from '../../services/quiz.service';
-import { apiGetQuizSession, apiSubmitQuizAnswer, apiJoinQuizSession, apiAwardXP } from '../../lib/api';
+import { 
+  apiGetQuizSession, apiSubmitQuizAnswer, apiJoinQuizSession, apiAwardXP, apiGetGamification 
+} from '../../lib/api';
 import type { QuizSession, SessionParticipant } from '../../types';
 import { showGamificationToasts } from '../../components/gamification/GamificationToasts';
 import {
@@ -38,6 +40,7 @@ const QuizPlayPage: React.FC = () => {
   const [answerResult, setAnswerResult] = useState<any>(null);
   const [timeLeft, setTimeLeft] = useState(0);
   const [startTime, setStartTime] = useState<number>(0);
+  const [badgeDefs, setBadgeDefs] = useState<any>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const prevQuestionIndex = useRef<number>(-2);
   
@@ -47,6 +50,7 @@ const QuizPlayPage: React.FC = () => {
 
   useEffect(() => {
     plopAudioRef.current = new Audio('/sounds/plop.mp3');
+    apiGetGamification().then((data: any) => setBadgeDefs(data.allBadgeDefs)).catch(() => {});
     return () => { cleanupAudio(); };
   }, []);
 
@@ -198,9 +202,18 @@ const QuizPlayPage: React.FC = () => {
               {participants.map(p => (
                 <span
                   key={p.participantId}
-                  className={`kahoot-player-chip ${p.participantId === profile?.uid ? '!bg-white/30 ring-2 ring-white/50' : ''}`}
+                  className={`kahoot-player-chip flex items-center gap-1.5 ${p.participantId === profile?.uid ? '!bg-white/30 ring-2 ring-white/50' : ''}`}
                 >
                   {p.participantName}
+                  {badgeDefs && p.pinnedBadges && p.pinnedBadges.length > 0 && (
+                     <div className="flex gap-0.5 ml-1">
+                       {p.pinnedBadges.map(id => badgeDefs[id] && (
+                          <div key={id} className="w-5 h-5 rounded-full bg-black/20 flex items-center justify-center text-[10px]" title={badgeDefs[id].title}>
+                            {badgeDefs[id].icon}
+                          </div>
+                       ))}
+                     </div>
+                  )}
                 </span>
               ))}
             </div>
@@ -410,7 +423,14 @@ const QuizPlayPage: React.FC = () => {
               {/* 2nd place */}
               {top3.length >= 2 && (
                 <div className="kahoot-podium-block">
-                  <p className="kahoot-font text-sm font-bold text-white truncate max-w-[100px] mb-2">{top3[1]?.participantName}</p>
+                  <p className="kahoot-font text-sm font-bold text-white truncate max-w-[100px] mb-1">{top3[1]?.participantName}</p>
+                  {badgeDefs && top3[1]?.pinnedBadges && top3[1].pinnedBadges.length > 0 && (
+                     <div className="flex gap-1 justify-center mb-1">
+                        {top3[1].pinnedBadges.map((id: string) => badgeDefs[id] && (
+                           <span key={id} className="bg-black/20 w-5 h-5 rounded-full flex items-center justify-center text-[10px]">{badgeDefs[id].icon}</span>
+                        ))}
+                     </div>
+                  )}
                   <p className="text-white/60 text-xs kahoot-font mb-2">{top3[1]?.score} pts</p>
                   <div className="kahoot-podium-bar silver">
                     <span className="text-3xl">🥈</span>
@@ -420,7 +440,14 @@ const QuizPlayPage: React.FC = () => {
               )}
               {/* 1st place */}
               <div className="kahoot-podium-block">
-                <p className="kahoot-font text-base font-extrabold text-white truncate max-w-[120px] mb-2">{top3[0]?.participantName}</p>
+                <p className="kahoot-font text-base font-extrabold text-white truncate max-w-[120px] mb-1">{top3[0]?.participantName}</p>
+                {badgeDefs && top3[0]?.pinnedBadges && top3[0].pinnedBadges.length > 0 && (
+                   <div className="flex gap-1 justify-center mb-1">
+                      {top3[0].pinnedBadges.map((id: string) => badgeDefs[id] && (
+                         <span key={id} className="bg-black/20 w-6 h-6 rounded-full flex items-center justify-center text-[12px]">{badgeDefs[id].icon}</span>
+                      ))}
+                   </div>
+                )}
                 <p className="text-yellow-300 text-sm kahoot-font font-bold mb-2">{top3[0]?.score} pts</p>
                 <div className="kahoot-podium-bar gold">
                   <span className="text-4xl">🥇</span>
@@ -430,7 +457,14 @@ const QuizPlayPage: React.FC = () => {
               {/* 3rd place */}
               {top3.length >= 3 && (
                 <div className="kahoot-podium-block">
-                  <p className="kahoot-font text-sm font-bold text-white truncate max-w-[100px] mb-2">{top3[2]?.participantName}</p>
+                  <p className="kahoot-font text-sm font-bold text-white truncate max-w-[100px] mb-1">{top3[2]?.participantName}</p>
+                  {badgeDefs && top3[2]?.pinnedBadges && top3[2].pinnedBadges.length > 0 && (
+                     <div className="flex gap-1 justify-center mb-1">
+                        {top3[2].pinnedBadges.map((id: string) => badgeDefs[id] && (
+                           <span key={id} className="bg-black/20 w-5 h-5 rounded-full flex items-center justify-center text-[10px]">{badgeDefs[id].icon}</span>
+                        ))}
+                     </div>
+                  )}
                   <p className="text-white/60 text-xs kahoot-font mb-2">{top3[2]?.score} pts</p>
                   <div className="kahoot-podium-bar bronze">
                     <span className="text-3xl">🥉</span>

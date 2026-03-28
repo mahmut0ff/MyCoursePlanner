@@ -1,9 +1,10 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Sparkles, X, FileText, UploadCloud, Loader2 } from 'lucide-react';
+import { Sparkles, X, FileText, UploadCloud, Loader2, Mic, MicOff } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { apiAIGenerate } from '../../lib/api';
 import { uploadFile } from '../../services/storage.service';
+import { useSpeechToText } from '../../hooks/useSpeechToText';
 
 interface Props {
   isOpen: boolean;
@@ -19,6 +20,23 @@ export const AIGeneratorModal: React.FC<Props> = ({ isOpen, onClose, onSuccess, 
   const [loading, setLoading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // Speech-to-text for the prompt textarea
+  const onSpeechTranscript = useCallback((text: string, isFinal: boolean) => {
+    if (isFinal) {
+      setPrompt(prev => {
+        // Add a space separator if there's already text
+        const separator = prev.trim() ? ' ' : '';
+        return prev.trim() + separator + text;
+      });
+    }
+  }, []);
+
+  const { isListening, isSupported, toggleListening } = useSpeechToText({
+    lang: 'ru-RU',
+    continuous: true,
+    onTranscript: onSpeechTranscript,
+  });
+
   if (!isOpen) return null;
 
   const handleGenerate = async () => {
@@ -26,6 +44,9 @@ export const AIGeneratorModal: React.FC<Props> = ({ isOpen, onClose, onSuccess, 
       toast.error(t('ai.providePromptOrFile', 'Пожалуйста, введите промпт или загрузите файл.'));
       return;
     }
+
+    // Stop listening when generating
+    if (isListening) toggleListening();
 
     setLoading(true);
     const toastId = toast.loading(t('ai.generating', 'Генерация с помощью ИИ... Это может занять несколько секунд.'));
@@ -82,15 +103,57 @@ export const AIGeneratorModal: React.FC<Props> = ({ isOpen, onClose, onSuccess, 
           </p>
 
           <div>
-            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-              {t('ai.promptLabel', 'Что нужно сгенерировать? (Промпт)')}
-            </label>
-            <textarea
-              className="input min-h-[100px] resize-y"
-              placeholder={t('ai.promptPlaceholder', 'Например: Создай 5 сложных вопросов по истории Древнего Рима для учеников 6 класса.')}
-              value={prompt}
-              onChange={(e) => setPrompt(e.target.value)}
-            />
+            <div className="flex items-center justify-between mb-2">
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">
+                {t('ai.promptLabel', 'Что нужно сгенерировать? (Промпт)')}
+              </label>
+              {isSupported && (
+                <button
+                  type="button"
+                  onClick={toggleListening}
+                  className={`
+                    flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all
+                    ${isListening
+                      ? 'bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 ring-2 ring-red-200 dark:ring-red-800 animate-pulse'
+                      : 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-400 hover:bg-primary-50 dark:hover:bg-primary-900/20 hover:text-primary-600 dark:hover:text-primary-400'
+                    }
+                  `}
+                  title={isListening ? t('ai.stopListening', 'Остановить запись') : t('ai.startListening', 'Говорить голосом')}
+                >
+                  {isListening ? (
+                    <>
+                      <MicOff className="w-3.5 h-3.5" />
+                      {t('ai.stopListening', 'Стоп')}
+                    </>
+                  ) : (
+                    <>
+                      <Mic className="w-3.5 h-3.5" />
+                      {t('ai.startListening', 'Голос')}
+                    </>
+                  )}
+                </button>
+              )}
+            </div>
+            <div className="relative">
+              <textarea
+                className={`input min-h-[100px] resize-y transition-all ${isListening ? 'ring-2 ring-red-300 dark:ring-red-700 border-red-300 dark:border-red-700' : ''}`}
+                placeholder={isListening
+                  ? t('ai.listeningPlaceholder', '🎙️ Говорите... Текст появится здесь автоматически')
+                  : t('ai.promptPlaceholder', 'Например: Создай 5 сложных вопросов по истории Древнего Рима для учеников 6 класса.')
+                }
+                value={prompt}
+                onChange={(e) => setPrompt(e.target.value)}
+              />
+              {isListening && (
+                <div className="absolute bottom-3 right-3 flex items-center gap-1.5">
+                  <span className="relative flex h-2.5 w-2.5">
+                    <span className="animate-ping absolute h-full w-full rounded-full bg-red-400 opacity-75" />
+                    <span className="relative rounded-full h-2.5 w-2.5 bg-red-500" />
+                  </span>
+                  <span className="text-[10px] font-semibold text-red-500 uppercase tracking-wider">REC</span>
+                </div>
+              )}
+            </div>
           </div>
 
           <div className="bg-slate-50 dark:bg-slate-900/50 border border-dashed border-slate-300 dark:border-slate-700 rounded-xl p-4 flex flex-col items-center justify-center text-center">

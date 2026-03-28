@@ -177,9 +177,9 @@ const QuizPlayPage: React.FC = () => {
     const timerPercent = (timeLeft / (currentQuestion.timerSeconds || 30)) * 100;
 
     return (
-      <div className="kahoot-bg fixed inset-0 z-50 flex flex-col" style={{ animation: 'kahoot-fade-in 0.3s ease-out' }}>
+      <div className="kahoot-bg fixed inset-0 z-50 flex flex-col overflow-auto" style={{ animation: 'kahoot-fade-in 0.3s ease-out' }}>
         {/* Top bar: progress + timer */}
-        <div className="px-4 pt-3 pb-2">
+        <div className="sticky top-0 z-10 px-4 pt-3 pb-2 bg-inherit">
           <div className="flex items-center justify-between mb-2">
             <span className="kahoot-font text-sm font-semibold text-white/70">
               {(session?.currentQuestionIndex || 0) + 1} / {session?.totalQuestions}
@@ -197,7 +197,7 @@ const QuizPlayPage: React.FC = () => {
         </div>
 
         {/* Question */}
-        <div className="flex-shrink-0 px-4 py-4">
+        <div className="px-4 py-4">
           <div className="kahoot-question-card max-w-3xl mx-auto">
             {currentQuestion.mediaUrl && currentQuestion.mediaType === 'image' && (
               <img src={currentQuestion.mediaUrl} alt="" className="max-h-40 object-contain rounded-lg mb-3" />
@@ -218,7 +218,7 @@ const QuizPlayPage: React.FC = () => {
         </div>
 
         {/* Answer Options */}
-        <div className="flex-1 px-4 pb-4 flex flex-col justify-end">
+        <div className="px-4 pb-6" style={{ paddingBottom: 'max(1.5rem, env(safe-area-inset-bottom))' }}>
           {isShortText ? (
             <div className="max-w-xl mx-auto w-full mb-4">
               <input

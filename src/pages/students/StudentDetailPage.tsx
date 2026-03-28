@@ -46,8 +46,8 @@ const StudentDetailPage: React.FC = () => {
       {/* Profile Card */}
       <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden mb-6">
         <div className="bg-slate-700 h-20" />
-        <div className="px-6 pb-6 -mt-8">
-          <div className="flex items-end gap-4 mb-4">
+        <div className="px-6 pb-6 relative">
+          <div className="absolute -top-8 left-6">
             {student.avatarUrl ? (
               <img src={student.avatarUrl} alt="" className="w-16 h-16 rounded-xl object-cover shadow-lg ring-4 ring-white dark:ring-slate-800" />
             ) : (
@@ -55,10 +55,10 @@ const StudentDetailPage: React.FC = () => {
                 {student.displayName?.[0]?.toUpperCase() || '?'}
               </div>
             )}
-            <div className="pb-1">
-              <h1 className="text-lg font-bold text-slate-900 dark:text-white">{student.displayName}</h1>
-              <p className="text-xs text-slate-500 flex items-center gap-1"><Mail className="w-3 h-3" />{student.email}</p>
-            </div>
+          </div>
+          <div className="pt-10 sm:pt-1 sm:ml-20 pb-1 mb-4">
+            <h1 className="text-lg font-bold text-slate-900 dark:text-white">{student.displayName}</h1>
+            <p className="text-xs text-slate-500 flex items-center gap-1"><Mail className="w-3 h-3" />{student.email}</p>
           </div>
           <div className="flex flex-wrap items-center gap-3">
             <span className="text-[10px] px-2 py-0.5 bg-emerald-500/10 text-emerald-500 rounded-full font-medium">{t('common.active')}</span>

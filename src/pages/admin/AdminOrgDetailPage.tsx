@@ -49,8 +49,8 @@ const AdminOrgDetailPage: React.FC = () => {
       {/* Header */}
       <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden mb-6">
         <div className="bg-slate-700 h-20" />
-        <div className="px-6 pb-6 -mt-6">
-          <h1 className="text-lg font-bold text-slate-900 dark:text-white mt-8">{org.name}</h1>
+        <div className="px-6 pb-6 pt-4">
+          <h1 className="text-xl font-bold text-slate-900 dark:text-white">{org.name}</h1>
           <p className="text-xs text-slate-500 mt-0.5">{org.ownerEmail}</p>
           <div className="flex flex-wrap items-center gap-3 mt-2">
             <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${STATUS_COLORS[org.status] || ''}`}>{org.status}</span>

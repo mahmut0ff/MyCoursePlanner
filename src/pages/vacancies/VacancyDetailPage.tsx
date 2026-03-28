@@ -89,10 +89,10 @@ const VacancyDetailPage: React.FC = () => {
       {/* Hero */}
       <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden mb-6">
         <div className="bg-slate-700 h-20" />
-        <div className="px-6 pb-6 -mt-4">
-          <div className="flex items-end justify-between gap-4">
+        <div className="px-6 pb-6 pt-4">
+          <div className="flex sm:items-end justify-between gap-4 flex-col sm:flex-row">
             <div>
-              <h1 className="text-xl font-bold text-slate-900 dark:text-white mt-6">{vacancy.title}</h1>
+              <h1 className="text-xl font-bold text-slate-900 dark:text-white">{vacancy.title}</h1>
               <div className="flex items-center gap-3 mt-1.5">
                 <span className="text-sm text-slate-500 flex items-center gap-1"><Building2 className="w-3.5 h-3.5" />{vacancy.organizationName}</span>
                 {vacancy.location?.city && <span className="text-sm text-slate-500 flex items-center gap-1"><MapPin className="w-3.5 h-3.5" />{vacancy.location.city}{vacancy.location.country ? `, ${vacancy.location.country}` : ''}</span>}

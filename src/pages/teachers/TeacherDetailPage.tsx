@@ -42,8 +42,8 @@ const TeacherDetailPage: React.FC = () => {
       {/* Profile Card */}
       <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden mb-6">
         <div className="bg-slate-700 h-24" />
-        <div className="px-6 pb-6 -mt-10">
-          <div className="flex items-end gap-4 mb-4">
+        <div className="px-6 pb-6 relative">
+          <div className="absolute -top-10 left-6">
             {teacher.avatarUrl ? (
               <img src={teacher.avatarUrl} alt="" className="w-20 h-20 rounded-xl object-cover shadow-lg ring-4 ring-white dark:ring-slate-800" />
             ) : (
@@ -51,10 +51,10 @@ const TeacherDetailPage: React.FC = () => {
                 {teacher.displayName?.[0]?.toUpperCase() || '?'}
               </div>
             )}
-            <div className="pb-1">
-              <h1 className="text-lg font-bold text-slate-900 dark:text-white">{teacher.displayName}</h1>
-              <p className="text-xs text-slate-500 flex items-center gap-1"><Mail className="w-3 h-3" />{teacher.email}</p>
-            </div>
+          </div>
+          <div className="pt-12 sm:pt-2 sm:ml-24 pb-1 mb-4">
+            <h1 className="text-lg font-bold text-slate-900 dark:text-white">{teacher.displayName}</h1>
+            <p className="text-xs text-slate-500 flex items-center gap-1"><Mail className="w-3 h-3" />{teacher.email}</p>
           </div>
           <div className="flex items-center gap-3 flex-wrap">
             <span className="text-[10px] px-2 py-0.5 bg-violet-500/10 text-violet-500 rounded-full font-medium">{t('teacher.role')}</span>

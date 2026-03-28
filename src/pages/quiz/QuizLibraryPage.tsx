@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../contexts/AuthContext';
-import { apiGetQuizzes, apiDeleteQuiz, apiArchiveQuiz, apiDuplicateQuiz, apiCreateQuizSession } from '../../lib/api';
+import { apiGetQuizzes, apiDeleteQuiz, apiDuplicateQuiz, apiCreateQuizSession } from '../../lib/api';
 import type { Quiz } from '../../types';
 import {
   Plus, Search, Play, Copy, Trash2,

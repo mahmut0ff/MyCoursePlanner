@@ -119,7 +119,7 @@ const QuizPlayPage: React.FC = () => {
   // ─── LOBBY PHASE ───
   if (phase === 'lobby') {
     return (
-      <div className="kahoot-bg kahoot-bg-pattern fixed inset-0 flex items-center justify-center z-50 overflow-auto">
+      <div className="quiz-bg-image fixed inset-0 flex items-center justify-center z-50 overflow-auto">
         <div className="text-center max-w-lg px-4" style={{ animation: 'kahoot-slide-up 0.5s ease-out' }}>
           <div className="mb-6" style={{ animation: 'kahoot-lobby-float 3s ease-in-out infinite' }}>
             <div className="w-20 h-20 mx-auto rounded-2xl bg-white/10 backdrop-blur-md flex items-center justify-center shadow-2xl border border-white/20">

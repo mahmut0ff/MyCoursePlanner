@@ -127,6 +127,11 @@ const App: React.FC = () => {
           {/* Exam Taking (full screen) */}
           <Route path="/take/:roomId" element={<ProtectedRoute><ExamTakePage /></ProtectedRoute>} />
 
+          {/* Quiz Taking & Hosting (full screen) */}
+          <Route path="/quiz/join" element={<JoinQuizPage />} />
+          <Route path="/quiz/play/:sessionId" element={<QuizPlayPage />} />
+          <Route path="/quiz/sessions/:id" element={<ProtectedRoute allowedRoles={['admin', 'manager', 'teacher']}><LiveSessionDashboard /></ProtectedRoute>} />
+
           {/* App Layout */}
           <Route element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
             <Route path="dashboard" element={<DashboardPage />} />
@@ -171,10 +176,7 @@ const App: React.FC = () => {
             <Route path="quiz/new" element={<ProtectedRoute allowedRoles={['admin', 'manager', 'teacher']}><QuizBuilderPage /></ProtectedRoute>} />
             <Route path="quiz/:id/edit" element={<ProtectedRoute allowedRoles={['admin', 'manager', 'teacher']}><QuizBuilderPage /></ProtectedRoute>} />
             <Route path="quiz/sessions" element={<ProtectedRoute allowedRoles={['admin', 'manager', 'teacher']}><SessionHistoryPage /></ProtectedRoute>} />
-            <Route path="quiz/sessions/:id" element={<ProtectedRoute allowedRoles={['admin', 'manager', 'teacher']}><LiveSessionDashboard /></ProtectedRoute>} />
             <Route path="quiz/analytics/:id" element={<ProtectedRoute allowedRoles={['admin', 'manager', 'teacher']}><SessionAnalyticsPage /></ProtectedRoute>} />
-            <Route path="quiz/join" element={<JoinQuizPage />} />
-            <Route path="quiz/play/:sessionId" element={<QuizPlayPage />} />
             <Route path="profile" element={<StudentProfilePage />} />
 
             {/* Chat Workspace */}

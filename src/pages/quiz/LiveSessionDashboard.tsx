@@ -82,8 +82,11 @@ const LiveSessionDashboard: React.FC = () => {
   const correctCount = currentQAnswers.filter(a => a.isCorrect).length;
 
   return (
-    <div className="max-w-6xl mx-auto kahoot-font">
-      {/* Header */}
+    <div 
+      className="quiz-bg-image min-h-screen w-full p-4 sm:p-8 kahoot-font overflow-y-auto relative"
+    >
+      <div className="max-w-6xl mx-auto relative z-10 drop-shadow-lg">
+        {/* Header */}
       <div className="flex items-center justify-between mb-5">
         <div className="flex items-center gap-3">
           <button onClick={() => navigate('/quiz/sessions')} className="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">
@@ -349,6 +352,7 @@ const LiveSessionDashboard: React.FC = () => {
           </div>
         </div>
       )}
+      </div>
     </div>
   );
 };

@@ -32,8 +32,8 @@ const JoinQuizPage: React.FC = () => {
   };
 
   return (
-    <div className="kahoot-bg kahoot-bg-pattern fixed inset-0 flex items-center justify-center z-50">
-      <div className="w-full max-w-md px-4" style={{ animation: 'kahoot-slide-up 0.5s ease-out' }}>
+    <div className="quiz-bg-image fixed inset-0 flex items-center justify-center z-50">
+      <div className="w-full max-w-md px-4 relative z-10" style={{ animation: 'kahoot-slide-up 0.5s ease-out' }}>
         {/* Floating Logo */}
         <div className="text-center mb-8" style={{ animation: 'kahoot-lobby-float 3s ease-in-out infinite' }}>
           <div className="w-24 h-24 mx-auto rounded-2xl bg-white/10 backdrop-blur-md flex items-center justify-center mb-4 shadow-2xl border border-white/20">

@@ -685,3 +685,114 @@ select:-webkit-autofill {
 .dark .exam-bg {
   background: linear-gradient(135deg, #0f172a 0%, #020617 100%);
 }
+
+/* =====================
+   PLANULA QUIZ BRANDING
+   ===================== */
+.planula-brand-container {
+  position: relative;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-bottom: 2rem;
+  animation: planula-float 4s ease-in-out infinite;
+}
+
+.planula-brand-text {
+  font-family: 'Pacifico', cursive;
+  font-size: 8rem;
+  font-weight: 400;
+  color: white;
+  text-shadow: 
+    0 5px 15px rgba(0,0,0,0.4),
+    0 10px 30px rgba(70, 23, 143, 0.6);
+  z-index: 10;
+  letter-spacing: -2px;
+  line-height: 1;
+  position: relative;
+}
+
+.planula-exclamation {
+  color: #fbbf24;
+  display: inline-block;
+  animation: planula-bounce 2s infinite cubic-bezier(0.28, 0.84, 0.42, 1);
+  transform-origin: bottom center;
+}
+
+.planula-brand-glow {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 120%;
+  height: 150%;
+  background: radial-gradient(circle, rgba(255,255,255,0.2) 0%, rgba(255,255,255,0) 70%);
+  border-radius: 50%;
+  z-index: 0;
+  pointer-events: none;
+  filter: blur(20px);
+}
+
+.planula-timer-display {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  background: rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(10px);
+  padding: 1rem 3rem;
+  border-radius: 100px;
+  border: 2px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+  color: white;
+  transition: all 0.3s ease;
+}
+
+.planula-timer-display.danger {
+  background: rgba(226, 27, 60, 0.3);
+  border-color: rgba(226, 27, 60, 0.6);
+  animation: planula-pulse 1s infinite;
+}
+
+.planula-timer-display.critical {
+  background: rgba(226, 27, 60, 0.8);
+  border-color: #e21b3c;
+  animation: planula-pulse-fast 0.5s infinite;
+}
+
+.planula-timer-number {
+  font-size: 4rem;
+  font-weight: 900;
+  font-family: 'Montserrat', sans-serif;
+  line-height: 1;
+  text-shadow: 0 4px 10px rgba(0,0,0,0.5);
+}
+
+.planula-timer-label {
+  font-size: 1.5rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  opacity: 0.8;
+  margin-top: 1rem;
+}
+
+@keyframes planula-float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-15px); }
+}
+
+@keyframes planula-bounce {
+  0%, 20%, 50%, 80%, 100% { transform: scaleY(1); }
+  40% { transform: scaleY(1.3) translateY(-10px); }
+  60% { transform: scaleY(1.1) translateY(-5px); }
+}
+
+@keyframes planula-pulse {
+  0%, 100% { transform: scale(1); box-shadow: 0 0 20px rgba(226, 27, 60, 0.4); }
+  50% { transform: scale(1.05); box-shadow: 0 0 40px rgba(226, 27, 60, 0.8); }
+}
+
+@keyframes planula-pulse-fast {
+  0%, 100% { transform: scale(1); box-shadow: 0 0 30px rgba(226, 27, 60, 0.6); }
+  50% { transform: scale(1.1); box-shadow: 0 0 60px rgba(226, 27, 60, 1); }
+}

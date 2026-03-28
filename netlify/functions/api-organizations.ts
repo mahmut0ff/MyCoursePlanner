@@ -274,6 +274,16 @@ const handler: Handler = async (event: HandlerEvent) => {
           status: 'active',
         });
       }
+      // Also log to systemLogs so billing history detects the plan change
+      await adminDb.collection('systemLogs').add({
+        action: 'plan_changed',
+        actorId: user.uid,
+        actorName: user.displayName,
+        targetType: 'org',
+        targetId: id,
+        metadata: { newPlan: body.planId },
+        createdAt: new Date().toISOString(),
+      });
     }
 
     // Log status changes

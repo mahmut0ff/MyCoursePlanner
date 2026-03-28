@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { adminGetOrg, adminSuspendOrg, adminActivateOrg, adminDeleteOrg, adminAddOrgNote, adminChangePlan, adminGiftPlan } from '../../lib/api';
-import { ArrowLeft, Building2, Ban, RotateCcw, Trash2, Calendar, MessageSquare, Gift } from 'lucide-react';
+import { ArrowLeft, Building2, Ban, RotateCcw, Trash2, Calendar, MessageSquare, Gift, History } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 const PLAN_COLORS: Record<string, string> = { starter: 'bg-blue-100 text-blue-800', professional: 'bg-violet-100 text-violet-800', enterprise: 'bg-amber-100 text-amber-800' };
@@ -146,8 +146,41 @@ const AdminOrgDetailPage: React.FC = () => {
           <h2 className="text-sm font-semibold text-slate-900 dark:text-white mb-3">{t('admin.orgs.subscription')}</h2>
           <div className="space-y-2 text-sm">
             <div className="flex justify-between"><span className="text-slate-500">{t('admin.orgs.status')}</span><span className="font-medium text-slate-900 dark:text-white capitalize">{org.subscription.status}</span></div>
-            <div className="flex justify-between"><span className="text-slate-500">{t('admin.orgs.periodEnd')}</span><span className="font-medium text-slate-900 dark:text-white">{new Date(org.subscription.currentPeriodEnd).toLocaleDateString()}</span></div>
+            <div className="flex justify-between"><span className="text-slate-500">{t('admin.orgs.periodEnd')}</span><span className="font-medium text-slate-900 dark:text-white">{org.subscription.currentPeriodEnd ? new Date(org.subscription.currentPeriodEnd).toLocaleDateString() : 'Бессрочно'}</span></div>
             {org.subscription.trialEndsAt && <div className="flex justify-between"><span className="text-slate-500">{t('admin.orgs.trialEnds')}</span><span className="font-medium text-slate-900 dark:text-white">{new Date(org.subscription.trialEndsAt).toLocaleDateString()}</span></div>}
+          </div>
+        </div>
+      )}
+
+      {/* 📜 History (Audit Logs) */}
+      {org.auditLogs && org.auditLogs.length > 0 && (
+        <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-5 mt-4">
+          <div className="flex items-center gap-2 mb-4">
+            <History className="w-4 h-4 text-primary-500" />
+            <h2 className="text-sm font-semibold text-slate-900 dark:text-white">История организации</h2>
+          </div>
+          <div className="space-y-3">
+            {org.auditLogs.map((log: any) => (
+              <div key={log.id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 border-b border-slate-100 dark:border-slate-700/50 pb-3 last:border-0 last:pb-0">
+                <div>
+                  <p className="text-sm font-medium text-slate-800 dark:text-slate-200">
+                    {log.action === 'plan_gifted' ? 'Подарен тариф' : log.action === 'plan_changed' ? 'Изменен тариф' : log.action === 'org_updated' ? 'Организация обновлена' : log.action}
+                  </p>
+                  {(log.after?.planId || log.before?.planId) && (
+                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                      Тариф: {log.before?.planId || 'отсутствует'} → <span className="font-medium">{log.after?.planId}</span>
+                    </p>
+                  )}
+                  {log.metadata?.reason && (
+                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Причина: {log.metadata.reason}</p>
+                  )}
+                </div>
+                <div className="text-left sm:text-right">
+                  <p className="text-xs text-slate-600 dark:text-slate-300">{log.actorName || log.actorRole}</p>
+                  <p className="text-[10px] text-slate-400">{new Date(log.createdAt).toLocaleString()}</p>
+                </div>
+              </div>
+            ))}
           </div>
         </div>
       )}

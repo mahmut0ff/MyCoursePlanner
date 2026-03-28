@@ -146,6 +146,21 @@ const handler: Handler = async (event: HandlerEvent) => {
       const users = usersSnap.docs.map(d => ({ uid: d.id, ...d.data() }));
       const subscription = subSnap.empty ? null : { id: subSnap.docs[0].id, ...subSnap.docs[0].data() };
 
+      let auditDocs: any[] = [];
+      try {
+        const auditSnap = await adminDb.collection('auditLogs')
+          .where('entityId', '==', id)
+          .orderBy('createdAt', 'desc')
+          .limit(30).get();
+        auditDocs = auditSnap.docs;
+      } catch (e) {
+        // Fallback without sort if composite index is missing
+        try {
+          const auditSnap = await adminDb.collection('auditLogs').where('entityId', '==', id).limit(30).get();
+          auditDocs = auditSnap.docs;
+        } catch { /* ignore */ }
+      }
+
       return ok({
         ...org,
         usage: {
@@ -161,6 +176,7 @@ const handler: Handler = async (event: HandlerEvent) => {
         users: users.slice(0, 20),
         subscription,
         notes: notesDocs.map(d => ({ id: d.id, ...d.data() })),
+        auditLogs: auditDocs.map(d => ({ id: d.id, ...d.data() })),
       });
     }
 
@@ -337,6 +353,18 @@ const handler: Handler = async (event: HandlerEvent) => {
       if (!subSnap.empty) await subSnap.docs[0].ref.update({ planId: body.planId, status: 'active' });
 
       await auditLog(user, 'plan_changed', 'subscription', body.organizationId, { planId: beforePlan }, { planId: body.planId });
+      
+      // Also write to systemLogs for billing history
+      await adminDb.collection('systemLogs').add({
+        action: 'plan_changed',
+        actorId: user.uid,
+        actorName: user.displayName,
+        targetType: 'subscription',
+        targetId: body.organizationId,
+        metadata: { newPlan: body.planId },
+        createdAt: new Date().toISOString(),
+      });
+      
       return ok({ success: true });
     }
 
@@ -383,6 +411,18 @@ const handler: Handler = async (event: HandlerEvent) => {
       }
 
       await auditLog(user, 'plan_gifted', 'subscription', body.organizationId, { planId: beforePlan }, { planId: body.planId, giftedBy: user.uid });
+      
+      // Also write to systemLogs for billing history
+      await adminDb.collection('systemLogs').add({
+        action: 'plan_changed',
+        actorId: user.uid,
+        actorName: user.displayName,
+        targetType: 'subscription',
+        targetId: body.organizationId,
+        metadata: { newPlan: `подарок: ${body.planId}` },
+        createdAt: new Date().toISOString(),
+      });
+
       // Notify all super admins
       notifyAllSuperAdmins('plan_gifted', 'Тариф подарен', `Организации «${orgDoc.data()?.name}» подарен тариф ${body.planId}`, '/admin/organizations').catch(() => {});
       return ok({ success: true });

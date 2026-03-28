@@ -6,6 +6,7 @@ import { apiGetRoom, apiGetExam, apiSaveAttempt, apiAwardXP } from '../../lib/ap
 import { auth } from '../../lib/firebase';
 import { useAuth } from '../../contexts/AuthContext';
 import { shuffleArray, formatTime } from '../../utils/grading';
+import { showGamificationToasts } from '../../components/gamification/GamificationToasts';
 import type { ExamRoom, Exam, Question } from '../../types';
 import { Clock, ChevronLeft, ChevronRight, Send, AlertTriangle, CheckCircle2 } from 'lucide-react';
 
@@ -119,6 +120,8 @@ const ExamTakePage: React.FC = () => {
         examPassed: result.passed,
         percentage: result.percentage,
         timeSpentSeconds,
+      }).then((res: any) => {
+        showGamificationToasts(res.newBadges, res.leveledUp);
       }).catch(() => {});
 
       navigate(`/results/${result.id}`);

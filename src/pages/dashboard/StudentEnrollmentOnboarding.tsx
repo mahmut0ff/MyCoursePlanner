@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { BookOpen, Users, CheckCircle2, ChevronRight, GraduationCap } from 'lucide-react';
-import { orgGetCourses, orgGetGroups, orgEnrollInGroup } from '../../lib/api';
+import { orgGetCourses, orgGetGroups, orgEnrollInGroup, apiAwardXP } from '../../lib/api';
 import toast from 'react-hot-toast';
+import { showGamificationToasts } from '../../components/gamification/GamificationToasts';
 
 interface Props {
   onComplete: () => void;
@@ -54,6 +55,15 @@ const StudentEnrollmentOnboarding: React.FC<Props> = ({ onComplete }) => {
     try {
       setEnrolling(true);
       await orgEnrollInGroup(groupId);
+      
+      if (selectedCourse?.organizationId) {
+        apiAwardXP({
+          type: 'org',
+          organizationId: selectedCourse.organizationId
+        }).then((res: any) => showGamificationToasts(res.newBadges, res.leveledUp))
+          .catch(() => {});
+      }
+
       toast.success('Вы успешно записались в группу!');
       onComplete();
     } catch (e: any) {

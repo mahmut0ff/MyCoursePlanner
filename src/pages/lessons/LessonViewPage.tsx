@@ -2,8 +2,9 @@ import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { deleteLessonPlan } from '../../services/lessons.service';
-import { apiGetLesson } from '../../lib/api';
+import { apiGetLesson, apiAwardXP } from '../../lib/api';
 import { useAuth } from '../../contexts/AuthContext';
+import { showGamificationToasts } from '../../components/gamification/GamificationToasts';
 import type { LessonPlan } from '../../types';
 import { formatDate } from '../../utils/grading';
 import { generateHTML } from '@tiptap/react';
@@ -57,10 +58,25 @@ const LessonViewPage: React.FC = () => {
   useEffect(() => {
     if (id) {
       apiGetLesson(id)
-        .then(setLesson)
+        .then((data) => {
+          setLesson(data);
+          
+          // Trigger gamification for students (with simple local anti-farming protection)
+          if (role === 'student' && data.organizationId) {
+            const viewedKey = `viewed_lesson_${id}`;
+            if (!sessionStorage.getItem(viewedKey)) {
+              setTimeout(() => {
+                apiAwardXP({ type: 'lesson', organizationId: data.organizationId })
+                  .then((res: any) => showGamificationToasts(res.newBadges, res.leveledUp))
+                  .catch(() => {});
+                sessionStorage.setItem(viewedKey, 'true');
+              }, 5000); // Trigger after 5 seconds of reading
+            }
+          }
+        })
         .finally(() => setLoading(false));
     }
-  }, [id]);
+  }, [id, role]);
 
   const handleDelete = async () => {
     if (!id || !confirm(t('lessons.confirmDelete', 'Вы уверены, что хотите удалить этот урок?'))) return;

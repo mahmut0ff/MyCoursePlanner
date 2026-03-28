@@ -3,8 +3,9 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../contexts/AuthContext';
 import { subscribeToSession, subscribeToParticipants } from '../../services/quiz.service';
-import { apiGetQuizSession, apiSubmitQuizAnswer, apiJoinQuizSession } from '../../lib/api';
+import { apiGetQuizSession, apiSubmitQuizAnswer, apiJoinQuizSession, apiAwardXP } from '../../lib/api';
 import type { QuizSession, SessionParticipant } from '../../types';
+import { showGamificationToasts } from '../../components/gamification/GamificationToasts';
 import {
   Trophy, Users, Zap, CheckCircle, XCircle, Star,
   Loader2, Gamepad2, ArrowLeft
@@ -75,6 +76,27 @@ const QuizPlayPage: React.FC = () => {
     const unsubParts = subscribeToParticipants(sessionId, setParticipants);
     return () => { unsubSession(); unsubParts(); };
   }, [sessionId]);
+
+  // Gamification for finishing a quiz
+  useEffect(() => {
+    if (phase === 'results' && sessionId && profile?.uid && session?.organizationId) {
+       const awardedKey = `quiz_awarded_${sessionId}_${profile.uid}`;
+       if (!sessionStorage.getItem(awardedKey)) {
+         sessionStorage.setItem(awardedKey, 'true');
+         const myParticipant = participants.find(p => p.participantId === profile.uid);
+         if (myParticipant) {
+           const totalQs = session.totalQuestions || 1;
+           const percentage = Math.round((myParticipant.correctCount / totalQs) * 100);
+           apiAwardXP({
+             type: 'quiz',
+             organizationId: session.organizationId,
+             percentage
+           }).then((res: any) => showGamificationToasts(res.newBadges, res.leveledUp))
+             .catch(() => {});
+         }
+       }
+    }
+  }, [phase, sessionId, profile?.uid, session?.organizationId, participants]);
 
   useEffect(() => {
     if (phase !== 'question' || submitted) return;

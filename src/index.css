@@ -51,6 +51,14 @@
     radial-gradient(ellipse at 50% 80%, rgba(45, 10, 94, 0.3) 0%, transparent 50%);
 }
 
+.quiz-bg-image {
+  background-image: url('/backgrounds/Educational%20Background.jfif');
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  background-attachment: fixed;
+}
+
 /* Answer Option Buttons */
 .kahoot-option {
   display: flex;

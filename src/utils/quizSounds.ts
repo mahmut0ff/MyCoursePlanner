@@ -20,13 +20,35 @@ function getAudioContext(): AudioContext {
 // A looping upbeat electronic groove
 
 let gameMusicNodes: { osc: OscillatorNode[]; gain: GainNode; interval?: ReturnType<typeof setInterval> } | null = null;
+let masterAudioConfig = { volume: 0.12, muted: false };
+
+export function setMusicVolume(vol: number) {
+  masterAudioConfig.volume = Math.max(0, Math.min(1, vol));
+  if (gameMusicNodes && gameMusicNodes.gain) {
+    gameMusicNodes.gain.gain.setValueAtTime(
+      masterAudioConfig.muted ? 0 : masterAudioConfig.volume, 
+      getAudioContext().currentTime
+    );
+  }
+}
+
+export function toggleMusicMute() {
+  masterAudioConfig.muted = !masterAudioConfig.muted;
+  if (gameMusicNodes && gameMusicNodes.gain) {
+    gameMusicNodes.gain.gain.setValueAtTime(
+      masterAudioConfig.muted ? 0 : masterAudioConfig.volume, 
+      getAudioContext().currentTime
+    );
+  }
+  return masterAudioConfig.muted;
+}
 
 export function playGameMusic() {
   stopGameMusic();
   try {
     const ctx = getAudioContext();
     const masterGain = ctx.createGain();
-    masterGain.gain.value = 0.12;
+    masterGain.gain.value = masterAudioConfig.muted ? 0 : masterAudioConfig.volume;
     masterGain.connect(ctx.destination);
 
     const oscillators: OscillatorNode[] = [];

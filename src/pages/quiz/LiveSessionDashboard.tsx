@@ -14,12 +14,13 @@ import type { QuizSession, SessionParticipant, SessionAnswer } from '../../types
 import {
   Play, Pause, SkipForward, Square, Copy, CheckCircle, Users,
   Lock, Unlock, UserMinus, Radio, BarChart3, ArrowLeft,
-  Trophy, Zap, RefreshCw, Award, Timer
+  Trophy, Zap, RefreshCw, Award, Timer, Volume2, VolumeX
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import {
   playGameMusic, stopGameMusic, playCountdownTick, playDramaticTick,
-  playVictoryFanfare, playQuestionTransition, cleanupAudio
+  playVictoryFanfare, playQuestionTransition, cleanupAudio,
+  setMusicVolume, toggleMusicMute
 } from '../../utils/quizSounds';
 
 type DashboardPhase = 'lobby' | 'playing' | 'scoreboard' | 'completed';
@@ -48,6 +49,19 @@ const LiveSessionDashboard: React.FC = () => {
 
   // Sound state tracking
   const musicStartedRef = useRef(false);
+  const [isMuted, setIsMuted] = useState(false);
+  const [volume, setVolume] = useState(0.12);
+
+  const handleMuteToggle = () => {
+    const muted = toggleMusicMute();
+    setIsMuted(muted);
+  };
+
+  const handleVolumeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = parseFloat(e.target.value);
+    setVolume(val);
+    setMusicVolume(val);
+  };
 
   useEffect(() => {
     return () => {
@@ -256,7 +270,32 @@ const LiveSessionDashboard: React.FC = () => {
   const sortedParticipants = [...participants].sort((a, b) => b.score - a.score);
 
   return (
-    <div className="quiz-bg-image w-full h-screen kahoot-font overflow-hidden relative flex flex-col">
+    <div 
+      className="w-full h-screen kahoot-font overflow-hidden relative flex flex-col"
+      style={{
+        backgroundImage: 'url(/classroom_bg.jpg)',
+        backgroundSize: 'cover',
+        backgroundPosition: 'center'
+      }}
+    >
+      {/* Dark blurred overlay to guarantee text readability against the complex background */}
+      <div className="absolute inset-0 bg-slate-900/65 backdrop-blur-md z-0" />
+
+      {/* Music Controls (Floating Top-Right) */}
+      <div className="absolute top-4 right-4 z-50 flex items-center gap-2 bg-slate-900/80 backdrop-blur-md border border-slate-700 p-2 rounded-xl shadow-lg transition-opacity hover:opacity-100 opacity-50 focus-within:opacity-100">
+        <button onClick={handleMuteToggle} className="p-1.5 rounded-lg hover:bg-slate-700 text-white transition-colors">
+          {isMuted ? <VolumeX className="w-5 h-5 text-red-400" /> : <Volume2 className="w-5 h-5" />}
+        </button>
+        <input 
+          type="range" 
+          min="0" max="0.5" step="0.01" 
+          value={isMuted ? 0 : volume} 
+          onChange={handleVolumeChange} 
+          disabled={isMuted}
+          className="w-24 accent-purple-500 cursor-pointer"
+        />
+      </div>
+
       <div className="max-w-7xl mx-auto relative z-10 drop-shadow-lg flex flex-col h-full w-full px-4 sm:px-6 py-3">
         
         {/* Header - Lobby State vs Playing/Scoreboard State */}

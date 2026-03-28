@@ -13,6 +13,18 @@ import { playCountdownTick, playDramaticTick, playTimesUpBuzzer, cleanupAudio } 
 
 type GamePhase = 'lobby' | 'question' | 'answer_feedback' | 'leaderboard' | 'results';
 
+// Reusable Background Component
+const QuizBackground = () => (
+  <>
+    <div 
+      className="fixed inset-0 z-[-2] bg-cover bg-center bg-no-repeat"
+      style={{ backgroundImage: 'url(/classroom_bg.jpg)' }}
+    />
+    {/* Dark blurred overlay to guarantee text readability */}
+    <div className="fixed inset-0 z-[-1] bg-slate-900/70 backdrop-blur-lg" />
+  </>
+);
+
 const OPTION_COLORS = ['kahoot-option-red', 'kahoot-option-blue', 'kahoot-option-yellow', 'kahoot-option-green', 'kahoot-option-red', 'kahoot-option-blue', 'kahoot-option-yellow', 'kahoot-option-green'];
 const OPTION_SHAPES = ['▲', '◆', '●', '■', '▲', '◆', '●', '■'];
 
@@ -151,8 +163,9 @@ const QuizPlayPage: React.FC = () => {
   // ─── LOBBY PHASE ───
   if (phase === 'lobby') {
     return (
-      <div className="quiz-bg-image fixed inset-0 flex items-center justify-center z-50 overflow-auto">
-        <div className="text-center max-w-lg px-4" style={{ animation: 'kahoot-slide-up 0.5s ease-out' }}>
+      <div className="fixed inset-0 flex items-center justify-center z-50 overflow-auto">
+        <QuizBackground />
+        <div className="text-center max-w-lg px-4 relative z-10" style={{ animation: 'kahoot-slide-up 0.5s ease-out' }}>
           <div className="mb-6" style={{ animation: 'kahoot-lobby-float 3s ease-in-out infinite' }}>
             <div className="w-20 h-20 mx-auto rounded-2xl bg-white/10 backdrop-blur-md flex items-center justify-center shadow-2xl border border-white/20">
               <Gamepad2 className="w-10 h-10 text-white" />
@@ -195,9 +208,11 @@ const QuizPlayPage: React.FC = () => {
     const timerPercent = (timeLeft / (currentQuestion.timerSeconds || 30)) * 100;
 
     return (
-      <div className="kahoot-bg fixed inset-0 z-50 flex flex-col overflow-auto" style={{ animation: 'kahoot-fade-in 0.3s ease-out' }}>
+      <div className="fixed inset-0 z-50 flex flex-col overflow-auto" style={{ animation: 'kahoot-fade-in 0.3s ease-out' }}>
+        <QuizBackground />
+        
         {/* Top bar: progress + timer */}
-        <div className="sticky top-0 z-10 px-4 pt-3 pb-2 bg-inherit">
+        <div className="sticky top-0 z-10 px-4 pt-3 pb-2 bg-transparent">
           <div className="flex items-center justify-between mb-2">
             <span className="kahoot-font text-sm font-semibold text-white/70">
               {(session?.currentQuestionIndex || 0) + 1} / {session?.totalQuestions}
@@ -215,28 +230,28 @@ const QuizPlayPage: React.FC = () => {
         </div>
 
         {/* Question */}
-        <div className="px-4 py-4">
-          <div className="kahoot-question-card max-w-3xl mx-auto">
+        <div className="px-4 py-4 relative z-10">
+          <div className="kahoot-question-card max-w-3xl mx-auto shadow-2xl border border-white/10 bg-white/95 backdrop-blur-sm">
             {currentQuestion.mediaUrl && currentQuestion.mediaType === 'image' && (
-              <img src={currentQuestion.mediaUrl} alt="" className="max-h-40 object-contain rounded-lg mb-3" />
+              <img src={currentQuestion.mediaUrl} alt="" className="max-h-56 object-contain rounded-lg mb-4 mx-auto" />
             )}
             {currentQuestion.mediaUrl && currentQuestion.mediaType === 'audio' && (
               <audio src={currentQuestion.mediaUrl} controls className="w-full mb-3" />
             )}
             {currentQuestion.passageText && (
-              <div className="bg-gray-50 p-3 rounded-lg mb-3 text-xs text-gray-600 max-h-24 overflow-y-auto text-left w-full">
+              <div className="bg-gray-50/80 p-3 rounded-lg mb-3 text-sm text-gray-700 max-h-32 overflow-y-auto w-full border border-gray-200">
                 {currentQuestion.passageText}
               </div>
             )}
-            <h2>{currentQuestion.text}</h2>
+            <h2 className="text-2xl sm:text-3xl font-black text-slate-800 leading-tight">{currentQuestion.text}</h2>
             {currentQuestion.helpText && (
-              <p className="text-sm text-gray-400 mt-2 font-normal">{currentQuestion.helpText}</p>
+              <p className="text-sm text-slate-500 mt-2 font-medium">{currentQuestion.helpText}</p>
             )}
           </div>
         </div>
 
         {/* Answer Options */}
-        <div className="px-4 pb-6" style={{ paddingBottom: 'max(1.5rem, env(safe-area-inset-bottom))' }}>
+        <div className="px-4 pb-6 relative z-10 flex-1" style={{ paddingBottom: 'max(1.5rem, env(safe-area-inset-bottom))' }}>
           {isShortText ? (
             <div className="max-w-xl mx-auto w-full mb-4">
               <input
@@ -367,10 +382,12 @@ const QuizPlayPage: React.FC = () => {
     const top3 = participants.slice(0, 3);
 
     return (
-      <div className="kahoot-bg kahoot-bg-pattern fixed inset-0 z-50 overflow-auto">
-        <div className="max-w-xl mx-auto py-8 px-4" style={{ animation: 'kahoot-slide-up 0.5s ease-out' }}>
-          <h1 className="kahoot-font text-3xl font-extrabold text-white text-center mb-2">{t('quiz.gameOver')}! 🏆</h1>
-          <p className="text-white/60 text-center text-sm kahoot-font mb-8">{session?.quizTitle}</p>
+      <div className="fixed inset-0 z-50 overflow-auto">
+        <QuizBackground />
+        
+        <div className="max-w-xl mx-auto py-10 px-4 relative z-10" style={{ animation: 'kahoot-slide-up 0.5s ease-out' }}>
+          <h1 className="kahoot-font text-4xl font-black text-white text-center mb-2 drop-shadow-lg">{t('quiz.gameOver')}! 🏆</h1>
+          <p className="text-white/80 text-center text-sm kahoot-font mb-10 drop-shadow-md">{session?.quizTitle}</p>
 
           {/* Podium */}
           {top3.length >= 1 && (
@@ -454,8 +471,9 @@ const QuizPlayPage: React.FC = () => {
 
   // Loading fallback
   return (
-    <div className="kahoot-bg fixed inset-0 z-50 flex items-center justify-center">
-      <div className="w-10 h-10 border-4 border-white/20 border-t-white rounded-full animate-spin" />
+    <div className="fixed inset-0 z-50 flex items-center justify-center">
+      <QuizBackground />
+      <div className="w-12 h-12 border-4 border-white/20 border-t-white rounded-full animate-spin relative z-10 shadow-lg" />
     </div>
   );
 };

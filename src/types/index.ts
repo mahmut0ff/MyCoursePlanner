@@ -482,6 +482,8 @@ export interface AIFeedback {
   reviewSuggestions: string[];
   summary: string;
   generatedAt: string;
+  modelUsed?: string;
+  teacherNotes?: string;
 }
 
 // ---- System Logs ----

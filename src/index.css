@@ -796,3 +796,10 @@ select:-webkit-autofill {
   0%, 100% { transform: scale(1); box-shadow: 0 0 30px rgba(226, 27, 60, 0.6); }
   50% { transform: scale(1.1); box-shadow: 0 0 60px rgba(226, 27, 60, 1); }
 }
+
+/* Light theme overrides for Planula branding */
+.planula-brand-text { color: #0f172a !important; text-shadow: 0 2px 10px rgba(0,0,0,0.1) !important; }
+.dark .planula-brand-text { color: white !important; text-shadow: 0 5px 15px rgba(0,0,0,0.4), 0 10px 30px rgba(70, 23, 143, 0.6) !important; }
+
+.planula-timer-display { background: white !important; border-color: #e2e8f0 !important; box-shadow: 0 10px 30px rgba(0,0,0,0.05) !important; color: #0f172a !important; }
+.dark .planula-timer-display { background: rgba(0, 0, 0, 0.4) !important; border-color: rgba(255, 255, 255, 0.1) !important; box-shadow: 0 10px 30px rgba(0,0,0,0.3) !important; color: white !important; }

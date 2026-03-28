@@ -270,17 +270,7 @@ const LiveSessionDashboard: React.FC = () => {
   const sortedParticipants = [...participants].sort((a, b) => b.score - a.score);
 
   return (
-    <div 
-      className="w-full h-screen kahoot-font overflow-hidden relative flex flex-col"
-      style={{
-        backgroundImage: 'url(/classroom_bg.jpg)',
-        backgroundColor: '#46178f',
-        backgroundSize: 'cover',
-        backgroundPosition: 'center'
-      }}
-    >
-      {/* Dark blurred overlay to guarantee text readability against the complex background */}
-      <div className="absolute inset-0 bg-slate-900/65 backdrop-blur-md z-0" />
+    <div className="w-full h-screen kahoot-font overflow-hidden flex flex-col bg-slate-50 dark:bg-slate-900 transition-colors">
 
       {/* Music Controls (Floating Top-Right) */}
       <div className="absolute top-4 right-4 z-50 flex items-center gap-2 bg-slate-900/80 backdrop-blur-md border border-slate-700 p-2 rounded-xl shadow-lg transition-opacity hover:opacity-100 opacity-50 focus-within:opacity-100">

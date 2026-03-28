@@ -15,19 +15,7 @@ type GamePhase = 'lobby' | 'question' | 'answer_feedback' | 'leaderboard' | 'res
 
 // Reusable Background Component
 const QuizBackground = () => (
-  <>
-    <div 
-      className="fixed inset-0 z-[-2] bg-cover bg-center bg-no-repeat"
-      style={{
-        backgroundImage: 'url(/classroom_bg.jpg)',
-        backgroundColor: '#46178f',
-        backgroundSize: 'cover',
-        backgroundPosition: 'center'
-      }}
-    />
-    {/* Dark blurred overlay to guarantee text readability */}
-    <div className="fixed inset-0 z-[-1] bg-slate-900/70 backdrop-blur-lg" />
-  </>
+  <div className="fixed inset-0 z-[-2] bg-slate-50 dark:bg-slate-900 transition-colors" />
 );
 
 const OPTION_COLORS = ['kahoot-option-red', 'kahoot-option-blue', 'kahoot-option-yellow', 'kahoot-option-green', 'kahoot-option-red', 'kahoot-option-blue', 'kahoot-option-yellow', 'kahoot-option-green'];

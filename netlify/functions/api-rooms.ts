@@ -43,13 +43,15 @@ const handler: Handler = async (event: HandlerEvent) => {
     let snap;
     if (isStaff(user)) {
       snap = orgFilter
-        ? await adminDb.collection(COLLECTION).where('organizationId', '==', orgFilter).orderBy('createdAt', 'desc').get()
-        : await adminDb.collection(COLLECTION).orderBy('createdAt', 'desc').get();
+        ? await adminDb.collection(COLLECTION).where('organizationId', '==', orgFilter).get()
+        : await adminDb.collection(COLLECTION).get();
     } else {
       if (!orgFilter) return ok([]);
-      snap = await adminDb.collection(COLLECTION).where('organizationId', '==', orgFilter).where('status', '==', 'active').orderBy('createdAt', 'desc').get();
+      snap = await adminDb.collection(COLLECTION).where('organizationId', '==', orgFilter).where('status', '==', 'active').get();
     }
-    return ok(snap.docs.map((d: any) => ({ id: d.id, ...d.data() })));
+    const results = snap.docs.map((d: any) => ({ id: d.id, ...d.data() }));
+    results.sort((a: any, b: any) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
+    return ok(results);
   }
 
   // POST

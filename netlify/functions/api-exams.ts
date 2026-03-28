@@ -26,11 +26,13 @@ const handler: Handler = async (event: HandlerEvent) => {
     const orgFilter = getOrgFilter(user);
     let snap;
     if (orgFilter) {
-      snap = await adminDb.collection(COLLECTION).where('organizationId', '==', orgFilter).orderBy('createdAt', 'desc').get();
+      snap = await adminDb.collection(COLLECTION).where('organizationId', '==', orgFilter).get();
     } else {
-      snap = await adminDb.collection(COLLECTION).orderBy('createdAt', 'desc').get();
+      snap = await adminDb.collection(COLLECTION).get();
     }
-    return ok(snap.docs.map((d: any) => ({ id: d.id, ...d.data() })));
+    const results = snap.docs.map((d: any) => ({ id: d.id, ...d.data() }));
+    results.sort((a: any, b: any) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
+    return ok(results);
   }
 
   if (!isStaff(user)) return forbidden();

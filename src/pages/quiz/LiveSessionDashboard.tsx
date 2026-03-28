@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import confetti from 'canvas-confetti';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../contexts/AuthContext';
 import { subscribeToSession, subscribeToParticipants, subscribeToAllAnswers } from '../../services/quiz.service';
@@ -116,6 +117,32 @@ const LiveSessionDashboard: React.FC = () => {
       stopGameMusic();
       musicStartedRef.current = false;
       playVictoryFanfare();
+
+      // Fireworks effect
+      const duration = 5000;
+      const end = Date.now() + duration;
+      const colors = ['#ff0000', '#00ff00', '#0000ff', '#ffff00', '#ff00ff', '#ffffff'];
+
+      (function frame() {
+        confetti({
+          particleCount: 5,
+          angle: 60,
+          spread: 55,
+          origin: { x: 0 },
+          colors: colors
+        });
+        confetti({
+          particleCount: 5,
+          angle: 120,
+          spread: 55,
+          origin: { x: 1 },
+          colors: colors
+        });
+
+        if (Date.now() < end) {
+          requestAnimationFrame(frame);
+        }
+      }());
     }
   }, [session?.status]);
 
@@ -557,46 +584,63 @@ const LiveSessionDashboard: React.FC = () => {
 
         {/* RESULTS INTERFACE */}
         {isCompleted && participants.length > 0 && (
-          <div className="flex flex-col items-center flex-1 overflow-auto animate-fade-in py-4">
-            <h2 className="text-3xl font-black text-slate-900 dark:text-white mb-6 flex items-center gap-4">
-               <Trophy className="w-8 h-8 text-yellow-500" /> {t('quiz.finalResults', 'Final Results')}
+          <div className="flex flex-col items-center flex-1 overflow-auto animate-fade-in py-10 relative z-10 w-full" style={{ background: 'radial-gradient(circle at center, rgba(108, 30, 219, 0.4) 0%, transparent 60%)' }}>
+            {/* Celebration backdrop */}
+            <div className="absolute inset-0 pointer-events-none overflow-hidden flex items-center justify-center opacity-30">
+              <div className="w-[800px] h-[800px] bg-yellow-400 rounded-full blur-[150px] mix-blend-screen animate-pulse" style={{ animationDuration: '4s' }} />
+            </div>
+
+            <h2 className="text-4xl md:text-5xl font-black text-white mb-10 flex items-center justify-center gap-4 drop-shadow-2xl z-10" style={{ animation: 'kahoot-pop 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275) both' }}>
+               <Trophy className="w-12 h-12 text-yellow-400 drop-shadow-[0_0_15px_rgba(250,204,21,0.8)]" /> 
+               <span className="bg-clip-text text-transparent bg-gradient-to-br from-yellow-300 via-white to-amber-200">
+                 {t('quiz.finalResults', 'Final Results!')}
+               </span>
             </h2>
             
-            <div className="kahoot-podium-container py-6 max-w-3xl w-full">
+            <div className="kahoot-podium-container py-6 max-w-4xl w-full z-10 px-4">
+              {/* 2nd Place */}
               {sortedParticipants.length >= 2 && (
-                <div className="kahoot-podium-block">
-                  <p className="text-lg font-bold text-slate-900 dark:text-white truncate max-w-[120px] mb-2">{sortedParticipants[1]?.participantName}</p>
-                  <p className="text-sm text-slate-500 font-black mb-2">{sortedParticipants[1]?.score} pts</p>
-                  <div className="kahoot-podium-bar silver !rounded-t-3xl shadow-lg border border-slate-200 dark:border-slate-700">
-                    <span className="text-4xl mt-4">🥈</span>
-                    <span className="font-extrabold text-2xl mt-2 text-slate-700">2</span>
+                <div className="kahoot-podium-block w-1/3">
+                  <p className="text-xl font-bold text-white truncate max-w-[150px] mb-2 drop-shadow-md">{sortedParticipants[1]?.participantName}</p>
+                  <p className="text-base text-slate-200 font-black mb-2 px-3 py-1 bg-white/10 rounded-full backdrop-blur-sm border border-white/20">{sortedParticipants[1]?.score} pts</p>
+                  <div className="kahoot-podium-bar silver !rounded-t-3xl shadow-[0_0_30px_rgba(203,213,225,0.4)] border-2 border-slate-300 relative overflow-hidden group">
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent" />
+                    <span className="text-5xl mt-4 z-10 relative drop-shadow-lg group-hover:scale-110 transition-transform">🥈</span>
+                    <span className="font-extrabold text-3xl mt-2 text-slate-800 z-10 relative">2</span>
                   </div>
                 </div>
               )}
-              <div className="kahoot-podium-block z-10">
-                <p className="text-2xl font-black text-slate-900 dark:text-white truncate max-w-[150px] mb-2">{sortedParticipants[0]?.participantName}</p>
-                <p className="text-base text-yellow-600 dark:text-yellow-400 font-black mb-2">{sortedParticipants[0]?.score} pts</p>
-                <div className="kahoot-podium-bar gold !rounded-t-3xl shadow-xl border border-yellow-400">
-                  <span className="text-5xl mt-4 drop-shadow-md">🥇</span>
-                  <span className="font-extrabold text-4xl mt-2 text-yellow-900">1</span>
+              {/* 1st Place */}
+              <div className="kahoot-podium-block z-20 w-1/3 -mt-16">
+                <div className="absolute -top-10 scale-150 opacity-50 blur-2xl rounded-full bg-yellow-400 w-32 h-32 z-0 animate-pulse" />
+                <p className="text-3xl font-black text-white truncate max-w-[180px] mb-2 drop-shadow-[0_2px_4px_rgba(0,0,0,0.5)] z-10 relative">{sortedParticipants[0]?.participantName}</p>
+                <p className="text-lg text-yellow-300 font-black mb-3 px-4 py-1.5 bg-black/30 rounded-full backdrop-blur-md border border-yellow-400/50 shadow-[0_0_15px_rgba(250,204,21,0.3)] z-10 relative">
+                  {sortedParticipants[0]?.score} pts
+                </p>
+                <div className="kahoot-podium-bar gold !rounded-t-3xl shadow-[0_0_50px_rgba(250,204,21,0.6)] border-2 border-yellow-300 relative overflow-hidden group !h-[280px]">
+                  <div className="absolute inset-0 bg-gradient-to-tr from-yellow-600/30 via-transparent to-white/30" />
+                  <span className="text-7xl mt-6 z-10 relative drop-shadow-xl group-hover:scale-125 transition-transform" style={{ animation: 'kahoot-wiggle 3s infinite ease-in-out' }}>👑</span>
+                  <span className="font-extrabold text-5xl mt-4 text-yellow-900 z-10 relative drop-shadow-sm">1</span>
                 </div>
               </div>
+              {/* 3rd Place */}
               {sortedParticipants.length >= 3 && (
-                <div className="kahoot-podium-block">
-                  <p className="text-lg font-bold text-slate-900 dark:text-white truncate max-w-[120px] mb-2">{sortedParticipants[2]?.participantName}</p>
-                  <p className="text-sm text-slate-500 font-black mb-2">{sortedParticipants[2]?.score} pts</p>
-                  <div className="kahoot-podium-bar bronze !rounded-t-3xl shadow-lg border border-orange-200">
-                    <span className="text-4xl mt-4">🥉</span>
-                    <span className="font-extrabold text-2xl mt-2 text-orange-900">3</span>
+                <div className="kahoot-podium-block w-1/3">
+                  <p className="text-xl font-bold text-white truncate max-w-[150px] mb-2 drop-shadow-md">{sortedParticipants[2]?.participantName}</p>
+                  <p className="text-base text-slate-200 font-black mb-2 px-3 py-1 bg-white/10 rounded-full backdrop-blur-sm border border-white/20">{sortedParticipants[2]?.score} pts</p>
+                  <div className="kahoot-podium-bar bronze !rounded-t-3xl shadow-[0_0_30px_rgba(253,186,116,0.4)] border-2 border-orange-300 relative overflow-hidden group">
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent" />
+                    <span className="text-5xl mt-4 z-10 relative drop-shadow-lg group-hover:scale-110 transition-transform">🥉</span>
+                    <span className="font-extrabold text-3xl mt-2 text-orange-900 z-10 relative">3</span>
                   </div>
                 </div>
               )}
             </div>
 
             <button onClick={() => doAction(() => apiRestartQuizSession(sessionId!), 'restart')} disabled={!!actionLoading}
-              className="mt-8 flex items-center gap-3 px-8 py-4 rounded-2xl font-black text-white text-xl transition-all shadow-xl active:scale-95"
+              className="mt-12 flex items-center gap-3 px-10 py-5 rounded-3xl font-black text-white text-2xl transition-all shadow-[0_8px_0_rgba(0,0,0,0.2),0_15px_30px_rgba(0,0,0,0.3)] active:scale-95 hover:-translate-y-1 hover:brightness-110 z-10"
               style={{ backgroundColor: 'var(--kahoot-purple)' }}>
-              <RefreshCw className="w-6 h-6" /> {t('quiz.restart', 'Play Again')}
+              <RefreshCw className="w-8 h-8 animate-[spin_4s_linear_infinite]" /> {t('quiz.restart', 'Play Again')}
             </button>
           </div>
         )}

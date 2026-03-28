@@ -55,6 +55,17 @@ const ExamTakePage: React.FC = () => {
     }
   };
 
+  // Warn the student before they accidentally close the tab during the exam
+  useEffect(() => {
+    if (submitted || loading) return;
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = '';
+    };
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [submitted, loading]);
+
   useEffect(() => {
     if (loading || submitted || timeLeft <= 0) return;
     const interval = setInterval(() => {
@@ -242,6 +253,31 @@ const ExamTakePage: React.FC = () => {
                       {selected && <div className="w-2.5 h-2.5 rounded-full bg-slate-900 dark:bg-white" />}
                     </div>
                     <span className={`text-lg sm:text-xl font-medium ${selected ? 'text-slate-900 dark:text-white' : 'text-slate-700 dark:text-slate-300'}`}>{opt}</span>
+                  </div>
+                );
+              })}
+
+              {q.type === 'true_false' && (['True', 'False']).map((opt, oi) => {
+                const selected = answers[q.id] === opt;
+                return (
+                  <div
+                    key={oi}
+                    onClick={() => setAnswer(q.id, opt)}
+                    role="button"
+                    tabIndex={0}
+                    onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setAnswer(q.id, opt); } }}
+                    className={`exam-card-hover flex items-center gap-4 p-5 sm:p-6 rounded-2xl border-2 cursor-pointer transition-all select-none ${
+                      selected
+                        ? 'border-slate-900 bg-slate-50 dark:border-white dark:bg-slate-800/80 shadow-sm'
+                        : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 hover:border-slate-300 dark:hover:border-slate-600'
+                    }`}
+                  >
+                    <div className={`shrink-0 w-6 h-6 rounded-full border-2 flex items-center justify-center transition-colors ${selected ? 'border-slate-900 dark:border-white' : 'border-slate-300 dark:border-slate-600'}`}>
+                      {selected && <div className="w-2.5 h-2.5 rounded-full bg-slate-900 dark:bg-white" />}
+                    </div>
+                    <span className={`text-lg sm:text-xl font-medium ${selected ? 'text-slate-900 dark:text-white' : 'text-slate-700 dark:text-slate-300'}`}>
+                      {opt === 'True' ? '✅ Верно (True)' : '❌ Неверно (False)'}
+                    </span>
                   </div>
                 );
               })}

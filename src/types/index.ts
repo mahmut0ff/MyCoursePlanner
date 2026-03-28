@@ -384,7 +384,7 @@ export interface LessonContentBlock {
 // ---- Exams ----
 
 export type ExamStatus = 'draft' | 'published' | 'archived';
-export type QuestionType = 'multiple_choice' | 'multi_select' | 'short_answer';
+export type QuestionType = 'multiple_choice' | 'multi_select' | 'short_answer' | 'true_false';
 
 export interface Exam {
   id: string;

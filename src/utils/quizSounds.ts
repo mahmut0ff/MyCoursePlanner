@@ -31,6 +31,27 @@ export function playGameMusic() {
 
     const oscillators: OscillatorNode[] = [];
 
+    // Choose one of 3 random themes for variety
+    const themes = [
+      {
+        bassFreq: 110, padFreqs: [220, 277.18, 329.63], 
+        bassNotes: [110, 130.81, 146.83, 164.81, 146.83, 130.81],
+        oscType: 'sawtooth' as OscillatorType, tempo: 350
+      },
+      { // Intense techno pulse
+        bassFreq: 55, padFreqs: [164.81, 196.00, 246.94], // E minor
+        bassNotes: [82.41, 82.41, 98.00, 82.41, 110.00, 98.00],
+        oscType: 'square' as OscillatorType, tempo: 200
+      },
+      { // Funky groove
+        bassFreq: 130.81, padFreqs: [261.63, 329.63, 392.00], // C major
+        bassNotes: [130.81, 65.41, 155.56, 130.81, 196.00, 130.81],
+        oscType: 'triangle' as OscillatorType, tempo: 280
+      }
+    ];
+
+    const theme = themes[Math.floor(Math.random() * themes.length)];
+
     // bass line pattern
     const bassGain = ctx.createGain();
     bassGain.gain.value = 0.6;
@@ -38,12 +59,12 @@ export function playGameMusic() {
 
     const bassFilter = ctx.createBiquadFilter();
     bassFilter.type = 'lowpass';
-    bassFilter.frequency.value = 400;
+    bassFilter.frequency.value = theme.oscType === 'triangle' ? 800 : 400;
     bassFilter.connect(bassGain);
 
     const bassOsc = ctx.createOscillator();
-    bassOsc.type = 'sawtooth';
-    bassOsc.frequency.value = 110;
+    bassOsc.type = theme.oscType;
+    bassOsc.frequency.value = theme.bassFreq;
     bassOsc.connect(bassFilter);
     bassOsc.start();
     oscillators.push(bassOsc);
@@ -58,7 +79,7 @@ export function playGameMusic() {
     padFilter.frequency.value = 1200;
     padFilter.connect(padGain);
 
-    [220, 277.18, 329.63].forEach(freq => {
+    theme.padFreqs.forEach(freq => {
       const osc = ctx.createOscillator();
       osc.type = 'sine';
       osc.frequency.value = freq;
@@ -68,14 +89,13 @@ export function playGameMusic() {
     });
 
     // rhythmic arpeggiation
-    const bassNotes = [110, 130.81, 146.83, 164.81, 146.83, 130.81];
     let noteIndex = 0;
     const interval = setInterval(() => {
       if (bassOsc && bassOsc.frequency) {
-        bassOsc.frequency.setValueAtTime(bassNotes[noteIndex % bassNotes.length], ctx.currentTime);
+        bassOsc.frequency.setValueAtTime(theme.bassNotes[noteIndex % theme.bassNotes.length], ctx.currentTime);
         noteIndex++;
       }
-    }, 350);
+    }, theme.tempo);
 
     gameMusicNodes = { osc: oscillators, gain: masterGain, interval };
   } catch (e) {

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Navigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import type { UserRole } from '../../types';
@@ -11,7 +11,25 @@ interface ProtectedRouteProps {
 const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, allowedRoles }) => {
   const { firebaseUser, profile, loading, configured } = useAuth();
 
-  if (loading) {
+  // Give the profile a moment to load from Firestore before concluding it doesn't exist.
+  // This prevents premature redirects to /onboarding during the auth → profile fetch cycle.
+  const [profileSettled, setProfileSettled] = useState(false);
+
+  useEffect(() => {
+    if (loading) return; // still loading auth — wait
+    if (profile) {
+      // Profile exists, no need to wait
+      setProfileSettled(true);
+      return;
+    }
+    // Firebase user exists but profile is null — wait 1.5s for Firestore fetch
+    const timer = setTimeout(() => {
+      setProfileSettled(true);
+    }, 1500);
+    return () => clearTimeout(timer);
+  }, [loading, profile]);
+
+  if (loading || (!profileSettled && firebaseUser && !profile)) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-slate-900">
         <div className="flex flex-col items-center gap-3">
@@ -37,7 +55,9 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, allowedRoles 
   }
 
   if (!firebaseUser) return <Navigate to="/login" replace />;
-  if (!profile && firebaseUser) {
+
+  // Only redirect to onboarding after we've confirmed profile truly doesn't exist
+  if (!profile && profileSettled) {
     return <Navigate to="/onboarding" replace />;
   }
   

@@ -195,9 +195,10 @@ const handler: Handler = async (event: HandlerEvent) => {
     const ref = await adminDb.collection(COLLECTION).add(orgData);
     const orgId = ref.id;
 
-    // Create subscription with 14-day trial
+    // Create subscription with plan-specific trial duration
+    const TRIAL_DAYS: Record<string, number> = { starter: 14, professional: 3, enterprise: 3 };
     const trialEnd = new Date();
-    trialEnd.setDate(trialEnd.getDate() + 14);
+    trialEnd.setDate(trialEnd.getDate() + (TRIAL_DAYS[orgData.planId] || 14));
     await adminDb.collection('subscriptions').add({
       organizationId: orgId,
       planId: orgData.planId,

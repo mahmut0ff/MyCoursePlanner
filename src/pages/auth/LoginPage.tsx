@@ -17,17 +17,14 @@ const LoginPage: React.FC = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const orgSlug = searchParams.get('orgSlug');
-  const { firebaseUser, profile, loading: authLoading } = useAuth();
+  const { firebaseUser, loading: authLoading } = useAuth();
 
   React.useEffect(() => {
     if (!authLoading && firebaseUser) {
-      if (profile) {
-        navigate(orgSlug ? `/dashboard?orgSlug=${orgSlug}` : '/dashboard');
-      } else {
-        navigate(orgSlug ? `/onboarding?orgSlug=${orgSlug}` : '/onboarding');
-      }
+      // Always go to dashboard — ProtectedRoute handles incomplete profiles
+      navigate(orgSlug ? `/dashboard?orgSlug=${orgSlug}` : '/dashboard');
     }
-  }, [firebaseUser, profile, authLoading, navigate, orgSlug]);
+  }, [firebaseUser, authLoading, navigate, orgSlug]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

@@ -33,7 +33,7 @@ const AdminOrgDetailPage: React.FC = () => {
   const handleGiftPlan = async (planId: string) => {
     if (!confirm(`Подарить тариф «${planId}» бесплатно для организации «${org?.name}»?`)) return;
     setGiftingPlan(planId);
-    try { await adminGiftPlan(id!, planId); load(); } catch (e) { console.error(e); }
+    try { await adminGiftPlan(id!, planId); toast.success(`🎁 Тариф «${planId}» подарен организации «${org?.name}»`); load(); } catch (e: any) { console.error(e); toast.error(e.message || 'Ошибка при подарке тарифа'); }
     finally { setGiftingPlan(null); }
   };
 

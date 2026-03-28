@@ -187,7 +187,8 @@ const handler: Handler = async (event: HandlerEvent) => {
       const orgData = { name: body.name, slug, ownerId: '', ownerEmail: body.email || '', planId: body.planId || 'starter', status: 'active', studentsCount: 0, teachersCount: 0, examsCount: 0, createdAt: now, updatedAt: now };
       const ref = await adminDb.collection('organizations').add(orgData);
 
-      const trialEnd = new Date(); trialEnd.setDate(trialEnd.getDate() + 14);
+      const TRIAL_DAYS: Record<string, number> = { starter: 14, professional: 3, enterprise: 3 };
+      const trialEnd = new Date(); trialEnd.setDate(trialEnd.getDate() + (TRIAL_DAYS[orgData.planId] || 14));
       await adminDb.collection('subscriptions').add({ organizationId: ref.id, planId: orgData.planId, status: 'trial', startDate: now, currentPeriodEnd: trialEnd.toISOString(), trialEndsAt: trialEnd.toISOString(), createdAt: now });
 
       await auditLog(user, 'org_created', 'organization', ref.id, null, orgData);
@@ -402,6 +403,7 @@ const handler: Handler = async (event: HandlerEvent) => {
         giftedAt: new Date().toISOString(),
         startDate: new Date().toISOString(),
         currentPeriodEnd: null, // permanent — no expiry
+        trialEndsAt: null, // clear trial deadline
         createdAt: new Date().toISOString(),
       };
       if (!subSnap.empty) {
@@ -414,12 +416,12 @@ const handler: Handler = async (event: HandlerEvent) => {
       
       // Also write to systemLogs for billing history
       await adminDb.collection('systemLogs').add({
-        action: 'plan_changed',
+        action: 'plan_gifted',
         actorId: user.uid,
         actorName: user.displayName,
         targetType: 'subscription',
         targetId: body.organizationId,
-        metadata: { newPlan: `подарок: ${body.planId}` },
+        metadata: { newPlan: body.planId, reason: 'gifted' },
         createdAt: new Date().toISOString(),
       });
 

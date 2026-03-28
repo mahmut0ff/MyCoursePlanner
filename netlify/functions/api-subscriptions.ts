@@ -48,7 +48,7 @@ const handler: Handler = async (event: HandlerEvent) => {
       // Also fetch subscription change logs from systemLogs
       const logsSnap = await adminDb.collection('systemLogs')
         .where('targetId', '==', orgId)
-        .where('action', 'in', ['plan_changed', 'subscription_cancelled'])
+        .where('action', 'in', ['plan_changed', 'subscription_cancelled', 'plan_gifted'])
         .orderBy('createdAt', 'desc')
         .limit(50).get();
       const logs = logsSnap.docs.map(d => ({ id: d.id, ...d.data() }));

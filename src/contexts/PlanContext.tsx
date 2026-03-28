@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useState, useMemo } from 'react';
+import React, { createContext, useContext, useEffect, useState, useMemo, useCallback } from 'react';
 import { useAuth } from './AuthContext';
 import { apiGetSubscription } from '../lib/api';
 import { PLANS, FEATURE_TO_LIMIT } from '../types';
@@ -44,29 +44,41 @@ export const PlanProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [currentPeriodEnd, setCurrentPeriodEnd] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
+  const fetchSubscription = useCallback(async () => {
     if (isSuperAdmin || !organizationId || role === 'student') {
       setLoading(false);
       return;
     }
-    let cancelled = false;
-    (async () => {
-      try {
-        const sub = await apiGetSubscription();
-        if (!cancelled && sub) {
-          setPlanId(sub.planId || 'starter');
-          setSubscriptionStatus(sub.status || null);
-          setTrialEndsAt(sub.trialEndsAt || null);
-          setCurrentPeriodEnd(sub.currentPeriodEnd || null);
-        }
-      } catch (e) {
-        console.warn('PlanContext: failed to load subscription', e);
-      } finally {
-        if (!cancelled) setLoading(false);
+    try {
+      const sub = await apiGetSubscription();
+      if (sub) {
+        setPlanId(sub.planId || 'starter');
+        setSubscriptionStatus(sub.status || null);
+        setTrialEndsAt(sub.trialEndsAt || null);
+        setCurrentPeriodEnd(sub.currentPeriodEnd || null);
       }
-    })();
-    return () => { cancelled = true; };
+    } catch (e) {
+      console.warn('PlanContext: failed to load subscription', e);
+    } finally {
+      setLoading(false);
+    }
   }, [organizationId, isSuperAdmin, role]);
+
+  // Initial fetch
+  useEffect(() => {
+    fetchSubscription();
+  }, [fetchSubscription]);
+
+  // Re-fetch when user returns to the tab (e.g. after admin gifts a plan)
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible' && organizationId) {
+        fetchSubscription();
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+  }, [fetchSubscription, organizationId]);
 
   const isGifted = subscriptionStatus === 'gifted';
 

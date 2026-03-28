@@ -282,11 +282,11 @@ const BillingPage: React.FC = () => {
                   <p className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase">{t('billing.changelog', 'Журнал изменений')}</p>
                 </div>
                 <div className="divide-y divide-slate-100 dark:divide-slate-700">
-                  {billingHistory.logs.map((log: any) => (
+                    {billingHistory.logs.map((log: any) => (
                     <div key={log.id} className="px-5 py-3 flex items-center gap-3 text-sm">
-                      <div className={`w-2 h-2 rounded-full shrink-0 ${log.action === 'plan_changed' ? 'bg-blue-500' : 'bg-red-500'}`} />
+                      <div className={`w-2 h-2 rounded-full shrink-0 ${log.action === 'plan_changed' ? 'bg-blue-500' : log.action === 'plan_gifted' ? 'bg-emerald-500' : 'bg-red-500'}`} />
                       <span className="text-slate-700 dark:text-slate-300">
-                        {log.action === 'plan_changed' ? t('billing.planChanged', 'Смена тарифа') : t('billing.subCancelled', 'Отмена подписки')}
+                        {log.action === 'plan_changed' ? t('billing.planChanged', 'Смена тарифа') : log.action === 'plan_gifted' ? '🎁 ' + t('billing.planGifted', 'Тариф подарен') : t('billing.subCancelled', 'Отмена подписки')}
                         {log.metadata?.newPlan && <span className="font-medium capitalize ml-1">→ {log.metadata.newPlan}</span>}
                       </span>
                       <span className="ml-auto text-[10px] text-slate-400">{log.actorName} · {new Date(log.createdAt).toLocaleDateString()}</span>

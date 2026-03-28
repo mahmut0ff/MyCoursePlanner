@@ -8,14 +8,16 @@ import {
   Sparkles, CheckCircle2,
   Calendar, FileCheck2,
   MessageCircle, Rocket, Zap, Crown, UserPlus, FileSpreadsheet,
-  Briefcase, Image, ArrowRight, Bot, LineChart
+  Briefcase, Image, ArrowRight, Bot, LineChart,
+  MapPin, ShieldCheck, Palette, CalendarDays,
+  Globe, Smartphone, PieChart, Timer
 } from 'lucide-react';
 import LanguageSwitcher from '../../components/LanguageSwitcher';
 
 const FeaturesPage: React.FC = () => {
   const { t } = useTranslation();
   const { firebaseUser: user } = useAuth();
-  const [activeTab, setActiveTab] = useState('ai');
+  const [activeTab, setActiveTab] = useState('summary');
   const [isScrolled, setIsScrolled] = useState(false);
 
   useEffect(() => {
@@ -25,15 +27,16 @@ const FeaturesPage: React.FC = () => {
   }, []);
 
   const featureTabs = [
+    { id: 'summary', label: 'Всё в одном', icon: PieChart, color: 'text-slate-500', bg: 'bg-slate-500/10' },
     { id: 'ai', label: 'AI Magic', icon: Brain, color: 'text-violet-500', bg: 'bg-violet-500/10' },
-    { id: 'teachers', label: 'Учителям', icon: Users, color: 'text-emerald-500', bg: 'bg-emerald-500/10' },
-    { id: 'students', label: 'Студентам', icon: Gamepad2, color: 'text-rose-500', bg: 'bg-rose-500/10' },
-    { id: 'b2b', label: 'Организациям', icon: Building2, color: 'text-blue-500', bg: 'bg-blue-500/10' },
-    { id: 'tools', label: 'Дополнительно', icon: Layers, color: 'text-amber-500', bg: 'bg-amber-500/10' }
+    { id: 'teachers', label: 'Всё для Учителя', icon: Users, color: 'text-emerald-500', bg: 'bg-emerald-500/10' },
+    { id: 'students', label: 'Опыт Студента', icon: Gamepad2, color: 'text-rose-500', bg: 'bg-rose-500/10' },
+    { id: 'b2b', label: 'B2B Администрирование', icon: Building2, color: 'text-blue-500', bg: 'bg-blue-500/10' },
+    { id: 'tools', label: 'Секретное оружие', icon: Layers, color: 'text-amber-500', bg: 'bg-amber-500/10' }
   ];
 
   return (
-    <div className="min-h-screen bg-[#fafafa] text-slate-900 pb-20 font-sans selection:bg-primary-500/30">
+    <div className="min-h-screen bg-[#f8fafc] text-slate-900 pb-20 font-sans selection:bg-primary-500/30">
       
       {/* ═══ Navbar ═══ */}
       <nav className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${isScrolled ? 'bg-white/80 backdrop-blur-xl border-b border-slate-200/50 shadow-sm' : 'bg-transparent'}`}>
@@ -54,19 +57,20 @@ const FeaturesPage: React.FC = () => {
       </nav>
 
       {/* ═══ Hero ═══ */}
-      <div className="pt-32 pb-16 px-6 relative overflow-hidden bg-white border-b border-slate-200/60">
-        <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-primary-600/5 rounded-full blur-[100px] pointer-events-none" />
-        <div className="absolute bottom-0 left-0 w-[600px] h-[600px] bg-violet-600/5 rounded-full blur-[100px] pointer-events-none" />
+      <div className="pt-32 pb-16 px-6 relative overflow-hidden bg-white border-b border-slate-200/60 shadow-sm">
+        <div className="absolute top-[-100px] right-[-100px] w-[600px] h-[600px] bg-primary-600/5 rounded-full blur-[100px] pointer-events-none" />
+        <div className="absolute bottom-[-100px] left-[-100px] w-[600px] h-[600px] bg-violet-600/5 rounded-full blur-[100px] pointer-events-none" />
         
         <div className="max-w-5xl mx-auto text-center relative z-10">
           <Link to="/" className="inline-flex items-center gap-1.5 text-sm font-medium text-slate-500 hover:text-primary-600 mb-8 transition-colors bg-slate-100 hover:bg-slate-200 px-4 py-1.5 rounded-full">
             <ArrowLeft className="w-4 h-4" /> Назад на главную
           </Link>
           <h1 className="text-5xl sm:text-6xl md:text-7xl font-extrabold mb-6 tracking-tight bg-gradient-to-br from-slate-900 via-slate-800 to-slate-500 bg-clip-text text-transparent">
-            Взгляните на все<br />возможности изнутри
+            Энциклопедия<br />Возможностей
           </h1>
-          <p className="text-xl text-slate-500 max-w-3xl mx-auto leading-relaxed">
-            Мы встроили всё необходимое для полного цикла работы учебного центра. От мощнейшей ИИ-автоматизации и геймификации до жесткого контроля финансов и посещаемости.
+          <p className="text-xl text-slate-500 max-w-4xl mx-auto leading-relaxed">
+            Мы спроектировали <strong>100% покрытие</strong> потребностей вашей школы. От автоматизации 
+            работы до геймификации, умных проверок домашки ИИ и жесткого биллинга. Это больше, чем LMS. Это <strong>Planula</strong>.
           </p>
         </div>
       </div>
@@ -76,7 +80,7 @@ const FeaturesPage: React.FC = () => {
         {/* ═══ Sticky Sidebar Navigation ═══ */}
         <div className="hidden lg:block w-72 shrink-0 sticky top-28 space-y-2 relative z-20">
           <div className="bg-white rounded-3xl p-4 border border-slate-200/60 shadow-xl shadow-slate-200/40">
-            <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-4 px-3">Категории</h3>
+            <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-4 px-3">Навигация</h3>
             <div className="space-y-1">
               {featureTabs.map((tab) => (
                 <button 
@@ -98,6 +102,27 @@ const FeaturesPage: React.FC = () => {
 
         {/* ═══ Content Stream ═══ */}
         <div className="flex-1 space-y-32">
+
+          {/* SECTION 0: SUMMARY */}
+          <section id="summary" className="scroll-mt-32">
+            <div className="bg-slate-900 rounded-[2rem] p-10 md:p-14 text-center relative overflow-hidden shadow-2xl">
+              <div className="absolute inset-0 bg-[url('/grid.svg')] opacity-10" />
+              <div className="relative z-10 flex flex-col items-center">
+                <div className="w-16 h-16 bg-white/10 backdrop-blur-md rounded-2xl flex items-center justify-center mb-6">
+                  <PieChart className="w-8 h-8 text-primary-400" />
+                </div>
+                <h2 className="text-3xl md:text-5xl font-extrabold text-white mb-6">Одна платформа заменяет десять</h2>
+                <p className="text-lg text-slate-300 max-w-2xl leading-relaxed mb-8">Забудьте про 10 разных подписок (Zoom, Google Docs, Kahoot, ChatGPT, Trello, Excel, CRM). Мы уместили лучший мировой опыт в одном чистом интерфейсе.</p>
+                <div className="flex flex-wrap justify-center gap-3">
+                  <span className="bg-white/10 text-white px-4 py-2 rounded-full text-sm font-medium border border-white/5">Аналитика</span>
+                  <span className="bg-white/10 text-white px-4 py-2 rounded-full text-sm font-medium border border-white/5">Финансы</span>
+                  <span className="bg-white/10 text-white px-4 py-2 rounded-full text-sm font-medium border border-white/5">Чат</span>
+                  <span className="bg-white/10 text-white px-4 py-2 rounded-full text-sm font-medium border border-white/5">Контент LMS</span>
+                  <span className="bg-white/10 text-white px-4 py-2 rounded-full text-sm font-medium border border-white/5">Gamification</span>
+                </div>
+              </div>
+            </div>
+          </section>
           
           {/* SECTION 1: AI MAGIC */}
           <section id="ai" className="scroll-mt-32">
@@ -110,44 +135,46 @@ const FeaturesPage: React.FC = () => {
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               
-              <div className="bg-white p-8 rounded-3xl border border-slate-200/60 shadow-sm hover:shadow-xl hover:shadow-violet-500/10 transition-shadow">
+              <div className="bg-white p-8 rounded-3xl border border-slate-200/60 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all">
                 <div className="w-12 h-12 rounded-2xl bg-violet-50 flex items-center justify-center mb-6 border border-violet-100">
                   <Bot className="w-6 h-6 text-violet-500" />
                 </div>
-                <h3 className="text-2xl font-bold text-slate-900 mb-4">AI-Менеджер (24/7)</h3>
-                <p className="text-slate-500 text-base leading-relaxed mb-6">Ваш личный ассистент на странице организации обучается на ваших данных (цены, расписание, документы) и мгновенно отвечает лидам. Без "галлюцинаций", строго по правилам.</p>
-                <div className="bg-slate-50 p-5 rounded-2xl text-sm font-mono text-slate-600 border border-slate-100 relative shadow-inner">
-                  <div className="absolute top-2 left-2 flex gap-1.5"><div className="w-2.5 h-2.5 rounded-full bg-red-400"></div><div className="w-2.5 h-2.5 rounded-full bg-amber-400"></div><div className="w-2.5 h-2.5 rounded-full bg-emerald-400"></div></div>
-                  <div className="mt-3">"Какая цена на курс IELTS?"<br/><span className="text-violet-500 mt-2 block font-semibold flex gap-2"><ArrowRight className="w-4 h-4 mt-0.5 shrink-0" /> "Подготовка длится 2 месяца и стоит 45 000 ₸ в месяц..."</span></div>
+                <h3 className="text-2xl font-bold text-slate-900 mb-4">Автономный AI-Ассистент</h3>
+                <p className="text-slate-500 text-base leading-relaxed mb-6">Публичный бот на вашей странице-визитке отвечает лидам 24/7. Он обучается на документах, стоимости курсов и расписании Вашей организации. Никаких придуманных фактов или "галлюцинаций".</p>
+                <div className="bg-slate-50 p-5 rounded-2xl text-sm font-mono text-slate-700 border border-slate-100 shadow-inner">
+                  "Какая цена на курс IELTS?"<br/>
+                  <span className="text-violet-600 mt-2 block font-semibold flex gap-2">
+                    <ArrowRight className="w-4 h-4 mt-0.5 shrink-0" />
+                    "IELTS интенсив длится 2 месяца и стоит 45 000 ₸. Включены пробные тесты."
+                  </span>
                 </div>
               </div>
 
-              <div className="bg-white p-8 rounded-3xl border border-slate-200/60 shadow-sm hover:shadow-xl hover:shadow-primary-500/10 transition-shadow">
-                <div className="w-12 h-12 rounded-2xl bg-primary-50 flex items-center justify-center mb-6 border border-primary-100">
-                  <FileCheck2 className="w-6 h-6 text-primary-500" />
+              <div className="bg-white p-8 rounded-3xl border border-slate-200/60 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all">
+                <div className="w-12 h-12 rounded-2xl bg-violet-50 flex items-center justify-center mb-6 border border-violet-100">
+                  <FileCheck2 className="w-6 h-6 text-violet-500" />
                 </div>
-                <h3 className="text-2xl font-bold text-slate-900 mb-4">Авто-проверка домашки</h3>
-                <p className="text-slate-500 text-base leading-relaxed mb-6">Больше не нужно вручную проверять сотни эссе. ИИ проверяет работы по ключам, ищет плагиат и пишет детальный фидбек для студента с разбором ошибок.</p>
-                <ul className="text-sm space-y-3 text-slate-600 font-medium">
-                  <li className="flex items-center gap-2"><CheckCircle2 className="w-5 h-5 text-emerald-500 shrink-0"/> Проверка плагиата (Поисковик сети)</li>
-                  <li className="flex items-center gap-2"><CheckCircle2 className="w-5 h-5 text-emerald-500 shrink-0"/> Выделение грамматических и смысловых ошибок</li>
+                <h3 className="text-2xl font-bold text-slate-900 mb-4">Умная проверка ДЗ</h3>
+                <p className="text-slate-500 text-base leading-relaxed mb-6">ИИ автоматически проверяет письменные работы студентов. Он не просто ставит балл, но и находит плагиат, выделяет грамматические ошибки и пишет развернутый отзыв-совет для ученика.</p>
+                <ul className="text-sm space-y-3 text-slate-600 font-medium bg-emerald-50 p-4 rounded-xl border border-emerald-100">
+                  <li className="flex items-center gap-2"><CheckCircle2 className="w-5 h-5 text-emerald-500 shrink-0"/> Быстрый фидбек экономит до 15 часов/нед.</li>
                 </ul>
               </div>
 
-              <div className="bg-white p-8 rounded-3xl border border-slate-200/60 shadow-sm hover:shadow-xl hover:shadow-amber-500/10 transition-shadow">
+              <div className="bg-white p-8 rounded-3xl border border-slate-200/60 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all">
                 <div className="w-12 h-12 rounded-2xl bg-amber-50 flex items-center justify-center mb-6 border border-amber-100">
                   <Sparkles className="w-6 h-6 text-amber-500" />
                 </div>
-                <h3 className="text-2xl font-bold text-slate-900 mb-4">Генерация викторин (PDF / Text)</h3>
-                <p className="text-slate-500 text-base leading-relaxed mb-6">Превратите PDF документ или скучную тему в полноценный Kahoot-квиз. Задайте промпт, и ИИ сам придумает вопросы, правильные и ложные варианты ответов.</p>
+                <h3 className="text-2xl font-bold text-slate-900 mb-4">AI Генерация Контента</h3>
+                <p className="text-slate-500 text-base leading-relaxed">Загрузите PDF файл или введите тему, и ИИ мгновенно сгенерирует набор вопросов с правильными и ложными ответами для проведения Kahoot-викторины.</p>
               </div>
 
-              <div className="bg-white p-8 rounded-3xl border border-slate-200/60 shadow-sm hover:shadow-xl hover:shadow-sky-500/10 transition-shadow">
+              <div className="bg-white p-8 rounded-3xl border border-slate-200/60 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all">
                 <div className="w-12 h-12 rounded-2xl bg-sky-50 flex items-center justify-center mb-6 border border-sky-100">
                   <MessageCircle className="w-6 h-6 text-sky-500" />
                 </div>
-                <h3 className="text-2xl font-bold text-slate-900 mb-4">Голосовой помощник везде</h3>
-                <p className="text-slate-500 text-base leading-relaxed mb-6">Идеально для мобильных устройств. Нажимайте на микрофон и диктуйте оценки, заметки и комментарии — нейросеть транскрибирует ваш голос сразу с учетом пунктуации!</p>
+                <h3 className="text-2xl font-bold text-slate-900 mb-4">Voice-to-Text Speech</h3>
+                <p className="text-slate-500 text-base leading-relaxed">Голосовой набор на любом экране (заметки к профилю, комментарии, чат). Нажмите иконку микрофона, и нейросеть расшифрует ваш голос с точной расстановкой запятых и точек.</p>
               </div>
 
             </div>
@@ -168,25 +195,21 @@ const FeaturesPage: React.FC = () => {
                 <div className="absolute right-[-100px] top-[-100px] w-[500px] h-[500px] bg-emerald-500/10 rounded-full blur-[100px] group-hover:bg-emerald-500/20 transition-colors pointer-events-none" />
                 <div className="relative z-10">
                   <div className="flex items-center gap-3 mb-6">
-                    <span className="bg-emerald-500 text-white text-xs font-bold px-3 py-1.5 rounded-full flex items-center gap-1.5 uppercase tracking-wide"><LineChart className="w-3.5 h-3.5"/> Инновация</span>
+                    <span className="bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-xs font-bold px-4 py-2 rounded-full flex items-center gap-2 uppercase tracking-wide"><LineChart className="w-4 h-4"/> Killer Feature</span>
                   </div>
-                  <h3 className="text-3xl md:text-5xl font-extrabold text-white mb-6 leading-tight">Светофор Рисков Студента<br />(Kanban Retention System)</h3>
+                  <h3 className="text-3xl md:text-5xl font-extrabold text-white mb-6 leading-tight">Светофор Рисков Студента<br />(Student Retention System)</h3>
                   <p className="text-slate-300 text-lg leading-relaxed max-w-3xl mb-8">
-                    Автоматическая панель дашбордов, анализирующая оценки, активность и посещаемость. Система раздает студентам метки "Красный", "Желтый", "Зеленый риски". Вы заранее знаете, кто может бросить учебу, и можете предпринять меры до окончания оплаты.
+                    Smart Dashboard анализирует посещаемость, активность на уроках и выполнение ДЗ. Студенты автоматически распределяются по доске риска: "Красный", "Желтый", "Зеленый". Действуйте проактивно и спасайте клиентов от оттока еще до того, как они заберут деньги!
                   </p>
                   
                   <div className="flex flex-wrap gap-4 mt-8">
-                    <div className="bg-slate-800/80 border border-slate-700 backdrop-blur-sm p-4 rounded-xl flex items-center gap-3">
-                      <div className="w-3 h-3 rounded-full bg-red-500 shadow-[0_0_10px_rgba(239,68,68,0.8)]" />
-                      <span className="text-slate-200 text-sm font-medium">Высокий риск оттока</span>
+                    <div className="bg-slate-800/80 border border-slate-700 backdrop-blur-sm px-5 py-3 rounded-2xl flex items-center gap-3">
+                      <div className="w-3.5 h-3.5 rounded-full bg-red-500 shadow-[0_0_12px_rgba(239,68,68,0.9)]" />
+                      <span className="text-slate-200 text-sm font-semibold">Высокий риск оттока</span>
                     </div>
-                    <div className="bg-slate-800/80 border border-slate-700 backdrop-blur-sm p-4 rounded-xl flex items-center gap-3">
-                      <div className="w-3 h-3 rounded-full bg-amber-500 shadow-[0_0_10px_rgba(245,158,11,0.8)]" />
-                      <span className="text-slate-200 text-sm font-medium">Нужно наблюдение</span>
-                    </div>
-                    <div className="bg-slate-800/80 border border-slate-700 backdrop-blur-sm p-4 rounded-xl flex items-center gap-3">
-                      <div className="w-3 h-3 rounded-full bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.8)]" />
-                      <span className="text-slate-200 text-sm font-medium">Студент в безопасности</span>
+                    <div className="bg-slate-800/80 border border-slate-700 backdrop-blur-sm px-5 py-3 rounded-2xl flex items-center gap-3">
+                      <div className="w-3.5 h-3.5 rounded-full bg-amber-500 shadow-[0_0_12px_rgba(245,158,11,0.9)]" />
+                      <span className="text-slate-200 text-sm font-semibold">Нужно наблюдение</span>
                     </div>
                   </div>
                 </div>
@@ -195,13 +218,23 @@ const FeaturesPage: React.FC = () => {
               <div className="bg-white p-8 rounded-3xl border border-slate-200/60 shadow-sm hover:shadow-xl transition-shadow">
                 <div className="w-12 h-12 rounded-2xl bg-slate-100 flex items-center justify-center mb-6"><Calendar className="w-6 h-6 text-slate-700" /></div>
                 <h3 className="text-2xl font-bold text-slate-900 mb-4">Интерактивный Журнал</h3>
-                <p className="text-slate-500 text-base leading-relaxed mb-6">Веб-аналог бумажного журнала, но гораздо удобнее. Выставляйте оценки парой кликов, отмечайте присутствие (Был / Опоздал / Не был / Уважительная) и оставляйте быстрые комментарии к каждому уроку.</p>
+                <p className="text-slate-500 text-base leading-relaxed mb-6">Мгновенное выставление оценок (A, B, C, F или 0-100) и отметка посещаемости. Присутствовал, опоздал, пропустил (уважительно/без). Быстрые комментарии к уроку видны ученикам.</p>
               </div>
 
               <div className="bg-white p-8 rounded-3xl border border-slate-200/60 shadow-sm hover:shadow-xl transition-shadow">
-                <div className="w-12 h-12 rounded-2xl bg-slate-100 flex items-center justify-center mb-6"><BookOpen className="w-6 h-6 text-slate-700" /></div>
-                <h3 className="text-2xl font-bold text-slate-900 mb-4">Хранилище материалов (LMS)</h3>
-                <p className="text-slate-500 text-base leading-relaxed mb-6">Прикрепляйте ссылки (YouTube), загружайте PDF, видео или картинки напрямую в курс. Студенты сразу видят их в своём приложении и учатся без скачивания на диск.</p>
+                <div className="w-12 h-12 rounded-2xl bg-slate-100 flex items-center justify-center mb-6"><CalendarDays className="w-6 h-6 text-slate-700" /></div>
+                <h3 className="text-2xl font-bold text-slate-900 mb-4">Расписание и Сетки</h3>
+                <p className="text-slate-500 text-base leading-relaxed mb-6">Конструктор расписания уроков. Визуальная таблица занятий, проверка накладок по времени и аудиториям. Легкий перенос уроков кликом.</p>
+              </div>
+
+              <div className="col-span-1 md:col-span-2 bg-white p-8 rounded-3xl border border-slate-200/60 shadow-sm hover:shadow-xl transition-shadow flex flex-col md:flex-row gap-8 items-center">
+                <div className="flex-1">
+                  <div className="w-12 h-12 rounded-2xl bg-slate-100 flex items-center justify-center mb-6"><BookOpen className="w-6 h-6 text-slate-700" /></div>
+                  <h3 className="text-2xl font-bold text-slate-900 mb-4">LMS Хранилище (Видео, PDF, Тесты)</h3>
+                  <p className="text-slate-500 text-base leading-relaxed">
+                    Преподаватель загружает материалы прямо в структуру курса (Документы, YouTube-видео в плеере, Практические задания). У студента всё выстроено в логичную цепочку для самообучения. Никаких Google Drive и засорения Telegram чатов.
+                  </p>
+                </div>
               </div>
 
             </div>
@@ -213,27 +246,45 @@ const FeaturesPage: React.FC = () => {
               <div className="w-12 h-12 rounded-2xl bg-rose-500/10 flex items-center justify-center border border-rose-500/20">
                 <Gamepad2 className="w-6 h-6 text-rose-600" />
               </div>
-              <h2 className="text-4xl font-extrabold text-slate-900 tracking-tight">Геймификация Студентов</h2>
+              <h2 className="text-4xl font-extrabold text-slate-900 tracking-tight">Опыт Студента & Геймификация</h2>
             </div>
             
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
 
               <div className="bg-white p-8 rounded-3xl border border-slate-200/60 shadow-sm hover:shadow-xl hover:shadow-rose-500/10 transition-shadow">
                 <div className="w-12 h-12 rounded-2xl bg-rose-50 flex items-center justify-center mb-6 border border-rose-100"><Zap className="w-6 h-6 text-rose-500" /></div>
-                <h3 className="text-xl font-bold text-slate-900 mb-4">Fire Streaks 🔥</h3>
-                <p className="text-slate-500 text-sm leading-relaxed mb-6">Система побуждает учеников возвращаться: за регулярное обучение и посещение занятий они копят дни, которые визуально отображаются как огоньки в профиле. Пропуск урока — потеря стрика!</p>
+                <h3 className="text-xl font-bold text-slate-900 mb-4">Огненные Стрики 🔥</h3>
+                <p className="text-slate-500 text-sm leading-relaxed mb-6">Каждое посещение продлевает "огонь" непрерывного обучения. Пропуск или невыполнение ДЗ сжигает стрик. Это мотивирует студентов возвращаться на уроки каждый день.</p>
               </div>
 
               <div className="bg-white p-8 rounded-3xl border border-slate-200/60 shadow-sm hover:shadow-xl hover:shadow-amber-500/10 transition-shadow">
                 <div className="w-12 h-12 rounded-2xl bg-amber-50 flex items-center justify-center mb-6 border border-amber-100"><Crown className="w-6 h-6 text-amber-500" /></div>
-                <h3 className="text-xl font-bold text-slate-900 mb-4">Шкала XP и Лидерборды</h3>
-                <p className="text-slate-500 text-sm leading-relaxed mb-6">Каждое выполненное ДЗ и пройденный тест дают XP. Набирая опыт, студенты конкурируют друг с другом в глобальном Leaderboard и переходят на новые Ранги (Новичок, Спец, Легенда).</p>
+                <h3 className="text-xl font-bold text-slate-900 mb-4">Шкала XP и Ранги</h3>
+                <p className="text-slate-500 text-sm leading-relaxed mb-6">Сдача заданий вовремя дает очки Опыта (XP). Система прокачки переводит учеников с ранга "Студент" до "Мастера", создавая глобальный соревновательный Ladder (Лидерборд).</p>
               </div>
 
               <div className="bg-white p-8 rounded-3xl border border-slate-200/60 shadow-sm hover:shadow-xl hover:shadow-indigo-500/10 transition-shadow">
                 <div className="w-12 h-12 rounded-2xl bg-indigo-50 flex items-center justify-center mb-6 border border-indigo-100"><Gamepad2 className="w-6 h-6 text-indigo-500" /></div>
-                <h3 className="text-xl font-bold text-slate-900 mb-4">Live Quiz Rooms</h3>
-                <p className="text-slate-500 text-sm leading-relaxed mb-6">Анимационные живые Викторины для проектора прямо на занятии. Все студенты подключаются с телефонов по PIN-коду и отвечают на скорость (как в популярном Kahoot). Полный отчет в конце.</p>
+                <h3 className="text-xl font-bold text-slate-900 mb-4">Аналог Kahoot (Live Quiz)</h3>
+                <p className="text-slate-500 text-sm leading-relaxed mb-6">Живые турниры в классе! Преподаватель запускает викторину на интерактивной доске, студенты присоединяются с телефонов. Турнирная таблица, таймеры и фан.</p>
+              </div>
+
+              <div className="bg-white p-8 rounded-3xl border border-slate-200/60 shadow-sm hover:shadow-xl transition-shadow">
+                <div className="w-12 h-12 rounded-2xl bg-blue-50 flex items-center justify-center mb-6 border border-blue-100"><PieChart className="w-6 h-6 text-blue-500" /></div>
+                <h3 className="text-xl font-bold text-slate-900 mb-4">Профиль и Радары Навыков</h3>
+                <p className="text-slate-500 text-sm leading-relaxed mb-6">Графики успеваемости в стиле RPG-игр. Студент наглядно видит, где он слабее (например Граматика, Аудирование) и может прокачивать целевые зоны.</p>
+              </div>
+
+              <div className="bg-white p-8 rounded-3xl border border-slate-200/60 shadow-sm hover:shadow-xl transition-shadow">
+                <div className="w-12 h-12 rounded-2xl bg-emerald-50 flex items-center justify-center mb-6 border border-emerald-100"><Smartphone className="w-6 h-6 text-emerald-500" /></div>
+                <h3 className="text-xl font-bold text-slate-900 mb-4">Адаптивный Mobile UI</h3>
+                <p className="text-slate-500 text-sm leading-relaxed mb-6">Интерфейс выглядит и ведет себя как нативное приложение (App) прямо в браузере Safari/Chrome смартфона. Не нужно скачивать приложение из сторов.</p>
+              </div>
+
+              <div className="bg-white p-8 rounded-3xl border border-slate-200/60 shadow-sm hover:shadow-xl transition-shadow">
+                <div className="w-12 h-12 rounded-2xl bg-cyan-50 flex items-center justify-center mb-6 border border-cyan-100"><Globe className="w-6 h-6 text-cyan-500" /></div>
+                <h3 className="text-xl font-bold text-slate-900 mb-4">Мультиязычность</h3>
+                <p className="text-slate-500 text-sm leading-relaxed mb-6">Вся система переведена на Русский, English и Қазақша. Каждый пользователь может использовать комфортный для себя язык независимо от остальных.</p>
               </div>
 
             </div>
@@ -248,34 +299,41 @@ const FeaturesPage: React.FC = () => {
               <h2 className="text-4xl font-extrabold text-slate-900 tracking-tight">Ядро управления (B2B Admin)</h2>
             </div>
             
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
 
-              <div className="bg-white p-8 rounded-3xl border border-slate-200/60 shadow-sm hover:shadow-xl hover:shadow-blue-500/10 transition-shadow">
+              <div className="bg-white p-8 rounded-3xl border border-slate-200/60 shadow-sm hover:shadow-xl transition-shadow">
                 <div className="w-12 h-12 rounded-2xl bg-slate-100 flex items-center justify-center mb-6"><Shield className="w-6 h-6 text-slate-700" /></div>
-                <h3 className="text-2xl font-bold text-slate-900 mb-4">Мультиарендность с Изоляцией</h3>
-                <p className="text-slate-500 text-base leading-relaxed">Полная изоляция данных организаций на уровне NoSQL. Ваши студенты, транзакции и данные никогда не пересекаются с другими учебными центрами. Это гарантирует 100% приватность.</p>
+                <h3 className="text-2xl font-bold text-slate-900 mb-4">Zero-Leak Изоляция</h3>
+                <p className="text-slate-500 text-base leading-relaxed">Данные вашей организации физически отрезаны от других центров на уровне БД. Ваша база клиентов 100% приватна и защищена ключами NoSQL.</p>
               </div>
 
-              <div className="bg-white p-8 rounded-3xl border border-slate-200/60 shadow-sm hover:shadow-xl hover:shadow-blue-500/10 transition-shadow">
-                <div className="w-12 h-12 rounded-2xl bg-slate-100 flex items-center justify-center mb-6"><UserPlus className="w-6 h-6 text-slate-700" /></div>
-                <h3 className="text-2xl font-bold text-slate-900 mb-4">Ролевая система (RBAC)</h3>
-                <p className="text-slate-500 text-base leading-relaxed">Система уровней доступа: Owner, Admin, Teacher, Student. Учителя видят лишь свои группы, админы организовывают процессы, а владельцы могут просматривать финансы и аудит-логи безопасности.</p>
+              <div className="bg-white p-8 rounded-3xl border border-slate-200/60 shadow-sm hover:shadow-xl transition-shadow">
+                <div className="w-12 h-12 rounded-2xl bg-slate-100 flex items-center justify-center mb-6"><MapPin className="w-6 h-6 text-slate-700" /></div>
+                <h3 className="text-2xl font-bold text-slate-900 mb-4">Система Филиалов</h3>
+                <p className="text-slate-500 text-base leading-relaxed">Контролируйте сразу несколько точек в городе. Привязка учителей, студентов и аудиторий к конкретным филиалам и раздельная финансовая отчетность.</p>
               </div>
 
-              <div className="col-span-1 md:col-span-2 bg-gradient-to-r from-blue-900 to-indigo-900 p-10 md:p-14 rounded-[2rem] shadow-xl relative overflow-hidden flex flex-col md:flex-row gap-8 items-center group">
+              <div className="bg-white p-8 rounded-3xl border border-slate-200/60 shadow-sm hover:shadow-xl transition-shadow">
+                <div className="w-12 h-12 rounded-2xl bg-slate-100 flex items-center justify-center mb-6"><ShieldCheck className="w-6 h-6 text-slate-700" /></div>
+                <h3 className="text-2xl font-bold text-slate-900 mb-4">Журнал Аудита (Security)</h3>
+                <p className="text-slate-500 text-base leading-relaxed">Ни одно редактирование оценки или оплаты не скроется. Система ведет Security Audit Trail: (Кто, Когда и Что изменил), чтобы предотвращать мошенничество персонала.</p>
+              </div>
+
+              <div className="col-span-1 md:col-span-3 bg-gradient-to-r from-blue-900 to-indigo-900 p-10 md:p-14 rounded-[2rem] shadow-xl relative overflow-hidden flex flex-col md:flex-row gap-8 items-center group">
                 <div className="absolute right-[-50px] top-[-50px] w-[300px] h-[300px] bg-indigo-500/20 rounded-full blur-[80px] pointer-events-none" />
                 <div className="flex-1 text-left relative z-10">
+                  <div className="inline-block bg-white/10 text-white border border-white/20 px-3 py-1 rounded-full text-xs font-bold mb-5 uppercase tracking-wide">Enterprise Level</div>
                   <h3 className="text-3xl font-bold text-white mb-4">Финансовая Аналитика и Подписки</h3>
-                  <p className="text-blue-100/70 text-base leading-relaxed mb-6 max-w-xl">Мощный биллинг в реальном времени: агрегация транзакций, графики прихода/расхода (Today, Week, Month, Year). Также, система включает автоматический Billing Guard: отключение SaaS аккаунта по истечении Trial/Pro периода с отсчетом таймера.</p>
-                  <ul className="grid grid-cols-2 gap-3 text-sm font-medium text-white/90">
-                    <li className="flex items-center gap-2 bg-white/10 px-4 py-2 rounded-lg border border-white/5 backdrop-blur-md">Учет Доходов</li>
-                    <li className="flex items-center gap-2 bg-white/10 px-4 py-2 rounded-lg border border-white/5 backdrop-blur-md">Управленческие Расходы</li>
-                    <li className="flex items-center gap-2 bg-white/10 px-4 py-2 rounded-lg border border-white/5 backdrop-blur-md">Trial & Stripe Ready</li>
-                    <li className="flex items-center gap-2 bg-white/10 px-4 py-2 rounded-lg border border-white/5 backdrop-blur-md">Логи Транзакций</li>
+                  <p className="text-blue-100/70 text-base leading-relaxed mb-6 max-w-2xl">
+                    Жесткий биллинг в реальном времени: агрегация транзакций, графики прихода/расхода (Today, Week, Month). 
+                    Для самой платформы встроен автоматический **Billing Guard**: умное отключение SaaS модулей арендаторов по истечении Trial/Pro периода с реалтайм таймерами и блокировками API на Backend-уровне.
+                  </p>
+                  <ul className="grid grid-cols-2 lg:grid-cols-4 gap-3 text-sm font-medium text-white/90 mt-8">
+                    <li className="flex items-center justify-center bg-white/10 px-4 py-3 rounded-xl border border-white/5 backdrop-blur-md">Учет Доходов</li>
+                    <li className="flex items-center justify-center bg-white/10 px-4 py-3 rounded-xl border border-white/5 backdrop-blur-md">Trial-Механика</li>
+                    <li className="flex items-center justify-center bg-white/10 px-4 py-3 rounded-xl border border-white/5 backdrop-blur-md">Stripe Ready</li>
+                    <li className="flex items-center justify-center bg-white/10 px-4 py-3 rounded-xl border border-white/5 backdrop-blur-md">Отчетные Графики</li>
                   </ul>
-                </div>
-                <div className="w-32 h-32 shrink-0 bg-white shadow-2xl rounded-3xl flex items-center justify-center border-4 border-indigo-200/30 relative z-10 group-hover:scale-105 transition-transform rotate-3 group-hover:rotate-0">
-                  <BarChart3 className="w-16 h-16 text-indigo-600" />
                 </div>
               </div>
 
@@ -288,48 +346,48 @@ const FeaturesPage: React.FC = () => {
               <div className="w-12 h-12 rounded-2xl bg-amber-500/10 flex items-center justify-center border border-amber-500/20">
                 <Layers className="w-6 h-6 text-amber-600" />
               </div>
-              <h2 className="text-4xl font-extrabold text-slate-900 tracking-tight">Секретное оружие</h2>
+              <h2 className="text-4xl font-extrabold text-slate-900 tracking-tight">Рабочие Инструменты</h2>
             </div>
             
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
 
               <div className="bg-white p-8 rounded-3xl border border-slate-200/60 hover:shadow-xl transition-shadow flex flex-col items-start gap-4">
+                <div className="w-12 h-12 rounded-xl bg-slate-50 flex items-center justify-center shrink-0 border border-slate-100"><Timer className="w-6 h-6 text-slate-600" /></div>
+                <div>
+                  <h3 className="text-lg font-bold text-slate-900 mb-3">Anti-Cheat на Экзаменах</h3>
+                  <p className="text-sm text-slate-500 leading-relaxed">Строгие экзамены с таймерами. Защита от списывания: система фиксирует смену вкладки и блокирует copy-paste.</p>
+                </div>
+              </div>
+
+              <div className="bg-white p-8 rounded-3xl border border-slate-200/60 hover:shadow-xl transition-shadow flex flex-col items-start gap-4">
                 <div className="w-12 h-12 rounded-xl bg-slate-50 flex items-center justify-center shrink-0 border border-slate-100"><FileSpreadsheet className="w-6 h-6 text-slate-600" /></div>
                 <div>
-                  <h3 className="text-lg font-bold text-slate-900 mb-3">Генератор Сертификатов (PDF)</h3>
-                  <p className="text-sm text-slate-500 leading-relaxed">Выдача крутых онлайн-сертификатов по окончанию курса (в PDF формате). С уникальным QR-кодом для проверки подлинности на сайте платформы.</p>
-                </div>
-              </div>
-
-              <div className="bg-white p-8 rounded-3xl border border-slate-200/60 hover:shadow-xl transition-shadow flex flex-col items-start gap-4">
-                <div className="w-12 h-12 rounded-xl bg-slate-50 flex items-center justify-center shrink-0 border border-slate-100"><Image className="w-6 h-6 text-slate-600" /></div>
-                <div>
-                  <h3 className="text-lg font-bold text-slate-900 mb-3">UI Avatar Cropper</h3>
-                  <p className="text-sm text-slate-500 leading-relaxed">Везде, где есть загрузка лого или аватарок — встроен идеальный редактор изображений (React Easy Crop). Все профили выглядят идеально, никаких кривых растянутых фотографий!</p>
-                </div>
-              </div>
-
-              <div className="bg-white p-8 rounded-3xl border border-slate-200/60 hover:shadow-xl transition-shadow flex flex-col items-start gap-4">
-                <div className="w-12 h-12 rounded-xl bg-slate-50 flex items-center justify-center shrink-0 border border-slate-100"><Briefcase className="w-6 h-6 text-slate-600" /></div>
-                <div>
-                  <h3 className="text-lg font-bold text-slate-900 mb-3">Найм выпускников (Directory)</h3>
-                  <p className="text-sm text-slate-500 leading-relaxed">Публичный каталог компаний и "Внутренний LinkedIn" для публикации актуальных вакансий, чтобы трудоустраивать ваших лучших студентов.</p>
-                </div>
-              </div>
-
-              <div className="bg-white p-8 rounded-3xl border border-slate-200/60 hover:shadow-xl transition-shadow flex flex-col items-start gap-4">
-                <div className="w-12 h-12 rounded-xl bg-slate-50 flex items-center justify-center shrink-0 border border-slate-100"><Shield className="w-6 h-6 text-slate-600" /></div>
-                <div>
-                  <h3 className="text-lg font-bold text-slate-900 mb-3">Anti-Cheat System</h3>
-                  <p className="text-sm text-slate-500 leading-relaxed">Блокировка жульничества студентов: предупреждение при попытке сменить вкладку с экзамена или скопировать/вставить чужой текст в поле ввода.</p>
+                  <h3 className="text-lg font-bold text-slate-900 mb-3">Генератор Сертификатов</h3>
+                  <p className="text-sm text-slate-500 leading-relaxed">Платформа сама создает и подписывает PDF-сертификаты для выпускников, присваивая им QR-коды для проверки.</p>
                 </div>
               </div>
 
               <div className="bg-white p-8 rounded-3xl border border-slate-200/60 hover:shadow-xl transition-shadow flex flex-col items-start gap-4">
                 <div className="w-12 h-12 rounded-xl bg-slate-50 flex items-center justify-center shrink-0 border border-slate-100"><MessageCircle className="w-6 h-6 text-slate-600" /></div>
                 <div>
-                  <h3 className="text-lg font-bold text-slate-900 mb-3">Внутренние Workspaces</h3>
-                  <p className="text-sm text-slate-500 leading-relaxed">Discord-подобные каналы и директ-месседжи для каждой группы (Group Chat) с отправкой файлов и реалтайм оповещениями.</p>
+                  <h3 className="text-lg font-bold text-slate-900 mb-3">Групповые Чаты</h3>
+                  <p className="text-sm text-slate-500 leading-relaxed">Внутренний мессенджер для коммуникации групп и преподавателей. Обмен файлами, упоминания, история переписки.</p>
+                </div>
+              </div>
+              
+              <div className="bg-white p-8 rounded-3xl border border-slate-200/60 hover:shadow-xl transition-shadow flex flex-col items-start gap-4">
+                <div className="w-12 h-12 rounded-xl bg-slate-50 flex items-center justify-center shrink-0 border border-slate-100"><Palette className="w-6 h-6 text-slate-600" /></div>
+                <div>
+                  <h3 className="text-lg font-bold text-slate-900 mb-3">White-Label Брендинг</h3>
+                  <p className="text-sm text-slate-500 leading-relaxed">Настраиваемый интерфейс: установите свой логотип и цвета организации, чтобы платформа смотрелась как ваше личное приложение.</p>
+                </div>
+              </div>
+
+              <div className="bg-white p-8 rounded-3xl border border-slate-200/60 hover:shadow-xl transition-shadow flex flex-col items-start gap-4">
+                <div className="w-12 h-12 rounded-xl bg-slate-50 flex items-center justify-center shrink-0 border border-slate-100"><Briefcase className="w-6 h-6 text-slate-600" /></div>
+                <div>
+                  <h3 className="text-lg font-bold text-slate-900 mb-3">Каталог Вакансий (Mini-LinkedIn)</h3>
+                  <p className="text-sm text-slate-500 leading-relaxed">Публикация партнёрских вакансий. Студенты-выпускники могут подавать резюме прямо из интерфейса школы.</p>
                 </div>
               </div>
 
@@ -338,7 +396,7 @@ const FeaturesPage: React.FC = () => {
                 <div>
                   <h3 className="text-lg font-bold text-white mb-2">Начнем работу?</h3>
                   <p className="text-white/80 text-sm leading-relaxed mb-4">Вам понравились возможности Planula?</p>
-                  <Link to="/register" className="bg-white text-primary-700 px-6 py-2.5 rounded-xl font-bold hover:bg-slate-50 transition-colors inline-block">Оформить предзаказ</Link>
+                  <Link to="/register" className="bg-white text-primary-700 px-6 py-2.5 rounded-xl font-bold hover:bg-slate-50 transition-colors inline-block shadow-lg">Попробовать бесплатно</Link>
                 </div>
               </div>
 

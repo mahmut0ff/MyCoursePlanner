@@ -6,7 +6,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { createExam, getExam, updateExam, saveQuestions, getQuestions } from '../../services/exams.service';
 import type { Question, QuestionType } from '../../types';
 import { generateId } from '../../utils/grading';
-import { Save, ArrowLeft, Plus, Trash2, Sparkles } from 'lucide-react';
+import { Save, ArrowLeft, Plus, Trash2, Sparkles, FileText, Settings, HelpCircle, GripVertical } from 'lucide-react';
 import { AIGeneratorModal } from '../../components/ui/AIGeneratorModal';
 
 const EMPTY_QUESTION = (): Question => ({
@@ -90,7 +90,7 @@ const ExamEditPage: React.FC = () => {
   const updateOption = (qIdx: number, oIdx: number, value: string) => { const opts = [...questions[qIdx].options]; opts[oIdx] = value; updateQuestion(qIdx, { options: opts }); };
 
   const handleSave = async () => {
-    if (!title || !subject) { toast.error(t('exams.titleSubjectRequired')); return; }
+    if (!title || !subject) { toast.error(t('exams.titleSubjectRequired', 'Title and Subject are required')); return; }
     setSaving(true);
     try {
       const examData = {
@@ -103,116 +103,262 @@ const ExamEditPage: React.FC = () => {
       if (isEdit && id) { await updateExam(id, examData); } else { examId = await createExam(examData as any); }
       await saveQuestions(examId!, questions.map((q, i) => ({ ...q, order: i })));
       navigate(`/exams/${examId}`);
-    } catch (e) { console.error(e); toast.error(t('exams.saveFailed')); }
+      toast.success(t('exams.savedSuccessfully', 'Exam saved successfully'));
+    } catch (e) { console.error(e); toast.error(t('exams.saveFailed', 'Failed to save exam')); }
     finally { setSaving(false); }
   };
 
-  if (loading) return <div className="flex items-center justify-center py-20"><div className="w-7 h-7 border-[3px] border-slate-200 border-t-primary-500 rounded-full animate-spin dark:border-slate-700 dark:border-t-primary-400" /></div>;
+  if (loading) return <div className="flex items-center justify-center py-32"><div className="w-8 h-8 border-4 border-slate-200 border-t-slate-800 rounded-full animate-spin dark:border-slate-700 dark:border-t-white" /></div>;
 
-  const labelClass = "block text-[10px] font-medium text-slate-500 uppercase tracking-wider mb-1";
+  const labelClass = "block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2";
+  const inputClass = "w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-slate-900 focus:border-slate-900 dark:focus:ring-white dark:focus:border-white outline-none transition-all text-slate-900 dark:text-white placeholder-slate-400";
 
   return (
-    <div className="max-w-4xl mx-auto">
-      {/* Header */}
-      <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center gap-2">
-          <button onClick={() => navigate(-1)} className="p-1 rounded-lg text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"><ArrowLeft className="w-4 h-4" /></button>
-          <h1 className="text-lg font-bold text-slate-900 dark:text-white">{isEdit ? t('exams.editExam') : t('exams.newExam')}</h1>
+    <div className="max-w-5xl mx-auto pb-16 font-sans animate-fade-in relative">
+      
+      {/* Sticky Top Bar for Actions */}
+      <div className="sticky top-0 z-40 bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl border-b border-slate-200/50 dark:border-slate-800/50 -mx-4 sm:-mx-6 lg:-mx-8 px-4 sm:px-6 lg:px-8 py-4 mb-8">
+        <div className="max-w-5xl mx-auto flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <button 
+              onClick={() => navigate(-1)} 
+              className="w-10 h-10 flex items-center justify-center rounded-xl border border-slate-200 dark:border-slate-700 text-slate-500 hover:text-slate-900 hover:bg-slate-50 dark:hover:text-white dark:hover:bg-slate-800 transition-all shadow-sm"
+            >
+              <ArrowLeft className="w-5 h-5" />
+            </button>
+            <div>
+              <h1 className="text-xl font-bold text-slate-900 dark:text-white tracking-tight leading-none mb-1">
+                {isEdit ? t('exams.editExam', 'Edit Assessment') : t('exams.newExam', 'Create Assessment')}
+              </h1>
+              <p className="text-xs font-medium text-slate-500 dark:text-slate-400">
+                {status === 'published' ? <span className="text-emerald-500">Live & Published</span> : 'Draft Mode'}
+              </p>
+            </div>
+          </div>
+          
+          <button 
+            onClick={handleSave} 
+            disabled={saving}
+            className="bg-slate-900 hover:bg-slate-800 text-white dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100 px-6 py-2.5 rounded-xl text-sm font-semibold flex items-center gap-2 transition-all shadow-md active:scale-95 disabled:opacity-50"
+          >
+            <Save className="w-4 h-4" />{saving ? t('common.saving', 'Saving...') : t('common.save', 'Save Assessment')}
+          </button>
         </div>
-        <button onClick={handleSave} disabled={saving}
-          className="bg-primary-600 hover:bg-primary-700 text-white text-xs font-medium px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition-colors disabled:opacity-50">
-          <Save className="w-3.5 h-3.5" />{saving ? '...' : t('common.save')}
-        </button>
       </div>
 
-      <div className="space-y-3">
-        {/* Metadata */}
-        <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-4 space-y-3">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            <div className="md:col-span-2">
-              <label className={labelClass}>{t('exams.titleLabel')} *</label>
-              <input value={title} onChange={(e) => setTitle(e.target.value)} className="input text-sm" placeholder={t('exams.titlePlaceholder')} />
+      <div className="space-y-8">
+        
+        {/* Module 1: Core Configuration */}
+        <section className="exam-slide-up bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-3xl p-6 sm:p-8 shadow-sm">
+          <div className="flex items-center gap-3 mb-6">
+            <div className="p-2 bg-slate-100 dark:bg-slate-800 rounded-lg">
+              <Settings className="w-5 h-5 text-slate-700 dark:text-slate-300" />
             </div>
-            <div className="md:col-span-2">
-              <label className={labelClass}>{t('exams.descriptionLabel')}</label>
-              <textarea value={description} onChange={(e) => setDescription(e.target.value)} className="input min-h-[60px] text-sm" />
-            </div>
-            <div><label className={labelClass}>{t('exams.subjectLabel')} *</label><input value={subject} onChange={(e) => setSubject(e.target.value)} className="input text-sm" /></div>
-            <div><label className={labelClass}>{t('exams.durationLabel')}</label><input type="number" value={durationMinutes} onChange={(e) => setDurationMinutes(+e.target.value)} className="input text-sm" min={1} /></div>
-            <div><label className={labelClass}>{t('exams.passScoreLabel')}</label><input type="number" value={passScore} onChange={(e) => setPassScore(+e.target.value)} className="input text-sm" min={0} max={100} /></div>
-            <div><label className={labelClass}>{t('common.status')}</label><select value={status} onChange={(e) => setStatus(e.target.value as any)} className="input text-sm"><option value="draft">{t('common.draft')}</option><option value="published">{t('common.published')}</option></select></div>
-            <div className="md:col-span-2 flex items-center gap-5">
-              <label className="flex items-center gap-2 cursor-pointer"><input type="checkbox" checked={randomize} onChange={(e) => setRandomize(e.target.checked)} className="w-3.5 h-3.5 rounded border-slate-300 dark:border-slate-600 text-primary-600" /><span className="text-xs text-slate-700 dark:text-slate-300">{t('exams.randomize')}</span></label>
-              <label className="flex items-center gap-2 cursor-pointer"><input type="checkbox" checked={showResults} onChange={(e) => setShowResults(e.target.checked)} className="w-3.5 h-3.5 rounded border-slate-300 dark:border-slate-600 text-primary-600" /><span className="text-xs text-slate-700 dark:text-slate-300">{t('exams.showResults')}</span></label>
-            </div>
+            <h2 className="text-lg font-bold text-slate-900 dark:text-white">{t('exams.coreSettings', 'Core Configuration')}</h2>
           </div>
-        </div>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="md:col-span-2">
+              <label className={labelClass}>{t('exams.titleLabel', 'Assessment Title')} *</label>
+              <input value={title} onChange={(e) => setTitle(e.target.value)} className={`${inputClass} !text-lg !font-semibold`} placeholder={t('exams.titlePlaceholder', 'e.g. Midterm Examination: Advanced Algorithms')} />
+            </div>
+            
+            <div className="md:col-span-2">
+              <label className={labelClass}>{t('exams.descriptionLabel', 'Description & Instructions')}</label>
+              <textarea value={description} onChange={(e) => setDescription(e.target.value)} className={`${inputClass} min-h-[100px] resize-y`} placeholder={t('exams.descPlaceholder', 'Provide any prep instructions for students...')} />
+            </div>
+            
+            <div>
+              <label className={labelClass}>{t('exams.subjectLabel', 'Subject / Category')} *</label>
+              <input value={subject} onChange={(e) => setSubject(e.target.value)} className={inputClass} placeholder="e.g. Computer Science" />
+            </div>
+            
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className={labelClass}>{t('exams.durationLabel', 'Duration (Min)')}</label>
+                <input type="number" value={durationMinutes} onChange={(e) => setDurationMinutes(+e.target.value)} className={inputClass} min={1} />
+              </div>
+              <div>
+                <label className={labelClass}>{t('exams.passScoreLabel', 'Pass Score (%)')}</label>
+                <input type="number" value={passScore} onChange={(e) => setPassScore(+e.target.value)} className={inputClass} min={0} max={100} />
+              </div>
+            </div>
 
-        {/* Questions */}
-        <div>
-          <div className="flex items-center justify-between mb-3">
-            <h2 className="text-sm font-semibold text-slate-900 dark:text-white">{t('exams.questions')} ({questions.length})</h2>
-            <div className="flex items-center gap-2">
-              <button onClick={() => setShowAIGen(true)} className="text-xs bg-gradient-to-r from-primary-600 to-violet-600 hover:from-primary-700 hover:to-violet-700 text-white font-medium px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition-all shadow-md shadow-primary-500/20">
-                <Sparkles className="w-3.5 h-3.5" />{t('ai.generateButton', 'Сгенерировать ИИ')}
+            <div>
+              <label className={labelClass}>{t('common.status', 'Status')}</label>
+              <select value={status} onChange={(e) => setStatus(e.target.value as any)} className={inputClass}>
+                <option value="draft">{t('common.draft', 'Draft (Hidden)')}</option>
+                <option value="published">{t('common.published', 'Published (Visible)')}</option>
+              </select>
+            </div>
+            
+            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 sm:gap-8 pt-2">
+              <label className="flex items-center gap-3 cursor-pointer group">
+                <div className="relative flex items-center justify-center w-5 h-5">
+                  <input type="checkbox" checked={randomize} onChange={(e) => setRandomize(e.target.checked)} className="peer sr-only" />
+                  <div className="w-5 h-5 rounded border-2 border-slate-300 dark:border-slate-600 peer-checked:bg-slate-900 peer-checked:border-slate-900 dark:peer-checked:bg-white dark:peer-checked:border-white transition-all flex items-center justify-center">
+                    <svg className={`w-3 h-3 text-white dark:text-slate-900 ${randomize ? 'opacity-100' : 'opacity-0'} transition-opacity`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                  </div>
+                </div>
+                <span className="text-sm font-medium text-slate-700 dark:text-slate-300 group-hover:text-slate-900 dark:group-hover:text-white transition-colors">{t('exams.randomize', 'Shuffle Questions')}</span>
+              </label>
+              
+              <label className="flex items-center gap-3 cursor-pointer group">
+                <div className="relative flex items-center justify-center w-5 h-5">
+                  <input type="checkbox" checked={showResults} onChange={(e) => setShowResults(e.target.checked)} className="peer sr-only" />
+                  <div className="w-5 h-5 rounded border-2 border-slate-300 dark:border-slate-600 peer-checked:bg-slate-900 peer-checked:border-slate-900 dark:peer-checked:bg-white dark:peer-checked:border-white transition-all flex items-center justify-center">
+                    <svg className={`w-3 h-3 text-white dark:text-slate-900 ${showResults ? 'opacity-100' : 'opacity-0'} transition-opacity`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                  </div>
+                </div>
+                <span className="text-sm font-medium text-slate-700 dark:text-slate-300 group-hover:text-slate-900 dark:group-hover:text-white transition-colors">{t('exams.showResults', 'Show Results Immediately')}</span>
+              </label>
+            </div>
+          </div>
+        </section>
+
+        {/* Module 2: Question Builder */}
+        <section className="exam-slide-up" style={{ animationDelay: '0.1s' }}>
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-slate-100 dark:bg-slate-800 rounded-lg">
+                <HelpCircle className="w-5 h-5 text-slate-700 dark:text-slate-300" />
+              </div>
+              <h2 className="text-lg font-bold text-slate-900 dark:text-white">{t('exams.questions', 'Questions Array')} ({questions.length})</h2>
+            </div>
+            
+            <div className="flex items-center gap-3">
+              <button 
+                onClick={() => setShowAIGen(true)} 
+                className="bg-gradient-to-r from-slate-800 to-slate-900 hover:from-black hover:to-black dark:from-white dark:to-slate-200 dark:text-slate-900 text-white px-4 py-2 rounded-xl text-sm font-bold flex items-center gap-2 transition-all shadow-md hover:shadow-lg active:scale-95"
+              >
+                <Sparkles className="w-4 h-4 text-amber-300 dark:text-amber-500" />
+                {t('ai.generateButton', 'AI Generation')}
               </button>
-              <button onClick={addQuestion} className="text-xs bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-300 px-2.5 py-1.5 rounded-lg flex items-center gap-1 transition-colors">
-                <Plus className="w-3.5 h-3.5" />{t('exams.addQuestion')}
+              <button 
+                onClick={addQuestion} 
+                className="bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-900 dark:text-white px-4 py-2 rounded-xl text-sm font-bold flex items-center gap-2 transition-all active:scale-95"
+              >
+                <Plus className="w-4 h-4" />{t('exams.addQuestion', 'Add Manual')}
               </button>
             </div>
           </div>
-          <div className="space-y-3">
+
+          <div className="space-y-6">
             {questions.map((q, qIdx) => (
-              <div key={q.id} className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-4">
-                <div className="flex items-start justify-between mb-3">
-                  <div className="flex items-center gap-2">
-                    <span className="flex items-center justify-center w-6 h-6 rounded-full bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-400 text-xs font-medium">{qIdx + 1}</span>
-                    <select value={q.type} onChange={(e) => updateQuestion(qIdx, { type: e.target.value as QuestionType })} className="input w-auto text-xs !py-1">
-                      <option value="multiple_choice">{t('exams.singleChoice')}</option>
-                      <option value="multi_select">{t('exams.multipleChoice')}</option>
-                      <option value="short_answer">{t('exams.textAnswer')}</option>
-                    </select>
-                    <input type="number" value={q.points} onChange={(e) => updateQuestion(qIdx, { points: +e.target.value })} className="input w-16 text-xs !py-1" min={1} placeholder={t('exams.points')} />
-                  </div>
-                  <button onClick={() => removeQuestion(qIdx)} className="text-slate-400 hover:text-red-500 transition-colors p-1"><Trash2 className="w-3.5 h-3.5" /></button>
-                </div>
+              <div key={q.id} className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-3xl p-6 sm:p-8 shadow-sm relative group overflow-hidden transition-all focus-within:ring-2 focus-within:ring-slate-400 dark:focus-within:ring-slate-600 focus-within:border-transparent">
+                
+                {/* Visual Number Indicator */}
+                <div className="absolute top-0 left-0 w-2 h-full bg-slate-100 dark:bg-slate-800 group-focus-within:bg-slate-900 dark:group-focus-within:bg-white transition-colors" />
 
-                <div className="mb-3">
-                  <textarea value={q.text} onChange={(e) => updateQuestion(qIdx, { text: e.target.value })} className="input min-h-[50px] text-sm" placeholder={t('exams.questionPlaceholder')} />
-                </div>
-
-                {(q.type === 'multiple_choice' || q.type === 'multi_select') && (
-                  <div className="space-y-1.5">
-                    {q.options.map((opt, oIdx) => (
-                      <div key={oIdx} className="flex items-center gap-2">
-                        {q.type === 'multiple_choice' ? (
-                          <input type="radio" name={`q-${q.id}`} checked={q.correctAnswer === opt && opt !== ''} onChange={() => updateQuestion(qIdx, { correctAnswer: opt })} className="w-3.5 h-3.5 text-primary-600" />
-                        ) : (
-                          <input type="checkbox" checked={q.correctAnswers.includes(opt) && opt !== ''} onChange={(e) => {
-                            const ca = e.target.checked ? [...q.correctAnswers, opt] : q.correctAnswers.filter((a) => a !== opt);
-                            updateQuestion(qIdx, { correctAnswers: ca });
-                          }} className="w-3.5 h-3.5 rounded text-primary-600" />
-                        )}
-                        <input value={opt} onChange={(e) => updateOption(qIdx, oIdx, e.target.value)} className="input flex-1 text-xs" placeholder={`${t('exams.option')} ${oIdx + 1}`} />
-                        <button onClick={() => removeOption(qIdx, oIdx)} className="text-slate-400 hover:text-red-500 transition-colors"><Trash2 className="w-3 h-3" /></button>
+                <div className="pl-4">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+                    <div className="flex items-center gap-4 flex-wrap">
+                      <div className="flex items-center gap-2 bg-slate-50 dark:bg-slate-800 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700">
+                        <GripVertical className="w-4 h-4 text-slate-400 cursor-move hidden sm:block" />
+                        <span className="text-sm font-bold text-slate-700 dark:text-slate-300">Q{qIdx + 1}</span>
                       </div>
-                    ))}
-                    <button onClick={() => addOption(qIdx)} className="text-xs text-primary-600 hover:text-primary-700 font-medium">+ {t('exams.addOption')}</button>
+                      
+                      <select 
+                        value={q.type} 
+                        onChange={(e) => updateQuestion(qIdx, { type: e.target.value as QuestionType })} 
+                        className="bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-1.5 text-sm font-semibold text-slate-700 dark:text-slate-300 focus:ring-2 focus:ring-slate-900 dark:focus:ring-white outline-none"
+                      >
+                        <option value="multiple_choice">{t('exams.singleChoice', 'Single Choice')}</option>
+                        <option value="multi_select">{t('exams.multipleChoice', 'Multiple Choice')}</option>
+                        <option value="short_answer">{t('exams.textAnswer', 'Short Answer')}</option>
+                      </select>
+                      
+                      <div className="flex items-center gap-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-1.5">
+                        <span className="text-xs font-bold text-slate-500">PTS</span>
+                        <input 
+                          type="number" 
+                          value={q.points} 
+                          onChange={(e) => updateQuestion(qIdx, { points: +e.target.value })} 
+                          className="w-12 bg-transparent text-sm font-bold text-slate-900 dark:text-white outline-none" 
+                          min={1} 
+                        />
+                      </div>
+                    </div>
+                    
+                    <button 
+                      onClick={() => removeQuestion(qIdx)} 
+                      className="w-8 h-8 flex items-center justify-center rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-all self-end sm:self-auto"
+                      title="Remove Question"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
                   </div>
-                )}
 
-                {q.type === 'short_answer' && (
-                  <div>
-                    <label className={labelClass}>{t('exams.keywords')}</label>
-                    <input value={q.keywords.join(', ')} onChange={(e) => updateQuestion(qIdx, { keywords: e.target.value.split(',').map((k) => k.trim()).filter(Boolean) })} className="input text-xs" placeholder={t('exams.keywordsPlaceholder')} />
-                    <p className="text-[10px] text-slate-400 dark:text-slate-500 mt-1">{t('exams.keywordsHint')}</p>
+                  <div className="mb-6">
+                    <textarea 
+                      value={q.text} 
+                      onChange={(e) => updateQuestion(qIdx, { text: e.target.value })} 
+                      className={`${inputClass} !text-base !font-medium min-h-[80px] resize-y`} 
+                      placeholder={t('exams.questionPlaceholder', 'Enter question text here...')} 
+                    />
                   </div>
-                )}
+
+                  {(q.type === 'multiple_choice' || q.type === 'multi_select') && (
+                    <div className="space-y-3 pl-2 sm:pl-6 border-l-2 border-slate-100 dark:border-slate-800">
+                      {q.options.map((opt, oIdx) => (
+                        <div key={oIdx} className="flex items-center gap-3">
+                          {q.type === 'multiple_choice' ? (
+                            <div className="relative flex items-center justify-center w-5 h-5 shrink-0">
+                               <input type="radio" name={`q-${q.id}`} checked={q.correctAnswer === opt && opt !== ''} onChange={() => updateQuestion(qIdx, { correctAnswer: opt })} className="peer sr-only" />
+                               <div className="w-5 h-5 rounded-full border-2 border-slate-300 dark:border-slate-600 peer-checked:border-emerald-500 flex items-center justify-center transition-all cursor-pointer">
+                                  {q.correctAnswer === opt && opt !== '' && <div className="w-2.5 h-2.5 rounded-full bg-emerald-500" />}
+                               </div>
+                            </div>
+                          ) : (
+                            <div className="relative flex items-center justify-center w-5 h-5 shrink-0">
+                              <input type="checkbox" checked={q.correctAnswers.includes(opt) && opt !== ''} onChange={(e) => {
+                                const ca = e.target.checked ? [...q.correctAnswers, opt] : q.correctAnswers.filter((a) => a !== opt);
+                                updateQuestion(qIdx, { correctAnswers: ca });
+                              }} className="peer sr-only" />
+                              <div className="w-5 h-5 rounded border-2 border-slate-300 dark:border-slate-600 peer-checked:bg-emerald-500 peer-checked:border-emerald-500 transition-all flex items-center justify-center cursor-pointer">
+                                <svg className={`w-3 h-3 text-white ${q.correctAnswers.includes(opt) && opt !== '' ? 'opacity-100' : 'opacity-0'} transition-opacity`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                              </div>
+                            </div>
+                          )}
+                          <input 
+                            value={opt} 
+                            onChange={(e) => updateOption(qIdx, oIdx, e.target.value)} 
+                            className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-slate-900 dark:focus:ring-white outline-none transition-all" 
+                            placeholder={`${t('exams.option', 'Option')} ${oIdx + 1}`} 
+                          />
+                          <button onClick={() => removeOption(qIdx, oIdx)} className="w-8 h-8 flex items-center justify-center rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-all shrink-0"><Trash2 className="w-4 h-4" /></button>
+                        </div>
+                      ))}
+                      <button onClick={() => addOption(qIdx)} className="mt-2 text-sm font-bold text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white flex items-center gap-1 transition-colors px-2 py-1 rounded-md hover:bg-slate-50 dark:hover:bg-slate-800">
+                        <Plus className="w-4 h-4" /> {t('exams.addOption', 'Add Option')}
+                      </button>
+                    </div>
+                  )}
+
+                  {q.type === 'short_answer' && (
+                    <div className="pl-6 border-l-2 border-slate-100 dark:border-slate-800 pt-2">
+                      <label className={labelClass}>{t('exams.keywords', 'Grading Keywords')}</label>
+                      <input 
+                        value={q.keywords.join(', ')} 
+                        onChange={(e) => updateQuestion(qIdx, { keywords: e.target.value.split(',').map((k) => k.trim()).filter(Boolean) })} 
+                        className={inputClass} 
+                        placeholder={t('exams.keywordsPlaceholder', 'e.g. constant, O(1), algorithm')} 
+                      />
+                      <p className="text-xs text-slate-500 dark:text-slate-400 mt-2 font-medium bg-amber-50 dark:bg-amber-900/20 text-amber-800 dark:text-amber-400 p-3 rounded-lg border border-amber-200 dark:border-amber-800/30">
+                        {t('exams.keywordsHint', 'Words separated by commas. Used by the automatic grader to evaluate short text answers.')}
+                      </p>
+                    </div>
+                  )}
+                </div>
               </div>
             ))}
           </div>
-        </div>
+        </section>
+
       </div>
+
+      {/* Floating Action Buffer */}
+      <div className="h-20" />
 
       <AIGeneratorModal
         isOpen={showAIGen}

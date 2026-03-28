@@ -528,3 +528,35 @@ select:-webkit-autofill {
   -webkit-text-fill-color: #f1f5f9 !important;
   caret-color: #f1f5f9 !important;
 }
+
+/* =====================
+   EXAMS MODULE STYLES 
+   ===================== */
+@keyframes exam-slide-up {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes exam-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+.exam-slide-up {
+  animation: exam-slide-up 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+.exam-fade-in {
+  animation: exam-fade-in 0.4s ease-out forwards;
+}
+.exam-card-hover {
+  transition: all 0.2s ease-in-out;
+}
+.exam-card-hover:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 24px -10px rgba(0, 0, 0, 0.1);
+}
+.exam-bg {
+  background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+  background-attachment: fixed;
+}
+.dark .exam-bg {
+  background: linear-gradient(135deg, #0f172a 0%, #020617 100%);
+}

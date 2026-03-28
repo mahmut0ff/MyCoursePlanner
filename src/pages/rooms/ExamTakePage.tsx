@@ -7,7 +7,7 @@ import { auth } from '../../lib/firebase';
 import { useAuth } from '../../contexts/AuthContext';
 import { shuffleArray, formatTime } from '../../utils/grading';
 import type { ExamRoom, Exam, Question } from '../../types';
-import { Clock, ChevronLeft, ChevronRight, Send, AlertTriangle } from 'lucide-react';
+import { Clock, ChevronLeft, ChevronRight, Send, AlertTriangle, CheckCircle2, Circle } from 'lucide-react';
 
 const ExamTakePage: React.FC = () => {
   const { roomId } = useParams<{ roomId: string }>();
@@ -46,7 +46,6 @@ const ExamTakePage: React.FC = () => {
       if (!e) { navigate('/join'); return; }
       setExam(e);
 
-      // Backend now returns questions populated within the exam response
       let qs = e.questions || [];
       if (e.randomizeQuestions) qs = shuffleArray(qs);
       setQuestions(qs);
@@ -56,7 +55,6 @@ const ExamTakePage: React.FC = () => {
     }
   };
 
-  // Timer
   useEffect(() => {
     if (loading || submitted || timeLeft <= 0) return;
     const interval = setInterval(() => {
@@ -92,7 +90,6 @@ const ExamTakePage: React.FC = () => {
       const startTime = new Date(startRef.current).getTime();
       const timeSpentSeconds = Math.floor((Date.now() - startTime) / 1000);
 
-      // Send to API — server recalculates score
       const result = await apiSaveAttempt({
         examId: exam!.id,
         examTitle: exam!.title,
@@ -105,7 +102,6 @@ const ExamTakePage: React.FC = () => {
 
       setSubmitted(true);
 
-      // Trigger AI feedback in background (with auth)
       try {
         const token = await auth.currentUser?.getIdToken();
         fetch('/.netlify/functions/ai-feedback', {
@@ -115,7 +111,6 @@ const ExamTakePage: React.FC = () => {
         }).catch(() => {});
       } catch {}
 
-      // Award gamification XP in background
       apiAwardXP({
         organizationId: room!.organizationId || '',
         examId: exam!.id,
@@ -127,15 +122,15 @@ const ExamTakePage: React.FC = () => {
       navigate(`/results/${result.id}`);
     } catch (e) {
       console.error('Submit failed:', e);
-      toast.error(t('rooms.submitFailed'));
+      toast.error(t('rooms.submitFailed', 'Failed to submit exam.'));
     } finally {
       setSubmitting(false);
     }
   };
 
-  if (loading) return <div role="status" className="flex items-center justify-center min-h-screen"><div className="w-10 h-10 border-4 border-primary-200 border-t-primary-600 rounded-full animate-spin" /></div>;
-  if (errorStr) return <div className="text-center py-20"><h3 className="text-lg font-medium text-red-500">{t(errorStr)}</h3></div>;
-  if (!exam || !questions.length) return <div className="text-center py-20"><h3 className="text-lg font-medium text-slate-700 dark:text-slate-300">{t('rooms.examNotAvailable')}</h3></div>;
+  if (loading) return <div role="status" className="exam-bg flex items-center justify-center min-h-screen"><div className="w-10 h-10 border-4 border-slate-200 border-t-slate-800 rounded-full animate-spin dark:border-slate-700 dark:border-t-white" /></div>;
+  if (errorStr) return <div className="exam-bg min-h-screen flex items-center justify-center p-4"><div className="bg-white dark:bg-slate-800 p-8 rounded-2xl shadow-xl text-center"><AlertTriangle className="w-12 h-12 text-red-500 mx-auto mb-4" /><h3 className="text-xl font-semibold text-slate-900 dark:text-white">{t(errorStr, 'An error occurred')}</h3></div></div>;
+  if (!exam || !questions.length) return <div className="exam-bg min-h-screen flex items-center justify-center p-4"><div className="bg-white dark:bg-slate-800 p-8 rounded-2xl shadow-xl text-center"><h3 className="text-xl font-semibold text-slate-900 dark:text-white">{t('rooms.examNotAvailable', 'Exam not available')}</h3></div></div>;
 
   const q = questions[currentQ];
   const isLow = timeLeft <= 60;
@@ -143,152 +138,177 @@ const ExamTakePage: React.FC = () => {
     const v = answers[k];
     return v && (Array.isArray(v) ? v.length > 0 : v.trim() !== '');
   }).length;
+  const progressPercent = (answeredCount / questions.length) * 100;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-slate-50 to-violet-50 dark:from-slate-900 dark:via-slate-900 dark:to-indigo-950">
-      {/* Fixed Timer Bar */}
-      <div className={`sticky top-0 z-50 border-b ${isLow ? 'bg-red-600 text-white' : 'bg-white dark:bg-slate-800 text-slate-900 dark:text-white'} shadow-sm`}>
-        <div className="max-w-4xl mx-auto px-4 py-3 flex items-center justify-between">
-          <div>
-            <h1 className="font-semibold text-sm">{exam.title}</h1>
-            <p className={`text-xs ${isLow ? 'text-red-200' : 'text-slate-500 dark:text-slate-400'}`}>
-              {answeredCount}/{questions.length} {t('rooms.answered')}
+    <div className="exam-bg min-h-screen flex flex-col font-sans">
+      
+      {/* Sleek Header */}
+      <header className="sticky top-0 z-50 bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl border-b border-slate-200/50 dark:border-slate-800/50">
+        {/* Progress Bar Top Edge */}
+        <div className="absolute top-0 left-0 right-0 h-1 bg-slate-100 dark:bg-slate-800">
+          <div className="h-full bg-slate-800 dark:bg-slate-300 transition-all duration-300 ease-out" style={{ width: `${progressPercent}%` }} />
+        </div>
+        
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex items-center justify-between">
+          <div className="max-w-[50%]">
+            <h1 className="font-bold text-slate-900 dark:text-white truncate">{exam.title}</h1>
+            <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">
+              {answeredCount} / {questions.length} {t('rooms.answered', 'Answered')}
             </p>
           </div>
-          <div className="flex items-center gap-2">
-            <Clock className="w-5 h-5" />
-            <span className="text-xl font-mono font-bold">{formatTime(timeLeft)}</span>
-            {isLow && <AlertTriangle className="w-5 h-5 animate-pulse" />}
-          </div>
-          <button
-            onClick={() => { if (confirm(t('rooms.submitConfirm'))) handleSubmit(); }}
-            disabled={submitting}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium text-sm ${
-              isLow ? 'bg-white dark:bg-slate-800 text-red-600 hover:bg-red-50' : 'btn-primary'
-            }`}
-          >
-            <Send className="w-4 h-4" />
-            {submitting ? t('rooms.submitting') : t('rooms.submit')}
-          </button>
-        </div>
-      </div>
-      {/* Progress bar */}
-      <div className="h-1 bg-slate-200 dark:bg-slate-700">
-        <div className="h-full bg-primary-500 transition-all" style={{ width: `${(answeredCount / questions.length) * 100}%` }} />
-      </div>
-
-      <div className="max-w-4xl mx-auto px-4 py-6">
-        {/* Question Navigation Pills */}
-        <div className="flex flex-wrap gap-2 mb-6">
-          {questions.map((_, i) => {
-            const qId = questions[i].id;
-            const answered = answers[qId] && (Array.isArray(answers[qId]) ? (answers[qId] as string[]).length > 0 : String(answers[qId]).trim() !== '');
-            return (
-              <button
-                key={i}
-                onClick={() => setCurrentQ(i)}
-                className={`w-9 h-9 rounded-lg text-sm font-medium transition-colors ${
-                  i === currentQ
-                    ? 'bg-primary-600 text-white'
-                    : answered
-                    ? 'bg-primary-100 text-primary-700'
-                    : 'bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 dark:text-slate-500 hover:border-primary-300'
-                }`}
-              >
-                {i + 1}
-              </button>
-            );
-          })}
-        </div>
-
-        {/* Question Card */}
-        <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm p-6 sm:p-8">
-          <div className="flex items-center justify-between mb-4">
-            <span className="badge-primary">{t('rooms.question')} {currentQ + 1} {t('rooms.of')} {questions.length}</span>
-            <span className="text-sm text-slate-500 dark:text-slate-400 dark:text-slate-500">{q.points} {q.points !== 1 ? t('rooms.points') : t('rooms.point')}</span>
-          </div>
-
-          <h2 className="text-xl font-semibold text-slate-900 dark:text-white mb-6">{q.text}</h2>
-
-          {q.type === 'multiple_choice' && (
-            <div className="space-y-3">
-              {q.options.map((opt, oi) => (
-                <label
-                  key={oi}
-                  className={`flex items-center gap-3 p-4 rounded-lg border-2 cursor-pointer transition-colors ${
-                    answers[q.id] === opt
-                      ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/20'
-                      : 'border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600'
-                  }`}
-                >
-                  <input
-                    type="radio"
-                    name={`q-${q.id}`}
-                    checked={answers[q.id] === opt}
-                    onChange={() => setAnswer(q.id, opt)}
-                    className="w-4 h-4 text-primary-600"
-                  />
-                  <span className="text-slate-800 dark:text-white">{opt}</span>
-                </label>
-              ))}
+          
+          <div className="flex items-center gap-4 sm:gap-6">
+            <div className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border ${isLow ? 'bg-red-50 border-red-200 text-red-600 dark:bg-red-900/30 dark:border-red-800 dark:text-red-400' : 'bg-slate-50 border-slate-200 text-slate-700 dark:bg-slate-800 dark:border-slate-700 dark:text-slate-300'} transition-colors`}>
+              <Clock className={`w-4 h-4 ${isLow ? 'animate-pulse' : ''}`} />
+              <span className="text-lg font-mono font-bold tracking-tight">{formatTime(timeLeft)}</span>
             </div>
-          )}
+            
+            <button
+              onClick={() => { if (confirm(t('rooms.submitConfirm', 'Are you sure you want to submit?'))) handleSubmit(); }}
+              disabled={submitting}
+              className="bg-slate-900 hover:bg-slate-800 text-white dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100 px-5 py-2 rounded-xl text-sm font-semibold shadow-sm hover:shadow-md transition-all disabled:opacity-50 flex items-center gap-2"
+            >
+              <Send className="w-4 h-4" />
+              <span className="hidden sm:inline">{submitting ? t('rooms.submitting', 'Submitting...') : t('rooms.submit', 'Submit Exam')}</span>
+            </button>
+          </div>
+        </div>
+      </header>
 
-          {q.type === 'multi_select' && (
-            <div className="space-y-3">
-              {q.options.map((opt, oi) => {
+      {/* Main Content */}
+      <main className="flex-1 w-full max-w-4xl mx-auto px-4 sm:px-6 py-8 sm:py-12 flex flex-col md:flex-row gap-8">
+        
+        {/* Left Side: Question Navigator */}
+        <div className="w-full md:w-64 shrink-0 order-2 md:order-1">
+          <div className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-md rounded-2xl border border-slate-200/50 dark:border-slate-800/50 p-5 sticky top-28 shadow-sm">
+            <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-4">{t('rooms.questionsOverview', 'Question Navigator')}</h3>
+            <div className="grid grid-cols-5 md:grid-cols-4 gap-2">
+              {questions.map((_, i) => {
+                const qId = questions[i].id;
+                const answered = answers[qId] && (Array.isArray(answers[qId]) ? (answers[qId] as string[]).length > 0 : String(answers[qId]).trim() !== '');
+                const isActive = i === currentQ;
+                
+                return (
+                  <button
+                    key={i}
+                    onClick={() => setCurrentQ(i)}
+                    className={`h-10 rounded-xl text-sm font-semibold flex items-center justify-center transition-all ${
+                      isActive
+                        ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900 shadow-md transform scale-105 z-10'
+                        : answered
+                        ? 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 exam-card-hover'
+                        : 'bg-white dark:bg-slate-900 text-slate-400 dark:text-slate-500 border border-slate-200 dark:border-slate-800 exam-card-hover hover:border-slate-300 dark:hover:border-slate-600'
+                    }`}
+                  >
+                    {i + 1}
+                  </button>
+                );
+              })}
+            </div>
+            
+            <div className="mt-6 pt-5 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-xs text-slate-500 font-medium">
+              <span>{Math.round(progressPercent)}% {t('rooms.completed', 'Completed')}</span>
+              <span>{questions.length - answeredCount} {t('rooms.remaining', 'Remaining')}</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Right Side: Active Question */}
+        <div className="flex-1 order-1 md:order-2">
+          {/* Use key to remount and trigger animation on question change */}
+          <div key={q.id} className="exam-slide-up bg-white/90 dark:bg-slate-900/90 backdrop-blur-md rounded-3xl border border-slate-200/50 dark:border-slate-800/50 shadow-lg p-6 sm:p-10">
+            
+            <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-xs font-bold tracking-wide">
+                {t('rooms.question', 'Question')} {currentQ + 1} / {questions.length}
+              </span>
+              <span className="text-sm font-semibold text-slate-400 dark:text-slate-500">
+                {q.points} {q.points !== 1 ? t('rooms.points', 'pts') : t('rooms.point', 'pt')}
+              </span>
+            </div>
+
+            <h2 className="text-2xl sm:text-3xl font-semibold text-slate-900 dark:text-white leading-snug mb-8">{q.text}</h2>
+
+            {/* Answer Options */}
+            <div className="space-y-4">
+              {q.type === 'multiple_choice' && q.options.map((opt, oi) => {
+                const selected = answers[q.id] === opt;
+                return (
+                  <label
+                    key={oi}
+                    className={`exam-card-hover flex items-center gap-4 p-5 sm:p-6 rounded-2xl border-2 cursor-pointer transition-all ${
+                      selected
+                        ? 'border-slate-900 bg-slate-50 dark:border-white dark:bg-slate-800/80 shadow-sm'
+                        : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 hover:border-slate-300 dark:hover:border-slate-600'
+                    }`}
+                  >
+                    <div className={`shrink-0 w-6 h-6 rounded-full border-2 flex items-center justify-center transition-colors ${selected ? 'border-slate-900 dark:border-white' : 'border-slate-300 dark:border-slate-600'}`}>
+                      {selected && <div className="w-2.5 h-2.5 rounded-full bg-slate-900 dark:bg-white" />}
+                    </div>
+                    <span className={`text-lg sm:text-xl font-medium ${selected ? 'text-slate-900 dark:text-white' : 'text-slate-700 dark:text-slate-300'}`}>{opt}</span>
+                  </label>
+                );
+              })}
+
+              {q.type === 'multi_select' && q.options.map((opt, oi) => {
                 const selected = ((answers[q.id] as string[]) || []).includes(opt);
                 return (
                   <label
                     key={oi}
-                    className={`flex items-center gap-3 p-4 rounded-lg border-2 cursor-pointer transition-colors ${
-                      selected ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/20' : 'border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600'
+                    className={`exam-card-hover flex items-center gap-4 p-5 sm:p-6 rounded-2xl border-2 cursor-pointer transition-all ${
+                      selected ? 'border-slate-900 bg-slate-50 dark:border-white dark:bg-slate-800/80 shadow-sm' : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 hover:border-slate-300 dark:hover:border-slate-600'
                     }`}
                   >
-                    <input
-                      type="checkbox"
-                      checked={selected}
-                      onChange={() => toggleMultiAnswer(q.id, opt)}
-                      className="w-4 h-4 rounded text-primary-600"
-                    />
-                    <span className="text-slate-800 dark:text-white">{opt}</span>
+                    <div className={`shrink-0 w-6 h-6 rounded-md border-2 flex items-center justify-center transition-colors ${selected ? 'bg-slate-900 border-slate-900 dark:bg-white dark:border-white' : 'border-slate-300 dark:border-slate-600'}`}>
+                      {selected && <CheckCircle2 className="w-4 h-4 text-white dark:text-slate-900" />}
+                    </div>
+                    <span className={`text-lg sm:text-xl font-medium ${selected ? 'text-slate-900 dark:text-white' : 'text-slate-700 dark:text-slate-300'}`}>{opt}</span>
                   </label>
                 );
               })}
-              <p className="text-xs text-slate-400 dark:text-slate-500">{t('rooms.selectAllCorrect')}</p>
-            </div>
-          )}
 
-          {q.type === 'short_answer' && (
-            <div>
-              <textarea
-                value={(answers[q.id] as string) || ''}
-                onChange={(e) => setAnswer(q.id, e.target.value)}
-                className="input min-h-[150px]"
-                placeholder={t('rooms.typeAnswerHere')}
-              />
+              {q.type === 'short_answer' && (
+                <textarea
+                  value={(answers[q.id] as string) || ''}
+                  onChange={(e) => setAnswer(q.id, e.target.value)}
+                  className="w-full min-h-[160px] p-6 text-lg rounded-2xl border-2 border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 text-slate-900 dark:text-white placeholder-slate-400 focus:border-slate-900 dark:focus:border-white focus:ring-0 outline-none transition-all resize-y"
+                  placeholder={t('rooms.typeAnswerHere', 'Type your answer here...')}
+                />
+              )}
             </div>
-          )}
+
+            {/* In-Card Navigation */}
+            <div className="flex items-center justify-between mt-10 pt-6 border-t border-slate-100 dark:border-slate-800">
+              <button
+                onClick={() => setCurrentQ(Math.max(0, currentQ - 1))}
+                disabled={currentQ === 0}
+                className="px-6 py-3 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 font-semibold flex items-center gap-2 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+              >
+                <ChevronLeft className="w-5 h-5" />{t('rooms.previous', 'Previous')}
+              </button>
+              
+              {currentQ === questions.length - 1 ? (
+                <button
+                  onClick={() => { if (confirm(t('rooms.submitConfirm', 'Are you sure you want to submit?'))) handleSubmit(); }}
+                  disabled={submitting}
+                  className="bg-slate-900 hover:bg-black dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100 text-white px-8 py-3 rounded-xl font-bold flex items-center gap-2 transition-all shadow-md"
+                >
+                  {submitting ? t('rooms.submitting', 'Submitting...') : t('rooms.submit', 'Submit Exam')} <Send className="w-5 h-5" />
+                </button>
+              ) : (
+                <button
+                  onClick={() => setCurrentQ(Math.min(questions.length - 1, currentQ + 1))}
+                  className="bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-900 dark:text-white px-6 py-3 rounded-xl font-semibold flex items-center gap-2 transition-colors"
+                >
+                  {t('rooms.next', 'Next')} <ChevronRight className="w-5 h-5" />
+                </button>
+              )}
+            </div>
+          </div>
         </div>
 
-        {/* Navigation Buttons */}
-        <div className="flex items-center justify-between mt-6">
-          <button
-            onClick={() => setCurrentQ(Math.max(0, currentQ - 1))}
-            disabled={currentQ === 0}
-            className="btn-secondary flex items-center gap-2"
-          >
-            <ChevronLeft className="w-4 h-4" />{t('rooms.previous')}
-          </button>
-          <button
-            onClick={() => setCurrentQ(Math.min(questions.length - 1, currentQ + 1))}
-            disabled={currentQ === questions.length - 1}
-            className="btn-secondary flex items-center gap-2"
-          >
-            {t('rooms.next')}<ChevronRight className="w-4 h-4" />
-          </button>
-        </div>
-      </div>
+      </main>
     </div>
   );
 };

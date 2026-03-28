@@ -550,3 +550,25 @@ export const apiGetParentPortalData = async (token: string) => {
   if (!res.ok) throw new Error(data.error || 'Failed to fetch parent data');
   return data;
 };
+
+// ============================================================
+// MEGA RELEASE EXPERIMENTAL API (Homework & Risk)
+// ============================================================
+
+export const apiStudentGetHomework = (lessonId: string) =>
+  apiRequest(`api-homework`, 'GET', undefined, { lessonId });
+
+export const apiOrgGetHomeworks = (orgId: string, lessonId?: string) =>
+  apiRequest(`api-homework`, 'GET', undefined, { orgId, ...(lessonId ? { lessonId } : {}) });
+
+export const apiSubmitHomework = (data: { lessonId: string; lessonTitle: string; content: string; organizationId: string; maxPoints: number }) =>
+  apiRequest(`api-homework/api-homework`, 'POST', data);
+
+export const apiGradeHomework = (id: string, data: { finalScore: number; feedback: string }) =>
+  apiRequest(`api-homework/${id}/grade`, 'PUT', data);
+
+export const apiAIGradeHomework = (id: string) =>
+  apiRequest(`api-homework/${id}/ai-grade`, 'POST');
+
+export const apiGetStudentRisks = (orgId: string) =>
+  apiRequest(`api-risk`, 'GET', undefined, { orgId });

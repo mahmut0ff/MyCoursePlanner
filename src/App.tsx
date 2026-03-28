@@ -56,6 +56,10 @@ import QuizPlayPage from './pages/quiz/QuizPlayPage';
 // Chat Workspace
 import ChatWorkspace from './pages/chat/ChatWorkspace';
 
+// Mega Features
+import StudentRiskDashboard from './pages/teacher-analytics/StudentRiskDashboard';
+import HomeworkReviewPage from './pages/homework/HomeworkReviewPage';
+
 // Org Pages
 import CoursesPage from './pages/courses/CoursesPage';
 import FinancesPage from './pages/finances/FinancesPage';
@@ -142,6 +146,8 @@ const App: React.FC = () => {
             <Route path="gradebook" element={<ProtectedRoute allowedRoles={['admin', 'manager', 'teacher']}><PlanGuard feature="gradebook"><GradebookPage /></PlanGuard></ProtectedRoute>} />
             <Route path="journal" element={<ProtectedRoute allowedRoles={['admin', 'manager', 'teacher']}><PlanGuard feature="gradebook"><JournalPage /></PlanGuard></ProtectedRoute>} />
             <Route path="teacher-analytics" element={<ProtectedRoute allowedRoles={['admin', 'manager', 'teacher']}><PlanGuard feature="advancedAnalytics"><AdminGradebookAnalytics /></PlanGuard></ProtectedRoute>} />
+            <Route path="risk-dashboard" element={<ProtectedRoute allowedRoles={['admin', 'manager', 'teacher']}><PlanGuard feature="advancedAnalytics"><StudentRiskDashboard /></PlanGuard></ProtectedRoute>} />
+            <Route path="homework/review" element={<ProtectedRoute allowedRoles={['admin', 'manager', 'teacher']}><HomeworkReviewPage /></ProtectedRoute>} />
 
             {/* Lessons */}
             <Route path="lessons" element={<ProtectedRoute allowedRoles={['admin', 'manager', 'teacher', 'student']}><LessonListPage /></ProtectedRoute>} />

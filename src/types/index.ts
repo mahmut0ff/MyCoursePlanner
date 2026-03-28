@@ -207,6 +207,21 @@ export interface Branch {
 
 // ---- Users ----
 
+export type RiskLevel = 'high' | 'medium' | 'low';
+
+export interface StudentRiskProfile {
+  studentId: string;
+  studentName: string;
+  avatarUrl?: string; // Optional since it maps from UserProfile
+  riskLevel: RiskLevel;
+  averageScore: number;
+  attendanceRate: number;
+  streak: number;
+  daysSinceLastActive: number;
+  missedAssignments: number;
+  notes?: string[];
+}
+
 export interface UserProfile {
   uid: string;
   email: string;
@@ -349,6 +364,30 @@ export interface LessonHomework {
   description: string;
   dueDate?: string;
   points?: number;
+}
+
+export interface HomeworkSubmission {
+  id: string;
+  lessonId: string;
+  lessonTitle: string;
+  studentId: string;
+  studentName: string;
+  organizationId: string;
+  content: string; // The rich text or plain text answer
+  attachments?: string[]; // URLs generated from file uploads
+  status: 'pending' | 'graded';
+  aiAnalysis?: {
+    grade: number;
+    suggestions: string;
+    isPlagiarism: boolean;
+    plagiarismProbability: number;
+  };
+  teacherFeedback?: string;
+  finalScore?: number;
+  maxPoints?: number;
+  submittedAt: string;
+  gradedAt?: string;
+  gradedBy?: string;
 }
 
 export interface LessonPlan {

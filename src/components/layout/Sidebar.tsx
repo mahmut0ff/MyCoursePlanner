@@ -13,7 +13,7 @@ import {
   BarChart3, Gamepad2, History, ChevronDown, TableProperties,
   Users, Layers, Database, Activity, Flag, Plug, FolderOpen,
   ClipboardList, Radio, Award, Trophy, LogOut, CreditCard,
-  TrendingUp, MessageSquareText, Bell, Lock
+  TrendingUp, MessageSquareText, Bell, Lock, ClipboardCheck, TrendingDown
 } from 'lucide-react';
 
 import { useChatRooms, useUnreadCount } from '../../lib/useChat';
@@ -180,6 +180,9 @@ const Sidebar: React.FC<{ open: boolean; onClose: () => void }> = ({ open, onClo
                   <ClipboardList className="w-4 h-4" />{t('nav.journal', 'Журнал')}
                   {!canAccess('gradebook') && <Lock className="w-3 h-3 ml-auto text-slate-500" />}
                 </NavLink>
+                <NavLink to="/homework/review" className={linkClass} onClick={onClose}>
+                  <ClipboardCheck className="w-4 h-4" />Проверка ДЗ
+                </NavLink>
                 <NavLink to="/gradebook" className={({ isActive }) => `${linkClass({ isActive })} ${!canAccess('gradebook') ? 'opacity-50' : ''}`} onClick={onClose}>
                   <TableProperties className="w-4 h-4" />{t('nav.gradebook', 'Оценки')}
                   {!canAccess('gradebook') && <Lock className="w-3 h-3 ml-auto text-slate-500" />}
@@ -219,6 +222,10 @@ const Sidebar: React.FC<{ open: boolean; onClose: () => void }> = ({ open, onClo
                   <Activity className="w-4 h-4" />{t('nav.analytics')}
                   {!canAccess('advancedAnalytics') && <Lock className="w-3 h-3 ml-auto text-slate-500" />}
                 </NavLink>
+                <NavLink to="/risk-dashboard" className={({ isActive }) => `${linkClass({ isActive })} ${!canAccess('advancedAnalytics') ? 'opacity-50' : ''}`} onClick={onClose}>
+                  <TrendingDown className="w-4 h-4" />Светофор рисков
+                  {!canAccess('advancedAnalytics') && <Lock className="w-3 h-3 ml-auto text-slate-500" />}
+                </NavLink>
                 <NavLink to="/org-vacancies" className={({ isActive }) => `${linkClass({ isActive })} ${!canAccess('vacancies') ? 'opacity-50' : ''}`} onClick={onClose}>
                   <Megaphone className="w-4 h-4" />{t('nav.vacancies', 'Вакансии')}
                   {!canAccess('vacancies') && <Lock className="w-3 h-3 ml-auto text-slate-500" />}
@@ -249,6 +256,9 @@ const Sidebar: React.FC<{ open: boolean; onClose: () => void }> = ({ open, onClo
                     <NavLink to="/journal" className={({ isActive }) => `${linkClass({ isActive })} ${!canAccess('gradebook') ? 'opacity-50' : ''}`} onClick={onClose}>
                       <ClipboardList className="w-4 h-4" />{t('nav.journal', 'Журнал')}
                       {!canAccess('gradebook') && <Lock className="w-3 h-3 ml-auto text-slate-500" />}
+                    </NavLink>
+                    <NavLink to="/homework/review" className={linkClass} onClick={onClose}>
+                      <ClipboardCheck className="w-4 h-4" />Проверка ДЗ
                     </NavLink>
                     <NavLink to="/gradebook" className={({ isActive }) => `${linkClass({ isActive })} ${!canAccess('gradebook') ? 'opacity-50' : ''}`} onClick={onClose}>
                       <TableProperties className="w-4 h-4" />{t('nav.gradebook', 'Оценки')}
@@ -335,6 +345,9 @@ const Sidebar: React.FC<{ open: boolean; onClose: () => void }> = ({ open, onClo
                       <ClipboardList className="w-4 h-4" />{t('nav.journal', 'Журнал')}
                       {!canAccess('gradebook') && <Lock className="w-3 h-3 ml-auto text-slate-500" />}
                     </NavLink>
+                    <NavLink to="/homework/review" className={linkClass} onClick={onClose}>
+                      <ClipboardCheck className="w-4 h-4" />Проверка ДЗ
+                    </NavLink>
                     <NavLink to="/gradebook" className={({ isActive }) => `${linkClass({ isActive })} ${!canAccess('gradebook') ? 'opacity-50' : ''}`} onClick={onClose}>
                       <TableProperties className="w-4 h-4" />{t('nav.gradebook', 'Оценки')}
                       {!canAccess('gradebook') && <Lock className="w-3 h-3 ml-auto text-slate-500" />}
@@ -377,6 +390,10 @@ const Sidebar: React.FC<{ open: boolean; onClose: () => void }> = ({ open, onClo
                     </NavLink>
                     <NavLink to="/teacher-analytics" className={({ isActive }) => `${linkClass({ isActive })} ${!canAccess('advancedAnalytics') ? 'opacity-50' : ''}`} onClick={onClose}>
                       <Activity className="w-4 h-4" />{t('nav.analytics')}
+                      {!canAccess('advancedAnalytics') && <Lock className="w-3 h-3 ml-auto text-slate-500" />}
+                    </NavLink>
+                    <NavLink to="/risk-dashboard" className={({ isActive }) => `${linkClass({ isActive })} ${!canAccess('advancedAnalytics') ? 'opacity-50' : ''}`} onClick={onClose}>
+                      <TrendingDown className="w-4 h-4" />Светофор рисков
                       {!canAccess('advancedAnalytics') && <Lock className="w-3 h-3 ml-auto text-slate-500" />}
                     </NavLink>
                   </CollapsibleSection>

@@ -87,6 +87,59 @@ const StudentDetailPage: React.FC = () => {
         </div>
       </div>
 
+      {/* Parent Portal */}
+      <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-5 mb-6">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-full bg-indigo-50 dark:bg-indigo-900/20 flex items-center justify-center text-indigo-500">
+            <Users className="w-5 h-5" />
+          </div>
+          <div className="flex-1">
+            <h3 className="text-sm font-semibold text-slate-900 dark:text-white">Портал для родителей</h3>
+            <p className="text-xs text-slate-500 mt-0.5">Безопасная ссылка для отслеживания успеваемости, без регистрации.</p>
+          </div>
+          <div>
+            {student.parentPortalKey ? (
+              <div className="flex items-center gap-2">
+                <button 
+                  onClick={() => {
+                    navigator.clipboard.writeText(`${window.location.origin}/parent/${student.parentPortalKey}`);
+                    alert('Ссылка скопирована!');
+                  }}
+                  className="px-3 py-1.5 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-300 rounded-lg text-xs font-medium transition-colors"
+                >
+                  Скопировать ссылку
+                </button>
+                <button 
+                  onClick={async () => {
+                    if (confirm('Сбросить ссылку? Родитель больше не сможет по ней зайти.')) {
+                      await import('../../lib/api').then(m => m.apiRevokeParentKey(student.uid));
+                      setStudent({ ...student, parentPortalKey: undefined });
+                    }
+                  }}
+                  className="px-3 py-1.5 bg-red-50 dark:bg-red-900/20 border justify-center border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/40 rounded-lg text-xs font-medium transition-colors"
+                >
+                  Сбросить
+                </button>
+              </div>
+            ) : (
+              <button 
+                onClick={async () => {
+                  try {
+                    const res = await import('../../lib/api').then(m => m.apiGenerateParentKey(student.uid));
+                    setStudent({ ...student, parentPortalKey: res.parentPortalKey });
+                  } catch (err) {
+                    alert('Ошибка генерации ссылки');
+                  }
+                }}
+                className="px-4 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-medium shadow-sm transition-colors"
+              >
+                Создать ссылку
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+
       {/* Stats */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
         {[

@@ -532,3 +532,21 @@ export const apiUpdateAIManagerSettings = (data: any) =>
 
 export const apiAIManagerChat = (organizationId: string, messages: any[]) =>
   apiRequest('api-ai-org-manager', 'POST', { messages }, { action: 'chat', organizationId });
+
+// ============================================================
+// PARENT PORTAL API
+// ============================================================
+
+export const apiGenerateParentKey = (uid: string) =>
+  apiRequest('api-users', 'POST', { uid }, { action: 'generateParentKey' });
+
+export const apiRevokeParentKey = (uid: string) =>
+  apiRequest('api-users', 'POST', { uid }, { action: 'revokeParentKey' });
+
+export const apiGetParentPortalData = async (token: string) => {
+  // Using direct fetch so we can bypass standard auth token interception if not logged in
+  const res = await fetch(`/.netlify/functions/api-parent-portal?token=${token}`);
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || 'Failed to fetch parent data');
+  return data;
+};

@@ -8,6 +8,7 @@ import PlanGuard from './components/guards/PlanGuard';
 import AppLayout from './components/layout/AppLayout';
 import LoginPage from './pages/auth/LoginPage';
 import RegisterPage from './pages/auth/RegisterPage';
+import ParentPortalPage from './pages/parent/ParentPortalPage';
 import OnboardingPage from './pages/auth/OnboardingPage';
 import LandingPage from './pages/landing/LandingPage';
 import AboutPage from './pages/landing/AboutPage';
@@ -120,6 +121,7 @@ const App: React.FC = () => {
             <Route path="/docs" element={<DocsPage />} />
             <Route path="/login" element={<LoginPage />} />
             <Route path="/register" element={<RegisterPage />} />
+            <Route path="/parent/:token" element={<ParentPortalPage />} />
             <Route path="/onboarding" element={<OnboardingPage />} />
             <Route path="/directory" element={<OrganizationsDirectoryPage />} />
             <Route path="/org/:slug" element={<PublicOrgProfilePage />} />

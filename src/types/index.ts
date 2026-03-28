@@ -218,6 +218,7 @@ export interface UserProfile {
   username?: string;
   activeOrgId?: string;            // currently selected org context
   avatarUrl?: string;
+  parentPortalKey?: string;        // Used for generating Magic Links for parents
   pinnedBadges?: string[];         // User's top 3 pinned badges
   bio?: string;
   skills?: string[];

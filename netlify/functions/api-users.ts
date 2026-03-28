@@ -197,6 +197,27 @@ const handler: Handler = async (event: HandlerEvent) => {
       }
     }
 
+    if (action === 'generateParentKey' && event.httpMethod === 'POST') {
+      const body = JSON.parse(event.body || '{}');
+      const targetUid = body.uid;
+      if (!targetUid) return badRequest('uid required');
+      if (!hasRole(user, 'admin', 'teacher') && user.uid !== targetUid) return forbidden();
+
+      const newKey = `pp_${Date.now()}_${Math.random().toString(36).substring(2, 10)}`;
+      await adminDb.collection('users').doc(targetUid).set({ parentPortalKey: newKey, updatedAt: now() }, { merge: true });
+      return ok({ parentPortalKey: newKey });
+    }
+
+    if (action === 'revokeParentKey' && event.httpMethod === 'POST') {
+      const body = JSON.parse(event.body || '{}');
+      const targetUid = body.uid;
+      if (!targetUid) return badRequest('uid required');
+      if (!hasRole(user, 'admin', 'teacher') && user.uid !== targetUid) return forbidden();
+
+      await adminDb.collection('users').doc(targetUid).set({ parentPortalKey: null, updatedAt: now() }, { merge: true });
+      return ok({ success: true, parentPortalKey: null });
+    }
+
     // ═══ DEFAULT: existing routes ═══
 
     // GET

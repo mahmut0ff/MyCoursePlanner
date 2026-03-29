@@ -5,7 +5,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { apiGetDashboard } from '../../lib/api';
 import type { LessonPlan, ExamAttempt } from '../../types';
 import { formatDate } from '../../utils/grading';
-import { BookOpen, Radio, Trophy, XCircle, ArrowRight, Brain, Target, BarChart3, Flame, Building2, Search, Gamepad2 } from 'lucide-react';
+import { BookOpen, Radio, Trophy, XCircle, Brain, Target, BarChart3, Flame, Building2, Search, Gamepad2, Play } from 'lucide-react';
 import { DashboardSkeleton } from '../../components/ui/Skeleton';
 import GamificationWidget from '../../components/gamification/GamificationWidget';
 import LeaderboardWidget from '../../components/gamification/LeaderboardWidget';
@@ -47,22 +47,24 @@ const StudentDashboard: React.FC = () => {
   // ═══ No Organization: Welcome + Discovery ═══
   if (!organizationId) {
     return (
-      <div className="space-y-6">
-        {/* Hero  */}
-        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-violet-600 via-indigo-600 to-purple-700 p-6 sm:p-10 text-white">
-          <div className="absolute -top-16 -right-16 w-56 h-56 bg-white/5 rounded-full blur-2xl" />
-          <div className="absolute bottom-0 left-1/4 w-40 h-40 bg-white/5 rounded-full blur-xl" />
-          <div className="relative z-10">
-            <h1 className="text-2xl sm:text-3xl font-bold mb-2">{greeting} {t('dashboard.welcome')}, {profile?.displayName?.split(' ')[0]}!</h1>
-            <p className="text-violet-200 text-sm sm:text-base max-w-lg leading-relaxed">
-              {t('student.welcomeMsg', 'Чтобы начать обучение, найдите и вступите в учебный центр. Это займёт всего пару секунд.')}
+      <div className="space-y-6 sm:space-y-8">
+        {/* Kahoot-style Premium Hero Banner */}
+        <div className="relative overflow-hidden rounded-[2rem] bg-gradient-to-br from-[#46178F] via-[#5C1FB5] to-[#46178F] p-8 sm:p-12 text-white shadow-2xl shadow-purple-900/20">
+          <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-white/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/3" />
+          <div className="absolute bottom-0 left-0 w-[400px] h-[400px] bg-white/5 rounded-full blur-3xl translate-y-1/2 -translate-x-1/4" />
+          <div className="relative z-10 flex flex-col items-center text-center max-w-2xl mx-auto">
+            <h1 className="kahoot-font text-4xl sm:text-5xl font-extrabold mb-4 tracking-tight drop-shadow-md">
+              {greeting} {t('dashboard.welcome')}, {profile?.displayName?.split(' ')[0]}!
+            </h1>
+            <p className="text-white/90 text-lg sm:text-xl font-medium leading-relaxed mb-6">
+              Войдите в учебное пространство, чтобы начать свое приключение!
             </p>
             <Link
               to="/directory"
-              className="inline-flex items-center gap-2 mt-5 px-5 py-3 bg-white text-violet-700 rounded-xl font-semibold text-sm hover:bg-violet-50 transition-all hover:scale-[1.02] active:scale-[0.98] shadow-lg shadow-black/10"
+              className="inline-flex items-center gap-2 px-8 py-4 bg-white text-[#46178F] rounded-2xl font-bold text-lg hover:bg-slate-50 shadow-[0_6px_0_#94a3b8] active:translate-y-[4px] active:shadow-[0_2px_0_#94a3b8] transition-all"
             >
-              <Search className="w-4 h-4" />
-              {t('student.findOrg', 'Найти учебный центр')}
+              <Search className="w-5 h-5" />
+              Найти учебный центр
             </Link>
           </div>
         </div>
@@ -70,28 +72,33 @@ const StudentDashboard: React.FC = () => {
         {/* Gamification */}
         <GamificationWidget />
 
-        {/* Global Quick Actions */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
-          <Link to="/join" className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-5 sm:p-6 hover:shadow-lg hover:shadow-slate-200/50 dark:hover:shadow-slate-900/30 transition-all group text-center hover:scale-[1.02] active:scale-[0.98]">
-            <div className="w-12 h-12 bg-primary-500 rounded-xl flex items-center justify-center mx-auto mb-3 group-hover:scale-110 transition-transform">
-              <Radio className="w-6 h-6 text-white" />
+        {/* Global Quick Actions (Kahoot Style) */}
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 sm:gap-6">
+          {/* Action 1: Join Live Room (Red) */}
+          <Link to="/join" className="bg-[#E21B3C] hover:bg-[#c61834] text-white p-5 sm:p-6 rounded-[2rem] shadow-[0_8px_0_#9d1228] active:translate-y-[6px] active:shadow-[0_2px_0_#9d1228] transition-all group flex flex-col items-center text-center">
+            <div className="w-16 h-16 bg-white/20 rounded-2xl flex items-center justify-center mb-4 group-hover:scale-110 group-hover:rotate-6 transition-transform">
+              <Play className="w-8 h-8 text-white fill-white" />
             </div>
-            <h3 className="font-semibold text-slate-900 dark:text-white mb-1">{t('rooms.join')}</h3>
-            <p className="text-xs text-slate-500 dark:text-slate-400">{t('rooms.enterCode')}</p>
+            <h3 className="kahoot-font text-xl font-bold mb-1 tracking-wide">Зайти в Зал</h3>
+            <p className="text-sm text-white/80 font-medium">Студенческая комната</p>
           </Link>
-          <Link to="/quiz/join" className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-5 sm:p-6 hover:shadow-lg hover:shadow-slate-200/50 dark:hover:shadow-slate-900/30 transition-all group text-center hover:scale-[1.02] active:scale-[0.98]">
-            <div className="w-12 h-12 bg-violet-500 rounded-xl flex items-center justify-center mx-auto mb-3 group-hover:scale-110 transition-transform">
-              <Gamepad2 className="w-6 h-6 text-white" />
+
+          {/* Action 2: Join Quiz (Blue) */}
+          <Link to="/quiz/join" className="bg-[#1368CE] hover:bg-[#105ab3] text-white p-5 sm:p-6 rounded-[2rem] shadow-[0_8px_0_#0a4387] active:translate-y-[6px] active:shadow-[0_2px_0_#0a4387] transition-all group flex flex-col items-center text-center">
+            <div className="w-16 h-16 bg-white/20 rounded-2xl flex items-center justify-center mb-4 group-hover:scale-110 group-hover:-rotate-6 transition-transform">
+              <Gamepad2 className="w-8 h-8 text-white" />
             </div>
-            <h3 className="font-semibold text-slate-900 dark:text-white mb-1">{t('nav.joinQuiz')}</h3>
-            <p className="text-xs text-slate-500 dark:text-slate-400">{t('student.joinQuizDesc', 'Введите код квиза')}</p>
+            <h3 className="kahoot-font text-xl font-bold mb-1 tracking-wide">Квиз</h3>
+            <p className="text-sm text-white/80 font-medium">Введите код игры</p>
           </Link>
-          <Link to="/directory" className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-5 sm:p-6 hover:shadow-lg hover:shadow-slate-200/50 dark:hover:shadow-slate-900/30 transition-all group text-center hover:scale-[1.02] active:scale-[0.98]">
-            <div className="w-12 h-12 bg-emerald-500 rounded-xl flex items-center justify-center mx-auto mb-3 group-hover:scale-110 transition-transform">
-              <Building2 className="w-6 h-6 text-white" />
+
+          {/* Action 3: Directory (Green) */}
+          <Link to="/directory" className="col-span-2 sm:col-span-1 bg-[#26890C] hover:bg-[#20740a] text-white p-5 sm:p-6 rounded-[2rem] shadow-[0_8px_0_#185507] active:translate-y-[6px] active:shadow-[0_2px_0_#185507] transition-all group flex flex-col items-center text-center">
+            <div className="w-16 h-16 bg-white/20 rounded-2xl flex items-center justify-center mb-4 group-hover:scale-110 group-hover:rotate-6 transition-transform">
+              <Building2 className="w-8 h-8 text-white" />
             </div>
-            <h3 className="font-semibold text-slate-900 dark:text-white mb-1">{t('nav.directory', 'Учебные центры')}</h3>
-            <p className="text-xs text-slate-500 dark:text-slate-400">{t('student.browseOrgsDesc', 'Каталог организаций')}</p>
+            <h3 className="kahoot-font text-xl font-bold mb-1 tracking-wide">Каталог</h3>
+            <p className="text-sm text-white/80 font-medium">Школы и центры</p>
           </Link>
         </div>
       </div>
@@ -109,23 +116,63 @@ const StudentDashboard: React.FC = () => {
   const passRate = attempts.length > 0 ? Math.round((attempts.filter((a) => a.passed).length / attempts.length) * 100) : 0;
 
   return (
-    <div className="space-y-6">
-      {/* ═══ Hero Banner ═══ */}
-      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-rose-500 via-pink-500 to-fuchsia-600 p-6 sm:p-8 text-white">
-        <div className="absolute -top-10 -right-10 w-40 h-40 bg-white/10 rounded-full blur-2xl" />
-        <div className="absolute bottom-0 left-1/3 w-32 h-32 bg-white/5 rounded-full blur-xl" />
-        <div className="relative z-10 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+    <div className="space-y-6 sm:space-y-8 max-w-[1400px] mx-auto pb-10">
+      
+      {/* ═══ Premium Hero Banner ═══ */}
+      <div className="relative overflow-hidden rounded-[2rem] bg-gradient-to-br from-[#46178F] via-[#5C1FB5] to-[#46178F] p-8 sm:p-10 text-white shadow-2xl shadow-purple-900/10">
+        <div className="absolute -top-20 -right-20 w-[400px] h-[400px] bg-white/10 rounded-full blur-3xl" />
+        <div className="absolute bottom-0 left-1/4 w-[300px] h-[300px] bg-white/5 rounded-full blur-3xl" />
+        
+        <div className="relative z-10 flex flex-col sm:flex-row sm:items-center justify-between gap-6">
           <div>
-            <h1 className="text-xl sm:text-2xl font-bold">{greeting} {t('dashboard.welcome')}, {profile?.displayName?.split(' ')[0]}!</h1>
-            <p className="text-white/70 text-sm mt-1 flex items-center gap-1.5">
-              <Flame className="w-4 h-4" />
+            <h1 className="kahoot-font text-3xl sm:text-5xl font-extrabold mb-3 tracking-tight drop-shadow-sm">
+              {greeting} {t('dashboard.welcome')}, {profile?.displayName?.split(' ')[0]}!
+            </h1>
+            <p className="text-white/90 text-base sm:text-lg font-medium flex items-center gap-2">
+              <Flame className="w-5 h-5 text-yellow-400 fill-yellow-400" />
               {t('studentDashboard.subtitle')}
             </p>
           </div>
-          <Link to="/join" className="inline-flex items-center gap-2 bg-white/20 backdrop-blur-sm hover:bg-white/30 text-white px-4 py-2.5 rounded-xl font-medium text-sm transition-all hover:scale-[1.02] active:scale-[0.98] w-fit">
-            <Radio className="w-4 h-4" />{t('rooms.join')}
+          
+          <Link to="/join" className="inline-flex items-center gap-2 bg-yellow-400 text-yellow-900 hover:bg-yellow-300 px-6 py-4 rounded-2xl font-bold text-lg shadow-[0_6px_0_#b7860b] active:translate-y-[4px] active:shadow-[0_2px_0_#b7860b] transition-all w-fit kahoot-font">
+            <Play className="w-5 h-5 fill-yellow-900" /> В Зал Ожидания
           </Link>
         </div>
+      </div>
+
+      {/* ═══ Kahoot 3D Quick Actions ═══ */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
+        <Link to="/join" className="bg-[#E21B3C] hover:bg-[#c61834] text-white p-5 rounded-[1.5rem] shadow-[0_6px_0_#9d1228] active:translate-y-[4px] active:shadow-[0_2px_0_#9d1228] transition-all group flex flex-col items-center text-center">
+          <div className="w-14 h-14 bg-white/20 rounded-2xl flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
+            <Radio className="w-7 h-7 text-white" />
+          </div>
+          <h3 className="kahoot-font text-lg font-bold mb-1">Live Урок</h3>
+          <p className="text-xs text-white/80 font-medium">Войти по коду</p>
+        </Link>
+        
+        <Link to="/quiz/join" className="bg-[#1368CE] hover:bg-[#105ab3] text-white p-5 rounded-[1.5rem] shadow-[0_6px_0_#0a4387] active:translate-y-[4px] active:shadow-[0_2px_0_#0a4387] transition-all group flex flex-col items-center text-center">
+          <div className="w-14 h-14 bg-white/20 rounded-2xl flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
+            <Gamepad2 className="w-7 h-7 text-white" />
+          </div>
+          <h3 className="kahoot-font text-lg font-bold mb-1">Викторина</h3>
+          <p className="text-xs text-white/80 font-medium">Быстрая игра</p>
+        </Link>
+
+        <Link to="/lessons" className="bg-[#D89E00] hover:bg-[#b88600] text-white p-5 rounded-[1.5rem] shadow-[0_6px_0_#8f6800] active:translate-y-[4px] active:shadow-[0_2px_0_#8f6800] transition-all group flex flex-col items-center text-center">
+          <div className="w-14 h-14 bg-white/20 rounded-2xl flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
+            <BookOpen className="w-7 h-7 text-white" />
+          </div>
+          <h3 className="kahoot-font text-lg font-bold mb-1">Уроки</h3>
+          <p className="text-xs text-white/80 font-medium">{lessons.length} {t('studentDashboard.available')}</p>
+        </Link>
+
+        <Link to="/my-results" className="bg-[#26890C] hover:bg-[#20740a] text-white p-5 rounded-[1.5rem] shadow-[0_6px_0_#185507] active:translate-y-[4px] active:shadow-[0_2px_0_#185507] transition-all group flex flex-col items-center text-center">
+          <div className="w-14 h-14 bg-white/20 rounded-2xl flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
+            <Trophy className="w-7 h-7 text-white" />
+          </div>
+          <h3 className="kahoot-font text-lg font-bold mb-1">Результаты</h3>
+          <p className="text-xs text-white/80 font-medium">Ваши успехи</p>
+        </Link>
       </div>
 
       {/* Gamification Area */}
@@ -138,92 +185,76 @@ const StudentDashboard: React.FC = () => {
         </div>
       </div>
 
-      {/* ═══ Quick Actions ═══ */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
-        <Link to="/join" className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-5 sm:p-6 hover:shadow-lg hover:shadow-slate-200/50 dark:hover:shadow-slate-900/30 transition-all group text-center hover:scale-[1.02] active:scale-[0.98]">
-          <div className="w-12 h-12 bg-primary-500 rounded-xl flex items-center justify-center mx-auto mb-3 group-hover:scale-110 transition-transform">
-            <Radio className="w-6 h-6 text-white" />
-          </div>
-          <h3 className="font-semibold text-slate-900 dark:text-white mb-1">{t('rooms.join')}</h3>
-          <p className="text-xs text-slate-500 dark:text-slate-400">{t('rooms.enterCode')}</p>
-        </Link>
-        <Link to="/lessons" className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-5 sm:p-6 hover:shadow-lg hover:shadow-slate-200/50 dark:hover:shadow-slate-900/30 transition-all group text-center hover:scale-[1.02] active:scale-[0.98]">
-          <div className="w-12 h-12 bg-violet-500 rounded-xl flex items-center justify-center mx-auto mb-3 group-hover:scale-110 transition-transform">
-            <BookOpen className="w-6 h-6 text-white" />
-          </div>
-          <h3 className="font-semibold text-slate-900 dark:text-white mb-1">{t('lessons.title')}</h3>
-          <p className="text-xs text-slate-500 dark:text-slate-400">{lessons.length} {t('studentDashboard.available')}</p>
-        </Link>
-        <Link to="/my-results" className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-5 sm:p-6 hover:shadow-lg hover:shadow-slate-200/50 dark:hover:shadow-slate-900/30 transition-all group text-center hover:scale-[1.02] active:scale-[0.98]">
-          <div className="w-12 h-12 bg-emerald-500 rounded-xl flex items-center justify-center mx-auto mb-3 group-hover:scale-110 transition-transform">
-            <Trophy className="w-6 h-6 text-white" />
-          </div>
-          <h3 className="font-semibold text-slate-900 dark:text-white mb-1">{t('nav.myResults')}</h3>
-          <p className="text-xs text-slate-500 dark:text-slate-400">{attempts.length} {t('studentDashboard.attempts')}</p>
-        </Link>
-      </div>
-
-      {/* ═══ Stats ═══ */}
+      {/* ═══ Premium Stats Glass Cards ═══ */}
       {attempts.length > 0 && (
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 sm:gap-6">
           {[
-            { label: t('studentDashboard.examsTaken'), value: attempts.length, icon: Target, iconBg: 'bg-blue-500', bg: 'bg-blue-50 dark:bg-blue-950/30', border: 'border-blue-200/50 dark:border-blue-800/40', text: 'text-blue-600 dark:text-blue-400' },
-            { label: t('studentDashboard.avgScore'), value: `${avgScore}%`, icon: BarChart3, iconBg: 'bg-violet-500', bg: 'bg-violet-50 dark:bg-violet-950/30', border: 'border-violet-200/50 dark:border-violet-800/40', text: 'text-violet-600 dark:text-violet-400' },
-            { label: t('studentDashboard.passRate'), value: `${passRate}%`, icon: Trophy, iconBg: 'bg-emerald-500', bg: 'bg-emerald-50 dark:bg-emerald-950/30', border: 'border-emerald-200/50 dark:border-emerald-800/40', text: 'text-emerald-600 dark:text-emerald-400' },
-          ].map((s) => (
-            <div key={s.label} className={`${s.bg} border ${s.border} rounded-2xl p-4 text-center transition-all hover:shadow-lg hover:scale-[1.02]`}>
-              <div className={`${s.iconBg} w-9 h-9 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center mx-auto mb-2`}>
-                <s.icon className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
-              </div>
-              <p className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white">{s.value}</p>
-              <p className={`text-[10px] sm:text-xs ${s.text} font-medium mt-0.5`}>{s.label}</p>
+            { label: t('studentDashboard.examsTaken'), value: attempts.length, icon: Target, bg: 'bg-[#46178F]', shadow: 'shadow-[#2c0e5a]' },
+            { label: t('studentDashboard.avgScore'), value: `${avgScore}%`, icon: BarChart3, bg: 'bg-[#1368CE]', shadow: 'shadow-[#0c4486]' },
+            { label: t('studentDashboard.passRate'), value: `${passRate}%`, icon: Trophy, bg: 'bg-[#26890C]', shadow: 'shadow-[#195a08]' },
+          ].map((s, i) => (
+            <div key={s.label} className={`${s.bg} text-white rounded-[2rem] p-6 shadow-[0_6px_0_var(--tw-shadow-color)] ${s.shadow} relative overflow-hidden transition-transform hover:scale-[1.03] active:translate-y-[2px] active:shadow-[0_3px_0_var(--tw-shadow-color)] ${i === 2 ? 'col-span-2 sm:col-span-1 border-t border-white/10' : 'border-t border-white/10'}`}>
+               <div className="absolute -right-4 -bottom-4 opacity-10">
+                 <s.icon className="w-32 h-32" />
+               </div>
+               <div className="relative z-10">
+                 <div className="w-12 h-12 bg-white/20 backdrop-blur-sm rounded-2xl flex items-center justify-center mb-4">
+                   <s.icon className="w-6 h-6 text-white" />
+                 </div>
+                 <p className="kahoot-font text-4xl sm:text-5xl font-black mb-1 drop-shadow-sm">{s.value}</p>
+                 <p className="font-bold text-white/80 text-sm">{s.label}</p>
+               </div>
             </div>
           ))}
         </div>
       )}
 
-      {/* ═══ Content ═══ */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
+      {/* ═══ Content Cards ═══ */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 pt-4">
         {/* Available Lessons */}
-        <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl overflow-hidden">
-          <div className="px-5 py-4 border-b border-slate-100 dark:border-slate-700 flex items-center justify-between">
-            <h2 className="font-semibold text-slate-900 dark:text-white">{t('lessons.title')}</h2>
-            <Link to="/lessons" className="text-sm text-primary-600 dark:text-primary-400 hover:text-primary-700 flex items-center gap-1">{t('dashboard.viewAll')}<ArrowRight className="w-3.5 h-3.5" /></Link>
+        <div className="bg-white dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 rounded-[2rem] overflow-hidden shadow-lg shadow-slate-200/50 dark:shadow-none">
+          <div className="px-6 py-5 border-b-2 border-slate-100 dark:border-slate-700 flex items-center justify-between bg-slate-50 dark:bg-slate-800/80">
+            <h2 className="kahoot-font text-2xl font-black text-slate-800 dark:text-white drop-shadow-sm">{t('lessons.title')}</h2>
+            <Link to="/lessons" className="text-sm font-bold text-primary-600 dark:text-primary-400 hover:underline">
+              {t('dashboard.viewAll')}
+            </Link>
           </div>
-          <div className="divide-y divide-slate-100 dark:divide-slate-700">
+          <div className="divide-y-2 divide-slate-100 dark:divide-slate-700 p-2">
             {lessons.slice(0, 5).map((l) => (
-              <Link key={l.id} to={`/lessons/${l.id}`} className="block px-5 py-3 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors">
-                <p className="font-medium text-slate-900 dark:text-white text-sm">{l.title}</p>
-                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">{l.subject} · {l.level}</p>
+              <Link key={l.id} to={`/lessons/${l.id}`} className="flex flex-col px-4 py-4 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors group">
+                <p className="font-extrabold text-slate-900 dark:text-white text-base group-hover:text-primary-600 transition-colors">{l.title}</p>
+                <p className="text-sm font-semibold text-slate-500 dark:text-slate-400 mt-1">{l.subject} • {l.level}</p>
               </Link>
             ))}
-            {lessons.length === 0 && <div className="px-5 py-8 text-center text-slate-400 dark:text-slate-500 text-sm">{t('lessons.noLessons')}</div>}
+            {lessons.length === 0 && <div className="px-6 py-10 text-center font-bold text-slate-400 text-lg">{t('lessons.noLessons')}</div>}
           </div>
         </div>
 
         {/* Recent Results */}
-        <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl overflow-hidden">
-          <div className="px-5 py-4 border-b border-slate-100 dark:border-slate-700 flex items-center justify-between">
-            <h2 className="font-semibold text-slate-900 dark:text-white">{t('exams.title')}</h2>
-            <Link to="/my-results" className="text-sm text-primary-600 dark:text-primary-400 hover:text-primary-700 flex items-center gap-1">{t('dashboard.viewAll')}<ArrowRight className="w-3.5 h-3.5" /></Link>
+        <div className="bg-white dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 rounded-[2rem] overflow-hidden shadow-lg shadow-slate-200/50 dark:shadow-none">
+          <div className="px-6 py-5 border-b-2 border-slate-100 dark:border-slate-700 flex items-center justify-between bg-slate-50 dark:bg-slate-800/80">
+            <h2 className="kahoot-font text-2xl font-black text-slate-800 dark:text-white drop-shadow-sm">{t('exams.title')}</h2>
+            <Link to="/my-results" className="text-sm font-bold text-primary-600 dark:text-primary-400 hover:underline">
+              {t('dashboard.viewAll')}
+            </Link>
           </div>
-          <div className="divide-y divide-slate-100 dark:divide-slate-700">
+          <div className="divide-y-2 divide-slate-100 dark:divide-slate-700 p-2">
             {attempts.slice(0, 5).map((a) => (
-              <Link key={a.id} to={`/results/${a.id}`} className="block px-5 py-3 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors">
-                <div className="flex items-center justify-between">
+              <Link key={a.id} to={`/results/${a.id}`} className="flex flex-col px-4 py-4 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors group">
+                <div className="flex items-center justify-between mb-1">
                   <div className="flex items-center gap-2">
-                    {a.passed ? <Trophy className="w-4 h-4 text-emerald-500" /> : <XCircle className="w-4 h-4 text-red-500" />}
-                    <p className="font-medium text-slate-900 dark:text-white text-sm">{a.examTitle}</p>
+                    {a.passed ? <Trophy className="w-5 h-5 text-emerald-500 fill-emerald-500" /> : <XCircle className="w-5 h-5 text-red-500 fill-red-500/20" />}
+                    <p className="font-extrabold text-slate-900 dark:text-white text-base group-hover:text-primary-600 transition-colors">{a.examTitle}</p>
                   </div>
-                  <p className="font-semibold text-sm text-slate-900 dark:text-white">{a.percentage}%</p>
+                  <p className="kahoot-font font-black text-lg text-slate-900 dark:text-white">{a.percentage}%</p>
                 </div>
-                <div className="flex items-center gap-2 mt-1 ml-6">
-                  {a.aiFeedback && <span className="flex items-center gap-1 text-xs text-primary-600 dark:text-primary-400"><Brain className="w-3 h-3" />{t('studentDashboard.aiFeedback')}</span>}
-                  <span className="text-xs text-slate-400 dark:text-slate-500">{formatDate(a.submittedAt)}</span>
+                <div className="flex items-center gap-3 ml-7">
+                  {a.aiFeedback && <span className="flex items-center gap-1 text-xs font-bold text-primary-600 dark:text-primary-400 bg-primary-50 dark:bg-primary-900/40 px-2 py-0.5 rounded-md"><Brain className="w-3.5 h-3.5" /> AI Feedback</span>}
+                  <span className="text-xs font-semibold text-slate-400">{formatDate(a.submittedAt)}</span>
                 </div>
               </Link>
             ))}
-            {attempts.length === 0 && <div className="px-5 py-8 text-center text-slate-400 dark:text-slate-500 text-sm">{t('studentDashboard.noExams')}</div>}
+            {attempts.length === 0 && <div className="px-6 py-10 text-center font-bold text-slate-400 text-lg">{t('studentDashboard.noExams')}</div>}
           </div>
         </div>
       </div>

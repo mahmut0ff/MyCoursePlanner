@@ -330,6 +330,12 @@ export interface TeacherProfile {
   experience: string;
   avatarUrl: string;
   socialLinks: { platform: string; url: string }[];
+  education?: string;
+  certificates?: string;
+  subjects?: string;
+  city?: string;
+  resumeUrl?: string;
+  resumeFileName?: string;
   updatedAt: string;
 }
 

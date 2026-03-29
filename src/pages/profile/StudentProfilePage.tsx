@@ -8,7 +8,7 @@ import { updateUser } from '../../services/users.service';
 import toast from 'react-hot-toast';
 import { Globe, Lock, Save, Camera, AtSign, CheckCircle2, XCircle, Loader2, Phone } from 'lucide-react';
 import i18n from '../../i18n';
-import StudentPortfolio from '../../components/portfolio/StudentPortfolio';
+
 import { apiCheckAuthIdentity, apiGetGamification } from '../../lib/api';
 import AvatarCropper from '../../components/ui/AvatarCropper';
 import type { GamificationData } from '../../types';
@@ -17,7 +17,7 @@ const StudentProfilePage: React.FC = () => {
   const { t } = useTranslation();
   const { profile, loading } = useAuth();
 
-  const [activeTab, setActiveTab] = useState<'settings' | 'portfolio'>('settings');
+
 
   // Fields
   const [name, setName] = useState(profile?.displayName || '');
@@ -31,10 +31,8 @@ const StudentProfilePage: React.FC = () => {
   const [myBadges, setMyBadges] = useState<GamificationData | null>(null);
   
   React.useEffect(() => {
-    if (activeTab === 'settings') {
-      apiGetGamification().then(setMyBadges).catch(() => {});
-    }
-  }, [activeTab]);
+    apiGetGamification().then(setMyBadges).catch(() => {});
+  }, []);
 
   React.useEffect(() => {
     if (!username || username === profile?.username || username.length < 3) return setUsernameStatus('idle');
@@ -162,22 +160,9 @@ const StudentProfilePage: React.FC = () => {
         <h1 className="text-2xl font-bold text-slate-900 dark:text-white">{t('profile.title')}</h1>
       </div>
 
-      <div className="flex gap-4 border-b border-slate-200 dark:border-slate-700 mb-8">
-        <button
-          onClick={() => setActiveTab('settings')}
-          className={`pb-3 px-2 text-sm font-medium border-b-2 transition-colors ${activeTab === 'settings' ? 'border-primary-600 text-primary-600' : 'border-transparent text-slate-500 hover:text-slate-700'}`}
-        >
-          {t('profile.settings', 'Settings')}
-        </button>
-        <button
-          onClick={() => setActiveTab('portfolio')}
-          className={`pb-3 px-2 text-sm font-medium border-b-2 transition-colors ${activeTab === 'portfolio' ? 'border-primary-600 text-primary-600' : 'border-transparent text-slate-500 hover:text-slate-700'}`}
-        >
-          {t('profile.portfolio', 'Portfolio')}
-        </button>
-      </div>
 
-      {activeTab === 'settings' && (
+
+      {
         <div className="space-y-6">
           {/* Avatar & Basic Info */}
           <div className="card p-6">
@@ -351,11 +336,7 @@ const StudentProfilePage: React.FC = () => {
             </div>
           </div>
         </div>
-      )}
-
-      {activeTab === 'portfolio' && (
-        <StudentPortfolio uid={profile?.uid || ''} />
-      )}
+      }
 
       {cropImageSrc && (
         <AvatarCropper

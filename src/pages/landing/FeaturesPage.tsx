@@ -3,12 +3,12 @@ import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../contexts/AuthContext';
 import {
-  ArrowLeft, BookOpen, Brain, BarChart3, Shield,
+  ArrowLeft, BookOpen, Brain, Shield,
   Gamepad2, Layers, Users, Building2,
   Sparkles, CheckCircle2,
   Calendar, FileCheck2,
-  MessageCircle, Rocket, Zap, Crown, UserPlus, FileSpreadsheet,
-  Briefcase, Image, ArrowRight, Bot, LineChart,
+  MessageCircle, Rocket, Zap, Crown, FileSpreadsheet,
+  Briefcase, ArrowRight, Bot, LineChart,
   MapPin, ShieldCheck, Palette, CalendarDays,
   Globe, Smartphone, PieChart, Timer
 } from 'lucide-react';

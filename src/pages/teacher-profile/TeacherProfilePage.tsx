@@ -6,7 +6,7 @@ import { ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage
 import { updateProfile } from 'firebase/auth';
 import { apiGetTeacherProfile, apiUpdateTeacherProfile } from '../../lib/api';
 import AvatarCropper from '../../components/ui/AvatarCropper';
-import { Save, User, Briefcase, BookOpen, Link2, Plus, X, Loader2, CheckCircle2, Eye, EyeOff, GraduationCap, Award, MapPin, Tag, Camera } from 'lucide-react';
+import { Save, User, Briefcase, BookOpen, Link2, Plus, X, Loader2, CheckCircle2, Eye, EyeOff, GraduationCap, Award, MapPin, Tag, Camera, FileText, Upload, Trash2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 interface SocialLink {
@@ -32,6 +32,11 @@ const TeacherProfilePage: React.FC = () => {
   const [certificates, setCertificates] = useState('');
   const [subjects, setSubjects] = useState('');
   const [city, setCity] = useState('');
+
+  const [resumeUrl, setResumeUrl] = useState('');
+  const [resumeFileName, setResumeFileName] = useState('');
+  const [resumeLoading, setResumeLoading] = useState(false);
+  const resumeInputRef = React.useRef<HTMLInputElement>(null);
 
   const fileInputRef = React.useRef<HTMLInputElement>(null);
   const [avatarLoading, setAvatarLoading] = useState(false);
@@ -70,6 +75,35 @@ const TeacherProfilePage: React.FC = () => {
     }
   };
 
+  const handleResumeChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !auth.currentUser) return;
+    if (file.type !== 'application/pdf') {
+      toast.error('Только PDF файлы разрешены');
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+       toast.error('Файл слишком большой (макс 5MB)');
+       return;
+    }
+    
+    setResumeLoading(true);
+    try {
+      const refArea = storageRef(storage, `resumes/teacher_${auth.currentUser.uid}_${Date.now()}.pdf`);
+      await uploadBytes(refArea, file);
+      const url = await getDownloadURL(refArea);
+      setResumeUrl(url);
+      setResumeFileName(file.name);
+      toast.success('Резюме загружено! Нажмите "Сохранить" чтобы обновить профиль.');
+    } catch (err) {
+      console.error(err);
+      toast.error(t('common.error'));
+    } finally {
+      if (resumeInputRef.current) resumeInputRef.current.value = '';
+      setResumeLoading(false);
+    }
+  };
+
   useEffect(() => {
     apiGetTeacherProfile()
       .then((data: any) => {
@@ -82,6 +116,8 @@ const TeacherProfilePage: React.FC = () => {
         setCertificates(data.certificates || '');
         setSubjects(data.subjects || '');
         setCity(data.city || '');
+        setResumeUrl(data.resumeUrl || '');
+        setResumeFileName(data.resumeFileName || '');
       })
       .catch((e: any) => setError(e.message))
       .finally(() => setLoading(false));
@@ -91,7 +127,7 @@ const TeacherProfilePage: React.FC = () => {
     setSaving(true);
     setError('');
     try {
-      await apiUpdateTeacherProfile({ bio, specialization, experience, socialLinks, avatarUrl, education, certificates, subjects, city });
+      await apiUpdateTeacherProfile({ bio, specialization, experience, socialLinks, avatarUrl, education, certificates, subjects, city, resumeUrl, resumeFileName });
       setSuccess(t('teacher.profileSaved'));
       setTimeout(() => setSuccess(''), 3000);
     } catch (e: any) {
@@ -169,6 +205,28 @@ const TeacherProfilePage: React.FC = () => {
               <div className="mt-4">
                 <h3 className="text-sm font-semibold text-slate-900 dark:text-white mb-1">{t('teacher.certificates')}</h3>
                 <p className="text-sm text-slate-600 dark:text-slate-300 whitespace-pre-line">{certificates}</p>
+              </div>
+            )}
+            {resumeUrl && (
+              <div className="mt-6 flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-700/50 rounded-xl border border-slate-200 dark:border-slate-600">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-lg bg-red-500/10 flex items-center justify-center shrink-0">
+                    <FileText className="w-5 h-5 text-red-500" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-slate-900 dark:text-white mb-0.5">Прикрепленное резюме</p>
+                    <p className="text-xs text-slate-500 line-clamp-1">{resumeFileName || 'resume.pdf'}</p>
+                  </div>
+                </div>
+                <a
+                  href={resumeUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="btn-primary text-xs flex items-center gap-2 whitespace-nowrap shrink-0 ml-4"
+                >
+                  <FileText className="w-4 h-4" />
+                  Открыть PDF
+                </a>
               </div>
             )}
             {socialLinks.length > 0 && (
@@ -323,6 +381,60 @@ const TeacherProfilePage: React.FC = () => {
           </div>
           <textarea value={certificates} onChange={(e) => setCertificates(e.target.value)} rows={3} placeholder={t('teacher.certificatesPlaceholder')}
             className="w-full bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-lg px-3.5 py-2.5 text-sm outline-none focus:border-primary-500 text-slate-900 dark:text-white placeholder:text-slate-400 resize-none" />
+        </div>
+
+        {/* Resume Uploader */}
+        <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-5">
+          <div className="flex items-center gap-2 mb-3">
+            <FileText className="w-4 h-4 text-violet-500" />
+            <h3 className="text-sm font-semibold text-slate-900 dark:text-white">Резюме (PDF)</h3>
+          </div>
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-lg p-4">
+            {resumeUrl ? (
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-lg bg-red-500/10 flex items-center justify-center shrink-0">
+                  <FileText className="w-5 h-5 text-red-500" />
+                </div>
+                <div className="min-w-0">
+                  <a href={resumeUrl} target="_blank" rel="noreferrer" className="block text-sm font-medium text-slate-900 dark:text-white hover:text-primary-600 dark:hover:text-primary-400 transition-colors truncate">
+                    {resumeFileName || 'Резюме.pdf'}
+                  </a>
+                  <p className="text-xs text-slate-500">Документ загружен</p>
+                </div>
+              </div>
+            ) : (
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-lg bg-slate-200 dark:bg-slate-600 flex items-center justify-center shrink-0">
+                  <FileText className="w-5 h-5 text-slate-400" />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-sm font-medium text-slate-900 dark:text-white">Нет резюме</p>
+                  <p className="text-xs text-slate-500">Загрузите файл до 5MB</p>
+                </div>
+              </div>
+            )}
+
+            <div className="flex items-center gap-2 shrink-0">
+              <input type="file" accept="application/pdf" ref={resumeInputRef} onChange={handleResumeChange} className="hidden" />
+              {resumeUrl && (
+                <button
+                  onClick={() => { setResumeUrl(''); setResumeFileName(''); }}
+                  className="p-2 text-slate-400 hover:text-red-500 transition-colors bg-white dark:bg-slate-800 rounded-lg shadow-sm border border-slate-200 dark:border-slate-700"
+                  title="Удалить"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              )}
+              <button
+                onClick={() => resumeInputRef.current?.click()}
+                disabled={resumeLoading}
+                className="btn-secondary text-xs flex items-center gap-2"
+              >
+                {resumeLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
+                {resumeUrl ? 'Заменить' : 'Загрузить PDF'}
+              </button>
+            </div>
+          </div>
         </div>
 
         {/* Social Links */}

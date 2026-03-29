@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { orgGetTeachers, orgGetGroups } from '../../lib/api';
 import { apiGetTeacherProfile } from '../../lib/api';
-import { ArrowLeft, Mail, Calendar, BookOpen, Briefcase, Link2, UserPlus, Users, FolderOpen, Phone } from 'lucide-react';
+import { ArrowLeft, Mail, Calendar, BookOpen, Briefcase, Link2, UserPlus, Users, FolderOpen, Phone, FileText } from 'lucide-react';
 import type { UserProfile, TeacherProfile } from '../../types';
 
 const TeacherDetailPage: React.FC = () => {
@@ -106,6 +106,28 @@ const TeacherDetailPage: React.FC = () => {
           <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-5">
             <div className="flex items-center gap-2 mb-2"><Briefcase className="w-4 h-4 text-violet-500" /><h2 className="text-sm font-semibold text-slate-900 dark:text-white">{t('teacher.experience')}</h2></div>
             <p className="text-sm text-slate-600 dark:text-slate-300 whitespace-pre-line">{profile.experience}</p>
+          </div>
+        )}
+
+        {profile?.resumeUrl && (
+          <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-5">
+            <div className="flex items-center gap-2 mb-3"><FileText className="w-4 h-4 text-violet-500" /><h2 className="text-sm font-semibold text-slate-900 dark:text-white">Резюме (PDF)</h2></div>
+            <a
+              href={profile.resumeUrl}
+              target="_blank"
+              rel="noreferrer"
+              className="flex items-center p-3 bg-slate-50 dark:bg-slate-700/50 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors border border-slate-200 dark:border-slate-600 group"
+            >
+              <div className="flex items-center gap-3 w-full">
+                <div className="w-10 h-10 rounded-lg bg-red-500/10 flex items-center justify-center shrink-0">
+                  <FileText className="w-5 h-5 text-red-500 group-hover:scale-110 transition-transform" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-slate-900 dark:text-white truncate">{profile.resumeFileName || 'Резюме.pdf'}</p>
+                  <p className="text-xs text-slate-500 mt-0.5">Нажмите, чтобы открыть PDF</p>
+                </div>
+              </div>
+            </a>
           </div>
         )}
 

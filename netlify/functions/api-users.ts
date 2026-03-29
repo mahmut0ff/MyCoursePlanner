@@ -175,7 +175,7 @@ const handler: Handler = async (event: HandlerEvent) => {
       if (event.httpMethod === 'GET') {
         const uid = params.uid || user.uid;
         const doc = await adminDb.collection('teacherProfiles').doc(uid).get();
-        if (!doc.exists) return ok({ uid, bio: '', specialization: '', experience: '', avatarUrl: '', socialLinks: [] });
+        if (!doc.exists) return ok({ uid, bio: '', specialization: '', experience: '', avatarUrl: '', socialLinks: [], resumeUrl: '', resumeFileName: '' });
         return ok({ uid, ...doc.data() });
       }
       if (event.httpMethod === 'PUT' || event.httpMethod === 'POST') {
@@ -190,6 +190,8 @@ const handler: Handler = async (event: HandlerEvent) => {
           certificates: body.certificates || '',
           subjects: body.subjects || '',
           city: body.city || '',
+          resumeUrl: body.resumeUrl || '',
+          resumeFileName: body.resumeFileName || '',
           updatedAt: now(),
         };
         await adminDb.collection('teacherProfiles').doc(user.uid).set(profileData, { merge: true });

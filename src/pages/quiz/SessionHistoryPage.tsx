@@ -60,7 +60,7 @@ const SessionHistoryPage: React.FC = () => {
             const config = STATUS_CONFIG[s.status] || STATUS_CONFIG.completed;
             return (
               <Link key={s.id} to={s.status === 'completed' ? `/quiz/analytics/${s.id}` : `/quiz/sessions/${s.id}`}
-                className="kahoot-library-card flex items-center gap-4 p-4 group">
+                className="kahoot-library-card flex items-center gap-4 p-4 group transition-all transform hover:-translate-y-1 hover:shadow-md">
                 <div className="w-12 h-12 rounded-xl flex items-center justify-center shrink-0" style={{ backgroundColor: config.bg }}>
                   {s.status === 'completed' ? <BarChart3 className="w-6 h-6" style={{ color: config.color }} /> :
                    s.status === 'in_progress' ? <Play className="w-6 h-6" style={{ color: config.color }} /> :

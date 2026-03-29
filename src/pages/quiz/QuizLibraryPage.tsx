@@ -229,7 +229,7 @@ const QuizLibraryPage: React.FC = () => {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {filtered.map((quiz, idx) => (
-            <div key={quiz.id} className="kahoot-library-card group bg-white dark:bg-slate-800 rounded-2xl overflow-hidden shadow-sm hover:shadow-xl transition-all border border-slate-200 dark:border-slate-700 flex flex-col h-full">
+            <div key={quiz.id} className="kahoot-library-card group bg-white dark:bg-slate-800 rounded-2xl overflow-hidden shadow-sm border border-slate-200 dark:border-slate-700 flex flex-col h-full">
               {/* Cover */}
               <div
                 className="h-32 flex items-center justify-center relative shrink-0"
@@ -301,7 +301,7 @@ const QuizLibraryPage: React.FC = () => {
                 {/* 3D Action Buttons */}
                 <div className="flex items-center gap-2 mt-4 pt-4 border-t border-slate-100 dark:border-slate-700">
                   <button onClick={() => handleLaunch(quiz.id)} 
-                    className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl font-bold text-white text-sm transition-all transform active:translate-y-1"
+                    className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl font-bold text-white text-sm transition-all transform hover:-translate-y-1 hover:brightness-110 active:translate-y-1"
                     style={{ backgroundColor: 'var(--kahoot-green)', boxShadow: '0 4px 0 rgba(0,0,0,0.2)' }}
                     title={t('quiz.launch', 'Играть')}
                   >
@@ -311,14 +311,14 @@ const QuizLibraryPage: React.FC = () => {
                   {tab === 'my' && (
                     <>
                       <Link to={`/quiz/${quiz.id}/edit`} 
-                        className="w-10 h-10 flex items-center justify-center rounded-xl transition-all transform active:translate-y-1 bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:text-blue-600 dark:hover:text-blue-400"
+                        className="w-10 h-10 flex items-center justify-center rounded-xl transition-all transform hover:-translate-y-1 hover:brightness-105 hover:shadow-md active:translate-y-1 bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:text-blue-600 dark:hover:text-blue-400"
                         style={{ boxShadow: '0 4px 0 rgba(0,0,0,0.1)' }}
                         title={t('quiz.edit', 'Редактировать')}
                       >
                         <BookOpen className="w-4 h-4" />
                       </Link>
                       <button onClick={() => handleDelete(quiz.id)} 
-                        className="w-10 h-10 flex items-center justify-center rounded-xl transition-all transform active:translate-y-1 bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:text-red-600 dark:hover:text-red-400"
+                        className="w-10 h-10 flex items-center justify-center rounded-xl transition-all transform hover:-translate-y-1 hover:brightness-105 hover:shadow-md active:translate-y-1 bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:text-red-600 dark:hover:text-red-400"
                         style={{ boxShadow: '0 4px 0 rgba(0,0,0,0.1)' }}
                         title={t('common.delete', 'Удалить')}
                       >
@@ -328,7 +328,7 @@ const QuizLibraryPage: React.FC = () => {
                   )}
                   {tab !== 'my' && (
                     <button onClick={() => handleDuplicate(quiz.id)}
-                      className="w-10 h-10 flex items-center justify-center rounded-xl transition-all transform active:translate-y-1 bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:text-purple-600 dark:hover:text-purple-400"
+                      className="w-10 h-10 flex items-center justify-center rounded-xl transition-all transform hover:-translate-y-1 hover:brightness-105 hover:shadow-md active:translate-y-1 bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:text-purple-600 dark:hover:text-purple-400"
                       style={{ boxShadow: '0 4px 0 rgba(0,0,0,0.1)' }}
                       title={t('quiz.duplicate', 'Копировать')}
                     >

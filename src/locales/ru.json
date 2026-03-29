@@ -664,8 +664,7 @@
       "empty": "Студенты не найдены",
       "activeTabs": "Активные студенты",
       "applicationsTab": "Заявки",
-      "create": "Создать студента",
-      "createDesc": "Создать новый аккаунт студента в вашей организации",
+      "applicationsCount": "заявок",
       "namePlaceholder": "ФИО студента",
       "passwordPlaceholder": "Пароль (мин. 6 символов)",
       "phonePlaceholder": "Номер телефона (необязательно)",
@@ -677,7 +676,16 @@
       "passRate": "Процент сдачи",
       "bestScore": "Лучший балл",
       "groups": "Группы",
-      "noGroups": "Не в группе"
+      "noGroups": "Не в группе",
+      "searchPlaceholder": "Поиск по имени, email или телефону...",
+      "allGroups": "Все группы",
+      "sortBy": "Сортировка:",
+      "clearFilters": "Сбросить",
+      "found": "Найдено",
+      "ofTotal": "из",
+      "noSearchResults": "Студенты не найдены по вашему запросу",
+      "groupCol": "Группа",
+      "noApplications": "Нет входящих заявок"
     },
     "teachers": {
       "total": "преподавателей",

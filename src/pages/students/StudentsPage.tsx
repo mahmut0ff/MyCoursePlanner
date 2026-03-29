@@ -1,17 +1,20 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../contexts/AuthContext';
 import { 
   orgGetStudents, 
-  orgCreateStudent,
+  orgGetGroups,
   apiGetOrgMembers,
   apiAcceptMembership,
   apiRejectMembership
 } from '../../lib/api';
-import { Users, Search, Mail, Plus, RefreshCw, Eye, EyeOff, CheckCircle, XCircle, UserPlus, Phone } from 'lucide-react';
-import type { UserProfile } from '../../types';
+import { Users, Search, Mail, RefreshCw, CheckCircle, XCircle, UserPlus, Phone, Filter, X, ChevronDown, SortAsc, SortDesc } from 'lucide-react';
+import type { UserProfile, Group } from '../../types';
 import toast from 'react-hot-toast';
+
+type SortField = 'name' | 'email' | 'date';
+type SortDir = 'asc' | 'desc';
 
 const StudentsPage: React.FC = () => {
   const { t } = useTranslation();
@@ -27,13 +30,15 @@ const StudentsPage: React.FC = () => {
   const [applications, setApplications] = useState<any[]>([]);
   const [loadingApps, setLoadingApps] = useState(false);
 
+  // Search & Filters
   const [search, setSearch] = useState('');
+  const [groups, setGroups] = useState<Group[]>([]);
+  const [selectedGroup, setSelectedGroup] = useState<string>('all');
+  const [showFilters, setShowFilters] = useState(false);
+  const [sortField, setSortField] = useState<SortField>('name');
+  const [sortDir, setSortDir] = useState<SortDir>('asc');
+
   const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
-  const [showCreate, setShowCreate] = useState(false);
-  const [form, setForm] = useState({ displayName: '', email: '', password: '', phone: '' });
-  const [saving, setSaving] = useState(false);
-  const [showPw, setShowPw] = useState(false);
 
   const loadStudents = () => { 
     setLoading(true); 
@@ -42,6 +47,13 @@ const StudentsPage: React.FC = () => {
       .then(setStudents)
       .catch((e) => setError(e.message || 'Error'))
       .finally(() => setLoading(false)); 
+  };
+
+  const loadGroups = async () => {
+    try {
+      const data = await orgGetGroups();
+      setGroups(Array.isArray(data) ? data : []);
+    } catch { /* silent */ }
   };
 
   const loadApplications = async () => {
@@ -59,22 +71,48 @@ const StudentsPage: React.FC = () => {
 
   useEffect(() => {
     loadStudents();
+    loadGroups();
     loadApplications();
   }, [profile?.activeOrgId]);
 
-  const filteredStudents = students.filter((s) => s.displayName?.toLowerCase().includes(search.toLowerCase()) || s.email?.toLowerCase().includes(search.toLowerCase()));
+  // Filtered & sorted students
+  const filteredStudents = useMemo(() => {
+    let result = [...students];
 
-  const handleCreate = async () => {
-    if (!form.displayName.trim() || !form.email.trim() || !form.password.trim()) return;
-    setSaving(true); setError('');
-    try {
-      const created = await orgCreateStudent(form);
-      setStudents((p) => [created, ...p]);
-      setShowCreate(false); setForm({ displayName: '', email: '', password: '', phone: '' });
-      setSuccess(t('org.students.created', 'Студент создан!')); setTimeout(() => setSuccess(''), 3000);
-    } catch (e: any) { setError(e.message || t('common.loadError', 'Ошибка')); }
-    finally { setSaving(false); }
-  };
+    // Search by name, email, phone
+    if (search.trim()) {
+      const q = search.toLowerCase().trim();
+      result = result.filter(s =>
+        s.displayName?.toLowerCase().includes(q) ||
+        s.email?.toLowerCase().includes(q) ||
+        s.phone?.toLowerCase().includes(q)
+      );
+    }
+
+    // Filter by group
+    if (selectedGroup !== 'all') {
+      const group = groups.find(g => g.id === selectedGroup);
+      if (group) {
+        const studentIdsInGroup = new Set(group.studentIds || []);
+        result = result.filter(s => studentIdsInGroup.has(s.uid));
+      }
+    }
+
+    // Sort
+    result.sort((a, b) => {
+      let cmp = 0;
+      if (sortField === 'name') {
+        cmp = (a.displayName || '').localeCompare(b.displayName || '', 'ru');
+      } else if (sortField === 'email') {
+        cmp = (a.email || '').localeCompare(b.email || '');
+      } else if (sortField === 'date') {
+        cmp = new Date(a.createdAt || 0).getTime() - new Date(b.createdAt || 0).getTime();
+      }
+      return sortDir === 'asc' ? cmp : -cmp;
+    });
+
+    return result;
+  }, [students, search, selectedGroup, groups, sortField, sortDir]);
 
   const handleApprove = async (userId: string) => {
     if (!profile?.activeOrgId) return;
@@ -99,8 +137,34 @@ const StudentsPage: React.FC = () => {
     }
   };
 
+  const toggleSort = (field: SortField) => {
+    if (sortField === field) {
+      setSortDir(d => d === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortField(field);
+      setSortDir('asc');
+    }
+  };
+
+  const activeFiltersCount = (selectedGroup !== 'all' ? 1 : 0);
+
+  const clearFilters = () => {
+    setSearch('');
+    setSelectedGroup('all');
+    setSortField('name');
+    setSortDir('asc');
+  };
+
+  // Get group name for a student
+  const getStudentGroups = (uid: string): string[] => {
+    return groups
+      .filter(g => (g.studentIds || []).includes(uid))
+      .map(g => g.name);
+  };
+
   return (
     <div>
+      {/* Header */}
       <div className="flex items-center justify-between mb-4">
         <div>
           <h1 className="text-lg font-bold text-slate-900 dark:text-white">{t('nav.students')}</h1>
@@ -108,28 +172,24 @@ const StudentsPage: React.FC = () => {
             {activeTab === 'students' ? `${students.length} ${t('org.students.total')}` : `${applications.length} ${t('org.students.applicationsCount', 'заявок')}`}
           </p>
         </div>
-        <div className="flex items-center gap-1.5">
-          <button onClick={() => { loadStudents(); loadApplications(); }} className="p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors">
-            <RefreshCw className="w-3.5 h-3.5" />
-          </button>
-          <button onClick={() => setShowCreate(true)} className="bg-emerald-500 hover:bg-emerald-600 text-white px-3 py-1.5 rounded-lg text-[11px] font-medium flex items-center gap-1 transition-colors">
-            <Plus className="w-3 h-3" />{t('org.students.create')}
-          </button>
-        </div>
+        <button onClick={() => { loadStudents(); loadGroups(); loadApplications(); }} className="p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors">
+          <RefreshCw className="w-3.5 h-3.5" />
+        </button>
       </div>
 
+      {/* Tabs */}
       <div className="flex gap-4 border-b border-slate-200 dark:border-slate-700 mb-4">
         <button
           onClick={() => setActiveTab('students')}
           className={`pb-2 text-sm font-medium border-b-2 transition-colors ${activeTab === 'students' ? 'border-primary-600 text-primary-600' : 'border-transparent text-slate-500 hover:text-slate-700'}`}
         >
-          {t('org.students.activeTabs', 'Active Students')}
+          {t('org.students.activeTabs', 'Активные студенты')}
         </button>
         <button
           onClick={() => setActiveTab('applications')}
           className={`pb-2 text-sm font-medium border-b-2 transition-colors flex items-center gap-2 ${activeTab === 'applications' ? 'border-primary-600 text-primary-600' : 'border-transparent text-slate-500 hover:text-slate-700'}`}
         >
-          {t('org.students.applicationsTab', 'Applications')}
+          {t('org.students.applicationsTab', 'Заявки')}
           {applications.length > 0 && (
             <span className="bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full">
               {applications.length}
@@ -139,47 +199,174 @@ const StudentsPage: React.FC = () => {
       </div>
 
       {error && <div className="mb-3 px-3 py-1.5 bg-red-500/10 border border-red-500/20 rounded-lg text-[11px] text-red-500">{error}</div>}
-      {success && <div className="mb-3 px-3 py-1.5 bg-emerald-500/10 border border-emerald-500/20 rounded-lg text-[11px] text-emerald-500">{success}</div>}
 
       {activeTab === 'students' && (
         <>
+          {/* Search & Filter Bar */}
           <div className="bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700/50 rounded-xl p-2.5 mb-3">
-            <div className="relative max-w-xs">
-              <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3 h-3 text-slate-400" />
-              <input type="text" value={search} onChange={(e) => setSearch(e.target.value)} placeholder={`${t('common.search')}...`}
-                className="w-full bg-transparent border-0 pl-7 pr-2 py-1 text-xs text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none" />
+            <div className="flex items-center gap-2">
+              {/* Search Input */}
+              <div className="relative flex-1">
+                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
+                <input 
+                  type="text" 
+                  value={search} 
+                  onChange={(e) => setSearch(e.target.value)} 
+                  placeholder={t('org.students.searchPlaceholder', 'Поиск по имени, email или телефону...')}
+                  className="w-full bg-white dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-lg pl-8 pr-8 py-1.5 text-xs text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:border-primary-500 focus:ring-1 focus:ring-primary-500/20 transition-all" 
+                />
+                {search && (
+                  <button onClick={() => setSearch('')} className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors">
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                )}
+              </div>
+
+              {/* Filter Toggle */}
+              <button 
+                onClick={() => setShowFilters(f => !f)}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-medium border transition-all ${showFilters || activeFiltersCount > 0 ? 'bg-primary-50 dark:bg-primary-900/20 border-primary-300 dark:border-primary-700 text-primary-700 dark:text-primary-400' : 'bg-white dark:bg-slate-700/50 border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-400 hover:border-slate-300'}`}
+              >
+                <Filter className="w-3.5 h-3.5" />
+                {t('common.filter', 'Фильтр')}
+                {activeFiltersCount > 0 && (
+                  <span className="bg-primary-500 text-white text-[9px] font-bold w-4 h-4 rounded-full flex items-center justify-center">{activeFiltersCount}</span>
+                )}
+              </button>
             </div>
+
+            {/* Expanded Filters */}
+            {showFilters && (
+              <div className="mt-2.5 pt-2.5 border-t border-slate-200 dark:border-slate-700/50">
+                <div className="flex flex-wrap items-center gap-2">
+                  {/* Group Filter */}
+                  {groups.length > 0 && (
+                    <div className="relative">
+                      <select 
+                        value={selectedGroup} 
+                        onChange={e => setSelectedGroup(e.target.value)}
+                        className="appearance-none bg-white dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-lg pl-3 pr-7 py-1.5 text-[11px] text-slate-700 dark:text-slate-300 focus:outline-none focus:border-primary-500 cursor-pointer min-w-[160px]"
+                      >
+                        <option value="all">{t('org.students.allGroups', 'Все группы')}</option>
+                        {groups.map(g => (
+                          <option key={g.id} value={g.id}>{g.name}</option>
+                        ))}
+                      </select>
+                      <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-3 h-3 text-slate-400 pointer-events-none" />
+                    </div>
+                  )}
+
+                  {/* Sort */}
+                  <div className="flex items-center gap-1 ml-auto">
+                    <span className="text-[10px] text-slate-400 mr-1">{t('org.students.sortBy', 'Сортировка:')}</span>
+                    {(['name', 'email', 'date'] as SortField[]).map(field => (
+                      <button
+                        key={field}
+                        onClick={() => toggleSort(field)}
+                        className={`flex items-center gap-1 px-2 py-1 rounded-md text-[10px] font-medium transition-all ${sortField === field ? 'bg-primary-100 dark:bg-primary-900/20 text-primary-700 dark:text-primary-400' : 'text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-700/50'}`}
+                      >
+                        {field === 'name' && t('common.name', 'Имя')}
+                        {field === 'email' && 'Email'}
+                        {field === 'date' && t('common.date', 'Дата')}
+                        {sortField === field && (sortDir === 'asc' ? <SortAsc className="w-3 h-3" /> : <SortDesc className="w-3 h-3" />)}
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* Clear Filters */}
+                  {(activeFiltersCount > 0 || search) && (
+                    <button 
+                      onClick={clearFilters}
+                      className="flex items-center gap-1 px-2 py-1 rounded-md text-[10px] font-medium text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-all"
+                    >
+                      <X className="w-3 h-3" />
+                      {t('org.students.clearFilters', 'Сбросить')}
+                    </button>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
 
-          {loading ? <div className="flex justify-center py-16"><div className="w-6 h-6 border-2 border-slate-200 border-t-primary-500 rounded-full animate-spin dark:border-slate-700 dark:border-t-primary-400" /></div> : filteredStudents.length === 0 ? (
-            <div className="text-center py-16"><Users className="w-8 h-8 text-slate-300 dark:text-slate-600 mx-auto mb-2" /><p className="text-xs text-slate-400">{t('org.students.empty')}</p></div>
+          {/* Results Count */}
+          {(search || selectedGroup !== 'all') && !loading && (
+            <div className="mb-2 text-[11px] text-slate-500 dark:text-slate-400">
+              {t('org.students.found', 'Найдено')}: <span className="font-semibold text-slate-700 dark:text-slate-300">{filteredStudents.length}</span> {t('org.students.ofTotal', 'из')} {students.length}
+            </div>
+          )}
+
+          {loading ? (
+            <div className="flex justify-center py-16"><div className="w-6 h-6 border-2 border-slate-200 border-t-primary-500 rounded-full animate-spin dark:border-slate-700 dark:border-t-primary-400" /></div>
+          ) : filteredStudents.length === 0 ? (
+            <div className="text-center py-16">
+              <Users className="w-8 h-8 text-slate-300 dark:text-slate-600 mx-auto mb-2" />
+              <p className="text-xs text-slate-400">
+                {search || selectedGroup !== 'all' 
+                  ? t('org.students.noSearchResults', 'Студенты не найдены по вашему запросу') 
+                  : t('org.students.empty')
+                }
+              </p>
+              {(search || selectedGroup !== 'all') && (
+                <button onClick={clearFilters} className="mt-2 text-[11px] text-primary-500 hover:text-primary-600 font-medium">
+                  {t('org.students.clearFilters', 'Сбросить фильтры')}
+                </button>
+              )}
+            </div>
           ) : (
             <div className="bg-white dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/40 rounded-xl overflow-hidden">
               <table className="w-full">
                 <thead><tr className="border-b border-slate-100 dark:border-slate-700/50">
-                  <th className="text-left text-[10px] font-medium text-slate-500 uppercase tracking-wider px-4 py-2">{t('org.results.student')}</th>
-                  <th className="text-left text-[10px] font-medium text-slate-500 uppercase tracking-wider px-4 py-2 hidden sm:table-cell">{t('common.email', 'Email')}</th>
+                  <th className="text-left text-[10px] font-medium text-slate-500 uppercase tracking-wider px-4 py-2 cursor-pointer hover:text-slate-700 dark:hover:text-slate-300 transition-colors select-none" onClick={() => toggleSort('name')}>
+                    <div className="flex items-center gap-1">
+                      {t('org.results.student')}
+                      {sortField === 'name' && (sortDir === 'asc' ? <SortAsc className="w-3 h-3" /> : <SortDesc className="w-3 h-3" />)}
+                    </div>
+                  </th>
+                  <th className="text-left text-[10px] font-medium text-slate-500 uppercase tracking-wider px-4 py-2 hidden sm:table-cell cursor-pointer hover:text-slate-700 dark:hover:text-slate-300 transition-colors select-none" onClick={() => toggleSort('email')}>
+                    <div className="flex items-center gap-1">
+                      {t('common.email', 'Email')}
+                      {sortField === 'email' && (sortDir === 'asc' ? <SortAsc className="w-3 h-3" /> : <SortDesc className="w-3 h-3" />)}
+                    </div>
+                  </th>
                   <th className="text-left text-[10px] font-medium text-slate-500 uppercase tracking-wider px-4 py-2 hidden md:table-cell">{t('common.phone')}</th>
+                  <th className="text-left text-[10px] font-medium text-slate-500 uppercase tracking-wider px-4 py-2 hidden lg:table-cell">{t('org.students.groupCol', 'Группа')}</th>
                   <th className="text-left text-[10px] font-medium text-slate-500 uppercase tracking-wider px-4 py-2">{t('common.status')}</th>
                 </tr></thead>
                 <tbody className="divide-y divide-slate-50 dark:divide-slate-700/30">
-                  {filteredStudents.map((s) => (
-                    <tr key={s.uid} onClick={() => navigate(`/students/${s.uid}`)} className="hover:bg-slate-50/80 dark:hover:bg-slate-700/20 cursor-pointer transition-colors">
-                      <td className="px-4 py-2.5">
-                        <div className="flex items-center gap-3">
-                          {s.avatarUrl ? (
-                            <img src={s.avatarUrl} alt="" className="w-8 h-8 rounded-full object-cover shadow-sm bg-slate-100 dark:bg-slate-700 hover:scale-110 transition-transform cursor-pointer" onClick={(e) => { e.stopPropagation(); setExpandedAvatar(s.avatarUrl!); }} />
+                  {filteredStudents.map((s) => {
+                    const studentGroupNames = getStudentGroups(s.uid);
+                    return (
+                      <tr key={s.uid} onClick={() => navigate(`/students/${s.uid}`)} className="hover:bg-slate-50/80 dark:hover:bg-slate-700/20 cursor-pointer transition-colors">
+                        <td className="px-4 py-2.5">
+                          <div className="flex items-center gap-3">
+                            {s.avatarUrl ? (
+                              <img src={s.avatarUrl} alt="" className="w-8 h-8 rounded-full object-cover shadow-sm bg-slate-100 dark:bg-slate-700 hover:scale-110 transition-transform cursor-pointer" onClick={(e) => { e.stopPropagation(); setExpandedAvatar(s.avatarUrl!); }} />
+                            ) : (
+                              <div className="w-8 h-8 bg-primary-600 rounded-full flex items-center justify-center text-[11px] text-white font-bold shadow-sm">{s.displayName?.[0]?.toUpperCase() || '?'}</div>
+                            )}
+                            <span className="text-sm font-semibold text-slate-900 dark:text-white truncate">{s.displayName}</span>
+                          </div>
+                        </td>
+                        <td className="px-4 py-2.5 text-[11px] text-slate-500 hidden sm:table-cell"><div className="flex items-center gap-1"><Mail className="w-3 h-3" /><span className="truncate max-w-[180px]">{s.email}</span></div></td>
+                        <td className="px-4 py-2.5 text-[11px] text-slate-500 hidden md:table-cell">{s.phone ? <div className="flex items-center gap-1"><Phone className="w-3 h-3" />{s.phone}</div> : <span className="text-slate-300 dark:text-slate-600">—</span>}</td>
+                        <td className="px-4 py-2.5 hidden lg:table-cell">
+                          {studentGroupNames.length > 0 ? (
+                            <div className="flex flex-wrap gap-1">
+                              {studentGroupNames.slice(0, 2).map((name, i) => (
+                                <span key={i} className="text-[10px] px-1.5 py-0.5 rounded bg-blue-500/10 text-blue-600 dark:text-blue-400 font-medium truncate max-w-[100px]">{name}</span>
+                              ))}
+                              {studentGroupNames.length > 2 && (
+                                <span className="text-[10px] px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-700 text-slate-500 font-medium">+{studentGroupNames.length - 2}</span>
+                              )}
+                            </div>
                           ) : (
-                            <div className="w-8 h-8 bg-primary-600 rounded-full flex items-center justify-center text-[11px] text-white font-bold shadow-sm">{s.displayName?.[0]?.toUpperCase() || '?'}</div>
+                            <span className="text-[10px] text-slate-300 dark:text-slate-600">—</span>
                           )}
-                          <span className="text-sm font-semibold text-slate-900 dark:text-white truncate">{s.displayName}</span>
-                        </div>
-                      </td>
-                      <td className="px-4 py-2.5 text-[11px] text-slate-500 hidden sm:table-cell"><div className="flex items-center gap-1"><Mail className="w-3 h-3" /><span className="truncate max-w-[180px]">{s.email}</span></div></td>
-                      <td className="px-4 py-2.5 text-[11px] text-slate-500 hidden md:table-cell">{s.phone ? <div className="flex items-center gap-1"><Phone className="w-3 h-3" />{s.phone}</div> : <span className="text-slate-300 dark:text-slate-600">—</span>}</td>
-                      <td className="px-4 py-2.5"><span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-500 font-medium">{t('common.active')}</span></td>
-                    </tr>
-                  ))}
+                        </td>
+                        <td className="px-4 py-2.5"><span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-500 font-medium">{t('common.active')}</span></td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
@@ -194,7 +381,7 @@ const StudentsPage: React.FC = () => {
           ) : applications.length === 0 ? (
              <div className="text-center py-16">
                <UserPlus className="w-8 h-8 text-slate-300 dark:text-slate-600 mx-auto mb-2" />
-               <p className="text-xs text-slate-400">{t('org.students.noApplications', 'No pending applications')}</p>
+               <p className="text-xs text-slate-400">{t('org.students.noApplications', 'Нет входящих заявок')}</p>
              </div>
           ) : (
             <table className="w-full">
@@ -232,35 +419,6 @@ const StudentsPage: React.FC = () => {
               </tbody>
             </table>
           )}
-        </div>
-      )}
-
-      {showCreate && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => setShowCreate(false)}>
-          <div className="bg-white dark:bg-slate-800 rounded-xl p-4 w-full max-w-sm shadow-2xl" onClick={(e) => e.stopPropagation()}>
-            <h2 className="text-sm font-bold text-slate-900 dark:text-white mb-1">{t('org.students.create')}</h2>
-            <p className="text-[10px] text-slate-500 mb-3">{t('org.students.createDesc')}</p>
-            <div className="space-y-2">
-              <input placeholder={t('org.students.namePlaceholder')} value={form.displayName} onChange={(e) => setForm(f => ({ ...f, displayName: e.target.value }))}
-                className="w-full bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-lg px-2.5 py-1.5 text-xs outline-none focus:border-primary-500 text-slate-900 dark:text-white" autoFocus />
-              <input type="email" placeholder="student@example.com" value={form.email} onChange={(e) => setForm(f => ({ ...f, email: e.target.value }))}
-                className="w-full bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-lg px-2.5 py-1.5 text-xs outline-none focus:border-primary-500 text-slate-900 dark:text-white" />
-              <div className="relative">
-                <input type={showPw ? 'text' : 'password'} placeholder={t('org.students.passwordPlaceholder')} value={form.password} onChange={(e) => setForm(f => ({ ...f, password: e.target.value }))}
-                  className="w-full bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-lg px-2.5 py-1.5 pr-8 text-xs outline-none focus:border-primary-500 text-slate-900 dark:text-white" />
-                <button type="button" onClick={() => setShowPw(!showPw)} className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
-                  {showPw ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
-                </button>
-              </div>
-              <input placeholder={t('org.students.phonePlaceholder')} value={form.phone} onChange={(e) => setForm(f => ({ ...f, phone: e.target.value }))}
-                className="w-full bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-lg px-2.5 py-1.5 text-xs outline-none focus:border-primary-500 text-slate-900 dark:text-white" />
-            </div>
-            <div className="flex justify-end gap-2 mt-3">
-              <button onClick={() => setShowCreate(false)} className="px-2.5 py-1 text-[11px] text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg">{t('common.cancel')}</button>
-              <button onClick={handleCreate} disabled={saving || !form.displayName.trim() || !form.email.trim() || !form.password.trim()}
-                className="bg-emerald-500 hover:bg-emerald-600 text-white px-3 py-1 rounded-lg text-[11px] font-medium disabled:opacity-50">{saving ? '...' : t('common.save')}</button>
-            </div>
-          </div>
         </div>
       )}
 

@@ -162,7 +162,7 @@ export const AILessonFactoryModal: React.FC<Props> = ({ isOpen, onClose, onSucce
         coverImageUrl: '',
         videoUrl: '',
         status: 'draft',
-        content: contentBlocks,
+        content: htmlContent,
       };
 
       const createdLesson: any = await apiCreateLesson(lessonData);

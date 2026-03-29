@@ -218,12 +218,10 @@ const LessonEditPage: React.FC = () => {
         data.homework = null;
       }
       
-      let finalId = id;
       if (isEdit && id) {
         await updateLessonPlan(id, data);
       } else {
         const newId = await createLessonPlan(data);
-        finalId = newId;
         if (!silent) navigate(`/lessons/${newId}/edit`, { replace: true });
       }
       setLastSaved(new Date());

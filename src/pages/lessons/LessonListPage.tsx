@@ -4,7 +4,6 @@ import { useTranslation } from 'react-i18next';
 import { apiGetLessons } from '../../lib/api';
 import { useAuth } from '../../contexts/AuthContext';
 import type { LessonPlan } from '../../types';
-import { formatDate } from '../../utils/grading';
 import { Plus, BookOpen, Clock, Search, Paperclip, ClipboardList, Sparkles, Filter, CheckCircle2 } from 'lucide-react';
 import EmptyState from '../../components/ui/EmptyState';
 import { ListSkeleton } from '../../components/ui/Skeleton';
@@ -47,12 +46,6 @@ const LessonListPage: React.FC = () => {
       return matchesSearch && matchesStatus && matchesSubject && matchesLevel;
     });
   }, [lessons, search, statusFilter, subjectFilter, levelFilter, isStaff]);
-
-  const counts = {
-    all: lessons.length,
-    published: lessons.filter((l) => (l.status || 'draft') === 'published').length,
-    draft: lessons.filter((l) => (l.status || 'draft') === 'draft').length,
-  };
 
   const isCompleted = (lessonId: string) => {
     if (!isStudent) return false;

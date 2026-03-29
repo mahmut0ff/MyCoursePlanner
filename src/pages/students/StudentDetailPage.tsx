@@ -8,6 +8,7 @@ import {
   Flame, Copy, Star, Shield, Link2, ExternalLink
 } from 'lucide-react';
 import type { UserProfile, ExamAttempt, Group } from '../../types';
+import { PinnedBadgesDisplay } from '../../lib/badges';
 import toast from 'react-hot-toast';
 
 /* ─── palette matching kahoot/quiz ─── */
@@ -139,7 +140,10 @@ const StudentDetailPage: React.FC = () => {
             {/* Name & email */}
             <div className="flex items-start justify-between flex-wrap gap-2">
               <div>
-                <h1 className="text-xl font-extrabold text-slate-900 dark:text-white">{student.displayName}</h1>
+                <div className="flex items-center gap-3">
+                  <h1 className="text-xl font-extrabold text-slate-900 dark:text-white">{student.displayName}</h1>
+                  <PinnedBadgesDisplay badges={student.pinnedBadges} emptyPlaceholder />
+                </div>
                 <div className="flex flex-wrap items-center gap-3 mt-1">
                   <span className="text-xs text-slate-500 flex items-center gap-1"><Mail className="w-3 h-3" />{student.email}</span>
                   {student.phone && <span className="text-xs text-slate-500 flex items-center gap-1"><Phone className="w-3 h-3" />{student.phone}</span>}

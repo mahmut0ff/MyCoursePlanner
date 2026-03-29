@@ -31,19 +31,24 @@ export const BADGE_DEFS: Record<string, { icon: string; title: string; descripti
   streak_5_attendance: { icon: '📅', title: 'Примерный студент', description: '5 занятий подряд без пропусков' }
 };
 
-export const PinnedBadgesDisplay: React.FC<{ badges?: string[], className?: string }> = ({ badges, className = '' }) => {
-  if (!badges || badges.length === 0) return null;
+export const PinnedBadgesDisplay: React.FC<{ badges?: string[], className?: string, emptyPlaceholder?: boolean }> = ({ badges, className = '', emptyPlaceholder = false }) => {
+  const validBadges = (badges || []).filter(id => BADGE_DEFS[id]);
+
+  if (validBadges.length === 0 && !emptyPlaceholder) return null;
+
   return (
     <div className={`flex items-center gap-1 ${className}`}>
-      {badges.slice(0, 3).map(id => {
+      {validBadges.slice(0, 3).map(id => {
         const def = BADGE_DEFS[id];
-        if (!def) return null;
         return (
           <div key={id} className="w-6 h-6 rounded-full bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex items-center justify-center text-xs shadow-sm" title={def.title}>
             {def.icon}
           </div>
         );
       })}
+      {emptyPlaceholder && validBadges.length < 3 && Array.from({ length: 3 - validBadges.length }).map((_, i) => (
+        <div key={`empty-${i}`} className="w-6 h-6 rounded-full border border-dashed border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 flex items-center justify-center opacity-50" title="Слот для бейджа" />
+      ))}
     </div>
   );
 };

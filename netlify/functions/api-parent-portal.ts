@@ -28,22 +28,24 @@ export const handler: Handler = async (event: HandlerEvent) => {
     // 3. Fetch recent exam/quiz results
     const resultsSnap = await adminDb.collection('examAttempts')
       .where('studentId', '==', userDoc.id)
-      .orderBy('submittedAt', 'desc')
-      .limit(10)
       .get();
       
-    const recentResults = resultsSnap.docs.map(d => {
+    let recentResults = resultsSnap.docs.map(d => {
       const data = d.data();
       return {
         id: d.id,
         examTitle: data.examTitle || 'Test',
         percentage: data.percentage || 0,
         passed: data.passed || false,
-        submittedAt: data.submittedAt,
+        submittedAt: data.submittedAt || new Date().toISOString(),
         type: data.type || 'exam',
         xpEarned: data.xpEarned || 0,
       };
     });
+    
+    // Sort in memory (descending) and take top 10
+    recentResults.sort((a, b) => new Date(b.submittedAt).getTime() - new Date(a.submittedAt).getTime());
+    recentResults = recentResults.slice(0, 10);
     
     // 4. Fetch Gamification Stats
     let totalXp = 0;
@@ -59,10 +61,9 @@ export const handler: Handler = async (event: HandlerEvent) => {
     // 5. Active organization memberships count (Active Courses approximation)
     const membershipsSnap = await adminDb.collection('memberships')
       .where('userId', '==', userDoc.id)
-      .where('status', '==', 'active')
       .get();
       
-    const activeOrgsCount = membershipsSnap.size;
+    const activeOrgsCount = membershipsSnap.docs.filter(d => d.data().status === 'active').length;
 
     return jsonResponse(200, {
       student: safeUser,

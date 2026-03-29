@@ -12,6 +12,7 @@ import i18n from '../../i18n';
 import { apiCheckAuthIdentity, apiGetGamification } from '../../lib/api';
 import AvatarCropper from '../../components/ui/AvatarCropper';
 import type { GamificationData } from '../../types';
+import { PinnedBadgesDisplay } from '../../lib/badges';
 
 const StudentProfilePage: React.FC = () => {
   const { t } = useTranslation();
@@ -186,7 +187,10 @@ const StudentProfilePage: React.FC = () => {
                 <input type="file" ref={fileInputRef} onChange={handleAvatarChange} accept="image/*" className="hidden" />
               </div>
               <div className="flex-1">
-                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">{t('profile.displayName')}</label>
+                <div className="flex items-center gap-3 mb-1">
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">{t('profile.displayName')}</label>
+                  <PinnedBadgesDisplay badges={pinnedBadges} emptyPlaceholder className="mb-0" />
+                </div>
                 <input type="text" value={name} onChange={e => setName(e.target.value)} className="input mb-4" />
                 
                 <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">{t('auth.username', 'Никнейм')}</label>

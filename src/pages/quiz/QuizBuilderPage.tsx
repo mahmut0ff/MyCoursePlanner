@@ -8,7 +8,7 @@ import {
   ArrowLeft, Save, Plus, Trash2, GripVertical,
   CheckCircle, Circle, Sparkles,
   ChevronDown, ChevronUp, Copy, Settings, Clock,
-  Upload, Maximize2, FileText
+  Upload, Maximize2
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { AIGeneratorModal } from '../../components/ui/AIGeneratorModal';
@@ -19,18 +19,8 @@ const QUESTION_TYPES: { type: QuizQuestionType; label: string; icon: string }[] 
   { type: 'single_choice', label: 'Single Choice', icon: '🔘' },
   { type: 'multiple_choice', label: 'Multiple Choice', icon: '☑️' },
   { type: 'true_false', label: 'True / False', icon: '✅' },
-  { type: 'multi_select', label: 'Multi Select', icon: '📋' },
-  { type: 'short_text', label: 'Short Answer', icon: '✏️' },
-  { type: 'poll', label: 'Poll / Opinion', icon: '📊' },
-  { type: 'ordering', label: 'Ordering', icon: '🔢' },
   { type: 'matching', label: 'Matching', icon: '🔗' },
   { type: 'image_question', label: 'Image Question', icon: '🖼️' },
-  { type: 'audio_question', label: 'Audio Question', icon: '🎵' },
-  { type: 'pdf_question', label: 'PDF Question', icon: '📄' },
-  { type: 'passage_question', label: 'Passage + Question', icon: '📖' },
-  { type: 'info_slide', label: 'Info Slide', icon: 'ℹ️' },
-  { type: 'discussion', label: 'Discussion', icon: '💬' },
-  { type: 'puzzle', label: 'Puzzle / Timed', icon: '🧩' },
 ];
 
 const OPTION_COLORS_BG = ['#e21b3c', '#1368ce', '#d89e00', '#26890c', '#864cbf', '#c4162f', '#1057ad', '#b88600'];
@@ -111,15 +101,22 @@ const QuizBuilderPage: React.FC = () => {
     const startOrder = questions.length;
     const newQuestions = data.map((q, i) => {
       const opts = (q.options || []).map((text: string) => ({ id: generateId(), text }));
-      const correctOpt = opts[q.correctOptionIndex || 0];
+      
+      let correctAnswers: string[] = [];
+      if (q.correctOptionIndices && Array.isArray(q.correctOptionIndices)) {
+        correctAnswers = q.correctOptionIndices.map((idx: number) => opts[idx]?.id).filter(Boolean);
+      } else if (q.correctOptionIndex !== undefined) {
+        correctAnswers = [opts[q.correctOptionIndex]?.id].filter(Boolean);
+      }
+
       return {
         id: generateId(),
         quizId: id || '',
-        type: 'single_choice' as QuizQuestionType,
+        type: (q.type as QuizQuestionType) || 'single_choice',
         order: startOrder + i,
         text: q.question || '',
         options: opts,
-        correctAnswers: correctOpt ? [correctOpt.id] : [],
+        correctAnswers,
         timerSeconds: 30,
         points: 1000,
         difficulty: 'medium' as QuizDifficulty,
@@ -414,20 +411,20 @@ const QuizBuilderPage: React.FC = () => {
               />
 
               {/* Media */}
-              {['image_question', 'audio_question', 'pdf_question'].includes(currentQ.type) && (
+              {['image_question'].includes(currentQ.type) && (
                 <div className="mt-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg p-4">
                   <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wide mb-2 block">{t('quiz.mediaContent', 'Media Content')}</label>
                   <div className="flex flex-col sm:flex-row sm:items-center gap-2 mb-3">
                     <input 
                       value={currentQ.mediaUrl || ''} 
-                      onChange={e => updateQuestion(activeQuestion, { mediaUrl: e.target.value, mediaType: currentQ.type === 'image_question' ? 'image' : currentQ.type === 'audio_question' ? 'audio' : 'pdf' })} 
+                      onChange={e => updateQuestion(activeQuestion, { mediaUrl: e.target.value, mediaType: 'image' })} 
                       placeholder="URL (https://...)" 
                       className="input text-xs flex-1" 
                     />
                     <div className="relative shrink-0 w-full sm:w-auto">
                       <input
                         type="file"
-                        accept={currentQ.type === 'image_question' ? 'image/*' : currentQ.type === 'audio_question' ? 'audio/*' : 'application/pdf'}
+                        accept="image/*"
                         onChange={handleFileUpload}
                         disabled={uploadingMedia || !id}
                         className="absolute inset-0 w-full h-full opacity-0 cursor-pointer disabled:cursor-not-allowed"
@@ -447,24 +444,14 @@ const QuizBuilderPage: React.FC = () => {
                   {currentQ.mediaUrl && (
                     <div className="mt-2 relative group inline-flex flex-col items-center max-w-full justify-center w-full bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 p-2 overflow-hidden">
                       {currentQ.type === 'image_question' && <img src={currentQ.mediaUrl} alt="Preview" className="max-h-56 rounded object-contain w-full" />}
-                      {currentQ.type === 'audio_question' && <audio src={currentQ.mediaUrl} controls className="w-full max-w-md my-4" />}
-                      {currentQ.type === 'pdf_question' && (
-                        <div className="flex items-center justify-center gap-3 p-6 w-full max-w-md">
-                           <FileText className="w-10 h-10 text-red-500 shrink-0" />
-                           <div className="min-w-0">
-                             <p className="text-sm font-semibold truncate text-slate-700 dark:text-slate-300">{currentQ.mediaUrl.split('/').pop()?.split('?')[0] || 'Document.pdf'}</p>
-                             <p className="text-xs text-slate-400">PDF Document</p>
-                           </div>
-                        </div>
-                      )}
                       
-                      {(currentQ.type === 'image_question' || currentQ.type === 'pdf_question') && (
+                      {currentQ.type === 'image_question' && (
                         <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center pointer-events-none rounded">
                           <button 
                             onClick={(e) => { e.preventDefault(); setPreviewFile({ 
                               name: currentQ.mediaUrl?.split('/').pop()?.split('?')[0] || 'Media Preview', 
                               url: currentQ.mediaUrl!, 
-                              type: currentQ.type === 'image_question' ? 'image/jpeg' : 'application/pdf' 
+                              type: 'image/jpeg' 
                             }); }}
                             className="pointer-events-auto p-3 bg-white/10 backdrop-blur-md hover:bg-white/20 text-white rounded-xl flex items-center gap-2 text-sm font-bold shadow-2xl transform scale-95 group-hover:scale-100 transition-all border border-white/20"
                             title="View Fullscreen"
@@ -477,13 +464,10 @@ const QuizBuilderPage: React.FC = () => {
                   )}
                 </div>
               )}
-              {currentQ.type === 'passage_question' && (
-                <textarea value={currentQ.passageText || ''} onChange={e => updateQuestion(activeQuestion, { passageText: e.target.value })} className="input text-xs w-full h-20 mt-3" placeholder={t('quiz.passagePlaceholder')} />
-              )}
             </div>
 
             {/* Answer Options — Kahoot 2x2 colored grid */}
-            {['single_choice', 'multiple_choice', 'true_false', 'multi_select', 'poll', 'image_question', 'audio_question', 'pdf_question', 'passage_question', 'puzzle'].includes(currentQ.type) && (
+            {['single_choice', 'multiple_choice', 'true_false', 'matching', 'image_question'].includes(currentQ.type) && (
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {currentQ.options.map((opt, oi) => {
                   const isCorrect = currentQ.correctAnswers.includes(opt.id);
@@ -532,18 +516,7 @@ const QuizBuilderPage: React.FC = () => {
               </div>
             )}
 
-            {/* Short text */}
-            {currentQ.type === 'short_text' && (
-              <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-4 shadow-sm">
-                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wide mb-2 block">{t('quiz.acceptedAnswers')}</label>
-                <input
-                  value={currentQ.correctAnswers.join(', ')}
-                  onChange={e => updateQuestion(activeQuestion, { correctAnswers: e.target.value.split(',').map(s => s.trim()).filter(Boolean) })}
-                  placeholder={t('quiz.acceptedAnswersHint')}
-                  className="input text-sm w-full"
-                />
-              </div>
-            )}
+
 
             {/* Help text + Explanation */}
             <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-4 shadow-sm grid grid-cols-1 sm:grid-cols-2 gap-3">

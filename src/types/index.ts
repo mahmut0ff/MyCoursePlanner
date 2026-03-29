@@ -735,18 +735,8 @@ export type QuizQuestionType =
   | 'single_choice'
   | 'multiple_choice'
   | 'true_false'
-  | 'multi_select'
-  | 'short_text'
-  | 'poll'
-  | 'ordering'
   | 'matching'
-  | 'image_question'
-  | 'audio_question'
-  | 'pdf_question'
-  | 'passage_question'
-  | 'info_slide'
-  | 'discussion'
-  | 'puzzle';
+  | 'image_question';
 
 export type QuizSessionStatus =
   | 'draft'

@@ -63,13 +63,16 @@ const handler: Handler = async (event: HandlerEvent) => {
     // System instruction injected into the prompt based on the type
     let systemPrompt = '';
     if (type === 'quiz') {
-      systemPrompt = `You are an expert educator. Generate a multiple-choice quiz based on the provided material or prompt. 
+      systemPrompt = `You are an expert educator. Generate a quiz based on the provided material or prompt. 
 Format the response strictly as a JSON array of objects. 
-Each object MUST have:
+Each question object MUST have:
+- "type": string (MUST be one of: "single_choice", "multiple_choice", "true_false", "matching", "image_question")
 - "question": string (the question text)
-- "options": array of 4 strings (the possible answers)
-- "correctOptionIndex": integer (0 to 3, the index of the correct answer)
-- "explanation": string (brief explanation of why the answer is correct)
+- "options": array of strings (the possible answers). For "true_false", use ["True", "False"]. For "matching", use strings formatted as "ItemA = ItemB".
+- "correctOptionIndices": array of integers (indices of correct answers in the options array. For "matching", all indices are technically correct answers since the student matches them. For "single_choice" or "true_false" use a single index).
+- "explanation": string (brief explanation of the answer)
+
+You must randomly mix and combine the given question types to make the quiz varied and engaging!
 Do not include any extra text, only the JSON array. Make the questions engaging and accurate.`;
     } else if (type === 'lesson_and_quiz') {
       systemPrompt = `You are an expert educator. Based on the provided prompt or material, generate BOTH a comprehensive lesson module and a multiple-choice quiz (Kahoot style) covering that exact material.
@@ -83,21 +86,26 @@ Requirements for "lesson":
    - If "paragraph", include "content" (string).
    - If "bulletList", include "items" (array of strings).
 Requirements for "quiz":
-- An array of exactly 10 objects:
+- An array of exactly 10 question objects. Each object MUST have:
+  - "type": string (MUST be one of: "single_choice", "multiple_choice", "true_false", "matching", "image_question")
   - "question": string (engaging question)
-  - "options": array of 4 strings
-  - "correctOptionIndex": integer
-  - "explanation": string
+  - "options": array of strings (the possible answers). For "true_false", use ["True", "False"]. For "matching", use format "A = B".
+  - "correctOptionIndices": array of integers (indices of correct answers).
+  - "explanation": string (brief explanation)
+You must randomly mix and combine the given question types to make the quiz varied and engaging!
 Do not include any extra text, markdown blocks like \`\`\`json, or anything other than the raw JSON object.`;
     } else {
-      systemPrompt = `You are an expert educator. Generate a multiple-choice exam based on the provided material or prompt. 
+      systemPrompt = `You are an expert educator. Generate an exam based on the provided material or prompt. 
 Format the response strictly as a JSON array of objects. 
-Each object MUST have:
+Each question object MUST have:
+- "type": string (MUST be one of: "single_choice", "multiple_choice", "true_false", "matching", "image_question")
 - "question": string (the test question text)
-- "options": array of 4 strings (the possible answers)
-- "correctOptionIndex": integer (0 to 3, the index of the correct answer)
+- "options": array of strings (the possible answers). For "true_false", use ["True", "False"]. For "matching", use format "A = B".
+- "correctOptionIndices": array of integers (indices of correct answers)
 - "points": integer (suggested weight/points for this question, usually 1 to 5 depending on difficulty)
 - "explanation": string (brief explanation)
+
+You must randomly mix and combine the given question types to make the exam varied and engaging!
 Do not include any extra text, only the JSON array.`;
     }
 

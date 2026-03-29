@@ -101,6 +101,8 @@ import AdminPlansPage from './pages/admin/AdminPlansPage';
 import AdminIntegrationsPage from './pages/admin/AdminIntegrationsPage';
 import AdminSettingsPage from './pages/admin/AdminSettingsPage';
 
+import DocumentViewerPage from './pages/viewer/DocumentViewerPage';
+
 const App: React.FC = () => {
   return (
     <ThemeProvider>
@@ -123,6 +125,9 @@ const App: React.FC = () => {
 
           {/* Exam Taking (full screen) */}
           <Route path="/take/:roomId" element={<ProtectedRoute><ExamTakePage /></ProtectedRoute>} />
+
+          {/* Document Viewer (full screen) */}
+          <Route path="/viewer" element={<DocumentViewerPage />} />
 
           {/* Quiz Taking & Hosting (full screen) */}
           <Route path="/quiz/join" element={<JoinQuizPage />} />

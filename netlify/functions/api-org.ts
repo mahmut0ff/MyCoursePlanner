@@ -488,8 +488,15 @@ const handler: Handler = async (event: HandlerEvent) => {
     if (action === 'schedule') {
       const branchScope = resolveBranchFilter(user, params.branchId);
       let query = orgQuery('scheduleEvents', orgId);
-      if (params.from) query = query.where('date', '>=', params.from) as any;
-      if (params.to) query = query.where('date', '<=', params.to) as any;
+
+      // Timetable mode: fetch recurring weekly lessons by dayOfWeek
+      if (params.mode === 'timetable') {
+        query = query.where('recurring', '==', true) as any;
+      } else {
+        // Events mode: fetch by date range
+        if (params.from) query = query.where('date', '>=', params.from) as any;
+        if (params.to) query = query.where('date', '<=', params.to) as any;
+      }
       if (params.groupId) query = query.where('groupId', '==', params.groupId) as any;
       if (branchScope === '__DENIED__') return ok([]);
       if (typeof branchScope === 'string') query = query.where('branchId', '==', branchScope) as any;
@@ -498,24 +505,34 @@ const handler: Handler = async (event: HandlerEvent) => {
       if (Array.isArray(branchScope)) {
         list = list.filter((e: any) => !e.branchId || branchScope.includes(e.branchId));
       }
-      list.sort((a: any, b: any) => (a.date || '').localeCompare(b.date || ''));
+      if (params.mode === 'timetable') {
+        list.sort((a: any, b: any) => (a.dayOfWeek ?? 0) - (b.dayOfWeek ?? 0) || (a.startTime || '').localeCompare(b.startTime || ''));
+      } else {
+        list.sort((a: any, b: any) => (a.date || '').localeCompare(b.date || ''));
+      }
       return ok(list);
     }
 
     if (action === 'createEvent') {
       const err = requireOrgStaff(user); if (err) return err;
       const body = JSON.parse(event.body || '{}');
-      if (!body.title || !body.date || !body.startTime) return badRequest('title, date, startTime required');
-      const data = {
+      const isRecurring = body.recurring === true;
+      if (!body.title || !body.startTime) return badRequest('title and startTime required');
+      if (!isRecurring && !body.date) return badRequest('date required for non-recurring events');
+      if (isRecurring && (body.dayOfWeek === undefined || body.dayOfWeek === null)) return badRequest('dayOfWeek required for recurring events');
+      const data: Record<string, any> = {
         organizationId: orgId,
         branchId: body.branchId || null,
         type: body.type || 'lesson',
         title: body.title,
+        recurring: isRecurring,
+        dayOfWeek: isRecurring ? Number(body.dayOfWeek) : null, // 0=Mon, 1=Tue, ..., 6=Sun
         groupId: body.groupId || null, groupName: body.groupName || '',
         courseId: body.courseId || null, courseName: body.courseName || '',
         teacherId: body.teacherId || null, teacherName: body.teacherName || '',
         examId: body.examId || null, lessonId: body.lessonId || null,
-        date: body.date, startTime: body.startTime,
+        date: isRecurring ? null : body.date,
+        startTime: body.startTime,
         endTime: body.endTime || '', duration: body.duration || 45,
         location: body.location || '', notes: body.notes || '',
         createdAt: now(), updatedAt: now(),

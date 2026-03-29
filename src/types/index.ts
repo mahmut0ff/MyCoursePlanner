@@ -631,6 +631,8 @@ export interface ScheduleEvent {
   branchId?: string;
   type: ScheduleEventType;
   title: string;
+  recurring?: boolean;           // true = weekly timetable lesson
+  dayOfWeek?: number;            // 0=Mon, 1=Tue, ..., 6=Sun (for recurring)
   groupId?: string;
   groupName?: string;
   courseId?: string;
@@ -639,7 +641,7 @@ export interface ScheduleEvent {
   teacherName?: string;
   examId?: string;
   lessonId?: string;
-  date: string;        // YYYY-MM-DD
+  date: string;        // YYYY-MM-DD (for non-recurring events)
   startTime: string;   // HH:mm
   endTime: string;     // HH:mm
   duration: number;    // minutes

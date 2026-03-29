@@ -280,6 +280,11 @@ export const orgGetSchedule = (from?: string, to?: string, groupId?: string) => 
   if (groupId) params.groupId = groupId;
   return orgReq('schedule', 'GET', undefined, Object.keys(params).length ? params : undefined);
 };
+export const orgGetTimetable = (groupId?: string) => {
+  const params: Record<string, string> = { mode: 'timetable' };
+  if (groupId) params.groupId = groupId;
+  return orgReq('schedule', 'GET', undefined, params);
+};
 export const orgCreateEvent = (data: any) => orgReq('createEvent', 'POST', data);
 export const orgUpdateEvent = (data: any) => orgReq('updateEvent', 'POST', data);
 export const orgDeleteEvent = (id: string) => orgReq('deleteEvent', 'POST', { id });

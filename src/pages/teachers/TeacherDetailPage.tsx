@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { orgGetTeachers, orgGetGroups } from '../../lib/api';
 import { apiGetTeacherProfile } from '../../lib/api';
-import { ArrowLeft, Mail, Calendar, BookOpen, Briefcase, Link2, UserPlus, Users, FolderOpen, Phone, FileText, MapPin, GraduationCap, Award, Tag } from 'lucide-react';
+import { ArrowLeft, Mail, Calendar, BookOpen, Briefcase, Link2, UserPlus, Users, FolderOpen, Phone, FileText, MapPin, GraduationCap, Award } from 'lucide-react';
 import type { UserProfile, TeacherProfile } from '../../types';
 
 const TeacherDetailPage: React.FC = () => {

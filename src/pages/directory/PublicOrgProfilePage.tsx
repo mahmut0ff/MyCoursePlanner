@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../contexts/AuthContext';
 import {
   MapPin, Mail, Phone, ArrowLeft, Building2,
-  Wifi, UserPlus, CheckCircle, Clock, FolderOpen,
+  UserPlus, CheckCircle, Clock, FolderOpen,
   Globe, MessageCircle, Send, LogIn, AlertCircle,
   FileText, Image as ImageIcon, Map, PhoneCall, LayoutList,
   CameraOff

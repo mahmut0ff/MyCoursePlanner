@@ -53,28 +53,23 @@ function AnimCard({ children, index }: { children: React.ReactNode; index: numbe
 
 /* ═══ Shimmer skeleton ═══ */
 const CardSkeleton: React.FC = () => (
-  <div className="bg-white dark:bg-gray-800/60 rounded-2xl border border-slate-200/60 dark:border-gray-700/50 overflow-hidden animate-pulse">
-    <div className="p-5">
-      <div className="flex items-start gap-4">
-        <div className="w-16 h-16 rounded-2xl bg-slate-200 dark:bg-slate-700" />
-        <div className="flex-1 space-y-2.5 pt-1">
-          <div className="h-4 bg-slate-200 dark:bg-slate-700 rounded-lg w-3/4" />
-          <div className="h-3 bg-slate-100 dark:bg-slate-700/60 rounded-lg w-1/2" />
-        </div>
+  <div className="bg-white dark:bg-gray-900 rounded-3xl p-6 shadow-[0_2px_8px_-4px_rgba(0,0,0,0.05)] border border-slate-200 dark:border-gray-800 animate-pulse flex flex-col sm:flex-row gap-6">
+    <div className="flex-1 space-y-4">
+      <div className="flex items-center gap-4">
+        <div className="w-12 h-12 rounded-xl bg-slate-100 dark:bg-gray-800 sm:hidden" />
+        <div className="h-6 bg-slate-100 dark:bg-gray-800 rounded-lg w-1/3" />
       </div>
-      <div className="mt-4 space-y-2">
-        <div className="h-3 bg-slate-100 dark:bg-slate-700/50 rounded-lg w-full" />
-        <div className="h-3 bg-slate-100 dark:bg-slate-700/50 rounded-lg w-4/5" />
+      <div className="h-4 bg-slate-50 dark:bg-gray-800/80 rounded w-1/4" />
+      <div className="space-y-2 pt-2">
+        <div className="h-3 bg-slate-50 dark:bg-gray-800/50 rounded w-full" />
+        <div className="h-3 bg-slate-50 dark:bg-gray-800/50 rounded w-5/6" />
       </div>
-      <div className="mt-4 flex gap-2">
-        <div className="h-6 bg-slate-100 dark:bg-slate-700/50 rounded-full w-16" />
-        <div className="h-6 bg-slate-100 dark:bg-slate-700/50 rounded-full w-20" />
+      <div className="flex gap-2 pt-4">
+        <div className="h-6 w-16 bg-slate-100 dark:bg-gray-800 rounded-full" />
+        <div className="h-6 w-20 bg-slate-100 dark:bg-gray-800 rounded-full" />
       </div>
     </div>
-    <div className="px-5 py-3 border-t border-slate-100 dark:border-gray-700/50 flex gap-4">
-      <div className="h-3 bg-slate-100 dark:bg-slate-700/50 rounded w-20" />
-      <div className="h-3 bg-slate-100 dark:bg-slate-700/50 rounded w-24" />
-    </div>
+    <div className="hidden sm:block w-32 h-32 bg-slate-50 dark:bg-gray-800 rounded-2xl shrink-0" />
   </div>
 );
 
@@ -154,15 +149,15 @@ const OrganizationsDirectoryPage: React.FC = () => {
         </div>
         
         {/* Category strips */}
-        <div className="w-full border-t border-slate-100 dark:border-gray-800">
+        <div className="w-full border-t border-slate-100 dark:border-gray-800 bg-[#F8FAFC] dark:bg-gray-900/50">
           <div className="max-w-4xl mx-auto px-4">
             <div className="flex items-center gap-2 py-3 overflow-x-auto scrollbar-hide">
               <button
                 onClick={() => setSelectedCity('all')}
-                className={`flex-shrink-0 px-3 py-1 rounded text-sm transition-colors whitespace-nowrap ${
+                className={`flex-shrink-0 px-4 py-1.5 rounded-full text-sm transition-colors whitespace-nowrap border ${
                   selectedCity === 'all'
-                    ? 'bg-slate-200 dark:bg-gray-700 text-slate-900 dark:text-white font-medium'
-                    : 'text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300'
+                    ? 'bg-blue-600 border-blue-600 text-white font-medium shadow-sm'
+                    : 'bg-white dark:bg-gray-800 border-slate-200 dark:border-gray-700 text-slate-600 dark:text-slate-300 hover:border-slate-300 hover:text-slate-900'
                 }`}
               >
                 {t('directory.allCities', 'Все регионы')}
@@ -171,10 +166,10 @@ const OrganizationsDirectoryPage: React.FC = () => {
                 <button
                   key={city}
                   onClick={() => setSelectedCity(city)}
-                  className={`flex-shrink-0 px-3 py-1 rounded text-sm transition-colors whitespace-nowrap ${
+                  className={`flex-shrink-0 px-4 py-1.5 rounded-full text-sm transition-colors whitespace-nowrap border ${
                     selectedCity === city
-                      ? 'bg-slate-200 dark:bg-gray-700 text-slate-900 dark:text-white font-medium'
-                      : 'text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300'
+                      ? 'bg-blue-600 border-blue-600 text-white font-medium shadow-sm'
+                      : 'bg-white dark:bg-gray-800 border-slate-200 dark:border-gray-700 text-slate-600 dark:text-slate-300 hover:border-slate-300 hover:text-slate-900'
                   }`}
                 >
                   {city}
@@ -191,25 +186,27 @@ const OrganizationsDirectoryPage: React.FC = () => {
       <div className="max-w-4xl mx-auto px-4 py-6">
 
         {loading ? (
-          <div className="flex flex-col gap-4">
+          <div className="flex flex-col gap-6">
             {[...Array(5)].map((_, i) => <CardSkeleton key={i} />)}
           </div>
         ) : filtered.length === 0 ? (
           /* ─── Empty state ─── */
-          <div className="text-center py-20 bg-white dark:bg-gray-800 border border-slate-200 dark:border-gray-700 rounded-lg">
-            <Search className="w-12 h-12 text-slate-300 mx-auto mb-4" />
+          <div className="text-center py-20 bg-white/50 dark:bg-gray-800/30 border border-slate-200 dark:border-gray-700/50 rounded-3xl border-dashed">
+            <div className="w-16 h-16 bg-white dark:bg-gray-800 rounded-full shadow-sm border border-slate-100 dark:border-gray-700 flex items-center justify-center mx-auto mb-5">
+              <Search className="w-7 h-7 text-slate-300 dark:text-slate-500" />
+            </div>
             <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-2">
               {search || selectedCity !== 'all'
-                ? t('directory.noResults', 'Ничего не найдено')
+                ? t('directory.noResults', 'Здесь пока пусто')
                 : t('directory.empty', 'Учебные центры ещё не добавлены')}
             </h3>
-            <p className="text-sm text-slate-500 mb-6">
-              {t('directory.tryDifferentSearch', 'Попробуйте изменить параметры поиска или город')}
+            <p className="text-sm text-slate-500 mb-6 max-w-sm mx-auto">
+              {t('directory.tryDifferentSearch', 'Попробуйте изменить параметры поиска, выбрать другой город или загляните позже.')}
             </p>
             {(search || selectedCity !== 'all') && (
               <button
                 onClick={() => { setSearch(''); setSelectedCity('all'); }}
-                className="px-6 py-2 bg-blue-600 text-white font-medium rounded hover:bg-blue-700 transition"
+                className="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-medium shadow-sm hover:shadow transition-all rounded-xl"
               >
                 {t('directory.clearFilters', 'Сбросить фильтры')}
               </button>
@@ -218,53 +215,52 @@ const OrganizationsDirectoryPage: React.FC = () => {
         ) : (
           <>
             {/* Header / Sort line */}
-            <div className="flex items-center justify-between mb-4">
-              <h1 className="text-2xl font-bold text-slate-900 dark:text-white">
+            <div className="flex items-center justify-between mb-6">
+              <h1 className="text-2xl font-bold text-slate-900 dark:text-white tracking-tight">
                 {search 
                   ? `По запросу «${search}» найдено ${filtered.length} организаций` 
-                  : `Учебные центры (${filtered.length})`
+                  : `Учебные центры и организации (${filtered.length})`
                 }
               </h1>
             </div>
 
             {/* List */}
-            <div className="flex flex-col gap-4">
+            <div className="flex flex-col gap-6">
               {filtered.map((org, i) => (
                 <AnimCard key={org.id} index={i}>
                   <div
                     onClick={() => navigate(`/org/${org.slug || org.id}`)}
-                    className="bg-white dark:bg-gray-800 border border-slate-200 dark:border-gray-700 rounded-lg p-5 sm:p-6 hover:shadow-md cursor-pointer transition-shadow flex flex-col sm:flex-row gap-5"
+                    className="bg-white dark:bg-gray-900 group rounded-3xl p-6 sm:p-8 shadow-[0_2px_8px_-4px_rgba(0,0,0,0.05)] hover:shadow-[0_8px_24px_-8px_rgba(0,0,0,0.1)] border border-slate-200 dark:border-gray-800 cursor-pointer transition-all hover:-translate-y-0.5 flex flex-col sm:flex-row gap-6 sm:gap-8"
                   >
                     {/* ─── Left: Info ─── */}
-                    <div className="flex-1 min-w-0 flex flex-col">
-                      <div className="flex items-start justify-between gap-4 mb-1">
-                        <h3 className="text-xl font-medium text-blue-600 dark:text-blue-400 hover:text-blue-800 hover:underline truncate">
+                    <div className="flex-1 min-w-0 flex flex-col justify-center">
+                      <div className="flex items-start justify-between gap-4 mb-2">
+                        <h3 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors truncate">
                           {org.name}
                         </h3>
                         {/* Mobile logo (visible only on small) */}
-                        <div className="sm:hidden shrink-0 w-12 h-12 rounded bg-slate-50 dark:bg-gray-700 border border-slate-100 dark:border-gray-600 flex items-center justify-center overflow-hidden p-1">
+                        <div className="sm:hidden shrink-0 w-14 h-14 rounded-2xl bg-white dark:bg-gray-800 border shadow-sm border-slate-100 dark:border-gray-700 flex items-center justify-center overflow-hidden p-1.5">
                           {org.logo ? (
                             <img src={org.logo} alt={org.name} className="w-full h-full object-contain" />
                           ) : (
-                            <Building2 className="w-5 h-5 text-slate-300" />
+                            <Building2 className="w-6 h-6 text-slate-300 dark:text-gray-500" />
                           )}
                         </div>
                       </div>
                       
-                      {org.isOnline && (
-                        <div className="mb-2">
-                          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-green-50 text-green-700 border border-green-200 rounded text-[11px] font-medium uppercase">
+                      <div className="flex flex-wrap items-center gap-2 mb-3">
+                        {org.isOnline && (
+                          <span className="inline-flex items-center gap-1.5 px-2 py-0.5 bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 border border-emerald-200/60 dark:border-emerald-800/50 rounded-md text-[11px] font-bold uppercase tracking-wider">
                             <Wifi className="w-3 h-3" /> {t('directory.online', 'Онлайн')}
                           </span>
-                        </div>
-                      )}
-
-                      <div className="text-sm text-slate-500 mb-3 flex items-center gap-1.5">
-                        <MapPin className="w-4 h-4" /> {getCityLabel(org)}
+                        )}
+                        <span className="text-sm font-medium text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
+                          <MapPin className="w-4 h-4 text-slate-400 dark:text-slate-500" /> {getCityLabel(org)}
+                        </span>
                       </div>
 
                       {org.description && (
-                        <div className="text-sm text-slate-700 dark:text-slate-300 line-clamp-2 md:line-clamp-3 mb-4 leading-relaxed">
+                        <div className="text-sm sm:text-base text-slate-600 dark:text-slate-300 line-clamp-2 mb-6 leading-relaxed">
                           {org.description}
                         </div>
                       )}
@@ -274,26 +270,28 @@ const OrganizationsDirectoryPage: React.FC = () => {
 
                       {/* Tags */}
                       {org.subjects?.length > 0 && (
-                        <div className="flex flex-wrap gap-2 mt-2">
-                          {org.subjects.slice(0, 6).map((s, idx) => (
-                            <span key={idx} className="px-2 py-1 bg-slate-100 dark:bg-gray-700 text-slate-600 dark:text-slate-300 rounded text-[11px] font-medium">
+                        <div className="flex flex-wrap gap-2 mt-auto">
+                          {org.subjects.slice(0, 5).map((s, idx) => (
+                            <span key={idx} className="px-3 py-1 bg-[#F8FAFC] dark:bg-gray-800 text-slate-600 dark:text-slate-300 rounded-lg text-xs font-semibold border border-slate-200 dark:border-gray-700">
                               {s}
                             </span>
                           ))}
-                          {org.subjects.length > 6 && (
-                            <span className="px-2 py-1 text-[11px] text-slate-400 font-medium">ещё {org.subjects.length - 6}</span>
+                          {org.subjects.length > 5 && (
+                            <span className="px-3 py-1 rounded-lg border border-transparent text-xs text-slate-400 dark:text-slate-500 font-medium bg-slate-50 dark:bg-gray-800/50">
+                              +{org.subjects.length - 5}
+                            </span>
                           )}
                         </div>
                       )}
                     </div>
 
                     {/* ─── Right: Logo (Desktop) ─── */}
-                    <div className="hidden sm:flex shrink-0 w-32 h-auto flex-col items-end pt-1">
-                       <div className="w-24 h-24 rounded border border-slate-100 dark:border-gray-700 bg-white dark:bg-gray-800 flex items-center justify-center p-2">
+                    <div className="hidden sm:flex shrink-0 w-32 flex-col items-center justify-center">
+                       <div className="w-32 h-32 rounded-3xl border border-slate-100 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm flex items-center justify-center p-3 group-hover:shadow-md group-hover:border-slate-200 dark:group-hover:border-gray-700 transition-all overflow-hidden">
                           {org.logo ? (
-                            <img src={org.logo} alt={org.name} className="w-full h-full object-contain" />
+                            <img src={org.logo} alt={org.name} className="w-full h-full object-contain group-hover:scale-105 transition-transform duration-500" />
                           ) : (
-                            <Building2 className="w-10 h-10 text-slate-200" />
+                            <Building2 className="w-12 h-12 text-slate-200 dark:text-gray-700" />
                           )}
                        </div>
                     </div>

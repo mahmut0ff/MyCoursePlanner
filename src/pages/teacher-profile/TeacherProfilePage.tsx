@@ -451,14 +451,16 @@ const TeacherProfilePage: React.FC = () => {
           {socialLinks.length === 0 ? (
             <p className="text-xs text-slate-400 text-center py-4">{t('teacher.noSocialLinks')}</p>
           ) : (
-            <div className="space-y-2">
+            <div className="space-y-3">
               {socialLinks.map((link, i) => (
-                <div key={i} className="flex items-center gap-2">
-                  <input value={link.platform} onChange={(e) => updateLink(i, 'platform', e.target.value)} placeholder={t('teacher.platformPlaceholder')}
-                    className="w-32 bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-lg px-2.5 py-1.5 text-xs outline-none focus:border-primary-500 text-slate-900 dark:text-white" />
-                  <input value={link.url} onChange={(e) => updateLink(i, 'url', e.target.value)} placeholder="https://..."
-                    className="flex-1 bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-lg px-2.5 py-1.5 text-xs outline-none focus:border-primary-500 text-slate-900 dark:text-white" />
-                  <button onClick={() => removeLink(i)} className="p-1 text-slate-400 hover:text-red-500"><X className="w-3.5 h-3.5" /></button>
+                <div key={i} className="flex items-start sm:items-center gap-2 w-full">
+                  <div className="flex-1 grid grid-cols-1 sm:grid-cols-3 gap-2">
+                    <input value={link.platform} onChange={(e) => updateLink(i, 'platform', e.target.value)} placeholder={t('teacher.platformPlaceholder')}
+                      className="w-full sm:col-span-1 bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-lg px-2.5 py-2 text-sm outline-none focus:border-primary-500 text-slate-900 dark:text-white" />
+                    <input value={link.url} onChange={(e) => updateLink(i, 'url', e.target.value)} placeholder="https://..."
+                      className="w-full sm:col-span-2 bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-lg px-2.5 py-2 text-sm outline-none focus:border-primary-500 text-slate-900 dark:text-white" />
+                  </div>
+                  <button onClick={() => removeLink(i)} className="p-2 mt-0.5 sm:mt-0 text-slate-400 hover:text-red-500 bg-slate-50 dark:bg-slate-700/50 rounded-lg shrink-0"><X className="w-4 h-4" /></button>
                 </div>
               ))}
             </div>

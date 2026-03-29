@@ -195,6 +195,12 @@ const handler: Handler = async (event: HandlerEvent) => {
           updatedAt: now(),
         };
         await adminDb.collection('teacherProfiles').doc(user.uid).set(profileData, { merge: true });
+
+        // Sync avatarUrl to users collection so managers can see it
+        if (body.avatarUrl) {
+          await adminDb.collection('users').doc(user.uid).update({ avatarUrl: body.avatarUrl, updatedAt: now() }).catch(() => null);
+        }
+
         return ok({ uid: user.uid, ...profileData });
       }
     }

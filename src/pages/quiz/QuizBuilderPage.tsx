@@ -8,7 +8,7 @@ import {
   ArrowLeft, Save, Plus, Trash2, GripVertical,
   CheckCircle, Circle, Sparkles,
   ChevronDown, ChevronUp, Copy, Settings, Clock,
-  Upload, Maximize2
+  Upload, Maximize2, Volume2
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { AIGeneratorModal } from '../../components/ui/AIGeneratorModal';
@@ -20,7 +20,8 @@ const QUESTION_TYPES: { type: QuizQuestionType; label: string; icon: string }[] 
   { type: 'multiple_choice', label: 'Multiple Choice', icon: '☑️' },
   { type: 'true_false', label: 'True / False', icon: '✅' },
   { type: 'matching', label: 'Matching', icon: '🔗' },
-  { type: 'image_question', label: 'Image Question', icon: '🖼️' },
+  { type: 'media_question', label: 'Media', icon: '🖼️' },
+  { type: 'speaking', label: 'Speaking', icon: '🎤' },
 ];
 
 const OPTION_COLORS_BG = ['#e21b3c', '#1368ce', '#d89e00', '#26890c', '#864cbf', '#c4162f', '#1057ad', '#b88600'];
@@ -86,7 +87,8 @@ const QuizBuilderPage: React.FC = () => {
       
       const mediaType = 
         file.type.startsWith('image/') ? 'image' : 
-        file.type.startsWith('audio/') ? 'audio' : 'pdf';
+        file.type.startsWith('audio/') ? 'audio' : 
+        file.type.startsWith('video/') ? 'video' : 'pdf';
       updateQuestion(activeQuestion, { mediaUrl: url, mediaType: mediaType as any });
       toast.success(t('common.uploadSuccess', 'File uploaded successfully'));
     } catch (err: any) {
@@ -109,6 +111,14 @@ const QuizBuilderPage: React.FC = () => {
         correctAnswers = [opts[q.correctOptionIndex]?.id].filter(Boolean);
       }
 
+      let generatedMediaUrl = q.mediaUrl || '';
+      let generatedMediaType = (q.mediaType as any) || 'image';
+      
+      if (q.searchQuery) {
+        generatedMediaUrl = `https://loremflickr.com/800/600/${encodeURIComponent(q.searchQuery)}?lock=${Math.floor(Math.random() * 100)}`;
+        generatedMediaType = 'image';
+      }
+
       return {
         id: generateId(),
         quizId: id || '',
@@ -121,6 +131,9 @@ const QuizBuilderPage: React.FC = () => {
         points: 1000,
         difficulty: 'medium' as QuizDifficulty,
         answerExplanation: q.explanation || '',
+        mediaUrl: generatedMediaUrl,
+        mediaType: generatedMediaType,
+        ttsText: q.ttsText || '',
       };
     });
     if (questions.length === 1 && questions[0].text === '') {
@@ -411,7 +424,7 @@ const QuizBuilderPage: React.FC = () => {
               />
 
               {/* Media */}
-              {['image_question'].includes(currentQ.type) && (
+              {['media_question', 'speaking'].includes(currentQ.type) && (
                 <div className="mt-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg p-4">
                   <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wide mb-2 block">{t('quiz.mediaContent', 'Media Content')}</label>
                   <div className="flex flex-col sm:flex-row sm:items-center gap-2 mb-3">
@@ -424,7 +437,7 @@ const QuizBuilderPage: React.FC = () => {
                     <div className="relative shrink-0 w-full sm:w-auto">
                       <input
                         type="file"
-                        accept="image/*"
+                        accept="image/*, audio/*, video/*"
                         onChange={handleFileUpload}
                         disabled={uploadingMedia || !id}
                         className="absolute inset-0 w-full h-full opacity-0 cursor-pointer disabled:cursor-not-allowed"
@@ -439,13 +452,37 @@ const QuizBuilderPage: React.FC = () => {
                       </button>
                     </div>
                   </div>
+                  
+                  <div className="flex flex-col sm:flex-row sm:items-center gap-2 mb-3">
+                    <input 
+                      value={currentQ.ttsText || ''} 
+                      onChange={e => updateQuestion(activeQuestion, { ttsText: e.target.value })} 
+                      placeholder={t('quiz.ttsPlaceholder', 'Text to synthesize (Audio question)')} 
+                      className="input text-xs flex-1" 
+                    />
+                    {currentQ.ttsText && (
+                      <button
+                        onClick={(e) => {
+                          e.preventDefault();
+                          const u = new SpeechSynthesisUtterance(currentQ.ttsText);
+                          u.lang = quiz.language || 'en-US';
+                          window.speechSynthesis.speak(u);
+                        }}
+                        className="w-full sm:w-auto flex items-center justify-center gap-1.5 px-4 py-2 bg-blue-100 hover:bg-blue-200 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300 dark:hover:bg-blue-900/60 rounded-lg text-xs font-semibold transition-colors"
+                      >
+                        <Volume2 className="w-3.5 h-3.5" /> {t('quiz.listen', 'Listen')}
+                      </button>
+                    )}
+                  </div>
 
                   {/* PREVIEW */}
                   {currentQ.mediaUrl && (
                     <div className="mt-2 relative group inline-flex flex-col items-center max-w-full justify-center w-full bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 p-2 overflow-hidden">
-                      {currentQ.type === 'image_question' && <img src={currentQ.mediaUrl} alt="Preview" className="max-h-56 rounded object-contain w-full" />}
+                      {(!currentQ.mediaType || currentQ.mediaType === 'image') && <img src={currentQ.mediaUrl} alt="Preview" className="max-h-56 rounded object-contain w-full" />}
+                      {currentQ.mediaType === 'audio' && <audio src={currentQ.mediaUrl} controls className="w-full mt-2" />}
+                      {currentQ.mediaType === 'video' && <video src={currentQ.mediaUrl} controls className="max-h-56 w-full rounded mt-2" />}
                       
-                      {currentQ.type === 'image_question' && (
+                      {(!currentQ.mediaType || currentQ.mediaType === 'image') && (
                         <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center pointer-events-none rounded">
                           <button 
                             onClick={(e) => { e.preventDefault(); setPreviewFile({ 
@@ -467,7 +504,7 @@ const QuizBuilderPage: React.FC = () => {
             </div>
 
             {/* Answer Options — Kahoot 2x2 colored grid */}
-            {['single_choice', 'multiple_choice', 'true_false', 'matching', 'image_question'].includes(currentQ.type) && (
+            {['single_choice', 'multiple_choice', 'true_false', 'matching', 'media_question'].includes(currentQ.type) && (
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {currentQ.options.map((opt, oi) => {
                   const isCorrect = currentQ.correctAnswers.includes(opt.id);

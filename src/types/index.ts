@@ -735,8 +735,8 @@ export type QuizQuestionType =
   | 'single_choice'
   | 'multiple_choice'
   | 'true_false'
-  | 'matching'
-  | 'image_question';
+  | 'media_question'
+  | 'speaking';
 
 export type QuizSessionStatus =
   | 'draft'
@@ -817,6 +817,7 @@ export interface QuizQuestion {
   mediaUrl?: string;
   mediaType?: 'image' | 'audio' | 'pdf' | 'video';
   passageText?: string;
+  ttsText?: string;
 
   // Answers
   options: QuizQuestionOption[];

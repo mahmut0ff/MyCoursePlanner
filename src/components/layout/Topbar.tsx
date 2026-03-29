@@ -9,8 +9,10 @@ import {
   Menu, Search, Sun, Moon, X,
   LayoutDashboard, Building2, Users, CreditCard, BarChart3,
   Activity, Server, BookOpen, ClipboardList, Radio, Tag, Puzzle, Zap,
-  Settings,
+  Settings, HelpCircle
 } from 'lucide-react';
+import { usePageHelp } from '../../hooks/usePageHelp';
+import { HelpDrawer } from './HelpDrawer';
 
 
 interface TopbarProps {
@@ -49,6 +51,9 @@ const Topbar: React.FC<TopbarProps> = ({ onMenuClick }) => {
   const [query, setQuery] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
   const [selectedIdx, setSelectedIdx] = useState(0);
+
+  const pageHelp = usePageHelp();
+  const [helpOpen, setHelpOpen] = useState(false);
 
   const items = isSuperAdmin ? ADMIN_ITEMS : USER_ITEMS;
   const filtered = query.trim()
@@ -142,6 +147,17 @@ const Topbar: React.FC<TopbarProps> = ({ onMenuClick }) => {
           {/* Notifications */}
           <NotificationDropdown />
 
+          {/* Help Button (Contextual) */}
+          {pageHelp && (
+            <button
+              onClick={() => setHelpOpen(true)}
+              className="p-2 rounded-lg text-primary-500 hover:text-primary-600 dark:text-primary-400 dark:hover:text-primary-300 hover:bg-primary-50 dark:hover:bg-primary-900/20 transition-colors"
+              title="Как это работает?"
+            >
+              <HelpCircle className="w-5 h-5" />
+            </button>
+          )}
+
           {/* Settings & Billing (Admin/Teacher) */}
           <div className="flex items-center gap-1 border-l border-slate-200 dark:border-slate-700/60 pl-2 ml-1">
             {role === 'admin' && !isSuperAdmin && (
@@ -221,6 +237,13 @@ const Topbar: React.FC<TopbarProps> = ({ onMenuClick }) => {
           </div>
         </div>
       )}
+      
+      {/* ═══ Help Drawer ═══ */}
+      <HelpDrawer 
+        isOpen={helpOpen} 
+        onClose={() => setHelpOpen(false)} 
+        config={pageHelp} 
+      />
     </>
   );
 };

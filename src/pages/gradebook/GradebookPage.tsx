@@ -37,6 +37,7 @@ const GradebookPage: React.FC = () => {
   const [lessons, setLessons] = useState<LessonPlan[]>([]);
   const [grades, setGrades] = useState<Record<string, GradeEntry>>({});
   const [schema, setSchema] = useState<GradeSchema>(defaultSchema);
+  const [syncStatus, setSyncStatus] = useState<Record<string, boolean>>({});
   
   const [loadingCourses, setLoadingCourses] = useState(true);
   const [loadingData, setLoadingData] = useState(false);
@@ -128,6 +129,7 @@ const GradebookPage: React.FC = () => {
 
     // Optimistic Update
     setGrades(prev => ({ ...prev, [key]: newEntry }));
+    setSyncStatus(prev => ({ ...prev, [key]: true }));
 
     // Debounce save
     if (timersRef.current[key]) clearTimeout(timersRef.current[key]);
@@ -158,6 +160,8 @@ const GradebookPage: React.FC = () => {
             return next;
           });
         }
+      } finally {
+        setSyncStatus(prev => ({ ...prev, [key]: false }));
       }
     }, 400);
   };
@@ -250,6 +254,7 @@ const GradebookPage: React.FC = () => {
             grades={grades}
             schema={schema}
             onGradeChange={handleGradeChange}
+            syncStatus={syncStatus}
           />
         </div>
       )}

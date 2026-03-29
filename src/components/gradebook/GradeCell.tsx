@@ -1,13 +1,15 @@
 import React, { useState, useEffect, useRef } from 'react';
 import type { GradeEntry, GradeSchema, GradeStatus } from '../../types';
+import { Loader2 } from 'lucide-react';
 
 interface GradeCellProps {
   studentId: string;
-  itemId: string; // lessonId or assignmentId
+  itemId: string;
   value: GradeEntry | undefined;
   schema: GradeSchema;
   onChange: (value: number | null, displayValue: string | undefined, status: GradeStatus, comment?: string) => void;
   tabIndex?: number;
+  isSyncing?: boolean;
 }
 
 const statusColors: Record<GradeStatus, string> = {
@@ -18,11 +20,12 @@ const statusColors: Record<GradeStatus, string> = {
   missing: 'bg-violet-500/10 text-violet-600 dark:text-violet-400',
 };
 
-const GradeCell: React.FC<GradeCellProps> = ({ studentId, itemId, value, schema, onChange, tabIndex }) => {
+const GradeCell: React.FC<GradeCellProps> = ({ studentId, itemId, value, schema, onChange, tabIndex, isSyncing }) => {
   const [editing, setEditing] = useState(false);
   const [tempVal, setTempVal] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
-  
+  const cellRef = useRef<HTMLDivElement>(null);
+
   const displayVal = value?.displayValue || (value?.value !== null && value?.value !== undefined ? String(value.value) : '');
   const status = value?.status || 'normal';
 
@@ -33,64 +36,75 @@ const GradeCell: React.FC<GradeCellProps> = ({ studentId, itemId, value, schema,
     }
   }, [editing]);
 
-  const handleStartEdit = () => {
-    setTempVal(displayVal);
-    setEditing(true);
-  };
-
-  const handleCommit = () => {
-    setEditing(false);
-    if (tempVal === displayVal) return;
-
+  const commitValue = (valToCommit: string) => {
     let numVal: number | null = null;
     let dispVal: string | undefined = undefined;
 
-    if (tempVal.trim() === '') {
+    if (valToCommit.trim() === '') {
       onChange(null, undefined, 'normal', value?.comment);
       return;
     }
 
     if (schema.gradingType === 'points' || schema.gradingType === 'percent') {
-      const parsed = parseFloat(tempVal);
+      const parsed = parseFloat(valToCommit.replace(',', '.'));
       if (!isNaN(parsed)) {
         numVal = Math.min(Math.max(parsed, schema.scale.min), schema.scale.max);
       }
     } else if (schema.gradingType === 'letter') {
-      dispVal = tempVal.toUpperCase();
-      // Basic validation against schema could go here
+      dispVal = valToCommit.toUpperCase();
     } else {
-      dispVal = tempVal;
+      dispVal = valToCommit;
     }
 
     onChange(numVal, dispVal, status, value?.comment);
   };
 
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter') {
-      handleCommit();
-      // Grid will handle arrow keys to move focus if not editing,
-      // but on Enter, we want to stay in cell or move down? 
-      // Usually grid handles Enter if we bubble it or we focus next.
-      e.target.dispatchEvent(new Event('blur', { bubbles: true }));
-    } else if (e.key === 'Escape') {
-      setEditing(false);
+  const handleCommitAndMove = (direction: 'down' | 'right' | 'none') => {
+    setEditing(false);
+    if (tempVal !== displayVal) {
+      commitValue(tempVal);
+    }
+    
+    // Dispatch custom event for grid navigation
+    if (direction !== 'none') {
+      window.dispatchEvent(new CustomEvent('gradebook:moveFocus', { 
+        detail: { studentId, itemId, direction }
+      }));
+    } else {
+      // Return focus to the cell itself
+      setTimeout(() => cellRef.current?.focus(), 0);
     }
   };
 
-  const handleWrapperKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
-    if (!editing) {
-      if (e.key === 'Enter' || e.key.match(/^[a-zA-Z0-9]$/)) {
-        e.preventDefault();
-        if (e.key !== 'Enter') {
-          setTempVal(e.key);
-        } else {
-          setTempVal(displayVal);
-        }
-        setEditing(true);
-      } else if (e.key === 'Backspace' || e.key === 'Delete') {
-        e.preventDefault();
-        onChange(null, undefined, 'normal', value?.comment);
-      }
+  const handleKeyDownEditing = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      handleCommitAndMove(e.shiftKey ? 'none' : 'down');
+    } else if (e.key === 'Tab') {
+      e.preventDefault();
+      handleCommitAndMove('right');
+    } else if (e.key === 'Escape') {
+      e.preventDefault();
+      setEditing(false);
+      setTimeout(() => cellRef.current?.focus(), 0);
+    }
+  };
+
+  const handleKeyDownNormal = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    if (editing) return;
+
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      setTempVal(displayVal);
+      setEditing(true);
+    } else if (e.key === 'Backspace' || e.key === 'Delete') {
+      e.preventDefault();
+      onChange(null, undefined, 'normal', value?.comment);
+    } else if (e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) {
+      // Start typing directly!
+      e.preventDefault();
+      setTempVal(e.key);
+      setEditing(true);
     }
   };
 
@@ -99,30 +113,42 @@ const GradeCell: React.FC<GradeCellProps> = ({ studentId, itemId, value, schema,
       <input
         ref={inputRef}
         type="text"
-        className="w-full h-full text-center bg-white dark:bg-slate-800 text-sm font-semibold text-slate-900 dark:text-white outline-none border-2 border-primary-500 rounded"
+        className="w-full h-full min-h-[48px] text-center bg-white dark:bg-slate-800 text-sm font-bold text-slate-900 dark:text-white outline-none ring-2 ring-inset ring-primary-500 shadow-[0_0_15px_rgba(99,102,241,0.2)] z-20 relative"
         value={tempVal}
         onChange={(e) => setTempVal(e.target.value)}
-        onBlur={handleCommit}
-        onKeyDown={handleKeyDown}
+        onBlur={() => handleCommitAndMove('none')}
+        onKeyDown={handleKeyDownEditing}
       />
     );
   }
 
   return (
     <div
+      ref={cellRef}
       tabIndex={tabIndex}
-      className={`w-full h-full min-h-[40px] flex flex-col items-center justify-center outline-none cursor-text transition-colors border-2 border-transparent focus:border-primary-400 group ${statusColors[status]}`}
-      onClick={handleStartEdit}
-      onKeyDown={handleWrapperKeyDown}
+      className={`w-full h-full min-h-[48px] flex flex-col items-center justify-center outline-none cursor-cell transition-all ring-inset focus:ring-2 focus:ring-primary-400 hover:bg-slate-50/80 dark:hover:bg-slate-700/50 group relative ${statusColors[status]}`}
+      onClick={() => {
+         // Single click to edit for ease.
+         setTempVal(displayVal);
+         setEditing(true);
+      }}
+      onKeyDown={handleKeyDownNormal}
       data-student-id={studentId}
       data-item-id={itemId}
+      data-grade-cell="true"
     >
-      {/* Visual Indicator of value */}
-      <span className="text-sm font-semibold">{displayVal || (status !== 'normal' ? status.substring(0, 3).toUpperCase() : '-')}</span>
+      <span className="text-sm font-bold tracking-tight">
+        {displayVal || (status !== 'normal' ? status.substring(0, 3).toUpperCase() : <span className="text-slate-200 dark:text-slate-700 font-normal">—</span>)}
+      </span>
       
-      {/* Comment indicator */}
       {value?.comment && (
-        <div className="absolute top-1 right-1 w-1.5 h-1.5 rounded-full bg-blue-500" title={value.comment} />
+        <div className="absolute top-1.5 right-1.5 w-1.5 h-1.5 rounded-full bg-blue-500 shadow-sm" title={value.comment} />
+      )}
+
+      {isSyncing && (
+        <div className="absolute bottom-1 right-1 text-slate-300">
+           <Loader2 className="w-3 h-3 animate-spin" />
+        </div>
       )}
     </div>
   );

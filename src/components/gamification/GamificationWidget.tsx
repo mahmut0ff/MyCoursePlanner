@@ -22,31 +22,32 @@ const GamificationWidget: React.FC = () => {
   return (
     <div className="card overflow-hidden mb-6">
       {/* Level Header */}
-      <div className="bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-500 p-5 text-white">
+      <div className="p-5 border-b border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50">
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-3">
-            <div className="w-12 h-12 bg-white/20 backdrop-blur rounded-xl flex items-center justify-center text-2xl font-bold">
+            <div className="w-12 h-12 bg-primary-100 dark:bg-primary-900/30 rounded-xl flex items-center justify-center text-2xl font-bold text-primary-600 dark:text-primary-400">
               {level.level}
             </div>
             <div>
-              <p className="text-sm text-white/70">{t('gamification.level')} {level.level}</p>
-              <h3 className="text-lg font-bold">{t(`gamification.levels.${level.level}`, level.title)}</h3>
+              <p className="text-sm text-slate-500">{t('gamification.level')} {level.level}</p>
+              <h3 className="text-lg font-bold text-slate-900 dark:text-white">{t(`gamification.levels.${level.level}`, level.title)}</h3>
             </div>
           </div>
           <div className="text-right">
-            <p className="text-2xl font-bold">{data.xp} <span className="text-sm font-normal text-white/70">XP</span></p>
+            <p className="text-2xl font-bold text-slate-900 dark:text-white">{data.xp} <span className="text-sm font-normal text-slate-500">XP</span></p>
           </div>
         </div>
         {/* XP bar */}
-        <div className="bg-white/20 rounded-full h-3 overflow-hidden">
+        <div className="bg-slate-200 dark:bg-slate-700 rounded-full h-3 overflow-hidden">
           <div
-            className="bg-white rounded-full h-full transition-all duration-700 ease-out"
+            className="bg-primary-500 rounded-full h-full transition-all duration-700 ease-out"
             style={{ width: `${progressPercent}%` }}
           />
         </div>
         {level.nextLevelXp && (
-          <p className="text-xs text-white/60 mt-1.5">
-            {data.xp - level.xp} / {level.nextLevelXp - level.xp} XP → {t(`gamification.levels.${level.level + 1}`, level.nextLevelTitle || '')}
+          <p className="text-xs text-slate-500 mt-1.5 flex justify-between">
+            <span>{data.xp - level.xp} / {level.nextLevelXp - level.xp} XP</span>
+            <span>→ {t(`gamification.levels.${level.level + 1}`, level.nextLevelTitle || '')}</span>
           </p>
         )}
       </div>

@@ -180,6 +180,7 @@ const handler: Handler = async (event: HandlerEvent) => {
         courseName: body.courseName || '',
         name: body.name,
         studentIds: body.studentIds || [],
+        teacherIds: body.teacherIds || [],
         createdAt: now(), updatedAt: now(),
       };
       const ref = await adminDb.collection('groups').add(data);
@@ -288,7 +289,7 @@ const handler: Handler = async (event: HandlerEvent) => {
         }
         filtered = filtered.map((s: any) => {
           const p = profileMap[s.uid] || {};
-          return { ...s, avatarUrl: p.avatarUrl || '', phone: p.phone || '', city: p.city || '', bio: p.bio || '', createdAt: p.createdAt || '' };
+          return { ...s, avatarUrl: p.avatarUrl || p.photoURL || '', phone: p.phone || '', city: p.city || '', bio: p.bio || '', createdAt: p.createdAt || '' };
         });
       }
         
@@ -371,7 +372,7 @@ const handler: Handler = async (event: HandlerEvent) => {
         }
         enriched = members.map((t: any) => {
           const p = profileMap[t.uid] || {};
-          return { ...t, avatarUrl: p.avatarUrl || '', phone: p.phone || '', city: p.city || '', bio: p.bio || '', createdAt: p.createdAt || '' };
+          return { ...t, avatarUrl: p.avatarUrl || p.photoURL || '', phone: p.phone || '', city: p.city || '', bio: p.bio || '', createdAt: p.createdAt || '' };
         });
       }
 

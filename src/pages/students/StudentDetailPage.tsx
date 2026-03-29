@@ -1,10 +1,11 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { orgGetStudents, orgGetResults, orgGetGroups } from '../../lib/api';
+import { orgGetStudents, orgGetResults, orgGetGroups, orgUpdateGroup } from '../../lib/api';
+import { useAuth } from '../../contexts/AuthContext';
 import {
   ArrowLeft, Mail, Trophy, Calendar, BarChart3, Users, Phone, MapPin,
-  BookOpen, Zap, Target, Clock, CheckCircle,
+  BookOpen, Zap, Target, Clock, CheckCircle, Plus, X, Loader2,
   Flame, Copy, Star, Shield, Link2, ExternalLink
 } from 'lucide-react';
 import type { UserProfile, ExamAttempt, Group } from '../../types';
@@ -27,7 +28,15 @@ const StudentDetailPage: React.FC = () => {
   const { t } = useTranslation();
   const [student, setStudent] = useState<UserProfile | null>(null);
   const [results, setResults] = useState<ExamAttempt[]>([]);
+  const { role } = useAuth();
+  const isAdmin = role === 'admin' || role === 'manager' || role === 'super_admin';
+  const [allGroups, setAllGroups] = useState<Group[]>([]);
   const [groups, setGroups] = useState<Group[]>([]);
+  
+  // Assignment Modal
+  const [showAssignModal, setShowAssignModal] = useState(false);
+  const [selectedGroupId, setSelectedGroupId] = useState('');
+  const [assigning, setAssigning] = useState(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -39,8 +48,9 @@ const StudentDetailPage: React.FC = () => {
       }),
       orgGetResults({ studentId: uid }).then(setResults).catch(() => setResults([])),
       orgGetGroups().then((allGroups: Group[]) => {
+        setAllGroups(allGroups);
         setGroups(allGroups.filter(g => g.studentIds?.includes(uid!)));
-      }).catch(() => setGroups([])),
+      }).catch(() => { setAllGroups([]); setGroups([]); }),
     ]).finally(() => setLoading(false));
   }, [uid]);
 
@@ -77,6 +87,56 @@ const StudentDetailPage: React.FC = () => {
     if (seconds < 60) return `${seconds}с`;
     if (seconds < 3600) return `${Math.floor(seconds / 60)}м`;
     return `${Math.floor(seconds / 3600)}ч ${Math.floor((seconds % 3600) / 60)}м`;
+  };
+
+  const handleAssignGroup = async () => {
+    if (!selectedGroupId || !uid) return;
+    const targetGroup = allGroups.find(g => g.id === selectedGroupId);
+    if (!targetGroup) return;
+
+    setAssigning(true);
+    try {
+      const currentStudentIds = targetGroup.studentIds || [];
+      if (!currentStudentIds.includes(uid)) {
+        await orgUpdateGroup({
+          id: targetGroup.id,
+          studentIds: [...currentStudentIds, uid]
+        });
+        
+        // Update local state
+        const updatedTarget = { ...targetGroup, studentIds: [...currentStudentIds, uid] };
+        setAllGroups(allGroups.map(g => g.id === targetGroup.id ? updatedTarget : g));
+        setGroups([...groups, updatedTarget]);
+        toast.success(t('common.saved', 'Ученик прикреплен к группе!'));
+      }
+      setShowAssignModal(false);
+      setSelectedGroupId('');
+    } catch (e: any) {
+      toast.error(e.message || 'Error assigning student');
+    } finally {
+      setAssigning(false);
+    }
+  };
+
+  const handleUnassignGroup = async (groupId: string) => {
+    const targetGroup = allGroups.find(g => g.id === groupId);
+    if (!targetGroup || !uid) return;
+    
+    if (!window.confirm('Открепить ученика от группы?')) return;
+
+    try {
+      const currentStudentIds = targetGroup.studentIds || [];
+      const updatedIds = currentStudentIds.filter(id => id !== uid);
+      
+      await orgUpdateGroup({ id: targetGroup.id, studentIds: updatedIds });
+      
+      const updatedTarget = { ...targetGroup, studentIds: updatedIds };
+      setAllGroups(allGroups.map(g => g.id === targetGroup.id ? updatedTarget : g));
+      setGroups(groups.filter(g => g.id !== targetGroup.id));
+      toast.success('Ученик откреплен');
+    } catch (e: any) {
+      toast.error(e.message || 'Error unassigning');
+    }
   };
 
   /* ─── loading ─── */
@@ -174,16 +234,27 @@ const StudentDetailPage: React.FC = () => {
             )}
 
             {/* Groups */}
-            {groups.length > 0 && (
-              <div className="mt-3 flex flex-wrap items-center gap-2">
-                <BookOpen className="w-3.5 h-3.5 text-slate-400" />
-                {groups.map(g => (
-                  <span key={g.id} className="text-[10px] px-2.5 py-1 rounded-lg font-bold border" style={{ borderColor: `${C.blue}40`, color: C.blue, background: `${C.blue}10` }}>
+            <div className="mt-4 flex flex-wrap items-center gap-2">
+              <BookOpen className="w-3.5 h-3.5 text-slate-400" />
+              {groups.map(g => (
+                <div key={g.id} className="group relative flex items-center pr-1 pl-2.5 py-1 rounded-lg font-bold border transition-colors" style={{ borderColor: `${C.blue}40`, color: C.blue, background: `${C.blue}10` }}>
+                  <span className="text-[10px] cursor-pointer" onClick={() => navigate(`/groups/${g.id}`)}>
                     {g.name}{g.courseName ? ` · ${g.courseName}` : ''}
                   </span>
-                ))}
-              </div>
-            )}
+                  {isAdmin && (
+                    <button onClick={() => handleUnassignGroup(g.id)} className="ml-1 opacity-0 group-hover:opacity-100 text-slate-400 hover:text-red-500 hover:bg-white/50 rounded-md p-0.5 transition-all">
+                      <X className="w-3 h-3" />
+                    </button>
+                  )}
+                </div>
+              ))}
+              {groups.length === 0 && <span className="text-[10px] text-slate-400 font-medium">Нет групп</span>}
+              {isAdmin && (
+                <button onClick={() => setShowAssignModal(true)} className="ml-1 p-1 rounded-lg border border-dashed border-slate-300 dark:border-slate-600 text-slate-400 hover:text-blue-500 hover:border-blue-300 transition-colors" title="Прикрепить к группе">
+                  <Plus className="w-3.5 h-3.5" />
+                </button>
+              )}
+            </div>
           </div>
         </div>
       </div>
@@ -350,6 +421,52 @@ const StudentDetailPage: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* Assign Modal */}
+      {showAssignModal && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => setShowAssignModal(false)}>
+          <div className="bg-white dark:bg-slate-800 rounded-3xl p-6 w-full max-w-sm shadow-2xl" onClick={e => e.stopPropagation()}>
+             <h2 className="text-lg font-bold text-slate-900 dark:text-white mb-2">Прикрепить к группе</h2>
+             <p className="text-xs text-slate-500 mb-4">Выберите группу для ученика <b>{student.displayName}</b>.</p>
+             
+             {(() => {
+               const availableGroups = allGroups.filter(g => !(g.studentIds || []).includes(uid!));
+               if (availableGroups.length === 0) {
+                 return (
+                   <div className="bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400 p-3 rounded-xl text-xs font-medium mb-4 border border-amber-200/50">
+                     Нет доступных групп.
+                   </div>
+                 );
+               }
+               return (
+                 <select 
+                   value={selectedGroupId} 
+                   onChange={e => setSelectedGroupId(e.target.value)}
+                   className="w-full bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-xl px-4 py-3 text-sm font-bold text-slate-900 dark:text-white outline-none focus:border-blue-500 mb-5"
+                 >
+                   <option value="">-- Выберите группу --</option>
+                   {availableGroups.map(g => (
+                     <option key={g.id} value={g.id}>{g.name} ({g.courseName || 'Без курса'})</option>
+                   ))}
+                 </select>
+               );
+             })()}
+
+             <div className="flex justify-end gap-2">
+               <button onClick={() => setShowAssignModal(false)} className="px-4 py-2 text-xs font-bold text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-xl transition-colors">
+                 Отмена
+               </button>
+               <button 
+                 onClick={handleAssignGroup} 
+                 disabled={!selectedGroupId || assigning}
+                 className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2 rounded-xl text-xs font-bold disabled:opacity-50 transition-all active:scale-[0.98] shadow-md shadow-blue-500/20 flex items-center gap-2"
+               >
+                 {assigning ? <><Loader2 className="w-3.5 h-3.5 animate-spin" /> ...</> : 'Прикрепить'}
+               </button>
+             </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

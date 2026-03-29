@@ -604,6 +604,7 @@ export interface Group {
   courseName?: string;
   name: string;
   studentIds: string[];
+  teacherIds?: string[];
   chatLinkTitle?: string;
   chatLinkUrl?: string;
   createdAt: string;

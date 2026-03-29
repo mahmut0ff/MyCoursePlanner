@@ -1,19 +1,37 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { orgGetTeachers, orgGetGroups } from '../../lib/api';
-import { apiGetTeacherProfile } from '../../lib/api';
-import { ArrowLeft, Mail, Calendar, BookOpen, Briefcase, Link2, UserPlus, Users, FolderOpen, Phone, FileText, MapPin, GraduationCap, Award } from 'lucide-react';
-import type { UserProfile, TeacherProfile } from '../../types';
+import { orgGetTeachers, orgGetGroups, orgUpdateGroup, apiGetTeacherProfile } from '../../lib/api';
+import { ArrowLeft, Mail, Calendar, BookOpen, Briefcase, Phone, MapPin, GraduationCap, Award, Users, Plus, X } from 'lucide-react';
+import type { UserProfile, TeacherProfile, Group } from '../../types';
+import toast from 'react-hot-toast';
+import { useAuth } from '../../contexts/AuthContext';
+
+const C = {
+  purple: '#46178f',
+  blue: '#1368ce',
+  green: '#26890c',
+  red: '#e21b3c',
+  yellow: '#d89e00',
+  teal: '#0aa08a',
+};
 
 const TeacherDetailPage: React.FC = () => {
   const { uid } = useParams<{ uid: string }>();
   const navigate = useNavigate();
   const { t } = useTranslation();
+  const { role } = useAuth();
+  const canAssign = role === 'admin' || role === 'manager' || role === 'super_admin';
+
   const [teacher, setTeacher] = useState<UserProfile | null>(null);
   const [profile, setProfile] = useState<TeacherProfile | null>(null);
-  const [groups, setGroups] = useState<any[]>([]);
+  const [groups, setGroups] = useState<Group[]>([]);
   const [loading, setLoading] = useState(true);
+
+  // Assignment Modal
+  const [showAssignModal, setShowAssignModal] = useState(false);
+  const [selectedGroupId, setSelectedGroupId] = useState('');
+  const [assigning, setAssigning] = useState(false);
 
   useEffect(() => {
     if (!uid) return;
@@ -21,204 +39,277 @@ const TeacherDetailPage: React.FC = () => {
     Promise.all([
       orgGetTeachers().then((all: UserProfile[]) => setTeacher(all.find((u) => u.uid === uid) || null)),
       apiGetTeacherProfile(uid).then((d: any) => setProfile(d)).catch(() => null),
-      orgGetGroups().then((all: any[]) => setGroups(all)).catch(() => []),
+      orgGetGroups().then((all: Group[]) => setGroups(all)).catch(() => []),
     ]).finally(() => setLoading(false));
   }, [uid]);
 
-  // Find groups this teacher belongs to
-  const teacherGroups = groups.filter((g: any) =>
-    g.teacherId === uid || g.teacherIds?.includes(uid) || g.studentIds?.includes(uid)
+  // Handle assigning a teacher to a group
+  const handleAssignGroup = async () => {
+    if (!selectedGroupId || !uid) return;
+    const targetGroup = groups.find(g => g.id === selectedGroupId);
+    if (!targetGroup) return;
+
+    setAssigning(true);
+    try {
+      const currentTeacherIds = targetGroup.teacherIds || [];
+      if (!currentTeacherIds.includes(uid)) {
+        await orgUpdateGroup({
+          id: targetGroup.id,
+          teacherIds: [...currentTeacherIds, uid]
+        });
+        
+        // Update local state
+        setGroups(groups.map(g => 
+          g.id === targetGroup.id 
+            ? { ...g, teacherIds: [...currentTeacherIds, uid] }
+            : g
+        ));
+        toast.success(t('common.saved', 'Преподаватель назначен!'));
+      } else {
+         toast.error('Преподаватель уже прикреплен к этой группе');
+      }
+      setShowAssignModal(false);
+      setSelectedGroupId('');
+    } catch (e: any) {
+      toast.error(e.message || 'Error assigning teacher');
+    } finally {
+      setAssigning(false);
+    }
+  };
+
+  const handleUnassignGroup = async (groupId: string) => {
+    const targetGroup = groups.find(g => g.id === groupId);
+    if (!targetGroup || !uid) return;
+    
+    // confirm
+    if (!window.confirm('Открепить преподавателя от группы?')) return;
+
+    try {
+      const currentTeacherIds = targetGroup.teacherIds || [];
+      const updatedIds = currentTeacherIds.filter(id => id !== uid);
+      
+      await orgUpdateGroup({
+        id: targetGroup.id,
+        teacherIds: updatedIds
+      });
+      
+      setGroups(groups.map(g => 
+        g.id === targetGroup.id 
+          ? { ...g, teacherIds: updatedIds }
+          : g
+      ));
+      toast.success('Преподаватель откреплен');
+    } catch (e: any) {
+      toast.error(e.message || 'Error unassigning');
+    }
+  };
+
+  if (loading) return (
+    <div className="flex items-center justify-center py-20">
+      <div className="w-10 h-10 border-4 rounded-full animate-spin" style={{ borderColor: `${C.purple}30`, borderTopColor: C.purple }} />
+    </div>
   );
 
-  if (loading) return <div className="flex justify-center py-20"><div className="w-8 h-8 border-2 border-slate-200 border-t-primary-500 rounded-full animate-spin dark:border-slate-700 dark:border-t-primary-400" /></div>;
-  if (!teacher) return <div className="text-center py-20"><UserPlus className="w-12 h-12 text-slate-300 dark:text-slate-600 mx-auto mb-3" /><p className="text-sm text-slate-400">{t('common.notFound')}</p><button onClick={() => navigate('/teachers')} className="mt-3 text-primary-500 text-sm hover:underline">{t('common.back')}</button></div>;
+  if (!teacher) return (
+    <div className="text-center py-20">
+      <Briefcase className="w-14 h-14 mx-auto mb-3" style={{ color: C.purple, opacity: 0.2 }} />
+      <p className="text-sm font-bold text-slate-500">{t('common.notFound')}</p>
+      <button onClick={() => navigate('/teachers')} className="mt-3 text-sm font-bold hover:underline" style={{ color: C.purple }}>{t('common.back')}</button>
+    </div>
+  );
 
   const subjectsArr = profile?.subjects ? profile.subjects.split(',').map(s => s.trim()).filter(Boolean) : [];
+  const teacherGroups = groups.filter(g => g.teacherIds?.includes(uid!));
+  const availableGroups = groups.filter(g => !(g.teacherIds || []).includes(uid!));
 
   return (
-    <div className="max-w-4xl mx-auto pb-10">
-      <button onClick={() => navigate('/teachers')} className="flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 mb-6 transition-colors font-bold">
-        <ArrowLeft className="w-4 h-4" /> Вернуться к списку
+    <div className="max-w-5xl mx-auto pb-10">
+      <button onClick={() => navigate('/teachers')} className="flex items-center gap-1.5 text-sm font-bold mb-4 transition-all hover:gap-2.5" style={{ color: C.purple }}>
+        <ArrowLeft className="w-4 h-4" />{t('common.back')}
       </button>
 
-      {/* ═══ Premium Hero Card ═══ */}
-      <div className="bg-gradient-to-br from-[#46178F] via-[#5C1FB5] to-[#46178F] rounded-[2rem] overflow-hidden shadow-2xl relative mb-8 p-8 sm:p-12">
-        <div className="absolute -top-20 -right-20 w-80 h-80 bg-white/10 rounded-full blur-3xl pointer-events-none" />
-        <div className="absolute bottom-0 left-1/4 w-60 h-60 bg-white/5 rounded-full blur-2xl pointer-events-none" />
-        
-        <div className="flex flex-col sm:flex-row items-center sm:items-start gap-8 relative z-10">
-          <div className="w-32 h-32 sm:w-40 sm:h-40 rounded-[1.5rem] bg-white p-1.5 shadow-xl shrink-0 rotate-[-2deg] transition-transform hover:rotate-0">
+      {/* Hero Profile Card */}
+      <div className="relative bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl overflow-hidden mb-6 shadow-sm">
+        <div className="h-28 sm:h-32 relative overflow-hidden" style={{ background: `linear-gradient(135deg, ${C.purple} 0%, ${C.blue} 50%, ${C.teal} 100%)` }}>
+          <div className="absolute inset-0 opacity-10" style={{ backgroundImage: 'url("data:image/svg+xml,%3Csvg width=\'60\' height=\'60\' viewBox=\'0 0 60 60\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cpath d=\'M30 5 L55 17.5 L55 42.5 L30 55 L5 42.5 L5 17.5 Z\' fill=\'none\' stroke=\'white\' stroke-width=\'1\'/%3E%3C/svg%3E")', backgroundSize: '60px 60px' }} />
+          
+          <div className="absolute bottom-3 right-4 flex items-center gap-3">
+             <div className="flex items-center gap-1 bg-white/20 backdrop-blur-sm text-white px-2.5 py-1 rounded-full">
+               <Calendar className="w-3.5 h-3.5" />
+               <span className="text-[11px] font-bold">с {new Date(teacher.createdAt).toLocaleDateString()}</span>
+             </div>
+          </div>
+        </div>
+
+        <div className="px-6 pb-6 relative">
+          {/* Avatar */}
+          <div className="absolute -top-10 left-6">
             {teacher.avatarUrl ? (
-              <img src={teacher.avatarUrl} alt="" className="w-full h-full rounded-[1.2rem] object-cover" />
+              <img src={teacher.avatarUrl} alt="" className="w-20 h-20 rounded-2xl object-cover shadow-xl ring-4 ring-white dark:ring-slate-800" />
             ) : (
-              <div className="w-full h-full bg-[#1368CE] rounded-[1.2rem] flex items-center justify-center text-5xl text-white font-bold kahoot-font">
+              <div className="w-20 h-20 rounded-2xl flex items-center justify-center text-2xl text-white font-extrabold shadow-xl ring-4 ring-white dark:ring-slate-800" style={{ background: `linear-gradient(135deg, ${C.purple} 0%, ${C.blue} 100%)` }}>
                 {teacher.displayName?.[0]?.toUpperCase() || '?'}
               </div>
             )}
           </div>
-          
-          <div className="text-center sm:text-left pt-2">
-            <h1 className="kahoot-font text-3xl sm:text-5xl font-extrabold text-white mb-3 tracking-wide drop-shadow-sm">
-              {teacher.displayName}
-            </h1>
-            
-            <p className="text-white/90 font-medium text-base sm:text-lg flex flex-col sm:flex-row items-center sm:justify-start gap-2 sm:gap-4 mb-4">
-               <span className="flex items-center gap-1.5 bg-black/20 px-3 py-1 rounded-full"><Briefcase className="w-4 h-4" /> {profile?.specialization || t('teacher.role')}</span>
-               {profile?.city && <span className="flex items-center gap-1.5 bg-black/20 px-3 py-1 rounded-full"><MapPin className="w-4 h-4" /> {profile.city}</span>}
-            </p>
 
-            <div className="flex flex-wrap items-center justify-center sm:justify-start gap-3 mt-4">
-              <span className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 bg-white/10 text-white rounded-xl backdrop-blur-sm border border-white/10"><Mail className="w-3.5 h-3.5" />{teacher.email}</span>
-              {teacher.phone && (
-                <span className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 bg-white/10 text-white rounded-xl backdrop-blur-sm border border-white/10"><Phone className="w-3.5 h-3.5" />{teacher.phone}</span>
-              )}
-              {teacher.createdAt && (
-                <span className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 bg-white/10 text-white rounded-xl backdrop-blur-sm border border-white/10"><Calendar className="w-3.5 h-3.5" />с {new Date(teacher.createdAt).toLocaleDateString()}</span>
-              )}
-            </div>
-            
-            {subjectsArr.length > 0 && (
-              <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2 mt-4">
-                {subjectsArr.map((s, i) => (
-                  <span key={i} className="text-[11px] font-bold px-3 py-1 bg-yellow-400 text-yellow-900 rounded-full shadow-sm">{s}</span>
-                ))}
-              </div>
-            )}
+          <div className="pt-12 sm:pt-2 sm:ml-24 flex items-start justify-between flex-wrap gap-4">
+             <div>
+                <h1 className="text-xl font-extrabold text-slate-900 dark:text-white">{teacher.displayName}</h1>
+                <div className="flex items-center gap-1.5 mt-1 mb-2">
+                   <span className="flex items-center gap-1 text-[11px] font-bold bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 px-2 py-0.5 rounded uppercase tracking-wider">
+                     <Briefcase className="w-3 h-3" /> {profile?.specialization || t('teacher.role', 'Преподаватель')}
+                   </span>
+                </div>
+                <div className="flex flex-wrap items-center gap-3">
+                  <span className="text-xs text-slate-500 flex items-center gap-1"><Mail className="w-3.5 h-3.5" />{teacher.email}</span>
+                  {teacher.phone && <span className="text-xs text-slate-500 flex items-center gap-1"><Phone className="w-3.5 h-3.5" />{teacher.phone}</span>}
+                  {profile?.city && <span className="text-xs text-slate-500 flex items-center gap-1"><MapPin className="w-3.5 h-3.5" />{profile.city}</span>}
+                </div>
+             </div>
+
+             {subjectsArr.length > 0 && (
+                <div className="flex flex-col items-start sm:items-end gap-1.5 flex-shrink-0">
+                  <span className="text-[10px] text-slate-400 font-medium uppercase tracking-widest leading-none">Предметы</span>
+                  <div className="flex flex-wrap gap-1.5 justify-end">
+                    {subjectsArr.map((s, i) => (
+                      <span key={i} className="px-2 py-0.5 rounded text-[10px] font-bold" style={{ backgroundColor: `${C.purple}15`, color: C.purple }}>{s}</span>
+                    ))}
+                  </div>
+                </div>
+             )}
           </div>
         </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         
-        {/* Left Column - Main Content */}
+        {/* Main Content Info */}
         <div className="lg:col-span-2 space-y-6">
-          
           {profile?.bio && (
-            <div className="bg-white dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 rounded-[2rem] p-6 sm:p-8 shadow-sm">
-              <div className="flex items-center gap-3 mb-4">
-                <div className="w-10 h-10 rounded-xl bg-violet-100 dark:bg-violet-900/30 flex items-center justify-center">
-                  <BookOpen className="w-5 h-5 text-violet-600 dark:text-violet-400" />
-                </div>
-                <h2 className="kahoot-font text-2xl font-bold text-slate-800 dark:text-white">О себе</h2>
+            <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-6 shadow-sm">
+              <div className="flex items-center gap-2 mb-3">
+                <BookOpen className="w-5 h-5 text-slate-400" />
+                <h2 className="text-sm font-extrabold text-slate-900 dark:text-white uppercase tracking-wider">О себе</h2>
               </div>
-              <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed whitespace-pre-line sm:text-base font-medium">{profile.bio}</p>
+              <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed whitespace-pre-line font-medium">{profile.bio}</p>
             </div>
           )}
 
           {profile?.experience && (
-            <div className="bg-white dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 rounded-[2rem] p-6 sm:p-8 shadow-sm">
-              <div className="flex items-center gap-3 mb-4">
-                <div className="w-10 h-10 rounded-xl bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
-                  <Briefcase className="w-5 h-5 text-blue-600 dark:text-blue-400" />
-                </div>
-                <h2 className="kahoot-font text-2xl font-bold text-slate-800 dark:text-white">Опыт работы</h2>
+            <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-6 shadow-sm">
+              <div className="flex items-center gap-2 mb-3">
+                <Briefcase className="w-5 h-5 text-slate-400" />
+                <h2 className="text-sm font-extrabold text-slate-900 dark:text-white uppercase tracking-wider">Опыт работы</h2>
               </div>
               <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed whitespace-pre-line font-medium">{profile.experience}</p>
             </div>
           )}
           
           {profile?.education && (
-            <div className="bg-white dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 rounded-[2rem] p-6 sm:p-8 shadow-sm">
-              <div className="flex items-center gap-3 mb-4">
-                <div className="w-10 h-10 rounded-xl bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center">
-                  <GraduationCap className="w-5 h-5 text-amber-600 dark:text-amber-400" />
-                </div>
-                <h2 className="kahoot-font text-2xl font-bold text-slate-800 dark:text-white">Образование</h2>
+            <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-6 shadow-sm">
+              <div className="flex items-center gap-2 mb-3">
+                <GraduationCap className="w-5 h-5 text-slate-400" />
+                <h2 className="text-sm font-extrabold text-slate-900 dark:text-white uppercase tracking-wider">Образование</h2>
               </div>
               <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed whitespace-pre-line font-medium">{profile.education}</p>
             </div>
           )}
 
           {profile?.certificates && (
-            <div className="bg-white dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 rounded-[2rem] p-6 sm:p-8 shadow-sm">
-              <div className="flex items-center gap-3 mb-4">
-                <div className="w-10 h-10 rounded-xl bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center">
-                  <Award className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
-                </div>
-                <h2 className="kahoot-font text-2xl font-bold text-slate-800 dark:text-white">Сертификаты</h2>
+            <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-6 shadow-sm">
+              <div className="flex items-center gap-2 mb-3">
+                <Award className="w-5 h-5 text-slate-400" />
+                <h2 className="text-sm font-extrabold text-slate-900 dark:text-white uppercase tracking-wider">Сертификаты</h2>
               </div>
               <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed whitespace-pre-line font-medium">{profile.certificates}</p>
             </div>
           )}
 
           {!profile?.bio && !profile?.experience && !profile?.education && !profile?.certificates && (
-            <div className="text-center py-12 border-2 border-dashed border-slate-200 dark:border-slate-700 rounded-[2rem]">
-              <p className="text-slate-400 font-bold">{t('teacher.noProfileYet')}</p>
-              <p className="text-xs text-slate-400 mt-2">Преподаватель пока не заполнил основную информацию.</p>
+            <div className="text-center py-12 border-2 border-dashed border-slate-200 dark:border-slate-700 rounded-2xl">
+              <p className="text-slate-400 font-bold">{t('teacher.noProfileYet', 'Профиль пока не заполнен')}</p>
             </div>
           )}
         </div>
 
-        {/* Right Column - Sidebar */}
+        {/* Sidebar: Assigned Groups */}
         <div className="space-y-6">
-          
-          {/* Resume Block */}
-          {profile?.resumeUrl && (
-            <div className="bg-white dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 rounded-[2rem] p-6 shadow-sm hover:shadow-lg transition-shadow">
-              <h3 className="kahoot-font text-xl font-bold text-slate-800 dark:text-white mb-4 flex items-center gap-2">
-                <FileText className="w-5 h-5 text-red-500" /> Резюме
-              </h3>
-              <a
-                href={profile.resumeUrl}
-                target="_blank"
-                rel="noreferrer"
-                className="flex items-center p-4 bg-slate-50 dark:bg-slate-700/50 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors border border-slate-200 dark:border-slate-600 group"
-              >
-                <div className="w-10 h-10 rounded-lg bg-red-500/10 flex items-center justify-center shrink-0 mr-3">
-                  <FileText className="w-5 h-5 text-red-500 group-hover:scale-110 transition-transform" />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <p className="text-sm font-bold text-slate-900 dark:text-white truncate">{profile.resumeFileName || 'Резюме.pdf'}</p>
-                  <p className="text-xs font-semibold text-slate-500 mt-0.5">Скачать PDF</p>
-                </div>
-              </a>
-            </div>
-          )}
-          
-          {/* Social Links Block */}
-          {profile?.socialLinks && profile.socialLinks.length > 0 && (
-            <div className="bg-white dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 rounded-[2rem] p-6 shadow-sm hover:shadow-lg transition-shadow">
-              <h3 className="kahoot-font text-xl font-bold text-slate-800 dark:text-white mb-4 flex items-center gap-2">
-                <Link2 className="w-5 h-5 text-violet-500" /> {t('teacher.socialLinks')}
-              </h3>
-              <div className="space-y-3">
-                {profile.socialLinks.map((l, i) => (
-                  <a key={i} href={l.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 p-3 rounded-xl bg-slate-50 dark:bg-slate-700/50 hover:bg-slate-100 dark:hover:bg-slate-600 transition-colors border border-slate-200 dark:border-slate-600">
-                    <div className="w-8 h-8 rounded-lg bg-primary-100 dark:bg-primary-900/30 flex items-center justify-center shrink-0">
-                      <Link2 className="w-4 h-4 text-primary-600 dark:text-primary-400" />
-                    </div>
-                    <div className="min-w-0">
-                      <p className="text-sm font-bold text-slate-900 dark:text-white">{l.platform}</p>
-                      <p className="text-[10px] text-slate-500 truncate">{l.url}</p>
-                    </div>
-                  </a>
-                ))}
+           <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl overflow-hidden shadow-sm">
+              <div className="px-5 py-4 border-b border-slate-100 dark:border-slate-700 flex items-center justify-between">
+                 <div className="flex items-center gap-2">
+                   <Users className="w-4 h-4 text-slate-400" />
+                   <h3 className="font-extrabold text-sm text-slate-900 dark:text-white uppercase tracking-wider">Группы</h3>
+                 </div>
+                 {canAssign && (
+                   <button onClick={() => setShowAssignModal(true)} className="p-1 text-slate-400 hover:text-white hover:bg-violet-500 rounded transition-colors" title="Добавить группу">
+                      <Plus className="w-4 h-4" />
+                   </button>
+                 )}
               </div>
-            </div>
-          )}
-
-          {/* Groups List */}
-          {teacherGroups.length > 0 && (
-            <div className="bg-white dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 rounded-[2rem] p-6 shadow-sm hover:shadow-lg transition-shadow">
-               <h3 className="kahoot-font text-xl font-bold text-slate-800 dark:text-white mb-4 flex items-center gap-2">
-                 <Users className="w-5 h-5 text-emerald-500" /> {t('teacher.groupsAndCourses')}
-               </h3>
-               <div className="space-y-3">
-                 {teacherGroups.map((g: any) => (
-                   <div key={g.id} className="bg-slate-50 dark:bg-slate-700/50 rounded-xl p-4 border border-slate-200 dark:border-slate-600">
-                     <p className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                       <FolderOpen className="w-4 h-4 text-emerald-500" /> {g.name}
-                     </p>
-                     {g.courseName && <p className="text-xs font-semibold text-slate-500 mt-1.5 ml-6">Курс: {g.courseName}</p>}
-                     <p className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 mt-1 ml-6">{g.studentIds?.length || 0} учеников</p>
-                   </div>
-                 ))}
-               </div>
-            </div>
-          )}
-
+              
+              <div className="p-3 divide-y divide-slate-50 dark:divide-slate-700/50">
+                {teacherGroups.length === 0 ? (
+                  <p className="text-[11px] text-slate-500 text-center py-4 font-medium">Нет прикрепленных групп</p>
+                ) : (
+                  teacherGroups.map(g => (
+                    <div key={g.id} className="py-2.5 px-2 flex items-center justify-between group">
+                       <div className="flex-1 cursor-pointer" onClick={() => navigate(`/groups/${g.id}`)}>
+                          <p className="text-xs font-bold text-slate-900 dark:text-white group-hover:text-primary-500 transition-colors truncate">{g.name}</p>
+                          <p className="text-[10px] text-slate-400 truncate mt-0.5">{g.courseName}</p>
+                       </div>
+                       {canAssign && (
+                         <button onClick={() => handleUnassignGroup(g.id)} className="opacity-0 group-hover:opacity-100 p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded transition-all">
+                           <X className="w-3.5 h-3.5" />
+                         </button>
+                       )}
+                    </div>
+                  ))
+                )}
+              </div>
+           </div>
         </div>
       </div>
+
+      {/* Assign Modal */}
+      {showAssignModal && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => setShowAssignModal(false)}>
+          <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 w-full max-w-sm shadow-2xl" onClick={e => e.stopPropagation()}>
+             <h2 className="text-lg font-bold text-slate-900 dark:text-white mb-2">Назначить группу</h2>
+             <p className="text-xs text-slate-500 mb-4">Выберите группу для преподавателя <b>{teacher.displayName}</b>. Преподаватель получит доступ к материалам курса.</p>
+             
+             {availableGroups.length === 0 ? (
+               <div className="bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400 p-3 rounded-lg text-xs mb-4">
+                 Нет доступных групп для назначения.
+               </div>
+             ) : (
+               <select 
+                 value={selectedGroupId} 
+                 onChange={e => setSelectedGroupId(e.target.value)}
+                 className="w-full bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-xl px-4 py-2.5 text-sm font-medium text-slate-900 dark:text-white outline-none focus:border-violet-500 mb-5"
+               >
+                 <option value="">-- Выберите группу --</option>
+                 {availableGroups.map(g => (
+                   <option key={g.id} value={g.id}>{g.name} ({g.courseName || 'Без курса'})</option>
+                 ))}
+               </select>
+             )}
+
+             <div className="flex justify-end gap-2">
+               <button onClick={() => setShowAssignModal(false)} className="px-4 py-2 text-xs font-bold text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-xl transition-colors">
+                 Отмена
+               </button>
+               <button 
+                 onClick={handleAssignGroup} 
+                 disabled={!selectedGroupId || assigning}
+                 className="bg-violet-500 hover:bg-violet-600 text-white px-5 py-2 rounded-xl text-xs font-bold disabled:opacity-50 transition-colors shadow-md shadow-violet-500/20"
+               >
+                 {assigning ? 'Назначение...' : 'Назначить'}
+               </button>
+             </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

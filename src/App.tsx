@@ -43,6 +43,7 @@ import StudentProgressPage from './pages/student/StudentProgressPage';
 import StudentCoursesPage from './pages/student/StudentCoursesPage';
 import StudentTeachersPage from './pages/student/StudentTeachersPage';
 import StudentGroupsPage from './pages/student/StudentGroupsPage';
+import StudentSchedulePage from './pages/student/StudentSchedulePage';
 
 // Quiz Pages
 import QuizLibraryPage from './pages/quiz/QuizLibraryPage';
@@ -178,6 +179,7 @@ const App: React.FC = () => {
             <Route path="student/teachers" element={<ProtectedRoute allowedRoles={['student']}><StudentTeachersPage /></ProtectedRoute>} />
             <Route path="diary" element={<ProtectedRoute allowedRoles={['student']}><StudentDiaryPage /></ProtectedRoute>} />
             <Route path="progress" element={<ProtectedRoute allowedRoles={['student']}><StudentProgressPage /></ProtectedRoute>} />
+            <Route path="student/schedule" element={<ProtectedRoute allowedRoles={['student']}><StudentSchedulePage /></ProtectedRoute>} />
 
             {/* ═══ Quiz System ═══ */}
             <Route path="quiz/library" element={<ProtectedRoute allowedRoles={['admin', 'manager', 'teacher']}><QuizLibraryPage /></ProtectedRoute>} />

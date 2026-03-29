@@ -444,6 +444,9 @@ const Sidebar: React.FC<{ open: boolean; onClose: () => void }> = ({ open, onClo
                     <NavLink to="/student/teachers" className={linkClass} onClick={onClose}>
                       <UserPlus className="w-4 h-4" />{t('nav.myTeachers', 'Мои преподаватели')}
                     </NavLink>
+                    <NavLink to="/student/schedule" className={linkClass} onClick={onClose}>
+                      <Calendar className="w-4 h-4" />{t('nav.schedule')}
+                    </NavLink>
                   </CollapsibleSection>
                 </>
               )}

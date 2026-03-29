@@ -57,14 +57,14 @@ const StudentDashboard: React.FC = () => {
               {greeting} {t('dashboard.welcome')}, {profile?.displayName?.split(' ')[0]}!
             </h1>
             <p className="text-white/90 text-lg sm:text-xl font-medium leading-relaxed mb-6">
-              Войдите в учебное пространство, чтобы начать свое приключение!
+              {t('studentDashboard.heroTitleNoOrg')}
             </p>
             <Link
               to="/directory"
               className="inline-flex items-center gap-2 px-8 py-4 bg-white text-[#46178F] rounded-2xl font-bold text-lg hover:bg-slate-50 shadow-[0_6px_0_#94a3b8] active:translate-y-[4px] active:shadow-[0_2px_0_#94a3b8] transition-all"
             >
               <Search className="w-5 h-5" />
-              Найти учебный центр
+              {t('studentDashboard.findCenterBtn')}
             </Link>
           </div>
         </div>
@@ -79,8 +79,8 @@ const StudentDashboard: React.FC = () => {
             <div className="w-16 h-16 bg-white/20 rounded-2xl flex items-center justify-center mb-4 group-hover:scale-110 group-hover:rotate-6 transition-transform">
               <Play className="w-8 h-8 text-white fill-white" />
             </div>
-            <h3 className="kahoot-font text-xl font-bold mb-1 tracking-wide">Зайти в Зал</h3>
-            <p className="text-sm text-white/80 font-medium">Студенческая комната</p>
+            <h3 className="kahoot-font text-xl font-bold mb-1 tracking-wide">{t('studentDashboard.joinLiveRoom')}</h3>
+            <p className="text-sm text-white/80 font-medium">{t('studentDashboard.studentRoomDesc')}</p>
           </Link>
 
           {/* Action 2: Join Quiz (Blue) */}
@@ -88,8 +88,8 @@ const StudentDashboard: React.FC = () => {
             <div className="w-16 h-16 bg-white/20 rounded-2xl flex items-center justify-center mb-4 group-hover:scale-110 group-hover:-rotate-6 transition-transform">
               <Gamepad2 className="w-8 h-8 text-white" />
             </div>
-            <h3 className="kahoot-font text-xl font-bold mb-1 tracking-wide">Квиз</h3>
-            <p className="text-sm text-white/80 font-medium">Введите код игры</p>
+            <h3 className="kahoot-font text-xl font-bold mb-1 tracking-wide">{t('studentDashboard.quiz')}</h3>
+            <p className="text-sm text-white/80 font-medium">{t('studentDashboard.quizDesc')}</p>
           </Link>
 
           {/* Action 3: Directory (Green) */}
@@ -97,8 +97,8 @@ const StudentDashboard: React.FC = () => {
             <div className="w-16 h-16 bg-white/20 rounded-2xl flex items-center justify-center mb-4 group-hover:scale-110 group-hover:rotate-6 transition-transform">
               <Building2 className="w-8 h-8 text-white" />
             </div>
-            <h3 className="kahoot-font text-xl font-bold mb-1 tracking-wide">Каталог</h3>
-            <p className="text-sm text-white/80 font-medium">Школы и центры</p>
+            <h3 className="kahoot-font text-xl font-bold mb-1 tracking-wide">{t('studentDashboard.directory')}</h3>
+            <p className="text-sm text-white/80 font-medium">{t('studentDashboard.schoolsDesc')}</p>
           </Link>
         </div>
       </div>
@@ -135,7 +135,7 @@ const StudentDashboard: React.FC = () => {
           </div>
           
           <Link to="/join" className="inline-flex items-center gap-2 bg-yellow-400 text-yellow-900 hover:bg-yellow-300 px-6 py-4 rounded-2xl font-bold text-lg shadow-[0_6px_0_#b7860b] active:translate-y-[4px] active:shadow-[0_2px_0_#b7860b] transition-all w-fit kahoot-font">
-            <Play className="w-5 h-5 fill-yellow-900" /> В Зал Ожидания
+            <Play className="w-5 h-5 fill-yellow-900" /> {t('studentDashboard.intoWaitingRoom')}
           </Link>
         </div>
       </div>
@@ -146,23 +146,23 @@ const StudentDashboard: React.FC = () => {
           <div className="w-14 h-14 bg-white/20 rounded-2xl flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
             <Radio className="w-7 h-7 text-white" />
           </div>
-          <h3 className="kahoot-font text-lg font-bold mb-1">Live Урок</h3>
-          <p className="text-xs text-white/80 font-medium">Войти по коду</p>
+          <h3 className="kahoot-font text-lg font-bold mb-1">{t('studentDashboard.liveLessonTitle')}</h3>
+          <p className="text-xs text-white/80 font-medium">{t('studentDashboard.liveLessonDesc')}</p>
         </Link>
         
         <Link to="/quiz/join" className="bg-[#1368CE] hover:bg-[#105ab3] text-white p-5 rounded-[1.5rem] shadow-[0_6px_0_#0a4387] active:translate-y-[4px] active:shadow-[0_2px_0_#0a4387] transition-all group flex flex-col items-center text-center">
           <div className="w-14 h-14 bg-white/20 rounded-2xl flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
             <Gamepad2 className="w-7 h-7 text-white" />
           </div>
-          <h3 className="kahoot-font text-lg font-bold mb-1">Викторина</h3>
-          <p className="text-xs text-white/80 font-medium">Быстрая игра</p>
+          <h3 className="kahoot-font text-lg font-bold mb-1">{t('studentDashboard.quizTitle')}</h3>
+          <p className="text-xs text-white/80 font-medium">{t('studentDashboard.quickGameDesc')}</p>
         </Link>
 
         <Link to="/lessons" className="bg-[#D89E00] hover:bg-[#b88600] text-white p-5 rounded-[1.5rem] shadow-[0_6px_0_#8f6800] active:translate-y-[4px] active:shadow-[0_2px_0_#8f6800] transition-all group flex flex-col items-center text-center">
           <div className="w-14 h-14 bg-white/20 rounded-2xl flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
             <BookOpen className="w-7 h-7 text-white" />
           </div>
-          <h3 className="kahoot-font text-lg font-bold mb-1">Уроки</h3>
+          <h3 className="kahoot-font text-lg font-bold mb-1">{t('studentDashboard.lessonsTitle')}</h3>
           <p className="text-xs text-white/80 font-medium">{lessons.length} {t('studentDashboard.available')}</p>
         </Link>
 
@@ -170,8 +170,8 @@ const StudentDashboard: React.FC = () => {
           <div className="w-14 h-14 bg-white/20 rounded-2xl flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
             <Trophy className="w-7 h-7 text-white" />
           </div>
-          <h3 className="kahoot-font text-lg font-bold mb-1">Результаты</h3>
-          <p className="text-xs text-white/80 font-medium">Ваши успехи</p>
+          <h3 className="kahoot-font text-lg font-bold mb-1">{t('studentDashboard.resultsTitle')}</h3>
+          <p className="text-xs text-white/80 font-medium">{t('studentDashboard.yourSuccessDesc')}</p>
         </Link>
       </div>
 

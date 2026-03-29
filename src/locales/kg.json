@@ -500,7 +500,7 @@
       "invite": "Мугалим чакыруу",
       "empty": "Мугалимдер азырка жок",
       "roleTeacher": "Мугалим",
-      "roleAdmin": "Администратор",
+      "roleAdmin": "Директор",
       "sendInvite": "Чакыруу жөнөтүү",
       "courses": "Курстар",
       "groups": "Топтор"
@@ -543,7 +543,7 @@
       "sendInvite": "Чакыруу жөнөтүү",
       "roleStudent": "Студент",
       "roleTeacher": "Мугалим",
-      "roleAdmin": "Администратор"
+      "roleAdmin": "Директор"
     },
     "settings": {
       "subtitle": "Уюмдун жөндөөлөрү",

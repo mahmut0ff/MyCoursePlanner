@@ -47,7 +47,7 @@ const AdminUsersPage: React.FC = () => {
           </div>
           <select value={roleFilter} onChange={(e) => setRoleFilter(e.target.value)} className="input w-auto">
             <option value="">{t('admin.users.allRoles')}</option>
-            <option value="admin">{t('roles.admin', 'Администратор')}</option>
+            <option value="admin">{t('roles.admin', 'Директор')}</option>
             <option value="manager">{t('roles.manager', 'Менеджер')}</option>
             <option value="teacher">{t('roles.teacher', 'Преподаватель')}</option>
             <option value="student">{t('roles.student', 'Студент')}</option>

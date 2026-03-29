@@ -595,7 +595,7 @@
       "invite": "Invite Teacher",
       "empty": "No teachers yet",
       "roleTeacher": "Teacher",
-      "roleAdmin": "Admin",
+      "roleAdmin": "Director",
       "sendInvite": "Send Invite",
       "courses": "Courses",
       "groups": "Groups"
@@ -638,7 +638,7 @@
       "sendInvite": "Send Invite",
       "roleStudent": "Student",
       "roleTeacher": "Teacher",
-      "roleAdmin": "Admin"
+      "roleAdmin": "Director"
     },
     "settings": {
       "subtitle": "Organization settings and preferences",
@@ -1266,7 +1266,7 @@
   },
   "membership": {
     "owner": "Owner",
-    "admin": "Admin",
+    "admin": "Director",
     "teacher": "Teacher",
     "mentor": "Mentor",
     "student": "Student",

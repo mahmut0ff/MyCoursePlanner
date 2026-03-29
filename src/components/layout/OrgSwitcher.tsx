@@ -80,7 +80,7 @@ const OrgSwitcher: React.FC<OrgSwitcherProps> = ({ currentOrgId, userRole, onSwi
 
   const roleLabels: Record<string, string> = {
     owner: t('membership.owner', 'Владелец'),
-    admin: t('membership.admin', 'Админ'),
+    admin: t('membership.admin', 'Директор'),
     teacher: t('membership.teacher', 'Преподаватель'),
     mentor: t('membership.mentor', 'Ментор'),
     student: t('membership.student', 'Студент'),

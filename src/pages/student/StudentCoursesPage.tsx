@@ -81,7 +81,7 @@ const StudentCoursesPage: React.FC = () => {
             {t('studentCourses.emptyTitle', 'Нет доступных курсов')}
           </h3>
           <p className="text-slate-500 dark:text-slate-400 max-w-sm mx-auto">
-            {t('studentCourses.emptySubtitle', 'Вы пока не состоите ни в одной группе, привязанной к курсу. Обратитесь к администратору.')}
+            {t('studentCourses.emptySubtitle', 'Вы пока не состоите ни в одной группе, привязанной к курсу. Обратитесь к директору.')}
           </p>
         </div>
       ) : (

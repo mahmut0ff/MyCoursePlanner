@@ -132,7 +132,7 @@ const SuperAdminDashboard: React.FC = () => {
               <div className="space-y-3">
                 <div className="flex items-center justify-between"><span className="text-sm text-slate-600 dark:text-slate-400">{t('admin.stats.students', 'Студенты')}</span><span className="font-semibold text-slate-900 dark:text-white">{stats.totalStudents}</span></div>
                 <div className="flex items-center justify-between"><span className="text-sm text-slate-600 dark:text-slate-400">{t('admin.stats.teachers', 'Преподаватели')}</span><span className="font-semibold text-slate-900 dark:text-white">{stats.totalTeachers}</span></div>
-                <div className="flex items-center justify-between"><span className="text-sm text-slate-600 dark:text-slate-400">{t('admin.stats.admins', 'Администраторы')}</span><span className="font-semibold text-slate-900 dark:text-white">{stats.totalAdmins}</span></div>
+                <div className="flex items-center justify-between"><span className="text-sm text-slate-600 dark:text-slate-400">{t('admin.stats.admins', 'Директора')}</span><span className="font-semibold text-slate-900 dark:text-white">{stats.totalAdmins}</span></div>
               </div>
               <div className="mt-4 pt-4 border-t border-slate-200 dark:border-slate-700 flex items-center justify-between text-sm">
                 <span className="text-slate-500 dark:text-slate-400">{t('admin.stats.totalAttempts', 'Всего попыток')}</span>

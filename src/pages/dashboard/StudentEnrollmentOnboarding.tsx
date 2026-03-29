@@ -121,7 +121,7 @@ const StudentEnrollmentOnboarding: React.FC<Props> = ({ onComplete }) => {
             </h2>
             {courses.length === 0 ? (
               <div className="text-center py-10 bg-slate-50 dark:bg-slate-900/50 rounded-2xl border border-dashed border-slate-200 dark:border-slate-700">
-                <p className="text-slate-500">Пока нет доступных курсов. Пожалуйста, обратитесь к администратору.</p>
+                <p className="text-slate-500">Пока нет доступных курсов. Пожалуйста, обратитесь к директору.</p>
               </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

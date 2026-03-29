@@ -238,6 +238,8 @@ export interface UserProfile {
   city?: string;
   country?: string;
   phone?: string;
+  resumeUrl?: string;              // PDF resume download URL
+  resumeFileName?: string;         // PDF resume original file name
   createdAt: string;
   updatedAt: string;
 }

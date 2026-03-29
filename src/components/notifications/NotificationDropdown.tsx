@@ -6,16 +6,14 @@ import { db } from '../../lib/firebase';
 import { collection, query, where, orderBy, limit, onSnapshot } from 'firebase/firestore';
 import { apiMarkNotificationRead, apiMarkAllNotificationsRead } from '../../lib/api';
 import {
-  Bell, MailOpen, Briefcase, Users, UserCheck, UserX,
+  Bell, MailOpen, Users, UserCheck, UserX,
   Radio, Trophy, BookOpen, Building2, CheckCheck, X,
 } from 'lucide-react';
 import type { AppNotification, NotificationType } from '../../types';
 
 const TYPE_CONFIG: Record<NotificationType, { icon: React.ReactNode; color: string }> = {
   invite_received:        { icon: <MailOpen className="w-4 h-4" />,   color: 'text-blue-500 bg-blue-500/10' },
-  vacancy_app_reviewed:   { icon: <Briefcase className="w-4 h-4" />,  color: 'text-emerald-500 bg-emerald-500/10' },
   added_to_group:         { icon: <Users className="w-4 h-4" />,      color: 'text-violet-500 bg-violet-500/10' },
-  new_vacancy_application:{ icon: <Briefcase className="w-4 h-4" />,  color: 'text-amber-500 bg-amber-500/10' },
   invite_accepted:        { icon: <UserCheck className="w-4 h-4" />,  color: 'text-emerald-500 bg-emerald-500/10' },
   invite_declined:        { icon: <UserX className="w-4 h-4" />,      color: 'text-red-500 bg-red-500/10' },
   exam_room_created:      { icon: <Radio className="w-4 h-4" />,      color: 'text-cyan-500 bg-cyan-500/10' },

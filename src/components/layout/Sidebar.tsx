@@ -9,15 +9,14 @@ import OrgSwitcher from './OrgSwitcher';
 import {
   Building2, Calendar, FileText, GraduationCap,
   LayoutDashboard, Library, Monitor, Shield,
-  UsersRound, Settings, BookOpen, UserPlus, Megaphone,
+  UsersRound, Settings, BookOpen, UserPlus,
   BarChart3, Gamepad2, History, ChevronDown, TableProperties,
   Users, Layers, Database, Activity, Flag, Plug, FolderOpen,
   ClipboardList, Radio, Award, Trophy, LogOut, CreditCard,
-  TrendingUp, MessageSquareText, Bell, Lock, ClipboardCheck, TrendingDown
+  TrendingUp, Bell, Lock, ClipboardCheck, TrendingDown
 } from 'lucide-react';
 
-import { useChatRooms, useUnreadCount } from '../../lib/useChat';
-
+                        
 /* ─── Collapsible section ─── */
 const CollapsibleSection: React.FC<{
   label: string;
@@ -74,8 +73,7 @@ const Sidebar: React.FC<{ open: boolean; onClose: () => void }> = ({ open, onClo
 
 
 
-  const { rooms } = useChatRooms(organizationId || undefined);
-  const unreadChatCount = useUnreadCount(rooms);
+                        
 
   return (
     <>

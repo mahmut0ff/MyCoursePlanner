@@ -1,8 +1,8 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../contexts/AuthContext';
 import { orgGetGroups, orgGetCourses } from '../../lib/api';
-import { Users, FolderOpen, Link as LinkIcon, MessageCircle } from 'lucide-react';
+import { Users, FolderOpen, MessageCircle } from 'lucide-react';
 import StudentOrgFilter from '../../components/ui/StudentOrgFilter';
 import type { Group, Course } from '../../types';
 

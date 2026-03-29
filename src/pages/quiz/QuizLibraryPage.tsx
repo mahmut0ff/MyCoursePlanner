@@ -177,18 +177,54 @@ const QuizLibraryPage: React.FC = () => {
         </div>
       ) : filtered.length === 0 ? (
         <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-14 text-center">
-          <div className="w-16 h-16 mx-auto rounded-2xl flex items-center justify-center mb-4" style={{ background: 'var(--kahoot-purple)', opacity: 0.2 }}>
-            <Gamepad2 className="w-8 h-8 text-white" />
-          </div>
-          <h3 className="text-base font-bold text-slate-700 dark:text-slate-300 mb-2">{t('quiz.noQuizzes')}</h3>
-          <p className="text-sm text-slate-500 dark:text-slate-400 mb-5">{t('quiz.createFirst')}</p>
-          <Link
-            to="/quiz/new"
-            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg font-bold text-white text-sm"
-            style={{ backgroundColor: 'var(--kahoot-green)' }}
-          >
-            <Plus className="w-4 h-4" />{t('quiz.create')}
-          </Link>
+          {tab === 'my' && (
+            <>
+              <div className="w-16 h-16 mx-auto rounded-2xl flex items-center justify-center mb-4" style={{ background: 'var(--kahoot-purple)', opacity: 0.2 }}>
+                <Gamepad2 className="w-8 h-8 text-white" />
+              </div>
+              <h3 className="text-base font-bold text-slate-700 dark:text-slate-300 mb-2">{t('quiz.noQuizzes')}</h3>
+              <p className="text-sm text-slate-500 dark:text-slate-400 mb-5">{t('quiz.createFirst')}</p>
+              <Link
+                to="/quiz/new"
+                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg font-bold text-white text-sm"
+                style={{ backgroundColor: 'var(--kahoot-green)' }}
+              >
+                <Plus className="w-4 h-4" />{t('quiz.create')}
+              </Link>
+            </>
+          )}
+          {tab === 'shared' && (
+            <>
+              <div className="w-16 h-16 mx-auto rounded-2xl flex items-center justify-center mb-4" style={{ background: 'linear-gradient(135deg, #1368ce 0%, #2b86e3 100%)', opacity: 0.2 }}>
+                <Share2 className="w-8 h-8 text-white" />
+              </div>
+              <h3 className="text-base font-bold text-slate-700 dark:text-slate-300 mb-2">{t('quiz.noSharedQuizzes', 'Нет общих викторин')}</h3>
+              <p className="text-sm text-slate-500 dark:text-slate-400 mb-5 max-w-md mx-auto">{t('quiz.noSharedDesc', 'Здесь появятся викторины, которыми поделились коллеги из вашей организации или другие преподаватели на платформе.')}</p>
+              <button
+                onClick={() => setTab('discover')}
+                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg font-bold text-white text-sm transition-all hover:shadow-lg active:scale-[0.98]"
+                style={{ background: 'linear-gradient(135deg, #1368ce 0%, #2b86e3 100%)' }}
+              >
+                <Globe className="w-4 h-4" />{t('quiz.browseDiscover', 'Обзор публичных')}
+              </button>
+            </>
+          )}
+          {tab === 'discover' && (
+            <>
+              <div className="w-16 h-16 mx-auto rounded-2xl flex items-center justify-center mb-4" style={{ background: 'linear-gradient(135deg, #26890c 0%, #3ba524 100%)', opacity: 0.2 }}>
+                <Globe className="w-8 h-8 text-white" />
+              </div>
+              <h3 className="text-base font-bold text-slate-700 dark:text-slate-300 mb-2">{t('quiz.noPublicQuizzes', 'Публичных викторин пока нет')}</h3>
+              <p className="text-sm text-slate-500 dark:text-slate-400 mb-5 max-w-md mx-auto">{t('quiz.noPublicDesc', 'Здесь будут опубликованные викторины от всех преподавателей на платформе. Опубликуйте свою викторину, чтобы другие могли её использовать!')}</p>
+              <Link
+                to="/quiz/new"
+                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg font-bold text-white text-sm transition-all hover:shadow-lg active:scale-[0.98]"
+                style={{ backgroundColor: 'var(--kahoot-green)' }}
+              >
+                <Plus className="w-4 h-4" />{t('quiz.createAndPublish', 'Создать и опубликовать')}
+              </Link>
+            </>
+          )}
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">

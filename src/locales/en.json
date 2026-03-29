@@ -46,7 +46,31 @@
     "profile": "Profile",
     "quizLibrary": "Quiz Library",
     "quizSessions": "Quiz Sessions",
-    "joinQuiz": "Join Quiz"
+    "joinQuiz": "Join Quiz",
+    "homeworkReview": "Homework Review",
+    "riskDashboard": "Risk Dashboard",
+    "sectionManagement": "Management",
+    "sectionSystem": "System",
+    "sectionEducation": "Education",
+    "journal": "Journal",
+    "gradebook": "Gradebook",
+    "sectionQuiz": "Quizzes",
+    "sectionPeople": "People",
+    "sectionOrg": "Organization",
+    "finances": "Finances",
+    "sectionPersonalWorkspace": "Personal Workspace",
+    "myLessons": "My Lessons",
+    "myMaterials": "My Materials",
+    "myExams": "My Exams",
+    "myExamRooms": "Exam Rooms",
+    "progress": "My Progress",
+    "diary": "My Diary",
+    "myCourses": "My Courses",
+    "myGroups": "My Groups",
+    "myTeachers": "My Teachers",
+    "sectionExams": "Exams & Tests",
+    "certificates": "Certificates",
+    "achievements": "Achievements"
   },
   "auth": {
     "login": "Sign In",
@@ -545,7 +569,8 @@
     "error": "An error occurred",
     "email": "Email",
     "optional": "optional",
-    "notFound": "Not found"
+    "notFound": "Not found",
+    "howItWorks": "How it works?"
   },
   "org": {
     "courses": {

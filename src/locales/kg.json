@@ -36,7 +36,32 @@
     "results": "Жыйынтыктар",
     "education": "Билим берүү",
     "examsSection": "Экзамендер",
-    "people": "Адамдар"
+    "people": "Адамдар",
+    "homeworkReview": "Үй тапшырма текшерүү",
+    "riskDashboard": "Тобокелдиктер светофору",
+    "sectionManagement": "Башкаруу",
+    "sectionSystem": "Система",
+    "sectionEducation": "Окутуу",
+    "journal": "Журнал",
+    "gradebook": "Баалар",
+    "sectionQuiz": "Квиздер",
+    "sectionPeople": "Адамдар",
+    "sectionOrg": "Организация",
+    "finances": "Каржы",
+    "notifications": "Билдирмелер",
+    "sectionPersonalWorkspace": "Жеке мейкиндик",
+    "myLessons": "Менин сабактарым",
+    "myMaterials": "Менин материалдарым",
+    "myExams": "Менин сынактарым",
+    "myExamRooms": "Сынак бөлмөлөрү",
+    "progress": "Менин прогрессим",
+    "diary": "Менин күндөлүгүм",
+    "myCourses": "Менин курстарым",
+    "myGroups": "Менин топторум",
+    "myTeachers": "Менин мугалимдерим",
+    "sectionExams": "Сынактар жана тесттер",
+    "certificates": "Сертификаттар",
+    "achievements": "Жетишкендиктер"
   },
   "auth": {
     "login": "Кирүү",
@@ -450,7 +475,8 @@
     "on": "КҮЙҮК",
     "off": "ӨЧҮК",
     "email": "Email",
-    "optional": "милдеттүү эмес"
+    "optional": "милдеттүү эмес",
+    "howItWorks": "Бул кантип иштейт?"
   },
   "org": {
     "courses": {

@@ -152,7 +152,7 @@ const Topbar: React.FC<TopbarProps> = ({ onMenuClick }) => {
             <button
               onClick={() => setHelpOpen(true)}
               className="p-2 rounded-lg text-primary-500 hover:text-primary-600 dark:text-primary-400 dark:hover:text-primary-300 hover:bg-primary-50 dark:hover:bg-primary-900/20 transition-colors"
-              title="Как это работает?"
+              title={t('common.howItWorks', "Как работает модуль?")}
             >
               <HelpCircle className="w-5 h-5" />
             </button>

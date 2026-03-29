@@ -172,7 +172,7 @@ const Sidebar: React.FC<{ open: boolean; onClose: () => void }> = ({ open, onClo
                   {!canAccess('gradebook') && <Lock className="w-3 h-3 ml-auto text-slate-500" />}
                 </NavLink>
                 <NavLink to="/homework/review" className={linkClass} onClick={onClose}>
-                  <ClipboardCheck className="w-4 h-4" />Проверка ДЗ
+                  <ClipboardCheck className="w-4 h-4" />{t('nav.homeworkReview', 'Проверка ДЗ')}
                 </NavLink>
                 <NavLink to="/gradebook" className={({ isActive }) => `${linkClass({ isActive })} ${!canAccess('gradebook') ? 'opacity-50' : ''}`} onClick={onClose}>
                   <TableProperties className="w-4 h-4" />{t('nav.gradebook', 'Оценки')}
@@ -214,7 +214,7 @@ const Sidebar: React.FC<{ open: boolean; onClose: () => void }> = ({ open, onClo
                   {!canAccess('advancedAnalytics') && <Lock className="w-3 h-3 ml-auto text-slate-500" />}
                 </NavLink>
                 <NavLink to="/risk-dashboard" className={({ isActive }) => `${linkClass({ isActive })} ${!canAccess('advancedAnalytics') ? 'opacity-50' : ''}`} onClick={onClose}>
-                  <TrendingDown className="w-4 h-4" />Светофор рисков
+                  <TrendingDown className="w-4 h-4" />{t('nav.riskDashboard', 'Светофор рисков')}
                   {!canAccess('advancedAnalytics') && <Lock className="w-3 h-3 ml-auto text-slate-500" />}
                 </NavLink>
 
@@ -239,7 +239,7 @@ const Sidebar: React.FC<{ open: boolean; onClose: () => void }> = ({ open, onClo
                       {!canAccess('gradebook') && <Lock className="w-3 h-3 ml-auto text-slate-500" />}
                     </NavLink>
                     <NavLink to="/homework/review" className={linkClass} onClick={onClose}>
-                      <ClipboardCheck className="w-4 h-4" />Проверка ДЗ
+                      <ClipboardCheck className="w-4 h-4" />{t('nav.homeworkReview', 'Проверка ДЗ')}
                     </NavLink>
                     <NavLink to="/gradebook" className={({ isActive }) => `${linkClass({ isActive })} ${!canAccess('gradebook') ? 'opacity-50' : ''}`} onClick={onClose}>
                       <TableProperties className="w-4 h-4" />{t('nav.gradebook', 'Оценки')}
@@ -320,7 +320,7 @@ const Sidebar: React.FC<{ open: boolean; onClose: () => void }> = ({ open, onClo
                       {!canAccess('gradebook') && <Lock className="w-3 h-3 ml-auto text-slate-500" />}
                     </NavLink>
                     <NavLink to="/homework/review" className={linkClass} onClick={onClose}>
-                      <ClipboardCheck className="w-4 h-4" />Проверка ДЗ
+                      <ClipboardCheck className="w-4 h-4" />{t('nav.homeworkReview', 'Проверка ДЗ')}
                     </NavLink>
                     <NavLink to="/gradebook" className={({ isActive }) => `${linkClass({ isActive })} ${!canAccess('gradebook') ? 'opacity-50' : ''}`} onClick={onClose}>
                       <TableProperties className="w-4 h-4" />{t('nav.gradebook', 'Оценки')}
@@ -367,7 +367,7 @@ const Sidebar: React.FC<{ open: boolean; onClose: () => void }> = ({ open, onClo
                       {!canAccess('advancedAnalytics') && <Lock className="w-3 h-3 ml-auto text-slate-500" />}
                     </NavLink>
                     <NavLink to="/risk-dashboard" className={({ isActive }) => `${linkClass({ isActive })} ${!canAccess('advancedAnalytics') ? 'opacity-50' : ''}`} onClick={onClose}>
-                      <TrendingDown className="w-4 h-4" />Светофор рисков
+                      <TrendingDown className="w-4 h-4" />{t('nav.riskDashboard', 'Светофор рисков')}
                       {!canAccess('advancedAnalytics') && <Lock className="w-3 h-3 ml-auto text-slate-500" />}
                     </NavLink>
                   </CollapsibleSection>
@@ -379,16 +379,16 @@ const Sidebar: React.FC<{ open: boolean; onClose: () => void }> = ({ open, onClo
                 <>
                   <CollapsibleSection label={t('nav.sectionPersonalWorkspace', 'Личное пространство')} icon={FolderOpen} defaultOpen>
                     <NavLink to="/lessons" className={linkClass} onClick={onClose}>
-                      <BookOpen className="w-4 h-4" />{t('nav.lessons', 'Мои уроки')}
+                      <BookOpen className="w-4 h-4" />{t('nav.myLessons', 'Мои уроки')}
                     </NavLink>
                     <NavLink to="/materials" className={linkClass} onClick={onClose}>
-                      <FileText className="w-4 h-4" />{t('nav.materials', 'Мои материалы')}
+                      <FileText className="w-4 h-4" />{t('nav.myMaterials', 'Мои материалы')}
                     </NavLink>
                     <NavLink to="/exams" className={linkClass} onClick={onClose}>
-                      <ClipboardList className="w-4 h-4" />{t('nav.exams', 'Мои экзамены')}
+                      <ClipboardList className="w-4 h-4" />{t('nav.myExams', 'Мои экзамены')}
                     </NavLink>
                     <NavLink to="/rooms" className={linkClass} onClick={onClose}>
-                      <Monitor className="w-4 h-4" />{t('nav.examRooms', 'Экзаменационные комнаты')}
+                      <Monitor className="w-4 h-4" />{t('nav.myExamRooms', 'Экзаменационные комнаты')}
                     </NavLink>
                   </CollapsibleSection>
 

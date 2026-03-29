@@ -48,12 +48,31 @@
     "quizSessions": "Сессии викторин",
     "joinQuiz": "Присоединиться к викторине",
     "orgUsers": "Пользователи орг.",
-    "journal": "Журнал (Переклички)",
+    "journal": "Журнал",
     "diary": "Мой дневник",
     "progress": "Мой прогресс",
     "sectionLearning": "Обучение",
-    "sectionPeople": "ЛЮДИ",
-    "sectionOrg": "ОРГАНИЗАЦИЯ"
+    "sectionPeople": "Люди",
+    "sectionOrg": "Организация",
+    "homeworkReview": "Проверка ДЗ",
+    "riskDashboard": "Светофор рисков",
+    "sectionManagement": "Управление",
+    "sectionSystem": "Система",
+    "sectionEducation": "Обучение",
+    "gradebook": "Оценки",
+    "sectionQuiz": "Квизы",
+    "finances": "Финансы",
+    "sectionPersonalWorkspace": "Личное пространство",
+    "myLessons": "Мои уроки",
+    "myMaterials": "Мои материалы",
+    "myExams": "Мои экзамены",
+    "myExamRooms": "Экзаменационные комнаты",
+    "myCourses": "Мои курсы",
+    "myGroups": "Мои группы",
+    "myTeachers": "Мои преподаватели",
+    "sectionExams": "Экзамены и тесты",
+    "certificates": "Сертификаты",
+    "achievements": "Достижения"
   },
   "auth": {
     "login": "Войти",
@@ -639,7 +658,8 @@
     "minutes": "мин",
     "error": "Произошла ошибка",
     "email": "Email",
-    "optional": "необязательно"
+    "optional": "необязательно",
+    "howItWorks": "Как работает модуль?"
   },
   "org": {
     "courses": {

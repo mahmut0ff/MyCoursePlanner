@@ -1,14 +1,14 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
-import { orgGetMaterials, orgCreateMaterial, orgDeleteMaterial, apiAIGenerate } from '../../lib/api';
+import { orgGetMaterials, orgCreateMaterial, orgDeleteMaterial, apiAIGenerate, apiTransferRequest, apiGetPersonalLessons } from '../../lib/api';
 import { uploadFile } from '../../services/storage.service';
 import { useAuth } from '../../contexts/AuthContext';
 import { 
   FileText, Search, Trash2, ExternalLink, RefreshCw, 
   UploadCloud, File as FileIcon, FileImage, FileAudio, FileVideo, 
-  LayoutGrid, List, Sparkles, X, Eye
+  LayoutGrid, List, Sparkles, X, Eye, FolderPlus
 } from 'lucide-react';
-import type { Material } from '../../types';
+import type { Material, LessonPlan } from '../../types';
 import FileViewerModal from '../../components/ui/FileViewerModal';
 import { toast } from 'react-hot-toast';
 import EmptyState from '../../components/ui/EmptyState';
@@ -40,7 +40,8 @@ const formatBytes = (bytes?: number) => {
 
 const MaterialsPage: React.FC = () => {
   const { t } = useTranslation();
-  const { profile } = useAuth();
+  const { profile, role } = useAuth();
+  const isAdmin = role === 'super_admin' || role === 'manager';
   const orgId = profile?.activeOrgId;
 
   const [materials, setMaterials] = useState<Material[]>([]);
@@ -54,6 +55,11 @@ const MaterialsPage: React.FC = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   
   const [viewMaterial, setViewMaterial] = useState<Material | null>(null);
+  const [transferringMaterial, setTransferringMaterial] = useState<Material | null>(null);
+  const [personalLessons, setPersonalLessons] = useState<LessonPlan[]>([]);
+  const [loadingLessons, setLoadingLessons] = useState(false);
+  const [selectedLessonId, setSelectedLessonId] = useState<string>('');
+  const [isTransferring, setIsTransferring] = useState(false);
 
   const [form, setForm] = useState({ 
     title: '', url: '', type: 'document', category: 'General', 
@@ -176,6 +182,41 @@ const MaterialsPage: React.FC = () => {
     }
   };
 
+  const openTransferModal = async (e: React.MouseEvent, m: Material) => {
+    e.stopPropagation();
+    setTransferringMaterial(m);
+    setSelectedLessonId('');
+    setLoadingLessons(true);
+    try {
+      const pLessons = await apiGetPersonalLessons();
+      setPersonalLessons(pLessons);
+    } catch (err: any) {
+       toast.error(err.message || 'Ошибка загрузки уроков');
+    } finally {
+      setLoadingLessons(false);
+    }
+  };
+
+  const handleTransfer = async () => {
+    if (!transferringMaterial || !selectedLessonId || !profile?.activeOrgId) return;
+    setIsTransferring(true);
+    try {
+       await apiTransferRequest({
+          transferType: 'material_to_lesson',
+          sourceId: transferringMaterial.id!,
+          targetId: selectedLessonId,
+          orgId: profile.activeOrgId,
+          sourceTitle: transferringMaterial.title
+       });
+       toast.success(t('materials.transferRequested', 'Запрос на копирование отправлен администратору'));
+       setTransferringMaterial(null);
+    } catch (err: any) {
+       toast.error(err.message || 'Ошибка при запросе');
+    } finally {
+       setIsTransferring(false);
+    }
+  };
+
   return (
     <div className="max-w-6xl mx-auto space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -285,16 +326,23 @@ const MaterialsPage: React.FC = () => {
                 </div>
 
                 {/* Quick actions overlay */}
-                <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-3">
-                  <button onClick={(e) => { e.stopPropagation(); setViewMaterial(m); }} className="p-2 bg-white text-slate-900 hover:text-primary-500 rounded-full shadow-lg transition-transform hover:scale-110">
+                <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                  <button onClick={(e) => { e.stopPropagation(); setViewMaterial(m); }} className="p-2 bg-white text-slate-900 hover:text-primary-500 rounded-full shadow-lg transition-transform hover:scale-110 tooltip" data-tip="Просмотр">
                     <Eye className="w-4 h-4" />
                   </button>
-                  <a href={m.url} target="_blank" rel="noreferrer" onClick={e => e.stopPropagation()} className="p-2 bg-white text-slate-900 hover:text-primary-500 rounded-full shadow-lg transition-transform hover:scale-110">
+                  <a href={m.url} target="_blank" rel="noreferrer" onClick={e => e.stopPropagation()} className="p-2 bg-white text-slate-900 hover:text-emerald-500 rounded-full shadow-lg transition-transform hover:scale-110 tooltip" data-tip="Внешняя ссылка">
                     <ExternalLink className="w-4 h-4" />
                   </a>
-                  <button onClick={(e) => handleDelete(m.id, e)} className="p-2 bg-red-500 text-white rounded-full shadow-lg transition-transform hover:scale-110">
-                    <Trash2 className="w-4 h-4" />
-                  </button>
+                  {profile?.activeOrgId && (
+                    <button onClick={(e) => openTransferModal(e, m)} className="p-2 bg-white text-slate-900 hover:text-indigo-500 rounded-full shadow-lg transition-transform hover:scale-110 tooltip" data-tip="Добавить в мой урок">
+                      <FolderPlus className="w-4 h-4" />
+                    </button>
+                  )}
+                  {isAdmin && (
+                    <button onClick={(e) => handleDelete(m.id, e)} className="p-2 bg-red-500 text-white hover:bg-red-600 rounded-full shadow-lg transition-transform hover:scale-110 tooltip" data-tip="Удалить">
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  )}
                 </div>
               </div>
             );
@@ -332,13 +380,20 @@ const MaterialsPage: React.FC = () => {
                     {formatBytes(m.sizeBytes)}
                   </td>
                   <td className="px-4 py-3 text-right">
-                    <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <a href={m.url} target="_blank" rel="noreferrer" onClick={e => e.stopPropagation()} className="p-1.5 text-slate-400 hover:text-primary-500 hover:bg-slate-100 dark:hover:bg-slate-700 rounded transition-colors">
+                    <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                      {profile?.activeOrgId && (
+                        <button onClick={(e) => openTransferModal(e, m)} className="p-1.5 text-slate-400 hover:text-indigo-500 hover:bg-slate-100 dark:hover:bg-slate-700 rounded transition-colors tooltip" data-tip="Добавить в мой урок">
+                          <FolderPlus className="w-4 h-4" />
+                        </button>
+                      )}
+                      <a href={m.url} target="_blank" rel="noreferrer" onClick={e => e.stopPropagation()} className="p-1.5 text-slate-400 hover:text-emerald-500 hover:bg-slate-100 dark:hover:bg-slate-700 rounded transition-colors tooltip" data-tip="Внешняя ссылка">
                         <ExternalLink className="w-4 h-4" />
                       </a>
-                      <button onClick={(e) => handleDelete(m.id, e)} className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded transition-colors">
-                        <Trash2 className="w-4 h-4" />
-                      </button>
+                      {isAdmin && (
+                        <button onClick={(e) => handleDelete(m.id, e)} className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded transition-colors tooltip" data-tip="Удалить">
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      )}
                     </div>
                   </td>
                 </tr>
@@ -487,6 +542,52 @@ const MaterialsPage: React.FC = () => {
           onClose={() => setViewMaterial(null)} 
         />
       )}
+      {/* Transfer Modal */}
+      {transferringMaterial && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+           <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={() => !isTransferring && setTransferringMaterial(null)} />
+           <div className="relative bg-white dark:bg-slate-800 rounded-2xl shadow-xl w-full max-w-md p-6 max-h-[90vh] flex flex-col">
+              <div className="flex justify-between items-center mb-4">
+                 <h2 className="text-xl font-bold dark:text-white">Добавить в личный урок</h2>
+                 <button onClick={() => !isTransferring && setTransferringMaterial(null)} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-full transition-colors">
+                   <X className="w-5 h-5 dark:text-slate-400" />
+                 </button>
+              </div>
+              <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">Выберите свой личный урок, в который вы хотите перенести материал "{transferringMaterial.title}". Данная операция требует одобрения администратора.</p>
+              
+              {loadingLessons ? (
+                 <div className="flex justify-center p-8"><span className="w-8 h-8 border-4 border-primary-500 border-t-transparent rounded-full animate-spin" /></div>
+              ) : personalLessons.length === 0 ? (
+                 <div className="text-center p-6 text-slate-500 text-sm">У вас пока нет личных уроков.</div>
+              ) : (
+                 <div className="flex-1 overflow-y-auto min-h-0 space-y-2 mb-6 pr-2">
+                    {personalLessons.map(l => (
+                       <button
+                          key={l.id}
+                          onClick={() => setSelectedLessonId(l.id!)}
+                          className={`w-full text-left p-3 rounded-xl border transition-colors ${selectedLessonId === l.id ? 'bg-primary-50 border-primary-500 shadow-sm dark:bg-primary-900/20 dark:border-primary-500' : 'bg-slate-50 border-slate-200 hover:border-primary-300 dark:bg-slate-900/50 dark:border-slate-700 dark:hover:border-primary-700'}`}
+                       >
+                          <div className="font-medium text-slate-900 dark:text-white line-clamp-1">{l.title}</div>
+                          <div className="text-xs text-slate-500 mt-1">{l.subject} • {l.level}</div>
+                       </button>
+                    ))}
+                 </div>
+              )}
+              
+              <div className="flex justify-end gap-3 pt-4 border-t border-slate-100 dark:border-slate-700 mt-auto">
+                 <button disabled={isTransferring} onClick={() => setTransferringMaterial(null)} className="btn-ghost">Отмена</button>
+                 <button 
+                    disabled={!selectedLessonId || isTransferring} 
+                    onClick={handleTransfer}
+                    className="btn-primary"
+                 >
+                    {isTransferring ? 'Отправка...' : 'Отправить запрос'}
+                 </button>
+              </div>
+           </div>
+        </div>
+      )}
+
     </div>
   );
 };

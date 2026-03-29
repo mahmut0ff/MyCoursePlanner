@@ -374,6 +374,35 @@ const Sidebar: React.FC<{ open: boolean; onClose: () => void }> = ({ open, onClo
                 </>
               )}
 
+              {/* Personal workspace for independent teachers */}
+              {!teacherWithOrg && (
+                <>
+                  <CollapsibleSection label={t('nav.sectionPersonalWorkspace', 'Личное пространство')} icon={FolderOpen} defaultOpen>
+                    <NavLink to="/lessons" className={linkClass} onClick={onClose}>
+                      <BookOpen className="w-4 h-4" />{t('nav.lessons', 'Мои уроки')}
+                    </NavLink>
+                    <NavLink to="/materials" className={linkClass} onClick={onClose}>
+                      <FileText className="w-4 h-4" />{t('nav.materials', 'Мои материалы')}
+                    </NavLink>
+                    <NavLink to="/exams" className={linkClass} onClick={onClose}>
+                      <ClipboardList className="w-4 h-4" />{t('nav.exams', 'Мои экзамены')}
+                    </NavLink>
+                    <NavLink to="/rooms" className={linkClass} onClick={onClose}>
+                      <Monitor className="w-4 h-4" />{t('nav.examRooms', 'Экзаменационные комнаты')}
+                    </NavLink>
+                  </CollapsibleSection>
+
+                  <CollapsibleSection label={t('nav.sectionQuiz', 'Квизы')} icon={Gamepad2}>
+                    <NavLink to="/quiz/library" className={linkClass} onClick={onClose}>
+                      <Library className="w-4 h-4" />{t('nav.quizLibrary')}
+                    </NavLink>
+                    <NavLink to="/quiz/sessions" className={linkClass} onClick={onClose}>
+                      <History className="w-4 h-4" />{t('nav.quizSessions')}
+                    </NavLink>
+                  </CollapsibleSection>
+                </>
+              )}
+
 
             </>
           )}

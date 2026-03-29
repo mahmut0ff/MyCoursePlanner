@@ -3,7 +3,7 @@
  */
 import type { Handler, HandlerEvent } from '@netlify/functions';
 import { adminDb } from './utils/firebase-admin';
-import { verifyAuth, isStaff, getOrgFilter, ok, unauthorized, forbidden, badRequest, notFound, jsonResponse } from './utils/auth';
+import { verifyAuth, isStaff, getOrgFilter, ok, unauthorized, forbidden, badRequest, notFound, jsonResponse, isSuperAdmin } from './utils/auth';
 
 const COLLECTION = 'exams';
 
@@ -24,11 +24,33 @@ const handler: Handler = async (event: HandlerEvent) => {
       return ok({ id: doc.id, ...doc.data(), questions: qSnap.docs.map((d: any) => ({ id: d.id, ...d.data() })) });
     }
     const orgFilter = getOrgFilter(user);
+    if (params.orgId === 'none') {
+      const snap1 = await adminDb.collection(COLLECTION).where('authorId', '==', user.uid).where('organizationId', '==', null).get();
+      const snap2 = await adminDb.collection(COLLECTION).where('authorId', '==', user.uid).where('organizationId', '==', '').get();
+      const allDocs = [...snap1.docs, ...snap2.docs].reduce((acc, curr) => {
+         if (!acc.some((d: any) => d.id === curr.id)) acc.push(curr);
+         return acc;
+      }, [] as any[]);
+      const results = allDocs.map((d: any) => ({ id: d.id, ...d.data() }));
+      results.sort((a: any, b: any) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
+      return ok(results);
+    }
+
     let snap;
-    if (orgFilter) {
+    if (isSuperAdmin(user)) {
+      snap = await adminDb.collection(COLLECTION).get();
+    } else if (orgFilter) {
       snap = await adminDb.collection(COLLECTION).where('organizationId', '==', orgFilter).get();
     } else {
-      snap = await adminDb.collection(COLLECTION).get();
+      const snap1 = await adminDb.collection(COLLECTION).where('authorId', '==', user.uid).where('organizationId', '==', null).get();
+      const snap2 = await adminDb.collection(COLLECTION).where('authorId', '==', user.uid).where('organizationId', '==', '').get();
+      const allDocs = [...snap1.docs, ...snap2.docs].reduce((acc, curr) => {
+         if (!acc.some((d: any) => d.id === curr.id)) acc.push(curr);
+         return acc;
+      }, [] as any[]);
+      const results = allDocs.map((d: any) => ({ id: d.id, ...d.data() }));
+      results.sort((a: any, b: any) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
+      return ok(results);
     }
     const results = snap.docs.map((d: any) => ({ id: d.id, ...d.data() }));
     results.sort((a: any, b: any) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());

@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { apiGetNotifications, apiMarkNotificationRead, apiMarkAllNotificationsRead } from '../../lib/api';
-import { Bell, Check, ExternalLink } from 'lucide-react';
+import { apiGetNotifications, apiMarkNotificationRead, apiMarkAllNotificationsRead, apiTransferResolve } from '../../lib/api';
+import { Bell, Check, ExternalLink, ShieldCheck, XCircle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { toast } from 'react-hot-toast';
 
 interface AppNotification {
   id: string;
@@ -12,6 +13,7 @@ interface AppNotification {
   read: boolean;
   createdAt: string;
   link?: string;
+  metadata?: any;
 }
 
 const NotificationsPage: React.FC = () => {
@@ -38,6 +40,20 @@ const NotificationsPage: React.FC = () => {
   const handleMarkAllRead = async () => {
     await apiMarkAllNotificationsRead();
     setNotifications(prev => prev.map(n => ({ ...n, read: true })));
+  };
+
+  const handleResolve = async (e: React.MouseEvent, n: AppNotification, decision: 'approve' | 'reject') => {
+    e.stopPropagation();
+    try {
+      await apiTransferResolve({ notificationId: n.id, decision });
+      toast.success(decision === 'approve' ? 'Запрос одобрен' : 'Запрос отклонен');
+      // Оптимистичное обновление
+      setNotifications(prev => prev.map(item => 
+         item.id === n.id ? { ...item, metadata: { ...item.metadata, status: decision === 'approve' ? 'approved' : 'rejected' } } : item
+      ));
+    } catch (err: any) {
+      toast.error(err.message || 'Ошибка обработки запроса');
+    }
   };
 
   const handleClick = (n: AppNotification) => {
@@ -91,7 +107,30 @@ const NotificationsPage: React.FC = () => {
                     {n.link && <ExternalLink className="w-3.5 h-3.5 text-slate-400 shrink-0" />}
                   </div>
                   <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">{n.message}</p>
-                  <p className="text-[10px] text-slate-400 mt-1">{new Date(n.createdAt).toLocaleString()}</p>
+                  
+                  {n.type === 'transfer_request' && n.metadata?.status === 'pending' && (
+                    <div className="mt-3 flex items-center gap-2">
+                      <button 
+                        onClick={(e) => handleResolve(e, n, 'approve')}
+                        className="px-3 py-1.5 text-xs font-semibold bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg transition-colors flex items-center gap-1.5"
+                      >
+                        <ShieldCheck className="w-3.5 h-3.5" /> Одобрить
+                      </button>
+                      <button 
+                        onClick={(e) => handleResolve(e, n, 'reject')}
+                        className="px-3 py-1.5 text-xs font-semibold bg-slate-100 hover:bg-red-50 text-slate-600 hover:text-red-500 rounded-lg transition-colors flex items-center gap-1.5"
+                      >
+                        <XCircle className="w-3.5 h-3.5" /> Отклонить
+                      </button>
+                    </div>
+                  )}
+                  {n.type === 'transfer_request' && n.metadata?.status !== 'pending' && (
+                    <div className="mt-2 inline-block px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider rounded-md bg-slate-100 dark:bg-slate-700 text-slate-500">
+                      {n.metadata?.status === 'approved' ? 'Одобрено' : 'Отклонено'}
+                    </div>
+                  )}
+
+                  <p className="text-[10px] text-slate-400 mt-2">{new Date(n.createdAt).toLocaleString()}</p>
                 </div>
               </div>
             </div>

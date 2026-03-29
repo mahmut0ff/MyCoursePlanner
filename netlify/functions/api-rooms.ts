@@ -40,13 +40,30 @@ const handler: Handler = async (event: HandlerEvent) => {
     }
 
     const orgFilter = getOrgFilter(user);
+    // Add isSuperAdmin from utils/auth
+    const { isSuperAdmin } = require('./utils/auth');
+
     let snap;
     if (isStaff(user)) {
-      snap = orgFilter
-        ? await adminDb.collection(COLLECTION).where('organizationId', '==', orgFilter).get()
-        : await adminDb.collection(COLLECTION).get();
+      if (isSuperAdmin(user)) {
+        snap = await adminDb.collection(COLLECTION).get();
+      } else if (orgFilter) {
+        snap = await adminDb.collection(COLLECTION).where('organizationId', '==', orgFilter).get();
+      } else {
+        // independent teacher
+        const snap1 = await adminDb.collection(COLLECTION).where('hostId', '==', user.uid).where('organizationId', '==', null).get();
+        const snap2 = await adminDb.collection(COLLECTION).where('hostId', '==', user.uid).where('organizationId', '==', '').get();
+        const allDocs = [...snap1.docs, ...snap2.docs].reduce((acc, curr) => {
+          if (!acc.some(d => d.id === curr.id)) acc.push(curr);
+          return acc;
+        }, [] as any[]);
+        
+        const results = allDocs.map(d => ({ id: d.id, ...d.data() }));
+        results.sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
+        return ok(results);
+      }
     } else {
-      if (!orgFilter) return ok([]);
+      if (!orgFilter) return ok([]); // Students must have an org to see rooms
       snap = await adminDb.collection(COLLECTION).where('organizationId', '==', orgFilter).where('status', '==', 'active').get();
     }
     const results = snap.docs.map((d: any) => ({ id: d.id, ...d.data() }));

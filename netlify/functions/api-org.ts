@@ -73,11 +73,10 @@ const handler: Handler = async (event: HandlerEvent) => {
 
   const user = await verifyAuth(event);
   if (!user) return unauthorized();
-  if (!user.organizationId) return forbidden();
 
   const params = event.queryStringParameters || {};
   const action = params.action || '';
-  const orgId = user.organizationId;
+  const orgId = user.organizationId || '';
 
   try {
     // ═══ COURSES ═══
@@ -450,17 +449,31 @@ const handler: Handler = async (event: HandlerEvent) => {
 
     // ═══ MATERIALS ═══
     if (action === 'materials') {
-      let query = orgQuery('materials', orgId);
+      let query;
+      if (orgId) {
+        query = orgQuery('materials', orgId);
+      } else {
+        query = adminDb.collection('materials').where('authorId', '==', user.uid).where('organizationId', '==', '');
+      }
       if (params.courseId) query = query.where('courseId', '==', params.courseId) as any;
       if (params.lessonId) query = query.where('lessonId', '==', params.lessonId) as any;
       const snap = await query.get();
-      const list = snap.docs.map((d: any) => ({ id: d.id, ...d.data() }));
+      let list = snap.docs.map((d: any) => ({ id: d.id, ...d.data() }));
+      // Temporary fallback for independent teachers who might have null orgId
+      if (!orgId) {
+        const snap2 = await adminDb.collection('materials').where('authorId', '==', user.uid).where('organizationId', '==', null).get();
+        const list2 = snap2.docs.map((d: any) => ({ id: d.id, ...d.data() }));
+        list = [...list, ...list2].reduce((acc, curr) => {
+           if (!acc.some((d: any) => d.id === curr.id)) acc.push(curr);
+           return acc;
+        }, [] as any[]);
+      }
       list.sort((a: any, b: any) => (b.createdAt || '').localeCompare(a.createdAt || ''));
       return ok(list);
     }
 
     if (action === 'createMaterial') {
-      const err = requireOrgStaff(user); if (err) return err;
+      if (!isStaff(user)) return forbidden();
       const body = JSON.parse(event.body || '{}');
       if (!body.title || !body.url) return badRequest('title and url required');
       const data = {
@@ -480,22 +493,24 @@ const handler: Handler = async (event: HandlerEvent) => {
     }
 
     if (action === 'updateMaterial') {
-      const err = requireOrgStaff(user); if (err) return err;
+      if (!isStaff(user)) return forbidden();
       const body = JSON.parse(event.body || '{}');
       if (!body.id) return badRequest('id required');
       const doc = await adminDb.collection('materials').doc(body.id).get();
-      if (!doc.exists || doc.data()?.organizationId !== orgId) return notFound();
+      if (!doc.exists) return notFound();
+      if (doc.data()?.organizationId && doc.data()?.organizationId !== orgId) return forbidden();
       const { id, ...fields } = body;
       await adminDb.collection('materials').doc(id).update(fields);
       return ok({ id, updated: true });
     }
 
     if (action === 'deleteMaterial') {
-      const err = requireOrgStaff(user); if (err) return err;
+      if (!isStaff(user)) return forbidden();
       const body = JSON.parse(event.body || '{}');
       if (!body.id) return badRequest('id required');
       const doc = await adminDb.collection('materials').doc(body.id).get();
-      if (!doc.exists || doc.data()?.organizationId !== orgId) return notFound();
+      if (!doc.exists) return notFound();
+      if (doc.data()?.organizationId && doc.data()?.organizationId !== orgId) return forbidden();
       await adminDb.collection('materials').doc(body.id).delete();
       return ok({ deleted: true });
     }

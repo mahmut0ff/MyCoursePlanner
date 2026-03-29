@@ -1,21 +1,23 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { apiGetLessons } from '../../lib/api';
+import { apiGetLessons, apiGetLesson, apiCreateLesson, apiTransferRequest } from '../../lib/api';
 import { useAuth } from '../../contexts/AuthContext';
 import type { LessonPlan } from '../../types';
-import { Plus, BookOpen, Clock, Search, Paperclip, ClipboardList, Sparkles, Filter, CheckCircle2 } from 'lucide-react';
+import { Plus, BookOpen, Clock, Search, Paperclip, ClipboardList, Sparkles, Filter, CheckCircle2, Copy } from 'lucide-react';
 import EmptyState from '../../components/ui/EmptyState';
 import { ListSkeleton } from '../../components/ui/Skeleton';
 import { AILessonFactoryModal } from '../../components/ui/AILessonFactoryModal';
+import { toast } from 'react-hot-toast';
 
 type StatusFilter = 'all' | 'published' | 'draft';
 
 const LessonListPage: React.FC = () => {
   const { t } = useTranslation();
-  const { role } = useAuth();
+  const { role, profile } = useAuth();
   const [lessons, setLessons] = useState<LessonPlan[]>([]);
   const [loading, setLoading] = useState(true);
+  const [duplicatingId, setDuplicatingId] = useState<string | null>(null);
   
   // Filters
   const [search, setSearch] = useState('');
@@ -27,9 +29,55 @@ const LessonListPage: React.FC = () => {
   const isStaff = role === 'admin' || role === 'manager' || role === 'teacher';
   const isStudent = role === 'student';
 
-  useEffect(() => {
+  const loadLessons = () => {
+    setLoading(true);
     apiGetLessons().then(setLessons).catch(console.error).finally(() => setLoading(false));
+  };
+
+  useEffect(() => {
+    loadLessons();
   }, []);
+
+  const handleDuplicate = async (e: React.MouseEvent, lesson: LessonPlan) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    setDuplicatingId(lesson.id!);
+    try {
+      if (profile?.activeOrgId && lesson.organizationId) {
+        // Мы в организации, дублируем чей-то корпоративный урок СЕБЕ
+        // Это требует одобрения (Security check)
+        await apiTransferRequest({
+          transferType: 'lesson_to_personal',
+          sourceId: lesson.id!,
+          targetId: 'personal',
+          orgId: profile.activeOrgId,
+          sourceTitle: lesson.title
+        });
+        toast.success(t('lessons.transferRequested', 'Запрос на копирование отправлен администратору'));
+      } else {
+        // Обычное дублирование (Личное -> Личное, или Личное -> Организация, или внутри Организации, 
+        // хотя внутри организации обычно не дублируют, но пусть так)
+        const fullLesson = await apiGetLesson(lesson.id!);
+        // @ts-ignore
+        const { id, createdAt, updatedAt, ...rest } = fullLesson;
+        const newLessonData = { ...rest, title: `${rest.title} (Копия)`, status: 'draft' };
+        
+        // Если автор делает копию своего урока В организацию, добавляем orgId
+        if (profile?.activeOrgId && !lesson.organizationId) {
+          (newLessonData as any).organizationId = profile.activeOrgId;
+        }
+
+        await apiCreateLesson(newLessonData);
+        toast.success(t('lessons.duplicated', 'Урок успешно скопирован'));
+        loadLessons();
+      }
+    } catch (err: any) {
+      toast.error(err.message || 'Error duplicating');
+    } finally {
+      setDuplicatingId(null);
+    }
+  };
 
   const uniqueSubjects = useMemo(() => Array.from(new Set(lessons.map(l => l.subject))).filter(Boolean), [lessons]);
   const uniqueLevels = useMemo(() => Array.from(new Set(lessons.map(l => l.level))).filter(Boolean), [lessons]);
@@ -153,6 +201,19 @@ const LessonListPage: React.FC = () => {
                         {(lesson.status || 'draft') === 'published' ? t('common.published') : t('common.draft')}
                       </span>
                     )}
+
+                    {isStaff && (
+                      <div className="absolute top-3 left-3 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button 
+                          onClick={(e) => handleDuplicate(e, lesson)}
+                          disabled={duplicatingId === lesson.id}
+                          className="p-2 bg-white/90 backdrop-blur hover:bg-white text-slate-700 hover:text-primary-600 rounded-lg shadow-sm transition-all flex items-center gap-1 tooltip"
+                          data-tip="Копировать урок"
+                        >
+                          {duplicatingId === lesson.id ? <div className="w-4 h-4 rounded-full border-2 border-primary-500 border-t-transparent animate-spin"/> : <Copy className="w-4 h-4" /> }
+                        </button>
+                      </div>
+                    )}
                   </div>
                 ) : (
                   <div className="h-44 bg-slate-50 dark:bg-slate-800/50 flex flex-col items-center justify-center relative shrink-0 border-b border-slate-100 dark:border-slate-700/50">
@@ -163,6 +224,19 @@ const LessonListPage: React.FC = () => {
                       <span className={`absolute top-3 right-3 text-[10px] px-2.5 py-1 rounded-full font-bold shadow-sm ${(lesson.status || 'draft') === 'published' ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400' : 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400'}`}>
                         {(lesson.status || 'draft') === 'published' ? t('common.published') : t('common.draft')}
                       </span>
+                    )}
+                    
+                    {isStaff && (
+                      <div className="absolute top-3 left-3 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button 
+                          onClick={(e) => handleDuplicate(e, lesson)}
+                          disabled={duplicatingId === lesson.id}
+                          className="p-2 bg-white dark:bg-slate-700 hover:bg-slate-50 dark:hover:bg-slate-600 border border-slate-200 dark:border-slate-600 text-slate-700 dark:text-slate-300 hover:text-primary-600 dark:hover:text-primary-400 rounded-lg shadow-sm transition-all flex items-center gap-1 tooltip"
+                          data-tip="Копировать урок"
+                        >
+                          {duplicatingId === lesson.id ? <div className="w-4 h-4 rounded-full border-2 border-primary-500 border-t-transparent animate-spin"/> : <Copy className="w-4 h-4" /> }
+                        </button>
+                      </div>
                     )}
                   </div>
                 )}
@@ -204,7 +278,7 @@ const LessonListPage: React.FC = () => {
       <AILessonFactoryModal 
         isOpen={isAIModalOpen} 
         onClose={() => setIsAIModalOpen(false)} 
-        onSuccess={() => apiGetLessons().then(setLessons)} 
+        onSuccess={() => loadLessons()} 
       />
     </div>
   );

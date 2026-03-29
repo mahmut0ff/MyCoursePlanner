@@ -3,7 +3,7 @@
  */
 import type { Handler, HandlerEvent } from '@netlify/functions';
 import { adminDb } from './utils/firebase-admin';
-import { verifyAuth, isStaff, getOrgFilter, hasRole, ok, unauthorized, forbidden, badRequest, notFound, jsonResponse, logSecurityAudit } from './utils/auth';
+import { verifyAuth, isStaff, getOrgFilter, hasRole, ok, unauthorized, forbidden, badRequest, notFound, jsonResponse, logSecurityAudit, isSuperAdmin } from './utils/auth';
 import { createNotification } from './utils/notifications';
 
 const COLLECTION = 'examAttempts';
@@ -50,13 +50,33 @@ const handler: Handler = async (event: HandlerEvent) => {
     if (!isStaff(user)) return forbidden();
     const orgFilter = getOrgFilter(user);
     let snap;
-    if (orgFilter) {
+    if (isSuperAdmin(user)) {
+      snap = await adminDb.collection(COLLECTION).orderBy('submittedAt', 'desc').limit(100).get();
+      return ok(snap.docs.map((d: any) => ({ id: d.id, ...d.data() })));
+    } else if (orgFilter) {
       snap = await adminDb.collection(COLLECTION)
         .where('organizationId', '==', orgFilter).orderBy('submittedAt', 'desc').limit(100).get();
+      return ok(snap.docs.map((d: any) => ({ id: d.id, ...d.data() })));
     } else {
-      snap = await adminDb.collection(COLLECTION).orderBy('submittedAt', 'desc').limit(100).get();
+      // Fetch rooms owned by this teacher
+      const roomsSnap = await adminDb.collection('examRooms').where('authorId', '==', user.uid).get();
+      const roomIds = roomsSnap.docs.map(d => d.id);
+      if (roomIds.length === 0) return ok([]);
+      // Firestore 'in' query supports max 10 values
+      const chunks = [];
+      for (let i = 0; i < roomIds.length; i += 10) {
+        chunks.push(roomIds.slice(i, i + 10));
+      }
+      let allDocs: any[] = [];
+      for (const chunk of chunks) {
+        const chunkSnap = await adminDb.collection(COLLECTION)
+          .where('roomId', 'in', chunk).orderBy('submittedAt', 'desc').limit(100).get();
+        allDocs = [...allDocs, ...chunkSnap.docs];
+      }
+      const results = allDocs.map((d: any) => ({ id: d.id, ...d.data() }));
+      results.sort((a: any, b: any) => new Date(b.submittedAt || 0).getTime() - new Date(a.submittedAt || 0).getTime());
+      return ok(results.slice(0, 100)); // limit conceptually
     }
-    return ok(snap.docs.map((d: any) => ({ id: d.id, ...d.data() })));
   }
 
   // POST — save attempt

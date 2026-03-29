@@ -57,6 +57,7 @@ export const apiResolveUsername = (username: string) =>
 
 // ---- Lessons ----
 export const apiGetLessons = () => apiRequest('api-lessons');
+export const apiGetPersonalLessons = () => apiRequest('api-lessons', 'GET', undefined, { orgId: 'none' });
 export const apiGetLesson = (id: string) => apiRequest('api-lessons', 'GET', undefined, { id });
 export const apiCreateLesson = (data: any) => apiRequest('api-lessons', 'POST', data);
 export const apiUpdateLesson = (data: any) => apiRequest('api-lessons', 'PUT', data);
@@ -578,3 +579,13 @@ export const apiAIGradeHomework = (id: string) =>
 
 export const apiGetStudentRisks = (orgId: string) =>
   apiRequest(`api-risk`, 'GET', undefined, { orgId });
+
+// ============================================================
+// TRANSFERS API
+// ============================================================
+
+export const apiTransferRequest = (data: { transferType: 'lesson_to_personal' | 'material_to_lesson', sourceId: string, targetId: string, orgId: string, sourceTitle: string }) =>
+  apiRequest('api-transfers', 'POST', data, { action: 'request_transfer' });
+
+export const apiTransferResolve = (data: { notificationId: string, decision: 'approve' | 'reject' }) =>
+  apiRequest('api-transfers', 'POST', data, { action: 'resolve_transfer' });

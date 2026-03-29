@@ -2,9 +2,10 @@ import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { deleteLessonPlan } from '../../services/lessons.service';
-import { apiGetLesson, apiAwardXP } from '../../lib/api';
+import { apiGetLesson, apiAwardXP, apiCreateLesson, apiTransferRequest, orgCreateMaterial } from '../../lib/api';
 import { useAuth } from '../../contexts/AuthContext';
 import { showGamificationToasts } from '../../components/gamification/GamificationToasts';
+import { toast } from 'react-hot-toast';
 import type { LessonPlan } from '../../types';
 import { formatDate } from '../../utils/grading';
 import { generateHTML } from '@tiptap/react';
@@ -16,7 +17,7 @@ import FileViewerModal from '../../components/ui/FileViewerModal';
 import {
   ArrowLeft, Edit, Trash2, Clock, BookOpen, Paperclip, Download,
   FileText, Film, Image as LucideImage, FileSpreadsheet, ClipboardList,
-  Calendar, Award, Maximize, Minimize, PartyPopper, CheckCircle
+  Calendar, Award, Maximize, Minimize, PartyPopper, CheckCircle, Copy, Building2
 } from 'lucide-react';
 
 const getFileIcon = (type: string) => {
@@ -57,7 +58,7 @@ const LessonViewPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { t } = useTranslation();
-  const { role } = useAuth();
+  const { role, profile } = useAuth();
   const [lesson, setLesson] = useState<LessonPlan | null>(null);
   const [loading, setLoading] = useState(true);
   const [viewerFile, setViewerFile] = useState<{ name: string; url: string; type: string } | null>(null);
@@ -66,6 +67,8 @@ const LessonViewPage: React.FC = () => {
   const [presentationMode, setPresentationMode] = useState(false);
   const [isCompleted, setIsCompleted] = useState(false);
   const [completing, setCompleting] = useState(false);
+  const [duplicating, setDuplicating] = useState(false);
+  const [copyingAttachment, setCopyingAttachment] = useState<string | null>(null);
 
   const isStaff = role === 'admin' || role === 'manager' || role === 'teacher';
 
@@ -82,6 +85,66 @@ const LessonViewPage: React.FC = () => {
         .finally(() => setLoading(false));
     }
   }, [id, role]);
+
+  const handleDuplicate = async () => {
+    if (!lesson) return;
+    setDuplicating(true);
+    try {
+      if (profile?.activeOrgId && lesson.organizationId) {
+        // Мы в организации, дублируем чей-то корпоративный урок СЕБЕ
+        await apiTransferRequest({
+          transferType: 'lesson_to_personal',
+          sourceId: lesson.id!,
+          targetId: 'personal',
+          orgId: profile.activeOrgId,
+          sourceTitle: lesson.title
+        });
+        toast.success(t('lessons.transferRequested', 'Запрос на копирование отправлен администратору'));
+      } else {
+        // Личный -> Личный, или Личный -> Организация
+        const fullLesson = await apiGetLesson(lesson.id!);
+        // @ts-ignore
+        const { id: _id, createdAt, updatedAt, ...rest } = fullLesson;
+        const newLessonData = { ...rest, title: `${rest.title} (Копия)`, status: 'draft' };
+        
+        if (profile?.activeOrgId && !lesson.organizationId) {
+          (newLessonData as any).organizationId = profile.activeOrgId;
+        }
+
+        const newLesson = await apiCreateLesson(newLessonData);
+        toast.success(t('lessons.duplicated', 'Урок успешно скопирован'));
+        navigate(`/lessons/${newLesson}`); // переходим в копию
+      }
+    } catch (err: any) {
+      toast.error(err.message || 'Error duplicating');
+    } finally {
+      setDuplicating(false);
+    }
+  };
+
+  const handleCopyToOrgMaterials = async (att: any) => {
+    if (!profile?.activeOrgId) {
+       toast.error('Необходимо выбрать организацию');
+       return;
+    }
+    setCopyingAttachment(att.id);
+    try {
+      await orgCreateMaterial({
+        title: att.name,
+        type: att.type.startsWith('image/') ? 'image' : att.type.startsWith('video/') ? 'video' : 'document',
+        url: att.url,
+        mimeType: att.type,
+        sizeBytes: att.size,
+        category: 'Материалы из уроков',
+        description: `Добавлено из урока "${lesson?.title}"`
+      });
+      toast.success('Успешно скопировано в Материалы организации!');
+    } catch (err: any) {
+      toast.error(err.message || 'Ошибка копирования');
+    } finally {
+      setCopyingAttachment(null);
+    }
+  };
 
   const handleCompleteLesson = async () => {
     if (!lesson?.organizationId || role !== 'student' || isCompleted) return;
@@ -149,6 +212,10 @@ const LessonViewPage: React.FC = () => {
         </div>
         {isStaff && !presentationMode && (
           <div className="flex items-center gap-2">
+            <button onClick={handleDuplicate} disabled={duplicating} className="btn-secondary flex items-center gap-2">
+              {duplicating ? <span className="w-4 h-4 border-2 border-primary-500 border-t-transparent rounded-full animate-spin" /> : <Copy className="w-4 h-4" />}
+              {t('common.duplicate', 'Дублировать')}
+            </button>
             <Link to={`/lessons/${id}/edit`} className="btn-secondary flex items-center gap-2"><Edit className="w-4 h-4" />{t('common.edit')}</Link>
             <button onClick={handleDelete} className="btn-danger flex items-center gap-2"><Trash2 className="w-4 h-4" />{t('common.delete')}</button>
           </div>
@@ -228,11 +295,24 @@ const LessonViewPage: React.FC = () => {
                           <p className="text-[13px] text-slate-800 dark:text-slate-200 truncate font-medium group-hover:text-primary-600 dark:group-hover:text-primary-400 transition-colors">{att.name}</p>
                           <p className="text-[10px] text-slate-500">{getFileLabel(att.type)} • {formatSize(att.size)}</p>
                         </div>
-                        <a href={att.url} download={att.name} target="_blank" rel="noreferrer"
-                           onClick={(e) => e.stopPropagation()}
-                           className="p-2 text-slate-400 hover:text-primary-500 hover:bg-primary-50 dark:hover:bg-primary-900/20 rounded-lg transition-colors">
-                          <Download className="w-4 h-4" />
-                        </a>
+                        <div className="flex items-center gap-1">
+                          {isStaff && (
+                            <button
+                               onClick={(e) => { e.stopPropagation(); handleCopyToOrgMaterials(att); }}
+                               disabled={copyingAttachment === att.id}
+                               className="p-2 text-slate-400 hover:text-primary-500 hover:bg-primary-50 dark:hover:bg-primary-900/20 rounded-lg transition-colors tooltip"
+                               data-tip="В Базу Знаний организации"
+                            >
+                               {copyingAttachment === att.id ? <span className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin block" /> : <Building2 className="w-4 h-4" />}
+                            </button>
+                          )}
+                          <a href={att.url} download={att.name} target="_blank" rel="noreferrer"
+                             onClick={(e) => e.stopPropagation()}
+                             className="p-2 text-slate-400 hover:text-emerald-500 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 rounded-lg transition-colors tooltip"
+                             data-tip="Скачать">
+                            <Download className="w-4 h-4" />
+                          </a>
+                        </div>
                       </div>
                     ))}
                   </div>

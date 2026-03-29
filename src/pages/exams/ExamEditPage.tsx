@@ -46,18 +46,27 @@ const ExamEditPage: React.FC = () => {
     const startOrder = questions.length;
     const newQuestions = data.map((q, i) => {
       const opts = q.options || [];
-      const correctOpt = opts[q.correctOptionIndex || 0] || '';
+      
+      let correctAnswersStr: string[] = [];
+      if (q.correctOptionIndices && Array.isArray(q.correctOptionIndices)) {
+        correctAnswersStr = q.correctOptionIndices.map((idx: number) => opts[idx]).filter(Boolean);
+      } else if (q.correctOptionIndex !== undefined) {
+        correctAnswersStr = [opts[q.correctOptionIndex]].filter(Boolean);
+      }
+      
+      const correctOpt = correctAnswersStr.length > 0 ? correctAnswersStr[0] : '';
+
       return {
         id: generateId(),
         type: q.type as QuestionType,
         text: q.question || '',
         options: opts,
         correctAnswer: correctOpt,
-        correctAnswers: [],
+        correctAnswers: correctAnswersStr,
         keywords: [],
         points: q.points || 1,
         order: startOrder + i,
-        mediaUrl: q.searchQuery ? `https://loremflickr.com/800/600/${encodeURIComponent(q.searchQuery)}` : undefined,
+        mediaUrl: q.searchQuery ? `https://loremflickr.com/800/600/${encodeURIComponent(q.searchQuery)}?lock=${Math.floor(Math.random() * 100)}` : undefined,
         mediaType: (q.searchQuery ? 'image' : undefined) as 'image' | undefined,
         ttsText: q.ttsText,
       } as Question;

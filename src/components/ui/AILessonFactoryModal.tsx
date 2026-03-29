@@ -14,6 +14,16 @@ interface Props {
   onSuccess?: () => void;
 }
 
+const escapeHtml = (text: string) => {
+  if (!text) return '';
+  return text.toString()
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+};
+
 export const AILessonFactoryModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
   const { t } = useTranslation();
   const navigate = useNavigate();
@@ -81,17 +91,40 @@ export const AILessonFactoryModal: React.FC<Props> = ({ isOpen, onClose, onSucce
       
       // 2. Сохранение вопросов Квиза
       const formattedQuestions = (quiz || []).map((q: any, index: number) => {
-        const optionIds = [generateId(), generateId(), generateId(), generateId()];
-        const correctAnswers = [optionIds[q.correctOptionIndex || 0]];
+        const isTF = q.type === 'true_false';
+        const defaultTexts = isTF ? ['True', 'False'] : [];
+        const givenOptions = q.options && q.options.length > 0 ? q.options : defaultTexts;
+        
+        const _options = givenOptions.map((t: string) => ({ id: generateId(), text: t }));
+        
+        let correctAnswers: string[] = [];
+        if (q.correctOptionIndices && Array.isArray(q.correctOptionIndices)) {
+          correctAnswers = q.correctOptionIndices.map((idx: number) => _options[idx]?.id).filter(Boolean);
+        } else if (q.correctOptionIndex !== undefined) {
+          correctAnswers = [_options[q.correctOptionIndex]?.id].filter(Boolean);
+        }
+
+        let generatedMediaUrl = q.mediaUrl || '';
+        let generatedMediaType = q.mediaType || 'image';
+        
+        if (q.searchQuery) {
+          generatedMediaUrl = `https://loremflickr.com/800/600/${encodeURIComponent(q.searchQuery)}?lock=${Math.floor(Math.random() * 100)}`;
+          generatedMediaType = 'image';
+        }
+
         return {
           id: generateId(),
-          type: 'multiple_choice',
-          text: q.question,
-          options: q.options.map((t: string, i: number) => ({ id: optionIds[i], text: t })),
+          type: q.type || (isTF ? 'true_false' : 'single_choice'),
+          text: q.question || '',
+          options: _options,
           correctAnswers,
-          answerExplanation: q.explanation,
+          answerExplanation: q.explanation || '',
+          mediaUrl: generatedMediaUrl,
+          mediaType: generatedMediaType,
+          ttsText: q.ttsText || '',
           timerSeconds: 30,
           points: 1000,
+          difficulty: 'medium',
           order: index
         };
       });
@@ -101,22 +134,24 @@ export const AILessonFactoryModal: React.FC<Props> = ({ isOpen, onClose, onSucce
       toast.loading(t('ai.savingLesson', '3/3 Верстка Урока и привязка...'), { id: toastId });
       setLoadingState('Собираем финальный урок...');
       
-      // Map AI blocks to our format and add quiz
-      const contentBlocks = (lesson.blocks || []).map((b: any) => ({
-        id: generateId(),
-        type: b.type,
-        content: b.content || '',
-        level: b.level || 2,
-        items: b.items || []
-      }));
-
-      // Inject the newly created Quiz at the bottom of the lesson
-      contentBlocks.push({
-        id: generateId(),
-        type: 'quiz',
-        content: '',
-        quizId: createdQuiz.id
+      // Convert AI blocks into valid HTML string for Tiptap
+      let htmlContent = '';
+      (lesson.blocks || []).forEach((b: any) => {
+        if (b.type === 'heading') {
+          const lv = b.level === 1 ? '1' : '2';
+          htmlContent += `<h${lv}>${escapeHtml(b.content || '')}</h${lv}>`;
+        } else if (b.type === 'bulletList' && Array.isArray(b.items)) {
+          htmlContent += `<ul>${b.items.map((i: string) => `<li><p>${escapeHtml(i)}</p></li>`).join('')}</ul>`;
+        } else {
+          htmlContent += `<p>${escapeHtml(b.content || '')}</p>`;
+        }
       });
+
+      // Inject the generated Quiz at the end of the HTML document
+      htmlContent += `<hr>`;
+      htmlContent += `<h2>🧠 Проверьте свои знания</h2>`;
+      htmlContent += `<p>После изучения материала мы предлагаем вам пройти интерактивный Квиз (10 вопросов), который был специально составлен ИИ по этому уроку!</p>`;
+      htmlContent += `<p><a href="/quiz/${createdQuiz.id}/play">👉 <strong>Начать тест: ${quizData.title}</strong></a></p>`;
 
       const lessonData = {
         title: lesson.title || 'Новый AI Урок',

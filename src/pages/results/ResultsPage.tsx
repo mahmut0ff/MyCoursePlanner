@@ -1,17 +1,25 @@
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { orgGetResults } from '../../lib/api';
+import { orgGetResults, orgGetStudents } from '../../lib/api';
 import { Trophy, Search, Download, RefreshCw } from 'lucide-react';
-import type { ExamAttempt } from '../../types';
+import type { ExamAttempt, UserProfile } from '../../types';
+import { PinnedBadgesDisplay } from '../../lib/badges';
 
 const ResultsPage: React.FC = () => {
   const { t } = useTranslation();
   const [results, setResults] = useState<ExamAttempt[]>([]);
+  const [students, setStudents] = useState<UserProfile[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [error, setError] = useState('');
 
-  const load = () => { setLoading(true); orgGetResults().then(setResults).catch((e) => setError(e.message || 'Error')).finally(() => setLoading(false)); };
+  const load = () => { 
+    setLoading(true); 
+    Promise.all([orgGetResults(), orgGetStudents().catch(() => [])])
+      .then(([res, st]) => { setResults(res); setStudents(st); })
+      .catch((e) => setError(e.message || 'Error'))
+      .finally(() => setLoading(false)); 
+  };
   useEffect(load, []);
 
   const filtered = results.filter((r) => r.studentName?.toLowerCase().includes(search.toLowerCase()) || r.examTitle?.toLowerCase().includes(search.toLowerCase()));
@@ -63,15 +71,26 @@ const ResultsPage: React.FC = () => {
               <th className="text-left text-[10px] font-medium text-slate-500 uppercase tracking-wider px-4 py-2 hidden md:table-cell">{t('org.results.date')}</th>
             </tr></thead>
             <tbody className="divide-y divide-slate-50 dark:divide-slate-700/30">
-              {filtered.map((r) => (
+              {filtered.map((r) => {
+                const s = students.find(x => x.uid === r.studentId);
+                return (
                 <tr key={r.id} className="hover:bg-slate-50/80 dark:hover:bg-slate-700/20 transition-colors">
-                  <td className="px-4 py-2 font-medium text-slate-900 dark:text-white">{r.studentName}</td>
+                  <td className="px-4 py-2 font-medium text-slate-900 dark:text-white">
+                    <div className="flex items-center gap-2">
+                       {s?.avatarUrl ? (
+                          <img src={s.avatarUrl} alt="" className="w-6 h-6 rounded-full object-cover shrink-0" />
+                       ) : (
+                          <div className="w-6 h-6 bg-slate-200 dark:bg-slate-700 rounded-full flex items-center justify-center text-[9px] text-slate-500 shrink-0">{r.studentName?.[0]?.toUpperCase() || '?'}</div>
+                       )}
+                       <span className="truncate flex items-center gap-1.5">{r.studentName} <PinnedBadgesDisplay className="hidden sm:flex" badges={s?.pinnedBadges} /></span>
+                    </div>
+                  </td>
                   <td className="px-4 py-2 text-slate-500">{r.examTitle}</td>
                   <td className="px-4 py-2"><span className={`font-bold ${r.percentage >= 80 ? 'text-emerald-500' : r.percentage >= 60 ? 'text-amber-500' : 'text-red-500'}`}>{r.percentage}%</span></td>
                   <td className="px-4 py-2"><span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${r.passed ? 'bg-emerald-500/10 text-emerald-500' : 'bg-red-500/10 text-red-500'}`}>{r.passed ? t('org.results.passed') : t('org.results.failed')}</span></td>
                   <td className="px-4 py-2 text-[10px] text-slate-400 hidden md:table-cell">{new Date(r.submittedAt).toLocaleDateString()}</td>
                 </tr>
-              ))}
+              )})}
             </tbody>
           </table>
         </div>

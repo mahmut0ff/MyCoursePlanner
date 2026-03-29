@@ -202,11 +202,18 @@ const QuizPlayPage: React.FC = () => {
               {participants.map(p => (
                 <span
                   key={p.participantId}
-                  className={`kahoot-player-chip flex items-center gap-1.5 ${p.participantId === profile?.uid ? '!bg-white/30 ring-2 ring-white/50' : ''}`}
+                  className={`kahoot-player-chip flex items-center gap-2 px-3 py-1.5 rounded-full ${p.participantId === profile?.uid ? '!bg-white/30 ring-2 ring-white/50' : ''}`}
                 >
-                  {p.participantName}
+                  {p.avatarUrl ? (
+                    <img src={p.avatarUrl} alt="" className="w-6 h-6 rounded-full object-cover shrink-0 ring-1 ring-white/30" />
+                  ) : (
+                    <div className="w-6 h-6 rounded-full bg-black/20 flex items-center justify-center text-[10px] font-bold text-white shrink-0">
+                      {p.participantName?.[0]?.toUpperCase() || '?'}
+                    </div>
+                  )}
+                  <span className="font-semibold text-white drop-shadow-sm truncate max-w-[120px]">{p.participantName}</span>
                   {badgeDefs && p.pinnedBadges && p.pinnedBadges.length > 0 && (
-                     <div className="flex gap-0.5 ml-1">
+                     <div className="flex gap-0.5 shrink-0 ml-1">
                        {p.pinnedBadges.map(id => badgeDefs[id] && (
                           <div key={id} className="w-5 h-5 rounded-full bg-black/20 flex items-center justify-center text-[10px]" title={badgeDefs[id].title}>
                             {badgeDefs[id].icon}

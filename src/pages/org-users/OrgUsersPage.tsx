@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { orgGetUsers, orgInviteUser } from '../../lib/api';
 import { Search, Plus, RefreshCw } from 'lucide-react';
 import type { UserProfile } from '../../types';
+import { PinnedBadgesDisplay } from '../../lib/badges';
 
 const ROLE_COLORS: Record<string, string> = { admin: 'bg-primary-500/10 text-primary-500', teacher: 'bg-violet-500/10 text-violet-500', student: 'bg-slate-500/10 text-slate-500' };
 
@@ -74,7 +75,12 @@ const OrgUsersPage: React.FC = () => {
                         ) : (
                            <div className="w-8 h-8 bg-slate-600 rounded-full flex items-center justify-center text-[11px] text-white font-bold shadow-sm shrink-0">{u.displayName?.[0]?.toUpperCase() || '?'}</div>
                         )}
-                        <span className="text-sm font-semibold text-slate-900 dark:text-white truncate">{u.displayName}</span>
+                        <div className="flex flex-col">
+                          <span className="text-sm font-semibold text-slate-900 dark:text-white truncate flex items-center gap-2">
+                            {u.displayName}
+                            <PinnedBadgesDisplay badges={u.pinnedBadges} />
+                          </span>
+                        </div>
                       </div>
                     </td>
                     <td className="px-4 py-2.5 text-[11px] text-slate-500 truncate max-w-[180px]">{u.email}</td>

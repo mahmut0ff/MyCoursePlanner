@@ -953,6 +953,7 @@ export interface SessionParticipant {
   sessionId: string;
   participantId: string;
   participantName: string;
+  avatarUrl?: string;
   pinnedBadges?: string[]; // display pinned badges on leaderboard
 
   score: number;

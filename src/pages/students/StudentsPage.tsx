@@ -12,6 +12,7 @@ import {
 import { Users, Search, Mail, RefreshCw, CheckCircle, XCircle, UserPlus, Phone, Filter, X, ChevronDown, SortAsc, SortDesc } from 'lucide-react';
 import type { UserProfile, Group } from '../../types';
 import toast from 'react-hot-toast';
+import { PinnedBadgesDisplay } from '../../lib/badges';
 
 type SortField = 'name' | 'email' | 'date';
 type SortDir = 'asc' | 'desc';
@@ -344,7 +345,12 @@ const StudentsPage: React.FC = () => {
                             ) : (
                               <div className="w-8 h-8 bg-primary-600 rounded-full flex items-center justify-center text-[11px] text-white font-bold shadow-sm">{s.displayName?.[0]?.toUpperCase() || '?'}</div>
                             )}
-                            <span className="text-sm font-semibold text-slate-900 dark:text-white truncate">{s.displayName}</span>
+                            <div className="flex flex-col">
+                              <span className="text-sm font-semibold text-slate-900 dark:text-white truncate flex items-center gap-2">
+                                {s.displayName}
+                                <PinnedBadgesDisplay badges={s.pinnedBadges} />
+                              </span>
+                            </div>
                           </div>
                         </td>
                         <td className="px-4 py-2.5 text-[11px] text-slate-500 hidden sm:table-cell"><div className="flex items-center gap-1"><Mail className="w-3 h-3" /><span className="truncate max-w-[180px]">{s.email}</span></div></td>

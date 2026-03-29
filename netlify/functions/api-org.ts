@@ -468,11 +468,26 @@ const handler: Handler = async (event: HandlerEvent) => {
         title: body.title, type: body.type || 'link',
         url: body.url, category: body.category || 'general',
         lessonId: body.lessonId || null, courseId: body.courseId || null,
+        description: body.description || '',
+        tags: body.tags || [],
+        sizeBytes: body.sizeBytes || null,
+        mimeType: body.mimeType || '',
         authorId: user.uid, authorName: user.displayName,
         createdAt: now(),
       };
       const ref = await adminDb.collection('materials').add(data);
       return ok({ id: ref.id, ...data });
+    }
+
+    if (action === 'updateMaterial') {
+      const err = requireOrgStaff(user); if (err) return err;
+      const body = JSON.parse(event.body || '{}');
+      if (!body.id) return badRequest('id required');
+      const doc = await adminDb.collection('materials').doc(body.id).get();
+      if (!doc.exists || doc.data()?.organizationId !== orgId) return notFound();
+      const { id, ...fields } = body;
+      await adminDb.collection('materials').doc(id).update(fields);
+      return ok({ id, updated: true });
     }
 
     if (action === 'deleteMaterial') {

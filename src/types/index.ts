@@ -623,9 +623,13 @@ export interface Material {
   id: string;
   organizationId: string;
   title: string;
+  description?: string;
   type: MaterialType;
   url: string;
+  sizeBytes?: number;
+  mimeType?: string;
   category: string;
+  tags?: string[];
   lessonId?: string;
   courseId?: string;
   authorId: string;

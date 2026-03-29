@@ -81,7 +81,7 @@ export const apiDeleteAuditLogs = () => apiRequest('api-audit', 'DELETE');
 export const apiCloseRoom = (roomId: string) => apiRequest('api-rooms', 'POST', { action: 'close', roomId });
 
 // ---- AI Generation ----
-export const apiAIGenerate = (data: { prompt?: string; type: 'quiz' | 'exam' | 'lesson_and_quiz'; fileUrl?: string }) =>
+export const apiAIGenerate = (data: { prompt?: string; type: 'quiz' | 'exam' | 'lesson_and_quiz' | 'material_summary'; fileUrl?: string }) =>
   apiRequest('api-ai-generate', 'POST', data);
 
 // ---- Attempts ----
@@ -270,6 +270,7 @@ export const orgInviteUser = (email: string, role: string) => orgReq('inviteUser
 // Materials
 export const orgGetMaterials = (filters?: Record<string, string>) => orgReq('materials', 'GET', undefined, filters);
 export const orgCreateMaterial = (data: any) => orgReq('createMaterial', 'POST', data);
+export const orgUpdateMaterial = (data: any) => orgReq('updateMaterial', 'POST', data);
 export const orgDeleteMaterial = (id: string) => orgReq('deleteMaterial', 'POST', { id });
 
 // Schedule

@@ -96,6 +96,15 @@ Requirements for "quiz":
   - If "media_question", MUST include a "searchQuery" field with an English keyword for an image, OR a "ttsText" field with text to be spoken.
 You must randomly mix and combine the given question types to make the quiz varied and engaging!
 Do not include any extra text, markdown blocks like \`\`\`json, or anything other than the raw JSON object.`;
+    } else if (type === 'material_summary') {
+      systemPrompt = `You are a helpful education AI assistant. Analyze the provided material/document.
+Extract key metadata to categorize it within an educational Learning Management System.
+Format the response strictly as a JSON object containing:
+- "title": string (a short, clear title for the material, max 60 chars)
+- "description": string (a concise 1-3 sentence description of the content)
+- "tags": array of strings (1 to 5 relevant tags, e.g. "Math", "Syllabus", "Guide")
+- "suggestedCategory": string (a single broad category like "Documents", "Media", "Lectures", or specific subject)
+Do not include any extra text, markdown blocks like \`\`\`json, or anything other than the raw JSON object.`;
     } else {
       systemPrompt = `You are an expert educator. Generate an exam based on the provided material or prompt. 
 Format the response strictly as a JSON array of objects. 

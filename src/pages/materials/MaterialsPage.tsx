@@ -1,83 +1,344 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
-import { orgGetMaterials, orgCreateMaterial, orgDeleteMaterial } from '../../lib/api';
-import { FileText, Plus, Search, Trash2, ExternalLink, RefreshCw } from 'lucide-react';
+import { orgGetMaterials, orgCreateMaterial, orgDeleteMaterial, apiAIGenerate } from '../../lib/api';
+import { uploadFile } from '../../services/storage.service';
+import { useAuth } from '../../contexts/AuthContext';
+import { 
+  FileText, Search, Trash2, ExternalLink, RefreshCw, 
+  UploadCloud, File as FileIcon, FileImage, FileAudio, FileVideo, 
+  LayoutGrid, List, Sparkles, X, Eye
+} from 'lucide-react';
 import type { Material } from '../../types';
+import FileViewerModal from '../../components/ui/FileViewerModal';
+import { toast } from 'react-hot-toast';
+import EmptyState from '../../components/ui/EmptyState';
 
 const TYPE_COLORS: Record<string, string> = {
-  link: 'bg-blue-500/10 text-blue-500', video: 'bg-red-500/10 text-red-500',
-  file: 'bg-amber-500/10 text-amber-500', document: 'bg-emerald-500/10 text-emerald-500',
+  link: 'bg-blue-500/10 text-blue-500 border-blue-500/20', 
+  video: 'bg-red-500/10 text-red-500 border-red-500/20',
+  audio: 'bg-purple-500/10 text-purple-500 border-purple-500/20',
+  file: 'bg-amber-500/10 text-amber-500 border-amber-500/20', 
+  document: 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20',
+  image: 'bg-pink-500/10 text-pink-500 border-pink-500/20'
+};
+
+const getFileIcon = (mimeType?: string, type?: string) => {
+  if (mimeType?.startsWith('image/') || type === 'image') return <FileImage className="w-5 h-5" />;
+  if (mimeType?.startsWith('video/') || type === 'video') return <FileVideo className="w-5 h-5" />;
+  if (mimeType?.startsWith('audio/') || type === 'audio') return <FileAudio className="w-5 h-5" />;
+  if (type === 'link') return <ExternalLink className="w-5 h-5" />;
+  return <FileIcon className="w-5 h-5" />;
+};
+
+const formatBytes = (bytes?: number) => {
+  if (!bytes) return '';
+  if (bytes === 0) return '0 Bytes';
+  const k = 1024, dm = 2, sizes = ['Bytes', 'KB', 'MB', 'GB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
 };
 
 const MaterialsPage: React.FC = () => {
   const { t } = useTranslation();
+  const { profile } = useAuth();
+  const orgId = profile?.activeOrgId;
+
   const [materials, setMaterials] = useState<Material[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+  
   const [showCreate, setShowCreate] = useState(false);
-  const [form, setForm] = useState({ title: '', url: '', type: 'link', category: 'general' });
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState('');
+  const [isUploading, setIsUploading] = useState(false);
+  const [isProcessingAI, setIsProcessingAI] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  
+  const [viewMaterial, setViewMaterial] = useState<Material | null>(null);
 
-  const load = () => { setLoading(true); orgGetMaterials().then(setMaterials).catch((e) => setError(e.message || 'Error')).finally(() => setLoading(false)); };
-  useEffect(load, []);
+  const [form, setForm] = useState({ 
+    title: '', url: '', type: 'document', category: 'General', 
+    description: '', tags: [] as string[],
+    mimeType: '', sizeBytes: 0, file: null as File | null
+  });
 
-  const filtered = materials.filter((m) => m.title.toLowerCase().includes(search.toLowerCase()));
+  const load = () => { 
+    setLoading(true); 
+    orgGetMaterials()
+      .then(setMaterials)
+      .catch((e: any) => toast.error(e.message || 'Error'))
+      .finally(() => setLoading(false)); 
+  };
+  
+  useEffect(() => { load(); }, []);
 
-  const handleCreate = async () => {
-    if (!form.title.trim() || !form.url.trim()) return; setSaving(true); setError('');
-    try { const c = await orgCreateMaterial(form); setMaterials((p) => [c, ...p]); setShowCreate(false); setForm({ title: '', url: '', type: 'link', category: 'general' }); }
-    catch (e: any) { setError(e.message || 'Error'); } finally { setSaving(false); }
+  const filtered = materials.filter((m) => 
+    m.title.toLowerCase().includes(search.toLowerCase()) ||
+    m.description?.toLowerCase().includes(search.toLowerCase()) ||
+    m.category?.toLowerCase().includes(search.toLowerCase())
+  );
+
+  const categories = Array.from(new Set(materials.map(m => m.category))).filter(Boolean);
+
+  const guessTypeFromMime = (mime: string): string => {
+    if (mime.startsWith('image/')) return 'image';
+    if (mime.startsWith('video/')) return 'video';
+    if (mime.startsWith('audio/')) return 'audio';
+    if (mime.includes('pdf') || mime.includes('word') || mime.includes('presentation')) return 'document';
+    return 'file';
   };
 
-  const handleDelete = async (id: string) => {
-    if (!confirm(t('common.confirmDelete'))) return;
-    try { await orgDeleteMaterial(id); setMaterials((p) => p.filter((m) => m.id !== id)); } catch (e: any) { setError(e.message); }
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    
+    setForm(prev => ({
+      ...prev,
+      title: file.name.split('.')[0],
+      file,
+      mimeType: file.type,
+      sizeBytes: file.size,
+      type: guessTypeFromMime(file.type)
+    }));
+  };
+
+  const processWithAI = async (url: string) => {
+    try {
+      setIsProcessingAI(true);
+      const res = await apiAIGenerate({ type: 'material_summary', fileUrl: url });
+      if (res?.data) {
+        setForm(f => ({
+          ...f,
+          title: res.data.title || f.title,
+          description: res.data.description || '',
+          tags: res.data.tags || [],
+          category: res.data.suggestedCategory || f.category
+        }));
+        toast.success(t('materials.aiSuccess', 'ИИ успешно заполнил данные'));
+      }
+    } catch (e: any) {
+      console.warn('AI Parsing failed', e);
+      toast.error(t('materials.aiError', 'ИИ не смог распознать файл'));
+    } finally {
+      setIsProcessingAI(false);
+    }
+  };
+
+  const handleCreate = async () => {
+    if (!form.title.trim() && !form.file) return;
+    if (!orgId) return;
+
+    setIsUploading(true);
+    try {
+      let downloadUrl = form.url;
+      
+      // If we have a physical file, upload it into Firebase Storage
+      if (form.file) {
+        const path = `materials/${orgId}/${Date.now()}_${form.file.name.replace(/[^a-zA-Z0-9.-]/g, '_')}`;
+        downloadUrl = await uploadFile(path, form.file);
+      } else if (!form.url.trim()) {
+        toast.error('URL or File is required');
+        setIsUploading(false);
+        return;
+      }
+
+      const payload = {
+        title: form.title,
+        description: form.description,
+        url: downloadUrl,
+        type: form.type,
+        category: form.category,
+        tags: form.tags,
+        mimeType: form.mimeType,
+        sizeBytes: form.sizeBytes
+      };
+
+      const c = await orgCreateMaterial(payload) as Material;
+      setMaterials((p) => [c, ...p]);
+      setShowCreate(false);
+      setForm({ title: '', url: '', type: 'link', category: 'General', description: '', tags: [], mimeType: '', sizeBytes: 0, file: null });
+      toast.success(t('materials.created', 'Материал успешно добавлен'));
+    } catch (e: any) {
+      toast.error(e.message || 'Error');
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  const handleDelete = async (id: string, e?: React.MouseEvent) => {
+    e?.stopPropagation();
+    if (!confirm(t('common.confirmDelete', 'Удалить безвозвратно?'))) return;
+    try { 
+      await orgDeleteMaterial(id); 
+      setMaterials((p) => p.filter((m) => m.id !== id)); 
+      toast.success(t('common.deleted', 'Удалено'));
+    } catch (e: any) { 
+      toast.error(e.message); 
+    }
   };
 
   return (
-    <div>
-      <div className="flex items-center justify-between mb-4">
-        <div><h1 className="text-lg font-bold text-slate-900 dark:text-white">{t('nav.materials')}</h1><p className="text-[11px] text-slate-500">{t('org.materials.subtitle')}</p></div>
-        <div className="flex items-center gap-1.5">
-          <button onClick={load} className="p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors"><RefreshCw className="w-3.5 h-3.5" /></button>
-          <button onClick={() => setShowCreate(true)} className="bg-emerald-500 hover:bg-emerald-600 text-white px-3 py-1.5 rounded-lg text-[11px] font-medium flex items-center gap-1 transition-colors"><Plus className="w-3 h-3" />{t('org.materials.add')}</button>
+    <div className="max-w-6xl mx-auto space-y-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">
+            {t('nav.materials', 'Материалы')}
+          </h1>
+          <p className="text-sm text-slate-500 mt-1 dark:text-slate-400">
+            {t('org.materials.subtitle', 'Хранилище файлов, лекций и медиа библиотеки')}
+          </p>
+        </div>
+        
+        <div className="flex items-center gap-2">
+          <div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-lg">
+            <button 
+              onClick={() => setViewMode('grid')}
+              className={`p-1.5 rounded-md transition-all ${viewMode === 'grid' ? 'bg-white dark:bg-slate-700 shadow-sm text-primary-500' : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-300'}`}
+            >
+              <LayoutGrid className="w-4 h-4" />
+            </button>
+            <button 
+              onClick={() => setViewMode('list')}
+              className={`p-1.5 rounded-md transition-all ${viewMode === 'list' ? 'bg-white dark:bg-slate-700 shadow-sm text-primary-500' : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-300'}`}
+            >
+              <List className="w-4 h-4" />
+            </button>
+          </div>
+          <button onClick={load} className="p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg transition-colors">
+            <RefreshCw className="w-4 h-4" />
+          </button>
+          <button onClick={() => setShowCreate(true)} className="bg-primary-500 hover:bg-primary-600 text-white px-4 py-2 rounded-lg font-medium flex items-center gap-2 transition-colors shadow-sm shadow-primary-500/20">
+            <UploadCloud className="w-4 h-4" />
+            <span>{t('org.materials.add', 'Загрузить файл')}</span>
+          </button>
         </div>
       </div>
 
-      {error && <div className="mb-3 px-3 py-1.5 bg-red-500/10 border border-red-500/20 rounded-lg text-[11px] text-red-500">{error}</div>}
-
-      <div className="bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700/50 rounded-xl p-2.5 mb-3">
-        <div className="relative max-w-xs">
-          <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3 h-3 text-slate-400" />
-          <input type="text" value={search} onChange={(e) => setSearch(e.target.value)} placeholder={`${t('common.search')}...`}
-            className="w-full bg-transparent border-0 pl-7 pr-2 py-1 text-xs text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none" />
+      <div className="bg-white dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700/50 rounded-xl p-3 flex flex-col sm:flex-row gap-3">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+          <input 
+            type="text" 
+            value={search} 
+            onChange={(e) => setSearch(e.target.value)} 
+            placeholder={t('common.search', 'Поиск материалов...')}
+            className="w-full bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-lg pl-9 pr-3 py-2 text-sm text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-all" 
+          />
         </div>
+        {categories.length > 0 && (
+          <select className="bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-primary-500/20">
+            <option value="all">{t('common.allCategories', 'Все категории')}</option>
+            {categories.map(c => <option key={c} value={c}>{c}</option>)}
+          </select>
+        )}
       </div>
 
-      {loading ? <div className="flex justify-center py-16"><div className="w-6 h-6 border-2 border-slate-200 border-t-primary-500 rounded-full animate-spin dark:border-slate-700 dark:border-t-primary-400" /></div> : filtered.length === 0 ? (
-        <div className="text-center py-16"><FileText className="w-8 h-8 text-slate-300 dark:text-slate-600 mx-auto mb-2" /><p className="text-xs text-slate-400">{t('org.materials.empty')}</p></div>
+      {loading ? (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+          {[1,2,3,4].map(i => (
+            <div key={i} className="bg-white dark:bg-slate-800 rounded-xl p-4 h-40 animate-pulse border border-slate-100 dark:border-slate-700" />
+          ))}
+        </div>
+      ) : filtered.length === 0 ? (
+        <EmptyState 
+          icon={FileText}
+          title={search ? t('common.noResults', 'Ничего не найдено') : t('org.materials.empty', 'Материалов пока нет')}
+          description={search ? '' : t('org.materials.emptyDesc', 'Загрузите файлы, документы или добавьте полезные ссылки для ваших курсов.')}
+          actionLabel={!search ? t('org.materials.add', 'Добавить первый материал') : undefined}
+          onAction={!search ? () => setShowCreate(true) : undefined}
+        />
+      ) : viewMode === 'grid' ? (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+          {filtered.map((m) => {
+            const colors = TYPE_COLORS[m.type] || TYPE_COLORS.file;
+            return (
+              <div 
+                key={m.id} 
+                onClick={() => setViewMaterial(m)}
+                className="group cursor-pointer bg-white dark:bg-slate-800 rounded-2xl border border-slate-200/80 dark:border-slate-700/60 p-5 hover:shadow-xl hover:shadow-primary-500/5 hover:-translate-y-1 transition-all duration-300 relative overflow-hidden flex flex-col"
+              >
+                {/* Format Badge */}
+                <div className="absolute top-4 right-4 flex items-center gap-2">
+                  <span className={`text-[10px] uppercase font-bold px-2 py-1 rounded-md border ${colors} backdrop-blur-md`}>
+                    {m.type}
+                  </span>
+                </div>
+
+                <div className={`w-12 h-12 rounded-xl flex items-center justify-center mb-4 ${colors.replace('border-', 'border-none ')}`}>
+                  {getFileIcon(m.mimeType, m.type)}
+                </div>
+
+                <h3 className="font-semibold text-slate-900 dark:text-white mb-1 line-clamp-2 leading-tight">
+                  {m.title}
+                </h3>
+                
+                {m.description && (
+                  <p className="text-xs text-slate-500 dark:text-slate-400 line-clamp-2 mb-3 leading-relaxed">
+                    {m.description}
+                  </p>
+                )}
+
+                <div className="mt-auto pt-4 flex flex-wrap gap-1.5 items-center justify-between border-t border-slate-50 dark:border-slate-700/50">
+                  <span className="text-[11px] font-medium text-slate-500 dark:text-slate-400 truncate max-w-[60%]">
+                    {m.category}
+                  </span>
+                  {m.sizeBytes ? <span className="text-[10px] text-slate-400">{formatBytes(m.sizeBytes)}</span> : null}
+                </div>
+
+                {/* Quick actions overlay */}
+                <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-3">
+                  <button onClick={(e) => { e.stopPropagation(); setViewMaterial(m); }} className="p-2 bg-white text-slate-900 hover:text-primary-500 rounded-full shadow-lg transition-transform hover:scale-110">
+                    <Eye className="w-4 h-4" />
+                  </button>
+                  <a href={m.url} target="_blank" rel="noreferrer" onClick={e => e.stopPropagation()} className="p-2 bg-white text-slate-900 hover:text-primary-500 rounded-full shadow-lg transition-transform hover:scale-110">
+                    <ExternalLink className="w-4 h-4" />
+                  </a>
+                  <button onClick={(e) => handleDelete(m.id, e)} className="p-2 bg-red-500 text-white rounded-full shadow-lg transition-transform hover:scale-110">
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
       ) : (
-        <div className="bg-white dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/40 rounded-xl overflow-hidden">
-          <table className="w-full">
-            <thead><tr className="border-b border-slate-100 dark:border-slate-700/50">
-              <th className="text-left text-[10px] font-medium text-slate-500 uppercase tracking-wider px-4 py-2">{t('common.name')}</th>
-              <th className="text-left text-[10px] font-medium text-slate-500 uppercase tracking-wider px-4 py-2 hidden sm:table-cell">{t('common.type', 'Тип')}</th>
-              <th className="text-left text-[10px] font-medium text-slate-500 uppercase tracking-wider px-4 py-2 hidden md:table-cell">{t('common.category', 'Категория')}</th>
-              <th className="text-right text-[10px] font-medium text-slate-500 uppercase tracking-wider px-4 py-2"></th>
-            </tr></thead>
+        <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden shadow-sm">
+          <table className="w-full text-left">
+            <thead>
+              <tr className="bg-slate-50/50 dark:bg-slate-900/20 border-b border-slate-100 dark:border-slate-700/50">
+                <th className="px-4 py-3 text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">{t('common.name', 'Название')}</th>
+                <th className="px-4 py-3 text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider hidden sm:table-cell">{t('common.category', 'Категория')}</th>
+                <th className="px-4 py-3 text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider hidden md:table-cell">{t('common.size', 'Размер')}</th>
+                <th className="px-4 py-3 text-right"></th>
+              </tr>
+            </thead>
             <tbody className="divide-y divide-slate-50 dark:divide-slate-700/30">
-              {filtered.map((m) => (
-                <tr key={m.id} className="hover:bg-slate-50/80 dark:hover:bg-slate-700/20 transition-colors group">
-                  <td className="px-4 py-2.5">
-                    <div className="flex items-center gap-2"><FileText className="w-3.5 h-3.5 text-slate-400 shrink-0" /><span className="text-xs font-medium text-slate-900 dark:text-white truncate">{m.title}</span></div>
+              {filtered.map(m => (
+                <tr key={m.id} className="hover:bg-slate-50/80 dark:hover:bg-slate-700/30 transition-colors group cursor-pointer" onClick={() => setViewMaterial(m)}>
+                  <td className="px-4 py-3">
+                    <div className="flex items-center gap-3">
+                      <div className={`p-2 rounded-lg ${TYPE_COLORS[m.type] || TYPE_COLORS.file}`}>
+                        {getFileIcon(m.mimeType, m.type)}
+                      </div>
+                      <div>
+                        <div className="text-sm font-medium text-slate-900 dark:text-white">{m.title}</div>
+                        {m.description && <div className="text-[11px] text-slate-500 max-w-md truncate">{m.description}</div>}
+                      </div>
+                    </div>
                   </td>
-                  <td className="px-4 py-2.5 hidden sm:table-cell"><span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${TYPE_COLORS[m.type] || TYPE_COLORS.link}`}>{t(`materials.type.${m.type}`, m.type)}</span></td>
-                  <td className="px-4 py-2.5 text-[11px] text-slate-500 hidden md:table-cell">{m.category}</td>
-                  <td className="px-4 py-2.5 text-right">
-                    <div className="flex items-center justify-end gap-0.5">
-                      <a href={m.url} target="_blank" rel="noreferrer" className="p-1 text-slate-400 hover:text-primary-500 rounded transition-colors"><ExternalLink className="w-3 h-3" /></a>
-                      <button onClick={() => handleDelete(m.id)} className="p-1 text-slate-400 hover:text-red-500 rounded transition-colors opacity-0 group-hover:opacity-100"><Trash2 className="w-3 h-3" /></button>
+                  <td className="px-4 py-3 hidden sm:table-cell text-sm text-slate-600 dark:text-slate-400">
+                    {m.category}
+                  </td>
+                  <td className="px-4 py-3 hidden md:table-cell text-sm text-slate-500">
+                    {formatBytes(m.sizeBytes)}
+                  </td>
+                  <td className="px-4 py-3 text-right">
+                    <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <a href={m.url} target="_blank" rel="noreferrer" onClick={e => e.stopPropagation()} className="p-1.5 text-slate-400 hover:text-primary-500 hover:bg-slate-100 dark:hover:bg-slate-700 rounded transition-colors">
+                        <ExternalLink className="w-4 h-4" />
+                      </a>
+                      <button onClick={(e) => handleDelete(m.id, e)} className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded transition-colors">
+                        <Trash2 className="w-4 h-4" />
+                      </button>
                     </div>
                   </td>
                 </tr>
@@ -87,30 +348,144 @@ const MaterialsPage: React.FC = () => {
         </div>
       )}
 
+      {/* CREATE MODAL */}
       {showCreate && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => setShowCreate(false)}>
-          <div className="bg-white dark:bg-slate-800 rounded-xl p-4 w-full max-w-sm shadow-2xl" onClick={(e) => e.stopPropagation()}>
-            <h2 className="text-sm font-bold text-slate-900 dark:text-white mb-3">{t('org.materials.add')}</h2>
-            <div className="space-y-2">
-              <input placeholder={t('org.materials.titlePlaceholder')} value={form.title} onChange={(e) => setForm(f => ({ ...f, title: e.target.value }))}
-                className="w-full bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-lg px-2.5 py-1.5 text-xs outline-none focus:border-primary-500 text-slate-900 dark:text-white" autoFocus />
-              <input placeholder="https://..." value={form.url} onChange={(e) => setForm(f => ({ ...f, url: e.target.value }))}
-                className="w-full bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-lg px-2.5 py-1.5 text-xs outline-none focus:border-primary-500 text-slate-900 dark:text-white" />
-              <div className="grid grid-cols-2 gap-2">
-                <select value={form.type} onChange={(e) => setForm(f => ({ ...f, type: e.target.value }))}
-                  className="bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-lg px-2.5 py-1.5 text-xs outline-none focus:border-primary-500 text-slate-900 dark:text-white">
-                  <option value="link">{t('materials.type.link', 'Ссылка')}</option><option value="video">{t('materials.type.video', 'Видео')}</option><option value="document">{t('materials.type.document', 'Документ')}</option><option value="file">{t('materials.type.file', 'Файл')}</option>
-                </select>
-                <input placeholder={t('org.materials.categoryPlaceholder')} value={form.category} onChange={(e) => setForm(f => ({ ...f, category: e.target.value }))}
-                  className="bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-lg px-2.5 py-1.5 text-xs outline-none focus:border-primary-500 text-slate-900 dark:text-white" />
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex flex-col justify-end sm:items-center sm:justify-center p-0 sm:p-4 animate-in fade-in" onClick={() => !isUploading && setShowCreate(false)}>
+          <div className="bg-white dark:bg-slate-900 w-full max-w-lg sm:rounded-2xl rounded-t-2xl shadow-2xl p-6 relative flex flex-col max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+            <button onClick={() => !isUploading && setShowCreate(false)} className="absolute top-4 right-4 p-2 text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full transition-colors">
+              <X className="w-5 h-5" />
+            </button>
+            
+            <h2 className="text-xl font-bold text-slate-900 dark:text-white mb-6 pr-8">
+              {t('materials.uploadNew', 'Загрузка материала')}
+            </h2>
+
+            <div className="space-y-5">
+              {/* File Dropzone */}
+              <div 
+                className="border-2 border-dashed border-slate-300 dark:border-slate-700 rounded-xl p-8 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors cursor-pointer group flex flex-col items-center justify-center text-center relative overflow-hidden"
+                onClick={() => fileInputRef.current?.click()}
+              >
+                <input 
+                  type="file" 
+                  ref={fileInputRef} 
+                  className="hidden" 
+                  onChange={handleFileSelect} 
+                  accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx"
+                />
+                
+                {form.file ? (
+                  <div className="flex flex-col items-center gap-2 z-10">
+                    <div className="w-12 h-12 bg-primary-100 dark:bg-primary-900/30 text-primary-600 rounded-full flex items-center justify-center mb-1">
+                      {getFileIcon(form.mimeType, form.type)}
+                    </div>
+                    <span className="font-semibold text-slate-900 dark:text-white line-clamp-1">{form.file.name}</span>
+                    <span className="text-xs text-slate-500">{formatBytes(form.file.size)}</span>
+                  </div>
+                ) : (
+                  <div className="flex flex-col items-center gap-2 z-10">
+                    <div className="w-12 h-12 bg-slate-100 dark:bg-slate-800 text-slate-400 group-hover:text-primary-500 group-hover:bg-primary-50 dark:group-hover:bg-primary-900/30 rounded-full flex items-center justify-center transition-colors mb-2">
+                      <UploadCloud className="w-6 h-6" />
+                    </div>
+                    <p className="text-sm font-medium text-slate-900 dark:text-white">Нажмите для загрузки файла</p>
+                    <p className="text-xs text-slate-500">или просто перетащите его сюда (PDF, DOCX, MP4, PNG)</p>
+                  </div>
+                )}
               </div>
+
+              {/* Or URL */}
+              {!form.file && (
+                <div className="flex items-center gap-3">
+                  <div className="h-px bg-slate-200 dark:bg-slate-700 flex-1" />
+                  <span className="text-xs text-slate-400 font-medium uppercase">или вставьте ссылку</span>
+                  <div className="h-px bg-slate-200 dark:bg-slate-700 flex-1" />
+                </div>
+              )}
+
+              {!form.file && (
+                <div>
+                  <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1.5">{t('common.link', 'Ссылка (URL)')}</label>
+                  <input type="url" placeholder="https://..." value={form.url} onChange={(e) => setForm(f => ({ ...f, url: e.target.value }))}
+                    className="w-full bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-sm outline-none focus:border-primary-500 focus:ring-1 focus:ring-primary-500 text-slate-900 dark:text-white transition-all" />
+                </div>
+              )}
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1.5">{t('materials.title', 'Название (Обязательно)')}</label>
+                  <input placeholder={t('org.materials.titlePlaceholder', 'Например: Учебник 5 класс')} value={form.title} onChange={(e) => setForm(f => ({ ...f, title: e.target.value }))}
+                    className="w-full bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-sm outline-none focus:border-primary-500 focus:ring-1 focus:ring-primary-500 text-slate-900 dark:text-white transition-all" />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1.5">{t('materials.category', 'Категория / Предмет')}</label>
+                  <input placeholder="Например: Математика, Документы" value={form.category} onChange={(e) => setForm(f => ({ ...f, category: e.target.value }))}
+                    className="w-full bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-sm outline-none focus:border-primary-500 focus:ring-1 focus:ring-primary-500 text-slate-900 dark:text-white transition-all" />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1.5">{t('common.description', 'Краткое описание (Опционально)')}</label>
+                <textarea placeholder="О чём этот материал..." value={form.description} onChange={(e) => setForm(f => ({ ...f, description: e.target.value }))} rows={2}
+                  className="w-full bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-sm outline-none focus:border-primary-500 focus:ring-1 focus:ring-primary-500 text-slate-900 dark:text-white transition-all resize-none" />
+              </div>
+
+              {!form.file && (
+                <div>
+                  <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1.5">{t('common.type', 'Формат файла вручную')}</label>
+                  <select value={form.type} onChange={(e) => setForm(f => ({ ...f, type: e.target.value }))}
+                    className="w-full bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-sm outline-none focus:border-primary-500 focus:ring-1 focus:ring-primary-500 text-slate-900 dark:text-white transition-all">
+                    <option value="link">🌐 {t('materials.type.link', 'Внешняя ссылка')}</option>
+                    <option value="video">🎥 {t('materials.type.video', 'Видео')}</option>
+                    <option value="document">📄 {t('materials.type.document', 'Документ (PDF/Word)')}</option>
+                    <option value="image">🖼 {t('materials.type.image', 'Изображение')}</option>
+                  </select>
+                </div>
+              )}
             </div>
-            <div className="flex justify-end gap-2 mt-3">
-              <button onClick={() => setShowCreate(false)} className="px-2.5 py-1 text-[11px] text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg">{t('common.cancel')}</button>
-              <button onClick={handleCreate} disabled={saving || !form.title.trim() || !form.url.trim()} className="bg-emerald-500 hover:bg-emerald-600 text-white px-3 py-1 rounded-lg text-[11px] font-medium disabled:opacity-50">{saving ? '...' : t('common.save')}</button>
+
+            <div className="flex flex-col-reverse sm:flex-row justify-end gap-3 mt-8">
+              <button 
+                onClick={() => !isUploading && setShowCreate(false)} 
+                disabled={isUploading}
+                className="px-4 py-2.5 text-sm font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100 dark:text-slate-400 dark:hover:text-white dark:hover:bg-slate-800 rounded-xl transition-colors w-full sm:w-auto text-center"
+              >
+                {t('common.cancel', 'Отмена')}
+              </button>
+
+              {!form.file && form.url.trim() && (
+                 <button 
+                    onClick={() => processWithAI(form.url)} 
+                    disabled={isProcessingAI || isUploading}
+                    className="relative overflow-hidden group px-6 py-2.5 bg-gradient-to-r from-violet-500 to-fuchsia-500 text-white rounded-xl text-sm font-bold flex items-center justify-center gap-2 transition-all shadow-md shadow-violet-500/25 shrink-0"
+                 >
+                   {isProcessingAI ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> : <Sparkles className="w-4 h-4" />}
+                   <span>Заполнить ИИ</span>
+                 </button>
+              )}
+
+              <button 
+                onClick={handleCreate} 
+                disabled={isUploading || isProcessingAI || (!form.title.trim() && !form.file)} 
+                className="bg-primary-500 hover:bg-primary-600 active:bg-primary-700 text-white px-6 py-2.5 rounded-xl text-sm font-bold shadow-md shadow-primary-500/20 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2 w-full sm:w-auto"
+              >
+                {isUploading ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    <span>Загрузка...</span>
+                  </>
+                ) : t('common.save', 'Опубликовать файл')}
+              </button>
             </div>
           </div>
         </div>
+      )}
+
+      {/* File Viewer Modal */}
+      {viewMaterial && (
+        <FileViewerModal 
+          file={{ name: viewMaterial.title, url: viewMaterial.url, type: viewMaterial.mimeType || 'unknown' }} 
+          onClose={() => setViewMaterial(null)} 
+        />
       )}
     </div>
   );

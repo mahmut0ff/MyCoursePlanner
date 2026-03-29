@@ -8,7 +8,7 @@ import {
   apiStartQuizSession, apiNextQuestion, apiPauseQuizSession,
   apiResumeQuizSession, apiEndQuizSession, apiKickParticipant,
   apiLockQuizSession, apiUnlockQuizSession, apiGetQuizSession,
-  apiRestartQuizSession
+  apiRestartQuizSession, apiGetGamification
 } from '../../lib/api';
 import type { QuizSession, SessionParticipant, SessionAnswer } from '../../types';
 import {
@@ -40,6 +40,7 @@ const LiveSessionDashboard: React.FC = () => {
 
   // Timer state for live countdown on teacher screen
   const [displayTimeLeft, setDisplayTimeLeft] = useState<number>(0);
+  const [badgeDefs, setBadgeDefs] = useState<any>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const lastTickRef = useRef<number>(-1);
 
@@ -64,6 +65,7 @@ const LiveSessionDashboard: React.FC = () => {
   };
 
   useEffect(() => {
+    apiGetGamification().then((data: any) => setBadgeDefs(data.allBadgeDefs)).catch(() => {});
     return () => {
       cleanupAudio();
       if (timerRef.current) clearInterval(timerRef.current);
@@ -414,14 +416,30 @@ const LiveSessionDashboard: React.FC = () => {
               ) : (
                 participants.map(p => (
                   <div key={p.participantId} 
-                       className="group relative px-6 py-3 rounded-xl flex items-center gap-2 transform transition-transform hover:scale-110 animate-in fade-in zoom-in duration-300 shadow-md" 
-                       style={{ backgroundColor: 'var(--kahoot-purple)' }}>
-                    <span className="text-white font-black text-lg tracking-wide truncate max-w-[200px]">
+                       className="group relative px-5 py-3 rounded-2xl flex items-center gap-3 transform transition-transform hover:scale-105 animate-in fade-in zoom-in duration-300 shadow-xl border-b-4" 
+                       style={{ backgroundColor: 'var(--kahoot-purple)', borderBottomColor: 'rgba(0,0,0,0.2)' }}>
+                    {p.avatarUrl ? (
+                      <img src={p.avatarUrl} alt="" className="w-8 h-8 rounded-full object-cover shrink-0 ring-2 ring-white/30" />
+                    ) : (
+                      <div className="w-8 h-8 rounded-full bg-black/20 flex items-center justify-center text-xs font-black text-white shrink-0">
+                        {p.participantName?.[0]?.toUpperCase() || '?'}
+                      </div>
+                    )}
+                    <span className="text-white font-extrabold text-lg tracking-wide truncate max-w-[200px] drop-shadow-md">
                       {p.participantName}
                     </span>
+                    {badgeDefs && p.pinnedBadges && p.pinnedBadges.length > 0 && (
+                       <div className="flex gap-1 shrink-0 ml-1">
+                         {p.pinnedBadges.map(id => badgeDefs[id] && (
+                            <div key={id} className="w-6 h-6 rounded-full bg-black/20 flex items-center justify-center text-xs shadow-inner" title={badgeDefs[id].title}>
+                              {badgeDefs[id].icon}
+                            </div>
+                         ))}
+                       </div>
+                    )}
                     <button onClick={() => { if (confirm(t('quiz.kickConfirm', 'Remove player?'))) apiKickParticipant(sessionId!, p.participantId) }}
-                      className="absolute -top-2 -right-2 bg-red-500 hover:bg-red-600 rounded-full p-1.5 opacity-0 group-hover:opacity-100 transition-opacity transform shadow-lg cursor-pointer">
-                      <UserMinus className="w-3.5 h-3.5 text-white" />
+                      className="absolute -top-2 -right-2 bg-red-500 hover:bg-red-600 rounded-full p-2 opacity-0 group-hover:opacity-100 transition-opacity transform shadow-lg cursor-pointer">
+                      <UserMinus className="w-4 h-4 text-white" />
                     </button>
                   </div>
                 ))

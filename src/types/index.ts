@@ -430,7 +430,7 @@ export interface LessonContentBlock {
 // ---- Exams ----
 
 export type ExamStatus = 'draft' | 'published' | 'archived';
-export type QuestionType = 'multiple_choice' | 'multi_select' | 'short_answer' | 'true_false';
+export type QuestionType = 'multiple_choice' | 'multi_select' | 'short_answer' | 'true_false' | 'matching' | 'media_question' | 'speaking';
 
 export interface Exam {
   id: string;
@@ -461,6 +461,9 @@ export interface Question {
   keywords: string[];
   points: number;
   order: number;
+  mediaUrl?: string;
+  mediaType?: 'image' | 'video' | 'audio';
+  ttsText?: string;
 }
 
 // ---- Exam Rooms ----

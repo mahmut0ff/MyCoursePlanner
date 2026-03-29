@@ -7,8 +7,10 @@ import { auth } from '../../lib/firebase';
 import { useAuth } from '../../contexts/AuthContext';
 import { shuffleArray, formatTime } from '../../utils/grading';
 import { showGamificationToasts } from '../../components/gamification/GamificationToasts';
+import { uploadFile } from '../../services/storage.service';
+import { StudentAudioRecorder } from '../../components/shared/StudentAudioRecorder';
 import type { ExamRoom, Exam, Question } from '../../types';
-import { Clock, ChevronLeft, ChevronRight, Send, AlertTriangle, CheckCircle2 } from 'lucide-react';
+import { Clock, ChevronLeft, ChevronRight, Send, AlertTriangle, CheckCircle2, Volume2 } from 'lucide-react';
 
 const ExamTakePage: React.FC = () => {
   const { roomId } = useParams<{ roomId: string }>();
@@ -235,8 +237,57 @@ const ExamTakePage: React.FC = () => {
 
             <h2 className="text-2xl sm:text-3xl font-semibold text-slate-900 dark:text-white leading-snug mb-8">{q.text}</h2>
 
+            {/* Media Block */}
+            {q.mediaUrl && (
+              <div className="mb-8 rounded-2xl overflow-hidden border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50 flex items-center justify-center p-4 min-h-[200px]">
+                {q.mediaType === 'image' && <img src={q.mediaUrl} alt="Visual material for question" className="max-h-[400px] object-contain rounded-xl shadow-sm" />}
+                {q.mediaType === 'video' && <video src={q.mediaUrl} controls className="max-h-[400px] w-full max-w-2xl rounded-xl shadow-sm" />}
+                {q.mediaType === 'audio' && <audio src={q.mediaUrl} controls className="w-full max-w-md mx-auto" />}
+              </div>
+            )}
+
+            {/* AI Synthesized Text (TTS) Block */}
+            {q.ttsText && (
+              <div className="mb-8 flex justify-end">
+                <button
+                  onClick={() => {
+                    const u = new SpeechSynthesisUtterance(q.ttsText!);
+                    window.speechSynthesis.cancel();
+                    window.speechSynthesis.speak(u);
+                  }}
+                  className="bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-900 dark:text-white px-5 py-2.5 rounded-xl font-bold flex items-center gap-2 transition-all shadow-sm exam-card-hover"
+                >
+                  <Volume2 className="w-5 h-5 text-indigo-500" />
+                  {t('exam.listenQuestion', 'Listen Question')}
+                </button>
+              </div>
+            )}
+
             {/* Answer Options */}
             <div className="space-y-4">
+              {q.type === 'speaking' && (
+                <div className="mb-8">
+                  <StudentAudioRecorder 
+                    onRecordingComplete={async (blob) => {
+                       toast.loading(t('common.uploading', 'Uploading recording...'), { id: 'upload-audio' });
+                       try {
+                         const ext = blob.type.split('/')[1]?.split(';')[0] || 'webm';
+                         const url = await uploadFile(`assessments/audio/${room?.id}/${q.id}/${profile?.uid}.${ext}`, blob);
+                         setAnswer(q.id, url);
+                         toast.success(t('common.success', 'Success'), { id: 'upload-audio' });
+                       } catch (e) {
+                         toast.error('Upload failed', { id: 'upload-audio' });
+                       }
+                    }} 
+                  />
+                  {answers[q.id] && (
+                    <div className="mt-4 flex items-center justify-center text-sm font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/20 py-3 rounded-xl">
+                      <CheckCircle2 className="w-5 h-5 mr-2" />
+                      {t('quiz.audioSaved', 'Audio Response Saved!')}
+                    </div>
+                  )}
+                </div>
+              )}
               {q.type === 'multiple_choice' && q.options.map((opt, oi) => {
                 const selected = answers[q.id] === opt;
                 return (

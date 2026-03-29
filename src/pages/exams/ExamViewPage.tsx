@@ -7,7 +7,7 @@ import { createRoom } from '../../services/rooms.service';
 import { useAuth } from '../../contexts/AuthContext';
 import type { Exam, Question } from '../../types';
 import { formatDate } from '../../utils/grading';
-import { ArrowLeft, Edit, Trash2, Play, Clock, Target, HelpCircle, Copy } from 'lucide-react';
+import { ArrowLeft, Edit, Trash2, Play, Clock, Target, HelpCircle, Copy, ImageIcon, Volume2, Mic } from 'lucide-react';
 
 const ExamViewPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -116,6 +116,27 @@ const ExamViewPage: React.FC = () => {
                   <p className="font-medium text-slate-900 dark:text-white"><span className="text-primary-600 dark:text-primary-400 mr-2">Q{i + 1}.</span>{q.text}</p>
                   <span className="badge-slate text-xs">{q.points} {t('exams.pts', 'б.')}</span>
                 </div>
+                
+                {/* Media Indicators */}
+                {(q.mediaUrl || q.ttsText || q.type === 'speaking') && (
+                  <div className="flex flex-wrap gap-2 mb-3">
+                    {q.mediaUrl && (
+                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 text-xs font-semibold">
+                        <ImageIcon className="w-3.5 h-3.5" /> Media Attached
+                      </span>
+                    )}
+                    {q.ttsText && (
+                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-amber-50 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 text-xs font-semibold">
+                        <Volume2 className="w-3.5 h-3.5" /> TTS Audio
+                      </span>
+                    )}
+                    {q.type === 'speaking' && (
+                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 text-xs font-semibold">
+                        <Mic className="w-3.5 h-3.5" /> Speaking Task
+                      </span>
+                    )}
+                  </div>
+                )}
                 {(q.type === 'multiple_choice' || q.type === 'multi_select') && (
                   <div className="space-y-1 ml-6">
                     {q.options.map((opt, oi) => (

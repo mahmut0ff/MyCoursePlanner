@@ -4,9 +4,10 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../contexts/AuthContext';
 import { createExam, getExam, updateExam, saveQuestions, getQuestions } from '../../services/exams.service';
+import { uploadFile } from '../../services/storage.service';
 import type { Question, QuestionType } from '../../types';
 import { generateId } from '../../utils/grading';
-import { Save, ArrowLeft, Plus, Trash2, Sparkles, Settings, HelpCircle, GripVertical } from 'lucide-react';
+import { Save, ArrowLeft, Plus, Trash2, Sparkles, Settings, HelpCircle, GripVertical, ImageIcon, Volume2, Video, PlayCircle } from 'lucide-react';
 import { AIGeneratorModal } from '../../components/ui/AIGeneratorModal';
 
 const EMPTY_QUESTION = (): Question => ({
@@ -48,7 +49,7 @@ const ExamEditPage: React.FC = () => {
       const correctOpt = opts[q.correctOptionIndex || 0] || '';
       return {
         id: generateId(),
-        type: 'multiple_choice' as QuestionType,
+        type: q.type as QuestionType,
         text: q.question || '',
         options: opts,
         correctAnswer: correctOpt,
@@ -56,7 +57,10 @@ const ExamEditPage: React.FC = () => {
         keywords: [],
         points: q.points || 1,
         order: startOrder + i,
-      };
+        mediaUrl: q.searchQuery ? `https://loremflickr.com/800/600/${encodeURIComponent(q.searchQuery)}` : undefined,
+        mediaType: (q.searchQuery ? 'image' : undefined) as 'image' | undefined,
+        ttsText: q.ttsText,
+      } as Question;
     });
     
     // Remove the default empty question if it's the only one and empty
@@ -296,6 +300,81 @@ const ExamEditPage: React.FC = () => {
                       className={`${inputClass} !text-base !font-medium min-h-[80px] resize-y`} 
                       placeholder={t('exams.questionPlaceholder', 'Enter question text here...')} 
                     />
+                  </div>
+
+                  {/* MEDIA & AUDIO CONTROLS */}
+                  <div className="mb-6 bg-slate-50 dark:bg-slate-800/50 rounded-2xl p-5 border border-slate-200 dark:border-slate-700">
+                    <div className="flex flex-col xl:flex-row gap-6">
+                      <div className="flex-1 space-y-4">
+                        <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">{t('quiz.mediaAttachment', 'Media Attachment')}</label>
+                        {q.mediaUrl ? (
+                          <div className="relative rounded-xl overflow-hidden border border-slate-200 dark:border-slate-700 bg-black/5 flex items-center justify-center min-h-[120px]">
+                            {q.mediaType === 'image' && <img src={q.mediaUrl} alt="Question Media" className="max-h-48 object-contain" />}
+                            {q.mediaType === 'video' && <video src={q.mediaUrl} controls className="max-h-48" />}
+                            {q.mediaType === 'audio' && <audio src={q.mediaUrl} controls className="w-full mx-4" />}
+                            <button onClick={() => updateQuestion(qIdx, { mediaUrl: undefined, mediaType: undefined })} className="absolute top-2 right-2 p-2 bg-red-500 text-white rounded-lg hover:bg-red-600 shadow-md transition-colors">
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
+                        ) : (
+                          <div className="grid grid-cols-3 gap-2">
+                            <label className="flex flex-col items-center justify-center gap-2 p-4 rounded-xl border-2 border-dashed border-slate-300 dark:border-slate-600 hover:border-slate-400 dark:hover:border-slate-500 hover:bg-slate-100 dark:hover:bg-slate-700/50 cursor-pointer transition-all">
+                              <ImageIcon className="w-6 h-6 text-slate-400" />
+                              <span className="text-xs font-semibold text-slate-500">{t('quiz.image', 'Image')}</span>
+                              <input type="file" accept="image/*" className="hidden" onChange={async (e) => {
+                                const file = e.target.files?.[0]; if (!file) return;
+                                const url = await uploadFile(`exams/${id}/${Date.now()}-${file.name}`, file);
+                                updateQuestion(qIdx, { mediaUrl: url, mediaType: 'image' });
+                              }} />
+                            </label>
+                            <label className="flex flex-col items-center justify-center gap-2 p-4 rounded-xl border-2 border-dashed border-slate-300 dark:border-slate-600 hover:border-slate-400 dark:hover:border-slate-500 hover:bg-slate-100 dark:hover:bg-slate-700/50 cursor-pointer transition-all">
+                              <Video className="w-6 h-6 text-slate-400" />
+                              <span className="text-xs font-semibold text-slate-500">{t('quiz.video', 'Video')}</span>
+                              <input type="file" accept="video/*" className="hidden" onChange={async (e) => {
+                                const file = e.target.files?.[0]; if (!file) return;
+                                const url = await uploadFile(`exams/${id}/${Date.now()}-${file.name}`, file);
+                                updateQuestion(qIdx, { mediaUrl: url, mediaType: 'video' });
+                              }} />
+                            </label>
+                            <label className="flex flex-col items-center justify-center gap-2 p-4 rounded-xl border-2 border-dashed border-slate-300 dark:border-slate-600 hover:border-slate-400 dark:hover:border-slate-500 hover:bg-slate-100 dark:hover:bg-slate-700/50 cursor-pointer transition-all">
+                              <Volume2 className="w-6 h-6 text-slate-400" />
+                              <span className="text-xs font-semibold text-slate-500">{t('quiz.audio', 'Audio')}</span>
+                              <input type="file" accept="audio/*" className="hidden" onChange={async (e) => {
+                                const file = e.target.files?.[0]; if (!file) return;
+                                const url = await uploadFile(`exams/${id}/${Date.now()}-${file.name}`, file);
+                                updateQuestion(qIdx, { mediaUrl: url, mediaType: 'audio' });
+                              }} />
+                            </label>
+                          </div>
+                        )}
+                      </div>
+                      
+                      <div className="flex-1 space-y-4">
+                        <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">{t('quiz.ttsAudio', 'Text to Synthesize')}</label>
+                        <div className="flex items-start gap-2">
+                          <textarea
+                            value={q.ttsText || ''}
+                            onChange={(e) => updateQuestion(qIdx, { ttsText: e.target.value })}
+                            className={`${inputClass} min-h-[120px] text-sm`}
+                            placeholder={t('quiz.ttsPlaceholder', 'Type text that will be synthesized into speech for the student...')}
+                          />
+                        </div>
+                        {q.ttsText && (
+                          <div className="flex justify-end">
+                            <button 
+                              onClick={() => {
+                                window.speechSynthesis.cancel();
+                                const u = new SpeechSynthesisUtterance(q.ttsText);
+                                window.speechSynthesis.speak(u);
+                              }}
+                              className="px-4 py-2 bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 rounded-lg text-sm font-bold flex items-center gap-2 transition-colors"
+                            >
+                              <PlayCircle className="w-4 h-4" /> {t('quiz.listen', 'Listen')}
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    </div>
                   </div>
 
                   {(q.type === 'multiple_choice' || q.type === 'multi_select') && (

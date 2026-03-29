@@ -3,7 +3,7 @@ import { storage } from '../lib/firebase';
 
 export const uploadFile = async (
   path: string,
-  file: File
+  file: File | Blob
 ): Promise<string> => {
   const storageRef = ref(storage, path);
   await uploadBytes(storageRef, file);

@@ -8,7 +8,8 @@ import { ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage
 import { updateUser } from '../../services/users.service';
 import AvatarCropper from '../../components/ui/AvatarCropper';
 import {
-  User, Globe, Bell, Lock, Save, Loader2, CheckCircle2, Eye, EyeOff, Phone, Camera
+  User, Globe, Bell, Lock, Save, Loader2, CheckCircle2, Eye, EyeOff, Phone, Camera,
+  FileText, Trash2, Upload
 } from 'lucide-react';
 
 type Tab = 'profile' | 'language' | 'notifications' | 'security';
@@ -32,6 +33,12 @@ const TeacherSettingsPage: React.FC = () => {
   const [avatarLoading, setAvatarLoading] = useState(false);
   const [cropImageSrc, setCropImageSrc] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Resume
+  const [resumeUrl, setResumeUrl] = useState(profile?.resumeUrl || '');
+  const [resumeFileName, setResumeFileName] = useState(profile?.resumeFileName || '');
+  const [resumeLoading, setResumeLoading] = useState(false);
+  const resumeInputRef = useRef<HTMLInputElement>(null);
 
   // Password
   const [currentPw, setCurrentPw] = useState('');
@@ -114,6 +121,52 @@ const TeacherSettingsPage: React.FC = () => {
       setError(t('common.error'));
     } finally {
       setAvatarLoading(false);
+    }
+  };
+
+  const handleResumeChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !auth.currentUser) return;
+    if (file.type !== 'application/pdf') {
+       setError(t('profile.pdfOnly', 'Only PDF files are allowed'));
+       return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+       setError(t('profile.fileTooLarge', 'File is too large (max 5MB)'));
+       return;
+    }
+    
+    setResumeLoading(true);
+    try {
+      const ref = storageRef(storage, `resumes/${auth.currentUser.uid}_${Date.now()}.pdf`);
+      await uploadBytes(ref, file);
+      const url = await getDownloadURL(ref);
+      setResumeUrl(url);
+      setResumeFileName(file.name);
+      await updateUser(auth.currentUser.uid, { resumeUrl: url, resumeFileName: file.name });
+      setSuccess(t('profile.resumeUpdated', 'Resume uploaded!'));
+      setTimeout(() => setSuccess(''), 3000);
+    } catch (err) {
+      setError(t('common.error'));
+    } finally {
+      setResumeLoading(false);
+      if (resumeInputRef.current) resumeInputRef.current.value = '';
+    }
+  };
+
+  const handleRemoveResume = async () => {
+    if (!auth.currentUser) return;
+    setResumeLoading(true);
+    try {
+      setResumeUrl('');
+      setResumeFileName('');
+      await updateUser(auth.currentUser.uid, { resumeUrl: '', resumeFileName: '' });
+      setSuccess(t('profile.resumeRemoved', 'Resume removed'));
+      setTimeout(() => setSuccess(''), 3000);
+    } catch (err) {
+      setError(t('common.error'));
+    } finally {
+      setResumeLoading(false);
     }
   };
 
@@ -224,6 +277,65 @@ const TeacherSettingsPage: React.FC = () => {
                     <span className="text-xs text-slate-400 font-normal">({t('common.optional', 'необязательно')})</span>
                   </label>
                   <input type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder={t('profile.phonePlaceholder', '+996 XXX XXX XXX')} className="input" />
+                </div>
+                
+                {/* Resume Upload */}
+                <div className="pt-4 border-t border-slate-200 dark:border-slate-700">
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2 flex items-center gap-1.5">
+                    <FileText className="w-4 h-4 text-slate-400" />
+                    {t('profile.resume', 'PDF Резюме')}
+                  </label>
+                  {resumeUrl ? (
+                    <div className="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-700 rounded-xl">
+                      <div className="flex items-center gap-3 overflow-hidden">
+                        <div className="w-10 h-10 rounded-lg bg-red-500/10 flex items-center justify-center shrink-0">
+                          <FileText className="w-5 h-5 text-red-500" />
+                        </div>
+                        <div className="min-w-0">
+                          <p className="text-sm font-medium text-slate-900 dark:text-white truncate">
+                            {resumeFileName || 'Resume.pdf'}
+                          </p>
+                          <a href={resumeUrl} target="_blank" rel="noopener noreferrer" className="text-xs text-primary-600 dark:text-primary-400 hover:underline">
+                            {t('common.view', 'Посмотреть')}
+                          </a>
+                        </div>
+                      </div>
+                      <button 
+                        onClick={handleRemoveResume}
+                        disabled={resumeLoading}
+                        className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-lg transition-colors"
+                      >
+                        {resumeLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+                      </button>
+                    </div>
+                  ) : (
+                    <div>
+                      <input 
+                        type="file" 
+                        ref={resumeInputRef} 
+                        onChange={handleResumeChange} 
+                        accept="application/pdf" 
+                        className="hidden" 
+                      />
+                      <button 
+                        onClick={() => resumeInputRef.current?.click()}
+                        disabled={resumeLoading}
+                        className="w-full flex flex-col items-center justify-center py-6 border-2 border-dashed border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-800 hover:border-primary-400 hover:bg-primary-50 dark:hover:bg-primary-900/20 transition-colors"
+                      >
+                        {resumeLoading ? (
+                          <Loader2 className="w-6 h-6 text-primary-500 animate-spin mb-2" />
+                        ) : (
+                          <Upload className="w-6 h-6 text-slate-400 mb-2" />
+                        )}
+                        <span className="text-sm font-medium text-slate-900 dark:text-white">
+                          {t('profile.uploadPdf', 'Загрузить PDF')}
+                        </span>
+                        <span className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                          Max 5MB
+                        </span>
+                      </button>
+                    </div>
+                  )}
                 </div>
               </div>
               <button onClick={handleSave} disabled={saving} className="mt-4 bg-primary-600 hover:bg-primary-700 text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2 transition-colors disabled:opacity-50">

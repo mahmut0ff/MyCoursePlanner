@@ -26,7 +26,7 @@ const GroupsPage: React.FC = () => {
   const [search, setSearch] = useState('');
   const [showModal, setShowModal] = useState(false);
   const navigate = useNavigate();
-  const [form, setForm] = useState({ name: '', courseId: '' });
+  const [form, setForm] = useState({ name: '', courseId: '', chatLinkTitle: '', chatLinkUrl: '' });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
 
@@ -46,8 +46,13 @@ const GroupsPage: React.FC = () => {
     setSaving(true); setError('');
     try {
       const course = courses.find((c) => c.id === form.courseId);
-      const created = await orgCreateGroup({ ...form, courseName: course?.title || '' });
-      setGroups((p) => [created, ...p]); setShowModal(false); setForm({ name: '', courseId: '' });
+      const created = await orgCreateGroup({ 
+        ...form, 
+        courseName: course?.title || '' 
+      });
+      setGroups((p) => [created, ...p]); 
+      setShowModal(false); 
+      setForm({ name: '', courseId: '', chatLinkTitle: '', chatLinkUrl: '' });
     } catch (e: any) { setError(e.message || 'Error'); } finally { setSaving(false); }
   };
 
@@ -169,6 +174,16 @@ const GroupsPage: React.FC = () => {
                 <select value={form.courseId} onChange={(e) => setForm(f => ({ ...f, courseId: e.target.value }))} className="input">
                   <option value="">{t('org.groups.selectCourse')}</option>{courses.map((c) => <option key={c.id} value={c.id}>{c.title}</option>)}
                 </select>
+              </div>
+              <div className="grid grid-cols-2 gap-3 pt-2 border-t border-slate-100 dark:border-slate-700">
+                <div>
+                  <label className="label text-xs">Чат (Название)</label>
+                  <input placeholder="Telegram, WhatsApp..." value={form.chatLinkTitle} onChange={(e) => setForm(f => ({ ...f, chatLinkTitle: e.target.value }))} className="input text-sm py-2" />
+                </div>
+                <div>
+                  <label className="label text-xs">Ссылка на чат</label>
+                  <input placeholder="https://t.me/..." value={form.chatLinkUrl} onChange={(e) => setForm(f => ({ ...f, chatLinkUrl: e.target.value }))} className="input text-sm py-2" />
+                </div>
               </div>
             </div>
             <div className="flex justify-end gap-3 mt-5">

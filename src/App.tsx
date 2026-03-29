@@ -54,9 +54,6 @@ import SessionAnalyticsPage from './pages/quiz/SessionAnalyticsPage';
 import JoinQuizPage from './pages/quiz/JoinQuizPage';
 import QuizPlayPage from './pages/quiz/QuizPlayPage';
 
-// Chat Workspace
-import ChatWorkspace from './pages/chat/ChatWorkspace';
-
 // Mega Features
 import StudentRiskDashboard from './pages/teacher-analytics/StudentRiskDashboard';
 import HomeworkReviewPage from './pages/homework/HomeworkReviewPage';
@@ -87,13 +84,6 @@ import GroupDetailPage from './pages/groups/GroupDetailPage';
 import OrgUserDetailPage from './pages/org-users/OrgUserDetailPage';
 import AdminUserDetailPage from './pages/admin/AdminUserDetailPage';
 import AdminOrgDetailPage from './pages/admin/AdminOrgDetailPage';
-
-// Vacancy Pages
-import VacanciesPage from './pages/vacancies/VacanciesPage';
-import VacancyDetailPage from './pages/vacancies/VacancyDetailPage';
-import VacancyCreatePage from './pages/vacancies/VacancyCreatePage';
-import MyApplicationsPage from './pages/vacancies/MyApplicationsPage';
-import OrgVacanciesPage from './pages/vacancies/OrgVacanciesPage';
 
 // Directory Pages (Ecosystem)
 import OrganizationsDirectoryPage from './pages/directory/OrganizationsDirectoryPage';
@@ -189,9 +179,6 @@ const App: React.FC = () => {
             <Route path="quiz/analytics/:id" element={<ProtectedRoute allowedRoles={['admin', 'manager', 'teacher']}><SessionAnalyticsPage /></ProtectedRoute>} />
             <Route path="profile" element={<StudentProfilePage />} />
 
-            {/* Chat Workspace */}
-            <Route path="chat" element={<ProtectedRoute allowedRoles={['admin', 'manager', 'teacher', 'student']}><ChatWorkspace /></ProtectedRoute>} />
-
             {/* Billing & Payments */}
             <Route path="billing" element={<ProtectedRoute allowedRoles={['admin']}><BillingPage /></ProtectedRoute>} />
             <Route path="payment/success" element={<PaymentSuccessPage />} />
@@ -218,13 +205,6 @@ const App: React.FC = () => {
             <Route path="invites" element={<ProtectedRoute allowedRoles={['teacher']}><TeacherInvitesPage /></ProtectedRoute>} />
             <Route path="notifications" element={<ProtectedRoute allowedRoles={['admin', 'manager', 'teacher', 'student']}><NotificationsPage /></ProtectedRoute>} />
             <Route path="teacher-settings" element={<ProtectedRoute allowedRoles={['teacher']}><TeacherSettingsPage /></ProtectedRoute>} />
-
-            {/* ═══ Vacancies ═══ */}
-            <Route path="vacancies" element={<ProtectedRoute allowedRoles={['admin', 'manager', 'teacher']}><VacanciesPage /></ProtectedRoute>} />
-            <Route path="vacancies/create" element={<ProtectedRoute allowedRoles={['admin']}><VacancyCreatePage /></ProtectedRoute>} />
-            <Route path="vacancies/:id" element={<ProtectedRoute allowedRoles={['admin', 'manager', 'teacher']}><VacancyDetailPage /></ProtectedRoute>} />
-            <Route path="my-applications" element={<ProtectedRoute allowedRoles={['teacher']}><MyApplicationsPage /></ProtectedRoute>} />
-            <Route path="org-vacancies" element={<ProtectedRoute allowedRoles={['admin']}><PlanGuard feature="vacancies"><OrgVacanciesPage /></PlanGuard></ProtectedRoute>} />
 
             {/* ═══ Org Admin: Organization ═══ */}
             <Route path="schedule" element={<ProtectedRoute allowedRoles={['admin', 'manager', 'teacher']}><SchedulePage /></ProtectedRoute>} />

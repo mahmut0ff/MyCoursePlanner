@@ -35,14 +35,13 @@ export interface PlanLimits {
   gradebookEnabled: boolean;
   certificatesEnabled: boolean;
   branchesEnabled: boolean;
-  vacanciesEnabled: boolean;
   advancedAnalytics: boolean;
 }
 
 /** Canonical feature keys for plan gating */
 export type PlanFeature =
   | 'finances' | 'gradebook' | 'certificates'
-  | 'branches' | 'vacancies' | 'advancedAnalytics'
+  | 'branches' | 'advancedAnalytics'
   | 'ai' | 'aiAnalytics';
 
 /** Map PlanFeature → PlanLimits key */
@@ -51,7 +50,6 @@ export const FEATURE_TO_LIMIT: Record<PlanFeature, keyof PlanLimits> = {
   gradebook: 'gradebookEnabled',
   certificates: 'certificatesEnabled',
   branches: 'branchesEnabled',
-  vacancies: 'vacanciesEnabled',
   advancedAnalytics: 'advancedAnalytics',
   ai: 'aiEnabled',
   aiAnalytics: 'aiAnalytics',
@@ -62,7 +60,6 @@ export const FEATURE_MIN_PLAN: Record<PlanFeature, PlanId> = {
   finances: 'professional',
   gradebook: 'professional',
   certificates: 'professional',
-  vacancies: 'professional',
   advancedAnalytics: 'professional',
   branches: 'enterprise',
   ai: 'enterprise',
@@ -83,7 +80,7 @@ export const PLANS: Plan[] = [
       'Auto-grading',
       'Email support',
     ],
-    limits: { maxStudents: 50, maxTeachers: 5, maxExams: 20, aiEnabled: false, aiAnalytics: false, prioritySupport: false, dedicatedSupport: false, customBranding: false, financesEnabled: false, gradebookEnabled: false, certificatesEnabled: false, branchesEnabled: false, vacanciesEnabled: false, advancedAnalytics: false },
+    limits: { maxStudents: 50, maxTeachers: 5, maxExams: 20, aiEnabled: false, aiAnalytics: false, prioritySupport: false, dedicatedSupport: false, customBranding: false, financesEnabled: false, gradebookEnabled: false, certificatesEnabled: false, branchesEnabled: false, advancedAnalytics: false },
   },
   {
     id: 'professional',
@@ -98,7 +95,7 @@ export const PLANS: Plan[] = [
       'Performance analytics',
       'Priority support',
     ],
-    limits: { maxStudents: 200, maxTeachers: 20, maxExams: -1, aiEnabled: false, aiAnalytics: false, prioritySupport: true, dedicatedSupport: false, customBranding: false, financesEnabled: true, gradebookEnabled: true, certificatesEnabled: true, branchesEnabled: false, vacanciesEnabled: true, advancedAnalytics: true },
+    limits: { maxStudents: 200, maxTeachers: 20, maxExams: -1, aiEnabled: false, aiAnalytics: false, prioritySupport: true, dedicatedSupport: false, customBranding: false, financesEnabled: true, gradebookEnabled: true, certificatesEnabled: true, branchesEnabled: false, advancedAnalytics: true },
   },
   {
     id: 'enterprise',
@@ -114,7 +111,7 @@ export const PLANS: Plan[] = [
       'Dedicated support manager',
       'API access',
     ],
-    limits: { maxStudents: -1, maxTeachers: -1, maxExams: -1, aiEnabled: true, aiAnalytics: true, prioritySupport: true, dedicatedSupport: true, customBranding: true, financesEnabled: true, gradebookEnabled: true, certificatesEnabled: true, branchesEnabled: true, vacanciesEnabled: true, advancedAnalytics: true },
+    limits: { maxStudents: -1, maxTeachers: -1, maxExams: -1, aiEnabled: true, aiAnalytics: true, prioritySupport: true, dedicatedSupport: true, customBranding: true, financesEnabled: true, gradebookEnabled: true, certificatesEnabled: true, branchesEnabled: true, advancedAnalytics: true },
   },
 ];
 
@@ -605,6 +602,8 @@ export interface Group {
   courseName?: string;
   name: string;
   studentIds: string[];
+  chatLinkTitle?: string;
+  chatLinkUrl?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -696,70 +695,11 @@ export interface OrgSettings {
   updatedAt: string;
 }
 
-// ---- Vacancies ----
-
-export type VacancyStatus = 'draft' | 'published' | 'closed';
-export type VacancyEmploymentType = 'full_time' | 'part_time' | 'contract' | 'freelance';
-export type VacancyApplicationStatus = 'pending' | 'viewed' | 'accepted' | 'rejected';
-
-export interface VacancyLocation {
-  city: string;
-  country: string;
-  address?: string;
-  lat?: number;
-  lng?: number;
-  remote: boolean;
-}
-
-export interface Vacancy {
-  id: string;
-  organizationId: string;
-  organizationName: string;
-  title: string;
-  description: string;
-  requirements: string;
-  responsibilities: string;
-  subject: string;
-  employmentType: VacancyEmploymentType;
-  salaryMin?: number;
-  salaryMax?: number;
-  salaryCurrency: string;
-  location: VacancyLocation;
-  workConditions: string;
-  benefits: string[];
-  photos: string[];
-  contactEmail: string;
-  contactPhone?: string;
-  status: VacancyStatus;
-  applicationsCount: number;
-  createdAt: string;
-  updatedAt: string;
-  closedAt?: string;
-}
-
-export interface VacancyApplication {
-  id: string;
-  vacancyId: string;
-  vacancyTitle: string;
-  organizationName: string;
-  teacherId: string;
-  teacherName: string;
-  teacherEmail: string;
-  coverLetter: string;
-  resumeUrl?: string;
-  status: VacancyApplicationStatus;
-  reviewedAt?: string;
-  reviewedBy?: string;
-  createdAt: string;
-}
-
 // ---- Notifications ----
 
 export type NotificationType =
   | 'invite_received'
-  | 'vacancy_app_reviewed'
   | 'added_to_group'
-  | 'new_vacancy_application'
   | 'invite_accepted'
   | 'invite_declined'
   | 'exam_room_created'

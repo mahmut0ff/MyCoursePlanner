@@ -112,7 +112,7 @@ const OrgSwitcher: React.FC<OrgSwitcherProps> = ({ currentOrgId, userRole, onSwi
 
     if (userRole === 'teacher') {
       actions.push(
-        { icon: Megaphone, label: t('nav.vacancies', 'Вакансии'), onClick: () => nav('/vacancies'), color: 'text-emerald-400' },
+
         { icon: MailOpen, label: t('nav.invites', 'Приглашения'), onClick: () => nav('/invites') },
         { icon: Briefcase, label: t('nav.myApplications', 'Мои заявки'), onClick: () => nav('/my-applications') },
       );
@@ -163,11 +163,6 @@ const OrgSwitcher: React.FC<OrgSwitcherProps> = ({ currentOrgId, userRole, onSwi
       emptyTitle = t('membership.createOrg', 'Создать организацию');
       emptySubtitle = t('membership.setupFirst', 'Настройте свой первый учебный центр');
       EmptyIcon = Plus;
-    } else if (userRole === 'teacher') {
-      emptyTitle = t('membership.findWork', 'Найти работу');
-      emptySubtitle = t('membership.browseVacancies', 'Откройте вакансии и подайте заявку');
-      emptyAction = () => nav('/vacancies');
-      EmptyIcon = Briefcase;
     }
 
     return (
@@ -199,7 +194,7 @@ const OrgSwitcher: React.FC<OrgSwitcherProps> = ({ currentOrgId, userRole, onSwi
   // Determine "+" button behavior
   const getPlusAction = () => {
     if (userRole === 'admin') return { title: t('org.addBranch', 'Добавить филиал'), action: () => nav('/branches') };
-    if (userRole === 'teacher') return { title: t('membership.findWork', 'Найти работу'), action: () => nav('/vacancies') };
+
     return { title: t('membership.findMore', 'Найти ещё'), action: () => nav('/directory') };
   };
   const plusAction = getPlusAction();

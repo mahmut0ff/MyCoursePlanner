@@ -148,14 +148,7 @@ const Sidebar: React.FC<{ open: boolean; onClose: () => void }> = ({ open, onClo
                 <LayoutDashboard className="w-4 h-4" />{t('nav.dashboard')}
               </NavLink>
 
-              <NavLink to="/chat" className={linkClass} onClick={onClose}>
-                <MessageSquareText className="w-4 h-4" />{t('nav.chat', 'Чат')}
-                {unreadChatCount > 0 && (
-                  <span className="ml-auto bg-red-500 text-white text-[10px] font-bold min-w-[18px] h-[18px] flex items-center justify-center rounded-full px-1 animate-pulse">
-                    {unreadChatCount}
-                  </span>
-                )}
-              </NavLink>
+
 
               <CollapsibleSection label={t('nav.sectionEducation', 'Обучение')} icon={GraduationCap} defaultOpen>
                 <NavLink to="/courses" className={linkClass} onClick={onClose}>
@@ -226,10 +219,7 @@ const Sidebar: React.FC<{ open: boolean; onClose: () => void }> = ({ open, onClo
                   <TrendingDown className="w-4 h-4" />Светофор рисков
                   {!canAccess('advancedAnalytics') && <Lock className="w-3 h-3 ml-auto text-slate-500" />}
                 </NavLink>
-                <NavLink to="/org-vacancies" className={({ isActive }) => `${linkClass({ isActive })} ${!canAccess('vacancies') ? 'opacity-50' : ''}`} onClick={onClose}>
-                  <Megaphone className="w-4 h-4" />{t('nav.vacancies', 'Вакансии')}
-                  {!canAccess('vacancies') && <Lock className="w-3 h-3 ml-auto text-slate-500" />}
-                </NavLink>
+
               </CollapsibleSection>
             </>
           )}
@@ -241,14 +231,7 @@ const Sidebar: React.FC<{ open: boolean; onClose: () => void }> = ({ open, onClo
                 <LayoutDashboard className="w-4 h-4" />{t('nav.dashboard')}
               </NavLink>
 
-              <NavLink to="/chat" className={linkClass} onClick={onClose}>
-                <MessageSquareText className="w-4 h-4" />{t('nav.chat', 'Чат')}
-                {unreadChatCount > 0 && (
-                  <span className="ml-auto bg-red-500 text-white text-[10px] font-bold min-w-[18px] h-[18px] flex items-center justify-center rounded-full px-1 animate-pulse">
-                    {unreadChatCount}
-                  </span>
-                )}
-              </NavLink>
+
 
               {managerWithOrg && (
                 <>
@@ -329,14 +312,7 @@ const Sidebar: React.FC<{ open: boolean; onClose: () => void }> = ({ open, onClo
                 <LayoutDashboard className="w-4 h-4" />{t('nav.dashboard')}
               </NavLink>
 
-              <NavLink to="/chat" className={linkClass} onClick={onClose}>
-                <MessageSquareText className="w-4 h-4" />{t('nav.chat', 'Чат')}
-                {unreadChatCount > 0 && (
-                  <span className="ml-auto bg-red-500 text-white text-[10px] font-bold min-w-[18px] h-[18px] flex items-center justify-center rounded-full px-1 animate-pulse">
-                    {unreadChatCount}
-                  </span>
-                )}
-              </NavLink>
+
 
               {teacherWithOrg && (
                 <>
@@ -422,15 +398,6 @@ const Sidebar: React.FC<{ open: boolean; onClose: () => void }> = ({ open, onClo
               {/* ── Tenant-specific: only when student has an active org ── */}
               {!!organizationId && (
                 <>
-                  <NavLink to="/chat" className={linkClass} onClick={onClose}>
-                    <MessageSquareText className="w-4 h-4" />{t('nav.chat', 'Чат')}
-                    {unreadChatCount > 0 && (
-                      <span className="ml-auto bg-red-500 text-white text-[10px] font-bold min-w-[18px] h-[18px] flex items-center justify-center rounded-full px-1 animate-pulse">
-                        {unreadChatCount}
-                      </span>
-                    )}
-                  </NavLink>
-
                   <CollapsibleSection label={t('nav.sectionEducation', 'Обучение')} icon={GraduationCap} defaultOpen>
                     <NavLink to="/student/courses" className={linkClass} onClick={onClose}>
                       <FolderOpen className="w-4 h-4" />{t('nav.myCourses', 'Мои курсы')}

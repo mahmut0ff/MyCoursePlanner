@@ -214,43 +214,47 @@ const StudentProfilePage: React.FC = () => {
             </div>
             
             <div className="space-y-4">
-              <div>
-                <div className="flex justify-between items-end mb-1">
-                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">{t('profile.bio', 'О себе')}</label>
-                  <span className="text-xs text-slate-400">{bio.length}/500</span>
-                </div>
-                <textarea
-                  value={bio}
-                  onChange={e => setBio(e.target.value)}
-                  maxLength={500}
-                  className="input min-h-[100px]"
-                  placeholder={t('profile.bioPlaceholder', 'Расскажите немного о себе...')}
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">{t('profile.skills', 'Навыки (через запятую)')}</label>
-                <input
-                  type="text"
-                  value={skills}
-                  onChange={e => setSkills(e.target.value)}
-                  className="input"
-                  placeholder={t('profile.skillsPlaceholder', 'напр. JavaScript, Дизайн, Python')}
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1 flex items-center gap-1.5">
-                  <Phone className="w-4 h-4 text-slate-400" />
-                  {t('profile.phone', 'Телефон')}
-                  <span className="text-xs text-slate-400 font-normal">({t('common.optional', 'необязательно')})</span>
-                </label>
-                <input
-                  type="tel"
-                  value={phone}
-                  onChange={e => setPhone(e.target.value)}
-                  className="input"
-                  placeholder={t('profile.phonePlaceholder', '+996 XXX XXX XXX')}
-                />
-              </div>
+              {profile?.role !== 'admin' && profile?.role !== 'super_admin' && (
+                <>
+                  <div>
+                    <div className="flex justify-between items-end mb-1">
+                      <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">{t('profile.bio', 'О себе')}</label>
+                      <span className="text-xs text-slate-400">{bio.length}/500</span>
+                    </div>
+                    <textarea
+                      value={bio}
+                      onChange={e => setBio(e.target.value)}
+                      maxLength={500}
+                      className="input min-h-[100px]"
+                      placeholder={t('profile.bioPlaceholder', 'Расскажите немного о себе...')}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">{t('profile.skills', 'Навыки (через запятую)')}</label>
+                    <input
+                      type="text"
+                      value={skills}
+                      onChange={e => setSkills(e.target.value)}
+                      className="input"
+                      placeholder={t('profile.skillsPlaceholder', 'напр. JavaScript, Дизайн, Python')}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1 flex items-center gap-1.5">
+                      <Phone className="w-4 h-4 text-slate-400" />
+                      {t('profile.phone', 'Телефон')}
+                      <span className="text-xs text-slate-400 font-normal">({t('common.optional', 'необязательно')})</span>
+                    </label>
+                    <input
+                      type="tel"
+                      value={phone}
+                      onChange={e => setPhone(e.target.value)}
+                      className="input"
+                      placeholder={t('profile.phonePlaceholder', '+996 XXX XXX XXX')}
+                    />
+                  </div>
+                </>
+              )}
               <div className="pt-4 flex justify-end">
                 <button onClick={handleUpdateProfile} disabled={saving} className="btn-primary flex items-center gap-2">
                   <Save className="w-4 h-4" />{saving ? '...' : t('profile.save')}

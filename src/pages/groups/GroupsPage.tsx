@@ -6,24 +6,7 @@ import { orgGetGroups, orgCreateGroup, orgDeleteGroup, orgGetCourses, orgGetTeac
 import { Users, Plus, Search, Trash2, RefreshCw, Loader2, BookOpen } from 'lucide-react';
 import type { Group, Course, UserProfile } from '../../types';
 
-const C = {
-  emerald: '#10b981',
-  teal: '#14b8a6',
-  blue: '#3b82f6',
-  purple: '#8b5cf6',
-  pink: '#ec4899',
-  orange: '#f97316'
-};
 
-const GRADIENTS = [
-  `linear-gradient(135deg, ${C.emerald} 0%, ${C.teal} 100%)`,
-  `linear-gradient(135deg, ${C.blue} 0%, ${C.purple} 100%)`,
-  `linear-gradient(135deg, ${C.purple} 0%, ${C.pink} 100%)`,
-  `linear-gradient(135deg, ${C.orange} 0%, ${C.pink} 100%)`,
-  `linear-gradient(135deg, ${C.teal} 0%, ${C.blue} 100%)`,
-];
-
-const getGradient = (i: number) => GRADIENTS[i % GRADIENTS.length];
 
 const GroupsPage: React.FC = () => {
   const { t } = useTranslation();
@@ -134,80 +117,98 @@ const GroupsPage: React.FC = () => {
           )}
         </div>
       ) : (
-        /* ═══ Premium Card Grid ═══ */
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
-          {filtered.map((g, i) => {
-            const gradient = getGradient(i);
-            const studentCount = g.studentIds?.length || 0;
-            const groupTeacherIds = g.teacherIds || [];
-            const groupTeachers = teachers.filter(t => groupTeacherIds.includes(t.uid));
-            
-            return (
-              <div
-                key={g.id}
-                onClick={() => navigate(`/groups/${g.id}`)}
-                className="group relative bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl overflow-hidden cursor-pointer transition-all hover:shadow-xl hover:shadow-slate-200/50 dark:hover:shadow-slate-900/50 hover:-translate-y-1"
-              >
-                {/* Visual Header Banner */}
-                <div className="h-14 w-full relative overflow-hidden" style={{ background: gradient }}>
-                   <div className="absolute inset-0 opacity-20" style={{ backgroundImage: 'url("data:image/svg+xml,%3Csvg width=\'20\' height=\'20\' viewBox=\'0 0 20 20\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Ccircle cx=\'2\' cy=\'2\' r=\'2\' fill=\'white\'/%3E%3C/svg%3E")', backgroundSize: '16px 16px' }} />
-                   
-                   {isAdmin && (
-                     <button 
-                       onClick={(e) => { e.stopPropagation(); handleDelete(g.id); }} 
-                       className="absolute top-2 right-2 p-2 text-white/70 hover:text-white hover:bg-white/20 rounded-lg transition-colors opacity-0 group-hover:opacity-100"
-                     >
-                       <Trash2 className="w-4 h-4" />
-                     </button>
-                   )}
-                </div>
-
-                <div className="p-5 pt-4 relative">
-                  {/* Floating Avatar Box */}
-                  <div className="absolute -top-7 left-5 w-12 h-12 bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-100 dark:border-slate-700 flex items-center justify-center pointer-events-none">
-                     <Users className="w-6 h-6 text-slate-800 dark:text-white" />
-                  </div>
-
-                  <div className="mt-6 mb-4">
-                     <h3 className="font-extrabold text-slate-900 dark:text-white text-lg truncate group-hover:text-transparent group-hover:bg-clip-text group-hover:bg-gradient-to-r transition-all" style={{ backgroundImage: `linear-gradient(135deg, ${C.teal}, ${C.blue})` }}>
-                       {g.name}
-                     </h3>
-                     <p className="text-xs font-medium text-slate-500 dark:text-slate-400 mt-1 flex items-center gap-1.5 truncate">
-                       <BookOpen className="w-3.5 h-3.5 shrink-0" /> {courseName(g.courseId)}
-                     </p>
-                  </div>
-
-                  {/* Footer Metrics */}
-                  <div className="flex items-center justify-between mt-auto pt-4 border-t border-slate-100 dark:border-slate-700">
-                     <div className="flex items-center gap-1.5 bg-slate-50 dark:bg-slate-700/50 px-2.5 py-1 rounded-lg">
-                       <Users className="w-3.5 h-3.5 text-emerald-500" />
-                       <span className="text-xs font-bold text-slate-700 dark:text-slate-300">{studentCount} учеников</span>
-                     </div>
-
-                     {/* Teacher Avatars Overlapping */}
-                     {groupTeachers.length > 0 && (
-                       <div className="flex -space-x-2">
-                          {groupTeachers.slice(0, 3).map((t, tid) => (
-                             t.avatarUrl ? (
-                               <img key={tid} src={t.avatarUrl} className="w-7 h-7 rounded-full object-cover ring-2 ring-white dark:ring-slate-800" title={t.displayName} />
-                             ) : (
-                               <div key={tid} className="w-7 h-7 rounded-full bg-violet-100 text-violet-600 flex items-center justify-center text-[10px] font-bold ring-2 ring-white dark:ring-slate-800" title={t.displayName}>
-                                  {t.displayName?.[0]?.toUpperCase() || '?'}
-                               </div>
-                             )
-                          ))}
-                          {groupTeachers.length > 3 && (
-                             <div className="w-7 h-7 rounded-full bg-slate-100 dark:bg-slate-700 text-slate-500 flex items-center justify-center text-[10px] font-bold ring-2 ring-white dark:ring-slate-800">
-                               +{groupTeachers.length - 3}
-                             </div>
-                          )}
-                       </div>
-                     )}
-                  </div>
-                </div>
-              </div>
-            );
-          })}
+        /* ═══ Premium Data Table ═══ */
+        <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-sm overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full text-left border-collapse">
+              <thead>
+                <tr className="bg-slate-50 dark:bg-slate-900/50 border-b border-slate-200 dark:border-slate-700">
+                  <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Группа</th>
+                  <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Курс</th>
+                  <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Студенты</th>
+                  <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Учителя</th>
+                  <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Создана</th>
+                  {isAdmin && <th className="px-6 py-4 text-right text-xs font-bold text-slate-500 uppercase tracking-wider">Действия</th>}
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-200 dark:divide-slate-700">
+                {filtered.map((g) => {
+                  const studentCount = g.studentIds?.length || 0;
+                  const groupTeacherIds = g.teacherIds || [];
+                  const groupTeachers = teachers.filter(t => groupTeacherIds.includes(t.uid));
+                  
+                  return (
+                    <tr 
+                      key={g.id} 
+                      onClick={() => navigate(`/groups/${g.id}`)}
+                      className="group/row hover:bg-slate-50 dark:hover:bg-slate-700/50 cursor-pointer transition-colors"
+                    >
+                      <td className="px-6 py-4">
+                        <div className="flex items-center gap-4">
+                          <div className="w-10 h-10 rounded-xl bg-violet-100 dark:bg-violet-900/30 text-violet-600 dark:text-violet-400 flex items-center justify-center font-bold text-lg shrink-0">
+                            {g.name[0]?.toUpperCase()}
+                          </div>
+                          <div>
+                            <p className="font-bold text-slate-900 dark:text-white group-hover/row:text-violet-600 dark:group-hover/row:text-violet-400 transition-colors">
+                              {g.name}
+                            </p>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 text-xs font-medium border border-slate-200 dark:border-slate-700">
+                          <BookOpen className="w-3.5 h-3.5" />
+                          {courseName(g.courseId)}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="flex items-center gap-1.5">
+                          <Users className="w-4 h-4 text-slate-400" />
+                          <span className="font-semibold text-slate-700 dark:text-slate-300">{studentCount}</span>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4">
+                        {groupTeachers.length > 0 ? (
+                          <div className="flex -space-x-2">
+                             {groupTeachers.slice(0, 3).map((t, tid) => (
+                                t.avatarUrl ? (
+                                  <img key={tid} src={t.avatarUrl} className="w-8 h-8 rounded-full object-cover ring-2 ring-white dark:ring-slate-800" title={t.displayName} />
+                                ) : (
+                                  <div key={tid} className="w-8 h-8 rounded-full bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300 flex items-center justify-center text-[11px] font-bold ring-2 ring-white dark:ring-slate-800" title={t.displayName}>
+                                     {t.displayName?.[0]?.toUpperCase() || '?'}
+                                  </div>
+                                )
+                             ))}
+                             {groupTeachers.length > 3 && (
+                                <div className="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-700 text-slate-500 flex items-center justify-center text-[10px] font-bold ring-2 ring-white dark:ring-slate-800">
+                                  +{groupTeachers.length - 3}
+                                </div>
+                             )}
+                          </div>
+                        ) : (
+                          <span className="text-xs text-slate-400">—</span>
+                        )}
+                      </td>
+                      <td className="px-6 py-4 text-sm font-medium text-slate-500 dark:text-slate-400">
+                        {g.createdAt ? new Date(g.createdAt).toLocaleDateString() : '—'}
+                      </td>
+                      {isAdmin && (
+                        <td className="px-6 py-4 text-right">
+                          <button 
+                            onClick={(e) => { e.stopPropagation(); handleDelete(g.id); }}
+                            className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-xl transition-colors opacity-0 group-hover/row:opacity-100"
+                            title="Удалить"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </td>
+                      )}
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
 

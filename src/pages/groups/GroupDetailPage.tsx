@@ -7,11 +7,7 @@ import type { Group, Course, UserProfile } from '../../types';
 import toast from 'react-hot-toast';
 import { useAuth } from '../../contexts/AuthContext';
 
-const C = {
-  emerald: '#10b981',
-  teal: '#14b8a6',
-  blue: '#3b82f6',
-};
+
 
 const GroupDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -159,19 +155,88 @@ const GroupDetailPage: React.FC = () => {
       </button>
 
       {/* Premium Hero Section */}
-      <div className="relative bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl overflow-hidden mb-6 shadow-sm">
-        <div className="h-28 relative overflow-hidden" style={{ background: `linear-gradient(135deg, ${C.emerald} 0%, ${C.teal} 50%, ${C.blue} 100%)` }}>
-          <div className="absolute inset-0 opacity-10" style={{ backgroundImage: 'url("data:image/svg+xml,%3Csvg width=\'60\' height=\'60\' viewBox=\'0 0 60 60\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cpath d=\'M30 5 L55 17.5 L55 42.5 L30 55 L5 42.5 L5 17.5 Z\' fill=\'none\' stroke=\'white\' stroke-width=\'1\'/%3E%3C/svg%3E")', backgroundSize: '60px 60px' }} />
-          <div className="absolute bottom-4 left-6 flex items-end gap-4">
-             <div className="w-14 h-14 bg-white/20 backdrop-blur-md rounded-xl flex items-center justify-center text-white shadow-xl ring-1 ring-white/30">
-                <Users className="w-7 h-7" />
-             </div>
-             <div className="text-white pb-0.5">
-                <h1 className="text-2xl font-extrabold">{group.name}</h1>
-                <p className="text-xs font-medium opacity-90 flex items-center gap-1.5 mt-1">
-                   <BookOpen className="w-3.5 h-3.5" /> {courseName}
-                </p>
-             </div>
+      <div className="relative bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-3xl overflow-hidden shadow-sm mb-8">
+        {/* Background Decorative Graphic */}
+        <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-gradient-to-bl from-violet-500/10 to-transparent rounded-full blur-3xl -translate-y-1/2 translate-x-1/3 opacity-50 pointer-events-none" />
+        
+        <div className="relative p-8 md:p-12">
+          <div className="flex flex-col md:flex-row md:items-start justify-between gap-8">
+            <div className="max-w-2xl">
+              <div className="flex items-center gap-3 mb-6">
+                <span className="px-3 py-1 text-[11px] font-bold uppercase tracking-wider rounded-lg border bg-violet-100 text-violet-700 border-violet-200 dark:bg-violet-900/30 dark:text-violet-400 dark:border-violet-800">
+                  <Users className="w-3 h-3 inline-block mr-1.5 -mt-0.5" />
+                  Группа
+                </span>
+                {courseName && (
+                  <span className="px-3 py-1 text-[11px] font-bold uppercase tracking-wider bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400 rounded-lg border border-slate-200 dark:border-slate-700">
+                    <BookOpen className="w-3 h-3 inline-block mr-1.5 -mt-0.5" />
+                    {courseName}
+                  </span>
+                )}
+              </div>
+              
+              <h1 className="text-3xl md:text-5xl font-extrabold text-slate-900 dark:text-white tracking-tight leading-tight mb-6">
+                {group.name}
+              </h1>
+              
+              {/* Chat Link Management */}
+              {isEditingChat ? (
+                 <div className="flex items-center gap-2 p-3 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200 dark:border-slate-700 max-w-md">
+                    <div className="flex-1 space-y-2">
+                       <input value={chatForm.title} onChange={e => setChatForm(f => ({ ...f, title: e.target.value }))} placeholder="Название (Telegram, WhatsApp...)" className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 rounded-lg px-3 py-2 text-xs font-medium outline-none focus:border-violet-500" />
+                       <input value={chatForm.url} onChange={e => setChatForm(f => ({ ...f, url: e.target.value }))} placeholder="https://..." className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 rounded-lg px-3 py-2 text-xs font-medium outline-none focus:border-violet-500" />
+                    </div>
+                    <div className="flex flex-col gap-2 shrink-0">
+                       <button onClick={handleSaveChat} disabled={savingChat} className="p-2 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg transition-colors"><Check className="w-4 h-4" /></button>
+                       <button onClick={() => setIsEditingChat(false)} className="p-2 bg-slate-200 hover:bg-slate-300 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-300 rounded-lg transition-colors"><X className="w-4 h-4" /></button>
+                    </div>
+                 </div>
+              ) : (
+                 <div className="flex items-center gap-3">
+                    {group.chatLinkUrl ? (
+                      <a href={group.chatLinkUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 px-4 py-2 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 font-bold text-sm rounded-xl border border-blue-100 dark:border-blue-900/50 hover:bg-blue-100 dark:hover:bg-blue-900/40 transition-colors">
+                        <LinkIcon className="w-4 h-4" /> {group.chatLinkTitle || 'Чат группы'}
+                      </a>
+                    ) : (
+                      <div className="inline-flex items-center gap-2 px-4 py-2 bg-slate-50 dark:bg-slate-800/50 text-slate-400 font-bold text-sm rounded-xl border border-slate-200 dark:border-slate-700 border-dashed">
+                        Нет ссылки на чат
+                      </div>
+                    )}
+                    {isAdmin && (
+                      <button onClick={() => setIsEditingChat(true)} className="p-2 text-slate-400 hover:text-violet-500 hover:bg-violet-50 dark:hover:bg-violet-500/10 rounded-xl transition-colors">
+                        <Edit2 className="w-4 h-4" />
+                      </button>
+                    )}
+                 </div>
+              )}
+            </div>
+
+            {/* Stats Keycards Grid */}
+            <div className="grid grid-cols-2 gap-3 shrink-0 md:w-80">
+              <div className="bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-700/50 p-4 rounded-2xl flex flex-col items-center justify-center text-center">
+                <GraduationCap className="w-6 h-6 text-emerald-500 mb-2" />
+                <span className="text-2xl font-bold text-slate-900 dark:text-white">{currentStudents.length}</span>
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Учеников</span>
+              </div>
+              <div className="bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-700/50 p-4 rounded-2xl flex flex-col items-center justify-center text-center">
+                <Briefcase className="w-6 h-6 text-blue-500 mb-2" />
+                <span className="text-2xl font-bold text-slate-900 dark:text-white">{currentTeachers.length}</span>
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Учителей</span>
+              </div>
+              <div className="bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-700/50 p-4 rounded-2xl col-span-2 flex items-center justify-between text-left">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full bg-violet-100 dark:bg-violet-900/30 flex items-center justify-center">
+                    <Calendar className="w-5 h-5 text-violet-600 dark:text-violet-400" />
+                  </div>
+                  <div>
+                    <span className="block text-sm font-bold text-slate-900 dark:text-white">
+                      {group.createdAt ? new Date(group.createdAt).toLocaleDateString() : '—'}
+                    </span>
+                    <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider">{t('common.created', 'Создан')}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </div>

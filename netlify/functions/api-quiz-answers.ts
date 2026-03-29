@@ -46,7 +46,7 @@ function gradeAnswer(
   switch (questionType) {
     case 'single_choice':
     case 'true_false':
-    case 'image_question':
+    case 'media_question':
     case 'audio_question':
     case 'pdf_question':
     case 'passage_question':

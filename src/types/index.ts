@@ -340,6 +340,7 @@ export interface TeacherProfile {
 
 export interface Invite {
   id: string;
+
   email: string;
   role: string;
   organizationId: string;
@@ -737,9 +738,15 @@ export type QuizStatus = 'draft' | 'published' | 'archived';
 export type QuizQuestionType =
   | 'single_choice'
   | 'multiple_choice'
+  | 'multi_select'
   | 'true_false'
   | 'matching'
-  | 'image_question';
+  | 'short_text'
+  | 'poll'
+  | 'discussion'
+  | 'info_slide'
+  | 'media_question'
+  | 'speaking';
 
 export type QuizSessionStatus =
   | 'draft'
@@ -820,6 +827,7 @@ export interface QuizQuestion {
   mediaUrl?: string;
   mediaType?: 'image' | 'audio' | 'pdf' | 'video';
   passageText?: string;
+  ttsText?: string;
 
   // Answers
   options: QuizQuestionOption[];
@@ -863,6 +871,7 @@ export interface QuizSession {
   code: string; // 6-char join code
   status: QuizSessionStatus;
   mode: QuizSessionMode;
+  language?: string;
 
   currentQuestionIndex: number;
   totalQuestions: number;

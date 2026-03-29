@@ -10,9 +10,11 @@ import type { QuizSession, SessionParticipant } from '../../types';
 import { showGamificationToasts } from '../../components/gamification/GamificationToasts';
 import {
   Trophy, Users, Zap, CheckCircle, XCircle, Star,
-  Loader2, Gamepad2, ArrowLeft
+  Loader2, Gamepad2, ArrowLeft, Volume2
 } from 'lucide-react';
 import { playCountdownTick, playDramaticTick, playTimesUpBuzzer, cleanupAudio } from '../../utils/quizSounds';
+import { StudentAudioRecorder } from '../../components/quiz/StudentAudioRecorder';
+import { uploadFile } from '../../services/storage.service';
 
 type GamePhase = 'lobby' | 'question' | 'answer_feedback' | 'leaderboard' | 'results';
 
@@ -239,6 +241,7 @@ const QuizPlayPage: React.FC = () => {
   if (phase === 'question' && currentQuestion) {
     const isMultiSelect = ['multiple_choice', 'multi_select'].includes(currentQuestion.type);
     const isShortText = currentQuestion.type === 'short_text';
+    const isSpeaking = currentQuestion.type === 'speaking';
     const isPoll = ['poll', 'discussion', 'info_slide'].includes(currentQuestion.type);
     const timerPercent = (timeLeft / (currentQuestion.timerSeconds || 30)) * 100;
 
@@ -267,11 +270,27 @@ const QuizPlayPage: React.FC = () => {
         {/* Question */}
         <div className="px-4 py-4 relative z-10">
           <div className="kahoot-question-card max-w-3xl mx-auto shadow-2xl border border-white/10 bg-white/95 backdrop-blur-sm">
-            {currentQuestion.mediaUrl && currentQuestion.mediaType === 'image' && (
+            {currentQuestion.mediaUrl && (!currentQuestion.mediaType || currentQuestion.mediaType === 'image') && (
               <img src={currentQuestion.mediaUrl} alt="" className="max-h-56 object-contain rounded-lg mb-4 mx-auto" />
             )}
             {currentQuestion.mediaUrl && currentQuestion.mediaType === 'audio' && (
               <audio src={currentQuestion.mediaUrl} controls className="w-full mb-3" />
+            )}
+            {currentQuestion.mediaUrl && currentQuestion.mediaType === 'video' && (
+              <video src={currentQuestion.mediaUrl} controls className="max-h-56 w-full rounded-lg mb-4 mx-auto" />
+            )}
+            {currentQuestion.ttsText && (
+              <button 
+                onClick={(e) => { 
+                  e.preventDefault(); 
+                  const u = new SpeechSynthesisUtterance(currentQuestion.ttsText);
+                  u.lang = session?.language || 'en-US'; 
+                  window.speechSynthesis.speak(u);
+                }} 
+                className="w-full flex justify-center items-center gap-2 mb-3 px-4 py-3 bg-blue-100 text-blue-700 font-bold rounded-xl hover:bg-blue-200 transition-colors active:scale-[0.98] outline-none"
+              >
+                <Volume2 className="w-5 h-5" /> {t('quiz.listenToAudio', 'Слушать аудио')}
+              </button>
             )}
             {currentQuestion.passageText && (
               <div className="bg-gray-50/80 p-3 rounded-lg mb-3 text-sm text-gray-700 max-h-32 overflow-y-auto w-full border border-gray-200">
@@ -287,7 +306,25 @@ const QuizPlayPage: React.FC = () => {
 
         {/* Answer Options */}
         <div className="px-4 pb-6 relative z-10 flex-1" style={{ paddingBottom: 'max(1.5rem, env(safe-area-inset-bottom))' }}>
-          {isShortText ? (
+          {isSpeaking ? (
+            <div className="max-w-xl mx-auto w-full mb-4">
+              <StudentAudioRecorder 
+                disabled={submitted || submitting}
+                onRecordingComplete={async (blob) => {
+                  setSubmitting(true);
+                  try {
+                    const audioFile = new File([blob], 'audio.webm', { type: 'audio/webm' });
+                    const url = await uploadFile(`quizzes/${sessionId}/answers/${profile?.uid}-${Date.now()}.webm`, audioFile);
+                    setSelectedAnswer(url);
+                  } catch (err) {
+                    console.error("Upload failed", err);
+                  } finally {
+                    setSubmitting(false);
+                  }
+                }} 
+              />
+            </div>
+          ) : isShortText ? (
             <div className="max-w-xl mx-auto w-full mb-4">
               <input
                 value={typeof selectedAnswer === 'string' ? selectedAnswer : ''}

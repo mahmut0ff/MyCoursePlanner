@@ -6,17 +6,29 @@ interface FileViewerModalProps {
   onClose: () => void;
 }
 
-const getViewerUrl = (url: string, type: string): string | null => {
-  if (type.startsWith('image/') || type.startsWith('video/') || type === 'application/pdf') return null; // handled natively
-  // Word / PPT / Excel → Google Docs Viewer
-  const officeTypes = [
-    'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-    'application/vnd.ms-powerpoint', 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
-    'application/vnd.ms-excel', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-  ];
-  if (officeTypes.includes(type)) {
-    return `https://docs.google.com/gview?url=${encodeURIComponent(url)}&embedded=true`;
+export const getViewerUrl = (url: string, type: string, name?: string): string | null => {
+  if (type?.startsWith('image/') || type?.startsWith('video/') || type === 'application/pdf') return null; // handled natively
+  
+  const safeName = (name || '').toLowerCase();
+  
+  // Microsoft Office Viewer handles Office documents much better without forcing downloads from iframes
+  const isOffice = 
+    type?.includes('msword') || type?.includes('wordprocessingml') || 
+    type?.includes('ms-excel') || type?.includes('spreadsheetml') ||
+    type?.includes('ms-powerpoint') || type?.includes('presentationml') ||
+    safeName.endsWith('.doc') || safeName.endsWith('.docx') ||
+    safeName.endsWith('.xls') || safeName.endsWith('.xlsx') ||
+    safeName.endsWith('.ppt') || safeName.endsWith('.pptx');
+
+  if (isOffice) {
+    return `https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(url)}`;
   }
+  
+  // If we suspect it's a generic text file, maybe fallback to Google Docs or direct link
+  if (safeName.endsWith('.txt') || type === 'text/plain') {
+    return url; // browsers natively display text
+  }
+
   return null;
 };
 
@@ -47,9 +59,9 @@ const FileViewerModal: React.FC<FileViewerModalProps> = ({ file, onClose }) => {
   if (!file) return null;
 
   const { name, url, type } = file;
-  const viewerUrl = getViewerUrl(url, type);
-  const isImage = type.startsWith('image/');
-  const isVideo = type.startsWith('video/');
+  const viewerUrl = getViewerUrl(url, type, name);
+  const isImage = type?.startsWith('image/');
+  const isVideo = type?.startsWith('video/');
   const isPdf = type === 'application/pdf';
 
   return (

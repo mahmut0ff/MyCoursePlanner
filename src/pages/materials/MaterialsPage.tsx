@@ -9,7 +9,7 @@ import {
   LayoutGrid, List, Sparkles, X, Eye, FolderPlus
 } from 'lucide-react';
 import type { Material, LessonPlan } from '../../types';
-import FileViewerModal from '../../components/ui/FileViewerModal';
+import FileViewerModal, { getViewerUrl } from '../../components/ui/FileViewerModal';
 import { toast } from 'react-hot-toast';
 import EmptyState from '../../components/ui/EmptyState';
 
@@ -330,7 +330,7 @@ const MaterialsPage: React.FC = () => {
                   <button onClick={(e) => { e.stopPropagation(); setViewMaterial(m); }} className="p-2 bg-white text-slate-900 hover:text-primary-500 rounded-full shadow-lg transition-transform hover:scale-110 tooltip" data-tip="Просмотр">
                     <Eye className="w-4 h-4" />
                   </button>
-                  <a href={m.url} target="_blank" rel="noreferrer" onClick={e => e.stopPropagation()} className="p-2 bg-white text-slate-900 hover:text-emerald-500 rounded-full shadow-lg transition-transform hover:scale-110 tooltip" data-tip="Внешняя ссылка">
+                  <a href={getViewerUrl(m.url, m.mimeType || 'unknown', m.title) || m.url} target="_blank" rel="noreferrer" onClick={e => e.stopPropagation()} className="p-2 bg-white text-slate-900 hover:text-emerald-500 rounded-full shadow-lg transition-transform hover:scale-110 tooltip" data-tip="Внешняя ссылка">
                     <ExternalLink className="w-4 h-4" />
                   </a>
                   {profile?.activeOrgId && (
@@ -386,7 +386,7 @@ const MaterialsPage: React.FC = () => {
                           <FolderPlus className="w-4 h-4" />
                         </button>
                       )}
-                      <a href={m.url} target="_blank" rel="noreferrer" onClick={e => e.stopPropagation()} className="p-1.5 text-slate-400 hover:text-emerald-500 hover:bg-slate-100 dark:hover:bg-slate-700 rounded transition-colors tooltip" data-tip="Внешняя ссылка">
+                      <a href={getViewerUrl(m.url, m.mimeType || 'unknown', m.title) || m.url} target="_blank" rel="noreferrer" onClick={e => e.stopPropagation()} className="p-1.5 text-slate-400 hover:text-emerald-500 hover:bg-slate-100 dark:hover:bg-slate-700 rounded transition-colors tooltip" data-tip="Внешняя ссылка">
                         <ExternalLink className="w-4 h-4" />
                       </a>
                       {isAdmin && (

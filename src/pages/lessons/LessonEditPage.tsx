@@ -11,13 +11,14 @@ import Placeholder from '@tiptap/extension-placeholder';
 import { useAuth } from '../../contexts/AuthContext';
 import { createLessonPlan, getLessonPlan, updateLessonPlan } from '../../services/lessons.service';
 import { uploadLessonCover, uploadLessonAttachment, deleteLessonAttachment } from '../../services/storage.service';
-import type { LessonAttachment } from '../../types';
+import type { LessonAttachment, Material } from '../../types';
+import { orgGetMaterials } from '../../lib/api';
 
 import {
   Save, ArrowLeft, Bold, Italic, Strikethrough, Heading1, Heading2, List,
   ListOrdered, LinkIcon, ImageIcon, Youtube as YoutubeIcon, Undo, Redo, Upload,
   Quote, Code, Minus, Paperclip, Trash2, FileText, Film, Image as LucideImage,
-  FileSpreadsheet, ClipboardList, Calendar, Award, CheckCircle2,
+  FileSpreadsheet, ClipboardList, Calendar, Award, CheckCircle2, Search,
 } from 'lucide-react';
 
 const FILE_ACCEPT = '.pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.jpg,.jpeg,.png,.gif,.webp,.mp4,.webm,.mov,.avi,.zip,.rar,.txt';
@@ -59,6 +60,11 @@ const LessonEditPage: React.FC = () => {
   const [attachments, setAttachments] = useState<LessonAttachment[]>([]);
   const [homework, setHomework] = useState({ title: '', description: '', dueDate: '', points: 0 });
   const [showHomework, setShowHomework] = useState(false);
+  
+  // Library materials state
+  const [libMaterials, setLibMaterials] = useState<Material[]>([]);
+  const [searchMaterial, setSearchMaterial] = useState('');
+  const [loadingMaterials, setLoadingMaterials] = useState(false);
   
   const [uploading, setUploading] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
@@ -110,6 +116,16 @@ const LessonEditPage: React.FC = () => {
     }
   }, [id, isEdit, editor]);
 
+  useEffect(() => {
+    if (profile?.activeOrgId || profile?.role === 'teacher') {
+      setLoadingMaterials(true);
+      orgGetMaterials()
+        .then(setLibMaterials)
+        .catch(console.error)
+        .finally(() => setLoadingMaterials(false));
+    }
+  }, [profile]);
+
   const handleCoverUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -156,11 +172,31 @@ const LessonEditPage: React.FC = () => {
 
   const handleDeleteAttachment = async (att: LessonAttachment) => {
     try {
-      await deleteLessonAttachment(att.storagePath);
+      if (att.storagePath) {
+        await deleteLessonAttachment(att.storagePath);
+      }
       setAttachments((p) => p.filter((a) => a.id !== att.id));
     } catch (err) {
       console.error('Delete failed:', err);
     }
+  };
+
+  const handleAddMaterial = (m: Material) => {
+    if (attachments.some((a) => a.url === m.url)) {
+      toast.error(t('lessons.materialExists', 'Этот материал уже прикреплён'));
+      return;
+    }
+    const newAtt: LessonAttachment = {
+      id: `lib-${m.id}`,
+      name: m.title,
+      url: m.url,
+      storagePath: '',
+      type: m.mimeType || 'application/octet-stream',
+      size: m.sizeBytes || 0,
+      uploadedAt: new Date().toISOString(),
+    };
+    setAttachments((prev) => [...prev, newAtt]);
+    toast.success(t('lessons.materialAdded', 'Материал добавлен'));
   };
 
   // Drag & drop
@@ -334,64 +370,106 @@ const LessonEditPage: React.FC = () => {
 
           {/* Attachments Section */}
           <div className="card p-6">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                <Paperclip className="w-5 h-5 text-primary-500 bg-primary-50 dark:bg-primary-900/30 p-1 rounded-lg" />
-                {t('lessons.attachments', 'Вложения')}
-                {attachments.length > 0 && <span className="text-sm text-slate-400 font-normal">({attachments.length})</span>}
-              </h3>
-              <button 
+            <h3 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2 mb-6">
+              <Paperclip className="w-5 h-5 text-primary-500 bg-primary-50 dark:bg-primary-900/30 p-1 rounded-lg" />
+              {t('lessons.attachments', 'Вложения')}
+              {attachments.length > 0 && <span className="text-sm text-slate-400 font-normal">({attachments.length})</span>}
+            </h3>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 lg:gap-6 mb-6">
+              {/* Left Column: Library */}
+              <div className="flex flex-col border border-slate-200 dark:border-slate-700 rounded-2xl overflow-hidden bg-slate-50/50 dark:bg-slate-800/30 h-[280px]">
+                <div className="p-3 border-b border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 shrink-0">
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                    <input 
+                      type="text" 
+                      value={searchMaterial} 
+                      onChange={(e) => setSearchMaterial(e.target.value)}
+                      placeholder="Поиск по базе знаний..." 
+                      className="w-full pl-9 pr-3 py-2 text-sm bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg focus:outline-none focus:border-primary-400 transition-colors"
+                    />
+                  </div>
+                </div>
+                <div className="flex-1 overflow-y-auto p-2 space-y-1 custom-scrollbar">
+                  {loadingMaterials ? (
+                    <div className="flex justify-center p-4"><div className="w-5 h-5 border-2 border-primary-500 border-t-transparent rounded-full animate-spin" /></div>
+                  ) : libMaterials.length === 0 ? (
+                    <div className="text-center p-4 text-sm text-slate-500">База знаний пуста</div>
+                  ) : libMaterials.filter(m => m.title.toLowerCase().includes(searchMaterial.toLowerCase())).length === 0 ? (
+                    <div className="text-center p-4 text-sm text-slate-500">Ничего не найдено</div>
+                  ) : (
+                    libMaterials.filter(m => m.title.toLowerCase().includes(searchMaterial.toLowerCase())).map((m) => (
+                      <div key={m.id} className="flex items-center gap-3 p-2 rounded-xl hover:bg-white dark:hover:bg-slate-700/50 transition-colors group cursor-pointer border border-transparent hover:border-slate-200 dark:hover:border-slate-600 shadow-sm" onClick={() => handleAddMaterial(m)}>
+                         <div className="w-8 h-8 rounded-lg bg-slate-100 dark:bg-slate-800 flex items-center justify-center shrink-0 text-slate-500">
+                           {getFileIcon(m.mimeType || '')}
+                         </div>
+                         <div className="flex-1 min-w-0">
+                           <p className="text-sm font-medium text-slate-900 dark:text-white truncate">{m.title}</p>
+                           <p className="text-[10px] text-slate-500 truncate">{m.type === 'link' ? 'Ссылка' : formatSize(m.sizeBytes || 0)}</p>
+                         </div>
+                         <button className="text-primary-600 dark:text-primary-400 opacity-0 group-hover:opacity-100 p-1.5 hover:bg-primary-50 dark:hover:bg-primary-900/20 rounded-lg transition-all shrink-0" title="Прикрепить">
+                            <Upload className="w-4 h-4 ml-1" />
+                         </button>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+
+              {/* Right Column: Upload */}
+              <div 
+                ref={dropZoneRef} 
+                onDragOver={handleDragOver} 
+                onDragLeave={handleDragLeave} 
+                onDrop={handleDrop}
                 onClick={() => fileInputRef.current?.click()}
-                className="btn-ghost flex items-center gap-2 text-sm text-primary-600 dark:text-primary-400 hover:bg-primary-50 dark:hover:bg-primary-900/20"
+                className={`flex flex-col items-center justify-center border-2 border-dashed rounded-2xl p-6 text-center transition-all cursor-pointer h-[280px] ${isDragging ? 'border-primary-400 bg-primary-50 dark:bg-primary-900/20 shadow-inner' : 'border-slate-200 dark:border-slate-700 hover:border-primary-300 dark:hover:border-primary-600 bg-slate-50 dark:bg-slate-800/50'}`}
               >
-                <Upload className="w-4 h-4" /> Добавить файлы
-              </button>
-              <input ref={fileInputRef} type="file" multiple accept={FILE_ACCEPT} onChange={(e) => { if (e.target.files) handleFileUpload(e.target.files); e.target.value = ''; }} className="hidden" />
+                <input ref={fileInputRef} type="file" multiple accept={FILE_ACCEPT} onChange={(e) => { if (e.target.files) handleFileUpload(e.target.files); e.target.value = ''; }} className="hidden" />
+                <div className="w-12 h-12 mx-auto bg-white dark:bg-slate-700 shadow-sm rounded-full flex items-center justify-center mb-3">
+                   <Upload className={`w-6 h-6 ${isDragging ? 'text-primary-500' : 'text-slate-400 dark:text-slate-500'}`} />
+                </div>
+                <p className="text-sm font-bold text-slate-700 dark:text-slate-300 mb-1">
+                  {isDragging ? t('lessons.dropHere', 'Отпустите файлы') : 'Загрузить с устройства'}
+                </p>
+                <p className="text-xs text-slate-500 dark:text-slate-400 max-w-[200px] mt-1 line-clamp-2">Перетащите файлы или нажмите (до 50MB).</p>
+                
+                {uploading.length > 0 && (
+                  <div className="mt-4 w-full max-w-[200px] space-y-2">
+                    {uploading.map((u) => (
+                      <div key={u} className="flex items-center justify-center gap-2 p-1.5 bg-white dark:bg-slate-800 rounded-lg shadow-sm border border-slate-100 dark:border-slate-700">
+                        <div className="w-3.5 h-3.5 border-2 border-primary-200 border-t-primary-600 rounded-full animate-spin shrink-0" />
+                        <span className="text-[10px] font-medium text-slate-600 dark:text-slate-400 truncate">Загрузка...</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
 
-            {/* Drop zone */}
-            {attachments.length === 0 && uploading.length === 0 && (
-              <div ref={dropZoneRef} onDragOver={handleDragOver} onDragLeave={handleDragLeave} onDrop={handleDrop}
-                className={`border-2 border-dashed rounded-2xl p-8 sm:p-12 text-center transition-all cursor-pointer ${isDragging ? 'border-primary-400 bg-primary-50 dark:bg-primary-900/20 shadow-inner' : 'border-slate-200 dark:border-slate-700 hover:border-primary-300 dark:hover:border-primary-600 bg-slate-50 dark:bg-slate-800/50'}`}
-                onClick={() => fileInputRef.current?.click()}>
-                <div className="w-16 h-16 mx-auto bg-white dark:bg-slate-700 shadow-sm rounded-full flex items-center justify-center mb-4">
-                   <Upload className={`w-8 h-8 ${isDragging ? 'text-primary-500' : 'text-slate-400 dark:text-slate-500'}`} />
-                </div>
-                <p className="text-base font-medium text-slate-700 dark:text-slate-300 mb-1">
-                  {isDragging ? t('lessons.dropHere', 'Отпустите файлы') : t('lessons.dragOrClick', 'Перетащите файлы сюда или нажмите для выбора')}
-                </p>
-                <p className="text-xs text-slate-500 dark:text-slate-400 max-w-xs mx-auto">Поддерживаются PDF, таблицы, презентации, картинки и видео (до 50MB).</p>
-              </div>
-            )}
-
-            {/* Active Uploads */}
-            {uploading.length > 0 && (
-              <div className="mb-4 space-y-3">
-                {uploading.map((u) => (
-                  <div key={u} className="flex items-center gap-3 p-3 bg-primary-50 dark:bg-primary-900/20 rounded-xl border border-primary-100 dark:border-primary-800/50">
-                    <div className="w-5 h-5 border-2 border-primary-200 border-t-primary-600 rounded-full animate-spin shrink-0" />
-                    <span className="text-sm font-medium text-primary-700 dark:text-primary-400 truncate">Загрузка файла...</span>
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {/* List */}
+            {/* List Array */}
             {attachments.length > 0 && (
               <div className="space-y-2">
+                <h4 className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-3">Прикреплено к уроку ({attachments.length})</h4>
                 {attachments.map((att) => (
-                  <div key={att.id} className="flex items-center gap-4 p-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl group hover:shadow-md transition-all hover:border-slate-300 dark:hover:border-slate-600">
+                  <div key={att.id} className="flex items-center gap-4 p-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl group hover:shadow-md hover:border-slate-300 dark:hover:border-slate-600 transition-all">
                     <div className="w-10 h-10 rounded-lg bg-slate-50 dark:bg-slate-700/50 flex items-center justify-center shrink-0">
                       {getFileIcon(att.type)}
                     </div>
-                    <div className="flex-1 min-w-0">
+                    <div className="flex-1 min-w-0 flex items-center gap-3">
                       <p className="text-sm text-slate-900 dark:text-white truncate font-medium">{att.name}</p>
-                      <p className="text-xs text-slate-500">{formatSize(att.size)}</p>
+                      {!att.storagePath && (
+                         <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-indigo-50 text-indigo-600 dark:bg-indigo-900/30 dark:text-indigo-400 uppercase tracking-wider shrink-0">Из базы знаний</span>
+                      )}
                     </div>
-                    <button onClick={() => handleDeleteAttachment(att)}
-                      className="p-2 text-slate-400 hover:text-white hover:bg-red-500 bg-slate-50 dark:bg-slate-700 dark:hover:bg-red-600 transition-all rounded-lg opacity-0 group-hover:opacity-100 focus:opacity-100 shadow-sm">
-                      <Trash2 className="w-4 h-4" />
-                    </button>
+                    <div className="flex items-center gap-3 shrink-0">
+                      <p className="text-xs text-slate-500">{formatSize(att.size)}</p>
+                      <button onClick={() => handleDeleteAttachment(att)}
+                        className="p-2 text-slate-400 hover:text-white hover:bg-red-500 bg-slate-50 dark:bg-slate-700 dark:hover:bg-red-600 transition-all rounded-lg opacity-0 group-hover:opacity-100 focus:opacity-100 shadow-sm" title="Открепить">
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
                   </div>
                 ))}
               </div>

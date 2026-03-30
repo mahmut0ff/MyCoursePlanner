@@ -12,6 +12,10 @@ import {
 import type { OrgSettings } from '../../types';
 import QRCode from 'qrcode';
 import { AIManagerTab } from './AIManagerTab';
+import { auth } from '../../lib/firebase';
+import { updateProfile, updatePassword, EmailAuthProvider, reauthenticateWithCredential } from 'firebase/auth';
+import { updateUser } from '../../services/users.service';
+import toast from 'react-hot-toast';
 
 type Tab = 'profile' | 'general' | 'academic' | 'branding' | 'visitcard' | 'notifications' | 'localization' | 'security' | 'data' | 'limits' | 'ai';
 
@@ -32,15 +36,53 @@ const TABS: { id: Tab; icon: React.ElementType; labelKey: string }[] = [
 /* ════════════════════════════════════ PROFILE ════════════════════════════════════ */
 const ProfileTab: React.FC = () => {
   const { t } = useTranslation();
-  const { profile } = useAuth();
+  const { profile, refreshProfile } = useAuth();
   const [form, setForm] = useState({
     firstName: profile?.displayName?.split(' ')[0] || '',
     lastName: profile?.displayName?.split(' ').slice(1).join(' ') || '',
     email: profile?.email || '',
-    phone: '',
+    phone: profile?.phone || '',
   });
   const [pw, setPw] = useState({ current: '', newPw: '', confirm: '' });
   const [showPw, setShowPw] = useState(false);
+  const [savingProfile, setSavingProfile] = useState(false);
+  const [savingPw, setSavingPw] = useState(false);
+
+  const handleSaveProfile = async () => {
+    if (!auth.currentUser || !profile) return;
+    setSavingProfile(true);
+    try {
+      const displayName = `${form.firstName.trim()} ${form.lastName.trim()}`.trim();
+      await updateProfile(auth.currentUser, { displayName });
+      await updateUser(auth.currentUser.uid, { displayName, phone: form.phone.trim() });
+      await refreshProfile();
+      toast.success(t('org.settings.saved', 'Сохранено'));
+    } catch (e: any) {
+      toast.error(e.message || t('common.error', 'Ошибка'));
+    } finally {
+      setSavingProfile(false);
+    }
+  };
+
+  const handleChangePassword = async () => {
+    if (!pw.current || !pw.newPw || pw.newPw.length < 6 || pw.newPw !== pw.confirm) {
+      toast.error(t('profile.passwordMinLength', 'Пароли не совпадают или длина менее 6 символов'));
+      return;
+    }
+    setSavingPw(true);
+    try {
+      const user = auth.currentUser!;
+      const cred = EmailAuthProvider.credential(user.email!, pw.current);
+      await reauthenticateWithCredential(user, cred);
+      await updatePassword(user, pw.newPw);
+      toast.success(t('profile.passwordChanged', 'Пароль успешно изменен'));
+      setPw({ current: '', newPw: '', confirm: '' });
+    } catch (e: any) {
+      toast.error(t('profile.passwordFailed', 'Неверный текущий пароль или ошибка'));
+    } finally {
+      setSavingPw(false);
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -81,7 +123,10 @@ const ProfileTab: React.FC = () => {
           </div>
         </div>
         <div className="flex justify-end">
-          <button className="btn-primary text-sm flex items-center gap-2"><Save className="w-4 h-4" />{t('org.settings.saveChanges')}</button>
+          <button onClick={handleSaveProfile} disabled={savingProfile} className="btn-primary text-sm flex items-center gap-2">
+            {savingProfile ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+            {t('org.settings.saveChanges')}
+          </button>
         </div>
       </div>
 
@@ -109,7 +154,10 @@ const ProfileTab: React.FC = () => {
             </div>
           </div>
           <div className="flex justify-end">
-            <button className="btn-primary text-sm">{t('org.settings.updatePassword')}</button>
+            <button onClick={handleChangePassword} disabled={savingPw || !pw.current || !pw.newPw || pw.newPw !== pw.confirm} className="btn-primary text-sm flex items-center gap-2">
+              {savingPw ? <Loader2 className="w-4 h-4 animate-spin" /> : <Shield className="w-4 h-4" />}
+              {t('org.settings.updatePassword')}
+            </button>
           </div>
         </div>
       </div>
@@ -559,7 +607,7 @@ const LocalizationTab: React.FC<{ settings: OrgSettings; update: (k: string, v: 
             </select>
           </div>
           <div className="flex justify-end">
-            <button className="btn-primary text-sm flex items-center gap-2"><Save className="w-4 h-4" />{t('org.settings.saveChanges')}</button>
+            <span className="text-xs text-slate-500 dark:text-slate-400">Настройки сохраняются по главной кнопке</span>
           </div>
         </div>
       </div>
@@ -605,7 +653,7 @@ const SecurityTab: React.FC<{ settings: OrgSettings; update: (k: string, v: any)
           </div>
 
           <div className="flex justify-end">
-            <button className="btn-primary text-sm flex items-center gap-2"><Save className="w-4 h-4" />{t('org.settings.saveChanges')}</button>
+            <span className="text-xs text-slate-500 dark:text-slate-400">Настройки сохраняются по главной кнопке</span>
           </div>
         </div>
       </div>
@@ -616,26 +664,31 @@ const SecurityTab: React.FC<{ settings: OrgSettings; update: (k: string, v: any)
 /* ════════════════════════════════════ DATA MANAGEMENT ════════════════════════════════════ */
 const DataTab: React.FC = () => {
   const { t } = useTranslation();
+
+  const handleMock = () => {
+    toast('Функция в разработке', { icon: '🚧' });
+  };
+
   return (
     <div className="space-y-6">
       <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-6">
         <h3 className="font-semibold text-slate-900 dark:text-white mb-4">{t('org.settings.exportData')}</h3>
         <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">{t('org.settings.exportDataDesc')}</p>
         <div className="flex gap-3">
-          <button className="btn-secondary text-sm">{t('org.settings.exportStudents')}</button>
-          <button className="btn-secondary text-sm">{t('org.settings.exportTeachers')}</button>
-          <button className="btn-secondary text-sm">{t('org.settings.exportResults')}</button>
+          <button onClick={handleMock} className="btn-secondary text-sm">{t('org.settings.exportStudents')}</button>
+          <button onClick={handleMock} className="btn-secondary text-sm">{t('org.settings.exportTeachers')}</button>
+          <button onClick={handleMock} className="btn-secondary text-sm">{t('org.settings.exportResults')}</button>
         </div>
       </div>
       <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-6">
         <h3 className="font-semibold text-slate-900 dark:text-white mb-4">{t('org.settings.backup')}</h3>
         <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">{t('org.settings.backupDesc')}</p>
-        <button className="btn-primary text-sm">{t('org.settings.createBackup')}</button>
+        <button onClick={handleMock} className="btn-primary text-sm">{t('org.settings.createBackup')}</button>
       </div>
       <div className="bg-white dark:bg-slate-800 border border-red-200 dark:border-red-900/50 rounded-2xl p-6">
         <h3 className="font-semibold text-red-600 dark:text-red-400 mb-2">{t('org.settings.dangerZone')}</h3>
         <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">{t('org.settings.dangerZoneDesc')}</p>
-        <button className="bg-red-500 hover:bg-red-600 text-white text-sm px-4 py-2 rounded-lg transition-colors">{t('org.settings.deleteOrg')}</button>
+        <button onClick={handleMock} className="bg-red-500 hover:bg-red-600 text-white text-sm px-4 py-2 rounded-lg transition-colors">{t('org.settings.deleteOrg')}</button>
       </div>
     </div>
   );

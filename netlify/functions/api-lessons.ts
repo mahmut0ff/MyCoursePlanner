@@ -23,33 +23,39 @@ const handler: Handler = async (event: HandlerEvent) => {
       if (!doc.exists) return notFound('Lesson not found');
       return ok({ id: doc.id, ...doc.data() });
     }
-    const orgFilter = getOrgFilter(user);
-    if (params.orgId === 'none') {
-      const snap = await adminDb.collection(COLLECTION).where('authorId', '==', user.uid).where('organizationId', '==', null).orderBy('createdAt', 'desc').get();
-      // Also try where('organizationId', '==', '') because sometimes it's empty string
-      const snap2 = await adminDb.collection(COLLECTION).where('authorId', '==', user.uid).where('organizationId', '==', '').orderBy('createdAt', 'desc').get();
-      const allDocs = [...snap.docs, ...snap2.docs].reduce((acc, curr) => {
-         if (!acc.some((d: any) => d.id === curr.id)) acc.push(curr);
-         return acc;
-      }, [] as any[]);
-      return ok(allDocs.map((d: any) => ({ id: d.id, ...d.data() })));
-    }
 
-    let snap;
-    if (isSuperAdmin(user)) {
-      snap = await adminDb.collection(COLLECTION).orderBy('createdAt', 'desc').get();
-    } else if (orgFilter) {
-      snap = await adminDb.collection(COLLECTION).where('organizationId', '==', orgFilter).orderBy('createdAt', 'desc').get();
-    } else {
-      const snap1 = await adminDb.collection(COLLECTION).where('authorId', '==', user.uid).where('organizationId', '==', null).orderBy('createdAt', 'desc').get();
-      const snap2 = await adminDb.collection(COLLECTION).where('authorId', '==', user.uid).where('organizationId', '==', '').orderBy('createdAt', 'desc').get();
-      const allDocs = [...snap1.docs, ...snap2.docs].reduce((acc, curr) => {
-         if (!acc.some((d: any) => d.id === curr.id)) acc.push(curr);
-         return acc;
-      }, [] as any[]);
-      return ok(allDocs.map((d: any) => ({ id: d.id, ...d.data() })));
+    try {
+      const orgFilter = getOrgFilter(user);
+      if (params.orgId === 'none') {
+        const snap = await adminDb.collection(COLLECTION).where('authorId', '==', user.uid).where('organizationId', '==', null).orderBy('createdAt', 'desc').get();
+        const snap2 = await adminDb.collection(COLLECTION).where('authorId', '==', user.uid).where('organizationId', '==', '').orderBy('createdAt', 'desc').get();
+        const allDocs = [...snap.docs, ...snap2.docs].reduce((acc, curr) => {
+           if (!acc.some((d: any) => d.id === curr.id)) acc.push(curr);
+           return acc;
+        }, [] as any[]);
+        return ok(allDocs.map((d: any) => ({ id: d.id, ...d.data() })));
+      }
+
+      let snap;
+      if (isSuperAdmin(user)) {
+        snap = await adminDb.collection(COLLECTION).orderBy('createdAt', 'desc').get();
+      } else if (orgFilter) {
+        snap = await adminDb.collection(COLLECTION).where('organizationId', '==', orgFilter).orderBy('createdAt', 'desc').get();
+      } else {
+        // Freelance teacher (no org) — show only their own lessons
+        const snap1 = await adminDb.collection(COLLECTION).where('authorId', '==', user.uid).where('organizationId', '==', null).orderBy('createdAt', 'desc').get();
+        const snap2 = await adminDb.collection(COLLECTION).where('authorId', '==', user.uid).where('organizationId', '==', '').orderBy('createdAt', 'desc').get();
+        const allDocs = [...snap1.docs, ...snap2.docs].reduce((acc, curr) => {
+           if (!acc.some((d: any) => d.id === curr.id)) acc.push(curr);
+           return acc;
+        }, [] as any[]);
+        return ok(allDocs.map((d: any) => ({ id: d.id, ...d.data() })));
+      }
+      return ok(snap.docs.map((d: any) => ({ id: d.id, ...d.data() })));
+    } catch (err: any) {
+      console.error('Lesson listing query failed:', err);
+      return jsonResponse(500, { error: `Listing failed: ${err.message || 'Unknown error'}. Check Firestore composite indexes for lessonPlans collection.` });
     }
-    return ok(snap.docs.map((d: any) => ({ id: d.id, ...d.data() })));
   }
 
   if (!isStaff(user)) return forbidden();

@@ -31,7 +31,13 @@ const LessonListPage: React.FC = () => {
 
   const loadLessons = () => {
     setLoading(true);
-    apiGetLessons().then(setLessons).catch(console.error).finally(() => setLoading(false));
+    apiGetLessons()
+      .then((data) => setLessons(Array.isArray(data) ? data : []))
+      .catch((err) => {
+        console.error('Failed to load lessons:', err);
+        toast.error(t('lessons.loadFailed', 'Ошибка загрузки уроков. Попробуйте обновить страницу.'));
+      })
+      .finally(() => setLoading(false));
   };
 
   useEffect(() => {

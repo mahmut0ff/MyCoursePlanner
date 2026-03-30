@@ -114,7 +114,7 @@ const LessonListPage: React.FC = () => {
       <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-6">
         <div>
           <h1 className="text-3xl font-extrabold text-slate-900 dark:text-white mb-2">{t('lessons.title', 'Уроки')}</h1>
-          <p className="text-slate-500 dark:text-slate-400 text-sm">{filtered.length} доступных материалов</p>
+          <p className="text-slate-500 dark:text-slate-400 text-sm">{filtered.length} доступных уроков</p>
         </div>
         
         {isStaff && (

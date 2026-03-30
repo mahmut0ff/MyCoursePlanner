@@ -28,13 +28,18 @@ const handler: Handler = async (event: HandlerEvent) => {
       const orgDoc = await adminDb.collection('organizations').doc(orgId).get();
       if (!orgDoc.exists) return badRequest('Org not found');
       
-      const snap = await adminDb.collection('organization_members')
-        .where('organizationId', '==', orgId)
+      const snap = await adminDb.collection('orgMembers').doc(orgId).collection('members')
+        .where('status', '==', 'active')
         .where('role', 'in', ['admin', 'manager', 'owner'])
         .get();
 
-      const adminIds = snap.docs.map(d => d.data().userId);
-      if (adminIds.length === 0) return badRequest('No admins found in org');
+      let adminIds = snap.docs.map(d => d.data().userId);
+      
+      if (adminIds.length === 0) {
+        // Fallback: If no dedicated admins found but the user is making the request, let them receive it
+        // (This can happen in newly created orgs or solo owner setups)
+        adminIds = [user.uid];
+      }
 
       // Создаем уведомление-заявку для каждого админа
       const batch = adminDb.batch();
@@ -140,7 +145,7 @@ const handler: Handler = async (event: HandlerEvent) => {
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString()
           };
-          delete newLessonData.id;
+          delete (newLessonData as any).id;
           
           await adminDb.collection(LESSONS).add(newLessonData);
           successMessage = `Урок "${sourceTitle}" скопирован в ваши личные материалы.`;

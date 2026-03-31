@@ -444,6 +444,7 @@ export interface Exam {
   showResultsImmediately: boolean;
   status: ExamStatus;
   questionCount: number;
+  gradingCategories?: string[]; // Custom metrics for AI (e.g., 'Speaking', 'Coding')
   authorId: string;
   authorName: string;
   organizationId?: string;
@@ -531,6 +532,8 @@ export interface AIFeedback {
   weakTopics: string[];
   reviewSuggestions: string[];
   summary: string;
+  categoryScores?: Record<string, string>; // e.g. { "Speaking": "poor" }
+  categoryInsights?: Record<string, string>; // e.g. { "Speaking": "Has strong accent" }
   generatedAt: string;
   modelUsed?: string;
   teacherNotes?: string;

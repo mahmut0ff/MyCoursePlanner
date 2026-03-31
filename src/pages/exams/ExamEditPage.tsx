@@ -37,6 +37,7 @@ const ExamEditPage: React.FC = () => {
   const [randomize, setRandomize] = useState(false);
   const [showResults, setShowResults] = useState(true);
   const [status, setStatus] = useState<'draft' | 'published'>('draft');
+  const [gradingCategories, setGradingCategories] = useState<string[]>([]);
   const [questions, setQuestions] = useState<Question[]>([EMPTY_QUESTION()]);
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(isEdit);
@@ -88,6 +89,7 @@ const ExamEditPage: React.FC = () => {
           setDurationMinutes(exam.durationMinutes); setPassScore(exam.passScore);
           setRandomize(exam.randomizeQuestions); setShowResults(exam.showResultsImmediately);
           setStatus(exam.status as any);
+          setGradingCategories(exam.gradingCategories || []);
         }
         if (qs.length > 0) setQuestions(qs);
         setLoading(false);
@@ -109,7 +111,7 @@ const ExamEditPage: React.FC = () => {
       const examData = {
         title, description, subject, durationMinutes, passScore,
         randomizeQuestions: randomize, showResultsImmediately: showResults,
-        status, questionCount: questions.length,
+        status, questionCount: questions.length, gradingCategories,
         authorId: profile?.uid || '', authorName: profile?.displayName || '',
       };
       let examId = id;
@@ -184,6 +186,12 @@ const ExamEditPage: React.FC = () => {
             <div>
               <label className={labelClass}>{t('exams.subjectLabel', 'Subject / Category')} *</label>
               <input value={subject} onChange={(e) => setSubject(e.target.value)} className={inputClass} placeholder="e.g. Computer Science" />
+            </div>
+            
+            <div className="md:col-span-2">
+              <label className={labelClass}>{t('exams.gradingCategories', 'AI Evaluation Skills (Optional)')}</label>
+              <input value={gradingCategories.join(', ')} onChange={(e) => setGradingCategories(e.target.value.split(',').map(s => s.trim()).filter(Boolean))} className={inputClass} placeholder={t('exams.gradingCategoriesPlaceholder', 'e.g. Speaking, Writing, Coding, Design')} />
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-2 font-medium">Comma-separated skills the AI must evaluate specifically. Leave blank for standard evaluation.</p>
             </div>
             
             <div className="grid grid-cols-2 gap-4">

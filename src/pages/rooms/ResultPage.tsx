@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
+import { useAuth } from '../../contexts/AuthContext';
 import { apiGetAttempt, apiGenerateCertificate } from '../../lib/api';
 import type { ExamAttempt } from '../../types';
 
@@ -8,6 +9,7 @@ import { ArrowLeft, Trophy, XCircle, Clock, Target, Brain, CheckCircle, HelpCirc
 
 const ResultPage: React.FC = () => {
   const { t } = useTranslation();
+  const { profile } = useAuth();
   const { attemptId } = useParams<{ attemptId: string }>();
   const navigate = useNavigate();
   const [attempt, setAttempt] = useState<ExamAttempt | null>(null);
@@ -73,6 +75,7 @@ const ResultPage: React.FC = () => {
   const mins = Math.floor(attempt.timeSpentSeconds / 60);
   const secs = attempt.timeSpentSeconds % 60;
   const isPolling = pollingRef.current !== null;
+  const isViewerStudent = profile?.uid === attempt.studentId;
 
   return (
     <div className="max-w-3xl mx-auto animate-fade-in">
@@ -128,9 +131,10 @@ const ResultPage: React.FC = () => {
         )}
       </div>
 
-      {/* AI Feedback */}
-      <div className="card p-6 mb-6 overflow-hidden">
-        <div className="flex items-center justify-between mb-4">
+      {/* AI Feedback (Hidden for students) */}
+      {!isViewerStudent && (
+        <div className="card p-6 mb-6 overflow-hidden">
+          <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
             <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-violet-500 to-indigo-600 flex items-center justify-center">
               <Brain className="w-4 h-4 text-white" />
@@ -150,6 +154,31 @@ const ResultPage: React.FC = () => {
                 <p className="text-slate-700 dark:text-slate-300 leading-relaxed">{attempt.aiFeedback.summary}</p>
               </div>
             )}
+            
+            {/* Category Scores */}
+            {attempt.aiFeedback.categoryScores && Object.keys(attempt.aiFeedback.categoryScores).length > 0 && (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {Object.entries(attempt.aiFeedback.categoryScores).map(([cat, score], i) => (
+                  <div key={i} className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-4 rounded-xl shadow-sm">
+                    <div className="flex items-center justify-between mb-2">
+                       <h4 className="font-bold text-slate-900 dark:text-white text-sm">{cat}</h4>
+                       <span className={`text-[10px] font-bold px-2 py-1 rounded-md uppercase tracking-wide
+                         ${score.toLowerCase() === 'excellent' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400' :
+                           score.toLowerCase() === 'good' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' :
+                           score.toLowerCase() === 'average' ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400' :
+                           'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'}`
+                       }>
+                         {score}
+                       </span>
+                    </div>
+                    {attempt.aiFeedback?.categoryInsights?.[cat] && (
+                      <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">{attempt.aiFeedback?.categoryInsights?.[cat]}</p>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+
             {attempt.aiFeedback.strengths?.length > 0 && (
               <div>
                 <h3 className="text-sm font-semibold text-emerald-700 dark:text-emerald-400 mb-2 flex items-center gap-1.5">
@@ -224,9 +253,10 @@ const ResultPage: React.FC = () => {
           </div>
         )}
       </div>
+      )}
 
-      {/* Question Results */}
-      {attempt.questionResults && attempt.questionResults.length > 0 && (
+      {/* Question Results (Hidden for students) */}
+      {!isViewerStudent && attempt.questionResults && attempt.questionResults.length > 0 && (
         <div className="card overflow-hidden">
           <div className="px-6 py-4 border-b border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-700/50"><h3 className="font-semibold text-slate-900 dark:text-white">{t('results.questionBreakdown')}</h3></div>
           <div className="divide-y divide-slate-100 dark:divide-slate-700">

@@ -10,11 +10,7 @@ import LoginPage from './pages/auth/LoginPage';
 import RegisterPage from './pages/auth/RegisterPage';
 import ParentPortalPage from './pages/parent/ParentPortalPage';
 import OnboardingPage from './pages/auth/OnboardingPage';
-import LandingPage from './pages/landing/LandingPage';
-import AboutPage from './pages/landing/AboutPage';
-import ContactPage from './pages/landing/ContactPage';
-import FeaturesPage from './pages/landing/FeaturesPage';
-import DocsPage from './pages/landing/DocsPage';
+
 import DashboardPage from './pages/dashboard/DashboardPage';
 import GradebookPage from './pages/gradebook/GradebookPage';
 import JournalPage from './pages/journal/JournalPage';
@@ -111,11 +107,7 @@ const App: React.FC = () => {
         <Toaster position="top-right" toastOptions={{ duration: 3000, style: { borderRadius: '12px', padding: '12px 16px', fontSize: '14px' } }} />
         <Routes>
           {/* Public */}
-            <Route path="/" element={<LandingPage />} />
-            <Route path="/features" element={<FeaturesPage />} />
-            <Route path="/about" element={<AboutPage />} />
-            <Route path="/contact" element={<ContactPage />} />
-            <Route path="/docs" element={<DocsPage />} />
+            <Route path="/" element={<Navigate to="/login" replace />} />
             <Route path="/login" element={<LoginPage />} />
             <Route path="/register" element={<RegisterPage />} />
             <Route path="/parent/:token" element={<ParentPortalPage />} />

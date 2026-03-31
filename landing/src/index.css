@@ -1,0 +1,805 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800;900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Pacifico&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ============================================================
+   KAHOOT-STYLE QUIZ DESIGN SYSTEM
+   ============================================================ */
+
+:root {
+  /* Kahoot Brand Colors */
+  --kahoot-purple: #46178f;
+  --kahoot-purple-dark: #2d0a5e;
+  --kahoot-purple-light: #6c34b2;
+  --kahoot-purple-bg: #1a0a3e;
+  /* Answer Option Colors */
+  --kahoot-red: #e21b3c;
+  --kahoot-blue: #1368ce;
+  --kahoot-yellow: #d89e00;
+  --kahoot-green: #26890c;
+  --kahoot-red-hover: #c4162f;
+  --kahoot-blue-hover: #1057ad;
+  --kahoot-yellow-hover: #b88600;
+  --kahoot-green-hover: #1f6f0a;
+  /* Accent */
+  --kahoot-correct: #66bf39;
+  --kahoot-incorrect: #e21b3c;
+  --kahoot-gold: #ffd700;
+  --kahoot-silver: #c0c0c0;
+  --kahoot-bronze: #cd7f32;
+}
+
+/* ---- Kahoot Quiz Utility Classes ---- */
+
+.kahoot-font {
+  font-family: 'Montserrat', 'Inter', system-ui, sans-serif;
+}
+
+.kahoot-bg {
+  background: linear-gradient(135deg, var(--kahoot-purple) 0%, var(--kahoot-purple-dark) 50%, var(--kahoot-purple-bg) 100%);
+  min-height: 100vh;
+  color: white;
+}
+
+.kahoot-bg-pattern {
+  background-image:
+    radial-gradient(ellipse at 20% 50%, rgba(108, 52, 178, 0.3) 0%, transparent 50%),
+    radial-gradient(ellipse at 80% 20%, rgba(70, 23, 143, 0.4) 0%, transparent 50%),
+    radial-gradient(ellipse at 50% 80%, rgba(45, 10, 94, 0.3) 0%, transparent 50%);
+}
+
+/* Answer Option Buttons */
+.kahoot-option {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 20px;
+  border-radius: 8px;
+  color: white;
+  font-weight: 700;
+  font-size: 16px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  border: 4px solid transparent;
+  text-align: left;
+  min-height: 80px;
+  position: relative;
+  overflow: hidden;
+  font-family: 'Montserrat', sans-serif;
+}
+.kahoot-option:hover:not(:disabled) {
+  transform: scale(1.02);
+  filter: brightness(1.1);
+}
+.kahoot-option:active:not(:disabled) {
+  transform: scale(0.98);
+}
+.kahoot-option.selected {
+  border-color: rgba(255,255,255,0.8);
+  box-shadow: 0 0 20px rgba(255,255,255,0.3);
+  transform: scale(1.03);
+}
+.kahoot-option:disabled {
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+.kahoot-option-red { background-color: var(--kahoot-red); }
+.kahoot-option-red:hover:not(:disabled) { background-color: var(--kahoot-red-hover); }
+.kahoot-option-blue { background-color: var(--kahoot-blue); }
+.kahoot-option-blue:hover:not(:disabled) { background-color: var(--kahoot-blue-hover); }
+.kahoot-option-yellow { background-color: var(--kahoot-yellow); }
+.kahoot-option-yellow:hover:not(:disabled) { background-color: var(--kahoot-yellow-hover); }
+.kahoot-option-green { background-color: var(--kahoot-green); }
+.kahoot-option-green:hover:not(:disabled) { background-color: var(--kahoot-green-hover); }
+
+.kahoot-shape {
+  font-size: 24px;
+  line-height: 1;
+  opacity: 0.9;
+  flex-shrink: 0;
+  width: 32px;
+  text-align: center;
+}
+
+/* Timer Bar */
+.kahoot-timer-bar {
+  height: 6px;
+  background: rgba(255,255,255,0.2);
+  border-radius: 3px;
+  overflow: hidden;
+}
+.kahoot-timer-bar-fill {
+  height: 100%;
+  background: white;
+  border-radius: 3px;
+  transition: width 1s linear;
+}
+.kahoot-timer-bar-fill.danger {
+  background: var(--kahoot-red);
+}
+
+/* Timer Circle */
+.kahoot-timer-circle {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.15);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+  font-weight: 800;
+  font-family: 'Montserrat', sans-serif;
+  color: white;
+  backdrop-filter: blur(8px);
+}
+.kahoot-timer-circle.danger {
+  background: rgba(226, 27, 60, 0.3);
+  animation: kahoot-pulse 0.5s ease-in-out infinite alternate;
+}
+
+/* Question Card */
+.kahoot-question-card {
+  background: white;
+  color: #333;
+  border-radius: 8px;
+  padding: 24px 32px;
+  font-size: 20px;
+  font-weight: 700;
+  text-align: center;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+  font-family: 'Montserrat', sans-serif;
+  min-height: 100px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+}
+
+/* Podium */
+.kahoot-podium-container {
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 8px;
+  padding: 0 16px;
+}
+.kahoot-podium-block {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+.kahoot-podium-bar {
+  width: 120px;
+  border-radius: 8px 8px 0 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  padding-top: 16px;
+  font-family: 'Montserrat', sans-serif;
+  animation: podium-rise 0.8s ease-out forwards;
+  transform-origin: bottom;
+}
+.kahoot-podium-bar.gold {
+  background: linear-gradient(180deg, #ffd700 0%, #e6b800 100%);
+  height: 190px;
+  animation-delay: 0.4s;
+  transform: scaleY(0);
+}
+.kahoot-podium-bar.silver {
+  background: linear-gradient(180deg, #c0c0c0 0%, #a8a8a8 100%);
+  height: 150px;
+  animation-delay: 0.2s;
+  transform: scaleY(0);
+}
+.kahoot-podium-bar.bronze {
+  background: linear-gradient(180deg, #cd7f32 0%, #b5692a 100%);
+  height: 120px;
+  animation-delay: 0.6s;
+  transform: scaleY(0);
+}
+
+/* Lobby player chip */
+.kahoot-player-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 16px;
+  background: rgba(255,255,255,0.15);
+  backdrop-filter: blur(8px);
+  border-radius: 24px;
+  font-weight: 600;
+  font-size: 14px;
+  color: white;
+  animation: kahoot-pop-in 0.3s ease-out;
+  font-family: 'Montserrat', sans-serif;
+}
+
+/* Builder Slide Navigator */
+.kahoot-slide-nav {
+  width: 200px;
+  background: #f2f2f2;
+  border-right: 1px solid #e0e0e0;
+  overflow-y: auto;
+  flex-shrink: 0;
+}
+.dark .kahoot-slide-nav {
+  background: #1e1e2e;
+  border-right-color: #333;
+}
+.kahoot-slide-item {
+  padding: 8px 12px;
+  margin: 4px 8px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  border: 2px solid transparent;
+  position: relative;
+}
+.kahoot-slide-item:hover {
+  background: rgba(70, 23, 143, 0.08);
+}
+.kahoot-slide-item.active {
+  border-color: var(--kahoot-purple);
+  background: rgba(70, 23, 143, 0.1);
+}
+.dark .kahoot-slide-item:hover {
+  background: rgba(108, 52, 178, 0.15);
+}
+.dark .kahoot-slide-item.active {
+  border-color: var(--kahoot-purple-light);
+  background: rgba(108, 52, 178, 0.2);
+}
+
+/* Builder Option Input (colored) */
+.kahoot-builder-option {
+  border-radius: 8px;
+  padding: 12px 16px;
+  color: white;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 56px;
+}
+.kahoot-builder-option input {
+  background: transparent;
+  border: none;
+  outline: none;
+  color: white;
+  font-weight: 600;
+  font-size: 14px;
+  flex: 1;
+  font-family: 'Montserrat', sans-serif;
+}
+.kahoot-builder-option input::placeholder {
+  color: rgba(255,255,255,0.5);
+}
+
+/* Pin/Code display */
+.kahoot-pin-display {
+  font-family: 'Montserrat', sans-serif;
+  font-size: 56px;
+  font-weight: 900;
+  letter-spacing: 0.15em;
+  color: white;
+  text-shadow: 0 4px 8px rgba(0,0,0,0.2);
+}
+
+/* Leaderboard Row */
+.kahoot-leaderboard-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  border-bottom: 1px solid rgba(255,255,255,0.1);
+  transition: background 0.15s ease;
+}
+.kahoot-leaderboard-row:hover {
+  background: rgba(255,255,255,0.05);
+}
+.kahoot-leaderboard-row.me {
+  background: rgba(255,215,0,0.1);
+}
+
+/* Library Card */
+.kahoot-library-card {
+  border-radius: 8px;
+  overflow: hidden;
+  background: white;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+  transition: all 0.2s ease;
+  cursor: pointer;
+  border: 1px solid #e5e7eb;
+}
+.dark .kahoot-library-card {
+  background: #1e1e2e;
+  border-color: #333;
+}
+.kahoot-library-card:hover {
+  /* transform: translateY(-4px); removed */
+  /* box-shadow: 0 8px 24px rgba(0,0,0,0.12); removed */
+}
+
+/* ---- Kahoot Keyframe Animations ---- */
+
+@keyframes kahoot-pulse {
+  from { transform: scale(1); }
+  to { transform: scale(1.08); }
+}
+
+@keyframes podium-rise {
+  from { transform: scaleY(0); }
+  to { transform: scaleY(1); }
+}
+
+@keyframes kahoot-pop-in {
+  from { opacity: 0; transform: scale(0.5); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+@keyframes kahoot-correct {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.15); }
+  100% { transform: scale(1); }
+}
+
+@keyframes kahoot-shake {
+  0%, 100% { transform: translateX(0); }
+  20% { transform: translateX(-8px); }
+  40% { transform: translateX(8px); }
+  60% { transform: translateX(-6px); }
+  80% { transform: translateX(6px); }
+}
+
+@keyframes kahoot-confetti {
+  0% { opacity: 1; transform: translateY(0) rotate(0deg); }
+  100% { opacity: 0; transform: translateY(-100px) rotate(720deg); }
+}
+
+@keyframes kahoot-slide-up {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes kahoot-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes kahoot-lobby-float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-8px); }
+}
+
+/* ═══════ PLANULA! BRAND TEXT ═══════ */
+
+.planula-brand-container {
+  position: relative;
+  text-align: center;
+  user-select: none;
+}
+
+.planula-brand-text {
+  font-family: 'Pacifico', cursive;
+  font-size: clamp(3rem, 8vw, 7rem);
+  font-weight: 400;
+  background: linear-gradient(135deg, #a855f7 0%, #ec4899 30%, #f97316 60%, #eab308 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  filter: drop-shadow(0 4px 12px rgba(168, 85, 247, 0.3));
+  letter-spacing: 0.02em;
+  line-height: 1.2;
+  animation: planula-shimmer 3s ease-in-out infinite alternate;
+}
+
+.planula-exclamation {
+  display: inline-block;
+  animation: planula-bounce 2s ease-in-out infinite;
+}
+
+.planula-brand-glow {
+  position: absolute;
+  inset: -20%;
+  background: radial-gradient(circle, rgba(168, 85, 247, 0.08) 0%, transparent 70%);
+  pointer-events: none;
+  animation: planula-glow-pulse 4s ease-in-out infinite alternate;
+}
+
+@keyframes planula-shimmer {
+  0% { filter: drop-shadow(0 4px 12px rgba(168, 85, 247, 0.3)) brightness(1); }
+  100% { filter: drop-shadow(0 4px 20px rgba(236, 72, 153, 0.4)) brightness(1.05); }
+}
+
+@keyframes planula-bounce {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  25% { transform: translateY(-6px) rotate(5deg); }
+  75% { transform: translateY(2px) rotate(-2deg); }
+}
+
+@keyframes planula-glow-pulse {
+  0% { opacity: 0.5; transform: scale(1); }
+  100% { opacity: 1; transform: scale(1.1); }
+}
+
+/* ═══════ LIVE TIMER DISPLAY ═══════ */
+
+.planula-timer-display {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 32px;
+  border-radius: 24px;
+  background: rgba(255, 255, 255, 0.9);
+  backdrop-filter: blur(12px);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+  border: 2px solid rgba(70, 23, 143, 0.15);
+  color: var(--kahoot-purple);
+  transition: all 0.3s ease;
+}
+
+.planula-timer-number {
+  font-family: 'Montserrat', sans-serif;
+  font-size: 3rem;
+  font-weight: 900;
+  line-height: 1;
+  min-width: 80px;
+  text-align: center;
+}
+
+.planula-timer-label {
+  font-family: 'Montserrat', sans-serif;
+  font-size: 0.9rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  opacity: 0.6;
+}
+
+.planula-timer-display.danger {
+  background: rgba(226, 27, 60, 0.1);
+  border-color: rgba(226, 27, 60, 0.4);
+  color: var(--kahoot-red);
+  animation: timer-pulse 0.5s ease-in-out infinite alternate;
+}
+
+.planula-timer-display.critical {
+  background: rgba(226, 27, 60, 0.2);
+  border-color: var(--kahoot-red);
+  animation: timer-shake 0.3s ease-in-out infinite;
+  box-shadow: 0 0 30px rgba(226, 27, 60, 0.3);
+}
+
+.dark .planula-timer-display {
+  background: rgba(15, 23, 42, 0.9);
+  border-color: rgba(108, 52, 178, 0.3);
+}
+
+.dark .planula-timer-display.danger {
+  background: rgba(226, 27, 60, 0.15);
+}
+
+@keyframes timer-pulse {
+  0% { transform: scale(1); }
+  100% { transform: scale(1.05); }
+}
+
+@keyframes timer-shake {
+  0%, 100% { transform: translateX(0) scale(1.05); }
+  25% { transform: translateX(-3px) scale(1.05); }
+  75% { transform: translateX(3px) scale(1.05); }
+}
+
+/* Scoreboard fade-in */
+.animate-fade-in {
+  animation: kahoot-fade-in 0.4s ease-out;
+}
+
+@layer base {
+  * {
+    @apply border-slate-200 dark:border-slate-700;
+  }
+  body {
+    @apply bg-slate-50 text-slate-900 font-sans antialiased
+      dark:bg-slate-900 dark:text-slate-100;
+  }
+}
+
+@layer components {
+  .btn-primary {
+    @apply bg-primary-600 text-white px-4 py-2.5 rounded-lg font-medium
+      hover:bg-primary-700 active:bg-primary-800 transition-all
+      disabled:opacity-50 disabled:cursor-not-allowed
+      focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2
+      dark:focus:ring-offset-slate-900
+      hover:shadow-md hover:shadow-primary-500/20 active:scale-[0.98];
+  }
+  .btn-secondary {
+    @apply bg-white text-slate-700 px-4 py-2.5 rounded-lg font-medium border border-slate-300
+      hover:bg-slate-50 active:bg-slate-100 transition-all
+      disabled:opacity-50 disabled:cursor-not-allowed
+      focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2
+      dark:bg-slate-800 dark:text-slate-200 dark:border-slate-600
+      dark:hover:bg-slate-700 dark:active:bg-slate-600
+      dark:focus:ring-offset-slate-900
+      hover:shadow-sm active:scale-[0.98];
+  }
+  .btn-danger {
+    @apply bg-red-600 text-white px-4 py-2.5 rounded-lg font-medium
+      hover:bg-red-700 active:bg-red-800 transition-all
+      disabled:opacity-50 disabled:cursor-not-allowed
+      focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2
+      dark:focus:ring-offset-slate-900
+      hover:shadow-md hover:shadow-red-500/20 active:scale-[0.98];
+  }
+  .btn-ghost {
+    @apply text-slate-600 px-4 py-2.5 rounded-lg font-medium
+      hover:bg-slate-100 active:bg-slate-200 transition-all
+      disabled:opacity-50 disabled:cursor-not-allowed
+      dark:text-slate-300 dark:hover:bg-slate-800 dark:active:bg-slate-700
+      active:scale-[0.98];
+  }
+  .card {
+    @apply bg-white rounded-xl border border-slate-200 shadow-sm
+      dark:bg-slate-800 dark:border-slate-700
+      transition-shadow hover:shadow-md;
+  }
+  .input {
+    @apply w-full px-3.5 py-2.5 rounded-lg border border-slate-300 bg-white
+      text-slate-900 placeholder:text-slate-400
+      focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500
+      disabled:bg-slate-100 disabled:cursor-not-allowed
+      transition-all
+      dark:bg-slate-800 dark:border-slate-600 dark:text-slate-100
+      dark:placeholder:text-slate-500 dark:disabled:bg-slate-700;
+  }
+  .label {
+    @apply block text-sm font-medium text-slate-700 mb-1.5
+      dark:text-slate-300;
+  }
+  .badge {
+    @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium;
+  }
+  .badge-primary {
+    @apply badge bg-primary-100 text-primary-700
+      dark:bg-primary-900/50 dark:text-primary-300;
+  }
+  .badge-green {
+    @apply badge bg-emerald-100 text-emerald-700
+      dark:bg-emerald-900/50 dark:text-emerald-300;
+  }
+  .badge-yellow {
+    @apply badge bg-amber-100 text-amber-700
+      dark:bg-amber-900/50 dark:text-amber-300;
+  }
+  .badge-red {
+    @apply badge bg-red-100 text-red-700
+      dark:bg-red-900/50 dark:text-red-300;
+  }
+  .badge-slate {
+    @apply badge bg-slate-100 text-slate-600
+      dark:bg-slate-700 dark:text-slate-300;
+  }
+}
+
+/* Page enter animation */
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.page-content > div {
+  animation: fadeInUp 0.25s ease-out;
+}
+
+/* FCM toast slide-in */
+@keyframes slideIn {
+  from { opacity: 0; transform: translateX(100%); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+/* TipTap Editor Styles */
+.tiptap-editor .ProseMirror {
+  @apply min-h-[300px] p-4 outline-none;
+}
+.tiptap-editor .ProseMirror h1 { @apply text-2xl font-bold mb-3 text-slate-900 dark:text-white; }
+.tiptap-editor .ProseMirror h2 { @apply text-xl font-semibold mb-2 text-slate-900 dark:text-white; }
+.tiptap-editor .ProseMirror h3 { @apply text-lg font-semibold mb-2 text-slate-800 dark:text-slate-200; }
+.tiptap-editor .ProseMirror p { @apply mb-3 text-slate-700 leading-relaxed dark:text-slate-300; }
+.tiptap-editor .ProseMirror ul { @apply list-disc pl-6 mb-3 space-y-1; }
+.tiptap-editor .ProseMirror ol { @apply list-decimal pl-6 mb-3 space-y-1; }
+.tiptap-editor .ProseMirror li { @apply text-slate-700 dark:text-slate-300; }
+.tiptap-editor .ProseMirror a { @apply text-primary-600 underline hover:text-primary-700 dark:text-primary-400; }
+.tiptap-editor .ProseMirror img { @apply rounded-lg max-w-full h-auto my-3; }
+.tiptap-editor .ProseMirror blockquote {
+  @apply border-l-4 border-primary-300 pl-4 italic text-slate-600 my-3 dark:text-slate-400 dark:border-primary-600;
+}
+.tiptap-editor .ProseMirror p.is-editor-empty:first-child::before {
+  @apply text-slate-400 float-left h-0 pointer-events-none dark:text-slate-600;
+  content: attr(data-placeholder);
+}
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { @apply bg-transparent; }
+::-webkit-scrollbar-thumb { @apply bg-slate-300 rounded-full dark:bg-slate-600; }
+::-webkit-scrollbar-thumb:hover { @apply bg-slate-400 dark:bg-slate-500; }
+
+/* Fix browser autofill background in dark mode */
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus,
+input:-webkit-autofill:active,
+textarea:-webkit-autofill,
+select:-webkit-autofill {
+  -webkit-box-shadow: 0 0 0 1000px #f8fafc inset !important;
+  -webkit-text-fill-color: #0f172a !important;
+  caret-color: #0f172a !important;
+  transition: background-color 5000s ease-in-out 0s;
+}
+
+.dark input:-webkit-autofill,
+.dark input:-webkit-autofill:hover,
+.dark input:-webkit-autofill:focus,
+.dark input:-webkit-autofill:active,
+.dark textarea:-webkit-autofill,
+.dark select:-webkit-autofill {
+  -webkit-box-shadow: 0 0 0 1000px #334155 inset !important;
+  -webkit-text-fill-color: #f1f5f9 !important;
+  caret-color: #f1f5f9 !important;
+}
+
+/* =====================
+   EXAMS MODULE STYLES 
+   ===================== */
+@keyframes exam-slide-up {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes exam-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+.exam-slide-up {
+  animation: exam-slide-up 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+.exam-fade-in {
+  animation: exam-fade-in 0.4s ease-out forwards;
+}
+.exam-card-hover {
+  transition: all 0.2s ease-in-out;
+}
+.exam-card-hover:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 24px -10px rgba(0, 0, 0, 0.1);
+}
+.exam-bg {
+  background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+  background-attachment: fixed;
+}
+.dark .exam-bg {
+  background: linear-gradient(135deg, #0f172a 0%, #020617 100%);
+}
+
+/* =====================
+   PLANULA QUIZ BRANDING
+   ===================== */
+.planula-brand-container {
+  position: relative;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-bottom: 2rem;
+  animation: planula-float 4s ease-in-out infinite;
+}
+
+.planula-brand-text {
+  font-family: 'Pacifico', cursive;
+  font-size: 8rem;
+  font-weight: 400;
+  color: white;
+  text-shadow: 
+    0 5px 15px rgba(0,0,0,0.4),
+    0 10px 30px rgba(70, 23, 143, 0.6);
+  z-index: 10;
+  letter-spacing: -2px;
+  line-height: 1;
+  position: relative;
+}
+
+.planula-exclamation {
+  color: #fbbf24;
+  display: inline-block;
+  animation: planula-bounce 2s infinite cubic-bezier(0.28, 0.84, 0.42, 1);
+  transform-origin: bottom center;
+}
+
+.planula-brand-glow {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 120%;
+  height: 150%;
+  background: radial-gradient(circle, rgba(255,255,255,0.2) 0%, rgba(255,255,255,0) 70%);
+  border-radius: 50%;
+  z-index: 0;
+  pointer-events: none;
+  filter: blur(20px);
+}
+
+.planula-timer-display {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  background: rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(10px);
+  padding: 1rem 3rem;
+  border-radius: 100px;
+  border: 2px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+  color: white;
+  transition: all 0.3s ease;
+}
+
+.planula-timer-display.danger {
+  background: rgba(226, 27, 60, 0.3);
+  border-color: rgba(226, 27, 60, 0.6);
+  animation: planula-pulse 1s infinite;
+}
+
+.planula-timer-display.critical {
+  background: rgba(226, 27, 60, 0.8);
+  border-color: #e21b3c;
+  animation: planula-pulse-fast 0.5s infinite;
+}
+
+.planula-timer-number {
+  font-size: 4rem;
+  font-weight: 900;
+  font-family: 'Montserrat', sans-serif;
+  line-height: 1;
+  text-shadow: 0 4px 10px rgba(0,0,0,0.5);
+}
+
+.planula-timer-label {
+  font-size: 1.5rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  opacity: 0.8;
+  margin-top: 1rem;
+}
+
+@keyframes planula-float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-15px); }
+}
+
+@keyframes planula-bounce {
+  0%, 20%, 50%, 80%, 100% { transform: scaleY(1); }
+  40% { transform: scaleY(1.3) translateY(-10px); }
+  60% { transform: scaleY(1.1) translateY(-5px); }
+}
+
+@keyframes planula-pulse {
+  0%, 100% { transform: scale(1); box-shadow: 0 0 20px rgba(226, 27, 60, 0.4); }
+  50% { transform: scale(1.05); box-shadow: 0 0 40px rgba(226, 27, 60, 0.8); }
+}
+
+@keyframes planula-pulse-fast {
+  0%, 100% { transform: scale(1); box-shadow: 0 0 30px rgba(226, 27, 60, 0.6); }
+  50% { transform: scale(1.1); box-shadow: 0 0 60px rgba(226, 27, 60, 1); }
+}
+
+/* Light theme overrides for Planula branding */
+.planula-brand-text { color: #0f172a !important; text-shadow: 0 2px 10px rgba(0,0,0,0.1) !important; }
+.dark .planula-brand-text { color: white !important; text-shadow: 0 5px 15px rgba(0,0,0,0.4), 0 10px 30px rgba(70, 23, 143, 0.6) !important; }
+
+.planula-timer-display { background: white !important; border-color: #e2e8f0 !important; box-shadow: 0 10px 30px rgba(0,0,0,0.05) !important; color: #0f172a !important; }
+.dark .planula-timer-display { background: rgba(0, 0, 0, 0.4) !important; border-color: rgba(255, 255, 255, 0.1) !important; box-shadow: 0 10px 30px rgba(0,0,0,0.3) !important; color: white !important; }

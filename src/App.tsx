@@ -160,7 +160,7 @@ const App: React.FC = () => {
             <Route path="my-results" element={<MyResultsPage />} />
             <Route path="results/:attemptId" element={<ResultPage />} />
             <Route path="certificate/:certId" element={<CertificatePage />} />
-            <Route path="certificates" element={<PlanGuard feature="certificates"><MyCertificatesPage /></PlanGuard>} />
+            <Route path="certificates" element={<MyCertificatesPage />} />
             <Route path="achievements" element={<AchievementsPage />} />
             <Route path="directory" element={<OrganizationsDirectoryPage />} />
             <Route path="student/courses" element={<ProtectedRoute allowedRoles={['student']}><StudentCoursesPage /></ProtectedRoute>} />

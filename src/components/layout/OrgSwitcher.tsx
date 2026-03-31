@@ -195,7 +195,6 @@ const OrgSwitcher: React.FC<OrgSwitcherProps> = ({ currentOrgId, userRole, onSwi
   // Has memberships — Main Launcher
   // ═══════════════════════════════════════════════
   const quickActions = getQuickActions();
-  const hasManyOrgs = memberships.length > 1;
   const currentOrg = currentMembership || null; // If null, they are in Personal Workspace
 
   // Determine "+" button behavior

@@ -414,17 +414,16 @@ const Sidebar: React.FC<{ open: boolean; onClose: () => void }> = ({ open, onClo
                 <LayoutDashboard className="w-4 h-4" />{t('nav.dashboard')}
               </NavLink>
 
-              {/* Always-visible student links */}
-              <NavLink to="/progress" className={linkClass} onClick={onClose}>
-                <TrendingUp className="w-4 h-4" />{t('nav.progress', 'Мой прогресс')}
-              </NavLink>
-              <NavLink to="/diary" className={linkClass} onClick={onClose}>
-                <BookOpen className="w-4 h-4" />{t('nav.diary', 'Мой дневник')}
-              </NavLink>
-
               {/* ── Tenant-specific: only when student has an active org ── */}
               {!!organizationId && (
                 <>
+                  <NavLink to="/progress" className={linkClass} onClick={onClose}>
+                    <TrendingUp className="w-4 h-4" />{t('nav.progress', 'Мой прогресс')}
+                  </NavLink>
+                  <NavLink to="/diary" className={linkClass} onClick={onClose}>
+                    <BookOpen className="w-4 h-4" />{t('nav.diary', 'Мой дневник')}
+                  </NavLink>
+
                   <CollapsibleSection label={t('nav.sectionEducation', 'Обучение')} icon={GraduationCap} defaultOpen>
                     <NavLink to="/student/courses" className={linkClass} onClick={onClose}>
                       <FolderOpen className="w-4 h-4" />{t('nav.myCourses', 'Мои курсы')}
@@ -442,24 +441,31 @@ const Sidebar: React.FC<{ open: boolean; onClose: () => void }> = ({ open, onClo
                       <Calendar className="w-4 h-4" />{t('nav.schedule')}
                     </NavLink>
                   </CollapsibleSection>
+
+                  <CollapsibleSection label={t('nav.sectionExams', 'Экзамены и тесты')} icon={ClipboardList}>
+                    <NavLink to="/join" className={linkClass} onClick={onClose}>
+                      <Radio className="w-4 h-4" />{t('rooms.join')}
+                    </NavLink>
+                    <NavLink to="/quiz/join" className={linkClass} onClick={onClose}>
+                      <Gamepad2 className="w-4 h-4" />{t('nav.joinQuiz')}
+                    </NavLink>
+                    <NavLink to="/my-results" className={linkClass} onClick={onClose}>
+                      <BarChart3 className="w-4 h-4" />{t('nav.myResults')}
+                    </NavLink>
+                  </CollapsibleSection>
                 </>
               )}
 
               {/* ── Global: always visible regardless of org ── */}
-              <CollapsibleSection label={t('nav.sectionExams', 'Экзамены и тесты')} icon={ClipboardList}>
-                <NavLink to="/join" className={linkClass} onClick={onClose}>
-                  <Radio className="w-4 h-4" />{t('rooms.join')}
+              {!organizationId && (
+                <NavLink to="/directory" className={linkClass} onClick={onClose}>
+                  <Building2 className="w-4 h-4" />{t('nav.findCenter', 'Найти учебный центр')}
                 </NavLink>
-                <NavLink to="/quiz/join" className={linkClass} onClick={onClose}>
-                  <Gamepad2 className="w-4 h-4" />{t('nav.joinQuiz')}
-                </NavLink>
-                <NavLink to="/my-results" className={linkClass} onClick={onClose}>
-                  <BarChart3 className="w-4 h-4" />{t('nav.myResults')}
-                </NavLink>
-                <NavLink to="/certificates" className={linkClass} onClick={onClose}>
-                  <Award className="w-4 h-4" />{t('nav.certificates', 'Сертификаты')}
-                </NavLink>
-              </CollapsibleSection>
+              )}
+
+              <NavLink to="/certificates" className={linkClass} onClick={onClose}>
+                <Award className="w-4 h-4" />{t('nav.certificates', 'Сертификаты')}
+              </NavLink>
 
               <NavLink to="/achievements" className={linkClass} onClick={onClose}>
                 <Trophy className="w-4 h-4" />{t('nav.achievements', 'Достижения')}

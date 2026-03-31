@@ -5,7 +5,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { apiGetDashboard } from '../../lib/api';
 import type { LessonPlan, ExamAttempt } from '../../types';
 import { formatDate } from '../../utils/grading';
-import { BookOpen, Radio, Trophy, XCircle, Brain, Target, BarChart3, Flame, Building2, Search, Gamepad2, Play } from 'lucide-react';
+import { BookOpen, Radio, Trophy, XCircle, Brain, Target, BarChart3, Flame, Search, Gamepad2, Play } from 'lucide-react';
 import { DashboardSkeleton } from '../../components/ui/Skeleton';
 import GamificationWidget from '../../components/gamification/GamificationWidget';
 import LeaderboardWidget from '../../components/gamification/LeaderboardWidget';
@@ -72,35 +72,7 @@ const StudentDashboard: React.FC = () => {
         {/* Gamification */}
         <GamificationWidget />
 
-        {/* Global Quick Actions (Kahoot Style) */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 sm:gap-6">
-          {/* Action 1: Join Live Room (Red) */}
-          <Link to="/join" className="bg-[#E21B3C] hover:bg-[#c61834] text-white p-5 sm:p-6 rounded-[2rem] shadow-[0_8px_0_#9d1228] active:translate-y-[6px] active:shadow-[0_2px_0_#9d1228] transition-all group flex flex-col items-center text-center">
-            <div className="w-16 h-16 bg-white/20 rounded-2xl flex items-center justify-center mb-4 group-hover:scale-110 group-hover:rotate-6 transition-transform">
-              <Play className="w-8 h-8 text-white fill-white" />
-            </div>
-            <h3 className="kahoot-font text-xl font-bold mb-1 tracking-wide">{t('studentDashboard.joinLiveRoom')}</h3>
-            <p className="text-sm text-white/80 font-medium">{t('studentDashboard.studentRoomDesc')}</p>
-          </Link>
 
-          {/* Action 2: Join Quiz (Blue) */}
-          <Link to="/quiz/join" className="bg-[#1368CE] hover:bg-[#105ab3] text-white p-5 sm:p-6 rounded-[2rem] shadow-[0_8px_0_#0a4387] active:translate-y-[6px] active:shadow-[0_2px_0_#0a4387] transition-all group flex flex-col items-center text-center">
-            <div className="w-16 h-16 bg-white/20 rounded-2xl flex items-center justify-center mb-4 group-hover:scale-110 group-hover:-rotate-6 transition-transform">
-              <Gamepad2 className="w-8 h-8 text-white" />
-            </div>
-            <h3 className="kahoot-font text-xl font-bold mb-1 tracking-wide">{t('studentDashboard.quiz')}</h3>
-            <p className="text-sm text-white/80 font-medium">{t('studentDashboard.quizDesc')}</p>
-          </Link>
-
-          {/* Action 3: Directory (Green) */}
-          <Link to="/directory" className="col-span-2 sm:col-span-1 bg-[#26890C] hover:bg-[#20740a] text-white p-5 sm:p-6 rounded-[2rem] shadow-[0_8px_0_#185507] active:translate-y-[6px] active:shadow-[0_2px_0_#185507] transition-all group flex flex-col items-center text-center">
-            <div className="w-16 h-16 bg-white/20 rounded-2xl flex items-center justify-center mb-4 group-hover:scale-110 group-hover:rotate-6 transition-transform">
-              <Building2 className="w-8 h-8 text-white" />
-            </div>
-            <h3 className="kahoot-font text-xl font-bold mb-1 tracking-wide">{t('studentDashboard.directory')}</h3>
-            <p className="text-sm text-white/80 font-medium">{t('studentDashboard.schoolsDesc')}</p>
-          </Link>
-        </div>
       </div>
     );
   }

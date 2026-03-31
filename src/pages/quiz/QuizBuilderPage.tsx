@@ -346,9 +346,9 @@ const QuizBuilderPage: React.FC = () => {
       )}
 
       {/* Main Builder Layout */}
-      <div className="flex gap-4" style={{ minHeight: '65vh' }}>
+      <div className="flex flex-col md:flex-row gap-4" style={{ minHeight: '65vh' }}>
         {/* Left: Slide Navigator */}
-        <div className="kahoot-slide-nav rounded-xl overflow-hidden">
+        <div className="kahoot-slide-nav w-full md:w-[200px] rounded-xl overflow-hidden shrink-0" style={{ width: 'auto' }}>
           <div className="px-3 py-3 border-b border-slate-200 dark:border-slate-700">
             <p className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wide">{t('quiz.questions')} ({questions.length})</p>
           </div>

@@ -53,15 +53,17 @@ const StudentCoursesPage: React.FC = () => {
 
   return (
     <div className="max-w-6xl mx-auto space-y-6">
-      <div className="flex items-center gap-3 mb-6">
-        <div className="w-10 h-10 rounded-xl bg-violet-500/10 flex items-center justify-center">
-          <FolderOpen className="w-5 h-5 text-violet-600 dark:text-violet-400" />
-        </div>
-        <div>
-          <h1 className="text-2xl font-bold text-slate-900 dark:text-white">{t('nav.myCourses', 'Мои курсы')}</h1>
-          <p className="text-sm text-slate-500 dark:text-slate-400">
-            {t('studentCourses.subtitle', 'Курсы, к которым у вас есть доступ')}
-          </p>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-violet-500/10 flex items-center justify-center shrink-0">
+            <FolderOpen className="w-5 h-5 text-violet-600 dark:text-violet-400" />
+          </div>
+          <div>
+            <h1 className="text-2xl font-bold text-slate-900 dark:text-white">{t('nav.myCourses', 'Мои курсы')}</h1>
+            <p className="text-sm text-slate-500 dark:text-slate-400">
+              {t('studentCourses.subtitle', 'Курсы, к которым у вас есть доступ')}
+            </p>
+          </div>
         </div>
         <StudentOrgFilter currentOrgId={profile?.activeOrgId} />
       </div>

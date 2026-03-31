@@ -648,7 +648,10 @@
     "email": "Email",
     "optional": "необязательно",
     "howItWorks": "Как работает модуль?",
-    "managers": "Менеджеры"
+    "managers": "Менеджеры",
+    "actions": "Действия",
+    "accept": "Одобрить",
+    "reject": "Отклонить"
   },
   "org": {
     "courses": {

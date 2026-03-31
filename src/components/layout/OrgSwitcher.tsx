@@ -154,6 +154,10 @@ const OrgSwitcher: React.FC<OrgSwitcherProps> = ({ currentOrgId, userRole, onSwi
   // 0 Memberships — Role-specific empty state
   // ═══════════════════════════════════════════════
   if (memberships.length === 0) {
+    if (userRole === 'teacher' || userRole === 'manager') {
+      return null;
+    }
+
     let emptyTitle = t('membership.findCenter', 'Найти учебный центр');
     let emptySubtitle = t('membership.browseOrgs', 'Каталог организаций');
     let emptyAction = () => nav('/directory');

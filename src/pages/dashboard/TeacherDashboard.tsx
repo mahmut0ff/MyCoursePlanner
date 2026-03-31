@@ -11,7 +11,7 @@ import type { LessonPlan, Exam, ExamRoom, ExamAttempt } from '../../types';
 import { formatDate } from '../../utils/grading';
 import {
   BookOpen, ClipboardList, Radio, TrendingUp, ArrowRight, Plus,
-  Users, MailOpen, UserCircle2, Calendar, Briefcase, GraduationCap,
+  Users, MailOpen, UserCircle2, Calendar, GraduationCap,
 } from 'lucide-react';
 
 const TeacherDashboard: React.FC = () => {
@@ -92,7 +92,6 @@ const TeacherDashboard: React.FC = () => {
           <p className="text-sm text-primary-700 dark:text-primary-400 mb-4">{t('teacherDashboard.getStartedDesc')}</p>
           <div className="flex flex-wrap gap-3">
             <Link to="/teacher-profile" className="btn-primary text-sm flex items-center gap-2"><UserCircle2 className="w-4 h-4" />{t('teacherDashboard.fillProfile')}</Link>
-            <Link to="/vacancies" className="btn-secondary text-sm flex items-center gap-2"><Briefcase className="w-4 h-4" />{t('teacherDashboard.browseVacancies')}</Link>
             {inviteCount > 0 && (
               <Link to="/invites" className="btn-secondary text-sm flex items-center gap-2">
                 <MailOpen className="w-4 h-4" />{t('teacherDashboard.viewInvites')}
@@ -226,12 +225,6 @@ const TeacherDashboard: React.FC = () => {
               </Link>
               <Link to="/schedule" className="flex items-center gap-2 px-3 py-2.5 rounded-xl text-sm text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors">
                 <Calendar className="w-4 h-4" />{t('nav.schedule')}
-              </Link>
-              <Link to="/vacancies" className="flex items-center gap-2 px-3 py-2.5 rounded-xl text-sm text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors">
-                <Briefcase className="w-4 h-4" />{t('nav.vacancies')}
-              </Link>
-              <Link to="/my-applications" className="flex items-center gap-2 px-3 py-2.5 rounded-xl text-sm text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors">
-                <Briefcase className="w-4 h-4" />{t('nav.myApplications')}
               </Link>
             </div>
           </div>

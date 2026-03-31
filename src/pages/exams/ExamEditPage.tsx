@@ -3,6 +3,7 @@ import toast from 'react-hot-toast';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../contexts/AuthContext';
+import { usePlanGate } from '../../contexts/PlanContext';
 import { createExam, getExam, updateExam, saveQuestions, getQuestions } from '../../services/exams.service';
 import { uploadFile } from '../../services/storage.service';
 import type { Question, QuestionType } from '../../types';
@@ -28,6 +29,7 @@ const ExamEditPage: React.FC = () => {
   const navigate = useNavigate();
   const { t } = useTranslation();
   const { profile } = useAuth();
+  const { canAccess } = usePlanGate();
 
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -248,13 +250,15 @@ const ExamEditPage: React.FC = () => {
             </div>
             
             <div className="flex items-center gap-3">
-              <button 
-                onClick={() => setShowAIGen(true)} 
-                className="bg-gradient-to-r from-slate-800 to-slate-900 hover:from-black hover:to-black dark:from-white dark:to-slate-200 dark:text-slate-900 text-white px-4 py-2 rounded-xl text-sm font-bold flex items-center gap-2 transition-all shadow-md hover:shadow-lg active:scale-95"
-              >
-                <Sparkles className="w-4 h-4 text-amber-300 dark:text-amber-500" />
-                {t('ai.generateButton', 'AI Generation')}
-              </button>
+              {canAccess('ai') && (
+                <button 
+                  onClick={() => setShowAIGen(true)} 
+                  className="bg-gradient-to-r from-slate-800 to-slate-900 hover:from-black hover:to-black dark:from-white dark:to-slate-200 dark:text-slate-900 text-white px-4 py-2 rounded-xl text-sm font-bold flex items-center gap-2 transition-all shadow-md hover:shadow-lg active:scale-95"
+                >
+                  <Sparkles className="w-4 h-4 text-amber-300 dark:text-amber-500" />
+                  {t('ai.generateButton', 'AI Generation')}
+                </button>
+              )}
               <button 
                 onClick={addQuestion} 
                 className="bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-900 dark:text-white px-4 py-2 rounded-xl text-sm font-bold flex items-center gap-2 transition-all active:scale-95"

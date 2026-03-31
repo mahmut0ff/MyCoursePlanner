@@ -577,11 +577,34 @@ const handler: Handler = async (event: HandlerEvent) => {
       const body = JSON.parse(event.body || '{}');
       if (!body.organizationId) return badRequest('organizationId required');
 
+      const ts = now();
+
+      // Switch to Personal Workspace
+      if (body.organizationId === 'personal') {
+        const userDoc = await adminDb.collection('users').doc(user.uid).get();
+        const userData = userDoc.data() || {};
+        
+        await adminDb.collection('users').doc(user.uid).update({
+          activeOrgId: '',
+          organizationId: '',
+          organizationName: '',
+          // default fallback role, will be overridden later if they join another org
+          role: userData.role === 'student' ? 'student' : 'teacher', 
+          updatedAt: ts,
+        });
+
+        return ok({
+          switched: true,
+          activeOrgId: '',
+          role: userData.role === 'student' ? 'student' : 'teacher',
+          organizationName: '',
+        });
+      }
+
       // Verify user has active membership
       const membership = await getMembership(user.uid, body.organizationId) as any;
       if (!membership || membership.status !== 'active') return badRequest('Not an active member of this org');
 
-      const ts = now();
       await adminDb.collection('users').doc(user.uid).update({
         activeOrgId: body.organizationId,
         // Keep legacy fields in sync

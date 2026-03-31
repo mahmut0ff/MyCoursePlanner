@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../contexts/AuthContext';
+import { usePlanGate } from '../../contexts/PlanContext';
 import { apiGetQuiz, apiCreateQuiz, apiUpdateQuiz, apiSaveQuizQuestions } from '../../lib/api';
 import type { Quiz, QuizQuestion, QuizQuestionType, QuizDifficulty } from '../../types';
 import {
@@ -54,6 +55,7 @@ const QuizBuilderPage: React.FC = () => {
   const navigate = useNavigate();
   const { t } = useTranslation();
   useAuth();
+  const { canAccess } = usePlanGate();
   const isEdit = Boolean(id);
 
   const [quiz, setQuiz] = useState<Partial<Quiz>>({
@@ -378,13 +380,15 @@ const QuizBuilderPage: React.FC = () => {
 
           {/* Add question buttons */}
           <div className="p-3 border-t border-slate-200 dark:border-slate-700">
-            <button
-              onClick={() => setShowAIGen(true)}
-              className="w-full flex items-center justify-center gap-1.5 text-xs font-bold text-white py-2.5 rounded-lg transition-all shadow-md hover:shadow-lg active:scale-[0.98] mb-2"
-              style={{ background: 'linear-gradient(135deg, var(--kahoot-purple) 0%, #864cbf 100%)' }}
-            >
-              <Sparkles className="w-3.5 h-3.5" />{t('ai.generateButton', 'Сгенерировать ИИ')}
-            </button>
+            {canAccess('ai') && (
+              <button
+                onClick={() => setShowAIGen(true)}
+                className="w-full flex items-center justify-center gap-1.5 text-xs font-bold text-white py-2.5 rounded-lg transition-all shadow-md hover:shadow-lg active:scale-[0.98] mb-2"
+                style={{ background: 'linear-gradient(135deg, var(--kahoot-purple) 0%, #864cbf 100%)' }}
+              >
+                <Sparkles className="w-3.5 h-3.5" />{t('ai.generateButton', 'Сгенерировать ИИ')}
+              </button>
+            )}
             <button onClick={() => addQuestion()} className="w-full flex items-center justify-center gap-1.5 text-xs font-semibold py-2 rounded-lg transition-colors hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-600 dark:text-slate-400">
               <Plus className="w-3 h-3" />{t('quiz.addQuestion')}
             </button>

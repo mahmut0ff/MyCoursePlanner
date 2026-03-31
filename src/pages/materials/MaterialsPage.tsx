@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { orgGetMaterials, orgCreateMaterial, orgDeleteMaterial, apiAIGenerate, apiTransferRequest, apiGetPersonalLessons } from '../../lib/api';
 import { uploadFile } from '../../services/storage.service';
 import { useAuth } from '../../contexts/AuthContext';
+import { usePlanGate } from '../../contexts/PlanContext';
 import { 
   FileText, Search, Trash2, ExternalLink, RefreshCw, 
   UploadCloud, File as FileIcon, FileImage, FileAudio, FileVideo, 
@@ -41,6 +42,7 @@ const formatBytes = (bytes?: number) => {
 const MaterialsPage: React.FC = () => {
   const { t } = useTranslation();
   const { profile, role } = useAuth();
+  const { canAccess } = usePlanGate();
   const isAdmin = role === 'super_admin' || role === 'manager';
   const orgId = profile?.activeOrgId;
 
@@ -507,7 +509,7 @@ const MaterialsPage: React.FC = () => {
                 {t('common.cancel', 'Отмена')}
               </button>
 
-              {!form.file && form.url.trim() && (
+              {!form.file && form.url.trim() && canAccess('ai') && (
                  <button 
                     onClick={() => processWithAI(form.url)} 
                     disabled={isProcessingAI || isUploading}

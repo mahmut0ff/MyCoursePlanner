@@ -20,23 +20,32 @@ const handler: Handler = async (event: HandlerEvent) => {
       if (!organizationId) return badRequest('organizationId is required');
       
       const docPath = adminDb.collection('organizationAIManager').doc(organizationId);
-      const snap = await docPath.get();
-      if (!snap.exists) {
-        // Return default skeleton
-        return ok({
-          data: {
-            organizationId,
-            isActive: false,
-            greetingMessage: 'Здравствуйте! Чем я могу вам помочь?',
-            aboutOrganization: '',
-            faq: [],
-            enrollmentPolicy: '',
-            customInstructions: '',
-            updatedAt: new Date().toISOString()
-          }
-        });
+      const [snap, orgSnap] = await Promise.all([
+        docPath.get(),
+        adminDb.collection('organizations').doc(organizationId).get()
+      ]);
+      const orgPlan = orgSnap.exists ? orgSnap.data()?.planId : null;
+      
+      let data: any = {
+        organizationId,
+        isActive: false,
+        greetingMessage: 'Здравствуйте! Чем я могу вам помочь?',
+        aboutOrganization: '',
+        faq: [],
+        enrollmentPolicy: '',
+        customInstructions: '',
+        updatedAt: new Date().toISOString()
+      };
+      
+      if (snap.exists) {
+        data = { ...data, ...snap.data() };
       }
-      return ok({ data: snap.data() });
+      
+      if (orgPlan !== 'ai') {
+        data.isActive = false;
+      }
+
+      return ok({ data });
     }
 
     // --- action: updateSettings ---
@@ -55,6 +64,9 @@ const handler: Handler = async (event: HandlerEvent) => {
       if (!orgSnap.exists) return badRequest('Organization not found');
       
       const orgData = orgSnap.data()!;
+      if (orgData.planId !== 'ai' && user.role !== 'super_admin') {
+         return forbidden('Your current plan does not support AI features');
+      }
       if (orgData.ownerId !== user.uid && user.role !== 'super_admin') {
          return forbidden('Only organization owner can update AI settings');
       }
@@ -96,6 +108,11 @@ const handler: Handler = async (event: HandlerEvent) => {
       ]);
 
       const org = orgSnap.data() || {};
+      
+      if (org.planId !== 'ai') {
+        return forbidden('AI Assistant is not available on this organization\'s plan.');
+      }
+      
       const courses = coursesSnap.docs
         .map(d => d.data())
         .filter(c => c.isPublished === true)

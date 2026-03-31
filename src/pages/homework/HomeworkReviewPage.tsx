@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
+import { usePlanGate } from '../../contexts/PlanContext';
 import { apiOrgGetHomeworks, apiGradeHomework, apiAIGradeHomework } from '../../lib/api';
 import type { HomeworkSubmission } from '../../types';
 import { ClipboardCheck, Sparkles, CheckCircle, Clock, XCircle } from 'lucide-react';
@@ -7,6 +8,7 @@ import toast from 'react-hot-toast';
 
 const HomeworkReviewPage: React.FC = () => {
   const { organizationId } = useAuth();
+  const { canAccess } = usePlanGate();
   
   const [submissions, setSubmissions] = useState<HomeworkSubmission[]>([]);
   const [loading, setLoading] = useState(true);
@@ -134,7 +136,7 @@ const HomeworkReviewPage: React.FC = () => {
                   <h3 className="text-xl font-bold text-slate-900 dark:text-white">{selectedSubmission.studentName}</h3>
                   <p className="text-sm text-slate-500">{selectedSubmission.lessonTitle}</p>
                 </div>
-                {selectedSubmission.status === 'pending' && (
+                {selectedSubmission.status === 'pending' && canAccess('ai') && (
                   <button 
                     onClick={handleAIAssist}
                     disabled={isAIGrading}

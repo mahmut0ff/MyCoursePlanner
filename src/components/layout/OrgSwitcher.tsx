@@ -45,7 +45,10 @@ const OrgSwitcher: React.FC<OrgSwitcherProps> = ({ currentOrgId, userRole, onSwi
   const currentMembership = memberships.find((m) => m.organizationId === currentOrgId);
 
   const handleSwitch = async (orgId: string) => {
-    if (orgId === currentOrgId) { setOpen(false); return; }
+    if (orgId === currentOrgId || (orgId === 'personal' && !currentOrgId)) { 
+      setOpen(false); 
+      return; 
+    }
     setSwitching(true);
     try {
       await apiSwitchOrg(orgId);
@@ -193,7 +196,7 @@ const OrgSwitcher: React.FC<OrgSwitcherProps> = ({ currentOrgId, userRole, onSwi
   // ═══════════════════════════════════════════════
   const quickActions = getQuickActions();
   const hasManyOrgs = memberships.length > 1;
-  const currentOrg = currentMembership || memberships[0];
+  const currentOrg = currentMembership || null; // If null, they are in Personal Workspace
 
   // Determine "+" button behavior
   const getPlusAction = () => {
@@ -213,14 +216,18 @@ const OrgSwitcher: React.FC<OrgSwitcherProps> = ({ currentOrgId, userRole, onSwi
         className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl bg-white/5 hover:bg-white/[0.08] transition text-left group"
       >
         <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-violet-500/30 to-indigo-500/30 flex items-center justify-center shrink-0 ring-1 ring-white/10">
-          <Building2 className="w-4 h-4 text-violet-300" />
+          {currentOrg ? (
+            <Building2 className="w-4 h-4 text-violet-300" />
+          ) : (
+            <FolderOpen className="w-4 h-4 text-violet-300" />
+          )}
         </div>
         <div className="flex-1 min-w-0">
           <p className="text-[13px] text-white truncate font-semibold leading-tight">
-            {currentOrg?.organizationName || t('membership.selectOrg', 'Выберите организацию')}
+            {currentOrg?.organizationName || t('nav.sectionPersonalWorkspace', 'Личное пространство')}
           </p>
           <p className="text-[10px] text-violet-400/80 font-medium mt-0.5">
-            {roleLabels[currentOrg?.role] || currentOrg?.role}
+            {currentOrg ? (roleLabels[currentOrg.role] || currentOrg.role) : t('nav.independent', 'Независимый профиль')}
           </p>
         </div>
         <ChevronDown className={`w-4 h-4 text-slate-500 transition-transform duration-200 ${open ? 'rotate-180' : ''}`} />
@@ -251,61 +258,76 @@ const OrgSwitcher: React.FC<OrgSwitcherProps> = ({ currentOrgId, userRole, onSwi
             )}
 
             {/* Org List */}
-            {hasManyOrgs && (
-              <div className="py-1 max-h-44 overflow-y-auto">
-                <p className="px-3 py-1 text-[10px] font-semibold uppercase tracking-wider text-slate-600">
-                  {userRole === 'admin' ? t('org.myBranches', 'Мои филиалы') : t('org.myOrgs', 'Мои организации')}
-                </p>
-                {memberships.map((m) => (
-                  <div key={m.organizationId} className="flex items-center hover:bg-white/5 transition">
-                    <button
-                      onClick={() => handleSwitch(m.organizationId)}
-                      disabled={switching}
-                      className="flex-1 flex items-center gap-2.5 px-3 py-2 text-left"
-                    >
-                      <div className={`w-6 h-6 rounded-md flex items-center justify-center text-[10px] font-bold shrink-0 ${
-                        m.organizationId === currentOrgId
-                          ? 'bg-violet-500/30 text-violet-300 ring-1 ring-violet-400/30'
-                          : 'bg-white/5 text-slate-500'
-                      }`}>
-                        {(m.organizationName || '?')[0].toUpperCase()}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className={`text-xs truncate ${m.organizationId === currentOrgId ? 'text-white font-semibold' : 'text-slate-300'}`}>
-                          {m.organizationName || m.organizationId}
-                        </p>
-                        <p className="text-[10px] text-slate-500">{roleLabels[m.role] || m.role}</p>
-                      </div>
-                      {m.organizationId === currentOrgId && (
-                        <Check className="w-3.5 h-3.5 text-green-400 shrink-0" />
-                      )}
-                    </button>
-                    {m.role !== 'owner' && m.role !== 'admin' && (
-                      <button
-                        onClick={() => { setOpen(false); setConfirmLeave(m.organizationId); }}
-                        className="p-1.5 mr-2 rounded-md hover:bg-red-500/10 text-slate-600 hover:text-red-400 transition"
-                        title={t('membership.leave', 'Покинуть')}
-                      >
-                        <LogOut className="w-3 h-3" />
-                      </button>
+            <div className="py-1 max-h-44 overflow-y-auto">
+              <p className="px-3 py-1 text-[10px] font-semibold uppercase tracking-wider text-slate-600">
+                {userRole === 'admin' ? t('org.myBranches', 'Мои филиалы') : t('org.myOrgs', 'Мои организации')}
+              </p>
+              
+              {/* Personal Workspace Option for Teachers/Managers */}
+              {userRole !== 'student' && userRole !== 'admin' && (
+                <div className="flex items-center hover:bg-white/5 transition mb-1">
+                  <button
+                    onClick={() => handleSwitch('personal')}
+                    disabled={switching}
+                    className="flex-1 flex items-center gap-2.5 px-3 py-2 text-left"
+                  >
+                    <div className={`w-6 h-6 rounded-md flex items-center justify-center shrink-0 ${
+                      !currentOrgId
+                        ? 'bg-violet-500/30 text-violet-300 ring-1 ring-violet-400/30'
+                        : 'bg-white/5 text-slate-500'
+                    }`}>
+                      <FolderOpen className="w-3.5 h-3.5" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className={`text-xs truncate ${!currentOrgId ? 'text-white font-semibold' : 'text-slate-300'}`}>
+                        {t('nav.sectionPersonalWorkspace', 'Личное пространство')}
+                      </p>
+                      <p className="text-[10px] text-slate-500">{t('nav.independent', 'Независимый профиль')}</p>
+                    </div>
+                    {!currentOrgId && (
+                      <Check className="w-3.5 h-3.5 text-green-400 shrink-0" />
                     )}
-                  </div>
-                ))}
-              </div>
-            )}
+                  </button>
+                </div>
+              )}
 
-            {/* Single org — show leave if not owner */}
-            {!hasManyOrgs && currentOrg && currentOrg.role !== 'owner' && currentOrg.role !== 'admin' && (
-              <div className="px-3 py-2 border-t border-white/5">
-                <button
-                  onClick={() => { setOpen(false); setConfirmLeave(currentOrg.organizationId); }}
-                  className="flex items-center gap-2 text-xs text-red-400/70 hover:text-red-400 transition w-full"
-                >
-                  <LogOut className="w-3.5 h-3.5" />
-                  {t('membership.leaveOrg', 'Покинуть организацию')}
-                </button>
-              </div>
-            )}
+              {/* Memberships */}
+              {memberships.map((m) => (
+                <div key={m.organizationId} className="flex items-center hover:bg-white/5 transition">
+                  <button
+                    onClick={() => handleSwitch(m.organizationId)}
+                    disabled={switching}
+                    className="flex-1 flex items-center gap-2.5 px-3 py-2 text-left"
+                  >
+                    <div className={`w-6 h-6 rounded-md flex items-center justify-center text-[10px] font-bold shrink-0 ${
+                      m.organizationId === currentOrgId
+                        ? 'bg-violet-500/30 text-violet-300 ring-1 ring-violet-400/30'
+                        : 'bg-white/5 text-slate-500'
+                    }`}>
+                      {(m.organizationName || '?')[0].toUpperCase()}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className={`text-xs truncate ${m.organizationId === currentOrgId ? 'text-white font-semibold' : 'text-slate-300'}`}>
+                        {m.organizationName || m.organizationId}
+                      </p>
+                      <p className="text-[10px] text-slate-500">{roleLabels[m.role] || m.role}</p>
+                    </div>
+                    {m.organizationId === currentOrgId && (
+                      <Check className="w-3.5 h-3.5 text-green-400 shrink-0" />
+                    )}
+                  </button>
+                  {m.role !== 'owner' && m.role !== 'admin' && (
+                    <button
+                      onClick={() => { setOpen(false); setConfirmLeave(m.organizationId); }}
+                      className="p-1.5 mr-2 rounded-md hover:bg-red-500/10 text-slate-600 hover:text-red-400 transition"
+                      title={t('membership.leave', 'Покинуть')}
+                    >
+                      <LogOut className="w-3 h-3" />
+                    </button>
+                  )}
+                </div>
+              ))}
+            </div>
 
             {/* Footer: + action */}
             <div className="border-t border-white/5 px-1 py-1">

@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { apiGetLessons, apiGetLesson, apiCreateLesson, apiTransferRequest } from '../../lib/api';
 import { useAuth } from '../../contexts/AuthContext';
+import { usePlanGate } from '../../contexts/PlanContext';
 import type { LessonPlan } from '../../types';
 import { Plus, BookOpen, Clock, Search, Paperclip, ClipboardList, Sparkles, Filter, CheckCircle2, Copy } from 'lucide-react';
 import EmptyState from '../../components/ui/EmptyState';
@@ -15,6 +16,7 @@ type StatusFilter = 'all' | 'published' | 'draft';
 const LessonListPage: React.FC = () => {
   const { t } = useTranslation();
   const { role, profile } = useAuth();
+  const { canAccess } = usePlanGate();
   const [lessons, setLessons] = useState<LessonPlan[]>([]);
   const [loading, setLoading] = useState(true);
   const [duplicatingId, setDuplicatingId] = useState<string | null>(null);
@@ -119,13 +121,15 @@ const LessonListPage: React.FC = () => {
         
         {isStaff && (
           <div className="flex items-center gap-3 w-full sm:w-auto">
-            <button 
-              onClick={() => setIsAIModalOpen(true)}
-              className="flex-1 sm:flex-none btn-secondary flex justify-center items-center gap-2 border-violet-200 text-violet-700 bg-violet-50 hover:bg-violet-100 hover:border-violet-300 dark:border-violet-500/30 dark:bg-violet-500/10 dark:text-violet-300 dark:hover:bg-violet-500/20"
-            >
-              <Sparkles className="w-4 h-4" /> 
-              <span>AI Конструктор</span>
-            </button>
+            {canAccess('ai') && (
+              <button 
+                onClick={() => setIsAIModalOpen(true)}
+                className="flex-1 sm:flex-none btn-secondary flex justify-center items-center gap-2 border-violet-200 text-violet-700 bg-violet-50 hover:bg-violet-100 hover:border-violet-300 dark:border-violet-500/30 dark:bg-violet-500/10 dark:text-violet-300 dark:hover:bg-violet-500/20"
+              >
+                <Sparkles className="w-4 h-4" /> 
+                <span>AI Конструктор</span>
+              </button>
+            )}
             <Link to="/lessons/new" className="flex-1 sm:flex-none btn-primary flex justify-center items-center gap-2">
               <Plus className="w-4 h-4" />
               {t('lessons.create', 'Создать')}

@@ -371,6 +371,10 @@ const Sidebar: React.FC<{ open: boolean; onClose: () => void }> = ({ open, onClo
                       <History className="w-4 h-4" />{t('nav.quizSessions')}
                     </NavLink>
                   </CollapsibleSection>
+
+                  <NavLink to="/directory" className={linkClass} onClick={onClose}>
+                    <Building2 className="w-4 h-4" />{t('nav.findCenter', 'Каталог Организаций')}
+                  </NavLink>
                 </>
               )}
 

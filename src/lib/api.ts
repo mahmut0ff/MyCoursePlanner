@@ -375,30 +375,7 @@ export const apiUpdateTeacherProfile = (data: any) => userReq('teacherProfile', 
 export const apiGetTeacherSettings = () => userReq('teacherSettings');
 export const apiUpdateTeacherSettings = (data: any) => userReq('teacherSettings', 'PUT', data);
 
-// ============================================================
-// VACANCIES API
-// ============================================================
 
-const vacReq = <T = any>(action: string, method = 'GET', body?: any, extra?: Record<string, string>) =>
-  apiRequest<T>('api-vacancies', method, body, { action, ...extra });
-
-// Public
-export const vacListVacancies = (filters?: Record<string, string>) => vacReq('list', 'GET', undefined, filters);
-export const vacGetVacancy = (id: string) => vacReq('get', 'GET', undefined, { id });
-
-// Org Admin
-export const vacCreateVacancy = (data: any) => vacReq('create', 'POST', data);
-export const vacUpdateVacancy = (data: any) => vacReq('update', 'POST', data);
-export const vacCloseVacancy = (id: string) => vacReq('close', 'POST', { id });
-export const vacDeleteVacancy = (id: string) => vacReq('delete', 'POST', { id });
-export const vacGetOrgVacancies = () => vacReq('orgVacancies');
-export const vacGetVacancyApplications = (vacancyId: string) => vacReq('vacancyApplications', 'GET', undefined, { vacancyId });
-export const vacReviewApplication = (applicationId: string, status: string) => vacReq('reviewApplication', 'POST', { applicationId, status });
-
-// Teacher
-export const vacApplyToVacancy = (vacancyId: string, coverLetter: string, resumeUrl?: string) =>
-  vacReq('apply', 'POST', { vacancyId, coverLetter, resumeUrl });
-export const vacGetMyApplications = () => vacReq('myApplications');
 
 // ============================================================
 // NOTIFICATIONS API

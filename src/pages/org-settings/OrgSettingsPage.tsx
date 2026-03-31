@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../contexts/AuthContext';
+import { usePlanGate } from '../../contexts/PlanContext';
 import { orgGetSettings, orgUpdateSettings } from '../../lib/api';
 import { ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { storage } from '../../lib/firebase';
@@ -724,6 +725,7 @@ const LimitsTab: React.FC<{ settings: OrgSettings }> = ({ settings }) => {
 /* ════════════════════════════════════ MAIN PAGE ════════════════════════════════════ */
 const OrgSettingsPage: React.FC = () => {
   const { t } = useTranslation();
+  const { canAccess } = usePlanGate();
   const [settings, setSettings] = useState<OrgSettings | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -789,7 +791,7 @@ const OrgSettingsPage: React.FC = () => {
         {/* Left sidebar tabs */}
         <div className="w-56 shrink-0">
           <nav className="space-y-0.5 sticky top-4">
-            {TABS.map((tab) => {
+            {TABS.filter(t => t.id !== 'ai' || canAccess('ai')).map((tab) => {
               const Icon = tab.icon;
               const isActive = activeTab === tab.id;
               return (

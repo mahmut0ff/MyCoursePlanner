@@ -15,6 +15,7 @@ const CourseDetailPage: React.FC = () => {
 
   const [course, setCourse] = useState<Course | null>(null);
   const [groups, setGroups] = useState<Group[]>([]);
+  const [allGroups, setAllGroups] = useState<Group[]>([]);
   const [loading, setLoading] = useState(true);
   
   // Modals
@@ -31,6 +32,8 @@ const CourseDetailPage: React.FC = () => {
   }>({ title: '', description: '', subject: '', status: 'draft', price: 0, paymentFormat: 'monthly', durationMonths: 1 });
 
   const [groupForm, setGroupForm] = useState({ name: '', chatLinkTitle: '', chatLinkUrl: '' });
+  const [addMode, setAddMode] = useState<'new' | 'existing'>('new');
+  const [existingGroupId, setExistingGroupId] = useState('');
 
   const loadData = () => {
     if (!id) return;
@@ -49,6 +52,7 @@ const CourseDetailPage: React.FC = () => {
             paymentFormat: found.paymentFormat || 'monthly', 
             durationMonths: found.durationMonths || 1 
           });
+          setAllGroups(allGroups);
           setGroups(allGroups.filter((g: Group) => g.courseId === found.id));
         }
       })
@@ -88,9 +92,32 @@ const CourseDetailPage: React.FC = () => {
         courseName: course.title 
       });
       setGroups(prev => [created, ...prev]);
+      setAllGroups(prev => [...prev, created]);
       setShowGroupModal(false);
       setGroupForm({ name: '', chatLinkTitle: '', chatLinkUrl: '' });
     } catch (e: any) { setError(e.message || 'Error creating group'); } finally { setSaving(false); }
+  };
+
+  const handleAttachExistingGroup = async () => {
+    import('../../lib/api').then(async ({ orgUpdateGroup }) => {
+      if (!course || !existingGroupId) return;
+      setSaving(true); setError('');
+      try {
+        const updated = await orgUpdateGroup({
+          id: existingGroupId,
+          courseId: course.id,
+          courseName: course.title
+        });
+        setGroups(prev => [updated, ...prev]);
+        setAllGroups(prev => prev.map(g => g.id === existingGroupId ? updated : g));
+        setShowGroupModal(false);
+        setExistingGroupId('');
+      } catch (e: any) { 
+        setError(e.message || 'Error attaching group'); 
+      } finally { 
+        setSaving(false); 
+      }
+    });
   };
 
   if (loading) return (
@@ -315,28 +342,78 @@ const CourseDetailPage: React.FC = () => {
       {showGroupModal && isAdmin && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => setShowGroupModal(false)}>
           <div className="bg-white dark:bg-slate-800 rounded-3xl p-8 w-full max-w-md shadow-2xl" onClick={(e) => e.stopPropagation()}>
-            <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-2">Новая группа</h2>
+            <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-2">Добавить группу</h2>
             <p className="text-sm text-slate-500 dark:text-slate-400 mb-6 font-medium">Курс: <span className="text-slate-900 dark:text-white font-bold">{course.title}</span></p>
             
-            <div className="space-y-4">
-              <div>
-                <label className="text-xs font-semibold text-slate-500 mb-1 block">Название группы *</label>
-                <input placeholder="Например: Фронтенд 2024" value={groupForm.name} onChange={(e) => setGroupForm(f => ({ ...f, name: e.target.value }))} className="w-full bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-slate-900 dark:focus:ring-white outline-none" autoFocus />
-              </div>
-              <div className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-200 dark:border-slate-700">
-                <div className="flex items-center gap-2 mb-3">
-                  <MessageSquare className="w-4 h-4 text-slate-500" />
-                  <span className="text-sm font-bold text-slate-900 dark:text-white">Ссылка на чат</span>
-                </div>
-                <div className="space-y-3">
-                  <input placeholder="Название чата (напр. Telegram)" value={groupForm.chatLinkTitle} onChange={(e) => setGroupForm(f => ({ ...f, chatLinkTitle: e.target.value }))} className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-slate-900 outline-none" />
-                  <input placeholder="https://t.me/..." value={groupForm.chatLinkUrl} onChange={(e) => setGroupForm(f => ({ ...f, chatLinkUrl: e.target.value }))} className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-slate-900 outline-none" />
-                </div>
-              </div>
+            <div className="flex bg-slate-100 dark:bg-slate-900/50 p-1 rounded-xl mb-6">
+              <button 
+                onClick={() => setAddMode('new')}
+                className={`flex-1 py-2 text-sm font-bold rounded-lg transition-colors ${addMode === 'new' ? 'bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-sm' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}
+              >
+                Создать новую
+              </button>
+              <button 
+                onClick={() => setAddMode('existing')}
+                className={`flex-1 py-2 text-sm font-bold rounded-lg transition-colors ${addMode === 'existing' ? 'bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-sm' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}
+              >
+                Выбрать существующую
+              </button>
             </div>
+
+            {addMode === 'new' ? (
+              <div className="space-y-4">
+                <div>
+                  <label className="text-xs font-semibold text-slate-500 mb-1 block">Название группы *</label>
+                  <input placeholder="Например: Фронтенд 2024" value={groupForm.name} onChange={(e) => setGroupForm(f => ({ ...f, name: e.target.value }))} className="w-full bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-slate-900 dark:focus:ring-white outline-none" autoFocus />
+                </div>
+                <div className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-200 dark:border-slate-700">
+                  <div className="flex items-center gap-2 mb-3">
+                    <MessageSquare className="w-4 h-4 text-slate-500" />
+                    <span className="text-sm font-bold text-slate-900 dark:text-white">Ссылка на чат</span>
+                  </div>
+                  <div className="space-y-3">
+                    <input placeholder="Название чата (напр. Telegram)" value={groupForm.chatLinkTitle} onChange={(e) => setGroupForm(f => ({ ...f, chatLinkTitle: e.target.value }))} className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-slate-900 outline-none" />
+                    <input placeholder="https://t.me/..." value={groupForm.chatLinkUrl} onChange={(e) => setGroupForm(f => ({ ...f, chatLinkUrl: e.target.value }))} className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-slate-900 outline-none" />
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <div>
+                  <label className="text-xs font-semibold text-slate-500 mb-1 block">Выберите группу</label>
+                  <select 
+                    value={existingGroupId} 
+                    onChange={e => setExistingGroupId(e.target.value)}
+                    className="w-full bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-slate-900 dark:focus:ring-white outline-none"
+                  >
+                    <option value="">-- Выберите группу --</option>
+                    {allGroups.filter(g => g.courseId !== course.id).map(g => (
+                      <option key={g.id} value={g.id}>{g.name} {g.courseId ? `(${g.courseName})` : '(Без курса)'}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+            )}
+            
             <div className="flex justify-end gap-3 mt-8">
-              <button onClick={() => setShowGroupModal(false)} className="px-5 py-2.5 rounded-xl text-sm font-semibold text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-700 transition-colors">{t('common.cancel')}</button>
-              <button onClick={handleCreateGroup} disabled={saving || !groupForm.name.trim()} className="px-5 py-2.5 rounded-xl text-sm font-semibold bg-slate-900 text-white hover:bg-slate-800 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100 transition-all disabled:opacity-50">{saving ? 'Создание...' : 'Создать группу'}</button>
+              <button 
+                onClick={() => {
+                  setShowGroupModal(false);
+                  setAddMode('new');
+                  setExistingGroupId('');
+                  setGroupForm({ name: '', chatLinkTitle: '', chatLinkUrl: '' });
+                }} 
+                className="px-5 py-2.5 rounded-xl text-sm font-semibold text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-700 transition-colors"
+              >
+                {t('common.cancel')}
+              </button>
+              <button 
+                onClick={addMode === 'new' ? handleCreateGroup : handleAttachExistingGroup} 
+                disabled={saving || (addMode === 'new' ? !groupForm.name.trim() : !existingGroupId)} 
+                className="px-5 py-2.5 rounded-xl text-sm font-semibold bg-slate-900 text-white hover:bg-slate-800 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100 transition-all disabled:opacity-50"
+              >
+                {saving ? 'Сохранение...' : (addMode === 'new' ? 'Создать группу' : 'Привязать группу')}
+              </button>
             </div>
           </div>
         </div>

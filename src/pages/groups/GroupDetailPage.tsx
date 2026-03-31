@@ -27,6 +27,11 @@ const GroupDetailPage: React.FC = () => {
   const [chatForm, setChatForm] = useState({ title: '', url: '' });
   const [savingChat, setSavingChat] = useState(false);
 
+  // Group Info Edit State
+  const [showEditGroupModal, setShowEditGroupModal] = useState(false);
+  const [editGroupForm, setEditGroupForm] = useState({ name: '', courseId: '' });
+  const [savingGroup, setSavingGroup] = useState(false);
+
   // Modals for adding teachers/students
   const [showAddTeacher, setShowAddTeacher] = useState(false);
   const [showAddStudent, setShowAddStudent] = useState(false);
@@ -42,6 +47,7 @@ const GroupDetailPage: React.FC = () => {
         setGroup(found);
         if (found) {
           setChatForm({ title: found.chatLinkTitle || '', url: found.chatLinkUrl || '' });
+          setEditGroupForm({ name: found.name || '', courseId: found.courseId || '' });
         }
       }),
       orgGetCourses().then(setCourses).catch(() => []),
@@ -68,6 +74,36 @@ const GroupDetailPage: React.FC = () => {
       toast.error(e.message || 'Error saving chat link');
     } finally {
       setSavingChat(false);
+    }
+  };
+
+  const handleSaveGroupInfo = async () => {
+    if (!group || !editGroupForm.name.trim()) return;
+    setSavingGroup(true);
+    try {
+      const selectedCourse = courses.find(c => c.id === editGroupForm.courseId);
+      // Using `any` cast for orgUpdateGroup to pass optional params easily if types are strict
+      const payload = {
+        id: group.id,
+        name: editGroupForm.name,
+        courseId: editGroupForm.courseId || '',
+        courseName: selectedCourse ? selectedCourse.title : ''
+      };
+      
+      await orgUpdateGroup(payload);
+      
+      setGroup({
+        ...group,
+        name: payload.name,
+        courseId: payload.courseId,
+        courseName: payload.courseName as any
+      });
+      setShowEditGroupModal(false);
+      toast.success(t('common.saved', 'Сохранено'));
+    } catch (e: any) {
+      toast.error(e.message || 'Error saving group');
+    } finally {
+      setSavingGroup(false);
     }
   };
 
@@ -175,9 +211,23 @@ const GroupDetailPage: React.FC = () => {
                 )}
               </div>
               
-              <h1 className="text-3xl md:text-5xl font-extrabold text-slate-900 dark:text-white tracking-tight leading-tight mb-6">
-                {group.name}
-              </h1>
+              <div className="flex items-center gap-4 mb-6">
+                <h1 className="text-3xl md:text-5xl font-extrabold text-slate-900 dark:text-white tracking-tight leading-tight">
+                  {group.name}
+                </h1>
+                {isAdmin && (
+                  <button 
+                    onClick={() => {
+                      setEditGroupForm({ name: group.name, courseId: group.courseId || '' });
+                      setShowEditGroupModal(true);
+                    }} 
+                    className="p-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-500 hover:text-violet-600 dark:hover:text-violet-400 rounded-xl transition-all shadow-sm hover:shadow"
+                    title="Редактировать группу"
+                  >
+                    <Edit2 className="w-5 h-5" />
+                  </button>
+                )}
+              </div>
               
               {/* Chat Link Management */}
               {isEditingChat ? (
@@ -511,6 +561,55 @@ const GroupDetailPage: React.FC = () => {
                  className="bg-emerald-500 hover:bg-emerald-600 text-white px-5 py-2 rounded-xl text-xs font-bold disabled:opacity-50 transition-colors shadow-md shadow-emerald-500/20"
                >
                  {addingUser ? '...' : 'Добавить'}
+               </button>
+             </div>
+          </div>
+        </div>
+      )}
+      {/* Edit Group Info Modal */}
+      {showEditGroupModal && isAdmin && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 shadow-2xl" onClick={() => setShowEditGroupModal(false)}>
+          <div className="bg-white dark:bg-slate-800 rounded-3xl p-6 w-full max-w-sm" onClick={e => e.stopPropagation()}>
+             <h2 className="text-xl font-bold text-slate-900 dark:text-white mb-4">Редактировать группу</h2>
+             
+             <div className="space-y-4 mb-6">
+               <div>
+                 <label className="text-xs font-semibold text-slate-500 mb-1 block">Название группы</label>
+                 <input 
+                   value={editGroupForm.name} 
+                   onChange={e => setEditGroupForm(f => ({ ...f, name: e.target.value }))}
+                   placeholder="Название группы" 
+                   className="w-full bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-xl px-4 py-3 text-sm font-bold text-slate-900 dark:text-white outline-none focus:border-violet-500" 
+                 />
+               </div>
+               <div>
+                 <label className="text-xs font-semibold text-slate-500 mb-1 block">Курс</label>
+                 <select 
+                   value={editGroupForm.courseId} 
+                   onChange={e => setEditGroupForm(f => ({ ...f, courseId: e.target.value }))}
+                   className="w-full bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-xl px-4 py-3 text-sm font-bold text-slate-900 dark:text-white outline-none focus:border-violet-500"
+                 >
+                   <option value="">-- Без курса --</option>
+                   {courses.map(c => (
+                     <option key={c.id} value={c.id}>{c.title}</option>
+                   ))}
+                 </select>
+               </div>
+             </div>
+
+             <div className="flex justify-end gap-3">
+               <button 
+                 onClick={() => setShowEditGroupModal(false)} 
+                 className="px-4 py-2 text-sm font-bold text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-xl transition-colors"
+               >
+                 {t('common.cancel')}
+               </button>
+               <button 
+                 onClick={handleSaveGroupInfo} 
+                 disabled={!editGroupForm.name.trim() || savingGroup}
+                 className="bg-violet-500 hover:bg-violet-600 text-white px-5 py-2 rounded-xl text-sm font-bold disabled:opacity-50 transition-colors shadow-md shadow-violet-500/20"
+               >
+                 {savingGroup ? 'Сохранение...' : t('common.save')}
                </button>
              </div>
           </div>

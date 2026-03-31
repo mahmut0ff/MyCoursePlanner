@@ -13,7 +13,8 @@ import {
   BarChart3, Gamepad2, History, ChevronDown, TableProperties,
   Users, Layers, Database, Activity, Flag, Plug, FolderOpen,
   ClipboardList, Radio, Award, Trophy, LogOut, CreditCard,
-  TrendingUp, Bell, Lock, ClipboardCheck, TrendingDown
+  TrendingUp, Bell, Lock, ClipboardCheck, TrendingDown,
+  ShieldCheck
 } from 'lucide-react';
 
                         

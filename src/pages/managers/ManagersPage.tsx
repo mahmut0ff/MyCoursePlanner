@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { orgGetManagers, orgCreateManager } from '../../lib/api';
-import { UserPlus, Search, Mail, RefreshCw, Send, Phone, ShieldCheck, Lock, User } from 'lucide-react';
+import { UserPlus, Search, Mail, RefreshCw, Phone, ShieldCheck, Lock, User } from 'lucide-react';
 import type { UserProfile } from '../../types';
 
 const ManagersPage: React.FC = () => {

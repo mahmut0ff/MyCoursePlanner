@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { orgGetManagers } from '../../lib/api';
 import { ArrowLeft, Mail, Calendar, ShieldCheck, Phone } from 'lucide-react';
 import type { UserProfile } from '../../types';
 

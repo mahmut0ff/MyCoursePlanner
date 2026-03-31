@@ -407,6 +407,88 @@ const handler: Handler = async (event: HandlerEvent) => {
       }
     }
 
+    // ═══ MANAGERS (users with role=manager in this org) ═══
+    if (action === 'managers') {
+      let query: any = adminDb.collection('orgMembers').doc(orgId)
+        .collection('members')
+        .where('status', '==', 'active')
+        .where('role', '==', 'manager');
+
+      if (params.branchId) {
+        query = query.where('branchIds', 'array-contains', params.branchId);
+      }
+      
+      const snap = await query.get();
+      const members = snap.docs.map((d: any) => {
+        const data = d.data();
+        return { uid: data.userId, displayName: data.userName, email: data.userEmail, role: data.role, branchIds: data.branchIds || [], primaryBranchId: data.primaryBranchId || null };
+      });
+
+      let enriched = members;
+      if (members.length > 0) {
+        const uids = members.map((t: any) => t.uid);
+        const batches = [];
+        for (let i = 0; i < uids.length; i += 10) {
+          batches.push(uids.slice(i, i + 10));
+        }
+        const profileMap: Record<string, any> = {};
+        for (const batch of batches) {
+          const profileSnap = await adminDb.collection('users').where('__name__', 'in', batch).get();
+          profileSnap.docs.forEach((d: any) => { profileMap[d.id] = d.data(); });
+        }
+        enriched = members.map((t: any) => {
+          const p = profileMap[t.uid] || {};
+          return { ...t, avatarUrl: p.avatarUrl || p.photoURL || '', phone: p.phone || '', city: p.city || '', bio: p.bio || '', createdAt: p.createdAt || '' };
+        });
+      }
+
+      return ok(enriched);
+    }
+
+    if (action === 'createManager') {
+      if (!hasRole(user, 'admin')) return forbidden();
+      const body = JSON.parse(event.body || '{}');
+      if (!body.email || !body.displayName || !body.password) return badRequest('email, displayName and password required');
+      try {
+        const existing = await adminDb.collection('users').where('email', '==', body.email).get();
+        if (!existing.empty) return badRequest('User with this email already exists');
+        const authUser = await adminAuth.createUser({
+          email: body.email,
+          password: body.password,
+          displayName: body.displayName,
+        });
+        const profile = {
+          email: body.email,
+          displayName: body.displayName,
+          role: 'manager',
+          organizationId: orgId,
+          phone: body.phone || '',
+          branchIds: body.branchIds || [],
+          primaryBranchId: body.primaryBranchId || null,
+          createdAt: now(),
+          updatedAt: now(),
+        };
+        await adminDb.collection('users').doc(authUser.uid).set(profile);
+        
+        await adminDb.collection('orgMembers').doc(orgId).collection('members').doc(authUser.uid).set({
+          userId: authUser.uid,
+          userEmail: body.email,
+          userName: body.displayName,
+          role: 'manager',
+          status: 'active',
+          branchIds: body.branchIds || [],
+          primaryBranchId: body.primaryBranchId || null,
+          joinedAt: now()
+        });
+        
+        return ok({ uid: authUser.uid, ...profile });
+      } catch (e: any) {
+        if (e.code === 'auth/email-already-exists') return badRequest('Email already registered in authentication system');
+        throw e;
+      }
+    }
+
+
     if (action === 'inviteUser') {
       if (!hasRole(user, 'admin')) return forbidden();
       const body = JSON.parse(event.body || '{}');

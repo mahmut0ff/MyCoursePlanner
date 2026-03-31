@@ -60,6 +60,7 @@ import FinancesPage from './pages/finances/FinancesPage';
 import GroupsPage from './pages/groups/GroupsPage';
 import StudentsPage from './pages/students/StudentsPage';
 import TeachersPage from './pages/teachers/TeachersPage';
+import ManagersPage from './pages/managers/ManagersPage';
 import MaterialsPage from './pages/materials/MaterialsPage';
 import SchedulePage from './pages/schedule/SchedulePage';
 import OrgResultsPage from './pages/results/ResultsPage';
@@ -75,6 +76,7 @@ import TeacherSettingsPage from './pages/teacher-settings/TeacherSettingsPage';
 // Detail Pages
 import StudentDetailPage from './pages/students/StudentDetailPage';
 import TeacherDetailPage from './pages/teachers/TeacherDetailPage';
+import ManagerDetailPage from './pages/managers/ManagerDetailPage';
 import CourseDetailPage from './pages/courses/CourseDetailPage';
 import GroupDetailPage from './pages/groups/GroupDetailPage';
 import OrgUserDetailPage from './pages/org-users/OrgUserDetailPage';
@@ -194,6 +196,8 @@ const App: React.FC = () => {
             <Route path="students/:uid" element={<ProtectedRoute allowedRoles={['admin', 'manager']}><StudentDetailPage /></ProtectedRoute>} />
             <Route path="teachers" element={<ProtectedRoute allowedRoles={['admin', 'manager']}><TeachersPage /></ProtectedRoute>} />
             <Route path="teachers/:uid" element={<ProtectedRoute allowedRoles={['admin', 'manager']}><TeacherDetailPage /></ProtectedRoute>} />
+            <Route path="managers" element={<ProtectedRoute allowedRoles={['admin']}><ManagersPage /></ProtectedRoute>} />
+            <Route path="managers/:uid" element={<ProtectedRoute allowedRoles={['admin']}><ManagerDetailPage /></ProtectedRoute>} />
             <Route path="org-users" element={<ProtectedRoute allowedRoles={['admin']}><OrgUsersPage /></ProtectedRoute>} />
             <Route path="org-users/:uid" element={<ProtectedRoute allowedRoles={['admin']}><OrgUserDetailPage /></ProtectedRoute>} />
 

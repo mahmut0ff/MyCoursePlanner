@@ -268,6 +268,10 @@ export const orgGetTeachers = () => orgReq('teachers');
 export const orgCreateTeacher = (data: any) => orgReq('createTeacher', 'POST', data);
 export const orgInviteUser = (email: string, role: string) => orgReq('inviteUser', 'POST', { email, role });
 
+// Managers
+export const orgGetManagers = () => orgReq('managers');
+export const orgCreateManager = (data: any) => orgReq('createManager', 'POST', data);
+
 // Materials
 export const orgGetMaterials = (filters?: Record<string, string>) => orgReq('materials', 'GET', undefined, filters);
 export const orgCreateMaterial = (data: any) => orgReq('createMaterial', 'POST', data);

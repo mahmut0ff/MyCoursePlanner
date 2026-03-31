@@ -72,7 +72,8 @@
     "myTeachers": "Мои преподаватели",
     "sectionExams": "Экзамены и тесты",
     "certificates": "Сертификаты",
-    "achievements": "Достижения"
+    "achievements": "Достижения",
+    "managers": "Менеджеры"
   },
   "auth": {
     "login": "Войти",
@@ -646,7 +647,8 @@
     "error": "Произошла ошибка",
     "email": "Email",
     "optional": "необязательно",
-    "howItWorks": "Как работает модуль?"
+    "howItWorks": "Как работает модуль?",
+    "managers": "Менеджеры"
   },
   "org": {
     "courses": {

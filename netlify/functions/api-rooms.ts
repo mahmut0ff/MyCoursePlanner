@@ -82,14 +82,8 @@ const handler: Handler = async (event: HandlerEvent) => {
       if (!roomDoc.exists) return notFound('Room not found');
       const roomData = roomDoc.data()!;
       if (roomData.status !== 'active') return badRequest('Room is closed');
-      // Fix: Secure Org membership check
-      if (roomData.organizationId) {
-        // If room belongs to an org, user MUST belong to the same org
-        if (roomData.organizationId !== user.organizationId) {
-          logSecurityAudit(user, event, 'join_alien_room', { roomId: body.roomId, roomOrgId: roomData.organizationId });
-          return forbidden();
-        }
-      }
+      // The user successfully supplied the code earlier to get the UI, so we allow joining.
+      // (Removed strict org check to allow external/independent teacher exams)
       const participants: string[] = roomData.participants || [];
       if (!participants.includes(user.uid)) {
         await roomRef.update({ participants: [...participants, user.uid] });

@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { apiGetRoomByCode, apiJoinRoom } from '../../lib/api';
-import { Edit3, ArrowRight, ShieldCheck, Loader2 } from 'lucide-react';
+import { Edit3, ArrowRight, ShieldCheck, Loader2, ArrowLeft } from 'lucide-react';
 
 const JoinRoomPage: React.FC = () => {
   const { t } = useTranslation();
@@ -31,6 +31,14 @@ const JoinRoomPage: React.FC = () => {
 
   return (
     <div className="exam-bg fixed inset-0 flex items-center justify-center z-50 p-4">
+      {/* Back Button */}
+      <button 
+        onClick={() => navigate('/dashboard')}
+        className="absolute top-4 left-4 sm:top-6 sm:left-6 w-12 h-12 bg-white/10 hover:bg-white/20 backdrop-blur-md rounded-full flex items-center justify-center text-white border border-white/20 transition-all z-20 group"
+      >
+        <ArrowLeft className="w-6 h-6 group-hover:-translate-x-1 transition-transform" />
+      </button>
+
       <div className="w-full max-w-sm relative z-10 exam-slide-up">
         
         {/* Logo/Icon */}

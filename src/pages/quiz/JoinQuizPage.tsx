@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { apiJoinQuizSession, apiGetQuizSessionByCode } from '../../lib/api';
-import { Gamepad2, ArrowRight, Loader2 } from 'lucide-react';
+import { Gamepad2, ArrowRight, Loader2, ArrowLeft } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 const JoinQuizPage: React.FC = () => {
@@ -33,6 +33,14 @@ const JoinQuizPage: React.FC = () => {
 
   return (
     <div className="quiz-bg-image fixed inset-0 flex items-center justify-center z-50">
+      {/* Back Button */}
+      <button 
+        onClick={() => navigate('/dashboard')}
+        className="absolute top-4 left-4 sm:top-6 sm:left-6 w-12 h-12 bg-black/20 hover:bg-black/40 backdrop-blur-md rounded-full flex items-center justify-center text-white border border-white/20 transition-all z-20 group"
+      >
+        <ArrowLeft className="w-6 h-6 group-hover:-translate-x-1 transition-transform" />
+      </button>
+
       <div className="w-full max-w-md px-4 relative z-10" style={{ animation: 'kahoot-slide-up 0.5s ease-out' }}>
         {/* Floating Logo */}
         <div className="text-center mb-8" style={{ animation: 'kahoot-lobby-float 3s ease-in-out infinite' }}>

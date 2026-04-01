@@ -538,9 +538,6 @@ const JournalPage: React.FC = () => {
                     <th className="px-5 py-4 font-medium text-center w-28 bg-primary-50/50 dark:bg-primary-900/10 border-r border-l border-slate-200 dark:border-slate-700">
                       <div className="flex flex-col items-center">
                         <span>Оценка</span>
-                        <span className="text-[10px] text-slate-500 font-normal leading-tight mt-1 max-w-[100%] truncate" title={currentLessonId ? courseLessons.find(l => l.id === currentLessonId)?.title : date}>
-                          {currentLessonId ? courseLessons.find(l => l.id === currentLessonId)?.title : new Date(date).toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' })}
-                        </span>
                         {schema && (
                           <span className="text-[10px] bg-primary-100 text-primary-700 dark:bg-primary-900/30 dark:text-primary-400 px-1.5 py-0.5 rounded mt-1 font-semibold" title={`Макс балл: ${schema.scale.max}`}>
                              М: {schema.scale.max}

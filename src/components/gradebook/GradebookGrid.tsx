@@ -1,5 +1,7 @@
-import React, { useRef, useEffect } from 'react';
+import React, { useRef, useEffect, useState } from 'react';
 import GradeCell from './GradeCell';
+import VoiceGradeDictator from './VoiceGradeDictator';
+import { Mic } from 'lucide-react';
 import type { GradeEntry, GradeSchema, UserProfile } from '../../types';
 
 export interface ColumnDef {
@@ -19,6 +21,7 @@ interface GradebookGridProps {
 
 const GradebookGrid: React.FC<GradebookGridProps> = ({ students, columns, grades, schema, onGradeChange, syncStatus = {} }) => {
   const gridRef = useRef<HTMLDivElement>(null);
+  const [voiceTarget, setVoiceTarget] = useState<ColumnDef | null>(null);
 
   // Keyboard navigation & Custom Event Listener
   useEffect(() => {
@@ -101,11 +104,18 @@ const GradebookGrid: React.FC<GradebookGridProps> = ({ students, columns, grades
               Сер. Балл
             </th>
             {columns.map((col) => (
-              <th key={col.id} className="bg-slate-50/95 dark:bg-slate-900/95 backdrop-blur-md px-4 py-3 font-semibold text-slate-700 dark:text-slate-300 w-32 min-w-[128px] max-w-[160px] text-center border-b border-r border-slate-200 dark:border-slate-800 last:border-r-0">
-                <div className="truncate mx-auto" title={col.title}>
+              <th key={col.id} className="group relative bg-slate-50/95 dark:bg-slate-900/95 backdrop-blur-md px-4 py-3 font-semibold text-slate-700 dark:text-slate-300 w-32 min-w-[128px] max-w-[160px] text-center border-b border-r border-slate-200 dark:border-slate-800 last:border-r-0">
+                <div className="truncate mx-auto pr-6" title={col.title}>
                   {col.title}
                 </div>
                 <div className="text-[10px] uppercase font-bold text-slate-400 dark:text-slate-500 mt-1">{col.type}</div>
+                <button 
+                  onClick={() => setVoiceTarget(col)}
+                  className="absolute top-2 right-1.5 opacity-0 group-hover:opacity-100 p-1.5 rounded-lg bg-indigo-50 dark:bg-indigo-900/30 text-indigo-500 hover:bg-indigo-100 dark:hover:bg-indigo-800/50 transition-all shadow-sm"
+                  title="Голосовое выставление оценок"
+                >
+                  <Mic className="w-4 h-4" />
+                </button>
               </th>
             ))}
           </tr>
@@ -187,6 +197,20 @@ const GradebookGrid: React.FC<GradebookGridProps> = ({ students, columns, grades
           )}
         </tbody>
       </table>
+
+      <VoiceGradeDictator
+        isOpen={!!voiceTarget}
+        onClose={() => setVoiceTarget(null)}
+        column={voiceTarget}
+        students={students}
+        schema={schema}
+        onApply={(mappedGrades) => {
+          if (!voiceTarget) return;
+          mappedGrades.forEach(g => {
+            onGradeChange(g.studentId, voiceTarget.id, g.value, undefined, undefined, g.comment);
+          });
+        }}
+      />
     </div>
   );
 };

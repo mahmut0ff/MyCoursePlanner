@@ -120,7 +120,7 @@ const SortableLessonItem = ({ id, lesson, isAttached, canEdit, groupStudentsLeng
 
 const JournalPage: React.FC = () => {
   const { t } = useTranslation();
-  const { role } = useAuth();
+  const { role, profile } = useAuth();
   const isReadOnly = role === 'admin' || role === 'manager';
 
   const [courses, setCourses] = useState<Course[]>([]);
@@ -169,11 +169,20 @@ const JournalPage: React.FC = () => {
       apiGetLessons().catch(() => [])
     ])
     .then(([coursesRes, groupsRes, studentsRes, lessonsRes]) => {
-      const c = Array.isArray(coursesRes) ? coursesRes : [];
+      let c = Array.isArray(coursesRes) ? coursesRes : [];
+      let g = Array.isArray(groupsRes) ? groupsRes : [];
+      const s = Array.isArray(studentsRes) ? studentsRes : [];
+      const l = Array.isArray(lessonsRes) ? lessonsRes : [];
+
+      if (role === 'teacher' && profile?.uid) {
+        c = c.filter((course: Course) => course.teacherIds?.includes(profile.uid));
+        g = g.filter((group: Group) => group.teacherIds?.includes(profile.uid));
+      }
+
       setCourses(c);
-      setAllGroups(Array.isArray(groupsRes) ? groupsRes : []);
-      setAllStudents(Array.isArray(studentsRes) ? studentsRes : []);
-      setAllLessons(Array.isArray(lessonsRes) ? lessonsRes : []);
+      setAllGroups(g);
+      setAllStudents(s);
+      setAllLessons(l);
 
       if (c.length > 0) {
         setSelectedCourseId(c[0].id);

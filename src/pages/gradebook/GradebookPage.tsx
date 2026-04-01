@@ -16,6 +16,7 @@ import GradebookGrid from '../../components/gradebook/GradebookGrid';
 import GradeSchemaConfig from '../../components/gradebook/GradeSchemaConfig';
 import { BookOpen, Settings, AlertCircle, RefreshCcw } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { useAuth } from '../../contexts/AuthContext';
 
 const defaultSchema: GradeSchema = {
   id: '',
@@ -30,6 +31,7 @@ const defaultSchema: GradeSchema = {
 
 const GradebookPage: React.FC = () => {
   const { t } = useTranslation();
+  const { role, profile } = useAuth();
   const [courses, setCourses] = useState<Course[]>([]);
   const [selectedCourseId, setSelectedCourseId] = useState<string>('');
   
@@ -48,14 +50,18 @@ const GradebookPage: React.FC = () => {
   useEffect(() => {
     orgGetCourses()
       .then((data: Course[]) => {
-        setCourses(data);
-        if (data.length > 0) {
-          setSelectedCourseId(data[0].id);
+        let filteredCourses = data;
+        if (role === 'teacher' && profile?.uid) {
+           filteredCourses = data.filter((c: Course) => c.teacherIds?.includes(profile.uid));
+        }
+        setCourses(filteredCourses);
+        if (filteredCourses.length > 0) {
+          setSelectedCourseId(filteredCourses[0].id);
         }
       })
       .catch((e: any) => toast.error(e.message))
       .finally(() => setLoadingCourses(false));
-  }, []);
+  }, [role, profile?.uid]);
 
   const loadData = async (courseId: string) => {
     setLoadingData(true);
@@ -73,7 +79,12 @@ const GradebookPage: React.FC = () => {
       ]);
 
       // Filter groups for this course
-      const courseGroups = (allGroups as Group[]).filter(g => g.courseId === courseId);
+      let courseGroups = (allGroups as Group[]).filter(g => g.courseId === courseId);
+      
+      if (role === 'teacher' && profile?.uid) {
+         courseGroups = courseGroups.filter((g: Group) => g.teacherIds?.includes(profile.uid));
+      }
+
       const studentIds = new Set<string>();
       courseGroups.forEach(g => g.studentIds.forEach(id => studentIds.add(id)));
       

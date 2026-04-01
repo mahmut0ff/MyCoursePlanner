@@ -10,7 +10,7 @@ import type { Group, Course, UserProfile } from '../../types';
 
 const GroupsPage: React.FC = () => {
   const { t } = useTranslation();
-  const { role } = useAuth();
+  const { role, profile } = useAuth();
   const isAdmin = role === 'admin' || role === 'manager' || role === 'super_admin';
   
   const [groups, setGroups] = useState<Group[]>([]);
@@ -33,13 +33,21 @@ const GroupsPage: React.FC = () => {
       orgGetTeachers()
     ])
     .then(([g, c, t]) => {
-      setGroups(g); setCourses(c); setTeachers(t);
+      let filteredG = g;
+      let filteredC = c;
+      
+      if (role === 'teacher' && profile?.uid) {
+        filteredG = g.filter((group: Group) => group.teacherIds?.includes(profile.uid));
+        filteredC = c.filter((course: Course) => course.teacherIds?.includes(profile.uid));
+      }
+
+      setGroups(filteredG); setCourses(filteredC); setTeachers(t);
     })
     .catch((e) => setError(e.message || 'Error'))
     .finally(() => setLoading(false));
   };
   
-  useEffect(() => { load(); }, []);
+  useEffect(() => { load(); }, [role, profile?.uid]);
 
   const filtered = groups.filter((g) => g.name.toLowerCase().includes(search.toLowerCase()));
   const courseName = (id: string) => courses.find((c) => c.id === id)?.title || 'Курс не найден';

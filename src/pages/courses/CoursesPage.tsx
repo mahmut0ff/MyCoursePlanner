@@ -8,7 +8,7 @@ import type { Course } from '../../types';
 
 const CoursesPage: React.FC = () => {
   const { t } = useTranslation();
-  const { role } = useAuth();
+  const { role, profile } = useAuth();
   const isAdmin = role === 'admin';
   const [courses, setCourses] = useState<Course[]>([]);
   const [loading, setLoading] = useState(true);
@@ -25,9 +25,18 @@ const CoursesPage: React.FC = () => {
 
   const load = () => {
     setLoading(true); setError('');
-    orgGetCourses().then(setCourses).catch((e) => setError(e.message || 'Error')).finally(() => setLoading(false));
+    orgGetCourses().then(c => {
+      let filtered = c;
+      if (role === 'teacher' && profile?.uid) {
+        filtered = filtered.filter((course: Course) => course.teacherIds?.includes(profile.uid));
+      }
+      setCourses(filtered);
+    }).catch((e) => setError(e.message || 'Error')).finally(() => setLoading(false));
   };
-  useEffect(load, []);
+
+  useEffect(() => {
+    load();
+  }, [role, profile?.uid]);
 
   const filtered = courses.filter((c) =>
     c.title.toLowerCase().includes(search.toLowerCase()) || c.subject?.toLowerCase().includes(search.toLowerCase())

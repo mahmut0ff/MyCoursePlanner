@@ -1041,6 +1041,7 @@ export interface JournalEntry {
   date: string; // YYYY-MM-DD
   attendance: AttendanceStatus;
   participation?: ParticipationLevel;
+  lessonId?: string;
   note?: string;
   flags?: string[]; // 'late_submission', 'behavior', etc.
   createdBy: string;

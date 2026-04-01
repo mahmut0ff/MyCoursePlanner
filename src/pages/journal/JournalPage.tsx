@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { 
   orgGetCourses, 
@@ -7,11 +7,13 @@ import {
   orgGetJournal, 
   orgSaveJournal,
   orgBulkAttendance,
-  apiAwardXP
+  apiAwardXP,
+  apiGetLessons
 } from '../../lib/api';
-import type { Course, Group, UserProfile, JournalEntry, AttendanceStatus, ParticipationLevel } from '../../types';
-import { ClipboardList, Calendar, AlertCircle, AlertTriangle, RefreshCcw, UserCheck, CheckCircle2, XCircle, Clock, FileWarning } from 'lucide-react';
+import type { Course, Group, UserProfile, JournalEntry, AttendanceStatus, ParticipationLevel, LessonPlan } from '../../types';
+import { ClipboardList, Calendar, AlertCircle, AlertTriangle, RefreshCcw, UserCheck, CheckCircle2, XCircle, Clock, FileWarning, BookOpen } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { useAuth } from '../../contexts/AuthContext';
 
 const now = new Date();
 const todayFormatted = now.toISOString().split('T')[0];
@@ -25,11 +27,18 @@ const attendanceIcons: Record<AttendanceStatus, React.ReactNode> = {
 
 const JournalPage: React.FC = () => {
   const { t } = useTranslation();
+  const { role } = useAuth();
+  const isReadOnly = role === 'admin' || role === 'manager';
+
   const [courses, setCourses] = useState<Course[]>([]);
+  const [allGroups, setAllGroups] = useState<Group[]>([]);
+  const [allStudents, setAllStudents] = useState<UserProfile[]>([]);
+  const [allLessons, setAllLessons] = useState<LessonPlan[]>([]);
+
   const [selectedCourseId, setSelectedCourseId] = useState<string>('');
+  const [selectedGroupId, setSelectedGroupId] = useState<string>('');
   const [date, setDate] = useState<string>(todayFormatted);
   
-  const [students, setStudents] = useState<UserProfile[]>([]);
   const [entries, setEntries] = useState<Record<string, JournalEntry>>({}); // Key: studentId
   
   const [loading, setLoading] = useState(true);
@@ -39,48 +48,60 @@ const JournalPage: React.FC = () => {
 
   const timersRef = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
 
+  // 1. Load initial static data (optimized)
   useEffect(() => {
-    orgGetCourses()
-      .then((data: Course[]) => {
-        setCourses(Array.isArray(data) ? data : []);
-        if (Array.isArray(data) && data.length > 0) {
-          setSelectedCourseId(data[0].id);
-        }
-      })
-      .catch((e: any) => {
-        if (e.message?.includes('403') || e.message?.includes('Forbidden')) {
-          setError(t('common.accessDenied', 'Нет доступа к данным'));
-        } else {
-          toast.error(e.message);
-        }
-      })
-      .finally(() => setLoading(false));
+    setLoading(true);
+    Promise.all([
+      orgGetCourses().catch(() => []),
+      orgGetGroups().catch(() => []),
+      orgGetStudents().catch(() => []),
+      apiGetLessons().catch(() => [])
+    ])
+    .then(([coursesRes, groupsRes, studentsRes, lessonsRes]) => {
+      const c = Array.isArray(coursesRes) ? coursesRes : [];
+      setCourses(c);
+      setAllGroups(Array.isArray(groupsRes) ? groupsRes : []);
+      setAllStudents(Array.isArray(studentsRes) ? studentsRes : []);
+      setAllLessons(Array.isArray(lessonsRes) ? lessonsRes : []);
+
+      if (c.length > 0) {
+        setSelectedCourseId(c[0].id);
+      }
+    })
+    .catch((e: any) => {
+      if (e.message?.includes('403') || e.message?.includes('Forbidden')) {
+        setError(t('common.accessDenied', 'Нет доступа к данным'));
+      } else {
+        toast.error(e.message);
+      }
+    })
+    .finally(() => setLoading(false));
   }, []);
 
-  const loadData = async (courseId: string, targetDate: string) => {
+  // 2. Set default group when course changes
+  const courseGroups = useMemo(() => allGroups.filter(g => g.courseId === selectedCourseId), [allGroups, selectedCourseId]);
+  
+  useEffect(() => {
+    if (courseGroups.length > 0) {
+      if (!courseGroups.find(g => g.id === selectedGroupId)) {
+        setSelectedGroupId(courseGroups[0].id);
+      }
+    } else {
+      setSelectedGroupId('');
+    }
+  }, [courseGroups, selectedCourseId]);
+
+  // 3. Load journal entries when date or course changes
+  const loadJournal = async () => {
+    if (!selectedCourseId || !date) return;
     setLoadingData(true);
     try {
-      const [allGroups, allStudents, journalRes] = await Promise.all([
-        orgGetGroups().catch(() => []),
-        orgGetStudents().catch(() => []),
-        orgGetJournal(courseId).catch(() => [])
-      ]);
-
-      const courseGroups = (Array.isArray(allGroups) ? allGroups as Group[] : []).filter(g => g.courseId === courseId);
-      const studentIds = new Set<string>();
-      courseGroups.forEach(g => g.studentIds.forEach(id => studentIds.add(id)));
-      
-      const enrolledStudents = (allStudents as UserProfile[]).filter(s => studentIds.has(s.uid));
-      setStudents(enrolledStudents);
-
+      const journalRes = await orgGetJournal(selectedCourseId);
+      const dateEntries = (Array.isArray(journalRes) ? journalRes : []).filter((j: any) => j.date === date);
       const entriesMap: Record<string, JournalEntry> = {};
-      
-      // Filter journal by date client-side to avoid composite indexes if missing
-      const dateEntries = (journalRes as JournalEntry[]).filter(j => j.date === targetDate);
-      dateEntries.forEach(j => {
+      dateEntries.forEach((j: any) => {
         entriesMap[j.studentId] = j;
       });
-      
       setEntries(entriesMap);
     } catch (e: any) {
       if (e.message?.includes('403') || e.message?.includes('Forbidden')) {
@@ -94,12 +115,35 @@ const JournalPage: React.FC = () => {
   };
 
   useEffect(() => {
-    if (selectedCourseId && courses.length > 0) {
-      loadData(selectedCourseId, date);
-    }
-  }, [selectedCourseId, date, courses]);
+    loadJournal();
+  }, [selectedCourseId, date]);
 
+  // 4. Derived Data
+  const groupStudents = useMemo(() => {
+    if (!selectedGroupId) return [];
+    const group = allGroups.find(g => g.id === selectedGroupId);
+    if (!group) return [];
+    return allStudents.filter(s => group.studentIds.includes(s.uid));
+  }, [selectedGroupId, allGroups, allStudents]);
+
+  const courseLessons = useMemo(() => {
+    const course = courses.find(c => c.id === selectedCourseId);
+    if (!course || !course.lessonIds) return [];
+    return allLessons.filter(l => course.lessonIds.includes(l.id));
+  }, [courses, selectedCourseId, allLessons]);
+
+  const currentLessonId = useMemo(() => {
+    for (const s of groupStudents) {
+      if (entries[s.uid]?.lessonId) return entries[s.uid].lessonId;
+    }
+    return null;
+  }, [entries, groupStudents]);
+
+
+  // 5. Handlers
   const handleEntryChange = (studentId: string, field: keyof JournalEntry, value: any) => {
+    if (isReadOnly) return;
+
     const prevEntry = entries[studentId];
     
     const newEntry: JournalEntry = {
@@ -111,6 +155,7 @@ const JournalPage: React.FC = () => {
       attendance: prevEntry?.attendance || 'present',
       participation: prevEntry?.participation || undefined,
       note: prevEntry?.note || '',
+      lessonId: prevEntry?.lessonId || currentLessonId || undefined,
       flags: prevEntry?.flags || [],
       version: (prevEntry?.version || 0) + 1,
       organizationId: '', 
@@ -119,7 +164,6 @@ const JournalPage: React.FC = () => {
       updatedAt: ''
     };
 
-    // Apply specific field change
     if (field === 'attendance') newEntry.attendance = value as AttendanceStatus;
     if (field === 'participation') newEntry.participation = value as ParticipationLevel | undefined;
     if (field === 'note') newEntry.note = value as string;
@@ -134,7 +178,6 @@ const JournalPage: React.FC = () => {
         const result = await orgSaveJournal(newEntry);
         setEntries(prev => ({ ...prev, [studentId]: result as JournalEntry }));
 
-        // Award gamification for attendance
         if (field === 'attendance') {
           apiAwardXP({
             type: 'attendance',
@@ -146,7 +189,6 @@ const JournalPage: React.FC = () => {
         }
       } catch (err: any) {
         toast.error('Failed to save entry');
-        // Rollback
         if (prevEntry) {
           setEntries(prev => ({ ...prev, [studentId]: prevEntry }));
         } else {
@@ -157,21 +199,21 @@ const JournalPage: React.FC = () => {
           });
         }
       }
-    }, field === 'note' ? 500 : 50); // fast for toggles, slower for text
+    }, field === 'note' ? 500 : 50);
   };
 
   const handleMarkAllPresent = async () => {
-    if (!selectedCourseId || students.length === 0) return;
+    if (isReadOnly || !selectedCourseId || groupStudents.length === 0) return;
     setBulking(true);
     
-    // Prepare bulk entries
-    const bulkData = students.map(s => {
+    const bulkData = groupStudents.map(s => {
       const existing = entries[s.uid];
       return {
         studentId: s.uid,
         attendance: 'present' as AttendanceStatus,
         participation: existing?.participation,
-        note: existing?.note
+        note: existing?.note,
+        lessonId: existing?.lessonId || currentLessonId || undefined
       };
     });
 
@@ -189,6 +231,65 @@ const JournalPage: React.FC = () => {
       setBulking(false);
     }
   };
+
+  const attachLesson = async (lessonId: string) => {
+    if (isReadOnly || !selectedCourseId || groupStudents.length === 0) {
+      if (groupStudents.length === 0) toast.error('В группе нет студентов');
+      return;
+    }
+    
+    setBulking(true);
+    const bulkData = groupStudents.map(s => {
+      const existing = entries[s.uid];
+      return {
+        studentId: s.uid,
+        attendance: existing?.attendance || 'present', // Give them 'present' default just in case
+        participation: existing?.participation,
+        note: existing?.note,
+        lessonId
+      };
+    });
+
+    try {
+      const res = await orgBulkAttendance(selectedCourseId, date, bulkData);
+      const newMap = { ...entries };
+      (res as JournalEntry[]).forEach(e => { newMap[e.studentId] = e; });
+      setEntries(newMap);
+      toast.success('Урок успешно прикреплен к дате!');
+    } catch(e: any) {
+      toast.error(e.message || 'Ошибка прикрепления урока');
+    } finally {
+      setBulking(false);
+    }
+  };
+
+  const removeAttachedLesson = async () => {
+    if (isReadOnly || !selectedCourseId || groupStudents.length === 0) return;
+    
+    setBulking(true);
+    const bulkData = groupStudents.map(s => {
+      const existing = entries[s.uid];
+      return {
+        studentId: s.uid,
+        attendance: existing?.attendance || 'present',
+        participation: existing?.participation,
+        note: existing?.note,
+        lessonId: '' // Clear lesson
+      };
+    });
+
+    try {
+      const res = await orgBulkAttendance(selectedCourseId, date, bulkData);
+      const newMap = { ...entries };
+      (res as JournalEntry[]).forEach(e => { newMap[e.studentId] = e; });
+      setEntries(newMap);
+      toast.success('Привязка урока снята');
+    } catch(e: any) {
+      toast.error(e.message || 'Ошибка открепления урока');
+    } finally {
+      setBulking(false);
+    }
+  }
 
   if (loading) {
     return <div className="flex justify-center py-20"><div className="w-8 h-8 border-2 border-primary-500 rounded-full animate-spin border-t-transparent" /></div>;
@@ -215,167 +316,278 @@ const JournalPage: React.FC = () => {
   }
 
   return (
-    <div className="space-y-6 max-w-5xl mx-auto">
-      {/* Header & Controls */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-orange-500/10 flex items-center justify-center">
-            <ClipboardList className="w-5 h-5 text-orange-600 dark:text-orange-400" />
-          </div>
-          <div>
-            <h1 className="text-2xl font-bold text-slate-900 dark:text-white">
-              {t('nav.journal', 'Журнал')}
-            </h1>
-            <p className="text-sm text-slate-500 dark:text-slate-400">
-              {t('journal.subtitle', 'Ежедневная перекличка и заметки')}
-            </p>
-          </div>
-        </div>
-
-        <div className="flex flex-wrap items-center gap-3">
-          <select
-            className="px-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-medium outline-none focus:border-primary-500 transition-colors shadow-sm cursor-pointer"
-            value={selectedCourseId}
-            onChange={(e) => setSelectedCourseId(e.target.value)}
-          >
-            {courses.map(c => (
-              <option key={c.id} value={c.id}>{c.title}</option>
-            ))}
-          </select>
-
-          <div className="relative">
-            <Calendar className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
-            <input
-              type="date"
-              className="pl-9 pr-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-medium outline-none focus:border-primary-500 transition-colors shadow-sm cursor-pointer"
-              value={date}
-              onChange={(e) => setDate(e.target.value)}
-            />
+    <div className="flex flex-col xl:flex-row gap-6 max-w-7xl mx-auto">
+      {/* ═ LEFT COLUMN: MAIN JOURNAL ═ */}
+      <div className="flex-1 space-y-6 min-w-0">
+        
+        {/* Header & Controls */}
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-orange-500/10 flex items-center justify-center shrink-0">
+              <ClipboardList className="w-5 h-5 text-orange-600 dark:text-orange-400" />
+            </div>
+            <div>
+              <h1 className="text-2xl font-bold text-slate-900 dark:text-white">
+                {t('nav.journal', 'Журнал')}
+              </h1>
+              <p className="text-sm text-slate-500 dark:text-slate-400">
+                {isReadOnly 
+                  ? 'Режим только для чтения' 
+                  : t('journal.subtitle', 'Ежедневная перекличка и заметки')}
+              </p>
+            </div>
           </div>
 
-          <button
-            onClick={() => loadData(selectedCourseId, date)}
-            className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors border border-transparent dark:hover:border-slate-700"
-            title="Refresh"
-          >
-            <RefreshCcw className="w-4 h-4" />
-          </button>
-        </div>
-      </div>
+          <div className="flex flex-wrap items-center gap-3">
+            <select
+              className="px-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-medium outline-none focus:border-primary-500 transition-colors shadow-sm cursor-pointer"
+              value={selectedCourseId}
+              onChange={(e) => setSelectedCourseId(e.target.value)}
+            >
+              {courses.map(c => (
+                <option key={c.id} value={c.id}>{c.title}</option>
+              ))}
+            </select>
 
-      <div className="flex justify-between items-center bg-slate-50 dark:bg-slate-800/50 p-4 rounded-xl border border-slate-200 dark:border-slate-700/50">
-        <p className="text-sm font-medium text-slate-700 dark:text-slate-300">
-          Студентов в группе: <span className="font-bold">{students.length}</span>
-        </p>
-        <button
-          onClick={handleMarkAllPresent}
-          disabled={loadingData || bulking || students.length === 0}
-          className="flex items-center gap-2 px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white text-sm font-medium rounded-xl transition-colors disabled:opacity-50"
-        >
-          {bulking ? <RefreshCcw className="w-4 h-4 animate-spin" /> : <UserCheck className="w-4 h-4" />}
-          {t('journal.markAllPresent', 'Отметить всех присутствующими')}
-        </button>
-      </div>
+            <select
+              className="px-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-medium outline-none focus:border-primary-500 transition-colors shadow-sm cursor-pointer"
+              value={selectedGroupId}
+              onChange={(e) => setSelectedGroupId(e.target.value)}
+            >
+              {courseGroups.length === 0 ? (
+                <option value="">Нет групп</option>
+              ) : (
+                courseGroups.map(g => (
+                  <option key={g.id} value={g.id}>{g.name}</option>
+                ))
+              )}
+            </select>
 
-      {loadingData ? (
-        <div className="flex flex-col items-center justify-center bg-white dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-2xl p-12">
-          <div className="w-8 h-8 border-2 border-primary-500 border-t-transparent rounded-full animate-spin mb-4" />
-          <p className="text-sm font-medium text-slate-500 animate-pulse">Загрузка переклички...</p>
+            <div className="relative">
+              <Calendar className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+              <input
+                type="date"
+                className="pl-9 pr-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-medium outline-none focus:border-primary-500 transition-colors shadow-sm cursor-pointer"
+                value={date}
+                onChange={(e) => setDate(e.target.value)}
+              />
+            </div>
+
+            <button
+              onClick={loadJournal}
+              className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors border border-transparent dark:hover:border-slate-700"
+              title="Refresh"
+            >
+              <RefreshCcw className="w-4 h-4" />
+            </button>
+          </div>
         </div>
-      ) : students.length === 0 ? (
-        <div className="flex flex-col items-center justify-center bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-12 text-center">
-          <AlertCircle className="w-12 h-12 text-slate-300 dark:text-slate-600 mb-3" />
-          <p className="font-medium text-slate-900 dark:text-white mb-1">Студентов нет</p>
-          <p className="text-sm text-slate-500">В этом курсе пока нет студентов для переклички.</p>
+
+        <div className="flex justify-between items-center bg-slate-50 dark:bg-slate-800/50 p-4 rounded-xl border border-slate-200 dark:border-slate-700/50">
+          <p className="text-sm font-medium text-slate-700 dark:text-slate-300">
+            Студентов в группе: <span className="font-bold">{groupStudents.length}</span>
+          </p>
+          {!isReadOnly && (
+            <button
+              onClick={handleMarkAllPresent}
+              disabled={loadingData || bulking || groupStudents.length === 0}
+              className="flex items-center gap-2 px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white text-sm font-medium rounded-xl transition-colors disabled:opacity-50 shadow-sm"
+            >
+              {bulking ? <RefreshCcw className="w-4 h-4 animate-spin" /> : <UserCheck className="w-4 h-4" />}
+              {t('journal.markAllPresent', 'Отметить всех присутствующими')}
+            </button>
+          )}
         </div>
-      ) : (
-        <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl overflow-hidden shadow-sm">
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-sm whitespace-nowrap">
-              <thead className="bg-slate-50 dark:bg-slate-900/50 border-b border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400">
-                <tr>
-                  <th className="px-5 py-4 font-medium min-w-[200px]">Студент</th>
-                  <th className="px-5 py-4 font-medium text-center w-48">Присутствие</th>
-                  <th className="px-5 py-4 font-medium text-center w-48">Участие</th>
-                  <th className="px-5 py-4 font-medium w-full">Заметка преподавателя</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 dark:divide-slate-700/50">
-                {students.map((student) => {
-                  const entry = entries[student.uid];
-                  // if no entry, give it a visual state of "not marked" 
-                  const isMarked = !!entry;
-                  
-                  return (
-                    <tr key={student.uid} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/50 transition-colors">
-                      <td className="px-5 py-3">
-                        <div className="flex items-center gap-3">
-                          {student.avatarUrl ? (
-                            <img src={student.avatarUrl} alt="" className="w-9 h-9 rounded-full object-cover shrink-0 border border-slate-200 dark:border-slate-700" />
-                          ) : (
-                            <div className="w-9 h-9 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-600 dark:text-slate-300 font-bold text-sm shrink-0 border border-slate-200 dark:border-slate-700">
-                              {student.displayName?.charAt(0).toUpperCase() || '?'}
+
+        {loadingData ? (
+          <div className="flex flex-col items-center justify-center bg-white dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-2xl p-12">
+            <div className="w-8 h-8 border-2 border-primary-500 border-t-transparent rounded-full animate-spin mb-4" />
+            <p className="text-sm font-medium text-slate-500 animate-pulse">Загрузка переклички...</p>
+          </div>
+        ) : groupStudents.length === 0 ? (
+          <div className="flex flex-col items-center justify-center bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-12 text-center shadow-sm">
+            <AlertCircle className="w-12 h-12 text-slate-300 dark:text-slate-600 mb-3" />
+            <p className="font-medium text-slate-900 dark:text-white mb-1">Нет студентов</p>
+            <p className="text-sm text-slate-500">В выбранной группе пока нет студентов для переклички.</p>
+          </div>
+        ) : (
+          <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl overflow-hidden shadow-sm">
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-sm whitespace-nowrap">
+                <thead className="bg-slate-50 dark:bg-slate-900/50 border-b border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400">
+                  <tr>
+                    <th className="px-5 py-4 font-medium min-w-[200px]">Студент</th>
+                    <th className="px-5 py-4 font-medium text-center w-48">Присутствие</th>
+                    <th className="px-5 py-4 font-medium text-center w-48">Участие</th>
+                    <th className="px-5 py-4 font-medium w-full">Заметка преподавателя</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 dark:divide-slate-700/50">
+                  {groupStudents.map((student) => {
+                    const entry = entries[student.uid];
+                    const isMarked = !!entry;
+                    
+                    return (
+                      <tr key={student.uid} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/50 transition-colors">
+                        {/* Student Info */}
+                        <td className="px-5 py-3">
+                          <div className="flex items-center gap-3">
+                            {student.avatarUrl ? (
+                              <img src={student.avatarUrl} alt="" className="w-9 h-9 rounded-full object-cover shrink-0 border border-slate-200 dark:border-slate-700" />
+                            ) : (
+                              <div className="w-9 h-9 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-600 dark:text-slate-300 font-bold text-sm shrink-0 border border-slate-200 dark:border-slate-700">
+                                {student.displayName?.charAt(0).toUpperCase() || '?'}
+                              </div>
+                            )}
+                            <div className="overflow-hidden">
+                              <p className="font-bold text-slate-900 dark:text-white truncate" title={student.displayName}>{student.displayName}</p>
+                              <p className="text-[11px] text-slate-500 truncate" title={student.email}>{student.email}</p>
                             </div>
-                          )}
-                          <div className="overflow-hidden">
-                            <p className="font-bold text-slate-900 dark:text-white truncate" title={student.displayName}>{student.displayName}</p>
-                            <p className="text-[11px] text-slate-500 truncate" title={student.email}>{student.email}</p>
                           </div>
-                        </div>
-                      </td>
-                      <td className="px-5 py-3 text-center">
-                        <div className="inline-flex bg-slate-100 dark:bg-slate-900 rounded-lg p-1 border border-slate-200 dark:border-slate-700">
-                          {(['present', 'absent', 'late', 'excused'] as AttendanceStatus[]).map(status => (
-                            <button
-                              key={status}
-                              onClick={() => handleEntryChange(student.uid, 'attendance', status)}
-                              className={`p-1.5 rounded-md transition-all ${isMarked && entry.attendance === status ? 'bg-white dark:bg-slate-800 shadow-sm' : 'opacity-40 hover:opacity-100'}`}
-                              title={status}
-                            >
-                              {attendanceIcons[status]}
-                            </button>
-                          ))}
-                        </div>
-                      </td>
-                      <td className="px-5 py-3 text-center">
-                        <div className="inline-flex bg-slate-100 dark:bg-slate-900 rounded-lg p-1 border border-slate-200 dark:border-slate-700 text-xs font-medium">
-                          <button
-                            onClick={() => handleEntryChange(student.uid, 'participation', 'low')}
-                            className={`px-3 py-1.5 rounded-md transition-all ${isMarked && entry.participation === 'low' ? 'bg-red-500/10 text-red-600 dark:text-red-400' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}
-                          >
-                            Low
-                          </button>
-                          <button
-                            onClick={() => handleEntryChange(student.uid, 'participation', 'medium')}
-                            className={`px-3 py-1.5 rounded-md transition-all ${isMarked && entry.participation === 'medium' ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}
-                          >
-                            Med
-                          </button>
-                          <button
-                            onClick={() => handleEntryChange(student.uid, 'participation', 'high')}
-                            className={`px-3 py-1.5 rounded-md transition-all ${isMarked && entry.participation === 'high' ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}
-                          >
-                            High
-                          </button>
-                        </div>
-                      </td>
-                      <td className="px-5 py-3">
-                        <input
-                          type="text"
-                          placeholder="Заметки (не видны студенту)..."
-                          className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm outline-none focus:border-primary-500 transition-colors"
-                          value={entry?.note || ''}
-                          onChange={(e) => handleEntryChange(student.uid, 'note', e.target.value)}
-                        />
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+                        </td>
+
+                        {/* Attendance */}
+                        <td className="px-5 py-3 text-center">
+                          <div className={`inline-flex rounded-lg p-1 border ${isReadOnly ? 'bg-transparent border-transparent' : 'bg-slate-100 dark:bg-slate-900 border-slate-200 dark:border-slate-700'}`}>
+                            {(['present', 'absent', 'late', 'excused'] as AttendanceStatus[]).map(status => {
+                              const isActive = isMarked && entry.attendance === status;
+                              if (isReadOnly && !isActive) return null; // Show only marked in read-only
+                              if (isReadOnly && isActive) return (
+                                <div key={status} className="p-1.5 opacity-100">
+                                    {attendanceIcons[status]}
+                                </div>
+                              );
+                              return (
+                                <button
+                                  key={status}
+                                  onClick={() => handleEntryChange(student.uid, 'attendance', status)}
+                                  className={`p-1.5 rounded-md transition-all ${isActive ? 'bg-white dark:bg-slate-800 shadow-sm' : 'opacity-40 hover:opacity-100'}`}
+                                  title={status}
+                                >
+                                  {attendanceIcons[status]}
+                                </button>
+                              )
+                            })}
+                          </div>
+                        </td>
+
+                        {/* Participation */}
+                        <td className="px-5 py-3 text-center">
+                          <div className={`inline-flex rounded-lg p-1 border text-xs font-medium ${isReadOnly ? 'bg-transparent border-transparent' : 'bg-slate-100 dark:bg-slate-900 border-slate-200 dark:border-slate-700'}`}>
+                            {(['low', 'medium', 'high'] as ParticipationLevel[]).map(level => {
+                               const isActive = isMarked && entry.participation === level;
+                               if (isReadOnly && !isActive) return null;
+
+                               let activeClass = '';
+                               if (level === 'low') activeClass = 'bg-red-500/10 text-red-600 dark:text-red-400';
+                               if (level === 'medium') activeClass = 'bg-amber-500/10 text-amber-600 dark:text-amber-400';
+                               if (level === 'high') activeClass = 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400';
+
+                               if (isReadOnly && isActive) {
+                                 return (
+                                   <div key={level} className={`px-3 py-1.5 rounded-md ${activeClass}`}>
+                                      {level.charAt(0).toUpperCase() + level.slice(1)}
+                                   </div>
+                                 )
+                               }
+
+                               return (
+                                <button
+                                  key={level}
+                                  onClick={() => handleEntryChange(student.uid, 'participation', level)}
+                                  className={`px-3 py-1.5 rounded-md transition-all ${isActive ? activeClass : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}
+                                >
+                                  {level.charAt(0).toUpperCase() + level.slice(1)}
+                                </button>
+                               )
+                            })}
+                          </div>
+                        </td>
+
+                        {/* Note */}
+                        <td className="px-5 py-3">
+                          <input
+                            type="text"
+                            placeholder={isReadOnly ? (entry?.note ? '' : "—") : "Заметки (не видны студенту)..."}
+                            readOnly={isReadOnly}
+                            className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm outline-none focus:border-primary-500 transition-colors read-only:outline-none read-only:bg-transparent read-only:border-transparent read-only:px-0"
+                            value={entry?.note || ''}
+                            onChange={(e) => handleEntryChange(student.uid, 'note', e.target.value)}
+                          />
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
           </div>
+        )}
+      </div>
+
+      {/* ═ RIGHT COLUMN: LESSON PLANS ═ */}
+      <div className="w-full xl:w-80 shrink-0 space-y-4">
+        <div className="flex items-center gap-2 mb-4">
+          <BookOpen className="w-5 h-5 text-slate-500" />
+          <h2 className="text-lg font-bold text-slate-900 dark:text-white">
+            Планы уроков
+          </h2>
         </div>
-      )}
+
+        {!selectedCourseId ? (
+           <p className="text-sm text-slate-500">Выберите курс для отображения уроков.</p>
+        ) : courseLessons.length === 0 ? (
+           <div className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200 dark:border-slate-700/50 text-center">
+             <p className="text-sm text-slate-500">К этому курсу не прикрепелены плановые уроки.</p>
+           </div>
+        ) : (
+          <div className="space-y-3">
+            {courseLessons.map(lesson => {
+              const isAttached = currentLessonId === lesson.id;
+              
+              return (
+                <div 
+                  key={lesson.id} 
+                  className={`p-4 rounded-xl border transition-all ${isAttached ? 'bg-primary-50/50 border-primary-200 dark:bg-primary-900/10 dark:border-primary-800' : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700'}`}
+                >
+                  <h3 className="font-bold text-slate-900 dark:text-white text-sm mb-1 leading-tight line-clamp-2">
+                    {lesson.title}
+                  </h3>
+                  <p className="text-xs text-slate-500 mb-3 font-medium">
+                    {lesson.duration} мин • Модуль: {lesson.subject}
+                  </p>
+                  
+                  {isAttached ? (
+                    <div className="flex items-center">
+                      <span className="flex items-center gap-1.5 text-primary-600 dark:text-primary-400 text-[11px] font-bold uppercase tracking-wider bg-primary-100 dark:bg-primary-900/40 px-2 py-1 rounded-md">
+                        <CheckCircle2 className="w-3.5 h-3.5" /> Пройден
+                      </span>
+                      {!isReadOnly && (
+                        <button 
+                          onClick={removeAttachedLesson} 
+                          title="Отменить"
+                          className="p-1 px-1.5 ml-auto text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-md transition-colors"
+                        >
+                          Снять
+                        </button>
+                      )}
+                    </div>
+                  ) : (
+                    <button 
+                      onClick={() => attachLesson(lesson.id)}
+                      disabled={isReadOnly || groupStudents.length === 0 || bulking}
+                      className="w-full py-2 bg-slate-50 dark:bg-slate-700/50 hover:bg-primary-50 hover:text-primary-600 dark:hover:bg-primary-900/20 dark:hover:text-primary-400 border border-slate-200 dark:border-slate-700 hover:border-primary-200 dark:hover:border-primary-800 text-slate-600 dark:text-slate-300 rounded-lg text-xs font-semibold transition-all disabled:opacity-50 disabled:pointer-events-none"
+                    >
+                      Отметить как пройденный
+                    </button>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+        )}
+      </div>
+
     </div>
   );
 };

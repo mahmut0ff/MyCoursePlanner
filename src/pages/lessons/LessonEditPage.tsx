@@ -11,8 +11,8 @@ import Placeholder from '@tiptap/extension-placeholder';
 import { useAuth } from '../../contexts/AuthContext';
 import { createLessonPlan, getLessonPlan, updateLessonPlan } from '../../services/lessons.service';
 import { uploadLessonCover, uploadLessonAttachment, deleteLessonAttachment } from '../../services/storage.service';
-import type { LessonAttachment, Material } from '../../types';
-import { orgGetMaterials } from '../../lib/api';
+import type { LessonAttachment, Material, Course } from '../../types';
+import { orgGetMaterials, orgGetCourses, orgUpdateCourse } from '../../lib/api';
 
 import {
   Save, ArrowLeft, Bold, Italic, Strikethrough, Heading1, Heading2, List,
@@ -72,6 +72,11 @@ const LessonEditPage: React.FC = () => {
   const [isDragging, setIsDragging] = useState(false);
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
 
+  // Courses linkage
+  const [courses, setCourses] = useState<Course[]>([]);
+  const [selectedCourses, setSelectedCourses] = useState<string[]>([]);
+  const [initialCourses, setInitialCourses] = useState<string[]>([]);
+
   const editor = useEditor({
     extensions: [
       StarterKit,
@@ -123,8 +128,17 @@ const LessonEditPage: React.FC = () => {
         .then(setLibMaterials)
         .catch(console.error)
         .finally(() => setLoadingMaterials(false));
+
+      orgGetCourses().then((cs: Course[]) => {
+        setCourses(cs);
+        if (isEdit && id) {
+          const linked = cs.filter(c => c.lessonIds?.includes(id)).map(c => c.id);
+          setSelectedCourses(linked);
+          setInitialCourses(linked);
+        }
+      }).catch(console.error);
     }
-  }, [profile]);
+  }, [profile, isEdit, id]);
 
   const handleCoverUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -254,14 +268,43 @@ const LessonEditPage: React.FC = () => {
         data.homework = null;
       }
       
+      let savedLessonId = id;
       if (isEdit && id) {
         await updateLessonPlan(id, data);
       } else {
-        const newId = await createLessonPlan(data);
-        if (!silent) navigate(`/lessons/${newId}/edit`, { replace: true });
+        savedLessonId = await createLessonPlan(data);
       }
+
+      // Update courses linkage
+      if (savedLessonId) {
+        const addedTo = selectedCourses.filter(cid => !initialCourses.includes(cid));
+        const removedFrom = initialCourses.filter(cid => !selectedCourses.includes(cid));
+
+        const updates = [];
+        
+        for (const cid of addedTo) {
+          const course = courses.find(c => c.id === cid);
+          if (!course) continue;
+          const newLessonIds = [...(course.lessonIds || []), savedLessonId];
+          updates.push(orgUpdateCourse({ id: course.id, lessonIds: newLessonIds }));
+        }
+
+        for (const cid of removedFrom) {
+          const course = courses.find(c => c.id === cid);
+          if (!course) continue;
+          const newLessonIds = (course.lessonIds || []).filter(lid => lid !== savedLessonId);
+          updates.push(orgUpdateCourse({ id: course.id, lessonIds: newLessonIds }));
+        }
+
+        if (updates.length > 0) {
+          await Promise.all(updates);
+          setInitialCourses([...selectedCourses]); // reset initial state after save
+        }
+      }
+
       setLastSaved(new Date());
       if (!silent) toast.success(t('common.saved', 'Успешно сохранено'));
+      if (!isEdit && !silent && savedLessonId) navigate(`/lessons/${savedLessonId}/edit`, { replace: true });
     } catch (e) {
       console.error('Save failed:', e);
       if (!silent) toast.error(t('lessons.saveFailed', 'Ошибка сохранения'));
@@ -507,11 +550,45 @@ const LessonEditPage: React.FC = () => {
                     </div>
                   </div>
 
-                  <div>
+                   <div>
                     <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">{t('lessons.tagsLabel', 'Теги')}</label>
                     <input value={tags} onChange={(e) => setTags(e.target.value)} className="input text-sm" placeholder="Грамматика, Аудирование..." />
                   </div>
                </div>
+            </div>
+
+            {/* Course Linkage Section */}
+            <div className="p-5 border-t border-slate-100 dark:border-slate-700/50">
+              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-3 uppercase tracking-wider">Привязка к курсам</label>
+              {courses.length === 0 ? (
+                <p className="text-xs text-slate-500">Нет доступных курсов</p>
+              ) : (
+                <div className="space-y-2 max-h-[150px] overflow-y-auto custom-scrollbar pr-2">
+                  {courses.map(course => (
+                    <label key={course.id} className="flex items-center gap-2 cursor-pointer group">
+                      <div className={`w-4 h-4 rounded border flex items-center justify-center transition-colors ${
+                        selectedCourses.includes(course.id)
+                          ? 'bg-primary-500 border-primary-500 text-white'
+                          : 'border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 group-hover:border-primary-400'
+                      }`}>
+                        {selectedCourses.includes(course.id) && <CheckCircle2 className="w-3 h-3" />}
+                      </div>
+                      <span className="text-sm text-slate-700 dark:text-slate-300 font-medium truncate select-none">
+                        {course.title}
+                      </span>
+                      <input 
+                        type="checkbox"
+                        className="hidden"
+                        checked={selectedCourses.includes(course.id)}
+                        onChange={(e) => {
+                          if (e.target.checked) setSelectedCourses(prev => [...prev, course.id]);
+                          else setSelectedCourses(prev => prev.filter(id => id !== course.id));
+                        }}
+                      />
+                    </label>
+                  ))}
+                </div>
+              )}
             </div>
 
             <div className="p-5">

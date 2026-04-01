@@ -11,13 +11,18 @@ import {
   apiGetLessons,
   orgGetGradeSchema,
   orgGetGrades,
-  orgSaveGrade
+  orgSaveGrade,
+  orgUpdateCourse
 } from '../../lib/api';
 import type { Course, Group, UserProfile, JournalEntry, AttendanceStatus, ParticipationLevel, LessonPlan, GradeSchema, GradeEntry } from '../../types';
 import GradeCell from '../../components/gradebook/GradeCell';
-import { ClipboardList, Calendar, AlertCircle, AlertTriangle, RefreshCcw, UserCheck, CheckCircle2, XCircle, Clock, FileWarning, BookOpen } from 'lucide-react';
+import { ClipboardList, Calendar, AlertCircle, AlertTriangle, RefreshCcw, UserCheck, CheckCircle2, XCircle, Clock, FileWarning, BookOpen, Plus } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useAuth } from '../../contexts/AuthContext';
+import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
+import type { DragEndEvent } from '@dnd-kit/core';
+import { arrayMove, SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy, useSortable } from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 
 const now = new Date();
 const todayFormatted = now.toISOString().split('T')[0];
@@ -48,6 +53,71 @@ const defaultSchema: GradeSchema = {
   updatedAt: '',
 };
 
+const SortableLessonItem = ({ id, lesson, isAttached, canEdit, groupStudentsLength, bulking, onAttach, onRemove }: any) => {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    zIndex: isDragging ? 20 : 1,
+    boxShadow: isDragging ? '0 10px 25px rgba(0,0,0,0.1)' : 'none',
+    opacity: isDragging ? 0.7 : 1,
+  };
+
+  return (
+    <div 
+      ref={setNodeRef}
+      style={style}
+      {...attributes}
+      className={`p-4 rounded-xl border transition-colors relative group ${isAttached ? 'bg-primary-50/50 border-primary-200 dark:bg-primary-900/10 dark:border-primary-800' : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700'}`}
+    >
+      <div 
+        {...listeners} 
+        className="absolute left-0 top-0 bottom-0 w-8 flex justify-center pt-5 text-slate-300 dark:text-slate-600 cursor-grab active:cursor-grabbing hover:text-slate-500" 
+        title="Перетащить"
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="9" cy="12" r="1"/><circle cx="9" cy="5" r="1"/><circle cx="9" cy="19" r="1"/><circle cx="15" cy="12" r="1"/><circle cx="15" cy="5" r="1"/><circle cx="15" cy="19" r="1"/></svg>
+      </div>
+
+      <div className="pl-6">
+        <h3 className="font-bold text-slate-900 dark:text-white text-sm mb-1 leading-tight line-clamp-2">
+          {lesson.title}
+        </h3>
+        <p className="text-xs text-slate-500 mb-3 font-medium">
+          {lesson.duration} мин • Модуль: {lesson.subject}
+        </p>
+        
+        {isAttached ? (
+          <div className="flex items-center">
+            <span className="flex items-center gap-1.5 text-primary-600 dark:text-primary-400 text-[11px] font-bold uppercase tracking-wider bg-primary-100 dark:bg-primary-900/40 px-2 py-1 rounded-md">
+              <CheckCircle2 className="w-3.5 h-3.5" /> Пройден
+            </span>
+            {canEdit && (
+              <button 
+                onPointerDown={(e) => e.stopPropagation()}
+                onClick={(e) => { e.stopPropagation(); onRemove(); }}
+                title="Отменить"
+                className="p-1 px-1.5 ml-auto text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-md transition-colors font-medium text-xs cursor-pointer z-10 relative"
+              >
+                Снять
+              </button>
+            )}
+          </div>
+        ) : (
+          <button 
+            onPointerDown={(e) => e.stopPropagation()}
+            onClick={(e) => { e.stopPropagation(); onAttach(lesson.id); }}
+            disabled={!canEdit || groupStudentsLength === 0 || bulking}
+            className="w-full py-2 bg-slate-50 dark:bg-slate-700/50 hover:bg-primary-50 hover:text-primary-600 dark:hover:bg-primary-900/20 dark:hover:text-primary-400 border border-slate-200 dark:border-slate-700 hover:border-primary-200 dark:hover:border-primary-800 text-slate-600 dark:text-slate-300 rounded-lg text-xs font-semibold transition-all cursor-pointer relative z-10 disabled:opacity-50 disabled:pointer-events-none"
+          >
+            Отметить как пройденный
+          </button>
+        )}
+      </div>
+    </div>
+  );
+};
+
 const JournalPage: React.FC = () => {
   const { t } = useTranslation();
   const { role } = useAuth();
@@ -57,6 +127,13 @@ const JournalPage: React.FC = () => {
   const [allGroups, setAllGroups] = useState<Group[]>([]);
   const [allStudents, setAllStudents] = useState<UserProfile[]>([]);
   const [allLessons, setAllLessons] = useState<LessonPlan[]>([]);
+  const [isLessonModalOpen, setIsLessonModalOpen] = useState(false);
+  const [lessonToAdd, setLessonToAdd] = useState('');
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+  );
 
   const [selectedCourseId, setSelectedCourseId] = useState<string>('');
   const [selectedGroupId, setSelectedGroupId] = useState<string>('');
@@ -176,7 +253,7 @@ const JournalPage: React.FC = () => {
   const courseLessons = useMemo(() => {
     const course = courses.find(c => c.id === selectedCourseId);
     if (!course || !course.lessonIds) return [];
-    return allLessons.filter(l => course.lessonIds.includes(l.id));
+    return course.lessonIds.map(id => allLessons.find(l => l.id === id)).filter(Boolean) as LessonPlan[];
   }, [courses, selectedCourseId, allLessons]);
 
   const currentLessonId = useMemo(() => {
@@ -337,6 +414,44 @@ const JournalPage: React.FC = () => {
       toast.error(e.message || 'Ошибка массовой отметки');
     } finally {
       setBulking(false);
+    }
+  };
+
+  const handleDragEnd = async (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (over && active.id !== over.id) {
+      const course = courses.find(c => c.id === selectedCourseId);
+      if (!course) return;
+      const oldIndex = (course.lessonIds || []).indexOf(active.id as string);
+      const newIndex = (course.lessonIds || []).indexOf(over.id as string);
+
+      if (oldIndex !== -1 && newIndex !== -1) {
+        const newLessonIds = arrayMove(course.lessonIds || [], oldIndex, newIndex);
+        setCourses(courses.map(c => c.id === selectedCourseId ? { ...c, lessonIds: newLessonIds } : c));
+        try {
+          await orgUpdateCourse({ id: selectedCourseId, lessonIds: newLessonIds });
+        } catch (e) {
+          toast.error('Ошибка сохранения порядка уроков');
+        }
+      }
+    }
+  };
+
+  const handleAddLessonToCourse = async () => {
+    if (!lessonToAdd || !selectedCourseId) return;
+    const course = courses.find(c => c.id === selectedCourseId);
+    if (!course) return;
+    
+    const newLessonIds = [...(course.lessonIds || []), lessonToAdd];
+    const toastId = toast.loading('Добавление...');
+    try {
+      await orgUpdateCourse({ id: selectedCourseId, lessonIds: newLessonIds });
+      setCourses(courses.map(c => c.id === selectedCourseId ? { ...c, lessonIds: newLessonIds } : c));
+      toast.success('Урок добавлен', { id: toastId });
+      setIsLessonModalOpen(false);
+      setLessonToAdd('');
+    } catch {
+      toast.error('Ошибка добавления урока', { id: toastId });
     }
   };
 
@@ -673,66 +788,90 @@ const JournalPage: React.FC = () => {
 
       {/* ═ RIGHT COLUMN: LESSON PLANS ═ */}
       <div className="w-full xl:w-80 shrink-0 space-y-4">
-        <div className="flex items-center gap-2 mb-4">
-          <BookOpen className="w-5 h-5 text-slate-500" />
-          <h2 className="text-lg font-bold text-slate-900 dark:text-white">
-            Планы уроков
-          </h2>
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-2">
+            <BookOpen className="w-5 h-5 text-slate-500" />
+            <h2 className="text-lg font-bold text-slate-900 dark:text-white">
+              Планы уроков
+            </h2>
+          </div>
+          {selectedCourseId && canEdit && (
+             <button onClick={() => setIsLessonModalOpen(true)} className="p-1 px-2 border border-slate-200 dark:border-slate-700 hover:border-primary-400 bg-white dark:bg-slate-800 rounded-lg text-xs font-semibold hover:bg-primary-50 dark:hover:bg-primary-900/20 text-slate-600 dark:text-slate-300 dark:hover:text-primary-400 transition-colors flex items-center gap-1 shadow-sm cursor-pointer z-10">
+                <Plus className="w-3.5 h-3.5" />
+                Урок
+             </button>
+          )}
         </div>
 
         {!selectedCourseId ? (
            <p className="text-sm text-slate-500">Выберите курс для отображения уроков.</p>
         ) : courseLessons.length === 0 ? (
            <div className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200 dark:border-slate-700/50 text-center">
-             <p className="text-sm text-slate-500">К этому курсу не прикрепелены плановые уроки.</p>
+             <p className="text-sm text-slate-500 mb-3">К этому курсу не прикрепелены плановые уроки.</p>
+             {canEdit && (
+               <button onClick={() => setIsLessonModalOpen(true)} className="px-3 py-1.5 bg-primary-50 dark:bg-primary-900/20 text-primary-600 dark:text-primary-400 font-medium text-xs rounded-lg hover:bg-primary-100 dark:hover:bg-primary-900/40 transition-colors cursor-pointer">Добавить с базы</button>
+             )}
            </div>
         ) : (
-          <div className="space-y-3">
-            {courseLessons.map(lesson => {
-              const isAttached = currentLessonId === lesson.id;
-              
-              return (
-                <div 
-                  key={lesson.id} 
-                  className={`p-4 rounded-xl border transition-all ${isAttached ? 'bg-primary-50/50 border-primary-200 dark:bg-primary-900/10 dark:border-primary-800' : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700'}`}
-                >
-                  <h3 className="font-bold text-slate-900 dark:text-white text-sm mb-1 leading-tight line-clamp-2">
-                    {lesson.title}
-                  </h3>
-                  <p className="text-xs text-slate-500 mb-3 font-medium">
-                    {lesson.duration} мин • Модуль: {lesson.subject}
-                  </p>
-                  
-                  {isAttached ? (
-                    <div className="flex items-center">
-                      <span className="flex items-center gap-1.5 text-primary-600 dark:text-primary-400 text-[11px] font-bold uppercase tracking-wider bg-primary-100 dark:bg-primary-900/40 px-2 py-1 rounded-md">
-                        <CheckCircle2 className="w-3.5 h-3.5" /> Пройден
-                      </span>
-                      {canEdit && (
-                        <button 
-                          onClick={removeAttachedLesson} 
-                          title="Отменить"
-                          className="p-1 px-1.5 ml-auto text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-md transition-colors font-medium text-xs"
-                        >
-                          Снять
-                        </button>
-                      )}
-                    </div>
-                  ) : (
-                    <button 
-                      onClick={() => attachLesson(lesson.id)}
-                      disabled={!canEdit || groupStudents.length === 0 || bulking}
-                      className="w-full py-2 bg-slate-50 dark:bg-slate-700/50 hover:bg-primary-50 hover:text-primary-600 dark:hover:bg-primary-900/20 dark:hover:text-primary-400 border border-slate-200 dark:border-slate-700 hover:border-primary-200 dark:hover:border-primary-800 text-slate-600 dark:text-slate-300 rounded-lg text-xs font-semibold transition-all disabled:opacity-50 disabled:pointer-events-none"
-                    >
-                      Отметить как пройденный
-                    </button>
-                  )}
-                </div>
-              )
-            })}
+          <div className="space-y-3 pb-8">
+            <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+              <SortableContext items={courseLessons.map(l => l.id)} strategy={verticalListSortingStrategy}>
+                {courseLessons.map(lesson => (
+                  <SortableLessonItem 
+                    key={lesson.id}
+                    id={lesson.id}
+                    lesson={lesson}
+                    isAttached={currentLessonId === lesson.id}
+                    canEdit={canEdit}
+                    groupStudentsLength={groupStudents.length}
+                    bulking={bulking}
+                    onAttach={attachLesson}
+                    onRemove={removeAttachedLesson}
+                  />
+                ))}
+              </SortableContext>
+            </DndContext>
           </div>
         )}
       </div>
+
+      {/* MODAL = ADD LESSON */}
+      {isLessonModalOpen && selectedCourseId && (
+        <div className="fixed inset-0 z-[100] flex justify-center items-center bg-black/40 backdrop-blur-sm px-4">
+           <div className="bg-white dark:bg-slate-900 w-full max-w-md rounded-2xl shadow-xl border border-slate-200 dark:border-slate-700 overflow-hidden">
+             <div className="p-5 border-b border-slate-100 dark:border-slate-800/80 flex items-center justify-between">
+                <div>
+                  <h3 className="text-lg font-bold text-slate-900 dark:text-white leading-tight">Добавить урок в курс</h3>
+                  <p className="text-[11px] text-slate-500 font-medium mt-0.5">Выберите урок из общей базы знаний</p>
+                </div>
+                <button onClick={() => setIsLessonModalOpen(false)} className="bg-slate-100 dark:bg-slate-800 p-1.5 rounded-lg text-slate-500 hover:text-slate-700 dark:hover:text-slate-300">
+                  <XCircle className="w-5 h-5" />
+                </button>
+             </div>
+             <div className="p-5">
+                <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-2">Существующие уроки</label>
+                <select 
+                  className="input text-sm w-full mb-5" 
+                  value={lessonToAdd} 
+                  onChange={(e) => setLessonToAdd(e.target.value)}
+                >
+                  <option value="" disabled>-- Выберите урок --</option>
+                  {allLessons
+                    .filter(l => !(courses.find(c => c.id === selectedCourseId)?.lessonIds || []).includes(l.id))
+                    .sort((a,b) => a.title.localeCompare(b.title))
+                    .map(l => (
+                      <option key={l.id} value={l.id}>{l.title} ({l.duration} мин)</option>
+                  ))}
+                </select>
+
+                <div className="flex gap-2">
+                  <button onClick={() => setIsLessonModalOpen(false)} className="btn-secondary flex-1 py-2.5">Отмена</button>
+                  <button onClick={handleAddLessonToCourse} disabled={!lessonToAdd} className="btn-primary flex-1 py-2.5 disabled:opacity-50">Добавить</button>
+                </div>
+             </div>
+           </div>
+        </div>
+      )}
 
     </div>
   );

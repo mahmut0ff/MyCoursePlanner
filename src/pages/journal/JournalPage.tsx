@@ -22,13 +22,13 @@ import { useAuth } from '../../contexts/AuthContext';
 const now = new Date();
 const todayFormatted = now.toISOString().split('T')[0];
 
-const yesterdayObj = new Date(now);
-yesterdayObj.setDate(now.getDate() - 1);
-const yesterdayFormatted = yesterdayObj.toISOString().split('T')[0];
+const minDateObj = new Date(now);
+minDateObj.setDate(now.getDate() - 7);
+const minDateFormatted = minDateObj.toISOString().split('T')[0];
 
-const tomorrowObj = new Date(now);
-tomorrowObj.setDate(now.getDate() + 1);
-const tomorrowFormatted = tomorrowObj.toISOString().split('T')[0];
+const maxDateObj = new Date(now);
+maxDateObj.setDate(now.getDate() + 7);
+const maxDateFormatted = maxDateObj.toISOString().split('T')[0];
 
 const attendanceIcons: Record<AttendanceStatus, React.ReactNode> = {
   present: <CheckCircle2 className="w-5 h-5 text-emerald-500" />,
@@ -76,8 +76,8 @@ const JournalPage: React.FC = () => {
 
   const isDateValidForEditing = useMemo(() => {
     if (isReadOnly) return false;
-    // 3 day window restriction for teachers
-    return date === yesterdayFormatted || date === todayFormatted || date === tomorrowFormatted;
+    // 7 day window restriction for teachers (1 week back, 1 week forward)
+    return date >= minDateFormatted && date <= maxDateFormatted;
   }, [date, isReadOnly]);
 
   const canEdit = !isReadOnly && isDateValidForEditing;
@@ -478,8 +478,8 @@ const JournalPage: React.FC = () => {
               <Calendar className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
               <input
                 type="date"
-                min={!isReadOnly ? yesterdayFormatted : undefined}
-                max={!isReadOnly ? tomorrowFormatted : undefined}
+                min={!isReadOnly ? minDateFormatted : undefined}
+                max={!isReadOnly ? maxDateFormatted : undefined}
                 className={`w-full sm:w-auto pl-9 pr-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-medium outline-none focus:border-primary-500 transition-colors shadow-sm cursor-pointer ${!isDateValidForEditing && !isReadOnly ? 'border-red-300 text-red-600 bg-red-50 dark:border-red-900/50 dark:bg-red-900/10' : ''}`}
                 value={date}
                 onChange={(e) => setDate(e.target.value)}
@@ -502,7 +502,7 @@ const JournalPage: React.FC = () => {
               Студентов в группе: <span className="font-bold">{groupStudents.length}</span>
             </p>
             {!isDateValidForEditing && !isReadOnly && (
-               <p className="text-xs text-red-500 mt-1 font-medium">Редактирование блокировано. Можно изменять данные только за сегодня, вчера и завтра.</p>
+               <p className="text-xs text-red-500 mt-1 font-medium">Редактирование блокировано. Можно изменять данные только в пределах прошедшей и будущей недели.</p>
             )}
           </div>
           {canEdit && (

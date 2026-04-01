@@ -15,7 +15,7 @@ import {
 } from '../../lib/api';
 import type { Course, Group, UserProfile, JournalEntry, AttendanceStatus, ParticipationLevel, LessonPlan, GradeSchema, GradeEntry } from '../../types';
 import GradeCell from '../../components/gradebook/GradeCell';
-import { ClipboardList, Calendar, AlertCircle, AlertTriangle, RefreshCcw, UserCheck, CheckCircle2, XCircle, Clock, FileWarning, BookOpen, GraduationCap } from 'lucide-react';
+import { ClipboardList, Calendar, AlertCircle, AlertTriangle, RefreshCcw, UserCheck, CheckCircle2, XCircle, Clock, FileWarning, BookOpen } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useAuth } from '../../contexts/AuthContext';
 
@@ -545,8 +545,6 @@ const JournalPage: React.FC = () => {
                   {groupStudents.map((student) => {
                     const entry = entries[student.uid];
                     const isMarked = !!entry;
-                    const gradeKey = currentLessonId ? `${student.uid}_${currentLessonId}` : '';
-                    const gradeEntry = currentLessonId ? grades[gradeKey] : undefined;
                     
                     return (
                       <tr key={student.uid} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/50 transition-colors">

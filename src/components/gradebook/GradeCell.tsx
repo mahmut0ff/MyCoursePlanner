@@ -113,7 +113,8 @@ const GradeCell: React.FC<GradeCellProps> = ({ studentId, itemId, value, schema,
       <input
         ref={inputRef}
         type="text"
-        className="w-full h-full min-h-[48px] text-center bg-white dark:bg-slate-800 text-sm font-bold text-slate-900 dark:text-white outline-none ring-2 ring-inset ring-primary-500 shadow-[0_0_15px_rgba(99,102,241,0.2)] z-20 relative"
+        placeholder={schema.gradingType === 'points' || schema.gradingType === 'percent' ? `Макс: ${schema.scale.max}` : ''}
+        className="w-full h-full min-h-[48px] text-center bg-white dark:bg-slate-800 text-sm font-bold text-slate-900 dark:text-white outline-none ring-2 ring-inset ring-primary-500 shadow-[0_0_15px_rgba(99,102,241,0.2)] z-20 relative placeholder:font-normal placeholder:text-xs placeholder:text-slate-300"
         value={tempVal}
         onChange={(e) => setTempVal(e.target.value)}
         onBlur={() => handleCommitAndMove('none')}

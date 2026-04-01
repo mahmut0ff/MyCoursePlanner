@@ -7,7 +7,7 @@ import { ClipboardCheck, Sparkles, CheckCircle, Clock, XCircle } from 'lucide-re
 import toast from 'react-hot-toast';
 
 const HomeworkReviewPage: React.FC = () => {
-  const { organizationId } = useAuth();
+  const { organizationId, role, profile } = useAuth();
   const { canAccess } = usePlanGate();
   
   const [submissions, setSubmissions] = useState<HomeworkSubmission[]>([]);
@@ -26,7 +26,21 @@ const HomeworkReviewPage: React.FC = () => {
     setLoading(true);
     try {
       const data = await apiOrgGetHomeworks(organizationId);
-      setSubmissions(data);
+      let filteredData = data;
+      
+      // If user is a teacher, only show submissions for students in their assigned groups
+      if (role === 'teacher' && profile?.uid) {
+        // we can fetch groups dynamically here or use imported orgGetGroups
+        const { orgGetGroups } = await import('../../lib/api');
+        const groups = await orgGetGroups();
+        const teacherGroups = (groups as any[]).filter(g => g.teacherIds?.includes(profile.uid));
+        const studentIds = new Set<string>();
+        teacherGroups.forEach(g => g.studentIds?.forEach((id: string) => studentIds.add(id)));
+        
+        filteredData = data.filter((sub: HomeworkSubmission) => studentIds.has(sub.studentId));
+      }
+      
+      setSubmissions(filteredData);
     } catch (e) {
       toast.error('Failed to load homework submissions');
     } finally {

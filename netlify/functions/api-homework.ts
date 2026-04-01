@@ -38,9 +38,10 @@ export const handler: Handler = async (event: HandlerEvent) => {
         const snap = await adminDb.collection(COLLECTION)
           .where('lessonId', '==', params.lessonId)
           .where('organizationId', '==', params.orgId || '')
-          .orderBy('submittedAt', 'desc')
           .get();
-        return ok(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+        const docs = snap.docs.map(d => ({ id: d.id, ...d.data() } as any));
+        docs.sort((a, b) => new Date(b.submittedAt).getTime() - new Date(a.submittedAt).getTime());
+        return ok(docs);
       }
     }
     
@@ -48,9 +49,10 @@ export const handler: Handler = async (event: HandlerEvent) => {
     if (params.orgId) {
       const snap = await adminDb.collection(COLLECTION)
         .where('organizationId', '==', params.orgId)
-        .orderBy('submittedAt', 'desc')
         .get();
-      return ok(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+      const docs = snap.docs.map(d => ({ id: d.id, ...d.data() } as any));
+      docs.sort((a, b) => new Date(b.submittedAt).getTime() - new Date(a.submittedAt).getTime());
+      return ok(docs);
     }
     
     return badRequest('lessonId or orgId required');

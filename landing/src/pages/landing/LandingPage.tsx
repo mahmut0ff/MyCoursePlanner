@@ -9,8 +9,8 @@ import {
  Globe, Sparkles, Crown, Menu, X, Users,
  MessageCircle, Mail, MapPin, Phone, Award,
  Layers, Lock, FileText, Target, Gamepad2,
- GraduationCap, Building2, Laptop, School,
- Bot, PenTool, LayoutGrid, Database,
+ GraduationCap, Laptop,
+ Bot, PenTool, LayoutGrid, Database, Briefcase, Building2
 } from 'lucide-react';
 
 /* ──────────────────────────────────────────
@@ -26,10 +26,10 @@ const LandingPage: React.FC = () => {
  const featureCategories = [
  {
  id: 'core',
- icon: Building2,
+ icon: Briefcase,
  title: t('landing.catCore'),
  items: [
- { icon: Building2, label: t('landing.coreMultiTenant') },
+ { icon: Briefcase, label: t('landing.coreMultiTenant') },
  { icon: Shield, label: t('landing.coreRbac') },
  { icon: Zap, label: t('landing.coreBilling') },
  { icon: Lock, label: t('landing.coreAudit') },
@@ -68,8 +68,8 @@ const LandingPage: React.FC = () => {
  icon: Bot,
  title: t('landing.catAi'),
  items: [
- { icon: Bot, label: t('landing.aiGenerateLessons') },
- { icon: Brain, label: t('landing.aiGenerateTests') },
+ { icon: Bot, label: t('landing.aiTelegramBot') },
+ { icon: MessageCircle, label: t('landing.aiClientSupport') },
  { icon: Sparkles, label: t('landing.aiEvaluate') },
  ],
  color: 'from-amber-500 to-orange-500',
@@ -144,9 +144,7 @@ const LandingPage: React.FC = () => {
 
  /* ── Use cases ── */
  const useCases = [
- { icon: School, title: t('landing.ucSchools'), desc: t('landing.ucSchoolsDesc') },
  { icon: GraduationCap, title: t('landing.ucTraining'), desc: t('landing.ucTrainingDesc') },
- { icon: Building2, title: t('landing.ucCorporate'), desc: t('landing.ucCorporateDesc') },
  { icon: Laptop, title: t('landing.ucOnline'), desc: t('landing.ucOnlineDesc') },
  ];
 
@@ -260,139 +258,56 @@ const LandingPage: React.FC = () => {
  </div>
  </section>
 
-  {/* ═══ AI Features Highlight ═══ */}
-  <section className="py-24 px-6 relative overflow-hidden bg-slate-900 border-y border-slate-800">
-    <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-violet-600/20 rounded-full blur-[100px] pointer-events-none" />
-    <div className="absolute bottom-0 left-0 w-[500px] h-[500px] bg-primary-600/20 rounded-full blur-[100px] pointer-events-none" />
-    
-    <div className="max-w-7xl mx-auto relative z-10">
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
-        {/* Text Content */}
-        <div>
-          <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-indigo-500/10 border border-indigo-500/20 rounded-full text-sm font-medium text-indigo-300 mb-6">
-            <Sparkles className="w-4 h-4" />
-            Planula AI (Gemini 1.5)
-          </div>
-          <h2 className="text-4xl md:text-5xl font-extrabold text-white mb-6 leading-tight">
-            Автоматизируйте создание тестов с <span className="bg-gradient-to-r from-violet-400 to-primary-400 bg-clip-text text-transparent">Искусственным Интеллектом</span>
-          </h2>
-          <p className="text-lg text-slate-400 mb-8 leading-relaxed">
-            Наш встроенный ИИ мгновенно превращает ваши материалы в готовые экзамены и викторины. Задайте промпт или загрузите PDF, остальное сделает магия нейросетей.
-          </p>
-          
-          <div className="space-y-6">
-            <div className="flex gap-4">
-              <div className="w-12 h-12 rounded-xl bg-violet-500/10 flex items-center justify-center shrink-0 border border-violet-500/20">
-                <Brain className="w-6 h-6 text-violet-400" />
-              </div>
-              <div>
-                <h3 className="text-xl font-bold text-white mb-2">Мгновенная генерация вопросов</h3>
-                <p className="text-slate-400 leading-relaxed md:text-sm">Загрузите файл с теорией или введите тему промптом. ИИ сам придумает вопросы, неверные ответы и пояснения.</p>
-              </div>
-            </div>
-            <div className="flex gap-4">
-              <div className="w-12 h-12 rounded-xl bg-primary-500/10 flex items-center justify-center shrink-0 border border-primary-500/20">
-                <Check className="w-6 h-6 text-primary-400" />
-              </div>
-              <div>
-                <h3 className="text-xl font-bold text-white mb-2">Объективная оценка и фидбек</h3>
-                <p className="text-slate-400 leading-relaxed md:text-sm">Автоматическая оценка экономит ваше время, а студенты сразу получают исчерпывающее объяснение своих ошибок.</p>
-              </div>
-            </div>
-          </div>
-        </div>
 
-        {/* Visual/Card */}
-        <div className="relative mt-8 lg:mt-0">
-          <div className="absolute inset-0 bg-gradient-to-tr from-violet-600 to-primary-600 rounded-3xl blur-[40px] opacity-20 animate-pulse" />
-          <div className="relative bg-slate-800/80 backdrop-blur-2xl border border-slate-700/50 p-8 rounded-3xl shadow-2xl">
-            <div className="flex items-center gap-3 border-b border-slate-700/50 pb-5 mb-6">
-              <div className="w-12 h-12 rounded-2xl bg-slate-700/50 flex items-center justify-center shrink-0 border border-slate-600/50">
-                 <Bot className="w-6 h-6 text-violet-400" />
-              </div>
-              <div>
-                <h4 className="text-white font-bold text-sm">AI Assistant</h4>
-                <p className="text-xs text-slate-400">В процессе генерации...</p>
-              </div>
-            </div>
-            
-            <div className="space-y-5">
-              <div className="bg-slate-900/60 p-4 rounded-xl border border-slate-700/50 relative">
-                <p className="text-sm text-slate-300 italic">«Создай сложный тест по астрономии на 15 вопросов для 11 класса»</p>
-                <div className="absolute -left-[5px] top-1/2 w-1 h-8 bg-indigo-500 -translate-y-1/2 rounded-full" />
-              </div>
-              
-              <div className="flex gap-2 py-1 px-3">
-                <div className="w-2 h-2 bg-violet-400 rounded-full animate-bounce" />
-                <div className="w-2 h-2 bg-violet-400 rounded-full animate-bounce [animation-delay:0.2s]" />
-                <div className="w-2 h-2 bg-violet-400 rounded-full animate-bounce [animation-delay:0.4s]" />
-              </div>
-              
-              <div className="bg-violet-500/10 p-5 rounded-xl border border-violet-500/20 shadow-inner">
-                <p className="text-sm text-violet-200 font-bold mb-3 flex items-center gap-2">
-                  <Check className="w-4 h-4 text-emerald-400" /> 
-                  15 вопросов успешно создано
-                </p>
-                <ul className="text-xs text-violet-300/80 space-y-2">
-                  <li className="flex items-center gap-2">
-                    <div className="w-1.5 h-1.5 rounded-full bg-violet-400" />
-                    Готовые форматы вопросов (JSON)
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <div className="w-1.5 h-1.5 rounded-full bg-violet-400" />
-                    Добавлены пояснения решений
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <div className="w-1.5 h-1.5 rounded-full bg-violet-400" />
-                    Автоматическая шкала баллов
-                  </li>
-                </ul>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  </section>
 
- {/* ═══ Stats ═══ */}
-
-  {/* ═══ AI Assistant Manager Highlight ═══ */}
+  {/* ═══ AI Telegram Bot Highlight ═══ */}
   <section className="py-24 px-6 relative overflow-hidden bg-white border-b border-slate-100">
     <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-primary-600/5 rounded-full blur-[100px] pointer-events-none" />
-    <div className="absolute bottom-0 left-0 w-[500px] h-[500px] bg-sky-600/5 rounded-full blur-[100px] pointer-events-none" />
+    <div className="absolute bottom-0 left-0 w-[500px] h-[500px] bg-blue-600/5 rounded-full blur-[100px] pointer-events-none" />
     
     <div className="max-w-7xl mx-auto relative z-10">
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
         
         {/* Visual/Card */}
         <div className="relative mt-8 lg:mt-0 order-2 lg:order-1">
-          <div className="absolute inset-0 bg-gradient-to-tr from-sky-400 to-primary-400 rounded-3xl blur-[40px] opacity-20 animate-pulse" />
-          <div className="relative bg-white border border-slate-200 p-8 rounded-3xl shadow-2xl">
-            <div className="flex items-center gap-3 border-b border-slate-100 pb-5 mb-6">
-              <div className="w-12 h-12 rounded-2xl bg-sky-50 flex items-center justify-center shrink-0 border border-sky-100">
-                 <Bot className="w-6 h-6 text-sky-500" />
+          <div className="absolute inset-0 bg-gradient-to-tr from-blue-400 to-primary-400 rounded-3xl blur-[40px] opacity-20 animate-pulse" />
+          <div className="relative bg-[#f5f7fb] border border-slate-200 rounded-3xl shadow-2xl overflow-hidden flex flex-col h-[400px]">
+            {/* Telegram Header */}
+            <div className="flex items-center gap-3 bg-white px-5 py-4 shadow-sm z-10">
+              <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center shrink-0 border border-blue-200">
+                 <Bot className="w-5 h-5 text-blue-500" />
               </div>
-              <div>
-                <h4 className="text-slate-900 font-bold text-sm">AI-менеджер платформы</h4>
-                <p className="text-xs text-emerald-500 flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span> В сети</p>
+              <div className="flex-1">
+                <h4 className="text-slate-900 font-bold text-sm">Центр Обучения Bot</h4>
+                <p className="text-[11px] text-blue-500">bot</p>
               </div>
             </div>
             
-            <div className="space-y-4">
+            {/* Telegram Chat Body */}
+            <div className="flex-1 p-5 space-y-4 overflow-y-auto bg-[#e6ebe9] bg-opacity-40" style={{ backgroundImage: 'url("https://web.telegram.org/a/chat-bg-pattern-dark.png")', backgroundBlendMode: 'overlay', opacity: 0.95 }}>
               <div className="flex justify-end">
-                 <div className="bg-primary-600 text-white p-4 rounded-2xl rounded-br-none text-sm max-w-[85%] shadow-sm">
-                    Здравствуйте! Подскажите, когда начинается набор на курс "Frontend Разработчик"? И какая цена?
+                 <div className="bg-[#eef2fb] border border-blue-100 text-slate-800 p-3 rounded-2xl rounded-br-sm text-sm max-w-[85%] shadow-sm">
+                    Здравствуйте! Подскажите, когда начинается набор на курс "Frontend Разработчик"? Και какая цена?
+                    <span className="block text-right text-[10px] text-slate-400 mt-1">14:00 <Check className="w-3 h-3 inline text-blue-500" /></span>
                  </div>
               </div>
               
               <div className="flex justify-start">
-                 <div className="bg-slate-50 border border-slate-100 text-slate-700 p-4 rounded-2xl rounded-bl-none text-sm max-w-[90%] space-y-3 shadow-sm">
+                 <div className="bg-white border border-slate-100 text-slate-800 p-3 rounded-2xl rounded-bl-sm text-sm max-w-[85%] space-y-2 shadow-sm relative">
                     <p>Привет! 👋</p>
-                    <p>Набор на курс <strong>«Frontend Разработчик»</strong> уже открыт! Ближайшая группа стартует 15-го числа следующего месяца.</p>
-                    <p>Длительность курса — 3 месяца. Стоимость составляет <span className="text-primary-600 font-semibold">120 000 ₸</span> в месяц.</p>
-                    <div className="pt-2 border-t border-slate-200 text-[10px] text-slate-400">Сгенерировано AI на основе ваших данных</div>
+                    <p>Набор на курс <strong>«Frontend Разработчик»</strong> уже открыт! Ближайшая группа стартует 15-го числа.</p>
+                    <p>Стоимость — <span className="text-primary-600 font-medium">120 000 ₸</span>/мес.</p>
+                    <span className="block text-right text-[10px] text-slate-400 mt-1">14:01</span>
                  </div>
+              </div>
+            </div>
+            
+            {/* Telegram Input */}
+            <div className="bg-white p-3 flex items-center gap-3">
+              <div className="w-6 h-6 rounded-full border-2 border-slate-300 text-slate-300 flex justify-center items-center shrink-0"><span className="text-xs">+</span></div>
+              <div className="flex-1 bg-slate-100 h-9 rounded-full px-4 flex items-center text-sm text-slate-400">Message...</div>
+              <div className="w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center shrink-0">
+                <svg className="w-4 h-4 text-white ml-0.5" fill="currentColor" viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
               </div>
             </div>
           </div>
@@ -400,25 +315,25 @@ const LandingPage: React.FC = () => {
 
         {/* Text Content */}
         <div className="order-1 lg:order-2">
-          <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-sky-50 border border-sky-100 rounded-full text-sm font-medium text-sky-600 mb-6">
+          <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-blue-50 border border-blue-100 rounded-full text-sm font-medium text-blue-600 mb-6">
             <MessageCircle className="w-4 h-4" />
-            AI Менеджер Организации
+            Умный Telegram Бот
           </div>
           <h2 className="text-4xl md:text-5xl font-extrabold text-slate-900 mb-6 leading-tight">
-            Освободите время с <span className="bg-gradient-to-r from-sky-500 to-primary-500 bg-clip-text text-transparent">Умным ИИ-Ассистентом</span>
+            Автоматизируйте продажи с <span className="bg-gradient-to-r from-blue-500 to-indigo-500 bg-clip-text text-transparent">Telegram ИИ-Ассистентом</span>
           </h2>
           <p className="text-lg text-slate-500 mb-8 leading-relaxed">
-            Поручите работу с клиентами искусственному интеллекту! Ваш персональный ИИ-ассистент работает 24/7 на странице вашей организации и мгновенно отвечает на вопросы будущих учеников.
+            Подключите нейросеть к вашему Telegram-боту! Ваш ИИ-ассистент будет 24/7 общаться с клиентами прямо в мессенджере, отвечая на основе данных платформы — вы настраиваете его изнутри Planula.
           </p>
           
           <div className="space-y-6">
             <div className="flex gap-4">
-              <div className="w-12 h-12 rounded-xl bg-sky-50 flex items-center justify-center shrink-0 border border-sky-100">
-                <Database className="w-6 h-6 text-sky-500" />
+              <div className="w-12 h-12 rounded-xl bg-blue-50 flex items-center justify-center shrink-0 border border-blue-100">
+                <Database className="w-6 h-6 text-blue-500" />
               </div>
               <div>
-                <h3 className="text-xl font-bold text-slate-900 mb-2">Знает всё о ваших курсах</h3>
-                <p className="text-slate-500 leading-relaxed md:text-sm">ИИ автоматически обучается на базе ваших загруженных курсов, установленных цен, адресов филиалов и расписания. Никаких выдуманных фактов!</p>
+                <h3 className="text-xl font-bold text-slate-900 mb-2">Обучается на ваших курсах</h3>
+                <p className="text-slate-500 leading-relaxed md:text-sm">Бот знает ваши курсы, цены и расписание. Настройки синхронизируются с нашей платформой — никаких выдуманных фактов!</p>
               </div>
             </div>
             <div className="flex gap-4">
@@ -426,8 +341,8 @@ const LandingPage: React.FC = () => {
                 <Shield className="w-6 h-6 text-emerald-500" />
               </div>
               <div>
-                <h3 className="text-xl font-bold text-slate-900 mb-2">Безопасность и тотальный контроль</h3>
-                <p className="text-slate-500 leading-relaxed md:text-sm">Вы полностью контролируете поведение бота: задавайте стартовые сообщения, описывайте политику зачисления и редактируйте FAQ. Бот отвечает строго по скрипту.</p>
+                <h3 className="text-xl font-bold text-slate-900 mb-2">Настраивайте прямо в платформе</h3>
+                <p className="text-slate-500 leading-relaxed md:text-sm">Задавайте промпты, стартовые сообщения и редактируйте FAQ прямо в админке. Бот отвечает строго по вашему скрипту в Telegram.</p>
               </div>
             </div>
           </div>
@@ -462,57 +377,86 @@ const LandingPage: React.FC = () => {
  </div>
  ))}
  </div>
-
- {/* New Massive CTA to Detail Features Page */}
- <div className="mt-16 bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 rounded-3xl p-10 md:p-14 border border-slate-700 shadow-2xl relative overflow-hidden group">
- <div className="absolute top-0 right-0 w-[400px] h-[400px] bg-primary-600/20 rounded-full blur-[80px] group-hover:bg-primary-500/30 transition-colors pointer-events-none" />
- <div className="absolute bottom-[-100px] left-[-100px] w-[300px] h-[300px] bg-violet-600/20 rounded-full blur-[80px] group-hover:bg-violet-500/30 transition-colors pointer-events-none" />
- 
- <div className="relative z-10 flex flex-col items-center text-center gap-8 max-w-3xl mx-auto">
- <div>
- <h3 className="text-3xl md:text-5xl font-extrabold text-white mb-6 leading-tight">Безграничные возможности платформы</h3>
- <p className="text-lg text-slate-400 mb-0 leading-relaxed">Мощное управление учебным центром, передовые технологии ИИ, продвинутая геймификация для студентов и полная оптимизация рабочих процессов. Узнайте всё, на что способен Planula.</p>
- </div>
- <div className="shrink-0 relative z-20">
- <Link to="/features" className="inline-flex items-center gap-3 bg-white text-slate-900 font-bold px-8 py-4 rounded-xl hover:bg-slate-50 transition-all shadow-xl hover:shadow-white/20 hover:scale-[1.02]">
- <Layers className="w-5 h-5 text-primary-600" />
- Смотреть весь функционал
- <ArrowRight className="w-5 h-5 ml-1" />
- </Link>
- </div>
- </div>
- </div>
-
  </div>
  </section>
 
- {/* ═══ Why Us ═══ */}
- <section className="py-20 px-6">
- <div className="max-w-7xl mx-auto">
- <div className="text-center mb-16">
- <h2 className="text-3xl md:text-4xl font-extrabold mb-4">{t('landing.whyUsTitle')}</h2>
- <p className="text-lg text-slate-500 max-w-2xl mx-auto">{t('landing.whyUsSubtitle')}</p>
- </div>
- <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-5xl mx-auto">
- {[
- { icon: Layers, title: t('landing.why1Title'), desc: t('landing.why1Desc'), gradient: 'from-blue-500 to-cyan-500' },
- { icon: Building2, title: t('landing.why2Title'), desc: t('landing.why2Desc'), gradient: 'from-violet-500 to-purple-500' },
- { icon: Brain, title: t('landing.why3Title'), desc: t('landing.why3Desc'), gradient: 'from-amber-500 to-orange-500' },
- { icon: Shield, title: t('landing.why4Title'), desc: t('landing.why4Desc'), gradient: 'from-emerald-500 to-teal-500' },
- { icon: Zap, title: t('landing.why5Title'), desc: t('landing.why5Desc'), gradient: 'from-rose-500 to-pink-500' },
- { icon: Globe, title: t('landing.why6Title'), desc: t('landing.why6Desc'), gradient: 'from-indigo-500 to-blue-500' },
- ].map((item, i) => (
- <div key={i} className="relative p-6 rounded-2xl bg-white border border-slate-100 hover:shadow-lg transition-shadow group">
- <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${item.gradient} flex items-center justify-center mb-4 shadow-lg group-hover:scale-110 transition-transform`}>
- <item.icon className="w-6 h-6 text-white" />
- </div>
- <h3 className="text-lg font-bold mb-2">{item.title}</h3>
- <p className="text-sm text-slate-500 leading-relaxed">{item.desc}</p>
- </div>
- ))}
- </div>
- </div>
- </section>
+  {/* ═══ Why Us ═══ */}
+  <section className="py-20 px-6">
+  <div className="max-w-7xl mx-auto">
+  <div className="text-center mb-16">
+  <h2 className="text-3xl md:text-4xl font-extrabold mb-4">{t('landing.whyUsTitle')}</h2>
+  <p className="text-lg text-slate-500 max-w-2xl mx-auto">{t('landing.whyUsSubtitle')}</p>
+  </div>
+  <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-5xl mx-auto">
+  {[
+  { icon: Layers, title: t('landing.why1Title'), desc: t('landing.why1Desc'), gradient: 'from-blue-500 to-cyan-500' },
+  { icon: Building2, title: t('landing.why2Title'), desc: t('landing.why2Desc'), gradient: 'from-violet-500 to-purple-500' },
+  { icon: Brain, title: t('landing.why3Title'), desc: t('landing.why3Desc'), gradient: 'from-amber-500 to-orange-500' },
+  { icon: Shield, title: t('landing.why4Title'), desc: t('landing.why4Desc'), gradient: 'from-emerald-500 to-teal-500' },
+  { icon: Zap, title: t('landing.why5Title'), desc: t('landing.why5Desc'), gradient: 'from-rose-500 to-pink-500' },
+  { icon: Globe, title: t('landing.why6Title'), desc: t('landing.why6Desc'), gradient: 'from-indigo-500 to-blue-500' },
+  ].map((item, i) => (
+  <div key={i} className="relative p-6 rounded-2xl bg-white border border-slate-100 hover:shadow-lg transition-shadow group">
+  <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${item.gradient} flex items-center justify-center mb-4 shadow-lg group-hover:scale-110 transition-transform`}>
+  <item.icon className="w-6 h-6 text-white" />
+  </div>
+  <h3 className="text-lg font-bold mb-2">{item.title}</h3>
+  <p className="text-sm text-slate-500 leading-relaxed">{item.desc}</p>
+  </div>
+  ))}
+  </div>
+  </div>
+  </section>
+
+  {/* ═══ Roles: Students & Teachers ═══ */}
+  <section className="py-24 px-6 relative overflow-hidden bg-white">
+  <div className="max-w-7xl mx-auto">
+  <div className="text-center mb-16">
+  <h2 className="text-3xl md:text-4xl font-extrabold mb-4">{t('landing.rolesTitle')}</h2>
+  <p className="text-lg text-slate-500 max-w-2xl mx-auto">{t('landing.rolesSubtitle')}</p>
+  </div>
+  
+  <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+  {/* Student Card */}
+  <div className="bg-slate-50 rounded-3xl p-8 lg:p-10 border border-slate-100 hover:shadow-2xl transition-all hover:-translate-y-1 relative overflow-hidden group">
+  <div className="absolute top-0 right-0 w-48 h-48 bg-violet-200/40 rounded-full blur-3xl group-hover:bg-violet-300/40 transition-colors pointer-events-none" />
+  <div className="w-16 h-16 bg-white rounded-2xl flex items-center justify-center mb-6 border border-slate-200 shadow-sm">
+  <Users className="w-8 h-8 text-violet-500" />
+  </div>
+  <h3 className="text-2xl font-bold text-slate-900 mb-4">{t('landing.roleStudent')}</h3>
+  <p className="text-slate-500 leading-relaxed mb-8">{t('landing.roleStudentDesc')}</p>
+  
+  <ul className="space-y-4">
+  {[1, 2, 3].map((i) => (
+  <li key={i} className="flex items-start gap-3">
+  <Check className="w-5 h-5 text-violet-500 shrink-0 mt-0.5" />
+  <span className="text-slate-600 font-medium text-sm leading-relaxed">{t(`landing.roleStudentF${i}`)}</span>
+  </li>
+  ))}
+  </ul>
+  </div>
+
+  {/* Teacher Card */}
+  <div className="bg-slate-50 rounded-3xl p-8 lg:p-10 border border-slate-100 hover:shadow-2xl transition-all hover:-translate-y-1 relative overflow-hidden group">
+  <div className="absolute top-0 right-0 w-48 h-48 bg-primary-200/40 rounded-full blur-3xl group-hover:bg-primary-300/40 transition-colors pointer-events-none" />
+  <div className="w-16 h-16 bg-white rounded-2xl flex items-center justify-center mb-6 border border-slate-200 shadow-sm">
+  <Briefcase className="w-8 h-8 text-primary-500" />
+  </div>
+  <h3 className="text-2xl font-bold text-slate-900 mb-4">{t('landing.roleTeacher')}</h3>
+  <p className="text-slate-500 leading-relaxed mb-8">{t('landing.roleTeacherDesc')}</p>
+  
+  <ul className="space-y-4">
+  {[1, 2, 3].map((i) => (
+  <li key={i} className="flex items-start gap-3">
+  <Check className="w-5 h-5 text-primary-500 shrink-0 mt-0.5" />
+  <span className="text-slate-600 font-medium text-sm leading-relaxed">{t(`landing.roleTeacherF${i}`)}</span>
+  </li>
+  ))}
+  </ul>
+  </div>
+  </div>
+  </div>
+  </section>
 
  {/* ═══ Use Cases ═══ */}
  <section className="py-20 px-6 bg-slate-50 ">
@@ -521,7 +465,7 @@ const LandingPage: React.FC = () => {
  <h2 className="text-3xl md:text-4xl font-extrabold mb-4">{t('landing.useCasesTitle')}</h2>
  <p className="text-lg text-slate-500 max-w-2xl mx-auto">{t('landing.useCasesSubtitle')}</p>
  </div>
- <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 max-w-5xl mx-auto">
+ <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 max-w-3xl mx-auto">
  {useCases.map((uc, i) => (
  <div key={i} className="text-center p-8 bg-white rounded-2xl border border-slate-100 hover:shadow-xl transition-all group">
  <div className="w-16 h-16 mx-auto bg-primary-50 rounded-2xl flex items-center justify-center mb-5 group-hover:scale-110 transition-transform">
@@ -573,7 +517,7 @@ const LandingPage: React.FC = () => {
  ))}
  </ul>
  <Link to="/register" className={`block w-full text-center py-3 rounded-xl font-semibold text-sm transition-all ${plan.popular ? 'bg-white text-primary-700 hover:bg-slate-100' : 'bg-primary-600 text-white hover:bg-primary-700 shadow-lg shadow-primary-500/20'}`}>
- {plan.price === 0 ? t('landing.startFree') : t('landing.startTrial')}
+ {plan.id === 'basic' ? t('landing.startTrial14') : t('landing.startTrial3')}
  </Link>
  </div>
  ))}

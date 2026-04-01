@@ -531,14 +531,14 @@ const JournalPage: React.FC = () => {
         ) : (
           <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl overflow-hidden shadow-sm">
             <div className="overflow-x-auto">
-              <table className="w-full text-left text-sm whitespace-nowrap min-w-max">
+              <table className="w-full text-left text-sm min-w-[850px]">
                 <thead className="bg-slate-50 dark:bg-slate-900/50 border-b border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400">
                   <tr>
-                    <th className="px-5 py-4 font-medium min-w-[200px]">Студент</th>
+                    <th className="px-5 py-4 font-medium w-[250px]">Студент</th>
                     <th className="px-5 py-4 font-medium text-center w-28 bg-primary-50/50 dark:bg-primary-900/10 border-r border-l border-slate-200 dark:border-slate-700">Оценка</th>
                     <th className="px-5 py-4 font-medium text-center w-48">Присутствие</th>
-                    <th className="px-5 py-4 font-medium text-center w-48">Участие</th>
-                    <th className="px-5 py-4 font-medium w-full">Заметка преподавателя</th>
+                    <th className="px-5 py-4 font-medium text-center w-56">Участие</th>
+                    <th className="px-5 py-4 font-medium min-w-[200px]">Заметки</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-700/50">

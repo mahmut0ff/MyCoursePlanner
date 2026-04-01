@@ -175,8 +175,9 @@ const JournalPage: React.FC = () => {
       const l = Array.isArray(lessonsRes) ? lessonsRes : [];
 
       if (role === 'teacher' && profile?.uid) {
-        c = c.filter((course: Course) => course.teacherIds?.includes(profile.uid));
         g = g.filter((group: Group) => group.teacherIds?.includes(profile.uid));
+        const groupCourseIds = new Set(g.map(group => group.courseId));
+        c = c.filter((course: Course) => course.teacherIds?.includes(profile.uid) || groupCourseIds.has(course.id));
       }
 
       setCourses(c);

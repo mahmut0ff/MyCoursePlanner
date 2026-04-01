@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../contexts/AuthContext';
-import { orgGetCourses, orgCreateCourse, orgUpdateCourse, orgDeleteCourse } from '../../lib/api';
+import { orgGetCourses, orgCreateCourse, orgUpdateCourse, orgDeleteCourse, orgGetGroups } from '../../lib/api';
 import { Plus, Search, Trash2, Edit, BookOpen, ChevronRight, FileText } from 'lucide-react';
 import type { Course } from '../../types';
 
@@ -25,10 +25,15 @@ const CoursesPage: React.FC = () => {
 
   const load = () => {
     setLoading(true); setError('');
-    orgGetCourses().then(c => {
+    Promise.all([
+      orgGetCourses(),
+      role === 'teacher' ? orgGetGroups().catch(() => []) : Promise.resolve([])
+    ]).then(([c, g]) => {
       let filtered = c;
       if (role === 'teacher' && profile?.uid) {
-        filtered = filtered.filter((course: Course) => course.teacherIds?.includes(profile.uid));
+        const teacherGroups = (g as import('../../types').Group[]).filter(group => group.teacherIds?.includes(profile.uid));
+        const groupCourseIds = new Set(teacherGroups.map(group => group.courseId));
+        filtered = filtered.filter((course: Course) => course.teacherIds?.includes(profile.uid) || groupCourseIds.has(course.id));
       }
       setCourses(filtered);
     }).catch((e) => setError(e.message || 'Error')).finally(() => setLoading(false));

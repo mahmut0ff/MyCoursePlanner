@@ -48,11 +48,18 @@ const GradebookPage: React.FC = () => {
   const timersRef = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
 
   useEffect(() => {
-    orgGetCourses()
-      .then((data: Course[]) => {
-        let filteredCourses = data;
+    Promise.all([
+      orgGetCourses(),
+      role === 'teacher' ? orgGetGroups().catch(() => []) : Promise.resolve([])
+    ])
+      .then(([coursesData, groupsData]) => {
+        let filteredCourses = coursesData;
         if (role === 'teacher' && profile?.uid) {
-           filteredCourses = data.filter((c: Course) => c.teacherIds?.includes(profile.uid));
+          const teacherGroups = (groupsData as Group[]).filter(g => g.teacherIds?.includes(profile.uid));
+          const groupCourseIds = new Set(teacherGroups.map(g => g.courseId));
+          filteredCourses = coursesData.filter((c: Course) => 
+            c.teacherIds?.includes(profile.uid) || groupCourseIds.has(c.id)
+          );
         }
         setCourses(filteredCourses);
         if (filteredCourses.length > 0) {

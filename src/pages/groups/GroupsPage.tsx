@@ -38,7 +38,8 @@ const GroupsPage: React.FC = () => {
       
       if (role === 'teacher' && profile?.uid) {
         filteredG = g.filter((group: Group) => group.teacherIds?.includes(profile.uid));
-        filteredC = c.filter((course: Course) => course.teacherIds?.includes(profile.uid));
+        const groupCourseIds = new Set(filteredG.map((group: Group) => group.courseId));
+        filteredC = c.filter((course: Course) => course.teacherIds?.includes(profile.uid) || groupCourseIds.has(course.id));
       }
 
       setGroups(filteredG); setCourses(filteredC); setTeachers(t);

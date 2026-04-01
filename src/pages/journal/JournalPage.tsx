@@ -569,25 +569,19 @@ const JournalPage: React.FC = () => {
 
                         {/* Grade */}
                         <td className="p-0 border-r border-l border-slate-200 dark:border-slate-700 bg-primary-50/30 dark:bg-primary-900/10 min-w-[112px] relative z-10">
-                           {currentLessonId ? (
-                              canEdit ? (
-                                <GradeCell
-                                   studentId={student.uid}
-                                   itemId={currentLessonId}
-                                   value={gradeEntry}
-                                   schema={schema}
-                                   isSyncing={syncStatus[gradeKey]}
-                                   onChange={(val, disp, status, comment) => handleGradeChange(student.uid, currentLessonId, val, disp, status, comment)}
-                                />
-                              ) : (
-                                <div className="w-full h-full min-h-[48px] flex items-center justify-center text-slate-500 font-bold">
-                                   {gradeEntry?.displayValue || gradeEntry?.value || <span className="opacity-50">—</span>}
-                                </div>
-                              )
+                           {canEdit ? (
+                             <GradeCell
+                                studentId={student.uid}
+                                itemId={currentLessonId || date}
+                                value={grades[`${student.uid}_${currentLessonId || date}`]}
+                                schema={schema}
+                                isSyncing={syncStatus[`${student.uid}_${currentLessonId || date}`]}
+                                onChange={(val, disp, status, comment) => handleGradeChange(student.uid, currentLessonId || date, val, disp, status, comment)}
+                             />
                            ) : (
-                              <div className="w-full h-full min-h-[48px] flex items-center justify-center text-[10px] text-slate-400 dark:text-slate-500 uppercase font-bold text-center px-2 leading-tight">
-                                 Прикрепите<br/>урок
-                              </div>
+                             <div className="w-full h-full min-h-[48px] flex items-center justify-center text-slate-500 font-bold">
+                                {grades[`${student.uid}_${currentLessonId || date}`]?.displayValue || grades[`${student.uid}_${currentLessonId || date}`]?.value || <span className="opacity-50">—</span>}
+                             </div>
                            )}
                         </td>
 

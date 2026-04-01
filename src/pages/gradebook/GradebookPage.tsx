@@ -167,12 +167,27 @@ const GradebookPage: React.FC = () => {
   };
 
   const columns = useMemo(() => {
-    return lessons.map(l => ({
+    const cols = lessons.map(l => ({
       id: l.id,
       title: l.title,
       type: 'lesson' as const
     }));
-  }, [lessons]);
+
+    const uniqueDates = new Set<string>();
+    Object.values(grades).forEach(g => {
+      if (g.lessonId && /^\d{4}-\d{2}-\d{2}$/.test(g.lessonId)) {
+        uniqueDates.add(g.lessonId);
+      }
+    });
+
+    const dateCols = Array.from(uniqueDates).sort().map(date => ({
+       id: date,
+       title: date.split('-').reverse().join('.'),
+       type: 'date' as const
+    }));
+
+    return [...cols, ...dateCols];
+  }, [lessons, grades]);
 
   if (loadingCourses) {
     return <div className="flex justify-center py-20"><div className="w-8 h-8 border-2 border-primary-500 rounded-full animate-spin border-t-transparent" /></div>;

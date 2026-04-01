@@ -2,10 +2,10 @@ import React, { useRef, useEffect } from 'react';
 import GradeCell from './GradeCell';
 import type { GradeEntry, GradeSchema, UserProfile } from '../../types';
 
-interface ColumnDef {
-  id: string; // lessonId or assignmentId
+export interface ColumnDef {
+  id: string; // lessonId or date string
   title: string;
-  type: 'lesson' | 'assignment';
+  type: 'lesson' | 'assignment' | 'date';
 }
 
 interface GradebookGridProps {

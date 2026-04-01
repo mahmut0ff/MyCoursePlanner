@@ -8,21 +8,44 @@ import {
   orgSaveJournal,
   orgBulkAttendance,
   apiAwardXP,
-  apiGetLessons
+  apiGetLessons,
+  orgGetGradeSchema,
+  orgGetGrades,
+  orgSaveGrade
 } from '../../lib/api';
-import type { Course, Group, UserProfile, JournalEntry, AttendanceStatus, ParticipationLevel, LessonPlan } from '../../types';
-import { ClipboardList, Calendar, AlertCircle, AlertTriangle, RefreshCcw, UserCheck, CheckCircle2, XCircle, Clock, FileWarning, BookOpen } from 'lucide-react';
+import type { Course, Group, UserProfile, JournalEntry, AttendanceStatus, ParticipationLevel, LessonPlan, GradeSchema, GradeEntry } from '../../types';
+import GradeCell from '../../components/gradebook/GradeCell';
+import { ClipboardList, Calendar, AlertCircle, AlertTriangle, RefreshCcw, UserCheck, CheckCircle2, XCircle, Clock, FileWarning, BookOpen, GraduationCap } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useAuth } from '../../contexts/AuthContext';
 
 const now = new Date();
 const todayFormatted = now.toISOString().split('T')[0];
 
+const yesterdayObj = new Date(now);
+yesterdayObj.setDate(now.getDate() - 1);
+const yesterdayFormatted = yesterdayObj.toISOString().split('T')[0];
+
+const tomorrowObj = new Date(now);
+tomorrowObj.setDate(now.getDate() + 1);
+const tomorrowFormatted = tomorrowObj.toISOString().split('T')[0];
+
 const attendanceIcons: Record<AttendanceStatus, React.ReactNode> = {
   present: <CheckCircle2 className="w-5 h-5 text-emerald-500" />,
   absent: <XCircle className="w-5 h-5 text-red-500" />,
   late: <Clock className="w-5 h-5 text-amber-500" />,
   excused: <FileWarning className="w-5 h-5 text-slate-400" />
+};
+
+const defaultSchema: GradeSchema = {
+  id: '',
+  courseId: '',
+  organizationId: '',
+  gradingType: 'points',
+  scale: { min: 0, max: 100 },
+  passThreshold: 50,
+  createdAt: '',
+  updatedAt: '',
 };
 
 const JournalPage: React.FC = () => {
@@ -39,7 +62,10 @@ const JournalPage: React.FC = () => {
   const [selectedGroupId, setSelectedGroupId] = useState<string>('');
   const [date, setDate] = useState<string>(todayFormatted);
   
-  const [entries, setEntries] = useState<Record<string, JournalEntry>>({}); // Key: studentId
+  const [schema, setSchema] = useState<GradeSchema>(defaultSchema);
+  const [entries, setEntries] = useState<Record<string, JournalEntry>>({});
+  const [grades, setGrades] = useState<Record<string, GradeEntry>>({});
+  const [syncStatus, setSyncStatus] = useState<Record<string, boolean>>({});
   
   const [loading, setLoading] = useState(true);
   const [loadingData, setLoadingData] = useState(false);
@@ -47,6 +73,14 @@ const JournalPage: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
 
   const timersRef = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
+
+  const isDateValidForEditing = useMemo(() => {
+    if (isReadOnly) return false;
+    // 3 day window restriction for teachers
+    return date === yesterdayFormatted || date === todayFormatted || date === tomorrowFormatted;
+  }, [date, isReadOnly]);
+
+  const canEdit = !isReadOnly && isDateValidForEditing;
 
   // 1. Load initial static data (optimized)
   useEffect(() => {
@@ -91,18 +125,31 @@ const JournalPage: React.FC = () => {
     }
   }, [courseGroups, selectedCourseId]);
 
-  // 3. Load journal entries when date or course changes
-  const loadJournal = async () => {
+  // 3. Load journal and grades when date/course changes
+  const loadContentAndGrades = async () => {
     if (!selectedCourseId || !date) return;
     setLoadingData(true);
     try {
-      const journalRes = await orgGetJournal(selectedCourseId);
+      const [journalRes, schemaRes, gradesRes] = await Promise.all([
+         orgGetJournal(selectedCourseId),
+         orgGetGradeSchema(selectedCourseId).catch(() => null),
+         orgGetGrades(selectedCourseId)
+      ]);
+
+      setSchema(schemaRes || { ...defaultSchema, courseId: selectedCourseId });
+
       const dateEntries = (Array.isArray(journalRes) ? journalRes : []).filter((j: any) => j.date === date);
       const entriesMap: Record<string, JournalEntry> = {};
       dateEntries.forEach((j: any) => {
         entriesMap[j.studentId] = j;
       });
       setEntries(entriesMap);
+
+      const gradesMap: Record<string, GradeEntry> = {};
+      (gradesRes as GradeEntry[]).forEach(g => {
+         if (g.lessonId) gradesMap[`${g.studentId}_${g.lessonId}`] = g;
+      });
+      setGrades(gradesMap);
     } catch (e: any) {
       if (e.message?.includes('403') || e.message?.includes('Forbidden')) {
         setError(t('common.accessDenied', 'Нет доступа к данным'));
@@ -115,7 +162,7 @@ const JournalPage: React.FC = () => {
   };
 
   useEffect(() => {
-    loadJournal();
+    loadContentAndGrades();
   }, [selectedCourseId, date]);
 
   // 4. Derived Data
@@ -133,6 +180,7 @@ const JournalPage: React.FC = () => {
   }, [courses, selectedCourseId, allLessons]);
 
   const currentLessonId = useMemo(() => {
+    // Find the attached lesson among the group's students for this date
     for (const s of groupStudents) {
       if (entries[s.uid]?.lessonId) return entries[s.uid].lessonId;
     }
@@ -142,7 +190,7 @@ const JournalPage: React.FC = () => {
 
   // 5. Handlers
   const handleEntryChange = (studentId: string, field: keyof JournalEntry, value: any) => {
-    if (isReadOnly) return;
+    if (!canEdit) return;
 
     const prevEntry = entries[studentId];
     
@@ -202,8 +250,68 @@ const JournalPage: React.FC = () => {
     }, field === 'note' ? 500 : 50);
   };
 
+  const handleGradeChange = (studentId: string, itemId: string, value: number | null, displayValue: string | undefined, status: any, comment?: string) => {
+    if (!canEdit) return;
+
+    const key = `${studentId}_${itemId}`;
+    const prevEntry = grades[key];
+    
+    const newEntry: GradeEntry = {
+      ...(prevEntry || {}),
+      id: prevEntry?.id || '',
+      studentId,
+      courseId: selectedCourseId,
+      lessonId: itemId,
+      value,
+      displayValue,
+      status,
+      comment,
+      type: schema.gradingType,
+      maxValue: schema.scale.max,
+      version: (prevEntry?.version || 0) + 1,
+      organizationId: '',
+      createdBy: '',
+      createdAt: '',
+      updatedAt: ''
+    };
+
+    setGrades(prev => ({ ...prev, [key]: newEntry }));
+    setSyncStatus(prev => ({ ...prev, [key]: true }));
+
+    if (timersRef.current[key]) clearTimeout(timersRef.current[key]);
+    timersRef.current[key] = setTimeout(async () => {
+      try {
+        const result = await orgSaveGrade(newEntry);
+        setGrades(prev => ({ ...prev, [key]: result as GradeEntry }));
+
+        if (typeof newEntry.value === 'number' && schema.gradingType === 'points' && schema.scale.max > 0) {
+          apiAwardXP({
+            type: 'grade',
+            studentId,
+            scorePct: (newEntry.value / schema.scale.max) * 100,
+            sourceType: 'grade',
+            sourceId: result.id
+          }).catch(console.error);
+        }
+      } catch (err: any) {
+        toast.error('Ошибка сохранения оценки');
+        if (prevEntry) {
+          setGrades(prev => ({ ...prev, [key]: prevEntry }));
+        } else {
+          setGrades(prev => {
+            const next = { ...prev };
+            delete next[key];
+            return next;
+          });
+        }
+      } finally {
+        setSyncStatus(prev => ({ ...prev, [key]: false }));
+      }
+    }, 400);
+  };
+
   const handleMarkAllPresent = async () => {
-    if (isReadOnly || !selectedCourseId || groupStudents.length === 0) return;
+    if (!canEdit || !selectedCourseId || groupStudents.length === 0) return;
     setBulking(true);
     
     const bulkData = groupStudents.map(s => {
@@ -233,7 +341,7 @@ const JournalPage: React.FC = () => {
   };
 
   const attachLesson = async (lessonId: string) => {
-    if (isReadOnly || !selectedCourseId || groupStudents.length === 0) {
+    if (!canEdit || !selectedCourseId || groupStudents.length === 0) {
       if (groupStudents.length === 0) toast.error('В группе нет студентов');
       return;
     }
@@ -264,7 +372,7 @@ const JournalPage: React.FC = () => {
   };
 
   const removeAttachedLesson = async () => {
-    if (isReadOnly || !selectedCourseId || groupStudents.length === 0) return;
+    if (!canEdit || !selectedCourseId || groupStudents.length === 0) return;
     
     setBulking(true);
     const bulkData = groupStudents.map(s => {
@@ -316,7 +424,7 @@ const JournalPage: React.FC = () => {
   }
 
   return (
-    <div className="flex flex-col xl:flex-row gap-6 max-w-7xl mx-auto">
+    <div className="flex flex-col xl:flex-row gap-6 max-w-[1600px] mx-auto">
       {/* ═ LEFT COLUMN: MAIN JOURNAL ═ */}
       <div className="flex-1 space-y-6 min-w-0">
         
@@ -327,8 +435,11 @@ const JournalPage: React.FC = () => {
               <ClipboardList className="w-5 h-5 text-orange-600 dark:text-orange-400" />
             </div>
             <div>
-              <h1 className="text-2xl font-bold text-slate-900 dark:text-white">
+              <h1 className="text-2xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
                 {t('nav.journal', 'Журнал')}
+                {!isDateValidForEditing && !isReadOnly && (
+                   <span className="text-xs bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400 px-2 py-0.5 rounded-lg font-bold">Архивный режим</span>
+                )}
               </h1>
               <p className="text-sm text-slate-500 dark:text-slate-400">
                 {isReadOnly 
@@ -340,7 +451,7 @@ const JournalPage: React.FC = () => {
 
           <div className="flex flex-wrap items-center gap-3">
             <select
-              className="px-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-medium outline-none focus:border-primary-500 transition-colors shadow-sm cursor-pointer"
+              className="w-full sm:w-auto px-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-medium outline-none focus:border-primary-500 transition-colors shadow-sm cursor-pointer"
               value={selectedCourseId}
               onChange={(e) => setSelectedCourseId(e.target.value)}
             >
@@ -350,7 +461,7 @@ const JournalPage: React.FC = () => {
             </select>
 
             <select
-              className="px-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-medium outline-none focus:border-primary-500 transition-colors shadow-sm cursor-pointer"
+              className="w-full sm:w-auto px-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-medium outline-none focus:border-primary-500 transition-colors shadow-sm cursor-pointer"
               value={selectedGroupId}
               onChange={(e) => setSelectedGroupId(e.target.value)}
             >
@@ -363,18 +474,20 @@ const JournalPage: React.FC = () => {
               )}
             </select>
 
-            <div className="relative">
+            <div className="relative w-full sm:w-auto">
               <Calendar className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
               <input
                 type="date"
-                className="pl-9 pr-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-medium outline-none focus:border-primary-500 transition-colors shadow-sm cursor-pointer"
+                min={!isReadOnly ? yesterdayFormatted : undefined}
+                max={!isReadOnly ? tomorrowFormatted : undefined}
+                className={`w-full sm:w-auto pl-9 pr-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-medium outline-none focus:border-primary-500 transition-colors shadow-sm cursor-pointer ${!isDateValidForEditing && !isReadOnly ? 'border-red-300 text-red-600 bg-red-50 dark:border-red-900/50 dark:bg-red-900/10' : ''}`}
                 value={date}
                 onChange={(e) => setDate(e.target.value)}
               />
             </div>
 
             <button
-              onClick={loadJournal}
+              onClick={loadContentAndGrades}
               className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors border border-transparent dark:hover:border-slate-700"
               title="Refresh"
             >
@@ -383,11 +496,16 @@ const JournalPage: React.FC = () => {
           </div>
         </div>
 
-        <div className="flex justify-between items-center bg-slate-50 dark:bg-slate-800/50 p-4 rounded-xl border border-slate-200 dark:border-slate-700/50">
-          <p className="text-sm font-medium text-slate-700 dark:text-slate-300">
-            Студентов в группе: <span className="font-bold">{groupStudents.length}</span>
-          </p>
-          {!isReadOnly && (
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between bg-slate-50 dark:bg-slate-800/50 p-4 rounded-xl border border-slate-200 dark:border-slate-700/50 gap-4">
+          <div>
+            <p className="text-sm font-medium text-slate-700 dark:text-slate-300">
+              Студентов в группе: <span className="font-bold">{groupStudents.length}</span>
+            </p>
+            {!isDateValidForEditing && !isReadOnly && (
+               <p className="text-xs text-red-500 mt-1 font-medium">Редактирование блокировано. Можно изменять данные только за сегодня, вчера и завтра.</p>
+            )}
+          </div>
+          {canEdit && (
             <button
               onClick={handleMarkAllPresent}
               disabled={loadingData || bulking || groupStudents.length === 0}
@@ -413,10 +531,11 @@ const JournalPage: React.FC = () => {
         ) : (
           <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl overflow-hidden shadow-sm">
             <div className="overflow-x-auto">
-              <table className="w-full text-left text-sm whitespace-nowrap">
+              <table className="w-full text-left text-sm whitespace-nowrap min-w-max">
                 <thead className="bg-slate-50 dark:bg-slate-900/50 border-b border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400">
                   <tr>
                     <th className="px-5 py-4 font-medium min-w-[200px]">Студент</th>
+                    <th className="px-5 py-4 font-medium text-center w-28 bg-primary-50/50 dark:bg-primary-900/10 border-r border-l border-slate-200 dark:border-slate-700">Оценка</th>
                     <th className="px-5 py-4 font-medium text-center w-48">Присутствие</th>
                     <th className="px-5 py-4 font-medium text-center w-48">Участие</th>
                     <th className="px-5 py-4 font-medium w-full">Заметка преподавателя</th>
@@ -426,6 +545,8 @@ const JournalPage: React.FC = () => {
                   {groupStudents.map((student) => {
                     const entry = entries[student.uid];
                     const isMarked = !!entry;
+                    const gradeKey = currentLessonId ? `${student.uid}_${currentLessonId}` : '';
+                    const gradeEntry = currentLessonId ? grades[gradeKey] : undefined;
                     
                     return (
                       <tr key={student.uid} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/50 transition-colors">
@@ -446,13 +567,37 @@ const JournalPage: React.FC = () => {
                           </div>
                         </td>
 
+                        {/* Grade */}
+                        <td className="p-0 border-r border-l border-slate-200 dark:border-slate-700 bg-primary-50/30 dark:bg-primary-900/10 min-w-[112px] relative z-10">
+                           {currentLessonId ? (
+                              canEdit ? (
+                                <GradeCell
+                                   studentId={student.uid}
+                                   itemId={currentLessonId}
+                                   value={gradeEntry}
+                                   schema={schema}
+                                   isSyncing={syncStatus[gradeKey]}
+                                   onChange={(val, disp, status, comment) => handleGradeChange(student.uid, currentLessonId, val, disp, status, comment)}
+                                />
+                              ) : (
+                                <div className="w-full h-full min-h-[48px] flex items-center justify-center text-slate-500 font-bold">
+                                   {gradeEntry?.displayValue || gradeEntry?.value || <span className="opacity-50">—</span>}
+                                </div>
+                              )
+                           ) : (
+                              <div className="w-full h-full min-h-[48px] flex items-center justify-center text-[10px] text-slate-400 dark:text-slate-500 uppercase font-bold text-center px-2 leading-tight">
+                                 Прикрепите<br/>урок
+                              </div>
+                           )}
+                        </td>
+
                         {/* Attendance */}
                         <td className="px-5 py-3 text-center">
-                          <div className={`inline-flex rounded-lg p-1 border ${isReadOnly ? 'bg-transparent border-transparent' : 'bg-slate-100 dark:bg-slate-900 border-slate-200 dark:border-slate-700'}`}>
+                          <div className={`inline-flex rounded-lg p-1 border ${!canEdit ? 'bg-transparent border-transparent' : 'bg-slate-100 dark:bg-slate-900 border-slate-200 dark:border-slate-700'}`}>
                             {(['present', 'absent', 'late', 'excused'] as AttendanceStatus[]).map(status => {
                               const isActive = isMarked && entry.attendance === status;
-                              if (isReadOnly && !isActive) return null; // Show only marked in read-only
-                              if (isReadOnly && isActive) return (
+                              if (!canEdit && !isActive) return null; // Show only marked in read-only
+                              if (!canEdit && isActive) return (
                                 <div key={status} className="p-1.5 opacity-100">
                                     {attendanceIcons[status]}
                                 </div>
@@ -473,17 +618,17 @@ const JournalPage: React.FC = () => {
 
                         {/* Participation */}
                         <td className="px-5 py-3 text-center">
-                          <div className={`inline-flex rounded-lg p-1 border text-xs font-medium ${isReadOnly ? 'bg-transparent border-transparent' : 'bg-slate-100 dark:bg-slate-900 border-slate-200 dark:border-slate-700'}`}>
+                          <div className={`inline-flex rounded-lg p-1 border text-xs font-medium ${!canEdit ? 'bg-transparent border-transparent' : 'bg-slate-100 dark:bg-slate-900 border-slate-200 dark:border-slate-700'}`}>
                             {(['low', 'medium', 'high'] as ParticipationLevel[]).map(level => {
                                const isActive = isMarked && entry.participation === level;
-                               if (isReadOnly && !isActive) return null;
+                               if (!canEdit && !isActive) return null;
 
                                let activeClass = '';
                                if (level === 'low') activeClass = 'bg-red-500/10 text-red-600 dark:text-red-400';
                                if (level === 'medium') activeClass = 'bg-amber-500/10 text-amber-600 dark:text-amber-400';
                                if (level === 'high') activeClass = 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400';
 
-                               if (isReadOnly && isActive) {
+                               if (!canEdit && isActive) {
                                  return (
                                    <div key={level} className={`px-3 py-1.5 rounded-md ${activeClass}`}>
                                       {level.charAt(0).toUpperCase() + level.slice(1)}
@@ -508,9 +653,9 @@ const JournalPage: React.FC = () => {
                         <td className="px-5 py-3">
                           <input
                             type="text"
-                            placeholder={isReadOnly ? (entry?.note ? '' : "—") : "Заметки (не видны студенту)..."}
-                            readOnly={isReadOnly}
-                            className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm outline-none focus:border-primary-500 transition-colors read-only:outline-none read-only:bg-transparent read-only:border-transparent read-only:px-0"
+                            placeholder={!canEdit ? (entry?.note ? '' : "—") : "Заметки (не видны студенту)..."}
+                            readOnly={!canEdit}
+                            className={`w-full px-3 py-2 rounded-xl text-sm outline-none transition-colors ${!canEdit ? 'bg-transparent border-transparent px-0' : 'bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 focus:border-primary-500'}`}
                             value={entry?.note || ''}
                             onChange={(e) => handleEntryChange(student.uid, 'note', e.target.value)}
                           />
@@ -562,11 +707,11 @@ const JournalPage: React.FC = () => {
                       <span className="flex items-center gap-1.5 text-primary-600 dark:text-primary-400 text-[11px] font-bold uppercase tracking-wider bg-primary-100 dark:bg-primary-900/40 px-2 py-1 rounded-md">
                         <CheckCircle2 className="w-3.5 h-3.5" /> Пройден
                       </span>
-                      {!isReadOnly && (
+                      {canEdit && (
                         <button 
                           onClick={removeAttachedLesson} 
                           title="Отменить"
-                          className="p-1 px-1.5 ml-auto text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-md transition-colors"
+                          className="p-1 px-1.5 ml-auto text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-md transition-colors font-medium text-xs"
                         >
                           Снять
                         </button>
@@ -575,7 +720,7 @@ const JournalPage: React.FC = () => {
                   ) : (
                     <button 
                       onClick={() => attachLesson(lesson.id)}
-                      disabled={isReadOnly || groupStudents.length === 0 || bulking}
+                      disabled={!canEdit || groupStudents.length === 0 || bulking}
                       className="w-full py-2 bg-slate-50 dark:bg-slate-700/50 hover:bg-primary-50 hover:text-primary-600 dark:hover:bg-primary-900/20 dark:hover:text-primary-400 border border-slate-200 dark:border-slate-700 hover:border-primary-200 dark:hover:border-primary-800 text-slate-600 dark:text-slate-300 rounded-lg text-xs font-semibold transition-all disabled:opacity-50 disabled:pointer-events-none"
                     >
                       Отметить как пройденный

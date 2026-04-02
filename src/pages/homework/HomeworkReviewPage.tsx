@@ -3,7 +3,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { usePlanGate } from '../../contexts/PlanContext';
 import { apiOrgGetHomeworks, apiGradeHomework, apiAIGradeHomework, apiUpdateHomeworkStatus } from '../../lib/api';
 import type { HomeworkSubmission } from '../../types';
-import { Sparkles, CheckCircle, Clock, XCircle, GripVertical, FileVideo, ImageIcon, Eye, X, FileAudio, FileArchive, FileText } from 'lucide-react';
+import { Sparkles, CheckCircle, Clock, XCircle, GripVertical, FileVideo, ImageIcon, Eye, X, FileAudio, FileArchive, FileText, ChevronRight, ArrowLeft } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { DndContext, useSensor, useSensors, PointerSensor, DragOverlay, closestCorners } from '@dnd-kit/core';
 import type { DragEndEvent, DragStartEvent } from '@dnd-kit/core';
@@ -12,27 +12,28 @@ import { useDraggable } from '@dnd-kit/core';
 
 // ─── DND KANBAN COMPONENTS ───
 
-const KanbanColumn: React.FC<{ id: string; title: string; count: number; children: React.ReactNode }> = ({ id, title, count, children }) => {
+const KanbanColumn: React.FC<{ id: string; title: string; count: number; color: string; children: React.ReactNode }> = ({ id, title, count, color, children }) => {
   const { setNodeRef, isOver } = useDroppable({ id });
   return (
     <div
       ref={setNodeRef}
-      className={`flex flex-col w-[300px] md:w-auto md:flex-1 md:min-w-[320px] shrink-0 bg-slate-100/50 dark:bg-slate-800/20 border-2 rounded-2xl p-4 transition-all ${
-        isOver ? 'border-accent-teal bg-accent-teal/5' : 'border-slate-200 dark:border-slate-700/50'
+      className={`flex flex-col flex-1 min-w-0 bg-slate-50/80 dark:bg-slate-800/30 border rounded-2xl transition-all ${
+        isOver ? `border-2 ${color} bg-opacity-10` : 'border-slate-200/80 dark:border-slate-700/40'
       }`}
     >
-      <div className="flex items-center justify-between mb-4 px-2">
-        <h3 className="font-bold text-slate-800 dark:text-slate-200 uppercase tracking-wider text-xs">{title}</h3>
-        <span className="bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300 px-2 py-0.5 rounded-full text-xs font-bold">{count}</span>
+      <div className="flex items-center gap-2.5 px-4 py-3 border-b border-slate-200/60 dark:border-slate-700/40">
+        <div className={`w-2.5 h-2.5 rounded-full ${color.replace('border-', 'bg-')}`} />
+        <h3 className="font-semibold text-slate-700 dark:text-slate-200 text-[13px] tracking-wide">{title}</h3>
+        <span className="ml-auto bg-slate-200/80 dark:bg-slate-700/70 text-slate-600 dark:text-slate-300 w-6 h-6 flex items-center justify-center rounded-lg text-[11px] font-bold">{count}</span>
       </div>
-      <div className="flex-1 flex flex-col gap-3 overflow-y-auto custom-scrollbar pr-1 pb-4">
+      <div className="flex-1 flex flex-col gap-2.5 overflow-y-auto custom-scrollbar p-3 pb-4">
         {children}
       </div>
     </div>
   );
 };
 
-const KanbanCard: React.FC<{ sub: HomeworkSubmission; onClick: () => void }> = ({ sub, onClick }) => {
+const KanbanCard: React.FC<{ sub: HomeworkSubmission; onClick: () => void; isActive: boolean }> = ({ sub, onClick, isActive }) => {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: sub.id,
     data: sub,
@@ -44,43 +45,54 @@ const KanbanCard: React.FC<{ sub: HomeworkSubmission; onClick: () => void }> = (
     <div
       ref={setNodeRef}
       style={style}
-      className={`group relative bg-white dark:bg-slate-800 rounded-xl p-4 border transition-all ${
-        isDragging ? 'opacity-50 ring-2 ring-accent-teal border-transparent shadow-2xl scale-105 z-50' : 'border-slate-200 dark:border-slate-700 shadow-sm hover:shadow-md hover:border-slate-300 dark:hover:border-slate-600'
+      onClick={onClick}
+      className={`group relative bg-white dark:bg-slate-800 rounded-xl p-3.5 border cursor-pointer transition-all duration-200 ${
+        isDragging
+          ? 'opacity-50 ring-2 ring-accent-teal border-transparent shadow-2xl scale-105 z-50'
+          : isActive
+            ? 'border-accent-teal ring-2 ring-accent-teal/20 shadow-md bg-accent-teal/[0.03] dark:bg-accent-teal/5'
+            : 'border-slate-200/80 dark:border-slate-700/60 shadow-sm hover:shadow-md hover:border-slate-300 dark:hover:border-slate-600'
       }`}
     >
-      <div className="flex justify-between items-start mb-2">
-         <div className="flex-1 min-w-0 pr-6">
-            <h4 className="font-bold text-slate-900 dark:text-white truncate">{sub.studentName}</h4>
-            <p className="text-xs text-slate-500 truncate" title={sub.lessonTitle}>{sub.lessonTitle}</p>
+      <div className="flex items-start justify-between gap-2 mb-1.5">
+         <div className="flex-1 min-w-0">
+            <h4 className="font-bold text-[13px] text-slate-900 dark:text-white truncate">{sub.studentName}</h4>
+            <p className="text-[11px] text-slate-500 truncate mt-0.5" title={sub.lessonTitle}>{sub.lessonTitle}</p>
+         </div>
+         <div {...listeners} {...attributes} className="p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-grab active:cursor-grabbing opacity-0 group-hover:opacity-100 transition-opacity shrink-0" onClick={e => e.stopPropagation()}>
+           <GripVertical className="w-3.5 h-3.5" />
          </div>
       </div>
 
       {sub.attachments && sub.attachments.length > 0 && (
-         <div className="flex gap-2 mb-3">
-           {sub.attachments.some(a => a.type === 'video') && <span className="flex items-center gap-1 text-[10px] bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300 px-1.5 py-0.5 rounded-md"><FileVideo className="w-3 h-3"/> {sub.attachments.filter(a => a.type === 'video').length} Видео</span>}
-           {sub.attachments.some(a => a.type === 'image') && <span className="flex items-center gap-1 text-[10px] bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300 px-1.5 py-0.5 rounded-md"><ImageIcon className="w-3 h-3"/> {sub.attachments.filter(a => a.type === 'image').length} Фото</span>}
+         <div className="flex gap-1.5 mb-2 mt-2">
+           {sub.attachments.some(a => a.type === 'video') && <span className="flex items-center gap-1 text-[10px] bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300 px-1.5 py-0.5 rounded-md"><FileVideo className="w-2.5 h-2.5"/> {sub.attachments.filter(a => a.type === 'video').length}</span>}
+           {sub.attachments.some(a => a.type === 'image') && <span className="flex items-center gap-1 text-[10px] bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300 px-1.5 py-0.5 rounded-md"><ImageIcon className="w-2.5 h-2.5"/> {sub.attachments.filter(a => a.type === 'image').length}</span>}
          </div>
       )}
 
-      <div className="flex items-center justify-between mt-3">
+      <div className="flex items-center justify-between mt-2 pt-2 border-t border-slate-100 dark:border-slate-700/40">
         <span className="text-[10px] text-slate-400 font-medium">{new Date(sub.submittedAt).toLocaleDateString()}</span>
         {sub.status === 'graded' && typeof sub.finalScore === 'number' && (
-           <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/20 px-2 py-1 rounded-lg">
-             Оценка: {sub.finalScore}
+           <span className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/20 px-2 py-0.5 rounded-lg">
+             {sub.finalScore}/{sub.maxPoints || 10}
            </span>
         )}
       </div>
-
-      <div className="absolute top-3 right-3 flex flex-col gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-         <div {...listeners} {...attributes} className="p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-grab active:cursor-grabbing bg-slate-100 dark:bg-slate-700 rounded transition-colors tooltip" data-tip="Move">
-           <GripVertical className="w-4 h-4" />
-         </div>
-         <button onClick={onClick} className="p-1 text-slate-400 hover:text-accent-teal bg-slate-100 dark:bg-slate-700 rounded transition-colors tooltip" data-tip="View Details">
-           <Eye className="w-4 h-4" />
-         </button>
-      </div>
     </div>
   );
+};
+
+// ─── STATUS BADGE ───
+
+const StatusBadge: React.FC<{ status: string }> = ({ status }) => {
+  const config = {
+    graded: { label: 'Оценено', cls: 'bg-emerald-500' },
+    reviewing: { label: 'Проверяется', cls: 'bg-amber-500' },
+    pending: { label: 'Ожидает', cls: 'bg-slate-400' },
+  }[status] || { label: status, cls: 'bg-slate-400' };
+
+  return <span className={`px-2.5 py-1 rounded-full text-[10px] uppercase tracking-widest text-white font-bold ${config.cls}`}>{config.label}</span>;
 };
 
 // ─── MAIN PAGE COMPONENT ───
@@ -157,11 +169,9 @@ const HomeworkReviewPage: React.FC = () => {
     setSubmissions(prev => prev.map(s => s.id === subId ? { ...s, status: newStatus } : s));
 
     try {
-      // If moving to 'graded' without setting a score, we might pop up the modal, but let's just let them drop it to reviewing.
-      // Or require opening modal to officially grade it. We can still save status.
       await apiUpdateHomeworkStatus(subId, newStatus);
       if (newStatus === 'graded' && typeof sub.finalScore !== 'number') {
-         // Auto open modal so they can grade
+         // Auto open detail panel so they can grade
          handleSelect({ ...sub, status: newStatus });
          toast('Пожалуйста, выставьте оценку', { icon: '📝' });
       } else {
@@ -180,7 +190,7 @@ const HomeworkReviewPage: React.FC = () => {
     setFeedbackInput(sub.teacherFeedback || '');
   };
 
-  const closeSidebar = () => {
+  const closeDetail = () => {
     setSelectedSubmission(null);
   };
 
@@ -231,214 +241,216 @@ const HomeworkReviewPage: React.FC = () => {
   if (loading) return <div className="h-full flex flex-col items-center justify-center p-12"><div className="w-10 h-10 border-4 border-accent-teal border-t-transparent rounded-full animate-spin"></div><p className="mt-4 text-slate-500 font-medium">Загрузка доски...</p></div>;
 
   return (
-    <div className="relative flex flex-col h-[calc(100vh-80px)] max-w-[1600px] mx-auto overflow-hidden">
+    <div className="flex flex-col h-[calc(100vh-80px)] max-w-[1800px] mx-auto">
       
-      <div className="flex items-center justify-between mb-6 px-6">
+      {/* Header */}
+      <div className="flex items-center justify-between px-6 pb-4 shrink-0">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Доска проверки работ</h1>
-          <p className="text-slate-500 dark:text-slate-400 text-sm mt-1">Организуйте проверку в формате Kanban. Перетаскивайте карточки для изменения статуса.</p>
+          <h1 className="text-xl font-bold text-slate-900 dark:text-white">Доска проверки работ</h1>
+          <p className="text-slate-500 dark:text-slate-400 text-[13px] mt-0.5">Перетаскивайте карточки для изменения статуса</p>
         </div>
       </div>
 
-      {/* Kanban Board Area */}
-      <div className="flex-1 overflow-x-auto custom-scrollbar px-6 pb-6">
-        <DndContext sensors={sensors} collisionDetection={closestCorners} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
-          <div className="flex gap-6 h-full items-stretch min-w-max md:min-w-0 md:w-full">
-            
-            <KanbanColumn id="pending" title="Ожидает проверки" count={pendingSubs.length}>
-              {pendingSubs.map(s => <KanbanCard key={s.id} sub={s} onClick={() => handleSelect(s)} />)}
-              {pendingSubs.length === 0 && <div className="text-center p-8 text-slate-400 text-sm border-2 border-dashed border-slate-200 dark:border-slate-700/50 rounded-xl">Нет новых работ</div>}
-            </KanbanColumn>
-            
-            <KanbanColumn id="reviewing" title="На проверке" count={reviewingSubs.length}>
-               {reviewingSubs.map(s => <KanbanCard key={s.id} sub={s} onClick={() => handleSelect(s)} />)}
-               {reviewingSubs.length === 0 && <div className="text-center p-8 text-slate-400 text-sm border-2 border-dashed border-slate-200 dark:border-slate-700/50 rounded-xl">Перетащите работы сюда</div>}
-            </KanbanColumn>
+      {/* Main Content — Kanban + Detail Panel side by side */}
+      <div className="flex-1 flex gap-0 overflow-hidden min-h-0">
+        
+        {/* Kanban Board */}
+        <div className={`flex-1 min-w-0 overflow-x-auto overflow-y-hidden custom-scrollbar px-6 pb-4 transition-all duration-300 ${selectedSubmission ? 'hidden lg:block lg:max-w-[55%] xl:max-w-[60%]' : ''}`}>
+          <DndContext sensors={sensors} collisionDetection={closestCorners} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
+            <div className="flex gap-4 h-full items-stretch min-w-max lg:min-w-0 lg:w-full">
+              
+              <KanbanColumn id="pending" title="Ожидает проверки" count={pendingSubs.length} color="border-slate-400">
+                {pendingSubs.map(s => <KanbanCard key={s.id} sub={s} onClick={() => handleSelect(s)} isActive={selectedSubmission?.id === s.id} />)}
+                {pendingSubs.length === 0 && <div className="text-center py-8 text-slate-400 text-[12px] border border-dashed border-slate-200 dark:border-slate-700/50 rounded-xl">Нет новых работ</div>}
+              </KanbanColumn>
+              
+              <KanbanColumn id="reviewing" title="На проверке" count={reviewingSubs.length} color="border-amber-400">
+                 {reviewingSubs.map(s => <KanbanCard key={s.id} sub={s} onClick={() => handleSelect(s)} isActive={selectedSubmission?.id === s.id} />)}
+                 {reviewingSubs.length === 0 && <div className="text-center py-8 text-slate-400 text-[12px] border border-dashed border-slate-200 dark:border-slate-700/50 rounded-xl">Перетащите сюда</div>}
+              </KanbanColumn>
 
-            <KanbanColumn id="graded" title="Оценено" count={gradedSubs.length}>
-               {gradedSubs.map(s => <KanbanCard key={s.id} sub={s} onClick={() => handleSelect(s)} />)}
-               {gradedSubs.length === 0 && <div className="text-center p-8 text-slate-400 text-sm border-2 border-dashed border-slate-200 dark:border-slate-700/50 rounded-xl">Оценённые работы</div>}
-            </KanbanColumn>
+              <KanbanColumn id="graded" title="Оценено" count={gradedSubs.length} color="border-emerald-400">
+                 {gradedSubs.map(s => <KanbanCard key={s.id} sub={s} onClick={() => handleSelect(s)} isActive={selectedSubmission?.id === s.id} />)}
+                 {gradedSubs.length === 0 && <div className="text-center py-8 text-slate-400 text-[12px] border border-dashed border-slate-200 dark:border-slate-700/50 rounded-xl">Оценённые работы</div>}
+              </KanbanColumn>
 
-          </div>
+            </div>
 
-          <DragOverlay>
-            {activeDragItem ? (
-              <div className="bg-white dark:bg-slate-800 rounded-xl p-4 shadow-2xl opacity-90 scale-105 border-2 border-accent-teal ring-4 ring-accent-teal/20 w-[300px]">
-                 <h4 className="font-bold text-slate-900 dark:text-white truncate">{activeDragItem.studentName}</h4>
-                 <p className="text-xs text-slate-500 truncate">{activeDragItem.lessonTitle}</p>
-                 <span className="text-[10px] text-slate-400 font-medium mt-2 inline-block">{new Date(activeDragItem.submittedAt).toLocaleDateString()}</span>
-              </div>
-            ) : null}
-          </DragOverlay>
-        </DndContext>
-      </div>
+            <DragOverlay>
+              {activeDragItem ? (
+                <div className="bg-white dark:bg-slate-800 rounded-xl p-3.5 shadow-2xl opacity-90 scale-105 border-2 border-accent-teal ring-4 ring-accent-teal/20 w-[280px]">
+                   <h4 className="font-bold text-[13px] text-slate-900 dark:text-white truncate">{activeDragItem.studentName}</h4>
+                   <p className="text-[11px] text-slate-500 truncate">{activeDragItem.lessonTitle}</p>
+                   <span className="text-[10px] text-slate-400 font-medium mt-2 inline-block">{new Date(activeDragItem.submittedAt).toLocaleDateString()}</span>
+                </div>
+              ) : null}
+            </DragOverlay>
+          </DndContext>
+        </div>
 
-      {/* Grading Sidebar/Drawer (Slide From Right) */}
-      <div className={`absolute top-0 right-0 w-full max-w-xl h-full bg-white dark:bg-slate-900 shadow-[-10px_0_30px_rgba(0,0,0,0.1)] dark:shadow-[-20px_0_40px_rgba(0,0,0,0.5)] transform transition-transform duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] z-50 flex flex-col ${selectedSubmission ? 'translate-x-0' : 'translate-x-[120%]'}`}>
+        {/* Detail Panel — Inline, no modal */}
         {selectedSubmission && (
-          <>
-            {/* Header */}
-            <div className="flex items-center justify-between p-6 border-b border-slate-200 dark:border-slate-800">
-               <div>
-                  <h3 className="text-2xl font-bold text-slate-900 dark:text-white">{selectedSubmission.studentName}</h3>
-                  <p className="text-slate-500">{selectedSubmission.lessonTitle}</p>
+          <div className="w-full lg:w-[45%] xl:w-[40%] lg:max-w-[560px] shrink-0 flex flex-col bg-white dark:bg-slate-900 border-l border-slate-200 dark:border-slate-800 animate-in slide-in-from-right-4 duration-300">
+            
+            {/* Detail Header */}
+            <div className="flex items-center gap-3 px-5 py-4 border-b border-slate-100 dark:border-slate-800 shrink-0">
+               <button onClick={closeDetail} className="lg:hidden p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors" title="Назад">
+                  <ArrowLeft className="w-5 h-5" />
+               </button>
+               <div className="flex-1 min-w-0">
+                  <h3 className="text-lg font-bold text-slate-900 dark:text-white truncate">{selectedSubmission.studentName}</h3>
+                  <p className="text-[13px] text-slate-500 truncate">{selectedSubmission.lessonTitle}</p>
                </div>
-               <div className="flex items-center gap-3">
+               <div className="flex items-center gap-2 shrink-0">
                  {canAccess('ai') && (
                     <button 
                       onClick={handleAIAssist}
                       disabled={isAIGrading}
-                      className="flex items-center gap-2 px-4 py-2 bg-slate-900 hover:bg-slate-800 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-200 text-white rounded-lg font-medium transition-all disabled:opacity-70 disabled:grayscale"
+                      className="flex items-center gap-1.5 px-3 py-2 bg-slate-900 hover:bg-slate-800 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-200 text-white rounded-lg text-[12px] font-semibold transition-all disabled:opacity-70 disabled:grayscale"
                     >
-                      {isAIGrading ? <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" /> : <Sparkles className="w-4 h-4" />}
-                      {isAIGrading ? 'AI Думает...' : 'AI Оценка'}
+                      {isAIGrading ? <div className="w-3.5 h-3.5 border-2 border-current border-t-transparent rounded-full animate-spin" /> : <Sparkles className="w-3.5 h-3.5" />}
+                      {isAIGrading ? 'Думает...' : 'AI Оценка'}
                     </button>
                  )}
-                 <button onClick={closeSidebar} className="p-2 text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full transition-colors">
-                    <X className="w-6 h-6" />
+                 <button onClick={closeDetail} className="hidden lg:flex p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors">
+                    <X className="w-5 h-5" />
                  </button>
                </div>
             </div>
 
             {/* Scrollable Content */}
-            <div className="flex-1 overflow-y-auto custom-scrollbar p-6 space-y-8">
+            <div className="flex-1 overflow-y-auto custom-scrollbar">
+              <div className="p-5 space-y-5">
               
-              {/* Info Bar */}
-              <div className="flex flex-wrap items-center gap-3 px-4 py-3 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-100 dark:border-slate-800">
-                <div className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300">
-                  <Clock className="w-4 h-4 text-slate-400" /> Сдано: {new Date(selectedSubmission.submittedAt).toLocaleString()}
+                {/* Info Bar */}
+                <div className="flex flex-wrap items-center gap-2.5 px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800/40 rounded-xl border border-slate-100 dark:border-slate-800">
+                  <div className="flex items-center gap-1.5 text-[12px] text-slate-600 dark:text-slate-300">
+                    <Clock className="w-3.5 h-3.5 text-slate-400" /> {new Date(selectedSubmission.submittedAt).toLocaleString()}
+                  </div>
+                  <div className="w-px h-3.5 bg-slate-200 dark:bg-slate-700 hidden sm:block"></div>
+                  <StatusBadge status={selectedSubmission.status} />
                 </div>
-                <div className="w-px h-4 bg-slate-300 dark:bg-slate-700 hidden sm:block"></div>
-                <div className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300 font-medium">
-                  Статус: <span className={`px-2 py-0.5 rounded-full text-xs uppercase tracking-wider text-white ${selectedSubmission.status === 'graded' ? 'bg-emerald-500' : selectedSubmission.status === 'reviewing' ? 'bg-amber-500' : 'bg-slate-500'}`}>{selectedSubmission.status === 'graded' ? 'Оценено' : selectedSubmission.status === 'reviewing' ? 'Проверяется' : 'Ожидает'}</span>
-                </div>
-              </div>
 
-              {/* Text submission */}
-              <div>
-                <h4 className="text-sm font-bold uppercase tracking-wider text-slate-400 mb-3">Текстовый ответ</h4>
-                <div className="p-5 bg-white dark:bg-slate-900 rounded-xl text-slate-800 dark:text-slate-300 text-[15px] whitespace-pre-wrap leading-relaxed border border-slate-200 dark:border-slate-800 shadow-sm">
-                  {selectedSubmission.content || <span className="text-slate-400 italic">Студент не оставил текстового ответа</span>}
-                </div>
-              </div>
-
-              {/* Attachments */}
-              {selectedSubmission.attachments && selectedSubmission.attachments.length > 0 && (
+                {/* Text submission */}
                 <div>
-                  <h4 className="text-sm font-bold uppercase tracking-wider text-slate-400 mb-3 flex items-center gap-2">Вложения <span className="bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 px-2 rounded-full text-xs">{selectedSubmission.attachments.length}</span></h4>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                     {selectedSubmission.attachments.map((att, i) => (
-                       <a key={i} href={att.url} target="_blank" rel="noreferrer" className="group block overflow-hidden rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 relative hover:border-accent-teal hover:ring-2 hover:ring-accent-teal/20 transition-all">
-                          {att.type === 'video' ? (
-                            <div className="aspect-video bg-black relative flex items-center justify-center">
-                              <video src={att.url} className="w-full h-full object-cover opacity-80" controls />
-                              {!att.url.endsWith('mp4') && <div className="absolute inset-0 bg-black/40 flex flex-col items-center justify-center text-white p-4 text-center pointer-events-none group-hover:opacity-0 transition-opacity"><FileVideo className="w-8 h-8 mb-2"/><span className="text-xs font-bold">{att.name}</span></div>}
-                            </div>
-                          ) : att.type === 'audio' ? (
-                            <div className="aspect-square bg-slate-100 dark:bg-slate-900 relative flex flex-col items-center justify-center p-4">
-                               <FileAudio className="w-12 h-12 text-amber-500 mb-3" />
-                               <audio src={att.url} controls className="w-full h-10 z-10 relative" />
-                               <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-3 pointer-events-none"><p className="text-white text-xs font-medium truncate w-full text-center">{att.name}</p></div>
-                            </div>
-                          ) : att.type === 'archive' || att.type === 'document' ? (
-                            <div className="aspect-square bg-slate-100 dark:bg-slate-900 relative flex flex-col items-center justify-center p-4 text-center group-hover:bg-slate-200 dark:group-hover:bg-slate-800 transition-colors">
-                              {att.type === 'archive' ? <FileArchive className="w-12 h-12 text-red-500 mb-3" /> : <FileText className="w-12 h-12 text-blue-500 mb-3" />}
-                              <p className="text-xs font-bold text-slate-700 dark:text-slate-300 break-all line-clamp-2">{att.name}</p>
-                              <span className="mt-2 px-3 py-1 bg-white dark:bg-slate-800 rounded-full text-[10px] font-bold text-accent-teal uppercase tracking-wider shadow-sm">Скачать</span>
-                            </div>
-                          ) : (
-                            <div className="aspect-square bg-slate-100 dark:bg-slate-900 relative">
-                               <img src={att.url} alt={att.name} className="w-full h-full object-cover" />
-                               <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-3"><p className="text-white text-xs font-medium truncate">{att.name}</p></div>
-                            </div>
-                          )}
-                       </a>
-                     ))}
+                  <h4 className="text-[11px] font-bold uppercase tracking-widest text-slate-400 mb-2">Текстовый ответ</h4>
+                  <div className="p-4 bg-slate-50 dark:bg-slate-800/40 rounded-xl text-slate-800 dark:text-slate-300 text-[14px] whitespace-pre-wrap leading-relaxed border border-slate-100 dark:border-slate-800">
+                    {selectedSubmission.content || <span className="text-slate-400 italic text-[13px]">Студент не оставил текстового ответа</span>}
                   </div>
                 </div>
-              )}
 
-              {/* AI Analysis Block */}
-              {selectedSubmission.aiAnalysis && (
-                <div className={`p-6 rounded-2xl border bg-white dark:bg-slate-900 ${selectedSubmission.aiAnalysis.isPlagiarism ? 'border-red-300 dark:border-red-900/50 shadow-[0_0_20px_rgba(239,68,68,0.1)]' : 'border-indigo-200 dark:border-indigo-900/50 shadow-[0_0_20px_rgba(99,102,241,0.05)]'}`}>
-                  <div className="flex items-center gap-2 mb-4">
-                    <Sparkles className={`w-6 h-6 ${selectedSubmission.aiAnalysis.isPlagiarism ? 'text-red-500' : 'text-indigo-500'}`} />
-                    <h4 className="text-lg font-bold text-slate-800 dark:text-white">Отчёт Нейросети</h4>
+                {/* Attachments */}
+                {selectedSubmission.attachments && selectedSubmission.attachments.length > 0 && (
+                  <div>
+                    <h4 className="text-[11px] font-bold uppercase tracking-widest text-slate-400 mb-2 flex items-center gap-2">
+                      Вложения <span className="bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-300 w-5 h-5 flex items-center justify-center rounded-md text-[10px] font-bold">{selectedSubmission.attachments.length}</span>
+                    </h4>
+                    <div className="grid grid-cols-2 gap-3">
+                       {selectedSubmission.attachments.map((att, i) => (
+                         <a key={i} href={att.url} target="_blank" rel="noreferrer" className="group block overflow-hidden rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 relative hover:border-accent-teal hover:ring-2 hover:ring-accent-teal/20 transition-all">
+                            {att.type === 'video' ? (
+                              <div className="aspect-video bg-black relative flex items-center justify-center">
+                                <video src={att.url} className="w-full h-full object-cover opacity-80" controls />
+                                {!att.url.endsWith('mp4') && <div className="absolute inset-0 bg-black/40 flex flex-col items-center justify-center text-white p-4 text-center pointer-events-none group-hover:opacity-0 transition-opacity"><FileVideo className="w-6 h-6 mb-1"/><span className="text-[10px] font-bold">{att.name}</span></div>}
+                              </div>
+                            ) : att.type === 'audio' ? (
+                              <div className="aspect-square bg-slate-100 dark:bg-slate-900 relative flex flex-col items-center justify-center p-3">
+                                 <FileAudio className="w-8 h-8 text-amber-500 mb-2" />
+                                 <audio src={att.url} controls className="w-full h-8 z-10 relative" />
+                                 <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-2 pointer-events-none"><p className="text-white text-[10px] font-medium truncate w-full text-center">{att.name}</p></div>
+                              </div>
+                            ) : att.type === 'archive' || att.type === 'document' ? (
+                              <div className="aspect-square bg-slate-100 dark:bg-slate-900 relative flex flex-col items-center justify-center p-3 text-center group-hover:bg-slate-200 dark:group-hover:bg-slate-800 transition-colors">
+                                {att.type === 'archive' ? <FileArchive className="w-8 h-8 text-red-500 mb-2" /> : <FileText className="w-8 h-8 text-blue-500 mb-2" />}
+                                <p className="text-[10px] font-bold text-slate-700 dark:text-slate-300 break-all line-clamp-2">{att.name}</p>
+                                <span className="mt-1 px-2 py-0.5 bg-white dark:bg-slate-800 rounded-full text-[9px] font-bold text-accent-teal uppercase tracking-wider shadow-sm">Скачать</span>
+                              </div>
+                            ) : (
+                              <div className="aspect-square bg-slate-100 dark:bg-slate-900 relative">
+                                 <img src={att.url} alt={att.name} className="w-full h-full object-cover" />
+                                 <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-2"><p className="text-white text-[10px] font-medium truncate">{att.name}</p></div>
+                              </div>
+                            )}
+                         </a>
+                       ))}
+                    </div>
                   </div>
-                  
-                  {selectedSubmission.aiAnalysis.isPlagiarism ? (
-                    <div className="mb-4 p-4 bg-red-50 dark:bg-red-900/10 border border-red-200 dark:border-red-800/30 text-red-800 dark:text-red-300 rounded-xl flex items-start gap-3">
-                       <XCircle className="w-6 h-6 shrink-0 text-red-500" />
-                       <div>
-                         <p className="font-bold text-[15px]">Высокая вероятность плагиата / ИИ ({selectedSubmission.aiAnalysis.plagiarismProbability}%)</p>
-                         <p className="text-sm mt-1">Текст выглядит неестественно или скопирован из внешних источников.</p>
-                       </div>
-                    </div>
-                  ) : (
-                    <div className="mb-4 px-3 py-1.5 bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800/30 text-emerald-700 dark:text-emerald-400 text-sm rounded-lg inline-block font-bold items-center gap-2 flex w-max">
-                      <CheckCircle className="w-4 h-4" />Оригинальный текст
-                    </div>
-                  )}
+                )}
 
-                  <div className="space-y-3">
-                    <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-xl border border-slate-100 dark:border-slate-800">
-                      <p className="text-xs uppercase tracking-wider text-slate-500 font-bold mb-1">Рекомендуемый балл</p>
-                      <p className="text-2xl font-black text-indigo-600 dark:text-indigo-400">{selectedSubmission.aiAnalysis.grade} <span className="text-lg text-slate-400 font-medium">/ {selectedSubmission.maxPoints || 10}</span></p>
+                {/* AI Analysis Block */}
+                {selectedSubmission.aiAnalysis && (
+                  <div className={`p-5 rounded-xl border ${selectedSubmission.aiAnalysis.isPlagiarism ? 'border-red-200 dark:border-red-900/50 bg-red-50/30 dark:bg-red-900/5' : 'border-indigo-200/80 dark:border-indigo-900/40 bg-indigo-50/30 dark:bg-indigo-900/5'}`}>
+                    <div className="flex items-center gap-2 mb-3">
+                      <Sparkles className={`w-5 h-5 ${selectedSubmission.aiAnalysis.isPlagiarism ? 'text-red-500' : 'text-indigo-500'}`} />
+                      <h4 className="text-[14px] font-bold text-slate-800 dark:text-white">Отчёт Нейросети</h4>
                     </div>
-                    <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-xl border border-slate-100 dark:border-slate-800">
-                      <p className="text-xs uppercase tracking-wider text-slate-500 font-bold mb-2">Анализ решения</p>
-                      <p className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed">{selectedSubmission.aiAnalysis.suggestions}</p>
+                    
+                    {selectedSubmission.aiAnalysis.isPlagiarism ? (
+                      <div className="mb-3 p-3 bg-red-50 dark:bg-red-900/10 border border-red-200 dark:border-red-800/30 text-red-800 dark:text-red-300 rounded-xl flex items-start gap-2.5">
+                         <XCircle className="w-5 h-5 shrink-0 text-red-500 mt-0.5" />
+                         <div>
+                           <p className="font-bold text-[13px]">Высокая вероятность плагиата / ИИ ({selectedSubmission.aiAnalysis.plagiarismProbability}%)</p>
+                           <p className="text-[12px] mt-0.5 opacity-80">Текст выглядит неестественно или скопирован.</p>
+                         </div>
+                      </div>
+                    ) : (
+                      <div className="mb-3 px-2.5 py-1.5 bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800/30 text-emerald-700 dark:text-emerald-400 text-[12px] rounded-lg inline-flex font-bold items-center gap-1.5 w-max">
+                        <CheckCircle className="w-3.5 h-3.5" />Оригинальный текст
+                      </div>
+                    )}
+
+                    <div className="space-y-2.5">
+                      <div className="bg-white/60 dark:bg-slate-800/40 p-3.5 rounded-xl border border-slate-100 dark:border-slate-800">
+                        <p className="text-[10px] uppercase tracking-widest text-slate-500 font-bold mb-1">Рекомендуемый балл</p>
+                        <p className="text-xl font-black text-indigo-600 dark:text-indigo-400">{selectedSubmission.aiAnalysis.grade} <span className="text-sm text-slate-400 font-medium">/ {selectedSubmission.maxPoints || 10}</span></p>
+                      </div>
+                      <div className="bg-white/60 dark:bg-slate-800/40 p-3.5 rounded-xl border border-slate-100 dark:border-slate-800">
+                        <p className="text-[10px] uppercase tracking-widest text-slate-500 font-bold mb-1.5">Анализ решения</p>
+                        <p className="text-[13px] text-slate-700 dark:text-slate-300 leading-relaxed">{selectedSubmission.aiAnalysis.suggestions}</p>
+                      </div>
                     </div>
                   </div>
-                </div>
-              )}
+                )}
+              </div>
             </div>
 
-            {/* Grading Footer form */}
-            <div className="p-6 border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
-              <div className="flex flex-col gap-5">
-                <div className="flex gap-4 items-end">
-                  <div className="w-32 shrink-0">
-                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Балл (из {selectedSubmission.maxPoints || 10})</label>
-                    <input 
-                      type="number" 
-                      min={0}
-                      max={selectedSubmission.maxPoints || 10}
-                      value={gradeInput}
-                      onChange={e => setGradeInput(Number(e.target.value))}
-                      className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 focus:border-accent-teal focus:ring-4 focus:ring-accent-teal/10 rounded-xl text-lg font-bold text-slate-900 dark:text-white transition-all outline-none"
-                    />
-                  </div>
-                  <div className="flex-1">
-                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Отзыв для студента</label>
-                    <input 
-                      type="text" 
-                      value={feedbackInput}
-                      onChange={e => setFeedbackInput(e.target.value)}
-                      placeholder="Например: Отличная работа, так держать!"
-                      className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 focus:border-accent-teal focus:ring-4 focus:ring-accent-teal/10 rounded-xl text-sm font-medium text-slate-900 dark:text-white transition-all outline-none placeholder:font-normal placeholder:text-slate-400"
-                    />
-                  </div>
+            {/* Grading Footer */}
+            <div className="p-5 border-t border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 shrink-0">
+              <div className="flex gap-3 items-end mb-3">
+                <div className="w-28 shrink-0">
+                  <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1.5">Балл (из {selectedSubmission.maxPoints || 10})</label>
+                  <input 
+                    type="number" 
+                    min={0}
+                    max={selectedSubmission.maxPoints || 10}
+                    value={gradeInput}
+                    onChange={e => setGradeInput(Number(e.target.value))}
+                    className="w-full px-3 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 focus:border-accent-teal focus:ring-2 focus:ring-accent-teal/10 rounded-xl text-lg font-bold text-slate-900 dark:text-white transition-all outline-none"
+                  />
                 </div>
-                <button
-                  onClick={handleSaveGrade}
-                  disabled={isSaving}
-                  className="w-full flex items-center justify-center gap-2 px-6 py-4 bg-accent-teal text-white rounded-xl font-bold shadow-[0_0_20px_rgba(45,212,191,0.3)] hover:shadow-[0_0_30px_rgba(45,212,191,0.5)] transition-all disabled:opacity-50 disabled:grayscale hover:-translate-y-0.5 text-lg"
-                >
-                  {isSaving ? <><div className="w-5 h-5 border-2 border-white/40 border-t-white rounded-full animate-spin" /> Сохранение...</> : <>Одобрить оценку и завершить <CheckCircle className="w-6 h-6" /></>}
-                </button>
+                <div className="flex-1 min-w-0">
+                  <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1.5">Отзыв</label>
+                  <input 
+                    type="text" 
+                    value={feedbackInput}
+                    onChange={e => setFeedbackInput(e.target.value)}
+                    placeholder="Отличная работа, так держать!"
+                    className="w-full px-3 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 focus:border-accent-teal focus:ring-2 focus:ring-accent-teal/10 rounded-xl text-[13px] font-medium text-slate-900 dark:text-white transition-all outline-none placeholder:font-normal placeholder:text-slate-400"
+                  />
+                </div>
               </div>
+              <button
+                onClick={handleSaveGrade}
+                disabled={isSaving}
+                className="w-full flex items-center justify-center gap-2 px-5 py-3 bg-accent-teal text-white rounded-xl font-bold shadow-[0_0_20px_rgba(45,212,191,0.2)] hover:shadow-[0_0_30px_rgba(45,212,191,0.4)] transition-all disabled:opacity-50 disabled:grayscale hover:-translate-y-0.5"
+              >
+                {isSaving ? <><div className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" /> Сохранение...</> : <>Сохранить оценку <CheckCircle className="w-5 h-5" /></>}
+              </button>
             </div>
             
-          </>
+          </div>
         )}
       </div>
-      
-      {/* Overlay for sidebar */}
-      {selectedSubmission && (
-         <div onClick={closeSidebar} className="fixed inset-0 bg-slate-900/20 backdrop-blur-sm z-40 animate-in fade-in transition-all"></div>
-      )}
 
     </div>
   );

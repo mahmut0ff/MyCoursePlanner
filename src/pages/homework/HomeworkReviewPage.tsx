@@ -3,7 +3,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { usePlanGate } from '../../contexts/PlanContext';
 import { apiOrgGetHomeworks, apiGradeHomework, apiAIGradeHomework, apiUpdateHomeworkStatus } from '../../lib/api';
 import type { HomeworkSubmission } from '../../types';
-import { Sparkles, CheckCircle, Clock, XCircle, GripVertical, FileVideo, ImageIcon, Eye, X } from 'lucide-react';
+import { Sparkles, CheckCircle, Clock, XCircle, GripVertical, FileVideo, ImageIcon, Eye, X, FileAudio, FileArchive, FileText } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { DndContext, useSensor, useSensors, PointerSensor, DragOverlay, closestCorners } from '@dnd-kit/core';
 import type { DragEndEvent, DragStartEvent } from '@dnd-kit/core';
@@ -334,6 +334,18 @@ const HomeworkReviewPage: React.FC = () => {
                             <div className="aspect-video bg-black relative flex items-center justify-center">
                               <video src={att.url} className="w-full h-full object-cover opacity-80" controls />
                               {!att.url.endsWith('mp4') && <div className="absolute inset-0 bg-black/40 flex flex-col items-center justify-center text-white p-4 text-center pointer-events-none group-hover:opacity-0 transition-opacity"><FileVideo className="w-8 h-8 mb-2"/><span className="text-xs font-bold">{att.name}</span></div>}
+                            </div>
+                          ) : att.type === 'audio' ? (
+                            <div className="aspect-square bg-slate-100 dark:bg-slate-900 relative flex flex-col items-center justify-center p-4">
+                               <FileAudio className="w-12 h-12 text-amber-500 mb-3" />
+                               <audio src={att.url} controls className="w-full h-10 z-10 relative" />
+                               <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-3 pointer-events-none"><p className="text-white text-xs font-medium truncate w-full text-center">{att.name}</p></div>
+                            </div>
+                          ) : att.type === 'archive' || att.type === 'document' ? (
+                            <div className="aspect-square bg-slate-100 dark:bg-slate-900 relative flex flex-col items-center justify-center p-4 text-center group-hover:bg-slate-200 dark:group-hover:bg-slate-800 transition-colors">
+                              {att.type === 'archive' ? <FileArchive className="w-12 h-12 text-red-500 mb-3" /> : <FileText className="w-12 h-12 text-blue-500 mb-3" />}
+                              <p className="text-xs font-bold text-slate-700 dark:text-slate-300 break-all line-clamp-2">{att.name}</p>
+                              <span className="mt-2 px-3 py-1 bg-white dark:bg-slate-800 rounded-full text-[10px] font-bold text-accent-teal uppercase tracking-wider shadow-sm">Скачать</span>
                             </div>
                           ) : (
                             <div className="aspect-square bg-slate-100 dark:bg-slate-900 relative">

@@ -382,7 +382,7 @@ export interface HomeworkSubmission {
   content: string; // The rich text or plain text answer
   attachments?: {
     url: string;
-    type: 'image' | 'video' | 'file';
+    type: 'image' | 'video' | 'audio' | 'archive' | 'document';
     name: string;
     size: number;
   }[];

@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { Upload, X, ImageIcon, Loader2, CheckCircle2, FileVideo } from 'lucide-react';
+import { Upload, X, ImageIcon, Loader2, CheckCircle2, FileVideo, FileAudio, FileArchive, FileText } from 'lucide-react';
 import { uploadFileWithProgress } from '../../services/storage.service';
 import toast from 'react-hot-toast';
 
@@ -17,7 +17,7 @@ interface UploadingFile {
   file: File;
   progress: number;
   url?: string;
-  type: 'image' | 'video' | 'file';
+  type: 'image' | 'video' | 'audio' | 'archive' | 'document';
   error?: string;
 }
 
@@ -33,8 +33,8 @@ export const StudentHomeworkForm: React.FC<StudentHomeworkFormProps> = ({
   const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const MAX_IMAGE_SIZE = 3 * 1024 * 1024; // 3MB
-  const MAX_VIDEO_SIZE = 50 * 1024 * 1024; // 50MB
+  const MAX_IMAGE_AUDIO_SIZE = 15 * 1024 * 1024; // 15MB
+  const MAX_FILE_VIDEO_SIZE = 50 * 1024 * 1024; // 50MB
 
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
@@ -52,19 +52,30 @@ export const StudentHomeworkForm: React.FC<StudentHomeworkFormProps> = ({
     newFiles.forEach((file) => {
       const isImage = file.type.startsWith('image/');
       const isVideo = file.type.startsWith('video/');
+      const isAudio = file.type.startsWith('audio/');
+      
+      const isArchive = file.name.endsWith('.zip') || file.name.endsWith('.rar') || file.name.endsWith('.7z') || file.type.includes('zip') || file.type.includes('rar') || file.type.includes('tar');
+      const isDocument = file.name.endsWith('.pdf') || file.name.endsWith('.doc') || file.name.endsWith('.docx') || file.type.includes('pdf') || file.type.includes('word') || file.type.includes('text') || file.name.endsWith('.py') || file.name.endsWith('.js') || file.name.endsWith('.ino') || file.name.endsWith('.sb3') || file.name.endsWith('.txt');
 
-      if (!isImage && !isVideo) {
-        toast.error(`Файл ${file.name} не поддерживается. Только фото и видео.`);
+      let type: 'image' | 'video' | 'audio' | 'archive' | 'document' = 'document';
+      if (isImage) type = 'image';
+      else if (isVideo) type = 'video';
+      else if (isAudio) type = 'audio';
+      else if (isArchive) type = 'archive';
+      else type = 'document';
+
+      if (!isImage && !isVideo && !isAudio && !isArchive && !isDocument) {
+        toast.error(`Файл ${file.name} не поддерживается. Только медиа, архивы и документы.`);
         return;
       }
 
-      if (isImage && file.size > MAX_IMAGE_SIZE) {
-        toast.error(`Фото ${file.name} превышает 3МБ`);
+      if ((type === 'image' || type === 'audio') && file.size > MAX_IMAGE_AUDIO_SIZE) {
+        toast.error(`Файл ${file.name} превышает 15МБ`);
         return;
       }
 
-      if (isVideo && file.size > MAX_VIDEO_SIZE) {
-        toast.error(`Видео ${file.name} превышает 50МБ`);
+      if ((type === 'video' || type === 'archive' || type === 'document') && file.size > MAX_FILE_VIDEO_SIZE) {
+        toast.error(`Файл ${file.name} превышает 50МБ`);
         return;
       }
 
@@ -72,7 +83,7 @@ export const StudentHomeworkForm: React.FC<StudentHomeworkFormProps> = ({
         id: Math.random().toString(36).substring(7),
         file,
         progress: 0,
-        type: isImage ? 'image' : 'video'
+        type
       });
     });
 
@@ -154,7 +165,7 @@ export const StudentHomeworkForm: React.FC<StudentHomeworkFormProps> = ({
       </div>
       <p className="text-gray-400 mb-6 text-sm">
         Урок: <span className="text-white font-medium">{lessonTitle}</span><br />
-        Опишите ваше решение и прикрепите фото (до 3МБ) или видео (до 50МБ).
+        Опишите ваше решение и прикрепите файлы (до 50МБ).
       </p>
 
       <form onSubmit={handleSubmit} className="space-y-6">
@@ -185,7 +196,7 @@ export const StudentHomeworkForm: React.FC<StudentHomeworkFormProps> = ({
             onChange={handleFileSelect}
             className="hidden"
             multiple
-            accept="image/*,video/*"
+            accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.zip,.rar,.7z,.py,.js,.ino,.sb3,.txt"
           />
           <div className="flex flex-col items-center justify-center space-y-4 pointer-events-none">
             <div className="p-4 bg-white/5 rounded-full">
@@ -196,7 +207,7 @@ export const StudentHomeworkForm: React.FC<StudentHomeworkFormProps> = ({
                 Нажмите или перетащите файлы сюда
               </p>
               <p className="text-gray-400 text-sm">
-                Фотографии (до 3 МБ) или одно видео (до 50 МБ)
+                Фото/Аудио (до 15 МБ), Видео/Архивы/Документы (до 50 МБ)
               </p>
             </div>
           </div>
@@ -210,11 +221,11 @@ export const StudentHomeworkForm: React.FC<StudentHomeworkFormProps> = ({
                 className="flex items-center gap-4 bg-black/20 border border-white/10 p-3 rounded-xl"
               >
                 <div className="p-2 bg-white/5 rounded-lg shrink-0">
-                  {file.type === 'image' ? (
-                    <ImageIcon className="w-5 h-5 text-accent-teal" />
-                  ) : (
-                    <FileVideo className="w-5 h-5 text-indigo-400" />
-                  )}
+                  {file.type === 'image' && <ImageIcon className="w-5 h-5 text-accent-teal" />}
+                  {file.type === 'video' && <FileVideo className="w-5 h-5 text-indigo-400" />}
+                  {file.type === 'audio' && <FileAudio className="w-5 h-5 text-amber-400" />}
+                  {file.type === 'archive' && <FileArchive className="w-5 h-5 text-red-400" />}
+                  {file.type === 'document' && <FileText className="w-5 h-5 text-blue-400" />}
                 </div>
                 
                 <div className="flex-1 min-w-0">

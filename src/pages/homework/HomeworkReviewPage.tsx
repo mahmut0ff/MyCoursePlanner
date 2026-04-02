@@ -275,7 +275,7 @@ const HomeworkReviewPage: React.FC = () => {
       </div>
 
       {/* Grading Sidebar/Drawer (Slide From Right) */}
-      <div className={`absolute top-0 right-0 w-full max-w-xl h-full bg-white dark:bg-slate-900 shadow-[-10px_0_30px_rgba(0,0,0,0.1)] dark:shadow-[-20px_0_40px_rgba(0,0,0,0.5)] transform transition-transform duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] z-50 flex flex-col ${selectedSubmission ? 'translate-x-0' : 'translate-x-full'}`}>
+      <div className={`absolute top-0 right-0 w-full max-w-xl h-full bg-white dark:bg-slate-900 shadow-[-10px_0_30px_rgba(0,0,0,0.1)] dark:shadow-[-20px_0_40px_rgba(0,0,0,0.5)] transform transition-transform duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] z-50 flex flex-col ${selectedSubmission ? 'translate-x-0' : 'translate-x-[120%]'}`}>
         {selectedSubmission && (
           <>
             {/* Header */}

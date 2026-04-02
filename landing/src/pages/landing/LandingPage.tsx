@@ -10,7 +10,9 @@ import {
  MessageCircle, Mail, MapPin, Phone, Award,
  Layers, Lock, FileText, Target, Gamepad2,
  GraduationCap, Laptop,
- Bot, PenTool, LayoutGrid, Database, Briefcase, Building2
+ Bot, PenTool, LayoutGrid, Database, Briefcase, Building2,
+ Code2, Headphones, Palette, Activity, Music, TrendingUp,
+ CalendarClock, CheckSquare, UploadCloud, Star
 } from 'lucide-react';
 
 /* ──────────────────────────────────────────
@@ -143,10 +145,14 @@ const LandingPage: React.FC = () => {
  },
  ];
 
- /* ── Use cases ── */
- const useCases = [
- { icon: GraduationCap, title: t('landing.ucTraining'), desc: t('landing.ucTrainingDesc') },
- { icon: Laptop, title: t('landing.ucOnline'), desc: t('landing.ucOnlineDesc') },
+ /* ── Target Niches ── */
+ const targetNiches = [
+  { id: 'it', icon: Code2, title: 'IT и Робототехника', desc: 'Автоматическая проверка кода, поддержка загрузки ZIP/RAR архивов со скриптами учеников', color: 'text-indigo-500', bg: 'bg-indigo-500/10' },
+  { id: 'lang', icon: Headphones, title: 'Языковые школы', desc: 'Домашние задания голосом. Встроенный аудиоплеер для практики Speaking & Listening', color: 'text-rose-500', bg: 'bg-rose-500/10' },
+  { id: 'art', icon: Palette, title: 'Art-классы и Творчество', desc: 'Красивое медиа-портфолио. Загрузка тяжелых фото и видео-работ до 50МБ без ограничений', color: 'text-fuchsia-500', bg: 'bg-fuchsia-500/10' },
+  { id: 'prep', icon: TrendingUp, title: 'Репетиторы ЕНТ / ЕГЭ', desc: 'Генерация сотен тестов за секунды с помощью ИИ. Точечная проработка ошибок ученика', color: 'text-emerald-500', bg: 'bg-emerald-500/10' },
+  { id: 'sports', icon: Activity, title: 'Спортивные секции', desc: 'Мгновенный контроль присутствия. Учет тарифов и статусов оплаты за абонемент', color: 'text-orange-500', bg: 'bg-orange-500/10' },
+  { id: 'music', icon: Music, title: 'Музыкальные школы', desc: 'Обмен нотами и табами в PDF. Сдача экзаменов аудиофайлами в высоком качестве', color: 'text-cyan-500', bg: 'bg-cyan-500/10' }
  ];
 
  /* ── FAQ ── */
@@ -476,104 +482,208 @@ const LandingPage: React.FC = () => {
  </div>
  </section>
 
-  {/* ═══ Why Us ═══ */}
-  <section className="py-20 px-6">
-  <div className="max-w-7xl mx-auto">
-  <div className="text-center mb-16">
-  <h2 className="text-3xl md:text-4xl font-extrabold mb-4">{t('landing.whyUsTitle')}</h2>
-  <p className="text-lg text-slate-500 max-w-2xl mx-auto">{t('landing.whyUsSubtitle')}</p>
-  </div>
-  <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-5xl mx-auto">
-  {[
-  { icon: Layers, title: t('landing.why1Title'), desc: t('landing.why1Desc'), gradient: 'from-blue-500 to-cyan-500' },
-  { icon: Building2, title: t('landing.why2Title'), desc: t('landing.why2Desc'), gradient: 'from-violet-500 to-purple-500' },
-  { icon: Brain, title: t('landing.why3Title'), desc: t('landing.why3Desc'), gradient: 'from-amber-500 to-orange-500' },
-  { icon: Shield, title: t('landing.why4Title'), desc: t('landing.why4Desc'), gradient: 'from-emerald-500 to-teal-500' },
-  { icon: Zap, title: t('landing.why5Title'), desc: t('landing.why5Desc'), gradient: 'from-rose-500 to-pink-500' },
-  { icon: Globe, title: t('landing.why6Title'), desc: t('landing.why6Desc'), gradient: 'from-indigo-500 to-blue-500' },
-  ].map((item, i) => (
-  <div key={i} className="relative p-6 rounded-2xl bg-white border border-slate-100 hover:shadow-lg transition-shadow group">
-  <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${item.gradient} flex items-center justify-center mb-4 shadow-lg group-hover:scale-110 transition-transform`}>
-  <item.icon className="w-6 h-6 text-white" />
-  </div>
-  <h3 className="text-lg font-bold mb-2">{item.title}</h3>
-  <p className="text-sm text-slate-500 leading-relaxed">{item.desc}</p>
-  </div>
-  ))}
-  </div>
-  </div>
+  {/* ═══ Role: For Teachers & Managers ═══ */}
+  <section className="py-24 px-6 relative overflow-hidden bg-slate-900 border-y border-slate-800">
+    <div className="absolute top-[-100px] right-[-200px] w-[600px] h-[600px] bg-primary-600/20 rounded-full blur-[120px] pointer-events-none" />
+    <div className="max-w-7xl mx-auto relative z-10">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
+        <div>
+          <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-primary-500/10 border border-primary-500/20 rounded-full text-sm font-medium text-primary-400 mb-6">
+            <Briefcase className="w-4 h-4" />
+            Для преподавателей и руководителей
+          </div>
+          <h2 className="text-4xl md:text-5xl font-extrabold text-white mb-6 leading-tight">
+            Полный контроль над <span className="bg-gradient-to-r from-primary-400 to-indigo-400 bg-clip-text text-transparent">учебным процессом</span>
+          </h2>
+          <p className="text-lg text-slate-400 mb-10 leading-relaxed">
+            Избавьтесь от рутины, бумажных журналов и таблиц Excel. Управляйте расписанием, проводите AI-проверку работ и автоматизируйте учет финансов в едином премиум-окружении.
+          </p>
+          
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+            <div className="bg-slate-800/50 p-5 rounded-2xl border border-slate-700/50 group hover:border-indigo-400/50 transition-colors">
+              <CalendarClock className="w-8 h-8 text-indigo-400 mb-4 group-hover:scale-110 transition-transform" />
+              <h4 className="text-white font-bold mb-2">Журнал & Посещаемость</h4>
+              <p className="text-sm text-slate-400">Отмечайте присутствие в три клика. Вся статистика формируется сама.</p>
+            </div>
+            <div className="bg-slate-800/50 p-5 rounded-2xl border border-slate-700/50 group hover:border-emerald-400/50 transition-colors">
+              <CheckSquare className="w-8 h-8 text-emerald-400 mb-4 group-hover:scale-110 transition-transform" />
+              <h4 className="text-white font-bold mb-2">Ревью ДЗ одним окном</h4>
+              <p className="text-sm text-slate-400">Удобный канбан, встроенный аудио-плеер, проверка PDF и кода.</p>
+            </div>
+            <div className="bg-slate-800/50 p-5 rounded-2xl border border-slate-700/50 group hover:border-amber-400/50 transition-colors">
+               <Database className="w-8 h-8 text-amber-400 mb-4 group-hover:scale-110 transition-transform" />
+               <h4 className="text-white font-bold mb-2">Финансы & Оплаты</h4>
+               <p className="text-sm text-slate-400">CRM-система биллинга, напоминания о долгах и расчет ЗП педагогов.</p>
+            </div>
+            <div className="bg-slate-800/50 p-5 rounded-2xl border border-slate-700/50 group hover:border-rose-400/50 transition-colors">
+               <Shield className="w-8 h-8 text-rose-400 mb-4 group-hover:scale-110 transition-transform" />
+               <h4 className="text-white font-bold mb-2">Ролевой доступ</h4>
+               <p className="text-sm text-slate-400">Настраивайте 65+ прав для менеджеров, педагогов и администраторов.</p>
+            </div>
+          </div>
+        </div>
+
+        <div className="relative mt-8 lg:mt-0 lg:ml-10">
+          <div className="absolute inset-0 bg-gradient-to-tr from-primary-600 to-indigo-600 rounded-3xl blur-[40px] opacity-20 animate-pulse" />
+          <div className="relative bg-[#0f172a] border border-slate-700/50 rounded-3xl shadow-2xl overflow-hidden flex flex-col p-6">
+             {/* Fake Teacher Dashboard Mock */}
+             <div className="flex items-center justify-between border-b border-slate-800 pb-4 mb-4">
+               <div className="flex items-center gap-3">
+                 <div className="w-10 h-10 rounded-full bg-primary-900/50 flex items-center justify-center border border-primary-800 border-2">
+                   <Briefcase className="w-5 h-5 text-primary-400" />
+                 </div>
+                 <div>
+                   <h4 className="text-white font-bold text-sm">Рабочий стол Учителя</h4>
+                   <p className="text-xs text-slate-500">Группа Advanced (Вторник, 15:00)</p>
+                 </div>
+               </div>
+               <div className="px-3 py-1 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs rounded-full">Урок идет</div>
+             </div>
+             
+             <div className="space-y-3 mb-6">
+               {[1, 2, 3].map((i) => (
+                 <div key={i} className="flex items-center justify-between p-3 rounded-xl bg-slate-800/50 border border-slate-700/50 hover:bg-slate-700/50 transition-colors cursor-pointer">
+                   <div className="flex items-center gap-3">
+                     <div className="w-8 h-8 rounded-full bg-slate-700" />
+                     <div>
+                       <div className="w-24 h-2 bg-slate-600 rounded-full mb-1.5" />
+                       <div className="w-16 h-1.5 bg-slate-700 rounded-full" />
+                     </div>
+                   </div>
+                   <div className="flex gap-2">
+                     <div className="w-6 h-6 rounded-md bg-emerald-500 border border-emerald-400 flex items-center justify-center"><Check className="w-4 h-4 text-white" /></div>
+                     <div className="w-6 h-6 rounded-md bg-slate-700" />
+                     <div className="w-6 h-6 rounded-md bg-slate-700" />
+                   </div>
+                 </div>
+               ))}
+             </div>
+             
+             <button className="w-full py-3 bg-primary-600 hover:bg-primary-500 transition-colors text-white text-sm font-bold rounded-xl mt-auto">Сохранить журнал</button>
+          </div>
+        </div>
+      </div>
+    </div>
   </section>
 
-  {/* ═══ Roles: Students & Teachers ═══ */}
-  <section className="py-24 px-6 relative overflow-hidden bg-white">
-  <div className="max-w-7xl mx-auto">
-  <div className="text-center mb-16">
-  <h2 className="text-3xl md:text-4xl font-extrabold mb-4">{t('landing.rolesTitle')}</h2>
-  <p className="text-lg text-slate-500 max-w-2xl mx-auto">{t('landing.rolesSubtitle')}</p>
-  </div>
-  
-  <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-  {/* Student Card */}
-  <div className="bg-slate-50 rounded-3xl p-8 lg:p-10 border border-slate-100 hover:shadow-2xl transition-all hover:-translate-y-1 relative overflow-hidden group">
-  <div className="absolute top-0 right-0 w-48 h-48 bg-violet-200/40 rounded-full blur-3xl group-hover:bg-violet-300/40 transition-colors pointer-events-none" />
-  <div className="w-16 h-16 bg-white rounded-2xl flex items-center justify-center mb-6 border border-slate-200 shadow-sm">
-  <Users className="w-8 h-8 text-violet-500" />
-  </div>
-  <h3 className="text-2xl font-bold text-slate-900 mb-4">{t('landing.roleStudent')}</h3>
-  <p className="text-slate-500 leading-relaxed mb-8">{t('landing.roleStudentDesc')}</p>
-  
-  <ul className="space-y-4">
-  {[1, 2, 3].map((i) => (
-  <li key={i} className="flex items-start gap-3">
-  <Check className="w-5 h-5 text-violet-500 shrink-0 mt-0.5" />
-  <span className="text-slate-600 font-medium text-sm leading-relaxed">{t(`landing.roleStudentF${i}`)}</span>
-  </li>
-  ))}
-  </ul>
-  </div>
+  {/* ═══ Role: For Students & Parents ═══ */}
+  <section className="py-24 px-6 relative overflow-hidden bg-slate-50 border-b border-slate-100">
+    <div className="absolute top-[-100px] left-[-200px] w-[600px] h-[600px] bg-violet-600/10 rounded-full blur-[120px] pointer-events-none" />
+    <div className="max-w-7xl mx-auto relative z-10">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
+        
+        {/* Mock Visual */}
+        <div className="relative mt-8 lg:mt-0 order-2 lg:order-1 lg:mr-10">
+          <div className="absolute inset-0 bg-gradient-to-tr from-violet-400 to-fuchsia-400 rounded-3xl blur-[40px] opacity-20 animate-pulse" />
+          <div className="relative bg-white border border-slate-200 rounded-3xl shadow-2xl overflow-hidden flex flex-col p-6 lg:p-8">
+             <div className="flex items-center gap-4 mb-8 bg-gradient-to-br from-violet-500 to-fuchsia-500 p-6 rounded-2xl text-white shadow-lg shadow-violet-500/20 transform transition-transform hover:scale-[1.02]">
+               <div className="w-16 h-16 rounded-2xl bg-white/20 backdrop-blur-sm flex items-center justify-center border border-white/30 shrink-0 shadow-inner">
+                 <Sparkles className="w-8 h-8 text-white" />
+               </div>
+               <div>
+                 <p className="text-white/80 text-sm font-medium">Ваш прогресс</p>
+                 <h4 className="text-2xl font-bold flex items-center gap-2">Lvl 14 Охотник <Crown className="w-5 h-5 text-amber-300" /></h4>
+                 <div className="w-full bg-white/20 h-2 rounded-full mt-2 overflow-hidden shadow-inner">
+                   <div className="bg-white w-[75%] h-full rounded-full" />
+                 </div>
+               </div>
+             </div>
+             
+             <h4 className="text-slate-800 font-bold mb-4 px-2">Активные задания</h4>
+             <div className="space-y-3">
+               {[1, 2].map((i) => (
+                 <div key={i} className="p-4 rounded-xl bg-slate-50 border border-slate-100 hover:border-violet-200 hover:bg-violet-50 group cursor-pointer transition-colors shadow-sm">
+                   <div className="flex justify-between items-center mb-2">
+                     <span className="text-violet-600 text-xs font-bold px-2 py-1 bg-violet-100 rounded-md">До завтра</span>
+                     <span className="text-amber-500 text-xs font-bold flex items-center gap-1">+150 XP <Star className="w-3 h-3 fill-current" /></span>
+                   </div>
+                   <h5 className="text-sm font-bold text-slate-800 mb-1">Проект "Случайные числа" Python</h5>
+                   <p className="text-xs text-slate-500 font-medium">Загрузите .py исходник или архив</p>
+                 </div>
+               ))}
+               <div className="p-4 rounded-xl bg-emerald-50 border border-emerald-100 border-dashed text-center mt-2 cursor-pointer hover:bg-emerald-100 transition-colors">
+                 <UploadCloud className="w-6 h-6 text-emerald-500 mx-auto mb-1" />
+                 <span className="text-sm font-bold text-emerald-700">Сдать работу через телефон</span>
+               </div>
+             </div>
+          </div>
+        </div>
 
-  {/* Teacher Card */}
-  <div className="bg-slate-50 rounded-3xl p-8 lg:p-10 border border-slate-100 hover:shadow-2xl transition-all hover:-translate-y-1 relative overflow-hidden group">
-  <div className="absolute top-0 right-0 w-48 h-48 bg-primary-200/40 rounded-full blur-3xl group-hover:bg-primary-300/40 transition-colors pointer-events-none" />
-  <div className="w-16 h-16 bg-white rounded-2xl flex items-center justify-center mb-6 border border-slate-200 shadow-sm">
-  <Briefcase className="w-8 h-8 text-primary-500" />
-  </div>
-  <h3 className="text-2xl font-bold text-slate-900 mb-4">{t('landing.roleTeacher')}</h3>
-  <p className="text-slate-500 leading-relaxed mb-8">{t('landing.roleTeacherDesc')}</p>
-  
-  <ul className="space-y-4">
-  {[1, 2, 3].map((i) => (
-  <li key={i} className="flex items-start gap-3">
-  <Check className="w-5 h-5 text-primary-500 shrink-0 mt-0.5" />
-  <span className="text-slate-600 font-medium text-sm leading-relaxed">{t(`landing.roleTeacherF${i}`)}</span>
-  </li>
-  ))}
-  </ul>
-  </div>
-  </div>
-  </div>
+        {/* Text Content */}
+        <div className="order-1 lg:order-2">
+          <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-violet-50 border border-violet-100 rounded-full text-sm font-medium text-violet-600 mb-6 shadow-sm">
+            <Gamepad2 className="w-4 h-4" />
+            Для Учеников и Родителей
+          </div>
+          <h2 className="text-4xl md:text-5xl font-extrabold text-slate-900 mb-6 leading-tight">
+            Обучение, в которое хочется <span className="bg-gradient-to-r from-violet-500 to-fuchsia-500 bg-clip-text text-transparent">возвращаться</span>
+          </h2>
+          <p className="text-lg text-slate-500 mb-10 leading-relaxed">
+            Мотивируйте студентов сбалансированной системой наград, бейджей и уровней. Легко загружайте домашние задания любых форматов, даже с мобильного телефона.
+          </p>
+          
+          <ul className="space-y-6">
+            <li className="flex gap-4 group">
+              <div className="w-12 h-12 rounded-xl bg-violet-50 flex items-center justify-center shrink-0 border border-violet-100 group-hover:bg-violet-500 transition-colors">
+                <Crown className="w-6 h-6 text-violet-500 group-hover:text-white transition-colors" />
+              </div>
+              <div>
+                <h4 className="text-lg font-bold text-slate-900 mb-1">Опыт (EXP) и рейтинг</h4>
+                <p className="text-slate-500 text-sm leading-relaxed">Здоровая конкуренция через внутрикурсовой лидерборд. Отслеживание уровня мотивирует учиться регулярно.</p>
+              </div>
+            </li>
+            <li className="flex gap-4 group">
+              <div className="w-12 h-12 rounded-xl bg-fuchsia-50 flex items-center justify-center shrink-0 border border-fuchsia-100 group-hover:bg-fuchsia-500 transition-colors">
+                <UploadCloud className="w-6 h-6 text-fuchsia-500 group-hover:text-white transition-colors" />
+              </div>
+              <div>
+                <h4 className="text-lg font-bold text-slate-900 mb-1">Разные форматы домашек (до 50 МБ)</h4>
+                <p className="text-slate-500 text-sm leading-relaxed">Сдавайте фото с телефона, аудиозаписи с произношением, PDF документы и архивы с кодом без зависаний.</p>
+              </div>
+            </li>
+            <li className="flex gap-4 group">
+              <div className="w-12 h-12 rounded-xl bg-emerald-50 flex items-center justify-center shrink-0 border border-emerald-100 group-hover:bg-emerald-500 transition-colors">
+                <BarChart3 className="w-6 h-6 text-emerald-500 group-hover:text-white transition-colors" />
+              </div>
+              <div>
+                <h4 className="text-lg font-bold text-slate-900 mb-1">Прозрачность для родителей</h4>
+                <p className="text-slate-500 text-sm leading-relaxed">В любой момент родитель может открыть приложение со смартфона и посмотреть табель посещаемости и оценки.</p>
+              </div>
+            </li>
+          </ul>
+        </div>
+      </div>
+    </div>
   </section>
 
- {/* ═══ Use Cases ═══ */}
- <section className="py-20 px-6 bg-slate-50 ">
- <div className="max-w-7xl mx-auto">
- <div className="text-center mb-16">
- <h2 className="text-3xl md:text-4xl font-extrabold mb-4">{t('landing.useCasesTitle')}</h2>
- <p className="text-lg text-slate-500 max-w-2xl mx-auto">{t('landing.useCasesSubtitle')}</p>
- </div>
- <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 max-w-3xl mx-auto">
- {useCases.map((uc, i) => (
- <div key={i} className="text-center p-8 bg-white rounded-2xl border border-slate-100 hover:shadow-xl transition-all group">
- <div className="w-16 h-16 mx-auto bg-primary-50 rounded-2xl flex items-center justify-center mb-5 group-hover:scale-110 transition-transform">
- <uc.icon className="w-8 h-8 text-primary-600 " />
- </div>
- <h3 className="text-lg font-bold mb-2">{uc.title}</h3>
- <p className="text-sm text-slate-500 leading-relaxed">{uc.desc}</p>
- </div>
- ))}
- </div>
- </div>
- </section>
+  {/* ═══ Who Uses Planula? (Target Niches) ═══ */}
+  <section className="py-24 px-6 bg-white">
+    <div className="max-w-7xl mx-auto">
+      <div className="text-center mb-16">
+        <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-slate-100 border border-slate-200 rounded-full text-sm font-medium text-slate-600 mb-6 shadow-sm">
+          <Target className="w-4 h-4" />
+          Универсальное решение
+        </div>
+        <h2 className="text-3xl md:text-5xl font-extrabold mb-6 text-slate-900 leading-tight">Для каких центров подходит <span className="bg-gradient-to-r from-primary-600 to-indigo-600 bg-clip-text text-transparent">Planula?</span></h2>
+        <p className="text-lg text-slate-500 max-w-2xl mx-auto leading-relaxed">Платформа адаптируется под любые методики. Не важно, проверяете вы исходный код или технику аргентинского танго — мы поддержали всё.</p>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {targetNiches.map((niche) => (
+          <div key={niche.id} className="bg-white rounded-3xl p-8 border border-slate-100 shadow-[0_2px_10px_rgba(0,0,0,0.02)] hover:shadow-2xl hover:border-slate-200 transition-all hover:-translate-y-1 group relative overflow-hidden cursor-default">
+             <div className={`absolute top-0 right-0 w-32 h-32 rounded-full blur-[60px] opacity-0 group-hover:opacity-40 transition-opacity pointer-events-none ${niche.bg.replace('/10', '')}`} />
+             <div className={`w-14 h-14 rounded-2xl flex items-center justify-center mb-6 relative z-10 ${niche.bg} border-2 border-white shadow-sm ring-1 ring-slate-100/50 group-hover:scale-110 transition-transform`}>
+               <niche.icon className={`w-6 h-6 ${niche.color}`} />
+             </div>
+             <h3 className="text-xl font-bold text-slate-900 mb-3 relative z-10">{niche.title}</h3>
+             <p className="text-sm text-slate-500 leading-relaxed relative z-10">
+               {niche.desc}
+             </p>
+          </div>
+        ))}
+      </div>
+    </div>
+  </section>
 
  {/* ═══ Pricing ═══ */}
  <section id="pricing" className="py-20 px-6">

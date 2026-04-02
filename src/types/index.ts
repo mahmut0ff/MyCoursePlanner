@@ -380,8 +380,13 @@ export interface HomeworkSubmission {
   studentName: string;
   organizationId: string;
   content: string; // The rich text or plain text answer
-  attachments?: string[]; // URLs generated from file uploads
-  status: 'pending' | 'graded';
+  attachments?: {
+    url: string;
+    type: 'image' | 'video' | 'file';
+    name: string;
+    size: number;
+  }[];
+  status: 'pending' | 'reviewing' | 'graded';
   aiAnalysis?: {
     grade: number;
     suggestions: string;

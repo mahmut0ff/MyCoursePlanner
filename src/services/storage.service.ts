@@ -1,4 +1,4 @@
-import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
+import { ref, uploadBytes, uploadBytesResumable, getDownloadURL, deleteObject } from 'firebase/storage';
 import { storage } from '../lib/firebase';
 
 export const uploadFile = async (
@@ -8,6 +8,32 @@ export const uploadFile = async (
   const storageRef = ref(storage, path);
   await uploadBytes(storageRef, file);
   return getDownloadURL(storageRef);
+};
+
+export const uploadFileWithProgress = (
+  path: string,
+  file: File | Blob,
+  onProgress: (progress: number) => void
+): Promise<string> => {
+  return new Promise((resolve, reject) => {
+    const storageRef = ref(storage, path);
+    const uploadTask = uploadBytesResumable(storageRef, file as Blob);
+
+    uploadTask.on(
+      'state_changed',
+      (snapshot) => {
+        const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+        onProgress(Math.round(progress));
+      },
+      (error) => {
+        reject(error);
+      },
+      async () => {
+        const url = await getDownloadURL(uploadTask.snapshot.ref);
+        resolve(url);
+      }
+    );
+  });
 };
 
 export const deleteFile = async (path: string): Promise<void> => {

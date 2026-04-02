@@ -549,11 +549,14 @@ export const apiStudentGetHomework = (lessonId: string) =>
 export const apiOrgGetHomeworks = (orgId: string, lessonId?: string) =>
   apiRequest(`api-homework`, 'GET', undefined, { orgId, ...(lessonId ? { lessonId } : {}) });
 
-export const apiSubmitHomework = (data: { lessonId: string; lessonTitle: string; content: string; organizationId: string; maxPoints: number }) =>
+export const apiSubmitHomework = (data: { lessonId: string; lessonTitle: string; content: string; organizationId: string; maxPoints: number; attachments?: { url: string; type: string; name: string; size: number }[] }) =>
   apiRequest(`api-homework/api-homework`, 'POST', data);
 
 export const apiGradeHomework = (id: string, data: { finalScore: number; feedback: string }) =>
   apiRequest(`api-homework/${id}/grade`, 'PUT', data);
+
+export const apiUpdateHomeworkStatus = (id: string, status: 'pending' | 'reviewing' | 'graded') =>
+  apiRequest(`api-homework/${id}/status`, 'PUT', { status });
 
 export const apiAIGradeHomework = (id: string) =>
   apiRequest(`api-homework/${id}/ai-grade`, 'POST');

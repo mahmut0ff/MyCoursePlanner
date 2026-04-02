@@ -77,6 +77,7 @@ export const handler: Handler = async (event: HandlerEvent) => {
       studentName: user.displayName,
       organizationId: body.organizationId,
       content: body.content,
+      attachments: body.attachments || [],
       status: 'pending',
       submittedAt: new Date().toISOString(),
       maxPoints: body.maxPoints || 10
@@ -103,6 +104,19 @@ export const handler: Handler = async (event: HandlerEvent) => {
       teacherFeedback: body.feedback || '',
       gradedAt: new Date().toISOString(),
       gradedBy: user.uid
+    });
+    
+    return ok({ success: true });
+  }
+
+  // PUT: Update homework status
+  if (event.httpMethod === 'PUT' && pathSegments.length > 2 && action === 'status') {
+    const id = pathSegments[pathSegments.length - 2];
+    const body = JSON.parse(event.body || '{}');
+
+    await adminDb.collection(COLLECTION).doc(id).update({
+      status: body.status || 'pending',
+      updatedAt: new Date().toISOString()
     });
     
     return ok({ success: true });

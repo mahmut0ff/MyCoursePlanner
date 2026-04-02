@@ -2,11 +2,11 @@ import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { deleteLessonPlan } from '../../services/lessons.service';
-import { apiGetLesson, apiAwardXP, apiCreateLesson, apiTransferRequest, orgCreateMaterial } from '../../lib/api';
+import { apiGetLesson, apiAwardXP, apiCreateLesson, apiTransferRequest, orgCreateMaterial, apiStudentGetHomework, apiSubmitHomework } from '../../lib/api';
 import { useAuth } from '../../contexts/AuthContext';
 import { showGamificationToasts } from '../../components/gamification/GamificationToasts';
 import { toast } from 'react-hot-toast';
-import type { LessonPlan } from '../../types';
+import type { LessonPlan, HomeworkSubmission } from '../../types';
 import { formatDate } from '../../utils/grading';
 import { generateHTML } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
@@ -14,10 +14,11 @@ import LinkExtension from '@tiptap/extension-link';
 import ImageExtension from '@tiptap/extension-image';
 import Youtube from '@tiptap/extension-youtube';
 import FileViewerModal from '../../components/ui/FileViewerModal';
+import { StudentHomeworkForm } from '../../components/lessons/StudentHomeworkForm';
 import {
   ArrowLeft, Edit, Trash2, Clock, BookOpen, Paperclip, Download,
   FileText, Film, Image as LucideImage, FileSpreadsheet, ClipboardList,
-  Calendar, Award, Maximize, Minimize, PartyPopper, CheckCircle, Copy, Building2
+  Calendar, Award, Maximize, Minimize, PartyPopper, CheckCircle, CheckCircle2, Copy, Building2
 } from 'lucide-react';
 
 const getFileIcon = (type: string) => {
@@ -69,6 +70,10 @@ const LessonViewPage: React.FC = () => {
   const [completing, setCompleting] = useState(false);
   const [duplicating, setDuplicating] = useState(false);
   const [copyingAttachment, setCopyingAttachment] = useState<string | null>(null);
+  
+  // Homework State
+  const [submission, setSubmission] = useState<HomeworkSubmission | null>(null);
+  const [submittingHomework, setSubmittingHomework] = useState(false);
 
   const isStaff = role === 'admin' || role === 'manager' || role === 'teacher';
 
@@ -80,6 +85,21 @@ const LessonViewPage: React.FC = () => {
           const viewedKey = `viewed_lesson_${id}`;
           if (sessionStorage.getItem(viewedKey)) {
              setIsCompleted(true);
+          }
+          
+          if (data?.organizationId && role === 'student' && data.homework?.title) {
+            apiStudentGetHomework(id)
+              .then(res => {
+                // apiStudentGetHomework returns array of submissions or empty array, based on api-homework.ts it returns a list but restricted by studentId
+                // Wait, apiStudentGetHomework doesn't specify if it's array. Assuming it is. Array or object?
+                // Actually my function may return a list since it's GET /api-homework?lessonId=... without ID path. Let's handle both
+                if (Array.isArray(res) && res.length > 0) {
+                  setSubmission(res[0]);
+                } else if (res && !Array.isArray(res) && res.id) {
+                  setSubmission(res);
+                }
+              })
+              .catch(console.error);
           }
         })
         .finally(() => setLoading(false));
@@ -143,6 +163,27 @@ const LessonViewPage: React.FC = () => {
       toast.error(err.message || 'Ошибка копирования');
     } finally {
       setCopyingAttachment(null);
+    }
+  };
+
+  const handleHomeworkSubmit = async (data: { content: string; attachments: any[] }) => {
+    if (!lesson || !lesson.organizationId) return;
+    setSubmittingHomework(true);
+    try {
+      const res = await apiSubmitHomework({
+        lessonId: lesson.id!,
+        lessonTitle: lesson.title,
+        organizationId: lesson.organizationId,
+        content: data.content,
+        attachments: data.attachments,
+        maxPoints: lesson.homework?.points || 10
+      });
+      setSubmission(res);
+      toast.success('Домашнее задание отправлено на проверку!');
+    } catch (e: any) {
+      toast.error(e.message || 'Ошибка отправки');
+    } finally {
+      setSubmittingHomework(false);
     }
   };
 
@@ -352,6 +393,51 @@ const LessonViewPage: React.FC = () => {
           {/* Completion Section (Students Only) */}
           {role === 'student' && (
             <div className="mt-12 pt-8 border-t border-slate-200 dark:border-slate-700 flex flex-col items-center justify-center">
+              
+              {hw && hw.title && (
+                <div className="w-full max-w-4xl mb-12">
+                  {submission ? (
+                    <div className="bg-white/5 backdrop-blur-sm border border-emerald-500/30 rounded-2xl p-6 shadow-xl relative overflow-hidden">
+                      <div className="absolute top-0 left-0 w-1 h-full bg-emerald-500"></div>
+                      <div className="flex items-start justify-between mb-4">
+                        <div>
+                          <h3 className="text-xl font-bold text-white mb-1 flex items-center gap-2">
+                            <CheckCircle2 className="w-6 h-6 text-emerald-400" />
+                            Домашнее задание сдано
+                          </h3>
+                          <p className="text-sm text-gray-400">
+                            {formatDate(submission.submittedAt)}
+                          </p>
+                        </div>
+                        <div className="px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                          {submission.status === 'graded' ? 'Оценено' : submission.status === 'reviewing' ? 'На проверке' : 'Ожидает проверки'}
+                        </div>
+                      </div>
+                      
+                      {submission.status === 'graded' && typeof submission.finalScore === 'number' && (
+                        <div className="mt-4 p-4 bg-indigo-500/10 border border-indigo-500/20 rounded-xl">
+                          <p className="text-indigo-200 font-semibold mb-2">Оценка преподавателя: <span className="text-white text-xl ml-2">{submission.finalScore} / {submission.maxPoints || 10}</span></p>
+                          {submission.teacherFeedback && (
+                            <div className="text-indigo-100/80 text-sm mt-2 italic bg-black/20 p-3 rounded-lg border-l-2 border-indigo-500">
+                              "{submission.teacherFeedback}"
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <StudentHomeworkForm 
+                      lessonId={lesson.id!} 
+                      lessonTitle={lesson.title}
+                      organizationId={lesson.organizationId!}
+                      maxPoints={hw.points}
+                      onSubmit={handleHomeworkSubmit}
+                      isSubmitting={submittingHomework}
+                    />
+                  )}
+                </div>
+              )}
+
               {isCompleted ? (
                 <div className="flex flex-col items-center gap-3 animate-in fade-in slide-in-from-bottom-4">
                   <div className="w-16 h-16 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-500 rounded-full flex items-center justify-center ring-4 ring-emerald-50 dark:ring-emerald-900/10">

@@ -17,7 +17,7 @@ const KanbanColumn: React.FC<{ id: string; title: string; count: number; childre
   return (
     <div
       ref={setNodeRef}
-      className={`flex flex-col min-w-[320px] w-full shrink-0 bg-slate-100/50 dark:bg-slate-800/20 border-2 rounded-2xl p-4 transition-all ${
+      className={`flex flex-col w-[300px] md:w-auto md:flex-1 md:min-w-[320px] shrink-0 bg-slate-100/50 dark:bg-slate-800/20 border-2 rounded-2xl p-4 transition-all ${
         isOver ? 'border-accent-teal bg-accent-teal/5' : 'border-slate-200 dark:border-slate-700/50'
       }`}
     >
@@ -243,7 +243,7 @@ const HomeworkReviewPage: React.FC = () => {
       {/* Kanban Board Area */}
       <div className="flex-1 overflow-x-auto custom-scrollbar px-6 pb-6">
         <DndContext sensors={sensors} collisionDetection={closestCorners} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
-          <div className="flex gap-6 h-full items-stretch w-max min-w-full">
+          <div className="flex gap-6 h-full items-stretch min-w-max md:min-w-0 md:w-full">
             
             <KanbanColumn id="pending" title="Ожидает проверки" count={pendingSubs.length}>
               {pendingSubs.map(s => <KanbanCard key={s.id} sub={s} onClick={() => handleSelect(s)} />)}

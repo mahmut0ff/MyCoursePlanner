@@ -10,9 +10,8 @@ import {
  MessageCircle, Mail, MapPin, Phone, Award,
  Layers, Lock, FileText, Target, Gamepad2,
  Bot, PenTool, LayoutGrid, Database, Briefcase,
- Code2, Headphones, Palette, Activity, Music, TrendingUp,
  CalendarClock, CheckSquare, UploadCloud, Star,
- Laptop, Globe, GraduationCap, Building2
+ Laptop, GraduationCap, Building2
 } from 'lucide-react';
 
 /* ──────────────────────────────────────────

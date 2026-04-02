@@ -16,7 +16,7 @@ import {
 } from '../../lib/api';
 import type { Course, Group, UserProfile, JournalEntry, AttendanceStatus, ParticipationLevel, LessonPlan, GradeSchema, GradeEntry } from '../../types';
 import GradeCell from '../../components/gradebook/GradeCell';
-import { ClipboardList, Calendar, AlertCircle, AlertTriangle, RefreshCcw, UserCheck, CheckCircle2, XCircle, Clock, FileWarning, BookOpen, Plus } from 'lucide-react';
+import { ClipboardList, Calendar, AlertCircle, AlertTriangle, RefreshCcw, UserCheck, CheckCircle2, XCircle, Clock, FileWarning, BookOpen, Plus, Loader2, Search } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useAuth } from '../../contexts/AuthContext';
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
@@ -28,11 +28,11 @@ const now = new Date();
 const todayFormatted = now.toISOString().split('T')[0];
 
 const minDateObj = new Date(now);
-minDateObj.setDate(now.getDate() - 7);
+minDateObj.setDate(now.getDate() - 14);
 const minDateFormatted = minDateObj.toISOString().split('T')[0];
 
 const maxDateObj = new Date(now);
-maxDateObj.setDate(now.getDate() + 7);
+maxDateObj.setDate(now.getDate() + 14);
 const maxDateFormatted = maxDateObj.toISOString().split('T')[0];
 
 const attendanceIcons: Record<AttendanceStatus, React.ReactNode> = {
@@ -138,11 +138,13 @@ const JournalPage: React.FC = () => {
   const [selectedCourseId, setSelectedCourseId] = useState<string>('');
   const [selectedGroupId, setSelectedGroupId] = useState<string>('');
   const [date, setDate] = useState<string>(todayFormatted);
+  const [lessonSearchQuery, setLessonSearchQuery] = useState('');
   
   const [schema, setSchema] = useState<GradeSchema>(defaultSchema);
   const [entries, setEntries] = useState<Record<string, JournalEntry>>({});
   const [grades, setGrades] = useState<Record<string, GradeEntry>>({});
   const [syncStatus, setSyncStatus] = useState<Record<string, boolean>>({});
+  const [entrySyncStatus, setEntrySyncStatus] = useState<Record<string, boolean>>({});
   
   const [loading, setLoading] = useState(true);
   const [loadingData, setLoadingData] = useState(false);
@@ -153,11 +155,24 @@ const JournalPage: React.FC = () => {
 
   const isDateValidForEditing = useMemo(() => {
     if (isReadOnly) return false;
-    // 7 day window restriction for teachers (1 week back, 1 week forward)
+    // 14 day window restriction for teachers (2 weeks back, 2 weeks forward)
     return date >= minDateFormatted && date <= maxDateFormatted;
   }, [date, isReadOnly]);
 
   const canEdit = !isReadOnly && isDateValidForEditing;
+
+  const quickDates = useMemo(() => {
+    const dates = [];
+    for(let i = 4; i >= 0; i--) {
+      const d = new Date(now);
+      d.setDate(now.getDate() - i);
+      dates.push({
+        val: d.toISOString().split('T')[0],
+        label: i === 0 ? 'Сегодня' : i === 1 ? 'Вчера' : d.toLocaleDateString('ru-RU', { weekday: 'short', day: 'numeric' })
+      });
+    }
+    return dates;
+  }, []);
 
   // 1. Load initial static data (optimized)
   useEffect(() => {
@@ -305,6 +320,7 @@ const JournalPage: React.FC = () => {
 
     // Optimistic Update
     setEntries(prev => ({ ...prev, [studentId]: newEntry }));
+    setEntrySyncStatus(prev => ({ ...prev, [studentId]: true }));
 
     // Debounce save
     if (timersRef.current[studentId]) clearTimeout(timersRef.current[studentId]);
@@ -333,6 +349,8 @@ const JournalPage: React.FC = () => {
             return next;
           });
         }
+      } finally {
+        setEntrySyncStatus(prev => ({ ...prev, [studentId]: false }));
       }
     }, field === 'note' ? 500 : 50);
   };
@@ -599,6 +617,19 @@ const JournalPage: React.FC = () => {
               )}
             </select>
 
+            {/* Quick Dates */}
+            <div className="hidden xl:flex items-center gap-1 bg-slate-50 dark:bg-slate-800/50 p-1 rounded-xl border border-slate-200 dark:border-slate-700">
+              {quickDates.map(qd => (
+                <button
+                  key={qd.val}
+                  onClick={() => setDate(qd.val)}
+                  className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-colors ${date === qd.val ? 'bg-primary-500 text-white shadow-sm' : 'text-slate-500 hover:bg-slate-200/50 dark:text-slate-400 dark:hover:bg-slate-700/50'}`}
+                >
+                  {qd.label}
+                </button>
+              ))}
+            </div>
+
             <div className="relative w-full sm:w-auto">
               <Calendar className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
               <input
@@ -627,7 +658,7 @@ const JournalPage: React.FC = () => {
               Студентов в группе: <span className="font-bold">{groupStudents.length}</span>
             </p>
             {!isDateValidForEditing && !isReadOnly && (
-               <p className="text-xs text-red-500 mt-1 font-medium">Редактирование блокировано. Можно изменять данные только в пределах прошедшей и будущей недели.</p>
+               <p className="text-xs text-red-500 mt-1 font-medium">Редактирование блокировано. Можно изменять данные только в пределах последних 14-ти дней.</p>
             )}
           </div>
           {canEdit && (
@@ -719,12 +750,12 @@ const JournalPage: React.FC = () => {
 
                         {/* Attendance */}
                         <td className="px-5 py-3 text-center">
-                          <div className={`inline-flex rounded-lg p-1 border ${!canEdit ? 'bg-transparent border-transparent' : 'bg-slate-100 dark:bg-slate-900 border-slate-200 dark:border-slate-700'}`}>
+                          <div className={`inline-flex gap-1 rounded-xl p-1 border ${!canEdit ? 'bg-transparent border-transparent' : 'bg-slate-100 dark:bg-slate-900 border-slate-200 dark:border-slate-700'}`}>
                             {(['present', 'absent', 'late', 'excused'] as AttendanceStatus[]).map(status => {
                               const isActive = isMarked && entry.attendance === status;
                               if (!canEdit && !isActive) return null; // Show only marked in read-only
                               if (!canEdit && isActive) return (
-                                <div key={status} className="p-1.5 opacity-100">
+                                <div key={status} className="p-2 opacity-100">
                                     {attendanceIcons[status]}
                                 </div>
                               );
@@ -732,7 +763,7 @@ const JournalPage: React.FC = () => {
                                 <button
                                   key={status}
                                   onClick={() => handleEntryChange(student.uid, 'attendance', status)}
-                                  className={`p-1.5 rounded-md transition-all ${isActive ? 'bg-white dark:bg-slate-800 shadow-sm' : 'opacity-40 hover:opacity-100'}`}
+                                  className={`p-2 rounded-lg transition-all ${isActive ? 'bg-white dark:bg-slate-800 shadow-sm' : 'opacity-40 hover:opacity-100 hover:bg-slate-200/50 dark:hover:bg-slate-800'}`}
                                   title={status}
                                 >
                                   {attendanceIcons[status]}
@@ -744,7 +775,7 @@ const JournalPage: React.FC = () => {
 
                         {/* Participation */}
                         <td className="px-5 py-3 text-center">
-                          <div className={`inline-flex rounded-lg p-1 border text-xs font-medium ${!canEdit ? 'bg-transparent border-transparent' : 'bg-slate-100 dark:bg-slate-900 border-slate-200 dark:border-slate-700'}`}>
+                          <div className={`inline-flex gap-1 rounded-xl p-1 border text-xs font-medium ${!canEdit ? 'bg-transparent border-transparent' : 'bg-slate-100 dark:bg-slate-900 border-slate-200 dark:border-slate-700'}`}>
                             {(['low', 'medium', 'high'] as ParticipationLevel[]).map(level => {
                                const isActive = isMarked && entry.participation === level;
                                if (!canEdit && !isActive) return null;
@@ -756,7 +787,7 @@ const JournalPage: React.FC = () => {
 
                                if (!canEdit && isActive) {
                                  return (
-                                   <div key={level} className={`px-3 py-1.5 rounded-md ${activeClass}`}>
+                                   <div key={level} className={`px-4 py-2 rounded-lg ${activeClass}`}>
                                       {level.charAt(0).toUpperCase() + level.slice(1)}
                                    </div>
                                  )
@@ -766,7 +797,7 @@ const JournalPage: React.FC = () => {
                                 <button
                                   key={level}
                                   onClick={() => handleEntryChange(student.uid, 'participation', level)}
-                                  className={`px-3 py-1.5 rounded-md transition-all ${isActive ? activeClass : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}
+                                  className={`px-4 py-2 rounded-lg transition-all ${isActive ? activeClass : 'text-slate-500 hover:text-slate-700 hover:bg-slate-200/50 dark:hover:bg-slate-800 dark:hover:text-slate-300'}`}
                                 >
                                   {level.charAt(0).toUpperCase() + level.slice(1)}
                                 </button>
@@ -776,15 +807,20 @@ const JournalPage: React.FC = () => {
                         </td>
 
                         {/* Note */}
-                        <td className="px-5 py-3">
+                        <td className="px-5 py-3 relative">
                           <input
                             type="text"
                             placeholder={!canEdit ? (entry?.note ? '' : "—") : "Заметки (не видны студенту)..."}
                             readOnly={!canEdit}
-                            className={`w-full px-3 py-2 rounded-xl text-sm outline-none transition-colors ${!canEdit ? 'bg-transparent border-transparent px-0' : 'bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 focus:border-primary-500'}`}
+                            className={`w-full px-3 py-2 pr-8 rounded-xl text-sm outline-none transition-colors ${!canEdit ? 'bg-transparent border-transparent px-0' : 'bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 focus:border-primary-500'}`}
                             value={entry?.note || ''}
                             onChange={(e) => handleEntryChange(student.uid, 'note', e.target.value)}
                           />
+                          {entrySyncStatus[student.uid] && (
+                            <div className="absolute right-8 top-1/2 -translate-y-1/2 text-primary-500 bg-white/80 dark:bg-slate-800/80 p-0.5 rounded-full z-10">
+                               <Loader2 className="w-4 h-4 animate-spin" />
+                            </div>
+                          )}
                         </td>
                       </tr>
                     );
@@ -813,6 +849,19 @@ const JournalPage: React.FC = () => {
           )}
         </div>
 
+        {selectedCourseId && courseLessons.length > 0 && (
+          <div className="relative mb-4">
+            <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+            <input 
+              type="text" 
+              placeholder="Найти урок..." 
+              value={lessonSearchQuery}
+              onChange={(e) => setLessonSearchQuery(e.target.value)}
+              className="w-full pl-9 pr-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm outline-none focus:border-primary-500 transition-colors"
+            />
+          </div>
+        )}
+
         {!selectedCourseId ? (
            <p className="text-sm text-slate-500">Выберите курс для отображения уроков.</p>
         ) : courseLessons.length === 0 ? (
@@ -825,8 +874,8 @@ const JournalPage: React.FC = () => {
         ) : (
           <div className="space-y-3 pb-8">
             <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-              <SortableContext items={courseLessons.map(l => l.id)} strategy={verticalListSortingStrategy}>
-                {courseLessons.map(lesson => (
+              <SortableContext items={courseLessons.filter(l => !lessonSearchQuery || l.title.toLowerCase().includes(lessonSearchQuery.toLowerCase())).map(l => l.id)} strategy={verticalListSortingStrategy}>
+                {courseLessons.filter(l => !lessonSearchQuery || l.title.toLowerCase().includes(lessonSearchQuery.toLowerCase())).map(lesson => (
                   <SortableLessonItem 
                     key={lesson.id}
                     id={lesson.id}

@@ -137,8 +137,8 @@ export const apiChangeMemberRole = (userId: string, organizationId: string, newR
   memberReq('changeRole', 'POST', { userId, organizationId, newRole });
 export const apiSwitchOrg = (organizationId: string) =>
   memberReq('switchOrg', 'POST', { organizationId });
-export const apiPublicJoin = (orgSlug: string) =>
-  memberReq<{ status: string; orgId?: string; orgName?: string }>('publicJoin', 'POST', { orgSlug });
+export const apiPublicJoin = (orgSlug: string, requestedRole?: string) =>
+  memberReq<{ status: string; orgId?: string; orgName?: string }>('publicJoin', 'POST', { orgSlug, requestedRole });
 export const apiSetBranchAssignment = (userId: string, organizationId: string, branchIds: string[], primaryBranchId?: string) =>
   memberReq('setBranchAssignment', 'POST', { userId, organizationId, branchIds, primaryBranchId });
 

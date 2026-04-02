@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef, useCallback } from 'react';
-import { useParams, useNavigate, Link } from 'react-router-dom';
+import { useParams, useNavigate, Link, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../contexts/AuthContext';
 import {
@@ -52,6 +52,8 @@ function Section({ children, className = '', delay = 0 }: { children: React.Reac
 const PublicOrgProfilePage: React.FC = () => {
   const { t } = useTranslation();
   const { slug } = useParams<{ slug: string }>();
+  const [searchParams] = useSearchParams();
+  const requestedRole = searchParams.get('role') || 'student';
   const { profile } = useAuth();
   const navigate = useNavigate();
 
@@ -82,7 +84,7 @@ const PublicOrgProfilePage: React.FC = () => {
     if (!profile || !slug) return;
     setJoining(true);
     try {
-      const result = await apiPublicJoin(slug);
+      const result = await apiPublicJoin(slug, requestedRole);
       setJoinStatus(result.status);
       if (result.status === 'already_member') {
         setTimeout(() => navigate('/dashboard'), 1500);
@@ -92,7 +94,7 @@ const PublicOrgProfilePage: React.FC = () => {
     } finally {
       setJoining(false);
     }
-  }, [profile, slug, navigate]);
+  }, [profile, slug, navigate, requestedRole]);
 
   // Group branches by city
   const branchesByCity = React.useMemo(() => {
@@ -143,7 +145,7 @@ const PublicOrgProfilePage: React.FC = () => {
 
   /* ═══ Status Messages ═══ */
   const statusConfig: Record<string, { text: string; icon: React.ElementType; color: string; bg: string }> = {
-    already_member: { text: t('directory.alreadyMember', 'Вы уже студент ✓'), icon: CheckCircle, color: 'text-emerald-700 dark:text-emerald-400', bg: 'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-800' },
+    already_member: { text: t('directory.alreadyMember', 'Вы уже участник ✓'), icon: CheckCircle, color: 'text-emerald-700 dark:text-emerald-400', bg: 'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-800' },
     pending: { text: t('directory.pending', 'Заявка отправлена ⏳'), icon: Clock, color: 'text-amber-700 dark:text-amber-400', bg: 'bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800' },
     org_unavailable: { text: t('directory.orgUnavailable', 'Организация временно недоступна'), icon: AlertCircle, color: 'text-red-600', bg: 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800' },
     org_not_found: { text: t('directory.orgNotFound', 'Организация не найдена'), icon: AlertCircle, color: 'text-red-600', bg: 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800' },
@@ -156,7 +158,7 @@ const PublicOrgProfilePage: React.FC = () => {
       const s = statusConfig[joinStatus];
       const Icon = s.icon;
       return (
-        <div className={`flex items-center justify-center gap-2.5 px-6 py-3.5 rounded-2xl border font-semibold ${s.bg} ${s.color} ${sticky ? 'w-full' : ''}`}>
+        <div className={`flex items-center justify-center gap-2.5 px-6 py-3.5 rounded-xl border font-semibold ${s.bg} ${s.color} ${sticky ? 'w-full' : ''}`}>
           <Icon className="w-5 h-5" />
           <span className="text-sm">{s.text}</span>
         </div>
@@ -165,17 +167,17 @@ const PublicOrgProfilePage: React.FC = () => {
 
     if (!profile) {
       return (
-        <div className={`flex flex-col sm:flex-row gap-2.5 ${sticky ? 'w-full' : 'w-full sm:w-auto'}`}>
+        <div className={`flex flex-col gap-2.5 ${sticky ? 'w-full' : 'w-full sm:w-auto'}`}>
           <Link
-            to={`/register?orgSlug=${slug}`}
-            className="flex-1 flex items-center justify-center gap-2 px-6 py-3.5 bg-gradient-to-r from-sky-600 to-indigo-600 text-white rounded-2xl font-semibold hover:from-sky-700 hover:to-indigo-700 transition-all text-sm shadow-lg shadow-sky-500/25 hover:shadow-sky-500/40 hover:scale-[1.02] active:scale-[0.98]"
+            to={`/register?orgSlug=${slug}${requestedRole === 'teacher' ? '&role=teacher' : ''}`}
+            className="flex-1 flex items-center justify-center gap-2 px-6 py-3.5 bg-blue-600 text-white rounded-xl font-semibold hover:bg-blue-700 transition-colors text-sm shadow-sm active:scale-[0.98]"
           >
             <UserPlus className="w-4 h-4" />
-            {t('directory.signUpJoin', 'Зарегистрироваться и вступить')}
+            {requestedRole === 'teacher' ? t('directory.signUpJoinTeacher', 'Регистрация для преподавателей') : t('directory.signUpJoin', 'Зарегистрироваться и вступить')}
           </Link>
           <Link
-            to={`/login?orgSlug=${slug}`}
-            className="flex-1 flex items-center justify-center gap-2 px-6 py-3.5 bg-white dark:bg-gray-700 text-slate-700 dark:text-white border border-slate-200 dark:border-gray-600 rounded-2xl font-semibold hover:bg-slate-50 dark:hover:bg-gray-600 transition-all text-sm hover:scale-[1.02] active:scale-[0.98]"
+            to={`/login?orgSlug=${slug}${requestedRole === 'teacher' ? '&role=teacher' : ''}`}
+            className="flex-1 flex items-center justify-center gap-2 px-6 py-3.5 bg-white dark:bg-gray-800 text-slate-700 dark:text-white border border-slate-200 dark:border-gray-700 rounded-xl font-semibold hover:bg-slate-50 dark:hover:bg-gray-700 transition-colors text-sm active:scale-[0.98]"
           >
             <LogIn className="w-4 h-4" />
             {t('directory.loginJoin', 'Войти и вступить')}
@@ -188,14 +190,14 @@ const PublicOrgProfilePage: React.FC = () => {
       <button
         onClick={handleJoin}
         disabled={joining}
-        className={`flex items-center justify-center gap-2.5 px-8 py-4 bg-gradient-to-r from-sky-600 to-indigo-600 text-white rounded-2xl font-bold hover:from-sky-700 hover:to-indigo-700 transition-all disabled:opacity-50 text-base shadow-lg shadow-sky-500/25 hover:shadow-sky-500/40 hover:scale-[1.02] active:scale-[0.98] ${sticky ? 'w-full' : ''}`}
+        className={`flex items-center justify-center gap-2.5 px-8 py-3.5 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-700 transition-colors disabled:opacity-50 text-base shadow-sm active:scale-[0.98] ${sticky ? 'w-full' : ''}`}
       >
         {joining ? (
           <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
         ) : (
           <UserPlus className="w-5 h-5" />
         )}
-        {t('directory.joinOrg', 'Вступить в организацию')}
+        {requestedRole === 'teacher' ? t('directory.joinTeacher', 'Подать заявку (Преподаватель)') : t('directory.joinOrg', 'Вступить в организацию')}
       </button>
     );
   };
@@ -264,12 +266,12 @@ const PublicOrgProfilePage: React.FC = () => {
       {/* ═══════════════════════════════════════ */}
       {/*  PROFILE HEADER                          */}
       {/* ═══════════════════════════════════════ */}
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 relative -mt-16 sm:-mt-20 z-10">
-        <div className="bg-white dark:bg-gray-900 rounded-3xl p-6 sm:p-8 shadow-sm border border-slate-200 dark:border-gray-800 mb-8">
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 relative -mt-16 sm:-mt-20 z-10 pb-20">
+        <div className="bg-white dark:bg-gray-900 rounded-2xl p-6 sm:p-8 shadow-sm border border-slate-200 dark:border-gray-800 mb-8">
           <div className="flex flex-col sm:flex-row items-center sm:items-start gap-6 relative">
             
             {/* Logo */}
-            <div className="w-28 h-28 sm:w-32 sm:h-32 shrink-0 bg-white dark:bg-gray-800 border-4 border-white dark:border-gray-900 rounded-2xl shadow-md flex items-center justify-center overflow-hidden p-2 -mt-16 sm:-mt-20">
+            <div className="w-28 h-28 sm:w-32 sm:h-32 shrink-0 bg-white dark:bg-gray-800 border-4 border-slate-100 dark:border-gray-800 rounded-xl shadow-sm flex items-center justify-center overflow-hidden p-2 -mt-16 sm:-mt-20">
               {org.logo ? (
                 <img src={org.logo} alt={org.name} className="w-full h-full object-contain" />
               ) : (
@@ -306,294 +308,312 @@ const PublicOrgProfilePage: React.FC = () => {
                 </div>
               )}
             </div>
-
+            
             {/* CTA Desktop */}
-            <div className="hidden sm:block shrink-0 mt-2 sm:mt-0">
+            <div className="hidden sm:block shrink-0 mt-2 sm:mt-0 lg:hidden">
                {renderCTA()}
             </div>
           </div>
         </div>
 
         {/* ═══════════════════════════════════════ */}
-        {/*  MAIN CONTENT                            */}
+        {/*  MAIN CONTENT & SIDEBAR                  */}
         {/* ═══════════════════════════════════════ */}
-        <div className="space-y-6 sm:space-y-8 pb-20">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 sm:gap-8">
           
-          {/* ── ABOUT ── */}
-          <Section delay={100}>
-            <div className="bg-white dark:bg-gray-900 rounded-3xl p-6 sm:p-8 shadow-sm border border-slate-200 dark:border-gray-800">
-              <h2 className="text-xl font-bold text-slate-900 dark:text-white mb-5 flex items-center gap-2">
-                <FileText className="w-5 h-5 text-blue-500" />
-                {t('directory.about', 'О компании')}
-              </h2>
-              {org.description ? (
-                <div>
-                  <div className={`text-slate-700 dark:text-slate-300 leading-relaxed whitespace-pre-line text-sm md:text-base ${!descExpanded ? 'line-clamp-4' : ''}`}>
-                    {org.description}
-                  </div>
-                  {org.description.length > 250 && (
-                    <button
-                      onClick={() => setDescExpanded(!descExpanded)}
-                      className="mt-3 text-blue-600 dark:text-blue-400 text-sm hover:underline font-medium"
-                    >
-                      {descExpanded ? t('common.less', 'Скрыть описание') : t('common.more', 'Читать полностью')}
-                    </button>
-                  )}
-                </div>
-              ) : (
-                <EmptyState 
-                  icon={FileText} 
-                  title="Нет описания"
-                  desc="Организация пока не добавила информацию о себе. Детали появятся позже."
-                />
-              )}
-            </div>
-          </Section>
-
-          {/* ── COURSES ── */}
-          <Section delay={200}>
-            <div className="bg-white dark:bg-gray-900 rounded-3xl p-6 sm:p-8 shadow-sm border border-slate-200 dark:border-gray-800">
-              <h2 className="text-xl font-bold text-slate-900 dark:text-white mb-5 flex items-center gap-2">
-                <LayoutList className="w-5 h-5 text-indigo-500" />
-                {t('directory.coursesTitle', 'Доступные курсы и программы')}
-              </h2>
-              {org.courses?.length > 0 ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {org.courses.map((c: any) => (
-                    <div
-                      key={c.id}
-                      className="p-5 bg-slate-50/50 dark:bg-gray-800/50 border border-slate-200 dark:border-gray-700/60 rounded-2xl hover:bg-slate-50 dark:hover:bg-gray-800 transition-colors group"
-                    >
-                      <h4 className="text-lg font-semibold text-slate-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors mb-2">{c.title}</h4>
-                      {c.description && (
-                        <p className="text-sm text-slate-500 dark:text-slate-400 line-clamp-2 leading-relaxed mb-4">
-                          {c.description}
-                        </p>
-                      )}
-                      {c.subject && (
-                        <span className="inline-flex items-center px-2.5 py-1 bg-white dark:bg-gray-700 text-slate-600 dark:text-slate-300 rounded text-xs font-medium border border-slate-200 dark:border-gray-600">
-                          {c.subject}
-                        </span>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <EmptyState 
-                  icon={LayoutList} 
-                  title="Курсы не добавлены"
-                  desc="В данный момент открытых курсов нет. Мы обновим страницу, когда они появятся."
-                />
-              )}
-            </div>
-          </Section>
-
-          {/* ── BRANCHES ── */}
-          <Section delay={300}>
-            <div className="bg-white dark:bg-gray-900 rounded-3xl p-6 sm:p-8 shadow-sm border border-slate-200 dark:border-gray-800">
-              <h2 className="text-xl font-bold text-slate-900 dark:text-white mb-5 flex items-center gap-2">
-                <Building2 className="w-5 h-5 text-emerald-500" />
-                {t('directory.branches', 'Филиалы и классы')} 
-                {org.branches?.length > 0 && <span className="text-slate-400 font-normal text-base ml-1">{org.branches.length}</span>}
-              </h2>
-
-              {Object.keys(branchesByCity).length > 0 ? (
-                <div className="space-y-6">
-                  {Object.entries(branchesByCity).map(([city, cityBranches]: [string, any]) => (
-                    <div key={city} className="bg-slate-50/50 dark:bg-gray-800/30 border border-slate-200 dark:border-gray-700/60 rounded-2xl p-5">
-                      <h3 className="text-base font-bold text-slate-800 dark:text-slate-200 mb-4 flex items-center gap-2">
-                        <MapPin className="w-4 h-4 text-emerald-600 dark:text-emerald-500" /> {city}
-                      </h3>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        {cityBranches.map((b: any) => (
-                          <div key={b.id} className="bg-white dark:bg-gray-800 border border-slate-200 dark:border-gray-700/80 rounded-xl p-4 flex flex-col justify-between">
-                            <div>
-                              <h4 className="font-semibold text-slate-900 dark:text-white">{b.name}</h4>
-                              {b.address && (
-                                <p className="text-sm text-slate-500 dark:text-slate-400 mt-1.5">{b.address}</p>
-                              )}
-                            </div>
-                            <div className="mt-4 pt-3 border-t border-slate-100 dark:border-gray-700 flex flex-wrap gap-y-2 gap-x-4">
-                              {b.phone && (
-                                <a href={`tel:${b.phone}`} className="flex items-center gap-1.5 text-sm text-slate-600 hover:text-blue-600 dark:text-slate-300 dark:hover:text-blue-400">
-                                  <Phone className="w-3.5 h-3.5" /> {b.phone}
-                                </a>
-                              )}
-                              {b.latitude && b.longitude && (
-                                <a
-                                  href={`https://www.google.com/maps/search/?api=1&query=${b.latitude},${b.longitude}`}
-                                  target="_blank" rel="noopener noreferrer"
-                                  className="flex items-center gap-1.5 text-sm text-blue-600 hover:underline dark:text-blue-400"
-                                >
-                                  <Map className="w-3.5 h-3.5" /> Открыть карту
-                                </a>
-                              )}
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <EmptyState 
-                  icon={Map} 
-                  title="Нет филиалов"
-                  desc="Организация еще не указала адреса своих учебных центров."
-                />
-              )}
-            </div>
-          </Section>
-
-          {/* ── MAP ── */}
-          {org.branches?.length > 0 && (
-            <Section delay={400}>
-              <div className="bg-white dark:bg-gray-900 rounded-3xl p-6 sm:p-8 shadow-sm border border-slate-200 dark:border-gray-800">
+          {/* ── Main Column ── */}
+          <div className="lg:col-span-2 space-y-6 sm:space-y-8">
+            
+            {/* ── ABOUT ── */}
+            <Section delay={100}>
+              <div className="bg-white dark:bg-gray-900 rounded-2xl p-6 sm:p-8 shadow-sm border border-slate-200 dark:border-gray-800">
                 <h2 className="text-xl font-bold text-slate-900 dark:text-white mb-5 flex items-center gap-2">
-                  <Map className="w-5 h-5 text-rose-500" />
-                  {t('directory.map', 'Адреса на карте')}
+                  <FileText className="w-5 h-5 text-blue-500" />
+                  {t('directory.about', 'О компании')}
                 </h2>
-                <div className="w-full h-[350px] bg-slate-50 dark:bg-gray-800/50 border border-slate-200 dark:border-gray-700 rounded-2xl overflow-hidden relative">
-                  {getMapUrl() ? (
-                    <iframe
-                      src={getMapUrl()!}
-                      className="absolute inset-0 w-full h-full border-0"
-                      allowFullScreen
-                      loading="lazy"
-                      referrerPolicy="no-referrer-when-downgrade"
-                      title="Branch locations"
-                    />
-                  ) : (
-                    <EmptyState 
-                      icon={MapPin} 
-                      title="Карта недоступна"
-                      desc="Не удалось отобразить карту, так как точные координаты филиалов не указаны."
-                    />
-                  )}
-                </div>
+                {org.description ? (
+                  <div>
+                    <div className={`text-slate-700 dark:text-slate-300 leading-relaxed whitespace-pre-line text-sm md:text-base ${!descExpanded ? 'line-clamp-4' : ''}`}>
+                      {org.description}
+                    </div>
+                    {org.description.length > 250 && (
+                      <button
+                        onClick={() => setDescExpanded(!descExpanded)}
+                        className="mt-3 text-blue-600 dark:text-blue-400 text-sm hover:underline font-medium"
+                      >
+                        {descExpanded ? t('common.less', 'Скрыть описание') : t('common.more', 'Читать полностью')}
+                      </button>
+                    )}
+                  </div>
+                ) : (
+                  <EmptyState 
+                    icon={FileText} 
+                    title="Нет описания"
+                    desc="Организация пока не добавила информацию о себе. Детали появятся позже."
+                  />
+                )}
               </div>
             </Section>
-          )}
 
-          {/* ── GALLERY ── */}
-          <Section delay={500}>
-            <div className="bg-white dark:bg-gray-900 rounded-3xl p-6 sm:p-8 shadow-sm border border-slate-200 dark:border-gray-800">
-              <h2 className="text-xl font-bold text-slate-900 dark:text-white mb-5 flex items-center gap-2">
-                <ImageIcon className="w-5 h-5 text-purple-500" />
-                {t('directory.photos', 'Фотографии центра')}
-              </h2>
-              {org.photos?.length > 0 ? (
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
-                  {org.photos.map((url: string, i: number) => (
-                    <div key={i} className="aspect-w-4 aspect-h-3 border border-slate-200 dark:border-gray-700 rounded-2xl overflow-hidden shadow-sm">
-                      <img src={url} alt="" className="w-full h-full object-cover hover:scale-105 transition-transform duration-500" />
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <EmptyState 
-                  icon={CameraOff} 
-                  title="Нет фотографий"
-                  desc="Автор пока не загрузил фотографии учебных классов или процесса."
-                />
-              )}
-            </div>
-          </Section>
+            {/* ── COURSES ── */}
+            <Section delay={200}>
+              <div className="bg-white dark:bg-gray-900 rounded-2xl p-6 sm:p-8 shadow-sm border border-slate-200 dark:border-gray-800">
+                <h2 className="text-xl font-bold text-slate-900 dark:text-white mb-5 flex items-center gap-2">
+                  <LayoutList className="w-5 h-5 text-indigo-500" />
+                  {t('directory.coursesTitle', 'Доступные курсы и программы')}
+                </h2>
+                {org.courses?.length > 0 ? (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {org.courses.map((c: any) => (
+                      <div
+                        key={c.id}
+                        className="p-5 bg-slate-50/50 dark:bg-gray-800/50 border border-slate-200 dark:border-gray-700/60 rounded-2xl hover:bg-slate-50 dark:hover:bg-gray-800 transition-colors group"
+                      >
+                        <h4 className="text-lg font-semibold text-slate-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors mb-2">{c.title}</h4>
+                        {c.description && (
+                          <p className="text-sm text-slate-500 dark:text-slate-400 line-clamp-2 leading-relaxed mb-4">
+                            {c.description}
+                          </p>
+                        )}
+                        {c.subject && (
+                          <span className="inline-flex items-center px-2.5 py-1 bg-white dark:bg-gray-700 text-slate-600 dark:text-slate-300 rounded text-xs font-medium border border-slate-200 dark:border-gray-600">
+                            {c.subject}
+                          </span>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <EmptyState 
+                    icon={LayoutList} 
+                    title="Курсы не добавлены"
+                    desc="В данный момент открытых курсов нет. Мы обновим страницу, когда они появятся."
+                  />
+                )}
+              </div>
+            </Section>
 
-          {/* ── CONTACTS ── */}
-          <Section delay={600}>
-            <div className="bg-gradient-to-br from-slate-50 to-white dark:from-gray-900 dark:to-gray-800/80 rounded-3xl p-6 sm:p-8 shadow-sm border border-slate-200 dark:border-gray-800">
-              <h2 className="text-xl font-bold text-slate-900 dark:text-white mb-6 flex items-center gap-2">
-                <PhoneCall className="w-5 h-5 text-sky-500" />
-                {t('directory.contactTitle', 'Контакты связи')}
-              </h2>
+            {/* ── BRANCHES ── */}
+            <Section delay={300}>
+              <div className="bg-white dark:bg-gray-900 rounded-2xl p-6 sm:p-8 shadow-sm border border-slate-200 dark:border-gray-800">
+                <h2 className="text-xl font-bold text-slate-900 dark:text-white mb-5 flex items-center gap-2">
+                  <Building2 className="w-5 h-5 text-emerald-500" />
+                  {t('directory.branches', 'Филиалы и классы')} 
+                  {org.branches?.length > 0 && <span className="text-slate-400 font-normal text-base ml-1">{org.branches.length}</span>}
+                </h2>
+
+                {Object.keys(branchesByCity).length > 0 ? (
+                  <div className="space-y-6">
+                    {Object.entries(branchesByCity).map(([city, cityBranches]: [string, any]) => (
+                      <div key={city} className="bg-slate-50/50 dark:bg-gray-800/30 border border-slate-200 dark:border-gray-700/60 rounded-2xl p-5">
+                        <h3 className="text-base font-bold text-slate-800 dark:text-slate-200 mb-4 flex items-center gap-2">
+                          <MapPin className="w-4 h-4 text-emerald-600 dark:text-emerald-500" /> {city}
+                        </h3>
+                        <div className="grid grid-cols-1 gap-4">
+                          {cityBranches.map((b: any) => (
+                            <div key={b.id} className="bg-white dark:bg-gray-800 border border-slate-200 dark:border-gray-700/80 rounded-xl p-4 flex flex-col justify-between">
+                              <div>
+                                <h4 className="font-semibold text-slate-900 dark:text-white">{b.name}</h4>
+                                {b.address && (
+                                  <p className="text-sm text-slate-500 dark:text-slate-400 mt-1.5">{b.address}</p>
+                                )}
+                              </div>
+                              <div className="mt-4 pt-3 border-t border-slate-100 dark:border-gray-700 flex flex-wrap gap-y-2 gap-x-4">
+                                {b.phone && (
+                                  <a href={`tel:${b.phone}`} className="flex items-center gap-1.5 text-sm text-slate-600 hover:text-blue-600 dark:text-slate-300 dark:hover:text-blue-400">
+                                    <Phone className="w-3.5 h-3.5" /> {b.phone}
+                                  </a>
+                                )}
+                                {b.latitude && b.longitude && (
+                                  <a
+                                    href={`https://www.google.com/maps/search/?api=1&query=${b.latitude},${b.longitude}`}
+                                    target="_blank" rel="noopener noreferrer"
+                                    className="flex items-center gap-1.5 text-sm text-blue-600 hover:underline dark:text-blue-400"
+                                  >
+                                    <Map className="w-3.5 h-3.5" /> Открыть карту
+                                  </a>
+                                )}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <EmptyState 
+                    icon={Map} 
+                    title="Нет филиалов"
+                    desc="Организация еще не указала адреса своих учебных центров."
+                  />
+                )}
+              </div>
+            </Section>
+
+            {/* ── GALLERY ── */}
+            <Section delay={500}>
+              <div className="bg-white dark:bg-gray-900 rounded-2xl p-6 sm:p-8 shadow-sm border border-slate-200 dark:border-gray-800">
+                <h2 className="text-xl font-bold text-slate-900 dark:text-white mb-5 flex items-center gap-2">
+                  <ImageIcon className="w-5 h-5 text-purple-500" />
+                  {t('directory.photos', 'Фотографии центра')}
+                </h2>
+                {org.photos?.length > 0 ? (
+                  <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
+                    {org.photos.map((url: string, i: number) => (
+                      <div key={i} className="aspect-w-4 aspect-h-3 border border-slate-200 dark:border-gray-700 rounded-xl overflow-hidden shadow-sm">
+                        <img src={url} alt="" className="w-full h-full object-cover hover:scale-105 transition-transform duration-500" />
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <EmptyState 
+                    icon={CameraOff} 
+                    title="Нет фотографий"
+                    desc="Автор пока не загрузил фотографии учебных классов или процесса."
+                  />
+                )}
+              </div>
+            </Section>
+          </div>
+
+          {/* ── Sidebar ── */}
+          <div className="space-y-6 sm:space-y-8">
+            <div className="sticky top-24 space-y-6 sm:space-y-8">
               
-              {hasContacts ? (
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  {org.contactPhone && (
-                    <a href={`tel:${org.contactPhone}`} className="flex items-center gap-4 p-4 bg-white dark:bg-gray-800 border border-slate-200 dark:border-gray-700 rounded-2xl hover:border-sky-300 dark:hover:border-sky-600 transition-colors">
-                      <div className="w-10 h-10 rounded-full bg-sky-50 dark:bg-sky-900/30 flex items-center justify-center shrink-0">
-                        <Phone className="w-5 h-5 text-sky-600 dark:text-sky-400" />
-                      </div>
-                      <div>
-                        <p className="text-xs font-medium text-slate-400 dark:text-slate-500">Телефон</p>
-                        <p className="text-sm font-semibold text-slate-900 dark:text-white">{org.contactPhone}</p>
-                      </div>
-                    </a>
-                  )}
-                  {org.contactEmail && (
-                    <a href={`mailto:${org.contactEmail}`} className="flex items-center gap-4 p-4 bg-white dark:bg-gray-800 border border-slate-200 dark:border-gray-700 rounded-2xl hover:border-indigo-300 dark:hover:border-indigo-600 transition-colors">
-                      <div className="w-10 h-10 rounded-full bg-indigo-50 dark:bg-indigo-900/30 flex items-center justify-center shrink-0">
-                        <Mail className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
-                      </div>
-                      <div>
-                        <p className="text-xs font-medium text-slate-400 dark:text-slate-500">Почта</p>
-                        <p className="text-sm font-semibold text-slate-900 dark:text-white truncate max-w-[180px]">{org.contactEmail}</p>
-                      </div>
-                    </a>
-                  )}
-                  {socialLinks.website && (
-                    <a href={socialLinks.website.startsWith('http') ? socialLinks.website : `https://${socialLinks.website}`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-4 p-4 bg-white dark:bg-gray-800 border border-slate-200 dark:border-gray-700 rounded-2xl hover:border-emerald-300 dark:hover:border-emerald-600 transition-colors">
-                      <div className="w-10 h-10 rounded-full bg-emerald-50 dark:bg-emerald-900/30 flex items-center justify-center shrink-0">
-                        <Globe className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
-                      </div>
-                      <div>
-                        <p className="text-xs font-medium text-slate-400 dark:text-slate-500">Веб-сайт</p>
-                        <p className="text-sm font-semibold text-slate-900 dark:text-white truncate max-w-[180px]">{socialLinks.website}</p>
-                      </div>
-                    </a>
-                  )}
-                  {socialLinks.whatsapp && (
-                    <a href={`https://wa.me/${socialLinks.whatsapp.replace(/[^0-9]/g, '')}`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-4 p-4 bg-white dark:bg-gray-800 border border-slate-200 dark:border-gray-700 rounded-2xl hover:border-green-400 dark:hover:border-green-600 transition-colors">
-                      <div className="w-10 h-10 rounded-full bg-green-50 dark:bg-green-900/30 flex items-center justify-center shrink-0">
-                        <MessageCircle className="w-5 h-5 text-green-600 dark:text-green-500" />
-                      </div>
-                      <div>
-                        <p className="text-xs font-medium text-slate-400 dark:text-slate-500">WhatsApp</p>
-                        <p className="text-sm font-semibold text-slate-900 dark:text-white">Написать</p>
-                      </div>
-                    </a>
-                  )}
-                  {socialLinks.telegram && (
-                    <a href={`https://t.me/${socialLinks.telegram.replace(/^@/, '')}`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-4 p-4 bg-white dark:bg-gray-800 border border-slate-200 dark:border-gray-700 rounded-2xl hover:border-blue-300 dark:hover:border-blue-500 transition-colors">
-                      <div className="w-10 h-10 rounded-full bg-blue-50 dark:bg-blue-900/30 flex items-center justify-center shrink-0">
-                        <Send className="w-5 h-5 text-blue-500 dark:text-blue-400" />
-                      </div>
-                      <div>
-                        <p className="text-xs font-medium text-slate-400 dark:text-slate-500">Telegram</p>
-                        <p className="text-sm font-semibold text-slate-900 dark:text-white">Написать</p>
-                      </div>
-                    </a>
-                  )}
-                  {socialLinks.instagram && (
-                    <a href={`https://instagram.com/${socialLinks.instagram.replace(/^@/, '')}`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-4 p-4 bg-white dark:bg-gray-800 border border-slate-200 dark:border-gray-700 rounded-2xl hover:border-pink-300 dark:hover:border-pink-500 transition-colors">
-                      <div className="w-10 h-10 rounded-full bg-pink-50 dark:bg-pink-900/30 flex items-center justify-center shrink-0">
-                        <div className="w-5 h-5 text-pink-500 dark:text-pink-400 flex items-center justify-center font-bold">📷</div>
-                      </div>
-                      <div>
-                        <p className="text-xs font-medium text-slate-400 dark:text-slate-500">Instagram</p>
-                        <p className="text-sm font-semibold text-slate-900 dark:text-white">Перейти</p>
-                      </div>
-                    </a>
+              {/* Actions Desktop */}
+              <div className="bg-white dark:bg-gray-900 rounded-2xl p-6 shadow-sm border border-slate-200 dark:border-gray-800 hidden lg:block">
+                <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-4">
+                  Действия
+                </h3>
+                {renderCTA(true)}
+              </div>
+
+              {/* ── CONTACTS ── */}
+              <Section delay={600}>
+                <div className="bg-slate-50 dark:bg-gray-800/80 rounded-2xl p-6 shadow-sm border border-slate-200 dark:border-gray-800">
+                  <h2 className="text-lg font-bold text-slate-900 dark:text-white mb-6 flex items-center gap-2">
+                    <PhoneCall className="w-5 h-5 text-sky-500" />
+                    {t('directory.contactTitle', 'Контакты связи')}
+                  </h2>
+                  
+                  {hasContacts ? (
+                    <div className="flex flex-col gap-4">
+                      {org.contactPhone && (
+                        <a href={`tel:${org.contactPhone}`} className="flex items-center gap-4 p-3 bg-white dark:bg-gray-800 border border-slate-200 dark:border-gray-700 rounded-xl hover:border-sky-300 dark:hover:border-sky-600 transition-colors">
+                          <div className="w-10 h-10 rounded-full bg-sky-50 dark:bg-sky-900/30 flex items-center justify-center shrink-0">
+                            <Phone className="w-5 h-5 text-sky-600 dark:text-sky-400" />
+                          </div>
+                          <div className="overflow-hidden">
+                            <p className="text-xs font-medium text-slate-400 dark:text-slate-500">Телефон</p>
+                            <p className="text-sm font-semibold text-slate-900 dark:text-white">{org.contactPhone}</p>
+                          </div>
+                        </a>
+                      )}
+                      {org.contactEmail && (
+                        <a href={`mailto:${org.contactEmail}`} className="flex items-center gap-4 p-3 bg-white dark:bg-gray-800 border border-slate-200 dark:border-gray-700 rounded-xl hover:border-indigo-300 dark:hover:border-indigo-600 transition-colors">
+                          <div className="w-10 h-10 rounded-full bg-indigo-50 dark:bg-indigo-900/30 flex items-center justify-center shrink-0">
+                            <Mail className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
+                          </div>
+                          <div className="overflow-hidden">
+                            <p className="text-xs font-medium text-slate-400 dark:text-slate-500">Почта</p>
+                            <p className="text-sm font-semibold text-slate-900 dark:text-white truncate" title={org.contactEmail}>{org.contactEmail}</p>
+                          </div>
+                        </a>
+                      )}
+                      {socialLinks.website && (
+                        <a href={socialLinks.website.startsWith('http') ? socialLinks.website : `https://${socialLinks.website}`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-4 p-3 bg-white dark:bg-gray-800 border border-slate-200 dark:border-gray-700 rounded-xl hover:border-emerald-300 dark:hover:border-emerald-600 transition-colors">
+                          <div className="w-10 h-10 rounded-full bg-emerald-50 dark:bg-emerald-900/30 flex items-center justify-center shrink-0">
+                            <Globe className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
+                          </div>
+                          <div className="overflow-hidden">
+                            <p className="text-xs font-medium text-slate-400 dark:text-slate-500">Веб-сайт</p>
+                            <p className="text-sm font-semibold text-slate-900 dark:text-white truncate" title={socialLinks.website}>{socialLinks.website}</p>
+                          </div>
+                        </a>
+                      )}
+                      {socialLinks.whatsapp && (
+                        <a href={`https://wa.me/${socialLinks.whatsapp.replace(/[^0-9]/g, '')}`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-4 p-3 bg-white dark:bg-gray-800 border border-slate-200 dark:border-gray-700 rounded-xl hover:border-green-400 dark:hover:border-green-600 transition-colors">
+                          <div className="w-10 h-10 rounded-full bg-green-50 dark:bg-green-900/30 flex items-center justify-center shrink-0">
+                            <MessageCircle className="w-5 h-5 text-green-600 dark:text-green-500" />
+                          </div>
+                          <div className="overflow-hidden">
+                            <p className="text-xs font-medium text-slate-400 dark:text-slate-500">WhatsApp</p>
+                            <p className="text-sm font-semibold text-slate-900 dark:text-white">Написать</p>
+                          </div>
+                        </a>
+                      )}
+                      {socialLinks.telegram && (
+                        <a href={`https://t.me/${socialLinks.telegram.replace(/^@/, '')}`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-4 p-3 bg-white dark:bg-gray-800 border border-slate-200 dark:border-gray-700 rounded-xl hover:border-blue-300 dark:hover:border-blue-500 transition-colors">
+                          <div className="w-10 h-10 rounded-full bg-blue-50 dark:bg-blue-900/30 flex items-center justify-center shrink-0">
+                            <Send className="w-5 h-5 text-blue-500 dark:text-blue-400" />
+                          </div>
+                          <div className="overflow-hidden">
+                            <p className="text-xs font-medium text-slate-400 dark:text-slate-500">Telegram</p>
+                            <p className="text-sm font-semibold text-slate-900 dark:text-white">Написать</p>
+                          </div>
+                        </a>
+                      )}
+                      {socialLinks.instagram && (
+                        <a href={`https://instagram.com/${socialLinks.instagram.replace(/^@/, '')}`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-4 p-3 bg-white dark:bg-gray-800 border border-slate-200 dark:border-gray-700 rounded-xl hover:border-pink-300 dark:hover:border-pink-500 transition-colors">
+                          <div className="w-10 h-10 rounded-full bg-pink-50 dark:bg-pink-900/30 flex items-center justify-center shrink-0">
+                            <div className="w-5 h-5 text-pink-500 dark:text-pink-400 flex items-center justify-center font-bold">📷</div>
+                          </div>
+                          <div className="overflow-hidden">
+                            <p className="text-xs font-medium text-slate-400 dark:text-slate-500">Instagram</p>
+                            <p className="text-sm font-semibold text-slate-900 dark:text-white">Перейти</p>
+                          </div>
+                        </a>
+                      )}
+                    </div>
+                  ) : (
+                    <EmptyState 
+                      icon={Mail} 
+                      title="Контакты не указаны"
+                      desc="Организация пока не разместила свои контактные данные."
+                    />
                   )}
                 </div>
-              ) : (
-                <EmptyState 
-                  icon={Mail} 
-                  title="Контакты не указаны"
-                  desc="К сожалению, организация пока не разместила свои контактные данные."
-                />
-              )}
-            </div>
-          </Section>
-        </div>
+              </Section>
 
+              {/* ── MAP ── */}
+              {org.branches?.length > 0 && (
+                <Section delay={400}>
+                  <div className="bg-white dark:bg-gray-900 rounded-2xl p-6 shadow-sm border border-slate-200 dark:border-gray-800">
+                    <h2 className="text-lg font-bold text-slate-900 dark:text-white mb-4 flex items-center gap-2">
+                      <Map className="w-5 h-5 text-rose-500" />
+                      {t('directory.map', 'Карта')}
+                    </h2>
+                    <div className="w-full h-[300px] bg-slate-50 dark:bg-gray-800/50 border border-slate-200 dark:border-gray-700 rounded-xl overflow-hidden relative">
+                      {getMapUrl() ? (
+                        <iframe
+                          src={getMapUrl()!}
+                          className="absolute inset-0 w-full h-full border-0"
+                          allowFullScreen
+                          loading="lazy"
+                          referrerPolicy="no-referrer-when-downgrade"
+                          title="Branch locations"
+                        />
+                      ) : (
+                        <EmptyState 
+                          icon={MapPin} 
+                          title="Карта"
+                          desc="Нет координат."
+                        />
+                      )}
+                    </div>
+                  </div>
+                </Section>
+              )}
+
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* ═══════════════════════════════════════ */}
       {/*  STICKY CTA (mobile)                     */}
       {/* ═══════════════════════════════════════ */}
-      <div className="fixed bottom-0 left-0 right-0 bg-white/80 dark:bg-gray-900/80 backdrop-blur-xl border-t border-slate-200/50 dark:border-gray-800/50 p-4 sm:hidden z-40 safe-area-bottom shadow-[0_-10px_40px_rgba(0,0,0,0.05)]">
+      <div className="fixed bottom-0 left-0 right-0 bg-white/80 dark:bg-gray-900/80 backdrop-blur-xl border-t border-slate-200/50 dark:border-gray-800/50 p-4 lg:hidden z-40 safe-area-bottom shadow-[0_-10px_40px_rgba(0,0,0,0.05)]">
         {renderCTA(true)}
       </div>
 

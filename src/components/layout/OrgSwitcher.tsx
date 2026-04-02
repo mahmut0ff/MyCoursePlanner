@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import {
   Building2, ChevronDown, Check, Plus, Search, LogOut,
-  Users, Settings, BarChart3, Briefcase, MailOpen,
+  Users, Settings, BarChart3, MailOpen,
   FolderOpen
 } from 'lucide-react';
 import { apiGetMyMemberships, apiSwitchOrg, apiLeaveMembership } from '../../lib/api';

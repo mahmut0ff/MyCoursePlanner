@@ -363,7 +363,7 @@ const BrandingTab: React.FC<{ settings: OrgSettings; update: (k: string, v: any)
 const VisitCardTab: React.FC<{ settings: OrgSettings; update: (k: string, v: any) => void }> = ({ settings, update }) => {
   const { t } = useTranslation();
   const [qrDataUrl, setQrDataUrl] = useState<string>('');
-  const [copied, setCopied] = useState(false);
+  const [copied, setCopied] = useState<string | null>(null);
   const slug = settings.slug || settings.organizationId;
   const publicUrl = `${typeof window !== 'undefined' ? window.location.origin : ''}/org/${slug}`;
   const links = settings.contactLinks || {};
@@ -384,10 +384,10 @@ const VisitCardTab: React.FC<{ settings: OrgSettings; update: (k: string, v: any
     a.click();
   };
 
-  const copyLink = () => {
-    navigator.clipboard.writeText(publicUrl);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+  const copyLink = (url: string, type: string) => {
+    navigator.clipboard.writeText(url);
+    setCopied(type);
+    setTimeout(() => setCopied(null), 2000);
   };
 
   const printPoster = () => {
@@ -447,12 +447,26 @@ const VisitCardTab: React.FC<{ settings: OrgSettings; update: (k: string, v: any
 
         {settings.publicProfileEnabled && (
           <div className="mt-4 pt-4 border-t border-slate-100 dark:border-slate-700">
-            <div className="flex items-center gap-2 text-sm">
-              <span className="text-slate-500 dark:text-slate-400">{t('org.settings.publicLink', 'Публичная ссылка')}:</span>
-              <a href={publicUrl} target="_blank" rel="noopener noreferrer" className="text-primary-600 dark:text-primary-400 hover:underline truncate">{publicUrl}</a>
-              <button onClick={copyLink} className="ml-1 p-1 rounded hover:bg-slate-100 dark:hover:bg-slate-700 transition">
-                {copied ? <CheckCircle className="w-4 h-4 text-green-500" /> : <Copy className="w-4 h-4 text-slate-400" />}
-              </button>
+            <div className="flex flex-col gap-3 text-sm">
+              <div className="flex items-center justify-between bg-slate-50 dark:bg-gray-800/50 p-3 rounded-xl border border-slate-100 dark:border-gray-700">
+                <div className="min-w-0">
+                  <p className="font-medium text-slate-700 dark:text-slate-300 mb-1">{t('org.settings.studentLink', 'Для учеников')}</p>
+                  <a href={publicUrl} target="_blank" rel="noopener noreferrer" className="text-primary-600 dark:text-primary-400 hover:underline truncate block">{publicUrl}</a>
+                </div>
+                <button onClick={() => copyLink(publicUrl, 'student')} className="ml-4 p-2 shrink-0 rounded-lg hover:bg-white dark:hover:bg-gray-700 transition">
+                  {copied === 'student' ? <CheckCircle className="w-5 h-5 text-green-500" /> : <Copy className="w-5 h-5 text-slate-400" />}
+                </button>
+              </div>
+
+              <div className="flex items-center justify-between bg-slate-50 dark:bg-gray-800/50 p-3 rounded-xl border border-slate-100 dark:border-gray-700">
+                <div className="min-w-0">
+                  <p className="font-medium text-slate-700 dark:text-slate-300 mb-1">{t('org.settings.teacherLink', 'Для преподавателей')}</p>
+                  <a href={`${publicUrl}?role=teacher`} target="_blank" rel="noopener noreferrer" className="text-primary-600 dark:text-primary-400 hover:underline truncate block">{publicUrl}?role=teacher</a>
+                </div>
+                <button onClick={() => copyLink(`${publicUrl}?role=teacher`, 'teacher')} className="ml-4 p-2 shrink-0 rounded-lg hover:bg-white dark:hover:bg-gray-700 transition">
+                  {copied === 'teacher' ? <CheckCircle className="w-5 h-5 text-green-500" /> : <Copy className="w-5 h-5 text-slate-400" />}
+                </button>
+              </div>
             </div>
           </div>
         )}

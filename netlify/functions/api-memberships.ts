@@ -199,7 +199,7 @@ const handler: Handler = async (event: HandlerEvent) => {
         // Re-apply: user previously left or was removed → set pending for approval
         if (['left', 'removed'].includes(existing.status)) {
           const ts = now();
-          const reapply = { status: 'pending', role: 'student', updatedAt: ts, joinMethod: 'public_join' };
+          const reapply = { status: 'pending', role: body.requestedRole || 'student', updatedAt: ts, joinMethod: 'public_join' };
           await adminDb.collection('users').doc(user.uid)
             .collection('memberships').doc(orgId).update(reapply);
           await adminDb.collection('orgMembers').doc(orgId)
@@ -236,7 +236,7 @@ const handler: Handler = async (event: HandlerEvent) => {
         userName: user.displayName,
         organizationId: orgId,
         organizationName: org.name,
-        role: 'student',
+        role: body.requestedRole || 'student',
         status: 'pending',
         joinMethod: 'public_join',
       });

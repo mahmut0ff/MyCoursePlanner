@@ -83,7 +83,7 @@ const LessonViewPage: React.FC = () => {
         .then((data) => {
           setLesson(data);
           const viewedKey = `viewed_lesson_${id}`;
-          if (sessionStorage.getItem(viewedKey)) {
+          if (localStorage.getItem(viewedKey)) {
              setIsCompleted(true);
           }
           
@@ -191,15 +191,25 @@ const LessonViewPage: React.FC = () => {
     if (!lesson?.organizationId || role !== 'student' || isCompleted) return;
     setCompleting(true);
     try {
-      const res: any = await apiAwardXP({ type: 'lesson', organizationId: lesson.organizationId });
+      const res: any = await apiAwardXP({ 
+        type: 'lesson', 
+        sourceType: 'lesson',
+        sourceId: lesson.id,
+        organizationId: lesson.organizationId 
+      });
       showGamificationToasts(res.newBadges, res.leveledUp);
       const viewedKey = `viewed_lesson_${id}`;
-      sessionStorage.setItem(viewedKey, 'true');
+      localStorage.setItem(viewedKey, 'true');
       setIsCompleted(true);
       // Optional: triggers a nice confetti effect locally if a library exists,
       // but GamificationToasts already displays a nice popup.
-    } catch (e) {
+    } catch (e: any) {
       console.error(e);
+      toast.error('Не удалось начислить баллы. Ошибка сети.');
+      // Оставляем возможность зафиксировать прохождение локально даже при ошибке АПИ
+      const viewedKey = `viewed_lesson_${id}`;
+      localStorage.setItem(viewedKey, 'true');
+      setIsCompleted(true);
     } finally {
       setCompleting(false);
     }

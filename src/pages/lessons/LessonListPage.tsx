@@ -105,7 +105,7 @@ const LessonListPage: React.FC = () => {
 
   const isCompleted = (lessonId: string) => {
     if (!isStudent) return false;
-    return !!sessionStorage.getItem(`viewed_lesson_${lessonId}`);
+    return !!localStorage.getItem(`viewed_lesson_${lessonId}`);
   };
 
   if (loading) return <ListSkeleton rows={6} />;

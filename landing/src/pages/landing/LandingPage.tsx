@@ -9,10 +9,10 @@ import {
  Globe, Sparkles, Crown, Menu, X, Users,
  MessageCircle, Mail, MapPin, Phone, Award,
  Layers, Lock, FileText, Target, Gamepad2,
- GraduationCap, Laptop,
- Bot, PenTool, LayoutGrid, Database, Briefcase, Building2,
+ Bot, PenTool, LayoutGrid, Database, Briefcase,
  Code2, Headphones, Palette, Activity, Music, TrendingUp,
- CalendarClock, CheckSquare, UploadCloud, Star
+ CalendarClock, CheckSquare, UploadCloud, Star,
+ Laptop, Globe, GraduationCap, Building2
 } from 'lucide-react';
 
 /* ──────────────────────────────────────────
@@ -147,12 +147,12 @@ const LandingPage: React.FC = () => {
 
  /* ── Target Niches ── */
  const targetNiches = [
-  { id: 'it', icon: Code2, title: 'IT и Робототехника', desc: 'Автоматическая проверка кода, поддержка загрузки ZIP/RAR архивов со скриптами учеников', color: 'text-indigo-500', bg: 'bg-indigo-500/10' },
-  { id: 'lang', icon: Headphones, title: 'Языковые школы', desc: 'Домашние задания голосом. Встроенный аудиоплеер для практики Speaking & Listening', color: 'text-rose-500', bg: 'bg-rose-500/10' },
-  { id: 'art', icon: Palette, title: 'Art-классы и Творчество', desc: 'Красивое медиа-портфолио. Загрузка тяжелых фото и видео-работ до 50МБ без ограничений', color: 'text-fuchsia-500', bg: 'bg-fuchsia-500/10' },
-  { id: 'prep', icon: TrendingUp, title: 'Репетиторы ЕНТ / ЕГЭ', desc: 'Генерация сотен тестов за секунды с помощью ИИ. Точечная проработка ошибок ученика', color: 'text-emerald-500', bg: 'bg-emerald-500/10' },
-  { id: 'sports', icon: Activity, title: 'Спортивные секции', desc: 'Мгновенный контроль присутствия. Учет тарифов и статусов оплаты за абонемент', color: 'text-orange-500', bg: 'bg-orange-500/10' },
-  { id: 'music', icon: Music, title: 'Музыкальные школы', desc: 'Обмен нотами и табами в PDF. Сдача экзаменов аудиофайлами в высоком качестве', color: 'text-cyan-500', bg: 'bg-cyan-500/10' }
+  { id: 'it', icon: Laptop, title: 'Онлайн-школы и Курсы', desc: 'Удобная загрузка контента (до 50 мб), видео-уроков и материалов. Студенческий портал.', color: 'text-indigo-500', bg: 'bg-indigo-500/10' },
+  { id: 'lang', icon: Globe, title: 'Языковые центры', desc: 'Загрузка аудиозаписей для проверки Speaking. Учитель слушает аудио прямо в платформе.', color: 'text-rose-500', bg: 'bg-rose-500/10' },
+  { id: 'tutor', icon: GraduationCap, title: 'Репетиторы', desc: 'Удобный Канбан для проверки ДЗ, выставление оценок и расписание в один клик.', color: 'text-emerald-500', bg: 'bg-emerald-500/10' },
+  { id: 'corporate', icon: Building2, title: 'Корпоративное обучение', desc: 'Доступ к интерактивным Квизам, Живым сессиям и детальной аналитике (Pro-тариф).', color: 'text-blue-500', bg: 'bg-blue-500/10' },
+  { id: 'studio', icon: LayoutGrid, title: 'Кружки и студии', desc: 'Моментальный учет посещаемости в смарт-журнале и контроль оплат.', color: 'text-fuchsia-500', bg: 'bg-fuchsia-500/10' },
+  { id: 'org', icon: Briefcase, title: 'Крупные учебные центры', desc: 'Иерархичный доступ, управление менеджерами, педагогами и филиалами.', color: 'text-cyan-500', bg: 'bg-cyan-500/10' }
  ];
 
  /* ── FAQ ── */
@@ -496,29 +496,29 @@ const LandingPage: React.FC = () => {
             Полный контроль над <span className="bg-gradient-to-r from-primary-400 to-indigo-400 bg-clip-text text-transparent">учебным процессом</span>
           </h2>
           <p className="text-lg text-slate-400 mb-10 leading-relaxed">
-            Избавьтесь от рутины, бумажных журналов и таблиц Excel. Управляйте расписанием, проводите AI-проверку работ и автоматизируйте учет финансов в едином премиум-окружении.
+            Избавьтесь от рутины, бумажных журналов и таблиц Excel. Управляйте расписанием, проверяйте домашки в удобном Канбане и ведите учет финансов в едином премиум-окружении.
           </p>
           
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
             <div className="bg-slate-800/50 p-5 rounded-2xl border border-slate-700/50 group hover:border-indigo-400/50 transition-colors">
               <CalendarClock className="w-8 h-8 text-indigo-400 mb-4 group-hover:scale-110 transition-transform" />
-              <h4 className="text-white font-bold mb-2">Журнал & Посещаемость</h4>
-              <p className="text-sm text-slate-400">Отмечайте присутствие в три клика. Вся статистика формируется сама.</p>
+              <h4 className="text-white font-bold mb-2">Журнал и Посещаемость</h4>
+              <p className="text-sm text-slate-400">Отмечайте присутствие и оценки. Вся статистика формируется автоматически.</p>
             </div>
             <div className="bg-slate-800/50 p-5 rounded-2xl border border-slate-700/50 group hover:border-emerald-400/50 transition-colors">
               <CheckSquare className="w-8 h-8 text-emerald-400 mb-4 group-hover:scale-110 transition-transform" />
-              <h4 className="text-white font-bold mb-2">Ревью ДЗ одним окном</h4>
-              <p className="text-sm text-slate-400">Удобный канбан, встроенный аудио-плеер, проверка PDF и кода.</p>
+              <h4 className="text-white font-bold mb-2">Канбан Ревью ДЗ</h4>
+              <p className="text-sm text-slate-400">Удобный канбан, встроенный аудио-плеер, проверка PDF-документов и кода.</p>
             </div>
             <div className="bg-slate-800/50 p-5 rounded-2xl border border-slate-700/50 group hover:border-amber-400/50 transition-colors">
                <Database className="w-8 h-8 text-amber-400 mb-4 group-hover:scale-110 transition-transform" />
-               <h4 className="text-white font-bold mb-2">Финансы & Оплаты</h4>
-               <p className="text-sm text-slate-400">CRM-система биллинга, напоминания о долгах и расчет ЗП педагогов.</p>
+               <h4 className="text-white font-bold mb-2">Финансы и Оплаты</h4>
+               <p className="text-sm text-slate-400">Контролируйте транзакции, ведите учет доходов и расходов филиала.</p>
             </div>
             <div className="bg-slate-800/50 p-5 rounded-2xl border border-slate-700/50 group hover:border-rose-400/50 transition-colors">
                <Shield className="w-8 h-8 text-rose-400 mb-4 group-hover:scale-110 transition-transform" />
                <h4 className="text-white font-bold mb-2">Ролевой доступ</h4>
-               <p className="text-sm text-slate-400">Настраивайте 65+ прав для менеджеров, педагогов и администраторов.</p>
+               <p className="text-sm text-slate-400">Безопасная архитектура ролей: администратор, менеджер, учитель, ученик.</p>
             </div>
           </div>
         </div>
@@ -665,7 +665,7 @@ const LandingPage: React.FC = () => {
           Универсальное решение
         </div>
         <h2 className="text-3xl md:text-5xl font-extrabold mb-6 text-slate-900 leading-tight">Для каких центров подходит <span className="bg-gradient-to-r from-primary-600 to-indigo-600 bg-clip-text text-transparent">Planula?</span></h2>
-        <p className="text-lg text-slate-500 max-w-2xl mx-auto leading-relaxed">Платформа адаптируется под любые методики. Не важно, проверяете вы исходный код или технику аргентинского танго — мы поддержали всё.</p>
+        <p className="text-lg text-slate-500 max-w-2xl mx-auto leading-relaxed">Платформа адаптируется под разные форматы — от классических языковых школ с живыми группами до онлайн-курсов и корпоративного обучения.</p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">

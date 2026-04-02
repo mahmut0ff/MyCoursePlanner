@@ -142,6 +142,7 @@ const JournalPage: React.FC = () => {
   
   const [schema, setSchema] = useState<GradeSchema>(defaultSchema);
   const [entries, setEntries] = useState<Record<string, JournalEntry>>({});
+  const [courseJournalDates, setCourseJournalDates] = useState<string[]>([]);
   const [grades, setGrades] = useState<Record<string, GradeEntry>>({});
   const [syncStatus, setSyncStatus] = useState<Record<string, boolean>>({});
   const [entrySyncStatus, setEntrySyncStatus] = useState<Record<string, boolean>>({});
@@ -162,17 +163,21 @@ const JournalPage: React.FC = () => {
   const canEdit = !isReadOnly && isDateValidForEditing;
 
   const quickDates = useMemo(() => {
-    const dates = [];
-    for(let i = 4; i >= 0; i--) {
-      const d = new Date(now);
-      d.setDate(now.getDate() - i);
-      dates.push({
-        val: d.toISOString().split('T')[0],
-        label: i === 0 ? 'Сегодня' : i === 1 ? 'Вчера' : d.toLocaleDateString('ru-RU', { weekday: 'short', day: 'numeric' })
-      });
-    }
-    return dates;
-  }, []);
+    const datesSet = new Set<string>();
+    datesSet.add(todayFormatted); // always include today
+
+    courseJournalDates.forEach(d => datesSet.add(d));
+
+    const sorted = Array.from(datesSet).sort((a, b) => b.localeCompare(a));
+    const top5 = sorted.slice(0, 5).reverse();
+
+    return top5.map(val => {
+      const d = new Date(val);
+      let label = d.toLocaleDateString('ru-RU', { weekday: 'short', day: 'numeric' });
+      if (val === todayFormatted) label = 'Сегодня';
+      return { val, label };
+    });
+  }, [courseJournalDates]);
 
   // 1. Load initial static data (optimized)
   useEffect(() => {
@@ -240,7 +245,12 @@ const JournalPage: React.FC = () => {
 
       setSchema(schemaRes || { ...defaultSchema, courseId: selectedCourseId });
 
-      const dateEntries = (Array.isArray(journalRes) ? journalRes : []).filter((j: any) => j.date === date);
+      const allEntries = Array.isArray(journalRes) ? journalRes : [];
+      const dateEntries = allEntries.filter((j: any) => j.date === date);
+      
+      const uniqueDates = Array.from(new Set(allEntries.map((j: any) => j.date as string))).sort((a, b) => b.localeCompare(a));
+      setCourseJournalDates(uniqueDates);
+
       const entriesMap: Record<string, JournalEntry> = {};
       dateEntries.forEach((j: any) => {
         entriesMap[j.studentId] = j;

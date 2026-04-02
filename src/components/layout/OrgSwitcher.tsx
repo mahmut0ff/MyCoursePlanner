@@ -115,9 +115,7 @@ const OrgSwitcher: React.FC<OrgSwitcherProps> = ({ currentOrgId, userRole, onSwi
 
     if (userRole === 'teacher') {
       actions.push(
-
         { icon: MailOpen, label: t('nav.invites', 'Приглашения'), onClick: () => nav('/invites') },
-        { icon: Briefcase, label: t('nav.myApplications', 'Мои заявки'), onClick: () => nav('/my-applications') },
       );
     }
 

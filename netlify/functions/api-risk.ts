@@ -69,7 +69,8 @@ export const handler: Handler = async (event: HandlerEvent) => {
 
       // Avg Score
       let avgScore = 0;
-      if (sAttempts.length > 0) {
+      const hasScores = sAttempts.length > 0;
+      if (hasScores) {
         avgScore = Math.round(sAttempts.reduce((acc, curr) => acc + curr.percentage, 0) / sAttempts.length);
       }
 
@@ -80,19 +81,30 @@ export const handler: Handler = async (event: HandlerEvent) => {
         attendanceRate = Math.round(((sJournal.length - missed) / sJournal.length) * 100);
       }
 
-      // Days since last active (simulated: looking at last test taken or createdAt if none)
+      // Days since last active
       let lastActiveDate = new Date(student.createdAt || Date.now());
+      const datesToConsider: Date[] = [lastActiveDate];
       if (sAttempts.length > 0) {
-        const sorted = [...sAttempts].sort((a,b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-        lastActiveDate = new Date(sorted[0].createdAt);
+        sAttempts.forEach(a => { if (a.createdAt) datesToConsider.push(new Date(a.createdAt)); });
       }
+      if (sJournal.length > 0) {
+        sJournal.forEach(j => { if (j.date) datesToConsider.push(new Date(j.date)); });
+      }
+      datesToConsider.sort((a, b) => b.getTime() - a.getTime());
+      lastActiveDate = datesToConsider[0];
+
       const daysSinceLastActive = Math.floor((now.getTime() - lastActiveDate.getTime()) / (1000 * 3600 * 24));
 
       // Calculate Risk Level
       let riskLevel = 'low';
-      if (daysSinceLastActive > 7 || avgScore < 50 || attendanceRate < 50) {
+      
+      // Only penalize low scores if the student actually took exams
+      const isHighRiskScore = hasScores && avgScore < 50;
+      const isMedRiskScore = hasScores && avgScore < 70;
+
+      if (daysSinceLastActive > 7 || isHighRiskScore || attendanceRate < 50) {
         riskLevel = 'high';
-      } else if (daysSinceLastActive > 4 || avgScore < 70 || attendanceRate < 80) {
+      } else if (daysSinceLastActive > 4 || isMedRiskScore || attendanceRate < 80) {
         riskLevel = 'medium';
       }
 

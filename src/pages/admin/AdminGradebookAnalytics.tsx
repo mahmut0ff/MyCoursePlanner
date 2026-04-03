@@ -99,15 +99,15 @@ export default function AdminGradebookAnalytics() {
     <div className="max-w-7xl mx-auto space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-indigo-500/10 flex items-center justify-center">
-            <BarChart3 className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
+          <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-indigo-500/20 to-purple-500/20 flex items-center justify-center ring-1 ring-indigo-500/30 shadow-inner">
+            <BarChart3 className="w-6 h-6 text-indigo-600 dark:text-indigo-400" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Аналитика успеваемости</h1>
-            <p className="text-sm text-slate-500 dark:text-slate-400">Контроль качества обучения, посещаемости и активности</p>
+            <h1 className="text-2xl font-bold bg-gradient-to-r from-slate-900 to-slate-700 dark:from-white dark:to-slate-300 bg-clip-text text-transparent">Аналитика успеваемости</h1>
+            <p className="text-sm text-slate-500 dark:text-slate-400 font-medium">Контроль качества обучения, посещаемости и активности</p>
           </div>
         </div>
-        <button className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-medium hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors">
+        <button className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-white to-slate-50 dark:from-slate-800 dark:to-slate-800/80 border border-slate-200/80 dark:border-slate-700 rounded-xl text-sm font-semibold text-slate-700 dark:text-slate-200 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200">
           <Download className="w-4 h-4" />
           Экспорт отчета
         </button>
@@ -124,102 +124,158 @@ export default function AdminGradebookAnalytics() {
       ) : (
         <>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            <div className="bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-200 dark:border-slate-700">
-              <div className="flex justify-between items-start mb-4">
-                <div className="w-10 h-10 rounded-xl bg-emerald-500/10 flex items-center justify-center">
-                  <TrendingUp className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
-                </div>
+            {/* Avg Score Card */}
+            <div className="relative overflow-hidden bg-white dark:bg-[#151f2e] p-6 rounded-2xl border border-slate-200/80 dark:border-slate-700/50 shadow-sm hover:shadow-lg transition-shadow group">
+              <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+                 <TrendingUp className="w-24 h-24 text-emerald-500 -mr-8 -mt-8" />
               </div>
-              <p className="text-3xl font-bold text-slate-900 dark:text-white mb-1">{metrics.avgScore.toFixed(1)}%</p>
-              <p className="text-sm text-slate-500 dark:text-slate-400">Средний балл по академии</p>
+              <div className="relative z-10">
+                <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-emerald-400/20 to-teal-500/20 flex items-center justify-center mb-4 ring-1 ring-emerald-500/30">
+                  <TrendingUp className="w-6 h-6 text-emerald-600 dark:text-emerald-400" />
+                </div>
+                <p className="text-4xl font-black text-slate-900 dark:text-white mb-1">{metrics.avgScore.toFixed(1)}%</p>
+                <p className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Средний балл</p>
+              </div>
             </div>
 
-            <div className="bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-200 dark:border-slate-700">
-              <div className="flex justify-between items-start mb-4">
-                <div className="w-10 h-10 rounded-xl bg-blue-500/10 flex items-center justify-center">
-                  <ClipboardList className="w-5 h-5 text-blue-600 dark:text-blue-400" />
-                </div>
+            {/* Attendance Card */}
+            <div className="relative overflow-hidden bg-white dark:bg-[#151f2e] p-6 rounded-2xl border border-slate-200/80 dark:border-slate-700/50 shadow-sm hover:shadow-lg transition-shadow group">
+              <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+                 <ClipboardList className="w-24 h-24 text-blue-500 -mr-8 -mt-8" />
               </div>
-              <p className="text-3xl font-bold text-slate-900 dark:text-white mb-1">{metrics.attendanceRate.toFixed(1)}%</p>
-              <p className="text-sm text-slate-500 dark:text-slate-400">Общая посещаемость</p>
+              <div className="relative z-10">
+                <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-400/20 to-indigo-500/20 flex items-center justify-center mb-4 ring-1 ring-blue-500/30">
+                  <ClipboardList className="w-6 h-6 text-blue-600 dark:text-blue-400" />
+                </div>
+                <p className="text-4xl font-black text-slate-900 dark:text-white mb-1">{metrics.attendanceRate.toFixed(1)}%</p>
+                <p className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Посещаемость</p>
+              </div>
             </div>
 
-            <div className="bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-200 dark:border-slate-700">
-              <div className="flex justify-between items-start mb-4">
-                <div className="w-10 h-10 rounded-xl bg-amber-500/10 flex items-center justify-center">
-                  <GraduationCap className="w-5 h-5 text-amber-600 dark:text-amber-400" />
-                </div>
+            {/* Grades Count Card */}
+            <div className="relative overflow-hidden bg-white dark:bg-[#151f2e] p-6 rounded-2xl border border-slate-200/80 dark:border-slate-700/50 shadow-sm hover:shadow-lg transition-shadow group">
+              <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+                 <GraduationCap className="w-24 h-24 text-amber-500 -mr-8 -mt-8" />
               </div>
-              <p className="text-3xl font-bold text-slate-900 dark:text-white mb-1">{metrics.gradesCount}</p>
-              <p className="text-sm text-slate-500 dark:text-slate-400">Всего выставлено оценок</p>
+              <div className="relative z-10">
+                <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-amber-400/20 to-orange-500/20 flex items-center justify-center mb-4 ring-1 ring-amber-500/30">
+                  <GraduationCap className="w-6 h-6 text-amber-600 dark:text-amber-400" />
+                </div>
+                <p className="text-4xl font-black text-slate-900 dark:text-white mb-1">{metrics.gradesCount || 0}</p>
+                <p className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Оценок выставлено</p>
+              </div>
             </div>
 
-            <div className="bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-200 dark:border-slate-700">
-              <div className="flex justify-between items-start mb-4">
-                <div className="w-10 h-10 rounded-xl bg-red-500/10 flex items-center justify-center">
-                  <AlertTriangle className="w-5 h-5 text-red-600 dark:text-red-400" />
-                </div>
+            {/* Risk Card */}
+            <div className="relative overflow-hidden bg-gradient-to-br from-white to-red-50 dark:from-[#151f2e] dark:to-red-900/10 p-6 rounded-2xl border border-red-200/80 dark:border-red-900/40 shadow-sm hover:shadow-lg transition-shadow group">
+              <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+                 <AlertTriangle className="w-24 h-24 text-red-500 -mr-8 -mt-8" />
               </div>
-              <p className="text-3xl font-bold text-slate-900 dark:text-white mb-1">{metrics.atRiskCount}</p>
-              <p className="text-sm text-slate-500 dark:text-slate-400">Студентов в зоне риска</p>
+              <div className="relative z-10">
+                <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-red-400/20 to-rose-500/20 flex items-center justify-center mb-4 ring-1 ring-red-500/50">
+                  <AlertTriangle className="w-6 h-6 text-red-600 dark:text-red-400" />
+                </div>
+                <p className="text-4xl font-black text-red-600 dark:text-red-400 mb-1">{metrics.atRiskCount || 0}</p>
+                <p className="text-xs font-semibold uppercase tracking-wider text-red-500/80 dark:text-red-400/80">В зоне риска</p>
+              </div>
             </div>
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <div className="bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-200 dark:border-slate-700 flex flex-col min-h-[400px]">
-              <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-4">Студенты в зоне риска</h3>
+            <div className="bg-white dark:bg-[#151f2e] p-6 rounded-2xl border border-slate-200/80 dark:border-slate-700/50 shadow-sm flex flex-col min-h-[400px]">
+              <div className="flex items-center gap-3 mb-6">
+                <div className="w-10 h-10 rounded-xl bg-red-500/10 flex items-center justify-center">
+                  <AlertTriangle className="w-5 h-5 text-red-500" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold text-slate-900 dark:text-white leading-tight">Зона риска</h3>
+                  <p className="text-xs text-slate-500">Студенты, требующие внимания</p>
+                </div>
+              </div>
               
               {metrics.atRiskStudents.length > 0 ? (
-                <div className="space-y-3 flex-1 overflow-y-auto pr-2">
+                <div className="space-y-3 flex-1 overflow-y-auto pr-2 custom-scrollbar">
                   {metrics.atRiskStudents.map(student => (
-                    <div key={student.uid} className="flex items-center gap-3 p-3 bg-slate-50 dark:bg-slate-900/50 border border-slate-100 dark:border-slate-700/50 rounded-xl">
+                    <div key={student.uid} className="flex items-center gap-4 p-3 bg-white dark:bg-slate-800/40 border border-slate-100 dark:border-slate-700/50 rounded-xl hover:border-red-200 dark:hover:border-red-500/30 transition-colors group">
                       {student.avatarUrl ? (
-                        <img src={student.avatarUrl} alt="" className="w-10 h-10 rounded-full object-cover shrink-0" />
+                        <img src={student.avatarUrl} alt="" className="w-12 h-12 rounded-full object-cover shrink-0 ring-2 ring-white dark:ring-slate-800 shadow-sm" />
                       ) : (
-                        <div className="w-10 h-10 rounded-full bg-red-500/10 flex items-center justify-center text-red-600 font-bold shrink-0">
+                        <div className="w-12 h-12 rounded-full bg-gradient-to-br from-red-400 to-rose-500 flex items-center justify-center text-white font-bold shrink-0 ring-2 ring-white dark:ring-slate-800 shadow-sm">
                           {student.displayName?.[0] || '?'}
                         </div>
                       )}
                       <div className="flex-1 min-w-0">
-                        <p className="font-semibold text-slate-900 dark:text-white truncate">{student.displayName}</p>
-                        <p className="text-xs text-slate-500">{student.email}</p>
+                        <p className="font-bold text-slate-900 dark:text-white truncate">{student.displayName}</p>
+                        <p className="text-xs text-slate-500 truncate">{student.email}</p>
                       </div>
-                      <button className="px-3 py-1.5 text-xs font-medium bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors">
+                      <button className="px-4 py-2 text-xs font-semibold text-rose-600 bg-rose-50 hover:bg-rose-100 dark:bg-rose-500/10 dark:text-rose-400 dark:hover:bg-rose-500/20 rounded-lg transition-colors opacity-0 group-hover:opacity-100 focus:opacity-100">
                         Профиль
                       </button>
                     </div>
                   ))}
                 </div>
               ) : (
-                <div className="flex-1 flex flex-col items-center justify-center text-slate-500">
-                  <CheckCircle2 className="w-12 h-12 text-emerald-500 mb-2 opacity-50" />
-                  <p>Нет студентов в зоне риска</p>
+                <div className="flex-1 flex flex-col items-center justify-center text-slate-500/70">
+                  <div className="w-16 h-16 bg-emerald-500/10 rounded-full flex items-center justify-center mb-4">
+                    <CheckCircle2 className="w-8 h-8 text-emerald-500" />
+                  </div>
+                  <p className="font-medium text-slate-700 dark:text-slate-300">Всё отлично!</p>
+                  <p className="text-sm">Нет студентов в зоне риска</p>
                 </div>
               )}
             </div>
             
-            <div className="bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-200 dark:border-slate-700 flex flex-col min-h-[400px]">
-              <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-4">Активность преподавателей</h3>
-              <p className="text-sm text-slate-500 dark:text-slate-400 mb-6">Количество заполненных журналов и оценок</p>
+            <div className="bg-white dark:bg-[#151f2e] p-6 rounded-2xl border border-slate-200/80 dark:border-slate-700/50 shadow-sm flex flex-col min-h-[400px]">
+              <div className="flex items-center gap-3 mb-6">
+                 <div className="w-10 h-10 rounded-xl bg-blue-500/10 flex items-center justify-center">
+                    <ClipboardList className="w-5 h-5 text-blue-500" />
+                 </div>
+                 <div>
+                    <h3 className="text-lg font-bold text-slate-900 dark:text-white leading-tight">Активность учителей</h3>
+                    <p className="text-xs text-slate-500">Оценки и журналы</p>
+                 </div>
+              </div>
               
-              <div className="space-y-4 flex-1 overflow-y-auto pr-2">
+              <div className="space-y-5 flex-1 overflow-y-auto pr-2 custom-scrollbar">
                  {teachers.map(teacher => {
                    const tGrades = grades.filter(g => g.createdBy === teacher.uid).length;
                    const tJournals = journals.filter(j => j.createdBy === teacher.uid).length;
+                   const totalActions = tGrades + tJournals;
+                   // Use logarithmic/capped scale for visual progress (max 100 actions = 100%)
+                   const displayWidth = Math.min((totalActions / 100) * 100, 100) || 2; 
                    
                    return (
-                     <div key={teacher.uid} className="flex flex-col gap-2">
+                     <div key={teacher.uid} className="flex flex-col gap-2 group">
                        <div className="flex justify-between items-center text-sm">
-                         <span className="font-medium text-slate-900 dark:text-white">{teacher.displayName}</span>
-                         <span className="text-slate-500">{tGrades + tJournals} действий</span>
+                         <div className="flex items-center gap-2">
+                           {teacher.avatarUrl ? (
+                              <img src={teacher.avatarUrl} alt="" className="w-6 h-6 rounded-full object-cover shrink-0" />
+                           ) : (
+                              <div className="w-6 h-6 rounded-full bg-slate-100 dark:bg-slate-700 flex items-center justify-center text-[10px] font-bold text-slate-500 shrink-0">
+                                {teacher.displayName?.[0] || '?'}
+                              </div>
+                           )}
+                           <span className="font-semibold text-slate-800 dark:text-slate-200">{teacher.displayName}</span>
+                         </div>
+                         <span className="text-xs font-medium text-slate-500 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-md">{totalActions} действий</span>
                        </div>
-                       <div className="h-2 w-full bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden flex">
-                         <div className="h-full bg-indigo-500 hover:opacity-90" style={{ width: `${Math.min((tGrades / 100) * 100, 100)}%` }} title="Оценки" />
-                         <div className="h-full bg-blue-500 hover:opacity-90" style={{ width: `${Math.min((tJournals / 100) * 100, 100)}%` }} title="Журнал" />
+                       <div className="h-2.5 w-full bg-slate-100 dark:bg-slate-800/80 rounded-full overflow-hidden flex ring-1 ring-inset ring-slate-900/5 dark:ring-white/5">
+                         <div 
+                           className="h-full bg-gradient-to-r from-blue-500 to-indigo-500 transition-all duration-500 ease-out flex group-hover:opacity-90" 
+                           style={{ width: `${displayWidth}%` }}
+                         >
+                           {tGrades > 0 && <div className="h-full bg-indigo-500/50" style={{ width: `${(tGrades/totalActions)*100}%` }} title={`Оценки: ${tGrades}`} />}
+                           {tJournals > 0 && <div className="h-full bg-blue-400/50" style={{ width: `${(tJournals/totalActions)*100}%` }} title={`Журнал: ${tJournals}`} />}
+                         </div>
                        </div>
                      </div>
                    );
                  })}
+                 {teachers.length === 0 && (
+                   <div className="flex-1 flex flex-col items-center justify-center text-slate-500/70 h-full py-10">
+                     <p>Нет закрепленных учителей</p>
+                   </div>
+                 )}
               </div>
             </div>
           </div>

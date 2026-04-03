@@ -5,6 +5,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { db } from '../../lib/firebase';
 import { collection, query, where, orderBy, limit, onSnapshot } from 'firebase/firestore';
 import { apiMarkNotificationRead, apiMarkAllNotificationsRead } from '../../lib/api';
+import { toast } from 'react-hot-toast';
 import {
   Bell, MailOpen, Users, UserCheck, UserX,
   Radio, Trophy, BookOpen, Building2, CheckCheck, X,
@@ -54,6 +55,8 @@ const NotificationDropdown: React.FC = () => {
   }, [location.pathname, notifications]);
 
   // Real-time Firestore listener
+  const initialLoadRef = useRef(true);
+
   useEffect(() => {
     if (!firebaseUser?.uid) return;
     const q = query(
@@ -67,11 +70,39 @@ const NotificationDropdown: React.FC = () => {
         .map(d => ({ id: d.id, ...d.data() } as AppNotification))
         .slice(0, 30);
       setNotifications(items);
+
+      if (initialLoadRef.current) {
+        initialLoadRef.current = false;
+        return;
+      }
+
+      snap.docChanges().forEach(change => {
+        if (change.type === 'added') {
+          const notif = change.doc.data() as AppNotification;
+          if (!notif.read && (Date.now() - new Date(notif.createdAt).getTime() < 15000)) {
+            toast(
+              (t) => (
+                <div 
+                  className="flex flex-col gap-1 cursor-pointer w-full"
+                  onClick={() => {
+                    toast.dismiss(t.id);
+                    if (notif.link) navigate(notif.link);
+                  }}
+                >
+                  <p className="font-semibold text-sm text-slate-900 dark:text-white">{notif.title}</p>
+                  <p className="text-xs text-slate-600 dark:text-slate-300">{notif.message}</p>
+                </div>
+              ),
+              { duration: 5000, position: 'top-right' }
+            );
+          }
+        }
+      });
     }, (err) => {
       console.warn('Notification listener error:', err);
     });
     return unsub;
-  }, [firebaseUser?.uid]);
+  }, [firebaseUser?.uid, navigate]);
 
   // Click outside to close
   useEffect(() => {
@@ -163,6 +194,19 @@ const NotificationDropdown: React.FC = () => {
                 );
               })
             )}
+          </div>
+
+          {/* Footer */}
+          <div className="p-2 border-t border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50">
+            <button
+              onClick={() => {
+                setOpen(false);
+                navigate('/notifications');
+              }}
+              className="w-full py-2 text-xs font-semibold text-primary-600 hover:text-primary-700 dark:text-primary-500 dark:hover:text-primary-400 hover:bg-primary-50 dark:hover:bg-primary-500/10 rounded-lg transition-colors text-center"
+            >
+              {t('notifications.showAll', 'Показать все уведомления')}
+            </button>
           </div>
         </div>
       )}

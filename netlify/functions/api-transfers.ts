@@ -60,6 +60,7 @@ const handler: Handler = async (event: HandlerEvent) => {
           recipientId: adminId,
           read: false,
           createdAt: new Date().toISOString(),
+          link: '/notifications',
           metadata: {
             requestId, // Grouping ID
             transferType,

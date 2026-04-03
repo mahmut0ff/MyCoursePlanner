@@ -62,12 +62,17 @@ const GroupDetailPage: React.FC = () => {
     if (!group) return;
     setSavingChat(true);
     try {
+      let finalUrl = chatForm.url.trim();
+      if (finalUrl && !/^https?:\/\//i.test(finalUrl)) {
+        finalUrl = 'https://' + finalUrl;
+      }
+
       await orgUpdateGroup({
         id: group.id,
         chatLinkTitle: chatForm.title,
-        chatLinkUrl: chatForm.url
+        chatLinkUrl: finalUrl
       });
-      setGroup({ ...group, chatLinkTitle: chatForm.title, chatLinkUrl: chatForm.url });
+      setGroup({ ...group, chatLinkTitle: chatForm.title, chatLinkUrl: finalUrl });
       setIsEditingChat(false);
       toast.success(t('common.saved', 'Сохранено'));
     } catch (e: any) {
@@ -338,151 +343,7 @@ const GroupDetailPage: React.FC = () => {
                     ))
                   )}
                </div>
-            </div>
-
-            {/* Chat Link */}
-            <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-5 shadow-sm">
-               <div className="flex items-center justify-between mb-4">
-                 <div className="flex items-center gap-2">
-                   <div className="w-8 h-8 rounded-xl bg-blue-500/10 flex items-center justify-center">
-                     <LinkIcon className="w-4 h-4 text-blue-500" />
-                   </div>
-                   <h2 className="text-sm font-extrabold text-slate-900 dark:text-white uppercase tracking-wider">Чат Группы</h2>
-                 </div>
-                 {!isEditingChat && (
-                   <button 
-                     onClick={() => setIsEditingChat(true)}
-                     className="p-1.5 text-slate-400 hover:text-blue-500 hover:bg-slate-50 dark:hover:bg-slate-700 rounded-lg transition-colors"
-                   >
-                     <Edit2 className="w-4 h-4" />
-                   </button>
-                 )}
-               </div>
-
-               {isEditingChat ? (
-                 <div className="space-y-4">
-                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                     <div>
-                       <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Название</label>
-                       <input 
-                         type="text" 
-                         value={chatForm.title} 
-                         onChange={e => setChatForm(f => ({ ...f, title: e.target.value }))}
-                         className="w-full bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-xl px-4 py-3 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 text-slate-900 dark:text-white outline-none transition-colors"
-                         placeholder="Общий чат группы..."
-                       />
-                     </div>
-                     <div>
-                       <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Ссылка</label>
-                       <input 
-                         type="url" 
-                         value={chatForm.url} 
-                         onChange={e => setChatForm(f => ({ ...f, url: e.target.value }))}
-                         className="w-full bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-xl px-4 py-3 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 text-slate-900 dark:text-white outline-none transition-colors"
-                         placeholder="https://t.me/..."
-                       />
-                     </div>
-                   </div>
-                   <div className="flex justify-end gap-2">
-                     <button 
-                       onClick={() => {
-                         setChatForm({ title: group.chatLinkTitle || '', url: group.chatLinkUrl || '' });
-                         setIsEditingChat(false);
-                       }}
-                       disabled={savingChat}
-                       className="p-2 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-xl transition-colors disabled:opacity-50"
-                     >
-                       <X className="w-5 h-5" />
-                     </button>
-                     <button 
-                       onClick={handleSaveChat}
-                       disabled={savingChat}
-                       className="p-2 text-white bg-blue-500 hover:bg-blue-600 rounded-xl transition-colors disabled:opacity-50 shadow-md shadow-blue-500/20"
-                     >
-                       {savingChat ? <Loader2 className="w-5 h-5 animate-spin" /> : <Check className="w-5 h-5" />}
-                     </button>
-                   </div>
-                 </div>
-               ) : (
-                 <div>
-                   {!group.chatLinkUrl ? (
-                     <p className="text-xs font-medium text-slate-500 dark:text-slate-400">Чат не указан. Добавьте ссылку для учеников.</p>
-                   ) : (
-                     <div className="flex items-center p-3 bg-slate-50 dark:bg-slate-700/30 border border-slate-100 dark:border-slate-700 rounded-xl">
-                       <div>
-                         <p className="text-sm font-bold text-slate-900 dark:text-white">
-                           {group.chatLinkTitle || 'Чат Группы'}
-                         </p>
-                         <a href={group.chatLinkUrl} target="_blank" rel="noopener noreferrer" className="text-xs font-medium text-blue-500 hover:underline break-all mt-0.5 inline-block">
-                           {group.chatLinkUrl}
-                         </a>
-                       </div>
-                     </div>
-                   )}
-                 </div>
-               )}
-            </div>
-         </div>
-
-         {/* Sidebar */}
-         <div className="space-y-6">
-            
-            {/* Teachers List */}
-            <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl overflow-hidden shadow-sm">
-               <div className="px-5 py-4 border-b border-slate-100 dark:border-slate-700 flex items-center justify-between">
-                  <div className="flex items-center gap-2 text-slate-900 dark:text-white">
-                     <Briefcase className="w-4 h-4 text-violet-500" />
-                     <h2 className="font-extrabold uppercase tracking-wider text-sm">Кураторы ({currentTeachers.length})</h2>
-                  </div>
-                  {isAdmin && (
-                    <button onClick={() => setShowAddTeacher(true)} className="p-1 text-slate-400 hover:text-violet-500 hover:bg-violet-50 dark:hover:bg-violet-500/10 rounded transition-colors" title="Добавить преподавателя">
-                       <Plus className="w-4 h-4" />
-                    </button>
-                  )}
-               </div>
-               <div className="divide-y divide-slate-50 dark:divide-slate-700/50 p-2">
-                  {currentTeachers.length === 0 ? (
-                    <div className="p-4 text-center">
-                       <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Нет преподавателей</p>
-                    </div>
-                  ) : (
-                    currentTeachers.map(t => (
-                      <div key={t.uid} className="flex items-center p-2 hover:bg-slate-50 dark:hover:bg-slate-700/30 rounded-xl transition-colors group">
-                         <div className="flex flex-1 min-w-0 items-center gap-3 cursor-pointer" onClick={() => navigate(`/teachers/${t.uid}`)}>
-                            {t.avatarUrl ? (
-                              <img src={t.avatarUrl} alt="" className="w-8 h-8 rounded-full object-cover shadow-sm shrink-0" />
-                            ) : (
-                              <div className="w-8 h-8 rounded-full bg-violet-100 text-violet-600 flex items-center justify-center font-bold text-xs shrink-0">
-                                 {t.displayName?.[0]?.toUpperCase() || '?'}
-                              </div>
-                            )}
-                            <div className="min-w-0">
-                               <p className="text-xs font-bold text-slate-900 dark:text-white truncate group-hover:text-violet-600 transition-colors">{t.displayName}</p>
-                            </div>
-                         </div>
-                         {isAdmin && (
-                           <button onClick={() => handleRemoveTeacher(t.uid)} className="opacity-0 group-hover:opacity-100 p-1.5 ml-2 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-lg transition-all shrink-0">
-                             <X className="w-3.5 h-3.5" />
-                           </button>
-                         )}
-                      </div>
-                    ))
-                  )}
-               </div>
-            </div>
-
-            {/* Minor info Card */}
-            <div className="bg-slate-50 dark:bg-slate-800 rounded-2xl p-5 border border-slate-200 dark:border-slate-700">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-orange-100 dark:bg-orange-500/20 flex items-center justify-center text-orange-500 shrink-0">
-                   <Calendar className="w-5 h-5" />
-                </div>
-                <div>
-                   <p className="text-[10px] uppercase tracking-widest font-bold text-slate-400">Создана</p>
-                   <p className="text-sm font-bold text-slate-900 dark:text-white mt-0.5">{group.createdAt ? new Date(group.createdAt).toLocaleDateString() : '—'}</p>
-                </div>
-              </div>
-            </div>
+             </div>
 
          </div>
       </div>

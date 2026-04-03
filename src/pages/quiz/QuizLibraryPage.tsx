@@ -122,13 +122,15 @@ const QuizLibraryPage: React.FC = () => {
           <button onClick={() => setShowFilters(!showFilters)} className={`p-2.5 rounded-lg transition-colors shrink-0 ${showFilters ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400' : 'bg-white dark:bg-slate-800 text-slate-500 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700'}`}>
             <Filter className="w-4 h-4" />
           </button>
-          <Link
-            to="/quiz/new"
-            className="flex items-center gap-2 px-5 py-2.5 rounded-lg font-bold text-white text-sm transition-all hover:shadow-lg active:scale-[0.98] shrink-0"
-            style={{ backgroundColor: 'var(--kahoot-green)', boxShadow: '0 3px 10px rgba(38,137,12,0.25)' }}
-          >
-            <Plus className="w-4 h-4" />{t('quiz.create')}
-          </Link>
+          {tab === 'my' && (
+            <Link
+              to="/quiz/new"
+              className="flex items-center gap-2 px-5 py-2.5 rounded-lg font-bold text-white text-sm transition-all hover:shadow-lg active:scale-[0.98] shrink-0"
+              style={{ backgroundColor: 'var(--kahoot-green)', boxShadow: '0 3px 10px rgba(38,137,12,0.25)' }}
+            >
+              <Plus className="w-4 h-4" />{t('quiz.create')}
+            </Link>
+          )}
         </div>
       </div>
 
@@ -214,14 +216,7 @@ const QuizLibraryPage: React.FC = () => {
                 <Globe className="w-8 h-8 text-white" />
               </div>
               <h3 className="text-base font-bold text-slate-700 dark:text-slate-300 mb-2">{t('quiz.noPublicQuizzes', 'Публичных викторин пока нет')}</h3>
-              <p className="text-sm text-slate-500 dark:text-slate-400 mb-5 max-w-md mx-auto">{t('quiz.noPublicDesc', 'Здесь будут опубликованные викторины от всех преподавателей на платформе. Опубликуйте свою викторину, чтобы другие могли её использовать!')}</p>
-              <Link
-                to="/quiz/new"
-                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg font-bold text-white text-sm transition-all hover:shadow-lg active:scale-[0.98]"
-                style={{ backgroundColor: 'var(--kahoot-green)' }}
-              >
-                <Plus className="w-4 h-4" />{t('quiz.createAndPublish', 'Создать и опубликовать')}
-              </Link>
+              <p className="text-sm text-slate-500 dark:text-slate-400 mb-5 max-w-md mx-auto">{t('quiz.noPublicDesc', 'Здесь будут отображаться опубликованные викторины от всех преподавателей на платформе.')}</p>
             </>
           )}
         </div>

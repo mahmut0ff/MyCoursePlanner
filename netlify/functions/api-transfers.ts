@@ -107,7 +107,7 @@ const handler: Handler = async (event: HandlerEvent) => {
           const lessonDoc = await adminDb.collection(LESSONS).doc(targetId).get();
           
           if (!materialDoc.exists || !lessonDoc.exists) {
-             return badRequest('Source or target not found');
+             return badRequest('Исходный материал или целевой урок не найдены');
           }
           
           const mat = materialDoc.data()!;
@@ -130,7 +130,7 @@ const handler: Handler = async (event: HandlerEvent) => {
         } else if (transferType === 'lesson_to_personal') {
           // Клонировать весь урок
           const srcLessonDoc = await adminDb.collection(LESSONS).doc(sourceId).get();
-          if (!srcLessonDoc.exists) return badRequest('Lesson not found');
+          if (!srcLessonDoc.exists) return badRequest('Урок не найден или был удалён');
           
           const srcLesson = srcLessonDoc.data()!;
           
@@ -165,16 +165,24 @@ const handler: Handler = async (event: HandlerEvent) => {
       }
 
       // Найти все уведомления с этим же requestId и пометить как resolved
-      const allReqNotes = await adminDb.collection(NOTIFICATIONS)
-        .where('metadata.requestId', '==', requestId).get();
-      
       const batch = adminDb.batch();
-      allReqNotes.docs.forEach(d => {
-        batch.update(d.ref, { 
-          'metadata.status': decision === 'approve' ? 'approved' : 'rejected',
-          read: true // auto-read for all admins so they don't see it hanging
+      
+      if (requestId) {
+        const allReqNotes = await adminDb.collection(NOTIFICATIONS)
+          .where('metadata.requestId', '==', requestId).get();
+        allReqNotes.docs.forEach(d => {
+          batch.update(d.ref, { 
+            'metadata.status': decision === 'approve' ? 'approved' : 'rejected',
+            read: true
+          });
         });
-      });
+      } else {
+        batch.update(adminDb.collection(NOTIFICATIONS).doc(notificationId), {
+          'metadata.status': decision === 'approve' ? 'approved' : 'rejected',
+          read: true
+        });
+      }
+      
       await batch.commit();
 
       return ok({ success: true });

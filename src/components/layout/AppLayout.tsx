@@ -62,13 +62,27 @@ const SubscriptionGuard: React.FC<{ children: React.ReactNode }> = ({ children }
 
 const AppLayout: React.FC = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(() => {
+    return localStorage.getItem('planula_sidebar_collapsed') === 'true';
+  });
+
+  const handleToggleCollapse = () => {
+    const newState = !isSidebarCollapsed;
+    setIsSidebarCollapsed(newState);
+    localStorage.setItem('planula_sidebar_collapsed', String(newState));
+  };
 
   return (
     <PlanProvider>
       <div className="min-h-screen bg-slate-50 dark:bg-slate-900 flex">
-        {/* Sidebar — always dark navy */}
-        <aside className="hidden lg:block w-60 shrink-0" />
-        <Sidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+        {/* Sidebar wrapper */}
+        <aside className={`hidden lg:block shrink-0 transition-all duration-300 ${isSidebarCollapsed ? 'w-[72px]' : 'w-60'}`} />
+        <Sidebar 
+          open={sidebarOpen} 
+          onClose={() => setSidebarOpen(false)} 
+          isCollapsed={isSidebarCollapsed}
+          onToggleCollapse={handleToggleCollapse}
+        />
 
         {/* Main content */}
         <div className="flex-1 flex flex-col h-screen min-w-0">

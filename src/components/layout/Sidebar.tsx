@@ -24,7 +24,8 @@ const CollapsibleSection: React.FC<{
   icon: React.ElementType;
   children: React.ReactNode;
   defaultOpen?: boolean;
-}> = ({ label, icon: Icon, children, defaultOpen = false }) => {
+  isCollapsed?: boolean;
+}> = ({ label, icon: Icon, children, defaultOpen = false, isCollapsed }) => {
   const [open, setOpen] = useState(defaultOpen);
   const location = useLocation();
 
@@ -41,19 +42,22 @@ const CollapsibleSection: React.FC<{
   return (
     <div className="mt-1">
       <button
-        onClick={() => setOpen(!open)}
-        className="flex items-center gap-2 w-full px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-slate-500/70 hover:text-slate-400 transition-colors select-none"
+        onClick={() => !isCollapsed && setOpen(!open)}
+        className={`group flex items-center w-full py-1.5 text-[10px] font-semibold uppercase tracking-wider text-slate-500/70 hover:text-slate-400 transition-colors select-none gap-2 px-3 ${isCollapsed ? 'lg:justify-center lg:px-0' : ''}`}
+        title={isCollapsed ? label : undefined}
       >
-        <Icon className="w-3 h-3" />
-        <span className="flex-1 text-left">{label}</span>
-        <ChevronDown className={`w-3 h-3 transition-transform ${open ? 'rotate-0' : '-rotate-90'}`} />
+        <Icon className="w-3 h-3 shrink-0" />
+        <div className={`flex items-center gap-2 flex-1 ${isCollapsed ? 'lg:hidden' : ''}`}>
+          <span className="flex-1 text-left line-clamp-1">{label}</span>
+          <ChevronDown className={`w-3 h-3 transition-transform ${open ? 'rotate-0' : '-rotate-90'}`} />
+        </div>
       </button>
-      {open && <div className="space-y-0.5">{children}</div>}
+      {(open || isCollapsed) && <div className="space-y-0.5">{children}</div>}
     </div>
   );
 };
 
-const Sidebar: React.FC<{ open: boolean; onClose: () => void }> = ({ open, onClose }) => {
+const Sidebar: React.FC<{ open: boolean; onClose: () => void; isCollapsed?: boolean; onToggleCollapse?: () => void }> = ({ open, onClose, isCollapsed, onToggleCollapse }) => {
   const { t } = useTranslation();
   const { profile, role, isSuperAdmin, isTeacher, isManager, organizationId } = useAuth();
   const { canAccess } = usePlanGate();
@@ -62,10 +66,12 @@ const Sidebar: React.FC<{ open: boolean; onClose: () => void }> = ({ open, onClo
   const handleSignOut = async () => { await signOut(); navigate('/login'); };
 
   const linkClass = ({ isActive }: { isActive: boolean }) =>
-    `flex items-center gap-3 px-3 py-2 rounded-lg text-[13px] font-medium transition-all duration-150 ${
-      isActive
-        ? 'bg-white/10 text-white'
-        : 'text-slate-400 hover:bg-white/5 hover:text-slate-200'
+    `flex items-center py-2 rounded-lg text-[13px] font-medium transition-all duration-150 relative group outline-none ${
+      isActive ? 'bg-white/10 text-white' : 'text-slate-400 hover:bg-white/5 hover:text-slate-200'
+    } ${
+      isCollapsed 
+        ? 'gap-3 px-3 w-full lg:justify-center lg:px-0 lg:w-12 lg:mx-auto lg:gap-0 [&>span]:block [&>span]:truncate lg:[&>span]:hidden' 
+        : 'gap-3 px-3 w-full [&>span]:block [&>span]:truncate'
     }`;
 
   const isAdmin = role === 'admin';
@@ -79,21 +85,31 @@ const Sidebar: React.FC<{ open: boolean; onClose: () => void }> = ({ open, onClo
   return (
     <>
       {open && <div className="fixed inset-0 bg-black/50 z-30 lg:hidden" onClick={onClose} />}
-      <aside className={`fixed top-0 left-0 bottom-0 w-60 bg-[#0f172a] border-r border-slate-700/50 z-40 transform transition-transform lg:translate-x-0 ${open ? 'translate-x-0' : '-translate-x-full'} flex flex-col`}>
+      <aside className={`fixed top-0 left-0 bottom-0 w-60 ${isCollapsed ? 'lg:w-[72px]' : 'lg:w-60'} bg-[#0f172a] border-r border-slate-700/50 z-40 transform transition-[width,transform] duration-300 lg:translate-x-0 ${open ? 'translate-x-0' : '-translate-x-full'} flex flex-col`}>
 
         {/* ═══ Header ═══ */}
-        <div className="flex items-center gap-3 px-4 py-4 border-b border-white/5">
-          <img src="/icons/logo.png" alt="Planula" className="h-9 w-auto object-contain" />
-          <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-3 px-4 py-4 border-b border-white/5 h-[69px]">
+          <img src="/icons/logo.png" alt="Planula" className="h-9 w-auto object-contain shrink-0" />
+          {/* Brand/Logo - hides on large screens when collapsed */}
+          <div className={`flex-1 min-w-0 ${isCollapsed ? 'lg:hidden' : ''}`}>
             <span className="font-bold text-[15px] text-white leading-none tracking-tight">{t('app.name')}</span>
             {isSuperAdmin && (
               <p className="text-[9px] text-primary-400 font-semibold tracking-wide mt-0.5">{t('app.superAdmin')}</p>
             )}
           </div>
+          {/* Toggle Button */}
+          {onToggleCollapse && (
+            <button 
+              onClick={onToggleCollapse} 
+              className="p-1.5 rounded-lg text-slate-500 hover:text-white hover:bg-white/10 hidden lg:flex items-center justify-center transition-colors absolute -right-3 top-5 bg-[#0f172a] border border-slate-700/50 shadow-lg z-50 rounded-full"
+            >
+              <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-300 ${isCollapsed ? '-rotate-90' : 'rotate-90'}`} />
+            </button>
+          )}
         </div>
 
         {/* ═══ Org Switcher ═══ */}
-        {!isSuperAdmin && <OrgSwitcher currentOrgId={organizationId || undefined} userRole={role} onClose={onClose} />}
+        {!isSuperAdmin && <OrgSwitcher currentOrgId={organizationId || undefined} userRole={role} onClose={onClose} isCollapsed={isCollapsed} />}
 
         {/* ═══ Navigation ═══ */}
         <nav className="flex-1 px-2 py-2 space-y-0.5 overflow-y-auto scrollbar-thin scrollbar-thumb-slate-700">
@@ -450,14 +466,14 @@ const Sidebar: React.FC<{ open: boolean; onClose: () => void }> = ({ open, onClo
         </nav>
 
         {/* ═══ Footer ═══ */}
-        <div className="border-t border-white/5 px-3 py-3">
-          <div className="flex items-center gap-2 px-1">
+        <div className={`border-t border-white/5 py-3 px-3 ${isCollapsed ? 'lg:px-1' : ''}`}>
+          <div className={`flex items-center gap-2 px-1 ${isCollapsed ? 'lg:flex-col lg:gap-3' : ''}`}>
             <div
               onClick={() => {
                 navigate(role === 'teacher' ? '/teacher-profile' : '/profile');
                 if (window.innerWidth < 1024) onClose();
               }}
-              className="flex items-center gap-3 flex-1 cursor-pointer hover:bg-white/5 p-1.5 -ml-1.5 rounded-lg transition-colors overflow-hidden"
+              className={`flex items-center cursor-pointer hover:bg-white/5 p-1.5 rounded-lg transition-colors overflow-hidden gap-3 flex-1 -ml-1.5 ${isCollapsed ? 'lg:justify-center lg:mx-auto lg:-ml-0 lg:gap-0' : ''}`}
               title={t('nav.profile')}
             >
               {profile?.avatarUrl ? (
@@ -467,7 +483,7 @@ const Sidebar: React.FC<{ open: boolean; onClose: () => void }> = ({ open, onClo
                   {profile?.displayName?.[0]?.toUpperCase() || '?'}
                 </div>
               )}
-              <div className="min-w-0 flex-1">
+              <div className={`min-w-0 flex-1 ${isCollapsed ? 'lg:hidden' : ''}`}>
                 <p className="text-sm font-semibold text-white truncate">{profile?.displayName}</p>
                 <p className="text-[10px] text-slate-500 capitalize">{role?.replace('_', ' ')}</p>
               </div>

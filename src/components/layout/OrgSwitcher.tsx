@@ -21,9 +21,10 @@ interface OrgSwitcherProps {
   userRole?: string | null;
   onSwitch?: () => void;
   onClose?: () => void;
+  isCollapsed?: boolean;
 }
 
-const OrgSwitcher: React.FC<OrgSwitcherProps> = ({ currentOrgId, userRole, onSwitch, onClose }) => {
+const OrgSwitcher: React.FC<OrgSwitcherProps> = ({ currentOrgId, userRole, onSwitch, onClose, isCollapsed }) => {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const [memberships, setMemberships] = useState<MembershipItem[]>([]);
@@ -171,19 +172,22 @@ const OrgSwitcher: React.FC<OrgSwitcherProps> = ({ currentOrgId, userRole, onSwi
     }
 
     return (
-      <div className="px-3 py-2">
+      <div className={`px-3 py-2 ${isCollapsed ? 'lg:flex lg:justify-center lg:px-0' : ''}`}>
         <button
           onClick={emptyAction}
-          className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl bg-gradient-to-r from-violet-500/15 to-indigo-500/15 border border-violet-500/25 hover:border-violet-400/40 transition text-left group"
+          className={`group flex items-center justify-center rounded-xl transition w-full gap-2.5 px-3 py-2.5 bg-gradient-to-r from-violet-500/15 to-indigo-500/15 border border-violet-500/25 hover:border-violet-400/40 text-left ${isCollapsed ? 'lg:w-10 lg:h-10 lg:bg-white/5 lg:bg-none lg:border-white/10 lg:hover:bg-white/10 lg:mx-auto lg:p-0' : ''}`}
+          title={isCollapsed ? emptyTitle : undefined}
         >
-          <div className="w-8 h-8 rounded-lg bg-violet-500/20 flex items-center justify-center shrink-0">
+          <div className={`rounded-lg flex items-center justify-center shrink-0 w-8 h-8 bg-violet-500/20 ${isCollapsed ? 'lg:w-full lg:h-full lg:bg-transparent' : ''}`}>
             <EmptyIcon className="w-4 h-4 text-violet-400" />
           </div>
-          <div className="flex-1 min-w-0">
-            <p className="text-xs text-violet-300 font-semibold">{emptyTitle}</p>
-            <p className="text-[10px] text-slate-500">{emptySubtitle}</p>
+          <div className={`flex items-center gap-2 flex-1 min-w-0 ${isCollapsed ? 'lg:hidden' : ''}`}>
+            <div className="flex-1 min-w-0 text-left">
+              <p className="text-xs text-violet-300 font-semibold">{emptyTitle}</p>
+              <p className="text-[10px] text-slate-500">{emptySubtitle}</p>
+            </div>
+            <ChevronDown className="w-3.5 h-3.5 text-violet-500/60 -rotate-90 group-hover:text-violet-300 transition" />
           </div>
-          <ChevronDown className="w-3.5 h-3.5 text-violet-500/60 -rotate-90 group-hover:text-violet-300 transition" />
         </button>
       </div>
     );
@@ -204,30 +208,33 @@ const OrgSwitcher: React.FC<OrgSwitcherProps> = ({ currentOrgId, userRole, onSwi
   const plusAction = getPlusAction();
 
   return (
-    <div className="relative px-3 py-2">
+    <div className={`relative px-3 py-2 ${isCollapsed ? 'lg:flex lg:justify-center lg:px-0' : ''}`}>
       {leaveModal}
 
       {/* ── Trigger Button ── */}
       <button
         onClick={() => setOpen(!open)}
-        className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl bg-white/5 hover:bg-white/[0.08] transition text-left group"
+        className={`group flex items-center justify-center rounded-xl bg-white/5 hover:bg-white/[0.08] transition w-full gap-2.5 px-3 py-2 text-left ${isCollapsed ? 'lg:w-10 lg:h-10 lg:mx-auto lg:p-0' : ''}`}
+        title={isCollapsed ? (currentOrg?.organizationName || t('nav.sectionPersonalWorkspace', 'Личное пространство')) : undefined}
       >
-        <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-violet-500/30 to-indigo-500/30 flex items-center justify-center shrink-0 ring-1 ring-white/10">
+        <div className="rounded-lg flex items-center justify-center shrink-0 w-8 h-8 bg-gradient-to-br from-violet-500/30 to-indigo-500/30 ring-1 ring-white/10">
           {currentOrg ? (
             <Building2 className="w-4 h-4 text-violet-300" />
           ) : (
             <FolderOpen className="w-4 h-4 text-violet-300" />
           )}
         </div>
-        <div className="flex-1 min-w-0">
-          <p className="text-[13px] text-white truncate font-semibold leading-tight">
-            {currentOrg?.organizationName || t('nav.sectionPersonalWorkspace', 'Личное пространство')}
-          </p>
-          <p className="text-[10px] text-violet-400/80 font-medium mt-0.5">
-            {currentOrg ? (roleLabels[currentOrg.role] || currentOrg.role) : t('nav.independent', 'Независимый профиль')}
-          </p>
+        <div className={`flex items-center gap-2.5 flex-1 min-w-0 ${isCollapsed ? 'lg:hidden' : ''}`}>
+          <div className="flex-1 min-w-0">
+            <p className="text-[13px] text-white truncate font-semibold leading-tight">
+              {currentOrg?.organizationName || t('nav.sectionPersonalWorkspace', 'Личное пространство')}
+            </p>
+            <p className="text-[10px] text-violet-400/80 font-medium mt-0.5">
+              {currentOrg ? (roleLabels[currentOrg.role] || currentOrg.role) : t('nav.independent', 'Независимый профиль')}
+            </p>
+          </div>
+          <ChevronDown className={`w-4 h-4 text-slate-500 transition-transform duration-200 ${open ? 'rotate-180' : ''}`} />
         </div>
-        <ChevronDown className={`w-4 h-4 text-slate-500 transition-transform duration-200 ${open ? 'rotate-180' : ''}`} />
       </button>
 
       {/* ── Dropdown Panel ── */}

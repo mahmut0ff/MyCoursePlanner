@@ -3,7 +3,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { usePlanGate } from '../../contexts/PlanContext';
 import { apiOrgGetHomeworks, apiGradeHomework, apiAIGradeHomework, apiUpdateHomeworkStatus } from '../../lib/api';
 import type { HomeworkSubmission } from '../../types';
-import { Sparkles, CheckCircle, Clock, XCircle, GripVertical, FileVideo, ImageIcon, Eye, X, FileAudio, FileArchive, FileText, ChevronRight, ArrowLeft } from 'lucide-react';
+import { Sparkles, CheckCircle, Clock, XCircle, GripVertical, FileVideo, ImageIcon, X, FileAudio, FileArchive, FileText, ArrowLeft } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { DndContext, useSensor, useSensors, PointerSensor, DragOverlay, closestCorners } from '@dnd-kit/core';
 import type { DragEndEvent, DragStartEvent } from '@dnd-kit/core';

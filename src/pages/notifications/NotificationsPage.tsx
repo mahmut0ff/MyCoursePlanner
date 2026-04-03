@@ -1,6 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { apiGetNotifications, apiMarkNotificationRead, apiMarkAllNotificationsRead, apiTransferResolve } from '../../lib/api';
+import { apiMarkNotificationRead, apiMarkAllNotificationsRead, apiTransferResolve } from '../../lib/api';
+import { db } from '../../lib/firebase';
+import { collection, query, where, orderBy, limit, onSnapshot } from 'firebase/firestore';
+import { useAuth } from '../../contexts/AuthContext';
 import { Bell, Check, ExternalLink, ShieldCheck, XCircle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
@@ -22,15 +25,27 @@ const NotificationsPage: React.FC = () => {
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const load = () => {
-    setLoading(true);
-    apiGetNotifications()
-      .then((data: any) => setNotifications(Array.isArray(data) ? data : []))
-      .catch(() => setNotifications([]))
-      .finally(() => setLoading(false));
-  };
+  const { firebaseUser } = useAuth();
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => {
+    if (!firebaseUser?.uid) return;
+    setLoading(true);
+    const q = query(
+      collection(db, 'notifications'),
+      where('recipientId', '==', firebaseUser.uid),
+      orderBy('createdAt', 'desc'),
+      limit(50)
+    );
+    const unsub = onSnapshot(q, (snap) => {
+      const items = snap.docs.map(d => ({ id: d.id, ...d.data() } as AppNotification));
+      setNotifications(items);
+      setLoading(false);
+    }, (err) => {
+      console.warn('Notifications page listener error:', err);
+      setLoading(false);
+    });
+    return unsub;
+  }, [firebaseUser?.uid]);
 
   const handleMarkRead = async (id: string) => {
     await apiMarkNotificationRead(id);

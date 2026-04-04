@@ -23,6 +23,7 @@ function verifySignature(scriptName: string, params: Record<string, string>, sec
   return expected === receivedSig;
 }
 
+// Server-to-server callback from payment provider — wildcard CORS is intentional
 const HEADERS = { 'Content-Type': 'text/xml', 'Access-Control-Allow-Origin': '*' };
 
 const xmlResponse = (status: string, desc: string) => ({

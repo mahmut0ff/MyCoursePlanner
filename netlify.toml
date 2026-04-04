@@ -1,3 +1,10 @@
+# ============================================================
+# Netlify Configuration — Multi-Environment
+# ============================================================
+# Staging site: deploys from `main` branch
+# Production site: deploys from `production` branch
+# ============================================================
+
 [build]
   command = "npm run build"
   publish = "dist"
@@ -5,7 +12,7 @@
 
 [build.environment]
   NODE_VERSION = "20"
-  SECRETS_SCAN_OMIT_KEYS = "VITE_FIREBASE_API_KEY,VITE_FIREBASE_AUTH_DOMAIN,VITE_FIREBASE_PROJECT_ID,VITE_FIREBASE_STORAGE_BUCKET,VITE_FIREBASE_MESSAGING_SENDER_ID,VITE_FIREBASE_APP_ID,FIREBASE_PROJECT_ID"
+  SECRETS_SCAN_OMIT_KEYS = "VITE_FIREBASE_API_KEY,VITE_FIREBASE_AUTH_DOMAIN,VITE_FIREBASE_PROJECT_ID,VITE_FIREBASE_STORAGE_BUCKET,VITE_FIREBASE_MESSAGING_SENDER_ID,VITE_FIREBASE_APP_ID,FIREBASE_PROJECT_ID,FINIK_API_KEY,FINIK_SECRET_KEY"
 
 [dev]
   command = "npm run dev"
@@ -13,13 +20,37 @@
   port = 8888
   framework = "#custom"
 
-# SPA routing — all non-file routes go to index.html
+# ---- Context: Production branch ----
+[context.production]
+  command = "npm run build:prod"
+
+[context.production.environment]
+  NODE_ENV = "production"
+
+# ---- Context: Branch deploys & Deploy Previews ----
+[context.deploy-preview]
+  command = "npm run build"
+
+[context.branch-deploy]
+  command = "npm run build"
+
+# ---- SPA routing — all non-file routes go to index.html ----
 [[redirects]]
   from = "/*"
   to = "/index.html"
   status = 200
 
+# ---- Functions ----
 [functions]
   node_bundler = "esbuild"
   directory = "netlify/functions"
   included_files = ["netlify/functions/**"]
+
+# ---- Security headers ----
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Frame-Options = "DENY"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+    Permissions-Policy = "camera=(), microphone=(self), geolocation=()"

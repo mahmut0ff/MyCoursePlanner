@@ -13,7 +13,7 @@ const COLLECTION = 'payments';
 const FREEDOMPAY_MERCHANT_ID = process.env.FREEDOMPAY_MERCHANT_ID || '';
 const FREEDOMPAY_SECRET_KEY = process.env.FREEDOMPAY_SECRET_KEY || '';
 const FREEDOMPAY_API_URL = process.env.FREEDOMPAY_API_URL || 'https://api.freedompay.kg/init_payment.php';
-const APP_URL = process.env.URL || process.env.DEPLOY_URL || 'https://mycourseplan.netlify.app';
+const APP_URL = process.env.URL || process.env.DEPLOY_URL || 'https://planula.netlify.app';
 
 /**
  * Generate FreedomPay pg_sig signature.

@@ -126,15 +126,33 @@ export function getOrgFilter(user: AuthUser): string | null {
   return user.organizationId;
 }
 
-// ---- Response helpers ----
+// ---- CORS Origin Whitelist ----
+const ALLOWED_ORIGINS = [
+  'https://planula.netlify.app',
+  'https://planula-staging.netlify.app',
+  process.env.URL,       // Netlify injects the site URL
+  process.env.DEPLOY_URL, // Netlify deploy preview URL
+  'http://localhost:5173', // Local dev
+  'http://localhost:8888', // Netlify CLI dev
+].filter(Boolean) as string[];
 
-export const jsonResponse = (statusCode: number, body: any) => ({
+function getAllowedOrigin(requestOrigin?: string): string {
+  if (!requestOrigin) return ALLOWED_ORIGINS[0];
+  if (ALLOWED_ORIGINS.includes(requestOrigin)) return requestOrigin;
+  // Allow any custom domain configured via env
+  const customDomain = process.env.CUSTOM_DOMAIN;
+  if (customDomain && requestOrigin.includes(customDomain)) return requestOrigin;
+  return ALLOWED_ORIGINS[0]; // fallback — browser will block if mismatch
+}
+
+export const jsonResponse = (statusCode: number, body: any, requestOrigin?: string) => ({
   statusCode,
   headers: {
     'Content-Type': 'application/json',
-    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Origin': getAllowedOrigin(requestOrigin),
     'Access-Control-Allow-Headers': 'Content-Type, Authorization',
     'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+    'Access-Control-Allow-Credentials': 'true',
   },
   body: JSON.stringify(body),
 });

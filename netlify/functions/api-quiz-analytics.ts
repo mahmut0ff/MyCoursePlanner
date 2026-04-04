@@ -213,7 +213,7 @@ const handler: Handler = async (event: HandlerEvent) => {
       headers: {
         'Content-Type': 'text/csv',
         'Content-Disposition': `attachment; filename="quiz-results-${sessionId}.csv"`,
-        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Origin': (event.headers['origin'] || event.headers['Origin'] || '*'),
       },
       body: csv,
     };

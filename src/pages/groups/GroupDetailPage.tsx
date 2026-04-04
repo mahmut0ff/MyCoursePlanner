@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { orgGetGroups, orgGetCourses, orgUpdateGroup, orgGetTeachers, orgGetStudents } from '../../lib/api';
-import { ArrowLeft, Users, BookOpen, Calendar, Link as LinkIcon, Edit2, Check, X, Loader2, Plus, Briefcase, GraduationCap } from 'lucide-react';
+import { ArrowLeft, Users, BookOpen, Calendar, Link as LinkIcon, Edit2, Check, X, Plus, Briefcase, GraduationCap } from 'lucide-react';
 import type { Group, Course, UserProfile } from '../../types';
 import toast from 'react-hot-toast';
 import { useAuth } from '../../contexts/AuthContext';
@@ -131,19 +131,6 @@ const GroupDetailPage: React.FC = () => {
     }
   };
 
-  const handleRemoveTeacher = async (teacherId: string) => {
-    if (!group) return;
-    if (!window.confirm('Открепить преподавателя?')) return;
-    try {
-      const currentIds = group.teacherIds || [];
-      const newIds = currentIds.filter(id => id !== teacherId);
-      await orgUpdateGroup({ id: group.id, teacherIds: newIds });
-      setGroup({ ...group, teacherIds: newIds });
-      toast.success('Преподаватель откреплен');
-    } catch (e: any) {
-      toast.error(e.message);
-    }
-  };
 
   const handleAddStudent = async () => {
     if (!group || !selectedUserId) return;

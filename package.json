@@ -1,15 +1,21 @@
 {
-  "name": "mycourseplan",
+  "name": "planula",
   "private": true,
   "version": "0.0.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "dev:staging": "vite --mode staging",
+    "dev:prod": "vite --mode production",
     "build": "tsc -b && vite build",
-    "lint": "eslint .",
+    "build:staging": "tsc -b && vite build --mode staging",
+    "build:prod": "tsc -b && vite build --mode production",
     "preview": "vite preview",
+    "lint": "eslint .",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "deploy:rules:staging": "firebase use staging && firebase deploy --only firestore:rules,storage",
+    "deploy:rules:prod": "firebase use production && firebase deploy --only firestore:rules,storage"
   },
   "dependencies": {
     "@capacitor/android": "^8.3.0",

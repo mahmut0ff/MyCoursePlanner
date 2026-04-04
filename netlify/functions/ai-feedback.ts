@@ -6,11 +6,9 @@
 import type { Handler, HandlerEvent } from '@netlify/functions';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { adminDb } from './utils/firebase-admin';
-import { verifyAuth, isStaff } from './utils/auth';
+import { verifyAuth, isStaff, jsonResponse, unauthorized, badRequest, notFound, forbidden } from './utils/auth';
 
-const HEADERS = {
-  'Content-Type': 'application/json',
-  'Access-Control-Allow-Origin': '*',
+const CORS_HEADERS = {
   'Access-Control-Allow-Headers': 'Content-Type, Authorization',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
 };
@@ -48,41 +46,29 @@ async function selectModel(): Promise<string> {
 }
 
 const handler: Handler = async (event: HandlerEvent) => {
-  if (event.httpMethod === 'OPTIONS') {
-    return { statusCode: 204, headers: HEADERS, body: '' };
-  }
+  if (event.httpMethod === 'OPTIONS') return jsonResponse(204, '');
 
   if (event.httpMethod !== 'POST') {
-    return { statusCode: 405, headers: HEADERS, body: JSON.stringify({ error: 'Method not allowed' }) };
+    return jsonResponse(405, { error: 'Method not allowed' });
   }
 
   // Auth check
   const user = await verifyAuth(event);
-  if (!user) {
-    return { statusCode: 401, headers: HEADERS, body: JSON.stringify({ error: 'Unauthorized' }) };
-  }
+  if (!user) return unauthorized();
 
   try {
     const { attemptId } = JSON.parse(event.body || '{}');
-    if (!attemptId) {
-      return { statusCode: 400, headers: HEADERS, body: JSON.stringify({ error: 'attemptId required' }) };
-    }
+    if (!attemptId) return badRequest('attemptId required');
 
-    if (!GEMINI_API_KEY) {
-      return { statusCode: 500, headers: HEADERS, body: JSON.stringify({ error: 'GEMINI_API_KEY not configured' }) };
-    }
+    if (!GEMINI_API_KEY) return jsonResponse(500, { error: 'GEMINI_API_KEY not configured' });
 
     const attemptDoc = await adminDb.collection('examAttempts').doc(attemptId).get();
-    if (!attemptDoc.exists) {
-      return { statusCode: 404, headers: HEADERS, body: JSON.stringify({ error: 'Attempt not found' }) };
-    }
+    if (!attemptDoc.exists) return notFound('Attempt not found');
 
     const attempt = attemptDoc.data()!;
 
     // Ownership check — only the student who took the exam or staff can request feedback
-    if (attempt.studentId !== user.uid && !isStaff(user)) {
-      return { statusCode: 403, headers: HEADERS, body: JSON.stringify({ error: 'Forbidden' }) };
-    }
+    if (attempt.studentId !== user.uid && !isStaff(user)) return forbidden();
 
     const questionResults = attempt.questionResults || [];
     const incorrect = questionResults.filter((r: any) => !r.isCorrect);
@@ -167,10 +153,10 @@ ${categoryPrompt}
     feedback.modelUsed = selectedModel;
     await adminDb.collection('examAttempts').doc(attemptId).update({ aiFeedback: feedback });
 
-    return { statusCode: 200, headers: HEADERS, body: JSON.stringify({ success: true, feedback }) };
+    return jsonResponse(200, { success: true, feedback });
   } catch (error: any) {
     console.error('AI Feedback error:', error);
-    return { statusCode: 500, headers: HEADERS, body: JSON.stringify({ error: 'Failed to generate feedback', message: error.message }) };
+    return jsonResponse(500, { error: 'Failed to generate feedback', message: error.message });
   }
 };
 

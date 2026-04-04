@@ -24,9 +24,6 @@
 [context.production]
   command = "npm run build:prod"
 
-[context.production.environment]
-  NODE_ENV = "production"
-
 # ---- Context: Branch deploys & Deploy Previews ----
 [context.deploy-preview]
   command = "npm run build"

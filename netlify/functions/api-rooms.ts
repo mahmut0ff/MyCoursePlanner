@@ -46,9 +46,11 @@ const handler: Handler = async (event: HandlerEvent) => {
     let snap;
     if (isStaff(user)) {
       if (isSuperAdmin(user)) {
-        snap = await adminDb.collection(COLLECTION).get();
+        try { snap = await adminDb.collection(COLLECTION).orderBy('createdAt', 'desc').limit(200).get(); }
+        catch { snap = await adminDb.collection(COLLECTION).get(); }
       } else if (orgFilter) {
-        snap = await adminDb.collection(COLLECTION).where('organizationId', '==', orgFilter).get();
+        try { snap = await adminDb.collection(COLLECTION).where('organizationId', '==', orgFilter).orderBy('createdAt', 'desc').limit(200).get(); }
+        catch { snap = await adminDb.collection(COLLECTION).where('organizationId', '==', orgFilter).get(); }
       } else {
         // independent teacher
         const snap1 = await adminDb.collection(COLLECTION).where('hostId', '==', user.uid).where('organizationId', '==', null).get();
@@ -64,7 +66,8 @@ const handler: Handler = async (event: HandlerEvent) => {
       }
     } else {
       if (!orgFilter) return ok([]); // Students must have an org to see rooms
-      snap = await adminDb.collection(COLLECTION).where('organizationId', '==', orgFilter).where('status', '==', 'active').get();
+      try { snap = await adminDb.collection(COLLECTION).where('organizationId', '==', orgFilter).where('status', '==', 'active').orderBy('createdAt', 'desc').limit(50).get(); }
+      catch { snap = await adminDb.collection(COLLECTION).where('organizationId', '==', orgFilter).where('status', '==', 'active').get(); }
     }
     const results = snap.docs.map((d: any) => ({ id: d.id, ...d.data() }));
     results.sort((a: any, b: any) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());

@@ -241,9 +241,14 @@ const handler: Handler = async (event: HandlerEvent) => {
       // List users
       if (!hasRole(user, 'super_admin', 'admin', 'teacher')) return forbidden();
       const orgFilter = getOrgFilter(user);
-      let query: any = adminDb.collection('users').orderBy('createdAt', 'desc');
-      if (orgFilter) query = adminDb.collection('users').where('organizationId', '==', orgFilter);
-      const snapshot = await query.get();
+      let snapshot;
+      try {
+        if (orgFilter) snapshot = await adminDb.collection('users').where('organizationId', '==', orgFilter).orderBy('createdAt', 'desc').limit(200).get();
+        else snapshot = await adminDb.collection('users').orderBy('createdAt', 'desc').limit(200).get();
+      } catch {
+        if (orgFilter) snapshot = await adminDb.collection('users').where('organizationId', '==', orgFilter).get();
+        else snapshot = await adminDb.collection('users').get();
+      }
       return ok(snapshot.docs.map((d: any) => ({ id: d.id, ...d.data() })));
     }
 

@@ -39,9 +39,11 @@ const handler: Handler = async (event: HandlerEvent) => {
 
     let snap;
     if (isSuperAdmin(user)) {
-      snap = await adminDb.collection(COLLECTION).get();
+      try { snap = await adminDb.collection(COLLECTION).orderBy('createdAt', 'desc').limit(200).get(); }
+      catch { snap = await adminDb.collection(COLLECTION).get(); }
     } else if (orgFilter) {
-      snap = await adminDb.collection(COLLECTION).where('organizationId', '==', orgFilter).get();
+      try { snap = await adminDb.collection(COLLECTION).where('organizationId', '==', orgFilter).orderBy('createdAt', 'desc').limit(200).get(); }
+      catch { snap = await adminDb.collection(COLLECTION).where('organizationId', '==', orgFilter).get(); }
     } else {
       const snap1 = await adminDb.collection(COLLECTION).where('authorId', '==', user.uid).where('organizationId', '==', null).get();
       const snap2 = await adminDb.collection(COLLECTION).where('authorId', '==', user.uid).where('organizationId', '==', '').get();

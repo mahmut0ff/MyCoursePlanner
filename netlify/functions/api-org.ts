@@ -86,7 +86,9 @@ const handler: Handler = async (event: HandlerEvent) => {
       let query = orgQuery('courses', orgId);
       if (branchScope === '__DENIED__') return ok([]);
       if (typeof branchScope === 'string') query = query.where('branchId', '==', branchScope) as any;
-      const snap = await query.get();
+      let snap;
+      try { snap = await query.orderBy('createdAt', 'desc').limit(200).get(); }
+      catch { snap = await query.get(); }
       let list = snap.docs.map((d: any) => ({ id: d.id, ...d.data() }));
       // For multi-branch array scope, filter in memory
       if (Array.isArray(branchScope)) {
@@ -153,7 +155,9 @@ const handler: Handler = async (event: HandlerEvent) => {
       if (params.courseId) query = query.where('courseId', '==', params.courseId) as any;
       if (branchScope === '__DENIED__') return ok([]);
       if (typeof branchScope === 'string') query = query.where('branchId', '==', branchScope) as any;
-      const snap = await query.get();
+      let snap;
+      try { snap = await query.orderBy('createdAt', 'desc').limit(200).get(); }
+      catch { snap = await query.get(); }
       let list = snap.docs.map((d: any) => ({ id: d.id, ...d.data() }));
       if (Array.isArray(branchScope)) {
         list = list.filter((g: any) => !g.branchId || branchScope.includes(g.branchId));

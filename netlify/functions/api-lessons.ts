@@ -38,9 +38,9 @@ const handler: Handler = async (event: HandlerEvent) => {
 
       let snap;
       if (isSuperAdmin(user)) {
-        snap = await adminDb.collection(COLLECTION).orderBy('createdAt', 'desc').get();
+        snap = await adminDb.collection(COLLECTION).orderBy('createdAt', 'desc').limit(200).get();
       } else if (orgFilter) {
-        snap = await adminDb.collection(COLLECTION).where('organizationId', '==', orgFilter).orderBy('createdAt', 'desc').get();
+        snap = await adminDb.collection(COLLECTION).where('organizationId', '==', orgFilter).orderBy('createdAt', 'desc').limit(200).get();
       } else {
         // Freelance teacher (no org) — show only their own lessons
         const snap1 = await adminDb.collection(COLLECTION).where('authorId', '==', user.uid).where('organizationId', '==', null).orderBy('createdAt', 'desc').get();

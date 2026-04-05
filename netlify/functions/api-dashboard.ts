@@ -113,9 +113,37 @@ const handler: Handler = async (event: HandlerEvent) => {
     roomsQuery = roomsQuery.where('branchId', '==', branchScope);
   }
 
-  const [lessonsSnap, examsSnap, roomsSnap] = await Promise.all([
-    lessonsQuery.get(), examsQuery.get(), roomsQuery.get(),
-  ]);
+  let lessonsSnap, examsSnap, roomsSnap;
+  let lessonsCount = 0, examsCount = 0, roomsCount = 0;
+
+  try {
+    const [lCount, eCount, rCount] = await Promise.all([
+      lessonsQuery.count().get(),
+      examsQuery.count().get(),
+      roomsQuery.count().get()
+    ]);
+    lessonsCount = lCount.data().count;
+    examsCount = eCount.data().count;
+    roomsCount = rCount.data().count;
+
+    // Try fetching with ordered limits
+    [lessonsSnap, examsSnap, roomsSnap] = await Promise.all([
+      lessonsQuery.orderBy('createdAt', 'desc').limit(5).get().catch(() => lessonsQuery.limit(5).get()),
+      examsQuery.orderBy('createdAt', 'desc').limit(5).get().catch(() => examsQuery.limit(5).get()),
+      roomsQuery.orderBy('createdAt', 'desc').limit(5).get().catch(() => roomsQuery.limit(5).get())
+    ]);
+  } catch (err) {
+    console.error('Error fetching dashboard counts/limits:', err);
+    // Fallback if count() or orderBy fails
+    [lessonsSnap, examsSnap, roomsSnap] = await Promise.all([
+      lessonsQuery.limit(5).get(),
+      examsQuery.limit(5).get(),
+      roomsQuery.limit(5).get()
+    ]);
+    lessonsCount = lessonsSnap.size;
+    examsCount = examsSnap.size;
+    roomsCount = roomsSnap.size;
+  }
 
   let attemptsSnap;
   let hasGroups = true;
@@ -152,9 +180,9 @@ const handler: Handler = async (event: HandlerEvent) => {
     : 0;
 
   return ok({
-    lessonsCount: lessonsSnap.size,
-    examsCount: examsSnap.size,
-    activeRoomsCount: roomsSnap.size,
+    lessonsCount,
+    examsCount,
+    activeRoomsCount: roomsCount,
     attemptsCount: attempts.length,
     avgScore,
     hasGroups,

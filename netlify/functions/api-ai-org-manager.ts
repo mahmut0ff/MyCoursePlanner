@@ -82,13 +82,19 @@ const handler: Handler = async (event: HandlerEvent) => {
             if (!meRes.ok) return badRequest('Invalid Telegram Bot Token');
             const meData = await meRes.json();
             
-            const host = event.headers['x-forwarded-host'] || event.headers.host;
-            const webhookUrl = `https://${host}/.netlify/functions/api-telegram-webhook?orgId=${organizationId}`;
+            // Create absolute webhook URL securely using rawUrl
+            const origin = event.rawUrl ? new URL(event.rawUrl).origin : `https://${event.headers.host}`;
+            const webhookUrl = `${origin}/.netlify/functions/api-telegram-webhook?orgId=${organizationId}`;
             
-            const whRes = await fetch(`https://api.telegram.org/bot${token}/setWebhook?url=${encodeURIComponent(webhookUrl)}`);
-            if (!whRes.ok) {
-              console.error('Webhook set error:', await whRes.text());
-              return jsonResponse(500, { error: 'Failed to set Telegram Webhook' });
+            if (origin.includes('localhost') || origin.includes('127.0.0.1')) {
+              console.warn('Skipping webhook setup on localhost');
+            } else {
+              const whRes = await fetch(`https://api.telegram.org/bot${token}/setWebhook?url=${encodeURIComponent(webhookUrl)}`);
+              if (!whRes.ok) {
+                const errTxt = await whRes.text();
+                console.error('Webhook set error:', errTxt);
+                return jsonResponse(400, { error: `Telegram Webhook Error: ${errTxt}` });
+              }
             }
             updates.telegramBotToken = token;
             updates.telegramBotUsername = meData.result.username;

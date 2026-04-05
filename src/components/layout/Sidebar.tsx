@@ -118,39 +118,39 @@ const Sidebar: React.FC<{ open: boolean; onClose: () => void; isCollapsed?: bool
           {isSuperAdmin && (
             <>
               <NavLink to="/admin" end className={linkClass} onClick={onClose}>
-                <LayoutDashboard className="w-4 h-4" />{t('nav.overview')}
+                <LayoutDashboard className="w-4 h-4" /><span>{t('nav.overview')}</span>
               </NavLink>
 
               <CollapsibleSection label={t('nav.sectionManagement', 'Управление')} icon={Shield} defaultOpen>
                 <NavLink to="/admin/organizations" className={linkClass} onClick={onClose}>
-                  <Building2 className="w-4 h-4" />{t('nav.organizations')}
+                  <Building2 className="w-4 h-4" /><span>{t('nav.organizations')}</span>
                 </NavLink>
                 <NavLink to="/admin/users" className={linkClass} onClick={onClose}>
-                  <Users className="w-4 h-4" />{t('nav.users')}
+                  <Users className="w-4 h-4" /><span>{t('nav.users')}</span>
                 </NavLink>
                 <NavLink to="/admin/billing" className={linkClass} onClick={onClose}>
-                  <CreditCard className="w-4 h-4" />{t('nav.billing')}
+                  <CreditCard className="w-4 h-4" /><span>{t('nav.billing')}</span>
                 </NavLink>
                 <NavLink to="/admin/plans" className={linkClass} onClick={onClose}>
-                  <Layers className="w-4 h-4" />{t('nav.plans')}
+                  <Layers className="w-4 h-4" /><span>{t('nav.plans')}</span>
                 </NavLink>
               </CollapsibleSection>
 
               <CollapsibleSection label={t('nav.sectionSystem', 'Система')} icon={Database}>
                 <NavLink to="/admin/audit-logs" className={linkClass} onClick={onClose}>
-                  <Activity className="w-4 h-4" />{t('nav.auditLogs')}
+                  <Activity className="w-4 h-4" /><span>{t('nav.auditLogs')}</span>
                 </NavLink>
                 <NavLink to="/admin/system-health" className={linkClass} onClick={onClose}>
-                  <Monitor className="w-4 h-4" />{t('nav.systemHealth')}
+                  <Monitor className="w-4 h-4" /><span>{t('nav.systemHealth')}</span>
                 </NavLink>
                 <NavLink to="/admin/feature-flags" className={linkClass} onClick={onClose}>
-                  <Flag className="w-4 h-4" />{t('nav.featureFlags')}
+                  <Flag className="w-4 h-4" /><span>{t('nav.featureFlags')}</span>
                 </NavLink>
                 <NavLink to="/admin/integrations" className={linkClass} onClick={onClose}>
-                  <Plug className="w-4 h-4" />{t('nav.integrations')}
+                  <Plug className="w-4 h-4" /><span>{t('nav.integrations')}</span>
                 </NavLink>
                 <NavLink to="/admin/analytics" className={linkClass} onClick={onClose}>
-                  <BarChart3 className="w-4 h-4" />{t('nav.analytics')}
+                  <BarChart3 className="w-4 h-4" /><span>{t('nav.analytics')}</span>
                 </NavLink>
               </CollapsibleSection>
             </>
@@ -160,63 +160,63 @@ const Sidebar: React.FC<{ open: boolean; onClose: () => void; isCollapsed?: bool
           {isAdmin && !isSuperAdmin && (
             <>
               <NavLink to="/dashboard" className={linkClass} onClick={onClose}>
-                <LayoutDashboard className="w-4 h-4" />{t('nav.dashboard')}
+                <LayoutDashboard className="w-4 h-4" /><span>{t('nav.dashboard')}</span>
               </NavLink>
 
               <CollapsibleSection label={t('nav.sectionPeople', 'Люди и Клиенты')} icon={Users} defaultOpen>
                 <NavLink to="/managers" className={linkClass} onClick={onClose}>
-                  <ShieldCheck className="w-4 h-4" />{t('nav.managers', 'Менеджеры')}
+                  <ShieldCheck className="w-4 h-4" /><span>{t('nav.managers', 'Менеджеры')}</span>
                 </NavLink>
                 <NavLink to="/students" className={linkClass} onClick={onClose}>
-                  <Users className="w-4 h-4" />{t('nav.students')}
+                  <Users className="w-4 h-4" /><span>{t('nav.students')}</span>
                 </NavLink>
                 <NavLink to="/teachers" className={linkClass} onClick={onClose}>
-                  <UserPlus className="w-4 h-4" />{t('nav.teachers')}
+                  <UserPlus className="w-4 h-4" /><span>{t('nav.teachers')}</span>
                 </NavLink>
               </CollapsibleSection>
 
               <CollapsibleSection label={t('nav.sectionOrg', 'Управление и Аналитика')} icon={Building2} defaultOpen>
                 <NavLink to="/finances" className={({ isActive }) => `${linkClass({ isActive })} ${!canAccess('finances') ? 'opacity-50' : ''}`} onClick={onClose}>
-                  <CreditCard className="w-4 h-4" />{t('nav.finances', 'Финансы')}
+                  <CreditCard className="w-4 h-4" /><span>{t('nav.finances', 'Финансы')}</span>
                   {!canAccess('finances') && <Lock className="w-3 h-3 ml-auto text-slate-500" />}
                 </NavLink>
                 <NavLink to="/schedule" className={linkClass} onClick={onClose}>
-                  <Calendar className="w-4 h-4" />{t('nav.schedule')}
+                  <Calendar className="w-4 h-4" /><span>{t('nav.schedule')}</span>
                 </NavLink>
                 <NavLink to="/results" className={linkClass} onClick={onClose}>
-                  <BarChart3 className="w-4 h-4" />{t('nav.results')}
+                  <BarChart3 className="w-4 h-4" /><span>{t('nav.results')}</span>
                 </NavLink>
                 <NavLink to="/teacher-analytics" className={({ isActive }) => `${linkClass({ isActive })} ${!canAccess('advancedAnalytics') ? 'opacity-50' : ''}`} onClick={onClose}>
-                  <Activity className="w-4 h-4" />{t('nav.analytics')}
+                  <Activity className="w-4 h-4" /><span>{t('nav.analytics')}</span>
                   {!canAccess('advancedAnalytics') && <Lock className="w-3 h-3 ml-auto text-slate-500" />}
                 </NavLink>
                 <NavLink to="/risk-dashboard" className={({ isActive }) => `${linkClass({ isActive })} ${!canAccess('advancedAnalytics') ? 'opacity-50' : ''}`} onClick={onClose}>
-                  <TrendingDown className="w-4 h-4" />{t('nav.riskDashboard', 'Светофор рисков')}
+                  <TrendingDown className="w-4 h-4" /><span>{t('nav.riskDashboard', 'Светофор рисков')}</span>
                   {!canAccess('advancedAnalytics') && <Lock className="w-3 h-3 ml-auto text-slate-500" />}
                 </NavLink>
               </CollapsibleSection>
 
               <CollapsibleSection label={t('nav.sectionEducation', 'Образовательные Продукты')} icon={GraduationCap}>
                 <NavLink to="/courses" className={linkClass} onClick={onClose}>
-                  <FolderOpen className="w-4 h-4" />{t('nav.courses')}
+                  <FolderOpen className="w-4 h-4" /><span>{t('nav.courses')}</span>
                 </NavLink>
                 <NavLink to="/groups" className={linkClass} onClick={onClose}>
-                  <UsersRound className="w-4 h-4" />{t('nav.groups')}
+                  <UsersRound className="w-4 h-4" /><span>{t('nav.groups')}</span>
                 </NavLink>
               </CollapsibleSection>
 
               <CollapsibleSection label={t('nav.sectionLibrary', 'Библиотека Контента')} icon={Library}>
                 <NavLink to="/lessons" className={linkClass} onClick={onClose}>
-                  <BookOpen className="w-4 h-4" />{t('nav.lessons')}
+                  <BookOpen className="w-4 h-4" /><span>{t('nav.lessons')}</span>
                 </NavLink>
                 <NavLink to="/materials" className={linkClass} onClick={onClose}>
-                  <FileText className="w-4 h-4" />{t('nav.materials')}
+                  <FileText className="w-4 h-4" /><span>{t('nav.materials')}</span>
                 </NavLink>
                 <NavLink to="/exams" className={linkClass} onClick={onClose}>
-                  <ClipboardList className="w-4 h-4" />{t('nav.exams')}
+                  <ClipboardList className="w-4 h-4" /><span>{t('nav.exams')}</span>
                 </NavLink>
                 <NavLink to="/quiz/library" className={linkClass} onClick={onClose}>
-                  <Gamepad2 className="w-4 h-4" />{t('nav.quizLibrary')}
+                  <Gamepad2 className="w-4 h-4" /><span>{t('nav.quizLibrary')}</span>
                 </NavLink>
               </CollapsibleSection>
             </>
@@ -226,7 +226,7 @@ const Sidebar: React.FC<{ open: boolean; onClose: () => void; isCollapsed?: bool
           {isManager && !isSuperAdmin && (
             <>
               <NavLink to="/dashboard" className={linkClass} onClick={onClose}>
-                <LayoutDashboard className="w-4 h-4" />{t('nav.dashboard')}
+                <LayoutDashboard className="w-4 h-4" /><span>{t('nav.dashboard')}</span>
               </NavLink>
 
 
@@ -235,54 +235,54 @@ const Sidebar: React.FC<{ open: boolean; onClose: () => void; isCollapsed?: bool
                 <>
                   <CollapsibleSection label={t('nav.sectionPeople', 'Люди и Клиенты')} icon={Users} defaultOpen>
                     <NavLink to="/students" className={linkClass} onClick={onClose}>
-                      <Users className="w-4 h-4" />{t('nav.students')}
+                      <Users className="w-4 h-4" /><span>{t('nav.students')}</span>
                     </NavLink>
                     <NavLink to="/teachers" className={linkClass} onClick={onClose}>
-                      <UserPlus className="w-4 h-4" />{t('nav.teachers')}
+                      <UserPlus className="w-4 h-4" /><span>{t('nav.teachers')}</span>
                     </NavLink>
                   </CollapsibleSection>
 
                   <CollapsibleSection label={t('nav.sectionOrg', 'Управление и Аналитика')} icon={Building2} defaultOpen>
                     <NavLink to="/finances" className={({ isActive }) => `${linkClass({ isActive })} ${!canAccess('finances') ? 'opacity-50' : ''}`} onClick={onClose}>
-                      <CreditCard className="w-4 h-4" />{t('nav.finances', 'Финансы')}
+                      <CreditCard className="w-4 h-4" /><span>{t('nav.finances', 'Финансы')}</span>
                       {!canAccess('finances') && <Lock className="w-3 h-3 ml-auto text-slate-500" />}
                     </NavLink>
                     <NavLink to="/schedule" className={linkClass} onClick={onClose}>
-                      <Calendar className="w-4 h-4" />{t('nav.schedule')}
+                      <Calendar className="w-4 h-4" /><span>{t('nav.schedule')}</span>
                     </NavLink>
                     <NavLink to="/results" className={linkClass} onClick={onClose}>
-                      <BarChart3 className="w-4 h-4" />{t('nav.results')}
+                      <BarChart3 className="w-4 h-4" /><span>{t('nav.results')}</span>
                     </NavLink>
                     <NavLink to="/gradebook" className={({ isActive }) => `${linkClass({ isActive })} ${!canAccess('gradebook') ? 'opacity-50' : ''}`} onClick={onClose}>
-                      <TableProperties className="w-4 h-4" />{t('nav.gradebook', 'Успеваемость')}
+                      <TableProperties className="w-4 h-4" /><span>{t('nav.gradebook', 'Успеваемость')}</span>
                       {!canAccess('gradebook') && <Lock className="w-3 h-3 ml-auto text-slate-500" />}
                     </NavLink>
                     <NavLink to="/notifications" className={linkClass} onClick={onClose}>
-                      <Bell className="w-4 h-4" />{t('nav.notifications', 'Уведомления')}
+                      <Bell className="w-4 h-4" /><span>{t('nav.notifications', 'Уведомления')}</span>
                     </NavLink>
                   </CollapsibleSection>
 
                   <CollapsibleSection label={t('nav.sectionEducation', 'Образовательные Продукты')} icon={GraduationCap}>
                     <NavLink to="/courses" className={linkClass} onClick={onClose}>
-                      <FolderOpen className="w-4 h-4" />{t('nav.courses')}
+                      <FolderOpen className="w-4 h-4" /><span>{t('nav.courses')}</span>
                     </NavLink>
                     <NavLink to="/groups" className={linkClass} onClick={onClose}>
-                      <UsersRound className="w-4 h-4" />{t('nav.groups')}
+                      <UsersRound className="w-4 h-4" /><span>{t('nav.groups')}</span>
                     </NavLink>
                   </CollapsibleSection>
 
                   <CollapsibleSection label={t('nav.sectionLibrary', 'Библиотека Контента')} icon={Library}>
                     <NavLink to="/lessons" className={linkClass} onClick={onClose}>
-                      <BookOpen className="w-4 h-4" />{t('nav.lessons')}
+                      <BookOpen className="w-4 h-4" /><span>{t('nav.lessons')}</span>
                     </NavLink>
                     <NavLink to="/materials" className={linkClass} onClick={onClose}>
-                      <FileText className="w-4 h-4" />{t('nav.materials')}
+                      <FileText className="w-4 h-4" /><span>{t('nav.materials')}</span>
                     </NavLink>
                     <NavLink to="/exams" className={linkClass} onClick={onClose}>
-                      <ClipboardList className="w-4 h-4" />{t('nav.exams')}
+                      <ClipboardList className="w-4 h-4" /><span>{t('nav.exams')}</span>
                     </NavLink>
                     <NavLink to="/quiz/library" className={linkClass} onClick={onClose}>
-                      <Gamepad2 className="w-4 h-4" />{t('nav.quizLibrary')}
+                      <Gamepad2 className="w-4 h-4" /><span>{t('nav.quizLibrary')}</span>
                     </NavLink>
                   </CollapsibleSection>
                 </>
@@ -294,7 +294,7 @@ const Sidebar: React.FC<{ open: boolean; onClose: () => void; isCollapsed?: bool
           {isTeacher && !isSuperAdmin && (
             <>
               <NavLink to="/dashboard" className={linkClass} onClick={onClose}>
-                <LayoutDashboard className="w-4 h-4" />{t('nav.dashboard')}
+                <LayoutDashboard className="w-4 h-4" /><span>{t('nav.dashboard')}</span>
               </NavLink>
 
 
@@ -303,58 +303,58 @@ const Sidebar: React.FC<{ open: boolean; onClose: () => void; isCollapsed?: bool
                 <>
                   <CollapsibleSection label={t('nav.sectionEducation', 'Обучение')} icon={GraduationCap} defaultOpen>
                     <NavLink to="/journal" className={({ isActive }) => `${linkClass({ isActive })} ${!canAccess('gradebook') ? 'opacity-50' : ''}`} onClick={onClose}>
-                      <ClipboardList className="w-4 h-4" />{t('nav.journal', 'Журнал')}
+                      <ClipboardList className="w-4 h-4" /><span>{t('nav.journal', 'Журнал')}</span>
                       {!canAccess('gradebook') && <Lock className="w-3 h-3 ml-auto text-slate-500" />}
                     </NavLink>
                     <NavLink to="/homework/review" className={linkClass} onClick={onClose}>
-                      <ClipboardCheck className="w-4 h-4" />{t('nav.homeworkReview', 'Проверка ДЗ')}
+                      <ClipboardCheck className="w-4 h-4" /><span>{t('nav.homeworkReview', 'Проверка ДЗ')}</span>
                     </NavLink>
                     <NavLink to="/gradebook" className={({ isActive }) => `${linkClass({ isActive })} ${!canAccess('gradebook') ? 'opacity-50' : ''}`} onClick={onClose}>
-                      <TableProperties className="w-4 h-4" />{t('nav.gradebook', 'Оценки')}
+                      <TableProperties className="w-4 h-4" /><span>{t('nav.gradebook', 'Оценки')}</span>
                       {!canAccess('gradebook') && <Lock className="w-3 h-3 ml-auto text-slate-500" />}
                     </NavLink>
                     <NavLink to="/courses" className={linkClass} onClick={onClose}>
-                      <FolderOpen className="w-4 h-4" />{t('nav.courses')}
+                      <FolderOpen className="w-4 h-4" /><span>{t('nav.courses')}</span>
                     </NavLink>
                     <NavLink to="/groups" className={linkClass} onClick={onClose}>
-                      <UsersRound className="w-4 h-4" />{t('nav.groups')}
+                      <UsersRound className="w-4 h-4" /><span>{t('nav.groups')}</span>
                     </NavLink>
                     <NavLink to="/lessons" className={linkClass} onClick={onClose}>
-                      <BookOpen className="w-4 h-4" />{t('nav.lessons')}
+                      <BookOpen className="w-4 h-4" /><span>{t('nav.lessons')}</span>
                     </NavLink>
                     <NavLink to="/materials" className={linkClass} onClick={onClose}>
-                      <FileText className="w-4 h-4" />{t('nav.materials')}
+                      <FileText className="w-4 h-4" /><span>{t('nav.materials')}</span>
                     </NavLink>
                     <NavLink to="/exams" className={linkClass} onClick={onClose}>
-                      <ClipboardList className="w-4 h-4" />{t('nav.exams')}
+                      <ClipboardList className="w-4 h-4" /><span>{t('nav.exams')}</span>
                     </NavLink>
                     <NavLink to="/rooms" className={linkClass} onClick={onClose}>
-                      <Monitor className="w-4 h-4" />{t('nav.examRooms')}
+                      <Monitor className="w-4 h-4" /><span>{t('nav.examRooms')}</span>
                     </NavLink>
                   </CollapsibleSection>
 
                   <CollapsibleSection label={t('nav.sectionQuiz', 'Квизы')} icon={Gamepad2}>
                     <NavLink to="/quiz/library" className={linkClass} onClick={onClose}>
-                      <Library className="w-4 h-4" />{t('nav.quizLibrary')}
+                      <Library className="w-4 h-4" /><span>{t('nav.quizLibrary')}</span>
                     </NavLink>
                     <NavLink to="/quiz/sessions" className={linkClass} onClick={onClose}>
-                      <History className="w-4 h-4" />{t('nav.quizSessions')}
+                      <History className="w-4 h-4" /><span>{t('nav.quizSessions')}</span>
                     </NavLink>
                   </CollapsibleSection>
 
                   <CollapsibleSection label={t('nav.sectionOrg', 'Организация')} icon={Building2}>
                     <NavLink to="/schedule" className={linkClass} onClick={onClose}>
-                      <Calendar className="w-4 h-4" />{t('nav.schedule')}
+                      <Calendar className="w-4 h-4" /><span>{t('nav.schedule')}</span>
                     </NavLink>
                     <NavLink to="/results" className={linkClass} onClick={onClose}>
-                      <BarChart3 className="w-4 h-4" />{t('nav.results')}
+                      <BarChart3 className="w-4 h-4" /><span>{t('nav.results')}</span>
                     </NavLink>
                     <NavLink to="/teacher-analytics" className={({ isActive }) => `${linkClass({ isActive })} ${!canAccess('advancedAnalytics') ? 'opacity-50' : ''}`} onClick={onClose}>
-                      <Activity className="w-4 h-4" />{t('nav.analytics')}
+                      <Activity className="w-4 h-4" /><span>{t('nav.analytics')}</span>
                       {!canAccess('advancedAnalytics') && <Lock className="w-3 h-3 ml-auto text-slate-500" />}
                     </NavLink>
                     <NavLink to="/risk-dashboard" className={({ isActive }) => `${linkClass({ isActive })} ${!canAccess('advancedAnalytics') ? 'opacity-50' : ''}`} onClick={onClose}>
-                      <TrendingDown className="w-4 h-4" />{t('nav.riskDashboard', 'Светофор рисков')}
+                      <TrendingDown className="w-4 h-4" /><span>{t('nav.riskDashboard', 'Светофор рисков')}</span>
                       {!canAccess('advancedAnalytics') && <Lock className="w-3 h-3 ml-auto text-slate-500" />}
                     </NavLink>
                   </CollapsibleSection>
@@ -366,30 +366,30 @@ const Sidebar: React.FC<{ open: boolean; onClose: () => void; isCollapsed?: bool
                 <>
                   <CollapsibleSection label={t('nav.sectionPersonalWorkspace', 'Личное пространство')} icon={FolderOpen} defaultOpen>
                     <NavLink to="/lessons" className={linkClass} onClick={onClose}>
-                      <BookOpen className="w-4 h-4" />{t('nav.myLessons', 'Мои уроки')}
+                      <BookOpen className="w-4 h-4" /><span>{t('nav.myLessons', 'Мои уроки')}</span>
                     </NavLink>
                     <NavLink to="/materials" className={linkClass} onClick={onClose}>
-                      <FileText className="w-4 h-4" />{t('nav.myMaterials', 'Мои материалы')}
+                      <FileText className="w-4 h-4" /><span>{t('nav.myMaterials', 'Мои материалы')}</span>
                     </NavLink>
                     <NavLink to="/exams" className={linkClass} onClick={onClose}>
-                      <ClipboardList className="w-4 h-4" />{t('nav.myExams', 'Мои экзамены')}
+                      <ClipboardList className="w-4 h-4" /><span>{t('nav.myExams', 'Мои экзамены')}</span>
                     </NavLink>
                     <NavLink to="/rooms" className={linkClass} onClick={onClose}>
-                      <Monitor className="w-4 h-4" />{t('nav.myExamRooms', 'Экзаменационные комнаты')}
+                      <Monitor className="w-4 h-4" /><span>{t('nav.myExamRooms', 'Экзаменационные комнаты')}</span>
                     </NavLink>
                   </CollapsibleSection>
 
                   <CollapsibleSection label={t('nav.sectionQuiz', 'Квизы')} icon={Gamepad2}>
                     <NavLink to="/quiz/library" className={linkClass} onClick={onClose}>
-                      <Library className="w-4 h-4" />{t('nav.quizLibrary')}
+                      <Library className="w-4 h-4" /><span>{t('nav.quizLibrary')}</span>
                     </NavLink>
                     <NavLink to="/quiz/sessions" className={linkClass} onClick={onClose}>
-                      <History className="w-4 h-4" />{t('nav.quizSessions')}
+                      <History className="w-4 h-4" /><span>{t('nav.quizSessions')}</span>
                     </NavLink>
                   </CollapsibleSection>
 
                   <NavLink to="/directory" className={linkClass} onClick={onClose}>
-                    <Building2 className="w-4 h-4" />{t('nav.findCenter', 'Каталог Организаций')}
+                    <Building2 className="w-4 h-4" /><span>{t('nav.findCenter', 'Каталог Организаций')}</span>
                   </NavLink>
                 </>
               )}
@@ -402,46 +402,46 @@ const Sidebar: React.FC<{ open: boolean; onClose: () => void; isCollapsed?: bool
           {role === 'student' && (
             <>
               <NavLink to="/dashboard" className={linkClass} onClick={onClose}>
-                <LayoutDashboard className="w-4 h-4" />{t('nav.dashboard')}
+                <LayoutDashboard className="w-4 h-4" /><span>{t('nav.dashboard')}</span>
               </NavLink>
 
               {/* ── Tenant-specific: only when student has an active org ── */}
               {!!organizationId && (
                 <>
                   <NavLink to="/progress" className={linkClass} onClick={onClose}>
-                    <TrendingUp className="w-4 h-4" />{t('nav.progress', 'Мой прогресс')}
+                    <TrendingUp className="w-4 h-4" /><span>{t('nav.progress', 'Мой прогресс')}</span>
                   </NavLink>
                   <NavLink to="/diary" className={linkClass} onClick={onClose}>
-                    <BookOpen className="w-4 h-4" />{t('nav.diary', 'Мой дневник')}
+                    <BookOpen className="w-4 h-4" /><span>{t('nav.diary', 'Мой дневник')}</span>
                   </NavLink>
 
                   <CollapsibleSection label={t('nav.sectionEducation', 'Обучение')} icon={GraduationCap} defaultOpen>
                     <NavLink to="/student/courses" className={linkClass} onClick={onClose}>
-                      <FolderOpen className="w-4 h-4" />{t('nav.myCourses', 'Мои курсы')}
+                      <FolderOpen className="w-4 h-4" /><span>{t('nav.myCourses', 'Мои курсы')}</span>
                     </NavLink>
                     <NavLink to="/student/groups" className={linkClass} onClick={onClose}>
-                      <UsersRound className="w-4 h-4" />{t('nav.myGroups', 'Мои группы')}
+                      <UsersRound className="w-4 h-4" /><span>{t('nav.myGroups', 'Мои группы')}</span>
                     </NavLink>
                     <NavLink to="/lessons" className={linkClass} onClick={onClose}>
-                      <BookOpen className="w-4 h-4" />{t('nav.lessons')}
+                      <BookOpen className="w-4 h-4" /><span>{t('nav.lessons')}</span>
                     </NavLink>
                     <NavLink to="/student/teachers" className={linkClass} onClick={onClose}>
-                      <UserPlus className="w-4 h-4" />{t('nav.myTeachers', 'Мои преподаватели')}
+                      <UserPlus className="w-4 h-4" /><span>{t('nav.myTeachers', 'Мои преподаватели')}</span>
                     </NavLink>
                     <NavLink to="/student/schedule" className={linkClass} onClick={onClose}>
-                      <Calendar className="w-4 h-4" />{t('nav.schedule')}
+                      <Calendar className="w-4 h-4" /><span>{t('nav.schedule')}</span>
                     </NavLink>
                   </CollapsibleSection>
 
                   <CollapsibleSection label={t('nav.sectionExams', 'Экзамены и тесты')} icon={ClipboardList}>
                     <NavLink to="/join" className={linkClass} onClick={onClose}>
-                      <Radio className="w-4 h-4" />{t('rooms.join')}
+                      <Radio className="w-4 h-4" /><span>{t('rooms.join')}</span>
                     </NavLink>
                     <NavLink to="/quiz/join" className={linkClass} onClick={onClose}>
-                      <Gamepad2 className="w-4 h-4" />{t('nav.joinQuiz')}
+                      <Gamepad2 className="w-4 h-4" /><span>{t('nav.joinQuiz')}</span>
                     </NavLink>
                     <NavLink to="/my-results" className={linkClass} onClick={onClose}>
-                      <BarChart3 className="w-4 h-4" />{t('nav.myResults')}
+                      <BarChart3 className="w-4 h-4" /><span>{t('nav.myResults')}</span>
                     </NavLink>
                   </CollapsibleSection>
                 </>
@@ -450,16 +450,16 @@ const Sidebar: React.FC<{ open: boolean; onClose: () => void; isCollapsed?: bool
               {/* ── Global: always visible regardless of org ── */}
               {!organizationId && (
                 <NavLink to="/directory" className={linkClass} onClick={onClose}>
-                  <Building2 className="w-4 h-4" />{t('nav.findCenter', 'Найти учебный центр')}
+                  <Building2 className="w-4 h-4" /><span>{t('nav.findCenter', 'Найти учебный центр')}</span>
                 </NavLink>
               )}
 
               <NavLink to="/certificates" className={linkClass} onClick={onClose}>
-                <Award className="w-4 h-4" />{t('nav.certificates', 'Сертификаты')}
+                <Award className="w-4 h-4" /><span>{t('nav.certificates', 'Сертификаты')}</span>
               </NavLink>
 
               <NavLink to="/achievements" className={linkClass} onClick={onClose}>
-                <Trophy className="w-4 h-4" />{t('nav.achievements', 'Достижения')}
+                <Trophy className="w-4 h-4" /><span>{t('nav.achievements', 'Достижения')}</span>
               </NavLink>
             </>
           )}

@@ -72,6 +72,7 @@ const AreaChart: React.FC<{
 }> = ({ datasets, labels, height = 220 }) => {
   const containerRef = React.useRef<HTMLDivElement>(null);
   const [width, setWidth] = useState(700);
+  const [hoverIndex, setHoverIndex] = useState<number | null>(null);
 
   useEffect(() => {
     const observer = new ResizeObserver((entries) => {
@@ -85,11 +86,14 @@ const AreaChart: React.FC<{
 
   const allValues = datasets.flatMap((d) => d.data);
   const max = Math.max(...allValues, 1);
+  const px = 40; // padding left and right
+  const innerWidth = width - px - 20; // 20px extra padding on right
 
   const getPath = (data: number[]) => {
     const points = data.map((v, i) => ({
-      x: (i / Math.max(data.length - 1, 1)) * width,
+      x: px + (i / Math.max(data.length - 1, 1)) * innerWidth,
       y: height - (v / max) * (height - 20) - 10,
+      val: v,
     }));
     
     let line = '';
@@ -103,26 +107,25 @@ const AreaChart: React.FC<{
         const cp2x = p1.x - (p1.x - p0.x) / 3;
         line += ` C${cp1x},${p0.y} ${cp2x},${p1.y} ${p1.x},${p1.y}`;
       }
-      area = `${line} L${width},${height} L0,${height} Z`;
+      area = `${line} L${px + innerWidth},${height} L${px},${height} Z`;
     }
 
-    return {
-      line,
-      area,
-      points,
-    };
+    return { line, area, points };
   };
 
   const ySteps = Array.from({ length: 5 }, (_, i) => Math.round((max / 4) * i));
 
+  // Compute all datasets points for the tooltip
+  const datasetsWithPoints = datasets.map(d => ({ ...d, ...getPath(d.data) }));
+
   return (
-    <div ref={containerRef} className="w-full overflow-x-auto">
-      <svg viewBox={`0 0 ${width} ${height + 30}`} className="w-full min-w-[500px]" style={{ height: height + 30 }}>
+    <div ref={containerRef} className="w-full overflow-x-auto relative pb-4">
+      <svg viewBox={`0 0 ${width} ${height + 30}`} className="w-full min-w-[500px]" style={{ height: height + 30, overflow: 'visible' }}>
         <defs>
           {datasets.map((ds, idx) => (
             <React.Fragment key={idx}>
               <linearGradient id={`chart-grad-${idx}`} x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor={ds.color} stopOpacity={0.2} />
+                <stop offset="0%" stopColor={ds.color} stopOpacity={0.3} />
                 <stop offset="100%" stopColor={ds.color} stopOpacity={0} />
               </linearGradient>
               <filter id={`chart-glow-${idx}`}>
@@ -138,28 +141,90 @@ const AreaChart: React.FC<{
           const y = height - (step / max) * (height - 20) - 10;
           return (
             <React.Fragment key={i}>
-              <line x1="0" y1={y} x2={width} y2={y} stroke="currentColor" strokeOpacity="0.06" strokeDasharray="4,4" />
-              <text x={-4} y={y + 4} textAnchor="end" className="fill-slate-500 dark:fill-slate-500 text-[10px]">{step}</text>
+              <line x1={px} y1={y} x2={width - 20} y2={y} stroke="currentColor" strokeOpacity="0.06" strokeDasharray="4,4" />
+              <text x={px - 8} y={y + 4} textAnchor="end" className="fill-slate-500 dark:fill-slate-500 text-[10px]">{step}</text>
             </React.Fragment>
           );
         })}
 
         {/* Datasets */}
-        {datasets.map((ds, idx) => {
-          const { line, area } = getPath(ds.data);
-          return (
-            <React.Fragment key={idx}>
-              <path d={area} fill={`url(#chart-grad-${idx})`} />
-              <path d={line} fill="none" stroke={ds.color} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" filter={`url(#chart-glow-${idx})`} />
-            </React.Fragment>
-          );
-        })}
+        {datasetsWithPoints.map((ds, idx) => (
+          <React.Fragment key={idx}>
+            <path d={ds.area} fill={`url(#chart-grad-${idx})`} />
+            <path d={ds.line} fill="none" stroke={ds.color} strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" filter={`url(#chart-glow-${idx})`} />
+          </React.Fragment>
+        ))}
+
+        {/* Hover Highlight & Tooltip logic */}
+        {hoverIndex !== null && (
+          <React.Fragment>
+            {/* Vertical crosshair line */}
+            <line 
+              x1={px + (hoverIndex / Math.max(labels.length - 1, 1)) * innerWidth} 
+              y1={0} 
+              x2={px + (hoverIndex / Math.max(labels.length - 1, 1)) * innerWidth} 
+              y2={height} 
+              stroke="currentColor" strokeOpacity="0.2" strokeWidth="1" strokeDasharray="4,4" 
+            />
+            {/* Draw dots at intersection */}
+            {datasetsWithPoints.map((ds, idx) => {
+              const pt = ds.points[hoverIndex];
+              return pt ? (
+                <circle key={idx} cx={pt.x} cy={pt.y} r="4" fill={ds.color} stroke="#fff" strokeWidth="2" />
+              ) : null;
+            })}
+          </React.Fragment>
+        )}
 
         {/* X labels */}
         {labels.map((lbl, i) => (
-          <text key={i} x={(i / Math.max(labels.length - 1, 1)) * width} y={height + 20} textAnchor="middle" className="fill-slate-500 dark:fill-slate-500 text-[10px]">{lbl}</text>
+          <text key={i} x={px + (i / Math.max(labels.length - 1, 1)) * innerWidth} y={height + 20} textAnchor="middle" className="fill-slate-500 dark:fill-slate-500 text-[10px]">{lbl}</text>
         ))}
+
+        {/* Interaction zones */}
+        {labels.map((_, i) => {
+          const x = px + (i / Math.max(labels.length - 1, 1)) * innerWidth;
+          const zoneWidth = innerWidth / Math.max(labels.length, 1);
+          return (
+            <rect
+              key={`zone-${i}`}
+              x={x - zoneWidth / 2}
+              y={0}
+              width={zoneWidth}
+              height={height + 30}
+              fill="transparent"
+              onMouseEnter={() => setHoverIndex(i)}
+              onMouseLeave={() => setHoverIndex(null)}
+              className="cursor-crosshair"
+            />
+          );
+        })}
       </svg>
+
+      {/* Floating HTML Tooltip */}
+      {hoverIndex !== null && (
+        <div 
+          className="absolute pointer-events-none z-10 bg-slate-900/95 dark:bg-slate-800/95 backdrop-blur shadow-xl border border-white/10 rounded-xl p-3 flex flex-col gap-2 min-w-[140px]"
+          style={{
+            left: Math.min(
+              px + (hoverIndex / Math.max(labels.length - 1, 1)) * innerWidth + 15,
+              width - 160 // prevent clipping on right side
+            ),
+            top: '10%'
+          }}
+        >
+          <p className="text-xs font-semibold text-white border-b border-white/10 pb-2 mb-1">{labels[hoverIndex]}</p>
+          {datasetsWithPoints.map((ds, idx) => (
+            <div key={idx} className="flex items-center justify-between gap-4">
+              <span className="flex items-center gap-1.5 text-xs text-slate-300">
+                <span className="w-2 h-2 rounded-full" style={{ backgroundColor: ds.color }} />
+                {ds.label}
+              </span>
+              <span className="font-bold text-white text-sm">{ds.points[hoverIndex]?.val}</span>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 };

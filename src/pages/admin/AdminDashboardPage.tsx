@@ -25,7 +25,17 @@ const Sparkline: React.FC<{
     x: (i / Math.max(data.length - 1, 1)) * width,
     y: height - ((v - min) / range) * (height - 4) - 2,
   }));
-  const line = points.map((p, i) => `${i === 0 ? 'M' : 'L'}${p.x},${p.y}`).join(' ');
+  let line = '';
+  if (points.length > 0) {
+    line = `M${points[0].x},${points[0].y}`;
+    for(let i=1; i<points.length; i++) {
+      const p0 = points[i-1];
+      const p1 = points[i];
+      const cp1x = p0.x + (p1.x - p0.x) / 3;
+      const cp2x = p1.x - (p1.x - p0.x) / 3;
+      line += ` C${cp1x},${p0.y} ${cp2x},${p1.y} ${p1.x},${p1.y}`;
+    }
+  }
   const area = `${line} L${width},${height} L0,${height} Z`;
   const id = `grad-${color.replace('#', '')}`;
 
@@ -69,9 +79,24 @@ const AreaChart: React.FC<{
       x: (i / Math.max(data.length - 1, 1)) * width,
       y: height - (v / max) * (height - 20) - 10,
     }));
+    
+    let line = '';
+    let area = '';
+    if (points.length > 0) {
+      line = `M${points[0].x},${points[0].y}`;
+      for(let i=1; i<points.length; i++) {
+        const p0 = points[i-1];
+        const p1 = points[i];
+        const cp1x = p0.x + (p1.x - p0.x) / 3;
+        const cp2x = p1.x - (p1.x - p0.x) / 3;
+        line += ` C${cp1x},${p0.y} ${cp2x},${p1.y} ${p1.x},${p1.y}`;
+      }
+      area = `${line} L${width},${height} L0,${height} Z`;
+    }
+
     return {
-      line: points.map((p, i) => `${i === 0 ? 'M' : 'L'}${p.x},${p.y}`).join(' '),
-      area: `${points.map((p, i) => `${i === 0 ? 'M' : 'L'}${p.x},${p.y}`).join(' ')} L${width},${height} L0,${height} Z`,
+      line,
+      area,
       points,
     };
   };

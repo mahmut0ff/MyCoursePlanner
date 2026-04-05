@@ -40,7 +40,7 @@ const Sparkline: React.FC<{
   const id = `grad-${color.replace('#', '')}`;
 
   return (
-    <svg viewBox={`0 0 ${width} ${height}`} className="w-full" style={{ height }}>
+    <svg viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="none" className="w-full" style={{ height }}>
       <defs>
         <linearGradient id={id} x1="0" y1="0" x2="0" y2="1">
           <stop offset="0%" stopColor={color} stopOpacity={0.3} />
@@ -70,7 +70,19 @@ const AreaChart: React.FC<{
   labels: string[];
   height?: number;
 }> = ({ datasets, labels, height = 220 }) => {
-  const width = 700;
+  const containerRef = React.useRef<HTMLDivElement>(null);
+  const [width, setWidth] = useState(700);
+
+  useEffect(() => {
+    const observer = new ResizeObserver((entries) => {
+      if (entries[0]) {
+        setWidth(Math.max(entries[0].contentRect.width, 500));
+      }
+    });
+    if (containerRef.current) observer.observe(containerRef.current);
+    return () => observer.disconnect();
+  }, []);
+
   const allValues = datasets.flatMap((d) => d.data);
   const max = Math.max(...allValues, 1);
 
@@ -104,7 +116,7 @@ const AreaChart: React.FC<{
   const ySteps = Array.from({ length: 5 }, (_, i) => Math.round((max / 4) * i));
 
   return (
-    <div className="w-full overflow-x-auto">
+    <div ref={containerRef} className="w-full overflow-x-auto">
       <svg viewBox={`0 0 ${width} ${height + 30}`} className="w-full min-w-[500px]" style={{ height: height + 30 }}>
         <defs>
           {datasets.map((ds, idx) => (

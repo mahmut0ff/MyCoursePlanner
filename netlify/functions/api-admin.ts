@@ -88,7 +88,10 @@ const handler: Handler = async (event: HandlerEvent) => {
       const limit = parseInt(params.limit || '50');
 
       let snap = await adminDb.collection('organizations').orderBy('createdAt', 'desc').get();
-      let orgs = snap.docs.map(d => ({ id: d.id, ...d.data() } as any));
+      let orgs = snap.docs.map(d => {
+        const data = d.data();
+        return { id: d.id, ...data, planId: data.planId || 'starter' } as any;
+      });
 
       if (search) orgs = orgs.filter(o => o.name?.toLowerCase().includes(search) || o.ownerEmail?.toLowerCase().includes(search) || o.slug?.toLowerCase().includes(search));
       if (statusFilter) orgs = orgs.filter(o => o.status === statusFilter);
@@ -207,7 +210,7 @@ const handler: Handler = async (event: HandlerEvent) => {
       const doc = await adminDb.collection('organizations').doc(body.id).get();
       const before = doc.data();
       await adminDb.collection('organizations').doc(body.id).update({ status: 'suspended', updatedAt: new Date().toISOString() });
-      await auditLog(user, 'org_suspended', 'organization', body.id, before, { status: 'suspended' }, { reason: body.reason });
+      await auditLog(user, 'org_suspended', 'organization', body.id, before, { status: 'suspended' }, body.reason ? { reason: body.reason } : undefined);
       return ok({ success: true });
     }
 

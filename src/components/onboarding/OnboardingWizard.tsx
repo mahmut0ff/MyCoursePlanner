@@ -59,6 +59,7 @@ const OnboardingWizard: React.FC<Props> = ({ lessonsCount, examsCount, studentsC
   ];
 
   const completedCount = steps.filter(s => s.done).length;
+  const progress = Math.round((completedCount / steps.length) * 100);
 
   // Don't show if all done, manually dismissed, or org is too old
   if (completedCount === steps.length || dismissed || !shouldShowOnboarding(orgCreatedAt)) return null;

@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { useTranslation } from 'react-i18next';
 import { Building2, Palette, Bot, Grid, ChevronRight, CheckCircle2, X } from 'lucide-react';
 
 interface Props {

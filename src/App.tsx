@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { lazy, Suspense } from 'react';
 import { Toaster } from 'react-hot-toast';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
@@ -6,100 +6,100 @@ import { ThemeProvider } from './contexts/ThemeContext';
 import ProtectedRoute from './components/auth/ProtectedRoute';
 import PlanGuard from './components/guards/PlanGuard';
 import AppLayout from './components/layout/AppLayout';
-import LoginPage from './pages/auth/LoginPage';
-import RegisterPage from './pages/auth/RegisterPage';
-import ParentPortalPage from './pages/parent/ParentPortalPage';
-import OnboardingPage from './pages/auth/OnboardingPage';
+const LoginPage = lazy(() => import('./pages/auth/LoginPage'));
+const RegisterPage = lazy(() => import('./pages/auth/RegisterPage'));
+const ParentPortalPage = lazy(() => import('./pages/parent/ParentPortalPage'));
+const OnboardingPage = lazy(() => import('./pages/auth/OnboardingPage'));
 
-import DashboardPage from './pages/dashboard/DashboardPage';
-import GradebookPage from './pages/gradebook/GradebookPage';
-import JournalPage from './pages/journal/JournalPage';
-import AdminGradebookAnalytics from './pages/admin/AdminGradebookAnalytics';
-import LessonListPage from './pages/lessons/LessonListPage';
-import LessonEditPage from './pages/lessons/LessonEditPage';
-import LessonViewPage from './pages/lessons/LessonViewPage';
-import ExamListPage from './pages/exams/ExamListPage';
-import ExamEditPage from './pages/exams/ExamEditPage';
-import ExamViewPage from './pages/exams/ExamViewPage';
-import RoomListPage from './pages/rooms/RoomListPage';
-import RoomPage from './pages/rooms/RoomPage';
-import JoinRoomPage from './pages/rooms/JoinRoomPage';
-import ExamTakePage from './pages/rooms/ExamTakePage';
-import ResultPage from './pages/rooms/ResultPage';
-import MyResultsPage from './pages/rooms/MyResultsPage';
-import BillingPage from './pages/billing/BillingPage';
-import CertificatePage from './pages/certificates/CertificatePage';
-import MyCertificatesPage from './pages/certificates/MyCertificatesPage';
-import PaymentSuccessPage from './pages/billing/PaymentSuccessPage';
-import PaymentFailurePage from './pages/billing/PaymentFailurePage';
-import StudentProfilePage from './pages/profile/StudentProfilePage';
-import AchievementsPage from './pages/achievements/AchievementsPage';
-import StudentDiaryPage from './pages/student/StudentDiaryPage';
-import StudentProgressPage from './pages/student/StudentProgressPage';
-import StudentCoursesPage from './pages/student/StudentCoursesPage';
-import StudentTeachersPage from './pages/student/StudentTeachersPage';
-import StudentGroupsPage from './pages/student/StudentGroupsPage';
-import StudentSchedulePage from './pages/student/StudentSchedulePage';
+const DashboardPage = lazy(() => import('./pages/dashboard/DashboardPage'));
+const GradebookPage = lazy(() => import('./pages/gradebook/GradebookPage'));
+const JournalPage = lazy(() => import('./pages/journal/JournalPage'));
+const AdminGradebookAnalytics = lazy(() => import('./pages/admin/AdminGradebookAnalytics'));
+const LessonListPage = lazy(() => import('./pages/lessons/LessonListPage'));
+const LessonEditPage = lazy(() => import('./pages/lessons/LessonEditPage'));
+const LessonViewPage = lazy(() => import('./pages/lessons/LessonViewPage'));
+const ExamListPage = lazy(() => import('./pages/exams/ExamListPage'));
+const ExamEditPage = lazy(() => import('./pages/exams/ExamEditPage'));
+const ExamViewPage = lazy(() => import('./pages/exams/ExamViewPage'));
+const RoomListPage = lazy(() => import('./pages/rooms/RoomListPage'));
+const RoomPage = lazy(() => import('./pages/rooms/RoomPage'));
+const JoinRoomPage = lazy(() => import('./pages/rooms/JoinRoomPage'));
+const ExamTakePage = lazy(() => import('./pages/rooms/ExamTakePage'));
+const ResultPage = lazy(() => import('./pages/rooms/ResultPage'));
+const MyResultsPage = lazy(() => import('./pages/rooms/MyResultsPage'));
+const BillingPage = lazy(() => import('./pages/billing/BillingPage'));
+const CertificatePage = lazy(() => import('./pages/certificates/CertificatePage'));
+const MyCertificatesPage = lazy(() => import('./pages/certificates/MyCertificatesPage'));
+const PaymentSuccessPage = lazy(() => import('./pages/billing/PaymentSuccessPage'));
+const PaymentFailurePage = lazy(() => import('./pages/billing/PaymentFailurePage'));
+const StudentProfilePage = lazy(() => import('./pages/profile/StudentProfilePage'));
+const AchievementsPage = lazy(() => import('./pages/achievements/AchievementsPage'));
+const StudentDiaryPage = lazy(() => import('./pages/student/StudentDiaryPage'));
+const StudentProgressPage = lazy(() => import('./pages/student/StudentProgressPage'));
+const StudentCoursesPage = lazy(() => import('./pages/student/StudentCoursesPage'));
+const StudentTeachersPage = lazy(() => import('./pages/student/StudentTeachersPage'));
+const StudentGroupsPage = lazy(() => import('./pages/student/StudentGroupsPage'));
+const StudentSchedulePage = lazy(() => import('./pages/student/StudentSchedulePage'));
 
 // Quiz Pages
-import QuizLibraryPage from './pages/quiz/QuizLibraryPage';
-import QuizBuilderPage from './pages/quiz/QuizBuilderPage';
-import LiveSessionDashboard from './pages/quiz/LiveSessionDashboard';
-import SessionHistoryPage from './pages/quiz/SessionHistoryPage';
-import SessionAnalyticsPage from './pages/quiz/SessionAnalyticsPage';
-import JoinQuizPage from './pages/quiz/JoinQuizPage';
-import QuizPlayPage from './pages/quiz/QuizPlayPage';
+const QuizLibraryPage = lazy(() => import('./pages/quiz/QuizLibraryPage'));
+const QuizBuilderPage = lazy(() => import('./pages/quiz/QuizBuilderPage'));
+const LiveSessionDashboard = lazy(() => import('./pages/quiz/LiveSessionDashboard'));
+const SessionHistoryPage = lazy(() => import('./pages/quiz/SessionHistoryPage'));
+const SessionAnalyticsPage = lazy(() => import('./pages/quiz/SessionAnalyticsPage'));
+const JoinQuizPage = lazy(() => import('./pages/quiz/JoinQuizPage'));
+const QuizPlayPage = lazy(() => import('./pages/quiz/QuizPlayPage'));
 
 // Mega Features
-import StudentRiskDashboard from './pages/teacher-analytics/StudentRiskDashboard';
-import HomeworkReviewPage from './pages/homework/HomeworkReviewPage';
+const StudentRiskDashboard = lazy(() => import('./pages/teacher-analytics/StudentRiskDashboard'));
+const HomeworkReviewPage = lazy(() => import('./pages/homework/HomeworkReviewPage'));
 
 // Org Pages
-import CoursesPage from './pages/courses/CoursesPage';
-import FinancesPage from './pages/finances/FinancesPage';
-import GroupsPage from './pages/groups/GroupsPage';
-import StudentsPage from './pages/students/StudentsPage';
-import TeachersPage from './pages/teachers/TeachersPage';
-import ManagersPage from './pages/managers/ManagersPage';
-import MaterialsPage from './pages/materials/MaterialsPage';
-import SchedulePage from './pages/schedule/SchedulePage';
-import OrgResultsPage from './pages/results/ResultsPage';
-import OrgUsersPage from './pages/org-users/OrgUsersPage';
-import OrgSettingsPage from './pages/org-settings/OrgSettingsPage';
-import BranchesPage from './pages/branches/BranchesPage';
-import TeacherProfilePage from './pages/teacher-profile/TeacherProfilePage';
-import TeacherInvitesPage from './pages/invites/TeacherInvitesPage';
-import NotificationsPage from './pages/notifications/NotificationsPage';
-import TeacherSettingsPage from './pages/teacher-settings/TeacherSettingsPage';
+const CoursesPage = lazy(() => import('./pages/courses/CoursesPage'));
+const FinancesPage = lazy(() => import('./pages/finances/FinancesPage'));
+const GroupsPage = lazy(() => import('./pages/groups/GroupsPage'));
+const StudentsPage = lazy(() => import('./pages/students/StudentsPage'));
+const TeachersPage = lazy(() => import('./pages/teachers/TeachersPage'));
+const ManagersPage = lazy(() => import('./pages/managers/ManagersPage'));
+const MaterialsPage = lazy(() => import('./pages/materials/MaterialsPage'));
+const SchedulePage = lazy(() => import('./pages/schedule/SchedulePage'));
+const OrgResultsPage = lazy(() => import('./pages/results/ResultsPage'));
+const OrgUsersPage = lazy(() => import('./pages/org-users/OrgUsersPage'));
+const OrgSettingsPage = lazy(() => import('./pages/org-settings/OrgSettingsPage'));
+const BranchesPage = lazy(() => import('./pages/branches/BranchesPage'));
+const TeacherProfilePage = lazy(() => import('./pages/teacher-profile/TeacherProfilePage'));
+const TeacherInvitesPage = lazy(() => import('./pages/invites/TeacherInvitesPage'));
+const NotificationsPage = lazy(() => import('./pages/notifications/NotificationsPage'));
+const TeacherSettingsPage = lazy(() => import('./pages/teacher-settings/TeacherSettingsPage'));
 // TeacherAnalyticsPage route uses AdminGradebookAnalytics component
 
 // Detail Pages
-import StudentDetailPage from './pages/students/StudentDetailPage';
-import TeacherDetailPage from './pages/teachers/TeacherDetailPage';
-import ManagerDetailPage from './pages/managers/ManagerDetailPage';
-import CourseDetailPage from './pages/courses/CourseDetailPage';
-import GroupDetailPage from './pages/groups/GroupDetailPage';
-import OrgUserDetailPage from './pages/org-users/OrgUserDetailPage';
-import AdminUserDetailPage from './pages/admin/AdminUserDetailPage';
-import AdminOrgDetailPage from './pages/admin/AdminOrgDetailPage';
+const StudentDetailPage = lazy(() => import('./pages/students/StudentDetailPage'));
+const TeacherDetailPage = lazy(() => import('./pages/teachers/TeacherDetailPage'));
+const ManagerDetailPage = lazy(() => import('./pages/managers/ManagerDetailPage'));
+const CourseDetailPage = lazy(() => import('./pages/courses/CourseDetailPage'));
+const GroupDetailPage = lazy(() => import('./pages/groups/GroupDetailPage'));
+const OrgUserDetailPage = lazy(() => import('./pages/org-users/OrgUserDetailPage'));
+const AdminUserDetailPage = lazy(() => import('./pages/admin/AdminUserDetailPage'));
+const AdminOrgDetailPage = lazy(() => import('./pages/admin/AdminOrgDetailPage'));
 
 // Directory Pages (Ecosystem)
-import OrganizationsDirectoryPage from './pages/directory/OrganizationsDirectoryPage';
-import PublicOrgProfilePage from './pages/directory/PublicOrgProfilePage';
+const OrganizationsDirectoryPage = lazy(() => import('./pages/directory/OrganizationsDirectoryPage'));
+const PublicOrgProfilePage = lazy(() => import('./pages/directory/PublicOrgProfilePage'));
 
 // Admin Pages
-import AdminDashboardPage from './pages/admin/AdminDashboardPage';
-import AdminOrganizationsPage from './pages/admin/AdminOrganizationsPage';
-import AdminUsersPage from './pages/admin/AdminUsersPage';
-import AdminBillingPage from './pages/admin/AdminBillingPage';
-import AdminAuditLogsPage from './pages/admin/AdminAuditLogsPage';
-import AdminFeatureFlagsPage from './pages/admin/AdminFeatureFlagsPage';
-import AdminSystemHealthPage from './pages/admin/AdminSystemHealthPage';
-import AdminPlansPage from './pages/admin/AdminPlansPage';
-import AdminIntegrationsPage from './pages/admin/AdminIntegrationsPage';
-import AdminSettingsPage from './pages/admin/AdminSettingsPage';
+const AdminDashboardPage = lazy(() => import('./pages/admin/AdminDashboardPage'));
+const AdminOrganizationsPage = lazy(() => import('./pages/admin/AdminOrganizationsPage'));
+const AdminUsersPage = lazy(() => import('./pages/admin/AdminUsersPage'));
+const AdminBillingPage = lazy(() => import('./pages/admin/AdminBillingPage'));
+const AdminAuditLogsPage = lazy(() => import('./pages/admin/AdminAuditLogsPage'));
+const AdminFeatureFlagsPage = lazy(() => import('./pages/admin/AdminFeatureFlagsPage'));
+const AdminSystemHealthPage = lazy(() => import('./pages/admin/AdminSystemHealthPage'));
+const AdminPlansPage = lazy(() => import('./pages/admin/AdminPlansPage'));
+const AdminIntegrationsPage = lazy(() => import('./pages/admin/AdminIntegrationsPage'));
+const AdminSettingsPage = lazy(() => import('./pages/admin/AdminSettingsPage'));
 
-import DocumentViewerPage from './pages/viewer/DocumentViewerPage';
+const DocumentViewerPage = lazy(() => import('./pages/viewer/DocumentViewerPage'));
 
 const App: React.FC = () => {
   return (
@@ -107,6 +107,7 @@ const App: React.FC = () => {
     <AuthProvider>
       <BrowserRouter>
         <Toaster position="top-right" toastOptions={{ duration: 3000, style: { borderRadius: '12px', padding: '12px 16px', fontSize: '14px' } }} />
+        <Suspense fallback={<div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-slate-900"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div></div>}>
         <Routes>
           {/* Public */}
             <Route path="/" element={<Navigate to="/login" replace />} />
@@ -232,6 +233,7 @@ const App: React.FC = () => {
           {/* Fallback */}
           <Route path="*" element={<Navigate to="/dashboard" replace />} />
         </Routes>
+        </Suspense>
       </BrowserRouter>
     </AuthProvider>
     </ThemeProvider>

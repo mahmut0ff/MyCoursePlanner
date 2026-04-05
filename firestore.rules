@@ -22,7 +22,20 @@ service cloud.firestore {
       allow read: if isSuperAdmin() || request.auth.uid == userId || 
         (request.auth != null && resource.data.organizationId != null && 
          resource.data.organizationId == get(/databases/$(database)/documents/users/$(request.auth.uid)).data.organizationId);
-      allow write: if isSuperAdmin() || request.auth.uid == userId;
+      
+      allow create: if isSuperAdmin() || (
+        request.auth.uid == userId &&
+        (!('role' in request.resource.data) || request.resource.data.role != 'super_admin') &&
+        (!('organizationId' in request.resource.data) || request.resource.data.organizationId == '') &&
+        (!('activeOrgId' in request.resource.data) || request.resource.data.activeOrgId == '')
+      );
+
+      allow update: if isSuperAdmin() || (
+        request.auth.uid == userId &&
+        !request.resource.data.diff(resource.data).affectedKeys().hasAny(['role', 'organizationId', 'activeOrgId', 'branchIds'])
+      );
+
+      allow delete: if isSuperAdmin();
       
       match /memberships/{orgId} {
         allow read: if request.auth != null;

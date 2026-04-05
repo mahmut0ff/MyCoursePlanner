@@ -121,7 +121,7 @@ const Sidebar: React.FC<{ open: boolean; onClose: () => void; isCollapsed?: bool
                 <LayoutDashboard className="w-4 h-4" /><span>{t('nav.overview')}</span>
               </NavLink>
 
-              <CollapsibleSection label={t('nav.sectionManagement', 'Управление')} icon={Shield} defaultOpen>
+              <CollapsibleSection isCollapsed={isCollapsed} label={t('nav.sectionManagement', 'Управление')} icon={Shield} defaultOpen>
                 <NavLink to="/admin/organizations" className={linkClass} onClick={onClose}>
                   <Building2 className="w-4 h-4" /><span>{t('nav.organizations')}</span>
                 </NavLink>
@@ -136,7 +136,7 @@ const Sidebar: React.FC<{ open: boolean; onClose: () => void; isCollapsed?: bool
                 </NavLink>
               </CollapsibleSection>
 
-              <CollapsibleSection label={t('nav.sectionSystem', 'Система')} icon={Database}>
+              <CollapsibleSection isCollapsed={isCollapsed} label={t('nav.sectionSystem', 'Система')} icon={Database}>
                 <NavLink to="/admin/audit-logs" className={linkClass} onClick={onClose}>
                   <Activity className="w-4 h-4" /><span>{t('nav.auditLogs')}</span>
                 </NavLink>
@@ -163,7 +163,7 @@ const Sidebar: React.FC<{ open: boolean; onClose: () => void; isCollapsed?: bool
                 <LayoutDashboard className="w-4 h-4" /><span>{t('nav.dashboard')}</span>
               </NavLink>
 
-              <CollapsibleSection label={t('nav.sectionPeople', 'Люди и Клиенты')} icon={Users} defaultOpen>
+              <CollapsibleSection isCollapsed={isCollapsed} label={t('nav.sectionPeople', 'Люди и Клиенты')} icon={Users} defaultOpen>
                 <NavLink to="/managers" className={linkClass} onClick={onClose}>
                   <ShieldCheck className="w-4 h-4" /><span>{t('nav.managers', 'Менеджеры')}</span>
                 </NavLink>
@@ -175,7 +175,7 @@ const Sidebar: React.FC<{ open: boolean; onClose: () => void; isCollapsed?: bool
                 </NavLink>
               </CollapsibleSection>
 
-              <CollapsibleSection label={t('nav.sectionOrg', 'Управление и Аналитика')} icon={Building2} defaultOpen>
+              <CollapsibleSection isCollapsed={isCollapsed} label={t('nav.sectionOrg', 'Управление и Аналитика')} icon={Building2} defaultOpen>
                 <NavLink to="/finances" className={({ isActive }) => `${linkClass({ isActive })} ${!canAccess('finances') ? 'opacity-50' : ''}`} onClick={onClose}>
                   <CreditCard className="w-4 h-4" /><span>{t('nav.finances', 'Финансы')}</span>
                   {!canAccess('finances') && <Lock className="w-3 h-3 ml-auto text-slate-500" />}
@@ -196,7 +196,7 @@ const Sidebar: React.FC<{ open: boolean; onClose: () => void; isCollapsed?: bool
                 </NavLink>
               </CollapsibleSection>
 
-              <CollapsibleSection label={t('nav.sectionEducation', 'Образовательные Продукты')} icon={GraduationCap}>
+              <CollapsibleSection isCollapsed={isCollapsed} label={t('nav.sectionEducation', 'Образовательные Продукты')} icon={GraduationCap}>
                 <NavLink to="/courses" className={linkClass} onClick={onClose}>
                   <FolderOpen className="w-4 h-4" /><span>{t('nav.courses')}</span>
                 </NavLink>
@@ -205,7 +205,7 @@ const Sidebar: React.FC<{ open: boolean; onClose: () => void; isCollapsed?: bool
                 </NavLink>
               </CollapsibleSection>
 
-              <CollapsibleSection label={t('nav.sectionLibrary', 'Библиотека Контента')} icon={Library}>
+              <CollapsibleSection isCollapsed={isCollapsed} label={t('nav.sectionLibrary', 'Библиотека Контента')} icon={Library}>
                 <NavLink to="/lessons" className={linkClass} onClick={onClose}>
                   <BookOpen className="w-4 h-4" /><span>{t('nav.lessons')}</span>
                 </NavLink>
@@ -233,7 +233,7 @@ const Sidebar: React.FC<{ open: boolean; onClose: () => void; isCollapsed?: bool
 
               {managerWithOrg && (
                 <>
-                  <CollapsibleSection label={t('nav.sectionPeople', 'Люди и Клиенты')} icon={Users} defaultOpen>
+                  <CollapsibleSection isCollapsed={isCollapsed} label={t('nav.sectionPeople', 'Люди и Клиенты')} icon={Users} defaultOpen>
                     <NavLink to="/students" className={linkClass} onClick={onClose}>
                       <Users className="w-4 h-4" /><span>{t('nav.students')}</span>
                     </NavLink>
@@ -242,7 +242,7 @@ const Sidebar: React.FC<{ open: boolean; onClose: () => void; isCollapsed?: bool
                     </NavLink>
                   </CollapsibleSection>
 
-                  <CollapsibleSection label={t('nav.sectionOrg', 'Управление и Аналитика')} icon={Building2} defaultOpen>
+                  <CollapsibleSection isCollapsed={isCollapsed} label={t('nav.sectionOrg', 'Управление и Аналитика')} icon={Building2} defaultOpen>
                     <NavLink to="/finances" className={({ isActive }) => `${linkClass({ isActive })} ${!canAccess('finances') ? 'opacity-50' : ''}`} onClick={onClose}>
                       <CreditCard className="w-4 h-4" /><span>{t('nav.finances', 'Финансы')}</span>
                       {!canAccess('finances') && <Lock className="w-3 h-3 ml-auto text-slate-500" />}
@@ -262,7 +262,7 @@ const Sidebar: React.FC<{ open: boolean; onClose: () => void; isCollapsed?: bool
                     </NavLink>
                   </CollapsibleSection>
 
-                  <CollapsibleSection label={t('nav.sectionEducation', 'Образовательные Продукты')} icon={GraduationCap}>
+                  <CollapsibleSection isCollapsed={isCollapsed} label={t('nav.sectionEducation', 'Образовательные Продукты')} icon={GraduationCap}>
                     <NavLink to="/courses" className={linkClass} onClick={onClose}>
                       <FolderOpen className="w-4 h-4" /><span>{t('nav.courses')}</span>
                     </NavLink>
@@ -271,7 +271,7 @@ const Sidebar: React.FC<{ open: boolean; onClose: () => void; isCollapsed?: bool
                     </NavLink>
                   </CollapsibleSection>
 
-                  <CollapsibleSection label={t('nav.sectionLibrary', 'Библиотека Контента')} icon={Library}>
+                  <CollapsibleSection isCollapsed={isCollapsed} label={t('nav.sectionLibrary', 'Библиотека Контента')} icon={Library}>
                     <NavLink to="/lessons" className={linkClass} onClick={onClose}>
                       <BookOpen className="w-4 h-4" /><span>{t('nav.lessons')}</span>
                     </NavLink>
@@ -301,7 +301,7 @@ const Sidebar: React.FC<{ open: boolean; onClose: () => void; isCollapsed?: bool
 
               {teacherWithOrg && (
                 <>
-                  <CollapsibleSection label={t('nav.sectionEducation', 'Обучение')} icon={GraduationCap} defaultOpen>
+                  <CollapsibleSection isCollapsed={isCollapsed} label={t('nav.sectionEducation', 'Обучение')} icon={GraduationCap} defaultOpen>
                     <NavLink to="/journal" className={({ isActive }) => `${linkClass({ isActive })} ${!canAccess('gradebook') ? 'opacity-50' : ''}`} onClick={onClose}>
                       <ClipboardList className="w-4 h-4" /><span>{t('nav.journal', 'Журнал')}</span>
                       {!canAccess('gradebook') && <Lock className="w-3 h-3 ml-auto text-slate-500" />}
@@ -333,7 +333,7 @@ const Sidebar: React.FC<{ open: boolean; onClose: () => void; isCollapsed?: bool
                     </NavLink>
                   </CollapsibleSection>
 
-                  <CollapsibleSection label={t('nav.sectionQuiz', 'Квизы')} icon={Gamepad2}>
+                  <CollapsibleSection isCollapsed={isCollapsed} label={t('nav.sectionQuiz', 'Квизы')} icon={Gamepad2}>
                     <NavLink to="/quiz/library" className={linkClass} onClick={onClose}>
                       <Library className="w-4 h-4" /><span>{t('nav.quizLibrary')}</span>
                     </NavLink>
@@ -342,7 +342,7 @@ const Sidebar: React.FC<{ open: boolean; onClose: () => void; isCollapsed?: bool
                     </NavLink>
                   </CollapsibleSection>
 
-                  <CollapsibleSection label={t('nav.sectionOrg', 'Организация')} icon={Building2}>
+                  <CollapsibleSection isCollapsed={isCollapsed} label={t('nav.sectionOrg', 'Организация')} icon={Building2}>
                     <NavLink to="/schedule" className={linkClass} onClick={onClose}>
                       <Calendar className="w-4 h-4" /><span>{t('nav.schedule')}</span>
                     </NavLink>
@@ -364,7 +364,7 @@ const Sidebar: React.FC<{ open: boolean; onClose: () => void; isCollapsed?: bool
               {/* Personal workspace for independent teachers */}
               {!teacherWithOrg && (
                 <>
-                  <CollapsibleSection label={t('nav.sectionPersonalWorkspace', 'Личное пространство')} icon={FolderOpen} defaultOpen>
+                  <CollapsibleSection isCollapsed={isCollapsed} label={t('nav.sectionPersonalWorkspace', 'Личное пространство')} icon={FolderOpen} defaultOpen>
                     <NavLink to="/lessons" className={linkClass} onClick={onClose}>
                       <BookOpen className="w-4 h-4" /><span>{t('nav.myLessons', 'Мои уроки')}</span>
                     </NavLink>
@@ -379,7 +379,7 @@ const Sidebar: React.FC<{ open: boolean; onClose: () => void; isCollapsed?: bool
                     </NavLink>
                   </CollapsibleSection>
 
-                  <CollapsibleSection label={t('nav.sectionQuiz', 'Квизы')} icon={Gamepad2}>
+                  <CollapsibleSection isCollapsed={isCollapsed} label={t('nav.sectionQuiz', 'Квизы')} icon={Gamepad2}>
                     <NavLink to="/quiz/library" className={linkClass} onClick={onClose}>
                       <Library className="w-4 h-4" /><span>{t('nav.quizLibrary')}</span>
                     </NavLink>
@@ -415,7 +415,7 @@ const Sidebar: React.FC<{ open: boolean; onClose: () => void; isCollapsed?: bool
                     <BookOpen className="w-4 h-4" /><span>{t('nav.diary', 'Мой дневник')}</span>
                   </NavLink>
 
-                  <CollapsibleSection label={t('nav.sectionEducation', 'Обучение')} icon={GraduationCap} defaultOpen>
+                  <CollapsibleSection isCollapsed={isCollapsed} label={t('nav.sectionEducation', 'Обучение')} icon={GraduationCap} defaultOpen>
                     <NavLink to="/student/courses" className={linkClass} onClick={onClose}>
                       <FolderOpen className="w-4 h-4" /><span>{t('nav.myCourses', 'Мои курсы')}</span>
                     </NavLink>
@@ -433,7 +433,7 @@ const Sidebar: React.FC<{ open: boolean; onClose: () => void; isCollapsed?: bool
                     </NavLink>
                   </CollapsibleSection>
 
-                  <CollapsibleSection label={t('nav.sectionExams', 'Экзамены и тесты')} icon={ClipboardList}>
+                  <CollapsibleSection isCollapsed={isCollapsed} label={t('nav.sectionExams', 'Экзамены и тесты')} icon={ClipboardList}>
                     <NavLink to="/join" className={linkClass} onClick={onClose}>
                       <Radio className="w-4 h-4" /><span>{t('rooms.join')}</span>
                     </NavLink>

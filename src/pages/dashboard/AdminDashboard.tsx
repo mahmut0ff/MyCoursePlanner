@@ -50,10 +50,8 @@ const AdminDashboard: React.FC = () => {
   const greeting = hour < 12 ? '🌅 ' + t('dashboard.goodMorning', 'Доброе утро') : hour < 18 ? '☀️ ' + t('dashboard.goodAfternoon', 'Добрый день') : '🌙 ' + t('dashboard.goodEvening', 'Добрый вечер');
 
   const onboardingProps = {
-    lessonsCount: lessons.length,
-    examsCount: exams.length,
-    studentsCount: orgData?.studentsCount || 0,
-    teachersCount: orgData?.teachersCount || 0,
+    orgData,
+    branchData,
     orgCreatedAt: orgData?.createdAt || profile?.createdAt,
   };
   const onboarding = useOnboardingProgress(onboardingProps);

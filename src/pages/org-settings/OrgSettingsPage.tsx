@@ -37,7 +37,7 @@ const TABS: { id: Tab; icon: React.ElementType; labelKey: string }[] = [
 /* ════════════════════════════════════ PROFILE ════════════════════════════════════ */
 const ProfileTab: React.FC = () => {
   const { t } = useTranslation();
-  const { profile, refreshProfile } = useAuth();
+  const { profile, refreshProfile, isSuperAdmin } = useAuth();
   const [form, setForm] = useState({
     firstName: profile?.displayName?.split(' ')[0] || '',
     lastName: profile?.displayName?.split(' ').slice(1).join(' ') || '',
@@ -99,7 +99,7 @@ const ProfileTab: React.FC = () => {
         <div>
           <h3 className="text-lg font-bold text-slate-900 dark:text-white">{profile?.displayName}</h3>
           <p className="text-sm text-slate-500 dark:text-slate-400">{profile?.email}</p>
-          <span className="inline-flex px-2 py-0.5 rounded text-xs font-medium bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-400 mt-1 capitalize">{profile?.role?.replace('_', ' ')}</span>
+          <span className="inline-flex px-2 py-0.5 rounded text-xs font-medium bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-400 mt-1 capitalize">{profile?.role === 'admin' && !isSuperAdmin ? t('roles.director', 'Директор') : profile?.role?.replace('_', ' ')}</span>
         </div>
       </div>
 

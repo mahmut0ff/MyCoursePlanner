@@ -104,6 +104,24 @@ const AdminUserDetailPage: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* Recent Activity */}
+      {user.recentActivity?.length > 0 && (
+        <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-5 mt-4">
+          <h2 className="text-sm font-semibold text-slate-900 dark:text-white mb-3">{t('admin.users.recentActivity', 'Недавняя активность')}</h2>
+          <div className="space-y-2">
+            {user.recentActivity.slice(0, 10).map((a: any) => (
+              <div key={a.id} className="bg-slate-50 dark:bg-slate-700/50 rounded-lg px-4 py-2.5 flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-slate-900 dark:text-white">{a.action}</p>
+                  <p className="text-[10px] text-slate-400">{new Date(a.createdAt).toLocaleString()}</p>
+                </div>
+                <span className="text-xs bg-slate-200 dark:bg-slate-600 px-2 py-0.5 rounded text-slate-600 dark:text-slate-300">{a.entityType}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 };

@@ -277,14 +277,25 @@ const handler: Handler = async (event: HandlerEvent) => {
       if (!doc.exists) return notFound('User not found');
       const userData = { uid: doc.id, ...doc.data() };
 
-      // Get user activity
-      const attemptsSnap = await adminDb.collection('examAttempts').where('studentId', '==', uid).orderBy('submittedAt', 'desc').limit(10).get();
-      const activitySnap = await adminDb.collection('auditLogs').where('actorId', '==', uid).orderBy('createdAt', 'desc').limit(10).get();
+      // Get user activity (graceful fallback if composite indices are not ready)
+      let attemptsSnap: any;
+      try {
+        attemptsSnap = await adminDb.collection('examAttempts').where('studentId', '==', uid).orderBy('submittedAt', 'desc').limit(10).get();
+      } catch {
+        attemptsSnap = await adminDb.collection('examAttempts').where('studentId', '==', uid).limit(10).get();
+      }
+
+      let activitySnap: any;
+      try {
+        activitySnap = await adminDb.collection('auditLogs').where('actorId', '==', uid).orderBy('createdAt', 'desc').limit(10).get();
+      } catch {
+        activitySnap = await adminDb.collection('auditLogs').where('actorId', '==', uid).limit(10).get();
+      }
 
       return ok({
         ...userData,
-        recentAttempts: attemptsSnap.docs.map(d => ({ id: d.id, ...d.data() })),
-        recentActivity: activitySnap.docs.map(d => ({ id: d.id, ...d.data() })),
+        recentAttempts: attemptsSnap.docs.map((d: any) => ({ id: d.id, ...d.data() })),
+        recentActivity: activitySnap.docs.map((d: any) => ({ id: d.id, ...d.data() })),
       });
     }
 

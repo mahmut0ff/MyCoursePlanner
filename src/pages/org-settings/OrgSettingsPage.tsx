@@ -12,14 +12,17 @@ import {
 import type { OrgSettings } from '../../types';
 import QRCode from 'qrcode';
 import { AIManagerTab } from './AIManagerTab';
+import { IntegrationsTab } from './IntegrationsTab';
 import toast from 'react-hot-toast';
+import { Link } from 'lucide-react';
 
-type Tab = 'general' | 'academic' | 'visitcard' | 'notifications' | 'data' | 'limits' | 'ai';
+type Tab = 'general' | 'academic' | 'visitcard' | 'integrations' | 'notifications' | 'data' | 'limits' | 'ai';
 
 const TABS: { id: Tab; icon: React.ElementType; labelKey: string }[] = [
   { id: 'general', icon: Building2, labelKey: 'org.settings.general' },
   { id: 'academic', icon: GraduationCap, labelKey: 'org.settings.academic' },
   { id: 'visitcard', icon: QrCode, labelKey: 'org.settings.visitCardTab' },
+  { id: 'integrations', icon: Link, labelKey: 'Интеграции' },
   { id: 'notifications', icon: Bell, labelKey: 'org.settings.notifications' },
   { id: 'data', icon: Database, labelKey: 'org.settings.dataTab' },
   { id: 'limits', icon: BarChart3, labelKey: 'org.settings.limits' },
@@ -530,6 +533,7 @@ const OrgSettingsPage: React.FC = () => {
       case 'general': return <GeneralTab settings={settings} update={update} />;
       case 'academic': return <AcademicTab settings={settings} update={update} />;
       case 'visitcard': return <VisitCardTab settings={settings} update={update} />;
+      case 'integrations': return <IntegrationsTab organizationId={settings.organizationId} />;
       case 'notifications': return <NotificationsTab settings={settings} update={update} />;
       case 'data': return <DataTab />;
       case 'limits': return <LimitsTab settings={settings} />;

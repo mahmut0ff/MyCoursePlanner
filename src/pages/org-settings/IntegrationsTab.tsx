@@ -1,19 +1,24 @@
 import React, { useEffect, useState } from 'react';
-import { Save, Loader2, MessageCircle, Link2 } from 'lucide-react';
+import { Save, Loader2, MessageCircle, Link2, Lock } from 'lucide-react';
 import { apiGetAIManagerSettings, apiUpdateAIManagerSettings } from '../../lib/api';
 import type { OrgAIManagerSettings } from '../../types';
 import toast from 'react-hot-toast';
+import { usePlanGate } from '../../contexts/PlanContext';
 
 export const IntegrationsTab: React.FC<{ organizationId: string }> = ({ organizationId }) => {
   const [settings, setSettings] = useState<OrgAIManagerSettings | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const { canAccess } = usePlanGate();
+  
+  const hasAccess = canAccess('ai');
 
   useEffect(() => {
     if (!organizationId) {
       setLoading(false);
       return;
     }
+    // Only attempt to fetch settings if the user has a plan supporting it just to prevent extraneous API errors, though the API handles it normally.
     apiGetAIManagerSettings(organizationId)
       .then((res) => setSettings(res.data))
       .catch((err) => {
@@ -28,7 +33,7 @@ export const IntegrationsTab: React.FC<{ organizationId: string }> = ({ organiza
   };
 
   const handleSave = async () => {
-    if (!settings) return;
+    if (!settings || !hasAccess) return;
     setSaving(true);
     try {
       await apiUpdateAIManagerSettings(settings);
@@ -54,9 +59,23 @@ export const IntegrationsTab: React.FC<{ organizationId: string }> = ({ organiza
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 relative">
+      {!hasAccess && (
+        <div className="absolute inset-0 z-10 bg-slate-50/70 dark:bg-slate-900/70 backdrop-blur-[2px] rounded-2xl flex flex-col items-center justify-center border border-slate-200/50 dark:border-slate-700/50">
+          <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-xl flex flex-col items-center max-w-sm text-center border border-slate-200 dark:border-slate-700">
+            <div className="w-12 h-12 bg-amber-100 dark:bg-amber-900/30 text-amber-600 rounded-full flex items-center justify-center mb-4">
+              <Lock className="w-6 h-6" />
+            </div>
+            <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-2">Интеграции недоступны</h3>
+            <p className="text-sm text-slate-500 dark:text-slate-400 mb-6">
+              Ваш текущий тариф не поддерживает расширенные настройки интеграций и автоматизацию Telegram.
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* ── Telegram Integration ── */}
-      <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-6 space-y-4">
+      <div className={`bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-6 space-y-4 ${!hasAccess ? 'opacity-50 pointer-events-none filter blur-[1px]' : ''}`}>
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-3">
             <div className="p-3 bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400 rounded-xl">
@@ -81,6 +100,7 @@ export const IntegrationsTab: React.FC<{ organizationId: string }> = ({ organiza
             onChange={e => update('telegramBotToken', e.target.value)}
             className="input"
             placeholder="Например: 1234567890:AAH_XYZ..."
+            disabled={!hasAccess}
           />
         </div>
 
@@ -96,7 +116,7 @@ export const IntegrationsTab: React.FC<{ organizationId: string }> = ({ organiza
 
       {/* ── Save Action ── */}
       <div className="flex justify-end">
-        <button onClick={handleSave} disabled={saving} className="btn-primary flex items-center gap-2">
+        <button onClick={handleSave} disabled={saving || !hasAccess} className="btn-primary flex items-center gap-2">
           {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
           Сохранить и активировать Webhook
         </button>

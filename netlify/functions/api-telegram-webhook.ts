@@ -60,7 +60,7 @@ export const handler: Handler = async (event: HandlerEvent) => {
     ]);
 
     const org = orgSnap.data() || {};
-    if (org.planId !== 'ai') {
+    if (org.planId !== 'enterprise') {
       await reply('К сожалению, AI-ассистент временно недоступен у данной организации.');
       return { statusCode: 200, body: 'OK' };
     }

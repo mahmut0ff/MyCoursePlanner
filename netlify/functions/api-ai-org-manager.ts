@@ -41,7 +41,7 @@ const handler: Handler = async (event: HandlerEvent) => {
         data = { ...data, ...snap.data() };
       }
       
-      if (orgPlan !== 'ai') {
+      if (orgPlan !== 'enterprise') {
         data.isActive = false;
       }
 
@@ -64,7 +64,7 @@ const handler: Handler = async (event: HandlerEvent) => {
       if (!orgSnap.exists) return badRequest('Organization not found');
       
       const orgData = orgSnap.data()!;
-      if (orgData.planId !== 'ai' && user.role !== 'super_admin') {
+      if (orgData.planId !== 'enterprise' && user.role !== 'super_admin') {
          return forbidden('Your current plan does not support AI features');
       }
       if (orgData.ownerId !== user.uid && user.role !== 'super_admin') {
@@ -137,7 +137,7 @@ const handler: Handler = async (event: HandlerEvent) => {
 
       const org = orgSnap.data() || {};
       
-      if (org.planId !== 'ai') {
+      if (org.planId !== 'enterprise') {
         return forbidden('AI Assistant is not available on this organization\'s plan.');
       }
       

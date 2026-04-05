@@ -241,7 +241,7 @@ const OrgSwitcher: React.FC<OrgSwitcherProps> = ({ currentOrgId, userRole, onSwi
       {open && (
         <>
           <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
-          <div className="absolute left-3 right-3 top-full mt-1 bg-[#151f2e] border border-slate-600/30 rounded-2xl shadow-2xl z-50 overflow-hidden">
+          <div className={`absolute z-50 overflow-hidden bg-[#151f2e] border border-slate-600/30 rounded-2xl shadow-2xl ${isCollapsed ? 'lg:left-[76px] lg:-top-2 lg:w-[260px] left-3 right-3 top-full mt-1' : 'left-3 right-3 top-full mt-1'}`}>
 
             {/* Quick Actions Grid */}
             {quickActions.length > 0 && (

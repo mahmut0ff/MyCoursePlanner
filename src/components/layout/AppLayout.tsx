@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Outlet, useLocation, Navigate } from 'react-router-dom';
 import Sidebar from './Sidebar.tsx';
 import Topbar from './Topbar.tsx';
@@ -60,7 +60,51 @@ const SubscriptionGuard: React.FC<{ children: React.ReactNode }> = ({ children }
   );
 };
 
+import { apiGetOrganization } from '../../lib/api';
+
 const AppLayout: React.FC = () => {
+  const { isSuperAdmin, organizationId } = useAuth();
+  const [orgData, setOrgData] = useState<any>(null);
+
+  useEffect(() => {
+    if (!isSuperAdmin && organizationId && organizationId !== 'personal') {
+      apiGetOrganization(organizationId).then(data => {
+        setOrgData(data);
+        if (data?.branding?.primaryColor) {
+           const hex = data.branding.primaryColor;
+           if (!hex.startsWith('#')) return;
+           const r = parseInt(hex.slice(1, 3), 16) || 99;
+           const g = parseInt(hex.slice(3, 5), 16) || 102;
+           const b = parseInt(hex.slice(5, 7), 16) || 241;
+           const mix = (c1: number, c2: number, weight: number) => Math.round(c1 * weight + c2 * (1 - weight));
+           const shade = (weight: number, isLight: boolean) => {
+             const target = isLight ? 255 : 0;
+             return `rgb(${mix(r, target, weight)}, ${mix(g, target, weight)}, ${mix(b, target, weight)})`;
+           };
+           
+           const root = document.documentElement;
+           root.style.setProperty('--color-primary-50', shade(0.9, true));
+           root.style.setProperty('--color-primary-100', shade(0.8, true));
+           root.style.setProperty('--color-primary-200', shade(0.6, true));
+           root.style.setProperty('--color-primary-300', shade(0.4, true));
+           root.style.setProperty('--color-primary-400', shade(0.2, true));
+           root.style.setProperty('--color-primary-500', hex);
+           root.style.setProperty('--color-primary-600', shade(0.8, false));
+           root.style.setProperty('--color-primary-700', shade(0.6, false));
+           root.style.setProperty('--color-primary-800', shade(0.4, false));
+           root.style.setProperty('--color-primary-900', shade(0.2, false));
+           root.style.setProperty('--color-primary-950', shade(0.1, false));
+        }
+      }).catch(console.error);
+    } else {
+      setOrgData(null);
+      const root = document.documentElement;
+      [50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950].forEach(w => {
+        root.style.removeProperty(`--color-primary-${w}`);
+      });
+    }
+  }, [organizationId, isSuperAdmin]);
+
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(() => {
     return localStorage.getItem('planula_sidebar_collapsed') === 'true';
@@ -82,6 +126,7 @@ const AppLayout: React.FC = () => {
           onClose={() => setSidebarOpen(false)} 
           isCollapsed={isSidebarCollapsed}
           onToggleCollapse={handleToggleCollapse}
+          orgData={orgData}
         />
 
         {/* Main content */}

@@ -8,7 +8,7 @@ import { getActiveRooms } from '../../services/rooms.service';
 import { getAllAttempts } from '../../services/attempts.service';
 import type { LessonPlan, Exam, ExamRoom, ExamAttempt } from '../../types';
 import { formatDate } from '../../utils/grading';
-import { BookOpen, ClipboardList, Radio, Users, TrendingUp, ArrowRight, Plus, Sparkles, GitBranch, MapPin } from 'lucide-react';
+import { BookOpen, ClipboardList, Radio, Users, TrendingUp, ArrowRight, Settings, Sparkles, GitBranch, MapPin } from 'lucide-react';
 import { DashboardSkeleton } from '../../components/ui/Skeleton';
 import OnboardingWizard, { useOnboardingProgress } from '../../components/onboarding/OnboardingWizard';
 import { apiGetBranchAnalytics, apiGetOrganization } from '../../lib/api';
@@ -73,9 +73,19 @@ const AdminDashboard: React.FC = () => {
                 {t('dashboard.subtitle', 'Управляйте вашим учебным центром')}
               </p>
             </div>
-            <Link to="/lessons/new" className="inline-flex items-center gap-2 bg-white/20 backdrop-blur-sm hover:bg-white/30 text-white px-4 py-2.5 rounded-xl font-medium text-sm transition-all hover:scale-[1.02] active:scale-[0.98] w-fit">
-              <Plus className="w-4 h-4" />{t('dashboard.createLesson')}
-            </Link>
+            <div className="flex flex-wrap items-center gap-3">
+              {typeof window !== 'undefined' && localStorage.getItem('planula_onboarding_admin_dismissed') && (
+                <button
+                  onClick={() => { localStorage.removeItem('planula_onboarding_admin_dismissed'); window.location.reload(); }}
+                  className="inline-flex items-center gap-2 bg-white/10 hover:bg-white/20 text-white px-4 py-2.5 rounded-xl font-medium text-sm transition-all hover:scale-[1.02] active:scale-[0.98] w-fit"
+                >
+                  <Sparkles className="w-4 h-4" /> Вернуть онбординг
+                </button>
+              )}
+              <Link to="/org-settings" className="inline-flex items-center gap-2 bg-white/20 backdrop-blur-sm hover:bg-white/30 text-white px-4 py-2.5 rounded-xl font-medium text-sm transition-all hover:scale-[1.02] active:scale-[0.98] w-fit">
+                <Settings className="w-4 h-4" /> Настройки платформы
+              </Link>
+            </div>
           </div>
 
           {/* Onboarding progress row (shown only if not all steps done) */}

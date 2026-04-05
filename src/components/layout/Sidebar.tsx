@@ -57,7 +57,7 @@ const CollapsibleSection: React.FC<{
   );
 };
 
-const Sidebar: React.FC<{ open: boolean; onClose: () => void; isCollapsed?: boolean; onToggleCollapse?: () => void }> = ({ open, onClose, isCollapsed, onToggleCollapse }) => {
+const Sidebar: React.FC<{ open: boolean; onClose: () => void; isCollapsed?: boolean; onToggleCollapse?: () => void; orgData?: any }> = ({ open, onClose, isCollapsed, onToggleCollapse, orgData }) => {
   const { t } = useTranslation();
   const { profile, role, isSuperAdmin, isTeacher, isManager, organizationId } = useAuth();
   const { canAccess } = usePlanGate();
@@ -89,10 +89,10 @@ const Sidebar: React.FC<{ open: boolean; onClose: () => void; isCollapsed?: bool
 
         {/* ═══ Header ═══ */}
         <div className="flex items-center gap-3 px-4 py-4 border-b border-white/5 h-[69px]">
-          <img src="/icons/logo.png" alt="Planula" className="h-9 w-auto object-contain shrink-0" />
+          <img src={orgData?.branding?.logoUrl || "/icons/logo.png"} alt={orgData?.name || "Planula"} className="h-9 w-auto object-contain shrink-0" />
           {/* Brand/Logo - hides on large screens when collapsed */}
           <div className={`flex-1 min-w-0 ${isCollapsed ? 'lg:hidden' : ''}`}>
-            <span className="font-bold text-[15px] text-white leading-none tracking-tight">{t('app.name')}</span>
+            <span className="font-bold text-[15px] text-white leading-none tracking-tight truncate block">{orgData?.name && orgData.name !== 'New Organization' ? orgData.name : t('app.name')}</span>
             {isSuperAdmin && (
               <p className="text-[9px] text-primary-400 font-semibold tracking-wide mt-0.5">{t('app.superAdmin')}</p>
             )}

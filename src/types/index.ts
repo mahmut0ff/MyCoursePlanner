@@ -167,6 +167,8 @@ export interface OrgAIManagerSettings {
   faq: AIManagerFAQ[];
   enrollmentPolicy: string;
   customInstructions: string;
+  telegramBotToken?: string;
+  telegramBotUsername?: string;
   updatedAt: string;
 }
 

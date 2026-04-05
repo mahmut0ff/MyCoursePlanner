@@ -154,6 +154,31 @@ export const AIManagerTab: React.FC<{ organizationId: string }> = ({ organizatio
             </div>
           </div>
 
+          {/* ── Telegram Integration ── */}
+          <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-6 space-y-4">
+            <h3 className="font-semibold text-slate-900 dark:text-white mb-2">Интеграция с Telegram</h3>
+            <p className="text-sm text-slate-500 mb-4">
+              Чат-бот будет работать и в Telegram. Создайте бота через <a href="https://t.me/BotFather" target="_blank" rel="noreferrer" className="text-primary-500 hover:underline">@BotFather</a> и вставьте токен ниже.
+            </p>
+            <div>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                Bot Token (от BotFather)
+              </label>
+              <input
+                type="text"
+                value={settings.telegramBotToken || ''}
+                onChange={e => update('telegramBotToken', e.target.value)}
+                className="input"
+                placeholder="1234567890:AAH_XYZ..."
+              />
+            </div>
+            {settings.telegramBotUsername && (
+              <p className="text-sm text-emerald-600 dark:text-emerald-400 mt-2">
+                ✅ Подключен: <a href={`https://t.me/${settings.telegramBotUsername}`} target="_blank" rel="noreferrer" className="font-medium hover:underline">@{settings.telegramBotUsername}</a>
+              </p>
+            )}
+          </div>
+
           {/* ── FAQ Builder ── */}
           <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-6">
             <div className="flex items-center justify-between mb-4">

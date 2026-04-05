@@ -71,6 +71,34 @@ const handler: Handler = async (event: HandlerEvent) => {
          return forbidden('Only organization owner can update AI settings');
       }
 
+      if (updates.telegramBotToken !== undefined) {
+        const token = updates.telegramBotToken.trim();
+        if (token === '') {
+          updates.telegramBotToken = '';
+          updates.telegramBotUsername = '';
+        } else {
+          try {
+            const meRes = await fetch(`https://api.telegram.org/bot${token}/getMe`);
+            if (!meRes.ok) return badRequest('Invalid Telegram Bot Token');
+            const meData = await meRes.json();
+            
+            const host = event.headers['x-forwarded-host'] || event.headers.host;
+            const webhookUrl = `https://${host}/.netlify/functions/api-telegram-webhook?orgId=${organizationId}`;
+            
+            const whRes = await fetch(`https://api.telegram.org/bot${token}/setWebhook?url=${encodeURIComponent(webhookUrl)}`);
+            if (!whRes.ok) {
+              console.error('Webhook set error:', await whRes.text());
+              return jsonResponse(500, { error: 'Failed to set Telegram Webhook' });
+            }
+            updates.telegramBotToken = token;
+            updates.telegramBotUsername = meData.result.username;
+          } catch (e: any) {
+            console.error('Telegram config error:', e);
+            return jsonResponse(500, { error: 'Error connecting to Telegram API' });
+          }
+        }
+      }
+
       const docPath = adminDb.collection('organizationAIManager').doc(organizationId);
       await docPath.set({
         organizationId,

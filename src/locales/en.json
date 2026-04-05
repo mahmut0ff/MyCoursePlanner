@@ -300,7 +300,27 @@
       "suspend": "Suspend",
       "reactivate": "Reactivate",
       "confirmSuspend": "Suspend this organization?",
-      "empty": "No organizations yet"
+      "empty": "No organizations yet",
+      "title": "Organizations",
+      "total": "Total Organizations",
+      "search": "Search organizations...",
+      "allStatus": "All Status",
+      "activate": "Activate",
+      "delete": "Delete",
+      "allPlans": "All Plans",
+      "status": "Status",
+      "created": "Created At",
+      "actions": "Actions",
+      "noOrgs": "No organizations found",
+      "confirmDelete": "Are you sure you want to delete this organization?",
+      "changePlan": "Change Plan",
+      "internalNotes": "Internal Notes",
+      "addNote": "Add Note",
+      "add": "Add",
+      "noNotes": "No notes",
+      "subscription": "Subscription",
+      "periodEnd": "Period End",
+      "trialEnds": "Trial Ends"
     },
     "users": {
       "title": "Users",
@@ -318,7 +338,8 @@
       "resetPassword": "Reset Password",
       "recentExams": "Recent Exams",
       "noUsers": "No users found",
-      "confirmDisable": "Disable this user?"
+      "confirmDisable": "Disable this user?",
+      "actions": "Actions"
     },
     "billing": {
       "title": "Billing",
@@ -395,7 +416,17 @@
     },
     "plans": {
       "subtitle": "Manage subscription plans and pricing",
-      "addPlan": "Add Plan"
+      "addPlan": "Add Plan",
+      "starter": "Starter",
+      "professional": "Professional",
+      "enterprise": "Enterprise"
+    },
+    "statuses": {
+      "active": "Active",
+      "suspended": "Suspended",
+      "deleted": "Deleted",
+      "trial": "Trial",
+      "cancelled": "Cancelled"
     },
     "integrations": {
       "subtitle": "Manage connected services, webhooks, and API keys",

@@ -73,9 +73,9 @@ const AdminBillingPage: React.FC = () => {
         </div>
         <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="input w-auto">
           <option value="">{t('admin.billing.allStatus')}</option>
-          <option value="active">{t('admin.billing.active')}</option>
-          <option value="trial">{t('admin.billing.trial')}</option>
-          <option value="cancelled">{t('admin.billing.cancelled')}</option>
+          <option value="active">{t('admin.statuses.active')}</option>
+          <option value="trial">{t('admin.statuses.trial')}</option>
+          <option value="cancelled">{t('admin.statuses.cancelled')}</option>
         </select>
       </div>
 
@@ -94,9 +94,9 @@ const AdminBillingPage: React.FC = () => {
             {filtered.map((s) => (
               <tr key={s.id} className="hover:bg-slate-50 dark:bg-slate-700/50">
                 <td className="px-4 py-3"><p className="text-sm font-medium text-slate-900 dark:text-white">{s.organizationName}</p><p className="text-xs text-slate-400 dark:text-slate-500">{s.organizationId?.slice(0, 12)}...</p></td>
-                <td className="px-4 py-3"><span className={`inline-flex px-2 py-0.5 rounded text-xs font-medium ${s.planId === 'enterprise' ? 'bg-amber-100 text-amber-800' : s.planId === 'professional' ? 'bg-violet-100 text-violet-800' : 'bg-blue-100 text-blue-800'}`}>{s.planId}</span></td>
+                <td className="px-4 py-3"><span className={`inline-flex px-2 py-0.5 rounded text-xs font-medium ${s.planId === 'enterprise' ? 'bg-amber-100 text-amber-800' : s.planId === 'professional' ? 'bg-violet-100 text-violet-800' : 'bg-blue-100 text-blue-800'}`}>{t(`admin.plans.${s.planId}`) as string}</span></td>
                 <td className="px-4 py-3 text-sm font-medium text-slate-900 dark:text-white">${PLAN_PRICES[s.planId] || 0}/mo</td>
-                <td className="px-4 py-3"><span className={`inline-flex px-2 py-0.5 rounded text-xs font-medium ${s.status === 'active' ? 'bg-emerald-100 text-emerald-700' : s.status === 'trial' ? 'bg-amber-100 text-amber-700' : 'bg-red-100 text-red-700'}`}>{s.status}</span></td>
+                <td className="px-4 py-3"><span className={`inline-flex px-2 py-0.5 rounded text-xs font-medium ${s.status === 'active' ? 'bg-emerald-100 text-emerald-700' : s.status === 'trial' ? 'bg-amber-100 text-amber-700' : 'bg-red-100 text-red-700'}`}>{t(`admin.statuses.${s.status}`) as string}</span></td>
                 <td className="px-4 py-3 text-xs text-slate-500 dark:text-slate-400 dark:text-slate-500">{s.currentPeriodEnd ? new Date(s.currentPeriodEnd).toLocaleDateString() : '—'}</td>
                 <td className="px-4 py-3">
                   <div className="flex gap-2">

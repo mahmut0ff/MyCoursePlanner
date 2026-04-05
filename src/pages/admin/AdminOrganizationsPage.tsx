@@ -51,15 +51,15 @@ const AdminOrganizationsPage: React.FC = () => {
           </div>
           <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="input w-auto">
             <option value="">{t('admin.orgs.allStatus')}</option>
-            <option value="active">{t('admin.orgs.activate')}</option>
-            <option value="suspended">{t('admin.orgs.suspend')}</option>
-            <option value="deleted">{t('admin.orgs.delete')}</option>
+            <option value="active">{t('admin.statuses.active')}</option>
+            <option value="suspended">{t('admin.statuses.suspended')}</option>
+            <option value="deleted">{t('admin.statuses.deleted')}</option>
           </select>
           <select value={planFilter} onChange={(e) => setPlanFilter(e.target.value)} className="input w-auto">
             <option value="">{t('admin.orgs.allPlans')}</option>
-            <option value="starter">{t('billing.planStarter', 'Starter')}</option>
-            <option value="professional">{t('billing.planProfessional', 'Professional')}</option>
-            <option value="enterprise">{t('billing.planEnterprise', 'Enterprise')}</option>
+            <option value="starter">{t('admin.plans.starter')}</option>
+            <option value="professional">{t('admin.plans.professional')}</option>
+            <option value="enterprise">{t('admin.plans.enterprise')}</option>
           </select>
         </div>
 
@@ -80,8 +80,8 @@ const AdminOrganizationsPage: React.FC = () => {
                     <p className="font-medium text-slate-900 dark:text-white text-sm">{org.name}</p>
                     <p className="text-xs text-slate-500 dark:text-slate-400">{org.ownerEmail}</p>
                   </td>
-                  <td className="px-4 py-3"><span className={`inline-flex px-2 py-0.5 rounded text-xs font-medium ${PLAN_COLORS[org.planId] || ''}`}>{org.planId}</span></td>
-                  <td className="px-4 py-3"><span className={`inline-flex px-2 py-0.5 rounded text-xs font-medium ${STATUS_COLORS[org.status] || ''}`}>{org.status}</span></td>
+                  <td className="px-4 py-3"><span className={`inline-flex px-2 py-0.5 rounded text-xs font-medium ${PLAN_COLORS[org.planId] || ''}`}>{t(`admin.plans.${org.planId}`) as string}</span></td>
+                  <td className="px-4 py-3"><span className={`inline-flex px-2 py-0.5 rounded text-xs font-medium ${STATUS_COLORS[org.status] || ''}`}>{t(`admin.statuses.${org.status}`) as string}</span></td>
                   <td className="px-4 py-3 text-xs text-slate-500 dark:text-slate-400">{new Date(org.createdAt).toLocaleDateString()}</td>
                   <td className="px-4 py-3">
                     <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>

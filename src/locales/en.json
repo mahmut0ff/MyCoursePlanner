@@ -430,7 +430,8 @@
       "suspended": "Suspended",
       "deleted": "Deleted",
       "trial": "Trial",
-      "cancelled": "Cancelled"
+      "cancelled": "Cancelled",
+      "gifted": "Gifted"
     },
     "integrations": {
       "subtitle": "Manage connected services, webhooks, and API keys",

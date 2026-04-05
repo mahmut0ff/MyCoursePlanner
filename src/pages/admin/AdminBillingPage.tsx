@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { adminGetSubscriptions, adminExtendSubscription, adminCancelSubscription } from '../../lib/api';
-import { CreditCard, DollarSign, Ban, Clock, Search } from 'lucide-react';
+import { CreditCard, Banknote, Ban, Clock, Search } from 'lucide-react';
 
 const PLAN_PRICES: Record<string, number> = { starter: 1990, professional: 4990, enterprise: 14900 };
 
@@ -48,8 +48,8 @@ const AdminBillingPage: React.FC = () => {
       {/* Summary Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 mb-6">
         <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-4">
-          <div className="flex items-center gap-2 mb-1"><DollarSign className="w-4 h-4 text-emerald-500" /><span className="text-xs text-slate-500 dark:text-slate-400">{t('admin.billing.mrr')}</span></div>
-          <p className="text-2xl font-bold text-slate-900 dark:text-white">${totalMRR}</p>
+          <div className="flex items-center gap-2 mb-1"><Banknote className="w-4 h-4 text-emerald-500" /><span className="text-xs text-slate-500 dark:text-slate-400">{t('admin.billing.mrr')}</span></div>
+          <p className="text-2xl font-bold text-slate-900 dark:text-white">{totalMRR} сом</p>
         </div>
         <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-4">
           <div className="flex items-center gap-2 mb-1"><CreditCard className="w-4 h-4 text-primary-500" /><span className="text-xs text-slate-500 dark:text-slate-400">{t('admin.billing.active')}</span></div>
@@ -95,7 +95,7 @@ const AdminBillingPage: React.FC = () => {
               <tr key={s.id} className="hover:bg-slate-50 dark:bg-slate-700/50">
                 <td className="px-4 py-3"><p className="text-sm font-medium text-slate-900 dark:text-white">{s.organizationName}</p><p className="text-xs text-slate-400 dark:text-slate-500">{s.organizationId?.slice(0, 12)}...</p></td>
                 <td className="px-4 py-3"><span className={`inline-flex px-2 py-0.5 rounded text-xs font-medium ${s.planId === 'enterprise' ? 'bg-amber-100 text-amber-800' : s.planId === 'professional' ? 'bg-violet-100 text-violet-800' : 'bg-blue-100 text-blue-800'}`}>{t(`admin.plans.${s.planId}`) as string}</span></td>
-                <td className="px-4 py-3 text-sm font-medium text-slate-900 dark:text-white">${PLAN_PRICES[s.planId] || 0}/mo</td>
+                <td className="px-4 py-3 text-sm font-medium text-slate-900 dark:text-white">{PLAN_PRICES[s.planId] || 0} сом/мес</td>
                 <td className="px-4 py-3"><span className={`inline-flex px-2 py-0.5 rounded text-xs font-medium ${s.status === 'active' ? 'bg-emerald-100 text-emerald-700' : s.status === 'trial' ? 'bg-amber-100 text-amber-700' : 'bg-red-100 text-red-700'}`}>{t(`admin.statuses.${s.status}`) as string}</span></td>
                 <td className="px-4 py-3 text-xs text-slate-500 dark:text-slate-400 dark:text-slate-500">{s.currentPeriodEnd ? new Date(s.currentPeriodEnd).toLocaleDateString() : '—'}</td>
                 <td className="px-4 py-3">

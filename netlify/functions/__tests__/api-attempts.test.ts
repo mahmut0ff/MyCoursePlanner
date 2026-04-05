@@ -12,6 +12,7 @@ vi.mock('../utils/firebase-admin', () => ({
 
 vi.mock('../utils/auth', () => ({
   verifyAuth: vi.fn(),
+  logSecurityAudit: vi.fn(),
   jsonResponse: (status: number, body: any) => ({ statusCode: status, body: JSON.stringify(body) }),
   ok: (body: any) => ({ statusCode: 200, body: JSON.stringify(body) }),
   forbidden: (msg?: string) => ({ statusCode: 403, body: JSON.stringify({ error: msg || 'Forbidden' }) }),

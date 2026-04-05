@@ -5,7 +5,8 @@ import StudentDashboard from '../StudentDashboard';
 
 // Mock API and translation
 vi.mock('../../../lib/api', () => ({
-  apiGetDashboard: vi.fn()
+  apiGetDashboard: vi.fn(),
+  apiGetGamificationLeaderboard: vi.fn().mockResolvedValue([])
 }));
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({ t: (key: string) => key })
@@ -25,7 +26,7 @@ import { useAuth } from '../../../contexts/AuthContext';
 describe('StudentDashboard (UI Contracts)', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    (useAuth as any).mockReturnValue({ profile: { uid: 'student123', displayName: 'John Doe' } });
+    (useAuth as any).mockReturnValue({ profile: { uid: 'student123', displayName: 'John Doe' }, organizationId: 'org1' });
   });
 
   it('C-UI-02: Given data fetching returns empty arrays, it MUST render clear empty state text', async () => {

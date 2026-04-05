@@ -21,6 +21,9 @@ export default {
           900: '#312e81',
           950: '#1e1b4b',
         },
+        accent: {
+          teal: '#14b8a6',
+        },
       },
       fontFamily: {
         sans: ['Inter', 'system-ui', '-apple-system', 'sans-serif'],

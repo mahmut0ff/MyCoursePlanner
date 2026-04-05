@@ -1,21 +1,17 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useAuth } from '../../contexts/AuthContext';
 import { usePlanGate } from '../../contexts/PlanContext';
 import { orgGetSettings, orgUpdateSettings } from '../../lib/api';
 import { ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { storage } from '../../lib/firebase';
 import {
-  Save, Building2, GraduationCap, Check, Bell, Lock, Palette, BarChart3,
-  Globe, Database, User, Shield, Eye, EyeOff, Camera, Loader2, MapPin, Phone, Mail, Clock,
-  QrCode, Download, Send, MessageCircle, Printer, Copy, CheckCircle, Bot
+  Save, Building2, GraduationCap, Check, Bell, BarChart3,
+  Database, Camera, Loader2, MapPin, Phone, Mail, Clock,
+  QrCode, Download, Send, MessageCircle, Printer, Copy, CheckCircle, Bot, Globe
 } from 'lucide-react';
 import type { OrgSettings } from '../../types';
 import QRCode from 'qrcode';
 import { AIManagerTab } from './AIManagerTab';
-import { auth } from '../../lib/firebase';
-import { updateProfile, updatePassword, EmailAuthProvider, reauthenticateWithCredential } from 'firebase/auth';
-import { updateUser } from '../../services/users.service';
 import toast from 'react-hot-toast';
 
 type Tab = 'general' | 'academic' | 'visitcard' | 'notifications' | 'data' | 'limits' | 'ai';

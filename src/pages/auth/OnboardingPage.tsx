@@ -10,6 +10,32 @@ import { auth } from '../../lib/firebase';
 
 type RegRole = 'admin' | 'teacher' | 'student';
 
+class OnboardingErrorBoundary extends React.Component<{ children: React.ReactNode }, { hasError: boolean; error: Error | null }> {
+  constructor(props: { children: React.ReactNode }) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+  static getDerivedStateFromError(error: Error) {
+    return { hasError: true, error };
+  }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-slate-900 p-6">
+          <div className="bg-white dark:bg-slate-800 p-8 rounded-xl shadow-xl max-w-2xl w-full border border-red-200 dark:border-red-900/30">
+            <h2 className="text-2xl font-bold text-red-600 dark:text-red-400 mb-4">Критическая ошибка онбординга</h2>
+            <p className="text-slate-600 dark:text-slate-300 mb-4">UI не смог отрендериться. Пожалуйста, отправьте этот текст разработчикам:</p>
+            <pre className="bg-slate-100 dark:bg-slate-900 p-4 rounded-lg overflow-auto text-[11px] text-red-500 whitespace-pre-wrap font-mono">
+              {this.state.error?.stack || this.state.error?.message}
+            </pre>
+          </div>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
 const OnboardingPage: React.FC = () => {
   const { t } = useTranslation();
   const { firebaseUser, profile, loading: authLoading, refreshProfile } = useAuth();
@@ -151,7 +177,8 @@ const OnboardingPage: React.FC = () => {
   const currentStep = step === 'role' ? 1 : step === 'details' ? 2 : 3;
 
   return (
-    <div className="min-h-screen flex">
+    <OnboardingErrorBoundary>
+      <div className="min-h-screen flex">
       {/* ═══ Left Decorative Panel ═══ */}
       <div className="hidden lg:flex lg:w-[55%] relative bg-primary-600 overflow-hidden">
         <div className="absolute top-[-80px] right-[-60px] w-[300px] h-[300px] rounded-full bg-white/10" />
@@ -164,9 +191,9 @@ const OnboardingPage: React.FC = () => {
         <div className="absolute bottom-[200px] left-[50%] text-white/30 text-2xl font-bold">✕</div>
         <div className="relative z-10 flex flex-col justify-center px-16">
           <h1 className="text-5xl font-extrabold text-white leading-tight mb-4">
-            {leftTitle.split('\n').map((line, i) => (
+            {typeof leftTitle === 'string' ? leftTitle.split('\n').map((line, i) => (
               <React.Fragment key={i}>{line}<br/></React.Fragment>
-            ))}
+            )) : leftTitle}
           </h1>
           <p className="text-white/70 text-lg max-w-sm">{leftSubtitle}</p>
         </div>
@@ -196,7 +223,7 @@ const OnboardingPage: React.FC = () => {
                 <div className="w-8 h-8 rounded-full bg-primary-100 flex items-center justify-center text-primary-700 font-bold overflow-hidden">
                     {firebaseUser?.photoURL ? 
                       <img src={firebaseUser.photoURL} alt="Avatar" className="w-full h-full object-cover" /> : 
-                      firebaseUser?.displayName?.charAt(0) || 'U'
+                      (firebaseUser?.displayName ? firebaseUser.displayName.charAt(0).toUpperCase() : 'U')
                     }
                 </div>
                 <div className="text-left">
@@ -327,6 +354,7 @@ const OnboardingPage: React.FC = () => {
         </div>
       </div>
     </div>
+    </OnboardingErrorBoundary>
   );
 };
 

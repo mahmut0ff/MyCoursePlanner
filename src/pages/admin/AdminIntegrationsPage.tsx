@@ -257,7 +257,7 @@ const AdminIntegrationsPage: React.FC = () => {
       {/* ═══ Webhooks ═══ */}
       <div className="bg-white dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/60 rounded-2xl overflow-hidden backdrop-blur-sm">
         <div className="px-6 py-4 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between">
-          <h3 className="font-semibold text-slate-900 dark:text-white flex items-center gap-2"><Webhook className="w-4 h-4 text-primary-500" />Webhooks</h3>
+          <h3 className="font-semibold text-slate-900 dark:text-white flex items-center gap-2"><Webhook className="w-4 h-4 text-primary-500" />{t('admin.integrations.webhooksTitle')}</h3>
           <span className="text-xs text-slate-400 dark:text-slate-500">{webhooks.length} {t('admin.integrations.configured')}</span>
         </div>
 
@@ -330,7 +330,7 @@ const AdminIntegrationsPage: React.FC = () => {
       {/* ═══ API Keys ═══ */}
       <div className="bg-white dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/60 rounded-2xl overflow-hidden backdrop-blur-sm">
         <div className="px-6 py-4 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between">
-          <h3 className="font-semibold text-slate-900 dark:text-white flex items-center gap-2"><Key className="w-4 h-4 text-primary-500" />API Keys</h3>
+          <h3 className="font-semibold text-slate-900 dark:text-white flex items-center gap-2"><Key className="w-4 h-4 text-primary-500" />{t('admin.integrations.apiKeysTitle')}</h3>
           <span className="text-xs text-slate-400 dark:text-slate-500">{apiKeys.length} {t('common.active')}</span>
         </div>
 

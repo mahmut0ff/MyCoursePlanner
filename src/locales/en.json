@@ -372,7 +372,11 @@
       "before": "Before",
       "after": "After",
       "metadata": "Metadata",
-      "noLogs": "No audit logs found"
+      "noLogs": "No audit logs found",
+      "filterOrgs": "Organizations",
+      "filterUsers": "Users",
+      "filterSubs": "Subscriptions",
+      "filterFlags": "Feature Flags"
     },
     "flags": {
       "title": "Feature Flags",
@@ -447,7 +451,9 @@
       "lastUsed": "Last used",
       "generateKey": "Generate New API Key",
       "keyNamePlaceholder": "e.g. Production Key",
-      "generate": "Generate"
+      "generate": "Generate",
+      "webhooksTitle": "Webhooks",
+      "apiKeysTitle": "API Keys"
     },
     "settings": {
       "subtitle": "Platform configuration and global settings",

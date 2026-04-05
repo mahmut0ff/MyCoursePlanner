@@ -452,7 +452,11 @@
       "before": "До",
       "after": "После",
       "metadata": "Метаданные",
-      "noLogs": "Журнал пуст"
+      "noLogs": "Журнал пуст",
+      "filterOrgs": "Организации",
+      "filterUsers": "Пользователи",
+      "filterSubs": "Подписки",
+      "filterFlags": "Функции"
     },
     "flags": {
       "title": "Функции",
@@ -527,7 +531,9 @@
       "lastUsed": "Последнее использование",
       "generateKey": "Сгенерировать новый API ключ",
       "keyNamePlaceholder": "напр. Production Key",
-      "generate": "Сгенерировать"
+      "generate": "Сгенерировать",
+      "webhooksTitle": "Вебхуки",
+      "apiKeysTitle": "API Ключи"
     },
     "settings": {
       "subtitle": "Конфигурация платформы и глобальные настройки",

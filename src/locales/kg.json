@@ -287,10 +287,14 @@
       "search": "Аракеттерди, аткаруучуларды издөө...",
       "allEntities": "Бардык объекттер",
       "refresh": "Жаңылоо",
-      "before": "Чейин",
+      "before": "Мурун",
       "after": "Кийин",
-      "metadata": "Метадайындар",
-      "noLogs": "Журнал бош"
+      "metadata": "Метаберилиштер",
+      "noLogs": "Аракеттер табылган жок",
+      "filterOrgs": "Уюмдар",
+      "filterUsers": "Колдонуучулар",
+      "filterSubs": "Жазылуулар",
+      "filterFlags": "Функциялар"
     },
     "flags": {
       "title": "Функциялар",
@@ -364,8 +368,10 @@
       "created": "Түзүлгөн",
       "lastUsed": "Акыркы колдонуу",
       "generateKey": "Жаңы API ачкыч түзүү",
-      "keyNamePlaceholder": "мис. Production Key",
-      "generate": "Түзүү"
+      "keyNamePlaceholder": "мисалы: Production Key",
+      "generate": "Түзүү",
+      "webhooksTitle": "Вебхуктар",
+      "apiKeysTitle": "API Ачкычтар"
     },
     "settings": {
       "subtitle": "Платформа конфигурациясы жана глобалдык жөндөөлөр",

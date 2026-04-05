@@ -54,10 +54,10 @@ const AdminAuditLogsPage: React.FC = () => {
         </div>
         <select value={entityFilter} onChange={(e) => setEntityFilter(e.target.value)} className="input w-auto">
           <option value="">{t('admin.audit.allEntities')}</option>
-          <option value="organization">Organizations</option>
-          <option value="user">Users</option>
-          <option value="subscription">Subscriptions</option>
-          <option value="feature_flag">Feature Flags</option>
+          <option value="organization">{t('admin.audit.filterOrgs')}</option>
+          <option value="user">{t('admin.audit.filterUsers')}</option>
+          <option value="subscription">{t('admin.audit.filterSubs')}</option>
+          <option value="feature_flag">{t('admin.audit.filterFlags')}</option>
         </select>
         <button onClick={load} className="btn-secondary text-sm">{t('admin.audit.refresh')}</button>
       </div>

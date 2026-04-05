@@ -17,6 +17,7 @@ import type { Handler, HandlerEvent } from '@netlify/functions';
 import { adminDb } from './utils/firebase-admin';
 import { verifyAuth, isSuperAdmin, ok, unauthorized, forbidden, badRequest, notFound, jsonResponse } from './utils/auth';
 import { createNotification, notifyOrgAdmins } from './utils/notifications';
+import { getOrgLimits } from './utils/plan-limits';
 
 const now = () => new Date().toISOString();
 
@@ -387,6 +388,20 @@ const handler: Handler = async (event: HandlerEvent) => {
         return badRequest(`Cannot accept membership with status: ${membership.status}`);
       }
 
+      // Enforce Limits
+      const limits = await getOrgLimits(body.organizationId);
+      const activeSnap = await adminDb.collection('orgMembers').doc(body.organizationId)
+        .collection('members').where('status', '==', 'active').get();
+      const studentCount = activeSnap.docs.filter((d: any) => d.data().role === 'student').length;
+      const teacherCount = activeSnap.docs.filter((d: any) => ['teacher', 'mentor', 'admin', 'owner'].includes(d.data().role)).length;
+
+      if (membership.role === 'student' && limits.maxStudents !== -1 && studentCount >= limits.maxStudents) {
+         return badRequest('Organization has reached the student limit for its plan.');
+      }
+      if (['teacher', 'mentor', 'admin', 'owner'].includes(membership.role) && limits.maxTeachers !== -1 && teacherCount >= limits.maxTeachers) {
+         return badRequest('Organization has reached the teacher limit for its plan.');
+      }
+
       const ts = now();
       const update = { status: 'active', joinedAt: ts, updatedAt: ts };
       await adminDb.collection('users').doc(body.userId)
@@ -409,13 +424,9 @@ const handler: Handler = async (event: HandlerEvent) => {
       }
 
       // Update org member count
-      const activeSnap = await adminDb.collection('orgMembers').doc(body.organizationId)
-        .collection('members').where('status', '==', 'active').get();
-      const studentCount = activeSnap.docs.filter((d: any) => d.data().role === 'student').length;
-      const teacherCount = activeSnap.docs.filter((d: any) => ['teacher', 'mentor', 'admin', 'owner'].includes(d.data().role)).length;
       await adminDb.collection('organizations').doc(body.organizationId).update({
-        studentsCount: studentCount,
-        teachersCount: teacherCount,
+        studentsCount: membership.role === 'student' ? studentCount + 1 : studentCount,
+        teachersCount: ['teacher', 'mentor', 'admin', 'owner'].includes(membership.role) ? teacherCount + 1 : teacherCount,
         updatedAt: ts,
       });
 

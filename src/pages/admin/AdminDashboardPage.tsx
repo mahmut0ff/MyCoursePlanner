@@ -437,22 +437,31 @@ const AdminDashboardPage: React.FC = () => {
           </h3>
           <div className="space-y-4">
             {[
-              { name: 'Starter', price: '39 сом', count: stats.planDistribution?.starter || 0, color: 'bg-blue-500', glow: '#3b82f6' },
-              { name: 'Professional', price: '79 сом', count: stats.planDistribution?.professional || 0, color: 'bg-violet-500', glow: '#8b5cf6' },
-              { name: 'Enterprise', price: '99 сом', count: stats.planDistribution?.enterprise || 0, color: 'bg-amber-500', glow: '#f59e0b' },
+              { name: 'Starter', price: '39 сом', count: Number(stats.planDistribution?.starter) || 0, color: 'bg-blue-500', glow: '#3b82f6' },
+              { name: 'Professional', price: '79 сом', count: Number(stats.planDistribution?.professional) || 0, color: 'bg-violet-500', glow: '#8b5cf6' },
+              { name: 'Enterprise', price: '99 сом', count: Number(stats.planDistribution?.enterprise) || 0, color: 'bg-amber-500', glow: '#f59e0b' },
             ].map((p) => {
-              const pct = stats.totalOrganizations > 0 ? Math.round((p.count / stats.totalOrganizations) * 100) : 0;
+              const totalItems = Number(stats.totalOrganizations) || 0;
+              let pct = 0;
+              if (totalItems > 0 && p.count > 0) {
+                pct = Math.round((p.count / totalItems) * 100);
+              }
+              // Clamp to 0-100 just in case
+              pct = Math.max(0, Math.min(100, pct));
+
               return (
                 <div key={p.name}>
                   <div className="flex items-center justify-between text-sm mb-2">
                     <span className="text-slate-700 dark:text-slate-300 font-medium">{p.name} <span className="text-slate-400 dark:text-slate-500 text-xs">({p.price})</span></span>
                     <span className="font-bold text-slate-900 dark:text-white">{p.count} <span className="text-slate-400 dark:text-slate-500 text-xs font-normal">({pct}%)</span></span>
                   </div>
-                  <div className="h-2.5 bg-slate-100 dark:bg-slate-700 rounded-full overflow-hidden">
-                    <div
-                      className={`h-full rounded-full ${p.color} transition-all duration-700`}
-                      style={{ width: `${pct}%`, boxShadow: `0 0 10px ${p.glow}40` }}
-                    />
+                  <div className="h-2.5 bg-slate-100 dark:bg-slate-700 rounded-full overflow-hidden w-full relative">
+                    {pct > 0 && (
+                      <div
+                        className={`absolute top-0 left-0 h-full rounded-full ${p.color} transition-all duration-700`}
+                        style={{ width: `${pct}%`, boxShadow: `0 0 10px ${p.glow}40` }}
+                      />
+                    )}
                   </div>
                 </div>
               );

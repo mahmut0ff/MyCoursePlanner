@@ -712,6 +712,14 @@ const DataTab: React.FC = () => {
 /* ════════════════════════════════════ LIMITS ════════════════════════════════════ */
 const LimitsTab: React.FC<{ settings: OrgSettings }> = ({ settings }) => {
   const { t } = useTranslation();
+  const { limits } = usePlanGate();
+  
+  const currStudents = (settings as any).studentsCount || 0;
+  const currTeachers = (settings as any).teachersCount || 0;
+  
+  const maxStudentsText = limits.maxStudents === -1 ? '∞' : limits.maxStudents;
+  const maxTeachersText = limits.maxTeachers === -1 ? '∞' : limits.maxTeachers;
+
   return (
     <div className="space-y-6">
       <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-6">
@@ -719,11 +727,11 @@ const LimitsTab: React.FC<{ settings: OrgSettings }> = ({ settings }) => {
         <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">{t('org.settings.limitsDesc')}</p>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div className="bg-slate-50 dark:bg-slate-700/50 rounded-xl p-5 text-center">
-            <p className="text-2xl font-bold text-slate-900 dark:text-white">{settings.maxStudents ?? '∞'}</p>
+            <p className="text-2xl font-bold text-slate-900 dark:text-white">{currStudents} / {maxStudentsText}</p>
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 uppercase tracking-wider">{t('org.settings.maxStudents')}</p>
           </div>
           <div className="bg-slate-50 dark:bg-slate-700/50 rounded-xl p-5 text-center">
-            <p className="text-2xl font-bold text-slate-900 dark:text-white">{settings.maxTeachers ?? '∞'}</p>
+            <p className="text-2xl font-bold text-slate-900 dark:text-white">{currTeachers} / {maxTeachersText}</p>
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 uppercase tracking-wider">{t('org.settings.maxTeachers')}</p>
           </div>
           <div className="bg-slate-50 dark:bg-slate-700/50 rounded-xl p-5 text-center">

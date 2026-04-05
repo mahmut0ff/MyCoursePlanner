@@ -4,6 +4,7 @@
 import type { Handler, HandlerEvent } from '@netlify/functions';
 import { adminDb } from './utils/firebase-admin';
 import { verifyAuth, isStaff, getOrgFilter, ok, unauthorized, forbidden, badRequest, notFound, jsonResponse, isSuperAdmin } from './utils/auth';
+import { getOrgLimits } from './utils/plan-limits';
 
 const COLLECTION = 'exams';
 
@@ -82,6 +83,18 @@ const handler: Handler = async (event: HandlerEvent) => {
       const srcDoc = await adminDb.collection(COLLECTION).doc(body.examId).get();
       if (!srcDoc.exists) return notFound('Exam not found');
       const srcData = srcDoc.data()!;
+      
+      const targetOrg = user.organizationId || srcData.organizationId || '';
+      if (targetOrg) {
+        const limits = await getOrgLimits(targetOrg);
+        if (limits.maxExams !== -1) {
+          const examsSnap = await adminDb.collection(COLLECTION).where('organizationId', '==', targetOrg).get();
+          if (examsSnap.size >= limits.maxExams) {
+            return badRequest('Organization has reached the exam limit for its plan.');
+          }
+        }
+      }
+
       const now = new Date().toISOString();
       const newData = {
         ...srcData,
@@ -105,6 +118,18 @@ const handler: Handler = async (event: HandlerEvent) => {
     }
 
     if (!body.title) return badRequest('title required');
+    
+    // Check exam limit
+    if (user.organizationId) {
+      const limits = await getOrgLimits(user.organizationId);
+      if (limits.maxExams !== -1) {
+        const examsSnap = await adminDb.collection(COLLECTION).where('organizationId', '==', user.organizationId).get();
+        if (examsSnap.size >= limits.maxExams) {
+          return badRequest('Organization has reached the exam limit for its plan.');
+        }
+      }
+    }
+
     const now = new Date().toISOString();
     const data = {
       title: body.title, subject: body.subject || '', description: body.description || '',

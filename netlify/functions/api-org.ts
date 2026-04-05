@@ -12,6 +12,7 @@ import {
 } from './utils/auth';
 import { createNotification } from './utils/notifications';
 import { FieldValue } from 'firebase-admin/firestore';
+import { getOrgLimits } from './utils/plan-limits';
 /* ═══════════════════════════════════════════════ */
 /*  Helpers                                        */
 /* ═══════════════════════════════════════════════ */
@@ -299,6 +300,16 @@ const handler: Handler = async (event: HandlerEvent) => {
       if (!hasRole(user, 'admin')) return forbidden();
       const body = JSON.parse(event.body || '{}');
       if (!body.email || !body.displayName || !body.password) return badRequest('email, displayName and password required');
+
+      // Check student limit
+      const limits = await getOrgLimits(orgId);
+      if (limits.maxStudents !== -1) {
+        const orgData = (await adminDb.collection('organizations').doc(orgId).get()).data();
+        if ((orgData?.studentsCount || 0) >= limits.maxStudents) {
+          return badRequest('Organization has reached the student limit for its plan.');
+        }
+      }
+
       try {
         // Check if user already exists in Firestore
         const existing = await adminDb.collection('users').where('email', '==', body.email).get();
@@ -382,6 +393,16 @@ const handler: Handler = async (event: HandlerEvent) => {
       if (!hasRole(user, 'admin')) return forbidden();
       const body = JSON.parse(event.body || '{}');
       if (!body.email || !body.displayName || !body.password) return badRequest('email, displayName and password required');
+
+      // Check teacher limit
+      const limits = await getOrgLimits(orgId);
+      if (limits.maxTeachers !== -1) {
+        const orgData = (await adminDb.collection('organizations').doc(orgId).get()).data();
+        if ((orgData?.teachersCount || 0) >= limits.maxTeachers) {
+          return badRequest('Organization has reached the teacher limit for its plan.');
+        }
+      }
+
       try {
         const existing = await adminDb.collection('users').where('email', '==', body.email).get();
         if (!existing.empty) return badRequest('User with this email already exists');
@@ -449,6 +470,16 @@ const handler: Handler = async (event: HandlerEvent) => {
       if (!hasRole(user, 'admin')) return forbidden();
       const body = JSON.parse(event.body || '{}');
       if (!body.email || !body.displayName || !body.password) return badRequest('email, displayName and password required');
+
+      // Check teacher limit (managers count towards teachers)
+      const limits = await getOrgLimits(orgId);
+      if (limits.maxTeachers !== -1) {
+        const orgData = (await adminDb.collection('organizations').doc(orgId).get()).data();
+        if ((orgData?.teachersCount || 0) >= limits.maxTeachers) {
+          return badRequest('Organization has reached the manager/teacher limit for its plan.');
+        }
+      }
+
       try {
         const existing = await adminDb.collection('users').where('email', '==', body.email).get();
         if (!existing.empty) return badRequest('User with this email already exists');
@@ -493,9 +524,19 @@ const handler: Handler = async (event: HandlerEvent) => {
       if (!hasRole(user, 'admin')) return forbidden();
       const body = JSON.parse(event.body || '{}');
       if (!body.email || !body.role) return badRequest('email and role required');
-      // Look up org name
-      const orgDoc = await adminDb.collection('organizations').doc(orgId).get();
-      const organizationName = orgDoc.exists ? orgDoc.data()?.name || '' : '';
+      
+      // Check limits
+      const limits = await getOrgLimits(orgId);
+      const orgData = (await adminDb.collection('organizations').doc(orgId).get()).data();
+      const organizationName = orgData?.name || '';
+
+      if (body.role === 'student' && limits.maxStudents !== -1 && (orgData?.studentsCount || 0) >= limits.maxStudents) {
+         return badRequest('Organization has reached the student limit for its plan.');
+      }
+      if (['teacher', 'mentor', 'admin', 'manager'].includes(body.role) && limits.maxTeachers !== -1 && (orgData?.teachersCount || 0) >= limits.maxTeachers) {
+         return badRequest('Organization has reached the teacher limit for its plan.');
+      }
+
       // Check if user is already in this org
       const existing = await adminDb.collection('users').where('email', '==', body.email).get();
       if (!existing.empty) {

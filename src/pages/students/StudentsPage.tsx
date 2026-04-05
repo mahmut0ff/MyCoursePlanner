@@ -2,6 +2,7 @@ import React, { useEffect, useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../contexts/AuthContext';
+import { usePlanGate } from '../../contexts/PlanContext';
 import { 
   orgGetStudents, 
   orgGetGroups,
@@ -21,6 +22,7 @@ const StudentsPage: React.FC = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { profile } = useAuth();
+  const { limits } = usePlanGate();
 
   const [activeTab, setActiveTab] = useState<'students' | 'applications'>('students');
   const [expandedAvatar, setExpandedAvatar] = useState<string | null>(null);
@@ -117,6 +119,12 @@ const StudentsPage: React.FC = () => {
 
   const handleApprove = async (userId: string) => {
     if (!profile?.activeOrgId) return;
+
+    if (limits.maxStudents !== -1 && students.length >= limits.maxStudents) {
+      toast.error(t('org.settings.maxStudentsReached', 'Достигнут лимит студентов для вашего тарифа'));
+      return;
+    }
+
     try {
       await apiAcceptMembership(userId, profile.activeOrgId);
       toast.success(t('directory.applicationApproved', 'Заявка одобрена!'));

@@ -5,9 +5,12 @@ import { getExams } from '../../services/exams.service';
 import type { Exam } from '../../types';
 import { formatDate } from '../../utils/grading';
 import { Plus, ClipboardList, Search, Clock, HelpCircle, FileText, ChevronRight } from 'lucide-react';
+import { usePlanGate } from '../../contexts/PlanContext';
+import toast from 'react-hot-toast';
 
 const ExamListPage: React.FC = () => {
   const { t } = useTranslation();
+  const { limits } = usePlanGate();
   const [exams, setExams] = useState<Exam[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -15,6 +18,13 @@ const ExamListPage: React.FC = () => {
   useEffect(() => {
     getExams().then(setExams).catch(() => setExams([])).finally(() => setLoading(false));
   }, []);
+
+  const handleCreate = (e: React.MouseEvent) => {
+    if (limits.maxExams !== -1 && exams.length >= limits.maxExams) {
+      e.preventDefault();
+      toast.error(t('org.settings.maxExamsReached', 'Достигнут лимит экзаменов для вашего тарифа'));
+    }
+  };
 
   const filtered = exams.filter((e) =>
     e.title.toLowerCase().includes(search.toLowerCase()) ||
@@ -54,7 +64,7 @@ const ExamListPage: React.FC = () => {
               className="pl-10 pr-4 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:ring-2 focus:ring-slate-900 focus:border-slate-900 dark:focus:ring-white dark:focus:border-white outline-none w-full sm:w-64 transition-all shadow-sm" 
             />
           </div>
-          <Link to="/exams/new" className="bg-slate-900 hover:bg-slate-800 text-white dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100 px-4 py-2.5 rounded-xl text-sm font-semibold flex items-center gap-2 transition-all shadow-sm hover:shadow-md shrink-0">
+          <Link to="/exams/new" onClick={handleCreate} className="bg-slate-900 hover:bg-slate-800 text-white dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100 px-4 py-2.5 rounded-xl text-sm font-semibold flex items-center gap-2 transition-all shadow-sm hover:shadow-md shrink-0">
             <Plus className="w-4 h-4" />{t('exams.create', 'Create Exam')}
           </Link>
         </div>
@@ -69,7 +79,7 @@ const ExamListPage: React.FC = () => {
           </div>
           <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-2">{t('exams.noExams', 'No exams found')}</h3>
           <p className="text-slate-500 dark:text-slate-400 mb-8 max-w-md mx-auto leading-relaxed">{t('exams.createFirst', 'Get started by creating your first formal assessment. Exams are strict, graded, and designed for serious evaluation.')}</p>
-          <Link to="/exams/new" className="bg-slate-900 hover:bg-slate-800 text-white dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100 px-6 py-3 rounded-xl font-semibold inline-flex items-center gap-2 transition-all shadow-md">
+          <Link to="/exams/new" onClick={handleCreate} className="bg-slate-900 hover:bg-slate-800 text-white dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100 px-6 py-3 rounded-xl font-semibold inline-flex items-center gap-2 transition-all shadow-md">
             <Plus className="w-5 h-5" />{t('exams.create', 'Create New Exam')}
           </Link>
         </div>

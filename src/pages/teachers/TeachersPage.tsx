@@ -2,11 +2,14 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { orgGetTeachers, orgInviteUser } from '../../lib/api';
+import { usePlanGate } from '../../contexts/PlanContext';
 import { UserPlus, Search, Mail, RefreshCw, Send, Phone } from 'lucide-react';
+import toast from 'react-hot-toast';
 import type { UserProfile } from '../../types';
 
 const TeachersPage: React.FC = () => {
   const { t } = useTranslation();
+  const { limits } = usePlanGate();
   const [teachers, setTeachers] = useState<UserProfile[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -39,6 +42,12 @@ const TeachersPage: React.FC = () => {
 
   const handleInvite = async () => {
     if (!inviteEmail.trim()) return;
+
+    if (limits.maxTeachers !== -1 && teachers.length >= limits.maxTeachers) {
+      toast.error(t('org.settings.maxTeachersReached', 'Достигнут лимит преподавателей для вашего тарифа'));
+      return;
+    }
+
     setSaving(true); setError('');
     try {
       await orgInviteUser(inviteEmail.trim(), 'teacher');

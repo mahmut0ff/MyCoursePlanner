@@ -79,7 +79,7 @@ const AppLayout: React.FC = () => {
            const mix = (c1: number, c2: number, weight: number) => Math.round(c1 * weight + c2 * (1 - weight));
            const shade = (weight: number, isLight: boolean) => {
              const target = isLight ? 255 : 0;
-             return `rgb(${mix(r, target, weight)}, ${mix(g, target, weight)}, ${mix(b, target, weight)})`;
+             return `${mix(r, target, weight)} ${mix(g, target, weight)} ${mix(b, target, weight)}`;
            };
            
            const root = document.documentElement;
@@ -88,7 +88,7 @@ const AppLayout: React.FC = () => {
            root.style.setProperty('--color-primary-200', shade(0.6, true));
            root.style.setProperty('--color-primary-300', shade(0.4, true));
            root.style.setProperty('--color-primary-400', shade(0.2, true));
-           root.style.setProperty('--color-primary-500', hex);
+           root.style.setProperty('--color-primary-500', `${r} ${g} ${b}`);
            root.style.setProperty('--color-primary-600', shade(0.8, false));
            root.style.setProperty('--color-primary-700', shade(0.6, false));
            root.style.setProperty('--color-primary-800', shade(0.4, false));

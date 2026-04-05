@@ -6,19 +6,31 @@ import { Building2, Palette, Bot, Grid, ChevronRight, CheckCircle2, X } from 'lu
 interface Props {
   orgData?: any;
   branchData?: any;
-  orgCreatedAt?: string;
+  orgCreatedAt?: any;
 }
 
 const ONBOARDING_DISMISS_KEY = 'planula_onboarding_admin_dismissed';
 const ONBOARDING_MAX_AGE_DAYS = 30;
 
 /** Check whether the onboarding should be shown at all (new org, not dismissed) */
-function shouldShowOnboarding(orgCreatedAt?: string): boolean {
+function shouldShowOnboarding(orgCreatedAt?: any): boolean {
   if (typeof window !== 'undefined' && localStorage.getItem(ONBOARDING_DISMISS_KEY)) {
     return false;
   }
   if (!orgCreatedAt) return true;
-  const created = new Date(orgCreatedAt).getTime();
+  
+  let created = NaN;
+  if (typeof orgCreatedAt === 'string' || typeof orgCreatedAt === 'number') {
+    created = new Date(orgCreatedAt).getTime();
+  } else if (orgCreatedAt && typeof orgCreatedAt === 'object') {
+    if (orgCreatedAt.seconds) created = orgCreatedAt.seconds * 1000;
+    else if (orgCreatedAt._seconds) created = orgCreatedAt._seconds * 1000;
+    else if (typeof orgCreatedAt.toDate === 'function') created = orgCreatedAt.toDate().getTime();
+    else if (typeof orgCreatedAt.getTime === 'function') created = orgCreatedAt.getTime();
+  }
+
+  if (isNaN(created)) return true;
+
   const now = Date.now();
   const daysSinceCreation = (now - created) / (1000 * 60 * 60 * 24);
   return daysSinceCreation <= ONBOARDING_MAX_AGE_DAYS;
@@ -42,7 +54,6 @@ export function useOnboardingProgress(props: Props) {
 }
 
 const OnboardingWizard: React.FC<Props> = ({ orgData, branchData, orgCreatedAt }) => {
-  const { t } = useTranslation();
   const [dismissed, setDismissed] = useState(false);
 
   const steps = [
@@ -64,8 +75,16 @@ const OnboardingWizard: React.FC<Props> = ({ orgData, branchData, orgCreatedAt }
   };
 
   return (
-    <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-sm mb-8">
-      <div className="p-6 md:p-8 flex flex-col xl:flex-row gap-8 xl:gap-12">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm animate-[fadeIn_0.2s_ease-out]">
+      <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-2xl w-full max-w-5xl overflow-hidden relative">
+        <button
+          onClick={handleDismiss}
+          className="absolute top-4 right-4 sm:top-6 sm:right-6 p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 rounded-full hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors z-10"
+        >
+          <X className="w-5 h-5" />
+        </button>
+        
+        <div className="p-6 md:p-10 flex flex-col lg:flex-row gap-8 lg:gap-16">
         
         {/* Left Column: Intro & Setup Progress */}
         <div className="xl:w-5/12 flex flex-col justify-between">
@@ -103,9 +122,9 @@ const OnboardingWizard: React.FC<Props> = ({ orgData, branchData, orgCreatedAt }
 
             <button
               onClick={handleDismiss}
-              className="mt-5 text-sm text-slate-500 hover:text-slate-800 dark:hover:text-slate-300 transition-colors flex items-center gap-1.5"
+              className="mt-6 text-sm font-medium text-slate-500 hover:text-slate-800 dark:hover:text-slate-300 transition-colors flex items-center gap-1.5"
             >
-              Скрыть руководство <X className="w-3.5 h-3.5" />
+              Пропустить пока <ChevronRight className="w-4 h-4" />
             </button>
           </div>
         </div>
@@ -162,6 +181,7 @@ const OnboardingWizard: React.FC<Props> = ({ orgData, branchData, orgCreatedAt }
               </div>
             </Link>
           ))}
+        </div>
         </div>
       </div>
     </div>

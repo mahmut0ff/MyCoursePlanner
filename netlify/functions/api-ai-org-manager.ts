@@ -41,8 +41,7 @@ const handler: Handler = async (event: HandlerEvent) => {
         data = { ...data, ...snap.data() };
       }
       
-      const allowedPlans = ['enterprise', 'professional', 'pro', 'expert'];
-      if (orgPlan && !allowedPlans.includes(orgPlan)) {
+      if (orgPlan !== 'enterprise') {
         data.isActive = false;
       }
 
@@ -65,9 +64,7 @@ const handler: Handler = async (event: HandlerEvent) => {
       if (!orgSnap.exists) return badRequest('Organization not found');
       
       const orgData = orgSnap.data()!;
-      // Allow enterprise, professional, or super_admin
-      const allowedPlans = ['enterprise', 'professional', 'pro', 'expert'];
-      if (!allowedPlans.includes(orgData.planId) && user.role !== 'super_admin') {
+      if (orgData.planId !== 'enterprise' && user.role !== 'super_admin') {
          return forbidden('Your current plan does not support AI features');
       }
       if (orgData.ownerId !== user.uid && user.role !== 'super_admin') {

@@ -485,7 +485,7 @@ const Sidebar: React.FC<{ open: boolean; onClose: () => void; isCollapsed?: bool
               )}
               <div className={`min-w-0 flex-1 ${isCollapsed ? 'lg:hidden' : ''}`}>
                 <p className="text-sm font-semibold text-white truncate">{profile?.displayName}</p>
-                <p className="text-[10px] text-slate-500 capitalize">{role?.replace('_', ' ')}</p>
+                <p className="text-[10px] text-slate-500 capitalize">{role === 'admin' && !isSuperAdmin ? t('roles.director', 'Директор') : role?.replace('_', ' ')}</p>
               </div>
             </div>
             {isSuperAdmin && (

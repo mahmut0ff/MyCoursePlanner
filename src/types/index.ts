@@ -686,6 +686,7 @@ export interface OrgSettings {
   logo?: string;
   timezone: string;
   locale: string;
+  supportedLocales?: string[];
   academicYearStart?: string;
   academicYearEnd?: string;
   gradingScale?: 'percentage' | 'letter' | 'points';

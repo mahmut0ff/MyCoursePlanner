@@ -208,7 +208,7 @@ const GeneralTab: React.FC<{ settings: OrgSettings; update: (k: string, v: any) 
                 onClick={() => update('isOnline', !settings.isOnline)}
                 className={`relative w-11 h-6 rounded-full transition-colors ${settings.isOnline ? 'bg-primary-500' : 'bg-slate-300 dark:bg-slate-600'}`}
               >
-                <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${settings.isOnline ? 'left-[22px]' : 'left-0.5'}`} />
+                <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-all ${settings.isOnline ? 'left-[22px]' : 'left-0.5'}`} />
               </button>
             </div>
           </div>
@@ -441,7 +441,7 @@ const VisitCardTab: React.FC<{ settings: OrgSettings; update: (k: string, v: any
             onClick={() => update('publicProfileEnabled', !settings.publicProfileEnabled)}
             className={`relative w-11 h-6 rounded-full transition-colors ${settings.publicProfileEnabled ? 'bg-primary-500' : 'bg-slate-300 dark:bg-slate-600'}`}
           >
-            <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${settings.publicProfileEnabled ? 'left-[22px]' : 'left-0.5'}`} />
+            <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-all ${settings.publicProfileEnabled ? 'left-[22px]' : 'left-0.5'}`} />
           </button>
         </div>
 
@@ -570,7 +570,7 @@ const NotificationsTab: React.FC<{ settings: OrgSettings; update: (k: string, v:
                 onClick={() => update(n.key, !(settings as any)[n.key])}
                 className={`relative w-11 h-6 rounded-full transition-colors ${(settings as any)[n.key] ? 'bg-primary-500' : 'bg-slate-300 dark:bg-slate-600'}`}
               >
-                <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${(settings as any)[n.key] ? 'left-[22px]' : 'left-0.5'}`} />
+                <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-all ${(settings as any)[n.key] ? 'left-[22px]' : 'left-0.5'}`} />
               </button>
             </div>
           ))}
@@ -603,13 +603,27 @@ const LocalizationTab: React.FC<{ settings: OrgSettings; update: (k: string, v: 
           <div>
             <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">{t('org.settings.enabledLanguages')}</label>
             <div className="flex gap-3">
-              {langs.map((l) => (
-                <label key={l.code} className="flex items-center gap-2 px-4 py-3 bg-slate-50 dark:bg-slate-700/50 rounded-xl cursor-pointer border border-slate-200 dark:border-slate-600 hover:border-primary-300 dark:hover:border-primary-600 transition-colors">
-                  <input type="checkbox" defaultChecked className="accent-primary-500 w-4 h-4" />
+              {langs.map((l) => {
+                const supportedLocales = settings.supportedLocales || ['ru', 'en', 'kg'];
+                const isChecked = supportedLocales.includes(l.code);
+                return (
+                <label key={l.code} className="flex flex-col sm:flex-row items-center sm:items-center gap-2 px-4 py-3 bg-slate-50 dark:bg-slate-700/50 rounded-xl cursor-pointer border border-slate-200 dark:border-slate-600 hover:border-primary-300 dark:hover:border-primary-600 transition-colors">
+                  <input 
+                    type="checkbox" 
+                    checked={isChecked} 
+                    onChange={() => {
+                      let newLocales = isChecked 
+                        ? supportedLocales.filter(c => c !== l.code) 
+                        : [...supportedLocales, l.code];
+                      if (newLocales.length === 0) newLocales = ['ru'];
+                      update('supportedLocales', newLocales);
+                    }} 
+                    className="accent-primary-500 w-4 h-4" 
+                  />
                   <span className="text-lg">{l.flag}</span>
                   <span className="text-sm text-slate-700 dark:text-slate-300">{l.label}</span>
                 </label>
-              ))}
+              )})}
             </div>
           </div>
           <div>
@@ -662,7 +676,7 @@ const SecurityTab: React.FC<{ settings: OrgSettings; update: (k: string, v: any)
                 onClick={() => update('requireTwoFactor', !settings.requireTwoFactor)}
                 className={`relative w-11 h-6 rounded-full transition-colors ${settings.requireTwoFactor ? 'bg-primary-500' : 'bg-slate-300 dark:bg-slate-600'}`}
               >
-                <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${settings.requireTwoFactor ? 'left-[22px]' : 'left-0.5'}`} />
+                <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-all ${settings.requireTwoFactor ? 'left-[22px]' : 'left-0.5'}`} />
               </button>
             </div>
           </div>
@@ -808,11 +822,11 @@ const OrgSettingsPage: React.FC = () => {
 
       {error && <div className="mb-4 px-4 py-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg text-sm text-red-600 dark:text-red-400">{error}</div>}
 
-      {/* Tabbed layout – same structure as AdminSettingsPage */}
-      <div className="flex gap-6 min-h-[calc(100vh-8rem)]">
+      {/* Tabbed layout */}
+      <div className="flex flex-col md:flex-row gap-6 min-h-[calc(100vh-8rem)]">
         {/* Left sidebar tabs */}
-        <div className="w-56 shrink-0">
-          <nav className="space-y-0.5 sticky top-4">
+        <div className="w-full md:w-56 shrink-0">
+          <nav className="flex md:block space-x-2 md:space-x-0 md:space-y-0.5 overflow-x-auto pb-2 md:pb-0 scrollbar-none md:sticky md:top-4">
             {TABS.filter(t => t.id !== 'ai' || canAccess('ai')).map((tab) => {
               const Icon = tab.icon;
               const isActive = activeTab === tab.id;
@@ -820,7 +834,7 @@ const OrgSettingsPage: React.FC = () => {
                 <button
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id)}
-                  className={`flex items-center gap-3 w-full px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${
+                  className={`flex items-center gap-2 md:gap-3 shrink-0 md:w-full px-3 py-2 md:py-2.5 rounded-xl text-sm font-medium transition-all ${
                     isActive
                       ? 'bg-primary-50 dark:bg-primary-900/20 text-primary-700 dark:text-primary-400'
                       : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700/50 hover:text-slate-900 dark:hover:text-white'

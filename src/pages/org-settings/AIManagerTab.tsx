@@ -92,7 +92,7 @@ export const AIManagerTab: React.FC<{ organizationId: string }> = ({ organizatio
             onClick={() => update('isActive', !settings.isActive)}
             className={`relative w-12 h-6 rounded-full transition-colors ${settings.isActive ? 'bg-primary-500' : 'bg-slate-300 dark:bg-slate-600'}`}
           >
-            <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform duration-200 ${settings.isActive ? 'left-[26px]' : 'left-0.5'}`} />
+            <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-all duration-200 ${settings.isActive ? 'left-[26px]' : 'left-0.5'}`} />
           </button>
         </div>
       </div>

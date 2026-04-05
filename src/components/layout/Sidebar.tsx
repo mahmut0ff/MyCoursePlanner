@@ -473,13 +473,13 @@ const Sidebar: React.FC<{ open: boolean; onClose: () => void; isCollapsed?: bool
                 navigate(role === 'teacher' ? '/teacher-profile' : '/profile');
                 if (window.innerWidth < 1024) onClose();
               }}
-              className={`flex items-center cursor-pointer hover:bg-white/5 p-1.5 rounded-lg transition-colors overflow-hidden gap-3 flex-1 -ml-1.5 ${isCollapsed ? 'lg:justify-center lg:mx-auto lg:-ml-0 lg:gap-0' : ''}`}
+              className={`flex items-center cursor-pointer hover:bg-white/5 p-1.5 rounded-lg transition-colors overflow-hidden ${isCollapsed ? 'gap-3 lg:gap-0 flex-1 lg:flex-none -ml-1.5 lg:mx-auto lg:ml-0 lg:justify-center' : 'gap-3 flex-1 -ml-1.5'}`}
               title={t('nav.profile')}
             >
               {profile?.avatarUrl ? (
-                <img src={profile.avatarUrl} alt="" className="w-8 h-8 rounded-full object-cover shadow-lg ring-2 ring-white/10 shrink-0" />
+                <img src={profile.avatarUrl} alt="" className="w-8 h-8 rounded-full object-cover shadow-sm ring-2 ring-white/10 shrink-0 aspect-square" />
               ) : (
-                <div className="w-8 h-8 bg-emerald-600 rounded-full flex items-center justify-center text-xs font-bold text-white shadow-lg ring-2 ring-white/10 shrink-0">
+                <div className="w-8 h-8 bg-emerald-600 rounded-full flex items-center justify-center text-xs font-bold text-white shadow-lg ring-2 ring-white/10 shrink-0 aspect-square">
                   {profile?.displayName?.[0]?.toUpperCase() || '?'}
                 </div>
               )}

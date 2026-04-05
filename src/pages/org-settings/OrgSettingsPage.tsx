@@ -18,165 +18,92 @@ import { updateProfile, updatePassword, EmailAuthProvider, reauthenticateWithCre
 import { updateUser } from '../../services/users.service';
 import toast from 'react-hot-toast';
 
-type Tab = 'profile' | 'general' | 'academic' | 'branding' | 'visitcard' | 'notifications' | 'localization' | 'security' | 'data' | 'limits' | 'ai';
+type Tab = 'general' | 'academic' | 'visitcard' | 'notifications' | 'data' | 'limits' | 'ai';
 
 const TABS: { id: Tab; icon: React.ElementType; labelKey: string }[] = [
-  { id: 'profile', icon: User, labelKey: 'org.settings.profileTab' },
   { id: 'general', icon: Building2, labelKey: 'org.settings.general' },
   { id: 'academic', icon: GraduationCap, labelKey: 'org.settings.academic' },
-  { id: 'branding', icon: Palette, labelKey: 'org.settings.branding' },
   { id: 'visitcard', icon: QrCode, labelKey: 'org.settings.visitCardTab' },
   { id: 'notifications', icon: Bell, labelKey: 'org.settings.notifications' },
-  { id: 'localization', icon: Globe, labelKey: 'org.settings.localizationTab' },
-  { id: 'security', icon: Lock, labelKey: 'org.settings.security' },
   { id: 'data', icon: Database, labelKey: 'org.settings.dataTab' },
   { id: 'limits', icon: BarChart3, labelKey: 'org.settings.limits' },
   { id: 'ai', icon: Bot, labelKey: 'AI Manager' },
 ];
 
-/* ════════════════════════════════════ PROFILE ════════════════════════════════════ */
-const ProfileTab: React.FC = () => {
-  const { t } = useTranslation();
-  const { profile, refreshProfile, isSuperAdmin } = useAuth();
-  const [form, setForm] = useState({
-    firstName: profile?.displayName?.split(' ')[0] || '',
-    lastName: profile?.displayName?.split(' ').slice(1).join(' ') || '',
-    email: profile?.email || '',
-    phone: profile?.phone || '',
-  });
-  const [pw, setPw] = useState({ current: '', newPw: '', confirm: '' });
-  const [showPw, setShowPw] = useState(false);
-  const [savingProfile, setSavingProfile] = useState(false);
-  const [savingPw, setSavingPw] = useState(false);
-
-  const handleSaveProfile = async () => {
-    if (!auth.currentUser || !profile) return;
-    setSavingProfile(true);
-    try {
-      const displayName = `${form.firstName.trim()} ${form.lastName.trim()}`.trim();
-      await updateProfile(auth.currentUser, { displayName });
-      await updateUser(auth.currentUser.uid, { displayName, phone: form.phone.trim() });
-      await refreshProfile();
-      toast.success(t('org.settings.saved', 'Сохранено'));
-    } catch (e: any) {
-      toast.error(e.message || t('common.error', 'Ошибка'));
-    } finally {
-      setSavingProfile(false);
-    }
-  };
-
-  const handleChangePassword = async () => {
-    if (!pw.current || !pw.newPw || pw.newPw.length < 6 || pw.newPw !== pw.confirm) {
-      toast.error(t('profile.passwordMinLength', 'Пароли не совпадают или длина менее 6 символов'));
-      return;
-    }
-    setSavingPw(true);
-    try {
-      const user = auth.currentUser!;
-      const cred = EmailAuthProvider.credential(user.email!, pw.current);
-      await reauthenticateWithCredential(user, cred);
-      await updatePassword(user, pw.newPw);
-      toast.success(t('profile.passwordChanged', 'Пароль успешно изменен'));
-      setPw({ current: '', newPw: '', confirm: '' });
-    } catch (e: any) {
-      toast.error(t('profile.passwordFailed', 'Неверный текущий пароль или ошибка'));
-    } finally {
-      setSavingPw(false);
-    }
-  };
-
-  return (
-    <div className="space-y-6">
-      {/* Profile Header */}
-      <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-6 flex items-center gap-4">
-        {profile?.avatarUrl ? (
-          <img src={profile.avatarUrl} alt="" className="w-14 h-14 rounded-full object-cover shadow-lg ring-2 ring-white/10" />
-        ) : (
-          <div className="w-14 h-14 bg-primary-600 rounded-full flex items-center justify-center text-xl font-bold text-white shadow-lg ring-2 ring-white/10">
-            {profile?.displayName?.[0]?.toUpperCase() || '?'}
-          </div>
-        )}
-        <div>
-          <h3 className="text-lg font-bold text-slate-900 dark:text-white">{profile?.displayName}</h3>
-          <p className="text-sm text-slate-500 dark:text-slate-400">{profile?.email}</p>
-          <span className="inline-flex px-2 py-0.5 rounded text-xs font-medium bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-400 mt-1 capitalize">{profile?.role === 'admin' && !isSuperAdmin ? t('roles.director', 'Директор') : profile?.role?.replace('_', ' ')}</span>
-        </div>
-      </div>
-
-      {/* Profile Form */}
-      <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-6">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-          <div>
-            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">{t('org.settings.firstName')}</label>
-            <input type="text" value={form.firstName} onChange={(e) => setForm({ ...form, firstName: e.target.value })} className="input" />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">{t('org.settings.lastName')}</label>
-            <input type="text" value={form.lastName} onChange={(e) => setForm({ ...form, lastName: e.target.value })} className="input" />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">{t('org.settings.emailLabel')}</label>
-            <input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} className="input" />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">{t('org.settings.phone')}</label>
-            <input type="text" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} className="input" placeholder="+996 XXX XXX XXX" />
-          </div>
-        </div>
-        <div className="flex justify-end">
-          <button onClick={handleSaveProfile} disabled={savingProfile} className="btn-primary text-sm flex items-center gap-2">
-            {savingProfile ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-            {t('org.settings.saveChanges')}
-          </button>
-        </div>
-      </div>
-
-      {/* Change Password */}
-      <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-6">
-        <h3 className="text-base font-semibold text-slate-900 dark:text-white mb-4 flex items-center gap-2"><Shield className="w-4 h-4" />{t('org.settings.changePassword')}</h3>
-        <div className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">{t('org.settings.currentPassword')}</label>
-            <div className="relative">
-              <input type={showPw ? 'text' : 'password'} value={pw.current} onChange={(e) => setPw({ ...pw, current: e.target.value })} className="input pr-10" placeholder={t('org.settings.enterCurrentPassword')} />
-              <button onClick={() => setShowPw(!showPw)} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300">
-                {showPw ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-              </button>
-            </div>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">{t('org.settings.newPassword')}</label>
-              <input type="password" value={pw.newPw} onChange={(e) => setPw({ ...pw, newPw: e.target.value })} className="input" placeholder={t('org.settings.enterNewPassword')} />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">{t('org.settings.confirmNewPassword')}</label>
-              <input type="password" value={pw.confirm} onChange={(e) => setPw({ ...pw, confirm: e.target.value })} className="input" placeholder={t('org.settings.confirmNewPassword')} />
-            </div>
-          </div>
-          <div className="flex justify-end">
-            <button onClick={handleChangePassword} disabled={savingPw || !pw.current || !pw.newPw || pw.newPw !== pw.confirm} className="btn-primary text-sm flex items-center gap-2">
-              {savingPw ? <Loader2 className="w-4 h-4 animate-spin" /> : <Shield className="w-4 h-4" />}
-              {t('org.settings.updatePassword')}
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-};
-
 /* ════════════════════════════════════ GENERAL ════════════════════════════════════ */
 const GeneralTab: React.FC<{ settings: OrgSettings; update: (k: string, v: any) => void }> = ({ settings, update }) => {
   const { t } = useTranslation();
+  const logoInputRef = useRef<HTMLInputElement>(null);
+  const [uploading, setUploading] = useState(false);
+
+  const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !settings.organizationId) return;
+    setUploading(true);
+    try {
+      const ref = storageRef(storage, `org-logos/${settings.organizationId}`);
+      await uploadBytes(ref, file);
+      const url = await getDownloadURL(ref);
+      update('logo', url);
+    } catch (err) {
+      console.error('Logo upload error:', err);
+    } finally {
+      setUploading(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
+      {/* Branding / Logo */}
+      <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-6">
+        <h3 className="font-semibold text-slate-900 dark:text-white mb-4">{t('org.settings.branding', 'Брендинг')}</h3>
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">{t('org.settings.logoUrl', 'Логотип организации')}</label>
+            <div className="flex items-center gap-6">
+              <div className="relative group">
+                <div className="w-24 h-24 rounded-2xl bg-gradient-to-br from-violet-100 to-indigo-100 dark:from-violet-900/40 dark:to-indigo-900/40 flex items-center justify-center overflow-hidden shadow-lg">
+                  {settings.logo ? (
+                    <img src={settings.logo} alt="Logo" className="w-24 h-24 object-cover rounded-2xl" />
+                  ) : (
+                    <Building2 className="w-10 h-10 text-violet-600 dark:text-violet-400" />
+                  )}
+                </div>
+                <button
+                  onClick={() => logoInputRef.current?.click()}
+                  disabled={uploading}
+                  className="absolute inset-0 bg-black/50 text-white rounded-2xl flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
+                >
+                  {uploading ? <Loader2 className="w-6 h-6 animate-spin" /> : <Camera className="w-6 h-6" />}
+                </button>
+                <input type="file" accept="image/*" ref={logoInputRef} onChange={handleLogoUpload} className="hidden" />
+              </div>
+              <div className="text-sm text-slate-500 dark:text-slate-400">
+                <p className="font-medium text-slate-700 dark:text-slate-300 mb-1">{t('org.settings.uploadLogo', 'Загрузите логотип')}</p>
+                <p className="text-xs">{t('org.settings.logoHint', 'Рекомендуемый размер: 256×256 px')}</p>
+              </div>
+            </div>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">{t('org.settings.primaryColor', 'Основной цвет')}</label>
+            <div className="flex items-center gap-2">
+              <input type="color" value={settings.primaryColor || '#6366f1'} onChange={(e) => update('primaryColor', e.target.value)} className="w-10 h-10 rounded-lg cursor-pointer border-0" />
+              <input type="text" value={settings.primaryColor || '#6366f1'} onChange={(e) => update('primaryColor', e.target.value)} className="input text-sm font-mono" />
+            </div>
+          </div>
+        </div>
+      </div>
+
       <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-6">
         <h3 className="font-semibold text-slate-900 dark:text-white mb-4">{t('org.settings.general')}</h3>
         <div className="space-y-4">
           <div>
             <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">{t('org.settings.orgName')}</label>
             <input value={settings.name} onChange={(e) => update('name', e.target.value)} className="input" />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">{t('org.settings.orgDescription', 'Описание организации')}</label>
+            <textarea value={settings.description || ''} onChange={(e) => update('description', e.target.value)} className="input min-h-[100px]" placeholder={t('org.settings.orgDescriptionPlaceholder')} />
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
@@ -274,84 +201,6 @@ const AcademicTab: React.FC<{ settings: OrgSettings; update: (k: string, v: any)
           <div>
             <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1"><span className="flex items-center gap-1"><Clock className="w-3 h-3" />{t('org.settings.workingHours', 'Рабочие часы')}</span></label>
             <input type="text" value={settings.workingHours || ''} onChange={(e) => update('workingHours', e.target.value)} className="input" placeholder="Пн-Пт 09:00-18:00, Сб 10:00-15:00" />
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-};
-
-/* ════════════════════════════════════ BRANDING ════════════════════════════════════ */
-const BrandingTab: React.FC<{ settings: OrgSettings; update: (k: string, v: any) => void }> = ({ settings, update }) => {
-  const { t } = useTranslation();
-  const logoInputRef = useRef<HTMLInputElement>(null);
-  const [uploading, setUploading] = useState(false);
-
-  const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file || !settings.organizationId) return;
-    setUploading(true);
-    try {
-      const ref = storageRef(storage, `org-logos/${settings.organizationId}`);
-      await uploadBytes(ref, file);
-      const url = await getDownloadURL(ref);
-      update('logo', url);
-    } catch (err) {
-      console.error('Logo upload error:', err);
-    } finally {
-      setUploading(false);
-    }
-  };
-
-  return (
-    <div className="space-y-6">
-      <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-6">
-        <h3 className="font-semibold text-slate-900 dark:text-white mb-4">{t('org.settings.branding')}</h3>
-        <div className="space-y-4">
-          {/* Logo Upload */}
-          <div>
-            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">{t('org.settings.logoUrl', 'Логотип организации')}</label>
-            <div className="flex items-center gap-6">
-              <div className="relative group">
-                <div className="w-24 h-24 rounded-2xl bg-gradient-to-br from-violet-100 to-indigo-100 dark:from-violet-900/40 dark:to-indigo-900/40 flex items-center justify-center overflow-hidden shadow-lg">
-                  {settings.logo ? (
-                    <img src={settings.logo} alt="Logo" className="w-24 h-24 object-cover rounded-2xl" />
-                  ) : (
-                    <Building2 className="w-10 h-10 text-violet-600 dark:text-violet-400" />
-                  )}
-                </div>
-                <button
-                  onClick={() => logoInputRef.current?.click()}
-                  disabled={uploading}
-                  className="absolute inset-0 bg-black/50 text-white rounded-2xl flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
-                >
-                  {uploading ? <Loader2 className="w-6 h-6 animate-spin" /> : <Camera className="w-6 h-6" />}
-                </button>
-                <input type="file" accept="image/*" ref={logoInputRef} onChange={handleLogoUpload} className="hidden" />
-              </div>
-              <div className="text-sm text-slate-500 dark:text-slate-400">
-                <p className="font-medium text-slate-700 dark:text-slate-300 mb-1">{t('org.settings.uploadLogo', 'Загрузите логотип')}</p>
-                <p className="text-xs">{t('org.settings.logoHint', 'Рекомендуемый размер: 256×256 px, формат PNG или JPG')}</p>
-              </div>
-            </div>
-          </div>
-
-          {/* Description */}
-          <div>
-            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">{t('org.settings.orgDescription')}</label>
-            <textarea value={settings.description || ''} onChange={(e) => update('description', e.target.value)} className="input min-h-[100px]"
-              placeholder={t('org.settings.orgDescriptionPlaceholder')} />
-          </div>
-
-          {/* Primary Color */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">{t('org.settings.primaryColor')}</label>
-              <div className="flex items-center gap-2">
-                <input type="color" value={settings.primaryColor || '#6366f1'} onChange={(e) => update('primaryColor', e.target.value)} className="w-10 h-10 rounded-lg cursor-pointer border-0" />
-                <input type="text" value={settings.primaryColor || '#6366f1'} onChange={(e) => update('primaryColor', e.target.value)} className="input text-sm font-mono" />
-              </div>
-            </div>
           </div>
         </div>
       </div>
@@ -580,116 +429,6 @@ const NotificationsTab: React.FC<{ settings: OrgSettings; update: (k: string, v:
   );
 };
 
-/* ════════════════════════════════════ LOCALIZATION ════════════════════════════════════ */
-const LocalizationTab: React.FC<{ settings: OrgSettings; update: (k: string, v: any) => void }> = ({ settings, update }) => {
-  const { t } = useTranslation();
-  const langs = [
-    { code: 'ru', label: 'Русский', flag: '🇷🇺' },
-    { code: 'kg', label: 'Кыргызча', flag: '🇰🇬' },
-    { code: 'en', label: 'English', flag: '🇬🇧' },
-  ];
-
-  return (
-    <div className="space-y-6">
-      <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-6">
-        <h3 className="font-semibold text-slate-900 dark:text-white mb-4">{t('org.settings.languageSettings')}</h3>
-        <div className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">{t('org.settings.defaultLanguage')}</label>
-            <select value={settings.locale} onChange={(e) => update('locale', e.target.value)} className="input">
-              {langs.map((l) => <option key={l.code} value={l.code}>{l.flag} {l.label}</option>)}
-            </select>
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">{t('org.settings.enabledLanguages')}</label>
-            <div className="flex gap-3">
-              {langs.map((l) => {
-                const supportedLocales = settings.supportedLocales || ['ru', 'en', 'kg'];
-                const isChecked = supportedLocales.includes(l.code);
-                return (
-                <label key={l.code} className="flex flex-col sm:flex-row items-center sm:items-center gap-2 px-4 py-3 bg-slate-50 dark:bg-slate-700/50 rounded-xl cursor-pointer border border-slate-200 dark:border-slate-600 hover:border-primary-300 dark:hover:border-primary-600 transition-colors">
-                  <input 
-                    type="checkbox" 
-                    checked={isChecked} 
-                    onChange={() => {
-                      let newLocales = isChecked 
-                        ? supportedLocales.filter(c => c !== l.code) 
-                        : [...supportedLocales, l.code];
-                      if (newLocales.length === 0) newLocales = ['ru'];
-                      update('supportedLocales', newLocales);
-                    }} 
-                    className="accent-primary-500 w-4 h-4" 
-                  />
-                  <span className="text-lg">{l.flag}</span>
-                  <span className="text-sm text-slate-700 dark:text-slate-300">{l.label}</span>
-                </label>
-              )})}
-            </div>
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">{t('org.settings.timezone')}</label>
-            <select value={settings.timezone} onChange={(e) => update('timezone', e.target.value)} className="input">
-              <option value="Asia/Bishkek">Asia/Bishkek (UTC+6)</option>
-              <option value="Asia/Almaty">Asia/Almaty (UTC+6)</option>
-              <option value="Europe/Moscow">Europe/Moscow (UTC+3)</option>
-              <option value="UTC">UTC</option>
-            </select>
-          </div>
-          <div className="flex justify-end">
-            <span className="text-xs text-slate-500 dark:text-slate-400">Настройки сохраняются по главной кнопке</span>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-};
-
-/* ════════════════════════════════════ SECURITY ════════════════════════════════════ */
-const SecurityTab: React.FC<{ settings: OrgSettings; update: (k: string, v: any) => void }> = ({ settings, update }) => {
-  const { t } = useTranslation();
-  return (
-    <div className="space-y-6">
-      <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-6">
-        <h3 className="font-semibold text-slate-900 dark:text-white mb-4">{t('org.settings.securitySettings')}</h3>
-        <div className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">{t('org.settings.sessionTimeout')}</label>
-            <div className="flex items-center gap-2">
-              <select value={settings.sessionTimeoutMinutes ?? 60} onChange={(e) => update('sessionTimeoutMinutes', Number(e.target.value))} className="input">
-                <option value={15}>15</option>
-                <option value={30}>30</option>
-                <option value={60}>60</option>
-                <option value={120}>120</option>
-                <option value={480}>480</option>
-              </select>
-              <span className="text-sm text-slate-500 dark:text-slate-400">{t('org.settings.minutes')}</span>
-            </div>
-          </div>
-
-          <div className="space-y-3 pt-2">
-            <div className="flex items-center justify-between py-2">
-              <div>
-                <p className="text-sm font-medium text-slate-900 dark:text-white">{t('org.settings.requireTwoFactor')}</p>
-                <p className="text-xs text-slate-500 dark:text-slate-400">{t('org.settings.requireTwoFactorDesc')}</p>
-              </div>
-              <button
-                onClick={() => update('requireTwoFactor', !settings.requireTwoFactor)}
-                className={`relative w-11 h-6 rounded-full transition-colors ${settings.requireTwoFactor ? 'bg-primary-500' : 'bg-slate-300 dark:bg-slate-600'}`}
-              >
-                <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-all ${settings.requireTwoFactor ? 'left-[22px]' : 'left-0.5'}`} />
-              </button>
-            </div>
-          </div>
-
-          <div className="flex justify-end">
-            <span className="text-xs text-slate-500 dark:text-slate-400">Настройки сохраняются по главной кнопке</span>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-};
-
 /* ════════════════════════════════════ DATA MANAGEMENT ════════════════════════════════════ */
 const DataTab: React.FC = () => {
   const { t } = useTranslation();
@@ -767,7 +506,7 @@ const OrgSettingsPage: React.FC = () => {
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState('');
-  const [activeTab, setActiveTab] = useState<Tab>('profile');
+  const [activeTab, setActiveTab] = useState<Tab>('general');
 
   useEffect(() => {
     orgGetSettings()
@@ -792,17 +531,14 @@ const OrgSettingsPage: React.FC = () => {
 
   const renderTab = () => {
     switch (activeTab) {
-      case 'profile': return <ProfileTab />;
       case 'general': return <GeneralTab settings={settings} update={update} />;
       case 'academic': return <AcademicTab settings={settings} update={update} />;
-      case 'branding': return <BrandingTab settings={settings} update={update} />;
       case 'visitcard': return <VisitCardTab settings={settings} update={update} />;
       case 'notifications': return <NotificationsTab settings={settings} update={update} />;
-      case 'localization': return <LocalizationTab settings={settings} update={update} />;
-      case 'security': return <SecurityTab settings={settings} update={update} />;
       case 'data': return <DataTab />;
       case 'limits': return <LimitsTab settings={settings} />;
       case 'ai': return <AIManagerTab organizationId={settings.organizationId} />;
+      default: return null;
     }
   };
 

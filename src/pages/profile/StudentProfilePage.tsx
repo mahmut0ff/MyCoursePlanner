@@ -210,6 +210,21 @@ const StudentProfilePage: React.FC = () => {
                   <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                   <input type="email" value={profile?.email || ''} readOnly className="input pl-11 bg-slate-100 dark:bg-slate-700 cursor-not-allowed text-slate-500 dark:text-slate-400" />
                 </div>
+                
+                <label className="block mt-4 text-sm font-medium text-slate-700 dark:text-slate-300 mb-1 flex items-center gap-1.5">
+                  <Phone className="w-4 h-4 text-slate-400" />
+                  {t('profile.phone', 'Телефон')}
+                  <span className="text-xs text-slate-400 font-normal">({t('common.optional', 'необязательно')})</span>
+                </label>
+                <div className="relative">
+                  <input
+                    type="tel"
+                    value={phone}
+                    onChange={e => setPhone(e.target.value)}
+                    className="input"
+                    placeholder={t('profile.phonePlaceholder', '+996 XXX XXX XXX')}
+                  />
+                </div>
               </div>
             </div>
             
@@ -239,20 +254,7 @@ const StudentProfilePage: React.FC = () => {
                       placeholder={t('profile.skillsPlaceholder', 'напр. JavaScript, Дизайн, Python')}
                     />
                   </div>
-                  <div>
-                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1 flex items-center gap-1.5">
-                      <Phone className="w-4 h-4 text-slate-400" />
-                      {t('profile.phone', 'Телефон')}
-                      <span className="text-xs text-slate-400 font-normal">({t('common.optional', 'необязательно')})</span>
-                    </label>
-                    <input
-                      type="tel"
-                      value={phone}
-                      onChange={e => setPhone(e.target.value)}
-                      className="input"
-                      placeholder={t('profile.phonePlaceholder', '+996 XXX XXX XXX')}
-                    />
-                  </div>
+
                 </>
               )}
               <div className="pt-4 flex justify-end">

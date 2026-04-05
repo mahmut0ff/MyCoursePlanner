@@ -318,7 +318,7 @@ const BillingTab: React.FC = () => {
             {plans.map((p) => (
               <tr key={p.id} className="hover:bg-slate-50 dark:hover:bg-slate-700/30">
                 <td className="px-6 py-4 text-sm font-medium text-slate-900 dark:text-white">{p.name}</td>
-                <td className="px-6 py-4 text-sm text-slate-600 dark:text-slate-400">${p.price}/mo</td>
+                <td className="px-6 py-4 text-sm text-slate-600 dark:text-slate-400">{p.price} сом/мес</td>
                 <td className="px-6 py-4 text-sm text-slate-600 dark:text-slate-400">{p.students === -1 ? '∞' : p.students}</td>
                 <td className="px-6 py-4 text-sm text-slate-600 dark:text-slate-400">{p.teachers === -1 ? '∞' : p.teachers}</td>
                 <td className="px-6 py-4 text-right"><button className="btn-secondary text-xs">{t('common.edit')}</button></td>

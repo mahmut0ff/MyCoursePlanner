@@ -307,9 +307,9 @@ const AdminDashboardPage: React.FC = () => {
     },
     {
       label: t('admin.dashboard.mrr'),
-      value: `$${stats.mrr}`,
+      value: `${stats.mrr} сом`,
       icon: DollarSign,
-      sub: `${t('admin.dashboard.arr')}: $${stats.arr}`,
+      sub: `${t('admin.dashboard.arr')}: ${stats.arr} сом`,
       chg: change(24),
       glow: 'shadow-amber-500/20 dark:shadow-amber-500/30',
       iconBg: 'bg-amber-500/10 dark:bg-amber-500/20 text-amber-500',
@@ -338,7 +338,7 @@ const AdminDashboardPage: React.FC = () => {
   const insights = [
     { cls: 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30', icon: '📈', text: `${t('admin.dashboard.insightGrowth')} +87%` },
     { cls: 'bg-blue-500/20 text-blue-400 border-blue-500/30', icon: '🎯', text: `${t('admin.dashboard.insightExams')} ${stats.totalAttempts}` },
-    { cls: 'bg-amber-500/20 text-amber-400 border-amber-500/30', icon: '💰', text: `${t('admin.dashboard.insightMrr')} $${stats.mrr}` },
+    { cls: 'bg-amber-500/20 text-amber-400 border-amber-500/30', icon: '💰', text: `${t('admin.dashboard.insightMrr')} ${stats.mrr} сом` },
   ];
 
   return (
@@ -437,9 +437,9 @@ const AdminDashboardPage: React.FC = () => {
           </h3>
           <div className="space-y-4">
             {[
-              { name: 'Starter', price: '$39', count: stats.planDistribution?.starter || 0, color: 'bg-blue-500', glow: '#3b82f6' },
-              { name: 'Professional', price: '$79', count: stats.planDistribution?.professional || 0, color: 'bg-violet-500', glow: '#8b5cf6' },
-              { name: 'Enterprise', price: '$99', count: stats.planDistribution?.enterprise || 0, color: 'bg-amber-500', glow: '#f59e0b' },
+              { name: 'Starter', price: '39 сом', count: stats.planDistribution?.starter || 0, color: 'bg-blue-500', glow: '#3b82f6' },
+              { name: 'Professional', price: '79 сом', count: stats.planDistribution?.professional || 0, color: 'bg-violet-500', glow: '#8b5cf6' },
+              { name: 'Enterprise', price: '99 сом', count: stats.planDistribution?.enterprise || 0, color: 'bg-amber-500', glow: '#f59e0b' },
             ].map((p) => {
               const pct = stats.totalOrganizations > 0 ? Math.round((p.count / stats.totalOrganizations) * 100) : 0;
               return (

@@ -1,6 +1,6 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
-import { Plus, Check, Crown, BookOpen, Shield } from 'lucide-react';
+import { Check, Crown, BookOpen, Shield } from 'lucide-react';
 
 const AdminPlansPage: React.FC = () => {
   const { t } = useTranslation();
@@ -27,7 +27,6 @@ const AdminPlansPage: React.FC = () => {
           <h1 className="text-2xl font-bold text-slate-900 dark:text-white">{t('nav.plans')}</h1>
           <p className="text-slate-500 dark:text-slate-400 text-sm mt-1">{t('admin.plans.subtitle')}</p>
         </div>
-        <button className="btn-primary flex items-center gap-2"><Plus className="w-4 h-4" />{t('admin.plans.addPlan')}</button>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-5xl mx-auto">
@@ -56,9 +55,6 @@ const AdminPlansPage: React.FC = () => {
                 </li>
               ))}
             </ul>
-            <button className={`w-full py-3.5 rounded-xl font-semibold text-sm transition-all ${plan.popular ? 'bg-white text-primary-700 hover:bg-slate-50 shadow-lg shadow-white/20' : 'bg-slate-100 text-slate-700 hover:bg-slate-200 dark:bg-slate-700 dark:text-white dark:hover:bg-slate-600'}`}>
-              {t('common.edit')}
-            </button>
           </div>
         ))}
       </div>

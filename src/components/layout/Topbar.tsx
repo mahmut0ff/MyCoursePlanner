@@ -41,6 +41,34 @@ const USER_ITEMS = [
   { icon: BarChart3, label: 'nav.myResults', path: '/my-results' },
 ];
 
+const TEACHER_ITEMS = [
+  { icon: LayoutDashboard, label: 'nav.dashboard', path: '/dashboard' },
+  { icon: BookOpen, label: 'nav.lessons', path: '/lessons' },
+  { icon: ClipboardList, label: 'nav.exams', path: '/exams' },
+  { icon: Radio, label: 'nav.examRooms', path: '/rooms' },
+  { icon: BarChart3, label: 'nav.results', path: '/results' },
+  { icon: Users, label: 'nav.students', path: '/students' },
+  { icon: Users, label: 'nav.groups', path: '/groups' },
+  { icon: BookOpen, label: 'nav.courses', path: '/courses' },
+  { icon: Activity, label: 'nav.schedule', path: '/schedule' },
+  { icon: ClipboardList, label: 'nav.journal', path: '/journal' },
+  { icon: BarChart3, label: 'nav.gradebook', path: '/gradebook' },
+  { icon: Puzzle, label: 'nav.quizLibrary', path: '/quiz/library' },
+  { icon: Settings, label: 'nav.settings', path: '/teacher-settings' },
+];
+
+const STUDENT_ITEMS = [
+  { icon: LayoutDashboard, label: 'nav.dashboard', path: '/dashboard' },
+  { icon: BookOpen, label: 'nav.lessons', path: '/lessons' },
+  { icon: Radio, label: 'nav.examRooms', path: '/join' },
+  { icon: BarChart3, label: 'nav.myResults', path: '/my-results' },
+  { icon: Activity, label: 'nav.schedule', path: '/schedule' },
+  { icon: BookOpen, label: 'nav.myCourses', path: '/courses' },
+  { icon: Users, label: 'nav.myGroups', path: '/groups' },
+  { icon: Zap, label: 'nav.achievements', path: '/achievements' },
+  { icon: BookOpen, label: 'nav.diary', path: '/diary' },
+];
+
 const Topbar: React.FC<TopbarProps> = ({ onMenuClick }) => {
   const { t } = useTranslation();
   const { isSuperAdmin, role, isTeacher } = useAuth();
@@ -55,7 +83,7 @@ const Topbar: React.FC<TopbarProps> = ({ onMenuClick }) => {
   const pageHelp = usePageHelp();
   const [helpOpen, setHelpOpen] = useState(false);
 
-  const items = isSuperAdmin ? ADMIN_ITEMS : USER_ITEMS;
+  const items = isSuperAdmin ? ADMIN_ITEMS : role === 'teacher' ? TEACHER_ITEMS : role === 'student' ? STUDENT_ITEMS : USER_ITEMS;
   const filtered = query.trim()
     ? items.filter((i) => t(i.label).toLowerCase().includes(query.toLowerCase()))
     : items;

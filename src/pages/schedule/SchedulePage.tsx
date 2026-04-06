@@ -138,14 +138,14 @@ const SchedulePage: React.FC = () => {
               className={`flex-1 px-5 py-2.5 text-sm font-bold rounded-lg transition-all flex items-center justify-center gap-2 ${activeTab === 'timetable' ? 'bg-white dark:bg-slate-700 text-primary-600 shadow-sm ring-1 ring-slate-900/5 dark:ring-white/10' : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200'}`}
             >
               <Repeat className="w-4 h-4" />
-              Расписание уроков
+              {t('schedule.timetableTab', 'Расписание уроков')}
             </button>
             <button 
               onClick={() => setActiveTab('events')} 
               className={`flex-1 px-5 py-2.5 text-sm font-bold rounded-lg transition-all flex items-center justify-center gap-2 ${activeTab === 'events' ? 'bg-white dark:bg-slate-700 text-amber-600 shadow-sm ring-1 ring-slate-900/5 dark:ring-white/10' : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200'}`}
             >
               <Calendar className="w-4 h-4" />
-              События и экзамены
+              {t('schedule.eventsTab', 'События и экзамены')}
             </button>
           </div>
         </div>
@@ -175,7 +175,7 @@ const SchedulePage: React.FC = () => {
         <div className="flex items-center gap-3 px-4 py-3 bg-primary-50/50 dark:bg-primary-900/10 border border-primary-200/50 dark:border-primary-800/30 rounded-2xl">
           <Repeat className="w-5 h-5 text-primary-500 flex-shrink-0" />
           <p className="text-xs font-medium text-primary-700 dark:text-primary-400">
-            Постоянное расписание — уроки здесь привязаны к дням недели и повторяются каждую неделю автоматически.
+            {t('schedule.timetableBanner', 'Постоянное расписание — уроки здесь привязаны к дням недели и повторяются каждую неделю автоматически.')}
           </p>
         </div>
       )}
@@ -211,7 +211,7 @@ const SchedulePage: React.FC = () => {
                          {dayName}
                        </p>
                        {isToday && (
-                         <span className="inline-block mt-1 text-[9px] font-bold text-white bg-primary-500 px-2 py-0.5 rounded-full">Сегодня</span>
+                         <span className="inline-block mt-1 text-[9px] font-bold text-white bg-primary-500 px-2 py-0.5 rounded-full">{t('schedule.today', 'Сегодня')}</span>
                        )}
                     </div>
 
@@ -223,7 +223,7 @@ const SchedulePage: React.FC = () => {
                            
                            <div className="flex justify-between items-start mb-2">
                               <span className="text-[9px] font-bold text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-700/80 px-2 py-0.5 rounded-md uppercase tracking-wider">
-                                {idx + 1}-й Урок
+                                {idx + 1}-{t('schedule.nthLesson', 'й Урок')}
                               </span>
                               <button onClick={() => handleDelete(l.id, true)} className="opacity-0 group-hover:opacity-100 text-red-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/30 p-1 rounded-md transition-all">
                                 <Trash2 className="w-3.5 h-3.5" />
@@ -253,7 +253,7 @@ const SchedulePage: React.FC = () => {
                        {dayLessons.length === 0 && (
                           <div className="absolute inset-x-0 top-1/2 -translate-y-1/2 flex flex-col items-center justify-center opacity-40 select-none pointer-events-none">
                             <Calendar className="w-10 h-10 mb-3 text-slate-300 dark:text-slate-600" />
-                            <p className="text-xs font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest text-center">Нет занятий</p>
+                            <p className="text-xs font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest text-center">{t('schedule.noLessons', 'Нет занятий')}</p>
                           </div>
                        )}
                     </div>
@@ -366,7 +366,7 @@ const SchedulePage: React.FC = () => {
         <div className="fixed inset-0 bg-slate-900/40 dark:bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in duration-200" onClick={() => setShowCreate(false)}>
           <div className="bg-white dark:bg-slate-800 rounded-[2rem] p-6 sm:p-8 w-full max-w-md shadow-2xl border border-slate-200/50 dark:border-slate-700/50 animate-in zoom-in-95 duration-200" onClick={(e) => e.stopPropagation()}>
             <h2 className="text-xl font-bold text-slate-900 dark:text-white mb-6">
-              {activeTab === 'timetable' ? 'Новый урок в расписании' : 'Новое событие'}
+              {activeTab === 'timetable' ? t('schedule.newTimetableLesson', 'Новый урок в расписании') : t('schedule.newEvent', 'Новое событие')}
             </h2>
             <div className="space-y-4">
               <div>
@@ -379,7 +379,7 @@ const SchedulePage: React.FC = () => {
               {/* Timetable: Day of Week selector */}
               {activeTab === 'timetable' ? (
                 <div>
-                  <label className="text-[11px] font-bold text-slate-500 uppercase tracking-widest mb-1.5 block">День недели</label>
+                  <label className="text-[11px] font-bold text-slate-500 uppercase tracking-widest mb-1.5 block">{t('schedule.dayOfWeek', 'День недели')}</label>
                   <div className="grid grid-cols-7 gap-1.5">
                     {dayNames.map((name, i) => (
                       <button
@@ -397,7 +397,7 @@ const SchedulePage: React.FC = () => {
                   </div>
                   <p className="mt-1.5 text-[10px] text-slate-400 flex items-center gap-1">
                     <Repeat className="w-3 h-3" />
-                    Урок будет повторяться каждый {dayNamesFull[form.dayOfWeek]?.toLowerCase()}
+                    {t('schedule.willRepeatEvery', 'Урок будет повторяться каждый')} {dayNamesFull[form.dayOfWeek]?.toLowerCase()}
                   </p>
                 </div>
               ) : (
@@ -420,7 +420,7 @@ const SchedulePage: React.FC = () => {
 
               {/* Location */}
               <div>
-                <label className="text-[11px] font-bold text-slate-500 uppercase tracking-widest mb-1.5 block">Аудитория / Кабинет</label>
+                <label className="text-[11px] font-bold text-slate-500 uppercase tracking-widest mb-1.5 block">{t('schedule.classroom', 'Аудитория / Кабинет')}</label>
                 <input placeholder="напр. Каб. 305" value={form.location}
                   onChange={(e) => setForm((f) => ({ ...f, location: e.target.value }))}
                   className="input bg-slate-50 dark:bg-slate-900/50" />

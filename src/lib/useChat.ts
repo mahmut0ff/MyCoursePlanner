@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { 
   collection, 
   query, 
@@ -296,4 +296,76 @@ export function useUnreadCount(rooms: ChatRoom[]) {
   }, [rooms, user]);
 
   return unreadTotal;
+}
+
+/**
+ * Hook to broadcast typing status. Call `startTyping()` on key presses;
+ * it auto-clears after 3s of inactivity using a debounce timer.
+ */
+export function useTypingIndicator(roomId?: string) {
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const startTyping = useCallback(async () => {
+    const user = auth.currentUser;
+    if (!user || !roomId) return;
+
+    const typingRef = doc(db, 'chatRooms', roomId, 'typing', user.uid);
+    try {
+      await setDoc(typingRef, {
+        displayName: user.displayName || user.email || 'User',
+        timestamp: serverTimestamp(),
+      });
+    } catch {}
+
+    // Clear previous timer, set new 3s auto-clear
+    if (timerRef.current) clearTimeout(timerRef.current);
+    timerRef.current = setTimeout(async () => {
+      try {
+        const { deleteDoc } = await import('firebase/firestore');
+        await deleteDoc(typingRef);
+      } catch {}
+    }, 3000);
+  }, [roomId]);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (timerRef.current) clearTimeout(timerRef.current);
+      const user = auth.currentUser;
+      if (user && roomId) {
+        const typingRef = doc(db, 'chatRooms', roomId, 'typing', user.uid);
+        import('firebase/firestore').then(({ deleteDoc }) => deleteDoc(typingRef).catch(() => {}));
+      }
+    };
+  }, [roomId]);
+
+  return { startTyping };
+}
+
+/**
+ * Hook to subscribe to who's typing in a room.
+ * Returns array of display names currently typing (excludes self).
+ */
+export function useTypingStatus(roomId?: string): string[] {
+  const [typingUsers, setTypingUsers] = useState<string[]>([]);
+
+  useEffect(() => {
+    if (!roomId) { setTypingUsers([]); return; }
+    const user = auth.currentUser;
+
+    const q = collection(db, 'chatRooms', roomId, 'typing');
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const names: string[] = [];
+      snapshot.docs.forEach((d) => {
+        if (d.id !== user?.uid) {
+          names.push(d.data().displayName || 'Someone');
+        }
+      });
+      setTypingUsers(names);
+    });
+
+    return () => unsubscribe();
+  }, [roomId]);
+
+  return typingUsers;
 }

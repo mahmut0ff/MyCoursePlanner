@@ -48,6 +48,7 @@ import { adminDb, adminAuth } from './utils/firebase-admin';
 import { verifyAuth, isSuperAdmin, jsonResponse, unauthorized, forbidden, badRequest, ok, notFound } from './utils/auth';
 import type { AuthUser } from './utils/auth';
 import { notifyAllSuperAdmins } from './utils/notifications';
+import { rateLimiters, getRateLimitKey } from './utils/rate-limiter';
 
 // ---- Audit Logger ----
 async function auditLog(actor: AuthUser, action: string, entityType: string, entityId: string, before?: any, after?: any, metadata?: any) {
@@ -71,6 +72,12 @@ const handler: Handler = async (event: HandlerEvent) => {
   const user = await verifyAuth(event);
   if (!user) return unauthorized();
   if (!isSuperAdmin(user)) return forbidden();
+
+  // Rate limit: 20 admin requests per minute
+  const rlKey = getRateLimitKey(event, user.uid);
+  if (rateLimiters.auth.isLimited(rlKey)) {
+    return jsonResponse(429, { error: 'Too many requests. Please wait a moment.' });
+  }
 
   const params = event.queryStringParameters || {};
   const action = params.action || '';

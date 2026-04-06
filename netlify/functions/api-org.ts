@@ -663,6 +663,29 @@ const handler: Handler = async (event: HandlerEvent) => {
       if (Array.isArray(branchScope)) {
         list = list.filter((e: any) => !e.branchId || branchScope.includes(e.branchId));
       }
+
+      // ── Student group-level filtering ──
+      // Students should only see events for THEIR groups (or org-wide events with no groupId).
+      // Teachers with specific groups see only their groups too.
+      if (hasRole(user, 'student')) {
+        const studentGroupsSnap = await adminDb.collection('groups')
+          .where('organizationId', '==', orgId)
+          .where('studentIds', 'array-contains', user.uid).get();
+        const myGroupIds = new Set(studentGroupsSnap.docs.map((d: any) => d.id));
+        list = list.filter((e: any) => !e.groupId || myGroupIds.has(e.groupId));
+      } else if (hasRole(user, 'teacher') && !hasRole(user, 'admin')) {
+        // Teachers see events for their groups + events they teach + org-wide events
+        const teacherGroupsSnap = await adminDb.collection('groups')
+          .where('organizationId', '==', orgId)
+          .where('teacherIds', 'array-contains', user.uid).get();
+        const myGroupIds = new Set(teacherGroupsSnap.docs.map((d: any) => d.id));
+        list = list.filter((e: any) =>
+          !e.groupId ||                           // org-wide events always shown
+          myGroupIds.has(e.groupId) ||             // events for teacher's groups
+          e.teacherId === user.uid                 // events assigned to this teacher
+        );
+      }
+
       if (params.mode === 'timetable') {
         list.sort((a: any, b: any) => (a.dayOfWeek ?? 0) - (b.dayOfWeek ?? 0) || (a.startTime || '').localeCompare(b.startTime || ''));
       } else {

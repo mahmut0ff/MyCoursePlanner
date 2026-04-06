@@ -19,7 +19,9 @@ export type NotificationType =
   | 'new_org_registered'
   | 'trial_reminder'
   | 'trial_expired'
-  | 'plan_gifted';
+  | 'plan_gifted'
+  | 'homework_submitted'
+  | 'homework_graded';
 
 interface NotificationPayload {
   recipientId: string;

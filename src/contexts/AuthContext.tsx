@@ -1,9 +1,9 @@
-import React, { createContext, useContext, useEffect, useState, useRef } from 'react';
+import React, { createContext, useContext, useEffect, useState, useRef, useCallback } from 'react';
 import type { User } from 'firebase/auth';
 import { onAuthChange } from '../services/auth.service';
 import { getUser } from '../services/users.service';
 import { isFirebaseConfigured, requestNotificationPermission } from '../lib/firebase';
-import { apiSaveFcmToken, apiRemoveFcmToken } from '../lib/api';
+import { apiSaveFcmToken, apiRemoveFcmToken, apiSwitchOrg } from '../lib/api';
 import type { UserProfile, UserRole } from '../types';
 
 interface AuthContextType {
@@ -21,6 +21,8 @@ interface AuthContextType {
   isTeacherWithoutOrg: boolean;
   isStudentWithoutOrg: boolean;
   refreshProfile: () => Promise<void>;
+  /** Switch the user's active organization context and refresh profile. */
+  switchOrganization: (orgId: string) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType>({
@@ -38,6 +40,7 @@ const AuthContext = createContext<AuthContextType>({
   isTeacherWithoutOrg: false,
   isStudentWithoutOrg: false,
   refreshProfile: async () => {},
+  switchOrganization: async () => {},
 });
 
 export const useAuth = () => useContext(AuthContext);
@@ -63,6 +66,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const refreshProfile = async () => {
     if (firebaseUser) await loadProfile(firebaseUser);
   };
+
+  /**
+   * Switch the user's active organization and reload their profile.
+   * This calls the backend switchOrg endpoint which updates both
+   * activeOrgId and the legacy organizationId field, then refreshes
+   * the local profile to reflect the new context.
+   */
+  const switchOrganization = useCallback(async (orgId: string) => {
+    await apiSwitchOrg(orgId);
+    if (firebaseUser) await loadProfile(firebaseUser);
+  }, [firebaseUser]);
 
   // Register FCM push token (best-effort, non-blocking)
   const registerFcmToken = async () => {
@@ -108,6 +122,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const isTeacher = role === 'teacher';
   const isStudent = role === 'student';
 
+  // Prefer activeOrgId, fall back to legacy organizationId
+  const resolvedOrgId = (profile as any)?.activeOrgId || profile?.organizationId || null;
+
   return (
     <AuthContext.Provider
       value={{
@@ -116,19 +133,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         loading,
         role,
         configured: isFirebaseConfigured,
-        organizationId: profile?.organizationId || null,
+        organizationId: resolvedOrgId,
         isSuperAdmin: role === 'super_admin',
         isStaff: role === 'super_admin' || role === 'admin' || role === 'manager' || role === 'teacher',
         isTeacher,
         isStudent,
         isManager: role === 'manager',
-        isTeacherWithoutOrg: isTeacher && !profile?.organizationId,
-        isStudentWithoutOrg: isStudent && !profile?.organizationId,
+        isTeacherWithoutOrg: isTeacher && !resolvedOrgId,
+        isStudentWithoutOrg: isStudent && !resolvedOrgId,
         refreshProfile,
+        switchOrganization,
       }}
     >
       {children}
     </AuthContext.Provider>
   );
 };
-

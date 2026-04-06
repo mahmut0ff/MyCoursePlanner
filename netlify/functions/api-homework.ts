@@ -5,6 +5,8 @@
 import type { Handler, HandlerEvent } from '@netlify/functions';
 import { adminDb } from './utils/firebase-admin';
 import { verifyAuth, ok, unauthorized, badRequest, notFound, jsonResponse } from './utils/auth';
+import { createNotification, notifyOrgAdmins } from './utils/notifications';
+import { rateLimiters, getRateLimitKey } from './utils/rate-limiter';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 
 const COLLECTION = 'homework_submissions';
@@ -17,6 +19,11 @@ export const handler: Handler = async (event: HandlerEvent) => {
   const user = await verifyAuth(event);
   if (!user) return unauthorized();
 
+  // Rate limit: 60 write requests per minute per user
+  const rlKey = getRateLimitKey(event, user.uid);
+  if (rateLimiters.write.isLimited(rlKey)) {
+    return jsonResponse(429, { error: 'Too many requests. Please wait a moment.' });
+  }
   const pathSegments = event.path.split('/').filter(Boolean);
   const action = pathSegments[pathSegments.length - 1];
   const params = event.queryStringParameters || {};
@@ -86,9 +93,23 @@ export const handler: Handler = async (event: HandlerEvent) => {
     if (!existSnap.empty) {
       const docRef = existSnap.docs[0].ref;
       await docRef.update(data);
+      // Notify teachers about re-submission
+      notifyOrgAdmins(
+        body.organizationId, 'homework_submitted',
+        'Домашнее задание обновлено',
+        `${user.displayName} обновил(а) ДЗ: ${body.lessonTitle || 'Урок'}`,
+        `/lessons/${body.lessonId}`,
+      ).catch(() => {});
       return ok({ id: docRef.id, ...data });
     } else {
       const ref = await adminDb.collection(COLLECTION).add(data);
+      // Notify teachers about new submission
+      notifyOrgAdmins(
+        body.organizationId, 'homework_submitted',
+        'Новое домашнее задание',
+        `${user.displayName} сдал(а) ДЗ: ${body.lessonTitle || 'Урок'}`,
+        `/lessons/${body.lessonId}`,
+      ).catch(() => {});
       return ok({ id: ref.id, ...data });
     }
   }
@@ -98,6 +119,9 @@ export const handler: Handler = async (event: HandlerEvent) => {
     const id = pathSegments[pathSegments.length - 2];
     const body = JSON.parse(event.body || '{}');
 
+    const hwDoc = await adminDb.collection(COLLECTION).doc(id).get();
+    const hwData = hwDoc.data();
+
     await adminDb.collection(COLLECTION).doc(id).update({
       status: 'graded',
       finalScore: body.finalScore || 0,
@@ -105,6 +129,17 @@ export const handler: Handler = async (event: HandlerEvent) => {
       gradedAt: new Date().toISOString(),
       gradedBy: user.uid
     });
+
+    // Notify the student that their homework was graded
+    if (hwData?.studentId) {
+      createNotification({
+        recipientId: hwData.studentId,
+        type: 'homework_graded',
+        title: 'Домашнее задание оценено',
+        message: `Ваше ДЗ "${hwData.lessonTitle || 'Урок'}" оценено: ${body.finalScore || 0} баллов`,
+        link: `/lessons/${hwData.lessonId}`,
+      }).catch(() => {});
+    }
     
     return ok({ success: true });
   }

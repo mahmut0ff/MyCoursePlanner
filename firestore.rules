@@ -9,11 +9,16 @@ service cloud.firestore {
     }
 
     // 1b. Organization Access Check
+    // OPTIMIZED: worst-case 2 reads (membership check + user doc), not 3.
+    // Membership check is cheapest (1 exists() read, no data transfer).
+    // If that fails, single user doc read checks both legacy fields.
     function hasOrgAccess(orgId) {
       return request.auth != null && (
         exists(/databases/$(database)/documents/users/$(request.auth.uid)/memberships/$(orgId)) ||
-        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.organizationId == orgId ||
-        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.activeOrgId == orgId
+        (
+          let userData = get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+          userData.organizationId == orgId || userData.activeOrgId == orgId
+        )
       );
     }
 
@@ -178,6 +183,12 @@ service cloud.firestore {
         );
         
         allow delete: if isSuperAdmin(); // Hard delete only via backend
+      }
+
+      // Typing indicators: participant can write/delete own entry, read all
+      match /typing/{typingUserId} {
+        allow read: if request.auth != null && request.auth.uid in get(/databases/$(database)/documents/chatRooms/$(roomId)).data.participantIds;
+        allow write, delete: if request.auth != null && request.auth.uid == typingUserId;
       }
     }
 

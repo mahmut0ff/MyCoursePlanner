@@ -101,7 +101,7 @@ const ExpensesTab: React.FC = () => {
                   <td className="px-6 py-4 text-slate-900 dark:text-white capitalize">
                     <div className="flex items-center gap-2">
                       <Tag className="w-4 h-4 text-slate-400" />
-                      {tx.categoryId === 'salary' ? 'Зарплата' : tx.categoryId === 'rent' ? 'Аренда' : tx.categoryId === 'marketing' ? 'Маркетинг' : 'Прочее'}
+                      {tx.categoryId || 'Прочее'}
                     </div>
                   </td>
                   <td className="px-6 py-4 font-bold text-rose-500">
@@ -141,17 +141,24 @@ const ExpensesTab: React.FC = () => {
               </div>
               <div>
                 <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Категория</label>
-                <select
+                <input
+                  type="text"
                   value={form.categoryId}
                   onChange={(e) => setForm({ ...form, categoryId: e.target.value })}
                   className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-sm"
-                >
-                  <option value="salary">Зарплата</option>
-                  <option value="rent">Аренда</option>
-                  <option value="marketing">Маркетинг</option>
-                  <option value="office">Офис / Хоз. нужды</option>
-                  <option value="other">Прочее</option>
-                </select>
+                  placeholder="Зарплата, Аренда, Маркетинг, Канцтовары..."
+                  list="expense-categories"
+                />
+                <datalist id="expense-categories">
+                  <option value="Зарплата" />
+                  <option value="Аренда" />
+                  <option value="Маркетинг" />
+                  <option value="Канцтовары" />
+                  <option value="Коммунальные" />
+                  <option value="Транспорт" />
+                  <option value="Оборудование" />
+                  <option value="Прочее" />
+                </datalist>
               </div>
               <div>
                 <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Дата</label>

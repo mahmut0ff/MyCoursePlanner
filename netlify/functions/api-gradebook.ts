@@ -126,6 +126,21 @@ const handler: Handler = async (event: HandlerEvent) => {
         if (status !== undefined) updates.status = status;
         if (comment !== undefined) updates.comment = comment;
         await doc.ref.update(updates);
+
+        // ── AUDIT TRAIL: Record grade change history ──
+        if (value !== undefined && value !== data.value) {
+          doc.ref.collection('history').add({
+            oldValue: data.value ?? null,
+            newValue: value,
+            oldDisplayValue: data.displayValue || null,
+            newDisplayValue: displayValue || data.displayValue || null,
+            changedBy: user.uid,
+            changedByName: user.displayName,
+            reason: comment || '',
+            timestamp: now(),
+          }).catch(() => {});
+        }
+
         return ok({ id: doc.id, ...data, ...updates });
       }
 
@@ -183,6 +198,18 @@ const handler: Handler = async (event: HandlerEvent) => {
             updatedAt: now(),
           };
           batch.update(doc.ref, updates);
+          // ── AUDIT TRAIL: Record grade change in bulk ──
+          if (g.value !== undefined && g.value !== data.value) {
+            // Cannot add to subcollection in batch, so fire async
+            doc.ref.collection('history').add({
+              oldValue: data.value ?? null,
+              newValue: g.value,
+              changedBy: user.uid,
+              changedByName: user.displayName,
+              reason: g.comment || '',
+              timestamp: now(),
+            }).catch(() => {});
+          }
           results.push({ id: doc.id, ...data, ...updates });
         } else {
           const ref = adminDb.collection('grades').doc();

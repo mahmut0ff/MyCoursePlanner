@@ -61,6 +61,8 @@ const SubscriptionGuard: React.FC<{ children: React.ReactNode }> = ({ children }
 };
 
 import { apiGetOrganization } from '../../lib/api';
+import PWAInstallPrompt from '../pwa/PWAInstallPrompt';
+import NetworkStatusBar from '../network/NetworkStatusBar';
 
 const AppLayout: React.FC = () => {
   const { isSuperAdmin, organizationId } = useAuth();
@@ -117,6 +119,7 @@ const AppLayout: React.FC = () => {
   };
 
   return (
+    <>
     <PlanProvider>
       <div className="min-h-screen bg-slate-50 dark:bg-slate-900 flex">
         {/* Sidebar wrapper */}
@@ -144,6 +147,9 @@ const AppLayout: React.FC = () => {
         </div>
       </div>
     </PlanProvider>
+    <PWAInstallPrompt />
+    <NetworkStatusBar />
+    </>
   );
 };
 

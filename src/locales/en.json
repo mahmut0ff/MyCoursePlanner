@@ -1486,5 +1486,55 @@
       "f2": "Access management",
       "t1": "Fill out the public profile so your organization appears in the platform's global Directory."
     }
+  },
+  "schedule": {
+    "mon": "Mon",
+    "tue": "Tue",
+    "wed": "Wed",
+    "thu": "Thu",
+    "fri": "Fri",
+    "sat": "Sat",
+    "sun": "Sun",
+    "monday": "Monday",
+    "tuesday": "Tuesday",
+    "wednesday": "Wednesday",
+    "thursday": "Thursday",
+    "friday": "Friday",
+    "saturday": "Saturday",
+    "sunday": "Sunday",
+    "timetableTab": "Lesson Timetable",
+    "eventsTab": "Events & Exams",
+    "timetableBanner": "Recurring timetable — lessons here are linked to days of the week and repeat every week automatically.",
+    "today": "Today",
+    "nthLesson": "Lesson",
+    "noLessons": "No lessons",
+    "newTimetableLesson": "New timetable lesson",
+    "newEvent": "New event",
+    "dayOfWeek": "Day of week",
+    "willRepeatEvery": "Lesson will repeat every",
+    "classroom": "Classroom / Room"
+  },
+  "teacherOnboarding": {
+    "title": "Get Started",
+    "stepsCompleted": "steps completed",
+    "dismiss": "Dismiss",
+    "step1": "Complete your profile",
+    "step1Desc": "Add photo, subjects and experience",
+    "step2": "Create your first lesson",
+    "step2Desc": "Add materials and content",
+    "step3": "Create a test",
+    "step3Desc": "Set up questions and answers",
+    "step4": "Launch an exam room",
+    "step4Desc": "Open a room for students"
+  },
+  "pwa": {
+    "installTitle": "Install the app",
+    "installDesc": "Quick access from your home screen — works like a native app",
+    "install": "Install",
+    "later": "Later"
+  },
+  "network": {
+    "offline": "No internet connection. Data may be outdated.",
+    "online": "Connection restored!"
   }
 }

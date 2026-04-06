@@ -1,6 +1,7 @@
 import type { Handler, HandlerEvent } from '@netlify/functions';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { verifyAuth, isStaff, ok, unauthorized, forbidden, badRequest, jsonResponse } from './utils/auth';
+import { rateLimiters, getRateLimitKey } from './utils/rate-limiter';
 
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY || '';
 
@@ -10,6 +11,12 @@ const handler: Handler = async (event: HandlerEvent) => {
   const user = await verifyAuth(event);
   if (!user) return unauthorized();
   if (!isStaff(user) && user.role !== 'teacher') return forbidden('Only staff and teachers can use AI grade dictation');
+
+  // Rate limit: 10 AI requests per minute per user
+  const rlKey = getRateLimitKey(event, user.uid);
+  if (rateLimiters.ai.isLimited(rlKey)) {
+    return jsonResponse(429, { error: 'Too many requests. Please wait a moment.' });
+  }
 
   if (event.httpMethod !== 'POST') return jsonResponse(405, { error: 'Method not allowed' });
 

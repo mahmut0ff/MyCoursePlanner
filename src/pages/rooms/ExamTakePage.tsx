@@ -10,7 +10,61 @@ import { showGamificationToasts } from '../../components/gamification/Gamificati
 import { uploadFile } from '../../services/storage.service';
 import { StudentAudioRecorder } from '../../components/shared/StudentAudioRecorder';
 import type { ExamRoom, Exam, Question } from '../../types';
-import { Clock, ChevronLeft, ChevronRight, Send, AlertTriangle, CheckCircle2, Volume2 } from 'lucide-react';
+import { Clock, ChevronLeft, ChevronRight, Send, AlertTriangle, CheckCircle2, Volume2, ShieldCheck, WifiOff } from 'lucide-react';
+
+// ═══════════════════════════════════════════════════════════════
+//  LOCAL BACKUP SYSTEM — Protects answers against network loss,
+//  tab crash, and accidental browser close during exam.
+// ═══════════════════════════════════════════════════════════════
+
+const BACKUP_PREFIX = 'planula_exam_backup_';
+
+interface ExamBackup {
+  roomId: string;
+  examId: string;
+  answers: Record<string, string | string[]>;
+  currentQ: number;
+  startedAt: string;
+  savedAt: string;
+}
+
+function getBackupKey(roomId: string): string {
+  return `${BACKUP_PREFIX}${roomId}`;
+}
+
+function saveBackup(roomId: string, examId: string, answers: Record<string, string | string[]>, currentQ: number, startedAt: string): void {
+  try {
+    const backup: ExamBackup = {
+      roomId,
+      examId,
+      answers,
+      currentQ,
+      startedAt,
+      savedAt: new Date().toISOString(),
+    };
+    localStorage.setItem(getBackupKey(roomId), JSON.stringify(backup));
+  } catch {
+    // localStorage full or unavailable — silent fail
+  }
+}
+
+function loadBackup(roomId: string): ExamBackup | null {
+  try {
+    const raw = localStorage.getItem(getBackupKey(roomId));
+    if (!raw) return null;
+    return JSON.parse(raw) as ExamBackup;
+  } catch {
+    return null;
+  }
+}
+
+function clearBackup(roomId: string): void {
+  try {
+    localStorage.removeItem(getBackupKey(roomId));
+  } catch { /* silent */ }
+}
+
+// ═══════════════════════════════════════════════════════════════
 
 const ExamTakePage: React.FC = () => {
   const { roomId } = useParams<{ roomId: string }>();
@@ -28,6 +82,7 @@ const ExamTakePage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [recovered, setRecovered] = useState(false);
   const startRef = useRef<string>(new Date().toISOString());
 
   useEffect(() => {
@@ -53,10 +108,29 @@ const ExamTakePage: React.FC = () => {
       if (e.randomizeQuestions) qs = shuffleArray(qs);
       setQuestions(qs);
       setTimeLeft(e.durationMinutes * 60);
+
+      // ── RECOVERY: Restore answers from localStorage backup ──
+      const backup = loadBackup(roomId);
+      if (backup && backup.examId === e.id && Object.keys(backup.answers).length > 0) {
+        setAnswers(backup.answers);
+        setCurrentQ(backup.currentQ || 0);
+        startRef.current = backup.startedAt;
+        setRecovered(true);
+        // Calculate remaining time from backup
+        const elapsedSec = Math.floor((Date.now() - new Date(backup.startedAt).getTime()) / 1000);
+        const remaining = Math.max(0, e.durationMinutes * 60 - elapsedSec);
+        setTimeLeft(remaining);
+      }
     } finally {
       setLoading(false);
     }
   };
+
+  // ── AUTO-SAVE: backup answers on every change ──
+  useEffect(() => {
+    if (!roomId || !exam || submitted) return;
+    saveBackup(roomId, exam.id, answers, currentQ, startRef.current);
+  }, [answers, currentQ, roomId, exam, submitted]);
 
   // Warn the student before they accidentally close the tab during the exam
   useEffect(() => {
@@ -87,8 +161,8 @@ const ExamTakePage: React.FC = () => {
     setAnswers((prev) => ({ ...prev, [qId]: value }));
   }, []);
 
-
-  const handleSubmit = async () => {
+  // ── SUBMIT with retry logic ──
+  const handleSubmit = async (retryCount = 0) => {
     if (submitting || submitted) return;
     setSubmitting(true);
     try {
@@ -105,6 +179,8 @@ const ExamTakePage: React.FC = () => {
         timeSpentSeconds,
       });
 
+      // ✅ Success — clear backup
+      if (roomId) clearBackup(roomId);
       setSubmitted(true);
 
       try {
@@ -129,7 +205,24 @@ const ExamTakePage: React.FC = () => {
       navigate(`/results/${result.id}`);
     } catch (e) {
       console.error('Submit failed:', e);
-      toast.error(t('rooms.submitFailed', 'Failed to submit exam.'));
+
+      // ── RETRY with exponential backoff (max 3 retries) ──
+      if (retryCount < 3) {
+        const delayMs = Math.pow(2, retryCount) * 1000; // 1s, 2s, 4s
+        toast.error(
+          t('rooms.submitRetrying', `Network error. Retrying in ${delayMs / 1000}s... (attempt ${retryCount + 2}/4)`),
+          { duration: delayMs }
+        );
+        setSubmitting(false);
+        setTimeout(() => handleSubmit(retryCount + 1), delayMs);
+        return;
+      }
+
+      // All retries exhausted — answers are still safe in localStorage
+      toast.error(
+        t('rooms.submitFailedSafe', 'Не удалось отправить. Ваши ответы сохранены локально. Попробуйте обновить страницу.'),
+        { duration: 10000 }
+      );
     } finally {
       setSubmitting(false);
     }
@@ -150,6 +243,15 @@ const ExamTakePage: React.FC = () => {
   return (
     <div className="exam-bg min-h-screen flex flex-col font-sans">
       
+      {/* Recovery Banner */}
+      {recovered && (
+        <div className="bg-emerald-500 text-white text-center py-2.5 px-4 text-sm font-semibold flex items-center justify-center gap-2 animate-in fade-in slide-in-from-top duration-500">
+          <ShieldCheck className="w-4 h-4" />
+          {t('rooms.recoveredAnswers', 'Ваши ответы были восстановлены из автосохранения')}
+          <button onClick={() => setRecovered(false)} className="ml-3 text-emerald-100 hover:text-white underline text-xs">OK</button>
+        </div>
+      )}
+
       {/* Sleek Header */}
       <header className="sticky top-0 z-50 bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl border-b border-slate-200/50 dark:border-slate-800/50">
         {/* Progress Bar Top Edge */}

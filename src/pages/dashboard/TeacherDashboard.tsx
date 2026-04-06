@@ -13,6 +13,7 @@ import {
   BookOpen, ClipboardList, Radio, TrendingUp, ArrowRight, Plus,
   Users, MailOpen, UserCircle2, Calendar, GraduationCap,
 } from 'lucide-react';
+import TeacherOnboardingWizard from '../../components/onboarding/TeacherOnboardingWizard';
 
 const TeacherDashboard: React.FC = () => {
   const { t } = useTranslation();
@@ -101,6 +102,9 @@ const TeacherDashboard: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* Teacher Onboarding Wizard */}
+      {organizationId && <TeacherOnboardingWizard />}
 
       {/* Stats Cards */}
       {organizationId && (

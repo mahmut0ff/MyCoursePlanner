@@ -34,7 +34,7 @@ const StudyRoomPage: React.FC = () => {
   // Chat
   const [messages, setMessages] = useState<StudyRoomMessage[]>([]);
   const [chatInput, setChatInput] = useState('');
-  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const chatScrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!id || !profile) return;
@@ -63,8 +63,8 @@ const StudyRoomPage: React.FC = () => {
 
   useEffect(() => {
     // Auto-scroll to bottom when new messages arrive
-    if (messagesEndRef.current) {
-      messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
+    if (chatScrollRef.current) {
+      chatScrollRef.current.scrollTop = chatScrollRef.current.scrollHeight;
     }
   }, [messages]);
 
@@ -427,7 +427,7 @@ const StudyRoomPage: React.FC = () => {
                 Чат комнаты
              </div>
              
-             <div className="flex-1 overflow-y-auto p-3 space-y-3 bg-slate-50 dark:bg-[#0f172a]/50 flex flex-col">
+             <div ref={chatScrollRef} className="flex-1 overflow-y-auto p-3 space-y-3 bg-slate-50 dark:bg-[#0f172a]/50 flex flex-col">
                 {messages.length === 0 ? (
                   <p className="text-center text-xs text-slate-400 dark:text-slate-500 my-auto">
                     Нет сообщений. Напишите что-нибудь!
@@ -445,7 +445,6 @@ const StudyRoomPage: React.FC = () => {
                         </div>
                       </div>
                     ))}
-                    <div ref={messagesEndRef} />
                   </div>
                 )}
              </div>

@@ -1227,6 +1227,8 @@ export interface StudyRoom {
   timerState?: 'focus' | 'break' | 'idle';
   timerEndsAt?: string;
   timerDuration?: number;
+  isTimerPaused?: boolean;
+  timerTimeLeft?: number; // ms left when paused
   createdAt: string;
   updatedAt: string;
 }

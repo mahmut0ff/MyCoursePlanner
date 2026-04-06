@@ -95,9 +95,45 @@ export const updateStudyRoomTimer = async (roomId: string, state: 'focus' | 'bre
   if (state !== 'idle' && durationMinutes > 0) {
     updates.timerEndsAt = new Date(Date.now() + durationMinutes * 60000).toISOString();
     updates.timerDuration = durationMinutes;
+    updates.isTimerPaused = false;
+    updates.timerTimeLeft = 0;
   } else {
     updates.timerEndsAt = null;
     updates.timerDuration = 0;
+    updates.isTimerPaused = false;
+    updates.timerTimeLeft = 0;
   }
   await updateDoc(doc(db, 'studyRooms', roomId), updates);
+};
+
+export const updateStudyRoomSettings = async (roomId: string, title: string, youtubeUrl: string): Promise<void> => {
+  await updateDoc(doc(db, 'studyRooms', roomId), {
+    title,
+    youtubeUrl: youtubeUrl || null,
+    updatedAt: new Date().toISOString()
+  });
+};
+
+export const toggleStudyRoomTimerPause = async (roomId: string, room: StudyRoom): Promise<void> => {
+  if (room.timerState === 'idle') return;
+  
+  const updates: any = {};
+  if (room.isTimerPaused) {
+    // Unpause
+    updates.isTimerPaused = false;
+    updates.timerEndsAt = new Date(Date.now() + (room.timerTimeLeft || 0)).toISOString();
+    updates.timerTimeLeft = 0;
+  } else {
+    // Pause
+    const endsAt = room.timerEndsAt ? new Date(room.timerEndsAt).getTime() : 0;
+    const timeLeft = Math.max(0, endsAt - Date.now());
+    updates.isTimerPaused = true;
+    updates.timerTimeLeft = timeLeft;
+    updates.timerEndsAt = null; // when paused, it's not ticking
+  }
+  await updateDoc(doc(db, 'studyRooms', roomId), updates);
+};
+
+export const kickParticipant = async (roomId: string, userId: string): Promise<void> => {
+  await leaveStudyRoom(roomId, userId); // we can reuse leave
 };

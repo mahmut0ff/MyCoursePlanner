@@ -1,11 +1,14 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
-import { subscribeToStudyRoom, joinStudyRoom, leaveStudyRoom, updateStudyRoomTimer } from '../../services/study-rooms.service';
+import { 
+  subscribeToStudyRoom, joinStudyRoom, leaveStudyRoom, 
+  updateStudyRoomTimer, updateStudyRoomSettings, toggleStudyRoomTimerPause, kickParticipant 
+} from '../../services/study-rooms.service';
 import type { StudyRoom, StudyParticipant } from '../../types';
 import YoutubeAudioPlayer from '../../components/common/YoutubeAudioPlayer';
 import { PinnedBadgesDisplay } from '../../lib/badges';
-import { ArrowLeft, User, Focus, BookOpen, Coffee, Play, Square } from 'lucide-react';
+import { ArrowLeft, User, Focus, BookOpen, Play, Square, Settings, X, Pause } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 const StudyRoomPage: React.FC = () => {
@@ -19,6 +22,13 @@ const StudyRoomPage: React.FC = () => {
   const [hasJoined, setHasJoined] = useState(false);
   const [myGoal, setMyGoal] = useState('Фокус');
   const [timeLeft, setTimeLeft] = useState<number>(0);
+  
+  // Custom timer and Settings
+  const [customMins, setCustomMins] = useState<string>('25');
+  const [showSettings, setShowSettings] = useState(false);
+  const [editTitle, setEditTitle] = useState('');
+  const [editUrl, setEditUrl] = useState('');
+  const notifiedRef = useRef(false);
 
   useEffect(() => {
     if (!id || !profile) return;
@@ -66,14 +76,24 @@ const StudyRoomPage: React.FC = () => {
 
   // Pomodoro Timer Logic
   useEffect(() => {
+    if (room?.isTimerPaused) {
+      setTimeLeft(room.timerTimeLeft || 0);
+      return;
+    }
     if (!room?.timerEndsAt) {
       setTimeLeft(0);
+      notifiedRef.current = false;
       return;
     }
     const end = new Date(room.timerEndsAt).getTime();
     
     // Initial sync
     setTimeLeft(Math.max(0, end - Date.now()));
+    
+    // Reset notification if timer is far from ending
+    if (end - Date.now() > 2000) {
+      notifiedRef.current = false;
+    }
 
     const timer = setInterval(() => {
       const diff = end - Date.now();
@@ -81,11 +101,16 @@ const StudyRoomPage: React.FC = () => {
         setTimeLeft(diff);
       } else {
         setTimeLeft(0);
+        if (!notifiedRef.current) {
+          notifiedRef.current = true;
+          toast.success("Таймер завершен!", { icon: '🔔', duration: 5000 });
+          new Audio('https://actions.google.com/sounds/v1/alarms/beep_short.ogg').play().catch(()=> {});
+        }
         clearInterval(timer);
       }
     }, 1000);
     return () => clearInterval(timer);
-  }, [room?.timerEndsAt]);
+  }, [room?.timerEndsAt, room?.isTimerPaused, room?.timerTimeLeft]);
 
   const formatTime = (ms: number) => {
     if (ms <= 0) return '00:00';
@@ -124,6 +149,56 @@ const StudyRoomPage: React.FC = () => {
     }
   };
 
+  const handleCustomStart = () => {
+    const m = parseInt(customMins, 10);
+    if (isNaN(m) || m <= 0 || m > 180) {
+      toast.error('Введите корректное время (от 1 до 180 мин)');
+      return;
+    }
+    handleTimer('focus', m);
+  };
+  
+  const togglePause = async () => {
+    if (!id || !room) return;
+    try {
+      await toggleStudyRoomTimerPause(id, room);
+    } catch(e: any) {
+      toast.error(e.message || 'Ошибка паузы');
+    }
+  };
+
+  const handleKick = async (userId: string) => {
+    if (!id) return;
+    if (window.confirm("Исключить участника из комнаты?")) {
+      await kickParticipant(id, userId);
+      toast.success("Участник исключен");
+    }
+  };
+
+  const openSettings = () => {
+    if (room) {
+      setEditTitle(room.title);
+      setEditUrl(room.youtubeUrl || '');
+      setShowSettings(true);
+    }
+  };
+
+  const saveSettings = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!id) return;
+    if (!editTitle.trim()) {
+      toast.error('Пустое название');
+      return;
+    }
+    try {
+      await updateStudyRoomSettings(id, editTitle.trim(), editUrl.trim());
+      setShowSettings(false);
+      toast.success('Настройки обновлены');
+    } catch (err: any) {
+      toast.error(err.message || 'Ошибка');
+    }
+  };
+
   if (loading || !room) {
     return (
       <div className="flex h-screen items-center justify-center bg-slate-50 dark:bg-[#0f172a]">
@@ -146,8 +221,13 @@ const StudyRoomPage: React.FC = () => {
           >
             <ArrowLeft className="w-4 h-4 text-slate-700 dark:text-slate-300" />
           </button>
-          <div className="flex-1 min-w-0">
+          <div className="flex-1 min-w-0 flex items-center gap-2">
             <h1 className="text-xl font-bold text-slate-900 dark:text-white truncate pr-2">{room.title}</h1>
+            {isCreator && (
+              <button onClick={openSettings} className="p-1.5 text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors" title="Настройки комнаты">
+                <Settings className="w-4 h-4" />
+              </button>
+            )}
           </div>
           <button 
             onClick={handleExit}
@@ -174,7 +254,16 @@ const StudyRoomPage: React.FC = () => {
             {participants.map((p) => {
               const isMe = p.userId === profile?.uid;
               return (
-                <div key={p.userId} className={`bg-white dark:bg-slate-800 border p-3 flex gap-3 ${isMe ? 'border-slate-800 dark:border-slate-400' : 'border-slate-200 dark:border-slate-700'}`}>
+                <div key={p.userId} className={`bg-white dark:bg-slate-800 border p-3 flex gap-3 relative group ${isMe ? 'border-slate-800 dark:border-slate-400' : 'border-slate-200 dark:border-slate-700'}`}>
+                  {isCreator && !isMe && (
+                    <button 
+                      onClick={() => handleKick(p.userId)}
+                      className="absolute top-2 right-2 p-1 text-slate-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
+                      title="Выгнать участника"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  )}
                   <div className="w-12 h-12 bg-slate-200 dark:bg-slate-700 shrink-0 flex items-center justify-center overflow-hidden">
                     {p.avatarUrl ? (
                       <img src={p.avatarUrl} alt="avatar" className="w-full h-full object-cover" />
@@ -182,7 +271,7 @@ const StudyRoomPage: React.FC = () => {
                       <User className="w-6 h-6 text-slate-500 dark:text-slate-400" />
                     )}
                   </div>
-                  <div className="flex-1 min-w-0 flex flex-col justify-center">
+                  <div className="flex-1 min-w-0 flex flex-col justify-center pr-6">
                     <div className="flex items-center justify-between gap-1">
                       <p className="font-bold text-slate-900 dark:text-white text-sm truncate flex items-center gap-2">
                         {p.name}
@@ -224,40 +313,52 @@ const StudyRoomPage: React.FC = () => {
               Pomodoro Timer
             </h3>
             
-            <div className={`text-5xl font-bold py-2 tracking-tighter ${room.timerState === 'break' ? 'text-blue-600 dark:text-blue-400' : 'text-slate-900 dark:text-white'}`}>
+            <div className={`text-5xl font-bold py-2 tracking-tighter ${room.timerState === 'break' ? 'text-blue-600 dark:text-blue-400' : 'text-slate-900 dark:text-white'} ${room.isTimerPaused ? 'opacity-50' : ''}`}>
               {formatTime(timeLeft)}
             </div>
 
             <p className="text-sm font-medium text-slate-500 dark:text-slate-400 mb-6 capitalize">
               {room.timerState === 'idle' ? 'Ожидание...' : room.timerState === 'focus' ? 'Время Фокуса' : 'Время Отдыха'}
+              {room.isTimerPaused && ' (Пауза)'}
             </p>
 
             {/* Controls (Only Creator) */}
             {isCreator && (
-              <div className="flex gap-2 w-full justify-center">
+              <div className="flex flex-col gap-3 w-full">
                 {room.timerState === 'idle' ? (
-                  <button 
-                    onClick={() => handleTimer('focus', 25)}
-                    className="flex-1 bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 flex justify-center items-center gap-2 py-2 px-3 text-xs font-medium hover:bg-slate-800 dark:hover:bg-white"
-                  >
-                    <Play className="w-3.5 h-3.5 flex-shrink-0" /> 25 м. Фокус
-                  </button>
-                ) : (
                   <>
-                    <button 
-                      onClick={() => handleTimer('break', 5)}
-                      className="flex-1 border border-blue-200 dark:border-blue-800/50 bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 flex justify-center items-center gap-2 py-2 px-3 text-xs font-medium hover:bg-blue-100 dark:hover:bg-blue-900/50"
-                    >
-                      <Coffee className="w-3.5 h-3.5 flex-shrink-0" /> Отдых (5 м.)
-                    </button>
-                    <button 
-                      onClick={() => handleTimer('idle', 0)}
-                      className="flex-none bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 px-3 flex justify-center items-center hover:bg-slate-200 dark:hover:bg-slate-600"
-                      title="Стоп"
-                    >
-                      <Square className="w-3.5 h-3.5" />
-                    </button>
+                    <div className="grid grid-cols-2 gap-2">
+                       <button onClick={() => handleTimer('focus', 25)} className="bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 flex justify-center items-center gap-2 py-2 px-3 text-xs font-medium hover:bg-slate-800 dark:hover:bg-white"><Play className="w-3.5 h-3.5 flex-shrink-0" /> Фокус 25m</button>
+                       <button onClick={() => handleTimer('focus', 50)} className="bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 flex justify-center items-center gap-2 py-2 px-3 text-xs font-medium hover:bg-slate-800 dark:hover:bg-white"><Play className="w-3.5 h-3.5 flex-shrink-0" /> Фокус 50m</button>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <input type="number" min="1" max="180" className="w-20 border border-slate-300 dark:border-slate-700 bg-transparent text-slate-900 dark:text-white px-2 py-2 text-xs focus:outline-none" value={customMins} onChange={e => setCustomMins(e.target.value)} />
+                      <button onClick={handleCustomStart} className="flex-1 bg-slate-100 dark:bg-slate-700 text-slate-900 dark:text-white flex justify-center items-center py-2 px-3 text-xs font-medium hover:bg-slate-200 dark:hover:bg-slate-600">Свое время (мин)</button>
+                    </div>
                   </>
+                ) : (
+                  <div className="flex flex-col gap-2 w-full">
+                    <div className="flex gap-2">
+                      <button 
+                        onClick={togglePause}
+                        className="flex-1 border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 flex justify-center items-center gap-2 py-2 px-3 text-xs font-medium hover:bg-slate-50 dark:hover:bg-slate-700"
+                      >
+                       {room.isTimerPaused ? <Play className="w-3.5 h-3.5" /> : <Pause className="w-3.5 h-3.5" />}
+                       {room.isTimerPaused ? 'Продолжить' : 'Пауза'}
+                      </button>
+                      <button 
+                        onClick={() => handleTimer('idle', 0)}
+                        className="flex-none bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-800/50 px-4 flex justify-center items-center hover:bg-red-100 dark:hover:bg-red-900/50"
+                        title="Остановить"
+                      >
+                        <Square className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2 mt-2 pt-2 border-t border-slate-100 dark:border-slate-700/50">
+                       <button onClick={() => handleTimer('break', 5)} className="border border-blue-200 dark:border-blue-800/50 bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 flex justify-center items-center py-2 px-3 text-xs font-medium hover:bg-blue-100 dark:hover:bg-blue-900/50">Перерыв 5m</button>
+                       <button onClick={() => handleTimer('break', 10)} className="border border-blue-200 dark:border-blue-800/50 bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 flex justify-center items-center py-2 px-3 text-xs font-medium hover:bg-blue-100 dark:hover:bg-blue-900/50">Перерыв 10m</button>
+                    </div>
+                  </div>
                 )}
               </div>
             )}
@@ -288,6 +389,48 @@ const StudyRoomPage: React.FC = () => {
         </div>
 
       </div>
+
+      {showSettings && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 dark:bg-black/60 backdrop-blur-none transition-opacity">
+          <div className="bg-white dark:bg-[#0f172a] border border-slate-300 dark:border-slate-700 w-full max-w-md shadow-2xl">
+            <div className="px-6 py-4 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between">
+              <h2 className="text-lg font-bold text-slate-900 dark:text-white">Настройки комнаты</h2>
+              <button onClick={() => setShowSettings(false)} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 text-2xl leading-none">&times;</button>
+            </div>
+            <form onSubmit={saveSettings} className="p-6">
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Название фокуса</label>
+                  <input
+                    type="text"
+                    required
+                    value={editTitle}
+                    onChange={(e) => setEditTitle(e.target.value)}
+                    className="w-full border border-slate-300 dark:border-slate-700 bg-transparent text-slate-900 dark:text-white px-3 py-2 text-sm focus:outline-none focus:border-slate-600 dark:focus:border-slate-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Фоновая музыка (YouTube)</label>
+                  <input
+                    type="url"
+                    value={editUrl}
+                    onChange={(e) => setEditUrl(e.target.value)}
+                    className="w-full border border-slate-300 dark:border-slate-700 bg-transparent text-slate-900 dark:text-white px-3 py-2 text-sm focus:outline-none focus:border-slate-600 dark:focus:border-slate-500"
+                  />
+                </div>
+              </div>
+              <div className="mt-8 flex justify-end gap-3">
+                <button type="button" onClick={() => setShowSettings(false)} className="px-4 py-2 text-sm font-medium border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800">
+                  Отмена
+                </button>
+                <button type="submit" className="px-4 py-2 text-sm font-medium bg-slate-900 dark:bg-white text-white dark:text-slate-900 hover:bg-slate-800 dark:hover:bg-slate-200">
+                  Сохранить
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

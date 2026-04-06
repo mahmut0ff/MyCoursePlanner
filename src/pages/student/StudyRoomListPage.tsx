@@ -76,13 +76,6 @@ const StudyRoomListPage: React.FC = () => {
         </button>
       </div>
 
-      <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 p-4 mb-6 text-sm text-blue-800 dark:text-blue-300 flex items-start gap-3">
-        <AlertCircle className="w-5 h-5 shrink-0 mt-0.5" />
-        <div>
-          <p className="font-semibold">Глобальное пространство</p>
-          <p>В этих комнатах вы можете учиться вместе со студентами со всей планеты. Фокусируйтесь на своих задачах, оставаясь в приятной компании.</p>
-        </div>
-      </div>
 
       <div className="mb-6 relative">
         <Search className="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />

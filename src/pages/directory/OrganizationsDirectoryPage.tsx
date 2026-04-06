@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { Search, MapPin, Building2, Wifi, Filter } from 'lucide-react';
+import { Search, MapPin, Building2, Wifi, Filter, ArrowLeft } from 'lucide-react';
 import { apiGetOrgDirectory } from '../../lib/api';
 
 interface OrgCard {
@@ -128,16 +128,25 @@ const OrganizationsDirectoryPage: React.FC = () => {
         {/*  PAGE TITLE & HEADER                     */}
         {/* ═══════════════════════════════════════ */}
         <div className="mb-8 sm:mb-10 flex flex-col md:flex-row md:items-end justify-between gap-4">
-          <div>
-            <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white mb-2 flex items-center gap-3">
-              <Building2 className="w-7 h-7 sm:w-8 sm:h-8 text-blue-600" />
-              {t('directory.badge', 'Каталог')}
-            </h1>
-            <p className="text-sm sm:text-base text-slate-500 dark:text-slate-400">
-              {filtered.length > 0 
-                ? `${t('directory.found', 'Найдено')} ${filtered.length} ${t('directory.orgs', 'организаций')}`
-                : t('directory.empty', 'Организации не найдены')}
-            </p>
+          <div className="flex items-start gap-4">
+            <button 
+              onClick={() => navigate(-1)} 
+              className="mt-1 p-2 bg-white dark:bg-gray-900 border border-slate-200 dark:border-gray-800 rounded-xl text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-gray-800 transition-colors shrink-0 shadow-sm"
+              title={t('common.back', 'Назад')}
+            >
+              <ArrowLeft className="w-5 h-5" />
+            </button>
+            <div>
+              <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white mb-2 flex items-center gap-3">
+                <Building2 className="w-7 h-7 sm:w-8 sm:h-8 text-blue-600" />
+                {t('directory.badge', 'Каталог')}
+              </h1>
+              <p className="text-sm sm:text-base text-slate-500 dark:text-slate-400">
+                {filtered.length > 0 
+                  ? `${t('directory.found', 'Найдено')} ${filtered.length} ${t('directory.orgs', 'организаций')}`
+                  : t('directory.empty', 'Организации не найдены')}
+              </p>
+            </div>
           </div>
           
           {/* Mobile Filter Toggle */}

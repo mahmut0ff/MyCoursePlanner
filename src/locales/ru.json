@@ -1816,5 +1816,17 @@
     "progress": "Прогресс оплаты",
     "noHistory": "Нет истории оплат",
     "addExpense": "Добавить расход"
+  },
+  "telegram": {
+    "title": "Telegram-уведомления",
+    "subtitle": "Оценки, ДЗ и оплата — прямо в Telegram",
+    "linked": "Telegram привязан. Уведомления включены.",
+    "unlink": "Отвязать Telegram",
+    "confirmUnlink": "Отвязать Telegram? Вы перестанете получать уведомления.",
+    "connect": "Привязать Telegram",
+    "instructions": "Нажмите на ссылку ниже и отправьте /start боту:",
+    "openBot": "Открыть бот",
+    "manualCode": "Отправьте этот код боту:",
+    "waiting": "Ожидание привязки... Код действует 15 минут."
   }
 }

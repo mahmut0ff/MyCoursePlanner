@@ -575,3 +575,11 @@ export const apiTransferResolve = (data: { notificationId: string, decision: 'ap
   apiRequest('api-transfers', 'POST', data, { action: 'resolve_transfer' });
 
 export const apiAIGradeDictation = (data: { audioBase64: string, mimeType?: string, students: any[], schema: any }) => apiRequest('api-ai-gradebook', 'POST', data);
+
+// ============================================================
+// TELEGRAM LINK API
+// ============================================================
+
+export const apiGetTelegramStatus = () => apiRequest('api-telegram-link', 'GET');
+export const apiGenerateTelegramLink = () => apiRequest('api-telegram-link', 'POST', { action: 'generate' });
+export const apiUnlinkTelegram = () => apiRequest('api-telegram-link', 'POST', { action: 'unlink' });

@@ -1574,5 +1574,17 @@
     "progress": "Payment Progress",
     "noHistory": "No payment history",
     "addExpense": "Add Expense"
+  },
+  "telegram": {
+    "title": "Telegram Notifications",
+    "subtitle": "Grades, homework and payments — right in Telegram",
+    "linked": "Telegram linked. Notifications enabled.",
+    "unlink": "Unlink Telegram",
+    "confirmUnlink": "Unlink Telegram? You will stop receiving notifications.",
+    "connect": "Link Telegram",
+    "instructions": "Tap the link below and send /start to the bot:",
+    "openBot": "Open bot",
+    "manualCode": "Send this code to the bot:",
+    "waiting": "Waiting for link... Code valid for 15 minutes."
   }
 }

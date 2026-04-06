@@ -13,6 +13,7 @@ import { apiCheckAuthIdentity, apiGetGamification } from '../../lib/api';
 import AvatarCropper from '../../components/ui/AvatarCropper';
 import type { GamificationData } from '../../types';
 import { PinnedBadgesDisplay } from '../../lib/badges';
+import TelegramLinkCard from '../../components/telegram/TelegramLinkCard';
 
 const StudentProfilePage: React.FC = () => {
   const { t } = useTranslation();
@@ -325,6 +326,9 @@ const StudentProfilePage: React.FC = () => {
               ))}
             </div>
           </div>
+
+          {/* Telegram Link */}
+          <TelegramLinkCard />
 
           {/* Password */}
           <div className="card p-6">

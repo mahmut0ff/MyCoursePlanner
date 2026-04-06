@@ -1,5 +1,6 @@
 import type { Handler, HandlerEvent } from '@netlify/functions';
 import { adminDb } from './utils/firebase-admin';
+import { resolveTelegramLinkCode } from './utils/telegram';
 
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY || '';
 
@@ -46,9 +47,52 @@ export const handler: Handler = async (event: HandlerEvent) => {
       }).catch(err => console.error('Telegram reply error:', err));
     };
 
-    if (text === '/start') {
+    // ─── /start with linking code ───
+    if (text.startsWith('/start')) {
+      const parts = text.split(' ');
+      if (parts.length > 1) {
+        // /start ABC123  →  link Telegram account
+        const code = parts[1].trim();
+        const linkResult = await resolveTelegramLinkCode(code);
+
+        if (linkResult && linkResult.orgId === orgId) {
+          // Save telegramChatId on user document
+          await adminDb.collection('users').doc(linkResult.userId).update({
+            telegramChatId: String(chatId),
+            telegramLinkedAt: new Date().toISOString(),
+          });
+
+          await reply('✅ <b>Аккаунт привязан!</b>\n\nТеперь вы будете получать уведомления об оценках, домашних заданиях и оплатах прямо сюда.\n\nЧтобы отвязать — напишите /unlink');
+          return { statusCode: 200, body: 'OK' };
+        } else {
+          await reply('❌ Код недействителен или истёк. Попробуйте получить новый код в приложении Planula.');
+          return { statusCode: 200, body: 'OK' };
+        }
+      }
+
+      // Plain /start — greeting
       const greeting = settingsData.greetingMessage || 'Здравствуйте! Чем я могу вам помочь?';
       await reply(greeting);
+      return { statusCode: 200, body: 'OK' };
+    }
+
+    // ─── /unlink — detach Telegram ───
+    if (text === '/unlink') {
+      // Find user by chatId in this org
+      const usersSnap = await adminDb.collection('users')
+        .where('organizationId', '==', orgId)
+        .where('telegramChatId', '==', String(chatId))
+        .limit(1).get();
+
+      if (!usersSnap.empty) {
+        await usersSnap.docs[0].ref.update({
+          telegramChatId: '',
+          telegramLinkedAt: '',
+        });
+        await reply('🔓 Telegram отвязан. Вы больше не будете получать уведомления.');
+      } else {
+        await reply('Ваш аккаунт не привязан.');
+      }
       return { statusCode: 200, body: 'OK' };
     }
 

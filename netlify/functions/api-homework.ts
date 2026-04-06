@@ -6,6 +6,7 @@ import type { Handler, HandlerEvent } from '@netlify/functions';
 import { adminDb } from './utils/firebase-admin';
 import { verifyAuth, ok, unauthorized, badRequest, notFound, jsonResponse } from './utils/auth';
 import { createNotification, notifyOrgAdmins } from './utils/notifications';
+import { sendTelegramToUser } from './utils/telegram';
 import { rateLimiters, getRateLimitKey } from './utils/rate-limiter';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 
@@ -139,6 +140,14 @@ export const handler: Handler = async (event: HandlerEvent) => {
         message: `Ваше ДЗ "${hwData.lessonTitle || 'Урок'}" оценено: ${body.finalScore || 0} баллов`,
         link: `/lessons/${hwData.lessonId}`,
       }).catch(() => {});
+
+      // Also notify via Telegram (best-effort)
+      if (hwData.organizationId) {
+        sendTelegramToUser(
+          hwData.organizationId, hwData.studentId,
+          `📝 Ваше ДЗ "${hwData.lessonTitle || 'Урок'}" оценено: ${body.finalScore || 0} баллов.\n${body.feedback ? `💬 ${body.feedback}` : ''}`
+        ).catch(() => {});
+      }
     }
     
     return ok({ success: true });

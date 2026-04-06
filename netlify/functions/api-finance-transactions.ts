@@ -4,6 +4,7 @@
 import type { Handler, HandlerEvent } from '@netlify/functions';
 import { adminDb } from './utils/firebase-admin';
 import { verifyAuth, isStaff, getOrgFilter, resolveBranchFilter, requireBranchScope, ok, unauthorized, forbidden, badRequest, notFound, jsonResponse } from './utils/auth';
+import { sendTelegramToUser } from './utils/telegram';
 
 const COLLECTION = 'financeTransactions';
 
@@ -88,6 +89,17 @@ const handler: Handler = async (event: HandlerEvent) => {
             t.update(planRef, { paidAmount: newPaidAmount, status, updatedAt: new Date().toISOString() });
           }
         });
+
+        // Notify student via Telegram about payment confirmation
+        if (data.studentId && orgFilter) {
+          const planDoc = await planRef.get();
+          const planData = planDoc.data();
+          const remaining = (planData?.totalAmount || 0) - (planData?.paidAmount || 0);
+          sendTelegramToUser(
+            orgFilter, data.studentId,
+            `✅ Оплата принята: ${data.amount.toLocaleString()} сом.${remaining > 0 ? `\nОстаток: ${remaining.toLocaleString()} сом.` : '\n🎉 Оплата завершена полностью!'}`
+          ).catch(() => {});
+        }
       }
 
       return ok({ id: ref.id, ...data });

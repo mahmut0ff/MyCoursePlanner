@@ -34,17 +34,22 @@ export const createStudyRoom = async (data: Partial<StudyRoom>): Promise<string>
 
 export const joinStudyRoom = async (roomId: string, participant: Omit<StudyParticipant, 'joinedAt'>): Promise<void> => {
   const pRef = doc(db, `studyRooms/${roomId}/participants`, participant.userId);
+  const pDoc = await getDoc(pRef);
+  const exists = pDoc.exists();
+
   await setDoc(pRef, {
     ...participant,
     joinedAt: new Date().toISOString()
   });
 
-  const roomDoc = await getDoc(doc(db, 'studyRooms', roomId));
-  if (roomDoc.exists()) {
-    const data = roomDoc.data();
-    await updateDoc(doc(db, 'studyRooms', roomId), {
-      participantsCount: (data.participantsCount || 0) + 1
-    });
+  if (!exists) {
+    const roomDoc = await getDoc(doc(db, 'studyRooms', roomId));
+    if (roomDoc.exists()) {
+      const data = roomDoc.data();
+      await updateDoc(doc(db, 'studyRooms', roomId), {
+        participantsCount: (data.participantsCount || 0) + 1
+      });
+    }
   }
 };
 

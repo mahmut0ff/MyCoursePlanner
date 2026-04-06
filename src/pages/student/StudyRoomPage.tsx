@@ -346,7 +346,7 @@ const StudyRoomPage: React.FC = () => {
         </div>
 
         {/* RIGHT COLUMN: Tools (YouTube + Timer + Chat) */}
-        <div className="lg:col-span-4 order-1 lg:order-2 flex flex-col gap-4 w-full h-[calc(100vh-12rem)] md:h-auto">
+        <div className="lg:col-span-4 order-1 lg:order-2 flex flex-col gap-4 w-full">
           
           {/* Pomodoro Timer */}
           <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-5 flex flex-col items-center">
@@ -421,13 +421,13 @@ const StudyRoomPage: React.FC = () => {
           </div>
 
           {/* Chat Integration */}
-          <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex flex-col min-h-[300px] flex-1">
+          <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex flex-col h-[400px] shrink-0">
              <div className="p-3 border-b border-slate-200 dark:border-slate-700 font-bold text-sm text-slate-900 dark:text-white flex items-center gap-2 shrink-0">
                 <MessageSquare className="w-4 h-4" />
                 Чат комнаты
              </div>
              
-             <div className="flex-1 overflow-y-auto p-3 space-y-3 bg-slate-50 dark:bg-[#0f172a]/50 flex flex-col justify-end">
+             <div className="flex-1 overflow-y-auto p-3 space-y-3 bg-slate-50 dark:bg-[#0f172a]/50 flex flex-col">
                 {messages.length === 0 ? (
                   <p className="text-center text-xs text-slate-400 dark:text-slate-500 my-auto">
                     Нет сообщений. Напишите что-нибудь!

@@ -3,12 +3,13 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { 
   subscribeToStudyRoom, joinStudyRoom, leaveStudyRoom, 
-  updateStudyRoomTimer, updateStudyRoomSettings, toggleStudyRoomTimerPause, kickParticipant 
+  updateStudyRoomTimer, updateStudyRoomSettings, toggleStudyRoomTimerPause, kickParticipant,
+  sendStudyRoomMessage, subscribeToStudyRoomMessages
 } from '../../services/study-rooms.service';
-import type { StudyRoom, StudyParticipant } from '../../types';
+import type { StudyRoom, StudyParticipant, StudyRoomMessage } from '../../types';
 import YoutubeAudioPlayer from '../../components/common/YoutubeAudioPlayer';
 import { PinnedBadgesDisplay } from '../../lib/badges';
-import { ArrowLeft, User, Focus, BookOpen, Play, Square, Settings, X, Pause } from 'lucide-react';
+import { ArrowLeft, User, Focus, BookOpen, Play, Square, Settings, X, Pause, MessageSquare, Send } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 const StudyRoomPage: React.FC = () => {
@@ -30,6 +31,11 @@ const StudyRoomPage: React.FC = () => {
   const [editUrl, setEditUrl] = useState('');
   const notifiedRef = useRef(false);
 
+  // Chat
+  const [messages, setMessages] = useState<StudyRoomMessage[]>([]);
+  const [chatInput, setChatInput] = useState('');
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+
   useEffect(() => {
     if (!id || !profile) return;
 
@@ -46,6 +52,21 @@ const StudyRoomPage: React.FC = () => {
 
     return () => unsub();
   }, [id, profile, navigate]);
+
+  useEffect(() => {
+    if (!id) return;
+    const unsubMsgs = subscribeToStudyRoomMessages(id, (msgs) => {
+      setMessages(msgs);
+    });
+    return () => unsubMsgs();
+  }, [id]);
+
+  useEffect(() => {
+    // Auto-scroll to bottom when new messages arrive
+    if (messagesEndRef.current) {
+      messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [messages]);
 
   useEffect(() => {
     if (!id || !profile || loading || hasJoined) return;
@@ -175,6 +196,24 @@ const StudyRoomPage: React.FC = () => {
     }
   };
 
+  const handleSendMessage = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!id || !profile || !chatInput.trim()) return;
+    try {
+      const text = chatInput.trim();
+      setChatInput(''); // clear optimistically
+      await sendStudyRoomMessage(id, {
+        senderId: profile.uid,
+        senderName: profile.displayName || 'Студент',
+        senderAvatar: profile.avatarUrl,
+        text
+      });
+    } catch (err: any) {
+      toast.error('Ошибка отправки сообщения');
+      setChatInput(chatInput); // restore on error
+    }
+  };
+
   const openSettings = () => {
     if (room) {
       setEditTitle(room.title);
@@ -242,70 +281,72 @@ const StudyRoomPage: React.FC = () => {
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start w-full">
         
         {/* LEFT COLUMN: Participants */}
-        <div className="lg:col-span-8 order-2 lg:order-1 w-full">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
-              <Focus className="w-5 h-5" /> 
-              В комнате ({participants.length})
-            </h2>
-          </div>
-          
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 w-full">
-            {participants.map((p) => {
-              const isMe = p.userId === profile?.uid;
-              return (
-                <div key={p.userId} className={`bg-white dark:bg-slate-800 border p-3 flex gap-3 relative group ${isMe ? 'border-slate-800 dark:border-slate-400' : 'border-slate-200 dark:border-slate-700'}`}>
-                  {isCreator && !isMe && (
-                    <button 
-                      onClick={() => handleKick(p.userId)}
-                      className="absolute top-2 right-2 p-1 text-slate-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
-                      title="Выгнать участника"
-                    >
-                      <X className="w-4 h-4" />
-                    </button>
-                  )}
-                  <div className="w-12 h-12 bg-slate-200 dark:bg-slate-700 shrink-0 flex items-center justify-center overflow-hidden">
-                    {p.avatarUrl ? (
-                      <img src={p.avatarUrl} alt="avatar" className="w-full h-full object-cover" />
-                    ) : (
-                      <User className="w-6 h-6 text-slate-500 dark:text-slate-400" />
+        <div className="lg:col-span-8 order-2 lg:order-1 w-full flex flex-col gap-6">
+          <div>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                <Focus className="w-5 h-5" /> 
+                В комнате ({participants.length})
+              </h2>
+            </div>
+            
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 w-full">
+              {participants.map((p) => {
+                const isMe = p.userId === profile?.uid;
+                return (
+                  <div key={p.userId} className={`bg-white dark:bg-slate-800 border p-3 flex gap-3 relative group ${isMe ? 'border-slate-800 dark:border-slate-400' : 'border-slate-200 dark:border-slate-700'}`}>
+                    {isCreator && !isMe && (
+                      <button 
+                        onClick={() => handleKick(p.userId)}
+                        className="absolute top-2 right-2 p-1 text-slate-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
+                        title="Выгнать участника"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
                     )}
-                  </div>
-                  <div className="flex-1 min-w-0 flex flex-col justify-center pr-6">
-                    <div className="flex items-center justify-between gap-1">
-                      <p className="font-bold text-slate-900 dark:text-white text-sm truncate flex items-center gap-2">
-                        {p.name}
-                        {isMe && <span className="text-[10px] uppercase bg-slate-900 dark:bg-white text-white dark:text-slate-900 px-1.5 py-0.5 font-bold">Я</span>}
-                      </p>
-                      {p.badges && p.badges.length > 0 && (
-                        <PinnedBadgesDisplay badges={p.badges} className="scale-75 origin-right" />
+                    <div className="w-12 h-12 bg-slate-200 dark:bg-slate-700 shrink-0 flex items-center justify-center overflow-hidden">
+                      {p.avatarUrl ? (
+                        <img src={p.avatarUrl} alt="avatar" className="w-full h-full object-cover" />
+                      ) : (
+                        <User className="w-6 h-6 text-slate-500 dark:text-slate-400" />
                       )}
                     </div>
-                    
-                    {isMe ? (
-                      <input 
-                        type="text" 
-                        value={myGoal}
-                        onChange={(e) => setMyGoal(e.target.value)}
-                        onBlur={() => updateGoal(myGoal)}
-                        className="w-full mt-1 text-xs border-b border-slate-300 dark:border-slate-600 focus:border-slate-800 dark:focus:border-slate-400 outline-none pb-0.5 bg-transparent text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500"
-                        placeholder="Ваша цель?"
-                        maxLength={50}
-                      />
-                    ) : (
-                      <p className="text-xs text-slate-600 dark:text-slate-400 mt-1 truncate">
-                        {p.goal || 'Фокус на учебе'}
-                      </p>
-                    )}
+                    <div className="flex-1 min-w-0 flex flex-col justify-center pr-6">
+                      <div className="flex items-center justify-between gap-1">
+                        <p className="font-bold text-slate-900 dark:text-white text-sm truncate flex items-center gap-2">
+                          {p.name}
+                          {isMe && <span className="text-[10px] uppercase bg-slate-900 dark:bg-white text-white dark:text-slate-900 px-1.5 py-0.5 font-bold">Я</span>}
+                        </p>
+                        {p.badges && p.badges.length > 0 && (
+                          <PinnedBadgesDisplay badges={p.badges} className="scale-75 origin-right" />
+                        )}
+                      </div>
+                      
+                      {isMe ? (
+                        <input 
+                          type="text" 
+                          value={myGoal}
+                          onChange={(e) => setMyGoal(e.target.value)}
+                          onBlur={() => updateGoal(myGoal)}
+                          className="w-full mt-1 text-xs border-b border-slate-300 dark:border-slate-600 focus:border-slate-800 dark:focus:border-slate-400 outline-none pb-0.5 bg-transparent text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500"
+                          placeholder="Ваша цель?"
+                          maxLength={50}
+                        />
+                      ) : (
+                        <p className="text-xs text-slate-600 dark:text-slate-400 mt-1 truncate">
+                          {p.goal || 'Фокус на учебе'}
+                        </p>
+                      )}
+                    </div>
                   </div>
-                </div>
-              );
-            })}
+                );
+              })}
+            </div>
           </div>
         </div>
 
-        {/* RIGHT COLUMN: Tools (YouTube + Timer) */}
-        <div className="lg:col-span-4 order-1 lg:order-2 flex flex-col gap-4 w-full">
+        {/* RIGHT COLUMN: Tools (YouTube + Timer + Chat) */}
+        <div className="lg:col-span-4 order-1 lg:order-2 flex flex-col gap-4 w-full h-[calc(100vh-12rem)] md:h-auto">
           
           {/* Pomodoro Timer */}
           <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-5 flex flex-col items-center">
@@ -364,7 +405,7 @@ const StudyRoomPage: React.FC = () => {
             )}
           </div>
 
-          <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-4">
+          <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-4 shrink-0">
             <h3 className="font-bold text-slate-900 dark:text-white mb-2 text-sm flex items-center gap-2">
               <BookOpen className="w-4 h-4" /> 
               Ваша цель
@@ -379,8 +420,57 @@ const StudyRoomPage: React.FC = () => {
             />
           </div>
 
+          {/* Chat Integration */}
+          <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex flex-col min-h-[300px] flex-1">
+             <div className="p-3 border-b border-slate-200 dark:border-slate-700 font-bold text-sm text-slate-900 dark:text-white flex items-center gap-2 shrink-0">
+                <MessageSquare className="w-4 h-4" />
+                Чат комнаты
+             </div>
+             
+             <div className="flex-1 overflow-y-auto p-3 space-y-3 bg-slate-50 dark:bg-[#0f172a]/50 flex flex-col justify-end">
+                {messages.length === 0 ? (
+                  <p className="text-center text-xs text-slate-400 dark:text-slate-500 my-auto">
+                    Нет сообщений. Напишите что-нибудь!
+                  </p>
+                ) : (
+                  <div className="flex flex-col gap-3">
+                    {messages.map(msg => (
+                      <div key={msg.id} className={`flex flex-col ${msg.senderId === profile?.uid ? 'items-end' : 'items-start'}`}>
+                        <div className="flex items-center gap-1.5 mb-1">
+                           <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400">{msg.senderId === profile?.uid ? 'Вы' : msg.senderName}</span>
+                           <span className="text-[9px] text-slate-400 dark:text-slate-600">{new Date(msg.createdAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
+                        </div>
+                        <div className={`text-sm px-3 py-1.5 break-words max-w-[90%] ${msg.senderId === profile?.uid ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900' : 'bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 text-slate-900 dark:text-white'}`}>
+                          {msg.text}
+                        </div>
+                      </div>
+                    ))}
+                    <div ref={messagesEndRef} />
+                  </div>
+                )}
+             </div>
+
+             <form onSubmit={handleSendMessage} className="p-3 border-t border-slate-200 dark:border-slate-700 shrink-0 flex gap-2">
+                <input 
+                  type="text" 
+                  value={chatInput}
+                  onChange={e => setChatInput(e.target.value)}
+                  placeholder="Сообщение..."
+                  maxLength={200}
+                  className="flex-1 bg-transparent text-sm text-slate-900 dark:text-white focus:outline-none placeholder-slate-400 dark:placeholder-slate-500"
+                />
+                <button 
+                  type="submit" 
+                  disabled={!chatInput.trim()}
+                  className="text-slate-400 hover:text-slate-900 dark:hover:text-white disabled:opacity-50 disabled:hover:text-slate-400 transition-colors"
+                >
+                  <Send className="w-4 h-4" />
+                </button>
+             </form>
+          </div>
+
           {room.youtubeUrl && (
-             <div className="w-full">
+             <div className="w-full shrink-0">
                <YoutubeAudioPlayer youtubeUrl={room.youtubeUrl} />
                <p className="text-[10px] text-slate-400 dark:text-slate-500 mt-2 text-center uppercase tracking-wider">Фоновое Видео</p>
              </div>
@@ -390,6 +480,7 @@ const StudyRoomPage: React.FC = () => {
 
       </div>
 
+      {/* Settings Modal */}
       {showSettings && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 dark:bg-black/60 backdrop-blur-none transition-opacity">
           <div className="bg-white dark:bg-[#0f172a] border border-slate-300 dark:border-slate-700 w-full max-w-md shadow-2xl">

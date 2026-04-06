@@ -1232,3 +1232,12 @@ export interface StudyRoom {
   createdAt: string;
   updatedAt: string;
 }
+
+export interface StudyRoomMessage {
+  id: string;
+  senderId: string;
+  senderName: string;
+  senderAvatar?: string;
+  text: string;
+  createdAt: string;
+}

@@ -3,7 +3,7 @@ import {
   deleteDoc, query, where, orderBy, onSnapshot, setDoc, limit 
 } from 'firebase/firestore';
 import { db } from '../lib/firebase';
-import type { StudyRoom, StudyParticipant } from '../types';
+import type { StudyRoom, StudyParticipant, StudyRoomMessage } from '../types';
 
 export const getStudyRooms = async (): Promise<StudyRoom[]> => {
   const q = query(
@@ -136,4 +136,24 @@ export const toggleStudyRoomTimerPause = async (roomId: string, room: StudyRoom)
 
 export const kickParticipant = async (roomId: string, userId: string): Promise<void> => {
   await leaveStudyRoom(roomId, userId); // we can reuse leave
+};
+
+export const sendStudyRoomMessage = async (roomId: string, message: Omit<StudyRoomMessage, 'id' | 'createdAt'>): Promise<void> => {
+  await addDoc(collection(db, `studyRooms/${roomId}/messages`), {
+    ...message,
+    createdAt: new Date().toISOString()
+  });
+};
+
+export const subscribeToStudyRoomMessages = (roomId: string, callback: (messages: StudyRoomMessage[]) => void) => {
+  const q = query(
+    collection(db, `studyRooms/${roomId}/messages`),
+    orderBy('createdAt', 'asc'),
+    limit(50)
+  );
+
+  return onSnapshot(q, (snap) => {
+    const messages = snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as StudyRoomMessage));
+    callback(messages);
+  });
 };

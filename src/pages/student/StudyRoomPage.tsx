@@ -126,8 +126,8 @@ const StudyRoomPage: React.FC = () => {
 
   if (loading || !room) {
     return (
-      <div className="flex h-screen items-center justify-center bg-slate-50">
-        <div className="w-8 h-8 border-2 border-slate-300 border-t-slate-900 rounded-full animate-spin" />
+      <div className="flex h-screen items-center justify-center bg-slate-50 dark:bg-[#0f172a]">
+        <div className="w-8 h-8 border-2 border-slate-300 dark:border-slate-700 border-t-slate-900 dark:border-t-white rounded-full animate-spin" />
       </div>
     );
   }
@@ -135,23 +135,23 @@ const StudyRoomPage: React.FC = () => {
   const isCreator = profile?.uid === room.creatorId;
 
   return (
-    <div className="min-h-[calc(100vh-4rem)] bg-slate-50 p-2 sm:p-4 lg:p-8 flex flex-col pt-[70px] lg:pt-8 w-full max-w-[100vw] overflow-x-hidden">
+    <div className="min-h-[calc(100vh-4rem)] bg-slate-50 dark:bg-[#0f172a] p-2 sm:p-4 lg:p-8 flex flex-col pt-[70px] lg:pt-8 w-full max-w-[100vw] overflow-x-hidden transition-colors">
       
       {/* Header */}
-      <div className="flex items-center justify-between gap-4 border-b border-slate-200 pb-4 mb-6">
+      <div className="flex items-center justify-between gap-4 border-b border-slate-200 dark:border-slate-800 pb-4 mb-6">
         <div className="flex items-center gap-3 w-full">
           <button 
             onClick={handleExit}
-            className="p-2 border border-slate-300 bg-white hover:bg-slate-100 transition-colors shrink-0"
+            className="p-2 border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors shrink-0"
           >
-            <ArrowLeft className="w-4 h-4 text-slate-700" />
+            <ArrowLeft className="w-4 h-4 text-slate-700 dark:text-slate-300" />
           </button>
           <div className="flex-1 min-w-0">
-            <h1 className="text-xl font-bold text-slate-900 truncate pr-2">{room.title}</h1>
+            <h1 className="text-xl font-bold text-slate-900 dark:text-white truncate pr-2">{room.title}</h1>
           </div>
           <button 
             onClick={handleExit}
-            className="px-4 py-2 border border-slate-300 bg-white text-sm font-medium hover:bg-slate-100 transition-colors shrink-0 hidden sm:block"
+            className="px-4 py-2 border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-sm font-medium hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors shrink-0 hidden sm:block"
           >
             Выйти
           </button>
@@ -164,7 +164,7 @@ const StudyRoomPage: React.FC = () => {
         {/* LEFT COLUMN: Participants */}
         <div className="lg:col-span-8 order-2 lg:order-1 w-full">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2">
+            <h2 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
               <Focus className="w-5 h-5" /> 
               В комнате ({participants.length})
             </h2>
@@ -174,19 +174,19 @@ const StudyRoomPage: React.FC = () => {
             {participants.map((p) => {
               const isMe = p.userId === profile?.uid;
               return (
-                <div key={p.userId} className={`bg-white border p-3 flex gap-3 ${isMe ? 'border-slate-800' : 'border-slate-200'}`}>
-                  <div className="w-12 h-12 bg-slate-200 shrink-0 flex items-center justify-center overflow-hidden">
+                <div key={p.userId} className={`bg-white dark:bg-slate-800 border p-3 flex gap-3 ${isMe ? 'border-slate-800 dark:border-slate-400' : 'border-slate-200 dark:border-slate-700'}`}>
+                  <div className="w-12 h-12 bg-slate-200 dark:bg-slate-700 shrink-0 flex items-center justify-center overflow-hidden">
                     {p.avatarUrl ? (
                       <img src={p.avatarUrl} alt="avatar" className="w-full h-full object-cover" />
                     ) : (
-                      <User className="w-6 h-6 text-slate-500" />
+                      <User className="w-6 h-6 text-slate-500 dark:text-slate-400" />
                     )}
                   </div>
                   <div className="flex-1 min-w-0 flex flex-col justify-center">
                     <div className="flex items-center justify-between gap-1">
-                      <p className="font-bold text-slate-900 text-sm truncate flex items-center gap-2">
+                      <p className="font-bold text-slate-900 dark:text-white text-sm truncate flex items-center gap-2">
                         {p.name}
-                        {isMe && <span className="text-[10px] uppercase bg-slate-900 text-white px-1.5 py-0.5 font-bold">Я</span>}
+                        {isMe && <span className="text-[10px] uppercase bg-slate-900 dark:bg-white text-white dark:text-slate-900 px-1.5 py-0.5 font-bold">Я</span>}
                       </p>
                       {p.badges && p.badges.length > 0 && (
                         <PinnedBadgesDisplay badges={p.badges} className="scale-75 origin-right" />
@@ -199,12 +199,12 @@ const StudyRoomPage: React.FC = () => {
                         value={myGoal}
                         onChange={(e) => setMyGoal(e.target.value)}
                         onBlur={() => updateGoal(myGoal)}
-                        className="w-full mt-1 text-xs border-b border-slate-300 focus:border-slate-800 outline-none pb-0.5 bg-transparent"
+                        className="w-full mt-1 text-xs border-b border-slate-300 dark:border-slate-600 focus:border-slate-800 dark:focus:border-slate-400 outline-none pb-0.5 bg-transparent text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500"
                         placeholder="Ваша цель?"
                         maxLength={50}
                       />
                     ) : (
-                      <p className="text-xs text-slate-600 mt-1 truncate">
+                      <p className="text-xs text-slate-600 dark:text-slate-400 mt-1 truncate">
                         {p.goal || 'Фокус на учебе'}
                       </p>
                     )}
@@ -219,16 +219,16 @@ const StudyRoomPage: React.FC = () => {
         <div className="lg:col-span-4 order-1 lg:order-2 flex flex-col gap-4 w-full">
           
           {/* Pomodoro Timer */}
-          <div className="bg-white border border-slate-200 p-5 flex flex-col items-center">
-            <h3 className="font-bold text-slate-500 uppercase tracking-widest text-[10px] mb-2 text-center w-full">
+          <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-5 flex flex-col items-center">
+            <h3 className="font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest text-[10px] mb-2 text-center w-full">
               Pomodoro Timer
             </h3>
             
-            <div className={`text-5xl font-bold py-2 tracking-tighter ${room.timerState === 'break' ? 'text-blue-600' : 'text-slate-900'}`}>
+            <div className={`text-5xl font-bold py-2 tracking-tighter ${room.timerState === 'break' ? 'text-blue-600 dark:text-blue-400' : 'text-slate-900 dark:text-white'}`}>
               {formatTime(timeLeft)}
             </div>
 
-            <p className="text-sm font-medium text-slate-500 mb-6 capitalize">
+            <p className="text-sm font-medium text-slate-500 dark:text-slate-400 mb-6 capitalize">
               {room.timerState === 'idle' ? 'Ожидание...' : room.timerState === 'focus' ? 'Время Фокуса' : 'Время Отдыха'}
             </p>
 
@@ -238,21 +238,21 @@ const StudyRoomPage: React.FC = () => {
                 {room.timerState === 'idle' ? (
                   <button 
                     onClick={() => handleTimer('focus', 25)}
-                    className="flex-1 bg-slate-900 text-white flex justify-center items-center gap-2 py-2 px-3 text-xs font-medium hover:bg-slate-800"
+                    className="flex-1 bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 flex justify-center items-center gap-2 py-2 px-3 text-xs font-medium hover:bg-slate-800 dark:hover:bg-white"
                   >
-                    <Play className="w-3.5 h-3.5" /> 25 м. Фокус
+                    <Play className="w-3.5 h-3.5 flex-shrink-0" /> 25 м. Фокус
                   </button>
                 ) : (
                   <>
                     <button 
                       onClick={() => handleTimer('break', 5)}
-                      className="flex-1 border border-blue-200 bg-blue-50 text-blue-700 flex justify-center items-center gap-2 py-2 px-3 text-xs font-medium hover:bg-blue-100"
+                      className="flex-1 border border-blue-200 dark:border-blue-800/50 bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 flex justify-center items-center gap-2 py-2 px-3 text-xs font-medium hover:bg-blue-100 dark:hover:bg-blue-900/50"
                     >
-                      <Coffee className="w-3.5 h-3.5" /> Отдых (5 м.)
+                      <Coffee className="w-3.5 h-3.5 flex-shrink-0" /> Отдых (5 м.)
                     </button>
                     <button 
                       onClick={() => handleTimer('idle', 0)}
-                      className="flex-none bg-slate-100 text-slate-600 px-3 flex justify-center items-center hover:bg-slate-200"
+                      className="flex-none bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 px-3 flex justify-center items-center hover:bg-slate-200 dark:hover:bg-slate-600"
                       title="Стоп"
                     >
                       <Square className="w-3.5 h-3.5" />
@@ -263,8 +263,8 @@ const StudyRoomPage: React.FC = () => {
             )}
           </div>
 
-          <div className="bg-white border border-slate-200 p-4">
-            <h3 className="font-bold text-slate-900 mb-2 text-sm flex items-center gap-2">
+          <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-4">
+            <h3 className="font-bold text-slate-900 dark:text-white mb-2 text-sm flex items-center gap-2">
               <BookOpen className="w-4 h-4" /> 
               Ваша цель
             </h3>
@@ -273,7 +273,7 @@ const StudyRoomPage: React.FC = () => {
               value={myGoal}
               onChange={(e) => setMyGoal(e.target.value)}
               onBlur={() => updateGoal(myGoal)}
-              className="w-full border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:border-slate-800"
+              className="w-full border border-slate-300 dark:border-slate-600 bg-transparent text-slate-900 dark:text-white px-3 py-2 text-sm focus:outline-none focus:border-slate-800 dark:focus:border-slate-400 placeholder-slate-400 dark:placeholder-slate-500"
               placeholder="Над чем сейчас работаете?"
             />
           </div>
@@ -281,7 +281,7 @@ const StudyRoomPage: React.FC = () => {
           {room.youtubeUrl && (
              <div className="w-full">
                <YoutubeAudioPlayer youtubeUrl={room.youtubeUrl} />
-               <p className="text-[10px] text-slate-400 mt-2 text-center uppercase tracking-wider">Фоновое Видео</p>
+               <p className="text-[10px] text-slate-400 dark:text-slate-500 mt-2 text-center uppercase tracking-wider">Фоновое Видео</p>
              </div>
           )}
 

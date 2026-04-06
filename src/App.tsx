@@ -41,6 +41,10 @@ const StudentTeachersPage = lazy(() => import('./pages/student/StudentTeachersPa
 const StudentGroupsPage = lazy(() => import('./pages/student/StudentGroupsPage'));
 const StudentSchedulePage = lazy(() => import('./pages/student/StudentSchedulePage'));
 
+// Co-Study
+const StudyRoomListPage = lazy(() => import('./pages/student/StudyRoomListPage'));
+const StudyRoomPage = lazy(() => import('./pages/student/StudyRoomPage'));
+
 // Quiz Pages
 const QuizLibraryPage = lazy(() => import('./pages/quiz/QuizLibraryPage'));
 const QuizBuilderPage = lazy(() => import('./pages/quiz/QuizBuilderPage'));
@@ -170,6 +174,10 @@ const App: React.FC = () => {
             <Route path="diary" element={<ProtectedRoute allowedRoles={['student']}><StudentDiaryPage /></ProtectedRoute>} />
             <Route path="progress" element={<ProtectedRoute allowedRoles={['student']}><StudentProgressPage /></ProtectedRoute>} />
             <Route path="student/schedule" element={<ProtectedRoute allowedRoles={['student']}><StudentSchedulePage /></ProtectedRoute>} />
+
+            {/* Co-Study Rooms */}
+            <Route path="study-rooms" element={<StudyRoomListPage />} />
+            <Route path="study-rooms/:id" element={<StudyRoomPage />} />
 
             {/* ═══ Quiz System ═══ */}
             <Route path="quiz/library" element={<ProtectedRoute allowedRoles={['admin', 'manager', 'teacher']}><QuizLibraryPage /></ProtectedRoute>} />

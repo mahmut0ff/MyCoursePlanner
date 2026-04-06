@@ -1198,3 +1198,35 @@ export interface FinancialTransaction {
   createdBy: string;
   createdAt: string;
 }
+
+// ============================================================
+// Co-Study Rooms 
+// ============================================================
+
+export type StudyRoomStatus = 'active' | 'closed';
+
+export interface StudyParticipant {
+  userId: string;
+  name: string;
+  avatarUrl?: string;
+  badges?: string[];
+  goal: string;
+  joinedAt: string;
+  status: 'focus' | 'break' | 'distracted';
+}
+
+export interface StudyRoom {
+  id: string;
+  title: string;
+  description?: string;
+  youtubeUrl?: string;
+  creatorId: string;
+  creatorName: string;
+  status: StudyRoomStatus;
+  participantsCount: number;
+  timerState?: 'focus' | 'break' | 'idle';
+  timerEndsAt?: string;
+  timerDuration?: number;
+  createdAt: string;
+  updatedAt: string;
+}

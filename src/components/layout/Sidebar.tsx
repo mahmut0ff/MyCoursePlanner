@@ -14,7 +14,7 @@ import {
   Users, Layers, Database, Activity, Flag, Plug, FolderOpen,
   ClipboardList, Radio, Award, Trophy, LogOut, CreditCard,
   TrendingUp, Bell, Lock, ClipboardCheck, TrendingDown,
-  ShieldCheck
+  ShieldCheck, Headphones
 } from 'lucide-react';
 
                         
@@ -456,6 +456,10 @@ const Sidebar: React.FC<{ open: boolean; onClose: () => void; isCollapsed?: bool
 
               <NavLink to="/certificates" className={linkClass} onClick={onClose}>
                 <Award className="w-4 h-4" /><span>{t('nav.certificates', 'Сертификаты')}</span>
+              </NavLink>
+
+              <NavLink to="/study-rooms" className={linkClass} onClick={onClose}>
+                <Headphones className="w-4 h-4" /><span>{t('nav.studyRooms', 'Co-Study Rooms')}</span>
               </NavLink>
 
               <NavLink to="/achievements" className={linkClass} onClick={onClose}>

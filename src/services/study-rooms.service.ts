@@ -1,6 +1,6 @@
 import { 
   collection, doc, getDoc, getDocs, addDoc, updateDoc, 
-  deleteDoc, query, where, orderBy, onSnapshot, setDoc, limit 
+  deleteDoc, query, orderBy, onSnapshot, setDoc, limit 
 } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import type { StudyRoom, StudyParticipant, StudyRoomMessage } from '../types';
@@ -8,12 +8,11 @@ import type { StudyRoom, StudyParticipant, StudyRoomMessage } from '../types';
 export const getStudyRooms = async (): Promise<StudyRoom[]> => {
   const q = query(
     collection(db, 'studyRooms'),
-    where('status', '==', 'active'),
     orderBy('createdAt', 'desc'),
     limit(50)
   );
   const snap = await getDocs(q);
-  return snap.docs.map(d => ({ id: d.id, ...d.data() } as StudyRoom));
+  return snap.docs.map(d => ({ id: d.id, ...d.data() } as StudyRoom)).filter(r => r.status === 'active');
 };
 
 export const getStudyRoom = async (roomId: string): Promise<StudyRoom | null> => {

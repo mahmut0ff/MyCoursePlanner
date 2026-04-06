@@ -166,10 +166,11 @@ YOUR DIRECTIVES (CRITICAL):
 1. ACT LIKE A REAL HUMAN MANAGER: Build a natural, empathetic, and engaging dialogue. Do not just robotically answer questions. 
 2. BE PROACTIVE: Gently guide the conversation. Ask clarifying questions to understand the client's needs (e.g., "What is the student's current level?", "Are you looking for morning or evening classes?", "Would you like me to reserve a spot for a trial lesson?").
 3. IMPROVISE & SOUND NATURAL: Rephrase your answers naturally so you don't sound like a script. You can use standard conversational fillers, warmth, and emojis where appropriate.
-4. STRICT FACTUAL ACCURACY: You MUST rely ONLY on the data provided below for facts (courses, prices, locations, schedules, policies). Do NOT invent courses, prices, or locations. However, you CAN creatively and persuasively pitch the available facts.
-5. HANDLING MISSING INFO: If a user asks something not covered in the data, organically tell them you'll need to check or suggest they contact the main office, providing the contacts below.
-6. LANGUAGE: ALWAYS respond in the exact same language as the user's message.
-7. CUSTOM INSTRUCTIONS: ${settingsData.customInstructions || 'None.'}
+4. STRICT FACTUAL ACCURACY: You MUST rely ONLY on the data provided below for facts. Do NOT invent courses or prices.
+5. NO REPETITIVE GREETINGS: DO NOT say "Hello" or "Здравствуйте" in every message. Only greet politely if it's the very beginning of the chat or if they explicitly greet you again. Keep follow-up messages direct and helpful.
+6. HANDLING MISSING INFO: If a user asks something not covered in the data, organically suggest they contact the main office.
+7. LANGUAGE: ALWAYS respond in the exact same language as the user's message.
+8. CUSTOM INSTRUCTIONS: ${settingsData.customInstructions || 'None.'}
 
 ORGANIZATION DATA (YOUR KNOWLEDGE BASE):
 - Name: ${org.name || 'Unknown'}
@@ -237,6 +238,21 @@ Review the Chat History and respond accurately to the final user message. Do NOT
           body: JSON.stringify({
             system_instruction: { parts: [{ text: systemPrompt }] },
             contents,
+            tools: [{
+              functionDeclarations: [{
+                name: 'addLeadToDatabase',
+                description: 'Adds a new lead to the CRM database for a trial lesson or meeting. Use this when the user agrees to a meeting or trial and provides their exact name and phone number.',
+                parameters: {
+                  type: 'OBJECT',
+                  properties: {
+                    name: { type: 'STRING', description: 'Client name' },
+                    phone: { type: 'STRING', description: 'Client phone number' },
+                    reason: { type: 'STRING', description: 'Reason for the appointment, e.g., Trial lesson for programming' }
+                  },
+                  required: ['name', 'phone', 'reason']
+                }
+              }]
+            }],
             generationConfig: { temperature: 0.4, maxOutputTokens: 2048 },
           }),
         }
@@ -249,7 +265,25 @@ Review the Chat History and respond accurately to the final user message. Do NOT
       }
 
       const geminiData = await geminiResponse.json();
-      const responseText = geminiData.candidates?.[0]?.content?.parts?.[0]?.text || 'Sorry, I could not generate a response.';
+      const candidateParts = geminiData.candidates?.[0]?.content?.parts || [];
+      
+      let responseText = '';
+      const functionCall = candidateParts.find((p: any) => p.functionCall)?.functionCall;
+      
+      if (functionCall && functionCall.name === 'addLeadToDatabase') {
+         const args = functionCall.args;
+         await adminDb.collection('organizations').doc(organizationId).collection('aiLeads').add({
+            name: args.name || 'Unknown',
+            phone: args.phone || 'Unknown',
+            reason: args.reason || '',
+            source: 'web_chat',
+            status: 'new',
+            createdAt: new Date().toISOString()
+         });
+         responseText = `Отлично! Я передал ваши контакты менеджеру. С вами скоро свяжутся.`;
+      } else {
+         responseText = candidateParts.find((p: any) => p.text)?.text || 'Sorry, I could not generate a response.';
+      }
 
       return ok({ reply: responseText });
     }

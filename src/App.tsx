@@ -91,6 +91,9 @@ const AdminOrgDetailPage = lazy(() => import('./pages/admin/AdminOrgDetailPage')
 const OrganizationsDirectoryPage = lazy(() => import('./pages/directory/OrganizationsDirectoryPage'));
 const PublicOrgProfilePage = lazy(() => import('./pages/directory/PublicOrgProfilePage'));
 
+// AI Leads CRM
+const AILeadsPage = lazy(() => import('./pages/leads/AILeadsPage'));
+
 // Admin Pages
 const AdminDashboardPage = lazy(() => import('./pages/admin/AdminDashboardPage'));
 const AdminOrganizationsPage = lazy(() => import('./pages/admin/AdminOrganizationsPage'));
@@ -201,6 +204,7 @@ const App: React.FC = () => {
             <Route path="materials" element={<ProtectedRoute allowedRoles={['admin', 'manager', 'teacher']}><MaterialsPage /></ProtectedRoute>} />
 
             {/* ═══ Org Admin: People ═══ */}
+            <Route path="leads" element={<ProtectedRoute allowedRoles={['admin', 'manager']}><AILeadsPage /></ProtectedRoute>} />
             <Route path="students" element={<ProtectedRoute allowedRoles={['admin', 'manager']}><StudentsPage /></ProtectedRoute>} />
             <Route path="students/:uid" element={<ProtectedRoute allowedRoles={['admin', 'manager']}><StudentDetailPage /></ProtectedRoute>} />
             <Route path="teachers" element={<ProtectedRoute allowedRoles={['admin', 'manager']}><TeachersPage /></ProtectedRoute>} />

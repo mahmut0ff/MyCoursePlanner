@@ -14,7 +14,7 @@ import {
   Users, Layers, Database, Activity, Flag, Plug, FolderOpen,
   ClipboardList, Radio, Award, Trophy, LogOut, CreditCard,
   TrendingUp, Bell, Lock, ClipboardCheck, TrendingDown,
-  ShieldCheck, Headphones
+  ShieldCheck, Headphones, Bot
 } from 'lucide-react';
 
                         
@@ -164,6 +164,9 @@ const Sidebar: React.FC<{ open: boolean; onClose: () => void; isCollapsed?: bool
               </NavLink>
 
               <CollapsibleSection isCollapsed={isCollapsed} label={t('nav.sectionPeople', 'Люди и Клиенты')} icon={Users} defaultOpen>
+                <NavLink to="/leads" className={linkClass} onClick={onClose}>
+                  <Bot className="w-4 h-4 text-primary-400" /><span>Заявки от ИИ</span>
+                </NavLink>
                 <NavLink to="/managers" className={linkClass} onClick={onClose}>
                   <ShieldCheck className="w-4 h-4" /><span>{t('nav.managers', 'Менеджеры')}</span>
                 </NavLink>
@@ -234,6 +237,9 @@ const Sidebar: React.FC<{ open: boolean; onClose: () => void; isCollapsed?: bool
               {managerWithOrg && (
                 <>
                   <CollapsibleSection isCollapsed={isCollapsed} label={t('nav.sectionPeople', 'Люди и Клиенты')} icon={Users} defaultOpen>
+                    <NavLink to="/leads" className={linkClass} onClick={onClose}>
+                      <Bot className="w-4 h-4 text-primary-400" /><span>Заявки от ИИ</span>
+                    </NavLink>
                     <NavLink to="/students" className={linkClass} onClick={onClose}>
                       <Users className="w-4 h-4" /><span>{t('nav.students')}</span>
                     </NavLink>

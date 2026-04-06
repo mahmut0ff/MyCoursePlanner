@@ -47,6 +47,15 @@ service cloud.firestore {
     match /organizations/{orgId} {
       allow read: if request.auth != null || resource.data.isPublic == true;
       allow write: if isSuperAdmin() || (request.auth != null && request.auth.uid == resource.data.ownerId);
+
+      match /aiLeads/{leadId} {
+        allow read, write: if isSuperAdmin() || (
+           hasOrgAccess(orgId) && (
+               request.auth.uid == get(/databases/$(database)/documents/organizations/$(orgId)).data.ownerId ||
+               get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'manager'
+           )
+        );
+      }
     }
     
     match /organizationAIManager/{orgId} {

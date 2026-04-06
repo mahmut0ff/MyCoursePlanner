@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { getStudyRooms, createStudyRoom } from '../../services/study-rooms.service';
 import type { StudyRoom } from '../../types';
-import { Headphones, Plus, Users, Search, AlertCircle } from 'lucide-react';
+import { Headphones, Plus, Users, Search } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 const StudyRoomListPage: React.FC = () => {

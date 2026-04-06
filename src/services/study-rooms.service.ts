@@ -1,6 +1,6 @@
 import { 
   collection, doc, getDoc, getDocs, addDoc, updateDoc, 
-  deleteDoc, query, orderBy, onSnapshot, setDoc, limit 
+  deleteDoc, query, orderBy, onSnapshot, setDoc, limit, getCountFromServer 
 } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import type { StudyRoom, StudyParticipant, StudyRoomMessage } from '../types';
@@ -32,38 +32,31 @@ export const createStudyRoom = async (data: Partial<StudyRoom>): Promise<string>
   return docRef.id;
 };
 
+const updateParticipantsCount = async (roomId: string) => {
+  const coll = collection(db, `studyRooms/${roomId}/participants`);
+  const snap = await getCountFromServer(coll);
+  const actualCount = snap.data().count;
+  
+  await updateDoc(doc(db, 'studyRooms', roomId), {
+    participantsCount: actualCount
+  });
+};
+
 export const joinStudyRoom = async (roomId: string, participant: Omit<StudyParticipant, 'joinedAt'>): Promise<void> => {
   const pRef = doc(db, `studyRooms/${roomId}/participants`, participant.userId);
-  const pDoc = await getDoc(pRef);
-  const exists = pDoc.exists();
 
   await setDoc(pRef, {
     ...participant,
     joinedAt: new Date().toISOString()
   });
 
-  if (!exists) {
-    const roomDoc = await getDoc(doc(db, 'studyRooms', roomId));
-    if (roomDoc.exists()) {
-      const data = roomDoc.data();
-      await updateDoc(doc(db, 'studyRooms', roomId), {
-        participantsCount: (data.participantsCount || 0) + 1
-      });
-    }
-  }
+  await updateParticipantsCount(roomId);
 };
 
 export const leaveStudyRoom = async (roomId: string, userId: string): Promise<void> => {
   await deleteDoc(doc(db, `studyRooms/${roomId}/participants`, userId));
   
-  const roomDoc = await getDoc(doc(db, 'studyRooms', roomId));
-  if (roomDoc.exists()) {
-    const data = roomDoc.data();
-    const newCount = Math.max(0, (data.participantsCount || 0) - 1);
-    await updateDoc(doc(db, 'studyRooms', roomId), {
-      participantsCount: newCount
-    });
-  }
+  await updateParticipantsCount(roomId);
 };
 
 export const subscribeToStudyRoom = (roomId: string, callback: (room: StudyRoom | null, participants: StudyParticipant[]) => void) => {

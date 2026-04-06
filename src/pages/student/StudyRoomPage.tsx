@@ -249,10 +249,10 @@ const StudyRoomPage: React.FC = () => {
   const isCreator = profile?.uid === room.creatorId;
 
   return (
-    <div className="min-h-[calc(100vh-4rem)] bg-slate-50 dark:bg-[#0f172a] p-2 sm:p-4 lg:p-8 flex flex-col pt-[70px] lg:pt-8 w-full max-w-[100vw] overflow-x-hidden transition-colors">
+    <div className="min-h-[calc(100vh-4rem)] lg:h-[calc(100vh-4rem)] bg-slate-50 dark:bg-[#0f172a] p-3 sm:p-4 lg:py-6 flex flex-col pt-[70px] lg:pt-6 w-full max-w-[100vw] overflow-x-hidden transition-colors lg:overflow-hidden">
       
       {/* Header */}
-      <div className="flex items-center justify-between gap-4 border-b border-slate-200 dark:border-slate-800 pb-4 mb-6">
+      <div className="flex items-center justify-between gap-4 border-b border-slate-200 dark:border-slate-800 pb-4 mb-4 shrink-0">
         <div className="flex items-center gap-3 w-full">
           <button 
             onClick={handleExit}
@@ -278,10 +278,10 @@ const StudyRoomPage: React.FC = () => {
       </div>
 
       {/* Main Grid Layout for Responsiveness */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start w-full">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start w-full flex-1 min-h-0">
         
         {/* LEFT COLUMN: Participants */}
-        <div className="lg:col-span-8 order-2 lg:order-1 w-full flex flex-col gap-6">
+        <div className="lg:col-span-8 order-2 lg:order-1 w-full flex flex-col gap-6 lg:h-full lg:overflow-y-auto lg:pr-2 pb-10 lg:pb-0">
           <div>
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
@@ -346,7 +346,7 @@ const StudyRoomPage: React.FC = () => {
         </div>
 
         {/* RIGHT COLUMN: Tools (YouTube + Timer + Chat) */}
-        <div className="lg:col-span-4 order-1 lg:order-2 flex flex-col gap-4 w-full">
+        <div className="lg:col-span-4 order-1 lg:order-2 flex flex-col gap-4 w-full lg:h-full lg:overflow-y-auto lg:pr-2">
           
           {/* Pomodoro Timer */}
           <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-5 flex flex-col items-center">

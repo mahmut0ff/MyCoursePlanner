@@ -15,7 +15,13 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "deploy:rules:staging": "firebase use staging && firebase deploy --only firestore:rules,storage",
-    "deploy:rules:prod": "firebase use production && firebase deploy --only firestore:rules,storage"
+    "deploy:rules:prod": "firebase use production && firebase deploy --only firestore:rules,storage",
+    "mobile:build": "npm run build && npx cap sync",
+    "mobile:build:android": "npm run build && npx cap sync android",
+    "mobile:build:ios": "npm run build && npx cap sync ios",
+    "mobile:run": "npm run build && npx cap run android",
+    "mobile:open:android": "npx cap open android",
+    "mobile:open:ios": "npx cap open ios"
   },
   "dependencies": {
     "@capacitor/android": "^8.3.0",

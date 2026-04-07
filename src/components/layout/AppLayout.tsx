@@ -121,7 +121,7 @@ const AppLayout: React.FC = () => {
   return (
     <>
     <PlanProvider>
-      <div className="min-h-screen bg-slate-50 dark:bg-slate-900 flex">
+      <div className="h-full bg-slate-50 dark:bg-slate-900 flex" style={{ paddingTop: 'var(--safe-area-top)', paddingLeft: 'var(--safe-area-left)', paddingRight: 'var(--safe-area-right)' }}>
         {/* Sidebar wrapper */}
         <aside className={`hidden lg:block shrink-0 transition-all duration-300 ${isSidebarCollapsed ? 'w-[72px]' : 'w-60'}`} />
         <Sidebar 
@@ -133,11 +133,11 @@ const AppLayout: React.FC = () => {
         />
 
         {/* Main content */}
-        <div className="flex-1 flex flex-col h-screen min-w-0">
+        <div className="flex-1 flex flex-col h-full min-w-0">
           <Topbar onMenuClick={() => setSidebarOpen(true)} />
           <SubscriptionGuard>
             <main className="flex-1 flex flex-col overflow-hidden min-h-0">
-              <div className="flex-1 p-4 md:p-6 lg:p-8 pb-20 md:pb-28 lg:pb-32 overflow-auto relative">
+              <div className="flex-1 p-4 md:p-6 lg:p-8 overflow-auto relative" style={{ paddingBottom: 'max(2rem, calc(var(--safe-area-bottom) + 1rem))' }}>
                 <div className="max-w-screen-xl mx-auto w-full min-h-full page-content">
                   <Outlet />
                 </div>

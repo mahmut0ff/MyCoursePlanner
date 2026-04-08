@@ -113,7 +113,7 @@ const AppLayout: React.FC = () => {
           <Topbar onMenuClick={() => setSidebarOpen(true)} />
           <SubscriptionGuard>
             <main className="flex-1 flex flex-col overflow-hidden min-h-0">
-              <div className="flex-1 p-4 md:p-6 lg:p-8 overflow-auto relative" style={{ paddingBottom: 'max(2rem, calc(var(--safe-area-bottom) + 1rem))' }}>
+              <div className="flex-1 p-4 md:p-6 lg:p-8 overflow-y-auto overflow-x-hidden relative" style={{ paddingBottom: 'max(2rem, calc(var(--safe-area-bottom) + 1rem))' }}>
                 <div className="max-w-screen-xl mx-auto w-full min-h-full page-content">
                   <Outlet />
                 </div>

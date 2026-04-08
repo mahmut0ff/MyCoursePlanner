@@ -213,6 +213,7 @@ export const adminAddOrgNote = (organizationId: string, note: string) => adminRe
 export const adminGetUsers = (filters?: Record<string, string>) => adminReq('users', 'GET', undefined, filters);
 export const adminGetUser = (uid: string) => adminReq('user', 'GET', undefined, { uid });
 export const adminUpdateUserRole = (uid: string, role: string) => adminReq('updateUserRole', 'POST', { uid, role });
+export const adminUpdateUserEmail = (uid: string, email: string) => adminReq('updateUserEmail', 'POST', { uid, email });
 export const adminDisableUser = (uid: string) => adminReq('disableUser', 'POST', { uid });
 export const adminEnableUser = (uid: string) => adminReq('enableUser', 'POST', { uid });
 export const adminResetPassword = (email: string) => adminReq('resetPassword', 'POST', { email });

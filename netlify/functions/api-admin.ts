@@ -318,6 +318,30 @@ const handler: Handler = async (event: HandlerEvent) => {
       return ok({ success: true });
     }
 
+    if (action === 'updateUserEmail') {
+      if (!body.uid || !body.email) return badRequest('uid and email required');
+      const doc = await adminDb.collection('users').doc(body.uid).get();
+      if (!doc.exists) return notFound('User not found');
+      const before = doc.data();
+
+      // Update in Firebase Auth
+      await adminAuth.updateUser(body.uid, { email: body.email });
+
+      // Update in users collection
+      await adminDb.collection('users').doc(body.uid).update({ email: body.email, updatedAt: new Date().toISOString() });
+
+      // Update if user is owner of organizations
+      const orgsSnap = await adminDb.collection('organizations').where('ownerId', '==', body.uid).get();
+      if (!orgsSnap.empty) {
+         const batch = adminDb.batch();
+         orgsSnap.docs.forEach((o: any) => batch.update(o.ref, { ownerEmail: body.email }));
+         await batch.commit();
+      }
+
+      await auditLog(user, 'user_email_changed', 'user', body.uid, { email: before?.email }, { email: body.email });
+      return ok({ success: true });
+    }
+
     if (action === 'disableUser') {
       if (!body.uid) return badRequest('uid required');
       await adminAuth.updateUser(body.uid, { disabled: true });

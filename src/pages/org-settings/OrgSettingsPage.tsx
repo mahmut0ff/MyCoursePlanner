@@ -83,13 +83,6 @@ const GeneralTab: React.FC<{ settings: OrgSettings; update: (k: string, v: any) 
               </div>
             </div>
           </div>
-          <div>
-            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">{t('org.settings.primaryColor', 'Основной цвет')}</label>
-            <div className="flex items-center gap-2">
-              <input type="color" value={settings.primaryColor || '#6366f1'} onChange={(e) => update('primaryColor', e.target.value)} className="w-10 h-10 rounded-lg cursor-pointer border-0" />
-              <input type="text" value={settings.primaryColor || '#6366f1'} onChange={(e) => update('primaryColor', e.target.value)} className="input text-sm font-mono" />
-            </div>
-          </div>
         </div>
       </div>
 

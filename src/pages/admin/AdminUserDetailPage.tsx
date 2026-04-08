@@ -1,9 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { adminGetUser, adminUpdateUserRole, adminDisableUser, adminEnableUser, adminResetPassword } from '../../lib/api';
+import { adminGetUser, adminUpdateUserRole, adminDisableUser, adminEnableUser, adminResetPassword, adminUpdateUserEmail } from '../../lib/api';
 import toast from 'react-hot-toast';
-import { ArrowLeft, Mail, Calendar, Shield, Users, Ban, Check, Key } from 'lucide-react';
+import { ArrowLeft, Mail, Calendar, Shield, Users, Ban, Check, Key, Edit2 } from 'lucide-react';
 
 const ROLE_COLORS: Record<string, string> = { super_admin: 'bg-red-100 text-red-700', admin: 'bg-violet-100 text-violet-700', teacher: 'bg-blue-100 text-blue-700', student: 'bg-emerald-100 text-emerald-700' };
 
@@ -28,6 +28,18 @@ const AdminUserDetailPage: React.FC = () => {
   const handleReset = async () => {
     if (!user?.email) return;
     try { const res = await adminResetPassword(user.email); toast.success(`Password reset link generated:\n${res.link}`); } catch (e: any) { toast.error(`Error: ${e.message}`); }
+  };
+  const handleEmailChange = async () => {
+    if (!user?.email) return;
+    const newEmail = prompt('Введите новый email адрес (осторожно, это изменит email входа пользователя):', user.email);
+    if (!newEmail || newEmail === user.email || !newEmail.includes('@')) return;
+    try {
+      await adminUpdateUserEmail(uid!, newEmail);
+      toast.success('Email успешно изменен');
+      load();
+    } catch (e: any) {
+      toast.error(`Ошибка при смене email: ${e.message}`);
+    }
   };
 
   if (loading) return <div className="flex justify-center py-20"><div className="w-8 h-8 border-2 border-slate-200 border-t-primary-500 rounded-full animate-spin dark:border-slate-700 dark:border-t-primary-400" /></div>;
@@ -54,7 +66,13 @@ const AdminUserDetailPage: React.FC = () => {
           </div>
           <div className="pt-10 sm:pt-1 sm:ml-20 pb-1 mb-4">
             <h1 className="text-lg font-bold text-slate-900 dark:text-white">{user.displayName}</h1>
-            <p className="text-xs text-slate-500 flex items-center gap-1"><Mail className="w-3 h-3" />{user.email}</p>
+            <div className="text-xs text-slate-500 flex items-center gap-1 group w-fit">
+              <Mail className="w-3 h-3" />
+              <span>{user.email}</span>
+              <button onClick={handleEmailChange} className="ml-1 opacity-0 group-hover:opacity-100 text-primary-500 hover:text-primary-600 transition-opacity" title="Сменить Email">
+                <Edit2 className="w-3 h-3" />
+              </button>
+            </div>
           </div>
           <div className="flex flex-wrap items-center gap-3">
             <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${ROLE_COLORS[user.role] || ''}`}>{user.role}</span>

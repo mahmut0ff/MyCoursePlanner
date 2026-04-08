@@ -121,8 +121,8 @@ const memberReq = <T = any>(action: string, method = 'GET', body?: any, extra?: 
   apiRequest<T>('api-memberships', method, body, { action, ...extra });
 
 export const apiGetMyMemberships = () => memberReq('myMemberships');
-export const apiGetOrgMembers = (orgId: string, status?: string) =>
-  memberReq('orgMembers', 'GET', undefined, { orgId, ...(status ? { status } : {}) });
+export const apiGetOrgMembers = (orgId: string, status?: string, role?: string) =>
+  memberReq('orgMembers', 'GET', undefined, { orgId, ...(status ? { status } : {}), ...(role ? { role } : {}) });
 export const apiApplyToOrg = (organizationId: string, role?: string) =>
   memberReq('apply', 'POST', { organizationId, role });
 export const apiInviteToOrg = (email: string, organizationId: string, role?: string) =>

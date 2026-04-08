@@ -67,7 +67,7 @@ const StudentsPage: React.FC = () => {
     if (!profile?.activeOrgId) return;
     setLoadingApps(true);
     try {
-      const apps = await apiGetOrgMembers(profile.activeOrgId, 'pending');
+      const apps = await apiGetOrgMembers(profile.activeOrgId, 'pending', 'student');
       setApplications(apps);
     } catch (e: any) {
       toast.error(e.message || t('common.loadError', 'Ошибка загрузки'));

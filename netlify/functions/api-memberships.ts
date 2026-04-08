@@ -138,6 +138,10 @@ const handler: Handler = async (event: HandlerEvent) => {
         query = query.where('status', '==', statusFilter);
       }
 
+      if (params.role) {
+        query = query.where('role', '==', params.role);
+      }
+
       const snap = await query.get();
       let members = snap.docs.map((d: any) => ({ id: d.id, ...d.data() }));
 

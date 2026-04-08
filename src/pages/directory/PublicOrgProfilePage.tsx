@@ -53,8 +53,8 @@ const PublicOrgProfilePage: React.FC = () => {
   const { t } = useTranslation();
   const { slug } = useParams<{ slug: string }>();
   const [searchParams] = useSearchParams();
-  const requestedRole = searchParams.get('role') || 'student';
   const { profile } = useAuth();
+  const requestedRole = searchParams.get('role') || profile?.role || 'student';
   const navigate = useNavigate();
 
   const [org, setOrg] = useState<any>(null);

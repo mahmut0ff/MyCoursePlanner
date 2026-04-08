@@ -8,9 +8,10 @@ import {
   orgGetGroups,
   apiGetOrgMembers,
   apiAcceptMembership,
-  apiRejectMembership
+  apiRejectMembership,
+  apiDeleteMember
 } from '../../lib/api';
-import { Users, Search, Mail, RefreshCw, CheckCircle, XCircle, UserPlus, Phone, Filter, X, ChevronDown, SortAsc, SortDesc } from 'lucide-react';
+import { Users, Search, Mail, RefreshCw, CheckCircle, XCircle, UserPlus, Phone, Filter, X, ChevronDown, SortAsc, SortDesc, Trash2 } from 'lucide-react';
 import type { UserProfile, Group } from '../../types';
 import toast from 'react-hot-toast';
 import { PinnedBadgesDisplay } from '../../lib/badges';
@@ -40,6 +41,9 @@ const StudentsPage: React.FC = () => {
   const [showFilters, setShowFilters] = useState(false);
   const [sortField, setSortField] = useState<SortField>('name');
   const [sortDir, setSortDir] = useState<SortDir>('asc');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'expelled'>('active');
+
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   const [error, setError] = useState('');
 
@@ -101,6 +105,11 @@ const StudentsPage: React.FC = () => {
       }
     }
 
+    // Filter by status
+    if (statusFilter !== 'all') {
+      result = result.filter(s => ((s as any).status || 'active') === statusFilter);
+    }
+
     // Sort
     result.sort((a, b) => {
       let cmp = 0;
@@ -155,13 +164,31 @@ const StudentsPage: React.FC = () => {
     }
   };
 
-  const activeFiltersCount = (selectedGroup !== 'all' ? 1 : 0);
+  const activeFiltersCount = (selectedGroup !== 'all' ? 1 : 0) + (statusFilter !== 'active' ? 1 : 0);
 
   const clearFilters = () => {
     setSearch('');
     setSelectedGroup('all');
+    setStatusFilter('active');
     setSortField('name');
     setSortDir('asc');
+  };
+
+  const handleDeleteExpelled = async (e: React.MouseEvent, uid: string) => {
+    e.stopPropagation();
+    if (!profile?.activeOrgId) return;
+    if (!window.confirm(t('org.students.confirmDeleteExpelled', 'Вы уверены что хотите полностью удалить этого студента из организации? Это действие необратимо.'))) return;
+    
+    setDeletingId(uid);
+    try {
+      await apiDeleteMember(uid, profile.activeOrgId);
+      toast.success(t('org.students.deleted', 'Студент полностью удален'));
+      setStudents(prev => prev.filter(s => s.uid !== uid));
+    } catch (err: any) {
+      toast.error(err.message || 'Error');
+    } finally {
+      setDeletingId(null);
+    }
   };
 
   // Get group name for a student
@@ -264,6 +291,20 @@ const StudentsPage: React.FC = () => {
                       <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-3 h-3 text-slate-400 pointer-events-none" />
                     </div>
                   )}
+
+                  {/* Status Filter */}
+                  <div className="relative">
+                    <select 
+                      value={statusFilter} 
+                      onChange={e => setStatusFilter(e.target.value as any)}
+                      className="appearance-none bg-white dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-lg pl-3 pr-7 py-1.5 text-[11px] text-slate-700 dark:text-slate-300 focus:outline-none focus:border-primary-500 cursor-pointer"
+                    >
+                      <option value="active">{t('org.students.statusActive', 'Активные')}</option>
+                      <option value="expelled">{t('org.students.statusExpelled', 'Отчисленные')}</option>
+                      <option value="all">{t('org.students.statusAll', 'Все статусы')}</option>
+                    </select>
+                    <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-3 h-3 text-slate-400 pointer-events-none" />
+                  </div>
 
                   {/* Sort */}
                   <div className="flex items-center gap-1 ml-auto">
@@ -377,7 +418,25 @@ const StudentsPage: React.FC = () => {
                             <span className="text-[10px] text-slate-300 dark:text-slate-600">—</span>
                           )}
                         </td>
-                        <td className="px-4 py-2.5"><span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-500 font-medium">{t('common.active')}</span></td>
+                        <td className="px-4 py-2.5">
+                          <div className="flex items-center gap-2">
+                            {(s as any).status === 'expelled' ? (
+                              <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-600 dark:text-amber-400 font-medium whitespace-nowrap">{t('common.expelled', 'Отчислен')}</span>
+                            ) : (
+                              <span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-500 font-medium">{t('common.active', 'Активен')}</span>
+                            )}
+                            {(s as any).status === 'expelled' && (
+                              <button
+                                onClick={(e) => handleDeleteExpelled(e, s.uid)}
+                                disabled={deletingId === s.uid}
+                                className="p-1 text-slate-400 hover:text-red-500 bg-slate-50 hover:bg-red-50 dark:bg-slate-800 dark:hover:bg-red-900/20 rounded-md transition-colors ml-auto"
+                                title={t('common.delete', 'Удалить навсегда')}
+                              >
+                                {deletingId === s.uid ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
+                              </button>
+                            )}
+                          </div>
+                        </td>
                       </tr>
                     );
                   })}

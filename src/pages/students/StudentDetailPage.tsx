@@ -1,12 +1,12 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { orgGetStudents, orgGetResults, orgGetGroups, orgUpdateGroup } from '../../lib/api';
+import { orgGetStudents, orgGetResults, orgGetGroups, orgUpdateGroup, apiRemoveMember, apiGetPaymentPlans, apiGetTransactions, apiCreateTransaction } from '../../lib/api';
 import { useAuth } from '../../contexts/AuthContext';
 import {
   ArrowLeft, Mail, Trophy, Calendar, BarChart3, Users, Phone, MapPin,
   BookOpen, Zap, Target, Clock, CheckCircle, Plus, X, Loader2,
-  Flame, Copy, Star, Shield, Link2, ExternalLink
+  Flame, Copy, Star, Shield, Link2, ExternalLink, CreditCard, Receipt
 } from 'lucide-react';
 import type { UserProfile, ExamAttempt, Group } from '../../types';
 import { PinnedBadgesDisplay } from '../../lib/badges';
@@ -39,6 +39,26 @@ const StudentDetailPage: React.FC = () => {
   const [assigning, setAssigning] = useState(false);
   const [loading, setLoading] = useState(true);
 
+  // Finances
+  const [paymentPlans, setPaymentPlans] = useState<any[]>([]);
+  const [transactions, setTransactions] = useState<any[]>([]);
+  const [payModalPlan, setPayModalPlan] = useState<any | null>(null);
+  const [payAmount, setPayAmount] = useState('');
+  const [payComment, setPayComment] = useState('');
+  const [paying, setPaying] = useState(false);
+
+  // Fetch finances
+  const loadFinances = async () => {
+    try {
+      const [plans, txs] = await Promise.all([
+        apiGetPaymentPlans(),
+        apiGetTransactions(),
+      ]);
+      setPaymentPlans((plans || []).filter((p: any) => p.studentId === uid));
+      setTransactions((txs || []).filter((t: any) => t.studentId === uid));
+    } catch { }
+  };
+
   useEffect(() => {
     if (!uid) return;
     setLoading(true);
@@ -51,6 +71,7 @@ const StudentDetailPage: React.FC = () => {
         setAllGroups(allGroups);
         setGroups(allGroups.filter(g => g.studentIds?.includes(uid!)));
       }).catch(() => { setAllGroups([]); setGroups([]); }),
+      loadFinances(),
     ]).finally(() => setLoading(false));
   }, [uid]);
 
@@ -210,9 +231,22 @@ const StudentDetailPage: React.FC = () => {
                   {student.city && <span className="text-xs text-slate-500 flex items-center gap-1"><MapPin className="w-3 h-3" />{student.city}</span>}
                 </div>
               </div>
-              <span className="px-3 py-1 rounded-full text-[11px] font-bold text-emerald-600 bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800">
-                {t('common.active')}
-              </span>
+              <div className="flex items-center gap-2">
+                <span className={`px-3 py-1 rounded-full text-[11px] font-bold ${(student as any).status === 'expelled' ? 'text-amber-600 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800' : 'text-emerald-600 bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800'}`}>
+                  {(student as any).status === 'expelled' ? t('common.expelled', 'Отчислен') : t('common.active', 'Активен')}
+                </span>
+                {isAdmin && (student as any).status !== 'expelled' && (
+                  <button onClick={async () => {
+                    if (window.confirm('Вы уверены что хотите отчислить студента?')) {
+                      await apiRemoveMember(student.uid, profile!.activeOrgId!);
+                      toast.success('Студент отчислен');
+                      navigate('/students');
+                    }
+                  }} className="text-[11px] font-bold text-red-500 hover:text-red-600 underline">
+                    Отчислить
+                  </button>
+                )}
+              </div>
             </div>
 
             {/* Bio */}
@@ -363,6 +397,68 @@ const StudentDetailPage: React.FC = () => {
               )}
             </div>
           </div>
+
+          {/* Finances Block */}
+          {isAdmin && (
+            <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 overflow-hidden shadow-sm">
+              <div className="px-4 py-3 border-b border-slate-100 dark:border-slate-700/50 flex items-center gap-2">
+                <CreditCard className="w-4 h-4 text-emerald-600" />
+                <h3 className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wide">Финансы</h3>
+              </div>
+              <div className="p-4 space-y-3">
+                {paymentPlans.length === 0 ? (
+                  <p className="text-[11px] text-slate-400 text-center py-2">Счетов не найдено</p>
+                ) : (
+                  paymentPlans.map(plan => {
+                    const debt = Math.max(0, plan.totalAmount - plan.paidAmount);
+                    return (
+                      <div key={plan.id} className="bg-slate-50 dark:bg-slate-700/50 rounded-lg p-3 border border-slate-100 dark:border-slate-600">
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="text-xs font-bold text-slate-800 dark:text-slate-200">{plan.courseName || 'Счёт'}</span>
+                          <span className={`text-[10px] px-1.5 py-0.5 rounded font-bold ${debt > 0 ? 'bg-amber-100 text-amber-700' : 'bg-emerald-100 text-emerald-700'}`}>
+                            {debt > 0 ? 'Долг' : 'Оплачено'}
+                          </span>
+                        </div>
+                        <div className="text-[10px] text-slate-500 mb-2 flex justify-between">
+                          <span>Сумма: {plan.totalAmount} c.</span>
+                          <span>Оплачено: {plan.paidAmount} c.</span>
+                        </div>
+                        {debt > 0 && (
+                          <button
+                            onClick={() => {
+                              setPayModalPlan(plan);
+                              setPayAmount(String(debt));
+                              setPayComment('');
+                            }}
+                            className="w-full mt-1 bg-emerald-50 text-emerald-600 hover:bg-emerald-100 border border-emerald-200 px-2 py-1.5 rounded-md text-[11px] font-bold transition-colors"
+                          >
+                            Принять оплату: {debt} c.
+                          </button>
+                        )}
+                      </div>
+                    );
+                  })
+                )}
+
+                {transactions.length > 0 && (
+                  <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-700">
+                    <h4 className="text-[10px] font-bold text-slate-500 uppercase mb-2">История оплат</h4>
+                    <div className="space-y-2 max-h-40 overflow-y-auto">
+                      {transactions.filter(t => t.type === 'income').map(tx => (
+                        <div key={tx.id} className="flex items-center justify-between text-[11px]">
+                          <div className="flex items-center gap-1.5">
+                            <Receipt className="w-3 h-3 text-emerald-500" />
+                            <span className="text-slate-600 dark:text-slate-300">{new Date(tx.date || tx.createdAt).toLocaleDateString()}</span>
+                          </div>
+                          <span className="font-bold text-emerald-600">+{tx.amount} c.</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Right column — Results Table */}
@@ -421,6 +517,47 @@ const StudentDetailPage: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* Pay Modal */}
+      {payModalPlan && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-slate-800 rounded-2xl w-full max-w-sm shadow-2xl overflow-hidden p-6">
+            <h2 className="text-lg font-bold text-slate-900 dark:text-white mb-4">Оплата: {payModalPlan.courseName || 'Счёт'}</h2>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-slate-500 mb-1">Сумма (сом)</label>
+                <input type="number" autoFocus value={payAmount} onChange={e => setPayAmount(e.target.value)} max={payModalPlan.totalAmount - payModalPlan.paidAmount} className="w-full bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-lg px-3 py-2 text-sm font-bold dark:text-white" />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-slate-500 mb-1">Комментарий</label>
+                <input type="text" value={payComment} onChange={e => setPayComment(e.target.value)} placeholder="Наличные / Перевод" className="w-full bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-lg px-3 py-2 text-sm dark:text-white" />
+              </div>
+            </div>
+            <div className="mt-6 flex justify-end gap-2">
+              <button onClick={() => setPayModalPlan(null)} className="px-3 py-1.5 text-xs font-bold text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg">Отмена</button>
+              <button 
+                disabled={paying || !payAmount || Number(payAmount) <= 0}
+                onClick={async () => {
+                  setPaying(true);
+                  try {
+                    await apiCreateTransaction({
+                      type: 'income', amount: Number(payAmount), date: new Date().toISOString(), categoryId: 'course_fee',
+                      paymentPlanId: payModalPlan.id, studentId: uid, courseId: payModalPlan.courseId,
+                      description: payComment || 'Оплата по счету'
+                    });
+                    toast.success('Оплата принята');
+                    setPayModalPlan(null);
+                    await loadFinances();
+                  } catch (e: any) { alert(e.message); } finally { setPaying(false); }
+                }}
+                className="bg-emerald-500 hover:bg-emerald-600 disabled:opacity-50 text-white px-4 py-1.5 rounded-lg text-xs font-bold transition-all"
+              >
+                {paying ? '...' : 'Подтвердить'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Assign Modal */}
       {showAssignModal && (

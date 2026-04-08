@@ -471,7 +471,8 @@ const handler: Handler = async (event: HandlerEvent) => {
       if (membership.role === 'owner') return badRequest('Owner cannot leave. Transfer ownership first.');
 
       const ts = now();
-      const update = { status: 'left', leftAt: ts, updatedAt: ts };
+      const newStatus = membership.role === 'student' ? 'expelled' : 'left';
+      const update = { status: newStatus, leftAt: ts, updatedAt: ts };
       await adminDb.collection('users').doc(user.uid)
         .collection('memberships').doc(body.organizationId).update(update);
       await adminDb.collection('orgMembers').doc(body.organizationId)
@@ -515,13 +516,34 @@ const handler: Handler = async (event: HandlerEvent) => {
       if (targetMembership.role === 'owner') return badRequest('Cannot remove organization owner');
 
       const ts = now();
-      const update = { status: 'removed', leftAt: ts, updatedAt: ts };
+      const newStatus = targetMembership.role === 'student' ? 'expelled' : 'removed';
+      const update = { status: newStatus, leftAt: ts, updatedAt: ts };
       await adminDb.collection('users').doc(body.userId)
         .collection('memberships').doc(body.organizationId).update(update);
       await adminDb.collection('orgMembers').doc(body.organizationId)
         .collection('members').doc(body.userId).update(update);
 
       return ok({ removed: true });
+    }
+
+    // ═══ POST: Delete member permanently ═══
+    if (event.httpMethod === 'POST' && action === 'delete') {
+      const body = JSON.parse(event.body || '{}');
+      if (!body.userId || !body.organizationId) return badRequest('userId and organizationId required');
+
+      const callerRole = await getOrgRole(user.uid, body.organizationId);
+      if (!isSuperAdmin(user) && !['admin', 'owner'].includes(callerRole || '')) return forbidden();
+
+      const targetMembership = await getMembership(body.userId, body.organizationId) as any;
+      if (!targetMembership) return notFound('Member not found');
+      if (targetMembership.role === 'owner') return badRequest('Cannot remove organization owner');
+
+      await adminDb.collection('users').doc(body.userId)
+        .collection('memberships').doc(body.organizationId).delete();
+      await adminDb.collection('orgMembers').doc(body.organizationId)
+        .collection('members').doc(body.userId).delete();
+
+      return ok({ deleted: true });
     }
 
     // ═══ POST: Change role ═══

@@ -135,6 +135,8 @@ export const apiLeaveMembership = (organizationId: string) =>
   memberReq('leave', 'POST', { organizationId });
 export const apiRemoveMember = (userId: string, organizationId: string) =>
   memberReq('remove', 'POST', { userId, organizationId });
+export const apiDeleteMember = (userId: string, organizationId: string) =>
+  memberReq('delete', 'POST', { userId, organizationId });
 export const apiChangeMemberRole = (userId: string, organizationId: string, newRole: string) =>
   memberReq('changeRole', 'POST', { userId, organizationId, newRole });
 export const apiSwitchOrg = (organizationId: string) =>

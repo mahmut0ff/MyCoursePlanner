@@ -252,7 +252,7 @@ const handler: Handler = async (event: HandlerEvent) => {
     if (action === 'students') {
       let query: any = adminDb.collection('orgMembers').doc(orgId)
         .collection('members')
-        .where('status', '==', 'active')
+        .where('status', 'in', ['active', 'expelled'])
         .where('role', '==', 'student');
       
       // Apply branch filter if requested
@@ -268,7 +268,7 @@ const handler: Handler = async (event: HandlerEvent) => {
       const snap = await query.get();
       const memberDocs = snap.docs.map((d: any) => {
         const data = d.data();
-        return { uid: data.userId, displayName: data.userName, email: data.userEmail, role: data.role, branchIds: data.branchIds || [], primaryBranchId: data.primaryBranchId || null };
+        return { uid: data.userId, displayName: data.userName, email: data.userEmail, role: data.role, branchIds: data.branchIds || [], primaryBranchId: data.primaryBranchId || null, status: data.status || 'active' };
       });
 
       // Multi-branch manager: filter in memory

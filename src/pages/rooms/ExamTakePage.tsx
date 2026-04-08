@@ -10,7 +10,7 @@ import { showGamificationToasts } from '../../components/gamification/Gamificati
 import { uploadFile } from '../../services/storage.service';
 import { StudentAudioRecorder } from '../../components/shared/StudentAudioRecorder';
 import type { ExamRoom, Exam, Question } from '../../types';
-import { Clock, ChevronLeft, ChevronRight, Send, AlertTriangle, CheckCircle2, Volume2, ShieldCheck, WifiOff } from 'lucide-react';
+import { Clock, ChevronLeft, ChevronRight, Send, AlertTriangle, CheckCircle2, Volume2, ShieldCheck } from 'lucide-react';
 
 // ═══════════════════════════════════════════════════════════════
 //  LOCAL BACKUP SYSTEM — Protects answers against network loss,

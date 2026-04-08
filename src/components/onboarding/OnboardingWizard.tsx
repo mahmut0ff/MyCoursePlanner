@@ -40,8 +40,8 @@ export function useOnboardingProgress(props: Props) {
   const { orgData, branchData, orgCreatedAt } = props;
   const steps = [
     { done: !!orgData?.name && orgData.name !== 'New Organization' },
-    { done: !!orgData?.branding?.logoUrl },
-    { done: !!orgData?.aiSettings?.telegramBotToken || !!orgData?.aiEnabled },
+    { done: !!orgData?.logo || !!orgData?.primaryColor || !!orgData?.branding?.logoUrl },
+    { done: !!orgData?.aiConfigured || !!orgData?.aiSettings?.telegramBotToken || !!orgData?.aiEnabled },
     { done: !!branchData?.branches && branchData.branches.length > 0 },
   ];
   const completedCount = steps.filter(s => s.done).length;
@@ -57,8 +57,8 @@ const OnboardingWizard: React.FC<Props> = ({ orgData, branchData, orgCreatedAt }
 
   const steps = [
     { key: 'profile', title: 'Профиль проекта', desc: 'Укажите название учебного центра', icon: Building2, link: '/org-settings?tab=general', color: 'text-blue-500', bg: 'bg-blue-500/10', done: !!orgData?.name && orgData.name !== 'New Organization' },
-    { key: 'branding', title: 'Брендинг', desc: 'Загрузите логотип и выберите цвета системы', icon: Palette, link: '/org-settings?tab=branding', color: 'text-violet-500', bg: 'bg-violet-500/10', done: !!orgData?.branding?.logoUrl },
-    { key: 'ai', title: 'AI Ассистент', desc: 'Настройте Telegram-бота для учеников', icon: Bot, link: '/org-settings?tab=ai', color: 'text-emerald-500', bg: 'bg-emerald-500/10', done: !!orgData?.aiSettings?.telegramBotToken || !!orgData?.aiEnabled },
+    { key: 'branding', title: 'Брендинг', desc: 'Загрузите логотип и выберите цвета системы', icon: Palette, link: '/org-settings?tab=branding', color: 'text-violet-500', bg: 'bg-violet-500/10', done: !!orgData?.logo || !!orgData?.primaryColor || !!orgData?.branding?.logoUrl },
+    { key: 'ai', title: 'AI Ассистент', desc: 'Настройте Telegram-бота для учеников', icon: Bot, link: '/org-settings?tab=ai', color: 'text-emerald-500', bg: 'bg-emerald-500/10', done: !!orgData?.aiConfigured || !!orgData?.aiSettings?.telegramBotToken || !!orgData?.aiEnabled },
     { key: 'branches', title: 'Филиалы', desc: 'Добавьте адреса проведения занятий', icon: Grid, link: '/branches', color: 'text-amber-500', bg: 'bg-amber-500/10', done: !!branchData?.branches && branchData.branches.length > 0 },
   ];
 

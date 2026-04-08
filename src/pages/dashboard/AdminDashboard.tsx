@@ -11,7 +11,7 @@ import { formatDate } from '../../utils/grading';
 import { BookOpen, ClipboardList, Radio, Users, TrendingUp, ArrowRight, Settings, Sparkles, GitBranch, MapPin } from 'lucide-react';
 import { DashboardSkeleton } from '../../components/ui/Skeleton';
 import OnboardingWizard, { useOnboardingProgress } from '../../components/onboarding/OnboardingWizard';
-import { apiGetBranchAnalytics, apiGetOrganization } from '../../lib/api';
+import { apiGetBranchAnalytics, apiGetOrganization, apiGetAIManagerSettings } from '../../lib/api';
 
 const AdminDashboard: React.FC = () => {
   const { t } = useTranslation();
@@ -31,7 +31,14 @@ const AdminDashboard: React.FC = () => {
     // Load branch analytics + org data in parallel
     apiGetBranchAnalytics().then(setBranchData).catch(() => {});
     if (organizationId) {
-      apiGetOrganization(organizationId).then(setOrgData).catch(() => {});
+      apiGetOrganization(organizationId).then(data => {
+        setOrgData(data);
+        apiGetAIManagerSettings(organizationId).then(res => {
+          if (res.data?.isActive || !!res.data?.telegramBotToken || !!res.data?.customInstructions || !!res.data?.aboutOrganization) {
+             setOrgData((prev: any) => ({ ...prev, aiConfigured: true }));
+          }
+        }).catch(() => {});
+      }).catch(() => {});
     }
   }, []);
 

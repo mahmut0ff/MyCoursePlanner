@@ -89,7 +89,7 @@ const Sidebar: React.FC<{ open: boolean; onClose: () => void; isCollapsed?: bool
 
         {/* ═══ Header ═══ */}
         <div className="flex items-center gap-3 px-4 py-4 border-b border-white/5 h-[69px]">
-          <img src={orgData?.branding?.logoUrl || "/icons/logo.png"} alt={orgData?.name || "Planula"} className="h-9 w-auto object-contain shrink-0" />
+          <img src={orgData?.logo || orgData?.branding?.logoUrl || "/icons/logo.png"} alt={orgData?.name || "Planula"} className="h-9 w-auto object-contain shrink-0" />
           {/* Brand/Logo - hides on large screens when collapsed */}
           <div className={`flex-1 min-w-0 ${isCollapsed ? 'lg:hidden' : ''}`}>
             <span className="font-bold text-[15px] text-white leading-none tracking-tight truncate block">{orgData?.name && orgData.name !== 'New Organization' ? orgData.name : t('app.name')}</span>

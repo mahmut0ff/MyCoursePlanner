@@ -826,6 +826,7 @@ const handler: Handler = async (event: HandlerEvent) => {
       if (body.city !== undefined) orgUpdate.city = body.city;
       if (body.country !== undefined) orgUpdate.country = body.country;
       if (body.subjects !== undefined) orgUpdate.subjects = body.subjects;
+      if (body.primaryColor !== undefined) orgUpdate.primaryColor = body.primaryColor;
       await adminDb.collection('organizations').doc(orgId).update(orgUpdate);
 
       // Settings doc (academic config)
@@ -835,6 +836,7 @@ const handler: Handler = async (event: HandlerEvent) => {
         academicYearEnd: body.academicYearEnd,
         gradingScale: body.gradingScale,
         passingScore: body.passingScore,
+        primaryColor: body.primaryColor,
         updatedAt: now(),
       };
       await adminDb.collection('orgSettings').doc(orgId).set(settingsData, { merge: true });

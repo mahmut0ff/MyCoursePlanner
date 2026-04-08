@@ -72,8 +72,9 @@ const AppLayout: React.FC = () => {
     if (!isSuperAdmin && organizationId && organizationId !== 'personal') {
       apiGetOrganization(organizationId).then(data => {
         setOrgData(data);
-        if (data?.branding?.primaryColor) {
-           const hex = data.branding.primaryColor;
+        const rawColor = data?.primaryColor || data?.branding?.primaryColor;
+        if (rawColor) {
+           const hex = rawColor;
            if (!hex.startsWith('#')) return;
            const r = parseInt(hex.slice(1, 3), 16) || 99;
            const g = parseInt(hex.slice(3, 5), 16) || 102;

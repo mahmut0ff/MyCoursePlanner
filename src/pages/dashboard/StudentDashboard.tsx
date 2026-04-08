@@ -96,7 +96,7 @@ const StudentDashboard: React.FC = () => {
               {t('studentDashboard.heroTitleNoOrg')}
             </p>
             <Link
-              to="/directory"
+              to="/catalog"
               className="inline-flex items-center gap-2 px-8 py-4 bg-white text-[#46178F] rounded-2xl font-bold text-lg hover:bg-slate-50 shadow-[0_6px_0_#94a3b8] active:translate-y-[4px] active:shadow-[0_2px_0_#94a3b8] transition-all"
             >
               <Search className="w-5 h-5" />

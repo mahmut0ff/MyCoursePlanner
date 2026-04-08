@@ -394,7 +394,7 @@ const Sidebar: React.FC<{ open: boolean; onClose: () => void; isCollapsed?: bool
                     </NavLink>
                   </CollapsibleSection>
 
-                  <NavLink to="/directory" className={linkClass} onClick={onClose}>
+                  <NavLink to="/catalog" className={linkClass} onClick={onClose}>
                     <Building2 className="w-4 h-4" /><span>{t('nav.findCenter', 'Каталог Организаций')}</span>
                   </NavLink>
                 </>
@@ -455,7 +455,7 @@ const Sidebar: React.FC<{ open: boolean; onClose: () => void; isCollapsed?: bool
 
               {/* ── Global: always visible regardless of org ── */}
               {!organizationId && (
-                <NavLink to="/directory" className={linkClass} onClick={onClose}>
+                <NavLink to="/catalog" className={linkClass} onClick={onClose}>
                   <Building2 className="w-4 h-4" /><span>{t('nav.findCenter', 'Найти учебный центр')}</span>
                 </NavLink>
               )}

@@ -100,6 +100,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const unsub = onAuthChange(async (user) => {
       setFirebaseUser(user);
       if (user) {
+        setLoading(true);
         await loadProfile(user);
         // Register push notifications (non-blocking)
         registerFcmToken();

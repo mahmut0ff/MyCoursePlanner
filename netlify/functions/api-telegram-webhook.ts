@@ -11,8 +11,6 @@ export const handler: Handler = async (event: HandlerEvent) => {
 
   try {
     const payload = JSON.parse(event.body || '{}');
-    
-    // Support message and callback_query if needed, but primarily text messages
     const message = payload.message;
     if (!message || !message.text || !message.chat) {
       return { statusCode: 200, body: 'OK' };
@@ -20,7 +18,23 @@ export const handler: Handler = async (event: HandlerEvent) => {
 
     const chatId = message.chat.id;
     const text = message.text;
-    const botToken = process.env.TELEGRAM_BOT_TOKEN || '8330921361:AAGmnzPz_womNW8dcoC2DNcTTpkXV8_5VaY';
+    
+    // Determine if this is the Global Planula Bot or a Custom AI Bot
+    const queryOrgId = event.queryStringParameters?.orgId;
+    let botToken = process.env.TELEGRAM_BOT_TOKEN || '8330921361:AAGmnzPz_womNW8dcoC2DNcTTpkXV8_5VaY';
+    let isGlobalBot = true;
+
+    if (queryOrgId) {
+      const settingsSnap = await adminDb.collection('organizationAIManager').doc(queryOrgId).get();
+      const settingsData = settingsSnap.data() || { isActive: false };
+      
+      // If the custom AI bot is inactive or doesn't have a token, ignore
+      if (!settingsData.isActive || !settingsData.telegramBotToken) {
+        return { statusCode: 200, body: 'OK' };
+      }
+      botToken = settingsData.telegramBotToken;
+      isGlobalBot = false;
+    }
 
     // A helper to send messages back to Telegram
     const reply = async (replyText: string) => {
@@ -31,62 +45,56 @@ export const handler: Handler = async (event: HandlerEvent) => {
       }).catch(err => console.error('Telegram reply error:', err));
     };
 
-    // ─── /start with linking code ───
-    if (text.startsWith('/start')) {
-      const parts = text.split(' ');
-      if (parts.length > 1) {
-        // /start ABC123  →  link Telegram account
-        const code = parts[1].trim();
-        const linkResult = await resolveTelegramLinkCode(code);
+    if (isGlobalBot) {
+      // ─── GLOBAL NOTIFICATION BOT BEHAVIOR ───
+      // Handles linking /start CODE and /unlink
+      if (text.startsWith('/start')) {
+        const parts = text.split(' ');
+        if (parts.length > 1) {
+          const code = parts[1].trim();
+          const linkResult = await resolveTelegramLinkCode(code);
 
-        if (linkResult && linkResult.orgId) {
-          // Save telegramChatId on user document
-          await adminDb.collection('users').doc(linkResult.userId).update({
-            telegramChatId: String(chatId),
-            telegramLinkedAt: new Date().toISOString(),
-          });
+          if (linkResult && linkResult.orgId) {
+            await adminDb.collection('users').doc(linkResult.userId).update({
+              telegramChatId: String(chatId),
+              telegramLinkedAt: new Date().toISOString(),
+            });
 
-          await reply('✅ <b>Аккаунт привязан!</b>\n\nТеперь вы будете получать уведомления об оценках, домашних заданиях и оплатах прямо сюда.\n\nЧтобы отвязать — напишите /unlink');
-          return { statusCode: 200, body: 'OK' };
-        } else {
-          await reply('❌ Код недействителен или истёк. Попробуйте получить новый код в приложении Planula.');
-          return { statusCode: 200, body: 'OK' };
+            await reply('✅ <b>Аккаунт привязан!</b>\n\nТеперь вы будете получать уведомления об оценках, домашних заданиях и оплатах прямо сюда.\n\nЧтобы отвязать — напишите /unlink');
+            return { statusCode: 200, body: 'OK' };
+          } else {
+            await reply('❌ Код недействителен или истёк. Попробуйте получить новый код в приложении Planula.');
+            return { statusCode: 200, body: 'OK' };
+          }
         }
+
+        await reply('Здравствуйте! Этот бот предназначен для системных уведомлений Planula. Для привязки используйте специальную ссылку из веб-приложения.');
+        return { statusCode: 200, body: 'OK' };
       }
 
-      await reply('Здравствуйте! Введите код привязки для получения уведомлений, например: /start ABC123');
+      if (text === '/unlink') {
+        const usersSnap = await adminDb.collection('users').where('telegramChatId', '==', String(chatId)).limit(1).get();
+        if (!usersSnap.empty) {
+          await usersSnap.docs[0].ref.update({ telegramChatId: '', telegramLinkedAt: '' });
+          await reply('🔓 Telegram отвязан. Вы больше не будете получать уведомления.');
+        } else {
+          await reply('Ваш аккаунт не привязан к системе.');
+        }
+        return { statusCode: 200, body: 'OK' };
+      }
+
+      // Ignore all other messages on global bot
       return { statusCode: 200, body: 'OK' };
     }
 
-    // Find the user's organization context globally for subsequent messages
-    const usersSnap = await adminDb.collection('users')
-      .where('telegramChatId', '==', String(chatId))
-      .limit(1).get();
-
-    if (usersSnap.empty) {
-      await reply('Ваш аккаунт не привязан к системе. Войдите в приложение и привяжите Telegram в настройках профиля.');
-      return { statusCode: 200, body: 'OK' };
-    }
-
-    const userDoc = usersSnap.docs[0];
-    const orgId = userDoc.data().organizationId;
-
-    // ─── /unlink — detach Telegram ───
-    if (text === '/unlink') {
-      await userDoc.ref.update({
-        telegramChatId: '',
-        telegramLinkedAt: '',
-      });
-      await reply('🔓 Telegram отвязан. Вы больше не будете получать уведомления.');
-      return { statusCode: 200, body: 'OK' };
-    }
-
-    // Process AI Chat if AI is active
+    // ─── CUSTOM ORG AI BOT BEHAVIOR ───
+    const orgId = queryOrgId!;
     const settingsSnap = await adminDb.collection('organizationAIManager').doc(orgId).get();
     const settingsData = settingsSnap.data() || { isActive: false };
-    
-    if (!settingsData.isActive) {
-      // AI Chat disabled, do not reply to arbitrary text. 
+
+    if (text.startsWith('/start')) {
+      const greeting = settingsData.greetingMessage || 'Здравствуйте! Чем я могу вам помочь?';
+      await reply(greeting);
       return { statusCode: 200, body: 'OK' };
     }
 

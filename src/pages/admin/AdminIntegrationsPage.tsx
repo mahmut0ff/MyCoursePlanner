@@ -172,9 +172,11 @@ const AdminIntegrationsPage: React.FC = () => {
   return (
     <div className="space-y-6">
       {/* ═══ Header ═══ */}
-      <div>
-        <h1 className="text-2xl font-bold text-slate-900 dark:text-white">{t('nav.integrations')}</h1>
-        <p className="text-slate-500 dark:text-slate-400 text-sm">{t('admin.integrations.subtitle')}</p>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-slate-900 dark:text-white">{t('nav.integrations')}</h1>
+          <p className="text-slate-500 dark:text-slate-400 text-sm">{t('admin.integrations.subtitle')}</p>
+        </div>
       </div>
 
       {/* ═══ Connected Services ═══ */}
@@ -186,34 +188,45 @@ const AdminIntegrationsPage: React.FC = () => {
           {integrations.map((intg) => (
             <div key={intg.id}>
               {/* Integration Row */}
-              <div className="px-6 py-4 flex items-center gap-4">
-                <div className="w-10 h-10 bg-slate-100 dark:bg-slate-700 rounded-xl flex items-center justify-center text-xl">{intg.icon}</div>
-                <div className="flex-1">
-                  <p className="text-sm font-medium text-slate-900 dark:text-white">{intg.name}</p>
-                  <p className="text-xs text-slate-500 dark:text-slate-400">{intg.description}</p>
+              <div className="px-4 sm:px-6 py-4 flex flex-col sm:flex-row sm:items-center gap-4">
+                <div className="flex items-center gap-4 flex-1 w-full">
+                  <div className="w-10 h-10 shrink-0 bg-slate-100 dark:bg-slate-700 rounded-xl flex items-center justify-center text-xl">{intg.icon}</div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-slate-900 dark:text-white truncate">{intg.name}</p>
+                    <p className="text-xs text-slate-500 dark:text-slate-400">{intg.description}</p>
+                  </div>
+                  {/* Mobile Toggle */}
+                  <button
+                    onClick={() => toggleIntegration(intg.id)}
+                    className={`sm:hidden relative w-11 h-6 rounded-full transition-colors shrink-0 ${intg.enabled ? 'bg-emerald-500' : 'bg-slate-300 dark:bg-slate-600'}`}
+                  >
+                    <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${intg.enabled ? 'left-[22px]' : 'left-0.5'}`} />
+                  </button>
                 </div>
 
-                {/* Toggle */}
-                <button
-                  onClick={() => toggleIntegration(intg.id)}
-                  className={`relative w-11 h-6 rounded-full transition-colors shrink-0 ${intg.enabled ? 'bg-emerald-500' : 'bg-slate-300 dark:bg-slate-600'}`}
-                >
-                  <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${intg.enabled ? 'left-[22px]' : 'left-0.5'}`} />
-                </button>
+                <div className="flex items-center gap-3 w-full sm:w-auto mt-2 sm:mt-0 justify-end">
+                  {/* Desktop Toggle */}
+                  <button
+                    onClick={() => toggleIntegration(intg.id)}
+                    className={`hidden sm:block relative w-11 h-6 rounded-full transition-colors shrink-0 ${intg.enabled ? 'bg-emerald-500' : 'bg-slate-300 dark:bg-slate-600'}`}
+                  >
+                    <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${intg.enabled ? 'left-[22px]' : 'left-0.5'}`} />
+                  </button>
 
-                {/* Configure Button */}
-                <button
-                  onClick={() => setEditingId(editingId === intg.id ? null : intg.id)}
-                  className={`btn-secondary text-xs ${editingId === intg.id ? 'ring-2 ring-primary-500' : ''}`}
-                >
-                  {editingId === intg.id ? t('common.close') : t('admin.integrations.configure')}
-                </button>
+                  {/* Configure Button */}
+                  <button
+                    onClick={() => setEditingId(editingId === intg.id ? null : intg.id)}
+                    className={`btn-secondary text-xs flex-1 sm:flex-none ${editingId === intg.id ? 'ring-2 ring-primary-500' : ''}`}
+                  >
+                    {editingId === intg.id ? t('common.close') : t('admin.integrations.configure')}
+                  </button>
 
-                {intg.docsUrl && (
-                  <a href={intg.docsUrl} target="_blank" rel="noreferrer" className="p-1.5 text-slate-400 hover:text-primary-500 transition-colors">
-                    <ExternalLink className="w-4 h-4" />
-                  </a>
-                )}
+                  {intg.docsUrl && (
+                    <a href={intg.docsUrl} target="_blank" rel="noreferrer" className="p-1.5 shrink-0 text-slate-400 hover:text-primary-500 transition-colors">
+                      <ExternalLink className="w-4 h-4" />
+                    </a>
+                  )}
+                </div>
               </div>
 
               {/* Config Panel (expandable) */}
@@ -265,25 +278,29 @@ const AdminIntegrationsPage: React.FC = () => {
         {webhooks.length > 0 && (
           <div className="divide-y divide-slate-100 dark:divide-slate-700">
             {webhooks.map((wh) => (
-              <div key={wh.id} className="px-6 py-3 flex items-center gap-3">
-                <button
-                  onClick={() => toggleWebhook(wh.id)}
-                  className={`relative w-9 h-5 rounded-full transition-colors shrink-0 ${wh.active ? 'bg-emerald-500' : 'bg-slate-300 dark:bg-slate-600'}`}
-                >
-                  <span className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${wh.active ? 'left-[18px]' : 'left-0.5'}`} />
-                </button>
+              <div key={wh.id} className="px-4 sm:px-6 py-3 flex flex-col sm:flex-row sm:items-center gap-3">
+                <div className="flex items-center gap-3 w-full sm:w-auto">
+                  <button
+                    onClick={() => toggleWebhook(wh.id)}
+                    className={`relative w-9 h-5 rounded-full transition-colors shrink-0 ${wh.active ? 'bg-emerald-500' : 'bg-slate-300 dark:bg-slate-600'}`}
+                  >
+                    <span className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${wh.active ? 'left-[18px]' : 'left-0.5'}`} />
+                  </button>
+                  <p className="text-sm font-mono text-slate-900 dark:text-white truncate flex-1 block sm:hidden">{wh.url}</p>
+                  <button onClick={() => removeWebhook(wh.id)} className="p-1 text-slate-400 hover:text-red-500 transition-colors shrink-0 sm:hidden"><Trash2 className="w-3.5 h-3.5" /></button>
+                </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-mono text-slate-900 dark:text-white truncate">{wh.url}</p>
-                  <div className="flex flex-wrap gap-1 mt-1">
+                  <p className="text-sm font-mono text-slate-900 dark:text-white truncate hidden sm:block">{wh.url}</p>
+                  <div className="flex flex-wrap gap-1 md:mt-1">
                     {wh.events.map((e) => (
                       <span key={e} className="text-[10px] bg-primary-50 dark:bg-primary-900/20 text-primary-700 dark:text-primary-400 px-1.5 py-0.5 rounded">{e}</span>
                     ))}
                   </div>
                 </div>
                 {wh.lastTriggered && (
-                  <span className="text-[10px] text-slate-400 dark:text-slate-500 shrink-0">{new Date(wh.lastTriggered).toLocaleDateString()}</span>
+                  <span className="text-[10px] text-slate-400 dark:text-slate-500 shrink-0 hidden sm:block">{new Date(wh.lastTriggered).toLocaleDateString()}</span>
                 )}
-                <button onClick={() => removeWebhook(wh.id)} className="p-1 text-slate-400 hover:text-red-500 transition-colors shrink-0"><Trash2 className="w-3.5 h-3.5" /></button>
+                <button onClick={() => removeWebhook(wh.id)} className="p-1 text-slate-400 hover:text-red-500 transition-colors shrink-0 hidden sm:block"><Trash2 className="w-3.5 h-3.5" /></button>
               </div>
             ))}
           </div>
@@ -344,26 +361,29 @@ const AdminIntegrationsPage: React.FC = () => {
         {apiKeys.length > 0 && (
           <div className="divide-y divide-slate-100 dark:divide-slate-700">
             {apiKeys.map((ak) => (
-              <div key={ak.id} className="px-6 py-3 flex items-center gap-3">
+              <div key={ak.id} className="px-4 sm:px-6 py-3 flex flex-col sm:flex-row sm:items-center gap-3">
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-slate-900 dark:text-white">{ak.name}</p>
+                  <div className="flex items-center justify-between sm:justify-start gap-2">
+                    <p className="text-sm font-medium text-slate-900 dark:text-white truncate">{ak.name}</p>
+                    <button onClick={() => deleteApiKey(ak.id)} className="p-1.5 text-slate-400 hover:text-red-500 transition-colors sm:hidden shrink-0"><Trash2 className="w-4 h-4" /></button>
+                  </div>
                   <div className="flex items-center gap-2 mt-1">
-                    <code className="text-xs text-slate-500 dark:text-slate-400 font-mono bg-slate-100 dark:bg-slate-700 px-2 py-0.5 rounded">
+                    <code className="text-xs text-slate-500 dark:text-slate-400 font-mono bg-slate-100 dark:bg-slate-700 px-2 py-0.5 rounded flex-1 truncate sm:flex-none">
                       {revealedKeys.has(ak.id) ? ak.key : ak.key.slice(0, 12) + '••••••••••••'}
                     </code>
-                    <button onClick={() => toggleReveal(ak.id)} className="p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors">
+                    <button onClick={() => toggleReveal(ak.id)} className="p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors shrink-0">
                       {revealedKeys.has(ak.id) ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
                     </button>
                     <button
                       onClick={() => copyToClipboard(ak.key, ak.id)}
-                      className="p-1 text-slate-400 hover:text-primary-500 transition-colors"
+                      className="p-1 text-slate-400 hover:text-primary-500 transition-colors shrink-0"
                     >
                       {copiedId === ak.id ? <Check className="w-3 h-3 text-emerald-500" /> : <Copy className="w-3 h-3" />}
                     </button>
                   </div>
                   <p className="text-[10px] text-slate-400 dark:text-slate-500 mt-1">{t('admin.integrations.created')}: {ak.created}{ak.lastUsed ? ` · ${t('admin.integrations.lastUsed')}: ${ak.lastUsed}` : ''}</p>
                 </div>
-                <button onClick={() => deleteApiKey(ak.id)} className="p-1.5 text-slate-400 hover:text-red-500 transition-colors"><Trash2 className="w-4 h-4" /></button>
+                <button onClick={() => deleteApiKey(ak.id)} className="p-1.5 text-slate-400 hover:text-red-500 transition-colors hidden sm:block shrink-0"><Trash2 className="w-4 h-4" /></button>
               </div>
             ))}
           </div>

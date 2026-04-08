@@ -27,18 +27,18 @@ const AdminSystemHealthPage: React.FC = () => {
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
         <div>
           <h1 className="text-2xl font-bold text-slate-900 dark:text-white">{t('admin.health.title')}</h1>
           <p className="text-slate-500 dark:text-slate-400 text-sm">{t('admin.health.subtitle')}</p>
         </div>
-        <button onClick={load} className="btn-secondary text-sm flex items-center gap-2"><RefreshCw className="w-4 h-4" />{t('admin.health.refresh')}</button>
+        <button onClick={load} className="btn-secondary text-sm w-full sm:w-auto flex justify-center items-center gap-2"><RefreshCw className="w-4 h-4" />{t('admin.health.refresh')}</button>
       </div>
 
       {/* Overall Status */}
       <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-6 mb-6">
         <div className="flex items-center gap-4">
-          <div className={`w-16 h-16 rounded-2xl flex items-center justify-center ${health.status === 'operational' ? 'bg-emerald-100' : 'bg-red-100'}`}>
+          <div className={`w-16 h-16 shrink-0 rounded-2xl flex items-center justify-center ${health.status === 'operational' ? 'bg-emerald-100' : 'bg-red-100'}`}>
             {health.status === 'operational' ? <CheckCircle2 className="w-8 h-8 text-emerald-500" /> : <XCircle className="w-8 h-8 text-red-500" />}
           </div>
           <div>
@@ -69,12 +69,12 @@ const AdminSystemHealthPage: React.FC = () => {
         <div className="px-6 py-4 border-b border-slate-200 dark:border-slate-700"><h3 className="font-semibold text-slate-900 dark:text-white flex items-center gap-2"><Server className="w-4 h-4" />{t('admin.health.services')}</h3></div>
         <div className="divide-y divide-slate-100 dark:divide-slate-700">
           {(health.services || []).map((svc: any, i: number) => (
-            <div key={i} className="px-6 py-4 flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                {STATUS_ICON[svc.status] || STATUS_ICON.operational}
-                <span className="text-sm font-medium text-slate-900 dark:text-white">{svc.name}</span>
+            <div key={i} className="px-6 py-4 flex items-center justify-between gap-4">
+              <div className="flex items-center gap-3 min-w-0 flex-1">
+                <div className="shrink-0">{STATUS_ICON[svc.status] || STATUS_ICON.operational}</div>
+                <span className="text-sm font-medium text-slate-900 dark:text-white truncate">{svc.name}</span>
               </div>
-              <span className={`inline-flex px-2 py-0.5 rounded text-xs font-medium capitalize ${svc.status === 'operational' ? 'bg-emerald-100 text-emerald-700' : svc.status === 'degraded' ? 'bg-amber-100 text-amber-700' : 'bg-red-100 text-red-700'}`}>{svc.status}</span>
+              <span className={`shrink-0 inline-flex px-2 py-0.5 rounded text-xs font-medium capitalize ${svc.status === 'operational' ? 'bg-emerald-100 text-emerald-700' : svc.status === 'degraded' ? 'bg-amber-100 text-amber-700' : 'bg-red-100 text-red-700'}`}>{svc.status}</span>
             </div>
           ))}
         </div>

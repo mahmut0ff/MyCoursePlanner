@@ -62,12 +62,12 @@ const AdminFeatureFlagsPage: React.FC = () => {
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
         <div>
           <h1 className="text-2xl font-bold text-slate-900 dark:text-white">{t('admin.flags.title')}</h1>
           <p className="text-slate-500 dark:text-slate-400 text-sm">{t('admin.flags.subtitle')}</p>
         </div>
-        <button onClick={() => setShowNewFlag(true)} className="btn-primary text-sm flex items-center gap-1"><Plus className="w-4 h-4" />{t('admin.flags.newFlag')}</button>
+        <button onClick={() => setShowNewFlag(true)} className="btn-primary text-sm w-full sm:w-auto flex justify-center items-center gap-1"><Plus className="w-4 h-4" />{t('admin.flags.newFlag')}</button>
       </div>
 
       {/* Feature Flags */}
@@ -91,13 +91,14 @@ const AdminFeatureFlagsPage: React.FC = () => {
       </div>
 
       {/* Organization Overrides */}
-      <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl overflow-x-auto">
-        <div className="px-6 py-4 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between">
+      <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl overflow-hidden">
+        <div className="px-4 sm:px-6 py-4 border-b border-slate-200 dark:border-slate-700 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <h3 className="font-semibold text-slate-900 dark:text-white flex items-center gap-2"><Building2 className="w-4 h-4" />{t('admin.flags.orgOverrides')}</h3>
-          <button onClick={() => setShowOverride(true)} className="btn-secondary text-xs flex items-center gap-1"><Plus className="w-3 h-3" />{t('admin.flags.addOverride')}</button>
+          <button onClick={() => setShowOverride(true)} className="btn-secondary text-xs w-full sm:w-auto flex justify-center items-center gap-1"><Plus className="w-3 h-3" />{t('admin.flags.addOverride')}</button>
         </div>
-        <table className="w-full">
-          <thead className="bg-slate-50 dark:bg-slate-700/50 border-b"><tr>
+        <div className="w-full overflow-x-auto">
+          <table className="w-full min-w-[700px]">
+            <thead className="bg-slate-50 dark:bg-slate-700/50 border-b"><tr>
             <th className="text-left px-4 py-3 text-xs font-medium text-slate-500 dark:text-slate-400 uppercase">{t('admin.users.organization')}</th>
             <th className="text-left px-4 py-3 text-xs font-medium text-slate-500 dark:text-slate-400 uppercase">{t('admin.flags.maxStudents')}</th>
             <th className="text-left px-4 py-3 text-xs font-medium text-slate-500 dark:text-slate-400 uppercase">{t('admin.flags.maxTeachers')}</th>
@@ -120,6 +121,7 @@ const AdminFeatureFlagsPage: React.FC = () => {
             {overrides.length === 0 && <tr><td colSpan={5} className="text-center py-8 text-slate-400 dark:text-slate-500 text-sm">{t('admin.flags.noOverrides')}</td></tr>}
           </tbody>
         </table>
+        </div>
       </div>
 
       {/* New Flag Modal */}

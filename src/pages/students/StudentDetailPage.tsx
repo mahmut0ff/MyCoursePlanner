@@ -28,7 +28,7 @@ const StudentDetailPage: React.FC = () => {
   const { t } = useTranslation();
   const [student, setStudent] = useState<UserProfile | null>(null);
   const [results, setResults] = useState<ExamAttempt[]>([]);
-  const { role } = useAuth();
+  const { role, organizationId } = useAuth();
   const isAdmin = role === 'admin' || role === 'manager' || role === 'super_admin';
   const [allGroups, setAllGroups] = useState<Group[]>([]);
   const [groups, setGroups] = useState<Group[]>([]);
@@ -238,7 +238,7 @@ const StudentDetailPage: React.FC = () => {
                 {isAdmin && (student as any).status !== 'expelled' && (
                   <button onClick={async () => {
                     if (window.confirm('Вы уверены что хотите отчислить студента?')) {
-                      await apiRemoveMember(student.uid, profile!.activeOrgId!);
+                      await apiRemoveMember(student.uid, organizationId!);
                       toast.success('Студент отчислен');
                       navigate('/students');
                     }

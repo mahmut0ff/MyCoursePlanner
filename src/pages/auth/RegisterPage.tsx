@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { signUp, signInWithGoogle } from '../../services/auth.service';
 import { useAuth } from '../../contexts/AuthContext';
 import { createUser } from '../../services/users.service';
-import { apiCheckAuthIdentity, apiPublicJoin } from '../../lib/api';
+import { apiCheckAuthIdentity, apiPublicJoin, apiCheckRegisterRateLimit } from '../../lib/api';
 import { Mail, Lock, User, Eye, EyeOff, Building2, BookOpenCheck, School, AtSign, CheckCircle2, XCircle, Loader2 } from 'lucide-react';
 import LanguageSwitcher from '../../components/LanguageSwitcher';
 
@@ -91,6 +91,7 @@ const RegisterPage: React.FC = () => {
     setError('');
     setLoading(true);
     try {
+      await apiCheckRegisterRateLimit();
       const cred = await signUp(email, password, name);
       await createUser(cred.user.uid, email, name, regRole === 'teacher' ? 'teacher' : 'student', username);
       if (orgSlug) {
@@ -112,6 +113,7 @@ const RegisterPage: React.FC = () => {
     if (!orgName.trim()) { setError(t('auth.orgRequired')); return; }
     setLoading(true);
     try {
+      await apiCheckRegisterRateLimit();
       const cred = await signUp(email, password, name);
       const profilePromise = createUser(cred.user.uid, email, name, 'admin', username);
       const timeoutPromise = new Promise((_, reject) =>
@@ -144,13 +146,14 @@ const RegisterPage: React.FC = () => {
     setError('');
     setLoading(true);
     try {
+      await apiCheckRegisterRateLimit();
       await signInWithGoogle();
       // AuthContext and ProtectedRoute will automatically redirect to /onboarding if no profile exists.
       // Or to /dashboard if profile exists.
     } catch (err: any) {
       console.error('Google Sign-In Error:', err);
       if (err.code !== 'auth/popup-closed-by-user') {
-        setError(t('auth.googleFailed'));
+        setError(err.message && err.message.length < 100 && !err.code ? err.message : t('auth.googleFailed'));
       }
     } finally {
       setLoading(false);

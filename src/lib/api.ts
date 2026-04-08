@@ -55,6 +55,8 @@ export const apiCheckAuthIdentity = (data: { action: 'check'; username?: string;
 export const apiResolveUsername = (username: string) => 
   apiRequest('api-auth-check', 'POST', { action: 'resolve', username });
 
+export const apiCheckRegisterRateLimit = () => apiRequest('api-register-rate-limit', 'POST');
+
 // ---- Lessons ----
 export const apiGetLessons = () => apiRequest('api-lessons');
 export const apiGetPersonalLessons = () => apiRequest('api-lessons', 'GET', undefined, { orgId: 'none' });

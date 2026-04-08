@@ -10,12 +10,6 @@ export const handler: Handler = async (event: HandlerEvent) => {
   }
 
   try {
-    const orgId = event.queryStringParameters?.orgId;
-    if (!orgId) {
-      console.error('No orgId provided in webhook URL');
-      return { statusCode: 200, body: 'OK' }; // Return 200 so Telegram stops retrying
-    }
-
     const payload = JSON.parse(event.body || '{}');
     
     // Support message and callback_query if needed, but primarily text messages
@@ -26,17 +20,7 @@ export const handler: Handler = async (event: HandlerEvent) => {
 
     const chatId = message.chat.id;
     const text = message.text;
-
-    // Fetch Settings
-    const settingsSnap = await adminDb.collection('organizationAIManager').doc(orgId).get();
-    const settingsData = settingsSnap.data() || { isActive: false };
-    
-    if (!settingsData.isActive || !settingsData.telegramBotToken) {
-      console.warn('AI is disabled or Telegram token missing for org', orgId);
-      return { statusCode: 200, body: 'OK' };
-    }
-    
-    const botToken = settingsData.telegramBotToken;
+    const botToken = process.env.TELEGRAM_BOT_TOKEN || '8330921361:AAGmnzPz_womNW8dcoC2DNcTTpkXV8_5VaY';
 
     // A helper to send messages back to Telegram
     const reply = async (replyText: string) => {
@@ -55,7 +39,7 @@ export const handler: Handler = async (event: HandlerEvent) => {
         const code = parts[1].trim();
         const linkResult = await resolveTelegramLinkCode(code);
 
-        if (linkResult && linkResult.orgId === orgId) {
+        if (linkResult && linkResult.orgId) {
           // Save telegramChatId on user document
           await adminDb.collection('users').doc(linkResult.userId).update({
             telegramChatId: String(chatId),
@@ -70,29 +54,39 @@ export const handler: Handler = async (event: HandlerEvent) => {
         }
       }
 
-      // Plain /start — greeting
-      const greeting = settingsData.greetingMessage || 'Здравствуйте! Чем я могу вам помочь?';
-      await reply(greeting);
+      await reply('Здравствуйте! Введите код привязки для получения уведомлений, например: /start ABC123');
       return { statusCode: 200, body: 'OK' };
     }
 
+    // Find the user's organization context globally for subsequent messages
+    const usersSnap = await adminDb.collection('users')
+      .where('telegramChatId', '==', String(chatId))
+      .limit(1).get();
+
+    if (usersSnap.empty) {
+      await reply('Ваш аккаунт не привязан к системе. Войдите в приложение и привяжите Telegram в настройках профиля.');
+      return { statusCode: 200, body: 'OK' };
+    }
+
+    const userDoc = usersSnap.docs[0];
+    const orgId = userDoc.data().organizationId;
+
     // ─── /unlink — detach Telegram ───
     if (text === '/unlink') {
-      // Find user by chatId in this org
-      const usersSnap = await adminDb.collection('users')
-        .where('organizationId', '==', orgId)
-        .where('telegramChatId', '==', String(chatId))
-        .limit(1).get();
+      await userDoc.ref.update({
+        telegramChatId: '',
+        telegramLinkedAt: '',
+      });
+      await reply('🔓 Telegram отвязан. Вы больше не будете получать уведомления.');
+      return { statusCode: 200, body: 'OK' };
+    }
 
-      if (!usersSnap.empty) {
-        await usersSnap.docs[0].ref.update({
-          telegramChatId: '',
-          telegramLinkedAt: '',
-        });
-        await reply('🔓 Telegram отвязан. Вы больше не будете получать уведомления.');
-      } else {
-        await reply('Ваш аккаунт не привязан.');
-      }
+    // Process AI Chat if AI is active
+    const settingsSnap = await adminDb.collection('organizationAIManager').doc(orgId).get();
+    const settingsData = settingsSnap.data() || { isActive: false };
+    
+    if (!settingsData.isActive) {
+      // AI Chat disabled, do not reply to arbitrary text. 
       return { statusCode: 200, body: 'OK' };
     }
 

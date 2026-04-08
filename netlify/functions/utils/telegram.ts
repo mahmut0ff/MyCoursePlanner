@@ -13,13 +13,11 @@
 import { adminDb } from './firebase-admin';
 
 /**
- * Get the Telegram bot token for an organization.
- * Returns null if not configured.
+ * Get the Telegram bot token.
+ * Uses the global planula_bot token for all organizations.
  */
 async function getOrgBotToken(orgId: string): Promise<string | null> {
-  const doc = await adminDb.collection('organizationAIManager').doc(orgId).get();
-  const data = doc.data();
-  return data?.telegramBotToken || null;
+  return process.env.TELEGRAM_BOT_TOKEN || '8330921361:AAGmnzPz_womNW8dcoC2DNcTTpkXV8_5VaY';
 }
 
 /**

@@ -48,17 +48,21 @@ const handler: Handler = async (event: HandlerEvent) => {
       // Generate code
       const code = await generateTelegramLinkCode(orgId, user.uid);
 
-      // Get bot username for deep link
-      const settingsDoc = await adminDb.collection('organizationAIManager').doc(orgId).get();
-      const botUsername = settingsDoc.data()?.telegramBotUsername || '';
+      // Global bot instead of organization-specific
+      const botUsername = 'planula_bot';
+      const systemToken = process.env.TELEGRAM_BOT_TOKEN || '8330921361:AAGmnzPz_womNW8dcoC2DNcTTpkXV8_5VaY';
 
-      const deepLink = botUsername
-        ? `https://t.me/${botUsername}?start=${code}`
-        : null;
+      const origin = event.rawUrl ? new URL(event.rawUrl).origin : `https://${event.headers.host}`;
+      if (!origin.includes('localhost') && !origin.includes('127.0.0.1')) {
+        const whUrl = `${origin}/.netlify/functions/api-telegram-webhook`;
+        fetch(`https://api.telegram.org/bot${systemToken}/setWebhook?url=${encodeURIComponent(whUrl)}`).catch(() => {});
+      }
+
+      const deepLink = `https://t.me/${botUsername}?start=${code}`;
 
       return ok({
         code,
-        botUsername: botUsername || null,
+        botUsername,
         deepLink,
         expiresInMinutes: 15,
       });

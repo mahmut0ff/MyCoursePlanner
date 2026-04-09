@@ -1,28 +1,68 @@
 import React, { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../contexts/AuthContext';
-import { apiGetDashboard, orgGetTimetable, orgGetGroups, orgGetCourses } from '../../lib/api';
+import { apiGetDashboard, orgGetTimetable, orgGetGroups, orgGetCourses, apiGetMyMemberships, apiPublicJoin } from '../../lib/api';
 import type { LessonPlan, ExamAttempt, ScheduleEvent, Group, Course } from '../../types';
 import { formatDate } from '../../utils/grading';
-import { BookOpen, Radio, Trophy, XCircle, Brain, Target, BarChart3, Flame, Search, Gamepad2, Play, Clock, MapPin, CalendarCheck, ArrowRight, GraduationCap } from 'lucide-react';
+import { BookOpen, Radio, Trophy, XCircle, Brain, Target, BarChart3, Flame, Search, Gamepad2, Play, Clock, MapPin, CalendarCheck, ArrowRight, GraduationCap, Building2, Hourglass, CheckCircle2, RefreshCw } from 'lucide-react';
 import { DashboardSkeleton } from '../../components/ui/Skeleton';
 import GamificationWidget from '../../components/gamification/GamificationWidget';
 import LeaderboardWidget from '../../components/gamification/LeaderboardWidget';
 import StudentEnrollmentOnboarding from './StudentEnrollmentOnboarding';
 
+interface PendingMembership {
+  id: string;
+  organizationId: string;
+  organizationName: string;
+  status: string;
+  role: string;
+  createdAt?: string;
+}
+
 const StudentDashboard: React.FC = () => {
   const { t } = useTranslation();
-  const { profile, organizationId } = useAuth();
+  const { profile, organizationId, refreshProfile } = useAuth();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [lessons, setLessons] = useState<LessonPlan[]>([]);
   const [attempts, setAttempts] = useState<ExamAttempt[]>([]);
   const [loading, setLoading] = useState(true);
   const [hasGroups, setHasGroups] = useState(true);
 
+  // ── Pending memberships for no-org state ──
+  const [pendingMemberships, setPendingMemberships] = useState<PendingMembership[]>([]);
+  const [pendingLoading, setPendingLoading] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+
   // ── NEW: Today's schedule + courses ──
   const [todayLessons, setTodayLessons] = useState<ScheduleEvent[]>([]);
   const [myGroups, setMyGroups] = useState<Group[]>([]);
   const [myCourses, setMyCourses] = useState<Course[]>([]);
+
+  // ── Auto-join from orgSlug query param (after registration redirect) ──
+  useEffect(() => {
+    const orgSlug = searchParams.get('orgSlug');
+    if (orgSlug && profile?.uid) {
+      apiPublicJoin(orgSlug).catch(() => {});
+      // Clean the URL
+      searchParams.delete('orgSlug');
+      setSearchParams(searchParams, { replace: true });
+    }
+  }, [profile?.uid, searchParams, setSearchParams]);
+
+  // ── Load pending memberships when student has no org ──
+  useEffect(() => {
+    if (profile?.uid && !organizationId) {
+      setPendingLoading(true);
+      apiGetMyMemberships()
+        .then((memberships: any[]) => {
+          const pending = memberships.filter(m => m.status === 'pending' || m.status === 'invited');
+          setPendingMemberships(pending);
+        })
+        .catch(() => {})
+        .finally(() => setPendingLoading(false));
+    }
+  }, [profile?.uid, organizationId]);
 
   useEffect(() => {
     if (profile?.uid && organizationId) {
@@ -70,6 +110,18 @@ const StudentDashboard: React.FC = () => {
     }
   }, [profile?.uid, organizationId]);
 
+  const handleRefreshStatus = async () => {
+    setRefreshing(true);
+    try {
+      await refreshProfile();
+      // Also refresh memberships
+      const memberships = await apiGetMyMemberships();
+      const pending = (memberships as any[]).filter(m => m.status === 'pending' || m.status === 'invited');
+      setPendingMemberships(pending);
+    } catch {}
+    setRefreshing(false);
+  };
+
   const hour = new Date().getHours();
   const greeting = hour < 12 ? '🌅' : hour < 18 ? '☀️' : '🌙';
 
@@ -80,10 +132,10 @@ const StudentDashboard: React.FC = () => {
   ];
   const todayName = dayNamesFull[new Date().getDay()];
 
-  // ═══ No Organization: Welcome + Discovery ═══
+  // ═══ No Organization: Welcome + Discovery + Pending Applications ═══
   if (!organizationId) {
     return (
-      <div className="space-y-6 sm:space-y-8">
+      <div className="space-y-6 sm:space-y-8 max-w-[1400px] mx-auto pb-10">
         {/* Kahoot-style Premium Hero Banner */}
         <div className="relative overflow-hidden rounded-[2rem] bg-gradient-to-br from-[#46178F] via-[#5C1FB5] to-[#46178F] p-8 sm:p-12 text-white shadow-2xl shadow-purple-900/20">
           <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-white/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/3" />
@@ -104,6 +156,102 @@ const StudentDashboard: React.FC = () => {
             </Link>
           </div>
         </div>
+
+        {/* ═══ Pending Memberships ═══ */}
+        {(pendingLoading || pendingMemberships.length > 0) && (
+          <div className="bg-white dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 rounded-[2rem] overflow-hidden shadow-lg shadow-slate-200/50 dark:shadow-none">
+            <div className="px-6 py-5 border-b-2 border-slate-100 dark:border-slate-700 flex items-center justify-between bg-gradient-to-r from-amber-50 to-orange-50 dark:from-slate-800/80 dark:to-slate-800/80">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-amber-500 rounded-xl flex items-center justify-center shadow-md">
+                  <Hourglass className="w-5 h-5 text-white" />
+                </div>
+                <div>
+                  <h2 className="kahoot-font text-xl font-black text-slate-800 dark:text-white">
+                    {t('studentDashboard.pendingApplications', 'Мои заявки')}
+                  </h2>
+                  <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">
+                    {t('studentDashboard.pendingApplicationsDesc', 'Ожидают одобрения администратора')}
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={handleRefreshStatus}
+                disabled={refreshing}
+                className="flex items-center gap-2 px-4 py-2 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 rounded-xl text-sm font-bold text-slate-700 dark:text-slate-300 transition-colors"
+              >
+                <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} />
+                {t('common.refresh', 'Обновить')}
+              </button>
+            </div>
+
+            {pendingLoading ? (
+              <div className="flex justify-center py-10">
+                <div className="w-8 h-8 border-[3px] border-slate-200 border-t-amber-500 rounded-full animate-spin" />
+              </div>
+            ) : (
+              <div className="p-3 sm:p-4 space-y-3">
+                {pendingMemberships.map((m) => (
+                  <div
+                    key={m.id}
+                    className="flex items-center gap-4 p-4 sm:p-5 rounded-2xl border-2 border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800"
+                  >
+                    {/* Org Icon */}
+                    <div className={`w-12 h-12 rounded-xl flex items-center justify-center shrink-0 shadow-sm ${
+                      m.status === 'invited' 
+                        ? 'bg-gradient-to-br from-emerald-400 to-teal-500' 
+                        : 'bg-gradient-to-br from-amber-400 to-orange-500'
+                    }`}>
+                      <Building2 className="w-6 h-6 text-white" />
+                    </div>
+
+                    {/* Info */}
+                    <div className="flex-1 min-w-0">
+                      <h4 className="text-sm sm:text-base font-bold text-slate-900 dark:text-white truncate">
+                        {m.organizationName || t('studentDashboard.unknownOrg', 'Организация')}
+                      </h4>
+                      <div className="flex items-center gap-2 mt-1">
+                        {m.status === 'pending' && (
+                          <span className="text-[10px] font-black text-amber-600 dark:text-amber-400 bg-amber-100 dark:bg-amber-900/30 px-2 py-0.5 rounded-full uppercase tracking-wider flex items-center gap-1">
+                            <Hourglass className="w-3 h-3" />
+                            {t('studentDashboard.statusPending', 'На рассмотрении')}
+                          </span>
+                        )}
+                        {m.status === 'invited' && (
+                          <span className="text-[10px] font-black text-emerald-600 dark:text-emerald-400 bg-emerald-100 dark:bg-emerald-900/30 px-2 py-0.5 rounded-full uppercase tracking-wider flex items-center gap-1">
+                            <CheckCircle2 className="w-3 h-3" />
+                            {t('studentDashboard.statusInvited', 'Приглашение')}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Status indicator */}
+                    <div className="shrink-0">
+                      {m.status === 'pending' && (
+                        <div className="w-3 h-3 rounded-full bg-amber-400 animate-pulse" />
+                      )}
+                      {m.status === 'invited' && (
+                        <Link
+                          to="/invites"
+                          className="text-sm font-bold text-emerald-600 dark:text-emerald-400 hover:underline"
+                        >
+                          {t('studentDashboard.viewInvite', 'Принять')}
+                        </Link>
+                      )}
+                    </div>
+                  </div>
+                ))}
+                
+                {/* Tip */}
+                <div className="text-center py-3">
+                  <p className="text-xs text-slate-400 dark:text-slate-500">
+                    {t('studentDashboard.pendingTip', 'После одобрения заявки вы сможете выбрать курс и группу')}
+                  </p>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Gamification */}
         <GamificationWidget />

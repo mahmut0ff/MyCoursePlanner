@@ -108,12 +108,33 @@ const AdminSettingsPage = lazy(() => import('./pages/admin/AdminSettingsPage'));
 
 const DocumentViewerPage = lazy(() => import('./pages/viewer/DocumentViewerPage'));
 
+const ThemedToaster = () => {
+  const { isDark } = useTheme();
+  return (
+    <Toaster
+      position="top-right"
+      toastOptions={{
+        duration: 3000,
+        style: {
+          borderRadius: '12px',
+          padding: '12px 16px',
+          fontSize: '14px',
+          background: isDark ? '#1e293b' : '#fff',
+          color: isDark ? '#f1f5f9' : '#0f172a',
+          border: isDark ? '1px solid #334155' : '1px solid #e2e8f0',
+          boxShadow: isDark ? '0 10px 25px rgba(0,0,0,0.4)' : '0 10px 25px rgba(0,0,0,0.08)',
+        },
+      }}
+    />
+  );
+};
+
 const App: React.FC = () => {
   return (
     <ThemeProvider>
     <AuthProvider>
       <BrowserRouter>
-        <Toaster position="top-right" toastOptions={{ duration: 3000, style: { borderRadius: '12px', padding: '12px 16px', fontSize: '14px' } }} />
+        <ThemedToaster />
         <Suspense fallback={<div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-slate-900"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div></div>}>
         <Routes>
           {/* Public */}

@@ -833,3 +833,18 @@ select:-webkit-autofill {
 
 .planula-timer-display { background: white !important; border-color: #e2e8f0 !important; box-shadow: 0 10px 30px rgba(0,0,0,0.05) !important; color: #0f172a !important; }
 .dark .planula-timer-display { background: rgba(0, 0, 0, 0.4) !important; border-color: rgba(255, 255, 255, 0.1) !important; box-shadow: 0 10px 30px rgba(0,0,0,0.3) !important; color: white !important; }
+
+/* ═══════ TOAST DARK MODE ═══════ */
+.dark [data-sonner-toaster] [data-sonner-toast],
+.dark div[role="status"][data-testid] {
+  background: #1e293b !important;
+  color: #f1f5f9 !important;
+  border-color: #334155 !important;
+}
+/* react-hot-toast specific: target the toast wrapper divs */
+.dark .go4109123758 {
+  background: #1e293b !important;
+  color: #f1f5f9 !important;
+  border: 1px solid #334155 !important;
+  box-shadow: 0 10px 25px rgba(0,0,0,0.4) !important;
+}

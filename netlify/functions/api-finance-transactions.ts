@@ -79,22 +79,21 @@ const handler: Handler = async (event: HandlerEvent) => {
       // If it's an income transaction tied to a student payment plan, we should update the payment plan
       if (data.type === 'income' && data.paymentPlanId) {
         const planRef = adminDb.collection('studentPaymentPlans').doc(data.paymentPlanId);
+        let remaining = 0;
         await adminDb.runTransaction(async (t) => {
           const doc = await t.get(planRef);
           if (doc.exists) {
             const planData = doc.data()!;
             const newPaidAmount = (planData.paidAmount || 0) + data.amount;
+            remaining = Math.max(0, (planData.totalAmount || 0) - newPaidAmount);
             let status = 'partial';
             if (newPaidAmount >= planData.totalAmount) status = 'paid';
             t.update(planRef, { paidAmount: newPaidAmount, status, updatedAt: new Date().toISOString() });
           }
         });
 
-        // Notify student via Telegram about payment confirmation
+        // Fire-and-forget Telegram notification (no extra Firestore read)
         if (data.studentId && orgFilter) {
-          const planDoc = await planRef.get();
-          const planData = planDoc.data();
-          const remaining = (planData?.totalAmount || 0) - (planData?.paidAmount || 0);
           sendTelegramToUser(
             orgFilter, data.studentId,
             `✅ Оплата принята: ${data.amount.toLocaleString()} сом.${remaining > 0 ? `\nОстаток: ${remaining.toLocaleString()} сом.` : '\n🎉 Оплата завершена полностью!'}`

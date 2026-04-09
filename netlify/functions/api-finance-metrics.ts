@@ -28,9 +28,13 @@ const handler: Handler = async (event: HandlerEvent) => {
       startOfMonth.setHours(0,0,0,0);
       const startIso = startOfMonth.toISOString();
 
-      // 1. Fetch Transactions (Memory filter to bypass missing composite indexes)
-      const trxsSnap = await adminDb.collection('financeTransactions')
-        .where('organizationId', '==', orgFilter).get();
+      // Fetch transactions and payment plans in parallel for speed
+      const [trxsSnap, plansSnap] = await Promise.all([
+        adminDb.collection('financeTransactions')
+          .where('organizationId', '==', orgFilter).get(),
+        adminDb.collection('studentPaymentPlans')
+          .where('organizationId', '==', orgFilter).get(),
+      ]);
       
       let totalIncome = 0;
       let totalExpense = 0;
@@ -50,10 +54,6 @@ const handler: Handler = async (event: HandlerEvent) => {
 
       const netProfit = totalIncome - totalExpense;
 
-      // 2. Fetch Payment Plans (Memory filter)
-      const plansSnap = await adminDb.collection('studentPaymentPlans')
-        .where('organizationId', '==', orgFilter).get();
-        
       let totalActiveDebt = 0;
       let overdueCount = 0;
       const invalidStatuses = ['paid'];
@@ -73,13 +73,35 @@ const handler: Handler = async (event: HandlerEvent) => {
         }
       });
 
+      // Build daily chart data for the current month
+      const dailyMap = new Map<string, { income: number; expense: number }>();
+      trxsSnap.docs.forEach(d => {
+        const data = d.data();
+        if (data.date < startIso) return;
+        if (typeof branchFilter === 'string' && data.branchId !== branchFilter) return;
+        if (Array.isArray(branchFilter) && branchFilter.length > 0 && !branchFilter.includes(data.branchId)) return;
+
+        const dateKey = (data.date || '').slice(0, 10); // YYYY-MM-DD
+        if (!dateKey) return;
+        const entry = dailyMap.get(dateKey) || { income: 0, expense: 0 };
+        if (data.type === 'income') entry.income += (data.amount || 0);
+        if (data.type === 'expense') entry.expense += (data.amount || 0);
+        dailyMap.set(dateKey, entry);
+      });
+
+      const chartData = [...dailyMap.entries()]
+        .sort(([a], [b]) => a.localeCompare(b))
+        .map(([date, vals]) => ({ date, ...vals }));
+
       return ok({
         period: 'current_month',
         totalIncome,
         totalExpense,
         netProfit,
         totalActiveDebt,
-        overdueCount
+        outstandingDebt: totalActiveDebt, // alias expected by frontend
+        overdueCount,
+        chartData,
       });
     }
 

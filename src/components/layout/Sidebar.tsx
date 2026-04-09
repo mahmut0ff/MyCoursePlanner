@@ -414,9 +414,7 @@ const Sidebar: React.FC<{ open: boolean; onClose: () => void; isCollapsed?: bool
               {/* ── Tenant-specific: only when student has an active org ── */}
               {!!organizationId && (
                 <>
-                  <NavLink to="/progress" className={linkClass} onClick={onClose}>
-                    <TrendingUp className="w-4 h-4" /><span>{t('nav.progress', 'Мой прогресс')}</span>
-                  </NavLink>
+
                   <NavLink to="/diary" className={linkClass} onClick={onClose}>
                     <BookOpen className="w-4 h-4" /><span>{t('nav.diary', 'Мой дневник')}</span>
                   </NavLink>

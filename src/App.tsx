@@ -35,7 +35,7 @@ const PaymentFailurePage = lazy(() => import('./pages/billing/PaymentFailurePage
 const StudentProfilePage = lazy(() => import('./pages/profile/StudentProfilePage'));
 const AchievementsPage = lazy(() => import('./pages/achievements/AchievementsPage'));
 const StudentDiaryPage = lazy(() => import('./pages/student/StudentDiaryPage'));
-const StudentProgressPage = lazy(() => import('./pages/student/StudentProgressPage'));
+
 const StudentCoursesPage = lazy(() => import('./pages/student/StudentCoursesPage'));
 const StudentTeachersPage = lazy(() => import('./pages/student/StudentTeachersPage'));
 const StudentGroupsPage = lazy(() => import('./pages/student/StudentGroupsPage'));
@@ -196,7 +196,7 @@ const App: React.FC = () => {
             <Route path="student/groups" element={<ProtectedRoute allowedRoles={['student']}><StudentGroupsPage /></ProtectedRoute>} />
             <Route path="student/teachers" element={<ProtectedRoute allowedRoles={['student']}><StudentTeachersPage /></ProtectedRoute>} />
             <Route path="diary" element={<ProtectedRoute allowedRoles={['student']}><StudentDiaryPage /></ProtectedRoute>} />
-            <Route path="progress" element={<ProtectedRoute allowedRoles={['student']}><StudentProgressPage /></ProtectedRoute>} />
+
             <Route path="student/schedule" element={<ProtectedRoute allowedRoles={['student']}><StudentSchedulePage /></ProtectedRoute>} />
 
             {/* Co-Study Rooms */}

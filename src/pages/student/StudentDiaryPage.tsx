@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../contexts/AuthContext';
 import { orgGetCourses, orgGetGrades, orgGetJournal, orgGetGroups } from '../../lib/api';
 import type { Course, GradeEntry, JournalEntry } from '../../types';
-import { Calendar, BookOpen, Star, Clock, FileWarning, CheckCircle2, MessageSquare, XCircle, AlertTriangle, Presentation, Activity, Award, GraduationCap, Sparkles } from 'lucide-react';
+import { Calendar, BookOpen, Star, Clock, FileWarning, MessageSquare, XCircle, Activity, GraduationCap, Sparkles } from 'lucide-react';
 
 type TimelineEvent = 
   | { type: 'grade'; date: string; data: GradeEntry; courseTitle: string; id: string }

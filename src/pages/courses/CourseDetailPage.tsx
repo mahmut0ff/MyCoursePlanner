@@ -313,7 +313,14 @@ const CourseDetailPage: React.FC = () => {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {groups.map((group) => (
-              <div key={group.id} onClick={() => navigate(`/groups/${group.id}`)} className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-5 cursor-pointer hover:shadow-lg hover:border-violet-300 dark:hover:border-violet-700/50 transition-all group/item">
+              <div 
+                key={group.id} 
+                onClick={() => {
+                  if (isStudent) return;
+                  navigate(`/groups/${group.id}`);
+                }} 
+                className={`bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-5 transition-all group/item ${!isStudent ? 'cursor-pointer hover:shadow-lg hover:border-violet-300 dark:hover:border-violet-700/50' : 'shadow-sm'}`}
+              >
                 <div className="flex items-center justify-between mb-4">
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 bg-violet-100 text-violet-600 dark:bg-violet-900/30 dark:text-violet-400 rounded-xl flex items-center justify-center font-bold">
@@ -324,9 +331,11 @@ const CourseDetailPage: React.FC = () => {
                       <p className="text-xs text-slate-500">{group.studentIds?.length || 0} учеников</p>
                     </div>
                   </div>
-                  <div className="w-8 h-8 rounded-full bg-slate-50 dark:bg-slate-700/50 flex items-center justify-center text-slate-400 group-hover/item:bg-violet-50 group-hover/item:text-violet-600 dark:group-hover/item:bg-violet-900/30 dark:group-hover/item:text-violet-400 transition-colors">
-                    <ArrowLeft className="w-4 h-4 rotate-135" style={{ transform: 'rotate(135deg)' }} />
-                  </div>
+                  {!isStudent && (
+                    <div className="w-8 h-8 rounded-full bg-slate-50 dark:bg-slate-700/50 flex items-center justify-center text-slate-400 group-hover/item:bg-violet-50 group-hover/item:text-violet-600 dark:group-hover/item:bg-violet-900/30 dark:group-hover/item:text-violet-400 transition-colors">
+                      <ArrowLeft className="w-4 h-4 rotate-135" style={{ transform: 'rotate(135deg)' }} />
+                    </div>
+                  )}
                 </div>
                 {group.chatLinkUrl && (
                   <div className="pt-3 border-t border-slate-100 dark:border-slate-700/50 flex items-center justify-between">

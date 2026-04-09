@@ -218,7 +218,7 @@ const App: React.FC = () => {
 
             {/* ═══ Org Admin: Education ═══ */}
             <Route path="courses" element={<ProtectedRoute allowedRoles={['admin', 'manager', 'teacher']}><CoursesPage /></ProtectedRoute>} />
-            <Route path="courses/:id" element={<ProtectedRoute allowedRoles={['admin', 'manager', 'teacher']}><CourseDetailPage /></ProtectedRoute>} />
+            <Route path="courses/:id" element={<ProtectedRoute allowedRoles={['admin', 'manager', 'teacher', 'student']}><CourseDetailPage /></ProtectedRoute>} />
             <Route path="finances" element={<ProtectedRoute allowedRoles={['admin', 'manager']}><PlanGuard feature="finances"><FinancesPage /></PlanGuard></ProtectedRoute>} />
             <Route path="groups" element={<ProtectedRoute allowedRoles={['admin', 'manager', 'teacher']}><GroupsPage /></ProtectedRoute>} />
             <Route path="groups/:id" element={<ProtectedRoute allowedRoles={['admin', 'manager', 'teacher']}><GroupDetailPage /></ProtectedRoute>} />

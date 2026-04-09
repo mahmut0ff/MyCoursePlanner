@@ -1,14 +1,16 @@
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../contexts/AuthContext';
-import { orgGetCourses, orgGetGroups } from '../../lib/api';
+import { orgGetCourses } from '../../lib/api';
 import { FolderOpen, Users, BookOpen } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import StudentOrgFilter from '../../components/ui/StudentOrgFilter';
 import type { Course } from '../../types';
 
 const StudentCoursesPage: React.FC = () => {
   const { t } = useTranslation();
   const { profile } = useAuth();
+  const navigate = useNavigate();
   
   const [courses, setCourses] = useState<Course[]>([]);
   const [loading, setLoading] = useState(true);
@@ -20,19 +22,10 @@ const StudentCoursesPage: React.FC = () => {
     const loadData = async () => {
       try {
         setLoading(true);
-        // Fetch all org groups and courses
-        const [allGroups, allCourses] = await Promise.all([
-          orgGetGroups(),
-          orgGetCourses()
-        ]);
+        const allCourses = await orgGetCourses();
 
-        // Find groups where this student is enrolled
-        const myGroups = allGroups.filter((g: any) => g.studentIds?.includes(profile.uid));
-        const myCourseIds = Array.from(new Set(myGroups.map((g: any) => g.courseId)));
-
-        // Filter courses
-        const myCourses = allCourses.filter((c: any) => myCourseIds.includes(c.id));
-        setCourses(myCourses);
+        // Filter courses - show ALL courses for the student to choose from!
+        setCourses(allCourses);
       } catch (err: any) {
         setError(err.message || t('common.loadError', 'Ошибка загрузки'));
       } finally {
@@ -61,7 +54,7 @@ const StudentCoursesPage: React.FC = () => {
           <div>
             <h1 className="text-2xl font-bold text-slate-900 dark:text-white">{t('nav.myCourses', 'Мои курсы')}</h1>
             <p className="text-sm text-slate-500 dark:text-slate-400">
-              {t('studentCourses.subtitle', 'Курсы, к которым у вас есть доступ')}
+              {t('studentCourses.subtitle', 'Все курсы в вашем учебном центре')}
             </p>
           </div>
         </div>
@@ -83,13 +76,13 @@ const StudentCoursesPage: React.FC = () => {
             {t('studentCourses.emptyTitle', 'Нет доступных курсов')}
           </h3>
           <p className="text-slate-500 dark:text-slate-400 max-w-sm mx-auto">
-            {t('studentCourses.emptySubtitle', 'Вы пока не состоите ни в одной группе, привязанной к курсу. Обратитесь к директору.')}
+            {t('studentCourses.emptySubtitle', 'В учебном центре пока не добавлено ни одного курса.')}
           </p>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {courses.map((course) => (
-            <div key={course.id} className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 overflow-hidden hover:shadow-lg transition-all group">
+            <div key={course.id} onClick={() => navigate(`/courses/${course.id}`)} className="cursor-pointer bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 overflow-hidden hover:shadow-lg transition-all group">
               {course.coverImageUrl ? (
                 <div className="h-40 w-full overflow-hidden">
                   <img src={course.coverImageUrl} alt={course.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />

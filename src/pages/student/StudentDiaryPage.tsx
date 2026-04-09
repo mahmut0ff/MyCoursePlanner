@@ -53,31 +53,32 @@ export default function StudentDiaryPage() {
           return;
         }
 
-        const gradesPromises = myCourses.map(c => orgGetGrades(c.id).catch(() => []));
-        const journalPromises = myCourses.map(c => orgGetJournal(c.id).catch(() => []));
-
-        const gradesRes = await Promise.all(gradesPromises);
-        const journalRes = await Promise.all(journalPromises);
+        const [gradesRes, journalRes] = await Promise.all([
+          orgGetGrades().catch(() => []),
+          orgGetJournal().catch(() => [])
+        ]);
 
         const newEvents: TimelineEvent[] = [];
         
-        gradesRes.forEach((courseGrades: any, i) => {
-          if (!Array.isArray(courseGrades)) return;
-          courseGrades.forEach((g: GradeEntry) => {
+        if (Array.isArray(gradesRes)) {
+          gradesRes.forEach((g: GradeEntry) => {
+            if (!myCourseIds.has(g.courseId)) return;
+            const courseTitle = myCourses.find(c => c.id === g.courseId)?.title || 'Неизвестный курс';
             const date = safeISODate(g.updatedAt || g.createdAt);
             if (!date) return;
-            newEvents.push({ type: 'grade', id: `grade_${g.id}`, date, data: g, courseTitle: myCourses[i].title });
+            newEvents.push({ type: 'grade', id: `grade_${g.id}`, date, data: g, courseTitle });
           });
-        });
+        }
 
-        journalRes.forEach((courseJournal: any, i) => {
-          if (!Array.isArray(courseJournal)) return;
-          courseJournal.forEach((j: JournalEntry) => {
+        if (Array.isArray(journalRes)) {
+          journalRes.forEach((j: JournalEntry) => {
+            if (!myCourseIds.has(j.courseId)) return;
+            const courseTitle = myCourses.find(c => c.id === j.courseId)?.title || 'Неизвестный курс';
             const eventDate = safeISODate(j.date);
             if (!eventDate) return;
-            newEvents.push({ type: 'journal', id: `journal_${j.id}`, date: eventDate, data: j, courseTitle: myCourses[i].title });
+            newEvents.push({ type: 'journal', id: `journal_${j.id}`, date: eventDate, data: j, courseTitle });
           });
-        });
+        }
 
         // Sort descending
         newEvents.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());

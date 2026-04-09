@@ -61,19 +61,17 @@ const handler: Handler = async (event: HandlerEvent) => {
     /** GET grades — fetch all grades for a course, optionally filtered by studentId/lessonId */
     if (action === 'grades' && event.httpMethod === 'GET') {
       const { courseId, studentId, lessonId } = params;
-      if (!courseId) return badRequest('courseId required');
 
       // Permission: staff sees all, student sees only own
       if (hasRole(user, 'student')) {
-        // Student can only see own grades
-        let q = orgQuery('grades', orgId)
-          .where('courseId', '==', courseId)
-          .where('studentId', '==', user.uid);
-        if (lessonId) q = q.where('lessonId', '==', lessonId);
-        const snap = await q.get();
-        return ok(snap.docs.map((d: any) => ({ id: d.id, ...d.data() })));
+        const snap = await adminDb.collection('grades').where('studentId', '==', user.uid).get();
+        let docs = snap.docs.map(d => ({ id: d.id, ...d.data() })).filter((d: any) => d.organizationId === orgId);
+        if (courseId) docs = docs.filter((d: any) => d.courseId === courseId);
+        if (lessonId) docs = docs.filter((d: any) => d.lessonId === lessonId);
+        return ok(docs);
       }
 
+      if (!courseId) return badRequest('courseId required');
       if (!isStaff(user)) return forbidden();
       const hasAccess = await verifyCourseAccess(user, courseId);
       if (!hasAccess) return forbidden();
@@ -297,17 +295,18 @@ const handler: Handler = async (event: HandlerEvent) => {
     /** GET journal entries */
     if (action === 'journal' && event.httpMethod === 'GET') {
       const { courseId, studentId, from, to } = params;
-      if (!courseId) return badRequest('courseId required');
 
       // Student: only own data
       if (hasRole(user, 'student')) {
-        let q = orgQuery('journal', orgId)
-          .where('courseId', '==', courseId)
-          .where('studentId', '==', user.uid);
-        const snap = await q.get();
-        return ok(snap.docs.map((d: any) => ({ id: d.id, ...d.data() })));
+        const snap = await adminDb.collection('journal').where('studentId', '==', user.uid).get();
+        let docs = snap.docs.map(d => ({ id: d.id, ...d.data() })).filter((d: any) => d.organizationId === orgId);
+        if (courseId) docs = docs.filter((d: any) => d.courseId === courseId);
+        if (from) docs = docs.filter((d: any) => d.date >= from);
+        if (to) docs = docs.filter((d: any) => d.date <= to);
+        return ok(docs);
       }
 
+      if (!courseId) return badRequest('courseId required');
       if (!isStaff(user)) return forbidden();
       let q: any = orgQuery('journal', orgId).where('courseId', '==', courseId);
       if (studentId) q = q.where('studentId', '==', studentId);

@@ -323,8 +323,8 @@ const gbReq = <T = any>(action: string, method = 'GET', body?: any, extra?: Reco
   apiRequest<T>('api-gradebook', method, body, { action, ...extra });
 
 // Grades
-export const orgGetGrades = (courseId: string, filters?: Record<string, string>) =>
-  gbReq('grades', 'GET', undefined, { courseId, ...filters });
+export const orgGetGrades = (courseId?: string, filters?: Record<string, string>) =>
+  gbReq('grades', 'GET', undefined, { ...(courseId ? { courseId } : {}), ...filters });
 export const orgSaveGrade = (data: any) => gbReq('grade', 'POST', data);
 export const orgBulkSaveGrades = (courseId: string, grades: any[]) =>
   gbReq('bulkGrades', 'POST', { courseId, grades });
@@ -336,8 +336,8 @@ export const orgGetGradeSchema = (courseId: string) =>
 export const orgSaveGradeSchema = (data: any) => gbReq('schema', 'POST', data);
 
 // Journal
-export const orgGetJournal = (courseId: string, filters?: Record<string, string>) =>
-  gbReq('journal', 'GET', undefined, { courseId, ...filters });
+export const orgGetJournal = (courseId?: string, filters?: Record<string, string>) =>
+  gbReq('journal', 'GET', undefined, { ...(courseId ? { courseId } : {}), ...filters });
 export const orgSaveJournal = (data: any) => gbReq('journal', 'POST', data);
 export const orgBulkAttendance = (courseId: string, date: string, entries: any[]) =>
   gbReq('bulkAttendance', 'POST', { courseId, date, entries });

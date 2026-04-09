@@ -463,7 +463,7 @@ const LessonViewPage: React.FC = () => {
                   <button 
                     onClick={handleCompleteLesson}
                     disabled={completing}
-                    className="group relative flex items-center justify-center gap-3 px-8 py-4 bg-gradient-to-r from-primary-600 to-indigo-600 hover:from-primary-500 hover:to-indigo-500 text-white font-bold rounded-2xl text-lg shadow-xl shadow-primary-500/20 hover:shadow-2xl hover:shadow-primary-500/30 hover:-translate-y-1 transition-all overflow-hidden disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
+                    className="group relative inline-flex items-center justify-center gap-3 px-8 py-4 mx-auto bg-gradient-to-r from-primary-600 to-indigo-600 hover:from-primary-500 hover:to-indigo-500 text-white font-bold rounded-2xl text-lg shadow-xl shadow-primary-500/20 hover:shadow-2xl hover:shadow-primary-500/30 hover:-translate-y-1 transition-all overflow-hidden disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
                   >
                     <div className="absolute inset-0 w-full h-full bg-white/20 skew-x-[45deg] -translate-x-full group-hover:translate-x-[200%] transition-transform duration-700 ease-out" />
                     {completing ? (

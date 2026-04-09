@@ -141,16 +141,53 @@ export default function StudentDiaryPage() {
     return { avgScore, attendanceRate, totalEvents: filteredEvents.length };
   }, [filteredEvents]);
 
-  // Group events by Day
-  const groupedEvents = useMemo(() => {
-    const groups: Record<string, TimelineEvent[]> = {};
+  // Group events by Day and Course
+  const groupedDays = useMemo(() => {
+    type DayRecord = {
+      courseId: string;
+      courseTitle: string;
+      grade?: GradeEntry;
+      journal?: JournalEntry;
+    };
+    const dayMap: Record<string, Record<string, DayRecord>> = {};
+
     filteredEvents.forEach(evt => {
       const d = new Date(evt.date);
-      const key = d.toLocaleDateString([], { day: 'numeric', month: 'long', year: 'numeric' });
-      if (!groups[key]) groups[key] = [];
-      groups[key].push(evt);
+      const yyyy = d.getFullYear();
+      const mm = String(d.getMonth() + 1).padStart(2, '0');
+      const dd = String(d.getDate()).padStart(2, '0');
+      const yyyy_mm_dd = `${yyyy}-${mm}-${dd}`;
+      
+      if (!dayMap[yyyy_mm_dd]) {
+        dayMap[yyyy_mm_dd] = {};
+      }
+      
+      const cId = evt.data.courseId;
+      if (!dayMap[yyyy_mm_dd][cId]) {
+        dayMap[yyyy_mm_dd][cId] = { courseId: cId, courseTitle: evt.courseTitle };
+      }
+
+      if (evt.type === 'grade') {
+        dayMap[yyyy_mm_dd][cId].grade = evt.data as GradeEntry;
+      } else {
+        dayMap[yyyy_mm_dd][cId].journal = evt.data as JournalEntry;
+      }
     });
-    return Object.entries(groups).map(([dateStr, items]) => ({ dateStr, items }));
+
+    const arr = Object.entries(dayMap).map(([yyyy_mm_dd, courseRecords]) => {
+       const dateObj = new Date(yyyy_mm_dd);
+       let dateStr = dateObj.toLocaleDateString([], { weekday: 'long', day: 'numeric', month: 'long' });
+       dateStr = dateStr.charAt(0).toUpperCase() + dateStr.slice(1);
+
+       return {
+         dateObj,
+         dateStr,
+         records: Object.values(courseRecords)
+       };
+    });
+
+    arr.sort((a,b) => b.dateObj.getTime() - a.dateObj.getTime());
+    return arr;
   }, [filteredEvents]);
 
   if (loading) {
@@ -167,8 +204,7 @@ export default function StudentDiaryPage() {
   if (error) {
     return (
       <div className="max-w-2xl mx-auto mt-16 p-8 bg-red-50 dark:bg-red-900/10 border border-red-100 dark:border-red-900/30 rounded-3xl text-center">
-        <AlertTriangle className="w-16 h-16 text-red-400 mx-auto mb-4" />
-        <h2 className="text-xl font-bold text-slate-900 dark:text-white mb-2">{t('common.error', 'Ошибка загрузки дневника')}</h2>
+        <div className="text-xl font-bold text-slate-900 dark:text-white mb-2">{t('common.error', 'Ошибка загрузки дневника')}</div>
         <p className="text-slate-500 dark:text-slate-400 text-sm">{error}</p>
       </div>
     );
@@ -182,7 +218,7 @@ export default function StudentDiaryPage() {
         <div className="relative z-10 flex flex-col md:flex-row items-center md:items-start justify-between gap-6">
           <div className="flex items-center gap-5">
             <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-primary-500 to-indigo-600 flex items-center justify-center shadow-lg shadow-primary-500/25 shrink-0">
-              <GraduationCap className="w-8 h-8 text-white" />
+              <BookOpen className="w-8 h-8 text-white" />
             </div>
             <div>
               <h1 className="text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight">
@@ -190,7 +226,7 @@ export default function StudentDiaryPage() {
               </h1>
               <p className="text-sm font-medium text-slate-500 dark:text-slate-400 mt-1 flex items-center gap-2">
                 <Sparkles className="w-4 h-4 text-amber-500" />
-                Ваши успехи и достижения
+                Классический школьный формат
               </p>
             </div>
           </div>
@@ -207,17 +243,16 @@ export default function StudentDiaryPage() {
             <div className="text-center md:text-left">
               <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1">Посещаемость</p>
               <div className="flex items-center gap-2">
-                <Presentation className={`w-5 h-5 ${stats.attendanceRate !== null && stats.attendanceRate >= 80 ? 'text-indigo-500' : 'text-orange-500'}`} />
+                <GraduationCap className={`w-5 h-5 ${stats.attendanceRate !== null && stats.attendanceRate >= 80 ? 'text-indigo-500' : 'text-orange-500'}`} />
                 <span className="text-2xl font-black text-slate-900 dark:text-white">{stats.attendanceRate !== null ? `${stats.attendanceRate}%` : '—'}</span>
               </div>
             </div>
           </div>
         </div>
-        {/* Decorative background blob */}
         <div className="absolute -top-24 -right-24 w-64 h-64 bg-primary-400/5 dark:bg-primary-400/10 rounded-full blur-3xl pointer-events-none" />
       </div>
 
-      {/* Filters (Scrollable Row) */}
+      {/* Filters */}
       {courses.length > 0 && (
         <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-none snap-x">
           <button
@@ -246,202 +281,101 @@ export default function StudentDiaryPage() {
         </div>
       )}
 
-      {/* Timeline Section */}
-      <div className="relative pt-4 sm:ml-4">
-        {/* Continuous left line */}
-        {groupedEvents.length > 0 && (
-          <div className="absolute top-8 bottom-0 left-[21px] sm:left-[39px] w-[3px] bg-slate-100 dark:bg-slate-800 rounded-full" />
-        )}
-        
-        {groupedEvents.length === 0 ? (
+      {/* Classic Diary View */}
+      <div className="max-w-3xl mx-auto space-y-6">
+        {groupedDays.length === 0 ? (
           <div className="py-20 text-center bg-white/50 dark:bg-slate-800/20 rounded-3xl border border-dashed border-slate-300 dark:border-slate-700 backdrop-blur-sm">
             <div className="w-20 h-20 bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center mx-auto mb-5 rotate-12 transition-transform hover:rotate-0 duration-300">
               <Calendar className="w-10 h-10 text-slate-400 dark:text-slate-500" />
             </div>
             <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-2">Здесь пока пусто</h3>
             <p className="text-sm font-medium text-slate-500 dark:text-slate-400 max-w-sm mx-auto">
-              {courses.length === 0 
-                ? 'Вы пока не зачислены ни на один курс. После зачисления здесь появится ваша история занятий.' 
-                : 'По выбранным курсам пока нет оценок или отметок о посещаемости.'}
+              По выбранным фильтрам нет оценок или отметок о посещаемости.
             </p>
           </div>
         ) : (
-          <div className="space-y-12">
-            {groupedEvents.map((group, groupIdx) => (
-              <div key={group.dateStr} className="relative z-10 slide-up" style={{ animationDelay: `${groupIdx * 100}ms` }}>
-                
-                {/* Date Group Header */}
-                <div className="flex items-center mb-6 pl-[44px] sm:pl-[84px] relative">
-                  <div className="absolute left-[13px] sm:left-[31px] w-5 h-5 rounded-full border-[4px] border-slate-50 dark:border-slate-900 bg-slate-300 dark:bg-slate-600 z-10 shadow-sm" />
-                  <span className="bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 px-4 py-1.5 rounded-full text-xs font-black uppercase tracking-widest shadow-sm">
-                    {group.dateStr}
-                  </span>
-                </div>
-
-                <div className="space-y-6">
-                  {group.items.map((evt) => {
-                    const dateObj = new Date(evt.date);
-                    const timeStr = dateObj.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-
-                    if (evt.type === 'grade') {
-                      const g = evt.data as GradeEntry;
-                      
-                      let isExcellent = false;
-                      let isGood = false;
-                      if (typeof g.value === 'number' && g.maxValue) {
-                         const pct = g.value / g.maxValue;
-                         isExcellent = pct >= 0.85;
-                         isGood = pct >= 0.7 && pct < 0.85;
-                      } else if (g.displayValue && typeof g.displayValue === 'string') {
-                         isExcellent = ['5', 'A', 'Отлично'].includes(g.displayValue);
-                         isGood = ['4', 'B', 'Хорошо'].includes(g.displayValue);
-                      }
-
-                      const gradTheme = isExcellent
-                        ? 'from-emerald-400 to-emerald-600 text-white shadow-emerald-500/30'
-                        : isGood
-                        ? 'from-blue-400 to-indigo-500 text-white shadow-blue-500/30'
-                        : 'from-amber-400 to-orange-500 text-white shadow-amber-500/30';
-                        
-                      const highlightColor = isExcellent ? 'text-emerald-500' : isGood ? 'text-blue-500' : 'text-amber-500';
-
-                      return (
-                        <div key={evt.id} className="relative flex items-center pl-[44px] sm:pl-[84px] group/item transition-all">
-                          {/* Dot */}
-                          <div className={`absolute left-[17px] sm:left-[35px] w-3 h-3 rounded-full bg-white dark:bg-slate-900 border-[3px] z-10 transition-transform group-hover/item:scale-125 ${isExcellent ? 'border-emerald-500' : isGood ? 'border-blue-500' : 'border-amber-500'}`} />
-                          
-                          {/* Time label for large screens */}
-                          <div className="hidden sm:block absolute left-0 w-[24px] text-right text-[11px] font-bold text-slate-400">
-                            {timeStr}
-                          </div>
-
-                          <div className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700/80 p-5 rounded-2xl shadow-sm hover:shadow-lg transition-all hover:-translate-y-0.5 relative overflow-hidden">
-                            {/* Subtle highligt on top edge */}
-                            <div className={`absolute top-0 left-0 w-full h-[3px] bg-gradient-to-r ${gradTheme.split(' text-')[0]}`} />
-                            
-                            <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
-                              <div className="flex items-start gap-4">
-                                <div className={`w-14 h-14 sm:w-16 sm:h-16 rounded-2xl flex items-center justify-center font-black text-xl sm:text-2xl bg-gradient-to-br shadow-md shrink-0 ${gradTheme}`}>
-                                  {g.displayValue || g.value || (g.status !== 'normal' ? g.status.substring(0,3).toUpperCase() : '?')}
-                                </div>
-                                <div className="pt-1">
-                                  <div className="flex items-center gap-2 mb-1.5">
-                                    <Award className={`w-4 h-4 ${highlightColor}`} />
-                                    <h3 className="text-base font-bold text-slate-900 dark:text-white">
-                                      Получена оценка
-                                    </h3>
-                                    <span className="sm:hidden ml-auto text-[10px] font-bold text-slate-400 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-md">
-                                      {timeStr}
-                                    </span>
-                                  </div>
-                                  <p className="text-xs font-bold text-primary-600 dark:text-primary-400 uppercase tracking-wider mb-2">
-                                    {evt.courseTitle}
-                                  </p>
-                                  {g.comment ? (
-                                    <div className="mt-2 bg-slate-50 dark:bg-slate-900/50 px-3 py-2.5 rounded-xl border border-slate-100 dark:border-slate-700/50">
-                                      <p className="text-sm text-slate-600 dark:text-slate-300 italic">"{g.comment}"</p>
-                                    </div>
-                                  ) : (
-                                    <p className="text-xs font-medium text-slate-400">Преподаватель не оставил комментарий.</p>
-                                  )}
-                                </div>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      );
-                    } else {
-                      const j = evt.data as JournalEntry;
-                      
-                      const isPresent = j.attendance === 'present';
-                      const isLate = j.attendance === 'late';
-                      const isExcused = j.attendance === 'excused';
-                      
-                      let Icon = CheckCircle2;
-                      let colorClass = 'text-emerald-500';
-                      let dotColor = 'border-emerald-500 bg-emerald-500';
-                      let bgClass = 'bg-emerald-50/50 dark:bg-emerald-900/10 border-emerald-100 dark:border-emerald-900/30';
-                      let label = 'Присутствие на занятии';
-
-                      if (!isPresent && !isLate && !isExcused) {
-                        Icon = XCircle;
-                        colorClass = 'text-red-500';
-                        dotColor = 'border-red-500 bg-red-500';
-                        bgClass = 'bg-red-50 dark:bg-red-900/10 border-red-100 dark:border-red-900/40';
-                        label = 'Пропуск занятия';
-                      } else if (isLate) {
-                        Icon = Clock;
-                        colorClass = 'text-amber-500';
-                        dotColor = 'border-amber-500 bg-amber-500';
-                        bgClass = 'bg-amber-50/50 dark:bg-amber-900/10 border-amber-100 dark:border-amber-900/30';
-                        label = 'Опоздание';
-                      } else if (isExcused) {
-                        Icon = FileWarning;
-                        colorClass = 'text-slate-500 dark:text-slate-400';
-                        dotColor = 'border-slate-400 bg-slate-400';
-                        bgClass = 'bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700';
-                        label = 'Отсутствие по ув. причине';
-                      }
-
-                      return (
-                        <div key={evt.id} className="relative flex items-center pl-[44px] sm:pl-[84px] group/item transition-all">
-                          {/* Dot - Solid filled for journal events */}
-                          <div className={`absolute left-[17px] sm:left-[35px] w-3 h-3 rounded-full border-[2px] border-white dark:border-slate-900 shadow-sm z-10 transition-transform group-hover/item:scale-125 ${dotColor}`} />
-                          
-                          {/* Time label */}
-                          <div className="hidden sm:block absolute left-0 w-[24px] text-right text-[11px] font-bold text-slate-400">
-                            {timeStr}
-                          </div>
-
-                          <div className={`w-full p-4 sm:p-5 rounded-2xl border shadow-sm hover:shadow-md transition-all relative ${bgClass}`}>
-                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                              <div>
-                                <div className="flex items-center gap-2.5 mb-1.5">
-                                  <div className={`w-7 h-7 rounded-lg flex items-center justify-center bg-white dark:bg-slate-900 shadow-sm ${colorClass}`}>
-                                    <Icon className="w-4 h-4" />
-                                  </div>
-                                  <h3 className={`text-sm sm:text-base font-extrabold ${colorClass.replace('text-', 'text-').replace('-500', '-600 dark:text-').replace('-600 dark:text-', '-400')}`}>
-                                    {label}
-                                  </h3>
-                                  <span className="sm:hidden ml-auto text-[10px] font-bold text-slate-400 bg-white/50 dark:bg-slate-900/50 px-2 py-0.5 rounded-md">
-                                    {timeStr}
-                                  </span>
-                                </div>
-                                <p className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider ml-9">
-                                  {evt.courseTitle}
-                                </p>
-                              </div>
-
-                              {j.participation && isPresent && (
-                                <div className={`self-start sm:self-center px-3 py-1.5 rounded-xl border text-[11px] font-bold tracking-wide flex items-center gap-1.5 ${
-                                  j.participation === 'high' ? 'bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-900/40 dark:text-emerald-300 dark:border-emerald-800/50' :
-                                  j.participation === 'medium' ? 'bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-900/40 dark:text-blue-300 dark:border-blue-800/50' :
-                                  'bg-slate-100 text-slate-700 border-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700'
-                                }`}>
-                                  <Activity className="w-3 h-3" />
-                                  Активность: {
-                                    j.participation === 'high' ? 'Высокая' : 
-                                    j.participation === 'medium' ? 'Средняя' : 'Низкая'
-                                  }
-                                </div>
-                              )}
-                            </div>
-                            
-                            {j.note && (
-                              <div className="mt-4 ml-0 sm:ml-9 bg-white/60 dark:bg-slate-900/40 p-3 rounded-xl border border-black/5 dark:border-white/5 text-sm text-slate-700 dark:text-slate-300 flex items-start gap-2.5">
-                                <MessageSquare className="w-4 h-4 text-slate-400 shrink-0 mt-0.5" />
-                                <p className="italic font-medium leading-relaxed">"{j.note}"</p>
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      );
-                    }
-                  })}
-                </div>
+          groupedDays.map((day, dIdx) => (
+            <div key={day.dateStr} className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700/80 rounded-3xl shadow-sm overflow-hidden slide-up" style={{ animationDelay: `${dIdx * 100}ms` }}>
+              {/* Day Header */}
+              <div className="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-100 dark:border-slate-700/80 px-6 py-4 flex items-center gap-3">
+                <div className="w-2 h-6 bg-primary-500 rounded-full" />
+                <h2 className="text-lg font-bold text-slate-900 dark:text-white">
+                  {day.dateStr}
+                </h2>
               </div>
-            ))}
-          </div>
+              
+              {/* Lessons/Records list */}
+              <div className="divide-y divide-slate-100 dark:divide-slate-700/50">
+                {day.records.map((rec, rIdx) => {
+                  
+                  // Evaluate Attendance
+                  const j = rec.journal;
+                  let attBadge = null;
+                  if (j) {
+                    if (j.attendance === 'absent') attBadge = <span className="flex items-center gap-1.5 text-xs font-bold px-2.5 py-1 rounded-md bg-red-50 text-red-600 dark:bg-red-900/20 dark:text-red-400"><XCircle className="w-3.5 h-3.5" />Пропуск</span>;
+                    else if (j.attendance === 'late') attBadge = <span className="flex items-center gap-1.5 text-xs font-bold px-2.5 py-1 rounded-md bg-amber-50 text-amber-600 dark:bg-amber-900/20 dark:text-amber-400"><Clock className="w-3.5 h-3.5" />Опоздание</span>;
+                    else if (j.attendance === 'excused') attBadge = <span className="flex items-center gap-1.5 text-xs font-bold px-2.5 py-1 rounded-md bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400"><FileWarning className="w-3.5 h-3.5" />Ув. причина</span>;
+                    else if (j.attendance === 'present' && j.participation) {
+                      attBadge = <span className="flex items-center gap-1 text-xs font-bold px-2 py-1 rounded-md bg-emerald-50 text-emerald-600 dark:bg-emerald-900/20 dark:text-emerald-400"><Activity className="w-3.5 h-3.5" /> {j.participation}</span>;
+                    }
+                  }
+
+                  // Evaluate Grade
+                  const g = rec.grade;
+                  let gradeBox = null;
+                  if (g) {
+                    let isHighGrade = false;
+                    let isMidGrade = false;
+                    if (typeof g.value === 'number' && g.maxValue) {
+                      const p = g.value / g.maxValue;
+                      isHighGrade = p >= 0.85;
+                      isMidGrade = p >= 0.7 && p < 0.85;
+                    } else if (g.displayValue && typeof g.displayValue === 'string') {
+                      isHighGrade = ['5', 'A', 'Отлично'].includes(g.displayValue);
+                      isMidGrade = ['4', 'B', 'Хорошо'].includes(g.displayValue);
+                    }
+                    
+                    const bgClr = isHighGrade ? 'bg-emerald-50 border-emerald-200 text-emerald-700 dark:bg-emerald-500/10 dark:border-emerald-500/30 dark:text-emerald-400' 
+                                : isMidGrade ? 'bg-blue-50 border-blue-200 text-blue-700 dark:bg-blue-500/10 dark:border-blue-500/30 dark:text-blue-400' 
+                                : 'bg-amber-50 border-amber-200 text-amber-700 dark:bg-amber-500/10 dark:border-amber-500/30 dark:text-amber-400';
+
+                    gradeBox = (
+                      <div className={`w-12 h-12 flex items-center justify-center rounded-xl border-2 font-black text-xl shrink-0 shadow-sm ${bgClr}`}>
+                        {g.displayValue || g.value || (g.status !== 'normal' ? g.status.substring(0,3).toUpperCase() : '?')}
+                      </div>
+                    );
+                  } else {
+                    gradeBox = <div className="w-12 h-12 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex items-center justify-center text-slate-300 dark:text-slate-600 font-bold text-sm shrink-0">—</div>;
+                  }
+
+                  const noteText = g?.comment || j?.note;
+
+                  return (
+                    <div key={rec.courseId + rIdx} className="p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:bg-slate-50/50 dark:hover:bg-slate-800/20 transition-colors">
+                       <div className="flex-1 min-w-0">
+                         <div className="flex items-center gap-3 mb-1.5">
+                           <h3 className="font-bold text-slate-800 dark:text-white text-base truncate">{rec.courseTitle}</h3>
+                           {attBadge}
+                         </div>
+                         {noteText ? (
+                           <div className="flex items-start gap-1.5 mt-2 bg-slate-50 dark:bg-slate-900/50 p-2.5 rounded-lg border border-slate-100 dark:border-slate-800">
+                             <MessageSquare className="w-4 h-4 text-slate-400 shrink-0 mt-0.5" />
+                             <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-300 italic">"{noteText}"</p>
+                           </div>
+                         ) : (
+                           <p className="text-xs font-semibold text-slate-400 dark:text-slate-500">Заметок нет</p>
+                         )}
+                       </div>
+
+                       <div className="flex items-center justify-end self-end sm:self-center pl-4 border-l border-slate-100 dark:border-slate-700/50">
+                          {gradeBox}
+                       </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          ))
         )}
       </div>
 

@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../contexts/AuthContext';
-import { orgGetCourses } from '../../lib/api';
+import { orgGetCourses, orgGetGroups } from '../../lib/api';
 import { FolderOpen, Users, BookOpen } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import StudentOrgFilter from '../../components/ui/StudentOrgFilter';
@@ -13,6 +13,7 @@ const StudentCoursesPage: React.FC = () => {
   const navigate = useNavigate();
   
   const [courses, setCourses] = useState<Course[]>([]);
+  const [allGroups, setAllGroups] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -22,10 +23,12 @@ const StudentCoursesPage: React.FC = () => {
     const loadData = async () => {
       try {
         setLoading(true);
-        const allCourses = await orgGetCourses();
-
-        // Filter courses - show ALL courses for the student to choose from!
-        setCourses(allCourses);
+        const [groupsData, coursesData] = await Promise.all([
+          orgGetGroups(),
+          orgGetCourses()
+        ]);
+        setAllGroups(groupsData);
+        setCourses(coursesData);
       } catch (err: any) {
         setError(err.message || t('common.loadError', 'Ошибка загрузки'));
       } finally {
@@ -35,6 +38,25 @@ const StudentCoursesPage: React.FC = () => {
 
     loadData();
   }, [profile?.uid, profile?.activeOrgId]);
+
+  const getTeacherCount = (course: Course) => {
+    const courseGroups = allGroups.filter((g: any) => g.courseId === course.id);
+    const teacherSet = new Set<string>();
+    
+    // Add teachers from groups
+    courseGroups.forEach((g: any) => {
+      if (Array.isArray(g.teacherIds)) {
+        g.teacherIds.forEach((tId: string) => teacherSet.add(tId));
+      }
+    });
+    
+    // Add teachers directly assigned to the course (if any)
+    if (Array.isArray(course.teacherIds)) {
+      course.teacherIds.forEach(tId => teacherSet.add(tId));
+    }
+    
+    return teacherSet.size;
+  };
 
   if (loading) {
     return (
@@ -122,7 +144,7 @@ const StudentCoursesPage: React.FC = () => {
                   </div>
                   <div className="flex items-center gap-1.5">
                     <Users className="w-4 h-4 text-slate-400" />
-                    <span>{course.teacherIds?.length || 0} {t('studentCourses.teachers', 'Преподавателей')}</span>
+                    <span>{getTeacherCount(course)} {t('studentCourses.teachers', 'Преподавателей')}</span>
                   </div>
                 </div>
               </div>

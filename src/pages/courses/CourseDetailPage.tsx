@@ -214,7 +214,15 @@ const CourseDetailPage: React.FC = () => {
               </h1>
               
               <p className="text-base text-slate-500 dark:text-slate-400 leading-relaxed mb-8">
-                {course.description || 'Описание курса не добавлено. Добавьте описание, чтобы студентам было проще понять, о чем курс.'}
+                {course.description ? (
+                  course.description
+                ) : (
+                  <span className="italic opacity-80">
+                    {isStudent 
+                      ? t('studentCourses.noDescription', 'У этого курса пока нет описания.')
+                      : 'Описание курса не добавлено. Добавьте описание, чтобы студентам было проще понять, о чем курс.'}
+                  </span>
+                )}
               </p>
 
               <div className="flex flex-wrap items-center gap-4">

@@ -254,6 +254,7 @@ export const orgGetCourse = (id: string) => orgReq('course', 'GET', undefined, {
 export const orgCreateCourse = (data: any) => orgReq('createCourse', 'POST', data);
 export const orgUpdateCourse = (data: any) => orgReq('updateCourse', 'POST', data);
 export const orgDeleteCourse = (id: string) => orgReq('deleteCourse', 'POST', { id });
+export const orgEnrollInCourse = (courseId: string) => orgReq('enrollInCourse', 'POST', { courseId });
 
 // Groups
 export const orgGetGroups = (courseId?: string) => orgReq('groups', 'GET', undefined, courseId ? { courseId } : undefined);

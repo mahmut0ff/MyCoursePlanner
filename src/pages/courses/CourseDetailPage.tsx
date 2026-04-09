@@ -1,17 +1,19 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { orgGetCourse, orgUpdateCourse, orgDeleteCourse, orgGetGroups, orgCreateGroup } from '../../lib/api';
+import { orgGetCourse, orgUpdateCourse, orgDeleteCourse, orgGetGroups, orgCreateGroup, orgEnrollInCourse, orgEnrollInGroup } from '../../lib/api';
 import { ArrowLeft, BookOpen, Calendar, Users, FileText, Edit, Trash2, Plus, MessageSquare, Coins, LayoutGrid } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import type { Course, Group } from '../../types';
+import toast from 'react-hot-toast';
 
 const CourseDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { t } = useTranslation();
-  const { role } = useAuth();
+  const { role, profile } = useAuth();
   const isAdmin = role === 'admin';
+  const isStudent = role === 'student';
 
   const [course, setCourse] = useState<Course | null>(null);
   const [groups, setGroups] = useState<Group[]>([]);
@@ -119,6 +121,35 @@ const CourseDetailPage: React.FC = () => {
     });
   };
 
+  const handleEnrollCourse = async () => {
+    if (!course) return;
+    setSaving(true);
+    try {
+      await orgEnrollInCourse(course.id);
+      toast.success(t('studentDashboard.courseJoinSuccess', 'Заявка на курс отправлена администратору!'));
+    } catch (e: any) {
+      toast.error(e.message || 'Ошибка отправки заявки');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleEnrollGroup = async (groupId: string) => {
+    setSaving(true);
+    try {
+      await orgEnrollInGroup(groupId);
+      toast.success(t('studentDashboard.groupJoinSuccess', 'Заявка в группу отправлена или вы успешно добавлены!'));
+      // re-load groups to update UI
+      const g = await orgGetGroups();
+      setAllGroups(g);
+      setGroups(g.filter((gg: Group) => gg.courseId === course?.id));
+    } catch (e: any) {
+      toast.error(e.message || 'Ошибка');
+    } finally {
+      setSaving(false);
+    }
+  };
+
   if (loading) return (
     <div className="flex items-center justify-center min-h-[60vh]">
       <div className="w-10 h-10 border-4 border-slate-200 border-t-slate-800 rounded-full animate-spin dark:border-slate-700 dark:border-t-white" />
@@ -202,6 +233,16 @@ const CourseDetailPage: React.FC = () => {
                   </div>
                 )}
               </div>
+
+              {isStudent && (
+                 <button 
+                   onClick={handleEnrollCourse} 
+                   disabled={saving}
+                   className="mt-6 w-full sm:w-auto px-8 py-3 bg-violet-600 hover:bg-violet-700 text-white rounded-xl font-bold transition-all shadow-md active:scale-[0.98] disabled:opacity-50"
+                 >
+                   Выбрать этот курс
+                 </button>
+              )}
             </div>
 
             {/* Stats Keycards Grid */}
@@ -280,10 +321,37 @@ const CourseDetailPage: React.FC = () => {
                   </div>
                 </div>
                 {group.chatLinkUrl && (
-                  <div className="pt-3 border-t border-slate-100 dark:border-slate-700/50 flex items-center gap-2 text-xs font-semibold text-blue-600 dark:text-blue-400">
-                    <MessageSquare className="w-3.5 h-3.5" />
-                    {group.chatLinkTitle || 'Чат группы'}
+                  <div className="pt-3 border-t border-slate-100 dark:border-slate-700/50 flex items-center justify-between">
+                    <div className="flex items-center gap-2 text-xs font-semibold text-blue-600 dark:text-blue-400">
+                      <MessageSquare className="w-3.5 h-3.5" />
+                      {group.chatLinkTitle || 'Чат группы'}
+                    </div>
+                    {isStudent && !group.studentIds?.includes(profile?.uid as string) && (
+                      <button 
+                         onClick={(e) => { e.stopPropagation(); handleEnrollGroup(group.id); }}
+                         className="px-3 py-1 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg text-xs font-bold transition-colors shadow-sm"
+                      >
+                         Вступить
+                      </button>
+                    )}
+                    {isStudent && group.studentIds?.includes(profile?.uid as string) && (
+                      <span className="text-[10px] font-bold text-emerald-600 bg-emerald-100 px-2 py-0.5 rounded-md">Вы тут</span>
+                    )}
                   </div>
+                )}
+                {!group.chatLinkUrl && isStudent && (
+                   <div className="pt-3 border-t border-slate-100 dark:border-slate-700/50 flex justify-end">
+                     {!group.studentIds?.includes(profile?.uid as string) ? (
+                        <button 
+                           onClick={(e) => { e.stopPropagation(); handleEnrollGroup(group.id); }}
+                           className="px-3 py-1 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg text-xs font-bold transition-colors shadow-sm"
+                        >
+                           Вступить
+                        </button>
+                     ) : (
+                        <span className="text-[10px] font-bold text-emerald-600 bg-emerald-100 px-2 py-0.5 rounded-md">Вы тут</span>
+                     )}
+                   </div>
                 )}
               </div>
             ))}

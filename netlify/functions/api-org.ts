@@ -10,7 +10,7 @@ import {
   resolveBranchFilter,
   type AuthUser,
 } from './utils/auth';
-import { createNotification } from './utils/notifications';
+import { createNotification, notifyOrgAdmins } from './utils/notifications';
 import { FieldValue } from 'firebase-admin/firestore';
 import { getOrgLimits } from './utils/plan-limits';
 /* ═══════════════════════════════════════════════ */
@@ -281,7 +281,23 @@ const handler: Handler = async (event: HandlerEvent) => {
       // Synchronize payment plans
       await syncPaymentPlans(orgId, groupData.branchId || null, groupData.courseId, [user.uid]).catch(console.error);
 
+      await notifyOrgAdmins(orgId, 'added_to_group', 'Новая заявка в группу', `Студент ${user.displayName || user.email} записался в группу ${groupData.name}`);
+
       return ok({ enrolled: true, groupId: body.groupId });
+    }
+
+    if (action === 'enrollInCourse') {
+      const body = JSON.parse(event.body || '{}');
+      if (!body.courseId) return badRequest('courseId required');
+
+      const courseDoc = await adminDb.collection('courses').doc(body.courseId).get();
+      if (!courseDoc.exists || courseDoc.data()?.organizationId !== orgId) return notFound('Course not found');
+      
+      const courseData = courseDoc.data()!;
+      
+      await notifyOrgAdmins(orgId, 'added_to_group', 'Заявка на курс', `Студент ${user.displayName || user.email} хочет записаться на курс ${courseData.title}.`);
+
+      return ok({ requested: true, courseId: body.courseId });
     }
 
     // ═══ STUDENTS (users with role=student in this org) ═══

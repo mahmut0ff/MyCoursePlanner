@@ -6,7 +6,8 @@ import {
   orgInviteUser,
   apiGetOrgMembers,
   apiAcceptMembership,
-  apiRejectMembership
+  apiRejectMembership,
+  orgGetGroups
 } from '../../lib/api';
 import { usePlanGate } from '../../contexts/PlanContext';
 import { useAuth } from '../../contexts/AuthContext';
@@ -17,7 +18,7 @@ import type { UserProfile } from '../../types';
 const TeachersPage: React.FC = () => {
   const { t } = useTranslation();
   const { limits } = usePlanGate();
-  const { profile } = useAuth();
+  const { profile, role } = useAuth();
   const navigate = useNavigate();
 
   const [activeTab, setActiveTab] = useState<'teachers' | 'applications'>('teachers');
@@ -35,19 +36,26 @@ const TeachersPage: React.FC = () => {
   const [success, setSuccess] = useState('');
   const [inviteEmail, setInviteEmail] = useState('');
 
-  const loadTeachers = () => {
+  const loadTeachers = async () => {
     setLoading(true);
     setError('');
-    orgGetTeachers()
-      .then((data: any) => {
-        // Filter to show only teachers (extra safety)
-        const teachersOnly = (Array.isArray(data) ? data : []).filter(
-          (u: any) => u.role === 'teacher'
-        );
-        setTeachers(teachersOnly);
-      })
-      .catch((e: any) => setError(e.message || 'Error'))
-      .finally(() => setLoading(false));
+    try {
+      const data: any = await orgGetTeachers();
+      let teachersOnly = (Array.isArray(data) ? data : []).filter(
+        (u: any) => u.role === 'teacher'
+      );
+      if (role === 'student' && profile?.uid) {
+        const groups: any[] = await orgGetGroups().catch(() => []);
+        const myGroups = groups.filter((g: any) => g.studentIds?.includes(profile.uid));
+        const myTeacherIds = new Set(myGroups.flatMap((g: any) => g.teacherIds || []));
+        teachersOnly = teachersOnly.filter((t: any) => myTeacherIds.has(t.uid));
+      }
+      setTeachers(teachersOnly);
+    } catch (e: any) {
+      setError(e.message || 'Error');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const loadApplications = async () => {

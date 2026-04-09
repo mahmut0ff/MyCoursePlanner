@@ -6,12 +6,13 @@ import { usePlanGate } from '../../contexts/PlanContext';
 import { 
   orgGetStudents, 
   orgGetGroups,
+  orgCreateStudent,
   apiGetOrgMembers,
   apiAcceptMembership,
   apiRejectMembership,
   apiDeleteMember
 } from '../../lib/api';
-import { Users, Search, Mail, RefreshCw, CheckCircle, XCircle, UserPlus, Phone, Filter, X, ChevronDown, SortAsc, SortDesc, Trash2 } from 'lucide-react';
+import { Users, Search, Mail, RefreshCw, CheckCircle, XCircle, UserPlus, Phone, Filter, X, ChevronDown, SortAsc, SortDesc, Trash2, Lock, Plus } from 'lucide-react';
 import type { UserProfile, Group } from '../../types';
 import toast from 'react-hot-toast';
 import { PinnedBadgesDisplay } from '../../lib/badges';
@@ -47,6 +48,15 @@ const StudentsPage: React.FC = () => {
 
   const [error, setError] = useState('');
 
+  // Create student modal
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [createForm, setCreateForm] = useState({ displayName: '', email: '', password: '', phone: '' });
+  const [creating, setCreating] = useState(false);
+
+  // Pagination
+  const [page, setPage] = useState(1);
+  const pageSize = 50;
+
   const loadStudents = () => { 
     setLoading(true); 
     setError(''); 
@@ -81,6 +91,9 @@ const StudentsPage: React.FC = () => {
     loadGroups();
     loadApplications();
   }, [profile?.activeOrgId]);
+
+  // Reset page when filters change
+  useEffect(() => setPage(1), [search, selectedGroup, statusFilter, sortField, sortDir]);
 
   // Filtered & sorted students
   const filteredStudents = useMemo(() => {
@@ -174,6 +187,27 @@ const StudentsPage: React.FC = () => {
     setSortDir('asc');
   };
 
+  const handleCreateStudent = async () => {
+    if (!createForm.displayName || !createForm.password) return;
+    setCreating(true);
+    try {
+      await orgCreateStudent(createForm);
+      toast.success(t('org.students.created', 'Студент создан!'));
+      setShowCreateModal(false);
+      setCreateForm({ displayName: '', email: '', password: '', phone: '' });
+      loadStudents();
+    } catch (e: any) {
+      toast.error(e.message || 'Error');
+    } finally {
+      setCreating(false);
+    }
+  };
+
+  // Pagination computation
+  const totalPages = Math.max(1, Math.ceil(filteredStudents.length / pageSize));
+  const safePage = Math.min(page, totalPages);
+  const paginatedStudents = filteredStudents.slice((safePage - 1) * pageSize, safePage * pageSize);
+
   const handleDeleteExpelled = async (e: React.MouseEvent, uid: string) => {
     e.stopPropagation();
     if (!profile?.activeOrgId) return;
@@ -208,9 +242,15 @@ const StudentsPage: React.FC = () => {
             {activeTab === 'students' ? `${students.length} ${t('org.students.total')}` : `${applications.length} ${t('org.students.applicationsCount', 'заявок')}`}
           </p>
         </div>
-        <button onClick={() => { loadStudents(); loadGroups(); loadApplications(); }} className="p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors">
-          <RefreshCw className="w-3.5 h-3.5" />
-        </button>
+        <div className="flex items-center gap-2">
+          <button onClick={() => setShowCreateModal(true)} className="flex items-center gap-1.5 px-3 py-1.5 bg-primary-600 hover:bg-primary-700 text-white text-[11px] font-bold rounded-lg transition-colors shadow-sm">
+            <Plus className="w-3.5 h-3.5" />
+            {t('org.students.create', 'Добавить студента')}
+          </button>
+          <button onClick={() => { loadStudents(); loadGroups(); loadApplications(); }} className="p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors">
+            <RefreshCw className="w-3.5 h-3.5" />
+          </button>
+        </div>
       </div>
 
       {/* Tabs */}
@@ -383,7 +423,7 @@ const StudentsPage: React.FC = () => {
                   <th className="text-left text-[10px] font-medium text-slate-500 uppercase tracking-wider px-4 py-2">{t('common.status')}</th>
                 </tr></thead>
                 <tbody className="divide-y divide-slate-50 dark:divide-slate-700/30">
-                  {filteredStudents.map((s) => {
+                  {paginatedStudents.map((s) => {
                     const studentGroupNames = getStudentGroups(s.uid);
                     return (
                       <tr key={s.uid} onClick={() => navigate(`/students/${s.uid}`)} className="hover:bg-slate-50/80 dark:hover:bg-slate-700/20 cursor-pointer transition-colors">
@@ -444,6 +484,20 @@ const StudentsPage: React.FC = () => {
               </table>
             </div>
           )}
+
+          {/* Pagination */}
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between mt-3 px-1">
+              <p className="text-[11px] text-slate-500">
+                {(safePage - 1) * pageSize + 1}–{Math.min(safePage * pageSize, filteredStudents.length)} из {filteredStudents.length}
+              </p>
+              <div className="flex items-center gap-1">
+                <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={safePage <= 1} className="px-2.5 py-1 text-[11px] font-medium rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 disabled:opacity-40 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors">←</button>
+                <span className="text-[11px] font-medium text-slate-500 px-2">{safePage} / {totalPages}</span>
+                <button onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={safePage >= totalPages} className="px-2.5 py-1 text-[11px] font-medium rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 disabled:opacity-40 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors">→</button>
+              </div>
+            </div>
+          )}
         </>
       )}
 
@@ -492,6 +546,46 @@ const StudentsPage: React.FC = () => {
               </tbody>
             </table>
           )}
+        </div>
+      )}
+
+      {/* Create Student Modal */}
+      {showCreateModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4" onClick={() => setShowCreateModal(false)}>
+          <div className="bg-white dark:bg-slate-800 rounded-2xl w-full max-w-sm shadow-2xl overflow-hidden" onClick={e => e.stopPropagation()}>
+            <div className="p-5 border-b border-slate-100 dark:border-slate-700">
+              <h2 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                <UserPlus className="w-5 h-5 text-primary-500" />
+                {t('org.students.createTitle', 'Добавить студента')}
+              </h2>
+              <p className="text-xs text-slate-500 mt-1">{t('org.students.createDesc', 'Для учеников, которые не могут зарегистрироваться сами')}</p>
+            </div>
+            <div className="p-5 space-y-3">
+              <div>
+                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1 block">{t('common.name', 'Имя')} *</label>
+                <input autoFocus value={createForm.displayName} onChange={e => setCreateForm(f => ({ ...f, displayName: e.target.value }))} placeholder={t('org.students.namePlaceholder', 'Иван Иванов')} className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-sm outline-none focus:border-primary-500 transition-colors" />
+              </div>
+              <div>
+                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1 block">Email <span className="text-slate-400 normal-case">(необязательно)</span></label>
+                <input value={createForm.email} onChange={e => setCreateForm(f => ({ ...f, email: e.target.value }))} placeholder="student@example.com" className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-sm outline-none focus:border-primary-500 transition-colors" />
+              </div>
+              <div>
+                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1 block flex items-center gap-1"><Lock className="w-3 h-3" /> {t('common.password', 'Пароль')} *</label>
+                <input type="password" value={createForm.password} onChange={e => setCreateForm(f => ({ ...f, password: e.target.value }))} placeholder="min 6 символов" className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-sm outline-none focus:border-primary-500 transition-colors" />
+              </div>
+              <div>
+                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1 block">{t('common.phone', 'Телефон')}</label>
+                <input value={createForm.phone} onChange={e => setCreateForm(f => ({ ...f, phone: e.target.value }))} placeholder="+996 ..." className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-sm outline-none focus:border-primary-500 transition-colors" />
+              </div>
+            </div>
+            <div className="p-5 border-t border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 flex justify-end gap-2">
+              <button onClick={() => setShowCreateModal(false)} className="px-4 py-2 text-xs font-bold text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors">{t('common.cancel', 'Отмена')}</button>
+              <button onClick={handleCreateStudent} disabled={creating || !createForm.displayName || !createForm.password || createForm.password.length < 6} className="px-5 py-2 bg-primary-600 hover:bg-primary-700 text-white text-xs font-bold rounded-lg transition-colors disabled:opacity-50 flex items-center gap-1.5 shadow-sm">
+                {creating ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Plus className="w-3.5 h-3.5" />}
+                {creating ? t('common.loading', 'Создание...') : t('common.create', 'Создать')}
+              </button>
+            </div>
+          </div>
         </div>
       )}
 

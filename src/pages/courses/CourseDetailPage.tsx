@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { orgGetCourses, orgUpdateCourse, orgDeleteCourse, orgGetGroups, orgCreateGroup } from '../../lib/api';
+import { orgGetCourse, orgUpdateCourse, orgDeleteCourse, orgGetGroups, orgCreateGroup } from '../../lib/api';
 import { ArrowLeft, BookOpen, Calendar, Users, FileText, Edit, Trash2, Plus, MessageSquare, Coins, LayoutGrid } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import type { Course, Group } from '../../types';
@@ -38,10 +38,9 @@ const CourseDetailPage: React.FC = () => {
   const loadData = () => {
     if (!id) return;
     setLoading(true);
-    Promise.all([orgGetCourses(), orgGetGroups()])
-      .then(([allCourses, allGroups]) => {
-        const found = allCourses.find((c: Course) => c.id === id) || null;
-        setCourse(found);
+    Promise.all([orgGetCourse(id), orgGetGroups()])
+      .then(([found, allGroupsData]) => {
+        setCourse(found || null);
         if (found) {
           setEditForm({ 
             title: found.title, 
@@ -52,8 +51,8 @@ const CourseDetailPage: React.FC = () => {
             paymentFormat: found.paymentFormat || 'monthly', 
             durationMonths: found.durationMonths || 1 
           });
-          setAllGroups(allGroups);
-          setGroups(allGroups.filter((g: Group) => g.courseId === found.id));
+          setAllGroups(allGroupsData);
+          setGroups(allGroupsData.filter((g: Group) => g.courseId === found.id));
         }
       })
       .finally(() => setLoading(false));

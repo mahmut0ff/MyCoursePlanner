@@ -37,19 +37,23 @@ async function syncPaymentPlans(orgId: string, branchId: string | null, courseId
   
   if (!courseData.price || courseData.price <= 0) return; // Free course
 
-  for (const studentId of studentIds) {
-    const existing = await adminDb.collection('studentPaymentPlans')
-      .where('organizationId', '==', orgId)
-      .where('courseId', '==', courseId)
-      .where('studentId', '==', studentId)
-      .limit(1).get();
+  // One bulk query instead of N individual queries
+  const existingSnap = await adminDb.collection('studentPaymentPlans')
+    .where('organizationId', '==', orgId)
+    .where('courseId', '==', courseId)
+    .get();
+  const existingStudentIds = new Set(existingSnap.docs.map(d => d.data().studentId));
 
-    if (existing.empty) {
-      await adminDb.collection('studentPaymentPlans').add({
+  // Collect new plans to create
+  const newPlans: any[] = [];
+  for (const studentId of studentIds) {
+    if (!existingStudentIds.has(studentId)) {
+      newPlans.push({
         organizationId: orgId,
         branchId: branchId || null,
         studentId,
         courseId,
+        courseName: courseData.title || '',
         totalAmount: courseData.price,
         paidAmount: 0,
         status: 'pending',
@@ -58,6 +62,16 @@ async function syncPaymentPlans(orgId: string, branchId: string | null, courseId
         updatedAt: now(),
       });
     }
+  }
+
+  // Batch write (max 499 per batch)
+  for (let i = 0; i < newPlans.length; i += 499) {
+    const batch = adminDb.batch();
+    const slice = newPlans.slice(i, i + 499);
+    for (const plan of slice) {
+      batch.set(adminDb.collection('studentPaymentPlans').doc(), plan);
+    }
+    await batch.commit();
   }
 }
 
@@ -119,6 +133,9 @@ const handler: Handler = async (event: HandlerEvent) => {
         lessonIds: body.lessonIds || [],
         status: body.status || 'draft',
         coverImageUrl: body.coverImageUrl || '',
+        price: body.price || 0,
+        paymentFormat: body.paymentFormat || 'one-time',
+        durationMonths: body.durationMonths || 0,
         createdAt: now(), updatedAt: now(),
       };
       const ref = await adminDb.collection('courses').add(data);
@@ -201,16 +218,35 @@ const handler: Handler = async (event: HandlerEvent) => {
       if (!body.id) return badRequest('id required');
       const doc = await adminDb.collection('groups').doc(body.id).get();
       if (!doc.exists || doc.data()?.organizationId !== orgId) return notFound();
+      const oldData = doc.data()!;
       const { id, ...fields } = body;
       fields.updatedAt = now();
       await adminDb.collection('groups').doc(id).update(fields);
       const updated = await adminDb.collection('groups').doc(id).get();
       const updatedData = updated.data()!;
       
-      // Auto-generate payment plans for newly added students
       if (fields.studentIds) {
-        // Technically syncPaymentPlans handles idempotency, so we can just pass all current studentIds
+        // Auto-generate payment plans for newly added students
         await syncPaymentPlans(orgId, updatedData.branchId || null, updatedData.courseId, fields.studentIds).catch(console.error);
+        
+        // Cancel pending payment plans for removed students
+        const oldStudents: string[] = oldData.studentIds || [];
+        const newStudents: string[] = fields.studentIds || [];
+        const removedStudents = oldStudents.filter((sid: string) => !newStudents.includes(sid));
+        if (removedStudents.length > 0 && updatedData.courseId) {
+          const plansSnap = await adminDb.collection('studentPaymentPlans')
+            .where('organizationId', '==', orgId)
+            .where('courseId', '==', updatedData.courseId)
+            .get();
+          const cancelBatch = adminDb.batch();
+          plansSnap.docs.forEach(d => {
+            const pd = d.data();
+            if (removedStudents.includes(pd.studentId) && pd.status === 'pending' && (pd.paidAmount || 0) === 0) {
+              cancelBatch.update(d.ref, { status: 'cancelled', updatedAt: now() });
+            }
+          });
+          await cancelBatch.commit().catch(console.error);
+        }
       }
 
       return ok({ id, ...updatedData });
@@ -303,7 +339,7 @@ const handler: Handler = async (event: HandlerEvent) => {
     if (action === 'createStudent') {
       if (!hasRole(user, 'admin')) return forbidden();
       const body = JSON.parse(event.body || '{}');
-      if (!body.email || !body.displayName || !body.password) return badRequest('email, displayName and password required');
+      if (!body.displayName || !body.password) return badRequest('displayName and password required');
 
       // Check student limit
       const limits = await getOrgLimits(orgId);
@@ -314,27 +350,54 @@ const handler: Handler = async (event: HandlerEvent) => {
         }
       }
 
+      // For children without email, auto-generate a placeholder
+      const email = body.email || `student_${Date.now()}@org.local`;
+
       try {
-        // Check if user already exists in Firestore
-        const existing = await adminDb.collection('users').where('email', '==', body.email).get();
-        if (!existing.empty) return badRequest('User with this email already exists');
-        // Create Firebase Auth user
+        if (body.email) {
+          const existing = await adminDb.collection('users').where('email', '==', body.email).get();
+          if (!existing.empty) return badRequest('User with this email already exists');
+        }
         const authUser = await adminAuth.createUser({
-          email: body.email,
+          email,
           password: body.password,
           displayName: body.displayName,
         });
-        // Create Firestore user profile
         const profile = {
-          email: body.email,
+          email,
           displayName: body.displayName,
           role: 'student',
           organizationId: orgId,
+          activeOrgId: orgId,
           phone: body.phone || '',
+          createdByOrg: true,
           createdAt: now(),
           updatedAt: now(),
         };
         await adminDb.collection('users').doc(authUser.uid).set(profile);
+
+        // Create orgMembers entry so student appears in all lists
+        await adminDb.collection('orgMembers').doc(orgId).collection('members').doc(authUser.uid).set({
+          userId: authUser.uid,
+          userEmail: email,
+          userName: body.displayName,
+          role: 'student',
+          status: 'active',
+          branchIds: body.branchIds || [],
+          primaryBranchId: body.primaryBranchId || null,
+          createdByOrg: true,
+          joinedAt: now()
+        });
+
+        // Create membership sub-doc on user for role resolution
+        await adminDb.collection('users').doc(authUser.uid).collection('memberships').doc(orgId).set({
+          role: 'student',
+          status: 'active',
+          branchIds: body.branchIds || [],
+          primaryBranchId: body.primaryBranchId || null,
+          joinedAt: now()
+        });
+
         return ok({ uid: authUser.uid, ...profile });
       } catch (e: any) {
         if (e.code === 'auth/email-already-exists') return badRequest('Email already registered in authentication system');
@@ -755,9 +818,15 @@ const handler: Handler = async (event: HandlerEvent) => {
 
     // ═══ ORG USERS ═══
     if (action === 'orgUsers') {
-      const snap = await adminDb.collection('users')
-        .where('organizationId', '==', orgId).get();
-      return ok(snap.docs.map((d: any) => ({ uid: d.id, ...d.data() })));
+      const snap = await adminDb.collection('orgMembers').doc(orgId)
+        .collection('members')
+        .where('status', '==', 'active')
+        .get();
+      const members = snap.docs.map((d: any) => {
+        const data = d.data();
+        return { uid: data.userId, displayName: data.userName, email: data.userEmail, role: data.role, branchIds: data.branchIds || [], status: data.status || 'active' };
+      });
+      return ok(members);
     }
 
     if (action === 'updateUserRole') {

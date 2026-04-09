@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { orgGetGroups, orgGetCourses, orgUpdateGroup, orgGetTeachers, orgGetStudents } from '../../lib/api';
+import { orgGetGroup, orgGetCourses, orgUpdateGroup, orgGetTeachers, orgGetStudents } from '../../lib/api';
 import { ArrowLeft, Users, BookOpen, Calendar, Link as LinkIcon, Edit2, Check, X, Plus, Briefcase, GraduationCap } from 'lucide-react';
 import type { Group, Course, UserProfile } from '../../types';
 import toast from 'react-hot-toast';
@@ -42,9 +42,8 @@ const GroupDetailPage: React.FC = () => {
     if (!id) return;
     setLoading(true);
     Promise.all([
-      orgGetGroups().then((all: Group[]) => {
-        const found = all.find((g) => g.id === id) || null;
-        setGroup(found);
+      orgGetGroup(id).then((found: Group) => {
+        setGroup(found || null);
         if (found) {
           setChatForm({ title: found.chatLinkTitle || '', url: found.chatLinkUrl || '' });
           setEditGroupForm({ name: found.name || '', courseId: found.courseId || '' });
@@ -332,6 +331,46 @@ const GroupDetailPage: React.FC = () => {
                </div>
              </div>
 
+         </div>
+
+         {/* Sidebar — Teachers */}
+         <div className="space-y-6">
+            <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl overflow-hidden shadow-sm">
+               <div className="px-5 py-4 border-b border-slate-100 dark:border-slate-700 flex items-center justify-between">
+                  <div className="flex items-center gap-2 text-slate-900 dark:text-white">
+                     <Briefcase className="w-5 h-5 text-blue-500" />
+                     <h2 className="font-extrabold uppercase tracking-wider text-sm">Преподаватели ({currentTeachers.length})</h2>
+                  </div>
+                  {isAdmin && (
+                    <button onClick={() => setShowAddTeacher(true)} className="p-1 text-slate-400 hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-500/10 rounded transition-colors" title="Назначить преподавателя">
+                       <Plus className="w-5 h-5" />
+                    </button>
+                  )}
+               </div>
+               <div className="divide-y divide-slate-50 dark:divide-slate-700/50">
+                  {currentTeachers.length === 0 ? (
+                    <div className="p-8 text-center">
+                       <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Нет преподавателей</p>
+                    </div>
+                  ) : (
+                    currentTeachers.map(teacher => (
+                      <div key={teacher.uid} className="flex items-center gap-3 p-3 hover:bg-slate-50 dark:hover:bg-slate-700/30 transition-colors">
+                         {teacher.avatarUrl ? (
+                           <img src={teacher.avatarUrl} alt="" className="w-10 h-10 rounded-full object-cover shadow-sm" />
+                         ) : (
+                           <div className="w-10 h-10 rounded-full bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400 flex items-center justify-center font-bold text-sm">
+                              {teacher.displayName?.[0]?.toUpperCase() || '?'}
+                           </div>
+                         )}
+                         <div>
+                            <p className="text-sm font-bold text-slate-900 dark:text-white">{teacher.displayName}</p>
+                            <p className="text-xs text-slate-500">{teacher.email}</p>
+                         </div>
+                      </div>
+                    ))
+                  )}
+               </div>
+            </div>
          </div>
       </div>
 

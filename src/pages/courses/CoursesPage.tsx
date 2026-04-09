@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../contexts/AuthContext';
 import { orgGetCourses, orgCreateCourse, orgUpdateCourse, orgDeleteCourse, orgGetGroups } from '../../lib/api';
-import { Plus, Search, Trash2, Edit, BookOpen, ChevronRight, FileText } from 'lucide-react';
+import { Plus, Search, Trash2, Edit, BookOpen, ChevronRight, FileText, Users } from 'lucide-react';
 import type { Course } from '../../types';
 
 const CoursesPage: React.FC = () => {
@@ -11,6 +11,7 @@ const CoursesPage: React.FC = () => {
   const { role, profile } = useAuth();
   const isAdmin = role === 'admin';
   const [courses, setCourses] = useState<Course[]>([]);
+  const [groups, setGroups] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [showModal, setShowModal] = useState(false);
@@ -27,8 +28,9 @@ const CoursesPage: React.FC = () => {
     setLoading(true); setError('');
     Promise.all([
       orgGetCourses(),
-      role === 'teacher' ? orgGetGroups().catch(() => []) : Promise.resolve([])
+      orgGetGroups().catch(() => [])
     ]).then(([c, g]) => {
+      setGroups(g);
       let filtered = c;
       if (role === 'teacher' && profile?.uid) {
         const teacherGroups = (g as import('../../types').Group[]).filter(group => group.teacherIds?.includes(profile.uid));
@@ -46,6 +48,8 @@ const CoursesPage: React.FC = () => {
   const filtered = courses.filter((c) =>
     c.title.toLowerCase().includes(search.toLowerCase()) || c.subject?.toLowerCase().includes(search.toLowerCase())
   );
+
+  const getStudentCount = (courseId: string) => groups.filter((g: any) => g.courseId === courseId).reduce((sum: number, g: any) => sum + (g.studentIds?.length || 0), 0);
 
   const openCreate = () => { setEditing(null); setForm({ title: '', description: '', subject: '', status: 'draft', price: 0, paymentFormat: 'monthly', durationMonths: 1 }); setShowModal(true); };
   const openEdit = (c: Course) => { setEditing(c); setForm({ title: c.title, description: c.description || '', subject: c.subject || '', status: c.status as any || 'draft', price: c.price || 0, paymentFormat: c.paymentFormat || 'monthly', durationMonths: c.durationMonths || 1 }); setShowModal(true); };
@@ -158,10 +162,14 @@ const CoursesPage: React.FC = () => {
 
               <div className="mt-auto pt-5 border-t border-slate-100 dark:border-slate-800">
                 <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-4 text-xs font-semibold text-slate-600 dark:text-slate-400">
+                  <div className="flex items-center gap-3 text-xs font-semibold text-slate-600 dark:text-slate-400">
                     <span className="flex items-center gap-1.5 bg-slate-50 dark:bg-slate-800 px-2 py-1 rounded-md">
                       <FileText className="w-3.5 h-3.5" />
                       {course.lessonIds?.length || 0}
+                    </span>
+                    <span className="flex items-center gap-1.5 bg-slate-50 dark:bg-slate-800 px-2 py-1 rounded-md">
+                      <Users className="w-3.5 h-3.5" />
+                      {getStudentCount(course.id)}
                     </span>
                   </div>
                   {isAdmin ? (

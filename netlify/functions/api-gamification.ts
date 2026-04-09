@@ -99,6 +99,7 @@ const handler: Handler = async (event: HandlerEvent) => {
         // 3. Fetch user names (batch chunks of 30 if needed, simplified for <30 here, or just fetch all users in org)
         const orgUsersSnap = await adminDb.collection('users')
            .where('activeOrgId', '==', orgId)
+           .where('role', '==', 'student')
            .get();
            
         const leaderboard = orgUsersSnap.docs.map(d => {

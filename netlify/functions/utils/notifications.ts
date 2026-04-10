@@ -54,31 +54,40 @@ export async function createNotification(payload: NotificationPayload): Promise<
 }
 
 /**
- * Notify all admins of an organization.
+ * Notify all admins and managers of an organization.
+ * Uses the orgMembers sub-collection for reliable multi-tenant membership lookup.
  */
 export async function notifyOrgAdmins(
   orgId: string, type: NotificationType, title: string, message: string, link?: string
 ): Promise<void> {
-  const snap = await adminDb.collection('users')
-    .where('organizationId', '==', orgId).get();
-  const admins = snap.docs.filter(d => d.data().role === 'admin');
+  const snap = await adminDb.collection('orgMembers').doc(orgId)
+    .collection('members')
+    .where('status', '==', 'active')
+    .get();
+  const admins = snap.docs.filter(d => {
+    const role = d.data().role;
+    return ['admin', 'owner', 'manager'].includes(role);
+  });
   const promises = admins.map(d =>
-    createNotification({ recipientId: d.id, type, title, message, link })
+    createNotification({ recipientId: d.data().userId || d.id, type, title, message, link })
   );
   await Promise.allSettled(promises);
 }
 
 /**
  * Notify all students of an organization.
+ * Uses the orgMembers sub-collection for reliable multi-tenant membership lookup.
  */
 export async function notifyOrgStudents(
   orgId: string, type: NotificationType, title: string, message: string, link?: string
 ): Promise<void> {
-  const snap = await adminDb.collection('users')
-    .where('organizationId', '==', orgId).get();
-  const students = snap.docs.filter(d => d.data().role === 'student');
-  const promises = students.map(d =>
-    createNotification({ recipientId: d.id, type, title, message, link })
+  const snap = await adminDb.collection('orgMembers').doc(orgId)
+    .collection('members')
+    .where('status', '==', 'active')
+    .where('role', '==', 'student')
+    .get();
+  const promises = snap.docs.map(d =>
+    createNotification({ recipientId: d.data().userId || d.id, type, title, message, link })
   );
   await Promise.allSettled(promises);
 }

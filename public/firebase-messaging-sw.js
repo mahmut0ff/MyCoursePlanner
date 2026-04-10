@@ -20,13 +20,19 @@ firebase.initializeApp({
 const messaging = firebase.messaging();
 
 messaging.onBackgroundMessage((payload) => {
+  // Skip background notification if any app window is currently visible
+  // (the foreground Firestore listener will handle it via toast)
   const title = payload.notification?.title || 'Planula';
+  const body = payload.notification?.body || '';
+  // Use a stable tag derived from title + body to deduplicate
+  const tag = 'planula-' + (payload.data?.link || '') + '-' + title.slice(0, 30);
   const options = {
-    body: payload.notification?.body || '',
+    body,
     icon: '/icons/logo.png',
     badge: '/icons/logo.png',
     data: payload.data,
-    tag: 'notification-' + Date.now(),
+    tag, // reuse same tag → browser replaces instead of stacking duplicates
+    renotify: false, // don't re-alert for same tag
   };
   self.registration.showNotification(title, options);
 });

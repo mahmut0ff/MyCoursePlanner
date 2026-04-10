@@ -226,7 +226,7 @@ const handler: Handler = async (event: HandlerEvent) => {
             orgId, 'new_vacancy_application' as any,
             'Новая заявка на вступление',
             `${user.displayName || user.email} подал(а) повторную заявку на вступление`,
-            '/org-users',
+            '/students',
           ).catch(() => {});
 
           return ok({ status: 'pending', orgId, orgName: org.name });
@@ -262,7 +262,7 @@ const handler: Handler = async (event: HandlerEvent) => {
         orgId, 'new_vacancy_application' as any,
         'Новая заявка на вступление',
         `${user.displayName || user.email} подал(а) заявку на вступление в организацию`,
-        '/org-users',
+        '/students',
       ).catch(() => {});
 
       return ok({ status: 'pending', orgId, orgName: org.name });
@@ -300,7 +300,7 @@ const handler: Handler = async (event: HandlerEvent) => {
         body.organizationId, 'new_vacancy_application' as any,
         'Новая заявка на вступление',
         `${user.displayName || user.email} подал(а) заявку на вступление в организацию`,
-        '/membership',
+        '/students',
       ).catch(() => {});
 
       return ok(membership);
@@ -500,7 +500,7 @@ const handler: Handler = async (event: HandlerEvent) => {
         body.organizationId, 'invite_declined' as any,
         'Участник покинул организацию',
         `${user.displayName || user.email} покинул(а) организацию`,
-        '/membership',
+        '/students',
       ).catch(() => {});
 
       return ok({ left: true });

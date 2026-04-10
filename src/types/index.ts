@@ -727,7 +727,14 @@ export type NotificationType =
   | 'exam_room_created'
   | 'exam_result_ready'
   | 'new_lesson'
-  | 'new_org_registered';
+  | 'new_org_registered'
+  | 'new_vacancy_application'
+  | 'transfer_request'
+  | 'homework_submitted'
+  | 'homework_graded'
+  | 'trial_reminder'
+  | 'trial_expired'
+  | 'plan_gifted';
 
 export interface AppNotification {
   id: string;

@@ -9,18 +9,26 @@ import { toast } from 'react-hot-toast';
 import {
   Bell, MailOpen, Users, UserCheck, UserX,
   Radio, Trophy, BookOpen, Building2, CheckCheck, X,
+  UserPlus, ArrowLeftRight, FileCheck, GraduationCap, Clock, AlertTriangle, Gift,
 } from 'lucide-react';
 import type { AppNotification, NotificationType } from '../../types';
 
-const TYPE_CONFIG: Record<NotificationType, { icon: React.ReactNode; color: string }> = {
-  invite_received:        { icon: <MailOpen className="w-4 h-4" />,   color: 'text-blue-500 bg-blue-500/10' },
-  added_to_group:         { icon: <Users className="w-4 h-4" />,      color: 'text-violet-500 bg-violet-500/10' },
-  invite_accepted:        { icon: <UserCheck className="w-4 h-4" />,  color: 'text-emerald-500 bg-emerald-500/10' },
-  invite_declined:        { icon: <UserX className="w-4 h-4" />,      color: 'text-red-500 bg-red-500/10' },
-  exam_room_created:      { icon: <Radio className="w-4 h-4" />,      color: 'text-cyan-500 bg-cyan-500/10' },
-  exam_result_ready:      { icon: <Trophy className="w-4 h-4" />,     color: 'text-amber-500 bg-amber-500/10' },
-  new_lesson:             { icon: <BookOpen className="w-4 h-4" />,    color: 'text-primary-500 bg-primary-500/10' },
-  new_org_registered:     { icon: <Building2 className="w-4 h-4" />,  color: 'text-indigo-500 bg-indigo-500/10' },
+const TYPE_CONFIG: Record<string, { icon: React.ReactNode; color: string }> = {
+  invite_received:        { icon: <MailOpen className="w-4 h-4" />,      color: 'text-blue-500 bg-blue-500/10' },
+  added_to_group:         { icon: <Users className="w-4 h-4" />,         color: 'text-violet-500 bg-violet-500/10' },
+  invite_accepted:        { icon: <UserCheck className="w-4 h-4" />,     color: 'text-emerald-500 bg-emerald-500/10' },
+  invite_declined:        { icon: <UserX className="w-4 h-4" />,         color: 'text-red-500 bg-red-500/10' },
+  exam_room_created:      { icon: <Radio className="w-4 h-4" />,         color: 'text-cyan-500 bg-cyan-500/10' },
+  exam_result_ready:      { icon: <Trophy className="w-4 h-4" />,        color: 'text-amber-500 bg-amber-500/10' },
+  new_lesson:             { icon: <BookOpen className="w-4 h-4" />,       color: 'text-primary-500 bg-primary-500/10' },
+  new_org_registered:     { icon: <Building2 className="w-4 h-4" />,     color: 'text-indigo-500 bg-indigo-500/10' },
+  new_vacancy_application:{ icon: <UserPlus className="w-4 h-4" />,      color: 'text-orange-500 bg-orange-500/10' },
+  transfer_request:       { icon: <ArrowLeftRight className="w-4 h-4" />,color: 'text-purple-500 bg-purple-500/10' },
+  homework_submitted:     { icon: <FileCheck className="w-4 h-4" />,     color: 'text-teal-500 bg-teal-500/10' },
+  homework_graded:        { icon: <GraduationCap className="w-4 h-4" />, color: 'text-green-500 bg-green-500/10' },
+  trial_reminder:         { icon: <Clock className="w-4 h-4" />,         color: 'text-yellow-500 bg-yellow-500/10' },
+  trial_expired:          { icon: <AlertTriangle className="w-4 h-4" />, color: 'text-red-500 bg-red-500/10' },
+  plan_gifted:            { icon: <Gift className="w-4 h-4" />,          color: 'text-pink-500 bg-pink-500/10' },
 };
 
 function timeAgo(dateStr: string): string {
@@ -56,9 +64,15 @@ const NotificationDropdown: React.FC = () => {
 
   // Real-time Firestore listener
   const initialLoadRef = useRef(true);
+  // Track which notification IDs we've already shown toasts for to prevent duplicates
+  const shownToastIdsRef = useRef<Set<string>>(new Set());
 
   useEffect(() => {
     if (!firebaseUser?.uid) return;
+    // Reset on user change
+    initialLoadRef.current = true;
+    shownToastIdsRef.current.clear();
+
     const q = query(
       collection(db, 'notifications'),
       where('recipientId', '==', firebaseUser.uid),
@@ -71,15 +85,25 @@ const NotificationDropdown: React.FC = () => {
         .slice(0, 30);
       setNotifications(items);
 
+      // Skip toast on initial load
       if (initialLoadRef.current) {
         initialLoadRef.current = false;
+        // Seed the shown set with all existing IDs so we don't re-toast them later
+        items.forEach(item => shownToastIdsRef.current.add(item.id));
         return;
       }
 
       snap.docChanges().forEach(change => {
         if (change.type === 'added') {
+          const docId = change.doc.id;
           const notif = change.doc.data() as AppNotification;
-          if (!notif.read && (Date.now() - new Date(notif.createdAt).getTime() < 15000)) {
+
+          // Guard: skip if we already showed a toast for this notification
+          if (shownToastIdsRef.current.has(docId)) return;
+          shownToastIdsRef.current.add(docId);
+
+          // Only toast for recent, unread notifications (within 30s)
+          if (!notif.read && (Date.now() - new Date(notif.createdAt).getTime() < 30000)) {
             toast(
               (t) => (
                 <div 
@@ -93,7 +117,7 @@ const NotificationDropdown: React.FC = () => {
                   <p className="text-xs text-slate-600 dark:text-slate-300">{notif.message}</p>
                 </div>
               ),
-              { duration: 5000, position: 'top-right' }
+              { duration: 5000, position: 'top-right', id: `notif-${docId}` }
             );
           }
         }

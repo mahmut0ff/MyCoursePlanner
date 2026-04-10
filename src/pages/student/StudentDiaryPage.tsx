@@ -9,14 +9,6 @@ type TimelineEvent =
   | { type: 'grade'; date: string; data: GradeEntry; courseTitle: string; id: string }
   | { type: 'journal'; date: string; data: JournalEntry; courseTitle: string; id: string };
 
-function safeISODate(raw: any): string | null {
-  if (!raw) return null;
-  try {
-    const d = new Date(raw);
-    if (isNaN(d.getTime())) return null;
-    return d.toISOString();
-  } catch { return null; }
-}
 
 function getDaysForMonth(date: Date) {
   const year = date.getFullYear();

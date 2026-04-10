@@ -3,7 +3,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { orgGetCourses, orgGetGrades, orgGetJournal, orgGetGroups, apiGetOrgMembers } from '../../lib/api';
 import type { Course, GradeEntry, JournalEntry } from '../../types';
-import { ChevronLeft, ChevronRight, Calendar, BookOpen, Clock, FileWarning, MessageSquare, XCircle, Activity, LayoutGrid, Search } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Search, MessageSquare } from 'lucide-react';
 
 type TimelineEvent = 
   | { type: 'grade'; date: string; data: GradeEntry; courseTitle: string; id: string }
@@ -18,43 +18,28 @@ function safeISODate(raw: any): string | null {
   } catch { return null; }
 }
 
-function getStartOfWeek(date: Date) {
-  const d = new Date(date);
-  const day = d.getDay();
-  const diff = d.getDate() - day + (day === 0 ? -6 : 1);
-  d.setDate(diff);
-  d.setHours(0, 0, 0, 0);
-  return d;
-}
-
-function getDaysForWeek(startDate: Date) {
-  return Array.from({ length: 7 }).map((_, i) => {
-    const d = new Date(startDate);
-    d.setDate(d.getDate() + i);
-    d.setHours(0,0,0,0);
-    return d;
-  });
-}
-
 function getDaysForMonth(date: Date) {
   const year = date.getFullYear();
   const month = date.getMonth();
   const firstDay = new Date(year, month, 1);
   const lastDay = new Date(year, month + 1, 0);
   
-  const startDayOfWeek = firstDay.getDay() === 0 ? 6 : firstDay.getDay() - 1; 
-  const totalDays = lastDay.getDate();
+  let startDayOfWeek = firstDay.getDay() - 1;
+  if (startDayOfWeek === -1) startDayOfWeek = 6;
   
+  const totalDays = lastDay.getDate();
   const days: { date: Date | null }[] = [];
   
-  for (let i = 0; i < startDayOfWeek; i++) {
-    days.push({ date: null });
-  }
+  for (let i = 0; i < startDayOfWeek; i++) days.push({ date: null });
   for (let i = 1; i <= totalDays; i++) {
     const d = new Date(year, month, i);
     d.setHours(0,0,0,0);
     days.push({ date: d });
   }
+
+  // pad till full rows (multiple of 7)
+  while (days.length % 7 !== 0) days.push({ date: null });
+
   return days;
 }
 
@@ -69,9 +54,9 @@ export default function StudentDiaryPage() {
   const [error, setError] = useState<string | null>(null);
   
   const [selectedCourseId, setSelectedCourseId] = useState<string>('all');
-  const [viewMode, setViewMode] = useState<'week' | 'month'>('week');
   const [currentDate, setCurrentDate] = useState(() => {
     const d = new Date();
+    d.setDate(1); 
     d.setHours(0,0,0,0);
     return d;
   });
@@ -98,8 +83,8 @@ export default function StudentDiaryPage() {
 
         const myGroups = (allGroups as any[]).filter(g => g.studentIds?.includes(profile.uid));
         const myCourseIds = new Set(myGroups.map(g => g.courseId));
-        
         const myCourses = (allCourses as Course[]).filter(c => myCourseIds.has(c.id));
+        
         setCourses(myCourses);
 
         if (myCourses.length === 0) {
@@ -135,7 +120,6 @@ export default function StudentDiaryPage() {
         }
 
         setEvents(newEvents);
-        
       } catch (err: any) {
          setError(err.message || 'Ошибка загрузки дневника');
       } finally {
@@ -191,115 +175,58 @@ export default function StudentDiaryPage() {
     return dayMap;
   }, [filteredEvents, teacherMap]);
 
-  const handlePrev = () => {
+  const handlePrevMonth = () => {
     const d = new Date(currentDate);
-    if (viewMode === 'week') d.setDate(d.getDate() - 7);
-    else d.setMonth(d.getMonth() - 1);
+    d.setMonth(d.getMonth() - 1);
     setCurrentDate(d);
   };
-  const handleNext = () => {
+  const handleNextMonth = () => {
     const d = new Date(currentDate);
-    if (viewMode === 'week') d.setDate(d.getDate() + 7);
-    else d.setMonth(d.getMonth() + 1);
+    d.setMonth(d.getMonth() + 1);
     setCurrentDate(d);
   };
   const handleToday = () => {
     const d = new Date();
+    d.setDate(1);
     d.setHours(0,0,0,0);
     setCurrentDate(d);
   };
 
-  const renderWeek = () => {
-    const startOfWeek = getStartOfWeek(currentDate);
-    const days = getDaysForWeek(startOfWeek);
-
-    return (
-      <div className="grid grid-cols-1 md:grid-cols-7 gap-4">
-        {days.map((date) => {
-          const yyyy = date.getFullYear();
-          const mm = String(date.getMonth() + 1).padStart(2, '0');
-          const dd = String(date.getDate()).padStart(2, '0');
-          const dateKey = `${yyyy}-${mm}-${dd}`;
-          
-          const weekdayStr = date.toLocaleDateString('ru-RU', { weekday: 'short' }).toUpperCase();
-          const isToday = dateKey === new Date().toISOString().split('T')[0];
-
-          const dayRecords = eventsByDate[dateKey] ? Object.values(eventsByDate[dateKey]) : [];
-
-          return (
-            <div key={dateKey} className={`flex flex-col border-2 ${isToday ? 'border-primary-600 bg-primary-50 dark:bg-primary-900/10' : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800'} rounded-sm overflow-hidden min-h-[400px]`}>
-              <div className={`p-3 text-center border-b-2 ${isToday ? 'border-primary-600 bg-primary-600 text-white' : 'border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900'}`}>
-                <div className={`text-xs font-black tracking-widest uppercase ${isToday ? 'text-white' : 'text-slate-500'}`}>{weekdayStr}</div>
-                <div className={`text-2xl font-black mt-1 ${isToday ? 'text-white' : 'text-slate-900 dark:text-white'}`}>{date.getDate()}</div>
-              </div>
-              <div className="flex-1 p-2 space-y-2">
-                {dayRecords.length === 0 ? (
-                  <div className="h-full flex items-center justify-center opacity-50">
-                    <span className="text-xs font-black uppercase tracking-widest text-slate-400">Пусто</span>
-                  </div>
-                ) : (
-                  dayRecords.map(rec => (
-                    <div key={rec.courseId} className="p-2.5 border-2 border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs hover:border-slate-400 transition-colors rounded-sm">
-                      <div className="font-bold text-slate-900 dark:text-slate-100 mb-1" title={rec.courseTitle}>{rec.courseTitle}</div>
-                      
-                      {rec.teacherName && (
-                        <div className="text-[10px] uppercase font-bold tracking-wider text-slate-400 mb-2 truncate" title={rec.teacherName}>
-                          {rec.teacherName}
-                        </div>
-                      )}
-
-                      <div className="flex items-center justify-between mt-3 pt-3 border-t-2 border-slate-100 dark:border-slate-700/80">
-                        <div className="flex items-center gap-1.5 font-bold">
-                          {rec.journal?.attendance === 'absent' && <span className="text-red-700 dark:text-red-400 flex items-center gap-1.5"><XCircle className="w-3.5 h-3.5" /> Н</span>}
-                          {rec.journal?.attendance === 'late' && <span className="text-amber-700 dark:text-amber-400 flex items-center gap-1.5"><Clock className="w-3.5 h-3.5" /> О</span>}
-                          {rec.journal?.attendance === 'excused' && <span className="text-slate-600 dark:text-slate-400 flex items-center gap-1.5"><FileWarning className="w-3.5 h-3.5" /> У</span>}
-                          {rec.journal?.attendance === 'present' && <span className="text-emerald-700 dark:text-emerald-400 flex items-center gap-1.5"><Activity className="w-3.5 h-3.5" /> П</span>}
-                          {!rec.journal && <span className="text-slate-300 dark:text-slate-600">-</span>}
-                        </div>
-                        
-                        {rec.grade ? (
-                          <div className={`font-black uppercase tracking-wider text-[11px] px-2 py-1 border-2 ${
-                            (rec.grade.displayValue === '5' || rec.grade.displayValue === 'A' || rec.grade.displayValue === 'Отлично' || (rec.grade.value && rec.grade.maxValue && rec.grade.value / rec.grade.maxValue >= 0.85)) ? 'bg-emerald-50 border-emerald-300 text-emerald-800 dark:bg-emerald-900/40 dark:border-emerald-800 dark:text-emerald-400' :
-                            (rec.grade.displayValue === '4' || rec.grade.displayValue === 'B' || rec.grade.displayValue === 'Хорошо' || (rec.grade.value && rec.grade.maxValue && rec.grade.value / rec.grade.maxValue >= 0.7)) ? 'bg-blue-50 border-blue-300 text-blue-800 dark:bg-blue-900/40 dark:border-blue-800 dark:text-blue-400' :
-                            'bg-amber-50 border-amber-300 text-amber-800 dark:bg-amber-900/40 dark:border-amber-800 dark:text-amber-400'
-                          }`}>
-                            {rec.grade.displayValue || rec.grade.value || '?'}
-                          </div>
-                        ) : (
-                          <div className="text-slate-300 dark:text-slate-600 font-bold">-</div>
-                        )}
-                      </div>
-                      
-                      {(rec.grade?.comment || rec.journal?.note) && (
-                        <div className="mt-3 text-[10px] text-slate-700 dark:text-slate-300 italic flex items-start gap-1 bg-slate-50 dark:bg-slate-900 p-2 border-l-2 border-slate-300 dark:border-slate-600">
-                          <MessageSquare className="w-3 h-3 shrink-0 mt-0.5 text-slate-400" />
-                          <span className="line-clamp-2 font-medium" title={rec.grade?.comment || rec.journal?.note}>{rec.grade?.comment || rec.journal?.note}</span>
-                        </div>
-                      )}
-                    </div>
-                  ))
-                )}
-              </div>
-            </div>
-          );
-        })}
-      </div>
-    );
+  const getRecordTheme = (g?: GradeEntry, j?: JournalEntry) => {
+    if (g) {
+       const isHigh = g.displayValue === '5' || g.displayValue === 'A' || g.displayValue === 'Отлично' || (g.value && g.maxValue && g.value / g.maxValue >= 0.85);
+       const isMid = g.displayValue === '4' || g.displayValue === 'B' || g.displayValue === 'Хорошо' || (g.value && g.maxValue && g.value / g.maxValue >= 0.7);
+       
+       if (isHigh) return 'border-emerald-500 text-emerald-700 bg-emerald-50 dark:bg-emerald-900/20 dark:text-emerald-400';
+       if (isMid) return 'border-blue-500 text-blue-700 bg-blue-50 dark:bg-blue-900/20 dark:text-blue-400';
+       return 'border-amber-500 text-amber-700 bg-amber-50 dark:bg-amber-900/20 dark:text-amber-400';
+    }
+    if (j) {
+      if (j.attendance === 'absent') return 'border-red-500 text-red-700 bg-red-50 dark:bg-red-900/20 dark:text-red-400';
+      if (j.attendance === 'late') return 'border-amber-500 text-amber-700 bg-amber-50 dark:bg-amber-900/20 dark:text-amber-400';
+      if (j.attendance === 'excused') return 'border-slate-400 text-slate-700 bg-slate-50 dark:bg-slate-800/40 dark:text-slate-400';
+    }
+    return 'border-slate-300 text-slate-700 bg-slate-50 dark:bg-slate-800/40 dark:text-slate-300';
   };
 
-  const renderMonth = () => {
+  const renderMonthGrid = () => {
     const days = getDaysForMonth(currentDate);
     
     return (
-      <div className="border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-sm rounded-sm">
-        <div className="grid grid-cols-7 border-b border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-900">
-          {['ПН', 'ВТ', 'СР', 'ЧТ', 'ПТ', 'СБ', 'ВС'].map(d => (
-            <div key={d} className="p-3 text-center text-[11px] font-black uppercase text-slate-500 tracking-widest border-r last:border-r-0 border-slate-300 dark:border-slate-700">{d}</div>
+      <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700/80 rounded-xl overflow-hidden shadow-sm">
+        {/* Days of week header */}
+        <div className="grid grid-cols-7 border-b border-slate-100 dark:border-slate-700/50 bg-slate-50/50 dark:bg-slate-900/30">
+          {['ПН', 'ВТ', 'СР', 'ЧТ', 'ПТ', 'СБ', 'ВС'].map((d) => (
+            <div key={d} className="py-3 text-center border-r border-slate-100 dark:border-slate-700/50 last:border-r-0">
+              <span className="text-[10px] sm:text-xs font-bold text-slate-500 uppercase tracking-wider">{d}</span>
+            </div>
           ))}
         </div>
-        <div className="grid grid-cols-7 auto-rows-[120px]">
+
+        {/* Grid body */}
+        <div className="grid grid-cols-7 auto-rows-[minmax(120px,1fr)]">
           {days.map((item, idx) => {
-            if (!item.date) return <div key={`empty-${idx}`} className="border-r border-b border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/20"></div>;
+            if (!item.date) return <div key={`empty-${idx}`} className="border-r border-b border-slate-100 dark:border-slate-700/50 bg-slate-50/30 dark:bg-slate-900/10"></div>;
             
             const yyyy = item.date.getFullYear();
             const mm = String(item.date.getMonth() + 1).padStart(2, '0');
@@ -310,27 +237,37 @@ export default function StudentDiaryPage() {
             const dayRecords = eventsByDate[dateKey] ? Object.values(eventsByDate[dateKey]) : [];
 
             return (
-              <div key={dateKey} className={`p-2 border-r border-b border-slate-200 dark:border-slate-700/80 hover:bg-slate-50 dark:hover:bg-slate-700/20 transition-colors flex flex-col ${isToday ? 'bg-primary-50/50 dark:bg-primary-900/10' : ''}`}>
+              <div key={dateKey} className={`relative p-1.5 sm:p-2 border-r border-b border-slate-100 dark:border-slate-700/50 hover:bg-slate-50 dark:hover:bg-slate-700/20 flex flex-col ${isToday ? 'bg-primary-50/30 dark:bg-primary-900/10' : ''}`}>
+                 
+                 {/* DATE CORNER */}
                  <div className="flex justify-between items-start mb-2">
-                   <div className={`text-sm font-bold w-6 h-6 flex items-center justify-center ${isToday ? 'bg-primary-600 text-white rounded-sm' : 'text-slate-900 dark:text-white'}`}>
+                   <div className={`text-[13px] sm:text-sm font-bold w-6 h-6 sm:w-7 sm:h-7 flex items-center justify-center rounded-full ${isToday ? 'bg-primary-600 text-white' : 'text-slate-900 dark:text-slate-200'}`}>
                      {item.date.getDate()}
                    </div>
                  </div>
-                 <div className="space-y-1.5 overflow-y-auto max-h-[80px] scrollbar-thin scrollbar-thumb-slate-200 dark:scrollbar-thumb-slate-600">
+
+                 {/* RECORDS */}
+                 <div className="flex-1 overflow-y-auto space-y-1.5 hide-scrollbar">
                     {dayRecords.map(rec => {
-                      const isHigh = rec.grade ? (rec.grade.displayValue === '5' || rec.grade.displayValue === 'A' || rec.grade.displayValue === 'Отлично' || (rec.grade.value && rec.grade.maxValue && rec.grade.value / rec.grade.maxValue >= 0.85)) : false;
+                      const theme = getRecordTheme(rec.grade, rec.journal);
+                      
                       return (
-                        <div key={rec.courseId} className={`flex items-center justify-between text-[10px] px-1.5 py-1 border rounded-sm truncate ${
-                          rec.grade ? (isHigh ? 'bg-emerald-50 border-emerald-200 text-emerald-800 dark:bg-emerald-900/30 dark:border-emerald-800 dark:text-emerald-300' : 'bg-slate-50 border-slate-300 text-slate-800 dark:bg-slate-800 dark:border-slate-600 dark:text-slate-200') : 'bg-slate-50 border-slate-200 text-slate-600 dark:bg-slate-800 dark:border-slate-700 dark:text-slate-400'
-                        }`}>
-                          <span className="font-bold truncate mr-1">{rec.courseTitle}</span>
-                          <div className="flex items-center gap-1 shrink-0">
-                            {rec.grade && (
-                               <span className="font-black px-1 border border-current">{rec.grade.displayValue || rec.grade.value}</span>
-                            )}
-                            {!rec.grade && rec.journal && (
-                               <span className="font-bold">{rec.journal.attendance === 'absent' ? 'Н' : rec.journal.attendance === 'late' ? 'О' : '*'}</span>
-                            )}
+                        <div key={rec.courseId} className={`flex flex-col border-l-[3px] border-y border-r border-y-transparent border-r-transparent ${theme} rounded-r-md px-2 py-1.5`}>
+                          <div className="flex items-center justify-between gap-1 w-full">
+                            <span className="font-semibold text-[10px] sm:text-[11px] truncate">{rec.courseTitle}</span>
+                            <div className="flex items-center shrink-0">
+                               {rec.grade ? (
+                                  <span className="font-black text-[12px] ml-1.5 tracking-tight">{rec.grade.displayValue || rec.grade.value}</span>
+                               ) : rec.journal ? (
+                                  <span className="font-black text-[11px] ml-1.5 opacity-80">{rec.journal.attendance === 'absent' ? 'Н' : rec.journal.attendance === 'late' ? 'ОПОЗД' : ''}</span>
+                               ) : null}
+                            </div>
+                          </div>
+                          
+                          {/* Teacher / comment row (only visible on sm and up) */}
+                          <div className="hidden sm:flex justify-between text-[9px] opacity-70 mt-0.5">
+                             <span className="truncate max-w-[70%]" title={rec.teacherName}>{rec.teacherName}</span>
+                             {rec.grade?.comment && <MessageSquare className="w-2.5 h-2.5" />}
                           </div>
                         </div>
                       )
@@ -344,102 +281,71 @@ export default function StudentDiaryPage() {
     );
   };
 
-  const currentViewLabel = useMemo(() => {
-    if (viewMode === 'month') {
-      let str = currentDate.toLocaleDateString('ru-RU', { month: 'long', year: 'numeric' });
-      return str.charAt(0).toUpperCase() + str.slice(1);
-    } else {
-      const start = getStartOfWeek(currentDate);
-      const end = new Date(start);
-      end.setDate(end.getDate() + 6);
-      return `${start.getDate()} ${start.toLocaleDateString('ru-RU', {month:'short'})} - ${end.getDate()} ${end.toLocaleDateString('ru-RU', {month:'short'})} ${end.getFullYear()}`;
-    }
-  }, [currentDate, viewMode]);
+  const currentMonthLabel = useMemo(() => {
+    const str = currentDate.toLocaleDateString('ru-RU', { month: 'long', year: 'numeric' });
+    return str.replace(' г.', '').replace(' г', '');
+  }, [currentDate]);
 
   return (
-    <div className="max-w-[1400px] mx-auto pb-20 font-sans">
+    <div className="max-w-[1400px] mx-auto pb-20 font-sans space-y-6 px-4 xl:px-0">
       
-      {/* Strict Header */}
-      <div className="flex flex-col md:flex-row items-center justify-between gap-4 border-b-2 border-slate-900 dark:border-slate-600 pb-6 pt-4 px-4 xl:px-0">
-        <div className="flex items-center gap-3">
-          <BookOpen className="w-8 h-8 text-slate-900 dark:text-white" />
-          <div>
-            <h1 className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white uppercase tracking-tight">
-              Дневник И Расписание
-            </h1>
-          </div>
+      {/* HEADER */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pt-6">
+        <div>
+          <h1 className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white uppercase tracking-tight">
+            Дневник
+          </h1>
+          <p className="text-sm font-medium text-slate-500 mt-1">
+            Календарь оценок и посещаемости
+          </p>
         </div>
 
-        <div className="flex border-2 border-slate-900 dark:border-slate-600 overflow-hidden rounded-sm">
-           <button 
-             onClick={() => setViewMode('week')}
-             className={`px-5 py-2 text-sm font-black uppercase tracking-wider flex items-center gap-2 transition-colors ${viewMode === 'week' ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900' : 'bg-transparent text-slate-900 dark:text-white hover:bg-slate-100 dark:hover:bg-slate-800'}`}
-           >
-             <LayoutGrid className="w-4 h-4" /> Неделя
-           </button>
-           <button 
-             onClick={() => setViewMode('month')}
-             className={`px-5 py-2 text-sm font-black uppercase tracking-wider flex items-center gap-2 border-l-2 border-slate-900 dark:border-slate-600 transition-colors ${viewMode === 'month' ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900' : 'bg-transparent text-slate-900 dark:text-white hover:bg-slate-100 dark:hover:bg-slate-800'}`}
-           >
-             <Calendar className="w-4 h-4" /> Месяц
-           </button>
-        </div>
-      </div>
-
-      <div className="px-4 xl:px-0 mt-6 space-y-6">
-        
-        {/* Strict Toolbar */}
-        <div className="flex flex-col lg:flex-row items-center justify-between gap-4 bg-slate-50 dark:bg-slate-800 border-y sm:border sm:border-slate-300 dark:border-slate-600 p-4 rounded-sm">
+        {/* Toolbar: Filters and Nav */}
+        <div className="flex flex-col sm:flex-row items-center gap-3">
           
-          {/* Pagination */}
-          <div className="flex items-center gap-0 border-2 border-slate-900 dark:border-white rounded-sm overflow-hidden">
-             <button onClick={handlePrev} className="p-2 bg-white dark:bg-slate-900 text-slate-900 dark:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
+          <div className="flex items-center w-full sm:w-auto overflow-hidden border border-slate-200 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-800 shadow-sm relative">
+             <Search className="w-4 h-4 text-slate-400 absolute left-3" />
+             <select 
+               value={selectedCourseId}
+               onChange={(e) => setSelectedCourseId(e.target.value)}
+               className="bg-transparent pl-10 pr-8 py-2 text-sm font-bold text-slate-900 dark:text-white appearance-none outline-none w-full sm:w-[220px]"
+             >
+               <option value="all">Все предметы</option>
+               {courses.map(c => (
+                 <option key={c.id} value={c.id}>{c.title}</option>
+               ))}
+             </select>
+          </div>
+
+          <div className="flex items-center w-full sm:w-auto p-1 bg-slate-100/80 dark:bg-slate-800/50 rounded-xl border border-slate-200/50 dark:border-slate-700/50 backdrop-blur-sm">
+             <button onClick={handlePrevMonth} className="p-1.5 hover:bg-white dark:hover:bg-slate-700 rounded-lg transition-colors text-slate-600 dark:text-slate-300">
                <ChevronLeft className="w-5 h-5" />
              </button>
-             <button onClick={handleToday} className="px-5 py-2 border-x-2 border-slate-900 dark:border-white bg-white dark:bg-slate-900 text-slate-900 dark:text-white font-black text-sm uppercase tracking-wider hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
-               Сегодня
+             <button onClick={handleToday} className="px-4 text-sm font-bold capitalize text-slate-800 dark:text-slate-100 pointer-events-none min-w-[140px] text-center">
+               {currentMonthLabel}
              </button>
-             <button onClick={handleNext} className="p-2 bg-white dark:bg-slate-900 text-slate-900 dark:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
+             <button onClick={handleNextMonth} className="p-1.5 hover:bg-white dark:hover:bg-slate-700 rounded-lg transition-colors text-slate-600 dark:text-slate-300">
                <ChevronRight className="w-5 h-5" />
              </button>
           </div>
 
-          <div className="text-xl font-black text-slate-900 dark:text-white tracking-widest uppercase">
-             {currentViewLabel}
-          </div>
-
-          {/* Filter */}
-          <div className="flex items-center gap-3">
-            <span className="text-xs uppercase font-black text-slate-500 tracking-widest">Фильтр:</span>
-            <div className="relative border-2 border-slate-300 dark:border-slate-600 focus-within:border-slate-900 dark:focus-within:border-white transition-colors bg-white dark:bg-slate-900 flex items-center rounded-sm">
-              <Search className="w-4 h-4 text-slate-400 absolute left-3" />
-              <select 
-                value={selectedCourseId}
-                onChange={(e) => setSelectedCourseId(e.target.value)}
-                className="bg-transparent pl-10 pr-8 py-2 text-sm font-bold text-slate-900 dark:text-white appearance-none outline-none w-full min-w-[200px]"
-              >
-                <option value="all">Все предметы</option>
-                {courses.map(c => (
-                  <option key={c.id} value={c.id}>{c.title}</option>
-                ))}
-              </select>
-            </div>
-          </div>
         </div>
-
-        {loading ? (
-          <div className="py-32 text-center text-slate-500 flex flex-col items-center">
-            <Calendar className="w-10 h-10 animate-pulse mb-4" />
-            <span className="text-sm font-black uppercase tracking-widest">Синхронизация данных...</span>
-          </div>
-        ) : error ? (
-          <div className="p-6 border-l-4 border-red-600 bg-red-50 text-red-700 font-black uppercase tracking-wider text-sm">{error}</div>
-        ) : (
-          <div className="w-full pb-8">
-            {viewMode === 'week' ? renderWeek() : renderMonth()}
-          </div>
-        )}
       </div>
+
+      {/* CONTENT */}
+      {loading ? (
+        <div className="py-32 flex justify-center">
+          <div className="w-8 h-8 border-4 border-primary-200 border-t-primary-600 rounded-full animate-spin" />
+        </div>
+      ) : error ? (
+        <div className="p-6 bg-red-50 dark:bg-red-900/10 border border-red-200 dark:border-red-800/30 text-red-700 dark:text-red-400 font-medium rounded-xl text-sm">
+          {error}
+        </div>
+      ) : (
+        <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+          {renderMonthGrid()}
+        </div>
+      )}
     </div>
   );
 }

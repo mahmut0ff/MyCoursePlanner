@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { orgGetGroups, orgGetStudents } from '../../lib/api';
 import type { Group, UserProfile } from '../../types';
-import { Loader2, Users, Trophy, Dices, ChevronDown, CheckCircle2 } from 'lucide-react';
+import { Loader2, Users, Trophy, Dices, ChevronDown } from 'lucide-react';
 
 const COLORS = [
   '#0d9488', // teal-600

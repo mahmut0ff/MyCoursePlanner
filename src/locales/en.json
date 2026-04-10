@@ -1512,7 +1512,17 @@
     "newEvent": "New event",
     "dayOfWeek": "Day of week",
     "willRepeatEvery": "Lesson will repeat every",
-    "classroom": "Classroom / Room"
+    "classroom": "Classroom / Room",
+    "copied": "Lesson copied!",
+    "pasted": "Lesson pasted!",
+    "moved": "Lesson moved!",
+    "copy": "Copy",
+    "paste": "Paste",
+    "pasteTitle": "Paste lesson",
+    "pasteHint": "Ctrl+V — Paste",
+    "pasteHere": "Paste here",
+    "dropHere": "Drop here",
+    "dndHint": "Drag lessons between days. Right-click → Copy, Ctrl+V → Paste."
   },
   "teacherOnboarding": {
     "title": "Get Started",

@@ -1,13 +1,22 @@
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useState, useMemo, useCallback, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
-import { orgGetSchedule, orgGetTimetable, orgCreateEvent, orgDeleteEvent } from '../../lib/api';
-import { Plus, ChevronLeft, ChevronRight, Clock, Trash2, Calendar, MapPin, Repeat } from 'lucide-react';
+import { orgGetSchedule, orgGetTimetable, orgCreateEvent, orgDeleteEvent, orgUpdateEvent } from '../../lib/api';
+import { Plus, ChevronLeft, ChevronRight, Clock, Trash2, Calendar, MapPin, Repeat, Copy, Clipboard, GripVertical, X } from 'lucide-react';
 import type { ScheduleEvent, ScheduleEventType } from '../../types';
+import { useAuth } from '../../contexts/AuthContext';
 
 const HOURS = Array.from({ length: 14 }, (_, i) => i + 7);
 
+interface ClipboardEvent {
+  event: ScheduleEvent;
+  action: 'copy';
+}
+
 const SchedulePage: React.FC = () => {
   const { t } = useTranslation();
+  const { role } = useAuth();
+  const canEdit = role === 'admin' || role === 'manager' || role === 'super_admin';
+
   const [timetableEvents, setTimetableEvents] = useState<ScheduleEvent[]>([]);
   const [calendarEvents, setCalendarEvents] = useState<ScheduleEvent[]>([]);
   const [loading, setLoading] = useState(true);
@@ -23,6 +32,21 @@ const SchedulePage: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'timetable' | 'events'>('timetable');
   const [mobileView, setMobileView] = useState<'week' | 'day'>('week');
   const [selectedDay, setSelectedDay] = useState(0);
+
+  // Drag & Drop state
+  const [draggedEvent, setDraggedEvent] = useState<ScheduleEvent | null>(null);
+  const [dragOverDay, setDragOverDay] = useState<number | null>(null);
+  const [dragOverHour, setDragOverHour] = useState<number | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
+
+  // Copy & Paste state
+  const [clipboard, setClipboard] = useState<ClipboardEvent | null>(null);
+  const [contextMenu, setContextMenu] = useState<{
+    x: number; y: number; event: ScheduleEvent; isTimetable: boolean;
+  } | null>(null);
+  const [clipboardToast, setClipboardToast] = useState('');
+
+  const contextMenuRef = useRef<HTMLDivElement>(null);
 
   const dayNames = [
     t('schedule.mon', 'Пн'), t('schedule.tue', 'Вт'), t('schedule.wed', 'Ср'),
@@ -56,6 +80,237 @@ const SchedulePage: React.FC = () => {
 
   const prevWeek = () => setCurrent((d) => { const n = new Date(d); n.setDate(n.getDate() - 7); return n; });
   const nextWeek = () => setCurrent((d) => { const n = new Date(d); n.setDate(n.getDate() + 7); return n; });
+
+  // ======== CLIPBOARD TOAST ========
+  const showToast = useCallback((msg: string) => {
+    setClipboardToast(msg);
+    setTimeout(() => setClipboardToast(''), 2500);
+  }, []);
+
+  // ======== CONTEXT MENU HANDLING ========
+  const handleContextMenu = useCallback((e: React.MouseEvent, event: ScheduleEvent, isTimetable: boolean) => {
+    if (!canEdit) return;
+    e.preventDefault();
+    e.stopPropagation();
+    setContextMenu({ x: e.clientX, y: e.clientY, event, isTimetable });
+  }, [canEdit]);
+
+  // Close context menu on outside click
+  useEffect(() => {
+    const closeCtx = (e: MouseEvent) => {
+      if (contextMenuRef.current && !contextMenuRef.current.contains(e.target as Node)) {
+        setContextMenu(null);
+      }
+    };
+    if (contextMenu) {
+      document.addEventListener('mousedown', closeCtx);
+      return () => document.removeEventListener('mousedown', closeCtx);
+    }
+  }, [contextMenu]);
+
+  // ======== KEYBOARD SHORTCUTS (Ctrl+C / Ctrl+V) ========
+  // We track selected event via a separate state for keyboard shortcuts
+  const [selectedEvent, setSelectedEvent] = useState<{ event: ScheduleEvent; isTimetable: boolean } | null>(null);
+
+  useEffect(() => {
+    if (!canEdit) return;
+    const handleKeyboard = (e: KeyboardEvent) => {
+      // Copy
+      if ((e.ctrlKey || e.metaKey) && e.key === 'c' && selectedEvent) {
+        e.preventDefault();
+        setClipboard({ event: selectedEvent.event, action: 'copy' });
+        showToast(t('schedule.copied', 'Занятие скопировано!'));
+      }
+      // Paste — triggers paste modal
+      if ((e.ctrlKey || e.metaKey) && e.key === 'v' && clipboard) {
+        e.preventDefault();
+        setShowPasteModal(true);
+      }
+      // Escape — deselect
+      if (e.key === 'Escape') {
+        setSelectedEvent(null);
+        setContextMenu(null);
+        setShowPasteModal(false);
+      }
+    };
+    document.addEventListener('keydown', handleKeyboard);
+    return () => document.removeEventListener('keydown', handleKeyboard);
+  }, [canEdit, selectedEvent, clipboard, showToast, t]);
+
+  // ======== PASTE MODAL ========
+  const [showPasteModal, setShowPasteModal] = useState(false);
+  const [pasteForm, setPasteForm] = useState<{
+    dayOfWeek: number; startTime: string; endTime: string; date: string;
+  }>({ dayOfWeek: 0, startTime: '09:00', endTime: '10:00', date: '' });
+
+  const handlePaste = async () => {
+    if (!clipboard) return;
+    setSaving(true);
+    setError('');
+    try {
+      const src = clipboard.event;
+      if (activeTab === 'timetable') {
+        const created = await orgCreateEvent({
+          title: src.title,
+          startTime: pasteForm.startTime,
+          endTime: pasteForm.endTime,
+          type: 'lesson',
+          duration: src.duration,
+          location: src.location,
+          recurring: true,
+          dayOfWeek: pasteForm.dayOfWeek,
+          groupId: (src as any).groupId,
+          courseId: (src as any).courseId,
+          teacherId: (src as any).teacherId,
+        });
+        setTimetableEvents((p) => [...p, created]);
+      } else {
+        if (!pasteForm.date) return;
+        const created = await orgCreateEvent({
+          title: src.title,
+          date: pasteForm.date,
+          startTime: pasteForm.startTime,
+          endTime: pasteForm.endTime,
+          type: src.type,
+          duration: src.duration,
+          location: src.location,
+          recurring: false,
+        });
+        setCalendarEvents((p) => [...p, created]);
+      }
+      setShowPasteModal(false);
+      showToast(t('schedule.pasted', 'Занятие вставлено!'));
+    } catch (e: any) {
+      setError(e.message || t('common.error'));
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleCopy = useCallback((event: ScheduleEvent) => {
+    setClipboard({ event, action: 'copy' });
+    setContextMenu(null);
+    showToast(t('schedule.copied', 'Занятие скопировано!'));
+  }, [showToast, t]);
+
+  // ======== DRAG & DROP — TIMETABLE (between days of week) ========
+  const handleDragStart = useCallback((e: React.DragEvent, event: ScheduleEvent) => {
+    if (!canEdit) return;
+    setDraggedEvent(event);
+    setIsDragging(true);
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', event.id);
+    // Set drag image
+    const el = e.currentTarget as HTMLElement;
+    if (el) {
+      e.dataTransfer.setDragImage(el, el.offsetWidth / 2, 20);
+    }
+  }, [canEdit]);
+
+  const handleDragEnd = useCallback(() => {
+    setDraggedEvent(null);
+    setDragOverDay(null);
+    setDragOverHour(null);
+    setIsDragging(false);
+  }, []);
+
+  const handleDragOverDay = useCallback((e: React.DragEvent, dayIdx: number) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    setDragOverDay(dayIdx);
+  }, []);
+
+  const handleDragLeaveDay = useCallback(() => {
+    setDragOverDay(null);
+  }, []);
+
+  const handleDropOnDay = useCallback(async (e: React.DragEvent, targetDayOfWeek: number) => {
+    e.preventDefault();
+    setDragOverDay(null);
+    if (!draggedEvent || !canEdit) return;
+
+    const fromDay = (draggedEvent as any).dayOfWeek;
+    if (fromDay === targetDayOfWeek) {
+      handleDragEnd();
+      return;
+    }
+
+    try {
+      await orgUpdateEvent({
+        id: draggedEvent.id,
+        dayOfWeek: targetDayOfWeek,
+      });
+      setTimetableEvents((prev) =>
+        prev.map((ev) =>
+          ev.id === draggedEvent.id
+            ? { ...ev, dayOfWeek: targetDayOfWeek } as any
+            : ev
+        )
+      );
+      showToast(t('schedule.moved', 'Занятие перемещено!'));
+    } catch (err: any) {
+      setError(err.message || t('common.error'));
+    }
+    handleDragEnd();
+  }, [draggedEvent, canEdit, handleDragEnd, showToast, t]);
+
+  // ======== DRAG & DROP — EVENTS (between dates / hours) ========
+  const handleEventDragStart = useCallback((e: React.DragEvent, event: ScheduleEvent) => {
+    if (!canEdit) return;
+    setDraggedEvent(event);
+    setIsDragging(true);
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', event.id);
+  }, [canEdit]);
+
+  const handleEventDragOverCell = useCallback((e: React.DragEvent, dayIdx: number, hour?: number) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    setDragOverDay(dayIdx);
+    if (hour !== undefined) setDragOverHour(hour);
+  }, []);
+
+  const handleEventDragLeaveCell = useCallback(() => {
+    setDragOverDay(null);
+    setDragOverHour(null);
+  }, []);
+
+  const handleDropOnCell = useCallback(async (e: React.DragEvent, dayIdx: number, hour?: number) => {
+    e.preventDefault();
+    setDragOverDay(null);
+    setDragOverHour(null);
+    if (!draggedEvent || !canEdit) return;
+
+    const targetDate = weekDays[dayIdx];
+    const targetDateStr = `${targetDate.getFullYear()}-${String(targetDate.getMonth() + 1).padStart(2, '0')}-${String(targetDate.getDate()).padStart(2, '0')}`;
+
+    const updates: any = { id: draggedEvent.id, date: targetDateStr };
+    if (hour !== undefined) {
+      const [, sm] = (draggedEvent.startTime || '09:00').split(':').map(Number);
+      const [, em] = (draggedEvent.endTime || '10:00').split(':').map(Number);
+      // Compute the duration in hours
+      const [origSh] = (draggedEvent.startTime || '09:00').split(':').map(Number);
+      const [origEh] = (draggedEvent.endTime || '10:00').split(':').map(Number);
+      const durationHours = origEh - origSh;
+      updates.startTime = `${String(hour).padStart(2, '0')}:${String(sm).padStart(2, '0')}`;
+      updates.endTime = `${String(hour + durationHours).padStart(2, '0')}:${String(em).padStart(2, '0')}`;
+    }
+
+    try {
+      await orgUpdateEvent(updates);
+      setCalendarEvents((prev) =>
+        prev.map((ev) =>
+          ev.id === draggedEvent.id
+            ? { ...ev, ...updates }
+            : ev
+        )
+      );
+      showToast(t('schedule.moved', 'Занятие перемещено!'));
+    } catch (err: any) {
+      setError(err.message || t('common.error'));
+    }
+    handleDragEnd();
+  }, [draggedEvent, canEdit, weekDays, handleDragEnd, showToast, t]);
 
   const handleCreate = async () => {
     if (!form.title.trim()) return;
@@ -112,12 +367,26 @@ const SchedulePage: React.FC = () => {
 
   const renderEventBlock = (ev: ScheduleEvent, top: number) => {
     const isExam = ev.type === 'exam';
+    const isSelected = selectedEvent?.event.id === ev.id;
     return (
       <div key={ev.id} style={{ top: `${top}px`, minHeight: '30px' }}
-        className={`absolute left-0.5 right-0.5 rounded-md px-1.5 py-0.5 text-[9px] leading-tight cursor-default group shadow-sm ${isExam ? 'bg-amber-100 dark:bg-amber-900/30 text-amber-800 dark:text-amber-300 border border-amber-200/50 dark:border-amber-800/30' : 'bg-primary-100 dark:bg-primary-900/30 text-primary-800 dark:text-primary-300 border border-primary-200/50 dark:border-primary-800/30'}`}>
+        className={`absolute left-0.5 right-0.5 rounded-md px-1.5 py-0.5 text-[9px] leading-tight group shadow-sm transition-all ${
+          canEdit ? 'cursor-grab active:cursor-grabbing' : 'cursor-default'
+        } ${isSelected ? 'ring-2 ring-primary-500 ring-offset-1 dark:ring-offset-slate-800' : ''} ${
+          isExam
+            ? 'bg-amber-100 dark:bg-amber-900/30 text-amber-800 dark:text-amber-300 border border-amber-200/50 dark:border-amber-800/30'
+            : 'bg-primary-100 dark:bg-primary-900/30 text-primary-800 dark:text-primary-300 border border-primary-200/50 dark:border-primary-800/30'
+        }`}
+        draggable={canEdit}
+        onDragStart={(e) => handleEventDragStart(e, ev)}
+        onDragEnd={handleDragEnd}
+        onClick={() => canEdit && setSelectedEvent({ event: ev, isTimetable: false })}
+        onContextMenu={(e) => handleContextMenu(e, ev, false)}
+      >
         <div className="flex items-center justify-between">
-          <span className="font-bold truncate">{ev.title}</span>
-          <button onClick={() => handleDelete(ev.id, false)} className="opacity-0 group-hover:opacity-100 text-red-500 transition-opacity"><Trash2 className="w-2.5 h-2.5" /></button>
+          {canEdit && <GripVertical className="w-2 h-2 opacity-0 group-hover:opacity-40 mr-0.5 flex-shrink-0" />}
+          <span className="font-bold truncate flex-1">{ev.title}</span>
+          <button onClick={(e) => { e.stopPropagation(); handleDelete(ev.id, false); }} className="opacity-0 group-hover:opacity-100 text-red-500 transition-opacity"><Trash2 className="w-2.5 h-2.5" /></button>
         </div>
         <span className="flex items-center gap-0.5 text-[8px] opacity-80"><Clock className="w-2 h-2" />{ev.startTime}</span>
       </div>
@@ -125,7 +394,7 @@ const SchedulePage: React.FC = () => {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6" onClick={() => setSelectedEvent(null)}>
       <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-black bg-clip-text text-transparent bg-gradient-to-r from-slate-900 to-slate-600 dark:from-white dark:to-slate-300">
@@ -154,15 +423,40 @@ const SchedulePage: React.FC = () => {
           </div>
         </div>
 
-        <button onClick={() => {
-          setForm(f => ({ ...f, type: activeTab === 'timetable' ? 'lesson' : 'exam' }));
-          setShowCreate(true);
-        }} className="btn-primary !py-2.5 !px-5 text-sm flex items-center gap-2 w-full sm:w-fit shadow-md shadow-primary-500/20 justify-center">
-          <Plus className="w-4 h-4" />{t('org.schedule.addEvent', 'Добавить')}
-        </button>
+        <div className="flex items-center gap-2 w-full sm:w-fit">
+          {/* Clipboard indicator */}
+          {canEdit && clipboard && (
+            <button
+              onClick={() => setShowPasteModal(true)}
+              className="flex items-center gap-2 px-4 py-2.5 text-sm font-bold rounded-xl bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400 border border-emerald-200/50 dark:border-emerald-800/40 hover:bg-emerald-100 dark:hover:bg-emerald-900/30 transition-all shadow-sm group"
+              title={t('schedule.pasteHint', 'Ctrl+V — Вставить')}
+            >
+              <Clipboard className="w-4 h-4" />
+              <span className="truncate max-w-[140px]">{clipboard.event.title}</span>
+              <kbd className="hidden sm:inline text-[9px] px-1.5 py-0.5 bg-emerald-200/50 dark:bg-emerald-800/50 rounded font-mono">Ctrl+V</kbd>
+              <X className="w-3.5 h-3.5 opacity-0 group-hover:opacity-100 transition-opacity" onClick={(e) => { e.stopPropagation(); setClipboard(null); }} />
+            </button>
+          )}
+          <button onClick={() => {
+            setForm(f => ({ ...f, type: activeTab === 'timetable' ? 'lesson' : 'exam' }));
+            setShowCreate(true);
+          }} className="btn-primary !py-2.5 !px-5 text-sm flex items-center gap-2 w-full sm:w-fit shadow-md shadow-primary-500/20 justify-center">
+            <Plus className="w-4 h-4" />{t('org.schedule.addEvent', 'Добавить')}
+          </button>
+        </div>
       </div>
 
       {error && <div className="px-5 py-3.5 bg-red-500/10 border border-red-500/20 rounded-2xl text-sm font-medium text-red-600 dark:text-red-400">{error}</div>}
+
+      {/* Drag & Drop hint banner */}
+      {canEdit && (
+        <div className="flex items-center gap-3 px-4 py-2.5 bg-indigo-50/50 dark:bg-indigo-900/10 border border-indigo-200/50 dark:border-indigo-800/30 rounded-2xl">
+          <GripVertical className="w-4 h-4 text-indigo-500 flex-shrink-0" />
+          <p className="text-[11px] font-medium text-indigo-700 dark:text-indigo-400">
+            {t('schedule.dndHint', 'Перетаскивайте занятия между днями. Правый клик → Копировать, Ctrl+V → Вставить.')}
+          </p>
+        </div>
+      )}
 
       {/* Week Navigator — only for Events tab */}
       {activeTab === 'events' && (
@@ -197,14 +491,24 @@ const SchedulePage: React.FC = () => {
                 const dayLessons = timetableEvents
                   .filter(e => (e as any).dayOfWeek === dayIdx)
                   .sort((a, b) => (a.startTime || '').localeCompare(b.startTime || ''));
+                const isDropTarget = isDragging && dragOverDay === dayIdx;
 
                 return (
-                  <div key={dayIdx} className={`w-[280px] sm:w-[300px] xl:flex-1 xl:min-w-[150px] shrink-0 snap-center rounded-[2rem] border transition-all duration-300 flex flex-col relative overflow-hidden ${
-                    isToday 
-                      ? 'bg-gradient-to-b from-primary-50/80 to-white dark:from-primary-900/30 dark:to-slate-800/40 border-primary-200 dark:border-primary-800/50 shadow-xl shadow-primary-500/10 ring-1 ring-primary-500/20' 
-                      : 'bg-white/60 dark:bg-slate-800/30 border-slate-200/60 dark:border-slate-700/50 shadow-sm backdrop-blur-xl hover:shadow-md'
-                  }`}>
+                  <div
+                    key={dayIdx}
+                    className={`w-[280px] sm:w-[300px] xl:flex-1 xl:min-w-[150px] shrink-0 snap-center rounded-[2rem] border transition-all duration-300 flex flex-col relative overflow-hidden ${
+                      isDropTarget
+                        ? 'bg-gradient-to-b from-indigo-50/80 to-indigo-100/50 dark:from-indigo-900/30 dark:to-indigo-800/20 border-indigo-400 dark:border-indigo-600 shadow-xl shadow-indigo-500/20 ring-2 ring-indigo-400/30 scale-[1.02]'
+                        : isToday 
+                          ? 'bg-gradient-to-b from-primary-50/80 to-white dark:from-primary-900/30 dark:to-slate-800/40 border-primary-200 dark:border-primary-800/50 shadow-xl shadow-primary-500/10 ring-1 ring-primary-500/20' 
+                          : 'bg-white/60 dark:bg-slate-800/30 border-slate-200/60 dark:border-slate-700/50 shadow-sm backdrop-blur-xl hover:shadow-md'
+                    }`}
+                    onDragOver={(e) => handleDragOverDay(e, dayIdx)}
+                    onDragLeave={handleDragLeaveDay}
+                    onDrop={(e) => handleDropOnDay(e, dayIdx)}
+                  >
                     {isToday && <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-primary-400 to-indigo-500" />}
+                    {isDropTarget && <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-indigo-400 to-purple-500 animate-pulse" />}
                     
                     {/* Day of Week Header */}
                     <div className="text-center pt-5 pb-3 mb-2 border-b border-slate-200/40 dark:border-slate-700/40">
@@ -221,46 +525,109 @@ const SchedulePage: React.FC = () => {
 
                     {/* Lessons Sequence */}
                     <div className="flex-1 px-3 pb-4 space-y-2.5 relative min-h-[300px]">
-                       {dayLessons.map((l, idx) => (
-                         <div key={l.id} className="relative group bg-white dark:bg-slate-800 rounded-2xl p-3.5 shadow-sm border border-slate-100 dark:border-slate-700/50 hover:shadow-lg hover:shadow-primary-500/5 transition-all duration-300 hover:-translate-y-1 overflow-hidden">
-                           <div className="absolute left-0 top-0 bottom-0 w-1 bg-gradient-to-b from-primary-400 to-indigo-500" />
-                           
-                           <div className="flex justify-between items-start mb-2">
-                              <span className="text-[9px] font-bold text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-700/80 px-2 py-0.5 rounded-md uppercase tracking-wider">
-                                {idx + 1}-{t('schedule.nthLesson', 'й Урок')}
-                              </span>
-                              <button onClick={() => handleDelete(l.id, true)} className="opacity-0 group-hover:opacity-100 text-red-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/30 p-1 rounded-md transition-all">
-                                <Trash2 className="w-3.5 h-3.5" />
-                              </button>
-                           </div>
-
-                           <h4 className="text-[13px] font-bold text-slate-800 dark:text-white leading-snug mb-2.5 pr-2 break-words">
-                             {l.title}
-                           </h4>
-                           
-                           <div className="flex flex-col gap-1.5 mt-auto">
-                             <div className="flex items-center gap-1.5 text-[11px] text-slate-500 dark:text-slate-400 font-semibold bg-slate-50 dark:bg-slate-800/50 w-fit px-2 py-1 rounded-lg">
-                               <Clock className="w-3.5 h-3.5 text-primary-500 dark:text-primary-400"/> 
-                               <span>{l.startTime} - {l.endTime}</span>
-                             </div>
+                       {dayLessons.map((l, idx) => {
+                         const isSelected = selectedEvent?.event.id === l.id;
+                         const isBeingDragged = draggedEvent?.id === l.id;
+                         return (
+                           <div
+                             key={l.id}
+                             className={`relative group rounded-2xl p-3.5 shadow-sm border transition-all duration-300 overflow-hidden ${
+                               canEdit ? 'cursor-grab active:cursor-grabbing' : ''
+                             } ${isBeingDragged ? 'opacity-30 scale-95' : 'hover:shadow-lg hover:shadow-primary-500/5 hover:-translate-y-1'} ${
+                               isSelected
+                                 ? 'bg-indigo-50 dark:bg-indigo-900/20 border-indigo-300 dark:border-indigo-700/50 ring-2 ring-indigo-400/30'
+                                 : 'bg-white dark:bg-slate-800 border-slate-100 dark:border-slate-700/50'
+                             }`}
+                             draggable={canEdit}
+                             onDragStart={(e) => { e.stopPropagation(); handleDragStart(e, l); }}
+                             onDragEnd={handleDragEnd}
+                             onClick={(e) => { e.stopPropagation(); canEdit && setSelectedEvent({ event: l, isTimetable: true }); }}
+                             onContextMenu={(e) => handleContextMenu(e, l, true)}
+                           >
+                             <div className="absolute left-0 top-0 bottom-0 w-1 bg-gradient-to-b from-primary-400 to-indigo-500" />
                              
-                             {l.location && (
-                               <div className="flex items-center gap-1.5 text-[10px] text-slate-500 dark:text-slate-400 font-medium">
-                                 <MapPin className="w-3 h-3 text-slate-400" />
-                                 {l.location}
+                             <div className="flex justify-between items-start mb-2">
+                                <div className="flex items-center gap-1">
+                                  {canEdit && <GripVertical className="w-3.5 h-3.5 text-slate-300 dark:text-slate-600 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0" />}
+                                  <span className="text-[9px] font-bold text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-700/80 px-2 py-0.5 rounded-md uppercase tracking-wider">
+                                    {idx + 1}-{t('schedule.nthLesson', 'й Урок')}
+                                  </span>
+                                </div>
+                                <div className="flex items-center gap-0.5">
+                                  {canEdit && (
+                                    <button
+                                      onClick={(e) => { e.stopPropagation(); handleCopy(l); }}
+                                      className="opacity-0 group-hover:opacity-100 text-slate-400 hover:text-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 p-1 rounded-md transition-all"
+                                      title={t('schedule.copy', 'Копировать')}
+                                    >
+                                      <Copy className="w-3.5 h-3.5" />
+                                    </button>
+                                  )}
+                                  <button onClick={(e) => { e.stopPropagation(); handleDelete(l.id, true); }} className="opacity-0 group-hover:opacity-100 text-red-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/30 p-1 rounded-md transition-all">
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                  </button>
+                                </div>
+                             </div>
+
+                             <h4 className="text-[13px] font-bold text-slate-800 dark:text-white leading-snug mb-2.5 pr-2 break-words">
+                               {l.title}
+                             </h4>
+                             
+                             <div className="flex flex-col gap-1.5 mt-auto">
+                               <div className="flex items-center gap-1.5 text-[11px] text-slate-500 dark:text-slate-400 font-semibold bg-slate-50 dark:bg-slate-800/50 w-fit px-2 py-1 rounded-lg">
+                                 <Clock className="w-3.5 h-3.5 text-primary-500 dark:text-primary-400"/> 
+                                 <span>{l.startTime} - {l.endTime}</span>
                                </div>
-                             )}
+                               
+                               {l.location && (
+                                 <div className="flex items-center gap-1.5 text-[10px] text-slate-500 dark:text-slate-400 font-medium">
+                                   <MapPin className="w-3 h-3 text-slate-400" />
+                                   {l.location}
+                                 </div>
+                               )}
+                             </div>
                            </div>
-                         </div>
-                       ))}
+                         );
+                       })}
                        
                        {dayLessons.length === 0 && (
-                          <div className="absolute inset-x-0 top-1/2 -translate-y-1/2 flex flex-col items-center justify-center opacity-40 select-none pointer-events-none">
-                            <Calendar className="w-10 h-10 mb-3 text-slate-300 dark:text-slate-600" />
-                            <p className="text-xs font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest text-center">{t('schedule.noLessons', 'Нет занятий')}</p>
+                          <div className={`absolute inset-x-0 top-1/2 -translate-y-1/2 flex flex-col items-center justify-center select-none pointer-events-none transition-opacity ${isDropTarget ? 'opacity-80' : 'opacity-40'}`}>
+                            {isDropTarget ? (
+                              <>
+                                <div className="w-16 h-16 mb-3 rounded-2xl bg-indigo-100 dark:bg-indigo-900/30 flex items-center justify-center animate-pulse">
+                                  <Plus className="w-8 h-8 text-indigo-500" />
+                                </div>
+                                <p className="text-xs font-black text-indigo-600 dark:text-indigo-400 uppercase tracking-widest text-center">{t('schedule.dropHere', 'Отпустите здесь')}</p>
+                              </>
+                            ) : (
+                              <>
+                                <Calendar className="w-10 h-10 mb-3 text-slate-300 dark:text-slate-600" />
+                                <p className="text-xs font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest text-center">{t('schedule.noLessons', 'Нет занятий')}</p>
+                              </>
+                            )}
                           </div>
                        )}
                     </div>
+
+                    {/* Quick paste button at bottom */}
+                    {canEdit && clipboard && !isDragging && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setPasteForm({
+                            dayOfWeek: dayIdx,
+                            startTime: clipboard.event.startTime || '09:00',
+                            endTime: clipboard.event.endTime || '10:00',
+                            date: '',
+                          });
+                          setShowPasteModal(true);
+                        }}
+                        className="mx-3 mb-3 flex items-center justify-center gap-2 py-2 rounded-xl bg-emerald-50/80 dark:bg-emerald-900/15 border border-emerald-200/50 dark:border-emerald-800/30 text-emerald-700 dark:text-emerald-400 text-[11px] font-bold hover:bg-emerald-100 dark:hover:bg-emerald-900/30 transition-all opacity-0 group-hover:opacity-100"
+                      >
+                        <Clipboard className="w-3 h-3" />
+                        {t('schedule.pasteHere', 'Вставить сюда')}
+                      </button>
+                    )}
                   </div>
                 );
               })}
@@ -307,9 +674,26 @@ const SchedulePage: React.FC = () => {
                   {weekDays.map((day, di) => {
                     const dayStr = `${day.getFullYear()}-${String(day.getMonth() + 1).padStart(2, '0')}-${String(day.getDate()).padStart(2, '0')}`;
                     const dayEvents = calendarEvents.filter((e) => e.date === dayStr && !(e as any).recurring);
+                    const isDropCol = isDragging && dragOverDay === di;
                     return (
-                      <div key={di} className="relative border-r border-slate-100 dark:border-slate-700/50 last:border-0">
-                        {HOURS.map((h) => <div key={h} className="h-12 border-b border-slate-50 dark:border-slate-700/30" />)}
+                      <div
+                        key={di}
+                        className={`relative border-r border-slate-100 dark:border-slate-700/50 last:border-0 transition-colors ${isDropCol ? 'bg-indigo-50/30 dark:bg-indigo-900/10' : ''}`}
+                        onDragOver={(e) => handleEventDragOverCell(e, di)}
+                        onDragLeave={handleEventDragLeaveCell}
+                        onDrop={(e) => handleDropOnCell(e, di)}
+                      >
+                        {HOURS.map((h) => {
+                          const isDropHourTarget = isDropCol && dragOverHour === h;
+                          return (
+                            <div
+                              key={h}
+                              className={`h-12 border-b border-slate-50 dark:border-slate-700/30 transition-colors ${isDropHourTarget ? 'bg-indigo-100/50 dark:bg-indigo-800/20' : ''}`}
+                              onDragOver={(e) => handleEventDragOverCell(e, di, h)}
+                              onDrop={(e) => handleDropOnCell(e, di, h)}
+                            />
+                          );
+                        })}
                         {dayEvents.map((ev) => {
                           const [sh] = (ev.startTime || '09:00').split(':').map(Number);
                           const top = Math.max(0, (sh - 7)) * 48;
@@ -336,7 +720,11 @@ const SchedulePage: React.FC = () => {
                   );
                   
                   return dayEvents.map((ev) => (
-                    <div key={ev.id} className={`bg-white dark:bg-slate-800 border rounded-2xl p-4 flex items-center justify-between gap-3 shadow-sm ${ev.type === 'exam' ? 'border-amber-200 dark:border-amber-800/40 shadow-amber-500/5' : 'border-slate-200 dark:border-slate-700'}`}>
+                    <div
+                      key={ev.id}
+                      className={`bg-white dark:bg-slate-800 border rounded-2xl p-4 flex items-center justify-between gap-3 shadow-sm ${ev.type === 'exam' ? 'border-amber-200 dark:border-amber-800/40 shadow-amber-500/5' : 'border-slate-200 dark:border-slate-700'}`}
+                      onContextMenu={(e) => handleContextMenu(e, ev, false)}
+                    >
                       <div className="flex items-center gap-3 w-full">
                         <div className={`w-12 h-12 rounded-[14px] flex items-center justify-center shrink-0 ${ev.type === 'exam' ? 'bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400' : 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400'}`}>
                           <Calendar className="w-5 h-5" />
@@ -353,9 +741,19 @@ const SchedulePage: React.FC = () => {
                           </div>
                         </div>
                       </div>
-                      <button onClick={() => handleDelete(ev.id, false)} className="p-2 bg-red-50 text-red-500 hover:bg-red-500 hover:text-white rounded-xl transition-all shadow-sm shrink-0">
-                        <Trash2 className="w-4 h-4" />
-                      </button>
+                      <div className="flex items-center gap-1 shrink-0">
+                        {canEdit && (
+                          <button
+                            onClick={() => handleCopy(ev)}
+                            className="p-2 bg-indigo-50 text-indigo-500 hover:bg-indigo-500 hover:text-white rounded-xl transition-all shadow-sm"
+                          >
+                            <Copy className="w-4 h-4" />
+                          </button>
+                        )}
+                        <button onClick={() => handleDelete(ev.id, false)} className="p-2 bg-red-50 text-red-500 hover:bg-red-500 hover:text-white rounded-xl transition-all shadow-sm shrink-0">
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
                     </div>
                   ));
                 })()}
@@ -363,6 +761,133 @@ const SchedulePage: React.FC = () => {
             </>
           )}
 
+        </div>
+      )}
+
+      {/* ═══ Context Menu ═══ */}
+      {contextMenu && (
+        <div
+          ref={contextMenuRef}
+          className="fixed z-[100] bg-white dark:bg-slate-800 rounded-2xl shadow-2xl border border-slate-200/80 dark:border-slate-700/50 py-2 px-1 min-w-[180px] animate-in zoom-in-95 fade-in duration-150"
+          style={{ left: contextMenu.x, top: contextMenu.y }}
+        >
+          <button
+            onClick={() => handleCopy(contextMenu.event)}
+            className="flex items-center gap-3 w-full px-4 py-2.5 text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700/50 rounded-xl transition-colors"
+          >
+            <Copy className="w-4 h-4 text-indigo-500" />
+            {t('schedule.copy', 'Копировать')}
+            <kbd className="ml-auto text-[9px] px-1.5 py-0.5 bg-slate-100 dark:bg-slate-700 rounded font-mono text-slate-400">Ctrl+C</kbd>
+          </button>
+          {clipboard && (
+            <button
+              onClick={() => {
+                setContextMenu(null);
+                if (activeTab === 'timetable') {
+                  setPasteForm({
+                    dayOfWeek: (contextMenu.event as any).dayOfWeek ?? 0,
+                    startTime: clipboard.event.startTime || '09:00',
+                    endTime: clipboard.event.endTime || '10:00',
+                    date: '',
+                  });
+                } else {
+                  setPasteForm({
+                    dayOfWeek: 0,
+                    startTime: clipboard.event.startTime || '09:00',
+                    endTime: clipboard.event.endTime || '10:00',
+                    date: contextMenu.event.date || '',
+                  });
+                }
+                setShowPasteModal(true);
+              }}
+              className="flex items-center gap-3 w-full px-4 py-2.5 text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700/50 rounded-xl transition-colors"
+            >
+              <Clipboard className="w-4 h-4 text-emerald-500" />
+              {t('schedule.paste', 'Вставить')}
+              <kbd className="ml-auto text-[9px] px-1.5 py-0.5 bg-slate-100 dark:bg-slate-700 rounded font-mono text-slate-400">Ctrl+V</kbd>
+            </button>
+          )}
+          <div className="my-1 border-t border-slate-100 dark:border-slate-700/50" />
+          <button
+            onClick={() => {
+              handleDelete(contextMenu.event.id, contextMenu.isTimetable);
+              setContextMenu(null);
+            }}
+            className="flex items-center gap-3 w-full px-4 py-2.5 text-sm font-medium text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-xl transition-colors"
+          >
+            <Trash2 className="w-4 h-4" />
+            {t('common.delete', 'Удалить')}
+          </button>
+        </div>
+      )}
+
+      {/* ═══ Paste Modal ═══ */}
+      {showPasteModal && clipboard && (
+        <div className="fixed inset-0 bg-slate-900/40 dark:bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in duration-200" onClick={() => setShowPasteModal(false)}>
+          <div className="bg-white dark:bg-slate-800 rounded-[2rem] p-6 sm:p-8 w-full max-w-md shadow-2xl border border-slate-200/50 dark:border-slate-700/50 animate-in zoom-in-95 duration-200" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center gap-3 mb-6">
+              <div className="w-10 h-10 rounded-xl bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center">
+                <Clipboard className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
+              </div>
+              <div>
+                <h2 className="text-lg font-bold text-slate-900 dark:text-white">
+                  {t('schedule.pasteTitle', 'Вставить занятие')}
+                </h2>
+                <p className="text-sm text-slate-500 truncate max-w-[250px]">{clipboard.event.title}</p>
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              {activeTab === 'timetable' ? (
+                <div>
+                  <label className="text-[11px] font-bold text-slate-500 uppercase tracking-widest mb-1.5 block">{t('schedule.dayOfWeek', 'День недели')}</label>
+                  <div className="grid grid-cols-7 gap-1.5">
+                    {dayNames.map((name, i) => (
+                      <button
+                        key={i}
+                        type="button"
+                        onClick={() => setPasteForm(f => ({ ...f, dayOfWeek: i }))}
+                        className={`py-2.5 rounded-xl text-xs font-bold transition-all ${pasteForm.dayOfWeek === i
+                          ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-500/30 ring-2 ring-emerald-500/20 scale-105'
+                          : 'bg-slate-100 dark:bg-slate-700/50 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-600/50'
+                        }`}
+                      >
+                        {name}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <div>
+                  <label className="text-[11px] font-bold text-slate-500 uppercase tracking-widest mb-1.5 block">{t('common.date', 'Дата')}</label>
+                  <input type="date" value={pasteForm.date} onChange={(e) => setPasteForm(f => ({ ...f, date: e.target.value }))} className="input bg-slate-50 dark:bg-slate-900/50" />
+                </div>
+              )}
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="text-[11px] font-bold text-slate-500 uppercase tracking-widest mb-1.5 block">{t('org.schedule.startTime', 'Начало')}</label>
+                  <input type="time" value={pasteForm.startTime} onChange={(e) => setPasteForm(f => ({ ...f, startTime: e.target.value }))} className="input bg-slate-50 dark:bg-slate-900/50" />
+                </div>
+                <div>
+                  <label className="text-[11px] font-bold text-slate-500 uppercase tracking-widest mb-1.5 block">{t('org.schedule.endTime', 'Конец')}</label>
+                  <input type="time" value={pasteForm.endTime} onChange={(e) => setPasteForm(f => ({ ...f, endTime: e.target.value }))} className="input bg-slate-50 dark:bg-slate-900/50" />
+                </div>
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-3 mt-8">
+              <button onClick={() => setShowPasteModal(false)} className="px-5 py-2.5 rounded-xl font-bold text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors text-sm">{t('common.cancel', 'Отмена')}</button>
+              <button
+                onClick={handlePaste}
+                disabled={saving || (activeTab === 'events' && !pasteForm.date)}
+                className="btn-primary !px-6 !py-2.5 text-sm flex items-center gap-2"
+              >
+                <Clipboard className="w-4 h-4" />
+                {saving ? '...' : t('schedule.paste', 'Вставить')}
+              </button>
+            </div>
+          </div>
         </div>
       )}
 
@@ -452,6 +977,16 @@ const SchedulePage: React.FC = () => {
                 {saving ? '...' : t('common.save', 'Сохранить')}
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* ═══ Toast Notification ═══ */}
+      {clipboardToast && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[200] animate-in slide-in-from-bottom-4 fade-in duration-300">
+          <div className="flex items-center gap-2 px-5 py-3 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-2xl shadow-2xl text-sm font-bold">
+            <Clipboard className="w-4 h-4 text-emerald-400 dark:text-emerald-600" />
+            {clipboardToast}
           </div>
         </div>
       )}

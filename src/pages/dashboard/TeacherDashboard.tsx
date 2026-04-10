@@ -14,6 +14,7 @@ import {
   Users, MailOpen, UserCircle2, Calendar, GraduationCap,
 } from 'lucide-react';
 import TeacherOnboardingWizard from '../../components/onboarding/TeacherOnboardingWizard';
+import TeacherWheelOfFortune from '../../components/dashboard/TeacherWheelOfFortune';
 
 const TeacherDashboard: React.FC = () => {
   const { t } = useTranslation();
@@ -137,6 +138,9 @@ const TeacherDashboard: React.FC = () => {
       {/* Content Grid */}
       {organizationId && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
+          {/* Wheel of Fortune */}
+          <TeacherWheelOfFortune />
+
           {/* My Lessons */}
           <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl overflow-hidden">
             <div className="px-5 py-4 border-b border-slate-100 dark:border-slate-700 flex items-center justify-between">

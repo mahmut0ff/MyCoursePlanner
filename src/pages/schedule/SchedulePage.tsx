@@ -42,8 +42,11 @@ const SchedulePage: React.FC = () => {
     Promise.all([
       orgGetTimetable().then(setTimetableEvents).catch(() => {}),
       (() => {
-        const from = weekDays[0].toISOString().split('T')[0];
-        const to = weekDays[6].toISOString().split('T')[0];
+        const getLocalDateStr = (d: Date) => {
+          return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+        };
+        const from = getLocalDateStr(weekDays[0]);
+        const to = getLocalDateStr(weekDays[6]);
         return orgGetSchedule(from, to).then(setCalendarEvents).catch(() => {});
       })()
     ]).finally(() => setLoading(false));
@@ -103,7 +106,8 @@ const SchedulePage: React.FC = () => {
     } catch (e: any) { setError(e.message); }
   };
 
-  const todayStr = new Date().toISOString().split('T')[0];
+  const todayD = new Date();
+  const todayStr = `${todayD.getFullYear()}-${String(todayD.getMonth() + 1).padStart(2, '0')}-${String(todayD.getDate()).padStart(2, '0')}`;
   const todayDayOfWeek = (() => { const d = new Date().getDay(); return d === 0 ? 6 : d - 1; })(); // 0=Mon
 
   const renderEventBlock = (ev: ScheduleEvent, top: number) => {
@@ -271,7 +275,7 @@ const SchedulePage: React.FC = () => {
               {/* Mobile: Day selector tabs */}
               <div className="flex sm:hidden gap-1.5 overflow-x-auto pb-3 mb-2 hide-scrollbar -mx-4 px-4">
                 {weekDays.map((d, i) => {
-                  const isToday = d.toISOString().split('T')[0] === todayStr;
+                  const isToday = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}` === todayStr;
                   return (
                     <button key={i} onClick={() => { setMobileView('day'); setSelectedDay(i); }}
                       className={`flex flex-col items-center px-4 py-2.5 rounded-2xl text-xs font-medium shrink-0 transition-all ${selectedDay === i && mobileView === 'day' ? 'bg-primary-600 text-white shadow-lg shadow-primary-500/30' : isToday ? 'bg-primary-50 dark:bg-primary-900/20 text-primary-600 dark:text-primary-400 ring-1 ring-primary-500/20' : 'bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:bg-slate-50'}`}>
@@ -287,7 +291,7 @@ const SchedulePage: React.FC = () => {
                 <div className="grid grid-cols-8 border-b border-slate-100 dark:border-slate-700/50 bg-slate-50/50 dark:bg-slate-800/50">
                   <div className="px-1 py-3 border-r border-slate-100 dark:border-slate-700/50" />
                   {weekDays.map((d, i) => {
-                    const isToday = d.toISOString().split('T')[0] === todayStr;
+                    const isToday = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}` === todayStr;
                     return (
                       <div key={i} className={`px-1 py-3 text-center border-r border-slate-100 dark:border-slate-700/50 last:border-0 ${isToday ? 'bg-amber-50/50 dark:bg-amber-900/10 shadow-inner' : ''}`}>
                         <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{dayNames[i]}</p>
@@ -301,7 +305,7 @@ const SchedulePage: React.FC = () => {
                     {HOURS.map((h) => <div key={h} className="h-12 flex items-start justify-end pr-2 pt-1"><span className="text-[10px] font-medium text-slate-400">{h}:00</span></div>)}
                   </div>
                   {weekDays.map((day, di) => {
-                    const dayStr = day.toISOString().split('T')[0];
+                    const dayStr = `${day.getFullYear()}-${String(day.getMonth() + 1).padStart(2, '0')}-${String(day.getDate()).padStart(2, '0')}`;
                     const dayEvents = calendarEvents.filter((e) => e.date === dayStr && !(e as any).recurring);
                     return (
                       <div key={di} className="relative border-r border-slate-100 dark:border-slate-700/50 last:border-0">
@@ -320,7 +324,8 @@ const SchedulePage: React.FC = () => {
               {/* Mobile List View */}
               <div className="sm:hidden space-y-3 mt-4">
                 {(() => {
-                  const dayStr = weekDays[selectedDay]?.toISOString().split('T')[0];
+                  const dDay = weekDays[selectedDay];
+                  const dayStr = dDay ? `${dDay.getFullYear()}-${String(dDay.getMonth() + 1).padStart(2, '0')}-${String(dDay.getDate()).padStart(2, '0')}` : '';
                   const dayEvents = calendarEvents.filter((e) => e.date === dayStr && !(e as any).recurring);
                   
                   if (dayEvents.length === 0) return (

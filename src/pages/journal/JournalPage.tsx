@@ -24,16 +24,23 @@ import type { DragEndEvent } from '@dnd-kit/core';
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy, useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 
+function getLocalISODate(d: Date) {
+  const yyyy = d.getFullYear();
+  const mm = String(d.getMonth() + 1).padStart(2, '0');
+  const dd = String(d.getDate()).padStart(2, '0');
+  return `${yyyy}-${mm}-${dd}`;
+}
+
 const now = new Date();
-const todayFormatted = now.toISOString().split('T')[0];
+const todayFormatted = getLocalISODate(now);
 
 const minDateObj = new Date(now);
 minDateObj.setDate(now.getDate() - 14);
-const minDateFormatted = minDateObj.toISOString().split('T')[0];
+const minDateFormatted = getLocalISODate(minDateObj);
 
 const maxDateObj = new Date(now);
 maxDateObj.setDate(now.getDate() + 14);
-const maxDateFormatted = maxDateObj.toISOString().split('T')[0];
+const maxDateFormatted = getLocalISODate(maxDateObj);
 
 const attendanceIcons: Record<AttendanceStatus, React.ReactNode> = {
   present: <CheckCircle2 className="w-5 h-5 text-emerald-500" />,

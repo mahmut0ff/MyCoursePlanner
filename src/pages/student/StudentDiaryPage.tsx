@@ -233,7 +233,9 @@ export default function StudentDiaryPage() {
             const dd = String(item.date.getDate()).padStart(2, '0');
             const dateKey = `${yyyy}-${mm}-${dd}`;
             
-            const isToday = dateKey === new Date().toISOString().split('T')[0];
+            const todayD = new Date();
+            const todayKey = `${todayD.getFullYear()}-${String(todayD.getMonth() + 1).padStart(2, '0')}-${String(todayD.getDate()).padStart(2, '0')}`;
+            const isToday = dateKey === todayKey;
             const dayRecords = eventsByDate[dateKey] ? Object.values(eventsByDate[dateKey]) : [];
 
             return (

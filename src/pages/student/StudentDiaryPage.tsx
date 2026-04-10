@@ -103,9 +103,20 @@ export default function StudentDiaryPage() {
           gradesRes.forEach((g: GradeEntry) => {
             if (!myCourseIds.has(g.courseId)) return;
             const courseTitle = myCourses.find(c => c.id === g.courseId)?.title || 'Неизвестный курс';
-            const date = safeISODate(g.updatedAt || g.createdAt);
-            if (!date) return;
-            newEvents.push({ type: 'grade', id: `grade_${g.id}`, date, data: g, courseTitle });
+            
+            let resolvedDateStr: string | null = null;
+            
+            if (g.lessonId && /^\\d{4}-\\d{2}-\\d{2}$/.test(g.lessonId)) {
+               resolvedDateStr = g.lessonId;
+            } else if (g.lessonId && Array.isArray(journalRes)) {
+               const matchingJ = journalRes.find((j: any) => j.lessonId === g.lessonId && j.studentId === g.studentId);
+               if (matchingJ && matchingJ.date) resolvedDateStr = matchingJ.date;
+            }
+
+            const finalDate = safeISODate(resolvedDateStr || g.updatedAt || g.createdAt);
+            if (!finalDate) return;
+
+            newEvents.push({ type: 'grade', id: `grade_${g.id}`, date: finalDate, data: g, courseTitle });
           });
         }
 

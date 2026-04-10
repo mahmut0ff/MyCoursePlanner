@@ -11,7 +11,7 @@ import {
   Radio, Trophy, BookOpen, Building2, CheckCheck, X,
   UserPlus, ArrowLeftRight, FileCheck, GraduationCap, Clock, AlertTriangle, Gift,
 } from 'lucide-react';
-import type { AppNotification, NotificationType } from '../../types';
+import type { AppNotification } from '../../types';
 
 const TYPE_CONFIG: Record<string, { icon: React.ReactNode; color: string }> = {
   invite_received:        { icon: <MailOpen className="w-4 h-4" />,      color: 'text-blue-500 bg-blue-500/10' },

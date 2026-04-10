@@ -104,19 +104,19 @@ export default function StudentDiaryPage() {
             if (!myCourseIds.has(g.courseId)) return;
             const courseTitle = myCourses.find(c => c.id === g.courseId)?.title || 'Неизвестный курс';
             
-            let resolvedDateStr: string | null = null;
+            let resolvedDateStr: string | null = (g.lessonId || '').trim();
             
-            if (g.lessonId && /^\\d{4}-\\d{2}-\\d{2}$/.test(g.lessonId)) {
-               resolvedDateStr = g.lessonId;
-            } else if (g.lessonId && Array.isArray(journalRes)) {
-               const matchingJ = journalRes.find((j: any) => j.lessonId === g.lessonId && j.studentId === g.studentId);
+            // If lessonId is an actual Lesson ID (not a date string), extract date from Journal
+            if (resolvedDateStr && !/^\\d{4}-\\d{2}-\\d{2}/.test(resolvedDateStr) && Array.isArray(journalRes)) {
+               const matchingJ = journalRes.find((j: any) => j.lessonId === g.lessonId || (j.lessonId === g.lessonId && j.studentId === g.studentId));
                if (matchingJ && matchingJ.date) resolvedDateStr = matchingJ.date;
             }
 
-            const finalDate = safeISODate(resolvedDateStr || g.updatedAt || g.createdAt);
-            if (!finalDate) return;
+            let finalDateStr = resolvedDateStr || g.updatedAt || g.createdAt || '';
+            const prefix = finalDateStr.substring(0, 10);
+            if (!prefix || prefix.length < 10) return;
 
-            newEvents.push({ type: 'grade', id: `grade_${g.id}`, date: finalDate, data: g, courseTitle });
+            newEvents.push({ type: 'grade', id: `grade_${g.id}`, date: prefix, data: g, courseTitle });
           });
         }
 
@@ -124,8 +124,8 @@ export default function StudentDiaryPage() {
           journalRes.forEach((j: JournalEntry) => {
             if (!myCourseIds.has(j.courseId)) return;
             const courseTitle = myCourses.find(c => c.id === j.courseId)?.title || 'Неизвестный курс';
-            const eventDate = safeISODate(j.date);
-            if (!eventDate) return;
+            const eventDate = (j.date || '').substring(0, 10);
+            if (!eventDate || eventDate.length < 10) return;
             newEvents.push({ type: 'journal', id: `journal_${j.id}`, date: eventDate, data: j, courseTitle });
           });
         }
@@ -158,11 +158,7 @@ export default function StudentDiaryPage() {
     const dayMap: Record<string, Record<string, DayRecord>> = {};
 
     filteredEvents.forEach(evt => {
-      const d = new Date(evt.date);
-      const yyyy = d.getFullYear();
-      const mm = String(d.getMonth() + 1).padStart(2, '0');
-      const dd = String(d.getDate()).padStart(2, '0');
-      const yyyy_mm_dd = `${yyyy}-${mm}-${dd}`;
+      const yyyy_mm_dd = evt.date.substring(0, 10);
       
       if (!dayMap[yyyy_mm_dd]) dayMap[yyyy_mm_dd] = {};
       
@@ -323,9 +319,9 @@ export default function StudentDiaryPage() {
                onChange={(e) => setSelectedCourseId(e.target.value)}
                className="bg-transparent pl-10 pr-8 py-2 text-sm font-bold text-slate-900 dark:text-white appearance-none outline-none w-full sm:w-[220px]"
              >
-               <option value="all">Все предметы</option>
+               <option value="all" className="bg-white dark:bg-slate-800 text-slate-900 dark:text-white">Все предметы</option>
                {courses.map(c => (
-                 <option key={c.id} value={c.id}>{c.title}</option>
+                 <option key={c.id} value={c.id} className="bg-white dark:bg-slate-800 text-slate-900 dark:text-white">{c.title}</option>
                ))}
              </select>
           </div>

@@ -7,14 +7,14 @@ import { signOut } from '../../services/auth.service';
 
 import OrgSwitcher from './OrgSwitcher';
 import {
-  Building2, Calendar, FileText, GraduationCap,
-  LayoutDashboard, Library, Monitor, Shield,
-  UsersRound, Settings, BookOpen, UserPlus,
+  Building2, Calendar, FileText,
+  LayoutDashboard, Monitor,
+  Settings, BookOpen, UserPlus,
   BarChart3, Gamepad2, ChevronDown, TableProperties,
-  Users, Layers, Database, Activity, Flag, Plug, FolderOpen,
-  ClipboardList, Radio, Award, Trophy, LogOut, CreditCard,
-  Lock, ClipboardCheck, TrendingDown,
-  ShieldCheck, Bot
+  Users, Layers, Activity, Flag, Plug, FolderOpen,
+  ClipboardList, Radio, LogOut, CreditCard, Trophy,
+  Lock, ClipboardCheck,
+  ShieldCheck
 } from 'lucide-react';
 
 /* ─── Thin divider between groups ─── */
@@ -37,7 +37,7 @@ const Sidebar: React.FC<{ open: boolean; onClose: () => void; isCollapsed?: bool
         : 'gap-3 px-3 w-full [&>span]:block [&>span]:truncate'
     }`;
 
-  const lockedLinkClass = (feature: string) => ({ isActive }: { isActive: boolean }) =>
+  const lockedLinkClass = (feature: 'finances' | 'gradebook' | 'certificates' | 'branches' | 'advancedAnalytics' | 'ai' | 'aiAnalytics') => ({ isActive }: { isActive: boolean }) =>
     `${linkClass({ isActive })} ${!canAccess(feature) ? 'opacity-50' : ''}`;
 
   const isAdmin = role === 'admin';

@@ -5,7 +5,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { apiGetDashboard, orgGetTimetable, orgGetSchedule, orgGetGroups, orgGetCourses, apiGetMyMemberships, apiPublicJoin } from '../../lib/api';
 import type { LessonPlan, ExamAttempt, ScheduleEvent, Group, Course } from '../../types';
 import { formatDate } from '../../utils/grading';
-import { BookOpen, Radio, Trophy, XCircle, Brain, Target, BarChart3, Flame, Search, Gamepad2, Play, Clock, MapPin, CalendarCheck, ArrowRight, GraduationCap, Building2, Hourglass, CheckCircle2, RefreshCw } from 'lucide-react';
+import { BookOpen, Radio, Trophy, XCircle, Brain, Target, BarChart3, Flame, Search, Gamepad2, Play, Clock, MapPin, CalendarCheck, ArrowRight, GraduationCap, Building2, Hourglass, CheckCircle2, RefreshCw, UsersRound, UserPlus, Award, Headphones } from 'lucide-react';
 import { DashboardSkeleton } from '../../components/ui/Skeleton';
 import GamificationWidget from '../../components/gamification/GamificationWidget';
 import LeaderboardWidget from '../../components/gamification/LeaderboardWidget';
@@ -492,6 +492,22 @@ const StudentDashboard: React.FC = () => {
               <h3 className="kahoot-font text-sm font-bold mb-0.5">{t('studentDashboard.resultsTitle')}</h3>
               <p className="text-[10px] text-white/80 font-medium">{t('studentDashboard.yourSuccessDesc')}</p>
             </Link>
+          </div>
+
+          {/* ═══ Quick Links (pages not in sidebar) ═══ */}
+          <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-4">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+              {[
+                { to: '/student/groups', icon: UsersRound, label: t('nav.myGroups', 'Мои группы'), color: 'text-violet-500' },
+                { to: '/student/teachers', icon: UserPlus, label: t('nav.myTeachers', 'Преподаватели'), color: 'text-blue-500' },
+                { to: '/certificates', icon: Award, label: t('nav.certificates', 'Сертификаты'), color: 'text-amber-500' },
+                { to: '/study-rooms', icon: Headphones, label: t('nav.studyRooms', 'Co-Study'), color: 'text-emerald-500' },
+              ].map(link => (
+                <Link key={link.to} to={link.to} className="flex items-center gap-2 px-3 py-2.5 rounded-xl text-[13px] font-medium text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700/50 hover:text-slate-900 dark:hover:text-white transition-colors">
+                  <link.icon className={`w-4 h-4 ${link.color}`} />{link.label}
+                </Link>
+              ))}
+            </div>
           </div>
 
           {/* Gamification Area */}

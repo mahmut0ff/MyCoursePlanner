@@ -12,6 +12,7 @@ import { formatDate } from '../../utils/grading';
 import {
   BookOpen, ClipboardList, Radio, TrendingUp, ArrowRight, Plus,
   Users, MailOpen, UserCircle2, Calendar, GraduationCap,
+  UsersRound, FileText, Monitor, Gamepad2, History, BarChart3, Activity, TrendingDown,
 } from 'lucide-react';
 import TeacherOnboardingWizard from '../../components/onboarding/TeacherOnboardingWizard';
 import TeacherWheelOfFortune from '../../components/dashboard/TeacherWheelOfFortune';
@@ -224,16 +225,25 @@ const TeacherDashboard: React.FC = () => {
             </div>
           </div>
 
-          {/* Quick Links */}
+          {/* Quick Links (pages not in sidebar) */}
           <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-5">
             <h2 className="font-semibold text-slate-900 dark:text-white mb-3">{t('teacherDashboard.quickLinks')}</h2>
-            <div className="grid grid-cols-2 gap-2">
-              <Link to="/teacher-profile" className="flex items-center gap-2 px-3 py-2.5 rounded-xl text-sm text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors">
-                <UserCircle2 className="w-4 h-4" />{t('nav.myProfile')}
-              </Link>
-              <Link to="/schedule" className="flex items-center gap-2 px-3 py-2.5 rounded-xl text-sm text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors">
-                <Calendar className="w-4 h-4" />{t('nav.schedule')}
-              </Link>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+              {[
+                { to: '/groups', icon: UsersRound, label: t('nav.groups'), color: 'text-violet-500' },
+                { to: '/materials', icon: FileText, label: t('nav.materials'), color: 'text-blue-500' },
+                { to: '/rooms', icon: Monitor, label: t('nav.examRooms', 'Комнаты'), color: 'text-emerald-500' },
+                { to: '/quiz/library', icon: Gamepad2, label: t('nav.quizLibrary'), color: 'text-pink-500' },
+                { to: '/quiz/sessions', icon: History, label: t('nav.quizSessions'), color: 'text-indigo-500' },
+                { to: '/results', icon: BarChart3, label: t('nav.results'), color: 'text-teal-500' },
+                { to: '/teacher-analytics', icon: Activity, label: t('nav.analytics'), color: 'text-amber-500' },
+                { to: '/risk-dashboard', icon: TrendingDown, label: t('nav.riskDashboard', 'Светофор рисков'), color: 'text-orange-500' },
+                { to: '/teacher-profile', icon: UserCircle2, label: t('nav.myProfile'), color: 'text-slate-500' },
+              ].map(link => (
+                <Link key={link.to} to={link.to} className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm font-medium text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700/50 hover:text-slate-900 dark:hover:text-white transition-colors">
+                  <link.icon className={`w-4 h-4 ${link.color}`} />{link.label}
+                </Link>
+              ))}
             </div>
           </div>
         </div>

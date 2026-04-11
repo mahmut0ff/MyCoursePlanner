@@ -108,6 +108,30 @@ const TeacherDashboard: React.FC = () => {
       {/* Teacher Onboarding Wizard */}
       {organizationId && <TeacherOnboardingWizard />}
 
+      {/* Quick Links (pages not in sidebar) */}
+      {organizationId && (
+        <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-5">
+          <h2 className="font-semibold text-slate-900 dark:text-white mb-3">{t('teacherDashboard.quickLinks')}</h2>
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
+            {[
+              { to: '/groups', icon: UsersRound, label: t('nav.groups'), color: 'text-violet-500' },
+              { to: '/materials', icon: FileText, label: t('nav.materials'), color: 'text-blue-500' },
+              { to: '/rooms', icon: Monitor, label: t('nav.examRooms', 'Комнаты'), color: 'text-emerald-500' },
+              { to: '/quiz/library', icon: Gamepad2, label: t('nav.quizLibrary'), color: 'text-pink-500' },
+              { to: '/quiz/sessions', icon: History, label: t('nav.quizSessions'), color: 'text-indigo-500' },
+              { to: '/results', icon: BarChart3, label: t('nav.results'), color: 'text-teal-500' },
+              { to: '/teacher-analytics', icon: Activity, label: t('nav.analytics'), color: 'text-amber-500' },
+              { to: '/risk-dashboard', icon: TrendingDown, label: t('nav.riskDashboard', 'Светофор рисков'), color: 'text-orange-500' },
+              { to: '/teacher-profile', icon: UserCircle2, label: t('nav.myProfile'), color: 'text-slate-500' },
+            ].map(link => (
+              <Link key={link.to} to={link.to} className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm font-medium text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700/50 hover:text-slate-900 dark:hover:text-white transition-colors">
+                <link.icon className={`w-4 h-4 ${link.color}`} />{link.label}
+              </Link>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Stats Cards */}
       {organizationId && (
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
@@ -225,27 +249,6 @@ const TeacherDashboard: React.FC = () => {
             </div>
           </div>
 
-          {/* Quick Links (pages not in sidebar) */}
-          <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-5">
-            <h2 className="font-semibold text-slate-900 dark:text-white mb-3">{t('teacherDashboard.quickLinks')}</h2>
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-              {[
-                { to: '/groups', icon: UsersRound, label: t('nav.groups'), color: 'text-violet-500' },
-                { to: '/materials', icon: FileText, label: t('nav.materials'), color: 'text-blue-500' },
-                { to: '/rooms', icon: Monitor, label: t('nav.examRooms', 'Комнаты'), color: 'text-emerald-500' },
-                { to: '/quiz/library', icon: Gamepad2, label: t('nav.quizLibrary'), color: 'text-pink-500' },
-                { to: '/quiz/sessions', icon: History, label: t('nav.quizSessions'), color: 'text-indigo-500' },
-                { to: '/results', icon: BarChart3, label: t('nav.results'), color: 'text-teal-500' },
-                { to: '/teacher-analytics', icon: Activity, label: t('nav.analytics'), color: 'text-amber-500' },
-                { to: '/risk-dashboard', icon: TrendingDown, label: t('nav.riskDashboard', 'Светофор рисков'), color: 'text-orange-500' },
-                { to: '/teacher-profile', icon: UserCircle2, label: t('nav.myProfile'), color: 'text-slate-500' },
-              ].map(link => (
-                <Link key={link.to} to={link.to} className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm font-medium text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700/50 hover:text-slate-900 dark:hover:text-white transition-colors">
-                  <link.icon className={`w-4 h-4 ${link.color}`} />{link.label}
-                </Link>
-              ))}
-            </div>
-          </div>
         </div>
       )}
     </div>

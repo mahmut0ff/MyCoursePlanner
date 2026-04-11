@@ -459,6 +459,22 @@ const StudentDashboard: React.FC = () => {
             </div>
           )}
 
+          {/* ═══ Quick Links (pages not in sidebar) ═══ */}
+          <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-4">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+              {[
+                { to: '/student/groups', icon: UsersRound, label: t('nav.myGroups', 'Мои группы'), color: 'text-violet-500' },
+                { to: '/student/teachers', icon: UserPlus, label: t('nav.myTeachers', 'Преподаватели'), color: 'text-blue-500' },
+                { to: '/certificates', icon: Award, label: t('nav.certificates', 'Сертификаты'), color: 'text-amber-500' },
+                { to: '/study-rooms', icon: Headphones, label: t('nav.studyRooms', 'Co-Study'), color: 'text-emerald-500' },
+              ].map(link => (
+                <Link key={link.to} to={link.to} className="flex items-center gap-2 px-3 py-2.5 rounded-xl text-[13px] font-medium text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700/50 hover:text-slate-900 dark:hover:text-white transition-colors">
+                  <link.icon className={`w-4 h-4 ${link.color}`} />{link.label}
+                </Link>
+              ))}
+            </div>
+          </div>
+
           {/* ═══ Quick Actions (compact 2x2 grid) ═══ */}
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
             <Link to="/join" className="bg-[#E21B3C] hover:bg-[#c61834] text-white p-4 rounded-xl shadow-[0_4px_0_#9d1228] active:translate-y-[3px] active:shadow-[0_1px_0_#9d1228] transition-all group flex flex-col items-center text-center">
@@ -492,22 +508,6 @@ const StudentDashboard: React.FC = () => {
               <h3 className="kahoot-font text-sm font-bold mb-0.5">{t('studentDashboard.resultsTitle')}</h3>
               <p className="text-[10px] text-white/80 font-medium">{t('studentDashboard.yourSuccessDesc')}</p>
             </Link>
-          </div>
-
-          {/* ═══ Quick Links (pages not in sidebar) ═══ */}
-          <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-4">
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-              {[
-                { to: '/student/groups', icon: UsersRound, label: t('nav.myGroups', 'Мои группы'), color: 'text-violet-500' },
-                { to: '/student/teachers', icon: UserPlus, label: t('nav.myTeachers', 'Преподаватели'), color: 'text-blue-500' },
-                { to: '/certificates', icon: Award, label: t('nav.certificates', 'Сертификаты'), color: 'text-amber-500' },
-                { to: '/study-rooms', icon: Headphones, label: t('nav.studyRooms', 'Co-Study'), color: 'text-emerald-500' },
-              ].map(link => (
-                <Link key={link.to} to={link.to} className="flex items-center gap-2 px-3 py-2.5 rounded-xl text-[13px] font-medium text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700/50 hover:text-slate-900 dark:hover:text-white transition-colors">
-                  <link.icon className={`w-4 h-4 ${link.color}`} />{link.label}
-                </Link>
-              ))}
-            </div>
           </div>
 
           {/* Gamification Area */}

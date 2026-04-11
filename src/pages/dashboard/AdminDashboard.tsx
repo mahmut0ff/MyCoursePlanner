@@ -118,6 +118,27 @@ const AdminDashboard: React.FC = () => {
       {/* Onboarding step cards */}
       <OnboardingWizard {...onboardingProps} />
 
+      {/* ═══ Quick Links (pages not in sidebar) ═══ */}
+      <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-5">
+        <h2 className="font-semibold text-slate-900 dark:text-white mb-3">{t('dashboard.quickLinks', 'Быстрый доступ')}</h2>
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
+          {[
+            { to: '/leads', icon: Bot, label: t('nav.aiLeads', 'Заявки от ИИ'), color: 'text-primary-500' },
+            { to: '/groups', icon: UsersRound, label: t('nav.groups'), color: 'text-violet-500' },
+            { to: '/materials', icon: FileText, label: t('nav.materials'), color: 'text-blue-500' },
+            { to: '/quiz/library', icon: Gamepad2, label: t('nav.quizLibrary'), color: 'text-pink-500' },
+            { to: '/results', icon: BarChart3, label: t('nav.results'), color: 'text-emerald-500' },
+            { to: '/risk-dashboard', icon: TrendingDown, label: t('nav.riskDashboard', 'Светофор рисков'), color: 'text-amber-500' },
+            { to: '/homework/review', icon: ClipboardCheck, label: t('nav.homeworkReview', 'Проверка ДЗ'), color: 'text-orange-500' },
+            { to: '/notifications', icon: Bell, label: t('nav.notifications', 'Уведомления'), color: 'text-rose-500' },
+          ].map(link => (
+            <Link key={link.to} to={link.to} className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm font-medium text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700/50 hover:text-slate-900 dark:hover:text-white transition-colors">
+              <link.icon className={`w-4 h-4 ${link.color}`} />{link.label}
+            </Link>
+          ))}
+        </div>
+      </div>
+
       {/* ═══ Stat Cards ═══ */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         {stats.map((s) => (
@@ -295,26 +316,6 @@ const AdminDashboard: React.FC = () => {
         </div>
       </div>
 
-      {/* ═══ Quick Links (pages not in sidebar) ═══ */}
-      <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-5">
-        <h2 className="font-semibold text-slate-900 dark:text-white mb-3">{t('dashboard.quickLinks', 'Быстрый доступ')}</h2>
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
-          {[
-            { to: '/leads', icon: Bot, label: t('nav.aiLeads', 'Заявки от ИИ'), color: 'text-primary-500' },
-            { to: '/groups', icon: UsersRound, label: t('nav.groups'), color: 'text-violet-500' },
-            { to: '/materials', icon: FileText, label: t('nav.materials'), color: 'text-blue-500' },
-            { to: '/quiz/library', icon: Gamepad2, label: t('nav.quizLibrary'), color: 'text-pink-500' },
-            { to: '/results', icon: BarChart3, label: t('nav.results'), color: 'text-emerald-500' },
-            { to: '/risk-dashboard', icon: TrendingDown, label: t('nav.riskDashboard', 'Светофор рисков'), color: 'text-amber-500' },
-            { to: '/homework/review', icon: ClipboardCheck, label: t('nav.homeworkReview', 'Проверка ДЗ'), color: 'text-orange-500' },
-            { to: '/notifications', icon: Bell, label: t('nav.notifications', 'Уведомления'), color: 'text-rose-500' },
-          ].map(link => (
-            <Link key={link.to} to={link.to} className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm font-medium text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700/50 hover:text-slate-900 dark:hover:text-white transition-colors">
-              <link.icon className={`w-4 h-4 ${link.color}`} />{link.label}
-            </Link>
-          ))}
-        </div>
-      </div>
     </div>
   );
 };

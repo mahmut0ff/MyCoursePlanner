@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense } from 'react';
 import { Outlet, useLocation, Navigate } from 'react-router-dom';
 import Sidebar from './Sidebar.tsx';
 import Topbar from './Topbar.tsx';
@@ -115,7 +115,13 @@ const AppLayout: React.FC = () => {
             <main className="flex-1 flex flex-col overflow-hidden min-h-0">
               <div className="flex-1 p-4 md:p-6 lg:p-8 overflow-y-auto overflow-x-hidden relative" style={{ paddingBottom: 'max(2rem, calc(var(--safe-area-bottom) + 1rem))' }}>
                 <div className="max-w-screen-xl mx-auto w-full min-h-full page-content">
-                  <Outlet />
+                  <Suspense fallback={
+                    <div className="flex items-center justify-center py-20">
+                      <div className="w-8 h-8 border-4 border-primary-200 border-t-primary-600 rounded-full animate-spin dark:border-slate-700 dark:border-t-primary-400" />
+                    </div>
+                  }>
+                    <Outlet />
+                  </Suspense>
                 </div>
               </div>
             </main>

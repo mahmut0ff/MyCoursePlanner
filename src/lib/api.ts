@@ -552,6 +552,9 @@ export const apiGetParentPortalData = async (token: string) => {
 export const apiStudentGetHomework = (lessonId: string) =>
   apiRequest(`api-homework`, 'GET', undefined, { lessonId });
 
+export const apiStudentGetMyHomeworks = () =>
+  apiRequest(`api-homework`, 'GET', undefined, { mySubmissions: 'true' });
+
 export const apiOrgGetHomeworks = (orgId: string, lessonId?: string) =>
   apiRequest(`api-homework`, 'GET', undefined, { orgId, ...(lessonId ? { lessonId } : {}) });
 

@@ -429,6 +429,9 @@ const Sidebar: React.FC<{ open: boolean; onClose: () => void; isCollapsed?: bool
                     <NavLink to="/lessons" className={linkClass} onClick={onClose}>
                       <BookOpen className="w-4 h-4" /><span>{t('nav.lessons')}</span>
                     </NavLink>
+                    <NavLink to="/student/homework" className={linkClass} onClick={onClose}>
+                      <ClipboardCheck className="w-4 h-4" /><span>{t('nav.myHomework', 'Мои ДЗ')}</span>
+                    </NavLink>
                     <NavLink to="/student/teachers" className={linkClass} onClick={onClose}>
                       <UserPlus className="w-4 h-4" /><span>{t('nav.myTeachers', 'Мои преподаватели')}</span>
                     </NavLink>

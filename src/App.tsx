@@ -40,6 +40,7 @@ const StudentCoursesPage = lazy(() => import('./pages/student/StudentCoursesPage
 const StudentTeachersPage = lazy(() => import('./pages/student/StudentTeachersPage'));
 const StudentGroupsPage = lazy(() => import('./pages/student/StudentGroupsPage'));
 const StudentSchedulePage = lazy(() => import('./pages/student/StudentSchedulePage'));
+const StudentHomeworkPage = lazy(() => import('./pages/student/StudentHomeworkPage'));
 
 // Co-Study
 const StudyRoomListPage = lazy(() => import('./pages/student/StudyRoomListPage'));
@@ -198,6 +199,7 @@ const App: React.FC = () => {
             <Route path="diary" element={<ProtectedRoute allowedRoles={['student']}><StudentDiaryPage /></ProtectedRoute>} />
 
             <Route path="student/schedule" element={<ProtectedRoute allowedRoles={['student']}><StudentSchedulePage /></ProtectedRoute>} />
+            <Route path="student/homework" element={<ProtectedRoute allowedRoles={['student']}><StudentHomeworkPage /></ProtectedRoute>} />
 
             {/* Co-Study Rooms */}
             <Route path="study-rooms" element={<StudyRoomListPage />} />

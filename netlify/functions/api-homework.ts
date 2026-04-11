@@ -62,8 +62,17 @@ export const handler: Handler = async (event: HandlerEvent) => {
       docs.sort((a, b) => new Date(b.submittedAt).getTime() - new Date(a.submittedAt).getTime());
       return ok(docs);
     }
+    // Student's own submissions across all lessons
+    if (params.mySubmissions === 'true') {
+      const snap = await adminDb.collection(COLLECTION)
+        .where('studentId', '==', user.uid)
+        .get();
+      const docs = snap.docs.map(d => ({ id: d.id, ...d.data() } as any));
+      docs.sort((a, b) => new Date(b.submittedAt).getTime() - new Date(a.submittedAt).getTime());
+      return ok(docs);
+    }
     
-    return badRequest('lessonId or orgId required');
+    return badRequest('lessonId, orgId, or mySubmissions required');
   }
 
   // POST: Add submission

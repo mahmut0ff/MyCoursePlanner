@@ -407,28 +407,38 @@ const LessonViewPage: React.FC = () => {
               {hw && hw.title && (
                 <div className="w-full max-w-4xl mb-12">
                   {submission ? (
-                    <div className="bg-white/5 backdrop-blur-sm border border-emerald-500/30 rounded-2xl p-6 shadow-xl relative overflow-hidden">
-                      <div className="absolute top-0 left-0 w-1 h-full bg-emerald-500"></div>
+                    <div className="relative overflow-hidden bg-white dark:bg-slate-900 border-2 border-emerald-200/70 dark:border-emerald-700/40 rounded-2xl p-6 shadow-xl shadow-emerald-100/30 dark:shadow-black/20">
+                      <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-emerald-400 via-teal-400 to-cyan-400" />
                       <div className="flex items-start justify-between mb-4">
-                        <div>
-                          <h3 className="text-xl font-bold text-white mb-1 flex items-center gap-2">
-                            <CheckCircle2 className="w-6 h-6 text-emerald-400" />
-                            Домашнее задание сдано
-                          </h3>
-                          <p className="text-sm text-gray-400">
-                            {formatDate(submission.submittedAt)}
-                          </p>
+                        <div className="flex items-center gap-3">
+                          <div className="p-2.5 bg-emerald-100 dark:bg-emerald-900/30 rounded-xl">
+                            <CheckCircle2 className="w-6 h-6 text-emerald-500" />
+                          </div>
+                          <div>
+                            <h3 className="text-lg font-extrabold text-slate-900 dark:text-white">
+                              Домашнее задание сдано
+                            </h3>
+                            <p className="text-[13px] text-slate-500 dark:text-slate-400">
+                              {formatDate(submission.submittedAt)}
+                            </p>
+                          </div>
                         </div>
-                        <div className="px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                        <span className={`px-3 py-1.5 rounded-xl text-[10px] font-bold uppercase tracking-wider ${
+                          submission.status === 'graded' 
+                            ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300' 
+                            : submission.status === 'reviewing' 
+                              ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300'
+                              : 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300'
+                        }`}>
                           {submission.status === 'graded' ? 'Оценено' : submission.status === 'reviewing' ? 'На проверке' : 'Ожидает проверки'}
-                        </div>
+                        </span>
                       </div>
                       
                       {submission.status === 'graded' && typeof submission.finalScore === 'number' && (
-                        <div className="mt-4 p-4 bg-indigo-500/10 border border-indigo-500/20 rounded-xl">
-                          <p className="text-indigo-200 font-semibold mb-2">Оценка преподавателя: <span className="text-white text-xl ml-2">{submission.finalScore} / {submission.maxPoints || 10}</span></p>
+                        <div className="mt-4 p-4 bg-indigo-50 dark:bg-indigo-900/10 border border-indigo-200/60 dark:border-indigo-700/30 rounded-xl">
+                          <p className="text-indigo-600 dark:text-indigo-300 font-semibold mb-2 text-[14px]">Оценка преподавателя: <span className="text-slate-900 dark:text-white text-xl font-extrabold ml-2">{submission.finalScore} / {submission.maxPoints || 10}</span></p>
                           {submission.teacherFeedback && (
-                            <div className="text-indigo-100/80 text-sm mt-2 italic bg-black/20 p-3 rounded-lg border-l-2 border-indigo-500">
+                            <div className="text-indigo-700/80 dark:text-indigo-200/80 text-sm mt-2 italic bg-white/60 dark:bg-black/20 p-3 rounded-lg border-l-2 border-indigo-400">
                               "{submission.teacherFeedback}"
                             </div>
                           )}

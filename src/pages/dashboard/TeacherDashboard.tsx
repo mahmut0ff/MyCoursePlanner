@@ -11,7 +11,7 @@ import type { LessonPlan, Exam, ExamRoom, ExamAttempt } from '../../types';
 import { formatDate } from '../../utils/grading';
 import {
   BookOpen, ClipboardList, Radio, TrendingUp, ArrowRight, Plus,
-  Users, MailOpen, UserCircle2, Calendar, GraduationCap,
+  Users, MailOpen, UserCircle2, GraduationCap,
   UsersRound, FileText, Monitor, Gamepad2, History, BarChart3, Activity, TrendingDown,
 } from 'lucide-react';
 import TeacherOnboardingWizard from '../../components/onboarding/TeacherOnboardingWizard';

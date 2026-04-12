@@ -6,6 +6,7 @@ import { usePlanGate } from '../../contexts/PlanContext';
 import { signOut } from '../../services/auth.service';
 
 import OrgSwitcher from './OrgSwitcher';
+import TelegramNotifyButton from '../telegram/TelegramNotifyButton';
 import {
   Building2, Calendar, FileText,
   LayoutDashboard, Monitor,
@@ -323,7 +324,10 @@ const Sidebar: React.FC<{ open: boolean; onClose: () => void; isCollapsed?: bool
         </nav>
 
         {/* ═══ Footer ═══ */}
-        <div className={`border-t border-white/5 py-3 px-3 ${isCollapsed ? 'lg:px-1' : ''}`} style={{ paddingBottom: 'max(0.75rem, var(--safe-area-bottom))' }}>
+        <div className={`border-t border-white/5 py-3 px-3 space-y-2 ${isCollapsed ? 'lg:px-1' : ''}`} style={{ paddingBottom: 'max(0.75rem, var(--safe-area-bottom))' }}>
+          {/* Telegram CTA */}
+          {!isSuperAdmin && <TelegramNotifyButton isCollapsed={isCollapsed} onClose={onClose} />}
+
           <div className={`flex items-center gap-2 px-1 ${isCollapsed ? 'lg:flex-col lg:gap-3' : ''}`}>
             <div
               onClick={() => {

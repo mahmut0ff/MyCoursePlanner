@@ -229,9 +229,22 @@ const handler: Handler = async (event: HandlerEvent) => {
         // Auto-generate payment plans for newly added students
         await syncPaymentPlans(orgId, updatedData.branchId || null, updatedData.courseId, fields.studentIds).catch(console.error);
         
-        // Cancel pending payment plans for removed students
+        // Notify newly added students
         const oldStudents: string[] = oldData.studentIds || [];
         const newStudents: string[] = fields.studentIds || [];
+        const addedStudents = newStudents.filter((sid: string) => !oldStudents.includes(sid));
+        for (const sid of addedStudents) {
+          createNotification({
+            recipientId: sid,
+            type: 'added_to_group',
+            title: 'Добавлен в группу',
+            message: `Вы добавлены в группу «${updatedData.name || ''}»${updatedData.courseName ? ` (${updatedData.courseName})` : ''}`,
+            link: '/groups',
+            organizationId: orgId,
+          }).catch(() => {});
+        }
+
+        // Cancel pending payment plans for removed students
         const removedStudents = oldStudents.filter((sid: string) => !newStudents.includes(sid));
         if (removedStudents.length > 0 && updatedData.courseId) {
           const plansSnap = await adminDb.collection('studentPaymentPlans')

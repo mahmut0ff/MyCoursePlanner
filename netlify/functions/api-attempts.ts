@@ -157,13 +157,28 @@ const handler: Handler = async (event: HandlerEvent) => {
       timeSpentSeconds: body.timeSpentSeconds || 0, createdAt: now,
     };
     const ref = await adminDb.collection(COLLECTION).add(data);
-    // Notify student that result is ready
+
+    // Notify student that result is ready (in-app + Telegram)
     createNotification({
       recipientId: user.uid, type: 'exam_result_ready',
       title: 'Результат экзамена',
-      message: `Ваш результат: ${data.percentage}% по «${data.examTitle}»`,
+      message: `Ваш результат: ${data.percentage}% по «${data.examTitle}»${data.passed ? ' — Сдан' : ' — Не сдан'}`,
       link: '/my-results',
+      organizationId: user.organizationId || '',
     }).catch(() => {});
+
+    // Notify the teacher (room host) about the exam submission
+    if (roomDoc.data()?.hostId && roomDoc.data()?.hostId !== user.uid) {
+      createNotification({
+        recipientId: roomDoc.data()!.hostId,
+        type: 'exam_submitted',
+        title: 'Экзамен сдан',
+        message: `${user.displayName} сдал «${data.examTitle}»: ${data.percentage}%`,
+        link: `/results/${ref.id}`,
+        organizationId: user.organizationId || '',
+      }).catch(() => {});
+    }
+
     return ok({ id: ref.id, ...data });
   }
 

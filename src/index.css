@@ -849,3 +849,14 @@ select:-webkit-autofill {
   border: 1px solid #334155 !important;
   box-shadow: 0 10px 25px rgba(0,0,0,0.4) !important;
 }
+
+/* ═══ Telegram Notification Button Glow ═══ */
+.telegram-glow-btn {
+  animation: tg-glow 3s ease-in-out infinite;
+}
+
+@keyframes tg-glow {
+  0%, 100% { box-shadow: 0 0 12px rgba(34, 158, 217, 0.35); }
+  50% { box-shadow: 0 0 22px rgba(34, 158, 217, 0.55); }
+}
+

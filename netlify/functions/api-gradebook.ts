@@ -10,6 +10,7 @@ import {
   ok, unauthorized, forbidden, badRequest, notFound, jsonResponse,
   type AuthUser,
 } from './utils/auth';
+import { createNotification } from './utils/notifications';
 
 const now = () => new Date().toISOString();
 
@@ -160,6 +161,20 @@ const handler: Handler = async (event: HandlerEvent) => {
         updatedAt: now(),
       };
       const ref = await adminDb.collection('grades').add(gradeData);
+
+      // Notify student about new grade
+      if (value !== undefined && value !== null) {
+        const courseDoc = await adminDb.collection('courses').doc(courseId).get();
+        const courseName = courseDoc.data()?.title || '';
+        createNotification({
+          recipientId: studentId,
+          type: 'grade_posted',
+          title: 'Новая оценка',
+          message: `Оценка: ${displayValue || value}${courseName ? ` по «${courseName}»` : ''}`,
+          organizationId: orgId,
+        }).catch(() => {});
+      }
+
       return ok({ id: ref.id, ...gradeData });
     }
 
@@ -233,6 +248,24 @@ const handler: Handler = async (event: HandlerEvent) => {
       }
 
       await batch.commit();
+
+      // Notify students about new grades (fire-and-forget, batch)
+      const courseDoc = await adminDb.collection('courses').doc(courseId).get();
+      const courseName = courseDoc.data()?.title || '';
+      const notifiedStudents = new Set<string>();
+      for (const r of results) {
+        if (r.value !== undefined && r.value !== null && !notifiedStudents.has(r.studentId)) {
+          notifiedStudents.add(r.studentId);
+          createNotification({
+            recipientId: r.studentId,
+            type: 'grade_posted',
+            title: 'Новая оценка',
+            message: `Оценка: ${r.displayValue || r.value}${courseName ? ` по «${courseName}»` : ''}`,
+            organizationId: orgId,
+          }).catch(() => {});
+        }
+      }
+
       return ok(results);
     }
 
@@ -364,6 +397,20 @@ const handler: Handler = async (event: HandlerEvent) => {
         createdAt: now(), updatedAt: now(),
       };
       const ref = await adminDb.collection('journal').add(journalData);
+
+      // Notify student if marked absent
+      if (attendance === 'absent') {
+        const courseDoc = await adminDb.collection('courses').doc(courseId).get();
+        const courseName = courseDoc.data()?.title || '';
+        createNotification({
+          recipientId: studentId,
+          type: 'attendance_absent',
+          title: 'Пропуск занятия',
+          message: `Вы отмечены отсутствующим на занятии${courseName ? ` «${courseName}»` : ''} (${date})`,
+          organizationId: orgId,
+        }).catch(() => {});
+      }
+
       return ok({ id: ref.id, ...journalData });
     }
 
@@ -414,6 +461,23 @@ const handler: Handler = async (event: HandlerEvent) => {
       }
 
       await batch.commit();
+
+      // Notify absent students (fire-and-forget)
+      const absentEntries = results.filter((r: any) => r.attendance === 'absent');
+      if (absentEntries.length > 0) {
+        const courseDoc = await adminDb.collection('courses').doc(courseId).get();
+        const courseName = courseDoc.data()?.title || '';
+        for (const entry of absentEntries) {
+          createNotification({
+            recipientId: entry.studentId,
+            type: 'attendance_absent',
+            title: 'Пропуск занятия',
+            message: `Вы отмечены отсутствующим на занятии${courseName ? ` «${courseName}»` : ''} (${date})`,
+            organizationId: orgId,
+          }).catch(() => {});
+        }
+      }
+
       return ok(results);
     }
 

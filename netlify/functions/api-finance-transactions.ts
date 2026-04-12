@@ -4,7 +4,7 @@
 import type { Handler, HandlerEvent } from '@netlify/functions';
 import { adminDb } from './utils/firebase-admin';
 import { verifyAuth, isStaff, getOrgFilter, resolveBranchFilter, requireBranchScope, ok, unauthorized, forbidden, badRequest, notFound, jsonResponse } from './utils/auth';
-import { sendTelegramToUser } from './utils/telegram';
+import { createNotification, notifyOrgAdmins } from './utils/notifications';
 
 const COLLECTION = 'financeTransactions';
 
@@ -92,11 +92,24 @@ const handler: Handler = async (event: HandlerEvent) => {
           }
         });
 
-        // Fire-and-forget Telegram notification (no extra Firestore read)
+        // Notify student about payment (in-app + Telegram via unified pipeline)
         if (data.studentId && orgFilter) {
-          sendTelegramToUser(
-            orgFilter, data.studentId,
-            `✅ Оплата принята: ${data.amount.toLocaleString()} сом.${remaining > 0 ? `\nОстаток: ${remaining.toLocaleString()} сом.` : '\n🎉 Оплата завершена полностью!'}`
+          createNotification({
+            recipientId: data.studentId,
+            type: 'payment_received',
+            title: 'Оплата принята',
+            message: `Оплата ${data.amount} сом принята.${remaining > 0 ? ` Остаток: ${remaining} сом.` : ' Оплата завершена полностью!'}`,
+            organizationId: orgFilter,
+          }).catch(() => {});
+        }
+
+        // Notify admins about received payment
+        if (orgFilter) {
+          notifyOrgAdmins(
+            orgFilter, 'payment_received',
+            'Получена оплата',
+            `Оплата ${data.amount} сом${data.description ? ` (${data.description})` : ''}`,
+            '/finances',
           ).catch(() => {});
         }
       }

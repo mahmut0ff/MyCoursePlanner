@@ -22,7 +22,11 @@ export type NotificationType =
   | 'trial_expired'
   | 'plan_gifted'
   | 'homework_submitted'
-  | 'homework_graded';
+  | 'homework_graded'
+  | 'grade_posted'
+  | 'attendance_absent'
+  | 'payment_received'
+  | 'exam_submitted';
 
 interface NotificationPayload {
   recipientId: string;

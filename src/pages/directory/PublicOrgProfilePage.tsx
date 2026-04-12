@@ -202,16 +202,12 @@ const PublicOrgProfilePage: React.FC = () => {
     );
   };
 
-  /* ═══ Google Maps embed URL ═══ */
+  /* ═══ OpenStreetMap embed URL (no API key needed) ═══ */
   const getMapUrl = () => {
     if (branchesWithCoords.length === 0) return null;
-    if (branchesWithCoords.length === 1) {
-      const b = branchesWithCoords[0];
-      return `https://www.google.com/maps/embed/v1/place?key=AIzaSyBFw0Qbyq9zTFTd-tUY6dZWTgaQzuU17R8&q=${b.latitude},${b.longitude}&zoom=15`;
-    }
-    // Center on first branch
     const b = branchesWithCoords[0];
-    return `https://www.google.com/maps/embed/v1/place?key=AIzaSyBFw0Qbyq9zTFTd-tUY6dZWTgaQzuU17R8&q=${b.latitude},${b.longitude}&zoom=12`;
+    // Use a bounding box centered on the first branch
+    return `https://www.openstreetmap.org/export/embed.html?bbox=${Number(b.longitude) - 0.02},${Number(b.latitude) - 0.015},${Number(b.longitude) + 0.02},${Number(b.latitude) + 0.015}&layer=mapnik&marker=${b.latitude},${b.longitude}`;
   };
 
   /* ═══ Cover Color ═══ */

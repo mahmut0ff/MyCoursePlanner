@@ -352,7 +352,7 @@ const handler: Handler = async (event: HandlerEvent) => {
         }
         filtered = filtered.map((s: any) => {
           const p = profileMap[s.uid] || {};
-          return { ...s, avatarUrl: p.avatarUrl || p.photoURL || '', phone: p.phone || '', city: p.city || '', bio: p.bio || '', createdAt: p.createdAt || '' };
+          return { ...s, avatarUrl: p.avatarUrl || p.photoURL || '', phone: p.phone || '', city: p.city || '', bio: p.bio || '', skills: p.skills || [], username: p.username || '', pinnedBadges: p.pinnedBadges || [], parentPortalKey: p.parentPortalKey || '', createdAt: p.createdAt || '' };
         });
       }
         

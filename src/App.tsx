@@ -5,6 +5,7 @@ import { AuthProvider } from './contexts/AuthContext';
 import { ThemeProvider, useTheme } from './contexts/ThemeContext';
 import ProtectedRoute from './components/auth/ProtectedRoute';
 import PlanGuard from './components/guards/PlanGuard';
+import ErrorBoundary from './components/common/ErrorBoundary';
 import AppLayout from './components/layout/AppLayout';
 const LoginPage = lazy(() => import('./pages/auth/LoginPage'));
 const RegisterPage = lazy(() => import('./pages/auth/RegisterPage'));
@@ -133,6 +134,7 @@ const ThemedToaster = () => {
 const App: React.FC = () => {
   return (
     <ThemeProvider>
+    <ErrorBoundary>
     <AuthProvider>
       <BrowserRouter>
         <ThemedToaster />
@@ -271,6 +273,7 @@ const App: React.FC = () => {
         </Suspense>
       </BrowserRouter>
     </AuthProvider>
+    </ErrorBoundary>
     </ThemeProvider>
   );
 };

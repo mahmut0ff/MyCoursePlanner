@@ -75,8 +75,8 @@ export const handler: Handler = async (event: HandlerEvent) => {
     return badRequest('lessonId, orgId, or mySubmissions required');
   }
 
-  // POST: Add submission
-  if (event.httpMethod === 'POST' && action === 'api-homework') {
+  // POST: Add submission (root POST with no sub-path action)
+  if (event.httpMethod === 'POST' && (action === 'api-homework' || pathSegments.length <= 3)) {
     const body = JSON.parse(event.body || '{}');
     if (!body.lessonId || !body.content || !body.organizationId) return badRequest('Missing fields');
 

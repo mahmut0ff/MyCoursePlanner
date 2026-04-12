@@ -267,6 +267,13 @@ const handler: Handler = async (event: HandlerEvent) => {
       const body = JSON.parse(event.body || '{}');
       if (!body.groupId) return badRequest('groupId required');
 
+      // Verify user has active membership in this organization
+      const memberDoc = await adminDb.collection('users').doc(user.uid)
+        .collection('memberships').doc(orgId).get();
+      if (!memberDoc.exists || memberDoc.data()?.status !== 'active') {
+        return forbidden('You must be an active member of this organization to enroll');
+      }
+
       const groupDoc = await adminDb.collection('groups').doc(body.groupId).get();
       if (!groupDoc.exists || groupDoc.data()?.organizationId !== orgId) return notFound('Group not found');
       
@@ -426,11 +433,28 @@ const handler: Handler = async (event: HandlerEvent) => {
       const body = JSON.parse(event.body || '{}');
       if (!body.uid) return badRequest('uid required');
       const userDoc = await adminDb.collection('users').doc(body.uid).get();
-      if (!userDoc.exists || userDoc.data()?.organizationId !== orgId) return notFound();
-      const { uid, ...fields } = body;
-      fields.updatedAt = now();
-      await adminDb.collection('users').doc(uid).update(fields);
-      return ok({ uid, updated: true });
+      if (!userDoc.exists) return notFound();
+      // Verify student belongs to this org via membership (not flat field)
+      const studentMemberDoc = await adminDb.collection('orgMembers').doc(orgId)
+        .collection('members').doc(body.uid).get();
+      if (!studentMemberDoc.exists) return notFound();
+
+      // Whitelist: only allow safe profile fields — prevent privilege escalation
+      const ALLOWED_FIELDS = ['displayName', 'phone', 'city', 'bio', 'avatarUrl', 'skills', 'country', 'username'];
+      const updateData: Record<string, any> = { updatedAt: now() };
+      for (const key of ALLOWED_FIELDS) {
+        if (body[key] !== undefined) updateData[key] = body[key];
+      }
+      await adminDb.collection('users').doc(body.uid).update(updateData);
+
+      // Also sync displayName to orgMembers if changed
+      if (body.displayName) {
+        await adminDb.collection('orgMembers').doc(orgId)
+          .collection('members').doc(body.uid)
+          .update({ userName: body.displayName, updatedAt: now() }).catch(() => {});
+      }
+
+      return ok({ uid: body.uid, updated: true });
     }
 
     // ═══ TEACHERS (users with role=teacher in this org) ═══
@@ -499,11 +523,36 @@ const handler: Handler = async (event: HandlerEvent) => {
           displayName: body.displayName,
           role: 'teacher',
           organizationId: orgId,
+          activeOrgId: orgId,
           phone: body.phone || '',
           createdAt: now(),
           updatedAt: now(),
         };
         await adminDb.collection('users').doc(authUser.uid).set(profile);
+
+        // Create orgMembers entry (consistent with createStudent)
+        await adminDb.collection('orgMembers').doc(orgId).collection('members').doc(authUser.uid).set({
+          userId: authUser.uid,
+          userEmail: body.email,
+          userName: body.displayName,
+          role: 'teacher',
+          status: 'active',
+          branchIds: body.branchIds || [],
+          primaryBranchId: body.primaryBranchId || null,
+          createdByOrg: true,
+          joinedAt: now(),
+        });
+
+        // Create membership sub-doc on user for role resolution
+        await adminDb.collection('users').doc(authUser.uid).collection('memberships').doc(orgId).set({
+          role: 'teacher',
+          status: 'active',
+          branchIds: body.branchIds || [],
+          primaryBranchId: body.primaryBranchId || null,
+          organizationId: orgId,
+          joinedAt: now(),
+        });
+
         return ok({ uid: authUser.uid, ...profile });
       } catch (e: any) {
         if (e.code === 'auth/email-already-exists') return badRequest('Email already registered in authentication system');

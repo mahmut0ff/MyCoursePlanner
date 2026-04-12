@@ -231,6 +231,22 @@ Review the Chat History and respond accurately to the final user message. Do NOT
       }
       contents.push({ role: 'user', parts: [{ text: latestMessage }] });
 
+      const toolDeclarations = [{
+        functionDeclarations: [{
+          name: 'addLeadToDatabase',
+          description: 'Adds a new lead/application to the CRM database. ALWAYS call this function when the user provides their name AND phone number for a trial lesson, meeting, or enrollment. Do not skip this step.',
+          parameters: {
+            type: 'OBJECT',
+            properties: {
+              name: { type: 'STRING', description: 'Full client name as provided by the user' },
+              phone: { type: 'STRING', description: 'Client phone number as provided by the user' },
+              reason: { type: 'STRING', description: 'Reason / goal, e.g. Trial lesson for programming, Enrollment inquiry' }
+            },
+            required: ['name', 'phone']
+          }
+        }]
+      }];
+
       // Direct REST API call
       const geminiResponse = await fetch(
         `https://generativelanguage.googleapis.com/v1beta/models/${selectedModel}:generateContent?key=${GEMINI_API_KEY}`,
@@ -240,21 +256,8 @@ Review the Chat History and respond accurately to the final user message. Do NOT
           body: JSON.stringify({
             system_instruction: { parts: [{ text: systemPrompt }] },
             contents,
-            tools: [{
-              functionDeclarations: [{
-                name: 'addLeadToDatabase',
-                description: 'Adds a new lead to the CRM database for a trial lesson or meeting. Use this when the user agrees to a meeting or trial and provides their exact name and phone number.',
-                parameters: {
-                  type: 'OBJECT',
-                  properties: {
-                    name: { type: 'STRING', description: 'Client name' },
-                    phone: { type: 'STRING', description: 'Client phone number' },
-                    reason: { type: 'STRING', description: 'Reason for the appointment, e.g., Trial lesson for programming' }
-                  },
-                  required: ['name', 'phone', 'reason']
-                }
-              }]
-            }],
+            tools: toolDeclarations,
+            tool_config: { function_calling_config: { mode: 'AUTO' } },
             generationConfig: { temperature: 0.4, maxOutputTokens: 2048 },
           }),
         }
@@ -269,11 +272,20 @@ Review the Chat History and respond accurately to the final user message. Do NOT
       const geminiData = await geminiResponse.json();
       const candidateParts = geminiData.candidates?.[0]?.content?.parts || [];
       
+      console.log('[AI-Chat] Gemini response parts:', JSON.stringify(candidateParts.map((p: any) => ({
+        hasText: !!p.text,
+        hasFunctionCall: !!p.functionCall,
+        functionName: p.functionCall?.name,
+      }))));
+
       let responseText = '';
-      const functionCall = candidateParts.find((p: any) => p.functionCall)?.functionCall;
+      const functionCallPart = candidateParts.find((p: any) => p.functionCall);
       
-      if (functionCall && functionCall.name === 'addLeadToDatabase') {
-         const args = functionCall.args;
+      if (functionCallPart?.functionCall?.name === 'addLeadToDatabase') {
+         const args = functionCallPart.functionCall.args || {};
+         console.log('[AI-Chat] Function call detected! Args:', JSON.stringify(args));
+
+         // Step 1: Execute the function — save the lead
          await adminDb.collection('organizations').doc(organizationId).collection('aiLeads').add({
             name: args.name || 'Unknown',
             phone: args.phone || 'Unknown',
@@ -289,7 +301,42 @@ Review the Chat History and respond accurately to the final user message. Do NOT
                          `${args.reason ? `🎯 Цель: ${args.reason}` : ''}`;
          await notifyOrgAdmins(organizationId, 'new_lead', '📩 Новая заявка', message, '/leads');
 
-         responseText = `Отлично! Я передал ваши контакты менеджеру. С вами скоро свяжутся.`;
+         // Step 2: Send functionResponse back to Gemini for a natural reply
+         try {
+           const functionResponseContents = [
+             ...contents,
+             { role: 'model', parts: [{ functionCall: functionCallPart.functionCall }] },
+             { role: 'user', parts: [{ functionResponse: {
+               name: 'addLeadToDatabase',
+               response: { success: true, message: 'Lead has been saved. The manager will contact the client soon.' }
+             }}] }
+           ];
+
+           const followUpResponse = await fetch(
+             `https://generativelanguage.googleapis.com/v1beta/models/${selectedModel}:generateContent?key=${GEMINI_API_KEY}`,
+             {
+               method: 'POST',
+               headers: { 'Content-Type': 'application/json' },
+               body: JSON.stringify({
+                 system_instruction: { parts: [{ text: systemPrompt }] },
+                 contents: functionResponseContents,
+                 generationConfig: { temperature: 0.4, maxOutputTokens: 1024 },
+               }),
+             }
+           );
+
+           if (followUpResponse.ok) {
+             const followUpData = await followUpResponse.json();
+             const followUpParts = followUpData.candidates?.[0]?.content?.parts || [];
+             responseText = followUpParts.find((p: any) => p.text)?.text || '';
+           }
+         } catch (e) {
+           console.warn('[AI-Chat] Follow-up call failed (non-fatal):', e);
+         }
+
+         if (!responseText) {
+           responseText = 'Отлично! Я записал ваши данные. Наш менеджер свяжется с вами в ближайшее время! 🙌';
+         }
       } else {
          responseText = candidateParts.find((p: any) => p.text)?.text || 'Sorry, I could not generate a response.';
       }

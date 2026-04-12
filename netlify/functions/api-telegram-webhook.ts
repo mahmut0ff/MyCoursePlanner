@@ -192,36 +192,44 @@ Provide formatted text for Telegram. Do not use Markdown unsupported by Telegram
       }
     } catch {}
 
+    const toolDeclarations = [{
+      functionDeclarations: [{
+        name: 'addLeadToDatabase',
+        description: 'Adds a new lead/application to the CRM database. ALWAYS call this function when the user provides their name AND phone number for a trial lesson, meeting, or enrollment. Do not skip this step.',
+        parameters: {
+          type: 'OBJECT',
+          properties: {
+            name: { type: 'STRING', description: 'Full client name as provided by the user' },
+            phone: { type: 'STRING', description: 'Client phone number as provided by the user' },
+            reason: { type: 'STRING', description: 'Reason / goal, e.g. Trial lesson for programming, Enrollment inquiry' }
+          },
+          required: ['name', 'phone']
+        }
+      }]
+    }];
+
+    const geminiRequestBody: any = {
+      system_instruction: { parts: [{ text: systemPrompt }] },
+      contents,
+      tools: toolDeclarations,
+      tool_config: { function_calling_config: { mode: 'AUTO' } },
+      generationConfig: { temperature: 0.4, maxOutputTokens: 2048 },
+    };
+
+    console.log('[TG-Webhook] Sending to Gemini, model:', selectedModel, 'contents length:', contents.length);
+
     const geminiResponse = await fetch(
       `https://generativelanguage.googleapis.com/v1beta/models/${selectedModel}:generateContent?key=${GEMINI_API_KEY}`,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          system_instruction: { parts: [{ text: systemPrompt }] },
-          contents,
-          tools: [{
-            functionDeclarations: [{
-              name: 'addLeadToDatabase',
-              description: 'Adds a new lead to the CRM database for a trial lesson or meeting. Use this when the user agrees to a meeting or trial and provides their exact name and phone number.',
-              parameters: {
-                type: 'OBJECT',
-                properties: {
-                  name: { type: 'STRING', description: 'Client name' },
-                  phone: { type: 'STRING', description: 'Client phone number' },
-                  reason: { type: 'STRING', description: 'Reason for the appointment, e.g., Trial lesson for programming' }
-                },
-                required: ['name', 'phone', 'reason']
-              }
-            }]
-          }],
-          generationConfig: { temperature: 0.4, maxOutputTokens: 2048 },
-        }),
+        body: JSON.stringify(geminiRequestBody),
       }
     );
 
     if (!geminiResponse.ok) {
-      console.error('Gemini error:', await geminiResponse.text());
+      const errText = await geminiResponse.text();
+      console.error('[TG-Webhook] Gemini API error:', geminiResponse.status, errText);
       await reply('Извините, произошла техническая ошибка. Пожалуйста, повторите позже.');
       return { statusCode: 200, body: 'OK' };
     }
@@ -229,27 +237,81 @@ Provide formatted text for Telegram. Do not use Markdown unsupported by Telegram
     const geminiData = await geminiResponse.json();
     const candidateParts = geminiData.candidates?.[0]?.content?.parts || [];
     
-    let responseText = '';
-    const functionCall = candidateParts.find((p: any) => p.functionCall)?.functionCall;
-    
-    if (functionCall && functionCall.name === 'addLeadToDatabase') {
-       const args = functionCall.args;
-       await adminDb.collection('organizations').doc(orgId).collection('aiLeads').add({
-          name: args.name || 'Unknown',
-          phone: args.phone || 'Unknown',
-          reason: args.reason || '',
-          source: 'telegram_bot',
-          status: 'new',
-          createdAt: new Date().toISOString()
-       });
-       
-       const message = `У вас новая заявка через Telegram бота!\n\n` +
-                       `👤 Имя: ${args.name}\n` +
-                       `📞 Телефон: ${args.phone}\n` +
-                       `${args.reason ? `🎯 Цель: ${args.reason}` : ''}`;
-       await notifyOrgAdmins(orgId, 'new_lead', '📩 Новая заявка', message, '/leads');
+    console.log('[TG-Webhook] Gemini response parts:', JSON.stringify(candidateParts.map((p: any) => ({
+      hasText: !!p.text,
+      hasFunctionCall: !!p.functionCall,
+      functionName: p.functionCall?.name,
+    }))));
 
-       responseText = `Отлично! Я передал ваши контакты менеджеру. С вами скоро свяжутся.`;
+    let responseText = '';
+    const functionCallPart = candidateParts.find((p: any) => p.functionCall);
+    
+    if (functionCallPart?.functionCall?.name === 'addLeadToDatabase') {
+       const args = functionCallPart.functionCall.args || {};
+       console.log('[TG-Webhook] Function call detected! Args:', JSON.stringify(args));
+
+       // Step 1: Execute the function — save the lead to Firestore
+       try {
+         await adminDb.collection('organizations').doc(orgId).collection('aiLeads').add({
+            name: args.name || 'Unknown',
+            phone: args.phone || 'Unknown',
+            reason: args.reason || '',
+            source: 'telegram_bot',
+            status: 'new',
+            telegramChatId: String(chatId),
+            createdAt: new Date().toISOString()
+         });
+         console.log('[TG-Webhook] Lead saved successfully for org:', orgId);
+         
+         const notifMessage = `У вас новая заявка через Telegram бота!\n\n` +
+                         `👤 Имя: ${args.name}\n` +
+                         `📞 Телефон: ${args.phone}\n` +
+                         `${args.reason ? `🎯 Цель: ${args.reason}` : ''}`;
+         await notifyOrgAdmins(orgId, 'new_lead', '📩 Новая заявка', notifMessage, '/leads');
+       } catch (dbErr: any) {
+         console.error('[TG-Webhook] Failed to save lead:', dbErr);
+       }
+
+       // Step 2: Send functionResponse back to Gemini to get a natural reply
+       const functionResponseContents = [
+         ...contents,
+         // The model's turn that contained the function call
+         { role: 'model', parts: [{ functionCall: functionCallPart.functionCall }] },
+         // Our function result
+         { role: 'user', parts: [{ functionResponse: {
+           name: 'addLeadToDatabase',
+           response: { success: true, message: 'Lead has been saved. The manager will contact the client soon.' }
+         }}] }
+       ];
+
+       try {
+         const followUpResponse = await fetch(
+           `https://generativelanguage.googleapis.com/v1beta/models/${selectedModel}:generateContent?key=${GEMINI_API_KEY}`,
+           {
+             method: 'POST',
+             headers: { 'Content-Type': 'application/json' },
+             body: JSON.stringify({
+               system_instruction: { parts: [{ text: systemPrompt }] },
+               contents: functionResponseContents,
+               generationConfig: { temperature: 0.4, maxOutputTokens: 1024 },
+             }),
+           }
+         );
+
+         if (followUpResponse.ok) {
+           const followUpData = await followUpResponse.json();
+           const followUpParts = followUpData.candidates?.[0]?.content?.parts || [];
+           responseText = followUpParts.find((p: any) => p.text)?.text || '';
+           console.log('[TG-Webhook] Follow-up response received:', responseText.substring(0, 100));
+         }
+       } catch (e) {
+         console.warn('[TG-Webhook] Follow-up call failed (non-fatal):', e);
+       }
+
+       // Fallback if the follow-up didn't produce text
+       if (!responseText) {
+         responseText = 'Отлично! Я записал ваши данные. Наш менеджер свяжется с вами в ближайшее время! 🙌';
+       }
     } else {
        responseText = candidateParts.find((p: any) => p.text)?.text || 'Простите, я не смог сформировать ответ.';
     }

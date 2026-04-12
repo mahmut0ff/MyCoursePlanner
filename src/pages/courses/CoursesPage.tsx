@@ -3,8 +3,9 @@ import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../contexts/AuthContext';
 import { orgGetCourses, orgCreateCourse, orgUpdateCourse, orgDeleteCourse, orgGetGroups } from '../../lib/api';
-import { Plus, Search, Trash2, Edit, BookOpen, ChevronRight, FileText, Users } from 'lucide-react';
+import { Plus, Search, Trash2, Edit, BookOpen, ChevronRight, FileText, Users, Building2 } from 'lucide-react';
 import type { Course } from '../../types';
+import BranchFilter from '../../components/ui/BranchFilter';
 
 const CoursesPage: React.FC = () => {
   const { t } = useTranslation();
@@ -20,9 +21,11 @@ const CoursesPage: React.FC = () => {
   const [form, setForm] = useState<{
     title: string; description: string; subject: string; status: 'draft' | 'published';
     price?: number; paymentFormat?: 'one-time' | 'monthly'; durationMonths?: number;
-  }>({ title: '', description: '', subject: '', status: 'draft', price: 0, paymentFormat: 'monthly', durationMonths: 1 });
+    branchId?: string;
+  }>({ title: '', description: '', subject: '', status: 'draft', price: 0, paymentFormat: 'monthly', durationMonths: 1, branchId: '' });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  const [branchFilter, setBranchFilter] = useState<string | null>(null);
 
   const load = () => {
     setLoading(true); setError('');
@@ -45,14 +48,16 @@ const CoursesPage: React.FC = () => {
     load();
   }, [role, profile?.uid]);
 
-  const filtered = courses.filter((c) =>
-    c.title.toLowerCase().includes(search.toLowerCase()) || c.subject?.toLowerCase().includes(search.toLowerCase())
-  );
+  const filtered = courses.filter((c) => {
+    const matchSearch = c.title.toLowerCase().includes(search.toLowerCase()) || c.subject?.toLowerCase().includes(search.toLowerCase());
+    const matchBranch = !branchFilter || (c as any).branchId === branchFilter;
+    return matchSearch && matchBranch;
+  });
 
   const getStudentCount = (courseId: string) => groups.filter((g: any) => g.courseId === courseId).reduce((sum: number, g: any) => sum + (g.studentIds?.length || 0), 0);
 
-  const openCreate = () => { setEditing(null); setForm({ title: '', description: '', subject: '', status: 'draft', price: 0, paymentFormat: 'monthly', durationMonths: 1 }); setShowModal(true); };
-  const openEdit = (c: Course) => { setEditing(c); setForm({ title: c.title, description: c.description || '', subject: c.subject || '', status: c.status as any || 'draft', price: c.price || 0, paymentFormat: c.paymentFormat || 'monthly', durationMonths: c.durationMonths || 1 }); setShowModal(true); };
+  const openCreate = () => { setEditing(null); setForm({ title: '', description: '', subject: '', status: 'draft', price: 0, paymentFormat: 'monthly', durationMonths: 1, branchId: '' }); setShowModal(true); };
+  const openEdit = (c: Course) => { setEditing(c); setForm({ title: c.title, description: c.description || '', subject: c.subject || '', status: c.status as any || 'draft', price: c.price || 0, paymentFormat: c.paymentFormat || 'monthly', durationMonths: c.durationMonths || 1, branchId: (c as any).branchId || '' }); setShowModal(true); };
 
   const handleSave = async () => {
     if (!form.title.trim()) return;
@@ -107,6 +112,7 @@ const CoursesPage: React.FC = () => {
               <Plus className="w-4 h-4" />{t('org.courses.create')}
             </button>
           )}
+          <BranchFilter value={branchFilter} onChange={setBranchFilter} compact />
         </div>
       </div>
 
@@ -218,6 +224,17 @@ const CoursesPage: React.FC = () => {
                   <label className="text-xs font-semibold text-slate-500 mb-1 block">Стоимость</label>
                   <input type="number" min="0" placeholder="0" value={form.price} onChange={(e) => setForm(f => ({ ...f, price: Number(e.target.value) }))} className="w-full bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-slate-900 focus:border-slate-900 dark:focus:ring-white outline-none" />
                 </div>
+              </div>
+              <div>
+                <label className="text-xs font-semibold text-slate-500 mb-1 block flex items-center gap-1">
+                  <Building2 className="w-3.5 h-3.5" /> Филиал
+                </label>
+                <BranchFilter
+                  value={form.branchId || null}
+                  onChange={(id) => setForm(f => ({ ...f, branchId: id || '' }))}
+                  hideAll={false}
+                  compact
+                />
               </div>
             </div>
             <div className="flex justify-end gap-3 mt-8">

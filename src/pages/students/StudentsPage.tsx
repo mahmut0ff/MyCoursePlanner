@@ -12,10 +12,11 @@ import {
   apiRejectMembership,
   apiDeleteMember
 } from '../../lib/api';
-import { Users, Search, Mail, RefreshCw, CheckCircle, XCircle, UserPlus, Phone, Filter, X, ChevronDown, SortAsc, SortDesc, Trash2, Lock, Plus } from 'lucide-react';
+import { Users, Search, Mail, RefreshCw, CheckCircle, XCircle, UserPlus, Phone, Filter, X, ChevronDown, SortAsc, SortDesc, Trash2, Lock, Plus, Building2 } from 'lucide-react';
 import type { UserProfile, Group } from '../../types';
 import toast from 'react-hot-toast';
 import { PinnedBadgesDisplay } from '../../lib/badges';
+import BranchFilter from '../../components/ui/BranchFilter';
 
 type SortField = 'name' | 'email' | 'date';
 type SortDir = 'asc' | 'desc';
@@ -50,8 +51,11 @@ const StudentsPage: React.FC = () => {
 
   // Create student modal
   const [showCreateModal, setShowCreateModal] = useState(false);
-  const [createForm, setCreateForm] = useState({ displayName: '', email: '', password: '', phone: '' });
+  const [createForm, setCreateForm] = useState({ displayName: '', email: '', password: '', phone: '', branchIds: [] as string[], primaryBranchId: '' });
   const [creating, setCreating] = useState(false);
+
+  // Branch filter for the list
+  const [branchFilter, setBranchFilter] = useState<string | null>(null);
 
   // Pagination
   const [page, setPage] = useState(1);
@@ -60,7 +64,7 @@ const StudentsPage: React.FC = () => {
   const loadStudents = () => { 
     setLoading(true); 
     setError(''); 
-    orgGetStudents()
+    orgGetStudents(branchFilter || undefined)
       .then(setStudents)
       .catch((e) => setError(e.message || 'Error'))
       .finally(() => setLoading(false)); 
@@ -90,7 +94,7 @@ const StudentsPage: React.FC = () => {
     loadStudents();
     loadGroups();
     loadApplications();
-  }, [profile?.activeOrgId]);
+  }, [profile?.activeOrgId, branchFilter]);
 
   // Reset page when filters change
   useEffect(() => setPage(1), [search, selectedGroup, statusFilter, sortField, sortDir]);
@@ -177,12 +181,13 @@ const StudentsPage: React.FC = () => {
     }
   };
 
-  const activeFiltersCount = (selectedGroup !== 'all' ? 1 : 0) + (statusFilter !== 'active' ? 1 : 0);
+  const activeFiltersCount = (selectedGroup !== 'all' ? 1 : 0) + (statusFilter !== 'active' ? 1 : 0) + (branchFilter ? 1 : 0);
 
   const clearFilters = () => {
     setSearch('');
     setSelectedGroup('all');
     setStatusFilter('active');
+    setBranchFilter(null);
     setSortField('name');
     setSortDir('asc');
   };
@@ -194,7 +199,7 @@ const StudentsPage: React.FC = () => {
       await orgCreateStudent(createForm);
       toast.success(t('org.students.created', 'Студент создан!'));
       setShowCreateModal(false);
-      setCreateForm({ displayName: '', email: '', password: '', phone: '' });
+      setCreateForm({ displayName: '', email: '', password: '', phone: '', branchIds: [], primaryBranchId: '' });
       loadStudents();
     } catch (e: any) {
       toast.error(e.message || 'Error');
@@ -331,6 +336,13 @@ const StudentsPage: React.FC = () => {
                       <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-3 h-3 text-slate-400 pointer-events-none" />
                     </div>
                   )}
+
+                  {/* Branch Filter */}
+                  <BranchFilter
+                    value={branchFilter}
+                    onChange={setBranchFilter}
+                    compact
+                  />
 
                   {/* Status Filter */}
                   <div className="relative">
@@ -576,6 +588,17 @@ const StudentsPage: React.FC = () => {
               <div>
                 <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1 block">{t('common.phone', 'Телефон')}</label>
                 <input value={createForm.phone} onChange={e => setCreateForm(f => ({ ...f, phone: e.target.value }))} placeholder="+996 ..." className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-sm outline-none focus:border-primary-500 transition-colors" />
+              </div>
+              <div>
+                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1 block flex items-center gap-1">
+                  <Building2 className="w-3 h-3" /> {t('branches.branch', 'Филиал')} <span className="text-slate-400 normal-case">(необязательно)</span>
+                </label>
+                <BranchFilter
+                  value={createForm.primaryBranchId || null}
+                  onChange={(id) => setCreateForm(f => ({ ...f, primaryBranchId: id || '', branchIds: id ? [id] : [] }))}
+                  hideAll={false}
+                  compact
+                />
               </div>
             </div>
             <div className="p-5 border-t border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 flex justify-end gap-2">

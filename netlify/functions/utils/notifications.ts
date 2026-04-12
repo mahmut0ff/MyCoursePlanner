@@ -26,7 +26,8 @@ export type NotificationType =
   | 'grade_posted'
   | 'attendance_absent'
   | 'payment_received'
-  | 'exam_submitted';
+  | 'exam_submitted'
+  | 'new_lead';
 
 interface NotificationPayload {
   recipientId: string;

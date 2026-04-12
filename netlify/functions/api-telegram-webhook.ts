@@ -1,5 +1,6 @@
 import type { Handler, HandlerEvent } from '@netlify/functions';
 import { adminDb } from './utils/firebase-admin';
+import { notifyOrgAdmins } from './utils/notifications';
 import { resolveTelegramLinkCode } from './utils/telegram';
 
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY || '';
@@ -241,6 +242,13 @@ Provide formatted text for Telegram. Do not use Markdown unsupported by Telegram
           status: 'new',
           createdAt: new Date().toISOString()
        });
+       
+       const message = `У вас новая заявка через Telegram бота!\n\n` +
+                       `👤 Имя: ${args.name}\n` +
+                       `📞 Телефон: ${args.phone}\n` +
+                       `${args.reason ? `🎯 Цель: ${args.reason}` : ''}`;
+       await notifyOrgAdmins(orgId, 'new_lead', '📩 Новая заявка', message, '/leads');
+
        responseText = `Отлично! Я передал ваши контакты менеджеру. С вами скоро свяжутся.`;
     } else {
        responseText = candidateParts.find((p: any) => p.text)?.text || 'Простите, я не смог сформировать ответ.';

@@ -1,6 +1,7 @@
 import type { Handler, HandlerEvent } from '@netlify/functions';
 import { adminDb } from './utils/firebase-admin';
 import { verifyAuth, jsonResponse, badRequest, unauthorized, forbidden, ok } from './utils/auth';
+import { notifyOrgAdmins } from './utils/notifications';
 
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY || '';
 
@@ -281,6 +282,13 @@ Review the Chat History and respond accurately to the final user message. Do NOT
             status: 'new',
             createdAt: new Date().toISOString()
          });
+         
+         const message = `У вас новая заявка через AI-ассистента на сайте!\n\n` +
+                         `👤 Имя: ${args.name}\n` +
+                         `📞 Телефон: ${args.phone}\n` +
+                         `${args.reason ? `🎯 Цель: ${args.reason}` : ''}`;
+         await notifyOrgAdmins(organizationId, 'new_lead', '📩 Новая заявка', message, '/leads');
+
          responseText = `Отлично! Я передал ваши контакты менеджеру. С вами скоро свяжутся.`;
       } else {
          responseText = candidateParts.find((p: any) => p.text)?.text || 'Sorry, I could not generate a response.';

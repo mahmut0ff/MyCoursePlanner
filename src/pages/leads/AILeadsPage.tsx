@@ -18,7 +18,7 @@ interface AILead {
 }
 
 const AILeadsPage: React.FC = () => {
-  const { organizationId, profile } = useAuth();
+  const { organizationId, profile, firebaseUser } = useAuth();
   const [leads, setLeads] = useState<AILead[]>([]);
   const [loading, setLoading] = useState(true);
   
@@ -101,6 +101,24 @@ const AILeadsPage: React.FC = () => {
         createdAt: new Date().toISOString()
       });
       
+      // Trigger telegram notification
+      if (firebaseUser) {
+        const token = await firebaseUser.getIdToken();
+        fetch('/.netlify/functions/api-notifications?action=notifyNewLead', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            name: newName.trim(),
+            phone: newPhone.trim(),
+            reason: newReason.trim(),
+            source: 'manual'
+          })
+        }).catch(e => console.error('Failed to notify about new lead:', e));
+      }
+      
       toast.success('Заявка добавлена');
       setModalOpen(false);
       setNewName('');
@@ -135,7 +153,7 @@ const AILeadsPage: React.FC = () => {
         
         <button 
           onClick={() => setModalOpen(true)}
-          className="btn-primary"
+          className="btn-primary flex items-center justify-center"
         >
           <Plus className="w-4 h-4 mr-2" />
           Добавить заявку

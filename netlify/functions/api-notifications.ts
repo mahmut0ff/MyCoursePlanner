@@ -4,6 +4,7 @@
 import type { Handler, HandlerEvent } from '@netlify/functions';
 import { adminDb } from './utils/firebase-admin';
 import { verifyAuth, ok, unauthorized, badRequest, jsonResponse } from './utils/auth';
+import { notifyOrgAdmins } from './utils/notifications';
 import { FieldValue } from 'firebase-admin/firestore';
 
 const NOTIFICATIONS = 'notifications';
@@ -55,6 +56,26 @@ const handler: Handler = async (event: HandlerEvent) => {
       snap.docs.forEach(d => batch.update(d.ref, { read: true }));
       await batch.commit();
       return ok({ success: true, count: snap.size });
+    }
+
+    // Notify about a new lead
+    if (action === 'notifyNewLead' && event.httpMethod === 'POST') {
+      if (!body.name) return badRequest('name required');
+      const orgId = user.activeOrgId || user.organizationId;
+      if (!orgId) return badRequest('org required');
+
+      const sourceText = body.source === 'telegram_bot' ? 'через Telegram бота' :
+                         body.source === 'manual' ? '(добавлена вручную)' :
+                         'через AI-ассистента на сайте';
+      const message = `У вас новая заявка ${sourceText}!\n\n` +
+                      `👤 Имя: ${body.name}\n` +
+                      `📞 Телефон: ${body.phone || 'Не указан'}\n` +
+                      `${body.reason ? `🎯 Цель: ${body.reason}` : ''}`;
+      
+      const title = '📩 Новая заявка';
+      await notifyOrgAdmins(orgId, 'new_lead', title, message, '/leads');
+
+      return ok({ success: true });
     }
 
     // Save FCM token

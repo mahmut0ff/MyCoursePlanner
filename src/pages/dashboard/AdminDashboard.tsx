@@ -123,7 +123,7 @@ const AdminDashboard: React.FC = () => {
         <h2 className="font-semibold text-slate-900 dark:text-white mb-3">{t('dashboard.quickLinks', 'Быстрый доступ')}</h2>
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
           {[
-            { to: '/leads', icon: Bot, label: t('nav.aiLeads', 'Заявки от ИИ'), color: 'text-primary-500' },
+            { to: '/leads', icon: Bot, label: 'Заявки', color: 'text-primary-500' },
             { to: '/groups', icon: UsersRound, label: t('nav.groups'), color: 'text-violet-500' },
             { to: '/materials', icon: FileText, label: t('nav.materials'), color: 'text-blue-500' },
             { to: '/quiz/library', icon: Gamepad2, label: t('nav.quizLibrary'), color: 'text-pink-500' },

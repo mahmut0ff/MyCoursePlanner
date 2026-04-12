@@ -7,6 +7,7 @@
  * 3. Linked → Subtle green "Подключено" badge
  */
 import React, { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { apiGetTelegramStatus, apiGenerateTelegramLink, apiUnlinkTelegram } from '../../lib/api';
 import { CheckCircle2, Loader2, ExternalLink, X, Unlink, Bell } from 'lucide-react';
@@ -181,7 +182,7 @@ const TelegramNotifyButton: React.FC<Props> = ({ isCollapsed, onClose }) => {
       )}
 
       {/* ═══ Modal Overlay ═══ */}
-      {modalOpen && (
+      {modalOpen && createPortal(
         <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4" onClick={() => setModalOpen(false)}>
           {/* Backdrop */}
           <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
@@ -297,7 +298,8 @@ const TelegramNotifyButton: React.FC<Props> = ({ isCollapsed, onClose }) => {
               )}
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </>
   );

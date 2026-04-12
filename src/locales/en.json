@@ -584,6 +584,8 @@
   },
   "common": {
     "selectFile": "Select File",
+    "navigate": "Navigate",
+    "select": "Select",
     "loading": "Loading...",
     "save": "Save",
     "cancel": "Cancel",

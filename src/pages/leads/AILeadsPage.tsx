@@ -89,7 +89,7 @@ const AILeadsPage: React.FC = () => {
 
     setCreating(true);
     try {
-      const managerName = `${profile.firstName} ${profile.lastName || ''}`.trim() || 'Менеджер';
+      const managerName = profile.displayName || 'Менеджер';
       
       await addDoc(collection(db, 'organizations', organizationId, 'aiLeads'), {
         name: newName.trim(),

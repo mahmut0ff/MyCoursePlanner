@@ -1,8 +1,9 @@
 /**
- * Shared notification helper — creates in-app notifications + sends FCM push.
+ * Shared notification helper — creates in-app notifications + FCM push + Telegram.
  */
 import { adminDb } from './firebase-admin';
 import { getMessaging } from 'firebase-admin/messaging';
+import { sendTelegramToUser } from './telegram';
 
 const NOTIFICATIONS = 'notifications';
 
@@ -30,14 +31,17 @@ interface NotificationPayload {
   message: string;
   link?: string;
   metadata?: Record<string, any>;
+  /** Organization ID — needed for Telegram delivery */
+  organizationId?: string;
 }
 
 /**
- * Create an in-app notification + attempt FCM push.
+ * Create an in-app notification + attempt FCM push + attempt Telegram.
  */
 export async function createNotification(payload: NotificationPayload): Promise<void> {
+  const { organizationId, ...rest } = payload;
   const data = {
-    ...payload,
+    ...rest,
     read: false,
     createdAt: new Date().toISOString(),
   };
@@ -50,6 +54,22 @@ export async function createNotification(payload: NotificationPayload): Promise<
     await sendPush(payload.recipientId, payload.title, payload.message, payload.link);
   } catch (e) {
     console.warn('FCM push failed (non-fatal):', e);
+  }
+
+  // Attempt Telegram notification (best-effort, never throw)
+  try {
+    // Resolve orgId: use provided or look up from user doc
+    let orgId = organizationId;
+    if (!orgId) {
+      const userDoc = await adminDb.collection('users').doc(payload.recipientId).get();
+      orgId = userDoc.data()?.activeOrgId || userDoc.data()?.organizationId;
+    }
+    if (orgId) {
+      const tgMessage = `🔔 <b>${payload.title}</b>\n\n${payload.message}`;
+      await sendTelegramToUser(orgId, payload.recipientId, tgMessage);
+    }
+  } catch (e) {
+    console.warn('Telegram notification failed (non-fatal):', e);
   }
 }
 
@@ -69,7 +89,7 @@ export async function notifyOrgAdmins(
     return ['admin', 'owner', 'manager'].includes(role);
   });
   const promises = admins.map(d =>
-    createNotification({ recipientId: d.data().userId || d.id, type, title, message, link })
+    createNotification({ recipientId: d.data().userId || d.id, type, title, message, link, organizationId: orgId })
   );
   await Promise.allSettled(promises);
 }
@@ -87,7 +107,7 @@ export async function notifyOrgStudents(
     .where('role', '==', 'student')
     .get();
   const promises = snap.docs.map(d =>
-    createNotification({ recipientId: d.data().userId || d.id, type, title, message, link })
+    createNotification({ recipientId: d.data().userId || d.id, type, title, message, link, organizationId: orgId })
   );
   await Promise.allSettled(promises);
 }

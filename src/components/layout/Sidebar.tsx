@@ -7,6 +7,7 @@ import { signOut } from '../../services/auth.service';
 
 import OrgSwitcher from './OrgSwitcher';
 import TelegramNotifyButton from '../telegram/TelegramNotifyButton';
+import SidebarTips from './SidebarTips';
 import {
   Building2, Calendar, FileText,
   LayoutDashboard, Monitor,
@@ -322,6 +323,11 @@ const Sidebar: React.FC<{ open: boolean; onClose: () => void; isCollapsed?: bool
             </>
           )}
         </nav>
+
+        {/* ═══ Tips ═══ */}
+        <div className="mt-auto">
+          <SidebarTips isCollapsed={isCollapsed} />
+        </div>
 
         {/* ═══ Footer ═══ */}
         <div className={`border-t border-white/5 py-3 px-3 space-y-2 ${isCollapsed ? 'lg:px-1' : ''}`} style={{ paddingBottom: 'max(0.75rem, var(--safe-area-bottom))' }}>

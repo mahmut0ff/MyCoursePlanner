@@ -860,3 +860,8 @@ select:-webkit-autofill {
   50% { box-shadow: 0 0 22px rgba(34, 158, 217, 0.55); }
 }
 
+/* ═══ Sidebar Tips Transition ═══ */
+.duration-400 {
+  transition-duration: 400ms;
+}
+

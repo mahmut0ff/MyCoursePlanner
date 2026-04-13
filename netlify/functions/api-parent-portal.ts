@@ -30,7 +30,7 @@ export const handler: Handler = async (event: HandlerEvent) => {
       .where('studentId', '==', userDoc.id)
       .get();
       
-    let recentResults = resultsSnap.docs.map(d => {
+    let recentResults: any[] = resultsSnap.docs.map(d => {
       const data = d.data();
       return {
         id: d.id,

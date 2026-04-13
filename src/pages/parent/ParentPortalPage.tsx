@@ -13,7 +13,7 @@ interface ParentPortalData {
   stats: {
     totalXp: number;
     currentStreak: number;
-    activeOrgsCount: number;
+    averageScore: number;
   };
   recentResults: {
     id: string;
@@ -23,6 +23,8 @@ interface ParentPortalData {
     submittedAt: string;
     type: string;
     xpEarned: number;
+    score?: number;
+    maxPoints?: number;
   }[];
 }
 
@@ -150,17 +152,18 @@ const ParentPortalPage: React.FC = () => {
             </div>
           </div>
 
-          {/* Courses Card */}
+          {/* Average Score Card */}
           <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 shadow-sm border border-slate-200 dark:border-slate-700 relative overflow-hidden group">
-            <div className="absolute -right-6 -top-6 w-24 h-24 bg-emerald-500/10 rounded-full blur-xl group-hover:scale-150 transition-transform duration-500"></div>
+            <div className={`absolute -right-6 -top-6 w-24 h-24 rounded-full blur-xl group-hover:scale-150 transition-transform duration-500 ${stats.averageScore >= 80 ? 'bg-emerald-500/10' : stats.averageScore >= 50 ? 'bg-amber-500/10' : 'bg-red-500/10'}`}></div>
             <div className="flex items-center gap-4 relative z-10">
-              <div className="w-12 h-12 rounded-xl bg-emerald-100 dark:bg-emerald-900/30 text-emerald-500 flex items-center justify-center shrink-0">
+              <div className={`w-12 h-12 rounded-xl flex items-center justify-center shrink-0 ${stats.averageScore >= 80 ? 'bg-emerald-100 text-emerald-500 dark:bg-emerald-900/30' : stats.averageScore >= 50 ? 'bg-amber-100 text-amber-500 dark:bg-amber-900/30' : 'bg-red-100 text-red-500 dark:bg-red-900/30'}`}>
                 <BookOpen className="w-6 h-6" />
               </div>
               <div>
-                <p className="text-sm font-medium text-slate-500 dark:text-slate-400">Активные курсы</p>
+                <p className="text-sm font-medium text-slate-500 dark:text-slate-400">Средний балл</p>
                 <div className="flex items-baseline gap-1">
-                  <span className="text-3xl font-bold tracking-tight text-slate-900 dark:text-white">{stats.activeOrgsCount}</span>
+                  <span className="text-3xl font-bold tracking-tight text-slate-900 dark:text-white">{stats.averageScore}</span>
+                  <span className="text-[13px] font-bold text-slate-400 mb-0.5">/ 100</span>
                 </div>
               </div>
             </div>
@@ -193,7 +196,7 @@ const ParentPortalPage: React.FC = () => {
                     <div className="flex items-center gap-2 mt-1">
                       <span className="text-sm text-slate-500">{new Date(result.submittedAt).toLocaleDateString()}</span>
                       <span className="w-1 h-1 bg-slate-300 dark:bg-slate-600 rounded-full"></span>
-                      <span className="text-sm text-slate-500 uppercase">{result.type === 'quiz' ? 'Квиз' : 'Экзамен'}</span>
+                      <span className="text-sm text-slate-500 uppercase">{result.type === 'homework' ? 'Домашка' : result.type === 'quiz' ? 'Квиз' : 'Экзамен'}</span>
                     </div>
                   </div>
                   
@@ -204,10 +207,23 @@ const ParentPortalPage: React.FC = () => {
                       </span>
                     )}
                     <div className="text-right">
-                      <span className="block text-2xl font-black tracking-tight text-slate-900 dark:text-white">{result.percentage}%</span>
-                      <span className={`text-xs font-bold uppercase tracking-wider ${result.passed ? 'text-emerald-500' : 'text-red-500'}`}>
-                        {result.passed ? 'Сдано' : 'Не сдано'}
-                      </span>
+                      {result.type === 'homework' ? (
+                        <>
+                          <span className="block text-2xl font-black tracking-tight text-slate-900 dark:text-white">
+                            {result.score} <span className="text-sm text-slate-400 font-bold">/ {result.maxPoints}</span>
+                          </span>
+                          <span className="text-xs font-bold uppercase tracking-wider text-indigo-500">
+                            Проверено
+                          </span>
+                        </>
+                      ) : (
+                        <>
+                          <span className="block text-2xl font-black tracking-tight text-slate-900 dark:text-white">{result.percentage}%</span>
+                          <span className={`text-xs font-bold uppercase tracking-wider ${result.passed ? 'text-emerald-500' : 'text-red-500'}`}>
+                            {result.passed ? 'Сдано' : 'Не сдано'}
+                          </span>
+                        </>
+                      )}
                     </div>
                   </div>
                 </div>

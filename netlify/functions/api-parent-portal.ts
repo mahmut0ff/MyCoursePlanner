@@ -43,6 +43,27 @@ export const handler: Handler = async (event: HandlerEvent) => {
       };
     });
     
+    // 3.5 Fetch homeworks
+    const hwSnap = await adminDb.collection('homework_submissions')
+      .where('studentId', '==', userDoc.id)
+      .get();
+      
+    const gradedHomeworks = hwSnap.docs.map(d => ({id: d.id, ...d.data()})).filter((d: any) => d.status === 'graded');
+    
+    gradedHomeworks.forEach((data: any) => {
+      recentResults.push({
+        id: data.id,
+        examTitle: data.lessonTitle || 'Домашнее задание',
+        percentage: data.maxPoints ? Math.round((data.finalScore / data.maxPoints) * 100) : 0,
+        score: data.finalScore || 0,
+        maxPoints: data.maxPoints || 10,
+        passed: true,
+        submittedAt: data.submittedAt || new Date().toISOString(),
+        type: 'homework',
+        xpEarned: 0,
+      });
+    });
+    
     // Sort in memory (descending) and take top 10
     recentResults.sort((a, b) => new Date(b.submittedAt).getTime() - new Date(a.submittedAt).getTime());
     recentResults = recentResults.slice(0, 10);
@@ -58,19 +79,32 @@ export const handler: Handler = async (event: HandlerEvent) => {
       currentStreak = gamiData.currentStreak || 0;
     }
     
-    // 5. Active organization memberships count (Active Courses approximation)
-    const membershipsSnap = await adminDb.collection('memberships')
-      .where('userId', '==', userDoc.id)
-      .get();
-      
-    const activeOrgsCount = membershipsSnap.docs.filter(d => d.data().status === 'active').length;
+    // 5. Calculate Average Score
+    let totalPercents = 0;
+    let scoreCount = 0;
+    
+    resultsSnap.docs.forEach(d => {
+       const data = d.data();
+       if (typeof data.percentage === 'number') {
+          totalPercents += data.percentage;
+          scoreCount++;
+       }
+    });
+    gradedHomeworks.forEach((data: any) => {
+       if (data.maxPoints && typeof data.finalScore === 'number') {
+          totalPercents += Math.round((data.finalScore / data.maxPoints) * 100);
+          scoreCount++;
+       }
+    });
+    
+    const averageScore = scoreCount > 0 ? Math.round(totalPercents / scoreCount) : 0;
 
     return jsonResponse(200, {
       student: safeUser,
       stats: {
         totalXp,
         currentStreak,
-        activeOrgsCount,
+        averageScore,
       },
       recentResults
     });

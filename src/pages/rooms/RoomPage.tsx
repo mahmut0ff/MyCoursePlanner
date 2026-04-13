@@ -130,7 +130,7 @@ const RoomPage: React.FC = () => {
             </tr></thead>
             <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
               {attempts.map((a) => (
-                <tr key={a.id} className="hover:bg-slate-50 dark:hover:bg-slate-700/50">
+                <tr key={a.id} onClick={() => navigate(`/results/${a.id}`)} className="hover:bg-slate-50 dark:hover:bg-slate-700/50 cursor-pointer transition-colors click-action">
                   <td className="px-6 py-4 font-medium text-slate-900 dark:text-white">{a.studentName}</td>
                   <td className="px-6 py-4 text-sm text-slate-700 dark:text-slate-300">{a.percentage}%</td>
                   <td className="px-6 py-4"><span className={a.passed ? 'badge-green' : 'badge-red'}>{a.passed ? t('rooms.passed') : t('rooms.failed')}</span></td>

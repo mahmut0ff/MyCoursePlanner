@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useNavigate } from 'react-router-dom';
 import { orgGetResults, orgGetStudents } from '../../lib/api';
 import { Trophy, Search, Download, RefreshCw } from 'lucide-react';
 import type { ExamAttempt, UserProfile } from '../../types';
@@ -7,6 +8,7 @@ import { PinnedBadgesDisplay } from '../../lib/badges';
 
 const ResultsPage: React.FC = () => {
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const [results, setResults] = useState<ExamAttempt[]>([]);
   const [students, setStudents] = useState<UserProfile[]>([]);
   const [loading, setLoading] = useState(true);
@@ -97,7 +99,7 @@ const ResultsPage: React.FC = () => {
               {filtered.map((r) => {
                 const s = students.find(x => x.uid === r.studentId);
                 return (
-                <tr key={r.id} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition-colors group">
+                <tr key={r.id} onClick={() => navigate(`/results/${r.id}`)} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition-colors group cursor-pointer click-action">
                   <td className="px-6 py-4 font-medium text-slate-900 dark:text-white">
                     <div className="flex items-center gap-3">
                        {s?.avatarUrl ? (

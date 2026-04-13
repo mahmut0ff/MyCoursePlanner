@@ -926,6 +926,11 @@ const handler: Handler = async (event: HandlerEvent) => {
       const settingsDoc = await adminDb.collection('orgSettings').doc(orgId).get();
       const orgData = orgDoc.data();
       const sData = settingsDoc.data() || {};
+      const [studentsSnap, teachersSnap] = await Promise.all([
+        adminDb.collection('orgMembers').doc(orgId).collection('members').where('role', '==', 'student').count().get().catch(() => ({ data: () => ({ count: 0 }) })),
+        adminDb.collection('orgMembers').doc(orgId).collection('members').where('role', '==', 'teacher').count().get().catch(() => ({ data: () => ({ count: 0 }) }))
+      ]);
+
       return ok({
         organizationId: orgId,
         name: orgData?.name || '',
@@ -951,6 +956,9 @@ const handler: Handler = async (event: HandlerEvent) => {
         passingScore: sData.passingScore || 60,
         primaryColor: sData.primaryColor || '#6366f1',
         updatedAt: sData.updatedAt || '',
+        studentsCount: studentsSnap.data().count,
+        teachersCount: teachersSnap.data().count,
+        storageUsedMb: orgData?.storageUsedMb || 0,
       });
     }
 

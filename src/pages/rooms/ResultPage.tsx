@@ -7,6 +7,30 @@ import type { ExamAttempt } from '../../types';
 
 import { ArrowLeft, Trophy, XCircle, Clock, Target, Brain, CheckCircle, HelpCircle, RefreshCw, Award, Loader2 } from 'lucide-react';
 
+/**
+ * Normalizes aiFeedback that may have been stored as a raw JSON string
+ * (double-serialization from Gemini). Ensures it's always a parsed object.
+ */
+function normalizeAttempt(data: ExamAttempt | null): ExamAttempt | null {
+  if (!data) return null;
+  if (data.aiFeedback && typeof data.aiFeedback === 'string') {
+    try {
+      data.aiFeedback = JSON.parse(data.aiFeedback as unknown as string);
+    } catch {
+      // If parsing fails, wrap the raw string into a valid AIFeedback shape
+      data.aiFeedback = {
+        summary: data.aiFeedback as unknown as string,
+        strengths: [],
+        weakTopics: [],
+        reviewSuggestions: [],
+        generatedAt: '',
+        modelUsed: 'unknown',
+      };
+    }
+  }
+  return data;
+}
+
 const ResultPage: React.FC = () => {
   const { t } = useTranslation();
   const { profile } = useAuth();
@@ -21,7 +45,7 @@ const ResultPage: React.FC = () => {
   useEffect(() => {
     if (attemptId) {
       apiGetAttempt(attemptId).then((data) => {
-        setAttempt(data);
+        setAttempt(normalizeAttempt(data));
         // Start polling for AI feedback if not yet available
         if (data && !data.aiFeedback) {
           startPolling();
@@ -44,7 +68,7 @@ const ResultPage: React.FC = () => {
       if (attemptId) {
         const a = await apiGetAttempt(attemptId);
         if (a) {
-          setAttempt(a);
+          setAttempt(normalizeAttempt(a));
           if (a.aiFeedback) stopPolling();
         }
       }
@@ -62,7 +86,7 @@ const ResultPage: React.FC = () => {
   const retryFeedback = async () => {
     if (attemptId) {
       const a = await apiGetAttempt(attemptId);
-      setAttempt(a);
+      setAttempt(normalizeAttempt(a));
       if (a && !a.aiFeedback) {
         startPolling();
       }

@@ -42,7 +42,7 @@ const handler: Handler = async (event: HandlerEvent) => {
          if (!acc.some((d: any) => d.id === curr.id)) acc.push(curr);
          return acc;
       }, [] as any[]);
-      const results = allDocs.map((d: any) => ({ id: d.id, ...d.data() }));
+      const results = allDocs.map((d: any) => ({ id: d.id, ...d.data() })).filter((d: any) => d.status !== 'archived');
       results.sort((a: any, b: any) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
       return ok(results);
     }
@@ -61,11 +61,11 @@ const handler: Handler = async (event: HandlerEvent) => {
          if (!acc.some((d: any) => d.id === curr.id)) acc.push(curr);
          return acc;
       }, [] as any[]);
-      const results = allDocs.map((d: any) => ({ id: d.id, ...d.data() }));
+      const results = allDocs.map((d: any) => ({ id: d.id, ...d.data() })).filter((d: any) => d.status !== 'archived');
       results.sort((a: any, b: any) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
       return ok(results);
     }
-    const results = snap.docs.map((d: any) => ({ id: d.id, ...d.data() }));
+    const results = snap.docs.map((d: any) => ({ id: d.id, ...d.data() })).filter((d: any) => d.status !== 'archived');
     results.sort((a: any, b: any) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
     return ok(results);
   }
@@ -170,14 +170,13 @@ const handler: Handler = async (event: HandlerEvent) => {
     return ok({ id: updated.id, ...updated.data() });
   }
 
-  // DELETE
+  // DELETE (Soft Delete)
   if (event.httpMethod === 'DELETE') {
     if (!params.id) return badRequest('id required');
-    const qSnap = await adminDb.collection(COLLECTION).doc(params.id).collection('questions').get();
-    const batch = adminDb.batch();
-    qSnap.docs.forEach((doc: any) => batch.delete(doc.ref));
-    batch.delete(adminDb.collection(COLLECTION).doc(params.id));
-    await batch.commit();
+    await adminDb.collection(COLLECTION).doc(params.id).update({
+      status: 'archived',
+      deletedAt: new Date().toISOString()
+    });
     return ok({ deleted: true });
   }
 

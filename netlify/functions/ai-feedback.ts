@@ -56,8 +56,10 @@ const handler: Handler = async (event: HandlerEvent) => {
   const user = await verifyAuth(event);
   if (!user) return unauthorized();
 
+  let attemptId = '';
   try {
-    const { attemptId } = JSON.parse(event.body || '{}');
+    const body = JSON.parse(event.body || '{}');
+    attemptId = body.attemptId;
     if (!attemptId) return badRequest('attemptId required');
 
     if (!GEMINI_API_KEY) return jsonResponse(500, { error: 'GEMINI_API_KEY not configured' });
@@ -156,7 +158,23 @@ ${categoryPrompt}
     return jsonResponse(200, { success: true, feedback });
   } catch (error: any) {
     console.error('AI Feedback error:', error);
-    return jsonResponse(500, { error: 'Failed to generate feedback', message: error.message });
+    
+    // Graceful degradation: return a generic feedback object so the UI doesn't look broken
+    const fallback = {
+      strengths: ['Экзамен успешно сохранен и проверен базовой системой'],
+      weakTopics: [],
+      reviewSuggestions: ['ИИ-анализ временно недоступен'],
+      summary: 'Ваш результат был успешно записан и оценен. Однако генерация детального анализа сейчас недоступна из-за загрузки серверов нейросети. Попробуйте нажать кнопку "Обновить" позже.',
+      generatedAt: new Date().toISOString(),
+      modelUsed: 'fallback',
+    };
+    
+    // Save fallback to DB so the UI stops spinning and shows the warning
+    try {
+       await adminDb.collection('examAttempts').doc(attemptId).update({ aiFeedback: fallback });
+    } catch {}
+
+    return jsonResponse(200, { success: true, feedback: fallback, degraded: true });
   }
 };
 

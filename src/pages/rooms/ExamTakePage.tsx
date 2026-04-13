@@ -10,7 +10,7 @@ import { showGamificationToasts } from '../../components/gamification/Gamificati
 import { uploadFile } from '../../services/storage.service';
 import { StudentAudioRecorder } from '../../components/shared/StudentAudioRecorder';
 import type { ExamRoom, Exam, Question } from '../../types';
-import { Clock, ChevronLeft, ChevronRight, Send, AlertTriangle, CheckCircle2, Volume2, ShieldCheck } from 'lucide-react';
+import { Clock, ChevronLeft, ChevronRight, Send, AlertTriangle, CheckCircle2, Volume2, ShieldCheck, Users } from 'lucide-react';
 
 // ═══════════════════════════════════════════════════════════════
 //  LOCAL BACKUP SYSTEM — Protects answers against network loss,
@@ -84,6 +84,7 @@ const ExamTakePage: React.FC = () => {
   const [submitted, setSubmitted] = useState(false);
   const [recovered, setRecovered] = useState(false);
   const startRef = useRef<string>(new Date().toISOString());
+  const cheatAttemptsRef = useRef<number>(0);
 
   useEffect(() => {
     loadData();
@@ -143,6 +144,46 @@ const ExamTakePage: React.FC = () => {
     return () => window.removeEventListener('beforeunload', handleBeforeUnload);
   }, [submitted, loading]);
 
+  // ── WAITING POLL: Check if teacher started the exam ──
+  useEffect(() => {
+    if (room?.status !== 'waiting') return;
+    const interval = setInterval(async () => {
+      try {
+        const r = await apiGetRoom(room.id);
+        if (r && r.status === 'active') {
+          setRoom(r);
+          startRef.current = new Date().toISOString(); 
+          if (exam) setTimeLeft(exam.durationMinutes * 60);
+          toast.success(t('rooms.examStarted', 'Экзамен начался! Удачи!'), { duration: 4000, icon: '🚀' });
+        } else if (r && r.status === 'closed') {
+          navigate('/dashboard');
+          toast.error(t('rooms.examClosed', 'Экзамен был закрыт.'));
+        }
+      } catch (e) {
+        // ignore
+      }
+    }, 3000);
+    return () => clearInterval(interval);
+  }, [room?.status, room?.id, exam, navigate, t]);
+
+  // ── ANTI-CHEAT: Track tab/window switches ──
+  useEffect(() => {
+    if (submitted || loading || room?.status === 'waiting') return;
+    const handleVisibilityChange = () => {
+      if (document.hidden) {
+        cheatAttemptsRef.current += 1;
+        toast.error(t('rooms.antiCheatWarning', 'Внимание! Вы свернули вкладку или переключились на другое приложение. Эта попытка была зафиксирована и будет отправлена преподавателю.'), {
+          duration: 6000,
+          position: 'top-center',
+          icon: '🚨',
+          style: { background: '#FEF2F2', color: '#991B1B', border: '1px solid #F87171' }
+        });
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+  }, [submitted, loading, room?.status, t]);
+
   useEffect(() => {
     if (loading || submitted || timeLeft <= 0) return;
     const interval = setInterval(() => {
@@ -177,6 +218,7 @@ const ExamTakePage: React.FC = () => {
         answers,
         startedAt: startRef.current,
         timeSpentSeconds,
+        cheatAttempts: cheatAttemptsRef.current,
       });
 
       // ✅ Success — clear backup
@@ -231,6 +273,32 @@ const ExamTakePage: React.FC = () => {
   if (loading) return <div role="status" className="exam-bg flex items-center justify-center min-h-screen"><div className="w-10 h-10 border-4 border-slate-200 border-t-slate-800 rounded-full animate-spin dark:border-slate-700 dark:border-t-white" /></div>;
   if (errorStr) return <div className="exam-bg min-h-screen flex items-center justify-center p-4"><div className="bg-white dark:bg-slate-800 p-8 rounded-2xl shadow-xl text-center"><AlertTriangle className="w-12 h-12 text-red-500 mx-auto mb-4" /><h3 className="text-xl font-semibold text-slate-900 dark:text-white">{t(errorStr, 'An error occurred')}</h3></div></div>;
   if (!exam || !questions.length) return <div className="exam-bg min-h-screen flex items-center justify-center p-4"><div className="bg-white dark:bg-slate-800 p-8 rounded-2xl shadow-xl text-center"><h3 className="text-xl font-semibold text-slate-900 dark:text-white">{t('rooms.examNotAvailable', 'Exam not available')}</h3></div></div>;
+
+  if (room?.status === 'waiting') {
+    return (
+      <div className="exam-bg min-h-screen flex items-center justify-center p-4">
+        <div className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-2xl p-10 rounded-3xl shadow-2xl text-center max-w-md w-full border border-white/40 dark:border-slate-800/50 exam-slide-up">
+          <div className="w-20 h-20 bg-primary-100 dark:bg-primary-900/30 rounded-2xl flex items-center justify-center mx-auto mb-6">
+            <Clock className="w-10 h-10 text-primary-600 dark:text-primary-400 animate-pulse" />
+          </div>
+          <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-2">{t('rooms.waitingTitle', 'Ожидание преподавателя')}</h2>
+          <p className="text-sm text-slate-500 dark:text-slate-400 mb-6">{t('rooms.waitingDesc', 'Пожалуйста, не закрывайте эту вкладку. Экзамен начнется автоматически, как только преподаватель нажмет кнопку старта.')}</p>
+          <div className="flex flex-col items-center justify-center gap-3">
+            <div className="flex items-center justify-center gap-2 text-sm text-primary-600 dark:text-primary-400 font-semibold bg-primary-50 dark:bg-primary-900/20 py-3 px-6 rounded-xl w-full">
+              <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+              {t('rooms.waitingSync', 'Синхронизация...')}
+            </div>
+            
+            <div className="flex items-center gap-2 text-sm text-slate-500 dark:text-slate-400 mt-2 bg-slate-50 dark:bg-slate-800 py-2 px-4 rounded-lg
+">
+              <Users className="w-4 h-4" />
+              <span>{(room.participants?.length || 0) + 1} {t('rooms.participantsReady', 'в зале ожидания')}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   const q = questions[currentQ];
   const isLow = timeLeft <= 60;

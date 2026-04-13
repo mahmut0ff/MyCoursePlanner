@@ -1,12 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { getRoom, closeRoom } from '../../services/rooms.service';
+import { getRoom, closeRoom, startRoom } from '../../services/rooms.service';
 import { getAttemptsByRoom } from '../../services/attempts.service';
 import { useAuth } from '../../contexts/AuthContext';
 import type { ExamRoom, ExamAttempt } from '../../types';
 import { formatDate } from '../../utils/grading';
-import { ArrowLeft, Copy, Users, XCircle, CheckCircle, Clock, Radio } from 'lucide-react';
+import { ArrowLeft, Copy, Users, XCircle, CheckCircle, Clock, Radio, Play, AlertTriangle } from 'lucide-react';
 
 const RoomPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -20,7 +20,7 @@ const RoomPage: React.FC = () => {
 
   useEffect(() => {
     loadRoom();
-    const interval = setInterval(loadRoom, 10000);
+    const interval = setInterval(loadRoom, 5000);
     return () => clearInterval(interval);
   }, [id]);
 
@@ -49,6 +49,12 @@ const RoomPage: React.FC = () => {
     loadRoom();
   };
 
+  const handleStart = async () => {
+    if (!id || !confirm(t('rooms.startConfirm', 'Начать экзамен для всех ожидающих учеников?'))) return;
+    await startRoom(id);
+    loadRoom();
+  };
+
   if (loading) return <div className="flex items-center justify-center py-20"><div className="w-8 h-8 border-4 border-primary-200 border-t-primary-600 rounded-full animate-spin dark:border-primary-800 dark:border-t-primary-400" /></div>;
   if (!room) return <div className="text-center py-20"><h3 className="text-lg font-medium text-slate-700 dark:text-slate-300">{t('common.notFound')}</h3></div>;
 
@@ -56,16 +62,26 @@ const RoomPage: React.FC = () => {
     <div className="max-w-4xl mx-auto">
       <div className="flex items-center justify-between mb-6">
         <button onClick={() => navigate('/rooms')} className="btn-ghost flex items-center gap-2"><ArrowLeft className="w-4 h-4" />{t('common.back')}</button>
-        {room.status === 'active' && (
-          <button onClick={handleClose} className="btn-danger flex items-center gap-2"><XCircle className="w-4 h-4" />{t('rooms.close')}</button>
-        )}
+        <div className="flex items-center gap-2">
+          {room.status === 'waiting' && (
+            <button onClick={handleStart} className="bg-emerald-500 hover:bg-emerald-600 text-white flex items-center gap-2 px-6 py-2.5 rounded-xl font-bold shadow-lg shadow-emerald-500/20 transition-all hover:scale-105 active:scale-95">
+              <Play className="w-5 h-5 fill-current" />
+              {t('rooms.startExam', 'Запустить экзамен')}
+            </button>
+          )}
+          {room.status === 'active' && (
+            <button onClick={handleClose} className="btn-danger flex items-center gap-2"><XCircle className="w-4 h-4" />{t('rooms.close')}</button>
+          )}
+        </div>
       </div>
 
       {/* Room Code Card */}
       <div className="card p-8 mb-6 text-center">
         <div className="flex items-center justify-center gap-2 mb-2">
           <Radio className={`w-5 h-5 ${room.status === 'active' ? 'text-emerald-500 animate-pulse' : 'text-slate-400 dark:text-slate-500'}`} />
-          <span className={room.status === 'active' ? 'badge-green' : 'badge-slate'}>{room.status === 'active' ? t('rooms.active') : t('rooms.closed')}</span>
+          <span className={room.status === 'active' ? 'badge-green' : room.status === 'waiting' ? 'badge-yellow px-3 py-1 text-sm font-bold animate-pulse' : 'badge-slate'}>
+            {room.status === 'active' ? t('rooms.active') : room.status === 'waiting' ? t('rooms.waiting', 'ОЖИДАНИЕ УЧЕНИКОВ') : t('rooms.closed')}
+          </span>
         </div>
         <h2 className="text-lg text-slate-600 dark:text-slate-400 mb-2">{room.examTitle}</h2>
         <div className="mt-4">
@@ -108,6 +124,7 @@ const RoomPage: React.FC = () => {
               <th className="text-left px-6 py-3 text-xs font-medium text-slate-500 dark:text-slate-400 uppercase">{t('rooms.student')}</th>
               <th className="text-left px-6 py-3 text-xs font-medium text-slate-500 dark:text-slate-400 uppercase">{t('rooms.score')}</th>
               <th className="text-left px-6 py-3 text-xs font-medium text-slate-500 dark:text-slate-400 uppercase">{t('rooms.result')}</th>
+              <th className="text-left px-6 py-3 text-xs font-medium text-slate-500 dark:text-slate-400 uppercase">{t('rooms.antiCheat', 'Сворачивания')}</th>
               <th className="text-left px-6 py-3 text-xs font-medium text-slate-500 dark:text-slate-400 uppercase">{t('results.timeSpent')}</th>
               <th className="text-left px-6 py-3 text-xs font-medium text-slate-500 dark:text-slate-400 uppercase">{t('rooms.submittedAt')}</th>
             </tr></thead>
@@ -117,6 +134,16 @@ const RoomPage: React.FC = () => {
                   <td className="px-6 py-4 font-medium text-slate-900 dark:text-white">{a.studentName}</td>
                   <td className="px-6 py-4 text-sm text-slate-700 dark:text-slate-300">{a.percentage}%</td>
                   <td className="px-6 py-4"><span className={a.passed ? 'badge-green' : 'badge-red'}>{a.passed ? t('rooms.passed') : t('rooms.failed')}</span></td>
+                  <td className="px-6 py-4">
+                    {a.cheatAttempts && a.cheatAttempts > 0 ? (
+                      <span className="flex items-center gap-1.5 text-xs font-bold text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 px-2.5 py-1 rounded-md w-fit">
+                        <AlertTriangle className="w-3.5 h-3.5" />
+                        {a.cheatAttempts} {t('rooms.times', 'раз')}
+                      </span>
+                    ) : (
+                      <span className="text-xs text-slate-400 dark:text-slate-500">-</span>
+                    )}
+                  </td>
                   <td className="px-6 py-4 text-sm text-slate-600 dark:text-slate-400">{Math.floor(a.timeSpentSeconds / 60)}m {a.timeSpentSeconds % 60}s</td>
                   <td className="px-6 py-4 text-sm text-slate-500 dark:text-slate-400">{formatDate(a.submittedAt)}</td>
                 </tr>

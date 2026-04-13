@@ -82,6 +82,7 @@ export const apiCreateRoom = (data: any) => apiRequest('api-rooms', 'POST', data
 export const apiJoinRoom = (roomId: string) => apiRequest('api-rooms', 'POST', { action: 'join', roomId });
 export const apiDeleteAuditLogs = () => apiRequest('api-audit', 'DELETE');
 export const apiCloseRoom = (roomId: string) => apiRequest('api-rooms', 'POST', { action: 'close', roomId });
+export const apiStartRoom = (roomId: string) => apiRequest('api-rooms', 'POST', { action: 'start', roomId });
 
 // ---- AI Generation ----
 export const apiAIGenerate = (data: { prompt?: string; type: 'quiz' | 'exam' | 'lesson_and_quiz' | 'material_summary'; fileUrl?: string }) =>

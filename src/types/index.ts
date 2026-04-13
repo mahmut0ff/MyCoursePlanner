@@ -477,7 +477,7 @@ export interface Question {
 
 // ---- Exam Rooms ----
 
-export type RoomStatus = 'active' | 'closed';
+export type RoomStatus = 'active' | 'closed' | 'waiting';
 
 export interface ExamRoom {
   id: string;
@@ -516,6 +516,7 @@ export interface ExamAttempt {
   startedAt: string;
   submittedAt: string;
   timeSpentSeconds: number;
+  cheatAttempts?: number;
   aiFeedback?: AIFeedback;
   createdAt: string;
 }

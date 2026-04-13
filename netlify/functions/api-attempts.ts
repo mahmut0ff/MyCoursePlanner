@@ -154,7 +154,9 @@ const handler: Handler = async (event: HandlerEvent) => {
       score, totalPoints, percentage, passed,
       organizationId: user.organizationId || '',
       startedAt: body.startedAt || now, submittedAt: now,
-      timeSpentSeconds: body.timeSpentSeconds || 0, createdAt: now,
+      timeSpentSeconds: body.timeSpentSeconds || 0,
+      cheatAttempts: body.cheatAttempts || 0,
+      createdAt: now,
     };
     const ref = await adminDb.collection(COLLECTION).add(data);
 

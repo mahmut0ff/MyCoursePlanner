@@ -34,7 +34,7 @@ const handler: Handler = async (event: HandlerEvent) => {
     if (params.code) {
       const snap = await adminDb.collection(COLLECTION)
         .where('code', '==', params.code.toUpperCase())
-        .where('status', '==', 'active').limit(1).get();
+        .where('status', 'in', ['active', 'waiting']).limit(1).get();
       if (snap.empty) return notFound('Room not found or closed');
       return ok({ id: snap.docs[0].id, ...snap.docs[0].data() });
     }
@@ -66,8 +66,8 @@ const handler: Handler = async (event: HandlerEvent) => {
       }
     } else {
       if (!orgFilter) return ok([]); // Students must have an org to see rooms
-      try { snap = await adminDb.collection(COLLECTION).where('organizationId', '==', orgFilter).where('status', '==', 'active').orderBy('createdAt', 'desc').limit(50).get(); }
-      catch { snap = await adminDb.collection(COLLECTION).where('organizationId', '==', orgFilter).where('status', '==', 'active').get(); }
+      try { snap = await adminDb.collection(COLLECTION).where('organizationId', '==', orgFilter).where('status', 'in', ['active', 'waiting']).orderBy('createdAt', 'desc').limit(50).get(); }
+      catch { snap = await adminDb.collection(COLLECTION).where('organizationId', '==', orgFilter).where('status', 'in', ['active', 'waiting']).get(); }
     }
     const results = snap.docs.map((d: any) => ({ id: d.id, ...d.data() }));
     results.sort((a: any, b: any) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
@@ -84,7 +84,7 @@ const handler: Handler = async (event: HandlerEvent) => {
       const roomDoc = await roomRef.get();
       if (!roomDoc.exists) return notFound('Room not found');
       const roomData = roomDoc.data()!;
-      if (roomData.status !== 'active') return badRequest('Room is closed');
+      if (roomData.status === 'closed') return badRequest('Room is closed');
       // The user successfully supplied the code earlier to get the UI, so we allow joining.
       // (Removed strict org check to allow external/independent teacher exams)
       const participants: string[] = roomData.participants || [];
@@ -101,13 +101,20 @@ const handler: Handler = async (event: HandlerEvent) => {
       return ok({ closed: true });
     }
 
+    if (body.action === 'start') {
+      if (!isStaff(user)) return forbidden();
+      if (!body.roomId) return badRequest('roomId required');
+      await adminDb.collection(COLLECTION).doc(body.roomId).update({ status: 'active', startedAt: new Date().toISOString() });
+      return ok({ started: true });
+    }
+
     if (!isStaff(user)) return forbidden();
     if (!body.examId || !body.examTitle) return badRequest('examId and examTitle required');
     const now = new Date().toISOString();
     const data = {
       examId: body.examId, examTitle: body.examTitle, code: generateCode(),
-      status: 'active', hostId: user.uid, hostName: user.displayName,
-      participants: [], organizationId: user.organizationId || '', createdAt: now,
+      status: 'waiting', hostId: user.uid, hostName: user.displayName,
+      participants: [], organizationId: user.organizationId || '', createdAt: now, startedAt: '',
     };
     const ref = await adminDb.collection(COLLECTION).add(data);
     // Notify org students about new exam room

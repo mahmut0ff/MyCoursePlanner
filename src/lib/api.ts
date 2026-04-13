@@ -504,6 +504,12 @@ export const apiGetTransactions = (filters?: { branchId?: string; startDate?: st
 export const apiCreateTransaction = (data: any) =>
   apiRequest('api-finance-transactions', 'POST', data);
 
+export const apiUpdateTransaction = (data: any) =>
+  apiRequest('api-finance-transactions', 'PUT', data);
+
+export const apiDeleteTransaction = (id: string) =>
+  apiRequest('api-finance-transactions', 'DELETE', undefined, { id });
+
 export const apiGetPaymentPlans = (filters?: { branchId?: string; studentId?: string; status?: string }) =>
   apiRequest('api-finance-plans', 'GET', undefined, filters as any);
 
@@ -513,8 +519,11 @@ export const apiCreatePaymentPlan = (data: any) =>
 export const apiUpdatePaymentPlan = (planId: string, data: any) =>
   apiRequest('api-finance-plans', 'PUT', { planId, ...data });
 
-export const apiGetFinanceMetrics = (branchId?: string) =>
-  apiRequest('api-finance-metrics', 'GET', undefined, branchId ? { branchId } : undefined);
+export const apiDeletePaymentPlan = (id: string) =>
+  apiRequest('api-finance-plans', 'DELETE', undefined, { id });
+
+export const apiGetFinanceMetrics = (params?: { branchId?: string; period?: string }) =>
+  apiRequest('api-finance-metrics', 'GET', undefined, params as any);
 
 // ============================================================
 // AI ORGANIZATION MANAGER API

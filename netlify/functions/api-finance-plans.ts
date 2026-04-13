@@ -201,6 +201,25 @@ const handler: Handler = async (event: HandlerEvent) => {
       return ok({ id: updated.id, ...updated.data() });
     }
 
+    // DELETE Payment Plan
+    if (event.httpMethod === 'DELETE') {
+      if (user.role === 'teacher' || user.role === 'student') return forbidden();
+      if (!hasPermission(user, 'finances')) return forbidden('No access to finances module');
+
+      const planId = (event.queryStringParameters || {}).id;
+      if (!planId) return badRequest('id required');
+
+      const docRef = adminDb.collection(COLLECTION).doc(planId);
+      const doc = await docRef.get();
+      if (!doc.exists) return notFound('Payment plan not found');
+
+      const orgFilter = getOrgFilter(user);
+      if (doc.data()?.organizationId !== orgFilter) return forbidden();
+
+      await docRef.delete();
+      return ok({ deleted: true, id: planId });
+    }
+
     return jsonResponse(405, { error: 'Method not allowed' });
   } catch (err: any) {
     console.error('Finance Plans API Error:', err);

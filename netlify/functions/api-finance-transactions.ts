@@ -119,6 +119,86 @@ const handler: Handler = async (event: HandlerEvent) => {
       return ok({ id: ref.id, ...data });
     }
 
+    // PUT — Update Transaction
+    if (event.httpMethod === 'PUT') {
+      if (user.role === 'teacher' || user.role === 'student') return forbidden();
+      if (!hasPermission(user, 'finances')) return forbidden('No access to finances module');
+
+      const body = JSON.parse(event.body || '{}');
+      if (!body.id) return badRequest('id required');
+
+      const docRef = adminDb.collection(COLLECTION).doc(body.id);
+      const doc = await docRef.get();
+      if (!doc.exists) return notFound('Transaction not found');
+
+      const existing = doc.data()!;
+      const orgFilter = getOrgFilter(user);
+      if (existing.organizationId !== orgFilter) return forbidden();
+
+      const updates: any = { updatedAt: new Date().toISOString() };
+      if (body.amount !== undefined) updates.amount = Number(body.amount);
+      if (body.description !== undefined) updates.description = body.description;
+      if (body.date !== undefined) updates.date = body.date;
+      if (body.categoryId !== undefined) updates.categoryId = body.categoryId;
+      if (body.paymentMethod !== undefined) updates.paymentMethod = body.paymentMethod;
+
+      // If amount changed and linked to payment plan, recalculate
+      if (body.amount !== undefined && existing.paymentPlanId && Number(body.amount) !== existing.amount) {
+        const diff = Number(body.amount) - (existing.amount || 0);
+        const planRef = adminDb.collection('studentPaymentPlans').doc(existing.paymentPlanId);
+        await adminDb.runTransaction(async (t) => {
+          const planDoc = await t.get(planRef);
+          if (planDoc.exists) {
+            const planData = planDoc.data()!;
+            const newPaid = Math.max(0, (planData.paidAmount || 0) + diff);
+            let status = 'partial';
+            if (newPaid >= planData.totalAmount) status = 'paid';
+            else if (newPaid === 0) status = 'pending';
+            t.update(planRef, { paidAmount: newPaid, status, updatedAt: new Date().toISOString() });
+          }
+        });
+      }
+
+      await docRef.update(updates);
+      return ok({ id: doc.id, ...existing, ...updates });
+    }
+
+    // DELETE — Remove Transaction
+    if (event.httpMethod === 'DELETE') {
+      if (user.role === 'teacher' || user.role === 'student') return forbidden();
+      if (!hasPermission(user, 'finances')) return forbidden('No access to finances module');
+
+      const txId = params.id;
+      if (!txId) return badRequest('id required');
+
+      const docRef = adminDb.collection(COLLECTION).doc(txId);
+      const doc = await docRef.get();
+      if (!doc.exists) return notFound('Transaction not found');
+
+      const existing = doc.data()!;
+      const orgFilter = getOrgFilter(user);
+      if (existing.organizationId !== orgFilter) return forbidden();
+
+      // Reverse payment plan if linked
+      if (existing.paymentPlanId && existing.type === 'income') {
+        const planRef = adminDb.collection('studentPaymentPlans').doc(existing.paymentPlanId);
+        await adminDb.runTransaction(async (t) => {
+          const planDoc = await t.get(planRef);
+          if (planDoc.exists) {
+            const planData = planDoc.data()!;
+            const newPaid = Math.max(0, (planData.paidAmount || 0) - (existing.amount || 0));
+            let status = 'partial';
+            if (newPaid >= planData.totalAmount) status = 'paid';
+            else if (newPaid === 0) status = 'pending';
+            t.update(planRef, { paidAmount: newPaid, status, updatedAt: new Date().toISOString() });
+          }
+        });
+      }
+
+      await docRef.delete();
+      return ok({ deleted: true, id: txId });
+    }
+
     return jsonResponse(405, { error: 'Method not allowed' });
   } catch (err: any) {
     console.error('Finance Transactions API Error:', err);

@@ -82,33 +82,38 @@ const ResultPage: React.FC = () => {
       <button onClick={() => navigate('/my-results')} className="btn-ghost flex items-center gap-2 mb-6"><ArrowLeft className="w-4 h-4" />{t('results.allResults')}</button>
 
       {/* Score Card */}
-      <div className={`card p-8 mb-6 text-center ${attempt.passed ? 'border-emerald-200 dark:border-emerald-800' : 'border-red-200 dark:border-red-800'} border-2`}>
-        <div className={`w-20 h-20 mx-auto rounded-full flex items-center justify-center mb-4 ${attempt.passed ? 'bg-emerald-100 dark:bg-emerald-900/30' : 'bg-red-100 dark:bg-red-900/30'}`}>
-          {attempt.passed ? <Trophy className="w-10 h-10 text-emerald-600 dark:text-emerald-400" /> : <XCircle className="w-10 h-10 text-red-500 dark:text-red-400" />}
+      <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-6 sm:p-10 mb-6 flex flex-col items-center text-center shadow-sm relative overflow-hidden">
+        {/* Subtle accent border at top instead of heavy full border */}
+        <div className={`absolute top-0 left-0 right-0 h-1.5 w-full ${attempt.passed ? 'bg-emerald-500' : 'bg-red-500'}`} />
+        
+        <div className={`w-16 h-16 mx-auto rounded-full flex items-center justify-center mb-5 ${attempt.passed ? 'bg-emerald-100 text-emerald-600 dark:bg-emerald-900/40 dark:text-emerald-400' : 'bg-red-100 text-red-600 dark:bg-red-900/40 dark:text-red-400'}`}>
+          {attempt.passed ? <Trophy className="w-8 h-8" /> : <XCircle className="w-8 h-8" />}
         </div>
-        <h1 className="text-4xl font-bold text-slate-900 dark:text-white mb-1">{attempt.percentage}%</h1>
-        <p className={`text-lg font-medium ${attempt.passed ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>
+        
+        <p className="text-slate-500 dark:text-slate-400 font-medium mb-1 uppercase tracking-wider text-xs">{attempt.examTitle}</p>
+        <h1 className="text-5xl font-extrabold text-slate-900 dark:text-white mb-3 tracking-tight">{attempt.percentage}%</h1>
+        
+        <span className={`px-4 py-1.5 rounded-full text-sm font-bold tracking-wide uppercase ${attempt.passed ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400' : 'bg-red-50 text-red-700 dark:bg-red-900/30 dark:text-red-400'}`}>
           {attempt.passed ? t('results.passed') : t('results.failed')}
-        </p>
-        <p className="text-slate-500 dark:text-slate-400 mt-1">{attempt.examTitle}</p>
+        </span>
 
-        <div className="grid grid-cols-3 gap-4 mt-6 pt-6 border-t border-slate-200 dark:border-slate-700">
-          <div>
-            <Target className="w-5 h-5 text-primary-500 mx-auto mb-1" />
-            <p className="text-lg font-semibold text-slate-900 dark:text-white">{attempt.score}/{attempt.totalPoints}</p>
-            <p className="text-xs text-slate-500 dark:text-slate-400">{t('results.score')}</p>
+        <div className="w-full grid grid-cols-3 gap-3 mt-8 pt-6 border-t border-slate-100 dark:border-slate-700/60">
+          <div className="bg-slate-50 dark:bg-slate-800/50 rounded-xl p-4 border border-slate-100 dark:border-slate-700/30">
+            <Target className="w-5 h-5 text-indigo-500 mx-auto mb-2" />
+            <p className="text-xl font-bold text-slate-900 dark:text-white">{attempt.score}/{attempt.totalPoints}</p>
+            <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase mt-0.5">{t('results.score')}</p>
           </div>
-          <div>
-            <Clock className="w-5 h-5 text-amber-500 mx-auto mb-1" />
-            <p className="text-lg font-semibold text-slate-900 dark:text-white">{mins}m {secs}s</p>
-            <p className="text-xs text-slate-500 dark:text-slate-400">{t('results.timeSpent')}</p>
+          <div className="bg-slate-50 dark:bg-slate-800/50 rounded-xl p-4 border border-slate-100 dark:border-slate-700/30">
+            <Clock className="w-5 h-5 text-amber-500 mx-auto mb-2" />
+            <p className="text-xl font-bold text-slate-900 dark:text-white">{mins}m {secs}s</p>
+            <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase mt-0.5">{t('results.timeSpent')}</p>
           </div>
-          <div>
-            <CheckCircle className="w-5 h-5 text-emerald-500 mx-auto mb-1" />
-            <p className="text-lg font-semibold text-slate-900 dark:text-white">
+          <div className="bg-slate-50 dark:bg-slate-800/50 rounded-xl p-4 border border-slate-100 dark:border-slate-700/30">
+            <CheckCircle className="w-5 h-5 text-emerald-500 mx-auto mb-2" />
+            <p className="text-xl font-bold text-slate-900 dark:text-white">
               {attempt.questionResults?.filter((r) => r.isCorrect).length || 0}/{attempt.questionResults?.length || 0}
             </p>
-            <p className="text-xs text-slate-500 dark:text-slate-400">{t('results.correct')}</p>
+            <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase mt-0.5">{t('results.correct')}</p>
           </div>
         </div>
 
@@ -123,7 +128,7 @@ const ResultPage: React.FC = () => {
               } catch { setCertLoading(false); }
             }}
             disabled={certLoading}
-            className="mt-5 inline-flex items-center gap-2 bg-gradient-to-r from-indigo-600 to-purple-600 text-white px-6 py-2.5 rounded-xl font-medium hover:opacity-90 transition-opacity disabled:opacity-50"
+            className="mt-6 w-full sm:w-auto inline-flex items-center justify-center gap-2 bg-indigo-600 text-white px-8 py-3 rounded-xl font-bold hover:bg-indigo-700 transition-colors disabled:opacity-50"
           >
             <Award className="w-5 h-5" />
             {certLoading ? '...' : t('certificate.getCertificate')}
@@ -180,40 +185,40 @@ const ResultPage: React.FC = () => {
             )}
 
             {attempt.aiFeedback.strengths?.length > 0 && (
-              <div>
-                <h3 className="text-sm font-semibold text-emerald-700 dark:text-emerald-400 mb-2 flex items-center gap-1.5">
-                  <span className="w-5 h-5 rounded-full bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center text-xs">💪</span>
+              <div className="bg-emerald-50/50 dark:bg-emerald-900/10 border border-emerald-100 dark:border-emerald-800/30 rounded-xl p-4">
+                <h3 className="text-sm font-bold text-emerald-800 dark:text-emerald-400 mb-3 flex items-center gap-2 uppercase tracking-wide">
+                  <span className="w-6 h-6 rounded-md bg-emerald-100 dark:bg-emerald-900/50 flex items-center justify-center text-xs shadow-sm">💪</span>
                   {t('results.strengths', 'Сильные стороны')}
                 </h3>
-                <ul className="text-sm text-slate-600 dark:text-slate-400 space-y-1.5 pl-1">
+                <ul className="text-sm text-emerald-900/80 dark:text-emerald-200/80 space-y-2 pl-1">
                   {attempt.aiFeedback.strengths.map((s: string, i: number) => (
-                    <li key={i} className="flex items-start gap-2"><span className="mt-1.5 w-1.5 h-1.5 rounded-full bg-emerald-400 shrink-0" />{s}</li>
+                    <li key={i} className="flex items-start gap-2.5"><span className="mt-1.5 w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" />{s}</li>
                   ))}
                 </ul>
               </div>
             )}
             {attempt.aiFeedback.weakTopics?.length > 0 && (
-              <div>
-                <h3 className="text-sm font-semibold text-amber-700 dark:text-amber-400 mb-2 flex items-center gap-1.5">
-                  <span className="w-5 h-5 rounded-full bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center text-xs">📚</span>
+              <div className="bg-amber-50/50 dark:bg-amber-900/10 border border-amber-100 dark:border-amber-800/30 rounded-xl p-4">
+                <h3 className="text-sm font-bold text-amber-800 dark:text-amber-400 mb-3 flex items-center gap-2 uppercase tracking-wide">
+                  <span className="w-6 h-6 rounded-md bg-amber-100 dark:bg-amber-900/50 flex items-center justify-center text-xs shadow-sm">📚</span>
                   {t('results.areasToImprove', 'Слабые места')}
                 </h3>
-                <ul className="text-sm text-slate-600 dark:text-slate-400 space-y-1.5 pl-1">
+                <ul className="text-sm text-amber-900/80 dark:text-amber-200/80 space-y-2 pl-1">
                   {attempt.aiFeedback.weakTopics.map((w: string, i: number) => (
-                    <li key={i} className="flex items-start gap-2"><span className="mt-1.5 w-1.5 h-1.5 rounded-full bg-amber-400 shrink-0" />{w}</li>
+                    <li key={i} className="flex items-start gap-2.5"><span className="mt-1.5 w-1.5 h-1.5 rounded-full bg-amber-500 shrink-0" />{w}</li>
                   ))}
                 </ul>
               </div>
             )}
             {attempt.aiFeedback.reviewSuggestions?.length > 0 && (
-              <div>
-                <h3 className="text-sm font-semibold text-primary-700 dark:text-primary-400 mb-2 flex items-center gap-1.5">
-                  <span className="w-5 h-5 rounded-full bg-primary-100 dark:bg-primary-900/30 flex items-center justify-center text-xs">📝</span>
+              <div className="bg-indigo-50/50 dark:bg-indigo-900/10 border border-indigo-100 dark:border-indigo-800/30 rounded-xl p-4">
+                <h3 className="text-sm font-bold text-indigo-800 dark:text-indigo-400 mb-3 flex items-center gap-2 uppercase tracking-wide">
+                  <span className="w-6 h-6 rounded-md bg-indigo-100 dark:bg-indigo-900/50 flex items-center justify-center text-xs shadow-sm">📝</span>
                   {t('results.whatToReview', 'Что повторить')}
                 </h3>
-                <ul className="text-sm text-slate-600 dark:text-slate-400 space-y-1.5 pl-1">
+                <ul className="text-sm text-indigo-900/80 dark:text-indigo-200/80 space-y-2 pl-1">
                   {attempt.aiFeedback.reviewSuggestions.map((r: string, i: number) => (
-                    <li key={i} className="flex items-start gap-2"><span className="mt-1.5 w-1.5 h-1.5 rounded-full bg-primary-400 shrink-0" />{r}</li>
+                    <li key={i} className="flex items-start gap-2.5"><span className="mt-1.5 w-1.5 h-1.5 rounded-full bg-indigo-500 shrink-0" />{r}</li>
                   ))}
                 </ul>
               </div>
@@ -257,28 +262,51 @@ const ResultPage: React.FC = () => {
 
       {/* Question Results (Hidden for students) */}
       {!isViewerStudent && attempt.questionResults && attempt.questionResults.length > 0 && (
-        <div className="card overflow-hidden">
-          <div className="px-6 py-4 border-b border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-700/50"><h3 className="font-semibold text-slate-900 dark:text-white">{t('results.questionBreakdown')}</h3></div>
-          <div className="divide-y divide-slate-100 dark:divide-slate-700">
+        <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl overflow-hidden shadow-sm">
+          <div className="px-6 py-4 border-b border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-700/30">
+            <h3 className="font-bold text-slate-900 dark:text-white uppercase tracking-wide text-sm">{t('results.questionBreakdown', 'Разбор вопросов')}</h3>
+          </div>
+          <div className="p-4 sm:p-6 space-y-4 bg-slate-50/30 dark:bg-slate-900/20">
             {attempt.questionResults.map((qr, i) => (
-              <div key={i} className="px-6 py-4">
-                <div className="flex items-start justify-between">
+              <div key={i} className={`relative overflow-hidden rounded-xl border p-4 sm:p-5 transition-colors ${
+                qr.status === 'correct' ? 'bg-emerald-50/50 border-emerald-100 dark:bg-emerald-900/20 dark:border-emerald-800/40' :
+                qr.status === 'incorrect' ? 'bg-red-50/50 border-red-100 dark:bg-red-900/20 dark:border-red-800/40' :
+                'bg-amber-50/50 border-amber-100 dark:bg-amber-900/20 dark:border-amber-800/40'
+              }`}>
+                {/* Left Side Indicator */}
+                <div className={`absolute top-0 bottom-0 left-0 w-1.5 ${
+                  qr.status === 'correct' ? 'bg-emerald-500' :
+                  qr.status === 'incorrect' ? 'bg-red-500' :
+                  'bg-amber-500'
+                }`} />
+                
+                <div className="flex items-start justify-between gap-4 pl-2">
                   <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-1">
-                      {qr.status === 'correct' && <CheckCircle className="w-4 h-4 text-emerald-500 shrink-0" />}
-                      {qr.status === 'incorrect' && <XCircle className="w-4 h-4 text-red-500 shrink-0" />}
-                      {qr.status === 'pending_review' && <HelpCircle className="w-4 h-4 text-amber-500 shrink-0" />}
-                      <span className="font-medium text-slate-900 dark:text-white text-sm">Q{i + 1}: {qr.questionText}</span>
+                    <div className="flex items-start gap-2 mb-3">
+                      {qr.status === 'correct' && <CheckCircle className="w-5 h-5 text-emerald-600 dark:text-emerald-400 shrink-0 mt-0.5" />}
+                      {qr.status === 'incorrect' && <XCircle className="w-5 h-5 text-red-600 dark:text-red-400 shrink-0 mt-0.5" />}
+                      {qr.status === 'pending_review' && <HelpCircle className="w-5 h-5 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />}
+                      <span className="font-semibold text-slate-900 dark:text-white text-sm sm:text-base leading-snug">Q{i + 1}: {qr.questionText}</span>
                     </div>
-                    <div className="ml-6 text-sm space-y-1">
-                      <p className="text-slate-600 dark:text-slate-400">{t('results.yourAnswer')}: <span className="font-medium">{Array.isArray(qr.studentAnswer) ? qr.studentAnswer.join(', ') : qr.studentAnswer || `(${t('results.noAnswer')})`}</span></p>
+                    <div className="ml-7 text-sm space-y-1.5 opacity-90">
+                      <p className="text-slate-600 dark:text-slate-300">
+                        <span className="opacity-75">{t('results.yourAnswer', 'Ваш ответ')}:</span> <span className="font-semibold text-slate-900 dark:text-white">{Array.isArray(qr.studentAnswer) ? qr.studentAnswer.join(', ') : qr.studentAnswer || `(${t('results.noAnswer', 'Нет ответа')})`}</span>
+                      </p>
                       {qr.status !== 'correct' && qr.status !== 'pending_review' && (
-                        <p className="text-emerald-600 dark:text-emerald-400">{t('results.correctAnswer')}: <span className="font-medium">{Array.isArray(qr.correctAnswer) ? qr.correctAnswer.join(', ') : qr.correctAnswer}</span></p>
+                        <p className="text-emerald-700 dark:text-emerald-400 bg-emerald-100/50 dark:bg-emerald-900/30 px-2.5 py-1.5 rounded-lg inline-block mt-1">
+                          <span className="opacity-80">{t('results.correctAnswer', 'Верный ответ')}:</span> <span className="font-semibold">{Array.isArray(qr.correctAnswer) ? qr.correctAnswer.join(', ') : qr.correctAnswer}</span>
+                        </p>
                       )}
-                      {qr.status === 'pending_review' && <span className="badge-yellow text-xs">{t('results.pendingReview')}</span>}
+                      {qr.status === 'pending_review' && <span className="inline-block mt-1 px-2.5 py-1 text-xs font-bold bg-amber-200 text-amber-800 rounded-lg">{t('results.pendingReview', 'Ожидает проверки')}</span>}
                     </div>
                   </div>
-                  <span className="text-sm font-medium text-slate-500 dark:text-slate-400">{qr.pointsEarned}/{qr.pointsPossible}</span>
+                  <span className={`text-sm sm:text-base font-bold shrink-0 px-3 py-1 rounded-lg ${
+                     qr.status === 'correct' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-800 dark:text-emerald-300' :
+                     qr.status === 'incorrect' ? 'bg-red-100 text-red-700 dark:bg-red-800 dark:text-red-300' :
+                     'bg-amber-100 text-amber-700 dark:bg-amber-800 dark:text-amber-300'
+                  }`}>
+                    {qr.pointsEarned}/{qr.pointsPossible}
+                  </span>
                 </div>
               </div>
             ))}

@@ -126,15 +126,23 @@ const handler: Handler = async (event: HandlerEvent) => {
       totalPoints += points;
       const studentAnswer = studentAnswers[q.id];
       let isCorrect = false;
+      let displayCorrectAnswer: any = q.correctAnswer;
 
       if (q.type === 'multiple_choice' || q.type === 'true_false') {
         isCorrect = studentAnswer === q.correctAnswer;
       } else if (q.type === 'multi_select') {
-        const correct = Array.isArray(q.correctAnswer) ? [...q.correctAnswer].sort() : [];
+        const correct = Array.isArray(q.correctAnswers) ? [...q.correctAnswers].sort() : [];
         const student = Array.isArray(studentAnswer) ? [...studentAnswer].sort() : [];
         isCorrect = JSON.stringify(correct) === JSON.stringify(student);
+        displayCorrectAnswer = q.correctAnswers;
       } else if (q.type === 'short_answer') {
-        isCorrect = String(studentAnswer || '').trim().toLowerCase() === String(q.correctAnswer || '').trim().toLowerCase();
+        const ans = String(studentAnswer || '').trim().toLowerCase();
+        if (q.keywords && Array.isArray(q.keywords) && q.keywords.length > 0) {
+          isCorrect = q.keywords.some((kw: string) => ans.includes(kw.trim().toLowerCase()) || ans === kw.trim().toLowerCase());
+          displayCorrectAnswer = q.keywords.join(', ');
+        } else {
+          isCorrect = ans === String(q.correctAnswer || '').trim().toLowerCase();
+        }
       } else {
         // open_ended — needs manual review
         questionResults.push({
@@ -149,7 +157,7 @@ const handler: Handler = async (event: HandlerEvent) => {
       if (isCorrect) score += points;
       questionResults.push({
         questionId: q.id, questionText: q.text || q.question || '',
-        studentAnswer, correctAnswer: q.correctAnswer,
+        studentAnswer, correctAnswer: displayCorrectAnswer,
         isCorrect, pointsEarned: isCorrect ? points : 0, pointsPossible: points,
         status: isCorrect ? 'correct' : 'incorrect',
       });

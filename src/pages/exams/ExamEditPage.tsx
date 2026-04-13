@@ -61,7 +61,26 @@ const ExamEditPage: React.FC = () => {
     return typeMap[aiType] || 'multiple_choice';
   };
 
-  const handleAIGenerateSuccess = (data: any[]) => {
+  // Search for a real image via Wikimedia Commons API (free, no key needed)
+  const searchWikimediaImage = async (query: string): Promise<string | undefined> => {
+    try {
+      const url = `https://commons.wikimedia.org/w/api.php?action=query&generator=search&gsrsearch=${encodeURIComponent(query)}&gsrlimit=3&prop=imageinfo&iiprop=url&iiurlwidth=800&format=json&origin=*`;
+      const res = await fetch(url);
+      if (!res.ok) return undefined;
+      const data = await res.json();
+      const pages = data?.query?.pages;
+      if (!pages) return undefined;
+      // Pick the first page that has a thumb URL
+      for (const key of Object.keys(pages)) {
+        const info = pages[key]?.imageinfo?.[0];
+        if (info?.thumburl) return info.thumburl;
+        if (info?.url && /\.(jpg|jpeg|png|webp|gif)/i.test(info.url)) return info.url;
+      }
+      return undefined;
+    } catch { return undefined; }
+  };
+
+  const handleAIGenerateSuccess = async (data: any[]) => {
     const startOrder = questions.length;
     const newQuestions = data.map((q, i) => {
       const opts = q.options || [];
@@ -86,17 +105,34 @@ const ExamEditPage: React.FC = () => {
         keywords: q.keywords || [],
         points: q.points || 1,
         order: startOrder + i,
-        mediaUrl: q.searchQuery ? `https://loremflickr.com/800/600/${encodeURIComponent(q.searchQuery)}?lock=${Math.floor(Math.random() * 100)}` : undefined,
-        mediaType: (q.searchQuery ? 'image' : undefined) as 'image' | undefined,
+        _searchQuery: q.searchQuery || '', // temp field for image resolution
         ttsText: q.ttsText,
-      } as Question;
+      } as Question & { _searchQuery?: string };
     });
     
-    // Remove the default empty question if it's the only one and empty
+    // Set questions immediately (without images)
     if (questions.length === 1 && questions[0].text === '') {
       setQuestions(newQuestions);
     } else {
       setQuestions([...questions, ...newQuestions]);
+    }
+
+    // Resolve images in parallel from Wikimedia Commons
+    const questionsWithSearchQuery = newQuestions.filter(q => (q as any)._searchQuery);
+    if (questionsWithSearchQuery.length > 0) {
+      const imageResults = await Promise.all(
+        questionsWithSearchQuery.map(async (q) => {
+          const imageUrl = await searchWikimediaImage((q as any)._searchQuery);
+          return { id: q.id, imageUrl };
+        })
+      );
+      
+      // Update questions with resolved images
+      setQuestions(prev => prev.map(q => {
+        const found = imageResults.find(r => r.id === q.id && r.imageUrl);
+        if (found) return { ...q, mediaUrl: found.imageUrl, mediaType: 'image' as const };
+        return q;
+      }));
     }
   };
 

@@ -151,7 +151,7 @@ const handler: Handler = async (event: HandlerEvent) => {
       
       const courses = coursesSnap.docs
         .map(d => d.data())
-        .filter(c => c.isPublished === true)
+        .filter(c => c.status === 'published')
         .map(c => {
           return `- ${c.title}${c.price ? ` (Price: ${c.price})` : ''}: ${c.description || ''}`;
         });
@@ -306,7 +306,7 @@ Review the Chat History and respond accurately to the final user message. Do NOT
            const functionResponseContents = [
              ...contents,
              { role: 'model', parts: [{ functionCall: functionCallPart.functionCall }] },
-             { role: 'user', parts: [{ functionResponse: {
+             { role: 'function', parts: [{ functionResponse: {
                name: 'addLeadToDatabase',
                response: { success: true, message: 'Lead has been saved. The manager will contact the client soon.' }
              }}] }

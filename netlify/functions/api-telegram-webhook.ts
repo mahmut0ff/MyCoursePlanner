@@ -114,7 +114,7 @@ export const handler: Handler = async (event: HandlerEvent) => {
 
     const courses = coursesSnap.docs
       .map(d => d.data())
-      .filter(c => c.isPublished === true)
+      .filter(c => c.status === 'published')
       .map(c => `- ${c.title}${c.price ? ` (Price: ${c.price})` : ''}: ${c.description || ''}`);
     const branches = branchesSnap.docs.map(d => {
       const b = d.data();
@@ -278,7 +278,7 @@ Provide formatted text for Telegram. Do not use Markdown unsupported by Telegram
          // The model's turn that contained the function call
          { role: 'model', parts: [{ functionCall: functionCallPart.functionCall }] },
          // Our function result
-         { role: 'user', parts: [{ functionResponse: {
+         { role: 'function', parts: [{ functionResponse: {
            name: 'addLeadToDatabase',
            response: { success: true, message: 'Lead has been saved. The manager will contact the client soon.' }
          }}] }

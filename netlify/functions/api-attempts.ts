@@ -34,16 +34,28 @@ const handler: Handler = async (event: HandlerEvent) => {
         logSecurityAudit(user, event, 'list_alien_attempts', { targetStudentId: params.studentId });
         return forbidden();
       }
-      const snap = await adminDb.collection(COLLECTION)
-        .where('studentId', '==', params.studentId).orderBy('submittedAt', 'desc').get();
-      return ok(snap.docs.map((d: any) => ({ id: d.id, ...d.data() })));
+      let snap;
+      try {
+        snap = await adminDb.collection(COLLECTION).where('studentId', '==', params.studentId).orderBy('submittedAt', 'desc').get();
+      } catch {
+        snap = await adminDb.collection(COLLECTION).where('studentId', '==', params.studentId).get();
+      }
+      const results = snap.docs.map((d: any) => ({ id: d.id, ...d.data() }));
+      results.sort((a: any, b: any) => new Date(b.submittedAt || 0).getTime() - new Date(a.submittedAt || 0).getTime());
+      return ok(results);
     }
 
     if (params.roomId) {
       if (!isStaff(user)) return forbidden();
-      const snap = await adminDb.collection(COLLECTION)
-        .where('roomId', '==', params.roomId).orderBy('submittedAt', 'desc').get();
-      return ok(snap.docs.map((d: any) => ({ id: d.id, ...d.data() })));
+      let snap;
+      try {
+        snap = await adminDb.collection(COLLECTION).where('roomId', '==', params.roomId).orderBy('submittedAt', 'desc').get();
+      } catch {
+        snap = await adminDb.collection(COLLECTION).where('roomId', '==', params.roomId).get();
+      }
+      const results = snap.docs.map((d: any) => ({ id: d.id, ...d.data() }));
+      results.sort((a: any, b: any) => new Date(b.submittedAt || 0).getTime() - new Date(a.submittedAt || 0).getTime());
+      return ok(results);
     }
 
     // All attempts — staff only, org-scoped

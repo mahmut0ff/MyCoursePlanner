@@ -11,9 +11,18 @@ export const createRoom = async (
   examId: string,
   examTitle: string,
   hostId: string,
-  hostName: string
+  hostName: string,
+  notifyOption: 'all' | 'group' | 'none' = 'none',
+  notifyGroupId?: string
 ): Promise<ExamRoom> => {
-  const result = await apiCreateRoom({ examId, examTitle, hostId, hostName });
+  const result = await apiCreateRoom({ 
+    examId, 
+    examTitle, 
+    authorId: hostId, 
+    authorName: hostName, 
+    notifyOption, 
+    notifyGroupId 
+  });
   return result as ExamRoom;
 };
 

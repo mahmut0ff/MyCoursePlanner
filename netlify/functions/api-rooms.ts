@@ -4,7 +4,7 @@
 import type { Handler, HandlerEvent } from '@netlify/functions';
 import { adminDb } from './utils/firebase-admin';
 import { verifyAuth, isStaff, getOrgFilter, hasRole, ok, unauthorized, forbidden, badRequest, notFound, jsonResponse, logSecurityAudit } from './utils/auth';
-import { notifyOrgStudents } from './utils/notifications';
+import { notifyOrgStudents, createNotification } from './utils/notifications';
 
 const COLLECTION = 'examRooms';
 
@@ -117,15 +117,37 @@ const handler: Handler = async (event: HandlerEvent) => {
       participants: [], organizationId: user.organizationId || '', createdAt: now, startedAt: '',
     };
     const ref = await adminDb.collection(COLLECTION).add(data);
-    // Notify org students about new exam room
-    if (user.organizationId) {
+    // Notifications Handling
+    if (body.notifyOption === 'all' && user.organizationId) {
       notifyOrgStudents(
         user.organizationId, 'exam_room_created',
         'Новая комната экзамена',
         `Комната для «${body.examTitle}» открыта (${data.code})`,
         '/rooms',
       ).catch(() => {});
+    } else if (body.notifyOption === 'group' && body.notifyGroupId && user.organizationId) {
+      try {
+        const groupDoc = await adminDb.collection('groups').doc(body.notifyGroupId).get();
+        if (groupDoc.exists && groupDoc.data()?.organizationId === user.organizationId) {
+          const studentIds: string[] = groupDoc.data()?.studentIds || [];
+          const promises = studentIds.map(studentId => 
+            createNotification({
+              recipientId: studentId,
+              type: 'exam_room_created',
+              title: 'Новая комната экзамена',
+              message: `Запущен экзамен: ${body.examTitle} (${data.code})`,
+              link: '/rooms',
+              organizationId: user.organizationId || ''
+            })
+          );
+          await Promise.allSettled(promises);
+        }
+      } catch (e) {
+        console.error('Failed to notify group:', e);
+      }
     }
+    // 'none' does nothing
+    
     return ok({ id: ref.id, ...data });
   }
 

@@ -5,9 +5,9 @@ import { useTranslation } from 'react-i18next';
 import { getExam, getQuestions, deleteExam, duplicateExam } from '../../services/exams.service';
 import { createRoom } from '../../services/rooms.service';
 import { useAuth } from '../../contexts/AuthContext';
-import type { Exam, Question } from '../../types';
-import { formatDate } from '../../utils/grading';
-import { ArrowLeft, Edit, Trash2, Play, Clock, Target, HelpCircle, Copy, ImageIcon, Volume2, Mic } from 'lucide-react';
+import { orgGetGroups } from '../../lib/api';
+import type { Exam, Question, Group } from '../../types';
+import { ArrowLeft, Edit, Trash2, Play, Clock, Target, HelpCircle, Copy, ImageIcon, Volume2, Mic, X } from 'lucide-react';
 
 const ExamViewPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -18,7 +18,17 @@ const ExamViewPage: React.FC = () => {
   const [questions, setQuestions] = useState<Question[]>([]);
   const [loading, setLoading] = useState(true);
   const [starting, setStarting] = useState(false);
+  const [showStartModal, setShowStartModal] = useState(false);
+  const [groups, setGroups] = useState<Group[]>([]);
+  const [notifyOption, setNotifyOption] = useState<'all' | 'group' | 'none'>('none');
+  const [selectedGroupId, setSelectedGroupId] = useState('');
   const isStaff = role === 'admin' || role === 'manager' || role === 'teacher';
+
+  useEffect(() => {
+    if (showStartModal && groups.length === 0) {
+      orgGetGroups().then(setGroups).catch(() => {});
+    }
+  }, [showStartModal, groups.length]);
 
   useEffect(() => {
     if (id) {
@@ -34,17 +44,18 @@ const ExamViewPage: React.FC = () => {
     navigate('/exams');
   };
 
-  const handleStartRoom = async () => {
+  const handleLaunchRoom = async () => {
     if (!exam || !profile) return;
     setStarting(true);
     try {
-      const room = await createRoom(exam.id, exam.title, profile.uid, profile.displayName);
+      const room = await createRoom(exam.id, exam.title, profile.uid, profile.displayName, notifyOption, notifyOption === 'group' ? selectedGroupId : undefined);
       navigate(`/rooms/${room.id}`);
     } catch (e) {
       console.error('Failed to start room:', e);
       toast.error(t('exams.startFailed', 'Не удалось запустить комнату'));
     } finally {
       setStarting(false);
+      setShowStartModal(false);
     }
   };
 
@@ -66,7 +77,7 @@ const ExamViewPage: React.FC = () => {
         <button onClick={() => navigate('/exams')} className="flex items-center gap-1 text-xs text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 transition-colors"><ArrowLeft className="w-3.5 h-3.5" />{t('common.back')}</button>
         {isStaff && (
           <div className="flex items-center gap-1.5">
-            <button onClick={handleStartRoom} disabled={starting} className="bg-primary-600 hover:bg-primary-700 text-white text-xs font-medium px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition-colors disabled:opacity-50">
+            <button onClick={() => setShowStartModal(true)} disabled={starting} className="bg-primary-600 hover:bg-primary-700 text-white text-xs font-medium px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition-colors disabled:opacity-50">
               <Play className="w-3.5 h-3.5" />{starting ? '...' : t('exams.startRoom')}
             </button>
             <Link to={`/exams/${id}/edit`} className="text-xs bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-300 px-2.5 py-1.5 rounded-lg flex items-center gap-1 transition-colors"><Edit className="w-3 h-3" />{t('common.edit')}</Link>
@@ -155,6 +166,80 @@ const ExamViewPage: React.FC = () => {
                 )}
               </div>
             ))}
+          </div>
+        </div>
+      )}
+
+      {/* Start Room Modal */}
+      {showStartModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm animate-fade-in">
+          <div className="bg-white dark:bg-slate-800 rounded-2xl w-full max-w-md shadow-2xl overflow-hidden border border-slate-200 dark:border-slate-700 exam-slide-up">
+            <div className="flex items-center justify-between p-5 border-b border-slate-100 dark:border-slate-700/50">
+              <h3 className="font-bold text-lg text-slate-900 dark:text-white">Настройка уведомлений</h3>
+              <button onClick={() => setShowStartModal(false)} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            
+            <div className="p-5 space-y-4">
+              <p className="text-sm text-slate-500 dark:text-slate-400 mb-2">Кому отправить Push-уведомление о старте экзамена?</p>
+              
+              <label className={`flex items-start gap-3 p-3 rounded-xl border cursor-pointer border-transparent hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors ${notifyOption === 'group' ? 'bg-indigo-50 border-indigo-200 dark:bg-indigo-900/20 dark:border-indigo-800' : ''}`}>
+                <input type="radio" name="notify" value="group" checked={notifyOption === 'group'} onChange={() => setNotifyOption('group')} className="mt-0.5" />
+                <div>
+                  <span className="block font-medium text-slate-900 dark:text-white text-sm">Определенной группе</span>
+                  <span className="block text-xs text-slate-500 dark:text-slate-400">Уведомление придет только студентам выбранной группы</span>
+                </div>
+              </label>
+
+              {notifyOption === 'group' && (
+                <div className="ml-7 mt-2">
+                  <select 
+                    className="input-field py-2 text-sm max-w-[250px]"
+                    value={selectedGroupId}
+                    onChange={(e) => setSelectedGroupId(e.target.value)}
+                  >
+                    <option value="" disabled>-- Выберите группу --</option>
+                    {groups.map(g => (
+                      <option key={g.id} value={g.id}>{g.name}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
+              <label className={`flex items-start gap-3 p-3 rounded-xl border cursor-pointer border-transparent hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors ${notifyOption === 'none' ? 'bg-slate-50 dark:bg-slate-900/50 border-slate-200 dark:border-slate-700' : ''}`}>
+                <input type="radio" name="notify" value="none" checked={notifyOption === 'none'} onChange={() => setNotifyOption('none')} className="mt-0.5" />
+                <div>
+                  <span className="block font-medium text-slate-900 dark:text-white text-sm">Не уведомлять никого</span>
+                  <span className="block text-xs text-slate-500 dark:text-slate-400">Студенты не получат пуш-сообщения, вы запустите комнату в тихом режиме</span>
+                </div>
+              </label>
+
+              <label className={`flex items-start gap-3 p-3 rounded-xl border cursor-pointer border-transparent hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors ${notifyOption === 'all' ? 'bg-red-50 border-red-200 dark:bg-red-900/20 dark:border-red-800' : ''}`}>
+                <input type="radio" name="notify" value="all" checked={notifyOption === 'all'} onChange={() => setNotifyOption('all')} className="mt-0.5" />
+                <div>
+                  <span className="block font-medium text-red-700 dark:text-red-400 text-sm">Всем студентам организации</span>
+                  <span className="block text-xs text-slate-500 dark:text-slate-400">Внимание! Уведомление придет всем студентам всей школы</span>
+                </div>
+              </label>
+
+            </div>
+
+            <div className="p-4 bg-slate-50 dark:bg-slate-900/50 border-t border-slate-100 dark:border-slate-700/50 flex items-center justify-end gap-3">
+              <button 
+                onClick={() => setShowStartModal(false)}
+                className="btn-ghost px-4 py-2 text-sm"
+              >
+                Отмена
+              </button>
+              <button 
+                onClick={handleLaunchRoom}
+                disabled={starting || (notifyOption === 'group' && !selectedGroupId)}
+                className="bg-primary-600 hover:bg-primary-700 disabled:opacity-50 text-white rounded-xl px-5 py-2 text-sm font-semibold flex items-center gap-2"
+              >
+                <Play className="w-4 h-4" /> {starting ? 'Запуск...' : 'Создать комнату'}
+              </button>
+            </div>
           </div>
         </div>
       )}

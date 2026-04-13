@@ -354,13 +354,19 @@ const ExamTakePage: React.FC = () => {
       </header>
 
       {/* Main Content */}
-      <main className="flex-1 w-full max-w-4xl mx-auto px-4 sm:px-6 py-8 sm:py-12 flex flex-col md:flex-row gap-8">
+      <main className="flex-1 w-full max-w-5xl mx-auto px-4 sm:px-6 py-6 sm:py-10 flex flex-col gap-6">
         
-        {/* Left Side: Question Navigator */}
-        <div className="w-full md:w-64 shrink-0 order-2 md:order-1">
-          <div className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-md rounded-2xl border border-slate-200/50 dark:border-slate-800/50 p-5 sticky top-28 shadow-sm">
-            <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-4">{t('rooms.questionsOverview', 'Question Navigator')}</h3>
-            <div className="grid grid-cols-5 md:grid-cols-4 gap-2">
+        {/* Top Side: Question Navigator */}
+        <div className="w-full order-1">
+          <div className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-md rounded-2xl border border-slate-200/50 dark:border-slate-800/50 p-4 shadow-sm">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">{t('rooms.questionsOverview', 'Question Navigator')}</h3>
+              <div className="text-xs text-slate-500 font-medium">
+                <span>{questions.length - answeredCount} {t('rooms.remaining', 'Remaining')}</span>
+              </div>
+            </div>
+            
+            <div className="flex flex-nowrap overflow-x-auto gap-2 pb-2 scrollbar-thin scrollbar-thumb-slate-200 dark:scrollbar-thumb-slate-700">
               {questions.map((_, i) => {
                 const qId = questions[i].id;
                 const answered = answers[qId] && (Array.isArray(answers[qId]) ? (answers[qId] as string[]).length > 0 : String(answers[qId]).trim() !== '');
@@ -370,7 +376,7 @@ const ExamTakePage: React.FC = () => {
                   <button
                     key={i}
                     onClick={() => setCurrentQ(i)}
-                    className={`h-10 rounded-xl text-sm font-semibold flex items-center justify-center transition-all ${
+                    className={`shrink-0 w-12 h-10 rounded-xl text-sm font-semibold flex items-center justify-center transition-all ${
                       isActive
                         ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900 shadow-md transform scale-105 z-10'
                         : answered
@@ -383,16 +389,11 @@ const ExamTakePage: React.FC = () => {
                 );
               })}
             </div>
-            
-            <div className="mt-6 pt-5 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-xs text-slate-500 font-medium">
-              <span>{Math.round(progressPercent)}% {t('rooms.completed', 'Completed')}</span>
-              <span>{questions.length - answeredCount} {t('rooms.remaining', 'Remaining')}</span>
-            </div>
           </div>
         </div>
 
-        {/* Right Side: Active Question */}
-        <div className="flex-1 order-1 md:order-2">
+        {/* Bottom Side: Active Question */}
+        <div className="flex-1 order-2 w-full">
           {/* Use key to remount and trigger animation on question change */}
           <div key={q.id} className="exam-slide-up bg-white/90 dark:bg-slate-900/90 backdrop-blur-md rounded-3xl border border-slate-200/50 dark:border-slate-800/50 shadow-lg p-6 sm:p-10">
             

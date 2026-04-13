@@ -78,7 +78,7 @@ export const apiSaveQuestions = (examId: string, questions: any[]) =>
 export const apiGetRooms = () => apiRequest('api-rooms');
 export const apiGetRoom = (id: string) => apiRequest('api-rooms', 'GET', undefined, { id });
 export const apiGetRoomByCode = (code: string) => apiRequest('api-rooms', 'GET', undefined, { code });
-export const apiCreateRoom = (data: any) => apiRequest('api-rooms', 'POST', data);
+export const apiCreateRoom = (data: { examId: string; examTitle: string; authorId: string; authorName: string; notifyOption?: 'all' | 'group' | 'none'; notifyGroupId?: string }) => apiRequest('api-rooms', 'POST', data);
 export const apiJoinRoom = (roomId: string) => apiRequest('api-rooms', 'POST', { action: 'join', roomId });
 export const apiDeleteAuditLogs = () => apiRequest('api-audit', 'DELETE');
 export const apiCloseRoom = (roomId: string) => apiRequest('api-rooms', 'POST', { action: 'close', roomId });

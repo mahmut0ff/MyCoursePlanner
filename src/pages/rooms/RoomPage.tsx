@@ -100,7 +100,7 @@ const RoomPage: React.FC = () => {
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
         <div className="card p-4 text-center">
           <Users className="w-5 h-5 text-primary-500 mx-auto mb-1" />
-          <p className="text-2xl font-bold text-slate-900 dark:text-white">{room.participants.length}</p>
+          <p className="text-2xl font-bold text-slate-900 dark:text-white">{(room.participants || []).length}</p>
           <p className="text-xs text-slate-500 dark:text-slate-400">{t('rooms.participants')}</p>
         </div>
         <div className="card p-4 text-center">
@@ -110,7 +110,7 @@ const RoomPage: React.FC = () => {
         </div>
         <div className="card p-4 text-center">
           <Clock className="w-5 h-5 text-amber-500 mx-auto mb-1" />
-          <p className="text-2xl font-bold text-slate-900 dark:text-white">{room.participants.length - attempts.length}</p>
+          <p className="text-2xl font-bold text-slate-900 dark:text-white">{Math.max(0, (room.participants || []).length - attempts.length)}</p>
           <p className="text-xs text-slate-500 dark:text-slate-400">{t('rooms.inProgress')}</p>
         </div>
       </div>

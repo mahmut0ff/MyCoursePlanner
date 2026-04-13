@@ -10,7 +10,7 @@ import BranchFilter from '../../components/ui/BranchFilter';
 const CoursesPage: React.FC = () => {
   const { t } = useTranslation();
   const { role, profile } = useAuth();
-  const isAdmin = role === 'admin';
+  const isAdmin = role === 'admin' || role === 'manager';
   const [courses, setCourses] = useState<Course[]>([]);
   const [groups, setGroups] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);

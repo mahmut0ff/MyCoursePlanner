@@ -12,7 +12,7 @@ const CourseDetailPage: React.FC = () => {
   const navigate = useNavigate();
   const { t } = useTranslation();
   const { role, profile } = useAuth();
-  const isAdmin = role === 'admin';
+  const isAdmin = role === 'admin' || role === 'manager';
   const isStudent = role === 'student';
 
   const [course, setCourse] = useState<Course | null>(null);

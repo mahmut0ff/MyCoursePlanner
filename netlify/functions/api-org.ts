@@ -373,7 +373,7 @@ const handler: Handler = async (event: HandlerEvent) => {
     }
 
     if (action === 'createStudent') {
-      if (!hasRole(user, 'admin')) return forbidden();
+      if (!hasRole(user, 'admin', 'manager')) return forbidden();
       const body = JSON.parse(event.body || '{}');
       if (!body.displayName || !body.password) return badRequest('displayName and password required');
 
@@ -510,7 +510,7 @@ const handler: Handler = async (event: HandlerEvent) => {
     }
 
     if (action === 'createTeacher') {
-      if (!hasRole(user, 'admin')) return forbidden();
+      if (!hasRole(user, 'admin', 'manager')) return forbidden();
       const body = JSON.parse(event.body || '{}');
       if (!body.email || !body.displayName || !body.password) return badRequest('email, displayName and password required');
 
@@ -666,7 +666,7 @@ const handler: Handler = async (event: HandlerEvent) => {
 
 
     if (action === 'inviteUser') {
-      if (!hasRole(user, 'admin')) return forbidden();
+      if (!hasRole(user, 'admin', 'manager')) return forbidden();
       const body = JSON.parse(event.body || '{}');
       if (!body.email || !body.role) return badRequest('email and role required');
       

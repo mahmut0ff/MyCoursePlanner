@@ -313,7 +313,7 @@ const handler: Handler = async (event: HandlerEvent) => {
 
       // Caller must be admin/owner of the org
       const callerRole = await getOrgRole(user.uid, body.organizationId);
-      if (!isSuperAdmin(user) && !['admin', 'owner'].includes(callerRole || '')) return forbidden();
+      if (!isSuperAdmin(user) && !['admin', 'owner', 'manager'].includes(callerRole || '')) return forbidden();
 
       // Get org name
       const orgDoc = await adminDb.collection('organizations').doc(body.organizationId).get();
@@ -387,7 +387,7 @@ const handler: Handler = async (event: HandlerEvent) => {
         if (body.userId !== user.uid) return forbidden();
       } else if (membership.status === 'pending') {
         const callerRole = await getOrgRole(user.uid, body.organizationId);
-        if (!isSuperAdmin(user) && !['admin', 'owner'].includes(callerRole || '')) return forbidden();
+        if (!isSuperAdmin(user) && !['admin', 'owner', 'manager'].includes(callerRole || '')) return forbidden();
       } else {
         return badRequest(`Cannot accept membership with status: ${membership.status}`);
       }
@@ -450,7 +450,7 @@ const handler: Handler = async (event: HandlerEvent) => {
         if (body.userId !== user.uid) return forbidden();
       } else if (membership.status === 'pending') {
         const callerRole = await getOrgRole(user.uid, body.organizationId);
-        if (!isSuperAdmin(user) && !['admin', 'owner'].includes(callerRole || '')) return forbidden();
+        if (!isSuperAdmin(user) && !['admin', 'owner', 'manager'].includes(callerRole || '')) return forbidden();
       } else {
         return badRequest(`Cannot reject membership with status: ${membership.status}`);
       }
@@ -512,7 +512,7 @@ const handler: Handler = async (event: HandlerEvent) => {
       if (!body.userId || !body.organizationId) return badRequest('userId and organizationId required');
 
       const callerRole = await getOrgRole(user.uid, body.organizationId);
-      if (!isSuperAdmin(user) && !['admin', 'owner'].includes(callerRole || '')) return forbidden();
+      if (!isSuperAdmin(user) && !['admin', 'owner', 'manager'].includes(callerRole || '')) return forbidden();
 
       // Cannot remove owner
       const targetMembership = await getMembership(body.userId, body.organizationId) as any;
@@ -536,7 +536,7 @@ const handler: Handler = async (event: HandlerEvent) => {
       if (!body.userId || !body.organizationId) return badRequest('userId and organizationId required');
 
       const callerRole = await getOrgRole(user.uid, body.organizationId);
-      if (!isSuperAdmin(user) && !['admin', 'owner'].includes(callerRole || '')) return forbidden();
+      if (!isSuperAdmin(user) && !['admin', 'owner', 'manager'].includes(callerRole || '')) return forbidden();
 
       const targetMembership = await getMembership(body.userId, body.organizationId) as any;
       if (!targetMembership) return notFound('Member not found');

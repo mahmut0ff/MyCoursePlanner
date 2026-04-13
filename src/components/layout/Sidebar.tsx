@@ -182,6 +182,9 @@ const Sidebar: React.FC<{ open: boolean; onClose: () => void; isCollapsed?: bool
               <NavLink to="/courses" className={linkClass} onClick={onClose}>
                 <FolderOpen className="w-4 h-4" /><span>{t('nav.courses')}</span>
               </NavLink>
+              <NavLink to="/groups" className={linkClass} onClick={onClose}>
+                <Layers className="w-4 h-4" /><span>{t('nav.groups', 'Группы')}</span>
+              </NavLink>
               <NavLink to="/lessons" className={linkClass} onClick={onClose}>
                 <BookOpen className="w-4 h-4" /><span>{t('nav.lessons')}</span>
               </NavLink>

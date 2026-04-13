@@ -22,7 +22,17 @@ const handler: Handler = async (event: HandlerEvent) => {
       const doc = await adminDb.collection(COLLECTION).doc(params.id).get();
       if (!doc.exists) return notFound('Exam not found');
       const qSnap = await adminDb.collection(COLLECTION).doc(params.id).collection('questions').orderBy('order').get();
-      return ok({ id: doc.id, ...doc.data(), questions: qSnap.docs.map((d: any) => ({ id: d.id, ...d.data() })) });
+      const questionsData = qSnap.docs.map((d: any) => {
+        const q = { id: d.id, ...d.data() };
+        if (!isStaff(user) && !isSuperAdmin(user)) {
+          delete q.correctAnswer;
+          delete q.correctAnswers;
+          delete q.keywords;
+          delete q.explanation;
+        }
+        return q;
+      });
+      return ok({ id: doc.id, ...doc.data(), questions: questionsData });
     }
     const orgFilter = getOrgFilter(user);
     if (params.orgId === 'none') {
@@ -85,6 +95,11 @@ const handler: Handler = async (event: HandlerEvent) => {
       const srcDoc = await adminDb.collection(COLLECTION).doc(body.examId).get();
       if (!srcDoc.exists) return notFound('Exam not found');
       const srcData = srcDoc.data()!;
+      
+      // IDOR FIX: Verify src organization against user's organization if user is not super admin
+      if (!isSuperAdmin(user) && srcData.organizationId && user.organizationId !== srcData.organizationId) {
+        return forbidden('Cannot duplicate an exam from a different organization.');
+      }
       
       const targetOrg = user.organizationId || srcData.organizationId || '';
       if (targetOrg) {

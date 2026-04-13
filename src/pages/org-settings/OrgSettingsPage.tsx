@@ -387,12 +387,8 @@ const VisitCardTab: React.FC<{ settings: OrgSettings; update: (k: string, v: any
 };
 
 /* ════════════════════════════════════ NOTIFICATIONS ════════════════════════════════════ */
-const NotificationsTab: React.FC<{ settings: OrgSettings; update: (k: string, v: any) => void }> = ({ settings, update }) => {
+const NotificationsTab: React.FC<{ settings: OrgSettings; update: (k: string, v: any) => void }> = () => {
   const { t } = useTranslation();
-  const notifs = [
-    { key: 'emailNotifications', label: t('org.settings.emailNotifications'), desc: t('org.settings.emailNotificationsDesc') },
-    { key: 'pushNotifications', label: t('org.settings.pushNotifications'), desc: t('org.settings.pushNotificationsDesc') },
-  ];
   return (
     <div className="space-y-6">
       <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl overflow-hidden">
@@ -400,21 +396,23 @@ const NotificationsTab: React.FC<{ settings: OrgSettings; update: (k: string, v:
           <h3 className="font-semibold text-slate-900 dark:text-white">{t('org.settings.notifications')}</h3>
           <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">{t('org.settings.notificationsDesc')}</p>
         </div>
-        <div className="divide-y divide-slate-100 dark:divide-slate-700">
-          {notifs.map((n) => (
-            <div key={n.key} className="px-6 py-4 flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-slate-900 dark:text-white">{n.label}</p>
-                <p className="text-xs text-slate-500 dark:text-slate-400">{n.desc}</p>
-              </div>
-              <button
-                onClick={() => update(n.key, !(settings as any)[n.key])}
-                className={`relative w-11 h-6 rounded-full transition-colors ${(settings as any)[n.key] ? 'bg-primary-500' : 'bg-slate-300 dark:bg-slate-600'}`}
-              >
-                <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-all ${(settings as any)[n.key] ? 'left-[22px]' : 'left-0.5'}`} />
-              </button>
-            </div>
-          ))}
+        <div className="px-6 py-12 flex flex-col items-center text-center">
+          <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-amber-100 to-orange-100 dark:from-amber-900/30 dark:to-orange-900/30 flex items-center justify-center mb-4">
+            <Bell className="w-7 h-7 text-amber-600 dark:text-amber-400" />
+          </div>
+          <h4 className="text-lg font-bold text-slate-900 dark:text-white mb-2">
+            {t('org.settings.notificationsComingSoon', 'В разработке')}
+          </h4>
+          <p className="text-sm text-slate-500 dark:text-slate-400 max-w-md leading-relaxed">
+            {t('org.settings.notificationsComingSoonDesc', 'Email и Push уведомления скоро будут доступны. Мы работаем над системой оповещений о важных событиях: новые студенты, результаты экзаменов, дедлайны и другое.')}
+          </p>
+          <div className="mt-6 flex flex-wrap justify-center gap-2">
+            {['📧 Email', '🔔 Push', '📱 Telegram'].map((ch) => (
+              <span key={ch} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-slate-600">
+                {ch}
+              </span>
+            ))}
+          </div>
         </div>
       </div>
     </div>

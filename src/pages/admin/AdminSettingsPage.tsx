@@ -212,16 +212,6 @@ const BrandingTab: React.FC = () => {
 /* ════════════════════════════════════════════════ */
 const NotificationsTab: React.FC = () => {
   const { t } = useTranslation();
-  const [notifs, setNotifs] = useState([
-    { id: 'new_user', enabled: true },
-    { id: 'new_org', enabled: true },
-    { id: 'payment', enabled: true },
-    { id: 'exam_completed', enabled: false },
-    { id: 'system_error', enabled: true },
-    { id: 'trial_expiring', enabled: true },
-  ]);
-
-  const toggleNotif = (id: string) => setNotifs(notifs.map((n) => n.id === id ? { ...n, enabled: !n.enabled } : n));
 
   return (
     <div className="space-y-6">
@@ -230,21 +220,29 @@ const NotificationsTab: React.FC = () => {
           <h3 className="font-semibold text-slate-900 dark:text-white">{t('admin.settings.emailNotifications')}</h3>
           <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">{t('admin.settings.emailNotificationsDesc')}</p>
         </div>
-        <div className="divide-y divide-slate-100 dark:divide-slate-700">
-          {notifs.map((n) => (
-            <div key={n.id} className="px-6 py-4 flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-slate-900 dark:text-white">{t(`admin.settings.notif_${n.id}`)}</p>
-                <p className="text-xs text-slate-500 dark:text-slate-400">{t(`admin.settings.notif_${n.id}_desc`)}</p>
-              </div>
-              <button
-                onClick={() => toggleNotif(n.id)}
-                className={`relative w-11 h-6 rounded-full transition-colors ${n.enabled ? 'bg-primary-500' : 'bg-slate-300 dark:bg-slate-600'}`}
-              >
-                <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${n.enabled ? 'left-[22px]' : 'left-0.5'}`} />
-              </button>
-            </div>
-          ))}
+        <div className="px-6 py-12 flex flex-col items-center text-center">
+          <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-amber-100 to-orange-100 dark:from-amber-900/30 dark:to-orange-900/30 flex items-center justify-center mb-4">
+            <Bell className="w-7 h-7 text-amber-600 dark:text-amber-400" />
+          </div>
+          <h4 className="text-lg font-bold text-slate-900 dark:text-white mb-2">
+            {t('admin.settings.notificationsComingSoon', 'В разработке')}
+          </h4>
+          <p className="text-sm text-slate-500 dark:text-slate-400 max-w-md leading-relaxed">
+            {t('admin.settings.notificationsComingSoonDesc', 'Система уведомлений находится в разработке. Скоро вы сможете получать уведомления о новых регистрациях, платежах, ошибках и истечении пробных периодов.')}
+          </p>
+          <div className="mt-6 flex flex-wrap justify-center gap-2">
+            {[
+              { icon: '👤', label: t('admin.settings.notif_new_user', 'Новые пользователи') },
+              { icon: '🏢', label: t('admin.settings.notif_new_org', 'Новые организации') },
+              { icon: '💳', label: t('admin.settings.notif_payment', 'Платежи') },
+              { icon: '⚠️', label: t('admin.settings.notif_system_error', 'Ошибки системы') },
+              { icon: '⏰', label: t('admin.settings.notif_trial_expiring', 'Истечение триала') },
+            ].map((item) => (
+              <span key={item.label} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-slate-600">
+                {item.icon} {item.label}
+              </span>
+            ))}
+          </div>
         </div>
       </div>
     </div>

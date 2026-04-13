@@ -133,6 +133,10 @@ export async function notifyAllSuperAdmins(
 
 /**
  * Send FCM push to a specific user (best-effort).
+ * Uses DATA-ONLY messages (no `notification` key) to prevent duplication.
+ * When a `notification` key is present, the OS auto-displays it AND the
+ * service worker's onBackgroundMessage fires — causing double notifications
+ * on mobile. Data-only messages give the SW exclusive control.
  */
 async function sendPush(userId: string, title: string, body: string, link?: string): Promise<void> {
   const userDoc = await adminDb.collection('users').doc(userId).get();
@@ -141,15 +145,22 @@ async function sendPush(userId: string, title: string, body: string, link?: stri
   if (fcmTokens.length === 0) return;
 
   const messaging = getMessaging();
+  // Data-only message — no `notification` key!
+  // The service worker reads these fields and calls showNotification() itself.
   const message = {
-    notification: { title, body },
-    data: { link: link || '/', type: 'notification' },
+    data: {
+      title,
+      body,
+      link: link || '/',
+      type: 'notification',
+      icon: '/icons/logo.png',
+    },
+    // Android: set high priority so data-only messages wake the device
+    android: {
+      priority: 'high' as const,
+    },
     webpush: {
-      fcmOptions: { link: link || '/' },
-      notification: {
-        icon: '/icons/logo.png',
-        badge: '/icons/logo.png',
-      },
+      headers: { Urgency: 'high' },
     },
   };
 

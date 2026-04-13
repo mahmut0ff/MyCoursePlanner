@@ -387,32 +387,66 @@ const VisitCardTab: React.FC<{ settings: OrgSettings; update: (k: string, v: any
 };
 
 /* ════════════════════════════════════ NOTIFICATIONS ════════════════════════════════════ */
-const NotificationsTab: React.FC<{ settings: OrgSettings; update: (k: string, v: any) => void }> = () => {
+const NotificationsTab: React.FC<{ settings: OrgSettings; update: (k: string, v: any) => void }> = ({ settings, update }) => {
   const { t } = useTranslation();
   return (
     <div className="space-y-6">
+      {/* Push — working */}
       <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl overflow-hidden">
         <div className="px-6 py-4 border-b border-slate-200 dark:border-slate-700">
           <h3 className="font-semibold text-slate-900 dark:text-white">{t('org.settings.notifications')}</h3>
           <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">{t('org.settings.notificationsDesc')}</p>
         </div>
-        <div className="px-6 py-12 flex flex-col items-center text-center">
-          <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-amber-100 to-orange-100 dark:from-amber-900/30 dark:to-orange-900/30 flex items-center justify-center mb-4">
-            <Bell className="w-7 h-7 text-amber-600 dark:text-amber-400" />
+        <div className="divide-y divide-slate-100 dark:divide-slate-700">
+          {/* Push notifications toggle — functional */}
+          <div className="px-6 py-4 flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-slate-900 dark:text-white">{t('org.settings.pushNotifications', 'Push-уведомления')}</p>
+              <p className="text-xs text-slate-500 dark:text-slate-400">{t('org.settings.pushNotificationsDesc', 'Получайте push-уведомления в браузере и мобильном приложении')}</p>
+            </div>
+            <button
+              onClick={() => update('pushNotifications', !settings.pushNotifications)}
+              className={`relative w-11 h-6 rounded-full transition-colors ${settings.pushNotifications ? 'bg-primary-500' : 'bg-slate-300 dark:bg-slate-600'}`}
+            >
+              <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-all ${settings.pushNotifications ? 'left-[22px]' : 'left-0.5'}`} />
+            </button>
           </div>
-          <h4 className="text-lg font-bold text-slate-900 dark:text-white mb-2">
-            {t('org.settings.notificationsComingSoon', 'В разработке')}
-          </h4>
-          <p className="text-sm text-slate-500 dark:text-slate-400 max-w-md leading-relaxed">
-            {t('org.settings.notificationsComingSoonDesc', 'Email и Push уведомления скоро будут доступны. Мы работаем над системой оповещений о важных событиях: новые студенты, результаты экзаменов, дедлайны и другое.')}
-          </p>
-          <div className="mt-6 flex flex-wrap justify-center gap-2">
-            {['📧 Email', '🔔 Push', '📱 Telegram'].map((ch) => (
-              <span key={ch} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-slate-600">
-                {ch}
-              </span>
-            ))}
+
+          {/* Email notifications — coming soon */}
+          <div className="px-6 py-4 flex items-center justify-between opacity-60">
+            <div>
+              <div className="flex items-center gap-2">
+                <p className="text-sm font-medium text-slate-900 dark:text-white">{t('org.settings.emailNotifications', 'Email-уведомления')}</p>
+                <span className="px-1.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400">
+                  {t('common.soon', 'Скоро')}
+                </span>
+              </div>
+              <p className="text-xs text-slate-500 dark:text-slate-400">{t('org.settings.emailNotificationsDesc', 'Получайте уведомления по email о важных событиях')}</p>
+            </div>
+            <button disabled className="relative w-11 h-6 rounded-full bg-slate-200 dark:bg-slate-700 cursor-not-allowed">
+              <span className="absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow" />
+            </button>
           </div>
+        </div>
+      </div>
+
+      {/* What gets notified */}
+      <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-6">
+        <h3 className="font-semibold text-slate-900 dark:text-white mb-3">{t('org.settings.notificationTypes', 'Типы уведомлений')}</h3>
+        <p className="text-xs text-slate-500 dark:text-slate-400 mb-4">{t('org.settings.notificationTypesDesc', 'Push-уведомления отправляются автоматически при следующих событиях:')}</p>
+        <div className="flex flex-wrap gap-2">
+          {[
+            { icon: '📝', label: t('org.settings.notifExamResult', 'Результат экзамена') },
+            { icon: '📚', label: t('org.settings.notifNewLesson', 'Новый урок') },
+            { icon: '👥', label: t('org.settings.notifAddedToGroup', 'Добавление в группу') },
+            { icon: '📩', label: t('org.settings.notifInvite', 'Приглашение в организацию') },
+            { icon: '📋', label: t('org.settings.notifHomework', 'Домашнее задание') },
+            { icon: '🎓', label: t('org.settings.notifGrade', 'Оценка') },
+          ].map((item) => (
+            <span key={item.label} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-slate-50 dark:bg-slate-700/50 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-600">
+              {item.icon} {item.label}
+            </span>
+          ))}
         </div>
       </div>
     </div>

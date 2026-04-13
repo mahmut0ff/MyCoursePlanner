@@ -91,8 +91,9 @@ export async function setupForegroundMessaging(
     if (!m) return null;
 
     const unsubscribe = onMessage(m, (payload) => {
-      const title = payload.notification?.title || 'Уведомление';
-      const body = payload.notification?.body || '';
+      // Data-only messages: title/body are in payload.data
+      const title = payload.data?.title || payload.notification?.title || 'Уведомление';
+      const body = payload.data?.body || payload.notification?.body || '';
       const link = payload.data?.link;
       callback({ title, body, link });
     });

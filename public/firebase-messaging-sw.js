@@ -1,5 +1,5 @@
 // Firebase Cloud Messaging Service Worker
-// Handles background push notifications
+// Handles background push notifications via DATA-ONLY messages
 
 /* eslint-disable no-undef */
 importScripts('https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js');
@@ -20,20 +20,24 @@ firebase.initializeApp({
 const messaging = firebase.messaging();
 
 messaging.onBackgroundMessage((payload) => {
-  // Skip background notification if any app window is currently visible
-  // (the foreground Firestore listener will handle it via toast)
-  const title = payload.notification?.title || 'Planula';
-  const body = payload.notification?.body || '';
-  // Use a stable tag derived from title + body to deduplicate
-  const tag = 'planula-' + (payload.data?.link || '') + '-' + title.slice(0, 30);
+  // Data-only messages: title/body are in payload.data, not payload.notification
+  const title = payload.data?.title || payload.notification?.title || 'Planula';
+  const body = payload.data?.body || payload.notification?.body || '';
+  const link = payload.data?.link || '/';
+  const icon = payload.data?.icon || '/icons/logo.png';
+
+  // Use a stable tag to deduplicate — browser replaces instead of stacking
+  const tag = 'planula-' + link + '-' + title.slice(0, 30);
+
   const options = {
     body,
-    icon: '/icons/logo.png',
+    icon,
     badge: '/icons/logo.png',
-    data: payload.data,
-    tag, // reuse same tag → browser replaces instead of stacking duplicates
+    data: { link },
+    tag,
     renotify: false, // don't re-alert for same tag
   };
+
   self.registration.showNotification(title, options);
 });
 

@@ -5,7 +5,7 @@
 import type { Handler, HandlerEvent } from '@netlify/functions';
 import { adminAuth, adminDb } from './utils/firebase-admin';
 import {
-  verifyAuth, isStaff, hasRole, getOrgFilter,
+  verifyAuth, isStaff, hasRole, hasPermission, getOrgFilter,
   ok, unauthorized, forbidden, badRequest, notFound, jsonResponse,
   resolveBranchFilter,
   type AuthUser,
@@ -575,6 +575,7 @@ const handler: Handler = async (event: HandlerEvent) => {
 
     // ═══ MANAGERS (users with role=manager in this org) ═══
     if (action === 'managers') {
+      if (!hasPermission(user, 'managers')) return forbidden('No access to managers module');
       let query: any = adminDb.collection('orgMembers').doc(orgId)
         .collection('members')
         .where('status', '==', 'active')
@@ -612,7 +613,7 @@ const handler: Handler = async (event: HandlerEvent) => {
     }
 
     if (action === 'createManager') {
-      if (!hasRole(user, 'admin')) return forbidden();
+      if (!hasPermission(user, 'managers')) return forbidden('No access to managers module');
       const body = JSON.parse(event.body || '{}');
       if (!body.email || !body.displayName || !body.password) return badRequest('email, displayName and password required');
 
@@ -954,7 +955,7 @@ const handler: Handler = async (event: HandlerEvent) => {
     }
 
     if (action === 'updateOrgSettings') {
-      if (!hasRole(user, 'admin')) return forbidden();
+      if (!hasPermission(user, 'settings')) return forbidden('No access to settings module');
       const body = JSON.parse(event.body || '{}');
 
       // Fields that go to the public organizations doc
@@ -1008,6 +1009,51 @@ const handler: Handler = async (event: HandlerEvent) => {
         totalExams: examsSnap.size,
         activeRooms: roomsSnap.size,
       });
+    }
+
+    // ═══ MANAGER PERMISSIONS ═══
+    if (action === 'getManagerPermissions') {
+      if (!hasRole(user, 'admin')) return forbidden();
+      const targetUid = params.uid;
+      if (!targetUid) return badRequest('uid required');
+      const memberDoc = await adminDb.collection('orgMembers').doc(orgId).collection('members').doc(targetUid).get();
+      if (!memberDoc.exists) return notFound('Member not found');
+      const data = memberDoc.data()!;
+      return ok({
+        permissions: {
+          finances: data.permissions?.finances === true,
+          settings: data.permissions?.settings === true,
+          managers: data.permissions?.managers === true,
+          branches: data.permissions?.branches === true,
+        }
+      });
+    }
+
+    if (action === 'updateManagerPermissions') {
+      if (!hasRole(user, 'admin')) return forbidden('Only admin can update manager permissions');
+      const body = JSON.parse(event.body || '{}');
+      if (!body.uid || !body.permissions) return badRequest('uid and permissions required');
+
+      const permData = {
+        finances: body.permissions.finances === true,
+        settings: body.permissions.settings === true,
+        managers: body.permissions.managers === true,
+        branches: body.permissions.branches === true,
+      };
+
+      // Update org-side membership
+      await adminDb.collection('orgMembers').doc(orgId).collection('members').doc(body.uid).update({
+        permissions: permData,
+        updatedAt: now(),
+      });
+
+      // Mirror to user-side membership
+      await adminDb.collection('users').doc(body.uid).collection('memberships').doc(orgId).update({
+        permissions: permData,
+        updatedAt: now(),
+      });
+
+      return ok({ message: 'Permissions updated', permissions: permData });
     }
 
     return badRequest(`Unknown action: ${action}`);

@@ -2,9 +2,20 @@ import React, { createContext, useContext, useEffect, useState, useRef, useCallb
 import type { User } from 'firebase/auth';
 import { onAuthChange } from '../services/auth.service';
 import { getUser } from '../services/users.service';
-import { isFirebaseConfigured, requestNotificationPermission } from '../lib/firebase';
+import { isFirebaseConfigured, requestNotificationPermission, db } from '../lib/firebase';
 import { apiSaveFcmToken, apiRemoveFcmToken, apiSwitchOrg } from '../lib/api';
+import { doc, getDoc } from 'firebase/firestore';
 import type { UserProfile, UserRole } from '../types';
+
+interface ManagerPermissions {
+  finances: boolean;
+  settings: boolean;
+  managers: boolean;
+  branches: boolean;
+}
+
+const ALL_PERMISSIONS: ManagerPermissions = { finances: true, settings: true, managers: true, branches: true };
+const NO_PERMISSIONS: ManagerPermissions = { finances: false, settings: false, managers: false, branches: false };
 
 interface AuthContextType {
   firebaseUser: User | null;
@@ -20,6 +31,8 @@ interface AuthContextType {
   isManager: boolean;
   isTeacherWithoutOrg: boolean;
   isStudentWithoutOrg: boolean;
+  permissions: ManagerPermissions;
+  hasPermission: (key: keyof ManagerPermissions) => boolean;
   refreshProfile: () => Promise<void>;
   /** Switch the user's active organization context and refresh profile. */
   switchOrganization: (orgId: string) => Promise<void>;
@@ -39,6 +52,8 @@ const AuthContext = createContext<AuthContextType>({
   isManager: false,
   isTeacherWithoutOrg: false,
   isStudentWithoutOrg: false,
+  permissions: { ...NO_PERMISSIONS },
+  hasPermission: () => false,
   refreshProfile: async () => {},
   switchOrganization: async () => {},
 });
@@ -51,12 +66,37 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [firebaseUser, setFirebaseUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
+  const [permissions, setPermissions] = useState<ManagerPermissions>({ ...NO_PERMISSIONS });
   const fcmTokenRef = useRef<string | null>(null);
 
   const loadProfile = async (user: User) => {
     try {
       const p = await getUser(user.uid);
       setProfile(p || null);
+      // Load manager permissions from membership
+      if (p) {
+        const orgId = (p as any)?.activeOrgId || p.organizationId;
+        if (orgId && p.role === 'manager') {
+          try {
+            const memberDoc = await getDoc(doc(db, 'users', user.uid, 'memberships', orgId));
+            if (memberDoc.exists()) {
+              const mData = memberDoc.data();
+              setPermissions({
+                finances: mData.permissions?.finances === true,
+                settings: mData.permissions?.settings === true,
+                managers: mData.permissions?.managers === true,
+                branches: mData.permissions?.branches === true,
+              });
+            } else {
+              setPermissions({ ...NO_PERMISSIONS });
+            }
+          } catch { setPermissions({ ...NO_PERMISSIONS }); }
+        } else if (p.role === 'admin' || p.role === 'super_admin') {
+          setPermissions({ ...ALL_PERMISSIONS });
+        } else {
+          setPermissions({ ...NO_PERMISSIONS });
+        }
+      }
     } catch (e) {
       console.error('Failed to load user profile:', e);
       setProfile(null);
@@ -142,6 +182,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         isManager: role === 'manager',
         isTeacherWithoutOrg: isTeacher && !resolvedOrgId,
         isStudentWithoutOrg: isStudent && !resolvedOrgId,
+        permissions,
+        hasPermission: (key: keyof ManagerPermissions) => {
+          if (role === 'admin' || role === 'super_admin') return true;
+          if (role !== 'manager') return false;
+          return permissions[key] === true;
+        },
         refreshProfile,
         switchOrganization,
       }}

@@ -1,12 +1,15 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { orgGetManagers, orgCreateManager } from '../../lib/api';
-import { UserPlus, Search, Mail, RefreshCw, Phone, ShieldCheck, Lock, User } from 'lucide-react';
+import { orgGetManagers, orgCreateManager, apiRemoveMember, apiDeleteMember } from '../../lib/api';
+import { UserPlus, Search, Mail, RefreshCw, Phone, ShieldCheck, Lock, User, Trash2, UserMinus, MoreVertical } from 'lucide-react';
 import type { UserProfile } from '../../types';
+import { useAuth } from '../../contexts/AuthContext';
+import toast from 'react-hot-toast';
 
 const ManagersPage: React.FC = () => {
   const { t } = useTranslation();
+  const { organizationId } = useAuth();
   const [managers, setManagers] = useState<UserProfile[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -116,6 +119,7 @@ const ManagersPage: React.FC = () => {
                   <th className="text-left text-[10px] font-medium text-slate-500 uppercase tracking-wider px-4 py-2 hidden sm:table-cell">{t('common.email', 'Email')}</th>
                   <th className="text-left text-[10px] font-medium text-slate-500 uppercase tracking-wider px-4 py-2 hidden md:table-cell">{t('common.phone')}</th>
                   <th className="text-left text-[10px] font-medium text-slate-500 uppercase tracking-wider px-4 py-2">{t('org.users.role')}</th>
+                  <th className="text-right text-[10px] font-medium text-slate-500 uppercase tracking-wider px-4 py-2">Действия</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-50 dark:divide-slate-700/30">
@@ -139,6 +143,40 @@ const ManagersPage: React.FC = () => {
                     </td>
                     <td className="px-4 py-2.5">
                       <span className="text-[10px] px-1.5 py-0.5 rounded font-medium bg-blue-500/10 text-blue-500">Управляющий</span>
+                    </td>
+                    <td className="px-4 py-2.5 text-right">
+                      <div className="flex items-center justify-end gap-1" onClick={(e) => e.stopPropagation()}>
+                        <button
+                          onClick={async () => {
+                            if (!organizationId) return;
+                            if (!window.confirm(`Убрать ${manager.displayName} из организации?`)) return;
+                            try {
+                              await apiRemoveMember(manager.uid, organizationId);
+                              toast.success('Менеджер убран');
+                              load();
+                            } catch (e: any) { toast.error(e.message || 'Ошибка'); }
+                          }}
+                          className="p-1.5 text-slate-400 hover:text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-900/20 rounded-lg transition-colors"
+                          title="Убрать из организации"
+                        >
+                          <UserMinus className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          onClick={async () => {
+                            if (!organizationId) return;
+                            if (!window.confirm(`Полностью удалить ${manager.displayName}? Это необратимо.`)) return;
+                            try {
+                              await apiDeleteMember(manager.uid, organizationId);
+                              toast.success('Менеджер удалён');
+                              load();
+                            } catch (e: any) { toast.error(e.message || 'Ошибка'); }
+                          }}
+                          className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
+                          title="Удалить полностью"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}

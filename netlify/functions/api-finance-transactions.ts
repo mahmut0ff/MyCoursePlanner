@@ -3,7 +3,7 @@
  */
 import type { Handler, HandlerEvent } from '@netlify/functions';
 import { adminDb } from './utils/firebase-admin';
-import { verifyAuth, isStaff, getOrgFilter, resolveBranchFilter, requireBranchScope, ok, unauthorized, forbidden, badRequest, notFound, jsonResponse } from './utils/auth';
+import { verifyAuth, isStaff, hasPermission, getOrgFilter, resolveBranchFilter, requireBranchScope, ok, unauthorized, forbidden, badRequest, notFound, jsonResponse } from './utils/auth';
 import { createNotification, notifyOrgAdmins } from './utils/notifications';
 
 const COLLECTION = 'financeTransactions';
@@ -19,8 +19,9 @@ const handler: Handler = async (event: HandlerEvent) => {
   try {
     // GET Transactions
     if (event.httpMethod === 'GET') {
-      if (!isStaff(user)) return forbidden(); // Only staff can see finances (but actually teachers shouldn't! Let's restrict to manager/admin)
+      if (!isStaff(user)) return forbidden();
       if (user.role === 'teacher' || user.role === 'student') return forbidden('Teachers and students cannot access finances');
+      if (!hasPermission(user, 'finances')) return forbidden('No access to finances module');
 
       const orgFilter = getOrgFilter(user);
       if (!orgFilter) return badRequest('Organization context required');
@@ -55,6 +56,7 @@ const handler: Handler = async (event: HandlerEvent) => {
     // POST Transaction
     if (event.httpMethod === 'POST') {
       if (user.role === 'teacher' || user.role === 'student') return forbidden();
+      if (!hasPermission(user, 'finances')) return forbidden('No access to finances module');
 
       const body = JSON.parse(event.body || '{}');
       if (!body.type || !body.amount || !body.date || !body.categoryId) {

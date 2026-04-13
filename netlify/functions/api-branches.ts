@@ -5,7 +5,7 @@
 import type { Handler, HandlerEvent } from '@netlify/functions';
 import { adminDb } from './utils/firebase-admin';
 import {
-  verifyAuth, isStaff, hasRole,
+  verifyAuth, isStaff, hasRole, hasPermission,
   ok, unauthorized, forbidden, badRequest, notFound, jsonResponse,
   type AuthUser,
 } from './utils/auth';
@@ -89,7 +89,7 @@ const handler: Handler = async (event: HandlerEvent) => {
 
     // ═══ CREATE BRANCH ═══
     if (action === 'create' && event.httpMethod === 'POST') {
-      if (!hasRole(user, 'admin')) return forbidden('Only admins can create branches');
+      if (!hasPermission(user, 'branches')) return forbidden('No access to branches module');
 
       const body = JSON.parse(event.body || '{}');
       const { name, slug, city, address, phone, whatsapp, contactName, description, latitude, longitude } = body;
@@ -134,7 +134,7 @@ const handler: Handler = async (event: HandlerEvent) => {
 
     // ═══ UPDATE BRANCH ═══
     if (action === 'update' && event.httpMethod === 'POST') {
-      if (!hasRole(user, 'admin')) return forbidden('Only admins can update branches');
+      if (!hasPermission(user, 'branches')) return forbidden('No access to branches module');
 
       const body = JSON.parse(event.body || '{}');
       const { id, name, slug, city, address, phone, whatsapp, contactName, description, latitude, longitude, isActive } = body;
@@ -169,7 +169,7 @@ const handler: Handler = async (event: HandlerEvent) => {
 
     // ═══ DELETE (ARCHIVE) BRANCH ═══
     if (action === 'archive' && event.httpMethod === 'POST') {
-      if (!hasRole(user, 'admin')) return forbidden('Only admins can archive branches');
+      if (!hasPermission(user, 'branches')) return forbidden('No access to branches module');
 
       const body = JSON.parse(event.body || '{}');
       if (!body.id) return badRequest('id required');
@@ -187,7 +187,7 @@ const handler: Handler = async (event: HandlerEvent) => {
 
     // ═══ ASSIGN USER TO BRANCH ═══
     if (action === 'assignUser' && event.httpMethod === 'POST') {
-      if (!hasRole(user, 'admin')) return forbidden('Only admins can assign users to branches');
+      if (!hasPermission(user, 'branches')) return forbidden('No access to branches module');
 
       const body = JSON.parse(event.body || '{}');
       const { userId, branchId } = body;
@@ -216,7 +216,7 @@ const handler: Handler = async (event: HandlerEvent) => {
 
     // ═══ REMOVE USER FROM BRANCH ═══
     if (action === 'removeUser' && event.httpMethod === 'POST') {
-      if (!hasRole(user, 'admin')) return forbidden('Only admins can remove users from branches');
+      if (!hasPermission(user, 'branches')) return forbidden('No access to branches module');
 
       const body = JSON.parse(event.body || '{}');
       const { userId, branchId } = body;

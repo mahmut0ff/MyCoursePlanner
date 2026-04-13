@@ -3,7 +3,7 @@
  */
 import type { Handler, HandlerEvent } from '@netlify/functions';
 import { adminDb } from './utils/firebase-admin';
-import { verifyAuth, isStaff, getOrgFilter, resolveBranchFilter, ok, unauthorized, forbidden, badRequest, jsonResponse } from './utils/auth';
+import { verifyAuth, isStaff, hasPermission, getOrgFilter, resolveBranchFilter, ok, unauthorized, forbidden, badRequest, jsonResponse } from './utils/auth';
 
 const handler: Handler = async (event: HandlerEvent) => {
   if (event.httpMethod === 'OPTIONS') return jsonResponse(204, '');
@@ -15,6 +15,7 @@ const handler: Handler = async (event: HandlerEvent) => {
     // GET Metrics
     if (event.httpMethod === 'GET') {
       if (!isStaff(user) || user.role === 'teacher') return forbidden();
+      if (!hasPermission(user, 'finances')) return forbidden('No access to finances module');
 
       const orgFilter = getOrgFilter(user);
       if (!orgFilter) return badRequest('Organization context required');

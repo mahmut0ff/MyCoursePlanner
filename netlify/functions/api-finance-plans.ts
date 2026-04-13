@@ -4,7 +4,7 @@
  */
 import type { Handler, HandlerEvent } from '@netlify/functions';
 import { adminDb } from './utils/firebase-admin';
-import { verifyAuth, isStaff, getOrgFilter, resolveBranchFilter, ok, unauthorized, forbidden, badRequest, notFound, jsonResponse } from './utils/auth';
+import { verifyAuth, isStaff, hasPermission, getOrgFilter, resolveBranchFilter, ok, unauthorized, forbidden, badRequest, notFound, jsonResponse } from './utils/auth';
 
 const COLLECTION = 'studentPaymentPlans';
 
@@ -71,6 +71,7 @@ const handler: Handler = async (event: HandlerEvent) => {
     if (event.httpMethod === 'GET') {
       if (!isStaff(user)) return forbidden();
       if (user.role === 'teacher') return forbidden('Teachers cannot access finance plans');
+      if (!hasPermission(user, 'finances')) return forbidden('No access to finances module');
 
       const orgFilter = getOrgFilter(user);
       if (!orgFilter) return badRequest('Organization context required');
@@ -129,6 +130,7 @@ const handler: Handler = async (event: HandlerEvent) => {
     // POST Create Payment Plan (Usually auto-created, but allow manual creation)
     if (event.httpMethod === 'POST') {
       if (user.role === 'teacher' || user.role === 'student') return forbidden();
+      if (!hasPermission(user, 'finances')) return forbidden('No access to finances module');
 
       const body = JSON.parse(event.body || '{}');
       if (!body.studentId || !body.courseId || body.totalAmount === undefined) {
@@ -184,6 +186,7 @@ const handler: Handler = async (event: HandlerEvent) => {
     // PUT Update Payment Plan
     if (event.httpMethod === 'PUT') {
       if (user.role === 'teacher' || user.role === 'student') return forbidden();
+      if (!hasPermission(user, 'finances')) return forbidden('No access to finances module');
 
       const body = JSON.parse(event.body || '{}');
       if (!body.planId) return badRequest('planId required');

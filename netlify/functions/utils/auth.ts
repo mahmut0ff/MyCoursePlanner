@@ -5,6 +5,20 @@
 import { adminAuth, adminDb } from './firebase-admin';
 import type { HandlerEvent } from '@netlify/functions';
 
+export interface ManagerPermissions {
+  finances: boolean;
+  settings: boolean;
+  managers: boolean;
+  branches: boolean;
+}
+
+export const DEFAULT_MANAGER_PERMISSIONS: ManagerPermissions = {
+  finances: false,
+  settings: false,
+  managers: false,
+  branches: false,
+};
+
 export interface AuthUser {
   uid: string;
   email: string;
@@ -15,21 +29,28 @@ export interface AuthUser {
   aiEnabled: boolean;
   branchIds: string[];               // assigned branches from membership
   primaryBranchId: string | null;    // default branch context
+  permissions: ManagerPermissions;    // granular module access for managers
 }
 
 /**
  * Resolve user's role in a specific org via membership subcollection.
  */
-export async function resolveOrgRole(uid: string, orgId: string): Promise<{ role: string | null; branchIds: string[]; primaryBranchId: string | null }> {
+export async function resolveOrgRole(uid: string, orgId: string): Promise<{ role: string | null; branchIds: string[]; primaryBranchId: string | null; permissions: ManagerPermissions }> {
   const doc = await adminDb.collection('users').doc(uid)
     .collection('memberships').doc(orgId).get();
-  if (!doc.exists) return { role: null, branchIds: [], primaryBranchId: null };
+  if (!doc.exists) return { role: null, branchIds: [], primaryBranchId: null, permissions: { ...DEFAULT_MANAGER_PERMISSIONS } };
   const data = doc.data()!;
-  if (data.status !== 'active') return { role: null, branchIds: [], primaryBranchId: null };
+  if (data.status !== 'active') return { role: null, branchIds: [], primaryBranchId: null, permissions: { ...DEFAULT_MANAGER_PERMISSIONS } };
   return {
     role: data.role || null,
     branchIds: data.branchIds || [],
     primaryBranchId: data.primaryBranchId || null,
+    permissions: {
+      finances: data.permissions?.finances === true,
+      settings: data.permissions?.settings === true,
+      managers: data.permissions?.managers === true,
+      branches: data.permissions?.branches === true,
+    },
   };
 }
 
@@ -55,6 +76,7 @@ export async function verifyAuth(event: HandlerEvent): Promise<AuthUser | null> 
     let role: AuthUser['role'] = (userData?.role as AuthUser['role']) || 'student';
     let branchIds: string[] = [];
     let primaryBranchId: string | null = null;
+    let permissions: ManagerPermissions = { ...DEFAULT_MANAGER_PERMISSIONS };
 
     if (role !== 'super_admin' && organizationId) {
       const membership = await resolveOrgRole(decoded.uid, organizationId);
@@ -72,6 +94,7 @@ export async function verifyAuth(event: HandlerEvent): Promise<AuthUser | null> 
       }
       branchIds = membership.branchIds;
       primaryBranchId = membership.primaryBranchId;
+      permissions = membership.permissions;
     }
 
     // Fetch org plan info for feature gating
@@ -95,6 +118,7 @@ export async function verifyAuth(event: HandlerEvent): Promise<AuthUser | null> 
       aiEnabled,
       branchIds,
       primaryBranchId,
+      permissions,
     };
   } catch (e) {
     console.error('Auth verification failed:', e);
@@ -116,6 +140,16 @@ export function isManager(user: AuthUser): boolean {
 
 export function hasRole(user: AuthUser, ...roles: AuthUser['role'][]): boolean {
   return roles.includes(user.role);
+}
+
+/**
+ * Check if a manager has a specific module permission.
+ * Admin/owner/super_admin always return true. Teachers/students always false.
+ */
+export function hasPermission(user: AuthUser, key: keyof ManagerPermissions): boolean {
+  if (isSuperAdmin(user) || hasRole(user, 'admin')) return true;
+  if (user.role !== 'manager') return false;
+  return user.permissions[key] === true;
 }
 
 /**

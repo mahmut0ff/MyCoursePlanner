@@ -24,7 +24,7 @@ const Divider = () => <div className="my-2 mx-3 border-t border-white/[0.06]" />
 
 const Sidebar: React.FC<{ open: boolean; onClose: () => void; isCollapsed?: boolean; onToggleCollapse?: () => void; orgData?: any }> = ({ open, onClose, isCollapsed, onToggleCollapse, orgData }) => {
   const { t } = useTranslation();
-  const { profile, role, isSuperAdmin, isTeacher, isManager, organizationId } = useAuth();
+  const { profile, role, isSuperAdmin, isTeacher, isManager, organizationId, hasPermission } = useAuth();
   const { canAccess } = usePlanGate();
   const navigate = useNavigate();
 
@@ -176,6 +176,11 @@ const Sidebar: React.FC<{ open: boolean; onClose: () => void; isCollapsed?: bool
               <NavLink to="/teachers" className={linkClass} onClick={onClose}>
                 <UserPlus className="w-4 h-4" /><span>{t('nav.teachers')}</span>
               </NavLink>
+              {hasPermission('managers') && (
+                <NavLink to="/managers" className={linkClass} onClick={onClose}>
+                  <ShieldCheck className="w-4 h-4" /><span>{t('nav.managers', 'Менеджеры')}</span>
+                </NavLink>
+              )}
 
               <Divider />
 
@@ -197,10 +202,23 @@ const Sidebar: React.FC<{ open: boolean; onClose: () => void; isCollapsed?: bool
 
               <Divider />
 
-              <NavLink to="/finances" className={lockedLinkClass('finances')} onClick={onClose}>
-                <CreditCard className="w-4 h-4" /><span>{t('nav.finances', 'Финансы')}</span>
-                {!canAccess('finances') && <Lock className="w-3 h-3 ml-auto text-slate-500" />}
-              </NavLink>
+              {hasPermission('finances') && (
+                <NavLink to="/finances" className={lockedLinkClass('finances')} onClick={onClose}>
+                  <CreditCard className="w-4 h-4" /><span>{t('nav.finances', 'Финансы')}</span>
+                  {!canAccess('finances') && <Lock className="w-3 h-3 ml-auto text-slate-500" />}
+                </NavLink>
+              )}
+              {hasPermission('branches') && (
+                <NavLink to="/branches" className={lockedLinkClass('branches')} onClick={onClose}>
+                  <Building2 className="w-4 h-4" /><span>{t('nav.branches', 'Филиалы')}</span>
+                  {!canAccess('branches') && <Lock className="w-3 h-3 ml-auto text-slate-500" />}
+                </NavLink>
+              )}
+              {hasPermission('settings') && (
+                <NavLink to="/org-settings" className={linkClass} onClick={onClose}>
+                  <Settings className="w-4 h-4" /><span>{t('nav.orgSettings', 'Настройки')}</span>
+                </NavLink>
+              )}
               <NavLink to="/gradebook" className={lockedLinkClass('gradebook')} onClick={onClose}>
                 <TableProperties className="w-4 h-4" /><span>{t('nav.gradebook', 'Успеваемость')}</span>
                 {!canAccess('gradebook') && <Lock className="w-3 h-3 ml-auto text-slate-500" />}

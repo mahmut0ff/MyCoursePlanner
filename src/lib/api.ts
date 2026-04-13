@@ -277,6 +277,8 @@ export const orgInviteUser = (email: string, role: string) => orgReq('inviteUser
 // Managers
 export const orgGetManagers = () => orgReq('managers');
 export const orgCreateManager = (data: any) => orgReq('createManager', 'POST', data);
+export const orgGetManagerPermissions = (uid: string) => orgReq('getManagerPermissions', 'GET', undefined, { uid });
+export const orgUpdateManagerPermissions = (uid: string, permissions: any) => orgReq('updateManagerPermissions', 'POST', { uid, permissions });
 
 // Materials
 export const orgGetMaterials = (filters?: Record<string, string>) => orgReq('materials', 'GET', undefined, filters);

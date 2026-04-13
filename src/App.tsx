@@ -234,8 +234,8 @@ const App: React.FC = () => {
             <Route path="students/:uid" element={<ProtectedRoute allowedRoles={['admin', 'manager']}><StudentDetailPage /></ProtectedRoute>} />
             <Route path="teachers" element={<ProtectedRoute allowedRoles={['admin', 'manager']}><TeachersPage /></ProtectedRoute>} />
             <Route path="teachers/:uid" element={<ProtectedRoute allowedRoles={['admin', 'manager']}><TeacherDetailPage /></ProtectedRoute>} />
-            <Route path="managers" element={<ProtectedRoute allowedRoles={['admin']}><ManagersPage /></ProtectedRoute>} />
-            <Route path="managers/:uid" element={<ProtectedRoute allowedRoles={['admin']}><ManagerDetailPage /></ProtectedRoute>} />
+            <Route path="managers" element={<ProtectedRoute allowedRoles={['admin', 'manager']}><ManagersPage /></ProtectedRoute>} />
+            <Route path="managers/:uid" element={<ProtectedRoute allowedRoles={['admin', 'manager']}><ManagerDetailPage /></ProtectedRoute>} />
             <Route path="org-users" element={<ProtectedRoute allowedRoles={['admin']}><OrgUsersPage /></ProtectedRoute>} />
             <Route path="org-users/:uid" element={<ProtectedRoute allowedRoles={['admin']}><OrgUserDetailPage /></ProtectedRoute>} />
 
@@ -249,7 +249,7 @@ const App: React.FC = () => {
             <Route path="schedule" element={<ProtectedRoute allowedRoles={['admin', 'manager', 'teacher']}><SchedulePage /></ProtectedRoute>} />
             <Route path="results" element={<ProtectedRoute allowedRoles={['admin', 'manager', 'teacher']}><OrgResultsPage /></ProtectedRoute>} />
             <Route path="branches" element={<ProtectedRoute allowedRoles={['admin', 'manager']}><PlanGuard feature="branches"><BranchesPage /></PlanGuard></ProtectedRoute>} />
-            <Route path="org-settings" element={<ProtectedRoute allowedRoles={['admin']}><OrgSettingsPage /></ProtectedRoute>} />
+            <Route path="org-settings" element={<ProtectedRoute allowedRoles={['admin', 'manager']}><OrgSettingsPage /></ProtectedRoute>} />
 
             {/* ═══ Super Admin Panel ═══ */}
             <Route path="admin" element={<ProtectedRoute allowedRoles={['super_admin']}><AdminDashboardPage /></ProtectedRoute>} />

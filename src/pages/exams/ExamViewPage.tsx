@@ -7,6 +7,7 @@ import { createRoom } from '../../services/rooms.service';
 import { useAuth } from '../../contexts/AuthContext';
 import { orgGetGroups } from '../../lib/api';
 import type { Exam, Question, Group } from '../../types';
+import { formatDate } from '../../utils/grading';
 import { ArrowLeft, Edit, Trash2, Play, Clock, Target, HelpCircle, Copy, ImageIcon, Volume2, Mic, X } from 'lucide-react';
 
 const ExamViewPage: React.FC = () => {

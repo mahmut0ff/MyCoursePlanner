@@ -15,6 +15,7 @@ import ImageExtension from '@tiptap/extension-image';
 import Youtube from '@tiptap/extension-youtube';
 import FileViewerModal from '../../components/ui/FileViewerModal';
 import { StudentHomeworkForm } from '../../components/lessons/StudentHomeworkForm';
+import { LessonSubmissionsPanel } from '../../components/lessons/LessonSubmissionsPanel';
 import {
   ArrowLeft, Edit, Trash2, Clock, BookOpen, Paperclip, Download,
   FileText, Film, Image as LucideImage, FileSpreadsheet, ClipboardList,
@@ -491,6 +492,10 @@ const LessonViewPage: React.FC = () => {
           )}
         </div>
       </div>
+
+      {isStaff && lesson?.organizationId && hw?.title && !presentationMode && (
+        <LessonSubmissionsPanel lessonId={lesson.id!} organizationId={lesson.organizationId} />
+      )}
 
       {/* File Viewer Modal */}
       {viewerFile && <FileViewerModal file={viewerFile} onClose={() => setViewerFile(null)} />}

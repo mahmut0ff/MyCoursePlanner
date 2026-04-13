@@ -45,10 +45,27 @@ const ExamEditPage: React.FC = () => {
   const [loading, setLoading] = useState(isEdit);
   const [showAIGen, setShowAIGen] = useState(false);
 
+  // Normalize AI-generated types to frontend QuestionType enum
+  const normalizeType = (aiType: string): QuestionType => {
+    const typeMap: Record<string, QuestionType> = {
+      'single_choice': 'multiple_choice',
+      'multiple_choice': 'multiple_choice',
+      'multi_select': 'multi_select',
+      'true_false': 'true_false',
+      'short_answer': 'short_answer',
+      'speaking': 'speaking',
+      // Legacy/deprecated AI types → best match
+      'matching': 'short_answer',
+      'media_question': 'multiple_choice',
+    };
+    return typeMap[aiType] || 'multiple_choice';
+  };
+
   const handleAIGenerateSuccess = (data: any[]) => {
     const startOrder = questions.length;
     const newQuestions = data.map((q, i) => {
       const opts = q.options || [];
+      const resolvedType = normalizeType(q.type);
       
       let correctAnswersStr: string[] = [];
       if (q.correctOptionIndices && Array.isArray(q.correctOptionIndices)) {
@@ -61,12 +78,12 @@ const ExamEditPage: React.FC = () => {
 
       return {
         id: generateId(),
-        type: q.type as QuestionType,
+        type: resolvedType,
         text: q.question || '',
-        options: opts,
+        options: resolvedType === 'true_false' ? ['True', 'False'] : opts,
         correctAnswer: correctOpt,
         correctAnswers: correctAnswersStr,
-        keywords: [],
+        keywords: q.keywords || [],
         points: q.points || 1,
         order: startOrder + i,
         mediaUrl: q.searchQuery ? `https://loremflickr.com/800/600/${encodeURIComponent(q.searchQuery)}?lock=${Math.floor(Math.random() * 100)}` : undefined,
@@ -288,9 +305,11 @@ const ExamEditPage: React.FC = () => {
                         onChange={(e) => updateQuestion(qIdx, { type: e.target.value as QuestionType })} 
                         className="bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-1.5 text-sm font-semibold text-slate-700 dark:text-slate-300 focus:ring-2 focus:ring-slate-900 dark:focus:ring-white outline-none"
                       >
-                        <option value="multiple_choice">{t('exams.singleChoice', 'Single Choice')}</option>
-                        <option value="multi_select">{t('exams.multipleChoice', 'Multiple Choice')}</option>
-                        <option value="short_answer">{t('exams.textAnswer', 'Short Answer')}</option>
+                        <option value="multiple_choice">{t('exams.singleChoice', 'Один ответ')}</option>
+                        <option value="multi_select">{t('exams.multipleChoice', 'Несколько ответов')}</option>
+                        <option value="true_false">{t('exams.trueFalse', 'Верно / Неверно')}</option>
+                        <option value="short_answer">{t('exams.textAnswer', 'Текстовый ответ')}</option>
+                        <option value="speaking">{t('exams.speaking', 'Устный ответ')}</option>
                       </select>
                       
                       <div className="flex items-center gap-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-1.5">
@@ -398,6 +417,7 @@ const ExamEditPage: React.FC = () => {
                     </div>
                   </div>
 
+                  {/* ─── Multiple Choice / Multi Select Options ─── */}
                   {(q.type === 'multiple_choice' || q.type === 'multi_select') && (
                     <div className="space-y-3 pl-2 sm:pl-6 border-l-2 border-slate-100 dark:border-slate-800">
                       {q.options.map((opt, oIdx) => (
@@ -406,7 +426,7 @@ const ExamEditPage: React.FC = () => {
                             <div className="relative flex items-center justify-center w-5 h-5 shrink-0">
                                <input type="radio" name={`q-${q.id}`} checked={q.correctAnswer === opt && opt !== ''} onChange={() => updateQuestion(qIdx, { correctAnswer: opt })} className="peer sr-only" />
                                <div className="w-5 h-5 rounded-full border-2 border-slate-300 dark:border-slate-600 peer-checked:border-emerald-500 flex items-center justify-center transition-all cursor-pointer">
-                                  {q.correctAnswer === opt && opt !== '' && <div className="w-2.5 h-2.5 rounded-full bg-emerald-500" />}
+                                   {q.correctAnswer === opt && opt !== '' && <div className="w-2.5 h-2.5 rounded-full bg-emerald-500" />}
                                </div>
                             </div>
                           ) : (
@@ -432,6 +452,34 @@ const ExamEditPage: React.FC = () => {
                       <button onClick={() => addOption(qIdx)} className="mt-2 text-sm font-bold text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white flex items-center gap-1 transition-colors px-2 py-1 rounded-md hover:bg-slate-50 dark:hover:bg-slate-800">
                         <Plus className="w-4 h-4" /> {t('exams.addOption', 'Add Option')}
                       </button>
+                    </div>
+                  )}
+
+                  {/* ─── True / False ─── */}
+                  {q.type === 'true_false' && (
+                    <div className="space-y-3 pl-2 sm:pl-6 border-l-2 border-emerald-200 dark:border-emerald-800">
+                      {['True', 'False'].map((opt) => (
+                        <div key={opt} className="flex items-center gap-3">
+                          <div className="relative flex items-center justify-center w-5 h-5 shrink-0">
+                            <input type="radio" name={`q-${q.id}-tf`} checked={q.correctAnswer === opt} onChange={() => updateQuestion(qIdx, { correctAnswer: opt, options: ['True', 'False'] })} className="peer sr-only" />
+                            <div className="w-5 h-5 rounded-full border-2 border-slate-300 dark:border-slate-600 peer-checked:border-emerald-500 flex items-center justify-center transition-all cursor-pointer">
+                              {q.correctAnswer === opt && <div className="w-2.5 h-2.5 rounded-full bg-emerald-500" />}
+                            </div>
+                          </div>
+                          <span className={`text-sm font-semibold ${q.correctAnswer === opt ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-600 dark:text-slate-400'}`}>
+                            {opt === 'True' ? '✅ Верно (True)' : '❌ Неверно (False)'}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* ─── Speaking (oral) ─── */}
+                  {q.type === 'speaking' && (
+                    <div className="pl-6 border-l-2 border-violet-200 dark:border-violet-800 pt-2">
+                      <p className="text-sm text-violet-600 dark:text-violet-400 bg-violet-50 dark:bg-violet-900/20 p-3 rounded-lg border border-violet-200 dark:border-violet-800/30 font-medium">
+                        🎤 {t('exams.speakingHint', 'Студент запишет аудио-ответ при прохождении экзамена. Оценка происходит вручную.')}
+                      </p>
                     </div>
                   )}
 

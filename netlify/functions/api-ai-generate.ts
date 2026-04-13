@@ -73,12 +73,17 @@ const handler: Handler = async (event: HandlerEvent) => {
       systemPrompt = `You are an expert educator. Generate a quiz based on the provided material or prompt. 
 Format the response strictly as a JSON array of objects. 
 Each question object MUST have:
-- "type": string (MUST be one of: "single_choice", "multiple_choice", "true_false", "matching", "media_question", "speaking")
+- "type": string (MUST be one of: "multiple_choice", "multi_select", "true_false", "short_answer", "speaking")
+  - "multiple_choice" = single correct answer (radio buttons)
+  - "multi_select" = multiple correct answers (checkboxes)
+  - "true_false" = True/False question
+  - "short_answer" = free text answer
+  - "speaking" = oral/audio response
 - "question": string (the question text)
-- "options": array of strings (omit if "speaking"). For "true_false", use ["True", "False"]. For "matching", format as "ItemA = ItemB".
-- "correctOptionIndices": array of integers (omit if "speaking").
+- "options": array of strings (required for multiple_choice, multi_select). For "true_false", use ["True", "False"]. Omit for "short_answer" and "speaking".
+- "correctOptionIndices": array of integers — indices of the correct options (required for multiple_choice, multi_select, true_false). For multiple_choice, array has exactly 1 element. For multi_select, array can have multiple. Omit for short_answer and speaking.
+- "keywords": array of strings (only for short_answer — words/phrases used to grade the answer)
 - "explanation": string (brief explanation of the answer)
-- If "media_question", MUST include a "searchQuery" field with an English keyword to find a relevant image, OR a "ttsText" field with text to be spoken if it's an audio listening question.
 
 You must randomly mix and combine the given question types to make the quiz varied and engaging!
 Do not include any extra text, only the JSON array. Make the questions engaging and accurate.`;
@@ -95,12 +100,17 @@ Requirements for "lesson":
    - If "bulletList", include "items" (array of strings).
 Requirements for "quiz":
 - An array of exactly 10 question objects. Each object MUST have:
-  - "type": string (MUST be one of: "single_choice", "multiple_choice", "true_false", "matching", "media_question", "speaking")
+  - "type": string (MUST be one of: "multiple_choice", "multi_select", "true_false", "short_answer", "speaking")
+    - "multiple_choice" = single correct answer (radio buttons)
+    - "multi_select" = multiple correct answers (checkboxes)
+    - "true_false" = True/False question
+    - "short_answer" = free text answer
+    - "speaking" = oral/audio response
   - "question": string (engaging question)
-  - "options": array of strings (omit if "speaking"). For "true_false", use ["True", "False"]. For "matching", use format "A = B".
-  - "correctOptionIndices": array of integers (omit if "speaking").
+  - "options": array of strings (required for multiple_choice, multi_select). For "true_false", use ["True", "False"]. Omit for short_answer and speaking.
+  - "correctOptionIndices": array of integers — indices of the correct options (required for multiple_choice, multi_select, true_false). Omit for short_answer and speaking.
+  - "keywords": array of strings (only for short_answer)
   - "explanation": string (brief explanation)
-  - If "media_question", MUST include a "searchQuery" field with an English keyword for an image, OR a "ttsText" field with text to be spoken.
 You must randomly mix and combine the given question types to make the quiz varied and engaging!
 Do not include any extra text, markdown blocks like \`\`\`json, or anything other than the raw JSON object.`;
     } else if (type === 'material_summary') {
@@ -116,13 +126,18 @@ Do not include any extra text, markdown blocks like \`\`\`json, or anything othe
       systemPrompt = `You are an expert educator. Generate an exam based on the provided material or prompt. 
 Format the response strictly as a JSON array of objects. 
 Each question object MUST have:
-- "type": string (MUST be one of: "single_choice", "multiple_choice", "true_false", "matching", "media_question", "speaking")
+- "type": string (MUST be one of: "multiple_choice", "multi_select", "true_false", "short_answer", "speaking")
+  - "multiple_choice" = single correct answer (radio buttons)
+  - "multi_select" = multiple correct answers (checkboxes)
+  - "true_false" = True/False question
+  - "short_answer" = free text answer
+  - "speaking" = oral/audio response
 - "question": string (the test question text)
-- "options": array of strings (omit if "speaking"). For "true_false", use ["True", "False"]. For "matching", use format "A = B".
-- "correctOptionIndices": array of integers (omit if "speaking")
+- "options": array of strings (required for multiple_choice, multi_select). For "true_false", use ["True", "False"]. Omit for short_answer and speaking.
+- "correctOptionIndices": array of integers — indices of the correct options (required for multiple_choice, multi_select, true_false). For multiple_choice, exactly 1 element. For multi_select, can have multiple. Omit for short_answer and speaking.
+- "keywords": array of strings (only for short_answer — words/phrases used to grade the answer)
 - "points": integer (suggested weight/points for this question, usually 1 to 5 depending on difficulty)
 - "explanation": string (brief explanation)
-- If "media_question", MUST include a "searchQuery" field with an English keyword for an image, OR a "ttsText" field with text to be spoken.
 
 You must randomly mix and combine the given question types to make the exam varied and engaging!
 Do not include any extra text, only the JSON array.`;

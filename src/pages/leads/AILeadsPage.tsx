@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { collection, query, orderBy, onSnapshot, doc, updateDoc, deleteDoc, addDoc } from 'firebase/firestore';
 import { db } from '../../lib/firebase';
 import { useAuth } from '../../contexts/AuthContext';
-import { Loader2, Calendar, Phone, User, MessageSquare, CheckCircle, Clock, Trash2, Plus, X, Inbox } from 'lucide-react';
+import { Loader2, Calendar, Phone, User, MessageSquare, CheckCircle, Clock, Trash2, Plus, X, Inbox, Target } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { format } from 'date-fns';
 
@@ -11,9 +11,18 @@ interface AILead {
   name: string;
   phone: string;
   reason: string;
-  source: 'telegram_bot' | 'web_chat' | 'manual';
+  source: 'telegram_bot' | 'web_chat' | 'manual' | 'test_link';
   createdBy?: string;
   status: 'new' | 'contacted' | 'resolved';
+  branchId?: string | null;
+  testResult?: {
+    examId: string;
+    examTitle: string;
+    score: number;
+    maxScore: number;
+    percentage: number;
+    passed: boolean;
+  };
   createdAt: string;
 }
 
@@ -211,6 +220,20 @@ const AILeadsPage: React.FC = () => {
                   </div>
                 </div>
               </div>
+
+              {lead.testResult && (
+                <div className="mb-5 bg-indigo-50 dark:bg-indigo-900/10 border border-indigo-100 dark:border-indigo-800/30 rounded-xl p-4 relative overflow-hidden">
+                  <div className="absolute top-0 right-0 p-3 opacity-10">
+                    <Target className="w-16 h-16 text-indigo-500" />
+                  </div>
+                  <p className="text-[10px] font-bold text-indigo-400 uppercase tracking-widest mb-1">Результат тестирования</p>
+                  <p className="font-semibold text-sm text-indigo-900 dark:text-indigo-200 mb-2 truncate pr-6">{lead.testResult.examTitle}</p>
+                  <div className="flex items-end gap-2">
+                    <span className="text-2xl font-black text-indigo-600 dark:text-indigo-400 leading-none">{lead.testResult.percentage}%</span>
+                    <span className="text-xs font-medium text-indigo-500/70 pb-0.5">{lead.testResult.score} / {lead.testResult.maxScore} баллов</span>
+                  </div>
+                </div>
+              )}
               
               <div className="pt-4 border-t border-slate-100 dark:border-slate-700 flex gap-2">
                 <select 
@@ -235,7 +258,7 @@ const AILeadsPage: React.FC = () => {
               
               {/* Floating Tag */}
               <div className="absolute -top-[12px] right-2 bg-slate-800 dark:bg-slate-700 text-white text-[10px] font-bold px-2.5 py-0.5 rounded-full uppercase tracking-wider shadow-sm border border-slate-700 dark:border-slate-600">
-                {lead.source === 'telegram_bot' ? 'TG BOT' : lead.source === 'manual' ? lead.createdBy : 'WEB CHAT'}
+                {lead.source === 'telegram_bot' ? 'TG BOT' : lead.source === 'test_link' ? 'PUBLIC TEST' : lead.source === 'manual' ? lead.createdBy : 'WEB CHAT'}
               </div>
             </div>
           ))}

@@ -26,6 +26,7 @@ const RoomListPage = lazy(() => import('./pages/rooms/RoomListPage'));
 const RoomPage = lazy(() => import('./pages/rooms/RoomPage'));
 const JoinRoomPage = lazy(() => import('./pages/rooms/JoinRoomPage'));
 const ExamTakePage = lazy(() => import('./pages/rooms/ExamTakePage'));
+const PublicExamTakePage = lazy(() => import('./pages/public/PublicExamTakePage'));
 const ResultPage = lazy(() => import('./pages/rooms/ResultPage'));
 const MyResultsPage = lazy(() => import('./pages/rooms/MyResultsPage'));
 const BillingPage = lazy(() => import('./pages/billing/BillingPage'));
@@ -148,6 +149,7 @@ const App: React.FC = () => {
             <Route path="/onboarding" element={<OnboardingPage />} />
             <Route path="/directory" element={<OrganizationsDirectoryPage />} />
             <Route path="/org/:slug" element={<PublicOrgProfilePage />} />
+            <Route path="/test/:examId" element={<PublicExamTakePage />} />
 
           {/* Exam Taking (full screen) */}
           <Route path="/take/:roomId" element={<ProtectedRoute><ExamTakePage /></ProtectedRoute>} />

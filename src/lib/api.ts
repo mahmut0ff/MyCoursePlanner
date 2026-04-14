@@ -161,6 +161,10 @@ export const apiGetPublicOrgProfile = (id?: string, slug?: string) =>
     ...(slug ? { slug } : {}),
   });
 
+// ---- Public Exam ----
+export const apiGetPublicExam = (examId: string) => apiRequest('api-public-exam', 'GET', undefined, { action: 'getExam', examId });
+export const apiSubmitPublicExam = (data: any) => apiRequest('api-public-exam', 'POST', data, { action: 'submitExam' });
+
 // ---- Payments ----
 export const apiCreatePayment = (data: any) => apiRequest('api-payments', 'POST', data);
 export const apiCheckPayment = (orderId: string) => apiRequest('api-payments', 'GET', undefined, { status: 'check', orderId });

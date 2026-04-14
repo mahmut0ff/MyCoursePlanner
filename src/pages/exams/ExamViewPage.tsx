@@ -8,7 +8,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { orgGetGroups } from '../../lib/api';
 import type { Exam, Question, Group } from '../../types';
 import { formatDate } from '../../utils/grading';
-import { ArrowLeft, Edit, Trash2, Play, Clock, Target, HelpCircle, Copy, ImageIcon, Volume2, Mic, X } from 'lucide-react';
+import { ArrowLeft, Edit, Trash2, Play, Clock, Target, HelpCircle, Copy, ImageIcon, Volume2, Mic, X, Link2 } from 'lucide-react';
 
 const ExamViewPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -69,6 +69,14 @@ const ExamViewPage: React.FC = () => {
     } catch { toast.error(t('exams.duplicateFailed')); }
   };
 
+  const handleCopyPublicLink = () => {
+    if (!exam) return;
+    const url = `${window.location.origin}/test/${exam.id}`;
+    navigator.clipboard.writeText(url)
+      .then(() => toast.success('Публичная ссылка скопирована. Ученики могут пройти тест как гости без регистрации.'))
+      .catch(() => toast.error('Не удалось скопировать ссылку'));
+  };
+
   if (loading) return <div className="flex items-center justify-center py-20"><div className="w-8 h-8 border-4 border-primary-200 border-t-primary-600 rounded-full animate-spin" /></div>;
   if (!exam) return <div className="text-center py-20"><h3 className="text-sm font-medium text-slate-700 dark:text-slate-300">{t('common.notFound')}</h3></div>;
 
@@ -80,6 +88,9 @@ const ExamViewPage: React.FC = () => {
           <div className="flex items-center gap-1.5">
             <button onClick={() => setShowStartModal(true)} disabled={starting} className="bg-primary-600 hover:bg-primary-700 text-white text-xs font-medium px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition-colors disabled:opacity-50">
               <Play className="w-3.5 h-3.5" />{starting ? '...' : t('exams.startRoom')}
+            </button>
+            <button onClick={handleCopyPublicLink} disabled={exam.status !== 'published'} className="text-xs bg-indigo-50 hover:bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:hover:bg-indigo-900/50 dark:text-indigo-300 px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition-colors disabled:opacity-50" title={exam.status !== 'published' ? 'Экзамен должен быть опубликован' : 'Публичная ссылка-тест для сбора лидов'}>
+              <Link2 className="w-3.5 h-3.5" />Публичная ссылка
             </button>
             <Link to={`/exams/${id}/edit`} className="text-xs bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-300 px-2.5 py-1.5 rounded-lg flex items-center gap-1 transition-colors"><Edit className="w-3 h-3" />{t('common.edit')}</Link>
             <button onClick={handleDuplicate} className="text-xs bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-300 px-2.5 py-1.5 rounded-lg flex items-center gap-1 transition-colors"><Copy className="w-3 h-3" />{t('exams.duplicate')}</button>

@@ -6,6 +6,7 @@ import { ArrowLeft, BookOpen, Calendar, Users, FileText, Edit, Trash2, Plus, Mes
 import { useAuth } from '../../contexts/AuthContext';
 import type { Course, Group } from '../../types';
 import toast from 'react-hot-toast';
+import { SyllabusBuilder } from '../../components/syllabuses/SyllabusBuilder';
 
 const CourseDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -282,6 +283,11 @@ const CourseDetailPage: React.FC = () => {
           </div>
         </div>
       </div>
+      
+      {/* Syllabus Builder Section */}
+      {isAdmin && (
+        <SyllabusBuilder courseId={course.id} />
+      )}
 
       {/* Course Groups Section */}
       <div>

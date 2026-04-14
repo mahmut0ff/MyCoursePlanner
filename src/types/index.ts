@@ -586,6 +586,37 @@ export interface DashboardStats {
   totalTeachers?: number;
 }
 
+// ---- Syllabuses ----
+
+export interface SyllabusItem {
+  id: string;
+  title: string;
+  type: 'lesson' | 'exam' | 'topic';
+  lessonPlanId?: string;
+  examId?: string;
+  order: number;
+}
+
+export interface SyllabusModule {
+  id: string;
+  title: string;
+  order: number;
+  items: SyllabusItem[];
+}
+
+export interface Syllabus {
+  id: string;
+  organizationId: string;
+  courseId: string;
+  title: string;
+  description: string;
+  modules: SyllabusModule[];
+  isMandatory: boolean;
+  sourceFileUrl?: string; // Optional PDF reference
+  createdAt: string;
+  updatedAt: string;
+}
+
 // ---- Courses ----
 
 export type CourseStatus = 'draft' | 'published' | 'archived';
@@ -599,6 +630,8 @@ export interface Course {
   subject: string;
   teacherIds: string[];
   lessonIds: string[];
+  syllabusId?: string;
+  isSyllabusMandatory?: boolean;
   status: CourseStatus;
   coverImageUrl?: string;
   // Financial Settings
@@ -622,6 +655,7 @@ export interface Group {
   teacherIds?: string[];
   chatLinkTitle?: string;
   chatLinkUrl?: string;
+  currentSyllabusItemId?: string; // Track which syllabus lesson/topic the group is currently on
   createdAt: string;
   updatedAt: string;
 }

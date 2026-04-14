@@ -282,6 +282,29 @@ const GroupDetailPage: React.FC = () => {
         </div>
       </div>
 
+      {/* Curriculum Tracker / Syllabus Roadmap */}
+      {(isAdmin || role === 'teacher') && (
+        <div className="mb-8 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-3xl p-6 shadow-sm">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="w-10 h-10 rounded-xl bg-indigo-50 text-indigo-600 dark:bg-indigo-900/30 dark:text-indigo-400 flex items-center justify-center">
+              <BookOpen className="w-5 h-5" />
+            </div>
+            <div>
+              <h2 className="text-lg font-bold text-slate-900 dark:text-white">Силлабус (Учебная программа)</h2>
+              <p className="text-xs text-slate-500">Прогресс освоения курса группой</p>
+            </div>
+          </div>
+          
+          <div className="bg-slate-50 dark:bg-slate-900/50 p-6 rounded-2xl border border-slate-100 dark:border-slate-700/50 flex flex-col items-center justify-center text-center">
+             <div className="flex bg-slate-200 dark:bg-slate-700 h-2 w-full max-w-md rounded-full overflow-hidden mb-4">
+                <div className="bg-indigo-500 w-[20%] h-full rounded-full" />
+             </div>
+             <p className="text-sm font-bold text-slate-700 dark:text-slate-300">Пройдено 20% (Этап 1: Основы)</p>
+             <p className="text-xs text-slate-500 mt-1">Функционал трекинга силлабуса в разработке. Здесь будет отображаться roadmap занятий.</p>
+          </div>
+        </div>
+      )}
+
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
          {/* Main Column */}
          <div className="md:col-span-2 space-y-6">

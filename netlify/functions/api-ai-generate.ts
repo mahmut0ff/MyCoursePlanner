@@ -122,6 +122,22 @@ Format the response strictly as a JSON object containing:
 - "tags": array of strings (1 to 5 relevant tags, e.g. "Math", "Syllabus", "Guide")
 - "suggestedCategory": string (a single broad category like "Documents", "Media", "Lectures", or specific subject)
 Do not include any extra text, markdown blocks like \`\`\`json, or anything other than the raw JSON object.`;
+    } else if (type === 'syllabus_extraction') {
+      systemPrompt = `You are an expert educator and instructional designer. Extract the course syllabus from the provided document.
+If the document is an image or PDF, parse it carefully.
+Format the response strictly as a JSON object with the following structure:
+- "title": string (the overall course title)
+- "description": string (the course description or objectives)
+- "modules": array of objects representing modules/weeks. Each module MUST have:
+  - "title": string (e.g. "Week 1: Introduction")
+  - "order": integer (e.g. 1, 2, 3)
+  - "items": array of objects representing lessons or topics in this module. Each item MUST have:
+    - "title": string (e.g. "Lecture: Basics", "Quiz 1", etc.)
+    - "type": string (MUST be one of: "lesson", "exam", "topic")
+    - "order": integer
+
+Extract modules and lessons logically based on the document's headings and bullet points.
+Do not include any extra text, markdown blocks like \`\`\`json, or anything other than the raw JSON object.`;
     } else {
       systemPrompt = `You are an expert educator. Generate an exam based on the provided material or prompt. 
 Format the response strictly as a JSON array of objects. 

@@ -582,15 +582,13 @@ const SchedulePage: React.FC = () => {
                                 </div>
 
                                 {/* Content */}
-                                <div className="pl-2">
-                                  <div className="flex items-center justify-between gap-1 pr-10">
-                                    <p className="text-[12px] font-bold text-slate-800 dark:text-white leading-snug truncate">{lesson.title}</p>
-                                    <span className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-slate-700/60 px-1.5 py-0.5 rounded-md flex items-center gap-0.5 shrink-0 whitespace-nowrap">
-                                      <Clock className="w-2.5 h-2.5 text-primary-500 dark:text-primary-400" />{lesson.startTime}–{lesson.endTime}
-                                    </span>
-                                  </div>
+                                <div className="pl-2 min-w-0 overflow-hidden" title={`${lesson.title}${lesson.location ? ` · ${lesson.location}` : ''}`}>
+                                  <p className="text-[12px] font-bold text-slate-800 dark:text-white leading-snug truncate pr-10">{lesson.title}</p>
+                                  <span className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 inline-flex items-center gap-0.5 mt-1">
+                                    <Clock className="w-2.5 h-2.5 text-primary-500 dark:text-primary-400" />{lesson.startTime}–{lesson.endTime}
+                                  </span>
                                   {lesson.location && (
-                                    <p className="text-[10px] text-slate-400 dark:text-slate-500 flex items-center gap-0.5 mt-1 truncate">
+                                    <p className="text-[10px] text-slate-400 dark:text-slate-500 items-center gap-0.5 mt-0.5 truncate hidden group-hover:flex transition-all">
                                       <MapPin className="w-2.5 h-2.5 shrink-0" />{lesson.location}
                                     </p>
                                   )}

@@ -1,8 +1,8 @@
 import React, { useEffect, useState, useMemo, useCallback, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
-import { orgGetSchedule, orgGetTimetable, orgCreateEvent, orgDeleteEvent, orgUpdateEvent } from '../../lib/api';
+import { orgGetSchedule, orgGetTimetable, orgCreateEvent, orgDeleteEvent, orgUpdateEvent, orgGetGroups } from '../../lib/api';
 import { Plus, ChevronLeft, ChevronRight, Clock, Trash2, Calendar, MapPin, Repeat, Copy, Clipboard, GripVertical, X } from 'lucide-react';
-import type { ScheduleEvent, ScheduleEventType } from '../../types';
+import type { ScheduleEvent, ScheduleEventType, Group } from '../../types';
 import { useAuth } from '../../contexts/AuthContext';
 import BranchFilter from '../../components/ui/BranchFilter';
 
@@ -20,12 +20,13 @@ const SchedulePage: React.FC = () => {
 
   const [timetableEvents, setTimetableEvents] = useState<ScheduleEvent[]>([]);
   const [calendarEvents, setCalendarEvents] = useState<ScheduleEvent[]>([]);
+  const [groups, setGroups] = useState<Group[]>([]);
   const [loading, setLoading] = useState(true);
   const [current, setCurrent] = useState(new Date());
   const [showCreate, setShowCreate] = useState(false);
   const [form, setForm] = useState<{
     title: string; date: string; dayOfWeek: number; startTime: string; endTime: string;
-    type: ScheduleEventType; duration: number; location: string; branchId?: string;
+    type: ScheduleEventType; duration: number; location: string; branchId?: string; groupId?: string;
   }>({ title: '', date: '', dayOfWeek: 0, startTime: '09:00', endTime: '10:00', type: 'lesson', duration: 60, location: '' });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
@@ -81,7 +82,8 @@ const SchedulePage: React.FC = () => {
         const from = getLocalDateStr(weekDays[0]);
         const to = getLocalDateStr(weekDays[6]);
         return orgGetSchedule(from, to, undefined, branchId || undefined).then(setCalendarEvents).catch(() => {});
-      })()
+      })(),
+      orgGetGroups().then(setGroups).catch(() => {})
     ]).finally(() => setLoading(false));
   };
 
@@ -413,6 +415,7 @@ const SchedulePage: React.FC = () => {
           recurring: true,
           dayOfWeek: form.dayOfWeek,
           branchId: form.branchId,
+          groupId: form.groupId,
         });
         setTimetableEvents((p) => [...p, created]);
       } else {
@@ -428,6 +431,7 @@ const SchedulePage: React.FC = () => {
           location: form.location,
           recurring: false,
           branchId: form.branchId,
+          groupId: form.groupId,
         });
         setCalendarEvents((p) => [...p, created]);
       }
@@ -1155,10 +1159,39 @@ const SchedulePage: React.FC = () => {
               </div>
 
               <div>
-                <label className="text-[11px] font-bold text-slate-500 uppercase tracking-widest mb-1.5 block">{t('org.schedule.eventTitle', 'Название')}</label>
-                <input placeholder="Например: Математика, 11-А" value={form.title}
+                <label className="text-[11px] font-bold text-slate-500 uppercase tracking-widest mb-1.5 block">
+                  {t('common.group', 'Группа')} / {t('org.schedule.eventTitle', 'Название')}
+                </label>
+                
+                {groups.length > 0 && (
+                  <select 
+                    value={form.groupId || ''}
+                    onChange={(e) => {
+                      const g = groups.find(x => x.id === e.target.value);
+                      if (g) {
+                         setForm(f => ({ ...f, groupId: g.id, title: g.name }));
+                      } else {
+                         setForm(f => ({ ...f, groupId: undefined, title: '' }));
+                      }
+                    }}
+                    className="input bg-slate-50 dark:bg-slate-900/50 mb-3"
+                  >
+                    <option value="">{t('schedule.selectGroup', 'Выберите группу...')}</option>
+                    {groups
+                      .filter(g => !form.branchId || g.branchId === form.branchId)
+                      .map(g => (
+                      <option key={g.id} value={g.id}>{g.name}</option>
+                    ))}
+                  </select>
+                )}
+
+                <input 
+                  placeholder={form.groupId ? "Название подставилось автоматически" : "Например: Математика, 11-А"} 
+                  value={form.title}
                   onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
-                  className="input bg-slate-50 dark:bg-slate-900/50" autoFocus />
+                  className="input bg-slate-50 dark:bg-slate-900/50" 
+                  autoFocus={!form.groupId} 
+                />
               </div>
 
               {/* Timetable: Day of Week selector */}

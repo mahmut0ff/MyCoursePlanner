@@ -288,16 +288,18 @@ export const orgUpdateMaterial = (data: any) => orgReq('updateMaterial', 'POST',
 export const orgDeleteMaterial = (id: string) => orgReq('deleteMaterial', 'POST', { id });
 
 // Schedule
-export const orgGetSchedule = (from?: string, to?: string, groupId?: string) => {
+export const orgGetSchedule = (from?: string, to?: string, groupId?: string, branchId?: string) => {
   const params: Record<string, string> = {};
   if (from) params.from = from;
   if (to) params.to = to;
   if (groupId) params.groupId = groupId;
+  if (branchId) params.branchId = branchId;
   return orgReq('schedule', 'GET', undefined, Object.keys(params).length ? params : undefined);
 };
-export const orgGetTimetable = (groupId?: string) => {
+export const orgGetTimetable = (groupId?: string, branchId?: string) => {
   const params: Record<string, string> = { mode: 'timetable' };
   if (groupId) params.groupId = groupId;
+  if (branchId) params.branchId = branchId;
   return orgReq('schedule', 'GET', undefined, params);
 };
 export const orgCreateEvent = (data: any) => orgReq('createEvent', 'POST', data);

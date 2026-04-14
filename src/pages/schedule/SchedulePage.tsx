@@ -4,6 +4,7 @@ import { orgGetSchedule, orgGetTimetable, orgCreateEvent, orgDeleteEvent, orgUpd
 import { Plus, ChevronLeft, ChevronRight, Clock, Trash2, Calendar, MapPin, Repeat, Copy, Clipboard, GripVertical, X } from 'lucide-react';
 import type { ScheduleEvent, ScheduleEventType } from '../../types';
 import { useAuth } from '../../contexts/AuthContext';
+import BranchFilter from '../../components/ui/BranchFilter';
 
 const HOURS = Array.from({ length: 14 }, (_, i) => i + 7);
 
@@ -32,6 +33,14 @@ const SchedulePage: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'timetable' | 'events'>('timetable');
   const [mobileView, setMobileView] = useState<'week' | 'day'>('week');
   const [selectedDay, setSelectedDay] = useState(0);
+  const [branchId, setBranchId] = useState<string | null>(null);
+
+  // Auto-refresh current time every minute
+  const [currentMins, setCurrentMins] = useState(() => new Date().getHours() * 60 + new Date().getMinutes());
+  useEffect(() => {
+    const int = setInterval(() => setCurrentMins(new Date().getHours() * 60 + new Date().getMinutes()), 60000);
+    return () => clearInterval(int);
+  }, []);
 
   // Drag & Drop state
   const [draggedEvent, setDraggedEvent] = useState<ScheduleEvent | null>(null);
@@ -64,19 +73,19 @@ const SchedulePage: React.FC = () => {
   const loadAll = () => {
     setLoading(true); setError('');
     Promise.all([
-      orgGetTimetable().then(setTimetableEvents).catch(() => {}),
+      orgGetTimetable(undefined, branchId || undefined).then(setTimetableEvents).catch(() => {}),
       (() => {
         const getLocalDateStr = (d: Date) => {
           return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
         };
         const from = getLocalDateStr(weekDays[0]);
         const to = getLocalDateStr(weekDays[6]);
-        return orgGetSchedule(from, to).then(setCalendarEvents).catch(() => {});
+        return orgGetSchedule(from, to, undefined, branchId || undefined).then(setCalendarEvents).catch(() => {});
       })()
     ]).finally(() => setLoading(false));
   };
 
-  useEffect(loadAll, [weekDays]);
+  useEffect(loadAll, [weekDays, branchId]);
 
   const prevWeek = () => setCurrent((d) => { const n = new Date(d); n.setDate(n.getDate() - 7); return n; });
   const nextWeek = () => setCurrent((d) => { const n = new Date(d); n.setDate(n.getDate() + 7); return n; });
@@ -365,15 +374,30 @@ const SchedulePage: React.FC = () => {
   const todayStr = `${todayD.getFullYear()}-${String(todayD.getMonth() + 1).padStart(2, '0')}-${String(todayD.getDate()).padStart(2, '0')}`;
   const todayDayOfWeek = (() => { const d = new Date().getDay(); return d === 0 ? 6 : d - 1; })(); // 0=Mon
 
+  const isEventOngoing = (ev: ScheduleEvent, isTimetable: boolean) => {
+    if (isTimetable) {
+      if (ev.dayOfWeek !== todayDayOfWeek) return false;
+    } else {
+      if (ev.date !== todayStr) return false;
+    }
+    const [h, m] = (ev.startTime || '00:00').split(':').map(Number);
+    const startMins = h * 60 + m;
+    const endMins = startMins + (ev.duration || 45);
+    return currentMins >= startMins && currentMins < endMins;
+  };
+
   const renderEventBlock = (ev: ScheduleEvent, top: number) => {
     const isExam = ev.type === 'exam';
     const isSelected = selectedEvent?.event.id === ev.id;
+    const ongoing = isEventOngoing(ev, false);
     return (
       <div key={ev.id} style={{ top: `${top}px`, minHeight: '30px' }}
         className={`absolute left-0.5 right-0.5 rounded-md px-1.5 py-0.5 text-[9px] leading-tight group shadow-sm transition-all ${
           canEdit ? 'cursor-grab active:cursor-grabbing' : 'cursor-default'
         } ${isSelected ? 'ring-2 ring-primary-500 ring-offset-1 dark:ring-offset-slate-800' : ''} ${
-          isExam
+          ongoing 
+            ? 'bg-rose-500 dark:bg-rose-600 text-white border border-rose-400 shadow-[0_0_15px_rgba(244,63,94,0.3)] animate-[pulse_3s_ease-in-out_infinite]' 
+            : isExam
             ? 'bg-amber-100 dark:bg-amber-900/30 text-amber-800 dark:text-amber-300 border border-amber-200/50 dark:border-amber-800/30'
             : 'bg-primary-100 dark:bg-primary-900/30 text-primary-800 dark:text-primary-300 border border-primary-200/50 dark:border-primary-800/30'
         }`}
@@ -424,6 +448,7 @@ const SchedulePage: React.FC = () => {
         </div>
 
         <div className="flex items-center gap-2 w-full sm:w-fit">
+          <BranchFilter value={branchId} onChange={setBranchId} />
           {/* Clipboard indicator */}
           {canEdit && clipboard && (
             <button
@@ -438,7 +463,7 @@ const SchedulePage: React.FC = () => {
             </button>
           )}
           <button onClick={() => {
-            setForm(f => ({ ...f, type: activeTab === 'timetable' ? 'lesson' : 'exam' }));
+            setForm(f => ({ ...f, type: activeTab === 'timetable' ? 'lesson' : 'exam', branchId: branchId || undefined }));
             setShowCreate(true);
           }} className="btn-primary !py-2.5 !px-5 text-sm flex items-center gap-2 w-full sm:w-fit shadow-md shadow-primary-500/20 justify-center">
             <Plus className="w-4 h-4" />{t('org.schedule.addEvent', 'Добавить')}
@@ -534,6 +559,7 @@ const SchedulePage: React.FC = () => {
                         const isDropTarget = isDragging && dragOverDay === dayIdx;
                         const isBeingDragged = lesson && draggedEvent?.id === lesson.id;
                         const isSelected = lesson && selectedEvent?.event.id === lesson.id;
+                        const ongoing = lesson && isEventOngoing(lesson, true);
 
                          return (
                           <div
@@ -549,9 +575,11 @@ const SchedulePage: React.FC = () => {
                                 className={`group/card relative h-full rounded-xl p-2 border transition-all duration-200 overflow-hidden ${
                                   canEdit ? 'cursor-grab active:cursor-grabbing' : ''
                                 } ${isBeingDragged ? 'opacity-30 scale-95' : 'hover:shadow-md hover:-translate-y-0.5'} ${
-                                  isSelected
-                                    ? 'bg-indigo-50 dark:bg-indigo-900/20 border-indigo-300 dark:border-indigo-700/50 ring-2 ring-indigo-400/30'
-                                    : 'bg-white dark:bg-slate-800 border-slate-100 dark:border-slate-700/50 hover:border-primary-200 dark:hover:border-primary-800/50'
+                                  ongoing
+                                    ? 'bg-rose-50 dark:bg-rose-900/20 border-rose-500/50 ring-2 ring-rose-500/30'
+                                    : isSelected
+                                      ? 'bg-indigo-50 dark:bg-indigo-900/20 border-indigo-300 dark:border-indigo-700/50 ring-2 ring-indigo-400/30'
+                                      : 'bg-white dark:bg-slate-800 border-slate-100 dark:border-slate-700/50 hover:border-primary-200 dark:hover:border-primary-800/50'
                                 }`}
                                 draggable={canEdit}
                                 onDragStart={(e) => { e.stopPropagation(); handleDragStart(e, lesson); }}
@@ -584,8 +612,8 @@ const SchedulePage: React.FC = () => {
                                 {/* Content */}
                                 <div className="pl-2 min-w-0 overflow-hidden">
                                   <p className="text-[12px] font-bold text-slate-800 dark:text-white leading-snug truncate pr-8">{lesson.title}</p>
-                                  <span className="text-[10px] font-medium text-slate-500 dark:text-slate-400 inline-flex items-center gap-0.5 mt-0.5">
-                                    <Clock className="w-2.5 h-2.5 text-primary-500 dark:text-primary-400 shrink-0" />{lesson.startTime}–{lesson.endTime}
+                                  <span className={`text-[10px] font-medium inline-flex items-center gap-0.5 mt-0.5 ${ongoing ? 'text-rose-600 dark:text-rose-400 font-bold' : 'text-slate-500 dark:text-slate-400'}`}>
+                                    <Clock className={`w-2.5 h-2.5 shrink-0 ${ongoing ? 'text-rose-500 animate-pulse shadow-rose-500' : 'text-primary-500 dark:text-primary-400'}`} />{lesson.startTime}–{lesson.endTime}
                                   </span>
                                 </div>
 

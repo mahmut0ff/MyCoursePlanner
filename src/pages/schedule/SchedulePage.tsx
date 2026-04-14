@@ -158,6 +158,28 @@ const SchedulePage: React.FC = () => {
     setError('');
     try {
       const src = clipboard.event;
+      
+      // Conflict formatting wrapper
+      const durationHours = (() => {
+        const [sh, sm] = (pasteForm.startTime || '09:00').split(':').map(Number);
+        const [eh, em] = (pasteForm.endTime || '10:00').split(':').map(Number);
+        return (eh * 60 + em) - (sh * 60 + sm);
+      })();
+
+      const conflict = checkConflict({
+        ...pasteForm,
+        location: src.location,
+        teacherId: (src as any).teacherId,
+        groupId: (src as any).groupId,
+        duration: durationHours
+      });
+      
+      if (conflict) {
+        setError(conflict);
+        setSaving(false);
+        return;
+      }
+
       if (activeTab === 'timetable') {
         const created = await orgCreateEvent({
           title: src.title,
@@ -323,10 +345,62 @@ const SchedulePage: React.FC = () => {
     handleDragEnd();
   }, [draggedEvent, canEdit, weekDays, handleDragEnd, showToast, t]);
 
+  const checkConflict = (testEv: Partial<ScheduleEvent>, ignoreId?: string) => {
+    let dayOfWeek = testEv.dayOfWeek;
+    if (testEv.date) {
+      const d = new Date(testEv.date);
+      dayOfWeek = d.getDay() === 0 ? 6 : d.getDay() - 1;
+    }
+
+    const startMins = (() => { const [h, m] = (testEv.startTime || '00:00').split(':').map(Number); return h * 60 + m; })();
+    const endMins = (() => { const [h, m] = (testEv.endTime || '00:00').split(':').map(Number); return h * 60 + m; })();
+
+    const pool = [
+      ...timetableEvents.filter(e => e.dayOfWeek === dayOfWeek),
+    ];
+    if (testEv.date) {
+      pool.push(...calendarEvents.filter(e => e.date === testEv.date));
+    }
+
+    for (const e of pool) {
+      if (e.id === ignoreId) continue;
+      
+      const eStart = (() => { const [h, m] = (e.startTime || '00:00').split(':').map(Number); return h * 60 + m; })();
+      const eEnd = (() => { const [h, m] = (e.endTime || '00:00').split(':').map(Number); return h * 60 + m; })();
+      
+      const overlaps = Math.max(startMins, eStart) < Math.min(endMins, eEnd);
+      if (overlaps) {
+        if (testEv.location && e.location && testEv.location.trim() !== '' && testEv.location.toLowerCase().trim() === e.location.toLowerCase().trim()) {
+          return `Конфликт: Кабинет "${e.location}" уже занят занятием "${e.title}" (${e.startTime}-${e.endTime})`;
+        }
+        if (testEv.teacherId && e.teacherId && testEv.teacherId === e.teacherId) {
+          return `Конфликт: У преподавателя уже стоит занятие "${e.title}" (${e.startTime}-${e.endTime})`;
+        }
+        if (testEv.groupId && e.groupId && testEv.groupId === e.groupId) {
+          return `Конфликт: У группы уже стоит занятие "${e.title}" (${e.startTime}-${e.endTime})`;
+        }
+      }
+    }
+    return null;
+  };
+
   const handleCreate = async () => {
     if (!form.title.trim()) return;
     setSaving(true); setError('');
     try {
+      const durationMins = (() => {
+        const [sh, sm] = (form.startTime || '09:00').split(':').map(Number);
+        const [eh, em] = (form.endTime || '10:00').split(':').map(Number);
+        return (eh * 60 + em) - (sh * 60 + sm);
+      })();
+
+      const conflict = checkConflict({ ...form, duration: durationMins });
+      if (conflict) {
+        setError(conflict);
+        setSaving(false);
+        return;
+      }
+
       if (activeTab === 'timetable') {
         // create recurring lesson
         const created = await orgCreateEvent({
@@ -390,13 +464,13 @@ const SchedulePage: React.FC = () => {
     return currentMins >= startMins && currentMins < endMins;
   };
 
-  const renderEventBlock = (ev: ScheduleEvent, top: number) => {
+  const renderEventBlock = (ev: ScheduleEvent, top: number, styleProps?: { left?: string; width?: string }) => {
     const isExam = ev.type === 'exam';
     const isSelected = selectedEvent?.event.id === ev.id;
     const ongoing = isEventOngoing(ev, false);
     return (
-      <div key={ev.id} style={{ top: `${top}px`, minHeight: '30px' }}
-        className={`absolute left-0.5 right-0.5 rounded-md px-1.5 py-0.5 text-[9px] leading-tight group shadow-sm transition-all ${
+      <div key={ev.id} style={{ top: `${top}px`, minHeight: '30px', left: styleProps?.left || '2px', width: styleProps?.width || 'calc(100% - 4px)' }}
+        className={`absolute rounded-md px-1.5 py-0.5 text-[9px] leading-tight group shadow-sm transition-all ${
           canEdit ? 'cursor-grab active:cursor-grabbing' : 'cursor-default'
         } ${isSelected ? 'ring-2 ring-primary-500 ring-offset-1 dark:ring-offset-slate-800' : ''} ${
           ongoing 
@@ -760,11 +834,63 @@ const SchedulePage: React.FC = () => {
                             />
                           );
                         })}
-                        {dayEvents.map((ev) => {
-                          const [sh] = (ev.startTime || '09:00').split(':').map(Number);
-                          const top = Math.max(0, (sh - 7)) * 48;
-                          return renderEventBlock(ev, top);
-                        })}
+                        {(() => {
+                          const parsed = dayEvents.map(e => {
+                            const [sh, sm] = (e.startTime || '09:00').split(':').map(Number);
+                            const [eh, em] = (e.endTime || '10:00').split(':').map(Number);
+                            return { ...e, startMins: sh * 60 + (sm || 0), endMins: eh * 60 + (em || 0) };
+                          }).sort((a, b) => a.startMins - b.startMins || b.endMins - a.endMins);
+
+                          let currentGroup: typeof parsed = [];
+                          let groupEndMins = 0;
+                          const allGroups: (typeof parsed)[] = [];
+                          
+                          parsed.forEach(ev => {
+                            if (ev.startMins >= groupEndMins) {
+                              if (currentGroup.length > 0) allGroups.push(currentGroup);
+                              currentGroup = [ev];
+                              groupEndMins = ev.endMins;
+                            } else {
+                              currentGroup.push(ev);
+                              groupEndMins = Math.max(groupEndMins, ev.endMins);
+                            }
+                          });
+                          if (currentGroup.length > 0) allGroups.push(currentGroup);
+
+                          const positions: Record<string, { top: number, left: string, width: string }> = {};
+                          
+                          allGroups.forEach(group => {
+                            const cols: typeof parsed[] = [];
+                            group.forEach(ev => {
+                              let placed = false;
+                              for (let i = 0; i < cols.length; i++) {
+                                if (cols[i][cols[i].length - 1].endMins <= ev.startMins) {
+                                  cols[i].push(ev);
+                                  placed = true;
+                                  break;
+                                }
+                              }
+                              if (!placed) cols.push([ev]);
+                            });
+                            
+                            const numCols = cols.length;
+                            cols.forEach((col, colIdx) => {
+                              col.forEach(ev => {
+                                const top = Math.max(0, (ev.startMins / 60) - 7) * 48;
+                                positions[ev.id] = {
+                                  top,
+                                  width: `calc(${100 / numCols}% - 4px)`,
+                                  left: `calc(${(100 / numCols) * colIdx}% + 2px)`,
+                                };
+                              });
+                            });
+                          });
+
+                          return parsed.map((ev) => {
+                            const pos = positions[ev.id];
+                            return renderEventBlock(ev, pos.top, pos);
+                          });
+                        })()}
                       </div>
                     );
                   })}

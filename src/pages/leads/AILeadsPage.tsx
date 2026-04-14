@@ -22,6 +22,7 @@ interface AILead {
     maxScore: number;
     percentage: number;
     passed: boolean;
+    aiFeedback?: any;
   };
   createdAt: string;
 }
@@ -232,6 +233,17 @@ const AILeadsPage: React.FC = () => {
                     <span className="text-2xl font-black text-indigo-600 dark:text-indigo-400 leading-none">{lead.testResult.percentage}%</span>
                     <span className="text-xs font-medium text-indigo-500/70 pb-0.5">{lead.testResult.score} / {lead.testResult.maxScore} баллов</span>
                   </div>
+
+                  {lead.testResult.aiFeedback && (
+                    <div className="mt-3 pt-3 border-t border-indigo-200/50 dark:border-indigo-800/50 relative z-10">
+                      <p className="text-[11px] font-bold text-indigo-700 dark:text-indigo-300 mb-1 flex items-center gap-1.5 uppercase tracking-wide">
+                        ✨ AI Анализ
+                      </p>
+                      <p className="text-xs text-indigo-800 dark:text-indigo-200 leading-relaxed italic">
+                        "{lead.testResult.aiFeedback.teacherNotes || lead.testResult.aiFeedback.summary}"
+                      </p>
+                    </div>
+                  )}
                 </div>
               )}
               

@@ -1002,8 +1002,8 @@ const handler: Handler = async (event: HandlerEvent) => {
       const [coursesSnap, groupsSnap, studentsSnap, teachersSnap, lessonsSnap, examsSnap, roomsSnap] = await Promise.all([
         orgQuery('courses', orgId).get(),
         orgQuery('groups', orgId).get(),
-        adminDb.collection('users').where('organizationId', '==', orgId).where('role', '==', 'student').get(),
-        adminDb.collection('users').where('organizationId', '==', orgId).where('role', 'in', ['teacher', 'admin']).get(),
+        adminDb.collection('orgMembers').doc(orgId).collection('members').where('role', '==', 'student').where('status', '==', 'active').get(),
+        adminDb.collection('orgMembers').doc(orgId).collection('members').where('role', 'in', ['teacher', 'admin', 'owner', 'mentor', 'manager']).where('status', '==', 'active').get(),
         orgQuery('lessonPlans', orgId).get(),
         orgQuery('exams', orgId).get(),
         orgQuery('examRooms', orgId).where('status', '==', 'active').get(),

@@ -837,7 +837,7 @@ const handler: Handler = async (event: HandlerEvent) => {
     }
 
     if (action === 'createEvent') {
-      const err = requireOrgStaff(user); if (err) return err;
+      if (!hasRole(user, 'admin', 'manager')) return forbidden('Only admins and managers can modify the schedule');
       const body = JSON.parse(event.body || '{}');
       const isRecurring = body.recurring === true;
       if (!body.title || !body.startTime) return badRequest('title and startTime required');
@@ -865,7 +865,7 @@ const handler: Handler = async (event: HandlerEvent) => {
     }
 
     if (action === 'updateEvent') {
-      const err = requireOrgStaff(user); if (err) return err;
+      if (!hasRole(user, 'admin', 'manager')) return forbidden('Only admins and managers can modify the schedule');
       const body = JSON.parse(event.body || '{}');
       if (!body.id) return badRequest('id required');
       const doc = await adminDb.collection('scheduleEvents').doc(body.id).get();
@@ -877,7 +877,7 @@ const handler: Handler = async (event: HandlerEvent) => {
     }
 
     if (action === 'deleteEvent') {
-      const err = requireOrgStaff(user); if (err) return err;
+      if (!hasRole(user, 'admin', 'manager')) return forbidden('Only admins and managers can modify the schedule');
       const body = JSON.parse(event.body || '{}');
       if (!body.id) return badRequest('id required');
       await adminDb.collection('scheduleEvents').doc(body.id).delete();

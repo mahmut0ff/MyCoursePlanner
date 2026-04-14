@@ -25,7 +25,7 @@ const SchedulePage: React.FC = () => {
   const [showCreate, setShowCreate] = useState(false);
   const [form, setForm] = useState<{
     title: string; date: string; dayOfWeek: number; startTime: string; endTime: string;
-    type: ScheduleEventType; duration: number; location: string;
+    type: ScheduleEventType; duration: number; location: string; branchId?: string;
   }>({ title: '', date: '', dayOfWeek: 0, startTime: '09:00', endTime: '10:00', type: 'lesson', duration: 60, location: '' });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
@@ -149,7 +149,7 @@ const SchedulePage: React.FC = () => {
   // ======== PASTE MODAL ========
   const [showPasteModal, setShowPasteModal] = useState(false);
   const [pasteForm, setPasteForm] = useState<{
-    dayOfWeek: number; startTime: string; endTime: string; date: string;
+    dayOfWeek: number; startTime: string; endTime: string; date: string; branchId?: string;
   }>({ dayOfWeek: 0, startTime: '09:00', endTime: '10:00', date: '' });
 
   const handlePaste = async () => {
@@ -171,6 +171,7 @@ const SchedulePage: React.FC = () => {
           groupId: (src as any).groupId,
           courseId: (src as any).courseId,
           teacherId: (src as any).teacherId,
+          branchId: pasteForm.branchId,
         });
         setTimetableEvents((p) => [...p, created]);
       } else {
@@ -184,6 +185,7 @@ const SchedulePage: React.FC = () => {
           duration: src.duration,
           location: src.location,
           recurring: false,
+          branchId: pasteForm.branchId,
         });
         setCalendarEvents((p) => [...p, created]);
       }
@@ -336,6 +338,7 @@ const SchedulePage: React.FC = () => {
           location: form.location,
           recurring: true,
           dayOfWeek: form.dayOfWeek,
+          branchId: form.branchId,
         });
         setTimetableEvents((p) => [...p, created]);
       } else {
@@ -350,6 +353,7 @@ const SchedulePage: React.FC = () => {
           duration: form.duration,
           location: form.location,
           recurring: false,
+          branchId: form.branchId,
         });
         setCalendarEvents((p) => [...p, created]);
       }
@@ -671,6 +675,7 @@ const SchedulePage: React.FC = () => {
                                 startTime: clipboard.event.startTime || '09:00',
                                 endTime: clipboard.event.endTime || '10:00',
                                 date: '',
+                                branchId: branchId || undefined
                               });
                               setShowPasteModal(true);
                             } else {
@@ -783,6 +788,7 @@ const SchedulePage: React.FC = () => {
                                   startTime: clipboard.event.startTime || '09:00',
                                   endTime: clipboard.event.endTime || '10:00',
                                   date: dayStr,
+                                  branchId: branchId || undefined
                                 });
                                 setShowPasteModal(true);
                               } else {
@@ -890,6 +896,7 @@ const SchedulePage: React.FC = () => {
                     startTime: clipboard.event.startTime || '09:00',
                     endTime: clipboard.event.endTime || '10:00',
                     date: '',
+                    branchId: branchId || undefined
                   });
                 } else {
                   setPasteForm({
@@ -897,6 +904,7 @@ const SchedulePage: React.FC = () => {
                     startTime: clipboard.event.startTime || '09:00',
                     endTime: clipboard.event.endTime || '10:00',
                     date: contextMenu.event.date || '',
+                    branchId: branchId || undefined
                   });
                 }
                 setShowPasteModal(true);
@@ -939,6 +947,16 @@ const SchedulePage: React.FC = () => {
             </div>
 
             <div className="space-y-4">
+              <div>
+                <label className="text-[11px] font-bold text-slate-500 uppercase tracking-widest mb-1.5 block">{t('common.branch', 'Филиал')}</label>
+                <div className="w-full">
+                  <BranchFilter 
+                    value={pasteForm.branchId || null} 
+                    onChange={(val) => setPasteForm(f => ({ ...f, branchId: val || undefined }))} 
+                  />
+                </div>
+              </div>
+
               {activeTab === 'timetable' ? (
                 <div>
                   <label className="text-[11px] font-bold text-slate-500 uppercase tracking-widest mb-1.5 block">{t('schedule.dayOfWeek', 'День недели')}</label>
@@ -1000,6 +1018,16 @@ const SchedulePage: React.FC = () => {
               {activeTab === 'timetable' ? t('schedule.newTimetableLesson', 'Новый урок в расписании') : t('schedule.newEvent', 'Новое событие')}
             </h2>
             <div className="space-y-4">
+              <div>
+                <label className="text-[11px] font-bold text-slate-500 uppercase tracking-widest mb-1.5 block">{t('common.branch', 'Филиал')}</label>
+                <div className="w-full">
+                  <BranchFilter 
+                    value={form.branchId || null} 
+                    onChange={(val) => setForm(f => ({ ...f, branchId: val || undefined }))} 
+                  />
+                </div>
+              </div>
+
               <div>
                 <label className="text-[11px] font-bold text-slate-500 uppercase tracking-widest mb-1.5 block">{t('org.schedule.eventTitle', 'Название')}</label>
                 <input placeholder="Например: Математика, 11-А" value={form.title}

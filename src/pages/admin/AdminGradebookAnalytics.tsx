@@ -124,7 +124,35 @@ export default function AdminGradebookAnalytics() {
       ) : (
         <>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            {/* Avg Score Card */}
+            {/* Students Tracked */}
+            <div className="relative overflow-hidden bg-white dark:bg-[#151f2e] p-6 rounded-2xl border border-slate-200/80 dark:border-slate-700/50 shadow-sm hover:shadow-lg transition-shadow group">
+              <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+                 <GraduationCap className="w-24 h-24 text-blue-500 -mr-8 -mt-8" />
+              </div>
+              <div className="relative z-10">
+                <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-400/20 to-indigo-500/20 flex items-center justify-center mb-4 ring-1 ring-blue-500/30">
+                  <GraduationCap className="w-6 h-6 text-blue-600 dark:text-blue-400" />
+                </div>
+                <p className="text-4xl font-black text-slate-900 dark:text-white mb-1">{students.length}</p>
+                <p className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Студентов</p>
+              </div>
+            </div>
+
+            {/* Teachers Active */}
+            <div className="relative overflow-hidden bg-white dark:bg-[#151f2e] p-6 rounded-2xl border border-slate-200/80 dark:border-slate-700/50 shadow-sm hover:shadow-lg transition-shadow group">
+              <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+                 <ClipboardList className="w-24 h-24 text-violet-500 -mr-8 -mt-8" />
+              </div>
+              <div className="relative z-10">
+                <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-violet-400/20 to-purple-500/20 flex items-center justify-center mb-4 ring-1 ring-violet-500/30">
+                  <ClipboardList className="w-6 h-6 text-violet-600 dark:text-violet-400" />
+                </div>
+                <p className="text-4xl font-black text-slate-900 dark:text-white mb-1">{teachers.length}</p>
+                <p className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Преподавателей</p>
+              </div>
+            </div>
+
+            {/* Grades + Journal entries */}
             <div className="relative overflow-hidden bg-white dark:bg-[#151f2e] p-6 rounded-2xl border border-slate-200/80 dark:border-slate-700/50 shadow-sm hover:shadow-lg transition-shadow group">
               <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
                  <TrendingUp className="w-24 h-24 text-emerald-500 -mr-8 -mt-8" />
@@ -133,36 +161,8 @@ export default function AdminGradebookAnalytics() {
                 <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-emerald-400/20 to-teal-500/20 flex items-center justify-center mb-4 ring-1 ring-emerald-500/30">
                   <TrendingUp className="w-6 h-6 text-emerald-600 dark:text-emerald-400" />
                 </div>
-                <p className="text-4xl font-black text-slate-900 dark:text-white mb-1">{metrics.avgScore.toFixed(1)}%</p>
-                <p className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Средний балл</p>
-              </div>
-            </div>
-
-            {/* Attendance Card */}
-            <div className="relative overflow-hidden bg-white dark:bg-[#151f2e] p-6 rounded-2xl border border-slate-200/80 dark:border-slate-700/50 shadow-sm hover:shadow-lg transition-shadow group">
-              <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
-                 <ClipboardList className="w-24 h-24 text-blue-500 -mr-8 -mt-8" />
-              </div>
-              <div className="relative z-10">
-                <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-400/20 to-indigo-500/20 flex items-center justify-center mb-4 ring-1 ring-blue-500/30">
-                  <ClipboardList className="w-6 h-6 text-blue-600 dark:text-blue-400" />
-                </div>
-                <p className="text-4xl font-black text-slate-900 dark:text-white mb-1">{metrics.attendanceRate.toFixed(1)}%</p>
-                <p className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Посещаемость</p>
-              </div>
-            </div>
-
-            {/* Grades Count Card */}
-            <div className="relative overflow-hidden bg-white dark:bg-[#151f2e] p-6 rounded-2xl border border-slate-200/80 dark:border-slate-700/50 shadow-sm hover:shadow-lg transition-shadow group">
-              <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
-                 <GraduationCap className="w-24 h-24 text-amber-500 -mr-8 -mt-8" />
-              </div>
-              <div className="relative z-10">
-                <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-amber-400/20 to-orange-500/20 flex items-center justify-center mb-4 ring-1 ring-amber-500/30">
-                  <GraduationCap className="w-6 h-6 text-amber-600 dark:text-amber-400" />
-                </div>
-                <p className="text-4xl font-black text-slate-900 dark:text-white mb-1">{metrics.gradesCount || 0}</p>
-                <p className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Оценок выставлено</p>
+                <p className="text-4xl font-black text-slate-900 dark:text-white mb-1">{metrics.gradesCount}</p>
+                <p className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Оценок · {metrics.journalsCount} записей</p>
               </div>
             </div>
 

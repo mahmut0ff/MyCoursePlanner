@@ -1055,11 +1055,13 @@ const handler: Handler = async (event: HandlerEvent) => {
         updatedAt: now(),
       });
 
-      // Mirror to user-side membership
-      await adminDb.collection('users').doc(body.uid).collection('memberships').doc(orgId).update({
+      // Mirror to user-side membership (use set+merge in case doc doesn't exist yet)
+      await adminDb.collection('users').doc(body.uid).collection('memberships').doc(orgId).set({
         permissions: permData,
+        role: 'manager',
+        status: 'active',
         updatedAt: now(),
-      });
+      }, { merge: true });
 
       return ok({ message: 'Permissions updated', permissions: permData });
     }

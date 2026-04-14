@@ -535,10 +535,10 @@ const SchedulePage: React.FC = () => {
                         const isBeingDragged = lesson && draggedEvent?.id === lesson.id;
                         const isSelected = lesson && selectedEvent?.event.id === lesson.id;
 
-                        return (
+                         return (
                           <div
                             key={dayIdx}
-                            className={`relative border-r border-slate-100 dark:border-slate-700/50 last:border-r-0 min-h-[72px] p-1 transition-colors
+                            className={`relative border-r border-slate-100 dark:border-slate-700/50 last:border-r-0 min-h-[72px] min-w-0 p-1 transition-colors
                               ${isDropTarget ? 'bg-indigo-50/40 dark:bg-indigo-900/10' : ''}`}
                             onDragOver={(e) => handleDragOverDay(e, dayIdx)}
                             onDragLeave={handleDragLeaveDay}
@@ -546,7 +546,7 @@ const SchedulePage: React.FC = () => {
                           >
                             {lesson ? (
                               <div
-                                className={`group relative h-full rounded-xl p-2.5 border transition-all duration-200 overflow-hidden ${
+                                className={`group/card relative h-full rounded-xl p-2 border transition-all duration-200 overflow-hidden ${
                                   canEdit ? 'cursor-grab active:cursor-grabbing' : ''
                                 } ${isBeingDragged ? 'opacity-30 scale-95' : 'hover:shadow-md hover:-translate-y-0.5'} ${
                                   isSelected
@@ -563,7 +563,7 @@ const SchedulePage: React.FC = () => {
                                 <div className="absolute left-0 top-0 bottom-0 w-1 rounded-l-xl bg-gradient-to-b from-primary-400 to-indigo-500" />
 
                                 {/* Action buttons */}
-                                <div className="absolute top-1.5 right-1.5 flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity z-10">
+                                <div className="absolute top-1 right-1 flex items-center gap-0.5 opacity-0 group-hover/card:opacity-100 transition-opacity z-10">
                                   {canEdit && (
                                     <button
                                       onClick={(e) => { e.stopPropagation(); handleCopy(lesson); }}
@@ -582,20 +582,25 @@ const SchedulePage: React.FC = () => {
                                 </div>
 
                                 {/* Content */}
-                                <div className="pl-2 min-w-0 overflow-hidden" title={`${lesson.title}${lesson.location ? ` · ${lesson.location}` : ''}`}>
-                                  <p className="text-[12px] font-bold text-slate-800 dark:text-white leading-snug truncate pr-10">{lesson.title}</p>
-                                  <span className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 inline-flex items-center gap-0.5 mt-1">
-                                    <Clock className="w-2.5 h-2.5 text-primary-500 dark:text-primary-400" />{lesson.startTime}–{lesson.endTime}
+                                <div className="pl-2 min-w-0 overflow-hidden">
+                                  <p className="text-[12px] font-bold text-slate-800 dark:text-white leading-snug truncate pr-8">{lesson.title}</p>
+                                  <span className="text-[10px] font-medium text-slate-500 dark:text-slate-400 inline-flex items-center gap-0.5 mt-0.5">
+                                    <Clock className="w-2.5 h-2.5 text-primary-500 dark:text-primary-400 shrink-0" />{lesson.startTime}–{lesson.endTime}
                                   </span>
-                                  {lesson.location && (
-                                    <p className="text-[10px] text-slate-400 dark:text-slate-500 items-center gap-0.5 mt-0.5 truncate hidden group-hover:flex transition-all">
-                                      <MapPin className="w-2.5 h-2.5 shrink-0" />{lesson.location}
-                                    </p>
-                                  )}
                                 </div>
 
+                                {/* Location tooltip — appears on hover to the right */}
+                                {lesson.location && (
+                                  <div className="absolute left-full top-1/2 -translate-y-1/2 ml-2 z-50 hidden group-hover/card:block pointer-events-none">
+                                    <div className="relative bg-slate-900 dark:bg-white text-white dark:text-slate-900 text-[11px] font-semibold px-3 py-1.5 rounded-lg shadow-xl whitespace-nowrap">
+                                      <MapPin className="w-3 h-3 inline-block mr-1 -mt-0.5" />{lesson.location}
+                                      <div className="absolute right-full top-1/2 -translate-y-1/2 border-[5px] border-transparent border-r-slate-900 dark:border-r-white" />
+                                    </div>
+                                  </div>
+                                )}
+
                                 {/* Drag handle */}
-                                {canEdit && <GripVertical className="absolute bottom-1.5 right-1.5 w-3 h-3 text-slate-300 dark:text-slate-600 opacity-0 group-hover:opacity-60 transition-opacity" />}
+                                {canEdit && <GripVertical className="absolute bottom-1 right-1 w-3 h-3 text-slate-300 dark:text-slate-600 opacity-0 group-hover/card:opacity-60 transition-opacity" />}
                               </div>
                             ) : (
                               /* Empty cell — drop target */

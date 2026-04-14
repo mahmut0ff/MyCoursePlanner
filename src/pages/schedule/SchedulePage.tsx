@@ -655,8 +655,8 @@ const SchedulePage: React.FC = () => {
                   )}
                 </div>
 
-                {/* ── Paste strip ── */}
-                {canEdit && clipboard && !isDragging && (
+                {/* ── Paste / Add strip ── */}
+                {canEdit && !isDragging && (
                   <div className="border-t border-slate-200 dark:border-slate-700/50 bg-slate-50/50 dark:bg-slate-800/30">
                     <div className="grid grid-cols-[48px_repeat(7,1fr)]">
                       <div className="border-r border-slate-100 dark:border-slate-700/50" />
@@ -665,18 +665,27 @@ const SchedulePage: React.FC = () => {
                           key={dayIdx}
                           onClick={(e) => {
                             e.stopPropagation();
-                            setPasteForm({
-                              dayOfWeek: dayIdx,
-                              startTime: clipboard.event.startTime || '09:00',
-                              endTime: clipboard.event.endTime || '10:00',
-                              date: '',
-                            });
-                            setShowPasteModal(true);
+                            if (clipboard) {
+                              setPasteForm({
+                                dayOfWeek: dayIdx,
+                                startTime: clipboard.event.startTime || '09:00',
+                                endTime: clipboard.event.endTime || '10:00',
+                                date: '',
+                              });
+                              setShowPasteModal(true);
+                            } else {
+                              setForm(f => ({ ...f, type: 'lesson', dayOfWeek: dayIdx, branchId: branchId || undefined }));
+                              setShowCreate(true);
+                            }
                           }}
-                          className="border-r border-slate-100 dark:border-slate-700/50 last:border-r-0 py-2 flex items-center justify-center gap-1 text-[10px] font-bold text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 transition-colors"
+                          className={`border-r border-slate-100 dark:border-slate-700/50 last:border-r-0 py-2 flex items-center justify-center gap-1 text-[10px] font-bold transition-colors ${
+                            clipboard
+                              ? 'text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/20'
+                              : 'text-primary-600 dark:text-primary-400 hover:bg-primary-50 dark:hover:bg-primary-900/20'
+                          }`}
                         >
-                          <Clipboard className="w-3 h-3" />
-                          {t('schedule.paste', 'Вставить')}
+                          {clipboard ? <Clipboard className="w-3 h-3" /> : <Plus className="w-3 h-3" />}
+                          {clipboard ? t('schedule.paste', 'Вставить') : t('schedule.add', 'Добавить')}
                         </button>
                       ))}
                     </div>
@@ -755,6 +764,46 @@ const SchedulePage: React.FC = () => {
                     );
                   })}
                 </div>
+
+                {/* ── Paste / Add strip ── */}
+                {canEdit && !isDragging && (
+                  <div className="border-t border-slate-200 dark:border-slate-700/50 bg-slate-50/50 dark:bg-slate-800/30">
+                    <div className="grid grid-cols-8">
+                      <div className="border-r border-slate-100 dark:border-slate-700/50" />
+                      {weekDays.map((d, di) => {
+                        const dayStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+                        return (
+                          <button
+                            key={di}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              if (clipboard) {
+                                setPasteForm({
+                                  dayOfWeek: 0,
+                                  startTime: clipboard.event.startTime || '09:00',
+                                  endTime: clipboard.event.endTime || '10:00',
+                                  date: dayStr,
+                                });
+                                setShowPasteModal(true);
+                              } else {
+                                setForm(f => ({ ...f, type: 'exam', date: dayStr, branchId: branchId || undefined }));
+                                setShowCreate(true);
+                              }
+                            }}
+                            className={`border-r border-slate-100 dark:border-slate-700/50 last:border-r-0 py-2 flex items-center justify-center gap-1 text-[10px] font-bold transition-colors ${
+                              clipboard
+                                ? 'text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/20'
+                                : 'text-primary-600 dark:text-primary-400 hover:bg-primary-50 dark:hover:bg-primary-900/20'
+                            }`}
+                          >
+                            {clipboard ? <Clipboard className="w-3 h-3" /> : <Plus className="w-3 h-3" />}
+                            {clipboard ? t('schedule.paste', 'Вставить') : t('schedule.add', 'Добавить')}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Mobile List View */}

@@ -837,8 +837,6 @@
       "timezone": "Часовой пояс",
       "language": "Язык",
       "academic": "Учебные настройки",
-      "yearStart": "Начало учебного года",
-      "yearEnd": "Конец учебного года",
       "gradingScale": "Система оценок",
       "passingScore": "Проходной балл (%)",
       "scalePercentage": "Проценты",

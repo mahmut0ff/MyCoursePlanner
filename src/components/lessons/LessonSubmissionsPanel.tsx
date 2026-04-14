@@ -1,5 +1,4 @@
 import React, { useEffect, useState } from 'react';
-import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { apiOrgGetHomeworks } from '../../lib/api';
 import type { HomeworkSubmission } from '../../types';
@@ -12,7 +11,6 @@ interface LessonSubmissionsPanelProps {
 }
 
 export const LessonSubmissionsPanel: React.FC<LessonSubmissionsPanelProps> = ({ lessonId, organizationId }) => {
-  const { t } = useTranslation();
   const navigate = useNavigate();
   const [submissions, setSubmissions] = useState<HomeworkSubmission[]>([]);
   const [loading, setLoading] = useState(true);

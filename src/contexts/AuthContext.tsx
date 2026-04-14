@@ -118,8 +118,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (firebaseUser) await loadProfile(firebaseUser);
   }, [firebaseUser]);
 
-  // Register FCM push token (best-effort, non-blocking)
+  // Register FCM push token (best-effort, non-blocking, runs only once)
+  const fcmRegisteredRef = useRef(false);
   const registerFcmToken = async () => {
+    if (fcmRegisteredRef.current) return;
+    fcmRegisteredRef.current = true;
     try {
       const token = await requestNotificationPermission();
       if (token) {
@@ -128,6 +131,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     } catch (e) {
       console.warn('FCM token registration failed:', e);
+      fcmRegisteredRef.current = false; // allow retry on failure
     }
   };
 

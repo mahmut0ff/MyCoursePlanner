@@ -688,8 +688,6 @@ export interface OrgSettings {
   timezone: string;
   locale: string;
   supportedLocales?: string[];
-  academicYearStart?: string;
-  academicYearEnd?: string;
   gradingScale?: 'percentage' | 'letter' | 'points';
   passingScore: number;
   // Notifications

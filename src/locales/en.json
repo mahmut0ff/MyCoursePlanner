@@ -727,8 +727,6 @@
       "timezone": "Timezone",
       "language": "Language",
       "academic": "Academic Settings",
-      "yearStart": "Academic Year Start",
-      "yearEnd": "Academic Year End",
       "gradingScale": "Grading Scale",
       "passingScore": "Passing Score (%)",
       "scalePercentage": "Percentage",

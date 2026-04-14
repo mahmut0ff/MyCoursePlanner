@@ -147,16 +147,6 @@ const AcademicTab: React.FC<{ settings: OrgSettings; update: (k: string, v: any)
         <div className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">{t('org.settings.yearStart')}</label>
-              <input type="date" value={settings.academicYearStart || ''} onChange={(e) => update('academicYearStart', e.target.value)} className="input" />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">{t('org.settings.yearEnd')}</label>
-              <input type="date" value={settings.academicYearEnd || ''} onChange={(e) => update('academicYearEnd', e.target.value)} className="input" />
-            </div>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
               <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">{t('org.settings.gradingScale')}</label>
               <select value={settings.gradingScale || 'percentage'} onChange={(e) => update('gradingScale', e.target.value)} className="input">
                 <option value="percentage">{t('org.settings.scalePercentage')}</option>

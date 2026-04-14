@@ -48,7 +48,13 @@ export async function getMessagingInstance(): Promise<Messaging | null> {
  */
 export async function requestNotificationPermission(): Promise<string | null> {
   try {
-    const permission = await Notification.requestPermission();
+    // Only prompt if the user hasn't decided yet; avoid repeat popups
+    if (typeof Notification === 'undefined') return null;
+    let permission = Notification.permission;
+    if (permission === 'denied') return null;
+    if (permission === 'default') {
+      permission = await Notification.requestPermission();
+    }
     if (permission !== 'granted') return null;
 
     const m = await getMessagingInstance();

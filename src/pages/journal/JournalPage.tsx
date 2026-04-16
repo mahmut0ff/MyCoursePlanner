@@ -8,21 +8,16 @@ import {
   orgSaveJournal,
   orgBulkAttendance,
   apiAwardXP,
-  apiGetLessons,
   orgGetGradeSchema,
   orgGetGrades,
   orgSaveGrade,
-  orgUpdateCourse
 } from '../../lib/api';
-import type { Course, Group, UserProfile, JournalEntry, AttendanceStatus, ParticipationLevel, LessonPlan, GradeSchema, GradeEntry } from '../../types';
+import type { Course, Group, UserProfile, JournalEntry, AttendanceStatus, ParticipationLevel, GradeSchema, GradeEntry } from '../../types';
 import GradeCell from '../../components/gradebook/GradeCell';
-import { ClipboardList, Calendar, AlertCircle, AlertTriangle, RefreshCcw, UserCheck, CheckCircle2, XCircle, Clock, FileWarning, BookOpen, Plus, Loader2, Search } from 'lucide-react';
+import { ClipboardList, Calendar, AlertCircle, AlertTriangle, RefreshCcw, UserCheck, CheckCircle2, XCircle, Clock, FileWarning, Trophy, TrendingUp, Loader2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useAuth } from '../../contexts/AuthContext';
-import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
-import type { DragEndEvent } from '@dnd-kit/core';
-import { arrayMove, SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy, useSortable } from '@dnd-kit/sortable';
-import { CSS } from '@dnd-kit/utilities';
+
 
 function getLocalISODate(d: Date) {
   const yyyy = d.getFullYear();
@@ -60,70 +55,7 @@ const defaultSchema: GradeSchema = {
   updatedAt: '',
 };
 
-const SortableLessonItem = ({ id, lesson, isAttached, canEdit, groupStudentsLength, bulking, onAttach, onRemove }: any) => {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
 
-  const style = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-    zIndex: isDragging ? 20 : 1,
-    boxShadow: isDragging ? '0 10px 25px rgba(0,0,0,0.1)' : 'none',
-    opacity: isDragging ? 0.7 : 1,
-  };
-
-  return (
-    <div 
-      ref={setNodeRef}
-      style={style}
-      {...attributes}
-      className={`p-4 rounded-xl border transition-colors relative group ${isAttached ? 'bg-primary-50/50 border-primary-200 dark:bg-primary-900/10 dark:border-primary-800' : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700'}`}
-    >
-      <div 
-        {...listeners} 
-        className="absolute left-0 top-0 bottom-0 w-8 flex justify-center pt-5 text-slate-300 dark:text-slate-600 cursor-grab active:cursor-grabbing hover:text-slate-500" 
-        title="Перетащить"
-      >
-        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="9" cy="12" r="1"/><circle cx="9" cy="5" r="1"/><circle cx="9" cy="19" r="1"/><circle cx="15" cy="12" r="1"/><circle cx="15" cy="5" r="1"/><circle cx="15" cy="19" r="1"/></svg>
-      </div>
-
-      <div className="pl-6">
-        <h3 className="font-bold text-slate-900 dark:text-white text-sm mb-1 leading-tight line-clamp-2">
-          {lesson.title}
-        </h3>
-        <p className="text-xs text-slate-500 mb-3 font-medium">
-          {lesson.duration} мин • Модуль: {lesson.subject}
-        </p>
-        
-        {isAttached ? (
-          <div className="flex items-center">
-            <span className="flex items-center gap-1.5 text-primary-600 dark:text-primary-400 text-[11px] font-bold uppercase tracking-wider bg-primary-100 dark:bg-primary-900/40 px-2 py-1 rounded-md">
-              <CheckCircle2 className="w-3.5 h-3.5" /> Пройден
-            </span>
-            {canEdit && (
-              <button 
-                onPointerDown={(e) => e.stopPropagation()}
-                onClick={(e) => { e.stopPropagation(); onRemove(); }}
-                title="Отменить"
-                className="p-1 px-1.5 ml-auto text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-md transition-colors font-medium text-xs cursor-pointer z-10 relative"
-              >
-                Снять
-              </button>
-            )}
-          </div>
-        ) : (
-          <button 
-            onPointerDown={(e) => e.stopPropagation()}
-            onClick={(e) => { e.stopPropagation(); onAttach(lesson.id); }}
-            disabled={!canEdit || groupStudentsLength === 0 || bulking}
-            className="w-full py-2 bg-slate-50 dark:bg-slate-700/50 hover:bg-primary-50 hover:text-primary-600 dark:hover:bg-primary-900/20 dark:hover:text-primary-400 border border-slate-200 dark:border-slate-700 hover:border-primary-200 dark:hover:border-primary-800 text-slate-600 dark:text-slate-300 rounded-lg text-xs font-semibold transition-all cursor-pointer relative z-10 disabled:opacity-50 disabled:pointer-events-none"
-          >
-            Отметить как пройденный
-          </button>
-        )}
-      </div>
-    </div>
-  );
-};
 
 const JournalPage: React.FC = () => {
   const { t } = useTranslation();
@@ -133,22 +65,14 @@ const JournalPage: React.FC = () => {
   const [courses, setCourses] = useState<Course[]>([]);
   const [allGroups, setAllGroups] = useState<Group[]>([]);
   const [allStudents, setAllStudents] = useState<UserProfile[]>([]);
-  const [allLessons, setAllLessons] = useState<LessonPlan[]>([]);
-  const [isLessonModalOpen, setIsLessonModalOpen] = useState(false);
-  const [lessonToAdd, setLessonToAdd] = useState('');
-
-  const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
-    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
-  );
 
   const [selectedCourseId, setSelectedCourseId] = useState<string>('');
   const [selectedGroupId, setSelectedGroupId] = useState<string>('');
   const [date, setDate] = useState<string>(todayFormatted);
-  const [lessonSearchQuery, setLessonSearchQuery] = useState('');
   
   const [schema, setSchema] = useState<GradeSchema>(defaultSchema);
   const [entries, setEntries] = useState<Record<string, JournalEntry>>({});
+  const [allJournalEntries, setAllJournalEntries] = useState<JournalEntry[]>([]);
   const [courseJournalDates, setCourseJournalDates] = useState<string[]>([]);
   const [grades, setGrades] = useState<Record<string, GradeEntry>>({});
   const [syncStatus, setSyncStatus] = useState<Record<string, boolean>>({});
@@ -193,13 +117,11 @@ const JournalPage: React.FC = () => {
       orgGetCourses().catch(() => []),
       orgGetGroups().catch(() => []),
       orgGetStudents().catch(() => []),
-      apiGetLessons().catch(() => [])
     ])
-    .then(([coursesRes, groupsRes, studentsRes, lessonsRes]) => {
+    .then(([coursesRes, groupsRes, studentsRes]) => {
       let c = Array.isArray(coursesRes) ? coursesRes : [];
       let g = Array.isArray(groupsRes) ? groupsRes : [];
       const s = Array.isArray(studentsRes) ? studentsRes : [];
-      const l = Array.isArray(lessonsRes) ? lessonsRes : [];
 
       if (role === 'teacher' && profile?.uid) {
         g = g.filter((group: Group) => group.teacherIds?.includes(profile.uid));
@@ -210,7 +132,6 @@ const JournalPage: React.FC = () => {
       setCourses(c);
       setAllGroups(g);
       setAllStudents(s);
-      setAllLessons(l);
 
       if (c.length > 0) {
         setSelectedCourseId(c[0].id);
@@ -257,6 +178,7 @@ const JournalPage: React.FC = () => {
       
       const uniqueDates = Array.from(new Set(allEntries.map((j: any) => j.date as string))).sort((a, b) => b.localeCompare(a));
       setCourseJournalDates(uniqueDates);
+      setAllJournalEntries(allEntries as JournalEntry[]);
 
       const entriesMap: Record<string, JournalEntry> = {};
       dateEntries.forEach((j: any) => {
@@ -292,10 +214,6 @@ const JournalPage: React.FC = () => {
     return allStudents.filter(s => group.studentIds.includes(s.uid));
   }, [selectedGroupId, allGroups, allStudents]);
 
-  const courseLessons = useMemo(() => {
-    if (!selectedGroupId) return [];
-    return allLessons.filter(l => (l.groupIds || []).includes(selectedGroupId));
-  }, [selectedGroupId, allLessons]);
 
   const currentLessonId = useMemo(() => {
     // Find the attached lesson among the group's students for this date
@@ -461,74 +379,7 @@ const JournalPage: React.FC = () => {
     }
   };
 
-  const handleDragEnd = async (event: DragEndEvent) => {
-    // Drag-and-drop reordering is no longer supported after lessons-to-groups migration
-  };
 
-  const handleAddLessonToCourse = async () => {
-    // No-op: lessons are now linked through groupIds, not course.lessonIds
-    setIsLessonModalOpen(false);
-    setLessonToAdd('');
-  };
-
-  const attachLesson = async (lessonId: string) => {
-    if (!canEdit || !selectedCourseId || groupStudents.length === 0) {
-      if (groupStudents.length === 0) toast.error('В группе нет студентов');
-      return;
-    }
-    
-    setBulking(true);
-    const bulkData = groupStudents.map(s => {
-      const existing = entries[s.uid];
-      return {
-        studentId: s.uid,
-        attendance: existing?.attendance || 'present', // Give them 'present' default just in case
-        participation: existing?.participation,
-        note: existing?.note,
-        lessonId
-      };
-    });
-
-    try {
-      const res = await orgBulkAttendance(selectedCourseId, date, bulkData);
-      const newMap = { ...entries };
-      (res as JournalEntry[]).forEach(e => { newMap[e.studentId] = e; });
-      setEntries(newMap);
-      toast.success('Урок успешно прикреплен к дате!');
-    } catch(e: any) {
-      toast.error(e.message || 'Ошибка прикрепления урока');
-    } finally {
-      setBulking(false);
-    }
-  };
-
-  const removeAttachedLesson = async () => {
-    if (!canEdit || !selectedCourseId || groupStudents.length === 0) return;
-    
-    setBulking(true);
-    const bulkData = groupStudents.map(s => {
-      const existing = entries[s.uid];
-      return {
-        studentId: s.uid,
-        attendance: existing?.attendance || 'present',
-        participation: existing?.participation,
-        note: existing?.note,
-        lessonId: '' // Clear lesson
-      };
-    });
-
-    try {
-      const res = await orgBulkAttendance(selectedCourseId, date, bulkData);
-      const newMap = { ...entries };
-      (res as JournalEntry[]).forEach(e => { newMap[e.studentId] = e; });
-      setEntries(newMap);
-      toast.success('Привязка урока снята');
-    } catch(e: any) {
-      toast.error(e.message || 'Ошибка открепления урока');
-    } finally {
-      setBulking(false);
-    }
-  }
 
   if (loading) {
     return <div className="flex justify-center py-20"><div className="w-8 h-8 border-2 border-primary-500 rounded-full animate-spin border-t-transparent" /></div>;
@@ -820,105 +671,133 @@ const JournalPage: React.FC = () => {
         )}
       </div>
 
-      {/* ═ RIGHT COLUMN: LESSON PLANS ═ */}
+      {/* ═ RIGHT COLUMN: STUDENT RANKING ═ */}
       <div className="w-full xl:w-80 shrink-0 space-y-4">
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-2">
-            <BookOpen className="w-5 h-5 text-slate-500" />
-            <h2 className="text-lg font-bold text-slate-900 dark:text-white">
-              Планы уроков
-            </h2>
-          </div>
-          {selectedCourseId && canEdit && (
-             <button onClick={() => setIsLessonModalOpen(true)} className="p-1 px-2 border border-slate-200 dark:border-slate-700 hover:border-primary-400 bg-white dark:bg-slate-800 rounded-lg text-xs font-semibold hover:bg-primary-50 dark:hover:bg-primary-900/20 text-slate-600 dark:text-slate-300 dark:hover:text-primary-400 transition-colors flex items-center gap-1 shadow-sm cursor-pointer z-10">
-                <Plus className="w-3.5 h-3.5" />
-                Урок
-             </button>
-          )}
+        <div className="flex items-center gap-2 mb-4">
+          <Trophy className="w-5 h-5 text-amber-500" />
+          <h2 className="text-lg font-bold text-slate-900 dark:text-white">
+            Рейтинг студентов
+          </h2>
         </div>
 
-        {selectedCourseId && courseLessons.length > 0 && (
-          <div className="relative mb-4">
-            <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
-            <input 
-              type="text" 
-              placeholder="Найти урок..." 
-              value={lessonSearchQuery}
-              onChange={(e) => setLessonSearchQuery(e.target.value)}
-              className="w-full pl-9 pr-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm outline-none focus:border-primary-500 transition-colors"
-            />
+        {groupStudents.length === 0 ? (
+          <div className="p-6 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200 dark:border-slate-700/50 text-center">
+            <p className="text-sm text-slate-500">Выберите группу со студентами.</p>
           </div>
-        )}
-
-        {!selectedCourseId ? (
-           <p className="text-sm text-slate-500">Выберите курс для отображения уроков.</p>
-        ) : courseLessons.length === 0 ? (
-           <div className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200 dark:border-slate-700/50 text-center">
-             <p className="text-sm text-slate-500 mb-3">К этому курсу не прикрепелены плановые уроки.</p>
-             {canEdit && (
-               <button onClick={() => setIsLessonModalOpen(true)} className="px-3 py-1.5 bg-primary-50 dark:bg-primary-900/20 text-primary-600 dark:text-primary-400 font-medium text-xs rounded-lg hover:bg-primary-100 dark:hover:bg-primary-900/40 transition-colors cursor-pointer">Добавить с базы</button>
-             )}
-           </div>
         ) : (
-          <div className="space-y-3 pb-8">
-            <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-              <SortableContext items={courseLessons.filter(l => !lessonSearchQuery || l.title.toLowerCase().includes(lessonSearchQuery.toLowerCase())).map(l => l.id)} strategy={verticalListSortingStrategy}>
-                {courseLessons.filter(l => !lessonSearchQuery || l.title.toLowerCase().includes(lessonSearchQuery.toLowerCase())).map(lesson => (
-                  <SortableLessonItem 
-                    key={lesson.id}
-                    id={lesson.id}
-                    lesson={lesson}
-                    isAttached={currentLessonId === lesson.id}
-                    canEdit={canEdit}
-                    groupStudentsLength={groupStudents.length}
-                    bulking={bulking}
-                    onAttach={attachLesson}
-                    onRemove={removeAttachedLesson}
-                  />
-                ))}
-              </SortableContext>
-            </DndContext>
+          <div className="space-y-2">
+            {(() => {
+              // Compute ranking for group students
+              const totalDates = courseJournalDates.length || 1;
+              
+              const ranked = groupStudents.map(student => {
+                // Attendance: count present/late across ALL dates
+                const studentEntries = allJournalEntries.filter(e => e.studentId === student.uid);
+                const presentCount = studentEntries.filter(e => e.attendance === 'present' || e.attendance === 'late').length;
+                const attendancePct = Math.round((presentCount / totalDates) * 100);
+
+                // Average grade
+                const studentGrades = Object.entries(grades)
+                  .filter(([key]) => key.startsWith(`${student.uid}_`))
+                  .map(([, g]) => g.value)
+                  .filter((v): v is number => typeof v === 'number');
+                  
+                const avgGrade = studentGrades.length > 0
+                  ? Math.round(studentGrades.reduce((sum, v) => sum + v, 0) / studentGrades.length)
+                  : 0;
+                const maxGrade = schema.scale.max || 100;
+                const gradePct = maxGrade > 0 ? Math.round((avgGrade / maxGrade) * 100) : 0;
+
+                // Overall score: 40% attendance + 60% grade
+                const overallScore = Math.round(attendancePct * 0.4 + gradePct * 0.6);
+
+                return { student, attendancePct, avgGrade, maxGrade, gradePct, overallScore, totalEntries: studentEntries.length };
+              })
+              .sort((a, b) => b.overallScore - a.overallScore);
+
+              const medalColors = [
+                'from-amber-400 to-yellow-500',   // gold
+                'from-slate-300 to-slate-400',     // silver 
+                'from-amber-600 to-orange-700',    // bronze
+              ];
+
+              return ranked.map((r, i) => (
+                <div key={r.student.uid} className={`p-3.5 rounded-xl border transition-all ${
+                  i === 0 ? 'bg-gradient-to-r from-amber-50 to-yellow-50 border-amber-200 dark:from-amber-900/10 dark:to-yellow-900/10 dark:border-amber-800/50' :
+                  'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600'
+                }`}>
+                  <div className="flex items-center gap-3">
+                    {/* Rank */}
+                    <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 text-sm font-extrabold ${
+                      i < 3 
+                        ? `bg-gradient-to-br ${medalColors[i]} text-white shadow-sm`
+                        : 'bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400'
+                    }`}>
+                      {i + 1}
+                    </div>
+
+                    {/* Avatar + Name */}
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-bold text-slate-900 dark:text-white truncate">
+                        {r.student.displayName}
+                      </p>
+                      <div className="flex items-center gap-2 mt-1">
+                        <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${
+                          r.attendancePct >= 80 ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400' :
+                          r.attendancePct >= 50 ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400' :
+                          'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
+                        }`}>
+                          {r.attendancePct}% посещ.
+                        </span>
+                        {r.avgGrade > 0 && (
+                          <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-700 px-1.5 py-0.5 rounded">
+                            {r.avgGrade}/{r.maxGrade}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Score */}
+                    <div className="text-right shrink-0">
+                      <p className={`text-lg font-extrabold ${
+                        r.overallScore >= 80 ? 'text-emerald-600 dark:text-emerald-400' :
+                        r.overallScore >= 50 ? 'text-amber-600 dark:text-amber-400' :
+                        'text-red-500 dark:text-red-400'
+                      }`}>
+                        {r.overallScore}
+                      </p>
+                      <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">балл</p>
+                    </div>
+                  </div>
+
+                  {/* Progress bar */}
+                  <div className="mt-2.5 h-1.5 bg-slate-100 dark:bg-slate-700 rounded-full overflow-hidden">
+                    <div 
+                      className={`h-full rounded-full transition-all duration-500 ${
+                        r.overallScore >= 80 ? 'bg-emerald-500' :
+                        r.overallScore >= 50 ? 'bg-amber-500' :
+                        'bg-red-500'
+                      }`}
+                      style={{ width: `${Math.min(r.overallScore, 100)}%` }}
+                    />
+                  </div>
+                </div>
+              ));
+            })()}
+
+            {/* Legend */}
+            <div className="mt-4 p-3 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200 dark:border-slate-700/50">
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2 flex items-center gap-1">
+                <TrendingUp className="w-3 h-3" />
+                Формула рейтинга
+              </p>
+              <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">
+                40% посещаемость + 60% ср.оценка
+              </p>
+            </div>
           </div>
         )}
       </div>
-
-      {/* MODAL = ADD LESSON */}
-      {isLessonModalOpen && selectedCourseId && (
-        <div className="fixed inset-0 z-[100] flex justify-center items-center bg-black/40 backdrop-blur-sm px-4">
-           <div className="bg-white dark:bg-slate-900 w-full max-w-md rounded-2xl shadow-xl border border-slate-200 dark:border-slate-700 overflow-hidden">
-             <div className="p-5 border-b border-slate-100 dark:border-slate-800/80 flex items-center justify-between">
-                <div>
-                  <h3 className="text-lg font-bold text-slate-900 dark:text-white leading-tight">Добавить урок в курс</h3>
-                  <p className="text-[11px] text-slate-500 font-medium mt-0.5">Выберите урок из общей базы знаний</p>
-                </div>
-                <button onClick={() => setIsLessonModalOpen(false)} className="bg-slate-100 dark:bg-slate-800 p-1.5 rounded-lg text-slate-500 hover:text-slate-700 dark:hover:text-slate-300">
-                  <XCircle className="w-5 h-5" />
-                </button>
-             </div>
-             <div className="p-5">
-                <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-2">Существующие уроки</label>
-                <select 
-                  className="input text-sm w-full mb-5" 
-                  value={lessonToAdd} 
-                  onChange={(e) => setLessonToAdd(e.target.value)}
-                >
-                  <option value="" disabled>-- Выберите урок --</option>
-                  {allLessons
-                    .filter(l => !(courseLessons.map(cl => cl.id)).includes(l.id))
-                    .sort((a,b) => a.title.localeCompare(b.title))
-                    .map(l => (
-                      <option key={l.id} value={l.id}>{l.title} ({l.duration} мин)</option>
-                  ))}
-                </select>
-
-                <div className="flex gap-2">
-                  <button onClick={() => setIsLessonModalOpen(false)} className="btn-secondary flex-1 py-2.5">Отмена</button>
-                  <button onClick={handleAddLessonToCourse} disabled={!lessonToAdd} className="btn-primary flex-1 py-2.5 disabled:opacity-50">Добавить</button>
-                </div>
-             </div>
-           </div>
-        </div>
-      )}
 
     </div>
   );

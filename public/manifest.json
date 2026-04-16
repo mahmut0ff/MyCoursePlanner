@@ -13,13 +13,13 @@
   "dir": "ltr",
   "id": "/",
   "icons": [
-    { "src": "/icons/icon-48.webp",  "type": "image/webp", "sizes": "48x48",   "purpose": "any" },
-    { "src": "/icons/icon-72.webp",  "type": "image/webp", "sizes": "72x72",   "purpose": "any" },
-    { "src": "/icons/icon-96.webp",  "type": "image/webp", "sizes": "96x96",   "purpose": "any" },
-    { "src": "/icons/icon-128.webp", "type": "image/webp", "sizes": "128x128", "purpose": "any" },
-    { "src": "/icons/icon-192.webp", "type": "image/webp", "sizes": "192x192", "purpose": "any maskable" },
-    { "src": "/icons/icon-256.webp", "type": "image/webp", "sizes": "256x256", "purpose": "any" },
-    { "src": "/icons/icon-512.webp", "type": "image/webp", "sizes": "512x512", "purpose": "any maskable" }
+    { "src": "/icons/icon-48.png",  "type": "image/png", "sizes": "48x48",   "purpose": "any" },
+    { "src": "/icons/icon-72.png",  "type": "image/png", "sizes": "72x72",   "purpose": "any" },
+    { "src": "/icons/icon-96.png",  "type": "image/png", "sizes": "96x96",   "purpose": "any" },
+    { "src": "/icons/icon-128.png", "type": "image/png", "sizes": "128x128", "purpose": "any" },
+    { "src": "/icons/icon-192.png", "type": "image/png", "sizes": "192x192", "purpose": "any maskable" },
+    { "src": "/icons/icon-256.png", "type": "image/png", "sizes": "256x256", "purpose": "any" },
+    { "src": "/icons/icon-512.png", "type": "image/png", "sizes": "512x512", "purpose": "any maskable" }
   ],
   "screenshots": [],
   "prefer_related_applications": false,
@@ -28,19 +28,19 @@
       "name": "Dashboard",
       "short_name": "Home",
       "url": "/dashboard",
-      "icons": [{ "src": "/icons/icon-96.webp", "sizes": "96x96" }]
+      "icons": [{ "src": "/icons/icon-96.png", "sizes": "96x96" }]
     },
     {
       "name": "Lessons",
       "short_name": "Lessons",
       "url": "/lessons",
-      "icons": [{ "src": "/icons/icon-96.webp", "sizes": "96x96" }]
+      "icons": [{ "src": "/icons/icon-96.png", "sizes": "96x96" }]
     },
     {
       "name": "Schedule",
       "short_name": "Schedule",
       "url": "/schedule",
-      "icons": [{ "src": "/icons/icon-96.webp", "sizes": "96x96" }]
+      "icons": [{ "src": "/icons/icon-96.png", "sizes": "96x96" }]
     }
   ]
 }

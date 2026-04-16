@@ -33,7 +33,7 @@ class HomeScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Planula'),
+        title: const Text('Planula Junior'),
         actions: [
           Stack(
             children: [

@@ -300,7 +300,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             _SettingsTile(
               icon: Icons.info_outline,
               title: 'О приложении',
-              subtitle: 'Planula v1.0.1',
+              subtitle: 'Planula Junior v1.0.1',
               onTap: () => _showAbout(context),
             ),
 
@@ -530,10 +530,10 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             const Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('Planula',
+                Text('Planula Junior',
                     style:
                         TextStyle(fontWeight: FontWeight.w800, fontSize: 18)),
-                Text('Версия 1.0.1',
+                Text('v1.0.1',
                     style: TextStyle(fontSize: 12, fontWeight: FontWeight.w400)),
               ],
             ),

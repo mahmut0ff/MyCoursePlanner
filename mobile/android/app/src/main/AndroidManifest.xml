@@ -3,7 +3,7 @@
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
 
     <application
-        android:label="Planula"
+        android:label="Planula Junior"
         android:name="${applicationName}"
         android:icon="@mipmap/launcher_icon">
         <activity

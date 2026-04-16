@@ -307,4 +307,27 @@ class ApiService {
     final res = await _dio.post('/api-homework', data: payload);
     return res.data;
   }
+
+  // ── Gamification ──
+
+  Future<Map<String, dynamic>> awardXP(Map<String, dynamic> payload) async {
+    final res = await _dio.post('/api-gamification', data: payload);
+    return res.data;
+  }
+
+  // ── Gradebook (Diary) ──
+
+  Future<List<dynamic>> getGrades({String? courseId}) async {
+    final params = <String, String>{'action': 'grades'};
+    if (courseId != null) params['courseId'] = courseId;
+    final res = await _dio.get('/api-gradebook', queryParameters: params);
+    return (res.data is List) ? res.data : [];
+  }
+
+  Future<List<dynamic>> getJournal({String? courseId}) async {
+    final params = <String, String>{'action': 'journal'};
+    if (courseId != null) params['courseId'] = courseId;
+    final res = await _dio.get('/api-gradebook', queryParameters: params);
+    return (res.data is List) ? res.data : [];
+  }
 }

@@ -230,7 +230,7 @@ const CourseDetailPage: React.FC = () => {
                 {(course.price && course.price > 0) ? (
                   <div className="flex items-center justify-center gap-2 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400 px-4 py-2 rounded-xl font-bold border border-emerald-100 dark:border-emerald-800/50">
                     <Coins className="w-5 h-5" />
-                    <span className="text-lg">{course.price.toLocaleString()} с.</span>
+                    <span className="text-lg">{course.price.toLocaleString()} сом</span>
                     <span className="text-xs font-medium opacity-70">
                       /{course.paymentFormat === 'monthly' ? t('common.monthly', 'мес') : t('common.oneTime', 'разово')}
                     </span>
@@ -243,7 +243,7 @@ const CourseDetailPage: React.FC = () => {
                 )}
               </div>
 
-              {isStudent && (
+              {isStudent && !groups.some(g => g.studentIds?.includes(profile?.uid as string)) && (
                  <button 
                    onClick={handleEnrollCourse} 
                    disabled={saving}
@@ -251,6 +251,12 @@ const CourseDetailPage: React.FC = () => {
                  >
                    Выбрать этот курс
                  </button>
+              )}
+              {isStudent && groups.some(g => g.studentIds?.includes(profile?.uid as string)) && (
+                <div className="mt-6 w-full sm:w-auto px-6 py-3 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400 rounded-xl font-bold border border-emerald-200 dark:border-emerald-800/50 flex items-center justify-center gap-2">
+                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
+                  Вы учитесь на этом курсе
+                </div>
               )}
             </div>
 

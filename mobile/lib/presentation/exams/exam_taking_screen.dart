@@ -109,6 +109,18 @@ class _ExamTakingScreenState extends ConsumerState<ExamTakingScreen> {
         'timeSpentSeconds': timeSpent,
       });
 
+      // Award XP for exam completion (streaks, badges, etc.)
+      try {
+        await api.awardXP({
+          'type': 'exam',
+          'examPassed': result['passed'] == true,
+          'percentage': result['percentage'] ?? 0,
+        });
+        ref.invalidate(gamificationProvider);
+      } catch (_) {
+        // Non-critical — don't block result display
+      }
+
       _timer?.cancel();
       setState(() {
         _result = result;

@@ -101,7 +101,7 @@ class CourseDetailScreen extends ConsumerWidget {
                         if (!course.isFree) ...[
                           const Spacer(),
                           Text(
-                            '${course.price!.toStringAsFixed(0)} ₸',
+                            '${course.price!.toStringAsFixed(0)} сом',
                             style: theme.textTheme.titleMedium?.copyWith(
                               color: theme.colorScheme.primary,
                               fontWeight: FontWeight.w800,
@@ -132,44 +132,86 @@ class CourseDetailScreen extends ConsumerWidget {
                       const SizedBox(height: 24),
                     ],
 
-                    // ── Enroll Button ──
-                    SizedBox(
-                      width: double.infinity,
-                      height: 52,
-                      child: ElevatedButton.icon(
-                        onPressed: () async {
-                          try {
-                            final api = ref.read(apiServiceProvider);
-                            await api.enrollInCourse(courseId);
-                            if (context.mounted) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content: Text(
-                                      'Заявка на курс отправлена!'),
+                    // ── Enroll Button (only if not already enrolled) ──
+                    ...(() {
+                      final groups = groupsAsync.valueOrNull ?? [];
+                      final uid = currentUser?.uid ?? '';
+                      final isEnrolled = groups.any(
+                          (g) => (g.studentIds).contains(uid));
+
+                      if (isEnrolled) {
+                        return [
+                          Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.symmetric(
+                                vertical: 14, horizontal: 16),
+                            decoration: BoxDecoration(
+                              color: Colors.green.withValues(alpha: 0.1),
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(
+                                  color:
+                                      Colors.green.withValues(alpha: 0.3)),
+                            ),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(Icons.check_circle,
+                                    color: Colors.green.shade600, size: 20),
+                                const SizedBox(width: 8),
+                                Text(
+                                  'Вы учитесь на этом курсе',
+                                  style: TextStyle(
+                                    color: Colors.green.shade700,
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: 15,
+                                  ),
                                 ),
-                              );
-                            }
-                          } catch (e) {
-                            if (context.mounted) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                    content: Text('Ошибка: $e')),
-                              );
-                            }
-                          }
-                        },
-                        icon: const Icon(Icons.school_outlined),
-                        label: Text(
-                          course.isFree
-                              ? 'Записаться на курс'
-                              : 'Записаться за ${course.price!.toStringAsFixed(0)} ₸',
-                          style: const TextStyle(
-                            fontWeight: FontWeight.w600,
-                            fontSize: 16,
+                              ],
+                            ),
+                          ),
+                        ];
+                      }
+
+                      return [
+                        SizedBox(
+                          width: double.infinity,
+                          height: 52,
+                          child: ElevatedButton.icon(
+                            onPressed: () async {
+                              try {
+                                final api = ref.read(apiServiceProvider);
+                                await api.enrollInCourse(courseId);
+                                if (context.mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                      content: Text(
+                                          'Заявка на курс отправлена!'),
+                                    ),
+                                  );
+                                }
+                              } catch (e) {
+                                if (context.mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                        content: Text('Ошибка: $e')),
+                                  );
+                                }
+                              }
+                            },
+                            icon: const Icon(Icons.school_outlined),
+                            label: Text(
+                              course.isFree
+                                  ? 'Записаться на курс'
+                                  : 'Записаться за ${course.price!.toStringAsFixed(0)} сом',
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w600,
+                                fontSize: 16,
+                              ),
+                            ),
                           ),
                         ),
-                      ),
-                    ),
+                      ];
+                    })(),
                     const SizedBox(height: 28),
 
                     // ── Groups ──

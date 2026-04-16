@@ -212,7 +212,7 @@ class _CourseCard extends StatelessWidget {
                         if (!course.isFree) ...[
                           const Spacer(),
                           Text(
-                            '${course.price!.toStringAsFixed(0)} ₸',
+                            '${course.price!.toStringAsFixed(0)} сом',
                             style: theme.textTheme.labelMedium?.copyWith(
                               color: theme.colorScheme.primary,
                               fontWeight: FontWeight.w700,

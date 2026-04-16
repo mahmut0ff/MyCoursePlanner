@@ -6,6 +6,9 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../../app.dart';
 import '../../domain/providers/auth_provider.dart';
+import '../../domain/providers/course_providers.dart';
+import '../../domain/providers/exam_providers.dart';
+import '../../domain/providers/schedule_providers.dart';
 
 class ProfileScreen extends ConsumerStatefulWidget {
   const ProfileScreen({super.key});
@@ -481,6 +484,15 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                         await api.switchOrg(m.id);
                         ref.invalidate(userProfileProvider);
                         ref.invalidate(gamificationProvider);
+                        // Invalidate all org-scoped data
+                        ref.invalidate(coursesProvider);
+                        ref.invalidate(myGroupsProvider);
+                        ref.invalidate(myAttemptsProvider);
+                        ref.invalidate(dashboardProvider);
+                        ref.invalidate(dayScheduleProvider);
+                        ref.invalidate(todayScheduleProvider);
+                        ref.invalidate(timetableProvider);
+                        ref.invalidate(userMembershipsProvider);
                       } catch (e) {
                         if (context.mounted) {
                           ScaffoldMessenger.of(context).showSnackBar(
@@ -498,19 +510,48 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   }
 
   void _showAbout(BuildContext context) {
-    showAboutDialog(
+    final theme = Theme.of(context);
+    showDialog(
       context: context,
-      applicationName: 'Planula',
-      applicationVersion: '1.0.1',
-      applicationLegalese: '© ${DateTime.now().year} Planula Systems. Все права защищены.',
-      children: [
-        const SizedBox(height: 16),
-        const Text(
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: theme.colorScheme.primary.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Icon(Icons.school_rounded,
+                  color: theme.colorScheme.primary, size: 24),
+            ),
+            const SizedBox(width: 12),
+            const Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Planula',
+                    style:
+                        TextStyle(fontWeight: FontWeight.w800, fontSize: 18)),
+                Text('Версия 1.0.1',
+                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.w400)),
+              ],
+            ),
+          ],
+        ),
+        content: const Text(
           'Образовательная платформа для учебных центров.\n'
           'Курсы, экзамены, расписание — всё в одном месте.\n\n'
-          'Разработано Planula Systems.',
+          '© 2026 Planula Systems.\nВсе права защищены.',
+          style: TextStyle(height: 1.5),
         ),
-      ],
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Закрыть'),
+          ),
+        ],
+      ),
     );
   }
 }

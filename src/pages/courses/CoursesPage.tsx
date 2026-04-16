@@ -153,7 +153,7 @@ const CoursesPage: React.FC = () => {
                   </span>
                   {(course.price && course.price > 0) ? (
                     <p className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/30 px-2 py-0.5 rounded-md">
-                       {course.price} с.
+                       {course.price} сом
                     </p>
                   ) : (
                     <p className="text-[10px] font-bold text-slate-400 bg-slate-50 dark:bg-slate-800 px-2 py-0.5 rounded-md">Free</p>

@@ -24,6 +24,7 @@ import '../../presentation/quiz/quiz_play_screen.dart';
 import '../../presentation/groups/group_detail_screen.dart';
 import '../../presentation/lessons/lesson_view_screen.dart';
 import '../../presentation/lessons/homework_submit_screen.dart';
+import '../../presentation/diary/diary_screen.dart';
 
 final _rootNavigatorKey = GlobalKey<NavigatorState>();
 final _shellNavigatorHomeKey = GlobalKey<NavigatorState>(debugLabel: 'home');
@@ -86,6 +87,11 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/achievements',
         parentNavigatorKey: _rootNavigatorKey,
         builder: (context, state) => const AchievementsScreen(),
+      ),
+      GoRoute(
+        path: '/diary',
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (context, state) => const DiaryScreen(),
       ),
       GoRoute(
         path: '/courses/:id',

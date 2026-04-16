@@ -3,7 +3,7 @@
  * network-first for navigation, skip API calls entirely.
  * Cache busting via versioned cache name.
  */
-const CACHE_VERSION = 'planula-v2';
+const CACHE_VERSION = 'planula-v3';
 const STATIC_ASSETS = [
   '/',
   '/manifest.json',

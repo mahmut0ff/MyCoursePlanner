@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "646458638686",
+    "project_id": "confident-totem-426112-j6",
+    "storage_bucket": "confident-totem-426112-j6.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:646458638686:android:865b1db3590d9a261fcfcf",
+        "android_client_info": {
+          "package_name": "com.planula.app"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "646458638686-r6eq6f4estv1qk5p9e2omlpb3dbsec2d.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBdmMh6av-czkmNDhAdcKlpdC1WPjs8L7k"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "646458638686-r6eq6f4estv1qk5p9e2omlpb3dbsec2d.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

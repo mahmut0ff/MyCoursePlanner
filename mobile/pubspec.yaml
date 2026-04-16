@@ -1,0 +1,85 @@
+name: planula
+description: Planula - Education Management Platform for Students
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.10.0
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_localizations:
+    sdk: flutter
+
+  # Firebase
+  firebase_core: ^3.13.0
+  firebase_auth: ^5.6.0
+  cloud_firestore: ^5.6.0
+  firebase_storage: ^12.4.0
+  firebase_messaging: ^15.2.0
+
+  # State Management
+  flutter_riverpod: ^2.6.1
+  riverpod_annotation: ^2.6.1
+
+  # Navigation
+  go_router: ^15.1.2
+
+  # Networking
+  dio: ^5.7.0
+
+  # Data Classes
+  freezed_annotation: ^3.0.0
+  json_annotation: ^4.9.0
+
+  # UI
+  cached_network_image: ^3.4.1
+  flutter_widget_from_html: ^0.17.1
+  shimmer: ^3.0.0
+  lottie: ^3.3.1
+  fl_chart: ^1.0.0
+  google_fonts: ^6.2.1
+  flutter_local_notifications: ^18.0.1
+
+  # Utilities
+  intl: ^0.20.2
+  image_picker: ^1.1.2
+  file_picker: ^8.1.7
+  url_launcher: ^6.3.1
+  share_plus: ^10.1.4
+  connectivity_plus: ^6.1.2
+  path_provider: ^2.1.5
+  confetti: ^0.8.0
+  audioplayers: ^6.6.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^5.0.0
+  build_runner: ^2.4.15
+  freezed: ^3.0.3
+  json_serializable: ^6.9.2
+  riverpod_generator: ^2.6.3
+  custom_lint: ^0.7.2
+  riverpod_lint: ^2.6.3
+  flutter_launcher_icons: ^0.14.2
+
+flutter_launcher_icons:
+  android: "launcher_icon"
+  ios: false
+  image_path: "assets/images/logo.png"
+  adaptive_icon_background: "#FFFFFF"
+  adaptive_icon_foreground: "assets/images/logo.png"
+
+flutter:
+  uses-material-design: true
+
+  assets:
+    - assets/images/
+    - assets/animations/
+
+  # fonts:
+  #   - family: Inter
+  #     fonts:
+  #       - asset: assets/fonts/Inter-Regular.ttf

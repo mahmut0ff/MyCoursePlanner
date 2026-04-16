@@ -140,7 +140,7 @@ const StudentCoursesPage: React.FC = () => {
                 <div className="flex items-center gap-4 text-xs font-medium text-slate-600 dark:text-slate-300">
                   <div className="flex items-center gap-1.5">
                     <BookOpen className="w-4 h-4 text-slate-400" />
-                    <span>{course.lessonIds?.length || 0} {t('studentCourses.lessons', 'Уроков')}</span>
+                    <span>{allGroups.filter((g: any) => g.courseId === course.id).length} {t('studentCourses.groups', 'Групп')}</span>
                   </div>
                   <div className="flex items-center gap-1.5">
                     <Users className="w-4 h-4 text-slate-400" />

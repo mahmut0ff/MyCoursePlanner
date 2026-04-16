@@ -16,8 +16,14 @@ import '../../presentation/schedule/schedule_screen.dart';
 import '../../presentation/profile/profile_screen.dart';
 import '../../presentation/notifications/notifications_screen.dart';
 import '../../presentation/organizations/org_search_screen.dart';
+import '../../presentation/profile/licenses_screen.dart';
+import '../../presentation/profile/edit_profile_screen.dart';
+import '../../presentation/profile/achievements_screen.dart';
 import '../../presentation/quiz/join_quiz_screen.dart';
 import '../../presentation/quiz/quiz_play_screen.dart';
+import '../../presentation/groups/group_detail_screen.dart';
+import '../../presentation/lessons/lesson_view_screen.dart';
+import '../../presentation/lessons/homework_submit_screen.dart';
 
 final _rootNavigatorKey = GlobalKey<NavigatorState>();
 final _shellNavigatorHomeKey = GlobalKey<NavigatorState>(debugLabel: 'home');
@@ -67,6 +73,21 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder: (context, state) => const OrgSearchScreen(),
       ),
       GoRoute(
+        path: '/licenses',
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (context, state) => const LicensesScreen(),
+      ),
+      GoRoute(
+        path: '/edit-profile',
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (context, state) => const EditProfileScreen(),
+      ),
+      GoRoute(
+        path: '/achievements',
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (context, state) => const AchievementsScreen(),
+      ),
+      GoRoute(
         path: '/courses/:id',
         parentNavigatorKey: _rootNavigatorKey,
         builder: (context, state) {
@@ -106,6 +127,30 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder: (context, state) {
           final sessionId = state.pathParameters['id']!;
           return QuizPlayScreen(sessionId: sessionId);
+        },
+      ),
+      GoRoute(
+        path: '/groups/:id',
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (context, state) {
+          final groupId = state.pathParameters['id']!;
+          return GroupDetailScreen(groupId: groupId);
+        },
+      ),
+      GoRoute(
+        path: '/lessons/:id',
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (context, state) {
+          final lessonId = state.pathParameters['id']!;
+          return LessonViewScreen(lessonId: lessonId);
+        },
+      ),
+      GoRoute(
+        path: '/lessons/:id/homework',
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (context, state) {
+          final lessonId = state.pathParameters['id']!;
+          return HomeworkSubmitScreen(lessonId: lessonId);
         },
       ),
 

@@ -378,6 +378,8 @@ export interface HomeworkSubmission {
   id: string;
   lessonId: string;
   lessonTitle: string;
+  groupId?: string;
+  groupName?: string;
   studentId: string;
   studentName: string;
   organizationId: string;
@@ -418,6 +420,8 @@ export interface LessonPlan {
   authorName: string;
   organizationId?: string;
   branchId?: string;
+  groupIds?: string[];     // Groups this lesson belongs to
+  groupNames?: string[];   // Denormalized group names
   status: LessonStatus;
   homework?: LessonHomework;
   attachments?: LessonAttachment[];
@@ -629,7 +633,6 @@ export interface Course {
   description: string;
   subject: string;
   teacherIds: string[];
-  lessonIds: string[];
   syllabusId?: string;
   isSyllabusMandatory?: boolean;
   status: CourseStatus;

@@ -278,4 +278,33 @@ class ApiService {
     });
     return res.data;
   }
+
+  // ── Lessons ──
+
+  Future<List<dynamic>> getLessons({String? groupId}) async {
+    final params = <String, dynamic>{};
+    if (groupId != null) params['groupId'] = groupId;
+    final res = await _dio.get('/api-lessons', queryParameters: params);
+    return (res.data is List) ? res.data : [];
+  }
+
+  Future<Map<String, dynamic>> getLesson(String id) async {
+    final res =
+        await _dio.get('/api-lessons', queryParameters: {'id': id});
+    return res.data;
+  }
+
+  // ── Homework ──
+
+  Future<Map<String, dynamic>> getMyHomework(String lessonId) async {
+    final res = await _dio.get('/api-homework',
+        queryParameters: {'lessonId': lessonId});
+    return res.data;
+  }
+
+  Future<Map<String, dynamic>> submitHomework(
+      Map<String, dynamic> payload) async {
+    final res = await _dio.post('/api-homework', data: payload);
+    return res.data;
+  }
 }

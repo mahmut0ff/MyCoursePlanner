@@ -26,6 +26,7 @@ const LessonListPage: React.FC = () => {
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
   const [subjectFilter, setSubjectFilter] = useState('all');
   const [levelFilter, setLevelFilter] = useState('all');
+  const [groupFilter, setGroupFilter] = useState('all');
   const [isAIModalOpen, setIsAIModalOpen] = useState(false);
 
   const isStaff = role === 'admin' || role === 'manager' || role === 'teacher';
@@ -89,6 +90,15 @@ const LessonListPage: React.FC = () => {
 
   const uniqueSubjects = useMemo(() => Array.from(new Set(lessons.map(l => l.subject))).filter(Boolean), [lessons]);
   const uniqueLevels = useMemo(() => Array.from(new Set(lessons.map(l => l.level))).filter(Boolean), [lessons]);
+  const uniqueGroups = useMemo(() => {
+    const map = new Map<string, string>();
+    lessons.forEach(l => {
+      (l.groupIds || []).forEach((gid, i) => {
+        if (!map.has(gid)) map.set(gid, (l.groupNames || [])[i] || gid);
+      });
+    });
+    return Array.from(map.entries()); // [[id, name], ...]
+  }, [lessons]);
 
   const filtered = useMemo(() => {
     return lessons.filter((l) => {
@@ -96,12 +106,13 @@ const LessonListPage: React.FC = () => {
       const matchesStatus = statusFilter === 'all' || (l.status || 'draft') === statusFilter;
       const matchesSubject = subjectFilter === 'all' || l.subject === subjectFilter;
       const matchesLevel = levelFilter === 'all' || l.level === levelFilter;
+      const matchesGroup = groupFilter === 'all' || (l.groupIds || []).includes(groupFilter);
       
       // Non-staff users only see published
       if (!isStaff && (l.status || 'draft') !== 'published') return false;
-      return matchesSearch && matchesStatus && matchesSubject && matchesLevel;
+      return matchesSearch && matchesStatus && matchesSubject && matchesLevel && matchesGroup;
     });
-  }, [lessons, search, statusFilter, subjectFilter, levelFilter, isStaff]);
+  }, [lessons, search, statusFilter, subjectFilter, levelFilter, groupFilter, isStaff]);
 
   const isCompleted = (lessonId: string) => {
     if (!isStudent) return false;
@@ -166,6 +177,15 @@ const LessonListPage: React.FC = () => {
               {uniqueLevels.map(l => <option key={l} value={l}>{l}</option>)}
             </select>
           </div>
+
+          {uniqueGroups.length > 0 && (
+            <div className="flex items-center gap-2 shrink-0">
+              <select value={groupFilter} onChange={(e) => setGroupFilter(e.target.value)} className="input text-sm py-2 bg-slate-50 dark:bg-slate-900 border-none">
+                <option value="all">Все группы</option>
+                {uniqueGroups.map(([gid, gname]) => <option key={gid} value={gid}>{gname}</option>)}
+              </select>
+            </div>
+          )}
 
           {isStaff && (
             <div className="flex gap-1 bg-slate-100 dark:bg-slate-900 rounded-lg p-1 shrink-0 ml-2">
@@ -252,9 +272,15 @@ const LessonListPage: React.FC = () => {
                 )}
                 
                 <div className="p-5 flex flex-col flex-grow">
-                  <div className="flex items-center gap-2 mb-3">
+                  <div className="flex items-center gap-2 mb-3 flex-wrap">
                     <span className="bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider">{lesson.subject}</span>
                     <span className="text-[10px] text-slate-400 font-medium px-2 border border-slate-200 dark:border-slate-700 rounded-md py-0.5">{lesson.level}</span>
+                    {(lesson.groupNames || []).slice(0, 2).map((gn, i) => (
+                      <span key={i} className="bg-violet-50 dark:bg-violet-900/20 text-violet-600 dark:text-violet-400 px-2 py-0.5 rounded-md text-[10px] font-bold">{gn}</span>
+                    ))}
+                    {(lesson.groupNames || []).length > 2 && (
+                      <span className="text-[10px] text-slate-400">+{lesson.groupNames!.length - 2}</span>
+                    )}
                   </div>
                   
                   <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-2 group-hover:text-primary-600 dark:group-hover:text-primary-400 transition-colors line-clamp-2 leading-tight">{lesson.title}</h3>

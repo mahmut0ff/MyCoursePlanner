@@ -258,8 +258,8 @@ const CourseDetailPage: React.FC = () => {
             <div className="grid grid-cols-2 gap-3 shrink-0 md:w-80">
               <div className="bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-700/50 p-4 rounded-2xl flex flex-col items-center justify-center text-center">
                 <FileText className="w-6 h-6 text-blue-500 mb-2" />
-                <span className="text-2xl font-bold text-slate-900 dark:text-white">{course.lessonIds?.length || 0}</span>
-                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{t('nav.lessons', 'Уроки')}</span>
+                <span className="text-2xl font-bold text-slate-900 dark:text-white">{groups.length}</span>
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Групп</span>
               </div>
               <div className="bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-700/50 p-4 rounded-2xl flex flex-col items-center justify-center text-center">
                 <Users className="w-6 h-6 text-violet-500 mb-2" />

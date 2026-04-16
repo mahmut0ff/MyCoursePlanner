@@ -24,6 +24,26 @@ const handler: Handler = async (event: HandlerEvent) => {
       return ok({ id: doc.id, ...doc.data() });
     }
 
+    // Filter by groupId — returns lessons that include this groupId in their groupIds array
+    if (params.groupId) {
+      try {
+        const snap = await adminDb.collection(COLLECTION)
+          .where('groupIds', 'array-contains', params.groupId)
+          .orderBy('createdAt', 'desc')
+          .limit(200)
+          .get();
+        const lessons = snap.docs.map((d: any) => ({ id: d.id, ...d.data() }));
+        // For students, only show published lessons
+        if (user.role === 'student') {
+          return ok(lessons.filter((l: any) => l.status === 'published'));
+        }
+        return ok(lessons);
+      } catch (err: any) {
+        console.error('Lesson groupId query failed:', err);
+        return jsonResponse(500, { error: `Group filter failed: ${err.message}. Ensure composite index exists for lessonPlans (groupIds + createdAt).` });
+      }
+    }
+
     try {
       const orgFilter = getOrgFilter(user);
       if (params.orgId === 'none') {
@@ -70,6 +90,8 @@ const handler: Handler = async (event: HandlerEvent) => {
       authorId: user.uid,
       authorName: user.displayName,
       organizationId: user.organizationId || '',
+      groupIds: body.groupIds || [],
+      groupNames: body.groupNames || [],
       status: body.status || 'draft',
       createdAt: now,
       updatedAt: now,

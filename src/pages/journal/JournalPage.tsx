@@ -293,10 +293,9 @@ const JournalPage: React.FC = () => {
   }, [selectedGroupId, allGroups, allStudents]);
 
   const courseLessons = useMemo(() => {
-    const course = courses.find(c => c.id === selectedCourseId);
-    if (!course || !course.lessonIds) return [];
-    return course.lessonIds.map(id => allLessons.find(l => l.id === id)).filter(Boolean) as LessonPlan[];
-  }, [courses, selectedCourseId, allLessons]);
+    if (!selectedGroupId) return [];
+    return allLessons.filter(l => (l.groupIds || []).includes(selectedGroupId));
+  }, [selectedGroupId, allLessons]);
 
   const currentLessonId = useMemo(() => {
     // Find the attached lesson among the group's students for this date
@@ -463,41 +462,13 @@ const JournalPage: React.FC = () => {
   };
 
   const handleDragEnd = async (event: DragEndEvent) => {
-    const { active, over } = event;
-    if (over && active.id !== over.id) {
-      const course = courses.find(c => c.id === selectedCourseId);
-      if (!course) return;
-      const oldIndex = (course.lessonIds || []).indexOf(active.id as string);
-      const newIndex = (course.lessonIds || []).indexOf(over.id as string);
-
-      if (oldIndex !== -1 && newIndex !== -1) {
-        const newLessonIds = arrayMove(course.lessonIds || [], oldIndex, newIndex);
-        setCourses(courses.map(c => c.id === selectedCourseId ? { ...c, lessonIds: newLessonIds } : c));
-        try {
-          await orgUpdateCourse({ id: selectedCourseId, lessonIds: newLessonIds });
-        } catch (e) {
-          toast.error('Ошибка сохранения порядка уроков');
-        }
-      }
-    }
+    // Drag-and-drop reordering is no longer supported after lessons-to-groups migration
   };
 
   const handleAddLessonToCourse = async () => {
-    if (!lessonToAdd || !selectedCourseId) return;
-    const course = courses.find(c => c.id === selectedCourseId);
-    if (!course) return;
-    
-    const newLessonIds = [...(course.lessonIds || []), lessonToAdd];
-    const toastId = toast.loading('Добавление...');
-    try {
-      await orgUpdateCourse({ id: selectedCourseId, lessonIds: newLessonIds });
-      setCourses(courses.map(c => c.id === selectedCourseId ? { ...c, lessonIds: newLessonIds } : c));
-      toast.success('Урок добавлен', { id: toastId });
-      setIsLessonModalOpen(false);
-      setLessonToAdd('');
-    } catch {
-      toast.error('Ошибка добавления урока', { id: toastId });
-    }
+    // No-op: lessons are now linked through groupIds, not course.lessonIds
+    setIsLessonModalOpen(false);
+    setLessonToAdd('');
   };
 
   const attachLesson = async (lessonId: string) => {
@@ -933,7 +904,7 @@ const JournalPage: React.FC = () => {
                 >
                   <option value="" disabled>-- Выберите урок --</option>
                   {allLessons
-                    .filter(l => !(courses.find(c => c.id === selectedCourseId)?.lessonIds || []).includes(l.id))
+                    .filter(l => !(courseLessons.map(cl => cl.id)).includes(l.id))
                     .sort((a,b) => a.title.localeCompare(b.title))
                     .map(l => (
                       <option key={l.id} value={l.id}>{l.title} ({l.duration} мин)</option>

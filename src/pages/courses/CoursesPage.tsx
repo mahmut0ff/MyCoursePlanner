@@ -171,7 +171,7 @@ const CoursesPage: React.FC = () => {
                   <div className="flex items-center gap-3 text-xs font-semibold text-slate-600 dark:text-slate-400">
                     <span className="flex items-center gap-1.5 bg-slate-50 dark:bg-slate-800 px-2 py-1 rounded-md">
                       <FileText className="w-3.5 h-3.5" />
-                      {course.lessonIds?.length || 0}
+                      {groups.filter((g: any) => g.courseId === course.id).length}
                     </span>
                     <span className="flex items-center gap-1.5 bg-slate-50 dark:bg-slate-800 px-2 py-1 rounded-md">
                       <Users className="w-3.5 h-3.5" />

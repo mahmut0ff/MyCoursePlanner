@@ -2,7 +2,6 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:package_info_plus/package_info_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../app.dart';
@@ -224,6 +223,22 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             ),
             const SizedBox(height: 10),
 
+            // Edit profile
+            _SettingsTile(
+              icon: Icons.edit_outlined,
+              title: 'Редактировать профиль',
+              subtitle: 'Фото, имя, город, бейджи',
+              onTap: () => context.push('/edit-profile'),
+            ),
+
+            // Achievements
+            _SettingsTile(
+              icon: Icons.emoji_events_outlined,
+              title: 'Достижения',
+              subtitle: '${badges.length} получено',
+              onTap: () => context.push('/achievements'),
+            ),
+
             // Theme toggle
             _SettingsTile(
               icon: Icons.dark_mode_outlined,
@@ -279,18 +294,19 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             ),
 
             // About
-            FutureBuilder<PackageInfo>(
-              future: PackageInfo.fromPlatform(),
-              builder: (context, snap) {
-                final version = snap.data?.version ?? '...';
-                final build = snap.data?.buildNumber ?? '';
-                return _SettingsTile(
-                  icon: Icons.info_outline,
-                  title: 'О приложении',
-                  subtitle: 'Planula v$version${build.isNotEmpty ? '+$build' : ''}',
-                  onTap: () => _showAbout(context, version),
-                );
-              },
+            _SettingsTile(
+              icon: Icons.info_outline,
+              title: 'О приложении',
+              subtitle: 'Planula v1.0.1',
+              onTap: () => _showAbout(context),
+            ),
+
+            // Licenses
+            _SettingsTile(
+              icon: Icons.gavel_outlined,
+              title: 'Правовая информация',
+              subtitle: 'Соглашение и правила',
+              onTap: () => context.push('/licenses'),
             ),
 
             const SizedBox(height: 16),
@@ -481,17 +497,18 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     );
   }
 
-  void _showAbout(BuildContext context, [String version = '1.0.0']) {
+  void _showAbout(BuildContext context) {
     showAboutDialog(
       context: context,
       applicationName: 'Planula',
-      applicationVersion: version,
-      applicationLegalese: '© 2024 Planula. Все права защищены.',
+      applicationVersion: '1.0.1',
+      applicationLegalese: '© ${DateTime.now().year} Planula Systems. Все права защищены.',
       children: [
         const SizedBox(height: 16),
         const Text(
           'Образовательная платформа для учебных центров.\n'
-          'Курсы, экзамены, расписание — всё в одном месте.',
+          'Курсы, экзамены, расписание — всё в одном месте.\n\n'
+          'Разработано Planula Systems.',
         ),
       ],
     );

@@ -11,8 +11,8 @@ import Placeholder from '@tiptap/extension-placeholder';
 import { useAuth } from '../../contexts/AuthContext';
 import { createLessonPlan, getLessonPlan, updateLessonPlan } from '../../services/lessons.service';
 import { uploadLessonCover, uploadLessonAttachment, deleteLessonAttachment } from '../../services/storage.service';
-import type { LessonAttachment, Material, Course } from '../../types';
-import { orgGetMaterials, orgGetCourses, orgUpdateCourse } from '../../lib/api';
+import type { LessonAttachment, Material, Group } from '../../types';
+import { orgGetMaterials, orgGetGroups } from '../../lib/api';
 
 import {
   Save, ArrowLeft, Bold, Italic, Strikethrough, Heading1, Heading2, List,
@@ -72,10 +72,9 @@ const LessonEditPage: React.FC = () => {
   const [isDragging, setIsDragging] = useState(false);
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
 
-  // Courses linkage
-  const [courses, setCourses] = useState<Course[]>([]);
-  const [selectedCourses, setSelectedCourses] = useState<string[]>([]);
-  const [initialCourses, setInitialCourses] = useState<string[]>([]);
+  // Groups linkage (lessons → groups)
+  const [groups, setGroups] = useState<Group[]>([]);
+  const [selectedGroups, setSelectedGroups] = useState<string[]>([]);
 
   const editor = useEditor({
     extensions: [
@@ -102,6 +101,7 @@ const LessonEditPage: React.FC = () => {
           setCoverImageUrl(lesson.coverImageUrl || '');
           setStatus(lesson.status || 'draft');
           setAttachments(lesson.attachments || []);
+          setSelectedGroups(lesson.groupIds || []);
           if (lesson.homework && lesson.homework.title) {
             setHomework({
               title: lesson.homework.title || '',
@@ -129,16 +129,11 @@ const LessonEditPage: React.FC = () => {
         .catch(console.error)
         .finally(() => setLoadingMaterials(false));
 
-      orgGetCourses().then((cs: Course[]) => {
-        setCourses(cs);
-        if (isEdit && id) {
-          const linked = cs.filter(c => c.lessonIds?.includes(id)).map(c => c.id);
-          setSelectedCourses(linked);
-          setInitialCourses(linked);
-        }
+      orgGetGroups().then((gs: Group[]) => {
+        setGroups(gs);
       }).catch(console.error);
     }
-  }, [profile, isEdit, id]);
+  }, [profile]);
 
   const handleCoverUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -267,6 +262,14 @@ const LessonEditPage: React.FC = () => {
       } else {
         data.homework = null;
       }
+
+      // Add group linkage
+      const selectedGroupNames = selectedGroups.map(gid => {
+        const g = groups.find(gr => gr.id === gid);
+        return g?.name || '';
+      }).filter(Boolean);
+      data.groupIds = selectedGroups;
+      data.groupNames = selectedGroupNames;
       
       let savedLessonId = id;
       if (isEdit && id) {
@@ -275,32 +278,6 @@ const LessonEditPage: React.FC = () => {
         savedLessonId = await createLessonPlan(data);
       }
 
-      // Update courses linkage
-      if (savedLessonId) {
-        const addedTo = selectedCourses.filter(cid => !initialCourses.includes(cid));
-        const removedFrom = initialCourses.filter(cid => !selectedCourses.includes(cid));
-
-        const updates = [];
-        
-        for (const cid of addedTo) {
-          const course = courses.find(c => c.id === cid);
-          if (!course) continue;
-          const newLessonIds = [...(course.lessonIds || []), savedLessonId];
-          updates.push(orgUpdateCourse({ id: course.id, lessonIds: newLessonIds }));
-        }
-
-        for (const cid of removedFrom) {
-          const course = courses.find(c => c.id === cid);
-          if (!course) continue;
-          const newLessonIds = (course.lessonIds || []).filter(lid => lid !== savedLessonId);
-          updates.push(orgUpdateCourse({ id: course.id, lessonIds: newLessonIds }));
-        }
-
-        if (updates.length > 0) {
-          await Promise.all(updates);
-          setInitialCourses([...selectedCourses]); // reset initial state after save
-        }
-      }
 
       setLastSaved(new Date());
       if (!silent) toast.success(t('common.saved', 'Успешно сохранено'));
@@ -557,32 +534,32 @@ const LessonEditPage: React.FC = () => {
                </div>
             </div>
 
-            {/* Course Linkage Section */}
+            {/* Group Linkage Section */}
             <div className="p-5 border-t border-slate-100 dark:border-slate-700/50">
-              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-3 uppercase tracking-wider">Привязка к курсам</label>
-              {courses.length === 0 ? (
-                <p className="text-xs text-slate-500">Нет доступных курсов</p>
+              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-3 uppercase tracking-wider">Привязка к группам</label>
+              {groups.length === 0 ? (
+                <p className="text-xs text-slate-500">Нет доступных групп</p>
               ) : (
                 <div className="space-y-2 max-h-[150px] overflow-y-auto custom-scrollbar pr-2">
-                  {courses.map(course => (
-                    <label key={course.id} className="flex items-center gap-2 cursor-pointer group">
+                  {groups.map(group => (
+                    <label key={group.id} className="flex items-center gap-2 cursor-pointer group">
                       <div className={`w-4 h-4 rounded border flex items-center justify-center transition-colors ${
-                        selectedCourses.includes(course.id)
+                        selectedGroups.includes(group.id)
                           ? 'bg-primary-500 border-primary-500 text-white'
                           : 'border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 group-hover:border-primary-400'
                       }`}>
-                        {selectedCourses.includes(course.id) && <CheckCircle2 className="w-3 h-3" />}
+                        {selectedGroups.includes(group.id) && <CheckCircle2 className="w-3 h-3" />}
                       </div>
                       <span className="text-sm text-slate-700 dark:text-slate-300 font-medium truncate select-none">
-                        {course.title}
+                        {group.name}{group.courseName ? ` (${group.courseName})` : ''}
                       </span>
                       <input 
                         type="checkbox"
                         className="hidden"
-                        checked={selectedCourses.includes(course.id)}
+                        checked={selectedGroups.includes(group.id)}
                         onChange={(e) => {
-                          if (e.target.checked) setSelectedCourses(prev => [...prev, course.id]);
-                          else setSelectedCourses(prev => prev.filter(id => id !== course.id));
+                          if (e.target.checked) setSelectedGroups(prev => [...prev, group.id]);
+                          else setSelectedGroups(prev => prev.filter(id => id !== group.id));
                         }}
                       />
                     </label>

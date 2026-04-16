@@ -29,11 +29,7 @@ class NotificationsScreen extends ConsumerWidget {
             ],
           ),
         ),
-        data: (rawNotifications) {
-          final notifications = rawNotifications
-              .map((n) => AppNotification.fromMap(n))
-              .toList();
-
+        data: (notifications) {
           if (notifications.isEmpty) {
             return const EmptyState(
               icon: Icons.notifications_none_rounded,
@@ -54,9 +50,9 @@ class NotificationsScreen extends ConsumerWidget {
                   notification: notif,
                   onTap: () async {
                     if (!notif.read) {
-                      final api = ref.read(apiServiceProvider);
-                      await api
-                          .markNotificationRead(notif.id)
+                      final repo = ref.read(notificationRepositoryProvider);
+                      await repo
+                          .markAsRead(notif.id)
                           .catchError((_) {});
                       ref.invalidate(notificationsProvider);
                     }

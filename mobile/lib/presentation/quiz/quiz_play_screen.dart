@@ -212,7 +212,7 @@ class _QuizPlayScreenState extends ConsumerState<QuizPlayScreen> {
         child: Column(
           children: [
             const Spacer(),
-            Icon(Icons.gamepad, size: 64, color: Colors.white.withOpacity(0.8)),
+            Icon(Icons.gamepad, size: 64, color: Colors.white.withValues(alpha: 0.8)),
             const SizedBox(height: 16),
             Text(
               session.quizTitle.isEmpty ? 'Ожидание...' : session.quizTitle,
@@ -221,16 +221,16 @@ class _QuizPlayScreenState extends ConsumerState<QuizPlayScreen> {
             const SizedBox(height: 8),
             Text(
               'Ожидаем старта от преподавателя',
-              style: TextStyle(fontSize: 16, color: Colors.white.withOpacity(0.6)),
+              style: TextStyle(fontSize: 16, color: Colors.white.withValues(alpha: 0.6)),
             ),
             const Spacer(),
             Container(
               margin: const EdgeInsets.symmetric(horizontal: 24),
               padding: const EdgeInsets.all(24),
               decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.1),
+                color: Colors.white.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(24),
-                border: Border.all(color: Colors.white.withOpacity(0.1)),
+                border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
               ),
               child: Column(
                 children: [
@@ -253,7 +253,7 @@ class _QuizPlayScreenState extends ConsumerState<QuizPlayScreen> {
                     children: parts.map((p) {
                       return Chip(
                         label: Text(p.participantName, style: const TextStyle(fontWeight: FontWeight.bold)),
-                        backgroundColor: Colors.white.withOpacity(0.2),
+                        backgroundColor: Colors.white.withValues(alpha: 0.2),
                         labelStyle: const TextStyle(color: Colors.white),
                       );
                     }).toList(),
@@ -382,7 +382,7 @@ class _QuizPlayScreenState extends ConsumerState<QuizPlayScreen> {
                       borderRadius: BorderRadius.circular(12),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withOpacity(isSelected ? 0.4 : 0.1),
+                          color: Colors.black.withValues(alpha: isSelected ? 0.4 : 0.1),
                           blurRadius: isSelected ? 12 : 4,
                           offset: Offset(0, isSelected ? 6 : 4),
                         ),
@@ -460,7 +460,7 @@ class _QuizPlayScreenState extends ConsumerState<QuizPlayScreen> {
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 24),
                   decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.2),
+                    color: Colors.white.withValues(alpha: 0.2),
                     borderRadius: BorderRadius.circular(24),
                   ),
                   child: Column(
@@ -516,7 +516,7 @@ class _QuizPlayScreenState extends ConsumerState<QuizPlayScreen> {
               margin: const EdgeInsets.symmetric(horizontal: 24),
               padding: const EdgeInsets.all(24),
               decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.1),
+                color: Colors.white.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(24),
               ),
               child: Column(

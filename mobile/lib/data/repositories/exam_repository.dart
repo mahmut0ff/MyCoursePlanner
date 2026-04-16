@@ -22,9 +22,9 @@ class ExamRepository {
     return ExamAttempt.fromMap(data);
   }
 
-  /// Join an exam room by 6-char code.
-  Future<Map<String, dynamic>> joinRoom(String code) async {
-    return _api.joinRoom(code);
+  /// Join an exam room by its ID.
+  Future<Map<String, dynamic>> joinRoom(String roomId) async {
+    return _api.joinRoom(roomId);
   }
 
   /// Fetch dashboard stats.

@@ -1,7 +1,9 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:google_fonts/google_fonts.dart';
+
+import '../../data/services/google_auth_service.dart';
+import '../common/google_logo.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -15,6 +17,7 @@ class _LoginScreenState extends State<LoginScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _loading = false;
+  bool _googleLoading = false;
   bool _obscurePassword = true;
   String? _error;
 
@@ -49,6 +52,26 @@ class _LoginScreenState extends State<LoginScreen> {
       setState(() => _error = 'Ошибка: $e');
     } finally {
       if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  Future<void> _signInWithGoogle() async {
+    setState(() { _googleLoading = true; _error = null; });
+    try {
+      final credential = await GoogleAuthService.signIn();
+      if (credential == null) {
+        // User cancelled — silently return
+        if (mounted) setState(() => _googleLoading = false);
+        return;
+      }
+      if (mounted) context.go('/home');
+    } catch (e) {
+      debugPrint('[GoogleSignIn] Error: $e');
+      if (mounted) {
+        setState(() => _error = 'Ошибка входа через Google. Попробуйте снова.');
+      }
+    } finally {
+      if (mounted) setState(() => _googleLoading = false);
     }
   }
 
@@ -103,6 +126,73 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
                     ),
 
+                  // ── Google Sign-In ──
+                  SizedBox(
+                    width: double.infinity,
+                    height: 52,
+                    child: OutlinedButton.icon(
+                      onPressed: (_loading || _googleLoading)
+                          ? null
+                          : _signInWithGoogle,
+                      icon: _googleLoading
+                          ? SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: theme.colorScheme.onSurface,
+                              ),
+                            )
+                          : const GoogleLogo(size: 20),
+                      label: Text(
+                        _googleLoading ? 'Подключение...' : 'Войти через Google',
+                        style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w500,
+                          color: theme.colorScheme.onSurface,
+                        ),
+                      ),
+                      style: OutlinedButton.styleFrom(
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                        side: BorderSide(
+                          color: isDark
+                              ? Colors.white24
+                              : Colors.grey.shade300,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+
+                  // ── Divider ──
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Divider(
+                          color: isDark ? Colors.white12 : Colors.grey.shade300,
+                        ),
+                      ),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        child: Text(
+                          'или',
+                          style: TextStyle(
+                            color: isDark ? Colors.white38 : Colors.grey,
+                            fontSize: 13,
+                          ),
+                        ),
+                      ),
+                      Expanded(
+                        child: Divider(
+                          color: isDark ? Colors.white12 : Colors.grey.shade300,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 24),
+
                   // ── Email ──
                   TextFormField(
                     controller: _emailController,
@@ -152,7 +242,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     width: double.infinity,
                     height: 52,
                     child: ElevatedButton(
-                      onPressed: _loading ? null : _login,
+                      onPressed: (_loading || _googleLoading) ? null : _login,
                       child: _loading
                           ? const SizedBox(
                               width: 22,
@@ -198,3 +288,4 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 }
+

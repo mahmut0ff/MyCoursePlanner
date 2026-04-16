@@ -68,53 +68,59 @@ class ApiService {
   }
 
   Future<Map<String, dynamic>> applyToOrg(String orgId) async {
-    final res = await _dio.post('/api-memberships', data: {
-      'action': 'apply',
-      'organizationId': orgId,
-      'role': 'student',
-    });
+    final res = await _dio.post('/api-memberships',
+        queryParameters: {'action': 'apply'},
+        data: {
+          'organizationId': orgId,
+          'role': 'student',
+        });
     return res.data;
   }
 
   Future<Map<String, dynamic>> publicJoinOrg(String slug) async {
-    final res = await _dio.post('/api-memberships', data: {
-      'action': 'publicJoin',
-      'orgSlug': slug,
-    });
+    final res = await _dio.post('/api-memberships',
+        queryParameters: {'action': 'publicJoin'},
+        data: {
+          'orgSlug': slug,
+        });
     return res.data;
   }
 
   Future<Map<String, dynamic>> acceptInvite(String orgId) async {
     final uid = FirebaseAuth.instance.currentUser?.uid ?? '';
-    final res = await _dio.post('/api-memberships', data: {
-      'action': 'accept',
-      'userId': uid,
-      'organizationId': orgId,
-    });
+    final res = await _dio.post('/api-memberships',
+        queryParameters: {'action': 'accept'},
+        data: {
+          'userId': uid,
+          'organizationId': orgId,
+        });
     return res.data;
   }
 
   // ── Users ──
 
   Future<void> switchOrg(String orgId) async {
-    await _dio.post('/api-memberships', data: {
-      'action': 'switchOrg',
-      'organizationId': orgId,
-    });
+    await _dio.post('/api-memberships',
+        queryParameters: {'action': 'switchOrg'},
+        data: {
+          'organizationId': orgId,
+        });
   }
 
   Future<void> saveFcmToken(String token) async {
-    await _dio.post('/api-users', data: {
-      'action': 'saveFcmToken',
-      'token': token,
-    });
+    await _dio.post('/api-users',
+        queryParameters: {'action': 'saveFcmToken'},
+        data: {
+          'token': token,
+        });
   }
 
   Future<void> removeFcmToken(String token) async {
-    await _dio.post('/api-users', data: {
-      'action': 'removeFcmToken',
-      'token': token,
-    });
+    await _dio.post('/api-users',
+        queryParameters: {'action': 'removeFcmToken'},
+        data: {
+          'token': token,
+        });
   }
 
   // ── Courses & Groups ──
@@ -139,18 +145,20 @@ class ApiService {
   }
 
   Future<Map<String, dynamic>> enrollInGroup(String groupId) async {
-    final res = await _dio.post('/api-org', data: {
-      'action': 'enrollInGroup',
-      'groupId': groupId,
-    });
+    final res = await _dio.post('/api-org',
+        queryParameters: {'action': 'enrollInGroup'},
+        data: {
+          'groupId': groupId,
+        });
     return res.data;
   }
 
   Future<Map<String, dynamic>> enrollInCourse(String courseId) async {
-    final res = await _dio.post('/api-org', data: {
-      'action': 'enrollInCourse',
-      'courseId': courseId,
-    });
+    final res = await _dio.post('/api-org',
+        queryParameters: {'action': 'enrollInCourse'},
+        data: {
+          'courseId': courseId,
+        });
     return res.data;
   }
 
@@ -236,7 +244,8 @@ class ApiService {
 
   Future<void> markNotificationRead(String id) async {
     await _dio.post('/api-notifications',
-        data: {'action': 'markRead', 'notificationId': id});
+        queryParameters: {'action': 'markRead'},
+        data: {'notificationId': id});
   }
 
   // ── Live Quizzes (Kahoot-style) ──

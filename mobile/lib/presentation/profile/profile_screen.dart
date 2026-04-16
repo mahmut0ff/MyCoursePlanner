@@ -2,6 +2,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../app.dart';
@@ -231,13 +232,11 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               trailing: Switch(
                 value: isDark,
                 onChanged: (_) {
-                  ref.read(themeModeProvider.notifier).state =
-                      isDark ? ThemeMode.light : ThemeMode.dark;
+                  ref.read(themeModeProvider.notifier).toggle();
                 },
               ),
               onTap: () {
-                ref.read(themeModeProvider.notifier).state =
-                    isDark ? ThemeMode.light : ThemeMode.dark;
+                ref.read(themeModeProvider.notifier).toggle();
               },
             ),
 
@@ -280,11 +279,18 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             ),
 
             // About
-            _SettingsTile(
-              icon: Icons.info_outline,
-              title: 'О приложении',
-              subtitle: 'Planula v1.0.0',
-              onTap: () => _showAbout(context),
+            FutureBuilder<PackageInfo>(
+              future: PackageInfo.fromPlatform(),
+              builder: (context, snap) {
+                final version = snap.data?.version ?? '...';
+                final build = snap.data?.buildNumber ?? '';
+                return _SettingsTile(
+                  icon: Icons.info_outline,
+                  title: 'О приложении',
+                  subtitle: 'Planula v$version${build.isNotEmpty ? '+$build' : ''}',
+                  onTap: () => _showAbout(context, version),
+                );
+              },
             ),
 
             const SizedBox(height: 16),
@@ -475,11 +481,11 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     );
   }
 
-  void _showAbout(BuildContext context) {
+  void _showAbout(BuildContext context, [String version = '1.0.0']) {
     showAboutDialog(
       context: context,
       applicationName: 'Planula',
-      applicationVersion: '1.0.0',
+      applicationVersion: version,
       applicationLegalese: '© 2024 Planula. Все права защищены.',
       children: [
         const SizedBox(height: 16),

@@ -1,13 +1,14 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../data/models/user_profile.dart';
 import '../../data/models/gamification.dart';
 import '../../data/models/membership.dart';
+import '../../data/models/notification_model.dart';
 import '../../data/repositories/user_repository.dart';
 import '../../data/repositories/course_repository.dart';
 import '../../data/repositories/exam_repository.dart';
+import '../../data/repositories/notification_repository.dart';
 import '../../data/services/api_service.dart';
 
 // ── Firebase Auth State ──
@@ -34,6 +35,11 @@ final courseRepositoryProvider = Provider<CourseRepository>((ref) {
 final examRepositoryProvider = Provider<ExamRepository>((ref) {
   final api = ref.watch(apiServiceProvider);
   return ExamRepository(api);
+});
+
+final notificationRepositoryProvider = Provider<NotificationRepository>((ref) {
+  final api = ref.watch(apiServiceProvider);
+  return NotificationRepository(api);
 });
 
 // ── User Profile (typed) ──
@@ -66,24 +72,19 @@ final gamificationProvider = FutureProvider<GamificationData?>((ref) async {
   return repo.getGamification(user.uid);
 });
 
-// ── Notifications ──
+// ── Notifications (typed via NotificationRepository) ──
 
 final notificationsProvider =
-    FutureProvider<List<Map<String, dynamic>>>((ref) async {
+    FutureProvider<List<AppNotification>>((ref) async {
   final user = ref.watch(authStateProvider).valueOrNull;
   if (user == null) return [];
 
-  final snapshot = await FirebaseFirestore.instance
-      .collection('notifications')
-      .where('recipientId', isEqualTo: user.uid)
-      .orderBy('createdAt', descending: true)
-      .limit(50)
-      .get();
-
-  return snapshot.docs.map((d) => {'id': d.id, ...d.data()}).toList();
+  final repo = ref.watch(notificationRepositoryProvider);
+  return repo.getAll();
 });
 
 final unreadNotificationCountProvider = Provider<int>((ref) {
   final notifications = ref.watch(notificationsProvider).valueOrNull ?? [];
-  return notifications.where((n) => n['read'] != true).length;
+  return notifications.where((n) => !n.read).length;
 });
+

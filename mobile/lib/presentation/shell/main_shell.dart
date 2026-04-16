@@ -4,6 +4,10 @@ import 'package:go_router/go_router.dart';
 
 import '../../domain/providers/auth_provider.dart';
 
+/// Branch indices for users without an active organization.
+/// Maps to: Home (0) → Exams (2) → Profile (4).
+const _noOrgBranches = [0, 2, 4];
+
 /// Main scaffold shell with modern compact Bottom Navigation Bar.
 /// Adapts tabs based on whether user has an active organization.
 class MainShell extends ConsumerWidget {
@@ -47,92 +51,7 @@ class MainShell extends ConsumerWidget {
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceAround,
-              children: hasOrg
-                  ? [
-                      _NavItem(
-                        index: 0,
-                        current: navigationShell.currentIndex,
-                        icon: Icons.home_outlined,
-                        activeIcon: Icons.home_rounded,
-                        label: 'Главная',
-                        onTap: () => _onTap(0),
-                      ),
-                      _NavItem(
-                        index: 1,
-                        current: navigationShell.currentIndex,
-                        icon: Icons.menu_book_outlined,
-                        activeIcon: Icons.menu_book_rounded,
-                        label: 'Курсы',
-                        onTap: () => _onTap(1),
-                      ),
-                      _NavItem(
-                        index: 2,
-                        current: navigationShell.currentIndex,
-                        icon: Icons.quiz_outlined,
-                        activeIcon: Icons.quiz_rounded,
-                        label: 'Экзамены',
-                        onTap: () => _onTap(2),
-                      ),
-                      _NavItem(
-                        index: 3,
-                        current: navigationShell.currentIndex,
-                        icon: Icons.calendar_month_outlined,
-                        activeIcon: Icons.calendar_month_rounded,
-                        label: 'Расписание',
-                        onTap: () => _onTap(3),
-                      ),
-                      _NavItem(
-                        index: 4,
-                        current: navigationShell.currentIndex,
-                        icon: Icons.person_outline_rounded,
-                        activeIcon: Icons.person_rounded,
-                        label: 'Профиль',
-                        onTap: () => _onTap(4),
-                      ),
-                    ]
-                  : [
-                      // No-org state: only Home (explore), Exams, Profile
-                      _NavItem(
-                        index: 0,
-                        current: navigationShell.currentIndex,
-                        icon: Icons.explore_outlined,
-                        activeIcon: Icons.explore_rounded,
-                        label: 'Обзор',
-                        onTap: () => _onTap(0),
-                      ),
-                      _NavItem(
-                        index: 1,
-                        current: navigationShell.currentIndex,
-                        icon: Icons.menu_book_outlined,
-                        activeIcon: Icons.menu_book_rounded,
-                        label: 'Курсы',
-                        onTap: () => _onTap(1),
-                      ),
-                      _NavItem(
-                        index: 2,
-                        current: navigationShell.currentIndex,
-                        icon: Icons.quiz_outlined,
-                        activeIcon: Icons.quiz_rounded,
-                        label: 'Экзамены',
-                        onTap: () => _onTap(2),
-                      ),
-                      _NavItem(
-                        index: 3,
-                        current: navigationShell.currentIndex,
-                        icon: Icons.calendar_month_outlined,
-                        activeIcon: Icons.calendar_month_rounded,
-                        label: 'Расписание',
-                        onTap: () => _onTap(3),
-                      ),
-                      _NavItem(
-                        index: 4,
-                        current: navigationShell.currentIndex,
-                        icon: Icons.person_outline_rounded,
-                        activeIcon: Icons.person_rounded,
-                        label: 'Профиль',
-                        onTap: () => _onTap(4),
-                      ),
-                    ],
+              children: hasOrg ? _buildOrgTabs() : _buildNoOrgTabs(),
             ),
           ),
         ),
@@ -140,10 +59,91 @@ class MainShell extends ConsumerWidget {
     );
   }
 
-  void _onTap(int index) {
+  /// Full 5-tab navigation for users with an active organization.
+  List<Widget> _buildOrgTabs() {
+    return [
+      _NavItem(
+        index: 0,
+        current: navigationShell.currentIndex,
+        icon: Icons.home_outlined,
+        activeIcon: Icons.home_rounded,
+        label: 'Главная',
+        onTap: () => _goBranch(0),
+      ),
+      _NavItem(
+        index: 1,
+        current: navigationShell.currentIndex,
+        icon: Icons.menu_book_outlined,
+        activeIcon: Icons.menu_book_rounded,
+        label: 'Курсы',
+        onTap: () => _goBranch(1),
+      ),
+      _NavItem(
+        index: 2,
+        current: navigationShell.currentIndex,
+        icon: Icons.quiz_outlined,
+        activeIcon: Icons.quiz_rounded,
+        label: 'Экзамены',
+        onTap: () => _goBranch(2),
+      ),
+      _NavItem(
+        index: 3,
+        current: navigationShell.currentIndex,
+        icon: Icons.calendar_month_outlined,
+        activeIcon: Icons.calendar_month_rounded,
+        label: 'Расписание',
+        onTap: () => _goBranch(3),
+      ),
+      _NavItem(
+        index: 4,
+        current: navigationShell.currentIndex,
+        icon: Icons.person_outline_rounded,
+        activeIcon: Icons.person_rounded,
+        label: 'Профиль',
+        onTap: () => _goBranch(4),
+      ),
+    ];
+  }
+
+  /// Compact 3-tab navigation for users without an organization.
+  /// Visual indices 0/1/2 map to shell branches 0/2/4.
+  List<Widget> _buildNoOrgTabs() {
+    // Convert the actual shell branch index to visual index (0–2)
+    final visualCurrent =
+        _noOrgBranches.indexOf(navigationShell.currentIndex).clamp(0, 2);
+
+    return [
+      _NavItem(
+        index: 0,
+        current: visualCurrent,
+        icon: Icons.explore_outlined,
+        activeIcon: Icons.explore_rounded,
+        label: 'Обзор',
+        onTap: () => _goBranch(_noOrgBranches[0]), // branch 0
+      ),
+      _NavItem(
+        index: 1,
+        current: visualCurrent,
+        icon: Icons.quiz_outlined,
+        activeIcon: Icons.quiz_rounded,
+        label: 'Экзамены',
+        onTap: () => _goBranch(_noOrgBranches[1]), // branch 2
+      ),
+      _NavItem(
+        index: 2,
+        current: visualCurrent,
+        icon: Icons.person_outline_rounded,
+        activeIcon: Icons.person_rounded,
+        label: 'Профиль',
+        onTap: () => _goBranch(_noOrgBranches[2]), // branch 4
+      ),
+    ];
+  }
+
+  void _goBranch(int branchIndex) {
     navigationShell.goBranch(
-      index,
-      initialLocation: index == navigationShell.currentIndex,
+      branchIndex,
+      initialLocation: branchIndex == navigationShell.currentIndex,
     );
   }
 }

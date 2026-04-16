@@ -104,7 +104,7 @@ class _ExamsHomeScreenState extends ConsumerState<ExamsHomeScreen> {
                   borderRadius: BorderRadius.circular(20),
                   boxShadow: [
                     BoxShadow(
-                      color: const Color(0xFFC026D3).withOpacity(0.3),
+                      color: const Color(0xFFC026D3).withValues(alpha: 0.3),
                       blurRadius: 16,
                       offset: const Offset(0, 8),
                     ),
@@ -115,7 +115,7 @@ class _ExamsHomeScreenState extends ConsumerState<ExamsHomeScreen> {
                     Container(
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.2),
+                        color: Colors.white.withValues(alpha: 0.2),
                         borderRadius: BorderRadius.circular(16),
                       ),
                       child: const Icon(Icons.gamepad, color: Colors.white, size: 32),
@@ -137,7 +137,7 @@ class _ExamsHomeScreenState extends ConsumerState<ExamsHomeScreen> {
                           Text(
                             'Интерактивная игра',
                             style: TextStyle(
-                              color: Colors.white.withOpacity(0.8),
+                              color: Colors.white.withValues(alpha: 0.8),
                               fontSize: 14,
                             ),
                           ),

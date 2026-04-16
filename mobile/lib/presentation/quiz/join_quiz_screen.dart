@@ -64,7 +64,7 @@ class _JoinQuizScreenState extends ConsumerState<JoinQuizScreen> {
                 'https://images.unsplash.com/photo-1557683316-973673baf926?q=80&w=2000&auto=format&fit=crop'),
             fit: BoxFit.cover,
             colorFilter: ColorFilter.mode(
-              Colors.black.withOpacity(0.5),
+              Colors.black.withValues(alpha: 0.5),
               BlendMode.darken,
             ),
           ),
@@ -81,12 +81,12 @@ class _JoinQuizScreenState extends ConsumerState<JoinQuizScreen> {
                     width: 96,
                     height: 96,
                     decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.1),
+                      color: Colors.white.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(24),
-                      border: Border.all(color: Colors.white.withOpacity(0.2)),
+                      border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withOpacity(0.2),
+                          color: Colors.black.withValues(alpha: 0.2),
                           blurRadius: 20,
                         )
                       ],
@@ -115,7 +115,7 @@ class _JoinQuizScreenState extends ConsumerState<JoinQuizScreen> {
                       borderRadius: BorderRadius.circular(16),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withOpacity(0.2),
+                          color: Colors.black.withValues(alpha: 0.2),
                           blurRadius: 30,
                           offset: const Offset(0, 10),
                         )

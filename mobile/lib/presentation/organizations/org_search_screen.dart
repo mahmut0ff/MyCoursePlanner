@@ -140,9 +140,8 @@ class _OrgCardState extends ConsumerState<_OrgCard> {
     final org = widget.org;
     final name = org['name'] ?? '';
     final city = org['city'] ?? '';
-    final students = org['studentsCount'] ?? 0;
-    final teachers = org['teachersCount'] ?? 0;
     final logo = org['logo'] ?? '';
+    final coursesCount = org['coursesCount'] ?? 0;
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
@@ -199,30 +198,39 @@ class _OrgCardState extends ConsumerState<_OrgCard> {
                       ),
                     ),
                   ],
-                  const SizedBox(height: 4),
+                  const SizedBox(height: 6),
                   Row(
                     children: [
-                      Icon(Icons.school_outlined,
-                          size: 13,
-                          color: theme.colorScheme.onSurface
-                              .withValues(alpha: 0.4)),
-                      const SizedBox(width: 3),
-                      Text('$students',
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 8, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: theme.colorScheme.primary
+                              .withValues(alpha: 0.08),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text(
+                          'Учебный центр',
                           style: TextStyle(
-                              fontSize: 11,
-                              color: theme.colorScheme.onSurface
-                                  .withValues(alpha: 0.5))),
-                      const SizedBox(width: 10),
-                      Icon(Icons.person_outlined,
-                          size: 13,
-                          color: theme.colorScheme.onSurface
-                              .withValues(alpha: 0.4)),
-                      const SizedBox(width: 3),
-                      Text('$teachers',
-                          style: TextStyle(
-                              fontSize: 11,
-                              color: theme.colorScheme.onSurface
-                                  .withValues(alpha: 0.5))),
+                            fontSize: 10,
+                            fontWeight: FontWeight.w500,
+                            color: theme.colorScheme.primary,
+                          ),
+                        ),
+                      ),
+                      if (coursesCount > 0) ...[
+                        const SizedBox(width: 8),
+                        Icon(Icons.menu_book_rounded,
+                            size: 12,
+                            color: theme.colorScheme.onSurface
+                                .withValues(alpha: 0.4)),
+                        const SizedBox(width: 3),
+                        Text('$coursesCount курс.',
+                            style: TextStyle(
+                                fontSize: 11,
+                                color: theme.colorScheme.onSurface
+                                    .withValues(alpha: 0.5))),
+                      ],
                     ],
                   ),
                 ],

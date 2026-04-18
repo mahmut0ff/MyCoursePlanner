@@ -13,7 +13,7 @@ import {
   apiRejectMembership,
   apiDeleteMember
 } from '../../lib/api';
-import { Users, Search, Mail, RefreshCw, CheckCircle, XCircle, UserPlus, Phone, Filter, X, ChevronDown, SortAsc, SortDesc, Trash2, Lock, Plus, Building2, Lightbulb, Link as LinkIcon, Copy, ExternalLink, BookOpen, UsersRound } from 'lucide-react';
+import { Users, Search, Mail, RefreshCw, CheckCircle, XCircle, UserPlus, Phone, Filter, X, ChevronDown, SortAsc, SortDesc, Trash2, Plus, Lightbulb, Link as LinkIcon, Copy, BookOpen, UsersRound } from 'lucide-react';
 import type { UserProfile, Group } from '../../types';
 import toast from 'react-hot-toast';
 import { PinnedBadgesDisplay } from '../../lib/badges';

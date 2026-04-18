@@ -209,101 +209,110 @@ const LessonListPage: React.FC = () => {
           actionLink={isStaff ? '/lessons/new' : undefined}
         />
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+        <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl overflow-hidden">
+          {/* Table header */}
+          <div className="hidden md:grid grid-cols-[1fr_120px_100px_90px_80px_60px] gap-3 px-5 py-3 border-b border-slate-100 dark:border-slate-700 bg-slate-50/80 dark:bg-slate-800/80 text-[11px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+            <span>Название</span>
+            <span>Предмет / Уровень</span>
+            <span>Группы</span>
+            <span>Длительность</span>
+            {isStaff && <span>Статус</span>}
+            <span></span>
+          </div>
+
           {filtered.map((lesson) => {
             const completed = isCompleted(lesson.id!);
             return (
-              <Link key={lesson.id} to={`/lessons/${lesson.id}`} className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl group flex flex-col h-full hover:shadow-xl hover:shadow-primary-500/5 dark:hover:shadow-primary-500/5 hover:-translate-y-1 transition-all overflow-hidden duration-300 relative">
-                
-                {/* Completion Marker (Student only) */}
-                {completed && (
-                  <div className="absolute top-3 left-3 z-10 bg-emerald-500 text-white p-1 rounded-full shadow-md tooltip" data-tip="Урок пройден">
-                    <CheckCircle2 className="w-5 h-5" />
-                  </div>
-                )}
-
-                {lesson.coverImageUrl ? (
-                  <div className="h-44 bg-slate-100 dark:bg-slate-700 overflow-hidden relative shrink-0">
-                    <img src={lesson.coverImageUrl} alt={lesson.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
-                    {isStaff && (
-                      <span className={`absolute top-3 right-3 text-[10px] px-2.5 py-1 rounded-full font-bold backdrop-blur-md shadow-sm ${(lesson.status || 'draft') === 'published' ? 'bg-emerald-500/90 text-white' : 'bg-amber-500/90 text-white'}`}>
-                        {(lesson.status || 'draft') === 'published' ? t('common.published') : t('common.draft')}
-                      </span>
-                    )}
-
-                    {isStaff && (
-                      <div className="absolute top-3 left-3 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <button 
-                          onClick={(e) => handleDuplicate(e, lesson)}
-                          disabled={duplicatingId === lesson.id}
-                          className="p-2 bg-white/90 backdrop-blur hover:bg-white text-slate-700 hover:text-primary-600 rounded-lg shadow-sm transition-all flex items-center gap-1 tooltip"
-                          data-tip="Копировать урок"
-                        >
-                          {duplicatingId === lesson.id ? <div className="w-4 h-4 rounded-full border-2 border-primary-500 border-t-transparent animate-spin"/> : <Copy className="w-4 h-4" /> }
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                ) : (
-                  <div className="h-44 bg-slate-50 dark:bg-slate-800/50 flex flex-col items-center justify-center relative shrink-0 border-b border-slate-100 dark:border-slate-700/50">
-                    <div className={`p-4 rounded-3xl mb-2 transition-transform duration-500 group-hover:scale-110 ${completed ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-500' : 'bg-primary-50 dark:bg-primary-900/20 text-primary-400'}`}>
-                      <BookOpen className="w-8 h-8" />
+              <Link 
+                key={lesson.id} 
+                to={`/lessons/${lesson.id}`} 
+                className={`group flex flex-col md:grid md:grid-cols-[1fr_120px_100px_90px_80px_60px] gap-2 md:gap-3 items-center px-5 py-3.5 border-b border-slate-100 dark:border-slate-700/50 last:border-b-0 hover:bg-primary-50/40 dark:hover:bg-primary-900/10 transition-colors relative ${!completed ? '' : 'bg-emerald-50/20 dark:bg-emerald-900/5'}`}
+              >
+                {/* Title + cover thumbnail */}
+                <div className="flex items-center gap-3 min-w-0 w-full">
+                  {lesson.coverImageUrl ? (
+                    <div className="w-10 h-10 rounded-lg overflow-hidden shrink-0 border border-slate-200 dark:border-slate-700">
+                      <img src={lesson.coverImageUrl} alt="" className="w-full h-full object-cover" />
                     </div>
-                    {isStaff && (
-                      <span className={`absolute top-3 right-3 text-[10px] px-2.5 py-1 rounded-full font-bold shadow-sm ${(lesson.status || 'draft') === 'published' ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400' : 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400'}`}>
-                        {(lesson.status || 'draft') === 'published' ? t('common.published') : t('common.draft')}
-                      </span>
-                    )}
-                    
-                    {isStaff && (
-                      <div className="absolute top-3 left-3 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <button 
-                          onClick={(e) => handleDuplicate(e, lesson)}
-                          disabled={duplicatingId === lesson.id}
-                          className="p-2 bg-white dark:bg-slate-700 hover:bg-slate-50 dark:hover:bg-slate-600 border border-slate-200 dark:border-slate-600 text-slate-700 dark:text-slate-300 hover:text-primary-600 dark:hover:text-primary-400 rounded-lg shadow-sm transition-all flex items-center gap-1 tooltip"
-                          data-tip="Копировать урок"
-                        >
-                          {duplicatingId === lesson.id ? <div className="w-4 h-4 rounded-full border-2 border-primary-500 border-t-transparent animate-spin"/> : <Copy className="w-4 h-4" /> }
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                )}
-                
-                <div className="p-5 flex flex-col flex-grow">
-                  <div className="flex items-center gap-2 mb-3 flex-wrap">
-                    <span className="bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider">{lesson.subject}</span>
-                    <span className="text-[10px] text-slate-400 font-medium px-2 border border-slate-200 dark:border-slate-700 rounded-md py-0.5">{lesson.level}</span>
-                    {(lesson.groupNames || []).slice(0, 2).map((gn, i) => (
-                      <span key={i} className="bg-violet-50 dark:bg-violet-900/20 text-violet-600 dark:text-violet-400 px-2 py-0.5 rounded-md text-[10px] font-bold">{gn}</span>
-                    ))}
-                    {(lesson.groupNames || []).length > 2 && (
-                      <span className="text-[10px] text-slate-400">+{lesson.groupNames!.length - 2}</span>
-                    )}
-                  </div>
-                  
-                  <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-2 group-hover:text-primary-600 dark:group-hover:text-primary-400 transition-colors line-clamp-2 leading-tight">{lesson.title}</h3>
-                  <p className="text-sm text-slate-500 dark:text-slate-400 line-clamp-2 mb-4 flex-grow">{lesson.description}</p>
-                  
-                  <div className="flex items-center justify-between pt-4 border-t border-slate-100 dark:border-slate-700/50 mt-auto">
-                    <div className="flex items-center gap-3 text-[11px] font-medium text-slate-400 dark:text-slate-500">
-                      <span className="flex items-center gap-1.5 bg-slate-50 dark:bg-slate-800 px-2 py-1 rounded-md"><Clock className="w-3.5 h-3.5" />{lesson.duration} мин</span>
+                  ) : (
+                    <div className={`w-10 h-10 rounded-lg flex items-center justify-center shrink-0 ${completed ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-500' : 'bg-primary-50 dark:bg-primary-900/20 text-primary-400'}`}>
+                      {completed ? <CheckCircle2 className="w-5 h-5" /> : <BookOpen className="w-5 h-5" />}
                     </div>
-                    
-                    <div className="flex items-center gap-2 text-slate-400">
-                      {(lesson.attachments?.length || 0) > 0 && (
-                        <span className="flex items-center gap-1 bg-slate-50 dark:bg-slate-800 px-2 py-1 rounded-md tooltip" data-tip="Вложения">
-                          <Paperclip className="w-3.5 h-3.5" /> <span className="text-[10px]">{lesson.attachments!.length}</span>
-                        </span>
-                      )}
-                      {lesson.homework?.title && (
-                        <span className="flex items-center gap-1 bg-amber-50 dark:bg-amber-900/20 px-2 py-1 rounded-md text-amber-600 dark:text-amber-400 tooltip" data-tip="Домашнее задание">
-                          <ClipboardList className="w-3.5 h-3.5" />
+                  )}
+                  <div className="min-w-0 flex-1">
+                    <h3 className="text-sm font-bold text-slate-900 dark:text-white truncate group-hover:text-primary-600 dark:group-hover:text-primary-400 transition-colors">
+                      {lesson.title}
+                    </h3>
+                    {/* Mobile-only meta */}
+                    <div className="flex items-center gap-2 mt-1 md:hidden flex-wrap">
+                      <span className="bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 px-1.5 py-0.5 rounded text-[10px] font-bold">{lesson.subject}</span>
+                      <span className="text-[10px] text-slate-400">{lesson.level}</span>
+                      <span className="text-[10px] text-slate-400 flex items-center gap-1"><Clock className="w-3 h-3" />{lesson.duration} мин</span>
+                      {isStaff && (
+                        <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${(lesson.status || 'draft') === 'published' ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400' : 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400'}`}>
+                          {(lesson.status || 'draft') === 'published' ? t('common.published') : t('common.draft')}
                         </span>
                       )}
                     </div>
                   </div>
+                </div>
+
+                {/* Subject / Level */}
+                <div className="hidden md:flex flex-col gap-1 min-w-0">
+                  <span className="bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider truncate text-center">{lesson.subject}</span>
+                  <span className="text-[10px] text-slate-400 text-center">{lesson.level}</span>
+                </div>
+
+                {/* Groups */}
+                <div className="hidden md:flex flex-wrap gap-1 justify-start">
+                  {(lesson.groupNames || []).slice(0, 2).map((gn, i) => (
+                    <span key={i} className="bg-violet-50 dark:bg-violet-900/20 text-violet-600 dark:text-violet-400 px-1.5 py-0.5 rounded text-[10px] font-bold truncate max-w-[90px]">{gn}</span>
+                  ))}
+                  {(lesson.groupNames || []).length > 2 && (
+                    <span className="text-[10px] text-slate-400">+{lesson.groupNames!.length - 2}</span>
+                  )}
+                  {(lesson.groupNames || []).length === 0 && (
+                    <span className="text-[10px] text-slate-400">—</span>
+                  )}
+                </div>
+
+                {/* Duration */}
+                <div className="hidden md:flex items-center gap-1.5 text-[11px] text-slate-500 dark:text-slate-400">
+                  <Clock className="w-3.5 h-3.5 text-slate-400" />
+                  <span>{lesson.duration} мин</span>
+                </div>
+
+                {/* Status (staff only) */}
+                {isStaff && (
+                  <div className="hidden md:block">
+                    <span className={`text-[10px] px-2 py-1 rounded-full font-bold ${(lesson.status || 'draft') === 'published' ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400' : 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400'}`}>
+                      {(lesson.status || 'draft') === 'published' ? t('common.published') : t('common.draft')}
+                    </span>
+                  </div>
+                )}
+
+                {/* Actions */}
+                <div className="hidden md:flex items-center gap-1.5 justify-end">
+                  {(lesson.attachments?.length || 0) > 0 && (
+                    <span className="flex items-center gap-0.5 text-slate-400 tooltip" data-tip="Вложения">
+                      <Paperclip className="w-3.5 h-3.5" /> <span className="text-[10px]">{lesson.attachments!.length}</span>
+                    </span>
+                  )}
+                  {lesson.homework?.title && (
+                    <span className="text-amber-500 tooltip" data-tip="Домашнее задание">
+                      <ClipboardList className="w-3.5 h-3.5" />
+                    </span>
+                  )}
+                  {isStaff && (
+                    <button 
+                      onClick={(e) => handleDuplicate(e, lesson)}
+                      disabled={duplicatingId === lesson.id}
+                      className="p-1.5 text-slate-400 hover:text-primary-600 dark:hover:text-primary-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-all tooltip"
+                      data-tip="Копировать"
+                    >
+                      {duplicatingId === lesson.id ? <div className="w-3.5 h-3.5 rounded-full border-2 border-primary-500 border-t-transparent animate-spin"/> : <Copy className="w-3.5 h-3.5" /> }
+                    </button>
+                  )}
                 </div>
               </Link>
             );

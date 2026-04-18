@@ -21,11 +21,17 @@ interface BranchFilterProps {
   hideAll?: boolean;
   /** Compact mode for tight layouts */
   compact?: boolean;
+  /** 
+   * Render mode:
+   * - 'dropdown' (default): custom popover dropdown, best for toolbars/headers
+   * - 'select': native <select> element, safe inside modals & forms (no overflow issues)
+   */
+  mode?: 'dropdown' | 'select';
 }
 
 const STORAGE_KEY = 'mycourseplanner_branch_filter';
 
-const BranchFilter: React.FC<BranchFilterProps> = ({ allowedBranchIds, value, onChange, hideAll, compact }) => {
+const BranchFilter: React.FC<BranchFilterProps> = ({ allowedBranchIds, value, onChange, hideAll, compact, mode = 'dropdown' }) => {
   const { t } = useTranslation();
   const [branches, setBranches] = useState<BranchItem[]>([]);
   const [open, setOpen] = useState(false);
@@ -75,6 +81,31 @@ const BranchFilter: React.FC<BranchFilterProps> = ({ allowedBranchIds, value, on
     }
   };
 
+  // ─── Native <select> mode — safe inside modals/forms ───
+  if (mode === 'select') {
+    return (
+      <div className="relative w-full">
+        <GitBranch className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-indigo-500 pointer-events-none z-10" />
+        <select
+          value={value || ''}
+          onChange={(e) => handleSelect(e.target.value || null)}
+          className="appearance-none w-full bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl pl-9 pr-8 py-3 text-sm font-medium text-slate-900 dark:text-white focus:ring-2 focus:ring-slate-900 focus:border-slate-900 dark:focus:ring-white dark:focus:border-white outline-none transition-all cursor-pointer"
+        >
+          {!hideAll && (
+            <option value="">{t('branchFilter.allBranches', 'Все филиалы')}</option>
+          )}
+          {branches.map(b => (
+            <option key={b.id} value={b.id}>
+              {b.name}{b.city ? ` (${b.city})` : ''}
+            </option>
+          ))}
+        </select>
+        <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400 pointer-events-none" />
+      </div>
+    );
+  }
+
+  // ─── Custom dropdown mode — for toolbars/headers ───
   return (
     <div className="relative inline-block">
       <button

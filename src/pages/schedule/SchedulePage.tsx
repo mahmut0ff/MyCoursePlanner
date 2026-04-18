@@ -1079,12 +1079,11 @@ const SchedulePage: React.FC = () => {
             <div className="space-y-4">
               <div>
                 <label className="text-[11px] font-bold text-slate-500 uppercase tracking-widest mb-1.5 block">{t('common.branch', 'Филиал')}</label>
-                <div className="w-full">
-                  <BranchFilter 
-                    value={pasteForm.branchId || null} 
-                    onChange={(val) => setPasteForm(f => ({ ...f, branchId: val || undefined }))} 
-                  />
-                </div>
+                <BranchFilter 
+                  value={pasteForm.branchId || null} 
+                  onChange={(val) => setPasteForm(f => ({ ...f, branchId: val || undefined }))} 
+                  mode="select"
+                />
               </div>
 
               {activeTab === 'timetable' ? (
@@ -1150,12 +1149,11 @@ const SchedulePage: React.FC = () => {
             <div className="space-y-4">
               <div>
                 <label className="text-[11px] font-bold text-slate-500 uppercase tracking-widest mb-1.5 block">{t('common.branch', 'Филиал')}</label>
-                <div className="w-full">
-                  <BranchFilter 
-                    value={form.branchId || null} 
-                    onChange={(val) => setForm(f => ({ ...f, branchId: val || undefined }))} 
-                  />
-                </div>
+                <BranchFilter 
+                  value={form.branchId || null} 
+                  onChange={(val) => setForm(f => ({ ...f, branchId: val || undefined }))} 
+                  mode="select"
+                />
               </div>
 
               <div>

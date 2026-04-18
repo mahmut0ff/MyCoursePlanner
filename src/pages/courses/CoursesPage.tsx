@@ -233,7 +233,7 @@ const CoursesPage: React.FC = () => {
                   value={form.branchId || null}
                   onChange={(id) => setForm(f => ({ ...f, branchId: id || '' }))}
                   hideAll={false}
-                  compact
+                  mode="select"
                 />
               </div>
             </div>

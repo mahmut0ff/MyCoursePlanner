@@ -2,10 +2,11 @@ import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { orgGetGroup, orgGetCourses, orgUpdateGroup, orgGetTeachers, orgGetStudents } from '../../lib/api';
-import { ArrowLeft, Users, BookOpen, Calendar, Link as LinkIcon, Edit2, Check, X, Plus, Briefcase, GraduationCap } from 'lucide-react';
+import { ArrowLeft, Users, BookOpen, Calendar, Link as LinkIcon, Edit2, Check, X, Plus, Briefcase, GraduationCap, Building2 } from 'lucide-react';
 import type { Group, Course, UserProfile } from '../../types';
 import toast from 'react-hot-toast';
 import { useAuth } from '../../contexts/AuthContext';
+import BranchFilter from '../../components/ui/BranchFilter';
 
 
 
@@ -29,7 +30,7 @@ const GroupDetailPage: React.FC = () => {
 
   // Group Info Edit State
   const [showEditGroupModal, setShowEditGroupModal] = useState(false);
-  const [editGroupForm, setEditGroupForm] = useState({ name: '', courseId: '' });
+  const [editGroupForm, setEditGroupForm] = useState({ name: '', courseId: '', branchId: '' });
   const [savingGroup, setSavingGroup] = useState(false);
 
   // Modals for adding teachers/students
@@ -46,7 +47,7 @@ const GroupDetailPage: React.FC = () => {
         setGroup(found || null);
         if (found) {
           setChatForm({ title: found.chatLinkTitle || '', url: found.chatLinkUrl || '' });
-          setEditGroupForm({ name: found.name || '', courseId: found.courseId || '' });
+          setEditGroupForm({ name: found.name || '', courseId: found.courseId || '', branchId: (found as any).branchId || '' });
         }
       }),
       orgGetCourses().then(setCourses).catch(() => []),
@@ -91,7 +92,8 @@ const GroupDetailPage: React.FC = () => {
         id: group.id,
         name: editGroupForm.name,
         courseId: editGroupForm.courseId || '',
-        courseName: selectedCourse ? selectedCourse.title : ''
+        courseName: selectedCourse ? selectedCourse.title : '',
+        branchId: editGroupForm.branchId || ''
       };
       
       await orgUpdateGroup(payload);
@@ -209,7 +211,7 @@ const GroupDetailPage: React.FC = () => {
                 {isAdmin && (
                   <button 
                     onClick={() => {
-                      setEditGroupForm({ name: group.name, courseId: group.courseId || '' });
+                      setEditGroupForm({ name: group.name, courseId: group.courseId || '', branchId: (group as any).branchId || '' });
                       setShowEditGroupModal(true);
                     }} 
                     className="p-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-500 hover:text-violet-600 dark:hover:text-violet-400 rounded-xl transition-all shadow-sm hover:shadow"
@@ -504,6 +506,17 @@ const GroupDetailPage: React.FC = () => {
                      <option key={c.id} value={c.id}>{c.title}</option>
                    ))}
                  </select>
+               </div>
+               <div>
+                 <label className="text-xs font-semibold text-slate-500 mb-1 block flex items-center gap-1">
+                   <Building2 className="w-3.5 h-3.5" /> Филиал
+                 </label>
+                 <BranchFilter
+                   value={editGroupForm.branchId || null}
+                   onChange={(id) => setEditGroupForm(f => ({ ...f, branchId: id || '' }))}
+                   hideAll={false}
+                   mode="select"
+                 />
                </div>
              </div>
 

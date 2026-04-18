@@ -3,8 +3,9 @@ import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../contexts/AuthContext';
 import { orgGetGroups, orgCreateGroup, orgDeleteGroup, orgGetCourses, orgGetTeachers } from '../../lib/api';
-import { Users, Plus, Search, Trash2, RefreshCw, Loader2, BookOpen } from 'lucide-react';
+import { Users, Plus, Search, Trash2, RefreshCw, Loader2, BookOpen, Building2 } from 'lucide-react';
 import type { Group, Course, UserProfile } from '../../types';
+import BranchFilter from '../../components/ui/BranchFilter';
 
 
 
@@ -21,7 +22,7 @@ const GroupsPage: React.FC = () => {
   const [search, setSearch] = useState('');
   const [showModal, setShowModal] = useState(false);
   const navigate = useNavigate();
-  const [form, setForm] = useState({ name: '', courseId: '', chatLinkTitle: '', chatLinkUrl: '' });
+  const [form, setForm] = useState({ name: '', courseId: '', chatLinkTitle: '', chatLinkUrl: '', branchId: '' });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
 
@@ -66,7 +67,7 @@ const GroupsPage: React.FC = () => {
       });
       setGroups((p) => [created, ...p]); 
       setShowModal(false); 
-      setForm({ name: '', courseId: '', chatLinkTitle: '', chatLinkUrl: '' });
+      setForm({ name: '', courseId: '', chatLinkTitle: '', chatLinkUrl: '', branchId: '' });
     } catch (e: any) { setError(e.message || 'Error'); } finally { setSaving(false); }
   };
 
@@ -250,6 +251,17 @@ const GroupsPage: React.FC = () => {
                   <option value="">-- Выберите курс --</option>
                   {courses.map((c) => <option key={c.id} value={c.id}>{c.title}</option>)}
                 </select>
+              </div>
+              <div>
+                <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5 flex items-center gap-1">
+                  <Building2 className="w-3.5 h-3.5" /> {t('common.branch', 'Филиал')}
+                </label>
+                <BranchFilter
+                  value={form.branchId || null}
+                  onChange={(id) => setForm(f => ({ ...f, branchId: id || '' }))}
+                  hideAll={false}
+                  mode="select"
+                />
               </div>
               
               <div className="grid grid-cols-2 gap-4 pt-4 border-t border-slate-100 dark:border-slate-700">

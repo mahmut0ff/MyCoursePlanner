@@ -375,7 +375,7 @@ const handler: Handler = async (event: HandlerEvent) => {
     if (action === 'createStudent') {
       if (!hasRole(user, 'admin', 'manager')) return forbidden();
       const body = JSON.parse(event.body || '{}');
-      if (!body.displayName || !body.password) return badRequest('displayName and password required');
+      if (!body.displayName) return badRequest('displayName required');
 
       // Check student limit
       const limits = await getOrgLimits(orgId);
@@ -386,47 +386,39 @@ const handler: Handler = async (event: HandlerEvent) => {
         }
       }
 
-      // For children without email, auto-generate a placeholder
-      const email = body.email || `student_${Date.now()}@org.local`;
-
       try {
-        if (body.email) {
-          const existing = await adminDb.collection('users').where('email', '==', body.email).get();
-          if (!existing.empty) return badRequest('User with this email already exists');
-        }
-        const authUser = await adminAuth.createUser({
-          email,
-          password: body.password,
-          displayName: body.displayName,
-        });
-        const profile = {
-          email,
+        // Generate a unique ID for the offline student (no Firebase Auth account)
+        const studentRef = adminDb.collection('users').doc();
+        const studentUid = studentRef.id;
+
+        const profile: Record<string, any> = {
           displayName: body.displayName,
           role: 'student',
           organizationId: orgId,
           activeOrgId: orgId,
           phone: body.phone || '',
           createdByOrg: true,
+          offlineStudent: true,   // Flag: not a real Firebase Auth user
           createdAt: now(),
           updatedAt: now(),
         };
-        await adminDb.collection('users').doc(authUser.uid).set(profile);
+        await studentRef.set(profile);
 
         // Create orgMembers entry so student appears in all lists
-        await adminDb.collection('orgMembers').doc(orgId).collection('members').doc(authUser.uid).set({
-          userId: authUser.uid,
-          userEmail: email,
+        await adminDb.collection('orgMembers').doc(orgId).collection('members').doc(studentUid).set({
+          userId: studentUid,
           userName: body.displayName,
           role: 'student',
           status: 'active',
           branchIds: body.branchIds || [],
           primaryBranchId: body.primaryBranchId || null,
           createdByOrg: true,
+          offlineStudent: true,
           joinedAt: now()
         });
 
         // Create membership sub-doc on user for role resolution
-        await adminDb.collection('users').doc(authUser.uid).collection('memberships').doc(orgId).set({
+        await adminDb.collection('users').doc(studentUid).collection('memberships').doc(orgId).set({
           role: 'student',
           status: 'active',
           branchIds: body.branchIds || [],
@@ -434,9 +426,24 @@ const handler: Handler = async (event: HandlerEvent) => {
           joinedAt: now()
         });
 
-        return ok({ uid: authUser.uid, ...profile });
+        // Auto-enroll in group if provided
+        if (body.groupId) {
+          const groupDoc = await adminDb.collection('groups').doc(body.groupId).get();
+          if (groupDoc.exists && groupDoc.data()?.organizationId === orgId) {
+            await adminDb.collection('groups').doc(body.groupId).update({
+              studentIds: FieldValue.arrayUnion(studentUid),
+              updatedAt: now(),
+            });
+            // Auto-generate payment plans for the course
+            const courseId = body.courseId || groupDoc.data()?.courseId;
+            if (courseId) {
+              await syncPaymentPlans(orgId, body.primaryBranchId || null, courseId, [studentUid]).catch(console.error);
+            }
+          }
+        }
+
+        return ok({ uid: studentUid, ...profile });
       } catch (e: any) {
-        if (e.code === 'auth/email-already-exists') return badRequest('Email already registered in authentication system');
         throw e;
       }
     }

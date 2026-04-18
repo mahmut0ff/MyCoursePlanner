@@ -6,13 +6,14 @@ import { usePlanGate } from '../../contexts/PlanContext';
 import { 
   orgGetStudents, 
   orgGetGroups,
+  orgGetCourses,
   orgCreateStudent,
   apiGetOrgMembers,
   apiAcceptMembership,
   apiRejectMembership,
   apiDeleteMember
 } from '../../lib/api';
-import { Users, Search, Mail, RefreshCw, CheckCircle, XCircle, UserPlus, Phone, Filter, X, ChevronDown, SortAsc, SortDesc, Trash2, Lock, Plus, Building2, Lightbulb, Link as LinkIcon, Copy, ExternalLink } from 'lucide-react';
+import { Users, Search, Mail, RefreshCw, CheckCircle, XCircle, UserPlus, Phone, Filter, X, ChevronDown, SortAsc, SortDesc, Trash2, Lock, Plus, Building2, Lightbulb, Link as LinkIcon, Copy, ExternalLink, BookOpen, UsersRound } from 'lucide-react';
 import type { UserProfile, Group } from '../../types';
 import toast from 'react-hot-toast';
 import { PinnedBadgesDisplay } from '../../lib/badges';
@@ -51,8 +52,9 @@ const StudentsPage: React.FC = () => {
 
   // Create student modal
   const [showCreateModal, setShowCreateModal] = useState(false);
-  const [createForm, setCreateForm] = useState({ displayName: '', email: '', password: '', phone: '', branchIds: [] as string[], primaryBranchId: '' });
+  const [createForm, setCreateForm] = useState({ displayName: '', phone: '', courseId: '', groupId: '' });
   const [creating, setCreating] = useState(false);
+  const [courses, setCourses] = useState<any[]>([]);
 
   // Branch filter for the list
   const [branchFilter, setBranchFilter] = useState<string | null>(null);
@@ -98,6 +100,13 @@ const StudentsPage: React.FC = () => {
     } catch { /* silent */ }
   };
 
+  const loadCourses = async () => {
+    try {
+      const data = await orgGetCourses();
+      setCourses(Array.isArray(data) ? data : []);
+    } catch { /* silent */ }
+  };
+
   const loadApplications = async () => {
     if (!profile?.activeOrgId) return;
     setLoadingApps(true);
@@ -114,6 +123,7 @@ const StudentsPage: React.FC = () => {
   useEffect(() => {
     loadStudents();
     loadGroups();
+    loadCourses();
     loadApplications();
   }, [profile?.activeOrgId, branchFilter]);
 
@@ -214,20 +224,27 @@ const StudentsPage: React.FC = () => {
   };
 
   const handleCreateStudent = async () => {
-    if (!createForm.displayName || !createForm.password) return;
+    if (!createForm.displayName) return;
     setCreating(true);
     try {
       await orgCreateStudent(createForm);
-      toast.success(t('org.students.created', 'Студент создан!'));
+      toast.success(t('org.students.created', 'Студент добавлен!'));
       setShowCreateModal(false);
-      setCreateForm({ displayName: '', email: '', password: '', phone: '', branchIds: [], primaryBranchId: '' });
+      setCreateForm({ displayName: '', phone: '', courseId: '', groupId: '' });
       loadStudents();
+      loadGroups();
     } catch (e: any) {
       toast.error(e.message || 'Error');
     } finally {
       setCreating(false);
     }
   };
+
+  // Groups filtered by selected course in the create form
+  const filteredGroupsForCreate = useMemo(() => {
+    if (!createForm.courseId) return [];
+    return groups.filter(g => g.courseId === createForm.courseId);
+  }, [groups, createForm.courseId]);
 
   // Pagination computation
   const totalPages = Math.max(1, Math.ceil(filteredStudents.length / pageSize));
@@ -646,48 +663,74 @@ const StudentsPage: React.FC = () => {
       {/* Create Student Modal */}
       {showCreateModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4" onClick={() => setShowCreateModal(false)}>
-          <div className="bg-white dark:bg-slate-800 rounded-2xl w-full max-w-sm shadow-2xl overflow-hidden" onClick={e => e.stopPropagation()}>
+          <div className="bg-white dark:bg-slate-800 rounded-2xl w-full max-w-sm shadow-2xl overflow-visible" onClick={e => e.stopPropagation()}>
             <div className="p-5 border-b border-slate-100 dark:border-slate-700">
               <h2 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
                 <UserPlus className="w-5 h-5 text-primary-500" />
-                {t('org.students.createTitle', 'Добавить студента')}
+                {t('org.students.createTitle', 'Добавить ученика')}
               </h2>
-              <p className="text-xs text-slate-500 mt-1">{t('org.students.createDesc', 'Для учеников, которые не могут зарегистрироваться сами')}</p>
+              <p className="text-xs text-slate-500 mt-1">{t('org.students.createDesc', 'Для учеников, которых добавляет менеджер (без аккаунта)')}</p>
             </div>
-            <div className="p-5 space-y-3">
+            <div className="p-5 space-y-3.5">
+              {/* ФИО */}
               <div>
-                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1 block">{t('common.name', 'Имя')} *</label>
-                <input autoFocus value={createForm.displayName} onChange={e => setCreateForm(f => ({ ...f, displayName: e.target.value }))} placeholder={t('org.students.namePlaceholder', 'Иван Иванов')} className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-sm outline-none focus:border-primary-500 transition-colors" />
+                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1 block">{t('org.students.fullName', 'ФИО')} *</label>
+                <input autoFocus value={createForm.displayName} onChange={e => setCreateForm(f => ({ ...f, displayName: e.target.value }))} placeholder={t('org.students.namePlaceholder', 'ФИО студента')} className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-sm outline-none focus:border-primary-500 transition-colors" />
               </div>
+              {/* Телефон */}
               <div>
-                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1 block">Email <span className="text-slate-400 normal-case">(необязательно)</span></label>
-                <input value={createForm.email} onChange={e => setCreateForm(f => ({ ...f, email: e.target.value }))} placeholder="student@example.com" className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-sm outline-none focus:border-primary-500 transition-colors" />
-              </div>
-              <div>
-                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1 block flex items-center gap-1"><Lock className="w-3 h-3" /> {t('common.password', 'Пароль')} *</label>
-                <input type="password" value={createForm.password} onChange={e => setCreateForm(f => ({ ...f, password: e.target.value }))} placeholder="min 6 символов" className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-sm outline-none focus:border-primary-500 transition-colors" />
-              </div>
-              <div>
-                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1 block">{t('common.phone', 'Телефон')}</label>
+                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1 block flex items-center gap-1"><Phone className="w-3 h-3" /> {t('common.phone', 'Телефон')}</label>
                 <input value={createForm.phone} onChange={e => setCreateForm(f => ({ ...f, phone: e.target.value }))} placeholder="+996 ..." className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-sm outline-none focus:border-primary-500 transition-colors" />
               </div>
-              <div>
-                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1 block flex items-center gap-1">
-                  <Building2 className="w-3 h-3" /> {t('branches.branch', 'Филиал')} <span className="text-slate-400 normal-case">(необязательно)</span>
-                </label>
-                <BranchFilter
-                  value={createForm.primaryBranchId || null}
-                  onChange={(id) => setCreateForm(f => ({ ...f, primaryBranchId: id || '', branchIds: id ? [id] : [] }))}
-                  hideAll={false}
-                  compact
-                />
-              </div>
+              {/* Курс */}
+              {courses.length > 0 && (
+                <div>
+                  <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1 block flex items-center gap-1"><BookOpen className="w-3 h-3" /> {t('org.students.course', 'Курс')}</label>
+                  <div className="relative">
+                    <select
+                      value={createForm.courseId}
+                      onChange={e => setCreateForm(f => ({ ...f, courseId: e.target.value, groupId: '' }))}
+                      className="appearance-none w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 pr-8 text-sm outline-none focus:border-primary-500 transition-colors cursor-pointer"
+                    >
+                      <option value="">{t('org.students.selectCourse', '— Выберите курс —')}</option>
+                      {courses.map((c: any) => (
+                        <option key={c.id} value={c.id}>{c.title}</option>
+                      ))}
+                    </select>
+                    <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400 pointer-events-none" />
+                  </div>
+                </div>
+              )}
+              {/* Группа — filtered by selected course */}
+              {createForm.courseId && filteredGroupsForCreate.length > 0 && (
+                <div>
+                  <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1 block flex items-center gap-1"><UsersRound className="w-3 h-3" /> {t('org.students.group', 'Группа')}</label>
+                  <div className="relative">
+                    <select
+                      value={createForm.groupId}
+                      onChange={e => setCreateForm(f => ({ ...f, groupId: e.target.value }))}
+                      className="appearance-none w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 pr-8 text-sm outline-none focus:border-primary-500 transition-colors cursor-pointer"
+                    >
+                      <option value="">{t('org.students.selectGroup', '— Выберите группу —')}</option>
+                      {filteredGroupsForCreate.map((g: any) => (
+                        <option key={g.id} value={g.id}>{g.name}</option>
+                      ))}
+                    </select>
+                    <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400 pointer-events-none" />
+                  </div>
+                </div>
+              )}
+              {createForm.courseId && filteredGroupsForCreate.length === 0 && (
+                <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200/60 dark:border-amber-700/30 rounded-lg px-3 py-2">
+                  <p className="text-[11px] text-amber-700 dark:text-amber-300">{t('org.students.noGroupsForCourse', 'У этого курса пока нет групп. Студент будет создан без группы.')}</p>
+                </div>
+              )}
             </div>
             <div className="p-5 border-t border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 flex justify-end gap-2">
-              <button onClick={() => setShowCreateModal(false)} className="px-4 py-2 text-xs font-bold text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors">{t('common.cancel', 'Отмена')}</button>
-              <button onClick={handleCreateStudent} disabled={creating || !createForm.displayName || !createForm.password || createForm.password.length < 6} className="px-5 py-2 bg-primary-600 hover:bg-primary-700 text-white text-xs font-bold rounded-lg transition-colors disabled:opacity-50 flex items-center gap-1.5 shadow-sm">
+              <button onClick={() => { setShowCreateModal(false); setCreateForm({ displayName: '', phone: '', courseId: '', groupId: '' }); }} className="px-4 py-2 text-xs font-bold text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors">{t('common.cancel', 'Отмена')}</button>
+              <button onClick={handleCreateStudent} disabled={creating || !createForm.displayName.trim()} className="px-5 py-2 bg-primary-600 hover:bg-primary-700 text-white text-xs font-bold rounded-lg transition-colors disabled:opacity-50 flex items-center gap-1.5 shadow-sm">
                 {creating ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Plus className="w-3.5 h-3.5" />}
-                {creating ? t('common.loading', 'Создание...') : t('common.create', 'Создать')}
+                {creating ? t('common.loading', 'Добавление...') : t('org.students.addStudent', 'Добавить')}
               </button>
             </div>
           </div>

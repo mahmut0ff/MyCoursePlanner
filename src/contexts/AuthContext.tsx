@@ -118,10 +118,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (firebaseUser) await loadProfile(firebaseUser);
   }, [firebaseUser]);
 
-  // Register FCM push token (best-effort, non-blocking, runs only once)
+  // Register FCM push token (best-effort, non-blocking, runs only once per session)
   const fcmRegisteredRef = useRef(false);
   const registerFcmToken = async () => {
+    // Skip if already registered this session (ref + sessionStorage guard)
     if (fcmRegisteredRef.current) return;
+    if (typeof sessionStorage !== 'undefined' && sessionStorage.getItem('fcm_registered') === '1') {
+      fcmRegisteredRef.current = true;
+      return;
+    }
+    // Skip if user has already denied — no point retrying
+    if (typeof Notification !== 'undefined' && Notification.permission === 'denied') {
+      fcmRegisteredRef.current = true;
+      return;
+    }
     fcmRegisteredRef.current = true;
     try {
       const token = await requestNotificationPermission();
@@ -129,9 +139,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         fcmTokenRef.current = token;
         await apiSaveFcmToken(token);
       }
+      // Mark as registered for this session regardless of token result
+      if (typeof sessionStorage !== 'undefined') {
+        sessionStorage.setItem('fcm_registered', '1');
+      }
     } catch (e) {
       console.warn('FCM token registration failed:', e);
-      fcmRegisteredRef.current = false; // allow retry on failure
+      // Do NOT reset fcmRegisteredRef — avoid retry loops that re-prompt the user
     }
   };
 

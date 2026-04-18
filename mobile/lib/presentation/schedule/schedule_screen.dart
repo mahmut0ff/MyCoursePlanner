@@ -168,7 +168,12 @@ class ScheduleScreen extends ConsumerWidget {
                               ),
                             ),
                             Expanded(
-                              child: _EventCard(event: event),
+                              child: GestureDetector(
+                                onTap: event.groupId != null && event.groupId!.isNotEmpty
+                                    ? () => context.push('/groups/${event.groupId}')
+                                    : null,
+                                child: _EventCard(event: event),
+                              ),
                             ),
                           ],
                         ),

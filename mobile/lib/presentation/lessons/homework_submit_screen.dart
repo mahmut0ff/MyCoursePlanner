@@ -201,8 +201,11 @@ class _HomeworkSubmitScreenState extends ConsumerState<HomeworkSubmitScreen> {
                 controller: _answerController,
                 maxLines: 8,
                 minLines: 4,
+                enabled: _existing == null || !_existing!.isGraded,
                 decoration: InputDecoration(
-                  hintText: 'Напишите свой ответ здесь...',
+                  hintText: _existing != null && _existing!.isGraded
+                      ? 'Работа уже оценена'
+                      : 'Напишите свой ответ здесь...',
                   hintStyle: TextStyle(
                     color: theme.colorScheme.onSurface
                         .withValues(alpha: 0.3),
@@ -251,6 +254,7 @@ class _HomeworkSubmitScreenState extends ConsumerState<HomeworkSubmitScreen> {
                         label: 'Фото',
                         onTap: () => _pickFile(ImageSource.gallery),
                         uploading: _uploading,
+                        disabled: _existing != null && _existing!.isGraded,
                       ),
                       const SizedBox(width: 8),
                       _UploadButton(
@@ -258,6 +262,7 @@ class _HomeworkSubmitScreenState extends ConsumerState<HomeworkSubmitScreen> {
                         label: 'Камера',
                         onTap: () => _pickFile(ImageSource.camera),
                         uploading: _uploading,
+                        disabled: _existing != null && _existing!.isGraded,
                       ),
                     ],
                   ),
@@ -344,12 +349,92 @@ class _HomeworkSubmitScreenState extends ConsumerState<HomeworkSubmitScreen> {
                 }),
               const SizedBox(height: 28),
 
+              // ── Deadline Warning ──
+              if (hw.dueDate != null && hw.dueDate!.isNotEmpty)
+                ...(() {
+                  try {
+                    final due = DateTime.parse(hw.dueDate!);
+                    final now = DateTime.now();
+                    if (now.isAfter(due)) {
+                      return [
+                        Container(
+                          padding: const EdgeInsets.all(12),
+                          margin: const EdgeInsets.only(bottom: 16),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFEF4444)
+                                .withValues(alpha: 0.08),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: const Color(0xFFEF4444)
+                                  .withValues(alpha: 0.2),
+                            ),
+                          ),
+                          child: Row(
+                            children: [
+                              const Icon(Icons.warning_amber_rounded,
+                                  color: Color(0xFFEF4444), size: 20),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: Text(
+                                  'Срок сдачи истёк (${hw.dueDate}). Работа будет отмечена как сданная с опозданием.',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: const Color(0xFFEF4444)
+                                        .withValues(alpha: 0.8),
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ];
+                    }
+                    return <Widget>[];
+                  } catch (_) {
+                    return <Widget>[];
+                  }
+                })(),
+
+              // ── Graded Lock Banner ──
+              if (_existing != null && _existing!.isGraded)
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  margin: const EdgeInsets.only(bottom: 16),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF10B981).withValues(alpha: 0.08),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: const Color(0xFF10B981).withValues(alpha: 0.2),
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.lock_outline,
+                          color: Color(0xFF10B981), size: 20),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          'Работа оценена преподавателем. Редактирование закрыто.',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: const Color(0xFF10B981),
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+
               // ── Submit Button ──
               SizedBox(
                 width: double.infinity,
                 height: 52,
                 child: FilledButton.icon(
-                  onPressed: _submitting ? null : _submit,
+                  onPressed: (_submitting || (_existing != null && _existing!.isGraded))
+                      ? null
+                      : _submit,
                   style: FilledButton.styleFrom(
                     backgroundColor: theme.colorScheme.primary,
                     shape: RoundedRectangleBorder(
@@ -487,12 +572,14 @@ class _UploadButton extends StatelessWidget {
   final String label;
   final VoidCallback onTap;
   final bool uploading;
+  final bool disabled;
 
   const _UploadButton({
     required this.icon,
     required this.label,
     required this.onTap,
     required this.uploading,
+    this.disabled = false,
   });
 
   @override
@@ -502,7 +589,7 @@ class _UploadButton extends StatelessWidget {
       color: theme.colorScheme.primary.withValues(alpha: 0.08),
       borderRadius: BorderRadius.circular(10),
       child: InkWell(
-        onTap: uploading ? null : onTap,
+        onTap: (uploading || disabled) ? null : onTap,
         borderRadius: BorderRadius.circular(10),
         child: Padding(
           padding:

@@ -145,26 +145,41 @@ const handler: Handler = async (event: HandlerEvent) => {
     roomsCount = roomsSnap.size;
   }
 
-  let attemptsSnap;
+  let attemptsSnap: any = { docs: [] };
   let hasGroups = true;
 
-  if (isStaff(user)) {
-    let q: any = orgFilter
-      ? adminDb.collection('examAttempts').where('organizationId', '==', orgFilter).orderBy('submittedAt', 'desc').limit(50)
-      : adminDb.collection('examAttempts').orderBy('submittedAt', 'desc').limit(50);
-    if (typeof branchScope === 'string') {
-      q = adminDb.collection('examAttempts').where('organizationId', '==', orgFilter).where('branchId', '==', branchScope).limit(50);
-    }
-    attemptsSnap = await q.get();
-  } else {
-    attemptsSnap = await adminDb.collection('examAttempts')
-      .where('studentId', '==', user.uid).orderBy('submittedAt', 'desc').get();
+  try {
+    if (isStaff(user)) {
+      let q: any = orgFilter
+        ? adminDb.collection('examAttempts').where('organizationId', '==', orgFilter).orderBy('submittedAt', 'desc').limit(50)
+        : adminDb.collection('examAttempts').orderBy('submittedAt', 'desc').limit(50);
+      if (typeof branchScope === 'string') {
+        q = adminDb.collection('examAttempts').where('organizationId', '==', orgFilter).where('branchId', '==', branchScope).limit(50);
+      }
+      attemptsSnap = await q.get();
+    } else {
+      try {
+        attemptsSnap = await adminDb.collection('examAttempts')
+          .where('studentId', '==', user.uid).orderBy('submittedAt', 'desc').get();
+      } catch {
+        // Fallback without orderBy if index missing
+        attemptsSnap = await adminDb.collection('examAttempts')
+          .where('studentId', '==', user.uid).limit(50).get();
+      }
 
-    const studentGroupsSnap = await adminDb.collection('groups')
-      .where('organizationId', '==', orgFilter)
-      .where('studentIds', 'array-contains', user.uid)
-      .limit(1).get();
-    hasGroups = !studentGroupsSnap.empty;
+      try {
+        const studentGroupsSnap = await adminDb.collection('groups')
+          .where('organizationId', '==', orgFilter)
+          .where('studentIds', 'array-contains', user.uid)
+          .limit(1).get();
+        hasGroups = !studentGroupsSnap.empty;
+      } catch {
+        hasGroups = false;
+      }
+    }
+  } catch (err) {
+    console.error('Error fetching attempts:', err);
+    // attemptsSnap stays as empty { docs: [] }
   }
 
   let attempts = attemptsSnap.docs.map((d: any) => ({ id: d.id, ...d.data() }));

@@ -1,11 +1,13 @@
 import React, { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { orgGetTimetable } from '../../lib/api';
-import { Clock, Calendar, MapPin, Repeat } from 'lucide-react';
+import { Clock, Calendar, MapPin, Repeat, ArrowRight } from 'lucide-react';
 import type { ScheduleEvent } from '../../types';
 
 const StudentSchedulePage: React.FC = () => {
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const [timetableEvents, setTimetableEvents] = useState<ScheduleEvent[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -82,33 +84,42 @@ const StudentSchedulePage: React.FC = () => {
 
               {/* Lessons */}
               <div className="flex-1 px-3 pb-4 space-y-2.5 relative min-h-[250px]">
-                 {dayLessons.map((l, idx) => (
-                   <div key={l.id} className="relative bg-white dark:bg-slate-800 rounded-2xl p-3.5 shadow-sm border border-slate-100 dark:border-slate-700/50 hover:shadow-lg hover:shadow-primary-500/5 transition-all duration-300 overflow-hidden">
-                     <div className="absolute left-0 top-0 bottom-0 w-1 bg-gradient-to-b from-primary-400 to-indigo-500" />
-                     
-                     <span className="text-[9px] font-bold text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-700/80 px-2 py-0.5 rounded-md uppercase tracking-wider inline-block mb-2">
-                       {idx + 1}-й Урок
-                     </span>
+                 {dayLessons.map((l, idx) => {
+                    const hasLink = !!(l.groupId);
+                    const handleClick = () => {
+                      if (l.groupId) navigate(`/groups/${l.groupId}`);
+                    };
+                    return (
+                    <div key={l.id} onClick={hasLink ? handleClick : undefined} className={`relative bg-white dark:bg-slate-800 rounded-2xl p-3.5 shadow-sm border border-slate-100 dark:border-slate-700/50 hover:shadow-lg hover:shadow-primary-500/5 transition-all duration-300 overflow-hidden ${hasLink ? 'cursor-pointer hover:border-primary-300 dark:hover:border-primary-600/50 group' : ''}`}>
+                      <div className="absolute left-0 top-0 bottom-0 w-1 bg-gradient-to-b from-primary-400 to-indigo-500" />
+                      
+                      <span className="text-[9px] font-bold text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-700/80 px-2 py-0.5 rounded-md uppercase tracking-wider inline-block mb-2">
+                        {idx + 1}-й Урок
+                      </span>
 
-                     <h4 className="text-[13px] font-bold text-slate-800 dark:text-white leading-snug mb-2.5 pr-2 break-words">
-                       {l.title}
-                     </h4>
-                     
-                     <div className="flex flex-col gap-1.5">
-                       <div className="flex items-center gap-1.5 text-[11px] text-slate-500 dark:text-slate-400 font-semibold bg-slate-50 dark:bg-slate-800/50 w-fit px-2 py-1 rounded-lg">
-                         <Clock className="w-3.5 h-3.5 text-primary-500 dark:text-primary-400"/> 
-                         <span>{l.startTime} - {l.endTime}</span>
-                       </div>
-                       
-                       {l.location && (
-                         <div className="flex items-center gap-1.5 text-[10px] text-slate-500 dark:text-slate-400 font-medium">
-                           <MapPin className="w-3 h-3 text-slate-400" />
-                           {l.location}
-                         </div>
-                       )}
-                     </div>
-                   </div>
-                 ))}
+                      <div className="flex items-start justify-between">
+                        <h4 className={`text-[13px] font-bold text-slate-800 dark:text-white leading-snug mb-2.5 pr-2 break-words ${hasLink ? 'group-hover:text-primary-600 dark:group-hover:text-primary-400 transition-colors' : ''}`}>
+                          {l.title}
+                        </h4>
+                        {hasLink && <ArrowRight className="w-3.5 h-3.5 text-slate-300 dark:text-slate-600 group-hover:text-primary-500 transition-colors shrink-0 mt-0.5" />}
+                      </div>
+                      
+                      <div className="flex flex-col gap-1.5">
+                        <div className="flex items-center gap-1.5 text-[11px] text-slate-500 dark:text-slate-400 font-semibold bg-slate-50 dark:bg-slate-800/50 w-fit px-2 py-1 rounded-lg">
+                          <Clock className="w-3.5 h-3.5 text-primary-500 dark:text-primary-400"/> 
+                          <span>{l.startTime} - {l.endTime}</span>
+                        </div>
+                        
+                        {l.location && (
+                          <div className="flex items-center gap-1.5 text-[10px] text-slate-500 dark:text-slate-400 font-medium">
+                            <MapPin className="w-3 h-3 text-slate-400" />
+                            {l.location}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                    );
+                  })}
                  
                  {dayLessons.length === 0 && (
                     <div className="absolute inset-x-0 top-1/2 -translate-y-1/2 flex flex-col items-center justify-center opacity-40 select-none pointer-events-none">

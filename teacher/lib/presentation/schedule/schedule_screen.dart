@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
 import '../../domain/providers/providers.dart';
@@ -319,6 +320,7 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
     final isExam = ev['type'] == 'exam';
     final location = ev['location'] ?? '';
     final groupName = ev['groupName'] ?? '';
+    final groupId = ev['groupId'] ?? '';
 
     // Check if ongoing
     final now = DateTime.now();
@@ -338,7 +340,11 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
       }
     } catch (_) {}
 
-    return Container(
+    return GestureDetector(
+      onTap: groupId.toString().isNotEmpty
+          ? () => context.push('/groups/$groupId')
+          : null,
+      child: Container(
       margin: const EdgeInsets.only(bottom: 8),
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
@@ -438,6 +444,7 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
           ),
         ],
       ),
+    ),
     );
   }
 }

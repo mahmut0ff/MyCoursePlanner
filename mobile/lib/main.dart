@@ -4,9 +4,11 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:google_mobile_ads/google_mobile_ads.dart';
 
 import 'app.dart';
 import 'data/services/api_service.dart';
+import 'core/services/app_open_ad_manager.dart';
 import 'firebase_options.dart';
 
 /// Handle background FCM messages (must be top-level).
@@ -26,6 +28,9 @@ void main() async {
     options: DefaultFirebaseOptions.currentPlatform,
   );
 
+  // Initialize AdMob
+  MobileAds.instance.initialize();
+
   // Status bar style
   SystemChrome.setSystemUIOverlayStyle(
     const SystemUiOverlayStyle(
@@ -42,6 +47,12 @@ void main() async {
 
   // Initialize FCM (non-blocking)
   _initFCM();
+
+  // App Open Ad — show on launch and app resume
+  final appOpenAdManager = AppOpenAdManager();
+  appOpenAdManager.loadAd();
+  final lifecycleReactor = AppLifecycleReactor(appOpenAdManager);
+  lifecycleReactor.listenToAppStateChanges();
 
   runApp(const ProviderScope(child: PlanulApp()));
 }

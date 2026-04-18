@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../domain/providers/providers.dart';
 
@@ -171,21 +172,29 @@ class _HomeworkDetailScreenState extends ConsumerState<HomeworkDetailScreen> {
                   ...attachments.map((a) {
                     final url = a is String ? a : (a as Map)['url'] ?? '';
                     final name = a is String ? 'Файл' : (a as Map)['name'] ?? 'Файл';
-                    return Container(
-                      margin: const EdgeInsets.only(bottom: 8),
-                      padding: const EdgeInsets.all(10),
-                      decoration: BoxDecoration(
-                        color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: Row(
-                        children: [
-                          const Icon(Icons.attach_file, size: 18, color: Colors.grey),
-                          const SizedBox(width: 8),
-                          Expanded(child: Text(name.toString(), style: const TextStyle(fontSize: 13), overflow: TextOverflow.ellipsis)),
-                          if (url.toString().isNotEmpty)
-                            const Icon(Icons.open_in_new, size: 16, color: Colors.grey),
-                        ],
+                    return GestureDetector(
+                      onTap: url.toString().isNotEmpty ? () async {
+                        final uri = Uri.parse(url.toString());
+                        if (await canLaunchUrl(uri)) {
+                          await launchUrl(uri, mode: LaunchMode.externalApplication);
+                        }
+                      } : null,
+                      child: Container(
+                        margin: const EdgeInsets.only(bottom: 8),
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.attach_file, size: 18, color: Colors.grey),
+                            const SizedBox(width: 8),
+                            Expanded(child: Text(name.toString(), style: const TextStyle(fontSize: 13), overflow: TextOverflow.ellipsis)),
+                            if (url.toString().isNotEmpty)
+                              Icon(Icons.open_in_new, size: 16, color: theme.colorScheme.primary),
+                          ],
+                        ),
                       ),
                     );
                   }),

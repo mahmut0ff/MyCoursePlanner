@@ -206,11 +206,8 @@ const LessonViewPage: React.FC = () => {
       // but GamificationToasts already displays a nice popup.
     } catch (e: any) {
       console.error(e);
-      toast.error('Не удалось начислить баллы. Ошибка сети.');
-      // Оставляем возможность зафиксировать прохождение локально даже при ошибке АПИ
-      const viewedKey = `viewed_lesson_${id}`;
-      localStorage.setItem(viewedKey, 'true');
-      setIsCompleted(true);
+      toast.error('Не удалось начислить баллы. Попробуйте ещё раз.');
+      // DO NOT mark as completed — XP was not awarded
     } finally {
       setCompleting(false);
     }
@@ -444,6 +441,17 @@ const LessonViewPage: React.FC = () => {
                             </div>
                           )}
                         </div>
+                      )}
+
+                      {/* Resubmit button — only allowed if NOT graded */}
+                      {submission.status !== 'graded' && (
+                        <button
+                          onClick={() => setSubmission(null)}
+                          className="mt-4 w-full flex items-center justify-center gap-2 px-4 py-3 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-xl font-semibold text-sm transition-colors"
+                        >
+                          <Edit className="w-4 h-4" />
+                          Редактировать ответ
+                        </button>
                       )}
                     </div>
                   ) : (

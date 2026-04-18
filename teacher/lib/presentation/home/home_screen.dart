@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../domain/providers/providers.dart';
 import '../components/org_switcher.dart';
+import '../components/ad_banner_widget.dart';
 
 class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
@@ -95,7 +96,61 @@ class HomeScreen extends ConsumerWidget {
                       ],
                     ),
                   ),
-                  const SizedBox(height: 24),
+                  const SizedBox(height: 16),
+
+                  // Ad Banner
+                  const Center(child: AdBannerWidget()),
+                  const SizedBox(height: 16),
+
+                  // Quick Actions
+                  Row(
+                    children: [
+                      Expanded(
+                        child: GestureDetector(
+                          onTap: () => context.push('/homework'),
+                          child: Container(
+                            padding: const EdgeInsets.all(16),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFF59E0B).withValues(alpha: 0.08),
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(color: const Color(0xFFF59E0B).withValues(alpha: 0.15)),
+                            ),
+                            child: const Row(
+                              children: [
+                                Icon(Icons.assignment_outlined, color: Color(0xFFF59E0B), size: 22),
+                                SizedBox(width: 10),
+                                Expanded(child: Text('Проверка ДЗ', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14, color: Color(0xFFF59E0B)))),
+                                Icon(Icons.chevron_right, size: 18, color: Color(0xFFF59E0B)),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: GestureDetector(
+                          onTap: () => context.push('/students'),
+                          child: Container(
+                            padding: const EdgeInsets.all(16),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF3B82F6).withValues(alpha: 0.08),
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(color: const Color(0xFF3B82F6).withValues(alpha: 0.15)),
+                            ),
+                            child: const Row(
+                              children: [
+                                Icon(Icons.people_outline, color: Color(0xFF3B82F6), size: 22),
+                                SizedBox(width: 10),
+                                Expanded(child: Text('Студенты', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14, color: Color(0xFF3B82F6)))),
+                                Icon(Icons.chevron_right, size: 18, color: Color(0xFF3B82F6)),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 20),
 
                   // Quick Stats
                   const Text('Статистика', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
@@ -129,44 +184,47 @@ class HomeScreen extends ConsumerWidget {
                         separatorBuilder: (_, __) => const SizedBox(width: 12),
                         itemBuilder: (context, i) {
                           final l = recentLessons[i] as Map<String, dynamic>;
-                          return Container(
-                            width: 220,
-                            padding: const EdgeInsets.all(16),
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(16),
-                              border: Border.all(color: theme.colorScheme.outline.withValues(alpha: 0.08)),
-                              boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 8, offset: const Offset(0, 2))],
-                            ),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Row(
-                                  children: [
-                                    Container(
-                                      width: 36, height: 36,
-                                      decoration: BoxDecoration(color: const Color(0xFF7C3AED).withValues(alpha: 0.1), borderRadius: BorderRadius.circular(10)),
-                                      child: const Icon(Icons.play_lesson_outlined, size: 18, color: Color(0xFF7C3AED)),
-                                    ),
-                                    const Spacer(),
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                                      decoration: BoxDecoration(
-                                        color: l['status'] == 'published' ? Colors.green.withValues(alpha: 0.1) : Colors.amber.withValues(alpha: 0.1),
-                                        borderRadius: BorderRadius.circular(8),
+                          return GestureDetector(
+                            onTap: () => context.push('/lessons/${l['id']}'),
+                            child: Container(
+                              width: 220,
+                              padding: const EdgeInsets.all(16),
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(16),
+                                border: Border.all(color: theme.colorScheme.outline.withValues(alpha: 0.08)),
+                                boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 8, offset: const Offset(0, 2))],
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    children: [
+                                      Container(
+                                        width: 36, height: 36,
+                                        decoration: BoxDecoration(color: const Color(0xFF7C3AED).withValues(alpha: 0.1), borderRadius: BorderRadius.circular(10)),
+                                        child: const Icon(Icons.play_lesson_outlined, size: 18, color: Color(0xFF7C3AED)),
                                       ),
-                                      child: Text(
-                                        l['status'] == 'published' ? '✓' : '●',
-                                        style: TextStyle(fontSize: 10, color: l['status'] == 'published' ? Colors.green[700] : Colors.amber[700]),
-                                      ),
-                                    )
-                                  ],
-                                ),
-                                const SizedBox(height: 12),
-                                Text(l['title'] ?? 'Без названия', style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14), maxLines: 2, overflow: TextOverflow.ellipsis),
-                                const SizedBox(height: 4),
-                                Text(l['subject'] ?? '', style: TextStyle(fontSize: 12, color: theme.colorScheme.onSurface.withValues(alpha: 0.5)), maxLines: 1),
-                              ],
+                                      const Spacer(),
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                        decoration: BoxDecoration(
+                                          color: l['status'] == 'published' ? Colors.green.withValues(alpha: 0.1) : Colors.amber.withValues(alpha: 0.1),
+                                          borderRadius: BorderRadius.circular(8),
+                                        ),
+                                        child: Text(
+                                          l['status'] == 'published' ? '✓' : '●',
+                                          style: TextStyle(fontSize: 10, color: l['status'] == 'published' ? Colors.green[700] : Colors.amber[700]),
+                                        ),
+                                      )
+                                    ],
+                                  ),
+                                  const SizedBox(height: 12),
+                                  Text(l['title'] ?? 'Без названия', style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14), maxLines: 2, overflow: TextOverflow.ellipsis),
+                                  const SizedBox(height: 4),
+                                  Text(l['subject'] ?? '', style: TextStyle(fontSize: 12, color: theme.colorScheme.onSurface.withValues(alpha: 0.5)), maxLines: 1),
+                                ],
+                              ),
                             ),
                           );
                         },
@@ -181,34 +239,37 @@ class HomeScreen extends ConsumerWidget {
                     const SizedBox(height: 12),
                     ...recentExams.take(3).map((e) {
                       final exam = e as Map<String, dynamic>;
-                      return Container(
-                        margin: const EdgeInsets.only(bottom: 12),
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(16),
-                          border: Border.all(color: theme.colorScheme.outline.withValues(alpha: 0.08)),
-                        ),
-                        child: Row(
-                          children: [
-                            Container(
-                              width: 48, height: 48,
-                              decoration: BoxDecoration(color: const Color(0xFF10B981).withValues(alpha: 0.1), borderRadius: BorderRadius.circular(12)),
-                              child: const Icon(Icons.assignment_outlined, color: Color(0xFF10B981)),
-                            ),
-                            const SizedBox(width: 14),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(exam['title'] ?? 'Экзамен', style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 15)),
-                                  const SizedBox(height: 3),
-                                  Text('${exam['questionsCount'] ?? '?'} вопросов', style: TextStyle(fontSize: 13, color: theme.colorScheme.onSurface.withValues(alpha: 0.5))),
-                                ],
+                      return GestureDetector(
+                        onTap: () => context.push('/exams/${exam['id']}'),
+                        child: Container(
+                          margin: const EdgeInsets.only(bottom: 12),
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(color: theme.colorScheme.outline.withValues(alpha: 0.08)),
+                          ),
+                          child: Row(
+                            children: [
+                              Container(
+                                width: 48, height: 48,
+                                decoration: BoxDecoration(color: const Color(0xFF10B981).withValues(alpha: 0.1), borderRadius: BorderRadius.circular(12)),
+                                child: const Icon(Icons.assignment_outlined, color: Color(0xFF10B981)),
                               ),
-                            ),
-                            const Icon(Icons.chevron_right, size: 20, color: Colors.grey),
-                          ],
+                              const SizedBox(width: 14),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(exam['title'] ?? 'Экзамен', style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 15)),
+                                    const SizedBox(height: 3),
+                                    Text('${exam['questionsCount'] ?? '?'} вопросов', style: TextStyle(fontSize: 13, color: theme.colorScheme.onSurface.withValues(alpha: 0.5))),
+                                  ],
+                                ),
+                              ),
+                              const Icon(Icons.chevron_right, size: 20, color: Colors.grey),
+                            ],
+                          ),
                         ),
                       );
                     }),

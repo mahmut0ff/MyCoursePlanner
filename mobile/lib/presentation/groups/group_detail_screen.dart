@@ -1,25 +1,46 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 
 import '../../domain/providers/lesson_providers.dart';
 import '../common/shimmer_list.dart';
 
 /// Group detail — shows group info + list of lessons for this group.
-class GroupDetailScreen extends ConsumerWidget {
+class GroupDetailScreen extends ConsumerStatefulWidget {
   final String groupId;
 
   const GroupDetailScreen({super.key, required this.groupId});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<GroupDetailScreen> createState() => _GroupDetailScreenState();
+}
+
+class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen> {
+  Set<String> _completedLessonIds = {};
+
+  @override
+  void initState() {
+    super.initState();
+    _loadCompletions();
+  }
+
+  Future<void> _loadCompletions() async {
+    final prefs = await SharedPreferences.getInstance();
+    final keys = prefs.getKeys().where((k) => k.startsWith('viewed_lesson_'));
+    final ids = keys
+        .where((k) => prefs.getBool(k) == true)
+        .map((k) => k.replaceFirst('viewed_lesson_', ''))
+        .toSet();
+    if (mounted) setState(() => _completedLessonIds = ids);
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
-    final lessonsAsync = ref.watch(groupLessonsProvider(groupId));
-
-    // We don't have a single-group provider yet, so we find it from allGroups
-    // or just show the lessons. We'll use the group data from the route param.
+    final lessonsAsync = ref.watch(groupLessonsProvider(widget.groupId));
 
     return Scaffold(
       body: CustomScrollView(
@@ -72,6 +93,78 @@ class GroupDetailScreen extends ConsumerWidget {
             ),
           ),
 
+          // ── Progress Header ──
+          if (_completedLessonIds.isNotEmpty)
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+                child: lessonsAsync.whenOrNull(
+                  data: (lessons) {
+                    if (lessons.isEmpty) return null;
+                    final completed = lessons
+                        .where((l) => _completedLessonIds.contains(l.id))
+                        .length;
+                    final progress = completed / lessons.length;
+                    return Container(
+                      padding: const EdgeInsets.all(14),
+                      decoration: BoxDecoration(
+                        color: isDark
+                            ? const Color(0xFF1E293B)
+                            : Colors.white,
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(
+                          color: theme.colorScheme.outline
+                              .withValues(alpha: 0.1),
+                        ),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            mainAxisAlignment:
+                                MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(
+                                'Прогресс',
+                                style:
+                                    theme.textTheme.labelMedium?.copyWith(
+                                  fontWeight: FontWeight.w700,
+                                  color: theme.colorScheme.onSurface
+                                      .withValues(alpha: 0.5),
+                                ),
+                              ),
+                              Text(
+                                '$completed / ${lessons.length}',
+                                style:
+                                    theme.textTheme.labelMedium?.copyWith(
+                                  fontWeight: FontWeight.w800,
+                                  color: const Color(0xFF10B981),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 8),
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(4),
+                            child: LinearProgressIndicator(
+                              value: progress,
+                              minHeight: 6,
+                              backgroundColor: theme
+                                  .colorScheme.primary
+                                  .withValues(alpha: 0.08),
+                              valueColor:
+                                  const AlwaysStoppedAnimation(
+                                      Color(0xFF10B981)),
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ),
+
           // ── Lessons List ──
           SliverPadding(
             padding: const EdgeInsets.all(16),
@@ -91,7 +184,7 @@ class GroupDetailScreen extends ConsumerWidget {
                       const SizedBox(height: 12),
                       FilledButton.icon(
                         onPressed: () =>
-                            ref.invalidate(groupLessonsProvider(groupId)),
+                            ref.invalidate(groupLessonsProvider(widget.groupId)),
                         icon: const Icon(Icons.refresh, size: 18),
                         label: const Text('Повторить'),
                       ),
@@ -119,6 +212,7 @@ class GroupDetailScreen extends ConsumerWidget {
                           hasVideo: lesson.hasVideo,
                           coverUrl: lesson.coverImageUrl,
                           status: lesson.status,
+                          isCompleted: _completedLessonIds.contains(lesson.id),
                           isDark: isDark,
                           theme: theme,
                           onTap: () =>
@@ -191,6 +285,7 @@ class _LessonCard extends StatelessWidget {
   final bool hasVideo;
   final String? coverUrl;
   final String status;
+  final bool isCompleted;
   final bool isDark;
   final ThemeData theme;
   final VoidCallback onTap;
@@ -203,6 +298,7 @@ class _LessonCard extends StatelessWidget {
     required this.hasVideo,
     this.coverUrl,
     required this.status,
+    this.isCompleted = false,
     required this.isDark,
     required this.theme,
     required this.onTap,
@@ -363,10 +459,22 @@ class _LessonCard extends StatelessWidget {
                 ),
               ),
 
-              // Chevron
-              Icon(Icons.chevron_right_rounded,
-                  color:
-                      theme.colorScheme.onSurface.withValues(alpha: 0.2)),
+              // Completion + Chevron
+              if (isCompleted)
+                Container(
+                  width: 28,
+                  height: 28,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF10B981).withValues(alpha: 0.1),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(Icons.check_circle,
+                      color: Color(0xFF10B981), size: 20),
+                )
+              else
+                Icon(Icons.chevron_right_rounded,
+                    color:
+                        theme.colorScheme.onSurface.withValues(alpha: 0.2)),
             ],
           ),
         ),

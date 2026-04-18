@@ -154,10 +154,10 @@ const StudentHomeworkPage: React.FC = () => {
           </p>
           {filter === 'all' && (
             <Link
-              to="/lessons"
+              to="/courses"
               className="mt-6 flex items-center gap-2 px-5 py-2.5 bg-accent-teal text-white rounded-xl font-semibold text-sm shadow-lg shadow-accent-teal/20 hover:shadow-xl hover:shadow-accent-teal/30 hover:-translate-y-0.5 transition-all"
             >
-              <BookOpen className="w-4 h-4" /> Перейти к урокам
+              <BookOpen className="w-4 h-4" /> Перейти к курсам
             </Link>
           )}
         </div>

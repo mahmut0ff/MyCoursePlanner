@@ -21,7 +21,17 @@ const handler: Handler = async (event: HandlerEvent) => {
     if (params.id) {
       const doc = await adminDb.collection(COLLECTION).doc(params.id).get();
       if (!doc.exists) return notFound('Lesson not found');
-      return ok({ id: doc.id, ...doc.data() });
+      const lessonData = doc.data()!;
+
+      // Access control: students can only see published lessons from their own org
+      if (!isSuperAdmin(user) && !isStaff(user)) {
+        if (lessonData.status !== 'published') return notFound('Lesson not found');
+        if (lessonData.organizationId && user.organizationId && lessonData.organizationId !== user.organizationId) {
+          return forbidden();
+        }
+      }
+
+      return ok({ id: doc.id, ...lessonData });
     }
 
     // Filter by groupId — returns lessons that include this groupId in their groupIds array

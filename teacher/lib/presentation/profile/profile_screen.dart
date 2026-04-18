@@ -38,12 +38,13 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
 
           final name = profile['displayName'] ?? 'Преподаватель';
           final email = profile['email'] ?? '';
-          final photoURL = profile['avatarUrl'] ?? profile['photoURL'] ?? '';
+          final photoURL = profile['avatarUrl'] ?? profile['photoURL'] ?? FirebaseAuth.instance.currentUser?.photoURL ?? '';
           final phone = profile['phone'] ?? '';
           final bio = profile['bio'] ?? '';
           final role = profile['role'] ?? 'teacher';
           final orgName = profile['organizationName'] ?? '';
           final initials = name.isNotEmpty ? name[0].toUpperCase() : '?';
+          final dashData = ref.watch(dashboardProvider).valueOrNull ?? {};
 
           return RefreshIndicator(
             onRefresh: () async {
@@ -146,9 +147,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                 // ── Stats Row ──
                 Row(
                   children: [
-                    _StatItem(value: bio.isNotEmpty ? '✓' : '—', label: 'Био', icon: '📝'),
-                    _StatItem(value: phone.isNotEmpty ? '✓' : '—', label: 'Телефон', icon: '📱'),
-                    _StatItem(value: role, label: 'Роль', icon: '👤'),
+                    _StatItem(value: '${dashData['lessonsCount'] ?? 0}', label: 'Уроков', icon: '📚'),
+                    _StatItem(value: '${dashData['examsCount'] ?? 0}', label: 'Экзаменов', icon: '📝'),
+                    _StatItem(value: '${dashData['activeRoomsCount'] ?? 0}', label: 'Комнат', icon: '🏫'),
                   ],
                 ),
                 const SizedBox(height: 28),
@@ -330,6 +331,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     final nameC = TextEditingController(text: profile['displayName'] ?? '');
     final phoneC = TextEditingController(text: profile['phone'] ?? '');
     final bioC = TextEditingController(text: profile['bio'] ?? '');
+    final avatarC = TextEditingController(text: profile['avatarUrl'] ?? profile['photoURL'] ?? '');
     bool loading = false;
 
     showModalBottomSheet(
@@ -339,47 +341,55 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setModalState) => Padding(
           padding: EdgeInsets.fromLTRB(20, 20, 20, MediaQuery.of(ctx).viewInsets.bottom + 20),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Center(
-                child: Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.grey[300], borderRadius: BorderRadius.circular(2))),
-              ),
-              const SizedBox(height: 20),
-              Text('Редактировать профиль', style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700)),
-              const SizedBox(height: 20),
-              TextField(controller: nameC, decoration: const InputDecoration(labelText: 'Имя', prefixIcon: Icon(Icons.person_outline))),
-              const SizedBox(height: 14),
-              TextField(controller: phoneC, keyboardType: TextInputType.phone, decoration: const InputDecoration(labelText: 'Телефон', prefixIcon: Icon(Icons.phone_outlined))),
-              const SizedBox(height: 14),
-              TextField(controller: bioC, maxLines: 3, decoration: const InputDecoration(labelText: 'О себе (Био)', alignLabelWithHint: true)),
-              const SizedBox(height: 20),
-              SizedBox(
-                width: double.infinity,
-                height: 52,
-                child: FilledButton(
-                  onPressed: loading ? null : () async {
-                    setModalState(() => loading = true);
-                    try {
-                      final api = ref.read(apiServiceProvider);
-                      await api.updateProfile({
-                        'displayName': nameC.text.trim(),
-                        'phone': phoneC.text.trim(),
-                        'bio': bioC.text.trim(),
-                      });
-                      ref.invalidate(userProfileProvider);
-                      if (ctx.mounted) Navigator.pop(ctx);
-                      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Профиль обновлён!')));
-                    } catch (e) {
-                      setModalState(() => loading = false);
-                      if (ctx.mounted) ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(content: Text('Ошибка: $e')));
-                    }
-                  },
-                  child: loading ? const CircularProgressIndicator(color: Colors.white) : const Text('Сохранить'),
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Center(
+                  child: Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.grey[300], borderRadius: BorderRadius.circular(2))),
                 ),
-              ),
-            ],
+                const SizedBox(height: 20),
+                Text('Редактировать профиль', style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700)),
+                const SizedBox(height: 20),
+                TextField(controller: nameC, decoration: const InputDecoration(labelText: 'Имя', prefixIcon: Icon(Icons.person_outline))),
+                const SizedBox(height: 14),
+                TextField(controller: phoneC, keyboardType: TextInputType.phone, decoration: const InputDecoration(labelText: 'Телефон', prefixIcon: Icon(Icons.phone_outlined))),
+                const SizedBox(height: 14),
+                TextField(controller: avatarC, keyboardType: TextInputType.url, decoration: const InputDecoration(labelText: 'URL фото профиля', prefixIcon: Icon(Icons.image_outlined), hintText: 'https://...')),
+                const SizedBox(height: 14),
+                TextField(controller: bioC, maxLines: 3, decoration: const InputDecoration(labelText: 'О себе (Био)', alignLabelWithHint: true)),
+                const SizedBox(height: 20),
+                SizedBox(
+                  width: double.infinity,
+                  height: 52,
+                  child: FilledButton(
+                    onPressed: loading ? null : () async {
+                      setModalState(() => loading = true);
+                      try {
+                        final api = ref.read(apiServiceProvider);
+                        final data = <String, dynamic>{
+                          'displayName': nameC.text.trim(),
+                          'phone': phoneC.text.trim(),
+                          'bio': bioC.text.trim(),
+                        };
+                        if (avatarC.text.trim().isNotEmpty) {
+                          data['avatarUrl'] = avatarC.text.trim();
+                        }
+                        await api.updateProfile(data);
+                        ref.invalidate(userProfileProvider);
+                        if (ctx.mounted) Navigator.pop(ctx);
+                        if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Профиль обновлён!')));
+                      } catch (e) {
+                        setModalState(() => loading = false);
+                        if (ctx.mounted) ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(content: Text('Ошибка: $e')));
+                      }
+                    },
+                    child: loading ? const CircularProgressIndicator(color: Colors.white) : const Text('Сохранить'),
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),

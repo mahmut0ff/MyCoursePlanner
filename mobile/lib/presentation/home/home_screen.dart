@@ -9,6 +9,7 @@ import '../../domain/providers/auth_provider.dart';
 import '../../domain/providers/schedule_providers.dart';
 import '../../domain/providers/exam_providers.dart';
 import '../common/shimmer_list.dart';
+import '../components/ad_banner_widget.dart';
 
 class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
@@ -97,6 +98,10 @@ class HomeScreen extends ConsumerWidget {
               ),
             ),
             const SizedBox(height: 20),
+
+            // ── Ad Banner ──
+            const Center(child: AdBannerWidget()),
+            const SizedBox(height: 12),
 
             // ── No-org CTA ──
             if (!hasOrg) ...[
@@ -413,7 +418,12 @@ class _TodaySchedule extends ConsumerWidget {
                   .take(3)
                   .map((e) => Padding(
                         padding: const EdgeInsets.only(bottom: 10),
-                        child: _ScheduleCard(event: e),
+                        child: _ScheduleCard(
+                          event: e,
+                          onTap: e.groupId != null && e.groupId!.isNotEmpty
+                              ? () => context.push('/groups/${e.groupId}')
+                              : null,
+                        ),
                       ))
                   .toList(),
             );
@@ -495,8 +505,9 @@ class _RecentResults extends ConsumerWidget {
 
 class _ScheduleCard extends StatelessWidget {
   final ScheduleEvent event;
+  final VoidCallback? onTap;
 
-  const _ScheduleCard({required this.event});
+  const _ScheduleCard({required this.event, this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -505,66 +516,76 @@ class _ScheduleCard extends StatelessWidget {
     final color =
         event.isExam ? const Color(0xFFEF4444) : const Color(0xFF3B82F6);
     final icon = event.isExam ? Icons.quiz_outlined : Icons.menu_book_outlined;
+    final hasLink = event.groupId != null && event.groupId!.isNotEmpty;
 
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF1E293B) : Colors.white,
-        borderRadius: BorderRadius.circular(14),
-        border: Border(left: BorderSide(color: color, width: 4)),
-        boxShadow: isDark
-            ? null
-            : [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.04),
-                  blurRadius: 8,
-                  offset: const Offset(0, 2),
-                ),
-              ],
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 42,
-            height: 42,
-            decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Icon(icon, color: color, size: 22),
-          ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  event.title,
-                  style: theme.textTheme.titleSmall
-                      ?.copyWith(fontWeight: FontWeight.w600),
-                ),
-                if (event.subtitle.isNotEmpty) ...[
-                  const SizedBox(height: 2),
-                  Text(
-                    event.subtitle,
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: theme.colorScheme.onSurface
-                          .withValues(alpha: 0.5),
-                    ),
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: isDark ? const Color(0xFF1E293B) : Colors.white,
+          borderRadius: BorderRadius.circular(14),
+          border: Border(left: BorderSide(color: color, width: 4)),
+          boxShadow: isDark
+              ? null
+              : [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.04),
+                    blurRadius: 8,
+                    offset: const Offset(0, 2),
                   ),
                 ],
-              ],
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 42,
+              height: 42,
+              decoration: BoxDecoration(
+                color: color.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Icon(icon, color: color, size: 22),
             ),
-          ),
-          Text(
-            '${event.startTime} – ${event.endTime}',
-            style: theme.textTheme.labelMedium?.copyWith(
-              color:
-                  theme.colorScheme.onSurface.withValues(alpha: 0.5),
-              fontWeight: FontWeight.w500,
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    event.title,
+                    style: theme.textTheme.titleSmall
+                        ?.copyWith(fontWeight: FontWeight.w600),
+                  ),
+                  if (event.subtitle.isNotEmpty) ...[
+                    const SizedBox(height: 2),
+                    Text(
+                      event.subtitle,
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: theme.colorScheme.onSurface
+                            .withValues(alpha: 0.5),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
             ),
-          ),
-        ],
+            Text(
+              '${event.startTime} – ${event.endTime}',
+              style: theme.textTheme.labelMedium?.copyWith(
+                color:
+                    theme.colorScheme.onSurface.withValues(alpha: 0.5),
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            if (hasLink) ...[
+              const SizedBox(width: 6),
+              Icon(Icons.chevron_right_rounded,
+                  size: 18,
+                  color: theme.colorScheme.onSurface.withValues(alpha: 0.25)),
+            ],
+          ],
+        ),
       ),
     );
   }

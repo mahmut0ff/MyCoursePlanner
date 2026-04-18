@@ -10,15 +10,25 @@ class StudentsScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final studentsAsync = ref.watch(studentsProvider);
+    final theme = Theme.of(context);
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Студенты'),
-      ),
+      appBar: AppBar(title: const Text('Студенты')),
       body: studentsAsync.when(
         data: (students) {
           if (students.isEmpty) {
-            return const Center(child: Text('Нет студентов'));
+            return Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.people_outline, size: 72, color: theme.colorScheme.primary.withValues(alpha: 0.3)),
+                  const SizedBox(height: 16),
+                  const Text('Нет студентов', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600)),
+                  const SizedBox(height: 8),
+                  Text('Студенты появятся здесь', style: TextStyle(color: theme.colorScheme.onSurface.withValues(alpha: 0.5))),
+                ],
+              ),
+            );
           }
 
           return RefreshIndicator(
@@ -26,35 +36,63 @@ class StudentsScreen extends ConsumerWidget {
             child: ListView.separated(
               padding: const EdgeInsets.all(16),
               itemCount: students.length,
-              separatorBuilder: (_, __) => const SizedBox(height: 12),
+              separatorBuilder: (_, __) => const SizedBox(height: 10),
               itemBuilder: (context, index) {
                 final student = students[index] as Map<String, dynamic>;
-                
-                return Card(
-                  clipBehavior: Clip.antiAlias,
-                  child: InkWell(
-                    onTap: () {
-                      Navigator.push(context, MaterialPageRoute(builder: (_) => StudentDetailScreen(student: student)));
-                    },
-                    child: ListTile(
-                    leading: CircleAvatar(
-                      backgroundColor: Theme.of(context).colorScheme.primaryContainer,
-                      child: Icon(Icons.person, color: Theme.of(context).colorScheme.onPrimaryContainer),
+                final name = student['displayName'] ?? student['email'] ?? 'Безымянный';
+                final initials = name.isNotEmpty ? name[0].toUpperCase() : '?';
+                final avatarColors = [const Color(0xFF7C3AED), const Color(0xFF10B981), const Color(0xFF3B82F6), const Color(0xFFF59E0B), const Color(0xFFEF4444)];
+                final color = avatarColors[index % avatarColors.length];
+
+                return GestureDetector(
+                  onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => StudentDetailScreen(student: student))),
+                  child: Container(
+                    padding: const EdgeInsets.all(14),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: theme.colorScheme.outline.withValues(alpha: 0.08)),
+                      boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 8, offset: const Offset(0, 2))],
                     ),
-                    title: Text(student['displayName'] ?? student['email'] ?? 'Безымянный', style: const TextStyle(fontWeight: FontWeight.bold)),
-                    subtitle: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+                    child: Row(
                       children: [
-                        if (student['email'] != null) ...[
-                          const SizedBox(height: 4),
-                          Text(student['email']),
-                        ],
-                        if (student['phone'] != null) ...[
-                          const SizedBox(height: 2),
-                          Text(student['phone']),
-                        ],
+                        CircleAvatar(
+                          radius: 24,
+                          backgroundColor: color.withValues(alpha: 0.12),
+                          backgroundImage: student['photoURL'] != null ? NetworkImage(student['photoURL']) : null,
+                          child: student['photoURL'] == null ? Text(initials, style: TextStyle(fontWeight: FontWeight.w700, color: color, fontSize: 16)) : null,
+                        ),
+                        const SizedBox(width: 14),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(name, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 15)),
+                              const SizedBox(height: 3),
+                              Row(
+                                children: [
+                                  if (student['email'] != null) ...[
+                                    Icon(Icons.email_outlined, size: 13, color: theme.colorScheme.onSurface.withValues(alpha: 0.4)),
+                                    const SizedBox(width: 4),
+                                    Flexible(child: Text(student['email'], style: TextStyle(fontSize: 13, color: theme.colorScheme.onSurface.withValues(alpha: 0.5)), overflow: TextOverflow.ellipsis)),
+                                  ],
+                                ],
+                              ),
+                              if (student['phone'] != null && student['phone'].toString().isNotEmpty) ...[
+                                const SizedBox(height: 2),
+                                Row(
+                                  children: [
+                                    Icon(Icons.phone_outlined, size: 13, color: theme.colorScheme.onSurface.withValues(alpha: 0.4)),
+                                    const SizedBox(width: 4),
+                                    Text(student['phone'], style: TextStyle(fontSize: 13, color: theme.colorScheme.onSurface.withValues(alpha: 0.5))),
+                                  ],
+                                ),
+                              ],
+                            ],
+                          ),
+                        ),
+                        Icon(Icons.chevron_right, size: 20, color: theme.colorScheme.onSurface.withValues(alpha: 0.3)),
                       ],
-                    ),
                     ),
                   ),
                 );
@@ -64,19 +102,21 @@ class StudentsScreen extends ConsumerWidget {
         },
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (err, stack) => Center(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text('Ошибка: $err'),
-              ElevatedButton(
-                onPressed: () => ref.refresh(studentsProvider),
-                child: const Text('Повторить'),
-              )
-            ],
+          child: Padding(
+            padding: const EdgeInsets.all(32),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.error_outline, size: 48, color: theme.colorScheme.error.withValues(alpha: 0.5)),
+                const SizedBox(height: 12),
+                Text('$err', style: const TextStyle(fontSize: 13), textAlign: TextAlign.center),
+                const SizedBox(height: 16),
+                FilledButton.icon(icon: const Icon(Icons.refresh), label: const Text('Повторить'), onPressed: () => ref.refresh(studentsProvider)),
+              ],
+            ),
           ),
         ),
       ),
     );
   }
 }
-

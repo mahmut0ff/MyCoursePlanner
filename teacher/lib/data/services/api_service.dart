@@ -265,6 +265,14 @@ class ApiService {
     return (res.data is List) ? res.data : [];
   }
 
+  Future<List<dynamic>> getJournalByCourse({required String courseId}) async {
+    final res = await _dio.get('/api-gradebook', queryParameters: {
+      'action': 'journal',
+      'courseId': courseId,
+    });
+    return (res.data is List) ? res.data : [];
+  }
+
   Future<void> markAttendance(Map<String, dynamic> data) async {
     await _dio.post('/api-gradebook', data: {
       'action': 'markAttendance',
@@ -278,6 +286,14 @@ class ApiService {
     final params = <String, dynamic>{'action': 'grades'};
     if (groupId != null) params['groupId'] = groupId;
     final res = await _dio.get('/api-gradebook', queryParameters: params);
+    return (res.data is List) ? res.data : [];
+  }
+
+  Future<List<dynamic>> getGradesByCourse({required String courseId}) async {
+    final res = await _dio.get('/api-gradebook', queryParameters: {
+      'action': 'grades',
+      'courseId': courseId,
+    });
     return (res.data is List) ? res.data : [];
   }
 
@@ -317,13 +333,18 @@ class ApiService {
   // ── Profile ──
 
   Future<Map<String, dynamic>> getTeacherProfile() async {
-    final res = await _dio.get('/api-users', queryParameters: {'action': 'me'});
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null) throw Exception('Not authenticated');
+    final res = await _dio.get('/api-users', queryParameters: {'uid': uid});
     return res.data;
   }
 
   Future<void> updateProfile(Map<String, dynamic> data) async {
-    await _dio.post('/api-users', data: {
-      'action': 'updateProfile',
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null) throw Exception('Not authenticated');
+    // Backend expects PUT /api-users with uid in body
+    await _dio.put('/api-users', data: {
+      'uid': uid,
       ...data,
     });
   }
@@ -340,6 +361,15 @@ class ApiService {
     await _dio.post('/api-org', data: {
       'action': accept ? 'acceptInvite' : 'rejectInvite',
       'inviteId': inviteId,
+    });
+  }
+
+  Future<void> acceptInvite(String userId, String organizationId) async {
+    await _dio.post('/api-memberships', queryParameters: {
+      'action': 'accept',
+    }, data: {
+      'userId': userId,
+      'organizationId': organizationId,
     });
   }
 }

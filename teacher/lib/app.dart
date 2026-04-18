@@ -34,14 +34,14 @@ class _PlanulaSeniorAppState extends ConsumerState<PlanulaSeniorApp> {
 
   @override
   Widget build(BuildContext context) {
-    final themeMode = ref.watch(themeModeProvider);
+
 
     return MaterialApp.router(
       title: 'Planula Senior',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.light(),
-      darkTheme: AppTheme.dark(),
-      themeMode: themeMode,
+      darkTheme: AppTheme.light(),
+      themeMode: ThemeMode.light,
       routerConfig: appRouter,
     );
   }

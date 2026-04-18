@@ -24,10 +24,23 @@ final userProfileProvider = FutureProvider<Map<String, dynamic>?>((ref) async {
   return {'id': doc.id, ...doc.data()!};
 });
 
-/// Dashboard data.
+/// Dashboard data — gracefully falls back to empty on 502/errors.
 final dashboardProvider = FutureProvider<Map<String, dynamic>>((ref) async {
   final api = ref.read(apiServiceProvider);
-  return api.getDashboard();
+  try {
+    return await api.getDashboard();
+  } catch (_) {
+    // Fallback: return empty dashboard so UI still renders
+    return {
+      'lessonsCount': 0,
+      'examsCount': 0,
+      'activeRoomsCount': 0,
+      'attemptsCount': 0,
+      'avgScore': 0,
+      'recentLessons': <dynamic>[],
+      'recentExams': <dynamic>[],
+    };
+  }
 });
 
 /// Lessons list.
@@ -98,18 +111,32 @@ final roomsProvider = FutureProvider<List<dynamic>>((ref) async {
   return api.getRooms();
 });
 
-/// Journal entries.
+/// Journal entries (by groupId — legacy).
 final journalProvider =
     FutureProvider.family<List<dynamic>, String?>((ref, groupId) async {
   final api = ref.read(apiServiceProvider);
   return api.getJournal(groupId: groupId);
 });
 
-/// Grades.
+/// Journal entries (by courseId — matches api-gradebook backend).
+final journalByCourseProvider =
+    FutureProvider.family<List<dynamic>, String>((ref, courseId) async {
+  final api = ref.read(apiServiceProvider);
+  return api.getJournalByCourse(courseId: courseId);
+});
+
+/// Grades (by groupId — legacy).
 final gradesProvider =
     FutureProvider.family<List<dynamic>, String?>((ref, groupId) async {
   final api = ref.read(apiServiceProvider);
   return api.getGrades(groupId: groupId);
+});
+
+/// Grades (by courseId — matches api-gradebook backend).
+final gradesByCourseProvider =
+    FutureProvider.family<List<dynamic>, String>((ref, courseId) async {
+  final api = ref.read(apiServiceProvider);
+  return api.getGradesByCourse(courseId: courseId);
 });
 
 /// Organization directory.

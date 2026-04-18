@@ -15,10 +15,12 @@ import '../../presentation/lessons/lesson_detail_screen.dart';
 import '../../presentation/lessons/lesson_form_screen.dart';
 import '../../presentation/exams/exams_screen.dart';
 import '../../presentation/exams/exam_detail_screen.dart';
+import '../../presentation/exams/exam_form_screen.dart';
 import '../../presentation/schedule/schedule_screen.dart';
 import '../../presentation/homework/homework_review_screen.dart';
 import '../../presentation/students/students_screen.dart';
 import '../../presentation/profile/profile_screen.dart';
+import '../../presentation/profile/licenses_screen.dart';
 import '../../presentation/organizations/directory_screen.dart';
 
 final _rootNavigatorKey = GlobalKey<NavigatorState>();
@@ -91,9 +93,19 @@ final appRouter = GoRouter(
       builder: (_, __) => const ExamsScreen(),
     ),
     GoRoute(
+      path: '/exams/new',
+      builder: (_, __) => const ExamFormScreen(),
+    ),
+    GoRoute(
       path: '/exams/:examId',
       builder: (_, state) => ExamDetailScreen(
         examId: state.pathParameters['examId']!,
+      ),
+    ),
+    GoRoute(
+      path: '/exams/:examId/edit',
+      builder: (_, state) => ExamFormScreen(
+        examId: state.pathParameters['examId'],
       ),
     ),
     GoRoute(
@@ -107,6 +119,10 @@ final appRouter = GoRouter(
     GoRoute(
       path: '/directory',
       builder: (_, __) => const DirectoryScreen(),
+    ),
+    GoRoute(
+      path: '/licenses',
+      builder: (_, __) => const LicensesScreen(),
     ),
   ],
 );

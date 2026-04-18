@@ -12,7 +12,7 @@ import {
   apiRejectMembership,
   apiDeleteMember
 } from '../../lib/api';
-import { Users, Search, Mail, RefreshCw, CheckCircle, XCircle, UserPlus, Phone, Filter, X, ChevronDown, SortAsc, SortDesc, Trash2, Lock, Plus, Building2 } from 'lucide-react';
+import { Users, Search, Mail, RefreshCw, CheckCircle, XCircle, UserPlus, Phone, Filter, X, ChevronDown, SortAsc, SortDesc, Trash2, Lock, Plus, Building2, Lightbulb, Link as LinkIcon, Copy, ExternalLink } from 'lucide-react';
 import type { UserProfile, Group } from '../../types';
 import toast from 'react-hot-toast';
 import { PinnedBadgesDisplay } from '../../lib/badges';
@@ -56,6 +56,27 @@ const StudentsPage: React.FC = () => {
 
   // Branch filter for the list
   const [branchFilter, setBranchFilter] = useState<string | null>(null);
+
+  // Onboarding hint
+  const [hintDismissed, setHintDismissed] = useState(() => localStorage.getItem('students_invite_hint_dismissed') === '1');
+  const [hintCopied, setHintCopied] = useState(false);
+
+  const dismissHint = () => {
+    setHintDismissed(true);
+    localStorage.setItem('students_invite_hint_dismissed', '1');
+  };
+
+  // Public invite URL
+  const orgSlug = (profile as any)?.activeOrgId || profile?.organizationId || '';
+  const publicInviteUrl = orgSlug ? `${window.location.origin}/org/${orgSlug}` : '';
+
+  const copyInviteLink = () => {
+    if (!publicInviteUrl) return;
+    navigator.clipboard.writeText(publicInviteUrl);
+    setHintCopied(true);
+    toast.success(t('common.copied', 'Ссылка скопирована!'));
+    setTimeout(() => setHintCopied(false), 2000);
+  };
 
   // Pagination
   const [page, setPage] = useState(1);
@@ -278,6 +299,67 @@ const StudentsPage: React.FC = () => {
           )}
         </button>
       </div>
+
+      {/* Onboarding Hint for Managers */}
+      {!hintDismissed && (profile?.role === 'admin' || profile?.role === 'manager' || profile?.role === 'super_admin') && (
+        <div className="mb-4 relative overflow-hidden bg-gradient-to-r from-amber-50 via-orange-50 to-yellow-50 dark:from-amber-900/20 dark:via-orange-900/15 dark:to-yellow-900/10 border border-amber-200/80 dark:border-amber-700/40 rounded-2xl p-4 shadow-sm">
+          <button
+            onClick={dismissHint}
+            className="absolute top-3 right-3 p-1 text-amber-400 hover:text-amber-600 dark:hover:text-amber-300 hover:bg-amber-100 dark:hover:bg-amber-800/30 rounded-lg transition-colors"
+            title={t('common.close', 'Закрыть')}
+          >
+            <X className="w-4 h-4" />
+          </button>
+
+          <div className="flex items-start gap-3">
+            <div className="w-8 h-8 rounded-xl bg-amber-400/20 dark:bg-amber-500/20 flex items-center justify-center shrink-0 mt-0.5">
+              <Lightbulb className="w-4.5 h-4.5 text-amber-600 dark:text-amber-400" />
+            </div>
+            <div className="min-w-0 flex-1 pr-6">
+              <h3 className="text-sm font-bold text-amber-900 dark:text-amber-200 mb-2">
+                {t('org.students.hintTitle', 'Как добавить студентов?')}
+              </h3>
+              <div className="space-y-2">
+                <div className="flex items-start gap-2">
+                  <span className="w-5 h-5 rounded-full bg-amber-400/20 text-amber-700 dark:text-amber-300 flex items-center justify-center shrink-0 text-[10px] font-bold mt-0.5">1</span>
+                  <p className="text-xs text-amber-800/80 dark:text-amber-300/80">
+                    <span className="font-semibold text-amber-800 dark:text-amber-200">{t('org.students.hintWay1Title', 'Создать вручную')}</span> — {t('org.students.hintWay1Desc', 'нажмите кнопку «Добавить студента» вверху и введите имя и пароль. Студент сможет войти по этим данным.')}
+                  </p>
+                </div>
+                <div className="flex items-start gap-2">
+                  <span className="w-5 h-5 rounded-full bg-amber-400/20 text-amber-700 dark:text-amber-300 flex items-center justify-center shrink-0 text-[10px] font-bold mt-0.5">2</span>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs text-amber-800/80 dark:text-amber-300/80">
+                      <span className="font-semibold text-amber-800 dark:text-amber-200">{t('org.students.hintWay2Title', 'Отправить ссылку')}</span> — {t('org.students.hintWay2Desc', 'поделитесь публичной ссылкой, и студенты зарегистрируются сами:')}
+                    </p>
+                    {publicInviteUrl && (
+                      <div className="mt-1.5 flex items-center gap-1.5">
+                        <div className="flex items-center gap-1.5 bg-white/80 dark:bg-slate-800/60 border border-amber-200/60 dark:border-amber-700/30 rounded-lg px-2.5 py-1.5 min-w-0 flex-1">
+                          <LinkIcon className="w-3 h-3 text-amber-500 shrink-0" />
+                          <span className="text-[11px] text-amber-700 dark:text-amber-300 truncate font-mono">{publicInviteUrl}</span>
+                        </div>
+                        <button
+                          onClick={copyInviteLink}
+                          className="shrink-0 flex items-center gap-1 px-2 py-1.5 rounded-lg text-[11px] font-medium bg-amber-500/10 hover:bg-amber-500/20 text-amber-700 dark:text-amber-300 border border-amber-300/50 dark:border-amber-600/30 transition-colors"
+                        >
+                          {hintCopied ? <CheckCircle className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
+                          {hintCopied ? t('common.copied', 'Скопировано') : t('common.copy', 'Копировать')}
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+                <div className="flex items-start gap-2">
+                  <span className="w-5 h-5 rounded-full bg-amber-400/20 text-amber-700 dark:text-amber-300 flex items-center justify-center shrink-0 text-[10px] font-bold mt-0.5">3</span>
+                  <p className="text-xs text-amber-800/80 dark:text-amber-300/80">
+                    <span className="font-semibold text-amber-800 dark:text-amber-200">{t('org.students.hintWay3Title', 'Заявки')}</span> — {t('org.students.hintWay3Desc', 'студенты, перешедшие по ссылке, появятся во вкладке «Заявки», где вы сможете одобрить или отклонить их.')}
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {error && <div className="mb-3 px-3 py-1.5 bg-red-500/10 border border-red-500/20 rounded-lg text-[11px] text-red-500">{error}</div>}
 

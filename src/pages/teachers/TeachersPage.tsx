@@ -11,7 +11,7 @@ import {
 } from '../../lib/api';
 import { usePlanGate } from '../../contexts/PlanContext';
 import { useAuth } from '../../contexts/AuthContext';
-import { UserPlus, Search, Mail, RefreshCw, Send, Phone, CheckCircle, XCircle } from 'lucide-react';
+import { UserPlus, Search, Mail, RefreshCw, Send, Phone, CheckCircle, XCircle, Lightbulb, Link as LinkIcon, Copy, X } from 'lucide-react';
 import toast from 'react-hot-toast';
 import type { UserProfile } from '../../types';
 
@@ -35,6 +35,27 @@ const TeachersPage: React.FC = () => {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [inviteEmail, setInviteEmail] = useState('');
+
+  // Onboarding hint
+  const [hintDismissed, setHintDismissed] = useState(() => localStorage.getItem('teachers_invite_hint_dismissed') === '1');
+  const [hintCopied, setHintCopied] = useState(false);
+
+  const dismissHint = () => {
+    setHintDismissed(true);
+    localStorage.setItem('teachers_invite_hint_dismissed', '1');
+  };
+
+  // Public invite URL for teachers
+  const orgSlug = (profile as any)?.activeOrgId || profile?.organizationId || '';
+  const publicInviteUrl = orgSlug ? `${window.location.origin}/org/${orgSlug}?role=teacher` : '';
+
+  const copyInviteLink = () => {
+    if (!publicInviteUrl) return;
+    navigator.clipboard.writeText(publicInviteUrl);
+    setHintCopied(true);
+    toast.success(t('common.copied', 'Ссылка скопирована!'));
+    setTimeout(() => setHintCopied(false), 2000);
+  };
 
   const loadTeachers = async () => {
     setLoading(true);
@@ -162,6 +183,67 @@ const TeachersPage: React.FC = () => {
             )}
           </button>
         </div>
+
+        {/* Onboarding Hint for Managers */}
+        {!hintDismissed && (profile?.role === 'admin' || profile?.role === 'manager' || profile?.role === 'super_admin') && (
+          <div className="mb-4 relative overflow-hidden bg-gradient-to-r from-violet-50 via-purple-50 to-indigo-50 dark:from-violet-900/20 dark:via-purple-900/15 dark:to-indigo-900/10 border border-violet-200/80 dark:border-violet-700/40 rounded-2xl p-4 shadow-sm">
+            <button
+              onClick={dismissHint}
+              className="absolute top-3 right-3 p-1 text-violet-400 hover:text-violet-600 dark:hover:text-violet-300 hover:bg-violet-100 dark:hover:bg-violet-800/30 rounded-lg transition-colors"
+              title={t('common.close', 'Закрыть')}
+            >
+              <X className="w-4 h-4" />
+            </button>
+
+            <div className="flex items-start gap-3">
+              <div className="w-8 h-8 rounded-xl bg-violet-400/20 dark:bg-violet-500/20 flex items-center justify-center shrink-0 mt-0.5">
+                <Lightbulb className="w-4.5 h-4.5 text-violet-600 dark:text-violet-400" />
+              </div>
+              <div className="min-w-0 flex-1 pr-6">
+                <h3 className="text-sm font-bold text-violet-900 dark:text-violet-200 mb-2">
+                  {t('org.teachers.hintTitle', 'Как пригласить преподавателя?')}
+                </h3>
+                <div className="space-y-2">
+                  <div className="flex items-start gap-2">
+                    <span className="w-5 h-5 rounded-full bg-violet-400/20 text-violet-700 dark:text-violet-300 flex items-center justify-center shrink-0 text-[10px] font-bold mt-0.5">1</span>
+                    <p className="text-xs text-violet-800/80 dark:text-violet-300/80">
+                      <span className="font-semibold text-violet-800 dark:text-violet-200">{t('org.teachers.hintWay1Title', 'Пригласить по Email')}</span> — {t('org.teachers.hintWay1Desc', 'нажмите кнопку «Пригласить» вверху и введите email преподавателя. Он получит приглашение в личном кабинете.')}
+                    </p>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="w-5 h-5 rounded-full bg-violet-400/20 text-violet-700 dark:text-violet-300 flex items-center justify-center shrink-0 text-[10px] font-bold mt-0.5">2</span>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs text-violet-800/80 dark:text-violet-300/80">
+                        <span className="font-semibold text-violet-800 dark:text-violet-200">{t('org.teachers.hintWay2Title', 'Отправить ссылку')}</span> — {t('org.teachers.hintWay2Desc', 'поделитесь ссылкой для преподавателей, и они зарегистрируются сами:')}
+                      </p>
+                      {publicInviteUrl && (
+                        <div className="mt-1.5 flex items-center gap-1.5">
+                          <div className="flex items-center gap-1.5 bg-white/80 dark:bg-slate-800/60 border border-violet-200/60 dark:border-violet-700/30 rounded-lg px-2.5 py-1.5 min-w-0 flex-1">
+                            <LinkIcon className="w-3 h-3 text-violet-500 shrink-0" />
+                            <span className="text-[11px] text-violet-700 dark:text-violet-300 truncate font-mono">{publicInviteUrl}</span>
+                          </div>
+                          <button
+                            onClick={copyInviteLink}
+                            className="shrink-0 flex items-center gap-1 px-2 py-1.5 rounded-lg text-[11px] font-medium bg-violet-500/10 hover:bg-violet-500/20 text-violet-700 dark:text-violet-300 border border-violet-300/50 dark:border-violet-600/30 transition-colors"
+                          >
+                            {hintCopied ? <CheckCircle className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
+                            {hintCopied ? t('common.copied', 'Скопировано') : t('common.copy', 'Копировать')}
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="w-5 h-5 rounded-full bg-violet-400/20 text-violet-700 dark:text-violet-300 flex items-center justify-center shrink-0 text-[10px] font-bold mt-0.5">3</span>
+                    <p className="text-xs text-violet-800/80 dark:text-violet-300/80">
+                      <span className="font-semibold text-violet-800 dark:text-violet-200">{t('org.teachers.hintWay3Title', 'Заявки')}</span> — {t('org.teachers.hintWay3Desc', 'преподаватели, перешедшие по ссылке, появятся во вкладке «Заявки», где вы сможете одобрить или отклонить их.')}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
         {error && <div className="mb-3 px-3 py-1.5 bg-red-500/10 border border-red-500/20 rounded-lg text-[11px] text-red-500">{error}</div>}
         {success && <div className="mb-3 px-3 py-1.5 bg-emerald-500/10 border border-emerald-500/20 rounded-lg text-[11px] text-emerald-500">{success}</div>}

@@ -26,13 +26,18 @@ class _DirectoryScreenState extends ConsumerState<DirectoryScreen> {
       final api = ref.read(apiServiceProvider);
       await api.applyToOrg(orgId);
       if (mounted) {
-        Navigator.pop(context); // close loading
+        Navigator.pop(context);
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Заявка успешно отправлена!')));
       }
     } catch (e) {
       if (mounted) {
-        Navigator.pop(context); // close loading
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Ошибка отправки: $e')));
+        Navigator.pop(context);
+        final msg = e.toString();
+        if (msg.contains('Already a member')) {
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Вы уже состоите в этой организации или заявка на рассмотрении')));
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Ошибка: $e')));
+        }
       }
     }
   }
@@ -43,9 +48,7 @@ class _DirectoryScreenState extends ConsumerState<DirectoryScreen> {
     final theme = Theme.of(context);
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Каталог организаций'),
-      ),
+      appBar: AppBar(title: const Text('Каталог организаций')),
       body: Column(
         children: [
           Padding(
@@ -58,10 +61,7 @@ class _DirectoryScreenState extends ConsumerState<DirectoryScreen> {
                 prefixIcon: const Icon(Icons.search),
                 filled: true,
                 fillColor: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide.none,
-                ),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
               ),
             ),
           ),
@@ -69,59 +69,123 @@ class _DirectoryScreenState extends ConsumerState<DirectoryScreen> {
             child: orgsAsync.when(
               data: (orgs) {
                 final filtered = orgs.cast<Map<String, dynamic>>().where((o) {
-                  final name = (o['organizationName'] ?? '').toString().toLowerCase();
+                  // Backend returns 'name' not 'organizationName'
+                  final name = (o['name'] ?? o['organizationName'] ?? '').toString().toLowerCase();
                   return name.contains(_query);
                 }).toList();
 
                 if (filtered.isEmpty) {
-                  return const Center(child: Text('Ничего не найдено.'));
+                  return Center(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.search_off, size: 64, color: theme.colorScheme.primary.withValues(alpha: 0.3)),
+                        const SizedBox(height: 12),
+                        const Text('Ничего не найдено'),
+                      ],
+                    ),
+                  );
                 }
 
                 return ListView.separated(
                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                   itemCount: filtered.length,
-                  separatorBuilder: (_, __) => const SizedBox(height: 12),
+                  separatorBuilder: (_, __) => const SizedBox(height: 10),
                   itemBuilder: (context, index) {
                     final o = filtered[index];
-                    return Card(
-                      child: ListTile(
-                        leading: Container(
-                          width: 48,
-                          height: 48,
-                          decoration: BoxDecoration(
-                            color: theme.colorScheme.primaryContainer,
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Center(
-                            child: Text(
-                              (o['organizationName'] ?? '?')[0].toUpperCase(),
-                              style: TextStyle(
-                                fontSize: 20,
-                                fontWeight: FontWeight.bold,
-                                color: theme.colorScheme.onPrimaryContainer,
+                    final orgName = (o['name'] ?? o['organizationName'] ?? 'Без названия').toString();
+                    final city = o['city'] ?? '';
+                    final description = o['description'] ?? '';
+                    final studentsCount = o['studentsCount'] ?? 0;
+                    final initial = orgName.isNotEmpty ? orgName[0].toUpperCase() : '?';
+
+                    return Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: theme.colorScheme.outline.withValues(alpha: 0.08)),
+                        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 8, offset: const Offset(0, 2))],
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Container(
+                                width: 48, height: 48,
+                                decoration: BoxDecoration(
+                                  color: theme.colorScheme.primaryContainer,
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: Center(
+                                  child: Text(initial, style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: theme.colorScheme.onPrimaryContainer)),
+                                ),
                               ),
-                            ),
+                              const SizedBox(width: 14),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(orgName, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 16)),
+                                    if (city.isNotEmpty) ...[
+                                      const SizedBox(height: 3),
+                                      Row(
+                                        children: [
+                                          Icon(Icons.location_on_outlined, size: 14, color: theme.colorScheme.onSurface.withValues(alpha: 0.4)),
+                                          const SizedBox(width: 4),
+                                          Text(city, style: TextStyle(fontSize: 13, color: theme.colorScheme.onSurface.withValues(alpha: 0.5))),
+                                        ],
+                                      ),
+                                    ],
+                                  ],
+                                ),
+                              ),
+                            ],
                           ),
-                        ),
-                        title: Text(o['organizationName'] ?? 'Без названия', style: const TextStyle(fontWeight: FontWeight.bold)),
-                        subtitle: Text(
-                          [
-                            if (o['type'] != null) o['type'],
-                            if (o['city'] != null) o['city']
-                          ].join(' • '),
-                          style: TextStyle(color: theme.colorScheme.onSurface.withValues(alpha: 0.7)),
-                        ),
-                        trailing: FilledButton.tonal(
-                          onPressed: () => _apply(o['id'] ?? o['organizationId']),
-                          child: const Text('Подать заявку'),
-                        ),
+                          if (description.isNotEmpty) ...[
+                            const SizedBox(height: 10),
+                            Text(description, maxLines: 2, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 13, color: theme.colorScheme.onSurface.withValues(alpha: 0.6))),
+                          ],
+                          const SizedBox(height: 12),
+                          Row(
+                            children: [
+                              if (studentsCount > 0) ...[
+                                Icon(Icons.people_outline, size: 14, color: theme.colorScheme.onSurface.withValues(alpha: 0.4)),
+                                const SizedBox(width: 4),
+                                Text('$studentsCount студентов', style: TextStyle(fontSize: 12, color: theme.colorScheme.onSurface.withValues(alpha: 0.5))),
+                                const Spacer(),
+                              ] else
+                                const Spacer(),
+                              FilledButton.tonal(
+                                onPressed: () => _apply(o['id']),
+                                style: FilledButton.styleFrom(padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8)),
+                                child: const Text('Подать заявку', style: TextStyle(fontSize: 13)),
+                              ),
+                            ],
+                          ),
+                        ],
                       ),
                     );
                   },
                 );
               },
               loading: () => const Center(child: CircularProgressIndicator()),
-              error: (err, _) => Center(child: Text('Ошибка: $err')),
+              error: (err, _) => Center(
+                child: Padding(
+                  padding: const EdgeInsets.all(32),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.error_outline, size: 48, color: theme.colorScheme.error.withValues(alpha: 0.5)),
+                      const SizedBox(height: 12),
+                      Text('$err', style: const TextStyle(fontSize: 13), textAlign: TextAlign.center),
+                      const SizedBox(height: 16),
+                      FilledButton.icon(icon: const Icon(Icons.refresh), label: const Text('Повторить'), onPressed: () => ref.refresh(orgDirectoryProvider)),
+                    ],
+                  ),
+                ),
+              ),
             ),
           ),
         ],

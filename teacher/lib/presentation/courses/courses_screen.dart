@@ -11,6 +11,7 @@ class CoursesScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final coursesAsync = ref.watch(coursesProvider);
     final canCreate = ref.watch(canCreateProvider);
+    final theme = Theme.of(context);
 
     return Scaffold(
       appBar: AppBar(
@@ -18,62 +19,93 @@ class CoursesScreen extends ConsumerWidget {
         actions: [
           if (canCreate)
             IconButton(
-              icon: const Icon(Icons.add),
+              icon: const Icon(Icons.add_circle_outline),
               tooltip: 'Добавить курс',
-              onPressed: () {
-                context.push('/courses/new');
-              },
+              onPressed: () => context.push('/courses/new'),
             ),
         ],
       ),
       body: coursesAsync.when(
         data: (courses) {
           if (courses.isEmpty) {
-            return const Center(child: Text('Нет курсов.'));
+            return Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.school_outlined, size: 72, color: theme.colorScheme.primary.withValues(alpha: 0.3)),
+                  const SizedBox(height: 16),
+                  const Text('Нет курсов', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600)),
+                  const SizedBox(height: 8),
+                  Text('Курсы появятся здесь', style: TextStyle(color: theme.colorScheme.onSurface.withValues(alpha: 0.5))),
+                  if (canCreate) ...[
+                    const SizedBox(height: 24),
+                    FilledButton.icon(
+                      icon: const Icon(Icons.add),
+                      label: const Text('Создать курс'),
+                      onPressed: () => context.push('/courses/new'),
+                    ),
+                  ],
+                ],
+              ),
+            );
           }
           return RefreshIndicator(
             onRefresh: () async => ref.refresh(coursesProvider.future),
             child: ListView.separated(
               padding: const EdgeInsets.all(16),
               itemCount: courses.length,
-              separatorBuilder: (_, __) => const SizedBox(height: 12),
+              separatorBuilder: (_, __) => const SizedBox(height: 10),
               itemBuilder: (context, index) {
                 final c = courses[index] as Map<String, dynamic>;
-                return Card(
-                  clipBehavior: Clip.antiAlias,
-                  child: InkWell(
-                    onTap: () => context.push('/courses/${c['id']}'),
-                    child: Padding(
-                      padding: const EdgeInsets.all(16),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            c['title'] ?? 'Без названия',
-                            style: const TextStyle(
-                                fontSize: 18, fontWeight: FontWeight.bold),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            c['subject'] ?? 'Предмет не указан',
-                            style: TextStyle(
-                              color: Theme.of(context).colorScheme.primary,
-                              fontWeight: FontWeight.w500,
+                final groupCount = (c['groupIds'] as List?)?.length ?? c['groupsCount'] ?? 0;
+                return GestureDetector(
+                  onTap: () => context.push('/courses/${c['id']}'),
+                  child: Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: theme.colorScheme.outline.withValues(alpha: 0.08)),
+                      boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 8, offset: const Offset(0, 2))],
+                    ),
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 52, height: 52,
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              colors: [theme.colorScheme.primary.withValues(alpha: 0.15), theme.colorScheme.primary.withValues(alpha: 0.05)],
+                              begin: Alignment.topLeft, end: Alignment.bottomRight,
                             ),
+                            borderRadius: BorderRadius.circular(14),
                           ),
-                          if (c['description'] != null && c['description'].toString().isNotEmpty) ...[
-                            const SizedBox(height: 8),
-                            Text(
-                              c['description'],
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
-                              style: TextStyle(
-                                color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
+                          child: Icon(Icons.auto_stories_rounded, color: theme.colorScheme.primary, size: 24),
+                        ),
+                        const SizedBox(width: 14),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(c['title'] ?? c['name'] ?? 'Без названия', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+                              const SizedBox(height: 4),
+                              Row(
+                                children: [
+                                  if (c['subject'] != null && c['subject'].toString().isNotEmpty) ...[
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                      decoration: BoxDecoration(color: theme.colorScheme.primary.withValues(alpha: 0.08), borderRadius: BorderRadius.circular(6)),
+                                      child: Text(c['subject'], style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: theme.colorScheme.primary)),
+                                    ),
+                                    const SizedBox(width: 8),
+                                  ],
+                                  Text('$groupCount групп', style: TextStyle(fontSize: 13, color: theme.colorScheme.onSurface.withValues(alpha: 0.5))),
+                                ],
                               ),
-                            ),
-                          ]
-                        ],
-                      ),
+                            ],
+                          ),
+                        ),
+                        Icon(Icons.chevron_right, size: 20, color: theme.colorScheme.onSurface.withValues(alpha: 0.3)),
+                      ],
                     ),
                   ),
                 );
@@ -83,19 +115,21 @@ class CoursesScreen extends ConsumerWidget {
         },
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (err, stack) => Center(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text('Ошибка: $err'),
-              ElevatedButton(
-                onPressed: () => ref.refresh(coursesProvider),
-                child: const Text('Повторить'),
-              )
-            ],
+          child: Padding(
+            padding: const EdgeInsets.all(32),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.error_outline, size: 48, color: theme.colorScheme.error.withValues(alpha: 0.5)),
+                const SizedBox(height: 12),
+                Text('$err', style: const TextStyle(fontSize: 13), textAlign: TextAlign.center),
+                const SizedBox(height: 16),
+                FilledButton.icon(icon: const Icon(Icons.refresh), label: const Text('Повторить'), onPressed: () => ref.refresh(coursesProvider)),
+              ],
+            ),
           ),
         ),
       ),
     );
   }
 }
-

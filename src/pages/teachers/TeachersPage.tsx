@@ -18,7 +18,7 @@ import type { UserProfile } from '../../types';
 const TeachersPage: React.FC = () => {
   const { t } = useTranslation();
   const { limits } = usePlanGate();
-  const { profile, role } = useAuth();
+  const { profile, role, organizationId } = useAuth();
   const navigate = useNavigate();
 
   const [activeTab, setActiveTab] = useState<'teachers' | 'applications'>('teachers');
@@ -46,7 +46,7 @@ const TeachersPage: React.FC = () => {
   };
 
   // Public invite URL for teachers
-  const orgSlug = (profile as any)?.activeOrgId || profile?.organizationId || '';
+  const orgSlug = organizationId || '';
   const publicInviteUrl = orgSlug ? `${window.location.origin}/org/${orgSlug}?role=teacher` : '';
 
   const copyInviteLink = () => {
@@ -80,10 +80,10 @@ const TeachersPage: React.FC = () => {
   };
 
   const loadApplications = async () => {
-    if (!profile?.activeOrgId) return;
+    if (!organizationId) return;
     setLoadingApps(true);
     try {
-      const apps = await apiGetOrgMembers(profile.activeOrgId, 'pending', 'teacher');
+      const apps = await apiGetOrgMembers(organizationId, 'pending', 'teacher');
       setApplications(apps);
     } catch (e: any) {
       toast.error(e.message || t('common.loadError', 'Ошибка загрузки'));
@@ -95,7 +95,7 @@ const TeachersPage: React.FC = () => {
   useEffect(() => {
     loadTeachers();
     loadApplications();
-  }, [profile?.activeOrgId]);
+  }, [organizationId]);
 
   const filtered = teachers.filter((t) => t.displayName?.toLowerCase().includes(search.toLowerCase()) || t.email?.toLowerCase().includes(search.toLowerCase()));
 
@@ -117,7 +117,7 @@ const TeachersPage: React.FC = () => {
   };
 
   const handleApprove = async (userId: string) => {
-    if (!profile?.activeOrgId) return;
+    if (!organizationId) return;
 
     if (limits.maxTeachers !== -1 && teachers.length >= limits.maxTeachers) {
       toast.error(t('org.settings.maxTeachersReached', 'Достигнут лимит преподавателей для вашего тарифа'));
@@ -125,7 +125,7 @@ const TeachersPage: React.FC = () => {
     }
 
     try {
-      await apiAcceptMembership(userId, profile.activeOrgId);
+      await apiAcceptMembership(userId, organizationId);
       toast.success(t('directory.applicationApproved', 'Заявка одобрена!'));
       loadApplications();
       loadTeachers();
@@ -135,9 +135,9 @@ const TeachersPage: React.FC = () => {
   };
 
   const handleReject = async (userId: string) => {
-    if (!profile?.activeOrgId) return;
+    if (!organizationId) return;
     try {
-      await apiRejectMembership(userId, profile.activeOrgId);
+      await apiRejectMembership(userId, organizationId);
       toast.success(t('directory.applicationRejected', 'Заявка отклонена'));
       loadApplications();
     } catch (e: any) {

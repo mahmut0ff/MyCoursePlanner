@@ -25,7 +25,7 @@ type SortDir = 'asc' | 'desc';
 const StudentsPage: React.FC = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const { profile } = useAuth();
+  const { profile, organizationId } = useAuth();
   const { limits } = usePlanGate();
 
   const [activeTab, setActiveTab] = useState<'students' | 'applications'>('students');
@@ -69,7 +69,7 @@ const StudentsPage: React.FC = () => {
   };
 
   // Public invite URL
-  const orgSlug = (profile as any)?.activeOrgId || profile?.organizationId || '';
+  const orgSlug = organizationId || '';
   const publicInviteUrl = orgSlug ? `${window.location.origin}/org/${orgSlug}` : '';
 
   const copyInviteLink = () => {
@@ -108,10 +108,10 @@ const StudentsPage: React.FC = () => {
   };
 
   const loadApplications = async () => {
-    if (!profile?.activeOrgId) return;
+    if (!organizationId) return;
     setLoadingApps(true);
     try {
-      const apps = await apiGetOrgMembers(profile.activeOrgId, 'pending', 'student');
+      const apps = await apiGetOrgMembers(organizationId, 'pending', 'student');
       setApplications(apps);
     } catch (e: any) {
       toast.error(e.message || t('common.loadError', 'Ошибка загрузки'));
@@ -125,7 +125,7 @@ const StudentsPage: React.FC = () => {
     loadGroups();
     loadCourses();
     loadApplications();
-  }, [profile?.activeOrgId, branchFilter]);
+  }, [organizationId, branchFilter]);
 
   // Reset page when filters change
   useEffect(() => setPage(1), [search, selectedGroup, statusFilter, sortField, sortDir]);
@@ -175,7 +175,7 @@ const StudentsPage: React.FC = () => {
   }, [students, search, selectedGroup, groups, sortField, sortDir]);
 
   const handleApprove = async (userId: string) => {
-    if (!profile?.activeOrgId) return;
+    if (!organizationId) return;
 
     if (limits.maxStudents !== -1 && students.length >= limits.maxStudents) {
       toast.error(t('org.settings.maxStudentsReached', 'Достигнут лимит студентов для вашего тарифа'));
@@ -183,7 +183,7 @@ const StudentsPage: React.FC = () => {
     }
 
     try {
-      await apiAcceptMembership(userId, profile.activeOrgId);
+      await apiAcceptMembership(userId, organizationId);
       toast.success(t('directory.applicationApproved', 'Заявка одобрена!'));
       loadApplications();
       loadStudents();
@@ -193,9 +193,9 @@ const StudentsPage: React.FC = () => {
   };
 
   const handleReject = async (userId: string) => {
-    if (!profile?.activeOrgId) return;
+    if (!organizationId) return;
     try {
-      await apiRejectMembership(userId, profile.activeOrgId);
+      await apiRejectMembership(userId, organizationId);
       toast.success(t('directory.applicationRejected', 'Заявка отклонена'));
       loadApplications();
     } catch (e: any) {
@@ -253,12 +253,12 @@ const StudentsPage: React.FC = () => {
 
   const handleDeleteExpelled = async (e: React.MouseEvent, uid: string) => {
     e.stopPropagation();
-    if (!profile?.activeOrgId) return;
+    if (!organizationId) return;
     if (!window.confirm(t('org.students.confirmDeleteExpelled', 'Вы уверены что хотите полностью удалить этого студента из организации? Это действие необратимо.'))) return;
     
     setDeletingId(uid);
     try {
-      await apiDeleteMember(uid, profile.activeOrgId);
+      await apiDeleteMember(uid, organizationId);
       toast.success(t('org.students.deleted', 'Студент полностью удален'));
       setStudents(prev => prev.filter(s => s.uid !== uid));
     } catch (err: any) {

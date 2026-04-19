@@ -315,19 +315,46 @@ class ApiService {
   }
 
   Future<void> gradeHomework(String submissionId, Map<String, dynamic> data) async {
-    await _dio.post('/api-homework', data: {
-      'action': 'grade',
-      'submissionId': submissionId,
-      ...data,
+    await _dio.put('/api-homework/$submissionId/grade', data: {
+      'finalScore': data['grade'] ?? data['finalScore'] ?? 0,
+      'feedback': data['feedback'] ?? '',
     });
   }
 
   // ── Notifications ──
 
+  Future<List<dynamic>> getNotifications() async {
+    final res = await _dio.get('/api-notifications');
+    return (res.data is List) ? res.data : [];
+  }
+
+  Future<void> markAllNotificationsRead() async {
+    await _dio.post('/api-notifications', data: {'action': 'markAllRead'});
+  }
+
   Future<void> saveFcmToken(String token) async {
     await _dio.post('/api-notifications', data: {
-      'action': 'saveToken',
+      'action': 'saveFcmToken',
       'token': token,
+    });
+  }
+
+  Future<void> removeFcmToken(String token) async {
+    await _dio.post('/api-notifications', data: {
+      'action': 'removeFcmToken',
+      'token': token,
+    });
+  }
+
+  Future<Map<String, dynamic>> getNotificationPreferences() async {
+    final res = await _dio.get('/api-notifications', queryParameters: {'action': 'getPreferences'});
+    return Map<String, dynamic>.from(res.data);
+  }
+
+  Future<void> saveNotificationPreferences(Map<String, dynamic> prefs) async {
+    await _dio.post('/api-notifications', data: {
+      'action': 'savePreferences',
+      ...prefs,
     });
   }
 

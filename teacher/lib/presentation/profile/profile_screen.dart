@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -147,9 +148,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                 // ── Stats Row ──
                 Row(
                   children: [
-                    _StatItem(value: '${dashData['lessonsCount'] ?? 0}', label: 'Уроков', icon: '📚'),
-                    _StatItem(value: '${dashData['examsCount'] ?? 0}', label: 'Экзаменов', icon: '📝'),
-                    _StatItem(value: '${dashData['activeRoomsCount'] ?? 0}', label: 'Комнат', icon: '🏫'),
+                    _StatItem(value: '${dashData['lessonsCount'] ?? 0}', label: 'Уроков', iconData: Icons.auto_stories_outlined, color: const Color(0xFF7C3AED)),
+                    _StatItem(value: '${dashData['examsCount'] ?? 0}', label: 'Экзаменов', iconData: Icons.quiz_outlined, color: const Color(0xFF10B981)),
+                    _StatItem(value: '${dashData['activeRoomsCount'] ?? 0}', label: 'Комнат', iconData: Icons.meeting_room_outlined, color: const Color(0xFFF59E0B)),
                   ],
                 ),
                 const SizedBox(height: 28),
@@ -182,10 +183,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                 _SettingsTile(
                   icon: Icons.notifications_outlined,
                   title: 'Уведомления',
-                  subtitle: 'Push-оповещения',
-                  onTap: () {
-                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Уведомления включены')));
-                  },
+                  subtitle: 'Настройки оповещений',
+                  onTap: () => _showNotificationSettings(context),
                 ),
 
                 _SettingsTile(
@@ -289,6 +288,14 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                         ),
                       );
                       if (confirmed == true) {
+                        // Remove FCM token before signing out
+                        try {
+                          final token = await FirebaseMessaging.instance.getToken();
+                          if (token != null) {
+                            final api = ref.read(apiServiceProvider);
+                            await api.removeFcmToken(token);
+                          }
+                        } catch (_) {} // best-effort
                         await FirebaseAuth.instance.signOut();
                         if (context.mounted) context.go('/login');
                       }
@@ -498,14 +505,166 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       ),
     );
   }
+
+  void _showNotificationSettings(BuildContext context) {
+    final theme = Theme.of(context);
+    final prefsAsync = ref.read(notificationPrefsProvider);
+
+    // Default values
+    bool pushEnabled = true;
+    bool lessonNotif = true;
+    bool homeworkNotif = true;
+    bool scheduleNotif = true;
+    bool examNotif = true;
+    bool loading = false;
+    bool initialLoading = true;
+
+    // Load current preferences
+    prefsAsync.whenData((prefs) {
+      pushEnabled = prefs['pushEnabled'] != false;
+      lessonNotif = prefs['lessons'] != false;
+      homeworkNotif = prefs['homework'] != false;
+      scheduleNotif = prefs['schedule'] != false;
+      examNotif = prefs['exams'] != false;
+      initialLoading = false;
+    });
+    if (prefsAsync.hasError || prefsAsync.hasValue) initialLoading = false;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setModalState) {
+          if (initialLoading) {
+            // Fetch fresh from API
+            ref.read(apiServiceProvider).getNotificationPreferences().then((prefs) {
+              if (ctx.mounted) {
+                setModalState(() {
+                  pushEnabled = prefs['pushEnabled'] != false;
+                  lessonNotif = prefs['lessons'] != false;
+                  homeworkNotif = prefs['homework'] != false;
+                  scheduleNotif = prefs['schedule'] != false;
+                  examNotif = prefs['exams'] != false;
+                  initialLoading = false;
+                });
+              }
+            }).catchError((_) {
+              if (ctx.mounted) setModalState(() => initialLoading = false);
+            });
+          }
+
+          return Padding(
+            padding: const EdgeInsets.fromLTRB(20, 20, 20, 32),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Center(child: Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.grey[300], borderRadius: BorderRadius.circular(2)))),
+                const SizedBox(height: 20),
+                Text('Уведомления', style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700)),
+                const SizedBox(height: 4),
+                Text('Настройте, какие уведомления вы хотите получать', style: TextStyle(fontSize: 13, color: theme.colorScheme.onSurface.withOpacity(0.5))),
+                const SizedBox(height: 20),
+                if (initialLoading)
+                  const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 32),
+                    child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
+                  )
+                else ...[
+                  SwitchListTile(
+                    value: pushEnabled,
+                    onChanged: (v) => setModalState(() => pushEnabled = v),
+                    title: const Text('Push-уведомления', style: TextStyle(fontWeight: FontWeight.w600)),
+                    subtitle: const Text('Общий переключатель'),
+                    secondary: Icon(Icons.notifications_active_outlined, color: theme.colorScheme.primary),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                  if (pushEnabled) ...[
+                    const Divider(height: 16),
+                    SwitchListTile(
+                      value: lessonNotif,
+                      onChanged: (v) => setModalState(() => lessonNotif = v),
+                      title: const Text('Новые уроки'),
+                      secondary: const Icon(Icons.auto_stories_outlined, size: 20),
+                      dense: true,
+                    ),
+                    SwitchListTile(
+                      value: homeworkNotif,
+                      onChanged: (v) => setModalState(() => homeworkNotif = v),
+                      title: const Text('Домашние задания'),
+                      secondary: const Icon(Icons.assignment_outlined, size: 20),
+                      dense: true,
+                    ),
+                    SwitchListTile(
+                      value: scheduleNotif,
+                      onChanged: (v) => setModalState(() => scheduleNotif = v),
+                      title: const Text('Изменения расписания'),
+                      secondary: const Icon(Icons.calendar_today_outlined, size: 20),
+                      dense: true,
+                    ),
+                    SwitchListTile(
+                      value: examNotif,
+                      onChanged: (v) => setModalState(() => examNotif = v),
+                      title: const Text('Результаты экзаменов'),
+                      secondary: const Icon(Icons.quiz_outlined, size: 20),
+                      dense: true,
+                    ),
+                  ],
+                  const SizedBox(height: 16),
+                  SizedBox(
+                    width: double.infinity,
+                    height: 50,
+                    child: FilledButton(
+                      onPressed: loading ? null : () async {
+                        setModalState(() => loading = true);
+                        try {
+                          final api = ref.read(apiServiceProvider);
+                          await api.saveNotificationPreferences({
+                            'pushEnabled': pushEnabled,
+                            'lessons': lessonNotif,
+                            'homework': homeworkNotif,
+                            'schedule': scheduleNotif,
+                            'exams': examNotif,
+                          });
+                          ref.invalidate(notificationPrefsProvider);
+                          if (ctx.mounted) Navigator.pop(ctx);
+                          if (mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text('Настройки уведомлений сохранены ✓')),
+                            );
+                          }
+                        } catch (e) {
+                          setModalState(() => loading = false);
+                          if (ctx.mounted) {
+                            ScaffoldMessenger.of(ctx).showSnackBar(
+                              SnackBar(content: Text('Ошибка: $e')),
+                            );
+                          }
+                        }
+                      },
+                      child: loading
+                          ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                          : const Text('Сохранить'),
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          );
+        },
+      ),
+    );
+  }
 }
 
 class _StatItem extends StatelessWidget {
   final String value;
   final String label;
-  final String icon;
+  final IconData iconData;
+  final Color color;
 
-  const _StatItem({required this.value, required this.label, required this.icon});
+  const _StatItem({required this.value, required this.label, required this.iconData, required this.color});
 
   @override
   Widget build(BuildContext context) {
@@ -515,17 +674,17 @@ class _StatItem extends StatelessWidget {
         margin: const EdgeInsets.symmetric(horizontal: 4),
         padding: const EdgeInsets.symmetric(vertical: 14),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: color.withOpacity(0.06),
           borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: theme.colorScheme.outline.withValues(alpha: 0.1)),
+          border: Border.all(color: color.withOpacity(0.12)),
         ),
         child: Column(
           children: [
-            Text(icon, style: const TextStyle(fontSize: 20)),
+            Icon(iconData, size: 22, color: color),
             const SizedBox(height: 6),
-            Text(value, style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800)),
+            Text(value, style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800, color: color)),
             const SizedBox(height: 2),
-            Text(label, style: theme.textTheme.labelSmall?.copyWith(color: theme.colorScheme.onSurface.withValues(alpha: 0.5))),
+            Text(label, style: theme.textTheme.labelSmall?.copyWith(color: color.withOpacity(0.7))),
           ],
         ),
       ),

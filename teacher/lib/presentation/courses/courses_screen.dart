@@ -10,8 +10,19 @@ class CoursesScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final coursesAsync = ref.watch(coursesProvider);
+    final groupsAsync = ref.watch(groupsProvider(null));
     final canCreate = ref.watch(canCreateProvider);
     final theme = Theme.of(context);
+
+    // Build a map of courseId -> group count
+    final groupCountMap = <String, int>{};
+    groupsAsync.whenData((groups) {
+      for (final g in groups) {
+        final gMap = g as Map<String, dynamic>;
+        final cid = gMap['courseId']?.toString() ?? '';
+        if (cid.isNotEmpty) groupCountMap[cid] = (groupCountMap[cid] ?? 0) + 1;
+      }
+    });
 
     return Scaffold(
       appBar: AppBar(
@@ -50,14 +61,18 @@ class CoursesScreen extends ConsumerWidget {
             );
           }
           return RefreshIndicator(
-            onRefresh: () async => ref.refresh(coursesProvider.future),
+            onRefresh: () async {
+              ref.refresh(coursesProvider.future);
+              ref.refresh(groupsProvider(null).future);
+            },
             child: ListView.separated(
               padding: const EdgeInsets.all(16),
               itemCount: courses.length,
               separatorBuilder: (_, __) => const SizedBox(height: 10),
               itemBuilder: (context, index) {
                 final c = courses[index] as Map<String, dynamic>;
-                final groupCount = (c['groupIds'] as List?)?.length ?? c['groupsCount'] ?? 0;
+                final courseId = c['id']?.toString() ?? '';
+                final groupCount = groupCountMap[courseId] ?? 0;
                 return GestureDetector(
                   onTap: () => context.push('/courses/${c['id']}'),
                   child: Container(
@@ -86,15 +101,17 @@ class CoursesScreen extends ConsumerWidget {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text(c['title'] ?? c['name'] ?? 'Без названия', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+                              Text(c['title'] ?? c['name'] ?? 'Без названия', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600), overflow: TextOverflow.ellipsis, maxLines: 1),
                               const SizedBox(height: 4),
                               Row(
                                 children: [
                                   if (c['subject'] != null && c['subject'].toString().isNotEmpty) ...[
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                                      decoration: BoxDecoration(color: theme.colorScheme.primary.withValues(alpha: 0.08), borderRadius: BorderRadius.circular(6)),
-                                      child: Text(c['subject'], style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: theme.colorScheme.primary)),
+                                    Flexible(
+                                      child: Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                        decoration: BoxDecoration(color: theme.colorScheme.primary.withValues(alpha: 0.08), borderRadius: BorderRadius.circular(6)),
+                                        child: Text(c['subject'], style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: theme.colorScheme.primary), overflow: TextOverflow.ellipsis),
+                                      ),
                                     ),
                                     const SizedBox(width: 8),
                                   ],

@@ -45,6 +45,27 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
         title: const Text('Расписание'),
         actions: [
           IconButton(
+            icon: const Icon(Icons.calendar_month_outlined),
+            tooltip: 'Выбрать дату',
+            onPressed: () async {
+              final picked = await showDatePicker(
+                context: context,
+                initialDate: _selectedDayIndex >= 0
+                    ? _weekStart.add(Duration(days: _selectedDayIndex))
+                    : DateTime.now(),
+                firstDate: DateTime(2020),
+                lastDate: DateTime(2030),
+                locale: const Locale('ru'),
+              );
+              if (picked != null) {
+                setState(() {
+                  _weekStart = _getWeekStart(picked);
+                  _selectedDayIndex = picked.weekday - 1;
+                });
+              }
+            },
+          ),
+          IconButton(
             icon: const Icon(Icons.today),
             onPressed: () => setState(() {
               _weekStart = _getWeekStart(DateTime.now());

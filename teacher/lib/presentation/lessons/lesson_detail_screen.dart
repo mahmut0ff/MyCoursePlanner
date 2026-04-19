@@ -71,7 +71,9 @@ class LessonDetailScreen extends ConsumerWidget {
                     style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
                   ),
                   const SizedBox(height: 8),
-                  Row(
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 6,
                     children: [
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
@@ -88,7 +90,6 @@ class LessonDetailScreen extends ConsumerWidget {
                           ),
                         ),
                       ),
-                      const SizedBox(width: 12),
                       if (lesson['status'] != null)
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),

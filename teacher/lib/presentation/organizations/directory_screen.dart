@@ -127,14 +127,14 @@ class _DirectoryScreenState extends ConsumerState<DirectoryScreen> {
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    Text(orgName, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 16)),
+                                    Text(orgName, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 16), overflow: TextOverflow.ellipsis, maxLines: 1),
                                     if (city.isNotEmpty) ...[
                                       const SizedBox(height: 3),
                                       Row(
                                         children: [
                                           Icon(Icons.location_on_outlined, size: 14, color: theme.colorScheme.onSurface.withValues(alpha: 0.4)),
                                           const SizedBox(width: 4),
-                                          Text(city, style: TextStyle(fontSize: 13, color: theme.colorScheme.onSurface.withValues(alpha: 0.5))),
+                                          Flexible(child: Text(city, style: TextStyle(fontSize: 13, color: theme.colorScheme.onSurface.withValues(alpha: 0.5)), overflow: TextOverflow.ellipsis)),
                                         ],
                                       ),
                                     ],

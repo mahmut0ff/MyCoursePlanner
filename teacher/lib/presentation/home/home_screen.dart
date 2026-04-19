@@ -24,6 +24,7 @@ class HomeScreen extends ConsumerWidget {
             final activeRoomsCount = data['activeRoomsCount'] ?? 0;
             final attemptsCount = data['attemptsCount'] ?? 0;
             final avgScore = data['avgScore'] ?? 0;
+            final pendingHomeworkCount = data['pendingHomeworkCount'] ?? 0;
             final recentLessons = (data['recentLessons'] as List?) ?? [];
             final recentExams = (data['recentExams'] as List?) ?? [];
 
@@ -33,66 +34,315 @@ class HomeScreen extends ConsumerWidget {
                 padding: const EdgeInsets.symmetric(horizontal: 20),
                 children: [
                   const SizedBox(height: 16),
-                  // Header
-                  Row(
-                    children: [
-                      Expanded(
-                        child: profileAsync.when(
-                          data: (profile) {
-                            final name = profile?['displayName'] ?? 'Преподаватель';
-                            return Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text('Привет, $name 👋', style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w700)),
-                                const SizedBox(height: 4),
-                                const OrgSwitcher(),
-                              ],
-                            );
-                          },
-                          loading: () => const Text('Загрузка...'),
-                          error: (_, __) => const Text('Привет! 👋', style: TextStyle(fontSize: 22, fontWeight: FontWeight.w700)),
+                  // ═══ Premium Header Card ═══
+                  profileAsync.when(
+                    data: (profile) {
+                      final name = profile?['displayName'] ?? 'Преподаватель';
+                      final firstName = name.toString().split(' ').first;
+                      final photoURL = profile?['avatarUrl'] ?? profile?['photoURL'] ?? '';
+                      final hour = DateTime.now().hour;
+                      final greeting = hour < 12 ? 'Доброе утро' : hour < 18 ? 'Добрый день' : 'Добрый вечер';
+
+                      return Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: [
+                              theme.colorScheme.primary.withOpacity(0.08),
+                              theme.colorScheme.primary.withOpacity(0.03),
+                            ],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          ),
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(
+                            color: theme.colorScheme.primary.withOpacity(0.12),
+                          ),
                         ),
-                      ),
-                      GestureDetector(
-                        onTap: () => context.push('/profile'),
-                        child: profileAsync.when(
-                          data: (profile) {
-                            final photoURL = profile?['avatarUrl'] ?? profile?['photoURL'] ?? '';
-                            return CircleAvatar(
-                              radius: 24,
-                              backgroundColor: theme.colorScheme.primaryContainer,
-                              backgroundImage: photoURL.toString().isNotEmpty ? NetworkImage(photoURL.toString()) : null,
-                              child: photoURL.toString().isEmpty ? Icon(Icons.person, color: theme.colorScheme.onPrimaryContainer) : null,
-                            );
-                          },
-                          loading: () => CircleAvatar(radius: 24, backgroundColor: theme.colorScheme.primaryContainer),
-                          error: (_, __) => CircleAvatar(radius: 24, backgroundColor: theme.colorScheme.primaryContainer),
+                        child: Row(
+                          children: [
+                            // Avatar
+                            GestureDetector(
+                              onTap: () => context.push('/profile'),
+                              child: Container(
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  border: Border.all(
+                                    color: theme.colorScheme.primary.withOpacity(0.3),
+                                    width: 2.5,
+                                  ),
+                                ),
+                                child: CircleAvatar(
+                                  radius: 24,
+                                  backgroundColor: theme.colorScheme.primaryContainer,
+                                  backgroundImage: photoURL.toString().isNotEmpty
+                                      ? NetworkImage(photoURL.toString())
+                                      : null,
+                                  child: photoURL.toString().isEmpty
+                                      ? Icon(Icons.person, size: 22, color: theme.colorScheme.onPrimaryContainer)
+                                      : null,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 14),
+                            // Greeting text
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    children: [
+                                      Text(
+                                        '$greeting,  ',
+                                        style: TextStyle(
+                                          fontSize: 13,
+                                          fontWeight: FontWeight.w500,
+                                          color: theme.colorScheme.onSurface.withOpacity(0.5),
+                                        ),
+                                      ),
+                                      Flexible(
+                                        child: Text(
+                                          '$firstName!',
+                                          style: const TextStyle(
+                                            fontSize: 17,
+                                            fontWeight: FontWeight.w800,
+                                            letterSpacing: -0.3,
+                                          ),
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    'Управляйте вашими занятиями',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: theme.colorScheme.onSurface.withOpacity(0.4),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            // Notification bell
+                            Container(
+                              width: 42,
+                              height: 42,
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(14),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withOpacity(0.04),
+                                    blurRadius: 8,
+                                    offset: const Offset(0, 2),
+                                  ),
+                                ],
+                              ),
+                              child: IconButton(
+                                icon: Icon(
+                                  Icons.notifications_outlined,
+                                  size: 22,
+                                  color: theme.colorScheme.onSurface.withOpacity(0.6),
+                                ),
+                                onPressed: () => _showNotifications(context, ref),
+                                padding: EdgeInsets.zero,
+                              ),
+                            ),
+                          ],
                         ),
+                      );
+                    },
+                    loading: () => Container(
+                      height: 76,
+                      decoration: BoxDecoration(
+                        color: theme.colorScheme.primary.withOpacity(0.05),
+                        borderRadius: BorderRadius.circular(20),
                       ),
-                    ],
+                      child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
+                    ),
+                    error: (_, __) => const SizedBox.shrink(),
                   ),
                   const SizedBox(height: 24),
 
-                  // Promo Banner
+                  // ═══ Premium Summary Card ═══
                   Container(
                     width: double.infinity,
-                    padding: const EdgeInsets.all(20),
                     decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: [theme.colorScheme.primary, theme.colorScheme.primary.withValues(alpha: 0.7)],
+                      gradient: const LinearGradient(
+                        colors: [Color(0xFF7C3AED), Color(0xFF6D28D9), Color(0xFF5B21B6)],
                         begin: Alignment.topLeft,
                         end: Alignment.bottomRight,
                       ),
-                      borderRadius: BorderRadius.circular(20),
+                      borderRadius: BorderRadius.circular(24),
+                      boxShadow: [
+                        BoxShadow(
+                          color: const Color(0xFF7C3AED).withOpacity(0.35),
+                          blurRadius: 20,
+                          offset: const Offset(0, 8),
+                        ),
+                      ],
                     ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+                    child: Stack(
                       children: [
-                        const Text('Сводка за сегодня', style: TextStyle(color: Colors.white70, fontSize: 13)),
-                        const SizedBox(height: 8),
-                        Text('Средний балл: $avgScore%', style: const TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold)),
-                        const SizedBox(height: 4),
-                        Text('$attemptsCount попыток сдачи', style: const TextStyle(color: Colors.white70, fontSize: 14)),
+                        // Decorative circles
+                        Positioned(
+                          top: -30,
+                          right: -20,
+                          child: Container(
+                            width: 100,
+                            height: 100,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: Colors.white.withOpacity(0.08),
+                            ),
+                          ),
+                        ),
+                        Positioned(
+                          bottom: -15,
+                          left: -10,
+                          child: Container(
+                            width: 60,
+                            height: 60,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: Colors.white.withOpacity(0.05),
+                            ),
+                          ),
+                        ),
+                        // Content
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(24, 22, 24, 18),
+                          child: Column(
+                            children: [
+                              // Top label
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 5),
+                                decoration: BoxDecoration(
+                                  color: Colors.white.withOpacity(0.15),
+                                  borderRadius: BorderRadius.circular(20),
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(Icons.assignment_outlined, size: 13, color: Colors.white.withOpacity(0.7)),
+                                    const SizedBox(width: 5),
+                                    const Text(
+                                      'ДОМАШНИЕ ЗАДАНИЯ',
+                                      style: TextStyle(color: Colors.white70, fontSize: 11, fontWeight: FontWeight.w600, letterSpacing: 0.5),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              const SizedBox(height: 16),
+                              // Main stat — pending homework
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                crossAxisAlignment: CrossAxisAlignment.end,
+                                children: [
+                                  Text(
+                                    '$pendingHomeworkCount',
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 42,
+                                      fontWeight: FontWeight.w800,
+                                      height: 1,
+                                      letterSpacing: -1,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 6),
+                              Text(
+                                pendingHomeworkCount == 0
+                                    ? 'Все ДЗ проверены ✔'
+                                    : 'Ожидают проверки',
+                                style: TextStyle(color: Colors.white.withOpacity(0.7), fontSize: 14, fontWeight: FontWeight.w500),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                '$lessonsCount уроков  ·  $examsCount экзаменов  ·  $activeRoomsCount комнат',
+                                style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 11, fontWeight: FontWeight.w500),
+                                textAlign: TextAlign.center,
+                              ),
+                              const SizedBox(height: 20),
+                              // Action buttons
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: GestureDetector(
+                                      onTap: () =>
+                                          showModalBottomSheet(
+                                            context: context,
+                                            backgroundColor: Colors.transparent,
+                                            builder: (_) => Container(
+                                              decoration: const BoxDecoration(
+                                                color: Colors.white,
+                                                borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+                                              ),
+                                              padding: const EdgeInsets.all(24),
+                                              child: Column(
+                                                mainAxisSize: MainAxisSize.min,
+                                                crossAxisAlignment: CrossAxisAlignment.start,
+                                                children: [
+                                                  const Text('Организация', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
+                                                  const SizedBox(height: 16),
+                                                  const OrgSwitcher(),
+                                                  const SizedBox(height: 24),
+                                                ],
+                                              ),
+                                            ),
+                                          ),
+                                      child: Container(
+                                        padding: const EdgeInsets.symmetric(vertical: 12),
+                                        decoration: BoxDecoration(
+                                          color: Colors.white.withOpacity(0.15),
+                                          borderRadius: BorderRadius.circular(14),
+                                          border: Border.all(color: Colors.white.withOpacity(0.2)),
+                                        ),
+                                        child: const Row(
+                                          mainAxisAlignment: MainAxisAlignment.center,
+                                          children: [
+                                            Icon(Icons.swap_horiz_rounded, color: Colors.white, size: 18),
+                                            SizedBox(width: 6),
+                                            Text(
+                                              'Организация',
+                                              style: TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w600),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 10),
+                                  Expanded(
+                                    child: GestureDetector(
+                                      onTap: () => context.push('/courses'),
+                                      child: Container(
+                                        padding: const EdgeInsets.symmetric(vertical: 12),
+                                        decoration: BoxDecoration(
+                                          color: Colors.white,
+                                          borderRadius: BorderRadius.circular(14),
+                                        ),
+                                        child: const Row(
+                                          mainAxisAlignment: MainAxisAlignment.center,
+                                          children: [
+                                            Icon(Icons.add_rounded, color: Color(0xFF5B21B6), size: 18),
+                                            SizedBox(width: 6),
+                                            Text(
+                                              'Создать урок',
+                                              style: TextStyle(color: Color(0xFF5B21B6), fontSize: 13, fontWeight: FontWeight.w700),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
                       ],
                     ),
                   ),
@@ -306,6 +556,144 @@ class HomeScreen extends ConsumerWidget {
       ),
     );
   }
+}
+
+void _showNotifications(BuildContext context, WidgetRef ref) {
+  final theme = Theme.of(context);
+  final api = ref.read(apiServiceProvider);
+
+  showModalBottomSheet(
+    context: context,
+    isScrollControlled: true,
+    shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+    builder: (ctx) {
+      return FutureBuilder<List<dynamic>>(
+        future: api.getNotifications(),
+        builder: (ctx, snap) {
+          return DraggableScrollableSheet(
+            initialChildSize: 0.6,
+            maxChildSize: 0.9,
+            minChildSize: 0.3,
+            expand: false,
+            builder: (ctx, scrollController) {
+              return Padding(
+                padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
+                child: Column(
+                  children: [
+                    Center(child: Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.grey[300], borderRadius: BorderRadius.circular(2)))),
+                    const SizedBox(height: 16),
+                    Row(
+                      children: [
+                        Text('Уведомления', style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700)),
+                        const Spacer(),
+                        if (snap.hasData && snap.data!.isNotEmpty)
+                          TextButton(
+                            onPressed: () async {
+                              await api.markAllNotificationsRead();
+                              if (ctx.mounted) Navigator.pop(ctx);
+                            },
+                            child: const Text('Прочитать все', style: TextStyle(fontSize: 12)),
+                          ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    if (snap.connectionState == ConnectionState.waiting)
+                      const Expanded(child: Center(child: CircularProgressIndicator(strokeWidth: 2)))
+                    else if (snap.hasError)
+                      Expanded(child: Center(child: Text('Ошибка: ${snap.error}', style: const TextStyle(fontSize: 13))))
+                    else if (!snap.hasData || snap.data!.isEmpty)
+                      Expanded(
+                        child: Center(
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.notifications_none, size: 56, color: theme.colorScheme.primary.withOpacity(0.2)),
+                              const SizedBox(height: 12),
+                              const Text('Нет уведомлений', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 16)),
+                              const SizedBox(height: 4),
+                              Text('Здесь появятся ваши оповещения', style: TextStyle(fontSize: 13, color: theme.colorScheme.onSurface.withOpacity(0.4))),
+                            ],
+                          ),
+                        ),
+                      )
+                    else
+                      Expanded(
+                        child: ListView.separated(
+                          controller: scrollController,
+                          itemCount: snap.data!.length,
+                          separatorBuilder: (_, __) => const SizedBox(height: 8),
+                          itemBuilder: (_, i) {
+                            final n = snap.data![i] as Map<String, dynamic>;
+                            final isRead = n['read'] == true;
+                            final title = n['title'] ?? '';
+                            final message = n['message'] ?? '';
+                            final createdAt = n['createdAt'] ?? '';
+                            String timeAgo = '';
+                            try {
+                              final dt = DateTime.parse(createdAt);
+                              final diff = DateTime.now().difference(dt);
+                              if (diff.inMinutes < 60) {
+                                timeAgo = '${diff.inMinutes} мин назад';
+                              } else if (diff.inHours < 24) {
+                                timeAgo = '${diff.inHours} ч назад';
+                              } else {
+                                timeAgo = '${diff.inDays} дн назад';
+                              }
+                            } catch (_) {}
+
+                            return Container(
+                              padding: const EdgeInsets.all(14),
+                              decoration: BoxDecoration(
+                                color: isRead ? Colors.white : theme.colorScheme.primary.withOpacity(0.04),
+                                borderRadius: BorderRadius.circular(14),
+                                border: Border.all(
+                                  color: isRead
+                                      ? theme.colorScheme.outline.withOpacity(0.06)
+                                      : theme.colorScheme.primary.withOpacity(0.15),
+                                ),
+                              ),
+                              child: Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Container(
+                                    width: 8, height: 8,
+                                    margin: const EdgeInsets.only(top: 6, right: 10),
+                                    decoration: BoxDecoration(
+                                      shape: BoxShape.circle,
+                                      color: isRead ? Colors.transparent : theme.colorScheme.primary,
+                                    ),
+                                  ),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(title, style: TextStyle(fontWeight: isRead ? FontWeight.w500 : FontWeight.w700, fontSize: 14)),
+                                        if (message.isNotEmpty) ...[
+                                          const SizedBox(height: 4),
+                                          Text(message, style: TextStyle(fontSize: 13, color: theme.colorScheme.onSurface.withOpacity(0.6)), maxLines: 2, overflow: TextOverflow.ellipsis),
+                                        ],
+                                        if (timeAgo.isNotEmpty) ...[
+                                          const SizedBox(height: 6),
+                                          Text(timeAgo, style: TextStyle(fontSize: 11, color: theme.colorScheme.onSurface.withOpacity(0.35))),
+                                        ],
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+                  ],
+                ),
+              );
+            },
+          );
+        },
+      );
+    },
+  );
 }
 
 class _QuickStat extends StatelessWidget {

@@ -18,6 +18,7 @@ const handler: Handler = async (event: HandlerEvent) => {
   const params = event.queryStringParameters || {};
   const action = params.action || '';
   const body = event.body ? JSON.parse(event.body) : {};
+  const postAction = body.action || action;
 
   try {
     // List notifications for the current user
@@ -79,21 +80,51 @@ const handler: Handler = async (event: HandlerEvent) => {
     }
 
     // Save FCM token
-    if (action === 'saveFcmToken' && event.httpMethod === 'POST') {
+    if ((postAction === 'saveFcmToken' || action === 'saveFcmToken') && event.httpMethod === 'POST') {
       if (!body.token) return badRequest('token required');
       await adminDb.collection('users').doc(user.uid).update({
-        fcmTokens: FieldValue.arrayUnion(body.token),
+        fcmTokens: FieldValue.arrayUnion([body.token]),
       });
       return ok({ success: true });
     }
 
     // Remove FCM token (on logout)
-    if (action === 'removeFcmToken' && event.httpMethod === 'POST') {
+    if ((postAction === 'removeFcmToken' || action === 'removeFcmToken') && event.httpMethod === 'POST') {
       if (!body.token) return badRequest('token required');
       await adminDb.collection('users').doc(user.uid).update({
-        fcmTokens: FieldValue.arrayRemove(body.token),
+        fcmTokens: FieldValue.arrayRemove([body.token]),
       });
       return ok({ success: true });
+    }
+
+    // ═══ NOTIFICATION PREFERENCES ═══
+
+    // Get notification preferences
+    if ((action === 'getPreferences' || postAction === 'getPreferences') && event.httpMethod === 'GET') {
+      const userDoc = await adminDb.collection('users').doc(user.uid).get();
+      const prefs = userDoc.data()?.notificationPreferences || {
+        pushEnabled: true,
+        lessons: true,
+        homework: true,
+        schedule: true,
+        exams: true,
+      };
+      return ok(prefs);
+    }
+
+    // Save notification preferences
+    if ((postAction === 'savePreferences') && event.httpMethod === 'POST') {
+      const prefs = {
+        pushEnabled: body.pushEnabled !== false,
+        lessons: body.lessons !== false,
+        homework: body.homework !== false,
+        schedule: body.schedule !== false,
+        exams: body.exams !== false,
+      };
+      await adminDb.collection('users').doc(user.uid).update({
+        notificationPreferences: prefs,
+      });
+      return ok({ success: true, preferences: prefs });
     }
 
     return badRequest(`Unknown action: ${action}`);

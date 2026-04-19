@@ -56,7 +56,7 @@ export async function createNotification(payload: NotificationPayload): Promise<
 
   // Attempt FCM push (best-effort, never throw)
   try {
-    await sendPush(payload.recipientId, payload.title, payload.message, payload.link);
+    await sendPush(payload.recipientId, payload.title, payload.message, payload.link, payload.type);
   } catch (e) {
     console.warn('FCM push failed (non-fatal):', e);
   }
@@ -132,21 +132,39 @@ export async function notifyAllSuperAdmins(
 }
 
 /**
- * Send FCM push to a specific user (best-effort).
- * Uses DATA-ONLY messages (no `notification` key) to prevent duplication.
- * When a `notification` key is present, the OS auto-displays it AND the
- * service worker's onBackgroundMessage fires — causing double notifications
- * on mobile. Data-only messages give the SW exclusive control.
+ * Map notification type → user preference key.
  */
-async function sendPush(userId: string, title: string, body: string, link?: string): Promise<void> {
+const TYPE_TO_PREF: Record<string, string> = {
+  homework_submitted: 'homework',
+  homework_graded: 'homework',
+  new_lesson: 'lessons',
+  grade_posted: 'exams',
+  exam_result_ready: 'exams',
+  exam_room_created: 'exams',
+  exam_submitted: 'exams',
+  attendance_absent: 'schedule',
+};
+
+/**
+ * Send FCM push to a specific user (best-effort).
+ * Checks user's notification preferences before sending.
+ * Uses DATA-ONLY messages (no `notification` key) to prevent duplication.
+ */
+async function sendPush(userId: string, title: string, body: string, link?: string, notifType?: string): Promise<void> {
   const userDoc = await adminDb.collection('users').doc(userId).get();
   if (!userDoc.exists) return;
-  const fcmTokens: string[] = userDoc.data()?.fcmTokens || [];
+  const userData = userDoc.data() || {};
+
+  // Check notification preferences
+  const prefs = userData.notificationPreferences || {};
+  if (prefs.pushEnabled === false) return; // User disabled all push
+  if (notifType && TYPE_TO_PREF[notifType] && prefs[TYPE_TO_PREF[notifType]] === false) return; // Category disabled
+
+  const fcmTokens: string[] = userData.fcmTokens || [];
   if (fcmTokens.length === 0) return;
 
   const messaging = getMessaging();
   // Data-only message — no `notification` key!
-  // The service worker reads these fields and calls showNotification() itself.
   const message = {
     data: {
       title,
@@ -155,7 +173,6 @@ async function sendPush(userId: string, title: string, body: string, link?: stri
       type: 'notification',
       icon: '/icons/logo.png',
     },
-    // Android: set high priority so data-only messages wake the device
     android: {
       priority: 'high' as const,
     },

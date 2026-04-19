@@ -37,6 +37,7 @@ final dashboardProvider = FutureProvider<Map<String, dynamic>>((ref) async {
       'activeRoomsCount': 0,
       'attemptsCount': 0,
       'avgScore': 0,
+      'pendingHomeworkCount': 0,
       'recentLessons': <dynamic>[],
       'recentExams': <dynamic>[],
     };
@@ -107,6 +108,22 @@ final homeworkProvider = FutureProvider<List<dynamic>>((ref) async {
   final orgId = profile?['activeOrgId'] ?? profile?['organizationId'];
   if (orgId == null || (orgId as String).isEmpty) return [];
   return api.getHomeworkSubmissions(orgId: orgId);
+});
+
+/// Notification preferences.
+final notificationPrefsProvider = FutureProvider<Map<String, dynamic>>((ref) async {
+  final api = ref.read(apiServiceProvider);
+  try {
+    return await api.getNotificationPreferences();
+  } catch (_) {
+    return {
+      'pushEnabled': true,
+      'lessons': true,
+      'homework': true,
+      'schedule': true,
+      'exams': true,
+    };
+  }
 });
 
 /// Exam attempts / results.

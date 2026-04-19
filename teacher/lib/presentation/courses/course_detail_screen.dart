@@ -46,7 +46,9 @@ class CourseDetailScreen extends ConsumerWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       // Status + Subject badges
-                      Row(
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 6,
                         children: [
                           Container(
                             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
@@ -65,14 +67,16 @@ class CourseDetailScreen extends ConsumerWidget {
                               ),
                             ),
                           ),
-                          if (course?['subject'] != null && course!['subject'].toString().isNotEmpty) ...[
-                            const SizedBox(width: 8),
+                          if (course?['subject'] != null && course!['subject'].toString().isNotEmpty)
                             Container(
                               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                               decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(8)),
-                              child: Text(course['subject'], style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: Colors.white70)),
+                              child: Text(
+                                course['subject'],
+                                style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: Colors.white70),
+                                overflow: TextOverflow.ellipsis,
+                              ),
                             ),
-                          ],
                         ],
                       ),
                       const SizedBox(height: 16),

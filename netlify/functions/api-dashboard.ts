@@ -114,17 +114,24 @@ const handler: Handler = async (event: HandlerEvent) => {
   }
 
   let lessonsSnap, examsSnap, roomsSnap;
-  let lessonsCount = 0, examsCount = 0, roomsCount = 0;
+  let lessonsCount = 0, examsCount = 0, roomsCount = 0, pendingHomeworkCount = 0;
 
   try {
-    const [lCount, eCount, rCount] = await Promise.all([
+    const [lCount, eCount, rCount, hwCount] = await Promise.all([
       lessonsQuery.count().get(),
       examsQuery.count().get(),
-      roomsQuery.count().get()
+      roomsQuery.count().get(),
+      orgFilter
+        ? adminDb.collection('homework_submissions')
+            .where('organizationId', '==', orgFilter)
+            .where('status', '==', 'pending')
+            .count().get()
+        : Promise.resolve({ data: () => ({ count: 0 }) }),
     ]);
     lessonsCount = lCount.data().count;
     examsCount = eCount.data().count;
     roomsCount = rCount.data().count;
+    pendingHomeworkCount = hwCount.data().count;
 
     // Try fetching with ordered limits
     [lessonsSnap, examsSnap, roomsSnap] = await Promise.all([
@@ -200,6 +207,7 @@ const handler: Handler = async (event: HandlerEvent) => {
     activeRoomsCount: roomsCount,
     attemptsCount: attempts.length,
     avgScore,
+    pendingHomeworkCount,
     hasGroups,
     recentLessons: lessonsSnap.docs.slice(0, 5).map((d: any) => ({ id: d.id, ...d.data() })),
     recentExams: examsSnap.docs.slice(0, 5).map((d: any) => ({ id: d.id, ...d.data() })),

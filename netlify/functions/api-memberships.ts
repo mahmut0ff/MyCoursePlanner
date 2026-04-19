@@ -163,6 +163,58 @@ const handler: Handler = async (event: HandlerEvent) => {
       return ok(members);
     }
 
+    // ═══ GET: Teacher's own students (from their groups) ═══
+    if (event.httpMethod === 'GET' && action === 'teacherStudents') {
+      if (!params.orgId) return badRequest('orgId required');
+      const callerRole = await getOrgRole(user.uid, params.orgId);
+      if (!callerRole) return forbidden();
+
+      // 1. Get groups where teacher is assigned
+      const groupsSnap = await adminDb.collection('groups')
+        .where('organizationId', '==', params.orgId)
+        .get();
+      const teacherGroups = groupsSnap.docs.filter((d: any) => {
+        const data = d.data();
+        const tIds: string[] = data.teacherIds || [];
+        return tIds.includes(user.uid) || data.createdBy === user.uid;
+      });
+
+      // 2. Collect unique studentIds
+      const studentIdSet = new Set<string>();
+      for (const g of teacherGroups) {
+        const ids: string[] = g.data().studentIds || [];
+        ids.forEach(id => { if (id) studentIdSet.add(id); });
+      }
+      if (studentIdSet.size === 0) return ok([]);
+
+      // 3. Fetch only those students from orgMembers
+      const studentIds = Array.from(studentIdSet);
+      let allStudents: any[] = [];
+      for (let i = 0; i < studentIds.length; i += 10) {
+        const batch = studentIds.slice(i, i + 10);
+        const snap = await adminDb.collection('orgMembers').doc(params.orgId)
+          .collection('members').where('userId', 'in', batch).get();
+        allStudents.push(...snap.docs.map((d: any) => ({ id: d.id, ...d.data() })));
+      }
+
+      // 4. Enrich with profile data
+      if (allStudents.length > 0) {
+        const uids = allStudents.map((m: any) => m.userId).filter(Boolean);
+        const profileMap: Record<string, any> = {};
+        for (let i = 0; i < uids.length; i += 10) {
+          const batch = uids.slice(i, i + 10);
+          const profileSnap = await adminDb.collection('users').where('__name__', 'in', batch).get();
+          profileSnap.docs.forEach((d: any) => { profileMap[d.id] = d.data(); });
+        }
+        allStudents = allStudents.map((m: any) => {
+          const p = profileMap[m.userId] || {};
+          return { ...m, avatarUrl: p.avatarUrl || '', phone: p.phone || '', city: p.city || '' };
+        });
+      }
+
+      return ok(allStudents);
+    }
+
     // ═══ POST: Public Join (QR / visit card flow) ═══
     if (event.httpMethod === 'POST' && action === 'publicJoin') {
       const body = JSON.parse(event.body || '{}');

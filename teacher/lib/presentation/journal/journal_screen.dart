@@ -65,13 +65,15 @@ class _JournalScreenState extends ConsumerState<JournalScreen> with SingleTicker
                       child: coursesAsync.when(
                         data: (courses) {
                           if (courses.isEmpty) return const Text('Нет курсов');
-                          if (_selectedCourseId == null && courses.isNotEmpty) {
+                          final courseIds = courses.map((c) => c['id'] as String).toSet();
+                          final validCourseId = (_selectedCourseId != null && courseIds.contains(_selectedCourseId)) ? _selectedCourseId : null;
+                          if (validCourseId == null && courses.isNotEmpty) {
                             WidgetsBinding.instance.addPostFrameCallback((_) {
-                              if (mounted) setState(() => _selectedCourseId = courses.first['id']);
+                              if (mounted) setState(() { _selectedCourseId = courses.first['id']; _selectedGroupId = null; });
                             });
                           }
                           return DropdownButtonFormField<String>(
-                            initialValue: _selectedCourseId,
+                            value: validCourseId,
                             isDense: true,
                             isExpanded: true,
                             decoration: InputDecoration(
@@ -96,13 +98,16 @@ class _JournalScreenState extends ConsumerState<JournalScreen> with SingleTicker
                       child: groupsAsync.when(
                         data: (groups) {
                           if (groups.isEmpty) return const Text('Нет групп', style: TextStyle(fontSize: 13, color: Colors.grey));
-                          if (_selectedGroupId == null && groups.isNotEmpty) {
+                          // Validate selectedGroupId exists in current groups
+                          final groupIds = groups.map((g) => g['id'] as String).toSet();
+                          final validGroupId = (_selectedGroupId != null && groupIds.contains(_selectedGroupId)) ? _selectedGroupId : null;
+                          if (validGroupId == null && groups.isNotEmpty) {
                             WidgetsBinding.instance.addPostFrameCallback((_) {
                               if (mounted) setState(() => _selectedGroupId = groups.first['id']);
                             });
                           }
                           return DropdownButtonFormField<String>(
-                            initialValue: _selectedGroupId,
+                            value: validGroupId,
                             isDense: true,
                             isExpanded: true,
                             decoration: InputDecoration(

@@ -53,7 +53,7 @@ class ApiService {
   }
 
   Future<void> switchOrg(String orgId) async {
-    await _dio.post('/api-memberships', data: {'action': 'switchOrg', 'organizationId': orgId});
+    await _dio.post('/api-memberships', queryParameters: {'action': 'switchOrg'}, data: {'organizationId': orgId});
   }
 
   Future<List<dynamic>> getOrgDirectory() async {
@@ -306,8 +306,9 @@ class ApiService {
 
   // ── Homework ──
 
-  Future<List<dynamic>> getHomeworkSubmissions({String? status}) async {
-    final params = <String, dynamic>{'action': 'submissions'};
+  Future<List<dynamic>> getHomeworkSubmissions({String? status, String? orgId}) async {
+    final params = <String, dynamic>{};
+    if (orgId != null) params['orgId'] = orgId;
     if (status != null) params['status'] = status;
     final res = await _dio.get('/api-homework', queryParameters: params);
     return (res.data is List) ? res.data : [];

@@ -177,7 +177,7 @@ class HomeScreen extends ConsumerWidget {
                     ),
                     const SizedBox(height: 8),
                     SizedBox(
-                      height: 130,
+                      height: 150,
                       child: ListView.separated(
                         scrollDirection: Axis.horizontal,
                         itemCount: recentLessons.length,
@@ -190,7 +190,7 @@ class HomeScreen extends ConsumerWidget {
                               width: 220,
                               padding: const EdgeInsets.all(16),
                               decoration: BoxDecoration(
-                                color: Colors.white,
+                                color: theme.colorScheme.surface,
                                 borderRadius: BorderRadius.circular(16),
                                 border: Border.all(color: theme.colorScheme.outline.withValues(alpha: 0.08)),
                                 boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 8, offset: const Offset(0, 2))],
@@ -220,9 +220,10 @@ class HomeScreen extends ConsumerWidget {
                                     ],
                                   ),
                                   const SizedBox(height: 12),
-                                  Text(l['title'] ?? 'Без названия', style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14), maxLines: 2, overflow: TextOverflow.ellipsis),
-                                  const SizedBox(height: 4),
-                                  Text(l['subject'] ?? '', style: TextStyle(fontSize: 12, color: theme.colorScheme.onSurface.withValues(alpha: 0.5)), maxLines: 1),
+                                  Expanded(
+                                    child: Text(l['title'] ?? 'Без названия', style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14), maxLines: 2, overflow: TextOverflow.ellipsis),
+                                  ),
+                                  Text(l['subject'] ?? '', style: TextStyle(fontSize: 12, color: theme.colorScheme.onSurface.withValues(alpha: 0.5)), maxLines: 1, overflow: TextOverflow.ellipsis),
                                 ],
                               ),
                             ),

@@ -39,8 +39,9 @@ class StudentsScreen extends ConsumerWidget {
               separatorBuilder: (_, __) => const SizedBox(height: 10),
               itemBuilder: (context, index) {
                 final student = students[index] as Map<String, dynamic>;
-                final name = student['displayName'] ?? student['email'] ?? 'Безымянный';
+                final name = student['userName'] ?? student['displayName'] ?? student['userEmail'] ?? 'Безымянный';
                 final initials = name.isNotEmpty ? name[0].toUpperCase() : '?';
+                final avatarUrl = student['avatarUrl'] ?? student['photoURL'];
                 final avatarColors = [const Color(0xFF7C3AED), const Color(0xFF10B981), const Color(0xFF3B82F6), const Color(0xFFF59E0B), const Color(0xFFEF4444)];
                 final color = avatarColors[index % avatarColors.length];
 
@@ -59,8 +60,8 @@ class StudentsScreen extends ConsumerWidget {
                         CircleAvatar(
                           radius: 24,
                           backgroundColor: color.withValues(alpha: 0.12),
-                          backgroundImage: student['photoURL'] != null ? NetworkImage(student['photoURL']) : null,
-                          child: student['photoURL'] == null ? Text(initials, style: TextStyle(fontWeight: FontWeight.w700, color: color, fontSize: 16)) : null,
+                          backgroundImage: (avatarUrl != null && avatarUrl.toString().isNotEmpty) ? NetworkImage(avatarUrl) : null,
+                          child: (avatarUrl == null || avatarUrl.toString().isEmpty) ? Text(initials, style: TextStyle(fontWeight: FontWeight.w700, color: color, fontSize: 16)) : null,
                         ),
                         const SizedBox(width: 14),
                         Expanded(
@@ -71,10 +72,10 @@ class StudentsScreen extends ConsumerWidget {
                               const SizedBox(height: 3),
                               Row(
                                 children: [
-                                  if (student['email'] != null) ...[
+                                  if ((student['userEmail'] ?? student['email']) != null) ...[
                                     Icon(Icons.email_outlined, size: 13, color: theme.colorScheme.onSurface.withValues(alpha: 0.4)),
                                     const SizedBox(width: 4),
-                                    Flexible(child: Text(student['email'], style: TextStyle(fontSize: 13, color: theme.colorScheme.onSurface.withValues(alpha: 0.5)), overflow: TextOverflow.ellipsis)),
+                                    Flexible(child: Text(student['userEmail'] ?? student['email'] ?? '', style: TextStyle(fontSize: 13, color: theme.colorScheme.onSurface.withValues(alpha: 0.5)), overflow: TextOverflow.ellipsis)),
                                   ],
                                 ],
                               ),

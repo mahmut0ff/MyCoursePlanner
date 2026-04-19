@@ -80,10 +80,18 @@ final groupsProvider =
   return api.getGroups(courseId: courseId);
 });
 
-/// Students list.
+/// Students list (org members with student role).
 final studentsProvider = FutureProvider<List<dynamic>>((ref) async {
   final api = ref.read(apiServiceProvider);
-  return api.getStudents();
+  final profile = ref.watch(userProfileProvider).valueOrNull;
+  final orgId = profile?['activeOrgId'] ?? profile?['organizationId'];
+  if (orgId == null || (orgId as String).isEmpty) return [];
+  final res = await api.dio.get('/api-memberships', queryParameters: {
+    'action': 'orgMembers',
+    'orgId': orgId,
+    'role': 'student',
+  });
+  return (res.data is List) ? res.data : [];
 });
 
 /// Schedule events.
@@ -92,10 +100,13 @@ final scheduleProvider = FutureProvider<List<dynamic>>((ref) async {
   return api.getSchedule();
 });
 
-/// Homework submissions.
+/// Homework submissions (filtered by org).
 final homeworkProvider = FutureProvider<List<dynamic>>((ref) async {
   final api = ref.read(apiServiceProvider);
-  return api.getHomeworkSubmissions();
+  final profile = ref.watch(userProfileProvider).valueOrNull;
+  final orgId = profile?['activeOrgId'] ?? profile?['organizationId'];
+  if (orgId == null || (orgId as String).isEmpty) return [];
+  return api.getHomeworkSubmissions(orgId: orgId);
 });
 
 /// Exam attempts / results.

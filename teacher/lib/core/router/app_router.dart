@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 import '../../presentation/auth/login_screen.dart';
 import '../../presentation/auth/register_screen.dart';
@@ -28,7 +29,14 @@ final _shellNavigatorKey = GlobalKey<NavigatorState>();
 
 final appRouter = GoRouter(
   navigatorKey: _rootNavigatorKey,
-  initialLocation: '/login',
+  initialLocation: '/',
+  redirect: (context, state) {
+    final loggedIn = FirebaseAuth.instance.currentUser != null;
+    final isAuthRoute = state.matchedLocation == '/login' || state.matchedLocation == '/register';
+    if (!loggedIn && !isAuthRoute) return '/login';
+    if (loggedIn && isAuthRoute) return '/';
+    return null;
+  },
   routes: [
     // ── Auth ──
     GoRoute(path: '/login', builder: (_, __) => const LoginScreen()),

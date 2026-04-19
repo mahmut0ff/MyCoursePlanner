@@ -1010,7 +1010,7 @@ const handler: Handler = async (event: HandlerEvent) => {
         orgQuery('courses', orgId).get(),
         orgQuery('groups', orgId).get(),
         adminDb.collection('orgMembers').doc(orgId).collection('members').where('role', '==', 'student').where('status', '==', 'active').get(),
-        adminDb.collection('orgMembers').doc(orgId).collection('members').where('role', 'in', ['teacher', 'admin', 'owner', 'mentor', 'manager']).where('status', '==', 'active').get(),
+        adminDb.collection('orgMembers').doc(orgId).collection('members').where('role', 'in', ['teacher', 'mentor']).where('status', '==', 'active').get(),
         orgQuery('lessonPlans', orgId).get(),
         orgQuery('exams', orgId).get(),
         orgQuery('examRooms', orgId).where('status', '==', 'active').get(),

@@ -158,7 +158,7 @@ class ApiService {
 
   Future<List<dynamic>> getCourses() async {
     final res = await _dio.get('/api-org',
-        queryParameters: {'action': 'courses'});
+        queryParameters: {'action': 'courses', 'teacherOnly': 'true'});
     return (res.data is List) ? res.data : [];
   }
 
@@ -188,7 +188,7 @@ class ApiService {
   // ── Groups ──
 
   Future<List<dynamic>> getGroups({String? courseId}) async {
-    final params = <String, dynamic>{'action': 'groups'};
+    final params = <String, dynamic>{'action': 'groups', 'teacherOnly': 'true'};
     if (courseId != null) params['courseId'] = courseId;
     final res = await _dio.get('/api-org', queryParameters: params);
     return (res.data is List) ? res.data : [];

@@ -81,18 +81,37 @@ final groupsProvider =
   return api.getGroups(courseId: courseId);
 });
 
-/// Students list (org members with student role).
+/// Students list — only students from teacher's own groups.
 final studentsProvider = FutureProvider<List<dynamic>>((ref) async {
   final api = ref.read(apiServiceProvider);
   final profile = ref.watch(userProfileProvider).valueOrNull;
   final orgId = profile?['activeOrgId'] ?? profile?['organizationId'];
   if (orgId == null || (orgId as String).isEmpty) return [];
+
+  // 1. Get teacher's groups (already filtered by teacherOnly on backend)
+  final groups = await api.getGroups();
+
+  // 2. Collect unique studentIds from all teacher's groups
+  final studentIdSet = <String>{};
+  for (final g in groups) {
+    final ids = (g['studentIds'] as List<dynamic>?) ?? [];
+    for (final id in ids) {
+      if (id is String && id.isNotEmpty) studentIdSet.add(id);
+    }
+  }
+  if (studentIdSet.isEmpty) return [];
+
+  // 3. Get all org students, then filter to only teacher's students
   final res = await api.dio.get('/api-memberships', queryParameters: {
     'action': 'orgMembers',
     'orgId': orgId,
     'role': 'student',
   });
-  return (res.data is List) ? res.data : [];
+  final allStudents = (res.data is List) ? res.data as List<dynamic> : <dynamic>[];
+  return allStudents.where((s) {
+    final sid = s['userId'] ?? s['uid'] ?? s['id'] ?? '';
+    return studentIdSet.contains(sid);
+  }).toList();
 });
 
 /// Schedule events.

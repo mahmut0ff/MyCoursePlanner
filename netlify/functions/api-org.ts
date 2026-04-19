@@ -108,6 +108,13 @@ const handler: Handler = async (event: HandlerEvent) => {
       if (Array.isArray(branchScope)) {
         list = list.filter((c: any) => !c.branchId || branchScope.includes(c.branchId));
       }
+      // Teacher-only filtering: only show courses assigned to this teacher
+      if (params.teacherOnly === 'true') {
+        list = list.filter((c: any) => {
+          const tIds: string[] = c.teacherIds || [];
+          return tIds.includes(user.uid) || c.createdBy === user.uid;
+        });
+      }
       list.sort((a: any, b: any) => (b.createdAt || '').localeCompare(a.createdAt || ''));
       return ok(list);
     }
@@ -178,6 +185,13 @@ const handler: Handler = async (event: HandlerEvent) => {
       let list = snap.docs.map((d: any) => ({ id: d.id, ...d.data() }));
       if (Array.isArray(branchScope)) {
         list = list.filter((g: any) => !g.branchId || branchScope.includes(g.branchId));
+      }
+      // Teacher-only filtering: only show groups assigned to this teacher
+      if (params.teacherOnly === 'true') {
+        list = list.filter((g: any) => {
+          const tIds: string[] = g.teacherIds || [];
+          return tIds.includes(user.uid) || g.createdBy === user.uid;
+        });
       }
       list.sort((a: any, b: any) => (b.createdAt || '').localeCompare(a.createdAt || ''));
       return ok(list);

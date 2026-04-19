@@ -20,8 +20,8 @@ class _HomeworkDetailScreenState extends ConsumerState<HomeworkDetailScreen> {
   @override
   void initState() {
     super.initState();
-    _gradeC.text = widget.submission['grade']?.toString() ?? '';
-    _feedbackC.text = widget.submission['feedback'] ?? '';
+    _gradeC.text = (widget.submission['finalScore'] ?? widget.submission['grade'])?.toString() ?? '';
+    _feedbackC.text = widget.submission['teacherFeedback'] ?? widget.submission['feedback'] ?? '';
   }
 
   @override

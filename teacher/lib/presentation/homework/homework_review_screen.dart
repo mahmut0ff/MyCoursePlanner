@@ -80,7 +80,7 @@ class HomeworkReviewScreen extends ConsumerWidget {
                           Container(
                             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                             decoration: BoxDecoration(color: Colors.green.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(8)),
-                            child: Text('${sub['grade']}', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.green[700])),
+                            child: Text('${sub['finalScore'] ?? sub['grade'] ?? '—'}', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.green[700])),
                           )
                         else
                           Container(

@@ -368,8 +368,8 @@ class HomeScreen extends ConsumerWidget {
                             child: const Row(
                               children: [
                                 Icon(Icons.assignment_outlined, color: Color(0xFFF59E0B), size: 22),
-                                SizedBox(width: 10),
-                                Expanded(child: Text('Проверка ДЗ', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14, color: Color(0xFFF59E0B)))),
+                                SizedBox(width: 8),
+                                Expanded(child: Text('ДЗ', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14, color: Color(0xFFF59E0B)))),
                                 Icon(Icons.chevron_right, size: 18, color: Color(0xFFF59E0B)),
                               ],
                             ),
@@ -390,7 +390,7 @@ class HomeScreen extends ConsumerWidget {
                             child: const Row(
                               children: [
                                 Icon(Icons.people_outline, color: Color(0xFF3B82F6), size: 22),
-                                SizedBox(width: 10),
+                                SizedBox(width: 8),
                                 Expanded(child: Text('Студенты', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14, color: Color(0xFF3B82F6)))),
                                 Icon(Icons.chevron_right, size: 18, color: Color(0xFF3B82F6)),
                               ],
@@ -402,16 +402,16 @@ class HomeScreen extends ConsumerWidget {
                   ),
                   const SizedBox(height: 20),
 
-                  // Quick Stats
-                  const Text('Статистика', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                  // Quick Stats — actionable metrics
+                  const Text('Обзор', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                   const SizedBox(height: 12),
                   Row(
                     children: [
+                      Expanded(child: _QuickStat(icon: Icons.pending_actions, label: 'Ожидает', value: '$pendingHomeworkCount', color: pendingHomeworkCount > 0 ? const Color(0xFFEF4444) : const Color(0xFF10B981))),
+                      const SizedBox(width: 12),
                       Expanded(child: _QuickStat(icon: Icons.auto_stories_outlined, label: 'Уроков', value: '$lessonsCount', color: const Color(0xFF7C3AED))),
                       const SizedBox(width: 12),
-                      Expanded(child: _QuickStat(icon: Icons.quiz_outlined, label: 'Экзаменов', value: '$examsCount', color: const Color(0xFF10B981))),
-                      const SizedBox(width: 12),
-                      Expanded(child: _QuickStat(icon: Icons.meeting_room_outlined, label: 'Комнат', value: '$activeRoomsCount', color: const Color(0xFFF59E0B))),
+                      Expanded(child: _QuickStat(icon: Icons.quiz_outlined, label: 'Экзамены', value: '$examsCount', color: const Color(0xFF3B82F6))),
                     ],
                   ),
                   const SizedBox(height: 28),

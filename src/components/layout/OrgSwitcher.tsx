@@ -268,7 +268,7 @@ const OrgSwitcher: React.FC<OrgSwitcherProps> = ({ currentOrgId, userRole, onSwi
               </p>
               
               {/* Personal Workspace Option for Teachers/Managers */}
-              {userRole !== 'student' && userRole !== 'admin' && (
+              {userRole !== 'student' && userRole !== 'admin' && userRole !== 'manager' && (
                 <div className="flex items-center hover:bg-white/5 transition mb-1">
                   <button
                     onClick={() => handleSwitch('personal')}

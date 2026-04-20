@@ -25,6 +25,7 @@ import '../../presentation/groups/group_detail_screen.dart';
 import '../../presentation/lessons/lesson_view_screen.dart';
 import '../../presentation/lessons/homework_submit_screen.dart';
 import '../../presentation/diary/diary_screen.dart';
+import '../../presentation/live/join_live_lesson_screen.dart';
 
 final _rootNavigatorKey = GlobalKey<NavigatorState>();
 final _shellNavigatorHomeKey = GlobalKey<NavigatorState>(debugLabel: 'home');
@@ -158,6 +159,11 @@ final routerProvider = Provider<GoRouter>((ref) {
           final lessonId = state.pathParameters['id']!;
           return HomeworkSubmitScreen(lessonId: lessonId);
         },
+      ),
+      GoRoute(
+        path: '/live/join',
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (context, state) => const JoinLiveLessonScreen(),
       ),
 
       // ── Main Shell with Bottom NavBar ──

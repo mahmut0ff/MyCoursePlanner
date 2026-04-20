@@ -201,7 +201,43 @@ service cloud.firestore {
     match /orgNotes/{noteId} { allow read, write: if isSuperAdmin(); }
     match /systemErrors/{errorId} { allow read, write: if isSuperAdmin(); }
 
-    // 12. Co-Study Rooms (Global)
+    // 12. Live Lesson Sessions (Interactive Mode)
+    match /liveSessions/{sessionId} {
+      // Any authenticated user can read sessions (needed for join-by-code queries)
+      allow read: if request.auth != null;
+      allow create: if request.auth != null && request.resource.data.teacherId == request.auth.uid;
+      allow update: if request.auth != null && (
+        resource.data.teacherId == request.auth.uid ||
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['participantCount', 'updatedAt'])
+      );
+      allow delete: if isSuperAdmin() || (request.auth != null && resource.data.teacherId == request.auth.uid);
+
+      match /participants/{participantId} {
+        // Any authenticated user can read participants (students need to see teacher cursor)
+        allow read: if request.auth != null;
+        allow write: if request.auth != null && participantId == request.auth.uid;
+        allow delete: if request.auth != null && (
+          participantId == request.auth.uid ||
+          request.auth.uid == get(/databases/$(database)/documents/liveSessions/$(sessionId)).data.teacherId
+        );
+      }
+
+      match /annotations/{annotationId} {
+        allow read: if request.auth != null;
+        allow create: if request.auth != null && request.resource.data.authorId == request.auth.uid;
+        allow delete: if request.auth != null && (
+          resource.data.authorId == request.auth.uid ||
+          request.auth.uid == get(/databases/$(database)/documents/liveSessions/$(sessionId)).data.teacherId
+        );
+      }
+
+      match /reactions/{reactionId} {
+        allow read: if request.auth != null;
+        allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
+      }
+    }
+
+    // 13. Co-Study Rooms (Global)
     match /studyRooms/{roomId} {
       allow read: if request.auth != null;
       allow create: if request.auth != null && request.resource.data.creatorId == request.auth.uid;

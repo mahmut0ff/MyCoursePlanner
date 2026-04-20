@@ -61,6 +61,9 @@ const QuizPlayPage = lazy(() => import('./pages/quiz/QuizPlayPage'));
 const StudentRiskDashboard = lazy(() => import('./pages/teacher-analytics/StudentRiskDashboard'));
 const HomeworkReviewPage = lazy(() => import('./pages/homework/HomeworkReviewPage'));
 
+// Live Lessons
+const JoinLiveLessonPage = lazy(() => import('./pages/live/JoinLiveLessonPage'));
+
 // Org Pages
 const CoursesPage = lazy(() => import('./pages/courses/CoursesPage'));
 const FinancesPage = lazy(() => import('./pages/finances/FinancesPage'));
@@ -161,6 +164,9 @@ const App: React.FC = () => {
           <Route path="/quiz/join" element={<JoinQuizPage />} />
           <Route path="/quiz/play/:sessionId" element={<QuizPlayPage />} />
           <Route path="/quiz/sessions/:id" element={<ProtectedRoute allowedRoles={['admin', 'manager', 'teacher']}><LiveSessionDashboard /></ProtectedRoute>} />
+
+          {/* Live Lesson (full screen) */}
+          <Route path="/live/join" element={<ProtectedRoute><JoinLiveLessonPage /></ProtectedRoute>} />
 
           {/* App Layout */}
           <Route element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>

@@ -865,3 +865,10 @@ select:-webkit-autofill {
   transition-duration: 400ms;
 }
 
+/* ═══ Live Lesson Reactions ═══ */
+@keyframes floatUp {
+  0% { transform: translateY(0) scale(1); opacity: 1; }
+  60% { opacity: 1; }
+  100% { transform: translateY(-60vh) scale(0.6); opacity: 0; }
+}
+

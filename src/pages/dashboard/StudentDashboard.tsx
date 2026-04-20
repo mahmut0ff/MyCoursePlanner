@@ -477,7 +477,7 @@ const StudentDashboard: React.FC = () => {
 
           {/* ═══ Quick Actions (compact 2x2 grid) ═══ */}
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-            <Link to="/join" className="bg-[#E21B3C] hover:bg-[#c61834] text-white p-4 rounded-xl shadow-[0_4px_0_#9d1228] active:translate-y-[3px] active:shadow-[0_1px_0_#9d1228] transition-all group flex flex-col items-center text-center">
+            <Link to="/live/join" className="bg-[#E21B3C] hover:bg-[#c61834] text-white p-4 rounded-xl shadow-[0_4px_0_#9d1228] active:translate-y-[3px] active:shadow-[0_1px_0_#9d1228] transition-all group flex flex-col items-center text-center">
               <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center mb-2 group-hover:scale-110 transition-transform">
                 <Radio className="w-5 h-5 text-white" />
               </div>

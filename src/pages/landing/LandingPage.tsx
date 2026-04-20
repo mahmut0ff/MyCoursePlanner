@@ -10,7 +10,7 @@ import {
  MessageCircle, Mail, MapPin, Phone, Award,
  Layers, Lock, FileText, Target, Gamepad2,
  Bot, PenTool, LayoutGrid, Database, Briefcase,
- CalendarClock, CheckSquare, UploadCloud, Star,
+ CalendarClock, CheckSquare, UploadCloud,
  Laptop, GraduationCap, Building2
 } from 'lucide-react';
 
@@ -271,8 +271,8 @@ const LandingPage: React.FC = () => {
     <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-violet-600/20 rounded-full blur-[100px] pointer-events-none" />
     <div className="absolute bottom-0 left-0 w-[500px] h-[500px] bg-primary-600/20 rounded-full blur-[100px] pointer-events-none" />
     
-    <div className="max-w-7xl mx-auto relative z-10">
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
+    <div className="max-w-4xl mx-auto relative z-10">
+      <div className="flex flex-col gap-10">
         {/* Text Content */}
         <div>
           <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-indigo-500/10 border border-indigo-500/20 rounded-full text-sm font-medium text-indigo-300 mb-6">
@@ -307,56 +307,6 @@ const LandingPage: React.FC = () => {
             </div>
           </div>
         </div>
-
-        {/* Visual/Card */}
-        <div className="relative mt-8 lg:mt-0">
-          <div className="absolute inset-0 bg-gradient-to-tr from-violet-600 to-primary-600 rounded-3xl blur-[40px] opacity-20 animate-pulse" />
-          <div className="relative bg-slate-800/80 backdrop-blur-2xl border border-slate-700/50 p-8 rounded-3xl shadow-2xl">
-            <div className="flex items-center gap-3 border-b border-slate-700/50 pb-5 mb-6">
-              <div className="w-12 h-12 rounded-2xl bg-slate-700/50 flex items-center justify-center shrink-0 border border-slate-600/50">
-                 <Bot className="w-6 h-6 text-violet-400" />
-              </div>
-              <div>
-                <h4 className="text-white font-bold text-sm">AI Assistant</h4>
-                <p className="text-xs text-slate-400">В процессе генерации...</p>
-              </div>
-            </div>
-            
-            <div className="space-y-5">
-              <div className="bg-slate-900/60 p-4 rounded-xl border border-slate-700/50 relative">
-                <p className="text-sm text-slate-300 italic">«Создай сложный тест по астрономии на 15 вопросов для 11 класса»</p>
-                <div className="absolute -left-[5px] top-1/2 w-1 h-8 bg-indigo-500 -translate-y-1/2 rounded-full" />
-              </div>
-              
-              <div className="flex gap-2 py-1 px-3">
-                <div className="w-2 h-2 bg-violet-400 rounded-full animate-bounce" />
-                <div className="w-2 h-2 bg-violet-400 rounded-full animate-bounce [animation-delay:0.2s]" />
-                <div className="w-2 h-2 bg-violet-400 rounded-full animate-bounce [animation-delay:0.4s]" />
-              </div>
-              
-              <div className="bg-violet-500/10 p-5 rounded-xl border border-violet-500/20 shadow-inner">
-                <p className="text-sm text-violet-200 font-bold mb-3 flex items-center gap-2">
-                  <Check className="w-4 h-4 text-emerald-400" /> 
-                  15 вопросов успешно создано
-                </p>
-                <ul className="text-xs text-violet-300/80 space-y-2">
-                  <li className="flex items-center gap-2">
-                    <div className="w-1.5 h-1.5 rounded-full bg-violet-400" />
-                    Готовые форматы вопросов (JSON)
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <div className="w-1.5 h-1.5 rounded-full bg-violet-400" />
-                    Добавлены пояснения решений
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <div className="w-1.5 h-1.5 rounded-full bg-violet-400" />
-                    Автоматическая шкала баллов
-                  </li>
-                </ul>
-              </div>
-            </div>
-          </div>
-        </div>
       </div>
     </div>
   </section>
@@ -366,56 +316,11 @@ const LandingPage: React.FC = () => {
     <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-primary-600/5 rounded-full blur-[100px] pointer-events-none" />
     <div className="absolute bottom-0 left-0 w-[500px] h-[500px] bg-blue-600/5 rounded-full blur-[100px] pointer-events-none" />
     
-    <div className="max-w-7xl mx-auto relative z-10">
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
+    <div className="max-w-4xl mx-auto relative z-10">
+      <div className="flex flex-col gap-10">
         
-        {/* Visual/Card */}
-        <div className="relative mt-8 lg:mt-0 order-2 lg:order-1">
-          <div className="absolute inset-0 bg-gradient-to-tr from-blue-400 to-primary-400 rounded-3xl blur-[40px] opacity-20 animate-pulse" />
-          <div className="relative bg-[#f5f7fb] border border-slate-200 rounded-3xl shadow-2xl overflow-hidden flex flex-col h-[400px]">
-            {/* Telegram Header */}
-            <div className="flex items-center gap-3 bg-white px-5 py-4 shadow-sm z-10">
-              <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center shrink-0 border border-blue-200">
-                 <Bot className="w-5 h-5 text-blue-500" />
-              </div>
-              <div className="flex-1">
-                <h4 className="text-slate-900 font-bold text-sm">Центр Обучения Bot</h4>
-                <p className="text-[11px] text-blue-500">bot</p>
-              </div>
-            </div>
-            
-            {/* Telegram Chat Body */}
-            <div className="flex-1 p-5 space-y-4 overflow-y-auto bg-[#e6ebe9] bg-opacity-40" style={{ backgroundImage: 'url("https://web.telegram.org/a/chat-bg-pattern-dark.png")', backgroundBlendMode: 'overlay', opacity: 0.95 }}>
-              <div className="flex justify-end">
-                 <div className="bg-[#eef2fb] border border-blue-100 text-slate-800 p-3 rounded-2xl rounded-br-sm text-sm max-w-[85%] shadow-sm">
-                    Здравствуйте! Подскажите, когда начинается набор на курс "Frontend Разработчик"? Και какая цена?
-                    <span className="block text-right text-[10px] text-slate-400 mt-1">14:00 <Check className="w-3 h-3 inline text-blue-500" /></span>
-                 </div>
-              </div>
-              
-              <div className="flex justify-start">
-                 <div className="bg-white border border-slate-100 text-slate-800 p-3 rounded-2xl rounded-bl-sm text-sm max-w-[85%] space-y-2 shadow-sm relative">
-                    <p>Привет! 👋</p>
-                    <p>Набор на курс <strong>«Frontend Разработчик»</strong> уже открыт! Ближайшая группа стартует 15-го числа.</p>
-                    <p>Стоимость — <span className="text-primary-600 font-medium">120 000 ₸</span>/мес.</p>
-                    <span className="block text-right text-[10px] text-slate-400 mt-1">14:01</span>
-                 </div>
-              </div>
-            </div>
-            
-            {/* Telegram Input */}
-            <div className="bg-white p-3 flex items-center gap-3">
-              <div className="w-6 h-6 rounded-full border-2 border-slate-300 text-slate-300 flex justify-center items-center shrink-0"><span className="text-xs">+</span></div>
-              <div className="flex-1 bg-slate-100 h-9 rounded-full px-4 flex items-center text-sm text-slate-400">Message...</div>
-              <div className="w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center shrink-0">
-                <svg className="w-4 h-4 text-white ml-0.5" fill="currentColor" viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
-              </div>
-            </div>
-          </div>
-        </div>
-
         {/* Text Content */}
-        <div className="order-1 lg:order-2">
+        <div>
           <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-blue-50 border border-blue-100 rounded-full text-sm font-medium text-blue-600 mb-6">
             <MessageCircle className="w-4 h-4" />
             Умный Telegram Бот
@@ -448,12 +353,21 @@ const LandingPage: React.FC = () => {
             </div>
           </div>
         </div>
-
       </div>
     </div>
   </section>
 
- {/* ═══ Features Grid ═══ */}
+  {/* ═══ Нам доверяют ═══ */}
+  <section className="py-12 px-6 border-y border-slate-100 bg-white">
+    <div className="max-w-7xl mx-auto text-center">
+      <p className="text-sm font-semibold text-slate-400 uppercase tracking-widest mb-8">Нам доверяют передовые учебные центры</p>
+      <div className="flex flex-wrap justify-center items-center gap-12 opacity-60 hover:opacity-100 transition-opacity duration-300">
+        <img src="/companies/myacademy.png" alt="My Academy" className="h-10 object-contain grayscale hover:grayscale-0 transition-all duration-300" />
+      </div>
+    </div>
+  </section>
+
+  {/* ═══ Features Grid ═══ */}
  <section id="features" className="py-20 px-6 bg-slate-50 ">
  <div className="max-w-7xl mx-auto">
  <div className="text-center mb-16">
@@ -484,8 +398,8 @@ const LandingPage: React.FC = () => {
   {/* ═══ Role: For Teachers & Managers ═══ */}
   <section className="py-24 px-6 relative overflow-hidden bg-slate-900 border-y border-slate-800">
     <div className="absolute top-[-100px] right-[-200px] w-[600px] h-[600px] bg-primary-600/20 rounded-full blur-[120px] pointer-events-none" />
-    <div className="max-w-7xl mx-auto relative z-10">
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
+    <div className="max-w-4xl mx-auto relative z-10">
+      <div className="flex flex-col gap-10">
         <div>
           <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-primary-500/10 border border-primary-500/20 rounded-full text-sm font-medium text-primary-400 mb-6">
             <Briefcase className="w-4 h-4" />
@@ -522,45 +436,6 @@ const LandingPage: React.FC = () => {
           </div>
         </div>
 
-        <div className="relative mt-8 lg:mt-0 lg:ml-10">
-          <div className="absolute inset-0 bg-gradient-to-tr from-primary-600 to-indigo-600 rounded-3xl blur-[40px] opacity-20 animate-pulse" />
-          <div className="relative bg-[#0f172a] border border-slate-700/50 rounded-3xl shadow-2xl overflow-hidden flex flex-col p-6">
-             {/* Fake Teacher Dashboard Mock */}
-             <div className="flex items-center justify-between border-b border-slate-800 pb-4 mb-4">
-               <div className="flex items-center gap-3">
-                 <div className="w-10 h-10 rounded-full bg-primary-900/50 flex items-center justify-center border border-primary-800 border-2">
-                   <Briefcase className="w-5 h-5 text-primary-400" />
-                 </div>
-                 <div>
-                   <h4 className="text-white font-bold text-sm">Рабочий стол Учителя</h4>
-                   <p className="text-xs text-slate-500">Группа Advanced (Вторник, 15:00)</p>
-                 </div>
-               </div>
-               <div className="px-3 py-1 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs rounded-full">Урок идет</div>
-             </div>
-             
-             <div className="space-y-3 mb-6">
-               {[1, 2, 3].map((i) => (
-                 <div key={i} className="flex items-center justify-between p-3 rounded-xl bg-slate-800/50 border border-slate-700/50 hover:bg-slate-700/50 transition-colors cursor-pointer">
-                   <div className="flex items-center gap-3">
-                     <div className="w-8 h-8 rounded-full bg-slate-700" />
-                     <div>
-                       <div className="w-24 h-2 bg-slate-600 rounded-full mb-1.5" />
-                       <div className="w-16 h-1.5 bg-slate-700 rounded-full" />
-                     </div>
-                   </div>
-                   <div className="flex gap-2">
-                     <div className="w-6 h-6 rounded-md bg-emerald-500 border border-emerald-400 flex items-center justify-center"><Check className="w-4 h-4 text-white" /></div>
-                     <div className="w-6 h-6 rounded-md bg-slate-700" />
-                     <div className="w-6 h-6 rounded-md bg-slate-700" />
-                   </div>
-                 </div>
-               ))}
-             </div>
-             
-             <button className="w-full py-3 bg-primary-600 hover:bg-primary-500 transition-colors text-white text-sm font-bold rounded-xl mt-auto">Сохранить журнал</button>
-          </div>
-        </div>
       </div>
     </div>
   </section>
@@ -568,48 +443,11 @@ const LandingPage: React.FC = () => {
   {/* ═══ Role: For Students & Parents ═══ */}
   <section className="py-24 px-6 relative overflow-hidden bg-slate-50 border-b border-slate-100">
     <div className="absolute top-[-100px] left-[-200px] w-[600px] h-[600px] bg-violet-600/10 rounded-full blur-[120px] pointer-events-none" />
-    <div className="max-w-7xl mx-auto relative z-10">
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
+    <div className="max-w-4xl mx-auto relative z-10">
+      <div className="flex flex-col gap-10">
         
-        {/* Mock Visual */}
-        <div className="relative mt-8 lg:mt-0 order-2 lg:order-1 lg:mr-10">
-          <div className="absolute inset-0 bg-gradient-to-tr from-violet-400 to-fuchsia-400 rounded-3xl blur-[40px] opacity-20 animate-pulse" />
-          <div className="relative bg-white border border-slate-200 rounded-3xl shadow-2xl overflow-hidden flex flex-col p-6 lg:p-8">
-             <div className="flex items-center gap-4 mb-8 bg-gradient-to-br from-violet-500 to-fuchsia-500 p-6 rounded-2xl text-white shadow-lg shadow-violet-500/20 transform transition-transform hover:scale-[1.02]">
-               <div className="w-16 h-16 rounded-2xl bg-white/20 backdrop-blur-sm flex items-center justify-center border border-white/30 shrink-0 shadow-inner">
-                 <Sparkles className="w-8 h-8 text-white" />
-               </div>
-               <div>
-                 <p className="text-white/80 text-sm font-medium">Ваш прогресс</p>
-                 <h4 className="text-2xl font-bold flex items-center gap-2">Lvl 14 Охотник <Crown className="w-5 h-5 text-amber-300" /></h4>
-                 <div className="w-full bg-white/20 h-2 rounded-full mt-2 overflow-hidden shadow-inner">
-                   <div className="bg-white w-[75%] h-full rounded-full" />
-                 </div>
-               </div>
-             </div>
-             
-             <h4 className="text-slate-800 font-bold mb-4 px-2">Активные задания</h4>
-             <div className="space-y-3">
-               {[1, 2].map((i) => (
-                 <div key={i} className="p-4 rounded-xl bg-slate-50 border border-slate-100 hover:border-violet-200 hover:bg-violet-50 group cursor-pointer transition-colors shadow-sm">
-                   <div className="flex justify-between items-center mb-2">
-                     <span className="text-violet-600 text-xs font-bold px-2 py-1 bg-violet-100 rounded-md">До завтра</span>
-                     <span className="text-amber-500 text-xs font-bold flex items-center gap-1">+150 XP <Star className="w-3 h-3 fill-current" /></span>
-                   </div>
-                   <h5 className="text-sm font-bold text-slate-800 mb-1">Проект "Случайные числа" Python</h5>
-                   <p className="text-xs text-slate-500 font-medium">Загрузите .py исходник или архив</p>
-                 </div>
-               ))}
-               <div className="p-4 rounded-xl bg-emerald-50 border border-emerald-100 border-dashed text-center mt-2 cursor-pointer hover:bg-emerald-100 transition-colors">
-                 <UploadCloud className="w-6 h-6 text-emerald-500 mx-auto mb-1" />
-                 <span className="text-sm font-bold text-emerald-700">Сдать работу через телефон</span>
-               </div>
-             </div>
-          </div>
-        </div>
-
         {/* Text Content */}
-        <div className="order-1 lg:order-2">
+        <div>
           <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-violet-50 border border-violet-100 rounded-full text-sm font-medium text-violet-600 mb-6 shadow-sm">
             <Gamepad2 className="w-4 h-4" />
             Для Учеников и Родителей

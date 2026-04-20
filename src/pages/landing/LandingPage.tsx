@@ -360,9 +360,12 @@ const LandingPage: React.FC = () => {
   {/* ═══ Нам доверяют ═══ */}
   <section className="py-12 px-6 border-y border-slate-100 bg-white">
     <div className="max-w-7xl mx-auto text-center">
-      <p className="text-sm font-semibold text-slate-400 uppercase tracking-widest mb-8">Нам доверяют передовые учебные центры</p>
+      <p className="text-sm font-semibold text-slate-400 uppercase tracking-widest mb-8">Нам доверяют учебные центры</p>
       <div className="flex flex-wrap justify-center items-center gap-12 opacity-60 hover:opacity-100 transition-opacity duration-300">
-        <img src="/companies/myacademy.png" alt="My Academy" className="h-10 object-contain grayscale hover:grayscale-0 transition-all duration-300" />
+        <div className="flex items-center gap-3 grayscale hover:grayscale-0 transition-all duration-300">
+          <img src="/companies/myacademy.png" alt="My Academy лого" className="h-10 w-auto object-contain" />
+          <span className="font-bold text-slate-800 text-lg">My Academy</span>
+        </div>
       </div>
     </div>
   </section>

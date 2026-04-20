@@ -27,7 +27,6 @@ const LiveCanvas: React.FC<LiveCanvasProps> = ({
   const isDrawing = useRef(false);
   const currentPath = useRef<{ x: number; y: number }[]>([]);
   const animFrameRef = useRef<number>(0);
-  const laserGlowRef = useRef(0);
   const targetCursorRef = useRef<{x: number, y: number} | null>(null);
   const currentCursorRef = useRef<{x: number, y: number} | null>(null);
 

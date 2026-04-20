@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { apiOrgGetHomeworks } from '../../lib/api';
 import type { HomeworkSubmission } from '../../types';
-import { ExternalLink, Clock, CheckCircle, FileText, FileVideo, ImageIcon, FileAudio, FileArchive, Search } from 'lucide-react';
+import { Clock, CheckCircle, FileText, FileVideo, ImageIcon, FileAudio, FileArchive, Search } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 interface LessonSubmissionsPanelProps {
@@ -68,19 +68,19 @@ export const LessonSubmissionsPanel: React.FC<LessonSubmissionsPanelProps> = ({ 
            <h3 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">Сданные работы <span className="px-2 py-0.5 bg-primary-100 text-primary-700 dark:bg-primary-900/30 dark:text-primary-400 rounded-lg text-sm">{submissions.length}</span></h3>
            <p className="text-[13px] text-slate-500 dark:text-slate-400 mt-1">Отслеживание и статистика выполнения заданий студентами.</p>
         </div>
-        <div className="flex items-center gap-3 w-full sm:w-auto">
-          <div className="relative flex-1 sm:w-64">
+        <div className="flex items-center gap-3 w-full mt-2">
+          <div className="relative flex-1 min-w-[120px]">
             <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
             <input 
               type="text" 
               placeholder="Поиск по имени..." 
               value={search}
               onChange={e => setSearch(e.target.value)}
-              className="w-full pl-9 pr-4 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 outline-none transition-all text-slate-900 dark:text-white"
+              className="w-full min-w-0 pl-9 pr-4 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 outline-none transition-all text-slate-900 dark:text-white"
             />
           </div>
-          <button onClick={() => navigate('/homework')} className="btn-primary shrink-0 flex items-center gap-2 py-2 px-4 rounded-xl text-[13px] font-semibold">
-            Проверить <ExternalLink className="w-4 h-4" />
+          <button onClick={() => navigate('/homework')} className="btn-primary shrink-0 flex items-center justify-center gap-2 py-2 px-4 rounded-xl text-[13px] font-semibold whitespace-nowrap">
+            Проверить
           </button>
         </div>
       </div>

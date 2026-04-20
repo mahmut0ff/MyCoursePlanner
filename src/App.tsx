@@ -12,6 +12,12 @@ const RegisterPage = lazy(() => import('./pages/auth/RegisterPage'));
 const ParentPortalPage = lazy(() => import('./pages/parent/ParentPortalPage'));
 const OnboardingPage = lazy(() => import('./pages/auth/OnboardingPage'));
 
+const LandingPage = lazy(() => import('./pages/landing/LandingPage'));
+const FeaturesPage = lazy(() => import('./pages/landing/FeaturesPage'));
+const AboutPage = lazy(() => import('./pages/landing/AboutPage'));
+const ContactPage = lazy(() => import('./pages/landing/ContactPage'));
+const DocsPage = lazy(() => import('./pages/landing/DocsPage'));
+
 const DashboardPage = lazy(() => import('./pages/dashboard/DashboardPage'));
 const GradebookPage = lazy(() => import('./pages/gradebook/GradebookPage'));
 const JournalPage = lazy(() => import('./pages/journal/JournalPage'));
@@ -145,7 +151,11 @@ const App: React.FC = () => {
         <Suspense fallback={<div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-slate-900"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div></div>}>
         <Routes>
           {/* Public */}
-            <Route path="/" element={<Navigate to="/login" replace />} />
+            <Route path="/" element={<LandingPage />} />
+            <Route path="/features" element={<FeaturesPage />} />
+            <Route path="/about" element={<AboutPage />} />
+            <Route path="/contact" element={<ContactPage />} />
+            <Route path="/docs" element={<DocsPage />} />
             <Route path="/login" element={<LoginPage />} />
             <Route path="/register" element={<RegisterPage />} />
             <Route path="/parent/:token" element={<ParentPortalPage />} />

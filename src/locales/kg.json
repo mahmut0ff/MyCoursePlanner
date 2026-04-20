@@ -264,9 +264,8 @@
       "subtitle": "Жазылуулар жана киреше башкаруу",
       "mrr": "MRR",
       "active": "Активдүү",
-      "trial": "Сыноо мөөнөтү",
+      "trial": "Сыноо",
       "cancelled": "Жокко чыгарылган",
-      "gifted": "Белекке берилген",
       "search": "Уюм боюнча издөө...",
       "allStatus": "Бардык абалдар",
       "organization": "Уюм",
@@ -280,7 +279,8 @@
       "extendTitle": "Жазылууну узартуу",
       "daysToExtend": "Узартуу күндөрү",
       "confirmCancel": "Бул жазылууну мажбурлап жокко чыгаруусузбу?",
-      "noSubs": "Жазылуулар табылган жок"
+      "noSubs": "Жазылуулар табылган жок",
+      "gifted": "Белекке берилген"
     },
     "audit": {
       "title": "Аракеттер журналы",
@@ -288,10 +288,10 @@
       "search": "Аракеттерди, аткаруучуларды издөө...",
       "allEntities": "Бардык объекттер",
       "refresh": "Жаңылоо",
-      "before": "Мурун",
+      "before": "Чейин",
       "after": "Кийин",
-      "metadata": "Метаберилиштер",
-      "noLogs": "Аракеттер табылган жок",
+      "metadata": "Метадайындар",
+      "noLogs": "Журнал бош",
       "filterOrgs": "Уюмдар",
       "filterUsers": "Колдонуучулар",
       "filterSubs": "Жазылуулар",
@@ -344,14 +344,6 @@
       "professional": "Профессионал",
       "enterprise": "Ишкана"
     },
-    "statuses": {
-      "active": "Активдүү",
-      "suspended": "Токтотулган",
-      "deleted": "Өчүрүлгөн",
-      "trial": "Сыноо",
-      "cancelled": "Жокко чыгарылган",
-      "gifted": "Белек"
-    },
     "integrations": {
       "subtitle": "Байланышкан сервистерди, вебхуктарды жана API ачкычтарды башкаруу",
       "addIntegration": "Интеграция кошуу",
@@ -370,7 +362,7 @@
       "created": "Түзүлгөн",
       "lastUsed": "Акыркы колдонуу",
       "generateKey": "Жаңы API ачкыч түзүү",
-      "keyNamePlaceholder": "мисалы: Production Key",
+      "keyNamePlaceholder": "мис. Production Key",
       "generate": "Түзүү",
       "webhooksTitle": "Вебхуктар",
       "apiKeysTitle": "API Ачкычтар"
@@ -485,6 +477,14 @@
     },
     "logs": {
       "empty": "Логдор азырынча жок"
+    },
+    "statuses": {
+      "active": "Активдүү",
+      "suspended": "Токтотулган",
+      "deleted": "Өчүрүлгөн",
+      "trial": "Сыноо",
+      "cancelled": "Жокко чыгарылган",
+      "gifted": "Белек"
     }
   },
   "billing": {
@@ -503,8 +503,6 @@
   },
   "common": {
     "selectFile": "Файлды тандаңыз",
-    "navigate": "Багыттоо",
-    "select": "Тандоо",
     "loading": "Жүктөлүүдө...",
     "save": "Сактоо",
     "cancel": "Жокко чыгаруу",
@@ -536,7 +534,9 @@
     "off": "ӨЧҮК",
     "email": "Email",
     "optional": "милдеттүү эмес",
-    "howItWorks": "Бул кантип иштейт?"
+    "howItWorks": "Бул кантип иштейт?",
+    "navigate": "Багыттоо",
+    "select": "Тандоо"
   },
   "org": {
     "courses": {
@@ -640,6 +640,8 @@
       "timezone": "Убакыт алкагы",
       "language": "Тил",
       "academic": "Окуу жөндөөлөрү",
+      "yearStart": "Окуу жылынын башы",
+      "yearEnd": "Окуу жылынын аягы",
       "gradingScale": "Баалоо системасы",
       "passingScore": "Өтүү баллы (%)",
       "scalePercentage": "Пайыздар",
@@ -691,7 +693,9 @@
     "currency": "сом",
     "free": "Бекер",
     "startFree": "Бекер баштоо",
-    "startTrial": "Бекер баштоо",
+    "startTrial14": "14 күн бекер баштоо",
+    "startTrial3": "3 күн бекер баштоо",
+    "startTrial": "14 күн бекер баштоо",
     "planFree": "Бекер",
     "planPro": "Профессионал",
     "planEnt": "Ишкана",

@@ -425,14 +425,6 @@
       "professional": "Professional",
       "enterprise": "Enterprise"
     },
-    "statuses": {
-      "active": "Active",
-      "suspended": "Suspended",
-      "deleted": "Deleted",
-      "trial": "Trial",
-      "cancelled": "Cancelled",
-      "gifted": "Gifted"
-    },
     "integrations": {
       "subtitle": "Manage connected services, webhooks, and API keys",
       "addIntegration": "Add Integration",
@@ -566,6 +558,14 @@
     },
     "logs": {
       "empty": "No logs yet"
+    },
+    "statuses": {
+      "active": "Active",
+      "suspended": "Suspended",
+      "deleted": "Deleted",
+      "trial": "Trial",
+      "cancelled": "Cancelled",
+      "gifted": "Gifted"
     }
   },
   "billing": {
@@ -584,8 +584,6 @@
   },
   "common": {
     "selectFile": "Select File",
-    "navigate": "Navigate",
-    "select": "Select",
     "loading": "Loading...",
     "save": "Save",
     "cancel": "Cancel",
@@ -623,7 +621,9 @@
     "email": "Email",
     "optional": "optional",
     "notFound": "Not found",
-    "howItWorks": "How it works?"
+    "howItWorks": "How it works?",
+    "navigate": "Navigate",
+    "select": "Select"
   },
   "org": {
     "courses": {
@@ -727,6 +727,8 @@
       "timezone": "Timezone",
       "language": "Language",
       "academic": "Academic Settings",
+      "yearStart": "Academic Year Start",
+      "yearEnd": "Academic Year End",
       "gradingScale": "Grading Scale",
       "passingScore": "Passing Score (%)",
       "scalePercentage": "Percentage",
@@ -930,10 +932,12 @@
     "examQuestionTypes": "Multiple question types",
     "examRooms": "Rooms with PIN access",
     "examAntiCheat": "Anti-cheat system",
-    "catAi": "AI Capabilities",
+    "catAi": "Artificial Intelligence",
     "aiGenerateLessons": "Generate lessons with AI",
     "aiGenerateTests": "Generate tests automatically",
     "aiEvaluate": "Evaluate open answers",
+    "aiTelegramBot": "Telegram Bot for Client Support",
+    "aiClientSupport": "24/7 AI Assistant for Students",
     "catEngagement": "Engagement",
     "engXpLevels": "XP & Levels",
     "engBadges": "Badges & achievements",
@@ -965,6 +969,18 @@
     "why5Desc": "From 10 students to 10,000 — SaaS infrastructure that grows with your organization.",
     "why6Title": "Global reach",
     "why6Desc": "Multi-language platform with localized certificates and international payment support.",
+    "rolesTitle": "Two Roles — One Platform",
+    "rolesSubtitle": "Specialized interfaces for every participant in the educational process",
+    "roleStudent": "Student Dashboard",
+    "roleStudentDesc": "A unified control panel to track learning progress",
+    "roleStudentF1": "Detailed statistics, gradebook, and weekly schedule",
+    "roleStudentF2": "Track XP level, badges, and leaderboard rankings",
+    "roleStudentF3": "Access lectures, take online exams, and chat with classmates",
+    "roleTeacher": "Teacher Dashboard",
+    "roleTeacherDesc": "A powerful toolkit for teaching and creating content",
+    "roleTeacherF1": "Quickly create courses, interactive lessons, and quizzes",
+    "roleTeacherF2": "Launch Live Exam Rooms with real-time anti-cheat",
+    "roleTeacherF3": "Manage the electronic gradebook and view group analytics",
     "useCasesTitle": "Built for every education model",
     "useCasesSubtitle": "Flexible platform that adapts to how you teach",
     "ucSchools": "Schools",
@@ -982,7 +998,9 @@
     "currency": "KGS",
     "free": "Free",
     "startFree": "Start for free",
-    "startTrial": "Start free trial",
+    "startTrial14": "Start 14-day free trial",
+    "startTrial3": "Start 3-day free trial",
+    "startTrial": "14-day free trial",
     "planFree": "Free",
     "planBasic": "Basic",
     "planPro": "Professional",

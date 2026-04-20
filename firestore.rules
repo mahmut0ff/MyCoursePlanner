@@ -15,10 +15,8 @@ service cloud.firestore {
     function hasOrgAccess(orgId) {
       return request.auth != null && (
         exists(/databases/$(database)/documents/users/$(request.auth.uid)/memberships/$(orgId)) ||
-        (
-          let userData = get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
-          userData.organizationId == orgId || userData.activeOrgId == orgId
-        )
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.organizationId == orgId ||
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.activeOrgId == orgId
       );
     }
 

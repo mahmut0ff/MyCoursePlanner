@@ -8,7 +8,7 @@ import { findSessionByCode, joinLiveSession } from '../../services/live-session.
 
 const JoinLiveLessonPage: React.FC = () => {
   const { t } = useTranslation();
-  const { user, profile } = useAuth();
+  const { firebaseUser: user } = useAuth();
   const navigate = useNavigate();
   const [code, setCode] = useState('');
   const [loading, setLoading] = useState(false);
@@ -32,7 +32,7 @@ const JoinLiveLessonPage: React.FC = () => {
         setLoading(false);
         return;
       }
-      await joinLiveSession(session.id, user.uid, user.displayName || 'Student', profile?.photoURL || '');
+      await joinLiveSession(session.id, user.uid, user.displayName || 'Student', user.photoURL || '');
       toast.success(t('live.joined'));
       // Navigate to lesson with the live session active
       navigate(`/lessons/${session.lessonId}`);

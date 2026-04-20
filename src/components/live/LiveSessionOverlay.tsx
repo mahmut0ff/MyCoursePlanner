@@ -2,16 +2,15 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'react-hot-toast';
 import {
-  Radio, X, Maximize2, Minimize2, Pencil, MousePointer,
-  Eraser, Trash2, Copy, Palette, Users, ChevronUp, ChevronDown,
-  Square, StopCircle
+  Maximize2, Minimize2, Pencil, MousePointer,
+  Eraser, Trash2, Copy, Users, ChevronUp, ChevronDown, StopCircle
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import LiveCanvas from './LiveCanvas';
 import LiveParticipants from './LiveParticipants';
 import LiveReactions from './LiveReactions';
 import {
-  createLiveSession, endLiveSession, joinLiveSession, leaveLiveSession,
+  endLiveSession, leaveLiveSession,
   subscribeToLiveSession, subscribeToAnnotations, subscribeToReactions,
   addAnnotation, clearAnnotations, updateTeacherCursor, clearCursorThrottle,
   addReaction, kickParticipant
@@ -22,9 +21,7 @@ import type {
 } from '../../types';
 
 interface LiveSessionOverlayProps {
-  lessonId: string;
-  lessonTitle: string;
-  organizationId: string;
+
   isTeacher: boolean;
   session: LiveSession | null;
   onSessionChange: (session: LiveSession | null) => void;
@@ -34,21 +31,21 @@ const COLORS = ['#ef4444', '#f97316', '#eab308', '#22c55e', '#3b82f6', '#8b5cf6'
 const WIDTHS = [2, 4, 6, 8];
 
 const LiveSessionOverlay: React.FC<LiveSessionOverlayProps> = ({
-  lessonId, lessonTitle, organizationId, isTeacher, session, onSessionChange,
+  isTeacher, session, onSessionChange,
 }) => {
   const { t } = useTranslation();
-  const { user } = useAuth();
+  const { firebaseUser: user } = useAuth();
   const [expanded, setExpanded] = useState(false);
   const [toolbarOpen, setToolbarOpen] = useState(true);
   const [toolMode, setToolMode] = useState<'laser' | 'draw' | 'eraser'>('laser');
   const [currentColor, setCurrentColor] = useState('#ef4444');
   const [currentWidth, setCurrentWidth] = useState(4);
-  const [showColorPicker, setShowColorPicker] = useState(false);
+
   const [participants, setParticipants] = useState<LiveParticipant[]>([]);
   const [annotations, setAnnotations] = useState<LiveAnnotation[]>([]);
   const [reactions, setReactions] = useState<LiveReaction[]>([]);
   const [teacherCursor, setTeacherCursor] = useState<{ x: number; y: number } | null>(null);
-  const [loading, setLoading] = useState(false);
+
   const [codeCopied, setCodeCopied] = useState(false);
   const unsubRef = useRef<(() => void)[]>([]);
 
@@ -107,31 +104,7 @@ const LiveSessionOverlay: React.FC<LiveSessionOverlayProps> = ({
     };
   }, [session?.id]);
 
-  // Start session
-  const handleStart = async () => {
-    if (!user) return;
-    setLoading(true);
-    try {
-      const sessionId = await createLiveSession(
-        lessonId, lessonTitle, organizationId,
-        user.uid, user.displayName || 'Teacher'
-      );
-      // H1 FIX: Fetch real session to get joinCode from Firestore
-      const { getLiveSession } = await import('../../services/live-session.service');
-      const realSession = await getLiveSession(sessionId);
-      onSessionChange(realSession || {
-        id: sessionId, lessonId, lessonTitle, organizationId,
-        teacherId: user.uid, teacherName: user.displayName || 'Teacher',
-        status: 'active' as const, joinCode: '', currentSlideIndex: 0,
-        focusMode: false, participantCount: 1,
-        createdAt: new Date().toISOString(), updatedAt: new Date().toISOString()
-      });
-    } catch (err) {
-      console.error('Failed to start session:', err);
-      toast.error(t('live.startError'));
-    }
-    setLoading(false);
-  };
+
 
   // End session
   const handleEnd = async () => {
@@ -242,7 +215,7 @@ const LiveSessionOverlay: React.FC<LiveSessionOverlayProps> = ({
           </button>
 
           {/* Reactions */}
-          <LiveReactions isTeacher={isTeacher} onReact={handleReact} incomingReactions={reactions} />
+          <LiveReactions onReact={handleReact} incomingReactions={reactions} />
 
           <div className="w-px h-6 bg-white/20" />
 
@@ -416,7 +389,7 @@ const LiveSessionOverlay: React.FC<LiveSessionOverlayProps> = ({
             <div className="flex-1" />
 
             {/* Reactions */}
-            <LiveReactions isTeacher={isTeacher} onReact={handleReact} incomingReactions={reactions} />
+            <LiveReactions onReact={handleReact} incomingReactions={reactions} />
 
             {/* Participants panel */}
             <div className="hidden md:block">

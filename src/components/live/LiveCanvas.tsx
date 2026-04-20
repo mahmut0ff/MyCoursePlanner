@@ -1,5 +1,5 @@
 import React, { useRef, useEffect, useCallback } from 'react';
-import type { LiveAnnotation, LiveParticipant } from '../../types';
+import type { LiveAnnotation } from '../../types';
 
 interface LiveCanvasProps {
   annotations: LiveAnnotation[];

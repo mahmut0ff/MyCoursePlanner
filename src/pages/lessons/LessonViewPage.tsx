@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { deleteLessonPlan } from '../../services/lessons.service';
@@ -64,7 +64,7 @@ const LessonViewPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { t } = useTranslation();
-  const { role, profile, user } = useAuth();
+  const { role, profile, firebaseUser: user } = useAuth();
   const [lesson, setLesson] = useState<LessonPlan | null>(null);
   const [loading, setLoading] = useState(true);
   const [viewerFile, setViewerFile] = useState<{ name: string; url: string; type: string } | null>(null);
@@ -137,7 +137,7 @@ const LessonViewPage: React.FC = () => {
         setJoinLoading(false);
         return;
       }
-      await joinLiveSession(session.id, user.uid, user.displayName || 'Student', profile?.photoURL || '');
+      await joinLiveSession(session.id, user.uid, user.displayName || 'Student', user.photoURL || '');
       setLiveSession(session);
       setShowJoinModal(false);
       toast.success(t('live.joined'));
@@ -597,9 +597,7 @@ const LessonViewPage: React.FC = () => {
       {/* Live Session Overlay */}
       {liveSession && liveSession.status === 'active' && lesson.organizationId && (
         <LiveSessionOverlay
-          lessonId={lesson.id!}
-          lessonTitle={lesson.title}
-          organizationId={lesson.organizationId}
+
           isTeacher={isStaff}
           session={liveSession}
           onSessionChange={setLiveSession}

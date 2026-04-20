@@ -2,7 +2,6 @@ import React, { useState, useEffect, useRef } from 'react';
 import type { LiveReactionType } from '../../types';
 
 interface LiveReactionsProps {
-  isTeacher: boolean;
   onReact: (type: LiveReactionType) => void;
   incomingReactions: { id: string; type: LiveReactionType; userName: string; createdAt: string }[];
 }
@@ -17,7 +16,7 @@ interface FloatingEmoji {
   startTime: number;
 }
 
-const LiveReactions: React.FC<LiveReactionsProps> = ({ isTeacher, onReact, incomingReactions }) => {
+const LiveReactions: React.FC<LiveReactionsProps> = ({ onReact, incomingReactions }) => {
   const [floating, setFloating] = useState<FloatingEmoji[]>([]);
   const [cooldown, setCooldown] = useState(false);
   const lastSeenRef = useRef<string>('');

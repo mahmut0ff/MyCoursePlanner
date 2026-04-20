@@ -27,7 +27,7 @@ interface LiveSessionOverlayProps {
   onSessionChange: (session: LiveSession | null) => void;
 }
 
-const COLORS = ['#ef4444', '#f97316', '#eab308', '#22c55e', '#3b82f6', '#8b5cf6', '#ec4899', '#ffffff'];
+const COLORS = ['#ef4444', '#f97316', '#eab308', '#22c55e', '#3b82f6', '#8b5cf6', '#ec4899', '#1e293b'];
 const WIDTHS = [2, 4, 6, 8];
 
 const LiveSessionOverlay: React.FC<LiveSessionOverlayProps> = ({
@@ -48,6 +48,7 @@ const LiveSessionOverlay: React.FC<LiveSessionOverlayProps> = ({
 
   const [codeCopied, setCodeCopied] = useState(false);
   const unsubRef = useRef<(() => void)[]>([]);
+  const lastLocalMoveRef = useRef(0);
 
   // Subscribe to session data
   useEffect(() => {
@@ -65,10 +66,10 @@ const LiveSessionOverlay: React.FC<LiveSessionOverlayProps> = ({
       onSessionChange(s);
       setParticipants(p);
 
-      // Get teacher cursor for students
-      if (!isTeacher) {
-        const teacher = p.find(pp => pp.role === 'teacher');
-        if (teacher && teacher.cursorX != null && teacher.cursorY != null) {
+      // Get teacher cursor (allow Air Mouse override if local mouse is idle)
+      const teacher = p.find(pp => pp.role === 'teacher');
+      if (teacher && teacher.cursorX != null && teacher.cursorY != null) {
+        if (!isTeacher || Date.now() - lastLocalMoveRef.current > 1000) {
           setTeacherCursor({ x: teacher.cursorX, y: teacher.cursorY });
         }
       }
@@ -139,9 +140,10 @@ const LiveSessionOverlay: React.FC<LiveSessionOverlayProps> = ({
   // Cursor
   const handleCursorMove = useCallback((x: number, y: number) => {
     if (!session || !user) return;
+    if (isTeacher) lastLocalMoveRef.current = Date.now();
     updateTeacherCursor(session.id, user.uid, x, y);
     setTeacherCursor({ x, y }); // local preview
-  }, [session, user]);
+  }, [session, user, isTeacher]);
 
   // Clear annotations
   const handleClear = async () => {
@@ -244,11 +246,11 @@ const LiveSessionOverlay: React.FC<LiveSessionOverlayProps> = ({
 
   // Expanded fullscreen overlay
   return (
-    <div className="fixed inset-0 z-[100] bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
+    <div className="fixed inset-0 z-[100] bg-slate-50 dark:bg-slate-950 animate-in fade-in duration-200">
       {/* Canvas layer */}
       <LiveCanvas
         annotations={annotations}
-        teacherCursor={isTeacher ? null : teacherCursor}
+        teacherCursor={teacherCursor}
         toolMode={toolMode}
         currentColor={currentColor}
         currentWidth={currentWidth}

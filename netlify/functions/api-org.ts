@@ -108,11 +108,17 @@ const handler: Handler = async (event: HandlerEvent) => {
       if (Array.isArray(branchScope)) {
         list = list.filter((c: any) => !c.branchId || branchScope.includes(c.branchId));
       }
-      // Teacher-only filtering: only show courses assigned to this teacher
-      if (params.teacherOnly === 'true') {
+      // Teacher-only filtering: only show assigned entities (skip for admins/managers)
+      if (params.teacherOnly === 'true' && !hasRole(user, 'admin', 'manager')) {
+        const teacherGroupsSnap = await adminDb.collection('groups')
+          .where('organizationId', '==', orgId)
+          .where('teacherIds', 'array-contains', user.uid)
+          .get();
+        const courseIdsFromGroups = new Set(teacherGroupsSnap.docs.map(d => d.data().courseId));
+
         list = list.filter((c: any) => {
           const tIds: string[] = c.teacherIds || [];
-          return tIds.includes(user.uid) || c.createdBy === user.uid;
+          return tIds.includes(user.uid) || c.createdBy === user.uid || courseIdsFromGroups.has(c.id);
         });
       }
       list.sort((a: any, b: any) => (b.createdAt || '').localeCompare(a.createdAt || ''));
@@ -143,6 +149,7 @@ const handler: Handler = async (event: HandlerEvent) => {
         price: body.price || 0,
         paymentFormat: body.paymentFormat || 'one-time',
         durationMonths: body.durationMonths || 0,
+        createdBy: user.uid,
         createdAt: now(), updatedAt: now(),
       };
       const ref = await adminDb.collection('courses').add(data);
@@ -186,8 +193,8 @@ const handler: Handler = async (event: HandlerEvent) => {
       if (Array.isArray(branchScope)) {
         list = list.filter((g: any) => !g.branchId || branchScope.includes(g.branchId));
       }
-      // Teacher-only filtering: only show groups assigned to this teacher
-      if (params.teacherOnly === 'true') {
+      // Teacher-only filtering: only show assigned entities (skip for admins/managers)
+      if (params.teacherOnly === 'true' && !hasRole(user, 'admin', 'manager')) {
         list = list.filter((g: any) => {
           const tIds: string[] = g.teacherIds || [];
           return tIds.includes(user.uid) || g.createdBy === user.uid;

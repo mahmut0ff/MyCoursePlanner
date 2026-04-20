@@ -287,7 +287,7 @@ const LessonViewPage: React.FC = () => {
   const hw = lesson.homework;
 
   return (
-    <div className={presentationMode ? 'fixed inset-0 z-[100] bg-slate-50 dark:bg-slate-900 overflow-y-auto px-4 py-8 md:p-12 lg:px-32 xl:px-64 animate-in fade-in zoom-in-95 duration-200' : 'max-w-4xl mx-auto'}>
+    <div className={presentationMode ? 'fixed inset-0 z-[100] bg-slate-50 dark:bg-slate-900 overflow-y-auto px-4 py-8 md:p-12 lg:px-32 xl:px-64 animate-in fade-in zoom-in-95 duration-200' : 'max-w-7xl mx-auto'}>
       <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
         <div className="flex items-center gap-3">
           {!presentationMode && <button onClick={() => navigate('/lessons')} className="btn-ghost flex items-center gap-2"><ArrowLeft className="w-4 h-4" />{t('common.back', 'Назад')}</button>}
@@ -357,7 +357,8 @@ const LessonViewPage: React.FC = () => {
         )}
       </div>
 
-      <div className={`card overflow-hidden shadow-sm ${presentationMode ? 'shadow-xl ring-1 ring-slate-900/5 dark:ring-white/10' : ''}`}>
+      <div className={`flex flex-col lg:flex-row items-start gap-8`}>
+        <div className={`w-full ${(!presentationMode && isStaff && lesson?.organizationId && hw?.title) ? 'lg:w-[65%] xl:w-[70%]' : ''} card overflow-hidden shadow-sm ${presentationMode ? 'shadow-xl ring-1 ring-slate-900/5 dark:ring-white/10' : ''}`}>
         
         {/* Cover Hero */}
         {lesson.coverImageUrl && (
@@ -585,11 +586,14 @@ const LessonViewPage: React.FC = () => {
             </div>
           )}
         </div>
-      </div>
+        </div>
 
-      {isStaff && lesson?.organizationId && hw?.title && !presentationMode && (
-        <LessonSubmissionsPanel lessonId={lesson.id!} organizationId={lesson.organizationId} />
-      )}
+        {isStaff && lesson?.organizationId && hw?.title && !presentationMode && (
+          <div className="w-full lg:w-[35%] xl:w-[30%] lg:sticky lg:top-8">
+            <LessonSubmissionsPanel lessonId={lesson.id!} organizationId={lesson.organizationId!} />
+          </div>
+        )}
+      </div>
 
       {/* File Viewer Modal */}
       {viewerFile && <FileViewerModal file={viewerFile} onClose={() => setViewerFile(null)} />}

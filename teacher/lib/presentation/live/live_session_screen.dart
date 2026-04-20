@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:sensors_plus/sensors_plus.dart';
 
 import '../../data/services/live_session_service.dart';
 
@@ -59,6 +60,12 @@ class _LiveSessionScreenState extends State<LiveSessionScreen> {
   StreamSubscription? _sessionSub;
   StreamSubscription? _participantsSub;
   StreamSubscription? _reactionsSub;
+
+  // Air mouse
+  bool _isGyroActive = false;
+  StreamSubscription? _gyroSub;
+  double _cursorX = 0.5;
+  double _cursorY = 0.5;
 
   static const _colors = [
     Colors.red,
@@ -120,8 +127,40 @@ class _LiveSessionScreenState extends State<LiveSessionScreen> {
     _sessionSub?.cancel();
     _participantsSub?.cancel();
     _reactionsSub?.cancel();
+    _gyroSub?.cancel();
     _service.disposeCursorThrottle();
     super.dispose();
+  }
+
+  void _startGyro() {
+    setState(() {
+      _isGyroActive = true;
+      _cursorX = 0.5; // Reset to center
+      _cursorY = 0.5;
+      _toolMode = 'laser';
+    });
+    if (_sessionId != null) {
+      _service.updateCursor(_sessionId!, _cursorX, _cursorY);
+    }
+    _gyroSub = gyroscopeEventStream().listen((GyroscopeEvent event) {
+      if (!_isGyroActive) return;
+      setState(() {
+        _cursorX -= (event.y * 0.05);
+        _cursorY -= (event.x * 0.05);
+
+        _cursorX = _cursorX.clamp(0.0, 1.0);
+        _cursorY = _cursorY.clamp(0.0, 1.0);
+      });
+      if (_sessionId != null) {
+        _service.updateCursor(_sessionId!, _cursorX, _cursorY);
+      }
+    });
+  }
+
+  void _stopGyro() {
+    setState(() => _isGyroActive = false);
+    _gyroSub?.cancel();
+    _gyroSub = null;
   }
 
   void _handlePanStart(DragStartDetails details, BoxConstraints constraints) {
@@ -303,55 +342,107 @@ class _LiveSessionScreenState extends State<LiveSessionScreen> {
             Expanded(
               child: LayoutBuilder(
                 builder: (context, constraints) {
-                  return GestureDetector(
-                    onPanStart: (d) => _handlePanStart(d, constraints),
-                    onPanUpdate: (d) => _handlePanUpdate(d, constraints),
-                    onPanEnd: _handlePanEnd,
-                    child: Container(
-                      width: double.infinity,
-                      decoration: BoxDecoration(
-                        color: Colors.black.withValues(alpha: 0.3),
-                        border: Border.all(
-                          color: _toolMode == 'laser'
-                              ? Colors.red.withValues(alpha: 0.4)
-                              : Colors.blue.withValues(alpha: 0.4),
-                          width: 2,
-                        ),
-                      ),
-                      child: CustomPaint(
-                        painter: _TouchZonePainter(
-                          path: _currentPath,
-                          color: _currentColor,
-                          width: _currentWidth,
-                          toolMode: _toolMode,
-                        ),
-                        child: Center(
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(
-                                _toolMode == 'laser'
-                                    ? Icons.touch_app
-                                    : Icons.edit,
-                                size: 48,
-                                color: Colors.white.withValues(alpha: 0.15),
+                  return Stack(
+                    children: [
+                      GestureDetector(
+                        onPanStart: (d) => _handlePanStart(d, constraints),
+                        onPanUpdate: (d) => _handlePanUpdate(d, constraints),
+                        onPanEnd: _handlePanEnd,
+                        child: Container(
+                          width: double.infinity,
+                          decoration: BoxDecoration(
+                            color: Colors.black.withValues(alpha: 0.3),
+                            border: Border.all(
+                              color: _toolMode == 'laser'
+                                  ? Colors.red.withValues(alpha: 0.4)
+                                  : Colors.blue.withValues(alpha: 0.4),
+                              width: 2,
+                            ),
+                          ),
+                          child: CustomPaint(
+                            painter: _TouchZonePainter(
+                              path: _currentPath,
+                              color: _currentColor,
+                              width: _currentWidth,
+                              toolMode: _toolMode,
+                            ),
+                            child: Center(
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(
+                                    _toolMode == 'laser'
+                                        ? Icons.touch_app
+                                        : Icons.edit,
+                                    size: 48,
+                                    color: Colors.white.withValues(alpha: 0.15),
+                                  ),
+                                  const SizedBox(height: 8),
+                                  Text(
+                                    _toolMode == 'laser'
+                                        ? 'Двигайте палец — лазер'
+                                        : 'Рисуйте пальцем',
+                                    style: TextStyle(
+                                      color: Colors.white.withValues(alpha: 0.2),
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                ],
                               ),
-                              const SizedBox(height: 8),
-                              Text(
-                                _toolMode == 'laser'
-                                    ? 'Двигайте палец — лазер'
-                                    : 'Рисуйте пальцем',
-                                style: TextStyle(
-                                  color: Colors.white.withValues(alpha: 0.2),
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              ),
-                            ],
+                            ),
                           ),
                         ),
                       ),
-                    ),
+                      
+                      // Air Mouse Overlay Button
+                      if (_toolMode == 'laser')
+                        Positioned(
+                          bottom: 24,
+                          left: 0,
+                          right: 0,
+                          child: Center(
+                            child: GestureDetector(
+                              onTapDown: (_) => _startGyro(),
+                              onTapUp: (_) => _stopGyro(),
+                              onTapCancel: () => _stopGyro(),
+                              child: AnimatedContainer(
+                                duration: const Duration(milliseconds: 150),
+                                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                                decoration: BoxDecoration(
+                                  color: _isGyroActive ? Colors.red.shade600 : Colors.indigo.shade600,
+                                  borderRadius: BorderRadius.circular(30),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: (_isGyroActive ? Colors.red : Colors.indigo).withValues(alpha: 0.5),
+                                      blurRadius: 15,
+                                      spreadRadius: 2,
+                                    )
+                                  ],
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(
+                                      _isGyroActive ? Icons.sensors : Icons.control_camera,
+                                      color: Colors.white,
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Text(
+                                      _isGyroActive ? 'AIR MOUSE АКТИВЕН' : 'Удерживать для Air Mouse',
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 16,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                    ],
                   );
                 },
               ),

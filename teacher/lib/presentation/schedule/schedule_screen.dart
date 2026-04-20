@@ -65,14 +65,6 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
               }
             },
           ),
-          IconButton(
-            icon: const Icon(Icons.today),
-            onPressed: () => setState(() {
-              _weekStart = _getWeekStart(DateTime.now());
-              _selectedDayIndex = todayDayIndex;
-            }),
-            tooltip: 'Сегодня',
-          ),
         ],
       ),
       body: Column(

@@ -160,7 +160,7 @@ class LiveSessionService {
     _pendingCursor = {'x': x, 'y': y};
     if (_cursorTimer != null) return;
 
-    _cursorTimer = Timer(const Duration(milliseconds: 100), () async {
+    _cursorTimer = Timer(const Duration(milliseconds: 40), () async {
       if (_pendingCursor != null) {
         try {
           await _db

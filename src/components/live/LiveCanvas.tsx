@@ -28,6 +28,18 @@ const LiveCanvas: React.FC<LiveCanvasProps> = ({
   const currentPath = useRef<{ x: number; y: number }[]>([]);
   const animFrameRef = useRef<number>(0);
   const laserGlowRef = useRef(0);
+  const targetCursorRef = useRef<{x: number, y: number} | null>(null);
+  const currentCursorRef = useRef<{x: number, y: number} | null>(null);
+
+  // Sync incoming cursor prop to target
+  useEffect(() => {
+    targetCursorRef.current = teacherCursor;
+    if (teacherCursor && !currentCursorRef.current) {
+        currentCursorRef.current = { ...teacherCursor };
+    } else if (!teacherCursor) {
+        currentCursorRef.current = null;
+    }
+  }, [teacherCursor]);
 
   // Normalize coords to 0-1
   const getNormalizedCoords = useCallback((e: React.MouseEvent | React.TouchEvent) => {
@@ -93,36 +105,33 @@ const LiveCanvas: React.FC<LiveCanvasProps> = ({
       ctx.globalAlpha = 1;
     }
 
-    // Draw laser pointer
-    if (teacherCursor) {
-      laserGlowRef.current = (laserGlowRef.current + 0.05) % (Math.PI * 2);
-      const glowSize = 12 + Math.sin(laserGlowRef.current) * 4;
-      const cx = teacherCursor.x * w;
-      const cy = teacherCursor.y * h;
+    // Draw laser pointer (with lerping for smoothness)
+    if (targetCursorRef.current && currentCursorRef.current) {
+      // Lerp cursor position
+      currentCursorRef.current.x += (targetCursorRef.current.x - currentCursorRef.current.x) * 0.3;
+      currentCursorRef.current.y += (targetCursorRef.current.y - currentCursorRef.current.y) * 0.3;
 
-      // Outer glow
-      const grd = ctx.createRadialGradient(cx, cy, 0, cx, cy, glowSize * 2);
-      grd.addColorStop(0, 'rgba(239, 68, 68, 0.4)');
-      grd.addColorStop(0.5, 'rgba(239, 68, 68, 0.15)');
-      grd.addColorStop(1, 'rgba(239, 68, 68, 0)');
-      ctx.fillStyle = grd;
-      ctx.beginPath();
-      ctx.arc(cx, cy, glowSize * 2, 0, Math.PI * 2);
-      ctx.fill();
+      const cx = currentCursorRef.current.x * w;
+      const cy = currentCursorRef.current.y * h;
+
+      ctx.shadowColor = 'rgba(0,0,0,0.5)';
+      ctx.shadowBlur = 4;
 
       // Inner dot
       ctx.fillStyle = '#ef4444';
       ctx.beginPath();
-      ctx.arc(cx, cy, 5, 0, Math.PI * 2);
+      ctx.arc(cx, cy, 6, 0, Math.PI * 2);
       ctx.fill();
 
       // White center
+      ctx.shadowColor = 'transparent';
+      ctx.shadowBlur = 0;
       ctx.fillStyle = '#fff';
       ctx.beginPath();
-      ctx.arc(cx, cy, 2, 0, Math.PI * 2);
+      ctx.arc(cx, cy, 2.5, 0, Math.PI * 2);
       ctx.fill();
     }
-  }, [annotations, teacherCursor, isTeacher, currentColor, currentWidth]);
+  }, [annotations, isTeacher, currentColor, currentWidth]);
 
   // Animation loop
   useEffect(() => {

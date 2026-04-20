@@ -143,7 +143,10 @@ class GroupDetailScreen extends ConsumerWidget {
                           children: students.asMap().entries.map((entry) {
                             final s = entry.value;
                             final i = entry.key;
-                            final name = s['displayName'] ?? s['email'] ?? 'Студент';
+                            final name = (s['userName']?.toString().isNotEmpty == true ? s['userName'] : null) ??
+                                         (s['displayName']?.toString().isNotEmpty == true ? s['displayName'] : null) ??
+                                         (s['email']?.toString().isNotEmpty == true ? s['email'] : null) ??
+                                         (s['userEmail']?.toString().isNotEmpty == true ? s['userEmail'] : null) ?? 'Студент';
                             final email = s['email'] ?? '';
                             final avatar = s['avatarUrl'] ?? '';
                             final nameInitial = name.isNotEmpty ? name[0].toUpperCase() : '?';

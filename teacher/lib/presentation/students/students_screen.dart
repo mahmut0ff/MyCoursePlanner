@@ -39,7 +39,10 @@ class StudentsScreen extends ConsumerWidget {
               separatorBuilder: (_, __) => const SizedBox(height: 10),
               itemBuilder: (context, index) {
                 final student = students[index] as Map<String, dynamic>;
-                final name = student['userName'] ?? student['displayName'] ?? student['userEmail'] ?? 'Безымянный';
+                final name = (student['userName']?.toString().isNotEmpty == true ? student['userName'] : null) ??
+                             (student['displayName']?.toString().isNotEmpty == true ? student['displayName'] : null) ??
+                             (student['userEmail']?.toString().isNotEmpty == true ? student['userEmail'] : null) ??
+                             (student['email']?.toString().isNotEmpty == true ? student['email'] : null) ?? 'Безымянный';
                 final initials = name.isNotEmpty ? name[0].toUpperCase() : '?';
                 final avatarUrl = student['avatarUrl'] ?? student['photoURL'];
                 final avatarColors = [const Color(0xFF7C3AED), const Color(0xFF10B981), const Color(0xFF3B82F6), const Color(0xFFF59E0B), const Color(0xFFEF4444)];

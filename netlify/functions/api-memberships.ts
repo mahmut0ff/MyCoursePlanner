@@ -156,7 +156,14 @@ const handler: Handler = async (event: HandlerEvent) => {
         }
         members = members.map((m: any) => {
           const p = profileMap[m.userId] || {};
-          return { ...m, avatarUrl: p.avatarUrl || '', phone: p.phone || '', city: p.city || '' };
+          return { 
+            ...m, 
+            displayName: m.userName || p.displayName || '', 
+            email: m.userEmail || p.email || '', 
+            avatarUrl: p.avatarUrl || '', 
+            phone: p.phone || '', 
+            city: p.city || '' 
+          };
         });
       }
 
@@ -208,7 +215,14 @@ const handler: Handler = async (event: HandlerEvent) => {
         }
         allStudents = allStudents.map((m: any) => {
           const p = profileMap[m.userId] || {};
-          return { ...m, avatarUrl: p.avatarUrl || '', phone: p.phone || '', city: p.city || '' };
+          return { 
+            ...m, 
+            displayName: m.userName || p.displayName || '', 
+            email: m.userEmail || p.email || '', 
+            avatarUrl: p.avatarUrl || '', 
+            phone: p.phone || '', 
+            city: p.city || '' 
+          };
         });
       }
 

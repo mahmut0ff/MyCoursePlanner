@@ -8,7 +8,10 @@ class StudentDetailScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final name = student['displayName'] ?? student['email'] ?? 'Безымянный';
+    final name = (student['userName']?.toString().isNotEmpty == true ? student['userName'] : null) ??
+                 (student['displayName']?.toString().isNotEmpty == true ? student['displayName'] : null) ??
+                 (student['email']?.toString().isNotEmpty == true ? student['email'] : null) ??
+                 (student['userEmail']?.toString().isNotEmpty == true ? student['userEmail'] : null) ?? 'Безымянный';
     final email = student['email'] ?? '';
     final phone = student['phone'] ?? '';
     final photoURL = student['photoURL'];

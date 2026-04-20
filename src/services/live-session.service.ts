@@ -74,26 +74,26 @@ export const findSessionByCode = async (code: string): Promise<LiveSession | nul
   const q = query(
     collection(db, 'liveSessions'),
     where('joinCode', '==', code.toUpperCase()),
-    where('status', '==', 'active'),
-    limit(1)
+    limit(5)
   );
   const snap = await getDocs(q);
   if (snap.empty) return null;
-  const d = snap.docs[0];
-  return { id: d.id, ...d.data() } as LiveSession;
+  const activeDoc = snap.docs.find(d => d.data().status === 'active');
+  if (!activeDoc) return null;
+  return { id: activeDoc.id, ...activeDoc.data() } as LiveSession;
 };
 
 export const findActiveSessionForLesson = async (lessonId: string): Promise<LiveSession | null> => {
   const q = query(
     collection(db, 'liveSessions'),
     where('lessonId', '==', lessonId),
-    where('status', '==', 'active'),
-    limit(1)
+    limit(5)
   );
   const snap = await getDocs(q);
   if (snap.empty) return null;
-  const d = snap.docs[0];
-  return { id: d.id, ...d.data() } as LiveSession;
+  const activeDoc = snap.docs.find(d => d.data().status === 'active');
+  if (!activeDoc) return null;
+  return { id: activeDoc.id, ...activeDoc.data() } as LiveSession;
 };
 
 // ---- Participants ----

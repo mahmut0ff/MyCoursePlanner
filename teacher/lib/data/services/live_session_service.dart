@@ -78,12 +78,15 @@ class LiveSessionService {
     final snap = await _db
         .collection('liveSessions')
         .where('lessonId', isEqualTo: lessonId)
-        .where('status', isEqualTo: 'active')
-        .limit(1)
+        .limit(5)
         .get();
-    if (snap.docs.isEmpty) return null;
-    final d = snap.docs.first;
-    return {'id': d.id, ...d.data()};
+        
+    for (var d in snap.docs) {
+      if (d.data()['status'] == 'active') {
+        return {'id': d.id, ...d.data()};
+      }
+    }
+    return null;
   }
 
   // ── Real-time Subscriptions ──

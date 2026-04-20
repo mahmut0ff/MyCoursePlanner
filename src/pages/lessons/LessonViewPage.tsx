@@ -347,12 +347,12 @@ const LessonViewPage: React.FC = () => {
         </div>
         {isStaff && !presentationMode && (
           <div className="flex items-center gap-2">
-            <button onClick={handleDuplicate} disabled={duplicating} className="btn-secondary flex items-center gap-2">
-              {duplicating ? <span className="w-4 h-4 border-2 border-primary-500 border-t-transparent rounded-full animate-spin" /> : <Copy className="w-4 h-4" />}
+            <button onClick={handleDuplicate} disabled={duplicating} className="btn-secondary !px-3 !py-1.5 !text-sm flex items-center gap-1.5">
+              {duplicating ? <span className="w-3.5 h-3.5 border-2 border-primary-500 border-t-transparent rounded-full animate-spin" /> : <Copy className="w-3.5 h-3.5" />}
               {t('common.duplicate', 'Дублировать')}
             </button>
-            <Link to={`/lessons/${id}/edit`} className="btn-secondary flex items-center gap-2"><Edit className="w-4 h-4" />{t('common.edit')}</Link>
-            <button onClick={handleDelete} className="btn-danger flex items-center gap-2"><Trash2 className="w-4 h-4" />{t('common.delete')}</button>
+            <Link to={`/lessons/${id}/edit`} className="btn-secondary !px-3 !py-1.5 !text-sm flex items-center gap-1.5"><Edit className="w-3.5 h-3.5" />{t('common.edit')}</Link>
+            <button onClick={handleDelete} className="btn-danger !px-3 !py-1.5 !text-sm flex items-center gap-1.5"><Trash2 className="w-3.5 h-3.5" />{t('common.delete')}</button>
           </div>
         )}
       </div>
@@ -455,7 +455,7 @@ const LessonViewPage: React.FC = () => {
                 </div>
               )}
 
-              {hw && hw.title && (
+              {hw && hw.title && (!isStaff || presentationMode) && (
                 <div className="bg-amber-50/50 dark:bg-amber-900/10 rounded-2xl p-5 border border-amber-200/50 dark:border-amber-700/30">
                   <h2 className="text-sm font-bold text-amber-900 dark:text-amber-100 mb-3 flex items-center gap-2">
                     <ClipboardList className="w-4 h-4 text-amber-500" />
@@ -589,7 +589,30 @@ const LessonViewPage: React.FC = () => {
         </div>
 
         {isStaff && lesson?.organizationId && hw?.title && !presentationMode && (
-          <div className="w-full lg:w-[35%] xl:w-[30%] lg:sticky lg:top-8">
+          <div className="w-full lg:w-[35%] xl:w-[30%] lg:sticky lg:top-8 shrink-0 flex flex-col gap-5">
+            {/* Домашнее задание INFO box in sidebar */}
+            <div className="bg-amber-50/50 dark:bg-amber-900/10 rounded-2xl p-5 border border-amber-200/50 dark:border-amber-700/30">
+              <h2 className="text-sm font-bold text-amber-900 dark:text-amber-100 mb-3 flex items-center gap-2">
+                <ClipboardList className="w-4 h-4 text-amber-500" />
+                Домашнее задание
+              </h2>
+              <h3 className="font-semibold text-slate-800 dark:text-slate-200 mb-2 text-[15px]">{hw.title}</h3>
+              {hw.description && <p className="text-sm text-slate-600 dark:text-slate-400 whitespace-pre-wrap mb-4">{hw.description}</p>}
+              <div className="flex flex-wrap items-center gap-3 text-xs font-medium">
+                {hw.dueDate && (
+                  <span className="flex items-center gap-1.5 bg-white dark:bg-slate-800 shadow-sm border border-slate-100 dark:border-slate-700 text-slate-700 dark:text-slate-300 px-3 py-1.5 rounded-lg">
+                    <Calendar className="w-3.5 h-3.5 text-slate-400" /> Срок: {new Date(hw.dueDate).toLocaleDateString()}
+                  </span>
+                )}
+                {hw.points && hw.points > 0 && (
+                  <span className="flex items-center gap-1.5 bg-white dark:bg-slate-800 shadow-sm border border-violet-100 dark:border-violet-800/30 text-violet-700 dark:text-violet-300 px-3 py-1.5 rounded-lg">
+                    <Award className="w-3.5 h-3.5 text-violet-500" /> {hw.points} баллов
+                  </span>
+                )}
+              </div>
+            </div>
+
+            {/* Сданные работы PANEL */}
             <LessonSubmissionsPanel lessonId={lesson.id!} organizationId={lesson.organizationId!} />
           </div>
         )}

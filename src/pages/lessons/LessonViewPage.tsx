@@ -6,7 +6,7 @@ import { apiGetLesson, apiAwardXP, apiCreateLesson, apiTransferRequest, orgCreat
 import { useAuth } from '../../contexts/AuthContext';
 import { showGamificationToasts } from '../../components/gamification/GamificationToasts';
 import { toast } from 'react-hot-toast';
-import type { LessonPlan, HomeworkSubmission, LiveSession } from '../../types';
+import type { LessonPlan, HomeworkSubmission } from '../../types';
 import { formatDate } from '../../utils/grading';
 import { generateHTML } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
@@ -19,12 +19,9 @@ import { LessonSubmissionsPanel } from '../../components/lessons/LessonSubmissio
 import {
   ArrowLeft, Edit, Trash2, Clock, BookOpen, Paperclip, Download,
   FileText, Film, Image as LucideImage, FileSpreadsheet, ClipboardList,
-  Calendar, Award, Maximize, Minimize, PartyPopper, CheckCircle, CheckCircle2, Copy, Building2,
-  Radio
+  Calendar, Award, Maximize, Minimize, PartyPopper, CheckCircle, CheckCircle2, Copy, Building2
 } from 'lucide-react';
-import LiveSessionOverlay from '../../components/live/LiveSessionOverlay';
-import JoinLiveModal from '../../components/live/JoinLiveModal';
-import { findActiveSessionForLesson, findSessionByCode, joinLiveSession } from '../../services/live-session.service';
+
 
 const getFileIcon = (type: string) => {
   if (type.startsWith('image/')) return <LucideImage className="w-5 h-5 text-emerald-500" />;
@@ -80,11 +77,7 @@ const LessonViewPage: React.FC = () => {
   const [submission, setSubmission] = useState<HomeworkSubmission | null>(null);
   const [submittingHomework, setSubmittingHomework] = useState(false);
 
-  // Live Session State
-  const [liveSession, setLiveSession] = useState<LiveSession | null>(null);
-  const [showJoinModal, setShowJoinModal] = useState(false);
-  const [joinLoading, setJoinLoading] = useState(false);
-  const [joinError, setJoinError] = useState('');
+
 
   const isStaff = role === 'admin' || role === 'manager' || role === 'teacher';
 
@@ -117,35 +110,7 @@ const LessonViewPage: React.FC = () => {
     }
   }, [id, role]);
 
-  // Check for active live session on this lesson
-  useEffect(() => {
-    if (!id) return;
-    findActiveSessionForLesson(id).then(s => {
-      if (s) setLiveSession(s);
-    }).catch(console.error);
-  }, [id]);
 
-  // Join live session by code (for students)
-  const handleJoinByCode = async (code: string) => {
-    if (!user) return;
-    setJoinLoading(true);
-    setJoinError('');
-    try {
-      const session = await findSessionByCode(code);
-      if (!session) {
-        setJoinError(t('live.sessionNotFound'));
-        setJoinLoading(false);
-        return;
-      }
-      await joinLiveSession(session.id, user.uid, user.displayName || 'Student', user.photoURL || '');
-      setLiveSession(session);
-      setShowJoinModal(false);
-      toast.success(t('live.joined'));
-    } catch (err: any) {
-      setJoinError(err.message || 'Error');
-    }
-    setJoinLoading(false);
-  };
 
   const handleDuplicate = async () => {
     if (!lesson) return;
@@ -299,51 +264,7 @@ const LessonViewPage: React.FC = () => {
             {presentationMode ? <><Minimize className="w-4 h-4"/> Вернуться в систему</> : <><Maximize className="w-4 h-4" /> Режим презентации</>}
           </button>
 
-          {/* Live Lesson Button */}
-          {isStaff && !liveSession && lesson.organizationId && (
-            <button
-              onClick={async () => {
-                if (!user || !lesson.organizationId) return;
-                try {
-                  const { createLiveSession: createSession } = await import('../../services/live-session.service');
-                  const sessionId = await createSession(
-                    lesson.id!, lesson.title, lesson.organizationId,
-                    user.uid, user.displayName || 'Teacher'
-                  );
-                  // Re-fetch the created session to get joinCode
-                  const { getLiveSession } = await import('../../services/live-session.service');
-                  const created = await getLiveSession(sessionId);
-                  setLiveSession(created);
-                  toast.success(t('live.sessionActive'));
-                } catch (err: any) {
-                  toast.error(err.message || 'Error starting live session');
-                }
-              }}
-              className="flex items-center gap-2 text-sm font-semibold px-3 py-2 rounded-lg bg-gradient-to-r from-violet-600 to-indigo-600 text-white hover:from-violet-500 hover:to-indigo-500 transition-all shadow-lg shadow-violet-500/20"
-              id="start-live-btn"
-            >
-              <Radio className="w-4 h-4" />
-              {t('live.startLesson')}
-            </button>
-          )}
-          {liveSession && liveSession.status === 'active' && (
-            <div className="flex items-center gap-2 px-3 py-1.5 bg-red-500/10 dark:bg-red-500/20 border border-red-500/30 rounded-lg">
-              <div className="relative">
-                <div className="w-2 h-2 bg-red-500 rounded-full" />
-                <div className="absolute inset-0 w-2 h-2 bg-red-500 rounded-full animate-ping" />
-              </div>
-              <span className="text-red-600 dark:text-red-400 text-sm font-bold">LIVE</span>
-            </div>
-          )}
-          {!isStaff && !liveSession && (
-            <button
-              onClick={() => setShowJoinModal(true)}
-              className="flex items-center gap-2 text-sm font-semibold px-3 py-2 rounded-lg bg-gradient-to-r from-violet-600 to-indigo-600 text-white hover:from-violet-500 hover:to-indigo-500 transition-all"
-            >
-              <Radio className="w-4 h-4" />
-              {t('live.joinLesson')}
-            </button>
-          )}
+
         </div>
         {isStaff && !presentationMode && (
           <div className="flex items-center gap-2">
@@ -620,26 +541,6 @@ const LessonViewPage: React.FC = () => {
 
       {/* File Viewer Modal */}
       {viewerFile && <FileViewerModal file={viewerFile} onClose={() => setViewerFile(null)} />}
-
-      {/* Live Session Overlay */}
-      {liveSession && liveSession.status === 'active' && lesson.organizationId && (
-        <LiveSessionOverlay
-
-          isTeacher={isStaff}
-          session={liveSession}
-          onSessionChange={setLiveSession}
-        />
-      )}
-
-      {/* Join Live Modal (students) */}
-      {showJoinModal && (
-        <JoinLiveModal
-          onJoin={handleJoinByCode}
-          onClose={() => setShowJoinModal(false)}
-          loading={joinLoading}
-          error={joinError}
-        />
-      )}
     </div>
   );
 };

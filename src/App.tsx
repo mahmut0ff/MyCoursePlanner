@@ -50,9 +50,7 @@ const StudentGroupsPage = lazy(() => import('./pages/student/StudentGroupsPage')
 const StudentSchedulePage = lazy(() => import('./pages/student/StudentSchedulePage'));
 const StudentHomeworkPage = lazy(() => import('./pages/student/StudentHomeworkPage'));
 
-// Co-Study
-const StudyRoomListPage = lazy(() => import('./pages/student/StudyRoomListPage'));
-const StudyRoomPage = lazy(() => import('./pages/student/StudyRoomPage'));
+
 
 // Quiz Pages
 const QuizLibraryPage = lazy(() => import('./pages/quiz/QuizLibraryPage'));
@@ -67,8 +65,7 @@ const QuizPlayPage = lazy(() => import('./pages/quiz/QuizPlayPage'));
 const StudentRiskDashboard = lazy(() => import('./pages/teacher-analytics/StudentRiskDashboard'));
 const HomeworkReviewPage = lazy(() => import('./pages/homework/HomeworkReviewPage'));
 
-// Live Lessons
-const JoinLiveLessonPage = lazy(() => import('./pages/live/JoinLiveLessonPage'));
+
 
 // Org Pages
 const CoursesPage = lazy(() => import('./pages/courses/CoursesPage'));
@@ -175,8 +172,7 @@ const App: React.FC = () => {
           <Route path="/quiz/play/:sessionId" element={<QuizPlayPage />} />
           <Route path="/quiz/sessions/:id" element={<ProtectedRoute allowedRoles={['admin', 'manager', 'teacher']}><LiveSessionDashboard /></ProtectedRoute>} />
 
-          {/* Live Lesson (full screen) */}
-          <Route path="/live/join" element={<ProtectedRoute><JoinLiveLessonPage /></ProtectedRoute>} />
+
 
           {/* App Layout */}
           <Route element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
@@ -221,9 +217,7 @@ const App: React.FC = () => {
             <Route path="student/schedule" element={<ProtectedRoute allowedRoles={['student']}><StudentSchedulePage /></ProtectedRoute>} />
             <Route path="student/homework" element={<ProtectedRoute allowedRoles={['student']}><StudentHomeworkPage /></ProtectedRoute>} />
 
-            {/* Co-Study Rooms */}
-            <Route path="study-rooms" element={<StudyRoomListPage />} />
-            <Route path="study-rooms/:id" element={<StudyRoomPage />} />
+
 
             {/* ═══ Quiz System ═══ */}
             <Route path="quiz/library" element={<ProtectedRoute allowedRoles={['admin', 'manager', 'teacher']}><QuizLibraryPage /></ProtectedRoute>} />

@@ -4,7 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../domain/providers/providers.dart';
-import '../live/live_session_screen.dart';
+
 
 class LessonDetailScreen extends ConsumerWidget {
   final String lessonId;
@@ -19,28 +19,6 @@ class LessonDetailScreen extends ConsumerWidget {
       appBar: AppBar(
         title: const Text('Урок'),
         actions: [
-          // Live Lesson button
-          lessonAsync.whenOrNull(
-            data: (lesson) {
-              if (lesson.isEmpty || lesson['organizationId'] == null) return null;
-              return IconButton(
-                icon: const Icon(Icons.cast, color: Colors.red),
-                tooltip: 'Live Урок',
-                onPressed: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => LiveSessionScreen(
-                        lessonId: lessonId,
-                        lessonTitle: lesson['title'] ?? 'Урок',
-                        organizationId: lesson['organizationId'],
-                      ),
-                    ),
-                  );
-                },
-              );
-            },
-          ) ?? const SizedBox.shrink(),
           IconButton(
             icon: const Icon(Icons.edit_outlined),
             tooltip: 'Редактировать',

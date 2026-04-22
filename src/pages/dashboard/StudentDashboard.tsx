@@ -5,7 +5,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { apiGetDashboard, orgGetTimetable, orgGetSchedule, orgGetGroups, orgGetCourses, apiGetMyMemberships, apiPublicJoin } from '../../lib/api';
 import type { LessonPlan, ExamAttempt, ScheduleEvent, Group, Course } from '../../types';
 import { formatDate } from '../../utils/grading';
-import { BookOpen, Radio, Trophy, XCircle, Brain, Target, BarChart3, Flame, Search, Gamepad2, Play, Clock, MapPin, CalendarCheck, ArrowRight, GraduationCap, Building2, Hourglass, CheckCircle2, RefreshCw, UsersRound, UserPlus, Award, Headphones } from 'lucide-react';
+import { BookOpen, Trophy, XCircle, Brain, Target, BarChart3, Flame, Search, Gamepad2, Play, Clock, MapPin, CalendarCheck, ArrowRight, GraduationCap, Building2, Hourglass, CheckCircle2, RefreshCw, UsersRound, UserPlus, Award } from 'lucide-react';
 import { DashboardSkeleton } from '../../components/ui/Skeleton';
 import GamificationWidget from '../../components/gamification/GamificationWidget';
 import LeaderboardWidget from '../../components/gamification/LeaderboardWidget';
@@ -466,7 +466,6 @@ const StudentDashboard: React.FC = () => {
                 { to: '/student/groups', icon: UsersRound, label: t('nav.myGroups', 'Мои группы'), color: 'text-violet-500' },
                 { to: '/student/teachers', icon: UserPlus, label: t('nav.myTeachers', 'Преподаватели'), color: 'text-blue-500' },
                 { to: '/certificates', icon: Award, label: t('nav.certificates', 'Сертификаты'), color: 'text-amber-500' },
-                { to: '/study-rooms', icon: Headphones, label: t('nav.studyRooms', 'Co-Study'), color: 'text-emerald-500' },
               ].map(link => (
                 <Link key={link.to} to={link.to} className="flex items-center gap-2 px-3 py-2.5 rounded-xl text-[13px] font-medium text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700/50 hover:text-slate-900 dark:hover:text-white transition-colors">
                   <link.icon className={`w-4 h-4 ${link.color}`} />{link.label}
@@ -477,18 +476,7 @@ const StudentDashboard: React.FC = () => {
 
           {/* ═══ Quick Actions (compact 2x2 grid) ═══ */}
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-            <Link to="/live/join" className="bg-[#E21B3C] hover:bg-[#c61834] text-white p-4 rounded-xl shadow-[0_4px_0_#9d1228] active:translate-y-[3px] active:shadow-[0_1px_0_#9d1228] transition-all group flex flex-col items-center text-center">
-              <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center mb-2 group-hover:scale-110 transition-transform">
-                <Radio className="w-5 h-5 text-white" />
-              </div>
-              <h3 className="kahoot-font text-sm font-bold mb-0.5">{t('studentDashboard.liveLessonTitle')}</h3>
-              <p className="text-[10px] text-white/80 font-medium">{t('studentDashboard.liveLessonDesc')}</p>
-            </Link>
-            
-            <Link to="/quiz/join" className="bg-[#1368CE] hover:bg-[#105ab3] text-white p-4 rounded-xl shadow-[0_4px_0_#0a4387] active:translate-y-[3px] active:shadow-[0_1px_0_#0a4387] transition-all group flex flex-col items-center text-center">
-              <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center mb-2 group-hover:scale-110 transition-transform">
-                <Gamepad2 className="w-5 h-5 text-white" />
-              </div>
+            <Link to="/quiz/join" className="bg-[#E21B3C] hover:bg-[#c61834] text-white p-4 rounded-xl shadow-[0_4px_0_#9d1228] active:translate-y-[3px] active:shadow-[0_1px_0_#9d1228] transition-all group flex flex-col items-center text-center">
               <h3 className="kahoot-font text-sm font-bold mb-0.5">{t('studentDashboard.quizTitle')}</h3>
               <p className="text-[10px] text-white/80 font-medium">{t('studentDashboard.quickGameDesc')}</p>
             </Link>

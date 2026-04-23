@@ -4,7 +4,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { usePlanGate } from '../../contexts/PlanContext';
 import { apiGetSubscription, apiGetBillingHistory, apiCancelSubscription, apiReactivateSubscription, apiCreatePayment } from '../../lib/api';
 import toast from 'react-hot-toast';
-import { Check, Crown, CreditCard, BookOpen, Shield, Clock, AlertTriangle, Receipt, History, Gift } from 'lucide-react';
+import { Check, Crown, BookOpen, Shield, Clock, AlertTriangle, Receipt, History, Gift, RefreshCw, Zap } from 'lucide-react';
 
 const BillingPage: React.FC = () => {
   const { t } = useTranslation();
@@ -57,23 +57,24 @@ const BillingPage: React.FC = () => {
     catch (e: any) { toast.error(e.message); }
   };
 
-  if (loading) return <div className="flex items-center justify-center py-20"><div className="w-7 h-7 border-[3px] border-slate-200 border-t-primary-500 rounded-full animate-spin dark:border-slate-700 dark:border-t-primary-400" /></div>;
+  if (loading) return <div className="flex items-center justify-center py-20"><div className="w-8 h-8 border-4 border-slate-200 border-t-slate-600 rounded-full animate-spin dark:border-slate-700 dark:border-t-slate-400" /></div>;
 
   const currentPlan = subscription?.planId || 'starter';
   const isTrialing = subscription?.status === 'trial';
   const isCancelled = subscription?.status === 'cancelled';
+  const isActive = subscription?.status === 'active';
 
   const localPlans = [
     {
-      id: 'starter', name: t('landing.planBasic'), price: 1990, popular: false, icon: BookOpen,
+      id: 'starter', name: t('landing.planBasic'), price: 1990, icon: BookOpen, userRange: t('billing.upTo5', 'До 5 учеников'),
       features: [t('landing.planBasicF1'), t('landing.planBasicF2'), t('landing.planBasicF3'), t('landing.planBasicF4')],
     },
     {
-      id: 'professional', name: t('landing.planPro'), price: 4990, popular: true, icon: Crown,
+      id: 'professional', name: t('landing.planPro'), price: 4990, icon: Crown, userRange: t('billing.upTo30', '5–30 учеников'),
       features: [t('landing.planProF1'), t('landing.planProF2'), t('landing.planProF3'), t('landing.planProF4'), t('landing.planProF5')],
     },
     {
-      id: 'enterprise', name: t('landing.planEnt'), price: 14900, popular: false, icon: Shield,
+      id: 'enterprise', name: t('landing.planEnt'), price: 14900, icon: Shield, userRange: t('billing.unlimited', '30+ учеников'),
       features: [t('landing.planEntF1'), t('landing.planEntF2'), t('landing.planEntF3'), t('landing.planEntF4'), t('landing.planEntF5')],
     },
   ];
@@ -85,22 +86,93 @@ const BillingPage: React.FC = () => {
     return 'text-slate-500 bg-slate-50 dark:bg-slate-800';
   };
 
+  const currentPlanData = localPlans.find(p => p.id === currentPlan);
+  const lastPayment = billingHistory.payments.find(p => p.status === 'completed');
+
+  // Status badge
+  const statusBadge = () => {
+    if (isGifted) return <span className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-bold rounded-full bg-emerald-50 text-emerald-600 dark:bg-emerald-900/20 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800/40"><Gift className="w-3.5 h-3.5" /> Подарен</span>;
+    if (isActive) return <span className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-bold rounded-full bg-emerald-50 text-emerald-600 dark:bg-emerald-900/20 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800/40"><Check className="w-3.5 h-3.5" /> {t('billing.active', 'Активен')}</span>;
+    if (isTrialing) return <span className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-bold rounded-full bg-amber-50 text-amber-600 dark:bg-amber-900/20 dark:text-amber-400 border border-amber-200 dark:border-amber-800/40"><Clock className="w-3.5 h-3.5" /> {t('billing.trial')}</span>;
+    if (isCancelled) return <span className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-bold rounded-full bg-red-50 text-red-600 dark:bg-red-900/20 dark:text-red-400 border border-red-200 dark:border-red-800/40">{t('billing.cancelled')}</span>;
+    if (isExpired) return <span className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-bold rounded-full bg-red-50 text-red-600 dark:bg-red-900/20 dark:text-red-400 border border-red-200 dark:border-red-800/40"><AlertTriangle className="w-3.5 h-3.5" /> {t('billing.expired', 'Истёк')}</span>;
+    return null;
+  };
+
   return (
-    <div className="max-w-6xl mx-auto">
-      {/* Header */}
-      <div className="flex items-center gap-3 mb-6">
-        <div className="w-9 h-9 bg-emerald-600 rounded-xl flex items-center justify-center">
-          <CreditCard className="w-4 h-4 text-white" />
+    <div className="max-w-5xl mx-auto space-y-6">
+      {/* ╔═══════════════════════════════════════════╗ */}
+      {/* ║  CURRENT PLAN SUMMARY CARD                ║ */}
+      {/* ╚═══════════════════════════════════════════╝ */}
+      <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-6">
+        {/* Top row: title + status */}
+        <div className="flex items-center justify-between mb-5">
+          <h2 className="text-base font-bold text-slate-900 dark:text-white">{t('billing.currentPlan', 'Текущий план')}</h2>
+          {statusBadge()}
         </div>
-        <div>
-          <h1 className="text-xl font-bold text-slate-900 dark:text-white">{t('billing.title')}</h1>
-          <p className="text-xs text-slate-500 dark:text-slate-400">{t('billing.subtitle')}</p>
+
+        {/* Info columns */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-5 mb-5">
+          {/* Plan */}
+          <div>
+            <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-1">{t('billing.plan', 'Тариф')}</p>
+            <p className="text-lg font-bold text-slate-900 dark:text-white capitalize">{currentPlanData?.name || currentPlan}</p>
+          </div>
+
+          {/* Monthly price */}
+          <div>
+            <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-1">{t('billing.monthly', 'В месяц')}</p>
+            <p className="text-lg font-bold text-slate-900 dark:text-white">
+              {isGifted ? t('billing.free', 'Бесплатно') : `${(currentPlanData?.price || 0).toLocaleString()} ₸`}
+            </p>
+          </div>
+
+          {/* Next billing / Trial end */}
+          <div>
+            <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-1">
+              {isTrialing ? t('billing.trialEndsLabel', 'Конец Trial') : t('billing.nextBilling', 'След. оплата')}
+            </p>
+            <p className="text-lg font-bold text-slate-900 dark:text-white">
+              {isGifted ? '∞' :
+                isTrialing && subscription?.trialEndsAt
+                  ? new Date(subscription.trialEndsAt).toLocaleDateString()
+                  : subscription?.currentPeriodEnd
+                    ? new Date(subscription.currentPeriodEnd).toLocaleDateString()
+                    : '—'}
+            </p>
+          </div>
+
+          {/* Last payment */}
+          <div>
+            <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-1">{t('billing.lastPayment', 'Посл. оплата')}</p>
+            <p className={`text-lg font-bold ${lastPayment ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-400'}`}>
+              {lastPayment
+                ? `${new Date(lastPayment.createdAt).toLocaleDateString()}`
+                : '—'}
+            </p>
+          </div>
+        </div>
+
+        {/* Action buttons */}
+        <div className="flex items-center gap-3 pt-4 border-t border-slate-100 dark:border-slate-700">
+          {isCancelled ? (
+            <button onClick={handleReactivate} className="h-9 px-4 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-lg text-sm font-semibold hover:opacity-90 transition-opacity">
+              {t('billing.reactivate')}
+            </button>
+          ) : !isGifted && !isExpired && (
+            <button onClick={handleCancel} className="h-9 px-4 border border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-300 rounded-lg text-sm font-medium hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors">
+              {t('billing.cancelSubscription')}
+            </button>
+          )}
+          <button onClick={() => { loadSubscription(); loadHistory(); }} className="h-9 px-4 border border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-300 rounded-lg text-sm font-medium hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors inline-flex items-center gap-1.5">
+            <RefreshCw className="w-3.5 h-3.5" />{t('billing.refresh', 'Обновить')}
+          </button>
         </div>
       </div>
 
       {/* ─── Expired Alert ─── */}
       {isExpired && (
-        <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800/40 rounded-xl p-5 mb-6">
+        <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800/40 rounded-2xl p-5">
           <div className="flex items-start gap-3">
             <AlertTriangle className="w-5 h-5 text-red-500 mt-0.5 shrink-0" />
             <div>
@@ -111,9 +183,9 @@ const BillingPage: React.FC = () => {
         </div>
       )}
 
-      {/* ─── Trial Countdown Card ─── */}
+      {/* ─── Trial Countdown ─── */}
       {isTrialing && trialDaysLeft !== null && trialDaysLeft > 0 && (
-        <div className={`rounded-xl p-5 mb-6 border ${
+        <div className={`rounded-2xl p-5 border ${
           trialDaysLeft <= 3 ? 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800/40'
           : trialDaysLeft <= 7 ? 'bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800/40'
           : 'bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800/40'
@@ -121,9 +193,7 @@ const BillingPage: React.FC = () => {
           <div className="flex items-center gap-3">
             <Clock className={`w-5 h-5 ${trialDaysLeft <= 3 ? 'text-red-500' : trialDaysLeft <= 7 ? 'text-amber-500' : 'text-blue-500'}`} />
             <div className="flex-1">
-              <p className="text-sm font-semibold text-slate-900 dark:text-white">
-                {t('billing.trialCountdown', 'Пробный период')}
-              </p>
+              <p className="text-sm font-semibold text-slate-900 dark:text-white">{t('billing.trialCountdown', 'Пробный период')}</p>
               <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
                 {t('billing.trialCountdownDesc', 'Осталось {{days}} {{dayWord}}. После этого нужно оплатить тариф.', {
                   days: trialDaysLeft,
@@ -141,7 +211,7 @@ const BillingPage: React.FC = () => {
 
       {/* ─── Gifted Plan Banner ─── */}
       {isGifted && (
-        <div className="bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800/40 rounded-xl p-5 mb-6">
+        <div className="bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800/40 rounded-2xl p-5">
           <div className="flex items-center gap-3">
             <Gift className="w-5 h-5 text-emerald-500" />
             <div>
@@ -152,91 +222,97 @@ const BillingPage: React.FC = () => {
         </div>
       )}
 
-      {/* Current Plan Banner */}
-      {subscription && !isExpired && (
-        <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-5 mb-8">
-          <div className="flex items-center justify-between flex-wrap gap-3">
-            <div>
-              <p className="text-[10px] text-primary-600 font-semibold uppercase tracking-wider">{t('billing.currentPlan')}</p>
-              <p className="text-lg font-bold text-slate-900 dark:text-white capitalize mt-0.5">
-                {localPlans.find(p => p.id === currentPlan)?.name || currentPlan}
-                {isTrialing && <span className="ml-2 text-xs font-normal text-amber-600 bg-amber-50 dark:bg-amber-900/20 px-2 py-0.5 rounded-full">{t('billing.trial')}</span>}
-                {isCancelled && <span className="ml-2 text-xs font-normal text-red-600 bg-red-50 dark:bg-red-900/20 px-2 py-0.5 rounded-full">{t('billing.cancelled')}</span>}
-                {isGifted && <span className="ml-2 text-xs font-normal text-emerald-600 bg-emerald-50 dark:bg-emerald-900/20 px-2 py-0.5 rounded-full">🎁 Подарен</span>}
-              </p>
-              {isTrialing && subscription.trialEndsAt && (
-                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">{t('billing.trialEnds')} {new Date(subscription.trialEndsAt).toLocaleDateString()}</p>
-              )}
-              {subscription.currentPeriodEnd && subscription.status === 'active' && (
-                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">{t('billing.periodEnd', 'Оплачено до')}: {new Date(subscription.currentPeriodEnd).toLocaleDateString()}</p>
-              )}
-            </div>
-            <div className="flex gap-3">
-              {isCancelled ? (
-                <button onClick={handleReactivate} className="btn-primary text-xs !py-2 !px-4">{t('billing.reactivate')}</button>
-              ) : !isGifted && (
-                <button onClick={handleCancel} className="text-xs text-red-500 hover:text-red-700 font-medium px-2 py-1">{t('billing.cancelSubscription')}</button>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
+      {/* ╔═══════════════════════════════════════════╗ */}
+      {/* ║  PLAN CARDS                               ║ */}
+      {/* ╚═══════════════════════════════════════════╝ */}
+      <div>
+        <h2 className="text-base font-bold text-slate-900 dark:text-white mb-4">{t('billing.yourPlan', 'Выберите тариф')}</h2>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {localPlans.map((plan) => {
+            const isCurrent = plan.id === currentPlan && !isExpired;
+            const isUpgrade = localPlans.findIndex(p => p.id === plan.id) > localPlans.findIndex(p => p.id === currentPlan);
+            return (
+              <div
+                key={plan.id}
+                className={`relative rounded-2xl border-2 p-5 transition-all ${
+                  isCurrent
+                    ? 'border-slate-900 dark:border-white bg-white dark:bg-slate-800 shadow-lg'
+                    : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:border-slate-300 dark:hover:border-slate-600 hover:shadow-md'
+                }`}
+              >
+                {/* Current plan label */}
+                {isCurrent && (
+                  <div className="absolute -top-3 right-4 bg-slate-900 dark:bg-white text-white dark:text-slate-900 text-[10px] font-bold px-3 py-0.5 rounded-full uppercase tracking-wider">
+                    {t('billing.currentPlan', 'Текущий план')}
+                  </div>
+                )}
 
-      {/* Pricing Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8 max-w-5xl mx-auto">
-        {localPlans.map((plan) => {
-          const isCurrent = plan.id === currentPlan && !isExpired;
-          return (
-            <div key={plan.id} className={`relative rounded-3xl p-8 border transition-all hover:shadow-xl ${plan.popular ? 'bg-primary-600 border-primary-600 text-white shadow-2xl shadow-primary-500/30 md:scale-105 z-10' : 'bg-white border-slate-200 hover:shadow-slate-200/50 dark:bg-slate-800 dark:border-slate-700'}`}>
-              {plan.popular && (
-                <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-amber-400 text-slate-900 text-xs font-bold px-4 py-1 rounded-full shadow-lg">
-                  {t('landing.popular')}
+                {/* Plan header */}
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="w-10 h-10 rounded-xl bg-slate-100 dark:bg-slate-700 flex items-center justify-center shrink-0">
+                    <plan.icon className="w-5 h-5 text-slate-600 dark:text-slate-300" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-bold text-slate-900 dark:text-white">{plan.name}</h3>
+                    <p className="text-[11px] text-slate-400">{plan.userRange}</p>
+                  </div>
                 </div>
-              )}
-              <div className="flex items-center gap-3 mb-6">
-                <div className={`w-12 h-12 rounded-xl flex items-center justify-center shrink-0 ${plan.popular ? 'bg-white/20' : 'bg-slate-100 dark:bg-slate-700'}`}>
-                  <plan.icon className={`w-6 h-6 ${plan.popular ? 'text-white' : 'text-slate-600 dark:text-slate-300'}`} />
+
+                {/* Price */}
+                <div className="mb-4">
+                  <span className="text-2xl font-extrabold text-slate-900 dark:text-white">{plan.price.toLocaleString()}</span>
+                  <span className="text-sm text-slate-400 ml-1">₸/{t('landing.perMonth', 'мес')}</span>
                 </div>
-                <h3 className={`text-xl font-bold ${plan.popular ? 'text-white' : 'text-slate-900 dark:text-white'}`}>{plan.name}</h3>
+
+                {/* Features */}
+                <ul className="space-y-2 mb-5">
+                  {plan.features.slice(0, 3).map((f, i) => (
+                    <li key={i} className="flex items-start gap-2 text-xs text-slate-600 dark:text-slate-400">
+                      <Check className="w-3.5 h-3.5 shrink-0 mt-0.5 text-emerald-500" />
+                      <span>{f}</span>
+                    </li>
+                  ))}
+                </ul>
+
+                {/* Action */}
+                {isCurrent ? (
+                  <button disabled className="w-full h-9 rounded-lg text-sm font-semibold bg-slate-100 dark:bg-slate-700 text-slate-400 dark:text-slate-500 cursor-default">
+                    {t('billing.currentPlan', 'Текущий план')}
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => handleChangePlan(plan.id)}
+                    disabled={changingPlan !== null}
+                    className="w-full h-9 rounded-lg text-sm font-semibold bg-slate-900 dark:bg-white text-white dark:text-slate-900 hover:opacity-90 transition-opacity disabled:opacity-50 inline-flex items-center justify-center gap-1.5"
+                  >
+                    {changingPlan === plan.id ? (
+                      <div className="w-4 h-4 border-2 border-white/30 border-t-white dark:border-slate-900/30 dark:border-t-slate-900 rounded-full animate-spin" />
+                    ) : (
+                      <>
+                        <Zap className="w-3.5 h-3.5" />
+                        {isExpired ? t('billing.subscribe', 'Оплатить') : isUpgrade ? t('billing.upgrade') : t('billing.downgrade')}
+                      </>
+                    )}
+                  </button>
+                )}
               </div>
-              <div className="mb-8">
-                <span className={`text-5xl font-extrabold tracking-tight ${plan.popular ? 'text-white' : 'text-slate-900 dark:text-white'}`}>{plan.price.toLocaleString()}</span>
-                <span className={`text-sm ml-2 ${plan.popular ? 'text-white/70' : 'text-slate-500 dark:text-slate-400'}`}>{t('landing.currency')}/{t('landing.perMonth')}</span>
-              </div>
-              <ul className="space-y-4 mb-10">
-                {plan.features.map((f, i) => (
-                  <li key={i} className={`flex items-start gap-3 text-sm ${plan.popular ? 'text-white/90' : 'text-slate-600 dark:text-slate-400'}`}>
-                    <Check className={`w-5 h-5 shrink-0 mt-0.5 ${plan.popular ? 'text-emerald-300' : 'text-emerald-500'}`} />
-                    <span>{f}</span>
-                  </li>
-                ))}
-              </ul>
-              {isCurrent ? (
-                <button disabled className={`w-full py-3.5 rounded-xl font-semibold text-sm transition-all ${plan.popular ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-500 dark:bg-slate-700 dark:text-slate-400'}`}>{t('billing.currentPlan')}</button>
-              ) : (
-                <button
-                  onClick={() => handleChangePlan(plan.id)}
-                  disabled={changingPlan !== null}
-                  className={`w-full py-3.5 rounded-xl font-semibold text-sm transition-all ${plan.popular ? 'bg-white text-primary-700 hover:bg-slate-50 shadow-lg shadow-white/20' : 'bg-primary-600 text-white hover:bg-primary-700 shadow-lg shadow-primary-500/20'}`}
-                >
-                  {changingPlan === plan.id ? '...' : isExpired ? t('billing.subscribe', 'Оплатить') : (localPlans.findIndex(p => p.id === plan.id) > localPlans.findIndex(p => p.id === currentPlan) ? t('billing.upgrade') : t('billing.downgrade'))}
-                </button>
-              )}
-            </div>
-          );
-        })}
+            );
+          })}
+        </div>
       </div>
 
-      {/* ═══ Billing History ═══ */}
-      <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden mb-8">
-        <div className="px-5 py-4 border-b border-slate-200 dark:border-slate-700 flex items-center gap-2">
-          <History className="w-4 h-4 text-primary-500" />
+      {/* ╔═══════════════════════════════════════════╗ */}
+      {/* ║  BILLING HISTORY                          ║ */}
+      {/* ╚═══════════════════════════════════════════╝ */}
+      <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl overflow-hidden">
+        <div className="px-5 py-4 border-b border-slate-100 dark:border-slate-700 flex items-center gap-2">
+          <History className="w-4 h-4 text-slate-400" />
           <h2 className="text-sm font-semibold text-slate-900 dark:text-white">{t('billing.history', 'История биллинга')}</h2>
         </div>
 
         {historyLoading ? (
           <div className="flex justify-center py-10">
-            <div className="w-6 h-6 border-2 border-slate-200 border-t-primary-500 rounded-full animate-spin dark:border-slate-700 dark:border-t-primary-400" />
+            <div className="w-6 h-6 border-2 border-slate-200 border-t-slate-600 rounded-full animate-spin dark:border-slate-700 dark:border-t-slate-400" />
           </div>
         ) : (
           <>

@@ -177,6 +177,9 @@ export function useChatMessages(roomId?: string, maxLimit = 100) {
       const msgs = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as ChatMessage));
       setMessages(msgs.reverse());
       setLoading(false);
+    }, (err) => {
+      console.warn('[chat] messages listener error:', err);
+      setLoading(false);
     });
 
     return () => unsubscribe();
@@ -362,7 +365,7 @@ export function useTypingStatus(roomId?: string): string[] {
         }
       });
       setTypingUsers(names);
-    });
+    }, (err) => console.warn('[chat] typing listener error:', err));
 
     return () => unsubscribe();
   }, [roomId]);

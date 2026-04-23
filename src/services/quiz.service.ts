@@ -17,7 +17,7 @@ export function subscribeToSession(
     if (snap.exists()) {
       callback({ id: snap.id, ...snap.data() } as unknown as QuizSession);
     }
-  });
+  }, (err) => console.warn('[quiz] session listener error:', err));
 }
 
 /** Subscribe to participants list (scores, connections) */
@@ -36,7 +36,7 @@ export function subscribeToParticipants(
       rank: i + 1,
     } as unknown as SessionParticipant));
     callback(participants);
-  });
+  }, (err) => console.warn('[quiz] participants listener error:', err));
 }
 
 /** Subscribe to answers for a specific question */
@@ -54,7 +54,7 @@ export function subscribeToQuestionAnswers(
       .map(d => ({ id: d.id, ...d.data() } as unknown as SessionAnswer))
       .filter(a => a.questionId === questionId);
     callback(answers);
-  });
+  }, (err) => console.warn('[quiz] question answers listener error:', err));
 }
 
 /** Subscribe to all answers in a session (for teacher analytics) */
@@ -72,7 +72,7 @@ export function subscribeToAllAnswers(
       ...d.data(),
     } as unknown as SessionAnswer));
     callback(answers);
-  });
+  }, (err) => console.warn('[quiz] all answers listener error:', err));
 }
 
 /** Subscribe to a quiz's questions */
@@ -86,5 +86,5 @@ export function subscribeToQuizQuestions(
   );
   return onSnapshot(q, (snap) => {
     callback(snap.docs.map(d => ({ id: d.id, ...d.data() })));
-  });
+  }, (err) => console.warn('[quiz] questions listener error:', err));
 }

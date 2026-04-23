@@ -310,7 +310,7 @@ const LessonListPage: React.FC = () => {
                       className="p-1.5 text-slate-400 hover:text-primary-600 dark:hover:text-primary-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-all tooltip"
                       data-tip="Копировать"
                     >
-                      {duplicatingId === lesson.id ? <div className="w-3.5 h-3.5 rounded-full border-2 border-primary-500 border-t-transparent animate-spin"/> : <Copy className="w-3.5 h-3.5" /> }
+                      {duplicatingId === lesson.id ? <div className="w-3.5 h-3.5 rounded-full border-2 border-slate-400 border-t-transparent animate-spin"/> : <Copy className="w-3.5 h-3.5" /> }
                     </button>
                   )}
                 </div>

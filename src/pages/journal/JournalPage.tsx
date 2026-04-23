@@ -382,7 +382,7 @@ const JournalPage: React.FC = () => {
 
 
   if (loading) {
-    return <div className="flex justify-center py-20"><div className="w-8 h-8 border-2 border-primary-500 rounded-full animate-spin border-t-transparent" /></div>;
+    return <div className="flex justify-center py-20"><div className="w-8 h-8 border-2 border-slate-400 rounded-full animate-spin border-t-transparent" /></div>;
   }
 
   if (error) {
@@ -514,7 +514,7 @@ const JournalPage: React.FC = () => {
 
         {loadingData ? (
           <div className="flex flex-col items-center justify-center bg-white dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-2xl p-12">
-            <div className="w-8 h-8 border-2 border-primary-500 border-t-transparent rounded-full animate-spin mb-4" />
+            <div className="w-8 h-8 border-2 border-slate-400 border-t-transparent rounded-full animate-spin mb-4" />
             <p className="text-sm font-medium text-slate-500 animate-pulse">Загрузка переклички...</p>
           </div>
         ) : groupStudents.length === 0 ? (

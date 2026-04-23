@@ -558,7 +558,7 @@ const MaterialsPage: React.FC = () => {
               <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">Выберите свой личный урок, в который вы хотите перенести материал "{transferringMaterial.title}". Данная операция требует одобрения администратора.</p>
               
               {loadingLessons ? (
-                 <div className="flex justify-center p-8"><span className="w-8 h-8 border-4 border-primary-500 border-t-transparent rounded-full animate-spin" /></div>
+                 <div className="flex justify-center p-8"><span className="w-8 h-8 border-4 border-slate-400 border-t-transparent rounded-full animate-spin" /></div>
               ) : personalLessons.length === 0 ? (
                  <div className="text-center p-6 text-slate-500 text-sm">У вас пока нет личных уроков.</div>
               ) : (

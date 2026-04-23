@@ -336,7 +336,7 @@ export default function StudentDiaryPage() {
       {/* CONTENT */}
       {loading ? (
         <div className="py-32 flex justify-center">
-          <div className="w-8 h-8 border-4 border-primary-200 border-t-primary-600 rounded-full animate-spin" />
+          <div className="w-8 h-8 border-4 border-slate-200 border-t-slate-600 rounded-full animate-spin dark:border-slate-700 dark:border-t-slate-400" />
         </div>
       ) : error ? (
         <div className="p-6 bg-red-50 dark:bg-red-900/10 border border-red-200 dark:border-red-800/30 text-red-700 dark:text-red-400 font-medium rounded-xl text-sm">

@@ -117,7 +117,7 @@ const AppLayout: React.FC = () => {
                 <div className="max-w-screen-xl mx-auto w-full min-h-full page-content">
                   <Suspense fallback={
                     <div className="flex items-center justify-center py-20">
-                      <div className="w-8 h-8 border-4 border-primary-200 border-t-primary-600 rounded-full animate-spin dark:border-slate-700 dark:border-t-primary-400" />
+                      <div className="w-8 h-8 border-4 border-slate-200 border-t-slate-600 rounded-full animate-spin dark:border-slate-700 dark:border-t-slate-400" />
                     </div>
                   }>
                     <Outlet />

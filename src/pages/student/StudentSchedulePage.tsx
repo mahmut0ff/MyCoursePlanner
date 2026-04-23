@@ -32,7 +32,7 @@ const StudentSchedulePage: React.FC = () => {
 
   if (loading) return (
     <div className="flex justify-center py-32">
-      <div className="w-10 h-10 border-4 border-primary-200 border-t-primary-600 rounded-full animate-spin shadow-lg" />
+      <div className="w-10 h-10 border-4 border-slate-200 border-t-slate-600 rounded-full animate-spin shadow-lg dark:border-slate-700 dark:border-t-slate-400" />
     </div>
   );
 

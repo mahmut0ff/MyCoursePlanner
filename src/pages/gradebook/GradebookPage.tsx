@@ -212,7 +212,7 @@ const GradebookPage: React.FC = () => {
   }, [lessons, grades]);
 
   if (loadingCourses) {
-    return <div className="flex justify-center py-20"><div className="w-8 h-8 border-2 border-primary-500 rounded-full animate-spin border-t-transparent" /></div>;
+    return <div className="flex justify-center py-20"><div className="w-8 h-8 border-2 border-slate-400 rounded-full animate-spin border-t-transparent" /></div>;
   }
 
   if (courses.length === 0) {
@@ -274,7 +274,7 @@ const GradebookPage: React.FC = () => {
 
       {loadingData ? (
         <div className="flex-1 flex flex-col items-center justify-center bg-white dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-2xl min-h-[400px]">
-          <div className="w-8 h-8 border-2 border-primary-500 border-t-transparent rounded-full animate-spin mb-4" />
+          <div className="w-8 h-8 border-2 border-slate-400 border-t-transparent rounded-full animate-spin mb-4" />
           <p className="text-sm font-medium text-slate-500 animate-pulse">Загрузка журнала...</p>
         </div>
       ) : columns.length === 0 ? (

@@ -291,7 +291,7 @@ const LessonEditPage: React.FC = () => {
   };
 
   if (loading) {
-    return <div className="flex items-center justify-center py-20"><div className="w-8 h-8 border-4 border-primary-200 border-t-primary-600 rounded-full animate-spin dark:border-primary-800 dark:border-t-primary-400" /></div>;
+    return <div className="flex items-center justify-center py-20"><div className="w-8 h-8 border-4 border-slate-200 border-t-slate-600 rounded-full animate-spin dark:border-slate-700 dark:border-t-slate-400" /></div>;
   }
 
   const tbtn = (active: boolean) =>
@@ -413,7 +413,7 @@ const LessonEditPage: React.FC = () => {
                 </div>
                 <div className="flex-1 overflow-y-auto p-2 space-y-1 custom-scrollbar">
                   {loadingMaterials ? (
-                    <div className="flex justify-center p-4"><div className="w-5 h-5 border-2 border-primary-500 border-t-transparent rounded-full animate-spin" /></div>
+                    <div className="flex justify-center p-4"><div className="w-5 h-5 border-2 border-slate-400 border-t-transparent rounded-full animate-spin" /></div>
                   ) : libMaterials.length === 0 ? (
                     <div className="text-center p-4 text-sm text-slate-500">База знаний пуста</div>
                   ) : libMaterials.filter(m => m.title.toLowerCase().includes(searchMaterial.toLowerCase())).length === 0 ? (
@@ -459,7 +459,7 @@ const LessonEditPage: React.FC = () => {
                   <div className="mt-4 w-full max-w-[200px] space-y-2">
                     {uploading.map((u) => (
                       <div key={u} className="flex items-center justify-center gap-2 p-1.5 bg-white dark:bg-slate-800 rounded-lg shadow-sm border border-slate-100 dark:border-slate-700">
-                        <div className="w-3.5 h-3.5 border-2 border-primary-200 border-t-primary-600 rounded-full animate-spin shrink-0" />
+                        <div className="w-3.5 h-3.5 border-2 border-slate-300 border-t-slate-600 rounded-full animate-spin shrink-0" />
                         <span className="text-[10px] font-medium text-slate-600 dark:text-slate-400 truncate">Загрузка...</span>
                       </div>
                     ))}

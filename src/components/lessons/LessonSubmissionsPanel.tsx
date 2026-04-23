@@ -58,7 +58,7 @@ export const LessonSubmissionsPanel: React.FC<LessonSubmissionsPanelProps> = ({ 
   };
 
   if (loading) {
-     return <div className="p-8 flex justify-center"><div className="w-6 h-6 border-2 border-primary-500 border-t-transparent rounded-full animate-spin"></div></div>;
+     return <div className="p-8 flex justify-center"><div className="w-6 h-6 border-2 border-slate-400 border-t-transparent rounded-full animate-spin"></div></div>;
   }
 
   return (

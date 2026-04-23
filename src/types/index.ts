@@ -36,15 +36,14 @@ export interface PlanLimits {
   certificatesEnabled: boolean;
   branchesEnabled: boolean;
   advancedAnalytics: boolean;
-  liveLessonsEnabled: boolean;
+
 }
 
 /** Canonical feature keys for plan gating */
 export type PlanFeature =
   | 'finances' | 'gradebook' | 'certificates'
   | 'branches' | 'advancedAnalytics'
-  | 'ai' | 'aiAnalytics'
-  | 'liveLessons';
+  | 'ai' | 'aiAnalytics';
 
 /** Map PlanFeature → PlanLimits key */
 export const FEATURE_TO_LIMIT: Record<PlanFeature, keyof PlanLimits> = {
@@ -55,7 +54,6 @@ export const FEATURE_TO_LIMIT: Record<PlanFeature, keyof PlanLimits> = {
   advancedAnalytics: 'advancedAnalytics',
   ai: 'aiEnabled',
   aiAnalytics: 'aiAnalytics',
-  liveLessons: 'liveLessonsEnabled',
 };
 
 /** Minimum plan required per feature (for UpgradeWall display) */
@@ -64,7 +62,6 @@ export const FEATURE_MIN_PLAN: Record<PlanFeature, PlanId> = {
   gradebook: 'professional',
   certificates: 'professional',
   advancedAnalytics: 'professional',
-  liveLessons: 'professional',
   branches: 'enterprise',
   ai: 'enterprise',
   aiAnalytics: 'enterprise',
@@ -84,7 +81,7 @@ export const PLANS: Plan[] = [
       'Auto-grading',
       'Email support',
     ],
-    limits: { maxStudents: 50, maxTeachers: 5, maxExams: 20, aiEnabled: false, aiAnalytics: false, prioritySupport: false, dedicatedSupport: false, customBranding: false, financesEnabled: false, gradebookEnabled: false, certificatesEnabled: false, branchesEnabled: false, advancedAnalytics: false, liveLessonsEnabled: false },
+    limits: { maxStudents: 50, maxTeachers: 5, maxExams: 20, aiEnabled: false, aiAnalytics: false, prioritySupport: false, dedicatedSupport: false, customBranding: false, financesEnabled: false, gradebookEnabled: false, certificatesEnabled: false, branchesEnabled: false, advancedAnalytics: false },
   },
   {
     id: 'professional',
@@ -99,7 +96,7 @@ export const PLANS: Plan[] = [
       'Performance analytics',
       'Priority support',
     ],
-    limits: { maxStudents: 200, maxTeachers: 20, maxExams: -1, aiEnabled: true, aiAnalytics: false, prioritySupport: true, dedicatedSupport: false, customBranding: false, financesEnabled: true, gradebookEnabled: true, certificatesEnabled: true, branchesEnabled: false, advancedAnalytics: true, liveLessonsEnabled: true },
+    limits: { maxStudents: 200, maxTeachers: 20, maxExams: -1, aiEnabled: true, aiAnalytics: false, prioritySupport: true, dedicatedSupport: false, customBranding: false, financesEnabled: true, gradebookEnabled: true, certificatesEnabled: true, branchesEnabled: false, advancedAnalytics: true },
   },
   {
     id: 'enterprise',
@@ -115,7 +112,7 @@ export const PLANS: Plan[] = [
       'Dedicated support manager',
       'API access',
     ],
-    limits: { maxStudents: -1, maxTeachers: -1, maxExams: -1, aiEnabled: true, aiAnalytics: true, prioritySupport: true, dedicatedSupport: true, customBranding: true, financesEnabled: true, gradebookEnabled: true, certificatesEnabled: true, branchesEnabled: true, advancedAnalytics: true, liveLessonsEnabled: true },
+    limits: { maxStudents: -1, maxTeachers: -1, maxExams: -1, aiEnabled: true, aiAnalytics: true, prioritySupport: true, dedicatedSupport: true, customBranding: true, financesEnabled: true, gradebookEnabled: true, certificatesEnabled: true, branchesEnabled: true, advancedAnalytics: true },
   },
 ];
 
@@ -1246,102 +1243,4 @@ export interface FinancialTransaction {
   createdAt: string;
 }
 
-// ============================================================
-// Co-Study Rooms 
-// ============================================================
 
-export type StudyRoomStatus = 'active' | 'closed';
-
-export interface StudyParticipant {
-  userId: string;
-  name: string;
-  avatarUrl?: string;
-  badges?: string[];
-  goal: string;
-  joinedAt: string;
-  status: 'focus' | 'break' | 'distracted';
-}
-
-export interface StudyRoom {
-  id: string;
-  title: string;
-  description?: string;
-  youtubeUrl?: string;
-  creatorId: string;
-  creatorName: string;
-  status: StudyRoomStatus;
-  participantsCount: number;
-  timerState?: 'focus' | 'break' | 'idle';
-  timerEndsAt?: string;
-  timerDuration?: number;
-  isTimerPaused?: boolean;
-  timerTimeLeft?: number; // ms left when paused
-  createdAt: string;
-  updatedAt: string;
-}
-
-export interface StudyRoomMessage {
-  id: string;
-  senderId: string;
-  senderName: string;
-  senderAvatar?: string;
-  text: string;
-  createdAt: string;
-}
-
-// ============================================================
-// Live Lesson Sessions (Interactive Mode)
-// ============================================================
-
-export type LiveSessionStatus = 'active' | 'paused' | 'ended';
-export type AnnotationType = 'laser' | 'draw' | 'text' | 'eraser';
-export type LiveReactionType = '👍' | '😕' | '🔥' | '✋' | '❓';
-
-export interface LiveSession {
-  id: string;
-  lessonId: string;
-  lessonTitle: string;
-  organizationId: string;
-  teacherId: string;
-  teacherName: string;
-  status: LiveSessionStatus;
-  joinCode: string;           // 6-char uppercase code
-  currentSlideIndex: number;  // for future slide control
-  focusMode: boolean;         // lock students to current view
-  participantCount: number;
-  createdAt: string;
-  updatedAt: string;
-}
-
-export interface LiveParticipant {
-  userId: string;
-  name: string;
-  avatarUrl?: string;
-  role: 'teacher' | 'student';
-  cursorX?: number;    // 0-1 normalized
-  cursorY?: number;    // 0-1 normalized
-  isOnline: boolean;
-  joinedAt: string;
-  lastActiveAt: string;
-}
-
-export interface LiveAnnotation {
-  id: string;
-  sessionId: string;
-  type: AnnotationType;
-  points: { x: number; y: number }[];
-  color: string;        // hex color
-  width: number;        // stroke width
-  slideIndex: number;
-  authorId: string;
-  createdAt: string;
-}
-
-export interface LiveReaction {
-  id: string;
-  sessionId: string;
-  userId: string;
-  userName: string;
-  type: LiveReactionType;
-  createdAt: string;
-}

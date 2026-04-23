@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../contexts/AuthContext';
-import { GraduationCap, Users, BookOpen, UsersRound, Settings, Sparkles, GitBranch, MapPin, FileText, Gamepad2, TrendingDown, ClipboardCheck, Bell, Bot, BarChart3, ChevronRight, ArrowUpRight } from 'lucide-react';
+import { GraduationCap, Users, BookOpen, UsersRound, Settings, Sparkles, GitBranch, MapPin, FileText, Gamepad2, TrendingDown, Bell, Bot, BarChart3, ChevronRight, ArrowUpRight } from 'lucide-react';
 import { DashboardSkeleton } from '../../components/ui/Skeleton';
 import OnboardingWizard, { useOnboardingProgress } from '../../components/onboarding/OnboardingWizard';
 import { apiGetBranchAnalytics, apiGetOrganization, apiGetAIManagerSettings, orgGetDashboardStats } from '../../lib/api';
@@ -53,12 +53,10 @@ const AdminDashboard: React.FC = () => {
 
   const quickLinks = [
     { to: '/leads', icon: Bot, label: 'Заявки' },
-    { to: '/groups', icon: UsersRound, label: t('nav.groups') },
     { to: '/materials', icon: FileText, label: t('nav.materials') },
     { to: '/quiz/library', icon: Gamepad2, label: t('nav.quizLibrary') },
     { to: '/results', icon: BarChart3, label: t('nav.results') },
     { to: '/risk-dashboard', icon: TrendingDown, label: t('nav.riskDashboard', 'Светофор рисков') },
-    { to: '/homework/review', icon: ClipboardCheck, label: t('nav.homeworkReview', 'Проверка ДЗ') },
     { to: '/notifications', icon: Bell, label: t('nav.notifications', 'Уведомления') },
   ];
 
@@ -251,14 +249,14 @@ const AdminDashboard: React.FC = () => {
               </div>
             </div>
 
-            {/* Platform Settings CTA */}
+            {/* Teacher Analytics CTA */}
             <Link
-              to="/org-settings"
+              to="/teacher-analytics"
               className="flex items-center justify-between w-full px-4 py-3 bg-slate-900 dark:bg-slate-700 rounded-xl text-white hover:bg-slate-800 dark:hover:bg-slate-600 transition-colors group"
             >
               <div className="flex items-center gap-2.5">
-                <Settings className="w-4 h-4 text-slate-400 group-hover:text-slate-300 transition-colors" />
-                <span className="text-sm font-medium">Настройки</span>
+                <BarChart3 className="w-4 h-4 text-slate-400 group-hover:text-slate-300 transition-colors" />
+                <span className="text-sm font-medium">Аналитика</span>
               </div>
               <ArrowUpRight className="w-3.5 h-3.5 text-slate-500 group-hover:text-slate-300 transition-colors" />
             </Link>

@@ -41,7 +41,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
           final email = profile['email'] ?? '';
           final photoURL = profile['avatarUrl'] ?? profile['photoURL'] ?? FirebaseAuth.instance.currentUser?.photoURL ?? '';
           final phone = profile['phone'] ?? '';
-          final bio = profile['bio'] ?? '';
+
           final role = profile['role'] ?? 'teacher';
           final orgName = profile['organizationName'] ?? '';
           final initials = name.isNotEmpty ? name[0].toUpperCase() : '?';
@@ -253,9 +253,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                                     await api.acceptInvite(m['userId'] ?? '', m['organizationId'] ?? '');
                                     ref.invalidate(membershipsProvider);
                                     ref.invalidate(userProfileProvider);
-                                    if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Приглашение принято!')));
+                                    if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Приглашение принято!')));
                                   } catch (e) {
-                                    if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Ошибка: $e')));
+                                    if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Ошибка: $e')));
                                   }
                                 },
                                 child: const Text('Принять'),
@@ -329,7 +329,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       ref.invalidate(userProfileProvider);
       setState(() => _editingName = false);
     } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Ошибка: $e')));
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Ошибка: $e')));
     }
   }
 
@@ -386,7 +387,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                         await api.updateProfile(data);
                         ref.invalidate(userProfileProvider);
                         if (ctx.mounted) Navigator.pop(ctx);
-                        if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Профиль обновлён!')));
+                        if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Профиль обновлён!')));
                       } catch (e) {
                         setModalState(() => loading = false);
                         if (ctx.mounted) ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(content: Text('Ошибка: $e')));
@@ -564,7 +565,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                 const SizedBox(height: 20),
                 Text('Уведомления', style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700)),
                 const SizedBox(height: 4),
-                Text('Настройте, какие уведомления вы хотите получать', style: TextStyle(fontSize: 13, color: theme.colorScheme.onSurface.withOpacity(0.5))),
+                Text('Настройте, какие уведомления вы хотите получать', style: TextStyle(fontSize: 13, color: theme.colorScheme.onSurface.withValues(alpha: 0.5))),
                 const SizedBox(height: 20),
                 if (initialLoading)
                   const Padding(
@@ -629,7 +630,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                           });
                           ref.invalidate(notificationPrefsProvider);
                           if (ctx.mounted) Navigator.pop(ctx);
-                          if (mounted) {
+                          if (context.mounted) {
                             ScaffoldMessenger.of(context).showSnackBar(
                               const SnackBar(content: Text('Настройки уведомлений сохранены ✓')),
                             );
@@ -674,9 +675,9 @@ class _StatItem extends StatelessWidget {
         margin: const EdgeInsets.symmetric(horizontal: 4),
         padding: const EdgeInsets.symmetric(vertical: 14),
         decoration: BoxDecoration(
-          color: color.withOpacity(0.06),
+          color: color.withValues(alpha: 0.06),
           borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: color.withOpacity(0.12)),
+          border: Border.all(color: color.withValues(alpha: 0.12)),
         ),
         child: Column(
           children: [
@@ -684,7 +685,7 @@ class _StatItem extends StatelessWidget {
             const SizedBox(height: 6),
             Text(value, style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800, color: color)),
             const SizedBox(height: 2),
-            Text(label, style: theme.textTheme.labelSmall?.copyWith(color: color.withOpacity(0.7))),
+            Text(label, style: theme.textTheme.labelSmall?.copyWith(color: color.withValues(alpha: 0.7))),
           ],
         ),
       ),
@@ -697,7 +698,6 @@ class _SettingsTile extends StatelessWidget {
   final String title;
   final String subtitle;
   final VoidCallback onTap;
-  final Widget? trailing;
 
   const _SettingsTile({required this.icon, required this.title, required this.subtitle, required this.onTap});
 
@@ -712,7 +712,7 @@ class _SettingsTile extends StatelessWidget {
       ),
       title: Text(title, style: const TextStyle(fontWeight: FontWeight.w500)),
       subtitle: Text(subtitle, style: TextStyle(color: theme.colorScheme.onSurface.withValues(alpha: 0.5), fontSize: 13)),
-      trailing: trailing ?? Icon(Icons.chevron_right_rounded, color: theme.colorScheme.onSurface.withValues(alpha: 0.3)),
+      trailing: Icon(Icons.chevron_right_rounded, color: theme.colorScheme.onSurface.withValues(alpha: 0.3)),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
       onTap: onTap,

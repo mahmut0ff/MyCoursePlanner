@@ -337,11 +337,16 @@ class _ExamFormScreenState extends ConsumerState<ExamFormScreen> {
             padding: const EdgeInsets.only(bottom: 8),
             child: Row(
               children: [
-                Radio<int>(
-                  value: oi,
-                  groupValue: q.correctIndex,
-                  onChanged: (v) => setState(() => q.correctIndex = v ?? 0),
-                  visualDensity: VisualDensity.compact,
+                SizedBox(
+                  width: 32,
+                  child: GestureDetector(
+                    onTap: () => setState(() => q.correctIndex = oi),
+                    child: Icon(
+                      q.correctIndex == oi ? Icons.radio_button_checked : Icons.radio_button_unchecked,
+                      color: q.correctIndex == oi ? Theme.of(context).colorScheme.primary : Colors.grey,
+                      size: 22,
+                    ),
+                  ),
                 ),
                 Expanded(
                   child: TextFormField(

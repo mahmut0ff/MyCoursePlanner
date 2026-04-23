@@ -334,14 +334,14 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                             await api.acceptInvite(m.id);
                             ref.invalidate(userMembershipsProvider);
                             ref.invalidate(userProfileProvider);
-                            if (mounted) {
+                            if (context.mounted) {
                               ScaffoldMessenger.of(context).showSnackBar(
                                 const SnackBar(
                                     content: Text('Приглашение принято!')),
                               );
                             }
                           } catch (e) {
-                            if (mounted) {
+                            if (context.mounted) {
                               ScaffoldMessenger.of(context).showSnackBar(
                                 SnackBar(content: Text('Ошибка: $e')),
                               );

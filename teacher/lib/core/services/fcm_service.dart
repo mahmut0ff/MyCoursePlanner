@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -11,7 +12,7 @@ import '../../domain/providers/providers.dart';
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   // Initialize Firebase if not already initialized
   // await Firebase.initializeApp();
-  print("Handling a background message: ${message.messageId}");
+  debugPrint("Handling a background message: ${message.messageId}");
 }
 
 class FcmService {
@@ -31,7 +32,7 @@ class FcmService {
     );
 
     if (settings.authorizationStatus != AuthorizationStatus.authorized) {
-      print('User declined or has not accepted permission');
+      debugPrint('User declined or has not accepted permission');
       return;
     }
 
@@ -94,7 +95,7 @@ class FcmService {
         _apiService.saveFcmToken(newToken);
       });
     } catch (e) {
-      print('Failed to get or save FCM token: $e');
+      debugPrint('Failed to get or save FCM token: $e');
     }
   }
 }

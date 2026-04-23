@@ -118,34 +118,28 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (firebaseUser) await loadProfile(firebaseUser);
   }, [firebaseUser]);
 
-  // Register FCM push token (best-effort, non-blocking, runs only once per session)
+  // Register FCM push token (best-effort, non-blocking, runs only once per session).
+  // IMPORTANT: We NEVER auto-prompt the browser's notification dialog.
+  // We only silently register the token if the user has ALREADY granted permission
+  // (e.g. from a previous explicit opt-in via a settings toggle / bell icon).
   const fcmRegisteredRef = useRef(false);
   const registerFcmToken = async () => {
-    // Skip if already registered this session (ref + sessionStorage guard)
     if (fcmRegisteredRef.current) return;
-    if (typeof sessionStorage !== 'undefined' && sessionStorage.getItem('fcm_registered') === '1') {
-      fcmRegisteredRef.current = true;
-      return;
-    }
-    // Skip if user has already denied — no point retrying
-    if (typeof Notification !== 'undefined' && Notification.permission === 'denied') {
-      fcmRegisteredRef.current = true;
-      return;
-    }
     fcmRegisteredRef.current = true;
+
+    // Only proceed if permission was already granted — never trigger the popup
+    if (typeof Notification === 'undefined' || Notification.permission !== 'granted') {
+      return;
+    }
+
     try {
       const token = await requestNotificationPermission();
       if (token) {
         fcmTokenRef.current = token;
         await apiSaveFcmToken(token);
       }
-      // Mark as registered for this session regardless of token result
-      if (typeof sessionStorage !== 'undefined') {
-        sessionStorage.setItem('fcm_registered', '1');
-      }
     } catch (e) {
       console.warn('FCM token registration failed:', e);
-      // Do NOT reset fcmRegisteredRef — avoid retry loops that re-prompt the user
     }
   };
 

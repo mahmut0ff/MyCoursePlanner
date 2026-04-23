@@ -22,8 +22,7 @@ class HomeScreen extends ConsumerWidget {
             final lessonsCount = data['lessonsCount'] ?? 0;
             final examsCount = data['examsCount'] ?? 0;
             final activeRoomsCount = data['activeRoomsCount'] ?? 0;
-            final attemptsCount = data['attemptsCount'] ?? 0;
-            final avgScore = data['avgScore'] ?? 0;
+
             final pendingHomeworkCount = data['pendingHomeworkCount'] ?? 0;
             final recentLessons = (data['recentLessons'] as List?) ?? [];
             final recentExams = (data['recentExams'] as List?) ?? [];
@@ -48,15 +47,15 @@ class HomeScreen extends ConsumerWidget {
                         decoration: BoxDecoration(
                           gradient: LinearGradient(
                             colors: [
-                              theme.colorScheme.primary.withOpacity(0.08),
-                              theme.colorScheme.primary.withOpacity(0.03),
+                              theme.colorScheme.primary.withValues(alpha: 0.08),
+                              theme.colorScheme.primary.withValues(alpha: 0.03),
                             ],
                             begin: Alignment.topLeft,
                             end: Alignment.bottomRight,
                           ),
                           borderRadius: BorderRadius.circular(20),
                           border: Border.all(
-                            color: theme.colorScheme.primary.withOpacity(0.12),
+                            color: theme.colorScheme.primary.withValues(alpha: 0.12),
                           ),
                         ),
                         child: Row(
@@ -68,7 +67,7 @@ class HomeScreen extends ConsumerWidget {
                                 decoration: BoxDecoration(
                                   shape: BoxShape.circle,
                                   border: Border.all(
-                                    color: theme.colorScheme.primary.withOpacity(0.3),
+                                    color: theme.colorScheme.primary.withValues(alpha: 0.3),
                                     width: 2.5,
                                   ),
                                 ),
@@ -97,7 +96,7 @@ class HomeScreen extends ConsumerWidget {
                                         style: TextStyle(
                                           fontSize: 13,
                                           fontWeight: FontWeight.w500,
-                                          color: theme.colorScheme.onSurface.withOpacity(0.5),
+                                          color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
                                         ),
                                       ),
                                       Flexible(
@@ -118,7 +117,7 @@ class HomeScreen extends ConsumerWidget {
                                     'Управляйте вашими занятиями',
                                     style: TextStyle(
                                       fontSize: 12,
-                                      color: theme.colorScheme.onSurface.withOpacity(0.4),
+                                      color: theme.colorScheme.onSurface.withValues(alpha: 0.4),
                                     ),
                                   ),
                                 ],
@@ -133,7 +132,7 @@ class HomeScreen extends ConsumerWidget {
                                 borderRadius: BorderRadius.circular(14),
                                 boxShadow: [
                                   BoxShadow(
-                                    color: Colors.black.withOpacity(0.04),
+                                    color: Colors.black.withValues(alpha: 0.04),
                                     blurRadius: 8,
                                     offset: const Offset(0, 2),
                                   ),
@@ -143,7 +142,7 @@ class HomeScreen extends ConsumerWidget {
                                 icon: Icon(
                                   Icons.notifications_outlined,
                                   size: 22,
-                                  color: theme.colorScheme.onSurface.withOpacity(0.6),
+                                  color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
                                 ),
                                 onPressed: () => _showNotifications(context, ref),
                                 padding: EdgeInsets.zero,
@@ -156,7 +155,7 @@ class HomeScreen extends ConsumerWidget {
                     loading: () => Container(
                       height: 76,
                       decoration: BoxDecoration(
-                        color: theme.colorScheme.primary.withOpacity(0.05),
+                        color: theme.colorScheme.primary.withValues(alpha: 0.05),
                         borderRadius: BorderRadius.circular(20),
                       ),
                       child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
@@ -177,7 +176,7 @@ class HomeScreen extends ConsumerWidget {
                       borderRadius: BorderRadius.circular(24),
                       boxShadow: [
                         BoxShadow(
-                          color: const Color(0xFF7C3AED).withOpacity(0.35),
+                          color: const Color(0xFF7C3AED).withValues(alpha: 0.35),
                           blurRadius: 20,
                           offset: const Offset(0, 8),
                         ),
@@ -194,7 +193,7 @@ class HomeScreen extends ConsumerWidget {
                             height: 100,
                             decoration: BoxDecoration(
                               shape: BoxShape.circle,
-                              color: Colors.white.withOpacity(0.08),
+                              color: Colors.white.withValues(alpha: 0.08),
                             ),
                           ),
                         ),
@@ -206,7 +205,7 @@ class HomeScreen extends ConsumerWidget {
                             height: 60,
                             decoration: BoxDecoration(
                               shape: BoxShape.circle,
-                              color: Colors.white.withOpacity(0.05),
+                              color: Colors.white.withValues(alpha: 0.05),
                             ),
                           ),
                         ),
@@ -219,13 +218,13 @@ class HomeScreen extends ConsumerWidget {
                               Container(
                                 padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 5),
                                 decoration: BoxDecoration(
-                                  color: Colors.white.withOpacity(0.15),
+                                  color: Colors.white.withValues(alpha: 0.15),
                                   borderRadius: BorderRadius.circular(20),
                                 ),
                                 child: Row(
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
-                                    Icon(Icons.assignment_outlined, size: 13, color: Colors.white.withOpacity(0.7)),
+                                    Icon(Icons.assignment_outlined, size: 13, color: Colors.white.withValues(alpha: 0.7)),
                                     const SizedBox(width: 5),
                                     const Text(
                                       'ДОМАШНИЕ ЗАДАНИЯ',
@@ -257,12 +256,12 @@ class HomeScreen extends ConsumerWidget {
                                 pendingHomeworkCount == 0
                                     ? 'Все ДЗ проверены ✔'
                                     : 'Ожидают проверки',
-                                style: TextStyle(color: Colors.white.withOpacity(0.7), fontSize: 14, fontWeight: FontWeight.w500),
+                                style: TextStyle(color: Colors.white.withValues(alpha: 0.7), fontSize: 14, fontWeight: FontWeight.w500),
                               ),
                               const SizedBox(height: 4),
                               Text(
                                 '$lessonsCount уроков  ·  $examsCount экзаменов  ·  $activeRoomsCount комнат',
-                                style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 11, fontWeight: FontWeight.w500),
+                                style: TextStyle(color: Colors.white.withValues(alpha: 0.5), fontSize: 11, fontWeight: FontWeight.w500),
                                 textAlign: TextAlign.center,
                               ),
                               const SizedBox(height: 20),
@@ -296,9 +295,9 @@ class HomeScreen extends ConsumerWidget {
                                       child: Container(
                                         padding: const EdgeInsets.symmetric(vertical: 12),
                                         decoration: BoxDecoration(
-                                          color: Colors.white.withOpacity(0.15),
+                                          color: Colors.white.withValues(alpha: 0.15),
                                           borderRadius: BorderRadius.circular(14),
-                                          border: Border.all(color: Colors.white.withOpacity(0.2)),
+                                          border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
                                         ),
                                         child: const Row(
                                           mainAxisAlignment: MainAxisAlignment.center,
@@ -607,11 +606,11 @@ void _showNotifications(BuildContext context, WidgetRef ref) {
                           child: Column(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              Icon(Icons.notifications_none, size: 56, color: theme.colorScheme.primary.withOpacity(0.2)),
+                              Icon(Icons.notifications_none, size: 56, color: theme.colorScheme.primary.withValues(alpha: 0.2)),
                               const SizedBox(height: 12),
                               const Text('Нет уведомлений', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 16)),
                               const SizedBox(height: 4),
-                              Text('Здесь появятся ваши оповещения', style: TextStyle(fontSize: 13, color: theme.colorScheme.onSurface.withOpacity(0.4))),
+                              Text('Здесь появятся ваши оповещения', style: TextStyle(fontSize: 13, color: theme.colorScheme.onSurface.withValues(alpha: 0.4))),
                             ],
                           ),
                         ),
@@ -644,12 +643,12 @@ void _showNotifications(BuildContext context, WidgetRef ref) {
                             return Container(
                               padding: const EdgeInsets.all(14),
                               decoration: BoxDecoration(
-                                color: isRead ? Colors.white : theme.colorScheme.primary.withOpacity(0.04),
+                                color: isRead ? Colors.white : theme.colorScheme.primary.withValues(alpha: 0.04),
                                 borderRadius: BorderRadius.circular(14),
                                 border: Border.all(
                                   color: isRead
-                                      ? theme.colorScheme.outline.withOpacity(0.06)
-                                      : theme.colorScheme.primary.withOpacity(0.15),
+                                      ? theme.colorScheme.outline.withValues(alpha: 0.06)
+                                      : theme.colorScheme.primary.withValues(alpha: 0.15),
                                 ),
                               ),
                               child: Row(
@@ -670,11 +669,11 @@ void _showNotifications(BuildContext context, WidgetRef ref) {
                                         Text(title, style: TextStyle(fontWeight: isRead ? FontWeight.w500 : FontWeight.w700, fontSize: 14)),
                                         if (message.isNotEmpty) ...[
                                           const SizedBox(height: 4),
-                                          Text(message, style: TextStyle(fontSize: 13, color: theme.colorScheme.onSurface.withOpacity(0.6)), maxLines: 2, overflow: TextOverflow.ellipsis),
+                                          Text(message, style: TextStyle(fontSize: 13, color: theme.colorScheme.onSurface.withValues(alpha: 0.6)), maxLines: 2, overflow: TextOverflow.ellipsis),
                                         ],
                                         if (timeAgo.isNotEmpty) ...[
                                           const SizedBox(height: 6),
-                                          Text(timeAgo, style: TextStyle(fontSize: 11, color: theme.colorScheme.onSurface.withOpacity(0.35))),
+                                          Text(timeAgo, style: TextStyle(fontSize: 11, color: theme.colorScheme.onSurface.withValues(alpha: 0.35))),
                                         ],
                                       ],
                                     ),

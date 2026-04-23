@@ -32,8 +32,8 @@ class ExamDetailScreen extends ConsumerWidget {
 
           return RefreshIndicator(
             onRefresh: () async {
-              await ref.refresh(examProvider(examId).future);
-              await ref.refresh(attemptsProvider(examId).future);
+              ref.invalidate(examProvider(examId));
+              ref.invalidate(attemptsProvider(examId));
             },
             child: ListView(
               padding: const EdgeInsets.all(16),

@@ -62,8 +62,11 @@ class CoursesScreen extends ConsumerWidget {
           }
           return RefreshIndicator(
             onRefresh: () async {
-              ref.refresh(coursesProvider.future);
-              ref.refresh(groupsProvider(null).future);
+              ref.invalidate(coursesProvider);
+              ref.invalidate(groupsProvider(null));
+              // Wait for the providers to reload
+              await ref.read(coursesProvider.future);
+              await ref.read(groupsProvider(null).future);
             },
             child: ListView.separated(
               padding: const EdgeInsets.all(16),

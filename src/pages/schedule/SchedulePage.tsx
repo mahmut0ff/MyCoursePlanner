@@ -555,16 +555,6 @@ const SchedulePage: React.FC = () => {
 
       {error && <div className="px-5 py-3.5 bg-red-500/10 border border-red-500/20 rounded-2xl text-sm font-medium text-red-600 dark:text-red-400">{error}</div>}
 
-      {/* Drag & Drop hint banner */}
-      {canEdit && (
-        <div className="flex items-center gap-3 px-4 py-2.5 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl">
-          <GripVertical className="w-4 h-4 text-slate-400 flex-shrink-0" />
-          <p className="text-[11px] font-medium text-slate-500 dark:text-slate-400">
-            {t('schedule.dndHint', 'Перетаскивайте занятия между днями. Правый клик → Копировать, Ctrl+V → Вставить.')}
-          </p>
-        </div>
-      )}
-
       {/* Week Navigator — only for Events tab */}
       {activeTab === 'events' && (
         <div className="flex items-center gap-3">
@@ -572,16 +562,6 @@ const SchedulePage: React.FC = () => {
           <button onClick={() => setCurrent(new Date())} className="px-4 py-2 text-sm font-bold text-slate-700 dark:text-slate-300 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-700/50 shadow-sm transition-colors">{t('org.schedule.today', 'Сегодня')}</button>
           <button onClick={nextWeek} className="p-2.5 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors shadow-sm"><ChevronRight className="w-4 h-4 text-slate-600 dark:text-slate-300" /></button>
           <span className="text-sm font-medium text-slate-500 ml-2 bg-white/50 dark:bg-slate-800/30 px-3 py-1.5 rounded-lg border border-slate-200/50 dark:border-slate-700/50 backdrop-blur-sm">{weekDays[0].toLocaleDateString()} — {weekDays[6].toLocaleDateString()}</span>
-        </div>
-      )}
-
-      {/* Timetable banner */}
-      {activeTab === 'timetable' && (
-        <div className="flex items-center gap-3 px-4 py-3 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl">
-          <Repeat className="w-5 h-5 text-slate-400 flex-shrink-0" />
-          <p className="text-xs font-medium text-slate-500 dark:text-slate-400">
-            {t('schedule.timetableBanner', 'Постоянное расписание — уроки здесь привязаны к дням недели и повторяются каждую неделю автоматически.')}
-          </p>
         </div>
       )}
 

@@ -1,4 +1,5 @@
 /// Planula Senior Design System — Material 3 Theme (Purple)
+library;
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 

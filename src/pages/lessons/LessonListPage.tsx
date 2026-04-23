@@ -141,7 +141,7 @@ const LessonListPage: React.FC = () => {
                 <span>AI Конструктор</span>
               </button>
             )}
-            <Link to="/lessons/new" className="flex-1 sm:flex-none btn-primary flex justify-center items-center gap-2">
+            <Link to="/lessons/new" className="flex-1 sm:flex-none bg-slate-900 hover:bg-slate-800 text-white dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100 px-4 py-2.5 rounded-xl text-sm font-semibold flex justify-center items-center gap-2 transition-all shadow-sm hover:shadow-md shrink-0">
               <Plus className="w-4 h-4" />
               {t('lessons.create', 'Создать')}
             </Link>

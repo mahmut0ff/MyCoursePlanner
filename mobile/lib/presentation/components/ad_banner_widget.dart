@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
-import 'dart:io';
 
 /// Reusable AdMob banner widget.
 /// Uses test ad unit IDs — replace with real ones before production.

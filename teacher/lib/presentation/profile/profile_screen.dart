@@ -699,7 +699,7 @@ class _SettingsTile extends StatelessWidget {
   final VoidCallback onTap;
   final Widget? trailing;
 
-  const _SettingsTile({required this.icon, required this.title, required this.subtitle, required this.onTap, this.trailing});
+  const _SettingsTile({required this.icon, required this.title, required this.subtitle, required this.onTap});
 
   @override
   Widget build(BuildContext context) {

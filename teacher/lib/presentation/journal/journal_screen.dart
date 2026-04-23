@@ -73,7 +73,7 @@ class _JournalScreenState extends ConsumerState<JournalScreen> with SingleTicker
                             });
                           }
                           return DropdownButtonFormField<String>(
-                            value: validCourseId,
+                            initialValue: validCourseId,
                             isDense: true,
                             isExpanded: true,
                             decoration: InputDecoration(
@@ -107,7 +107,7 @@ class _JournalScreenState extends ConsumerState<JournalScreen> with SingleTicker
                             });
                           }
                           return DropdownButtonFormField<String>(
-                            value: validGroupId,
+                            initialValue: validGroupId,
                             isDense: true,
                             isExpanded: true,
                             decoration: InputDecoration(

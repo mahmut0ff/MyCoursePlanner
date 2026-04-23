@@ -229,7 +229,7 @@ class _ExamFormScreenState extends ConsumerState<ExamFormScreen> {
                 ),
                 const SizedBox(height: 14),
                 DropdownButtonFormField<String>(
-                  value: _status,
+                  initialValue: _status,
                   decoration: const InputDecoration(labelText: 'Статус', prefixIcon: Icon(Icons.visibility_outlined)),
                   items: const [
                     DropdownMenuItem(value: 'draft', child: Text('Черновик')),

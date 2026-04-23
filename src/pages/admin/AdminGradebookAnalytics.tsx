@@ -4,11 +4,43 @@ import {
   orgGetStudents, 
   orgGetTeachers,
   orgGetGrades,
-  orgGetJournal
+  orgGetJournal,
+  orgListBranches
 } from '../../lib/api';
 import type { Course, UserProfile, GradeEntry, JournalEntry } from '../../types';
-import { BarChart3, TrendingUp, GraduationCap, AlertTriangle, Download, ClipboardList, CheckCircle2 } from 'lucide-react';
+import { BarChart3, TrendingUp, GraduationCap, AlertTriangle, Download, ClipboardList, CheckCircle2, Filter, TrendingDown, BookOpen } from 'lucide-react';
 import toast from 'react-hot-toast';
+
+// ── Russian pluralization ──────────────────────────
+function pluralize(n: number, one: string, few: string, many: string): string {
+  const abs = Math.abs(n) % 100;
+  const last = abs % 10;
+  if (abs >= 11 && abs <= 19) return many;
+  if (last === 1) return one;
+  if (last >= 2 && last <= 4) return few;
+  return many;
+}
+
+type Period = 'all' | 'month' | 'quarter' | 'year';
+
+const PERIODS: { id: Period; label: string }[] = [
+  { id: 'month', label: 'Месяц' },
+  { id: 'quarter', label: 'Квартал' },
+  { id: 'year', label: 'Год' },
+  { id: 'all', label: 'Всё время' },
+];
+
+function getPeriodStart(period: Period): Date {
+  const now = new Date();
+  switch (period) {
+    case 'month': return new Date(now.getFullYear(), now.getMonth(), 1);
+    case 'quarter': return new Date(now.getFullYear(), Math.floor(now.getMonth() / 3) * 3, 1);
+    case 'year': return new Date(now.getFullYear(), 0, 1);
+    default: return new Date(2020, 0, 1);
+  }
+}
+
+interface Branch { id: string; name: string; }
 
 export default function AdminGradebookAnalytics() {
   const [loading, setLoading] = useState(true);
@@ -16,19 +48,24 @@ export default function AdminGradebookAnalytics() {
   const [teachers, setTeachers] = useState<UserProfile[]>([]);
   const [grades, setGrades] = useState<GradeEntry[]>([]);
   const [journals, setJournals] = useState<JournalEntry[]>([]);
+  const [branches, setBranches] = useState<Branch[]>([]);
+  const [period, setPeriod] = useState<Period>('all');
+  const [branchId, setBranchId] = useState('');
 
   useEffect(() => {
     const fetchData = async () => {
       try {
         setLoading(true);
-        const [cRes, sRes, tRes] = await Promise.all([
+        const [cRes, sRes, tRes, bRes] = await Promise.all([
           orgGetCourses(),
           orgGetStudents(),
-          orgGetTeachers()
+          orgGetTeachers(),
+          orgListBranches().catch(() => []),
         ]);
         
         setStudents(sRes as UserProfile[]);
         setTeachers(tRes as UserProfile[]);
+        setBranches(Array.isArray(bRes) ? bRes as Branch[] : []);
 
         // Fetch all grades and journals for all courses
         const allGrades = await Promise.all((cRes as Course[]).map(c => orgGetGrades(c.id).catch(() => [])));
@@ -46,71 +83,163 @@ export default function AdminGradebookAnalytics() {
     fetchData();
   }, []);
 
+  // ── Filter data by period + branch ──
+  const filteredData = useMemo(() => {
+    const periodStart = getPeriodStart(period);
+    const periodIso = periodStart.toISOString();
+
+    let fGrades = grades;
+    let fJournals = journals;
+    let fStudents = students;
+
+    // Period filter
+    if (period !== 'all') {
+      fGrades = fGrades.filter(g => (g as any).createdAt >= periodIso || (g as any).date >= periodIso);
+      fJournals = fJournals.filter(j => (j as any).date >= periodIso);
+    }
+
+    // Branch filter
+    if (branchId) {
+      const branchStudentIds = new Set(
+        students.filter((s: any) => s.branchId === branchId || (s.branchIds || []).includes(branchId)).map(s => s.uid)
+      );
+      fGrades = fGrades.filter(g => branchStudentIds.has(g.studentId));
+      fJournals = fJournals.filter(j => branchStudentIds.has(j.studentId));
+      fStudents = students.filter(s => branchStudentIds.has(s.uid));
+    }
+
+    return { grades: fGrades, journals: fJournals, students: fStudents };
+  }, [grades, journals, students, period, branchId]);
+
   const metrics = useMemo(() => {
-    if (!grades.length && !journals.length) return null;
+    const { grades: fg, journals: fj, students: fs } = filteredData;
+    if (!fg.length && !fj.length) return null;
 
     // Averages
-    const numericGrades = grades.filter(g => typeof g.value === 'number' && typeof g.maxValue === 'number' && g.maxValue > 0);
+    const numericGrades = fg.filter(g => typeof g.value === 'number' && typeof g.maxValue === 'number' && g.maxValue > 0);
     const avgScore = numericGrades.length ? numericGrades.reduce((sum, g) => sum + ((g.value as number) / g.maxValue! * 100), 0) / numericGrades.length : 0;
 
     // Attendance Rate
-    const totalAttendance = journals.length;
-    const presentAttendance = journals.filter(j => j.attendance === 'present' || j.attendance === 'late').length;
+    const totalAttendance = fj.length;
+    const presentAttendance = fj.filter(j => j.attendance === 'present' || j.attendance === 'late').length;
     const attendanceRate = totalAttendance ? (presentAttendance / totalAttendance) * 100 : 0;
 
-    // Risk Detection (students with < 60% avg grade AND < 70% attendance)
-    const studentStats: Record<string, { totalGrades: number, passedGrades: number, totalAtt: number, presentAtt: number }> = {};
+    // Risk Detection (students with < 60% avg grade OR < 70% attendance)
+    const studentStats: Record<string, { totalGrades: number; passedGrades: number; totalAtt: number; presentAtt: number; gradePercent: number; attPercent: number }> = {};
     numericGrades.forEach(g => {
-      if (!studentStats[g.studentId]) studentStats[g.studentId] = { totalGrades: 0, passedGrades: 0, totalAtt: 0, presentAtt: 0 };
+      if (!studentStats[g.studentId]) studentStats[g.studentId] = { totalGrades: 0, passedGrades: 0, totalAtt: 0, presentAtt: 0, gradePercent: 0, attPercent: 100 };
       studentStats[g.studentId].totalGrades++;
       if (((g.value as number) / g.maxValue! * 100) >= 60) studentStats[g.studentId].passedGrades++;
     });
-    journals.forEach(j => {
-      if (!studentStats[j.studentId]) studentStats[j.studentId] = { totalGrades: 0, passedGrades: 0, totalAtt: 0, presentAtt: 0 };
+    fj.forEach(j => {
+      if (!studentStats[j.studentId]) studentStats[j.studentId] = { totalGrades: 0, passedGrades: 0, totalAtt: 0, presentAtt: 0, gradePercent: 0, attPercent: 100 };
       studentStats[j.studentId].totalAtt++;
       if (j.attendance === 'present' || j.attendance === 'late') studentStats[j.studentId].presentAtt++;
     });
 
+    // Calculate percentages
+    Object.values(studentStats).forEach(s => {
+      s.gradePercent = s.totalGrades ? (s.passedGrades / s.totalGrades) * 100 : 100;
+      s.attPercent = s.totalAtt ? (s.presentAtt / s.totalAtt) * 100 : 100;
+    });
+
     const atRiskStudents = Object.entries(studentStats).filter(([, stats]) => {
-      const gRate = stats.totalGrades ? (stats.passedGrades / stats.totalGrades) * 100 : 100;
-      const aRate = stats.totalAtt ? (stats.presentAtt / stats.totalAtt) * 100 : 100;
-      return gRate < 60 || aRate < 70;
-    }).map(([id]) => students.find(s => s.uid === id)).filter(Boolean) as UserProfile[];
+      return stats.gradePercent < 60 || stats.attPercent < 70;
+    }).map(([id]) => {
+      const student = fs.find(s => s.uid === id);
+      const stats = studentStats[id];
+      return student ? { ...student, riskStats: stats } : null;
+    }).filter(Boolean) as (UserProfile & { riskStats: typeof studentStats[string] })[];
 
     return {
       avgScore,
       attendanceRate,
       gradesCount: numericGrades.length,
-      journalsCount: journals.length,
+      journalsCount: fj.length,
       atRiskCount: atRiskStudents.length,
-      atRiskStudents
+      atRiskStudents,
+      studentStats,
+      studentsCount: fs.length,
     };
-  }, [grades, journals, students]);
+  }, [filteredData]);
+
+  // ── CSV Export ──
+  const handleExport = () => {
+    if (!metrics) return;
+    const header = 'Студент,Email,Успеваемость %,Посещаемость %,Статус\n';
+    const rows = students.map(s => {
+      const stats = metrics.studentStats[s.uid];
+      const gp = stats ? Math.round(stats.gradePercent) : '-';
+      const ap = stats ? Math.round(stats.attPercent) : '-';
+      const risk = stats && (stats.gradePercent < 60 || stats.attPercent < 70) ? 'Зона риска' : 'Норма';
+      return `"${s.displayName || ''}",${s.email || ''},${gp},${ap},${risk}`;
+    }).join('\n');
+    const blob = new Blob(['\uFEFF' + header + rows], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `analytics_${period}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
 
   if (loading) {
     return (
       <div className="flex justify-center py-20">
-        <div className="w-8 h-8 border-2 border-primary-500 rounded-full animate-spin border-t-transparent" />
+        <div className="w-8 h-8 border-2 border-slate-300 dark:border-slate-600 rounded-full animate-spin border-t-slate-900 dark:border-t-white" />
       </div>
     );
   }
 
   return (
     <div className="max-w-7xl mx-auto space-y-6">
+      {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-indigo-500/20 to-purple-500/20 flex items-center justify-center ring-1 ring-indigo-500/30 shadow-inner">
-            <BarChart3 className="w-6 h-6 text-indigo-600 dark:text-indigo-400" />
-          </div>
-          <div>
-            <h1 className="text-2xl font-bold bg-gradient-to-r from-slate-900 to-slate-700 dark:from-white dark:to-slate-300 bg-clip-text text-transparent">Аналитика успеваемости</h1>
-            <p className="text-sm text-slate-500 dark:text-slate-400 font-medium">Контроль качества обучения, посещаемости и активности</p>
-          </div>
+        <div>
+          <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Аналитика успеваемости</h1>
+          <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">Контроль качества обучения, посещаемости и активности</p>
         </div>
-        <button className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-white to-slate-50 dark:from-slate-800 dark:to-slate-800/80 border border-slate-200/80 dark:border-slate-700 rounded-xl text-sm font-semibold text-slate-700 dark:text-slate-200 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200">
+        <button
+          onClick={handleExport}
+          disabled={!metrics}
+          className="flex items-center gap-2 px-4 py-2.5 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-xl text-sm font-semibold hover:bg-slate-800 dark:hover:bg-slate-100 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+        >
           <Download className="w-4 h-4" />
           Экспорт отчета
         </button>
+      </div>
+
+      {/* Filters */}
+      <div className="flex flex-wrap items-center gap-3">
+        <div className="flex items-center gap-1.5 text-xs text-slate-500">
+          <Filter className="w-3.5 h-3.5" />
+          Фильтры:
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          {PERIODS.map(p => (
+            <button
+              key={p.id}
+              onClick={() => setPeriod(p.id)}
+              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                period === p.id
+                  ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900 shadow-sm'
+                  : 'bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:hover:bg-slate-700'
+              }`}
+            >
+              {p.label}
+            </button>
+          ))}
+        </div>
+        {branches.length > 1 && (
+          <select
+            value={branchId}
+            onChange={e => setBranchId(e.target.value)}
+            className="text-xs bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-0 rounded-lg px-3 py-1.5 focus:ring-1 focus:ring-slate-400"
+          >
+            <option value="">Все филиалы</option>
+            {branches.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
+          </select>
+        )}
       </div>
 
       {!metrics ? (
@@ -123,159 +252,158 @@ export default function AdminGradebookAnalytics() {
         </div>
       ) : (
         <>
+          {/* KPI Cards */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            {/* Students Tracked */}
-            <div className="relative overflow-hidden bg-white dark:bg-[#151f2e] p-6 rounded-2xl border border-slate-200/80 dark:border-slate-700/50 shadow-sm hover:shadow-lg transition-shadow group">
-              <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
-                 <GraduationCap className="w-24 h-24 text-blue-500 -mr-8 -mt-8" />
-              </div>
-              <div className="relative z-10">
-                <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-400/20 to-indigo-500/20 flex items-center justify-center mb-4 ring-1 ring-blue-500/30">
-                  <GraduationCap className="w-6 h-6 text-blue-600 dark:text-blue-400" />
+            <div className="bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-200 dark:border-slate-700">
+              <div className="flex items-center justify-between mb-3">
+                <p className="text-sm font-medium text-slate-500">Студентов</p>
+                <div className="p-2 bg-slate-100 dark:bg-slate-700 rounded-lg">
+                  <GraduationCap className="w-4 h-4 text-slate-600 dark:text-slate-400" />
                 </div>
-                <p className="text-4xl font-black text-slate-900 dark:text-white mb-1">{students.length}</p>
-                <p className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Студентов</p>
               </div>
+              <h3 className="text-3xl font-bold text-slate-900 dark:text-white">{metrics.studentsCount}</h3>
             </div>
 
-            {/* Teachers Active */}
-            <div className="relative overflow-hidden bg-white dark:bg-[#151f2e] p-6 rounded-2xl border border-slate-200/80 dark:border-slate-700/50 shadow-sm hover:shadow-lg transition-shadow group">
-              <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
-                 <ClipboardList className="w-24 h-24 text-violet-500 -mr-8 -mt-8" />
-              </div>
-              <div className="relative z-10">
-                <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-violet-400/20 to-purple-500/20 flex items-center justify-center mb-4 ring-1 ring-violet-500/30">
-                  <ClipboardList className="w-6 h-6 text-violet-600 dark:text-violet-400" />
+            <div className="bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-200 dark:border-slate-700">
+              <div className="flex items-center justify-between mb-3">
+                <p className="text-sm font-medium text-slate-500">Преподавателей</p>
+                <div className="p-2 bg-slate-100 dark:bg-slate-700 rounded-lg">
+                  <BookOpen className="w-4 h-4 text-slate-600 dark:text-slate-400" />
                 </div>
-                <p className="text-4xl font-black text-slate-900 dark:text-white mb-1">{teachers.length}</p>
-                <p className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Преподавателей</p>
               </div>
+              <h3 className="text-3xl font-bold text-slate-900 dark:text-white">{teachers.length}</h3>
             </div>
 
-            {/* Grades + Journal entries */}
-            <div className="relative overflow-hidden bg-white dark:bg-[#151f2e] p-6 rounded-2xl border border-slate-200/80 dark:border-slate-700/50 shadow-sm hover:shadow-lg transition-shadow group">
-              <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
-                 <TrendingUp className="w-24 h-24 text-emerald-500 -mr-8 -mt-8" />
-              </div>
-              <div className="relative z-10">
-                <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-emerald-400/20 to-teal-500/20 flex items-center justify-center mb-4 ring-1 ring-emerald-500/30">
-                  <TrendingUp className="w-6 h-6 text-emerald-600 dark:text-emerald-400" />
+            <div className="bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-200 dark:border-slate-700">
+              <div className="flex items-center justify-between mb-3">
+                <p className="text-sm font-medium text-slate-500">Оценок</p>
+                <div className="p-2 bg-slate-100 dark:bg-slate-700 rounded-lg">
+                  <TrendingUp className="w-4 h-4 text-slate-600 dark:text-slate-400" />
                 </div>
-                <p className="text-4xl font-black text-slate-900 dark:text-white mb-1">{metrics.gradesCount}</p>
-                <p className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Оценок · {metrics.journalsCount} записей</p>
               </div>
+              <h3 className="text-3xl font-bold text-slate-900 dark:text-white">{metrics.gradesCount}</h3>
+              <p className="text-xs text-slate-400 mt-1">{metrics.journalsCount} {pluralize(metrics.journalsCount, 'запись', 'записи', 'записей')}</p>
             </div>
 
-            {/* Risk Card */}
-            <div className="relative overflow-hidden bg-gradient-to-br from-white to-red-50 dark:from-[#151f2e] dark:to-red-900/10 p-6 rounded-2xl border border-red-200/80 dark:border-red-900/40 shadow-sm hover:shadow-lg transition-shadow group">
-              <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
-                 <AlertTriangle className="w-24 h-24 text-red-500 -mr-8 -mt-8" />
-              </div>
-              <div className="relative z-10">
-                <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-red-400/20 to-rose-500/20 flex items-center justify-center mb-4 ring-1 ring-red-500/50">
-                  <AlertTriangle className="w-6 h-6 text-red-600 dark:text-red-400" />
+            <div className="bg-white dark:bg-slate-800 p-5 rounded-2xl border border-amber-200 dark:border-amber-900/50">
+              <div className="flex items-center justify-between mb-3">
+                <p className="text-sm font-medium text-amber-600 dark:text-amber-500">В зоне риска</p>
+                <div className="p-2 bg-amber-50 dark:bg-amber-900/30 rounded-lg">
+                  <AlertTriangle className="w-4 h-4 text-amber-600 dark:text-amber-500" />
                 </div>
-                <p className="text-4xl font-black text-red-600 dark:text-red-400 mb-1">{metrics.atRiskCount || 0}</p>
-                <p className="text-xs font-semibold uppercase tracking-wider text-red-500/80 dark:text-red-400/80">В зоне риска</p>
               </div>
+              <h3 className="text-3xl font-bold text-slate-900 dark:text-white">{metrics.atRiskCount || 0}</h3>
+              <p className="text-xs text-amber-500/70 mt-1">{metrics.atRiskCount > 0 ? 'Требуют внимания' : 'Все в норме'}</p>
             </div>
           </div>
 
+          {/* Bottom 2-col */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <div className="bg-white dark:bg-[#151f2e] p-6 rounded-2xl border border-slate-200/80 dark:border-slate-700/50 shadow-sm flex flex-col min-h-[400px]">
-              <div className="flex items-center gap-3 mb-6">
-                <div className="w-10 h-10 rounded-xl bg-red-500/10 flex items-center justify-center">
-                  <AlertTriangle className="w-5 h-5 text-red-500" />
+            {/* Risk Zone */}
+            <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl border border-slate-200 dark:border-slate-700 flex flex-col min-h-[380px]">
+              <div className="flex items-center gap-3 mb-5">
+                <div className="w-9 h-9 rounded-xl bg-amber-50 dark:bg-amber-900/30 flex items-center justify-center">
+                  <AlertTriangle className="w-4.5 h-4.5 text-amber-600 dark:text-amber-500" />
                 </div>
                 <div>
-                  <h3 className="text-lg font-bold text-slate-900 dark:text-white leading-tight">Зона риска</h3>
+                  <h3 className="text-base font-bold text-slate-900 dark:text-white leading-tight">Зона риска</h3>
                   <p className="text-xs text-slate-500">Студенты, требующие внимания</p>
                 </div>
               </div>
               
               {metrics.atRiskStudents.length > 0 ? (
-                <div className="space-y-3 flex-1 overflow-y-auto pr-2 custom-scrollbar">
-                  {metrics.atRiskStudents.map(student => (
-                    <div key={student.uid} className="flex items-center gap-4 p-3 bg-white dark:bg-slate-800/40 border border-slate-100 dark:border-slate-700/50 rounded-xl hover:border-red-200 dark:hover:border-red-500/30 transition-colors group">
-                      {student.avatarUrl ? (
-                        <img src={student.avatarUrl} alt="" className="w-12 h-12 rounded-full object-cover shrink-0 ring-2 ring-white dark:ring-slate-800 shadow-sm" />
-                      ) : (
-                        <div className="w-12 h-12 rounded-full bg-gradient-to-br from-red-400 to-rose-500 flex items-center justify-center text-white font-bold shrink-0 ring-2 ring-white dark:ring-slate-800 shadow-sm">
-                          {student.displayName?.[0] || '?'}
+                <div className="space-y-2 flex-1 overflow-y-auto">
+                  {metrics.atRiskStudents.map(student => {
+                    const stats = (student as any).riskStats;
+                    const reasons: string[] = [];
+                    if (stats.gradePercent < 60) reasons.push(`Успеваемость: ${Math.round(stats.gradePercent)}%`);
+                    if (stats.attPercent < 70) reasons.push(`Посещаемость: ${Math.round(stats.attPercent)}%`);
+
+                    return (
+                      <div key={student.uid} className="flex items-center gap-3 p-3 bg-slate-50 dark:bg-slate-900/50 border border-slate-100 dark:border-slate-700/50 rounded-xl">
+                        {student.avatarUrl ? (
+                          <img src={student.avatarUrl} alt="" className="w-10 h-10 rounded-full object-cover shrink-0" />
+                        ) : (
+                          <div className="w-10 h-10 rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center text-sm font-bold text-slate-600 dark:text-slate-300 shrink-0">
+                            {student.displayName?.[0] || '?'}
+                          </div>
+                        )}
+                        <div className="flex-1 min-w-0">
+                          <p className="font-semibold text-sm text-slate-900 dark:text-white truncate">{student.displayName}</p>
+                          <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                            {reasons.map(r => (
+                              <span key={r} className="text-[10px] font-medium px-1.5 py-0.5 bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-400 rounded-md flex items-center gap-1">
+                                <TrendingDown className="w-2.5 h-2.5" />{r}
+                              </span>
+                            ))}
+                          </div>
                         </div>
-                      )}
-                      <div className="flex-1 min-w-0">
-                        <p className="font-bold text-slate-900 dark:text-white truncate">{student.displayName}</p>
-                        <p className="text-xs text-slate-500 truncate">{student.email}</p>
                       </div>
-                      <button className="px-4 py-2 text-xs font-semibold text-rose-600 bg-rose-50 hover:bg-rose-100 dark:bg-rose-500/10 dark:text-rose-400 dark:hover:bg-rose-500/20 rounded-lg transition-colors opacity-0 group-hover:opacity-100 focus:opacity-100">
-                        Профиль
-                      </button>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               ) : (
                 <div className="flex-1 flex flex-col items-center justify-center text-slate-500/70">
-                  <div className="w-16 h-16 bg-emerald-500/10 rounded-full flex items-center justify-center mb-4">
-                    <CheckCircle2 className="w-8 h-8 text-emerald-500" />
+                  <div className="w-14 h-14 bg-emerald-50 dark:bg-emerald-900/20 rounded-full flex items-center justify-center mb-3">
+                    <CheckCircle2 className="w-7 h-7 text-emerald-500" />
                   </div>
-                  <p className="font-medium text-slate-700 dark:text-slate-300">Всё отлично!</p>
-                  <p className="text-sm">Нет студентов в зоне риска</p>
+                  <p className="font-medium text-sm text-slate-700 dark:text-slate-300">Всё отлично!</p>
+                  <p className="text-xs text-slate-400">Нет студентов в зоне риска</p>
                 </div>
               )}
             </div>
             
-            <div className="bg-white dark:bg-[#151f2e] p-6 rounded-2xl border border-slate-200/80 dark:border-slate-700/50 shadow-sm flex flex-col min-h-[400px]">
-              <div className="flex items-center gap-3 mb-6">
-                 <div className="w-10 h-10 rounded-xl bg-blue-500/10 flex items-center justify-center">
-                    <ClipboardList className="w-5 h-5 text-blue-500" />
-                 </div>
-                 <div>
-                    <h3 className="text-lg font-bold text-slate-900 dark:text-white leading-tight">Активность учителей</h3>
-                    <p className="text-xs text-slate-500">Оценки и журналы</p>
-                 </div>
+            {/* Teacher Activity */}
+            <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl border border-slate-200 dark:border-slate-700 flex flex-col min-h-[380px]">
+              <div className="flex items-center gap-3 mb-5">
+                <div className="w-9 h-9 rounded-xl bg-slate-100 dark:bg-slate-700 flex items-center justify-center">
+                  <ClipboardList className="w-4.5 h-4.5 text-slate-600 dark:text-slate-400" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-slate-900 dark:text-white leading-tight">Активность учителей</h3>
+                  <p className="text-xs text-slate-500">Оценки и журналы</p>
+                </div>
               </div>
               
-              <div className="space-y-5 flex-1 overflow-y-auto pr-2 custom-scrollbar">
-                 {teachers.map(teacher => {
-                   const tGrades = grades.filter(g => g.createdBy === teacher.uid).length;
-                   const tJournals = journals.filter(j => j.createdBy === teacher.uid).length;
-                   const totalActions = tGrades + tJournals;
-                   // Use logarithmic/capped scale for visual progress (max 100 actions = 100%)
-                   const displayWidth = Math.min((totalActions / 100) * 100, 100) || 2; 
-                   
-                   return (
-                     <div key={teacher.uid} className="flex flex-col gap-2 group">
-                       <div className="flex justify-between items-center text-sm">
-                         <div className="flex items-center gap-2">
-                           {teacher.avatarUrl ? (
-                              <img src={teacher.avatarUrl} alt="" className="w-6 h-6 rounded-full object-cover shrink-0" />
-                           ) : (
-                              <div className="w-6 h-6 rounded-full bg-slate-100 dark:bg-slate-700 flex items-center justify-center text-[10px] font-bold text-slate-500 shrink-0">
-                                {teacher.displayName?.[0] || '?'}
-                              </div>
-                           )}
-                           <span className="font-semibold text-slate-800 dark:text-slate-200">{teacher.displayName}</span>
-                         </div>
-                         <span className="text-xs font-medium text-slate-500 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-md">{totalActions} действий</span>
-                       </div>
-                       <div className="h-2.5 w-full bg-slate-100 dark:bg-slate-800/80 rounded-full overflow-hidden flex ring-1 ring-inset ring-slate-900/5 dark:ring-white/5">
-                         <div 
-                           className="h-full bg-gradient-to-r from-blue-500 to-indigo-500 transition-all duration-500 ease-out flex group-hover:opacity-90" 
-                           style={{ width: `${displayWidth}%` }}
-                         >
-                           {tGrades > 0 && <div className="h-full bg-indigo-500/50" style={{ width: `${(tGrades/totalActions)*100}%` }} title={`Оценки: ${tGrades}`} />}
-                           {tJournals > 0 && <div className="h-full bg-blue-400/50" style={{ width: `${(tJournals/totalActions)*100}%` }} title={`Журнал: ${tJournals}`} />}
-                         </div>
-                       </div>
-                     </div>
-                   );
-                 })}
-                 {teachers.length === 0 && (
-                   <div className="flex-1 flex flex-col items-center justify-center text-slate-500/70 h-full py-10">
-                     <p>Нет закрепленных учителей</p>
-                   </div>
-                 )}
+              <div className="space-y-4 flex-1 overflow-y-auto">
+                {teachers.map(teacher => {
+                  const { grades: fg, journals: fj } = filteredData;
+                  const tGrades = fg.filter(g => g.createdBy === teacher.uid).length;
+                  const tJournals = fj.filter(j => j.createdBy === teacher.uid).length;
+                  const totalActions = tGrades + tJournals;
+                  const displayWidth = Math.min((totalActions / 100) * 100, 100) || 2; 
+                  
+                  return (
+                    <div key={teacher.uid} className="flex flex-col gap-1.5">
+                      <div className="flex justify-between items-center text-sm">
+                        <div className="flex items-center gap-2">
+                          {teacher.avatarUrl ? (
+                            <img src={teacher.avatarUrl} alt="" className="w-6 h-6 rounded-full object-cover shrink-0" />
+                          ) : (
+                            <div className="w-6 h-6 rounded-full bg-slate-100 dark:bg-slate-700 flex items-center justify-center text-[10px] font-bold text-slate-500 shrink-0">
+                              {teacher.displayName?.[0] || '?'}
+                            </div>
+                          )}
+                          <span className="font-medium text-slate-800 dark:text-slate-200">{teacher.displayName}</span>
+                        </div>
+                        <span className="text-xs font-medium text-slate-500 bg-slate-100 dark:bg-slate-700 px-2 py-0.5 rounded-md">
+                          {totalActions} {pluralize(totalActions, 'действие', 'действия', 'действий')}
+                        </span>
+                      </div>
+                      <div className="h-2 w-full bg-slate-100 dark:bg-slate-700 rounded-full overflow-hidden">
+                        <div 
+                          className="h-full bg-slate-900 dark:bg-white/80 rounded-full transition-all duration-500 ease-out" 
+                          style={{ width: `${displayWidth}%` }}
+                        />
+                      </div>
+                    </div>
+                  );
+                })}
+                {teachers.length === 0 && (
+                  <div className="flex-1 flex flex-col items-center justify-center text-slate-400 h-full py-10">
+                    <p className="text-sm">Нет закрепленных учителей</p>
+                  </div>
+                )}
               </div>
             </div>
           </div>

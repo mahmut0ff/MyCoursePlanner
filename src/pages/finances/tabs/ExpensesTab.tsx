@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { apiGetTransactions, apiCreateTransaction, apiDeleteTransaction } from '../../../lib/api';
-import { Plus, Search, Calendar as CalendarIcon, FileText, Trash2, X } from 'lucide-react';
+import { Plus, Search, Calendar as CalendarIcon, FileText, Trash2, X, Download } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 const EXPENSE_CATEGORIES = [
@@ -87,6 +87,25 @@ const ExpensesTab: React.FC = () => {
   // Stats
   const totalExpenses = filtered.reduce((sum, tx) => sum + (tx.amount || 0), 0);
 
+  // CSV Export
+  const handleExportCSV = () => {
+    if (filtered.length === 0) return;
+    const header = 'Дата,Категория,Сумма,Способ оплаты,Описание\n';
+    const rows = filtered.map(tx => {
+      const date = new Date(tx.date).toLocaleDateString();
+      const cat = getCategoryLabel(tx.categoryId);
+      const method = tx.paymentMethod === 'card' ? 'Карта' : tx.paymentMethod === 'transfer' ? 'Перевод' : 'Наличные';
+      return `${date},${cat},${tx.amount},${method},"${tx.description || ''}"`;
+    }).join('\n');
+    const blob = new Blob(['\uFEFF' + header + rows], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'expenses.csv';
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   return (
     <div className="space-y-4">
       {/* Stats */}
@@ -122,13 +141,21 @@ const ExpensesTab: React.FC = () => {
             ))}
           </select>
         </div>
-        <button
-          onClick={() => setShowModal(true)}
-          className="bg-rose-500 hover:bg-rose-600 text-white px-4 py-2.5 rounded-xl text-sm font-medium flex items-center gap-2 transition-all shrink-0"
-        >
-          <Plus className="w-4 h-4" />
-          {t('finances.addExpense', 'Добавить Расход')}
-        </button>
+        <div className="flex items-center gap-2">
+          {filtered.length > 0 && (
+            <button onClick={handleExportCSV}
+              className="text-slate-500 hover:text-slate-700 dark:hover:text-white bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 px-3 py-2.5 rounded-xl text-sm font-medium flex items-center gap-1.5 transition-colors shrink-0">
+              <Download className="w-3.5 h-3.5" />CSV
+            </button>
+          )}
+          <button
+            onClick={() => setShowModal(true)}
+            className="bg-rose-500 hover:bg-rose-600 text-white px-4 py-2.5 rounded-xl text-sm font-medium flex items-center gap-2 transition-all shrink-0"
+          >
+            <Plus className="w-4 h-4" />
+            {t('finances.addExpense', 'Добавить Расход')}
+          </button>
+        </div>
       </div>
 
       {/* Table */}

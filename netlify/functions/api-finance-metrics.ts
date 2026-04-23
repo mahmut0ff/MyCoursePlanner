@@ -1,9 +1,45 @@
 /**
  * API: Finance Metrics — Aggregations for SaaS Dashboards.
+ * Supports period filtering: current_month, last_month, quarter, year, all
  */
 import type { Handler, HandlerEvent } from '@netlify/functions';
 import { adminDb } from './utils/firebase-admin';
 import { verifyAuth, isStaff, hasPermission, getOrgFilter, resolveBranchFilter, ok, unauthorized, forbidden, badRequest, jsonResponse } from './utils/auth';
+
+function getPeriodRange(period: string): { startIso: string; endIso: string } {
+  const now = new Date();
+  let start: Date;
+  const end = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
+
+  switch (period) {
+    case 'last_month': {
+      start = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+      const lastDay = new Date(now.getFullYear(), now.getMonth(), 0);
+      return { startIso: start.toISOString(), endIso: lastDay.toISOString() };
+    }
+    case 'quarter': {
+      const qMonth = Math.floor(now.getMonth() / 3) * 3;
+      start = new Date(now.getFullYear(), qMonth, 1);
+      break;
+    }
+    case 'half_year':
+      start = new Date(now.getFullYear(), now.getMonth() - 6, 1);
+      break;
+    case 'year':
+      start = new Date(now.getFullYear(), 0, 1);
+      break;
+    case 'all':
+      start = new Date(2020, 0, 1);
+      break;
+    case 'current_month':
+    default:
+      start = new Date(now.getFullYear(), now.getMonth(), 1);
+      break;
+  }
+
+  start.setHours(0, 0, 0, 0);
+  return { startIso: start.toISOString(), endIso: end.toISOString() };
+}
 
 const handler: Handler = async (event: HandlerEvent) => {
   if (event.httpMethod === 'OPTIONS') return jsonResponse(204, '');
@@ -24,10 +60,8 @@ const handler: Handler = async (event: HandlerEvent) => {
       const branchFilter = resolveBranchFilter(user, params.branchId);
       if (branchFilter === '__DENIED__') return forbidden('Access denied');
 
-      const startOfMonth = new Date();
-      startOfMonth.setDate(1);
-      startOfMonth.setHours(0,0,0,0);
-      const startIso = startOfMonth.toISOString();
+      const period = params.period || 'current_month';
+      const { startIso, endIso } = getPeriodRange(period);
 
       // Fetch transactions and payment plans in parallel for speed
       const [trxsSnap, plansSnap] = await Promise.all([
@@ -42,8 +76,8 @@ const handler: Handler = async (event: HandlerEvent) => {
       
       trxsSnap.docs.forEach(d => {
         const data = d.data();
-        // date filter
-        if (data.date < startIso) return;
+        // date filter — within selected period
+        if (data.date < startIso || data.date > endIso) return;
         
         // branch filter
         if (typeof branchFilter === 'string' && data.branchId !== branchFilter) return;
@@ -58,6 +92,7 @@ const handler: Handler = async (event: HandlerEvent) => {
       let totalActiveDebt = 0;
       let overdueCount = 0;
       const invalidStatuses = ['paid'];
+      const nowIso = new Date().toISOString();
 
       plansSnap.docs.forEach(d => {
         const data = d.data();
@@ -70,15 +105,18 @@ const handler: Handler = async (event: HandlerEvent) => {
         const debt = (data.totalAmount || 0) - (data.paidAmount || 0);
         if (debt > 0) {
           totalActiveDebt += debt;
-          if (data.status === 'overdue') overdueCount++;
+          // Auto-detect overdue: if deadline passed and not paid
+          if (data.status === 'overdue' || (data.deadline && data.deadline < nowIso && data.status !== 'paid')) {
+            overdueCount++;
+          }
         }
       });
 
-      // Build daily chart data for the current month
+      // Build daily chart data for the selected period
       const dailyMap = new Map<string, { income: number; expense: number }>();
       trxsSnap.docs.forEach(d => {
         const data = d.data();
-        if (data.date < startIso) return;
+        if (data.date < startIso || data.date > endIso) return;
         if (typeof branchFilter === 'string' && data.branchId !== branchFilter) return;
         if (Array.isArray(branchFilter) && branchFilter.length > 0 && !branchFilter.includes(data.branchId)) return;
 
@@ -95,7 +133,7 @@ const handler: Handler = async (event: HandlerEvent) => {
         .map(([date, vals]) => ({ date, ...vals }));
 
       return ok({
-        period: 'current_month',
+        period,
         totalIncome,
         totalExpense,
         netProfit,

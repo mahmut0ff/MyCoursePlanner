@@ -95,6 +95,26 @@ const handler: Handler = async (event: HandlerEvent) => {
       if (params.status) {
         results = results.filter(r => r.status === params.status);
       }
+
+      // ── Auto-detect overdue: update plans whose deadline has passed ──
+      const nowIso = new Date().toISOString();
+      const overdueUpdates: Promise<void>[] = [];
+      for (const r of results) {
+        if (
+          r.deadline &&
+          r.deadline < nowIso &&
+          (r.status === 'pending' || r.status === 'partial')
+        ) {
+          r.status = 'overdue';
+          overdueUpdates.push(
+            adminDb.collection(COLLECTION).doc(r.id).update({ status: 'overdue', updatedAt: nowIso }).then(() => {}).catch(() => {})
+          );
+        }
+      }
+      // Fire-and-forget batch update (don't block response)
+      if (overdueUpdates.length > 0) {
+        Promise.all(overdueUpdates).catch(() => {});
+      }
       
       // Memory sort
       results.sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());

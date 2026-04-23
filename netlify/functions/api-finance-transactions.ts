@@ -43,6 +43,9 @@ const handler: Handler = async (event: HandlerEvent) => {
 
       if (params.startDate) results = results.filter(r => (r.date || '') >= params.startDate!);
       if (params.endDate) results = results.filter(r => (r.date || '') <= params.endDate!);
+      if (params.paymentPlanId) results = results.filter(r => r.paymentPlanId === params.paymentPlanId);
+      if (params.studentId) results = results.filter(r => r.studentId === params.studentId);
+      if (params.type) results = results.filter(r => r.type === params.type);
       
       // Memory sort by date DESC
       results.sort((a, b) => new Date(b.date || 0).getTime() - new Date(a.date || 0).getTime());

@@ -2,7 +2,7 @@ import React, { useEffect, useState, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { apiGetPaymentPlans, apiCreatePaymentPlan, apiCreateTransaction, apiGetTransactions, apiDeletePaymentPlan } from '../../../lib/api';
 import { orgGetStudents } from '../../../lib/api';
-import { CheckCircle2, AlertCircle, Clock, Search, Plus, CreditCard, History, X, Users, Trash2 } from 'lucide-react';
+import { CheckCircle2, AlertCircle, Clock, Search, Plus, CreditCard, History, X, Users, Trash2, Download } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 interface PaymentPlan {
@@ -172,17 +172,14 @@ const IncomeTab: React.FC = () => {
     } catch (e: any) { toast.error(e.message); }
   };
 
-  // PAYMENT HISTORY
+  // PAYMENT HISTORY — server-side filtering
   const openHistory = async (plan: PaymentPlan) => {
     setSelectedPlan(plan);
     setModal('history');
     setHistoryLoading(true);
     try {
-      const txs = await apiGetTransactions();
-      const filtered = (Array.isArray(txs) ? txs : []).filter((tx: Transaction) =>
-        tx.paymentPlanId === plan.id || (tx.studentId === plan.studentId && tx.type === 'income')
-      );
-      setHistory(filtered);
+      const txs = await apiGetTransactions({ paymentPlanId: plan.id } as any);
+      setHistory(Array.isArray(txs) ? txs : []);
     } catch { setHistory([]); }
     finally { setHistoryLoading(false); }
   };
@@ -200,6 +197,24 @@ const IncomeTab: React.FC = () => {
   const totalDebt = plans.reduce((sum, p) => sum + Math.max(0, p.totalAmount - p.paidAmount), 0);
   const overdueCount = plans.filter(p => p.status === 'overdue').length;
   const paidCount = plans.filter(p => p.status === 'paid').length;
+
+  // CSV Export
+  const handleExportCSV = () => {
+    if (filtered.length === 0) return;
+    const header = 'Студент,Курс,Сумма,Оплачено,Долг,Статус,Дедлайн\n';
+    const rows = filtered.map(p => {
+      const debt = Math.max(0, p.totalAmount - p.paidAmount);
+      const statusLabel = statusConfig[p.status]?.label || p.status;
+      return `"${p.studentName || p.studentId}","${p.courseName || p.courseId || ''}",${p.totalAmount},${p.paidAmount},${debt},${statusLabel},${p.deadline || ''}`;
+    }).join('\n');
+    const blob = new Blob(['\uFEFF' + header + rows], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'payment_plans.csv';
+    a.click();
+    URL.revokeObjectURL(url);
+  };
 
   return (
     <div className="space-y-4">
@@ -247,6 +262,12 @@ const IncomeTab: React.FC = () => {
             <option value="paid">Оплачено</option>
           </select>
         </div>
+        {filtered.length > 0 && (
+          <button onClick={handleExportCSV}
+            className="text-slate-500 hover:text-slate-700 dark:hover:text-white bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 px-3 py-2.5 rounded-xl text-sm font-medium flex items-center gap-1.5 transition-colors shrink-0">
+            <Download className="w-3.5 h-3.5" />CSV
+          </button>
+        )}
         <button onClick={openCreateModal}
           className="bg-emerald-500 hover:bg-emerald-600 text-white px-4 py-2.5 rounded-xl text-sm font-medium flex items-center gap-2 transition-all shadow-sm shrink-0">
           <Plus className="w-4 h-4" />{t('finances.createPlan', 'Новый счёт')}

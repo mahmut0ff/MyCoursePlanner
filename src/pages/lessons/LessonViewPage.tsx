@@ -61,7 +61,7 @@ const LessonViewPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { t } = useTranslation();
-  const { role, profile, firebaseUser: user } = useAuth();
+  const { role, profile } = useAuth();
   const [lesson, setLesson] = useState<LessonPlan | null>(null);
   const [loading, setLoading] = useState(true);
   const [viewerFile, setViewerFile] = useState<{ name: string; url: string; type: string } | null>(null);

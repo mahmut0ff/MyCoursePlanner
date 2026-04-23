@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { getExams } from '../../services/exams.service';
 import type { Exam } from '../../types';
-import { formatDate } from '../../utils/grading';
+
 import { Plus, ClipboardList, Search, Clock, HelpCircle, FileText, Filter } from 'lucide-react';
 import { usePlanGate } from '../../contexts/PlanContext';
 import { useAuth } from '../../contexts/AuthContext';

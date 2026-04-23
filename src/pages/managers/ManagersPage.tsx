@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { orgGetManagers, orgCreateManager, apiRemoveMember, apiDeleteMember } from '../../lib/api';
-import { UserPlus, Search, Mail, RefreshCw, Phone, ShieldCheck, Lock, User, Trash2, UserMinus, Plus } from 'lucide-react';
+import { UserPlus, Search, Mail, RefreshCw, Phone, ShieldCheck, Lock, User, Trash2, UserMinus } from 'lucide-react';
 import type { UserProfile } from '../../types';
 import { useAuth } from '../../contexts/AuthContext';
 import toast from 'react-hot-toast';

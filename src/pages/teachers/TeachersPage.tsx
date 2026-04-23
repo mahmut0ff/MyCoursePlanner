@@ -11,7 +11,7 @@ import {
 } from '../../lib/api';
 import { usePlanGate } from '../../contexts/PlanContext';
 import { useAuth } from '../../contexts/AuthContext';
-import { UserPlus, Search, Mail, RefreshCw, Send, Phone, CheckCircle, XCircle, Lightbulb, Link as LinkIcon, Copy, X, Plus } from 'lucide-react';
+import { UserPlus, Search, Mail, RefreshCw, Send, Phone, CheckCircle, XCircle, Lightbulb, Link as LinkIcon, Copy, X } from 'lucide-react';
 import toast from 'react-hot-toast';
 import type { UserProfile } from '../../types';
 import EmptyState from '../../components/ui/EmptyState';

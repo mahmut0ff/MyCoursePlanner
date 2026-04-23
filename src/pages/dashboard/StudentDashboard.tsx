@@ -5,7 +5,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { apiGetDashboard, orgGetTimetable, orgGetSchedule, orgGetGroups, orgGetCourses, apiGetMyMemberships, apiPublicJoin } from '../../lib/api';
 import type { LessonPlan, ExamAttempt, ScheduleEvent, Group, Course } from '../../types';
 import { formatDate } from '../../utils/grading';
-import { BookOpen, Trophy, XCircle, Brain, Target, BarChart3, Flame, Search, Gamepad2, Play, Clock, MapPin, CalendarCheck, ArrowRight, GraduationCap, Building2, Hourglass, CheckCircle2, RefreshCw, UsersRound, UserPlus, Award } from 'lucide-react';
+import { BookOpen, Trophy, XCircle, Brain, Target, BarChart3, Flame, Search, Play, Clock, MapPin, CalendarCheck, ArrowRight, GraduationCap, Building2, Hourglass, CheckCircle2, RefreshCw, UsersRound, UserPlus, Award } from 'lucide-react';
 import { DashboardSkeleton } from '../../components/ui/Skeleton';
 import GamificationWidget from '../../components/gamification/GamificationWidget';
 import LeaderboardWidget from '../../components/gamification/LeaderboardWidget';

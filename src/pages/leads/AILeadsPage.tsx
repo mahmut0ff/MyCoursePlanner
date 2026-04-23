@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { collection, query, orderBy, onSnapshot, doc, updateDoc, deleteDoc, addDoc } from 'firebase/firestore';
 import { db } from '../../lib/firebase';
 import { useAuth } from '../../contexts/AuthContext';
-import { Loader2, Calendar, Phone, User, MessageSquare, CheckCircle, Clock, Trash2, Plus, X, Inbox, Target } from 'lucide-react';
+import { Phone, MessageSquare, CheckCircle, Clock, Trash2, Plus, X, Inbox, Target, ChevronDown } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { format } from 'date-fns';
 
@@ -27,10 +27,24 @@ interface AILead {
   createdAt: string;
 }
 
+const STATUS_CFG: Record<string, { label: string; icon: React.ReactNode; cls: string }> = {
+  new:       { label: 'Новая',       icon: <Clock className="w-3 h-3" />,          cls: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' },
+  contacted: { label: 'В обработке', icon: <MessageSquare className="w-3 h-3" />,  cls: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400' },
+  resolved:  { label: 'Закрыта',     icon: <CheckCircle className="w-3 h-3" />,    cls: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400' },
+};
+
+const SOURCE_LABEL: Record<string, string> = {
+  telegram_bot: 'TG BOT',
+  test_link:    'PUBLIC TEST',
+  web_chat:     'WEB CHAT',
+  manual:       'ВРУЧНУЮ',
+};
+
 const AILeadsPage: React.FC = () => {
   const { organizationId, profile, firebaseUser } = useAuth();
   const [leads, setLeads] = useState<AILead[]>([]);
   const [loading, setLoading] = useState(true);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
   
   // Modal state
   const [modalOpen, setModalOpen] = useState(false);
@@ -145,135 +159,151 @@ const AILeadsPage: React.FC = () => {
   if (loading) {
     return (
       <div className="flex h-64 items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin text-primary-500" />
+        <div className="w-8 h-8 border-4 border-slate-200 border-t-slate-600 rounded-full animate-spin dark:border-slate-700 dark:border-t-slate-400" />
       </div>
     );
   }
 
   return (
-    <div className="space-y-6 max-w-6xl mx-auto">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+    <div className="space-y-5 max-w-5xl mx-auto">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
-            <Inbox className="w-7 h-7 text-primary-500" />
-            Заявки
-          </h1>
-          <p className="text-slate-500 mt-1">Входящие заявки от клиентов, телеграм-бота и AI-ассистента.</p>
+          <h1 className="text-xl font-bold text-slate-900 dark:text-white">Заявки</h1>
+          <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">
+            Входящие заявки от клиентов, телеграм-бота и AI-ассистента.
+          </p>
         </div>
-        
-        <button 
+        <button
           onClick={() => setModalOpen(true)}
-          className="btn-primary flex items-center justify-center"
+          className="h-9 px-4 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-lg text-sm font-semibold hover:opacity-90 transition-opacity flex items-center gap-1.5 shrink-0"
         >
-          <Plus className="w-4 h-4 mr-2" />
-          Добавить заявку
+          <Plus className="w-4 h-4" />
+          Добавить
         </button>
       </div>
 
+      {/* List */}
       {leads.length === 0 ? (
-        <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-12 text-center text-slate-500">
+        <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-12 text-center">
           <Inbox className="w-12 h-12 mx-auto text-slate-300 dark:text-slate-600 mb-4" />
-          <p className="text-lg font-medium">Пока нет заявок</p>
-          <p className="text-sm">Как только клиент оставит заявку или вы добавите её вручную, она появится здесь.</p>
+          <p className="text-lg font-semibold text-slate-700 dark:text-slate-200">Пока нет заявок</p>
+          <p className="text-sm text-slate-400 mt-1">Как только клиент оставит заявку, она появится здесь.</p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-          {leads.map(lead => (
-            <div key={lead.id} className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 mt-2 rounded-2xl p-5 shadow-sm hover:shadow-md transition-shadow relative group">
-              <div className="flex items-center justify-between mb-4 mt-2">
-                <span className={`px-2.5 py-1 text-xs font-semibold rounded-full flex items-center gap-1
-                  ${lead.status === 'new' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' : ''}
-                  ${lead.status === 'contacted' ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400' : ''}
-                  ${lead.status === 'resolved' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400' : ''}
-                `}>
-                  {lead.status === 'new' && <Clock className="w-3.5 h-3.5" />}
-                  {lead.status === 'contacted' && <MessageSquare className="w-3.5 h-3.5" />}
-                  {lead.status === 'resolved' && <CheckCircle className="w-3.5 h-3.5" />}
-                  {lead.status === 'new' ? 'Новая' : lead.status === 'contacted' ? 'В обработке' : 'Закрыта'}
-                </span>
-                <span className="text-xs text-slate-400 font-medium whitespace-nowrap">
-                  {format(new Date(lead.createdAt), 'dd.MM.yyyy HH:mm')}
-                </span>
-              </div>
-              
-              <div className="space-y-3 mb-5">
-                <div className="flex items-start gap-3">
-                  <User className="w-5 h-5 text-slate-400 shrink-0 mt-0.5" />
-                  <div>
-                    <p className="font-semibold text-slate-900 dark:text-white">{lead.name}</p>
-                    <p className="text-xs text-slate-500">Имя клиента</p>
-                  </div>
-                </div>
-                
-                <div className="flex items-start gap-3">
-                  <Phone className="w-5 h-5 text-slate-400 shrink-0 mt-0.5" />
-                  <div>
-                    <a href={`tel:${lead.phone}`} className="font-semibold text-primary-600 dark:text-primary-400 hover:underline">{lead.phone}</a>
-                    <p className="text-xs text-slate-500">Телефон</p>
-                  </div>
-                </div>
-                
-                <div className="flex items-start gap-3">
-                  <Calendar className="w-5 h-5 text-slate-400 shrink-0 mt-0.5" />
-                  <div>
-                    <p className="font-medium text-sm text-slate-700 dark:text-slate-300 line-clamp-3">{lead.reason}</p>
-                    <p className="text-xs text-slate-500">Цель заявки</p>
-                  </div>
-                </div>
-              </div>
+        <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl overflow-hidden">
+          {leads.map((lead, idx) => {
+            const cfg = STATUS_CFG[lead.status] || STATUS_CFG.new;
+            const isExpanded = expandedId === lead.id;
+            const srcLabel = lead.source === 'manual' && lead.createdBy ? lead.createdBy : SOURCE_LABEL[lead.source] || lead.source;
 
-              {lead.testResult && (
-                <div className="mb-5 bg-indigo-50 dark:bg-indigo-900/10 border border-indigo-100 dark:border-indigo-800/30 rounded-xl p-4 relative overflow-hidden">
-                  <div className="absolute top-0 right-0 p-3 opacity-10">
-                    <Target className="w-16 h-16 text-indigo-500" />
-                  </div>
-                  <p className="text-[10px] font-bold text-indigo-400 uppercase tracking-widest mb-1">Результат тестирования</p>
-                  <p className="font-semibold text-sm text-indigo-900 dark:text-indigo-200 mb-2 truncate pr-6">{lead.testResult.examTitle}</p>
-                  <div className="flex items-end gap-2">
-                    <span className="text-2xl font-black text-indigo-600 dark:text-indigo-400 leading-none">{lead.testResult.percentage}%</span>
-                    <span className="text-xs font-medium text-indigo-500/70 pb-0.5">{lead.testResult.score} / {lead.testResult.maxScore} баллов</span>
-                  </div>
+            return (
+              <div
+                key={lead.id}
+                className={`${idx > 0 ? 'border-t border-slate-100 dark:border-slate-700/60' : ''}`}
+              >
+                {/* Main row */}
+                <div className="flex items-center gap-3 px-4 py-3 sm:px-5 hover:bg-slate-50 dark:hover:bg-slate-700/30 transition-colors">
+                  {/* Status badge */}
+                  <span className={`hidden sm:inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide rounded-md shrink-0 ${cfg.cls}`}>
+                    {cfg.icon} {cfg.label}
+                  </span>
 
-                  {lead.testResult.aiFeedback && (
-                    <div className="mt-3 pt-3 border-t border-indigo-200/50 dark:border-indigo-800/50 relative z-10">
-                      <p className="text-[11px] font-bold text-indigo-700 dark:text-indigo-300 mb-1 flex items-center gap-1.5 uppercase tracking-wide">
-                        ✨ AI Анализ
-                      </p>
-                      <p className="text-xs text-indigo-800 dark:text-indigo-200 leading-relaxed italic">
-                        "{lead.testResult.aiFeedback.teacherNotes || lead.testResult.aiFeedback.summary}"
-                      </p>
+                  {/* Name */}
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold text-slate-900 dark:text-white truncate">{lead.name}</p>
+                    <div className="flex items-center gap-2 mt-0.5">
+                      {/* Mobile status */}
+                      <span className={`sm:hidden inline-flex items-center gap-0.5 text-[10px] font-bold ${cfg.cls} px-1.5 py-0.5 rounded`}>{cfg.icon} {cfg.label}</span>
+                      <a href={`tel:${lead.phone}`} className="text-xs text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 transition-colors flex items-center gap-1">
+                        <Phone className="w-3 h-3" />{lead.phone}
+                      </a>
                     </div>
-                  )}
+                  </div>
+
+                  {/* Source tag */}
+                  <span className="hidden md:inline-block text-[9px] font-bold uppercase tracking-wider bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400 px-2 py-0.5 rounded-md shrink-0">
+                    {srcLabel}
+                  </span>
+
+                  {/* Date */}
+                  <span className="text-[11px] text-slate-400 font-medium whitespace-nowrap shrink-0 hidden sm:block">
+                    {format(new Date(lead.createdAt), 'dd.MM.yyyy HH:mm')}
+                  </span>
+
+                  {/* Status select */}
+                  <select
+                    value={lead.status}
+                    onChange={(e) => updateStatus(lead.id, e.target.value)}
+                    className="h-8 pl-2 pr-6 text-xs font-medium rounded-lg border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-900/50 text-slate-700 dark:text-slate-300 cursor-pointer focus:outline-none focus:ring-1 focus:ring-slate-300 dark:focus:ring-slate-500 shrink-0"
+                  >
+                    <option value="new">Новая</option>
+                    <option value="contacted">Связались</option>
+                    <option value="resolved">Закрыта</option>
+                  </select>
+
+                  {/* Expand reason */}
+                  <button
+                    onClick={() => setExpandedId(isExpanded ? null : lead.id)}
+                    className={`w-7 h-7 flex items-center justify-center rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 transition-all shrink-0 ${isExpanded ? 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300' : ''}`}
+                    title="Показать цель заявки"
+                  >
+                    <ChevronDown className={`w-4 h-4 transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`} />
+                  </button>
+
+                  {/* Delete */}
+                  <button
+                    onClick={() => deleteLead(lead.id)}
+                    className="w-7 h-7 flex items-center justify-center rounded-lg text-slate-300 hover:text-red-500 hover:bg-red-50 dark:text-slate-600 dark:hover:text-red-400 dark:hover:bg-red-900/20 transition-colors shrink-0"
+                    title="Удалить"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
                 </div>
-              )}
-              
-              <div className="pt-4 border-t border-slate-100 dark:border-slate-700 flex gap-2">
-                <select 
-                  value={lead.status}
-                  onChange={(e) => updateStatus(lead.id, e.target.value)}
-                  className="input py-1.5 px-3 text-sm flex-1 bg-slate-50 dark:bg-slate-900/50"
-                  style={{ height: '36px' }}
-                >
-                  <option value="new">Новая</option>
-                  <option value="contacted">Связались</option>
-                  <option value="resolved">Успешно закрыта</option>
-                </select>
-                
-                <button 
-                  onClick={() => deleteLead(lead.id)}
-                  className="w-9 h-9 flex items-center justify-center text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors border border-transparent hover:border-red-100 dark:hover:border-red-800/30"
-                  title="Удалить заявку"
-                >
-                  <Trash2 className="w-4 h-4" />
-                </button>
+
+                {/* Collapsible reason + test result */}
+                {isExpanded && (
+                  <div className="px-5 pb-4 pt-1 bg-slate-50/50 dark:bg-slate-900/20 border-t border-slate-100/80 dark:border-slate-700/40 animate-in fade-in slide-in-from-top-1 duration-200">
+                    {/* Reason */}
+                    <div className="mb-2">
+                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Цель заявки</p>
+                      <p className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed">{lead.reason}</p>
+                    </div>
+
+                    {/* Mobile-only: date + source */}
+                    <div className="flex items-center gap-3 sm:hidden mt-2 mb-2">
+                      <span className="text-[11px] text-slate-400">{format(new Date(lead.createdAt), 'dd.MM.yyyy HH:mm')}</span>
+                      <span className="text-[9px] font-bold uppercase tracking-wider bg-slate-200 dark:bg-slate-700 text-slate-500 dark:text-slate-400 px-1.5 py-0.5 rounded">{srcLabel}</span>
+                    </div>
+
+                    {/* Test result */}
+                    {lead.testResult && (
+                      <div className="mt-3 bg-white dark:bg-slate-800 border border-indigo-100 dark:border-indigo-800/30 rounded-xl p-3.5 relative overflow-hidden">
+                        <div className="absolute top-0 right-0 p-2 opacity-5">
+                          <Target className="w-12 h-12 text-indigo-500" />
+                        </div>
+                        <p className="text-[10px] font-bold text-indigo-400 uppercase tracking-widest mb-1">Результат тестирования</p>
+                        <p className="font-semibold text-sm text-slate-900 dark:text-slate-100 mb-1.5 truncate pr-6">{lead.testResult.examTitle}</p>
+                        <div className="flex items-end gap-2">
+                          <span className="text-xl font-black text-indigo-600 dark:text-indigo-400 leading-none">{lead.testResult.percentage}%</span>
+                          <span className="text-xs font-medium text-slate-400 pb-0.5">{lead.testResult.score} / {lead.testResult.maxScore}</span>
+                        </div>
+
+                        {lead.testResult.aiFeedback && (
+                          <div className="mt-2.5 pt-2.5 border-t border-slate-100 dark:border-slate-700">
+                            <p className="text-[10px] font-bold text-indigo-500 dark:text-indigo-400 mb-0.5 uppercase tracking-wide">✨ AI Анализ</p>
+                            <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed italic">
+                              "{lead.testResult.aiFeedback.teacherNotes || lead.testResult.aiFeedback.summary}"
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
-              
-              {/* Floating Tag */}
-              <div className="absolute -top-[12px] right-2 bg-slate-800 dark:bg-slate-700 text-white text-[10px] font-bold px-2.5 py-0.5 rounded-full uppercase tracking-wider shadow-sm border border-slate-700 dark:border-slate-600">
-                {lead.source === 'telegram_bot' ? 'TG BOT' : lead.source === 'test_link' ? 'PUBLIC TEST' : lead.source === 'manual' ? lead.createdBy : 'WEB CHAT'}
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
 
@@ -341,9 +371,9 @@ const AILeadsPage: React.FC = () => {
                 <button
                   type="submit"
                   disabled={creating}
-                  className="btn-primary"
+                  className="h-9 px-5 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-lg text-sm font-semibold hover:opacity-90 transition-opacity disabled:opacity-50"
                 >
-                  {creating ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Сохранить'}
+                  {creating ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : 'Сохранить'}
                 </button>
               </div>
             </form>

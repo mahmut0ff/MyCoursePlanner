@@ -55,17 +55,16 @@ class ErrorBoundary extends Component<Props, State> {
               Произошла непредвиденная ошибка. Попробуйте обновить страницу или вернуться на главную.
             </p>
 
-            {/* Error details (dev only) */}
-            {import.meta.env.DEV && this.state.error && (
-              <details className="text-left mb-6 p-4 bg-red-50 dark:bg-red-900/10 border border-red-200/60 dark:border-red-800/30 rounded-xl">
+            {/* Error details (always show for debugging) */}
+            {this.state.error && (
+              <details className="text-left mb-6 p-4 bg-red-50 dark:bg-red-900/10 border border-red-200/60 dark:border-red-800/30 rounded-xl" open>
                 <summary className="text-xs font-bold text-red-600 dark:text-red-400 cursor-pointer mb-2">
-                  Детали ошибки (dev)
+                  Детали ошибки
                 </summary>
-                <pre className="text-[11px] text-red-700 dark:text-red-300 whitespace-pre-wrap break-all font-mono leading-relaxed">
-                  {this.state.error.message}
-                  {'\n\n'}
-                  {this.state.error.stack}
-                </pre>
+                <div className="text-[11px] text-red-700 dark:text-red-300 break-words font-mono overflow-auto max-h-64 whitespace-pre-wrap">
+                  <div className="font-bold mb-2">{this.state.error.message}</div>
+                  <div>{this.state.error.stack}</div>
+                </div>
               </details>
             )}
 

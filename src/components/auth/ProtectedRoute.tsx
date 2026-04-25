@@ -29,7 +29,19 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, allowedRoles 
     return () => clearTimeout(timer);
   }, [loading, profile]);
 
-  if (loading || (!profileSettled && firebaseUser && !profile)) {
+  // Safety net: if auth loading is stuck for >5s, force settled to prevent infinite spinner
+  useEffect(() => {
+    if (!loading) return;
+    const safetyTimer = setTimeout(() => {
+      console.warn('[ProtectedRoute] Auth loading stuck for 5s — forcing settled');
+      setProfileSettled(true);
+    }, 5000);
+    return () => clearTimeout(safetyTimer);
+  }, [loading]);
+
+  // Show spinner while auth is loading or profile fetch is pending.
+  // The 5s safety timer above guarantees this exits eventually.
+  if ((loading || (!profileSettled && firebaseUser && !profile)) && !profileSettled) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-slate-900">
         <div className="flex flex-col items-center gap-3">

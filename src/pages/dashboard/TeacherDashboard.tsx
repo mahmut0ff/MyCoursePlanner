@@ -10,7 +10,7 @@ import { apiGetPendingInviteCount } from '../../lib/api';
 import type { LessonPlan, Exam, ExamRoom, ExamAttempt } from '../../types';
 import { formatDate } from '../../utils/grading';
 import {
-  BookOpen, Radio, ArrowRight, Plus,
+  Radio, ArrowRight, Plus,
   Users, MailOpen, UserCircle2, GraduationCap,
   UsersRound, FileText, Monitor, Gamepad2, History, BarChart3, Activity, TrendingDown,
   ChevronRight, ArrowUpRight,
@@ -49,7 +49,6 @@ const TeacherDashboard: React.FC = () => {
 
   if (loading) return <div className="flex items-center justify-center py-20"><div className="w-8 h-8 border-4 border-slate-200 border-t-slate-600 rounded-full animate-spin dark:border-slate-700 dark:border-t-slate-400" /></div>;
 
-  const avgScore = attempts.length > 0 ? Math.round(attempts.reduce((s, a) => s + a.percentage, 0) / attempts.length) : 0;
   const recentAttempts = attempts.filter(a => !a.passed || a.percentage < 100).slice(0, 5);
 
   const hour = new Date().getHours();

@@ -81,10 +81,12 @@ const handler: Handler = async (event: HandlerEvent) => {
     if (params.code) {
       const snap = await adminDb.collection(SESSIONS)
         .where('code', '==', params.code.toUpperCase())
-        .where('status', 'in', ['lobby', 'in_progress', 'paused'])
-        .limit(1).get();
-      if (snap.empty) return notFound('No active session with this code');
-      const doc = snap.docs[0];
+        .limit(10).get();
+      
+      const activeDocs = snap.docs.filter(d => ['lobby', 'in_progress', 'paused'].includes(d.data().status));
+      if (activeDocs.length === 0) return notFound('No active session with this code');
+      
+      const doc = activeDocs[0];
       return ok({ id: doc.id, ...doc.data() });
     }
 
@@ -181,10 +183,11 @@ const handler: Handler = async (event: HandlerEvent) => {
       } else if (code) {
         const snap = await adminDb.collection(SESSIONS)
           .where('code', '==', code.toUpperCase())
-          .where('status', 'in', ['lobby', 'in_progress', 'paused'])
-          .limit(1).get();
-        if (snap.empty) return notFound('No active session with this code');
-        sessDoc = snap.docs[0];
+          .limit(10).get();
+        
+        const activeDocs = snap.docs.filter(d => ['lobby', 'in_progress', 'paused'].includes(d.data().status));
+        if (activeDocs.length === 0) return notFound('No active session with this code');
+        sessDoc = activeDocs[0];
       } else {
         return badRequest('sessionId or code required');
       }

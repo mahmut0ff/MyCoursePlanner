@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { orgGetCourse, orgUpdateCourse, orgDeleteCourse, orgGetGroups, orgCreateGroup, orgEnrollInCourse, orgEnrollInGroup } from '../../lib/api';
-import { ArrowLeft, BookOpen, Calendar, Users, FileText, Edit, Trash2, Plus, MessageSquare, Coins, LayoutGrid } from 'lucide-react';
+import { ArrowLeft, BookOpen, Calendar, Users, FileText, Edit, Trash2, Plus, MessageSquare, Coins, LayoutGrid, Clock } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import type { Course, Group } from '../../types';
 import toast from 'react-hot-toast';
@@ -128,6 +128,7 @@ const CourseDetailPage: React.FC = () => {
     try {
       await orgEnrollInCourse(course.id);
       toast.success(t('studentDashboard.courseJoinSuccess', 'Заявка на курс отправлена администратору!'));
+      setCourse({ ...course, requestStatus: 'pending' } as any);
     } catch (e: any) {
       toast.error(e.message || 'Ошибка отправки заявки');
     } finally {
@@ -244,13 +245,20 @@ const CourseDetailPage: React.FC = () => {
               </div>
 
               {isStudent && !groups.some(g => g.studentIds?.includes(profile?.uid as string)) && (
-                 <button 
-                   onClick={handleEnrollCourse} 
-                   disabled={saving}
-                   className="mt-6 w-full sm:w-auto px-8 py-3 bg-violet-600 hover:bg-violet-700 text-white rounded-xl font-bold transition-all shadow-md active:scale-[0.98] disabled:opacity-50"
-                 >
-                   Выбрать этот курс
-                 </button>
+                 (course as any).requestStatus === 'pending' ? (
+                   <div className="mt-6 w-full sm:w-auto px-6 py-3 bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400 rounded-xl font-bold border border-amber-200 dark:border-amber-800/50 flex items-center justify-center gap-2">
+                     <Clock className="w-5 h-5" />
+                     Заявка на рассмотрении
+                   </div>
+                 ) : (
+                   <button 
+                     onClick={handleEnrollCourse} 
+                     disabled={saving}
+                     className="mt-6 w-full sm:w-auto px-8 py-3 bg-violet-600 hover:bg-violet-700 text-white rounded-xl font-bold transition-all shadow-md active:scale-[0.98] disabled:opacity-50"
+                   >
+                     Выбрать этот курс
+                   </button>
+                 )
               )}
               {isStudent && groups.some(g => g.studentIds?.includes(profile?.uid as string)) && (
                 <div className="mt-6 w-full sm:w-auto px-6 py-3 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400 rounded-xl font-bold border border-emerald-200 dark:border-emerald-800/50 flex items-center justify-center gap-2">

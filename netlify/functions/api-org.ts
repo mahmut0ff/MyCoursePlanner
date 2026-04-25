@@ -129,7 +129,23 @@ const handler: Handler = async (event: HandlerEvent) => {
       if (!params.id) return badRequest('id required');
       const doc = await adminDb.collection('courses').doc(params.id).get();
       if (!doc.exists || doc.data()?.organizationId !== orgId) return notFound();
-      return ok({ id: doc.id, ...doc.data() });
+      
+      const courseData = { id: doc.id, ...doc.data() };
+      
+      // Check for pending course request
+      if (hasRole(user, 'student') || user.role === 'student' || !hasRole(user, 'admin', 'manager')) {
+         const reqSnap = await adminDb.collection('courseRequests')
+           .where('orgId', '==', orgId)
+           .where('courseId', '==', params.id)
+           .where('userId', '==', user.uid)
+           .where('status', '==', 'pending')
+           .limit(1).get();
+         if (!reqSnap.empty) {
+            (courseData as any).requestStatus = 'pending';
+         }
+      }
+      
+      return ok(courseData);
     }
 
     if (action === 'createCourse') {
@@ -335,10 +351,119 @@ const handler: Handler = async (event: HandlerEvent) => {
       if (!courseDoc.exists || courseDoc.data()?.organizationId !== orgId) return notFound('Course not found');
       
       const courseData = courseDoc.data()!;
-      
+
+      // Check if user is an active member
+      const memberDoc = await adminDb.collection('users').doc(user.uid)
+        .collection('memberships').doc(orgId).get();
+      if (!memberDoc.exists || memberDoc.data()?.status !== 'active') {
+        return forbidden('Для записи на курс необходимо быть активным участником организации');
+      }
+
+      // Check if request already exists
+      const existingSnap = await adminDb.collection('courseRequests')
+        .where('orgId', '==', orgId)
+        .where('courseId', '==', body.courseId)
+        .where('userId', '==', user.uid)
+        .where('status', '==', 'pending')
+        .limit(1).get();
+
+      if (!existingSnap.empty) {
+        return badRequest('Вы уже отправили заявку на этот курс');
+      }
+
+      await adminDb.collection('courseRequests').add({
+        orgId,
+        courseId: body.courseId,
+        courseName: courseData.title,
+        userId: user.uid,
+        userName: user.displayName || '',
+        userEmail: user.email || '',
+        status: 'pending',
+        createdAt: now(),
+        updatedAt: now()
+      });
+
+      // Notification
       await notifyOrgAdmins(orgId, 'added_to_group', 'Заявка на курс', `Студент ${user.displayName || user.email} хочет записаться на курс ${courseData.title}.`);
 
       return ok({ requested: true, courseId: body.courseId });
+    }
+
+    if (action === 'getCourseRequests') {
+      if (!hasRole(user, 'admin', 'manager')) return forbidden();
+
+      const snap = await adminDb.collection('courseRequests')
+        .where('orgId', '==', orgId)
+        .where('status', '==', 'pending')
+        .orderBy('createdAt', 'desc')
+        .get();
+
+      let requests = snap.docs.map((d: any) => ({ id: d.id, ...d.data() }));
+
+      // Fetch user avatars
+      if (requests.length > 0) {
+        const uids = requests.map((m: any) => m.userId).filter(Boolean);
+        const profileMap: Record<string, any> = {};
+        for (let i = 0; i < uids.length; i += 10) {
+          const batch = uids.slice(i, i + 10);
+          const profileSnap = await adminDb.collection('users').where('__name__', 'in', batch).get();
+          profileSnap.docs.forEach((d: any) => { profileMap[d.id] = d.data(); });
+        }
+        requests = requests.map((req: any) => ({
+          ...req,
+          userAvatarUrl: profileMap[req.userId]?.avatarUrl || profileMap[req.userId]?.photoURL || ''
+        }));
+      }
+
+      return ok(requests);
+    }
+
+    if (action === 'approveCourseRequest') {
+      if (!hasRole(user, 'admin', 'manager')) return forbidden();
+      const body = JSON.parse(event.body || '{}');
+      if (!body.requestId || !body.groupId) return badRequest('requestId and groupId required');
+
+      const reqDoc = await adminDb.collection('courseRequests').doc(body.requestId).get();
+      if (!reqDoc.exists || reqDoc.data()?.orgId !== orgId) return notFound('Request not found');
+
+      const reqData = reqDoc.data()!;
+      if (reqData.status !== 'pending') return badRequest('Request is not pending');
+
+      // Add to group
+      await adminDb.collection('groups').doc(body.groupId).update({
+        studentIds: FieldValue.arrayUnion(reqData.userId),
+        updatedAt: now()
+      });
+
+      // Sync payment plan
+      const groupDoc = await adminDb.collection('groups').doc(body.groupId).get();
+      const groupData = groupDoc.data()!;
+      await syncPaymentPlans(orgId, groupData.branchId || null, groupData.courseId, [reqData.userId]).catch(console.error);
+
+      // Update request status
+      await adminDb.collection('courseRequests').doc(body.requestId).update({
+        status: 'approved',
+        groupId: body.groupId,
+        updatedAt: now()
+      });
+
+      return ok({ approved: true });
+    }
+
+    if (action === 'rejectCourseRequest') {
+      if (!hasRole(user, 'admin', 'manager')) return forbidden();
+      const body = JSON.parse(event.body || '{}');
+      if (!body.requestId) return badRequest('requestId required');
+
+      const reqDoc = await adminDb.collection('courseRequests').doc(body.requestId).get();
+      if (!reqDoc.exists || reqDoc.data()?.orgId !== orgId) return notFound('Request not found');
+
+      await adminDb.collection('courseRequests').doc(body.requestId).update({
+        status: 'rejected',
+        updatedAt: now()
+      });
+
+      return ok({ rejected: true });
     }
 
     // ═══ STUDENTS (users with role=student in this org) ═══

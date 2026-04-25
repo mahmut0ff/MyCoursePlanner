@@ -11,7 +11,10 @@ import {
   apiGetOrgMembers,
   apiAcceptMembership,
   apiRejectMembership,
-  apiDeleteMember
+  apiDeleteMember,
+  orgGetCourseRequests,
+  orgApproveCourseRequest,
+  orgRejectCourseRequest
 } from '../../lib/api';
 import { Users, Search, Mail, RefreshCw, CheckCircle, XCircle, UserPlus, Phone, Filter, X, SortAsc, SortDesc, Trash2, Plus, Lightbulb, Link as LinkIcon, Copy, BookOpen, UsersRound } from 'lucide-react';
 import type { UserProfile, Group } from '../../types';
@@ -30,7 +33,7 @@ const StudentsPage: React.FC = () => {
   const { profile, organizationId } = useAuth();
   const { limits } = usePlanGate();
 
-  const [activeTab, setActiveTab] = useState<'students' | 'applications'>('students');
+  const [activeTab, setActiveTab] = useState<'students' | 'applications' | 'courseRequests'>('students');
   const [expandedAvatar, setExpandedAvatar] = useState<string | null>(null);
 
   const [students, setStudents] = useState<UserProfile[]>([]);
@@ -38,6 +41,11 @@ const StudentsPage: React.FC = () => {
   
   const [applications, setApplications] = useState<any[]>([]);
   const [loadingApps, setLoadingApps] = useState(false);
+
+  const [courseRequests, setCourseRequests] = useState<any[]>([]);
+  const [loadingCourseReqs, setLoadingCourseReqs] = useState(false);
+  const [showCourseReqModal, setShowCourseReqModal] = useState(false);
+  const [selectedCourseReq, setSelectedCourseReq] = useState<any>(null);
 
   // Search & Filters
   const [search, setSearch] = useState('');
@@ -121,11 +129,24 @@ const StudentsPage: React.FC = () => {
     }
   };
 
+  const loadCourseRequests = async () => {
+    setLoadingCourseReqs(true);
+    try {
+      const reqs = await orgGetCourseRequests();
+      setCourseRequests(reqs || []);
+    } catch (e: any) {
+      // silent or error
+    } finally {
+      setLoadingCourseReqs(false);
+    }
+  };
+
   useEffect(() => {
     loadStudents();
     loadGroups();
     loadCourses();
     loadApplications();
+    loadCourseRequests();
   }, [organizationId, branchFilter]);
 
   // Reset page when filters change
@@ -204,6 +225,30 @@ const StudentsPage: React.FC = () => {
     }
   };
 
+  const handleApproveCourseReq = async (groupId: string) => {
+    if (!selectedCourseReq || !groupId) return;
+    try {
+      await orgApproveCourseRequest(selectedCourseReq.id, groupId);
+      toast.success('Заявка на курс одобрена, студент добавлен в группу');
+      setShowCourseReqModal(false);
+      setSelectedCourseReq(null);
+      loadCourseRequests();
+      loadGroups(); // Refresh group counts
+    } catch (e: any) {
+      toast.error(e.message || 'Error');
+    }
+  };
+
+  const handleRejectCourseReq = async (reqId: string) => {
+    try {
+      await orgRejectCourseRequest(reqId);
+      toast.success('Заявка на курс отклонена');
+      loadCourseRequests();
+    } catch (e: any) {
+      toast.error(e.message || 'Error');
+    }
+  };
+
   const toggleSort = (field: SortField) => {
     if (sortField === field) {
       setSortDir(d => d === 'asc' ? 'desc' : 'asc');
@@ -277,7 +322,7 @@ const StudentsPage: React.FC = () => {
         <div>
           <h1 className="text-3xl font-extrabold text-slate-900 dark:text-white mb-2">{t('nav.students')}</h1>
           <p className="text-slate-500 dark:text-slate-400 text-sm">
-            {activeTab === 'students' ? `${students.length} ${t('org.students.total')}` : `${applications.length} ${t('org.students.applicationsCount', 'заявок')}`}
+            {activeTab === 'students' ? `${students.length} ${t('org.students.total')}` : activeTab === 'applications' ? `${applications.length} ${t('org.students.applicationsCount', 'заявок')}` : `${courseRequests.length} заявок на курсы`}
           </p>
         </div>
         <div className="flex items-center gap-3 w-full sm:w-auto">
@@ -307,6 +352,17 @@ const StudentsPage: React.FC = () => {
           {applications.length > 0 && (
             <span className="bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full">
               {applications.length}
+            </span>
+          )}
+        </button>
+        <button
+          onClick={() => setActiveTab('courseRequests')}
+          className={`pb-2.5 text-sm font-semibold border-b-2 transition-colors flex items-center gap-2 ${activeTab === 'courseRequests' ? 'border-slate-900 dark:border-white text-slate-900 dark:text-white' : 'border-transparent text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}
+        >
+          Заявки на курсы
+          {courseRequests.length > 0 && (
+            <span className="bg-amber-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full">
+              {courseRequests.length}
             </span>
           )}
         </button>
@@ -596,6 +652,92 @@ const StudentsPage: React.FC = () => {
             </>
           )}
         </div>
+      )}
+
+      {activeTab === 'courseRequests' && (
+        <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl overflow-hidden">
+          {loadingCourseReqs ? (
+            <ListSkeleton rows={4} />
+          ) : courseRequests.length === 0 ? (
+            <EmptyState
+              icon={BookOpen}
+              title="Нет заявок на курсы"
+              description="Заявки студентов на курсы появятся здесь"
+            />
+          ) : (
+            <>
+              <div className="hidden md:grid grid-cols-[1fr_200px_120px_100px] gap-3 px-5 py-3 border-b border-slate-100 dark:border-slate-700 bg-slate-50/80 dark:bg-slate-800/80 text-[11px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+                <span>Студент</span>
+                <span>Курс</span>
+                <span>Дата</span>
+                <span className="text-right">Действия</span>
+              </div>
+              {courseRequests.map((req) => (
+                <div key={req.id} className="flex flex-col md:grid md:grid-cols-[1fr_200px_120px_100px] gap-2 md:gap-3 items-center px-5 py-3.5 border-b border-slate-100 dark:border-slate-700/50 last:border-b-0 hover:bg-primary-50/40 dark:hover:bg-primary-900/10 transition-colors">
+                  <div className="flex items-center gap-3 min-w-0 w-full">
+                    {req.userAvatarUrl ? (
+                      <img src={req.userAvatarUrl} alt="" className="w-9 h-9 rounded-full object-cover shrink-0" />
+                    ) : (
+                      <div className="w-9 h-9 bg-violet-500 rounded-full flex items-center justify-center text-xs text-white font-bold shrink-0">{req.userName?.[0]?.toUpperCase() || '?'}</div>
+                    )}
+                    <div>
+                      <span className="block text-sm font-bold text-slate-900 dark:text-white truncate">{req.userName}</span>
+                      <span className="block md:hidden text-[10px] text-slate-500 truncate">{req.courseName}</span>
+                    </div>
+                  </div>
+                  <div className="hidden md:flex items-center gap-1.5 text-sm font-semibold text-slate-700 dark:text-slate-300 truncate">
+                    <span className="truncate">{req.courseName}</span>
+                  </div>
+                  <div className="hidden md:block text-[11px] text-slate-500">{new Date(req.createdAt).toLocaleDateString()}</div>
+                  <div className="flex justify-end gap-2">
+                    <button onClick={() => { setSelectedCourseReq(req); setShowCourseReqModal(true); }} className="px-3 py-1.5 text-xs font-bold text-white bg-emerald-500 hover:bg-emerald-600 rounded-lg shadow-sm transition-all" title={t('common.accept')}>
+                      Одобрить
+                    </button>
+                    <button onClick={() => handleRejectCourseReq(req.id)} className="p-1.5 text-red-600 bg-red-50 hover:bg-red-100 dark:bg-red-900/20 dark:hover:bg-red-900/30 rounded-lg transition-colors" title={t('common.reject')}>
+                      <XCircle className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </>
+          )}
+        </div>
+      )}
+
+      {showCourseReqModal && selectedCourseReq && (
+         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4" onClick={() => { setShowCourseReqModal(false); setSelectedCourseReq(null); }}>
+           <div className="bg-white dark:bg-slate-800 rounded-3xl p-8 w-full max-w-md shadow-2xl" onClick={e => e.stopPropagation()}>
+             <h2 className="text-xl font-bold text-slate-900 dark:text-white mb-2">Одобрение заявки на курс</h2>
+             <p className="text-sm text-slate-600 dark:text-slate-400 mb-6">Студент <span className="font-bold">{selectedCourseReq.userName}</span> хочет на курс <span className="font-bold">{selectedCourseReq.courseName}</span>. Выберите группу для зачисления:</p>
+             
+             <div className="space-y-4">
+               {groups.filter(g => g.courseId === selectedCourseReq.courseId).length > 0 ? (
+                 <div className="grid grid-cols-1 gap-2">
+                   {groups.filter(g => g.courseId === selectedCourseReq.courseId).map(g => (
+                     <button
+                       key={g.id}
+                       onClick={() => handleApproveCourseReq(g.id)}
+                       className="p-3 text-left border border-slate-200 dark:border-slate-700 rounded-xl hover:border-violet-500 hover:bg-violet-50 dark:hover:bg-violet-900/20 transition-all group"
+                     >
+                       <div className="font-bold text-slate-900 dark:text-white group-hover:text-violet-700 dark:group-hover:text-violet-300">{g.name}</div>
+                       <div className="text-xs text-slate-500">{g.studentIds?.length || 0} студентов</div>
+                     </button>
+                   ))}
+                 </div>
+               ) : (
+                 <div className="p-4 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-xl text-amber-700 dark:text-amber-400 text-sm">
+                   У этого курса пока нет ни одной группы. Создайте группу в карточке курса, прежде чем одобрять заявку.
+                 </div>
+               )}
+             </div>
+
+             <div className="flex justify-end mt-6">
+               <button onClick={() => { setShowCourseReqModal(false); setSelectedCourseReq(null); }} className="px-5 py-2.5 rounded-xl text-sm font-semibold text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800 transition-colors">
+                 Отмена
+               </button>
+             </div>
+           </div>
+         </div>
       )}
 
       {/* Create Student Modal */}

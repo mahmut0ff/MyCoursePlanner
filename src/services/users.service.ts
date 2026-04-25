@@ -16,7 +16,17 @@ export const createUser = async (
   role: UserRole = 'student',
   username: string = ''
 ): Promise<void> => {
-  await setDoc(doc(db, COLLECTION, uid), {
+  const userRef = doc(db, COLLECTION, uid);
+  const existing = await getDoc(userRef);
+
+  // If the user document already exists, skip creation to avoid
+  // triggering Firestore UPDATE rules (which block role/orgId changes).
+  if (existing.exists()) {
+    console.warn('[createUser] Document already exists for', uid, '— skipping setDoc');
+    return;
+  }
+
+  await setDoc(userRef, {
     uid,
     username: username.trim().toLowerCase(),
     email,

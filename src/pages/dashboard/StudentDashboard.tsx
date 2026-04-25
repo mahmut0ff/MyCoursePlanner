@@ -321,7 +321,7 @@ const StudentDashboard: React.FC = () => {
                 </p>
               </div>
               
-              <Link to="/join" className="inline-flex items-center gap-2 bg-yellow-400 text-yellow-900 hover:bg-yellow-300 px-5 py-3 rounded-xl font-bold text-sm shadow-[0_4px_0_#b7860b] active:translate-y-[3px] active:shadow-[0_1px_0_#b7860b] transition-all w-fit kahoot-font whitespace-nowrap">
+              <Link to="/quiz/join" className="inline-flex items-center gap-2 bg-yellow-400 text-yellow-900 hover:bg-yellow-300 px-5 py-3 rounded-xl font-bold text-sm shadow-[0_4px_0_#b7860b] active:translate-y-[3px] active:shadow-[0_1px_0_#b7860b] transition-all w-fit kahoot-font whitespace-nowrap">
                 <Play className="w-4 h-4 fill-yellow-900" /> {t('studentDashboard.intoWaitingRoom')}
               </Link>
             </div>

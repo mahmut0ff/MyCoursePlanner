@@ -27,14 +27,15 @@ const RegisterPage: React.FC = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const orgSlug = searchParams.get('orgSlug');
-  const { firebaseUser, loading: authLoading } = useAuth();
+  const { firebaseUser, loading: authLoading, refreshProfile } = useAuth();
 
   useEffect(() => {
-    if (!authLoading && firebaseUser) {
+    // Prevent auto-redirect if we are actively submitting the registration form (loading=true)
+    if (!authLoading && firebaseUser && !loading) {
       // Always go to dashboard — ProtectedRoute handles incomplete profiles
       navigate(orgSlug ? `/dashboard?orgSlug=${orgSlug}` : '/dashboard');
     }
-  }, [firebaseUser, authLoading, navigate, orgSlug]);
+  }, [firebaseUser, authLoading, navigate, orgSlug, loading]);
 
   useEffect(() => {
     if (!username || username.length < 3) return setUsernameStatus('idle');
@@ -94,6 +95,7 @@ const RegisterPage: React.FC = () => {
       await apiCheckRegisterRateLimit();
       const cred = await signUp(email, password, name);
       await createUser(cred.user.uid, email, name, regRole === 'teacher' ? 'teacher' : 'student', username);
+      await refreshProfile(); // Refresh AuthContext so it knows the profile is fully created
       if (orgSlug) {
         try { await apiPublicJoin(orgSlug); } catch {}
       }
@@ -132,6 +134,8 @@ const RegisterPage: React.FC = () => {
         const err = await orgRes.json().catch(() => ({}));
         throw new Error(err.error || 'Failed to create organization');
       }
+      
+      await refreshProfile(); // Refresh AuthContext to pull the newly created organizationId
       navigate('/dashboard');
     } catch (err: any) {
       console.error('Registration error:', err);

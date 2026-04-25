@@ -20,11 +20,12 @@ const LoginPage: React.FC = () => {
   const { firebaseUser, loading: authLoading } = useAuth();
 
   React.useEffect(() => {
-    if (!authLoading && firebaseUser) {
+    // Prevent auto-redirect if we are actively submitting the login form (loading=true)
+    if (!authLoading && firebaseUser && !loading) {
       // Always go to dashboard — ProtectedRoute handles incomplete profiles
       navigate(orgSlug ? `/dashboard?orgSlug=${orgSlug}` : '/dashboard');
     }
-  }, [firebaseUser, authLoading, navigate, orgSlug]);
+  }, [firebaseUser, authLoading, navigate, orgSlug, loading]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

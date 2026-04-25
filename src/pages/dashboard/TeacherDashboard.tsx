@@ -10,7 +10,7 @@ import { apiGetPendingInviteCount } from '../../lib/api';
 import type { LessonPlan, Exam, ExamRoom, ExamAttempt } from '../../types';
 import { formatDate } from '../../utils/grading';
 import {
-  BookOpen, ClipboardList, Radio, TrendingUp, ArrowRight, Plus,
+  BookOpen, Radio, ArrowRight, Plus,
   Users, MailOpen, UserCircle2, GraduationCap,
   UsersRound, FileText, Monitor, Gamepad2, History, BarChart3, Activity, TrendingDown,
   ChevronRight, ArrowUpRight,
@@ -54,13 +54,6 @@ const TeacherDashboard: React.FC = () => {
 
   const hour = new Date().getHours();
   const greeting = hour < 12 ? '🌅' : hour < 18 ? '☀️' : '🌙';
-
-  const stats = [
-    { label: t('teacherDashboard.myLessons'), value: lessons.length, icon: BookOpen, iconBg: 'bg-blue-500', bg: 'bg-blue-50 dark:bg-blue-950/30', border: 'border-blue-200/50 dark:border-blue-800/40', text: 'text-blue-600 dark:text-blue-400' },
-    { label: t('teacherDashboard.myExams'), value: exams.length, icon: ClipboardList, iconBg: 'bg-violet-500', bg: 'bg-violet-50 dark:bg-violet-950/30', border: 'border-violet-200/50 dark:border-violet-800/40', text: 'text-violet-600 dark:text-violet-400' },
-    { label: t('teacherDashboard.activeRooms'), value: rooms.length, icon: Radio, iconBg: 'bg-emerald-500', bg: 'bg-emerald-50 dark:bg-emerald-950/30', border: 'border-emerald-200/50 dark:border-emerald-800/40', text: 'text-emerald-600 dark:text-emerald-400' },
-    { label: t('teacherDashboard.avgScore'), value: `${avgScore}%`, icon: TrendingUp, iconBg: 'bg-amber-500', bg: 'bg-amber-50 dark:bg-amber-950/30', border: 'border-amber-200/50 dark:border-amber-800/40', text: 'text-amber-600 dark:text-amber-400' },
-  ];
 
   return (
     <div className="max-w-[1400px] mx-auto">
@@ -115,24 +108,7 @@ const TeacherDashboard: React.FC = () => {
           {/* Teacher Onboarding Wizard */}
           {organizationId && <TeacherOnboardingWizard />}
 
-          {/* Stats Cards */}
-          {organizationId && (
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-              {stats.map((s) => (
-                <div key={s.label} className={`${s.bg} border ${s.border} rounded-2xl p-4 sm:p-5 transition-all hover:shadow-lg hover:scale-[1.02] active:scale-[0.98]`}>
-                  <div className="flex items-start gap-3">
-                    <div className={`${s.iconBg} w-10 h-10 sm:w-11 sm:h-11 rounded-xl flex items-center justify-center shrink-0`}>
-                      <s.icon className="w-5 h-5 text-white" />
-                    </div>
-                    <div className="min-w-0">
-                      <p className="text-2xl sm:text-3xl font-bold text-slate-900 dark:text-white leading-none">{s.value}</p>
-                      <p className={`text-xs mt-1 ${s.text} font-medium`}>{s.label}</p>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
+
 
           {/* Invite banner */}
           {inviteCount > 0 && organizationId && (

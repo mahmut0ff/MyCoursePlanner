@@ -8,9 +8,12 @@ import {
   Plus, Search, Play, Copy, Trash2,
   BookOpen, Share2, Filter, Zap,
   Globe, Lock, Building2,
-  Users, Star, Gamepad2
+  Users, Star, Gamepad2, Download, CopyPlus
 } from 'lucide-react';
 import toast from 'react-hot-toast';
+
+import { Dialog, Transition } from '@headlessui/react';
+import { Fragment } from 'react';
 
 type Tab = 'my' | 'shared' | 'discover';
 
@@ -33,6 +36,8 @@ const QuizLibraryPage: React.FC = () => {
   const [filterDifficulty, setFilterDifficulty] = useState('');
   const [filterSubject, setFilterSubject] = useState('');
   const [showFilters, setShowFilters] = useState(false);
+  const [showImportModal, setShowImportModal] = useState(false);
+  const { profile } = useAuth();
 
   useEffect(() => { loadQuizzes(); }, [tab, sortBy, filterDifficulty, filterSubject]);
 
@@ -68,12 +73,18 @@ const QuizLibraryPage: React.FC = () => {
     catch (e: any) { toast.error(e.message || t('common.error')); }
   };
 
-  const filtered = quizzes.filter(q =>
-    !search ||
-    q.title.toLowerCase().includes(search.toLowerCase()) ||
-    q.subject?.toLowerCase().includes(search.toLowerCase()) ||
-    q.tags?.some(t => t.toLowerCase().includes(search.toLowerCase()))
-  );
+  const filtered = quizzes.filter(q => {
+    // Search filtering
+    const matchesSearch = !search ||
+      q.title.toLowerCase().includes(search.toLowerCase()) ||
+      q.subject?.toLowerCase().includes(search.toLowerCase()) ||
+      q.tags?.some(t => t.toLowerCase().includes(search.toLowerCase()));
+
+    // Organization filtering for "My Quizzes"
+    const matchesOrg = tab !== 'my' || !profile?.organizationId || q.organizationId === profile.organizationId;
+
+    return matchesSearch && matchesOrg;
+  });
 
   const getCardGradient = (index: number) => {
     const gradients = [
@@ -123,13 +134,21 @@ const QuizLibraryPage: React.FC = () => {
             <Filter className="w-4 h-4" />
           </button>
           {tab === 'my' && (
-            <Link
-              to="/quiz/new"
-              className="flex items-center gap-2 px-5 py-2.5 rounded-lg font-bold text-white text-sm transition-all hover:shadow-lg active:scale-[0.98] shrink-0"
-              style={{ backgroundColor: 'var(--kahoot-green)', boxShadow: '0 3px 10px rgba(38,137,12,0.25)' }}
-            >
-              <Plus className="w-4 h-4" />{t('quiz.create')}
-            </Link>
+            <div className="flex items-center gap-2 shrink-0">
+              <button
+                onClick={() => setShowImportModal(true)}
+                className="flex items-center gap-2 px-5 py-2.5 rounded-lg font-bold text-slate-700 bg-white border border-slate-200 dark:bg-slate-800 dark:border-slate-700 dark:text-slate-300 text-sm transition-all hover:bg-slate-50 dark:hover:bg-slate-700 active:scale-[0.98] shadow-sm"
+              >
+                <Download className="w-4 h-4" />{t('quiz.import', 'Импорт')}
+              </button>
+              <Link
+                to="/quiz/new"
+                className="flex items-center gap-2 px-5 py-2.5 rounded-lg font-bold text-white text-sm transition-all hover:shadow-lg active:scale-[0.98]"
+                style={{ backgroundColor: 'var(--kahoot-green)', boxShadow: '0 3px 10px rgba(38,137,12,0.25)' }}
+              >
+                <Plus className="w-4 h-4" />{t('quiz.create')}
+              </Link>
+            </div>
           )}
         </div>
       </div>
@@ -335,6 +354,102 @@ const QuizLibraryPage: React.FC = () => {
           ))}
         </div>
       )}
+
+      {/* Import Modal */}
+      <Transition appear show={showImportModal} as={Fragment}>
+        <Dialog as="div" className="relative z-50" onClose={() => setShowImportModal(false)}>
+          <Transition.Child
+            as={Fragment}
+            enter="ease-out duration-300"
+            enterFrom="opacity-0"
+            enterTo="opacity-100"
+            leave="ease-in duration-200"
+            leaveFrom="opacity-100"
+            leaveTo="opacity-0"
+          >
+            <div className="fixed inset-0 bg-black/50 backdrop-blur-sm" />
+          </Transition.Child>
+
+          <div className="fixed inset-0 overflow-y-auto">
+            <div className="flex min-h-full items-center justify-center p-4 text-center">
+              <Transition.Child
+                as={Fragment}
+                enter="ease-out duration-300"
+                enterFrom="opacity-0 scale-95"
+                enterTo="opacity-100 scale-100"
+                leave="ease-in duration-200"
+                leaveFrom="opacity-100 scale-100"
+                leaveTo="opacity-0 scale-95"
+              >
+                <Dialog.Panel className="w-full max-w-2xl transform overflow-hidden rounded-2xl bg-white dark:bg-slate-800 p-6 text-left align-middle shadow-xl transition-all">
+                  <Dialog.Title as="h3" className="text-xl font-bold leading-6 text-slate-900 dark:text-white flex items-center gap-3 mb-2">
+                    <Download className="w-6 h-6 text-purple-600 dark:text-purple-400" />
+                    {t('quiz.importModalTitle', 'Импорт викторин')}
+                  </Dialog.Title>
+                  <p className="text-sm text-slate-500 dark:text-slate-400 mb-6 font-medium">
+                    {t('quiz.importModalDesc', 'Выберите ваши личные викторины (или из других организаций) и скопируйте их в текущую организацию.')}
+                  </p>
+
+                  <div className="max-h-[60vh] overflow-y-auto space-y-3 scrollbar-thin scrollbar-thumb-slate-200 dark:scrollbar-thumb-slate-700 pr-2">
+                    {quizzes.filter(q => q.organizationId !== profile?.organizationId).length === 0 ? (
+                      <div className="text-center py-10 bg-slate-50 dark:bg-slate-900/50 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-500">
+                        {t('quiz.noQuizzesToImport', 'У вас нет викторин, доступных для импорта.')}
+                      </div>
+                    ) : (
+                      quizzes.filter(q => q.organizationId !== profile?.organizationId).map(quiz => (
+                        <div key={quiz.id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 border border-slate-200 dark:border-slate-700 rounded-xl hover:border-purple-300 dark:hover:border-purple-600 transition-colors bg-white dark:bg-slate-800 group">
+                          <div>
+                            <h4 className="font-bold text-slate-900 dark:text-white group-hover:text-purple-600 dark:group-hover:text-purple-400 transition-colors">{quiz.title}</h4>
+                            <div className="flex items-center gap-3 mt-1.5 flex-wrap">
+                              <span className="text-xs font-bold text-slate-500 flex items-center gap-1">
+                                <Zap className="w-3.5 h-3.5" />{quiz.questionCount} {t('quiz.questions', 'вопросов')}
+                              </span>
+                              {quiz.organizationId ? (
+                                <span className="text-[10px] uppercase tracking-wider font-extrabold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full dark:bg-blue-900/30 dark:text-blue-400 border border-blue-200 dark:border-blue-800">
+                                  Из другой организации
+                                </span>
+                              ) : (
+                                <span className="text-[10px] uppercase tracking-wider font-extrabold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full dark:bg-emerald-900/30 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800">
+                                  Личный черновик
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                          <button
+                            onClick={async () => {
+                              try {
+                                toast.loading('Импорт...', { id: `import-${quiz.id}` });
+                                await apiDuplicateQuiz(quiz.id);
+                                toast.success('Успешно импортировано!', { id: `import-${quiz.id}` });
+                                loadQuizzes();
+                              } catch {
+                                toast.error('Ошибка импорта', { id: `import-${quiz.id}` });
+                              }
+                            }}
+                            className="shrink-0 flex items-center justify-center gap-2 px-4 py-2 rounded-lg font-bold text-sm bg-purple-100 text-purple-700 hover:bg-purple-200 dark:bg-purple-900/30 dark:text-purple-400 dark:hover:bg-purple-900/50 transition-colors"
+                          >
+                            <CopyPlus className="w-4 h-4" /> {t('quiz.importButton', 'Импортировать')}
+                          </button>
+                        </div>
+                      ))
+                    )}
+                  </div>
+
+                  <div className="mt-6 flex justify-end gap-3 pt-4 border-t border-slate-100 dark:border-slate-700">
+                    <button
+                      onClick={() => setShowImportModal(false)}
+                      className="px-5 py-2.5 rounded-lg text-sm font-bold text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800 transition-colors"
+                    >
+                      {t('common.close', 'Закрыть')}
+                    </button>
+                  </div>
+                </Dialog.Panel>
+              </Transition.Child>
+            </div>
+          </div>
+        </Dialog>
+      </Transition>
+
     </div>
   );
 };

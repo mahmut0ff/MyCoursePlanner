@@ -122,7 +122,7 @@ const OrgSwitcher: React.FC<OrgSwitcherProps> = ({ currentOrgId, userRole, onSwi
 
     if (userRole === 'student') {
       actions.push(
-        { icon: FolderOpen, label: t('nav.directory', 'Каталог'), onClick: () => nav('/directory'), color: 'text-violet-400' },
+        { icon: FolderOpen, label: t('nav.directory', 'Каталог'), onClick: () => nav('/catalog'), color: 'text-violet-400' },
       );
     }
 
@@ -162,7 +162,7 @@ const OrgSwitcher: React.FC<OrgSwitcherProps> = ({ currentOrgId, userRole, onSwi
 
     let emptyTitle = t('membership.findCenter', 'Найти учебный центр');
     let emptySubtitle = t('membership.browseOrgs', 'Каталог организаций');
-    let emptyAction = () => nav('/directory');
+    let emptyAction = () => nav('/catalog');
     let EmptyIcon = Search;
 
     if (userRole === 'admin') {
@@ -203,7 +203,7 @@ const OrgSwitcher: React.FC<OrgSwitcherProps> = ({ currentOrgId, userRole, onSwi
   const getPlusAction = () => {
     if (userRole === 'admin') return { title: t('org.addBranch', 'Добавить филиал'), action: () => nav('/branches') };
 
-    return { title: t('membership.findMore', 'Найти ещё'), action: () => nav('/directory') };
+    return { title: t('membership.findMore', 'Найти ещё'), action: () => nav('/catalog') };
   };
   const plusAction = getPlusAction();
 

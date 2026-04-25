@@ -77,15 +77,17 @@ service cloud.firestore {
       allow write: if isSuperAdmin();
     }
     match /exams/{examId} {
-      allow read: if isSuperAdmin() || hasOrgAccess(resource.data.organizationId);
+      // PIN-based access model (like Kahoot). Knowing the ID implies access.
+      allow read: if request.auth != null;
       allow write: if isSuperAdmin();
       match /questions/{questionId} {
-        allow read: if isSuperAdmin() || hasOrgAccess(get(/databases/$(database)/documents/exams/$(examId)).data.organizationId);
+        allow read: if request.auth != null;
         allow write: if isSuperAdmin();
       }
     }
     match /examRooms/{roomId} {
-      allow read: if isSuperAdmin() || hasOrgAccess(resource.data.organizationId);
+      // PIN-based access model: student joins via PIN/code.
+      allow read: if request.auth != null;
       allow write: if isSuperAdmin();
     }
 
@@ -122,14 +124,16 @@ service cloud.firestore {
       }
     }
     match /quizSessions/{sessionId} {
-      allow read: if isSuperAdmin() || hasOrgAccess(resource.data.organizationId);
+      // PIN-based access model (like Kahoot): any authenticated user who knows
+      // the sessionId can read the session. The PIN/ID itself is the access control.
+      allow read: if request.auth != null;
       allow write: if isSuperAdmin();
       match /participants/{participantId} {
-        allow read: if isSuperAdmin() || hasOrgAccess(get(/databases/$(database)/documents/quizSessions/$(sessionId)).data.organizationId);
+        allow read: if request.auth != null;
         allow write: if isSuperAdmin();
       }
       match /answers/{answerId} {
-        allow read: if isSuperAdmin() || hasOrgAccess(get(/databases/$(database)/documents/quizSessions/$(sessionId)).data.organizationId);
+        allow read: if request.auth != null;
         allow write: if isSuperAdmin(); // Created via backend
       }
     }

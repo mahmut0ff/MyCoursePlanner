@@ -59,9 +59,8 @@ const TeachersPage: React.FC = () => {
     setTimeout(() => setHintCopied(false), 2000);
   };
 
-  const loadTeachers = async () => {
-    setLoading(true);
-    setError('');
+  const loadTeachers = async (silent = false) => {
+    if (!silent) { setLoading(true); setError(''); }
     try {
       const data: any = await orgGetTeachers();
       let teachersOnly = (Array.isArray(data) ? data : []).filter(
@@ -75,22 +74,22 @@ const TeachersPage: React.FC = () => {
       }
       setTeachers(teachersOnly);
     } catch (e: any) {
-      setError(e.message || 'Error');
+      if (!silent) setError(e.message || 'Error');
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   };
 
-  const loadApplications = async () => {
+  const loadApplications = async (silent = false) => {
     if (!organizationId) return;
-    setLoadingApps(true);
+    if (!silent) setLoadingApps(true);
     try {
       const apps = await apiGetOrgMembers(organizationId, 'pending', 'teacher');
       setApplications(apps);
     } catch (e: any) {
-      toast.error(e.message || t('common.loadError', 'Ошибка загрузки'));
+      if (!silent) toast.error(e.message || t('common.loadError', 'Ошибка загрузки'));
     } finally {
-      setLoadingApps(false);
+      if (!silent) setLoadingApps(false);
     }
   };
 
@@ -128,11 +127,14 @@ const TeachersPage: React.FC = () => {
 
     try {
       await apiAcceptMembership(userId, organizationId);
+      // Optimistic: remove from local list immediately
+      setApplications(prev => prev.filter(a => a.userId !== userId));
       toast.success(t('directory.applicationApproved', 'Заявка одобрена!'));
-      loadApplications();
-      loadTeachers();
+      // Silent background refresh
+      loadTeachers(true);
     } catch (e: any) {
       toast.error(e.message);
+      loadApplications(true); // Restore real state on error
     }
   };
 
@@ -140,10 +142,12 @@ const TeachersPage: React.FC = () => {
     if (!organizationId) return;
     try {
       await apiRejectMembership(userId, organizationId);
+      // Optimistic: remove from local list immediately
+      setApplications(prev => prev.filter(a => a.userId !== userId));
       toast.success(t('directory.applicationRejected', 'Заявка отклонена'));
-      loadApplications();
     } catch (e: any) {
       toast.error(e.message);
+      loadApplications(true); // Restore real state on error
     }
   };
 

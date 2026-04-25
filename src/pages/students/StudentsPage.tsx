@@ -93,13 +93,12 @@ const StudentsPage: React.FC = () => {
   const [page, setPage] = useState(1);
   const pageSize = 50;
 
-  const loadStudents = () => { 
-    setLoading(true); 
-    setError(''); 
+  const loadStudents = (silent = false) => { 
+    if (!silent) { setLoading(true); setError(''); }
     orgGetStudents(branchFilter || undefined)
       .then(setStudents)
-      .catch((e) => setError(e.message || 'Error'))
-      .finally(() => setLoading(false)); 
+      .catch((e) => { if (!silent) setError(e.message || 'Error'); })
+      .finally(() => { if (!silent) setLoading(false); }); 
   };
 
   const loadGroups = async () => {
@@ -116,28 +115,28 @@ const StudentsPage: React.FC = () => {
     } catch { /* silent */ }
   };
 
-  const loadApplications = async () => {
+  const loadApplications = async (silent = false) => {
     if (!organizationId) return;
-    setLoadingApps(true);
+    if (!silent) setLoadingApps(true);
     try {
       const apps = await apiGetOrgMembers(organizationId, 'pending', 'student');
       setApplications(apps);
     } catch (e: any) {
-      toast.error(e.message || t('common.loadError', 'Ошибка загрузки'));
+      if (!silent) toast.error(e.message || t('common.loadError', 'Ошибка загрузки'));
     } finally {
-      setLoadingApps(false);
+      if (!silent) setLoadingApps(false);
     }
   };
 
-  const loadCourseRequests = async () => {
-    setLoadingCourseReqs(true);
+  const loadCourseRequests = async (silent = false) => {
+    if (!silent) setLoadingCourseReqs(true);
     try {
       const reqs = await orgGetCourseRequests();
       setCourseRequests(reqs || []);
     } catch (e: any) {
       // silent or error
     } finally {
-      setLoadingCourseReqs(false);
+      if (!silent) setLoadingCourseReqs(false);
     }
   };
 
@@ -206,11 +205,14 @@ const StudentsPage: React.FC = () => {
 
     try {
       await apiAcceptMembership(userId, organizationId);
+      // Optimistic: remove from local applications list immediately
+      setApplications(prev => prev.filter(a => a.userId !== userId));
       toast.success(t('directory.applicationApproved', 'Заявка одобрена!'));
-      loadApplications();
-      loadStudents();
+      // Silent background refresh
+      loadStudents(true);
     } catch (e: any) {
       toast.error(e.message);
+      loadApplications(true); // Restore real state on error
     }
   };
 
@@ -218,34 +220,41 @@ const StudentsPage: React.FC = () => {
     if (!organizationId) return;
     try {
       await apiRejectMembership(userId, organizationId);
+      // Optimistic: remove from local list immediately
+      setApplications(prev => prev.filter(a => a.userId !== userId));
       toast.success(t('directory.applicationRejected', 'Заявка отклонена'));
-      loadApplications();
     } catch (e: any) {
       toast.error(e.message);
+      loadApplications(true); // Restore real state on error
     }
   };
 
   const handleApproveCourseReq = async (groupId: string) => {
     if (!selectedCourseReq || !groupId) return;
+    const reqId = selectedCourseReq.id;
     try {
-      await orgApproveCourseRequest(selectedCourseReq.id, groupId);
+      await orgApproveCourseRequest(reqId, groupId);
+      // Optimistic: remove from local list
+      setCourseRequests(prev => prev.filter(r => r.id !== reqId));
       toast.success('Заявка на курс одобрена, студент добавлен в группу');
       setShowCourseReqModal(false);
       setSelectedCourseReq(null);
-      loadCourseRequests();
-      loadGroups(); // Refresh group counts
+      loadGroups(); // Refresh group counts silently
     } catch (e: any) {
       toast.error(e.message || 'Error');
+      loadCourseRequests(true); // Restore real state on error
     }
   };
 
   const handleRejectCourseReq = async (reqId: string) => {
     try {
       await orgRejectCourseRequest(reqId);
+      // Optimistic: remove from local list
+      setCourseRequests(prev => prev.filter(r => r.id !== reqId));
       toast.success('Заявка на курс отклонена');
-      loadCourseRequests();
     } catch (e: any) {
       toast.error(e.message || 'Error');
+      loadCourseRequests(true); // Restore real state on error
     }
   };
 

@@ -342,15 +342,7 @@ const OrganizationsDirectoryPage: React.FC = () => {
                         )}
 
                         {/* Stats row */}
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-3 text-[11px] text-slate-500 dark:text-slate-400">
-                            {org.studentsCount > 0 && (
-                              <span className="flex items-center gap-1"><Users className="w-3 h-3" />{org.studentsCount}</span>
-                            )}
-                            {org.teachersCount > 0 && (
-                              <span className="flex items-center gap-1"><BookOpen className="w-3 h-3" />{org.teachersCount}</span>
-                            )}
-                          </div>
+                        <div className="flex items-center justify-end mt-2">
                           <ChevronRight className="w-4 h-4 text-slate-300 dark:text-slate-600 group-hover:text-indigo-500 group-hover:translate-x-0.5 transition-all" />
                         </div>
                       </div>

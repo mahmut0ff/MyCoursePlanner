@@ -240,7 +240,7 @@ const PublicOrgProfilePage: React.FC = () => {
   );
 
   return (
-    <div className="space-y-6 pb-20 lg:pb-6">
+    <div className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 space-y-6 pb-20 lg:pb-6">
 
       {/* ═══ Cover + Profile Header ═══ */}
       <div className={`relative overflow-hidden rounded-2xl bg-gradient-to-br ${getCoverColor(org.id)}`}>

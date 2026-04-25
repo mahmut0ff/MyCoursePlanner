@@ -27,17 +27,56 @@ import '../../presentation/organizations/directory_screen.dart';
 final _rootNavigatorKey = GlobalKey<NavigatorState>();
 final _shellNavigatorKey = GlobalKey<NavigatorState>();
 
+/// Listenable that notifies GoRouter when Firebase auth state changes.
+/// This ensures the redirect function is re-evaluated after Firebase
+/// restores the session from local storage (which happens asynchronously).
+class _AuthNotifier extends ChangeNotifier {
+  bool _initialized = false;
+  bool get initialized => _initialized;
+
+  User? _user;
+  User? get user => _user;
+
+  _AuthNotifier() {
+    FirebaseAuth.instance.authStateChanges().listen((user) {
+      _user = user;
+      _initialized = true;
+      notifyListeners();
+    });
+  }
+}
+
+final _authNotifier = _AuthNotifier();
+
 final appRouter = GoRouter(
   navigatorKey: _rootNavigatorKey,
   initialLocation: '/',
+  refreshListenable: _authNotifier,
   redirect: (context, state) {
-    final loggedIn = FirebaseAuth.instance.currentUser != null;
-    final isAuthRoute = state.matchedLocation == '/login' || state.matchedLocation == '/register';
+    // While Firebase Auth is still initializing, show the splash screen.
+    // This prevents the false redirect to /login on cold start.
+    if (!_authNotifier.initialized) {
+      // If we're not already on splash, redirect there
+      if (state.matchedLocation != '/splash') return '/splash';
+      return null;
+    }
+
+    final loggedIn = _authNotifier.user != null;
+    final isAuthRoute = state.matchedLocation == '/login' ||
+        state.matchedLocation == '/register' ||
+        state.matchedLocation == '/splash';
+
     if (!loggedIn && !isAuthRoute) return '/login';
     if (loggedIn && isAuthRoute) return '/';
     return null;
   },
   routes: [
+    // ── Splash (shown while Firebase Auth initializes) ──
+    GoRoute(
+      path: '/splash',
+      builder: (_, __) => const _SplashScreen(),
+    ),
+
     // ── Auth ──
     GoRoute(path: '/login', builder: (_, __) => const LoginScreen()),
     GoRoute(path: '/register', builder: (_, __) => const RegisterScreen()),
@@ -134,3 +173,45 @@ final appRouter = GoRouter(
     ),
   ],
 );
+
+/// Minimal splash screen shown while Firebase Auth initializes.
+class _SplashScreen extends StatelessWidget {
+  const _SplashScreen();
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 80,
+              height: 80,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(20),
+                boxShadow: [
+                  BoxShadow(
+                    color: const Color(0xFF7C3AED).withValues(alpha: 0.2),
+                    blurRadius: 24,
+                    offset: const Offset(0, 8),
+                  ),
+                ],
+              ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(20),
+                child: Image.asset('assets/images/planula_senior.png', fit: BoxFit.cover),
+              ),
+            ),
+            const SizedBox(height: 24),
+            const SizedBox(
+              width: 24,
+              height: 24,
+              child: CircularProgressIndicator(strokeWidth: 2.5),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}

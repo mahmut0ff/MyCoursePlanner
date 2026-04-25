@@ -23,9 +23,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   @override
   void initState() {
     super.initState();
-    FirebaseAuth.instance.authStateChanges().first.then((user) {
-      if (user != null && mounted) context.go('/');
-    });
+    // Auth redirect is now handled by GoRouter's refreshListenable + redirect.
+    // No need for a manual authStateChanges listener here.
   }
 
   @override

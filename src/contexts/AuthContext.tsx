@@ -69,6 +69,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [permissions, setPermissions] = useState<ManagerPermissions>({ ...NO_PERMISSIONS });
   const fcmTokenRef = useRef<string | null>(null);
 
+  // Ref keeps the latest firebase user available synchronously for refreshProfile,
+  // even when called from stale closures (e.g. during registration handlers).
+  const firebaseUserRef = useRef<User | null>(null);
+
   const loadProfile = async (user: User) => {
     try {
       const p = await getUser(user.uid);
@@ -104,7 +108,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const refreshProfile = async () => {
-    if (firebaseUser) await loadProfile(firebaseUser);
+    // Use the ref (not state) to avoid stale-closure issues in registration handlers
+    const user = firebaseUserRef.current;
+    if (user) await loadProfile(user);
   };
 
   /**
@@ -150,6 +156,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
 
     const unsub = onAuthChange(async (user) => {
+      firebaseUserRef.current = user; // Sync update — available immediately for refreshProfile
       setFirebaseUser(user);
       if (user) {
         setLoading(true);

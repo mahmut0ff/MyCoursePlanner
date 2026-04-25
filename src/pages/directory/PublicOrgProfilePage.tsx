@@ -5,7 +5,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import {
   MapPin, Mail, Phone, ArrowLeft, Building2,
   UserPlus, CheckCircle, Clock, FolderOpen,
-  Globe, MessageCircle, Send, LogIn, AlertCircle,
+  Globe, MessageCircle, Send, AlertCircle,
   FileText, Image as ImageIcon, Map, PhoneCall, LayoutList,
   CameraOff, ChevronRight, ExternalLink, Sparkles
 } from 'lucide-react';
@@ -172,22 +172,13 @@ const PublicOrgProfilePage: React.FC = () => {
 
     if (!profile) {
       return (
-        <div className={`flex flex-col gap-2.5 ${full ? 'w-full' : 'w-full sm:w-auto'}`}>
-          <Link
-            to={`/register?orgSlug=${slug}${requestedRole === 'teacher' ? '&role=teacher' : ''}`}
-            className="flex items-center justify-center gap-2 px-6 py-3 bg-indigo-600 text-white rounded-xl font-semibold hover:bg-indigo-700 transition-all text-sm shadow-sm active:scale-[0.98]"
-          >
-            <UserPlus className="w-4 h-4" />
-            {requestedRole === 'teacher' ? t('directory.signUpJoinTeacher', 'Регистрация для преподавателей') : t('directory.signUpJoin', 'Зарегистрироваться и вступить')}
-          </Link>
-          <Link
-            to={`/login?orgSlug=${slug}${requestedRole === 'teacher' ? '&role=teacher' : ''}`}
-            className="flex items-center justify-center gap-2 px-6 py-3 bg-white dark:bg-slate-800 text-slate-700 dark:text-white border border-slate-200 dark:border-slate-700 rounded-xl font-semibold hover:bg-slate-50 dark:hover:bg-slate-700 transition-all text-sm active:scale-[0.98]"
-          >
-            <LogIn className="w-4 h-4" />
-            {t('directory.loginJoin', 'Войти и вступить')}
-          </Link>
-        </div>
+        <Link
+          to={`/login?orgSlug=${slug}${requestedRole === 'teacher' ? '&role=teacher' : ''}`}
+          className={`flex items-center justify-center gap-2 px-6 py-3 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 transition-all text-sm shadow-sm active:scale-[0.98] ${full ? 'w-full' : ''}`}
+        >
+          <UserPlus className="w-5 h-5" />
+          {requestedRole === 'teacher' ? t('directory.joinTeacher', 'Подать заявку (Преподаватель)') : t('directory.joinOrg', 'Вступить в организацию')}
+        </Link>
       );
     }
 
@@ -240,7 +231,7 @@ const PublicOrgProfilePage: React.FC = () => {
   );
 
   return (
-    <div className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 space-y-6 pb-20 lg:pb-6">
+    <div className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 pt-6 sm:pt-10 space-y-6 pb-20 lg:pb-6">
 
       {/* ═══ Cover + Profile Header ═══ */}
       <div className={`relative overflow-hidden rounded-2xl bg-gradient-to-br ${getCoverColor(org.id)}`}>

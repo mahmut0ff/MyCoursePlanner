@@ -209,6 +209,7 @@ const App: React.FC = () => {
             <Route path="certificates" element={<MyCertificatesPage />} />
             <Route path="achievements" element={<AchievementsPage />} />
             <Route path="catalog" element={<OrganizationsDirectoryPage />} />
+            <Route path="org/:slug" element={<PublicOrgProfilePage />} />
             <Route path="student/courses" element={<ProtectedRoute allowedRoles={['student']}><StudentCoursesPage /></ProtectedRoute>} />
             <Route path="student/groups" element={<ProtectedRoute allowedRoles={['student']}><StudentGroupsPage /></ProtectedRoute>} />
             <Route path="student/teachers" element={<ProtectedRoute allowedRoles={['student']}><StudentTeachersPage /></ProtectedRoute>} />

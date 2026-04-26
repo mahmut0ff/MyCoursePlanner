@@ -86,16 +86,19 @@ export default function AdminGradebookAnalytics() {
   // ── Filter data by period + branch ──
   const filteredData = useMemo(() => {
     const periodStart = getPeriodStart(period);
-    const periodIso = periodStart.toISOString();
+    const periodMs = periodStart.getTime();
 
     let fGrades = grades;
     let fJournals = journals;
     let fStudents = students;
 
-    // Period filter
+    // Period filter — use Date comparison (not string) to handle YYYY-MM-DD vs ISO timestamps
     if (period !== 'all') {
-      fGrades = fGrades.filter(g => (g as any).createdAt >= periodIso || (g as any).date >= periodIso);
-      fJournals = fJournals.filter(j => (j as any).date >= periodIso);
+      fGrades = fGrades.filter(g => {
+        const d = (g as any).date || g.createdAt;
+        return d ? new Date(d).getTime() >= periodMs : false;
+      });
+      fJournals = fJournals.filter(j => j.date ? new Date(j.date).getTime() >= periodMs : false);
     }
 
     // Branch filter
@@ -125,21 +128,23 @@ export default function AdminGradebookAnalytics() {
     const attendanceRate = totalAttendance ? (presentAttendance / totalAttendance) * 100 : 0;
 
     // Risk Detection (students with < 60% avg grade OR < 70% attendance)
-    const studentStats: Record<string, { totalGrades: number; passedGrades: number; totalAtt: number; presentAtt: number; gradePercent: number; attPercent: number }> = {};
+    const studentStats: Record<string, { totalGrades: number; gradeSum: number; totalAtt: number; presentAtt: number; gradePercent: number; attPercent: number }> = {};
+    const defaultStats = () => ({ totalGrades: 0, gradeSum: 0, totalAtt: 0, presentAtt: 0, gradePercent: 0, attPercent: 100 });
     numericGrades.forEach(g => {
-      if (!studentStats[g.studentId]) studentStats[g.studentId] = { totalGrades: 0, passedGrades: 0, totalAtt: 0, presentAtt: 0, gradePercent: 0, attPercent: 100 };
+      if (!studentStats[g.studentId]) studentStats[g.studentId] = defaultStats();
+      const pct = (g.value as number) / g.maxValue! * 100;
       studentStats[g.studentId].totalGrades++;
-      if (((g.value as number) / g.maxValue! * 100) >= 60) studentStats[g.studentId].passedGrades++;
+      studentStats[g.studentId].gradeSum += pct;
     });
     fj.forEach(j => {
-      if (!studentStats[j.studentId]) studentStats[j.studentId] = { totalGrades: 0, passedGrades: 0, totalAtt: 0, presentAtt: 0, gradePercent: 0, attPercent: 100 };
+      if (!studentStats[j.studentId]) studentStats[j.studentId] = defaultStats();
       studentStats[j.studentId].totalAtt++;
       if (j.attendance === 'present' || j.attendance === 'late') studentStats[j.studentId].presentAtt++;
     });
 
-    // Calculate percentages
+    // Calculate percentages — gradePercent is now real average score, not pass rate
     Object.values(studentStats).forEach(s => {
-      s.gradePercent = s.totalGrades ? (s.passedGrades / s.totalGrades) * 100 : 100;
+      s.gradePercent = s.totalGrades ? s.gradeSum / s.totalGrades : 100;
       s.attPercent = s.totalAtt ? (s.presentAtt / s.totalAtt) * 100 : 100;
     });
 
@@ -167,7 +172,7 @@ export default function AdminGradebookAnalytics() {
   const handleExport = () => {
     if (!metrics) return;
     const header = 'Студент,Email,Успеваемость %,Посещаемость %,Статус\n';
-    const rows = students.map(s => {
+    const rows = filteredData.students.map(s => {
       const stats = metrics.studentStats[s.uid];
       const gp = stats ? Math.round(stats.gradePercent) : '-';
       const ap = stats ? Math.round(stats.attPercent) : '-';
@@ -253,7 +258,7 @@ export default function AdminGradebookAnalytics() {
       ) : (
         <>
           {/* KPI Cards */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
             <div className="bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-200 dark:border-slate-700">
               <div className="flex items-center justify-between mb-3">
                 <p className="text-sm font-medium text-slate-500">Студентов</p>
@@ -276,13 +281,34 @@ export default function AdminGradebookAnalytics() {
 
             <div className="bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-200 dark:border-slate-700">
               <div className="flex items-center justify-between mb-3">
+                <p className="text-sm font-medium text-slate-500">Средний балл</p>
+                <div className="p-2 bg-emerald-50 dark:bg-emerald-900/30 rounded-lg">
+                  <TrendingUp className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                </div>
+              </div>
+              <h3 className="text-3xl font-bold text-slate-900 dark:text-white">{Math.round(metrics.avgScore)}%</h3>
+              <p className="text-xs text-slate-400 mt-1">{metrics.gradesCount} {pluralize(metrics.gradesCount, 'оценка', 'оценки', 'оценок')}</p>
+            </div>
+
+            <div className="bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-200 dark:border-slate-700">
+              <div className="flex items-center justify-between mb-3">
+                <p className="text-sm font-medium text-slate-500">Посещаемость</p>
+                <div className="p-2 bg-blue-50 dark:bg-blue-900/30 rounded-lg">
+                  <ClipboardList className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                </div>
+              </div>
+              <h3 className="text-3xl font-bold text-slate-900 dark:text-white">{Math.round(metrics.attendanceRate)}%</h3>
+              <p className="text-xs text-slate-400 mt-1">{metrics.journalsCount} {pluralize(metrics.journalsCount, 'запись', 'записи', 'записей')}</p>
+            </div>
+
+            <div className="bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-200 dark:border-slate-700">
+              <div className="flex items-center justify-between mb-3">
                 <p className="text-sm font-medium text-slate-500">Оценок</p>
                 <div className="p-2 bg-slate-100 dark:bg-slate-700 rounded-lg">
-                  <TrendingUp className="w-4 h-4 text-slate-600 dark:text-slate-400" />
+                  <BarChart3 className="w-4 h-4 text-slate-600 dark:text-slate-400" />
                 </div>
               </div>
               <h3 className="text-3xl font-bold text-slate-900 dark:text-white">{metrics.gradesCount}</h3>
-              <p className="text-xs text-slate-400 mt-1">{metrics.journalsCount} {pluralize(metrics.journalsCount, 'запись', 'записи', 'записей')}</p>
             </div>
 
             <div className="bg-white dark:bg-slate-800 p-5 rounded-2xl border border-amber-200 dark:border-amber-900/50">
@@ -366,12 +392,17 @@ export default function AdminGradebookAnalytics() {
               </div>
               
               <div className="space-y-4 flex-1 overflow-y-auto">
-                {teachers.map(teacher => {
+                {(() => {
                   const { grades: fg, journals: fj } = filteredData;
-                  const tGrades = fg.filter(g => g.createdBy === teacher.uid).length;
-                  const tJournals = fj.filter(j => j.createdBy === teacher.uid).length;
-                  const totalActions = tGrades + tJournals;
-                  const displayWidth = Math.min((totalActions / 100) * 100, 100) || 2; 
+                  // Pre-compute max actions for progress bar normalization
+                  const teacherActions = teachers.map(t => {
+                    const tg = fg.filter(g => g.createdBy === t.uid).length;
+                    const tj = fj.filter(j => j.createdBy === t.uid).length;
+                    return { teacher: t, tGrades: tg, tJournals: tj, totalActions: tg + tj };
+                  });
+                  const maxActions = Math.max(...teacherActions.map(t => t.totalActions), 1);
+                  return teacherActions.map(({ teacher, totalActions }) => {
+                  const displayWidth = Math.max((totalActions / maxActions) * 100, 2); 
                   
                   return (
                     <div key={teacher.uid} className="flex flex-col gap-1.5">
@@ -398,7 +429,8 @@ export default function AdminGradebookAnalytics() {
                       </div>
                     </div>
                   );
-                })}
+                });
+                })()}
                 {teachers.length === 0 && (
                   <div className="flex-1 flex flex-col items-center justify-center text-slate-400 h-full py-10">
                     <p className="text-sm">Нет закрепленных учителей</p>

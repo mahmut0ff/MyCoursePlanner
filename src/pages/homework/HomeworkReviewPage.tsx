@@ -1,9 +1,9 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { usePlanGate } from '../../contexts/PlanContext';
 import { apiOrgGetHomeworks, apiGradeHomework, apiAIGradeHomework, apiUpdateHomeworkStatus } from '../../lib/api';
 import type { HomeworkSubmission } from '../../types';
-import { Sparkles, CheckCircle, Clock, XCircle, GripVertical, FileVideo, ImageIcon, X, FileAudio, FileArchive, FileText, ArrowLeft } from 'lucide-react';
+import { Sparkles, CheckCircle, Clock, XCircle, GripVertical, FileVideo, ImageIcon, X, FileAudio, FileArchive, FileText, ArrowLeft, Search, Filter, BarChart3 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { DndContext, useSensor, useSensors, PointerSensor, DragOverlay, closestCorners } from '@dnd-kit/core';
 import type { DragEndEvent, DragStartEvent } from '@dnd-kit/core';
@@ -58,6 +58,7 @@ const KanbanCard: React.FC<{ sub: HomeworkSubmission; onClick: () => void; isAct
          <div className="flex-1 min-w-0">
             <h4 className="font-bold text-[13px] text-slate-900 dark:text-white truncate">{sub.studentName}</h4>
             <p className="text-[11px] text-slate-500 truncate mt-0.5" title={sub.lessonTitle}>{sub.lessonTitle}</p>
+            {sub.groupName && <span className="inline-block mt-1 text-[9px] font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/20 px-1.5 py-0.5 rounded-md truncate max-w-full">{sub.groupName}</span>}
          </div>
          <div {...listeners} {...attributes} className="p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-grab active:cursor-grabbing opacity-0 group-hover:opacity-100 transition-opacity shrink-0" onClick={e => e.stopPropagation()}>
            <GripVertical className="w-3.5 h-3.5" />
@@ -112,6 +113,8 @@ const HomeworkReviewPage: React.FC = () => {
   
   const [isAIGrading, setIsAIGrading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [groupFilter, setGroupFilter] = useState('all');
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 }})
@@ -234,9 +237,26 @@ const HomeworkReviewPage: React.FC = () => {
     }
   };
 
-  const pendingSubs = submissions.filter(s => s.status === 'pending');
-  const reviewingSubs = submissions.filter(s => s.status === 'reviewing');
-  const gradedSubs = submissions.filter(s => s.status === 'graded');
+  const groups = useMemo(() => {
+    const g = new Map<string, string>();
+    submissions.forEach(s => { if (s.groupId && s.groupName) g.set(s.groupId, s.groupName); });
+    return Array.from(g.entries());
+  }, [submissions]);
+
+  const filtered = useMemo(() => {
+    let list = submissions;
+    if (groupFilter !== 'all') list = list.filter(s => s.groupId === groupFilter);
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
+      list = list.filter(s => s.studentName.toLowerCase().includes(q) || s.lessonTitle.toLowerCase().includes(q));
+    }
+    return list;
+  }, [submissions, groupFilter, searchQuery]);
+
+  const pendingSubs = filtered.filter(s => s.status === 'pending');
+  const reviewingSubs = filtered.filter(s => s.status === 'reviewing');
+  const gradedSubs = filtered.filter(s => s.status === 'graded');
+  const avgScore = gradedSubs.length ? Math.round(gradedSubs.reduce((a, s) => a + (s.finalScore || 0), 0) / gradedSubs.length * 10) / 10 : 0;
 
   if (loading) return <div className="h-full flex flex-col items-center justify-center p-12"><div className="w-10 h-10 border-4 border-accent-teal border-t-transparent rounded-full animate-spin"></div><p className="mt-4 text-slate-500 font-medium">Загрузка доски...</p></div>;
 
@@ -244,10 +264,52 @@ const HomeworkReviewPage: React.FC = () => {
     <div className="flex flex-col h-[calc(100vh-80px)] max-w-[1800px] mx-auto">
       
       {/* Header */}
-      <div className="flex items-center justify-between px-6 pb-4 shrink-0">
-        <div>
-          <h1 className="text-xl font-bold text-slate-900 dark:text-white">Доска проверки работ</h1>
-          <p className="text-slate-500 dark:text-slate-400 text-[13px] mt-0.5">Перетаскивайте карточки для изменения статуса</p>
+      <div className="px-6 pb-4 shrink-0 space-y-3">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-xl font-bold text-slate-900 dark:text-white">Доска проверки работ</h1>
+            <p className="text-slate-500 dark:text-slate-400 text-[13px] mt-0.5">Перетаскивайте карточки для изменения статуса</p>
+          </div>
+        </div>
+
+        {/* Stats + Filters Row */}
+        <div className="flex items-center gap-3 flex-wrap">
+          {/* Stats pills */}
+          <div className="flex items-center gap-1.5 mr-auto">
+            <div className="flex items-center gap-1.5 px-2.5 py-1.5 bg-amber-50 dark:bg-amber-900/15 border border-amber-200/60 dark:border-amber-800/40 rounded-lg text-[11px] font-bold text-amber-700 dark:text-amber-300">
+              <Clock className="w-3 h-3" /> {pendingSubs.length}
+            </div>
+            <div className="flex items-center gap-1.5 px-2.5 py-1.5 bg-blue-50 dark:bg-blue-900/15 border border-blue-200/60 dark:border-blue-800/40 rounded-lg text-[11px] font-bold text-blue-700 dark:text-blue-300">
+              <BarChart3 className="w-3 h-3" /> {reviewingSubs.length}
+            </div>
+            <div className="flex items-center gap-1.5 px-2.5 py-1.5 bg-emerald-50 dark:bg-emerald-900/15 border border-emerald-200/60 dark:border-emerald-800/40 rounded-lg text-[11px] font-bold text-emerald-700 dark:text-emerald-300">
+              <CheckCircle className="w-3 h-3" /> {gradedSubs.length}
+            </div>
+            {avgScore > 0 && <span className="text-[11px] text-slate-400 font-medium ml-1">Ø {avgScore}</span>}
+          </div>
+
+          {/* Group filter */}
+          {groups.length > 0 && (
+            <div className="relative">
+              <Filter className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400 pointer-events-none" />
+              <select value={groupFilter} onChange={e => setGroupFilter(e.target.value)} className="pl-8 pr-3 py-1.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-[12px] text-slate-700 dark:text-slate-300 appearance-none cursor-pointer focus:outline-none focus:ring-2 focus:ring-accent-teal/30">
+                <option value="all">Все группы</option>
+                {groups.map(([id, name]) => <option key={id} value={id}>{name}</option>)}
+              </select>
+            </div>
+          )}
+
+          {/* Search */}
+          <div className="relative">
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400 pointer-events-none" />
+            <input
+              type="text"
+              placeholder="Поиск..."
+              value={searchQuery}
+              onChange={e => setSearchQuery(e.target.value)}
+              className="pl-8 pr-3 py-1.5 w-44 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-[12px] text-slate-700 dark:text-slate-300 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-accent-teal/30 transition-all"
+            />
+          </div>
         </div>
       </div>
 
@@ -261,17 +323,17 @@ const HomeworkReviewPage: React.FC = () => {
               
               <KanbanColumn id="pending" title="Ожидает проверки" count={pendingSubs.length} color="border-slate-400">
                 {pendingSubs.map(s => <KanbanCard key={s.id} sub={s} onClick={() => handleSelect(s)} isActive={selectedSubmission?.id === s.id} />)}
-                {pendingSubs.length === 0 && <div className="text-center py-8 text-slate-400 text-[12px] border border-dashed border-slate-200 dark:border-slate-700/50 rounded-xl">Нет новых работ</div>}
+                {pendingSubs.length === 0 && <div className="text-center py-10 text-slate-400 border border-dashed border-slate-200 dark:border-slate-700/50 rounded-xl"><Clock className="w-6 h-6 mx-auto mb-2 opacity-40" /><p className="text-[12px] font-medium">Нет новых работ</p></div>}
               </KanbanColumn>
               
               <KanbanColumn id="reviewing" title="На проверке" count={reviewingSubs.length} color="border-amber-400">
                  {reviewingSubs.map(s => <KanbanCard key={s.id} sub={s} onClick={() => handleSelect(s)} isActive={selectedSubmission?.id === s.id} />)}
-                 {reviewingSubs.length === 0 && <div className="text-center py-8 text-slate-400 text-[12px] border border-dashed border-slate-200 dark:border-slate-700/50 rounded-xl">Перетащите сюда</div>}
+                 {reviewingSubs.length === 0 && <div className="text-center py-10 text-slate-400 border border-dashed border-slate-200 dark:border-slate-700/50 rounded-xl"><BarChart3 className="w-6 h-6 mx-auto mb-2 opacity-40" /><p className="text-[12px] font-medium">Перетащите сюда</p></div>}
               </KanbanColumn>
 
               <KanbanColumn id="graded" title="Оценено" count={gradedSubs.length} color="border-emerald-400">
                  {gradedSubs.map(s => <KanbanCard key={s.id} sub={s} onClick={() => handleSelect(s)} isActive={selectedSubmission?.id === s.id} />)}
-                 {gradedSubs.length === 0 && <div className="text-center py-8 text-slate-400 text-[12px] border border-dashed border-slate-200 dark:border-slate-700/50 rounded-xl">Оценённые работы</div>}
+                 {gradedSubs.length === 0 && <div className="text-center py-10 text-slate-400 border border-dashed border-slate-200 dark:border-slate-700/50 rounded-xl"><CheckCircle className="w-6 h-6 mx-auto mb-2 opacity-40" /><p className="text-[12px] font-medium">Оценённые работы</p></div>}
               </KanbanColumn>
 
             </div>
@@ -415,36 +477,61 @@ const HomeworkReviewPage: React.FC = () => {
             </div>
 
             {/* Grading Footer */}
-            <div className="p-5 border-t border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 shrink-0">
-              <div className="flex gap-3 items-end mb-3">
-                <div className="w-28 shrink-0">
-                  <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1.5">Балл (из {selectedSubmission.maxPoints || 10})</label>
+            <div className="p-5 border-t border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 shrink-0 space-y-3">
+              {/* Score section */}
+              <div>
+                <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-2">Балл</label>
+                <div className="flex items-center gap-3">
                   <input 
-                    type="number" 
+                    type="range"
                     min={0}
                     max={selectedSubmission.maxPoints || 10}
                     value={gradeInput}
                     onChange={e => setGradeInput(Number(e.target.value))}
-                    className="w-full px-3 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 focus:border-accent-teal focus:ring-2 focus:ring-accent-teal/10 rounded-xl text-lg font-bold text-slate-900 dark:text-white transition-all outline-none"
+                    className="flex-1 h-2 bg-slate-200 dark:bg-slate-700 rounded-full appearance-none cursor-pointer accent-accent-teal"
                   />
+                  <div className="flex items-baseline gap-0.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-1.5 min-w-[72px] justify-center">
+                    <input 
+                      type="number" 
+                      min={0}
+                      max={selectedSubmission.maxPoints || 10}
+                      value={gradeInput}
+                      onChange={e => setGradeInput(Number(e.target.value))}
+                      className="w-8 text-center text-lg font-black text-slate-900 dark:text-white bg-transparent outline-none"
+                    />
+                    <span className="text-[11px] text-slate-400 font-medium">/ {selectedSubmission.maxPoints || 10}</span>
+                  </div>
                 </div>
-                <div className="flex-1 min-w-0">
-                  <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1.5">Отзыв</label>
-                  <input 
-                    type="text" 
-                    value={feedbackInput}
-                    onChange={e => setFeedbackInput(e.target.value)}
-                    placeholder="Отличная работа, так держать!"
-                    className="w-full px-3 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 focus:border-accent-teal focus:ring-2 focus:ring-accent-teal/10 rounded-xl text-[13px] font-medium text-slate-900 dark:text-white transition-all outline-none placeholder:font-normal placeholder:text-slate-400"
+                {/* Visual bar */}
+                <div className="mt-1.5 h-1 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
+                  <div 
+                    className={`h-full rounded-full transition-all duration-300 ${
+                      (gradeInput / (selectedSubmission.maxPoints || 10)) >= 0.7 ? 'bg-emerald-500' : 
+                      (gradeInput / (selectedSubmission.maxPoints || 10)) >= 0.4 ? 'bg-amber-500' : 'bg-red-500'
+                    }`}
+                    style={{ width: `${Math.min(100, (gradeInput / (selectedSubmission.maxPoints || 10)) * 100)}%` }}
                   />
                 </div>
               </div>
+              
+              {/* Feedback */}
+              <div>
+                <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1.5">Отзыв</label>
+                <textarea 
+                  value={feedbackInput}
+                  onChange={e => setFeedbackInput(e.target.value)}
+                  placeholder="Отличная работа, так держать!"
+                  rows={2}
+                  className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 focus:border-accent-teal focus:ring-2 focus:ring-accent-teal/10 rounded-xl text-[13px] text-slate-900 dark:text-white transition-all outline-none placeholder:text-slate-400 resize-none"
+                />
+              </div>
+
               <button
                 onClick={handleSaveGrade}
                 disabled={isSaving}
-                className="w-full flex items-center justify-center gap-2 px-5 py-3 bg-accent-teal text-white rounded-xl font-bold shadow-[0_0_20px_rgba(45,212,191,0.2)] hover:shadow-[0_0_30px_rgba(45,212,191,0.4)] transition-all disabled:opacity-50 disabled:grayscale hover:-translate-y-0.5"
+                className="w-full flex items-center justify-center gap-2 px-5 py-2.5 bg-accent-teal text-white rounded-xl font-bold shadow-[0_0_20px_rgba(45,212,191,0.2)] hover:shadow-[0_0_30px_rgba(45,212,191,0.4)] transition-all disabled:opacity-50 disabled:grayscale hover:-translate-y-0.5"
               >
-                {isSaving ? <><div className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" /> Сохранение...</> : <>Сохранить оценку <CheckCircle className="w-5 h-5" /></>}
+                {isSaving ? <><div className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" /> Сохранение...</> : <>Сохранить оценку <CheckCircle className="w-4 h-4" /></>}
               </button>
             </div>
             

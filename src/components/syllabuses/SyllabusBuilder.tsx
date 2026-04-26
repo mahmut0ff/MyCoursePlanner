@@ -4,14 +4,7 @@ import toast from 'react-hot-toast';
 import type { Syllabus } from '../../types';
 import { AISyllabusImportModal } from '../ui/AISyllabusImportModal';
 import { generateId } from '../../utils/grading';
-
-// This would usually be imported from api.ts
-// import { apiGetSyllabuses, apiCreateSyllabus, apiUpdateSyllabus } from '../../lib/api';
-
-const mockSaveAPI = async (data: any) => {
-  // In a real app, this calls apiCreateSyllabus or apiUpdateSyllabus
-  return { ...data, id: data.id || generateId() };
-};
+import { apiGetSyllabuses, apiCreateSyllabus, apiUpdateSyllabus } from '../../lib/api';
 
 interface Props {
   courseId: string;
@@ -19,16 +12,28 @@ interface Props {
 
 export const SyllabusBuilder: React.FC<Props> = ({ courseId }) => {
   const [syllabus, setSyllabus] = useState<Syllabus | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   
   const [isAIModalOpen, setAIModalOpen] = useState(false);
   const [isExpanded, setIsExpanded] = useState(true);
 
-  // Fallback loading mechanism (in real app, fetch from api)
   useEffect(() => {
-    // apiGetSyllabuses(courseId).then(...)
-    setLoading(false);
+    const fetchSyllabus = async () => {
+      setLoading(true);
+      try {
+        const data = await apiGetSyllabuses(courseId);
+        // Assuming the backend returns an array of syllabuses for the course
+        if (data && data.length > 0) {
+          setSyllabus(data[0]);
+        }
+      } catch (err) {
+        console.error('Failed to load syllabus', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchSyllabus();
   }, [courseId]);
 
   const handleAISuccess = (aiData: any) => {
@@ -51,7 +56,12 @@ export const SyllabusBuilder: React.FC<Props> = ({ courseId }) => {
     if (!syllabus) return;
     setSaving(true);
     try {
-      const saved = await mockSaveAPI(syllabus);
+      let saved;
+      if (syllabus.id) {
+        saved = await apiUpdateSyllabus(syllabus.id, syllabus);
+      } else {
+        saved = await apiCreateSyllabus(syllabus);
+      }
       setSyllabus(saved);
       toast.success('Силлабус успешно сохранен!');
     } catch (err: any) {

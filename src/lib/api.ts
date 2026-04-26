@@ -615,3 +615,12 @@ export const apiAIGradeDictation = (data: { audioBase64: string, mimeType?: stri
 export const apiGetTelegramStatus = () => apiRequest('api-telegram-link', 'GET');
 export const apiGenerateTelegramLink = () => apiRequest('api-telegram-link', 'POST', { action: 'generate' });
 export const apiUnlinkTelegram = () => apiRequest('api-telegram-link', 'POST', { action: 'unlink' });
+// ---- Syllabuses ----
+export const apiGetSyllabuses = (courseId?: string) =>
+  apiRequest('api-syllabuses', 'GET', undefined, courseId ? { courseId } : undefined);
+export const apiCreateSyllabus = (data: any) =>
+  apiRequest('api-syllabuses', 'POST', data);
+export const apiUpdateSyllabus = (id: string, data: any) =>
+  apiRequest('api-syllabuses', 'PUT', { ...data, id });
+export const apiDeleteSyllabus = (id: string) =>
+  apiRequest('api-syllabuses', 'DELETE', undefined, { id });

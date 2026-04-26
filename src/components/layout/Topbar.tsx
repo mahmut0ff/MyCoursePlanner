@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../contexts/AuthContext';
 import { useTheme } from '../../contexts/ThemeContext';
@@ -13,7 +13,7 @@ import {
 } from 'lucide-react';
 import { usePageHelp } from '../../hooks/usePageHelp';
 import { HelpDrawer } from './HelpDrawer';
-
+import { orgGetStudents, orgGetCourses, orgGetGroups, apiGetLessons, apiGetExams } from '../../lib/api';
 
 interface TopbarProps {
   onMenuClick: () => void;
@@ -83,10 +83,108 @@ const Topbar: React.FC<TopbarProps> = ({ onMenuClick }) => {
   const pageHelp = usePageHelp();
   const [helpOpen, setHelpOpen] = useState(false);
 
+  const [globalData, setGlobalData] = useState<{
+    students: any[];
+    courses: any[];
+    groups: any[];
+    lessons: any[];
+    exams: any[];
+  }>({ students: [], courses: [], groups: [], lessons: [], exams: [] });
+  const [globalDataLoaded, setGlobalDataLoaded] = useState(false);
+
+  // When search opens, fetch global data
+  useEffect(() => {
+    if (searchOpen && !globalDataLoaded && !isSuperAdmin) {
+      const load = async () => {
+        try {
+          const [studentsRes, coursesRes, groupsRes, lessonsRes, examsRes] = await Promise.allSettled([
+            (isTeacher || role === 'admin' || role === 'manager') ? orgGetStudents() : Promise.resolve([]),
+            orgGetCourses(),
+            orgGetGroups(),
+            apiGetLessons(),
+            apiGetExams()
+          ]);
+          setGlobalData({
+            students: studentsRes.status === 'fulfilled' ? studentsRes.value : [],
+            courses: coursesRes.status === 'fulfilled' ? coursesRes.value : [],
+            groups: groupsRes.status === 'fulfilled' ? groupsRes.value : [],
+            lessons: lessonsRes.status === 'fulfilled' ? lessonsRes.value : [],
+            exams: examsRes.status === 'fulfilled' ? examsRes.value : [],
+          });
+          setGlobalDataLoaded(true);
+        } catch (e) {
+          console.error('Failed to load search data', e);
+        }
+      };
+      load();
+    }
+  }, [searchOpen, globalDataLoaded, isSuperAdmin, isTeacher, role]);
+
   const items = isSuperAdmin ? ADMIN_ITEMS : role === 'teacher' ? TEACHER_ITEMS : role === 'student' ? STUDENT_ITEMS : USER_ITEMS;
-  const filtered = query.trim()
-    ? items.filter((i) => t(i.label).toLowerCase().includes(query.toLowerCase()))
-    : items;
+  
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    
+    // 1. Navigation items
+    const navResults = items
+      .filter((i) => t(i.label).toLowerCase().includes(q))
+      .map(i => ({ ...i, type: 'nav' as const }));
+
+    if (!q) return navResults; // Only show nav items when empty query
+
+    // 2. Global Data Search
+    const studentResults = globalData.students
+      .filter((s: any) => s.displayName?.toLowerCase().includes(q) || s.email?.toLowerCase().includes(q))
+      .map((s: any) => ({
+        icon: Users,
+        label: s.displayName || s.email,
+        path: `/students/${s.uid}`,
+        type: 'student' as const,
+        meta: t('org.results.student', 'Студент')
+      }));
+
+    const courseResults = globalData.courses
+      .filter((c: any) => c.title?.toLowerCase().includes(q))
+      .map((c: any) => ({
+        icon: BookOpen,
+        label: c.title,
+        path: `/courses/${c.id}`,
+        type: 'course' as const,
+        meta: t('org.results.course', 'Курс')
+      }));
+
+    const groupResults = globalData.groups
+      .filter((g: any) => g.name?.toLowerCase().includes(q))
+      .map((g: any) => ({
+        icon: Users,
+        label: g.name,
+        path: `/groups/${g.id}`,
+        type: 'group' as const,
+        meta: t('org.results.group', 'Группа')
+      }));
+
+    const lessonResults = globalData.lessons
+      .filter((l: any) => l.title?.toLowerCase().includes(q))
+      .map((l: any) => ({
+        icon: BookOpen,
+        label: l.title,
+        path: `/lessons/${l.id}`,
+        type: 'lesson' as const,
+        meta: t('org.results.lesson', 'Урок')
+      }));
+
+    const examResults = globalData.exams
+      .filter((e: any) => e.title?.toLowerCase().includes(q))
+      .map((e: any) => ({
+        icon: ClipboardList,
+        label: e.title,
+        path: `/exams/${e.id}`,
+        type: 'exam' as const,
+        meta: t('org.results.exam', 'Экзамен')
+      }));
+
+    return [...navResults, ...studentResults, ...courseResults, ...groupResults, ...lessonResults, ...examResults].slice(0, 20);
+  }, [query, items, globalData, t]);
 
   // ⌘K / Ctrl+K
   useEffect(() => {
@@ -248,8 +346,15 @@ const Topbar: React.FC<TopbarProps> = ({ onMenuClick }) => {
                       }`}
                     >
                       <Icon className="w-4 h-4 shrink-0" />
-                      <span className="font-medium">{t(item.label)}</span>
-                      <span className="ml-auto text-xs text-slate-400 dark:text-slate-500 font-mono">{item.path}</span>
+                      <span className="font-medium truncate max-w-[200px] md:max-w-xs text-left">
+                        {item.type === 'nav' ? t(item.label) : item.label}
+                      </span>
+                      {item.type !== 'nav' && (
+                        <span className="ml-2 px-1.5 py-0.5 text-[10px] bg-slate-100 dark:bg-slate-700 text-slate-500 rounded font-semibold shrink-0">
+                          {item.meta}
+                        </span>
+                      )}
+                      <span className="ml-auto text-xs text-slate-400 dark:text-slate-500 font-mono truncate max-w-[150px]">{item.path}</span>
                     </button>
                   );
                 })

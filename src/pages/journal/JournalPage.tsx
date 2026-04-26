@@ -11,6 +11,7 @@ import {
   orgGetGradeSchema,
   orgGetGrades,
   orgSaveGrade,
+  apiGetLessons
 } from '../../lib/api';
 import type { Course, Group, UserProfile, JournalEntry, AttendanceStatus, ParticipationLevel, GradeSchema, GradeEntry } from '../../types';
 import GradeCell from '../../components/gradebook/GradeCell';
@@ -75,6 +76,7 @@ const JournalPage: React.FC = () => {
   const [allJournalEntries, setAllJournalEntries] = useState<JournalEntry[]>([]);
   const [courseJournalDates, setCourseJournalDates] = useState<string[]>([]);
   const [grades, setGrades] = useState<Record<string, GradeEntry>>({});
+  const [courseLessons, setCourseLessons] = useState<any[]>([]);
   const [syncStatus, setSyncStatus] = useState<Record<string, boolean>>({});
   const [entrySyncStatus, setEntrySyncStatus] = useState<Record<string, boolean>>({});
   
@@ -165,13 +167,17 @@ const JournalPage: React.FC = () => {
     if (!selectedCourseId || !date) return;
     setLoadingData(true);
     try {
-      const [journalRes, schemaRes, gradesRes] = await Promise.all([
+      const [journalRes, schemaRes, gradesRes, lessonsRes] = await Promise.all([
          orgGetJournal(selectedCourseId),
          orgGetGradeSchema(selectedCourseId).catch(() => null),
-         orgGetGrades(selectedCourseId)
+         orgGetGrades(selectedCourseId),
+         apiGetLessons().catch(() => [])
       ]);
 
       setSchema(schemaRes || { ...defaultSchema, courseId: selectedCourseId });
+
+      const allLessons = Array.isArray(lessonsRes) ? lessonsRes : [];
+      setCourseLessons(allLessons.filter(l => l.courseId === selectedCourseId));
 
       const allEntries = Array.isArray(journalRes) ? journalRes : [];
       const dateEntries = allEntries.filter((j: any) => j.date === date);
@@ -215,13 +221,48 @@ const JournalPage: React.FC = () => {
   }, [selectedGroupId, allGroups, allStudents]);
 
 
-  const currentLessonId = useMemo(() => {
-    // Find the attached lesson among the group's students for this date
+  const [selectedLessonId, setSelectedLessonId] = useState<string | null>(null);
+
+  useEffect(() => {
+    let found = null;
     for (const s of groupStudents) {
-      if (entries[s.uid]?.lessonId) return entries[s.uid].lessonId;
+      if (entries[s.uid]?.lessonId) {
+        found = entries[s.uid].lessonId;
+        break;
+      }
     }
-    return null;
-  }, [entries, groupStudents]);
+    setSelectedLessonId(found);
+  }, [selectedCourseId, selectedGroupId, date, groupStudents.length]);
+
+  const handleAttachLesson = async (lessonId: string) => {
+    const finalLessonId = lessonId || null;
+    setSelectedLessonId(finalLessonId);
+    
+    const updates = groupStudents.map(s => entries[s.uid]).filter(e => !!e);
+    if (updates.length === 0) return;
+    
+    setBulking(true);
+    try {
+      const bulkData = updates.map(e => ({
+        studentId: e.studentId,
+        attendance: e.attendance,
+        participation: e.participation,
+        note: e.note,
+        lessonId: finalLessonId || undefined
+      }));
+      const res = await orgBulkAttendance(selectedCourseId, date, bulkData);
+      const newEntries = { ...entries };
+      (res as JournalEntry[]).forEach(e => {
+        newEntries[e.studentId] = e;
+      });
+      setEntries(newEntries);
+      toast.success(t('journal.lessonAttached', 'Урок прикреплен'));
+    } catch(e: any) {
+      toast.error(e.message || 'Ошибка прикрепления урока');
+    } finally {
+      setBulking(false);
+    }
+  };
 
 
   // 5. Handlers
@@ -239,7 +280,7 @@ const JournalPage: React.FC = () => {
       attendance: prevEntry?.attendance || 'present',
       participation: prevEntry?.participation || undefined,
       note: prevEntry?.note || '',
-      lessonId: prevEntry?.lessonId || currentLessonId || undefined,
+      lessonId: prevEntry?.lessonId || selectedLessonId || undefined,
       flags: prevEntry?.flags || [],
       version: (prevEntry?.version || 0) + 1,
       organizationId: '', 
@@ -360,7 +401,7 @@ const JournalPage: React.FC = () => {
         attendance: 'present' as AttendanceStatus,
         participation: existing?.participation,
         note: existing?.note,
-        lessonId: existing?.lessonId || currentLessonId || undefined
+        lessonId: existing?.lessonId || selectedLessonId || undefined
       };
     });
 
@@ -496,6 +537,26 @@ const JournalPage: React.FC = () => {
             <p className="text-sm font-medium text-slate-700 dark:text-slate-300">
               Студентов в группе: <span className="font-bold">{groupStudents.length}</span>
             </p>
+            {canEdit && courseLessons.length > 0 && (
+              <div className="mt-3 flex flex-wrap items-center gap-2">
+                 <span className="text-xs font-medium text-slate-500">Прикреплённый урок:</span>
+                 <select 
+                    className="text-sm border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-1 bg-white dark:bg-slate-900"
+                    value={selectedLessonId || ''}
+                    onChange={(e) => handleAttachLesson(e.target.value)}
+                 >
+                    <option value="">— Без урока —</option>
+                    {courseLessons.map(l => (
+                      <option key={l.id} value={l.id}>{l.title}</option>
+                    ))}
+                 </select>
+              </div>
+            )}
+            {!canEdit && selectedLessonId && (
+              <div className="mt-2 text-sm text-slate-600 dark:text-slate-400">
+                 Прикреплённый урок: <span className="font-medium">{courseLessons.find(l => l.id === selectedLessonId)?.title || selectedLessonId}</span>
+              </div>
+            )}
             {!isDateValidForEditing && !isReadOnly && (
                <p className="text-xs text-red-500 mt-1 font-medium">Редактирование блокировано. Можно изменять данные только в пределах последних 14-ти дней.</p>
             )}
@@ -574,15 +635,15 @@ const JournalPage: React.FC = () => {
                            {canEdit ? (
                              <GradeCell
                                 studentId={student.uid}
-                                itemId={currentLessonId || date}
-                                value={grades[`${student.uid}_${currentLessonId || date}`]}
+                                itemId={selectedLessonId || date}
+                                value={grades[`${student.uid}_${selectedLessonId || date}`]}
                                 schema={schema}
-                                isSyncing={syncStatus[`${student.uid}_${currentLessonId || date}`]}
-                                onChange={(val, disp, status, comment) => handleGradeChange(student.uid, currentLessonId || date, val, disp, status, comment)}
+                                isSyncing={syncStatus[`${student.uid}_${selectedLessonId || date}`]}
+                                onChange={(val, disp, status, comment) => handleGradeChange(student.uid, selectedLessonId || date, val, disp, status, comment)}
                              />
                            ) : (
                              <div className="w-full h-full min-h-[48px] flex items-center justify-center text-slate-500 font-bold">
-                                {grades[`${student.uid}_${currentLessonId || date}`]?.displayValue || grades[`${student.uid}_${currentLessonId || date}`]?.value || <span className="opacity-50">—</span>}
+                                {grades[`${student.uid}_${selectedLessonId || date}`]?.displayValue || grades[`${student.uid}_${selectedLessonId || date}`]?.value || <span className="opacity-50">—</span>}
                              </div>
                            )}
                         </td>

@@ -1,55 +1,77 @@
 import React, { lazy, type ComponentType } from 'react';
 
+const STORAGE_KEY = 'chunk_reload_ts';
+const RELOAD_COOLDOWN_MS = 10_000; // prevent infinite reload loops
+
 /**
- * Enhanced lazy() wrapper that retries failed dynamic imports.
+ * Enhanced lazy() wrapper that handles post-deploy chunk failures.
  *
- * After a deploy, existing users may have stale chunk hashes in their browser.
- * The first import() will 404, triggering a ChunkLoadError.
- * This wrapper catches that and retries up to `maxRetries` times with a short
- * delay, giving the browser a chance to fetch the updated manifest.
+ * After a deploy, hashed chunk URLs (e.g. HomeworkReviewPage-Ck64ue8g.js)
+ * no longer exist on the server. The hosting returns index.html (text/html)
+ * instead of JS, which causes a TypeError.
  *
- * Usage:
- *   const MyPage = lazyRetry(() => import('./pages/MyPage'));
- *   // Use exactly like React.lazy
+ * Retrying the same URL is pointless — the chunk hash is baked into the
+ * import() call. The only real fix is a full page reload so the browser
+ * fetches the new index.html with updated chunk references.
+ *
+ * This wrapper:
+ * 1. Catches chunk/module load errors
+ * 2. Forces a single page reload (with cooldown to prevent loops)
+ * 3. If reload already happened recently, throws to ErrorBoundary
  */
 export function lazyRetry<T extends ComponentType<any>>(
   importFn: () => Promise<{ default: T }>,
-  maxRetries = 2,
-  retryDelay = 1500,
 ): React.LazyExoticComponent<T> {
-  return lazy(() => retryImport(importFn, maxRetries, retryDelay));
+  return lazy(() => importWithReload(importFn));
 }
 
-async function retryImport<T extends ComponentType<any>>(
+async function importWithReload<T extends ComponentType<any>>(
   importFn: () => Promise<{ default: T }>,
-  retriesLeft: number,
-  delay: number,
 ): Promise<{ default: T }> {
   try {
     return await importFn();
   } catch (error: any) {
-    if (retriesLeft <= 0) throw error;
+    if (!isChunkError(error)) throw error;
 
-    // Only retry for network/chunk errors, not for syntax/runtime errors
-    const msg = (error?.message || '').toLowerCase();
-    const isRetryable =
-      msg.includes('loading chunk') ||
-      msg.includes('loading module') ||
-      msg.includes('dynamically imported module') ||
-      msg.includes('failed to fetch') ||
-      msg.includes('importing a module script failed') ||
-      msg.includes('loading css chunk') ||
-      msg.includes('networkerror') ||
-      error?.name === 'ChunkLoadError';
+    // Check if we already reloaded recently (prevent infinite loops)
+    const lastReload = Number(sessionStorage.getItem(STORAGE_KEY) || '0');
+    const now = Date.now();
 
-    if (!isRetryable) throw error;
+    if (now - lastReload < RELOAD_COOLDOWN_MS) {
+      // Already reloaded recently — let ErrorBoundary handle it
+      console.error(
+        '[lazyRetry] Chunk load failed after recent reload. Deferring to ErrorBoundary.',
+        error.message,
+      );
+      throw error;
+    }
 
-    console.warn(
-      `[lazyRetry] Chunk load failed, retrying (${retriesLeft} left)...`,
-      error.message,
-    );
+    // Mark that we're about to reload
+    sessionStorage.setItem(STORAGE_KEY, String(now));
+    console.warn('[lazyRetry] Chunk missing after deploy, reloading page...', error.message);
 
-    await new Promise((r) => setTimeout(r, delay));
-    return retryImport(importFn, retriesLeft - 1, delay);
+    // Force reload — bypasses cache so new index.html (with new chunk refs) is fetched
+    window.location.reload();
+
+    // Return a never-resolving promise to prevent React from rendering
+    // while the page is reloading
+    return new Promise(() => {});
   }
+}
+
+function isChunkError(error: any): boolean {
+  const msg = (error?.message || '').toLowerCase();
+  const name = (error?.name || '').toLowerCase();
+  return (
+    msg.includes('loading chunk') ||
+    msg.includes('loading module') ||
+    msg.includes('dynamically imported module') ||
+    msg.includes('failed to fetch') ||
+    msg.includes('importing a module script failed') ||
+    msg.includes('loading css chunk') ||
+    msg.includes('mime type') ||
+    msg.includes('networkerror') ||
+    name === 'chunkerror' ||
+    name === 'chunkloaderror'
+  );
 }

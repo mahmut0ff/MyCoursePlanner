@@ -41,7 +41,6 @@ export const PlanProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [planId, setPlanId] = useState<PlanId>('starter');
   const [subscriptionStatus, setSubscriptionStatus] = useState<string | null>(null);
   const [trialEndsAt, setTrialEndsAt] = useState<string | null>(null);
-  const [currentPeriodEnd, setCurrentPeriodEnd] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
   const fetchSubscription = useCallback(async () => {
@@ -55,7 +54,6 @@ export const PlanProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setPlanId(sub.planId || 'starter');
         setSubscriptionStatus(sub.status || null);
         setTrialEndsAt(sub.trialEndsAt || null);
-        setCurrentPeriodEnd(sub.currentPeriodEnd || null);
       }
     } catch (e) {
       console.warn('PlanContext: failed to load subscription', e);
@@ -95,16 +93,12 @@ export const PlanProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const isExpired = useMemo(() => {
     if (isSuperAdmin || isGifted) return false;
     if (!subscriptionStatus) return false;
-    // Cancelled = expired
+    // Status-based: backend sets 'expired' when balance depletes
     if (subscriptionStatus === 'cancelled' || subscriptionStatus === 'suspended' || subscriptionStatus === 'expired') return true;
     // Trial ended
     if (subscriptionStatus === 'trial' && trialDaysLeft !== null && trialDaysLeft <= 0) return true;
-    // Active subscription period ended
-    if (subscriptionStatus === 'active' && currentPeriodEnd) {
-      return new Date(currentPeriodEnd) < new Date();
-    }
     return false;
-  }, [subscriptionStatus, trialDaysLeft, currentPeriodEnd, isSuperAdmin, isGifted]);
+  }, [subscriptionStatus, trialDaysLeft, isSuperAdmin, isGifted]);
 
   const limits = useMemo(() => {
     if (isSuperAdmin) return PLANS[2].limits;

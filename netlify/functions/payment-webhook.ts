@@ -74,17 +74,29 @@ const handler: Handler = async (event: HandlerEvent) => {
       // Activate subscription
       const orgId = payment.organizationId;
       if (orgId && payment.planId) {
-        const periodEnd = new Date();
-        periodEnd.setMonth(periodEnd.getMonth() + 1);
+        const planPrices: Record<string, number> = { starter: 1990, professional: 4990, enterprise: 14900 };
+        const monthlyPrice = planPrices[payment.planId] || payment.amount;
+        const dailyRate = Math.round((monthlyPrice / 30) * 100) / 100;
 
         const subSnap = await adminDb.collection('subscriptions')
           .where('organizationId', '==', orgId).limit(1).get();
 
         if (!subSnap.empty) {
+          const existingSub = subSnap.docs[0].data();
+          // Calculate any remaining balance from previous period
+          const prevBalance = existingSub.balance || 0;
+          const prevDailyRate = existingSub.dailyRate || 0;
+          const prevChargeDate = existingSub.lastChargeDate || now;
+          const daysSinceLast = Math.max(0, Math.floor((new Date(now).getTime() - new Date(prevChargeDate).getTime()) / 86400000));
+          const remainingBalance = Math.max(0, prevBalance - (prevDailyRate * daysSinceLast));
+
           await subSnap.docs[0].ref.update({
             planId: payment.planId,
             status: 'active',
-            currentPeriodEnd: periodEnd.toISOString(),
+            balance: Math.round((remainingBalance + payment.amount) * 100) / 100,
+            dailyRate,
+            lastChargeDate: now,
+            paidAmount: payment.amount,
             lastPaymentId: paymentDoc.id,
           });
         } else {
@@ -92,8 +104,11 @@ const handler: Handler = async (event: HandlerEvent) => {
             organizationId: orgId,
             planId: payment.planId,
             status: 'active',
+            balance: payment.amount,
+            dailyRate,
+            lastChargeDate: now,
+            paidAmount: payment.amount,
             startDate: now,
-            currentPeriodEnd: periodEnd.toISOString(),
             lastPaymentId: paymentDoc.id,
             createdAt: now,
           });

@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../contexts/AuthContext';
 import { usePlanGate } from '../../contexts/PlanContext';
-import { apiGetSubscription, apiGetBillingHistory, apiCancelSubscription, apiReactivateSubscription, apiCreatePayment } from '../../lib/api';
+import { apiGetSubscription, apiGetBillingHistory, apiChangePlan, apiCancelSubscription, apiReactivateSubscription, apiCreatePayment } from '../../lib/api';
 import toast from 'react-hot-toast';
 import { Check, Crown, BookOpen, Shield, Clock, AlertTriangle, Receipt, History, Gift, RefreshCw, Zap } from 'lucide-react';
 
@@ -34,13 +34,49 @@ const BillingPage: React.FC = () => {
     finally { setHistoryLoading(false); }
   };
 
+  const planOrder: Record<string, number> = { starter: 0, professional: 1, enterprise: 2 };
+  const kgsPrices: Record<string, number> = { starter: 1990, professional: 4990, enterprise: 14900 };
+
   const handleChangePlan = async (planId: string) => {
+    const currentIdx = planOrder[currentPlan] ?? 0;
+    const newIdx = planOrder[planId] ?? 0;
+    const isDowngradeAction = newIdx < currentIdx;
+    const isSamePlan = newIdx === currentIdx;
+
+    if (isSamePlan) return;
+
     setChangingPlan(planId);
     try {
-      const kgsPrices: Record<string, number> = { starter: 1990, professional: 4990, enterprise: 14900 };
-      const result = await apiCreatePayment({ planId, amount: kgsPrices[planId] || 1990 });
-      if (result.redirectUrl) {
-        window.location.href = result.redirectUrl;
+      if (isDowngradeAction) {
+        // Downgrade: just change the plan, keep balance, lower daily rate
+        if (!confirm(`Понизить тариф до ${localPlans.find(p => p.id === planId)?.name}?\n\nВаш баланс сохранится и будет расходоваться медленнее.`)) {
+          setChangingPlan(null);
+          return;
+        }
+        const result = await apiChangePlan(planId);
+        toast.success(`Тариф понижен. Баланса хватит на ~${result.daysRemaining} дн.`, { duration: 5000, icon: '✅' });
+        await loadSubscription();
+        await loadHistory();
+      } else {
+        // Upgrade: change plan (balance depletes faster) or pay if no balance
+        const effectiveBalance = subscription?.effectiveBalance || 0;
+        if (effectiveBalance > 0) {
+          // Has balance — just switch, daily rate increases
+          if (!confirm(`Повысить тариф до ${localPlans.find(p => p.id === planId)?.name}?\n\nВаш текущий баланс (${Math.round(effectiveBalance).toLocaleString()} ₸) сохранится, но будет расходоваться быстрее.`)) {
+            setChangingPlan(null);
+            return;
+          }
+          const result = await apiChangePlan(planId);
+          toast.success(`Тариф повышен! Баланса хватит на ~${result.daysRemaining} дн.`, { duration: 5000, icon: '🚀' });
+          await loadSubscription();
+          await loadHistory();
+        } else {
+          // No balance — redirect to payment
+          const result = await apiCreatePayment({ planId, amount: kgsPrices[planId] || 1990 });
+          if (result.redirectUrl) {
+            window.location.href = result.redirectUrl;
+          }
+        }
       }
     } catch (e: any) { toast.error(e.message); }
     finally { setChangingPlan(null); }
@@ -63,6 +99,9 @@ const BillingPage: React.FC = () => {
   const isTrialing = subscription?.status === 'trial';
   const isCancelled = subscription?.status === 'cancelled';
   const isActive = subscription?.status === 'active';
+  const effectiveBalance = subscription?.effectiveBalance ?? 0;
+  const daysRemaining = subscription?.daysRemaining ?? 0;
+  const dailyRate = subscription?.computedDailyRate ?? 0;
 
   const localPlans = [
     {
@@ -127,18 +166,18 @@ const BillingPage: React.FC = () => {
             </p>
           </div>
 
-          {/* Next billing / Trial end */}
+          {/* Balance / Trial end */}
           <div>
             <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-1">
-              {isTrialing ? t('billing.trialEndsLabel', 'Конец Trial') : t('billing.nextBilling', 'След. оплата')}
+              {isTrialing ? t('billing.trialEndsLabel', 'Конец Trial') : 'Баланс'}
             </p>
-            <p className="text-lg font-bold text-slate-900 dark:text-white">
+            <p className={`text-lg font-bold ${effectiveBalance > 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-900 dark:text-white'}`}>
               {isGifted ? '∞' :
                 isTrialing && subscription?.trialEndsAt
                   ? new Date(subscription.trialEndsAt).toLocaleDateString()
-                  : subscription?.currentPeriodEnd
-                    ? new Date(subscription.currentPeriodEnd).toLocaleDateString()
-                    : '—'}
+                  : effectiveBalance > 0
+                    ? `${Math.round(effectiveBalance).toLocaleString()} ₸`
+                    : '0 ₸'}
             </p>
           </div>
 
@@ -169,6 +208,42 @@ const BillingPage: React.FC = () => {
           </button>
         </div>
       </div>
+
+      {/* ─── Balance Info ─── */}
+      {isActive && effectiveBalance > 0 && !isGifted && (
+        <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-5">
+          <div className="flex items-center gap-2 mb-3">
+            <Zap className="w-4 h-4 text-amber-500" />
+            <h3 className="text-sm font-bold text-slate-900 dark:text-white">Баланс и расход</h3>
+          </div>
+          <div className="grid grid-cols-3 gap-4 mb-3">
+            <div>
+              <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-0.5">Баланс</p>
+              <p className="text-base font-bold text-emerald-600 dark:text-emerald-400">{Math.round(effectiveBalance).toLocaleString()} ₸</p>
+            </div>
+            <div>
+              <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-0.5">Расход / день</p>
+              <p className="text-base font-bold text-slate-900 dark:text-white">{Math.round(dailyRate).toLocaleString()} ₸</p>
+            </div>
+            <div>
+              <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-0.5">Хватит на</p>
+              <p className={`text-base font-bold ${daysRemaining <= 5 ? 'text-red-600 dark:text-red-400' : daysRemaining <= 10 ? 'text-amber-600 dark:text-amber-400' : 'text-slate-900 dark:text-white'}`}>
+                ~{daysRemaining} {daysRemaining === 1 ? 'день' : daysRemaining < 5 ? 'дня' : 'дней'}
+              </p>
+            </div>
+          </div>
+          {/* Progress bar */}
+          <div className="h-1.5 bg-slate-100 dark:bg-slate-700 rounded-full overflow-hidden">
+            <div 
+              className={`h-full rounded-full transition-all duration-500 ${
+                daysRemaining <= 5 ? 'bg-red-500' : daysRemaining <= 10 ? 'bg-amber-500' : 'bg-emerald-500'
+              }`}
+              style={{ width: `${Math.min(100, Math.max(2, (daysRemaining / 30) * 100))}%` }}
+            />
+          </div>
+          <p className="text-[10px] text-slate-400 mt-2">Баланс расходуется по {Math.round(dailyRate)} ₸/день. При смене тарифа остаток сохраняется.</p>
+        </div>
+      )}
 
       {/* ─── Expired Alert ─── */}
       {isExpired && (
@@ -262,6 +337,7 @@ const BillingPage: React.FC = () => {
                 <div className="mb-4">
                   <span className="text-2xl font-extrabold text-slate-900 dark:text-white">{plan.price.toLocaleString()}</span>
                   <span className="text-sm text-slate-400 ml-1">₸/{t('landing.perMonth', 'мес')}</span>
+                  <p className="text-[10px] text-slate-400 mt-0.5">{Math.round(plan.price / 30)} ₸/день</p>
                 </div>
 
                 {/* Features */}
@@ -283,14 +359,22 @@ const BillingPage: React.FC = () => {
                   <button
                     onClick={() => handleChangePlan(plan.id)}
                     disabled={changingPlan !== null}
-                    className="w-full h-9 rounded-lg text-sm font-semibold bg-slate-900 dark:bg-white text-white dark:text-slate-900 hover:opacity-90 transition-opacity disabled:opacity-50 inline-flex items-center justify-center gap-1.5"
+                    className={`w-full h-9 rounded-lg text-sm font-semibold transition-opacity disabled:opacity-50 inline-flex items-center justify-center gap-1.5 ${
+                      isUpgrade
+                        ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900 hover:opacity-90'
+                        : 'bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-600'
+                    }`}
                   >
                     {changingPlan === plan.id ? (
-                      <div className="w-4 h-4 border-2 border-white/30 border-t-white dark:border-slate-900/30 dark:border-t-slate-900 rounded-full animate-spin" />
+                      <div className="w-4 h-4 border-2 border-current/30 border-t-current rounded-full animate-spin" />
                     ) : (
                       <>
                         <Zap className="w-3.5 h-3.5" />
-                        {isExpired ? t('billing.subscribe', 'Оплатить') : isUpgrade ? t('billing.upgrade') : t('billing.downgrade')}
+                        {isExpired
+                          ? t('billing.subscribe', 'Оплатить')
+                          : isUpgrade
+                            ? t('billing.upgrade', 'Повысить')
+                            : t('billing.downgrade', 'Понизить')}
                       </>
                     )}
                   </button>

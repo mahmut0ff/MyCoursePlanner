@@ -1,16 +1,55 @@
 /**
- * API: Subscriptions — billing and plan management.
+ * API: Subscriptions — billing and plan management with daily proration.
  *
- * GET  /api-subscriptions              → get subscription for user's org
+ * GET  /api-subscriptions              → get subscription + calculated balance
  * GET  /api-subscriptions?orgId=<id>   → get subscription for specific org (super_admin)
- * POST /api-subscriptions              → create/upgrade subscription
- * PUT  /api-subscriptions              → update subscription (change plan, cancel)
+ * GET  /api-subscriptions?history=true → include payment history
+ * POST /api-subscriptions              → change plan (proration — no payment needed for downgrade)
+ * PUT  /api-subscriptions              → cancel / reactivate subscription
  */
 import type { Handler, HandlerEvent } from '@netlify/functions';
 import { adminDb } from './utils/firebase-admin';
 import { verifyAuth, isSuperAdmin, ok, unauthorized, forbidden, badRequest, notFound, jsonResponse } from './utils/auth';
 
 const COLLECTION = 'subscriptions';
+
+const PLAN_PRICES: Record<string, number> = {
+  starter: 1990,
+  professional: 4990,
+  enterprise: 14900,
+};
+
+const PLAN_ORDER: Record<string, number> = {
+  starter: 0,
+  professional: 1,
+  enterprise: 2,
+};
+
+/**
+ * Calculate effective balance on-the-fly.
+ * balance - (dailyRate × daysSinceLastCharge)
+ */
+function calculateEffectiveBalance(sub: any): {
+  effectiveBalance: number;
+  daysRemaining: number;
+  dailyRate: number;
+  isExpiredByBalance: boolean;
+} {
+  const balance = sub.balance || 0;
+  const dailyRate = sub.dailyRate || 0;
+  const lastChargeDate = sub.lastChargeDate || sub.createdAt || new Date().toISOString();
+
+  const now = new Date();
+  const lastCharge = new Date(lastChargeDate);
+  const daysSinceLast = Math.max(0, Math.floor((now.getTime() - lastCharge.getTime()) / 86400000));
+
+  const spent = dailyRate * daysSinceLast;
+  const effectiveBalance = Math.max(0, Math.round((balance - spent) * 100) / 100);
+  const daysRemaining = dailyRate > 0 ? Math.floor(effectiveBalance / dailyRate) : 999;
+  const isExpiredByBalance = effectiveBalance <= 0 && balance > 0;
+
+  return { effectiveBalance, daysRemaining, dailyRate, isExpiredByBalance };
+}
 
 const handler: Handler = async (event: HandlerEvent) => {
   if (event.httpMethod === 'OPTIONS') return jsonResponse(204, '');
@@ -34,7 +73,26 @@ const handler: Handler = async (event: HandlerEvent) => {
     if (snap.empty) return notFound('No subscription found');
     const allSubs = snap.docs.map((d: any) => ({ id: d.id, ...d.data() }));
     allSubs.sort((a: any, b: any) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
-    const subscription = allSubs[0];
+    const subscription = allSubs[0] as any;
+
+    // Calculate effective balance on-the-fly
+    const balanceInfo = calculateEffectiveBalance(subscription);
+    const enrichedSub = {
+      ...subscription,
+      effectiveBalance: balanceInfo.effectiveBalance,
+      daysRemaining: balanceInfo.daysRemaining,
+      computedDailyRate: balanceInfo.dailyRate,
+    };
+
+    // Auto-expire if balance depleted (non-trial, non-gifted, was active)
+    if (balanceInfo.isExpiredByBalance && subscription.status === 'active') {
+      await snap.docs[0].ref.update({ status: 'expired' });
+      enrichedSub.status = 'expired';
+      // Also update org
+      await adminDb.collection('organizations').doc(orgId).update({
+        updatedAt: new Date().toISOString(),
+      });
+    }
 
     // If billing history requested, also fetch payments
     if (params.history === 'true') {
@@ -53,70 +111,120 @@ const handler: Handler = async (event: HandlerEvent) => {
       logs.sort((a: any, b: any) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
       logs = logs.slice(0, 50);
 
-      return ok({ subscription, payments, logs });
+      return ok({ subscription: enrichedSub, payments, logs });
     }
 
-    return ok(subscription);
+    return ok(enrichedSub);
   }
 
-  // POST — upgrade/change plan
+  // POST — change plan with proration
   if (event.httpMethod === 'POST') {
     const body = JSON.parse(event.body || '{}');
     const orgId = body.organizationId || user.organizationId;
     if (!orgId) return badRequest('organizationId required');
     if (!body.planId) return badRequest('planId required');
+    if (!PLAN_PRICES[body.planId]) return badRequest('Invalid planId');
 
     // Only admin of the org or super_admin can change plan
     if (orgId !== user.organizationId && !isSuperAdmin(user)) return forbidden();
 
     const now = new Date().toISOString();
-    const periodEnd = new Date();
-    periodEnd.setMonth(periodEnd.getMonth() + 1);
+    const newDailyRate = Math.round((PLAN_PRICES[body.planId] / 30) * 100) / 100;
 
     // Find existing subscription
     const existingSnap = await adminDb.collection(COLLECTION)
       .where('organizationId', '==', orgId).limit(1).get();
 
     if (!existingSnap.empty) {
-      // Update existing
+      const existingSub = existingSnap.docs[0].data();
+      const currentPlan = existingSub.planId || 'starter';
+
+      // Calculate current effective balance
+      const { effectiveBalance } = calculateEffectiveBalance(existingSub);
+
+      // Determine if upgrade or downgrade
+      const isUpgrade = (PLAN_ORDER[body.planId] || 0) > (PLAN_ORDER[currentPlan] || 0);
+      const isDowngrade = (PLAN_ORDER[body.planId] || 0) < (PLAN_ORDER[currentPlan] || 0);
+
+      // For both upgrade and downgrade: keep the balance, change the daily rate
+      // Upgrade: balance depletes faster (higher daily rate)
+      // Downgrade: balance lasts longer (lower daily rate)
       await existingSnap.docs[0].ref.update({
         planId: body.planId,
-        status: 'active',
-        currentPeriodEnd: periodEnd.toISOString(),
+        status: effectiveBalance > 0 ? 'active' : existingSub.status,
+        balance: effectiveBalance,
+        dailyRate: newDailyRate,
+        lastChargeDate: now,
+      });
+
+      // Calculate new days remaining
+      const newDaysRemaining = newDailyRate > 0 ? Math.floor(effectiveBalance / newDailyRate) : 0;
+
+      // Log the change
+      await adminDb.collection('systemLogs').add({
+        action: 'plan_changed',
+        actorId: user.uid,
+        actorName: user.displayName,
+        targetType: 'subscription',
+        targetId: orgId,
+        metadata: {
+          previousPlan: currentPlan,
+          newPlan: body.planId,
+          direction: isUpgrade ? 'upgrade' : isDowngrade ? 'downgrade' : 'same',
+          balanceAtChange: effectiveBalance,
+          newDailyRate,
+          newDaysRemaining,
+        },
+        createdAt: now,
+      });
+
+      // Update org plan
+      await adminDb.collection('organizations').doc(orgId).update({
+        planId: body.planId,
+        updatedAt: now,
+      });
+
+      return ok({
+        success: true,
+        planId: body.planId,
+        effectiveBalance,
+        newDailyRate,
+        daysRemaining: newDaysRemaining,
+        direction: isUpgrade ? 'upgrade' : isDowngrade ? 'downgrade' : 'same',
       });
     } else {
-      // Create new
+      // No subscription — create new (first time)
       await adminDb.collection(COLLECTION).add({
         organizationId: orgId,
         planId: body.planId,
         status: 'active',
+        balance: 0,
+        dailyRate: newDailyRate,
+        lastChargeDate: now,
         startDate: now,
-        currentPeriodEnd: periodEnd.toISOString(),
         createdAt: now,
       });
+
+      await adminDb.collection('organizations').doc(orgId).update({
+        planId: body.planId,
+        updatedAt: now,
+      });
+
+      await adminDb.collection('systemLogs').add({
+        action: 'plan_changed',
+        actorId: user.uid,
+        actorName: user.displayName,
+        targetType: 'subscription',
+        targetId: orgId,
+        metadata: { newPlan: body.planId },
+        createdAt: now,
+      });
+
+      return ok({ success: true, planId: body.planId });
     }
-
-    // Update org plan
-    await adminDb.collection('organizations').doc(orgId).update({
-      planId: body.planId,
-      updatedAt: now,
-    });
-
-    // Log
-    await adminDb.collection('systemLogs').add({
-      action: 'plan_changed',
-      actorId: user.uid,
-      actorName: user.displayName,
-      targetType: 'subscription',
-      targetId: orgId,
-      metadata: { newPlan: body.planId },
-      createdAt: now,
-    });
-
-    return ok({ success: true, planId: body.planId });
   }
 
-  // PUT — cancel subscription
+  // PUT — cancel / reactivate subscription
   if (event.httpMethod === 'PUT') {
     const body = JSON.parse(event.body || '{}');
     const orgId = body.organizationId || user.organizationId;
@@ -149,14 +257,14 @@ const handler: Handler = async (event: HandlerEvent) => {
     }
 
     if (body.action === 'reactivate') {
-      const periodEnd = new Date();
-      periodEnd.setMonth(periodEnd.getMonth() + 1);
+      const subData = snap.docs[0].data();
+      const { effectiveBalance } = calculateEffectiveBalance(subData);
+
       await snap.docs[0].ref.update({
-        status: 'active',
+        status: effectiveBalance > 0 ? 'active' : 'expired',
         cancelledAt: null,
-        currentPeriodEnd: periodEnd.toISOString(),
       });
-      return ok({ reactivated: true });
+      return ok({ reactivated: true, effectiveBalance });
     }
 
     return badRequest('Invalid action');

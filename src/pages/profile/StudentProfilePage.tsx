@@ -167,7 +167,7 @@ const StudentProfilePage: React.FC = () => {
       {
         <div className="space-y-6">
           {/* Avatar & Basic Info */}
-          <div className="card p-6">
+          <div className="card p-5">
             <div className="flex items-center gap-6 mb-6">
               <div className="relative group">
                 <div className="w-24 h-24 rounded-full overflow-hidden bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-3xl font-bold text-white shadow-lg shrink-0">
@@ -229,7 +229,7 @@ const StudentProfilePage: React.FC = () => {
               </div>
             </div>
             
-            <div className="space-y-4">
+            <div className="space-y-3">
               {profile?.role !== 'admin' && profile?.role !== 'super_admin' && (
                 <>
                   <div>
@@ -241,7 +241,7 @@ const StudentProfilePage: React.FC = () => {
                       value={bio}
                       onChange={e => setBio(e.target.value)}
                       maxLength={500}
-                      className="input min-h-[100px]"
+                      className="input min-h-[80px]"
                       placeholder={t('profile.bioPlaceholder', 'Расскажите немного о себе...')}
                     />
                   </div>
@@ -268,7 +268,7 @@ const StudentProfilePage: React.FC = () => {
 
           {/* ----- Pinned Badges ----- */}
           {myBadges && myBadges.badges.length > 0 && (
-            <div className="card p-6">
+            <div className="card p-5">
               <h3 className="font-semibold text-slate-900 dark:text-white mb-2">Закрепленные бейджи</h3>
               <p className="text-sm text-slate-500 mb-4">Выберите до 3 любимых бейджей, чтобы они отображались рядом с вашим аватаром.</p>
               
@@ -305,7 +305,7 @@ const StudentProfilePage: React.FC = () => {
           )}
 
           {/* Language */}
-          <div className="card p-6">
+          <div className="card p-5">
             <div className="flex items-center gap-2 mb-4">
               <Globe className="w-5 h-5 text-primary-600 dark:text-primary-400" />
               <h3 className="font-semibold text-slate-900 dark:text-white">{t('profile.language')}</h3>
@@ -331,7 +331,7 @@ const StudentProfilePage: React.FC = () => {
           <TelegramLinkCard />
 
           {/* Password */}
-          <div className="card p-6">
+          <div className="card p-5">
             <div className="flex items-center gap-2 mb-4">
               <Lock className="w-5 h-5 text-amber-500" />
               <h3 className="font-semibold text-slate-900 dark:text-white">{t('profile.changePassword')}</h3>

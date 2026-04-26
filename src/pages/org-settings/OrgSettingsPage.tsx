@@ -52,11 +52,11 @@ const GeneralTab: React.FC<{ settings: OrgSettings; update: (k: string, v: any) 
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       {/* Branding / Logo */}
-      <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-6">
-        <h3 className="font-semibold text-slate-900 dark:text-white mb-4">{t('org.settings.branding', 'Брендинг')}</h3>
-        <div className="space-y-4">
+      <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-5">
+        <h3 className="font-semibold text-slate-900 dark:text-white mb-3 text-sm">{t('org.settings.branding', 'Брендинг')}</h3>
+        <div className="space-y-3">
           <div>
             <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">{t('org.settings.logoUrl', 'Логотип организации')}</label>
             <div className="flex items-center gap-6">
@@ -86,18 +86,18 @@ const GeneralTab: React.FC<{ settings: OrgSettings; update: (k: string, v: any) 
         </div>
       </div>
 
-      <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-6">
-        <h3 className="font-semibold text-slate-900 dark:text-white mb-4">{t('org.settings.general')}</h3>
-        <div className="space-y-4">
+      <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-5">
+        <h3 className="font-semibold text-slate-900 dark:text-white mb-3 text-sm">{t('org.settings.general')}</h3>
+        <div className="space-y-3">
           <div>
             <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">{t('org.settings.orgName')}</label>
             <input value={settings.name} onChange={(e) => update('name', e.target.value)} className="input" />
           </div>
           <div>
             <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">{t('org.settings.orgDescription', 'Описание организации')}</label>
-            <textarea value={settings.description || ''} onChange={(e) => update('description', e.target.value)} className="input min-h-[100px]" placeholder={t('org.settings.orgDescriptionPlaceholder')} />
+            <textarea value={settings.description || ''} onChange={(e) => update('description', e.target.value)} className="input min-h-[80px]" placeholder={t('org.settings.orgDescriptionPlaceholder')} />
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <div>
               <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">{t('org.settings.timezone')}</label>
               <select value={settings.timezone} onChange={(e) => update('timezone', e.target.value)} className="input">
@@ -141,11 +141,11 @@ const GeneralTab: React.FC<{ settings: OrgSettings; update: (k: string, v: any) 
 const AcademicTab: React.FC<{ settings: OrgSettings; update: (k: string, v: any) => void }> = ({ settings, update }) => {
   const { t } = useTranslation();
   return (
-    <div className="space-y-6">
-      <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-6">
-        <h3 className="font-semibold text-slate-900 dark:text-white mb-4">{t('org.settings.academic')}</h3>
-        <div className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+    <div className="space-y-5">
+      <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-5">
+        <h3 className="font-semibold text-slate-900 dark:text-white mb-3 text-sm">{t('org.settings.academic')}</h3>
+        <div className="space-y-3">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <div>
               <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">{t('org.settings.gradingScale')}</label>
               <select value={settings.gradingScale || 'percentage'} onChange={(e) => update('gradingScale', e.target.value)} className="input">
@@ -163,10 +163,10 @@ const AcademicTab: React.FC<{ settings: OrgSettings; update: (k: string, v: any)
       </div>
 
       {/* ── Contact & Info ── */}
-      <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-6">
-        <h3 className="font-semibold text-slate-900 dark:text-white mb-4 flex items-center gap-2"><MapPin className="w-4 h-4" />{t('org.settings.contactInfo', 'Контакты и расположение')}</h3>
-        <div className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-5">
+        <h3 className="font-semibold text-slate-900 dark:text-white mb-3 text-sm flex items-center gap-2"><MapPin className="w-4 h-4" />{t('org.settings.contactInfo', 'Контакты и расположение')}</h3>
+        <div className="space-y-3">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <div>
               <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1"><span className="flex items-center gap-1"><Mail className="w-3 h-3" />{t('org.settings.contactEmail', 'Email')}</span></label>
               <input type="email" value={settings.contactEmail || ''} onChange={(e) => update('contactEmail', e.target.value)} className="input" placeholder="info@myschool.kg" />
@@ -262,7 +262,7 @@ const VisitCardTab: React.FC<{ settings: OrgSettings; update: (k: string, v: any
   return (
     <div className="space-y-6">
       {/* Enable Public Profile */}
-      <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-6">
+      <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-5">
         <div className="flex items-center justify-between">
           <div>
             <h3 className="font-semibold text-slate-900 dark:text-white flex items-center gap-2"><QrCode className="w-4 h-4" />{t('org.settings.visitCard', 'Визитка организации')}</h3>
@@ -306,9 +306,9 @@ const VisitCardTab: React.FC<{ settings: OrgSettings; update: (k: string, v: any
       {settings.publicProfileEnabled && (
         <>
           {/* Social Links */}
-          <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-6">
-            <h3 className="font-semibold text-slate-900 dark:text-white mb-4">{t('org.settings.socialLinks', 'Социальные сети')}</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-5">
+            <h3 className="font-semibold text-slate-900 dark:text-white mb-3 text-sm">{t('org.settings.socialLinks', 'Социальные сети')}</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               <div>
                 <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
                   <span className="flex items-center gap-1"><Send className="w-3 h-3 text-blue-500" /> Telegram</span>
@@ -345,8 +345,8 @@ const VisitCardTab: React.FC<{ settings: OrgSettings; update: (k: string, v: any
           </div>
 
           {/* QR Code */}
-          <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-6">
-            <h3 className="font-semibold text-slate-900 dark:text-white mb-4">{t('org.settings.qrCode', 'QR-код')}</h3>
+          <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-5">
+            <h3 className="font-semibold text-slate-900 dark:text-white mb-3 text-sm">{t('org.settings.qrCode', 'QR-код')}</h3>
             <div className="flex flex-col sm:flex-row items-center gap-6">
               {qrDataUrl ? (
                 <div className="w-48 h-48 bg-white rounded-2xl p-3 shadow-lg border border-slate-200 dark:border-slate-600">
@@ -421,8 +421,8 @@ const NotificationsTab: React.FC<{ settings: OrgSettings; update: (k: string, v:
       </div>
 
       {/* What gets notified */}
-      <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-6">
-        <h3 className="font-semibold text-slate-900 dark:text-white mb-3">{t('org.settings.notificationTypes', 'Типы уведомлений')}</h3>
+      <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-5">
+        <h3 className="font-semibold text-slate-900 dark:text-white mb-2 text-sm">{t('org.settings.notificationTypes', 'Типы уведомлений')}</h3>
         <p className="text-xs text-slate-500 dark:text-slate-400 mb-4">{t('org.settings.notificationTypesDesc', 'Push-уведомления отправляются автоматически при следующих событиях:')}</p>
         <div className="flex flex-wrap gap-2">
           {[
@@ -453,8 +453,8 @@ const DataTab: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-6">
-        <h3 className="font-semibold text-slate-900 dark:text-white mb-4">{t('org.settings.exportData')}</h3>
+      <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-5">
+        <h3 className="font-semibold text-slate-900 dark:text-white mb-3 text-sm">{t('org.settings.exportData')}</h3>
         <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">{t('org.settings.exportDataDesc')}</p>
         <div className="flex gap-3">
           <button onClick={handleMock} className="btn-secondary text-sm">{t('org.settings.exportStudents')}</button>
@@ -462,12 +462,12 @@ const DataTab: React.FC = () => {
           <button onClick={handleMock} className="btn-secondary text-sm">{t('org.settings.exportResults')}</button>
         </div>
       </div>
-      <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-6">
-        <h3 className="font-semibold text-slate-900 dark:text-white mb-4">{t('org.settings.backup')}</h3>
+      <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-5">
+        <h3 className="font-semibold text-slate-900 dark:text-white mb-3 text-sm">{t('org.settings.backup')}</h3>
         <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">{t('org.settings.backupDesc')}</p>
         <button onClick={handleMock} className="btn-primary text-sm">{t('org.settings.createBackup')}</button>
       </div>
-      <div className="bg-white dark:bg-slate-800 border border-red-200 dark:border-red-900/50 rounded-2xl p-6">
+      <div className="bg-white dark:bg-slate-800 border border-red-200 dark:border-red-900/50 rounded-2xl p-5">
         <h3 className="font-semibold text-red-600 dark:text-red-400 mb-2">{t('org.settings.dangerZone')}</h3>
         <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">{t('org.settings.dangerZoneDesc')}</p>
         <button onClick={handleMock} className="bg-red-500 hover:bg-red-600 text-white text-sm px-4 py-2 rounded-lg transition-colors">{t('org.settings.deleteOrg')}</button>
@@ -489,10 +489,10 @@ const LimitsTab: React.FC<{ settings: OrgSettings }> = ({ settings }) => {
 
   return (
     <div className="space-y-6">
-      <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-6">
-        <h3 className="font-semibold text-slate-900 dark:text-white mb-4">{t('org.settings.limits')}</h3>
+      <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-5">
+        <h3 className="font-semibold text-slate-900 dark:text-white mb-3 text-sm">{t('org.settings.limits')}</h3>
         <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">{t('org.settings.limitsDesc')}</p>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
           <div className="bg-slate-50 dark:bg-slate-700/50 rounded-xl p-5 text-center">
             <p className="text-2xl font-bold text-slate-900 dark:text-white">{currStudents} / {maxStudentsText}</p>
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 uppercase tracking-wider">{t('org.settings.maxStudents')}</p>

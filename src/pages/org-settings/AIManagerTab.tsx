@@ -75,7 +75,7 @@ export const AIManagerTab: React.FC<{ organizationId: string }> = ({ organizatio
   return (
     <div className="space-y-6">
       {/* ── Status Header ── */}
-      <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-6">
+      <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-5">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className={`p-3 rounded-xl ${settings.isActive ? 'bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30' : 'bg-slate-100 text-slate-400 dark:bg-slate-800'}`}>
@@ -100,7 +100,7 @@ export const AIManagerTab: React.FC<{ organizationId: string }> = ({ organizatio
       {settings.isActive && (
         <>
           {/* ── Core Instructions ── */}
-          <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-6 space-y-5">
+          <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-5 space-y-4">
             <h3 className="font-semibold text-slate-900 dark:text-white mb-2">Базовые знания</h3>
             
             <div>
@@ -123,12 +123,12 @@ export const AIManagerTab: React.FC<{ organizationId: string }> = ({ organizatio
               <textarea
                 value={settings.aboutOrganization || ''}
                 onChange={e => update('aboutOrganization', e.target.value)}
-                className="input min-h-[100px]"
+                className="input min-h-[80px]"
                 placeholder="Укажите подробное описание вашей организации: история, миссия, уникальные особенности..."
               />
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               <div>
                 <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
                   Политика зачисления
@@ -136,7 +136,7 @@ export const AIManagerTab: React.FC<{ organizationId: string }> = ({ organizatio
                 <textarea
                   value={settings.enrollmentPolicy || ''}
                   onChange={e => update('enrollmentPolicy', e.target.value)}
-                  className="input min-h-[100px]"
+                  className="input min-h-[80px]"
                   placeholder="Как студенты могут записаться? Когда открыт набор?"
                 />
               </div>
@@ -147,7 +147,7 @@ export const AIManagerTab: React.FC<{ organizationId: string }> = ({ organizatio
                 <textarea
                   value={settings.customInstructions || ''}
                   onChange={e => update('customInstructions', e.target.value)}
-                  className="input min-h-[100px]"
+                  className="input min-h-[80px]"
                   placeholder="Например: 'Общайся строго официально' или 'Всегда предлагай скидку'"
                 />
               </div>
@@ -155,7 +155,7 @@ export const AIManagerTab: React.FC<{ organizationId: string }> = ({ organizatio
           </div>
 
           {/* ── FAQ Builder ── */}
-          <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-6">
+          <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-5">
             <div className="flex items-center justify-between mb-4">
               <h3 className="font-semibold text-slate-900 dark:text-white">Часто задаваемые вопросы (FAQ)</h3>
               <button onClick={addFAQ} className="btn-secondary py-1.5 text-sm flex items-center gap-1">
@@ -166,7 +166,7 @@ export const AIManagerTab: React.FC<{ organizationId: string }> = ({ organizatio
               Добавление FAQ помогает AI-ассистенту отвечать точнее и надежнее в нестандартных ситуациях.
             </p>
 
-            <div className="space-y-4">
+            <div className="space-y-3">
               {(!settings.faq || settings.faq.length === 0) ? (
                 <div className="text-center py-6 border-2 border-dashed border-slate-200 dark:border-slate-700 rounded-xl text-slate-400">
                   Пользовательские FAQ не заданы.

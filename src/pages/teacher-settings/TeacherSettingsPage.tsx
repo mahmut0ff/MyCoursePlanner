@@ -234,7 +234,7 @@ const TeacherSettingsPage: React.FC = () => {
         {/* Content */}
         <div className="flex-1 space-y-5">
           {activeTab === 'profile' && (
-            <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-6">
+            <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-5">
               <h2 className="text-lg font-semibold text-slate-900 dark:text-white mb-4">{t('teacherSettings.profileInfo')}</h2>
               
               <div className="flex items-center gap-6 mb-6">
@@ -258,7 +258,7 @@ const TeacherSettingsPage: React.FC = () => {
                 </div>
               </div>
 
-              <div className="space-y-4">
+              <div className="space-y-3">
                 <div>
                   <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">{t('teacherSettings.displayName')}</label>
                   <input value={displayName} onChange={(e) => setDisplayName(e.target.value)} className="input" />
@@ -346,7 +346,7 @@ const TeacherSettingsPage: React.FC = () => {
           )}
 
           {activeTab === 'language' && (
-            <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-6">
+            <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-5">
               <h2 className="text-lg font-semibold text-slate-900 dark:text-white mb-4">{t('teacherSettings.languageSettings')}</h2>
               <div>
                 <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">{t('teacherSettings.appLanguage')}</label>
@@ -365,9 +365,9 @@ const TeacherSettingsPage: React.FC = () => {
           )}
 
           {activeTab === 'notifications' && (
-            <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-6">
+            <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-5">
               <h2 className="text-lg font-semibold text-slate-900 dark:text-white mb-4">{t('teacherSettings.notifSettings')}</h2>
-              <div className="space-y-4">
+              <div className="space-y-3">
                 {[
                   { label: t('teacherSettings.emailNotif'), desc: t('teacherSettings.emailNotifDesc'), value: emailNotif, set: setEmailNotif },
                   { label: t('teacherSettings.pushNotif'), desc: t('teacherSettings.pushNotifDesc'), value: pushNotif, set: setPushNotif },
@@ -391,9 +391,9 @@ const TeacherSettingsPage: React.FC = () => {
           )}
 
           {activeTab === 'security' && (
-            <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-6">
+            <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-5">
               <h2 className="text-lg font-semibold text-slate-900 dark:text-white mb-4">{t('teacherSettings.changePw')}</h2>
-              <div className="space-y-4">
+              <div className="space-y-3">
                 <div className="relative">
                   <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">{t('teacherSettings.currentPw')}</label>
                   <input type={showCurrent ? 'text' : 'password'} value={currentPw} onChange={(e) => setCurrentPw(e.target.value)} className="input pr-10" />

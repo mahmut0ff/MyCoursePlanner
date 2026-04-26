@@ -76,7 +76,7 @@ export const IntegrationsTab: React.FC<{ organizationId: string }> = ({ organiza
       )}
 
       {/* ── Telegram Integration ── */}
-      <div className={`bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-6 space-y-4 ${!hasAccess ? 'opacity-50 pointer-events-none filter blur-[1px]' : ''}`}>
+      <div className={`bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-5 space-y-3 ${!hasAccess ? 'opacity-50 pointer-events-none filter blur-[1px]' : ''}`}>
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="p-3 bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400 rounded-xl">

@@ -211,7 +211,7 @@ const LessonListPage: React.FC = () => {
       ) : (
         <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl overflow-hidden">
           {/* Table header */}
-          <div className="hidden md:grid grid-cols-[1fr_120px_100px_90px_80px_60px] gap-3 px-5 py-3 border-b border-slate-100 dark:border-slate-700 bg-slate-50/80 dark:bg-slate-800/80 text-[11px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+          <div className="hidden md:grid grid-cols-[1fr_120px_100px_100px_90px_60px] gap-3 px-5 py-3 border-b border-slate-100 dark:border-slate-700 bg-slate-50/80 dark:bg-slate-800/80 text-[11px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
             <span>Название</span>
             <span>Предмет / Уровень</span>
             <span>Группы</span>
@@ -226,7 +226,7 @@ const LessonListPage: React.FC = () => {
               <Link 
                 key={lesson.id} 
                 to={`/lessons/${lesson.id}`} 
-                className={`group flex flex-col md:grid md:grid-cols-[1fr_120px_100px_90px_80px_60px] gap-2 md:gap-3 items-center px-5 py-3.5 border-b border-slate-100 dark:border-slate-700/50 last:border-b-0 hover:bg-primary-50/40 dark:hover:bg-primary-900/10 transition-colors relative ${!completed ? '' : 'bg-emerald-50/20 dark:bg-emerald-900/5'}`}
+                className={`group flex flex-col md:grid md:grid-cols-[1fr_120px_100px_100px_90px_60px] gap-2 md:gap-3 items-center px-5 py-3.5 border-b border-slate-100 dark:border-slate-700/50 last:border-b-0 hover:bg-primary-50/40 dark:hover:bg-primary-900/10 transition-colors relative ${!completed ? '' : 'bg-emerald-50/20 dark:bg-emerald-900/5'}`}
               >
                 {/* Title + cover thumbnail */}
                 <div className="flex items-center gap-3 min-w-0 w-full">

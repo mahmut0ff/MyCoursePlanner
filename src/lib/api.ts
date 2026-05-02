@@ -606,7 +606,7 @@ export const apiTransferRequest = (data: { transferType: 'lesson_to_personal' | 
 export const apiTransferResolve = (data: { notificationId: string, decision: 'approve' | 'reject' }) =>
   apiRequest('api-transfers', 'POST', data, { action: 'resolve_transfer' });
 
-export const apiAIGradeDictation = (data: { audioBase64: string, mimeType?: string, students: any[], schema: any }) => apiRequest('api-ai-gradebook', 'POST', data);
+export const apiAIGradeDictation = (data: { audioBase64: string, mimeType?: string, students: any[], schema?: any, mode?: 'gradebook' | 'journal' }) => apiRequest('api-ai-gradebook', 'POST', data);
 
 // ============================================================
 // TELEGRAM LINK API

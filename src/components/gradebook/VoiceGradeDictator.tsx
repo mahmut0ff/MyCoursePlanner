@@ -9,16 +9,17 @@ interface VoiceGradeDictatorProps {
   onClose: () => void;
   column: any; // We just need the title
   students: UserProfile[];
-  schema: GradeSchema;
-  onApply: (grades: { studentId: string; value: number | null; comment?: string }[]) => void;
+  schema?: GradeSchema;
+  mode?: 'gradebook' | 'journal';
+  onApply: (grades: { studentId: string; value: number | null; comment?: string; status?: string }[]) => void;
 }
 
-const VoiceGradeDictator: React.FC<VoiceGradeDictatorProps> = ({ isOpen, onClose, column, students, schema, onApply }) => {
+const VoiceGradeDictator: React.FC<VoiceGradeDictatorProps> = ({ isOpen, onClose, column, students, schema, mode = 'gradebook', onApply }) => {
   const { t } = useTranslation();
   const [recording, setRecording] = useState(false);
   const [processing, setProcessing] = useState(false);
   const [error, setError] = useState('');
-  const [parsedGrades, setParsedGrades] = useState<{ studentId: string; value: number | null; comment?: string; studentName: string }[] | null>(null);
+  const [parsedGrades, setParsedGrades] = useState<{ studentId: string; value: number | null; status?: string; comment?: string; studentName: string }[] | null>(null);
 
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<BlobChunk[]>([]);
@@ -98,7 +99,8 @@ const VoiceGradeDictator: React.FC<VoiceGradeDictatorProps> = ({ isOpen, onClose
         audioBase64: base64Audio,
         mimeType: 'audio/webm',
         students: studentsList,
-        schema
+        schema,
+        mode
       });
 
       if (result && Array.isArray(result.data)) {
@@ -125,15 +127,15 @@ const VoiceGradeDictator: React.FC<VoiceGradeDictatorProps> = ({ isOpen, onClose
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm animate-fade-in">
-      <div className="bg-white dark:bg-slate-800 rounded-3xl w-full max-w-lg shadow-2xl overflow-hidden flex flex-col border border-slate-200 dark:border-slate-700/50">
+    <div className="fixed bottom-6 right-6 z-50 flex items-end justify-end p-0 animate-fade-in pointer-events-none">
+      <div className="bg-white dark:bg-slate-800 rounded-3xl w-full max-w-[420px] shadow-[0_10px_40px_-10px_rgba(0,0,0,0.3)] overflow-hidden flex flex-col border border-slate-200 dark:border-slate-700 pointer-events-auto">
         
         {/* Header */}
         <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-700 flex items-center justify-between bg-slate-50/50 dark:bg-slate-800/50">
           <div>
             <h3 className="font-bold text-slate-900 dark:text-white flex items-center gap-2">
               <Mic className="w-5 h-5 text-indigo-500" />
-              Голсовое выставление ({column?.title})
+              Голосовое выставление ({column?.title})
             </h3>
             <p className="text-xs font-medium text-slate-500 mt-0.5">Gemini Audio AI Intelligence</p>
           </div>
@@ -221,8 +223,18 @@ const VoiceGradeDictator: React.FC<VoiceGradeDictatorProps> = ({ isOpen, onClose
                       <div className="font-semibold text-slate-900 dark:text-white">{g.studentName}</div>
                       <div className="flex items-center gap-3">
                         {g.comment && <span className="text-xs italic text-slate-500 max-w-[150px] truncate">{g.comment}</span>}
-                        <div className="px-3 py-1 bg-white dark:bg-slate-800 border-2 border-indigo-500/20 dark:border-indigo-500/40 rounded-lg font-bold text-indigo-700 dark:text-indigo-400 shadow-sm min-w-[40px] text-center">
-                          {g.value !== null ? g.value : '-'}
+                        <div className={`px-3 py-1 bg-white dark:bg-slate-800 border-2 rounded-lg font-bold shadow-sm min-w-[40px] text-center text-sm ${mode === 'journal' 
+                          ? (g.status === 'present' ? 'border-emerald-500/20 text-emerald-600' :
+                             g.status === 'absent' ? 'border-rose-500/20 text-rose-600' :
+                             g.status === 'late' ? 'border-amber-500/20 text-amber-600' :
+                             'border-indigo-500/20 text-indigo-600')
+                          : 'border-indigo-500/20 dark:border-indigo-500/40 text-indigo-700 dark:text-indigo-400'}`}>
+                          {mode === 'journal' 
+                            ? (g.status === 'present' ? 'Присутствует' :
+                               g.status === 'absent' ? 'Отсутствует' :
+                               g.status === 'late' ? 'Опоздал' :
+                               g.status === 'excused' ? 'По ув. причине' : '-')
+                            : (g.value !== null ? g.value : '-')}
                         </div>
                       </div>
                     </div>

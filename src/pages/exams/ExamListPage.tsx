@@ -119,7 +119,7 @@ const ExamListPage: React.FC = () => {
       ) : (
         <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl overflow-hidden">
           {/* Table header */}
-          <div className="hidden md:grid grid-cols-[1fr_120px_100px_80px_80px] gap-3 px-5 py-3 border-b border-slate-100 dark:border-slate-700 bg-slate-50/80 dark:bg-slate-800/80 text-[11px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+          <div className="hidden md:grid grid-cols-[1fr_120px_100px_100px_90px] gap-3 px-5 py-3 border-b border-slate-100 dark:border-slate-700 bg-slate-50/80 dark:bg-slate-800/80 text-[11px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
             <span>Название</span>
             <span>Предмет</span>
             <span>Вопросы</span>
@@ -131,7 +131,7 @@ const ExamListPage: React.FC = () => {
             <Link
               key={exam.id}
               to={`/exams/${exam.id}`}
-              className="group flex flex-col md:grid md:grid-cols-[1fr_120px_100px_80px_80px] gap-2 md:gap-3 items-center px-5 py-3.5 border-b border-slate-100 dark:border-slate-700/50 last:border-b-0 hover:bg-primary-50/40 dark:hover:bg-primary-900/10 transition-colors relative"
+              className="group flex flex-col md:grid md:grid-cols-[1fr_120px_100px_100px_90px] gap-2 md:gap-3 items-center px-5 py-3.5 border-b border-slate-100 dark:border-slate-700/50 last:border-b-0 hover:bg-primary-50/40 dark:hover:bg-primary-900/10 transition-colors relative"
             >
               {/* Title + icon */}
               <div className="flex items-center gap-3 min-w-0 w-full">

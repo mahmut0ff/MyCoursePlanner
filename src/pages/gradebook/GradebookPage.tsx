@@ -9,9 +9,7 @@ import {
   orgSaveGrade,
   apiAwardXP 
 } from '../../lib/api';
-// We need apiGetLessons for the lessons list. Let me import it.
-import { apiGetLessons } from '../../lib/api';
-import type { Course, Group, UserProfile, GradeSchema, GradeEntry, LessonPlan } from '../../types';
+import type { Course, Group, UserProfile, GradeSchema, GradeEntry } from '../../types';
 import GradebookGrid from '../../components/gradebook/GradebookGrid';
 import GradeSchemaConfig from '../../components/gradebook/GradeSchemaConfig';
 import { BookOpen, Settings, AlertCircle, RefreshCcw } from 'lucide-react';
@@ -36,7 +34,6 @@ const GradebookPage: React.FC = () => {
   const [selectedCourseId, setSelectedCourseId] = useState<string>('');
   
   const [students, setStudents] = useState<UserProfile[]>([]);
-  const [lessons, setLessons] = useState<LessonPlan[]>([]);
   const [grades, setGrades] = useState<Record<string, GradeEntry>>({});
   const [schema, setSchema] = useState<GradeSchema>(defaultSchema);
   const [syncStatus, setSyncStatus] = useState<Record<string, boolean>>({});
@@ -77,10 +74,9 @@ const GradebookPage: React.FC = () => {
       if (!course) return;
 
       // Parallel fetch
-      const [allGroups, allStudents, allLessons, schemaRes, gradesRes] = await Promise.all([
+      const [allGroups, allStudents, schemaRes, gradesRes] = await Promise.all([
         orgGetGroups(),
         orgGetStudents(),
-        apiGetLessons().catch(() => []), // some staff might not have full lesson read access? they should.
         orgGetGradeSchema(courseId),
         orgGetGrades(courseId)
       ]);
@@ -98,12 +94,6 @@ const GradebookPage: React.FC = () => {
       const enrolledStudents = (allStudents as UserProfile[]).filter(s => studentIds.has(s.uid));
       setStudents(enrolledStudents);
 
-      // Lessons linked to any group in this course
-      const courseGroupIds = new Set(courseGroups.map(g => g.id));
-      const courseLessons = (allLessons as LessonPlan[]).filter(l =>
-        (l.groupIds || []).some(gid => courseGroupIds.has(gid))
-      );
-      setLessons(courseLessons);
 
       setSchema(schemaRes || { ...defaultSchema, courseId });
 
@@ -189,13 +179,12 @@ const GradebookPage: React.FC = () => {
   };
 
   const columns = useMemo(() => {
-    const cols = lessons.map(l => ({
-      id: l.id,
-      title: l.title,
-      type: 'lesson' as const
-    }));
-
     const uniqueDates = new Set<string>();
+    
+    // Always include today's date so there's a column for new grades
+    const today = new Date().toISOString().split('T')[0];
+    uniqueDates.add(today);
+
     Object.values(grades).forEach(g => {
       if (g.lessonId && /^\d{4}-\d{2}-\d{2}$/.test(g.lessonId)) {
         uniqueDates.add(g.lessonId);
@@ -208,8 +197,8 @@ const GradebookPage: React.FC = () => {
        type: 'date' as const
     }));
 
-    return [...cols, ...dateCols];
-  }, [lessons, grades]);
+    return dateCols;
+  }, [grades]);
 
   if (loadingCourses) {
     return <div className="flex justify-center py-20"><div className="w-8 h-8 border-2 border-slate-400 rounded-full animate-spin border-t-transparent" /></div>;
@@ -281,7 +270,7 @@ const GradebookPage: React.FC = () => {
         <div className="flex-1 flex flex-col items-center justify-center bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl min-h-[400px]">
           <AlertCircle className="w-12 h-12 text-slate-300 dark:text-slate-600 mb-3" />
           <p className="font-medium text-slate-900 dark:text-white mb-1">Нет столбцов для оценки</p>
-          <p className="text-sm text-slate-500">Добавьте уроки в курс, чтобы оценивать студентов.</p>
+          <p className="text-sm text-slate-500">Ожидайте загрузки данных.</p>
         </div>
       ) : (
         <div className="flex-1 min-h-0">

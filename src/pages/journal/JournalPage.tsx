@@ -15,7 +15,8 @@ import {
 } from '../../lib/api';
 import type { Course, Group, UserProfile, JournalEntry, AttendanceStatus, ParticipationLevel, GradeSchema, GradeEntry } from '../../types';
 import GradeCell from '../../components/gradebook/GradeCell';
-import { ClipboardList, Calendar, AlertCircle, AlertTriangle, RefreshCcw, UserCheck, CheckCircle2, XCircle, Clock, FileWarning, Trophy, TrendingUp, Loader2 } from 'lucide-react';
+import VoiceGradeDictator from '../../components/gradebook/VoiceGradeDictator';
+import { ClipboardList, Calendar, AlertCircle, AlertTriangle, RefreshCcw, UserCheck, CheckCircle2, XCircle, Clock, FileWarning, Trophy, TrendingUp, Loader2, Mic } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useAuth } from '../../contexts/AuthContext';
 
@@ -84,6 +85,7 @@ const JournalPage: React.FC = () => {
   const [loadingData, setLoadingData] = useState(false);
   const [bulking, setBulking] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showDictator, setShowDictator] = useState(false);
 
   const timersRef = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
 
@@ -224,10 +226,10 @@ const JournalPage: React.FC = () => {
   const [selectedLessonId, setSelectedLessonId] = useState<string | null>(null);
 
   useEffect(() => {
-    let found = null;
+    let found: string | null = null;
     for (const s of groupStudents) {
       if (entries[s.uid]?.lessonId) {
-        found = entries[s.uid].lessonId;
+        found = entries[s.uid].lessonId || null;
         break;
       }
     }
@@ -420,6 +422,36 @@ const JournalPage: React.FC = () => {
     }
   };
 
+  const handleApplyDictation = async (dictatedGrades: { studentId: string; status?: string; comment?: string }[]) => {
+    if (!canEdit || !selectedCourseId) return;
+    setBulking(true);
+
+    const bulkData = dictatedGrades.map(g => {
+      const existing = entries[g.studentId];
+      return {
+        studentId: g.studentId,
+        attendance: (g.status || 'present') as AttendanceStatus,
+        participation: existing?.participation,
+        note: g.comment || existing?.note,
+        lessonId: existing?.lessonId || selectedLessonId || undefined
+      };
+    });
+
+    try {
+      const res = await orgBulkAttendance(selectedCourseId, date, bulkData);
+      const newEntries = { ...entries };
+      (res as JournalEntry[]).forEach(e => {
+        newEntries[e.studentId] = e;
+      });
+      setEntries(newEntries);
+      toast.success('Отметки применены');
+    } catch(e: any) {
+      toast.error(e.message || 'Ошибка применения');
+    } finally {
+      setBulking(false);
+    }
+  };
+
 
 
   if (loading) {
@@ -562,14 +594,24 @@ const JournalPage: React.FC = () => {
             )}
           </div>
           {canEdit && (
-            <button
-              onClick={handleMarkAllPresent}
-              disabled={loadingData || bulking || groupStudents.length === 0}
-              className="flex items-center gap-2 px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white text-sm font-medium rounded-xl transition-colors disabled:opacity-50 shadow-sm"
-            >
-              {bulking ? <RefreshCcw className="w-4 h-4 animate-spin" /> : <UserCheck className="w-4 h-4" />}
-              {t('journal.markAllPresent', 'Отметить всех присутствующими')}
-            </button>
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => setShowDictator(true)}
+                disabled={loadingData || bulking || groupStudents.length === 0}
+                className="flex items-center gap-2 px-4 py-2 bg-indigo-500 hover:bg-indigo-600 text-white text-sm font-medium rounded-xl transition-colors disabled:opacity-50 shadow-sm"
+              >
+                <Mic className="w-4 h-4" />
+                Голосовой ввод
+              </button>
+              <button
+                onClick={handleMarkAllPresent}
+                disabled={loadingData || bulking || groupStudents.length === 0}
+                className="flex items-center gap-2 px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white text-sm font-medium rounded-xl transition-colors disabled:opacity-50 shadow-sm"
+              >
+                {bulking ? <RefreshCcw className="w-4 h-4 animate-spin" /> : <UserCheck className="w-4 h-4" />}
+                {t('journal.markAllPresent', 'Отметить всех присутствующими')}
+              </button>
+            </div>
           )}
         </div>
 
@@ -860,6 +902,14 @@ const JournalPage: React.FC = () => {
         )}
       </div>
 
+      <VoiceGradeDictator 
+        isOpen={showDictator} 
+        onClose={() => setShowDictator(false)} 
+        column={{ title: date }} 
+        students={groupStudents} 
+        mode="journal"
+        onApply={handleApplyDictation}
+      />
     </div>
   );
 };

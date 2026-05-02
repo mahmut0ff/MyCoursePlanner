@@ -35,32 +35,35 @@ const handler: Handler = async (event: HandlerEvent) => {
     const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
     // Use flash model, it optimally handles audio natively
     const model = genAI.getGenerativeModel({
-      model: 'gemini-1.5-flash',
+      model: 'gemini-2.0-flash',
       generationConfig: {
         responseMimeType: 'application/json',
       },
     });
 
-    const systemPrompt = `You are a strict JSON structure generator for a Gradebook system. 
-You will receive an audio recording of a teacher dictating grades for students. 
-You are also provided with a list of valid students and the grading schema.
+    const mode = data.mode || 'gradebook';
+    const isJournal = mode === 'journal';
+
+    const systemPrompt = `You are a strict JSON structure generator for a ${isJournal ? 'Journal Attendance' : 'Gradebook'} system. 
+You will receive an audio recording of a teacher dictating ${isJournal ? 'attendance' : 'grades'} for students. 
+You are also provided with a list of valid students${isJournal ? '.' : ' and the grading schema.'}
 
 CONTEXT:
 Students Array: ${JSON.stringify(students)}
-Grading Schema: ${JSON.stringify(schema)}
+${isJournal ? '' : `Grading Schema: ${JSON.stringify(schema)}`}
 
 YOUR TASKS:
 1. Listen to the audio. The teacher may speak in any language (Russian, English, Uzbek, Kazakh, etc.) and may mix languages.
-2. Extract the names of the students mentioned and the grades they received.
+2. Extract the names of the students mentioned and the ${isJournal ? 'attendance status' : 'grades'} they received.
 3. Match the spoken names to the "id" of the students in the provided Students Array. Use fuzzy phonetic matching (e.g., if you hear "Alesha" or "Alisher", match it to the student named "Alisher" and use their "id").
-4. If the teacher says something like "Give everyone a 5" or "All others get 4", apply that logic to all students in the array (unless specific exceptions were mentioned).
-5. Output MUST be ONLY a JSON array of objects representing the extracted grades. 
+4. If the teacher says something like "Give everyone a 5" or "Everyone is present", apply that logic to all students in the array (unless specific exceptions were mentioned).
+5. Output MUST be ONLY a JSON array of objects representing the extracted data. 
 Each object must have the following keys:
 - "studentId": The string ID of the matched student (from the Students Array).
-- "value": A number or null representing the grade. Ensure it fits the Grading Schema.
+${isJournal ? `- "status": A string representing attendance. MUST be exactly one of: "present", "absent", "late", "excused".` : `- "value": A number or null representing the grade. Ensure it fits the Grading Schema.`}
 - "comment": (Optional) A brief string if the teacher added a comment for that student.
 
-Do NOT include any students who were not assigned a grade.
+Do NOT include any students who were not assigned a ${isJournal ? 'status' : 'grade'}.
 Do NOT output any markdown, only raw JSON array format.`;
 
     const parts: any[] = [

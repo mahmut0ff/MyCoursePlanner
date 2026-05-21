@@ -47,8 +47,8 @@ const Sidebar: React.FC<{ open: boolean; onClose: () => void; isCollapsed?: bool
 
   return (
     <>
-      {open && <div className="fixed inset-0 bg-black/50 z-30 lg:hidden" onClick={onClose} />}
-      <aside className={`fixed top-0 left-0 bottom-0 w-60 ${isCollapsed ? 'lg:w-[72px]' : 'lg:w-60'} bg-[#0f172a] border-r border-slate-700/50 z-40 transform transition-[width,transform] duration-300 lg:translate-x-0 ${open ? 'translate-x-0' : '-translate-x-full'} flex flex-col`} style={{ paddingTop: 'var(--safe-area-top)' }}>
+      {open && <div className="fixed inset-0 bg-black/50 z-30 lg:hidden" onClick={onClose} aria-hidden="true" />}
+      <aside role="navigation" aria-label={t('nav.mainNavigation', 'Main navigation')} className={`fixed top-0 left-0 bottom-0 w-60 ${isCollapsed ? 'lg:w-[72px]' : 'lg:w-60'} bg-[#0f172a] border-r border-slate-700/50 z-40 transform transition-[width,transform] duration-300 lg:translate-x-0 ${open ? 'translate-x-0' : '-translate-x-full'} flex flex-col`} style={{ paddingTop: 'var(--safe-area-top)' }}>
 
         {/* ═══ Header ═══ */}
         <div className="flex items-center gap-3 px-4 py-4 border-b border-white/5 h-[69px]">
@@ -61,7 +61,8 @@ const Sidebar: React.FC<{ open: boolean; onClose: () => void; isCollapsed?: bool
           </div>
           {onToggleCollapse && (
             <button 
-              onClick={onToggleCollapse} 
+              onClick={onToggleCollapse}
+              aria-label={isCollapsed ? t('nav.expandSidebar', 'Expand sidebar') : t('nav.collapseSidebar', 'Collapse sidebar')}
               className="p-1.5 rounded-lg text-slate-500 hover:text-white hover:bg-white/10 hidden lg:flex items-center justify-center transition-colors absolute -right-3 top-5 bg-[#0f172a] border border-slate-700/50 shadow-lg z-50 rounded-full"
             >
               <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-300 ${isCollapsed ? '-rotate-90' : 'rotate-90'}`} />
@@ -395,6 +396,7 @@ const Sidebar: React.FC<{ open: boolean; onClose: () => void; isCollapsed?: bool
               onClick={handleSignOut}
               className="p-1.5 rounded-lg text-slate-600 hover:text-red-400 hover:bg-white/5 transition-colors"
               title={t('app.signOut')}
+              aria-label={t('app.signOut')}
             >
               <LogOut className="w-4 h-4" />
             </button>

@@ -97,9 +97,14 @@ const AppLayout: React.FC = () => {
   return (
     <>
     <PlanProvider>
+      {/* Skip-to-content link for keyboard/screen reader users */}
+      <a href="#main-content" className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-[100] focus:px-4 focus:py-2 focus:bg-primary-600 focus:text-white focus:rounded-lg focus:text-sm focus:font-medium">
+        Skip to main content
+      </a>
+
       <div className="h-full bg-slate-50 dark:bg-slate-900 flex" style={{ paddingTop: 'var(--safe-area-top)', paddingLeft: 'var(--safe-area-left)', paddingRight: 'var(--safe-area-right)' }}>
         {/* Sidebar wrapper */}
-        <aside className={`hidden lg:block shrink-0 transition-all duration-300 ${isSidebarCollapsed ? 'w-[72px]' : 'w-60'}`} />
+        <div className={`hidden lg:block shrink-0 transition-all duration-300 ${isSidebarCollapsed ? 'w-[72px]' : 'w-60'}`} role="none" />
         <Sidebar 
           open={sidebarOpen} 
           onClose={() => setSidebarOpen(false)} 
@@ -112,11 +117,11 @@ const AppLayout: React.FC = () => {
         <div className="flex-1 flex flex-col h-full min-w-0">
           <Topbar onMenuClick={() => setSidebarOpen(true)} />
           <SubscriptionGuard>
-            <main className="flex-1 flex flex-col overflow-hidden min-h-0">
+            <main id="main-content" role="main" aria-label="Page content" className="flex-1 flex flex-col overflow-hidden min-h-0">
               <div className="flex-1 p-4 md:p-6 lg:p-8 overflow-y-auto overflow-x-hidden relative" style={{ paddingBottom: 'max(2rem, calc(var(--safe-area-bottom) + 1rem))' }}>
                 <div className="max-w-screen-xl mx-auto w-full min-h-full page-content">
                   <Suspense fallback={
-                    <div className="flex items-center justify-center py-20">
+                    <div className="flex items-center justify-center py-20" role="status" aria-label="Loading page">
                       <div className="w-8 h-8 border-4 border-slate-200 border-t-slate-600 rounded-full animate-spin dark:border-slate-700 dark:border-t-slate-400" />
                     </div>
                   }>

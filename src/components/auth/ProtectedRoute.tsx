@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Navigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../contexts/AuthContext';
 import type { UserRole } from '../../types';
 
@@ -10,6 +11,7 @@ interface ProtectedRouteProps {
 
 const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, allowedRoles }) => {
   const { firebaseUser, profile, loading, configured } = useAuth();
+  const { t } = useTranslation();
 
   // Give the profile a moment to load from Firestore before concluding it doesn't exist.
   // This prevents premature redirects to /onboarding during the auth → profile fetch cycle.
@@ -46,7 +48,7 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, allowedRoles 
       <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-slate-900">
         <div className="flex flex-col items-center gap-3">
           <div className="w-10 h-10 border-4 border-slate-200 border-t-slate-600 rounded-full animate-spin dark:border-slate-700 dark:border-t-slate-400" />
-          <p className="text-slate-500 dark:text-slate-400 text-sm">Загрузка...</p>
+          <p className="text-slate-500 dark:text-slate-400 text-sm">{t('common.loading', 'Загрузка...')}</p>
         </div>
       </div>
     );
@@ -59,8 +61,8 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, allowedRoles 
           <div className="w-16 h-16 bg-amber-100 dark:bg-amber-900/30 rounded-full flex items-center justify-center mx-auto mb-4">
             <span className="text-3xl">⚠️</span>
           </div>
-          <h1 className="text-xl font-bold text-slate-900 dark:text-white mb-2">Firebase не настроен</h1>
-          <p className="text-slate-600 dark:text-slate-400 mb-4">Создайте файл <code className="bg-slate-100 dark:bg-slate-700 px-1.5 py-0.5 rounded text-sm">.env</code>.</p>
+          <h1 className="text-xl font-bold text-slate-900 dark:text-white mb-2">{t('error.firebaseNotConfigured', 'Firebase не настроен')}</h1>
+          <p className="text-slate-600 dark:text-slate-400 mb-4">{t('error.createEnvFile', 'Создайте файл')} <code className="bg-slate-100 dark:bg-slate-700 px-1.5 py-0.5 rounded text-sm">.env</code>.</p>
         </div>
       </div>
     );

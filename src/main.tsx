@@ -1,5 +1,6 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
+import './lib/sentry'; // Initialize error tracking before anything else
 import App from './App';
 import './i18n';
 import './index.css';

@@ -6,9 +6,9 @@ interface StudentPortfolioProps {
   uid: string;
 }
 
-const StudentPortfolio: React.FC<StudentPortfolioProps> = ({ uid }) => {
+const StudentPortfolio: React.FC<StudentPortfolioProps> = ({ uid: _uid }) => {
   const { t } = useTranslation();
-  console.log('Rendering portfolio for:', uid); // temporary usage of uid to avoid lint error
+  void _uid; // prop reserved for future portfolio data fetching
 
   return (
     <div className="card p-8 text-center border-dashed border-2 border-slate-200 dark:border-slate-700">

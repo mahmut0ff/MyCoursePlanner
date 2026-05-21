@@ -5,21 +5,24 @@ service firebase.storage {
     match /avatars/{fileName} {
       allow read: if true;
       allow write: if request.auth != null
-                   && request.resource.size < 5 * 1024 * 1024; // 5MB max
+                   && request.resource.size < 5 * 1024 * 1024 // 5MB max
+                   && request.resource.contentType.matches('image/.*');
     }
     // Org logos — only the org owner can update the logo
     match /org-logos/{orgId} {
       allow read: if true;
       allow write: if request.auth != null
                    && request.auth.uid == firestore.get(/databases/(default)/documents/organizations/$(orgId)).data.ownerId
-                   && request.resource.size < 5 * 1024 * 1024;
+                   && request.resource.size < 5 * 1024 * 1024
+                   && request.resource.contentType.matches('image/.*');
     }
     // Org photos — only the org owner can upload/replace photos
     match /org-photos/{orgId}/{photo} {
       allow read: if true;
       allow write: if request.auth != null
                    && request.auth.uid == firestore.get(/databases/(default)/documents/organizations/$(orgId)).data.ownerId
-                   && request.resource.size < 10 * 1024 * 1024;
+                   && request.resource.size < 10 * 1024 * 1024
+                   && request.resource.contentType.matches('image/.*');
     }
     // Strict validation for chat attachments
     match /chat/{orgId}/{roomId}/{fileName} {
@@ -28,49 +31,95 @@ service firebase.storage {
                   request.auth.uid in firestore.get(/databases/(default)/documents/chatRooms/$(roomId)).data.participantIds;
       allow write: if request.auth != null && 
                    request.auth.uid in firestore.get(/databases/(default)/documents/chatRooms/$(roomId)).data.participantIds &&
-                   request.resource.size < 25 * 1024 * 1024; // 25MB max
+                   request.resource.size < 25 * 1024 * 1024 && // 25MB max
+                   (request.resource.contentType.matches('image/.*')
+                    || request.resource.contentType.matches('video/.*')
+                    || request.resource.contentType.matches('audio/.*')
+                    || request.resource.contentType == 'application/pdf'
+                    || request.resource.contentType == 'application/msword'
+                    || request.resource.contentType == 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+                    || request.resource.contentType == 'application/vnd.ms-excel'
+                    || request.resource.contentType == 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+                    || request.resource.contentType == 'application/vnd.ms-powerpoint'
+                    || request.resource.contentType == 'application/vnd.openxmlformats-officedocument.presentationml.presentation'
+                    || request.resource.contentType == 'text/plain');
     }
 
     // Course materials — authenticated users only, 50MB max
     match /materials/{orgId}/{fileName} {
       allow read: if request.auth != null;
       allow write: if request.auth != null &&
-                   request.resource.size < 50 * 1024 * 1024;
+                   request.resource.size < 50 * 1024 * 1024 &&
+                   (request.resource.contentType.matches('image/.*')
+                    || request.resource.contentType.matches('video/.*')
+                    || request.resource.contentType.matches('audio/.*')
+                    || request.resource.contentType == 'application/pdf'
+                    || request.resource.contentType == 'application/msword'
+                    || request.resource.contentType == 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+                    || request.resource.contentType == 'application/vnd.ms-excel'
+                    || request.resource.contentType == 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+                    || request.resource.contentType == 'application/vnd.ms-powerpoint'
+                    || request.resource.contentType == 'application/vnd.openxmlformats-officedocument.presentationml.presentation'
+                    || request.resource.contentType == 'application/zip'
+                    || request.resource.contentType == 'text/plain');
     }
 
     // Exam attachments — authenticated users only, 10MB max
     match /exams/{orgId}/{fileName} {
       allow read: if request.auth != null;
       allow write: if request.auth != null &&
-                   request.resource.size < 10 * 1024 * 1024;
+                   request.resource.size < 10 * 1024 * 1024 &&
+                   (request.resource.contentType.matches('image/.*')
+                    || request.resource.contentType.matches('video/.*')
+                    || request.resource.contentType.matches('audio/.*'));
     }
 
     // Vacancy photos — authenticated users only, 10MB max
     match /vacancies/{orgId}/{fileName} {
       allow read: if true;
       allow write: if request.auth != null &&
-                   request.resource.size < 10 * 1024 * 1024;
+                   request.resource.size < 10 * 1024 * 1024 &&
+                   request.resource.contentType.matches('image/.*');
     }
 
     // Quiz media — authenticated users only, 10MB max
     match /quiz/{orgId}/{fileName} {
       allow read: if request.auth != null;
       allow write: if request.auth != null &&
-                   request.resource.size < 10 * 1024 * 1024;
+                   request.resource.size < 10 * 1024 * 1024 &&
+                   (request.resource.contentType.matches('image/.*')
+                    || request.resource.contentType.matches('video/.*')
+                    || request.resource.contentType.matches('audio/.*'));
     }
 
     // Homework submissions — authenticated users only, 50MB max
     match /homeworks/{lessonId}/{fileName} {
       allow read: if request.auth != null;
       allow write: if request.auth != null &&
-                   request.resource.size < 50 * 1024 * 1024;
+                   request.resource.size < 50 * 1024 * 1024 &&
+                   (request.resource.contentType.matches('image/.*')
+                    || request.resource.contentType.matches('video/.*')
+                    || request.resource.contentType.matches('audio/.*')
+                    || request.resource.contentType == 'application/pdf'
+                    || request.resource.contentType == 'application/msword'
+                    || request.resource.contentType == 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+                    || request.resource.contentType == 'application/zip'
+                    || request.resource.contentType == 'text/plain');
     }
 
     // Homework attachments (student-scoped) — owner writes, authenticated reads
     match /homework_attachments/{userId}/{fileName} {
       allow read: if request.auth != null;
       allow write: if request.auth != null && request.auth.uid == userId &&
-                   request.resource.size < 50 * 1024 * 1024;
+                   request.resource.size < 50 * 1024 * 1024 &&
+                   (request.resource.contentType.matches('image/.*')
+                    || request.resource.contentType.matches('video/.*')
+                    || request.resource.contentType.matches('audio/.*')
+                    || request.resource.contentType == 'application/pdf'
+                    || request.resource.contentType == 'application/msword'
+                    || request.resource.contentType == 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+                    || request.resource.contentType == 'application/zip'
+                    || request.resource.contentType == 'text/plain');
     }
 
     // Deny all other paths — explicit deny

@@ -1,5 +1,7 @@
 import React from 'react';
 import { RefreshCw, WifiOff, AlertTriangle } from 'lucide-react';
+import { Sentry } from '../../lib/sentry';
+import i18n from '../../i18n';
 
 interface ErrorBoundaryProps {
   children: React.ReactNode;
@@ -39,6 +41,14 @@ class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundarySta
       window.location.reload();
       return;
     }
+
+    // Report non-chunk errors to Sentry
+    try {
+      Sentry?.captureException(error, {
+        contexts: { react: { componentStack: info.componentStack || '' } },
+        tags: { isChunkError: String(ErrorBoundary.isChunkLoadError(error)) },
+      });
+    } catch { /* Sentry not initialized — silently skip */ }
 
     console.error('[ErrorBoundary] Caught:', error, info);
   }
@@ -106,14 +116,14 @@ class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundarySta
 
           {/* Title */}
           <h1 className="text-xl font-bold text-slate-900 dark:text-white mb-2">
-            {isChunkError ? 'Обновление приложения' : 'Что-то пошло не так'}
+            {isChunkError ? i18n.t('error.appUpdate', 'Обновление приложения') : i18n.t('error.somethingWrong', 'Что-то пошло не так')}
           </h1>
 
           {/* Description */}
           <p className="text-sm text-slate-500 dark:text-slate-400 mb-6 leading-relaxed">
             {isChunkError
-              ? 'Вышла новая версия приложения. Перезагрузите страницу, чтобы получить обновление.'
-              : 'Произошла непредвиденная ошибка. Попробуйте перезагрузить страницу или вернуться на главную.'
+              ? i18n.t('error.newVersionAvailable', 'Вышла новая версия приложения. Перезагрузите страницу, чтобы получить обновление.')
+              : i18n.t('error.unexpectedError', 'Произошла непредвиденная ошибка. Попробуйте перезагрузить страницу или вернуться на главную.')
             }
           </p>
 
@@ -121,7 +131,7 @@ class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundarySta
           {!isChunkError && error && (
             <details className="mb-6 text-left">
               <summary className="text-xs text-slate-400 cursor-pointer hover:text-slate-600 dark:hover:text-slate-300 transition-colors">
-                Подробности ошибки
+                {i18n.t('error.errorDetails', 'Подробности ошибки')}
               </summary>
               <pre className="mt-2 p-3 bg-slate-100 dark:bg-slate-800 rounded-lg text-xs text-red-600 dark:text-red-400 overflow-x-auto whitespace-pre-wrap break-words border border-slate-200 dark:border-slate-700">
                 {error.message}
@@ -136,7 +146,7 @@ class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundarySta
               className="inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-primary-600 hover:bg-primary-700 text-white rounded-xl font-medium text-sm transition-colors shadow-md shadow-primary-500/20"
             >
               <RefreshCw className="w-4 h-4" />
-              Перезагрузить
+              {i18n.t('error.reload', 'Перезагрузить')}
             </button>
 
             {!isChunkError && (
@@ -144,7 +154,7 @@ class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundarySta
                 onClick={this.handleGoHome}
                 className="inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 rounded-xl font-medium text-sm transition-colors hover:bg-slate-50 dark:hover:bg-slate-700"
               >
-                На главную
+                {i18n.t('error.goHome', 'На главную')}
               </button>
             )}
           </div>

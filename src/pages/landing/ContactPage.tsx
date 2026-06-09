@@ -1,14 +1,21 @@
-import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
+import React, { useEffect, useState } from 'react';
+import { Link, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../contexts/AuthContext';
-import { ArrowLeft, Mail, MapPin, Phone, MessageCircle, Send, CheckCircle } from 'lucide-react';
+import { ArrowLeft, Mail, MapPin, Phone, MessageCircle, Send, CheckCircle, School } from 'lucide-react';
 import LanguageSwitcher from '../../components/LanguageSwitcher';
+import RequestDemoModal from '../../components/landing/RequestDemoModal';
 
 const ContactPage: React.FC = () => {
   const { t } = useTranslation();
   const { firebaseUser: user } = useAuth();
   const [sent, setSent] = useState(false);
+  const [demoOpen, setDemoOpen] = useState(false);
+  const [searchParams] = useSearchParams();
+
+  useEffect(() => {
+    if (searchParams.get('demo') === '1') setDemoOpen(true);
+  }, [searchParams]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -41,7 +48,24 @@ const ContactPage: React.FC = () => {
           </Link>
 
           <h1 className="text-4xl font-extrabold mb-3 text-slate-900">{t('landing.contactPageTitle')}</h1>
-          <p className="text-lg text-slate-500 mb-12">{t('landing.contactPageSubtitle')}</p>
+          <p className="text-lg text-slate-500 mb-8">{t('landing.contactPageSubtitle')}</p>
+
+          {/* Demo CTA: owners of учебных центров onboard through demo, not self-signup */}
+          <div className="mb-12 rounded-3xl border border-primary-100 bg-gradient-to-br from-primary-50 to-violet-50 p-6 md:p-8 flex flex-col sm:flex-row items-start sm:items-center gap-5">
+            <div className="w-14 h-14 rounded-2xl bg-primary-600 flex items-center justify-center shadow-lg shadow-primary-500/20 shrink-0">
+              <School className="w-7 h-7 text-white" />
+            </div>
+            <div className="flex-1">
+              <h2 className="text-xl font-extrabold text-slate-900 mb-1">Владелец учебного центра?</h2>
+              <p className="text-slate-600 leading-relaxed">Закажите демо — мы расскажем про возможности и создадим аккаунт под ваш центр.</p>
+            </div>
+            <button
+              onClick={() => setDemoOpen(true)}
+              className="bg-primary-600 hover:bg-primary-700 text-white font-semibold px-6 py-3 rounded-xl shadow-lg shadow-primary-500/20 transition-all whitespace-nowrap"
+            >
+              Заказать демо
+            </button>
+          </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
             {/* Form */}
@@ -106,6 +130,8 @@ const ContactPage: React.FC = () => {
       <footer className="bg-[#0f172a] text-white py-8 px-6 text-center mt-auto">
         <p className="text-sm text-slate-500">&copy; {new Date().getFullYear()} Planula. {t('landing.rights')}</p>
       </footer>
+
+      <RequestDemoModal open={demoOpen} onClose={() => setDemoOpen(false)} />
     </div>
   );
 };

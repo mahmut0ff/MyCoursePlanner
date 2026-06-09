@@ -194,22 +194,82 @@ const handler: Handler = async (event: HandlerEvent) => {
       if (!body.name) return badRequest('name required');
       const now = new Date().toISOString();
       const slug = body.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').substring(0, 40);
-      const orgData = { name: body.name, slug, ownerId: '', ownerEmail: body.email || '', planId: body.planId || 'starter', status: 'active', studentsCount: 0, teachersCount: 0, examsCount: 0, createdAt: now, updatedAt: now };
+
+      // If owner credentials provided — provision the owner account too.
+      let ownerUid = '';
+      let tempPassword = '';
+      if (body.ownerEmail && body.ownerName) {
+        const ownerEmail = String(body.ownerEmail).trim().toLowerCase();
+        // Generate a memorable-but-secure temp password (shown to super-admin once).
+        const rand = () => Math.random().toString(36).slice(2);
+        tempPassword = `${rand().slice(0, 4)}-${rand().slice(0, 4)}-${rand().slice(0, 4)}`;
+        try {
+          const created = await adminAuth.createUser({
+            email: ownerEmail,
+            password: tempPassword,
+            displayName: body.ownerName,
+            emailVerified: false,
+          });
+          ownerUid = created.uid;
+        } catch (e: any) {
+          if (e?.code === 'auth/email-already-exists') {
+            return badRequest('Пользователь с таким email уже существует');
+          }
+          throw e;
+        }
+      }
+
+      const orgData = {
+        name: body.name,
+        slug,
+        ownerId: ownerUid,
+        ownerEmail: body.ownerEmail || '',
+        planId: body.planId || 'starter',
+        status: 'active',
+        studentsCount: 0,
+        teachersCount: 0,
+        examsCount: 0,
+        createdAt: now,
+        updatedAt: now,
+      };
       const ref = await adminDb.collection('organizations').add(orgData);
+
+      // Create the owner profile + membership now that we know orgId.
+      if (ownerUid) {
+        await adminDb.collection('users').doc(ownerUid).set({
+          uid: ownerUid,
+          name: body.ownerName,
+          displayName: body.ownerName,
+          email: body.ownerEmail,
+          role: 'admin',
+          organizationId: ref.id,
+          activeOrgId: ref.id,
+          status: 'active',
+          createdAt: now,
+          updatedAt: now,
+        });
+        await adminDb.collection('orgMembers').doc(ref.id)
+          .collection('members').doc(ownerUid).set({
+            uid: ownerUid,
+            role: 'admin',
+            status: 'active',
+            joinedAt: now,
+          });
+      }
 
       const TRIAL_DAYS: Record<string, number> = { starter: 14, professional: 3, enterprise: 3 };
       const trialEnd = new Date(); trialEnd.setDate(trialEnd.getDate() + (TRIAL_DAYS[orgData.planId] || 14));
       await adminDb.collection('subscriptions').add({ organizationId: ref.id, planId: orgData.planId, status: 'trial', startDate: now, currentPeriodEnd: trialEnd.toISOString(), trialEndsAt: trialEnd.toISOString(), createdAt: now });
 
-      await auditLog(user, 'org_created', 'organization', ref.id, null, orgData);
-      // Notify all super admins
+      await auditLog(user, 'org_created', 'organization', ref.id, null, { ...orgData, ownerCreated: !!ownerUid });
       notifyAllSuperAdmins(
         'new_org_registered',
         'Новая организация',
         `Создана организация «${body.name}»`,
         '/admin/organizations',
       ).catch(() => {});
-      return ok({ id: ref.id, ...orgData });
+      // tempPassword is returned ONCE — super-admin must copy it now; we never store/return it again.
+      return ok({ id: ref.id, ...orgData, ownerUid, tempPassword });
     }
 
     if (action === 'suspendOrg') {

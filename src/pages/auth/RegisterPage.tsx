@@ -5,21 +5,23 @@ import { signUp, signInWithGoogle } from '../../services/auth.service';
 import { useAuth } from '../../contexts/AuthContext';
 import { createUser } from '../../services/users.service';
 import { apiCheckAuthIdentity, apiPublicJoin, apiCheckRegisterRateLimit } from '../../lib/api';
-import { Mail, Lock, User, Eye, EyeOff, Building2, BookOpenCheck, School, AtSign, CheckCircle2, XCircle, Loader2 } from 'lucide-react';
+import { Mail, Lock, User, Eye, EyeOff, BookOpenCheck, School, AtSign, CheckCircle2, XCircle, Loader2 } from 'lucide-react';
 import LanguageSwitcher from '../../components/LanguageSwitcher';
 
-type RegRole = 'admin' | 'teacher' | 'student';
+// Note: 'admin' (owner of a learning center) is intentionally excluded from
+// self-service registration. Owners are provisioned by super-admins after a
+// demo call — see /admin/organizations.
+type RegRole = 'teacher' | 'student';
 
 const RegisterPage: React.FC = () => {
   const { t } = useTranslation();
-  const [regRole, setRegRole] = useState<RegRole>('admin');
-  const [step, setStep] = useState<'role' | 'account' | 'org'>('role');
+  const [regRole, setRegRole] = useState<RegRole>('teacher');
+  const [step, setStep] = useState<'role' | 'account'>('role');
   const [name, setName] = useState('');
   const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [orgName, setOrgName] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [usernameStatus, setUsernameStatus] = useState<'idle' | 'checking' | 'available' | 'taken'>('idle');
@@ -61,8 +63,8 @@ const RegisterPage: React.FC = () => {
     return () => clearTimeout(timer);
   }, [email]);
 
-  const totalSteps = 3;
-  const currentStep = step === 'role' ? 1 : step === 'account' ? 2 : 3;
+  const totalSteps = 2;
+  const currentStep = step === 'role' ? 1 : 2;
 
   const handleRoleStep = (role: RegRole) => {
     // If coming from QR/visit card, force student role
@@ -81,11 +83,7 @@ const RegisterPage: React.FC = () => {
     if (!name || !username || !email || !password) { setError(t('auth.fillAllFields')); return; }
     if (password.length < 6) { setError(t('auth.passwordMinLength')); return; }
     if (usernameStatus === 'taken' || emailStatus === 'taken') { setError(t('auth.identitiesTaken', 'Указанный email или никнейм уже занят.')); return; }
-    if (regRole === 'admin') {
-      setStep('org');
-    } else {
-      handleTeacherSubmit();
-    }
+    handleTeacherSubmit();
   };
 
   const handleTeacherSubmit = async () => {
@@ -100,43 +98,6 @@ const RegisterPage: React.FC = () => {
         try { await apiPublicJoin(orgSlug); } catch {}
       }
       navigate(regRole === 'teacher' ? '/teacher-profile' : '/dashboard');
-    } catch (err: any) {
-      console.error('Registration error:', err);
-      if (err.message?.includes('already')) setError(t('auth.emailInUse'));
-      else setError(`${t('auth.regFailed')}: ${err.message || ''}`);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleFinalSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError('');
-    if (!orgName.trim()) { setError(t('auth.orgRequired')); return; }
-    setLoading(true);
-    try {
-      await apiCheckRegisterRateLimit();
-      const cred = await signUp(email, password, name);
-      const profilePromise = createUser(cred.user.uid, email, name, 'admin', username);
-      const timeoutPromise = new Promise((_, reject) =>
-        setTimeout(() => reject(new Error('timeout')), 8000)
-      );
-      try { await Promise.race([profilePromise, timeoutPromise]); } catch {}
-
-      const token = await cred.user.getIdToken();
-      const orgRes = await fetch('/.netlify/functions/api-organizations', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ name: orgName }),
-      });
-
-      if (!orgRes.ok) {
-        const err = await orgRes.json().catch(() => ({}));
-        throw new Error(err.error || 'Failed to create organization');
-      }
-      
-      await refreshProfile(); // Refresh AuthContext to pull the newly created organizationId
-      navigate('/dashboard');
     } catch (err: any) {
       console.error('Registration error:', err);
       if (err.message?.includes('already')) setError(t('auth.emailInUse'));
@@ -241,19 +202,6 @@ const RegisterPage: React.FC = () => {
               <p className="text-slate-500 dark:text-slate-400 text-sm mb-5 text-center">{t('auth.chooseRole')}</p>
               <div className="space-y-3">
                 <button
-                  onClick={() => handleRoleStep('admin')}
-                  className="w-full flex items-center gap-4 p-4 rounded-xl border-2 border-slate-200 dark:border-slate-700 hover:border-primary-500 dark:hover:border-primary-500 bg-white dark:bg-slate-800 hover:bg-primary-50 dark:hover:bg-primary-900/10 transition-all group"
-                >
-                  <div className="w-12 h-12 bg-primary-600 rounded-xl flex items-center justify-center shrink-0 shadow-lg shadow-primary-200/50 dark:shadow-primary-900/30">
-                    <School className="w-6 h-6 text-white" />
-                  </div>
-                  <div className="text-left">
-                    <p className="font-semibold text-slate-900 dark:text-white group-hover:text-primary-600 dark:group-hover:text-primary-400 transition-colors">{t('auth.roleOrgAdmin')}</p>
-                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">{t('auth.roleOrgAdminDesc')}</p>
-                  </div>
-                </button>
-
-                <button
                   onClick={() => handleRoleStep('teacher')}
                   className="w-full flex items-center gap-4 p-4 rounded-xl border-2 border-slate-200 dark:border-slate-700 hover:border-violet-500 dark:hover:border-violet-500 bg-white dark:bg-slate-800 hover:bg-violet-50 dark:hover:bg-violet-900/10 transition-all group"
                 >
@@ -278,6 +226,22 @@ const RegisterPage: React.FC = () => {
                     <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">{t('dashboard.studentDesc', 'Начни учиться прямо сейчас')}</p>
                   </div>
                 </button>
+              </div>
+
+              {/* Owner / school center — handled by sales, not self-service */}
+              <div className="mt-5 p-4 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 flex items-start gap-3">
+                <div className="w-9 h-9 rounded-lg bg-primary-100 dark:bg-primary-900/30 flex items-center justify-center shrink-0">
+                  <School className="w-4 h-4 text-primary-600 dark:text-primary-400" />
+                </div>
+                <div className="text-left">
+                  <p className="text-sm font-semibold text-slate-900 dark:text-white">{t('auth.roleOrgAdmin', 'Владелец учебного центра')}?</p>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                    Для владельцев центров аккаунт создаёт наша команда после короткого демо.
+                  </p>
+                  <Link to="/contact?demo=1" className="inline-block mt-2 text-xs font-semibold text-primary-600 dark:text-primary-400 hover:underline">
+                    Заказать демо →
+                  </Link>
+                </div>
               </div>
             </>
           )}
@@ -357,28 +321,6 @@ const RegisterPage: React.FC = () => {
                 </svg>
                 Google
               </button>
-            </>
-          )}
-
-          {/* ═══ Step: Organization ═══ */}
-          {step === 'org' && (
-            <>
-              <p className="text-slate-500 dark:text-slate-400 text-sm mb-5">{t('auth.step2')}</p>
-              <form onSubmit={handleFinalSubmit} className="space-y-4">
-                <div>
-                  <label className="label">{t('auth.orgName')}</label>
-                  <div className="relative">
-                    <Building2 className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                    <input type="text" value={orgName} onChange={(e) => setOrgName(e.target.value)} className="input pl-11" placeholder={t('auth.orgNamePlaceholder')} />
-                  </div>
-                </div>
-                <div className="flex gap-3 pt-2">
-                  <button type="button" onClick={() => setStep('account')} className="btn-secondary flex-1 !py-3 !rounded-xl">{t('common.back')}</button>
-                  <button type="submit" disabled={loading} className="btn-primary flex-1 !py-3 !rounded-xl">
-                    {loading ? t('auth.creating') : t('auth.createAccount')}
-                  </button>
-                </div>
-              </form>
             </>
           )}
 

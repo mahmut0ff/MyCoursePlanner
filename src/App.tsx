@@ -117,6 +117,7 @@ const AdminSystemHealthPage = lazyRetry(() => import('./pages/admin/AdminSystemH
 const AdminPlansPage = lazyRetry(() => import('./pages/admin/AdminPlansPage'));
 const AdminIntegrationsPage = lazyRetry(() => import('./pages/admin/AdminIntegrationsPage'));
 const AdminSettingsPage = lazyRetry(() => import('./pages/admin/AdminSettingsPage'));
+const AdminDemoRequestsPage = lazyRetry(() => import('./pages/admin/AdminDemoRequestsPage'));
 
 const DocumentViewerPage = lazyRetry(() => import('./pages/viewer/DocumentViewerPage'));
 
@@ -282,6 +283,7 @@ const App: React.FC = () => {
             <Route path="admin/plans" element={<ProtectedRoute allowedRoles={['super_admin']}><AdminPlansPage /></ProtectedRoute>} />
             <Route path="admin/integrations" element={<ProtectedRoute allowedRoles={['super_admin']}><AdminIntegrationsPage /></ProtectedRoute>} />
             <Route path="admin/settings" element={<ProtectedRoute allowedRoles={['super_admin']}><AdminSettingsPage /></ProtectedRoute>} />
+            <Route path="admin/demo-requests" element={<ProtectedRoute allowedRoles={['super_admin']}><AdminDemoRequestsPage /></ProtectedRoute>} />
           </Route>
 
           {/* Fallback */}

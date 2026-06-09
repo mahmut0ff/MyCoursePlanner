@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../contexts/AuthContext';
 import LanguageSwitcher from '../../components/LanguageSwitcher';
+import RequestDemoModal from '../../components/landing/RequestDemoModal';
 import {
  BookOpen, ClipboardList, Radio, Brain, BarChart3,
  Shield, Zap, Check, ArrowRight, ChevronDown,
@@ -22,6 +23,7 @@ const LandingPage: React.FC = () => {
   const { firebaseUser: user } = useAuth();
  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
  const [openFaqIndex, setOpenFaqIndex] = useState<number | null>(null);
+ const [demoOpen, setDemoOpen] = useState(false);
 
  /* ── Feature categories ── */
  const featureCategories = [
@@ -256,9 +258,9 @@ const LandingPage: React.FC = () => {
                 {user ? (t('nav.dashboard') || 'Dashboard') : t('landing.heroCta')}
                 <ArrowRight className="w-5 h-5 group-hover:translate-x-0.5 transition-transform" />
               </Link>
- <Link to="/contact" className="text-slate-600 hover:text-slate-900 font-medium px-6 py-3.5 rounded-xl border border-slate-200 hover:border-slate-300 transition-all flex items-center gap-2">
+ <button type="button" onClick={() => setDemoOpen(true)} className="text-slate-600 hover:text-slate-900 font-medium px-6 py-3.5 rounded-xl border border-slate-200 hover:border-slate-300 transition-all flex items-center gap-2">
  {t('landing.heroDemo')}
- </Link>
+ </button>
  </div>
  </div>
  </div>
@@ -771,6 +773,8 @@ const LandingPage: React.FC = () => {
  </div>
  </div>
  </footer>
+
+ <RequestDemoModal open={demoOpen} onClose={() => setDemoOpen(false)} />
  </div>
  );
 };

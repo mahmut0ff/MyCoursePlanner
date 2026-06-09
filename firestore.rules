@@ -26,9 +26,13 @@ service cloud.firestore {
         (request.auth != null && resource.data.organizationId != null && 
          resource.data.organizationId == get(/databases/$(database)/documents/users/$(request.auth.uid)).data.organizationId);
       
+      // Self-service signup: only teacher/student. Admins (owners of учебных
+      // центров) are provisioned server-side via the super-admin panel after a
+      // demo call, so they must NOT be creatable from the client.
       allow create: if isSuperAdmin() || (
         request.auth.uid == userId &&
-        (!('role' in request.resource.data) || request.resource.data.role != 'super_admin') &&
+        (!('role' in request.resource.data) ||
+          request.resource.data.role in ['teacher', 'student']) &&
         (!('organizationId' in request.resource.data) || request.resource.data.organizationId == '') &&
         (!('activeOrgId' in request.resource.data) || request.resource.data.activeOrgId == '')
       );
@@ -206,6 +210,7 @@ service cloud.firestore {
     match /orgNotes/{noteId} { allow read, write: if isSuperAdmin(); }
     match /systemErrors/{errorId} { allow read, write: if isSuperAdmin(); }
     match /courseRequests/{reqId} { allow read, write: if false; } // Handled entirely via backend
+    match /demoRequests/{reqId} { allow read, write: if false; }   // Handled entirely via backend (api-demo-requests)
 
   }
 }

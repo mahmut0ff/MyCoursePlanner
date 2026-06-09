@@ -16,7 +16,7 @@ import {
   Users, Layers, Activity, Flag, Plug, FolderOpen,
   ClipboardList, Radio, LogOut, CreditCard, Trophy,
   Lock, ClipboardCheck,
-  ShieldCheck
+  ShieldCheck, Inbox,
 } from 'lucide-react';
 
 /* ─── Thin divider between groups ─── */
@@ -87,6 +87,9 @@ const Sidebar: React.FC<{ open: boolean; onClose: () => void; isCollapsed?: bool
 
               <NavLink to="/admin/organizations" className={linkClass} onClick={onClose}>
                 <Building2 className="w-4 h-4" /><span>{t('nav.organizations')}</span>
+              </NavLink>
+              <NavLink to="/admin/demo-requests" className={linkClass} onClick={onClose}>
+                <Inbox className="w-4 h-4" /><span>Заявки на демо</span>
               </NavLink>
               <NavLink to="/admin/users" className={linkClass} onClick={onClose}>
                 <Users className="w-4 h-4" /><span>{t('nav.users')}</span>

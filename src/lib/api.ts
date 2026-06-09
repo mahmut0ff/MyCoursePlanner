@@ -57,6 +57,27 @@ export const apiResolveUsername = (username: string) =>
 
 export const apiCheckRegisterRateLimit = () => apiRequest('api-register-rate-limit', 'POST');
 
+// ---- Demo Requests (sales lead capture) ----
+// Public POST — no auth required. Throttled per IP.
+export const apiSubmitDemoRequest = async (data: { orgName: string; ownerName: string; telegram: string; note?: string }) => {
+  const res = await fetch(`${API_BASE}/api-demo-requests`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ error: res.statusText }));
+    throw new Error(err.error || `Request failed: ${res.status}`);
+  }
+  return res.json();
+};
+export const adminGetDemoRequests = (status?: string) =>
+  apiRequest('api-demo-requests', 'GET', undefined, status ? { status } : undefined);
+export const adminUpdateDemoRequest = (data: { id: string; status?: string; adminNote?: string }) =>
+  apiRequest('api-demo-requests', 'PATCH', data);
+export const adminDeleteDemoRequest = (id: string) =>
+  apiRequest('api-demo-requests', 'DELETE', undefined, { id });
+
 // ---- Lessons ----
 export const apiGetLessons = () => apiRequest('api-lessons');
 export const apiGetPersonalLessons = () => apiRequest('api-lessons', 'GET', undefined, { orgId: 'none' });

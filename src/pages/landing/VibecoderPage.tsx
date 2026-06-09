@@ -139,7 +139,7 @@ const ACCENTS: Record<string, { text: string; bg: string; softBg: string; ring: 
 const VideoEmbed: React.FC<{ id: string; title: string }> = ({ id, title }) => (
   <div className="relative w-full aspect-video rounded-2xl overflow-hidden shadow-lg ring-1 ring-slate-200 bg-slate-900">
     <iframe
-      src={`https://www.youtube-nocookie.com/embed/${id}`}
+      src={`https://www.youtube.com/embed/${id}`}
       title={title}
       loading="lazy"
       allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"

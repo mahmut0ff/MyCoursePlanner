@@ -11,7 +11,7 @@ import {
  Layers, Lock, FileText, Target, Gamepad2,
  Bot, PenTool, LayoutGrid, Database, Briefcase,
  CalendarClock, CheckSquare, UploadCloud,
- Laptop, GraduationCap, Building2, Coins
+ Laptop, GraduationCap, Building2, Coins, TrendingUp, UserRound
 } from 'lucide-react';
 
 /* ──────────────────────────────────────────
@@ -677,6 +677,29 @@ const LandingPage: React.FC = () => {
  <li className="flex items-center gap-3 text-white/90"><Check className="w-5 h-5 text-emerald-300 shrink-0" /> Работа с ИИ-инструментами</li>
  <li className="flex items-center gap-3 text-white/90"><Check className="w-5 h-5 text-emerald-300 shrink-0" /> Поддержка и помощь с первыми заказами</li>
  </ul>
+ </div>
+ </div>
+
+ {/* Преподаватель */}
+ <div className="mt-6 bg-white rounded-3xl border border-slate-200 shadow-sm p-6 md:p-8 flex flex-col sm:flex-row items-start sm:items-center gap-6">
+ <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-primary-600 to-violet-600 flex items-center justify-center shrink-0 shadow-lg shadow-primary-500/20">
+ <UserRound className="w-8 h-8 text-white" />
+ </div>
+ <div className="flex-1">
+ <div className="flex flex-wrap items-center gap-2 mb-2">
+ <h3 className="text-lg font-bold text-slate-900">Преподаватель курса</h3>
+ <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 text-xs font-semibold">Практикующий специалист</span>
+ </div>
+ <p className="text-slate-600 leading-relaxed mb-4">
+ Курс ведёт не вчерашний выпускник, который сам недавно отучился. Это практикующий разработчик
+ с реальным опытом — он каждый день работает с теми же инструментами, которым учит, и понимает,
+ что за этой профессией будущее.
+ </p>
+ <div className="flex flex-wrap gap-2">
+ <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-50 border border-slate-100 text-sm font-medium text-slate-700"><Award className="w-4 h-4 text-primary-600" /> 3 года опыта преподавания</span>
+ <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-50 border border-slate-100 text-sm font-medium text-slate-700"><Building2 className="w-4 h-4 text-primary-600" /> Полгода в IT-компании из США</span>
+ <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-50 border border-slate-100 text-sm font-medium text-slate-700"><TrendingUp className="w-4 h-4 text-primary-600" /> Профессия будущего</span>
+ </div>
  </div>
  </div>
  </div>

@@ -11,7 +11,7 @@ import {
  Layers, Lock, FileText, Target, Gamepad2,
  Bot, PenTool, LayoutGrid, Database, Briefcase,
  CalendarClock, CheckSquare, UploadCloud,
- Laptop, GraduationCap, Building2
+ Laptop, GraduationCap, Building2, Coins
 } from 'lucide-react';
 
 /* ──────────────────────────────────────────
@@ -611,6 +611,73 @@ const LandingPage: React.FC = () => {
               {user ? (t('nav.dashboard') || 'Dashboard') : t('landing.ctaButton')}
               <ArrowRight className="w-5 h-5 group-hover:translate-x-0.5 transition-transform" />
             </Link>
+ </div>
+ </div>
+ </section>
+
+ {/* ═══ Курсы по вайбкодингу (доп. направление) ═══ */}
+ <section className="py-20 px-6 bg-slate-50 border-t border-slate-100">
+ <div className="max-w-6xl mx-auto">
+ <div className="grid lg:grid-cols-2 bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
+ {/* Контент */}
+ <div className="p-8 md:p-12">
+ <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-primary-50 text-primary-700 text-sm font-semibold mb-5">
+ <GraduationCap className="w-4 h-4" /> Учебный центр
+ </div>
+ <h2 className="text-3xl md:text-4xl font-extrabold text-slate-900 mb-4 leading-tight">
+ Курсы по <span className="bg-gradient-to-r from-primary-600 to-violet-600 bg-clip-text text-transparent">вайбкодингу</span>
+ </h2>
+ <p className="text-slate-600 text-lg leading-relaxed mb-8">
+ Учим создавать реальные продукты в связке с ИИ — от идеи до первых заказов.
+ Это отдельное направление: на практике, на той же платформе, что вы видите сейчас.
+ </p>
+
+ {/* Факты */}
+ <div className="grid sm:grid-cols-3 gap-4 mb-8">
+ <div className="rounded-2xl border border-slate-100 bg-slate-50/60 p-4">
+ <CalendarClock className="w-5 h-5 text-primary-600 mb-2" />
+ <p className="font-bold text-slate-900">1 месяц</p>
+ <p className="text-xs text-slate-500">длительность</p>
+ </div>
+ <div className="rounded-2xl border border-slate-100 bg-slate-50/60 p-4">
+ <Coins className="w-5 h-5 text-primary-600 mb-2" />
+ <p className="font-bold text-slate-900">10 000 сом</p>
+ <p className="text-xs text-slate-500">за весь курс</p>
+ </div>
+ <div className="rounded-2xl border border-slate-100 bg-slate-50/60 p-4">
+ <Briefcase className="w-5 h-5 text-primary-600 mb-2" />
+ <p className="font-bold text-slate-900">Первые заказы</p>
+ <p className="text-xs text-slate-500">уже после курса</p>
+ </div>
+ </div>
+
+ {/* Адрес */}
+ <div className="flex items-center gap-2 text-slate-500 mb-8">
+ <MapPin className="w-4 h-4 shrink-0" /> г. Ош, ул. Раймбекова, 13
+ </div>
+
+ <Link to="/vibecoder" className="inline-flex items-center gap-2 bg-primary-600 hover:bg-primary-700 text-white font-semibold px-7 py-3.5 rounded-xl shadow-lg shadow-primary-500/20 transition-all group">
+ Программа курса
+ <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+ </Link>
+ </div>
+
+ {/* Партнёр */}
+ <div className="p-8 md:p-12 bg-gradient-to-br from-primary-600 to-violet-600 text-white flex flex-col justify-center">
+ <p className="text-white/70 text-xs font-semibold uppercase tracking-widest mb-5">Курс проводит</p>
+ <div className="flex items-center gap-4 bg-white rounded-2xl p-5 shadow-lg">
+ <img src="/companies/myacademy.png" alt="My Academy лого" className="h-12 w-auto object-contain shrink-0" />
+ <div>
+ <p className="font-bold text-slate-900 text-xl leading-tight">My Academy</p>
+ <p className="text-slate-500 text-sm">Учебный центр-партнёр</p>
+ </div>
+ </div>
+ <ul className="mt-8 space-y-3.5">
+ <li className="flex items-center gap-3 text-white/90"><Check className="w-5 h-5 text-emerald-300 shrink-0" /> Практика на реальном проекте</li>
+ <li className="flex items-center gap-3 text-white/90"><Check className="w-5 h-5 text-emerald-300 shrink-0" /> Работа с ИИ-инструментами</li>
+ <li className="flex items-center gap-3 text-white/90"><Check className="w-5 h-5 text-emerald-300 shrink-0" /> Поддержка и помощь с первыми заказами</li>
+ </ul>
+ </div>
  </div>
  </div>
  </section>

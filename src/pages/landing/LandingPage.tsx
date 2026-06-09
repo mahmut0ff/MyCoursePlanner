@@ -11,7 +11,8 @@ import {
  Layers, Lock, FileText, Target, Gamepad2,
  Bot, PenTool, LayoutGrid, Database, Briefcase,
  CalendarClock, CheckSquare, UploadCloud,
- Laptop, GraduationCap, Building2, Coins, UserRound
+ Laptop, GraduationCap, Building2, Coins, UserRound,
+ ShoppingCart, Rocket
 } from 'lucide-react';
 
 /* ──────────────────────────────────────────
@@ -699,6 +700,69 @@ const LandingPage: React.FC = () => {
  <li className="flex items-center gap-3 text-white/90"><Check className="w-5 h-5 text-emerald-300 shrink-0" /> Работа с ИИ-инструментами</li>
  <li className="flex items-center gap-3 text-white/90"><Check className="w-5 h-5 text-emerald-300 shrink-0" /> Поддержка и помощь с первыми заказами</li>
  </ul>
+ </div>
+ </div>
+
+ {/* Программа курса */}
+ <div className="mt-6 bg-white rounded-3xl border border-slate-200 shadow-sm p-8 md:p-12">
+ <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-primary-50 text-primary-700 text-sm font-semibold mb-5">
+ <ClipboardList className="w-4 h-4" /> Программа курса
+ </div>
+ <h3 className="text-2xl md:text-3xl font-extrabold text-slate-900 mb-3 leading-tight">
+ С нуля до продакшена за один месяц
+ </h3>
+ <p className="text-slate-600 text-lg leading-relaxed mb-8 max-w-3xl">
+ Мы проходим весь путь целиком — от первой строчки до готового сайта в интернете, которым
+ могут пользоваться реальные люди. За месяц студенты с помощью ИИ делают два завершённых проекта,
+ после которых уже могут принимать заказы и создавать сайты сами.
+ </p>
+
+ {/* Что освоят */}
+ <p className="text-sm font-bold text-slate-700 uppercase tracking-wider mb-4">Чему научатся</p>
+ <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-10">
+ <div className="rounded-2xl border border-slate-100 bg-slate-50/60 p-5">
+ <div className="w-10 h-10 rounded-xl bg-primary-50 text-primary-600 flex items-center justify-center mb-3"><Users className="w-5 h-5" /></div>
+ <p className="font-bold text-slate-900 mb-1">Работа в команде</p>
+ <p className="text-sm text-slate-500 leading-relaxed">Совместная разработка, как в настоящих IT-проектах.</p>
+ </div>
+ <div className="rounded-2xl border border-slate-100 bg-slate-50/60 p-5">
+ <div className="w-10 h-10 rounded-xl bg-primary-50 text-primary-600 flex items-center justify-center mb-3"><Zap className="w-5 h-5" /></div>
+ <p className="font-bold text-slate-900 mb-1">Современные технологии</p>
+ <p className="text-sm text-slate-500 leading-relaxed">Те же инструменты, что используют в индустрии сегодня.</p>
+ </div>
+ <div className="rounded-2xl border border-slate-100 bg-slate-50/60 p-5">
+ <div className="w-10 h-10 rounded-xl bg-primary-50 text-primary-600 flex items-center justify-center mb-3"><UploadCloud className="w-5 h-5" /></div>
+ <p className="font-bold text-slate-900 mb-1">Публикация в интернете</p>
+ <p className="text-sm text-slate-500 leading-relaxed">Облачные сервисы, чтобы сайтом могли пользоваться другие.</p>
+ </div>
+ <div className="rounded-2xl border border-slate-100 bg-slate-50/60 p-5">
+ <div className="w-10 h-10 rounded-xl bg-primary-50 text-primary-600 flex items-center justify-center mb-3"><Bot className="w-5 h-5" /></div>
+ <p className="font-bold text-slate-900 mb-1">Создание с ИИ</p>
+ <p className="text-sm text-slate-500 leading-relaxed">Строим реальные продукты в связке с искусственным интеллектом.</p>
+ </div>
+ </div>
+
+ {/* Два проекта */}
+ <p className="text-sm font-bold text-slate-700 uppercase tracking-wider mb-4">Два реальных проекта</p>
+ <div className="grid sm:grid-cols-2 gap-5">
+ <div className="rounded-2xl border border-primary-100 bg-gradient-to-br from-primary-50 to-violet-50 p-6">
+ <div className="flex items-center gap-3 mb-2">
+ <div className="w-10 h-10 rounded-xl bg-primary-600 text-white flex items-center justify-center shadow-md"><ShoppingCart className="w-5 h-5" /></div>
+ <h4 className="font-bold text-slate-900 text-lg">Интернет-магазин</h4>
+ </div>
+ <p className="text-slate-600 leading-relaxed">Первый проект для всех — полноценный магазин: каталог, корзина, оформление заказа.</p>
+ </div>
+ <div className="rounded-2xl border border-slate-200 bg-white p-6">
+ <div className="flex items-center gap-3 mb-2">
+ <div className="w-10 h-10 rounded-xl bg-violet-600 text-white flex items-center justify-center shadow-md"><LayoutGrid className="w-5 h-5" /></div>
+ <h4 className="font-bold text-slate-900 text-lg">Проект на выбор</h4>
+ </div>
+ <p className="text-slate-600 leading-relaxed">Второй проект студент выбирает сам из списка идей, который даёт преподаватель.</p>
+ </div>
+ </div>
+
+ <div className="mt-8 flex items-center gap-2 text-slate-500">
+ <Rocket className="w-4 h-4 text-primary-600 shrink-0" /> Оба проекта — завершённые сайты, готовые к показу заказчикам.
  </div>
  </div>
  </div>

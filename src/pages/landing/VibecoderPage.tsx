@@ -5,7 +5,8 @@ import { useAuth } from '../../contexts/AuthContext';
 import {
   ArrowLeft, Globe2, Atom, GitBranch, Server, Cloud,
   Database, FolderOpen, PlayCircle, ListChecks,
-  CheckCircle2, BookOpen, Clock,
+  CheckCircle2, BookOpen, Clock, ClipboardList, Users,
+  Zap, UploadCloud, Bot, ShoppingCart, LayoutGrid, Rocket,
 } from 'lucide-react';
 import LanguageSwitcher from '../../components/LanguageSwitcher';
 
@@ -218,6 +219,64 @@ const VibecoderPage: React.FC = () => {
             или разбор с ключевыми понятиями.
           </p>
         </header>
+
+        {/* Программа курса */}
+        <section className="mb-16 rounded-3xl border border-slate-200 bg-white shadow-sm p-8 md:p-10 vc-rise">
+          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-primary-50 text-primary-700 text-sm font-semibold mb-5">
+            <ClipboardList className="w-4 h-4" /> Программа курса
+          </div>
+          <h2 className="text-2xl md:text-3xl font-extrabold text-slate-900 mb-3 leading-tight">
+            С нуля до продакшена за один месяц
+          </h2>
+          <p className="text-slate-600 text-lg leading-relaxed mb-8 max-w-3xl">
+            Мы проходим весь путь целиком — от первой строчки до готового сайта в интернете, которым
+            могут пользоваться реальные люди. За месяц студенты с помощью ИИ делают два завершённых
+            проекта, после которых уже могут принимать заказы и создавать сайты сами.
+          </p>
+
+          {/* Чему научатся */}
+          <p className="text-sm font-bold text-slate-700 uppercase tracking-wider mb-4">Чему научатся</p>
+          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-10">
+            {[
+              { icon: Users, title: 'Работа в команде', text: 'Совместная разработка, как в настоящих IT-проектах.' },
+              { icon: Zap, title: 'Современные технологии', text: 'Те же инструменты, что используют в индустрии сегодня.' },
+              { icon: UploadCloud, title: 'Публикация в интернете', text: 'Облачные сервисы, чтобы сайтом могли пользоваться другие.' },
+              { icon: Bot, title: 'Создание с ИИ', text: 'Строим реальные продукты в связке с искусственным интеллектом.' },
+            ].map((s, i) => {
+              const SIcon = s.icon;
+              return (
+                <div key={i} className="rounded-2xl border border-slate-100 bg-slate-50/60 p-5">
+                  <div className="w-10 h-10 rounded-xl bg-primary-50 text-primary-600 flex items-center justify-center mb-3"><SIcon className="w-5 h-5" /></div>
+                  <p className="font-bold text-slate-900 mb-1">{s.title}</p>
+                  <p className="text-sm text-slate-500 leading-relaxed">{s.text}</p>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Два проекта */}
+          <p className="text-sm font-bold text-slate-700 uppercase tracking-wider mb-4">Два реальных проекта</p>
+          <div className="grid sm:grid-cols-2 gap-5">
+            <div className="rounded-2xl border border-primary-100 bg-gradient-to-br from-primary-50 to-violet-50 p-6">
+              <div className="flex items-center gap-3 mb-2">
+                <div className="w-10 h-10 rounded-xl bg-primary-600 text-white flex items-center justify-center shadow-md"><ShoppingCart className="w-5 h-5" /></div>
+                <h3 className="font-bold text-slate-900 text-lg">Интернет-магазин</h3>
+              </div>
+              <p className="text-slate-600 leading-relaxed">Первый проект для всех — полноценный магазин: каталог, корзина, оформление заказа.</p>
+            </div>
+            <div className="rounded-2xl border border-slate-200 bg-white p-6">
+              <div className="flex items-center gap-3 mb-2">
+                <div className="w-10 h-10 rounded-xl bg-violet-600 text-white flex items-center justify-center shadow-md"><LayoutGrid className="w-5 h-5" /></div>
+                <h3 className="font-bold text-slate-900 text-lg">Проект на выбор</h3>
+              </div>
+              <p className="text-slate-600 leading-relaxed">Второй проект студент выбирает сам из списка идей, который даёт преподаватель.</p>
+            </div>
+          </div>
+
+          <div className="mt-8 flex items-center gap-2 text-slate-500">
+            <Rocket className="w-4 h-4 text-primary-600 shrink-0" /> Оба проекта — завершённые сайты, готовые к показу заказчикам.
+          </div>
+        </section>
 
         <div className="lg:grid lg:grid-cols-[230px_1fr] lg:gap-12">
           {/* Оглавление / роадмап */}

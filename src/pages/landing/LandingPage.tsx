@@ -657,6 +657,7 @@ const LandingPage: React.FC = () => {
  <h4 className="font-semibold text-sm mb-4">{t('landing.footerResources')}</h4>
  <ul className="space-y-2.5">
  <li><Link to="/docs" className="text-sm text-slate-400 hover:text-white transition-colors">{t('landing.navDocs')}</Link></li>
+ <li><Link to="/vibecoder" className="text-sm text-slate-400 hover:text-white transition-colors">Вайбкодеру</Link></li>
  <li><a href="#faq" className="text-sm text-slate-400 hover:text-white transition-colors">{t('landing.navFaq')}</a></li>
  </ul>
  </div>

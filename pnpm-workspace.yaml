@@ -1,0 +1,5 @@
+packages:
+  # Web app continues to live at the repo root (Netlify build expects it
+  # there). We only add the workspaces — no actual move — to stay safe.
+  - 'apps/*'
+  - 'packages/*'

@@ -100,7 +100,7 @@ const RequestDemoModal: React.FC<Props> = ({ open, onClose }) => {
                     type="text"
                     value={orgName}
                     onChange={(e) => setOrgName(e.target.value)}
-                    placeholder="Например, Sunrise Academy"
+                    placeholder="Например, Билим Академия"
                     className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 focus:border-primary-500 focus:ring-2 focus:ring-primary-100 outline-none transition-all"
                     autoFocus
                   />
@@ -115,7 +115,7 @@ const RequestDemoModal: React.FC<Props> = ({ open, onClose }) => {
                     type="text"
                     value={ownerName}
                     onChange={(e) => setOwnerName(e.target.value)}
-                    placeholder="Иван Иванов"
+                    placeholder="Айбек Турсунов"
                     className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 focus:border-primary-500 focus:ring-2 focus:ring-primary-100 outline-none transition-all"
                   />
                 </div>
@@ -129,7 +129,7 @@ const RequestDemoModal: React.FC<Props> = ({ open, onClose }) => {
                     type="text"
                     value={telegram}
                     onChange={(e) => setTelegram(e.target.value)}
-                    placeholder="@username или https://t.me/username"
+                    placeholder="@aibek_t или https://t.me/aibek_t"
                     className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 focus:border-primary-500 focus:ring-2 focus:ring-primary-100 outline-none transition-all"
                   />
                 </div>

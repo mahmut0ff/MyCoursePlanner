@@ -255,14 +255,14 @@ const RegisterPage: React.FC = () => {
                   <label className="label">{t('auth.fullName')}</label>
                   <div className="relative">
                     <User className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                    <input type="text" value={name} onChange={(e) => setName(e.target.value)} className="input pl-11" placeholder="John Doe" />
+                    <input type="text" value={name} onChange={(e) => setName(e.target.value)} className="input pl-11" placeholder="Айбек Турсунов" />
                   </div>
                 </div>
                 <div>
                   <label className="label">{t('auth.username', 'Никнейм')}</label>
                   <div className="relative">
                     <AtSign className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                    <input type="text" value={username} onChange={(e) => setUsername(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ''))} className="input pl-11 pr-11" placeholder="john_doe" />
+                    <input type="text" value={username} onChange={(e) => setUsername(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ''))} className="input pl-11 pr-11" placeholder="aibek_t" />
                     <div className="absolute right-3.5 top-1/2 -translate-y-1/2">
                       {usernameStatus === 'checking' && <Loader2 className="w-4 h-4 text-slate-400 animate-spin" />}
                       {usernameStatus === 'available' && <CheckCircle2 className="w-4 h-4 text-emerald-500" />}
@@ -275,7 +275,7 @@ const RegisterPage: React.FC = () => {
                   <label className="label">{t('auth.email')}</label>
                   <div className="relative">
                     <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                    <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} className="input pl-11 pr-11" placeholder="you@example.com" />
+                    <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} className="input pl-11 pr-11" placeholder="aibek@example.kg" />
                     <div className="absolute right-3.5 top-1/2 -translate-y-1/2">
                       {emailStatus === 'checking' && <Loader2 className="w-4 h-4 text-slate-400 animate-spin" />}
                       {emailStatus === 'available' && <CheckCircle2 className="w-4 h-4 text-emerald-500" />}

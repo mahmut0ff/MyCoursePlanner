@@ -91,15 +91,15 @@ const CreateOrgModal: React.FC<{ onClose: () => void; onCreated: () => void }> =
             </p>
             <div>
               <label className="label">Название центра</label>
-              <input type="text" value={name} onChange={(e) => setName(e.target.value)} className="input" placeholder="Например, Sunrise Academy" autoFocus />
+              <input type="text" value={name} onChange={(e) => setName(e.target.value)} className="input" placeholder="Например, Билим Академия" autoFocus />
             </div>
             <div>
               <label className="label">Имя владельца</label>
-              <input type="text" value={ownerName} onChange={(e) => setOwnerName(e.target.value)} className="input" placeholder="Иван Иванов" />
+              <input type="text" value={ownerName} onChange={(e) => setOwnerName(e.target.value)} className="input" placeholder="Айбек Турсунов" />
             </div>
             <div>
               <label className="label">Email владельца</label>
-              <input type="email" value={ownerEmail} onChange={(e) => setOwnerEmail(e.target.value)} className="input" placeholder="owner@example.com" />
+              <input type="email" value={ownerEmail} onChange={(e) => setOwnerEmail(e.target.value)} className="input" placeholder="aibek@example.kg" />
             </div>
             <div>
               <label className="label">Тариф</label>

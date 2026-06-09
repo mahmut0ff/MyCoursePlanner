@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../contexts/AuthContext';
-import { ArrowLeft, Mail, MapPin, Phone, MessageCircle, Send, CheckCircle, School } from 'lucide-react';
+import { ArrowLeft, MapPin, Phone, MessageCircle, Send, CheckCircle } from 'lucide-react';
 import LanguageSwitcher from '../../components/LanguageSwitcher';
 import RequestDemoModal from '../../components/landing/RequestDemoModal';
 
@@ -14,6 +14,9 @@ const ContactPage: React.FC = () => {
   const [searchParams] = useSearchParams();
 
   useEffect(() => {
+    // Старый параметр ?demo=1 — мы убрали отдельную кнопку демо со страницы
+    // контактов (страница и так контактная), но автооткрытие модалки оставляем
+    // для совместимости со ссылкой со страницы регистрации.
     if (searchParams.get('demo') === '1') setDemoOpen(true);
   }, [searchParams]);
 
@@ -48,24 +51,7 @@ const ContactPage: React.FC = () => {
           </Link>
 
           <h1 className="text-4xl font-extrabold mb-3 text-slate-900">{t('landing.contactPageTitle')}</h1>
-          <p className="text-lg text-slate-500 mb-8">{t('landing.contactPageSubtitle')}</p>
-
-          {/* Demo CTA: owners of учебных центров onboard through demo, not self-signup */}
-          <div className="mb-12 rounded-3xl border border-primary-100 bg-gradient-to-br from-primary-50 to-violet-50 p-6 md:p-8 flex flex-col sm:flex-row items-start sm:items-center gap-5">
-            <div className="w-14 h-14 rounded-2xl bg-primary-600 flex items-center justify-center shadow-lg shadow-primary-500/20 shrink-0">
-              <School className="w-7 h-7 text-white" />
-            </div>
-            <div className="flex-1">
-              <h2 className="text-xl font-extrabold text-slate-900 mb-1">Владелец учебного центра?</h2>
-              <p className="text-slate-600 leading-relaxed">Закажите демо — мы расскажем про возможности и создадим аккаунт под ваш центр.</p>
-            </div>
-            <button
-              onClick={() => setDemoOpen(true)}
-              className="bg-primary-600 hover:bg-primary-700 text-white font-semibold px-6 py-3 rounded-xl shadow-lg shadow-primary-500/20 transition-all whitespace-nowrap"
-            >
-              Заказать демо
-            </button>
-          </div>
+          <p className="text-lg text-slate-500 mb-12">{t('landing.contactPageSubtitle')}</p>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
             {/* Form */}
@@ -82,15 +68,15 @@ const ContactPage: React.FC = () => {
                 <form onSubmit={handleSubmit} className="space-y-5 relative z-10">
                   <div>
                     <label className="block text-sm font-semibold text-slate-700 mb-2">{t('landing.contactName')}</label>
-                    <input type="text" required className="w-full border border-slate-200 rounded-xl px-4 py-3.5 bg-slate-50/50 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 focus:bg-white transition-all" placeholder="John Doe" />
+                    <input type="text" required className="w-full border border-slate-200 rounded-xl px-4 py-3.5 bg-slate-50/50 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 focus:bg-white transition-all" placeholder="Айбек Турсунов" />
                   </div>
                   <div>
                     <label className="block text-sm font-semibold text-slate-700 mb-2">{t('landing.contactEmail')}</label>
-                    <input type="email" required className="w-full border border-slate-200 rounded-xl px-4 py-3.5 bg-slate-50/50 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 focus:bg-white transition-all" placeholder="john@example.com" />
+                    <input type="email" required className="w-full border border-slate-200 rounded-xl px-4 py-3.5 bg-slate-50/50 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 focus:bg-white transition-all" placeholder="aibek@example.kg" />
                   </div>
                   <div>
                     <label className="block text-sm font-semibold text-slate-700 mb-2">{t('landing.contactMessage')}</label>
-                    <textarea required rows={5} className="w-full border border-slate-200 rounded-xl px-4 py-3.5 bg-slate-50/50 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 focus:bg-white transition-all resize-none" placeholder="How can we help you?" />
+                    <textarea required rows={5} className="w-full border border-slate-200 rounded-xl px-4 py-3.5 bg-slate-50/50 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 focus:bg-white transition-all resize-none" placeholder="Расскажите коротко, чем можем помочь" />
                   </div>
                   <button type="submit" className="w-full bg-primary-600 hover:bg-primary-700 text-white font-semibold py-3.5 rounded-xl flex items-center justify-center gap-2 shadow-lg shadow-primary-500/25 hover:shadow-primary-500/40 transition-all">
                     <Send className="w-5 h-5" />
@@ -105,9 +91,8 @@ const ContactPage: React.FC = () => {
               <h3 className="text-2xl font-bold text-slate-900 mb-6">{t('landing.contactInfo')}</h3>
               <div className="space-y-4">
                 {[
-                  { icon: Mail, label: 'support@planula.com', href: 'mailto:support@planula.com', color: 'bg-blue-50 text-blue-600' },
-                  { icon: Phone, label: '+996 550 308 078', href: 'tel:+996550308078', color: 'bg-emerald-50 text-emerald-600' },
                   { icon: MessageCircle, label: 'Telegram: @planula_bot', href: 'https://t.me/planula_bot', color: 'bg-sky-50 text-sky-600' },
+                  { icon: Phone, label: '+996 550 308 078', href: 'tel:+996550308078', color: 'bg-emerald-50 text-emerald-600' },
                   { icon: MapPin, label: t('landing.footerCity'), href: '', color: 'bg-rose-50 text-rose-600' },
                 ].map((item, i) => (
                   <div key={i} className="flex items-center gap-4 p-5 bg-white rounded-2xl border border-slate-100 shadow-sm hover:shadow-md transition-shadow group">

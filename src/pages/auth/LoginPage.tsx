@@ -154,7 +154,7 @@ const LoginPage: React.FC = () => {
                 <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                 <input
                   type="text" value={identity} onChange={(e) => setIdentity(e.target.value.toLowerCase().replace(/\s/g, ''))}
-                  className="input pl-11" placeholder="you@example.com или john_doe"
+                  className="input pl-11" placeholder="aibek@example.kg или aibek_t"
                 />
               </div>
             </div>

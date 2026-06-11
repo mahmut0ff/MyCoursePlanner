@@ -12,7 +12,7 @@ import {
  Layers, Lock, FileText, Target, Gamepad2,
  Bot, PenTool, LayoutGrid, Database, Briefcase,
  CalendarClock, CheckSquare, UploadCloud,
- Laptop, GraduationCap, Building2, Coins, UserRound
+ Laptop, GraduationCap, Building2
 } from 'lucide-react';
 
 /* ──────────────────────────────────────────
@@ -37,8 +37,6 @@ const LandingPage: React.FC = () => {
  { icon: Zap, label: t('landing.coreBilling') },
  { icon: Lock, label: t('landing.coreAudit') },
  ],
- color: 'from-blue-500 to-indigo-500',
- bg: 'bg-blue-500/10',
  },
  {
  id: 'learning',
@@ -50,8 +48,6 @@ const LandingPage: React.FC = () => {
  { icon: BarChart3, label: t('landing.learnProgress') },
  { icon: FileText, label: t('landing.learnDiary') },
  ],
- color: 'from-emerald-500 to-teal-500',
- bg: 'bg-emerald-500/10',
  },
  {
  id: 'exams',
@@ -63,8 +59,6 @@ const LandingPage: React.FC = () => {
  { icon: Radio, label: t('landing.examRooms') },
  { icon: Shield, label: t('landing.examAntiCheat') },
  ],
- color: 'from-violet-500 to-purple-500',
- bg: 'bg-violet-500/10',
  },
  {
  id: 'ai',
@@ -76,8 +70,6 @@ const LandingPage: React.FC = () => {
  { icon: FileText, label: t('landing.aiGenerateTests') },
  { icon: Sparkles, label: t('landing.aiEvaluate') },
  ],
- color: 'from-amber-500 to-orange-500',
- bg: 'bg-amber-500/10',
  },
  {
  id: 'engagement',
@@ -89,8 +81,6 @@ const LandingPage: React.FC = () => {
  { icon: Crown, label: t('landing.engLeaderboards') },
  { icon: Gamepad2, label: t('landing.engQuiz') },
  ],
- color: 'from-rose-500 to-pink-500',
- bg: 'bg-rose-500/10',
  },
  {
  id: 'certificates',
@@ -101,8 +91,6 @@ const LandingPage: React.FC = () => {
  { icon: Globe, label: t('landing.certQr') },
  { icon: Layers, label: t('landing.certMultilang') },
  ],
- color: 'from-cyan-500 to-blue-500',
- bg: 'bg-cyan-500/10',
  },
  {
  id: 'communication',
@@ -113,8 +101,6 @@ const LandingPage: React.FC = () => {
  { icon: Users, label: t('landing.commDirect') },
  { icon: Radio, label: t('landing.commRealtime') },
  ],
- color: 'from-indigo-500 to-violet-500',
- bg: 'bg-indigo-500/10',
  },
  {
  id: 'analytics',
@@ -125,8 +111,6 @@ const LandingPage: React.FC = () => {
  { icon: Users, label: t('landing.analyticsTeacher') },
  { icon: Layers, label: t('landing.analyticsSaas') },
  ],
- color: 'from-slate-500 to-zinc-500',
- bg: 'bg-slate-500/10',
  },
  ];
 
@@ -148,12 +132,12 @@ const LandingPage: React.FC = () => {
 
  /* ── Target Niches ── */
  const targetNiches = [
-  { id: 'it', icon: Laptop, title: 'Онлайн-школы и Курсы', desc: 'Удобная загрузка контента (до 50 мб), видео-уроков и материалов. Студенческий портал.', color: 'text-indigo-500', bg: 'bg-indigo-500/10' },
-  { id: 'lang', icon: Globe, title: 'Языковые центры', desc: 'Загрузка аудиозаписей для проверки Speaking. Учитель слушает аудио прямо в платформе.', color: 'text-rose-500', bg: 'bg-rose-500/10' },
-  { id: 'tutor', icon: GraduationCap, title: 'Репетиторы', desc: 'Удобный Канбан для проверки ДЗ, выставление оценок и расписание в один клик.', color: 'text-emerald-500', bg: 'bg-emerald-500/10' },
-  { id: 'corporate', icon: Building2, title: 'Корпоративное обучение', desc: 'Доступ к интерактивным Квизам, Живым сессиям и детальной аналитике (Pro-тариф).', color: 'text-blue-500', bg: 'bg-blue-500/10' },
-  { id: 'studio', icon: LayoutGrid, title: 'Кружки и студии', desc: 'Моментальный учет посещаемости в смарт-журнале и контроль оплат.', color: 'text-fuchsia-500', bg: 'bg-fuchsia-500/10' },
-  { id: 'org', icon: Briefcase, title: 'Крупные учебные центры', desc: 'Иерархичный доступ, управление менеджерами, педагогами и филиалами.', color: 'text-cyan-500', bg: 'bg-cyan-500/10' }
+  { id: 'it', icon: Laptop, title: t('landing.niche1Title'), desc: t('landing.niche1Desc') },
+  { id: 'lang', icon: Globe, title: t('landing.niche2Title'), desc: t('landing.niche2Desc') },
+  { id: 'tutor', icon: GraduationCap, title: t('landing.niche3Title'), desc: t('landing.niche3Desc') },
+  { id: 'corporate', icon: Building2, title: t('landing.niche4Title'), desc: t('landing.niche4Desc') },
+  { id: 'studio', icon: LayoutGrid, title: t('landing.niche5Title'), desc: t('landing.niche5Desc') },
+  { id: 'org', icon: Briefcase, title: t('landing.niche6Title'), desc: t('landing.niche6Desc') }
  ];
 
  /* ── FAQ ── */
@@ -250,7 +234,7 @@ const LandingPage: React.FC = () => {
  <p className="text-lg text-slate-500 mb-4 leading-relaxed max-w-2xl mx-auto">
  {t('landing.heroSubtitle')}
  </p>
- <p className="text-sm text-slate-400 mb-10 font-medium tracking-wide">
+ <p className="text-sm text-slate-500 mb-10 font-medium tracking-wide">
  {t('landing.heroStack')}
  </p>
  <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
@@ -277,25 +261,25 @@ const LandingPage: React.FC = () => {
       <div className="flex flex-col gap-10">
         {/* Text Content */}
         <div>
-          <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-indigo-500/10 border border-indigo-500/20 rounded-full text-sm font-medium text-indigo-300 mb-6">
+          <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-primary-500/10 border border-primary-500/20 rounded-full text-sm font-medium text-primary-300 mb-6">
             <Sparkles className="w-4 h-4" />
-            Planula AI (Gemini 1.5)
+            Planula AI
           </div>
           <h2 className="text-4xl md:text-5xl font-extrabold text-white mb-6 leading-tight">
-            Автоматизируйте создание тестов с <span className="bg-gradient-to-r from-violet-400 to-primary-400 bg-clip-text text-transparent">Искусственным Интеллектом</span>
+            {t('landing.aiSecTitlePre')}<span className="bg-gradient-to-r from-violet-400 to-primary-400 bg-clip-text text-transparent">{t('landing.aiSecTitleHighlight')}</span>
           </h2>
           <p className="text-lg text-slate-400 mb-8 leading-relaxed">
-            Наш встроенный ИИ мгновенно превращает ваши материалы в готовые экзамены и викторины. Задайте промпт или загрузите PDF, остальное сделает магия нейросетей.
+            {t('landing.aiSecSubtitle')}
           </p>
-          
+
           <div className="space-y-6">
             <div className="flex gap-4">
               <div className="w-12 h-12 rounded-xl bg-violet-500/10 flex items-center justify-center shrink-0 border border-violet-500/20">
                 <Brain className="w-6 h-6 text-violet-400" />
               </div>
               <div>
-                <h3 className="text-xl font-bold text-white mb-2">Мгновенная генерация вопросов</h3>
-                <p className="text-slate-400 leading-relaxed md:text-sm">Загрузите файл с теорией или введите тему промптом. ИИ сам придумает вопросы, неверные ответы и пояснения.</p>
+                <h3 className="text-xl font-bold text-white mb-2">{t('landing.aiSecF1Title')}</h3>
+                <p className="text-slate-400 leading-relaxed md:text-sm">{t('landing.aiSecF1Desc')}</p>
               </div>
             </div>
             <div className="flex gap-4">
@@ -303,8 +287,8 @@ const LandingPage: React.FC = () => {
                 <Check className="w-6 h-6 text-primary-400" />
               </div>
               <div>
-                <h3 className="text-xl font-bold text-white mb-2">Объективная оценка и фидбек</h3>
-                <p className="text-slate-400 leading-relaxed md:text-sm">Автоматическая оценка экономит ваше время, а студенты сразу получают исчерпывающее объяснение своих ошибок.</p>
+                <h3 className="text-xl font-bold text-white mb-2">{t('landing.aiSecF2Title')}</h3>
+                <p className="text-slate-400 leading-relaxed md:text-sm">{t('landing.aiSecF2Desc')}</p>
               </div>
             </div>
           </div>
@@ -316,57 +300,44 @@ const LandingPage: React.FC = () => {
   {/* ═══ AI Telegram Bot Highlight ═══ */}
   <section className="py-24 px-6 relative overflow-hidden bg-white border-b border-slate-100">
     <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-primary-600/5 rounded-full blur-[100px] pointer-events-none" />
-    <div className="absolute bottom-0 left-0 w-[500px] h-[500px] bg-blue-600/5 rounded-full blur-[100px] pointer-events-none" />
-    
+    <div className="absolute bottom-0 left-0 w-[500px] h-[500px] bg-violet-600/5 rounded-full blur-[100px] pointer-events-none" />
+
     <div className="max-w-4xl mx-auto relative z-10">
       <div className="flex flex-col gap-10">
-        
+
         {/* Text Content */}
         <div>
-          <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-blue-50 border border-blue-100 rounded-full text-sm font-medium text-blue-600 mb-6">
+          <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-primary-50 border border-primary-100 rounded-full text-sm font-medium text-primary-600 mb-6">
             <MessageCircle className="w-4 h-4" />
-            Умный Telegram Бот
+            {t('landing.tgSecBadge')}
           </div>
           <h2 className="text-4xl md:text-5xl font-extrabold text-slate-900 mb-6 leading-tight">
-            Автоматизируйте продажи с <span className="bg-gradient-to-r from-blue-500 to-indigo-500 bg-clip-text text-transparent">Telegram ИИ-Ассистентом</span>
+            {t('landing.tgSecTitle')}
           </h2>
           <p className="text-lg text-slate-500 mb-8 leading-relaxed">
-            Подключите нейросеть к вашему Telegram-боту! Ваш ИИ-ассистент будет 24/7 общаться с клиентами прямо в мессенджере, отвечая на основе данных платформы — вы настраиваете его изнутри Planula.
+            {t('landing.tgSecSubtitle')}
           </p>
-          
+
           <div className="space-y-6">
             <div className="flex gap-4">
-              <div className="w-12 h-12 rounded-xl bg-blue-50 flex items-center justify-center shrink-0 border border-blue-100">
-                <Database className="w-6 h-6 text-blue-500" />
+              <div className="w-12 h-12 rounded-xl bg-primary-50 flex items-center justify-center shrink-0 border border-primary-100">
+                <Database className="w-6 h-6 text-primary-600" />
               </div>
               <div>
-                <h3 className="text-xl font-bold text-slate-900 mb-2">Обучается на ваших курсах</h3>
-                <p className="text-slate-500 leading-relaxed md:text-sm">Бот знает ваши курсы, цены и расписание. Настройки синхронизируются с нашей платформой — никаких выдуманных фактов!</p>
+                <h3 className="text-xl font-bold text-slate-900 mb-2">{t('landing.tgSecF1Title')}</h3>
+                <p className="text-slate-500 leading-relaxed md:text-sm">{t('landing.tgSecF1Desc')}</p>
               </div>
             </div>
             <div className="flex gap-4">
-              <div className="w-12 h-12 rounded-xl bg-emerald-50 flex items-center justify-center shrink-0 border border-emerald-100">
-                <Shield className="w-6 h-6 text-emerald-500" />
+              <div className="w-12 h-12 rounded-xl bg-violet-50 flex items-center justify-center shrink-0 border border-violet-100">
+                <Shield className="w-6 h-6 text-violet-600" />
               </div>
               <div>
-                <h3 className="text-xl font-bold text-slate-900 mb-2">Настраивайте прямо в платформе</h3>
-                <p className="text-slate-500 leading-relaxed md:text-sm">Задавайте промпты, стартовые сообщения и редактируйте FAQ прямо в админке. Бот отвечает строго по вашему скрипту в Telegram.</p>
+                <h3 className="text-xl font-bold text-slate-900 mb-2">{t('landing.tgSecF2Title')}</h3>
+                <p className="text-slate-500 leading-relaxed md:text-sm">{t('landing.tgSecF2Desc')}</p>
               </div>
             </div>
           </div>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  {/* ═══ Нам доверяют ═══ */}
-  <section className="py-12 px-6 border-y border-slate-100 bg-white">
-    <div className="max-w-7xl mx-auto text-center">
-      <p className="text-sm font-semibold text-slate-400 uppercase tracking-widest mb-8">Нам доверяют учебные центры</p>
-      <div className="flex flex-wrap justify-center items-center gap-12 opacity-60 hover:opacity-100 transition-opacity duration-300">
-        <div className="flex items-center gap-3 grayscale hover:grayscale-0 transition-all duration-300">
-          <img src="/companies/myacademy.png" alt="My Academy лого" className="h-10 w-auto object-contain" />
-          <span className="font-bold text-slate-800 text-lg">My Academy</span>
         </div>
       </div>
     </div>
@@ -382,8 +353,8 @@ const LandingPage: React.FC = () => {
  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
  {featureCategories.map((cat) => (
  <div key={cat.id} className="bg-white rounded-2xl p-6 border border-slate-100 hover:shadow-xl hover:shadow-slate-200/50 transition-all group">
- <div className={`w-12 h-12 rounded-xl ${cat.bg} flex items-center justify-center mb-4 group-hover:scale-110 transition-transform`}>
- <cat.icon className="w-6 h-6 text-slate-700" />
+ <div className="w-12 h-12 rounded-xl bg-primary-50 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+ <cat.icon className="w-6 h-6 text-primary-600" />
  </div>
  <h3 className="text-base font-bold mb-3">{cat.title}</h3>
  <ul className="space-y-2">
@@ -408,35 +379,35 @@ const LandingPage: React.FC = () => {
         <div>
           <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-primary-500/10 border border-primary-500/20 rounded-full text-sm font-medium text-primary-400 mb-6">
             <Briefcase className="w-4 h-4" />
-            Для преподавателей и руководителей
+            {t('landing.teachSecBadge')}
           </div>
           <h2 className="text-4xl md:text-5xl font-extrabold text-white mb-6 leading-tight">
-            Полный контроль над <span className="bg-gradient-to-r from-primary-400 to-indigo-400 bg-clip-text text-transparent">учебным процессом</span>
+            {t('landing.teachSecTitle')}
           </h2>
           <p className="text-lg text-slate-400 mb-10 leading-relaxed">
-            Избавьтесь от рутины, бумажных журналов и таблиц Excel. Управляйте расписанием, проверяйте домашки в удобном Канбане и ведите учет финансов в едином премиум-окружении.
+            {t('landing.teachSecSubtitle')}
           </p>
-          
+
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-            <div className="bg-slate-800/50 p-5 rounded-2xl border border-slate-700/50 group hover:border-indigo-400/50 transition-colors">
-              <CalendarClock className="w-8 h-8 text-indigo-400 mb-4 group-hover:scale-110 transition-transform" />
-              <h4 className="text-white font-bold mb-2">Журнал и Посещаемость</h4>
-              <p className="text-sm text-slate-400">Отмечайте присутствие и оценки. Вся статистика формируется автоматически.</p>
+            <div className="bg-slate-800/50 p-5 rounded-2xl border border-slate-700/50 group hover:border-primary-400/50 transition-colors">
+              <CalendarClock className="w-8 h-8 text-primary-400 mb-4 group-hover:scale-110 transition-transform" />
+              <h4 className="text-white font-bold mb-2">{t('landing.teachCard1Title')}</h4>
+              <p className="text-sm text-slate-400">{t('landing.teachCard1Desc')}</p>
             </div>
-            <div className="bg-slate-800/50 p-5 rounded-2xl border border-slate-700/50 group hover:border-emerald-400/50 transition-colors">
-              <CheckSquare className="w-8 h-8 text-emerald-400 mb-4 group-hover:scale-110 transition-transform" />
-              <h4 className="text-white font-bold mb-2">Канбан Ревью ДЗ</h4>
-              <p className="text-sm text-slate-400">Удобный канбан, встроенный аудио-плеер, проверка PDF-документов и кода.</p>
+            <div className="bg-slate-800/50 p-5 rounded-2xl border border-slate-700/50 group hover:border-violet-400/50 transition-colors">
+              <CheckSquare className="w-8 h-8 text-violet-400 mb-4 group-hover:scale-110 transition-transform" />
+              <h4 className="text-white font-bold mb-2">{t('landing.teachCard2Title')}</h4>
+              <p className="text-sm text-slate-400">{t('landing.teachCard2Desc')}</p>
             </div>
-            <div className="bg-slate-800/50 p-5 rounded-2xl border border-slate-700/50 group hover:border-amber-400/50 transition-colors">
-               <Database className="w-8 h-8 text-amber-400 mb-4 group-hover:scale-110 transition-transform" />
-               <h4 className="text-white font-bold mb-2">Финансы и Оплаты</h4>
-               <p className="text-sm text-slate-400">Контролируйте транзакции, ведите учет доходов и расходов филиала.</p>
+            <div className="bg-slate-800/50 p-5 rounded-2xl border border-slate-700/50 group hover:border-primary-400/50 transition-colors">
+               <Database className="w-8 h-8 text-primary-400 mb-4 group-hover:scale-110 transition-transform" />
+               <h4 className="text-white font-bold mb-2">{t('landing.teachCard3Title')}</h4>
+               <p className="text-sm text-slate-400">{t('landing.teachCard3Desc')}</p>
             </div>
-            <div className="bg-slate-800/50 p-5 rounded-2xl border border-slate-700/50 group hover:border-rose-400/50 transition-colors">
-               <Shield className="w-8 h-8 text-rose-400 mb-4 group-hover:scale-110 transition-transform" />
-               <h4 className="text-white font-bold mb-2">Ролевой доступ</h4>
-               <p className="text-sm text-slate-400">Безопасная архитектура ролей: администратор, менеджер, учитель, ученик.</p>
+            <div className="bg-slate-800/50 p-5 rounded-2xl border border-slate-700/50 group hover:border-violet-400/50 transition-colors">
+               <Shield className="w-8 h-8 text-violet-400 mb-4 group-hover:scale-110 transition-transform" />
+               <h4 className="text-white font-bold mb-2">{t('landing.teachCard4Title')}</h4>
+               <p className="text-sm text-slate-400">{t('landing.teachCard4Desc')}</p>
             </div>
           </div>
         </div>
@@ -455,41 +426,41 @@ const LandingPage: React.FC = () => {
         <div>
           <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-violet-50 border border-violet-100 rounded-full text-sm font-medium text-violet-600 mb-6 shadow-sm">
             <Gamepad2 className="w-4 h-4" />
-            Для Учеников и Родителей
+            {t('landing.studSecBadge')}
           </div>
           <h2 className="text-4xl md:text-5xl font-extrabold text-slate-900 mb-6 leading-tight">
-            Обучение, в которое хочется <span className="bg-gradient-to-r from-violet-500 to-fuchsia-500 bg-clip-text text-transparent">возвращаться</span>
+            {t('landing.studSecTitle')}
           </h2>
           <p className="text-lg text-slate-500 mb-10 leading-relaxed">
-            Мотивируйте студентов сбалансированной системой наград, бейджей и уровней. Легко загружайте домашние задания любых форматов, даже с мобильного телефона.
+            {t('landing.studSecSubtitle')}
           </p>
-          
+
           <ul className="space-y-6">
             <li className="flex gap-4 group">
               <div className="w-12 h-12 rounded-xl bg-violet-50 flex items-center justify-center shrink-0 border border-violet-100 group-hover:bg-violet-500 transition-colors">
                 <Crown className="w-6 h-6 text-violet-500 group-hover:text-white transition-colors" />
               </div>
               <div>
-                <h4 className="text-lg font-bold text-slate-900 mb-1">Опыт (EXP) и рейтинг</h4>
-                <p className="text-slate-500 text-sm leading-relaxed">Здоровая конкуренция через внутрикурсовой лидерборд. Отслеживание уровня мотивирует учиться регулярно.</p>
+                <h4 className="text-lg font-bold text-slate-900 mb-1">{t('landing.studItem1Title')}</h4>
+                <p className="text-slate-500 text-sm leading-relaxed">{t('landing.studItem1Desc')}</p>
               </div>
             </li>
             <li className="flex gap-4 group">
-              <div className="w-12 h-12 rounded-xl bg-fuchsia-50 flex items-center justify-center shrink-0 border border-fuchsia-100 group-hover:bg-fuchsia-500 transition-colors">
-                <UploadCloud className="w-6 h-6 text-fuchsia-500 group-hover:text-white transition-colors" />
+              <div className="w-12 h-12 rounded-xl bg-violet-50 flex items-center justify-center shrink-0 border border-violet-100 group-hover:bg-violet-500 transition-colors">
+                <UploadCloud className="w-6 h-6 text-violet-500 group-hover:text-white transition-colors" />
               </div>
               <div>
-                <h4 className="text-lg font-bold text-slate-900 mb-1">Разные форматы домашек (до 50 МБ)</h4>
-                <p className="text-slate-500 text-sm leading-relaxed">Сдавайте фото с телефона, аудиозаписи с произношением, PDF документы и архивы с кодом без зависаний.</p>
+                <h4 className="text-lg font-bold text-slate-900 mb-1">{t('landing.studItem2Title')}</h4>
+                <p className="text-slate-500 text-sm leading-relaxed">{t('landing.studItem2Desc')}</p>
               </div>
             </li>
             <li className="flex gap-4 group">
-              <div className="w-12 h-12 rounded-xl bg-emerald-50 flex items-center justify-center shrink-0 border border-emerald-100 group-hover:bg-emerald-500 transition-colors">
-                <BarChart3 className="w-6 h-6 text-emerald-500 group-hover:text-white transition-colors" />
+              <div className="w-12 h-12 rounded-xl bg-violet-50 flex items-center justify-center shrink-0 border border-violet-100 group-hover:bg-violet-500 transition-colors">
+                <BarChart3 className="w-6 h-6 text-violet-500 group-hover:text-white transition-colors" />
               </div>
               <div>
-                <h4 className="text-lg font-bold text-slate-900 mb-1">Прозрачность для родителей</h4>
-                <p className="text-slate-500 text-sm leading-relaxed">В любой момент родитель может открыть приложение со смартфона и посмотреть табель посещаемости и оценки.</p>
+                <h4 className="text-lg font-bold text-slate-900 mb-1">{t('landing.studItem3Title')}</h4>
+                <p className="text-slate-500 text-sm leading-relaxed">{t('landing.studItem3Desc')}</p>
               </div>
             </li>
           </ul>
@@ -504,18 +475,18 @@ const LandingPage: React.FC = () => {
       <div className="text-center mb-16">
         <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-slate-100 border border-slate-200 rounded-full text-sm font-medium text-slate-600 mb-6 shadow-sm">
           <Target className="w-4 h-4" />
-          Универсальное решение
+          {t('landing.nichesBadge')}
         </div>
-        <h2 className="text-3xl md:text-5xl font-extrabold mb-6 text-slate-900 leading-tight">Для каких центров подходит <span className="bg-gradient-to-r from-primary-600 to-indigo-600 bg-clip-text text-transparent">Planula?</span></h2>
-        <p className="text-lg text-slate-500 max-w-2xl mx-auto leading-relaxed">Платформа адаптируется под разные форматы — от классических языковых школ с живыми группами до онлайн-курсов и корпоративного обучения.</p>
+        <h2 className="text-3xl md:text-5xl font-extrabold mb-6 text-slate-900 leading-tight">{t('landing.nichesTitle')}</h2>
+        <p className="text-lg text-slate-500 max-w-2xl mx-auto leading-relaxed">{t('landing.nichesSubtitle')}</p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {targetNiches.map((niche) => (
           <div key={niche.id} className="bg-white rounded-3xl p-8 border border-slate-100 shadow-[0_2px_10px_rgba(0,0,0,0.02)] hover:shadow-2xl hover:border-slate-200 transition-all hover:-translate-y-1 group relative overflow-hidden cursor-default">
-             <div className={`absolute top-0 right-0 w-32 h-32 rounded-full blur-[60px] opacity-0 group-hover:opacity-40 transition-opacity pointer-events-none ${niche.bg.replace('/10', '')}`} />
-             <div className={`w-14 h-14 rounded-2xl flex items-center justify-center mb-6 relative z-10 ${niche.bg} border-2 border-white shadow-sm ring-1 ring-slate-100/50 group-hover:scale-110 transition-transform`}>
-               <niche.icon className={`w-6 h-6 ${niche.color}`} />
+             <div className="absolute top-0 right-0 w-32 h-32 rounded-full blur-[60px] opacity-0 group-hover:opacity-40 transition-opacity pointer-events-none bg-primary-500" />
+             <div className="w-14 h-14 rounded-2xl flex items-center justify-center mb-6 relative z-10 bg-primary-50 border-2 border-white shadow-sm ring-1 ring-slate-100/50 group-hover:scale-110 transition-transform">
+               <niche.icon className="w-6 h-6 text-primary-600" />
              </div>
              <h3 className="text-xl font-bold text-slate-900 mb-3 relative z-10">{niche.title}</h3>
              <p className="text-sm text-slate-500 leading-relaxed relative z-10">
@@ -617,97 +588,8 @@ const LandingPage: React.FC = () => {
  </div>
  </section>
 
- {/* ═══ Курсы по вайбкодингу (доп. направление) ═══ */}
- <section className="py-20 px-6 bg-slate-50 border-t border-slate-100">
- <div className="max-w-6xl mx-auto">
- <div className="grid lg:grid-cols-2 bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
- {/* Контент */}
- <div className="p-8 md:p-12">
- <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-primary-50 text-primary-700 text-sm font-semibold mb-5">
- <GraduationCap className="w-4 h-4" /> Учебный центр
- </div>
- <h2 className="text-3xl md:text-4xl font-extrabold text-slate-900 mb-4 leading-tight">
- Курсы по <span className="bg-gradient-to-r from-primary-600 to-violet-600 bg-clip-text text-transparent">вайбкодингу</span>
- </h2>
- <p className="text-slate-600 text-lg leading-relaxed mb-8">
- Учим создавать реальные продукты в связке с ИИ — от идеи до первых заказов.
- Это отдельное направление: на практике, на той же платформе, что вы видите сейчас.
- </p>
-
- {/* Факты */}
- <div className="grid sm:grid-cols-3 gap-4 mb-8">
- <div className="rounded-2xl border border-slate-100 bg-slate-50/60 p-4">
- <CalendarClock className="w-5 h-5 text-primary-600 mb-2" />
- <p className="font-bold text-slate-900">1 месяц</p>
- <p className="text-xs text-slate-500">длительность</p>
- </div>
- <div className="rounded-2xl border border-slate-100 bg-slate-50/60 p-4">
- <Coins className="w-5 h-5 text-primary-600 mb-2" />
- <p className="font-bold text-slate-900">10 000 сом</p>
- <p className="text-xs text-slate-500">за весь курс</p>
- </div>
- <div className="rounded-2xl border border-slate-100 bg-slate-50/60 p-4">
- <Briefcase className="w-5 h-5 text-primary-600 mb-2" />
- <p className="font-bold text-slate-900">Первые заказы</p>
- <p className="text-xs text-slate-500">уже после курса</p>
- </div>
- </div>
-
- {/* Адрес */}
- <div className="flex items-center gap-2 text-slate-500 mb-8">
- <MapPin className="w-4 h-4 shrink-0" /> г. Ош, ул. Раймбекова, 13
- </div>
-
- <Link to="/vibecoder" className="inline-flex items-center gap-2 bg-primary-600 hover:bg-primary-700 text-white font-semibold px-7 py-3.5 rounded-xl shadow-lg shadow-primary-500/20 transition-all group">
- Программа курса
- <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
- </Link>
- </div>
-
- {/* Партнёр */}
- <div className="p-8 md:p-12 bg-gradient-to-br from-primary-600 to-violet-600 text-white flex flex-col justify-center">
- {/* Преподаватель */}
- <div className="mb-8">
- <div className="flex items-center gap-3 mb-4">
- <div className="w-11 h-11 rounded-xl bg-white/15 flex items-center justify-center shrink-0">
- <UserRound className="w-6 h-6 text-white" />
- </div>
- <div>
- <p className="font-bold text-white leading-tight">Преподаватель</p>
- <p className="text-white/70 text-sm">Практикующий специалист</p>
- </div>
- </div>
- <p className="text-white/90 leading-relaxed mb-4">
- Практикующий разработчик с реальным опытом — каждый день работает с теми же инструментами, которым учит.
- </p>
- <div className="flex flex-wrap gap-2">
- <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/10 border border-white/20 text-sm font-medium text-white"><Award className="w-4 h-4 text-emerald-300" /> 3 года опыта преподавания</span>
- <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/10 border border-white/20 text-sm font-medium text-white"><Building2 className="w-4 h-4 text-emerald-300" /> Полгода в IT-компании из США</span>
- </div>
- </div>
-
- <div className="h-px bg-white/15 mb-8" />
-
- <p className="text-white/70 text-xs font-semibold uppercase tracking-widest mb-5">Курс проводит</p>
- <div className="flex items-center gap-4 bg-white rounded-2xl p-5 shadow-lg">
- <img src="/companies/myacademy.png" alt="My Academy лого" className="h-12 w-auto object-contain shrink-0" />
- <div>
- <p className="font-bold text-slate-900 text-xl leading-tight">My Academy</p>
- <p className="text-slate-500 text-sm">Учебный центр-партнёр</p>
- </div>
- </div>
- <ul className="mt-8 space-y-3.5">
- <li className="flex items-center gap-3 text-white/90"><Check className="w-5 h-5 text-emerald-300 shrink-0" /> Практика на реальном проекте</li>
- <li className="flex items-center gap-3 text-white/90"><Check className="w-5 h-5 text-emerald-300 shrink-0" /> Работа с ИИ-инструментами</li>
- <li className="flex items-center gap-3 text-white/90"><Check className="w-5 h-5 text-emerald-300 shrink-0" /> Поддержка и помощь с первыми заказами</li>
- </ul>
- </div>
- </div>
- </div>
- </section>
-
  {/* ═══ Footer ═══ */}
- <footer className="bg-[#0f172a] text-white pt-16 pb-8 px-6">
+ <footer className="bg-slate-900 text-white pt-16 pb-8 px-6">
  <div className="max-w-7xl mx-auto">
  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-10 mb-12">
  {/* Brand */}
@@ -748,7 +630,7 @@ const LandingPage: React.FC = () => {
  <h4 className="font-semibold text-sm mb-4">{t('landing.footerResources')}</h4>
  <ul className="space-y-2.5">
  <li><Link to="/docs" className="text-sm text-slate-400 hover:text-white transition-colors">{t('landing.navDocs')}</Link></li>
- <li><Link to="/vibecoder" className="text-sm text-slate-400 hover:text-white transition-colors">Вайбкодеру</Link></li>
+ <li><Link to="/vibecoder" className="text-sm text-slate-400 hover:text-white transition-colors">{t('landing.footerVibecoder')}</Link></li>
  <li><a href="#faq" className="text-sm text-slate-400 hover:text-white transition-colors">{t('landing.navFaq')}</a></li>
  </ul>
  </div>

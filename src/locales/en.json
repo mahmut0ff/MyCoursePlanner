@@ -623,7 +623,8 @@
     "notFound": "Not found",
     "howItWorks": "How it works?",
     "navigate": "Navigate",
-    "select": "Select"
+    "select": "Select",
+    "saving": "Saving..."
   },
   "org": {
     "courses": {

@@ -183,17 +183,7 @@ Provide formatted text for Telegram. Do not use Markdown unsupported by Telegram
     }
 
     // Dynamic model discovery
-    let selectedModel = 'gemini-2.0-flash-lite';
-    try {
-      const modelsResponse = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${GEMINI_API_KEY}`);
-      if (modelsResponse.ok) {
-        const modelsData = await modelsResponse.json();
-        const flashModels = modelsData.models?.filter((m: any) => m.name.includes('flash') && m.supportedGenerationMethods?.includes('generateContent'));
-        if (flashModels && flashModels.length > 0) {
-          selectedModel = flashModels[flashModels.length - 1].name.replace('models/', '');
-        }
-      }
-    } catch {}
+    const selectedModel = 'gemini-2.5-flash';
 
     const toolDeclarations = [{
       functionDeclarations: [{

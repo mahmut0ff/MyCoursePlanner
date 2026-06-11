@@ -2,30 +2,8 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY || '';
 
-export async function selectModel(): Promise<string> {
-  let selectedModel = 'gemini-1.5-flash';
-  try {
-    const modelsResponse = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models?key=${GEMINI_API_KEY}`
-    );
-    if (modelsResponse.ok) {
-      const modelsData = await modelsResponse.json();
-      if (modelsData?.models) {
-        const supported = modelsData.models.filter((m: any) =>
-          m.supportedGenerationMethods?.includes('generateContent')
-        );
-        const flashModels = supported.filter((m: any) => m.name.includes('flash'));
-        if (flashModels.length > 0) {
-          selectedModel = flashModels[flashModels.length - 1].name.replace('models/', '');
-        } else if (supported.length > 0) {
-          selectedModel = supported[supported.length - 1].name.replace('models/', '');
-        }
-      }
-    }
-  } catch (e) {
-    console.warn('Failed to dynamically fetch models, falling back to gemini-1.5-flash', e);
-  }
-  return selectedModel;
+export function selectModel(): string {
+  return 'gemini-2.5-flash';
 }
 
 export function buildRuleBasedFeedback(

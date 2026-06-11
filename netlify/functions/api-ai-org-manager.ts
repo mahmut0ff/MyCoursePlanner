@@ -193,27 +193,7 @@ ${branches.length ? branches.join('\n') : 'No public branches listed.'}
 ${isFirstMessage ? 'IMPORTANT: This is the first message from the user. You MUST reply by starting with the Configured Greeting Message exactly as written, then naturally address what they asked.' : ''}
 Review the Chat History and respond accurately to the final user message. Do NOT output raw generic JSON or code blocks.`;
 
-      // Dynamic model discovery (same approach as api-ai-generate.ts)
-      let selectedModel = 'gemini-2.0-flash-lite';
-      try {
-        const modelsResponse = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${GEMINI_API_KEY}`);
-        if (modelsResponse.ok) {
-          const modelsData = await modelsResponse.json();
-          if (modelsData?.models) {
-            const supportedModels = modelsData.models.filter((m: any) =>
-              m.supportedGenerationMethods?.includes('generateContent')
-            );
-            const flashModels = supportedModels.filter((m: any) => m.name.includes('flash'));
-            if (flashModels.length > 0) {
-              selectedModel = flashModels[flashModels.length - 1].name.replace('models/', '');
-            } else if (supportedModels.length > 0) {
-              selectedModel = supportedModels[supportedModels.length - 1].name.replace('models/', '');
-            }
-          }
-        }
-      } catch (e) {
-        console.warn('Dynamic model discovery failed, using fallback:', e);
-      }
+      const selectedModel = 'gemini-2.5-flash';
 
       console.log('AI Chat: using model:', selectedModel);
 

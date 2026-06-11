@@ -15,35 +15,7 @@ const CORS_HEADERS = {
 
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY || '';
 
-/**
- * Dynamically selects the best available Gemini flash model.
- * Falls back through a chain to ensure reliability.
- */
-async function selectModel(): Promise<string> {
-  let selectedModel = 'gemini-1.5-flash';
-  try {
-    const modelsResponse = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models?key=${GEMINI_API_KEY}`
-    );
-    if (modelsResponse.ok) {
-      const modelsData = await modelsResponse.json();
-      if (modelsData?.models) {
-        const supported = modelsData.models.filter((m: any) =>
-          m.supportedGenerationMethods?.includes('generateContent')
-        );
-        const flashModels = supported.filter((m: any) => m.name.includes('flash'));
-        if (flashModels.length > 0) {
-          selectedModel = flashModels[flashModels.length - 1].name.replace('models/', '');
-        } else if (supported.length > 0) {
-          selectedModel = supported[supported.length - 1].name.replace('models/', '');
-        }
-      }
-    }
-  } catch (e) {
-    console.warn('Failed to dynamically fetch models, falling back to gemini-1.5-flash', e);
-  }
-  return selectedModel;
-}
+const GEMINI_MODEL = 'gemini-2.5-flash';
 
 /**
  * Generates meaningful feedback from raw exam data when Gemini is unavailable.
@@ -205,8 +177,7 @@ ${categoryPrompt}
 
 Пиши по-русски. Будь конструктивным и объективным. Анализируй глубоко.`;
 
-    // Dynamic model selection (same as api-ai-generate.ts)
-    const selectedModel = await selectModel();
+    const selectedModel = GEMINI_MODEL;
     const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
     const model = genAI.getGenerativeModel({
       model: selectedModel,

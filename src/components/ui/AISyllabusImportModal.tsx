@@ -147,7 +147,7 @@ export const AISyllabusImportModal: React.FC<Props> = ({ isOpen, onClose, onSucc
               <div>
                 <h2 className="text-xl font-bold tracking-tight text-slate-900 dark:text-white">AI Импорт Силлабуса</h2>
                 <p className="text-xs font-medium text-blue-600 dark:text-blue-400">
-                  {step === 'upload' ? 'Извлечение структуры из PDF файлов' : 'Слеверка распознанных данных'}
+                  {step === 'upload' ? 'Извлечение структуры из PDF файлов' : 'Сверка распознанных данных'}
                 </p>
               </div>
             </div>
@@ -188,7 +188,11 @@ export const AISyllabusImportModal: React.FC<Props> = ({ isOpen, onClose, onSucc
                   </h4>
                   <p className="text-xs text-slate-500 mb-3">Максимальный размер: 10 MB</p>
                   <span className="btn-secondary py-1.5 px-4 text-xs font-semibold">Обзор файлов</span>
-                  <input type="file" className="hidden" accept="application/pdf,image/*" ref={fileInputRef} onChange={(e) => setFile(e.target.files?.[0] || null)} />
+                  <input type="file" className="hidden" accept="application/pdf,image/*" ref={fileInputRef} onChange={(e) => {
+                    const f = e.target.files?.[0] || null;
+                    if (f && f.size > 10 * 1024 * 1024) { toast.error('Файл превышает 10 МБ. Выберите файл поменьше.'); return; }
+                    setFile(f);
+                  }} />
                 </>
               )}
             </div>

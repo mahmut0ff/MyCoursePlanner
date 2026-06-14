@@ -1,9 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { orgGetGroup, orgGetCourses, orgUpdateGroup, orgGetTeachers, orgGetStudents } from '../../lib/api';
-import { ArrowLeft, Users, BookOpen, Calendar, Link as LinkIcon, Edit2, Check, X, Plus, Briefcase, GraduationCap, Building2 } from 'lucide-react';
-import type { Group, Course, UserProfile } from '../../types';
+import { orgGetGroup, orgGetCourses, orgUpdateGroup, orgGetTeachers, orgGetStudents, apiGetSyllabuses } from '../../lib/api';
+import { ArrowLeft, Users, BookOpen, Calendar, Link as LinkIcon, Edit2, Check, X, Plus, Briefcase, GraduationCap, Building2, CheckCircle2, Circle, ExternalLink } from 'lucide-react';
+import type { Group, Course, UserProfile, Syllabus } from '../../types';
 import toast from 'react-hot-toast';
 import { useAuth } from '../../contexts/AuthContext';
 import BranchFilter from '../../components/ui/BranchFilter';
@@ -22,6 +22,10 @@ const GroupDetailPage: React.FC = () => {
   const [allTeachers, setAllTeachers] = useState<UserProfile[]>([]);
   const [allStudents, setAllStudents] = useState<UserProfile[]>([]);
   const [loading, setLoading] = useState(true);
+
+  // Course syllabus + curriculum progress
+  const [syllabus, setSyllabus] = useState<Syllabus | null>(null);
+  const [savingProgress, setSavingProgress] = useState(false);
 
   // Chat Link Edit State
   const [isEditingChat, setIsEditingChat] = useState(false);
@@ -55,6 +59,37 @@ const GroupDetailPage: React.FC = () => {
       orgGetStudents().then(setAllStudents).catch(() => []),
     ]).finally(() => setLoading(false));
   }, [id]);
+
+  // Load the course syllabus once we know the group's course.
+  useEffect(() => {
+    if (!group?.courseId) { setSyllabus(null); return; }
+    apiGetSyllabuses(group.courseId)
+      .then((data: any[]) => setSyllabus(Array.isArray(data) && data.length > 0 ? data[0] : null))
+      .catch(() => setSyllabus(null));
+  }, [group?.courseId]);
+
+  // Flattened list of syllabus items in display order — drives progress math.
+  const syllabusItems = (syllabus?.modules || []).flatMap(m => m.items);
+  const currentIdx = group?.currentSyllabusItemId
+    ? syllabusItems.findIndex(i => i.id === group.currentSyllabusItemId)
+    : -1;
+  const progressPct = syllabusItems.length > 0 && currentIdx >= 0
+    ? Math.round(((currentIdx + 1) / syllabusItems.length) * 100)
+    : 0;
+
+  const setCurrentItem = async (itemId: string) => {
+    if (!group) return;
+    const next = group.currentSyllabusItemId === itemId ? '' : itemId;
+    setSavingProgress(true);
+    try {
+      await orgUpdateGroup({ id: group.id, currentSyllabusItemId: next });
+      setGroup({ ...group, currentSyllabusItemId: next || undefined });
+    } catch (e: any) {
+      toast.error(e.message || 'Не удалось обновить прогресс');
+    } finally {
+      setSavingProgress(false);
+    }
+  };
 
   const courseName = group?.courseId ? courses.find(c => c.id === group.courseId)?.title || '—' : '—';
 
@@ -292,18 +327,75 @@ const GroupDetailPage: React.FC = () => {
               <BookOpen className="w-5 h-5" />
             </div>
             <div>
-              <h2 className="text-lg font-bold text-slate-900 dark:text-white">Силлабус (Учебная программа)</h2>
+              <div className="flex items-center gap-2">
+                <h2 className="text-lg font-bold text-slate-900 dark:text-white">Силлабус (Учебная программа)</h2>
+                {syllabus?.isMandatory && (
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-indigo-600 dark:text-indigo-400 bg-indigo-100 dark:bg-indigo-900/40 px-2 py-0.5 rounded-full">Обязательная</span>
+                )}
+              </div>
               <p className="text-xs text-slate-500">Прогресс освоения курса группой</p>
             </div>
           </div>
           
-          <div className="bg-slate-50 dark:bg-slate-900/50 p-6 rounded-2xl border border-slate-100 dark:border-slate-700/50 flex flex-col items-center justify-center text-center">
-             <div className="flex bg-slate-200 dark:bg-slate-700 h-2 w-full max-w-md rounded-full overflow-hidden mb-4">
-                <div className="bg-indigo-500 w-[20%] h-full rounded-full" />
+          {!syllabus ? (
+             <div className="bg-slate-50 dark:bg-slate-900/50 p-6 rounded-2xl border border-slate-100 dark:border-slate-700/50 text-center">
+                <p className="text-sm font-semibold text-slate-700 dark:text-slate-300">Силлабус для курса не настроен</p>
+                <p className="text-xs text-slate-500 mt-1 max-w-md mx-auto">Создайте программу курса, чтобы отслеживать прогресс группы по модулям и урокам.</p>
+                {group?.courseId && (
+                  <button onClick={() => navigate(`/courses/${group.courseId}`)} className="mt-3 inline-flex items-center gap-1.5 text-xs font-semibold text-indigo-600 dark:text-indigo-400 hover:underline">
+                    Перейти к курсу <ExternalLink className="w-3.5 h-3.5" />
+                  </button>
+                )}
              </div>
-             <p className="text-sm font-bold text-slate-700 dark:text-slate-300">Пройдено 20% (Этап 1: Основы)</p>
-             <p className="text-xs text-slate-500 mt-1">Функционал трекинга силлабуса в разработке. Здесь будет отображаться roadmap занятий.</p>
-          </div>
+          ) : syllabusItems.length === 0 ? (
+             <div className="bg-slate-50 dark:bg-slate-900/50 p-6 rounded-2xl border border-slate-100 dark:border-slate-700/50 text-center">
+                <p className="text-sm font-semibold text-slate-700 dark:text-slate-300">В силлабусе пока нет уроков</p>
+                <p className="text-xs text-slate-500 mt-1">Добавьте модули и темы в программу курса.</p>
+             </div>
+          ) : (
+             <div className="space-y-4">
+                {/* Progress bar */}
+                <div className="bg-slate-50 dark:bg-slate-900/50 p-4 rounded-2xl border border-slate-100 dark:border-slate-700/50">
+                   <div className="flex items-center justify-between mb-1.5">
+                      <span className="text-sm font-bold text-slate-700 dark:text-slate-300">Пройдено {progressPct}%</span>
+                      <span className="text-xs text-slate-500">{currentIdx >= 0 ? currentIdx + 1 : 0} / {syllabusItems.length}</span>
+                   </div>
+                   <div className="bg-slate-200 dark:bg-slate-700 h-2 w-full rounded-full overflow-hidden">
+                      <div className="bg-indigo-500 h-full rounded-full transition-all duration-500" style={{ width: `${progressPct}%` }} />
+                   </div>
+                </div>
+
+                {/* Roadmap */}
+                <div className="space-y-3 max-h-80 overflow-y-auto pr-1 custom-scrollbar">
+                   {syllabus.modules.map((mod, mi) => (
+                     <div key={mod.id}>
+                        <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-1.5">Модуль {mi + 1}: {mod.title}</p>
+                        <div className="space-y-1">
+                           {mod.items.map(item => {
+                             const idx = syllabusItems.findIndex(i => i.id === item.id);
+                             const done = currentIdx >= 0 && idx <= currentIdx;
+                             const isCurrent = item.id === group?.currentSyllabusItemId;
+                             const linkTo = item.type === 'exam' && item.examId ? `/exams/${item.examId}` : item.lessonPlanId ? `/lessons/${item.lessonPlanId}` : null;
+                             return (
+                               <div key={item.id} className={`flex items-center gap-2 px-2.5 py-1.5 rounded-lg border transition-colors ${isCurrent ? 'border-indigo-300 dark:border-indigo-700 bg-indigo-50 dark:bg-indigo-900/20' : 'border-transparent hover:bg-slate-100 dark:hover:bg-slate-700/40'}`}>
+                                  <button onClick={() => setCurrentItem(item.id)} disabled={savingProgress} title={isCurrent ? 'Снять отметку «текущий»' : 'Отметить как текущий урок'} className="shrink-0 disabled:opacity-50">
+                                     {done ? <CheckCircle2 className="w-4 h-4 text-emerald-500" /> : <Circle className="w-4 h-4 text-slate-300 dark:text-slate-600" />}
+                                  </button>
+                                  <span className={`flex-1 text-sm truncate ${done ? 'text-slate-700 dark:text-slate-200' : 'text-slate-500'} ${isCurrent ? 'font-semibold' : ''}`}>{item.title}</span>
+                                  {isCurrent && <span className="text-[10px] font-bold uppercase text-indigo-600 dark:text-indigo-400 bg-indigo-100 dark:bg-indigo-900/40 px-1.5 py-0.5 rounded shrink-0">Сейчас</span>}
+                                  {linkTo && (
+                                    <button onClick={() => navigate(linkTo)} className="p-1 text-slate-400 hover:text-indigo-500 shrink-0" title="Открыть"><ExternalLink className="w-3.5 h-3.5" /></button>
+                                  )}
+                               </div>
+                             );
+                           })}
+                        </div>
+                     </div>
+                   ))}
+                </div>
+                <p className="text-[11px] text-slate-400">Отметьте текущий урок — прогресс пересчитается автоматически.</p>
+             </div>
+          )}
         </div>
       )}
 

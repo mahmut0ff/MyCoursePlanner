@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import DOMPurify from 'dompurify';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
@@ -225,7 +225,7 @@ const LessonViewPage: React.FC = () => {
     navigate('/lessons');
   };
 
-  const renderContent = () => {
+  const contentEl = useMemo(() => {
     if (!lesson?.content) return null;
     try {
       const html = generateHTML(lesson.content as any, [StarterKit, LinkExtension, ImageExtension, Youtube]);
@@ -234,7 +234,7 @@ const LessonViewPage: React.FC = () => {
     } catch {
       return <p className="text-slate-500 dark:text-slate-400">{t('lessons.contentError', 'Не удалось отобразить содержание.')}</p>;
     }
-  };
+  }, [lesson?.content, t]);
 
   if (loading) {
     return <div className="flex items-center justify-center py-20"><div className="w-8 h-8 border-4 border-slate-200 border-t-slate-600 rounded-full animate-spin dark:border-slate-700 dark:border-t-slate-400" /></div>;
@@ -405,7 +405,7 @@ const LessonViewPage: React.FC = () => {
 
           {/* Rich Content (Theory) */}
           <div className={`lesson-content mb-10 ${presentationMode ? 'prose-lg md:prose-xl max-w-none' : 'max-w-none'}`}>
-            {renderContent()}
+            {contentEl}
           </div>
 
           {/* Completion Section (Students Only) */}

@@ -76,15 +76,21 @@ const LessonEditPage: React.FC = () => {
   const [groups, setGroups] = useState<Group[]>([]);
   const [selectedGroups, setSelectedGroups] = useState<string[]>([]);
 
+  // Autosave / unsaved-changes tracking
+  const [contentVersion, setContentVersion] = useState(0);
+  const [isDirty, setIsDirty] = useState(false);
+  const skipNextAutosave = useRef(true);
+
   const editor = useEditor({
     extensions: [
       StarterKit,
       LinkExtension.configure({ openOnClick: false }),
       ImageExtension,
       Youtube.configure({ width: 640, height: 360 }),
-      Placeholder.configure({ placeholder: t('lessons.contentPlaceholder', 'Начните писать или вставьте / для команд...') }),
+      Placeholder.configure({ placeholder: t('lessons.contentPlaceholder', 'Начните писать содержание урока...') }),
     ],
     content: '',
+    onUpdate: () => setContentVersion(v => v + 1),
   });
 
   useEffect(() => {
@@ -116,6 +122,7 @@ const LessonEditPage: React.FC = () => {
             catch { editor.commands.setContent(''); }
           }
         }
+        skipNextAutosave.current = true; // ignore the hydration-driven autosave run
         setLoading(false);
       });
     }
@@ -230,6 +237,7 @@ const LessonEditPage: React.FC = () => {
   };
 
   const handleSave = async (silent = false) => {
+    if (silent && saving) return; // don't autosave over an in-flight save
     if (!title || !subject) {
       if (!silent) toast.error(t('lessons.titleSubjectRequired', 'Название и предмет обязательны'));
       return;
@@ -280,6 +288,7 @@ const LessonEditPage: React.FC = () => {
 
 
       setLastSaved(new Date());
+      setIsDirty(false);
       if (!silent) toast.success(t('common.saved', 'Успешно сохранено'));
       if (!isEdit && !silent && savedLessonId) navigate(`/lessons/${savedLessonId}/edit`, { replace: true });
     } catch (e) {
@@ -289,6 +298,30 @@ const LessonEditPage: React.FC = () => {
       setSaving(false);
     }
   };
+
+  // Keep a live ref to handleSave for the debounced autosave timer.
+  const handleSaveRef = useRef(handleSave);
+  useEffect(() => { handleSaveRef.current = handleSave; });
+
+  // Debounced autosave (existing lessons only) + unsaved-changes tracking.
+  useEffect(() => {
+    if (loading) return;
+    if (skipNextAutosave.current) { skipNextAutosave.current = false; return; }
+    setIsDirty(true);
+    if (!isEdit || !title || !subject) return; // new lessons: tracked as dirty, saved manually
+    const tid = setTimeout(() => { void handleSaveRef.current?.(true); }, 4000);
+    return () => clearTimeout(tid);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [title, description, subject, level, duration, tags, videoUrl, coverImageUrl, status, attachments, homework, showHomework, selectedGroups, contentVersion, loading, isEdit]);
+
+  // Warn before closing the tab / refreshing with unsaved changes.
+  useEffect(() => {
+    const handler = (e: BeforeUnloadEvent) => {
+      if (isDirty) { e.preventDefault(); e.returnValue = ''; }
+    };
+    window.addEventListener('beforeunload', handler);
+    return () => window.removeEventListener('beforeunload', handler);
+  }, [isDirty]);
 
   if (loading) {
     return <div className="flex items-center justify-center py-20"><div className="w-8 h-8 border-4 border-slate-200 border-t-slate-600 rounded-full animate-spin dark:border-slate-700 dark:border-t-slate-400" /></div>;
@@ -303,7 +336,7 @@ const LessonEditPage: React.FC = () => {
       {/* Header bar */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 sticky top-0 z-10 bg-slate-50/80 dark:bg-slate-900/80 backdrop-blur-md pb-4 pt-2 -mt-2">
         <div className="flex items-center gap-3">
-          <button onClick={() => navigate('/lessons')} className="p-2 bg-white dark:bg-slate-800 rounded-lg text-slate-500 hover:text-slate-900 dark:hover:text-white border border-slate-200 dark:border-slate-700 shadow-sm transition-all hover:shadow-md"><ArrowLeft className="w-4 h-4" /></button>
+          <button onClick={() => { if (!isDirty || confirm('Есть несохранённые изменения. Покинуть страницу?')) navigate('/lessons'); }} className="p-2 bg-white dark:bg-slate-800 rounded-lg text-slate-500 hover:text-slate-900 dark:hover:text-white border border-slate-200 dark:border-slate-700 shadow-sm transition-all hover:shadow-md"><ArrowLeft className="w-4 h-4" /></button>
           <h1 className="text-xl font-bold text-slate-900 dark:text-white">{isEdit ? t('lessons.editLesson', 'Редактировать урок') : t('lessons.newLesson', 'Новый урок')}</h1>
           {lastSaved && (
              <span className="text-xs text-slate-400 flex items-center gap-1 hidden sm:flex">
@@ -351,7 +384,7 @@ const LessonEditPage: React.FC = () => {
           <div className="card overflow-hidden shadow-sm hover:shadow-md transition-shadow">
             <div className="bg-slate-50 dark:bg-slate-900/50 border-b border-slate-200 dark:border-slate-800 p-2 sm:p-3 flex flex-wrap items-center gap-1 sm:gap-2">
               <div className="flex items-center gap-0.5 bg-white dark:bg-slate-800 p-1 rounded-lg border border-slate-200 dark:border-slate-700 shadow-sm">
-                <button onClick={() => editor?.chain().focus().toggleBold().run()} className={tbtn(editor?.isActive('bold') ?? false)} title="Жирный шрифть"><Bold className="w-4 h-4" /></button>
+                <button onClick={() => editor?.chain().focus().toggleBold().run()} className={tbtn(editor?.isActive('bold') ?? false)} title="Жирный шрифт"><Bold className="w-4 h-4" /></button>
                 <button onClick={() => editor?.chain().focus().toggleItalic().run()} className={tbtn(editor?.isActive('italic') ?? false)} title="Курсив"><Italic className="w-4 h-4" /></button>
                 <button onClick={() => editor?.chain().focus().toggleStrike().run()} className={tbtn(editor?.isActive('strike') ?? false)} title="Зачеркнутый"><Strikethrough className="w-4 h-4" /></button>
                 <button onClick={() => editor?.chain().focus().toggleCode().run()} className={tbtn(editor?.isActive('code') ?? false)} title="Код"><Code className="w-4 h-4" /></button>
@@ -508,7 +541,7 @@ const LessonEditPage: React.FC = () => {
                
                <div className="space-y-4">
                   <div>
-                    <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">{t('lessons.subjectLabel', 'Прeдмет')} *</label>
+                    <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">{t('lessons.subjectLabel', 'Предмет')} *</label>
                     <input value={subject} onChange={(e) => setSubject(e.target.value)} className="input text-sm font-medium" placeholder={t('lessons.subjectPlaceholder', 'напр. Математика')} />
                   </div>
                   

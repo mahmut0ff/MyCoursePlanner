@@ -7,6 +7,12 @@
   "nav": {
     "dashboard": "Dashboard",
     "overview": "Overview",
+    "secPeople": "People",
+    "secLearning": "Learning",
+    "secManagement": "Management",
+    "secContent": "Content",
+    "secSystem": "System",
+    "demoRequests": "Demo requests",
     "management": "Management",
     "organizations": "Organizations",
     "users": "Users",

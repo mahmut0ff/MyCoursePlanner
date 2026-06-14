@@ -1,10 +1,13 @@
 /**
  * SidebarTips — rotating helpful tips in the sidebar, tailored to user role.
  * 15 tips per role, 5-second interval, smooth crossfade animation.
+ * Dismissible — once closed it stays hidden (persisted in localStorage).
  */
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
-import { Lightbulb } from 'lucide-react';
+import { Lightbulb, X } from 'lucide-react';
+
+const DISMISS_KEY = 'planula_tips_dismissed';
 
 const tipsByRole: Record<string, string[]> = {
   student: [
@@ -85,34 +88,40 @@ const SidebarTips: React.FC<Props> = ({ isCollapsed }) => {
   const { role, isSuperAdmin, organizationId } = useAuth();
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isVisible, setIsVisible] = useState(true);
-
-  // Don't show for super admin or users without org
-  if (isSuperAdmin || !organizationId) return null;
+  const [dismissed, setDismissed] = useState(() => {
+    try { return localStorage.getItem(DISMISS_KEY) === 'true'; } catch { return false; }
+  });
 
   const resolvedRole = (role as string) === 'owner' ? 'admin' : role || 'student';
   const tips = tipsByRole[resolvedRole] || tipsByRole.student;
 
+  // Start from a random tip
   useEffect(() => {
-    // Start from random tip
     setCurrentIndex(Math.floor(Math.random() * tips.length));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Rotate tips on an interval
   useEffect(() => {
     const interval = setInterval(() => {
-      // Fade out
       setIsVisible(false);
-
-      // After fade out, switch tip and fade in
       setTimeout(() => {
         setCurrentIndex(prev => (prev + 1) % tips.length);
         setIsVisible(true);
       }, 400);
     }, 5000);
-
     return () => clearInterval(interval);
   }, [tips.length]);
 
-  // Hide when sidebar is collapsed on desktop
+  const handleDismiss = () => {
+    try { localStorage.setItem(DISMISS_KEY, 'true'); } catch { /* ignore */ }
+    setDismissed(true);
+  };
+
+  // Don't show for super admin, users without org, or once dismissed.
+  if (isSuperAdmin || !organizationId || dismissed) return null;
+
+  // Folded desktop sidebar — just a hint glyph.
   if (isCollapsed) {
     return (
       <div className="hidden lg:flex justify-center py-2 px-1">
@@ -123,7 +132,7 @@ const SidebarTips: React.FC<Props> = ({ isCollapsed }) => {
 
   return (
     <div className="px-3 py-2">
-      <div className="relative overflow-hidden rounded-lg bg-white/[0.03] px-3 py-2.5 min-h-[52px] flex items-start gap-2">
+      <div className="relative overflow-hidden rounded-lg bg-white/[0.03] px-3 py-2.5 pr-7 min-h-[52px] flex items-start gap-2">
         <Lightbulb className="w-3.5 h-3.5 text-amber-500/60 shrink-0 mt-0.5" />
         <p
           className={`text-[11px] leading-[1.4] text-slate-500 transition-all duration-400 ${
@@ -134,6 +143,15 @@ const SidebarTips: React.FC<Props> = ({ isCollapsed }) => {
         >
           {tips[currentIndex]}
         </p>
+        <button
+          type="button"
+          onClick={handleDismiss}
+          aria-label="Скрыть подсказки"
+          title="Скрыть подсказки"
+          className="absolute top-1.5 right-1.5 p-1 rounded-md text-slate-600 hover:text-slate-300 hover:bg-white/5 transition-colors"
+        >
+          <X className="w-3 h-3" />
+        </button>
       </div>
     </div>
   );

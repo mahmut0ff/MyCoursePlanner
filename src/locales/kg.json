@@ -7,6 +7,12 @@
   "nav": {
     "dashboard": "Башкы бет",
     "overview": "Обзор",
+    "secPeople": "Адамдар",
+    "secLearning": "Окутуу",
+    "secManagement": "Башкаруу",
+    "secContent": "Мазмун",
+    "secSystem": "Система",
+    "demoRequests": "Демо өтүнүчтөр",
     "management": "Башкаруу",
     "organizations": "Уюмдар",
     "users": "Колдонуучулар",

@@ -7,6 +7,12 @@
   "nav": {
     "dashboard": "Главная",
     "overview": "Обзор",
+    "secPeople": "Люди",
+    "secLearning": "Обучение",
+    "secManagement": "Управление",
+    "secContent": "Контент",
+    "secSystem": "Система",
+    "demoRequests": "Заявки на демо",
     "management": "Управление",
     "organizations": "Организации",
     "users": "Пользователи",

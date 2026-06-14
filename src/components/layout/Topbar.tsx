@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../contexts/AuthContext';
 import { useTheme } from '../../contexts/ThemeContext';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import LanguageSwitcher from '../LanguageSwitcher';
 import NotificationDropdown from '../notifications/NotificationDropdown';
 import {
@@ -69,11 +69,64 @@ const STUDENT_ITEMS = [
   { icon: BookOpen, label: 'nav.diary', path: '/diary' },
 ];
 
+/* ── current-page title (longest-prefix match) ── */
+const TITLE_MAP: [string, string, string][] = [
+  ['/admin/organizations', 'nav.organizations', 'Организации'],
+  ['/admin/demo-requests', 'nav.demoRequests', 'Заявки на демо'],
+  ['/admin/users', 'nav.users', 'Пользователи'],
+  ['/admin/billing', 'nav.billing', 'Биллинг'],
+  ['/admin/plans', 'nav.plans', 'Тарифы'],
+  ['/admin/audit-logs', 'nav.auditLogs', 'Журнал аудита'],
+  ['/admin/system-health', 'nav.systemHealth', 'Система'],
+  ['/admin/feature-flags', 'nav.featureFlags', 'Флаги'],
+  ['/admin/integrations', 'nav.integrations', 'Интеграции'],
+  ['/admin/settings', 'nav.settings', 'Настройки'],
+  ['/admin', 'nav.overview', 'Обзор'],
+  ['/dashboard', 'nav.dashboard', 'Дашборд'],
+  ['/student/courses', 'nav.myCourses', 'Курсы'],
+  ['/student/homework', 'nav.myHomework', 'Мои ДЗ'],
+  ['/student/schedule', 'nav.schedule', 'Расписание'],
+  ['/students', 'nav.students', 'Студенты'],
+  ['/teachers', 'nav.teachers', 'Учителя'],
+  ['/managers', 'nav.managers', 'Менеджеры'],
+  ['/courses', 'nav.courses', 'Курсы'],
+  ['/lessons', 'nav.lessons', 'Уроки'],
+  ['/exams', 'nav.exams', 'Экзамены'],
+  ['/schedule', 'nav.schedule', 'Расписание'],
+  ['/finances', 'nav.finances', 'Финансы'],
+  ['/teacher-analytics', 'nav.analytics', 'Аналитика'],
+  ['/journal', 'nav.journal', 'Журнал'],
+  ['/homework/review', 'nav.homeworkReview', 'Проверка ДЗ'],
+  ['/gradebook', 'nav.gradebook', 'Оценки'],
+  ['/groups', 'nav.groups', 'Группы'],
+  ['/branches', 'nav.branches', 'Филиалы'],
+  ['/diary', 'nav.diary', 'Дневник'],
+  ['/achievements', 'nav.achievements', 'Достижения'],
+  ['/join', 'nav.joinTest', 'Войти в тест'],
+  ['/catalog', 'nav.findCenter', 'Каталог'],
+  ['/materials', 'nav.myMaterials', 'Материалы'],
+  ['/quiz/library', 'nav.quizLibrary', 'Викторины'],
+  ['/org-settings', 'nav.settings', 'Настройки'],
+  ['/teacher-settings', 'nav.settings', 'Настройки'],
+  ['/teacher-profile', 'nav.profile', 'Профиль'],
+  ['/profile', 'nav.profile', 'Профиль'],
+  ['/billing', 'nav.billing', 'Биллинг'],
+  ['/rooms', 'nav.examRooms', 'Комнаты'],
+  ['/my-results', 'nav.myResults', 'Мои результаты'],
+  ['/results', 'nav.results', 'Результаты'],
+].sort((a, b) => b[0].length - a[0].length) as [string, string, string][];
+
 const Topbar: React.FC<TopbarProps> = ({ onMenuClick }) => {
   const { t } = useTranslation();
   const { isSuperAdmin, role, isTeacher } = useAuth();
   const { isDark, toggle } = useTheme();
   const navigate = useNavigate();
+  const location = useLocation();
+
+  const pageTitle = useMemo(() => {
+    const hit = TITLE_MAP.find(([prefix]) => location.pathname === prefix || location.pathname.startsWith(prefix + '/'));
+    return hit ? t(hit[1], hit[2]) : '';
+  }, [location.pathname, t]);
 
   const [searchOpen, setSearchOpen] = useState(false);
   const [query, setQuery] = useState('');
@@ -231,6 +284,11 @@ const Topbar: React.FC<TopbarProps> = ({ onMenuClick }) => {
             <Menu className="w-5 h-5" />
           </button>
 
+          {/* Current page title */}
+          {pageTitle && (
+            <h1 className="hidden md:block text-[15px] font-semibold text-slate-800 dark:text-white truncate max-w-[32vw] mr-1">{pageTitle}</h1>
+          )}
+
           {/* ⌘K Search trigger */}
           <button
             onClick={() => setSearchOpen(true)}
@@ -284,19 +342,14 @@ const Topbar: React.FC<TopbarProps> = ({ onMenuClick }) => {
             </button>
           )}
 
-          {/* Settings & Billing (Admin/Teacher) */}
-          <div className="flex items-center gap-1 border-l border-slate-200 dark:border-slate-700/60 pl-2 ml-1">
-            {role === 'admin' && !isSuperAdmin && (
+          {/* Billing quick-access (Admin) — settings live in the sidebar to avoid duplication */}
+          {role === 'admin' && !isSuperAdmin && (
+            <div className="flex items-center border-l border-slate-200 dark:border-slate-700/60 pl-2 ml-1">
               <button onClick={() => navigate('/billing')} className="p-2 rounded-lg text-slate-400 hover:text-slate-600 dark:text-slate-500 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors" title={t('nav.billingPlans')}>
                 <CreditCard className="w-5 h-5" />
               </button>
-            )}
-            {(role === 'admin' || isTeacher) && !isSuperAdmin && (
-              <button onClick={() => navigate(role === 'admin' ? '/org-settings' : '/teacher-settings')} className="p-2 rounded-lg text-slate-400 hover:text-slate-600 dark:text-slate-500 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors" title={t('nav.settings')}>
-                <Settings className="w-5 h-5" />
-              </button>
-            )}
-          </div>
+            </div>
+          )}
         </div>
       </header>
 
@@ -354,7 +407,6 @@ const Topbar: React.FC<TopbarProps> = ({ onMenuClick }) => {
                           {item.meta}
                         </span>
                       )}
-                      <span className="ml-auto text-xs text-slate-400 dark:text-slate-500 font-mono truncate max-w-[150px]">{item.path}</span>
                     </button>
                   );
                 })

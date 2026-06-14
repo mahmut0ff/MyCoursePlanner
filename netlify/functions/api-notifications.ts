@@ -62,7 +62,7 @@ const handler: Handler = async (event: HandlerEvent) => {
     // Notify about a new lead
     if (action === 'notifyNewLead' && event.httpMethod === 'POST') {
       if (!body.name) return badRequest('name required');
-      const orgId = user.activeOrgId || user.organizationId;
+      const orgId = (user as any).activeOrgId || user.organizationId;
       if (!orgId) return badRequest('org required');
 
       const sourceText = body.source === 'telegram_bot' ? 'через Telegram бота' :

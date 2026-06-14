@@ -227,7 +227,7 @@ Provide formatted text for Telegram. Do not use Markdown unsupported by Telegram
       return { statusCode: 200, body: 'OK' };
     }
 
-    const geminiData = await geminiResponse.json();
+    const geminiData: any = await geminiResponse.json();
     const candidateParts = geminiData.candidates?.[0]?.content?.parts || [];
     
     console.log('[TG-Webhook] Gemini response parts:', JSON.stringify(candidateParts.map((p: any) => ({
@@ -292,7 +292,7 @@ Provide formatted text for Telegram. Do not use Markdown unsupported by Telegram
          );
 
          if (followUpResponse.ok) {
-           const followUpData = await followUpResponse.json();
+           const followUpData: any = await followUpResponse.json();
            const followUpParts = followUpData.candidates?.[0]?.content?.parts || [];
            responseText = followUpParts.find((p: any) => p.text)?.text || '';
            console.log('[TG-Webhook] Follow-up response received:', responseText.substring(0, 100));

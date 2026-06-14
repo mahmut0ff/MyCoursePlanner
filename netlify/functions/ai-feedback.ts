@@ -218,7 +218,7 @@ ${categoryPrompt}
     console.error('AI Feedback error:', error);
     
     // Try to build rule-based feedback from the attempt data
-    let fallback;
+    let fallback: any;
     try {
       const attemptDoc = await adminDb.collection('examAttempts').doc(attemptId).get();
       if (attemptDoc.exists) {

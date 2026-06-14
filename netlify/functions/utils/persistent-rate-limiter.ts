@@ -45,7 +45,7 @@ function createPersistentRateLimiter(opts: PersistentRateLimiterOptions): Persis
         const now = Date.now();
 
         // Read current entry
-        const raw = await store.get(blobKey);
+        const raw = await store.get(blobKey, { type: 'text' });
         let entry: RateLimitEntry | null = null;
 
         if (raw) {

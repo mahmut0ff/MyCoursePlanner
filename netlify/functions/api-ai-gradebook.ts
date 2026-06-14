@@ -41,7 +41,7 @@ const handler: Handler = async (event: HandlerEvent) => {
       },
     });
 
-    const mode = data.mode || 'gradebook';
+    const mode = body.mode || 'gradebook';
     const isJournal = mode === 'journal';
 
     const systemPrompt = `You are a strict JSON structure generator for a ${isJournal ? 'Journal Attendance' : 'Gradebook'} system. 

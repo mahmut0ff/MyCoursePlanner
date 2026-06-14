@@ -82,7 +82,7 @@ const handler: Handler = async (event: HandlerEvent) => {
           try {
             const meRes = await fetch(`https://api.telegram.org/bot${token}/getMe`);
             if (!meRes.ok) return badRequest('Invalid Telegram Bot Token');
-            const meData = await meRes.json();
+            const meData: any = await meRes.json();
             
             // Create absolute webhook URL securely using rawUrl
             const origin = event.rawUrl ? new URL(event.rawUrl).origin : `https://${event.headers.host}`;
@@ -252,7 +252,7 @@ Review the Chat History and respond accurately to the final user message. Do NOT
         return jsonResponse(502, { error: `AI service error: ${geminiResponse.status}` });
       }
 
-      const geminiData = await geminiResponse.json();
+      const geminiData: any = await geminiResponse.json();
       const candidateParts = geminiData.candidates?.[0]?.content?.parts || [];
       
       console.log('[AI-Chat] Gemini response parts:', JSON.stringify(candidateParts.map((p: any) => ({
@@ -309,7 +309,7 @@ Review the Chat History and respond accurately to the final user message. Do NOT
            );
 
            if (followUpResponse.ok) {
-             const followUpData = await followUpResponse.json();
+             const followUpData: any = await followUpResponse.json();
              const followUpParts = followUpData.candidates?.[0]?.content?.parts || [];
              responseText = followUpParts.find((p: any) => p.text)?.text || '';
            }

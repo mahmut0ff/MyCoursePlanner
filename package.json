@@ -16,6 +16,7 @@
     "build:prod": "tsc -b && vite build --mode production",
     "preview": "vite preview",
     "lint": "eslint .",
+    "typecheck:functions": "tsc -p tsconfig.functions.json",
     "test": "vitest run",
     "test:watch": "vitest",
     "deploy:rules:staging": "firebase use staging && firebase deploy --only firestore:rules,storage",

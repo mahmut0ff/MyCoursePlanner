@@ -395,8 +395,15 @@ export interface HomeworkSubmission {
   aiAnalysis?: {
     grade: number;
     suggestions: string;
-    isPlagiarism: boolean;
-    plagiarismProbability: number;
+    summary?: string;
+    strengths?: string[];
+    weaknesses?: string[];
+    grammarIssues?: {
+      fragment: string;
+      correction: string;
+      explanation?: string;
+    }[];
+    checkedAt?: string;
   };
   teacherFeedback?: string;
   finalScore?: number;

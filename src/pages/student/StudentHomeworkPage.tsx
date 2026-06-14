@@ -1,11 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
-import { apiStudentGetMyHomeworks } from '../../lib/api';
+import { apiStudentGetMyHomeworks, apiAIGradeHomework } from '../../lib/api';
 import type { HomeworkSubmission } from '../../types';
 import {
   ClipboardCheck, Clock, CheckCircle2, AlertCircle, BookOpen,
-  FileVideo, ImageIcon, FileAudio, FileArchive, FileText, Inbox, ExternalLink
+  FileVideo, ImageIcon, FileAudio, FileArchive, FileText, Inbox, ExternalLink, Sparkles
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -46,6 +46,23 @@ const StudentHomeworkPage: React.FC = () => {
   const [submissions, setSubmissions] = useState<HomeworkSubmission[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<FilterStatus>('all');
+  const [checkingId, setCheckingId] = useState<string | null>(null);
+
+  const handleSelfCheck = async (sub: HomeworkSubmission, e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (checkingId) return;
+    setCheckingId(sub.id);
+    try {
+      const analysis = await apiAIGradeHomework(sub.id);
+      setSubmissions(prev => prev.map(s => s.id === sub.id ? { ...s, aiAnalysis: analysis } : s));
+      toast.success('Работа проверена ИИ', { icon: '✨' });
+    } catch (err: any) {
+      toast.error(err?.message || 'Не удалось проверить работу');
+    } finally {
+      setCheckingId(null);
+    }
+  };
 
   useEffect(() => {
     if (!organizationId) return;
@@ -169,6 +186,8 @@ const StudentHomeworkPage: React.FC = () => {
           {filtered.map(sub => {
             const cfg = statusConfig[sub.status] || statusConfig.pending;
             const StatusIcon = cfg.icon;
+            const canSelfCheck = !!(sub.content && sub.content.trim()) ||
+              !!sub.attachments?.some(a => a.type === 'image' || (a.type === 'document' && /\.pdf($|\?)/i.test(`${a.url || ''} ${a.name || ''}`)));
             return (
               <Link
                 key={sub.id}
@@ -226,6 +245,49 @@ const StudentHomeworkPage: React.FC = () => {
                         <p className="text-[11px] font-bold text-indigo-500 dark:text-indigo-400 uppercase tracking-wider mb-1">Отзыв преподавателя</p>
                         <p className="text-[13px] text-indigo-800 dark:text-indigo-200 italic line-clamp-2">"{sub.teacherFeedback}"</p>
                       </div>
+                    )}
+
+                    {/* AI grammar analysis (read-only) */}
+                    {sub.aiAnalysis && (
+                      ((sub.aiAnalysis.strengths?.length || 0) > 0 ||
+                       (sub.aiAnalysis.weaknesses?.length || 0) > 0 ||
+                       (sub.aiAnalysis.grammarIssues?.length || 0) > 0) && (
+                      <div className="mt-3 p-3 bg-violet-50 dark:bg-violet-900/10 border border-violet-200/50 dark:border-violet-700/30 rounded-xl space-y-2">
+                        <p className="text-[11px] font-bold text-violet-500 dark:text-violet-400 uppercase tracking-wider flex items-center gap-1.5">
+                          <Sparkles className="w-3.5 h-3.5" /> Разбор ИИ
+                        </p>
+                        {sub.aiAnalysis.strengths && sub.aiAnalysis.strengths.length > 0 && (
+                          <ul className="space-y-1">
+                            {sub.aiAnalysis.strengths.map((s, i) => (
+                              <li key={`s${i}`} className="text-[12px] text-slate-600 dark:text-slate-300 flex gap-1.5"><span className="text-emerald-500 font-bold shrink-0">+</span>{s}</li>
+                            ))}
+                          </ul>
+                        )}
+                        {sub.aiAnalysis.weaknesses && sub.aiAnalysis.weaknesses.length > 0 && (
+                          <ul className="space-y-1">
+                            {sub.aiAnalysis.weaknesses.map((s, i) => (
+                              <li key={`w${i}`} className="text-[12px] text-slate-600 dark:text-slate-300 flex gap-1.5"><span className="text-amber-500 font-bold shrink-0">−</span>{s}</li>
+                            ))}
+                          </ul>
+                        )}
+                        {sub.aiAnalysis.grammarIssues && sub.aiAnalysis.grammarIssues.length > 0 && (
+                          <p className="text-[11.5px] text-violet-700 dark:text-violet-300 font-medium">Грамматических замечаний: {sub.aiAnalysis.grammarIssues.length}</p>
+                        )}
+                      </div>
+                      )
+                    )}
+                    {/* Self-check button (text and/or photo/PDF) */}
+                    {canSelfCheck && (
+                      <button
+                        type="button"
+                        onClick={(e) => handleSelfCheck(sub, e)}
+                        disabled={checkingId === sub.id}
+                        className="mt-3 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-semibold bg-violet-600 hover:bg-violet-500 text-white transition-colors disabled:opacity-60"
+                      >
+                        {checkingId === sub.id
+                          ? <><span className="w-3.5 h-3.5 border-2 border-white/40 border-t-white rounded-full animate-spin" /> Проверяю…</>
+                          : <><Sparkles className="w-3.5 h-3.5" /> {sub.aiAnalysis ? 'Перепроверить грамматику' : 'Проверить грамматику'}</>}
+                      </button>
                     )}
                   </div>
 

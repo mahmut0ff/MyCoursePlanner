@@ -441,35 +441,77 @@ const HomeworkReviewPage: React.FC = () => {
 
                 {/* AI Analysis Block */}
                 {selectedSubmission.aiAnalysis && (
-                  <div className={`p-5 rounded-xl border ${selectedSubmission.aiAnalysis.isPlagiarism ? 'border-red-200 dark:border-red-900/50 bg-red-50/30 dark:bg-red-900/5' : 'border-indigo-200/80 dark:border-indigo-900/40 bg-indigo-50/30 dark:bg-indigo-900/5'}`}>
+                  <div className="p-5 rounded-xl border border-indigo-200/80 dark:border-indigo-900/40 bg-indigo-50/30 dark:bg-indigo-900/5">
                     <div className="flex items-center gap-2 mb-3">
-                      <Sparkles className={`w-5 h-5 ${selectedSubmission.aiAnalysis.isPlagiarism ? 'text-red-500' : 'text-indigo-500'}`} />
-                      <h4 className="text-[14px] font-bold text-slate-800 dark:text-white">Отчёт Нейросети</h4>
+                      <Sparkles className="w-5 h-5 text-indigo-500" />
+                      <h4 className="text-[14px] font-bold text-slate-800 dark:text-white">Отчёт нейросети</h4>
                     </div>
-                    
-                    {selectedSubmission.aiAnalysis.isPlagiarism ? (
-                      <div className="mb-3 p-3 bg-red-50 dark:bg-red-900/10 border border-red-200 dark:border-red-800/30 text-red-800 dark:text-red-300 rounded-xl flex items-start gap-2.5">
-                         <XCircle className="w-5 h-5 shrink-0 text-red-500 mt-0.5" />
-                         <div>
-                           <p className="font-bold text-[13px]">Высокая вероятность плагиата / ИИ ({selectedSubmission.aiAnalysis.plagiarismProbability}%)</p>
-                           <p className="text-[12px] mt-0.5 opacity-80">Текст выглядит неестественно или скопирован.</p>
-                         </div>
-                      </div>
-                    ) : (
-                      <div className="mb-3 px-2.5 py-1.5 bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800/30 text-emerald-700 dark:text-emerald-400 text-[12px] rounded-lg inline-flex font-bold items-center gap-1.5 w-max">
-                        <CheckCircle className="w-3.5 h-3.5" />Оригинальный текст
-                      </div>
-                    )}
 
                     <div className="space-y-2.5">
+                      {/* Recommended grade */}
                       <div className="bg-white/60 dark:bg-slate-800/40 p-3.5 rounded-xl border border-slate-100 dark:border-slate-800">
                         <p className="text-[10px] uppercase tracking-widest text-slate-500 font-bold mb-1">Рекомендуемый балл</p>
                         <p className="text-xl font-black text-indigo-600 dark:text-indigo-400">{selectedSubmission.aiAnalysis.grade} <span className="text-sm text-slate-400 font-medium">/ {selectedSubmission.maxPoints || 10}</span></p>
                       </div>
-                      <div className="bg-white/60 dark:bg-slate-800/40 p-3.5 rounded-xl border border-slate-100 dark:border-slate-800">
-                        <p className="text-[10px] uppercase tracking-widest text-slate-500 font-bold mb-1.5">Анализ решения</p>
-                        <p className="text-[13px] text-slate-700 dark:text-slate-300 leading-relaxed">{selectedSubmission.aiAnalysis.suggestions}</p>
-                      </div>
+
+                      {/* Summary */}
+                      {selectedSubmission.aiAnalysis.summary && (
+                        <div className="bg-white/60 dark:bg-slate-800/40 p-3.5 rounded-xl border border-slate-100 dark:border-slate-800">
+                          <p className="text-[10px] uppercase tracking-widest text-slate-500 font-bold mb-1.5">Общая оценка</p>
+                          <p className="text-[13px] text-slate-700 dark:text-slate-300 leading-relaxed">{selectedSubmission.aiAnalysis.summary}</p>
+                        </div>
+                      )}
+
+                      {/* Strengths / Weaknesses */}
+                      {((selectedSubmission.aiAnalysis.strengths?.length || 0) > 0 || (selectedSubmission.aiAnalysis.weaknesses?.length || 0) > 0) && (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                          {selectedSubmission.aiAnalysis.strengths && selectedSubmission.aiAnalysis.strengths.length > 0 && (
+                            <div className="p-3.5 rounded-xl border border-emerald-200/70 dark:border-emerald-900/40 bg-emerald-50/40 dark:bg-emerald-900/10">
+                              <p className="text-[10px] uppercase tracking-widest text-emerald-600 dark:text-emerald-400 font-bold mb-2 flex items-center gap-1.5"><CheckCircle className="w-3.5 h-3.5" /> Плюсы</p>
+                              <ul className="space-y-1.5">
+                                {selectedSubmission.aiAnalysis.strengths.map((s, i) => (
+                                  <li key={i} className="text-[12.5px] text-slate-700 dark:text-slate-300 leading-snug flex gap-1.5"><span className="text-emerald-500 font-bold shrink-0">+</span>{s}</li>
+                                ))}
+                              </ul>
+                            </div>
+                          )}
+                          {selectedSubmission.aiAnalysis.weaknesses && selectedSubmission.aiAnalysis.weaknesses.length > 0 && (
+                            <div className="p-3.5 rounded-xl border border-amber-200/70 dark:border-amber-900/40 bg-amber-50/40 dark:bg-amber-900/10">
+                              <p className="text-[10px] uppercase tracking-widest text-amber-600 dark:text-amber-400 font-bold mb-2 flex items-center gap-1.5"><XCircle className="w-3.5 h-3.5" /> Минусы</p>
+                              <ul className="space-y-1.5">
+                                {selectedSubmission.aiAnalysis.weaknesses.map((s, i) => (
+                                  <li key={i} className="text-[12.5px] text-slate-700 dark:text-slate-300 leading-snug flex gap-1.5"><span className="text-amber-500 font-bold shrink-0">−</span>{s}</li>
+                                ))}
+                              </ul>
+                            </div>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Grammar issues */}
+                      {selectedSubmission.aiAnalysis.grammarIssues && selectedSubmission.aiAnalysis.grammarIssues.length > 0 && (
+                        <div className="bg-white/60 dark:bg-slate-800/40 p-3.5 rounded-xl border border-slate-100 dark:border-slate-800">
+                          <p className="text-[10px] uppercase tracking-widest text-slate-500 font-bold mb-2">Грамматика и ошибки ({selectedSubmission.aiAnalysis.grammarIssues.length})</p>
+                          <ul className="space-y-2.5">
+                            {selectedSubmission.aiAnalysis.grammarIssues.map((g, i) => (
+                              <li key={i} className="text-[12.5px] leading-snug">
+                                <span className="text-red-500 line-through decoration-red-400/60">{g.fragment}</span>
+                                <span className="mx-1.5 text-slate-400">→</span>
+                                <span className="text-emerald-600 dark:text-emerald-400 font-semibold">{g.correction}</span>
+                                {g.explanation && <p className="text-[11.5px] text-slate-500 dark:text-slate-400 mt-0.5">{g.explanation}</p>}
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+
+                      {/* Suggestions */}
+                      {selectedSubmission.aiAnalysis.suggestions && (
+                        <div className="bg-white/60 dark:bg-slate-800/40 p-3.5 rounded-xl border border-slate-100 dark:border-slate-800">
+                          <p className="text-[10px] uppercase tracking-widest text-slate-500 font-bold mb-1.5">Рекомендации</p>
+                          <p className="text-[13px] text-slate-700 dark:text-slate-300 leading-relaxed">{selectedSubmission.aiAnalysis.suggestions}</p>
+                        </div>
+                      )}
                     </div>
                   </div>
                 )}

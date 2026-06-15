@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { signIn, signInWithGoogle } from '../../services/auth.service';
+import { signIn, signInWithGoogle, getGoogleRedirectResult } from '../../services/auth.service';
 import { useAuth } from '../../contexts/AuthContext';
 import { apiResolveUsername, apiPublicJoin } from '../../lib/api';
+import { googleAuthErrorKey, isUserCancelledAuth } from '../../lib/authErrors';
 import { Mail, Lock, Eye, EyeOff } from 'lucide-react';
 import LanguageSwitcher from '../../components/LanguageSwitcher';
 
@@ -55,17 +56,29 @@ const LoginPage: React.FC = () => {
     }
   };
 
+  // Surface any error from a Google redirect sign-in once the page returns.
+  React.useEffect(() => {
+    getGoogleRedirectResult().catch((err: any) => {
+      if (!isUserCancelledAuth(err?.code)) {
+        console.error('Google redirect error:', err);
+        setError(t(googleAuthErrorKey(err?.code)));
+      }
+    });
+  }, [t]);
+
   const handleGoogleLogin = async () => {
     setError('');
     setLoading(true);
     try {
-      await signInWithGoogle();
-      // AuthContext and ProtectedRoute will automatically redirect to /onboarding if no profile exists.
-      // Or to /dashboard if profile exists.
+      const result = await signInWithGoogle();
+      // result === null → popup was blocked and a full-page redirect started;
+      // the page is navigating away, so there's nothing more to do here.
+      // Otherwise AuthContext/ProtectedRoute redirect to /onboarding or /dashboard.
+      if (!result) return;
     } catch (err: any) {
       console.error('Google Sign-In Error:', err);
-      if (err.code !== 'auth/popup-closed-by-user') {
-        setError('Google sign-in failed. Please try again.');
+      if (!isUserCancelledAuth(err.code)) {
+        setError(t(googleAuthErrorKey(err.code)));
       }
     } finally {
       setLoading(false);

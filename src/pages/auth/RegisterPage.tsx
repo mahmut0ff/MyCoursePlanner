@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { signUp, signInWithGoogle } from '../../services/auth.service';
+import { signUp, signInWithGoogle, getGoogleRedirectResult } from '../../services/auth.service';
+import { googleAuthErrorKey, isUserCancelledAuth } from '../../lib/authErrors';
 import { useAuth } from '../../contexts/AuthContext';
 import { createUser } from '../../services/users.service';
 import { apiCheckAuthIdentity, apiPublicJoin, apiCheckRegisterRateLimit } from '../../lib/api';
@@ -107,18 +108,30 @@ const RegisterPage: React.FC = () => {
     }
   };
 
+  // Surface any error from a Google redirect sign-in once the page returns.
+  React.useEffect(() => {
+    getGoogleRedirectResult().catch((err: any) => {
+      if (!isUserCancelledAuth(err?.code)) {
+        console.error('Google redirect error:', err);
+        setError(t(googleAuthErrorKey(err?.code)));
+      }
+    });
+  }, [t]);
+
   const handleGoogleRegister = async () => {
     setError('');
     setLoading(true);
     try {
       await apiCheckRegisterRateLimit();
-      await signInWithGoogle();
-      // AuthContext and ProtectedRoute will automatically redirect to /onboarding if no profile exists.
-      // Or to /dashboard if profile exists.
+      const result = await signInWithGoogle();
+      // result === null → popup was blocked and a full-page redirect started;
+      // the page is navigating away. Otherwise AuthContext/ProtectedRoute
+      // redirect to /onboarding (no profile) or /dashboard.
+      if (!result) return;
     } catch (err: any) {
       console.error('Google Sign-In Error:', err);
-      if (err.code !== 'auth/popup-closed-by-user') {
-        setError(err.message && err.message.length < 100 && !err.code ? err.message : t('auth.googleFailed'));
+      if (!isUserCancelledAuth(err.code)) {
+        setError(t(googleAuthErrorKey(err.code)));
       }
     } finally {
       setLoading(false);

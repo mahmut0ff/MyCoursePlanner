@@ -90,7 +90,13 @@
     "creating": "Аккаунт түзүлүүдө...",
     "signingIn": "Кирүүдө...",
     "continue": "Улантуу",
-    "createAccount": "Аккаунт түзүү"
+    "createAccount": "Аккаунт түзүү",
+    "googleFailed": "Google аркылуу кирүүдө ката кетти",
+    "googlePopupBlocked": "Браузер Google кирүү терезесин бөгеттеди. Кайра аракет кылыңыз.",
+    "googleAccountExists": "Бул email башка кирүү ыкмасы менен катталган. Email жана сырсөз менен кириңиз.",
+    "googleUnauthorizedDomain": "Бул домен Google аркылуу кирүүгө уруксат берилген эмес. Администраторго кайрылыңыз.",
+    "googleNotEnabled": "Google аркылуу кирүү учурда өчүрүлгөн.",
+    "networkError": "Тармак көйгөйү. Интернет байланышыңызды текшериңиз."
   },
   "dashboard": {
     "title": "Башкы бет",

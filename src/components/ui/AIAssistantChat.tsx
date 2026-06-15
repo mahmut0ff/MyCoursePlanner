@@ -99,7 +99,7 @@ export const AIAssistantChat: React.FC<Props> = ({ organizationId, settings }) =
       <button
         onClick={() => setIsOpen(true)}
         className="fixed bottom-6 right-6 w-14 h-14 bg-primary-600 hover:bg-primary-700 text-white rounded-full shadow-2xl flex items-center justify-center transition-transform hover:scale-105 z-50 animate-bounce"
-        aria-label="Open Planula AI"
+        aria-label="Open SabakHub AI"
       >
         <Sparkles className="w-7 h-7" />
       </button>
@@ -116,7 +116,7 @@ export const AIAssistantChat: React.FC<Props> = ({ organizationId, settings }) =
             <Sparkles className="w-5 h-5 text-white" />
           </div>
           <div>
-            <h3 className="font-semibold text-base leading-tight tracking-wide">Planula AI</h3>
+            <h3 className="font-semibold text-base leading-tight tracking-wide">SabakHub AI</h3>
             <p className="text-xs text-primary-100 flex items-center gap-1">
               <span className="relative flex h-2 w-2">
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>

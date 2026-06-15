@@ -9,7 +9,7 @@ module.exports = {
   theme: {
     extend: {
       colors: {
-        // Planula Senior brand palette — matches the old Flutter theme.
+        // SabakHub Senior brand palette — matches the old Flutter theme.
         brand: {
           DEFAULT: '#7C3AED', // vivid purple
           50:  '#F5F3FF',

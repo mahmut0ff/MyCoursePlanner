@@ -20,7 +20,7 @@ export const handler: Handler = async (event: HandlerEvent) => {
     const chatId = message.chat.id;
     const text = message.text;
     
-    // Determine if this is the Global Planula Bot or a Custom AI Bot
+    // Determine if this is the Global SabakHub Bot or a Custom AI Bot
     const queryOrgId = event.queryStringParameters?.orgId;
     let botToken = process.env.TELEGRAM_BOT_TOKEN || '8330921361:AAGmnzPz_womNW8dcoC2DNcTTpkXV8_5VaY';
     let isGlobalBot = true;
@@ -64,12 +64,12 @@ export const handler: Handler = async (event: HandlerEvent) => {
             await reply('✅ <b>Аккаунт привязан!</b>\n\nТеперь вы будете получать уведомления об оценках, домашних заданиях и оплатах прямо сюда.\n\nЧтобы отвязать — напишите /unlink');
             return { statusCode: 200, body: 'OK' };
           } else {
-            await reply('❌ Код недействителен или истёк. Попробуйте получить новый код в приложении Planula.');
+            await reply('❌ Код недействителен или истёк. Попробуйте получить новый код в приложении SabakHub.');
             return { statusCode: 200, body: 'OK' };
           }
         }
 
-        await reply('Здравствуйте! Этот бот предназначен для системных уведомлений Planula. Для привязки используйте специальную ссылку из веб-приложения.');
+        await reply('Здравствуйте! Этот бот предназначен для системных уведомлений SabakHub. Для привязки используйте специальную ссылку из веб-приложения.');
         return { statusCode: 200, body: 'OK' };
       }
 

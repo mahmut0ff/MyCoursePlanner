@@ -476,12 +476,12 @@ const LiveSessionDashboard: React.FC = () => {
                 </div>
               </div>
 
-              {/* ═══════ CENTRAL AREA: Planula! branding + Big Timer ═══════ */}
+              {/* ═══════ CENTRAL AREA: SabakHub! branding + Big Timer ═══════ */}
               <div className="flex-1 flex flex-col items-center justify-center gap-4 py-4">
-                {/* Planula! Brand Logo */}
+                {/* SabakHub! Brand Logo */}
                 <div className="planula-brand-container">
                   <h1 className="planula-brand-text">
-                    Planula<span className="planula-exclamation">!</span>
+                    SabakHub<span className="planula-exclamation">!</span>
                   </h1>
                   <div className="planula-brand-glow" />
                 </div>

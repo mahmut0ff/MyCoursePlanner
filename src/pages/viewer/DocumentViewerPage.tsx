@@ -29,7 +29,7 @@ const DocumentViewerPage: React.FC = () => {
 
   useEffect(() => {
     document.title = `${fileName} - Просмотр документа`;
-    return () => { document.title = 'Planula'; };
+    return () => { document.title = 'SabakHub'; };
   }, [fileName]);
 
   if (!fileUrl) {

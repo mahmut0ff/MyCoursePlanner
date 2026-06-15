@@ -1,4 +1,4 @@
-# Planula Senior (React Native)
+# SabakHub Senior (React Native)
 
 Mobile app for teachers. Replaces the old Flutter `teacher/` project.
 

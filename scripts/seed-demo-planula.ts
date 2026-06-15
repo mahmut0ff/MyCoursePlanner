@@ -73,7 +73,7 @@ async function createOrGetUser(u: any, orgId: string) {
   // 1. User -> Memberships (for auth & scope)
   await db.collection('users').doc(uid).collection('memberships').doc(orgId).set({
     organizationId: orgId,
-    organizationName: 'Planula',
+    organizationName: 'SabakHub',
     role: u.role,
     status: 'active',
     joinedAt: now(),
@@ -93,18 +93,18 @@ async function createOrGetUser(u: any, orgId: string) {
 }
 
 async function main() {
-  console.log('🚀 Setting up Planula presentation data...');
+  console.log('🚀 Setting up SabakHub presentation data...');
 
   const orgsRef = db.collection('organizations');
-  const snapshot = await orgsRef.where('name', '==', 'Planula').limit(1).get();
+  const snapshot = await orgsRef.where('name', '==', 'SabakHub').limit(1).get();
 
   if (snapshot.empty) {
-    console.error('❌ Planula organization not found! Run seed-planula.ts first.');
+    console.error('❌ SabakHub organization not found! Run seed-planula.ts first.');
     process.exit(1);
   }
 
   const orgId = snapshot.docs[0].id;
-  console.log(`📌 Found Planula: ${orgId}`);
+  console.log(`📌 Found SabakHub: ${orgId}`);
 
   // 1. Create Users
   console.log('👥 Creating Demo Users...');

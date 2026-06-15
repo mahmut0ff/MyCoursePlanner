@@ -1,5 +1,5 @@
 /**
- * Shared Planula types — used by web (apps root) and React Native apps
+ * Shared SabakHub types — used by web (apps root) and React Native apps
  * (apps/senior, apps/junior).
  *
  * Source of truth currently lives in src/types/index.ts (web). As we extract

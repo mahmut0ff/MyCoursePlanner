@@ -47,7 +47,7 @@ const JoinQuizPage: React.FC = () => {
           <div className="w-24 h-24 mx-auto rounded-2xl bg-white/10 backdrop-blur-md flex items-center justify-center mb-4 shadow-2xl border border-white/20">
             <Gamepad2 className="w-12 h-12 text-white" />
           </div>
-          <h1 className="kahoot-font text-3xl font-extrabold text-white tracking-tight">Planula Quiz</h1>
+          <h1 className="kahoot-font text-3xl font-extrabold text-white tracking-tight">SabakHub Quiz</h1>
         </div>
 
         {/* PIN Card */}

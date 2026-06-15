@@ -21,7 +21,7 @@ const messaging = firebase.messaging();
 
 messaging.onBackgroundMessage((payload) => {
   // Data-only messages: title/body are in payload.data, not payload.notification
-  const title = payload.data?.title || payload.notification?.title || 'Planula';
+  const title = payload.data?.title || payload.notification?.title || 'SabakHub';
   const body = payload.data?.body || payload.notification?.body || '';
   const link = payload.data?.link || '/';
   const icon = payload.data?.icon || '/icons/logo.png';

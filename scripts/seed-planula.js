@@ -19,21 +19,21 @@ const auth = getAuth(app);
 const now = () => new Date().toISOString();
 
 async function main() {
-  console.log('🌱 Starting Planula seeding...');
+  console.log('🌱 Starting SabakHub seeding...');
 
-  // 1. Find or create Planula organization
+  // 1. Find or create SabakHub organization
   const orgsRef = db.collection('organizations');
-  const snapshot = await orgsRef.where('name', '==', 'Planula').limit(1).get();
+  const snapshot = await orgsRef.where('name', '==', 'SabakHub').limit(1).get();
 
   let orgId;
   if (snapshot.empty) {
-    console.log('📌 Planula not found! Creating new org...');
+    console.log('📌 SabakHub not found! Creating new org...');
     const newOrgRef = orgsRef.doc();
     orgId = newOrgRef.id;
     await newOrgRef.set({
-      name: 'Planula',
+      name: 'SabakHub',
       slug: 'planula',
-      description: 'Современный учебный центр Planula. Мы предлагаем качественное образование по самым актуальным направлениям.',
+      description: 'Современный учебный центр SabakHub. Мы предлагаем качественное образование по самым актуальным направлениям.',
       city: 'Бишкек',
       country: 'Кыргызстан',
       address: 'ул. Киевская 120, 3 этаж',
@@ -44,14 +44,14 @@ async function main() {
     });
   } else {
     orgId = snapshot.docs[0].id;
-    console.log(`📌 Found Planula with ID: ${orgId}`);
+    console.log(`📌 Found SabakHub with ID: ${orgId}`);
   }
 
   // 2. Add realistic profile data
   console.log('📦 Updating profile data (photos, contacts, subjects)...');
   await db.collection('organizations').doc(orgId).update({
-    description: 'Инновационный учебный центр Planula. Мы предлагаем качественное гибридное образование по самым актуальным направлениям: Программирование, Дизайн, Английский язык и Робототехника. Наши студенты добиваются выдающихся результатов благодаря современным методикам и лучшим преподавателям-практикам.\n\nЗапишитесь на пробное занятие и начните свой путь в IT вместе с нами!',
-    logo: 'https://api.dicebear.com/7.x/shapes/svg?seed=Planula&backgroundColor=b6e3f4',
+    description: 'Инновационный учебный центр SabakHub. Мы предлагаем качественное гибридное образование по самым актуальным направлениям: Программирование, Дизайн, Английский язык и Робототехника. Наши студенты добиваются выдающихся результатов благодаря современным методикам и лучшим преподавателям-практикам.\n\nЗапишитесь на пробное занятие и начните свой путь в IT вместе с нами!',
+    logo: 'https://api.dicebear.com/7.x/shapes/svg?seed=SabakHub&backgroundColor=b6e3f4',
     subjects: ['Программирование', 'Веб-разработка', 'Дизайн', 'Английский', 'Математика', 'Мобильная разработка'],
     contactPhone: '+996 555 123 456',
     contactEmail: 'hello@planula.kg',
@@ -157,7 +157,7 @@ async function main() {
     await db.collection('courses').add(c);
   }
 
-  console.log('✅ Planula seeded successfully!');
+  console.log('✅ SabakHub seeded successfully!');
 }
 
 main().catch((err) => {

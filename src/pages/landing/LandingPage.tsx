@@ -169,8 +169,8 @@ const LandingPage: React.FC = () => {
  <nav className="fixed top-0 left-0 right-0 z-50 bg-white/80 backdrop-blur-xl border-b border-slate-200/50 ">
  <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
  <Link to="/" className="flex items-center gap-2.5">
- <img src="/icons/logo.png" alt="Planula" className="h-8 w-auto object-contain" />
- <span className="font-bold text-xl tracking-tight">Planula</span>
+ <img src="/icons/logo.png" alt="SabakHub" className="h-8 w-auto object-contain" />
+ <span className="font-bold text-xl tracking-tight">SabakHub</span>
  </Link>
  <div className="hidden md:flex items-center gap-8">
  {navItems.map(item => (
@@ -263,7 +263,7 @@ const LandingPage: React.FC = () => {
         <div>
           <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-primary-500/10 border border-primary-500/20 rounded-full text-sm font-medium text-primary-300 mb-6">
             <Sparkles className="w-4 h-4" />
-            Planula AI
+            SabakHub AI
           </div>
           <h2 className="text-4xl md:text-5xl font-extrabold text-white mb-6 leading-tight">
             {t('landing.aiSecTitlePre')}<span className="bg-gradient-to-r from-violet-400 to-primary-400 bg-clip-text text-transparent">{t('landing.aiSecTitleHighlight')}</span>
@@ -469,7 +469,7 @@ const LandingPage: React.FC = () => {
     </div>
   </section>
 
-  {/* ═══ Who Uses Planula? (Target Niches) ═══ */}
+  {/* ═══ Who Uses SabakHub? (Target Niches) ═══ */}
   <section className="py-24 px-6 bg-white">
     <div className="max-w-7xl mx-auto">
       <div className="text-center mb-16">
@@ -595,8 +595,8 @@ const LandingPage: React.FC = () => {
  {/* Brand */}
  <div className="md:col-span-1">
  <div className="flex items-center gap-2.5 mb-4">
- <img src="/icons/logo.png" alt="Planula" className="h-8 w-auto object-contain" />
- <span className="font-bold text-xl tracking-tight">Planula</span>
+ <img src="/icons/logo.png" alt="SabakHub" className="h-8 w-auto object-contain" />
+ <span className="font-bold text-xl tracking-tight">SabakHub</span>
  </div>
  <p className="text-sm text-slate-400 leading-relaxed mb-4">{t('landing.footerDesc')}</p>
  <div className="flex gap-3">
@@ -646,7 +646,7 @@ const LandingPage: React.FC = () => {
  </div>
  {/* Legal */}
  <div className="border-t border-white/10 pt-6 flex flex-col md:flex-row items-center justify-between gap-6">
- <p className="text-sm text-slate-500 text-center md:text-left">&copy; {new Date().getFullYear()} Planula. {t('landing.rights')}</p>
+ <p className="text-sm text-slate-500 text-center md:text-left">&copy; {new Date().getFullYear()} SabakHub. {t('landing.rights')}</p>
  <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-4">
  <Link to="/privacy" className="text-sm text-slate-500 hover:text-white transition-colors text-center">{t('landing.footerPrivacy')}</Link>
  <Link to="/terms" className="text-sm text-slate-500 hover:text-white transition-colors text-center">{t('landing.footerTerms')}</Link>

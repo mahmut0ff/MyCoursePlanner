@@ -1,6 +1,6 @@
 {
-  "name": "Planula",
-  "short_name": "Planula",
+  "name": "SabakHub",
+  "short_name": "SabakHub",
   "description": "Education Management Platform — Lessons, Exams, AI Feedback",
   "start_url": "/dashboard",
   "scope": "/",

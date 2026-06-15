@@ -1,4 +1,4 @@
-# MyCoursePlan — Education Management Platform
+# SabakHub — Education Management Platform
 
 A modern MVP platform for managing lesson plans and running exams in an offline educational center.
 

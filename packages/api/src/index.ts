@@ -1,5 +1,5 @@
 /**
- * Shared HTTP client for Planula Netlify Functions.
+ * Shared HTTP client for SabakHub Netlify Functions.
  *
  * Environment-agnostic: caller supplies the base URL and a way to fetch the
  * current Firebase ID token. The web app and the React Native apps each get

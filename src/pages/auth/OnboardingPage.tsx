@@ -218,7 +218,7 @@ const OnboardingPage: React.FC = () => {
           {/* Logo */}
           <div className="text-center mb-6">
             <div className="inline-flex flex-col items-center">
-              <img src="/icons/logo.png" alt="Planula" className="h-14 w-auto object-contain mb-4" />
+              <img src="/icons/logo.png" alt="SabakHub" className="h-14 w-auto object-contain mb-4" />
               <div className="flex items-center gap-2 mb-2">
                 <div className="w-8 h-8 rounded-full bg-primary-100 flex items-center justify-center text-primary-700 font-bold overflow-hidden">
                     {firebaseUser?.photoURL ? 

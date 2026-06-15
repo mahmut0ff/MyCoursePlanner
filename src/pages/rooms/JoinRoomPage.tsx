@@ -46,7 +46,7 @@ const JoinRoomPage: React.FC = () => {
           <div className="w-20 h-20 mx-auto rounded-2xl bg-white/40 dark:bg-black/40 backdrop-blur-xl flex items-center justify-center mb-4 shadow-xl border border-white/50 dark:border-white/10">
             <Edit3 className="w-10 h-10 text-primary-700 dark:text-primary-300" />
           </div>
-          <h1 className="text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight">Planula Exam</h1>
+          <h1 className="text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight">SabakHub Exam</h1>
         </div>
 
         {/* Input Card */}
@@ -86,7 +86,7 @@ const JoinRoomPage: React.FC = () => {
         
         {/* Footer text */}
         <div className="text-center mt-6 text-slate-500 dark:text-slate-400 text-xs font-medium">
-          Protected by Planula Secure Assessment
+          Protected by SabakHub Secure Assessment
         </div>
       </div>
     </div>

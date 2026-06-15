@@ -75,7 +75,7 @@ export async function generateExamAIFeedback(
     ? `,\n  "categoryScores": { "название_категории": "одна из [excellent, good, average, poor]" },\n  "categoryInsights": { "название_категории": "краткое объяснение, почему выставлена такая оценка" }`
     : '';
 
-  const prompt = `Ты — образовательный ИИ-ассистент платформы Planula. Пользователь только что завершил вступительный тест/экзамен.
+  const prompt = `Ты — образовательный ИИ-ассистент платформы SabakHub. Пользователь только что завершил вступительный тест/экзамен.
 
 Экзамен: "${attempt.examTitle}"
 Результат: ${attempt.percentage}% (${attempt.score}/${attempt.totalPoints} баллов). ${attempt.passed ? 'Экзамен сдан.' : 'Экзамен НЕ сдан.'}

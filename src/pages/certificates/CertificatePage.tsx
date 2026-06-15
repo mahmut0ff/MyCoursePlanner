@@ -91,7 +91,7 @@ const CertificatePage: React.FC = () => {
     if (!cert) return;
     const certUrl = window.location.href;
     const title = encodeURIComponent(cert.examTitle);
-    const org = encodeURIComponent(cert.organizationName || 'MyCoursePlan');
+    const org = encodeURIComponent(cert.organizationName || 'SabakHub');
     const certIdArg = encodeURIComponent(cert.certificateNumber);
     
     // Constructing LinkedIn Add Certificate URL

@@ -1,5 +1,5 @@
 // ============================================================
-// Planula — TypeScript Interfaces & Types
+// SabakHub — TypeScript Interfaces & Types
 // Multi-Tenant SaaS Platform
 // ============================================================
 

@@ -149,7 +149,7 @@ const handler: Handler = async (event: HandlerEvent) => {
       ? `,\n  "categoryScores": { "название_категории": "одна из [excellent, good, average, poor]" },\n  "categoryInsights": { "название_категории": "краткое объяснение, почему выставлена такая оценка" }`
       : '';
 
-    const prompt = `Ты — образовательный ИИ-ассистент платформы Planula. Студент только что завершил экзамен.
+    const prompt = `Ты — образовательный ИИ-ассистент платформы SabakHub. Студент только что завершил экзамен.
 
 Экзамен: "${attempt.examTitle}"
 Результат: ${attempt.percentage}% (${attempt.score}/${attempt.totalPoints} баллов). ${attempt.passed ? 'Экзамен сдан.' : 'Экзамен НЕ сдан.'}

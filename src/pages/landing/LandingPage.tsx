@@ -1,664 +1,646 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../contexts/AuthContext';
 import LanguageSwitcher from '../../components/LanguageSwitcher';
 import RequestDemoModal from '../../components/landing/RequestDemoModal';
 import {
- BookOpen, ClipboardList, Radio, Brain, BarChart3,
- Shield, Zap, Check, ArrowRight, ChevronDown,
- Globe, Sparkles, Crown, Menu, X, Users,
- MessageCircle, Mail, MapPin, Phone, Award,
- Layers, Lock, FileText, Target, Gamepad2,
- Bot, PenTool, LayoutGrid, Database, Briefcase,
- CalendarClock, CheckSquare, UploadCloud,
- Laptop, GraduationCap, Building2
+  BookOpen, ClipboardList, Radio, Brain, BarChart3,
+  Shield, Zap, Check, ArrowRight, ChevronDown,
+  Globe, Sparkles, Crown, Menu, X, Users,
+  MessageCircle, Mail, MapPin, Phone, Award,
+  Layers, Lock, FileText, Target, Gamepad2,
+  Bot, PenTool, LayoutGrid, Database, Briefcase,
+  CalendarClock, CheckSquare, UploadCloud,
+  Laptop, GraduationCap, Building2,
 } from 'lucide-react';
 
-/* ──────────────────────────────────────────
- MAIN LANDING PAGE
- ────────────────────────────────────────── */
+/* ──────────────────────────────────────────────────────────────
+   Small shared building blocks — one source of truth for rhythm,
+   so every section lines up instead of each doing its own thing.
+   ────────────────────────────────────────────────────────────── */
+
+const Eyebrow: React.FC<{ children: React.ReactNode; tone?: 'light' | 'dark' }> = ({ children, tone = 'light' }) => (
+  <p className={`text-[0.8rem] font-semibold uppercase tracking-[0.18em] ${tone === 'dark' ? 'text-primary-300' : 'text-primary-600'}`}>
+    {children}
+  </p>
+);
+
+const SectionHead: React.FC<{
+  eyebrow: string;
+  title: string;
+  subtitle?: string;
+  tone?: 'light' | 'dark';
+  align?: 'left' | 'center';
+}> = ({ eyebrow, title, subtitle, tone = 'light', align = 'center' }) => (
+  <div className={`max-w-2xl ${align === 'center' ? 'mx-auto text-center' : ''}`}>
+    <Eyebrow tone={tone}>{eyebrow}</Eyebrow>
+    <h2 className={`mt-3 text-3xl sm:text-4xl font-bold tracking-tight ${tone === 'dark' ? 'text-white' : 'text-slate-900'}`}>
+      {title}
+    </h2>
+    {subtitle && (
+      <p className={`mt-4 text-lg leading-relaxed ${tone === 'dark' ? 'text-slate-400' : 'text-slate-600'}`}>
+        {subtitle}
+      </p>
+    )}
+  </div>
+);
+
 const LandingPage: React.FC = () => {
- const { t } = useTranslation();
+  const { t } = useTranslation();
   const { firebaseUser: user } = useAuth();
- const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
- const [openFaqIndex, setOpenFaqIndex] = useState<number | null>(null);
- const [demoOpen, setDemoOpen] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [openFaqIndex, setOpenFaqIndex] = useState<number | null>(0);
+  const [demoOpen, setDemoOpen] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
 
- /* ── Feature categories ── */
- const featureCategories = [
- {
- id: 'core',
- icon: Briefcase,
- title: t('landing.catCore'),
- items: [
- { icon: Briefcase, label: t('landing.coreMultiTenant') },
- { icon: Shield, label: t('landing.coreRbac') },
- { icon: Zap, label: t('landing.coreBilling') },
- { icon: Lock, label: t('landing.coreAudit') },
- ],
- },
- {
- id: 'learning',
- icon: BookOpen,
- title: t('landing.catLearning'),
- items: [
- { icon: BookOpen, label: t('landing.learnCourseBuilder') },
- { icon: PenTool, label: t('landing.learnRichEditor') },
- { icon: BarChart3, label: t('landing.learnProgress') },
- { icon: FileText, label: t('landing.learnDiary') },
- ],
- },
- {
- id: 'exams',
- icon: ClipboardList,
- title: t('landing.catExams'),
- items: [
- { icon: ClipboardList, label: t('landing.examBuilder') },
- { icon: LayoutGrid, label: t('landing.examQuestionTypes') },
- { icon: Radio, label: t('landing.examRooms') },
- { icon: Shield, label: t('landing.examAntiCheat') },
- ],
- },
- {
- id: 'ai',
- icon: Bot,
- title: t('landing.catAi'),
- items: [
- { icon: Bot, label: t('landing.aiTelegramBot') },
- { icon: PenTool, label: t('landing.aiGenerateLessons') },
- { icon: FileText, label: t('landing.aiGenerateTests') },
- { icon: Sparkles, label: t('landing.aiEvaluate') },
- ],
- },
- {
- id: 'engagement',
- icon: Gamepad2,
- title: t('landing.catEngagement'),
- items: [
- { icon: Target, label: t('landing.engXpLevels') },
- { icon: Award, label: t('landing.engBadges') },
- { icon: Crown, label: t('landing.engLeaderboards') },
- { icon: Gamepad2, label: t('landing.engQuiz') },
- ],
- },
- {
- id: 'certificates',
- icon: FileText,
- title: t('landing.catCertificates'),
- items: [
- { icon: FileText, label: t('landing.certPdf') },
- { icon: Globe, label: t('landing.certQr') },
- { icon: Layers, label: t('landing.certMultilang') },
- ],
- },
- {
- id: 'communication',
- icon: MessageCircle,
- title: t('landing.catComm'),
- items: [
- { icon: MessageCircle, label: t('landing.commGroup') },
- { icon: Users, label: t('landing.commDirect') },
- { icon: Radio, label: t('landing.commRealtime') },
- ],
- },
- {
- id: 'analytics',
- icon: BarChart3,
- title: t('landing.catAnalytics'),
- items: [
- { icon: BarChart3, label: t('landing.analyticsDashboard') },
- { icon: Users, label: t('landing.analyticsTeacher') },
- { icon: Layers, label: t('landing.analyticsSaas') },
- ],
- },
- ];
+  useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > 8);
+    onScroll();
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => window.removeEventListener('scroll', onScroll);
+  }, []);
 
- /* ── Pricing plans ── */
- const plans = [
- {
- id: 'basic', name: t('landing.planBasic'), price: 1990, popular: false, icon: BookOpen,
- features: [t('landing.planBasicF1'), t('landing.planBasicF2'), t('landing.planBasicF3'), t('landing.planBasicF4')],
- },
- {
- id: 'pro', name: t('landing.planPro'), price: 4990, popular: true, icon: Crown,
- features: [t('landing.planProF1'), t('landing.planProF2'), t('landing.planProF3'), t('landing.planProF4'), t('landing.planProF5')],
- },
- {
- id: 'enterprise', name: t('landing.planEnt'), price: 14900, popular: false, icon: Shield,
- features: [t('landing.planEntF1'), t('landing.planEntF2'), t('landing.planEntF3'), t('landing.planEntF4'), t('landing.planEntF5')],
- },
- ];
+  /* ── Feature categories ── */
+  const featureCategories = [
+    {
+      id: 'core', icon: Briefcase, title: t('landing.catCore'),
+      items: [
+        { icon: Briefcase, label: t('landing.coreMultiTenant') },
+        { icon: Shield, label: t('landing.coreRbac') },
+        { icon: Zap, label: t('landing.coreBilling') },
+        { icon: Lock, label: t('landing.coreAudit') },
+      ],
+    },
+    {
+      id: 'learning', icon: BookOpen, title: t('landing.catLearning'),
+      items: [
+        { icon: BookOpen, label: t('landing.learnCourseBuilder') },
+        { icon: PenTool, label: t('landing.learnRichEditor') },
+        { icon: BarChart3, label: t('landing.learnProgress') },
+        { icon: FileText, label: t('landing.learnDiary') },
+      ],
+    },
+    {
+      id: 'exams', icon: ClipboardList, title: t('landing.catExams'),
+      items: [
+        { icon: ClipboardList, label: t('landing.examBuilder') },
+        { icon: LayoutGrid, label: t('landing.examQuestionTypes') },
+        { icon: Radio, label: t('landing.examRooms') },
+        { icon: Shield, label: t('landing.examAntiCheat') },
+      ],
+    },
+    {
+      id: 'ai', icon: Bot, title: t('landing.catAi'),
+      items: [
+        { icon: Bot, label: t('landing.aiTelegramBot') },
+        { icon: PenTool, label: t('landing.aiGenerateLessons') },
+        { icon: FileText, label: t('landing.aiGenerateTests') },
+        { icon: Sparkles, label: t('landing.aiEvaluate') },
+      ],
+    },
+    {
+      id: 'engagement', icon: Gamepad2, title: t('landing.catEngagement'),
+      items: [
+        { icon: Target, label: t('landing.engXpLevels') },
+        { icon: Award, label: t('landing.engBadges') },
+        { icon: Crown, label: t('landing.engLeaderboards') },
+        { icon: Gamepad2, label: t('landing.engQuiz') },
+      ],
+    },
+    {
+      id: 'certificates', icon: FileText, title: t('landing.catCertificates'),
+      items: [
+        { icon: FileText, label: t('landing.certPdf') },
+        { icon: Globe, label: t('landing.certQr') },
+        { icon: Layers, label: t('landing.certMultilang') },
+      ],
+    },
+    {
+      id: 'communication', icon: MessageCircle, title: t('landing.catComm'),
+      items: [
+        { icon: MessageCircle, label: t('landing.commGroup') },
+        { icon: Users, label: t('landing.commDirect') },
+        { icon: Radio, label: t('landing.commRealtime') },
+      ],
+    },
+    {
+      id: 'analytics', icon: BarChart3, title: t('landing.catAnalytics'),
+      items: [
+        { icon: BarChart3, label: t('landing.analyticsDashboard') },
+        { icon: Users, label: t('landing.analyticsTeacher') },
+        { icon: Layers, label: t('landing.analyticsSaas') },
+      ],
+    },
+  ];
 
- /* ── Target Niches ── */
- const targetNiches = [
-  { id: 'it', icon: Laptop, title: t('landing.niche1Title'), desc: t('landing.niche1Desc') },
-  { id: 'lang', icon: Globe, title: t('landing.niche2Title'), desc: t('landing.niche2Desc') },
-  { id: 'tutor', icon: GraduationCap, title: t('landing.niche3Title'), desc: t('landing.niche3Desc') },
-  { id: 'corporate', icon: Building2, title: t('landing.niche4Title'), desc: t('landing.niche4Desc') },
-  { id: 'studio', icon: LayoutGrid, title: t('landing.niche5Title'), desc: t('landing.niche5Desc') },
-  { id: 'org', icon: Briefcase, title: t('landing.niche6Title'), desc: t('landing.niche6Desc') }
- ];
+  /* ── Pricing plans ── */
+  const plans = [
+    {
+      id: 'basic', name: t('landing.planBasic'), price: 1990, popular: false, icon: BookOpen,
+      features: [t('landing.planBasicF1'), t('landing.planBasicF2'), t('landing.planBasicF3'), t('landing.planBasicF4')],
+    },
+    {
+      id: 'pro', name: t('landing.planPro'), price: 4990, popular: true, icon: Crown,
+      features: [t('landing.planProF1'), t('landing.planProF2'), t('landing.planProF3'), t('landing.planProF4'), t('landing.planProF5')],
+    },
+    {
+      id: 'enterprise', name: t('landing.planEnt'), price: 14900, popular: false, icon: Shield,
+      features: [t('landing.planEntF1'), t('landing.planEntF2'), t('landing.planEntF3'), t('landing.planEntF4'), t('landing.planEntF5')],
+    },
+  ];
 
- /* ── FAQ ── */
- const faqs = [
- { q: t('landing.faq1Q'), a: t('landing.faq1A') },
- { q: t('landing.faq2Q'), a: t('landing.faq2A') },
- { q: t('landing.faq3Q'), a: t('landing.faq3A') },
- { q: t('landing.faq4Q'), a: t('landing.faq4A') },
- { q: t('landing.faq5Q'), a: t('landing.faq5A') },
- ];
+  /* ── Target niches ── */
+  const targetNiches = [
+    { id: 'it', icon: Laptop, title: t('landing.niche1Title'), desc: t('landing.niche1Desc') },
+    { id: 'lang', icon: Globe, title: t('landing.niche2Title'), desc: t('landing.niche2Desc') },
+    { id: 'tutor', icon: GraduationCap, title: t('landing.niche3Title'), desc: t('landing.niche3Desc') },
+    { id: 'corporate', icon: Building2, title: t('landing.niche4Title'), desc: t('landing.niche4Desc') },
+    { id: 'studio', icon: LayoutGrid, title: t('landing.niche5Title'), desc: t('landing.niche5Desc') },
+    { id: 'org', icon: Briefcase, title: t('landing.niche6Title'), desc: t('landing.niche6Desc') },
+  ];
 
+  /* ── FAQ ── */
+  const faqs = [
+    { q: t('landing.faq1Q'), a: t('landing.faq1A') },
+    { q: t('landing.faq2Q'), a: t('landing.faq2A') },
+    { q: t('landing.faq3Q'), a: t('landing.faq3A') },
+    { q: t('landing.faq4Q'), a: t('landing.faq4A') },
+    { q: t('landing.faq5Q'), a: t('landing.faq5A') },
+  ];
 
- const navItems = [
- { label: t('landing.navFeatures'), href: '#features' },
- { label: t('landing.navPricing'), href: '#pricing' },
- { label: t('landing.navFaq'), href: '#faq' },
- ];
+  const navItems = [
+    { label: t('landing.navFeatures'), href: '#features' },
+    { label: t('landing.navPricing'), href: '#pricing' },
+    { label: t('landing.navFaq'), href: '#faq' },
+  ];
+  const navLinks = [
+    { label: t('landing.navFeaturesPage'), to: '/features' },
+    { label: t('landing.navAbout'), to: '/about' },
+    { label: t('landing.navContact'), to: '/contact' },
+  ];
 
- const navLinks = [
- { label: t('landing.navFeaturesPage'), to: '/features' },
- { label: t('landing.navAbout'), to: '/about' },
- { label: t('landing.navContact'), to: '/contact' },
- ];
+  return (
+    <div className="min-h-screen bg-white text-slate-900 antialiased selection:bg-primary-600 selection:text-white">
 
- return (
- <div className="min-h-screen bg-white text-slate-900 transition-colors">
-
- {/* ═══ Navbar ═══ */}
- <nav className="fixed top-0 left-0 right-0 z-50 bg-white/80 backdrop-blur-xl border-b border-slate-200/50 ">
- <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
- <Link to="/" className="flex items-center gap-2.5">
- <img src="/icons/logo.png" alt="SabakHub" className="h-8 w-auto object-contain" />
- <span className="font-bold text-xl tracking-tight">SabakHub</span>
- </Link>
- <div className="hidden md:flex items-center gap-8">
- {navItems.map(item => (
- <a key={item.href} href={item.href} className="text-sm text-slate-600 hover:text-slate-900 transition-colors">{item.label}</a>
- ))}
- {navLinks.map(item => (
- <Link key={item.to} to={item.to} className="text-sm text-slate-600 hover:text-slate-900 transition-colors">{item.label}</Link>
- ))}
- </div>
- <div className="flex items-center gap-3">
- <LanguageSwitcher />
- {user ? (
-            <Link to="/dashboard" className="hidden sm:inline-block text-sm font-semibold text-white bg-primary-600 hover:bg-primary-700 px-5 py-2.5 rounded-xl transition-colors shadow-lg shadow-primary-500/20">{t('nav.dashboard') || 'Dashboard'}</Link>
-          ) : (
-            <>
-              <Link to="/login" className="hidden sm:inline-block text-sm font-medium text-slate-600 hover:text-slate-900 px-4 py-2 transition-colors">{t('auth.login')}</Link>
-              <Link to="/register" className="hidden sm:inline-block text-sm font-semibold text-white bg-primary-600 hover:bg-primary-700 px-5 py-2.5 rounded-xl transition-colors shadow-lg shadow-primary-500/20">{t('landing.heroCta')}</Link>
-            </>
-          )}
- <button onClick={() => setMobileMenuOpen(!mobileMenuOpen)} className="md:hidden p-2 text-slate-600 ">
- {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
- </button>
- </div>
- </div>
- {mobileMenuOpen && (
- <div className="md:hidden bg-white border-t border-slate-200 px-6 py-4 space-y-3">
- {navItems.map(item => (
- <a key={item.href} href={item.href} onClick={() => setMobileMenuOpen(false)} className="block text-sm text-slate-600 py-2">{item.label}</a>
- ))}
- {navLinks.map(item => (
- <Link key={item.to} to={item.to} onClick={() => setMobileMenuOpen(false)} className="block text-sm text-slate-600 py-2">{item.label}</Link>
- ))}
- <div className="flex gap-3 pt-2">
- {user ? (
-                <Link to="/dashboard" onClick={() => setMobileMenuOpen(false)} className="flex-1 text-center text-sm font-semibold text-white bg-primary-600 rounded-xl py-2.5 shadow-lg shadow-primary-500/20">{t('nav.dashboard') || 'Dashboard'}</Link>
+      {/* ═══ Navbar ═══ */}
+      <nav className={`fixed inset-x-0 top-0 z-50 transition-colors duration-300 ${scrolled ? 'bg-white/80 backdrop-blur-xl border-b border-slate-200/70' : 'bg-transparent border-b border-transparent'}`}>
+        <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
+          <Link to="/" className="flex items-center gap-2.5">
+            <img src="/icons/logo.png" alt="SabakHub" className="h-8 w-8 rounded-lg" />
+            <span className="font-semibold text-lg tracking-tight">SabakHub</span>
+          </Link>
+          <div className="hidden md:flex items-center gap-1">
+            {navItems.map(item => (
+              <a key={item.href} href={item.href} className="px-3 py-2 text-sm font-medium text-slate-600 hover:text-slate-900 rounded-lg hover:bg-slate-100/70 transition-colors">{item.label}</a>
+            ))}
+            {navLinks.map(item => (
+              <Link key={item.to} to={item.to} className="px-3 py-2 text-sm font-medium text-slate-600 hover:text-slate-900 rounded-lg hover:bg-slate-100/70 transition-colors">{item.label}</Link>
+            ))}
+          </div>
+          <div className="flex items-center gap-2">
+            <LanguageSwitcher />
+            {user ? (
+              <Link to="/dashboard" className="hidden sm:inline-flex items-center text-sm font-semibold text-white bg-slate-900 hover:bg-slate-800 px-4 py-2 rounded-lg transition-colors">{t('nav.dashboard') || 'Dashboard'}</Link>
+            ) : (
+              <>
+                <Link to="/login" className="hidden sm:inline-flex items-center text-sm font-medium text-slate-600 hover:text-slate-900 px-3 py-2 transition-colors">{t('auth.login')}</Link>
+                <Link to="/register" className="hidden sm:inline-flex items-center text-sm font-semibold text-white bg-slate-900 hover:bg-slate-800 px-4 py-2 rounded-lg transition-colors">{t('landing.heroCta')}</Link>
+              </>
+            )}
+            <button onClick={() => setMobileMenuOpen(!mobileMenuOpen)} className="md:hidden p-2 -mr-2 text-slate-700">
+              {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+            </button>
+          </div>
+        </div>
+        {mobileMenuOpen && (
+          <div className="md:hidden bg-white border-t border-slate-200 px-6 py-4 space-y-1">
+            {navItems.map(item => (
+              <a key={item.href} href={item.href} onClick={() => setMobileMenuOpen(false)} className="block text-sm font-medium text-slate-600 py-2.5">{item.label}</a>
+            ))}
+            {navLinks.map(item => (
+              <Link key={item.to} to={item.to} onClick={() => setMobileMenuOpen(false)} className="block text-sm font-medium text-slate-600 py-2.5">{item.label}</Link>
+            ))}
+            <div className="flex gap-3 pt-3">
+              {user ? (
+                <Link to="/dashboard" onClick={() => setMobileMenuOpen(false)} className="flex-1 text-center text-sm font-semibold text-white bg-slate-900 rounded-lg py-2.5">{t('nav.dashboard') || 'Dashboard'}</Link>
               ) : (
                 <>
-                  <Link to="/login" onClick={() => setMobileMenuOpen(false)} className="flex-1 text-center text-sm font-medium text-slate-600 border border-slate-200 rounded-xl py-2.5">{t('auth.login')}</Link>
-                  <Link to="/register" onClick={() => setMobileMenuOpen(false)} className="flex-1 text-center text-sm font-semibold text-white bg-primary-600 rounded-xl py-2.5">{t('landing.heroCta')}</Link>
+                  <Link to="/login" onClick={() => setMobileMenuOpen(false)} className="flex-1 text-center text-sm font-medium text-slate-700 border border-slate-200 rounded-lg py-2.5">{t('auth.login')}</Link>
+                  <Link to="/register" onClick={() => setMobileMenuOpen(false)} className="flex-1 text-center text-sm font-semibold text-white bg-slate-900 rounded-lg py-2.5">{t('landing.heroCta')}</Link>
                 </>
               )}
- </div>
- </div>
- )}
- </nav>
-
- {/* ═══ Hero ═══ */}
- <section className="pt-32 pb-10 px-6 relative overflow-hidden">
- <div className="absolute top-20 left-[-200px] w-[500px] h-[500px] rounded-full bg-primary-100/50 blur-3xl" />
- <div className="absolute bottom-[-100px] right-[-150px] w-[400px] h-[400px] rounded-full bg-violet-100/50 blur-3xl" />
-
- <div className="max-w-7xl mx-auto relative z-10">
- <div className="text-center max-w-3xl mx-auto">
- <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-primary-50 border border-primary-200 rounded-full text-sm font-medium text-primary-700 mb-6">
- <Sparkles className="w-4 h-4" />
- {t('landing.heroBadge')}
- </div>
- <h1 className="text-4xl sm:text-5xl md:text-6xl font-extrabold leading-tight mb-6 tracking-tight bg-gradient-to-r from-slate-900 via-slate-800 to-slate-700 bg-clip-text text-transparent">
- {t('landing.heroTitle')}
- </h1>
- <p className="text-lg text-slate-500 mb-4 leading-relaxed max-w-2xl mx-auto">
- {t('landing.heroSubtitle')}
- </p>
- <p className="text-sm text-slate-500 mb-10 font-medium tracking-wide">
- {t('landing.heroStack')}
- </p>
- <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
- <Link to={user ? "/dashboard" : "/register"} className="bg-primary-600 hover:bg-primary-700 text-white font-semibold px-8 py-3.5 rounded-xl text-base shadow-xl shadow-primary-500/25 hover:shadow-primary-500/40 transition-all flex items-center gap-2 group">
-                {user ? (t('nav.dashboard') || 'Dashboard') : t('landing.heroCta')}
-                <ArrowRight className="w-5 h-5 group-hover:translate-x-0.5 transition-transform" />
-              </Link>
- <button type="button" onClick={() => setDemoOpen(true)} className="text-slate-600 hover:text-slate-900 font-medium px-6 py-3.5 rounded-xl border border-slate-200 hover:border-slate-300 transition-all flex items-center gap-2">
- {t('landing.heroDemo')}
- </button>
- </div>
- </div>
- </div>
- </section>
-
-
-
-  {/* ═══ AI Features Highlight (Tests) ═══ */}
-  <section className="py-24 px-6 relative overflow-hidden bg-slate-900 border-y border-slate-800">
-    <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-violet-600/20 rounded-full blur-[100px] pointer-events-none" />
-    <div className="absolute bottom-0 left-0 w-[500px] h-[500px] bg-primary-600/20 rounded-full blur-[100px] pointer-events-none" />
-    
-    <div className="max-w-4xl mx-auto relative z-10">
-      <div className="flex flex-col gap-10">
-        {/* Text Content */}
-        <div>
-          <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-primary-500/10 border border-primary-500/20 rounded-full text-sm font-medium text-primary-300 mb-6">
-            <Sparkles className="w-4 h-4" />
-            SabakHub AI
+            </div>
           </div>
-          <h2 className="text-4xl md:text-5xl font-extrabold text-white mb-6 leading-tight">
-            {t('landing.aiSecTitlePre')}<span className="bg-gradient-to-r from-violet-400 to-primary-400 bg-clip-text text-transparent">{t('landing.aiSecTitleHighlight')}</span>
-          </h2>
-          <p className="text-lg text-slate-400 mb-8 leading-relaxed">
-            {t('landing.aiSecSubtitle')}
+        )}
+      </nav>
+
+      {/* ═══ Hero ═══ */}
+      <section className="relative overflow-hidden px-6 pt-36 pb-20 sm:pt-40 sm:pb-28">
+        {/* fading grid — replaces the old blur blobs */}
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-0 -z-10 bg-[linear-gradient(to_right,#e2e8f01a_1px,transparent_1px),linear-gradient(to_bottom,#e2e8f01a_1px,transparent_1px)] bg-[size:56px_56px]"
+          style={{ WebkitMaskImage: 'radial-gradient(ellipse 70% 60% at 50% 0%, #000 55%, transparent 100%)', maskImage: 'radial-gradient(ellipse 70% 60% at 50% 0%, #000 55%, transparent 100%)' }}
+        />
+        <div aria-hidden className="pointer-events-none absolute left-1/2 top-0 -z-10 h-[420px] w-[820px] -translate-x-1/2 rounded-full bg-primary-200/30 blur-[120px]" />
+
+        <div className="max-w-3xl mx-auto text-center">
+          <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white/70 px-3.5 py-1.5 text-sm font-medium text-slate-700 shadow-sm backdrop-blur">
+            <Sparkles className="w-4 h-4 text-primary-600" />
+            {t('landing.heroBadge')}
+          </div>
+          <h1 className="mt-6 text-balance text-4xl sm:text-5xl md:text-6xl font-bold tracking-tight leading-[1.05] text-slate-900">
+            {t('landing.heroTitle')}
+          </h1>
+          <p className="mt-6 text-lg sm:text-xl leading-relaxed text-slate-600 max-w-2xl mx-auto">
+            {t('landing.heroSubtitle')}
           </p>
-
-          <div className="space-y-6">
-            <div className="flex gap-4">
-              <div className="w-12 h-12 rounded-xl bg-violet-500/10 flex items-center justify-center shrink-0 border border-violet-500/20">
-                <Brain className="w-6 h-6 text-violet-400" />
-              </div>
-              <div>
-                <h3 className="text-xl font-bold text-white mb-2">{t('landing.aiSecF1Title')}</h3>
-                <p className="text-slate-400 leading-relaxed md:text-sm">{t('landing.aiSecF1Desc')}</p>
-              </div>
-            </div>
-            <div className="flex gap-4">
-              <div className="w-12 h-12 rounded-xl bg-primary-500/10 flex items-center justify-center shrink-0 border border-primary-500/20">
-                <Check className="w-6 h-6 text-primary-400" />
-              </div>
-              <div>
-                <h3 className="text-xl font-bold text-white mb-2">{t('landing.aiSecF2Title')}</h3>
-                <p className="text-slate-400 leading-relaxed md:text-sm">{t('landing.aiSecF2Desc')}</p>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  {/* ═══ AI Telegram Bot Highlight ═══ */}
-  <section className="py-24 px-6 relative overflow-hidden bg-white border-b border-slate-100">
-    <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-primary-600/5 rounded-full blur-[100px] pointer-events-none" />
-    <div className="absolute bottom-0 left-0 w-[500px] h-[500px] bg-violet-600/5 rounded-full blur-[100px] pointer-events-none" />
-
-    <div className="max-w-4xl mx-auto relative z-10">
-      <div className="flex flex-col gap-10">
-
-        {/* Text Content */}
-        <div>
-          <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-primary-50 border border-primary-100 rounded-full text-sm font-medium text-primary-600 mb-6">
-            <MessageCircle className="w-4 h-4" />
-            {t('landing.tgSecBadge')}
-          </div>
-          <h2 className="text-4xl md:text-5xl font-extrabold text-slate-900 mb-6 leading-tight">
-            {t('landing.tgSecTitle')}
-          </h2>
-          <p className="text-lg text-slate-500 mb-8 leading-relaxed">
-            {t('landing.tgSecSubtitle')}
-          </p>
-
-          <div className="space-y-6">
-            <div className="flex gap-4">
-              <div className="w-12 h-12 rounded-xl bg-primary-50 flex items-center justify-center shrink-0 border border-primary-100">
-                <Database className="w-6 h-6 text-primary-600" />
-              </div>
-              <div>
-                <h3 className="text-xl font-bold text-slate-900 mb-2">{t('landing.tgSecF1Title')}</h3>
-                <p className="text-slate-500 leading-relaxed md:text-sm">{t('landing.tgSecF1Desc')}</p>
-              </div>
-            </div>
-            <div className="flex gap-4">
-              <div className="w-12 h-12 rounded-xl bg-violet-50 flex items-center justify-center shrink-0 border border-violet-100">
-                <Shield className="w-6 h-6 text-violet-600" />
-              </div>
-              <div>
-                <h3 className="text-xl font-bold text-slate-900 mb-2">{t('landing.tgSecF2Title')}</h3>
-                <p className="text-slate-500 leading-relaxed md:text-sm">{t('landing.tgSecF2Desc')}</p>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  {/* ═══ Features Grid ═══ */}
- <section id="features" className="py-20 px-6 bg-slate-50 ">
- <div className="max-w-7xl mx-auto">
- <div className="text-center mb-16">
- <h2 className="text-3xl md:text-4xl font-extrabold mb-4">{t('landing.featuresTitle')}</h2>
- <p className="text-lg text-slate-500 max-w-2xl mx-auto">{t('landing.featuresSubtitle')}</p>
- </div>
- <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
- {featureCategories.map((cat) => (
- <div key={cat.id} className="bg-white rounded-2xl p-6 border border-slate-100 hover:shadow-xl hover:shadow-slate-200/50 transition-all group">
- <div className="w-12 h-12 rounded-xl bg-primary-50 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
- <cat.icon className="w-6 h-6 text-primary-600" />
- </div>
- <h3 className="text-base font-bold mb-3">{cat.title}</h3>
- <ul className="space-y-2">
- {cat.items.map((item, j) => (
- <li key={j} className="flex items-center gap-2 text-sm text-slate-500 ">
- <item.icon className="w-4 h-4 text-slate-400 shrink-0" />
- {item.label}
- </li>
- ))}
- </ul>
- </div>
- ))}
- </div>
- </div>
- </section>
-
-  {/* ═══ Role: For Teachers & Managers ═══ */}
-  <section className="py-24 px-6 relative overflow-hidden bg-slate-900 border-y border-slate-800">
-    <div className="absolute top-[-100px] right-[-200px] w-[600px] h-[600px] bg-primary-600/20 rounded-full blur-[120px] pointer-events-none" />
-    <div className="max-w-4xl mx-auto relative z-10">
-      <div className="flex flex-col gap-10">
-        <div>
-          <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-primary-500/10 border border-primary-500/20 rounded-full text-sm font-medium text-primary-400 mb-6">
-            <Briefcase className="w-4 h-4" />
-            {t('landing.teachSecBadge')}
-          </div>
-          <h2 className="text-4xl md:text-5xl font-extrabold text-white mb-6 leading-tight">
-            {t('landing.teachSecTitle')}
-          </h2>
-          <p className="text-lg text-slate-400 mb-10 leading-relaxed">
-            {t('landing.teachSecSubtitle')}
-          </p>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-            <div className="bg-slate-800/50 p-5 rounded-2xl border border-slate-700/50 group hover:border-primary-400/50 transition-colors">
-              <CalendarClock className="w-8 h-8 text-primary-400 mb-4 group-hover:scale-110 transition-transform" />
-              <h4 className="text-white font-bold mb-2">{t('landing.teachCard1Title')}</h4>
-              <p className="text-sm text-slate-400">{t('landing.teachCard1Desc')}</p>
-            </div>
-            <div className="bg-slate-800/50 p-5 rounded-2xl border border-slate-700/50 group hover:border-violet-400/50 transition-colors">
-              <CheckSquare className="w-8 h-8 text-violet-400 mb-4 group-hover:scale-110 transition-transform" />
-              <h4 className="text-white font-bold mb-2">{t('landing.teachCard2Title')}</h4>
-              <p className="text-sm text-slate-400">{t('landing.teachCard2Desc')}</p>
-            </div>
-            <div className="bg-slate-800/50 p-5 rounded-2xl border border-slate-700/50 group hover:border-primary-400/50 transition-colors">
-               <Database className="w-8 h-8 text-primary-400 mb-4 group-hover:scale-110 transition-transform" />
-               <h4 className="text-white font-bold mb-2">{t('landing.teachCard3Title')}</h4>
-               <p className="text-sm text-slate-400">{t('landing.teachCard3Desc')}</p>
-            </div>
-            <div className="bg-slate-800/50 p-5 rounded-2xl border border-slate-700/50 group hover:border-violet-400/50 transition-colors">
-               <Shield className="w-8 h-8 text-violet-400 mb-4 group-hover:scale-110 transition-transform" />
-               <h4 className="text-white font-bold mb-2">{t('landing.teachCard4Title')}</h4>
-               <p className="text-sm text-slate-400">{t('landing.teachCard4Desc')}</p>
-            </div>
-          </div>
-        </div>
-
-      </div>
-    </div>
-  </section>
-
-  {/* ═══ Role: For Students & Parents ═══ */}
-  <section className="py-24 px-6 relative overflow-hidden bg-slate-50 border-b border-slate-100">
-    <div className="absolute top-[-100px] left-[-200px] w-[600px] h-[600px] bg-violet-600/10 rounded-full blur-[120px] pointer-events-none" />
-    <div className="max-w-4xl mx-auto relative z-10">
-      <div className="flex flex-col gap-10">
-        
-        {/* Text Content */}
-        <div>
-          <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-violet-50 border border-violet-100 rounded-full text-sm font-medium text-violet-600 mb-6 shadow-sm">
-            <Gamepad2 className="w-4 h-4" />
-            {t('landing.studSecBadge')}
-          </div>
-          <h2 className="text-4xl md:text-5xl font-extrabold text-slate-900 mb-6 leading-tight">
-            {t('landing.studSecTitle')}
-          </h2>
-          <p className="text-lg text-slate-500 mb-10 leading-relaxed">
-            {t('landing.studSecSubtitle')}
-          </p>
-
-          <ul className="space-y-6">
-            <li className="flex gap-4 group">
-              <div className="w-12 h-12 rounded-xl bg-violet-50 flex items-center justify-center shrink-0 border border-violet-100 group-hover:bg-violet-500 transition-colors">
-                <Crown className="w-6 h-6 text-violet-500 group-hover:text-white transition-colors" />
-              </div>
-              <div>
-                <h4 className="text-lg font-bold text-slate-900 mb-1">{t('landing.studItem1Title')}</h4>
-                <p className="text-slate-500 text-sm leading-relaxed">{t('landing.studItem1Desc')}</p>
-              </div>
-            </li>
-            <li className="flex gap-4 group">
-              <div className="w-12 h-12 rounded-xl bg-violet-50 flex items-center justify-center shrink-0 border border-violet-100 group-hover:bg-violet-500 transition-colors">
-                <UploadCloud className="w-6 h-6 text-violet-500 group-hover:text-white transition-colors" />
-              </div>
-              <div>
-                <h4 className="text-lg font-bold text-slate-900 mb-1">{t('landing.studItem2Title')}</h4>
-                <p className="text-slate-500 text-sm leading-relaxed">{t('landing.studItem2Desc')}</p>
-              </div>
-            </li>
-            <li className="flex gap-4 group">
-              <div className="w-12 h-12 rounded-xl bg-violet-50 flex items-center justify-center shrink-0 border border-violet-100 group-hover:bg-violet-500 transition-colors">
-                <BarChart3 className="w-6 h-6 text-violet-500 group-hover:text-white transition-colors" />
-              </div>
-              <div>
-                <h4 className="text-lg font-bold text-slate-900 mb-1">{t('landing.studItem3Title')}</h4>
-                <p className="text-slate-500 text-sm leading-relaxed">{t('landing.studItem3Desc')}</p>
-              </div>
-            </li>
-          </ul>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  {/* ═══ Who Uses SabakHub? (Target Niches) ═══ */}
-  <section className="py-24 px-6 bg-white">
-    <div className="max-w-7xl mx-auto">
-      <div className="text-center mb-16">
-        <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-slate-100 border border-slate-200 rounded-full text-sm font-medium text-slate-600 mb-6 shadow-sm">
-          <Target className="w-4 h-4" />
-          {t('landing.nichesBadge')}
-        </div>
-        <h2 className="text-3xl md:text-5xl font-extrabold mb-6 text-slate-900 leading-tight">{t('landing.nichesTitle')}</h2>
-        <p className="text-lg text-slate-500 max-w-2xl mx-auto leading-relaxed">{t('landing.nichesSubtitle')}</p>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {targetNiches.map((niche) => (
-          <div key={niche.id} className="bg-white rounded-3xl p-8 border border-slate-100 shadow-[0_2px_10px_rgba(0,0,0,0.02)] hover:shadow-2xl hover:border-slate-200 transition-all hover:-translate-y-1 group relative overflow-hidden cursor-default">
-             <div className="absolute top-0 right-0 w-32 h-32 rounded-full blur-[60px] opacity-0 group-hover:opacity-40 transition-opacity pointer-events-none bg-primary-500" />
-             <div className="w-14 h-14 rounded-2xl flex items-center justify-center mb-6 relative z-10 bg-primary-50 border-2 border-white shadow-sm ring-1 ring-slate-100/50 group-hover:scale-110 transition-transform">
-               <niche.icon className="w-6 h-6 text-primary-600" />
-             </div>
-             <h3 className="text-xl font-bold text-slate-900 mb-3 relative z-10">{niche.title}</h3>
-             <p className="text-sm text-slate-500 leading-relaxed relative z-10">
-               {niche.desc}
-             </p>
-          </div>
-        ))}
-      </div>
-    </div>
-  </section>
-
- {/* ═══ Pricing ═══ */}
- <section id="pricing" className="py-20 px-6">
- <div className="max-w-7xl mx-auto">
- <div className="text-center mb-16">
- <h2 className="text-3xl md:text-4xl font-extrabold mb-4">{t('landing.pricingTitle')}</h2>
- <p className="text-lg text-slate-500 max-w-2xl mx-auto">{t('landing.pricingSubtitle')}</p>
- </div>
- <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-5xl mx-auto">
- {plans.map((plan) => (
- <div key={plan.id} className={`relative rounded-2xl p-7 border transition-all hover:shadow-xl ${plan.popular ? 'bg-primary-600 border-primary-600 text-white shadow-xl shadow-primary-500/30 scale-[1.02]' : 'bg-white border-slate-200 hover:shadow-slate-200/50 '}`}>
- {plan.popular && (
- <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-amber-400 text-slate-900 text-xs font-bold px-4 py-1 rounded-full shadow-lg">{t('landing.popular')}</div>
- )}
- <div className="flex items-center gap-3 mb-4">
- <div className={`w-12 h-12 rounded-xl flex items-center justify-center shrink-0 ${plan.popular ? 'bg-white/20' : 'bg-slate-100 '}`}>
- <plan.icon className={`w-6 h-6 ${plan.popular ? 'text-white' : 'text-slate-600 '}`} />
- </div>
- <h3 className={`text-lg font-bold ${plan.popular ? 'text-white' : ''}`}>{plan.name}</h3>
- </div>
- <div className="mb-6">
- {plan.price === 0 ? (
- <span className={`text-4xl font-extrabold ${plan.popular ? 'text-white' : ''}`}>{t('landing.free')}</span>
- ) : (
- <>
- <span className={`text-4xl font-extrabold ${plan.popular ? 'text-white' : ''}`}>{plan.price.toLocaleString()}</span>
- <span className={`text-sm ${plan.popular ? 'text-white/70' : 'text-slate-400'}`}> {t('landing.currency')}/{t('landing.perMonth')}</span>
- </>
- )}
- </div>
- <ul className="space-y-3 mb-8">
- {plan.features.map((f) => (
- <li key={f} className={`flex items-center gap-2.5 text-sm ${plan.popular ? 'text-white/90' : 'text-slate-600 '}`}>
- <Check className={`w-4 h-4 shrink-0 ${plan.popular ? 'text-emerald-300' : 'text-emerald-500'}`} />
- {f}
- </li>
- ))}
- </ul>
- <Link to="/register" className={`block w-full text-center py-3 rounded-xl font-semibold text-sm transition-all ${plan.popular ? 'bg-white text-primary-700 hover:bg-slate-100' : 'bg-primary-600 text-white hover:bg-primary-700 shadow-lg shadow-primary-500/20'}`}>
- {plan.id === 'basic' ? t('landing.startTrial14') : t('landing.startTrial3')}
- </Link>
- </div>
- ))}
- </div>
- </div>
- </section>
-
- {/* ═══ FAQ ═══ */}
- <section id="faq" className="py-20 px-6 bg-slate-50 ">
- <div className="max-w-3xl mx-auto">
- <div className="text-center mb-16">
- <h2 className="text-3xl md:text-4xl font-extrabold mb-4">{t('landing.faqTitle')}</h2>
- <p className="text-lg text-slate-500 ">{t('landing.faqSubtitle')}</p>
- </div>
- <div className="space-y-3">
- {faqs.map((faq, i) => (
- <div key={i} className="border border-slate-200 rounded-xl overflow-hidden bg-white ">
- <button
- onClick={() => setOpenFaqIndex(openFaqIndex === i ? null : i)}
- className="w-full flex items-center justify-between px-6 py-4 text-left hover:bg-slate-50 transition-colors"
- >
- <span className="font-semibold text-sm pr-4">{faq.q}</span>
- <ChevronDown className={`w-5 h-5 text-slate-400 shrink-0 transition-transform ${openFaqIndex === i ? 'rotate-180' : ''}`} />
- </button>
- {openFaqIndex === i && (
- <div className="px-6 pb-4">
- <p className="text-sm text-slate-500 leading-relaxed">{faq.a}</p>
- </div>
- )}
- </div>
- ))}
- </div>
- </div>
- </section>
-
- {/* ═══ CTA ═══ */}
- <section className="py-20 px-6">
- <div className="max-w-4xl mx-auto text-center bg-gradient-to-br from-primary-600 to-violet-600 rounded-3xl p-12 md:p-16 relative overflow-hidden">
- <div className="absolute top-[-50px] right-[-50px] w-[200px] h-[200px] rounded-full bg-white/10" />
- <div className="absolute bottom-[-60px] left-[-40px] w-[180px] h-[180px] rounded-full bg-white/5" />
- <div className="relative z-10">
- <h2 className="text-3xl md:text-4xl font-extrabold text-white mb-4">{t('landing.ctaTitle')}</h2>
- <p className="text-white/70 text-lg mb-8 max-w-xl mx-auto">{t('landing.ctaSubtitle')}</p>
- <Link to={user ? "/dashboard" : "/register"} className="inline-flex items-center gap-2 bg-white text-primary-700 font-semibold px-8 py-3.5 rounded-xl hover:bg-slate-100 transition-colors shadow-xl group">
-              {user ? (t('nav.dashboard') || 'Dashboard') : t('landing.ctaButton')}
-              <ArrowRight className="w-5 h-5 group-hover:translate-x-0.5 transition-transform" />
+          <div className="mt-9 flex flex-col sm:flex-row items-center justify-center gap-3">
+            <Link to={user ? '/dashboard' : '/register'} className="group inline-flex items-center justify-center gap-2 rounded-xl bg-primary-600 px-7 py-3.5 text-base font-semibold text-white shadow-lg shadow-primary-600/20 transition-all hover:bg-primary-700 hover:shadow-primary-600/30">
+              {user ? (t('nav.dashboard') || 'Dashboard') : t('landing.heroCta')}
+              <ArrowRight className="w-5 h-5 transition-transform group-hover:translate-x-0.5" />
             </Link>
- </div>
- </div>
- </section>
+            <button type="button" onClick={() => setDemoOpen(true)} className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-6 py-3.5 text-base font-medium text-slate-700 transition-colors hover:border-slate-300 hover:bg-slate-50">
+              {t('landing.heroDemo')}
+            </button>
+          </div>
+          <p className="mt-5 text-sm text-slate-400">{t('landing.heroStack')}</p>
+        </div>
 
- {/* ═══ Footer ═══ */}
- <footer className="bg-slate-900 text-white pt-16 pb-8 px-6">
- <div className="max-w-7xl mx-auto">
- <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-10 mb-12">
- {/* Brand */}
- <div className="md:col-span-1">
- <div className="flex items-center gap-2.5 mb-4">
- <img src="/icons/logo.png" alt="SabakHub" className="h-8 w-auto object-contain" />
- <span className="font-bold text-xl tracking-tight">SabakHub</span>
- </div>
- <p className="text-sm text-slate-400 leading-relaxed mb-4">{t('landing.footerDesc')}</p>
- <div className="flex gap-3">
- <a href="https://t.me/planula_bot" target="_blank" rel="noopener noreferrer" className="w-9 h-9 bg-white/10 rounded-lg flex items-center justify-center hover:bg-primary-600 transition-colors">
- <MessageCircle className="w-4 h-4" />
- </a>
- <a href="mailto:support@planula.com" className="w-9 h-9 bg-white/10 rounded-lg flex items-center justify-center hover:bg-primary-600 transition-colors">
- <Mail className="w-4 h-4" />
- </a>
- </div>
- </div>
- {/* Product */}
- <div>
- <h4 className="font-semibold text-sm mb-4">{t('landing.footerProduct')}</h4>
- <ul className="space-y-2.5">
- <li><Link to="/features" className="text-sm text-slate-400 hover:text-white transition-colors">{t('landing.navFeatures')}</Link></li>
- <li><a href="#pricing" className="text-sm text-slate-400 hover:text-white transition-colors">{t('landing.navPricing')}</a></li>
- <li><Link to="/docs" className="text-sm text-slate-400 hover:text-white transition-colors">{t('landing.navDocs')}</Link></li>
- </ul>
- </div>
- {/* Company */}
- <div>
- <h4 className="font-semibold text-sm mb-4">{t('landing.footerCompany')}</h4>
- <ul className="space-y-2.5">
- <li><Link to="/about" className="text-sm text-slate-400 hover:text-white transition-colors">{t('landing.footerAbout')}</Link></li>
- <li><Link to="/contact" className="text-sm text-slate-400 hover:text-white transition-colors">{t('landing.footerContactLink')}</Link></li>
- </ul>
- </div>
- {/* Resources */}
- <div>
- <h4 className="font-semibold text-sm mb-4">{t('landing.footerResources')}</h4>
- <ul className="space-y-2.5">
- <li><Link to="/docs" className="text-sm text-slate-400 hover:text-white transition-colors">{t('landing.navDocs')}</Link></li>
- <li><Link to="/vibecoder" className="text-sm text-slate-400 hover:text-white transition-colors">{t('landing.footerVibecoder')}</Link></li>
- <li><a href="#faq" className="text-sm text-slate-400 hover:text-white transition-colors">{t('landing.navFaq')}</a></li>
- </ul>
- </div>
- {/* Contact */}
- <div>
- <h4 className="font-semibold text-sm mb-4">{t('landing.footerContact')}</h4>
- <ul className="space-y-2.5">
- <li className="flex items-center gap-2 text-sm text-slate-400"><Mail className="w-4 h-4 shrink-0" /> support@planula.com</li>
- <li className="flex items-center gap-2 text-sm text-slate-400"><Phone className="w-4 h-4 shrink-0" /> +996 550 308 078</li>
- <li className="flex items-center gap-2 text-sm text-slate-400"><MapPin className="w-4 h-4 shrink-0" /> {t('landing.footerCity')}</li>
- </ul>
- </div>
- </div>
- {/* Legal */}
- <div className="border-t border-white/10 pt-6 flex flex-col md:flex-row items-center justify-between gap-6">
- <p className="text-sm text-slate-500 text-center md:text-left">&copy; {new Date().getFullYear()} SabakHub. {t('landing.rights')}</p>
- <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-4">
- <Link to="/privacy" className="text-sm text-slate-500 hover:text-white transition-colors text-center">{t('landing.footerPrivacy')}</Link>
- <Link to="/terms" className="text-sm text-slate-500 hover:text-white transition-colors text-center">{t('landing.footerTerms')}</Link>
- <LanguageSwitcher />
- </div>
- </div>
- </div>
- </footer>
+        {/* Product preview */}
+        <div className="relative mx-auto mt-16 max-w-5xl">
+          <div aria-hidden className="absolute -inset-x-6 -top-6 bottom-0 -z-10 rounded-[2rem] bg-gradient-to-b from-primary-100/50 to-transparent blur-2xl" />
+          <ProductFrame />
+        </div>
+      </section>
 
- <RequestDemoModal open={demoOpen} onClose={() => setDemoOpen(false)} />
- </div>
- );
+      {/* ═══ Features ═══ */}
+      <section id="features" className="px-6 py-20 sm:py-28 bg-slate-50 border-y border-slate-100">
+        <div className="max-w-6xl mx-auto">
+          <SectionHead eyebrow={t('landing.nichesBadge')} title={t('landing.featuresTitle')} subtitle={t('landing.featuresSubtitle')} />
+          <div className="mt-14 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+            {featureCategories.map((cat) => (
+              <div key={cat.id} className="group rounded-2xl border border-slate-200 bg-white p-6 transition-all hover:border-slate-300 hover:shadow-lg hover:shadow-slate-900/5">
+                <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-primary-50 text-primary-600 ring-1 ring-primary-100 transition-colors group-hover:bg-primary-600 group-hover:text-white">
+                  <cat.icon className="w-5 h-5" />
+                </div>
+                <h3 className="mt-5 text-[0.95rem] font-semibold text-slate-900">{cat.title}</h3>
+                <ul className="mt-3 space-y-2">
+                  {cat.items.map((item, j) => (
+                    <li key={j} className="flex items-center gap-2 text-sm text-slate-500">
+                      <item.icon className="w-4 h-4 text-slate-400 shrink-0" />
+                      {item.label}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ═══ AI (the one dark, focal section) ═══ */}
+      <section className="relative overflow-hidden px-6 py-20 sm:py-28 bg-slate-950">
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-0 -z-0 opacity-[0.18] bg-[linear-gradient(to_right,#ffffff14_1px,transparent_1px),linear-gradient(to_bottom,#ffffff14_1px,transparent_1px)] bg-[size:56px_56px]"
+          style={{ WebkitMaskImage: 'radial-gradient(ellipse 60% 60% at 50% 40%, #000 40%, transparent 100%)', maskImage: 'radial-gradient(ellipse 60% 60% at 50% 40%, #000 40%, transparent 100%)' }}
+        />
+        <div aria-hidden className="pointer-events-none absolute right-[-10%] top-[-20%] -z-0 h-[460px] w-[460px] rounded-full bg-primary-600/20 blur-[130px]" />
+
+        <div className="relative max-w-6xl mx-auto">
+          <SectionHead
+            tone="dark"
+            eyebrow="SabakHub AI"
+            title={`${t('landing.aiSecTitlePre')}${t('landing.aiSecTitleHighlight')}`}
+            subtitle={t('landing.aiSecSubtitle')}
+          />
+          <div className="mt-14 grid grid-cols-1 lg:grid-cols-2 gap-5">
+            {[
+              { icon: Brain, title: t('landing.aiSecF1Title'), desc: t('landing.aiSecF1Desc') },
+              { icon: Check, title: t('landing.aiSecF2Title'), desc: t('landing.aiSecF2Desc') },
+              { icon: Database, title: t('landing.tgSecF1Title'), desc: t('landing.tgSecF1Desc') },
+              { icon: MessageCircle, title: t('landing.tgSecF2Title'), desc: t('landing.tgSecF2Desc') },
+            ].map((f, i) => (
+              <div key={i} className="rounded-2xl border border-white/10 bg-white/[0.03] p-6 transition-colors hover:border-white/20 hover:bg-white/[0.05]">
+                <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-primary-500/15 text-primary-300 ring-1 ring-primary-400/20">
+                  <f.icon className="w-5 h-5" />
+                </div>
+                <h3 className="mt-5 text-lg font-semibold text-white">{f.title}</h3>
+                <p className="mt-2 text-sm leading-relaxed text-slate-400">{f.desc}</p>
+              </div>
+            ))}
+          </div>
+          <div className="mt-10 flex justify-center">
+            <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-4 py-2 text-sm text-slate-300">
+              <Bot className="w-4 h-4 text-primary-300" />
+              {t('landing.tgSecBadge')}
+            </span>
+          </div>
+        </div>
+      </section>
+
+      {/* ═══ For teachers & managers ═══ */}
+      <section className="px-6 py-20 sm:py-28">
+        <div className="max-w-6xl mx-auto grid lg:grid-cols-2 gap-14 items-center">
+          <div>
+            <SectionHead align="left" eyebrow={t('landing.teachSecBadge')} title={t('landing.teachSecTitle')} subtitle={t('landing.teachSecSubtitle')} />
+          </div>
+          <div className="grid sm:grid-cols-2 gap-4">
+            {[
+              { icon: CalendarClock, title: t('landing.teachCard1Title'), desc: t('landing.teachCard1Desc') },
+              { icon: CheckSquare, title: t('landing.teachCard2Title'), desc: t('landing.teachCard2Desc') },
+              { icon: Database, title: t('landing.teachCard3Title'), desc: t('landing.teachCard3Desc') },
+              { icon: Shield, title: t('landing.teachCard4Title'), desc: t('landing.teachCard4Desc') },
+            ].map((c, i) => (
+              <div key={i} className="rounded-2xl border border-slate-200 bg-white p-5 transition-all hover:border-slate-300 hover:shadow-lg hover:shadow-slate-900/5">
+                <c.icon className="w-7 h-7 text-primary-600" />
+                <h4 className="mt-4 font-semibold text-slate-900">{c.title}</h4>
+                <p className="mt-1.5 text-sm leading-relaxed text-slate-500">{c.desc}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ═══ For students & parents ═══ */}
+      <section className="px-6 py-20 sm:py-28 bg-slate-50 border-y border-slate-100">
+        <div className="max-w-6xl mx-auto grid lg:grid-cols-2 gap-14 items-center">
+          <ul className="order-2 lg:order-1 space-y-3">
+            {[
+              { icon: Crown, title: t('landing.studItem1Title'), desc: t('landing.studItem1Desc') },
+              { icon: UploadCloud, title: t('landing.studItem2Title'), desc: t('landing.studItem2Desc') },
+              { icon: BarChart3, title: t('landing.studItem3Title'), desc: t('landing.studItem3Desc') },
+            ].map((s, i) => (
+              <li key={i} className="flex gap-4 rounded-2xl border border-slate-200 bg-white p-5 transition-colors hover:border-slate-300">
+                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary-50 text-primary-600 ring-1 ring-primary-100">
+                  <s.icon className="w-5 h-5" />
+                </div>
+                <div>
+                  <h4 className="font-semibold text-slate-900">{s.title}</h4>
+                  <p className="mt-1 text-sm leading-relaxed text-slate-500">{s.desc}</p>
+                </div>
+              </li>
+            ))}
+          </ul>
+          <div className="order-1 lg:order-2">
+            <SectionHead align="left" eyebrow={t('landing.studSecBadge')} title={t('landing.studSecTitle')} subtitle={t('landing.studSecSubtitle')} />
+          </div>
+        </div>
+      </section>
+
+      {/* ═══ Niches ═══ */}
+      <section className="px-6 py-20 sm:py-28">
+        <div className="max-w-6xl mx-auto">
+          <SectionHead eyebrow={t('landing.nichesBadge')} title={t('landing.nichesTitle')} subtitle={t('landing.nichesSubtitle')} />
+          <div className="mt-14 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+            {targetNiches.map((niche) => (
+              <div key={niche.id} className="group rounded-2xl border border-slate-200 bg-white p-7 transition-all hover:border-slate-300 hover:shadow-lg hover:shadow-slate-900/5">
+                <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-slate-900 text-white transition-colors group-hover:bg-primary-600">
+                  <niche.icon className="w-5 h-5" />
+                </div>
+                <h3 className="mt-5 text-lg font-semibold text-slate-900">{niche.title}</h3>
+                <p className="mt-2 text-sm leading-relaxed text-slate-500">{niche.desc}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ═══ Pricing ═══ */}
+      <section id="pricing" className="px-6 py-20 sm:py-28 bg-slate-50 border-y border-slate-100">
+        <div className="max-w-6xl mx-auto">
+          <SectionHead eyebrow={t('landing.navPricing')} title={t('landing.pricingTitle')} subtitle={t('landing.pricingSubtitle')} />
+          <div className="mt-14 grid grid-cols-1 md:grid-cols-3 gap-6 items-start max-w-5xl mx-auto">
+            {plans.map((plan) => (
+              <div
+                key={plan.id}
+                className={`relative rounded-2xl p-7 transition-all ${plan.popular
+                  ? 'bg-slate-900 text-white shadow-xl shadow-slate-900/20 md:-translate-y-3'
+                  : 'bg-white border border-slate-200 hover:border-slate-300 hover:shadow-lg hover:shadow-slate-900/5'}`}
+              >
+                {plan.popular && (
+                  <div className="absolute -top-3 left-7 rounded-full bg-primary-600 px-3 py-1 text-xs font-semibold text-white shadow-lg shadow-primary-600/30">
+                    {t('landing.popular')}
+                  </div>
+                )}
+                <div className="flex items-center gap-3">
+                  <div className={`flex h-10 w-10 items-center justify-center rounded-lg ${plan.popular ? 'bg-white/10 text-white' : 'bg-slate-100 text-slate-700'}`}>
+                    <plan.icon className="w-5 h-5" />
+                  </div>
+                  <h3 className="font-semibold">{plan.name}</h3>
+                </div>
+                <div className="mt-6 flex items-baseline gap-1.5">
+                  {plan.price === 0 ? (
+                    <span className="text-4xl font-bold tracking-tight">{t('landing.free')}</span>
+                  ) : (
+                    <>
+                      <span className="text-4xl font-bold tracking-tight">{plan.price.toLocaleString()}</span>
+                      <span className={`text-sm ${plan.popular ? 'text-white/60' : 'text-slate-400'}`}>{t('landing.currency')}/{t('landing.perMonth')}</span>
+                    </>
+                  )}
+                </div>
+                <ul className="mt-6 space-y-3">
+                  {plan.features.map((f) => (
+                    <li key={f} className={`flex items-start gap-2.5 text-sm ${plan.popular ? 'text-white/85' : 'text-slate-600'}`}>
+                      <Check className={`mt-0.5 w-4 h-4 shrink-0 ${plan.popular ? 'text-primary-400' : 'text-primary-600'}`} />
+                      {f}
+                    </li>
+                  ))}
+                </ul>
+                <Link
+                  to="/register"
+                  className={`mt-8 block w-full rounded-xl py-3 text-center text-sm font-semibold transition-all ${plan.popular
+                    ? 'bg-white text-slate-900 hover:bg-slate-100'
+                    : 'bg-slate-900 text-white hover:bg-slate-800'}`}
+                >
+                  {plan.id === 'basic' ? t('landing.startTrial14') : t('landing.startTrial3')}
+                </Link>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ═══ FAQ ═══ */}
+      <section id="faq" className="px-6 py-20 sm:py-28">
+        <div className="max-w-3xl mx-auto">
+          <SectionHead eyebrow={t('landing.navFaq')} title={t('landing.faqTitle')} subtitle={t('landing.faqSubtitle')} />
+          <div className="mt-12 divide-y divide-slate-200 border-y border-slate-200">
+            {faqs.map((faq, i) => (
+              <div key={i}>
+                <button
+                  onClick={() => setOpenFaqIndex(openFaqIndex === i ? null : i)}
+                  className="flex w-full items-center justify-between gap-4 py-5 text-left"
+                >
+                  <span className="font-medium text-slate-900">{faq.q}</span>
+                  <ChevronDown className={`w-5 h-5 shrink-0 text-slate-400 transition-transform ${openFaqIndex === i ? 'rotate-180 text-primary-600' : ''}`} />
+                </button>
+                <div className={`grid transition-all duration-200 ${openFaqIndex === i ? 'grid-rows-[1fr] pb-5' : 'grid-rows-[0fr]'}`}>
+                  <p className="overflow-hidden text-sm leading-relaxed text-slate-500">{faq.a}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ═══ CTA ═══ */}
+      <section className="px-6 pb-24">
+        <div className="relative max-w-5xl mx-auto overflow-hidden rounded-3xl bg-slate-900 px-8 py-16 sm:px-16 sm:py-20 text-center">
+          <div aria-hidden className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top,rgba(99,102,241,0.35),transparent_60%)]" />
+          <div className="relative">
+            <h2 className="text-3xl sm:text-4xl font-bold tracking-tight text-white">{t('landing.ctaTitle')}</h2>
+            <p className="mx-auto mt-4 max-w-xl text-lg text-slate-300">{t('landing.ctaSubtitle')}</p>
+            <Link to={user ? '/dashboard' : '/register'} className="group mt-8 inline-flex items-center gap-2 rounded-xl bg-white px-7 py-3.5 text-base font-semibold text-slate-900 transition-colors hover:bg-slate-100">
+              {user ? (t('nav.dashboard') || 'Dashboard') : t('landing.ctaButton')}
+              <ArrowRight className="w-5 h-5 transition-transform group-hover:translate-x-0.5" />
+            </Link>
+          </div>
+        </div>
+      </section>
+
+      {/* ═══ Footer ═══ */}
+      <footer className="border-t border-slate-200 bg-white px-6 pt-16 pb-8">
+        <div className="max-w-7xl mx-auto">
+          <div className="grid grid-cols-2 gap-10 md:grid-cols-5">
+            <div className="col-span-2 md:col-span-1">
+              <div className="flex items-center gap-2.5">
+                <img src="/icons/logo.png" alt="SabakHub" className="h-8 w-8 rounded-lg" />
+                <span className="font-semibold text-lg tracking-tight">SabakHub</span>
+              </div>
+              <p className="mt-4 max-w-xs text-sm leading-relaxed text-slate-500">{t('landing.footerDesc')}</p>
+              <div className="mt-5 flex gap-2.5">
+                <a href="https://t.me/planula_bot" target="_blank" rel="noopener noreferrer" aria-label="Telegram" className="flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 text-slate-500 transition-colors hover:border-primary-200 hover:bg-primary-50 hover:text-primary-600">
+                  <MessageCircle className="w-4 h-4" />
+                </a>
+                <a href="mailto:hello@sabakhub.kg" aria-label="Email" className="flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 text-slate-500 transition-colors hover:border-primary-200 hover:bg-primary-50 hover:text-primary-600">
+                  <Mail className="w-4 h-4" />
+                </a>
+              </div>
+            </div>
+            <div>
+              <h4 className="text-sm font-semibold text-slate-900">{t('landing.footerProduct')}</h4>
+              <ul className="mt-4 space-y-3">
+                <li><Link to="/features" className="text-sm text-slate-500 transition-colors hover:text-slate-900">{t('landing.navFeatures')}</Link></li>
+                <li><a href="#pricing" className="text-sm text-slate-500 transition-colors hover:text-slate-900">{t('landing.navPricing')}</a></li>
+                <li><Link to="/docs" className="text-sm text-slate-500 transition-colors hover:text-slate-900">{t('landing.navDocs')}</Link></li>
+              </ul>
+            </div>
+            <div>
+              <h4 className="text-sm font-semibold text-slate-900">{t('landing.footerCompany')}</h4>
+              <ul className="mt-4 space-y-3">
+                <li><Link to="/about" className="text-sm text-slate-500 transition-colors hover:text-slate-900">{t('landing.footerAbout')}</Link></li>
+                <li><Link to="/contact" className="text-sm text-slate-500 transition-colors hover:text-slate-900">{t('landing.footerContactLink')}</Link></li>
+              </ul>
+            </div>
+            <div>
+              <h4 className="text-sm font-semibold text-slate-900">{t('landing.footerResources')}</h4>
+              <ul className="mt-4 space-y-3">
+                <li><Link to="/docs" className="text-sm text-slate-500 transition-colors hover:text-slate-900">{t('landing.navDocs')}</Link></li>
+                <li><Link to="/vibecoder" className="text-sm text-slate-500 transition-colors hover:text-slate-900">{t('landing.footerVibecoder')}</Link></li>
+                <li><a href="#faq" className="text-sm text-slate-500 transition-colors hover:text-slate-900">{t('landing.navFaq')}</a></li>
+              </ul>
+            </div>
+            <div>
+              <h4 className="text-sm font-semibold text-slate-900">{t('landing.footerContact')}</h4>
+              <ul className="mt-4 space-y-3">
+                <li className="flex items-center gap-2 text-sm text-slate-500"><Mail className="w-4 h-4 shrink-0 text-slate-400" /> hello@sabakhub.kg</li>
+                <li className="flex items-center gap-2 text-sm text-slate-500"><Phone className="w-4 h-4 shrink-0 text-slate-400" /> +996 550 308 078</li>
+                <li className="flex items-center gap-2 text-sm text-slate-500"><MapPin className="w-4 h-4 shrink-0 text-slate-400" /> {t('landing.footerCity')}</li>
+              </ul>
+            </div>
+          </div>
+          <div className="mt-12 flex flex-col items-center justify-between gap-5 border-t border-slate-200 pt-6 md:flex-row">
+            <p className="text-sm text-slate-400">&copy; {new Date().getFullYear()} SabakHub. {t('landing.rights')}</p>
+            <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-3">
+              <Link to="/privacy" className="text-sm text-slate-400 transition-colors hover:text-slate-900">{t('landing.footerPrivacy')}</Link>
+              <Link to="/terms" className="text-sm text-slate-400 transition-colors hover:text-slate-900">{t('landing.footerTerms')}</Link>
+              <LanguageSwitcher />
+            </div>
+          </div>
+        </div>
+      </footer>
+
+      <RequestDemoModal open={demoOpen} onClose={() => setDemoOpen(false)} />
+    </div>
+  );
+};
+
+/* Language-neutral product preview — a stylised app window built from
+   shapes only, so it reads as "a real product" in every locale. */
+const ProductFrame: React.FC = () => {
+  const navIcons = [LayoutGrid, BookOpen, ClipboardList, Users, BarChart3, CalendarClock];
+  const bars = [42, 64, 38, 78, 54, 88, 60];
+  return (
+    <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl shadow-slate-900/10 ring-1 ring-slate-900/5">
+      {/* window chrome */}
+      <div className="flex items-center gap-2 border-b border-slate-100 bg-slate-50 px-4 h-10">
+        <span className="h-3 w-3 rounded-full bg-slate-300" />
+        <span className="h-3 w-3 rounded-full bg-slate-300" />
+        <span className="h-3 w-3 rounded-full bg-slate-300" />
+        <div className="ml-3 hidden h-5 w-full max-w-[260px] items-center rounded-md border border-slate-200 bg-white px-2 sm:flex">
+          <span className="h-2 w-2 rounded-full bg-emerald-400" />
+          <span className="ml-2 h-1.5 w-24 rounded bg-slate-200" />
+        </div>
+      </div>
+      <div className="flex h-[300px] sm:h-[380px]">
+        {/* sidebar */}
+        <aside className="hidden w-48 shrink-0 flex-col border-r border-slate-100 bg-white p-4 sm:flex">
+          <div className="flex items-center gap-2">
+            <span className="h-7 w-7 rounded-lg bg-gradient-to-br from-primary-600 to-violet-600" />
+            <span className="h-3 w-20 rounded bg-slate-200" />
+          </div>
+          <div className="mt-6 space-y-1.5">
+            {navIcons.map((Icon, i) => (
+              <div key={i} className={`flex items-center gap-2.5 rounded-lg px-2.5 py-2 ${i === 0 ? 'bg-primary-50 text-primary-600' : 'text-slate-400'}`}>
+                <Icon className="h-4 w-4" />
+                <span className={`h-2 rounded ${i === 0 ? 'w-16 bg-primary-200' : 'w-14 bg-slate-200'}`} />
+              </div>
+            ))}
+          </div>
+          <div className="mt-auto flex items-center gap-2 rounded-lg bg-slate-50 p-2">
+            <span className="h-7 w-7 rounded-full bg-slate-200" />
+            <span className="h-2 w-16 rounded bg-slate-200" />
+          </div>
+        </aside>
+        {/* main */}
+        <main className="flex-1 bg-slate-50/60 p-5 sm:p-6">
+          <div className="flex items-center justify-between">
+            <span className="h-4 w-32 rounded bg-slate-300" />
+            <span className="h-8 w-24 rounded-lg bg-primary-600" />
+          </div>
+          <div className="mt-5 grid grid-cols-3 gap-3">
+            {[
+              { Icon: Users, tint: 'text-primary-600 bg-primary-50' },
+              { Icon: ClipboardList, tint: 'text-violet-600 bg-violet-50' },
+              { Icon: Award, tint: 'text-teal-600 bg-teal-50' },
+            ].map(({ Icon, tint }, i) => (
+              <div key={i} className="rounded-xl border border-slate-200 bg-white p-3">
+                <div className={`flex h-7 w-7 items-center justify-center rounded-lg ${tint}`}>
+                  <Icon className="h-4 w-4" />
+                </div>
+                <span className="mt-3 block h-4 w-12 rounded bg-slate-300" />
+                <span className="mt-1.5 block h-2 w-14 rounded bg-slate-200" />
+              </div>
+            ))}
+          </div>
+          <div className="mt-3 rounded-xl border border-slate-200 bg-white p-4">
+            <div className="flex items-center justify-between">
+              <span className="h-3 w-24 rounded bg-slate-300" />
+              <span className="h-2 w-12 rounded bg-slate-200" />
+            </div>
+            <div className="mt-4 flex h-20 items-end gap-2 sm:h-24">
+              {bars.map((h, i) => (
+                <div key={i} className="flex-1 rounded-t bg-gradient-to-t from-primary-500 to-primary-400" style={{ height: `${h}%` }} />
+              ))}
+            </div>
+          </div>
+        </main>
+      </div>
+    </div>
+  );
 };
 
 export default LandingPage;

@@ -1,9 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { useTranslation } from 'react-i18next';
-import { useAuth } from '../../contexts/AuthContext';
 import {
-  ArrowLeft, BookOpen, Brain, Shield,
+  BookOpen, Brain, Shield,
   Gamepad2, Layers, Users, Building2,
   Sparkles, CheckCircle2,
   Calendar, FileCheck2,
@@ -12,19 +10,10 @@ import {
   MapPin, ShieldCheck, Palette, CalendarDays,
   Globe, Smartphone, PieChart, Timer
 } from 'lucide-react';
-import LanguageSwitcher from '../../components/LanguageSwitcher';
+import { LandingNav, LandingFooter } from '../../components/landing/LandingChrome';
 
 const FeaturesPage: React.FC = () => {
-  const { t } = useTranslation();
-  const { firebaseUser: user } = useAuth();
   const [activeTab, setActiveTab] = useState('summary');
-  const [isScrolled, setIsScrolled] = useState(false);
-
-  useEffect(() => {
-    const handleScroll = () => { setIsScrolled(window.scrollY > 20); };
-    window.addEventListener('scroll', handleScroll);
-    return () => window.removeEventListener('scroll', handleScroll);
-  }, []);
 
   const featureTabs = [
     { id: 'summary', label: 'Всё в одном', icon: PieChart, color: 'text-slate-500', bg: 'bg-slate-500/10' },
@@ -38,39 +27,22 @@ const FeaturesPage: React.FC = () => {
   return (
     <div className="min-h-screen bg-[#f8fafc] text-slate-900 pb-20 font-sans selection:bg-primary-500/30">
       
-      {/* ═══ Navbar ═══ */}
-      <nav className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${isScrolled ? 'bg-white/80 backdrop-blur-xl border-b border-slate-200/50 shadow-sm' : 'bg-transparent'}`}>
-        <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
-          <Link to="/" className="flex items-center gap-2.5">
-            <img src="/icons/logo.png" alt="SabakHub" className="h-8 w-auto object-contain" />
-            <span className="font-bold text-xl tracking-tight text-slate-800">SabakHub</span>
-          </Link>
-          <div className="flex items-center gap-3">
-            <LanguageSwitcher />
-            {user ? (
-              <Link to="/dashboard" className="hidden sm:inline-block text-sm font-semibold text-white bg-slate-900 hover:bg-slate-800 px-5 py-2.5 rounded-full transition-all shadow-lg">{t('nav.dashboard') || 'Dashboard'}</Link>
-            ) : (
-              <Link to="/register" className="text-sm font-semibold text-white bg-slate-900 hover:bg-slate-800 px-5 py-2.5 rounded-full transition-all shadow-lg">{t('landing.heroCta')}</Link>
-            )}
-          </div>
-        </div>
-      </nav>
+      <LandingNav />
 
       {/* ═══ Hero ═══ */}
-      <div className="pt-32 pb-16 px-6 relative overflow-hidden bg-white border-b border-slate-200/60 shadow-sm">
-        <div className="absolute top-[-100px] right-[-100px] w-[600px] h-[600px] bg-primary-600/5 rounded-full blur-[100px] pointer-events-none" />
-        <div className="absolute bottom-[-100px] left-[-100px] w-[600px] h-[600px] bg-violet-600/5 rounded-full blur-[100px] pointer-events-none" />
-        
-        <div className="max-w-5xl mx-auto text-center relative z-10">
-          <Link to="/" className="inline-flex items-center gap-1.5 text-sm font-medium text-slate-500 hover:text-primary-600 mb-8 transition-colors bg-slate-100 hover:bg-slate-200 px-4 py-1.5 rounded-full">
-            <ArrowLeft className="w-4 h-4" /> Назад на главную
-          </Link>
-          <h1 className="text-5xl sm:text-6xl md:text-7xl font-extrabold mb-6 tracking-tight bg-gradient-to-br from-slate-900 via-slate-800 to-slate-500 bg-clip-text text-transparent">
-            Энциклопедия<br />Возможностей
+      <div className="pt-36 pb-16 px-6 relative overflow-hidden bg-white border-b border-slate-200/60">
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-0 bg-[linear-gradient(to_right,#e2e8f01a_1px,transparent_1px),linear-gradient(to_bottom,#e2e8f01a_1px,transparent_1px)] bg-[size:56px_56px]"
+          style={{ WebkitMaskImage: 'radial-gradient(ellipse 70% 60% at 50% 0%, #000 55%, transparent 100%)', maskImage: 'radial-gradient(ellipse 70% 60% at 50% 0%, #000 55%, transparent 100%)' }}
+        />
+        <div className="max-w-3xl mx-auto text-center relative z-10">
+          <p className="text-[0.8rem] font-semibold uppercase tracking-[0.18em] text-primary-600">Возможности</p>
+          <h1 className="mt-3 text-4xl sm:text-5xl md:text-6xl font-bold tracking-tight text-slate-900">
+            Энциклопедия возможностей
           </h1>
-          <p className="text-xl text-slate-500 max-w-4xl mx-auto leading-relaxed">
-            Мы спроектировали <strong>100% покрытие</strong> потребностей вашей школы. От автоматизации 
-            работы до геймификации, умных проверок домашки ИИ и жесткого биллинга. Это больше, чем LMS. Это <strong>SabakHub</strong>.
+          <p className="mt-5 text-lg sm:text-xl text-slate-600 max-w-2xl mx-auto leading-relaxed">
+            Мы спроектировали <strong className="font-semibold text-slate-900">100% покрытие</strong> потребностей вашей школы — от автоматизации работы до геймификации, умных проверок ДЗ и биллинга. Это больше, чем LMS. Это <strong className="font-semibold text-slate-900">SabakHub</strong>.
           </p>
         </div>
       </div>
@@ -406,6 +378,7 @@ const FeaturesPage: React.FC = () => {
         </div>
       </div>
 
+      <LandingFooter />
     </div>
   );
 };

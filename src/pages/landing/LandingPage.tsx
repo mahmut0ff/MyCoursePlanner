@@ -1,65 +1,25 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../contexts/AuthContext';
-import LanguageSwitcher from '../../components/LanguageSwitcher';
 import RequestDemoModal from '../../components/landing/RequestDemoModal';
+import { LandingNav, LandingFooter, SectionHead } from '../../components/landing/LandingChrome';
 import {
   BookOpen, ClipboardList, Radio, Brain, BarChart3,
   Shield, Zap, Check, ArrowRight, ChevronDown,
-  Globe, Sparkles, Crown, Menu, X, Users,
-  MessageCircle, Mail, MapPin, Phone, Award,
+  Globe, Sparkles, Crown, Users,
+  MessageCircle, Award,
   Layers, Lock, FileText, Target, Gamepad2,
   Bot, PenTool, LayoutGrid, Database, Briefcase,
   CalendarClock, CheckSquare, UploadCloud,
   Laptop, GraduationCap, Building2,
 } from 'lucide-react';
 
-/* ──────────────────────────────────────────────────────────────
-   Small shared building blocks — one source of truth for rhythm,
-   so every section lines up instead of each doing its own thing.
-   ────────────────────────────────────────────────────────────── */
-
-const Eyebrow: React.FC<{ children: React.ReactNode; tone?: 'light' | 'dark' }> = ({ children, tone = 'light' }) => (
-  <p className={`text-[0.8rem] font-semibold uppercase tracking-[0.18em] ${tone === 'dark' ? 'text-primary-300' : 'text-primary-600'}`}>
-    {children}
-  </p>
-);
-
-const SectionHead: React.FC<{
-  eyebrow: string;
-  title: string;
-  subtitle?: string;
-  tone?: 'light' | 'dark';
-  align?: 'left' | 'center';
-}> = ({ eyebrow, title, subtitle, tone = 'light', align = 'center' }) => (
-  <div className={`max-w-2xl ${align === 'center' ? 'mx-auto text-center' : ''}`}>
-    <Eyebrow tone={tone}>{eyebrow}</Eyebrow>
-    <h2 className={`mt-3 text-3xl sm:text-4xl font-bold tracking-tight ${tone === 'dark' ? 'text-white' : 'text-slate-900'}`}>
-      {title}
-    </h2>
-    {subtitle && (
-      <p className={`mt-4 text-lg leading-relaxed ${tone === 'dark' ? 'text-slate-400' : 'text-slate-600'}`}>
-        {subtitle}
-      </p>
-    )}
-  </div>
-);
-
 const LandingPage: React.FC = () => {
   const { t } = useTranslation();
   const { firebaseUser: user } = useAuth();
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [openFaqIndex, setOpenFaqIndex] = useState<number | null>(0);
   const [demoOpen, setDemoOpen] = useState(false);
-  const [scrolled, setScrolled] = useState(false);
-
-  useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 8);
-    onScroll();
-    window.addEventListener('scroll', onScroll, { passive: true });
-    return () => window.removeEventListener('scroll', onScroll);
-  }, []);
 
   /* ── Feature categories ── */
   const featureCategories = [
@@ -169,71 +129,10 @@ const LandingPage: React.FC = () => {
     { q: t('landing.faq5Q'), a: t('landing.faq5A') },
   ];
 
-  const navItems = [
-    { label: t('landing.navFeatures'), href: '#features' },
-    { label: t('landing.navPricing'), href: '#pricing' },
-    { label: t('landing.navFaq'), href: '#faq' },
-  ];
-  const navLinks = [
-    { label: t('landing.navFeaturesPage'), to: '/features' },
-    { label: t('landing.navAbout'), to: '/about' },
-    { label: t('landing.navContact'), to: '/contact' },
-  ];
-
   return (
     <div className="min-h-screen bg-white text-slate-900 antialiased selection:bg-primary-600 selection:text-white">
 
-      {/* ═══ Navbar ═══ */}
-      <nav className={`fixed inset-x-0 top-0 z-50 transition-colors duration-300 ${scrolled ? 'bg-white/80 backdrop-blur-xl border-b border-slate-200/70' : 'bg-transparent border-b border-transparent'}`}>
-        <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
-          <Link to="/" className="flex items-center gap-2.5">
-            <img src="/icons/logo.png" alt="SabakHub" className="h-8 w-8 rounded-lg" />
-            <span className="font-semibold text-lg tracking-tight">SabakHub</span>
-          </Link>
-          <div className="hidden md:flex items-center gap-1">
-            {navItems.map(item => (
-              <a key={item.href} href={item.href} className="px-3 py-2 text-sm font-medium text-slate-600 hover:text-slate-900 rounded-lg hover:bg-slate-100/70 transition-colors">{item.label}</a>
-            ))}
-            {navLinks.map(item => (
-              <Link key={item.to} to={item.to} className="px-3 py-2 text-sm font-medium text-slate-600 hover:text-slate-900 rounded-lg hover:bg-slate-100/70 transition-colors">{item.label}</Link>
-            ))}
-          </div>
-          <div className="flex items-center gap-2">
-            <LanguageSwitcher />
-            {user ? (
-              <Link to="/dashboard" className="hidden sm:inline-flex items-center text-sm font-semibold text-white bg-slate-900 hover:bg-slate-800 px-4 py-2 rounded-lg transition-colors">{t('nav.dashboard') || 'Dashboard'}</Link>
-            ) : (
-              <>
-                <Link to="/login" className="hidden sm:inline-flex items-center text-sm font-medium text-slate-600 hover:text-slate-900 px-3 py-2 transition-colors">{t('auth.login')}</Link>
-                <Link to="/register" className="hidden sm:inline-flex items-center text-sm font-semibold text-white bg-slate-900 hover:bg-slate-800 px-4 py-2 rounded-lg transition-colors">{t('landing.heroCta')}</Link>
-              </>
-            )}
-            <button onClick={() => setMobileMenuOpen(!mobileMenuOpen)} className="md:hidden p-2 -mr-2 text-slate-700">
-              {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
-            </button>
-          </div>
-        </div>
-        {mobileMenuOpen && (
-          <div className="md:hidden bg-white border-t border-slate-200 px-6 py-4 space-y-1">
-            {navItems.map(item => (
-              <a key={item.href} href={item.href} onClick={() => setMobileMenuOpen(false)} className="block text-sm font-medium text-slate-600 py-2.5">{item.label}</a>
-            ))}
-            {navLinks.map(item => (
-              <Link key={item.to} to={item.to} onClick={() => setMobileMenuOpen(false)} className="block text-sm font-medium text-slate-600 py-2.5">{item.label}</Link>
-            ))}
-            <div className="flex gap-3 pt-3">
-              {user ? (
-                <Link to="/dashboard" onClick={() => setMobileMenuOpen(false)} className="flex-1 text-center text-sm font-semibold text-white bg-slate-900 rounded-lg py-2.5">{t('nav.dashboard') || 'Dashboard'}</Link>
-              ) : (
-                <>
-                  <Link to="/login" onClick={() => setMobileMenuOpen(false)} className="flex-1 text-center text-sm font-medium text-slate-700 border border-slate-200 rounded-lg py-2.5">{t('auth.login')}</Link>
-                  <Link to="/register" onClick={() => setMobileMenuOpen(false)} className="flex-1 text-center text-sm font-semibold text-white bg-slate-900 rounded-lg py-2.5">{t('landing.heroCta')}</Link>
-                </>
-              )}
-            </div>
-          </div>
-        )}
-      </nav>
+      <LandingNav variant="home" />
 
       {/* ═══ Hero ═══ */}
       <section className="relative overflow-hidden px-6 pt-36 pb-20 sm:pt-40 sm:pb-28">
@@ -501,67 +400,7 @@ const LandingPage: React.FC = () => {
         </div>
       </section>
 
-      {/* ═══ Footer ═══ */}
-      <footer className="border-t border-slate-200 bg-white px-6 pt-16 pb-8">
-        <div className="max-w-7xl mx-auto">
-          <div className="grid grid-cols-2 gap-10 md:grid-cols-5">
-            <div className="col-span-2 md:col-span-1">
-              <div className="flex items-center gap-2.5">
-                <img src="/icons/logo.png" alt="SabakHub" className="h-8 w-8 rounded-lg" />
-                <span className="font-semibold text-lg tracking-tight">SabakHub</span>
-              </div>
-              <p className="mt-4 max-w-xs text-sm leading-relaxed text-slate-500">{t('landing.footerDesc')}</p>
-              <div className="mt-5 flex gap-2.5">
-                <a href="https://t.me/planula_bot" target="_blank" rel="noopener noreferrer" aria-label="Telegram" className="flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 text-slate-500 transition-colors hover:border-primary-200 hover:bg-primary-50 hover:text-primary-600">
-                  <MessageCircle className="w-4 h-4" />
-                </a>
-                <a href="mailto:hello@sabakhub.kg" aria-label="Email" className="flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 text-slate-500 transition-colors hover:border-primary-200 hover:bg-primary-50 hover:text-primary-600">
-                  <Mail className="w-4 h-4" />
-                </a>
-              </div>
-            </div>
-            <div>
-              <h4 className="text-sm font-semibold text-slate-900">{t('landing.footerProduct')}</h4>
-              <ul className="mt-4 space-y-3">
-                <li><Link to="/features" className="text-sm text-slate-500 transition-colors hover:text-slate-900">{t('landing.navFeatures')}</Link></li>
-                <li><a href="#pricing" className="text-sm text-slate-500 transition-colors hover:text-slate-900">{t('landing.navPricing')}</a></li>
-                <li><Link to="/docs" className="text-sm text-slate-500 transition-colors hover:text-slate-900">{t('landing.navDocs')}</Link></li>
-              </ul>
-            </div>
-            <div>
-              <h4 className="text-sm font-semibold text-slate-900">{t('landing.footerCompany')}</h4>
-              <ul className="mt-4 space-y-3">
-                <li><Link to="/about" className="text-sm text-slate-500 transition-colors hover:text-slate-900">{t('landing.footerAbout')}</Link></li>
-                <li><Link to="/contact" className="text-sm text-slate-500 transition-colors hover:text-slate-900">{t('landing.footerContactLink')}</Link></li>
-              </ul>
-            </div>
-            <div>
-              <h4 className="text-sm font-semibold text-slate-900">{t('landing.footerResources')}</h4>
-              <ul className="mt-4 space-y-3">
-                <li><Link to="/docs" className="text-sm text-slate-500 transition-colors hover:text-slate-900">{t('landing.navDocs')}</Link></li>
-                <li><Link to="/vibecoder" className="text-sm text-slate-500 transition-colors hover:text-slate-900">{t('landing.footerVibecoder')}</Link></li>
-                <li><a href="#faq" className="text-sm text-slate-500 transition-colors hover:text-slate-900">{t('landing.navFaq')}</a></li>
-              </ul>
-            </div>
-            <div>
-              <h4 className="text-sm font-semibold text-slate-900">{t('landing.footerContact')}</h4>
-              <ul className="mt-4 space-y-3">
-                <li className="flex items-center gap-2 text-sm text-slate-500"><Mail className="w-4 h-4 shrink-0 text-slate-400" /> hello@sabakhub.kg</li>
-                <li className="flex items-center gap-2 text-sm text-slate-500"><Phone className="w-4 h-4 shrink-0 text-slate-400" /> +996 550 308 078</li>
-                <li className="flex items-center gap-2 text-sm text-slate-500"><MapPin className="w-4 h-4 shrink-0 text-slate-400" /> {t('landing.footerCity')}</li>
-              </ul>
-            </div>
-          </div>
-          <div className="mt-12 flex flex-col items-center justify-between gap-5 border-t border-slate-200 pt-6 md:flex-row">
-            <p className="text-sm text-slate-400">&copy; {new Date().getFullYear()} SabakHub. {t('landing.rights')}</p>
-            <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-3">
-              <Link to="/privacy" className="text-sm text-slate-400 transition-colors hover:text-slate-900">{t('landing.footerPrivacy')}</Link>
-              <Link to="/terms" className="text-sm text-slate-400 transition-colors hover:text-slate-900">{t('landing.footerTerms')}</Link>
-              <LanguageSwitcher />
-            </div>
-          </div>
-        </div>
-      </footer>
+      <LandingFooter />
 
       <RequestDemoModal open={demoOpen} onClose={() => setDemoOpen(false)} />
     </div>

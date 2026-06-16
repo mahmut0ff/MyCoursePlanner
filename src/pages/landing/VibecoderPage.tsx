@@ -1,14 +1,13 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { useAuth } from '../../contexts/AuthContext';
 import {
   ArrowLeft, Globe2, Atom, GitBranch, Server, Cloud,
   Database, FolderOpen, PlayCircle, ListChecks,
   CheckCircle2, BookOpen, Clock, ClipboardList, Users,
   Zap, UploadCloud, Bot, ShoppingCart, LayoutGrid, Rocket,
 } from 'lucide-react';
-import LanguageSwitcher from '../../components/LanguageSwitcher';
+import { LandingNav, LandingFooter } from '../../components/landing/LandingChrome';
 
 /**
  * Открытая учебная страница «Что должен знать вайбкодер».
@@ -152,7 +151,6 @@ const VideoEmbed: React.FC<{ id: string; title: string }> = ({ id, title }) => (
 
 const VibecoderPage: React.FC = () => {
   const { t } = useTranslation();
-  const { firebaseUser: user } = useAuth();
   const [activeId, setActiveId] = useState<string>(MODULES[0].id);
 
   // Подсветка активного этапа в оглавлении
@@ -180,26 +178,7 @@ const VibecoderPage: React.FC = () => {
         @media (prefers-reduced-motion: reduce) { .vc-rise { animation: none; opacity: 1; transform: none; } }
       `}</style>
 
-      {/* Navbar */}
-      <nav className="fixed top-0 left-0 right-0 z-50 bg-white/80 backdrop-blur-xl border-b border-slate-200/50">
-        <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
-          <Link to="/" className="flex items-center gap-2.5">
-            <img src="/icons/logo.png" alt="SabakHub" className="h-8 w-auto object-contain" />
-            <span className="font-bold text-lg">SabakHub</span>
-          </Link>
-          <div className="flex items-center gap-3">
-            <LanguageSwitcher />
-            {user ? (
-              <Link to="/dashboard" className="text-sm font-semibold text-white bg-primary-600 hover:bg-primary-700 px-5 py-2.5 rounded-xl shadow-lg shadow-primary-500/20 transition-all">{t('nav.dashboard') || 'Dashboard'}</Link>
-            ) : (
-              <>
-                <Link to="/login" className="text-sm font-medium text-slate-600 hover:text-slate-900 px-4 py-2 transition-colors">{t('auth.login')}</Link>
-                <Link to="/register" className="text-sm font-semibold text-white bg-primary-600 hover:bg-primary-700 px-5 py-2.5 rounded-xl shadow-lg shadow-primary-500/20 transition-all">{t('landing.heroCta')}</Link>
-              </>
-            )}
-          </div>
-        </div>
-      </nav>
+      <LandingNav />
 
       <div className="max-w-6xl mx-auto px-6 pt-28 pb-24">
         {/* Header */}
@@ -414,10 +393,7 @@ const VibecoderPage: React.FC = () => {
         </div>
       </div>
 
-      {/* Footer */}
-      <footer className="bg-[#0f172a] text-white py-8 px-6 text-center">
-        <p className="text-sm text-slate-500">&copy; {new Date().getFullYear()} SabakHub. {t('landing.rights')}</p>
-      </footer>
+      <LandingFooter />
     </div>
   );
 };

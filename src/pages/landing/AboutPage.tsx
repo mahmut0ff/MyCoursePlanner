@@ -1,89 +1,42 @@
 import React from 'react';
-import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { useAuth } from '../../contexts/AuthContext';
-import { ArrowLeft, Heart, Rocket, GraduationCap } from 'lucide-react';
-import LanguageSwitcher from '../../components/LanguageSwitcher';
+import { Rocket, GraduationCap, Heart } from 'lucide-react';
+import { LandingNav, LandingFooter, LandingCTA, PageHero } from '../../components/landing/LandingChrome';
 
 const AboutPage: React.FC = () => {
   const { t } = useTranslation();
-  const { firebaseUser: user } = useAuth();
+
+  const values = [
+    { icon: Rocket, title: t('landing.aboutMission'), text: t('landing.aboutMissionText') },
+    { icon: GraduationCap, title: t('landing.aboutProduct'), text: t('landing.aboutProductText') },
+    { icon: Heart, title: t('landing.aboutTeam'), text: t('landing.aboutTeamText') },
+  ];
+
   return (
-    <div className="min-h-screen bg-white text-slate-900">
-      {/* Navbar */}
-      <nav className="fixed top-0 left-0 right-0 z-50 bg-white/80 backdrop-blur-xl border-b border-slate-200/50">
-        <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
-          <Link to="/" className="flex items-center gap-2.5">
-            <img src="/icons/logo.png" alt="SabakHub" className="h-8 w-auto object-contain" />
-            <span className="font-bold text-lg">SabakHub</span>
-          </Link>
-          <div className="flex items-center gap-3">
-            <LanguageSwitcher />
-            {user ? (
-              <Link to="/dashboard" className="text-sm font-semibold text-white bg-primary-600 hover:bg-primary-700 px-5 py-2.5 rounded-xl shadow-lg shadow-primary-500/20 transition-all">{t('nav.dashboard') || 'Dashboard'}</Link>
-            ) : (
-              <>
-                <Link to="/login" className="text-sm font-medium text-slate-600 hover:text-slate-900 px-4 py-2 transition-colors">{t('auth.login')}</Link>
-                <Link to="/register" className="text-sm font-semibold text-white bg-primary-600 hover:bg-primary-700 px-5 py-2.5 rounded-xl shadow-lg shadow-primary-500/20 transition-all">{t('landing.heroCta')}</Link>
-              </>
-            )}
+    <div className="min-h-screen bg-white text-slate-900 antialiased">
+      <LandingNav />
+
+      <main>
+        <PageHero eyebrow={t('landing.navAbout')} title={t('landing.aboutPageTitle')} subtitle={t('landing.aboutPageSubtitle')} />
+
+        <section className="px-6 pb-4">
+          <div className="max-w-5xl mx-auto grid gap-5 md:grid-cols-3">
+            {values.map((v, i) => (
+              <div key={i} className="rounded-2xl border border-slate-200 bg-white p-7 transition-all hover:border-slate-300 hover:shadow-lg hover:shadow-slate-900/5">
+                <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-primary-50 text-primary-600 ring-1 ring-primary-100">
+                  <v.icon className="w-5 h-5" />
+                </div>
+                <h3 className="mt-5 text-lg font-semibold text-slate-900">{v.title}</h3>
+                <p className="mt-2 text-[0.95rem] leading-relaxed text-slate-600">{v.text}</p>
+              </div>
+            ))}
           </div>
-        </div>
-      </nav>
+        </section>
 
-      <main className="pt-28 pb-20 px-6">
-        <div className="max-w-4xl mx-auto">
-          <Link to="/" className="inline-flex items-center gap-1.5 text-sm font-medium text-slate-500 hover:text-primary-600 mb-8 transition-colors">
-            <ArrowLeft className="w-4 h-4" /> {t('common.back')}
-          </Link>
-
-          <h1 className="text-4xl font-extrabold mb-3 text-slate-900">{t('landing.aboutPageTitle')}</h1>
-          <p className="text-lg text-slate-500 mb-12">{t('landing.aboutPageSubtitle')}</p>
-
-          <div className="space-y-8">
-            {/* Mission */}
-            <div className="bg-gradient-to-br from-primary-50 to-violet-50 rounded-3xl p-8 md:p-10 border border-primary-100 shadow-sm relative overflow-hidden group hover:shadow-xl hover:-translate-y-1 transition-all duration-300">
-              <div className="absolute top-0 right-0 w-64 h-64 bg-white/40 blur-3xl rounded-full -mr-10 -mt-10 pointer-events-none transition-transform group-hover:scale-110" />
-              <div className="relative z-10">
-                <div className="flex items-center gap-4 mb-6">
-                  <div className="w-12 h-12 rounded-2xl bg-primary-600 flex items-center justify-center shadow-lg shadow-primary-600/20">
-                    <Rocket className="w-6 h-6 text-white" />
-                  </div>
-                  <h2 className="text-2xl font-bold text-slate-900">{t('landing.aboutMission')}</h2>
-                </div>
-                <p className="text-slate-700 text-lg leading-relaxed">{t('landing.aboutMissionText')}</p>
-              </div>
-            </div>
-
-            {/* Product */}
-            <div className="bg-white rounded-3xl p-8 md:p-10 border border-slate-100 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 group">
-              <div className="flex items-center gap-4 mb-6">
-                <div className="w-12 h-12 rounded-2xl bg-violet-600 flex items-center justify-center shadow-lg shadow-violet-600/20 group-hover:scale-110 transition-transform">
-                  <GraduationCap className="w-6 h-6 text-white" />
-                </div>
-                <h2 className="text-2xl font-bold text-slate-900">{t('landing.aboutProduct')}</h2>
-              </div>
-              <p className="text-slate-600 text-lg leading-relaxed">{t('landing.aboutProductText')}</p>
-            </div>
-
-            {/* Team */}
-            <div className="bg-white rounded-3xl p-8 md:p-10 border border-slate-100 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 group">
-              <div className="flex items-center gap-4 mb-6">
-                <div className="w-12 h-12 rounded-2xl bg-emerald-600 flex items-center justify-center shadow-lg shadow-emerald-600/20 group-hover:scale-110 transition-transform">
-                  <Heart className="w-6 h-6 text-white" />
-                </div>
-                <h2 className="text-2xl font-bold text-slate-900">{t('landing.aboutTeam')}</h2>
-              </div>
-              <p className="text-slate-600 text-lg leading-relaxed">{t('landing.aboutTeamText')}</p>
-            </div>
-          </div>
-        </div>
+        <LandingCTA />
       </main>
 
-      {/* Footer */}
-      <footer className="bg-[#0f172a] text-white py-8 px-6 text-center mt-auto">
-        <p className="text-sm text-slate-500">&copy; {new Date().getFullYear()} SabakHub. {t('landing.rights')}</p>
-      </footer>
+      <LandingFooter />
     </div>
   );
 };

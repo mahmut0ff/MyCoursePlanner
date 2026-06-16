@@ -1,121 +1,101 @@
 import React, { useEffect, useState } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
+import { useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { useAuth } from '../../contexts/AuthContext';
-import { ArrowLeft, MapPin, Phone, MessageCircle, Send, CheckCircle } from 'lucide-react';
-import LanguageSwitcher from '../../components/LanguageSwitcher';
+import { MapPin, Phone, MessageCircle, Send, CheckCircle2 } from 'lucide-react';
+import { LandingNav, LandingFooter, PageHero } from '../../components/landing/LandingChrome';
 import RequestDemoModal from '../../components/landing/RequestDemoModal';
 
 const ContactPage: React.FC = () => {
   const { t } = useTranslation();
-  const { firebaseUser: user } = useAuth();
   const [sent, setSent] = useState(false);
   const [demoOpen, setDemoOpen] = useState(false);
   const [searchParams] = useSearchParams();
 
   useEffect(() => {
-    // Старый параметр ?demo=1 — мы убрали отдельную кнопку демо со страницы
-    // контактов (страница и так контактная), но автооткрытие модалки оставляем
-    // для совместимости со ссылкой со страницы регистрации.
+    // Backwards-compat: ?demo=1 still auto-opens the request-demo modal.
     if (searchParams.get('demo') === '1') setDemoOpen(true);
   }, [searchParams]);
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    setSent(true);
-  };
+  const channels = [
+    { icon: MessageCircle, label: 'Telegram', value: '@planula_bot', href: 'https://t.me/planula_bot' },
+    { icon: Phone, label: t('landing.footerContact'), value: '+996 550 308 078', href: 'tel:+996550308078' },
+    { icon: MapPin, label: t('landing.footerCity'), value: t('landing.footerCity'), href: '' },
+  ];
+
+  const inputClass =
+    'w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 transition-colors placeholder:text-slate-400 focus:border-primary-500 focus:outline-none focus:ring-4 focus:ring-primary-500/10';
 
   return (
-    <div className="min-h-screen bg-white text-slate-900">
-      <nav className="fixed top-0 left-0 right-0 z-50 bg-white/80 backdrop-blur-xl border-b border-slate-200/50">
-        <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
-          <Link to="/" className="flex items-center gap-2.5">
-            <img src="/icons/logo.png" alt="SabakHub" className="h-8 w-auto object-contain" />
-            <span className="font-bold text-lg">SabakHub</span>
-          </Link>
-          <div className="flex items-center gap-3">
-            <LanguageSwitcher />
-            {user ? (
-              <Link to="/dashboard" className="text-sm font-semibold text-white bg-primary-600 hover:bg-primary-700 px-5 py-2.5 rounded-xl shadow-lg shadow-primary-500/20 transition-all">{t('nav.dashboard') || 'Dashboard'}</Link>
-            ) : (
-              <Link to="/login" className="text-sm font-medium text-slate-600 hover:text-slate-900 px-4 py-2 transition-colors">{t('auth.login')}</Link>
-            )}
-          </div>
-        </div>
-      </nav>
+    <div className="min-h-screen bg-white text-slate-900 antialiased">
+      <LandingNav />
 
-      <main className="pt-28 pb-20 px-6">
-        <div className="max-w-5xl mx-auto">
-          <Link to="/" className="inline-flex items-center gap-1.5 text-sm font-medium text-slate-500 hover:text-primary-600 mb-8 transition-colors">
-            <ArrowLeft className="w-4 h-4" /> {t('common.back')}
-          </Link>
+      <main>
+        <PageHero eyebrow={t('landing.footerContact')} title={t('landing.contactPageTitle')} subtitle={t('landing.contactPageSubtitle')} />
 
-          <h1 className="text-4xl font-extrabold mb-3 text-slate-900">{t('landing.contactPageTitle')}</h1>
-          <p className="text-lg text-slate-500 mb-12">{t('landing.contactPageSubtitle')}</p>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
+        <section className="px-6 pb-4">
+          <div className="max-w-5xl mx-auto grid gap-6 lg:grid-cols-5">
             {/* Form */}
-            <div className="bg-white rounded-3xl p-8 border border-slate-100 shadow-sm relative overflow-hidden group">
+            <div className="lg:col-span-3 rounded-2xl border border-slate-200 bg-white p-6 sm:p-8 shadow-sm">
               {sent ? (
-                <div className="flex flex-col items-center justify-center h-full text-center py-10 animate-fade-in">
-                  <div className="w-20 h-20 bg-emerald-50 rounded-full flex items-center justify-center mb-6">
-                    <CheckCircle className="w-10 h-10 text-emerald-500" />
+                <div className="flex h-full flex-col items-center justify-center py-12 text-center">
+                  <div className="flex h-16 w-16 items-center justify-center rounded-full bg-emerald-50 text-emerald-500">
+                    <CheckCircle2 className="w-8 h-8" />
                   </div>
-                  <h3 className="text-2xl font-bold text-slate-900 mb-2">{t('landing.contactSent')}</h3>
-                  <p className="text-slate-500">We'll get back to you shortly.</p>
+                  <h3 className="mt-5 text-xl font-semibold text-slate-900">{t('landing.contactSent')}</h3>
                 </div>
               ) : (
-                <form onSubmit={handleSubmit} className="space-y-5 relative z-10">
+                <form onSubmit={(e) => { e.preventDefault(); setSent(true); }} className="space-y-5">
                   <div>
-                    <label className="block text-sm font-semibold text-slate-700 mb-2">{t('landing.contactName')}</label>
-                    <input type="text" required className="w-full border border-slate-200 rounded-xl px-4 py-3.5 bg-slate-50/50 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 focus:bg-white transition-all" placeholder="Айбек Турсунов" />
+                    <label className="mb-1.5 block text-sm font-medium text-slate-700">{t('landing.contactName')}</label>
+                    <input type="text" required className={inputClass} placeholder="Айбек Турсунов" />
                   </div>
                   <div>
-                    <label className="block text-sm font-semibold text-slate-700 mb-2">{t('landing.contactEmail')}</label>
-                    <input type="email" required className="w-full border border-slate-200 rounded-xl px-4 py-3.5 bg-slate-50/50 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 focus:bg-white transition-all" placeholder="aibek@example.kg" />
+                    <label className="mb-1.5 block text-sm font-medium text-slate-700">{t('landing.contactEmail')}</label>
+                    <input type="email" required className={inputClass} placeholder="aibek@example.kg" />
                   </div>
                   <div>
-                    <label className="block text-sm font-semibold text-slate-700 mb-2">{t('landing.contactMessage')}</label>
-                    <textarea required rows={5} className="w-full border border-slate-200 rounded-xl px-4 py-3.5 bg-slate-50/50 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 focus:bg-white transition-all resize-none" placeholder="Расскажите коротко, чем можем помочь" />
+                    <label className="mb-1.5 block text-sm font-medium text-slate-700">{t('landing.contactMessage')}</label>
+                    <textarea required rows={5} className={`${inputClass} resize-none`} placeholder={t('landing.contactPlaceholder', 'Расскажите коротко, чем можем помочь')} />
                   </div>
-                  <button type="submit" className="w-full bg-primary-600 hover:bg-primary-700 text-white font-semibold py-3.5 rounded-xl flex items-center justify-center gap-2 shadow-lg shadow-primary-500/25 hover:shadow-primary-500/40 transition-all">
-                    <Send className="w-5 h-5" />
+                  <button type="submit" className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-primary-600 py-3.5 text-sm font-semibold text-white transition-colors hover:bg-primary-700">
+                    <Send className="w-4 h-4" />
                     {t('landing.contactSend')}
                   </button>
                 </form>
               )}
             </div>
 
-            {/* Contact info */}
-            <div className="space-y-6 lg:pl-8">
-              <h3 className="text-2xl font-bold text-slate-900 mb-6">{t('landing.contactInfo')}</h3>
-              <div className="space-y-4">
-                {[
-                  { icon: MessageCircle, label: 'Telegram: @planula_bot', href: 'https://t.me/planula_bot', color: 'bg-sky-50 text-sky-600' },
-                  { icon: Phone, label: '+996 550 308 078', href: 'tel:+996550308078', color: 'bg-emerald-50 text-emerald-600' },
-                  { icon: MapPin, label: t('landing.footerCity'), href: '', color: 'bg-rose-50 text-rose-600' },
-                ].map((item, i) => (
-                  <div key={i} className="flex items-center gap-4 p-5 bg-white rounded-2xl border border-slate-100 shadow-sm hover:shadow-md transition-shadow group">
-                    <div className={`w-12 h-12 ${item.color} rounded-xl flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform`}>
-                      <item.icon className="w-6 h-6" />
-                    </div>
-                    {item.href ? (
-                      <a href={item.href} target="_blank" rel="noopener noreferrer" className="text-slate-700 font-medium hover:text-primary-600 transition-colors">{item.label}</a>
-                    ) : (
-                      <span className="text-slate-700 font-medium">{item.label}</span>
-                    )}
-                  </div>
-                ))}
+            {/* Channels */}
+            <div className="lg:col-span-2">
+              <h3 className="text-sm font-semibold uppercase tracking-[0.14em] text-slate-500">{t('landing.contactInfo')}</h3>
+              <div className="mt-4 space-y-3">
+                {channels.map((c, i) => {
+                  const inner = (
+                    <>
+                      <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary-50 text-primary-600 ring-1 ring-primary-100">
+                        <c.icon className="w-5 h-5" />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-xs font-medium uppercase tracking-wide text-slate-400">{c.label}</p>
+                        <p className="truncate text-sm font-medium text-slate-800">{c.value}</p>
+                      </div>
+                    </>
+                  );
+                  return c.href ? (
+                    <a key={i} href={c.href} target="_blank" rel="noopener noreferrer" className="flex items-center gap-4 rounded-2xl border border-slate-200 bg-white p-4 transition-colors hover:border-primary-200 hover:bg-primary-50/30">{inner}</a>
+                  ) : (
+                    <div key={i} className="flex items-center gap-4 rounded-2xl border border-slate-200 bg-white p-4">{inner}</div>
+                  );
+                })}
               </div>
             </div>
           </div>
-        </div>
+        </section>
+
+        <div className="h-16" />
       </main>
 
-      <footer className="bg-[#0f172a] text-white py-8 px-6 text-center mt-auto">
-        <p className="text-sm text-slate-500">&copy; {new Date().getFullYear()} SabakHub. {t('landing.rights')}</p>
-      </footer>
-
+      <LandingFooter />
       <RequestDemoModal open={demoOpen} onClose={() => setDemoOpen(false)} />
     </div>
   );

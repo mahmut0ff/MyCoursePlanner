@@ -3,6 +3,8 @@ import { NavLink, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../contexts/AuthContext';
 import { usePlanGate } from '../../contexts/PlanContext';
+import { usePermissions } from '../../contexts/PermissionsContext';
+import { term } from '../../lib/terminology';
 import { signOut } from '../../services/auth.service';
 
 import OrgSwitcher from './OrgSwitcher';
@@ -17,7 +19,7 @@ import {
   ClipboardList, Radio, LogOut, CreditCard, Trophy,
   Lock, ClipboardCheck,
   ShieldCheck, Inbox,
-  NotebookText, NotebookPen, MapPin,
+  NotebookText, NotebookPen, MapPin, UserCog,
 } from 'lucide-react';
 
 /* ─── Thin divider between groups ─── */
@@ -74,6 +76,7 @@ const Sidebar: React.FC<{ open: boolean; onClose: () => void; isCollapsed?: bool
   const { t } = useTranslation();
   const { profile, role, isSuperAdmin, isTeacher, isManager, organizationId, hasPermission } = useAuth();
   const { canAccess } = usePlanGate();
+  const { canRead } = usePermissions();
   const navigate = useNavigate();
 
   const handleSignOut = async () => { await signOut(); navigate('/login'); };
@@ -85,6 +88,7 @@ const Sidebar: React.FC<{ open: boolean; onClose: () => void; isCollapsed?: bool
 
   const isAdmin = role === 'admin';
   const teacherWithOrg = isTeacher && !!organizationId;
+  const instType = orgData?.institutionType;
 
   return (
     <>
@@ -143,9 +147,10 @@ const Sidebar: React.FC<{ open: boolean; onClose: () => void; isCollapsed?: bool
               <NavItem to="/dashboard" icon={LayoutDashboard} label={t('nav.dashboard')} isCollapsed={isCollapsed} onClose={onClose} />
 
               <SectionLabel label={t('nav.secPeople', 'Люди')} isCollapsed={isCollapsed} />
-              <NavItem to="/students" icon={Users} label={t('nav.students')} isCollapsed={isCollapsed} onClose={onClose} />
+              <NavItem to="/students" icon={Users} label={term(t, instType, 'students')} isCollapsed={isCollapsed} onClose={onClose} />
               <NavItem to="/teachers" icon={UserPlus} label={t('nav.teachers')} isCollapsed={isCollapsed} onClose={onClose} />
               <NavItem to="/managers" icon={ShieldCheck} label={t('nav.managers', 'Менеджеры')} isCollapsed={isCollapsed} onClose={onClose} />
+              <NavItem to="/team" icon={UserCog} label={t('nav.team', 'Команда и роли')} isCollapsed={isCollapsed} onClose={onClose} locked={!canAccess('rbac')} />
 
               <SectionLabel label={t('nav.secLearning', 'Обучение')} isCollapsed={isCollapsed} />
               <NavItem to="/courses" icon={FolderOpen} label={t('nav.courses')} isCollapsed={isCollapsed} onClose={onClose} />
@@ -165,15 +170,18 @@ const Sidebar: React.FC<{ open: boolean; onClose: () => void; isCollapsed?: bool
               <NavItem to="/dashboard" icon={LayoutDashboard} label={t('nav.dashboard')} isCollapsed={isCollapsed} onClose={onClose} />
 
               <SectionLabel label={t('nav.secPeople', 'Люди')} isCollapsed={isCollapsed} />
-              <NavItem to="/students" icon={Users} label={t('nav.students')} isCollapsed={isCollapsed} onClose={onClose} />
+              <NavItem to="/students" icon={Users} label={term(t, instType, 'students')} isCollapsed={isCollapsed} onClose={onClose} />
               <NavItem to="/teachers" icon={UserPlus} label={t('nav.teachers')} isCollapsed={isCollapsed} onClose={onClose} />
               {hasPermission('managers') && (
                 <NavItem to="/managers" icon={ShieldCheck} label={t('nav.managers', 'Менеджеры')} isCollapsed={isCollapsed} onClose={onClose} />
               )}
+              {canRead('team') && (
+                <NavItem to="/team" icon={UserCog} label={t('nav.team', 'Команда и роли')} isCollapsed={isCollapsed} onClose={onClose} locked={!canAccess('rbac')} />
+              )}
 
               <SectionLabel label={t('nav.secLearning', 'Обучение')} isCollapsed={isCollapsed} />
               <NavItem to="/courses" icon={FolderOpen} label={t('nav.courses')} isCollapsed={isCollapsed} onClose={onClose} />
-              <NavItem to="/groups" icon={Layers} label={t('nav.groups', 'Группы')} isCollapsed={isCollapsed} onClose={onClose} />
+              <NavItem to="/groups" icon={Layers} label={term(t, instType, 'groups')} isCollapsed={isCollapsed} onClose={onClose} />
               <NavItem to="/lessons" icon={BookOpen} label={t('nav.lessons')} isCollapsed={isCollapsed} onClose={onClose} />
               <NavItem to="/exams" icon={ClipboardList} label={t('nav.exams')} isCollapsed={isCollapsed} onClose={onClose} />
               <NavItem to="/schedule" icon={Calendar} label={t('nav.schedule')} isCollapsed={isCollapsed} onClose={onClose} />

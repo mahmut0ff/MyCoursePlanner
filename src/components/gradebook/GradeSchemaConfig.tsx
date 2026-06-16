@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import type { GradeSchema, GradingType } from '../../types';
 import { X, Settings, Check, Plus, Trash2 } from 'lucide-react';
 import { orgSaveGradeSchema } from '../../lib/api';
+import { GRADE_PRESETS, type GradePreset } from '../../lib/gradePresets';
 import toast from 'react-hot-toast';
 
 interface GradeSchemaConfigProps {
@@ -23,8 +24,18 @@ const GradeSchemaConfig: React.FC<GradeSchemaConfigProps> = ({ courseId, schema,
   const [maxVal, setMaxVal] = useState(schema?.scale?.max ?? 100);
   const [passThreshold, setPassThreshold] = useState(schema?.passThreshold ?? 50);
   const [labels, setLabels] = useState<Record<string, string>>(schema?.scale?.labels || {});
+  const [newKey, setNewKey] = useState('');
+  const [newDesc, setNewDesc] = useState('');
 
   if (!isOpen) return null;
+
+  const applyPreset = (p: GradePreset) => {
+    setGradingType(p.gradingType);
+    setMinVal(p.scale.min);
+    setMaxVal(p.scale.max);
+    setPassThreshold(p.passThreshold);
+    setLabels(p.scale.labels || {});
+  };
 
   const handleSave = async () => {
     setSaving(true);
@@ -48,12 +59,11 @@ const GradeSchemaConfig: React.FC<GradeSchemaConfigProps> = ({ courseId, schema,
   };
 
   const handleAddLabel = () => {
-    const key = prompt('Label symbol (e.g. A, B, C):');
+    const key = newKey.trim();
     if (!key) return;
-    const desc = prompt('Label description or range (e.g. 90-100%):');
-    if (desc !== null) {
-      setLabels(prev => ({ ...prev, [key.trim()]: desc.trim() }));
-    }
+    setLabels(prev => ({ ...prev, [key]: newDesc.trim() }));
+    setNewKey('');
+    setNewDesc('');
   };
 
   const handleRemoveLabel = (key: string) => {
@@ -90,6 +100,28 @@ const GradeSchemaConfig: React.FC<GradeSchemaConfigProps> = ({ courseId, schema,
         <div className="p-4 sm:p-6 overflow-y-auto flex-1 space-y-6">
           
           <div className="space-y-4">
+            {/* ── Quick presets ── */}
+            <div>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">
+                {t('gradebook.presets', 'Готовые шкалы')}
+              </label>
+              <div className="flex flex-wrap gap-2">
+                {GRADE_PRESETS.map((p) => (
+                  <button
+                    key={p.id}
+                    type="button"
+                    onClick={() => applyPreset(p)}
+                    className="px-3 py-1.5 text-xs font-medium rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-slate-700 dark:text-slate-300 hover:border-primary-400 hover:text-primary-600 dark:hover:text-primary-400 transition-colors"
+                  >
+                    {t(p.labelKey, p.label)}
+                  </button>
+                ))}
+              </div>
+              <p className="text-[10px] text-slate-500 mt-1.5">
+                {t('gradebook.presetsHint', 'Нажмите, чтобы заполнить настройки одним кликом. Затем можно подправить вручную.')}
+              </p>
+            </div>
+
             <div>
               <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">
                 {t('gradebook.typeLabel', 'Тип оценивания')}
@@ -151,14 +183,9 @@ const GradeSchemaConfig: React.FC<GradeSchemaConfigProps> = ({ courseId, schema,
 
             {(gradingType === 'letter' || gradingType === 'custom') && (
               <div className="pt-2 border-t border-slate-200 dark:border-slate-700">
-                <div className="flex items-center justify-between mb-3">
-                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">
-                    {t('gradebook.labels', 'Символы и диапазоны')}
-                  </label>
-                  <button onClick={handleAddLabel} className="text-xs text-primary-500 flex items-center gap-1 hover:underline">
-                    <Plus className="w-3 h-3" /> {t('common.add', 'Добавить')}
-                  </button>
-                </div>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-3">
+                  {t('gradebook.labels', 'Символы и диапазоны')}
+                </label>
                 {Object.keys(labels).length === 0 ? (
                   <p className="text-xs text-slate-500 italic bg-slate-50 dark:bg-slate-900 p-3 rounded-lg text-center">
                     Нет заданных символов.
@@ -178,6 +205,32 @@ const GradeSchemaConfig: React.FC<GradeSchemaConfigProps> = ({ courseId, schema,
                     ))}
                   </div>
                 )}
+
+                {/* Inline add row */}
+                <div className="flex items-center gap-2 mt-3">
+                  <input
+                    value={newKey}
+                    onChange={(e) => setNewKey(e.target.value)}
+                    placeholder={t('gradebook.labelSymbolPh', 'Символ')}
+                    className="w-24 px-3 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm text-slate-900 dark:text-white outline-none focus:border-primary-500"
+                  />
+                  <input
+                    value={newDesc}
+                    onChange={(e) => setNewDesc(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAddLabel(); } }}
+                    placeholder={t('gradebook.labelDescPh', 'Диапазон или описание (90–100)')}
+                    className="flex-1 px-3 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm text-slate-900 dark:text-white outline-none focus:border-primary-500"
+                  />
+                  <button
+                    type="button"
+                    onClick={handleAddLabel}
+                    disabled={!newKey.trim()}
+                    className="shrink-0 p-2 bg-primary-500 hover:bg-primary-600 text-white rounded-xl transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                    title={t('common.add', 'Добавить')}
+                  >
+                    <Plus className="w-4 h-4" />
+                  </button>
+                </div>
               </div>
             )}
           </div>

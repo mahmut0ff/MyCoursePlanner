@@ -4,7 +4,7 @@
  */
 import type { Handler, HandlerEvent } from '@netlify/functions';
 import { adminDb } from './utils/firebase-admin';
-import { verifyAuth, isStaff, forbidden, ok, unauthorized, badRequest, notFound, jsonResponse } from './utils/auth';
+import { verifyAuth, isStaff, can, forbidden, ok, unauthorized, badRequest, notFound, jsonResponse } from './utils/auth';
 import { createNotification, notifyOrgAdmins } from './utils/notifications';
 import { rateLimiters, getRateLimitKey } from './utils/rate-limiter';
 import { GoogleGenerativeAI } from '@google/generative-ai';
@@ -125,6 +125,7 @@ export const handler: Handler = async (event: HandlerEvent) => {
 
   // PUT: Teacher grades homework manually
   if (event.httpMethod === 'PUT' && pathSegments.length > 2 && action === 'grade') {
+    if (!isStaff(user) || !can(user, 'homework', 'write')) return forbidden('Недостаточно прав для этого действия');
     const id = pathSegments[pathSegments.length - 2];
     const body = JSON.parse(event.body || '{}');
 
@@ -156,6 +157,7 @@ export const handler: Handler = async (event: HandlerEvent) => {
 
   // PUT: Update homework status
   if (event.httpMethod === 'PUT' && pathSegments.length > 2 && action === 'status') {
+    if (!isStaff(user) || !can(user, 'homework', 'write')) return forbidden('Недостаточно прав для этого действия');
     const id = pathSegments[pathSegments.length - 2];
     const body = JSON.parse(event.body || '{}');
 

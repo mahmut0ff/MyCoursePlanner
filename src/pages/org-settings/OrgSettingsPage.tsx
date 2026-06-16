@@ -7,9 +7,11 @@ import { storage } from '../../lib/firebase';
 import {
   Save, Building2, GraduationCap, Check, Bell, BarChart3,
   Database, Camera, Loader2, MapPin, Phone, Mail, Clock,
-  QrCode, Download, Send, MessageCircle, Printer, Copy, CheckCircle, Bot, Globe
+  QrCode, Download, Send, MessageCircle, Printer, Copy, CheckCircle, Bot, Globe,
+  School, Languages
 } from 'lucide-react';
 import type { OrgSettings } from '../../types';
+import { INSTITUTION_LIST } from '../../lib/terminology';
 import QRCode from 'qrcode';
 import { AIManagerTab } from './AIManagerTab';
 import { IntegrationsTab } from './IntegrationsTab';
@@ -51,8 +53,34 @@ const GeneralTab: React.FC<{ settings: OrgSettings; update: (k: string, v: any) 
     }
   };
 
+  const INST_ICONS: Record<string, React.ElementType> = { center: GraduationCap, school: School, language: Languages, academy: Globe };
+
   return (
     <div className="space-y-5">
+      {/* Institution type */}
+      <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-5">
+        <h3 className="font-semibold text-slate-900 dark:text-white mb-1 text-sm">{t('org.settings.institutionType', 'Тип заведения')}</h3>
+        <p className="text-xs text-slate-500 dark:text-slate-400 mb-3">{t('org.settings.institutionTypeDesc', 'Меняет терминологию (группы/классы, студенты/ученики) и шкалу оценок по умолчанию для новых курсов')}</p>
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
+          {INSTITUTION_LIST.map((inst) => {
+            const Icon = INST_ICONS[inst.id] || GraduationCap;
+            const active = (settings.institutionType || 'center') === inst.id;
+            return (
+              <button
+                key={inst.id}
+                type="button"
+                onClick={() => update('institutionType', inst.id)}
+                className={`flex flex-col items-start gap-1.5 p-3 rounded-xl border text-left transition-all ${active ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/20 ring-1 ring-primary-500' : 'border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600'}`}
+              >
+                <Icon className={`w-5 h-5 ${active ? 'text-primary-600 dark:text-primary-400' : 'text-slate-400'}`} />
+                <span className={`text-sm font-medium ${active ? 'text-primary-700 dark:text-primary-300' : 'text-slate-700 dark:text-slate-300'}`}>{t(inst.labelKey, inst.label)}</span>
+                <span className="text-[11px] leading-tight text-slate-500 dark:text-slate-400">{t(inst.descKey, inst.desc)}</span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
       {/* Branding / Logo */}
       <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-5">
         <h3 className="font-semibold text-slate-900 dark:text-white mb-3 text-sm">{t('org.settings.branding', 'Брендинг')}</h3>

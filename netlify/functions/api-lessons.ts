@@ -3,7 +3,7 @@
  */
 import type { Handler, HandlerEvent } from '@netlify/functions';
 import { adminDb } from './utils/firebase-admin';
-import { verifyAuth, isStaff, getOrgFilter, ok, unauthorized, forbidden, badRequest, notFound, jsonResponse, isSuperAdmin } from './utils/auth';
+import { verifyAuth, isStaff, can, getOrgFilter, ok, unauthorized, forbidden, badRequest, notFound, jsonResponse, isSuperAdmin } from './utils/auth';
 import { notifyOrgStudents } from './utils/notifications';
 
 const COLLECTION = 'lessonPlans';
@@ -90,6 +90,8 @@ const handler: Handler = async (event: HandlerEvent) => {
   }
 
   if (!isStaff(user)) return forbidden();
+  // RBAC: writes require lessons:write, deletes require lessons:delete.
+  if (!can(user, 'lessons', event.httpMethod === 'DELETE' ? 'delete' : 'write')) return forbidden('Недостаточно прав для этого действия');
 
   // POST
   if (event.httpMethod === 'POST') {

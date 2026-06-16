@@ -3,7 +3,7 @@
  */
 import type { Handler, HandlerEvent } from '@netlify/functions';
 import { adminDb } from './utils/firebase-admin';
-import { verifyAuth, isStaff, hasPermission, getOrgFilter, resolveBranchFilter, requireBranchScope, ok, unauthorized, forbidden, badRequest, notFound, jsonResponse } from './utils/auth';
+import { verifyAuth, isStaff, hasPermission, can, getOrgFilter, resolveBranchFilter, requireBranchScope, ok, unauthorized, forbidden, badRequest, notFound, jsonResponse } from './utils/auth';
 import { createNotification, notifyOrgAdmins } from './utils/notifications';
 
 const COLLECTION = 'financeTransactions';
@@ -60,6 +60,7 @@ const handler: Handler = async (event: HandlerEvent) => {
     if (event.httpMethod === 'POST') {
       if (user.role === 'teacher' || user.role === 'student') return forbidden();
       if (!hasPermission(user, 'finances')) return forbidden('No access to finances module');
+      if (!can(user, 'finances', 'write')) return forbidden('Недостаточно прав для этого действия');
 
       const body = JSON.parse(event.body || '{}');
       if (!body.type || !body.amount || !body.date || !body.categoryId) {
@@ -126,6 +127,7 @@ const handler: Handler = async (event: HandlerEvent) => {
     if (event.httpMethod === 'PUT') {
       if (user.role === 'teacher' || user.role === 'student') return forbidden();
       if (!hasPermission(user, 'finances')) return forbidden('No access to finances module');
+      if (!can(user, 'finances', 'write')) return forbidden('Недостаточно прав для этого действия');
 
       const body = JSON.parse(event.body || '{}');
       if (!body.id) return badRequest('id required');
@@ -170,6 +172,7 @@ const handler: Handler = async (event: HandlerEvent) => {
     if (event.httpMethod === 'DELETE') {
       if (user.role === 'teacher' || user.role === 'student') return forbidden();
       if (!hasPermission(user, 'finances')) return forbidden('No access to finances module');
+      if (!can(user, 'finances', 'delete')) return forbidden('Недостаточно прав для этого действия');
 
       const txId = params.id;
       if (!txId) return badRequest('id required');

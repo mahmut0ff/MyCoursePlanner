@@ -36,13 +36,14 @@ export interface PlanLimits {
   certificatesEnabled: boolean;
   branchesEnabled: boolean;
   advancedAnalytics: boolean;
+  rbacEnabled: boolean;
 
 }
 
 /** Canonical feature keys for plan gating */
 export type PlanFeature =
   | 'finances' | 'gradebook' | 'certificates'
-  | 'branches' | 'advancedAnalytics'
+  | 'branches' | 'advancedAnalytics' | 'rbac'
   | 'ai' | 'aiAnalytics';
 
 /** Map PlanFeature → PlanLimits key */
@@ -52,6 +53,7 @@ export const FEATURE_TO_LIMIT: Record<PlanFeature, keyof PlanLimits> = {
   certificates: 'certificatesEnabled',
   branches: 'branchesEnabled',
   advancedAnalytics: 'advancedAnalytics',
+  rbac: 'rbacEnabled',
   ai: 'aiEnabled',
   aiAnalytics: 'aiAnalytics',
 };
@@ -62,6 +64,7 @@ export const FEATURE_MIN_PLAN: Record<PlanFeature, PlanId> = {
   gradebook: 'professional',
   certificates: 'professional',
   advancedAnalytics: 'professional',
+  rbac: 'professional',
   branches: 'enterprise',
   ai: 'enterprise',
   aiAnalytics: 'enterprise',
@@ -81,7 +84,7 @@ export const PLANS: Plan[] = [
       'Auto-grading',
       'Email support',
     ],
-    limits: { maxStudents: 50, maxTeachers: 5, maxExams: 20, aiEnabled: false, aiAnalytics: false, prioritySupport: false, dedicatedSupport: false, customBranding: false, financesEnabled: false, gradebookEnabled: false, certificatesEnabled: false, branchesEnabled: false, advancedAnalytics: false },
+    limits: { maxStudents: 50, maxTeachers: 5, maxExams: 20, aiEnabled: false, aiAnalytics: false, prioritySupport: false, dedicatedSupport: false, customBranding: false, financesEnabled: false, gradebookEnabled: false, certificatesEnabled: false, branchesEnabled: false, advancedAnalytics: false, rbacEnabled: false },
   },
   {
     id: 'professional',
@@ -96,7 +99,7 @@ export const PLANS: Plan[] = [
       'Performance analytics',
       'Priority support',
     ],
-    limits: { maxStudents: 200, maxTeachers: 20, maxExams: -1, aiEnabled: true, aiAnalytics: false, prioritySupport: true, dedicatedSupport: false, customBranding: false, financesEnabled: true, gradebookEnabled: true, certificatesEnabled: true, branchesEnabled: false, advancedAnalytics: true },
+    limits: { maxStudents: 200, maxTeachers: 20, maxExams: -1, aiEnabled: true, aiAnalytics: false, prioritySupport: true, dedicatedSupport: false, customBranding: false, financesEnabled: true, gradebookEnabled: true, certificatesEnabled: true, branchesEnabled: false, advancedAnalytics: true, rbacEnabled: true },
   },
   {
     id: 'enterprise',
@@ -112,7 +115,7 @@ export const PLANS: Plan[] = [
       'Dedicated support manager',
       'API access',
     ],
-    limits: { maxStudents: -1, maxTeachers: -1, maxExams: -1, aiEnabled: true, aiAnalytics: true, prioritySupport: true, dedicatedSupport: true, customBranding: true, financesEnabled: true, gradebookEnabled: true, certificatesEnabled: true, branchesEnabled: true, advancedAnalytics: true },
+    limits: { maxStudents: -1, maxTeachers: -1, maxExams: -1, aiEnabled: true, aiAnalytics: true, prioritySupport: true, dedicatedSupport: true, customBranding: true, financesEnabled: true, gradebookEnabled: true, certificatesEnabled: true, branchesEnabled: true, advancedAnalytics: true, rbacEnabled: true },
   },
 ];
 
@@ -125,6 +128,9 @@ export interface ContactLinks {
   website?: string;
 }
 
+/** Institution profile — adapts terminology and default grading scale per segment. */
+export type InstitutionType = 'center' | 'school' | 'language' | 'academy';
+
 export interface Organization {
   id: string;
   name: string;
@@ -133,6 +139,7 @@ export interface Organization {
   ownerEmail: string;
   planId: PlanId;
   status: OrgStatus;
+  institutionType?: InstitutionType;
   studentsCount: number;
   teachersCount: number;
   examsCount: number;
@@ -733,6 +740,7 @@ export interface OrgSettings {
   timezone: string;
   locale: string;
   supportedLocales?: string[];
+  institutionType?: InstitutionType;
   gradingScale?: 'percentage' | 'letter' | 'points';
   passingScore: number;
   // Notifications

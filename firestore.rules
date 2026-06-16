@@ -63,6 +63,14 @@ service cloud.firestore {
            )
         );
       }
+
+      // RBAC roles — readable by org members (the Team & Roles UI resolves the
+      // current user's role client-side). All writes go through the backend
+      // (api-roles, Admin SDK), so direct SDK writes are restricted to super admin.
+      match /roles/{roleId} {
+        allow read: if isSuperAdmin() || hasOrgAccess(orgId);
+        allow write: if isSuperAdmin();
+      }
     }
     
     match /organizationAIManager/{orgId} {

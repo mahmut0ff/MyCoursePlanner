@@ -4,7 +4,7 @@
  */
 import type { Handler, HandlerEvent } from '@netlify/functions';
 import { adminDb } from './utils/firebase-admin';
-import { verifyAuth, isStaff, hasPermission, getOrgFilter, resolveBranchFilter, ok, unauthorized, forbidden, badRequest, notFound, jsonResponse } from './utils/auth';
+import { verifyAuth, isStaff, hasPermission, can, getOrgFilter, resolveBranchFilter, ok, unauthorized, forbidden, badRequest, notFound, jsonResponse } from './utils/auth';
 
 const COLLECTION = 'studentPaymentPlans';
 
@@ -151,6 +151,7 @@ const handler: Handler = async (event: HandlerEvent) => {
     if (event.httpMethod === 'POST') {
       if (user.role === 'teacher' || user.role === 'student') return forbidden();
       if (!hasPermission(user, 'finances')) return forbidden('No access to finances module');
+      if (!can(user, 'finances', 'write')) return forbidden('Недостаточно прав для этого действия');
 
       const body = JSON.parse(event.body || '{}');
       if (!body.studentId || !body.courseId || body.totalAmount === undefined) {
@@ -207,6 +208,7 @@ const handler: Handler = async (event: HandlerEvent) => {
     if (event.httpMethod === 'PUT') {
       if (user.role === 'teacher' || user.role === 'student') return forbidden();
       if (!hasPermission(user, 'finances')) return forbidden('No access to finances module');
+      if (!can(user, 'finances', 'write')) return forbidden('Недостаточно прав для этого действия');
 
       const body = JSON.parse(event.body || '{}');
       if (!body.planId) return badRequest('planId required');
@@ -225,6 +227,7 @@ const handler: Handler = async (event: HandlerEvent) => {
     if (event.httpMethod === 'DELETE') {
       if (user.role === 'teacher' || user.role === 'student') return forbidden();
       if (!hasPermission(user, 'finances')) return forbidden('No access to finances module');
+      if (!can(user, 'finances', 'delete')) return forbidden('Недостаточно прав для этого действия');
 
       const planId = (event.queryStringParameters || {}).id;
       if (!planId) return badRequest('id required');

@@ -5,7 +5,7 @@
 import type { Handler, HandlerEvent } from '@netlify/functions';
 import { adminDb } from './utils/firebase-admin';
 import {
-  verifyAuth, isStaff, hasRole, hasPermission,
+  verifyAuth, isStaff, hasRole, hasPermission, can,
   ok, unauthorized, forbidden, badRequest, notFound, jsonResponse,
   type AuthUser,
 } from './utils/auth';
@@ -50,6 +50,15 @@ const handler: Handler = async (event: HandlerEvent) => {
   const params = event.queryStringParameters || {};
   const action = params.action || '';
   const orgId = user.organizationId;
+
+  // RBAC: branch mutations require the matching grant (admins always pass).
+  if (event.httpMethod === 'POST') {
+    if (action === 'archive') {
+      if (!can(user, 'branches', 'delete')) return forbidden('Недостаточно прав для этого действия');
+    } else if (['create', 'update', 'assignUser', 'removeUser'].includes(action)) {
+      if (!can(user, 'branches', 'write')) return forbidden('Недостаточно прав для этого действия');
+    }
+  }
 
   try {
     // ═══ LIST BRANCHES ═══

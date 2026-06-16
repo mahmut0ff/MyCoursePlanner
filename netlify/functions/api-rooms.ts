@@ -3,7 +3,7 @@
  */
 import type { Handler, HandlerEvent } from '@netlify/functions';
 import { adminDb } from './utils/firebase-admin';
-import { verifyAuth, isStaff, getOrgFilter, hasRole, ok, unauthorized, forbidden, badRequest, notFound, jsonResponse, logSecurityAudit } from './utils/auth';
+import { verifyAuth, isStaff, can, getOrgFilter, hasRole, ok, unauthorized, forbidden, badRequest, notFound, jsonResponse, logSecurityAudit } from './utils/auth';
 import { notifyOrgStudents, createNotification } from './utils/notifications';
 
 const COLLECTION = 'examRooms';
@@ -95,20 +95,20 @@ const handler: Handler = async (event: HandlerEvent) => {
     }
 
     if (body.action === 'close') {
-      if (!isStaff(user)) return forbidden();
+      if (!isStaff(user) || !can(user, 'rooms', 'write')) return forbidden();
       if (!body.roomId) return badRequest('roomId required');
       await adminDb.collection(COLLECTION).doc(body.roomId).update({ status: 'closed', closedAt: new Date().toISOString() });
       return ok({ closed: true });
     }
 
     if (body.action === 'start') {
-      if (!isStaff(user)) return forbidden();
+      if (!isStaff(user) || !can(user, 'rooms', 'write')) return forbidden();
       if (!body.roomId) return badRequest('roomId required');
       await adminDb.collection(COLLECTION).doc(body.roomId).update({ status: 'active', startedAt: new Date().toISOString() });
       return ok({ started: true });
     }
 
-    if (!isStaff(user)) return forbidden();
+    if (!isStaff(user) || !can(user, 'rooms', 'write')) return forbidden();
     if (!body.examId || !body.examTitle) return badRequest('examId and examTitle required');
     const now = new Date().toISOString();
     const data = {

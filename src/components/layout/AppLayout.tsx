@@ -3,6 +3,8 @@ import { Outlet, useLocation, Navigate } from 'react-router-dom';
 import Sidebar from './Sidebar.tsx';
 import Topbar from './Topbar.tsx';
 import { PlanProvider, usePlanGate } from '../../contexts/PlanContext';
+import { PermissionsProvider } from '../../contexts/PermissionsContext';
+import { OrgContext } from '../../contexts/OrgContext';
 import { useAuth } from '../../contexts/AuthContext';
 import { useTranslation } from 'react-i18next';
 import { Clock, AlertTriangle } from 'lucide-react';
@@ -97,6 +99,9 @@ const AppLayout: React.FC = () => {
   return (
     <>
     <PlanProvider>
+    <PermissionsProvider>
+    <OrgContext.Provider value={{ orgData, institutionType: orgData?.institutionType || 'center' }}>
+      {/* RBAC permission context wraps the authenticated app shell */}
       {/* Skip-to-content link for keyboard/screen reader users */}
       <a href="#main-content" className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-[100] focus:px-4 focus:py-2 focus:bg-primary-600 focus:text-white focus:rounded-lg focus:text-sm focus:font-medium">
         Skip to main content
@@ -133,6 +138,8 @@ const AppLayout: React.FC = () => {
           </SubscriptionGuard>
         </div>
       </div>
+    </OrgContext.Provider>
+    </PermissionsProvider>
     </PlanProvider>
     <PWAInstallPrompt />
     <NetworkStatusBar />

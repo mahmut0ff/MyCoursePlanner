@@ -33,6 +33,8 @@ interface AuthContextType {
   isStudentWithoutOrg: boolean;
   permissions: ManagerPermissions;
   hasPermission: (key: keyof ManagerPermissions) => boolean;
+  /** Assigned custom RBAC role id from the active membership, if any. */
+  membershipRoleId: string | null;
   refreshProfile: () => Promise<void>;
   /** Switch the user's active organization context and refresh profile. */
   switchOrganization: (orgId: string) => Promise<void>;
@@ -54,6 +56,7 @@ const AuthContext = createContext<AuthContextType>({
   isStudentWithoutOrg: false,
   permissions: { ...NO_PERMISSIONS },
   hasPermission: () => false,
+  membershipRoleId: null,
   refreshProfile: async () => {},
   switchOrganization: async () => {},
 });
@@ -67,6 +70,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [permissions, setPermissions] = useState<ManagerPermissions>({ ...NO_PERMISSIONS });
+  const [membershipRoleId, setMembershipRoleId] = useState<string | null>(null);
   const fcmTokenRef = useRef<string | null>(null);
 
   // Ref keeps the latest firebase user available synchronously for refreshProfile,
@@ -80,19 +84,27 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       // Load manager permissions from membership
       if (p) {
         const orgId = (p as any)?.activeOrgId || p.organizationId;
-        if (orgId && p.role === 'manager') {
+        let mRoleId: string | null = null;
+        if (orgId && p.role !== 'super_admin') {
           try {
             const memberDoc = await getDoc(doc(db, 'users', user.uid, 'memberships', orgId));
             if (memberDoc.exists()) {
               const mData = memberDoc.data();
-              setPermissions({
-                finances: mData.permissions?.finances === true,
-                settings: mData.permissions?.settings === true,
-                managers: mData.permissions?.managers === true,
-                branches: mData.permissions?.branches === true,
-              });
+              mRoleId = mData.roleId || null;
+              if (p.role === 'manager') {
+                setPermissions({
+                  finances: mData.permissions?.finances === true,
+                  settings: mData.permissions?.settings === true,
+                  managers: mData.permissions?.managers === true,
+                  branches: mData.permissions?.branches === true,
+                });
+              } else if (p.role === 'admin') {
+                setPermissions({ ...ALL_PERMISSIONS });
+              } else {
+                setPermissions({ ...NO_PERMISSIONS });
+              }
             } else {
-              setPermissions({ ...NO_PERMISSIONS });
+              setPermissions(p.role === 'admin' ? { ...ALL_PERMISSIONS } : { ...NO_PERMISSIONS });
             }
           } catch { setPermissions({ ...NO_PERMISSIONS }); }
         } else if (p.role === 'admin' || p.role === 'super_admin') {
@@ -100,6 +112,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         } else {
           setPermissions({ ...NO_PERMISSIONS });
         }
+        setMembershipRoleId(mRoleId);
       }
     } catch (e) {
       console.error('Failed to load user profile:', e);
@@ -207,6 +220,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           if (role !== 'manager') return false;
           return permissions[key] === true;
         },
+        membershipRoleId,
         refreshProfile,
         switchOrganization,
       }}

@@ -5,7 +5,7 @@
 import type { Handler, HandlerEvent } from '@netlify/functions';
 import { adminAuth, adminDb } from './utils/firebase-admin';
 import {
-  verifyAuth, isStaff, hasRole, hasPermission, getOrgFilter,
+  verifyAuth, isStaff, hasRole, hasPermission, can, getOrgFilter,
   ok, unauthorized, forbidden, badRequest, notFound, jsonResponse,
   resolveBranchFilter,
   type AuthUser,
@@ -150,6 +150,7 @@ const handler: Handler = async (event: HandlerEvent) => {
 
     if (action === 'createCourse') {
       const err = requireOrgStaff(user); if (err) return err;
+      if (!can(user, 'courses', 'write')) return forbidden('Недостаточно прав для этого действия');
       const body = JSON.parse(event.body || '{}');
       if (!body.title) return badRequest('title required');
       const data = {
@@ -174,6 +175,7 @@ const handler: Handler = async (event: HandlerEvent) => {
 
     if (action === 'updateCourse') {
       const err = requireOrgStaff(user); if (err) return err;
+      if (!can(user, 'courses', 'write')) return forbidden('Недостаточно прав для этого действия');
       const body = JSON.parse(event.body || '{}');
       if (!body.id) return badRequest('id required');
       const doc = await adminDb.collection('courses').doc(body.id).get();
@@ -187,6 +189,7 @@ const handler: Handler = async (event: HandlerEvent) => {
 
     if (action === 'deleteCourse') {
       const err = requireOrgStaff(user); if (err) return err;
+      if (!can(user, 'courses', 'delete')) return forbidden('Недостаточно прав для этого действия');
       const body = JSON.parse(event.body || '{}');
       if (!body.id) return badRequest('id required');
       const doc = await adminDb.collection('courses').doc(body.id).get();
@@ -229,6 +232,7 @@ const handler: Handler = async (event: HandlerEvent) => {
 
     if (action === 'createGroup') {
       const err = requireOrgStaff(user); if (err) return err;
+      if (!can(user, 'groups', 'write')) return forbidden('Недостаточно прав для этого действия');
       const body = JSON.parse(event.body || '{}');
       if (!body.name || !body.courseId) return badRequest('name and courseId required');
       const data = {
@@ -251,6 +255,7 @@ const handler: Handler = async (event: HandlerEvent) => {
 
     if (action === 'updateGroup') {
       const err = requireOrgStaff(user); if (err) return err;
+      if (!can(user, 'groups', 'write')) return forbidden('Недостаточно прав для этого действия');
       const body = JSON.parse(event.body || '{}');
       if (!body.id) return badRequest('id required');
       const doc = await adminDb.collection('groups').doc(body.id).get();
@@ -304,6 +309,7 @@ const handler: Handler = async (event: HandlerEvent) => {
 
     if (action === 'deleteGroup') {
       const err = requireOrgStaff(user); if (err) return err;
+      if (!can(user, 'groups', 'delete')) return forbidden('Недостаточно прав для этого действия');
       const body = JSON.parse(event.body || '{}');
       if (!body.id) return badRequest('id required');
       const doc = await adminDb.collection('groups').doc(body.id).get();
@@ -520,6 +526,7 @@ const handler: Handler = async (event: HandlerEvent) => {
 
     if (action === 'createStudent') {
       if (!hasRole(user, 'admin', 'manager')) return forbidden();
+      if (!can(user, 'students', 'write')) return forbidden('Недостаточно прав для этого действия');
       const body = JSON.parse(event.body || '{}');
       if (!body.displayName) return badRequest('displayName required');
 
@@ -596,6 +603,7 @@ const handler: Handler = async (event: HandlerEvent) => {
 
     if (action === 'updateStudent') {
       const err = requireOrgStaff(user); if (err) return err;
+      if (!can(user, 'students', 'write')) return forbidden('Недостаточно прав для этого действия');
       const body = JSON.parse(event.body || '{}');
       if (!body.uid) return badRequest('uid required');
       const userDoc = await adminDb.collection('users').doc(body.uid).get();
@@ -664,6 +672,7 @@ const handler: Handler = async (event: HandlerEvent) => {
 
     if (action === 'createTeacher') {
       if (!hasRole(user, 'admin', 'manager')) return forbidden();
+      if (!can(user, 'teachers', 'write')) return forbidden('Недостаточно прав для этого действия');
       const body = JSON.parse(event.body || '{}');
       if (!body.email || !body.displayName || !body.password) return badRequest('email, displayName and password required');
 
@@ -767,6 +776,7 @@ const handler: Handler = async (event: HandlerEvent) => {
 
     if (action === 'createManager') {
       if (!hasPermission(user, 'managers')) return forbidden('No access to managers module');
+      if (!can(user, 'team', 'write')) return forbidden('Недостаточно прав для этого действия');
       const body = JSON.parse(event.body || '{}');
       if (!body.email || !body.displayName || !body.password) return badRequest('email, displayName and password required');
 
@@ -896,6 +906,7 @@ const handler: Handler = async (event: HandlerEvent) => {
 
     if (action === 'createMaterial') {
       if (!isStaff(user)) return forbidden();
+      if (!can(user, 'materials', 'write')) return forbidden('Недостаточно прав для этого действия');
       const body = JSON.parse(event.body || '{}');
       if (!body.title || !body.url) return badRequest('title and url required');
       const data = {
@@ -916,6 +927,7 @@ const handler: Handler = async (event: HandlerEvent) => {
 
     if (action === 'updateMaterial') {
       if (!isStaff(user)) return forbidden();
+      if (!can(user, 'materials', 'write')) return forbidden('Недостаточно прав для этого действия');
       const body = JSON.parse(event.body || '{}');
       if (!body.id) return badRequest('id required');
       const doc = await adminDb.collection('materials').doc(body.id).get();
@@ -928,6 +940,7 @@ const handler: Handler = async (event: HandlerEvent) => {
 
     if (action === 'deleteMaterial') {
       if (!isStaff(user)) return forbidden();
+      if (!can(user, 'materials', 'delete')) return forbidden('Недостаточно прав для этого действия');
       const body = JSON.parse(event.body || '{}');
       if (!body.id) return badRequest('id required');
       const doc = await adminDb.collection('materials').doc(body.id).get();
@@ -991,6 +1004,7 @@ const handler: Handler = async (event: HandlerEvent) => {
 
     if (action === 'createEvent') {
       if (!hasRole(user, 'admin', 'manager')) return forbidden('Only admins and managers can modify the schedule');
+      if (!can(user, 'schedule', 'write')) return forbidden('Недостаточно прав для этого действия');
       const body = JSON.parse(event.body || '{}');
       const isRecurring = body.recurring === true;
       if (!body.title || !body.startTime) return badRequest('title and startTime required');
@@ -1019,6 +1033,7 @@ const handler: Handler = async (event: HandlerEvent) => {
 
     if (action === 'updateEvent') {
       if (!hasRole(user, 'admin', 'manager')) return forbidden('Only admins and managers can modify the schedule');
+      if (!can(user, 'schedule', 'write')) return forbidden('Недостаточно прав для этого действия');
       const body = JSON.parse(event.body || '{}');
       if (!body.id) return badRequest('id required');
       const doc = await adminDb.collection('scheduleEvents').doc(body.id).get();
@@ -1031,6 +1046,7 @@ const handler: Handler = async (event: HandlerEvent) => {
 
     if (action === 'deleteEvent') {
       if (!hasRole(user, 'admin', 'manager')) return forbidden('Only admins and managers can modify the schedule');
+      if (!can(user, 'schedule', 'delete')) return forbidden('Недостаточно прав для этого действия');
       const body = JSON.parse(event.body || '{}');
       if (!body.id) return badRequest('id required');
       await adminDb.collection('scheduleEvents').doc(body.id).delete();
@@ -1101,6 +1117,7 @@ const handler: Handler = async (event: HandlerEvent) => {
         workingHours: orgData?.workingHours || '',
         photos: orgData?.photos || [],
         subjects: orgData?.subjects || [],
+        institutionType: orgData?.institutionType || 'center',
         timezone: sData.timezone || 'Asia/Bishkek',
         locale: sData.locale || 'ru',
         academicYearStart: sData.academicYearStart || '',
@@ -1117,6 +1134,7 @@ const handler: Handler = async (event: HandlerEvent) => {
 
     if (action === 'updateOrgSettings') {
       if (!hasPermission(user, 'settings')) return forbidden('No access to settings module');
+      if (!can(user, 'settings', 'write')) return forbidden('Недостаточно прав для этого действия');
       const body = JSON.parse(event.body || '{}');
 
       // Fields that go to the public organizations doc
@@ -1135,6 +1153,7 @@ const handler: Handler = async (event: HandlerEvent) => {
       if (body.city !== undefined) orgUpdate.city = body.city;
       if (body.country !== undefined) orgUpdate.country = body.country;
       if (body.subjects !== undefined) orgUpdate.subjects = body.subjects;
+      if (body.institutionType !== undefined) orgUpdate.institutionType = body.institutionType;
       await adminDb.collection('organizations').doc(orgId).update(orgUpdate);
 
       // Settings doc (academic config)

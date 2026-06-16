@@ -311,6 +311,19 @@ export const orgCreateManager = (data: any) => orgReq('createManager', 'POST', d
 export const orgGetManagerPermissions = (uid: string) => orgReq('getManagerPermissions', 'GET', undefined, { uid });
 export const orgUpdateManagerPermissions = (uid: string, permissions: any) => orgReq('updateManagerPermissions', 'POST', { uid, permissions });
 
+// ---- Roles & Permissions (RBAC) ----
+const rolesReq = <T = any>(action: string, method = 'GET', body?: any, extra?: Record<string, string>) =>
+  apiRequest<T>('api-roles', method, body, { action, ...extra });
+
+export const apiGetRoles = () => rolesReq<{ items: any[] }>('list');
+export const apiGetTeamMembers = () => rolesReq<{ items: any[] }>('members');
+export const apiCreateRole = (data: { name: string; description?: string; permissions: any[]; baseRole?: string }) =>
+  rolesReq('create', 'POST', data);
+export const apiUpdateRole = (id: string, data: { name?: string; description?: string; permissions?: any[]; baseRole?: string }) =>
+  rolesReq('update', 'POST', { id, ...data });
+export const apiDeleteRole = (id: string) => rolesReq('delete', 'POST', { id });
+export const apiAssignRole = (uid: string, roleId: string | null) => rolesReq('assign', 'POST', { uid, roleId });
+
 // Materials
 export const orgGetMaterials = (filters?: Record<string, string>) => orgReq('materials', 'GET', undefined, filters);
 export const orgCreateMaterial = (data: any) => orgReq('createMaterial', 'POST', data);

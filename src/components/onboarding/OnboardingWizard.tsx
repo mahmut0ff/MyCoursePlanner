@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Building2, Palette, Bot, Grid, ChevronRight, CheckCircle2, X } from 'lucide-react';
+import { Building2, Palette, Bot, Grid, ChevronRight, CheckCircle2, X, GraduationCap } from 'lucide-react';
 
 interface Props {
   orgData?: any;
@@ -39,6 +39,7 @@ function shouldShowOnboarding(orgCreatedAt?: any): boolean {
 export function useOnboardingProgress(props: Props) {
   const { orgData, branchData, orgCreatedAt } = props;
   const steps = [
+    { done: !!orgData?.institutionType },
     { done: !!orgData?.name && orgData.name !== 'New Organization' },
     { done: !!orgData?.logo || !!orgData?.primaryColor || !!orgData?.branding?.logoUrl },
     { done: !!orgData?.aiConfigured || !!orgData?.aiSettings?.telegramBotToken || !!orgData?.aiEnabled },
@@ -56,6 +57,7 @@ const OnboardingWizard: React.FC<Props> = ({ orgData, branchData, orgCreatedAt }
   const [dismissed, setDismissed] = useState(false);
 
   const steps = [
+    { key: 'type', title: 'Тип заведения', desc: 'Школа, центр, языковые курсы или академия', icon: GraduationCap, link: '/org-settings?tab=general', color: 'text-indigo-500', bg: 'bg-indigo-500/10', done: !!orgData?.institutionType },
     { key: 'profile', title: 'Профиль проекта', desc: 'Укажите название учебного центра', icon: Building2, link: '/org-settings?tab=general', color: 'text-blue-500', bg: 'bg-blue-500/10', done: !!orgData?.name && orgData.name !== 'New Organization' },
     { key: 'branding', title: 'Брендинг', desc: 'Загрузите логотип и выберите цвета системы', icon: Palette, link: '/org-settings?tab=branding', color: 'text-violet-500', bg: 'bg-violet-500/10', done: !!orgData?.logo || !!orgData?.primaryColor || !!orgData?.branding?.logoUrl },
     { key: 'ai', title: 'AI Ассистент', desc: 'Настройте Telegram-бота для учеников', icon: Bot, link: '/org-settings?tab=ai', color: 'text-emerald-500', bg: 'bg-emerald-500/10', done: !!orgData?.aiConfigured || !!orgData?.aiSettings?.telegramBotToken || !!orgData?.aiEnabled },

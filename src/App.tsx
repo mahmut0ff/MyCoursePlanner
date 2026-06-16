@@ -79,6 +79,7 @@ const GroupsPage = lazyRetry(() => import('./pages/groups/GroupsPage'));
 const StudentsPage = lazyRetry(() => import('./pages/students/StudentsPage'));
 const TeachersPage = lazyRetry(() => import('./pages/teachers/TeachersPage'));
 const ManagersPage = lazyRetry(() => import('./pages/managers/ManagersPage'));
+const TeamRolesPage = lazyRetry(() => import('./pages/team/TeamRolesPage'));
 const MaterialsPage = lazyRetry(() => import('./pages/materials/MaterialsPage'));
 const SchedulePage = lazyRetry(() => import('./pages/schedule/SchedulePage'));
 const OrgResultsPage = lazyRetry(() => import('./pages/results/ResultsPage'));
@@ -258,6 +259,7 @@ const App: React.FC = () => {
             <Route path="teachers/:uid" element={<ProtectedRoute allowedRoles={['admin', 'manager']}><TeacherDetailPage /></ProtectedRoute>} />
             <Route path="managers" element={<ProtectedRoute allowedRoles={['admin', 'manager']}><ManagersPage /></ProtectedRoute>} />
             <Route path="managers/:uid" element={<ProtectedRoute allowedRoles={['admin', 'manager']}><ManagerDetailPage /></ProtectedRoute>} />
+            <Route path="team" element={<ProtectedRoute allowedRoles={['admin', 'manager']}><PlanGuard feature="rbac"><TeamRolesPage /></PlanGuard></ProtectedRoute>} />
             <Route path="org-users" element={<ProtectedRoute allowedRoles={['admin']}><OrgUsersPage /></ProtectedRoute>} />
             <Route path="org-users/:uid" element={<ProtectedRoute allowedRoles={['admin']}><OrgUserDetailPage /></ProtectedRoute>} />
 

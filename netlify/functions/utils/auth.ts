@@ -4,6 +4,7 @@
  */
 import { adminAuth, adminDb } from './firebase-admin';
 import type { HandlerEvent } from '@netlify/functions';
+import { resolvePermissionSet, deriveLegacyManagerPerms, fullPermissionSet, FULL_ACCESS_ROLES } from './rbac';
 
 export interface ManagerPermissions {
   finances: boolean;
@@ -29,20 +30,23 @@ export interface AuthUser {
   aiEnabled: boolean;
   branchIds: string[];               // assigned branches from membership
   primaryBranchId: string | null;    // default branch context
-  permissions: ManagerPermissions;    // granular module access for managers
+  permissions: ManagerPermissions;    // legacy 4-toggle view (derived from rbac for back-compat)
+  customRoleId: string | null;        // assigned custom RBAC role id (if any)
+  rbac: Set<string>;                  // resolved "resource:action" grants
 }
 
 /**
  * Resolve user's role in a specific org via membership subcollection.
  */
-export async function resolveOrgRole(uid: string, orgId: string): Promise<{ role: string | null; branchIds: string[]; primaryBranchId: string | null; permissions: ManagerPermissions }> {
+export async function resolveOrgRole(uid: string, orgId: string): Promise<{ role: string | null; roleId: string | null; branchIds: string[]; primaryBranchId: string | null; permissions: ManagerPermissions }> {
   const doc = await adminDb.collection('users').doc(uid)
     .collection('memberships').doc(orgId).get();
-  if (!doc.exists) return { role: null, branchIds: [], primaryBranchId: null, permissions: { ...DEFAULT_MANAGER_PERMISSIONS } };
+  if (!doc.exists) return { role: null, roleId: null, branchIds: [], primaryBranchId: null, permissions: { ...DEFAULT_MANAGER_PERMISSIONS } };
   const data = doc.data()!;
-  if (data.status !== 'active') return { role: null, branchIds: [], primaryBranchId: null, permissions: { ...DEFAULT_MANAGER_PERMISSIONS } };
+  if (data.status !== 'active') return { role: null, roleId: null, branchIds: [], primaryBranchId: null, permissions: { ...DEFAULT_MANAGER_PERMISSIONS } };
   return {
     role: data.role || null,
+    roleId: data.roleId || null,
     branchIds: data.branchIds || [],
     primaryBranchId: data.primaryBranchId || null,
     permissions: {
@@ -77,6 +81,8 @@ export async function verifyAuth(event: HandlerEvent): Promise<AuthUser | null> 
     let branchIds: string[] = [];
     let primaryBranchId: string | null = null;
     let permissions: ManagerPermissions = { ...DEFAULT_MANAGER_PERMISSIONS };
+    let customRoleId: string | null = null;
+    let rbac: Set<string> = new Set();
 
     if (role !== 'super_admin' && organizationId) {
       const membership = await resolveOrgRole(decoded.uid, organizationId);
@@ -94,7 +100,37 @@ export async function verifyAuth(event: HandlerEvent): Promise<AuthUser | null> 
       }
       branchIds = membership.branchIds;
       primaryBranchId = membership.primaryBranchId;
-      permissions = membership.permissions;
+      customRoleId = membership.roleId;
+
+      // Resolve the assigned custom role (if any) to build the granular grant set.
+      let customRole: { name?: string; permissions?: any[] } | null = null;
+      if (membership.roleId && !FULL_ACCESS_ROLES.includes(role)) {
+        try {
+          const roleDoc = await adminDb.collection('organizations').doc(organizationId)
+            .collection('roles').doc(membership.roleId).get();
+          if (roleDoc.exists) {
+            const rd = roleDoc.data()!;
+            customRole = { name: rd.name, permissions: rd.permissions };
+          }
+        } catch { /* fall through to system defaults */ }
+      }
+
+      rbac = resolvePermissionSet({ baseRole: role, customRole, legacyManagerPerms: membership.permissions });
+      // Keep the legacy 4-toggle view in sync so existing hasPermission() callers still work.
+      permissions = customRole
+        ? deriveLegacyManagerPerms(rbac)
+        : membership.permissions;
+    }
+
+    // Super admins and org admins/owners get unrestricted grants.
+    if (role === 'super_admin' || FULL_ACCESS_ROLES.includes(role)) {
+      rbac = fullPermissionSet();
+      permissions = { finances: true, settings: true, managers: true, branches: true };
+    } else if (rbac.size === 0) {
+      // No active org membership (e.g. independent teacher/student with personal
+      // content, or flat-role fallback) — resolve grants from the base role so
+      // personal-content endpoints still authorize under can().
+      rbac = resolvePermissionSet({ baseRole: role, legacyManagerPerms: permissions });
     }
 
     // Fetch org plan info for feature gating
@@ -119,11 +155,22 @@ export async function verifyAuth(event: HandlerEvent): Promise<AuthUser | null> 
       branchIds,
       primaryBranchId,
       permissions,
+      customRoleId,
+      rbac,
     };
   } catch (e) {
     console.error('Auth verification failed:', e);
     return null;
   }
+}
+
+/**
+ * Granular RBAC check: does the user have `resource:action`?
+ * Super admins / org admins / owners always pass.
+ */
+export function can(user: AuthUser, resource: string, action: 'read' | 'write' | 'delete' = 'read'): boolean {
+  if (isSuperAdmin(user) || hasRole(user, 'admin')) return true;
+  return user.rbac?.has(`${resource}:${action}`) === true;
 }
 
 export function isSuperAdmin(user: AuthUser): boolean {

@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { orgGetManagers, apiRemoveMember, apiDeleteMember, orgGetManagerPermissions, orgUpdateManagerPermissions } from '../../lib/api';
-import { ArrowLeft, Mail, Calendar, ShieldCheck, Phone, Trash2, UserMinus, CreditCard, Settings, Users, Building2, Loader2 } from 'lucide-react';
+import { orgGetManagers, apiRemoveMember, apiDeleteMember, apiGetRoles, apiGetTeamMembers, apiAssignRole } from '../../lib/api';
+import { ArrowLeft, Mail, Calendar, ShieldCheck, Phone, Trash2, UserMinus, Loader2, Shield, Settings2 } from 'lucide-react';
 import type { UserProfile } from '../../types';
+import type { OrgRole } from '../../lib/rbac';
 import toast from 'react-hot-toast';
 import { useAuth } from '../../contexts/AuthContext';
 
@@ -12,20 +13,6 @@ const C = {
   indigo: '#6366f1',
   cyan: '#06b6d4',
 };
-
-interface ManagerPerms {
-  finances: boolean;
-  settings: boolean;
-  managers: boolean;
-  branches: boolean;
-}
-
-const PERM_MODULES: { key: keyof ManagerPerms; icon: React.ReactNode; label: string; desc: string }[] = [
-  { key: 'finances', icon: <CreditCard className="w-4 h-4" />, label: 'Финансы', desc: 'Транзакции, счета, платёжные планы' },
-  { key: 'settings', icon: <Settings className="w-4 h-4" />, label: 'Настройки орг.', desc: 'Редактирование настроек организации' },
-  { key: 'managers', icon: <Users className="w-4 h-4" />, label: 'Менеджеры', desc: 'Просмотр, создание и удаление менеджеров' },
-  { key: 'branches', icon: <Building2 className="w-4 h-4" />, label: 'Филиалы', desc: 'Управление филиалами и точками' },
-];
 
 const ManagerDetailPage: React.FC = () => {
   const { uid } = useParams<{ uid: string }>();
@@ -36,9 +23,10 @@ const ManagerDetailPage: React.FC = () => {
 
   const [manager, setManager] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
-  const [perms, setPerms] = useState<ManagerPerms>({ finances: false, settings: false, managers: false, branches: false });
-  const [permsLoading, setPermsLoading] = useState(true);
-  const [saving, setSaving] = useState<string | null>(null);
+  const [roles, setRoles] = useState<OrgRole[]>([]);
+  const [currentRoleId, setCurrentRoleId] = useState<string>('');
+  const [rolesLoading, setRolesLoading] = useState(true);
+  const [savingRole, setSavingRole] = useState(false);
 
   useEffect(() => {
     if (!uid) return;
@@ -49,28 +37,31 @@ const ManagerDetailPage: React.FC = () => {
       .finally(() => setLoading(false));
 
     if (isAdmin) {
-      setPermsLoading(true);
-      orgGetManagerPermissions(uid)
-        .then((data: any) => setPerms(data.permissions))
+      setRolesLoading(true);
+      Promise.all([apiGetRoles(), apiGetTeamMembers()])
+        .then(([r, m]: any) => {
+          setRoles(r.items || []);
+          const me = (m.items || []).find((x: any) => x.uid === uid);
+          setCurrentRoleId(me?.roleId || '');
+        })
         .catch(() => {})
-        .finally(() => setPermsLoading(false));
+        .finally(() => setRolesLoading(false));
     } else {
-      setPermsLoading(false);
+      setRolesLoading(false);
     }
   }, [uid]);
 
-  const togglePerm = async (key: keyof ManagerPerms) => {
+  const assignRole = async (roleId: string) => {
     if (!uid || !isAdmin) return;
-    const newPerms = { ...perms, [key]: !perms[key] };
-    setSaving(key);
+    setSavingRole(true);
     try {
-      await orgUpdateManagerPermissions(uid, newPerms);
-      setPerms(newPerms);
-      toast.success(`${!perms[key] ? 'Доступ открыт' : 'Доступ закрыт'}`);
+      await apiAssignRole(uid, roleId || null);
+      setCurrentRoleId(roleId);
+      toast.success(t('team.roleAssigned', 'Роль назначена'));
     } catch (e: any) {
       toast.error(e.message || 'Ошибка');
     } finally {
-      setSaving(null);
+      setSavingRole(false);
     }
   };
 
@@ -165,53 +156,46 @@ const ManagerDetailPage: React.FC = () => {
         </div>
       </div>
       
-      {/* Permissions Panel */}
+      {/* Role assignment Panel */}
       {isAdmin && (
         <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-6 shadow-sm mb-6">
           <div className="flex items-center gap-2 mb-1">
             <ShieldCheck className="w-5 h-5 text-blue-500" />
-            <h2 className="text-sm font-extrabold text-slate-900 dark:text-white uppercase tracking-wider">Доступы и права</h2>
+            <h2 className="text-sm font-extrabold text-slate-900 dark:text-white uppercase tracking-wider">{t('team.assignedRole', 'Назначенная роль')}</h2>
           </div>
-          <p className="text-[11px] text-slate-500 mb-5">Базовые права (студенты, учителя, курсы, группы, расписание) включены всегда. Дополнительные модули можно настроить ниже.</p>
+          <p className="text-[11px] text-slate-500 mb-5">{t('team.assignedRoleDesc', 'Выберите роль с детально настроенными правами. Без роли применяются права по умолчанию для менеджера.')}</p>
 
-          {permsLoading ? (
+          {rolesLoading ? (
             <div className="flex items-center justify-center py-8">
               <Loader2 className="w-5 h-5 animate-spin text-blue-500" />
             </div>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              {PERM_MODULES.map(mod => (
-                <div
-                  key={mod.key}
-                  className={`flex items-center gap-3 p-3.5 rounded-xl border transition-all cursor-pointer select-none group ${
-                    perms[mod.key]
-                      ? 'bg-blue-50/80 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800'
-                      : 'bg-slate-50 dark:bg-slate-700/30 border-slate-200 dark:border-slate-700 hover:border-blue-300 dark:hover:border-blue-700'
-                  }`}
-                  onClick={() => togglePerm(mod.key)}
-                >
-                  <div className={`w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 transition-colors ${
-                    perms[mod.key]
-                      ? 'bg-blue-500 text-white'
-                      : 'bg-slate-200 dark:bg-slate-600 text-slate-500 dark:text-slate-400 group-hover:bg-blue-100 group-hover:text-blue-500'
-                  }`}>
-                    {saving === mod.key ? <Loader2 className="w-4 h-4 animate-spin" /> : mod.icon}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-xs font-bold text-slate-900 dark:text-white">{mod.label}</p>
-                    <p className="text-[10px] text-slate-500 truncate">{mod.desc}</p>
-                  </div>
-                  {/* Toggle Switch */}
-                  <div className={`relative w-9 h-5 rounded-full flex-shrink-0 transition-colors ${
-                    perms[mod.key] ? 'bg-blue-500' : 'bg-slate-300 dark:bg-slate-600'
-                  }`}>
-                    <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow-sm transition-transform ${
-                      perms[mod.key] ? 'translate-x-4' : 'translate-x-0.5'
-                    }`} />
-                  </div>
+            <div className="flex flex-col sm:flex-row sm:items-end gap-3">
+              <div className="flex-1">
+                <label className="block text-[11px] font-semibold text-slate-500 mb-1.5">{t('team.role', 'Роль')}</label>
+                <div className="relative">
+                  <Shield className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                  <select
+                    value={currentRoleId}
+                    disabled={savingRole}
+                    onChange={(e) => assignRole(e.target.value)}
+                    className="w-full bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl pl-9 pr-4 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                  >
+                    <option value="">{t('team.defaultForRole', 'По умолчанию для роли')}</option>
+                    {roles.map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}
+                  </select>
                 </div>
-              ))}
+              </div>
+              <button
+                onClick={() => navigate('/team')}
+                className="flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-semibold text-blue-600 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 hover:bg-blue-100 dark:hover:bg-blue-900/40 transition-all shrink-0"
+              >
+                <Settings2 className="w-4 h-4" /> {t('team.manageRoles', 'Настроить роли')}
+              </button>
             </div>
+          )}
+          {!rolesLoading && roles.length === 0 && (
+            <p className="text-[11px] text-slate-400 mt-3">{t('team.noRolesHint', 'Создайте роли во вкладке «Роли и доступы», чтобы назначать их сотрудникам.')}</p>
           )}
         </div>
       )}

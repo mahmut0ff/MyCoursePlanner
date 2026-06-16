@@ -15,27 +15,37 @@ import GradeSchemaConfig from '../../components/gradebook/GradeSchemaConfig';
 import { BookOpen, Settings, AlertCircle, RefreshCcw } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useAuth } from '../../contexts/AuthContext';
+import { useOrg } from '../../contexts/OrgContext';
+import { getInstitution } from '../../lib/terminology';
+import { getPreset } from '../../lib/gradePresets';
 
-const defaultSchema: GradeSchema = {
-  id: '',
-  courseId: '',
-  organizationId: '',
-  gradingType: 'points',
-  scale: { min: 0, max: 100 },
-  passThreshold: 50,
-  createdAt: '',
-  updatedAt: '',
-};
+/** Build the fallback schema for a course that has none yet, seeded from the
+ *  institution's default grading preset. */
+function makeDefaultSchema(presetId: string | undefined, courseId = ''): GradeSchema {
+  const preset = getPreset(presetId);
+  return {
+    id: '',
+    courseId,
+    organizationId: '',
+    gradingType: preset?.gradingType || 'points',
+    scale: preset?.scale || { min: 0, max: 100 },
+    passThreshold: preset?.passThreshold ?? 50,
+    createdAt: '',
+    updatedAt: '',
+  };
+}
 
 const GradebookPage: React.FC = () => {
   const { t } = useTranslation();
   const { role, profile } = useAuth();
+  const { institutionType } = useOrg();
+  const defaultPresetId = getInstitution(institutionType).defaultGradePresetId;
   const [courses, setCourses] = useState<Course[]>([]);
   const [selectedCourseId, setSelectedCourseId] = useState<string>('');
   
   const [students, setStudents] = useState<UserProfile[]>([]);
   const [grades, setGrades] = useState<Record<string, GradeEntry>>({});
-  const [schema, setSchema] = useState<GradeSchema>(defaultSchema);
+  const [schema, setSchema] = useState<GradeSchema>(() => makeDefaultSchema(defaultPresetId));
   const [syncStatus, setSyncStatus] = useState<Record<string, boolean>>({});
   
   const [loadingCourses, setLoadingCourses] = useState(true);
@@ -95,7 +105,7 @@ const GradebookPage: React.FC = () => {
       setStudents(enrolledStudents);
 
 
-      setSchema(schemaRes || { ...defaultSchema, courseId });
+      setSchema(schemaRes || makeDefaultSchema(defaultPresetId, courseId));
 
       const gradesMap: Record<string, GradeEntry> = {};
       (gradesRes as GradeEntry[]).forEach(g => {

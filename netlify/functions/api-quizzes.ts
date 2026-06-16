@@ -9,7 +9,7 @@
  */
 import type { Handler, HandlerEvent } from '@netlify/functions';
 import { adminDb } from './utils/firebase-admin';
-import { verifyAuth, hasRole, ok, unauthorized, badRequest, forbidden, notFound, jsonResponse } from './utils/auth';
+import { verifyAuth, hasRole, can, ok, unauthorized, badRequest, forbidden, notFound, jsonResponse } from './utils/auth';
 
 const QUIZZES = 'quizzes';
 const SHARES = 'quizShares';
@@ -150,6 +150,7 @@ const handler: Handler = async (event: HandlerEvent) => {
   // ─── POST ───
   if (event.httpMethod === 'POST') {
     if (!hasRole(user, 'admin', 'teacher')) return forbidden();
+    if (!can(user, 'quizzes', 'write')) return forbidden('Недостаточно прав для этого действия');
 
     const body = JSON.parse(event.body || '{}');
     const action = body.action;
@@ -318,6 +319,7 @@ const handler: Handler = async (event: HandlerEvent) => {
   // ─── PUT ───
   if (event.httpMethod === 'PUT') {
     if (!hasRole(user, 'admin', 'teacher')) return forbidden();
+    if (!can(user, 'quizzes', 'write')) return forbidden('Недостаточно прав для этого действия');
     const body = JSON.parse(event.body || '{}');
     const { id, ...updates } = body;
     if (!id) return badRequest('id required');
@@ -346,6 +348,7 @@ const handler: Handler = async (event: HandlerEvent) => {
   // ─── DELETE ───
   if (event.httpMethod === 'DELETE') {
     if (!hasRole(user, 'admin', 'teacher')) return forbidden();
+    if (!can(user, 'quizzes', 'delete')) return forbidden('Недостаточно прав для этого действия');
     const id = params.id;
     if (!id) return badRequest('id required');
 

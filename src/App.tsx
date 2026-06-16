@@ -20,6 +20,8 @@ const AboutPage = lazyRetry(() => import('./pages/landing/AboutPage'));
 const ContactPage = lazyRetry(() => import('./pages/landing/ContactPage'));
 const DocsPage = lazyRetry(() => import('./pages/landing/DocsPage'));
 const VibecoderPage = lazyRetry(() => import('./pages/landing/VibecoderPage'));
+const PrivacyPage = lazyRetry(() => import('./pages/landing/PrivacyPage'));
+const TermsPage = lazyRetry(() => import('./pages/landing/TermsPage'));
 
 const DashboardPage = lazyRetry(() => import('./pages/dashboard/DashboardPage'));
 const GradebookPage = lazyRetry(() => import('./pages/gradebook/GradebookPage'));
@@ -158,6 +160,8 @@ const App: React.FC = () => {
             <Route path="/contact" element={<ContactPage />} />
             <Route path="/docs" element={<DocsPage />} />
             <Route path="/vibecoder" element={<VibecoderPage />} />
+            <Route path="/privacy" element={<PrivacyPage />} />
+            <Route path="/terms" element={<TermsPage />} />
             <Route path="/login" element={<LoginPage />} />
             <Route path="/register" element={<RegisterPage />} />
             <Route path="/parent/:token" element={<ParentPortalPage />} />

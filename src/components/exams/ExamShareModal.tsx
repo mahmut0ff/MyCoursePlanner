@@ -1,15 +1,19 @@
 import React, { useEffect, useState } from 'react';
 import QRCode from 'qrcode';
 import toast from 'react-hot-toast';
-import { X, Copy, Download, Printer, Check, QrCode, ExternalLink, Loader2, Send } from 'lucide-react';
+import { X, Copy, Download, Printer, Check, QrCode, ExternalLink, Loader2, Send, Lock, Unlock } from 'lucide-react';
 
 interface ExamShareModalProps {
   examId: string;
   examTitle: string;
   /** Public link only works for published exams. */
   published: boolean;
+  /** Whether the public link is currently accepting responses (undefined = open). */
+  acceptingResponses?: boolean;
   /** Optional: publish the exam straight from the modal (draft → published). */
   onPublish?: () => Promise<void> | void;
+  /** Optional: open/close public responses (closes the QR/link after a session). */
+  onToggleResponses?: (next: boolean) => Promise<void> | void;
   onClose: () => void;
 }
 
@@ -18,11 +22,15 @@ interface ExamShareModalProps {
  * Anyone who scans opens /test/:examId, enters their name + phone, and takes
  * the exam as a guest. Results land in the org's Leads (Заявки) with an AI verdict.
  */
-const ExamShareModal: React.FC<ExamShareModalProps> = ({ examId, examTitle, published, onPublish, onClose }) => {
+const ExamShareModal: React.FC<ExamShareModalProps> = ({ examId, examTitle, published, acceptingResponses, onPublish, onToggleResponses, onClose }) => {
   const publicUrl = `${typeof window !== 'undefined' ? window.location.origin : ''}/test/${examId}`;
   const [qrDataUrl, setQrDataUrl] = useState('');
   const [copied, setCopied] = useState(false);
   const [publishing, setPublishing] = useState(false);
+  const [toggling, setToggling] = useState(false);
+
+  const isAccepting = acceptingResponses !== false; // undefined = open
+  const liveLink = published && isAccepting;
 
   const handlePublish = async () => {
     if (!onPublish) return;
@@ -31,6 +39,16 @@ const ExamShareModal: React.FC<ExamShareModalProps> = ({ examId, examTitle, publ
       await onPublish();
     } finally {
       setPublishing(false);
+    }
+  };
+
+  const handleToggleResponses = async () => {
+    if (!onToggleResponses) return;
+    setToggling(true);
+    try {
+      await onToggleResponses(!isAccepting);
+    } finally {
+      setToggling(false);
     }
   };
 
@@ -127,12 +145,37 @@ const ExamShareModal: React.FC<ExamShareModalProps> = ({ examId, examTitle, publ
 
           {/* QR */}
           <div className="flex justify-center mb-5">
-            <div className={`bg-white p-4 rounded-2xl border border-slate-200 shadow-sm ${!published ? 'opacity-40' : ''}`}>
+            <div className={`bg-white p-4 rounded-2xl border border-slate-200 shadow-sm relative ${!liveLink ? 'opacity-40' : ''}`}>
               {qrDataUrl
                 ? <img src={qrDataUrl} alt="QR-код теста" className="w-52 h-52" />
                 : <div className="w-52 h-52 flex items-center justify-center text-slate-400 text-sm">Генерация…</div>}
+              {published && !isAccepting && (
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <span className="bg-slate-900/80 text-white text-xs font-bold px-3 py-1.5 rounded-lg flex items-center gap-1.5"><Lock className="w-3.5 h-3.5" />Закрыто</span>
+                </div>
+              )}
             </div>
           </div>
+
+          {/* Accepting responses toggle */}
+          {published && onToggleResponses && (
+            <div className="flex items-center justify-between gap-3 mb-4 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3">
+              <div className="min-w-0">
+                <p className="text-sm font-semibold text-slate-800 dark:text-white flex items-center gap-1.5">
+                  {isAccepting ? <Unlock className="w-4 h-4 text-emerald-500" /> : <Lock className="w-4 h-4 text-slate-400" />}
+                  Приём ответов: {isAccepting ? 'открыт' : 'закрыт'}
+                </p>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Закройте после занятия, чтобы по старому QR больше нельзя было пройти тест.</p>
+              </div>
+              <button
+                onClick={handleToggleResponses}
+                disabled={toggling}
+                className={`shrink-0 text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors disabled:opacity-60 ${isAccepting ? 'bg-rose-50 hover:bg-rose-100 text-rose-600 dark:bg-rose-900/30 dark:text-rose-400' : 'bg-emerald-50 hover:bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400'}`}
+              >
+                {toggling ? '…' : (isAccepting ? 'Закрыть' : 'Открыть')}
+              </button>
+            </div>
+          )}
 
           <p className="text-center text-sm text-slate-500 dark:text-slate-400 mb-5 leading-relaxed">
             Студент сканирует QR-код, вводит имя и телефон и проходит тест как гость.
@@ -151,10 +194,10 @@ const ExamShareModal: React.FC<ExamShareModalProps> = ({ examId, examTitle, publ
 
           {/* Actions */}
           <div className="grid grid-cols-2 gap-3">
-            <button onClick={downloadQR} disabled={!qrDataUrl || !published} className="flex items-center justify-center gap-2 bg-slate-900 hover:bg-slate-800 text-white dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100 px-4 py-2.5 rounded-xl text-sm font-semibold transition-colors disabled:opacity-50">
+            <button onClick={downloadQR} disabled={!qrDataUrl || !liveLink} className="flex items-center justify-center gap-2 bg-slate-900 hover:bg-slate-800 text-white dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100 px-4 py-2.5 rounded-xl text-sm font-semibold transition-colors disabled:opacity-50">
               <Download className="w-4 h-4" /> Скачать QR
             </button>
-            <button onClick={printPoster} disabled={!qrDataUrl || !published} className="flex items-center justify-center gap-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-800 dark:text-white px-4 py-2.5 rounded-xl text-sm font-semibold transition-colors disabled:opacity-50">
+            <button onClick={printPoster} disabled={!qrDataUrl || !liveLink} className="flex items-center justify-center gap-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-800 dark:text-white px-4 py-2.5 rounded-xl text-sm font-semibold transition-colors disabled:opacity-50">
               <Printer className="w-4 h-4" /> Печать
             </button>
           </div>

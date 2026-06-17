@@ -61,6 +61,10 @@ const STR: Record<Lang, Record<string, string>> = {
     toastDone: 'Тест успешно завершен!',
     toastError: 'Ошибка при отправке теста',
     fillNamePhone: 'Пожалуйста, заполните имя и телефон',
+    closedTitle: 'Приём ответов закрыт',
+    closedDesc: 'Этот тест больше не принимает ответы. Обратитесь к организатору.',
+    alreadySubmitted: 'Вы уже проходили этот тест с этого номера телефона.',
+    responsesClosed: 'Приём ответов закрыт.',
   },
   uz: {
     examNotFound: 'Imtihon topilmadi',
@@ -95,6 +99,10 @@ const STR: Record<Lang, Record<string, string>> = {
     toastDone: 'Test muvaffaqiyatli yakunlandi!',
     toastError: 'Testni yuborishda xatolik',
     fillNamePhone: 'Iltimos, ism va telefon raqamini kiriting',
+    closedTitle: 'Javoblar qabuli yopilgan',
+    closedDesc: 'Bu test endi javoblarni qabul qilmaydi. Tashkilotchiga murojaat qiling.',
+    alreadySubmitted: 'Siz bu testni ushbu telefon raqami bilan allaqachon topshirgansiz.',
+    responsesClosed: 'Javoblar qabuli yopilgan.',
   },
   en: {
     examNotFound: 'Exam not found',
@@ -129,6 +137,10 @@ const STR: Record<Lang, Record<string, string>> = {
     toastDone: 'Test completed successfully!',
     toastError: 'Error submitting the test',
     fillNamePhone: 'Please fill in your name and phone',
+    closedTitle: 'Responses are closed',
+    closedDesc: 'This test is no longer accepting responses. Please contact the organizer.',
+    alreadySubmitted: 'You have already taken this test with this phone number.',
+    responsesClosed: 'Responses are closed.',
   },
   kg: {
     examNotFound: 'Экзамен табылган жок',
@@ -163,6 +175,10 @@ const STR: Record<Lang, Record<string, string>> = {
     toastDone: 'Тест ийгиликтүү аякталды!',
     toastError: 'Тестти жөнөтүүдө ката',
     fillNamePhone: 'Сураныч, атыңызды жана телефонуңузду жазыңыз',
+    closedTitle: 'Жооптор кабыл алынбайт',
+    closedDesc: 'Бул тест мындан ары жоопторду кабыл албайт. Уюштуруучуга кайрылыңыз.',
+    alreadySubmitted: 'Сиз бул тестти ушул телефон номери менен мурда тапшыргансыз.',
+    responsesClosed: 'Жооптор кабыл алынбайт.',
   },
 };
 
@@ -280,9 +296,12 @@ export default function PublicExamTakePage() {
       });
       setResult(data);
       toast.success(STR[lang].toastDone);
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
-      toast.error(STR[lang].toastError);
+      const code = err?.message;
+      if (code === 'already_submitted') toast.error(STR[lang].alreadySubmitted, { duration: 6000 });
+      else if (code === 'responses_closed') toast.error(STR[lang].responsesClosed, { duration: 6000 });
+      else toast.error(STR[lang].toastError);
       setSubmitting(false);
     }
   }, [submitting, result, examId, name, phone, answers, lang]);
@@ -372,6 +391,22 @@ export default function PublicExamTakePage() {
               </div>
             </div>
           )}
+        </div>
+      </div>
+    );
+  }
+
+  // Public access closed by the teacher
+  if (exam.closed) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center bg-slate-50 dark:bg-slate-900 px-4 text-center relative">
+        <LangPicker lang={lang} onChange={changeLang} className="absolute top-4 right-4" />
+        <div className="bg-white dark:bg-slate-800 p-10 rounded-3xl shadow-xl max-w-md w-full">
+          <div className="w-16 h-16 bg-slate-100 dark:bg-slate-700/50 rounded-full flex items-center justify-center mx-auto mb-5">
+            <Clock className="w-8 h-8 text-slate-400" />
+          </div>
+          <h2 className="text-2xl font-bold text-slate-800 dark:text-white mb-2">{tr.closedTitle}</h2>
+          <p className="text-slate-500 dark:text-slate-400 leading-relaxed">{tr.closedDesc}</p>
         </div>
       </div>
     );

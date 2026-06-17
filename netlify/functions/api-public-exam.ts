@@ -21,6 +21,11 @@ const handler: Handler = async (event: HandlerEvent) => {
     const examData = examDoc.data()!;
     if (examData.status !== 'published') return badRequest('Exam is not published');
 
+    // Public access can be closed by the teacher after a session — the link/QR then stops working.
+    if (examData.acceptingResponses === false) {
+      return ok({ closed: true, reason: 'responses_closed', title: examData.title });
+    }
+
     // Fetch questions and sanitize them
     const questionsSnap = await adminDb.collection('exams').doc(examId).collection('questions').orderBy('order').get();
     // NOTE: deliberately strips correctAnswer / correctAnswers / keywords so answers never leak to the client.
@@ -68,6 +73,24 @@ const handler: Handler = async (event: HandlerEvent) => {
     
     if (!organizationId) {
       return badRequest('Exam has no associated organization');
+    }
+
+    // Public access closed by the teacher → reject submissions from the old link/QR.
+    if (examData.acceptingResponses === false) {
+      return jsonResponse(403, { error: 'responses_closed' });
+    }
+
+    // One attempt per phone number per exam — stops a student re-submitting / spamming later.
+    const normalizedPhone = String(phone).replace(/\D/g, '');
+    if (normalizedPhone) {
+      const dupSnap = await adminDb.collection('examAttempts')
+        .where('examId', '==', examId)
+        .where('phone', '==', normalizedPhone)
+        .limit(1)
+        .get();
+      if (!dupSnap.empty) {
+        return jsonResponse(409, { error: 'already_submitted' });
+      }
     }
 
     // Grade Exam Server-side
@@ -216,9 +239,10 @@ const handler: Handler = async (event: HandlerEvent) => {
       examTitle: examData.title, 
       roomId: 'public', // denotes no active room
       roomCode: 'public', 
-      studentId: `lead_${leadId}`, 
+      studentId: `lead_${leadId}`,
       studentName: name.trim(),
-      answers: studentAnswers, 
+      phone: normalizedPhone, // used to enforce one attempt per phone per exam
+      answers: studentAnswers,
       questionResults,
       score, 
       totalPoints, 

@@ -472,6 +472,7 @@ export interface Exam {
   questionCount: number;
   gradingCategories?: string[]; // Custom metrics for AI (e.g., 'Speaking', 'Coding')
   placementLevels?: string[]; // Level scale for placement tests (e.g. CEFR: A1, A2, B1...). When set, AI classifies the student into one of these.
+  acceptingResponses?: boolean; // Public QR/link access. When false, the public test link is closed. Undefined = open (default).
   authorId: string;
   authorName: string;
   organizationId?: string;

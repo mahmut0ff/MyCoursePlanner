@@ -348,10 +348,16 @@ const ExamViewPage: React.FC = () => {
           examId={exam.id}
           examTitle={exam.title}
           published={exam.status === 'published'}
+          acceptingResponses={exam.acceptingResponses}
           onPublish={async () => {
             await updateExam(exam.id, { status: 'published' });
             setExam(prev => (prev ? { ...prev, status: 'published' } : prev));
             toast.success('Экзамен опубликован');
+          }}
+          onToggleResponses={async (next) => {
+            await updateExam(exam.id, { acceptingResponses: next });
+            setExam(prev => (prev ? { ...prev, acceptingResponses: next } : prev));
+            toast.success(next ? 'Приём ответов открыт' : 'Приём ответов закрыт');
           }}
           onClose={() => setShowShareModal(false)}
         />

@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { signIn, signInWithGoogle, getGoogleRedirectResult } from '../../services/auth.service';
 import { useAuth } from '../../contexts/AuthContext';
 import { apiResolveUsername, apiPublicJoin } from '../../lib/api';
-import { googleAuthErrorKey, isUserCancelledAuth } from '../../lib/authErrors';
+import { googleAuthErrorMessage, isUserCancelledAuth } from '../../lib/authErrors';
 import { Mail, Lock, Eye, EyeOff } from 'lucide-react';
 import LanguageSwitcher from '../../components/LanguageSwitcher';
 
@@ -61,7 +61,7 @@ const LoginPage: React.FC = () => {
     getGoogleRedirectResult().catch((err: any) => {
       if (!isUserCancelledAuth(err?.code)) {
         console.error('Google redirect error:', err);
-        setError(t(googleAuthErrorKey(err?.code)));
+        setError(googleAuthErrorMessage(t, err?.code));
       }
     });
   }, [t]);
@@ -78,7 +78,7 @@ const LoginPage: React.FC = () => {
     } catch (err: any) {
       console.error('Google Sign-In Error:', err);
       if (!isUserCancelledAuth(err.code)) {
-        setError(t(googleAuthErrorKey(err.code)));
+        setError(googleAuthErrorMessage(t, err.code));
       }
     } finally {
       setLoading(false);

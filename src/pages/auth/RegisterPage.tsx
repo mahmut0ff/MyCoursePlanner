@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { signUp, signInWithGoogle, getGoogleRedirectResult } from '../../services/auth.service';
-import { googleAuthErrorKey, isUserCancelledAuth } from '../../lib/authErrors';
+import { googleAuthErrorMessage, isUserCancelledAuth } from '../../lib/authErrors';
 import { useAuth } from '../../contexts/AuthContext';
 import { createUser } from '../../services/users.service';
 import { apiCheckAuthIdentity, apiPublicJoin, apiCheckRegisterRateLimit } from '../../lib/api';
@@ -113,7 +113,7 @@ const RegisterPage: React.FC = () => {
     getGoogleRedirectResult().catch((err: any) => {
       if (!isUserCancelledAuth(err?.code)) {
         console.error('Google redirect error:', err);
-        setError(t(googleAuthErrorKey(err?.code)));
+        setError(googleAuthErrorMessage(t, err?.code));
       }
     });
   }, [t]);
@@ -131,7 +131,7 @@ const RegisterPage: React.FC = () => {
     } catch (err: any) {
       console.error('Google Sign-In Error:', err);
       if (!isUserCancelledAuth(err.code)) {
-        setError(t(googleAuthErrorKey(err.code)));
+        setError(googleAuthErrorMessage(t, err.code));
       }
     } finally {
       setLoading(false);

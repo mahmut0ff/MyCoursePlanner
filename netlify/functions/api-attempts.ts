@@ -212,6 +212,48 @@ const handler: Handler = async (event: HandlerEvent) => {
     const existing = await docRef.get();
     if (!existing.exists) return notFound('Attempt not found');
     const existingData = existing.data()!;
+
+    // ── Manual grading: teacher overrides per-question points; server recomputes the total ──
+    if (body.action === 'grade') {
+      if (!isStaff(user)) return forbidden();
+      if (!isSuperAdmin(user) && existingData.organizationId && user.organizationId
+          && existingData.organizationId !== user.organizationId) {
+        logSecurityAudit(user, event, 'grade_alien_attempt', { attemptId: body.id, attemptOrgId: existingData.organizationId });
+        return forbidden('Attempt belongs to a different organization');
+      }
+      const grades: { questionId: string; pointsEarned: number }[] = Array.isArray(body.grades) ? body.grades : [];
+      const gmap = new Map(grades.map(g => [String(g.questionId), Number(g.pointsEarned)]));
+
+      const questionResults = (existingData.questionResults || []).map((qr: any) => {
+        if (!gmap.has(String(qr.questionId))) return qr;
+        const max = qr.pointsPossible || 0;
+        let pts = Math.round(gmap.get(String(qr.questionId)) || 0);
+        pts = Math.max(0, Math.min(pts, max));
+        return {
+          ...qr,
+          pointsEarned: pts,
+          isCorrect: max > 0 && pts >= max,
+          status: pts <= 0 ? 'incorrect' : (pts >= max ? 'correct' : 'partial'),
+          manuallyGraded: true,
+        };
+      });
+
+      const score = questionResults.reduce((s: number, qr: any) => s + (qr.pointsEarned || 0), 0);
+      const totalPoints = questionResults.reduce((s: number, qr: any) => s + (qr.pointsPossible || 0), 0);
+      const percentage = totalPoints > 0 ? Math.round((score / totalPoints) * 100) : 0;
+
+      let passScore = 60;
+      if (existingData.examId) {
+        const examDoc = await adminDb.collection('exams').doc(existingData.examId).get();
+        if (examDoc.exists) passScore = examDoc.data()?.passScore || 60;
+      }
+      const passed = percentage >= passScore;
+
+      const update = { questionResults, score, totalPoints, percentage, passed, manuallyGradedAt: new Date().toISOString(), updatedAt: new Date().toISOString() };
+      await docRef.update(update);
+      return ok({ id: body.id, ...existingData, ...update });
+    }
+
     if (!isStaff(user) && existingData.studentId !== user.uid) return forbidden();
     const { id, ...updateFields } = body;
     updateFields.updatedAt = new Date().toISOString();

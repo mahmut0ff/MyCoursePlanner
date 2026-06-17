@@ -39,8 +39,10 @@ const ExamEditPage: React.FC = () => {
   const [randomize, setRandomize] = useState(false);
   const [showResults, setShowResults] = useState(true);
   const [status, setStatus] = useState<'draft' | 'published'>('draft');
-  const [gradingCategories, setGradingCategories] = useState<string[]>([]);
-  const [placementLevels, setPlacementLevels] = useState<string[]>([]);
+  // Stored as raw comma-separated text so the user can actually type commas;
+  // parsed into arrays only on save (a controlled split/join strips the comma mid-typing).
+  const [gradingCategoriesText, setGradingCategoriesText] = useState('');
+  const [placementLevelsText, setPlacementLevelsText] = useState('');
   const [questions, setQuestions] = useState<Question[]>([EMPTY_QUESTION()]);
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(isEdit);
@@ -145,8 +147,8 @@ const ExamEditPage: React.FC = () => {
           setDurationMinutes(exam.durationMinutes); setPassScore(exam.passScore);
           setRandomize(exam.randomizeQuestions); setShowResults(exam.showResultsImmediately);
           setStatus(exam.status as any);
-          setGradingCategories(exam.gradingCategories || []);
-          setPlacementLevels(exam.placementLevels || []);
+          setGradingCategoriesText((exam.gradingCategories || []).join(', '));
+          setPlacementLevelsText((exam.placementLevels || []).join(', '));
         }
         if (qs.length > 0) setQuestions(qs);
         setLoading(false);
@@ -165,10 +167,13 @@ const ExamEditPage: React.FC = () => {
     if (!title || !subject) { toast.error(t('exams.titleSubjectRequired', 'Title and Subject are required')); return; }
     setSaving(true);
     try {
+      const parseCsv = (s: string) => s.split(',').map(x => x.trim()).filter(Boolean);
       const examData = {
         title, description, subject, durationMinutes, passScore,
         randomizeQuestions: randomize, showResultsImmediately: showResults,
-        status, questionCount: questions.length, gradingCategories, placementLevels,
+        status, questionCount: questions.length,
+        gradingCategories: parseCsv(gradingCategoriesText),
+        placementLevels: parseCsv(placementLevelsText),
         authorId: profile?.uid || '', authorName: profile?.displayName || '',
       };
       let examId = id;
@@ -247,13 +252,13 @@ const ExamEditPage: React.FC = () => {
             
             <div className="md:col-span-2">
               <label className={labelClass}>{t('exams.gradingCategories', 'AI Evaluation Skills (Optional)')}</label>
-              <input value={gradingCategories.join(', ')} onChange={(e) => setGradingCategories(e.target.value.split(',').map(s => s.trim()).filter(Boolean))} className={inputClass} placeholder={t('exams.gradingCategoriesPlaceholder', 'e.g. Speaking, Writing, Coding, Design')} />
+              <input value={gradingCategoriesText} onChange={(e) => setGradingCategoriesText(e.target.value)} className={inputClass} placeholder={t('exams.gradingCategoriesPlaceholder', 'e.g. Speaking, Writing, Coding, Design')} />
               <p className="text-xs text-slate-500 dark:text-slate-400 mt-2 font-medium">Comma-separated skills the AI must evaluate specifically. Leave blank for standard evaluation.</p>
             </div>
 
             <div className="md:col-span-2">
               <label className={labelClass}>{t('exams.placementLevels', 'Шкала уровней (Placement)')}</label>
-              <input value={placementLevels.join(', ')} onChange={(e) => setPlacementLevels(e.target.value.split(',').map(s => s.trim()).filter(Boolean))} className={inputClass} placeholder={t('exams.placementLevelsPlaceholder', 'напр. A1, A2, B1, B2, C1, C2')} />
+              <input value={placementLevelsText} onChange={(e) => setPlacementLevelsText(e.target.value)} className={inputClass} placeholder={t('exams.placementLevelsPlaceholder', 'напр. A1, A2, B1, B2, C1, C2')} />
               <p className="text-xs text-slate-500 dark:text-slate-400 mt-2 font-medium">{t('exams.placementLevelsHint', 'Для тестов на определение уровня (языковые курсы). ИИ определит уровень студента строго по этой шкале. Оставьте пустым для обычного экзамена.')}</p>
             </div>
             

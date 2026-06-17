@@ -550,7 +550,10 @@ export interface QuestionResult {
   isCorrect: boolean;
   pointsEarned: number;
   pointsPossible: number;
-  status: 'correct' | 'incorrect' | 'pending_review';
+  status: 'correct' | 'incorrect' | 'pending_review' | 'partial';
+  aiGraded?: boolean;      // points were assigned by the AI grader
+  aiComment?: string;      // AI's per-answer rationale (for open/text answers)
+  manuallyGraded?: boolean; // a teacher overrode the points
 }
 
 // ---- AI Feedback ----

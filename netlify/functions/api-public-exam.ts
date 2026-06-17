@@ -142,8 +142,8 @@ const handler: Handler = async (event: HandlerEvent) => {
       else incorrect.push(resultObj);
     }
 
-    const percentage = totalPoints > 0 ? Math.round((score / totalPoints) * 100) : 0;
-    const passed = percentage >= passScore;
+    let percentage = totalPoints > 0 ? Math.round((score / totalPoints) * 100) : 0;
+    let passed = percentage >= passScore;
     const now = new Date().toISOString();
 
     // AI verdict — always produced. Try Gemini first; if the key is missing or the
@@ -165,6 +165,26 @@ const handler: Handler = async (event: HandlerEvent) => {
     } catch (err) {
       console.warn('AI Feedback unavailable, using rule-based fallback:', (err as any)?.message || err);
       aiFeedback = buildRuleBasedFeedback(attemptObj, correct, incorrect, pending, placementLevels);
+    }
+
+    // Apply AI-assigned points for open/text/speaking answers into the score.
+    if (aiFeedback && Array.isArray(aiFeedback.gradedAnswers)) {
+      const gmap = new Map(aiFeedback.gradedAnswers.map((g: any) => [String(g.questionId), g]));
+      for (const qr of questionResults) {
+        if (qr.status === 'pending_review' && gmap.has(String(qr.questionId))) {
+          const g: any = gmap.get(String(qr.questionId));
+          let pts = Math.round(Number(g.pointsEarned) || 0);
+          pts = Math.max(0, Math.min(pts, qr.pointsPossible || 0));
+          qr.pointsEarned = pts;
+          qr.aiGraded = true;
+          qr.aiComment = g.feedback || '';
+          qr.isCorrect = (qr.pointsPossible || 0) > 0 && pts >= qr.pointsPossible;
+          qr.status = pts <= 0 ? 'incorrect' : (pts >= (qr.pointsPossible || 0) ? 'correct' : 'partial');
+          score += pts;
+        }
+      }
+      percentage = totalPoints > 0 ? Math.round((score / totalPoints) * 100) : 0;
+      passed = percentage >= passScore;
     }
 
     // 1. Create a Lead Record (AILeads)

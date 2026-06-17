@@ -2,13 +2,13 @@ import React, { useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { getExam, getQuestions, deleteExam, duplicateExam } from '../../services/exams.service';
+import { getExam, getQuestions, deleteExam, duplicateExam, updateExam } from '../../services/exams.service';
 import { createRoom } from '../../services/rooms.service';
 import { useAuth } from '../../contexts/AuthContext';
-import { orgGetGroups } from '../../lib/api';
-import type { Exam, Question, Group } from '../../types';
+import { orgGetGroups, orgGetResults, apiGradeAttempt } from '../../lib/api';
+import type { Exam, Question, Group, ExamAttempt } from '../../types';
 import { formatDate } from '../../utils/grading';
-import { ArrowLeft, Edit, Trash2, Play, Clock, Target, HelpCircle, Copy, ImageIcon, Volume2, Mic, X, QrCode } from 'lucide-react';
+import { ArrowLeft, Edit, Trash2, Play, Clock, Target, HelpCircle, Copy, ImageIcon, Volume2, Mic, X, QrCode, Users, Award, ChevronDown } from 'lucide-react';
 import ExamShareModal from '../../components/exams/ExamShareModal';
 
 const ExamViewPage: React.FC = () => {
@@ -25,7 +25,42 @@ const ExamViewPage: React.FC = () => {
   const [notifyOption, setNotifyOption] = useState<'all' | 'group' | 'none'>('none');
   const [selectedGroupId, setSelectedGroupId] = useState('');
   const [showShareModal, setShowShareModal] = useState(false);
+  const [publicAttempts, setPublicAttempts] = useState<ExamAttempt[]>([]);
+  const [expandedAttempt, setExpandedAttempt] = useState<string | null>(null);
+  const [gradeEdits, setGradeEdits] = useState<Record<string, Record<string, number>>>({});
+  const [savingGrade, setSavingGrade] = useState<string | null>(null);
   const isStaff = role === 'admin' || role === 'manager' || role === 'teacher';
+
+  const setPoint = (attemptId: string, questionId: string, value: string, max: number) => {
+    const v = Math.max(0, Math.min(Number(value) || 0, max));
+    setGradeEdits(prev => ({ ...prev, [attemptId]: { ...(prev[attemptId] || {}), [questionId]: v } }));
+  };
+
+  const saveGrades = async (attempt: ExamAttempt) => {
+    const edits = gradeEdits[attempt.id] || {};
+    const grades = (attempt.questionResults || []).map(qr => ({
+      questionId: qr.questionId,
+      pointsEarned: edits[qr.questionId] ?? qr.pointsEarned,
+    }));
+    setSavingGrade(attempt.id);
+    try {
+      await apiGradeAttempt(attempt.id, grades);
+      toast.success(t('exams.gradesSaved', 'Баллы сохранены'));
+      setGradeEdits(prev => { const n = { ...prev }; delete n[attempt.id]; return n; });
+      loadPublicAttempts();
+    } catch {
+      toast.error(t('exams.gradesSaveFailed', 'Не удалось сохранить баллы'));
+    } finally {
+      setSavingGrade(null);
+    }
+  };
+
+  const loadPublicAttempts = React.useCallback(() => {
+    if (!id) return;
+    orgGetResults({ examId: id })
+      .then((res: ExamAttempt[]) => setPublicAttempts((res || []).filter(a => a.roomId === 'public')))
+      .catch(() => {});
+  }, [id]);
 
   useEffect(() => {
     if (showStartModal && groups.length === 0) {
@@ -40,6 +75,10 @@ const ExamViewPage: React.FC = () => {
         .finally(() => setLoading(false));
     }
   }, [id]);
+
+  useEffect(() => {
+    if (isStaff) loadPublicAttempts();
+  }, [isStaff, loadPublicAttempts]);
 
   const handleDelete = async () => {
     if (!id || !confirm(t('exams.confirmDelete', 'Удалить этот экзамен?'))) return;
@@ -83,7 +122,7 @@ const ExamViewPage: React.FC = () => {
             <button onClick={() => setShowStartModal(true)} disabled={starting} className="bg-primary-600 hover:bg-primary-700 text-white text-xs font-medium px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition-colors disabled:opacity-50">
               <Play className="w-3.5 h-3.5" />{starting ? '...' : t('exams.startRoom')}
             </button>
-            <button onClick={() => setShowShareModal(true)} disabled={exam.status !== 'published'} className="text-xs bg-indigo-50 hover:bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:hover:bg-indigo-900/50 dark:text-indigo-300 px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition-colors disabled:opacity-50" title={exam.status !== 'published' ? 'Экзамен должен быть опубликован' : 'QR-код и публичная ссылка для прохождения теста'}>
+            <button onClick={() => setShowShareModal(true)} className="text-xs bg-indigo-50 hover:bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:hover:bg-indigo-900/50 dark:text-indigo-300 px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition-colors" title="QR-код и публичная ссылка для прохождения теста">
               <QrCode className="w-3.5 h-3.5" />QR / Поделиться
             </button>
             <Link to={`/exams/${id}/edit`} className="text-xs bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-300 px-2.5 py-1.5 rounded-lg flex items-center gap-1 transition-colors"><Edit className="w-3 h-3" />{t('common.edit')}</Link>
@@ -176,12 +215,144 @@ const ExamViewPage: React.FC = () => {
         </div>
       )}
 
+      {/* Public test results (from QR / public link) */}
+      {isStaff && (
+        <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-4 mt-4">
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-sm font-semibold text-slate-900 dark:text-white flex items-center gap-2">
+              <Users className="w-4 h-4 text-indigo-500" />
+              Результаты публичного теста ({publicAttempts.length})
+            </h2>
+            <button onClick={loadPublicAttempts} className="text-xs text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 transition-colors">Обновить</button>
+          </div>
+
+          {publicAttempts.length === 0 ? (
+            <p className="text-xs text-slate-500 dark:text-slate-400 py-4 text-center">
+              Пока никто не прошёл тест по ссылке/QR. Результаты появятся здесь автоматически, как только кто-то его сдаст.
+              <br />Полный список лидов с контактами — в разделе «Заявки».
+            </p>
+          ) : (
+            <div className="space-y-2">
+              {publicAttempts.map((a) => {
+                const isOpen = expandedAttempt === a.id;
+                const fb: any = a.aiFeedback;
+                return (
+                  <div key={a.id} className="border border-slate-100 dark:border-slate-700/60 rounded-lg overflow-hidden">
+                    <button onClick={() => setExpandedAttempt(isOpen ? null : a.id)} className="w-full flex items-center gap-3 px-3 py-2.5 hover:bg-slate-50 dark:hover:bg-slate-700/30 transition-colors text-left">
+                      <div className="w-8 h-8 rounded-full bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 text-xs font-bold flex items-center justify-center shrink-0">
+                        {a.studentName?.[0]?.toUpperCase() || '?'}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-semibold text-slate-900 dark:text-white truncate">{a.studentName}</p>
+                        <p className="text-[11px] text-slate-400">{a.submittedAt ? formatDate(a.submittedAt) : ''}</p>
+                      </div>
+                      {fb?.level && (
+                        <span className="hidden sm:inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-indigo-600 text-white text-[11px] font-bold shrink-0">
+                          <Award className="w-3 h-3" />{fb.level}
+                        </span>
+                      )}
+                      <span className={`text-sm font-black shrink-0 ${a.percentage >= 80 ? 'text-emerald-500' : a.percentage >= 60 ? 'text-amber-500' : 'text-rose-500'}`}>{a.percentage}%</span>
+                      <ChevronDown className={`w-4 h-4 text-slate-400 shrink-0 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+                    </button>
+
+                    {isOpen && (
+                      <div className="px-3 pb-3 pt-1 bg-slate-50/60 dark:bg-slate-900/20 border-t border-slate-100 dark:border-slate-700/40 space-y-2">
+                        <div className="text-xs text-slate-500 dark:text-slate-400">
+                          Баллы: <b className="text-slate-700 dark:text-slate-200">{a.score} / {a.totalPoints}</b>
+                          {fb?.level && <span className="sm:hidden ml-2">· Уровень: <b className="text-indigo-600 dark:text-indigo-400">{fb.level}</b></span>}
+                        </div>
+                        {fb?.levelDescription && <p className="text-xs text-slate-600 dark:text-slate-300 italic">{fb.levelDescription}</p>}
+                        {fb?.summary && (
+                          <div>
+                            <p className="text-[10px] font-bold text-indigo-500 uppercase tracking-wide mb-0.5">✨ AI-вердикт</p>
+                            <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">{fb.summary}</p>
+                          </div>
+                        )}
+                        {Array.isArray(fb?.weakTopics) && fb.weakTopics.length > 0 && (
+                          <div>
+                            <p className="text-[10px] font-bold text-amber-500 uppercase tracking-wide mb-0.5">Слабые темы</p>
+                            <ul className="list-disc list-inside">
+                              {fb.weakTopics.map((w: string, i: number) => <li key={i} className="text-xs text-slate-600 dark:text-slate-300">{w}</li>)}
+                            </ul>
+                          </div>
+                        )}
+                        {Array.isArray(fb?.reviewSuggestions) && fb.reviewSuggestions.length > 0 && (
+                          <div>
+                            <p className="text-[10px] font-bold text-sky-500 uppercase tracking-wide mb-0.5">План действий</p>
+                            <ul className="list-disc list-inside space-y-0.5">
+                              {fb.reviewSuggestions.map((w: string, i: number) => <li key={i} className="text-xs text-slate-600 dark:text-slate-300">{w}</li>)}
+                            </ul>
+                          </div>
+                        )}
+                        {fb?.teacherNotes && (
+                          <p className="text-xs text-slate-600 dark:text-slate-300 italic bg-white dark:bg-slate-800 rounded-lg p-2 border border-slate-100 dark:border-slate-700">"{fb.teacherNotes}"</p>
+                        )}
+
+                        {/* Per-question answers + editable points */}
+                        {Array.isArray(a.questionResults) && a.questionResults.length > 0 && (
+                          <div className="pt-2 mt-1 border-t border-slate-100 dark:border-slate-700/40">
+                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wide mb-2">Ответы и баллы</p>
+                            <div className="space-y-2">
+                              {a.questionResults.map((qr, qi) => {
+                                const val = gradeEdits[a.id]?.[qr.questionId] ?? qr.pointsEarned;
+                                const ans = Array.isArray(qr.studentAnswer) ? qr.studentAnswer.join(', ') : (qr.studentAnswer || '—');
+                                return (
+                                  <div key={qr.questionId} className="bg-white dark:bg-slate-800 rounded-lg p-2.5 border border-slate-100 dark:border-slate-700">
+                                    <div className="flex items-start justify-between gap-2">
+                                      <p className="text-xs font-medium text-slate-700 dark:text-slate-200 flex-1">{qi + 1}. {qr.questionText}</p>
+                                      <div className="flex items-center gap-1 shrink-0">
+                                        <input
+                                          type="number" min={0} max={qr.pointsPossible}
+                                          value={val}
+                                          onChange={(e) => setPoint(a.id, qr.questionId, e.target.value, qr.pointsPossible)}
+                                          className="w-12 text-center text-xs font-bold bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-600 rounded px-1 py-0.5 text-slate-900 dark:text-white"
+                                        />
+                                        <span className="text-[11px] text-slate-400">/ {qr.pointsPossible}</span>
+                                      </div>
+                                    </div>
+                                    <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1"><b>Ответ:</b> {ans}</p>
+                                    {qr.aiComment && <p className="text-[11px] text-indigo-500 dark:text-indigo-400 mt-0.5 italic">ИИ: {qr.aiComment}</p>}
+                                    <div className="flex gap-1.5 mt-1">
+                                      {qr.aiGraded && <span className="text-[9px] font-bold uppercase bg-indigo-50 dark:bg-indigo-900/30 text-indigo-500 px-1.5 py-0.5 rounded">AI</span>}
+                                      {qr.manuallyGraded && <span className="text-[9px] font-bold uppercase bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 px-1.5 py-0.5 rounded">Учитель</span>}
+                                      {qr.status === 'pending_review' && <span className="text-[9px] font-bold uppercase bg-amber-50 dark:bg-amber-900/30 text-amber-600 px-1.5 py-0.5 rounded">На проверке</span>}
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                            <div className="flex justify-end mt-2">
+                              <button
+                                onClick={() => saveGrades(a)}
+                                disabled={savingGrade === a.id || !gradeEdits[a.id]}
+                                className="text-xs bg-slate-900 dark:bg-white text-white dark:text-slate-900 px-3 py-1.5 rounded-lg font-semibold disabled:opacity-50 hover:opacity-90 transition-opacity"
+                              >
+                                {savingGrade === a.id ? 'Сохранение…' : 'Сохранить баллы'}
+                              </button>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Share / QR Modal */}
       {showShareModal && (
         <ExamShareModal
           examId={exam.id}
           examTitle={exam.title}
           published={exam.status === 'published'}
+          onPublish={async () => {
+            await updateExam(exam.id, { status: 'published' });
+            setExam(prev => (prev ? { ...prev, status: 'published' } : prev));
+            toast.success('Экзамен опубликован');
+          }}
           onClose={() => setShowShareModal(false)}
         />
       )}

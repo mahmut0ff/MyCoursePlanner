@@ -111,38 +111,49 @@ export async function generateExamAIFeedback(
     ? `Это тест на определение уровня. Определи уровень студента СТРОГО по шкале: ${placementLevels.join(', ')}. В поле "level" верни ровно одно значение из этой шкалы.`
     : `Определи примерный уровень студента короткой меткой (например: Начальный, Базовый, Средний, Продвинутый).`;
 
-  const pendingBlock = pending.length > 0
-    ? `\n\nОтветы, требующие смысловой оценки (открытые/устные — оцени их сам по содержанию):\n${pending.map((r: any) => `- Вопрос: ${r.questionText}\n  Ответ студента: ${Array.isArray(r.studentAnswer) ? r.studentAnswer.join(', ') : r.studentAnswer || '(пусто)'}`).join('\n')}`
+  // Open / text / speaking answers — the AI must GRADE these (assign points), not defer to a human.
+  const gradingBlock = pending.length > 0
+    ? `\n\nОТКРЫТЫЕ/ТЕКСТОВЫЕ ОТВЕТЫ — ты должен оценить каждый по содержанию и выставить баллы (целое число от 0 до максимума). Учитывай точность, полноту, аргументацию и грамотность. Для каждого верни объект в "gradedAnswers".\n${pending.map((r: any) => `- questionId: ${r.questionId} | Максимум баллов: ${r.pointsPossible} | Вопрос: ${r.questionText}\n  Ответ студента: ${Array.isArray(r.studentAnswer) ? r.studentAnswer.join(', ') : r.studentAnswer || '(пусто)'}`).join('\n')}`
     : '';
 
-  const prompt = `Ты — образовательный ИИ-ассистент платформы SabakHub. Пользователь только что завершил вступительный тест/экзамен.
+  const gradedFormat = pending.length > 0
+    ? `\n  "gradedAnswers": [{ "questionId": "id вопроса", "pointsEarned": целое_число_0_до_максимума, "feedback": "конкретный разбор: что верно, что упущено, как улучшить (1-2 предложения)" }],`
+    : '';
+
+  const prompt = `Ты — опытный преподаватель-эксперт и ИИ-экзаменатор платформы SabakHub. Студент завершил тест/экзамен.
 
 Экзамен: "${attempt.examTitle}"${attempt.subject ? `\nПредмет: ${attempt.subject}` : ''}
-Результат: ${attempt.percentage}% (${attempt.score}/${attempt.totalPoints} баллов). ${attempt.passed ? 'Экзамен сдан.' : 'Экзамен НЕ сдан.'}
+Результат по автопроверке: ${attempt.percentage}% (${attempt.score}/${attempt.totalPoints} баллов).
 Время: ${Math.floor((attempt.timeSpentSeconds || 0) / 60)} мин ${(attempt.timeSpentSeconds || 0) % 60} сек
 
 Правильные ответы (${correct.length}):
 ${correct.map((r: any) => `- ${r.questionText}`).join('\n') || 'Нет'}
 
 Неправильные ответы (${incorrect.length}):
-${incorrect.map((r: any) => `- Вопрос: ${r.questionText}\n  Ответ студента: ${Array.isArray(r.studentAnswer) ? r.studentAnswer.join(', ') : r.studentAnswer || '(пусто)'}\n  Правильный ответ: ${Array.isArray(r.correctAnswer) ? r.correctAnswer.join(', ') : r.correctAnswer}`).join('\n') || 'Нет'}${pendingBlock}
+${incorrect.map((r: any) => `- Вопрос: ${r.questionText}\n  Ответ студента: ${Array.isArray(r.studentAnswer) ? r.studentAnswer.join(', ') : r.studentAnswer || '(пусто)'}\n  Правильный ответ: ${Array.isArray(r.correctAnswer) ? r.correctAnswer.join(', ') : r.correctAnswer}`).join('\n') || 'Нет'}${gradingBlock}
 
-Составь подробный и полезный отчёт для преподавателя или менеджера по продажам (студент этот отчет не увидит, поэтому пиши прямо и по делу).
+Составь ПОЛЕЗНЫЙ и КОНКРЕТНЫЙ отчёт для преподавателя (студент его не видит).
 ${levelPrompt}
 ${categoryPrompt}
+
+ТРЕБОВАНИЯ К КАЧЕСТВУ (обязательно):
+- Запрещены общие фразы вроде «повтори вопросы, на которые ответил неверно», «изучи слабые темы», «больше практикуйся». Это бесполезно.
+- В weakTopics называй КОНКРЕТНЫЕ темы/правила/навыки (например: «Past Simple неправильных глаголов», «согласование времён», «дроби с разными знаменателями») — то, что реально видно из ошибок.
+- В reviewSuggestions дай ПОШАГОВЫЙ план: что именно делать, какие темы/материалы/упражнения, в каком порядке, с примерами. Каждый пункт — действие, а не лозунг.
+- Анализируй ПРИЧИНУ ошибок (невнимательность, пробел в теме, путаница понятий), а не просто факт ошибки.
 
 Верни JSON строго в таком формате:
 {
   "level": "Определённый уровень студента (одно значение)",
-  "levelDescription": "1 предложение: почему именно этот уровень",
-  "summary": "Краткий итог (2-3 предложения). Укажи процент, примерный уровень.",
-  "strengths": ["Конкретная сильная сторона 1", "Конкретная сильная сторона 2"],
-  "weakTopics": ["Конкретная слабая тема 1", "Конкретная слабая тема 2"],
-  "reviewSuggestions": ["Конкретный совет 1: в какую группу/уровень лучше определить клиента"],
-  "teacherNotes": "Заметка для преподавателя/менеджера: как продавать или обучать данного клиента."${categoryFormat}
+  "levelDescription": "1 предложение: почему именно этот уровень, с опорой на конкретные ответы",
+  "summary": "Содержательный итог (3-4 предложения): что студент умеет, где системные пробелы, готовность к следующему уровню.",${gradedFormat}
+  "strengths": ["Конкретная сильная сторона с привязкой к ответам"],
+  "weakTopics": ["Конкретная тема/правило/навык, где есть пробел"],
+  "reviewSuggestions": ["Шаг 1: конкретное действие с темой/примером", "Шаг 2: ..."],
+  "teacherNotes": "Практическая заметка преподавателю: на что обратить внимание на занятиях, в какую группу/уровень определить."${categoryFormat}
 }
 
-Пиши по-русски. Будь конструктивным и объективным.`;
+Пиши по-русски. Будь конкретным, как живой преподаватель, который реально разобрал работу.`;
 
   const selectedModel = await selectModel();
   const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
@@ -150,8 +161,8 @@ ${categoryPrompt}
     model: selectedModel,
     generationConfig: {
       responseMimeType: 'application/json',
-      temperature: 0.3,
-      maxOutputTokens: 2048,
+      temperature: 0.4,
+      maxOutputTokens: 3072,
     },
   });
 

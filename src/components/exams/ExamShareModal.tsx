@@ -1,13 +1,15 @@
 import React, { useEffect, useState } from 'react';
 import QRCode from 'qrcode';
 import toast from 'react-hot-toast';
-import { X, Copy, Download, Printer, Check, QrCode, ExternalLink } from 'lucide-react';
+import { X, Copy, Download, Printer, Check, QrCode, ExternalLink, Loader2, Send } from 'lucide-react';
 
 interface ExamShareModalProps {
   examId: string;
   examTitle: string;
   /** Public link only works for published exams. */
   published: boolean;
+  /** Optional: publish the exam straight from the modal (draft → published). */
+  onPublish?: () => Promise<void> | void;
   onClose: () => void;
 }
 
@@ -16,10 +18,21 @@ interface ExamShareModalProps {
  * Anyone who scans opens /test/:examId, enters their name + phone, and takes
  * the exam as a guest. Results land in the org's Leads (Заявки) with an AI verdict.
  */
-const ExamShareModal: React.FC<ExamShareModalProps> = ({ examId, examTitle, published, onClose }) => {
+const ExamShareModal: React.FC<ExamShareModalProps> = ({ examId, examTitle, published, onPublish, onClose }) => {
   const publicUrl = `${typeof window !== 'undefined' ? window.location.origin : ''}/test/${examId}`;
   const [qrDataUrl, setQrDataUrl] = useState('');
   const [copied, setCopied] = useState(false);
+  const [publishing, setPublishing] = useState(false);
+
+  const handlePublish = async () => {
+    if (!onPublish) return;
+    setPublishing(true);
+    try {
+      await onPublish();
+    } finally {
+      setPublishing(false);
+    }
+  };
 
   useEffect(() => {
     QRCode.toDataURL(publicUrl, { width: 480, margin: 2, color: { dark: '#1e293b', light: '#ffffff' } })
@@ -95,8 +108,20 @@ const ExamShareModal: React.FC<ExamShareModalProps> = ({ examId, examTitle, publ
 
         <div className="p-6">
           {!published && (
-            <div className="mb-5 text-sm bg-amber-50 dark:bg-amber-900/20 text-amber-800 dark:text-amber-300 p-3 rounded-xl border border-amber-200 dark:border-amber-800/30 font-medium">
-              Экзамен нужно <b>опубликовать</b>, чтобы ссылка и QR-код заработали.
+            <div className="mb-5 bg-amber-50 dark:bg-amber-900/20 p-3 rounded-xl border border-amber-200 dark:border-amber-800/30">
+              <p className="text-sm text-amber-800 dark:text-amber-300 font-medium">
+                Экзамен в статусе <b>черновик</b>. Чтобы ссылка и QR-код заработали, его нужно опубликовать.
+              </p>
+              {onPublish && (
+                <button
+                  onClick={handlePublish}
+                  disabled={publishing}
+                  className="mt-3 w-full flex items-center justify-center gap-2 bg-amber-500 hover:bg-amber-600 text-white px-4 py-2 rounded-lg text-sm font-semibold transition-colors disabled:opacity-60"
+                >
+                  {publishing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+                  {publishing ? 'Публикация…' : 'Опубликовать сейчас'}
+                </button>
+              )}
             </div>
           )}
 

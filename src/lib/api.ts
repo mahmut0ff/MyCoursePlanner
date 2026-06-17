@@ -118,6 +118,8 @@ export const apiGetAttemptsByRoom = (roomId: string) =>
   apiRequest('api-attempts', 'GET', undefined, { roomId });
 export const apiSaveAttempt = (data: any) => apiRequest('api-attempts', 'POST', data);
 export const apiUpdateAttempt = (data: any) => apiRequest('api-attempts', 'PUT', data);
+export const apiGradeAttempt = (id: string, grades: { questionId: string; pointsEarned: number }[]) =>
+  apiRequest('api-attempts', 'PUT', { action: 'grade', id, grades });
 
 // ---- Gamification ----
 export const apiGetGamification = (studentId?: string) =>

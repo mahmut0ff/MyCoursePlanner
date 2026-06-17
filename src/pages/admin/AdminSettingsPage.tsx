@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../contexts/AuthContext';
+import { adminGetAnalytics } from '../../lib/api';
 import {
   User, Users, Palette, Bell, Puzzle, CreditCard, Mail,
   Globe, Shield, Database, Save, Eye, EyeOff,
@@ -126,11 +127,24 @@ const ProfileTab: React.FC = () => {
 /* ════════════════════════════════════════════════ */
 const UsersRolesTab: React.FC = () => {
   const { t } = useTranslation();
+  const [counts, setCounts] = useState<Record<string, number>>({});
+
+  useEffect(() => {
+    adminGetAnalytics()
+      .then((s: any) => setCounts({
+        super_admin: s.superAdmins ?? 0,
+        admin: s.admins ?? 0,
+        teacher: s.teachers ?? 0,
+        student: s.students ?? 0,
+      }))
+      .catch(() => {});
+  }, []);
+
   const roles = [
-    { name: 'super_admin', users: 1, permissions: 'Full access', color: 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400' },
-    { name: 'admin', users: 5, permissions: 'Organization management', color: 'bg-violet-100 dark:bg-violet-900/30 text-violet-700 dark:text-violet-400' },
-    { name: 'teacher', users: 20, permissions: 'Lessons, exams, rooms', color: 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400' },
-    { name: 'student', users: 150, permissions: 'Take exams, view results', color: 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400' },
+    { name: 'super_admin', descKey: 'admin.settings.role_super_admin', color: 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400' },
+    { name: 'admin', descKey: 'admin.settings.role_admin', color: 'bg-violet-100 dark:bg-violet-900/30 text-violet-700 dark:text-violet-400' },
+    { name: 'teacher', descKey: 'admin.settings.role_teacher', color: 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400' },
+    { name: 'student', descKey: 'admin.settings.role_student', color: 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400' },
   ];
 
   return (
@@ -145,11 +159,11 @@ const UsersRolesTab: React.FC = () => {
               <div className="flex items-center gap-3">
                 <span className={`inline-flex px-2.5 py-1 rounded-lg text-xs font-medium capitalize ${r.color}`}>{r.name.replace('_', ' ')}</span>
                 <div>
-                  <p className="text-sm text-slate-600 dark:text-slate-400">{r.permissions}</p>
+                  <p className="text-sm text-slate-600 dark:text-slate-400">{t(r.descKey)}</p>
                 </div>
               </div>
               <div className="flex items-center gap-4">
-                <span className="text-sm text-slate-500 dark:text-slate-400">{r.users} {t('admin.settings.usersCount')}</span>
+                <span className="text-sm text-slate-500 dark:text-slate-400">{counts[r.name] ?? 0} {t('admin.settings.usersCount')}</span>
                 <button className="btn-secondary text-xs">{t('common.edit')}</button>
               </div>
             </div>
@@ -291,9 +305,9 @@ const IntegrationsTab: React.FC = () => {
 const BillingTab: React.FC = () => {
   const { t } = useTranslation();
   const plans = [
-    { id: 'starter', name: 'Starter', price: 39, students: 50, teachers: 5 },
-    { id: 'professional', name: 'Professional', price: 79, students: 200, teachers: 20 },
-    { id: 'enterprise', name: 'Enterprise', price: 199, students: -1, teachers: -1 },
+    { id: 'starter', name: t('admin.plans.starter'), price: 1990, students: 50, teachers: 5 },
+    { id: 'professional', name: t('admin.plans.professional'), price: 4990, students: 200, teachers: 20 },
+    { id: 'enterprise', name: t('admin.plans.enterprise'), price: 14900, students: -1, teachers: -1 },
   ];
 
   return (

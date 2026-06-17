@@ -562,9 +562,13 @@ const handler: Handler = async (event: HandlerEvent) => {
       const users = usersSnap.docs.map(d => d.data() as any);
       const subs = subsSnap.docs.map(d => d.data() as any);
 
-      const planPrices: Record<string, number> = { starter: 39, professional: 79, enterprise: 99 };
+      const planPrices: Record<string, number> = { starter: 1990, professional: 4990, enterprise: 14900 };
       const activeOrgs = orgs.filter(o => o.status === 'active');
-      const mrr = activeOrgs.reduce((s, o) => s + (planPrices[o.planId] || 0), 0);
+      // MRR = recurring revenue from PAYING subscriptions only.
+      // Trial and gifted subscriptions generate no revenue and must NOT be counted.
+      const mrr = subs
+        .filter(s => s.status === 'active')
+        .reduce((sum, s) => sum + (planPrices[s.planId] || 0), 0);
 
       // Monthly trends (last 6 months)
       const now = new Date();
@@ -586,6 +590,7 @@ const handler: Handler = async (event: HandlerEvent) => {
         students: users.filter(u => u.role === 'student').length,
         teachers: users.filter(u => u.role === 'teacher').length,
         admins: users.filter(u => u.role === 'admin').length,
+        superAdmins: users.filter(u => u.role === 'super_admin').length,
         totalExams: examsSnap.size,
         totalAttempts: attemptsSnap.size,
         totalRooms: roomsSnap.size,
@@ -666,16 +671,24 @@ const handler: Handler = async (event: HandlerEvent) => {
       const now = new Date();
       const oneDayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000).toISOString();
 
-      const [recentLogs, recentErrors] = await Promise.all([
+      // Measure real Firestore round-trip latency instead of a random number.
+      const latencyStart = Date.now();
+      const [recentLogs, recentErrors, flagsSnap] = await Promise.all([
         adminDb.collection('auditLogs').where('createdAt', '>=', oneDayAgo).get(),
         adminDb.collection('systemErrors').orderBy('createdAt', 'desc').limit(20).get(),
+        adminDb.collection('featureFlags').get(),
       ]);
+      const apiLatency = Date.now() - latencyStart;
+      // "Active functions" = enabled feature flags (matches the Feature Flags page).
+      const activeFunctions = flagsSnap.docs.filter(d => d.data().enabled).length;
+      // Uptime is degraded if errors were logged in the last 24h.
+      const errorsLast24h = recentErrors.docs.filter(d => (d.data().createdAt || '') >= oneDayAgo).length;
 
       return ok({
-        status: 'operational',
-        uptime: '99.9%',
-        apiLatency: `${Math.floor(Math.random() * 50 + 80)}ms`,
-        activeFunctions: 11,
+        status: errorsLast24h > 0 ? 'degraded' : 'operational',
+        uptime: errorsLast24h > 0 ? '99.0%' : '99.9%',
+        apiLatency: `${apiLatency}ms`,
+        activeFunctions,
         last24hActions: recentLogs.size,
         recentErrors: recentErrors.docs.map(d => ({ id: d.id, ...d.data() })),
         services: [

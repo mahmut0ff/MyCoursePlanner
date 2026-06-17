@@ -259,9 +259,18 @@ const AdminDashboardPage: React.FC = () => {
     const months = (stats.orgsByMonth || []).map((m: any) => m.month?.split('-')[1] || '');
     const orgCounts = (stats.orgsByMonth || []).map((m: any) => m.count);
     const userCounts = (stats.usersByMonth || []).map((m: any) => m.count);
-    const revCounts = orgCounts.map((c: number) => c * (stats.mrr || 39));
+    const revCounts = orgCounts.map((c: number) => c * (stats.mrr || 0));
     return { labels: months, orgs: orgCounts, users: userCounts, revenue: revCounts };
   }, [stats]);
+
+  /* ── Real month-over-month growth from the monthly series ── */
+  const growth = (series: number[]): number => {
+    if (!series || series.length < 2) return 0;
+    const prev = series[series.length - 2];
+    const curr = series[series.length - 1];
+    if (!prev) return curr > 0 ? 100 : 0;
+    return Math.round(((curr - prev) / prev) * 100);
+  };
 
   /* ── Metric change arrows ── */
   const change = (val: number) => {
@@ -281,6 +290,8 @@ const AdminDashboardPage: React.FC = () => {
     orgs: (stats.orgsByMonth || []).map((m: any) => m.count),
     users: (stats.usersByMonth || []).map((m: any) => m.count),
   };
+  const orgGrowth = growth(sparklineData.orgs);
+  const userGrowth = growth(sparklineData.users);
 
   const metrics = [
     {
@@ -288,7 +299,7 @@ const AdminDashboardPage: React.FC = () => {
       value: stats.totalOrganizations,
       icon: Building2,
       sub: `${stats.activeOrganizations} ${t('admin.dashboard.active')}`,
-      chg: change(12),
+      chg: change(orgGrowth),
       glow: 'shadow-primary-500/20 dark:shadow-primary-500/30',
       iconBg: 'bg-primary-500/10 dark:bg-primary-500/20 text-primary-500',
       spark: sparklineData.orgs,
@@ -299,7 +310,7 @@ const AdminDashboardPage: React.FC = () => {
       value: stats.totalUsers,
       icon: Users,
       sub: `${stats.students} ${t('admin.dashboard.students')}`,
-      chg: change(87),
+      chg: change(userGrowth),
       glow: 'shadow-emerald-500/20 dark:shadow-emerald-500/30',
       iconBg: 'bg-emerald-500/10 dark:bg-emerald-500/20 text-emerald-500',
       spark: sparklineData.users,
@@ -310,10 +321,10 @@ const AdminDashboardPage: React.FC = () => {
       value: `${stats.mrr} сом`,
       icon: DollarSign,
       sub: `${t('admin.dashboard.arr')}: ${stats.arr} сом`,
-      chg: change(24),
+      chg: change(0),
       glow: 'shadow-amber-500/20 dark:shadow-amber-500/30',
       iconBg: 'bg-amber-500/10 dark:bg-amber-500/20 text-amber-500',
-      spark: sparklineData.orgs.map((v: number) => v * 39),
+      spark: sparklineData.orgs.map((v: number) => v * 1990),
       sparkColor: '#fbbf24',
     },
     {
@@ -336,7 +347,7 @@ const AdminDashboardPage: React.FC = () => {
   ];
 
   const insights = [
-    { cls: 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30', icon: '📈', text: `${t('admin.dashboard.insightGrowth')} +87%` },
+    { cls: 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30', icon: '📈', text: `${t('admin.dashboard.insightGrowth')} ${userGrowth >= 0 ? '+' : ''}${userGrowth}%` },
     { cls: 'bg-blue-500/20 text-blue-400 border-blue-500/30', icon: '🎯', text: `${t('admin.dashboard.insightExams')} ${stats.totalAttempts}` },
     { cls: 'bg-amber-500/20 text-amber-400 border-amber-500/30', icon: '💰', text: `${t('admin.dashboard.insightMrr')} ${stats.mrr} сом` },
   ];
@@ -437,9 +448,9 @@ const AdminDashboardPage: React.FC = () => {
           </h3>
           <div className="space-y-4">
             {[
-              { name: 'Starter', price: '39 сом', count: Number(stats.planDistribution?.starter) || 0, color: 'bg-blue-500', glow: '#3b82f6' },
-              { name: 'Professional', price: '79 сом', count: Number(stats.planDistribution?.professional) || 0, color: 'bg-violet-500', glow: '#8b5cf6' },
-              { name: 'Enterprise', price: '99 сом', count: Number(stats.planDistribution?.enterprise) || 0, color: 'bg-amber-500', glow: '#f59e0b' },
+              { name: t('admin.plans.starter'), price: '1990 сом', count: Number(stats.planDistribution?.starter) || 0, color: 'bg-blue-500', glow: '#3b82f6' },
+              { name: t('admin.plans.professional'), price: '4990 сом', count: Number(stats.planDistribution?.professional) || 0, color: 'bg-violet-500', glow: '#8b5cf6' },
+              { name: t('admin.plans.enterprise'), price: '14900 сом', count: Number(stats.planDistribution?.enterprise) || 0, color: 'bg-amber-500', glow: '#f59e0b' },
             ].map((p) => {
               const totalItems = Number(stats.totalOrganizations) || 0;
               let pct = 0;

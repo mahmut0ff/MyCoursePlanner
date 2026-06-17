@@ -28,12 +28,13 @@ const AdminOrgDetailPage: React.FC = () => {
   const handleSuspend = async () => { if (!confirm(t('admin.orgs.confirmSuspend'))) return; try { await adminSuspendOrg(id!); toast.success('Организация приостановлена'); load(); } catch (e: any) { toast.error(e.message || 'Ошибка'); } };
   const handleActivate = async () => { try { await adminActivateOrg(id!); toast.success('Организация активирована'); load(); } catch (e: any) { toast.error(e.message || 'Ошибка'); } };
   const handleDelete = async () => { if (!confirm(t('admin.orgs.confirmDelete'))) return; try { await adminDeleteOrg(id!); toast.success('Организация удалена'); navigate('/admin/organizations'); } catch (e: any) { toast.error(e.message || 'Ошибка'); } };
-  const handleChangePlan = async (planId: string) => { try { await adminChangePlan(id!, planId); toast.success(`Тариф изменён на ${planId}`); load(); } catch (e: any) { toast.error(e.message || 'Ошибка'); } };
+  const handleChangePlan = async (planId: string) => { try { await adminChangePlan(id!, planId); toast.success(`Тариф изменён на ${t(`admin.plans.${planId}`)}`); load(); } catch (e: any) { toast.error(e.message || 'Ошибка'); } };
   const handleAddNote = async () => { if (!noteText.trim() || !id) return; try { await adminAddOrgNote(id, noteText); setNoteText(''); toast.success('Заметка добавлена'); load(); } catch (e: any) { toast.error(e.message || 'Ошибка'); } };
   const handleGiftPlan = async (planId: string) => {
-    if (!confirm(`Подарить тариф «${planId}» бесплатно для организации «${org?.name}»?`)) return;
+    const planName = t(`admin.plans.${planId}`);
+    if (!confirm(`Подарить тариф «${planName}» бесплатно для организации «${org?.name}»?`)) return;
     setGiftingPlan(planId);
-    try { await adminGiftPlan(id!, planId); toast.success(`🎁 Тариф «${planId}» подарен организации «${org?.name}»`); load(); } catch (e: any) { console.error(e); toast.error(e.message || 'Ошибка при подарке тарифа'); }
+    try { await adminGiftPlan(id!, planId); toast.success(`🎁 Тариф «${planName}» подарен организации «${org?.name}»`); load(); } catch (e: any) { console.error(e); toast.error(e.message || 'Ошибка при подарке тарифа'); }
     finally { setGiftingPlan(null); }
   };
 
@@ -54,7 +55,7 @@ const AdminOrgDetailPage: React.FC = () => {
           <p className="text-xs text-slate-500 mt-0.5">{org.ownerEmail}</p>
           <div className="flex flex-wrap items-center gap-3 mt-2">
             <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${STATUS_COLORS[org.status] || ''}`}>{org.status}</span>
-            <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${PLAN_COLORS[org.planId] || ''}`}>{org.planId}</span>
+            <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${PLAN_COLORS[org.planId] || ''}`}>{org.planId ? t(`admin.plans.${org.planId}`) : '—'}</span>
             {org.createdAt && <span className="text-[10px] text-slate-400 flex items-center gap-1"><Calendar className="w-3 h-3" />{new Date(org.createdAt).toLocaleDateString()}</span>}
           </div>
         </div>
@@ -66,7 +67,7 @@ const AdminOrgDetailPage: React.FC = () => {
           {[
             { label: t('dashboard.totalStudents'), value: org.usage.students },
             { label: t('dashboard.totalTeachers'), value: org.usage.teachers },
-            { label: 'Admins', value: org.usage.admins },
+            { label: t('admin.stats.admins'), value: org.usage.admins },
             { label: t('lessons.title'), value: org.usage.lessons },
             { label: t('exams.title'), value: org.usage.exams },
             { label: t('dashboard.examAttempts'), value: org.usage.attempts },
@@ -85,8 +86,8 @@ const AdminOrgDetailPage: React.FC = () => {
         <div className="flex gap-2">
           {['starter', 'professional', 'enterprise'].map((p) => (
             <button key={p} disabled={org.planId === p} onClick={() => handleChangePlan(p)}
-              className={`flex-1 px-3 py-2.5 rounded-lg text-xs font-medium transition-colors capitalize ${org.planId === p ? 'bg-primary-100 text-primary-700 cursor-not-allowed' : 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-600'}`}>
-              {p}
+              className={`flex-1 px-3 py-2.5 rounded-lg text-xs font-medium transition-colors ${org.planId === p ? 'bg-primary-100 text-primary-700 cursor-not-allowed' : 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-600'}`}>
+              {t(`admin.plans.${p}`)}
             </button>
           ))}
         </div>
@@ -105,8 +106,8 @@ const AdminOrgDetailPage: React.FC = () => {
         <div className="flex gap-2">
           {['starter', 'professional', 'enterprise'].map((p) => (
             <button key={p} disabled={giftingPlan === p} onClick={() => handleGiftPlan(p)}
-              className={`flex-1 px-3 py-2.5 rounded-lg text-xs font-medium transition-colors capitalize ${org.planId === p && org.subscription?.status === 'gifted' ? 'bg-emerald-500 text-white ring-2 ring-emerald-300' : 'bg-white dark:bg-slate-700 text-slate-600 dark:text-slate-400 hover:bg-emerald-100 dark:hover:bg-emerald-900/30 border border-slate-200 dark:border-slate-600'}`}>
-              {giftingPlan === p ? '...' : `🎁 ${p}`}
+              className={`flex-1 px-3 py-2.5 rounded-lg text-xs font-medium transition-colors ${org.planId === p && org.subscription?.status === 'gifted' ? 'bg-emerald-500 text-white ring-2 ring-emerald-300' : 'bg-white dark:bg-slate-700 text-slate-600 dark:text-slate-400 hover:bg-emerald-100 dark:hover:bg-emerald-900/30 border border-slate-200 dark:border-slate-600'}`}>
+              {giftingPlan === p ? '...' : `🎁 ${t(`admin.plans.${p}`)}`}
             </button>
           ))}
         </div>

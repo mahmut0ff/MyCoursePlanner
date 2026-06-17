@@ -485,7 +485,7 @@
     "plans": {
       "subtitle": "Manage subscription plans and pricing",
       "addPlan": "Add Plan",
-      "starter": "Starter",
+      "starter": "Basic",
       "professional": "Professional",
       "enterprise": "Enterprise"
     },
@@ -524,6 +524,10 @@
       "localization": "Localization",
       "security": "Security",
       "dataManagement": "Data Management",
+      "role_super_admin": "Full access",
+      "role_admin": "Organization management",
+      "role_teacher": "Lessons, exams, rooms",
+      "role_student": "Take exams & view results",
       "firstName": "First Name",
       "lastName": "Last Name",
       "emailLabel": "Email",
@@ -639,7 +643,7 @@
     "downgrade": "Downgrade",
     "cancel": "Cancel Subscription",
     "reactivate": "Reactivate",
-    "starter": "Starter",
+    "starter": "Basic",
     "professional": "Professional",
     "enterprise": "Enterprise",
     "perMonth": "/mo",

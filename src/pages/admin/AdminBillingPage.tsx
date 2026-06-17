@@ -30,7 +30,8 @@ const AdminBillingPage: React.FC = () => {
   let filtered = subs;
   if (search) filtered = subs.filter(s => s.organizationName?.toLowerCase().includes(search.toLowerCase()) || s.organizationId?.includes(search));
 
-  const totalMRR = filtered.filter(s => s.status === 'active' || s.status === 'trial').reduce((sum, s) => sum + (PLAN_PRICES[s.planId] || 0), 0);
+  // MRR counts PAYING subscriptions only — trial and gifted generate no revenue.
+  const totalMRR = filtered.filter(s => s.status === 'active').reduce((sum, s) => sum + (PLAN_PRICES[s.planId] || 0), 0);
   const activeCount = filtered.filter(s => s.status === 'active').length;
   const trialCount = filtered.filter(s => s.status === 'trial').length;
   const cancelledCount = filtered.filter(s => s.status === 'cancelled').length;

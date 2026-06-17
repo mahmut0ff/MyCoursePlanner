@@ -99,16 +99,12 @@ const AdminIntegrationsPage: React.FC = () => {
   const [showSecrets, setShowSecrets] = useState<Record<string, boolean>>({});
 
   /* ── Webhooks state ── */
-  const [webhooks, setWebhooks] = useState<WebhookItem[]>([
-    { id: '1', url: 'https://example.com/webhooks/events', events: ['user.created', 'payment.success'], active: true, lastTriggered: '2026-03-21T12:00:00' },
-  ]);
+  const [webhooks, setWebhooks] = useState<WebhookItem[]>([]);
   const [newWebhookUrl, setNewWebhookUrl] = useState('');
   const [newWebhookEvents, setNewWebhookEvents] = useState('');
 
   /* ── API Keys state ── */
-  const [apiKeys, setApiKeys] = useState<ApiKey[]>([
-    { id: '1', name: 'Production Key', key: 'mcp_live_sk_a1b2c3d4e5f6g7h8', created: '2026-03-01', lastUsed: '2026-03-21' },
-  ]);
+  const [apiKeys, setApiKeys] = useState<ApiKey[]>([]);
   const [newKeyName, setNewKeyName] = useState('');
   const [revealedKeys, setRevealedKeys] = useState<Set<string>>(new Set());
   const [copiedId, setCopiedId] = useState<string | null>(null);

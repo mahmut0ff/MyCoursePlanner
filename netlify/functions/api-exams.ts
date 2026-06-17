@@ -154,7 +154,10 @@ const handler: Handler = async (event: HandlerEvent) => {
       title: body.title, subject: body.subject || '', description: body.description || '',
       durationMinutes: body.durationMinutes || 60, passScore: body.passScore || 60,
       randomizeQuestions: body.randomizeQuestions || false, status: body.status || 'draft',
-      questionCount: 0, authorId: user.uid, authorName: user.displayName,
+      showResultsImmediately: body.showResultsImmediately ?? true,
+      gradingCategories: Array.isArray(body.gradingCategories) ? body.gradingCategories : [],
+      placementLevels: Array.isArray(body.placementLevels) ? body.placementLevels : [],
+      questionCount: body.questionCount || 0, authorId: user.uid, authorName: user.displayName,
       organizationId: user.organizationId || '', createdAt: now, updatedAt: now,
     };
     const ref = await adminDb.collection(COLLECTION).add(data);

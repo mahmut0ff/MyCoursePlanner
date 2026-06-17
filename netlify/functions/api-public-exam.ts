@@ -23,6 +23,7 @@ const handler: Handler = async (event: HandlerEvent) => {
 
     // Fetch questions and sanitize them
     const questionsSnap = await adminDb.collection('exams').doc(examId).collection('questions').orderBy('order').get();
+    // NOTE: deliberately strips correctAnswer / correctAnswers / keywords so answers never leak to the client.
     const questions = questionsSnap.docs.map(doc => {
       const q = doc.data();
       return {
@@ -31,7 +32,10 @@ const handler: Handler = async (event: HandlerEvent) => {
         text: q.text || q.question || '',
         options: q.options || [],
         points: q.points || 1,
-        order: q.order || 0
+        order: q.order || 0,
+        mediaUrl: q.mediaUrl || null,
+        mediaType: q.mediaType || null,
+        ttsText: q.ttsText || null,
       };
     });
 
@@ -66,10 +70,6 @@ const handler: Handler = async (event: HandlerEvent) => {
       return badRequest('Exam has no associated organization');
     }
 
-    const orgDoc = await adminDb.collection('organizations').doc(organizationId).get();
-    const orgData = orgDoc.exists ? orgDoc.data() : null;
-    const isCorporate = orgData?.planId === 'enterprise';
-
     // Grade Exam Server-side
     const questionsSnap = await adminDb.collection('exams').doc(examId).collection('questions').orderBy('order').get();
     const questions = questionsSnap.docs.map((d: any) => ({ id: d.id, ...d.data() }));
@@ -98,17 +98,30 @@ const handler: Handler = async (event: HandlerEvent) => {
         displayCorrectAnswer = q.correctAnswers;
       } else if (q.type === 'short_answer') {
         const ans = String(studentAnswer || '').trim().toLowerCase();
-        if (q.keywords && Array.isArray(q.keywords) && q.keywords.length > 0) {
+        const hasKeywords = q.keywords && Array.isArray(q.keywords) && q.keywords.length > 0;
+        const hasCorrect = !!String(q.correctAnswer || '').trim();
+        if (hasKeywords) {
           isCorrect = q.keywords.some((kw: string) => ans.includes(kw.trim().toLowerCase()) || ans === kw.trim().toLowerCase());
           displayCorrectAnswer = q.keywords.join(', ');
+        } else if (hasCorrect) {
+          isCorrect = ans === String(q.correctAnswer).trim().toLowerCase();
         } else {
-          isCorrect = ans === String(q.correctAnswer || '').trim().toLowerCase();
+          // No automatic grading criteria — defer to manual / AI review instead of silently marking wrong.
+          const resultObj = {
+            questionId: q.id, questionText: q.text || q.question || '',
+            studentAnswer, correctAnswer: null,
+            isCorrect: false, pointsEarned: 0, pointsPossible: points,
+            status: 'pending_review',
+          };
+          questionResults.push(resultObj);
+          pending.push(resultObj);
+          continue;
         }
       } else {
-        // open_ended
+        // open_ended / speaking — requires manual or AI review
         const resultObj = {
           questionId: q.id, questionText: q.text || q.question || '',
-          studentAnswer, correctAnswer: q.correctAnswer,
+          studentAnswer, correctAnswer: q.correctAnswer ?? null,
           isCorrect: false, pointsEarned: 0, pointsPossible: points,
           status: 'pending_review',
         };
@@ -132,21 +145,26 @@ const handler: Handler = async (event: HandlerEvent) => {
     const percentage = totalPoints > 0 ? Math.round((score / totalPoints) * 100) : 0;
     const passed = percentage >= passScore;
     const now = new Date().toISOString();
-    
-    // AI Generation (only if corporate)
-    let aiFeedback: any = null;
-    if (isCorporate) {
-      try {
-        const attemptObj = {
-           examTitle: examData.title,
-           percentage, score, totalPoints, passed,
-           timeSpentSeconds: timeSpentSeconds || 0
-        };
-        aiFeedback = await generateExamAIFeedback(attemptObj, correct, incorrect, pending, examData.gradingCategories || []);
-      } catch (err) {
-        console.warn('AI Feedback error:', err);
-        aiFeedback = null;
-      }
+
+    // AI verdict — always produced. Try Gemini first; if the key is missing or the
+    // call fails, fall back to a deterministic rule-based verdict so a report
+    // (including a level/verdict) ALWAYS appears for the teacher.
+    const placementLevels: string[] = Array.isArray(examData.placementLevels) ? examData.placementLevels : [];
+    const attemptObj = {
+      examTitle: examData.title,
+      subject: examData.subject || '',
+      percentage, score, totalPoints, passed,
+      timeSpentSeconds: timeSpentSeconds || 0,
+    };
+    let aiFeedback: any;
+    try {
+      aiFeedback = await generateExamAIFeedback(
+        attemptObj, correct, incorrect, pending,
+        examData.gradingCategories || [], placementLevels
+      );
+    } catch (err) {
+      console.warn('AI Feedback unavailable, using rule-based fallback:', (err as any)?.message || err);
+      aiFeedback = buildRuleBasedFeedback(attemptObj, correct, incorrect, pending, placementLevels);
     }
 
     // 1. Create a Lead Record (AILeads)
@@ -197,13 +215,16 @@ const handler: Handler = async (event: HandlerEvent) => {
     
     await adminDb.collection('examAttempts').add(attemptData);
 
-    return ok({ 
-      success: true, 
+    return ok({
+      success: true,
       leadId,
       score,
       totalPoints,
       percentage,
       passed,
+      level: aiFeedback?.level || null,
+      levelDescription: aiFeedback?.levelDescription || null,
+      isPlacement: placementLevels.length > 0,
       showResultsImmediately: examData.showResultsImmediately
     });
   }

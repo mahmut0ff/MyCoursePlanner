@@ -10,13 +10,38 @@ export function buildRuleBasedFeedback(
   attempt: any,
   correct: any[],
   incorrect: any[],
-  pending: any[]
+  pending: any[],
+  placementLevels: string[] = []
 ) {
   const pct = attempt.percentage ?? 0;
   const total = (correct.length + incorrect.length + pending.length) || 1;
-  const timeMin = Math.floor((attempt.timeSpentSeconds || 0) / 60);
-  const timeSec = (attempt.timeSpentSeconds || 0) % 60;
   const avgTimePerQ = total > 0 ? Math.round((attempt.timeSpentSeconds || 0) / total) : 0;
+
+  // --- Level (verdict) ---
+  // For placement tests, map the score band onto the provided scale (e.g. CEFR).
+  // Otherwise fall back to a generic competence label.
+  let level: string;
+  let levelDescription: string;
+  if (placementLevels.length > 0) {
+    const idx = Math.min(
+      placementLevels.length - 1,
+      Math.floor((pct / 100) * placementLevels.length)
+    );
+    level = placementLevels[idx];
+    levelDescription = `Результат ${pct}% соответствует уровню «${level}» по выбранной шкале.`;
+  } else if (pct >= 90) {
+    level = 'Продвинутый';
+    levelDescription = `Высокий результат (${pct}%) — продвинутый уровень владения материалом.`;
+  } else if (pct >= 70) {
+    level = 'Средний';
+    levelDescription = `Хороший результат (${pct}%) — средний уровень, есть отдельные пробелы.`;
+  } else if (pct >= 50) {
+    level = 'Базовый';
+    levelDescription = `Удовлетворительный результат (${pct}%) — базовый уровень.`;
+  } else {
+    level = 'Начальный';
+    levelDescription = `Низкий результат (${pct}%) — начальный уровень, требуется подготовка.`;
+  }
 
   // --- Summary ---
   let summary: string;
@@ -55,19 +80,25 @@ export function buildRuleBasedFeedback(
   // --- Teacher Notes ---
   let teacherNotes = pct < 70 ? `Обратите внимание на ${incorrect.length} ошибок. Потенциально слабый лид/клиент.` : `Хороший потенциальный клиент. Готов обучаться.`;
 
-  return { summary, strengths, weakTopics, reviewSuggestions, teacherNotes };
+  return {
+    summary, strengths, weakTopics, reviewSuggestions, teacherNotes,
+    level, levelDescription,
+    modelUsed: 'rule-based',
+    generatedAt: new Date().toISOString(),
+  };
 }
 
 export async function generateExamAIFeedback(
-  attempt: any, 
-  correct: any[], 
-  incorrect: any[], 
-  pending: any[], 
-  gradingCategories: string[] = []
+  attempt: any,
+  correct: any[],
+  incorrect: any[],
+  pending: any[],
+  gradingCategories: string[] = [],
+  placementLevels: string[] = []
 ) {
   if (!GEMINI_API_KEY) throw new Error('No GEMINI_API_KEY');
 
-  const categoryPrompt = gradingCategories.length > 0 
+  const categoryPrompt = gradingCategories.length > 0
     ? `Оцени работу строго по этим категориям: ${gradingCategories.join(', ')}. Выстави оценки (excellent, good, average, poor) и напиши подробный инсайт по каждой категории.`
     : '';
 
@@ -75,9 +106,18 @@ export async function generateExamAIFeedback(
     ? `,\n  "categoryScores": { "название_категории": "одна из [excellent, good, average, poor]" },\n  "categoryInsights": { "название_категории": "краткое объяснение, почему выставлена такая оценка" }`
     : '';
 
+  // Placement / level determination
+  const levelPrompt = placementLevels.length > 0
+    ? `Это тест на определение уровня. Определи уровень студента СТРОГО по шкале: ${placementLevels.join(', ')}. В поле "level" верни ровно одно значение из этой шкалы.`
+    : `Определи примерный уровень студента короткой меткой (например: Начальный, Базовый, Средний, Продвинутый).`;
+
+  const pendingBlock = pending.length > 0
+    ? `\n\nОтветы, требующие смысловой оценки (открытые/устные — оцени их сам по содержанию):\n${pending.map((r: any) => `- Вопрос: ${r.questionText}\n  Ответ студента: ${Array.isArray(r.studentAnswer) ? r.studentAnswer.join(', ') : r.studentAnswer || '(пусто)'}`).join('\n')}`
+    : '';
+
   const prompt = `Ты — образовательный ИИ-ассистент платформы SabakHub. Пользователь только что завершил вступительный тест/экзамен.
 
-Экзамен: "${attempt.examTitle}"
+Экзамен: "${attempt.examTitle}"${attempt.subject ? `\nПредмет: ${attempt.subject}` : ''}
 Результат: ${attempt.percentage}% (${attempt.score}/${attempt.totalPoints} баллов). ${attempt.passed ? 'Экзамен сдан.' : 'Экзамен НЕ сдан.'}
 Время: ${Math.floor((attempt.timeSpentSeconds || 0) / 60)} мин ${(attempt.timeSpentSeconds || 0) % 60} сек
 
@@ -85,13 +125,16 @@ export async function generateExamAIFeedback(
 ${correct.map((r: any) => `- ${r.questionText}`).join('\n') || 'Нет'}
 
 Неправильные ответы (${incorrect.length}):
-${incorrect.map((r: any) => `- Вопрос: ${r.questionText}\n  Ответ студента: ${Array.isArray(r.studentAnswer) ? r.studentAnswer.join(', ') : r.studentAnswer || '(пусто)'}\n  Правильный ответ: ${Array.isArray(r.correctAnswer) ? r.correctAnswer.join(', ') : r.correctAnswer}`).join('\n') || 'Нет'}
+${incorrect.map((r: any) => `- Вопрос: ${r.questionText}\n  Ответ студента: ${Array.isArray(r.studentAnswer) ? r.studentAnswer.join(', ') : r.studentAnswer || '(пусто)'}\n  Правильный ответ: ${Array.isArray(r.correctAnswer) ? r.correctAnswer.join(', ') : r.correctAnswer}`).join('\n') || 'Нет'}${pendingBlock}
 
-Составь подробный и полезный отчёт для преподавателя или менеджера по продажам (студент этот отчет не увидит, поэтому пиши прямо и по делу). Оцени его уровень.
+Составь подробный и полезный отчёт для преподавателя или менеджера по продажам (студент этот отчет не увидит, поэтому пиши прямо и по делу).
+${levelPrompt}
 ${categoryPrompt}
 
 Верни JSON строго в таком формате:
 {
+  "level": "Определённый уровень студента (одно значение)",
+  "levelDescription": "1 предложение: почему именно этот уровень",
   "summary": "Краткий итог (2-3 предложения). Укажи процент, примерный уровень.",
   "strengths": ["Конкретная сильная сторона 1", "Конкретная сильная сторона 2"],
   "weakTopics": ["Конкретная слабая тема 1", "Конкретная слабая тема 2"],

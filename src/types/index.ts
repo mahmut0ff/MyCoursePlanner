@@ -471,6 +471,7 @@ export interface Exam {
   status: ExamStatus;
   questionCount: number;
   gradingCategories?: string[]; // Custom metrics for AI (e.g., 'Speaking', 'Coding')
+  placementLevels?: string[]; // Level scale for placement tests (e.g. CEFR: A1, A2, B1...). When set, AI classifies the student into one of these.
   authorId: string;
   authorName: string;
   organizationId?: string;
@@ -559,6 +560,8 @@ export interface AIFeedback {
   weakTopics: string[];
   reviewSuggestions: string[];
   summary: string;
+  level?: string; // Determined level/verdict (e.g. CEFR "B1" for language placement, or "Intermediate")
+  levelDescription?: string; // Short human explanation of why this level was assigned
   categoryScores?: Record<string, string>; // e.g. { "Speaking": "poor" }
   categoryInsights?: Record<string, string>; // e.g. { "Speaking": "Has strong accent" }
   generatedAt: string;

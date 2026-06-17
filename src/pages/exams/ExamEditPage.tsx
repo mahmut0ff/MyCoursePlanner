@@ -40,6 +40,7 @@ const ExamEditPage: React.FC = () => {
   const [showResults, setShowResults] = useState(true);
   const [status, setStatus] = useState<'draft' | 'published'>('draft');
   const [gradingCategories, setGradingCategories] = useState<string[]>([]);
+  const [placementLevels, setPlacementLevels] = useState<string[]>([]);
   const [questions, setQuestions] = useState<Question[]>([EMPTY_QUESTION()]);
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(isEdit);
@@ -145,6 +146,7 @@ const ExamEditPage: React.FC = () => {
           setRandomize(exam.randomizeQuestions); setShowResults(exam.showResultsImmediately);
           setStatus(exam.status as any);
           setGradingCategories(exam.gradingCategories || []);
+          setPlacementLevels(exam.placementLevels || []);
         }
         if (qs.length > 0) setQuestions(qs);
         setLoading(false);
@@ -166,7 +168,7 @@ const ExamEditPage: React.FC = () => {
       const examData = {
         title, description, subject, durationMinutes, passScore,
         randomizeQuestions: randomize, showResultsImmediately: showResults,
-        status, questionCount: questions.length, gradingCategories,
+        status, questionCount: questions.length, gradingCategories, placementLevels,
         authorId: profile?.uid || '', authorName: profile?.displayName || '',
       };
       let examId = id;
@@ -247,6 +249,12 @@ const ExamEditPage: React.FC = () => {
               <label className={labelClass}>{t('exams.gradingCategories', 'AI Evaluation Skills (Optional)')}</label>
               <input value={gradingCategories.join(', ')} onChange={(e) => setGradingCategories(e.target.value.split(',').map(s => s.trim()).filter(Boolean))} className={inputClass} placeholder={t('exams.gradingCategoriesPlaceholder', 'e.g. Speaking, Writing, Coding, Design')} />
               <p className="text-xs text-slate-500 dark:text-slate-400 mt-2 font-medium">Comma-separated skills the AI must evaluate specifically. Leave blank for standard evaluation.</p>
+            </div>
+
+            <div className="md:col-span-2">
+              <label className={labelClass}>{t('exams.placementLevels', 'Шкала уровней (Placement)')}</label>
+              <input value={placementLevels.join(', ')} onChange={(e) => setPlacementLevels(e.target.value.split(',').map(s => s.trim()).filter(Boolean))} className={inputClass} placeholder={t('exams.placementLevelsPlaceholder', 'напр. A1, A2, B1, B2, C1, C2')} />
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-2 font-medium">{t('exams.placementLevelsHint', 'Для тестов на определение уровня (языковые курсы). ИИ определит уровень студента строго по этой шкале. Оставьте пустым для обычного экзамена.')}</p>
             </div>
             
             <div className="grid grid-cols-2 gap-4">

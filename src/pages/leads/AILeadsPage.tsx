@@ -284,17 +284,68 @@ const AILeadsPage: React.FC = () => {
                         </div>
                         <p className="text-[10px] font-bold text-indigo-400 uppercase tracking-widest mb-1">Результат тестирования</p>
                         <p className="font-semibold text-sm text-slate-900 dark:text-slate-100 mb-1.5 truncate pr-6">{lead.testResult.examTitle}</p>
-                        <div className="flex items-end gap-2">
+                        <div className="flex items-end gap-2 flex-wrap">
                           <span className="text-xl font-black text-indigo-600 dark:text-indigo-400 leading-none">{lead.testResult.percentage}%</span>
                           <span className="text-xs font-medium text-slate-400 pb-0.5">{lead.testResult.score} / {lead.testResult.maxScore}</span>
+                          {lead.testResult.aiFeedback?.level && (
+                            <span className="ml-auto inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-indigo-600 text-white text-xs font-bold">
+                              Уровень: {lead.testResult.aiFeedback.level}
+                            </span>
+                          )}
                         </div>
 
                         {lead.testResult.aiFeedback && (
-                          <div className="mt-2.5 pt-2.5 border-t border-slate-100 dark:border-slate-700">
-                            <p className="text-[10px] font-bold text-indigo-500 dark:text-indigo-400 mb-0.5 uppercase tracking-wide">✨ AI Анализ</p>
-                            <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed italic">
-                              "{lead.testResult.aiFeedback.teacherNotes || lead.testResult.aiFeedback.summary}"
-                            </p>
+                          <div className="mt-3 pt-3 border-t border-slate-100 dark:border-slate-700 space-y-3">
+                            <div className="flex items-center gap-1.5">
+                              <p className="text-[10px] font-bold text-indigo-500 dark:text-indigo-400 uppercase tracking-wide">✨ AI Анализ</p>
+                              {lead.testResult.aiFeedback.modelUsed === 'rule-based' && (
+                                <span className="text-[9px] text-slate-400 font-medium">(базовый)</span>
+                              )}
+                            </div>
+
+                            {lead.testResult.aiFeedback.summary && (
+                              <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">{lead.testResult.aiFeedback.summary}</p>
+                            )}
+
+                            {Array.isArray(lead.testResult.aiFeedback.strengths) && lead.testResult.aiFeedback.strengths.length > 0 && (
+                              <div>
+                                <p className="text-[10px] font-bold text-emerald-500 uppercase tracking-wide mb-1">Сильные стороны</p>
+                                <ul className="list-disc list-inside space-y-0.5">
+                                  {lead.testResult.aiFeedback.strengths.map((s: string, i: number) => (
+                                    <li key={i} className="text-xs text-slate-600 dark:text-slate-300">{s}</li>
+                                  ))}
+                                </ul>
+                              </div>
+                            )}
+
+                            {Array.isArray(lead.testResult.aiFeedback.weakTopics) && lead.testResult.aiFeedback.weakTopics.length > 0 && (
+                              <div>
+                                <p className="text-[10px] font-bold text-amber-500 uppercase tracking-wide mb-1">Слабые темы</p>
+                                <ul className="list-disc list-inside space-y-0.5">
+                                  {lead.testResult.aiFeedback.weakTopics.map((s: string, i: number) => (
+                                    <li key={i} className="text-xs text-slate-600 dark:text-slate-300">{s}</li>
+                                  ))}
+                                </ul>
+                              </div>
+                            )}
+
+                            {Array.isArray(lead.testResult.aiFeedback.reviewSuggestions) && lead.testResult.aiFeedback.reviewSuggestions.length > 0 && (
+                              <div>
+                                <p className="text-[10px] font-bold text-sky-500 uppercase tracking-wide mb-1">Рекомендации</p>
+                                <ul className="list-disc list-inside space-y-0.5">
+                                  {lead.testResult.aiFeedback.reviewSuggestions.map((s: string, i: number) => (
+                                    <li key={i} className="text-xs text-slate-600 dark:text-slate-300">{s}</li>
+                                  ))}
+                                </ul>
+                              </div>
+                            )}
+
+                            {lead.testResult.aiFeedback.teacherNotes && (
+                              <div className="bg-slate-50 dark:bg-slate-900/40 rounded-lg p-2.5 border border-slate-100 dark:border-slate-700">
+                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wide mb-0.5">Заметка преподавателю</p>
+                                <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed italic">"{lead.testResult.aiFeedback.teacherNotes}"</p>
+                              </div>
+                            )}
                           </div>
                         )}
                       </div>

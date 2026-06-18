@@ -2,6 +2,7 @@ import type { Handler, HandlerEvent } from '@netlify/functions';
 import { adminDb } from './utils/firebase-admin';
 import { ok, badRequest, notFound, jsonResponse } from './utils/auth';
 import { generateExamAIFeedback, buildRuleBasedFeedback } from './utils/ai-exam-analytics';
+import { notifyOrgAdmins } from './utils/notifications';
 
 const handler: Handler = async (event: HandlerEvent) => {
   try {
@@ -232,6 +233,15 @@ const handler: Handler = async (event: HandlerEvent) => {
     });
 
     const leadId = leadRef.id;
+
+    // Notify staff so they can follow up on the new lead (parity with other lead sources).
+    notifyOrgAdmins(
+      organizationId,
+      'new_lead',
+      '📩 Новая заявка (входной тест)',
+      `👤 ${name.trim()}\n📞 ${phone.trim()}\n📝 ${examData.title} — ${percentage}%`,
+      '/leads',
+    ).catch(() => {});
 
     // 2. Create the anonymous Exam Attempt
     const attemptData = {

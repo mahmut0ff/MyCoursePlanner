@@ -60,6 +60,14 @@
 [functions."weekly-digest"]
   schedule = "0 6 * * 1"
 
+# Daily reminder to follow up on untouched leads.
+[functions."lead-followups"]
+  schedule = "0 8 * * *"
+
+# Weekly alert of at-risk students (absences / overdue payments) to staff.
+[functions."risk-alerts"]
+  schedule = "0 7 * * 3"
+
 # ---- Security headers ----
 [[headers]]
   for = "/*"

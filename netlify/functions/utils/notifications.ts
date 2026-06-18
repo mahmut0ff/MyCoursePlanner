@@ -32,6 +32,8 @@ export type NotificationType =
   | 'lesson_reminder'
   | 'schedule_changed'
   | 'weekly_digest'
+  | 'risk_alert'
+  | 'lead_followup'
   | 'new_lead';
 
 interface NotificationPayload {

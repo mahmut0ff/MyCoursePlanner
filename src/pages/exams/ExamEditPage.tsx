@@ -208,7 +208,7 @@ const ExamEditPage: React.FC = () => {
                 {isEdit ? t('exams.editExam', 'Edit Assessment') : t('exams.newExam', 'Create Assessment')}
               </h1>
               <p className="text-xs font-medium text-slate-500 dark:text-slate-400">
-                {status === 'published' ? <span className="text-emerald-500">Live & Published</span> : 'Draft Mode'}
+                {status === 'published' ? <span className="text-emerald-500">{t('exams.livePublished', 'Live & Published')}</span> : t('exams.draftMode', 'Draft Mode')}
               </p>
             </div>
           </div>
@@ -247,13 +247,13 @@ const ExamEditPage: React.FC = () => {
             
             <div>
               <label className={labelClass}>{t('exams.subjectLabel', 'Subject / Category')} *</label>
-              <input value={subject} onChange={(e) => setSubject(e.target.value)} className={inputClass} placeholder="e.g. Computer Science" />
+              <input value={subject} onChange={(e) => setSubject(e.target.value)} className={inputClass} placeholder={t('exams.subjectPlaceholder', 'e.g. Computer Science')} />
             </div>
             
             <div className="md:col-span-2">
               <label className={labelClass}>{t('exams.gradingCategories', 'AI Evaluation Skills (Optional)')}</label>
               <input value={gradingCategoriesText} onChange={(e) => setGradingCategoriesText(e.target.value)} className={inputClass} placeholder={t('exams.gradingCategoriesPlaceholder', 'e.g. Speaking, Writing, Coding, Design')} />
-              <p className="text-xs text-slate-500 dark:text-slate-400 mt-2 font-medium">Comma-separated skills the AI must evaluate specifically. Leave blank for standard evaluation.</p>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-2 font-medium">{t('exams.gradingCategoriesHint', 'Comma-separated skills the AI must evaluate specifically. Leave blank for standard evaluation.')}</p>
             </div>
 
             <div className="md:col-span-2">
@@ -362,7 +362,7 @@ const ExamEditPage: React.FC = () => {
                       </select>
                       
                       <div className="flex items-center gap-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-1.5">
-                        <span className="text-xs font-bold text-slate-500">PTS</span>
+                        <span className="text-xs font-bold text-slate-500">{t('exams.pts', 'PTS')}</span>
                         <input 
                           type="number" 
                           value={q.points} 
@@ -376,7 +376,7 @@ const ExamEditPage: React.FC = () => {
                     <button 
                       onClick={() => removeQuestion(qIdx)} 
                       className="w-8 h-8 flex items-center justify-center rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-all self-end sm:self-auto"
-                      title="Remove Question"
+                      title={t('exams.removeQuestion', 'Remove Question')}
                     >
                       <Trash2 className="w-4 h-4" />
                     </button>

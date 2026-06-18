@@ -34,7 +34,11 @@ const RiskCard: React.FC<{ student: StudentRiskProfile }> = ({ student }) => {
       <div className="grid grid-cols-2 gap-2 text-sm">
         <div className="bg-slate-50 dark:bg-slate-900 p-2 rounded-lg">
           <p className="text-[10px] uppercase text-slate-400 font-bold tracking-wider">Ср. Балл</p>
-          <p className={`font-bold ${student.averageScore < 60 ? 'text-red-500' : 'text-slate-800 dark:text-white'}`}>{student.averageScore}%</p>
+          {student.examsTaken && student.examsTaken > 0 ? (
+            <p className={`font-bold ${student.averageScore < 60 ? 'text-red-500' : 'text-slate-800 dark:text-white'}`}>{student.averageScore}%</p>
+          ) : (
+            <p className="font-bold text-slate-400" title="Нет сданных экзаменов">—</p>
+          )}
         </div>
         <div className="bg-slate-50 dark:bg-slate-900 p-2 rounded-lg">
           <p className="text-[10px] uppercase text-slate-400 font-bold tracking-wider">Посещения</p>

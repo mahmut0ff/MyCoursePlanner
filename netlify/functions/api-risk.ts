@@ -137,6 +137,7 @@ export const handler: Handler = async (event: HandlerEvent) => {
         avatarUrl: student.avatarUrl,
         riskLevel,
         averageScore: avgScore,
+        examsTaken: sAttempts.length,
         attendanceRate,
         streak,
         daysSinceLastActive,

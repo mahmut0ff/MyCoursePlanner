@@ -456,7 +456,7 @@ const StudentsPage: React.FC = () => {
         <div>
           <h1 className="text-3xl font-extrabold text-slate-900 dark:text-white mb-2">{t('nav.students')}</h1>
           <p className="text-slate-500 dark:text-slate-400 text-sm">
-            {activeTab === 'students' ? `${students.length} ${t('org.students.total')}` : activeTab === 'applications' ? `${applications.length} ${t('org.students.applicationsCount', 'заявок')}` : `${courseRequests.length} заявок на курсы`}
+            {activeTab === 'students' ? `${students.filter(s => ((s as any).status || 'active') === 'active').length} ${t('org.students.total')}` : activeTab === 'applications' ? `${applications.length} ${t('org.students.applicationsCount', 'заявок')}` : `${courseRequests.length} заявок на курсы`}
           </p>
         </div>
         <div className="flex items-center gap-3 w-full sm:w-auto">

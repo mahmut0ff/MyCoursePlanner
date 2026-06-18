@@ -222,6 +222,7 @@ export interface StudentRiskProfile {
   avatarUrl?: string; // Optional since it maps from UserProfile
   riskLevel: RiskLevel;
   averageScore: number;
+  examsTaken?: number;
   attendanceRate: number;
   streak: number;
   daysSinceLastActive: number;

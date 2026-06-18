@@ -21,22 +21,43 @@ export const handler: Handler = async (event: HandlerEvent) => {
   if (!orgId) return badRequest('orgId required');
 
   try {
-    // 1. Get students active in this org (or from groups of the teacher)
-    // Here we find all students by grabbing members or just getting all users who took exams in org.
-    // For a robust system, let's grab the org users.
-    const membershipsSnap = await adminDb.collection('memberships')
-      .where('organizationId', '==', orgId)
+    // 1. Resolve active students from the org-side membership mirror.
+    const memberSnap = await adminDb.collection('orgMembers').doc(orgId)
+      .collection('members')
       .where('role', '==', 'student')
+      .where('status', '==', 'active')
       .get();
-      
-    if (membershipsSnap.empty) return ok([]);
-    
-    const dbUsersSnap = await adminDb.collection('users').get();
-    const allUsersMap = new Map();
-    dbUsersSnap.docs.forEach(d => allUsersMap.set(d.id, { uid: d.id, ...d.data() }));
 
-    const studentIds = membershipsSnap.docs.map(d => d.data().userId);
-    const validStudents = studentIds.map(sid => allUsersMap.get(sid)).filter(Boolean);
+    if (memberSnap.empty) return ok([]);
+
+    const memberByUid = new Map<string, any>();
+    memberSnap.docs.forEach(d => {
+      const data = d.data();
+      memberByUid.set(data.userId || d.id, data);
+    });
+    const studentIds = Array.from(memberByUid.keys());
+
+    // Batch-fetch only the org's student user docs (Firestore 'in' supports max 30 ids per query).
+    const usersMap = new Map<string, any>();
+    const USER_BATCH = 30;
+    for (let i = 0; i < studentIds.length; i += USER_BATCH) {
+      const batch = studentIds.slice(i, i + USER_BATCH);
+      const usersSnap = await adminDb.collection('users').where('__name__', 'in', batch).get();
+      usersSnap.docs.forEach(d => usersMap.set(d.id, d.data()));
+    }
+
+    // Fall back to member data when a student's user doc is missing.
+    const validStudents = studentIds.map(uid => {
+      const profile = usersMap.get(uid) || {};
+      const member = memberByUid.get(uid) || {};
+      return {
+        uid,
+        displayName: profile.displayName || member.userName || 'Ученик',
+        avatarUrl: profile.avatarUrl || '',
+        createdAt: profile.createdAt || member.createdAt,
+        currentStreak: profile.currentStreak || 0,
+      };
+    });
 
     // 2. Load attempts to get avg scores and last active dates
     const attemptsSnap = await adminDb.collection('examAttempts')
@@ -50,8 +71,8 @@ export const handler: Handler = async (event: HandlerEvent) => {
       attemptsByStudent.get(data.studentId)!.push(data);
     });
 
-    // 3. Optional: Load Journal for attendance rate
-    const journalSnap = await adminDb.collection('journalEntries')
+    // 3. Load attendance entries from the journal for attendance rate.
+    const journalSnap = await adminDb.collection('journal')
       .where('organizationId', '==', orgId).get();
       
     const journalByStudent = new Map<string, any[]>();
@@ -108,7 +129,6 @@ export const handler: Handler = async (event: HandlerEvent) => {
         riskLevel = 'medium';
       }
 
-      // Hack for demo if real data is empty: let's populate random streak if missing from user doc
       const streak = student.currentStreak || 0;
 
       return {

@@ -31,6 +31,7 @@ export type NotificationType =
   | 'exam_submitted'
   | 'lesson_reminder'
   | 'schedule_changed'
+  | 'weekly_digest'
   | 'new_lead';
 
 interface NotificationPayload {

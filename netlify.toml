@@ -56,6 +56,10 @@
 [functions."lesson-reminders"]
   schedule = "0 14 * * *"
 
+# Weekly owner digest (Monday morning): revenue, debts, new students & leads.
+[functions."weekly-digest"]
+  schedule = "0 6 * * 1"
+
 # ---- Security headers ----
 [[headers]]
   for = "/*"

@@ -52,6 +52,10 @@
 [functions."monthly-billing"]
   schedule = "0 6 1 * *"
 
+# Evening reminder of tomorrow's lessons to students & teachers.
+[functions."lesson-reminders"]
+  schedule = "0 14 * * *"
+
 # ---- Security headers ----
 [[headers]]
   for = "/*"

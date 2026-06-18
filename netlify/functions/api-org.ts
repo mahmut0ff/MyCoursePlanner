@@ -10,7 +10,7 @@ import {
   resolveBranchFilter,
   type AuthUser,
 } from './utils/auth';
-import { createNotification, notifyOrgAdmins } from './utils/notifications';
+import { createNotification, notifyOrgAdmins, notifyGroupMembers } from './utils/notifications';
 import { FieldValue } from 'firebase-admin/firestore';
 import { getOrgLimits } from './utils/plan-limits';
 import { billingPeriodKey, billingDeadlineISO } from './utils/billing';
@@ -1186,9 +1186,28 @@ const handler: Handler = async (event: HandlerEvent) => {
       if (!body.id) return badRequest('id required');
       const doc = await adminDb.collection('scheduleEvents').doc(body.id).get();
       if (!doc.exists || doc.data()?.organizationId !== orgId) return notFound();
+      const before = doc.data()!;
       const { id, ...fields } = body;
       fields.updatedAt = now();
       await adminDb.collection('scheduleEvents').doc(id).update(fields);
+
+      // Notify the group when the time / date / location actually changes.
+      const changed = ['startTime', 'endTime', 'date', 'dayOfWeek', 'location'].some(
+        k => fields[k] !== undefined && fields[k] !== before[k]
+      );
+      if (changed && before.groupId) {
+        const title = fields.title ?? before.title;
+        const newStart = fields.startTime ?? before.startTime;
+        const newDate = fields.date ?? before.date;
+        const when = newDate ? `${newDate} ${newStart}` : newStart;
+        notifyGroupMembers(
+          orgId, before.groupId, 'schedule_changed',
+          'Изменение в расписании',
+          `Занятие «${title}» изменено. Новое время: ${when}.`,
+          '/schedule',
+          before.teacherId ? [before.teacherId] : [],
+        ).catch(() => {});
+      }
       return ok({ id, updated: true });
     }
 
@@ -1197,7 +1216,23 @@ const handler: Handler = async (event: HandlerEvent) => {
       if (!can(user, 'schedule', 'delete')) return forbidden('Недостаточно прав для этого действия');
       const body = JSON.parse(event.body || '{}');
       if (!body.id) return badRequest('id required');
+      const doc = await adminDb.collection('scheduleEvents').doc(body.id).get();
+      const ev = doc.exists ? doc.data()! : null;
+      // Only touch events that belong to this org.
+      if (ev && ev.organizationId !== orgId) return forbidden();
       await adminDb.collection('scheduleEvents').doc(body.id).delete();
+
+      // Notify the group that the lesson was cancelled.
+      if (ev && ev.groupId) {
+        const when = ev.date ? `${ev.date} ${ev.startTime || ''}`.trim() : (ev.startTime || '');
+        notifyGroupMembers(
+          orgId, ev.groupId, 'schedule_changed',
+          'Занятие отменено',
+          `Занятие «${ev.title}»${when ? ` (${when})` : ''} отменено.`,
+          '/schedule',
+          ev.teacherId ? [ev.teacherId] : [],
+        ).catch(() => {});
+      }
       return ok({ deleted: true });
     }
 

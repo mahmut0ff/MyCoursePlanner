@@ -29,6 +29,8 @@ export type NotificationType =
   | 'payment_due'
   | 'payment_overdue'
   | 'exam_submitted'
+  | 'lesson_reminder'
+  | 'schedule_changed'
   | 'new_lead';
 
 interface NotificationPayload {
@@ -120,6 +122,27 @@ export async function notifyOrgStudents(
 }
 
 /**
+ * Notify the members of a single group (its students + teachers), plus any
+ * extra recipients. Used for schedule changes / lesson reminders.
+ */
+export async function notifyGroupMembers(
+  orgId: string, groupId: string, type: NotificationType, title: string, message: string, link?: string, extraRecipientIds: string[] = []
+): Promise<void> {
+  const groupDoc = await adminDb.collection('groups').doc(groupId).get();
+  if (!groupDoc.exists) return;
+  const g = groupDoc.data() || {};
+  const recipients = new Set<string>([
+    ...(g.studentIds || []),
+    ...(g.teacherIds || []),
+    ...extraRecipientIds.filter(Boolean),
+  ]);
+  const promises = [...recipients].map(uid =>
+    createNotification({ recipientId: uid, type, title, message, link, organizationId: orgId })
+  );
+  await Promise.allSettled(promises);
+}
+
+/**
  * Notify all super admins.
  */
 export async function notifyAllSuperAdmins(
@@ -145,6 +168,8 @@ const TYPE_TO_PREF: Record<string, string> = {
   exam_room_created: 'exams',
   exam_submitted: 'exams',
   attendance_absent: 'schedule',
+  lesson_reminder: 'schedule',
+  schedule_changed: 'schedule',
 };
 
 /**

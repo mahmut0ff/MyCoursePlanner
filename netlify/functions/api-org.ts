@@ -779,6 +779,32 @@ const handler: Handler = async (event: HandlerEvent) => {
       return ok({ uid: body.uid, updated: true });
     }
 
+    if (action === 'resetStudentPassword') {
+      if (!hasRole(user, 'admin', 'manager')) return forbidden();
+      if (!can(user, 'students', 'write')) return forbidden('Недостаточно прав для этого действия');
+      const body = JSON.parse(event.body || '{}');
+      if (!body.uid || !body.password) return badRequest('uid and password required');
+      if (String(body.password).length < 6) return badRequest('Пароль — минимум 6 символов');
+
+      // Student must belong to this org.
+      const member = await adminDb.collection('orgMembers').doc(orgId).collection('members').doc(body.uid).get();
+      if (!member.exists) return notFound();
+
+      // Only login-enabled students have an auth account to update.
+      const userDoc = await adminDb.collection('users').doc(body.uid).get();
+      const data = userDoc.data() || {};
+      if (data.offlineStudent === true || !data.email) {
+        return badRequest('У этого ученика нет входа в систему. Создайте логин при добавлении или отправьте ссылку-приглашение.');
+      }
+      try {
+        await adminAuth.updateUser(body.uid, { password: body.password });
+        return ok({ uid: body.uid, updated: true });
+      } catch (e: any) {
+        if (e.code === 'auth/user-not-found') return badRequest('Аккаунт не найден в системе аутентификации');
+        throw e;
+      }
+    }
+
     // ═══ TEACHERS (users with role=teacher in this org) ═══
     if (action === 'teachers') {
       let query: any = adminDb.collection('orgMembers').doc(orgId)

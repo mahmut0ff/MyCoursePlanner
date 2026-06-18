@@ -1,12 +1,12 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { orgGetStudents, orgGetResults, orgGetGroups, orgUpdateGroup, apiRemoveMember, apiGetPaymentPlans, apiGetTransactions, apiCreateTransaction } from '../../lib/api';
+import { orgGetStudents, orgGetResults, orgGetGroups, orgUpdateGroup, apiRemoveMember, apiGetPaymentPlans, apiGetTransactions, apiCreateTransaction, orgResetStudentPassword } from '../../lib/api';
 import { useAuth } from '../../contexts/AuthContext';
 import {
   ArrowLeft, Mail, Trophy, Calendar, BarChart3, Users, Phone, MapPin,
   BookOpen, Zap, Target, Clock, CheckCircle, Plus, X, Loader2,
-  Flame, Copy, Star, Shield, Link2, ExternalLink, CreditCard, Receipt
+  Flame, Copy, Star, Shield, Link2, ExternalLink, CreditCard, Receipt, KeyRound
 } from 'lucide-react';
 import type { UserProfile, ExamAttempt, Group } from '../../types';
 import { PinnedBadgesDisplay } from '../../lib/badges';
@@ -46,6 +46,25 @@ const StudentDetailPage: React.FC = () => {
   const [payAmount, setPayAmount] = useState('');
   const [payComment, setPayComment] = useState('');
   const [paying, setPaying] = useState(false);
+
+  // Login / password reset
+  const [showPwReset, setShowPwReset] = useState(false);
+  const [newPw, setNewPw] = useState('');
+  const [savingPw, setSavingPw] = useState(false);
+
+  const handleResetPassword = async () => {
+    if (!uid || newPw.length < 6) { toast.error('Пароль — минимум 6 символов'); return; }
+    setSavingPw(true);
+    try {
+      await orgResetStudentPassword(uid, newPw);
+      toast.success('Пароль обновлён');
+      setShowPwReset(false);
+    } catch (e: any) {
+      toast.error(e.message || 'Ошибка');
+    } finally {
+      setSavingPw(false);
+    }
+  };
 
   // Fetch finances
   const loadFinances = async () => {
@@ -397,6 +416,60 @@ const StudentDetailPage: React.FC = () => {
               )}
             </div>
           </div>
+
+          {/* System Access Block */}
+          {isAdmin && (
+            <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 overflow-hidden shadow-sm">
+              <div className="px-4 py-3 border-b border-slate-100 dark:border-slate-700/50 flex items-center gap-2">
+                <KeyRound className="w-4 h-4" style={{ color: C.blue }} />
+                <h3 className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wide">Доступ в систему</h3>
+              </div>
+              <div className="p-4">
+                {(!!student.email && (student as any).offlineStudent !== true) ? (
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-2 bg-slate-50 dark:bg-slate-700/50 rounded-lg p-2">
+                      <span className="text-[10px] uppercase font-bold text-slate-400 shrink-0">Логин</span>
+                      <span className="text-[11px] text-slate-700 dark:text-slate-300 truncate flex-1 font-mono">{(student as any).username || student.email}</span>
+                      <button
+                        onClick={() => { navigator.clipboard.writeText((student as any).username || student.email || ''); toast.success('Скопировано'); }}
+                        className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 shrink-0"
+                      ><Copy className="w-3.5 h-3.5" /></button>
+                    </div>
+                    {showPwReset ? (
+                      <div className="space-y-2">
+                        <input
+                          type="text" autoFocus value={newPw} onChange={e => setNewPw(e.target.value)}
+                          placeholder="Новый пароль (мин. 6)"
+                          className="w-full bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-lg px-3 py-2 text-sm font-mono dark:text-white outline-none focus:border-blue-500"
+                        />
+                        <div className="flex gap-2">
+                          <button onClick={handleResetPassword} disabled={savingPw || newPw.length < 6}
+                            className="flex-1 flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-bold text-white transition-all disabled:opacity-50" style={{ background: C.blue }}>
+                            {savingPw ? <Loader2 className="w-3 h-3 animate-spin" /> : <CheckCircle className="w-3 h-3" />}
+                            Сохранить
+                          </button>
+                          <button onClick={() => { setShowPwReset(false); setNewPw(''); }}
+                            className="px-3 py-1.5 rounded-lg text-[11px] font-bold text-slate-500 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 transition-all">
+                            Отмена
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <button onClick={() => { setShowPwReset(true); setNewPw(''); }}
+                        className="w-full flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-xs font-bold text-white transition-all hover:shadow-md active:scale-[0.98]"
+                        style={{ background: `linear-gradient(135deg, ${C.purple} 0%, ${C.blue} 100%)` }}>
+                        <KeyRound className="w-3.5 h-3.5" />Сменить пароль
+                      </button>
+                    )}
+                  </div>
+                ) : (
+                  <p className="text-[11px] text-slate-500 leading-relaxed">
+                    Ученик без входа — это запись для журнала и оплат. Чтобы дать доступ, отправьте ссылку-приглашение со страницы «{t('nav.students', 'Студенты')}».
+                  </p>
+                )}
+              </div>
+            </div>
+          )}
 
           {/* Finances Block */}
           {isAdmin && (

@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { apiGetParentPortalData } from '../../lib/api';
 import { Trophy, Flame, Play, BookOpen, Star, AlertCircle, Calendar } from 'lucide-react';
+import { PinnedBadgesDisplay } from '../../lib/badges';
 
 interface ParentPortalData {
   student: {
@@ -10,10 +11,14 @@ interface ParentPortalData {
     avatarUrl: string;
     pinnedBadges: string[];
   };
+  organization?: {
+    name: string;
+    logoUrl: string;
+  } | null;
   stats: {
     totalXp: number;
     currentStreak: number;
-    averageScore: number;
+    averageScore: number | null;
   };
   recentResults: {
     id: string;
@@ -25,6 +30,8 @@ interface ParentPortalData {
     xpEarned: number;
     score?: number;
     maxPoints?: number;
+    correct?: number;
+    total?: number;
   }[];
 }
 
@@ -80,7 +87,7 @@ const ParentPortalPage: React.FC = () => {
     );
   }
 
-  const { student, stats, recentResults } = data;
+  const { student, stats, recentResults, organization } = data;
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-900 font-sans text-slate-900 dark:text-slate-100 selection:bg-indigo-500/30">
@@ -89,6 +96,18 @@ const ParentPortalPage: React.FC = () => {
         <div className="absolute inset-0 bg-black/10"></div>
         <div className="absolute -bottom-24 -left-24 w-96 h-96 bg-white/10 rounded-full blur-3xl"></div>
         <div className="absolute top-10 right-10 w-64 h-64 bg-white/10 rounded-full blur-3xl"></div>
+
+        {/* School branding */}
+        {organization && (organization.name || organization.logoUrl) && (
+          <div className="absolute top-0 left-0 right-0 max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 pt-5 flex items-center gap-2.5 z-10">
+            {organization.logoUrl && (
+              <img src={organization.logoUrl} alt={organization.name} className="h-8 w-8 rounded-lg object-contain bg-white/90 p-0.5 shadow-sm" />
+            )}
+            {organization.name && (
+              <span className="text-white font-bold text-sm sm:text-base drop-shadow-sm truncate">{organization.name}</span>
+            )}
+          </div>
+        )}
       </div>
 
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 -mt-24 relative z-10 pb-20">
@@ -113,6 +132,11 @@ const ParentPortalPage: React.FC = () => {
               Портал для родителей
             </div>
             <h1 className="text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight">{student.displayName}</h1>
+            {student.pinnedBadges && student.pinnedBadges.length > 0 && (
+              <div className="flex items-center justify-center sm:justify-start gap-1.5 mt-2">
+                <PinnedBadgesDisplay badges={student.pinnedBadges} />
+              </div>
+            )}
           </div>
         </div>
 
@@ -153,21 +177,42 @@ const ParentPortalPage: React.FC = () => {
           </div>
 
           {/* Average Score Card */}
-          <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 shadow-sm border border-slate-200 dark:border-slate-700 relative overflow-hidden group">
-            <div className={`absolute -right-6 -top-6 w-24 h-24 rounded-full blur-xl group-hover:scale-150 transition-transform duration-500 ${stats.averageScore >= 80 ? 'bg-emerald-500/10' : stats.averageScore >= 50 ? 'bg-amber-500/10' : 'bg-red-500/10'}`}></div>
-            <div className="flex items-center gap-4 relative z-10">
-              <div className={`w-12 h-12 rounded-xl flex items-center justify-center shrink-0 ${stats.averageScore >= 80 ? 'bg-emerald-100 text-emerald-500 dark:bg-emerald-900/30' : stats.averageScore >= 50 ? 'bg-amber-100 text-amber-500 dark:bg-amber-900/30' : 'bg-red-100 text-red-500 dark:bg-red-900/30'}`}>
-                <BookOpen className="w-6 h-6" />
-              </div>
-              <div>
-                <p className="text-sm font-medium text-slate-500 dark:text-slate-400">Средний балл</p>
-                <div className="flex items-baseline gap-1">
-                  <span className="text-3xl font-bold tracking-tight text-slate-900 dark:text-white">{stats.averageScore}</span>
-                  <span className="text-[13px] font-bold text-slate-400 mb-0.5">/ 100</span>
+          {(() => {
+            const avg = stats.averageScore;
+            const hasAvg = avg !== null && avg !== undefined;
+            const tone: 'slate' | 'emerald' | 'amber' | 'red' = !hasAvg ? 'slate' : avg >= 80 ? 'emerald' : avg >= 50 ? 'amber' : 'red';
+            const blur = { slate: 'bg-slate-400/10', emerald: 'bg-emerald-500/10', amber: 'bg-amber-500/10', red: 'bg-red-500/10' }[tone];
+            const chip = {
+              slate: 'bg-slate-100 text-slate-400 dark:bg-slate-700/40',
+              emerald: 'bg-emerald-100 text-emerald-500 dark:bg-emerald-900/30',
+              amber: 'bg-amber-100 text-amber-500 dark:bg-amber-900/30',
+              red: 'bg-red-100 text-red-500 dark:bg-red-900/30',
+            }[tone];
+            return (
+              <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 shadow-sm border border-slate-200 dark:border-slate-700 relative overflow-hidden group">
+                <div className={`absolute -right-6 -top-6 w-24 h-24 rounded-full blur-xl group-hover:scale-150 transition-transform duration-500 ${blur}`}></div>
+                <div className="flex items-center gap-4 relative z-10">
+                  <div className={`w-12 h-12 rounded-xl flex items-center justify-center shrink-0 ${chip}`}>
+                    <BookOpen className="w-6 h-6" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-slate-500 dark:text-slate-400">Средний балл</p>
+                    {hasAvg ? (
+                      <div className="flex items-baseline gap-1">
+                        <span className="text-3xl font-bold tracking-tight text-slate-900 dark:text-white">{avg}</span>
+                        <span className="text-[13px] font-bold text-slate-400 mb-0.5">/ 100</span>
+                      </div>
+                    ) : (
+                      <div className="flex items-baseline gap-1">
+                        <span className="text-3xl font-bold tracking-tight text-slate-400">—</span>
+                        <span className="text-[13px] font-medium text-slate-400 mb-0.5">пока нет оценок</span>
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
-            </div>
-          </div>
+            );
+          })()}
         </div>
 
         {/* Recent Results */}
@@ -194,7 +239,7 @@ const ParentPortalPage: React.FC = () => {
                   <div>
                     <h3 className="text-base font-semibold text-slate-900 dark:text-white">{result.examTitle}</h3>
                     <div className="flex items-center gap-2 mt-1">
-                      <span className="text-sm text-slate-500">{new Date(result.submittedAt).toLocaleDateString()}</span>
+                      <span className="text-sm text-slate-500">{new Date(result.submittedAt).toLocaleDateString('ru-RU')}</span>
                       <span className="w-1 h-1 bg-slate-300 dark:bg-slate-600 rounded-full"></span>
                       <span className="text-sm text-slate-500 uppercase">{result.type === 'homework' ? 'Домашка' : result.type === 'quiz' ? 'Квиз' : 'Экзамен'}</span>
                     </div>
@@ -214,6 +259,13 @@ const ParentPortalPage: React.FC = () => {
                           </span>
                           <span className="text-xs font-bold uppercase tracking-wider text-indigo-500">
                             Проверено
+                          </span>
+                        </>
+                      ) : result.type === 'quiz' ? (
+                        <>
+                          <span className="block text-2xl font-black tracking-tight text-slate-900 dark:text-white">{result.percentage}%</span>
+                          <span className="text-xs font-bold uppercase tracking-wider text-indigo-500">
+                            {result.correct ?? 0}/{result.total ?? 0} верных
                           </span>
                         </>
                       ) : (

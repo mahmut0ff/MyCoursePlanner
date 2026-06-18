@@ -13,6 +13,7 @@ import {
 import { createNotification, notifyOrgAdmins } from './utils/notifications';
 import { FieldValue } from 'firebase-admin/firestore';
 import { getOrgLimits } from './utils/plan-limits';
+import { billingPeriodKey, billingDeadlineISO } from './utils/billing';
 /* ═══════════════════════════════════════════════ */
 /*  Helpers                                        */
 /* ═══════════════════════════════════════════════ */
@@ -45,6 +46,8 @@ async function syncPaymentPlans(orgId: string, branchId: string | null, courseId
   const existingStudentIds = new Set(existingSnap.docs.map(d => d.data().studentId));
 
   // Collect new plans to create
+  const isMonthly = courseData.paymentFormat === 'monthly';
+  const enrollDate = new Date();
   const newPlans: any[] = [];
   for (const studentId of studentIds) {
     if (!existingStudentIds.has(studentId)) {
@@ -57,7 +60,10 @@ async function syncPaymentPlans(orgId: string, branchId: string | null, courseId
         totalAmount: courseData.price,
         paidAmount: 0,
         status: 'pending',
-        nextDueDate: courseData.paymentFormat === 'monthly' ? new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString() : null,
+        nextDueDate: isMonthly ? new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString() : null,
+        // Tag monthly plans with a billing period + deadline so the monthly-billing
+        // cron can dedupe and debt-reminders can chase them.
+        ...(isMonthly ? { billingType: 'monthly', period: billingPeriodKey(enrollDate), deadline: billingDeadlineISO(enrollDate) } : {}),
         createdAt: now(),
         updatedAt: now(),
       });

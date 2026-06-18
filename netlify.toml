@@ -48,6 +48,10 @@
 [functions."debt-reminders"]
   schedule = "0 9 * * *"
 
+# Monthly auto-billing: generate invoices for monthly-format courses on the 1st.
+[functions."monthly-billing"]
+  schedule = "0 6 1 * *"
+
 # ---- Security headers ----
 [[headers]]
   for = "/*"

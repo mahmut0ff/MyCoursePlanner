@@ -26,6 +26,8 @@ export type NotificationType =
   | 'grade_posted'
   | 'attendance_absent'
   | 'payment_received'
+  | 'payment_due'
+  | 'payment_overdue'
   | 'exam_submitted'
   | 'new_lead';
 

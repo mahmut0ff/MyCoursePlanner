@@ -43,6 +43,11 @@
   directory = "netlify/functions"
   included_files = ["netlify/functions/**"]
 
+# ---- Scheduled functions (cron) ----
+# Daily debt/payment reminders to students + overdue alerts to admins.
+[functions."debt-reminders"]
+  schedule = "0 9 * * *"
+
 # ---- Security headers ----
 [[headers]]
   for = "/*"

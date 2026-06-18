@@ -300,6 +300,7 @@ export const orgEnrollInGroup = (groupId: string) => orgReq('enrollInGroup', 'PO
 // Students
 export const orgGetStudents = (branchId?: string) => orgReq('students', 'GET', undefined, branchId ? { branchId } : undefined);
 export const orgCreateStudent = (data: any) => orgReq('createStudent', 'POST', data);
+export const orgBulkCreateStudents = (data: { students: { displayName: string; phone?: string }[]; courseId?: string; groupId?: string }) => orgReq('bulkCreateStudents', 'POST', data);
 export const orgUpdateStudent = (data: any) => orgReq('updateStudent', 'POST', data);
 
 // Teachers

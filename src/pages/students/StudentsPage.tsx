@@ -1,13 +1,14 @@
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useState, useMemo, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../contexts/AuthContext';
 import { usePlanGate } from '../../contexts/PlanContext';
-import { 
-  orgGetStudents, 
+import {
+  orgGetStudents,
   orgGetGroups,
   orgGetCourses,
   orgCreateStudent,
+  orgBulkCreateStudents,
   apiGetOrgMembers,
   apiAcceptMembership,
   apiRejectMembership,
@@ -16,7 +17,7 @@ import {
   orgApproveCourseRequest,
   orgRejectCourseRequest
 } from '../../lib/api';
-import { Users, Search, Mail, RefreshCw, CheckCircle, XCircle, UserPlus, Phone, Filter, X, SortAsc, SortDesc, Trash2, Plus, Lightbulb, Link as LinkIcon, Copy, BookOpen, UsersRound } from 'lucide-react';
+import { Users, Search, Mail, RefreshCw, CheckCircle, XCircle, UserPlus, Phone, Filter, X, SortAsc, SortDesc, Trash2, Plus, Lightbulb, Link as LinkIcon, Copy, BookOpen, UsersRound, Upload, KeyRound, Eye, EyeOff } from 'lucide-react';
 import type { UserProfile, Group } from '../../types';
 import toast from 'react-hot-toast';
 import { PinnedBadgesDisplay } from '../../lib/badges';
@@ -61,9 +62,22 @@ const StudentsPage: React.FC = () => {
 
   // Create student modal
   const [showCreateModal, setShowCreateModal] = useState(false);
-  const [createForm, setCreateForm] = useState({ displayName: '', phone: '', courseId: '', groupId: '' });
+  const [createForm, setCreateForm] = useState({ displayName: '', phone: '', courseId: '', groupId: '', username: '', password: '' });
+  const [giveLogin, setGiveLogin] = useState(false);
+  const [showCreatePassword, setShowCreatePassword] = useState(false);
   const [creating, setCreating] = useState(false);
   const [courses, setCourses] = useState<any[]>([]);
+  // Credentials shown once after creating a student with a login
+  const [createdInfo, setCreatedInfo] = useState<{ name: string; username?: string; password?: string } | null>(null);
+
+  // Bulk import modal
+  const [showImportModal, setShowImportModal] = useState(false);
+  const [importText, setImportText] = useState('');
+  const [importCourseId, setImportCourseId] = useState('');
+  const [importGroupId, setImportGroupId] = useState('');
+  const [importing, setImporting] = useState(false);
+  const [importResult, setImportResult] = useState<{ created: number; skipped?: number } | null>(null);
+  const importFileRef = useRef<HTMLInputElement>(null);
 
   // Branch filter for the list
   const [branchFilter, setBranchFilter] = useState<string | null>(null);
@@ -269,21 +283,132 @@ const StudentsPage: React.FC = () => {
 
 
 
+  const resetCreateForm = () => {
+    setCreateForm({ displayName: '', phone: '', courseId: '', groupId: '', username: '', password: '' });
+    setGiveLogin(false);
+    setShowCreatePassword(false);
+  };
+
   const handleCreateStudent = async () => {
-    if (!createForm.displayName) return;
+    if (!createForm.displayName.trim()) return;
+    if (giveLogin) {
+      if (createForm.username.trim().length < 3) { toast.error(t('org.students.usernameTooShort', 'Логин — минимум 3 символа')); return; }
+      if (createForm.password.length < 6) { toast.error(t('org.students.passwordTooShort', 'Пароль — минимум 6 символов')); return; }
+    }
     setCreating(true);
     try {
-      await orgCreateStudent(createForm);
+      const payload: any = {
+        displayName: createForm.displayName.trim(),
+        phone: createForm.phone,
+        courseId: createForm.courseId,
+        groupId: createForm.groupId,
+      };
+      if (giveLogin) {
+        payload.username = createForm.username.trim().toLowerCase();
+        payload.password = createForm.password;
+      }
+      const res: any = await orgCreateStudent(payload);
       toast.success(t('org.students.created', 'Студент добавлен!'));
-      setShowCreateModal(false);
-      setCreateForm({ displayName: '', phone: '', courseId: '', groupId: '' });
       loadStudents();
       loadGroups();
+      if (res?.login) {
+        // Keep the modal open to show the login the manager can hand to the student.
+        setCreatedInfo({ name: payload.displayName, username: res.login.username || createForm.username.trim().toLowerCase(), password: createForm.password });
+      } else {
+        setShowCreateModal(false);
+        resetCreateForm();
+      }
     } catch (e: any) {
       toast.error(e.message || 'Error');
     } finally {
       setCreating(false);
     }
+  };
+
+  // ─── Bulk import (CSV / pasted list) ───
+  // Parses a name+phone table. Accepts comma / semicolon / tab delimiters, an
+  // optional header row, and a "one name per line" fallback.
+  const parsedImport = useMemo(() => {
+    const lines = importText.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+    if (lines.length === 0) return [] as { displayName: string; phone: string }[];
+
+    const splitRow = (line: string): string[] => {
+      const delim = line.includes('\t') ? '\t' : line.includes(';') ? ';' : ',';
+      // Minimal quoted-field aware split
+      const out: string[] = [];
+      let cur = '', inQ = false;
+      for (let i = 0; i < line.length; i++) {
+        const ch = line[i];
+        if (ch === '"') { inQ = !inQ; continue; }
+        if (ch === delim && !inQ) { out.push(cur); cur = ''; continue; }
+        cur += ch;
+      }
+      out.push(cur);
+      return out.map(c => c.trim());
+    };
+
+    let nameIdx = 0, phoneIdx = 1;
+    let start = 0;
+    const firstCells = splitRow(lines[0]).map(c => c.toLowerCase());
+    const looksLikeHeader = firstCells.some(c => /имя|фио|name|студент|ученик|телефон|phone|тел/.test(c));
+    if (looksLikeHeader) {
+      const ni = firstCells.findIndex(c => /имя|фио|name|студент|ученик/.test(c));
+      const pi = firstCells.findIndex(c => /телефон|phone|тел/.test(c));
+      if (ni >= 0) nameIdx = ni;
+      if (pi >= 0) phoneIdx = pi;
+      start = 1;
+    }
+
+    const rows: { displayName: string; phone: string }[] = [];
+    for (let i = start; i < lines.length; i++) {
+      const cells = splitRow(lines[i]);
+      const displayName = (cells[nameIdx] || '').trim();
+      if (!displayName) continue;
+      rows.push({ displayName, phone: (cells[phoneIdx] || '').trim() });
+    }
+    return rows;
+  }, [importText]);
+
+  const importGroupsForCourse = useMemo(() => {
+    if (!importCourseId) return [];
+    return groups.filter(g => g.courseId === importCourseId);
+  }, [groups, importCourseId]);
+
+  const handleImportFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => setImportText(String(reader.result || ''));
+    reader.readAsText(file);
+    e.target.value = '';
+  };
+
+  const handleBulkImport = async () => {
+    if (parsedImport.length === 0) { toast.error(t('org.students.importEmpty', 'Не найдено ни одной строки с именем')); return; }
+    setImporting(true);
+    try {
+      const res: any = await orgBulkCreateStudents({
+        students: parsedImport,
+        courseId: importCourseId || undefined,
+        groupId: importGroupId || undefined,
+      });
+      setImportResult({ created: res?.created || 0, skipped: res?.skipped || 0 });
+      toast.success(t('org.students.imported', `Импортировано: ${res?.created || 0}`));
+      loadStudents();
+      loadGroups();
+    } catch (e: any) {
+      toast.error(e.message || 'Error');
+    } finally {
+      setImporting(false);
+    }
+  };
+
+  const closeImportModal = () => {
+    setShowImportModal(false);
+    setImportText('');
+    setImportCourseId('');
+    setImportGroupId('');
+    setImportResult(null);
   };
 
   // Groups filtered by selected course in the create form
@@ -337,6 +462,10 @@ const StudentsPage: React.FC = () => {
         <div className="flex items-center gap-3 w-full sm:w-auto">
           <button onClick={() => { loadStudents(); loadGroups(); loadApplications(); }} className="p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-xl transition-colors">
             <RefreshCw className="w-4 h-4" />
+          </button>
+          <button onClick={() => { setImportResult(null); setShowImportModal(true); }} className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 px-4 py-2.5 rounded-xl text-sm font-semibold flex justify-center items-center gap-2 transition-all shrink-0">
+            <Upload className="w-4 h-4" />
+            {t('org.students.import', 'Импорт')}
           </button>
           <button onClick={() => setShowCreateModal(true)} className="flex-1 sm:flex-none bg-slate-900 hover:bg-slate-800 text-white dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100 px-4 py-2.5 rounded-xl text-sm font-semibold flex justify-center items-center gap-2 transition-all shadow-sm hover:shadow-md shrink-0">
             <Plus className="w-4 h-4" />
@@ -400,7 +529,7 @@ const StudentsPage: React.FC = () => {
                 <div className="flex items-start gap-2">
                   <span className="w-5 h-5 rounded-full bg-amber-400/20 text-amber-700 dark:text-amber-300 flex items-center justify-center shrink-0 text-[10px] font-bold mt-0.5">1</span>
                   <p className="text-xs text-amber-800/80 dark:text-amber-300/80">
-                    <span className="font-semibold text-amber-800 dark:text-amber-200">{t('org.students.hintWay1Title', 'Создать вручную')}</span> — {t('org.students.hintWay1Desc', 'нажмите кнопку «Добавить студента» вверху и введите имя и пароль. Студент сможет войти по этим данным.')}
+                    <span className="font-semibold text-amber-800 dark:text-amber-200">{t('org.students.hintWay1Title', 'Создать вручную')}</span> — {t('org.students.hintWay1DescV2', 'нажмите «Добавить студента». По умолчанию это запись для журнала и оплат (без входа). Чтобы ученик мог заходить сам — включите «Дать доступ» и задайте логин с паролем. Список целиком удобнее завести через «Импорт».')}
                   </p>
                 </div>
                 <div className="flex items-start gap-2">
@@ -751,13 +880,55 @@ const StudentsPage: React.FC = () => {
 
       {/* Create Student Modal */}
       {showCreateModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4" onClick={() => setShowCreateModal(false)}>
-          <div className="bg-white dark:bg-slate-800 rounded-3xl p-8 w-full max-w-md shadow-2xl" onClick={e => e.stopPropagation()}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4" onClick={() => { if (!creating) { setShowCreateModal(false); setCreatedInfo(null); resetCreateForm(); } }}>
+          <div className="bg-white dark:bg-slate-800 rounded-3xl p-8 w-full max-w-md shadow-2xl max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+
+            {createdInfo ? (
+              /* ─── Credentials result: show the login to hand to the student ─── */
+              <div>
+                <div className="w-12 h-12 rounded-2xl bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center mb-4">
+                  <CheckCircle className="w-6 h-6 text-emerald-600 dark:text-emerald-400" />
+                </div>
+                <h2 className="text-xl font-bold text-slate-900 dark:text-white mb-1">{t('org.students.createdTitle', 'Ученик создан')}</h2>
+                <p className="text-xs text-slate-500 mb-5">{t('org.students.createdDesc', 'Передайте ученику эти данные для входа. Пароль показывается только сейчас.')}</p>
+
+                {createdInfo.username && (
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3">
+                      <div className="min-w-0">
+                        <p className="text-[10px] uppercase font-bold text-slate-400">{t('org.students.loginLabel', 'Логин')}</p>
+                        <p className="text-sm font-mono font-semibold text-slate-900 dark:text-white truncate">{createdInfo.username}</p>
+                      </div>
+                      <button onClick={() => { navigator.clipboard.writeText(createdInfo.username || ''); toast.success(t('common.copied', 'Скопировано')); }} className="p-2 text-slate-400 hover:text-slate-700 dark:hover:text-white hover:bg-slate-200/60 dark:hover:bg-slate-700 rounded-lg transition-colors shrink-0"><Copy className="w-4 h-4" /></button>
+                    </div>
+                    <div className="flex items-center justify-between bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3">
+                      <div className="min-w-0">
+                        <p className="text-[10px] uppercase font-bold text-slate-400">{t('auth.password', 'Пароль')}</p>
+                        <p className="text-sm font-mono font-semibold text-slate-900 dark:text-white truncate">{createdInfo.password}</p>
+                      </div>
+                      <button onClick={() => { navigator.clipboard.writeText(createdInfo.password || ''); toast.success(t('common.copied', 'Скопировано')); }} className="p-2 text-slate-400 hover:text-slate-700 dark:hover:text-white hover:bg-slate-200/60 dark:hover:bg-slate-700 rounded-lg transition-colors shrink-0"><Copy className="w-4 h-4" /></button>
+                    </div>
+                    <button
+                      onClick={() => { navigator.clipboard.writeText(`${t('org.students.loginLabel', 'Логин')}: ${createdInfo.username}\n${t('auth.password', 'Пароль')}: ${createdInfo.password}`); toast.success(t('common.copied', 'Скопировано')); }}
+                      className="w-full text-xs font-medium text-primary-600 dark:text-primary-400 hover:underline flex items-center justify-center gap-1.5 pt-1"
+                    >
+                      <Copy className="w-3.5 h-3.5" /> {t('org.students.copyBoth', 'Скопировать логин и пароль')}
+                    </button>
+                  </div>
+                )}
+
+                <div className="flex justify-end gap-3 mt-8">
+                  <button onClick={() => { setCreatedInfo(null); resetCreateForm(); }} className="px-5 py-2.5 rounded-xl text-sm font-semibold text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800 transition-colors">{t('org.students.addAnother', 'Добавить ещё')}</button>
+                  <button onClick={() => { setShowCreateModal(false); setCreatedInfo(null); resetCreateForm(); }} className="px-5 py-2.5 rounded-xl text-sm font-semibold bg-slate-900 text-white hover:bg-slate-800 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100 transition-all">{t('common.done', 'Готово')}</button>
+                </div>
+              </div>
+            ) : (
+            <>
             <h2 className="text-xl font-bold text-slate-900 dark:text-white mb-1 flex items-center gap-2">
               <UserPlus className="w-5 h-5 text-primary-500" />
               {t('org.students.createTitle', 'Добавить ученика')}
             </h2>
-            <p className="text-xs text-slate-500 mb-6">{t('org.students.createDesc', 'Для учеников, которых добавляет менеджер (без аккаунта)')}</p>
+            <p className="text-xs text-slate-500 mb-6">{t('org.students.createDescV2', 'По умолчанию — запись для журнала и оплат, без входа. Включите «Дать доступ», чтобы ученик мог входить сам.')}</p>
             <div className="space-y-4">
               {/* ФИО */}
               <div>
@@ -806,14 +977,149 @@ const StudentsPage: React.FC = () => {
                   <p className="text-xs text-amber-700 dark:text-amber-300">{t('org.students.noGroupsForCourse', 'У этого курса пока нет групп. Студент будет создан без группы.')}</p>
                 </div>
               )}
+
+              {/* ─── Optional login access ─── */}
+              <div className="border-t border-slate-100 dark:border-slate-700 pt-4">
+                <label className="flex items-center justify-between cursor-pointer">
+                  <span className="flex items-center gap-2 text-sm font-semibold text-slate-700 dark:text-slate-200">
+                    <KeyRound className="w-4 h-4 text-primary-500" />
+                    {t('org.students.giveLogin', 'Дать доступ в систему')}
+                  </span>
+                  <button
+                    type="button"
+                    role="switch"
+                    aria-checked={giveLogin}
+                    onClick={() => setGiveLogin(v => !v)}
+                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${giveLogin ? 'bg-primary-600' : 'bg-slate-300 dark:bg-slate-600'}`}
+                  >
+                    <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${giveLogin ? 'translate-x-6' : 'translate-x-1'}`} />
+                  </button>
+                </label>
+                {giveLogin && (
+                  <div className="space-y-3 mt-3">
+                    <p className="text-[11px] text-slate-400">{t('org.students.giveLoginHint', 'Ученик сможет войти по этому логину и паролю на странице входа.')}</p>
+                    <div>
+                      <label className="text-xs font-semibold text-slate-500 mb-1 block">{t('org.students.loginLabel', 'Логин')} *</label>
+                      <input value={createForm.username} onChange={e => setCreateForm(f => ({ ...f, username: e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, '') }))} placeholder="aibek_t" className="w-full bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 text-sm font-mono focus:ring-2 focus:ring-slate-900 focus:border-slate-900 dark:focus:ring-white outline-none" />
+                    </div>
+                    <div>
+                      <label className="text-xs font-semibold text-slate-500 mb-1 block">{t('auth.password', 'Пароль')} *</label>
+                      <div className="relative">
+                        <input type={showCreatePassword ? 'text' : 'password'} value={createForm.password} onChange={e => setCreateForm(f => ({ ...f, password: e.target.value }))} placeholder="••••••" className="w-full bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 pr-11 text-sm focus:ring-2 focus:ring-slate-900 focus:border-slate-900 dark:focus:ring-white outline-none" />
+                        <button type="button" onClick={() => setShowCreatePassword(v => !v)} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300">
+                          {showCreatePassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
             <div className="flex justify-end gap-3 mt-8">
-              <button onClick={() => { setShowCreateModal(false); setCreateForm({ displayName: '', phone: '', courseId: '', groupId: '' }); }} className="px-5 py-2.5 rounded-xl text-sm font-semibold text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800 transition-colors">{t('common.cancel', 'Отмена')}</button>
+              <button onClick={() => { setShowCreateModal(false); resetCreateForm(); }} className="px-5 py-2.5 rounded-xl text-sm font-semibold text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800 transition-colors">{t('common.cancel', 'Отмена')}</button>
               <button onClick={handleCreateStudent} disabled={creating || !createForm.displayName.trim()} className="px-5 py-2.5 rounded-xl text-sm font-semibold bg-slate-900 text-white hover:bg-slate-800 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5">
                 {creating ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Plus className="w-3.5 h-3.5" />}
                 {creating ? t('common.loading', 'Добавление...') : t('org.students.addStudent', 'Добавить')}
               </button>
             </div>
+            </>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Bulk Import Modal */}
+      {showImportModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4" onClick={() => { if (!importing) closeImportModal(); }}>
+          <div className="bg-white dark:bg-slate-800 rounded-3xl p-8 w-full max-w-lg shadow-2xl max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+            {importResult ? (
+              /* ─── Import result ─── */
+              <div>
+                <div className="w-12 h-12 rounded-2xl bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center mb-4">
+                  <CheckCircle className="w-6 h-6 text-emerald-600 dark:text-emerald-400" />
+                </div>
+                <h2 className="text-xl font-bold text-slate-900 dark:text-white mb-1">{t('org.students.importDone', 'Импорт завершён')}</h2>
+                <p className="text-sm text-slate-500 mb-2">
+                  {t('org.students.importedCount', 'Добавлено учеников')}: <span className="font-bold text-slate-900 dark:text-white">{importResult.created}</span>
+                </p>
+                {!!importResult.skipped && (
+                  <p className="text-xs text-amber-600 dark:text-amber-400 mb-2">{t('org.students.importSkipped', 'Пропущено из-за лимита тарифа')}: {importResult.skipped}</p>
+                )}
+                <div className="flex justify-end mt-8">
+                  <button onClick={closeImportModal} className="px-5 py-2.5 rounded-xl text-sm font-semibold bg-slate-900 text-white hover:bg-slate-800 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100 transition-all">{t('common.done', 'Готово')}</button>
+                </div>
+              </div>
+            ) : (
+              <>
+                <h2 className="text-xl font-bold text-slate-900 dark:text-white mb-1 flex items-center gap-2">
+                  <Upload className="w-5 h-5 text-primary-500" />
+                  {t('org.students.importTitle', 'Импорт учеников')}
+                </h2>
+                <p className="text-xs text-slate-500 mb-5">{t('org.students.importDesc', 'Вставьте список из Excel/таблицы или загрузите CSV-файл. Колонки: имя и телефон.')}</p>
+
+                <div className="space-y-4">
+                  {/* Paste / upload */}
+                  <div>
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="text-xs font-semibold text-slate-500">{t('org.students.importList', 'Список')} *</label>
+                      <button onClick={() => importFileRef.current?.click()} className="text-xs font-medium text-primary-600 dark:text-primary-400 hover:underline flex items-center gap-1">
+                        <Upload className="w-3.5 h-3.5" /> {t('org.students.importUpload', 'Загрузить CSV')}
+                      </button>
+                      <input ref={importFileRef} type="file" accept=".csv,.txt,text/csv,text/plain" className="hidden" onChange={handleImportFile} />
+                    </div>
+                    <textarea
+                      value={importText}
+                      onChange={e => setImportText(e.target.value)}
+                      rows={6}
+                      placeholder={'Айбек Тологонов, +996700112233\nАйгерим Осмонова, +996555998877\n...'}
+                      className="w-full bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 text-sm font-mono focus:ring-2 focus:ring-slate-900 focus:border-slate-900 dark:focus:ring-white outline-none resize-y"
+                    />
+                    <p className="text-[11px] text-slate-400 mt-1">{t('org.students.importParsed', 'Распознано записей')}: <span className="font-semibold text-slate-600 dark:text-slate-300">{parsedImport.length}</span></p>
+                  </div>
+
+                  {/* Optional course + group for the whole batch */}
+                  {courses.length > 0 && (
+                    <div>
+                      <label className="text-xs font-semibold text-slate-500 mb-1 block flex items-center gap-1"><BookOpen className="w-3.5 h-3.5" /> {t('org.students.course', 'Курс')} <span className="text-slate-400 font-normal">({t('common.optional', 'необязательно')})</span></label>
+                      <select value={importCourseId} onChange={e => { setImportCourseId(e.target.value); setImportGroupId(''); }} className="w-full bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 text-sm outline-none appearance-none">
+                        <option value="">{t('org.students.selectCourse', '— Выберите курс —')}</option>
+                        {courses.map((c: any) => (<option key={c.id} value={c.id}>{c.title}</option>))}
+                      </select>
+                    </div>
+                  )}
+                  {importCourseId && importGroupsForCourse.length > 0 && (
+                    <div>
+                      <label className="text-xs font-semibold text-slate-500 mb-1 block flex items-center gap-1"><UsersRound className="w-3.5 h-3.5" /> {t('org.students.group', 'Группа')}</label>
+                      <select value={importGroupId} onChange={e => setImportGroupId(e.target.value)} className="w-full bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 text-sm outline-none appearance-none">
+                        <option value="">{t('org.students.selectGroup', '— Выберите группу —')}</option>
+                        {importGroupsForCourse.map((g: any) => (<option key={g.id} value={g.id}>{g.name}</option>))}
+                      </select>
+                    </div>
+                  )}
+
+                  {/* Preview */}
+                  {parsedImport.length > 0 && (
+                    <div className="bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl p-3 max-h-40 overflow-y-auto">
+                      {parsedImport.slice(0, 8).map((r, i) => (
+                        <div key={i} className="flex items-center justify-between text-xs py-1 border-b border-slate-100 dark:border-slate-800 last:border-0">
+                          <span className="font-medium text-slate-700 dark:text-slate-200 truncate">{r.displayName}</span>
+                          <span className="text-slate-400 shrink-0 ml-3">{r.phone || '—'}</span>
+                        </div>
+                      ))}
+                      {parsedImport.length > 8 && <p className="text-[11px] text-slate-400 pt-1.5">+{parsedImport.length - 8} {t('org.students.more', 'ещё')}</p>}
+                    </div>
+                  )}
+                </div>
+
+                <div className="flex justify-end gap-3 mt-8">
+                  <button onClick={closeImportModal} className="px-5 py-2.5 rounded-xl text-sm font-semibold text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800 transition-colors">{t('common.cancel', 'Отмена')}</button>
+                  <button onClick={handleBulkImport} disabled={importing || parsedImport.length === 0} className="px-5 py-2.5 rounded-xl text-sm font-semibold bg-slate-900 text-white hover:bg-slate-800 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5">
+                    {importing ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Upload className="w-3.5 h-3.5" />}
+                    {importing ? t('common.loading', 'Импорт...') : `${t('org.students.importBtn', 'Импортировать')} (${parsedImport.length})`}
+                  </button>
+                </div>
+              </>
+            )}
           </div>
         </div>
       )}

@@ -539,11 +539,12 @@ const handler: Handler = async (event: HandlerEvent) => {
         }
       }
 
-      try {
-        // Generate a unique ID for the offline student (no Firebase Auth account)
-        const studentRef = adminDb.collection('users').doc();
-        const studentUid = studentRef.id;
+      // When a password is supplied we create a real Firebase Auth account so the
+      // student can actually sign in (with a username, or an email). Without it we
+      // create a "record-only" offline student (for journal / finances) that cannot log in.
+      const wantsLogin = !!(body.password && (body.username || body.email));
 
+      try {
         const profile: Record<string, any> = {
           displayName: body.displayName,
           role: 'student',
@@ -551,22 +552,61 @@ const handler: Handler = async (event: HandlerEvent) => {
           activeOrgId: orgId,
           phone: body.phone || '',
           createdByOrg: true,
-          offlineStudent: true,   // Flag: not a real Firebase Auth user
           createdAt: now(),
           updatedAt: now(),
         };
-        await studentRef.set(profile);
+
+        let studentUid: string;
+        let loginInfo: { username?: string; email?: string } | null = null;
+
+        if (wantsLogin) {
+          const username = String(body.username || '').toLowerCase().trim().replace(/[^a-z0-9_]/g, '');
+          if (body.username && username.length < 3) return badRequest('Username must be at least 3 characters');
+          if (typeof body.password !== 'string' || body.password.length < 6) {
+            return badRequest('Password must be at least 6 characters');
+          }
+          if (username) {
+            const taken = await adminDb.collection('users').where('username', '==', username).limit(1).get();
+            if (!taken.empty) return badRequest('Этот логин уже занят');
+          }
+          // Synthesize a login email from the username when no real email is provided —
+          // login resolves username → email before Firebase sign-in, so this is enough.
+          const loginEmail = (body.email && String(body.email).trim())
+            ? String(body.email).trim().toLowerCase()
+            : `${username}@student.sabakhub.app`;
+          const dupEmail = await adminDb.collection('users').where('email', '==', loginEmail).limit(1).get();
+          if (!dupEmail.empty) return badRequest('Пользователь с таким email уже существует');
+
+          const authUser = await adminAuth.createUser({
+            email: loginEmail,
+            password: body.password,
+            displayName: body.displayName,
+          });
+          studentUid = authUser.uid;
+          profile.email = loginEmail;
+          if (username) profile.username = username;
+          profile.offlineStudent = false;
+          profile.hasLogin = true;
+          loginInfo = { username: username || undefined, email: loginEmail };
+        } else {
+          // Generate a unique ID for the offline student (no Firebase Auth account)
+          studentUid = adminDb.collection('users').doc().id;
+          profile.offlineStudent = true;   // Flag: not a real Firebase Auth user
+        }
+
+        await adminDb.collection('users').doc(studentUid).set(profile);
 
         // Create orgMembers entry so student appears in all lists
         await adminDb.collection('orgMembers').doc(orgId).collection('members').doc(studentUid).set({
           userId: studentUid,
           userName: body.displayName,
+          ...(profile.email ? { userEmail: profile.email } : {}),
           role: 'student',
           status: 'active',
           branchIds: body.branchIds || [],
           primaryBranchId: body.primaryBranchId || null,
           createdByOrg: true,
-          offlineStudent: true,
+          offlineStudent: !wantsLogin,
           joinedAt: now()
         });
 
@@ -595,10 +635,112 @@ const handler: Handler = async (event: HandlerEvent) => {
           }
         }
 
-        return ok({ uid: studentUid, ...profile });
+        return ok({ uid: studentUid, ...profile, login: loginInfo });
       } catch (e: any) {
+        if (e.code === 'auth/email-already-exists') return badRequest('Email уже зарегистрирован в системе');
+        if (e.code === 'auth/invalid-password') return badRequest('Пароль слишком слабый (минимум 6 символов)');
         throw e;
       }
+    }
+
+    if (action === 'bulkCreateStudents') {
+      if (!hasRole(user, 'admin', 'manager')) return forbidden();
+      if (!can(user, 'students', 'write')) return forbidden('Недостаточно прав для этого действия');
+      const body = JSON.parse(event.body || '{}');
+      const rows: any[] = Array.isArray(body.students) ? body.students : [];
+      if (rows.length === 0) return badRequest('students array required');
+      if (rows.length > 1000) return badRequest('Maximum 1000 students per import');
+
+      // Normalize + drop rows without a name
+      const clean = rows
+        .map((r: any) => ({
+          displayName: String(r.displayName || r.name || '').trim(),
+          phone: String(r.phone || '').trim(),
+        }))
+        .filter((r: { displayName: string }) => r.displayName.length > 0);
+      if (clean.length === 0) return badRequest('Нет валидных строк — в каждой нужно имя');
+
+      // Enforce student limit against the real active-student count
+      const limits = await getOrgLimits(orgId);
+      let allowed = clean;
+      let skipped = 0;
+      if (limits.maxStudents !== -1) {
+        const currentSnap = await adminDb.collection('orgMembers').doc(orgId).collection('members')
+          .where('role', '==', 'student').where('status', '==', 'active').get();
+        const remaining = Math.max(0, limits.maxStudents - currentSnap.size);
+        if (clean.length > remaining) {
+          allowed = clean.slice(0, remaining);
+          skipped = clean.length - remaining;
+        }
+      }
+      if (allowed.length === 0) {
+        return ok({ created: 0, skipped, limit: limits.maxStudents, reason: 'limit' });
+      }
+
+      const branchIds = body.branchIds || [];
+      const primaryBranchId = body.primaryBranchId || null;
+      const ts = now();
+      const createdUids: string[] = [];
+
+      // Write in chunked batches (<=150 students × 3 writes = <=450 ops, under the 500 limit)
+      const CHUNK = 150;
+      for (let i = 0; i < allowed.length; i += CHUNK) {
+        const slice = allowed.slice(i, i + CHUNK);
+        const batch = adminDb.batch();
+        for (const r of slice) {
+          const ref = adminDb.collection('users').doc();
+          const uid = ref.id;
+          createdUids.push(uid);
+          batch.set(ref, {
+            displayName: r.displayName,
+            role: 'student',
+            organizationId: orgId,
+            activeOrgId: orgId,
+            phone: r.phone,
+            createdByOrg: true,
+            offlineStudent: true,
+            importedAt: ts,
+            createdAt: ts,
+            updatedAt: ts,
+          });
+          batch.set(adminDb.collection('orgMembers').doc(orgId).collection('members').doc(uid), {
+            userId: uid,
+            userName: r.displayName,
+            role: 'student',
+            status: 'active',
+            branchIds,
+            primaryBranchId,
+            createdByOrg: true,
+            offlineStudent: true,
+            joinedAt: ts,
+          });
+          batch.set(adminDb.collection('users').doc(uid).collection('memberships').doc(orgId), {
+            role: 'student',
+            status: 'active',
+            branchIds,
+            primaryBranchId,
+            joinedAt: ts,
+          });
+        }
+        await batch.commit();
+      }
+
+      // Enroll the whole batch into a group + auto-generate payment plans
+      if (body.groupId && createdUids.length > 0) {
+        const groupDoc = await adminDb.collection('groups').doc(body.groupId).get();
+        if (groupDoc.exists && groupDoc.data()?.organizationId === orgId) {
+          await adminDb.collection('groups').doc(body.groupId).update({
+            studentIds: FieldValue.arrayUnion(...createdUids),
+            updatedAt: ts,
+          });
+          const courseId = body.courseId || groupDoc.data()?.courseId;
+          if (courseId) {
+            await syncPaymentPlans(orgId, primaryBranchId, courseId, createdUids).catch(console.error);
+          }
+        }
+      }
+
+      return ok({ created: createdUids.length, skipped, limit: limits.maxStudents });
     }
 
     if (action === 'updateStudent') {
@@ -1171,7 +1313,7 @@ const handler: Handler = async (event: HandlerEvent) => {
 
     // ═══ ORG DASHBOARD STATS ═══
     if (action === 'dashboardStats') {
-      const [coursesSnap, groupsSnap, studentsSnap, teachersSnap, lessonsSnap, examsSnap, roomsSnap] = await Promise.all([
+      const [coursesSnap, groupsSnap, studentsSnap, teachersSnap, lessonsSnap, examsSnap, roomsSnap, scheduleSnap] = await Promise.all([
         orgQuery('courses', orgId).get(),
         orgQuery('groups', orgId).get(),
         adminDb.collection('orgMembers').doc(orgId).collection('members').where('role', '==', 'student').where('status', '==', 'active').get(),
@@ -1179,6 +1321,7 @@ const handler: Handler = async (event: HandlerEvent) => {
         orgQuery('lessonPlans', orgId).get(),
         orgQuery('exams', orgId).get(),
         orgQuery('examRooms', orgId).where('status', '==', 'active').get(),
+        orgQuery('scheduleEvents', orgId).limit(1).get(),
       ]);
       return ok({
         totalCourses: coursesSnap.size,
@@ -1188,6 +1331,7 @@ const handler: Handler = async (event: HandlerEvent) => {
         totalLessons: lessonsSnap.size,
         totalExams: examsSnap.size,
         activeRooms: roomsSnap.size,
+        totalScheduleEvents: scheduleSnap.size,
       });
     }
 

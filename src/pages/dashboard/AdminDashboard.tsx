@@ -63,6 +63,7 @@ const AdminDashboard: React.FC = () => {
   const onboardingProps = {
     orgData,
     branchData,
+    dashStats,
     orgCreatedAt: orgData?.createdAt || profile?.createdAt,
   };
   const onboarding = useOnboardingProgress(onboardingProps);

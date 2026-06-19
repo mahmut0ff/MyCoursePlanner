@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { usePlanGate } from '../../contexts/PlanContext';
 import { orgGetSettings, orgUpdateSettings } from '../../lib/api';
@@ -7,18 +8,17 @@ import { storage } from '../../lib/firebase';
 import {
   Save, Building2, GraduationCap, Check, Bell, BarChart3,
   Database, Camera, Loader2, MapPin, Phone, Mail, Clock,
-  QrCode, Download, Send, MessageCircle, Printer, Copy, CheckCircle, Bot, Globe,
+  QrCode, Download, Send, MessageCircle, Printer, Copy, CheckCircle, Globe,
   School, Languages
 } from 'lucide-react';
 import type { OrgSettings } from '../../types';
 import { INSTITUTION_LIST } from '../../lib/terminology';
 import QRCode from 'qrcode';
-import { AIManagerTab } from './AIManagerTab';
 import { IntegrationsTab } from './IntegrationsTab';
 import toast from 'react-hot-toast';
 import { Link } from 'lucide-react';
 
-type Tab = 'general' | 'academic' | 'visitcard' | 'integrations' | 'notifications' | 'data' | 'limits' | 'ai';
+type Tab = 'general' | 'academic' | 'visitcard' | 'integrations' | 'notifications' | 'data' | 'limits';
 
 const TABS: { id: Tab; icon: React.ElementType; labelKey: string }[] = [
   { id: 'general', icon: Building2, labelKey: 'org.settings.general' },
@@ -28,7 +28,6 @@ const TABS: { id: Tab; icon: React.ElementType; labelKey: string }[] = [
   { id: 'notifications', icon: Bell, labelKey: 'org.settings.notifications' },
   { id: 'data', icon: Database, labelKey: 'org.settings.dataTab' },
   { id: 'limits', icon: BarChart3, labelKey: 'org.settings.limits' },
-  { id: 'ai', icon: Bot, labelKey: 'AI Manager' },
 ];
 
 /* ════════════════════════════════════ GENERAL ════════════════════════════════════ */
@@ -542,13 +541,16 @@ const LimitsTab: React.FC<{ settings: OrgSettings }> = ({ settings }) => {
 /* ════════════════════════════════════ MAIN PAGE ════════════════════════════════════ */
 const OrgSettingsPage: React.FC = () => {
   const { t } = useTranslation();
-  const { canAccess } = usePlanGate();
+  const [searchParams] = useSearchParams();
   const [settings, setSettings] = useState<OrgSettings | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState('');
-  const [activeTab, setActiveTab] = useState<Tab>('general');
+  const requestedTab = searchParams.get('tab') as Tab | null;
+  const [activeTab, setActiveTab] = useState<Tab>(
+    requestedTab && TABS.some((tb) => tb.id === requestedTab) ? requestedTab : 'general'
+  );
 
   useEffect(() => {
     orgGetSettings()
@@ -580,7 +582,6 @@ const OrgSettingsPage: React.FC = () => {
       case 'notifications': return <NotificationsTab settings={settings} update={update} />;
       case 'data': return <DataTab />;
       case 'limits': return <LimitsTab settings={settings} />;
-      case 'ai': return <AIManagerTab organizationId={settings.organizationId} />;
       default: return null;
     }
   };
@@ -606,7 +607,7 @@ const OrgSettingsPage: React.FC = () => {
         {/* Left sidebar tabs */}
         <div className="w-full md:w-56 shrink-0">
           <nav className="flex md:block space-x-2 md:space-x-0 md:space-y-0.5 overflow-x-auto pb-2 md:pb-0 scrollbar-none md:sticky md:top-4">
-            {TABS.filter(t => t.id !== 'ai' || canAccess('ai')).map((tab) => {
+            {TABS.map((tab) => {
               const Icon = tab.icon;
               const isActive = activeTab === tab.id;
               return (

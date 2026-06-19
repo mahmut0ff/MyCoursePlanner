@@ -20,6 +20,7 @@ import {
   Lock, ClipboardCheck,
   ShieldCheck, Inbox,
   NotebookText, NotebookPen, MapPin, UserCog,
+  Sparkles,
 } from 'lucide-react';
 
 /* ─── Thin divider between groups ─── */
@@ -159,6 +160,7 @@ const Sidebar: React.FC<{ open: boolean; onClose: () => void; isCollapsed?: bool
               <NavItem to="/schedule" icon={Calendar} label={t('nav.schedule')} isCollapsed={isCollapsed} onClose={onClose} />
 
               <SectionLabel label={t('nav.secManagement', 'Управление')} isCollapsed={isCollapsed} />
+              <NavItem to="/ai" icon={Sparkles} label={t('nav.aiHub', 'AI-центр')} isCollapsed={isCollapsed} onClose={onClose} locked={!canAccess('ai')} />
               <NavItem to="/finances" icon={CreditCard} label={t('nav.finances', 'Финансы')} isCollapsed={isCollapsed} onClose={onClose} locked={!canAccess('finances')} />
               <NavItem to="/teacher-analytics" icon={BarChart3} label={t('nav.analytics')} isCollapsed={isCollapsed} onClose={onClose} locked={!canAccess('advancedAnalytics')} />
             </>
@@ -187,6 +189,9 @@ const Sidebar: React.FC<{ open: boolean; onClose: () => void; isCollapsed?: bool
               <NavItem to="/schedule" icon={Calendar} label={t('nav.schedule')} isCollapsed={isCollapsed} onClose={onClose} />
 
               <SectionLabel label={t('nav.secManagement', 'Управление')} isCollapsed={isCollapsed} />
+              {hasPermission('settings') && (
+                <NavItem to="/ai" icon={Sparkles} label={t('nav.aiHub', 'AI-центр')} isCollapsed={isCollapsed} onClose={onClose} locked={!canAccess('ai')} />
+              )}
               {hasPermission('finances') && (
                 <NavItem to="/finances" icon={CreditCard} label={t('nav.finances', 'Финансы')} isCollapsed={isCollapsed} onClose={onClose} locked={!canAccess('finances')} />
               )}

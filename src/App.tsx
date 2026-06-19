@@ -109,6 +109,9 @@ const PublicOrgProfilePage = lazyRetry(() => import('./pages/directory/PublicOrg
 // AI Leads CRM
 const AILeadsPage = lazyRetry(() => import('./pages/leads/AILeadsPage'));
 
+// AI Hub (owner-facing AI command center)
+const AIHubPage = lazyRetry(() => import('./pages/ai/AIHubPage'));
+
 // Admin Pages
 const AdminDashboardPage = lazyRetry(() => import('./pages/admin/AdminDashboardPage'));
 const AdminOrganizationsPage = lazyRetry(() => import('./pages/admin/AdminOrganizationsPage'));
@@ -274,6 +277,7 @@ const App: React.FC = () => {
             <Route path="results" element={<ProtectedRoute allowedRoles={['admin', 'manager', 'teacher']}><OrgResultsPage /></ProtectedRoute>} />
             <Route path="branches" element={<ProtectedRoute allowedRoles={['admin', 'manager']}><PlanGuard feature="branches"><BranchesPage /></PlanGuard></ProtectedRoute>} />
             <Route path="org-settings" element={<ProtectedRoute allowedRoles={['admin', 'manager']}><OrgSettingsPage /></ProtectedRoute>} />
+            <Route path="ai" element={<ProtectedRoute allowedRoles={['admin', 'manager']}><AIHubPage /></ProtectedRoute>} />
 
             {/* ═══ Super Admin Panel ═══ */}
             <Route path="admin" element={<ProtectedRoute allowedRoles={['super_admin']}><AdminDashboardPage /></ProtectedRoute>} />

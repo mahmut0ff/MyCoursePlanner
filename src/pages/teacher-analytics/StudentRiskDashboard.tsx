@@ -1,9 +1,11 @@
 import React, { useEffect, useState } from 'react';
 
 import { useAuth } from '../../contexts/AuthContext';
+import { usePlanGate } from '../../contexts/PlanContext';
 import { apiGetStudentRisks } from '../../lib/api';
 import type { StudentRiskProfile } from '../../types';
-import { ShieldAlert, AlertTriangle, ShieldCheck, TrendingDown, Clock } from 'lucide-react';
+import { ShieldAlert, AlertTriangle, ShieldCheck, TrendingDown, Clock, Sparkles } from 'lucide-react';
+import ChurnInsightsModal from '../../components/ai/ChurnInsightsModal';
 
 const RiskCard: React.FC<{ student: StudentRiskProfile }> = ({ student }) => {
   return (
@@ -55,9 +57,11 @@ const RiskCard: React.FC<{ student: StudentRiskProfile }> = ({ student }) => {
 
 const StudentRiskDashboard: React.FC = () => {
   const { organizationId } = useAuth();
-  
+  const { canAccess } = usePlanGate();
+
   const [risks, setRisks] = useState<StudentRiskProfile[]>([]);
   const [loading, setLoading] = useState(true);
+  const [churnOpen, setChurnOpen] = useState(false);
 
   useEffect(() => {
     if (organizationId) {
@@ -77,14 +81,24 @@ const StudentRiskDashboard: React.FC = () => {
 
   return (
     <div className="max-w-7xl mx-auto p-4 md:p-8">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-slate-900 dark:text-white flex items-center gap-3">
-          <TrendingDown className="text-red-500" />
-          Светофор Рисков (Retention)
-        </h1>
-        <p className="text-slate-500 dark:text-slate-400 mt-2 max-w-2xl">
-          Следите за вовлеченностью студентов. Красная зона показывает учеников, которые давно не заходили, получают плохие оценки или пропускают занятия. Вовремя свяжитесь с ними!
-        </p>
+      <div className="mb-8 flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-bold text-slate-900 dark:text-white flex items-center gap-3">
+            <TrendingDown className="text-red-500" />
+            Светофор Рисков (Retention)
+          </h1>
+          <p className="text-slate-500 dark:text-slate-400 mt-2 max-w-2xl">
+            Следите за вовлеченностью студентов. Красная зона показывает учеников, которые давно не заходили, получают плохие оценки или пропускают занятия. Вовремя свяжитесь с ними!
+          </p>
+        </div>
+        {canAccess('ai') && (
+          <button
+            onClick={() => setChurnOpen(true)}
+            className="shrink-0 inline-flex items-center gap-2 h-10 px-4 rounded-xl bg-gradient-to-br from-violet-600 to-indigo-600 text-white text-sm font-semibold shadow-sm hover:opacity-90 transition-opacity"
+          >
+            <Sparkles className="w-4 h-4" /> AI-анализ оттока
+          </button>
+        )}
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -119,6 +133,8 @@ const StudentRiskDashboard: React.FC = () => {
         </div>
 
       </div>
+
+      <ChurnInsightsModal open={churnOpen} onClose={() => setChurnOpen(false)} />
     </div>
   );
 };

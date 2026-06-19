@@ -6,11 +6,15 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useOrg } from '../../contexts/OrgContext';
 import { usePlanGate } from '../../contexts/PlanContext';
 import { AIManagerTab } from '../org-settings/AIManagerTab';
+import AIAnalystPanel from '../../components/ai/AIAnalystPanel';
+import AIUsagePanel from '../../components/ai/AIUsagePanel';
+import MarketingGeneratorModal from '../../components/ai/MarketingGeneratorModal';
 import { PLANS } from '../../types';
 import {
   Sparkles, Wand2, ClipboardList, FileText, Mic, ScrollText,
   Inbox, Lock, ArrowRight, Cpu, BookOpen, Bot,
   ExternalLink, Send, CheckCircle2, Zap, Globe, ShieldCheck,
+  Megaphone, TrendingDown, BarChart3,
 } from 'lucide-react';
 
 /* ─────────────────────────────────────────────────────────────
@@ -19,7 +23,7 @@ import {
    публичный AI-ассистент, входящие заявки и статус по тарифу.
    ───────────────────────────────────────────────────────────── */
 
-type ToolAction = 'navigate' | 'scroll' | 'external';
+type ToolAction = 'navigate' | 'scroll' | 'external' | 'modal';
 
 interface ToolDef {
   key: string;
@@ -35,6 +39,38 @@ interface ToolDef {
 }
 
 const TOOLS: ToolDef[] = [
+  {
+    key: 'analyst',
+    title: 'AI-аналитик',
+    desc: 'Задавайте вопросы о центре простым языком — AI отвечает по вашим финансам, посещаемости и оценкам.',
+    where: 'Здесь, в AI-центре',
+    icon: BarChart3,
+    accent: 'bg-violet-100 text-violet-600 dark:bg-violet-900/30 dark:text-violet-400',
+    action: 'scroll',
+    scrollTo: 'ai-analyst',
+    gated: true,
+  },
+  {
+    key: 'churn',
+    title: 'AI-анализ оттока',
+    desc: 'Кто из учеников может уйти, почему и что сделать — с вероятностью и рекомендацией для менеджера.',
+    where: 'Аналитика → Группа риска',
+    icon: TrendingDown,
+    accent: 'bg-rose-100 text-rose-600 dark:bg-rose-900/30 dark:text-rose-400',
+    action: 'navigate',
+    to: '/risk-dashboard',
+    gated: true,
+  },
+  {
+    key: 'marketing',
+    title: 'AI-маркетолог',
+    desc: 'Готовые посты для Instagram, Telegram и WhatsApp о курсах и акциях в пару кликов.',
+    where: 'Здесь, в AI-центре',
+    icon: Megaphone,
+    accent: 'bg-pink-100 text-pink-600 dark:bg-pink-900/30 dark:text-pink-400',
+    action: 'modal',
+    gated: true,
+  },
   {
     key: 'lesson-factory',
     title: 'AI-конструктор уроков',
@@ -158,6 +194,7 @@ const AIHubPage: React.FC = () => {
   const [leadCount, setLeadCount] = useState(0);
   const [newLeadCount, setNewLeadCount] = useState(0);
   const [aiLeadCount, setAiLeadCount] = useState(0);
+  const [marketingOpen, setMarketingOpen] = useState(false);
 
   // Live AI-leads stats (same collection the /leads CRM reads)
   useEffect(() => {
@@ -184,6 +221,10 @@ const AIHubPage: React.FC = () => {
   const handleToolClick = (tool: ToolDef) => {
     if (tool.gated && !hasAI) {
       navigate('/billing');
+      return;
+    }
+    if (tool.action === 'modal') {
+      setMarketingOpen(true);
       return;
     }
     if (tool.action === 'scroll' && tool.scrollTo) {
@@ -274,6 +315,18 @@ const AIHubPage: React.FC = () => {
           accent="bg-indigo-100 text-indigo-600 dark:bg-indigo-900/30 dark:text-indigo-400"
         />
       </div>
+
+      {/* ── Owner cockpit: AI analyst + usage ── */}
+      {hasAI && (
+        <div id="ai-analyst" className="scroll-mt-6 grid grid-cols-1 lg:grid-cols-3 gap-4">
+          <div className="lg:col-span-2">
+            <AIAnalystPanel />
+          </div>
+          <div className="lg:col-span-1">
+            <AIUsagePanel />
+          </div>
+        </div>
+      )}
 
       {/* ── Tools catalog ── */}
       <div>
@@ -408,6 +461,8 @@ const AIHubPage: React.FC = () => {
           не используются для обучения сторонних моделей. Доступность функций зависит от тарифа организации.
         </p>
       </div>
+
+      <MarketingGeneratorModal open={marketingOpen} onClose={() => setMarketingOpen(false)} />
     </div>
   );
 };

@@ -71,6 +71,13 @@ service cloud.firestore {
         allow read: if isSuperAdmin() || hasOrgAccess(orgId);
         allow write: if isSuperAdmin();
       }
+
+      // AI usage meter — read by the AI hub usage panel; written only by the
+      // backend (Admin SDK) via recordAiUsage, so direct SDK writes are denied.
+      match /aiUsage/{period} {
+        allow read: if isSuperAdmin() || hasOrgAccess(orgId);
+        allow write: if false;
+      }
     }
     
     match /organizationAIManager/{orgId} {

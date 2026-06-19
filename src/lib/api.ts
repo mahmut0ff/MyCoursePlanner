@@ -106,7 +106,10 @@ export const apiCloseRoom = (roomId: string) => apiRequest('api-rooms', 'POST', 
 export const apiStartRoom = (roomId: string) => apiRequest('api-rooms', 'POST', { action: 'start', roomId });
 
 // ---- AI Generation ----
-export const apiAIGenerate = (data: { prompt?: string; type: 'quiz' | 'exam' | 'lesson_and_quiz' | 'material_summary' | 'syllabus_extraction'; fileUrl?: string }) =>
+export type AIGenerateType =
+  | 'quiz' | 'exam' | 'lesson_and_quiz' | 'material_summary' | 'syllabus_extraction'
+  | 'lesson_assist' | 'report_comment' | 'marketing_post' | 'translate';
+export const apiAIGenerate = (data: { prompt?: string; type: AIGenerateType; fileUrl?: string }) =>
   apiRequest('api-ai-generate', 'POST', data);
 
 // ---- Attempts ----
@@ -587,6 +590,24 @@ export const apiUpdateAIManagerSettings = (data: any) =>
 
 export const apiAIManagerChat = (organizationId: string, messages: any[]) =>
   apiRequest('api-ai-org-manager', 'POST', { messages }, { action: 'chat', organizationId });
+
+// ---- AI Insights (owner analyst + churn) ----
+export const apiAIInsightsAsk = (question: string) =>
+  apiRequest('api-ai-insights', 'POST', { question }, { action: 'ask' });
+export const apiAIChurn = (limit?: number) =>
+  apiRequest('api-ai-insights', 'POST', { limit }, { action: 'churn' });
+
+// ---- AI Tutor (student / parent facing) ----
+export const apiAITutor = (question: string, history?: { role: string; content: string }[]) =>
+  apiRequest('api-ai-tutor', 'POST', { question, history }, { action: 'tutor' });
+export const apiAIPractice = (topic: string, count?: number, level?: string) =>
+  apiRequest('api-ai-tutor', 'POST', { topic, count, level }, { action: 'practice' });
+export const apiAIExplainMistakes = (questions: any[]) =>
+  apiRequest('api-ai-tutor', 'POST', { questions }, { action: 'explain' });
+export const apiAIStudyPlan = (weakTopics?: string[]) =>
+  apiRequest('api-ai-tutor', 'POST', { weakTopics }, { action: 'studyplan' });
+export const apiAISpeaking = (messages: { role: string; content: string }[], opts?: { level?: string; lang?: string }) =>
+  apiRequest('api-ai-tutor', 'POST', { messages, ...opts }, { action: 'speaking' });
 
 // ============================================================
 // PARENT PORTAL API

@@ -2,6 +2,7 @@ import type { Handler, HandlerEvent } from '@netlify/functions';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { verifyAuth, isStaff, ok, unauthorized, forbidden, badRequest, jsonResponse } from './utils/auth';
 import { rateLimiters, getRateLimitKey } from './utils/rate-limiter';
+import { recordAiUsage } from './utils/ai';
 
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY || '';
 
@@ -115,6 +116,27 @@ Format the response strictly as a JSON object with the following structure:
 
 Extract modules and lessons logically based on the document's headings and bullet points.
 Do not include any extra text, markdown blocks like \`\`\`json, or anything other than the raw JSON object.`;
+    } else if (type === 'lesson_assist') {
+      systemPrompt = `You are an expert instructional designer assisting a teacher inside a lesson editor.
+Follow the teacher's instruction applied to their text/topic and return improved lesson content.
+Return strictly a JSON object: { "html": string } where "html" is clean, valid HTML suitable for a rich-text editor.
+Use only these tags: <h2>, <h3>, <p>, <ul>, <li>, <ol>, <strong>, <em>, <blockquote>. No inline styles, no <script>, no markdown.
+Write in the same language as the teacher's text/instruction (default Russian).
+Do not include any extra text outside the JSON object.`;
+    } else if (type === 'report_comment') {
+      systemPrompt = `You are an experienced teacher writing a short, personalized progress comment for a student's report card, based on the provided performance data (grades, attendance, trends).
+Be specific, constructive and warm; mention one strength and one area to improve. Write in Russian.
+Return strictly a JSON object: { "comment": string (2-4 sentences), "short": string (one encouraging sentence for SMS/Telegram) }.
+No markdown, only the raw JSON object.`;
+    } else if (type === 'marketing_post') {
+      systemPrompt = `You are a social-media marketer for a private education center.
+Based on the provided topic/course/offer, write engaging promotional posts. Write in Russian unless the request specifies another language.
+Return strictly a JSON object: { "variants": [{ "caption": string (ready-to-post text with light emoji, 2-5 short lines), "hashtags": [string] (3-7 relevant hashtags without spaces) }] } with exactly 3 distinct variants (different angles/tones).
+No markdown fences, only the raw JSON object.`;
+    } else if (type === 'translate') {
+      systemPrompt = `You are a professional translator for educational content.
+Translate the provided text into the requested target language, preserving meaning, tone and any simple formatting. Do not add commentary.
+Return strictly a JSON object: { "translation": string }. No markdown, only the raw JSON object.`;
     } else {
       systemPrompt = `You are an expert educator. Generate an exam based on the provided material or prompt. 
 Format the response strictly as a JSON array of objects. 
@@ -171,6 +193,7 @@ Do not include any extra text, only the JSON array.`;
 
     try {
       const generatedData = JSON.parse(textResp);
+      recordAiUsage(user.organizationId, `generate_${type}`);
       return ok({ data: generatedData });
     } catch (parseErr) {
       console.error('Failed to parse Gemini JSON output:', textResp);

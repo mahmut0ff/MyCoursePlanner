@@ -9,6 +9,8 @@ import ImageExtension from '@tiptap/extension-image';
 import Youtube from '@tiptap/extension-youtube';
 import Placeholder from '@tiptap/extension-placeholder';
 import { useAuth } from '../../contexts/AuthContext';
+import { usePlanGate } from '../../contexts/PlanContext';
+import LessonCoPilotModal from '../../components/ai/LessonCoPilotModal';
 import { createLessonPlan, getLessonPlan, updateLessonPlan } from '../../services/lessons.service';
 import { uploadLessonCover, uploadLessonAttachment, deleteLessonAttachment } from '../../services/storage.service';
 import type { LessonAttachment, Material, Group } from '../../types';
@@ -18,7 +20,7 @@ import {
   Save, ArrowLeft, Bold, Italic, Strikethrough, Heading1, Heading2, List,
   ListOrdered, LinkIcon, ImageIcon, Youtube as YoutubeIcon, Undo, Redo, Upload,
   Quote, Code, Minus, Paperclip, Trash2, FileText, Film, Image as LucideImage,
-  FileSpreadsheet, ClipboardList, Calendar, Award, CheckCircle2, Search,
+  FileSpreadsheet, ClipboardList, Calendar, Award, CheckCircle2, Search, Sparkles,
 } from 'lucide-react';
 
 const FILE_ACCEPT = '.pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.jpg,.jpeg,.png,.gif,.webp,.mp4,.webm,.mov,.avi,.zip,.rar,.txt';
@@ -45,6 +47,8 @@ const LessonEditPage: React.FC = () => {
   const navigate = useNavigate();
   const { t } = useTranslation();
   const { profile } = useAuth();
+  const { canAccess } = usePlanGate();
+  const [aiOpen, setAiOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const dropZoneRef = useRef<HTMLDivElement>(null);
 
@@ -408,7 +412,16 @@ const LessonEditPage: React.FC = () => {
                 <button onClick={addVideo} className={tbtn(editor?.isActive('youtube') ?? false)} title="Вставить YouTube"><YoutubeIcon className="w-4 h-4" /></button>
               </div>
               
-              <div className="flex items-center gap-0.5 bg-white dark:bg-slate-800 p-1 rounded-lg border border-slate-200 dark:border-slate-700 shadow-sm ml-auto">
+              {canAccess('ai') && (
+                <button
+                  onClick={() => setAiOpen(true)}
+                  className="ml-auto inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-semibold text-white bg-gradient-to-br from-violet-600 to-indigo-600 hover:opacity-90 shadow-sm transition-opacity"
+                  title="AI-помощник урока"
+                >
+                  <Sparkles className="w-4 h-4" /> <span className="hidden sm:inline">AI</span>
+                </button>
+              )}
+              <div className={`flex items-center gap-0.5 bg-white dark:bg-slate-800 p-1 rounded-lg border border-slate-200 dark:border-slate-700 shadow-sm ${canAccess('ai') ? '' : 'ml-auto'}`}>
                 <button onClick={() => editor?.chain().focus().undo().run()} className={tbtn(false)} title="Отменить"><Undo className="w-4 h-4" /></button>
                 <button onClick={() => editor?.chain().focus().redo().run()} className={tbtn(false)} title="Повторить"><Redo className="w-4 h-4" /></button>
               </div>
@@ -691,6 +704,8 @@ const LessonEditPage: React.FC = () => {
           </div>
         </div>
       </div>
+
+      <LessonCoPilotModal open={aiOpen} onClose={() => setAiOpen(false)} editor={editor} />
     </div>
   );
 };

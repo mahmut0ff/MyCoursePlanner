@@ -3,10 +3,12 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { orgGetStudents, orgGetResults, orgGetGroups, orgUpdateGroup, apiRemoveMember, apiGetPaymentPlans, apiGetTransactions, apiCreateTransaction, orgResetStudentPassword } from '../../lib/api';
 import { useAuth } from '../../contexts/AuthContext';
+import { usePlanGate } from '../../contexts/PlanContext';
+import ReportCommentModal from '../../components/ai/ReportCommentModal';
 import {
   ArrowLeft, Mail, Trophy, Calendar, BarChart3, Users, Phone, MapPin,
   BookOpen, Zap, Target, Clock, CheckCircle, Plus, X, Loader2,
-  Flame, Copy, Star, Shield, Link2, ExternalLink, CreditCard, Receipt, KeyRound
+  Flame, Copy, Star, Shield, Link2, ExternalLink, CreditCard, Receipt, KeyRound, Sparkles
 } from 'lucide-react';
 import type { UserProfile, ExamAttempt, Group } from '../../types';
 import { PinnedBadgesDisplay } from '../../lib/badges';
@@ -29,6 +31,8 @@ const StudentDetailPage: React.FC = () => {
   const [student, setStudent] = useState<UserProfile | null>(null);
   const [results, setResults] = useState<ExamAttempt[]>([]);
   const { role, organizationId } = useAuth();
+  const { canAccess } = usePlanGate();
+  const [reportOpen, setReportOpen] = useState(false);
   const isAdmin = role === 'admin' || role === 'manager' || role === 'super_admin';
   const [allGroups, setAllGroups] = useState<Group[]>([]);
   const [groups, setGroups] = useState<Group[]>([]);
@@ -270,6 +274,15 @@ const StudentDetailPage: React.FC = () => {
                 </div>
               </div>
               <div className="flex items-center gap-2">
+                {canAccess('ai') && (
+                  <button
+                    onClick={() => setReportOpen(true)}
+                    className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold text-white bg-gradient-to-br from-violet-600 to-indigo-600 hover:opacity-90 transition-opacity shadow-sm"
+                    title="AI-комментарий в табель"
+                  >
+                    <Sparkles className="w-3 h-3" /> AI-отзыв
+                  </button>
+                )}
                 <span className={`px-3 py-1 rounded-full text-[11px] font-bold ${(student as any).status === 'expelled' ? 'text-amber-600 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800' : 'text-emerald-600 bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800'}`}>
                   {(student as any).status === 'expelled' ? t('common.expelled', 'Отчислен') : t('common.active', 'Активен')}
                 </span>
@@ -708,6 +721,19 @@ const StudentDetailPage: React.FC = () => {
           </div>
         </div>
       )}
+
+      <ReportCommentModal
+        open={reportOpen}
+        onClose={() => setReportOpen(false)}
+        studentName={student.displayName || 'Ученик'}
+        stats={{
+          'Средний балл': `${stats.avgScore}%`,
+          'Проходимость': `${stats.passRate}%`,
+          'Лучший результат': `${stats.best}%`,
+          'Сдано тестов': results.length,
+          'Верных ответов': stats.totalQuestions > 0 ? `${stats.totalCorrect}/${stats.totalQuestions}` : '0',
+        }}
+      />
     </div>
   );
 };

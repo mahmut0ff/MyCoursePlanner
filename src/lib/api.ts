@@ -596,6 +596,8 @@ export const apiAIInsightsAsk = (question: string) =>
   apiRequest('api-ai-insights', 'POST', { question }, { action: 'ask' });
 export const apiAIChurn = (limit?: number) =>
   apiRequest('api-ai-insights', 'POST', { limit }, { action: 'churn' });
+export const apiAIScheduleReview = (events: any[]) =>
+  apiRequest('api-ai-insights', 'POST', { events }, { action: 'schedule' });
 
 // ---- AI Tutor (student / parent facing) ----
 export const apiAITutor = (question: string, history?: { role: string; content: string }[]) =>

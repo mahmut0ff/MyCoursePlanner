@@ -1,10 +1,14 @@
 import React, { useEffect, useState, useMemo, useCallback, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { orgGetSchedule, orgGetTimetable, orgCreateEvent, orgDeleteEvent, orgUpdateEvent, orgGetGroups } from '../../lib/api';
-import { Plus, ChevronLeft, ChevronRight, Clock, Trash2, Calendar, MapPin, Repeat, Copy, Clipboard, GripVertical, X } from 'lucide-react';
+import { Plus, ChevronLeft, ChevronRight, Clock, Trash2, Calendar, MapPin, Repeat, Copy, Clipboard, GripVertical, X, Sparkles } from 'lucide-react';
 import type { ScheduleEvent, ScheduleEventType, Group } from '../../types';
 import { useAuth } from '../../contexts/AuthContext';
+import { usePlanGate } from '../../contexts/PlanContext';
 import BranchFilter from '../../components/ui/BranchFilter';
+import ScheduleReviewModal from '../../components/ai/ScheduleReviewModal';
+
+const DAY_NAMES = ['Вс', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб'];
 
 const HOURS = Array.from({ length: 14 }, (_, i) => i + 7);
 
@@ -16,7 +20,10 @@ interface ClipboardEvent {
 const SchedulePage: React.FC = () => {
   const { t } = useTranslation();
   const { role } = useAuth();
+  const { canAccess } = usePlanGate();
   const canEdit = role === 'admin' || role === 'manager' || role === 'super_admin';
+  const [aiReviewOpen, setAiReviewOpen] = useState(false);
+  const [aiEvents, setAiEvents] = useState<any[]>([]);
 
   const [timetableEvents, setTimetableEvents] = useState<ScheduleEvent[]>([]);
   const [calendarEvents, setCalendarEvents] = useState<ScheduleEvent[]>([]);
@@ -544,6 +551,26 @@ const SchedulePage: React.FC = () => {
               <X className="w-3.5 h-3.5 opacity-0 group-hover:opacity-100 transition-opacity" onClick={(e) => { e.stopPropagation(); setClipboard(null); }} />
             </button>
           )}
+          {canEdit && canAccess('ai') && timetableEvents.length > 0 && (
+            <button
+              onClick={() => {
+                setAiEvents(timetableEvents.map((ev) => ({
+                  title: ev.title,
+                  type: ev.type,
+                  day: DAY_NAMES[(ev as any).dayOfWeek ?? 0] || '',
+                  startTime: ev.startTime,
+                  endTime: ev.endTime,
+                  group: groups.find((g) => g.id === (ev as any).groupId)?.name || null,
+                  location: ev.location || null,
+                })));
+                setAiReviewOpen(true);
+              }}
+              className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold text-white bg-gradient-to-br from-violet-600 to-indigo-600 hover:opacity-90 transition-opacity shadow-sm shrink-0"
+              title="AI-анализ расписания"
+            >
+              <Sparkles className="w-4 h-4" /><span className="hidden sm:inline">AI-анализ</span>
+            </button>
+          )}
           <button onClick={() => {
             setForm(f => ({ ...f, type: activeTab === 'timetable' ? 'lesson' : 'exam', branchId: branchId || undefined }));
             setShowCreate(true);
@@ -552,6 +579,8 @@ const SchedulePage: React.FC = () => {
           </button>
         </div>
       </div>
+
+      <ScheduleReviewModal open={aiReviewOpen} onClose={() => setAiReviewOpen(false)} events={aiEvents} />
 
       {error && <div className="px-5 py-3.5 bg-red-500/10 border border-red-500/20 rounded-2xl text-sm font-medium text-red-600 dark:text-red-400">{error}</div>}
 

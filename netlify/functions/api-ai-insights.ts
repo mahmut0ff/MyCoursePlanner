@@ -262,6 +262,34 @@ ${JSON.stringify(atRisk)}
       return ok({ data });
     }
 
+    if (action === 'schedule') {
+      const { events } = JSON.parse(event.body || '{}');
+      if (!Array.isArray(events) || events.length === 0) {
+        return ok({ data: { summary: 'Расписание пустое — добавьте занятия, чтобы получить анализ.', issues: [] } });
+      }
+      const compact = events.slice(0, 200).map((e: any) => ({
+        title: e.title, type: e.type, day: e.day, start: e.startTime, end: e.endTime,
+        group: e.group || null, room: e.location || null,
+      }));
+      const model = getModel({ json: true });
+      const prompt = `Ты — методист, который проверяет недельное расписание учебного центра. Найди проблемы и дай практичные рекомендации. Отвечай на русском.
+
+Ищи: накладки (одна группа/кабинет/преподаватель в одно время в разных занятиях), перегруженные дни, большие «окна» между занятиями одной группы, неравномерное распределение по дням, поздние/слишком ранние слоты.
+
+РАСПИСАНИЕ (JSON, day — день недели):
+${JSON.stringify(compact)}
+
+Верни строго JSON: {
+  "summary": string (1-2 предложения — общая оценка),
+  "issues": [{ "type": "conflict" | "overload" | "gap" | "balance" | "other", "detail": string (в чём проблема, с указанием дня/времени/группы), "suggestion": string (что сделать) }]
+}
+Если проблем нет — верни пустой массив issues и похвали в summary.`;
+      const result = await model.generateContent(prompt);
+      const data = parseJsonLoose(result.response.text());
+      recordAiUsage(orgId, 'insights_schedule');
+      return ok({ data });
+    }
+
     return badRequest(`Unknown action: ${action}`);
   } catch (err: any) {
     console.error('AI Insights error:', err);

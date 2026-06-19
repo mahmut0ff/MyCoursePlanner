@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../contexts/AuthContext';
 import { apiGetAttempt, apiGenerateCertificate } from '../../lib/api';
 import type { ExamAttempt } from '../../types';
+import MistakeExplainer from '../../components/ai/MistakeExplainer';
 
 import { ArrowLeft, Trophy, XCircle, Clock, Target, Brain, CheckCircle, HelpCircle, RefreshCw, Award, Loader2 } from 'lucide-react';
 
@@ -159,6 +160,11 @@ const ResultPage: React.FC = () => {
           </button>
         )}
       </div>
+
+      {/* Student-facing AI mistake explainer */}
+      {isViewerStudent && attempt.questionResults && (
+        <MistakeExplainer questionResults={attempt.questionResults} />
+      )}
 
       {/* AI Feedback (Hidden for students) */}
       {!isViewerStudent && (

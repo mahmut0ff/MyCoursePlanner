@@ -255,6 +255,9 @@ const Sidebar: React.FC<{ open: boolean; onClose: () => void; isCollapsed?: bool
                   <NavItem to="/lessons" icon={BookOpen} label={t('nav.lessons')} isCollapsed={isCollapsed} onClose={onClose} />
                   <NavItem to="/student/homework" icon={ClipboardCheck} label={t('nav.myHomework', 'Мои ДЗ')} isCollapsed={isCollapsed} onClose={onClose} />
                   <NavItem to="/student/schedule" icon={Calendar} label={t('nav.schedule')} isCollapsed={isCollapsed} onClose={onClose} />
+                  {(orgData?.planId === 'professional' || orgData?.planId === 'enterprise') && (
+                    <NavItem to="/ai-coach" icon={Sparkles} label={t('nav.aiCoach', 'AI-наставник')} isCollapsed={isCollapsed} onClose={onClose} />
+                  )}
 
                   <Divider />
                   <NavItem to="/join" icon={Radio} label={t('nav.joinTest', 'Войти в тест')} isCollapsed={isCollapsed} onClose={onClose} />

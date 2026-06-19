@@ -627,6 +627,13 @@ export const apiGetParentPortalData = async (token: string) => {
   return data;
 };
 
+export const apiGetParentAISummary = async (token: string): Promise<{ summary: string | null; recommendations?: string[]; locked?: boolean }> => {
+  const res = await fetch(`/.netlify/functions/api-parent-portal?action=aiSummary&token=${encodeURIComponent(token)}`);
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || 'Failed to fetch summary');
+  return data;
+};
+
 // ============================================================
 // MEGA RELEASE EXPERIMENTAL API (Homework & Risk)
 // ============================================================

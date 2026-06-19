@@ -9,12 +9,13 @@ import { AIManagerTab } from '../org-settings/AIManagerTab';
 import AIAnalystPanel from '../../components/ai/AIAnalystPanel';
 import AIUsagePanel from '../../components/ai/AIUsagePanel';
 import MarketingGeneratorModal from '../../components/ai/MarketingGeneratorModal';
+import TranslateModal from '../../components/ai/TranslateModal';
 import { PLANS } from '../../types';
 import {
   Sparkles, Wand2, ClipboardList, FileText, Mic, ScrollText,
   Inbox, Lock, ArrowRight, Cpu, BookOpen, Bot,
   ExternalLink, Send, CheckCircle2, Zap, Globe, ShieldCheck,
-  Megaphone, TrendingDown, BarChart3,
+  Megaphone, TrendingDown, BarChart3, Languages,
 } from 'lucide-react';
 
 /* ─────────────────────────────────────────────────────────────
@@ -68,6 +69,16 @@ const TOOLS: ToolDef[] = [
     where: 'Здесь, в AI-центре',
     icon: Megaphone,
     accent: 'bg-pink-100 text-pink-600 dark:bg-pink-900/30 dark:text-pink-400',
+    action: 'modal',
+    gated: true,
+  },
+  {
+    key: 'translate',
+    title: 'AI-перевод',
+    desc: 'Переводите материалы, объявления и сообщения между русским, английским, кыргызским и др.',
+    where: 'Здесь, в AI-центре',
+    icon: Languages,
+    accent: 'bg-teal-100 text-teal-600 dark:bg-teal-900/30 dark:text-teal-400',
     action: 'modal',
     gated: true,
   },
@@ -195,6 +206,7 @@ const AIHubPage: React.FC = () => {
   const [newLeadCount, setNewLeadCount] = useState(0);
   const [aiLeadCount, setAiLeadCount] = useState(0);
   const [marketingOpen, setMarketingOpen] = useState(false);
+  const [translateOpen, setTranslateOpen] = useState(false);
 
   // Live AI-leads stats (same collection the /leads CRM reads)
   useEffect(() => {
@@ -224,7 +236,8 @@ const AIHubPage: React.FC = () => {
       return;
     }
     if (tool.action === 'modal') {
-      setMarketingOpen(true);
+      if (tool.key === 'translate') setTranslateOpen(true);
+      else setMarketingOpen(true);
       return;
     }
     if (tool.action === 'scroll' && tool.scrollTo) {
@@ -463,6 +476,7 @@ const AIHubPage: React.FC = () => {
       </div>
 
       <MarketingGeneratorModal open={marketingOpen} onClose={() => setMarketingOpen(false)} />
+      <TranslateModal open={translateOpen} onClose={() => setTranslateOpen(false)} />
     </div>
   );
 };

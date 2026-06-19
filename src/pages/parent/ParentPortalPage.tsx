@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { apiGetParentPortalData } from '../../lib/api';
 import { Trophy, Flame, Play, BookOpen, Star, AlertCircle, Calendar } from 'lucide-react';
 import { PinnedBadgesDisplay } from '../../lib/badges';
+import ParentAISummaryCard from '../../components/ai/ParentAISummaryCard';
 
 interface ParentPortalData {
   student: {
@@ -15,6 +16,7 @@ interface ParentPortalData {
     name: string;
     logoUrl: string;
   } | null;
+  aiEnabled?: boolean;
   stats: {
     totalXp: number;
     currentStreak: number;
@@ -87,7 +89,7 @@ const ParentPortalPage: React.FC = () => {
     );
   }
 
-  const { student, stats, recentResults, organization } = data;
+  const { student, stats, recentResults, organization, aiEnabled } = data;
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-900 font-sans text-slate-900 dark:text-slate-100 selection:bg-indigo-500/30">
@@ -214,6 +216,13 @@ const ParentPortalPage: React.FC = () => {
             );
           })()}
         </div>
+
+        {/* AI progress summary */}
+        {aiEnabled && token && (
+          <div className="mb-6">
+            <ParentAISummaryCard token={token} />
+          </div>
+        )}
 
         {/* Recent Results */}
         <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">

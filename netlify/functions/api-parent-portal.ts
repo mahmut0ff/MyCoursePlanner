@@ -1,6 +1,8 @@
 import type { Handler, HandlerEvent } from '@netlify/functions';
 import { adminDb } from './utils/firebase-admin';
 import { jsonResponse, badRequest, notFound } from './utils/auth';
+import { rateLimiters, getRateLimitKey } from './utils/rate-limiter';
+import { getModel, parseJsonLoose, hasGeminiKey, recordAiUsage } from './utils/ai';
 
 export const handler: Handler = async (event: HandlerEvent) => {
   if (event.httpMethod === 'OPTIONS') return jsonResponse(204, '');
@@ -36,11 +38,13 @@ export const handler: Handler = async (event: HandlerEvent) => {
 
     // 2.5 Organization branding (logo + name) for a white-labeled portal.
     let organization: { name: string; logoUrl: string } | null = null;
+    let aiEnabled = false;
     if (orgId) {
       const orgDoc = await adminDb.collection('organizations').doc(orgId).get();
       if (orgDoc.exists) {
         const o = orgDoc.data()!;
         organization = { name: o.name || '', logoUrl: o.logo || o.branding?.logoUrl || '' };
+        aiEnabled = o.planId === 'professional' || o.planId === 'enterprise';
       }
     }
 
@@ -158,9 +162,41 @@ export const handler: Handler = async (event: HandlerEvent) => {
     // null when there's nothing to average — the UI shows "—" instead of a red 0.
     const averageScore = scoreCount > 0 ? Math.round(totalPercents / scoreCount) : null;
 
+    // ── AI progress summary for parents (separate action) ──
+    if (event.queryStringParameters?.action === 'aiSummary') {
+      if (!aiEnabled) return jsonResponse(200, { summary: null, locked: true });
+      if (!hasGeminiKey()) return jsonResponse(200, { summary: null });
+      if (rateLimiters.ai.isLimited(getRateLimitKey(event, `parent:${token}`))) {
+        return jsonResponse(429, { error: 'Слишком много запросов. Подождите немного.' });
+      }
+      const resultsText = recentResults
+        .map((r: any) => `${r.examTitle} (${r.type}): ${r.percentage}%`)
+        .join('; ') || 'пока нет результатов';
+      const model = getModel({ json: true });
+      const prompt = `Ты — доброжелательный куратор учебного центра. Напиши для РОДИТЕЛЯ краткую сводку об успехах ребёнка простым, тёплым языком (без жаргона). Опирайся только на данные. Не выдумывай.
+
+Ребёнок: ${safeUser.displayName}
+Средний балл: ${averageScore === null ? 'нет данных' : averageScore + '%'}
+Серия активности (стрик): ${currentStreak} дн.
+Очки (XP): ${totalXp}
+Последние результаты: ${resultsText}
+
+Верни строго JSON: { "summary": string (2-4 предложения: как дела в целом, что хорошо, на что обратить внимание), "recommendations": [string] (1-2 коротких совета родителю) }`;
+      try {
+        const result = await model.generateContent(prompt);
+        const data = parseJsonLoose(result.response.text());
+        recordAiUsage(orgId, 'parent_summary');
+        return jsonResponse(200, { summary: data.summary || '', recommendations: Array.isArray(data.recommendations) ? data.recommendations : [] });
+      } catch (e: any) {
+        console.error('Parent AI summary error:', e);
+        return jsonResponse(200, { summary: null });
+      }
+    }
+
     return jsonResponse(200, {
       student: safeUser,
       organization,
+      aiEnabled,
       stats: {
         totalXp,
         currentStreak,

@@ -10,9 +10,17 @@
 import type { Handler, HandlerEvent } from '@netlify/functions';
 import { verifyAuth, ok, unauthorized, forbidden, badRequest, jsonResponse, hasPermission } from './utils/auth';
 import { getOrgOnboarding, regenerateCode, setStudentJoinMode } from './utils/onboarding';
-import { TELEGRAM_BOT_USERNAME } from './utils/telegram';
+import { TELEGRAM_BOT_USERNAME, TELEGRAM_BOT_TOKEN } from './utils/telegram';
 
 const deepLink = (code: string) => `https://t.me/${TELEGRAM_BOT_USERNAME}?start=join_${code}`;
+
+/** Ensure the global bot's webhook points at our handler (idempotent, best-effort). */
+function ensureWebhook(rawUrl?: string, host?: string): void {
+  const origin = rawUrl ? new URL(rawUrl).origin : (host ? `https://${host}` : '');
+  if (!origin || origin.includes('localhost') || origin.includes('127.0.0.1')) return;
+  const whUrl = `${origin}/.netlify/functions/api-telegram-webhook`;
+  fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/setWebhook?url=${encodeURIComponent(whUrl)}&allowed_updates=${encodeURIComponent('["message"]')}`).catch(() => {});
+}
 
 export const handler: Handler = async (event: HandlerEvent) => {
   if (event.httpMethod === 'OPTIONS') return jsonResponse(204, '');
@@ -27,6 +35,7 @@ export const handler: Handler = async (event: HandlerEvent) => {
 
   try {
     if (event.httpMethod === 'GET' && action === 'codes') {
+      ensureWebhook(event.rawUrl, event.headers.host);
       const o = await getOrgOnboarding(orgId);
       return ok({
         studentCode: o.studentCode,

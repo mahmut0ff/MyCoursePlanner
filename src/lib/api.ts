@@ -636,6 +636,34 @@ export const apiGetParentAISummary = async (token: string): Promise<{ summary: s
   return data;
 };
 
+// ---- Telegram onboarding ----
+/** Exchange a one-time login token (from the bot) for a Firebase custom token. Public. */
+export const apiTgLogin = async (ott: string): Promise<{ customToken: string }> => {
+  const res = await fetch('/.netlify/functions/api-tg-login', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ ott }),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || 'Не удалось войти');
+  return data;
+};
+
+export interface OrgJoinCodes {
+  studentCode: string;
+  teacherCode: string;
+  studentJoinMode: 'auto' | 'approval';
+  botUsername: string;
+  studentLink: string;
+  teacherLink: string;
+}
+export const apiGetJoinCodes = (): Promise<OrgJoinCodes> =>
+  apiRequest('api-onboarding', 'GET', undefined, { action: 'codes' });
+export const apiRegenerateJoinCode = (role: 'student' | 'teacher'): Promise<{ code: string; link: string }> =>
+  apiRequest('api-onboarding', 'POST', { role }, { action: 'regenerate' });
+export const apiSetStudentJoinMode = (mode: 'auto' | 'approval'): Promise<{ studentJoinMode: string }> =>
+  apiRequest('api-onboarding', 'POST', { mode }, { action: 'setMode' });
+
 // ============================================================
 // MEGA RELEASE EXPERIMENTAL API (Homework & Risk)
 // ============================================================

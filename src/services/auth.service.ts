@@ -1,6 +1,7 @@
 import {
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
+  signInWithCustomToken,
   signOut as firebaseSignOut,
   onAuthStateChanged,
   updateProfile,
@@ -15,6 +16,10 @@ import { auth } from '../lib/firebase';
 
 export const signIn = (email: string, password: string) =>
   signInWithEmailAndPassword(auth, email, password);
+
+/** Passwordless sign-in with a Firebase custom token (Telegram bot login flow). */
+export const signInWithToken = (customToken: string) =>
+  signInWithCustomToken(auth, customToken);
 
 export const signUp = async (email: string, password: string, displayName: string) => {
   const cred = await createUserWithEmailAndPassword(auth, email, password);

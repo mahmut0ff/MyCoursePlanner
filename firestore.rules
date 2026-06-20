@@ -227,5 +227,11 @@ service cloud.firestore {
     match /courseRequests/{reqId} { allow read, write: if false; } // Handled entirely via backend
     match /demoRequests/{reqId} { allow read, write: if false; }   // Handled entirely via backend (api-demo-requests)
 
+    // Telegram onboarding / login — all written & read by the backend (Admin SDK).
+    match /orgJoinCodes/{code} { allow read, write: if false; }
+    match /orgOnboarding/{orgId} { allow read, write: if false; }
+    match /telegramRegistrations/{chatId} { allow read, write: if false; }
+    match /telegramLoginTokens/{token} { allow read, write: if false; }
+
   }
 }

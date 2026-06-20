@@ -13,6 +13,7 @@ const LoginPage = lazyRetry(() => import('./pages/auth/LoginPage'));
 const RegisterPage = lazyRetry(() => import('./pages/auth/RegisterPage'));
 const ParentPortalPage = lazyRetry(() => import('./pages/parent/ParentPortalPage'));
 const OnboardingPage = lazyRetry(() => import('./pages/auth/OnboardingPage'));
+const TgLoginPage = lazyRetry(() => import('./pages/auth/TgLoginPage'));
 
 const LandingPage = lazyRetry(() => import('./pages/landing/LandingPage'));
 const FeaturesPage = lazyRetry(() => import('./pages/landing/FeaturesPage'));
@@ -171,6 +172,7 @@ const App: React.FC = () => {
             <Route path="/terms" element={<TermsPage />} />
             <Route path="/login" element={<LoginPage />} />
             <Route path="/register" element={<RegisterPage />} />
+            <Route path="/tg-login" element={<TgLoginPage />} />
             <Route path="/parent/:token" element={<ParentPortalPage />} />
             <Route path="/onboarding" element={<OnboardingPage />} />
             <Route path="/directory" element={<OrganizationsDirectoryPage />} />

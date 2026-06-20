@@ -664,6 +664,26 @@ export const apiRegenerateJoinCode = (role: 'student' | 'teacher'): Promise<{ co
 export const apiSetStudentJoinMode = (mode: 'auto' | 'approval'): Promise<{ studentJoinMode: string }> =>
   apiRequest('api-onboarding', 'POST', { mode }, { action: 'setMode' });
 
+export interface InviteGroup { id: string; name: string; courseName: string; studentsCount: number; joinCode: string | null; link: string | null; }
+export const apiGetInviteGroups = (): Promise<{ groups: InviteGroup[] }> =>
+  apiRequest('api-onboarding', 'GET', undefined, { action: 'groups' });
+export const apiGetGroupCode = (groupId: string): Promise<{ code: string; groupName: string; link: string }> =>
+  apiRequest('api-onboarding', 'POST', { groupId }, { action: 'groupCode' });
+export const apiRegenGroupCode = (groupId: string): Promise<{ code: string; groupName: string; link: string }> =>
+  apiRequest('api-onboarding', 'POST', { groupId }, { action: 'regenGroupCode' });
+
+export interface BulkCreateRow { name: string; phone: string; status: string; link?: string; error?: string; }
+export const apiBulkCreate = (data: { students: { name: string; phone: string }[]; role: 'student' | 'teacher'; groupId?: string }): Promise<{ created: number; results: BulkCreateRow[] }> =>
+  apiRequest('api-onboarding', 'POST', data, { action: 'bulkCreate' });
+
+/** AI roster extraction from pasted text or an uploaded image/PDF. */
+export const apiRosterExtract = (data: { prompt?: string; fileUrl?: string }): Promise<{ data: { students: { name: string; phone: string }[] } }> =>
+  apiRequest('api-ai-generate', 'POST', { ...data, type: 'roster_extraction' });
+
+/** Natural-language "add X +996.. to group Y" → pre-created accounts + invite links. */
+export const apiAIRoster = (text: string): Promise<{ data: { results: any[]; reply: string } }> =>
+  apiRequest('api-ai-roster', 'POST', { text });
+
 // ============================================================
 // MEGA RELEASE EXPERIMENTAL API (Homework & Risk)
 // ============================================================

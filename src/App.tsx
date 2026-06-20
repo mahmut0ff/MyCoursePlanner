@@ -116,6 +116,9 @@ const AIHubPage = lazyRetry(() => import('./pages/ai/AIHubPage'));
 // AI Coach (student-facing tutor / practice / plan / speaking)
 const StudentAICoachPage = lazyRetry(() => import('./pages/student/StudentAICoachPage'));
 
+// Enrollment (Telegram join links / QR)
+const EnrollmentPage = lazyRetry(() => import('./pages/enrollment/EnrollmentPage'));
+
 // Admin Pages
 const AdminDashboardPage = lazyRetry(() => import('./pages/admin/AdminDashboardPage'));
 const AdminOrganizationsPage = lazyRetry(() => import('./pages/admin/AdminOrganizationsPage'));
@@ -262,6 +265,7 @@ const App: React.FC = () => {
 
             {/* ═══ Org Admin: People ═══ */}
             <Route path="leads" element={<ProtectedRoute allowedRoles={['admin', 'manager']}><AILeadsPage /></ProtectedRoute>} />
+            <Route path="enrollment" element={<ProtectedRoute allowedRoles={['admin', 'manager']}><EnrollmentPage /></ProtectedRoute>} />
             <Route path="students" element={<ProtectedRoute allowedRoles={['admin', 'manager']}><StudentsPage /></ProtectedRoute>} />
             <Route path="students/:uid" element={<ProtectedRoute allowedRoles={['admin', 'manager']}><StudentDetailPage /></ProtectedRoute>} />
             <Route path="teachers" element={<ProtectedRoute allowedRoles={['admin', 'manager']}><TeachersPage /></ProtectedRoute>} />

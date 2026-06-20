@@ -20,7 +20,7 @@ import {
   Lock, ClipboardCheck,
   ShieldCheck, Inbox,
   NotebookText, NotebookPen, MapPin, UserCog,
-  Sparkles,
+  Sparkles, Send,
 } from 'lucide-react';
 
 /* ─── Thin divider between groups ─── */
@@ -151,6 +151,7 @@ const Sidebar: React.FC<{ open: boolean; onClose: () => void; isCollapsed?: bool
               <NavItem to="/students" icon={Users} label={term(t, instType, 'students')} isCollapsed={isCollapsed} onClose={onClose} />
               <NavItem to="/teachers" icon={UserPlus} label={t('nav.teachers')} isCollapsed={isCollapsed} onClose={onClose} />
               <NavItem to="/managers" icon={ShieldCheck} label={t('nav.managers', 'Менеджеры')} isCollapsed={isCollapsed} onClose={onClose} />
+              <NavItem to="/enrollment" icon={Send} label={t('nav.intake', 'Набор')} isCollapsed={isCollapsed} onClose={onClose} />
               <NavItem to="/team" icon={UserCog} label={t('nav.team', 'Команда и роли')} isCollapsed={isCollapsed} onClose={onClose} locked={!canAccess('rbac')} />
 
               <SectionLabel label={t('nav.secLearning', 'Обучение')} isCollapsed={isCollapsed} />
@@ -176,6 +177,9 @@ const Sidebar: React.FC<{ open: boolean; onClose: () => void; isCollapsed?: bool
               <NavItem to="/teachers" icon={UserPlus} label={t('nav.teachers')} isCollapsed={isCollapsed} onClose={onClose} />
               {hasPermission('managers') && (
                 <NavItem to="/managers" icon={ShieldCheck} label={t('nav.managers', 'Менеджеры')} isCollapsed={isCollapsed} onClose={onClose} />
+              )}
+              {hasPermission('settings') && (
+                <NavItem to="/enrollment" icon={Send} label={t('nav.intake', 'Набор')} isCollapsed={isCollapsed} onClose={onClose} />
               )}
               {canRead('team') && (
                 <NavItem to="/team" icon={UserCog} label={t('nav.team', 'Команда и роли')} isCollapsed={isCollapsed} onClose={onClose} locked={!canAccess('rbac')} />

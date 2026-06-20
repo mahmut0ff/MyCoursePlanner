@@ -9,23 +9,21 @@ import {
   Save, Building2, GraduationCap, Check, Bell, BarChart3,
   Database, Camera, Loader2, MapPin, Phone, Mail, Clock,
   QrCode, Download, Send, MessageCircle, Printer, Copy, CheckCircle, Globe,
-  School, Languages, UserPlus
+  School, Languages
 } from 'lucide-react';
 import type { OrgSettings } from '../../types';
 import { INSTITUTION_LIST } from '../../lib/terminology';
 import QRCode from 'qrcode';
 import { IntegrationsTab } from './IntegrationsTab';
-import { EnrollmentTab } from './EnrollmentTab';
 import toast from 'react-hot-toast';
 import { Link } from 'lucide-react';
 
-type Tab = 'general' | 'academic' | 'visitcard' | 'enrollment' | 'integrations' | 'notifications' | 'data' | 'limits';
+type Tab = 'general' | 'academic' | 'visitcard' | 'integrations' | 'notifications' | 'data' | 'limits';
 
 const TABS: { id: Tab; icon: React.ElementType; labelKey: string }[] = [
   { id: 'general', icon: Building2, labelKey: 'org.settings.general' },
   { id: 'academic', icon: GraduationCap, labelKey: 'org.settings.academic' },
   { id: 'visitcard', icon: QrCode, labelKey: 'org.settings.visitCardTab' },
-  { id: 'enrollment', icon: UserPlus, labelKey: 'Регистрация' },
   { id: 'integrations', icon: Link, labelKey: 'Интеграции' },
   { id: 'notifications', icon: Bell, labelKey: 'org.settings.notifications' },
   { id: 'data', icon: Database, labelKey: 'org.settings.dataTab' },
@@ -580,7 +578,6 @@ const OrgSettingsPage: React.FC = () => {
       case 'general': return <GeneralTab settings={settings} update={update} />;
       case 'academic': return <AcademicTab settings={settings} update={update} />;
       case 'visitcard': return <VisitCardTab settings={settings} update={update} />;
-      case 'enrollment': return <EnrollmentTab />;
       case 'integrations': return <IntegrationsTab organizationId={settings.organizationId} />;
       case 'notifications': return <NotificationsTab settings={settings} update={update} />;
       case 'data': return <DataTab />;

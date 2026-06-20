@@ -137,6 +137,13 @@ No markdown fences, only the raw JSON object.`;
       systemPrompt = `You are a professional translator for educational content.
 Translate the provided text into the requested target language, preserving meaning, tone and any simple formatting. Do not add commentary.
 Return strictly a JSON object: { "translation": string }. No markdown, only the raw JSON object.`;
+    } else if (type === 'roster_extraction') {
+      systemPrompt = `You extract a people roster from the provided text or image (a photo of a paper journal, a screenshot of a messenger group, a pasted list or table).
+Return strictly a JSON object: { "students": [{ "name": string, "phone": string }] }.
+- "name": full name exactly as written (keep original language/spelling). If only a first name exists, use it.
+- "phone": the person's phone with country code if shown (e.g. +996700123456); if none is visible, use "".
+- Include every distinct person. Skip headers, totals, dates and non-person rows. Do not invent names or numbers.
+Only the raw JSON object, no markdown.`;
     } else {
       systemPrompt = `You are an expert educator. Generate an exam based on the provided material or prompt. 
 Format the response strictly as a JSON array of objects. 

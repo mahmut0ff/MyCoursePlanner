@@ -36,15 +36,26 @@ function genCode(): string {
   return out;
 }
 
-async function freshCode(orgId: string, role: JoinRole): Promise<string> {
+async function freshCode(orgId: string, role: JoinRole, extra?: { groupId?: string; groupName?: string }): Promise<string> {
   let code = genCode();
   for (let i = 0; i < 5; i++) {
     const exists = await adminDb.collection('orgJoinCodes').doc(code).get();
     if (!exists.exists) break;
     code = genCode();
   }
-  await adminDb.collection('orgJoinCodes').doc(code).set({ orgId, role, createdAt: now() });
+  await adminDb.collection('orgJoinCodes').doc(code).set({
+    orgId, role, createdAt: now(),
+    ...(extra?.groupId ? { groupId: extra.groupId, groupName: extra.groupName || '' } : {}),
+  });
   return code;
+}
+
+/** Add a user to a group's roster (students vs teachers). */
+async function assignToGroup(orgId: string, groupId: string, uid: string, role: JoinRole): Promise<void> {
+  const field = role === 'teacher' ? 'teacherIds' : 'studentIds';
+  await adminDb.collection('groups').doc(groupId)
+    .update({ [field]: FieldValue.arrayUnion(uid), updatedAt: now() })
+    .catch(() => {});
 }
 
 /** Get (creating if needed) the org's onboarding config + join codes. */
@@ -92,12 +103,41 @@ export async function setStudentJoinMode(orgId: string, mode: 'auto' | 'approval
   await adminDb.collection('orgOnboarding').doc(orgId).set({ studentJoinMode: mode, updatedAt: now() }, { merge: true });
 }
 
-/** Resolve a join code to its org + role. */
-export async function resolveJoinCode(code: string): Promise<{ orgId: string; role: JoinRole } | null> {
+/** Resolve a join code to its org + role (+ optional group). */
+export async function resolveJoinCode(code: string): Promise<{ orgId: string; role: JoinRole; groupId?: string; groupName?: string } | null> {
   const snap = await adminDb.collection('orgJoinCodes').doc(code.trim().toUpperCase()).get();
   if (!snap.exists) return null;
   const d = snap.data()!;
-  return { orgId: d.orgId, role: d.role };
+  return { orgId: d.orgId, role: d.role, groupId: d.groupId, groupName: d.groupName };
+}
+
+/** Get (creating if needed) a reusable join code for a specific group. */
+export async function getGroupJoinCode(orgId: string, groupId: string): Promise<{ code: string; groupName: string } | null> {
+  const groupSnap = await adminDb.collection('groups').doc(groupId).get();
+  if (!groupSnap.exists) return null;
+  const g = groupSnap.data()!;
+  if (g.organizationId !== orgId) return null;
+  const groupName = g.name || 'Группа';
+  if (g.joinCode) {
+    const map = await adminDb.collection('orgJoinCodes').doc(g.joinCode).get();
+    if (map.exists) return { code: g.joinCode, groupName };
+  }
+  const code = await freshCode(orgId, 'student', { groupId, groupName });
+  await adminDb.collection('groups').doc(groupId).update({ joinCode: code }).catch(() => {});
+  return { code, groupName };
+}
+
+/** Issue a new code for a group, invalidating the previous one. */
+export async function regenerateGroupCode(orgId: string, groupId: string): Promise<{ code: string; groupName: string } | null> {
+  const groupSnap = await adminDb.collection('groups').doc(groupId).get();
+  if (!groupSnap.exists) return null;
+  const g = groupSnap.data()!;
+  if (g.organizationId !== orgId) return null;
+  const groupName = g.name || 'Группа';
+  const code = await freshCode(orgId, 'student', { groupId, groupName });
+  if (g.joinCode) await adminDb.collection('orgJoinCodes').doc(g.joinCode).delete().catch(() => {});
+  await adminDb.collection('groups').doc(groupId).update({ joinCode: code }).catch(() => {});
+  return { code, groupName };
 }
 
 async function countActiveMembers(orgId: string, role: JoinRole): Promise<number> {
@@ -125,6 +165,8 @@ export async function createOrJoinTelegramUser(args: {
   role: JoinRole;
   orgId: string;
   orgName: string;
+  groupId?: string;
+  groupName?: string;
 }): Promise<JoinResult> {
   const chatId = String(args.chatId);
   const displayName = (args.displayName || '').trim() || 'Студент';
@@ -160,10 +202,11 @@ export async function createOrJoinTelegramUser(args: {
     });
   }
 
-  // 2. Already an active member? Nothing to do.
+  // 2. Already an active member? Just (re)assign to the group if a group link was used.
   const memRef = adminDb.collection('users').doc(uid).collection('memberships').doc(args.orgId);
   const memSnap = await memRef.get();
   if (memSnap.exists && memSnap.data()?.status === 'active') {
+    if (args.groupId) await assignToGroup(args.orgId, args.groupId, uid, args.role);
     return { uid, status: 'active', isNewUser, alreadyMember: true };
   }
 
@@ -206,6 +249,11 @@ export async function createOrJoinTelegramUser(args: {
     await adminDb.collection('organizations').doc(args.orgId).update({ [field]: FieldValue.increment(1) }).catch(() => {});
   }
 
+  // 5b. Auto-assign to the group (group invite links).
+  if (args.groupId) {
+    await assignToGroup(args.orgId, args.groupId, uid, args.role);
+  }
+
   // 6. Notify org admins.
   if (status === 'pending') {
     notifyOrgAdmins(
@@ -246,4 +294,99 @@ export async function consumeLoginToken(ott: string): Promise<string | null> {
   await ref.delete().catch(() => {}); // one-time use
   if (new Date(d.expiresAt) < new Date()) return null;
   return d.uid as string;
+}
+
+/** Issue a durable claim token (30 days) that links a pre-created account to a Telegram chat. */
+export async function createClaimToken(uid: string, orgId: string): Promise<string> {
+  const token = randomBytes(16).toString('base64url');
+  await adminDb.collection('orgClaimTokens').doc(token).set({
+    uid, orgId, createdAt: now(), expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+  });
+  return token;
+}
+
+export async function resolveClaimToken(token: string): Promise<{ uid: string; orgId: string } | null> {
+  const snap = await adminDb.collection('orgClaimTokens').doc(token).get();
+  if (!snap.exists) return null;
+  const d = snap.data()!;
+  if (new Date(d.expiresAt) < new Date()) return null;
+  return { uid: d.uid, orgId: d.orgId };
+}
+
+export interface InviteResult {
+  uid: string;
+  token: string;
+  status: 'active' | 'pending';
+  isNew: boolean;
+}
+
+/**
+ * Pre-create an account from data the center already has (bulk import, voice add).
+ * Creates a passwordless user + membership (+ group), and returns a claim token so
+ * the person links Telegram with one tap (no contact/name step).
+ * Dedupes by phone within the org.
+ */
+export async function createPendingInvite(args: {
+  orgId: string;
+  orgName: string;
+  role: JoinRole;
+  name: string;
+  phone: string;
+  groupId?: string;
+  groupName?: string;
+}): Promise<InviteResult> {
+  const displayName = (args.name || '').trim() || (args.role === 'teacher' ? 'Преподаватель' : 'Ученик');
+  const phone = (args.phone || '').trim();
+
+  let uid: string | null = null;
+  let isNew = false;
+  if (phone) {
+    const existing = await adminDb.collection('users')
+      .where('phone', '==', phone).where('organizationId', '==', args.orgId).limit(1).get();
+    if (!existing.empty) uid = existing.docs[0].id;
+  }
+  if (!uid) {
+    const record = await adminAuth.createUser({ displayName });
+    uid = record.uid;
+    isNew = true;
+    await adminDb.collection('users').doc(uid).set({
+      uid, username: '', email: '', displayName, role: args.role,
+      avatarUrl: '', bio: '', skills: [], city: '', country: '', phone,
+      activeOrgId: args.orgId, organizationId: args.orgId,
+      createdAt: now(), updatedAt: now(),
+    });
+  }
+
+  // Membership (admin-initiated → active within plan limit; teachers active).
+  const memRef = adminDb.collection('users').doc(uid).collection('memberships').doc(args.orgId);
+  const memSnap = await memRef.get();
+  let status: 'active' | 'pending' = 'active';
+  if (!(memSnap.exists && memSnap.data()?.status === 'active')) {
+    if (args.role === 'student') {
+      const limits = await getOrgLimits(args.orgId);
+      const active = await countActiveMembers(args.orgId, 'student');
+      status = (limits.maxStudents !== -1 && active >= limits.maxStudents) ? 'pending' : 'active';
+    }
+    const ts = now();
+    const membership = {
+      userId: uid, userName: displayName, userEmail: '',
+      organizationId: args.orgId, organizationName: args.orgName,
+      role: args.role, status, joinMethod: 'invite',
+      joinedAt: status === 'active' ? ts : '', createdAt: ts, updatedAt: ts,
+    };
+    await memRef.set(membership, { merge: true });
+    await adminDb.collection('orgMembers').doc(args.orgId).collection('members').doc(uid).set(membership, { merge: true });
+    await adminDb.collection('users').doc(uid).set(
+      { activeOrgId: args.orgId, organizationId: args.orgId, role: args.role, updatedAt: ts }, { merge: true },
+    );
+    if (status === 'active') {
+      const field = args.role === 'student' ? 'studentsCount' : 'teachersCount';
+      await adminDb.collection('organizations').doc(args.orgId).update({ [field]: FieldValue.increment(1) }).catch(() => {});
+    }
+  }
+
+  if (args.groupId) await assignToGroup(args.orgId, args.groupId, uid, args.role);
+
+  const token = await createClaimToken(uid, args.orgId);
+  return { uid, token, status, isNew };
 }

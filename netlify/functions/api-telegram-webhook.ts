@@ -2,7 +2,7 @@ import type { Handler, HandlerEvent } from '@netlify/functions';
 import { adminDb } from './utils/firebase-admin';
 import { notifyOrgAdmins } from './utils/notifications';
 import { resolveTelegramLinkCode, TELEGRAM_BOT_TOKEN } from './utils/telegram';
-import { resolveJoinCode, createOrJoinTelegramUser, createLoginToken } from './utils/onboarding';
+import { resolveJoinCode, createOrJoinTelegramUser, createLoginToken, resolveClaimToken } from './utils/onboarding';
 
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY || '';
 
@@ -101,7 +101,7 @@ export const handler: Handler = async (event: HandlerEvent) => {
             return { statusCode: 200, body: 'OK' };
           }
           try {
-            const result = await createOrJoinTelegramUser({ chatId, phone: reg.phone || '', displayName: fullName, role: reg.role, orgId: reg.orgId, orgName: reg.orgName });
+            const result = await createOrJoinTelegramUser({ chatId, phone: reg.phone || '', displayName: fullName, role: reg.role, orgId: reg.orgId, orgName: reg.orgName, groupId: reg.groupId, groupName: reg.groupName });
             await stateRef.delete().catch(() => {});
             await sendTg(`Принято, <b>${fullName}</b> ✅`, { remove_keyboard: true });
             if (result.status === 'active') {
@@ -122,6 +122,23 @@ export const handler: Handler = async (event: HandlerEvent) => {
         const parts = text.split(' ');
         const payloadArg = parts.length > 1 ? parts[1].trim() : '';
 
+        // Claim a pre-created account: /start claim_<TOKEN> (bulk import / voice add).
+        if (payloadArg.startsWith('claim_')) {
+          const token = payloadArg.slice('claim_'.length);
+          const claim = await resolveClaimToken(token);
+          if (!claim) {
+            await reply('❌ Ссылка-приглашение недействительна или истекла. Попросите центр прислать новую.');
+            return { statusCode: 200, body: 'OK' };
+          }
+          await adminDb.collection('users').doc(claim.uid).set(
+            { telegramChatId: String(chatId), telegramLinkedAt: new Date().toISOString() }, { merge: true },
+          );
+          const u = await adminDb.collection('users').doc(claim.uid).get();
+          const nm = u.data()?.displayName || '';
+          await sendLoginButton(claim.uid, `🎉 Добро пожаловать${nm ? `, <b>${nm}</b>` : ''}! Ваш аккаунт готов.\n\nНажмите, чтобы войти — без пароля:`);
+          return { statusCode: 200, body: 'OK' };
+        }
+
         // Join-by-code: /start join_<CODE>
         if (payloadArg.startsWith('join_')) {
           const code = payloadArg.slice('join_'.length);
@@ -137,11 +154,14 @@ export const handler: Handler = async (event: HandlerEvent) => {
           }
           const orgName = orgSnap.data()?.name || 'учебный центр';
           await adminDb.collection('telegramRegistrations').doc(String(chatId)).set({
-            orgId: resolved.orgId, role: resolved.role, orgName, step: 'awaiting_contact', createdAt: new Date().toISOString(),
+            orgId: resolved.orgId, role: resolved.role, orgName,
+            ...(resolved.groupId ? { groupId: resolved.groupId, groupName: resolved.groupName || '' } : {}),
+            step: 'awaiting_contact', createdAt: new Date().toISOString(),
           });
           const roleWord = resolved.role === 'teacher' ? 'преподаватель' : 'ученик';
+          const groupLine = resolved.groupName ? `\nГруппа: <b>${resolved.groupName}</b>` : '';
           await sendTg(
-            `👋 Добро пожаловать!\n\nВы вступаете в <b>${orgName}</b> как <b>${roleWord}</b>.\nПоделитесь номером телефона, чтобы создать аккаунт 👇`,
+            `👋 Добро пожаловать!\n\nВы вступаете в <b>${orgName}</b> как <b>${roleWord}</b>.${groupLine}\nПоделитесь номером телефона, чтобы создать аккаунт 👇`,
             { keyboard: [[{ text: '📱 Поделиться номером', request_contact: true }]], resize_keyboard: true, one_time_keyboard: true },
           );
           return { statusCode: 200, body: 'OK' };

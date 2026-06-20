@@ -230,6 +230,7 @@ service cloud.firestore {
     // Telegram onboarding / login — all written & read by the backend (Admin SDK).
     match /orgJoinCodes/{code} { allow read, write: if false; }
     match /orgOnboarding/{orgId} { allow read, write: if false; }
+    match /orgClaimTokens/{token} { allow read, write: if false; }
     match /telegramRegistrations/{chatId} { allow read, write: if false; }
     match /telegramLoginTokens/{token} { allow read, write: if false; }
 

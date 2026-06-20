@@ -67,32 +67,54 @@ export const handler: Handler = async (event: HandlerEvent) => {
     if (isGlobalBot) {
       // ─── GLOBAL BOT: registration, account linking & passwordless login ───
 
-      // (a) Contact shared → complete a pending registration.
+      // (a) Contact shared → capture phone, then ask for the official full name.
       if (contact) {
-        const stateSnap = await adminDb.collection('telegramRegistrations').doc(String(chatId)).get();
+        const stateRef = adminDb.collection('telegramRegistrations').doc(String(chatId));
+        const stateSnap = await stateRef.get();
         if (!stateSnap.exists) {
           await sendTg('Чтобы зарегистрироваться, откройте ссылку-приглашение от вашего учебного центра.', { remove_keyboard: true });
           return { statusCode: 200, body: 'OK' };
         }
-        const state = stateSnap.data()!;
         const phone = contact.phone_number || '';
-        const fname = message.from?.first_name || contact.first_name || '';
-        const lname = message.from?.last_name || contact.last_name || '';
-        const displayName = `${fname} ${lname}`.trim() || 'Студент';
-        try {
-          const result = await createOrJoinTelegramUser({ chatId, phone, displayName, role: state.role, orgId: state.orgId, orgName: state.orgName });
-          await adminDb.collection('telegramRegistrations').doc(String(chatId)).delete().catch(() => {});
-          await sendTg('Принято ✅', { remove_keyboard: true });
-          if (result.status === 'active') {
-            await sendLoginButton(result.uid, `🎉 Готово, <b>${displayName}</b>! Вы зачислены в <b>${state.orgName}</b>.\n\nНажмите, чтобы войти — без пароля:`);
-          } else {
-            await sendLoginButton(result.uid, `📨 Заявка отправлена в <b>${state.orgName}</b>. Администратор подтвердит вас в ближайшее время.\n\nКнопка для входа (заработает после подтверждения):`);
-          }
-        } catch (e) {
-          console.error('TG registration error:', e);
-          await sendTg('Не удалось завершить регистрацию. Попробуйте ещё раз позже.', { remove_keyboard: true });
-        }
+        const sFname = message.from?.first_name || contact.first_name || '';
+        const sLname = message.from?.last_name || contact.last_name || '';
+        const suggested = `${sFname} ${sLname}`.trim();
+        await stateRef.set({ phone, suggestedName: suggested, step: 'awaiting_name', updatedAt: new Date().toISOString() }, { merge: true });
+        await sendTg(
+          'Спасибо! 📝 Как записать вас в журнал? Напишите <b>имя и фамилию</b> (как в документах).',
+          suggested
+            ? { keyboard: [[{ text: suggested }]], resize_keyboard: true, one_time_keyboard: true }
+            : { remove_keyboard: true },
+        );
         return { statusCode: 200, body: 'OK' };
+      }
+
+      // (a2) Awaiting full name (free text) → finalize the account.
+      if (text && !text.startsWith('/')) {
+        const stateRef = adminDb.collection('telegramRegistrations').doc(String(chatId));
+        const stateSnap = await stateRef.get();
+        const reg = stateSnap.exists ? stateSnap.data()! : null;
+        if (reg && reg.step === 'awaiting_name') {
+          const fullName = text.trim().replace(/\s+/g, ' ').slice(0, 80);
+          if (fullName.length < 2) {
+            await sendTg('Пожалуйста, напишите имя и фамилию полностью.');
+            return { statusCode: 200, body: 'OK' };
+          }
+          try {
+            const result = await createOrJoinTelegramUser({ chatId, phone: reg.phone || '', displayName: fullName, role: reg.role, orgId: reg.orgId, orgName: reg.orgName });
+            await stateRef.delete().catch(() => {});
+            await sendTg(`Принято, <b>${fullName}</b> ✅`, { remove_keyboard: true });
+            if (result.status === 'active') {
+              await sendLoginButton(result.uid, `🎉 Готово! Вы зачислены в <b>${reg.orgName}</b>.\n\nНажмите, чтобы войти — без пароля:`);
+            } else {
+              await sendLoginButton(result.uid, `📨 Заявка отправлена в <b>${reg.orgName}</b>. Администратор подтвердит вас в ближайшее время.\n\nКнопка для входа (заработает после подтверждения):`);
+            }
+          } catch (e) {
+            console.error('TG registration error:', e);
+            await sendTg('Не удалось завершить регистрацию. Попробуйте ещё раз позже.', { remove_keyboard: true });
+          }
+          return { statusCode: 200, body: 'OK' };
+        }
       }
 
       // (b) /start with payload — join-by-code or account-linking code.

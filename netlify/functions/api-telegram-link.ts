@@ -10,7 +10,7 @@
 import type { Handler, HandlerEvent } from '@netlify/functions';
 import { adminDb } from './utils/firebase-admin';
 import { verifyAuth, ok, unauthorized, badRequest, jsonResponse } from './utils/auth';
-import { generateTelegramLinkCode } from './utils/telegram';
+import { generateTelegramLinkCode, TELEGRAM_BOT_TOKEN, TELEGRAM_BOT_USERNAME } from './utils/telegram';
 
 const handler: Handler = async (event: HandlerEvent) => {
   if (event.httpMethod === 'OPTIONS') return jsonResponse(204, '');
@@ -49,8 +49,8 @@ const handler: Handler = async (event: HandlerEvent) => {
       const code = await generateTelegramLinkCode(orgId, user.uid);
 
       // Global bot instead of organization-specific
-      const botUsername = 'planula_bot';
-      const systemToken = process.env.TELEGRAM_BOT_TOKEN || '8330921361:AAGmnzPz_womNW8dcoC2DNcTTpkXV8_5VaY';
+      const botUsername = TELEGRAM_BOT_USERNAME;
+      const systemToken = TELEGRAM_BOT_TOKEN;
 
       const origin = event.rawUrl ? new URL(event.rawUrl).origin : `https://${event.headers.host}`;
       if (!origin.includes('localhost') && !origin.includes('127.0.0.1')) {

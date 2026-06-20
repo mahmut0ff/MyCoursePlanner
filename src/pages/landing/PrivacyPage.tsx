@@ -66,7 +66,7 @@ const PrivacyPage: React.FC = () => {
     {
       id: 'contact', heading: 'Контакты',
       body: [
-        'По вопросам конфиденциальности: hello@sabakhub.kg, Telegram @planula_bot, г. Ош, Кыргызстан.',
+        'По вопросам конфиденциальности: hello@sabakhub.kg, Telegram @sabakhub_bot, г. Ош, Кыргызстан.',
       ],
     },
   ];

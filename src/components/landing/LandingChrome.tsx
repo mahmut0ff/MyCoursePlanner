@@ -223,7 +223,7 @@ export const LandingFooter: React.FC = () => {
             </div>
             <p className="mt-4 max-w-xs text-sm leading-relaxed text-slate-500">{t('landing.footerDesc')}</p>
             <div className="mt-5 flex gap-2.5">
-              <a href="https://t.me/planula_bot" target="_blank" rel="noopener noreferrer" aria-label="Telegram" className="flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 text-slate-500 transition-colors hover:border-primary-200 hover:bg-primary-50 hover:text-primary-600">
+              <a href="https://t.me/sabakhub_bot" target="_blank" rel="noopener noreferrer" aria-label="Telegram" className="flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 text-slate-500 transition-colors hover:border-primary-200 hover:bg-primary-50 hover:text-primary-600">
                 <MessageCircle className="w-4 h-4" />
               </a>
               <a href="mailto:hello@sabakhub.kg" aria-label="Email" className="flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 text-slate-500 transition-colors hover:border-primary-200 hover:bg-primary-50 hover:text-primary-600">

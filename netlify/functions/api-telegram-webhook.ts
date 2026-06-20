@@ -1,7 +1,8 @@
 import type { Handler, HandlerEvent } from '@netlify/functions';
 import { adminDb } from './utils/firebase-admin';
 import { notifyOrgAdmins } from './utils/notifications';
-import { resolveTelegramLinkCode } from './utils/telegram';
+import { resolveTelegramLinkCode, TELEGRAM_BOT_TOKEN } from './utils/telegram';
+import { resolveJoinCode, createOrJoinTelegramUser, createLoginToken } from './utils/onboarding';
 
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY || '';
 
@@ -13,16 +14,18 @@ export const handler: Handler = async (event: HandlerEvent) => {
   try {
     const payload = JSON.parse(event.body || '{}');
     const message = payload.message;
-    if (!message || !message.text || !message.chat) {
+    if (!message || !message.chat || (!message.text && !message.contact)) {
       return { statusCode: 200, body: 'OK' };
     }
 
     const chatId = message.chat.id;
-    const text = message.text;
+    const text = message.text || '';
+    const contact = message.contact;
+    const appOrigin = event.rawUrl ? new URL(event.rawUrl).origin : `https://${event.headers.host || ''}`;
     
     // Determine if this is the Global SabakHub Bot or a Custom AI Bot
     const queryOrgId = event.queryStringParameters?.orgId;
-    let botToken = process.env.TELEGRAM_BOT_TOKEN || '8330921361:AAGmnzPz_womNW8dcoC2DNcTTpkXV8_5VaY';
+    let botToken = TELEGRAM_BOT_TOKEN;
     let isGlobalBot = true;
 
     if (queryOrgId) {
@@ -46,30 +49,115 @@ export const handler: Handler = async (event: HandlerEvent) => {
       }).catch(err => console.error('Telegram reply error:', err));
     };
 
+    // Send with custom reply markup (keyboards / inline buttons).
+    const sendTg = async (replyText: string, replyMarkup?: any) => {
+      await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ chat_id: chatId, text: replyText, parse_mode: 'HTML', ...(replyMarkup ? { reply_markup: replyMarkup } : {}) })
+      }).catch(err => console.error('Telegram send error:', err));
+    };
+
+    // Inline button that opens the app already signed in (passwordless).
+    const sendLoginButton = async (uid: string, intro: string) => {
+      const ott = await createLoginToken(uid);
+      await sendTg(intro, { inline_keyboard: [[{ text: '🚀 Открыть SabakHub', url: `${appOrigin}/tg-login?ott=${ott}` }]] });
+    };
+
     if (isGlobalBot) {
-      // ─── GLOBAL NOTIFICATION BOT BEHAVIOR ───
-      // Handles linking /start CODE and /unlink
+      // ─── GLOBAL BOT: registration, account linking & passwordless login ───
+
+      // (a) Contact shared → complete a pending registration.
+      if (contact) {
+        const stateSnap = await adminDb.collection('telegramRegistrations').doc(String(chatId)).get();
+        if (!stateSnap.exists) {
+          await sendTg('Чтобы зарегистрироваться, откройте ссылку-приглашение от вашего учебного центра.', { remove_keyboard: true });
+          return { statusCode: 200, body: 'OK' };
+        }
+        const state = stateSnap.data()!;
+        const phone = contact.phone_number || '';
+        const fname = message.from?.first_name || contact.first_name || '';
+        const lname = message.from?.last_name || contact.last_name || '';
+        const displayName = `${fname} ${lname}`.trim() || 'Студент';
+        try {
+          const result = await createOrJoinTelegramUser({ chatId, phone, displayName, role: state.role, orgId: state.orgId, orgName: state.orgName });
+          await adminDb.collection('telegramRegistrations').doc(String(chatId)).delete().catch(() => {});
+          await sendTg('Принято ✅', { remove_keyboard: true });
+          if (result.status === 'active') {
+            await sendLoginButton(result.uid, `🎉 Готово, <b>${displayName}</b>! Вы зачислены в <b>${state.orgName}</b>.\n\nНажмите, чтобы войти — без пароля:`);
+          } else {
+            await sendLoginButton(result.uid, `📨 Заявка отправлена в <b>${state.orgName}</b>. Администратор подтвердит вас в ближайшее время.\n\nКнопка для входа (заработает после подтверждения):`);
+          }
+        } catch (e) {
+          console.error('TG registration error:', e);
+          await sendTg('Не удалось завершить регистрацию. Попробуйте ещё раз позже.', { remove_keyboard: true });
+        }
+        return { statusCode: 200, body: 'OK' };
+      }
+
+      // (b) /start with payload — join-by-code or account-linking code.
       if (text.startsWith('/start')) {
         const parts = text.split(' ');
-        if (parts.length > 1) {
-          const code = parts[1].trim();
-          const linkResult = await resolveTelegramLinkCode(code);
+        const payloadArg = parts.length > 1 ? parts[1].trim() : '';
 
+        // Join-by-code: /start join_<CODE>
+        if (payloadArg.startsWith('join_')) {
+          const code = payloadArg.slice('join_'.length);
+          const resolved = await resolveJoinCode(code);
+          if (!resolved) {
+            await reply('❌ Код приглашения не найден или больше не действителен. Попросите у центра новую ссылку.');
+            return { statusCode: 200, body: 'OK' };
+          }
+          const orgSnap = await adminDb.collection('organizations').doc(resolved.orgId).get();
+          if (!orgSnap.exists || orgSnap.data()?.status !== 'active') {
+            await reply('Учебный центр сейчас недоступен.');
+            return { statusCode: 200, body: 'OK' };
+          }
+          const orgName = orgSnap.data()?.name || 'учебный центр';
+          await adminDb.collection('telegramRegistrations').doc(String(chatId)).set({
+            orgId: resolved.orgId, role: resolved.role, orgName, step: 'awaiting_contact', createdAt: new Date().toISOString(),
+          });
+          const roleWord = resolved.role === 'teacher' ? 'преподаватель' : 'ученик';
+          await sendTg(
+            `👋 Добро пожаловать!\n\nВы вступаете в <b>${orgName}</b> как <b>${roleWord}</b>.\nПоделитесь номером телефона, чтобы создать аккаунт 👇`,
+            { keyboard: [[{ text: '📱 Поделиться номером', request_contact: true }]], resize_keyboard: true, one_time_keyboard: true },
+          );
+          return { statusCode: 200, body: 'OK' };
+        }
+
+        // Account-linking code (existing users linking notifications).
+        if (payloadArg) {
+          const linkResult = await resolveTelegramLinkCode(payloadArg);
           if (linkResult && linkResult.orgId) {
             await adminDb.collection('users').doc(linkResult.userId).update({
               telegramChatId: String(chatId),
               telegramLinkedAt: new Date().toISOString(),
             });
-
             await reply('✅ <b>Аккаунт привязан!</b>\n\nТеперь вы будете получать уведомления об оценках, домашних заданиях и оплатах прямо сюда.\n\nЧтобы отвязать — напишите /unlink');
             return { statusCode: 200, body: 'OK' };
-          } else {
-            await reply('❌ Код недействителен или истёк. Попробуйте получить новый код в приложении SabakHub.');
-            return { statusCode: 200, body: 'OK' };
           }
+          await reply('❌ Код недействителен или истёк. Попробуйте получить новый код в приложении SabakHub.');
+          return { statusCode: 200, body: 'OK' };
         }
 
-        await reply('Здравствуйте! Этот бот предназначен для системных уведомлений SabakHub. Для привязки используйте специальную ссылку из веб-приложения.');
+        // /start with no payload — returning linked users get a login button.
+        const known = await adminDb.collection('users').where('telegramChatId', '==', String(chatId)).limit(1).get();
+        if (!known.empty) {
+          await sendLoginButton(known.docs[0].id, 'С возвращением! 👋 Нажмите, чтобы войти в SabakHub:');
+          return { statusCode: 200, body: 'OK' };
+        }
+        await reply('Здравствуйте! Я бот SabakHub. Чтобы зарегистрироваться в учебном центре, откройте ссылку-приглашение, которую вам прислали.');
+        return { statusCode: 200, body: 'OK' };
+      }
+
+      // (c) /login — quick passwordless login for linked users.
+      if (text === '/login') {
+        const known = await adminDb.collection('users').where('telegramChatId', '==', String(chatId)).limit(1).get();
+        if (!known.empty) {
+          await sendLoginButton(known.docs[0].id, 'Нажмите, чтобы войти в SabakHub:');
+        } else {
+          await reply('Ваш Telegram пока не привязан к аккаунту. Откройте ссылку-приглашение от вашего центра.');
+        }
         return { statusCode: 200, body: 'OK' };
       }
 

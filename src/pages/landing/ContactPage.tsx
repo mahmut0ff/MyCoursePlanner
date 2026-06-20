@@ -17,7 +17,7 @@ const ContactPage: React.FC = () => {
   }, [searchParams]);
 
   const channels = [
-    { icon: MessageCircle, label: 'Telegram', value: '@planula_bot', href: 'https://t.me/planula_bot' },
+    { icon: MessageCircle, label: 'Telegram', value: '@sabakhub_bot', href: 'https://t.me/sabakhub_bot' },
     { icon: Phone, label: t('landing.footerContact'), value: '+996 550 308 078', href: 'tel:+996550308078' },
     { icon: MapPin, label: t('landing.footerCity'), value: t('landing.footerCity'), href: '' },
   ];

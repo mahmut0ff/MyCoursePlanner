@@ -13,11 +13,19 @@
 import { adminDb } from './firebase-admin';
 
 /**
- * Get the Telegram bot token.
- * Uses the global planula_bot token for all organizations.
+ * Global SabakHub bot credentials. Prefer the TELEGRAM_BOT_TOKEN /
+ * TELEGRAM_BOT_USERNAME env vars (recommended — keeps the token out of source);
+ * the literals below are a fallback so the bot keeps working without config.
  */
-async function getOrgBotToken(orgId: string): Promise<string | null> {
-  return process.env.TELEGRAM_BOT_TOKEN || '8330921361:AAGmnzPz_womNW8dcoC2DNcTTpkXV8_5VaY';
+export const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN || '8905679858:AAF2uxqpo_ccA2a8lvh068W3xiNU8tAA4-8';
+export const TELEGRAM_BOT_USERNAME = process.env.TELEGRAM_BOT_USERNAME || 'sabakhub_bot';
+
+/**
+ * Get the Telegram bot token for an org. Currently the global SabakHub bot
+ * is used for all organizations.
+ */
+async function getOrgBotToken(_orgId: string): Promise<string | null> {
+  return TELEGRAM_BOT_TOKEN;
 }
 
 /**

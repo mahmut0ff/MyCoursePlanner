@@ -75,7 +75,7 @@ const TermsPage: React.FC = () => {
     {
       id: 'contact', heading: 'Контакты',
       body: [
-        'По юридическим вопросам: hello@sabakhub.kg, Telegram @planula_bot, г. Ош, Кыргызстан.',
+        'По юридическим вопросам: hello@sabakhub.kg, Telegram @sabakhub_bot, г. Ош, Кыргызстан.',
       ],
     },
   ];

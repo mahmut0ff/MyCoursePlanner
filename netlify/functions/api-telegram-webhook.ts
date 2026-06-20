@@ -2,7 +2,7 @@ import type { Handler, HandlerEvent } from '@netlify/functions';
 import { adminDb } from './utils/firebase-admin';
 import { notifyOrgAdmins } from './utils/notifications';
 import { resolveTelegramLinkCode, TELEGRAM_BOT_TOKEN } from './utils/telegram';
-import { resolveJoinCode, createOrJoinTelegramUser, createLoginToken, resolveClaimToken } from './utils/onboarding';
+import { resolveJoinCode, createOrJoinTelegramUser, createLoginToken, resolveClaimToken, ensureParentKey } from './utils/onboarding';
 
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY || '';
 
@@ -64,6 +64,12 @@ export const handler: Handler = async (event: HandlerEvent) => {
       await sendTg(intro, { inline_keyboard: [[{ text: '🚀 Открыть SabakHub', url: `${appOrigin}/tg-login?ott=${ott}` }]] });
     };
 
+    // Offer a parent-portal link (students only) so the student can forward it to parents.
+    const sendParentLink = async (uid: string) => {
+      const key = await ensureParentKey(uid);
+      await sendTg(`👨‍👩‍👦 <b>Для родителей</b>\nПерешлите эту ссылку родителям — они будут видеть ваши успехи и посещаемость:\n${appOrigin}/parent/${key}`);
+    };
+
     if (isGlobalBot) {
       // ─── GLOBAL BOT: registration, account linking & passwordless login ───
 
@@ -106,6 +112,7 @@ export const handler: Handler = async (event: HandlerEvent) => {
             await sendTg(`Принято, <b>${fullName}</b> ✅`, { remove_keyboard: true });
             if (result.status === 'active') {
               await sendLoginButton(result.uid, `🎉 Готово! Вы зачислены в <b>${reg.orgName}</b>.\n\nНажмите, чтобы войти — без пароля:`);
+              if (reg.role === 'student') await sendParentLink(result.uid);
             } else {
               await sendLoginButton(result.uid, `📨 Заявка отправлена в <b>${reg.orgName}</b>. Администратор подтвердит вас в ближайшее время.\n\nКнопка для входа (заработает после подтверждения):`);
             }
@@ -136,6 +143,7 @@ export const handler: Handler = async (event: HandlerEvent) => {
           const u = await adminDb.collection('users').doc(claim.uid).get();
           const nm = u.data()?.displayName || '';
           await sendLoginButton(claim.uid, `🎉 Добро пожаловать${nm ? `, <b>${nm}</b>` : ''}! Ваш аккаунт готов.\n\nНажмите, чтобы войти — без пароля:`);
+          if (u.data()?.role === 'student') await sendParentLink(claim.uid);
           return { statusCode: 200, body: 'OK' };
         }
 

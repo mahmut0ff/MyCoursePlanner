@@ -296,6 +296,16 @@ export async function consumeLoginToken(ott: string): Promise<string | null> {
   return d.uid as string;
 }
 
+/** Ensure the user has a parent-portal key, returning it (matches api-users format). */
+export async function ensureParentKey(uid: string): Promise<string> {
+  const snap = await adminDb.collection('users').doc(uid).get();
+  const existing = snap.data()?.parentPortalKey;
+  if (existing) return existing as string;
+  const key = `pp_${Date.now()}_${randomBytes(4).toString('hex')}`;
+  await adminDb.collection('users').doc(uid).set({ parentPortalKey: key, updatedAt: now() }, { merge: true });
+  return key;
+}
+
 /** Issue a durable claim token (30 days) that links a pre-created account to a Telegram chat. */
 export async function createClaimToken(uid: string, orgId: string): Promise<string> {
   const token = randomBytes(16).toString('base64url');

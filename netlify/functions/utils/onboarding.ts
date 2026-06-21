@@ -67,15 +67,16 @@ function genTempPassword(): string {
   return out;
 }
 
-/** Generate a unique, student-friendly login username (e.g. student_4821). */
-async function freshUsername(): Promise<string> {
+/** Generate a unique, role-aware login username (e.g. student_4821 / teacher_4821). */
+async function freshUsername(role: JoinRole): Promise<string> {
+  const prefix = role === 'teacher' ? 'teacher' : 'student';
   for (let i = 0; i < 8; i++) {
     const n = (randomBytes(2).readUInt16BE(0) % 9000) + 1000; // 1000..9999
-    const candidate = `student_${n}`;
+    const candidate = `${prefix}_${n}`;
     const exists = await adminDb.collection('users').where('username', '==', candidate).limit(1).get();
     if (exists.empty) return candidate;
   }
-  return `student_${randomBytes(4).toString('hex')}`; // fallback: collision-proof
+  return `${prefix}_${randomBytes(4).toString('hex')}`; // fallback: collision-proof
 }
 
 /** Add a user to a group's roster (students vs teachers). */
@@ -212,9 +213,9 @@ export async function createOrJoinTelegramUser(args: {
   if (!existing.empty) {
     uid = existing.docs[0].id;
   } else {
-    // Brand-new account: mint a username + temp password so the student can also
+    // Brand-new account: mint a username + temp password so the user can also
     // sign in on the web (username → email login), not only via the Telegram link.
-    loginUsername = await freshUsername();
+    loginUsername = await freshUsername(args.role);
     tempPassword = genTempPassword();
     const loginEmail = `${loginUsername}@${TG_LOGIN_EMAIL_DOMAIN}`;
     const record = await adminAuth.createUser({ email: loginEmail, password: tempPassword, displayName });
@@ -332,13 +333,14 @@ export async function ensureLoginCredentials(
   const hasLogin = !!(data.email && data.username);
   if (hasLogin && !opts.reset) return null; // already has a login — nothing to backfill
 
+  const role: JoinRole = data.role === 'teacher' ? 'teacher' : 'student';
   let username: string = data.username || '';
   let email: string = data.email || '';
   if (!email) {
-    if (!username) username = await freshUsername();
+    if (!username) username = await freshUsername(role);
     email = `${username}@${TG_LOGIN_EMAIL_DOMAIN}`;
   } else if (!username) {
-    username = await freshUsername(); // keep the real email, just add a login handle
+    username = await freshUsername(role); // keep the real email, just add a login handle
   }
 
   const tempPassword = genTempPassword();

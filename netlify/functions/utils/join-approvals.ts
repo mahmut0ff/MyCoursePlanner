@@ -165,12 +165,21 @@ export async function processApprovalDecision(
     return { ok: true, result: 'rejected', applicantName: ap.applicantName };
   }
 
-  // Approve — enforce the plan's active-member limit first.
+  // Approve — enforce the plan's active-member limit first (per role).
   const limits = await getOrgLimits(ap.orgId);
-  if (ap.role === 'student' && limits.maxStudents !== -1) {
+  if (ap.role === 'student') {
+    if (limits.maxStudents !== -1) {
+      const activeSnap = await adminDb.collection('orgMembers').doc(ap.orgId).collection('members')
+        .where('status', '==', 'active').where('role', '==', 'student').get();
+      if (activeSnap.size >= limits.maxStudents) {
+        return { ok: false, reason: 'limit', applicantName: ap.applicantName };
+      }
+    }
+  } else if (limits.maxTeachers !== -1) {
     const activeSnap = await adminDb.collection('orgMembers').doc(ap.orgId).collection('members')
-      .where('status', '==', 'active').where('role', '==', 'student').get();
-    if (activeSnap.size >= limits.maxStudents) {
+      .where('status', '==', 'active').get();
+    const teacherCount = activeSnap.docs.filter((d) => ['teacher', 'mentor', 'admin', 'owner'].includes(d.data().role)).length;
+    if (teacherCount >= limits.maxTeachers) {
       return { ok: false, reason: 'limit', applicantName: ap.applicantName };
     }
   }

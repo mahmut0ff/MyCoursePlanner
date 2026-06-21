@@ -54,7 +54,7 @@ async function handleApprovalCallback(cq: any, botToken: string, appOrigin: stri
     const messages: Record<string, string> = {
       not_found: 'Заявка не найдена или устарела',
       forbidden: 'Управлять заявками может только администратор центра',
-      limit: 'Достигнут лимит учеников по вашему тарифу',
+      limit: 'Достигнут лимит участников по вашему тарифу',
       handled: 'Эта заявка уже обработана',
     };
     await answer(messages[res.reason] || 'Не удалось обработать заявку', true);

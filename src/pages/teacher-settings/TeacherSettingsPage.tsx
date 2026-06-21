@@ -263,13 +263,25 @@ const TeacherSettingsPage: React.FC = () => {
                   <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">{t('teacherSettings.displayName')}</label>
                   <input value={displayName} onChange={(e) => setDisplayName(e.target.value)} className="input" />
                 </div>
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">{t('teacherSettings.emailLabel')}</label>
-                  <div className="relative">
-                    <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                    <input type="email" value={email} readOnly className="input pl-11 bg-slate-100 dark:bg-slate-700 cursor-not-allowed text-slate-500 dark:text-slate-400" />
+                {/* Telegram-registered accounts use a service email and log in by username — show the login, not the address. */}
+                {(profile?.email || '').endsWith('@tg.sabakhub.app') ? (
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">{t('profile.loginLabel', 'Логин для входа')}</label>
+                    <div className="relative">
+                      <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                      <input type="text" value={profile?.username || ''} readOnly className="input pl-11 bg-slate-100 dark:bg-slate-700 cursor-not-allowed text-slate-500 dark:text-slate-400" />
+                    </div>
+                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">{t('profile.tgLoginHint', 'Вход в систему — по этому логину и паролю (или через Telegram).')}</p>
                   </div>
-                </div>
+                ) : (
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">{t('teacherSettings.emailLabel')}</label>
+                    <div className="relative">
+                      <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                      <input type="email" value={email} readOnly className="input pl-11 bg-slate-100 dark:bg-slate-700 cursor-not-allowed text-slate-500 dark:text-slate-400" />
+                    </div>
+                  </div>
+                )}
                 <div>
                   <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1 flex items-center gap-1.5">
                     <Phone className="w-4 h-4 text-slate-400" />

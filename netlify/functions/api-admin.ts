@@ -545,6 +545,65 @@ const handler: Handler = async (event: HandlerEvent) => {
       return ok({ success: true });
     }
 
+    // Manual billing: set plan + paid-through date + active/suspended in one call.
+    if (action === 'setSubscription') {
+      if (!body.organizationId) return badRequest('organizationId required');
+      const orgRef = adminDb.collection('organizations').doc(body.organizationId);
+      const orgDoc = await orgRef.get();
+      if (!orgDoc.exists) return notFound('Organization not found');
+      const beforeOrg = orgDoc.data();
+      const ts = new Date().toISOString();
+
+      const subUpdate: any = { updatedAt: ts };
+      const orgUpdate: any = { updatedAt: ts };
+
+      if (body.planId !== undefined) {
+        if (!['starter', 'professional', 'enterprise'].includes(body.planId)) return badRequest('Invalid planId');
+        subUpdate.planId = body.planId;
+        orgUpdate.planId = body.planId;
+      }
+      if (body.paidUntil !== undefined) {
+        subUpdate.paidUntil = body.paidUntil || null;
+      }
+
+      // Status: explicit, or implied 'active' when a future paid-through date is given.
+      let status = body.status;
+      if (!status && body.paidUntil) {
+        const due = new Date(body.paidUntil).getTime();
+        if (!isNaN(due) && due > Date.now()) status = 'active';
+      }
+      if (status === 'active' || status === 'suspended') {
+        subUpdate.status = status;
+        orgUpdate.status = status;
+        if (status === 'active') subUpdate.cancelledAt = null;
+      }
+
+      const subSnap = await adminDb.collection('subscriptions').where('organizationId', '==', body.organizationId).limit(1).get();
+      if (!subSnap.empty) {
+        await subSnap.docs[0].ref.update(subUpdate);
+      } else {
+        await adminDb.collection('subscriptions').add({
+          organizationId: body.organizationId,
+          planId: subUpdate.planId || beforeOrg?.planId || 'starter',
+          status: subUpdate.status || 'active',
+          paidUntil: subUpdate.paidUntil ?? null,
+          startDate: ts,
+          createdAt: ts,
+        });
+      }
+      await orgRef.update(orgUpdate);
+
+      await auditLog(user, 'subscription_set', 'subscription', body.organizationId, beforeOrg,
+        { planId: subUpdate.planId, paidUntil: subUpdate.paidUntil, status: subUpdate.status });
+      await adminDb.collection('systemLogs').add({
+        action: 'plan_changed', actorId: user.uid, actorName: user.displayName,
+        targetType: 'subscription', targetId: body.organizationId,
+        metadata: { newPlan: subUpdate.planId, paidUntil: subUpdate.paidUntil, status: subUpdate.status, manual: true },
+        createdAt: ts,
+      });
+      return ok({ success: true });
+    }
+
     // ============================================================
     // ANALYTICS
     // ============================================================

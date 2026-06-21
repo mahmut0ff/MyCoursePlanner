@@ -68,6 +68,10 @@
 [functions."risk-alerts"]
   schedule = "0 7 * * 3"
 
+# Daily super-admin digest of org subscriptions expiring/overdue + auto-block past grace.
+[functions."subscription-reminders"]
+  schedule = "0 10 * * *"
+
 # ---- Security headers ----
 [[headers]]
   for = "/*"

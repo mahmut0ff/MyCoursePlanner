@@ -117,7 +117,7 @@ const FeaturesPage: React.FC = () => {
                   "Какая цена на курс IELTS?"<br/>
                   <span className="text-violet-600 mt-2 block font-semibold flex gap-2">
                     <ArrowRight className="w-4 h-4 mt-0.5 shrink-0" />
-                    "IELTS интенсив длится 2 месяца и стоит 45 000 ₸. Включены пробные тесты."
+                    "IELTS интенсив длится 2 месяца и стоит 45 000 сом. Включены пробные тесты."
                   </span>
                 </div>
               </div>

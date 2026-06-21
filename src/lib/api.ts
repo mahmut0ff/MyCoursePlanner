@@ -257,6 +257,8 @@ export const adminChangePlan = (organizationId: string, planId: string) => admin
 export const adminExtendSubscription = (organizationId: string, days: number) => adminReq('extendSubscription', 'POST', { organizationId, days });
 export const adminGiftPlan = (organizationId: string, planId: string) => adminReq('giftPlan', 'POST', { organizationId, planId });
 export const adminCancelSubscription = (organizationId: string) => adminReq('cancelSubscription', 'POST', { organizationId });
+export const adminSetSubscription = (organizationId: string, data: { planId?: string; paidUntil?: string | null; status?: 'active' | 'suspended' }) =>
+  adminReq('setSubscription', 'POST', { organizationId, ...data });
 
 // Analytics
 export const adminGetAnalytics = () => adminReq('analytics');

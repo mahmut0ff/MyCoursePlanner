@@ -187,6 +187,8 @@ export interface Subscription {
   status: SubscriptionStatus;
   startDate: string;
   currentPeriodEnd: string;
+  /** Manual billing: the date the org is paid through (ISO). Super-admin sets it. */
+  paidUntil?: string;
   trialEndsAt?: string;
   cancelledAt?: string;
   createdAt: string;

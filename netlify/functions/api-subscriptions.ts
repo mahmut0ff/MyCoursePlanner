@@ -10,6 +10,7 @@
 import type { Handler, HandlerEvent } from '@netlify/functions';
 import { adminDb } from './utils/firebase-admin';
 import { verifyAuth, isSuperAdmin, ok, unauthorized, forbidden, badRequest, notFound, jsonResponse } from './utils/auth';
+import { computePaidUntil, GRACE_DAYS } from './utils/subscription';
 
 const COLLECTION = 'subscriptions';
 
@@ -75,23 +76,32 @@ const handler: Handler = async (event: HandlerEvent) => {
     allSubs.sort((a: any, b: any) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
     const subscription = allSubs[0] as any;
 
-    // Calculate effective balance on-the-fly
+    // Calculate effective balance on-the-fly (legacy) + manual paid-until info.
     const balanceInfo = calculateEffectiveBalance(subscription);
+    const paidInfo = computePaidUntil(subscription.paidUntil);
     const enrichedSub = {
       ...subscription,
       effectiveBalance: balanceInfo.effectiveBalance,
-      daysRemaining: balanceInfo.daysRemaining,
+      daysRemaining: paidInfo.hasPaidUntil ? paidInfo.daysUntilDue : balanceInfo.daysRemaining,
       computedDailyRate: balanceInfo.dailyRate,
+      paidUntil: subscription.paidUntil || null,
+      daysUntilDue: paidInfo.daysUntilDue,
+      isOverdue: paidInfo.isOverdue,
+      graceDays: GRACE_DAYS,
     };
 
-    // Auto-expire if balance depleted (non-trial, non-gifted, was active)
-    if (balanceInfo.isExpiredByBalance && subscription.status === 'active') {
+    // Auto-expire once active. Manual model (paidUntil set) wins; otherwise fall
+    // back to legacy balance depletion.
+    const shouldExpire = subscription.status === 'active' && (
+      paidInfo.hasPaidUntil ? paidInfo.isPastGrace : balanceInfo.isExpiredByBalance
+    );
+    if (shouldExpire) {
       await snap.docs[0].ref.update({ status: 'expired' });
       enrichedSub.status = 'expired';
-      // Also update org
-      await adminDb.collection('organizations').doc(orgId).update({
-        updatedAt: new Date().toISOString(),
-      });
+      const orgUpdate: any = { updatedAt: new Date().toISOString() };
+      // Auto-block the org only in the manual model (legacy balance path keeps old behavior).
+      if (paidInfo.hasPaidUntil) orgUpdate.status = 'suspended';
+      await adminDb.collection('organizations').doc(orgId).update(orgUpdate);
     }
 
     // If billing history requested, also fetch payments

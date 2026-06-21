@@ -16,6 +16,14 @@ import { notifyOrgAdmins, notifyJoinRequest } from './notifications';
 
 const now = () => new Date().toISOString();
 
+/**
+ * Internal email domain for Telegram-registered accounts. The address is only
+ * used as a Firebase Auth login handle (username → email resolution); students
+ * sign in by their auto-generated username, never see this address. Kept in
+ * sync with the frontend check in StudentProfilePage.tsx.
+ */
+export const TG_LOGIN_EMAIL_DOMAIN = 'tg.sabakhub.app';
+
 export type JoinRole = 'student' | 'teacher';
 
 export interface OrgOnboarding {
@@ -48,6 +56,26 @@ async function freshCode(orgId: string, role: JoinRole, extra?: { groupId?: stri
     ...(extra?.groupId ? { groupId: extra.groupId, groupName: extra.groupName || '' } : {}),
   });
   return code;
+}
+
+/** A temporary, easy-to-type password (10 chars, no ambiguous 0/O/1/I/l). */
+function genTempPassword(): string {
+  const alphabet = 'ABCDEFGHJKMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789';
+  const bytes = randomBytes(10);
+  let out = '';
+  for (let i = 0; i < 10; i++) out += alphabet[bytes[i] % alphabet.length];
+  return out;
+}
+
+/** Generate a unique, student-friendly login username (e.g. student_4821). */
+async function freshUsername(): Promise<string> {
+  for (let i = 0; i < 8; i++) {
+    const n = (randomBytes(2).readUInt16BE(0) % 9000) + 1000; // 1000..9999
+    const candidate = `student_${n}`;
+    const exists = await adminDb.collection('users').where('username', '==', candidate).limit(1).get();
+    if (exists.empty) return candidate;
+  }
+  return `student_${randomBytes(4).toString('hex')}`; // fallback: collision-proof
 }
 
 /** Add a user to a group's roster (students vs teachers). */
@@ -151,6 +179,10 @@ export interface JoinResult {
   status: 'active' | 'pending';
   isNewUser: boolean;
   alreadyMember: boolean;
+  /** Auto-generated login (set only when a brand-new account is created). */
+  loginUsername?: string;
+  /** Temporary password issued for the new account (sent once via the bot). */
+  tempPassword?: string;
 }
 
 /**
@@ -174,17 +206,24 @@ export async function createOrJoinTelegramUser(args: {
   // 1. Dedupe by telegramChatId.
   let uid: string;
   let isNewUser = false;
+  let loginUsername = '';
+  let tempPassword = '';
   const existing = await adminDb.collection('users').where('telegramChatId', '==', chatId).limit(1).get();
   if (!existing.empty) {
     uid = existing.docs[0].id;
   } else {
-    const record = await adminAuth.createUser({ displayName });
+    // Brand-new account: mint a username + temp password so the student can also
+    // sign in on the web (username → email login), not only via the Telegram link.
+    loginUsername = await freshUsername();
+    tempPassword = genTempPassword();
+    const loginEmail = `${loginUsername}@${TG_LOGIN_EMAIL_DOMAIN}`;
+    const record = await adminAuth.createUser({ email: loginEmail, password: tempPassword, displayName });
     uid = record.uid;
     isNewUser = true;
     await adminDb.collection('users').doc(uid).set({
       uid,
-      username: '',
-      email: '',
+      username: loginUsername,
+      email: loginEmail,
       displayName,
       role: args.role,
       avatarUrl: '',
@@ -267,7 +306,7 @@ export async function createOrJoinTelegramUser(args: {
     ).catch(() => {});
   }
 
-  return { uid, status, isNewUser, alreadyMember: false };
+  return { uid, status, isNewUser, alreadyMember: false, loginUsername, tempPassword };
 }
 
 /** Issue a one-time login token (15-min TTL) for passwordless web sign-in. */

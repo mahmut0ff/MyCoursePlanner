@@ -206,11 +206,21 @@ const StudentProfilePage: React.FC = () => {
                 </div>
                 {usernameStatus === 'taken' && <p className="text-xs text-red-500 mt-1 mb-2">{t('auth.usernameTaken', 'Этот никнейм уже занят')}</p>}
                 
-                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">{t('teacherSettings.emailLabel', 'Email')}</label>
-                <div className="relative">
-                  <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                  <input type="email" value={profile?.email || ''} readOnly className="input pl-11 bg-slate-100 dark:bg-slate-700 cursor-not-allowed text-slate-500 dark:text-slate-400" />
-                </div>
+                {/* Telegram-registered accounts use a service email and log in by username — hide the address. */}
+                {(profile?.email || '').endsWith('@tg.sabakhub.app') ? (
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 flex items-center gap-1.5">
+                    <Lock className="w-3.5 h-3.5 shrink-0" />
+                    {t('profile.tgLoginHint', 'Вход в систему — по никнейму выше и паролю (или через Telegram).')}
+                  </p>
+                ) : (
+                  <>
+                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">{t('teacherSettings.emailLabel', 'Email')}</label>
+                    <div className="relative">
+                      <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                      <input type="email" value={profile?.email || ''} readOnly className="input pl-11 bg-slate-100 dark:bg-slate-700 cursor-not-allowed text-slate-500 dark:text-slate-400" />
+                    </div>
+                  </>
+                )}
                 
                 <label className="block mt-4 text-sm font-medium text-slate-700 dark:text-slate-300 mb-1 flex items-center gap-1.5">
                   <Phone className="w-4 h-4 text-slate-400" />

@@ -209,6 +209,15 @@ export const handler: Handler = async (event: HandlerEvent) => {
             } else {
               await sendLoginButton(result.uid, `📨 Заявка отправлена в <b>${reg.orgName}</b>. Администратор подтвердит вас в ближайшее время.\n\nКнопка для входа (заработает после подтверждения):`);
             }
+            // New account → also hand over a login + temporary password for web sign-in without Telegram.
+            if (result.isNewUser && result.loginUsername && result.tempPassword) {
+              await sendTg(
+                `🔑 <b>Данные для входа в веб-версию</b> (без Telegram):\n\n` +
+                `Логин: <code>${result.loginUsername}</code>\n` +
+                `Пароль: <code>${result.tempPassword}</code>\n\n` +
+                `🔒 Рекомендуем сменить пароль после первого входа — в разделе «Профиль».`,
+              );
+            }
           } catch (e) {
             console.error('TG registration error:', e);
             await sendTg('Не удалось завершить регистрацию. Попробуйте ещё раз позже.', { remove_keyboard: true });

@@ -2,7 +2,7 @@ import type { Handler, HandlerEvent } from '@netlify/functions';
 import { adminDb } from './utils/firebase-admin';
 import { notifyOrgAdmins } from './utils/notifications';
 import { resolveTelegramLinkCode, TELEGRAM_BOT_TOKEN } from './utils/telegram';
-import { resolveJoinCode, createOrJoinTelegramUser, createLoginToken, resolveClaimToken, ensureParentKey } from './utils/onboarding';
+import { resolveJoinCode, createOrJoinTelegramUser, createLoginToken, resolveClaimToken, ensureParentKey, ensureLoginCredentials } from './utils/onboarding';
 import { processApprovalDecision } from './utils/join-approvals';
 
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY || '';
@@ -163,6 +163,26 @@ export const handler: Handler = async (event: HandlerEvent) => {
       await sendTg(`👨‍👩‍👦 <b>Для родителей</b>\nПерешлите эту ссылку родителям — они будут видеть ваши успехи и посещаемость:\n${appOrigin}/parent/${key}`);
     };
 
+    // Hand the user their web login (username + temp password). `isReset` tweaks the wording.
+    const sendCredentials = async (username: string, tempPassword: string, isReset = false) => {
+      await sendTg(
+        `🔑 <b>Данные для входа в веб-версию</b> (без Telegram):\n\n` +
+        `Логин: <code>${username}</code>\n` +
+        `Пароль: <code>${tempPassword}</code>\n\n` +
+        (isReset
+          ? '🔒 Это новый пароль. Рекомендуем сменить его в разделе «Профиль».'
+          : '🔒 Рекомендуем сменить пароль после первого входа — в разделе «Профиль».'),
+      );
+    };
+
+    // Issue web credentials to a linked user who doesn't have them yet (backfill, one-time).
+    const backfillCredentials = async (uid: string) => {
+      try {
+        const creds = await ensureLoginCredentials(uid);
+        if (creds) await sendCredentials(creds.username, creds.tempPassword, false);
+      } catch (e) { console.warn('Credential backfill failed:', e); }
+    };
+
     if (isGlobalBot) {
       // ─── GLOBAL BOT: registration, account linking & passwordless login ───
 
@@ -211,12 +231,7 @@ export const handler: Handler = async (event: HandlerEvent) => {
             }
             // New account → also hand over a login + temporary password for web sign-in without Telegram.
             if (result.isNewUser && result.loginUsername && result.tempPassword) {
-              await sendTg(
-                `🔑 <b>Данные для входа в веб-версию</b> (без Telegram):\n\n` +
-                `Логин: <code>${result.loginUsername}</code>\n` +
-                `Пароль: <code>${result.tempPassword}</code>\n\n` +
-                `🔒 Рекомендуем сменить пароль после первого входа — в разделе «Профиль».`,
-              );
+              await sendCredentials(result.loginUsername, result.tempPassword, false);
             }
           } catch (e) {
             console.error('TG registration error:', e);
@@ -295,7 +310,9 @@ export const handler: Handler = async (event: HandlerEvent) => {
         // /start with no payload — returning linked users get a login button.
         const known = await adminDb.collection('users').where('telegramChatId', '==', String(chatId)).limit(1).get();
         if (!known.empty) {
-          await sendLoginButton(known.docs[0].id, 'С возвращением! 👋 Нажмите, чтобы войти в SabakHub:');
+          const uid = known.docs[0].id;
+          await sendLoginButton(uid, 'С возвращением! 👋 Нажмите, чтобы войти в SabakHub:');
+          await backfillCredentials(uid); // old accounts without a web login get one
           return { statusCode: 200, body: 'OK' };
         }
         await reply('Здравствуйте! Я бот SabakHub. Чтобы зарегистрироваться в учебном центре, откройте ссылку-приглашение, которую вам прислали.');
@@ -306,9 +323,29 @@ export const handler: Handler = async (event: HandlerEvent) => {
       if (text === '/login') {
         const known = await adminDb.collection('users').where('telegramChatId', '==', String(chatId)).limit(1).get();
         if (!known.empty) {
-          await sendLoginButton(known.docs[0].id, 'Нажмите, чтобы войти в SabakHub:');
+          const uid = known.docs[0].id;
+          await sendLoginButton(uid, 'Нажмите, чтобы войти в SabakHub:');
+          await backfillCredentials(uid); // old accounts without a web login get one
         } else {
           await reply('Ваш Telegram пока не привязан к аккаунту. Откройте ссылку-приглашение от вашего центра.');
+        }
+        return { statusCode: 200, body: 'OK' };
+      }
+
+      // (c2) /parol (or /password) — issue or reset the web login password.
+      if (text === '/parol' || text === '/password') {
+        const known = await adminDb.collection('users').where('telegramChatId', '==', String(chatId)).limit(1).get();
+        if (known.empty) {
+          await reply('Ваш Telegram пока не привязан к аккаунту. Откройте ссылку-приглашение от вашего центра.');
+          return { statusCode: 200, body: 'OK' };
+        }
+        try {
+          const creds = await ensureLoginCredentials(known.docs[0].id, { reset: true });
+          if (creds) await sendCredentials(creds.username, creds.tempPassword, true);
+          else await reply('Не удалось обновить пароль. Попробуйте позже.');
+        } catch (e) {
+          console.error('TG /parol error:', e);
+          await reply('Не удалось обновить пароль. Попробуйте позже.');
         }
         return { statusCode: 200, body: 'OK' };
       }

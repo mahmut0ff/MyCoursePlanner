@@ -309,6 +309,44 @@ export async function createOrJoinTelegramUser(args: {
   return { uid, status, isNewUser, alreadyMember: false, loginUsername, tempPassword };
 }
 
+/**
+ * Ensure a Telegram-linked user has web login credentials (username + password).
+ * Backfills accounts created before passwords were issued, and powers a manual
+ * "give me my password" command.
+ *
+ * - reset=false (default): issue credentials only if the account has none yet.
+ *   Returns the new credentials, or null if the account already had a login.
+ * - reset=true: always set a fresh temporary password (recovery), keeping the
+ *   existing username/real email when present.
+ *
+ * An existing real email is never overwritten — only a missing one gets a
+ * synthetic, username-based address.
+ */
+export async function ensureLoginCredentials(
+  uid: string, opts: { reset?: boolean } = {},
+): Promise<{ username: string; tempPassword: string } | null> {
+  const ref = adminDb.collection('users').doc(uid);
+  const snap = await ref.get();
+  if (!snap.exists) return null;
+  const data = snap.data()!;
+  const hasLogin = !!(data.email && data.username);
+  if (hasLogin && !opts.reset) return null; // already has a login — nothing to backfill
+
+  let username: string = data.username || '';
+  let email: string = data.email || '';
+  if (!email) {
+    if (!username) username = await freshUsername();
+    email = `${username}@${TG_LOGIN_EMAIL_DOMAIN}`;
+  } else if (!username) {
+    username = await freshUsername(); // keep the real email, just add a login handle
+  }
+
+  const tempPassword = genTempPassword();
+  await adminAuth.updateUser(uid, { email, password: tempPassword });
+  await ref.set({ username, email, updatedAt: now() }, { merge: true });
+  return { username, tempPassword };
+}
+
 /** Issue a one-time login token (15-min TTL) for passwordless web sign-in. */
 export async function createLoginToken(uid: string): Promise<string> {
   const ott = randomBytes(24).toString('base64url');

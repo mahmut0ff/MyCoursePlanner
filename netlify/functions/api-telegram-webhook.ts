@@ -3,8 +3,94 @@ import { adminDb } from './utils/firebase-admin';
 import { notifyOrgAdmins } from './utils/notifications';
 import { resolveTelegramLinkCode, TELEGRAM_BOT_TOKEN } from './utils/telegram';
 import { resolveJoinCode, createOrJoinTelegramUser, createLoginToken, resolveClaimToken, ensureParentKey } from './utils/onboarding';
+import { processApprovalDecision } from './utils/join-approvals';
 
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY || '';
+
+/** Reconcile every admin's approval message: drop the buttons, show the outcome. */
+async function refreshApprovalMessages(token: string, botToken: string): Promise<void> {
+  const snap = await adminDb.collection('telegramApprovals').doc(token).get();
+  if (!snap.exists) return;
+  const ap = snap.data()!;
+  const name = ap.applicantName || 'Заявка';
+  const outcome =
+    ap.status === 'approved' ? '✅ <b>Принято</b>' :
+    ap.status === 'rejected' ? '❌ <b>Отклонено</b>' : 'ℹ️ Обработано';
+  const by = ap.decidedByName ? `\n<i>Решение принял(а): ${ap.decidedByName}</i>` : '';
+  const text = `📨 Заявка: <b>${name}</b>\n\n${outcome}${by}`;
+  const msgs: { chatId: string; messageId: number }[] = ap.messages || [];
+  await Promise.allSettled(
+    msgs.map((m) =>
+      fetch(`https://api.telegram.org/bot${botToken}/editMessageText`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ chat_id: m.chatId, message_id: m.messageId, text, parse_mode: 'HTML' }),
+      }).catch(() => {}),
+    ),
+  );
+}
+
+/** Handle an inline-button press on a join-request notification. */
+async function handleApprovalCallback(cq: any, botToken: string, appOrigin: string): Promise<void> {
+  const cbId = cq.id;
+  const data: string = cq.data || '';
+  const fromChatId = String(cq.from?.id || cq.message?.chat?.id || '');
+
+  const answer = (text: string, alert = false) =>
+    fetch(`https://api.telegram.org/bot${botToken}/answerCallbackQuery`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ callback_query_id: cbId, text, show_alert: alert }),
+    }).catch(() => {});
+
+  const parts = data.split(':');
+  if (parts[0] !== 'apv' || parts.length < 3) { await answer('Неизвестное действие'); return; }
+  const token = parts[1];
+  const decision = parts[2] === 'a' ? 'approve' : 'reject';
+
+  const res = await processApprovalDecision(token, decision, fromChatId);
+
+  if (!res.ok) {
+    const messages: Record<string, string> = {
+      not_found: 'Заявка не найдена или устарела',
+      forbidden: 'Управлять заявками может только администратор центра',
+      limit: 'Достигнут лимит учеников по вашему тарифу',
+      handled: 'Эта заявка уже обработана',
+    };
+    await answer(messages[res.reason] || 'Не удалось обработать заявку', true);
+    if (res.reason === 'handled') await refreshApprovalMessages(token, botToken);
+    return;
+  }
+
+  const toast =
+    res.result === 'approved' ? '✅ Заявка принята' :
+    res.result === 'rejected' ? '❌ Заявка отклонена' : 'Заявка уже обработана';
+  await answer(toast);
+  await refreshApprovalMessages(token, botToken);
+
+  // Let the approved applicant in immediately with a fresh passwordless login button.
+  if (res.result === 'approved' && res.applicantUid) {
+    try {
+      const userDoc = await adminDb.collection('users').doc(res.applicantUid).get();
+      const tgChat = userDoc.data()?.telegramChatId;
+      if (tgChat) {
+        const ott = await createLoginToken(res.applicantUid);
+        await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            chat_id: tgChat,
+            parse_mode: 'HTML',
+            text: '🎉 Ваша заявка одобрена! Добро пожаловать.\n\nНажмите, чтобы войти — без пароля:',
+            reply_markup: { inline_keyboard: [[{ text: '🚀 Открыть SabakHub', url: `${appOrigin}/tg-login?ott=${ott}` }]] },
+          }),
+        }).catch(() => {});
+      }
+    } catch (e) {
+      console.warn('Notify approved applicant failed:', e);
+    }
+  }
+}
 
 export const handler: Handler = async (event: HandlerEvent) => {
   if (event.httpMethod !== 'POST') {
@@ -13,16 +99,8 @@ export const handler: Handler = async (event: HandlerEvent) => {
 
   try {
     const payload = JSON.parse(event.body || '{}');
-    const message = payload.message;
-    if (!message || !message.chat || (!message.text && !message.contact)) {
-      return { statusCode: 200, body: 'OK' };
-    }
-
-    const chatId = message.chat.id;
-    const text = message.text || '';
-    const contact = message.contact;
     const appOrigin = event.rawUrl ? new URL(event.rawUrl).origin : `https://${event.headers.host || ''}`;
-    
+
     // Determine if this is the Global SabakHub Bot or a Custom AI Bot
     const queryOrgId = event.queryStringParameters?.orgId;
     let botToken = TELEGRAM_BOT_TOKEN;
@@ -31,7 +109,7 @@ export const handler: Handler = async (event: HandlerEvent) => {
     if (queryOrgId) {
       const settingsSnap = await adminDb.collection('organizationAIManager').doc(queryOrgId).get();
       const settingsData = settingsSnap.data() || { isActive: false };
-      
+
       // If the custom AI bot is inactive or doesn't have a token, ignore
       if (!settingsData.isActive || !settingsData.telegramBotToken) {
         return { statusCode: 200, body: 'OK' };
@@ -39,6 +117,21 @@ export const handler: Handler = async (event: HandlerEvent) => {
       botToken = settingsData.telegramBotToken;
       isGlobalBot = false;
     }
+
+    // Inline-button press (Принять / Отклонить on a join request) — no chat message.
+    if (payload.callback_query) {
+      await handleApprovalCallback(payload.callback_query, botToken, appOrigin);
+      return { statusCode: 200, body: 'OK' };
+    }
+
+    const message = payload.message;
+    if (!message || !message.chat || (!message.text && !message.contact)) {
+      return { statusCode: 200, body: 'OK' };
+    }
+
+    const chatId = message.chat.id;
+    const text = message.text || '';
+    const contact = message.contact;
 
     // A helper to send messages back to Telegram
     const reply = async (replyText: string) => {

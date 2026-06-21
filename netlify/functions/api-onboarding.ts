@@ -24,7 +24,7 @@ function ensureWebhook(rawUrl?: string, host?: string): void {
   const origin = rawUrl ? new URL(rawUrl).origin : (host ? `https://${host}` : '');
   if (!origin || origin.includes('localhost') || origin.includes('127.0.0.1')) return;
   const whUrl = `${origin}/.netlify/functions/api-telegram-webhook`;
-  fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/setWebhook?url=${encodeURIComponent(whUrl)}&allowed_updates=${encodeURIComponent('["message"]')}`).catch(() => {});
+  fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/setWebhook?url=${encodeURIComponent(whUrl)}&allowed_updates=${encodeURIComponent('["message","callback_query"]')}`).catch(() => {});
 }
 
 export const handler: Handler = async (event: HandlerEvent) => {

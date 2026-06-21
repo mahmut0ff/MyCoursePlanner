@@ -12,7 +12,7 @@ import { randomBytes } from 'crypto';
 import { FieldValue } from 'firebase-admin/firestore';
 import { adminDb, adminAuth } from './firebase-admin';
 import { getOrgLimits } from './plan-limits';
-import { notifyOrgAdmins } from './notifications';
+import { notifyOrgAdmins, notifyJoinRequest } from './notifications';
 
 const now = () => new Date().toISOString();
 
@@ -256,12 +256,8 @@ export async function createOrJoinTelegramUser(args: {
 
   // 6. Notify org admins.
   if (status === 'pending') {
-    notifyOrgAdmins(
-      args.orgId, 'new_vacancy_application' as any,
-      'Новая заявка на вступление',
-      `${displayName} подал(а) заявку через Telegram (${args.role === 'teacher' ? 'преподаватель' : 'ученик'})`,
-      args.role === 'teacher' ? '/teachers' : '/students',
-    ).catch(() => {});
+    // Interactive notification with "Принять / Отклонить" buttons in Telegram.
+    notifyJoinRequest(args.orgId, uid, displayName, args.role).catch(() => {});
   } else {
     notifyOrgAdmins(
       args.orgId, 'new_member' as any,

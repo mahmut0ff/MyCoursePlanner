@@ -4,6 +4,7 @@
 import { adminDb } from './firebase-admin';
 import { getMessaging } from 'firebase-admin/messaging';
 import { sendTelegramToUser } from './telegram';
+import { sendJoinApprovalButtons } from './join-approvals';
 
 const NOTIFICATIONS = 'notifications';
 
@@ -45,13 +46,15 @@ interface NotificationPayload {
   metadata?: Record<string, any>;
   /** Organization ID — needed for Telegram delivery */
   organizationId?: string;
+  /** Skip the plain Telegram message (e.g. when a richer interactive one is sent separately). */
+  skipTelegram?: boolean;
 }
 
 /**
  * Create an in-app notification + attempt FCM push + attempt Telegram.
  */
 export async function createNotification(payload: NotificationPayload): Promise<void> {
-  const { organizationId, ...rest } = payload;
+  const { organizationId, skipTelegram, ...rest } = payload;
   const data = {
     ...rest,
     read: false,
@@ -69,6 +72,7 @@ export async function createNotification(payload: NotificationPayload): Promise<
   }
 
   // Attempt Telegram notification (best-effort, never throw)
+  if (skipTelegram) return;
   try {
     // Resolve orgId: use provided or look up from user doc
     let orgId = organizationId;
@@ -104,6 +108,44 @@ export async function notifyOrgAdmins(
     createNotification({ recipientId: d.data().userId || d.id, type, title, message, link, organizationId: orgId })
   );
   await Promise.allSettled(promises);
+}
+
+/**
+ * Notify org admins of a pending join request.
+ * Creates the usual in-app + push notifications, and — instead of a plain
+ * Telegram line — sends an interactive message with "Принять / Отклонить"
+ * buttons so admins can decide right from Telegram.
+ */
+export async function notifyJoinRequest(
+  orgId: string, applicantUid: string, applicantName: string, role: 'student' | 'teacher',
+): Promise<void> {
+  const snap = await adminDb.collection('orgMembers').doc(orgId)
+    .collection('members')
+    .where('status', '==', 'active')
+    .get();
+  const admins = snap.docs.filter(d => ['admin', 'owner', 'manager'].includes(d.data().role));
+  const adminUserIds = admins.map(d => d.data().userId || d.id);
+
+  const roleWord = role === 'teacher' ? 'преподаватель' : 'ученик';
+  const link = role === 'teacher' ? '/teachers' : '/students';
+
+  // In-app + push only (skipTelegram) — the Telegram message is the interactive one below.
+  await Promise.allSettled(
+    adminUserIds.map(uid =>
+      createNotification({
+        recipientId: uid,
+        type: 'new_vacancy_application',
+        title: 'Новая заявка на вступление',
+        message: `${applicantName} подал(а) заявку через Telegram (${roleWord})`,
+        link,
+        organizationId: orgId,
+        skipTelegram: true,
+      }),
+    ),
+  );
+
+  // Interactive Telegram message with Approve/Reject buttons.
+  await sendJoinApprovalButtons({ orgId, applicantUid, applicantName, role, adminUserIds });
 }
 
 /**

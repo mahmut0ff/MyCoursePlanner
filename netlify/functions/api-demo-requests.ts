@@ -11,7 +11,7 @@
 import type { Handler, HandlerEvent } from '@netlify/functions';
 import { adminDb } from './utils/firebase-admin';
 import { verifyAuth, isSuperAdmin, jsonResponse, ok, badRequest, unauthorized, forbidden, notFound } from './utils/auth';
-import { notifyAllSuperAdmins } from './utils/notifications';
+import { notifyAllSuperAdmins, notifySuperAdminTelegram } from './utils/notifications';
 import { rateLimiters, getRateLimitKey } from './utils/rate-limiter';
 
 const VALID_STATUSES = ['new', 'contacted', 'scheduled', 'done', 'rejected'] as const;
@@ -73,13 +73,15 @@ export const handler: Handler = async (event: HandlerEvent) => {
 
     const ref = await adminDb.collection('demoRequests').add(record);
 
-    // Notify all super admins (in-app + Telegram if linked).
+    // Notify all super admins: in-app (bell) + Telegram (super-admin channel).
     const msg = `Учебный центр: ${record.orgName}\nВладелец: ${record.ownerName}\nTelegram: ${record.telegramDisplay}`;
-    notifyAllSuperAdmins(
-      'new_lead',
-      'Новая заявка на демо',
-      msg,
-      '/admin/demo-requests',
+    notifyAllSuperAdmins('new_lead', 'Новая заявка на демо', msg, '/admin/demo-requests').catch(() => {});
+    notifySuperAdminTelegram(
+      `📩 <b>Новая заявка на демо</b>\n\n` +
+      `🏫 ${record.orgName}\n` +
+      `👤 ${record.ownerName}\n` +
+      `💬 ${record.telegramDisplay}` +
+      (record.note ? `\n📝 ${record.note}` : ''),
     ).catch(() => {});
 
     return ok({ id: ref.id, ok: true });

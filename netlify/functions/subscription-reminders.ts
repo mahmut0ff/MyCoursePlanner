@@ -15,20 +15,11 @@ import type { Handler, HandlerEvent } from '@netlify/functions';
 import { adminDb } from './utils/firebase-admin';
 import { jsonResponse } from './utils/auth';
 import { computePaidUntil, GRACE_DAYS } from './utils/subscription';
-import { TELEGRAM_BOT_TOKEN } from './utils/telegram';
+import { notifySuperAdminTelegram } from './utils/notifications';
 
-const SUPERADMIN_CHAT_ID = process.env.SUPERADMIN_TELEGRAM_CHAT_ID || '1343553158';
 const PLAN_PRICES: Record<string, number> = { starter: 1990, professional: 4990, enterprise: 14900 };
 // Warn this many days before the due date.
 const WARN_WITHIN_DAYS = 3;
-
-async function tgSend(chatId: string, text: string): Promise<void> {
-  await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ chat_id: chatId, text, parse_mode: 'HTML' }),
-  }).catch((e) => console.error('Super-admin Telegram send failed:', e));
-}
 
 const handler: Handler = async (event: HandlerEvent) => {
   if (event.httpMethod === 'OPTIONS') return jsonResponse(204, '');
@@ -89,17 +80,10 @@ const handler: Handler = async (event: HandlerEvent) => {
       blocked.forEach((o) => lines.push(`• ${o.name} (${PLAN_PRICES[o.plan] || 0} сом)`));
     }
     lines.push('\nНапишите владельцам с напоминанием об оплате. Продлить/включить — в суперадминке → Биллинг.');
-    const text = lines.join('\n');
 
-    // Recipients: env/default super-admin chat + any super_admin with linked Telegram.
-    const chatIds = new Set<string>();
-    if (SUPERADMIN_CHAT_ID) chatIds.add(SUPERADMIN_CHAT_ID);
-    const superAdmins = await adminDb.collection('users').where('role', '==', 'super_admin').get();
-    superAdmins.docs.forEach((d) => { const c = (d.data() as any).telegramChatId; if (c) chatIds.add(String(c)); });
+    await notifySuperAdminTelegram(lines.join('\n'));
 
-    await Promise.allSettled([...chatIds].map((c) => tgSend(c, text)));
-
-    return jsonResponse(200, { ok: true, soon: soon.length, overdue: overdue.length, blocked: blocked.length, recipients: chatIds.size });
+    return jsonResponse(200, { ok: true, soon: soon.length, overdue: overdue.length, blocked: blocked.length });
   } catch (e: any) {
     console.error('subscription-reminders error:', e);
     return jsonResponse(200, { ok: false, error: e.message });

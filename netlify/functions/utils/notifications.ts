@@ -3,8 +3,33 @@
  */
 import { adminDb } from './firebase-admin';
 import { getMessaging } from 'firebase-admin/messaging';
-import { sendTelegramToUser } from './telegram';
+import { sendTelegramToUser, TELEGRAM_BOT_TOKEN } from './telegram';
 import { sendJoinApprovalButtons } from './join-approvals';
+
+/**
+ * Super-admins have no org context, so the per-user/org Telegram path can't
+ * reach them. Deliver straight to the global bot: SUPERADMIN_TELEGRAM_CHAT_ID
+ * (env, with a sensible default) + any super_admin with a linked telegramChatId.
+ */
+const SUPERADMIN_TELEGRAM_CHAT_ID = process.env.SUPERADMIN_TELEGRAM_CHAT_ID || '1343553158';
+
+export async function notifySuperAdminTelegram(text: string): Promise<void> {
+  const chatIds = new Set<string>();
+  if (SUPERADMIN_TELEGRAM_CHAT_ID) chatIds.add(SUPERADMIN_TELEGRAM_CHAT_ID);
+  try {
+    const snap = await adminDb.collection('users').where('role', '==', 'super_admin').get();
+    snap.docs.forEach(d => { const c = (d.data() as any).telegramChatId; if (c) chatIds.add(String(c)); });
+  } catch (e) {
+    console.warn('Super-admin lookup failed (non-fatal):', e);
+  }
+  await Promise.allSettled([...chatIds].map(chatId =>
+    fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ chat_id: chatId, text, parse_mode: 'HTML' }),
+    }).catch(e => console.warn('Super-admin Telegram send failed (non-fatal):', e)),
+  ));
+}
 
 const NOTIFICATIONS = 'notifications';
 

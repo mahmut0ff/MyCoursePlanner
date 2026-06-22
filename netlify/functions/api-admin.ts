@@ -47,7 +47,7 @@ import type { Handler, HandlerEvent } from '@netlify/functions';
 import { adminDb, adminAuth } from './utils/firebase-admin';
 import { verifyAuth, isSuperAdmin, jsonResponse, unauthorized, forbidden, badRequest, ok, notFound } from './utils/auth';
 import type { AuthUser } from './utils/auth';
-import { notifyAllSuperAdmins } from './utils/notifications';
+import { notifyAllSuperAdmins, notifySuperAdminTelegram } from './utils/notifications';
 import { rateLimiters, getRateLimitKey } from './utils/rate-limiter';
 
 // ---- Audit Logger ----
@@ -530,8 +530,9 @@ const handler: Handler = async (event: HandlerEvent) => {
         createdAt: new Date().toISOString(),
       });
 
-      // Notify all super admins
+      // Notify all super admins: in-app (bell) + Telegram (super-admin channel).
       notifyAllSuperAdmins('plan_gifted', 'Тариф подарен', `Организации «${orgDoc.data()?.name}» подарен тариф ${body.planId}`, '/admin/organizations').catch(() => {});
+      notifySuperAdminTelegram(`🎁 <b>Тариф подарен</b>\n\n🏫 ${orgDoc.data()?.name}\n📦 ${body.planId}`).catch(() => {});
       return ok({ success: true });
     }
 

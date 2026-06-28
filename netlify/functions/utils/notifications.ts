@@ -76,6 +76,46 @@ interface NotificationPayload {
 }
 
 /**
+ * Notification types worth forwarding to a linked parent's Telegram.
+ * Parents care about attendance, money and results — not lesson-feed noise.
+ */
+const PARENT_RELEVANT_TYPES = new Set<NotificationType>([
+  'attendance_absent',
+  'payment_due',
+  'payment_overdue',
+  'payment_received',
+  'grade_posted',
+  'exam_result_ready',
+  'homework_graded',
+  'schedule_changed',
+]);
+
+/**
+ * Mirror a child-relevant notification to the student's linked parent chats.
+ * Parents aren't app users — they link the global bot from the parent portal, and
+ * their chat id(s) live on the student's user doc (parentTelegramChatIds). The
+ * message is prefixed with the child's name so a parent of several kids knows who
+ * it's about. Best-effort, never throws.
+ */
+async function relayToParents(studentId: string, title: string, message: string): Promise<void> {
+  const snap = await adminDb.collection('users').doc(studentId).get();
+  if (!snap.exists) return;
+  const data = snap.data() || {};
+  const chatIds: string[] = Array.isArray(data.parentTelegramChatIds) ? data.parentTelegramChatIds : [];
+  if (chatIds.length === 0) return;
+
+  const childName = data.displayName || 'Ваш ребёнок';
+  const text = `👨‍👩‍👦 <b>${childName}</b>\n\n🔔 <b>${title}</b>\n${message}`;
+  await Promise.allSettled(chatIds.map(chatId =>
+    fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ chat_id: chatId, text, parse_mode: 'HTML' }),
+    }).catch(() => {})
+  ));
+}
+
+/**
  * Create an in-app notification + attempt FCM push + attempt Telegram.
  */
 export async function createNotification(payload: NotificationPayload): Promise<void> {
@@ -111,6 +151,15 @@ export async function createNotification(payload: NotificationPayload): Promise<
     }
   } catch (e) {
     console.warn('Telegram notification failed (non-fatal):', e);
+  }
+
+  // Mirror child-relevant alerts to the student's linked parents (best-effort).
+  if (PARENT_RELEVANT_TYPES.has(payload.type)) {
+    try {
+      await relayToParents(payload.recipientId, payload.title, payload.message);
+    } catch (e) {
+      console.warn('Parent Telegram relay failed (non-fatal):', e);
+    }
   }
 }
 

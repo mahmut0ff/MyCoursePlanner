@@ -593,6 +593,9 @@ export const apiUpdateAIManagerSettings = (data: any) =>
 export const apiAIManagerChat = (organizationId: string, messages: any[]) =>
   apiRequest('api-ai-org-manager', 'POST', { messages }, { action: 'chat', organizationId });
 
+export const apiGetAIManagerUsage = (organizationId: string) =>
+  apiRequest('api-ai-org-manager', 'GET', undefined, { action: 'getUsage', organizationId });
+
 // ---- AI Insights (owner analyst + churn) ----
 export const apiAIInsightsAsk = (question: string) =>
   apiRequest('api-ai-insights', 'POST', { question }, { action: 'ask' });

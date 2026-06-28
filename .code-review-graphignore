@@ -1,0 +1,20 @@
+# Dependencies
+node_modules/
+
+# Build / output artifacts
+dist/
+build/
+.netlify/
+.firebase/
+coverage/
+*.min.js
+*.bundle.js
+
+# Lockfiles & generated
+package-lock.json
+pnpm-lock.yaml
+deno.lock
+
+# Logs / misc
+*.log
+test_output.txt

@@ -60,6 +60,11 @@
 [functions."weekly-digest"]
   schedule = "0 6 * * 1"
 
+# Daily morning AI brief to directors (Telegram): state of the business + priority actions.
+# 03:00 UTC ≈ 09:00 in Kyrgyzstan (UTC+6).
+[functions."morning-brief"]
+  schedule = "0 3 * * *"
+
 # Daily reminder to follow up on untouched leads.
 [functions."lead-followups"]
   schedule = "0 8 * * *"

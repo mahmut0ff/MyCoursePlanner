@@ -82,6 +82,15 @@ export const handler: Handler = async (event: HandlerEvent) => {
       journalByStudent.get(data.studentId)!.push(data);
     });
 
+    // 4. Load overdue payment plans — debt is a strong, reliable risk signal.
+    const overdueSnap = await adminDb.collection('studentPaymentPlans')
+      .where('organizationId', '==', orgId).where('status', '==', 'overdue').get();
+    const overdueStudents = new Set<string>();
+    overdueSnap.docs.forEach(doc => {
+      const s = (doc.data() as any).studentId;
+      if (s) overdueStudents.add(s);
+    });
+
     const now = new Date();
 
     const risks = validStudents.map(student => {
@@ -116,16 +125,37 @@ export const handler: Handler = async (event: HandlerEvent) => {
 
       const daysSinceLastActive = Math.floor((now.getTime() - lastActiveDate.getTime()) / (1000 * 3600 * 24));
 
-      // Calculate Risk Level
-      let riskLevel = 'low';
-      
+      // Score dynamics — are the most recent results trending down?
+      let scoreTrend: 'up' | 'down' | 'flat' = 'flat';
+      if (sAttempts.length >= 4) {
+        const sorted = [...sAttempts].sort((a, b) =>
+          new Date(a.submittedAt || a.createdAt || 0).getTime() - new Date(b.submittedAt || b.createdAt || 0).getTime());
+        const avgOf = (arr: any[]) => arr.reduce((s, x) => s + (x.percentage || 0), 0) / arr.length;
+        const recentAvg = avgOf(sorted.slice(-3));
+        const earlierAvg = avgOf(sorted.slice(0, -3));
+        if (recentAvg <= earlierAvg - 10) scoreTrend = 'down';
+        else if (recentAvg >= earlierAvg + 10) scoreTrend = 'up';
+      }
+
+      const hasOverduePayment = overdueStudents.has(student.uid);
+
       // Only penalize low scores if the student actually took exams
       const isHighRiskScore = hasScores && avgScore < 50;
       const isMedRiskScore = hasScores && avgScore < 70;
 
-      if (daysSinceLastActive > 7 || isHighRiskScore || attendanceRate < 50) {
+      // Human-readable reasons (drives the dashboard tooltip / sort).
+      const reasons: string[] = [];
+      if (daysSinceLastActive > 7) reasons.push(`не активен ${daysSinceLastActive} дн.`);
+      if (attendanceRate < 50) reasons.push(`посещаемость ${attendanceRate}%`);
+      if (isHighRiskScore) reasons.push(`средний балл ${avgScore}%`);
+      if (hasOverduePayment) reasons.push('просрочена оплата');
+      if (scoreTrend === 'down') reasons.push('оценки падают');
+
+      // Calculate Risk Level
+      let riskLevel = 'low';
+      if (daysSinceLastActive > 7 || isHighRiskScore || attendanceRate < 50 || hasOverduePayment) {
         riskLevel = 'high';
-      } else if (daysSinceLastActive > 4 || isMedRiskScore || attendanceRate < 80) {
+      } else if (daysSinceLastActive > 4 || isMedRiskScore || attendanceRate < 80 || scoreTrend === 'down') {
         riskLevel = 'medium';
       }
 
@@ -141,6 +171,9 @@ export const handler: Handler = async (event: HandlerEvent) => {
         attendanceRate,
         streak,
         daysSinceLastActive,
+        scoreTrend,
+        hasOverduePayment,
+        reasons,
         missedAssignments: missed // Repurposed for simplicity
       };
     });

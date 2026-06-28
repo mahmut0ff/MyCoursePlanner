@@ -1,6 +1,7 @@
 import type { Handler, HandlerEvent } from '@netlify/functions';
 import { adminDb } from './utils/firebase-admin';
 import { jsonResponse, badRequest, notFound } from './utils/auth';
+import { TELEGRAM_BOT_USERNAME } from './utils/telegram';
 import { rateLimiters, getRateLimitKey } from './utils/rate-limiter';
 import { getModel, parseJsonLoose, hasGeminiKey, recordAiUsage } from './utils/ai';
 
@@ -197,6 +198,7 @@ export const handler: Handler = async (event: HandlerEvent) => {
       student: safeUser,
       organization,
       aiEnabled,
+      telegramBot: TELEGRAM_BOT_USERNAME,
       stats: {
         totalXp,
         currentStreak,

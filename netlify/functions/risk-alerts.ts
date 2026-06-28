@@ -19,6 +19,7 @@ import { jsonResponse } from './utils/auth';
 
 const ABSENCE_WINDOW_DAYS = 30;
 const ABSENCE_THRESHOLD = 3;
+const LOW_SCORE_THRESHOLD = 50; // average % below this (with ≥2 attempts) flags the student
 const MAX_LISTED = 12;
 
 const handler: Handler = async (event: HandlerEvent) => {
@@ -66,6 +67,18 @@ const handler: Handler = async (event: HandlerEvent) => {
         overdueByStudent.set(data.studentId, (overdueByStudent.get(data.studentId) || 0) + debt);
       }
 
+      // Average exam/quiz score (only trust it once there are ≥2 graded attempts).
+      const attemptsSnap = await adminDb.collection('examAttempts')
+        .where('organizationId', '==', orgId).get();
+      const scoreAgg = new Map<string, { sum: number; n: number }>();
+      for (const a of attemptsSnap.docs) {
+        const data = a.data() as any;
+        if (typeof data.percentage !== 'number' || !data.studentId) continue;
+        const agg = scoreAgg.get(data.studentId) || { sum: 0, n: 0 };
+        agg.sum += data.percentage; agg.n += 1;
+        scoreAgg.set(data.studentId, agg);
+      }
+
       // Build the at-risk list (only for current active students).
       const atRisk: { name: string; reasons: string[] }[] = [];
       for (const [uid, name] of nameByUid) {
@@ -73,6 +86,11 @@ const handler: Handler = async (event: HandlerEvent) => {
         const absences = absencesByStudent.get(uid) || 0;
         if (absences >= ABSENCE_THRESHOLD) reasons.push(`${absences} пропусков`);
         if (overdueByStudent.has(uid)) reasons.push('просрочена оплата');
+        const agg = scoreAgg.get(uid);
+        if (agg && agg.n >= 2) {
+          const avg = Math.round(agg.sum / agg.n);
+          if (avg < LOW_SCORE_THRESHOLD) reasons.push(`низкие оценки (${avg}%)`);
+        }
         if (reasons.length > 0) atRisk.push({ name, reasons });
       }
       if (atRisk.length === 0) continue;

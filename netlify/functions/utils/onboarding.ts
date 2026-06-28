@@ -11,6 +11,7 @@
 import { randomBytes } from 'crypto';
 import { FieldValue } from 'firebase-admin/firestore';
 import { adminDb, adminAuth } from './firebase-admin';
+import { resolveOrCreateUserByPhone } from './identity';
 import { getOrgLimits } from './plan-limits';
 import { notifyOrgAdmins, notifyJoinRequest } from './notifications';
 
@@ -204,7 +205,11 @@ export async function createOrJoinTelegramUser(args: {
   const chatId = String(args.chatId);
   const displayName = (args.displayName || '').trim() || 'Студент';
 
-  // 1. Dedupe by telegramChatId.
+  // 1. Resolve the account:
+  //    a) returning bot user → matched by telegramChatId;
+  //    b) otherwise unify by phone via the global chokepoint (links to an account
+  //       already created via import/web, or creates a phone-keyed one);
+  //    c) no chatId match and no phone → legacy username+password account.
   let uid: string;
   let isNewUser = false;
   let loginUsername = '';
@@ -213,33 +218,52 @@ export async function createOrJoinTelegramUser(args: {
   if (!existing.empty) {
     uid = existing.docs[0].id;
   } else {
-    // Brand-new account: mint a username + temp password so the user can also
-    // sign in on the web (username → email login), not only via the Telegram link.
-    loginUsername = await freshUsername(args.role);
-    tempPassword = genTempPassword();
-    const loginEmail = `${loginUsername}@${TG_LOGIN_EMAIL_DOMAIN}`;
-    const record = await adminAuth.createUser({ email: loginEmail, password: tempPassword, displayName });
-    uid = record.uid;
-    isNewUser = true;
-    await adminDb.collection('users').doc(uid).set({
-      uid,
-      username: loginUsername,
-      email: loginEmail,
-      displayName,
-      role: args.role,
-      avatarUrl: '',
-      bio: '',
-      skills: [],
-      city: '',
-      country: '',
-      phone: args.phone || '',
-      telegramChatId: chatId,
-      telegramLinkedAt: now(),
-      activeOrgId: args.orgId,
-      organizationId: args.orgId,
-      createdAt: now(),
-      updatedAt: now(),
-    });
+    const identity = args.phone ? await resolveOrCreateUserByPhone({ phone: args.phone, displayName, role: args.role }) : null;
+    if (identity) {
+      uid = identity.uid;
+      isNewUser = identity.isNew;
+    } else {
+      // No usable phone — fall back to a username + temp password account.
+      loginUsername = await freshUsername(args.role);
+      tempPassword = genTempPassword();
+      const loginEmail = `${loginUsername}@${TG_LOGIN_EMAIL_DOMAIN}`;
+      const record = await adminAuth.createUser({ email: loginEmail, password: tempPassword, displayName });
+      uid = record.uid;
+      isNewUser = true;
+      await adminDb.collection('users').doc(uid).set({
+        uid,
+        username: loginUsername,
+        email: loginEmail,
+        displayName,
+        role: args.role,
+        avatarUrl: '',
+        bio: '',
+        skills: [],
+        city: '',
+        country: '',
+        phone: args.phone || '',
+        telegramChatId: chatId,
+        telegramLinkedAt: now(),
+        activeOrgId: args.orgId,
+        organizationId: args.orgId,
+        createdAt: now(),
+        updatedAt: now(),
+      });
+    }
+  }
+
+  // Link this Telegram chat to the resolved account (covers accounts found by phone
+  // or pre-created via import that are opening the bot for the first time).
+  await adminDb.collection('users').doc(uid).set(
+    { telegramChatId: chatId, telegramLinkedAt: now(), updatedAt: now() },
+    { merge: true },
+  );
+
+  // A brand-new phone-keyed account has no web login yet — issue username + temp
+  // password so the bot can deliver sign-in credentials (transitional until phone login).
+  if (isNewUser && !loginUsername) {
+    const creds = await ensureLoginCredentials(uid);
+    if (creds) { loginUsername = creds.username; tempPassword = creds.tempPassword; }
   }
 
   // 2. Already an active member? Just (re)assign to the group if a group link was used.
@@ -423,14 +447,15 @@ export async function createPendingInvite(args: {
   const displayName = (args.name || '').trim() || (args.role === 'teacher' ? 'Преподаватель' : 'Ученик');
   const phone = (args.phone || '').trim();
 
-  let uid: string | null = null;
+  // Resolve identity globally by phone (one phone = one account, across all centers).
+  // Falls back to a bare passwordless account when there's no/invalid phone, so imports never break.
+  let uid: string;
   let isNew = false;
-  if (phone) {
-    const existing = await adminDb.collection('users')
-      .where('phone', '==', phone).where('organizationId', '==', args.orgId).limit(1).get();
-    if (!existing.empty) uid = existing.docs[0].id;
-  }
-  if (!uid) {
+  const identity = phone ? await resolveOrCreateUserByPhone({ phone, displayName, role: args.role }) : null;
+  if (identity) {
+    uid = identity.uid;
+    isNew = identity.isNew;
+  } else {
     const record = await adminAuth.createUser({ displayName });
     uid = record.uid;
     isNew = true;

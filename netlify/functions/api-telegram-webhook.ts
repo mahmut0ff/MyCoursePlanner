@@ -1,9 +1,18 @@
 import type { Handler, HandlerEvent } from '@netlify/functions';
 import { adminDb } from './utils/firebase-admin';
+import { FieldValue } from 'firebase-admin/firestore';
 import { notifyOrgAdmins } from './utils/notifications';
 import { resolveTelegramLinkCode, TELEGRAM_BOT_TOKEN } from './utils/telegram';
 import { resolveJoinCode, createOrJoinTelegramUser, createLoginToken, resolveClaimToken, ensureParentKey, ensureLoginCredentials } from './utils/onboarding';
 import { processApprovalDecision } from './utils/join-approvals';
+import { planHasAIManager } from './utils/plan-limits';
+import {
+  answerDirectorQuestion, answerDirectorVoice, generateBrief, remindOrgDebtors,
+  generateDebtorDraft, sendDebtorDraft,
+  buildDirectorSnapshot, renderDebtors, renderRisk, renderLeads,
+  directorMenuKeyboard, resolveDirectorByChat, resolveDirectorFromUser,
+  type DirectorChatMessage,
+} from './utils/director-copilot';
 
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY || '';
 
@@ -92,6 +101,80 @@ async function handleApprovalCallback(cq: any, botToken: string, appOrigin: stri
   }
 }
 
+/** Handle a director action-button press (callback_data starts with "dir:"). */
+async function handleDirectorCallback(cq: any, botToken: string): Promise<void> {
+  const cbId = cq.id;
+  const action = String(cq.data || '').slice('dir:'.length);
+  const chatId = String(cq.from?.id || cq.message?.chat?.id || '');
+
+  const answer = (text?: string, alert = false) =>
+    fetch(`https://api.telegram.org/bot${botToken}/answerCallbackQuery`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ callback_query_id: cbId, ...(text ? { text } : {}), show_alert: alert }),
+    }).catch(() => {});
+
+  const send = (text: string, replyMarkup: any = directorMenuKeyboard()) =>
+    fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ chat_id: chatId, text, parse_mode: 'HTML', ...(replyMarkup ? { reply_markup: replyMarkup } : {}) }),
+    }).catch(() => {});
+
+  const dir = await resolveDirectorByChat(chatId);
+  if (!dir) { await answer('Доступно только администраторам центра', true); return; }
+  if (!planHasAIManager(dir.org.planId)) { await answer('Доступно на тарифе Professional и выше', true); return; }
+  const orgName = dir.org.name || 'центр';
+
+  // ── Actions that do work / take time: answer the callback first, then process. ──
+  if (action === 'remind') {
+    await answer('Отправляю напоминания…');
+    const res = await remindOrgDebtors(dir.orgId);
+    await send(
+      res.sent === 0 && res.skipped === 0
+        ? '✅ Должников нет — напоминать некому.'
+        : `📨 <b>Напоминания должникам отправлены: ${res.sent}</b>${res.skipped ? `\nПропущено (уже получили сегодня): ${res.skipped}` : ''}`,
+    );
+    return;
+  }
+
+  if (action === 'draft') {
+    await answer('Готовлю черновик…');
+    const draft = await generateDebtorDraft(dir.orgId, orgName);
+    await adminDb.collection('directorDrafts').doc(chatId).set({
+      text: draft, orgId: dir.orgId, audience: 'debtors', createdAt: new Date().toISOString(),
+    });
+    await send(
+      `✍️ <b>Черновик для должников:</b>\n\n${draft}\n\n<i>Проверьте и отправьте — каждому добавится его личная сумма.</i>`,
+      { inline_keyboard: [
+        [{ text: '📨 Отправить должникам', callback_data: 'dir:send_draft' }],
+        [{ text: '🔄 Другой вариант', callback_data: 'dir:draft' }],
+      ] },
+    );
+    return;
+  }
+
+  if (action === 'send_draft') {
+    const draftDoc = await adminDb.collection('directorDrafts').doc(chatId).get();
+    const draft = draftDoc.exists ? draftDoc.data() : null;
+    if (!draft?.text || draft.orgId !== dir.orgId) { await answer('Черновик не найден — создайте заново', true); return; }
+    await answer('Отправляю…');
+    const res = await sendDebtorDraft(dir.orgId, draft.text);
+    await adminDb.collection('directorDrafts').doc(chatId).delete().catch(() => {});
+    await send(res.sent ? `📨 <b>Сообщение отправлено должникам: ${res.sent}</b>` : '✅ Должников нет — отправлять некому.');
+    return;
+  }
+
+  // ── Read actions: answer immediately, then send the requested view. ──
+  await answer();
+  if (action === 'brief') { await send(await generateBrief(dir.orgId, orgName)); return; }
+
+  const snap = await buildDirectorSnapshot(dir.orgId);
+  if (action === 'debtors') await send(renderDebtors(snap));
+  else if (action === 'risk') await send(renderRisk(snap));
+  else if (action === 'leads') await send(renderLeads(snap));
+}
+
 export const handler: Handler = async (event: HandlerEvent) => {
   if (event.httpMethod !== 'POST') {
     return { statusCode: 405, body: 'Make it a POST' };
@@ -118,20 +201,26 @@ export const handler: Handler = async (event: HandlerEvent) => {
       isGlobalBot = false;
     }
 
-    // Inline-button press (Принять / Отклонить on a join request) — no chat message.
+    // Inline-button press — route by callback_data prefix.
     if (payload.callback_query) {
-      await handleApprovalCallback(payload.callback_query, botToken, appOrigin);
+      const cqData = String(payload.callback_query.data || '');
+      if (cqData.startsWith('dir:')) {
+        await handleDirectorCallback(payload.callback_query, botToken);
+      } else {
+        await handleApprovalCallback(payload.callback_query, botToken, appOrigin);
+      }
       return { statusCode: 200, body: 'OK' };
     }
 
     const message = payload.message;
-    if (!message || !message.chat || (!message.text && !message.contact)) {
+    if (!message || !message.chat || (!message.text && !message.contact && !message.voice)) {
       return { statusCode: 200, body: 'OK' };
     }
 
     const chatId = message.chat.id;
     const text = message.text || '';
     const contact = message.contact;
+    const voice = message.voice; // Telegram voice note (ogg/opus) — used by the director copilot
 
     // A helper to send messages back to Telegram
     const reply = async (replyText: string) => {
@@ -163,6 +252,39 @@ export const handler: Handler = async (event: HandlerEvent) => {
       await sendTg(`👨‍👩‍👦 <b>Для родителей</b>\nПерешлите эту ссылку родителям — они будут видеть ваши успехи и посещаемость:\n${appOrigin}/parent/${key}`);
     };
 
+    // ─── PARENT LINKING (this chat = a parent, not an app account) ───
+    // The parent opens the portal, taps "Подключить Telegram" → deep-links here with
+    // the child's portal key. We store this chat id on the STUDENT's user doc so the
+    // notification helper can mirror attendance/grade/payment alerts to the parent.
+    const linkParentByKey = async (key: string): Promise<{ name: string; portalUrl: string } | null> => {
+      const snap = await adminDb.collection('users').where('parentPortalKey', '==', key).limit(1).get();
+      if (snap.empty) return null;
+      const studentDoc = snap.docs[0];
+      await studentDoc.ref.set({
+        parentTelegramChatIds: FieldValue.arrayUnion(String(chatId)),
+        parentTelegramLinkedAt: new Date().toISOString(),
+      }, { merge: true });
+      return { name: studentDoc.data()?.displayName || 'ребёнка', portalUrl: `${appOrigin}/parent/${key}` };
+    };
+
+    // Show a linked parent quick buttons to open each of their children's portals.
+    // Returns false if this chat isn't linked to any student (so callers can fall through).
+    const sendParentPortals = async (): Promise<boolean> => {
+      const snap = await adminDb.collection('users')
+        .where('parentTelegramChatIds', 'array-contains', String(chatId)).get();
+      if (snap.empty) return false;
+      const buttons = snap.docs
+        .map(d => {
+          const key = d.data()?.parentPortalKey;
+          const nm = d.data()?.displayName || 'Ученик';
+          return key ? [{ text: `📊 ${nm}`, url: `${appOrigin}/parent/${key}` }] : null;
+        })
+        .filter(Boolean) as { text: string; url: string }[][];
+      if (buttons.length === 0) return false;
+      await sendTg('👨‍👩‍👦 <b>Портал родителя</b>\nОткройте успехи и посещаемость ребёнка:', { inline_keyboard: buttons });
+      return true;
+    };
+
     // Hand the user their web login (username + temp password). `isReset` tweaks the wording.
     const sendCredentials = async (username: string, tempPassword: string, isReset = false) => {
       await sendTg(
@@ -183,8 +305,74 @@ export const handler: Handler = async (event: HandlerEvent) => {
       } catch (e) { console.warn('Credential backfill failed:', e); }
     };
 
+    // Telegram "typing…" indicator while the copilot thinks.
+    const sendChatAction = async (action: string) => {
+      await fetch(`https://api.telegram.org/bot${botToken}/sendChatAction`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ chat_id: chatId, action }),
+      }).catch(() => {});
+    };
+
+    // Download a Telegram voice note → base64 (for Gemini audio transcription). Null on failure.
+    const downloadVoice = async (fileId: string): Promise<{ base64: string; mime: string } | null> => {
+      try {
+        const fr = await fetch(`https://api.telegram.org/bot${botToken}/getFile?file_id=${fileId}`);
+        const fd: any = await fr.json();
+        const filePath = fd?.result?.file_path;
+        if (!filePath) return null;
+        const ar = await fetch(`https://api.telegram.org/file/bot${botToken}/${filePath}`);
+        if (!ar.ok) return null;
+        const buf = Buffer.from(await ar.arrayBuffer());
+        return { base64: buf.toString('base64'), mime: 'audio/ogg' };
+      } catch (e) {
+        console.warn('Voice download failed:', e);
+        return null;
+      }
+    };
+
+    // Show the director command menu (/menu, /brief, /login) in this chat's "/" button.
+    const setDirectorCommands = async () => {
+      await fetch(`https://api.telegram.org/bot${botToken}/setMyCommands`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          commands: [
+            { command: 'menu', description: '📊 Меню директора' },
+            { command: 'brief', description: '☀️ AI-сводка по центру' },
+            { command: 'login', description: '🔑 Войти в SabakHub' },
+          ],
+          scope: { type: 'chat', chat_id: chatId },
+        }),
+      }).catch(() => {});
+    };
+
     if (isGlobalBot) {
       // ─── GLOBAL BOT: registration, account linking & passwordless login ───
+
+      // (a0) Voice message from a director → transcribe + answer via the copilot.
+      if (voice) {
+        const dir = await resolveDirectorByChat(String(chatId));
+        if (dir && planHasAIManager(dir.org.planId)) {
+          await sendChatAction('typing');
+          const audio = await downloadVoice(voice.file_id);
+          if (!audio) {
+            await reply('Не удалось обработать голосовое 🤔 Попробуйте ещё раз или напишите текстом.');
+            return { statusCode: 200, body: 'OK' };
+          }
+          const sessRef = adminDb.collection('directorSessions').doc(String(chatId));
+          const sessSnap = await sessRef.get();
+          let history: DirectorChatMessage[] = sessSnap.exists ? (sessSnap.data()?.messages || []) : [];
+
+          const answer = await answerDirectorVoice(dir.orgId, dir.org.name || 'центр', audio.base64, audio.mime, history);
+          await sendTg(answer, directorMenuKeyboard());
+
+          history.push({ role: 'user', content: '[голосовое сообщение]' }, { role: 'assistant', content: answer });
+          if (history.length > 8) history = history.slice(-8);
+          await sessRef.set({ messages: history, updatedAt: new Date().toISOString() }, { merge: true }).catch(() => {});
+        }
+        return { statusCode: 200, body: 'OK' };
+      }
 
       // (a) Contact shared → capture phone, then ask for the official full name.
       if (contact) {
@@ -292,6 +480,23 @@ export const handler: Handler = async (event: HandlerEvent) => {
           return { statusCode: 200, body: 'OK' };
         }
 
+        // Parent linking: /start parent_<parentPortalKey> (from the parent portal).
+        if (payloadArg.startsWith('parent_')) {
+          const key = payloadArg.slice('parent_'.length);
+          const linked = await linkParentByKey(key);
+          if (!linked) {
+            await reply('❌ Ссылка недействительна или устарела. Откройте портал ребёнка и нажмите «Подключить Telegram» ещё раз.');
+            return { statusCode: 200, body: 'OK' };
+          }
+          await sendTg(
+            `✅ <b>Готово!</b> Вы подключены к успехам <b>${linked.name}</b>.\n\n` +
+            `Теперь вам будут приходить уведомления о посещаемости, оценках и оплате прямо сюда.\n` +
+            `Чтобы отписаться — напишите /unlink`,
+            { inline_keyboard: [[{ text: '📊 Открыть портал', url: linked.portalUrl }]] },
+          );
+          return { statusCode: 200, body: 'OK' };
+        }
+
         // Account-linking code (existing users linking notifications).
         if (payloadArg) {
           const linkResult = await resolveTelegramLinkCode(payloadArg);
@@ -313,8 +518,19 @@ export const handler: Handler = async (event: HandlerEvent) => {
           const uid = known.docs[0].id;
           await sendLoginButton(uid, 'С возвращением! 👋 Нажмите, чтобы войти в SabakHub:');
           await backfillCredentials(uid); // old accounts without a web login get one
+          // Directors get a one-line nudge + the quick-action menu + the "/" command list.
+          const dir = await resolveDirectorFromUser(uid, known.docs[0].data());
+          if (dir && planHasAIManager(dir.org.planId)) {
+            await setDirectorCommands();
+            await sendTg(
+              '🤖 <b>AI-копилот директора</b>\nСпросите меня текстом или голосом — например «Сколько дохода в этом месяце?», «Кто должает?» — или жмите кнопки ниже:',
+              directorMenuKeyboard(),
+            );
+          }
           return { statusCode: 200, body: 'OK' };
         }
+        // Returning parent (no app account, but linked to a child's portal).
+        if (await sendParentPortals()) return { statusCode: 200, body: 'OK' };
         await reply('Здравствуйте! Я бот SabakHub. Чтобы зарегистрироваться в учебном центре, откройте ссылку-приглашение, которую вам прислали.');
         return { statusCode: 200, body: 'OK' };
       }
@@ -350,15 +566,76 @@ export const handler: Handler = async (event: HandlerEvent) => {
         return { statusCode: 200, body: 'OK' };
       }
 
+      // (c3) /menu — director quick-action menu.
+      if (text === '/menu') {
+        const dir = await resolveDirectorByChat(String(chatId));
+        if (dir && planHasAIManager(dir.org.planId)) {
+          await setDirectorCommands();
+          await sendTg('🤖 <b>Меню директора</b>\nВыберите действие или просто задайте вопрос текстом:', directorMenuKeyboard());
+        } else {
+          await reply('Это меню доступно только администраторам центра.');
+        }
+        return { statusCode: 200, body: 'OK' };
+      }
+
+      // (c4) /brief — on-demand AI briefing for the director.
+      if (text === '/brief') {
+        const dir = await resolveDirectorByChat(String(chatId));
+        if (dir && planHasAIManager(dir.org.planId)) {
+          await sendChatAction('typing');
+          const brief = await generateBrief(dir.orgId, dir.org.name || 'центр');
+          await sendTg(`☀️ <b>Сводка по центру</b>\n\n${brief}`, directorMenuKeyboard());
+        } else {
+          await reply('Эта команда доступна только администраторам центра.');
+        }
+        return { statusCode: 200, body: 'OK' };
+      }
+
       if (text === '/unlink') {
+        let did = false;
+        // (1) Unlink an app account (student / teacher) bound to this chat.
         const usersSnap = await adminDb.collection('users').where('telegramChatId', '==', String(chatId)).limit(1).get();
         if (!usersSnap.empty) {
           await usersSnap.docs[0].ref.update({ telegramChatId: '', telegramLinkedAt: '' });
-          await reply('🔓 Telegram отвязан. Вы больше не будете получать уведомления.');
-        } else {
-          await reply('Ваш аккаунт не привязан к системе.');
+          did = true;
         }
+        // (2) Detach any parent links (this chat following a child's portal).
+        const parentSnap = await adminDb.collection('users')
+          .where('parentTelegramChatIds', 'array-contains', String(chatId)).get();
+        if (!parentSnap.empty) {
+          await Promise.allSettled(parentSnap.docs.map(d =>
+            d.ref.update({ parentTelegramChatIds: FieldValue.arrayRemove(String(chatId)) })));
+          did = true;
+        }
+        await reply(did
+          ? '🔓 Telegram отвязан. Уведомления больше приходить не будут.'
+          : 'Ваш аккаунт не привязан к системе.');
         return { statusCode: 200, body: 'OK' };
+      }
+
+      // (d) Director copilot — owners/admins/managers ask management questions in plain text.
+      if (text && !text.startsWith('/')) {
+        const dir = await resolveDirectorByChat(String(chatId));
+        if (dir) {
+          if (!planHasAIManager(dir.org.planId)) {
+            await reply('🤖 AI-копилот директора доступен на тарифе <b>Professional</b> и выше.');
+            return { statusCode: 200, body: 'OK' };
+          }
+          await sendChatAction('typing');
+
+          // Short rolling history for conversational follow-ups (data is re-read each turn).
+          const sessRef = adminDb.collection('directorSessions').doc(String(chatId));
+          const sessSnap = await sessRef.get();
+          let history: DirectorChatMessage[] = sessSnap.exists ? (sessSnap.data()?.messages || []) : [];
+
+          const answer = await answerDirectorQuestion(dir.orgId, dir.org.name || 'центр', text, history);
+          await sendTg(answer, directorMenuKeyboard());
+
+          history.push({ role: 'user', content: text }, { role: 'assistant', content: answer });
+          if (history.length > 8) history = history.slice(-8);
+          await sessRef.set({ messages: history, updatedAt: new Date().toISOString() }, { merge: true }).catch(() => {});
+          return { statusCode: 200, body: 'OK' };
+        }
       }
 
       // Ignore all other messages on global bot
@@ -366,6 +643,7 @@ export const handler: Handler = async (event: HandlerEvent) => {
     }
 
     // ─── CUSTOM ORG AI BOT BEHAVIOR ───
+    if (voice) return { statusCode: 200, body: 'OK' }; // sales bot doesn't transcribe voice
     const orgId = queryOrgId!;
     const settingsSnap = await adminDb.collection('organizationAIManager').doc(orgId).get();
     const settingsData = settingsSnap.data() || { isActive: false };
@@ -384,7 +662,7 @@ export const handler: Handler = async (event: HandlerEvent) => {
     ]);
 
     const org = orgSnap.data() || {};
-    if (org.planId !== 'enterprise') {
+    if (!planHasAIManager(org.planId)) {
       await reply('К сожалению, AI-ассистент временно недоступен у данной организации.');
       return { statusCode: 200, body: 'OK' };
     }

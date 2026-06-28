@@ -19,6 +19,101 @@ import { billingPeriodKey, billingDeadlineISO } from './utils/billing';
 /* ═══════════════════════════════════════════════ */
 const now = () => new Date().toISOString();
 
+// ─── Schedule conflict detection ───────────────────────────────────────────
+// Authoritative server-side check so EVERY path (manual create, drag&drop, paste,
+// AI import) is protected — the client check only sees the loaded week/branch.
+
+/** "HH:MM" → minutes since midnight, or null if unparseable. */
+function timeToMinutes(t?: string | null): number | null {
+  if (!t) return null;
+  const [h, m] = String(t).split(':').map(Number);
+  if (Number.isNaN(h)) return null;
+  return h * 60 + (Number.isNaN(m) ? 0 : m);
+}
+
+/** Weekday in the app's convention (0=Mon … 6=Sun) from a YYYY-MM-DD string. */
+function appDayOfWeek(dateStr: string): number {
+  const js = new Date(dateStr + 'T00:00:00').getDay(); // 0=Sun … 6=Sat
+  return (js + 6) % 7;
+}
+
+interface ConflictCandidate {
+  recurring: boolean;
+  dayOfWeek: number | null;
+  date: string | null;
+  startTime: string;
+  endTime?: string | null;
+  duration?: number | null;
+  teacherId?: string | null;
+  groupId?: string | null;
+  location?: string | null;
+}
+
+interface ConflictHit { id: string; title: string; kind: 'teacher' | 'room' | 'group'; startTime: string; endTime: string; }
+
+/**
+ * Find scheduling conflicts: an existing event sharing the same teacher, group or
+ * room and overlapping in time on the same calendar slot. Handles recurring↔recurring
+ * (same weekday), dated↔dated (same date) and a dated event landing on a recurring weekday.
+ */
+async function detectScheduleConflicts(orgId: string, cand: ConflictCandidate, excludeId?: string): Promise<ConflictHit[]> {
+  const candStart = timeToMinutes(cand.startTime);
+  if (candStart === null) return [];
+  const candEnd = timeToMinutes(cand.endTime) ?? candStart + (Number(cand.duration) || 45);
+
+  const room = (cand.location || '').trim().toLowerCase();
+  const teacherId = cand.teacherId || null;
+  const groupId = cand.groupId || null;
+  if (!teacherId && !groupId && !room) return []; // nothing that can clash
+
+  const snap = await adminDb.collection('scheduleEvents').where('organizationId', '==', orgId).get();
+  const hits: ConflictHit[] = [];
+
+  for (const doc of snap.docs) {
+    if (doc.id === excludeId) continue;
+    const e = doc.data() as any;
+
+    // Same calendar slot?
+    let sameSlot = false;
+    if (cand.recurring && e.recurring) {
+      sameSlot = e.dayOfWeek === cand.dayOfWeek;
+    } else if (!cand.recurring && !e.recurring) {
+      sameSlot = !!cand.date && e.date === cand.date;
+    } else if (cand.recurring && !e.recurring) {
+      sameSlot = !!e.date && cand.dayOfWeek === appDayOfWeek(e.date);
+    } else { // cand dated, e recurring
+      sameSlot = !!cand.date && e.dayOfWeek === appDayOfWeek(cand.date);
+    }
+    if (!sameSlot) continue;
+
+    // Time overlap?
+    const eStart = timeToMinutes(e.startTime);
+    if (eStart === null) continue;
+    const eEnd = timeToMinutes(e.endTime) ?? eStart + (Number(e.duration) || 45);
+    if (Math.max(candStart, eStart) >= Math.min(candEnd, eEnd)) continue;
+
+    // What resource clashes? Teacher/group are physically impossible; room is a resource clash.
+    let kind: ConflictHit['kind'] | null = null;
+    if (teacherId && e.teacherId && e.teacherId === teacherId) kind = 'teacher';
+    else if (groupId && e.groupId && e.groupId === groupId) kind = 'group';
+    else if (room && e.location && String(e.location).trim().toLowerCase() === room) kind = 'room';
+    if (!kind) continue;
+
+    hits.push({ id: doc.id, title: e.title || 'Занятие', kind, startTime: e.startTime || '', endTime: e.endTime || '' });
+  }
+  return hits;
+}
+
+function conflictMessage(hits: ConflictHit[]): string {
+  const h = hits[0];
+  const who = h.kind === 'teacher' ? 'преподаватель уже занят'
+    : h.kind === 'group' ? 'у группы уже есть занятие'
+    : 'кабинет уже занят';
+  const span = h.startTime ? ` ${h.startTime}${h.endTime ? '–' + h.endTime : ''}` : '';
+  const more = hits.length > 1 ? ` (и ещё ${hits.length - 1})` : '';
+  return `Конфликт: ${who} — «${h.title}»${span}${more}.`;
+}
+
 /** Ensure user has org access and is admin/teacher */
 function requireOrgStaff(user: AuthUser) {
   if (!user.organizationId) return forbidden();
@@ -1201,6 +1296,17 @@ const handler: Handler = async (event: HandlerEvent) => {
         location: body.location || '', notes: body.notes || '',
         createdAt: now(), updatedAt: now(),
       };
+      // Block double-booking (teacher / group / room) unless explicitly forced.
+      if (body.force !== true) {
+        const conflicts = await detectScheduleConflicts(orgId, {
+          recurring: isRecurring,
+          dayOfWeek: isRecurring ? Number(body.dayOfWeek) : null,
+          date: isRecurring ? null : body.date,
+          startTime: body.startTime, endTime: body.endTime, duration: body.duration,
+          teacherId: body.teacherId, groupId: body.groupId, location: body.location,
+        });
+        if (conflicts.length) return jsonResponse(409, { error: conflictMessage(conflicts), conflicts });
+      }
       const ref = await adminDb.collection('scheduleEvents').add(data);
       return ok({ id: ref.id, ...data });
     }
@@ -1213,7 +1319,19 @@ const handler: Handler = async (event: HandlerEvent) => {
       const doc = await adminDb.collection('scheduleEvents').doc(body.id).get();
       if (!doc.exists || doc.data()?.organizationId !== orgId) return notFound();
       const before = doc.data()!;
-      const { id, ...fields } = body;
+      const { id, force, ...fields } = body;
+      // Re-check conflicts against the event's resulting state (covers drag&drop moves).
+      if (force !== true) {
+        const m = { ...before, ...fields };
+        const conflicts = await detectScheduleConflicts(orgId, {
+          recurring: !!m.recurring,
+          dayOfWeek: m.recurring ? Number(m.dayOfWeek) : null,
+          date: m.recurring ? null : m.date,
+          startTime: m.startTime, endTime: m.endTime, duration: m.duration,
+          teacherId: m.teacherId, groupId: m.groupId, location: m.location,
+        }, id);
+        if (conflicts.length) return jsonResponse(409, { error: conflictMessage(conflicts), conflicts });
+      }
       fields.updatedAt = now();
       await adminDb.collection('scheduleEvents').doc(id).update(fields);
 

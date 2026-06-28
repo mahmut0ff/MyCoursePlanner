@@ -164,8 +164,9 @@ ${JSON.stringify(questions)}
     if (action === 'speaking') {
       const messages = Array.isArray(body.messages) ? body.messages.slice(-10) : [];
       const level = String(body.level || 'A2-B1').trim();
-      const lang = String(body.lang || 'English').trim();
+      const lang = String(body.lang || '').trim();
       if (messages.length === 0) return badRequest('messages required');
+      if (!lang) return badRequest('lang required');
 
       const convo = messages.map((m: any) => `${m.role === 'user' ? 'Student' : 'Partner'}: ${m.content}`).join('\n');
       const model = getModel({ json: true });

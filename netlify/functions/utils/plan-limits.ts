@@ -6,6 +6,18 @@ export const PLAN_LIMITS: Record<string, { maxStudents: number; maxTeachers: num
   enterprise: { maxStudents: -1, maxTeachers: -1, maxExams: -1 },
 };
 
+/**
+ * Plans that include the AI sales manager / assistant.
+ * Lowered from Enterprise-only to Professional and up (aliases included so older
+ * plan ids keep working). Single source of truth — used by the AI manager API,
+ * the Telegram webhook (custom org bot) and settings gating.
+ */
+export const AI_MANAGER_PLANS = ['professional', 'pro', 'expert', 'enterprise'];
+
+export function planHasAIManager(planId?: string | null): boolean {
+  return !!planId && AI_MANAGER_PLANS.includes(planId);
+}
+
 export async function getOrgLimits(organizationId: string) {
   let limits = { ...PLAN_LIMITS.starter };
   

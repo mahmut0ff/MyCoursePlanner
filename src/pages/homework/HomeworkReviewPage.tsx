@@ -491,7 +491,7 @@ const HomeworkReviewPage: React.FC = () => {
                       {/* Grammar issues */}
                       {selectedSubmission.aiAnalysis.grammarIssues && selectedSubmission.aiAnalysis.grammarIssues.length > 0 && (
                         <div className="bg-white/60 dark:bg-slate-800/40 p-3.5 rounded-xl border border-slate-100 dark:border-slate-800">
-                          <p className="text-[10px] uppercase tracking-widest text-slate-500 font-bold mb-2">Грамматика и ошибки ({selectedSubmission.aiAnalysis.grammarIssues.length})</p>
+                          <p className="text-[10px] uppercase tracking-widest text-slate-500 font-bold mb-2">Замечания и правки ({selectedSubmission.aiAnalysis.grammarIssues.length})</p>
                           <ul className="space-y-2.5">
                             {selectedSubmission.aiAnalysis.grammarIssues.map((g, i) => (
                               <li key={i} className="text-[12.5px] leading-snug">

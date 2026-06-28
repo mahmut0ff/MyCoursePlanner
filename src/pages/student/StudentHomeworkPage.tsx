@@ -247,7 +247,7 @@ const StudentHomeworkPage: React.FC = () => {
                       </div>
                     )}
 
-                    {/* AI grammar analysis (read-only) */}
+                    {/* AI analysis (read-only) */}
                     {sub.aiAnalysis && (
                       ((sub.aiAnalysis.strengths?.length || 0) > 0 ||
                        (sub.aiAnalysis.weaknesses?.length || 0) > 0 ||
@@ -271,7 +271,7 @@ const StudentHomeworkPage: React.FC = () => {
                           </ul>
                         )}
                         {sub.aiAnalysis.grammarIssues && sub.aiAnalysis.grammarIssues.length > 0 && (
-                          <p className="text-[11.5px] text-violet-700 dark:text-violet-300 font-medium">Грамматических замечаний: {sub.aiAnalysis.grammarIssues.length}</p>
+                          <p className="text-[11.5px] text-violet-700 dark:text-violet-300 font-medium">Замечаний и правок: {sub.aiAnalysis.grammarIssues.length}</p>
                         )}
                       </div>
                       )
@@ -286,7 +286,7 @@ const StudentHomeworkPage: React.FC = () => {
                       >
                         {checkingId === sub.id
                           ? <><span className="w-3.5 h-3.5 border-2 border-white/40 border-t-white rounded-full animate-spin" /> Проверяю…</>
-                          : <><Sparkles className="w-3.5 h-3.5" /> {sub.aiAnalysis ? 'Перепроверить грамматику' : 'Проверить грамматику'}</>}
+                          : <><Sparkles className="w-3.5 h-3.5" /> {sub.aiAnalysis ? 'Перепроверить работу' : 'Проверить работу'}</>}
                       </button>
                     )}
                   </div>

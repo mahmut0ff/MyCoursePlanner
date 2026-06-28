@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { apiGetParentPortalData } from '../../lib/api';
-import { Trophy, Flame, Play, BookOpen, Star, AlertCircle, Calendar } from 'lucide-react';
+import { Trophy, Flame, Play, BookOpen, Star, AlertCircle, Calendar, Send, ChevronRight } from 'lucide-react';
 import { PinnedBadgesDisplay } from '../../lib/badges';
 import ParentAISummaryCard from '../../components/ai/ParentAISummaryCard';
 
@@ -17,6 +17,7 @@ interface ParentPortalData {
     logoUrl: string;
   } | null;
   aiEnabled?: boolean;
+  telegramBot?: string;
   stats: {
     totalXp: number;
     currentStreak: number;
@@ -89,7 +90,7 @@ const ParentPortalPage: React.FC = () => {
     );
   }
 
-  const { student, stats, recentResults, organization, aiEnabled } = data;
+  const { student, stats, recentResults, organization, aiEnabled, telegramBot } = data;
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-900 font-sans text-slate-900 dark:text-slate-100 selection:bg-indigo-500/30">
@@ -216,6 +217,27 @@ const ParentPortalPage: React.FC = () => {
             );
           })()}
         </div>
+
+        {/* Connect Telegram — get push alerts about attendance, grades & payments */}
+        {token && telegramBot && (
+          <a
+            href={`https://t.me/${telegramBot}?start=parent_${token}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="block mb-8 group"
+          >
+            <div className="flex items-center gap-4 bg-gradient-to-r from-sky-500 to-blue-600 text-white rounded-2xl p-5 shadow-lg hover:shadow-xl transition-all hover:-translate-y-0.5">
+              <div className="w-12 h-12 rounded-xl bg-white/20 flex items-center justify-center shrink-0">
+                <Send className="w-6 h-6" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <h3 className="font-bold text-base sm:text-lg">Подключить Telegram</h3>
+                <p className="text-sm text-white/80">Уведомления о посещаемости, оценках и оплате — прямо в Telegram</p>
+              </div>
+              <ChevronRight className="w-5 h-5 shrink-0 opacity-80 group-hover:translate-x-0.5 transition-transform" />
+            </div>
+          </a>
+        )}
 
         {/* AI progress summary */}
         {aiEnabled && token && (

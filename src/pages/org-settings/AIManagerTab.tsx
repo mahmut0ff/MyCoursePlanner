@@ -1,11 +1,23 @@
 import React, { useEffect, useState } from 'react';
-import { Bot, Save, Loader2, Plus, Trash2 } from 'lucide-react';
-import { apiGetAIManagerSettings, apiUpdateAIManagerSettings } from '../../lib/api';
+import { Bot, Save, Loader2, Plus, Trash2, Activity } from 'lucide-react';
+import { apiGetAIManagerSettings, apiUpdateAIManagerSettings, apiGetAIManagerUsage } from '../../lib/api';
 import type { OrgAIManagerSettings, AIManagerFAQ } from '../../types';
 import toast from 'react-hot-toast';
 
+/** Human labels for AI usage features (recordAiUsage keys). */
+const AI_FEATURE_LABELS: Record<string, string> = {
+  director_copilot: 'Копилот директора (вопросы)',
+  director_brief: 'AI-сводки',
+  director_voice: 'Голосовые вопросы',
+  director_draft: 'Черновики рассылок',
+  parent_summary: 'Сводки для родителей',
+};
+
+interface AIUsage { period: string; total: number; features: Record<string, number>; }
+
 export const AIManagerTab: React.FC<{ organizationId: string }> = ({ organizationId }) => {
   const [settings, setSettings] = useState<OrgAIManagerSettings | null>(null);
+  const [usage, setUsage] = useState<AIUsage | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
@@ -21,6 +33,8 @@ export const AIManagerTab: React.FC<{ organizationId: string }> = ({ organizatio
         toast.error('Не удалось загрузить настройки AI');
       })
       .finally(() => setLoading(false));
+    // AI consumption is independent of the sales-bot toggle — load it separately.
+    apiGetAIManagerUsage(organizationId).then((res) => setUsage(res.data)).catch(() => {});
   }, [organizationId]);
 
   const update = <K extends keyof OrgAIManagerSettings>(key: K, value: OrgAIManagerSettings[K]) => {
@@ -96,6 +110,36 @@ export const AIManagerTab: React.FC<{ organizationId: string }> = ({ organizatio
           </button>
         </div>
       </div>
+
+      {/* ── AI Usage (this month) ── */}
+      {usage && (
+        <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-5">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="p-3 rounded-xl bg-indigo-100 text-indigo-600 dark:bg-indigo-900/30">
+                <Activity className="w-6 h-6" />
+              </div>
+              <div>
+                <h3 className="font-semibold text-slate-900 dark:text-white">Расход AI за месяц</h3>
+                <p className="text-sm text-slate-500 dark:text-slate-400">{usage.period} · всего запросов</p>
+              </div>
+            </div>
+            <span className="text-3xl font-bold text-slate-900 dark:text-white">{usage.total}</span>
+          </div>
+          {usage.total === 0 ? (
+            <p className="text-sm text-slate-400 mt-3">AI ещё не использовался в этом месяце.</p>
+          ) : (
+            <div className="mt-4 space-y-2 border-t border-slate-100 dark:border-slate-700/50 pt-4">
+              {Object.entries(usage.features).sort((a, b) => b[1] - a[1]).map(([key, count]) => (
+                <div key={key} className="flex items-center justify-between text-sm">
+                  <span className="text-slate-600 dark:text-slate-300">{AI_FEATURE_LABELS[key] || key}</span>
+                  <span className="font-semibold text-slate-900 dark:text-white tabular-nums">{count}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
       {settings.isActive && (
         <>

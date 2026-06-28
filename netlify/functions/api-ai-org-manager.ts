@@ -2,6 +2,7 @@ import type { Handler, HandlerEvent } from '@netlify/functions';
 import { adminDb } from './utils/firebase-admin';
 import { verifyAuth, jsonResponse, badRequest, unauthorized, forbidden, ok } from './utils/auth';
 import { notifyOrgAdmins } from './utils/notifications';
+import { planHasAIManager } from './utils/plan-limits';
 
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY || '';
 
@@ -42,11 +43,26 @@ const handler: Handler = async (event: HandlerEvent) => {
         data = { ...data, ...snap.data() };
       }
       
-      if (orgPlan !== 'enterprise') {
+      if (!planHasAIManager(orgPlan)) {
         data.isActive = false;
       }
 
       return ok({ data });
+    }
+
+    // --- action: getUsage (current month AI consumption) ---
+    if (action === 'getUsage') {
+      const user = await verifyAuth(event);
+      if (!user) return unauthorized();
+      const organizationId = event.queryStringParameters?.organizationId;
+      if (!organizationId) return badRequest('organizationId is required');
+      if (user.organizationId !== organizationId && user.role !== 'super_admin') return forbidden();
+
+      const period = new Date().toISOString().slice(0, 7); // YYYY-MM
+      const snap = await adminDb.collection('organizations').doc(organizationId)
+        .collection('aiUsage').doc(period).get();
+      const d = snap.exists ? snap.data()! : null;
+      return ok({ data: { period, total: d?.total || 0, features: d?.features || {} } });
     }
 
     // --- action: updateSettings ---
@@ -65,8 +81,7 @@ const handler: Handler = async (event: HandlerEvent) => {
       if (!orgSnap.exists) return badRequest('Organization not found');
       
       const orgData = orgSnap.data()!;
-      const allowedPlans = ['enterprise', 'professional', 'pro', 'expert'];
-      if (!allowedPlans.includes(orgData.planId) && user.role !== 'super_admin') {
+      if (!planHasAIManager(orgData.planId) && user.role !== 'super_admin') {
          return forbidden('Your current plan does not support AI features');
       }
       if (orgData.ownerId !== user.uid && user.role !== 'super_admin') {
@@ -144,8 +159,8 @@ const handler: Handler = async (event: HandlerEvent) => {
       ]);
 
       const org = orgSnap.data() || {};
-      
-      if (org.planId !== 'enterprise') {
+
+      if (!planHasAIManager(org.planId)) {
         return forbidden('AI Assistant is not available on this organization\'s plan.');
       }
       

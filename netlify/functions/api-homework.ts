@@ -185,11 +185,14 @@ export const handler: Handler = async (event: HandlerEvent) => {
     // We should ideally fetch the actual lesson assignment details. 
     // Usually it resides in `lessons` collection.
     let assignmentDesc = 'Unknown task.';
+    let subject = '';
     try {
       const lessonSnap = await adminDb.collection('lessons').doc(submission?.lessonId).get();
       if (lessonSnap.exists) {
-        const h = lessonSnap.data()?.homework;
+        const ldata = lessonSnap.data();
+        const h = ldata?.homework;
         if (h) assignmentDesc = `${h.title}: ${h.description}`;
+        if (ldata?.subject) subject = String(ldata.subject).trim();
       }
     } catch (e) {}
 
@@ -220,7 +223,7 @@ export const handler: Handler = async (event: HandlerEvent) => {
     const hasMedia = mediaParts.length > 0;
     const hasText = !!(submission?.content && submission.content.trim());
 
-    const prompt = `Ты — ассистент опытного преподавателя языковой школы. Проверь письменную работу студента по заданию и дай развёрнутый конструктивный разбор с акцентом на язык: грамматику, лексику, орфографию, структуру и связность.
+    const prompt = `Ты — ассистент опытного преподавателя${subject ? ` по предмету «${subject}»` : ''}. Проверь работу студента по заданию и дай развёрнутый конструктивный разбор по сути предмета: правильность и полноту ответа, ход решения и методику, аргументацию, структуру и ясность изложения. Если это языковая/письменная работа — учитывай также грамматику, лексику и орфографию. Оценивай строго по теме и предмету задания, не навязывай критерии из других областей.
 
 Задание:
 """
@@ -231,7 +234,7 @@ ${assignmentDesc}
 """
 ${submission?.content || '(текста нет)'}
 """
-${hasMedia ? `\nК работе приложено файлов (фото/скан/PDF): ${mediaParts.length}. Считай текст с приложенных изображений/документов${hasText ? ' и объедини его с текстом выше' : ' — это и есть работа студента'}, затем проверяй грамматику по распознанному тексту.\n` : ''}
+${hasMedia ? `\nК работе приложено файлов (фото/скан/PDF): ${mediaParts.length}. Считай содержимое с приложенных изображений/документов${hasText ? ' и объедини его с текстом выше' : ' — это и есть работа студента'}, затем проверяй работу по распознанному содержимому.\n` : ''}
 Максимальный балл: ${maxPoints}
 
 Верни СТРОГО валидный JSON в таком формате:
@@ -241,14 +244,14 @@ ${hasMedia ? `\nК работе приложено файлов (фото/ска
   "strengths": ["плюсы — что студент сделал хорошо, конкретно"],
   "weaknesses": ["минусы — что стоит улучшить, конкретно"],
   "grammarIssues": [
-    { "fragment": "точная цитата ошибочного фрагмента из работы", "correction": "исправленный вариант", "explanation": "кратко: почему так правильно" }
+    { "fragment": "точная цитата проблемного фрагмента из работы (ошибка, неточность или неверный шаг)", "correction": "исправленный/улучшенный вариант", "explanation": "кратко: почему так правильно" }
   ],
   "suggestions": "Дружелюбный итоговый комментарий студенту: что доработать и как."
 }
 
 Правила:
 - Пиши summary, strengths, weaknesses, explanation и suggestions по-русски. Цитаты "fragment" и "correction" приводи на языке оригинала работы.
-- Если грамматических ошибок нет, верни "grammarIssues": [].
+- Если конкретных замечаний нет, верни "grammarIssues": [].
 - Если приложены фото и текст на них не читается (плохое качество/почерк), честно укажи это в summary и не выдумывай содержимое.
 - Если работы нет (ни текста, ни читаемых файлов), поставь низкий балл и объясни это в summary.
 - Не оборачивай JSON в markdown. Только чистый JSON.`;

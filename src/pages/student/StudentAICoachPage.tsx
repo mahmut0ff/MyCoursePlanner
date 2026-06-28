@@ -101,7 +101,7 @@ const PracticeTab: React.FC = () => {
   return (
     <div className="space-y-4">
       <div className="flex flex-col sm:flex-row gap-2">
-        <input value={topic} onChange={(e) => setTopic(e.target.value)} placeholder="Тема для тренировки, напр. Present Perfect" className="input flex-1" />
+        <input value={topic} onChange={(e) => setTopic(e.target.value)} placeholder="Тема для тренировки, напр. тема прошлого урока" className="input flex-1" />
         <select value={count} onChange={(e) => setCount(Number(e.target.value))} className="input sm:w-28">
           {[5, 8, 10].map(n => <option key={n} value={n}>{n} вопр.</option>)}
         </select>
@@ -200,7 +200,7 @@ const SpeakingTab: React.FC = () => {
   const [messages, setMessages] = useState<ChatMsg[]>([]);
   const [input, setInput] = useState('');
   const [level, setLevel] = useState('A2-B1');
-  const [lang, setLang] = useState('English');
+  const [lang, setLang] = useState('');
   const [loading, setLoading] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -209,6 +209,7 @@ const SpeakingTab: React.FC = () => {
   const send = async (text: string) => {
     const content = text.trim();
     if (!content || loading) return;
+    if (!lang) { toast.error('Выберите язык для разговора'); return; }
     setInput('');
     const next = [...messages, { role: 'user' as const, content }];
     setMessages(next);
@@ -226,6 +227,7 @@ const SpeakingTab: React.FC = () => {
     <div className="flex flex-col h-[60vh]">
       <div className="flex gap-2 mb-3">
         <select value={lang} onChange={(e) => setLang(e.target.value)} className="input w-auto text-sm">
+          <option value="">Язык…</option>
           {['English', 'Кыргызча', 'Русский', 'Türkçe', 'Deutsch'].map(l => <option key={l}>{l}</option>)}
         </select>
         <select value={level} onChange={(e) => setLevel(e.target.value)} className="input w-auto text-sm">
@@ -236,7 +238,7 @@ const SpeakingTab: React.FC = () => {
         {messages.length === 0 && (
           <div className="text-center py-10">
             <MessagesSquare className="w-10 h-10 mx-auto text-emerald-400 mb-3" />
-            <p className="text-slate-600 dark:text-slate-300 font-medium">Поговорите на {lang}</p>
+            <p className="text-slate-600 dark:text-slate-300 font-medium">{lang ? `Поговорите на ${lang}` : 'Выберите язык, чтобы начать разговор'}</p>
             <p className="text-sm text-slate-400 mt-1">Напишите что угодно — партнёр ответит и мягко исправит ошибки</p>
           </div>
         )}
@@ -260,8 +262,8 @@ const SpeakingTab: React.FC = () => {
         {loading && <div className="flex items-center gap-2 text-sm text-slate-400"><Loader2 className="w-4 h-4 animate-spin" /> …</div>}
       </div>
       <form onSubmit={(e) => { e.preventDefault(); send(input); }} className="pt-3 flex items-center gap-2">
-        <input value={input} onChange={(e) => setInput(e.target.value)} placeholder={`Напишите на ${lang}…`} className="input flex-1" />
-        <button type="submit" disabled={loading || !input.trim()} className="btn-primary flex items-center gap-1.5 shrink-0">
+        <input value={input} onChange={(e) => setInput(e.target.value)} placeholder={lang ? `Напишите на ${lang}…` : 'Сначала выберите язык'} className="input flex-1" />
+        <button type="submit" disabled={loading || !input.trim() || !lang} className="btn-primary flex items-center gap-1.5 shrink-0">
           {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
         </button>
       </form>
@@ -278,10 +280,13 @@ const TABS: { id: Tab; label: string; icon: React.ElementType }[] = [
 ];
 
 const StudentAICoachPage: React.FC = () => {
-  const { orgData } = useOrg();
+  const { orgData, institutionType } = useOrg();
   const navigate = useNavigate();
   const [tab, setTab] = useState<Tab>('tutor');
   const aiEnabled = aiEnabledFor(orgData?.planId);
+  // Conversation practice is inherently language-learning — surface it only for language schools.
+  const isLanguageOrg = institutionType === 'language';
+  const tabs = TABS.filter(t => t.id !== 'speaking' || isLanguageOrg);
 
   return (
     <div className="max-w-4xl mx-auto space-y-5">
@@ -289,7 +294,7 @@ const StudentAICoachPage: React.FC = () => {
         <div className="absolute -right-6 -top-6 opacity-10"><Sparkles className="w-36 h-36" /></div>
         <div className="relative">
           <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2.5"><Sparkles className="w-6 h-6" /> AI-наставник</h1>
-          <p className="text-sm text-white/80 mt-1.5 max-w-xl">Личный репетитор, тренировки, план обучения и разговорная практика — на базе материалов вашего центра.</p>
+          <p className="text-sm text-white/80 mt-1.5 max-w-xl">Личный репетитор, тренировки, план обучения{isLanguageOrg ? ' и разговорная практика' : ''} — на базе материалов вашего центра.</p>
         </div>
       </div>
 
@@ -303,7 +308,7 @@ const StudentAICoachPage: React.FC = () => {
       ) : (
         <>
           <div className="flex gap-1.5 overflow-x-auto pb-1">
-            {TABS.map(({ id, label, icon: Icon }) => (
+            {tabs.map(({ id, label, icon: Icon }) => (
               <button
                 key={id}
                 onClick={() => setTab(id)}

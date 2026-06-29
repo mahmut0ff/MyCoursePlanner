@@ -1,7 +1,6 @@
 import type { Handler, HandlerEvent } from '@netlify/functions';
 import { adminDb } from './utils/firebase-admin';
 import { FieldValue } from 'firebase-admin/firestore';
-import { notifyOrgAdmins } from './utils/notifications';
 import { resolveTelegramLinkCode, TELEGRAM_BOT_TOKEN } from './utils/telegram';
 import { resolveJoinCode, createOrJoinTelegramUser, createLoginToken, resolveClaimToken, ensureParentKey, ensureLoginCredentials } from './utils/onboarding';
 import { processApprovalDecision } from './utils/join-approvals';
@@ -14,8 +13,7 @@ import {
   type DirectorChatMessage,
 } from './utils/director-copilot';
 import { resolveStaffByChat, runStaffCopilotTurn, can, type StaffContext } from './utils/copilot-actions';
-
-const GEMINI_API_KEY = process.env.GEMINI_API_KEY || '';
+import { runSalesBotTurn, type SalesMessage } from './utils/sales-copilot';
 
 /** Reply keyboard for a staff copilot turn — director quick-actions, or none for teachers. */
 function copilotKeyboard(staff: StaffContext) {
@@ -683,227 +681,31 @@ export const handler: Handler = async (event: HandlerEvent) => {
       return { statusCode: 200, body: 'OK' };
     }
 
-    // Fetch Context (Org, Courses, Branches)
-    const [orgSnap, coursesSnap, branchesSnap] = await Promise.all([
-      adminDb.collection('organizations').doc(orgId).get(),
-      adminDb.collection('courses').where('organizationId', '==', orgId).get(),
-      adminDb.collection('branches').where('organizationId', '==', orgId).get()
-    ]);
-
+    // Plan-gate the org's own AI bot (Professional+), same as the global copilots.
+    const orgSnap = await adminDb.collection('organizations').doc(orgId).get();
     const org = orgSnap.data() || {};
     if (!planHasAIManager(org.planId)) {
       await reply('К сожалению, AI-ассистент временно недоступен у данной организации.');
       return { statusCode: 200, body: 'OK' };
     }
 
-    const courses = coursesSnap.docs
-      .map(d => d.data())
-      .filter(c => c.status === 'published')
-      .map(c => `- ${c.title}${c.price ? ` (Price: ${c.price})` : ''}: ${c.description || ''}`);
-    const branches = branchesSnap.docs.map(d => {
-      const b = d.data();
-      return `- ${b.name}: ${b.address || ''} ${b.phone ? `(${b.phone})` : ''}`;
-    });
-
-    // Manage Context in Firestore (simplified 10 messages context limit)
+    // Rolling chat history (per org + chat), capped. The sales copilot re-reads
+    // all org data (courses, schedule, prices) each turn — history is just for tone.
     const sessionRef = adminDb.collection('organizationAIManager').doc(orgId).collection('telegramSessions').doc(chatId.toString());
     const sessionSnap = await sessionRef.get();
-    let history: any[] = [];
-    if (sessionSnap.exists) {
-      history = sessionSnap.data()?.messages || [];
-    }
-    
-    // Add User Message to local history array
-    history.push({ role: 'user', content: text });
-    if (history.length > 20) {
-      history = history.slice(-20);
-    }
-    
-    const isFirstMessage = history.length === 1;
+    let history: SalesMessage[] = sessionSnap.exists ? (sessionSnap.data()?.messages || []) : [];
+    const isFirstMessage = history.length === 0;
 
-    const systemPrompt = `You are the friendly, proactive, and highly professional sales manager and consultant for "${org.name || 'this educational organization'}".
-
-YOUR DIRECTIVES (CRITICAL):
-1. ACT LIKE A REAL HUMAN: Build a natural, empathetic, and engaging dialogue. 
-2. PROACTIVE SALES: Gently guide the conversation. Ask clarifying questions (e.g., "What is the student's current level?", "When would you like to start?"). 
-3. FACTUAL ACCURACY: Rely ONLY on the data provided below. Do not invent courses, prices, or policies.
-4. GREETING RULE: If this is the start of the conversation, you MUST incorporate the exact essence of the configured "Greeting Message". Do not overwrite it with generic text.
-5. NO REPETITIVE GREETINGS: Do not say hello in follow-up messages.
-6. LEAD LOGGING (CRITICAL): If the user agrees to a meeting or trial lesson AND provides their name and phone number, you MUST call the "addLeadToDatabase" function tool.
-7. LANGUAGE: Reply in the same language as the user.
-8. CUSTOM BEHAVIOR INSTRUCTIONS: ${settingsData.customInstructions ? 'STRICTLY FOLLOW THIS: "' + settingsData.customInstructions + '"' : 'None.'}
-
-ORGANIZATION KNOWLEDGE BASE:
-- Name: ${org.name || 'Unknown'}
-- Location/Address: ${org.address || 'N/A'}
-- Organization Bio / Description: ${settingsData.aboutOrganization || org.description || 'No description provided.'}
-- Configured Greeting Message: "${settingsData.greetingMessage || 'Здравствуйте! Чем я могу вам помочь?'}"
-- Enrollment Policy: ${settingsData.enrollmentPolicy || 'No specific policy provided.'}
-- FAQ: ${JSON.stringify(settingsData.faq || [])}
-- Contacts: Email: ${org.contactEmail || 'N/A'}, Phone: ${org.contactPhone || 'N/A'}
-
-AVAILABLE COURSES & PRICES:
-${courses.length ? courses.join('\n') : 'No public courses listed. Suggest contacting the office.'}
-
-AVAILABLE BRANCHES:
-${branches.length ? branches.join('\n') : 'No public branches listed.'}
-
-${isFirstMessage ? 'IMPORTANT: This is the first message from the user. You MUST reply by starting with the Configured Greeting Message exactly as written, then naturally address what they asked.' : ''}
-Provide formatted text for Telegram. Do not use Markdown unsupported by Telegram HTML (use <b>bold</b>, <i>italic</i>, etc.). Do NOT output raw generic JSON or code blocks.`;
-
-    // Prepare formats for Gemini API
-    const contents: any[] = [];
-    let expectedRole = 'user';
-    for (const msg of history) {
-      const mappedRole = msg.role === 'assistant' ? 'model' : 'user';
-      if (mappedRole === expectedRole) {
-         contents.push({ role: mappedRole, parts: [{ text: msg.content }] });
-         expectedRole = expectedRole === 'user' ? 'model' : 'user';
-      }
-    }
-    // ensure last message is from user
-    if (contents.length > 0 && contents[contents.length - 1].role === 'model') {
-       contents.pop();
-    }
-
-    // Dynamic model discovery
-    const selectedModel = 'gemini-2.5-flash';
-
-    const toolDeclarations = [{
-      functionDeclarations: [{
-        name: 'addLeadToDatabase',
-        description: 'Adds a new lead/application to the CRM database. ALWAYS call this function when the user provides their name AND phone number for a trial lesson, meeting, or enrollment. Do not skip this step.',
-        parameters: {
-          type: 'OBJECT',
-          properties: {
-            name: { type: 'STRING', description: 'Full client name as provided by the user' },
-            phone: { type: 'STRING', description: 'Client phone number as provided by the user' },
-            reason: { type: 'STRING', description: 'Reason / goal, e.g. Trial lesson for programming, Enrollment inquiry' }
-          },
-          required: ['name', 'phone']
-        }
-      }]
-    }];
-
-    const geminiRequestBody: any = {
-      system_instruction: { parts: [{ text: systemPrompt }] },
-      contents,
-      tools: toolDeclarations,
-      tool_config: { function_calling_config: { mode: 'AUTO' } },
-      generationConfig: { temperature: 0.4, maxOutputTokens: 2048 },
-    };
-
-    console.log('[TG-Webhook] Sending to Gemini, model:', selectedModel, 'contents length:', contents.length);
-
-    const geminiResponse = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/${selectedModel}:generateContent?key=${GEMINI_API_KEY}`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(geminiRequestBody),
-      }
-    );
-
-    if (!geminiResponse.ok) {
-      const errText = await geminiResponse.text();
-      console.error('[TG-Webhook] Gemini API error:', geminiResponse.status, errText);
-      await reply('Извините, произошла техническая ошибка. Пожалуйста, повторите позже.');
-      return { statusCode: 200, body: 'OK' };
-    }
-
-    const geminiData: any = await geminiResponse.json();
-    const candidateParts = geminiData.candidates?.[0]?.content?.parts || [];
-    
-    console.log('[TG-Webhook] Gemini response parts:', JSON.stringify(candidateParts.map((p: any) => ({
-      hasText: !!p.text,
-      hasFunctionCall: !!p.functionCall,
-      functionName: p.functionCall?.name,
-    }))));
-
-    let responseText = '';
-    const functionCallPart = candidateParts.find((p: any) => p.functionCall);
-    
-    if (functionCallPart?.functionCall?.name === 'addLeadToDatabase') {
-       const args = functionCallPart.functionCall.args || {};
-       console.log('[TG-Webhook] Function call detected! Args:', JSON.stringify(args));
-
-       // Step 1: Execute the function — save the lead to Firestore
-       try {
-         await adminDb.collection('organizations').doc(orgId).collection('aiLeads').add({
-            name: args.name || 'Unknown',
-            phone: args.phone || 'Unknown',
-            reason: args.reason || '',
-            source: 'telegram_bot',
-            status: 'new',
-            telegramChatId: String(chatId),
-            createdAt: new Date().toISOString()
-         });
-         console.log('[TG-Webhook] Lead saved successfully for org:', orgId);
-         
-         const notifMessage = `У вас новая заявка через Telegram бота!\n\n` +
-                         `👤 Имя: ${args.name}\n` +
-                         `📞 Телефон: ${args.phone}\n` +
-                         `${args.reason ? `🎯 Цель: ${args.reason}` : ''}`;
-         await notifyOrgAdmins(orgId, 'new_lead', '📩 Новая заявка', notifMessage, '/leads');
-       } catch (dbErr: any) {
-         console.error('[TG-Webhook] Failed to save lead:', dbErr);
-       }
-
-       // Step 2: Send functionResponse back to Gemini to get a natural reply
-       const functionResponseContents = [
-         ...contents,
-         // The model's turn that contained the function call
-         { role: 'model', parts: [{ functionCall: functionCallPart.functionCall }] },
-         // Our function result
-         { role: 'function', parts: [{ functionResponse: {
-           name: 'addLeadToDatabase',
-           response: { success: true, message: 'Lead has been saved. The manager will contact the client soon.' }
-         }}] }
-       ];
-
-       try {
-         const followUpResponse = await fetch(
-           `https://generativelanguage.googleapis.com/v1beta/models/${selectedModel}:generateContent?key=${GEMINI_API_KEY}`,
-           {
-             method: 'POST',
-             headers: { 'Content-Type': 'application/json' },
-             body: JSON.stringify({
-               system_instruction: { parts: [{ text: systemPrompt }] },
-               contents: functionResponseContents,
-               generationConfig: { temperature: 0.4, maxOutputTokens: 1024 },
-             }),
-           }
-         );
-
-         if (followUpResponse.ok) {
-           const followUpData: any = await followUpResponse.json();
-           const followUpParts = followUpData.candidates?.[0]?.content?.parts || [];
-           responseText = followUpParts.find((p: any) => p.text)?.text || '';
-           console.log('[TG-Webhook] Follow-up response received:', responseText.substring(0, 100));
-         }
-       } catch (e) {
-         console.warn('[TG-Webhook] Follow-up call failed (non-fatal):', e);
-       }
-
-       // Fallback if the follow-up didn't produce text
-       if (!responseText) {
-         responseText = 'Отлично! Я записал ваши данные. Наш менеджер свяжется с вами в ближайшее время! 🙌';
-       }
-    } else {
-       responseText = candidateParts.find((p: any) => p.text)?.text || 'Простите, я не смог сформировать ответ.';
-    }
-    
-    // Telegram HTML simple markdown fallback cleanups inside the AI output
-    responseText = responseText.replace(/\*\*(.*?)\*\*/g, '<b>$1</b>');
-    responseText = responseText.replace(/\*(.*?)\*/g, '<i>$1</i>');
-    
-    await reply(responseText);
-    
-    history.push({ role: 'assistant', content: responseText });
-    await sessionRef.set({
-      messages: history,
-      updatedAt: new Date().toISOString()
+    await sendChatAction('typing');
+    const answer = await runSalesBotTurn({
+      orgId, org, settings: settingsData, chatId: String(chatId),
+      history, userText: text, isFirstMessage,
     });
+    await reply(answer);
+
+    history.push({ role: 'user', content: text }, { role: 'assistant', content: toHistoryText(answer) });
+    if (history.length > 20) history = history.slice(-20);
+    await sessionRef.set({ messages: history, updatedAt: new Date().toISOString() }, { merge: true });
 
     return { statusCode: 200, body: 'OK' };
 

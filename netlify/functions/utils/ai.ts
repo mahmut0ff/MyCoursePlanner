@@ -13,6 +13,13 @@ const GEMINI_API_KEY = process.env.GEMINI_API_KEY || '';
 /** Default model used across all AI features. */
 export const AI_MODEL = 'gemini-2.5-flash';
 
+/**
+ * Secondary model, tried automatically when the primary one errors — most
+ * importantly a retired-model 404 (e.g. when Google sunsets a `-flash` revision).
+ * Overridable via env so we can re-point it without a redeploy.
+ */
+export const AI_FALLBACK_MODEL = process.env.GEMINI_FALLBACK_MODEL || 'gemini-2.5-flash-lite';
+
 export function hasGeminiKey(): boolean {
   return !!GEMINI_API_KEY;
 }
@@ -30,6 +37,31 @@ export function getModel(opts?: { json?: boolean; model?: string; tools?: any[];
     ...(opts?.tools ? { tools: opts.tools } : {}),
     generationConfig: opts?.json ? { responseMimeType: 'application/json' } : {},
   });
+}
+
+/**
+ * Generate content with automatic model fallback. Tries the primary model
+ * (`opts.model` or `AI_MODEL`) first; if that call throws — typically a
+ * retired-model 404 or a transient 429 — it retries ONCE on `AI_FALLBACK_MODEL`
+ * so the feature self-heals instead of hard-failing. Returns the SDK
+ * `GenerateContentResult`, so callers keep full access to
+ * `.response.text()` / `.response.functionCalls()` / `.response.candidates`.
+ */
+export async function generateWithFallback(
+  opts: { json?: boolean; model?: string; tools?: any[]; systemInstruction?: string } | undefined,
+  request: any,
+): Promise<any> {
+  try {
+    return await getModel(opts).generateContent(request);
+  } catch (primaryErr) {
+    // Already running on the fallback model — nothing left to try.
+    if ((opts?.model || AI_MODEL) === AI_FALLBACK_MODEL) throw primaryErr;
+    console.warn(
+      `[ai] primary model failed, retrying on ${AI_FALLBACK_MODEL}:`,
+      (primaryErr as any)?.message || primaryErr,
+    );
+    return await getModel({ ...(opts || {}), model: AI_FALLBACK_MODEL }).generateContent(request);
+  }
 }
 
 /** Tolerant JSON parse — strips ```json fences and surrounding prose. */

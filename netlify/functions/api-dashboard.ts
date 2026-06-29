@@ -5,6 +5,15 @@ import type { Handler, HandlerEvent } from '@netlify/functions';
 import { adminDb } from './utils/firebase-admin';
 import { verifyAuth, isStaff, hasRole, getOrgFilter, resolveBranchFilter, ok, unauthorized, forbidden, jsonResponse } from './utils/auth';
 
+/** ISO timestamp for the 1st of the month, `offset` months back (0 = this month). */
+function monthStartISO(offset = 0): string {
+  const d = new Date();
+  d.setUTCDate(1);
+  d.setUTCHours(0, 0, 0, 0);
+  d.setUTCMonth(d.getUTCMonth() - offset);
+  return d.toISOString();
+}
+
 const handler: Handler = async (event: HandlerEvent) => {
   if (event.httpMethod === 'OPTIONS') return jsonResponse(204, '');
   if (event.httpMethod !== 'GET') return jsonResponse(405, { error: 'Method not allowed' });
@@ -89,6 +98,110 @@ const handler: Handler = async (event: HandlerEvent) => {
     }
 
     return ok({ branches: result, unassigned, totalBranches: branchesSnap.size });
+  }
+
+  // ═══ OWNER OVERVIEW (command-center data — growth, performance, attendance, leads, risk) ═══
+  // Non-financial on purpose: money lives in api-finance-metrics (permission-gated). This is safe
+  // for managers without the `finances` permission. One heavy aggregation per dashboard load.
+  if (action === 'overview') {
+    if (!orgFilter) return forbidden();
+    if (!hasRole(user, 'admin') && !hasRole(user, 'manager')) return forbidden();
+
+    const monthStart = monthStartISO(0);
+    const lastMonthStart = monthStartISO(1);
+    const nowMs = Date.now();
+    const emptyCount = { data: () => ({ count: 0 }) };
+
+    const [memberSnap, leadSnap, attemptSnap, journalSnap, overdueSnap, hwCountSnap] = await Promise.all([
+      adminDb.collection('orgMembers').doc(orgFilter).collection('members').where('status', '==', 'active').get(),
+      adminDb.collection('organizations').doc(orgFilter).collection('aiLeads').get().catch(() => null),
+      adminDb.collection('examAttempts').where('organizationId', '==', orgFilter).get().catch(() => null),
+      adminDb.collection('journal').where('organizationId', '==', orgFilter).get().catch(() => null),
+      adminDb.collection('studentPaymentPlans').where('organizationId', '==', orgFilter).where('status', '==', 'overdue').get().catch(() => null),
+      adminDb.collection('homework_submissions').where('organizationId', '==', orgFilter).where('status', '==', 'pending').count().get().catch(() => emptyCount),
+    ]);
+
+    const members = memberSnap.docs.map(d => ({ id: d.id, ...(d.data() as any) }));
+    const students = members.filter(m => m.role === 'student');
+    const teachers = members.filter(m => ['teacher', 'mentor'].includes(m.role)).length;
+    const memberByUid = new Map<string, any>();
+    students.forEach(m => memberByUid.set(m.userId || m.id, m));
+    const studentIds = Array.from(memberByUid.keys());
+
+    const sinceOf = (m: any) => m.joinedAt || m.createdAt || '';
+    const newThisMonth = students.filter(m => sinceOf(m) >= monthStart).length;
+    const newLastMonth = students.filter(m => sinceOf(m) >= lastMonthStart && sinceOf(m) < monthStart).length;
+    // Apples-to-apples: last month up to the same day-of-month, so an early-month
+    // comparison isn't distorted (MTD vs full month).
+    const lmStart = new Date(lastMonthStart);
+    const lmDays = new Date(Date.UTC(lmStart.getUTCFullYear(), lmStart.getUTCMonth() + 1, 0)).getUTCDate();
+    const lmCutoff = new Date(Date.UTC(
+      lmStart.getUTCFullYear(), lmStart.getUTCMonth(), Math.min(new Date().getUTCDate(), lmDays), 23, 59, 59, 999,
+    )).toISOString();
+    const newLastMonthToDate = students.filter(m => { const s = sinceOf(m); return s >= lastMonthStart && s <= lmCutoff; }).length;
+
+    // Group attempts & attendance by student (single pass each).
+    const attemptsByStudent = new Map<string, any[]>();
+    const allAttempts = (attemptSnap?.docs || []).map(d => d.data() as any);
+    allAttempts.forEach(a => {
+      if (!attemptsByStudent.has(a.studentId)) attemptsByStudent.set(a.studentId, []);
+      attemptsByStudent.get(a.studentId)!.push(a);
+    });
+    const journalByStudent = new Map<string, any[]>();
+    const allJournal = (journalSnap?.docs || []).map(d => d.data() as any);
+    allJournal.forEach(j => {
+      if (!journalByStudent.has(j.studentId)) journalByStudent.set(j.studentId, []);
+      journalByStudent.get(j.studentId)!.push(j);
+    });
+    const overdueStudents = new Set<string>();
+    (overdueSnap?.docs || []).forEach(d => { const s = (d.data() as any).studentId; if (s) overdueStudents.add(s); });
+
+    const avgScore = allAttempts.length
+      ? Math.round(allAttempts.reduce((s, a) => s + (a.percentage || 0), 0) / allAttempts.length)
+      : null;
+    const attemptsThisMonth = allAttempts.filter(a => (a.createdAt || a.submittedAt || '') >= monthStart).length;
+
+    const totalAbsences = allJournal.filter(j => j.attendance === 'absent').length;
+    const rateAvg = allJournal.length ? Math.round(((allJournal.length - totalAbsences) / allJournal.length) * 100) : null;
+    const absencesThisMonth = allJournal.filter(j => j.attendance === 'absent' && (j.date || '') >= monthStart).length;
+
+    // Risk counts — mirror api-risk thresholds so the dashboard count matches the Risk page.
+    let riskHigh = 0, riskMedium = 0;
+    studentIds.forEach(uid => {
+      const sa = attemptsByStudent.get(uid) || [];
+      const sj = journalByStudent.get(uid) || [];
+      const member = memberByUid.get(uid) || {};
+      const hasScores = sa.length > 0;
+      const avg = hasScores ? Math.round(sa.reduce((s, a) => s + (a.percentage || 0), 0) / sa.length) : 0;
+      const missed = sj.filter(j => j.attendance === 'absent').length;
+      const attendanceRate = sj.length ? Math.round(((sj.length - missed) / sj.length) * 100) : 100;
+      const dates = [new Date(member.createdAt || nowMs).getTime()];
+      sa.forEach(a => a.createdAt && dates.push(new Date(a.createdAt).getTime()));
+      sj.forEach(j => j.date && dates.push(new Date(j.date).getTime()));
+      const daysSince = Math.floor((nowMs - Math.max(...dates)) / 86400000);
+      const overdue = overdueStudents.has(uid);
+      if (daysSince > 7 || (hasScores && avg < 50) || attendanceRate < 50 || overdue) riskHigh++;
+      else if (daysSince > 4 || (hasScores && avg < 70) || attendanceRate < 80) riskMedium++;
+    });
+
+    const leads = (leadSnap?.docs || []).map(d => d.data() as any);
+    const leadCount = (st: string) => leads.filter(l => (l.status || 'new') === st).length;
+
+    return ok({
+      students: { active: students.length, newThisMonth, newLastMonth, newLastMonthToDate },
+      teachers,
+      performance: { avgScore, attemptsThisMonth },
+      attendance: { rateAvg, absencesThisMonth },
+      risk: { high: riskHigh, medium: riskMedium, total: riskHigh + riskMedium },
+      leads: {
+        total: leads.length,
+        new: leadCount('new'),
+        contacted: leadCount('contacted'),
+        resolved: leadCount('resolved'),
+        newThisMonth: leads.filter(l => (l.createdAt || '') >= monthStart).length,
+      },
+      pendingHomework: hwCountSnap.data().count,
+    });
   }
 
   // ═══ DEFAULT DASHBOARD ═══

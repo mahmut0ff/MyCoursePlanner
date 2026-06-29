@@ -177,6 +177,10 @@ export const apiSetBranchAssignment = (userId: string, organizationId: string, b
 export const apiGetBranchAnalytics = () =>
   apiRequest<any>('api-dashboard', 'GET', undefined, { action: 'branchAnalytics' });
 
+/** Owner command-center snapshot: growth, performance, attendance, leads funnel, risk counts (non-financial). */
+export const apiGetDashboardOverview = () =>
+  apiRequest<any>('api-dashboard', 'GET', undefined, { action: 'overview' });
+
 // ---- Organization Directory (public) ----
 export const apiGetOrgDirectory = () =>
   apiRequest('api-organizations', 'GET', undefined, { action: 'directory' });

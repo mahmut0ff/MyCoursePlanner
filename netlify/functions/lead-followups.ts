@@ -12,6 +12,7 @@
 import type { Handler, HandlerEvent } from '@netlify/functions';
 import { adminDb } from './utils/firebase-admin';
 import { notifyOrgAdmins } from './utils/notifications';
+import { sendTelegramRaw } from './utils/telegram';
 import { jsonResponse } from './utils/auth';
 
 const STALE_HOURS = 24;
@@ -28,6 +29,7 @@ const handler: Handler = async (event: HandlerEvent) => {
 
     let scanned = 0;
     let reminded = 0;
+    let autoReplied = 0;
 
     for (const orgDoc of orgSnap.docs) {
       const org = orgDoc.data() as any;
@@ -40,12 +42,32 @@ const handler: Handler = async (event: HandlerEvent) => {
         .catch(() => null);
       if (!leadSnap) continue;
 
+      // The org's own sales bot — used to auto-reply to cooled Telegram leads
+      // (the channel a Telegram-sourced lead arrived through). Null = no custom bot.
+      const aiMgrSnap = await adminDb.collection('organizationAIManager').doc(orgId).get().catch(() => null);
+      const aiMgr = aiMgrSnap?.data() as any || null;
+      const orgBotToken = aiMgr?.isActive && aiMgr?.telegramBotToken ? String(aiMgr.telegramBotToken) : null;
+      const orgName = org.name || 'учебный центр';
+
       for (const leadDoc of leadSnap.docs) {
         const lead = leadDoc.data() as any;
         scanned++;
         const created = lead.createdAt;
         if (!created || created > staleBefore) continue;       // too fresh — give staff time
-        if (lead.lastFollowupDate === today) continue;          // already nudged today
+
+        // One-time gentle auto-reply to a cooled Telegram lead, from the org's own
+        // bot. Independent of the daily staff-nudge cadence; guarded by its own flag
+        // so the prospect is messaged at most once.
+        if (orgBotToken && lead.source === 'telegram_bot' && lead.telegramChatId && !lead.leadAutoReplySentAt) {
+          const greet = `Здравствуйте${lead.name ? `, ${lead.name}` : ''}! 👋 Вы интересовались обучением в «${orgName}». Подскажите, остались ли вопросы? С радостью поможем с выбором и запишем на пробное занятие.`;
+          const sent = await sendTelegramRaw(orgBotToken, String(lead.telegramChatId), greet).catch(() => false);
+          if (sent) {
+            await leadDoc.ref.update({ leadAutoReplySentAt: now.toISOString() }).catch(() => {});
+            autoReplied++;
+          }
+        }
+
+        if (lead.lastFollowupDate === today) continue;          // staff already nudged today
 
         const ageDays = Math.max(1, Math.floor((now.getTime() - new Date(created).getTime()) / (1000 * 60 * 60 * 24)));
         await notifyOrgAdmins(
@@ -60,7 +82,7 @@ const handler: Handler = async (event: HandlerEvent) => {
       }
     }
 
-    return jsonResponse(200, { success: true, scanned, reminded });
+    return jsonResponse(200, { success: true, scanned, reminded, autoReplied });
   } catch (error: any) {
     console.error('Lead follow-ups error:', error);
     return jsonResponse(500, { error: error.message });

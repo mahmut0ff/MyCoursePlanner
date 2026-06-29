@@ -14,6 +14,11 @@ import {
 } from './utils/director-copilot';
 import { resolveStaffByChat, runStaffCopilotTurn, can, type StaffContext } from './utils/copilot-actions';
 import { runSalesBotTurn, type SalesMessage } from './utils/sales-copilot';
+import {
+  resolveStudentByChat, runStudentTutorTurn,
+  resolveParentByChat, runParentTurn,
+} from './utils/student-copilot';
+import { rateLimiters } from './utils/rate-limiter';
 
 /** Reply keyboard for a staff copilot turn — director quick-actions, or none for teachers. */
 function copilotKeyboard(staff: StaffContext) {
@@ -256,6 +261,16 @@ export const handler: Handler = async (event: HandlerEvent) => {
       }).catch(err => console.error('Telegram send error:', err));
     };
 
+    // Best-effort per-chat AI rate limit (shared 10/min bucket, keyed by chat id).
+    // Returns true if the caller should stop — it has already sent a gentle notice.
+    const aiRateLimited = async (): Promise<boolean> => {
+      if (rateLimiters.ai.isLimited(`tg:${chatId}`)) {
+        await reply('⏳ Слишком много запросов подряд. Подождите минуту и попробуйте снова.');
+        return true;
+      }
+      return false;
+    };
+
     // Inline button that opens the app already signed in (passwordless).
     const sendLoginButton = async (uid: string, intro: string) => {
       const ott = await createLoginToken(uid);
@@ -373,6 +388,7 @@ export const handler: Handler = async (event: HandlerEvent) => {
       if (voice) {
         const staff = await resolveStaffByChat(String(chatId));
         if (staff && planHasAIManager(staff.org.planId)) {
+          if (await aiRateLimited()) return { statusCode: 200, body: 'OK' };
           await sendChatAction('typing');
           const audio = await downloadVoice(voice.file_id);
           if (!audio) {
@@ -385,6 +401,29 @@ export const handler: Handler = async (event: HandlerEvent) => {
 
           const answer = await runStaffCopilotTurn(staff, { audio }, history);
           await sendTg(answer, copilotKeyboard(staff));
+
+          history.push({ role: 'user', content: '[голосовое сообщение]' }, { role: 'assistant', content: toHistoryText(answer) });
+          if (history.length > 8) history = history.slice(-8);
+          await sessRef.set({ messages: history, updatedAt: new Date().toISOString() }, { merge: true }).catch(() => {});
+          return { statusCode: 200, body: 'OK' };
+        }
+
+        // Student voice → AI tutor (dictate a homework/study question).
+        const student = staff ? null : await resolveStudentByChat(String(chatId));
+        if (student && planHasAIManager(student.org.planId)) {
+          if (await aiRateLimited()) return { statusCode: 200, body: 'OK' };
+          await sendChatAction('typing');
+          const audio = await downloadVoice(voice.file_id);
+          if (!audio) {
+            await reply('Не удалось обработать голосовое 🤔 Попробуйте ещё раз или напишите текстом.');
+            return { statusCode: 200, body: 'OK' };
+          }
+          const sessRef = adminDb.collection('studentSessions').doc(String(chatId));
+          const sessSnap = await sessRef.get();
+          let history: DirectorChatMessage[] = sessSnap.exists ? (sessSnap.data()?.messages || []) : [];
+
+          const answer = await runStudentTutorTurn(student, { audio }, history);
+          await sendTg(answer);
 
           history.push({ role: 'user', content: '[голосовое сообщение]' }, { role: 'assistant', content: toHistoryText(answer) });
           if (history.length > 8) history = history.slice(-8);
@@ -552,6 +591,14 @@ export const handler: Handler = async (event: HandlerEvent) => {
                 '🤖 <b>AI-помощник преподавателя</b>\nПишите или диктуйте голосом — например:\n• «Поставь Аброру 4 за сегодня, Мухаммаду 5»\n• «Отметь, что все пришли; Аброр отсутствовал»\n• «Усмановой заметка: молодец на уроке»',
               );
             }
+          } else if (!staff) {
+            // Students get a tutor nudge so they discover homework help right here.
+            const student = await resolveStudentByChat(String(chatId));
+            if (student && planHasAIManager(student.org.planId)) {
+              await sendTg(
+                '🤖 <b>AI-репетитор</b>\nСпросите меня о домашке или учёбе — текстом или голосом. Например:\n• «Объясни Present Perfect»\n• «Какие у меня оценки?»\n• «Что мне подтянуть к тесту?»',
+              );
+            }
           }
           return { statusCode: 200, body: 'OK' };
         }
@@ -648,6 +695,7 @@ export const handler: Handler = async (event: HandlerEvent) => {
             await reply('🤖 AI-копилот доступен на тарифе <b>Professional</b> и выше.');
             return { statusCode: 200, body: 'OK' };
           }
+          if (await aiRateLimited()) return { statusCode: 200, body: 'OK' };
           await sendChatAction('typing');
 
           // Short rolling history for conversational follow-ups (data is re-read each turn).
@@ -661,6 +709,51 @@ export const handler: Handler = async (event: HandlerEvent) => {
           history.push({ role: 'user', content: text }, { role: 'assistant', content: toHistoryText(answer) });
           if (history.length > 8) history = history.slice(-8);
           await sessRef.set({ messages: history, updatedAt: new Date().toISOString() }, { merge: true }).catch(() => {});
+          return { statusCode: 200, body: 'OK' };
+        }
+
+        // (d2) Student → AI tutor (homework/study, grounded in lessons + own progress).
+        const student = await resolveStudentByChat(String(chatId));
+        if (student) {
+          if (!planHasAIManager(student.org.planId)) {
+            await sendLoginButton(student.uid, '🤖 AI-репетитор станет доступен, когда ваш центр подключит ИИ. А пока — открыть приложение:');
+            return { statusCode: 200, body: 'OK' };
+          }
+          if (await aiRateLimited()) return { statusCode: 200, body: 'OK' };
+          await sendChatAction('typing');
+          const sessRef = adminDb.collection('studentSessions').doc(String(chatId));
+          const sessSnap = await sessRef.get();
+          let history: DirectorChatMessage[] = sessSnap.exists ? (sessSnap.data()?.messages || []) : [];
+
+          const answer = await runStudentTutorTurn(student, { text }, history);
+          await sendTg(answer);
+
+          history.push({ role: 'user', content: text }, { role: 'assistant', content: toHistoryText(answer) });
+          if (history.length > 8) history = history.slice(-8);
+          await sessRef.set({ messages: history, updatedAt: new Date().toISOString() }, { merge: true }).catch(() => {});
+          return { statusCode: 200, body: 'OK' };
+        }
+
+        // (d3) Parent → read-only Q&A about their child(ren); without AI, hand over portal links.
+        const parent = await resolveParentByChat(String(chatId));
+        if (parent) {
+          const aiChildren = parent.children.filter(c => planHasAIManager(c.orgPlanId));
+          if (aiChildren.length) {
+            if (await aiRateLimited()) return { statusCode: 200, body: 'OK' };
+            await sendChatAction('typing');
+            const sessRef = adminDb.collection('parentSessions').doc(String(chatId));
+            const sessSnap = await sessRef.get();
+            let history: DirectorChatMessage[] = sessSnap.exists ? (sessSnap.data()?.messages || []) : [];
+
+            const answer = await runParentTurn({ chatId: String(chatId), children: aiChildren }, { text }, history);
+            await sendTg(answer);
+
+            history.push({ role: 'user', content: text }, { role: 'assistant', content: toHistoryText(answer) });
+            if (history.length > 8) history = history.slice(-8);
+            await sessRef.set({ messages: history, updatedAt: new Date().toISOString() }, { merge: true }).catch(() => {});
+          } else {
+            await sendParentPortals(); // org without AI — links beat silence
+          }
           return { statusCode: 200, body: 'OK' };
         }
       }
@@ -696,6 +789,10 @@ export const handler: Handler = async (event: HandlerEvent) => {
     let history: SalesMessage[] = sessionSnap.exists ? (sessionSnap.data()?.messages || []) : [];
     const isFirstMessage = history.length === 0;
 
+    if (rateLimiters.ai.isLimited(`tg:${chatId}`)) {
+      await reply('⏳ Секунду — слишком много сообщений подряд. Напишите ещё раз через минуту.');
+      return { statusCode: 200, body: 'OK' };
+    }
     await sendChatAction('typing');
     const answer = await runSalesBotTurn({
       orgId, org, settings: settingsData, chatId: String(chatId),

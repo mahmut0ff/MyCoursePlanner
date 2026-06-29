@@ -11,7 +11,7 @@
  * current); the bot passes a short chat history only for conversational coherence.
  */
 import { adminDb } from './firebase-admin';
-import { getModel, hasGeminiKey, recordAiUsage } from './ai';
+import { generateWithFallback, hasGeminiKey, recordAiUsage } from './ai';
 import { createNotification } from './notifications';
 
 const RU_MONTHS = ['Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь', 'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'];
@@ -301,8 +301,7 @@ export async function generateBrief(orgId: string, orgName: string): Promise<str
 
 СНИМОК ДАННЫХ:
 ${snapshot}`;
-    const model = getModel();
-    const result = await model.generateContent(prompt);
+    const result = await generateWithFallback({}, prompt);
     recordAiUsage(orgId, 'director_brief');
     return toTelegramHtml(result.response.text()) || 'Не удалось сформировать сводку.';
   } catch (e) {
@@ -348,7 +347,7 @@ export async function answerDirectorQuestion(
   try {
     const snapshot = renderSnapshotText(await buildDirectorSnapshot(orgId));
     const prompt = buildCopilotPrompt(orgName, snapshot, formatHistory(history), `ВОПРОС ДИРЕКТОРА: ${question}`);
-    const result = await getModel().generateContent(prompt);
+    const result = await generateWithFallback({}, prompt);
     recordAiUsage(orgId, 'director_copilot');
     return toTelegramHtml(result.response.text()) || 'Не удалось сформировать ответ. Попробуйте переформулировать вопрос.';
   } catch (e) {
@@ -375,7 +374,7 @@ export async function answerDirectorVoice(
       orgName, snapshot, formatHistory(history),
       'ВОПРОС ДИРЕКТОРА задан голосовым сообщением — распознай его из аудио и ответь по данным снимка. Если речь неразборчива, вежливо попроси повторить.',
     );
-    const result = await getModel().generateContent([
+    const result = await generateWithFallback({}, [
       { text: prompt },
       { inlineData: { mimeType: mimeType || 'audio/ogg', data: audioBase64 } },
     ]);
@@ -392,7 +391,7 @@ export async function generateDebtorDraft(orgId: string, orgName: string): Promi
   if (!hasGeminiKey()) return 'Напоминаем о необходимости внести оплату за обучение. Спасибо!';
   try {
     const prompt = `Напиши короткое вежливое напоминание об оплате для рассылки должникам от лица учебного центра «${orgName}». Тёплый, уважительный тон, 2-3 предложения, на русском. НЕ указывай конкретную сумму (у каждого своя — она добавится автоматически). Без приветствия по имени. Только текст сообщения, без пояснений.`;
-    const result = await getModel().generateContent(prompt);
+    const result = await generateWithFallback({}, prompt);
     recordAiUsage(orgId, 'director_draft');
     return (result.response.text() || '').trim() || 'Напоминаем о необходимости внести оплату за обучение. Спасибо!';
   } catch (e) {

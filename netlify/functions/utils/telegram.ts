@@ -55,6 +55,15 @@ async function sendTelegramMessage(botToken: string, chatId: string | number, te
 }
 
 /**
+ * Send a message to a raw chat id via a specific bot token. For flows that hold a
+ * chat id but no user doc — e.g. a Telegram-sourced lead the org's own sales bot
+ * follows up with. Returns true on success.
+ */
+export async function sendTelegramRaw(botToken: string, chatId: string | number, text: string): Promise<boolean> {
+  return sendTelegramMessage(botToken, chatId, text);
+}
+
+/**
  * Send a Telegram notification to a specific user (by userId).
  * Silently skips if user has no telegramChatId or org has no bot.
  */

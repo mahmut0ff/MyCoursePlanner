@@ -14,39 +14,8 @@ import { adminDb } from './utils/firebase-admin';
 import { verifyAuth, ok, unauthorized, forbidden, badRequest, jsonResponse } from './utils/auth';
 import { rateLimiters, getRateLimitKey } from './utils/rate-limiter';
 import { getModel, parseJsonLoose, aiAllowed, hasGeminiKey, recordAiUsage } from './utils/ai';
-
-/** Flatten a lesson's content blocks into a short plain-text snippet. */
-function lessonText(data: any, maxChars = 600): string {
-  const blocks = Array.isArray(data?.content) ? data.content : [];
-  const parts: string[] = [];
-  for (const b of blocks) {
-    if (b?.content) parts.push(String(b.content));
-    if (Array.isArray(b?.items)) parts.push(b.items.join('; '));
-    if (parts.join(' ').length > maxChars) break;
-  }
-  return parts.join(' ').slice(0, maxChars);
-}
-
-async function buildLessonContext(orgId: string, limit = 30): Promise<string> {
-  const snap = await adminDb.collection('lessons')
-    .where('organizationId', '==', orgId)
-    .where('status', '==', 'published')
-    .limit(limit)
-    .get()
-    .catch(() => null);
-  if (!snap || snap.empty) return '';
-  let total = 0;
-  const out: string[] = [];
-  for (const d of snap.docs) {
-    const data = d.data();
-    const snippet = lessonText(data);
-    const entry = `• ${data.title || 'Урок'}${data.subject ? ` (${data.subject})` : ''}: ${snippet}`;
-    if (total + entry.length > 12000) break;
-    total += entry.length;
-    out.push(entry);
-  }
-  return out.join('\n');
-}
+// Shared with the Telegram student copilot so web + bot ground answers identically.
+import { buildLessonContext } from './utils/lessons';
 
 export const handler: Handler = async (event: HandlerEvent) => {
   if (event.httpMethod === 'OPTIONS') return jsonResponse(204, '');

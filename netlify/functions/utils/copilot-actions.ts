@@ -19,7 +19,7 @@
  */
 import { SchemaType } from '@google/generative-ai';
 import { adminDb } from './firebase-admin';
-import { getModel, hasGeminiKey, recordAiUsage } from './ai';
+import { generateWithFallback, hasGeminiKey, recordAiUsage } from './ai';
 import { createNotification, notifyOrgAdmins } from './notifications';
 import { createPendingInvite } from './onboarding';
 import { resolveOrgRole } from './auth';
@@ -801,11 +801,6 @@ export async function runStaffCopilotTurn(
     const decls = buildFunctionDeclarations(toolNames);
     const systemInstruction = buildSystemInstruction(staff, ctx, toolNames);
 
-    const model = getModel({
-      systemInstruction,
-      ...(decls.length ? { tools: [{ functionDeclarations: decls }] } : {}),
-    });
-
     const userParts: any[] = [];
     if (input.audio) {
       userParts.push({ inlineData: { mimeType: input.audio.mime || 'audio/ogg', data: input.audio.base64 } });
@@ -814,7 +809,10 @@ export async function runStaffCopilotTurn(
       userParts.push({ text: input.text || '' });
     }
 
-    const result = await model.generateContent({ contents: toContents(history, userParts) });
+    const result = await generateWithFallback(
+      { systemInstruction, ...(decls.length ? { tools: [{ functionDeclarations: decls }] } : {}) },
+      { contents: toContents(history, userParts) },
+    );
     const resp = result.response;
     const calls = resp.functionCalls?.() || [];
 

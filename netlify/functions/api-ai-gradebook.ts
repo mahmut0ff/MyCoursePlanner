@@ -35,7 +35,7 @@ const handler: Handler = async (event: HandlerEvent) => {
     const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
     // Use flash model, it optimally handles audio natively
     const model = genAI.getGenerativeModel({
-      model: 'gemini-2.0-flash',
+      model: 'gemini-2.5-flash',
       generationConfig: {
         responseMimeType: 'application/json',
       },

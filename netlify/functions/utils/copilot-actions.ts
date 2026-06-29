@@ -67,7 +67,6 @@ interface TurnContext {
   todayISO: string;
   snapshotText: string | null;
   roster: RosterStudent[];
-  rosterById: Map<string, RosterStudent>;
   schemasByCourse: Map<string, GradeSchema>;
   groups: { id: string; name: string }[];
 }
@@ -158,6 +157,49 @@ export function findGroupByName<T extends { name: string }>(groups: T[], nm: str
     || groups.find(g => { const gn = (g.name || '').toLowerCase(); return gn.includes(n) || n.includes(gn); });
 }
 
+/** Normalize a name for matching: lowercase, strip punctuation, collapse whitespace. */
+function normName(s: string): string {
+  return (s || '').toLowerCase().replace(/[^\p{L}\p{N} ]/gu, ' ').replace(/\s+/g, ' ').trim();
+}
+
+/**
+ * Two name tokens match if equal or share a long common prefix — tolerant of
+ * Russian case endings ("билолдину"→"билолдин", "усманазаровой"→"усманазарова").
+ */
+export function tokenMatch(a: string, b: string): boolean {
+  if (a === b) return true;
+  const min = Math.min(a.length, b.length);
+  if (min < 4) return false;                    // too short to stem-match safely
+  let i = 0;
+  while (i < min && a[i] === b[i]) i++;
+  if (i < 4) return false;                       // need a real shared stem
+  return a.length - i <= 3 && b.length - i <= 3; // only a short case ending may differ on each
+}
+
+/**
+ * Resolve a spoken/written name to roster students (declension-tolerant). The model
+ * emits the NAME, not an opaque id (LLMs mangle long ids) — we do the lookup here.
+ * Returns all candidates: 0 = not found, 1 = unique, >1 = ambiguous (ask to clarify).
+ */
+export function matchRosterByName<T extends { name: string }>(roster: T[], query: string): T[] {
+  const q = normName(query);
+  if (!q) return [];
+  // 1. exact full-name match
+  const exact = roster.filter(r => normName(r.name) === q);
+  if (exact.length) return exact;
+  // 2. every query token matches some roster-name token by stem (handles declensions)
+  const qTokens = q.split(' ').filter(t => t.length >= 3);
+  if (qTokens.length) {
+    const tok = roster.filter(r => {
+      const rTokens = normName(r.name).split(' ').filter(Boolean);
+      return qTokens.every(qt => rTokens.some(rt => tokenMatch(rt, qt)));
+    });
+    if (tok.length) return tok;
+  }
+  // 3. last resort: substring either direction
+  return roster.filter(r => { const rn = normName(r.name); return !!rn && (rn.includes(q) || q.includes(rn)); });
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Turn context (snapshot + roster + groups + grade schemas)
 // ─────────────────────────────────────────────────────────────────────────────
@@ -176,7 +218,7 @@ async function buildTurnContext(staff: StaffContext): Promise<TurnContext> {
 
   // Groups (scoped to taught groups for teachers; all for admins/managers) → roster + group list.
   const roster: RosterStudent[] = [];
-  const rosterById = new Map<string, RosterStudent>();
+  const seen = new Set<string>();
   const groups: { id: string; name: string }[] = [];
   const schemasByCourse = new Map<string, GradeSchema>();
 
@@ -189,7 +231,8 @@ async function buildTurnContext(staff: StaffContext): Promise<TurnContext> {
     const nameById = new Map<string, string>();
     if (memberSnap) for (const d of memberSnap.docs) {
       const m = d.data() as any;
-      nameById.set(m.userId || d.id, m.userName || 'Ученик');
+      const nm = (m.userName || '').trim();
+      if (nm) nameById.set(m.userId || d.id, nm);
     }
 
     const groupDocs = (groupSnap?.docs || [])
@@ -201,19 +244,27 @@ async function buildTurnContext(staff: StaffContext): Promise<TurnContext> {
       if (!wantsGrades) continue;
       for (const sid of (g.studentIds || [])) {
         if (roster.length >= MAX_ROSTER) break;
-        if (rosterById.has(sid)) continue; // a student appears once even if in several groups
-        const entry: RosterStudent = {
+        if (seen.has(sid) || !g.courseId) continue; // dedup; can't grade without a course
+        seen.add(sid);
+        roster.push({
           studentId: sid,
-          name: nameById.get(sid) || 'Ученик',
+          name: nameById.get(sid) || '',
           groupId: g.id,
           groupName: g.name || 'Группа',
-          courseId: g.courseId || '',
+          courseId: g.courseId,
           courseName: g.courseName || '',
-        };
-        if (!entry.courseId) continue; // can't grade without a course
-        roster.push(entry);
-        rosterById.set(sid, entry);
+        });
       }
+    }
+
+    // Backfill names the membership mirror was missing (userName can be empty) from
+    // the users collection, so name-matching always has a real name to resolve.
+    const missing = roster.filter(r => !r.name).map(r => r.studentId);
+    if (missing.length) {
+      const docs = await adminDb.getAll(...missing.map(id => adminDb.collection('users').doc(id))).catch(() => [] as any[]);
+      const dn = new Map<string, string>();
+      docs.forEach((d: any) => { if (d.exists) dn.set(d.id, (d.data()?.displayName || '').trim()); });
+      roster.forEach(r => { if (!r.name) r.name = dn.get(r.studentId) || 'Ученик'; });
     }
 
     // Grade schemas for the involved courses (one org-wide read, mapped by course).
@@ -227,7 +278,7 @@ async function buildTurnContext(staff: StaffContext): Promise<TurnContext> {
     }
   }
 
-  return { todayISO, snapshotText, roster, rosterById, schemasByCourse, groups };
+  return { todayISO, snapshotText, roster, schemasByCourse, groups };
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -239,22 +290,22 @@ function buildFunctionDeclarations(toolNames: string[]): any[] {
   if (toolNames.includes('set_grades')) {
     decls.push({
       name: 'set_grades',
-      description: 'Выставить оценки ученикам. Вызывай, когда преподаватель диктует оценки, например «Поставь Аброру 4, Мухаммаду 5». Сопоставь произнесённые имена с studentId из списка учеников (РОСТЕР) в системной инструкции, используя фонетическое сопоставление. Если имя подходит нескольким ученикам из разных групп — не угадывай, а переспроси.',
+      description: 'Выставить оценки ученикам. Вызывай, когда диктуют оценки, например «Поставь Аброру 4, Мухаммаду 5» или «Усманазаровой 100 за вчера». Передавай ИМЯ ученика (studentName) из СПИСКА УЧЕНИКОВ — НЕ придумывай идентификаторы. Если сообщение — продолжение предыдущего («Билолдину тоже», «и Аброру»), повтори ту же оценку и дату из прошлого сообщения для нового ученика.',
       parameters: {
         type: SchemaType.OBJECT,
         properties: {
-          date: { type: SchemaType.STRING, description: 'Дата урока в формате YYYY-MM-DD. «сегодня»/«за сегодня» = сегодняшняя дата. По умолчанию — сегодня.' },
+          date: { type: SchemaType.STRING, description: 'Дата урока в формате YYYY-MM-DD. «сегодня» = сегодня, «вчера»/«за вчерашний день» = вчерашняя дата. По умолчанию — сегодня.' },
           grades: {
             type: SchemaType.ARRAY,
             description: 'Список оценок.',
             items: {
               type: SchemaType.OBJECT,
               properties: {
-                studentId: { type: SchemaType.STRING, description: 'ID ученика строго из РОСТЕРА.' },
-                value: { type: SchemaType.NUMBER, description: 'Числовая оценка (например 4 или 5).' },
+                studentName: { type: SchemaType.STRING, description: 'Имя ученика как в СПИСКЕ УЧЕНИКОВ (желательно в именительном падеже). Система сама найдёт ученика по имени.' },
+                value: { type: SchemaType.NUMBER, description: 'Числовая оценка (например 4, 5 или 100).' },
                 comment: { type: SchemaType.STRING, description: 'Необязательный комментарий.' },
               },
-              required: ['studentId', 'value'],
+              required: ['studentName', 'value'],
             },
           },
         },
@@ -330,8 +381,8 @@ function buildSystemInstruction(staff: StaffContext, ctx: TurnContext, toolNames
 
   if (toolNames.includes('set_grades') && ctx.roster.length) {
     lines.push('');
-    lines.push('РОСТЕР УЧЕНИКОВ (studentId | Имя | Группа | Курс) — выбирай studentId строго отсюда:');
-    ctx.roster.forEach(r => lines.push(`${r.studentId} | ${r.name} | ${r.groupName} | ${r.courseName}`));
+    lines.push('СПИСОК УЧЕНИКОВ (Имя — Группа). В set_grades передавай ИМЯ ученика (studentName) из этого списка, без идентификаторов:');
+    ctx.roster.forEach(r => lines.push(`• ${r.name} — ${r.groupName}`));
     if (ctx.roster.length >= MAX_ROSTER) lines.push(`(показаны первые ${MAX_ROSTER})`);
   }
 
@@ -364,22 +415,27 @@ async function executeSetGrades(staff: StaffContext, ctx: TurnContext, args: any
   if (!items.length) return '⚠️ Не понял, кому и какие оценки выставить.';
 
   const done: string[] = [];
-  const failed: string[] = [];
+  const notFound: string[] = [];
+  const ambiguous: string[] = [];
   for (const it of items) {
-    const studentId = String(it?.studentId || '');
+    // The model emits the student's NAME (studentId tolerated for back-compat); we resolve it here.
+    const rawName = String(it?.studentName ?? it?.studentId ?? '').trim();
     const value = Number(it?.value);
-    const entry = ctx.rosterById.get(studentId);
-    if (!entry || !Number.isFinite(value)) { failed.push(esc(String(it?.studentId || 'неизвестный'))); continue; }
+    if (!rawName || !Number.isFinite(value)) { notFound.push(esc(rawName || 'неизвестный')); continue; }
+    const matches = matchRosterByName(ctx.roster, rawName);
+    if (matches.length === 0) { notFound.push(esc(rawName)); continue; }
+    if (matches.length > 1) { ambiguous.push(esc(rawName)); continue; }
+    const entry = matches[0];
     try {
       const meta = gradeMetaForValue(ctx.schemasByCourse.get(entry.courseId), value);
       await upsertGrade(staff, {
-        studentId, courseId: entry.courseId, date, value,
+        studentId: entry.studentId, courseId: entry.courseId, date, value,
         displayValue: String(value), type: meta.type, maxValue: meta.maxValue,
         comment: it?.comment ? String(it.comment) : '',
       });
       // Mirrors to in-app + push + student's Telegram + parents (createNotification handles relay).
       createNotification({
-        recipientId: studentId,
+        recipientId: entry.studentId,
         type: 'grade_posted',
         title: 'Новая оценка',
         message: `Оценка: ${value}${entry.courseName ? ` по «${entry.courseName}»` : ''} (${date})`,
@@ -388,13 +444,14 @@ async function executeSetGrades(staff: StaffContext, ctx: TurnContext, args: any
       }).catch(() => {});
       done.push(`• <b>${esc(entry.name)}</b> — ${esc(String(value))}`);
     } catch {
-      failed.push(esc(entry.name));
+      notFound.push(esc(entry.name));
     }
   }
 
   const header = date === ctx.todayISO ? '📝 <b>Оценки выставлены</b> (сегодня):' : `📝 <b>Оценки выставлены</b> (${date}):`;
   let out = done.length ? `${header}\n${done.join('\n')}` : '⚠️ Не удалось выставить оценки.';
-  if (failed.length) out += `\n\n⚠️ Не распознал: ${failed.join(', ')}. Уточните имя.`;
+  if (ambiguous.length) out += `\n\n⚠️ Несколько учеников с именем: ${ambiguous.join(', ')} — уточните фамилию или группу.`;
+  if (notFound.length) out += `\n\n⚠️ Не нашёл в ваших группах: ${notFound.join(', ')}. Проверьте имя.`;
   return out;
 }
 

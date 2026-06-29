@@ -15,6 +15,7 @@ vi.mock('../utils/onboarding', () => ({ createPendingInvite: vi.fn() }));
 
 import {
   availableToolNames, gradeMetaForValue, normalizeGradeDate, findGroupByName, can,
+  tokenMatch, matchRosterByName,
   type StaffContext,
 } from '../utils/copilot-actions';
 
@@ -103,6 +104,55 @@ describe('findGroupByName — exact then fuzzy contains, like the web AI roster'
   it('returns undefined for no match or empty name', () => {
     expect(findGroupByName(groups, 'French')).toBeUndefined();
     expect(findGroupByName(groups, '')).toBeUndefined();
+  });
+});
+
+describe('tokenMatch — declension-tolerant token comparison', () => {
+  it('matches identical tokens', () => {
+    expect(tokenMatch('аброр', 'аброр')).toBe(true);
+  });
+
+  it('matches Russian case endings via common stem', () => {
+    expect(tokenMatch('билолдин', 'билолдину')).toBe(true);       // nominative vs dative
+    expect(tokenMatch('усманазарова', 'усманазаровой')).toBe(true);
+    expect(tokenMatch('мухаммад', 'мухаммаду')).toBe(true);
+  });
+
+  it('rejects different names', () => {
+    expect(tokenMatch('аброр', 'мухаммад')).toBe(false);
+    expect(tokenMatch('али', 'алишер')).toBe(false); // too short to stem-match safely
+  });
+});
+
+describe('matchRosterByName — resolves spoken names to roster students (the Билолдин bug)', () => {
+  const roster = [
+    { name: 'Усманазарова Рухшона', studentId: 's1' },
+    { name: 'Билолдин Усманов', studentId: 's2' },
+    { name: 'Аброр Каримов', studentId: 's3' },
+  ];
+
+  it('resolves a dative-case follow-up name to the right student', () => {
+    // "Билолдину тоже" used to return a hallucinated id; now it resolves by name.
+    expect(matchRosterByName(roster, 'Билолдину').map(r => r.studentId)).toEqual(['s2']);
+    expect(matchRosterByName(roster, 'Усманазаровой').map(r => r.studentId)).toEqual(['s1']);
+  });
+
+  it('matches a single given name or surname token', () => {
+    expect(matchRosterByName(roster, 'Аброр').map(r => r.studentId)).toEqual(['s3']);
+    expect(matchRosterByName(roster, 'Рухшона').map(r => r.studentId)).toEqual(['s1']);
+  });
+
+  it('returns empty for a name not in the roster', () => {
+    expect(matchRosterByName(roster, 'Хасанов')).toEqual([]);
+    expect(matchRosterByName(roster, '')).toEqual([]);
+  });
+
+  it('returns all candidates when a name is ambiguous (caller asks to clarify)', () => {
+    const dup = [
+      { name: 'Билолдин Усманов', studentId: 'a' },
+      { name: 'Билолдин Рахимов', studentId: 'b' },
+    ];
+    expect(matchRosterByName(dup, 'Билолдину').map(r => r.studentId).sort()).toEqual(['a', 'b']);
   });
 });
 

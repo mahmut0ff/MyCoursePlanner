@@ -14,25 +14,28 @@ vi.mock('../utils/notifications', () => ({ createNotification: vi.fn(), notifyOr
 vi.mock('../utils/onboarding', () => ({ createPendingInvite: vi.fn() }));
 
 import {
-  availableToolNames, gradeMetaForValue, normalizeGradeDate, findGroupByName, can,
-  tokenMatch, matchRosterByName,
+  availableToolNames, gradeMetaForValue, normalizeGradeDate, normalizeAttendance,
+  findGroupByName, can, tokenMatch, matchRosterByName,
   type StaffContext,
 } from '../utils/copilot-actions';
 
 const set = (...g: string[]) => new Set(g);
 
 describe('availableToolNames — tools are gated by RBAC grants + a non-empty roster', () => {
-  it('teacher (gradebook:write) with a roster gets only set_grades', () => {
-    expect(availableToolNames(set('gradebook:write'), true)).toEqual(['set_grades']);
+  it('teacher (gradebook:write) with a roster gets the whole journal toolset', () => {
+    expect(availableToolNames(set('gradebook:write'), true).sort())
+      .toEqual(['add_note', 'set_attendance', 'set_grades'].sort());
   });
 
-  it('teacher with NO roster gets nothing (grading needs students)', () => {
+  it('teacher with NO roster gets nothing (the journal tools need students)', () => {
     expect(availableToolNames(set('gradebook:write'), false)).toEqual([]);
   });
 
-  it('manager (leads/students/teachers/gradebook:write) with a roster gets all four', () => {
+  it('manager (leads/students/teachers/gradebook:write) with a roster gets every tool', () => {
     const tools = availableToolNames(set('gradebook:write', 'leads:write', 'students:write', 'teachers:write'), true);
-    expect(tools.sort()).toEqual(['add_lead', 'add_student', 'add_teacher', 'set_grades'].sort());
+    expect(tools.sort()).toEqual(
+      ['add_lead', 'add_note', 'add_student', 'add_teacher', 'set_attendance', 'set_grades'].sort(),
+    );
   });
 
   it('manager without a roster keeps the add tools but loses grading', () => {
@@ -85,6 +88,33 @@ describe('normalizeGradeDate — "за сегодня" and bad input fall back t
     expect(normalizeGradeDate('2026-6-1', today)).toBe(today); // not zero-padded
     expect(normalizeGradeDate(undefined, today)).toBe(today);
     expect(normalizeGradeDate(42, today)).toBe(today);
+  });
+});
+
+describe('normalizeAttendance — maps enum values and Russian stems, defaults to present', () => {
+  it('passes through the canonical enum values', () => {
+    expect(normalizeAttendance('present')).toBe('present');
+    expect(normalizeAttendance('absent')).toBe('absent');
+    expect(normalizeAttendance('late')).toBe('late');
+    expect(normalizeAttendance('excused')).toBe('excused');
+  });
+
+  it('resolves Russian words by stem (declension-tolerant)', () => {
+    expect(normalizeAttendance('отсутствовал')).toBe('absent');
+    expect(normalizeAttendance('отсутствует')).toBe('absent');
+    expect(normalizeAttendance('пропустил')).toBe('absent');
+    expect(normalizeAttendance('не пришёл')).toBe('absent');
+    expect(normalizeAttendance('опоздал')).toBe('late');
+    expect(normalizeAttendance('опоздала')).toBe('late');
+    expect(normalizeAttendance('уважительная')).toBe('excused');
+  });
+
+  it('defaults to present for "пришёл", blanks, and anything unknown', () => {
+    expect(normalizeAttendance('пришёл')).toBe('present');
+    expect(normalizeAttendance('присутствовал')).toBe('present');
+    expect(normalizeAttendance('')).toBe('present');
+    expect(normalizeAttendance(undefined)).toBe('present');
+    expect(normalizeAttendance('что-то непонятное')).toBe('present');
   });
 });
 

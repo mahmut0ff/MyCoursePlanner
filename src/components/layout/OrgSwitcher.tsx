@@ -91,7 +91,7 @@ const OrgSwitcher: React.FC<OrgSwitcherProps> = ({ currentOrgId, userRole, onSwi
     manager: t('membership.manager', 'Менеджер'),
   };
 
-  if (!loaded) return <div className="px-3 py-2"><div className="h-10 bg-white/5 rounded-xl animate-pulse" /></div>;
+  if (!loaded) return <div className="px-3 py-2"><div className="h-10 bg-slate-100 dark:bg-white/5 rounded-xl animate-pulse" /></div>;
 
   // ═══════════════════════════════════════════════
   // Quick Actions per Role
@@ -135,16 +135,16 @@ const OrgSwitcher: React.FC<OrgSwitcherProps> = ({ currentOrgId, userRole, onSwi
   const leaveModal = confirmLeave && (
     <>
       <div className="fixed inset-0 bg-black/50 z-[60]" onClick={() => setConfirmLeave(null)} />
-      <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-[70] bg-[#1a2332] border border-slate-600/30 rounded-2xl p-5 w-72 shadow-2xl">
-        <h4 className="text-sm font-semibold text-white mb-2">{t('membership.leaveConfirmTitle', 'Покинуть организацию?')}</h4>
-        <p className="text-xs text-slate-400 mb-4">
+      <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-[70] bg-white dark:bg-[#1a2332] border border-slate-200 dark:border-slate-600/30 rounded-2xl p-5 w-72 shadow-2xl">
+        <h4 className="text-sm font-semibold text-slate-900 dark:text-white mb-2">{t('membership.leaveConfirmTitle', 'Покинуть организацию?')}</h4>
+        <p className="text-xs text-slate-500 dark:text-slate-400 mb-4">
           {t('membership.leaveConfirmMsg', 'Вы потеряете доступ к курсам, дневнику и чату этой организации.')}
         </p>
         <div className="flex gap-2">
-          <button onClick={() => setConfirmLeave(null)} className="flex-1 px-3 py-2 text-xs rounded-lg bg-white/5 text-slate-300 hover:bg-white/10 transition">
+          <button onClick={() => setConfirmLeave(null)} className="flex-1 px-3 py-2 text-xs rounded-lg bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-white/5 dark:text-slate-300 dark:hover:bg-white/10 transition">
             {t('common.cancel', 'Отмена')}
           </button>
-          <button onClick={() => handleLeave(confirmLeave)} disabled={switching} className="flex-1 px-3 py-2 text-xs rounded-lg bg-red-500/20 text-red-400 hover:bg-red-500/30 transition font-medium">
+          <button onClick={() => handleLeave(confirmLeave)} disabled={switching} className="flex-1 px-3 py-2 text-xs rounded-lg bg-red-500/10 text-red-600 hover:bg-red-500/20 dark:bg-red-500/20 dark:text-red-400 dark:hover:bg-red-500/30 transition font-medium">
             {switching ? '...' : t('membership.leaveBtn', 'Покинуть')}
           </button>
         </div>
@@ -175,15 +175,15 @@ const OrgSwitcher: React.FC<OrgSwitcherProps> = ({ currentOrgId, userRole, onSwi
       <div className={`px-3 py-2 ${isCollapsed ? 'lg:flex lg:justify-center lg:px-0' : ''}`}>
         <button
           onClick={emptyAction}
-          className={`group flex items-center justify-center rounded-xl transition w-full gap-2.5 px-3 py-2.5 bg-gradient-to-r from-violet-500/15 to-indigo-500/15 border border-violet-500/25 hover:border-violet-400/40 text-left ${isCollapsed ? 'lg:w-10 lg:h-10 lg:bg-white/5 lg:bg-none lg:border-white/10 lg:hover:bg-white/10 lg:mx-auto lg:p-0' : ''}`}
+          className={`group flex items-center justify-center rounded-xl transition w-full gap-2.5 px-3 py-2.5 bg-gradient-to-r from-violet-500/15 to-indigo-500/15 border border-violet-500/25 hover:border-violet-400/40 text-left ${isCollapsed ? 'lg:w-10 lg:h-10 lg:bg-slate-100 lg:bg-none lg:border-slate-200 lg:hover:bg-slate-200 dark:lg:bg-white/5 dark:lg:border-white/10 dark:lg:hover:bg-white/10 lg:mx-auto lg:p-0' : ''}`}
           title={isCollapsed ? emptyTitle : undefined}
         >
           <div className={`rounded-lg flex items-center justify-center shrink-0 w-8 h-8 bg-violet-500/20 ${isCollapsed ? 'lg:w-full lg:h-full lg:bg-transparent' : ''}`}>
-            <EmptyIcon className="w-4 h-4 text-violet-400" />
+            <EmptyIcon className="w-4 h-4 text-violet-600 dark:text-violet-400" />
           </div>
           <div className={`flex items-center gap-2 flex-1 min-w-0 ${isCollapsed ? 'lg:hidden' : ''}`}>
             <div className="flex-1 min-w-0 text-left">
-              <p className="text-xs text-violet-300 font-semibold">{emptyTitle}</p>
+              <p className="text-xs text-violet-700 dark:text-violet-300 font-semibold">{emptyTitle}</p>
               <p className="text-[10px] text-slate-500">{emptySubtitle}</p>
             </div>
             <ChevronDown className="w-3.5 h-3.5 text-violet-500/60 -rotate-90 group-hover:text-violet-300 transition" />
@@ -214,26 +214,26 @@ const OrgSwitcher: React.FC<OrgSwitcherProps> = ({ currentOrgId, userRole, onSwi
       {/* ── Trigger Button ── */}
       <button
         onClick={() => setOpen(!open)}
-        className={`group flex items-center justify-center rounded-xl bg-white/5 hover:bg-white/[0.08] transition w-full gap-2.5 px-3 py-2 text-left ${isCollapsed ? 'lg:w-10 lg:h-10 lg:mx-auto lg:p-0' : ''}`}
+        className={`group flex items-center justify-center rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-white/5 dark:hover:bg-white/[0.08] transition w-full gap-2.5 px-3 py-2 text-left ${isCollapsed ? 'lg:w-10 lg:h-10 lg:mx-auto lg:p-0' : ''}`}
         title={isCollapsed ? (currentOrg?.organizationName || t('nav.sectionPersonalWorkspace', 'Личное пространство')) : undefined}
       >
-        <div className="rounded-lg flex items-center justify-center shrink-0 w-8 h-8 bg-gradient-to-br from-violet-500/30 to-indigo-500/30 ring-1 ring-white/10">
+        <div className="rounded-lg flex items-center justify-center shrink-0 w-8 h-8 bg-gradient-to-br from-violet-500/20 to-indigo-500/20 dark:from-violet-500/30 dark:to-indigo-500/30 ring-1 ring-slate-200 dark:ring-white/10">
           {currentOrg ? (
-            <Building2 className="w-4 h-4 text-violet-300" />
+            <Building2 className="w-4 h-4 text-violet-600 dark:text-violet-300" />
           ) : (
-            <FolderOpen className="w-4 h-4 text-violet-300" />
+            <FolderOpen className="w-4 h-4 text-violet-600 dark:text-violet-300" />
           )}
         </div>
         <div className={`flex items-center gap-2.5 flex-1 min-w-0 ${isCollapsed ? 'lg:hidden' : ''}`}>
           <div className="flex-1 min-w-0">
-            <p className="text-[13px] text-white truncate font-semibold leading-tight">
+            <p className="text-[13px] text-slate-900 dark:text-white truncate font-semibold leading-tight">
               {currentOrg?.organizationName || t('nav.sectionPersonalWorkspace', 'Личное пространство')}
             </p>
-            <p className="text-[10px] text-violet-400/80 font-medium mt-0.5">
+            <p className="text-[10px] text-violet-600 dark:text-violet-400/80 font-medium mt-0.5">
               {currentOrg ? (roleLabels[currentOrg.role] || currentOrg.role) : t('nav.independent', 'Независимый профиль')}
             </p>
           </div>
-          <ChevronDown className={`w-4 h-4 text-slate-500 transition-transform duration-200 ${open ? 'rotate-180' : ''}`} />
+          <ChevronDown className={`w-4 h-4 text-slate-400 dark:text-slate-500 transition-transform duration-200 ${open ? 'rotate-180' : ''}`} />
         </div>
       </button>
 
@@ -241,20 +241,20 @@ const OrgSwitcher: React.FC<OrgSwitcherProps> = ({ currentOrgId, userRole, onSwi
       {open && (
         <>
           <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
-          <div className={`absolute z-50 overflow-hidden bg-[#151f2e] border border-slate-600/30 rounded-2xl shadow-2xl ${isCollapsed ? 'lg:left-[76px] lg:-top-2 lg:w-[260px] left-3 right-3 top-full mt-1' : 'left-3 right-3 top-full mt-1'}`}>
+          <div className={`absolute z-50 overflow-hidden bg-white dark:bg-[#151f2e] border border-slate-200 dark:border-slate-600/30 rounded-2xl shadow-2xl ${isCollapsed ? 'lg:left-[76px] lg:-top-2 lg:w-[260px] left-3 right-3 top-full mt-1' : 'left-3 right-3 top-full mt-1'}`}>
 
             {/* Quick Actions Grid */}
             {quickActions.length > 0 && (
-              <div className="p-2 border-b border-white/5">
+              <div className="p-2 border-b border-slate-200 dark:border-white/5">
                 <div className="grid grid-cols-3 gap-1">
                   {quickActions.map((a, i) => (
                     <button
                       key={i}
                       onClick={a.onClick}
-                      className="flex flex-col items-center gap-1 py-2 px-1 rounded-lg hover:bg-white/5 transition group"
+                      className="flex flex-col items-center gap-1 py-2 px-1 rounded-lg hover:bg-slate-100 dark:hover:bg-white/5 transition group"
                     >
-                      <a.icon className={`w-4 h-4 ${a.color || 'text-slate-400'} group-hover:text-white transition`} />
-                      <span className="text-[10px] text-slate-500 group-hover:text-slate-300 text-center leading-tight transition">{a.label}</span>
+                      <a.icon className={`w-4 h-4 ${a.color || 'text-slate-500 dark:text-slate-400'} group-hover:text-slate-900 dark:group-hover:text-white transition`} />
+                      <span className="text-[10px] text-slate-500 group-hover:text-slate-700 dark:group-hover:text-slate-300 text-center leading-tight transition">{a.label}</span>
                     </button>
                   ))}
                 </div>
@@ -263,13 +263,13 @@ const OrgSwitcher: React.FC<OrgSwitcherProps> = ({ currentOrgId, userRole, onSwi
 
             {/* Org List */}
             <div className="py-1 max-h-44 overflow-y-auto">
-              <p className="px-3 py-1 text-[10px] font-semibold uppercase tracking-wider text-slate-600">
+              <p className="px-3 py-1 text-[10px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-600">
                 {userRole === 'admin' ? t('org.myBranches', 'Мои филиалы') : t('org.myOrgs', 'Мои организации')}
               </p>
               
               {/* Personal Workspace Option for Teachers/Managers */}
               {userRole !== 'student' && userRole !== 'admin' && userRole !== 'manager' && (
-                <div className="flex items-center hover:bg-white/5 transition mb-1">
+                <div className="flex items-center hover:bg-slate-100 dark:hover:bg-white/5 transition mb-1">
                   <button
                     onClick={() => handleSwitch('personal')}
                     disabled={switching}
@@ -277,13 +277,13 @@ const OrgSwitcher: React.FC<OrgSwitcherProps> = ({ currentOrgId, userRole, onSwi
                   >
                     <div className={`w-6 h-6 rounded-md flex items-center justify-center shrink-0 ${
                       !currentOrgId
-                        ? 'bg-violet-500/30 text-violet-300 ring-1 ring-violet-400/30'
-                        : 'bg-white/5 text-slate-500'
+                        ? 'bg-violet-500/20 text-violet-700 ring-1 ring-violet-400/30 dark:bg-violet-500/30 dark:text-violet-300'
+                        : 'bg-slate-100 text-slate-500 dark:bg-white/5 dark:text-slate-500'
                     }`}>
                       <FolderOpen className="w-3.5 h-3.5" />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className={`text-xs truncate ${!currentOrgId ? 'text-white font-semibold' : 'text-slate-300'}`}>
+                      <p className={`text-xs truncate ${!currentOrgId ? 'text-slate-900 font-semibold dark:text-white' : 'text-slate-600 dark:text-slate-300'}`}>
                         {t('nav.sectionPersonalWorkspace', 'Личное пространство')}
                       </p>
                       <p className="text-[10px] text-slate-500">{t('nav.independent', 'Независимый профиль')}</p>
@@ -297,7 +297,7 @@ const OrgSwitcher: React.FC<OrgSwitcherProps> = ({ currentOrgId, userRole, onSwi
 
               {/* Memberships */}
               {memberships.map((m) => (
-                <div key={m.organizationId} className="flex items-center hover:bg-white/5 transition">
+                <div key={m.organizationId} className="flex items-center hover:bg-slate-100 dark:hover:bg-white/5 transition">
                   <button
                     onClick={() => handleSwitch(m.organizationId)}
                     disabled={switching}
@@ -305,13 +305,13 @@ const OrgSwitcher: React.FC<OrgSwitcherProps> = ({ currentOrgId, userRole, onSwi
                   >
                     <div className={`w-6 h-6 rounded-md flex items-center justify-center text-[10px] font-bold shrink-0 ${
                       m.organizationId === currentOrgId
-                        ? 'bg-violet-500/30 text-violet-300 ring-1 ring-violet-400/30'
-                        : 'bg-white/5 text-slate-500'
+                        ? 'bg-violet-500/20 text-violet-700 ring-1 ring-violet-400/30 dark:bg-violet-500/30 dark:text-violet-300'
+                        : 'bg-slate-100 text-slate-500 dark:bg-white/5 dark:text-slate-500'
                     }`}>
                       {(m.organizationName || '?')[0].toUpperCase()}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className={`text-xs truncate ${m.organizationId === currentOrgId ? 'text-white font-semibold' : 'text-slate-300'}`}>
+                      <p className={`text-xs truncate ${m.organizationId === currentOrgId ? 'text-slate-900 font-semibold dark:text-white' : 'text-slate-600 dark:text-slate-300'}`}>
                         {m.organizationName || m.organizationId}
                       </p>
                       <p className="text-[10px] text-slate-500">{roleLabels[m.role] || m.role}</p>
@@ -323,7 +323,7 @@ const OrgSwitcher: React.FC<OrgSwitcherProps> = ({ currentOrgId, userRole, onSwi
                   {m.role !== 'owner' && m.role !== 'admin' && (
                     <button
                       onClick={() => { setOpen(false); setConfirmLeave(m.organizationId); }}
-                      className="p-1.5 mr-2 rounded-md hover:bg-red-500/10 text-slate-600 hover:text-red-400 transition"
+                      className="p-1.5 mr-2 rounded-md hover:bg-red-500/10 text-slate-400 hover:text-red-500 dark:text-slate-600 dark:hover:text-red-400 transition"
                       title={t('membership.leave', 'Покинуть')}
                     >
                       <LogOut className="w-3 h-3" />
@@ -334,10 +334,10 @@ const OrgSwitcher: React.FC<OrgSwitcherProps> = ({ currentOrgId, userRole, onSwi
             </div>
 
             {/* Footer: + action */}
-            <div className="border-t border-white/5 px-1 py-1">
+            <div className="border-t border-slate-200 dark:border-white/5 px-1 py-1">
               <button
                 onClick={plusAction.action}
-                className="w-full flex items-center gap-2 px-3 py-2 text-xs text-violet-400 hover:bg-white/5 rounded-lg transition font-medium"
+                className="w-full flex items-center gap-2 px-3 py-2 text-xs text-violet-600 dark:text-violet-400 hover:bg-slate-100 dark:hover:bg-white/5 rounded-lg transition font-medium"
               >
                 <Plus className="w-3.5 h-3.5" />
                 {plusAction.title}

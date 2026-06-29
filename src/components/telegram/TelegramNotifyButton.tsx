@@ -141,7 +141,7 @@ const TelegramNotifyButton: React.FC<Props> = ({ isCollapsed, onClose }) => {
           onClick={openModal}
           className={`
             flex items-center w-full rounded-lg transition-all duration-200
-            bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/15
+            bg-emerald-50 text-emerald-700 hover:bg-emerald-100 dark:bg-emerald-500/10 dark:text-emerald-400 dark:hover:bg-emerald-500/15
             ${isCollapsed
               ? 'gap-3 px-3 py-2 lg:justify-center lg:px-0 lg:w-12 lg:mx-auto'
               : 'gap-2.5 px-3 py-2'

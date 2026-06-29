@@ -132,7 +132,7 @@ const SidebarTips: React.FC<Props> = ({ isCollapsed }) => {
 
   return (
     <div className="px-3 py-2">
-      <div className="relative overflow-hidden rounded-lg bg-white/[0.03] px-3 py-2.5 pr-7 min-h-[52px] flex items-start gap-2">
+      <div className="relative overflow-hidden rounded-lg bg-slate-100 dark:bg-white/[0.03] px-3 py-2.5 pr-7 min-h-[52px] flex items-start gap-2">
         <Lightbulb className="w-3.5 h-3.5 text-amber-500/60 shrink-0 mt-0.5" />
         <p
           className={`text-[11px] leading-[1.4] text-slate-500 transition-all duration-400 ${
@@ -148,7 +148,7 @@ const SidebarTips: React.FC<Props> = ({ isCollapsed }) => {
           onClick={handleDismiss}
           aria-label="Скрыть подсказки"
           title="Скрыть подсказки"
-          className="absolute top-1.5 right-1.5 p-1 rounded-md text-slate-600 hover:text-slate-300 hover:bg-white/5 transition-colors"
+          className="absolute top-1.5 right-1.5 p-1 rounded-md text-slate-400 hover:text-slate-600 hover:bg-slate-100 dark:text-slate-600 dark:hover:text-slate-300 dark:hover:bg-white/5 transition-colors"
         >
           <X className="w-3 h-3" />
         </button>

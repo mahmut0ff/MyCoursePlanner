@@ -17,7 +17,7 @@ vi.mock('../utils/notifications', () => ({
 
 import { adminDb } from '../utils/firebase-admin';
 import { createNotification } from '../utils/notifications';
-import { buildDirectorSnapshot, renderSnapshotText, remindOrgDebtors, sendDebtorDraft } from '../utils/director-copilot';
+import { buildDirectorSnapshot, renderSnapshotText, remindOrgDebtors, sendDebtorDraft, toTelegramHtml } from '../utils/director-copilot';
 
 /** Wrap plain objects as a Firestore-like query result (chainable .where, resolvable .get). */
 function coll(docs: any[]) {
@@ -126,6 +126,28 @@ describe('buildDirectorSnapshot', () => {
     expect(s).toContain('Новых за 7 дней: 1');
     expect(s).toContain('Не обработано (статус «новая»): 1');
     expect(s).toContain('Мария (0555)');
+  });
+});
+
+describe('toTelegramHtml — markdown bold in, safe HTML out, no double-escaping', () => {
+  it('converts **bold** to <b>', () => {
+    expect(toTelegramHtml('Доход **800** с.')).toBe('Доход <b>800</b> с.');
+  });
+
+  it('passes real <b>…</b> through untouched (idempotent — fixes the &lt;b&gt; bug)', () => {
+    // The model (or a prior history turn) emitting real tags must NOT become &lt;b&gt;.
+    expect(toTelegramHtml('В зоне риска <b>0</b> учеников.')).toBe('В зоне риска <b>0</b> учеников.');
+    // Running the output back through is a no-op.
+    expect(toTelegramHtml(toTelegramHtml('Заявок **2**'))).toBe('Заявок <b>2</b>');
+  });
+
+  it('escapes stray angle brackets and ampersands so Telegram HTML never breaks', () => {
+    expect(toTelegramHtml('доход < расхода')).toBe('доход &lt; расхода');
+    expect(toTelegramHtml('Иванов & Со')).toBe('Иванов &amp; Со');
+  });
+
+  it('escapes disallowed tags (only b/i/u/s/strong/em survive)', () => {
+    expect(toTelegramHtml('<script>alert(1)</script>')).toBe('&lt;script&gt;alert(1)&lt;/script&gt;');
   });
 });
 

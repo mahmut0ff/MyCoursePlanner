@@ -22,6 +22,18 @@ function copilotKeyboard(staff: StaffContext) {
   return staff.isDirector ? directorMenuKeyboard() : undefined;
 }
 
+/**
+ * Strip Telegram HTML back to plain text for storing in the rolling chat history.
+ * Keeping history tag-free stops the model from echoing <b>…</b> (or its escaped
+ * form) back into later answers, which would render as visible &lt;b&gt; gibberish.
+ */
+function toHistoryText(html: string): string {
+  return (html || '')
+    .replace(/<\/?[^>]+>/g, '')
+    .replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&')
+    .trim();
+}
+
 /** Reconcile every admin's approval message: drop the buttons, show the outcome. */
 async function refreshApprovalMessages(token: string, botToken: string): Promise<void> {
   const snap = await adminDb.collection('telegramApprovals').doc(token).get();
@@ -376,7 +388,7 @@ export const handler: Handler = async (event: HandlerEvent) => {
           const answer = await runStaffCopilotTurn(staff, { audio }, history);
           await sendTg(answer, copilotKeyboard(staff));
 
-          history.push({ role: 'user', content: '[голосовое сообщение]' }, { role: 'assistant', content: answer });
+          history.push({ role: 'user', content: '[голосовое сообщение]' }, { role: 'assistant', content: toHistoryText(answer) });
           if (history.length > 8) history = history.slice(-8);
           await sessRef.set({ messages: history, updatedAt: new Date().toISOString() }, { merge: true }).catch(() => {});
         }
@@ -648,7 +660,7 @@ export const handler: Handler = async (event: HandlerEvent) => {
           const answer = await runStaffCopilotTurn(staff, { text }, history);
           await sendTg(answer, copilotKeyboard(staff));
 
-          history.push({ role: 'user', content: text }, { role: 'assistant', content: answer });
+          history.push({ role: 'user', content: text }, { role: 'assistant', content: toHistoryText(answer) });
           if (history.length > 8) history = history.slice(-8);
           await sessRef.set({ messages: history, updatedAt: new Date().toISOString() }, { merge: true }).catch(() => {});
           return { statusCode: 200, body: 'OK' };

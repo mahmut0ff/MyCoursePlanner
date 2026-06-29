@@ -212,6 +212,10 @@ export function toTelegramHtml(raw: string): string {
     .replace(/^#{1,6}\s*/gm, '')       // strip markdown headings
     .trim();
   s = s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  // Re-allow a small safe subset of Telegram formatting tags. This also makes the
+  // escape idempotent: if the model (or a prior chat-history turn) emits real
+  // <b>…</b>, it survives intact instead of rendering as visible &lt;b&gt; gibberish.
+  s = s.replace(/&lt;(\/?(?:b|strong|i|em|u|s))&gt;/gi, '<$1>');
   s = s.replace(/\*\*(.+?)\*\*/g, '<b>$1</b>');
   return s.trim();
 }

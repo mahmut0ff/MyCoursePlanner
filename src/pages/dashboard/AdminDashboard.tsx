@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../contexts/AuthContext';
-import { GraduationCap, Users, BookOpen, UsersRound, Settings, Sparkles, GitBranch, MapPin, FileText, Gamepad2, TrendingDown, Bell, Bot, BarChart3, ChevronRight, ArrowUpRight } from 'lucide-react';
+import { GraduationCap, Users, BookOpen, UsersRound, Settings, Sparkles, GitBranch, MapPin } from 'lucide-react';
 import { DashboardSkeleton } from '../../components/ui/Skeleton';
 import OnboardingWizard, { useOnboardingProgress } from '../../components/onboarding/OnboardingWizard';
 import { apiGetBranchAnalytics, apiGetOrganization, apiGetAIManagerSettings, orgGetDashboardStats } from '../../lib/api';
@@ -50,14 +50,6 @@ const AdminDashboard: React.FC = () => {
     : hour < 18
     ? t('dashboard.goodAfternoon', 'Добрый день')
     : t('dashboard.goodEvening', 'Добрый вечер');
-
-  const quickLinks = [
-    { to: '/leads', icon: Bot, label: 'Заявки' },
-    { to: '/materials', icon: FileText, label: t('nav.materials') },
-    { to: '/quiz/library', icon: Gamepad2, label: t('nav.quizLibrary') },
-    { to: '/risk-dashboard', icon: TrendingDown, label: t('nav.riskDashboard', 'Светофор рисков') },
-    { to: '/notifications', icon: Bell, label: t('nav.notifications', 'Уведомления') },
-  ];
 
   const onboardingProps = {
     orgData,
@@ -220,47 +212,6 @@ const AdminDashboard: React.FC = () => {
               </div>
             </div>
           )}
-        </div>
-
-        {/* ═══ RIGHT: Sidebar (Quick Links) ═══ */}
-        <div className="lg:w-[260px] xl:w-[280px] shrink-0">
-          <div className="lg:sticky lg:top-4 space-y-4">
-            {/* Quick Access Panel */}
-            <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden">
-              <div className="px-4 py-3 border-b border-slate-100 dark:border-slate-700">
-                <h3 className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
-                  {t('dashboard.quickLinks', 'Быстрый доступ')}
-                </h3>
-              </div>
-              <div className="p-1.5">
-                {quickLinks.map(link => (
-                  <Link
-                    key={link.to}
-                    to={link.to}
-                    className="flex items-center justify-between px-3 py-2.5 rounded-lg text-[13px] font-medium text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700/50 hover:text-slate-900 dark:hover:text-white transition-colors group"
-                  >
-                    <div className="flex items-center gap-2.5">
-                      <link.icon className="w-4 h-4 text-slate-400 group-hover:text-slate-600 dark:group-hover:text-slate-300 transition-colors" />
-                      <span>{link.label}</span>
-                    </div>
-                    <ChevronRight className="w-3.5 h-3.5 text-slate-300 dark:text-slate-600 group-hover:text-slate-400 dark:group-hover:text-slate-500 transition-colors" />
-                  </Link>
-                ))}
-              </div>
-            </div>
-
-            {/* Teacher Analytics CTA */}
-            <Link
-              to="/teacher-analytics"
-              className="flex items-center justify-between w-full px-4 py-3 bg-slate-900 dark:bg-slate-700 rounded-xl text-white hover:bg-slate-800 dark:hover:bg-slate-600 transition-colors group"
-            >
-              <div className="flex items-center gap-2.5">
-                <BarChart3 className="w-4 h-4 text-slate-400 group-hover:text-slate-300 transition-colors" />
-                <span className="text-sm font-medium">Аналитика</span>
-              </div>
-              <ArrowUpRight className="w-3.5 h-3.5 text-slate-500 group-hover:text-slate-300 transition-colors" />
-            </Link>
-          </div>
         </div>
       </div>
     </div>

@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { getExams } from '../../services/exams.service';
 import type { Exam } from '../../types';
 
-import { Plus, ClipboardList, Search, Clock, HelpCircle, FileText, Filter } from 'lucide-react';
+import { Plus, ClipboardList, Search, Clock, HelpCircle, FileText, Filter, BarChart3 } from 'lucide-react';
 import { usePlanGate } from '../../contexts/PlanContext';
 import { useAuth } from '../../contexts/AuthContext';
 import EmptyState from '../../components/ui/EmptyState';
@@ -61,6 +61,12 @@ const ExamListPage: React.FC = () => {
         </div>
 
         <div className="flex items-center gap-3 w-full sm:w-auto">
+          <Link
+            to="/results"
+            className="flex-1 sm:flex-none bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 px-4 py-2.5 rounded-xl text-sm font-semibold flex justify-center items-center gap-2 transition-all shrink-0"
+          >
+            <BarChart3 className="w-4 h-4" />{t('nav.results', 'Результаты')}
+          </Link>
           <Link
             to="/exams/new"
             onClick={handleCreate}

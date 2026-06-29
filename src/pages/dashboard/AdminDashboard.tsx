@@ -55,7 +55,6 @@ const AdminDashboard: React.FC = () => {
     { to: '/leads', icon: Bot, label: 'Заявки' },
     { to: '/materials', icon: FileText, label: t('nav.materials') },
     { to: '/quiz/library', icon: Gamepad2, label: t('nav.quizLibrary') },
-    { to: '/results', icon: BarChart3, label: t('nav.results') },
     { to: '/risk-dashboard', icon: TrendingDown, label: t('nav.riskDashboard', 'Светофор рисков') },
     { to: '/notifications', icon: Bell, label: t('nav.notifications', 'Уведомления') },
   ];

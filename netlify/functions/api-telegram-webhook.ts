@@ -7,14 +7,20 @@ import { resolveJoinCode, createOrJoinTelegramUser, createLoginToken, resolveCla
 import { processApprovalDecision } from './utils/join-approvals';
 import { planHasAIManager } from './utils/plan-limits';
 import {
-  answerDirectorQuestion, answerDirectorVoice, generateBrief, remindOrgDebtors,
+  generateBrief, remindOrgDebtors,
   generateDebtorDraft, sendDebtorDraft,
   buildDirectorSnapshot, renderDebtors, renderRisk, renderLeads,
-  directorMenuKeyboard, resolveDirectorByChat, resolveDirectorFromUser,
+  directorMenuKeyboard, resolveDirectorByChat,
   type DirectorChatMessage,
 } from './utils/director-copilot';
+import { resolveStaffByChat, runStaffCopilotTurn, can, type StaffContext } from './utils/copilot-actions';
 
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY || '';
+
+/** Reply keyboard for a staff copilot turn — director quick-actions, or none for teachers. */
+function copilotKeyboard(staff: StaffContext) {
+  return staff.isDirector ? directorMenuKeyboard() : undefined;
+}
 
 /** Reconcile every admin's approval message: drop the buttons, show the outcome. */
 async function refreshApprovalMessages(token: string, botToken: string): Promise<void> {
@@ -331,29 +337,32 @@ export const handler: Handler = async (event: HandlerEvent) => {
       }
     };
 
-    // Show the director command menu (/menu, /brief, /login) in this chat's "/" button.
-    const setDirectorCommands = async () => {
+    // Set this chat's "/" command list. Directors get the full menu; other staff
+    // (e.g. teachers) just get /login.
+    const setBotCommands = async (commands: { command: string; description: string }[]) => {
       await fetch(`https://api.telegram.org/bot${botToken}/setMyCommands`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          commands: [
-            { command: 'menu', description: '📊 Меню директора' },
-            { command: 'brief', description: '☀️ AI-сводка по центру' },
-            { command: 'login', description: '🔑 Войти в SabakHub' },
-          ],
-          scope: { type: 'chat', chat_id: chatId },
-        }),
+        body: JSON.stringify({ commands, scope: { type: 'chat', chat_id: chatId } }),
       }).catch(() => {});
     };
+    const setDirectorCommands = () => setBotCommands([
+      { command: 'menu', description: '📊 Меню директора' },
+      { command: 'brief', description: '☀️ AI-сводка по центру' },
+      { command: 'login', description: '🔑 Войти в SabakHub' },
+    ]);
+    const setStaffCommands = () => setBotCommands([
+      { command: 'login', description: '🔑 Войти в SabakHub' },
+    ]);
 
     if (isGlobalBot) {
       // ─── GLOBAL BOT: registration, account linking & passwordless login ───
 
-      // (a0) Voice message from a director → transcribe + answer via the copilot.
+      // (a0) Voice message from staff → transcribe + act/answer via the copilot.
+      // Directors get analytics + actions; teachers dictate grades ("Поставь Аброру 4").
       if (voice) {
-        const dir = await resolveDirectorByChat(String(chatId));
-        if (dir && planHasAIManager(dir.org.planId)) {
+        const staff = await resolveStaffByChat(String(chatId));
+        if (staff && planHasAIManager(staff.org.planId)) {
           await sendChatAction('typing');
           const audio = await downloadVoice(voice.file_id);
           if (!audio) {
@@ -364,8 +373,8 @@ export const handler: Handler = async (event: HandlerEvent) => {
           const sessSnap = await sessRef.get();
           let history: DirectorChatMessage[] = sessSnap.exists ? (sessSnap.data()?.messages || []) : [];
 
-          const answer = await answerDirectorVoice(dir.orgId, dir.org.name || 'центр', audio.base64, audio.mime, history);
-          await sendTg(answer, directorMenuKeyboard());
+          const answer = await runStaffCopilotTurn(staff, { audio }, history);
+          await sendTg(answer, copilotKeyboard(staff));
 
           history.push({ role: 'user', content: '[голосовое сообщение]' }, { role: 'assistant', content: answer });
           if (history.length > 8) history = history.slice(-8);
@@ -518,14 +527,21 @@ export const handler: Handler = async (event: HandlerEvent) => {
           const uid = known.docs[0].id;
           await sendLoginButton(uid, 'С возвращением! 👋 Нажмите, чтобы войти в SabakHub:');
           await backfillCredentials(uid); // old accounts without a web login get one
-          // Directors get a one-line nudge + the quick-action menu + the "/" command list.
-          const dir = await resolveDirectorFromUser(uid, known.docs[0].data());
-          if (dir && planHasAIManager(dir.org.planId)) {
-            await setDirectorCommands();
-            await sendTg(
-              '🤖 <b>AI-копилот директора</b>\nСпросите меня текстом или голосом — например «Сколько дохода в этом месяце?», «Кто должает?» — или жмите кнопки ниже:',
-              directorMenuKeyboard(),
-            );
+          // Staff get an AI-copilot nudge tailored to their role + the "/" command list.
+          const staff = await resolveStaffByChat(String(chatId));
+          if (staff && planHasAIManager(staff.org.planId)) {
+            if (staff.isDirector) {
+              await setDirectorCommands();
+              await sendTg(
+                '🤖 <b>AI-копилот директора</b>\nСпросите аналитику или поручите действие — текстом или голосом:\n• «Сколько дохода в этом месяце?», «Кто должает?»\n• «Добавь заявку Азиз +99890…»\n• «Добавь ученика Алишер в группу A2»\n…или жмите кнопки ниже:',
+                directorMenuKeyboard(),
+              );
+            } else if (can(staff, 'gradebook', 'write')) {
+              await setStaffCommands();
+              await sendTg(
+                '🤖 <b>AI-помощник преподавателя</b>\nВыставляйте оценки текстом или голосом — например:\n«Поставь Аброру 4 за сегодня, Мухаммаду 5».',
+              );
+            }
           }
           return { statusCode: 200, body: 'OK' };
         }
@@ -613,12 +629,13 @@ export const handler: Handler = async (event: HandlerEvent) => {
         return { statusCode: 200, body: 'OK' };
       }
 
-      // (d) Director copilot — owners/admins/managers ask management questions in plain text.
+      // (d) Staff copilot — directors ask analytics & add leads/people; teachers set
+      //     grades; managers/custom-roles act within their RBAC grants. Plain text.
       if (text && !text.startsWith('/')) {
-        const dir = await resolveDirectorByChat(String(chatId));
-        if (dir) {
-          if (!planHasAIManager(dir.org.planId)) {
-            await reply('🤖 AI-копилот директора доступен на тарифе <b>Professional</b> и выше.');
+        const staff = await resolveStaffByChat(String(chatId));
+        if (staff) {
+          if (!planHasAIManager(staff.org.planId)) {
+            await reply('🤖 AI-копилот доступен на тарифе <b>Professional</b> и выше.');
             return { statusCode: 200, body: 'OK' };
           }
           await sendChatAction('typing');
@@ -628,8 +645,8 @@ export const handler: Handler = async (event: HandlerEvent) => {
           const sessSnap = await sessRef.get();
           let history: DirectorChatMessage[] = sessSnap.exists ? (sessSnap.data()?.messages || []) : [];
 
-          const answer = await answerDirectorQuestion(dir.orgId, dir.org.name || 'центр', text, history);
-          await sendTg(answer, directorMenuKeyboard());
+          const answer = await runStaffCopilotTurn(staff, { text }, history);
+          await sendTg(answer, copilotKeyboard(staff));
 
           history.push({ role: 'user', content: text }, { role: 'assistant', content: answer });
           if (history.length > 8) history = history.slice(-8);

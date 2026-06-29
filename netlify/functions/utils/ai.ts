@@ -17,11 +17,17 @@ export function hasGeminiKey(): boolean {
   return !!GEMINI_API_KEY;
 }
 
-/** Build a Gemini model. Pass `json: true` to force a JSON response. */
-export function getModel(opts?: { json?: boolean; model?: string }) {
+/**
+ * Build a Gemini model. Pass `json: true` to force a JSON response, or
+ * `tools` / `systemInstruction` to enable agentic function-calling (used by the
+ * Telegram staff copilot). All options are optional and back-compatible.
+ */
+export function getModel(opts?: { json?: boolean; model?: string; tools?: any[]; systemInstruction?: string }) {
   const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
   return genAI.getGenerativeModel({
     model: opts?.model || AI_MODEL,
+    ...(opts?.systemInstruction ? { systemInstruction: opts.systemInstruction } : {}),
+    ...(opts?.tools ? { tools: opts.tools } : {}),
     generationConfig: opts?.json ? { responseMimeType: 'application/json' } : {},
   });
 }

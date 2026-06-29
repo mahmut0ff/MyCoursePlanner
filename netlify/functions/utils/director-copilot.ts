@@ -206,7 +206,7 @@ export function renderSnapshotText(s: DirectorSnapshot): string {
  * Escapes &/</> FIRST so any stray angle brackets from the model (e.g. "доход < расхода")
  * can't break Telegram's HTML parser, then re-introduces only **bold**.
  */
-function toTelegramHtml(raw: string): string {
+export function toTelegramHtml(raw: string): string {
   let s = (raw || '')
     .replace(/```[\s\S]*?```/g, '')   // drop code fences
     .replace(/^#{1,6}\s*/gm, '')       // strip markdown headings

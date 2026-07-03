@@ -163,15 +163,25 @@ async function computeRisk(orgId: string) {
     const missed = sJournal.filter(j => j.attendance === 'absent').length;
     const attendanceRate = sJournal.length ? Math.round(((sJournal.length - missed) / sJournal.length) * 100) : 100;
 
-    const dates = [new Date(profile.createdAt || member.createdAt || now)];
-    sAttempts.forEach(a => a.createdAt && dates.push(new Date(a.createdAt)));
-    sJournal.forEach(j => j.date && dates.push(new Date(j.date)));
+    // Only students who actually started (took an exam or showed up at least once)
+    // can be a churn risk — a just-added student with no history is not "inactive".
+    const attendedCount = sJournal.filter(j => j.attendance && j.attendance !== 'absent').length;
+    const everEngaged = sAttempts.length > 0 || attendedCount > 0;
+
+    // Days since last *real* activity — never account/enrollment creation, which
+    // would make freshly-added students look inactive for weeks.
+    const dates: Date[] = [];
+    sAttempts.forEach(a => { const d = a.submittedAt || a.createdAt; if (d) dates.push(new Date(d)); });
+    sJournal.forEach(j => { if (j.date && j.attendance !== 'absent') dates.push(new Date(j.date)); });
     dates.sort((a, b) => b.getTime() - a.getTime());
-    const daysSinceLastActive = Math.floor((now - dates[0].getTime()) / 86400000);
+    const enrolledAt = new Date(member.joinedAt || member.createdAt || profile.createdAt || now);
+    const daysSinceLastActive = dates.length > 0
+      ? Math.floor((now - dates[0].getTime()) / 86400000)
+      : Math.max(0, Math.floor((now - enrolledAt.getTime()) / 86400000));
 
     let riskLevel: 'low' | 'medium' | 'high' = 'low';
-    if (daysSinceLastActive > 7 || (hasScores && avgScore < 50) || attendanceRate < 50) riskLevel = 'high';
-    else if (daysSinceLastActive > 4 || (hasScores && avgScore < 70) || attendanceRate < 80) riskLevel = 'medium';
+    if (everEngaged && (daysSinceLastActive > 7 || (hasScores && avgScore < 50) || attendanceRate < 50)) riskLevel = 'high';
+    else if (everEngaged && (daysSinceLastActive > 4 || (hasScores && avgScore < 70) || attendanceRate < 80)) riskLevel = 'medium';
 
     return {
       studentId: uid,

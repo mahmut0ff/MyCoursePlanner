@@ -28,7 +28,10 @@ const RiskCard: React.FC<{ student: StudentRiskProfile }> = ({ student }) => {
         <div>
           <h4 className="font-bold text-slate-800 dark:text-white leading-tight">{student.studentName}</h4>
           <span className="text-xs text-slate-500 flex items-center gap-1">
-            <Clock className="w-3 h-3"/> был(а) {student.daysSinceLastActive} дн. назад 
+            <Clock className="w-3 h-3"/>
+            {student.hasActivity === false
+              ? <>новый · добавлен(а) {student.daysSinceEnrolled ?? student.daysSinceLastActive} дн. назад</>
+              : <>был(а) {student.daysSinceLastActive} дн. назад</>}
           </span>
         </div>
       </div>
@@ -44,7 +47,11 @@ const RiskCard: React.FC<{ student: StudentRiskProfile }> = ({ student }) => {
         </div>
         <div className="bg-slate-50 dark:bg-slate-900 p-2 rounded-lg">
           <p className="text-[10px] uppercase text-slate-400 font-bold tracking-wider">Посещения</p>
-          <p className={`font-bold ${student.attendanceRate < 70 ? 'text-amber-500' : 'text-slate-800 dark:text-white'}`}>{student.attendanceRate}%</p>
+          {student.hasActivity === false ? (
+            <p className="font-bold text-slate-400" title="Ещё не посещал(а) занятия">—</p>
+          ) : (
+            <p className={`font-bold ${student.attendanceRate < 70 ? 'text-amber-500' : 'text-slate-800 dark:text-white'}`}>{student.attendanceRate}%</p>
+          )}
         </div>
         <div className="bg-slate-50 dark:bg-slate-900 p-2 rounded-lg col-span-2 flex items-center justify-between">
           <span className="text-[10px] uppercase text-slate-400 font-bold tracking-wider">Стрик (дней подряд)</span>

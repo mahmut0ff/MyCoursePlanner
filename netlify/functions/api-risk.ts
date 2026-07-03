@@ -48,7 +48,10 @@ export const handler: Handler = async (event: HandlerEvent) => {
         uid,
         displayName: profile.displayName || member.userName || 'Ученик',
         avatarUrl: profile.avatarUrl || '',
-        createdAt: profile.createdAt || member.createdAt,
+        // Enrollment into THIS org is the right anchor for retention and for the
+        // newcomer grace — NOT account creation (profile.createdAt), which can be
+        // months old for a student who only just joined this particular school.
+        enrolledAt: member.joinedAt || member.createdAt || profile.createdAt,
         currentStreak: profile.currentStreak || 0,
       };
     });
@@ -105,19 +108,30 @@ export const handler: Handler = async (event: HandlerEvent) => {
         attendanceRate = Math.round(((sJournal.length - missed) / sJournal.length) * 100);
       }
 
-      // Days since last active
-      let lastActiveDate = new Date(student.createdAt || Date.now());
-      const datesToConsider: Date[] = [lastActiveDate];
-      if (sAttempts.length > 0) {
-        sAttempts.forEach(a => { if (a.createdAt) datesToConsider.push(new Date(a.createdAt)); });
-      }
-      if (sJournal.length > 0) {
-        sJournal.forEach(j => { if (j.date) datesToConsider.push(new Date(j.date)); });
-      }
-      datesToConsider.sort((a, b) => b.getTime() - a.getTime());
-      lastActiveDate = datesToConsider[0];
+      // Has the student ever actually engaged? An exam attempt, or an attendance
+      // record that isn't an absence, counts. A just-added / imported student who
+      // has only ever been marked absent (or has no records at all) never really
+      // started — there is nothing to churn from, so they are NOT a retention risk.
+      const attendedCount = sJournal.filter(j => j.attendance && j.attendance !== 'absent').length;
+      const everEngaged = sAttempts.length > 0 || attendedCount > 0;
 
-      const daysSinceLastActive = Math.floor((now.getTime() - lastActiveDate.getTime()) / (1000 * 3600 * 24));
+      // Days since last *real* activity: latest exam, or latest day present.
+      // Account/enrollment creation is NOT activity — seeding "last active" with
+      // createdAt is what made freshly-added students look inactive for weeks and
+      // land in the red zone. Recent absences don't count as "active" either.
+      const activityDates: Date[] = [];
+      sAttempts.forEach(a => { const d = a.submittedAt || a.createdAt; if (d) activityDates.push(new Date(d)); });
+      sJournal.forEach(j => { if (j.date && j.attendance !== 'absent') activityDates.push(new Date(j.date)); });
+      activityDates.sort((a, b) => b.getTime() - a.getTime());
+
+      const enrolledAt = new Date(student.enrolledAt || Date.now());
+      const daysSinceEnrolled = Math.max(0, Math.floor((now.getTime() - enrolledAt.getTime()) / (1000 * 3600 * 24)));
+
+      // "Last active" is the latest real activity; for a never-engaged student we
+      // fall back to how long ago they were added (display only — see everEngaged).
+      const daysSinceLastActive = activityDates.length > 0
+        ? Math.floor((now.getTime() - activityDates[0].getTime()) / (1000 * 3600 * 24))
+        : daysSinceEnrolled;
 
       // Score dynamics — are the most recent results trending down?
       let scoreTrend: 'up' | 'down' | 'flat' = 'flat';
@@ -137,20 +151,27 @@ export const handler: Handler = async (event: HandlerEvent) => {
       const isHighRiskScore = hasScores && avgScore < 50;
       const isMedRiskScore = hasScores && avgScore < 70;
 
-      // Human-readable reasons (drives the dashboard tooltip / sort).
+      // Human-readable reasons (drives the dashboard tooltip / sort). Inactivity,
+      // attendance and trend only make sense once the student has engaged.
       const reasons: string[] = [];
-      if (daysSinceLastActive > 7) reasons.push(`не активен ${daysSinceLastActive} дн.`);
-      if (attendanceRate < 50) reasons.push(`посещаемость ${attendanceRate}%`);
+      if (everEngaged && daysSinceLastActive > 7) reasons.push(`не активен ${daysSinceLastActive} дн.`);
+      if (everEngaged && attendanceRate < 50) reasons.push(`посещаемость ${attendanceRate}%`);
       if (isHighRiskScore) reasons.push(`средний балл ${avgScore}%`);
       if (hasOverduePayment) reasons.push('просрочена оплата');
-      if (scoreTrend === 'down') reasons.push('оценки падают');
+      if (everEngaged && scoreTrend === 'down') reasons.push('оценки падают');
 
-      // Calculate Risk Level
+      // Calculate Risk Level. Overdue debt is a hard, reliable signal that stands
+      // on its own. Every other trigger requires prior engagement — otherwise a
+      // just-added student with no history gets misclassified as a churn risk.
       let riskLevel = 'low';
-      if (daysSinceLastActive > 7 || isHighRiskScore || attendanceRate < 50 || hasOverduePayment) {
+      if (hasOverduePayment) {
         riskLevel = 'high';
-      } else if (daysSinceLastActive > 4 || isMedRiskScore || attendanceRate < 80 || scoreTrend === 'down') {
-        riskLevel = 'medium';
+      } else if (everEngaged) {
+        if (daysSinceLastActive > 7 || isHighRiskScore || attendanceRate < 50) {
+          riskLevel = 'high';
+        } else if (daysSinceLastActive > 4 || isMedRiskScore || attendanceRate < 80 || scoreTrend === 'down') {
+          riskLevel = 'medium';
+        }
       }
 
       const streak = student.currentStreak || 0;
@@ -165,6 +186,8 @@ export const handler: Handler = async (event: HandlerEvent) => {
         attendanceRate,
         streak,
         daysSinceLastActive,
+        daysSinceEnrolled,
+        hasActivity: everEngaged,
         scoreTrend,
         hasOverduePayment,
         reasons,

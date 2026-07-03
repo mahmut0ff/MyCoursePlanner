@@ -228,6 +228,8 @@ export interface StudentRiskProfile {
   attendanceRate: number;
   streak: number;
   daysSinceLastActive: number;
+  daysSinceEnrolled?: number;
+  hasActivity?: boolean; // false = newly added, no engagement yet (not a churn risk)
   missedAssignments: number;
   notes?: string[];
 }

@@ -232,6 +232,7 @@ const Sidebar: React.FC<{ open: boolean; onClose: () => void; isCollapsed?: bool
               {teacherWithOrg && (
                 <>
                   <SectionLabel label={t('nav.secLearning', 'Обучение')} isCollapsed={isCollapsed} />
+                  <NavItem to="/groups" icon={Layers} label={term(t, instType, 'groups')} isCollapsed={isCollapsed} onClose={onClose} />
                   <NavItem to="/journal" icon={NotebookPen} label={t('nav.journal', 'Журнал')} isCollapsed={isCollapsed} onClose={onClose} locked={!canAccess('gradebook')} />
                   <NavItem to="/homework/review" icon={ClipboardCheck} label={t('nav.homeworkReview', 'Проверка ДЗ')} isCollapsed={isCollapsed} onClose={onClose} />
                   <NavItem to="/gradebook" icon={TableProperties} label={t('nav.gradebook', 'Оценки')} isCollapsed={isCollapsed} onClose={onClose} locked={!canAccess('gradebook')} />

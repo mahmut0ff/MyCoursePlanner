@@ -12,7 +12,7 @@
  * Trigger via: scheduled run, or POST /.netlify/functions/lesson-reminders for testing.
  */
 import type { Handler, HandlerEvent } from '@netlify/functions';
-import { adminDb } from './utils/firebase-admin';
+import { adminDb, getDocsByIds } from './utils/firebase-admin';
 import { createNotification } from './utils/notifications';
 import { jsonResponse } from './utils/auth';
 
@@ -46,12 +46,7 @@ const handler: Handler = async (event: HandlerEvent) => {
 
     // Batch-fetch the groups referenced by these events.
     const groupIds = [...new Set(events.map(e => e.groupId).filter(Boolean))];
-    const groupMap = new Map<string, any>();
-    for (let i = 0; i < groupIds.length; i += 30) {
-      const batch = groupIds.slice(i, i + 30);
-      const snap = await adminDb.collection('groups').where('__name__', 'in', batch).get();
-      snap.docs.forEach(g => groupMap.set(g.id, g.data()));
-    }
+    const groupMap = new Map<string, any>(Object.entries(await getDocsByIds('groups', groupIds)));
 
     // Aggregate per recipient: { orgId, isTeacher, items[] }
     const perUser = new Map<string, { orgId: string; isTeacher: boolean; items: ReminderItem[] }>();

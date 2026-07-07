@@ -14,7 +14,7 @@
  * POST   ?action=switchOrg                  → switch user's active org context
  */
 import type { Handler, HandlerEvent } from '@netlify/functions';
-import { adminDb } from './utils/firebase-admin';
+import { adminDb, getDocsByIds } from './utils/firebase-admin';
 import { verifyAuth, isSuperAdmin, ok, unauthorized, forbidden, badRequest, notFound, jsonResponse } from './utils/auth';
 import { createNotification, notifyOrgAdmins } from './utils/notifications';
 import { getOrgLimits } from './utils/plan-limits';
@@ -93,12 +93,7 @@ const handler: Handler = async (event: HandlerEvent) => {
     // Enrich with avatarUrl from users collection
     if (members.length > 0) {
       const uids = members.map((m: any) => m.userId).filter(Boolean);
-      const profileMap: Record<string, any> = {};
-      for (let i = 0; i < uids.length; i += 10) {
-        const batch = uids.slice(i, i + 10);
-        const profileSnap = await adminDb.collection('users').where('__name__', 'in', batch).get();
-        profileSnap.docs.forEach((d: any) => { profileMap[d.id] = d.data(); });
-      }
+      const profileMap = await getDocsByIds('users', uids);
       members = members.map((m: any) => {
         const p = profileMap[m.userId] || {};
         return { ...m, avatarUrl: p.avatarUrl || '' };
@@ -148,12 +143,7 @@ const handler: Handler = async (event: HandlerEvent) => {
       // Enrich with avatarUrl, phone from users collection
       if (members.length > 0) {
         const uids = members.map((m: any) => m.userId).filter(Boolean);
-        const profileMap: Record<string, any> = {};
-        for (let i = 0; i < uids.length; i += 10) {
-          const batch = uids.slice(i, i + 10);
-          const profileSnap = await adminDb.collection('users').where('__name__', 'in', batch).get();
-          profileSnap.docs.forEach((d: any) => { profileMap[d.id] = d.data(); });
-        }
+        const profileMap = await getDocsByIds('users', uids);
         members = members.map((m: any) => {
           const p = profileMap[m.userId] || {};
           return { 
@@ -196,23 +186,16 @@ const handler: Handler = async (event: HandlerEvent) => {
 
       // 3. Fetch only those students from orgMembers
       const studentIds = Array.from(studentIdSet);
-      let allStudents: any[] = [];
-      for (let i = 0; i < studentIds.length; i += 10) {
-        const batch = studentIds.slice(i, i + 10);
-        const snap = await adminDb.collection('orgMembers').doc(params.orgId)
-          .collection('members').where('userId', 'in', batch).get();
-        allStudents.push(...snap.docs.map((d: any) => ({ id: d.id, ...d.data() })));
-      }
+      const memberChunks: string[][] = [];
+      for (let i = 0; i < studentIds.length; i += 10) memberChunks.push(studentIds.slice(i, i + 10));
+      const memberSnaps = await Promise.all(memberChunks.map((b) =>
+        adminDb.collection('orgMembers').doc(params.orgId).collection('members').where('userId', 'in', b).get()));
+      let allStudents: any[] = memberSnaps.flatMap((snap: any) => snap.docs.map((d: any) => ({ id: d.id, ...d.data() })));
 
       // 4. Enrich with profile data
       if (allStudents.length > 0) {
         const uids = allStudents.map((m: any) => m.userId).filter(Boolean);
-        const profileMap: Record<string, any> = {};
-        for (let i = 0; i < uids.length; i += 10) {
-          const batch = uids.slice(i, i + 10);
-          const profileSnap = await adminDb.collection('users').where('__name__', 'in', batch).get();
-          profileSnap.docs.forEach((d: any) => { profileMap[d.id] = d.data(); });
-        }
+        const profileMap = await getDocsByIds('users', uids);
         allStudents = allStudents.map((m: any) => {
           const p = profileMap[m.userId] || {};
           return { 

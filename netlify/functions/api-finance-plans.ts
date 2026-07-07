@@ -3,7 +3,7 @@
  * Enriches results with student/course names from users/courses collections.
  */
 import type { Handler, HandlerEvent } from '@netlify/functions';
-import { adminDb } from './utils/firebase-admin';
+import { adminDb, getDocsByIds } from './utils/firebase-admin';
 import { verifyAuth, isStaff, hasPermission, can, getOrgFilter, resolveBranchFilter, ok, unauthorized, forbidden, badRequest, notFound, jsonResponse } from './utils/auth';
 
 const COLLECTION = 'studentPaymentPlans';
@@ -16,22 +16,13 @@ async function batchGetUserNames(uids: string[]): Promise<Map<string, string>> {
   const nameMap = new Map<string, string>();
   if (uids.length === 0) return nameMap;
 
-  // Firestore 'in' queries support max 30 items per batch
-  const BATCH = 30;
-  for (let i = 0; i < uids.length; i += BATCH) {
-    const batch = uids.slice(i, i + BATCH);
-    const snap = await adminDb.collection('users')
-      .where('__name__', 'in', batch)
-      .select('displayName', 'firstName', 'lastName', 'name')
-      .get();
-    snap.docs.forEach(doc => {
-      const d = doc.data();
-      const name = d.displayName
-        || [d.firstName, d.lastName].filter(Boolean).join(' ')
-        || d.name
-        || '';
-      nameMap.set(doc.id, name);
-    });
+  const docs = await getDocsByIds('users', uids, ['displayName', 'firstName', 'lastName', 'name']);
+  for (const [id, d] of Object.entries(docs)) {
+    const name = d.displayName
+      || [d.firstName, d.lastName].filter(Boolean).join(' ')
+      || d.name
+      || '';
+    nameMap.set(id, name);
   }
   return nameMap;
 }
@@ -43,17 +34,9 @@ async function batchGetCourseNames(orgId: string, courseIds: string[]): Promise<
   const nameMap = new Map<string, string>();
   if (courseIds.length === 0 || !orgId) return nameMap;
 
-  const BATCH = 30;
-  for (let i = 0; i < courseIds.length; i += BATCH) {
-    const batch = courseIds.slice(i, i + BATCH);
-    const snap = await adminDb.collection('courses')
-      .where('__name__', 'in', batch)
-      .select('title', 'name')
-      .get();
-    snap.docs.forEach(doc => {
-      const d = doc.data();
-      nameMap.set(doc.id, d.title || d.name || '');
-    });
+  const docs = await getDocsByIds('courses', courseIds, ['title', 'name']);
+  for (const [id, d] of Object.entries(docs)) {
+    nameMap.set(id, d.title || d.name || '');
   }
   return nameMap;
 }

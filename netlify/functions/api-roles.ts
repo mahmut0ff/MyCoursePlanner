@@ -4,7 +4,7 @@
  * writes require org admin/owner. Custom roles need a Professional+ plan.
  */
 import type { Handler, HandlerEvent } from '@netlify/functions';
-import { adminDb } from './utils/firebase-admin';
+import { adminDb, getDocsByIds } from './utils/firebase-admin';
 import {
   verifyAuth, hasRole, can,
   ok, unauthorized, forbidden, badRequest, notFound, jsonResponse,
@@ -66,12 +66,7 @@ const handler: Handler = async (event: HandlerEvent) => {
       // Enrich with profile avatar/email/phone
       if (members.length) {
         const uids = members.map(m => m.uid);
-        const profileMap: Record<string, any> = {};
-        for (let i = 0; i < uids.length; i += 10) {
-          const batch = uids.slice(i, i + 10);
-          const ps = await adminDb.collection('users').where('__name__', 'in', batch).get();
-          ps.docs.forEach(d => { profileMap[d.id] = d.data(); });
-        }
+        const profileMap = await getDocsByIds('users', uids);
         members = members.map(m => {
           const p = profileMap[m.uid] || {};
           return { ...m, email: m.email || p.email || '', avatarUrl: p.avatarUrl || p.photoURL || '', phone: p.phone || '' };

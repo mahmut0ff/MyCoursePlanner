@@ -8,7 +8,7 @@
  * DELETE /api-quizzes?id=          → delete quiz + questions
  */
 import type { Handler, HandlerEvent } from '@netlify/functions';
-import { adminDb } from './utils/firebase-admin';
+import { adminDb, getDocsByIds } from './utils/firebase-admin';
 import { verifyAuth, hasRole, can, ok, unauthorized, badRequest, forbidden, notFound, jsonResponse } from './utils/auth';
 
 const QUIZZES = 'quizzes';
@@ -85,16 +85,10 @@ const handler: Handler = async (event: HandlerEvent) => {
       const ids = Array.from(sharedQuizIds);
       if (ids.length === 0) return ok([]);
 
-      // Fetch in batches of 10 (Firestore 'in' limit)
+      const quizDocs = await getDocsByIds(QUIZZES, ids);
       const quizzes: any[] = [];
-      for (let i = 0; i < ids.length; i += 10) {
-        const batch = ids.slice(i, i + 10);
-        const snap = await adminDb.collection(QUIZZES).where('__name__', 'in', batch).get();
-        snap.docs.forEach(d => {
-          if (d.data().authorId !== user.uid) {
-            quizzes.push({ id: d.id, ...d.data() });
-          }
-        });
+      for (const [id, d] of Object.entries(quizDocs)) {
+        if (d.authorId !== user.uid) quizzes.push({ id, ...d });
       }
       return ok(quizzes);
     } else if (tab === 'discover') {

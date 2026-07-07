@@ -3,7 +3,7 @@
  * All data strictly scoped by organizationId.
  */
 import type { Handler, HandlerEvent } from '@netlify/functions';
-import { adminAuth, adminDb } from './utils/firebase-admin';
+import { adminAuth, adminDb, getDocsByIds } from './utils/firebase-admin';
 import {
   verifyAuth, isStaff, hasRole, hasPermission, can, getOrgFilter,
   ok, unauthorized, forbidden, badRequest, notFound, jsonResponse,
@@ -510,12 +510,7 @@ const handler: Handler = async (event: HandlerEvent) => {
       // Fetch user avatars
       if (requests.length > 0) {
         const uids = requests.map((m: any) => m.userId).filter(Boolean);
-        const profileMap: Record<string, any> = {};
-        for (let i = 0; i < uids.length; i += 10) {
-          const batch = uids.slice(i, i + 10);
-          const profileSnap = await adminDb.collection('users').where('__name__', 'in', batch).get();
-          profileSnap.docs.forEach((d: any) => { profileMap[d.id] = d.data(); });
-        }
+        const profileMap = await getDocsByIds('users', uids, ['avatarUrl', 'photoURL']);
         requests = requests.map((req: any) => ({
           ...req,
           userAvatarUrl: profileMap[req.userId]?.avatarUrl || profileMap[req.userId]?.photoURL || ''
@@ -604,18 +599,13 @@ const handler: Handler = async (event: HandlerEvent) => {
         );
       }
 
-      // Enrich with user profile data (avatarUrl, phone, city, createdAt)
+      // Enrich with user profile data (avatarUrl, phone, city, createdAt).
+      // Uses a single batched getAll() instead of sequential `in` queries so this
+      // stays ~1 round-trip regardless of roster size. The old code fired one
+      // Firestore query per 10 students *sequentially* (e.g. 20 serial round-trips
+      // for 200 students, ~2s), which is what made this page slow as orgs grew.
       if (filtered.length > 0) {
-        const uids = filtered.map((s: any) => s.uid);
-        const batches = [];
-        for (let i = 0; i < uids.length; i += 10) {
-          batches.push(uids.slice(i, i + 10));
-        }
-        const profileMap: Record<string, any> = {};
-        for (const batch of batches) {
-          const profileSnap = await adminDb.collection('users').where('__name__', 'in', batch).get();
-          profileSnap.docs.forEach((d: any) => { profileMap[d.id] = d.data(); });
-        }
+        const profileMap = await getDocsByIds('users', filtered.map((s: any) => s.uid));
         filtered = filtered.map((s: any) => {
           const p = profileMap[s.uid] || {};
           return { ...s, avatarUrl: p.avatarUrl || p.photoURL || '', phone: p.phone || '', city: p.city || '', bio: p.bio || '', skills: p.skills || [], username: p.username || '', pinnedBadges: p.pinnedBadges || [], parentPortalKey: p.parentPortalKey || '', createdAt: p.createdAt || '' };
@@ -879,7 +869,6 @@ const handler: Handler = async (event: HandlerEvent) => {
       if (!body.uid || !body.password) return badRequest('uid and password required');
       if (String(body.password).length < 6) return badRequest('Пароль — минимум 6 символов');
 
-      // Student must belong to this org.
       // Who may reset a student's password:
       //  • admin/manager with students:write → any student in the org
       //  • teacher → only students enrolled in a group they teach (own-groups scope)
@@ -887,10 +876,10 @@ const handler: Handler = async (event: HandlerEvent) => {
       const isTeacher = hasRole(user, 'teacher');
       if (!canManageAllStudents && !isTeacher) return forbidden('Недостаточно прав для этого действия');
 
+      // Student must belong to this org.
       const member = await adminDb.collection('orgMembers').doc(orgId).collection('members').doc(body.uid).get();
       if (!member.exists) return notFound();
 
-      // Only login-enabled students have an auth account to update.
       // Teachers are scoped to their own groups: allow the reset only when the teacher
       // shares a group with this student (assigned as teacher + student is enrolled).
       if (!canManageAllStudents) {
@@ -902,6 +891,7 @@ const handler: Handler = async (event: HandlerEvent) => {
         if (!sharesGroup) return forbidden('Можно менять пароль только студентам из своих групп');
       }
 
+      // Only login-enabled students have an auth account to update.
       const userDoc = await adminDb.collection('users').doc(body.uid).get();
       const data = userDoc.data() || {};
       if (data.offlineStudent === true || !data.email) {
@@ -937,15 +927,7 @@ const handler: Handler = async (event: HandlerEvent) => {
       let enriched = members;
       if (members.length > 0) {
         const uids = members.map((t: any) => t.uid);
-        const batches = [];
-        for (let i = 0; i < uids.length; i += 10) {
-          batches.push(uids.slice(i, i + 10));
-        }
-        const profileMap: Record<string, any> = {};
-        for (const batch of batches) {
-          const profileSnap = await adminDb.collection('users').where('__name__', 'in', batch).get();
-          profileSnap.docs.forEach((d: any) => { profileMap[d.id] = d.data(); });
-        }
+        const profileMap = await getDocsByIds('users', uids);
         enriched = members.map((t: any) => {
           const p = profileMap[t.uid] || {};
           return { ...t, avatarUrl: p.avatarUrl || p.photoURL || '', phone: p.phone || '', city: p.city || '', bio: p.bio || '', createdAt: p.createdAt || '' };
@@ -959,7 +941,7 @@ const handler: Handler = async (event: HandlerEvent) => {
       if (!hasRole(user, 'admin', 'manager')) return forbidden();
       if (!can(user, 'teachers', 'write')) return forbidden('Недостаточно прав для этого действия');
       const body = JSON.parse(event.body || '{}');
-      if (!body.email || !body.displayName || !body.password) return badRequest('email, displayName and password required');
+      if (!body.displayName) return badRequest('displayName required');
 
       // Check teacher limit
       const limits = await getOrgLimits(orgId);
@@ -970,41 +952,79 @@ const handler: Handler = async (event: HandlerEvent) => {
         }
       }
 
+      // Mirrors createStudent: a password + (username or email) creates a real
+      // Firebase Auth account the teacher can sign in with. Without it we create a
+      // "record-only" teacher (for schedule / group assignment) that cannot log in yet.
+      const wantsLogin = !!(body.password && (body.username || body.email));
+
       try {
-        const existing = await adminDb.collection('users').where('email', '==', body.email).get();
-        if (!existing.empty) return badRequest('User with this email already exists');
-        const authUser = await adminAuth.createUser({
-          email: body.email,
-          password: body.password,
-          displayName: body.displayName,
-        });
-        const profile = {
-          email: body.email,
+        const profile: Record<string, any> = {
           displayName: body.displayName,
           role: 'teacher',
           organizationId: orgId,
           activeOrgId: orgId,
           phone: body.phone || '',
+          createdByOrg: true,
           createdAt: now(),
           updatedAt: now(),
         };
-        await adminDb.collection('users').doc(authUser.uid).set(profile);
 
-        // Create orgMembers entry (consistent with createStudent)
-        await adminDb.collection('orgMembers').doc(orgId).collection('members').doc(authUser.uid).set({
-          userId: authUser.uid,
-          userEmail: body.email,
+        let teacherUid: string;
+        let loginInfo: { username?: string; email?: string } | null = null;
+
+        if (wantsLogin) {
+          const username = String(body.username || '').toLowerCase().trim().replace(/[^a-z0-9_]/g, '');
+          if (body.username && username.length < 3) return badRequest('Username must be at least 3 characters');
+          if (typeof body.password !== 'string' || body.password.length < 6) {
+            return badRequest('Password must be at least 6 characters');
+          }
+          if (username) {
+            const taken = await adminDb.collection('users').where('username', '==', username).limit(1).get();
+            if (!taken.empty) return badRequest('Этот логин уже занят');
+          }
+          // Synthesize a login email from the username when no real email is provided —
+          // login resolves username → email before Firebase sign-in, so this is enough.
+          const loginEmail = (body.email && String(body.email).trim())
+            ? String(body.email).trim().toLowerCase()
+            : `${username}@teacher.sabakhub.app`;
+          const dupEmail = await adminDb.collection('users').where('email', '==', loginEmail).limit(1).get();
+          if (!dupEmail.empty) return badRequest('Пользователь с таким email уже существует');
+
+          const authUser = await adminAuth.createUser({
+            email: loginEmail,
+            password: body.password,
+            displayName: body.displayName,
+          });
+          teacherUid = authUser.uid;
+          profile.email = loginEmail;
+          if (username) profile.username = username;
+          profile.offlineTeacher = false;
+          profile.hasLogin = true;
+          loginInfo = { username: username || undefined, email: loginEmail };
+        } else {
+          // Generate a unique ID for the record-only teacher (no Firebase Auth account)
+          teacherUid = adminDb.collection('users').doc().id;
+          profile.offlineTeacher = true;   // Flag: not a real Firebase Auth user
+        }
+
+        await adminDb.collection('users').doc(teacherUid).set(profile);
+
+        // Create orgMembers entry so teacher appears in all lists
+        await adminDb.collection('orgMembers').doc(orgId).collection('members').doc(teacherUid).set({
+          userId: teacherUid,
           userName: body.displayName,
+          ...(profile.email ? { userEmail: profile.email } : {}),
           role: 'teacher',
           status: 'active',
           branchIds: body.branchIds || [],
           primaryBranchId: body.primaryBranchId || null,
           createdByOrg: true,
+          offlineTeacher: !wantsLogin,
           joinedAt: now(),
         });
 
         // Create membership sub-doc on user for role resolution
-        await adminDb.collection('users').doc(authUser.uid).collection('memberships').doc(orgId).set({
+        await adminDb.collection('users').doc(teacherUid).collection('memberships').doc(orgId).set({
           role: 'teacher',
           status: 'active',
           branchIds: body.branchIds || [],
@@ -1013,9 +1033,10 @@ const handler: Handler = async (event: HandlerEvent) => {
           joinedAt: now(),
         });
 
-        return ok({ uid: authUser.uid, ...profile });
+        return ok({ uid: teacherUid, ...profile, login: loginInfo });
       } catch (e: any) {
-        if (e.code === 'auth/email-already-exists') return badRequest('Email already registered in authentication system');
+        if (e.code === 'auth/email-already-exists') return badRequest('Email уже зарегистрирован в системе');
+        if (e.code === 'auth/invalid-password') return badRequest('Пароль слишком слабый (минимум 6 символов)');
         throw e;
       }
     }
@@ -1041,15 +1062,7 @@ const handler: Handler = async (event: HandlerEvent) => {
       let enriched = members;
       if (members.length > 0) {
         const uids = members.map((t: any) => t.uid);
-        const batches = [];
-        for (let i = 0; i < uids.length; i += 10) {
-          batches.push(uids.slice(i, i + 10));
-        }
-        const profileMap: Record<string, any> = {};
-        for (const batch of batches) {
-          const profileSnap = await adminDb.collection('users').where('__name__', 'in', batch).get();
-          profileSnap.docs.forEach((d: any) => { profileMap[d.id] = d.data(); });
-        }
+        const profileMap = await getDocsByIds('users', uids);
         enriched = members.map((t: any) => {
           const p = profileMap[t.uid] || {};
           return { ...t, avatarUrl: p.avatarUrl || p.photoURL || '', phone: p.phone || '', city: p.city || '', bio: p.bio || '', createdAt: p.createdAt || '' };

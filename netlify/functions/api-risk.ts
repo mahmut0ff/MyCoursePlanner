@@ -3,7 +3,7 @@
  * Aggregates student data to detect those in risk zones (Red, Yellow, Green)
  */
 import type { Handler, HandlerEvent } from '@netlify/functions';
-import { adminDb } from './utils/firebase-admin';
+import { adminDb, getDocsByIds } from './utils/firebase-admin';
 import { verifyAuth, ok, unauthorized, badRequest, jsonResponse } from './utils/auth';
 
 export const handler: Handler = async (event: HandlerEvent) => {
@@ -38,13 +38,7 @@ export const handler: Handler = async (event: HandlerEvent) => {
     const studentIds = Array.from(memberByUid.keys());
 
     // Batch-fetch only the org's student user docs (Firestore 'in' supports max 30 ids per query).
-    const usersMap = new Map<string, any>();
-    const USER_BATCH = 30;
-    for (let i = 0; i < studentIds.length; i += USER_BATCH) {
-      const batch = studentIds.slice(i, i + USER_BATCH);
-      const usersSnap = await adminDb.collection('users').where('__name__', 'in', batch).get();
-      usersSnap.docs.forEach(d => usersMap.set(d.id, d.data()));
-    }
+    const usersMap = new Map<string, any>(Object.entries(await getDocsByIds('users', studentIds)));
 
     // Fall back to member data when a student's user doc is missing.
     const validStudents = studentIds.map(uid => {

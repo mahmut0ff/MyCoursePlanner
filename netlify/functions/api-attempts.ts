@@ -79,12 +79,10 @@ const handler: Handler = async (event: HandlerEvent) => {
       for (let i = 0; i < roomIds.length; i += 10) {
         chunks.push(roomIds.slice(i, i + 10));
       }
-      let allDocs: any[] = [];
-      for (const chunk of chunks) {
-        const chunkSnap = await adminDb.collection(COLLECTION)
-          .where('roomId', 'in', chunk).orderBy('submittedAt', 'desc').limit(100).get();
-        allDocs = [...allDocs, ...chunkSnap.docs];
-      }
+      const chunkSnaps = await Promise.all(chunks.map((chunk) =>
+        adminDb.collection(COLLECTION)
+          .where('roomId', 'in', chunk).orderBy('submittedAt', 'desc').limit(100).get()));
+      const allDocs: any[] = chunkSnaps.flatMap((s: any) => s.docs);
       const results = allDocs.map((d: any) => ({ id: d.id, ...d.data() }));
       results.sort((a: any, b: any) => new Date(b.submittedAt || 0).getTime() - new Date(a.submittedAt || 0).getTime());
       return ok(results.slice(0, 100)); // limit conceptually

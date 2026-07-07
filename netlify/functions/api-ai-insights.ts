@@ -8,7 +8,7 @@
  * scoped strictly to the caller's organization. Admin / manager only.
  */
 import type { Handler, HandlerEvent } from '@netlify/functions';
-import { adminDb } from './utils/firebase-admin';
+import { adminDb, getDocsByIds } from './utils/firebase-admin';
 import { verifyAuth, ok, unauthorized, forbidden, badRequest, jsonResponse, hasRole } from './utils/auth';
 import { rateLimiters, getRateLimitKey } from './utils/rate-limiter';
 import { getModel, parseJsonLoose, aiAllowed, hasGeminiKey, recordAiUsage } from './utils/ai';
@@ -133,12 +133,7 @@ async function computeRisk(orgId: string) {
   memberSnap.docs.forEach(d => { const data = d.data(); memberByUid.set(data.userId || d.id, data); });
   const studentIds = Array.from(memberByUid.keys());
 
-  const usersMap = new Map<string, any>();
-  for (let i = 0; i < studentIds.length; i += 30) {
-    const batch = studentIds.slice(i, i + 30);
-    const snap = await adminDb.collection('users').where('__name__', 'in', batch).get();
-    snap.docs.forEach(d => usersMap.set(d.id, d.data()));
-  }
+  const usersMap = new Map<string, any>(Object.entries(await getDocsByIds('users', studentIds)));
 
   const attemptsSnap = await adminDb.collection('examAttempts').where('organizationId', '==', orgId).get();
   const attemptsByStudent = new Map<string, any[]>();

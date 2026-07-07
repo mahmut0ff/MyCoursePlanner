@@ -163,12 +163,13 @@ const handler: Handler = async (event: HandlerEvent) => {
     // ═══ GET: Teacher's own students (from their groups) ═══
     if (event.httpMethod === 'GET' && action === 'teacherStudents') {
       if (!params.orgId) return badRequest('orgId required');
-      const callerRole = await getOrgRole(user.uid, params.orgId);
+      const orgId = params.orgId;
+      const callerRole = await getOrgRole(user.uid, orgId);
       if (!callerRole) return forbidden();
 
       // 1. Get groups where teacher is assigned
       const groupsSnap = await adminDb.collection('groups')
-        .where('organizationId', '==', params.orgId)
+        .where('organizationId', '==', orgId)
         .get();
       const teacherGroups = groupsSnap.docs.filter((d: any) => {
         const data = d.data();
@@ -189,7 +190,7 @@ const handler: Handler = async (event: HandlerEvent) => {
       const memberChunks: string[][] = [];
       for (let i = 0; i < studentIds.length; i += 10) memberChunks.push(studentIds.slice(i, i + 10));
       const memberSnaps = await Promise.all(memberChunks.map((b) =>
-        adminDb.collection('orgMembers').doc(params.orgId).collection('members').where('userId', 'in', b).get()));
+        adminDb.collection('orgMembers').doc(orgId).collection('members').where('userId', 'in', b).get()));
       let allStudents: any[] = memberSnaps.flatMap((snap: any) => snap.docs.map((d: any) => ({ id: d.id, ...d.data() })));
 
       // 4. Enrich with profile data

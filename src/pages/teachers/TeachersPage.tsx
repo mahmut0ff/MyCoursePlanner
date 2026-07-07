@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { 
-  orgGetTeachers, 
+import {
+  orgGetTeachers,
+  orgCreateTeacher,
   orgInviteUser,
   apiGetOrgMembers,
   apiAcceptMembership,
@@ -11,7 +12,7 @@ import {
 } from '../../lib/api';
 import { usePlanGate } from '../../contexts/PlanContext';
 import { useAuth } from '../../contexts/AuthContext';
-import { UserPlus, Search, Mail, RefreshCw, Send, Phone, CheckCircle, XCircle, Lightbulb, Link as LinkIcon, Copy, X } from 'lucide-react';
+import { UserPlus, Search, Mail, RefreshCw, Send, Phone, CheckCircle, XCircle, Lightbulb, Copy, X, Plus, KeyRound, Eye, EyeOff } from 'lucide-react';
 import toast from 'react-hot-toast';
 import type { UserProfile } from '../../types';
 import EmptyState from '../../components/ui/EmptyState';
@@ -38,25 +39,21 @@ const TeachersPage: React.FC = () => {
   const [success, setSuccess] = useState('');
   const [inviteEmail, setInviteEmail] = useState('');
 
+  // Direct add (create a teacher account with credentials) — mirrors the student add flow
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [createForm, setCreateForm] = useState({ displayName: '', phone: '', username: '', password: '' });
+  const [giveLogin, setGiveLogin] = useState(true);
+  const [showCreatePassword, setShowCreatePassword] = useState(false);
+  const [creating, setCreating] = useState(false);
+  // Holds the generated credentials so the manager can hand them to the teacher (shown once).
+  const [createdInfo, setCreatedInfo] = useState<{ name: string; username?: string; password?: string } | null>(null);
+
   // Onboarding hint
   const [hintDismissed, setHintDismissed] = useState(() => localStorage.getItem('teachers_invite_hint_dismissed') === '1');
-  const [hintCopied, setHintCopied] = useState(false);
 
   const dismissHint = () => {
     setHintDismissed(true);
     localStorage.setItem('teachers_invite_hint_dismissed', '1');
-  };
-
-  // Public invite URL for teachers
-  const orgSlug = organizationId || '';
-  const publicInviteUrl = orgSlug ? `${window.location.origin}/org/${orgSlug}?role=teacher` : '';
-
-  const copyInviteLink = () => {
-    if (!publicInviteUrl) return;
-    navigator.clipboard.writeText(publicInviteUrl);
-    setHintCopied(true);
-    toast.success(t('common.copied', 'Ссылка скопирована!'));
-    setTimeout(() => setHintCopied(false), 2000);
   };
 
   const loadTeachers = async (silent = false) => {
@@ -99,6 +96,50 @@ const TeachersPage: React.FC = () => {
   }, [organizationId]);
 
   const filtered = teachers.filter((t) => t.displayName?.toLowerCase().includes(search.toLowerCase()) || t.email?.toLowerCase().includes(search.toLowerCase()));
+
+  const resetCreateForm = () => {
+    setCreateForm({ displayName: '', phone: '', username: '', password: '' });
+    setGiveLogin(true);
+    setShowCreatePassword(false);
+  };
+
+  const handleCreateTeacher = async () => {
+    if (!createForm.displayName.trim()) return;
+
+    if (limits.maxTeachers !== -1 && teachers.length >= limits.maxTeachers) {
+      toast.error(t('org.settings.maxTeachersReached', 'Достигнут лимит преподавателей для вашего тарифа'));
+      return;
+    }
+    if (giveLogin) {
+      if (createForm.username.trim().length < 3) { toast.error(t('org.teachers.usernameTooShort', 'Логин — минимум 3 символа')); return; }
+      if (createForm.password.length < 6) { toast.error(t('org.teachers.passwordTooShort', 'Пароль — минимум 6 символов')); return; }
+    }
+    setCreating(true);
+    try {
+      const payload: any = {
+        displayName: createForm.displayName.trim(),
+        phone: createForm.phone,
+      };
+      if (giveLogin) {
+        payload.username = createForm.username.trim().toLowerCase();
+        payload.password = createForm.password;
+      }
+      const res: any = await orgCreateTeacher(payload);
+      toast.success(t('org.teachers.created', 'Преподаватель создан!'));
+      loadTeachers();
+      if (res?.login) {
+        // Keep the modal open to show the login the manager can hand to the teacher.
+        setCreatedInfo({ name: payload.displayName, username: res.login.username || createForm.username.trim().toLowerCase(), password: createForm.password });
+      } else {
+        setShowCreateModal(false);
+        resetCreateForm();
+      }
+    } catch (e: any) {
+      toast.error(e.message || 'Error');
+    } finally {
+      setCreating(false);
+    }
+  };
 
   const handleInvite = async () => {
     if (!inviteEmail.trim()) return;
@@ -168,9 +209,13 @@ const TeachersPage: React.FC = () => {
           <button onClick={() => { loadTeachers(); loadApplications(); }} className="p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-xl transition-colors">
             <RefreshCw className="w-4 h-4" />
           </button>
-          <button onClick={() => setShowInvite(true)} className="flex-1 sm:flex-none bg-slate-900 hover:bg-slate-800 text-white dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100 px-4 py-2.5 rounded-xl text-sm font-semibold flex justify-center items-center gap-2 transition-all shadow-sm hover:shadow-md shrink-0">
+          <button onClick={() => setShowInvite(true)} className="flex-1 sm:flex-none bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 px-4 py-2.5 rounded-xl text-sm font-semibold flex justify-center items-center gap-2 transition-all shrink-0">
             <Mail className="w-4 h-4" />
             {t('org.teachers.invite')}
+          </button>
+          <button onClick={() => setShowCreateModal(true)} className="flex-1 sm:flex-none bg-slate-900 hover:bg-slate-800 text-white dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100 px-4 py-2.5 rounded-xl text-sm font-semibold flex justify-center items-center gap-2 transition-all shadow-sm hover:shadow-md shrink-0">
+            <Plus className="w-4 h-4" />
+            {t('org.teachers.add', 'Добавить')}
           </button>
         </div>
       </div>
@@ -198,57 +243,34 @@ const TeachersPage: React.FC = () => {
 
       {/* Onboarding Hint for Managers */}
       {!hintDismissed && (profile?.role === 'admin' || profile?.role === 'manager' || profile?.role === 'super_admin') && (
-        <div className="mb-6 relative overflow-hidden bg-gradient-to-r from-violet-50 via-purple-50 to-indigo-50 dark:from-violet-900/20 dark:via-purple-900/15 dark:to-indigo-900/10 border border-violet-200/80 dark:border-violet-700/40 rounded-2xl p-4 shadow-sm">
+        <div className="mb-6 relative bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-4 shadow-sm">
           <button
             onClick={dismissHint}
-            className="absolute top-3 right-3 p-1 text-violet-400 hover:text-violet-600 dark:hover:text-violet-300 hover:bg-violet-100 dark:hover:bg-violet-800/30 rounded-lg transition-colors"
+            className="absolute top-3 right-3 p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors"
             title={t('common.close', 'Закрыть')}
           >
             <X className="w-4 h-4" />
           </button>
 
           <div className="flex items-start gap-3">
-            <div className="w-8 h-8 rounded-xl bg-violet-400/20 dark:bg-violet-500/20 flex items-center justify-center shrink-0 mt-0.5">
-              <Lightbulb className="w-4.5 h-4.5 text-violet-600 dark:text-violet-400" />
+            <div className="w-8 h-8 rounded-xl bg-primary-500/10 flex items-center justify-center shrink-0 mt-0.5">
+              <Lightbulb className="w-4.5 h-4.5 text-primary-600 dark:text-primary-400" />
             </div>
             <div className="min-w-0 flex-1 pr-6">
-              <h3 className="text-sm font-bold text-violet-900 dark:text-violet-200 mb-2">
-                {t('org.teachers.hintTitle', 'Как пригласить преподавателя?')}
+              <h3 className="text-sm font-bold text-slate-900 dark:text-white mb-2">
+                {t('org.teachers.hintTitle', 'Как добавить преподавателя?')}
               </h3>
               <div className="space-y-2">
                 <div className="flex items-start gap-2">
-                  <span className="w-5 h-5 rounded-full bg-violet-400/20 text-violet-700 dark:text-violet-300 flex items-center justify-center shrink-0 text-[10px] font-bold mt-0.5">1</span>
-                  <p className="text-xs text-violet-800/80 dark:text-violet-300/80">
-                    <span className="font-semibold text-violet-800 dark:text-violet-200">{t('org.teachers.hintWay1Title', 'Пригласить по Email')}</span> — {t('org.teachers.hintWay1Desc', 'нажмите кнопку «Пригласить» вверху и введите email преподавателя. Он получит приглашение в личном кабинете.')}
+                  <span className="w-5 h-5 rounded-full bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 flex items-center justify-center shrink-0 text-[10px] font-bold mt-0.5">1</span>
+                  <p className="text-xs text-slate-600 dark:text-slate-400">
+                    <span className="font-semibold text-slate-800 dark:text-slate-200">{t('org.teachers.hintAddTitle', 'Добавить напрямую')}</span> — {t('org.teachers.hintAddDesc', 'нажмите «Добавить», введите ФИО и задайте логин с паролем. Передайте эти данные преподавателю — самому регистрироваться не нужно.')}
                   </p>
                 </div>
                 <div className="flex items-start gap-2">
-                  <span className="w-5 h-5 rounded-full bg-violet-400/20 text-violet-700 dark:text-violet-300 flex items-center justify-center shrink-0 text-[10px] font-bold mt-0.5">2</span>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-xs text-violet-800/80 dark:text-violet-300/80">
-                      <span className="font-semibold text-violet-800 dark:text-violet-200">{t('org.teachers.hintWay2Title', 'Отправить ссылку')}</span> — {t('org.teachers.hintWay2Desc', 'поделитесь ссылкой для преподавателей, и они зарегистрируются сами:')}
-                    </p>
-                    {publicInviteUrl && (
-                      <div className="mt-1.5 flex items-center gap-1.5">
-                        <div className="flex items-center gap-1.5 bg-white/80 dark:bg-slate-800/60 border border-violet-200/60 dark:border-violet-700/30 rounded-lg px-2.5 py-1.5 min-w-0 flex-1">
-                          <LinkIcon className="w-3 h-3 text-violet-500 shrink-0" />
-                          <span className="text-[11px] text-violet-700 dark:text-violet-300 truncate font-mono">{publicInviteUrl}</span>
-                        </div>
-                        <button
-                          onClick={copyInviteLink}
-                          className="shrink-0 flex items-center gap-1 px-2 py-1.5 rounded-lg text-[11px] font-medium bg-violet-500/10 hover:bg-violet-500/20 text-violet-700 dark:text-violet-300 border border-violet-300/50 dark:border-violet-600/30 transition-colors"
-                        >
-                          {hintCopied ? <CheckCircle className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
-                          {hintCopied ? t('common.copied', 'Скопировано') : t('common.copy', 'Копировать')}
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                </div>
-                <div className="flex items-start gap-2">
-                  <span className="w-5 h-5 rounded-full bg-violet-400/20 text-violet-700 dark:text-violet-300 flex items-center justify-center shrink-0 text-[10px] font-bold mt-0.5">3</span>
-                  <p className="text-xs text-violet-800/80 dark:text-violet-300/80">
-                    <span className="font-semibold text-violet-800 dark:text-violet-200">{t('org.teachers.hintWay3Title', 'Заявки')}</span> — {t('org.teachers.hintWay3Desc', 'преподаватели, перешедшие по ссылке, появятся во вкладке «Заявки», где вы сможете одобрить или отклонить их.')}
+                  <span className="w-5 h-5 rounded-full bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 flex items-center justify-center shrink-0 text-[10px] font-bold mt-0.5">2</span>
+                  <p className="text-xs text-slate-600 dark:text-slate-400">
+                    <span className="font-semibold text-slate-800 dark:text-slate-200">{t('org.teachers.hintInviteTitle', 'Пригласить по Email')}</span> — {t('org.teachers.hintInviteDesc', 'если у преподавателя уже есть аккаунт в системе, отправьте приглашение по email кнопкой «Пригласить».')}
                   </p>
                 </div>
               </div>
@@ -275,9 +297,9 @@ const TeachersPage: React.FC = () => {
             <EmptyState
               icon={UserPlus}
               title={search ? 'Преподаватели не найдены' : t('org.teachers.empty')}
-              description={search ? 'Попробуйте изменить поисковый запрос' : 'Пригласите первого преподавателя'}
-              actionLabel={t('org.teachers.invite')}
-              onAction={() => setShowInvite(true)}
+              description={search ? 'Попробуйте изменить поисковый запрос' : t('org.teachers.emptyDesc', 'Добавьте первого преподавателя')}
+              actionLabel={t('org.teachers.add', 'Добавить')}
+              onAction={() => setShowCreateModal(true)}
             />
           ) : (
             <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl overflow-hidden">
@@ -383,6 +405,119 @@ const TeachersPage: React.FC = () => {
               ))}
             </>
           )}
+        </div>
+      )}
+
+      {/* Create Teacher Modal — add a teacher directly, no self-registration */}
+      {showCreateModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4" onClick={() => { if (!creating) { setShowCreateModal(false); setCreatedInfo(null); resetCreateForm(); } }}>
+          <div className="bg-white dark:bg-slate-800 rounded-3xl p-8 w-full max-w-md shadow-2xl max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+
+            {createdInfo ? (
+              /* ─── Credentials result: show the login to hand to the teacher ─── */
+              <div>
+                <div className="w-12 h-12 rounded-2xl bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center mb-4">
+                  <CheckCircle className="w-6 h-6 text-emerald-600 dark:text-emerald-400" />
+                </div>
+                <h2 className="text-xl font-bold text-slate-900 dark:text-white mb-1">{t('org.teachers.createdTitle', 'Преподаватель создан')}</h2>
+                <p className="text-xs text-slate-500 mb-5">{t('org.teachers.createdDesc', 'Передайте преподавателю эти данные для входа. Пароль показывается только сейчас.')}</p>
+
+                {createdInfo.username && (
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3">
+                      <div className="min-w-0">
+                        <p className="text-[10px] uppercase font-bold text-slate-400">{t('org.students.loginLabel', 'Логин')}</p>
+                        <p className="text-sm font-mono font-semibold text-slate-900 dark:text-white truncate">{createdInfo.username}</p>
+                      </div>
+                      <button onClick={() => { navigator.clipboard.writeText(createdInfo.username || ''); toast.success(t('common.copied', 'Скопировано')); }} className="p-2 text-slate-400 hover:text-slate-700 dark:hover:text-white hover:bg-slate-200/60 dark:hover:bg-slate-700 rounded-lg transition-colors shrink-0"><Copy className="w-4 h-4" /></button>
+                    </div>
+                    <div className="flex items-center justify-between bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3">
+                      <div className="min-w-0">
+                        <p className="text-[10px] uppercase font-bold text-slate-400">{t('auth.password', 'Пароль')}</p>
+                        <p className="text-sm font-mono font-semibold text-slate-900 dark:text-white truncate">{createdInfo.password}</p>
+                      </div>
+                      <button onClick={() => { navigator.clipboard.writeText(createdInfo.password || ''); toast.success(t('common.copied', 'Скопировано')); }} className="p-2 text-slate-400 hover:text-slate-700 dark:hover:text-white hover:bg-slate-200/60 dark:hover:bg-slate-700 rounded-lg transition-colors shrink-0"><Copy className="w-4 h-4" /></button>
+                    </div>
+                    <button
+                      onClick={() => { navigator.clipboard.writeText(`${t('org.students.loginLabel', 'Логин')}: ${createdInfo.username}\n${t('auth.password', 'Пароль')}: ${createdInfo.password}`); toast.success(t('common.copied', 'Скопировано')); }}
+                      className="w-full text-xs font-medium text-primary-600 dark:text-primary-400 hover:underline flex items-center justify-center gap-1.5 pt-1"
+                    >
+                      <Copy className="w-3.5 h-3.5" /> {t('org.students.copyBoth', 'Скопировать логин и пароль')}
+                    </button>
+                  </div>
+                )}
+
+                <div className="flex justify-end gap-3 mt-8">
+                  <button onClick={() => { setCreatedInfo(null); resetCreateForm(); }} className="px-5 py-2.5 rounded-xl text-sm font-semibold text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800 transition-colors">{t('org.students.addAnother', 'Добавить ещё')}</button>
+                  <button onClick={() => { setShowCreateModal(false); setCreatedInfo(null); resetCreateForm(); }} className="px-5 py-2.5 rounded-xl text-sm font-semibold bg-slate-900 text-white hover:bg-slate-800 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100 transition-all">{t('common.done', 'Готово')}</button>
+                </div>
+              </div>
+            ) : (
+            <>
+            <h2 className="text-xl font-bold text-slate-900 dark:text-white mb-1 flex items-center gap-2">
+              <UserPlus className="w-5 h-5 text-primary-500" />
+              {t('org.teachers.createTitle', 'Добавить преподавателя')}
+            </h2>
+            <p className="text-xs text-slate-500 mb-6">{t('org.teachers.createDescV2', 'Создайте аккаунт преподавателя с логином и паролем. Отключите «Дать доступ», чтобы завести только запись без входа.')}</p>
+            <div className="space-y-4">
+              {/* ФИО */}
+              <div>
+                <label className="text-xs font-semibold text-slate-500 mb-1 block">{t('org.students.fullName', 'ФИО')} *</label>
+                <input autoFocus value={createForm.displayName} onChange={e => setCreateForm(f => ({ ...f, displayName: e.target.value }))} placeholder={t('org.teachers.namePlaceholder', 'ФИО преподавателя')} className="w-full bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-slate-900 focus:border-slate-900 dark:focus:ring-white outline-none" />
+              </div>
+              {/* Телефон */}
+              <div>
+                <label className="text-xs font-semibold text-slate-500 mb-1 block flex items-center gap-1"><Phone className="w-3.5 h-3.5" /> {t('common.phone', 'Телефон')}</label>
+                <input value={createForm.phone} onChange={e => setCreateForm(f => ({ ...f, phone: e.target.value }))} placeholder="+996 ..." className="w-full bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-slate-900 focus:border-slate-900 dark:focus:ring-white outline-none" />
+              </div>
+
+              {/* ─── Optional login access ─── */}
+              <div className="border-t border-slate-100 dark:border-slate-700 pt-4">
+                <label className="flex items-center justify-between cursor-pointer">
+                  <span className="flex items-center gap-2 text-sm font-semibold text-slate-700 dark:text-slate-200">
+                    <KeyRound className="w-4 h-4 text-primary-500" />
+                    {t('org.teachers.giveLogin', 'Дать доступ в систему')}
+                  </span>
+                  <button
+                    type="button"
+                    role="switch"
+                    aria-checked={giveLogin}
+                    onClick={() => setGiveLogin(v => !v)}
+                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${giveLogin ? 'bg-primary-600' : 'bg-slate-300 dark:bg-slate-600'}`}
+                  >
+                    <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${giveLogin ? 'translate-x-6' : 'translate-x-1'}`} />
+                  </button>
+                </label>
+                {giveLogin && (
+                  <div className="space-y-3 mt-3">
+                    <p className="text-[11px] text-slate-400">{t('org.teachers.giveLoginHint', 'Преподаватель сможет войти по этому логину и паролю на странице входа.')}</p>
+                    <div>
+                      <label className="text-xs font-semibold text-slate-500 mb-1 block">{t('org.students.loginLabel', 'Логин')} *</label>
+                      <input value={createForm.username} onChange={e => setCreateForm(f => ({ ...f, username: e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, '') }))} placeholder="aibek_t" className="w-full bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 text-sm font-mono focus:ring-2 focus:ring-slate-900 focus:border-slate-900 dark:focus:ring-white outline-none" />
+                    </div>
+                    <div>
+                      <label className="text-xs font-semibold text-slate-500 mb-1 block">{t('auth.password', 'Пароль')} *</label>
+                      <div className="relative">
+                        <input type={showCreatePassword ? 'text' : 'password'} value={createForm.password} onChange={e => setCreateForm(f => ({ ...f, password: e.target.value }))} placeholder="••••••" className="w-full bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 pr-11 text-sm focus:ring-2 focus:ring-slate-900 focus:border-slate-900 dark:focus:ring-white outline-none" />
+                        <button type="button" onClick={() => setShowCreatePassword(v => !v)} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300">
+                          {showCreatePassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+            <div className="flex justify-end gap-3 mt-8">
+              <button onClick={() => { setShowCreateModal(false); resetCreateForm(); }} className="px-5 py-2.5 rounded-xl text-sm font-semibold text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800 transition-colors">{t('common.cancel', 'Отмена')}</button>
+              <button onClick={handleCreateTeacher} disabled={creating || !createForm.displayName.trim()} className="px-5 py-2.5 rounded-xl text-sm font-semibold bg-slate-900 text-white hover:bg-slate-800 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5">
+                {creating ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Plus className="w-3.5 h-3.5" />}
+                {creating ? t('common.loading', 'Добавление...') : t('org.teachers.add', 'Добавить')}
+              </button>
+            </div>
+            </>
+            )}
+          </div>
         </div>
       )}
 

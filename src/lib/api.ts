@@ -292,6 +292,9 @@ export const orgCreateCourse = (data: any) => orgReq('createCourse', 'POST', dat
 export const orgUpdateCourse = (data: any) => orgReq('updateCourse', 'POST', data);
 export const orgDeleteCourse = (id: string) => orgReq('deleteCourse', 'POST', { id });
 export const orgEnrollInCourse = (courseId: string) => orgReq('enrollInCourse', 'POST', { courseId });
+// Teacher self-service: add/remove yourself as a teacher of a course (own uid only)
+export const orgTeacherJoinCourse = (courseId: string) => orgReq('teacherJoinCourse', 'POST', { courseId });
+export const orgTeacherLeaveCourse = (courseId: string) => orgReq('teacherLeaveCourse', 'POST', { courseId });
 
 // Course Requests
 export const orgGetCourseRequests = () => orgReq('getCourseRequests');
@@ -305,6 +308,9 @@ export const orgCreateGroup = (data: any) => orgReq('createGroup', 'POST', data)
 export const orgUpdateGroup = (data: any) => orgReq('updateGroup', 'POST', data);
 export const orgDeleteGroup = (id: string) => orgReq('deleteGroup', 'POST', { id });
 export const orgEnrollInGroup = (groupId: string) => orgReq('enrollInGroup', 'POST', { groupId });
+// Teacher self-service: add/remove yourself as a teacher of a group (own uid only)
+export const orgTeacherJoinGroup = (groupId: string) => orgReq('teacherJoinGroup', 'POST', { groupId });
+export const orgTeacherLeaveGroup = (groupId: string) => orgReq('teacherLeaveGroup', 'POST', { groupId });
 
 // Students
 export const orgGetStudents = (branchId?: string) => orgReq('students', 'GET', undefined, branchId ? { branchId } : undefined);

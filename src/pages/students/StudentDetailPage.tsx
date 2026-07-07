@@ -113,7 +113,8 @@ const StudentDetailPage: React.FC = () => {
         setAllGroups(allGroups);
         setGroups(allGroups.filter(g => g.studentIds?.includes(uid!)));
       }).catch(() => { setAllGroups([]); setGroups([]); }),
-      loadFinances(),
+      // Finances are admin/manager-only in the UI — skip the fetch for teachers.
+      isAdmin ? loadFinances() : Promise.resolve(),
     ]).finally(() => setLoading(false));
   }, [uid]);
 

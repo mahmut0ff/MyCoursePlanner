@@ -2,8 +2,8 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../contexts/AuthContext';
-import { orgGetGroups, orgCreateGroup, orgDeleteGroup, orgGetCourses, orgGetTeachers } from '../../lib/api';
-import { Users, Plus, Search, Trash2, RefreshCw, Loader2, BookOpen, Building2 } from 'lucide-react';
+import { orgGetGroups, orgCreateGroup, orgDeleteGroup, orgGetCourses, orgGetTeachers, orgTeacherJoinGroup, orgTeacherLeaveGroup } from '../../lib/api';
+import { Users, Plus, Search, Trash2, RefreshCw, Loader2, BookOpen, Building2, UserPlus, LogOut } from 'lucide-react';
 import type { Group, Course, UserProfile } from '../../types';
 import BranchFilter from '../../components/ui/BranchFilter';
 
@@ -25,6 +25,9 @@ const GroupsPage: React.FC = () => {
   const [form, setForm] = useState({ name: '', courseId: '', chatLinkTitle: '', chatLinkUrl: '', branchId: '' });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  // Teachers browse all groups ('all') or just the ones they teach ('mine')
+  const [viewMode, setViewMode] = useState<'mine' | 'all'>('mine');
+  const [togglingId, setTogglingId] = useState<string | null>(null);
 
   const load = () => {
     setLoading(true); setError('');
@@ -34,26 +37,42 @@ const GroupsPage: React.FC = () => {
       orgGetTeachers()
     ])
     .then(([g, c, t]) => {
-      let filteredG = g;
-      let filteredC = c;
-      
-      if (role === 'teacher' && profile?.uid) {
-        filteredG = g.filter((group: Group) => group.teacherIds?.includes(profile.uid));
-        const groupCourseIds = new Set(filteredG.map((group: Group) => group.courseId));
-        filteredC = c.filter((course: Course) => course.teacherIds?.includes(profile.uid) || groupCourseIds.has(course.id));
-      } else if (role === 'student' && profile?.uid) {
-        filteredG = g.filter((group: Group) => group.studentIds?.includes(profile.uid));
+      // Keep the full course list for name lookups. Students see only their own groups;
+      // teachers get the full list and switch between "Мои"/"Все" via viewMode below.
+      let displayGroups = g;
+      if (role === 'student' && profile?.uid) {
+        displayGroups = g.filter((group: Group) => group.studentIds?.includes(profile.uid));
       }
-
-      setGroups(filteredG); setCourses(filteredC); setTeachers(t);
+      setGroups(displayGroups); setCourses(c); setTeachers(t);
     })
     .catch((e) => setError(e.message || 'Error'))
     .finally(() => setLoading(false));
   };
-  
+
   useEffect(() => { load(); }, [role, profile?.uid]);
 
-  const filtered = groups.filter((g) => g.name.toLowerCase().includes(search.toLowerCase()));
+  const filtered = groups.filter((g) => {
+    if (role === 'teacher' && viewMode === 'mine' && !g.teacherIds?.includes(profile?.uid || '')) return false;
+    return g.name.toLowerCase().includes(search.toLowerCase());
+  });
+
+  // Teacher self-service: add/remove yourself as a teacher of this group
+  const toggleTeachGroup = async (group: Group, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!profile?.uid || togglingId) return;
+    const isMember = !!group.teacherIds?.includes(profile.uid);
+    setTogglingId(group.id);
+    try {
+      if (isMember) await orgTeacherLeaveGroup(group.id);
+      else await orgTeacherJoinGroup(group.id);
+      setGroups(prev => prev.map(g => g.id === group.id ? {
+        ...g,
+        teacherIds: isMember
+          ? (g.teacherIds || []).filter(id => id !== profile.uid)
+          : [...(g.teacherIds || []), profile.uid],
+      } : g));
+    } catch (err: any) { setError(err.message || 'Error'); } finally { setTogglingId(null); }
+  };
   const courseName = (id: string) => courses.find((c) => c.id === id)?.title || 'Курс не найден';
 
   const handleCreate = async () => {
@@ -84,7 +103,7 @@ const GroupsPage: React.FC = () => {
         <div>
           <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight">{t('nav.groups', 'Группы')}</h1>
           <p className="text-sm font-medium text-slate-500 dark:text-slate-400 mt-1 flex items-center gap-1.5">
-            <Users className="w-4 h-4" /> Всего групп: {groups.length}
+            <Users className="w-4 h-4" /> Всего групп: {filtered.length}
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -99,16 +118,28 @@ const GroupsPage: React.FC = () => {
 
       {error && <div className="px-5 py-3 bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/30 rounded-xl text-sm font-bold text-red-600 dark:text-red-400">{error}</div>}
 
-      {/* Search */}
-      <div className="relative max-w-md">
-        <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-        <input 
-          type="text" 
-          value={search} 
-          onChange={(e) => setSearch(e.target.value)} 
-          placeholder={`${t('common.search', 'Поиск')}...`}
-          className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl pl-11 pr-4 py-3 text-sm font-medium text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500 transition-all shadow-sm" 
-        />
+      {/* Search + teacher view toggle */}
+      <div className="flex items-center gap-3 flex-wrap">
+        <div className="relative flex-1 min-w-[200px] max-w-md">
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+          <input
+            type="text"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder={`${t('common.search', 'Поиск')}...`}
+            className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl pl-11 pr-4 py-3 text-sm font-medium text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500 transition-all shadow-sm"
+          />
+        </div>
+        {role === 'teacher' && (
+          <div className="flex gap-1 bg-slate-100 dark:bg-slate-900 rounded-lg p-1 shrink-0">
+            {(['mine', 'all'] as const).map((m) => (
+              <button key={m} onClick={() => setViewMode(m)}
+                className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${viewMode === m ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300'}`}>
+                {m === 'mine' ? t('org.teach.mine', 'Мои') : t('org.teach.all', 'Все')}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
       {loading ? (
@@ -140,7 +171,7 @@ const GroupsPage: React.FC = () => {
                   <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Студенты</th>
                   <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Учителя</th>
                   <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Создана</th>
-                  {isAdmin && <th className="px-6 py-4 text-right text-xs font-bold text-slate-500 uppercase tracking-wider">Действия</th>}
+                  {(isAdmin || role === 'teacher') && <th className="px-6 py-4 text-right text-xs font-bold text-slate-500 uppercase tracking-wider">{isAdmin ? 'Действия' : 'Преподавание'}</th>}
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-200 dark:divide-slate-700">
@@ -148,7 +179,8 @@ const GroupsPage: React.FC = () => {
                   const studentCount = g.studentIds?.length || 0;
                   const groupTeacherIds = g.teacherIds || [];
                   const groupTeachers = teachers.filter(t => groupTeacherIds.includes(t.uid));
-                  
+                  const isMemberOfGroup = !!(profile?.uid && groupTeacherIds.includes(profile.uid));
+
                   return (
                     <tr 
                       key={g.id} 
@@ -204,9 +236,9 @@ const GroupsPage: React.FC = () => {
                       <td className="px-6 py-4 text-sm font-medium text-slate-500 dark:text-slate-400">
                         {g.createdAt ? new Date(g.createdAt).toLocaleDateString() : '—'}
                       </td>
-                      {isAdmin && (
+                      {isAdmin ? (
                         <td className="px-6 py-4 text-right">
-                          <button 
+                          <button
                             onClick={(e) => { e.stopPropagation(); handleDelete(g.id); }}
                             className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-xl transition-colors opacity-0 group-hover/row:opacity-100"
                             title="Удалить"
@@ -214,7 +246,17 @@ const GroupsPage: React.FC = () => {
                             <Trash2 className="w-4 h-4" />
                           </button>
                         </td>
-                      )}
+                      ) : role === 'teacher' ? (
+                        <td className="px-6 py-4 text-right">
+                          <button
+                            onClick={(e) => toggleTeachGroup(g, e)}
+                            disabled={togglingId === g.id}
+                            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors disabled:opacity-50 ${isMemberOfGroup ? 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-500/10' : 'bg-emerald-500 text-white hover:bg-emerald-600'}`}
+                          >
+                            {isMemberOfGroup ? <><LogOut className="w-3.5 h-3.5" />{t('org.teach.leave', 'Выйти')}</> : <><UserPlus className="w-3.5 h-3.5" />{t('org.teach.teach', 'Вести')}</>}
+                          </button>
+                        </td>
+                      ) : null}
                     </tr>
                   );
                 })}

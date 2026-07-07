@@ -496,6 +496,40 @@ const handler: Handler = async (event: HandlerEvent) => {
       return ok({ requested: true, courseId: body.courseId });
     }
 
+    // ═══ TEACHER SELF-SERVICE: join / leave a course or group ═══
+    // A staff member (teacher/admin/manager) adds or removes ONLY THEMSELVES to/from
+    // teacherIds. Atomic arrayUnion/arrayRemove — unlike updateGroup/updateCourse this
+    // can never touch another user or any other field. No approval needed.
+    if (action === 'teacherJoinCourse' || action === 'teacherLeaveCourse') {
+      const err = requireOrgStaff(user); if (err) return err;
+      const body = JSON.parse(event.body || '{}');
+      if (!body.courseId) return badRequest('courseId required');
+      const ref = adminDb.collection('courses').doc(body.courseId);
+      const doc = await ref.get();
+      if (!doc.exists || doc.data()?.organizationId !== orgId) return notFound();
+      const joining = action === 'teacherJoinCourse';
+      await ref.update({
+        teacherIds: joining ? FieldValue.arrayUnion(user.uid) : FieldValue.arrayRemove(user.uid),
+        updatedAt: now(),
+      });
+      return ok({ courseId: body.courseId, joined: joining });
+    }
+
+    if (action === 'teacherJoinGroup' || action === 'teacherLeaveGroup') {
+      const err = requireOrgStaff(user); if (err) return err;
+      const body = JSON.parse(event.body || '{}');
+      if (!body.groupId) return badRequest('groupId required');
+      const ref = adminDb.collection('groups').doc(body.groupId);
+      const doc = await ref.get();
+      if (!doc.exists || doc.data()?.organizationId !== orgId) return notFound();
+      const joining = action === 'teacherJoinGroup';
+      await ref.update({
+        teacherIds: joining ? FieldValue.arrayUnion(user.uid) : FieldValue.arrayRemove(user.uid),
+        updatedAt: now(),
+      });
+      return ok({ groupId: body.groupId, joined: joining });
+    }
+
     if (action === 'getCourseRequests') {
       if (!hasRole(user, 'admin', 'manager')) return forbidden();
 

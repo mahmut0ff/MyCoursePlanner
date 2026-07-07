@@ -267,7 +267,7 @@ const App: React.FC = () => {
             <Route path="leads" element={<ProtectedRoute allowedRoles={['admin', 'manager']}><AILeadsPage /></ProtectedRoute>} />
             <Route path="enrollment" element={<ProtectedRoute allowedRoles={['admin', 'manager']}><EnrollmentPage /></ProtectedRoute>} />
             <Route path="students" element={<ProtectedRoute allowedRoles={['admin', 'manager']}><StudentsPage /></ProtectedRoute>} />
-            <Route path="students/:uid" element={<ProtectedRoute allowedRoles={['admin', 'manager']}><StudentDetailPage /></ProtectedRoute>} />
+            <Route path="students/:uid" element={<ProtectedRoute allowedRoles={['admin', 'manager', 'teacher']}><StudentDetailPage /></ProtectedRoute>} />
             <Route path="teachers" element={<ProtectedRoute allowedRoles={['admin', 'manager']}><TeachersPage /></ProtectedRoute>} />
             <Route path="teachers/:uid" element={<ProtectedRoute allowedRoles={['admin', 'manager']}><TeacherDetailPage /></ProtectedRoute>} />
             <Route path="managers" element={<ProtectedRoute allowedRoles={['admin', 'manager']}><ManagersPage /></ProtectedRoute>} />

@@ -767,6 +767,16 @@
       "hintInviteTitle": "Invite by Email",
       "hintInviteDesc": "if the teacher already has an account, send an invite by email with the “Invite” button."
     },
+    "teach": {
+      "mine": "Mine",
+      "all": "All",
+      "teach": "Teach",
+      "leave": "Leave",
+      "joinCourse": "Teach this course",
+      "leaveCourse": "Leave this course",
+      "joinGroup": "Teach this group",
+      "leaveGroup": "Leave this group"
+    },
     "materials": {
       "subtitle": "Learning materials and resources",
       "add": "Add Material",

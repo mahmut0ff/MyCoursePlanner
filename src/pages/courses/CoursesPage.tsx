@@ -2,9 +2,9 @@ import React, { useEffect, useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../contexts/AuthContext';
-import { orgGetCourses, orgCreateCourse, orgUpdateCourse, orgDeleteCourse, orgGetGroups } from '../../lib/api';
-import { Plus, Search, Trash2, Edit, BookOpen, FileText, Users, Building2, Filter } from 'lucide-react';
-import type { Course } from '../../types';
+import { orgGetCourses, orgCreateCourse, orgUpdateCourse, orgDeleteCourse, orgGetGroups, orgTeacherJoinCourse, orgTeacherLeaveCourse } from '../../lib/api';
+import { Plus, Search, Trash2, Edit, BookOpen, FileText, Users, Building2, Filter, UserPlus, LogOut } from 'lucide-react';
+import type { Course, Group } from '../../types';
 import BranchFilter from '../../components/ui/BranchFilter';
 import EmptyState from '../../components/ui/EmptyState';
 import { ListSkeleton } from '../../components/ui/Skeleton';
@@ -21,6 +21,9 @@ const CoursesPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [editing, setEditing] = useState<Course | null>(null);
+  // Teachers can browse all courses ('all') or just the ones they teach ('mine')
+  const [viewMode, setViewMode] = useState<'mine' | 'all'>('mine');
+  const [togglingId, setTogglingId] = useState<string | null>(null);
   const navigate = useNavigate();
   const [form, setForm] = useState<{
     title: string; description: string; subject: string; status: 'draft' | 'published';
@@ -43,13 +46,8 @@ const CoursesPage: React.FC = () => {
       orgGetGroups().catch(() => [])
     ]).then(([c, g]) => {
       setGroups(g);
-      let filtered = c;
-      if (role === 'teacher' && profile?.uid) {
-        const teacherGroups = (g as import('../../types').Group[]).filter(group => group.teacherIds?.includes(profile.uid));
-        const groupCourseIds = new Set(teacherGroups.map(group => group.courseId));
-        filtered = filtered.filter((course: Course) => course.teacherIds?.includes(profile.uid) || groupCourseIds.has(course.id));
-      }
-      setCourses(filtered);
+      // Store the full list; teachers switch between "Мои"/"Все" via viewMode below.
+      setCourses(c);
     }).catch((e) => setError(e.message || 'Error')).finally(() => setLoading(false));
   };
 
@@ -57,17 +55,49 @@ const CoursesPage: React.FC = () => {
     load();
   }, [role, profile?.uid]);
 
+  // Courses this teacher is linked to — directly (course.teacherIds) or via a group they teach
+  const myCourseIds = useMemo(() => {
+    const ids = new Set<string>();
+    if (!profile?.uid) return ids;
+    (groups as Group[]).forEach(gr => { if (gr.teacherIds?.includes(profile.uid)) ids.add(gr.courseId); });
+    courses.forEach(c => { if (c.teacherIds?.includes(profile.uid)) ids.add(c.id); });
+    return ids;
+  }, [courses, groups, profile?.uid]);
+
+  // Teacher self-service: add/remove yourself as a teacher of this course
+  const toggleTeachCourse = async (course: Course, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!profile?.uid || togglingId) return;
+    const isMember = !!course.teacherIds?.includes(profile.uid);
+    setTogglingId(course.id);
+    try {
+      if (isMember) await orgTeacherLeaveCourse(course.id);
+      else await orgTeacherJoinCourse(course.id);
+      setCourses(prev => prev.map(c => c.id === course.id ? {
+        ...c,
+        teacherIds: isMember
+          ? (c.teacherIds || []).filter(id => id !== profile.uid)
+          : [...(c.teacherIds || []), profile.uid],
+      } : c));
+    } catch (err: any) {
+      setError(err.message || 'Error');
+    } finally {
+      setTogglingId(null);
+    }
+  };
+
   const uniqueSubjects = useMemo(() => Array.from(new Set(courses.map(c => c.subject))).filter(Boolean), [courses]);
 
   const filtered = useMemo(() => {
     return courses.filter((c) => {
+      if (role === 'teacher' && viewMode === 'mine' && !myCourseIds.has(c.id)) return false;
       const matchesSearch = c.title.toLowerCase().includes(search.toLowerCase()) || c.subject?.toLowerCase().includes(search.toLowerCase());
       const matchesStatus = statusFilter === 'all' || c.status === statusFilter;
       const matchesSubject = subjectFilter === 'all' || c.subject === subjectFilter;
       const matchesBranch = !branchFilter || (c as any).branchId === branchFilter;
       return matchesSearch && matchesStatus && matchesSubject && matchesBranch;
     });
-  }, [courses, search, statusFilter, subjectFilter, branchFilter]);
+  }, [courses, search, statusFilter, subjectFilter, branchFilter, role, viewMode, myCourseIds]);
 
   const getStudentCount = (courseId: string) => groups.filter((g: any) => g.courseId === courseId).reduce((sum: number, g: any) => sum + (g.studentIds?.length || 0), 0);
   const getGroupCount = (courseId: string) => groups.filter((g: any) => g.courseId === courseId).length;
@@ -140,6 +170,17 @@ const CoursesPage: React.FC = () => {
 
           <BranchFilter value={branchFilter} onChange={setBranchFilter} compact />
 
+          {role === 'teacher' && (
+            <div className="flex gap-1 bg-slate-100 dark:bg-slate-900 rounded-lg p-1 shrink-0">
+              {(['mine', 'all'] as const).map((m) => (
+                <button key={m} onClick={() => setViewMode(m)}
+                  className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${viewMode === m ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300'}`}>
+                  {m === 'mine' ? t('org.teach.mine', 'Мои') : t('org.teach.all', 'Все')}
+                </button>
+              ))}
+            </div>
+          )}
+
           {isStaff && (
             <div className="flex gap-1 bg-slate-100 dark:bg-slate-900 rounded-lg p-1 shrink-0 ml-2">
               {(['all', 'published', 'draft'] as const).map((s) => (
@@ -175,7 +216,9 @@ const CoursesPage: React.FC = () => {
             {isAdmin && <span></span>}
           </div>
 
-          {filtered.map((course) => (
+          {filtered.map((course) => {
+            const isMember = !!course.teacherIds?.includes(profile?.uid || '');
+            return (
             <div
               key={course.id}
               onClick={() => navigate(`/courses/${course.id}`)}
@@ -205,6 +248,15 @@ const CoursesPage: React.FC = () => {
                       <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${course.status === 'published' ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400' : 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400'}`}>
                         {course.status === 'published' ? t('common.published') : t('common.draft')}
                       </span>
+                    )}
+                    {role === 'teacher' && (
+                      <button
+                        onClick={(e) => toggleTeachCourse(course, e)}
+                        disabled={togglingId === course.id}
+                        className={`text-[10px] font-bold px-2 py-0.5 rounded-full inline-flex items-center gap-1 transition-colors disabled:opacity-50 ${isMember ? 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300' : 'bg-primary-600 text-white'}`}
+                      >
+                        {isMember ? <><LogOut className="w-3 h-3" />{t('org.teach.leave', 'Выйти')}</> : <><UserPlus className="w-3 h-3" />{t('org.teach.teach', 'Вести')}</>}
+                      </button>
                     )}
                   </div>
                 </div>
@@ -239,8 +291,8 @@ const CoursesPage: React.FC = () => {
                 </div>
               )}
 
-              {/* Actions (admin only) */}
-              {isAdmin && (
+              {/* Actions: admins edit/delete, teachers join/leave */}
+              {isAdmin ? (
                 <div className="hidden md:flex items-center gap-1.5 justify-end">
                   <button onClick={(e) => { e.stopPropagation(); openEdit(course); }} className="p-1.5 text-slate-400 hover:text-primary-600 dark:hover:text-primary-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-all tooltip" data-tip="Редактировать">
                     <Edit className="w-3.5 h-3.5" />
@@ -249,9 +301,21 @@ const CoursesPage: React.FC = () => {
                     <Trash2 className="w-3.5 h-3.5" />
                   </button>
                 </div>
-              )}
+              ) : role === 'teacher' ? (
+                <div className="hidden md:flex items-center justify-end">
+                  <button
+                    onClick={(e) => toggleTeachCourse(course, e)}
+                    disabled={togglingId === course.id}
+                    title={isMember ? t('org.teach.leaveCourse', 'Выйти из курса') : t('org.teach.joinCourse', 'Преподавать этот курс')}
+                    className={`p-1.5 rounded-lg transition-all disabled:opacity-50 ${isMember ? 'text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10' : 'text-primary-600 dark:text-primary-400 hover:bg-primary-50 dark:hover:bg-primary-900/20'}`}
+                  >
+                    {isMember ? <LogOut className="w-3.5 h-3.5" /> : <UserPlus className="w-3.5 h-3.5" />}
+                  </button>
+                </div>
+              ) : null}
             </div>
-          ))}
+            );
+          })}
         </div>
       )}
 

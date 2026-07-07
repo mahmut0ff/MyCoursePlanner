@@ -350,7 +350,7 @@ const LandingPage: React.FC = () => {
                   ) : (
                     <>
                       <span className="text-4xl font-bold tracking-tight">{plan.price.toLocaleString()}</span>
-                      <span className={`text-sm ${plan.popular ? 'text-white/60' : 'text-slate-400'}`}>{t('landing.currency')}/{t('landing.perMonth')}</span>
+                      <span className={`text-sm ${plan.popular ? 'text-white/60' : 'text-slate-500'}`}>{t('landing.currency')}/{t('landing.perMonth')}</span>
                     </>
                   )}
                 </div>
@@ -386,6 +386,7 @@ const LandingPage: React.FC = () => {
               <div key={i}>
                 <button
                   onClick={() => setOpenFaqIndex(openFaqIndex === i ? null : i)}
+                  aria-expanded={openFaqIndex === i}
                   className="flex w-full items-center justify-between gap-4 py-5 text-left"
                 >
                   <span className="font-medium text-slate-900">{faq.q}</span>

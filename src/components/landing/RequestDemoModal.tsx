@@ -140,7 +140,7 @@ const RequestDemoModal: React.FC<Props> = ({ open, onClose }) => {
                     className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 focus:border-primary-500 focus:ring-2 focus:ring-primary-100 outline-none transition-all"
                   />
                 </div>
-                <p className="text-xs text-slate-400 mt-1.5">Напишем туда, чтобы договориться о времени демо.</p>
+                <p className="text-xs text-slate-500 mt-1.5">Напишем туда, чтобы договориться о времени демо.</p>
               </div>
 
               <div>
@@ -166,7 +166,7 @@ const RequestDemoModal: React.FC<Props> = ({ open, onClose }) => {
               >
                 {submitting ? <><Loader2 className="w-4 h-4 animate-spin" /> Отправляем…</> : <><Send className="w-4 h-4" /> Отправить заявку</>}
               </button>
-              <p className="text-xs text-slate-400 text-center">
+              <p className="text-xs text-slate-500 text-center">
                 Отправляя форму, вы соглашаетесь, что мы свяжемся с вами по указанному Telegram.
               </p>
             </form>

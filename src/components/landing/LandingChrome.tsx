@@ -178,7 +178,7 @@ export const LegalLayout: React.FC<{
       <div className="max-w-5xl mx-auto">
         <Eyebrow>{eyebrow}</Eyebrow>
         <h1 className="mt-3 text-4xl font-bold tracking-tight text-slate-900">{title}</h1>
-        <p className="mt-3 text-sm text-slate-400">{updated}</p>
+        <p className="mt-3 text-sm text-slate-500">{updated}</p>
         {intro && <p className="mt-6 max-w-2xl text-lg leading-relaxed text-slate-600">{intro}</p>}
 
         <div className="mt-12 grid gap-12 lg:grid-cols-[220px_1fr]">
@@ -264,10 +264,10 @@ export const LandingFooter: React.FC = () => {
           </div>
         </div>
         <div className="mt-12 flex flex-col items-center justify-between gap-5 border-t border-slate-200 pt-6 md:flex-row">
-          <p className="text-sm text-slate-400">&copy; {new Date().getFullYear()} SabakHub. {t('landing.rights')}</p>
+          <p className="text-sm text-slate-500">&copy; {new Date().getFullYear()} SabakHub. {t('landing.rights')}</p>
           <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-3">
-            <Link to="/privacy" className="text-sm text-slate-400 transition-colors hover:text-slate-900">{t('landing.footerPrivacy')}</Link>
-            <Link to="/terms" className="text-sm text-slate-400 transition-colors hover:text-slate-900">{t('landing.footerTerms')}</Link>
+            <Link to="/privacy" className="text-sm text-slate-500 transition-colors hover:text-slate-900">{t('landing.footerPrivacy')}</Link>
+            <Link to="/terms" className="text-sm text-slate-500 transition-colors hover:text-slate-900">{t('landing.footerTerms')}</Link>
             <LanguageSwitcher />
           </div>
         </div>

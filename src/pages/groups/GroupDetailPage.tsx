@@ -249,6 +249,10 @@ const GroupDetailPage: React.FC = () => {
   const myUid = profile?.uid;
   const isMyGroup = !!myUid && currentTeacherIds.includes(myUid);
   const canManageCreds = isAdmin || isMyGroup;
+  // Syllabus progress is the one group field teachers may write — and only on
+  // their own groups. The backend enforces the same own-groups scope, so keep the
+  // toggle read-only for teachers viewing a group they don't teach.
+  const canEditProgress = isAdmin || isMyGroup;
 
   const availableTeachers = allTeachers.filter(t => !currentTeacherIds.includes(t.uid));
   const availableStudents = allStudents.filter(s => !currentStudentIds.includes(s.uid));
@@ -419,7 +423,7 @@ const GroupDetailPage: React.FC = () => {
                              const linkTo = item.type === 'exam' && item.examId ? `/exams/${item.examId}` : item.lessonPlanId ? `/lessons/${item.lessonPlanId}` : null;
                              return (
                                <div key={item.id} className={`flex items-center gap-2 px-2.5 py-1.5 rounded-lg border transition-colors ${isCurrent ? 'border-indigo-300 dark:border-indigo-700 bg-indigo-50 dark:bg-indigo-900/20' : 'border-transparent hover:bg-slate-100 dark:hover:bg-slate-700/40'}`}>
-                                  <button onClick={() => setCurrentItem(item.id)} disabled={savingProgress} title={isCurrent ? 'Снять отметку «текущий»' : 'Отметить как текущий урок'} className="shrink-0 disabled:opacity-50">
+                                  <button onClick={() => setCurrentItem(item.id)} disabled={savingProgress || !canEditProgress} title={!canEditProgress ? 'Прогресс отмечают преподаватели этой группы' : isCurrent ? 'Снять отметку «текущий»' : 'Отметить как текущий урок'} className="shrink-0 disabled:opacity-50 disabled:cursor-default">
                                      {done ? <CheckCircle2 className="w-4 h-4 text-emerald-500" /> : <Circle className="w-4 h-4 text-slate-300 dark:text-slate-600" />}
                                   </button>
                                   <span className={`flex-1 text-sm truncate ${done ? 'text-slate-700 dark:text-slate-200' : 'text-slate-500'} ${isCurrent ? 'font-semibold' : ''}`}>{item.title}</span>

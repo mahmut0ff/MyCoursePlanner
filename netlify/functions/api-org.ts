@@ -276,16 +276,26 @@ const handler: Handler = async (event: HandlerEvent) => {
 
     if (action === 'updateCourse') {
       const err = requireOrgStaff(user); if (err) return err;
+      // Course edits are an admin/manager action. Teachers hold courses:write for
+      // lesson/material authoring, but must NOT be able to PATCH arbitrary course
+      // records (price, branch, status, teacher roster…). No teacher UI calls
+      // updateCourse — the create/edit affordances are all admin-gated.
+      if (!hasRole(user, 'admin', 'manager')) return forbidden('Недостаточно прав для этого действия');
       if (!can(user, 'courses', 'write')) return forbidden('Недостаточно прав для этого действия');
       const body = JSON.parse(event.body || '{}');
       if (!body.id) return badRequest('id required');
       const doc = await adminDb.collection('courses').doc(body.id).get();
       if (!doc.exists || doc.data()?.organizationId !== orgId) return notFound();
-      const { id, ...fields } = body;
-      fields.updatedAt = now();
-      await adminDb.collection('courses').doc(id).update(fields);
-      const updated = await adminDb.collection('courses').doc(id).get();
-      return ok({ id, ...updated.data() });
+      // Whitelist mutable fields so a blind body spread can't overwrite
+      // organizationId / createdBy / createdAt (mirrors updateStudent).
+      const ALLOWED_FIELDS = ['title', 'description', 'subject', 'teacherIds', 'lessonIds', 'status', 'coverImageUrl', 'price', 'paymentFormat', 'durationMonths', 'branchId'];
+      const fields: Record<string, any> = { updatedAt: now() };
+      for (const key of ALLOWED_FIELDS) {
+        if (body[key] !== undefined) fields[key] = body[key];
+      }
+      await adminDb.collection('courses').doc(body.id).update(fields);
+      const updated = await adminDb.collection('courses').doc(body.id).get();
+      return ok({ id: body.id, ...updated.data() });
     }
 
     if (action === 'deleteCourse') {
@@ -362,8 +372,27 @@ const handler: Handler = async (event: HandlerEvent) => {
       const doc = await adminDb.collection('groups').doc(body.id).get();
       if (!doc.exists || doc.data()?.organizationId !== orgId) return notFound();
       const oldData = doc.data()!;
-      const { id, ...fields } = body;
-      fields.updatedAt = now();
+
+      // Field-level authorization. Admins/managers manage the whole group record;
+      // teachers also hold groups:write, but only so they can advance syllabus
+      // progress on a group they actually teach — never reassign teachers/students
+      // or move the group to another course/branch. Anything outside their scope is
+      // dropped (own-groups + field whitelist), mirroring the updateStudent guard.
+      const isAdminOrManager = hasRole(user, 'admin', 'manager');
+      if (!isAdminOrManager) {
+        const teacherIds: string[] = oldData.teacherIds || [];
+        if (!teacherIds.includes(user.uid)) {
+          return forbidden('Можно изменять только свои группы');
+        }
+      }
+      const ALLOWED_FIELDS = isAdminOrManager
+        ? ['name', 'courseId', 'courseName', 'branchId', 'studentIds', 'teacherIds', 'chatLinkTitle', 'chatLinkUrl', 'currentSyllabusItemId']
+        : ['currentSyllabusItemId'];
+      const id = body.id;
+      const fields: Record<string, any> = { updatedAt: now() };
+      for (const key of ALLOWED_FIELDS) {
+        if (body[key] !== undefined) fields[key] = body[key];
+      }
       await adminDb.collection('groups').doc(id).update(fields);
       const updated = await adminDb.collection('groups').doc(id).get();
       const updatedData = updated.data()!;

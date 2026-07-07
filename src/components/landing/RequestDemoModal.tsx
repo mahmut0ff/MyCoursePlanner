@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { X, Send, Loader2, CheckCircle2, Building2, User, AtSign } from 'lucide-react';
 import { apiSubmitDemoRequest } from '../../lib/api';
 
@@ -21,14 +21,21 @@ const RequestDemoModal: React.FC<Props> = ({ open, onClose }) => {
   const [submitting, setSubmitting] = useState(false);
   const [success, setSuccess] = useState(false);
 
-  if (!open) return null;
-
-  const close = () => {
+  const close = useCallback(() => {
     if (submitting) return;
     setOrgName(''); setOwnerName(''); setTelegram(''); setNote('');
     setError(''); setSuccess(false);
     onClose();
-  };
+  }, [submitting, onClose]);
+
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') close(); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [open, close]);
+
+  if (!open) return null;
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -52,8 +59,8 @@ const RequestDemoModal: React.FC<Props> = ({ open, onClose }) => {
   };
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 animate-fade-in">
-      <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md max-h-[90vh] overflow-y-auto relative">
+    <div onClick={close} className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 animate-fade-in">
+      <div onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-label="Заказать демо" className="bg-white rounded-3xl shadow-2xl w-full max-w-md max-h-[90vh] overflow-y-auto relative">
         <button
           onClick={close}
           aria-label="Закрыть"

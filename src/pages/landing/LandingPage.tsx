@@ -156,15 +156,29 @@ const LandingPage: React.FC = () => {
             {t('landing.heroSubtitle')}
           </p>
           <div className="mt-9 flex flex-col sm:flex-row items-center justify-center gap-3">
-            <Link to={user ? '/dashboard' : '/register'} className="group inline-flex items-center justify-center gap-2 rounded-xl bg-primary-600 px-7 py-3.5 text-base font-semibold text-white shadow-lg shadow-primary-600/20 transition-all hover:bg-primary-700 hover:shadow-primary-600/30">
-              {user ? (t('nav.dashboard') || 'Dashboard') : t('landing.heroCta')}
-              <ArrowRight className="w-5 h-5 transition-transform group-hover:translate-x-0.5" />
-            </Link>
-            <button type="button" onClick={() => setDemoOpen(true)} className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-6 py-3.5 text-base font-medium text-slate-700 transition-colors hover:border-slate-300 hover:bg-slate-50">
-              {t('landing.heroDemo')}
-            </button>
+            {user ? (
+              <Link to="/dashboard" className="group inline-flex items-center justify-center gap-2 rounded-xl bg-primary-600 px-7 py-3.5 text-base font-semibold text-white shadow-lg shadow-primary-600/20 transition-all hover:bg-primary-700 hover:shadow-primary-600/30">
+                {t('nav.dashboard') || 'Dashboard'}
+                <ArrowRight className="w-5 h-5 transition-transform group-hover:translate-x-0.5" />
+              </Link>
+            ) : (
+              <>
+                <button type="button" onClick={() => setDemoOpen(true)} className="group inline-flex items-center justify-center gap-2 rounded-xl bg-primary-600 px-7 py-3.5 text-base font-semibold text-white shadow-lg shadow-primary-600/20 transition-all hover:bg-primary-700 hover:shadow-primary-600/30">
+                  {t('landing.heroDemo')}
+                  <ArrowRight className="w-5 h-5 transition-transform group-hover:translate-x-0.5" />
+                </button>
+                <Link to="/login" className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-6 py-3.5 text-base font-medium text-slate-700 transition-colors hover:border-slate-300 hover:bg-slate-50">
+                  {t('auth.login')}
+                </Link>
+              </>
+            )}
           </div>
-          <p className="mt-5 text-sm text-slate-400">{t('landing.heroStack')}</p>
+          <p className="mx-auto mt-6 flex max-w-md flex-wrap items-center justify-center gap-x-2.5 gap-y-1 text-sm text-slate-600">
+            <Check className="h-4 w-4 shrink-0 text-primary-600" aria-hidden />
+            <span><span className="font-semibold text-slate-900">200+</span> {t('landing.statStudents')}</span>
+            <span className="text-slate-300" aria-hidden>·</span>
+            <span><span className="font-semibold text-slate-900">50+</span> {t('landing.statExams')}</span>
+          </p>
         </div>
 
         {/* Product preview */}
@@ -348,14 +362,15 @@ const LandingPage: React.FC = () => {
                     </li>
                   ))}
                 </ul>
-                <Link
-                  to="/register"
+                <button
+                  type="button"
+                  onClick={() => setDemoOpen(true)}
                   className={`mt-8 block w-full rounded-xl py-3 text-center text-sm font-semibold transition-all ${plan.popular
                     ? 'bg-white text-slate-900 hover:bg-slate-100'
                     : 'bg-slate-900 text-white hover:bg-slate-800'}`}
                 >
-                  {plan.id === 'basic' ? t('landing.startTrial14') : t('landing.startTrial3')}
-                </Link>
+                  {t('landing.heroDemo')}
+                </button>
               </div>
             ))}
           </div>
@@ -392,10 +407,17 @@ const LandingPage: React.FC = () => {
           <div className="relative">
             <h2 className="text-3xl sm:text-4xl font-bold tracking-tight text-white">{t('landing.ctaTitle')}</h2>
             <p className="mx-auto mt-4 max-w-xl text-lg text-slate-300">{t('landing.ctaSubtitle')}</p>
-            <Link to={user ? '/dashboard' : '/register'} className="group mt-8 inline-flex items-center gap-2 rounded-xl bg-white px-7 py-3.5 text-base font-semibold text-slate-900 transition-colors hover:bg-slate-100">
-              {user ? (t('nav.dashboard') || 'Dashboard') : t('landing.ctaButton')}
-              <ArrowRight className="w-5 h-5 transition-transform group-hover:translate-x-0.5" />
-            </Link>
+            {user ? (
+              <Link to="/dashboard" className="group mt-8 inline-flex items-center gap-2 rounded-xl bg-white px-7 py-3.5 text-base font-semibold text-slate-900 transition-colors hover:bg-slate-100">
+                {t('nav.dashboard') || 'Dashboard'}
+                <ArrowRight className="w-5 h-5 transition-transform group-hover:translate-x-0.5" />
+              </Link>
+            ) : (
+              <button type="button" onClick={() => setDemoOpen(true)} className="group mt-8 inline-flex items-center gap-2 rounded-xl bg-white px-7 py-3.5 text-base font-semibold text-slate-900 transition-colors hover:bg-slate-100">
+                {t('landing.heroDemo')}
+                <ArrowRight className="w-5 h-5 transition-transform group-hover:translate-x-0.5" />
+              </button>
+            )}
           </div>
         </div>
       </section>
@@ -411,7 +433,6 @@ const LandingPage: React.FC = () => {
    shapes only, so it reads as "a real product" in every locale. */
 const ProductFrame: React.FC = () => {
   const navIcons = [LayoutGrid, BookOpen, ClipboardList, Users, BarChart3, CalendarClock];
-  const bars = [42, 64, 38, 78, 54, 88, 60];
   return (
     <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl shadow-slate-900/10 ring-1 ring-slate-900/5">
       {/* window chrome */}
@@ -468,11 +489,20 @@ const ProductFrame: React.FC = () => {
           <div className="mt-3 rounded-xl border border-slate-200 bg-white p-4">
             <div className="flex items-center justify-between">
               <span className="h-3 w-24 rounded bg-slate-300" />
-              <span className="h-2 w-12 rounded bg-slate-200" />
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-2 py-0.5">
+                <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                <span className="h-1.5 w-8 rounded bg-emerald-200" />
+              </span>
             </div>
-            <div className="mt-4 flex h-20 items-end gap-2 sm:h-24">
-              {bars.map((h, i) => (
-                <div key={i} className="flex-1 rounded-t bg-gradient-to-t from-primary-500 to-primary-400" style={{ height: `${h}%` }} />
+            <div className="mt-3 space-y-2.5">
+              {[['bg-emerald-400', 'bg-emerald-400', 'bg-amber-400'], ['bg-emerald-400', 'bg-amber-400', 'bg-emerald-400'], ['bg-amber-400', 'bg-emerald-400', 'bg-emerald-400']].map((row, i) => (
+                <div key={i} className="flex items-center gap-2.5">
+                  <span className="h-6 w-6 shrink-0 rounded-full bg-gradient-to-br from-slate-200 to-slate-300" />
+                  <span className="h-2 flex-1 rounded bg-slate-200" />
+                  {row.map((c, j) => (
+                    <span key={j} className={`h-5 w-5 rounded-md ${c}`} />
+                  ))}
+                </div>
               ))}
             </div>
           </div>

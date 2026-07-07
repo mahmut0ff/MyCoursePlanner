@@ -1,4 +1,5 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import { GitBranch, ChevronDown, Check,  MapPin } from 'lucide-react';
 import { orgListBranches } from '../../lib/api';
@@ -36,6 +37,8 @@ const BranchFilter: React.FC<BranchFilterProps> = ({ allowedBranchIds, value, on
   const [branches, setBranches] = useState<BranchItem[]>([]);
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(true);
+  const btnRef = useRef<HTMLButtonElement>(null);
+  const [coords, setCoords] = useState<{ top: number; left: number } | null>(null);
 
   useEffect(() => {
     setLoading(true);
@@ -65,7 +68,34 @@ const BranchFilter: React.FC<BranchFilterProps> = ({ allowedBranchIds, value, on
       .finally(() => setLoading(false));
   }, [allowedBranchIds?.join(',')]); // eslint-disable-line
 
-  // Don't show if no branches or only 1 branch and hideAll is off  
+  // Position the portal popover directly under the trigger button, in viewport
+  // coordinates. Rendering the menu in a portal + `position: fixed` means it can
+  // never be clipped by an ancestor's `overflow` (e.g. a horizontally-scrolling
+  // filter bar) or trapped in a lower stacking context.
+  const reposition = () => {
+    const el = btnRef.current;
+    if (!el) return;
+    const r = el.getBoundingClientRect();
+    // Keep the 240px-wide menu inside the viewport horizontally.
+    const left = Math.max(8, Math.min(r.left, window.innerWidth - 248));
+    setCoords({ top: r.bottom + 4, left });
+  };
+
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setOpen(false); };
+    // capture:true so scrolling inside any ancestor container repositions the menu too
+    window.addEventListener('scroll', reposition, true);
+    window.addEventListener('resize', reposition);
+    window.addEventListener('keydown', onKey);
+    return () => {
+      window.removeEventListener('scroll', reposition, true);
+      window.removeEventListener('resize', reposition);
+      window.removeEventListener('keydown', onKey);
+    };
+  }, [open]); // eslint-disable-line
+
+  // Don't show if no branches or only 1 branch and hideAll is off
   if (loading || branches.length === 0) return null;
   if (branches.length === 1 && !hideAll) return null;
 
@@ -107,9 +137,10 @@ const BranchFilter: React.FC<BranchFilterProps> = ({ allowedBranchIds, value, on
 
   // ─── Custom dropdown mode — for toolbars/headers ───
   return (
-    <div className="relative inline-block">
+    <div className="inline-block">
       <button
-        onClick={() => setOpen(!open)}
+        ref={btnRef}
+        onClick={() => { if (open) { setOpen(false); } else { reposition(); setOpen(true); } }}
         className={`flex items-center gap-2 ${compact ? 'px-2 py-1' : 'px-3 py-1.5'} bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors`}
       >
         <GitBranch className="w-3.5 h-3.5 text-indigo-500" />
@@ -119,10 +150,13 @@ const BranchFilter: React.FC<BranchFilterProps> = ({ allowedBranchIds, value, on
         <ChevronDown className={`w-3.5 h-3.5 text-slate-400 transition ${open ? 'rotate-180' : ''}`} />
       </button>
 
-      {open && (
+      {open && createPortal(
         <>
-          <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
-          <div className="absolute left-0 top-full mt-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-xl z-50 py-1 min-w-[240px] max-h-64 overflow-y-auto">
+          <div className="fixed inset-0 z-[59]" onClick={() => setOpen(false)} />
+          <div
+            style={{ top: coords?.top ?? -9999, left: coords?.left ?? -9999 }}
+            className="fixed bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-xl z-[60] py-1 min-w-[240px] max-h-64 overflow-y-auto"
+          >
             <p className="px-3 py-1.5 text-[10px] uppercase tracking-wider text-slate-400 font-semibold">
               {t('branchFilter.selectBranch', 'Выберите филиал')}
             </p>
@@ -161,7 +195,8 @@ const BranchFilter: React.FC<BranchFilterProps> = ({ allowedBranchIds, value, on
               </button>
             ))}
           </div>
-        </>
+        </>,
+        document.body
       )}
     </div>
   );

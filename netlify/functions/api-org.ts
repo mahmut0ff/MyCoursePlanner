@@ -875,17 +875,33 @@ const handler: Handler = async (event: HandlerEvent) => {
     }
 
     if (action === 'resetStudentPassword') {
-      if (!hasRole(user, 'admin', 'manager')) return forbidden();
-      if (!can(user, 'students', 'write')) return forbidden('Недостаточно прав для этого действия');
       const body = JSON.parse(event.body || '{}');
       if (!body.uid || !body.password) return badRequest('uid and password required');
       if (String(body.password).length < 6) return badRequest('Пароль — минимум 6 символов');
 
       // Student must belong to this org.
+      // Who may reset a student's password:
+      //  • admin/manager with students:write → any student in the org
+      //  • teacher → only students enrolled in a group they teach (own-groups scope)
+      const canManageAllStudents = hasRole(user, 'admin', 'manager') && can(user, 'students', 'write');
+      const isTeacher = hasRole(user, 'teacher');
+      if (!canManageAllStudents && !isTeacher) return forbidden('Недостаточно прав для этого действия');
+
       const member = await adminDb.collection('orgMembers').doc(orgId).collection('members').doc(body.uid).get();
       if (!member.exists) return notFound();
 
       // Only login-enabled students have an auth account to update.
+      // Teachers are scoped to their own groups: allow the reset only when the teacher
+      // shares a group with this student (assigned as teacher + student is enrolled).
+      if (!canManageAllStudents) {
+        const groupsSnap = await adminDb.collection('groups').where('organizationId', '==', orgId).get();
+        const sharesGroup = groupsSnap.docs.some((g: any) => {
+          const gd = g.data();
+          return (gd.teacherIds || []).includes(user.uid) && (gd.studentIds || []).includes(body.uid);
+        });
+        if (!sharesGroup) return forbidden('Можно менять пароль только студентам из своих групп');
+      }
+
       const userDoc = await adminDb.collection('users').doc(body.uid).get();
       const data = userDoc.data() || {};
       if (data.offlineStudent === true || !data.email) {

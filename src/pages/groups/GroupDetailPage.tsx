@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { orgGetGroup, orgGetCourses, orgUpdateGroup, orgGetTeachers, orgGetStudents, apiGetSyllabuses } from '../../lib/api';
-import { ArrowLeft, Users, BookOpen, Calendar, Link as LinkIcon, Edit2, Check, X, Plus, Briefcase, GraduationCap, Building2, CheckCircle2, Circle, ExternalLink } from 'lucide-react';
+import { orgGetGroup, orgGetCourses, orgUpdateGroup, orgGetTeachers, orgGetStudents, apiGetSyllabuses, orgResetStudentPassword } from '../../lib/api';
+import { ArrowLeft, Users, BookOpen, Calendar, Link as LinkIcon, Edit2, Check, X, Plus, Briefcase, GraduationCap, Building2, CheckCircle2, Circle, ExternalLink, KeyRound, Copy, Loader2, RefreshCw } from 'lucide-react';
 import type { Group, Course, UserProfile, Syllabus } from '../../types';
 import toast from 'react-hot-toast';
 import { useAuth } from '../../contexts/AuthContext';
@@ -14,7 +14,7 @@ const GroupDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { t } = useTranslation();
-  const { role } = useAuth();
+  const { role, profile } = useAuth();
   const isAdmin = role === 'admin' || role === 'manager' || role === 'super_admin';
 
   const [group, setGroup] = useState<Group | null>(null);
@@ -42,6 +42,13 @@ const GroupDetailPage: React.FC = () => {
   const [showAddStudent, setShowAddStudent] = useState(false);
   const [selectedUserId, setSelectedUserId] = useState('');
   const [addingUser, setAddingUser] = useState(false);
+
+  // Student credentials — view login & issue a new password to hand over.
+  // (Existing passwords can't be shown: they're hashed in Firebase Auth.)
+  const [credStudent, setCredStudent] = useState<UserProfile | null>(null);
+  const [credPw, setCredPw] = useState('');
+  const [issuedPw, setIssuedPw] = useState<string | null>(null);
+  const [savingCred, setSavingCred] = useState(false);
 
   useEffect(() => {
     if (!id) return;
@@ -201,6 +208,34 @@ const GroupDetailPage: React.FC = () => {
     }
   };
 
+  // Readable password (no ambiguous chars) to hand to a student.
+  const genPassword = () => {
+    const chars = 'abcdefghijkmnpqrstuvwxyz23456789';
+    let out = '';
+    for (let i = 0; i < 8; i++) out += chars[Math.floor(Math.random() * chars.length)];
+    return out;
+  };
+
+  const openCredentials = (s: UserProfile) => {
+    setCredStudent(s);
+    setIssuedPw(null);
+    setCredPw(genPassword());
+  };
+
+  const handleIssuePassword = async () => {
+    if (!credStudent || credPw.length < 6) { toast.error('Пароль — минимум 6 символов'); return; }
+    setSavingCred(true);
+    try {
+      await orgResetStudentPassword(credStudent.uid, credPw);
+      setIssuedPw(credPw);
+      toast.success('Новый пароль установлен');
+    } catch (e: any) {
+      toast.error(e.message || 'Ошибка');
+    } finally {
+      setSavingCred(false);
+    }
+  };
+
   if (loading) return <div className="flex justify-center py-20"><div className="w-10 h-10 border-4 border-slate-200 border-t-emerald-500 rounded-full animate-spin dark:border-slate-700" /></div>;
   if (!group) return <div className="text-center py-20"><Users className="w-12 h-12 text-slate-300 dark:text-slate-600 mx-auto mb-3" /><p className="text-sm font-bold text-slate-400">{t('common.notFound')}</p><button onClick={() => navigate('/groups')} className="mt-3 font-bold text-emerald-500 text-sm hover:underline">{t('common.back')}</button></div>;
 
@@ -208,6 +243,12 @@ const GroupDetailPage: React.FC = () => {
   const currentStudentIds = group.studentIds || [];
   const currentTeachers = allTeachers.filter(t => currentTeacherIds.includes(t.uid));
   const currentStudents = allStudents.filter(s => currentStudentIds.includes(s.uid));
+
+  // Who may see logins / issue passwords here: admins/managers, or a teacher of THIS group.
+  // (The backend enforces the same own-groups scope for teachers.)
+  const myUid = profile?.uid;
+  const isMyGroup = !!myUid && currentTeacherIds.includes(myUid);
+  const canManageCreds = isAdmin || isMyGroup;
 
   const availableTeachers = allTeachers.filter(t => !currentTeacherIds.includes(t.uid));
   const availableStudents = allStudents.filter(s => !currentStudentIds.includes(s.uid));
@@ -437,11 +478,18 @@ const GroupDetailPage: React.FC = () => {
                                <p className="text-xs text-slate-500">{s.email}</p>
                             </div>
                          </div>
-                         {isAdmin && (
-                           <button onClick={() => handleRemoveStudent(s.uid)} className="opacity-0 group-hover:opacity-100 p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-lg transition-all">
-                             <X className="w-4 h-4" />
-                           </button>
-                         )}
+                         <div className="flex items-center gap-1">
+                           {canManageCreds && (
+                             <button onClick={(e) => { e.stopPropagation(); openCredentials(s); }} title="Логин и пароль" className="opacity-0 group-hover:opacity-100 p-2 text-slate-400 hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-500/10 rounded-lg transition-all">
+                               <KeyRound className="w-4 h-4" />
+                             </button>
+                           )}
+                           {isAdmin && (
+                             <button onClick={(e) => { e.stopPropagation(); handleRemoveStudent(s.uid); }} className="opacity-0 group-hover:opacity-100 p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-lg transition-all">
+                               <X className="w-4 h-4" />
+                             </button>
+                           )}
+                         </div>
                       </div>
                     ))
                   )}
@@ -627,6 +675,83 @@ const GroupDetailPage: React.FC = () => {
                  {savingGroup ? 'Сохранение...' : t('common.save')}
                </button>
              </div>
+          </div>
+        </div>
+      )}
+
+      {/* Student Credentials Modal — view login & issue a new password */}
+      {credStudent && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => setCredStudent(null)}>
+          <div className="bg-white dark:bg-slate-800 rounded-3xl p-6 w-full max-w-sm shadow-2xl" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center gap-2 mb-1">
+              <KeyRound className="w-5 h-5 text-blue-500" />
+              <h2 className="text-lg font-extrabold text-slate-900 dark:text-white">Доступ ученика</h2>
+            </div>
+            <p className="text-xs font-medium text-slate-500 mb-5">{credStudent.displayName}</p>
+
+            {!credStudent.email ? (
+              <div className="bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-400 p-3 rounded-xl text-xs font-medium leading-relaxed">
+                У этого ученика нет входа в систему — это запись для журнала. Логин может создать администратор при добавлении ученика.
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {/* Login */}
+                <div>
+                  <label className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Логин</label>
+                  <div className="flex items-center gap-2 bg-slate-50 dark:bg-slate-700/50 rounded-xl px-3 py-2.5 mt-1">
+                    <span className="flex-1 text-sm font-mono font-semibold text-slate-900 dark:text-white truncate">{(credStudent as any).username || credStudent.email}</span>
+                    <button onClick={() => { navigator.clipboard.writeText((credStudent as any).username || credStudent.email || ''); toast.success('Скопировано'); }} className="p-1.5 text-slate-400 hover:text-slate-700 dark:hover:text-white hover:bg-slate-200/60 dark:hover:bg-slate-600 rounded-lg transition-colors shrink-0"><Copy className="w-4 h-4" /></button>
+                  </div>
+                </div>
+
+                {issuedPw ? (
+                  /* New password — shown once */
+                  <div>
+                    <label className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Новый пароль</label>
+                    <div className="flex items-center gap-2 bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/30 rounded-xl px-3 py-2.5 mt-1">
+                      <span className="flex-1 text-sm font-mono font-semibold text-emerald-700 dark:text-emerald-300 truncate">{issuedPw}</span>
+                      <button onClick={() => { navigator.clipboard.writeText(issuedPw); toast.success('Скопировано'); }} className="p-1.5 text-emerald-600 hover:bg-emerald-100 dark:hover:bg-emerald-500/20 rounded-lg transition-colors shrink-0"><Copy className="w-4 h-4" /></button>
+                    </div>
+                    <button
+                      onClick={() => { navigator.clipboard.writeText(`Логин: ${(credStudent as any).username || credStudent.email}\nПароль: ${issuedPw}`); toast.success('Скопировано'); }}
+                      className="w-full mt-2 flex items-center justify-center gap-2 px-4 py-2 rounded-xl text-xs font-bold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-500/10 hover:bg-blue-100 dark:hover:bg-blue-500/20 transition-colors"
+                    >
+                      <Copy className="w-3.5 h-3.5" /> Скопировать логин и пароль
+                    </button>
+                    <p className="text-[11px] text-slate-500 leading-relaxed mt-3">
+                      Передайте эти данные ученику. Пароль показывается один раз — скопируйте его сейчас.
+                    </p>
+                    <div className="flex justify-end mt-4">
+                      <button onClick={() => setCredStudent(null)} className="px-5 py-2 text-xs font-bold text-white bg-blue-500 hover:bg-blue-600 rounded-xl transition-colors shadow-md shadow-blue-500/20">Готово</button>
+                    </div>
+                  </div>
+                ) : (
+                  /* Issue a new password */
+                  <div>
+                    <label className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Новый пароль</label>
+                    <div className="flex items-center gap-2 mt-1">
+                      <input
+                        type="text" value={credPw} onChange={e => setCredPw(e.target.value)}
+                        placeholder="мин. 6 символов"
+                        className="flex-1 bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-xl px-3 py-2.5 text-sm font-mono text-slate-900 dark:text-white outline-none focus:border-blue-500"
+                      />
+                      <button onClick={() => setCredPw(genPassword())} title="Сгенерировать другой" className="p-2.5 text-slate-400 hover:text-blue-500 bg-slate-50 dark:bg-slate-700/50 hover:bg-blue-50 dark:hover:bg-blue-500/10 rounded-xl transition-colors shrink-0"><RefreshCw className="w-4 h-4" /></button>
+                    </div>
+                    <p className="text-[11px] text-slate-500 leading-relaxed mt-3">
+                      Старый пароль показать нельзя — он хранится в зашифрованном виде. Задайте новый и передайте его ученику.
+                    </p>
+                    <div className="flex justify-end gap-2 mt-5">
+                      <button onClick={() => setCredStudent(null)} className="px-4 py-2 text-xs font-bold text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-xl transition-colors">Отмена</button>
+                      <button onClick={handleIssuePassword} disabled={savingCred || credPw.length < 6}
+                        className="flex items-center gap-1.5 bg-blue-500 hover:bg-blue-600 text-white px-5 py-2 rounded-xl text-xs font-bold disabled:opacity-50 transition-colors shadow-md shadow-blue-500/20">
+                        {savingCred ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <KeyRound className="w-3.5 h-3.5" />}
+                        Установить пароль
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         </div>
       )}

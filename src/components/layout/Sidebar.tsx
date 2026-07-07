@@ -75,7 +75,7 @@ const NavItem: React.FC<{
 
 const Sidebar: React.FC<{ open: boolean; onClose: () => void; isCollapsed?: boolean; onToggleCollapse?: () => void; orgData?: any }> = ({ open, onClose, isCollapsed, onToggleCollapse, orgData }) => {
   const { t } = useTranslation();
-  const { profile, role, isSuperAdmin, isTeacher, isManager, organizationId, hasPermission } = useAuth();
+  const { profile, role, isSuperAdmin, isTeacher, isManager, organizationId } = useAuth();
   const { canAccess } = usePlanGate();
   const { canRead } = usePermissions();
   const navigate = useNavigate();
@@ -182,10 +182,10 @@ const Sidebar: React.FC<{ open: boolean; onClose: () => void; isCollapsed?: bool
               {canRead('leads') && (
                 <NavItem to="/leads" icon={Inbox} label={t('nav.leads', 'Заявки')} isCollapsed={isCollapsed} onClose={onClose} />
               )}
-              {hasPermission('managers') && (
+              {canRead('team') && (
                 <NavItem to="/managers" icon={ShieldCheck} label={t('nav.managers', 'Менеджеры')} isCollapsed={isCollapsed} onClose={onClose} />
               )}
-              {hasPermission('settings') && (
+              {canRead('settings') && (
                 <NavItem to="/enrollment" icon={Send} label={t('nav.intake', 'Набор')} isCollapsed={isCollapsed} onClose={onClose} />
               )}
               {canRead('team') && (
@@ -202,16 +202,16 @@ const Sidebar: React.FC<{ open: boolean; onClose: () => void; isCollapsed?: bool
               <NavItem to="/quiz/library" icon={Gamepad2} label={t('nav.quizLibrary')} isCollapsed={isCollapsed} onClose={onClose} />
 
               <SectionLabel label={t('nav.secManagement', 'Управление')} isCollapsed={isCollapsed} />
-              {hasPermission('settings') && (
+              {canRead('settings') && (
                 <NavItem to="/ai" icon={Sparkles} label={t('nav.aiHub', 'AI-центр')} isCollapsed={isCollapsed} onClose={onClose} locked={!canAccess('ai')} />
               )}
-              {hasPermission('finances') && (
+              {canRead('finances') && (
                 <NavItem to="/finances" icon={CreditCard} label={t('nav.finances', 'Финансы')} isCollapsed={isCollapsed} onClose={onClose} locked={!canAccess('finances')} />
               )}
-              {hasPermission('branches') && (
+              {canRead('branches') && (
                 <NavItem to="/branches" icon={MapPin} label={t('nav.branches', 'Филиалы')} isCollapsed={isCollapsed} onClose={onClose} locked={!canAccess('branches')} />
               )}
-              {hasPermission('settings') && (
+              {canRead('settings') && (
                 <NavItem to="/org-settings" icon={Settings} label={t('nav.orgSettings', 'Настройки')} isCollapsed={isCollapsed} onClose={onClose} />
               )}
               <NavItem to="/gradebook" icon={TableProperties} label={t('nav.gradebook', 'Успеваемость')} isCollapsed={isCollapsed} onClose={onClose} locked={!canAccess('gradebook')} />

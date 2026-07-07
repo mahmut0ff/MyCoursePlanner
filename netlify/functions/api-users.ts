@@ -238,8 +238,9 @@ const handler: Handler = async (event: HandlerEvent) => {
         return ok({ id: doc.id, ...data });
       }
 
-      // List users
-      if (!hasRole(user, 'super_admin', 'admin', 'teacher')) return forbidden();
+      // List users (org-scoped via getOrgFilter). Managers manage students & teachers,
+      // so they belong on this list alongside admins/teachers.
+      if (!hasRole(user, 'super_admin', 'admin', 'manager', 'teacher')) return forbidden();
       const orgFilter = getOrgFilter(user);
       let snapshot;
       try {

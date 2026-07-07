@@ -94,7 +94,8 @@ const handler: Handler = async (event: HandlerEvent) => {
     let ref: FirebaseFirestore.Query = adminDb.collection(SESSIONS);
     if (hasRole(user, 'teacher')) {
       ref = ref.where('hostId', '==', user.uid);
-    } else if (hasRole(user, 'admin') && user.organizationId) {
+    } else if (hasRole(user, 'admin', 'manager') && user.organizationId) {
+      // Managers (like admins) list their whole org's sessions; teachers see only their own.
       ref = ref.where('organizationId', '==', user.organizationId);
     }
     ref = ref.orderBy('createdAt', 'desc').limit(50);
@@ -118,7 +119,7 @@ const handler: Handler = async (event: HandlerEvent) => {
 
     // ── CREATE SESSION ──
     if (action === 'create') {
-      if (!hasRole(user, 'admin', 'teacher')) return forbidden();
+      if (!hasRole(user, 'admin', 'manager', 'teacher')) return forbidden();
       const { quizId, mode, settings } = body;
       if (!quizId) return badRequest('quizId required');
 

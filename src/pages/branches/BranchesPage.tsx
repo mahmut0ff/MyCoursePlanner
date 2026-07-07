@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../contexts/AuthContext';
+import { usePermissions } from '../../contexts/PermissionsContext';
 import { orgListBranches, orgCreateBranch, orgUpdateBranch, orgArchiveBranch } from '../../lib/api';
 import type { Branch } from '../../types';
 import { Building2, Plus, MapPin, Phone, Pencil, Archive, Check, Loader2, MessageCircle, User, Search, RefreshCw } from 'lucide-react';
@@ -11,7 +12,8 @@ import { ListSkeleton } from '../../components/ui/Skeleton';
 const BranchesPage: React.FC = () => {
   const { t } = useTranslation();
   const { role } = useAuth();
-  
+  const { canWrite } = usePermissions();
+
   const [branches, setBranches] = useState<Branch[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
@@ -23,7 +25,9 @@ const BranchesPage: React.FC = () => {
     name: '', slug: '', city: '', address: '', phone: '', whatsapp: '', contactName: '', description: '', latitude: undefined, longitude: undefined
   });
 
-  const isAdmin = role === 'admin' || role === 'super_admin';
+  // Managers granted the "branches" permission can manage branches too — mirror the
+  // backend, which gates every branch mutation on the same branches grant (not role).
+  const isAdmin = role === 'admin' || role === 'super_admin' || canWrite('branches');
 
   const loadBranches = useCallback(async () => {
     try {

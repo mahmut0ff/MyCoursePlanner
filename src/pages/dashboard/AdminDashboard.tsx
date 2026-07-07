@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../contexts/AuthContext';
+import { usePermissions } from '../../contexts/PermissionsContext';
 import { usePlanGate } from '../../contexts/PlanContext';
 import {
   GraduationCap, UsersRound, Settings, Sparkles, GitBranch, MapPin,
@@ -105,9 +106,10 @@ const Ring: React.FC<{ value: number | null; color: string; label: string }> = (
 
 const AdminDashboard: React.FC = () => {
   const { t } = useTranslation();
-  const { profile, organizationId, role, hasPermission } = useAuth();
+  const { profile, organizationId, role } = useAuth();
+  const { canRead } = usePermissions();
   const { canAccess, loading: planLoading } = usePlanGate();
-  const canSeeFinance = role === 'admin' || hasPermission('finances');
+  const canSeeFinance = role === 'admin' || canRead('finances');
 
   const [loading, setLoading] = useState(true);
   const [branchData, setBranchData] = useState<any>(null);

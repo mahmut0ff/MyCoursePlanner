@@ -143,7 +143,7 @@ const handler: Handler = async (event: HandlerEvent) => {
 
   // ─── POST ───
   if (event.httpMethod === 'POST') {
-    if (!hasRole(user, 'admin', 'teacher')) return forbidden();
+    if (!hasRole(user, 'admin', 'manager', 'teacher')) return forbidden();
     if (!can(user, 'quizzes', 'write')) return forbidden('Недостаточно прав для этого действия');
 
     const body = JSON.parse(event.body || '{}');
@@ -312,7 +312,7 @@ const handler: Handler = async (event: HandlerEvent) => {
 
   // ─── PUT ───
   if (event.httpMethod === 'PUT') {
-    if (!hasRole(user, 'admin', 'teacher')) return forbidden();
+    if (!hasRole(user, 'admin', 'manager', 'teacher')) return forbidden();
     if (!can(user, 'quizzes', 'write')) return forbidden('Недостаточно прав для этого действия');
     const body = JSON.parse(event.body || '{}');
     const { id, ...updates } = body;
@@ -341,7 +341,7 @@ const handler: Handler = async (event: HandlerEvent) => {
 
   // ─── DELETE ───
   if (event.httpMethod === 'DELETE') {
-    if (!hasRole(user, 'admin', 'teacher')) return forbidden();
+    if (!hasRole(user, 'admin', 'manager', 'teacher')) return forbidden();
     if (!can(user, 'quizzes', 'delete')) return forbidden('Недостаточно прав для этого действия');
     const id = params.id;
     if (!id) return badRequest('id required');

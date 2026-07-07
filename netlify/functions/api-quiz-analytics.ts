@@ -29,8 +29,13 @@ const handler: Handler = async (event: HandlerEvent) => {
       if (!sessDoc.exists) return notFound('Session not found');
       const session = sessDoc.data()!;
 
-      // Permission check — host or admin
-      if (session.hostId !== user.uid && !hasRole(user, 'admin', 'super_admin')) {
+      // Permission check — host, admin/super_admin, or a manager in the session's org
+      // (analytics/results are read grants in the manager default set).
+      if (
+        session.hostId !== user.uid &&
+        !hasRole(user, 'admin', 'super_admin') &&
+        !(hasRole(user, 'manager') && session.organizationId === user.organizationId)
+      ) {
         return forbidden();
       }
 
@@ -162,7 +167,11 @@ const handler: Handler = async (event: HandlerEvent) => {
     const sessDoc = await adminDb.collection(SESSIONS).doc(sessionId).get();
     if (!sessDoc.exists) return notFound();
     const session = sessDoc.data()!;
-    if (session.hostId !== user.uid && !hasRole(user, 'admin', 'super_admin')) return forbidden();
+    if (
+      session.hostId !== user.uid &&
+      !hasRole(user, 'admin', 'super_admin') &&
+      !(hasRole(user, 'manager') && session.organizationId === user.organizationId)
+    ) return forbidden();
 
     // Build CSV
     const pSnap = await adminDb.collection(SESSIONS).doc(sessionId)

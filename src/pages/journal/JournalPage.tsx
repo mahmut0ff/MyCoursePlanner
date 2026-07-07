@@ -19,6 +19,7 @@ import VoiceGradeDictator from '../../components/gradebook/VoiceGradeDictator';
 import { ClipboardList, Calendar, AlertCircle, AlertTriangle, RefreshCcw, UserCheck, CheckCircle2, XCircle, Clock, FileWarning, Trophy, TrendingUp, Loader2, Mic } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useAuth } from '../../contexts/AuthContext';
+import { usePermissions } from '../../contexts/PermissionsContext';
 
 
 function getLocalISODate(d: Date) {
@@ -62,7 +63,10 @@ const defaultSchema: GradeSchema = {
 const JournalPage: React.FC = () => {
   const { t } = useTranslation();
   const { role, profile } = useAuth();
-  const isReadOnly = role === 'admin' || role === 'manager';
+  const { canWrite } = usePermissions();
+  // Read-only is driven by the resolved gradebook grant, not the base role — a manager
+  // (or custom role) with gradebook:write can mark attendance/grades, matching the backend.
+  const isReadOnly = !canWrite('gradebook');
 
   const [courses, setCourses] = useState<Course[]>([]);
   const [allGroups, setAllGroups] = useState<Group[]>([]);

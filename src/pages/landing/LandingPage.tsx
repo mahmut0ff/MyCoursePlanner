@@ -1,376 +1,265 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
+import { Menu, X } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import RequestDemoModal from '../../components/landing/RequestDemoModal';
-import { LandingNav, LandingFooter, SectionHead } from '../../components/landing/LandingChrome';
-import {
-  BookOpen, ClipboardList, Radio, Brain, BarChart3,
-  Shield, Zap, Check, ArrowRight, ChevronDown,
-  Globe, Sparkles, Crown, Users,
-  MessageCircle, Award,
-  Layers, Lock, FileText, Target, Gamepad2,
-  Bot, PenTool, LayoutGrid, Database, Briefcase,
-  CalendarClock, CheckSquare, UploadCloud,
-  Laptop, GraduationCap, Building2,
-} from 'lucide-react';
+import LanguageSwitcher from '../../components/LanguageSwitcher';
+
+/* ──────────────────────────────────────────────────────────────
+   SabakHub home page — warm editorial marketing surface.
+   Paper/ink palette + Unbounded/Golos Text pairing, deliberately
+   distinct from the cool slate of the product app. Subpages keep
+   the shared LandingChrome; this page owns its nav and footer.
+   ────────────────────────────────────────────────────────────── */
+
+type InstId = 'center' | 'school' | 'language' | 'academy';
+const INSTITUTIONS: { id: InstId; suffix: string }[] = [
+  { id: 'center', suffix: 'Center' },
+  { id: 'school', suffix: 'School' },
+  { id: 'language', suffix: 'Language' },
+  { id: 'academy', suffix: 'Academy' },
+];
+
+const focusRing =
+  'focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-600 focus-visible:ring-offset-2 focus-visible:ring-offset-paper';
+const focusRingDark =
+  'focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2 focus-visible:ring-offset-ink';
 
 const LandingPage: React.FC = () => {
   const { t } = useTranslation();
   const { firebaseUser: user } = useAuth();
-  const [openFaqIndex, setOpenFaqIndex] = useState<number | null>(0);
   const [demoOpen, setDemoOpen] = useState(false);
+  const [inst, setInst] = useState<InstId>('center');
+  const [openFaq, setOpenFaq] = useState<number | null>(0);
 
-  /* ── Feature categories ── */
-  const featureCategories = [
-    {
-      id: 'core', icon: Briefcase, title: t('landing.catCore'),
-      items: [
-        { icon: Briefcase, label: t('landing.coreMultiTenant') },
-        { icon: Shield, label: t('landing.coreRbac') },
-        { icon: Zap, label: t('landing.coreBilling') },
-        { icon: Lock, label: t('landing.coreAudit') },
-      ],
-    },
-    {
-      id: 'learning', icon: BookOpen, title: t('landing.catLearning'),
-      items: [
-        { icon: BookOpen, label: t('landing.learnCourseBuilder') },
-        { icon: PenTool, label: t('landing.learnRichEditor') },
-        { icon: BarChart3, label: t('landing.learnProgress') },
-        { icon: FileText, label: t('landing.learnDiary') },
-      ],
-    },
-    {
-      id: 'exams', icon: ClipboardList, title: t('landing.catExams'),
-      items: [
-        { icon: ClipboardList, label: t('landing.examBuilder') },
-        { icon: LayoutGrid, label: t('landing.examQuestionTypes') },
-        { icon: Radio, label: t('landing.examRooms') },
-        { icon: Shield, label: t('landing.examAntiCheat') },
-      ],
-    },
-    {
-      id: 'ai', icon: Bot, title: t('landing.catAi'),
-      items: [
-        { icon: Bot, label: t('landing.aiTelegramBot') },
-        { icon: PenTool, label: t('landing.aiGenerateLessons') },
-        { icon: FileText, label: t('landing.aiGenerateTests') },
-        { icon: Sparkles, label: t('landing.aiEvaluate') },
-      ],
-    },
-    {
-      id: 'engagement', icon: Gamepad2, title: t('landing.catEngagement'),
-      items: [
-        { icon: Target, label: t('landing.engXpLevels') },
-        { icon: Award, label: t('landing.engBadges') },
-        { icon: Crown, label: t('landing.engLeaderboards') },
-        { icon: Gamepad2, label: t('landing.engQuiz') },
-      ],
-    },
-    {
-      id: 'certificates', icon: FileText, title: t('landing.catCertificates'),
-      items: [
-        { icon: FileText, label: t('landing.certPdf') },
-        { icon: Globe, label: t('landing.certQr') },
-        { icon: Layers, label: t('landing.certMultilang') },
-      ],
-    },
-    {
-      id: 'communication', icon: MessageCircle, title: t('landing.catComm'),
-      items: [
-        { icon: MessageCircle, label: t('landing.commGroup') },
-        { icon: Users, label: t('landing.commDirect') },
-        { icon: Radio, label: t('landing.commRealtime') },
-      ],
-    },
-    {
-      id: 'analytics', icon: BarChart3, title: t('landing.catAnalytics'),
-      items: [
-        { icon: BarChart3, label: t('landing.analyticsDashboard') },
-        { icon: Users, label: t('landing.analyticsTeacher') },
-        { icon: Layers, label: t('landing.analyticsSaas') },
-      ],
-    },
-  ];
+  const suffix = INSTITUTIONS.find((i) => i.id === inst)!.suffix;
+  // Terminology of the currently selected institution type flows into the
+  // day-timeline copy and the switcher preview, mirroring the real product.
+  const terms = {
+    students: t(`terms.${inst}.students`),
+    group: t(`terms.${inst}.group`),
+    groupsDat: t(`home.fitGroupsDat${suffix}`),
+  };
 
-  /* ── Pricing plans ── */
-  const plans = [
-    {
-      id: 'basic', name: t('landing.planBasic'), price: 1990, popular: false, icon: BookOpen,
-      features: [t('landing.planBasicF1'), t('landing.planBasicF2'), t('landing.planBasicF3'), t('landing.planBasicF4')],
-    },
-    {
-      id: 'pro', name: t('landing.planPro'), price: 4990, popular: true, icon: Crown,
-      features: [t('landing.planProF1'), t('landing.planProF2'), t('landing.planProF3'), t('landing.planProF4'), t('landing.planProF5')],
-    },
-    {
-      id: 'enterprise', name: t('landing.planEnt'), price: 14900, popular: false, icon: Shield,
-      features: [t('landing.planEntF1'), t('landing.planEntF2'), t('landing.planEntF3'), t('landing.planEntF4'), t('landing.planEntF5')],
-    },
-  ];
+  const faqs = [1, 2, 3, 4].map((n) => ({ q: t(`home.faq${n}Q`), a: t(`home.faq${n}A`) }));
+  const marquee = [1, 2, 3, 4, 5].map((n) => t(`home.marq${n}`));
 
-  /* ── Target niches ── */
-  const targetNiches = [
-    { id: 'it', icon: Laptop, title: t('landing.niche1Title'), desc: t('landing.niche1Desc') },
-    { id: 'lang', icon: Globe, title: t('landing.niche2Title'), desc: t('landing.niche2Desc') },
-    { id: 'tutor', icon: GraduationCap, title: t('landing.niche3Title'), desc: t('landing.niche3Desc') },
-    { id: 'corporate', icon: Building2, title: t('landing.niche4Title'), desc: t('landing.niche4Desc') },
-    { id: 'studio', icon: LayoutGrid, title: t('landing.niche5Title'), desc: t('landing.niche5Desc') },
-    { id: 'org', icon: Briefcase, title: t('landing.niche6Title'), desc: t('landing.niche6Desc') },
-  ];
-
-  /* ── FAQ ── */
-  const faqs = [
-    { q: t('landing.faq1Q'), a: t('landing.faq1A') },
-    { q: t('landing.faq2Q'), a: t('landing.faq2A') },
-    { q: t('landing.faq3Q'), a: t('landing.faq3A') },
-    { q: t('landing.faq4Q'), a: t('landing.faq4A') },
-    { q: t('landing.faq5Q'), a: t('landing.faq5A') },
+  const days = [
+    { time: '07:45', title: t('home.day1Title'), desc: t('home.day1Desc', terms) },
+    { time: '12:30', title: t('home.day2Title'), desc: t('home.day2Desc', terms) },
+    { time: '17:10', title: t('home.day3Title'), desc: t('home.day3Desc', terms) },
+    { time: '21:00', title: t('home.day4Title'), desc: t('home.day4Desc', terms), dark: true },
   ];
 
   return (
-    <div className="min-h-screen bg-white text-slate-900 antialiased selection:bg-primary-600 selection:text-white">
-
-      <LandingNav variant="home" />
+    <div className="min-h-screen overflow-x-clip bg-paper font-marketing text-ink antialiased selection:bg-primary-600 selection:text-white">
+      <HomeNav onDemo={() => setDemoOpen(true)} />
 
       {/* ═══ Hero ═══ */}
-      <section className="relative overflow-hidden px-6 pt-36 pb-20 sm:pt-40 sm:pb-28">
-        {/* fading grid — replaces the old blur blobs */}
-        <div
-          aria-hidden
-          className="pointer-events-none absolute inset-0 -z-10 bg-[linear-gradient(to_right,#e2e8f01a_1px,transparent_1px),linear-gradient(to_bottom,#e2e8f01a_1px,transparent_1px)] bg-[size:56px_56px]"
-          style={{ WebkitMaskImage: 'radial-gradient(ellipse 70% 60% at 50% 0%, #000 55%, transparent 100%)', maskImage: 'radial-gradient(ellipse 70% 60% at 50% 0%, #000 55%, transparent 100%)' }}
-        />
-        <div aria-hidden className="pointer-events-none absolute left-1/2 top-0 -z-10 h-[420px] w-[820px] -translate-x-1/2 rounded-full bg-primary-200/30 blur-[120px]" />
-
-        <div className="max-w-3xl mx-auto text-center">
-          <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white/70 px-3.5 py-1.5 text-sm font-medium text-slate-700 shadow-sm backdrop-blur">
-            <Sparkles className="w-4 h-4 text-primary-600" />
-            {t('landing.heroBadge')}
-          </div>
-          <h1 className="mt-6 text-balance text-4xl sm:text-5xl md:text-6xl font-bold tracking-tight leading-[1.05] text-slate-900">
-            {t('landing.heroTitle')}
-          </h1>
-          <p className="mt-6 text-lg sm:text-xl leading-relaxed text-slate-600 max-w-2xl mx-auto">
-            {t('landing.heroSubtitle')}
-          </p>
-          <div className="mt-9 flex flex-col sm:flex-row items-center justify-center gap-3">
-            {user ? (
-              <Link to="/dashboard" className="group inline-flex items-center justify-center gap-2 rounded-xl bg-primary-600 px-7 py-3.5 text-base font-semibold text-white shadow-lg shadow-primary-600/20 transition-all hover:bg-primary-700 hover:shadow-primary-600/30">
-                {t('nav.dashboard') || 'Dashboard'}
-                <ArrowRight className="w-5 h-5 transition-transform group-hover:translate-x-0.5" />
-              </Link>
-            ) : (
-              <>
-                <button type="button" onClick={() => setDemoOpen(true)} className="group inline-flex items-center justify-center gap-2 rounded-xl bg-primary-600 px-7 py-3.5 text-base font-semibold text-white shadow-lg shadow-primary-600/20 transition-all hover:bg-primary-700 hover:shadow-primary-600/30">
-                  {t('landing.heroDemo')}
-                  <ArrowRight className="w-5 h-5 transition-transform group-hover:translate-x-0.5" />
-                </button>
-                <Link to="/login" className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-6 py-3.5 text-base font-medium text-slate-700 transition-colors hover:border-slate-300 hover:bg-slate-50">
-                  {t('auth.login')}
-                </Link>
-              </>
-            )}
-          </div>
-          <p className="mx-auto mt-6 flex max-w-md flex-wrap items-center justify-center gap-x-2.5 gap-y-1 text-sm text-slate-600">
-            <Check className="h-4 w-4 shrink-0 text-primary-600" aria-hidden />
-            <span><span className="font-semibold text-slate-900">200+</span> {t('landing.statStudents')}</span>
-            <span className="text-slate-300" aria-hidden>·</span>
-            <span><span className="font-semibold text-slate-900">50+</span> {t('landing.statExams')}</span>
-          </p>
-        </div>
-
-        {/* Product preview */}
-        <div className="relative mx-auto mt-16 max-w-5xl">
-          <div aria-hidden className="absolute -inset-x-6 -top-6 bottom-0 -z-10 rounded-[2rem] bg-gradient-to-b from-primary-100/50 to-transparent blur-2xl" />
-          <ProductFrame />
-        </div>
-      </section>
-
-      {/* ═══ Features ═══ */}
-      <section id="features" className="px-6 py-20 sm:py-28 bg-slate-50 border-y border-slate-100">
-        <div className="max-w-6xl mx-auto">
-          <SectionHead eyebrow={t('landing.nichesBadge')} title={t('landing.featuresTitle')} subtitle={t('landing.featuresSubtitle')} />
-          <div className="mt-14 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-            {featureCategories.map((cat) => (
-              <div key={cat.id} className="group rounded-2xl border border-slate-200 bg-white p-6 transition-all hover:border-slate-300 hover:shadow-lg hover:shadow-slate-900/5">
-                <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-primary-50 text-primary-600 ring-1 ring-primary-100 transition-colors group-hover:bg-primary-600 group-hover:text-white">
-                  <cat.icon className="w-5 h-5" />
-                </div>
-                <h3 className="mt-5 text-[0.95rem] font-semibold text-slate-900">{cat.title}</h3>
-                <ul className="mt-3 space-y-2">
-                  {cat.items.map((item, j) => (
-                    <li key={j} className="flex items-center gap-2 text-sm text-slate-500">
-                      <item.icon className="w-4 h-4 text-slate-400 shrink-0" />
-                      {item.label}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* ═══ AI (the one dark, focal section) ═══ */}
-      <section className="relative overflow-hidden px-6 py-20 sm:py-28 bg-slate-950">
-        <div
-          aria-hidden
-          className="pointer-events-none absolute inset-0 -z-0 opacity-[0.18] bg-[linear-gradient(to_right,#ffffff14_1px,transparent_1px),linear-gradient(to_bottom,#ffffff14_1px,transparent_1px)] bg-[size:56px_56px]"
-          style={{ WebkitMaskImage: 'radial-gradient(ellipse 60% 60% at 50% 40%, #000 40%, transparent 100%)', maskImage: 'radial-gradient(ellipse 60% 60% at 50% 40%, #000 40%, transparent 100%)' }}
-        />
-        <div aria-hidden className="pointer-events-none absolute right-[-10%] top-[-20%] -z-0 h-[460px] w-[460px] rounded-full bg-primary-600/20 blur-[130px]" />
-
-        <div className="relative max-w-6xl mx-auto">
-          <SectionHead
-            tone="dark"
-            eyebrow="SabakHub AI"
-            title={`${t('landing.aiSecTitlePre')}${t('landing.aiSecTitleHighlight')}`}
-            subtitle={t('landing.aiSecSubtitle')}
-          />
-          <div className="mt-14 grid grid-cols-1 lg:grid-cols-2 gap-5">
-            {[
-              { icon: Brain, title: t('landing.aiSecF1Title'), desc: t('landing.aiSecF1Desc') },
-              { icon: Check, title: t('landing.aiSecF2Title'), desc: t('landing.aiSecF2Desc') },
-              { icon: Database, title: t('landing.tgSecF1Title'), desc: t('landing.tgSecF1Desc') },
-              { icon: MessageCircle, title: t('landing.tgSecF2Title'), desc: t('landing.tgSecF2Desc') },
-            ].map((f, i) => (
-              <div key={i} className="rounded-2xl border border-white/10 bg-white/[0.03] p-6 transition-colors hover:border-white/20 hover:bg-white/[0.05]">
-                <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-primary-500/15 text-primary-300 ring-1 ring-primary-400/20">
-                  <f.icon className="w-5 h-5" />
-                </div>
-                <h3 className="mt-5 text-lg font-semibold text-white">{f.title}</h3>
-                <p className="mt-2 text-sm leading-relaxed text-slate-400">{f.desc}</p>
-              </div>
-            ))}
-          </div>
-          <div className="mt-10 flex justify-center">
-            <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-4 py-2 text-sm text-slate-300">
-              <Bot className="w-4 h-4 text-primary-300" />
-              {t('landing.tgSecBadge')}
-            </span>
-          </div>
-        </div>
-      </section>
-
-      {/* ═══ For teachers & managers ═══ */}
-      <section className="px-6 py-20 sm:py-28">
-        <div className="max-w-6xl mx-auto grid lg:grid-cols-2 gap-14 items-center">
+      <header className="mx-auto max-w-[1240px] px-5 pb-14 pt-12 sm:px-8 sm:pt-16 lg:pb-[72px] lg:pt-[88px]">
+        <div className="grid items-center gap-12 lg:grid-cols-[1.15fr_0.85fr] lg:gap-16">
           <div>
-            <SectionHead align="left" eyebrow={t('landing.teachSecBadge')} title={t('landing.teachSecTitle')} subtitle={t('landing.teachSecSubtitle')} />
+            <p className="text-sm font-semibold uppercase tracking-[0.14em] text-primary-600">
+              {t('home.heroEyebrow')}
+            </p>
+            <h1 className="mt-[22px] text-balance font-marketing-display text-[clamp(34px,4.6vw,64px)] font-bold leading-[1.08] tracking-[-0.01em]">
+              {t('home.heroTitle1')}
+              <br />
+              {t('home.heroTitle2')}{' '}
+              <span className="shadow-[inset_0_-0.32em_0_rgba(245,158,11,0.5)]">{t('home.heroTitleMark')}</span>.
+            </h1>
+            <p className="mt-[26px] max-w-[52ch] text-[17px] leading-[1.65] text-ink/70 sm:text-[19px]">
+              {t('home.heroSubtitle')}
+            </p>
+            <div className="mt-9 flex flex-wrap items-center gap-3.5">
+              {user ? (
+                <Link
+                  to="/dashboard"
+                  className={`inline-flex items-center gap-2.5 rounded-full bg-primary-600 px-8 py-4 text-[17px] font-semibold text-white shadow-[0_12px_28px_-8px_rgba(79,70,229,0.45)] transition-[transform,box-shadow] hover:-translate-y-0.5 hover:shadow-[0_18px_34px_-8px_rgba(79,70,229,0.55)] active:scale-[0.98] ${focusRing}`}
+                >
+                  {t('nav.dashboard')} <span aria-hidden>→</span>
+                </Link>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setDemoOpen(true)}
+                  className={`inline-flex items-center gap-2.5 rounded-full bg-primary-600 px-8 py-4 text-[17px] font-semibold text-white shadow-[0_12px_28px_-8px_rgba(79,70,229,0.45)] transition-[transform,box-shadow] hover:-translate-y-0.5 hover:shadow-[0_18px_34px_-8px_rgba(79,70,229,0.55)] active:scale-[0.98] ${focusRing}`}
+                >
+                  {t('home.heroCta')} <span aria-hidden>→</span>
+                </button>
+              )}
+              <a
+                href="#day"
+                className={`inline-flex items-center gap-2.5 rounded-full border-[1.5px] border-ink/20 px-[26px] py-4 text-[17px] font-semibold text-ink transition-colors hover:border-ink ${focusRing}`}
+              >
+                {t('home.heroCta2')}
+              </a>
+            </div>
+            <p className="mt-[26px] text-[15px] text-ink/65">
+              <span className="font-bold text-ink">{t('home.stat1Num')}</span> {t('home.stat1Text')} ·{' '}
+              <span className="font-bold text-ink">{t('home.stat2Num')}</span> {t('home.stat2Text')} ·{' '}
+              {t('home.stat3')}
+            </p>
           </div>
-          <div className="grid sm:grid-cols-2 gap-4">
-            {[
-              { icon: CalendarClock, title: t('landing.teachCard1Title'), desc: t('landing.teachCard1Desc') },
-              { icon: CheckSquare, title: t('landing.teachCard2Title'), desc: t('landing.teachCard2Desc') },
-              { icon: Database, title: t('landing.teachCard3Title'), desc: t('landing.teachCard3Desc') },
-              { icon: Shield, title: t('landing.teachCard4Title'), desc: t('landing.teachCard4Desc') },
-            ].map((c, i) => (
-              <div key={i} className="rounded-2xl border border-slate-200 bg-white p-5 transition-all hover:border-slate-300 hover:shadow-lg hover:shadow-slate-900/5">
-                <c.icon className="w-7 h-7 text-primary-600" />
-                <h4 className="mt-4 font-semibold text-slate-900">{c.title}</h4>
-                <p className="mt-1.5 text-sm leading-relaxed text-slate-500">{c.desc}</p>
-              </div>
-            ))}
-          </div>
+          <HeroVisual />
+        </div>
+      </header>
+
+      {/* ═══ Marquee ═══ */}
+      <div
+        aria-hidden
+        className="overflow-hidden whitespace-nowrap border-y border-ink/10 bg-ink py-3.5 text-paper"
+      >
+        <div className="inline-flex gap-12 pr-12 [animation:mkt-marquee_26s_linear_infinite]">
+          {[0, 1].map((copy) => (
+            <React.Fragment key={copy}>
+              {marquee.map((label, i) => (
+                <React.Fragment key={i}>
+                  <span className="font-marketing-display text-sm font-semibold">{label}</span>
+                  <span className="text-amber-500">✳</span>
+                </React.Fragment>
+              ))}
+            </React.Fragment>
+          ))}
+        </div>
+      </div>
+
+      {/* ═══ One day with SabakHub ═══ */}
+      <section id="day" className="mx-auto max-w-[1240px] scroll-mt-24 px-5 pb-16 pt-16 sm:px-8 sm:pt-[104px]">
+        <p className="text-sm font-semibold uppercase tracking-[0.14em] text-primary-600">{t('home.dayEyebrow')}</p>
+        <h2 className="mt-[18px] max-w-[22ch] text-balance font-marketing-display text-[clamp(26px,3vw,42px)] font-bold leading-[1.15]">
+          {t('home.dayTitle')}
+        </h2>
+        <div className="mt-10 grid gap-5 sm:grid-cols-2 sm:gap-5 lg:mt-14 xl:grid-cols-4">
+          {days.map((d) => (
+            <article
+              key={d.time}
+              className={`rounded-3xl p-7 transition-[transform,box-shadow] duration-200 ease-[cubic-bezier(0.16,1,0.3,1)] hover:-translate-y-1.5 ${
+                d.dark
+                  ? 'bg-ink text-paper hover:shadow-[0_20px_40px_-20px_rgba(22,20,31,0.45)]'
+                  : 'border border-ink/5 bg-white hover:shadow-[0_20px_40px_-20px_rgba(22,20,31,0.25)]'
+              }`}
+            >
+              <p className={`font-marketing-display text-[26px] font-bold ${d.dark ? 'text-amber-500' : 'text-primary-600'}`}>
+                {d.time}
+              </p>
+              <h3 className="mt-3.5 text-[17px] font-semibold">{d.title}</h3>
+              <p className={`mt-2.5 text-[15px] leading-relaxed ${d.dark ? 'text-paper/70' : 'text-ink/65'}`}>
+                {d.desc}
+              </p>
+            </article>
+          ))}
         </div>
       </section>
 
-      {/* ═══ For students & parents ═══ */}
-      <section className="px-6 py-20 sm:py-28 bg-slate-50 border-y border-slate-100">
-        <div className="max-w-6xl mx-auto grid lg:grid-cols-2 gap-14 items-center">
-          <ul className="order-2 lg:order-1 space-y-3">
-            {[
-              { icon: Crown, title: t('landing.studItem1Title'), desc: t('landing.studItem1Desc') },
-              { icon: UploadCloud, title: t('landing.studItem2Title'), desc: t('landing.studItem2Desc') },
-              { icon: BarChart3, title: t('landing.studItem3Title'), desc: t('landing.studItem3Desc') },
-            ].map((s, i) => (
-              <li key={i} className="flex gap-4 rounded-2xl border border-slate-200 bg-white p-5 transition-colors hover:border-slate-300">
-                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary-50 text-primary-600 ring-1 ring-primary-100">
-                  <s.icon className="w-5 h-5" />
-                </div>
-                <div>
-                  <h4 className="font-semibold text-slate-900">{s.title}</h4>
-                  <p className="mt-1 text-sm leading-relaxed text-slate-500">{s.desc}</p>
-                </div>
-              </li>
-            ))}
-          </ul>
-          <div className="order-1 lg:order-2">
-            <SectionHead align="left" eyebrow={t('landing.studSecBadge')} title={t('landing.studSecTitle')} subtitle={t('landing.studSecSubtitle')} />
-          </div>
-        </div>
-      </section>
-
-      {/* ═══ Niches ═══ */}
-      <section className="px-6 py-20 sm:py-28">
-        <div className="max-w-6xl mx-auto">
-          <SectionHead eyebrow={t('landing.nichesBadge')} title={t('landing.nichesTitle')} subtitle={t('landing.nichesSubtitle')} />
-          <div className="mt-14 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-            {targetNiches.map((niche) => (
-              <div key={niche.id} className="group rounded-2xl border border-slate-200 bg-white p-7 transition-all hover:border-slate-300 hover:shadow-lg hover:shadow-slate-900/5">
-                <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-slate-900 text-white transition-colors group-hover:bg-primary-600">
-                  <niche.icon className="w-5 h-5" />
-                </div>
-                <h3 className="mt-5 text-lg font-semibold text-slate-900">{niche.title}</h3>
-                <p className="mt-2 text-sm leading-relaxed text-slate-500">{niche.desc}</p>
+      {/* ═══ Institution switcher ═══ */}
+      <section id="fit" className="mx-auto max-w-[1240px] scroll-mt-24 px-5 pb-16 pt-16 sm:px-8 sm:pb-[104px]">
+        <div className="rounded-[28px] border border-ink/5 bg-white p-6 sm:rounded-[32px] sm:p-10 lg:p-14">
+          <div className="grid items-start gap-9 lg:grid-cols-2 lg:gap-14">
+            <div>
+              <p className="text-sm font-semibold uppercase tracking-[0.14em] text-primary-600">{t('home.fitEyebrow')}</p>
+              <h2 className="mt-[18px] text-balance font-marketing-display text-[clamp(24px,2.6vw,36px)] font-bold leading-[1.18]">
+                {t('home.fitTitle')}
+              </h2>
+              <p className="mt-[18px] leading-[1.65] text-ink/70">{t('home.fitDesc')}</p>
+              <div className="mt-7 flex flex-col gap-2.5" role="group" aria-label={t('home.fitEyebrow')}>
+                {INSTITUTIONS.map(({ id, suffix: sfx }) => {
+                  const selected = inst === id;
+                  return (
+                    <button
+                      key={id}
+                      type="button"
+                      aria-pressed={selected}
+                      onClick={() => setInst(id)}
+                      className={`flex w-full items-center justify-between gap-3 rounded-2xl border-[1.5px] px-5 py-4 text-left text-base font-semibold transition-colors ${focusRing} ${
+                        selected
+                          ? 'border-primary-600 bg-primary-50'
+                          : 'border-ink/10 bg-white hover:border-ink/30'
+                      }`}
+                    >
+                      {t(`inst.${id}`)}
+                      <span className="text-[13px] font-medium text-ink/60">{t(`home.fitDesc${sfx}`)}</span>
+                    </button>
+                  );
+                })}
               </div>
-            ))}
+            </div>
+            <div className="lg:sticky lg:top-24">
+              <div className="rounded-3xl bg-paper p-6 sm:p-8">
+                <p className="text-[13px] uppercase tracking-[0.1em] text-ink/60">{t('home.fitPreviewLabel')}</p>
+                <div className="mt-[22px] flex flex-col gap-3.5">
+                  {[
+                    { label: t('home.fitRowPeople'), value: t(`terms.${inst}.students`) },
+                    { label: t('home.fitRowGroups'), value: t(`terms.${inst}.groups`) },
+                    { label: t('home.fitRowScale'), value: t(`home.fitScale${suffix}`) },
+                  ].map((row) => (
+                    <div key={row.label} className="flex items-center justify-between rounded-[14px] bg-white px-5 py-4">
+                      <span className="text-[15px] text-ink/65">{row.label}</span>
+                      <span className="font-bold">{row.value}</span>
+                    </div>
+                  ))}
+                </div>
+                <p className="mt-[22px] text-sm leading-[1.55] text-ink/65">{t(`home.fitNote${suffix}`)}</p>
+              </div>
+            </div>
           </div>
         </div>
       </section>
 
       {/* ═══ Pricing ═══ */}
-      <section id="pricing" className="px-6 py-20 sm:py-28 bg-slate-50 border-y border-slate-100">
-        <div className="max-w-6xl mx-auto">
-          <SectionHead eyebrow={t('landing.navPricing')} title={t('landing.pricingTitle')} subtitle={t('landing.pricingSubtitle')} />
-          <div className="mt-14 grid grid-cols-1 md:grid-cols-3 gap-6 items-start max-w-5xl mx-auto">
-            {plans.map((plan) => (
+      <section id="pricing" className="scroll-mt-0 bg-ink px-5 py-16 text-paper sm:px-8 sm:py-[104px]">
+        <div className="mx-auto max-w-[1240px]">
+          <p className="text-sm font-semibold uppercase tracking-[0.14em] text-amber-500">{t('home.priceEyebrow')}</p>
+          <div className="flex flex-wrap items-end justify-between gap-8">
+            <h2 className="mt-[18px] max-w-[20ch] text-balance font-marketing-display text-[clamp(26px,3vw,42px)] font-bold leading-[1.15]">
+              {t('home.priceTitle')}
+            </h2>
+            <p className="max-w-[36ch] text-[15px] text-paper/60">{t('home.priceDesc')}</p>
+          </div>
+          <div className="mt-10 grid items-stretch gap-5 min-[900px]:grid-cols-3 lg:mt-14">
+            {[
+              { name: t('home.plan1Name'), price: t('home.plan1Price'), desc: t('home.plan1Desc'), cta: t('home.plan1Cta') },
+              { name: t('home.plan2Name'), price: t('home.plan2Price'), desc: t('home.plan2Desc'), cta: t('home.plan2Cta'), popular: true },
+              { name: t('home.plan3Name'), price: t('home.plan3Price'), desc: t('home.plan3Desc'), cta: t('home.plan3Cta') },
+            ].map((plan) => (
               <div
-                key={plan.id}
-                className={`relative rounded-2xl p-7 transition-all ${plan.popular
-                  ? 'bg-slate-900 text-white shadow-xl shadow-slate-900/20 md:-translate-y-3'
-                  : 'bg-white border border-slate-200 hover:border-slate-300 hover:shadow-lg hover:shadow-slate-900/5'}`}
+                key={plan.name}
+                className={`flex flex-col rounded-[28px] p-7 sm:p-9 ${
+                  plan.popular
+                    ? 'relative bg-paper text-ink shadow-[0_30px_60px_-24px_rgba(0,0,0,0.5)] min-[900px]:-translate-y-3.5'
+                    : 'border border-paper/15'
+                }`}
               >
                 {plan.popular && (
-                  <div className="absolute -top-3 left-7 rounded-full bg-primary-600 px-3 py-1 text-xs font-semibold text-white shadow-lg shadow-primary-600/30">
-                    {t('landing.popular')}
-                  </div>
+                  <span className="absolute -top-[13px] left-9 rounded-full bg-amber-500 px-3.5 py-[5px] text-xs font-bold text-ink">
+                    {t('home.planPopular')}
+                  </span>
                 )}
-                <div className="flex items-center gap-3">
-                  <div className={`flex h-10 w-10 items-center justify-center rounded-lg ${plan.popular ? 'bg-white/10 text-white' : 'bg-slate-100 text-slate-700'}`}>
-                    <plan.icon className="w-5 h-5" />
-                  </div>
-                  <h3 className="font-semibold">{plan.name}</h3>
+                <h3 className="text-[17px] font-semibold">{plan.name}</h3>
+                <p className="mt-[22px] font-marketing-display text-[40px] font-bold leading-none">
+                  {plan.price}{' '}
+                  <span className={`text-[15px] font-normal ${plan.popular ? 'text-ink/60' : 'text-paper/60'}`}>
+                    {t('home.pricePer')}
+                  </span>
+                </p>
+                <p className={`mt-[18px] text-[15px] leading-relaxed ${plan.popular ? 'text-ink/70' : 'text-paper/70'}`}>
+                  {plan.desc}
+                </p>
+                <div className="mt-auto pt-7">
+                  <button
+                    type="button"
+                    onClick={() => setDemoOpen(true)}
+                    className={`block w-full rounded-full py-3.5 text-center text-[15px] font-semibold transition-colors ${
+                      plan.popular
+                        ? `bg-primary-600 text-white shadow-[0_12px_24px_-8px_rgba(79,70,229,0.5)] hover:bg-primary-700 ${focusRing}`
+                        : `border-[1.5px] border-paper/35 text-paper hover:border-paper ${focusRingDark}`
+                    }`}
+                  >
+                    <span className="sr-only">{plan.name}: </span>
+                    {plan.cta}
+                  </button>
                 </div>
-                <div className="mt-6 flex items-baseline gap-1.5">
-                  {plan.price === 0 ? (
-                    <span className="text-4xl font-bold tracking-tight">{t('landing.free')}</span>
-                  ) : (
-                    <>
-                      <span className="text-4xl font-bold tracking-tight">{plan.price.toLocaleString()}</span>
-                      <span className={`text-sm ${plan.popular ? 'text-white/60' : 'text-slate-500'}`}>{t('landing.currency')}/{t('landing.perMonth')}</span>
-                    </>
-                  )}
-                </div>
-                <ul className="mt-6 space-y-3">
-                  {plan.features.map((f) => (
-                    <li key={f} className={`flex items-start gap-2.5 text-sm ${plan.popular ? 'text-white/85' : 'text-slate-600'}`}>
-                      <Check className={`mt-0.5 w-4 h-4 shrink-0 ${plan.popular ? 'text-primary-400' : 'text-primary-600'}`} />
-                      {f}
-                    </li>
-                  ))}
-                </ul>
-                <button
-                  type="button"
-                  onClick={() => setDemoOpen(true)}
-                  className={`mt-8 block w-full rounded-xl py-3 text-center text-sm font-semibold transition-all ${plan.popular
-                    ? 'bg-white text-slate-900 hover:bg-slate-100'
-                    : 'bg-slate-900 text-white hover:bg-slate-800'}`}
-                >
-                  {t('landing.heroDemo')}
-                </button>
               </div>
             ))}
           </div>
@@ -378,138 +267,260 @@ const LandingPage: React.FC = () => {
       </section>
 
       {/* ═══ FAQ ═══ */}
-      <section id="faq" className="px-6 py-20 sm:py-28">
-        <div className="max-w-3xl mx-auto">
-          <SectionHead eyebrow={t('landing.navFaq')} title={t('landing.faqTitle')} subtitle={t('landing.faqSubtitle')} />
-          <div className="mt-12 divide-y divide-slate-200 border-y border-slate-200">
-            {faqs.map((faq, i) => (
-              <div key={i}>
+      <section id="faq" className="mx-auto max-w-[860px] scroll-mt-24 px-5 py-16 sm:px-8 sm:py-[104px]">
+        <h2 className="font-marketing-display text-[clamp(24px,2.6vw,36px)] font-bold">{t('home.faqTitle')}</h2>
+        <div className="mt-10 border-t border-ink/10">
+          {faqs.map((faq, i) => {
+            const open = openFaq === i;
+            return (
+              <div key={i} className="border-b border-ink/10">
                 <button
-                  onClick={() => setOpenFaqIndex(openFaqIndex === i ? null : i)}
-                  aria-expanded={openFaqIndex === i}
-                  className="flex w-full items-center justify-between gap-4 py-5 text-left"
+                  type="button"
+                  aria-expanded={open}
+                  onClick={() => setOpenFaq(open ? null : i)}
+                  className={`flex w-full items-center justify-between gap-5 py-6 text-left text-[17px] font-semibold sm:text-lg ${focusRing}`}
                 >
-                  <span className="font-medium text-slate-900">{faq.q}</span>
-                  <ChevronDown className={`w-5 h-5 shrink-0 text-slate-400 transition-transform ${openFaqIndex === i ? 'rotate-180 text-primary-600' : ''}`} />
+                  {faq.q}
+                  <span aria-hidden className="font-marketing-display text-xl text-primary-600">
+                    {open ? '−' : '+'}
+                  </span>
                 </button>
-                <div className={`grid transition-all duration-200 ${openFaqIndex === i ? 'grid-rows-[1fr] pb-5' : 'grid-rows-[0fr]'}`}>
-                  <p className="overflow-hidden text-sm leading-relaxed text-slate-500">{faq.a}</p>
+                <div className={`grid transition-[grid-template-rows] duration-200 ${open ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'}`}>
+                  <p className={`overflow-hidden pr-10 leading-[1.65] text-ink/70 ${open ? 'pb-6' : ''}`}>{faq.a}</p>
                 </div>
               </div>
-            ))}
-          </div>
+            );
+          })}
         </div>
       </section>
 
       {/* ═══ CTA ═══ */}
-      <section className="px-6 pb-24">
-        <div className="relative max-w-5xl mx-auto overflow-hidden rounded-3xl bg-slate-900 px-8 py-16 sm:px-16 sm:py-20 text-center">
-          <div aria-hidden className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top,rgba(99,102,241,0.35),transparent_60%)]" />
-          <div className="relative">
-            <h2 className="text-3xl sm:text-4xl font-bold tracking-tight text-white">{t('landing.ctaTitle')}</h2>
-            <p className="mx-auto mt-4 max-w-xl text-lg text-slate-300">{t('landing.ctaSubtitle')}</p>
-            {user ? (
-              <Link to="/dashboard" className="group mt-8 inline-flex items-center gap-2 rounded-xl bg-white px-7 py-3.5 text-base font-semibold text-slate-900 transition-colors hover:bg-slate-100">
-                {t('nav.dashboard') || 'Dashboard'}
-                <ArrowRight className="w-5 h-5 transition-transform group-hover:translate-x-0.5" />
-              </Link>
-            ) : (
-              <button type="button" onClick={() => setDemoOpen(true)} className="group mt-8 inline-flex items-center gap-2 rounded-xl bg-white px-7 py-3.5 text-base font-semibold text-slate-900 transition-colors hover:bg-slate-100">
-                {t('landing.heroDemo')}
-                <ArrowRight className="w-5 h-5 transition-transform group-hover:translate-x-0.5" />
-              </button>
-            )}
+      <section id="cta" className="mx-auto max-w-[1240px] scroll-mt-24 px-5 pb-16 sm:px-8 sm:pb-[104px]">
+        <div className="relative overflow-hidden rounded-[28px] bg-primary-600 p-7 text-white sm:rounded-[36px] sm:px-16 sm:py-[72px]">
+          <div aria-hidden className="absolute -right-20 -top-20 h-[340px] w-[340px] rounded-full bg-white/[0.08]" />
+          <div aria-hidden className="absolute -bottom-[120px] right-[60px] h-[260px] w-[260px] rounded-full bg-amber-500/25" />
+          <div className="relative max-w-[60ch]">
+            <h2 className="text-balance font-marketing-display text-[clamp(26px,3.2vw,44px)] font-bold leading-[1.12]">
+              {t('home.ctaTitle')}
+            </h2>
+            <p className="mt-5 text-[17px] leading-relaxed text-white/80">{t('home.ctaDesc')}</p>
+            <div className="mt-[34px] flex flex-wrap gap-3.5">
+              {user ? (
+                <Link
+                  to="/dashboard"
+                  className="inline-flex items-center gap-2.5 rounded-full bg-white px-[30px] py-4 text-base font-bold text-ink transition-transform hover:scale-[1.03] focus:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-primary-600"
+                >
+                  {t('nav.dashboard')} <span aria-hidden>→</span>
+                </Link>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setDemoOpen(true)}
+                  className="inline-flex items-center gap-2.5 rounded-full bg-white px-[30px] py-4 text-base font-bold text-ink transition-transform hover:scale-[1.03] focus:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-primary-600"
+                >
+                  {t('home.ctaBtn')} <span aria-hidden>→</span>
+                </button>
+              )}
+              <a
+                href="https://t.me/sabakhub_bot"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-2.5 rounded-full border-[1.5px] border-white/40 px-[26px] py-4 text-base font-semibold text-white transition-colors hover:border-white focus:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-primary-600"
+              >
+                {t('home.ctaTg')}
+              </a>
+            </div>
           </div>
         </div>
       </section>
 
-      <LandingFooter />
+      <HomeFooter />
 
       <RequestDemoModal open={demoOpen} onClose={() => setDemoOpen(false)} />
     </div>
   );
 };
 
-/* Language-neutral product preview — a stylised app window built from
-   shapes only, so it reads as "a real product" in every locale. */
-const ProductFrame: React.FC = () => {
-  const navIcons = [LayoutGrid, BookOpen, ClipboardList, Users, BarChart3, CalendarClock];
+/* ── Nav ── */
+const HomeNav: React.FC<{ onDemo: () => void }> = ({ onDemo }) => {
+  const { t } = useTranslation();
+  const { firebaseUser: user } = useAuth();
+  const [open, setOpen] = useState(false);
+
+  const anchors = [
+    { href: '#day', label: t('home.navHow') },
+    { href: '#fit', label: t('home.navFit') },
+    { href: '#pricing', label: t('home.navPricing') },
+    { href: '#faq', label: t('home.navFaq') },
+  ];
+
   return (
-    <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl shadow-slate-900/10 ring-1 ring-slate-900/5">
-      {/* window chrome */}
-      <div className="flex items-center gap-2 border-b border-slate-100 bg-slate-50 px-4 h-10">
-        <span className="h-3 w-3 rounded-full bg-slate-300" />
-        <span className="h-3 w-3 rounded-full bg-slate-300" />
-        <span className="h-3 w-3 rounded-full bg-slate-300" />
-        <div className="ml-3 hidden h-5 w-full max-w-[260px] items-center rounded-md border border-slate-200 bg-white px-2 sm:flex">
-          <span className="h-2 w-2 rounded-full bg-emerald-400" />
-          <span className="ml-2 h-1.5 w-24 rounded bg-slate-200" />
+    <nav className="sticky top-0 z-50 border-b border-ink/[0.08] bg-paper/85 backdrop-blur-xl">
+      <div className="mx-auto flex h-[72px] max-w-[1240px] items-center justify-between px-5 sm:px-8">
+        <Link to="/" className={`flex items-center gap-3 rounded-lg ${focusRing}`}>
+          <img src="/icons/logo.png" alt="SabakHub" className="h-[34px] w-[34px] rounded-[9px]" />
+          <span className="hidden font-marketing-display text-[17px] font-semibold min-[400px]:block">SabakHub</span>
+        </Link>
+
+        <div className="hidden items-center gap-7 text-[15px] lg:flex">
+          {anchors.map((a) => (
+            <a key={a.href} href={a.href} className={`rounded-lg text-ink/65 transition-colors hover:text-ink ${focusRing}`}>
+              {a.label}
+            </a>
+          ))}
+        </div>
+
+        <div className="flex items-center gap-2">
+          <div className="hidden sm:block">
+            <LanguageSwitcher compact />
+          </div>
+          {user ? (
+            <Link
+              to="/dashboard"
+              className={`rounded-full bg-ink px-5 py-3 text-[15px] font-semibold text-paper transition-transform hover:scale-[1.03] ${focusRing}`}
+            >
+              {t('nav.dashboard')}
+            </Link>
+          ) : (
+            <>
+              <Link
+                to="/login"
+                className={`hidden rounded-lg px-3.5 py-2.5 text-[15px] text-ink/70 transition-colors hover:text-ink sm:block ${focusRing}`}
+              >
+                {t('home.navLogin')}
+              </Link>
+              <button
+                type="button"
+                onClick={onDemo}
+                className={`rounded-full bg-ink px-4 py-2.5 text-sm font-semibold text-paper transition-transform hover:scale-[1.03] sm:px-[22px] sm:py-3 sm:text-[15px] ${focusRing}`}
+              >
+                {t('home.navDemo')}
+              </button>
+            </>
+          )}
+          <button
+            type="button"
+            onClick={() => setOpen(!open)}
+            aria-expanded={open}
+            aria-label="Menu"
+            className={`-mr-1 rounded-lg p-2 text-ink lg:hidden ${focusRing}`}
+          >
+            {open ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+          </button>
         </div>
       </div>
-      <div className="flex h-[300px] sm:h-[380px]">
-        {/* sidebar */}
-        <aside className="hidden w-48 shrink-0 flex-col border-r border-slate-100 bg-white p-4 sm:flex">
-          <div className="flex items-center gap-2">
-            <span className="h-7 w-7 rounded-lg bg-gradient-to-br from-primary-600 to-violet-600" />
-            <span className="h-3 w-20 rounded bg-slate-200" />
+
+      {open && (
+        <div className="border-t border-ink/[0.08] bg-paper px-5 py-4 lg:hidden">
+          {anchors.map((a) => (
+            <a key={a.href} href={a.href} onClick={() => setOpen(false)} className="block py-2.5 text-[15px] font-medium text-ink/70">
+              {a.label}
+            </a>
+          ))}
+          {!user && (
+            <Link to="/login" onClick={() => setOpen(false)} className="block py-2.5 text-[15px] font-medium text-ink/70 sm:hidden">
+              {t('home.navLogin')}
+            </Link>
+          )}
+          <div className="pt-3 sm:hidden">
+            <LanguageSwitcher compact />
           </div>
-          <div className="mt-6 space-y-1.5">
-            {navIcons.map((Icon, i) => (
-              <div key={i} className={`flex items-center gap-2.5 rounded-lg px-2.5 py-2 ${i === 0 ? 'bg-primary-50 text-primary-600' : 'text-slate-400'}`}>
-                <Icon className="h-4 w-4" />
-                <span className={`h-2 rounded ${i === 0 ? 'w-16 bg-primary-200' : 'w-14 bg-slate-200'}`} />
-              </div>
-            ))}
-          </div>
-          <div className="mt-auto flex items-center gap-2 rounded-lg bg-slate-50 p-2">
-            <span className="h-7 w-7 rounded-full bg-slate-200" />
-            <span className="h-2 w-16 rounded bg-slate-200" />
-          </div>
-        </aside>
-        {/* main */}
-        <main className="flex-1 bg-slate-50/60 p-5 sm:p-6">
-          <div className="flex items-center justify-between">
-            <span className="h-4 w-32 rounded bg-slate-300" />
-            <span className="h-8 w-24 rounded-lg bg-primary-600" />
-          </div>
-          <div className="mt-5 grid grid-cols-3 gap-3">
-            {[
-              { Icon: Users, tint: 'text-primary-600 bg-primary-50' },
-              { Icon: ClipboardList, tint: 'text-violet-600 bg-violet-50' },
-              { Icon: Award, tint: 'text-teal-600 bg-teal-50' },
-            ].map(({ Icon, tint }, i) => (
-              <div key={i} className="rounded-xl border border-slate-200 bg-white p-3">
-                <div className={`flex h-7 w-7 items-center justify-center rounded-lg ${tint}`}>
-                  <Icon className="h-4 w-4" />
-                </div>
-                <span className="mt-3 block h-4 w-12 rounded bg-slate-300" />
-                <span className="mt-1.5 block h-2 w-14 rounded bg-slate-200" />
-              </div>
-            ))}
-          </div>
-          <div className="mt-3 rounded-xl border border-slate-200 bg-white p-4">
-            <div className="flex items-center justify-between">
-              <span className="h-3 w-24 rounded bg-slate-300" />
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-2 py-0.5">
-                <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-                <span className="h-1.5 w-8 rounded bg-emerald-200" />
+        </div>
+      )}
+    </nav>
+  );
+};
+
+/* ── Hero visual: paper card stack (decorative, fabricated data) ── */
+const HeroVisual: React.FC = () => {
+  const { t } = useTranslation();
+  const students = [
+    { init: t('home.visInit1'), name: t('home.visStudent1'), grade: '5', tone: 'bg-primary-50 text-primary-600' },
+    { init: t('home.visInit2'), name: t('home.visStudent2'), grade: '4', tone: 'bg-amber-100 text-amber-700' },
+    { init: t('home.visInit3'), name: t('home.visStudent3'), grade: null, tone: 'bg-violet-100 text-violet-600' },
+  ];
+  return (
+    <div aria-hidden className="pointer-events-none relative mx-auto h-[420px] w-full max-w-[560px] select-none sm:h-[460px] lg:max-w-none">
+      {/* deep paper sheet behind */}
+      <div className="absolute -right-2.5 left-[30px] top-[30px] h-[380px] rotate-3 rounded-[28px] bg-paper-deep" />
+      {/* group card */}
+      <div className="absolute left-0 right-6 top-0 -rotate-[1.5deg] rounded-[28px] bg-white p-7 shadow-[0_30px_60px_-24px_rgba(22,20,31,0.25)]">
+        <div className="flex items-center justify-between gap-3">
+          <span className="text-[15px] font-semibold">{t('home.visGroupTitle')}</span>
+          <span className="rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold text-emerald-700">
+            {t('home.visLessonLive')}
+          </span>
+        </div>
+        <div className="mt-5 flex flex-col gap-3">
+          {students.map((s) => (
+            <div key={s.name} className="flex items-center gap-3">
+              <span className={`flex h-[34px] w-[34px] items-center justify-center rounded-full text-[13px] font-bold ${s.tone}`}>
+                {s.init}
               </span>
+              <span className="flex-1 text-sm">{s.name}</span>
+              {s.grade ? (
+                <span className="text-[13px] font-bold text-emerald-600">{s.grade}</span>
+              ) : (
+                <span className="text-[13px] text-ink/40">—</span>
+              )}
             </div>
-            <div className="mt-3 space-y-2.5">
-              {[['bg-emerald-400', 'bg-emerald-400', 'bg-amber-400'], ['bg-emerald-400', 'bg-amber-400', 'bg-emerald-400'], ['bg-amber-400', 'bg-emerald-400', 'bg-emerald-400']].map((row, i) => (
-                <div key={i} className="flex items-center gap-2.5">
-                  <span className="h-6 w-6 shrink-0 rounded-full bg-gradient-to-br from-slate-200 to-slate-300" />
-                  <span className="h-2 flex-1 rounded bg-slate-200" />
-                  {row.map((c, j) => (
-                    <span key={j} className={`h-5 w-5 rounded-md ${c}`} />
-                  ))}
-                </div>
-              ))}
-            </div>
-          </div>
-        </main>
+          ))}
+        </div>
+      </div>
+      {/* telegram card */}
+      <div className="absolute bottom-10 right-0 max-w-[270px] rotate-2 rounded-[22px] bg-ink p-5 px-6 text-paper shadow-[0_24px_48px_-20px_rgba(22,20,31,0.5)]">
+        <p className="text-xs uppercase tracking-[0.1em] text-paper/60">{t('home.visTgLabel')}</p>
+        <p className="mt-2.5 text-sm leading-normal">{t('home.visTgMsg')}</p>
+      </div>
+      {/* amber sticker */}
+      <div className="absolute -left-2 bottom-0 -rotate-[4deg] rounded-[18px] bg-amber-500 px-5 py-3.5 text-ink shadow-[0_16px_32px_-14px_rgba(245,158,11,0.6)]">
+        <p className="font-marketing-display text-[22px] font-bold">{t('home.visStickerNum')}</p>
+        <p className="mt-0.5 text-[13px] font-medium">{t('home.visStickerText')}</p>
       </div>
     </div>
+  );
+};
+
+/* ── Footer ── */
+const HomeFooter: React.FC = () => {
+  const { t } = useTranslation();
+  const links = [
+    { to: '/features', label: t('landing.navFeatures') },
+    { to: '/docs', label: t('landing.navDocs') },
+    { to: '/about', label: t('landing.navAbout') },
+    { to: '/contact', label: t('landing.navContact') },
+    { to: '/privacy', label: t('landing.footerPrivacy') },
+    { to: '/terms', label: t('landing.footerTerms') },
+  ];
+  return (
+    <footer className="border-t border-ink/10 px-5 py-10 sm:px-8">
+      <div className="mx-auto max-w-[1240px]">
+        <div className="flex flex-wrap items-center justify-between gap-6">
+          <div className="flex items-center gap-2.5">
+            <img src="/icons/logo.png" alt="SabakHub" className="h-7 w-7 rounded-[7px]" />
+            <span className="font-marketing-display text-[15px] font-semibold">SabakHub</span>
+          </div>
+          <p className="text-sm text-ink/65">
+            <a href="mailto:hello@sabakhub.kg" className="transition-colors hover:text-ink">hello@sabakhub.kg</a>
+            {' · '}
+            <a href="tel:+996550308078" className="whitespace-nowrap transition-colors hover:text-ink">+996 550 308 078</a>
+            {' · '}
+            {t('home.footerCity')}
+          </p>
+          <p className="text-sm text-ink/60">© {new Date().getFullYear()} SabakHub</p>
+        </div>
+        <div className="mt-7 flex flex-wrap items-center gap-x-6 gap-y-2.5 border-t border-ink/[0.06] pt-6">
+          {links.map((l) => (
+            <Link key={l.to} to={l.to} className="text-sm text-ink/65 transition-colors hover:text-ink">
+              {l.label}
+            </Link>
+          ))}
+          <span className="ms-auto">
+            <LanguageSwitcher compact />
+          </span>
+        </div>
+      </div>
+    </footer>
   );
 };
 

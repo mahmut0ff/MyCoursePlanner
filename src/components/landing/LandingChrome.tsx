@@ -63,10 +63,14 @@ export const LandingNav: React.FC<{ variant?: 'home' | 'page' }> = ({ variant = 
 
   // A subpage isn't transparent at the top — only the home hero needs that.
   const solid = scrolled || variant !== 'home';
+  // Transparent state now sits over the dark hero, so top-of-home text goes light.
+  const overDark = !solid;
 
   const linkClass = (active: boolean) =>
     `px-3 py-2 text-sm font-medium rounded-lg transition-colors ${
-      active ? 'text-slate-900 bg-slate-100/80' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100/70'
+      overDark
+        ? (active ? 'text-white bg-white/15' : 'text-slate-200 hover:text-white hover:bg-white/10')
+        : (active ? 'text-slate-900 bg-slate-100/80' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100/70')
     }`;
 
   return (
@@ -74,7 +78,7 @@ export const LandingNav: React.FC<{ variant?: 'home' | 'page' }> = ({ variant = 
       <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
         <Link to="/" className="flex items-center gap-2.5">
           <img src="/icons/logo.png" alt="SabakHub" className="h-8 w-8 rounded-lg" />
-          <span className="font-semibold text-lg tracking-tight">SabakHub</span>
+          <span className={`font-semibold text-lg tracking-tight ${overDark ? 'text-white' : ''}`}>SabakHub</span>
         </Link>
 
         <div className="hidden md:flex items-center gap-1">
@@ -90,14 +94,14 @@ export const LandingNav: React.FC<{ variant?: 'home' | 'page' }> = ({ variant = 
         <div className="flex items-center gap-2">
           <LanguageSwitcher />
           {user ? (
-            <Link to="/dashboard" className="hidden sm:inline-flex items-center text-sm font-semibold text-white bg-slate-900 hover:bg-slate-800 px-4 py-2 rounded-lg transition-colors">{t('nav.dashboard') || 'Dashboard'}</Link>
+            <Link to="/dashboard" className={`hidden sm:inline-flex items-center text-sm font-semibold px-4 py-2 rounded-lg transition-colors ${overDark ? 'bg-white text-slate-900 hover:bg-slate-100' : 'bg-slate-900 text-white hover:bg-slate-800'}`}>{t('nav.dashboard') || 'Dashboard'}</Link>
           ) : (
             <>
-              <Link to="/login" className="hidden sm:inline-flex items-center text-sm font-medium text-slate-600 hover:text-slate-900 px-3 py-2 transition-colors">{t('auth.login')}</Link>
-              <Link to="/register" className="hidden sm:inline-flex items-center text-sm font-semibold text-white bg-slate-900 hover:bg-slate-800 px-4 py-2 rounded-lg transition-colors">{t('landing.heroCta')}</Link>
+              <Link to="/login" className={`hidden sm:inline-flex items-center text-sm font-medium px-3 py-2 transition-colors ${overDark ? 'text-slate-200 hover:text-white' : 'text-slate-600 hover:text-slate-900'}`}>{t('auth.login')}</Link>
+              <Link to="/register" className={`hidden sm:inline-flex items-center text-sm font-semibold px-4 py-2 rounded-lg transition-colors ${overDark ? 'bg-white text-slate-900 hover:bg-slate-100' : 'bg-slate-900 text-white hover:bg-slate-800'}`}>{t('landing.heroCta')}</Link>
             </>
           )}
-          <button onClick={() => setOpen(!open)} className="md:hidden p-2 -mr-2 text-slate-700" aria-label="Menu">
+          <button onClick={() => setOpen(!open)} className={`md:hidden p-2 -mr-2 transition-colors ${overDark ? 'text-white' : 'text-slate-700'}`} aria-label="Menu">
             {open ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
           </button>
         </div>

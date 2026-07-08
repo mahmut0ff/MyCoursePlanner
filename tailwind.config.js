@@ -24,9 +24,20 @@ export default {
         accent: {
           teal: '#14b8a6',
         },
+        /* Marketing (landing) surface — warm paper/ink layer, deliberately
+           not the app's cool slate. */
+        paper: {
+          DEFAULT: '#f7f5f0',
+          deep: '#efece4',
+        },
+        ink: '#16141f',
       },
       fontFamily: {
         sans: ['Inter', 'system-ui', '-apple-system', 'sans-serif'],
+        display: ['"Source Serif 4"', 'Georgia', 'Cambria', 'serif'],
+        /* Cyrillic-first pairing for the marketing surface only */
+        marketing: ['"Golos Text"', 'Inter', 'system-ui', 'sans-serif'],
+        'marketing-display': ['Unbounded', 'Montserrat', 'sans-serif'],
       },
     },
   },

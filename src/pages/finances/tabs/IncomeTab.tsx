@@ -41,6 +41,20 @@ const statusConfig = {
 
 const noPlanBadge = { label: 'Без счёта', bg: 'bg-slate-100 text-slate-500 dark:bg-slate-700/50 dark:text-slate-400', icon: MinusCircle };
 
+const isExpelled = (s: any) => (s?.status || 'active') === 'expelled';
+
+// Бэкенд иногда отдаёт по нескольку member-документов на одного студента —
+// сворачиваем к одному uid, предпочитая активную запись отчисленной.
+const dedupeStudents = (list: any[]): any[] => {
+  const byId = new Map<string, any>();
+  for (const s of list) {
+    const id = String(s.uid || s.id);
+    const existing = byId.get(id);
+    if (!existing || (isExpelled(existing) && !isExpelled(s))) byId.set(id, s);
+  }
+  return [...byId.values()];
+};
+
 // Единый список: строки-счета + строки-студенты без единого счёта
 type Row =
   | { kind: 'plan'; plan: PaymentPlan; student?: any }
@@ -107,15 +121,17 @@ const IncomeTab: React.FC = () => {
 
   useEffect(load, []);
 
-  // Load students once — for autocomplete and the unified list
+  // Load students once — for autocomplete and the unified list.
+  // Дедуплицируем по uid: бэкенд может вернуть дубли member-документов.
   useEffect(() => {
     orgGetStudents()
-      .then((data: any) => setAllStudents(Array.isArray(data) ? data : []))
+      .then((data: any) => setAllStudents(dedupeStudents(Array.isArray(data) ? data : [])))
       .catch(() => {})
       .finally(() => setStudentsLoading(false));
   }, []);
 
-  const filteredStudents = allStudents.filter(s =>
+  // В счёт выставляем только активных студентов
+  const filteredStudents = allStudents.filter(s => !isExpelled(s)).filter(s =>
     (s.displayName?.toLowerCase() || '').includes(studentQuery.toLowerCase()) ||
     (s.email?.toLowerCase() || '').includes(studentQuery.toLowerCase())
   ).slice(0, 8);
@@ -211,14 +227,19 @@ const IncomeTab: React.FC = () => {
     finally { setHistoryLoading(false); }
   };
 
-  // UNIFIED ROWS — все счета + все студенты без единого счёта
+  // UNIFIED ROWS — все счета + все активные студенты без единого счёта.
+  // Отчисленных не показываем: ни их счета, ни строки «без счёта».
   const studentKey = (s: any) => String(s.uid || s.id);
   const studentById = new Map(allStudents.map((s) => [studentKey(s), s]));
+  const activeStudents = allStudents.filter((s) => !isExpelled(s));
   const billedIds = new Set(plans.map((p) => String(p.studentId)));
-  const unbilledStudents = allStudents.filter((s) => !billedIds.has(studentKey(s)));
+  const unbilledStudents = activeStudents.filter((s) => !billedIds.has(studentKey(s)));
+
+  // Счета отчисленных студентов не показываем и не считаем в статистике
+  const visiblePlans = plans.filter((p) => !isExpelled(studentById.get(String(p.studentId))));
 
   const allRows: Row[] = [
-    ...plans.map((p) => ({ kind: 'plan' as const, plan: p, student: studentById.get(String(p.studentId)) })),
+    ...visiblePlans.map((p) => ({ kind: 'plan' as const, plan: p, student: studentById.get(String(p.studentId)) })),
     ...unbilledStudents.map((s) => ({ kind: 'student' as const, student: s })),
   ];
   const rowName = (r: Row) =>
@@ -246,10 +267,10 @@ const IncomeTab: React.FC = () => {
     return matchSearch && (!statusFilter || statusFilter === 'no_plan');
   });
 
-  // Stats
-  const totalDebt = plans.reduce((sum, p) => sum + Math.max(0, p.totalAmount - p.paidAmount), 0);
-  const overdueCount = plans.filter(p => p.status === 'overdue').length;
-  const paidCount = plans.filter(p => p.status === 'paid').length;
+  // Stats — по видимым счетам (без отчисленных)
+  const totalDebt = visiblePlans.reduce((sum, p) => sum + Math.max(0, p.totalAmount - p.paidAmount), 0);
+  const overdueCount = visiblePlans.filter(p => p.status === 'overdue').length;
+  const paidCount = visiblePlans.filter(p => p.status === 'paid').length;
   const unbilledCount = unbilledStudents.length;
 
   // CSV Export

@@ -225,9 +225,9 @@ const LandingPage: React.FC = () => {
             ].map((plan) => (
               <div
                 key={plan.name}
-                className={`flex flex-col rounded-[28px] p-7 sm:p-9 ${
+                className={`relative flex flex-col rounded-[28px] p-7 sm:p-9 ${
                   plan.popular
-                    ? 'relative bg-paper text-ink shadow-[0_30px_60px_-24px_rgba(0,0,0,0.5)] min-[900px]:-translate-y-3.5'
+                    ? 'bg-paper text-ink shadow-[0_30px_60px_-24px_rgba(0,0,0,0.5)] min-[900px]:-translate-y-3.5'
                     : 'border border-paper/15'
                 }`}
               >
@@ -256,7 +256,6 @@ const LandingPage: React.FC = () => {
                         : `border-[1.5px] border-paper/35 text-paper hover:border-paper ${focusRingDark}`
                     }`}
                   >
-                    <span className="sr-only">{plan.name}: </span>
                     {plan.cta}
                   </button>
                 </div>

@@ -36,16 +36,38 @@ export interface AuthUser {
 }
 
 /**
+ * Read a user's membership doc in an org. Prefers the user-side doc
+ * (users/{uid}/memberships/{orgId}); when it's missing, falls back to the
+ * org-side mirror (orgMembers/{orgId}/members/{uid}) — staff created by the
+ * org before the dual-write fix (e.g. managers) only got the mirror doc —
+ * and backfills the user-side doc so the next look-up finds it directly.
+ */
+export async function getMembershipData(uid: string, orgId: string): Promise<Record<string, any> | null> {
+  const userSide = await adminDb.collection('users').doc(uid)
+    .collection('memberships').doc(orgId).get();
+  if (userSide.exists) return userSide.data()!;
+
+  const orgSide = await adminDb.collection('orgMembers').doc(orgId)
+    .collection('members').doc(uid).get();
+  if (!orgSide.exists) return null;
+  const data = orgSide.data()!;
+  await adminDb.collection('users').doc(uid)
+    .collection('memberships').doc(orgId)
+    .set({ ...data, organizationId: orgId }, { merge: true })
+    .catch(() => {});
+  return data;
+}
+
+/**
  * Resolve user's role in a specific org via membership subcollection.
  */
-export async function resolveOrgRole(uid: string, orgId: string): Promise<{ role: string | null; roleId: string | null; branchIds: string[]; primaryBranchId: string | null; permissions: ManagerPermissions }> {
-  const doc = await adminDb.collection('users').doc(uid)
-    .collection('memberships').doc(orgId).get();
-  if (!doc.exists) return { role: null, roleId: null, branchIds: [], primaryBranchId: null, permissions: { ...DEFAULT_MANAGER_PERMISSIONS } };
-  const data = doc.data()!;
-  if (data.status !== 'active') return { role: null, roleId: null, branchIds: [], primaryBranchId: null, permissions: { ...DEFAULT_MANAGER_PERMISSIONS } };
+export async function resolveOrgRole(uid: string, orgId: string): Promise<{ role: string | null; roles: string[]; roleId: string | null; branchIds: string[]; primaryBranchId: string | null; permissions: ManagerPermissions }> {
+  const data = await getMembershipData(uid, orgId);
+  if (!data || data.status !== 'active') return { role: null, roles: [], roleId: null, branchIds: [], primaryBranchId: null, permissions: { ...DEFAULT_MANAGER_PERMISSIONS } };
   return {
     role: data.role || null,
+    // Multi-role members carry a `roles` array; fall back to the single `role` for legacy docs.
+    roles: Array.isArray(data.roles) && data.roles.length ? data.roles : (data.role ? [data.role] : []),
     roleId: data.roleId || null,
     branchIds: data.branchIds || [],
     primaryBranchId: data.primaryBranchId || null,
@@ -96,7 +118,13 @@ export async function verifyAuth(event: HandlerEvent): Promise<AuthUser | null> 
           mentor: 'teacher',
           student: 'student',
         };
-        role = roleMap[membership.role] || role;
+        const primaryRole = roleMap[membership.role] || role;
+        // Multi-role: honor the user's chosen active role ONLY if it's one the
+        // membership actually grants. Otherwise fall back to the primary role.
+        // This is the server-side guard against privilege escalation.
+        const allowedRoles = membership.roles.map((r) => roleMap[r] || r);
+        const active = userData?.activeRole as AuthUser['role'] | undefined;
+        role = active && allowedRoles.includes(active) ? active : primaryRole;
       }
       branchIds = membership.branchIds;
       primaryBranchId = membership.primaryBranchId;

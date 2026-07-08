@@ -10,12 +10,14 @@
  * POST   ?action=reject                     → reject invite or application
  * POST   ?action=leave                      → user leaves an org
  * POST   ?action=remove                     → org removes a member
- * POST   ?action=changeRole                 → change member's role
+ * POST   ?action=changeRole                 → set member's role(s) (single or multi-role)
  * POST   ?action=switchOrg                  → switch user's active org context
+ * POST   ?action=switchRole                 → switch caller's active role within their active org
+ * GET    ?action=memberRoles&orgId&userId   → a member's role set (for multi-role assignment UI)
  */
 import type { Handler, HandlerEvent } from '@netlify/functions';
 import { adminDb, getDocsByIds } from './utils/firebase-admin';
-import { verifyAuth, isSuperAdmin, ok, unauthorized, forbidden, badRequest, notFound, jsonResponse } from './utils/auth';
+import { verifyAuth, isSuperAdmin, getMembershipData, ok, unauthorized, forbidden, badRequest, notFound, jsonResponse } from './utils/auth';
 import { createNotification, notifyOrgAdmins } from './utils/notifications';
 import { getOrgLimits } from './utils/plan-limits';
 
@@ -55,11 +57,13 @@ async function getMembership(userId: string, orgId: string) {
   return doc.exists ? { id: doc.id, ...doc.data() } : null;
 }
 
-// Helper: get user's role in an org
+// Helper: get user's role in an org.
+// Reads via getMembershipData so staff whose membership only exists in the
+// org-side mirror (managers created before the dual-write fix) still resolve.
 async function getOrgRole(userId: string, orgId: string): Promise<string | null> {
-  const m = await getMembership(userId, orgId);
-  if (!m || (m as any).status !== 'active') return null;
-  return (m as any).role || null;
+  const m = await getMembershipData(userId, orgId);
+  if (!m || m.status !== 'active') return null;
+  return m.role || null;
 }
 
 const handler: Handler = async (event: HandlerEvent) => {
@@ -116,6 +120,17 @@ const handler: Handler = async (event: HandlerEvent) => {
         .get();
       const memberships = snap.docs.map((d: any) => ({ id: d.id, ...d.data() }));
       return ok(memberships);
+    }
+
+    // ═══ GET: A specific member's role set in an org (for the multi-role assignment UI) ═══
+    if (event.httpMethod === 'GET' && action === 'memberRoles') {
+      if (!params.orgId || !params.userId) return badRequest('orgId and userId required');
+      const callerRole = await getOrgRole(user.uid, params.orgId);
+      if (!isSuperAdmin(user) && !['admin', 'owner'].includes(callerRole || '')) return forbidden();
+      const m = await getMembership(params.userId, params.orgId) as any;
+      if (!m) return ok({ role: null, roles: [] });
+      const roles = Array.isArray(m.roles) && m.roles.length ? m.roles : (m.role ? [m.role] : []);
+      return ok({ role: m.role || null, roles });
     }
 
     // ═══ GET: Org members ═══
@@ -600,27 +615,33 @@ const handler: Handler = async (event: HandlerEvent) => {
       return ok({ deleted: true });
     }
 
-    // ═══ POST: Change role ═══
+    // ═══ POST: Change role (single legacy `newRole`, or multi-role `roles[]`) ═══
     if (event.httpMethod === 'POST' && action === 'changeRole') {
       const body = JSON.parse(event.body || '{}');
-      if (!body.userId || !body.organizationId || !body.newRole) {
-        return badRequest('userId, organizationId, and newRole required');
+      if (!body.userId || !body.organizationId || (!body.newRole && !Array.isArray(body.roles))) {
+        return badRequest('userId, organizationId, and newRole or roles[] required');
       }
 
       const callerRole = await getOrgRole(user.uid, body.organizationId);
       if (!isSuperAdmin(user) && !['admin', 'owner'].includes(callerRole || '')) return forbidden();
 
-      const validRoles = ['student', 'teacher', 'mentor', 'admin'];
-      if (!validRoles.includes(body.newRole)) return badRequest(`Invalid role: ${body.newRole}`);
+      const validRoles = ['student', 'teacher', 'mentor', 'manager', 'admin'];
+      // Accept a single role (legacy) or a set of roles (multi-role membership).
+      const roles: string[] = Array.isArray(body.roles) && body.roles.length
+        ? [...new Set(body.roles as string[])]
+        : [body.newRole];
+      const invalid = roles.filter((r) => !validRoles.includes(r));
+      if (invalid.length) return badRequest(`Invalid role(s): ${invalid.join(', ')}`);
 
       const ts = now();
-      const update = { role: body.newRole, updatedAt: ts };
+      // `role` stays the primary (roles[0]) for back-compat; `roles` is the full set.
+      const update = { role: roles[0], roles, updatedAt: ts };
       await adminDb.collection('users').doc(body.userId)
         .collection('memberships').doc(body.organizationId).update(update);
       await adminDb.collection('orgMembers').doc(body.organizationId)
         .collection('members').doc(body.userId).update(update);
 
-      return ok({ roleChanged: true, newRole: body.newRole });
+      return ok({ roleChanged: true, role: roles[0], roles });
     }
 
     // ═══ POST: Set branch assignment ═══
@@ -671,12 +692,14 @@ const handler: Handler = async (event: HandlerEvent) => {
         const userDoc = await adminDb.collection('users').doc(user.uid).get();
         const userData = userDoc.data() || {};
         
+        const personalRole = userData.role === 'student' ? 'student' : 'teacher';
         await adminDb.collection('users').doc(user.uid).update({
           activeOrgId: '',
           organizationId: '',
           organizationName: '',
           // default fallback role, will be overridden later if they join another org
-          role: userData.role === 'student' ? 'student' : 'teacher', 
+          role: personalRole,
+          activeRole: personalRole, // reset any stale multi-role selection
           updatedAt: ts,
         });
 
@@ -692,12 +715,14 @@ const handler: Handler = async (event: HandlerEvent) => {
       const membership = await getMembership(user.uid, body.organizationId) as any;
       if (!membership || membership.status !== 'active') return badRequest('Not an active member of this org');
 
+      const switchedRole = membership.role === 'owner' ? 'admin' : membership.role;
       await adminDb.collection('users').doc(user.uid).update({
         activeOrgId: body.organizationId,
         // Keep legacy fields in sync
         organizationId: body.organizationId,
         organizationName: membership.organizationName || '',
-        role: membership.role === 'owner' ? 'admin' : membership.role,
+        role: switchedRole,
+        activeRole: switchedRole, // reset role selection to the new org's primary role
         updatedAt: ts,
       });
 
@@ -707,6 +732,38 @@ const handler: Handler = async (event: HandlerEvent) => {
         role: membership.role,
         organizationName: membership.organizationName,
       });
+    }
+
+    // ═══ POST: Switch active role (within the caller's active org) ═══
+    if (event.httpMethod === 'POST' && action === 'switchRole') {
+      const body = JSON.parse(event.body || '{}');
+      if (!body.role) return badRequest('role required');
+
+      const userDoc = await adminDb.collection('users').doc(user.uid).get();
+      const userData = userDoc.data() || {};
+      const orgId = userData.activeOrgId || userData.organizationId;
+      if (!orgId) return badRequest('No active organization to switch role in');
+
+      const membership = await getMembership(user.uid, orgId) as any;
+      if (!membership || membership.status !== 'active') return badRequest('Not an active member of this org');
+
+      // Map membership roles → app roles, then verify the requested role is one the
+      // membership actually grants. This is the server-side anti-escalation guard.
+      const roleMap: Record<string, string> = { owner: 'admin', admin: 'admin', manager: 'manager', teacher: 'teacher', mentor: 'teacher', student: 'student' };
+      const membershipRoles: string[] = Array.isArray(membership.roles) && membership.roles.length
+        ? membership.roles
+        : (membership.role ? [membership.role] : []);
+      const allowed = [...new Set(membershipRoles.map((r) => roleMap[r] || r))];
+      if (!allowed.includes(body.role)) return forbidden('You do not hold that role in this organization');
+
+      const ts = now();
+      await adminDb.collection('users').doc(user.uid).update({
+        activeRole: body.role,
+        role: body.role, // keep legacy flat field in sync so route guards / sidebar react
+        updatedAt: ts,
+      });
+
+      return ok({ switched: true, role: body.role, activeRole: body.role });
     }
 
     return jsonResponse(405, { error: 'Method not allowed' });

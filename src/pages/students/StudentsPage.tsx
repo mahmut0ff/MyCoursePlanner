@@ -17,7 +17,7 @@ import {
   orgApproveCourseRequest,
   orgRejectCourseRequest
 } from '../../lib/api';
-import { Users, Search, Mail, RefreshCw, CheckCircle, XCircle, UserPlus, Phone, Filter, X, SortAsc, SortDesc, Trash2, Plus, Lightbulb, Link as LinkIcon, Copy, BookOpen, UsersRound, Upload, KeyRound, Eye, EyeOff } from 'lucide-react';
+import { Users, Search, Mail, RefreshCw, CheckCircle, XCircle, UserPlus, Phone, Filter, X, SortAsc, SortDesc, Trash2, Plus, Lightbulb, Link as LinkIcon, Copy, BookOpen, UsersRound, Upload, KeyRound, Eye, EyeOff, Calendar } from 'lucide-react';
 import type { UserProfile, Group } from '../../types';
 import toast from 'react-hot-toast';
 import { PinnedBadgesDisplay } from '../../lib/badges';
@@ -62,7 +62,7 @@ const StudentsPage: React.FC = () => {
 
   // Create student modal
   const [showCreateModal, setShowCreateModal] = useState(false);
-  const [createForm, setCreateForm] = useState({ displayName: '', phone: '', courseId: '', groupId: '', username: '', password: '' });
+  const [createForm, setCreateForm] = useState({ displayName: '', phone: '', enrollmentDate: '', courseId: '', groupId: '', username: '', password: '' });
   const [giveLogin, setGiveLogin] = useState(false);
   const [showCreatePassword, setShowCreatePassword] = useState(false);
   const [creating, setCreating] = useState(false);
@@ -75,6 +75,7 @@ const StudentsPage: React.FC = () => {
   const [importText, setImportText] = useState('');
   const [importCourseId, setImportCourseId] = useState('');
   const [importGroupId, setImportGroupId] = useState('');
+  const [importEnrollmentDate, setImportEnrollmentDate] = useState('');
   const [importing, setImporting] = useState(false);
   const [importResult, setImportResult] = useState<{ created: number; skipped?: number } | null>(null);
   const importFileRef = useRef<HTMLInputElement>(null);
@@ -284,7 +285,7 @@ const StudentsPage: React.FC = () => {
 
 
   const resetCreateForm = () => {
-    setCreateForm({ displayName: '', phone: '', courseId: '', groupId: '', username: '', password: '' });
+    setCreateForm({ displayName: '', phone: '', enrollmentDate: '', courseId: '', groupId: '', username: '', password: '' });
     setGiveLogin(false);
     setShowCreatePassword(false);
   };
@@ -303,6 +304,7 @@ const StudentsPage: React.FC = () => {
         courseId: createForm.courseId,
         groupId: createForm.groupId,
       };
+      if (createForm.enrollmentDate) payload.enrollmentDate = createForm.enrollmentDate;
       if (giveLogin) {
         payload.username = createForm.username.trim().toLowerCase();
         payload.password = createForm.password;
@@ -391,6 +393,7 @@ const StudentsPage: React.FC = () => {
         students: parsedImport,
         courseId: importCourseId || undefined,
         groupId: importGroupId || undefined,
+        enrollmentDate: importEnrollmentDate || undefined,
       });
       setImportResult({ created: res?.created || 0, skipped: res?.skipped || 0 });
       toast.success(t('org.students.imported', `Импортировано: ${res?.created || 0}`));
@@ -408,6 +411,7 @@ const StudentsPage: React.FC = () => {
     setImportText('');
     setImportCourseId('');
     setImportGroupId('');
+    setImportEnrollmentDate('');
     setImportResult(null);
   };
 
@@ -940,6 +944,11 @@ const StudentsPage: React.FC = () => {
                 <label className="text-xs font-semibold text-slate-500 mb-1 block flex items-center gap-1"><Phone className="w-3.5 h-3.5" /> {t('common.phone', 'Телефон')}</label>
                 <input value={createForm.phone} onChange={e => setCreateForm(f => ({ ...f, phone: e.target.value }))} placeholder="+996 ..." className="w-full bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-slate-900 focus:border-slate-900 dark:focus:ring-white outline-none" />
               </div>
+              {/* Дата поступления (необязательно) */}
+              <div>
+                <label className="text-xs font-semibold text-slate-500 mb-1 block flex items-center gap-1"><Calendar className="w-3.5 h-3.5" /> {t('org.students.enrollmentDate', 'Дата поступления')} <span className="text-slate-400 font-normal">({t('common.optional', 'необязательно')})</span></label>
+                <input type="date" value={createForm.enrollmentDate} onChange={e => setCreateForm(f => ({ ...f, enrollmentDate: e.target.value }))} className="w-full bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-slate-900 focus:border-slate-900 dark:focus:ring-white outline-none" />
+              </div>
               {/* Курс */}
               {courses.length > 0 && (
                 <div>
@@ -1096,6 +1105,12 @@ const StudentsPage: React.FC = () => {
                       </select>
                     </div>
                   )}
+
+                  {/* Дата поступления для всей группы (необязательно) */}
+                  <div>
+                    <label className="text-xs font-semibold text-slate-500 mb-1 block flex items-center gap-1"><Calendar className="w-3.5 h-3.5" /> {t('org.students.enrollmentDate', 'Дата поступления')} <span className="text-slate-400 font-normal">({t('common.optional', 'необязательно')})</span></label>
+                    <input type="date" value={importEnrollmentDate} onChange={e => setImportEnrollmentDate(e.target.value)} className="w-full bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 text-sm outline-none" />
+                  </div>
 
                   {/* Preview */}
                   {parsedImport.length > 0 && (

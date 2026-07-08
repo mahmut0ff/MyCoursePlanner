@@ -244,6 +244,7 @@ export interface UserProfile {
   // Global identity fields
   username?: string;
   activeOrgId?: string;            // currently selected org context
+  activeRole?: UserRole;          // active role within the active org (multi-role members)
   avatarUrl?: string;
   parentPortalKey?: string;        // Used for generating Magic Links for parents
   parentTelegramChatIds?: string[]; // Parent Telegram chats linked to this student (push channel)
@@ -256,6 +257,7 @@ export interface UserProfile {
   phone?: string;
   resumeUrl?: string;              // PDF resume download URL
   resumeFileName?: string;         // PDF resume original file name
+  enrollmentDate?: string;         // Дата поступления (YYYY-MM-DD) — optional, manager-set
   createdAt: string;
   updatedAt: string;
 }
@@ -288,7 +290,8 @@ export interface Membership {
   userName?: string;
   organizationId: string;
   organizationName?: string;
-  role: MembershipRole;
+  role: MembershipRole;              // primary/default role (roles[0])
+  roles?: MembershipRole[];          // all roles this member holds in the org (multi-role)
   status: MembershipStatus;
   joinMethod: JoinMethod;
   branchIds?: string[];              // assigned branch scopes (manager/teacher)

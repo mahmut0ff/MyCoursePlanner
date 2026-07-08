@@ -166,8 +166,17 @@ export const apiDeleteMember = (userId: string, organizationId: string) =>
   memberReq('delete', 'POST', { userId, organizationId });
 export const apiChangeMemberRole = (userId: string, organizationId: string, newRole: string) =>
   memberReq('changeRole', 'POST', { userId, organizationId, newRole });
+/** Set a member's full role set (multi-role). `roles[0]` becomes the primary role. */
+export const apiSetMemberRoles = (userId: string, organizationId: string, roles: string[]) =>
+  memberReq('changeRole', 'POST', { userId, organizationId, roles });
+/** Read a member's role set in an org (for the assignment UI). */
+export const apiGetMemberRoles = (userId: string, orgId: string) =>
+  memberReq<{ role: string | null; roles: string[] }>('memberRoles', 'GET', undefined, { userId, orgId });
 export const apiSwitchOrg = (organizationId: string) =>
   memberReq('switchOrg', 'POST', { organizationId });
+/** Switch the caller's active role within their active org (must be a role they hold). */
+export const apiSwitchRole = (role: string) =>
+  memberReq('switchRole', 'POST', { role });
 export const apiPublicJoin = (orgSlug: string, requestedRole?: string) =>
   memberReq<{ status: string; orgId?: string; orgName?: string }>('publicJoin', 'POST', { orgSlug, requestedRole });
 export const apiSetBranchAssignment = (userId: string, organizationId: string, branchIds: string[], primaryBranchId?: string) =>
@@ -315,7 +324,7 @@ export const orgTeacherLeaveGroup = (groupId: string) => orgReq('teacherLeaveGro
 // Students
 export const orgGetStudents = (branchId?: string) => orgReq('students', 'GET', undefined, branchId ? { branchId } : undefined);
 export const orgCreateStudent = (data: any) => orgReq('createStudent', 'POST', data);
-export const orgBulkCreateStudents = (data: { students: { displayName: string; phone?: string }[]; courseId?: string; groupId?: string }) => orgReq('bulkCreateStudents', 'POST', data);
+export const orgBulkCreateStudents = (data: { students: { displayName: string; phone?: string }[]; courseId?: string; groupId?: string; enrollmentDate?: string }) => orgReq('bulkCreateStudents', 'POST', data);
 export const orgUpdateStudent = (data: any) => orgReq('updateStudent', 'POST', data);
 export const orgResetStudentPassword = (uid: string, password: string) => orgReq('resetStudentPassword', 'POST', { uid, password });
 

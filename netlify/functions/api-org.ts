@@ -709,6 +709,9 @@ const handler: Handler = async (event: HandlerEvent) => {
           createdAt: now(),
           updatedAt: now(),
         };
+        // Optional enrollment date (дата поступления) — YYYY-MM-DD, manager-set.
+        const enrollmentDate = String(body.enrollmentDate || '').trim();
+        if (/^\d{4}-\d{2}-\d{2}$/.test(enrollmentDate)) profile.enrollmentDate = enrollmentDate;
 
         let studentUid: string;
         let loginInfo: { username?: string; email?: string } | null = null;
@@ -833,6 +836,9 @@ const handler: Handler = async (event: HandlerEvent) => {
 
       const branchIds = body.branchIds || [];
       const primaryBranchId = body.primaryBranchId || null;
+      // Optional enrollment date (дата поступления) applied to the whole batch — YYYY-MM-DD.
+      const enrollmentDateRaw = String(body.enrollmentDate || '').trim();
+      const enrollmentDate = /^\d{4}-\d{2}-\d{2}$/.test(enrollmentDateRaw) ? enrollmentDateRaw : null;
       const ts = now();
       const createdUids: string[] = [];
 
@@ -853,6 +859,7 @@ const handler: Handler = async (event: HandlerEvent) => {
             phone: r.phone,
             createdByOrg: true,
             offlineStudent: true,
+            ...(enrollmentDate ? { enrollmentDate } : {}),
             importedAt: ts,
             createdAt: ts,
             updatedAt: ts,
@@ -910,10 +917,17 @@ const handler: Handler = async (event: HandlerEvent) => {
       if (!studentMemberDoc.exists) return notFound();
 
       // Whitelist: only allow safe profile fields — prevent privilege escalation
-      const ALLOWED_FIELDS = ['displayName', 'phone', 'city', 'bio', 'avatarUrl', 'skills', 'country', 'username'];
+      const ALLOWED_FIELDS = ['displayName', 'phone', 'city', 'bio', 'avatarUrl', 'skills', 'country', 'username', 'enrollmentDate'];
       const updateData: Record<string, any> = { updatedAt: now() };
       for (const key of ALLOWED_FIELDS) {
         if (body[key] !== undefined) updateData[key] = body[key];
+      }
+      // enrollmentDate must be a valid YYYY-MM-DD, or empty string to clear it.
+      if (updateData.enrollmentDate !== undefined) {
+        const d = String(updateData.enrollmentDate).trim();
+        if (d === '') updateData.enrollmentDate = FieldValue.delete();
+        else if (/^\d{4}-\d{2}-\d{2}$/.test(d)) updateData.enrollmentDate = d;
+        else return badRequest('Некорректная дата поступления');
       }
       await adminDb.collection('users').doc(body.uid).update(updateData);
 
@@ -1181,7 +1195,17 @@ const handler: Handler = async (event: HandlerEvent) => {
           primaryBranchId: body.primaryBranchId || null,
           joinedAt: now()
         });
-        
+
+        // Create membership sub-doc on user for role resolution (mirrors createTeacher)
+        await adminDb.collection('users').doc(authUser.uid).collection('memberships').doc(orgId).set({
+          role: 'manager',
+          status: 'active',
+          branchIds: body.branchIds || [],
+          primaryBranchId: body.primaryBranchId || null,
+          organizationId: orgId,
+          joinedAt: now(),
+        });
+
         return ok({ uid: authUser.uid, ...profile });
       } catch (e: any) {
         if (e.code === 'auth/email-already-exists') return badRequest('Email already registered in authentication system');

@@ -39,7 +39,7 @@ service cloud.firestore {
 
       allow update: if isSuperAdmin() || (
         request.auth.uid == userId &&
-        !request.resource.data.diff(resource.data).affectedKeys().hasAny(['role', 'organizationId', 'activeOrgId', 'branchIds'])
+        !request.resource.data.diff(resource.data).affectedKeys().hasAny(['role', 'organizationId', 'activeOrgId', 'activeRole', 'branchIds'])
       );
 
       allow delete: if isSuperAdmin();

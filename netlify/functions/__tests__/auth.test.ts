@@ -17,7 +17,10 @@ import {
   userHasBranchAccess,
   requireBranchScope,
   resolveBranchFilter,
+  getMembershipData,
+  resolveOrgRole,
 } from '../utils/auth';
+import { adminDb } from '../utils/firebase-admin';
 
 // ── Helpers ──────────────────────────────────────────────────────
 
@@ -233,5 +236,86 @@ describe('resolveBranchFilter', () => {
   it('teacher requests alien branch → __DENIED__ sentinel', () => {
     const user = makeUser({ role: 'teacher', branchIds: ['b1'] });
     expect(resolveBranchFilter(user, 'b99')).toBe('__DENIED__');
+  });
+});
+
+// ═════════════════════════════════════════════════════════════════
+// 6. Membership resolution (user-side doc + org-side mirror fallback)
+// ═════════════════════════════════════════════════════════════════
+
+// Managers created via api-org createManager historically only got the
+// org-side mirror doc (orgMembers/{orgId}/members/{uid}); the fallback keeps
+// them from resolving to "no role" (403 Forbidden on membership endpoints).
+function mockMembershipDb(opts: { userSide?: Record<string, any> | null; orgSide?: Record<string, any> | null }) {
+  const userSideSet = vi.fn().mockResolvedValue(undefined);
+  const userSideGet = vi.fn().mockResolvedValue({ exists: !!opts.userSide, data: () => opts.userSide });
+  const orgSideGet = vi.fn().mockResolvedValue({ exists: !!opts.orgSide, data: () => opts.orgSide });
+
+  (adminDb.collection as any).mockImplementation((col: string) => ({
+    doc: () => ({
+      collection: () => ({
+        doc: () => (col === 'users'
+          ? { get: userSideGet, set: userSideSet }
+          : { get: orgSideGet }),
+      }),
+    }),
+  }));
+
+  return { userSideSet, orgSideGet };
+}
+
+describe('getMembershipData (org-side mirror fallback)', () => {
+  it('prefers the user-side doc when it exists', async () => {
+    const { userSideSet, orgSideGet } = mockMembershipDb({
+      userSide: { role: 'teacher', status: 'active' },
+      orgSide: { role: 'manager', status: 'active' },
+    });
+    const data = await getMembershipData('u1', 'org1');
+    expect(data).toEqual({ role: 'teacher', status: 'active' });
+    expect(orgSideGet).not.toHaveBeenCalled();
+    expect(userSideSet).not.toHaveBeenCalled();
+  });
+
+  it('falls back to the org-side mirror and backfills the user-side doc', async () => {
+    const { userSideSet } = mockMembershipDb({
+      userSide: null,
+      orgSide: { role: 'manager', status: 'active', branchIds: ['b1'] },
+    });
+    const data = await getMembershipData('u1', 'org1');
+    expect(data).toMatchObject({ role: 'manager', status: 'active' });
+    expect(userSideSet).toHaveBeenCalledWith(
+      expect.objectContaining({ role: 'manager', status: 'active', organizationId: 'org1' }),
+      { merge: true },
+    );
+  });
+
+  it('returns null when neither side has a doc', async () => {
+    mockMembershipDb({ userSide: null, orgSide: null });
+    expect(await getMembershipData('u1', 'org1')).toBeNull();
+  });
+});
+
+describe('resolveOrgRole', () => {
+  const NULL_RESULT = { role: null, roles: [], roleId: null, branchIds: [], primaryBranchId: null, permissions: { ...NO_PERMS } };
+
+  it('resolves a legacy manager who only has the org-side mirror doc', async () => {
+    mockMembershipDb({
+      userSide: null,
+      orgSide: { role: 'manager', status: 'active', branchIds: ['b1'], primaryBranchId: 'b1' },
+    });
+    const result = await resolveOrgRole('u1', 'org1');
+    expect(result.role).toBe('manager');
+    expect(result.branchIds).toEqual(['b1']);
+    expect(result.primaryBranchId).toBe('b1');
+  });
+
+  it('returns nulls when the membership is not active', async () => {
+    mockMembershipDb({ userSide: { role: 'manager', status: 'removed' }, orgSide: null });
+    expect(await resolveOrgRole('u1', 'org1')).toEqual(NULL_RESULT);
+  });
+
+  it('does not resolve a role from an inactive org-side doc', async () => {
+    mockMembershipDb({ userSide: null, orgSide: { role: 'manager', status: 'removed' } });
+    expect(await resolveOrgRole('u1', 'org1')).toEqual(NULL_RESULT);
   });
 });

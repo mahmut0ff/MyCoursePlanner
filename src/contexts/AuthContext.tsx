@@ -3,9 +3,14 @@ import type { User } from 'firebase/auth';
 import { onAuthChange } from '../services/auth.service';
 import { getUser } from '../services/users.service';
 import { isFirebaseConfigured, requestNotificationPermission, db } from '../lib/firebase';
-import { apiSaveFcmToken, apiRemoveFcmToken, apiSwitchOrg } from '../lib/api';
+import { apiSaveFcmToken, apiRemoveFcmToken, apiSwitchOrg, apiSwitchRole } from '../lib/api';
 import { doc, getDoc } from 'firebase/firestore';
 import type { UserProfile, UserRole } from '../types';
+
+// Maps stored membership roles to app-level roles (owner→admin, mentor→teacher).
+const MEMBERSHIP_TO_APP_ROLE: Record<string, UserRole> = {
+  owner: 'admin', admin: 'admin', manager: 'manager', teacher: 'teacher', mentor: 'teacher', student: 'student',
+};
 
 interface ManagerPermissions {
   finances: boolean;
@@ -35,9 +40,13 @@ interface AuthContextType {
   hasPermission: (key: keyof ManagerPermissions) => boolean;
   /** Assigned custom RBAC role id from the active membership, if any. */
   membershipRoleId: string | null;
+  /** App-level roles the user holds in the active org (for the role switcher). */
+  availableRoles: UserRole[];
   refreshProfile: () => Promise<void>;
   /** Switch the user's active organization context and refresh profile. */
   switchOrganization: (orgId: string) => Promise<void>;
+  /** Switch the user's active role within the active org (must be one they hold). */
+  switchRole: (role: UserRole) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType>({
@@ -57,8 +66,10 @@ const AuthContext = createContext<AuthContextType>({
   permissions: { ...NO_PERMISSIONS },
   hasPermission: () => false,
   membershipRoleId: null,
+  availableRoles: [],
   refreshProfile: async () => {},
   switchOrganization: async () => {},
+  switchRole: async () => {},
 });
 
 export const useAuth = () => useContext(AuthContext);
@@ -71,6 +82,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [loading, setLoading] = useState(true);
   const [permissions, setPermissions] = useState<ManagerPermissions>({ ...NO_PERMISSIONS });
   const [membershipRoleId, setMembershipRoleId] = useState<string | null>(null);
+  const [availableRoles, setAvailableRoles] = useState<UserRole[]>([]);
   const fcmTokenRef = useRef<string | null>(null);
 
   // Ref keeps the latest firebase user available synchronously for refreshProfile,
@@ -85,12 +97,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (p) {
         const orgId = (p as any)?.activeOrgId || p.organizationId;
         let mRoleId: string | null = null;
+        let avail: UserRole[] = [];
         if (orgId && p.role !== 'super_admin') {
           try {
             const memberDoc = await getDoc(doc(db, 'users', user.uid, 'memberships', orgId));
             if (memberDoc.exists()) {
               const mData = memberDoc.data();
               mRoleId = mData.roleId || null;
+              // App-level roles this member holds in the org (for the role switcher).
+              const rawRoles: string[] = Array.isArray(mData.roles) && mData.roles.length
+                ? mData.roles
+                : (mData.role ? [mData.role] : []);
+              avail = [...new Set(rawRoles.map((r) => MEMBERSHIP_TO_APP_ROLE[r] || (r as UserRole)))];
               if (p.role === 'manager') {
                 setPermissions({
                   finances: mData.permissions?.finances === true,
@@ -113,6 +131,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           setPermissions({ ...NO_PERMISSIONS });
         }
         setMembershipRoleId(mRoleId);
+        setAvailableRoles(avail);
       }
     } catch (e) {
       console.error('Failed to load user profile:', e);
@@ -134,6 +153,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
    */
   const switchOrganization = useCallback(async (orgId: string) => {
     await apiSwitchOrg(orgId);
+    if (firebaseUser) await loadProfile(firebaseUser);
+  }, [firebaseUser]);
+
+  /**
+   * Switch the active role within the current org. The backend validates that
+   * the target role is one the membership actually grants (anti-escalation),
+   * then we reload the profile so route guards and the sidebar react.
+   */
+  const switchRole = useCallback(async (role: UserRole) => {
+    await apiSwitchRole(role);
     if (firebaseUser) await loadProfile(firebaseUser);
   }, [firebaseUser]);
 
@@ -221,8 +250,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           return permissions[key] === true;
         },
         membershipRoleId,
+        availableRoles,
         refreshProfile,
         switchOrganization,
+        switchRole,
       }}
     >
       {children}

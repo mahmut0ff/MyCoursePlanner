@@ -2,7 +2,7 @@ import React, { useEffect, useState, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { apiGetPaymentPlans, apiCreatePaymentPlan, apiCreateTransaction, apiGetTransactions, apiDeletePaymentPlan } from '../../../lib/api';
 import { orgGetStudents } from '../../../lib/api';
-import { CheckCircle2, AlertCircle, Clock, Search, Plus, CreditCard, History, X, Users, Trash2, Download } from 'lucide-react';
+import { CheckCircle2, AlertCircle, Clock, Search, Plus, CreditCard, History, X, Users, Trash2, Download, MinusCircle } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 interface PaymentPlan {
@@ -39,6 +39,29 @@ const statusConfig = {
   pending: { label: 'Ожидает', bg: 'bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-400', icon: Clock },
 };
 
+const noPlanBadge = { label: 'Без счёта', bg: 'bg-slate-100 text-slate-500 dark:bg-slate-700/50 dark:text-slate-400', icon: MinusCircle };
+
+// Единый список: строки-счета + строки-студенты без единого счёта
+type Row =
+  | { kind: 'plan'; plan: PaymentPlan; student?: any }
+  | { kind: 'student'; student: any };
+
+const StudentCell: React.FC<{ name: string; email?: string; avatarUrl?: string }> = ({ name, email, avatarUrl }) => (
+  <div className="flex items-center gap-3">
+    {avatarUrl ? (
+      <img src={avatarUrl} className="w-8 h-8 rounded-full object-cover shrink-0" alt="" />
+    ) : (
+      <div className="w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center text-[11px] text-white font-bold shrink-0">
+        {name?.[0]?.toUpperCase() || '?'}
+      </div>
+    )}
+    <div>
+      <p className="font-medium text-slate-900 dark:text-white leading-tight">{name}</p>
+      {email && <p className="text-[11px] text-slate-400 leading-tight mt-0.5">{email}</p>}
+    </div>
+  </div>
+);
+
 const IncomeTab: React.FC = () => {
   const { t } = useTranslation();
   const [plans, setPlans] = useState<PaymentPlan[]>([]);
@@ -63,8 +86,9 @@ const IncomeTab: React.FC = () => {
     totalAmount: '', deadline: '',
   });
 
-  // Student autocomplete
+  // Student autocomplete + unified list
   const [allStudents, setAllStudents] = useState<any[]>([]);
+  const [studentsLoading, setStudentsLoading] = useState(true);
   const [studentQuery, setStudentQuery] = useState('');
   const [showStudentDropdown, setShowStudentDropdown] = useState(false);
   const studentInputRef = useRef<HTMLInputElement>(null);
@@ -83,9 +107,12 @@ const IncomeTab: React.FC = () => {
 
   useEffect(load, []);
 
-  // Load students once for autocomplete
+  // Load students once — for autocomplete and the unified list
   useEffect(() => {
-    orgGetStudents().then((data: any) => setAllStudents(Array.isArray(data) ? data : [])).catch(() => {});
+    orgGetStudents()
+      .then((data: any) => setAllStudents(Array.isArray(data) ? data : []))
+      .catch(() => {})
+      .finally(() => setStudentsLoading(false));
   }, []);
 
   const filteredStudents = allStudents.filter(s =>
@@ -124,10 +151,10 @@ const IncomeTab: React.FC = () => {
     finally { setSaving(false); }
   };
 
-  // CREATE PLAN — with student autocomplete
-  const openCreateModal = () => {
-    setNewPlan({ studentId: '', studentName: '', courseId: '', courseName: '', totalAmount: '', deadline: '' });
-    setStudentQuery('');
+  // CREATE PLAN — открывается из строки студента, студент уже выбран
+  const openCreateFor = (studentId: string, studentName: string) => {
+    setNewPlan({ studentId, studentName, courseId: '', courseName: '', totalAmount: '', deadline: '' });
+    setStudentQuery(studentName);
     setShowStudentDropdown(false);
     setModal('create');
   };
@@ -184,25 +211,56 @@ const IncomeTab: React.FC = () => {
     finally { setHistoryLoading(false); }
   };
 
+  // UNIFIED ROWS — все счета + все студенты без единого счёта
+  const studentKey = (s: any) => String(s.uid || s.id);
+  const studentById = new Map(allStudents.map((s) => [studentKey(s), s]));
+  const billedIds = new Set(plans.map((p) => String(p.studentId)));
+  const unbilledStudents = allStudents.filter((s) => !billedIds.has(studentKey(s)));
+
+  const allRows: Row[] = [
+    ...plans.map((p) => ({ kind: 'plan' as const, plan: p, student: studentById.get(String(p.studentId)) })),
+    ...unbilledStudents.map((s) => ({ kind: 'student' as const, student: s })),
+  ];
+  const rowName = (r: Row) =>
+    r.kind === 'plan' ? (r.plan.studentName || r.student?.displayName || r.plan.studentId) : (r.student.displayName || '');
+  allRows.sort((a, b) =>
+    rowName(a).localeCompare(rowName(b), 'ru') ||
+    (a.kind === 'plan' && b.kind === 'plan' ? (a.plan.courseName || '').localeCompare(b.plan.courseName || '', 'ru') : 0)
+  );
+
   // FILTERS
-  const filtered = plans.filter((p) => {
-    const matchSearch =
-      (p.studentName?.toLowerCase() || '').includes(search.toLowerCase()) ||
-      (p.courseName?.toLowerCase() || '').includes(search.toLowerCase());
-    const matchStatus = !statusFilter || p.status === statusFilter;
-    return matchSearch && matchStatus;
+  const q = search.toLowerCase();
+  const filtered = allRows.filter((r) => {
+    if (r.kind === 'plan') {
+      const p = r.plan;
+      const matchSearch = !q ||
+        (p.studentName?.toLowerCase() || '').includes(q) ||
+        (p.courseName?.toLowerCase() || '').includes(q) ||
+        (r.student?.email?.toLowerCase() || '').includes(q);
+      return matchSearch && (!statusFilter || p.status === statusFilter);
+    }
+    const s = r.student;
+    const matchSearch = !q ||
+      (s.displayName?.toLowerCase() || '').includes(q) ||
+      (s.email?.toLowerCase() || '').includes(q);
+    return matchSearch && (!statusFilter || statusFilter === 'no_plan');
   });
 
   // Stats
   const totalDebt = plans.reduce((sum, p) => sum + Math.max(0, p.totalAmount - p.paidAmount), 0);
   const overdueCount = plans.filter(p => p.status === 'overdue').length;
   const paidCount = plans.filter(p => p.status === 'paid').length;
+  const unbilledCount = unbilledStudents.length;
 
   // CSV Export
   const handleExportCSV = () => {
     if (filtered.length === 0) return;
     const header = 'Студент,Курс,Сумма,Оплачено,Долг,Статус,Дедлайн\n';
-    const rows = filtered.map(p => {
+    const rows = filtered.map(r => {
+      if (r.kind === 'student') {
+        return `"${r.student.displayName || ''}","",,,,${noPlanBadge.label},`;
+      }
+      const p = r.plan;
       const debt = Math.max(0, p.totalAmount - p.paidAmount);
       const statusLabel = statusConfig[p.status]?.label || p.status;
       return `"${p.studentName || p.studentId}","${p.courseName || p.courseId || ''}",${p.totalAmount},${p.paidAmount},${debt},${statusLabel},${p.deadline || ''}`;
@@ -219,7 +277,7 @@ const IncomeTab: React.FC = () => {
   return (
     <div className="space-y-4">
       {/* Quick Stats */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
         <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-4 flex items-center gap-3">
           <div className="p-2.5 bg-amber-100 dark:bg-amber-900/30 rounded-xl"><CreditCard className="w-5 h-5 text-amber-600" /></div>
           <div>
@@ -241,6 +299,13 @@ const IncomeTab: React.FC = () => {
             <p className="text-lg font-bold text-slate-900 dark:text-white">{paidCount}</p>
           </div>
         </div>
+        <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-4 flex items-center gap-3">
+          <div className="p-2.5 bg-sky-100 dark:bg-sky-900/30 rounded-xl"><Users className="w-5 h-5 text-sky-600" /></div>
+          <div>
+            <p className="text-xs text-slate-500">{t('finances.unbilled', 'Без счёта')}</p>
+            <p className="text-lg font-bold text-slate-900 dark:text-white">{unbilledCount}</p>
+          </div>
+        </div>
       </div>
 
       {/* Toolbar */}
@@ -260,6 +325,7 @@ const IncomeTab: React.FC = () => {
             <option value="partial">Частично</option>
             <option value="overdue">Просрочено</option>
             <option value="paid">Оплачено</option>
+            <option value="no_plan">Без счёта</option>
           </select>
         </div>
         {filtered.length > 0 && (
@@ -268,24 +334,19 @@ const IncomeTab: React.FC = () => {
             <Download className="w-3.5 h-3.5" />CSV
           </button>
         )}
-        <button onClick={openCreateModal}
-          className="bg-emerald-500 hover:bg-emerald-600 text-white px-4 py-2.5 rounded-xl text-sm font-medium flex items-center gap-2 transition-all shadow-sm shrink-0">
-          <Plus className="w-4 h-4" />{t('finances.createPlan', 'Новый счёт')}
-        </button>
       </div>
 
       {/* Table */}
-      {loading ? (
+      {loading || studentsLoading ? (
         <div className="py-10 text-center text-slate-500 animate-pulse">{t('common.loading', 'Загрузка...')}</div>
       ) : error ? (
         <div className="p-4 text-red-500 bg-red-50 dark:bg-red-900/10 rounded-xl">{error}</div>
       ) : filtered.length === 0 ? (
         <div className="py-20 text-center">
           <Users className="w-12 h-12 text-slate-300 mx-auto mb-3" />
-          <p className="text-slate-500">{t('finances.noPlans', 'Нет счетов на оплату')}</p>
-          <button onClick={openCreateModal} className="mt-3 text-sm text-emerald-600 hover:text-emerald-700 font-medium">
-            {t('finances.createFirst', 'Создать первый счёт →')}
-          </button>
+          <p className="text-slate-500">
+            {search || statusFilter ? t('finances.nothingFound', 'Ничего не найдено') : t('finances.noStudents', 'Нет студентов')}
+          </p>
         </div>
       ) : (
         <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl overflow-hidden">
@@ -303,14 +364,44 @@ const IncomeTab: React.FC = () => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-700/50">
-                {filtered.map((p) => {
+                {filtered.map((row) => {
+                  if (row.kind === 'student') {
+                    const s = row.student;
+                    const NoPlanIcon = noPlanBadge.icon;
+                    return (
+                      <tr key={`student-${s.uid || s.id}`} className="hover:bg-slate-50 dark:hover:bg-slate-700/30 transition-colors">
+                        <td className="px-5 py-3.5 whitespace-nowrap">
+                          <StudentCell name={s.displayName || '—'} email={s.email} avatarUrl={s.avatarUrl} />
+                        </td>
+                        <td className="px-5 py-3.5 text-slate-400 whitespace-nowrap">—</td>
+                        <td className="px-5 py-3.5 text-slate-400 whitespace-nowrap">—</td>
+                        <td className="px-5 py-3.5 text-slate-400 whitespace-nowrap">—</td>
+                        <td className="px-5 py-3.5 text-slate-400 whitespace-nowrap">—</td>
+                        <td className="px-5 py-3.5 whitespace-nowrap">
+                          <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${noPlanBadge.bg}`}>
+                            <NoPlanIcon className="w-3.5 h-3.5" />{noPlanBadge.label}
+                          </span>
+                        </td>
+                        <td className="px-5 py-3.5 text-right whitespace-nowrap">
+                          <div className="flex items-center justify-end gap-1">
+                            <button onClick={() => openCreateFor(String(s.uid || s.id), s.displayName || '')}
+                              className="text-sky-600 hover:text-sky-700 font-medium bg-sky-50 dark:bg-sky-900/20 hover:bg-sky-100 dark:hover:bg-sky-900/40 px-2.5 py-1.5 rounded-lg transition-colors text-xs inline-flex items-center gap-1">
+                              <Plus className="w-3.5 h-3.5" />Выставить счёт
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  }
+                  const p = row.plan;
                   const debt = Math.max(0, p.totalAmount - p.paidAmount);
                   const cfg = statusConfig[p.status] || statusConfig.pending;
                   const Icon = cfg.icon;
+                  const displayName = p.studentName || row.student?.displayName || p.studentId;
                   return (
-                    <tr key={p.id} className="hover:bg-slate-50 dark:hover:bg-slate-700/30 transition-colors">
-                      <td className="px-5 py-3.5 font-medium text-slate-900 dark:text-white whitespace-nowrap">
-                        {p.studentName || p.studentId}
+                    <tr key={`plan-${p.id}`} className="hover:bg-slate-50 dark:hover:bg-slate-700/30 transition-colors">
+                      <td className="px-5 py-3.5 whitespace-nowrap">
+                        <StudentCell name={displayName} email={row.student?.email} avatarUrl={row.student?.avatarUrl} />
                       </td>
                       <td className="px-5 py-3.5 text-slate-500 whitespace-nowrap">{p.courseName || p.courseId || '—'}</td>
                       <td className="px-5 py-3.5 font-medium text-slate-900 dark:text-white whitespace-nowrap">{p.totalAmount?.toLocaleString()} с.</td>
@@ -337,6 +428,11 @@ const IncomeTab: React.FC = () => {
                             className="text-slate-500 hover:text-slate-700 dark:hover:text-white p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
                             title="История оплат">
                             <History className="w-4 h-4" />
+                          </button>
+                          <button onClick={() => openCreateFor(String(p.studentId), displayName)}
+                            className="text-slate-500 hover:text-slate-700 dark:hover:text-white p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
+                            title="Выставить ещё один счёт">
+                            <Plus className="w-4 h-4" />
                           </button>
                           <button onClick={() => handleDeletePlan(p)}
                             className="text-slate-400 hover:text-red-500 p-1.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
@@ -424,7 +520,7 @@ const IncomeTab: React.FC = () => {
                 <input
                   ref={studentInputRef}
                   type="text"
-                  autoFocus
+                  autoFocus={!newPlan.studentId}
                   value={studentQuery}
                   onChange={(e) => {
                     setStudentQuery(e.target.value);
@@ -481,7 +577,7 @@ const IncomeTab: React.FC = () => {
               </div>
               <div>
                 <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Сумма (сом) *</label>
-                <input type="number" min="1" value={newPlan.totalAmount}
+                <input type="number" min="1" autoFocus={!!newPlan.studentId} value={newPlan.totalAmount}
                   onChange={(e) => setNewPlan({ ...newPlan, totalAmount: e.target.value })}
                   className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 text-lg font-bold"
                   placeholder="5000"

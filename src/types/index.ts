@@ -678,6 +678,10 @@ export interface Course {
 
 // ---- Groups ----
 
+// Lifecycle status. Undefined is treated as 'active' for groups created before
+// the field existed.
+export type GroupStatus = 'active' | 'completed' | 'archived';
+
 export interface Group {
   id: string;
   organizationId: string;
@@ -690,6 +694,7 @@ export interface Group {
   chatLinkTitle?: string;
   chatLinkUrl?: string;
   currentSyllabusItemId?: string; // Track which syllabus lesson/topic the group is currently on
+  status?: GroupStatus;
   createdAt: string;
   updatedAt: string;
 }

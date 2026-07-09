@@ -2,11 +2,35 @@ import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { orgGetGroup, orgGetCourses, orgUpdateGroup, orgGetTeachers, orgGetStudents, apiGetSyllabuses, orgResetStudentPassword } from '../../lib/api';
-import { ArrowLeft, Users, BookOpen, Calendar, Link as LinkIcon, Edit2, Check, X, Plus, Briefcase, GraduationCap, Building2, CheckCircle2, Circle, ExternalLink, KeyRound, Copy, Loader2, RefreshCw } from 'lucide-react';
-import type { Group, Course, UserProfile, Syllabus } from '../../types';
+import { ArrowLeft, Users, BookOpen, Calendar, Link as LinkIcon, Edit2, Check, X, Plus, Briefcase, GraduationCap, Building2, CheckCircle2, Circle, ExternalLink, KeyRound, Copy, Loader2, RefreshCw, Archive, ChevronDown, PlayCircle } from 'lucide-react';
+import type { Group, GroupStatus, Course, UserProfile, Syllabus } from '../../types';
 import toast from 'react-hot-toast';
 import { useAuth } from '../../contexts/AuthContext';
+import { usePermissions } from '../../contexts/PermissionsContext';
 import BranchFilter from '../../components/ui/BranchFilter';
+
+// Lifecycle statuses a group can move between, with their badge/menu styling.
+const GROUP_STATUS_META: Record<GroupStatus, { label: string; icon: typeof PlayCircle; badge: string; dot: string }> = {
+  active: {
+    label: 'Активна',
+    icon: PlayCircle,
+    badge: 'bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-400 dark:border-emerald-800',
+    dot: 'text-emerald-500',
+  },
+  completed: {
+    label: 'Завершена',
+    icon: CheckCircle2,
+    badge: 'bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-900/30 dark:text-blue-400 dark:border-blue-800',
+    dot: 'text-blue-500',
+  },
+  archived: {
+    label: 'В архиве',
+    icon: Archive,
+    badge: 'bg-slate-200 text-slate-600 border-slate-300 dark:bg-slate-700/50 dark:text-slate-400 dark:border-slate-600',
+    dot: 'text-slate-500',
+  },
+};
+const GROUP_STATUS_ORDER: GroupStatus[] = ['active', 'completed', 'archived'];
 
 
 
@@ -15,7 +39,11 @@ const GroupDetailPage: React.FC = () => {
   const navigate = useNavigate();
   const { t } = useTranslation();
   const { role, profile } = useAuth();
+  const { canWrite } = usePermissions();
   const isAdmin = role === 'admin' || role === 'manager' || role === 'super_admin';
+  // Whoever holds the "edit group" grant (groups:write) may archive it and switch
+  // its status — mirrors the backend, which gates the same mutation on groups:write.
+  const canEditGroup = isAdmin || canWrite('groups');
 
   const [group, setGroup] = useState<Group | null>(null);
   const [courses, setCourses] = useState<Course[]>([]);
@@ -36,6 +64,10 @@ const GroupDetailPage: React.FC = () => {
   const [showEditGroupModal, setShowEditGroupModal] = useState(false);
   const [editGroupForm, setEditGroupForm] = useState({ name: '', courseId: '', branchId: '' });
   const [savingGroup, setSavingGroup] = useState(false);
+
+  // Group status (active / completed / archived) dropdown
+  const [showStatusMenu, setShowStatusMenu] = useState(false);
+  const [changingStatus, setChangingStatus] = useState(false);
 
   // Modals for adding teachers/students
   const [showAddTeacher, setShowAddTeacher] = useState(false);
@@ -155,6 +187,21 @@ const GroupDetailPage: React.FC = () => {
     }
   };
 
+  const handleChangeStatus = async (next: GroupStatus) => {
+    setShowStatusMenu(false);
+    if (!group || (group.status || 'active') === next) return;
+    setChangingStatus(true);
+    try {
+      await orgUpdateGroup({ id: group.id, status: next });
+      setGroup({ ...group, status: next });
+      toast.success(`Статус: ${GROUP_STATUS_META[next].label}`);
+    } catch (e: any) {
+      toast.error(e.message || 'Не удалось изменить статус');
+    } finally {
+      setChangingStatus(false);
+    }
+  };
+
   const handleAddTeacher = async () => {
     if (!group || !selectedUserId) return;
     setAddingUser(true);
@@ -239,6 +286,10 @@ const GroupDetailPage: React.FC = () => {
   if (loading) return <div className="flex justify-center py-20"><div className="w-10 h-10 border-4 border-slate-200 border-t-emerald-500 rounded-full animate-spin dark:border-slate-700" /></div>;
   if (!group) return <div className="text-center py-20"><Users className="w-12 h-12 text-slate-300 dark:text-slate-600 mx-auto mb-3" /><p className="text-sm font-bold text-slate-400">{t('common.notFound')}</p><button onClick={() => navigate('/groups')} className="mt-3 font-bold text-emerald-500 text-sm hover:underline">{t('common.back')}</button></div>;
 
+  const status: GroupStatus = group.status || 'active';
+  const statusMeta = GROUP_STATUS_META[status];
+  const StatusIcon = statusMeta.icon;
+
   const currentTeacherIds = group.teacherIds || [];
   const currentStudentIds = group.studentIds || [];
   const currentTeachers = allTeachers.filter(t => currentTeacherIds.includes(t.uid));
@@ -282,6 +333,10 @@ const GroupDetailPage: React.FC = () => {
                     {courseName}
                   </span>
                 )}
+                <span className={`px-3 py-1 text-[11px] font-bold uppercase tracking-wider rounded-lg border ${statusMeta.badge}`}>
+                  <StatusIcon className="w-3 h-3 inline-block mr-1.5 -mt-0.5" />
+                  {statusMeta.label}
+                </span>
               </div>
               
               <div className="flex items-center gap-4 mb-6">
@@ -289,16 +344,55 @@ const GroupDetailPage: React.FC = () => {
                   {group.name}
                 </h1>
                 {isAdmin && (
-                  <button 
+                  <button
                     onClick={() => {
                       setEditGroupForm({ name: group.name, courseId: group.courseId || '', branchId: (group as any).branchId || '' });
                       setShowEditGroupModal(true);
-                    }} 
+                    }}
                     className="p-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-500 hover:text-violet-600 dark:hover:text-violet-400 rounded-xl transition-all shadow-sm hover:shadow"
                     title="Редактировать группу"
                   >
                     <Edit2 className="w-5 h-5" />
                   </button>
+                )}
+                {/* Status switcher — archive / activate / complete (needs groups:write) */}
+                {canEditGroup && (
+                  <div className="relative">
+                    <button
+                      onClick={() => setShowStatusMenu(v => !v)}
+                      disabled={changingStatus}
+                      className="flex items-center gap-1.5 px-3 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-sm font-bold text-slate-600 dark:text-slate-300 hover:text-violet-600 dark:hover:text-violet-400 rounded-xl transition-all shadow-sm hover:shadow disabled:opacity-50"
+                      title="Изменить статус группы"
+                    >
+                      {changingStatus ? <Loader2 className="w-4 h-4 animate-spin" /> : <StatusIcon className={`w-4 h-4 ${statusMeta.dot}`} />}
+                      <span className="hidden sm:inline">{statusMeta.label}</span>
+                      <ChevronDown className="w-3.5 h-3.5" />
+                    </button>
+                    {showStatusMenu && (
+                      <>
+                        <div className="fixed inset-0 z-10" onClick={() => setShowStatusMenu(false)} />
+                        <div className="absolute left-0 top-full mt-2 z-20 w-52 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-xl p-1.5">
+                          {GROUP_STATUS_ORDER.map(s => {
+                            const m = GROUP_STATUS_META[s];
+                            const Icon = m.icon;
+                            const isCurrent = s === status;
+                            return (
+                              <button
+                                key={s}
+                                onClick={() => handleChangeStatus(s)}
+                                disabled={changingStatus}
+                                className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-sm font-semibold text-left transition-colors disabled:opacity-50 ${isCurrent ? 'bg-slate-100 dark:bg-slate-700/50 text-slate-900 dark:text-white' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700/40'}`}
+                              >
+                                <Icon className={`w-4 h-4 ${m.dot}`} />
+                                <span className="flex-1">{m.label}</span>
+                                {isCurrent && <Check className="w-4 h-4 text-emerald-500" />}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </>
+                    )}
+                  </div>
                 )}
               </div>
               

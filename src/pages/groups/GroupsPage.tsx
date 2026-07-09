@@ -4,8 +4,15 @@ import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../contexts/AuthContext';
 import { orgGetGroups, orgCreateGroup, orgDeleteGroup, orgGetCourses, orgGetTeachers, orgTeacherJoinGroup, orgTeacherLeaveGroup } from '../../lib/api';
 import { Users, Plus, Search, Trash2, RefreshCw, Loader2, BookOpen, Building2, UserPlus, LogOut } from 'lucide-react';
-import type { Group, Course, UserProfile } from '../../types';
+import type { Group, GroupStatus, Course, UserProfile } from '../../types';
 import BranchFilter from '../../components/ui/BranchFilter';
+
+// Compact status pill for the table — only rendered for non-active groups so an
+// "active" group stays visually clean.
+const GROUP_STATUS_PILL: Record<Exclude<GroupStatus, 'active'>, { label: string; className: string }> = {
+  completed: { label: 'Завершена', className: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' },
+  archived: { label: 'В архиве', className: 'bg-slate-200 text-slate-600 dark:bg-slate-700/60 dark:text-slate-400' },
+};
 
 
 
@@ -193,9 +200,16 @@ const GroupsPage: React.FC = () => {
                             {g.name[0]?.toUpperCase()}
                           </div>
                           <div>
-                            <p className="font-bold text-slate-900 dark:text-white group-hover/row:text-violet-600 dark:group-hover/row:text-violet-400 transition-colors">
-                              {g.name}
-                            </p>
+                            <div className="flex items-center gap-2">
+                              <p className="font-bold text-slate-900 dark:text-white group-hover/row:text-violet-600 dark:group-hover/row:text-violet-400 transition-colors">
+                                {g.name}
+                              </p>
+                              {g.status && g.status !== 'active' && (
+                                <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider ${GROUP_STATUS_PILL[g.status].className}`}>
+                                  {GROUP_STATUS_PILL[g.status].label}
+                                </span>
+                              )}
+                            </div>
                           </div>
                         </div>
                       </td>

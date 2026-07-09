@@ -385,10 +385,17 @@ const handler: Handler = async (event: HandlerEvent) => {
           return forbidden('Можно изменять только свои группы');
         }
       }
+      // `status` (active/completed/archived) is a lifecycle change any holder of
+      // groups:write may make — admins/managers on any group, teachers only on
+      // their own (own-groups guard above). It's the one structural field the
+      // teacher whitelist also permits, per the edit-group permission.
       const ALLOWED_FIELDS = isAdminOrManager
-        ? ['name', 'courseId', 'courseName', 'branchId', 'studentIds', 'teacherIds', 'chatLinkTitle', 'chatLinkUrl', 'currentSyllabusItemId']
-        : ['currentSyllabusItemId'];
+        ? ['name', 'courseId', 'courseName', 'branchId', 'studentIds', 'teacherIds', 'chatLinkTitle', 'chatLinkUrl', 'currentSyllabusItemId', 'status']
+        : ['currentSyllabusItemId', 'status'];
       const id = body.id;
+      if (body.status !== undefined && !['active', 'completed', 'archived'].includes(body.status)) {
+        return badRequest('invalid status');
+      }
       const fields: Record<string, any> = { updatedAt: now() };
       for (const key of ALLOWED_FIELDS) {
         if (body[key] !== undefined) fields[key] = body[key];

@@ -336,6 +336,9 @@ export const orgInviteUser = (email: string, role: string) => orgReq('inviteUser
 // Managers
 export const orgGetManagers = () => orgReq('managers');
 export const orgCreateManager = (data: any) => orgReq('createManager', 'POST', data);
+/** Create a real account with an arbitrary combination of app roles (multi-role). Admin-only. */
+export const orgCreateUser = (data: { displayName: string; username?: string; email?: string; password: string; roles: string[]; phone?: string; branchIds?: string[]; primaryBranchId?: string | null }) =>
+  orgReq('createUser', 'POST', data);
 export const orgGetManagerPermissions = (uid: string) => orgReq('getManagerPermissions', 'GET', undefined, { uid });
 export const orgUpdateManagerPermissions = (uid: string, permissions: any) => orgReq('updateManagerPermissions', 'POST', { uid, permissions });
 

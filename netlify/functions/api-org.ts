@@ -1140,6 +1140,100 @@ const handler: Handler = async (event: HandlerEvent) => {
       }
     }
 
+    // ═══ CREATE USER (real account with an arbitrary combination of app roles) ═══
+    if (action === 'createUser') {
+      // Admin-only: this can grant admin/manager, so managers may not use it (anti-escalation).
+      if (!hasRole(user, 'admin')) return forbidden('Только директор может создавать пользователей');
+      const body = JSON.parse(event.body || '{}');
+      if (!body.displayName) return badRequest('displayName required');
+
+      const VALID = ['admin', 'manager', 'teacher', 'student'];
+      const roles: string[] = [...new Set(Array.isArray(body.roles) ? body.roles : [])].filter((r: any) => VALID.includes(r)) as string[];
+      if (roles.length === 0) return badRequest('Выберите хотя бы одну роль');
+      // Deterministic primary: strongest role wins (admin > manager > teacher > student).
+      const PRIORITY = ['admin', 'manager', 'teacher', 'student'];
+      const primary = PRIORITY.find((r) => roles.includes(r))!;
+
+      if (typeof body.password !== 'string' || body.password.length < 6) {
+        return badRequest('Пароль минимум 6 символов');
+      }
+      if (!body.username && !body.email) return badRequest('Укажите логин или email');
+
+      // Plan seat limits: student seat if student; teacher/staff seat for admin/manager/teacher.
+      const limits = await getOrgLimits(orgId);
+      const orgData = (await adminDb.collection('organizations').doc(orgId).get()).data();
+      if (roles.includes('student') && limits.maxStudents !== -1 && (orgData?.studentsCount || 0) >= limits.maxStudents) {
+        return badRequest('Достигнут лимит студентов по тарифу.');
+      }
+      if (roles.some((r) => ['admin', 'manager', 'teacher'].includes(r)) && limits.maxTeachers !== -1 && (orgData?.teachersCount || 0) >= limits.maxTeachers) {
+        return badRequest('Достигнут лимит сотрудников по тарифу.');
+      }
+
+      try {
+        const username = String(body.username || '').toLowerCase().trim().replace(/[^a-z0-9_]/g, '');
+        if (body.username && username.length < 3) return badRequest('Логин минимум 3 символа');
+        if (username) {
+          const taken = await adminDb.collection('users').where('username', '==', username).limit(1).get();
+          if (!taken.empty) return badRequest('Этот логин уже занят');
+        }
+        // Synthesize a login email from the username when no real email is given —
+        // login resolves username → email before Firebase sign-in, so this is enough.
+        const loginEmail = (body.email && String(body.email).trim())
+          ? String(body.email).trim().toLowerCase()
+          : `${username}@user.sabakhub.app`;
+        const dupEmail = await adminDb.collection('users').where('email', '==', loginEmail).limit(1).get();
+        if (!dupEmail.empty) return badRequest('Пользователь с таким email уже существует');
+
+        const authUser = await adminAuth.createUser({
+          email: loginEmail,
+          password: body.password,
+          displayName: body.displayName,
+        });
+        const uid = authUser.uid;
+        const organizationName = orgData?.name || '';
+
+        const profile: Record<string, any> = {
+          displayName: body.displayName,
+          role: primary,
+          organizationId: orgId,
+          activeOrgId: orgId,
+          activeRole: primary,
+          email: loginEmail,
+          phone: body.phone || '',
+          createdByOrg: true,
+          hasLogin: true,
+          createdAt: now(),
+          updatedAt: now(),
+        };
+        if (username) profile.username = username;
+        await adminDb.collection('users').doc(uid).set(profile);
+
+        // `role` is the primary (for legacy reads); `roles` is the full multi-role set.
+        const memberBase = {
+          userId: uid,
+          userName: body.displayName,
+          userEmail: loginEmail,
+          role: primary,
+          roles,
+          status: 'active',
+          branchIds: body.branchIds || [],
+          primaryBranchId: body.primaryBranchId || null,
+          organizationId: orgId,
+          organizationName,
+          createdByOrg: true,
+          joinedAt: now(),
+        };
+        await adminDb.collection('orgMembers').doc(orgId).collection('members').doc(uid).set(memberBase);
+        await adminDb.collection('users').doc(uid).collection('memberships').doc(orgId).set(memberBase);
+
+        return ok({ uid, ...profile, roles, login: { username: username || undefined, email: loginEmail } });
+      } catch (e: any) {
+        if (e.code === 'auth/email-already-exists') return badRequest('Email уже зарегистрирован в системе');
+        if (e.code === 'auth/invalid-password') return badRequest('Пароль слишком слабый (минимум 6 символов)');
+        throw e;
+      }
+    }
+
     // ═══ MANAGERS (everyone who holds the manager role in this org, incl. multi-role) ═══
     if (action === 'managers') {
       if (!hasPermission(user, 'managers')) return forbidden('No access to managers module');

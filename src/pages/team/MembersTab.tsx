@@ -147,6 +147,9 @@ const MembersTab: React.FC<{ isAdmin: boolean }> = ({ isAdmin }) => {
             const heldRoles = member.roles?.length ? member.roles : [member.role];
             const accent = roleAccent({ id: member.role, name: member.role });
             const full = heldRoles.some(isFullAccessRole);
+            // Assigned fine-grained access role (RBAC) — shown as a badge so it reads
+            // alongside the base roles, not just inside the edit dropdown.
+            const rbacRole = !full ? roles.find(r => r.id === member.roleId) : undefined;
             return (
               <div key={member.uid} className="flex flex-col sm:flex-row sm:items-center gap-3 px-4 py-3">
                 {/* Identity */}
@@ -180,6 +183,11 @@ const MembersTab: React.FC<{ isAdmin: boolean }> = ({ isAdmin }) => {
                       </span>
                     );
                   })}
+                  {rbacRole && (
+                    <span className="text-[10px] font-bold px-2 py-1 rounded-full inline-flex items-center gap-1 border border-indigo-300 dark:border-indigo-500/40 text-indigo-600 dark:text-indigo-300 bg-indigo-50 dark:bg-indigo-500/10">
+                      <ShieldCheck className="w-3 h-3" />{rbacRole.name}
+                    </span>
+                  )}
                 </div>
 
                 {/* Role assignment */}

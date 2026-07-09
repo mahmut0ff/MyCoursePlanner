@@ -75,7 +75,7 @@ const NavItem: React.FC<{
 
 const Sidebar: React.FC<{ open: boolean; onClose: () => void; isCollapsed?: boolean; onToggleCollapse?: () => void; orgData?: any }> = ({ open, onClose, isCollapsed, onToggleCollapse, orgData }) => {
   const { t } = useTranslation();
-  const { profile, role, isSuperAdmin, isTeacher, isManager, organizationId } = useAuth();
+  const { profile, role, isSuperAdmin, isTeacher, isManager, organizationId, membershipRole } = useAuth();
   const { canAccess } = usePlanGate();
   const { canRead } = usePermissions();
   const navigate = useNavigate();
@@ -90,6 +90,21 @@ const Sidebar: React.FC<{ open: boolean; onClose: () => void; isCollapsed?: bool
   const isAdmin = role === 'admin';
   const teacherWithOrg = isTeacher && !!organizationId;
   const instType = orgData?.institutionType;
+
+  // Localized label for the ACTIVE role — matches the org switcher and role switcher.
+  // Uses the assigned custom RBAC role's own name when the active role is its base.
+  const roleLabels: Record<string, string> = {
+    owner: t('membership.owner', 'Владелец'),
+    admin: t('membership.admin', 'Директор'),
+    manager: t('membership.manager', 'Менеджер'),
+    teacher: t('membership.teacher', 'Преподаватель'),
+    student: t('membership.student', 'Студент'),
+    super_admin: t('app.superAdmin', 'Супер админ'),
+  };
+  const BASE_TO_APP: Record<string, string> = { owner: 'admin', admin: 'admin', manager: 'manager', teacher: 'teacher', mentor: 'teacher', student: 'student' };
+  const activeRoleLabel = (membershipRole && BASE_TO_APP[membershipRole.baseRole] === role)
+    ? membershipRole.name
+    : (roleLabels[role || ''] || role || '');
 
   return (
     <>
@@ -322,7 +337,7 @@ const Sidebar: React.FC<{ open: boolean; onClose: () => void; isCollapsed?: bool
               )}
               <div className={`min-w-0 flex-1 ${isCollapsed ? 'lg:hidden' : ''}`}>
                 <p className="text-sm font-semibold text-slate-900 dark:text-white truncate">{profile?.displayName}</p>
-                <p className="text-[10px] text-slate-500 capitalize">{role === 'admin' && !isSuperAdmin ? t('roles.director', 'Директор') : role?.replace('_', ' ')}</p>
+                <p className="text-[10px] text-slate-500">{activeRoleLabel}</p>
               </div>
             </button>
             {isSuperAdmin && (

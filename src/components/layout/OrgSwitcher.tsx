@@ -7,6 +7,12 @@ import {
   FolderOpen
 } from 'lucide-react';
 import { apiGetMyMemberships, apiSwitchOrg, apiLeaveMembership } from '../../lib/api';
+import { useAuth } from '../../contexts/AuthContext';
+
+// Maps a custom RBAC role's baseRole to the app-level role it acts as.
+const BASE_TO_APP: Record<string, string> = {
+  owner: 'admin', admin: 'admin', manager: 'manager', teacher: 'teacher', mentor: 'teacher', student: 'student',
+};
 
 interface MembershipItem {
   id: string;
@@ -26,6 +32,7 @@ interface OrgSwitcherProps {
 
 const OrgSwitcher: React.FC<OrgSwitcherProps> = ({ currentOrgId, userRole, onSwitch, onClose, isCollapsed }) => {
   const { t } = useTranslation();
+  const { membershipRole } = useAuth();
   const navigate = useNavigate();
   const [memberships, setMemberships] = useState<MembershipItem[]>([]);
   const [open, setOpen] = useState(false);
@@ -199,6 +206,13 @@ const OrgSwitcher: React.FC<OrgSwitcherProps> = ({ currentOrgId, userRole, onSwi
   const quickActions = getQuickActions();
   const currentOrg = currentMembership || null; // If null, they are in Personal Workspace
 
+  // Show the ACTIVE (switched) role for the current org — not the membership's primary
+  // role — so this stays in sync with the sidebar. Uses the custom RBAC role's own name
+  // when the active role is that role's base (e.g. "Менеджер 2").
+  const currentOrgRoleLabel = (membershipRole && BASE_TO_APP[membershipRole.baseRole] === userRole)
+    ? membershipRole.name
+    : (roleLabels[userRole || ''] || roleLabels[currentOrg?.role || ''] || userRole || currentOrg?.role || '');
+
   // Determine "+" button behavior
   const getPlusAction = () => {
     if (userRole === 'admin') return { title: t('org.addBranch', 'Добавить филиал'), action: () => nav('/branches') };
@@ -230,7 +244,7 @@ const OrgSwitcher: React.FC<OrgSwitcherProps> = ({ currentOrgId, userRole, onSwi
               {currentOrg?.organizationName || t('nav.sectionPersonalWorkspace', 'Личное пространство')}
             </p>
             <p className="text-[10px] text-violet-600 dark:text-violet-400/80 font-medium mt-0.5">
-              {currentOrg ? (roleLabels[currentOrg.role] || currentOrg.role) : t('nav.independent', 'Независимый профиль')}
+              {currentOrg ? currentOrgRoleLabel : t('nav.independent', 'Независимый профиль')}
             </p>
           </div>
           <ChevronDown className={`w-4 h-4 text-slate-400 dark:text-slate-500 transition-transform duration-200 ${open ? 'rotate-180' : ''}`} />

@@ -56,10 +56,16 @@ const handler: Handler = async (event: HandlerEvent) => {
         .where('status', '==', 'active').get();
       let members = snap.docs
         .map(d => d.data())
-        .filter((m: any) => STAFF_ROLES.includes(m.role))
+        // Include anyone whose primary OR secondary (multi-role) role is staff.
+        .filter((m: any) => {
+          const held = [m.role, ...(Array.isArray(m.roles) ? m.roles : [])].filter(Boolean);
+          return held.some((r: string) => STAFF_ROLES.includes(r));
+        })
         .map((m: any) => ({
           uid: m.userId, displayName: m.userName, email: m.userEmail,
-          role: m.role, roleId: m.roleId || null,
+          role: m.role,
+          roles: (Array.isArray(m.roles) && m.roles.length ? m.roles : (m.role ? [m.role] : [])),
+          roleId: m.roleId || null,
           branchIds: m.branchIds || [], status: m.status || 'active',
         }));
 

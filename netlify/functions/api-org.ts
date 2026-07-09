@@ -19,6 +19,17 @@ import { billingPeriodKey, billingDeadlineISO } from './utils/billing';
 /* ═══════════════════════════════════════════════ */
 const now = () => new Date().toISOString();
 
+/**
+ * A member "holds" an app role if it's their primary `role` OR appears in their
+ * multi-role `roles[]` set. Used so a multi-role member (e.g. teacher + manager)
+ * shows up under every list they belong to, not just their primary role. Falls
+ * back to the single `role` field for legacy members that have no `roles` array.
+ */
+function memberHoldsRole(m: { role?: string; roles?: string[] }, wanted: string[]): boolean {
+  const held = new Set<string>([m.role, ...(Array.isArray(m.roles) ? m.roles : [])].filter(Boolean) as string[]);
+  return wanted.some((r) => held.has(r));
+}
+
 // ─── Schedule conflict detection ───────────────────────────────────────────
 // Authoritative server-side check so EVERY path (manual create, drag&drop, paste,
 // AI import) is protected — the client check only sees the loaded week/branch.
@@ -638,33 +649,26 @@ const handler: Handler = async (event: HandlerEvent) => {
       return ok({ rejected: true });
     }
 
-    // ═══ STUDENTS (users with role=student in this org) ═══
+    // ═══ STUDENTS (everyone who holds the student role in this org, incl. multi-role) ═══
     if (action === 'students') {
-      let query: any = adminDb.collection('orgMembers').doc(orgId)
+      // Fetch by status only, then keep anyone whose primary OR secondary role is
+      // student. This lets a multi-role member (e.g. teacher + student) appear here too.
+      const snap = await adminDb.collection('orgMembers').doc(orgId)
         .collection('members')
         .where('status', 'in', ['active', 'expelled'])
-        .where('role', '==', 'student');
-      
-      // Apply branch filter if requested
-      if (params.branchId) {
-        query = query.where('branchIds', 'array-contains', params.branchId);
-      } else if (hasRole(user, 'manager') && user.branchIds.length > 0) {
-        // Managers auto-scoped to their branches (array-contains supports single value)
-        if (user.branchIds.length === 1) {
-          query = query.where('branchIds', 'array-contains', user.branchIds[0]);
-        }
-      }
-      
-      const snap = await query.get();
-      const memberDocs = snap.docs.map((d: any) => {
-        const data = d.data();
-        return { uid: data.userId, displayName: data.userName, email: data.userEmail, role: data.role, branchIds: data.branchIds || [], primaryBranchId: data.primaryBranchId || null, status: data.status || 'active' };
-      });
+        .get();
+      let filtered = snap.docs
+        .map((d: any) => {
+          const data = d.data();
+          return { uid: data.userId, displayName: data.userName, email: data.userEmail, role: data.role, roles: data.roles || [], branchIds: data.branchIds || [], primaryBranchId: data.primaryBranchId || null, status: data.status || 'active' };
+        })
+        .filter((m: any) => memberHoldsRole(m, ['student']));
 
-      // Multi-branch manager: filter in memory
-      let filtered = memberDocs;
-      if (!params.branchId && hasRole(user, 'manager') && user.branchIds.length > 1) {
-        filtered = memberDocs.filter((s: any) => 
+      // Branch scoping in memory (the query above is unscoped by branch).
+      if (params.branchId) {
+        filtered = filtered.filter((s: any) => s.branchIds.includes(params.branchId));
+      } else if (hasRole(user, 'manager') && user.branchIds.length > 0) {
+        filtered = filtered.filter((s: any) =>
           s.branchIds.length === 0 || s.branchIds.some((id: string) => user.branchIds.includes(id))
         );
       }
@@ -996,22 +1000,22 @@ const handler: Handler = async (event: HandlerEvent) => {
       }
     }
 
-    // ═══ TEACHERS (users with role=teacher in this org) ═══
+    // ═══ TEACHERS (everyone who holds a teaching role in this org, incl. multi-role) ═══
     if (action === 'teachers') {
-      let query: any = adminDb.collection('orgMembers').doc(orgId)
+      const snap = await adminDb.collection('orgMembers').doc(orgId)
         .collection('members')
         .where('status', '==', 'active')
-        .where('role', 'in', ['teacher', 'admin', 'owner', 'mentor']);
+        .get();
+      let members = snap.docs
+        .map((d: any) => {
+          const data = d.data();
+          return { uid: data.userId, displayName: data.userName, email: data.userEmail, role: data.role, roles: data.roles || [], branchIds: data.branchIds || [], primaryBranchId: data.primaryBranchId || null };
+        })
+        .filter((m: any) => memberHoldsRole(m, ['teacher', 'admin', 'owner', 'mentor']));
 
       if (params.branchId) {
-        query = query.where('branchIds', 'array-contains', params.branchId);
+        members = members.filter((m: any) => m.branchIds.includes(params.branchId));
       }
-      
-      const snap = await query.get();
-      const members = snap.docs.map((d: any) => {
-        const data = d.data();
-        return { uid: data.userId, displayName: data.userName, email: data.userEmail, role: data.role, branchIds: data.branchIds || [], primaryBranchId: data.primaryBranchId || null };
-      });
 
       // Enrich with user profile data (avatarUrl, phone, city, createdAt)
       let enriched = members;
@@ -1136,23 +1140,23 @@ const handler: Handler = async (event: HandlerEvent) => {
       }
     }
 
-    // ═══ MANAGERS (users with role=manager in this org) ═══
+    // ═══ MANAGERS (everyone who holds the manager role in this org, incl. multi-role) ═══
     if (action === 'managers') {
       if (!hasPermission(user, 'managers')) return forbidden('No access to managers module');
-      let query: any = adminDb.collection('orgMembers').doc(orgId)
+      const snap = await adminDb.collection('orgMembers').doc(orgId)
         .collection('members')
         .where('status', '==', 'active')
-        .where('role', '==', 'manager');
+        .get();
+      let members = snap.docs
+        .map((d: any) => {
+          const data = d.data();
+          return { uid: data.userId, displayName: data.userName, email: data.userEmail, role: data.role, roles: data.roles || [], branchIds: data.branchIds || [], primaryBranchId: data.primaryBranchId || null };
+        })
+        .filter((m: any) => memberHoldsRole(m, ['manager']));
 
       if (params.branchId) {
-        query = query.where('branchIds', 'array-contains', params.branchId);
+        members = members.filter((m: any) => m.branchIds.includes(params.branchId));
       }
-      
-      const snap = await query.get();
-      const members = snap.docs.map((d: any) => {
-        const data = d.data();
-        return { uid: data.userId, displayName: data.userName, email: data.userEmail, role: data.role, branchIds: data.branchIds || [], primaryBranchId: data.primaryBranchId || null };
-      });
 
       let enriched = members;
       if (members.length > 0) {

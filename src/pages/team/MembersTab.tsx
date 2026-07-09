@@ -10,6 +10,7 @@ interface Member {
   displayName: string;
   email: string;
   role: string;
+  roles?: string[];
   roleId: string | null;
   avatarUrl?: string;
 }
@@ -20,6 +21,7 @@ const BASE_ROLE_LABELS: Record<string, string> = {
   manager: 'Менеджер',
   teacher: 'Преподаватель',
   mentor: 'Наставник',
+  student: 'Студент',
 };
 
 const isFullAccessRole = (r: string) => r === 'admin' || r === 'owner';
@@ -83,8 +85,9 @@ const MembersTab: React.FC<{ isAdmin: boolean }> = ({ isAdmin }) => {
       ) : (
         <div className="card divide-y divide-slate-100 dark:divide-slate-700/60 overflow-hidden">
           {filtered.map(member => {
+            const heldRoles = member.roles?.length ? member.roles : [member.role];
             const accent = roleAccent({ id: member.role, name: member.role });
-            const full = isFullAccessRole(member.role);
+            const full = heldRoles.some(isFullAccessRole);
             return (
               <div key={member.uid} className="flex flex-col sm:flex-row sm:items-center gap-3 px-4 py-3">
                 {/* Identity */}
@@ -104,13 +107,21 @@ const MembersTab: React.FC<{ isAdmin: boolean }> = ({ isAdmin }) => {
                   </div>
                 </div>
 
-                {/* Base role badge */}
-                <span
-                  className="text-[10px] font-bold px-2 py-1 rounded-full self-start sm:self-auto shrink-0"
-                  style={{ background: `${accent}1a`, color: accent }}
-                >
-                  {BASE_ROLE_LABELS[member.role] || member.role}
-                </span>
+                {/* Base role badges — a member may hold several roles (multi-role) */}
+                <div className="flex flex-wrap gap-1 self-start sm:self-auto shrink-0">
+                  {heldRoles.map(r => {
+                    const rAccent = roleAccent({ id: r, name: r });
+                    return (
+                      <span
+                        key={r}
+                        className="text-[10px] font-bold px-2 py-1 rounded-full"
+                        style={{ background: `${rAccent}1a`, color: rAccent }}
+                      >
+                        {BASE_ROLE_LABELS[r] || r}
+                      </span>
+                    );
+                  })}
+                </div>
 
                 {/* Role assignment */}
                 <div className="sm:w-56 shrink-0">

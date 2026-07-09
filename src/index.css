@@ -869,14 +869,42 @@ select:-webkit-autofill {
    those hashes are unstable and previously bled onto react-hot-toast's full-width positioning
    wrapper, rendering a stray dark rectangle next to every toast. */
 
-/* ═══ Telegram Notification Button Glow ═══ */
+/* ═══ Telegram Notification Button Glow + Shine Sweep ═══ */
 .telegram-glow-btn {
+  position: relative;
+  overflow: hidden;
   animation: tg-glow 3s ease-in-out infinite;
 }
 
 @keyframes tg-glow {
   0%, 100% { box-shadow: 0 0 12px rgba(34, 158, 217, 0.35); }
   50% { box-shadow: 0 0 22px rgba(34, 158, 217, 0.55); }
+}
+
+/* Fleeting light band that sweeps left → right to draw the eye, then rests
+   off-screen for the remainder of the cycle. */
+.telegram-glow-btn::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 55%;
+  height: 100%;
+  background: linear-gradient(
+    100deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.55) 50%,
+    transparent 100%
+  );
+  transform: translateX(-130%) skewX(-18deg);
+  animation: tg-shine 3.8s ease-in-out infinite;
+  pointer-events: none;
+}
+
+@keyframes tg-shine {
+  0%   { transform: translateX(-130%) skewX(-18deg); }
+  22%  { transform: translateX(300%) skewX(-18deg); }
+  100% { transform: translateX(300%) skewX(-18deg); }
 }
 
 /* ═══ Sidebar Tips Transition ═══ */

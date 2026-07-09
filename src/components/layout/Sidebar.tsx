@@ -8,7 +8,6 @@ import { term } from '../../lib/terminology';
 import { signOut } from '../../services/auth.service';
 
 import OrgSwitcher from './OrgSwitcher';
-import RoleSwitcher from './RoleSwitcher';
 import TelegramNotifyButton from '../telegram/TelegramNotifyButton';
 import SidebarTips from './SidebarTips';
 import {
@@ -120,8 +119,7 @@ const Sidebar: React.FC<{ open: boolean; onClose: () => void; isCollapsed?: bool
         {/* ═══ Org Switcher ═══ */}
         {!isSuperAdmin && <OrgSwitcher currentOrgId={organizationId || undefined} userRole={role} onClose={onClose} isCollapsed={isCollapsed} />}
 
-        {/* ═══ Role Switcher (multi-role members only; self-hides otherwise) ═══ */}
-        {!isSuperAdmin && <RoleSwitcher onClose={onClose} isCollapsed={isCollapsed} />}
+        {/* Role switching for multi-role members now lives in Settings → «Активная роль» (ActiveRoleCard). */}
 
         {/* ═══ Navigation ═══ */}
         <nav className="flex-1 px-2 py-2 space-y-0.5 overflow-y-auto scrollbar-thin scrollbar-thumb-slate-700">

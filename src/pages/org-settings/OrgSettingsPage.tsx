@@ -17,6 +17,7 @@ import QRCode from 'qrcode';
 import { IntegrationsTab } from './IntegrationsTab';
 import toast from 'react-hot-toast';
 import { Link } from 'lucide-react';
+import ActiveRoleCard from '../../components/shared/ActiveRoleCard';
 
 type Tab = 'general' | 'academic' | 'visitcard' | 'integrations' | 'notifications' | 'data' | 'limits';
 
@@ -601,6 +602,9 @@ const OrgSettingsPage: React.FC = () => {
       </div>
 
       {error && <div className="mb-4 px-4 py-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg text-sm text-red-600 dark:text-red-400">{error}</div>}
+
+      {/* Active role switcher — only shows for members holding more than one role */}
+      <ActiveRoleCard className="mb-6" />
 
       {/* Tabbed layout */}
       <div className="flex flex-col md:flex-row gap-6 min-h-[calc(100vh-8rem)]">

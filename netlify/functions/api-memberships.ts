@@ -645,14 +645,51 @@ const handler: Handler = async (event: HandlerEvent) => {
         : [body.newRole];
       const invalid = roles.filter((r) => !validRoles.includes(r));
       if (invalid.length) return badRequest(`Invalid role(s): ${invalid.join(', ')}`);
+      if (roles.length === 0) return badRequest('At least one role required');
 
       const ts = now();
       // `role` stays the primary (roles[0]) for back-compat; `roles` is the full set.
       const update = { role: roles[0], roles, updatedAt: ts };
+
+      // Upsert with merge rather than update() so assigning roles never throws on a
+      // membership doc that only exists in one mirror (or not yet at all). When the
+      // doc is new we seed identity fields from the user's profile.
+      const existing = await getMembership(body.userId, body.organizationId) as any;
+      const targetUserDoc = await adminDb.collection('users').doc(body.userId).get();
+      const targetUserData = targetUserDoc.data() || {};
+      const baseIdentity = existing ? {} : {
+        userId: body.userId,
+        userEmail: targetUserData.email || '',
+        userName: targetUserData.displayName || targetUserData.email || '',
+        organizationId: body.organizationId,
+        organizationName: targetUserData.organizationName || '',
+        status: 'active',
+        joinMethod: 'admin_assigned',
+        joinedAt: ts,
+        createdAt: ts,
+      };
       await adminDb.collection('users').doc(body.userId)
-        .collection('memberships').doc(body.organizationId).update(update);
+        .collection('memberships').doc(body.organizationId).set({ ...baseIdentity, ...update }, { merge: true });
       await adminDb.collection('orgMembers').doc(body.organizationId)
-        .collection('members').doc(body.userId).update(update);
+        .collection('members').doc(body.userId).set({ ...baseIdentity, ...update }, { merge: true });
+
+      // Keep the flat users.role in sync with the primary role so the member's
+      // default landing role matches the set — but only when this org is their
+      // active context, and never downgrade a platform super_admin. Preserve the
+      // member's current active role if it's still granted (don't yank them out).
+      const roleMap: Record<string, string> = { owner: 'admin', admin: 'admin', manager: 'manager', teacher: 'teacher', mentor: 'teacher', student: 'student' };
+      const activeOrgId = targetUserData.activeOrgId || targetUserData.organizationId;
+      if (activeOrgId === body.organizationId && targetUserData.role !== 'super_admin') {
+        const primaryAppRole = roleMap[roles[0]] || roles[0];
+        const allowedApp = [...new Set(roles.map((r) => roleMap[r] || r))];
+        const current = targetUserData.activeRole || targetUserData.role || '';
+        const nextActiveRole = allowedApp.includes(current) ? current : primaryAppRole;
+        await adminDb.collection('users').doc(body.userId).update({
+          role: nextActiveRole,
+          activeRole: nextActiveRole,
+          updatedAt: ts,
+        });
+      }
 
       return ok({ roleChanged: true, role: roles[0], roles });
     }

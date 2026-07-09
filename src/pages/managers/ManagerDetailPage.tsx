@@ -7,6 +7,7 @@ import type { UserProfile } from '../../types';
 import type { OrgRole } from '../../lib/rbac';
 import toast from 'react-hot-toast';
 import { useAuth } from '../../contexts/AuthContext';
+import MemberRolesEditor from '../../components/shared/MemberRolesEditor';
 
 const C = {
   blue: '#3b82f6',
@@ -156,7 +157,14 @@ const ManagerDetailPage: React.FC = () => {
         </div>
       </div>
       
-      {/* Role assignment Panel */}
+      {/* App-level roles (multi-role membership) */}
+      {isAdmin && organizationId && (
+        <div className="mb-6">
+          <MemberRolesEditor uid={manager.uid} orgId={organizationId} />
+        </div>
+      )}
+
+      {/* Role assignment Panel (RBAC — fine-grained permissions) */}
       {isAdmin && (
         <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-6 shadow-sm mb-6">
           <div className="flex items-center gap-2 mb-1">

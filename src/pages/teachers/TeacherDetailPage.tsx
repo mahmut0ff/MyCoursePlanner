@@ -6,6 +6,7 @@ import { ArrowLeft, Mail, Calendar, BookOpen, Briefcase, Phone, MapPin, Graduati
 import type { UserProfile, TeacherProfile, Group } from '../../types';
 import toast from 'react-hot-toast';
 import { useAuth } from '../../contexts/AuthContext';
+import MemberRolesEditor from '../../components/shared/MemberRolesEditor';
 
 const C = {
   purple: '#46178f',
@@ -20,8 +21,9 @@ const TeacherDetailPage: React.FC = () => {
   const { uid } = useParams<{ uid: string }>();
   const navigate = useNavigate();
   const { t } = useTranslation();
-  const { role } = useAuth();
+  const { role, organizationId } = useAuth();
   const canAssign = role === 'admin' || role === 'manager' || role === 'super_admin';
+  const canEditRoles = role === 'admin' || role === 'super_admin';
 
   const [teacher, setTeacher] = useState<UserProfile | null>(null);
   const [profile, setProfile] = useState<TeacherProfile | null>(null);
@@ -233,8 +235,11 @@ const TeacherDetailPage: React.FC = () => {
           )}
         </div>
 
-        {/* Sidebar: Assigned Groups */}
+        {/* Sidebar: Roles + Assigned Groups */}
         <div className="space-y-6">
+           {canEditRoles && organizationId && (
+             <MemberRolesEditor uid={teacher.uid} orgId={organizationId} />
+           )}
            <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl overflow-hidden shadow-sm">
               <div className="px-5 py-4 border-b border-slate-100 dark:border-slate-700 flex items-center justify-between">
                  <div className="flex items-center gap-2">

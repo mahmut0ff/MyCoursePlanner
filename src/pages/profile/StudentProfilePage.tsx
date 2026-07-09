@@ -14,6 +14,7 @@ import AvatarCropper from '../../components/ui/AvatarCropper';
 import type { GamificationData } from '../../types';
 import { PinnedBadgesDisplay } from '../../lib/badges';
 import TelegramLinkCard from '../../components/telegram/TelegramLinkCard';
+import ActiveRoleCard from '../../components/shared/ActiveRoleCard';
 
 const StudentProfilePage: React.FC = () => {
   const { t } = useTranslation();
@@ -162,7 +163,8 @@ const StudentProfilePage: React.FC = () => {
         <h1 className="text-2xl font-bold text-slate-900 dark:text-white">{t('profile.title')}</h1>
       </div>
 
-
+      {/* Active role switcher — only shows for members holding more than one role */}
+      <ActiveRoleCard className="mb-6" />
 
       {
         <div className="space-y-6">

@@ -1,17 +1,19 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { orgGetUsers, orgUpdateUserRole } from '../../lib/api';
-import { ArrowLeft, Mail, Calendar, Shield, Users } from 'lucide-react';
+import { orgGetUsers } from '../../lib/api';
+import { ArrowLeft, Mail, Calendar, Users } from 'lucide-react';
 import type { UserProfile } from '../../types';
+import { useAuth } from '../../contexts/AuthContext';
+import MemberRolesEditor from '../../components/shared/MemberRolesEditor';
 
 const OrgUserDetailPage: React.FC = () => {
   const { uid } = useParams<{ uid: string }>();
   const navigate = useNavigate();
   const { t } = useTranslation();
+  const { organizationId } = useAuth();
   const [user, setUser] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
-  const [roleChanging, setRoleChanging] = useState(false);
 
   useEffect(() => {
     if (!uid) return;
@@ -20,16 +22,6 @@ const OrgUserDetailPage: React.FC = () => {
       .then((all: UserProfile[]) => setUser(all.find((u) => u.uid === uid) || null))
       .finally(() => setLoading(false));
   }, [uid]);
-
-  const handleRoleChange = async (role: string) => {
-    if (!user) return;
-    setRoleChanging(true);
-    try {
-      await orgUpdateUserRole(user.uid, role);
-      setUser({ ...user, role: role as any });
-    } catch (e) { console.error(e); }
-    finally { setRoleChanging(false); }
-  };
 
   if (loading) return <div className="flex justify-center py-20"><div className="w-8 h-8 border-2 border-slate-200 border-t-primary-500 rounded-full animate-spin dark:border-slate-700 dark:border-t-primary-400" /></div>;
   if (!user) return <div className="text-center py-20"><Users className="w-12 h-12 text-slate-300 dark:text-slate-600 mx-auto mb-3" /><p className="text-sm text-slate-400">{t('common.notFound')}</p><button onClick={() => navigate('/org-users')} className="mt-3 text-primary-500 text-sm hover:underline">{t('common.back')}</button></div>;
@@ -69,25 +61,10 @@ const OrgUserDetailPage: React.FC = () => {
         </div>
       </div>
 
-      {/* Role Management */}
-      <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-5">
-        <div className="flex items-center gap-2 mb-3">
-          <Shield className="w-4 h-4 text-primary-500" />
-          <h2 className="text-sm font-semibold text-slate-900 dark:text-white">{t('org.users.role')}</h2>
-        </div>
-        <div className="flex gap-2">
-          {['admin', 'teacher', 'student'].map((r) => (
-            <button
-              key={r}
-              onClick={() => handleRoleChange(r)}
-              disabled={roleChanging || user.role === r}
-              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors disabled:opacity-50 ${user.role === r ? 'bg-primary-500 text-white' : 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-primary-100 dark:hover:bg-primary-900/20'}`}
-            >
-              {t(`org.users.role_${r}`) || r}
-            </button>
-          ))}
-        </div>
-      </div>
+      {/* Role Management (multi-role membership) */}
+      {organizationId
+        ? <MemberRolesEditor uid={user.uid} orgId={organizationId} onSaved={(roles) => setUser({ ...user, role: roles[0] as any })} />
+        : null}
     </div>
   );
 };

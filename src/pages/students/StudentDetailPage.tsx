@@ -5,6 +5,7 @@ import { orgGetStudents, orgGetResults, orgGetGroups, orgUpdateGroup, apiRemoveM
 import { useAuth } from '../../contexts/AuthContext';
 import { usePlanGate } from '../../contexts/PlanContext';
 import ReportCommentModal from '../../components/ai/ReportCommentModal';
+import MemberRolesEditor from '../../components/shared/MemberRolesEditor';
 import {
   ArrowLeft, Mail, Trophy, Calendar, BarChart3, Users, Phone, MapPin,
   BookOpen, Zap, Target, Clock, CheckCircle, Plus, X, Loader2,
@@ -550,6 +551,11 @@ const StudentDetailPage: React.FC = () => {
                 )}
               </div>
             </div>
+          )}
+
+          {/* Roles (multi-role) — only real admins, only for students who have a login */}
+          {(role === 'admin' || role === 'super_admin') && organizationId && !!student.email && (student as any).offlineStudent !== true && (
+            <MemberRolesEditor uid={student.uid} orgId={organizationId} />
           )}
 
           {/* Finances Block */}

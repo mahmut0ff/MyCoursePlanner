@@ -7,6 +7,7 @@ import { auth, storage } from '../../lib/firebase';
 import { ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { updateUser } from '../../services/users.service';
 import AvatarCropper from '../../components/ui/AvatarCropper';
+import ActiveRoleCard from '../../components/shared/ActiveRoleCard';
 import {
   User, Globe, Bell, Lock, Save, Loader2, CheckCircle2, Eye, EyeOff, Phone, Camera,
   FileText, Trash2, Upload
@@ -219,6 +220,9 @@ const TeacherSettingsPage: React.FC = () => {
         </div>
       )}
       {error && <div className="mb-4 px-4 py-2.5 bg-red-500/10 border border-red-500/20 rounded-lg text-sm text-red-500">{error}</div>}
+
+      {/* Active role switcher — only shows for members holding more than one role */}
+      <ActiveRoleCard className="mb-6" />
 
       <div className="flex flex-col md:flex-row gap-6">
         {/* Sidebar */}

@@ -8,6 +8,11 @@ const ROLE_ICON: Record<string, React.ElementType> = {
   admin: Shield, manager: Briefcase, teacher: GraduationCap, student: BookOpen,
 };
 
+// Maps a custom RBAC role's baseRole to the app-level role it switches into.
+const BASE_TO_APP: Record<string, string> = {
+  owner: 'admin', admin: 'admin', manager: 'manager', teacher: 'teacher', mentor: 'teacher', student: 'student',
+};
+
 /**
  * Settings card that lets a multi-role member switch which role is currently
  * active. Renders nothing for single-role members, so it can be dropped into any
@@ -17,7 +22,7 @@ const ROLE_ICON: Record<string, React.ElementType> = {
  */
 const ActiveRoleCard: React.FC<{ className?: string }> = ({ className }) => {
   const { t } = useTranslation();
-  const { role, availableRoles, switchRole } = useAuth();
+  const { role, availableRoles, switchRole, membershipRole } = useAuth();
   const [switching, setSwitching] = useState<UserRole | null>(null);
 
   // Only multi-role members get the switcher.
@@ -29,6 +34,11 @@ const ActiveRoleCard: React.FC<{ className?: string }> = ({ className }) => {
     teacher: t('membership.teacher', 'Преподаватель'),
     student: t('membership.student', 'Студент'),
   };
+
+  // The app role that the assigned custom RBAC role switches into — labelled with
+  // the custom role's own name (e.g. "Менеджер 2") instead of the generic base label.
+  const rbacApp = membershipRole ? (BASE_TO_APP[membershipRole.baseRole] || membershipRole.baseRole) : null;
+  const labelFor = (r: string) => (membershipRole && r === rbacApp ? membershipRole.name : (roleLabels[r] || r));
 
   const handleSwitch = async (next: UserRole) => {
     if (next === role || switching) return;
@@ -70,7 +80,7 @@ const ActiveRoleCard: React.FC<{ className?: string }> = ({ className }) => {
               } disabled:opacity-60`}
             >
               {isLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Icon className="w-3.5 h-3.5" />}
-              {roleLabels[r] || r}
+              {labelFor(r)}
               {isActive && !isLoading && <Check className="w-3.5 h-3.5" />}
             </button>
           );

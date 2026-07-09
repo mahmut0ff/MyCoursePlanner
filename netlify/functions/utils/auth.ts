@@ -108,6 +108,22 @@ export async function verifyAuth(event: HandlerEvent): Promise<AuthUser | null> 
 
     if (role !== 'super_admin' && organizationId) {
       const membership = await resolveOrgRole(decoded.uid, organizationId);
+      customRoleId = membership.roleId;
+
+      // Resolve the assigned custom role once — we need its base role (which becomes a
+      // switchable app role) as well as its granular permission set.
+      let customRole: { name?: string; baseRole?: string; permissions?: any[] } | null = null;
+      if (membership.roleId) {
+        try {
+          const roleDoc = await adminDb.collection('organizations').doc(organizationId)
+            .collection('roles').doc(membership.roleId).get();
+          if (roleDoc.exists) {
+            const rd = roleDoc.data()!;
+            customRole = { name: rd.name, baseRole: rd.baseRole, permissions: rd.permissions };
+          }
+        } catch { /* fall through to system defaults */ }
+      }
+
       if (membership.role) {
         // Map membership roles to AuthUser roles
         const roleMap: Record<string, AuthUser['role']> = {
@@ -123,29 +139,23 @@ export async function verifyAuth(event: HandlerEvent): Promise<AuthUser | null> 
         // membership actually grants. Otherwise fall back to the primary role.
         // This is the server-side guard against privilege escalation.
         const allowedRoles = membership.roles.map((r) => roleMap[r] || r);
+        // An assigned custom role's base role is also a valid role to switch into.
+        if (customRole?.baseRole) {
+          const mappedBase = roleMap[customRole.baseRole] || (customRole.baseRole as AuthUser['role']);
+          if (!allowedRoles.includes(mappedBase)) allowedRoles.push(mappedBase);
+        }
         const active = userData?.activeRole as AuthUser['role'] | undefined;
         role = active && allowedRoles.includes(active) ? active : primaryRole;
       }
       branchIds = membership.branchIds;
       primaryBranchId = membership.primaryBranchId;
-      customRoleId = membership.roleId;
 
-      // Resolve the assigned custom role (if any) to build the granular grant set.
-      let customRole: { name?: string; permissions?: any[] } | null = null;
-      if (membership.roleId && !FULL_ACCESS_ROLES.includes(role)) {
-        try {
-          const roleDoc = await adminDb.collection('organizations').doc(organizationId)
-            .collection('roles').doc(membership.roleId).get();
-          if (roleDoc.exists) {
-            const rd = roleDoc.data()!;
-            customRole = { name: rd.name, permissions: rd.permissions };
-          }
-        } catch { /* fall through to system defaults */ }
-      }
-
-      rbac = resolvePermissionSet({ baseRole: role, customRole, legacyManagerPerms: membership.permissions });
+      // Layer the custom role's grants only when the active role isn't full-access
+      // (admins/owners get everything anyway).
+      const effectiveCustomRole = (membership.roleId && !FULL_ACCESS_ROLES.includes(role)) ? customRole : null;
+      rbac = resolvePermissionSet({ baseRole: role, customRole: effectiveCustomRole, legacyManagerPerms: membership.permissions });
       // Keep the legacy 4-toggle view in sync so existing hasPermission() callers still work.
-      permissions = customRole
+      permissions = effectiveCustomRole
         ? deriveLegacyManagerPerms(rbac)
         : membership.permissions;
     }

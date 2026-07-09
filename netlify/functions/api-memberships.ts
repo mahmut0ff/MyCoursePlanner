@@ -804,6 +804,14 @@ const handler: Handler = async (event: HandlerEvent) => {
         ? membership.roles
         : (membership.role ? [membership.role] : []);
       const allowed = [...new Set(membershipRoles.map((r) => roleMap[r] || r))];
+      // An assigned custom RBAC role's base role is also switchable.
+      if (membership.roleId) {
+        try {
+          const roleDoc = await adminDb.collection('organizations').doc(orgId).collection('roles').doc(membership.roleId).get();
+          const base = roleDoc.exists ? (roleDoc.data()?.baseRole || null) : null;
+          if (base) { const mb = roleMap[base] || base; if (!allowed.includes(mb)) allowed.push(mb); }
+        } catch { /* ignore — fall back to membership roles only */ }
+      }
       if (!allowed.includes(body.role)) return forbidden('You do not hold that role in this organization');
 
       const ts = now();

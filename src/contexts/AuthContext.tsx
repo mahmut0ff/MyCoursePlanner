@@ -40,6 +40,8 @@ interface AuthContextType {
   hasPermission: (key: keyof ManagerPermissions) => boolean;
   /** Assigned custom RBAC role id from the active membership, if any. */
   membershipRoleId: string | null;
+  /** Assigned custom RBAC role (id + name + base app role), if any — labels the switcher. */
+  membershipRole: { id: string; name: string; baseRole: string } | null;
   /** App-level roles the user holds in the active org (for the role switcher). */
   availableRoles: UserRole[];
   refreshProfile: () => Promise<void>;
@@ -66,6 +68,7 @@ const AuthContext = createContext<AuthContextType>({
   permissions: { ...NO_PERMISSIONS },
   hasPermission: () => false,
   membershipRoleId: null,
+  membershipRole: null,
   availableRoles: [],
   refreshProfile: async () => {},
   switchOrganization: async () => {},
@@ -82,6 +85,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [loading, setLoading] = useState(true);
   const [permissions, setPermissions] = useState<ManagerPermissions>({ ...NO_PERMISSIONS });
   const [membershipRoleId, setMembershipRoleId] = useState<string | null>(null);
+  const [membershipRole, setMembershipRole] = useState<{ id: string; name: string; baseRole: string } | null>(null);
   const [availableRoles, setAvailableRoles] = useState<UserRole[]>([]);
   const fcmTokenRef = useRef<string | null>(null);
 
@@ -97,6 +101,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (p) {
         const orgId = (p as any)?.activeOrgId || p.organizationId;
         let mRoleId: string | null = null;
+        let mRole: { id: string; name: string; baseRole: string } | null = null;
         let avail: UserRole[] = [];
         if (orgId && p.role !== 'super_admin') {
           try {
@@ -109,6 +114,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 ? mData.roles
                 : (mData.role ? [mData.role] : []);
               avail = [...new Set(rawRoles.map((r) => MEMBERSHIP_TO_APP_ROLE[r] || (r as UserRole)))];
+              // An assigned custom RBAC role's base is also a switchable role — surface it
+              // in the switcher and remember its name to label the switch button.
+              if (mRoleId) {
+                try {
+                  const roleDoc = await getDoc(doc(db, 'organizations', orgId, 'roles', mRoleId));
+                  if (roleDoc.exists()) {
+                    const rd: any = roleDoc.data();
+                    const base = rd.baseRole || 'manager';
+                    mRole = { id: mRoleId, name: rd.name || '', baseRole: base };
+                    const mappedBase = (MEMBERSHIP_TO_APP_ROLE[base] || base) as UserRole;
+                    if (!avail.includes(mappedBase)) avail.push(mappedBase);
+                  }
+                } catch { /* ignore — switcher just won't include the custom role */ }
+              }
               if (p.role === 'manager') {
                 setPermissions({
                   finances: mData.permissions?.finances === true,
@@ -131,6 +150,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           setPermissions({ ...NO_PERMISSIONS });
         }
         setMembershipRoleId(mRoleId);
+        setMembershipRole(mRole);
         setAvailableRoles(avail);
       }
     } catch (e) {
@@ -250,6 +270,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           return permissions[key] === true;
         },
         membershipRoleId,
+        membershipRole,
         availableRoles,
         refreshProfile,
         switchOrganization,

@@ -154,22 +154,36 @@ const handler: Handler = async (event: HandlerEvent) => {
       const roleId: string | null = body.roleId || null;
       if (!uid) return badRequest('uid is required');
 
-      // Validate the target role exists (when not clearing)
+      // Validate the target role exists (when not clearing) and capture its base role.
+      let baseRole: string | null = null;
       if (roleId) {
         const roleDoc = await rolesCol.doc(roleId).get();
         if (!roleDoc.exists) return notFound('Role not found');
+        baseRole = roleDoc.data()?.baseRole || 'manager';
       }
 
       const memberRef = adminDb.collection('orgMembers').doc(orgId).collection('members').doc(uid);
       const memberDoc = await memberRef.get();
       if (!memberDoc.exists) return notFound('Member not found');
 
-      await memberRef.update({ roleId: roleId, updatedAt: now() });
+      const update: Record<string, any> = { roleId: roleId, updatedAt: now() };
+      // Assigning a custom role makes its base an actual switchable app role for the
+      // member: add it to roles[] so they can switch into it and appear in its lists.
+      // (The role's fine-grained permissions already apply via roleId.)
+      if (baseRole) {
+        const md: any = memberDoc.data() || {};
+        const currentRoles: string[] = Array.isArray(md.roles) && md.roles.length
+          ? md.roles
+          : (md.role ? [md.role] : []);
+        if (!currentRoles.includes(baseRole)) update.roles = [...currentRoles, baseRole];
+      }
+
+      await memberRef.update(update);
       // Mirror to user-side membership for role resolution in verifyAuth.
       await adminDb.collection('users').doc(uid).collection('memberships').doc(orgId)
-        .set({ roleId: roleId, updatedAt: now() }, { merge: true });
+        .set(update, { merge: true });
 
-      return ok({ uid, roleId });
+      return ok({ uid, roleId, roles: update.roles });
     }
 
     return badRequest(`Unknown action: ${action}`);

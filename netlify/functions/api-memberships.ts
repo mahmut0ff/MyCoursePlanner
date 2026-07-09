@@ -118,7 +118,20 @@ const handler: Handler = async (event: HandlerEvent) => {
         .collection('memberships')
         .where('status', 'in', ['active', 'invited', 'pending'])
         .get();
-      const memberships = snap.docs.map((d: any) => ({ id: d.id, ...d.data() }));
+      let memberships = snap.docs.map((d: any) => ({ id: d.id, organizationId: d.id, ...d.data() }));
+
+      // Self-heal: memberships created via the org admin panel (createTeacher /
+      // createStudent / createManager) historically omitted organizationName, so
+      // the org switcher fell back to showing the raw org id. Backfill the name
+      // from the organizations collection for any doc still missing it.
+      const missingIds = memberships.filter((m: any) => !m.organizationName).map((m: any) => m.organizationId);
+      if (missingIds.length) {
+        const orgMap = await getDocsByIds('organizations', missingIds, ['name']);
+        memberships = memberships.map((m: any) =>
+          m.organizationName ? m : { ...m, organizationName: orgMap[m.organizationId]?.name || '' }
+        );
+      }
+
       return ok(memberships);
     }
 

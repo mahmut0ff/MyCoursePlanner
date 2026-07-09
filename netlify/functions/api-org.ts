@@ -753,6 +753,10 @@ const handler: Handler = async (event: HandlerEvent) => {
 
         await adminDb.collection('users').doc(studentUid).set(profile);
 
+        // Denormalized org name so the org switcher / member lists show a real
+        // name instead of the raw org id.
+        const organizationName = (await adminDb.collection('organizations').doc(orgId).get()).data()?.name || '';
+
         // Create orgMembers entry so student appears in all lists
         await adminDb.collection('orgMembers').doc(orgId).collection('members').doc(studentUid).set({
           userId: studentUid,
@@ -773,6 +777,8 @@ const handler: Handler = async (event: HandlerEvent) => {
           status: 'active',
           branchIds: body.branchIds || [],
           primaryBranchId: body.primaryBranchId || null,
+          organizationId: orgId,
+          organizationName,
           joinedAt: now()
         });
 
@@ -1086,6 +1092,10 @@ const handler: Handler = async (event: HandlerEvent) => {
 
         await adminDb.collection('users').doc(teacherUid).set(profile);
 
+        // Denormalized org name so the org switcher / member lists show a real
+        // name instead of the raw org id.
+        const organizationName = (await adminDb.collection('organizations').doc(orgId).get()).data()?.name || '';
+
         // Create orgMembers entry so teacher appears in all lists
         await adminDb.collection('orgMembers').doc(orgId).collection('members').doc(teacherUid).set({
           userId: teacherUid,
@@ -1107,6 +1117,7 @@ const handler: Handler = async (event: HandlerEvent) => {
           branchIds: body.branchIds || [],
           primaryBranchId: body.primaryBranchId || null,
           organizationId: orgId,
+          organizationName,
           joinedAt: now(),
         });
 
@@ -1184,7 +1195,11 @@ const handler: Handler = async (event: HandlerEvent) => {
           updatedAt: now(),
         };
         await adminDb.collection('users').doc(authUser.uid).set(profile);
-        
+
+        // Denormalized org name so the org switcher / member lists show a real
+        // name instead of the raw org id.
+        const organizationName = (await adminDb.collection('organizations').doc(orgId).get()).data()?.name || '';
+
         await adminDb.collection('orgMembers').doc(orgId).collection('members').doc(authUser.uid).set({
           userId: authUser.uid,
           userEmail: body.email,
@@ -1203,6 +1218,7 @@ const handler: Handler = async (event: HandlerEvent) => {
           branchIds: body.branchIds || [],
           primaryBranchId: body.primaryBranchId || null,
           organizationId: orgId,
+          organizationName,
           joinedAt: now(),
         });
 

@@ -771,6 +771,9 @@
       "institutionType": "Мекеменин түрү",
       "institutionTypeDesc": "Терминологияны (группалар/класстар, студенттер/окуучулар) жана жаңы курстар үчүн демейки баалоо системасын өзгөртөт",
       "passingScore": "Өтүү баллы (%)",
+      "teacherPermissions": "Мугалимдердин укуктары",
+      "teacherGroupManagement": "Өз топторун башкаруу",
+      "teacherGroupManagementDesc": "Мугалимдерге өздөрү түзгөн топторду түзүүгө, өзгөртүүгө жана өчүрүүгө уруксат берүү",
       "scalePercentage": "Пайыздар",
       "scaleLetter": "Тамга баалоо",
       "scalePoints": "Баллдар"
@@ -1108,7 +1111,21 @@
     "fail": "Өткөн жок",
     "noResults": "Жыйынтык жок",
     "viewAll": "Баарын көрүү",
-    "participants": "катышуучу"
+    "participants": "катышуучу",
+    "greetingMorning": "Кутмандуу таңыңыз",
+    "greetingDay": "Кутмандуу күнүңүз",
+    "greetingEvening": "Кутмандуу кечиңиз",
+    "liveNow": "Азыр жүрүп жатат",
+    "attention": "Көңүл буруу керек",
+    "createFirstLesson": "Биринчи сабакты түзүү",
+    "createFirstExam": "Биринчи тестти түзүү",
+    "wheelTitle": "Бакыт дөңгөлөгү",
+    "wheelDesc": "Группадан кокустан студент тандоо",
+    "wheelSpin": "Дөңгөлөктү айлантуу",
+    "wheelSpinning": "Айлануу…",
+    "wheelEmpty": "Бул группада студенттер жок",
+    "wheelWinner": "Тандалды",
+    "wheelContinue": "Улантуу"
   },
   "studentDashboard": {
     "subtitle": "Жаңы бийиктиктерди багындыра бериңиз!",
@@ -1177,7 +1194,8 @@
     "step3": "Тест түзүңүз",
     "step3Desc": "Суроолорду жана жоопторду жөндөңүз",
     "step4": "Экзамен ишке киргизиңиз",
-    "step4Desc": "Студенттер үчүн бөлмө ачыңыз"
+    "step4Desc": "Студенттер үчүн бөлмө ачыңыз",
+    "setupLabel": "Жөндөө: {{done}} / {{total}}"
   },
   "pwa": {
     "installTitle": "Тиркемени орнотуңуз",

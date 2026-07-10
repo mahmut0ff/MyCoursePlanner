@@ -994,6 +994,9 @@
       "institutionType": "Тип заведения",
       "institutionTypeDesc": "Меняет терминологию (группы/классы, студенты/ученики) и шкалу оценок по умолчанию для новых курсов",
       "passingScore": "Проходной балл (%)",
+      "teacherPermissions": "Права преподавателей",
+      "teacherGroupManagement": "Управление своими группами",
+      "teacherGroupManagementDesc": "Разрешить преподавателям создавать, редактировать и удалять группы, которые они сами создали",
       "scalePercentage": "Проценты",
       "scaleLetter": "Буквенная оценка",
       "scalePoints": "Баллы",
@@ -1122,7 +1125,21 @@
     "noResults": "Пока нет результатов",
     "quickLinks": "Быстрые ссылки",
     "newLesson": "Новый урок",
-    "newExam": "Новый тест"
+    "newExam": "Новый тест",
+    "greetingMorning": "Доброе утро",
+    "greetingDay": "Добрый день",
+    "greetingEvening": "Добрый вечер",
+    "liveNow": "Идут сейчас",
+    "attention": "Требуют внимания",
+    "createFirstLesson": "Создать первый урок",
+    "createFirstExam": "Создать первый тест",
+    "wheelTitle": "Колесо фортуны",
+    "wheelDesc": "Случайный студент из группы",
+    "wheelSpin": "Крутить колесо",
+    "wheelSpinning": "Вращение…",
+    "wheelEmpty": "В этой группе нет студентов",
+    "wheelWinner": "Выбран(а)",
+    "wheelContinue": "Продолжить"
   },
   "invites": {
     "title": "Приглашения",
@@ -2017,7 +2034,8 @@
     "step3": "Создайте тест",
     "step3Desc": "Настройте вопросы и ответы",
     "step4": "Запустите экзамен",
-    "step4Desc": "Откройте комнату для студентов"
+    "step4Desc": "Откройте комнату для студентов",
+    "setupLabel": "Настройка: {{done}} из {{total}}"
   },
   "pwa": {
     "installTitle": "Установите приложение",

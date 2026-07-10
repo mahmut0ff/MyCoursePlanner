@@ -857,6 +857,9 @@
       "institutionType": "Institution type",
       "institutionTypeDesc": "Changes terminology (groups/classes, students/pupils) and the default grading scale for new courses",
       "passingScore": "Passing Score (%)",
+      "teacherPermissions": "Teacher permissions",
+      "teacherGroupManagement": "Manage their own groups",
+      "teacherGroupManagementDesc": "Let teachers create, edit and delete the groups they created themselves",
       "scalePercentage": "Percentage",
       "scaleLetter": "Letter Grade",
       "scalePoints": "Points"
@@ -900,7 +903,21 @@
     "pass": "Passed",
     "fail": "Failed",
     "viewAll": "View All",
-    "participants": "participants"
+    "participants": "participants",
+    "greetingMorning": "Good morning",
+    "greetingDay": "Good afternoon",
+    "greetingEvening": "Good evening",
+    "liveNow": "Live now",
+    "attention": "Needs attention",
+    "createFirstLesson": "Create your first lesson",
+    "createFirstExam": "Create your first exam",
+    "wheelTitle": "Wheel of fortune",
+    "wheelDesc": "Pick a random student from a group",
+    "wheelSpin": "Spin the wheel",
+    "wheelSpinning": "Spinning…",
+    "wheelEmpty": "No students in this group",
+    "wheelWinner": "Selected",
+    "wheelContinue": "Continue"
   },
   "vacancies": {
     "title": "Vacancies",
@@ -1739,7 +1756,8 @@
     "step3": "Create a test",
     "step3Desc": "Set up questions and answers",
     "step4": "Launch an exam room",
-    "step4Desc": "Open a room for students"
+    "step4Desc": "Open a room for students",
+    "setupLabel": "Setup: {{done}} of {{total}}"
   },
   "pwa": {
     "installTitle": "Install the app",

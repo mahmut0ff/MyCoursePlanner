@@ -997,6 +997,8 @@
       "teacherPermissions": "Права преподавателей",
       "teacherGroupManagement": "Управление своими группами",
       "teacherGroupManagementDesc": "Разрешить преподавателям создавать, редактировать и удалять группы, которые они сами создали",
+      "teacherGroupStatus": "Изменение статуса групп",
+      "teacherGroupStatusDesc": "Разрешить преподавателям архивировать и менять статус групп, которые они ведут",
       "scalePercentage": "Проценты",
       "scaleLetter": "Буквенная оценка",
       "scalePoints": "Баллы",

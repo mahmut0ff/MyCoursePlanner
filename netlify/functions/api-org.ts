@@ -5,7 +5,7 @@
 import type { Handler, HandlerEvent } from '@netlify/functions';
 import { adminAuth, adminDb, getDocsByIds } from './utils/firebase-admin';
 import {
-  verifyAuth, isStaff, hasRole, hasPermission, can, getOrgFilter,
+  verifyAuth, isStaff, isSuperAdmin, hasRole, hasPermission, can, getOrgFilter,
   ok, unauthorized, forbidden, badRequest, notFound, jsonResponse,
   resolveBranchFilter,
   type AuthUser,
@@ -192,6 +192,22 @@ function orgQuery(collection: string, orgId: string) {
   return adminDb.collection(collection).where('organizationId', '==', orgId);
 }
 
+/**
+ * Org-level teacher policy toggles (admin-controlled), both off by default:
+ *   • manage — teachers may create/edit/delete groups they own (createdBy === uid);
+ *   • status — teachers may archive / change the status of a group they teach.
+ * Stored on the orgSettings doc; read lazily so admin/manager paths pay nothing.
+ */
+async function getTeacherGroupPolicy(orgId: string): Promise<{ manage: boolean; status: boolean }> {
+  try {
+    const doc = await adminDb.collection('orgSettings').doc(orgId).get();
+    const d = doc.exists ? doc.data() : null;
+    return { manage: d?.teacherGroupManagement === true, status: d?.teacherGroupStatus === true };
+  } catch {
+    return { manage: false, status: false };
+  }
+}
+
 /* ═══════════════════════════════════════════════ */
 /*  Handler                                        */
 /* ═══════════════════════════════════════════════ */
@@ -355,8 +371,18 @@ const handler: Handler = async (event: HandlerEvent) => {
     if (action === 'createGroup') {
       const err = requireOrgStaff(user); if (err) return err;
       if (!can(user, 'groups', 'write')) return forbidden('Недостаточно прав для этого действия');
+      // Teachers can create groups only when the org enabled the "manage own groups"
+      // policy. Admins/managers always may (their groups:write is unconditional).
+      const isPrivileged = hasRole(user, 'admin', 'manager') || isSuperAdmin(user);
+      if (!isPrivileged && !(await getTeacherGroupPolicy(orgId)).manage) {
+        return forbidden('Создание групп недоступно для преподавателей');
+      }
       const body = JSON.parse(event.body || '{}');
       if (!body.name || !body.courseId) return badRequest('name and courseId required');
+      // A teacher who creates a group is teaching it — record ownership and make sure
+      // they're on the teacher list so it lands in their "Мои" view and own-groups scope.
+      const teacherIds: string[] = Array.isArray(body.teacherIds) ? [...body.teacherIds] : [];
+      if (!isPrivileged && !teacherIds.includes(user.uid)) teacherIds.push(user.uid);
       const data = {
         organizationId: orgId,
         branchId: body.branchId || null,
@@ -364,7 +390,10 @@ const handler: Handler = async (event: HandlerEvent) => {
         courseName: body.courseName || '',
         name: body.name,
         studentIds: body.studentIds || [],
-        teacherIds: body.teacherIds || [],
+        teacherIds,
+        createdBy: user.uid,
+        chatLinkTitle: body.chatLinkTitle || '',
+        chatLinkUrl: body.chatLinkUrl || '',
         createdAt: now(), updatedAt: now(),
       };
       const ref = await adminDb.collection('groups').add(data);
@@ -384,25 +413,36 @@ const handler: Handler = async (event: HandlerEvent) => {
       if (!doc.exists || doc.data()?.organizationId !== orgId) return notFound();
       const oldData = doc.data()!;
 
-      // Field-level authorization. Admins/managers manage the whole group record;
-      // teachers also hold groups:write, but only so they can advance syllabus
-      // progress on a group they actually teach — never reassign teachers/students
-      // or move the group to another course/branch. Anything outside their scope is
-      // dropped (own-groups + field whitelist), mirroring the updateStudent guard.
-      const isAdminOrManager = hasRole(user, 'admin', 'manager');
-      if (!isAdminOrManager) {
+      // Field-level authorization. Admins/managers manage the whole group record.
+      // Teachers also hold groups:write, but their scope depends on ownership:
+      //   • a teacher who OWNS the group (createdBy) AND whose org enabled the
+      //     "manage own groups" policy gets the full editor, like a manager;
+      //   • otherwise a teacher who merely TEACHES the group may only advance
+      //     syllabus progress / lifecycle status — never reassign people or move
+      //     the group. Anything outside their scope is dropped (whitelist), and a
+      //     teacher with no relationship to the group is refused outright.
+      const isPrivileged = hasRole(user, 'admin', 'manager') || isSuperAdmin(user);
+      let fullEditor = isPrivileged;
+      // Whether a teacher who merely teaches the group may change its lifecycle
+      // status (active/completed/archived) — an admin-controlled org policy.
+      let teacherStatusAllowed = false;
+      if (!isPrivileged) {
         const teacherIds: string[] = oldData.teacherIds || [];
-        if (!teacherIds.includes(user.uid)) {
+        const teachesGroup = teacherIds.includes(user.uid);
+        const policy = await getTeacherGroupPolicy(orgId);
+        const ownsGroup = oldData.createdBy === user.uid && policy.manage;
+        if (!teachesGroup && !ownsGroup) {
           return forbidden('Можно изменять только свои группы');
         }
+        fullEditor = ownsGroup;
+        teacherStatusAllowed = policy.status;
       }
-      // `status` (active/completed/archived) is a lifecycle change any holder of
-      // groups:write may make — admins/managers on any group, teachers only on
-      // their own (own-groups guard above). It's the one structural field the
-      // teacher whitelist also permits, per the edit-group permission.
-      const ALLOWED_FIELDS = isAdminOrManager
+      // Owners/admins/managers manage the whole record. A teacher who only teaches
+      // the group may always advance syllabus progress, and may change the group
+      // status only when the org enabled that policy.
+      const ALLOWED_FIELDS = fullEditor
         ? ['name', 'courseId', 'courseName', 'branchId', 'studentIds', 'teacherIds', 'chatLinkTitle', 'chatLinkUrl', 'currentSyllabusItemId', 'status']
-        : ['currentSyllabusItemId', 'status'];
+        : (teacherStatusAllowed ? ['currentSyllabusItemId', 'status'] : ['currentSyllabusItemId']);
       const id = body.id;
       if (body.status !== undefined && !['active', 'completed', 'archived'].includes(body.status)) {
         return badRequest('invalid status');
@@ -457,11 +497,19 @@ const handler: Handler = async (event: HandlerEvent) => {
 
     if (action === 'deleteGroup') {
       const err = requireOrgStaff(user); if (err) return err;
-      if (!can(user, 'groups', 'delete')) return forbidden('Недостаточно прав для этого действия');
       const body = JSON.parse(event.body || '{}');
       if (!body.id) return badRequest('id required');
       const doc = await adminDb.collection('groups').doc(body.id).get();
       if (!doc.exists || doc.data()?.organizationId !== orgId) return notFound();
+      // Admins/managers delete any group (needs groups:delete). Teachers may delete
+      // only groups they own, and only when the org enabled the policy.
+      const isPrivileged = hasRole(user, 'admin', 'manager') || isSuperAdmin(user);
+      if (isPrivileged) {
+        if (!can(user, 'groups', 'delete')) return forbidden('Недостаточно прав для этого действия');
+      } else {
+        const ownsGroup = doc.data()?.createdBy === user.uid && (await getTeacherGroupPolicy(orgId)).manage;
+        if (!ownsGroup) return forbidden('Можно удалять только свои группы');
+      }
       await adminDb.collection('groups').doc(body.id).delete();
       return ok({ deleted: true });
     }
@@ -1689,6 +1737,8 @@ const handler: Handler = async (event: HandlerEvent) => {
         gradingScale: sData.gradingScale || 'percentage',
         passingScore: sData.passingScore || 60,
         primaryColor: sData.primaryColor || '#6366f1',
+        teacherGroupManagement: sData.teacherGroupManagement === true,
+        teacherGroupStatus: sData.teacherGroupStatus === true,
         updatedAt: sData.updatedAt || '',
         studentsCount: studentsSnap.data().count,
         teachersCount: teachersSnap.data().count,
@@ -1721,7 +1771,7 @@ const handler: Handler = async (event: HandlerEvent) => {
       await adminDb.collection('organizations').doc(orgId).update(orgUpdate);
 
       // Settings doc (academic config)
-      const settingsData = {
+      const settingsData: Record<string, any> = {
         timezone: body.timezone, locale: body.locale,
         academicYearStart: body.academicYearStart,
         academicYearEnd: body.academicYearEnd,
@@ -1729,6 +1779,13 @@ const handler: Handler = async (event: HandlerEvent) => {
         passingScore: body.passingScore,
         updatedAt: now(),
       };
+      // Teacher self-service group management (admin-controlled policy toggles).
+      if (body.teacherGroupManagement !== undefined) {
+        settingsData.teacherGroupManagement = body.teacherGroupManagement === true;
+      }
+      if (body.teacherGroupStatus !== undefined) {
+        settingsData.teacherGroupStatus = body.teacherGroupStatus === true;
+      }
       await adminDb.collection('orgSettings').doc(orgId).set(settingsData, { merge: true });
       return ok({ updated: true });
     }

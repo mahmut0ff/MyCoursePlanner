@@ -9,7 +9,7 @@ import {
   Save, Building2, GraduationCap, Check, Bell, BarChart3,
   Database, Camera, Loader2, MapPin, Phone, Mail, Clock,
   QrCode, Download, Send, MessageCircle, Printer, Copy, CheckCircle, Globe,
-  School, Languages
+  School, Languages, Users
 } from 'lucide-react';
 import type { OrgSettings } from '../../types';
 import { INSTITUTION_LIST } from '../../lib/terminology';
@@ -158,6 +158,41 @@ const GeneralTab: React.FC<{ settings: OrgSettings; update: (k: string, v: any) 
                 <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-all ${settings.isOnline ? 'left-[22px]' : 'left-0.5'}`} />
               </button>
             </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Teacher permissions */}
+      <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-5">
+        <h3 className="font-semibold text-slate-900 dark:text-white mb-3 text-sm flex items-center gap-2">
+          <Users className="w-4 h-4" />{t('org.settings.teacherPermissions', 'Права преподавателей')}
+        </h3>
+        <div className="divide-y divide-slate-100 dark:divide-slate-700/60">
+          <div className="flex items-center justify-between py-3">
+            <div className="pr-4">
+              <p className="text-sm font-medium text-slate-900 dark:text-white">{t('org.settings.teacherGroupManagement', 'Управление своими группами')}</p>
+              <p className="text-xs text-slate-500 dark:text-slate-400">{t('org.settings.teacherGroupManagementDesc', 'Разрешить преподавателям создавать, редактировать и удалять группы, которые они сами создали')}</p>
+            </div>
+            <button
+              onClick={() => update('teacherGroupManagement', !settings.teacherGroupManagement)}
+              className={`relative w-11 h-6 rounded-full transition-colors shrink-0 ${settings.teacherGroupManagement ? 'bg-primary-500' : 'bg-slate-300 dark:bg-slate-600'}`}
+              aria-pressed={!!settings.teacherGroupManagement}
+            >
+              <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-all ${settings.teacherGroupManagement ? 'left-[22px]' : 'left-0.5'}`} />
+            </button>
+          </div>
+          <div className="flex items-center justify-between py-3">
+            <div className="pr-4">
+              <p className="text-sm font-medium text-slate-900 dark:text-white">{t('org.settings.teacherGroupStatus', 'Изменение статуса групп')}</p>
+              <p className="text-xs text-slate-500 dark:text-slate-400">{t('org.settings.teacherGroupStatusDesc', 'Разрешить преподавателям архивировать и менять статус групп, которые они ведут')}</p>
+            </div>
+            <button
+              onClick={() => update('teacherGroupStatus', !settings.teacherGroupStatus)}
+              className={`relative w-11 h-6 rounded-full transition-colors shrink-0 ${settings.teacherGroupStatus ? 'bg-primary-500' : 'bg-slate-300 dark:bg-slate-600'}`}
+              aria-pressed={!!settings.teacherGroupStatus}
+            >
+              <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-all ${settings.teacherGroupStatus ? 'left-[22px]' : 'left-0.5'}`} />
+            </button>
           </div>
         </div>
       </div>

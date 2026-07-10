@@ -860,6 +860,8 @@
       "teacherPermissions": "Teacher permissions",
       "teacherGroupManagement": "Manage their own groups",
       "teacherGroupManagementDesc": "Let teachers create, edit and delete the groups they created themselves",
+      "teacherGroupStatus": "Change group status",
+      "teacherGroupStatusDesc": "Let teachers archive and change the status of groups they teach",
       "scalePercentage": "Percentage",
       "scaleLetter": "Letter Grade",
       "scalePoints": "Points"

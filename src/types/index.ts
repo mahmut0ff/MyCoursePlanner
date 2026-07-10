@@ -695,6 +695,7 @@ export interface Group {
   chatLinkUrl?: string;
   currentSyllabusItemId?: string; // Track which syllabus lesson/topic the group is currently on
   status?: GroupStatus;
+  createdBy?: string; // uid of the staff member who created the group (own-groups scope for teachers)
   createdAt: string;
   updatedAt: string;
 }
@@ -764,6 +765,10 @@ export interface OrgSettings {
   institutionType?: InstitutionType;
   gradingScale?: 'percentage' | 'letter' | 'points';
   passingScore: number;
+  // Teacher self-service: allow teachers to create/edit/delete their own groups (admin-controlled)
+  teacherGroupManagement?: boolean;
+  // Allow teachers to archive / change the status of groups they teach (admin-controlled)
+  teacherGroupStatus?: boolean;
   // Notifications
   emailNotifications?: boolean;
   pushNotifications?: boolean;

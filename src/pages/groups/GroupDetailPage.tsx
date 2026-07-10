@@ -1,12 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { orgGetGroup, orgGetCourses, orgUpdateGroup, orgGetTeachers, orgGetStudents, apiGetSyllabuses, orgResetStudentPassword } from '../../lib/api';
+import { orgGetGroup, orgGetCourses, orgUpdateGroup, orgGetTeachers, orgGetStudents, apiGetSyllabuses, orgResetStudentPassword, orgGetSettings } from '../../lib/api';
 import { ArrowLeft, Users, BookOpen, Calendar, Link as LinkIcon, Edit2, Check, X, Plus, Briefcase, GraduationCap, Building2, CheckCircle2, Circle, ExternalLink, KeyRound, Copy, Loader2, RefreshCw, Archive, ChevronDown, PlayCircle } from 'lucide-react';
 import type { Group, GroupStatus, Course, UserProfile, Syllabus } from '../../types';
 import toast from 'react-hot-toast';
 import { useAuth } from '../../contexts/AuthContext';
-import { usePermissions } from '../../contexts/PermissionsContext';
 import BranchFilter from '../../components/ui/BranchFilter';
 
 // Lifecycle statuses a group can move between, with their badge/menu styling.
@@ -39,17 +38,17 @@ const GroupDetailPage: React.FC = () => {
   const navigate = useNavigate();
   const { t } = useTranslation();
   const { role, profile } = useAuth();
-  const { canWrite } = usePermissions();
   const isAdmin = role === 'admin' || role === 'manager' || role === 'super_admin';
-  // Whoever holds the "edit group" grant (groups:write) may archive it and switch
-  // its status — mirrors the backend, which gates the same mutation on groups:write.
-  const canEditGroup = isAdmin || canWrite('groups');
 
   const [group, setGroup] = useState<Group | null>(null);
   const [courses, setCourses] = useState<Course[]>([]);
   const [allTeachers, setAllTeachers] = useState<UserProfile[]>([]);
   const [allStudents, setAllStudents] = useState<UserProfile[]>([]);
   const [loading, setLoading] = useState(true);
+  // Org policies (admin-controlled): may teachers manage groups they own, and may
+  // they archive / change the status of groups they teach?
+  const [teacherCanManage, setTeacherCanManage] = useState(false);
+  const [teacherCanChangeStatus, setTeacherCanChangeStatus] = useState(false);
 
   // Course syllabus + curriculum progress
   const [syllabus, setSyllabus] = useState<Syllabus | null>(null);
@@ -98,6 +97,20 @@ const GroupDetailPage: React.FC = () => {
       orgGetStudents().then(setAllStudents).catch(() => []),
     ]).finally(() => setLoading(false));
   }, [id]);
+
+  // Teachers need to know which group policies the org enabled for them.
+  useEffect(() => {
+    if (role !== 'teacher') { setTeacherCanManage(false); setTeacherCanChangeStatus(false); return; }
+    let cancelled = false;
+    orgGetSettings()
+      .then((s) => {
+        if (cancelled) return;
+        setTeacherCanManage(!!s.teacherGroupManagement);
+        setTeacherCanChangeStatus(!!s.teacherGroupStatus);
+      })
+      .catch(() => { if (!cancelled) { setTeacherCanManage(false); setTeacherCanChangeStatus(false); } });
+    return () => { cancelled = true; };
+  }, [role]);
 
   // Load the course syllabus once we know the group's course.
   useEffect(() => {
@@ -299,6 +312,13 @@ const GroupDetailPage: React.FC = () => {
   // (The backend enforces the same own-groups scope for teachers.)
   const myUid = profile?.uid;
   const isMyGroup = !!myUid && currentTeacherIds.includes(myUid);
+  // A teacher who OWNS this group (and whose org enabled the policy) gets the full
+  // editor — rename/move it, manage the roster, delete it — mirroring the backend.
+  const isOwner = role === 'teacher' && teacherCanManage && !!myUid && group.createdBy === myUid;
+  const canManageGroup = isAdmin || isOwner;
+  // Archiving / status changes: admins & owners always; a teacher who teaches the
+  // group only when the org enabled the status policy. Mirrors the backend whitelist.
+  const canChangeStatus = isAdmin || isOwner || (isMyGroup && teacherCanChangeStatus);
   const canManageCreds = isAdmin || isMyGroup;
   // Syllabus progress is the one group field teachers may write — and only on
   // their own groups. The backend enforces the same own-groups scope, so keep the
@@ -343,7 +363,7 @@ const GroupDetailPage: React.FC = () => {
                 <h1 className="text-3xl md:text-5xl font-extrabold text-slate-900 dark:text-white tracking-tight leading-tight">
                   {group.name}
                 </h1>
-                {isAdmin && (
+                {canManageGroup && (
                   <button
                     onClick={() => {
                       setEditGroupForm({ name: group.name, courseId: group.courseId || '', branchId: (group as any).branchId || '' });
@@ -355,8 +375,8 @@ const GroupDetailPage: React.FC = () => {
                     <Edit2 className="w-5 h-5" />
                   </button>
                 )}
-                {/* Status switcher — archive / activate / complete (needs groups:write) */}
-                {canEditGroup && (
+                {/* Status switcher — archive / activate / complete (admin-controlled for teachers) */}
+                {canChangeStatus && (
                   <div className="relative">
                     <button
                       onClick={() => setShowStatusMenu(v => !v)}
@@ -419,7 +439,7 @@ const GroupDetailPage: React.FC = () => {
                         Нет ссылки на чат
                       </div>
                     )}
-                    {isAdmin && (
+                    {canManageGroup && (
                       <button onClick={() => setIsEditingChat(true)} className="p-2 text-slate-400 hover:text-violet-500 hover:bg-violet-50 dark:hover:bg-violet-500/10 rounded-xl transition-colors">
                         <Edit2 className="w-4 h-4" />
                       </button>
@@ -549,7 +569,7 @@ const GroupDetailPage: React.FC = () => {
                      <GraduationCap className="w-5 h-5 text-emerald-500" />
                      <h2 className="font-extrabold uppercase tracking-wider text-sm">Ученики ({currentStudents.length})</h2>
                   </div>
-                  {isAdmin && (
+                  {canManageGroup && (
                     <button onClick={() => setShowAddStudent(true)} className="p-1 text-slate-400 hover:text-emerald-500 hover:bg-emerald-50 dark:hover:bg-emerald-500/10 rounded transition-colors" title="Добавить ученика">
                        <Plus className="w-5 h-5" />
                     </button>
@@ -582,7 +602,7 @@ const GroupDetailPage: React.FC = () => {
                                <KeyRound className="w-4 h-4" />
                              </button>
                            )}
-                           {isAdmin && (
+                           {canManageGroup && (
                              <button onClick={(e) => { e.stopPropagation(); handleRemoveStudent(s.uid); }} className="opacity-0 group-hover:opacity-100 p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-lg transition-all">
                                <X className="w-4 h-4" />
                              </button>
@@ -604,7 +624,7 @@ const GroupDetailPage: React.FC = () => {
                      <Briefcase className="w-5 h-5 text-blue-500" />
                      <h2 className="font-extrabold uppercase tracking-wider text-sm">Преподаватели ({currentTeachers.length})</h2>
                   </div>
-                  {isAdmin && (
+                  {canManageGroup && (
                     <button onClick={() => setShowAddTeacher(true)} className="p-1 text-slate-400 hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-500/10 rounded transition-colors" title="Назначить преподавателя">
                        <Plus className="w-5 h-5" />
                     </button>
@@ -717,7 +737,7 @@ const GroupDetailPage: React.FC = () => {
         </div>
       )}
       {/* Edit Group Info Modal */}
-      {showEditGroupModal && isAdmin && (
+      {showEditGroupModal && canManageGroup && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 shadow-2xl" onClick={() => setShowEditGroupModal(false)}>
           <div className="bg-white dark:bg-slate-800 rounded-3xl p-6 w-full max-w-sm" onClick={e => e.stopPropagation()}>
              <h2 className="text-xl font-bold text-slate-900 dark:text-white mb-4">Редактировать группу</h2>

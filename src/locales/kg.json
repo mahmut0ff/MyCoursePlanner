@@ -774,6 +774,8 @@
       "teacherPermissions": "Мугалимдердин укуктары",
       "teacherGroupManagement": "Өз топторун башкаруу",
       "teacherGroupManagementDesc": "Мугалимдерге өздөрү түзгөн топторду түзүүгө, өзгөртүүгө жана өчүрүүгө уруксат берүү",
+      "teacherGroupStatus": "Топтун статусун өзгөртүү",
+      "teacherGroupStatusDesc": "Мугалимдерге өздөрү жетектеген топторду архивдөөгө жана статусун өзгөртүүгө уруксат берүү",
       "scalePercentage": "Пайыздар",
       "scaleLetter": "Тамга баалоо",
       "scalePoints": "Баллдар"

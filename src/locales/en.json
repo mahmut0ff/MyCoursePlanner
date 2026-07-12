@@ -1,4 +1,9 @@
 {
+  "presence": {
+    "online": "Online",
+    "offline": "Offline",
+    "lastSeen": "last seen {{time}}"
+  },
   "inst": {
     "center": "Training center",
     "centerDesc": "Courses and groups, 100-point scale",

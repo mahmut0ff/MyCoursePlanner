@@ -7,6 +7,7 @@ import ProtectedRoute from './components/auth/ProtectedRoute';
 import PlanGuard from './components/guards/PlanGuard';
 import ErrorBoundary from './components/common/ErrorBoundary';
 import AppLayout from './components/layout/AppLayout';
+import PresenceHeartbeat from './components/presence/PresenceHeartbeat';
 import { lazyRetry } from './lib/lazyRetry';
 
 const LoginPage = lazyRetry(() => import('./pages/auth/LoginPage'));
@@ -162,6 +163,7 @@ const App: React.FC = () => {
     <AuthProvider>
       <BrowserRouter>
         <ThemedToaster />
+        <PresenceHeartbeat />
         <Suspense fallback={<div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-slate-900"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div></div>}>
         <Routes>
           {/* Public */}

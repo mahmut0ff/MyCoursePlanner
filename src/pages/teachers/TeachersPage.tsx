@@ -17,12 +17,15 @@ import toast from 'react-hot-toast';
 import type { UserProfile } from '../../types';
 import EmptyState from '../../components/ui/EmptyState';
 import { ListSkeleton } from '../../components/ui/Skeleton';
+import { useOrgPresence } from '../../hooks/useOrgPresence';
+import { PresenceBadge, PresenceDot } from '../../components/presence/PresenceBadge';
 
 const TeachersPage: React.FC = () => {
   const { t } = useTranslation();
   const { limits } = usePlanGate();
   const { profile, role, organizationId } = useAuth();
   const navigate = useNavigate();
+  const presence = useOrgPresence(organizationId);
 
   const [activeTab, setActiveTab] = useState<'teachers' | 'applications'>('teachers');
 
@@ -304,32 +307,42 @@ const TeachersPage: React.FC = () => {
           ) : (
             <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl overflow-hidden">
               {/* Table header */}
-              <div className="hidden md:grid grid-cols-[1fr_200px_140px_100px] gap-3 px-5 py-3 border-b border-slate-100 dark:border-slate-700 bg-slate-50/80 dark:bg-slate-800/80 text-[11px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+              <div className="hidden md:grid grid-cols-[1fr_190px_130px_150px] gap-3 px-5 py-3 border-b border-slate-100 dark:border-slate-700 bg-slate-50/80 dark:bg-slate-800/80 text-[11px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
                 <span>{t('nav.teachers')}</span>
                 <span>{t('common.email', 'Email')}</span>
                 <span>{t('common.phone')}</span>
-                <span>{t('org.users.role')}</span>
+                <span>{t('common.status', 'Статус')}</span>
               </div>
 
-              {filtered.map((teacher) => (
+              {filtered.map((teacher) => {
+                const online = presence.isOnline(teacher.uid);
+                const lastSeenMs = presence.lastSeenMs(teacher.uid);
+                return (
                 <div
                   key={teacher.uid}
                   onClick={() => navigate(`/teachers/${teacher.uid}`)}
-                  className="cursor-pointer group flex flex-col md:grid md:grid-cols-[1fr_200px_140px_100px] gap-2 md:gap-3 items-center px-5 py-3.5 border-b border-slate-100 dark:border-slate-700/50 last:border-b-0 hover:bg-primary-50/40 dark:hover:bg-primary-900/10 transition-colors"
+                  className="cursor-pointer group flex flex-col md:grid md:grid-cols-[1fr_190px_130px_150px] gap-2 md:gap-3 items-center px-5 py-3.5 border-b border-slate-100 dark:border-slate-700/50 last:border-b-0 hover:bg-primary-50/40 dark:hover:bg-primary-900/10 transition-colors"
                 >
                   {/* Name + avatar */}
                   <div className="flex items-center gap-3 min-w-0 w-full">
-                    {teacher.avatarUrl ? (
-                      <img src={teacher.avatarUrl} alt="" className="w-9 h-9 rounded-full object-cover shadow-sm bg-slate-100 dark:bg-slate-700 shrink-0 hover:scale-110 transition-transform" />
-                    ) : (
-                      <div className="w-9 h-9 bg-primary-600 rounded-full flex items-center justify-center text-xs text-white font-bold shadow-sm shrink-0">{teacher.displayName?.[0]?.toUpperCase() || '?'}</div>
-                    )}
+                    <div className="relative shrink-0">
+                      {teacher.avatarUrl ? (
+                        <img src={teacher.avatarUrl} alt="" className="w-9 h-9 rounded-full object-cover shadow-sm bg-slate-100 dark:bg-slate-700 hover:scale-110 transition-transform" />
+                      ) : (
+                        <div className="w-9 h-9 bg-primary-600 rounded-full flex items-center justify-center text-xs text-white font-bold shadow-sm">{teacher.displayName?.[0]?.toUpperCase() || '?'}</div>
+                      )}
+                      <PresenceDot
+                        online={online}
+                        className="absolute -bottom-0.5 -right-0.5 w-3 h-3"
+                        title={online ? t('presence.online', 'В сети') : t('presence.offline', 'Не в сети')}
+                      />
+                    </div>
                     <div className="min-w-0 flex-1">
                       <h3 className="text-sm font-bold text-slate-900 dark:text-white truncate group-hover:text-primary-600 dark:group-hover:text-primary-400 transition-colors">{teacher.displayName}</h3>
                       {/* Mobile meta */}
                       <div className="flex items-center gap-2 mt-1 md:hidden flex-wrap">
                         {teacher.email && <span className="text-[10px] text-slate-400 flex items-center gap-1"><Mail className="w-3 h-3" />{teacher.email}</span>}
-                        <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-violet-100 dark:bg-violet-900/30 text-violet-700 dark:text-violet-400">{t('org.teachers.roleTeacher')}</span>
+                        <PresenceBadge online={online} lastSeenMs={lastSeenMs} />
                       </div>
                     </div>
                   </div>
@@ -349,12 +362,13 @@ const TeachersPage: React.FC = () => {
                     )}
                   </div>
 
-                  {/* Role */}
+                  {/* Presence status */}
                   <div className="hidden md:block">
-                    <span className="text-[10px] px-2 py-1 rounded-full font-bold bg-violet-100 dark:bg-violet-900/30 text-violet-700 dark:text-violet-400">{t('org.teachers.roleTeacher')}</span>
+                    <PresenceBadge online={online} lastSeenMs={lastSeenMs} />
                   </div>
                 </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </>

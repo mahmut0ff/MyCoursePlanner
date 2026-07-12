@@ -91,6 +91,20 @@ service cloud.firestore {
       allow write: if isSuperAdmin();
     }
 
+    // Real-time presence (online / last-seen heartbeats).
+    // Each user writes ONLY their own presence doc; org members read presence
+    // for their organization (e.g. a director viewing the teacher list).
+    match /presence/{userId} {
+      allow read: if isSuperAdmin() || hasOrgAccess(resource.data.organizationId);
+      // Own doc only, and its org must be one the writer actually belongs to —
+      // otherwise a user could stamp a foreign tenant's id onto their presence
+      // and inject a phantom entry into that org's presence query.
+      allow write: if request.auth != null
+        && request.auth.uid == userId
+        && request.resource.data.organizationId is string
+        && hasOrgAccess(request.resource.data.organizationId);
+    }
+
     // 4. Exams & Lessons (Org-scoped read for students, edited via backend)
     match /lessonPlans/{lessonId} {
       allow read: if isSuperAdmin() || hasOrgAccess(resource.data.organizationId);

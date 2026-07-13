@@ -1,10 +1,9 @@
 import React, { useState } from 'react';
-import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { signIn, signInWithGoogle, getGoogleRedirectResult } from '../../services/auth.service';
+import { signIn } from '../../services/auth.service';
 import { useAuth } from '../../contexts/AuthContext';
-import { apiResolveUsername, apiPublicJoin } from '../../lib/api';
-import { googleAuthErrorMessage, isUserCancelledAuth } from '../../lib/authErrors';
+import { apiResolveUsername } from '../../lib/api';
 import { Mail, Lock, Eye, EyeOff } from 'lucide-react';
 import LanguageSwitcher from '../../components/LanguageSwitcher';
 
@@ -16,17 +15,15 @@ const LoginPage: React.FC = () => {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
-  const orgSlug = searchParams.get('orgSlug');
   const { firebaseUser, loading: authLoading } = useAuth();
 
   React.useEffect(() => {
     // Prevent auto-redirect if we are actively submitting the login form (loading=true)
     if (!authLoading && firebaseUser && !loading) {
       // Always go to dashboard — ProtectedRoute handles incomplete profiles
-      navigate(orgSlug ? `/dashboard?orgSlug=${orgSlug}` : '/dashboard');
+      navigate('/dashboard');
     }
-  }, [firebaseUser, authLoading, navigate, orgSlug, loading]);
+  }, [firebaseUser, authLoading, navigate, loading]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -44,42 +41,10 @@ const LoginPage: React.FC = () => {
         }
       }
       await signIn(loginEmail, password);
-      if (orgSlug) {
-        try { await apiPublicJoin(orgSlug); } catch {}
-      }
       navigate('/dashboard');
     } catch (err: any) {
       if (err.message === 'User not found') setError(t('auth.userNotFound', 'Пользователь с таким никнеймом не найден'));
       else setError(err.message?.includes('invalid') ? t('auth.invalidCreds', 'Неверные данные для входа') : t('auth.loginFailed', 'Ошибка входа'));
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Surface any error from a Google redirect sign-in once the page returns.
-  React.useEffect(() => {
-    getGoogleRedirectResult().catch((err: any) => {
-      if (!isUserCancelledAuth(err?.code)) {
-        console.error('Google redirect error:', err);
-        setError(googleAuthErrorMessage(t, err?.code));
-      }
-    });
-  }, [t]);
-
-  const handleGoogleLogin = async () => {
-    setError('');
-    setLoading(true);
-    try {
-      const result = await signInWithGoogle();
-      // result === null → popup was blocked and a full-page redirect started;
-      // the page is navigating away, so there's nothing more to do here.
-      // Otherwise AuthContext/ProtectedRoute redirect to /onboarding or /dashboard.
-      if (!result) return;
-    } catch (err: any) {
-      console.error('Google Sign-In Error:', err);
-      if (!isUserCancelledAuth(err.code)) {
-        setError(googleAuthErrorMessage(t, err.code));
-      }
     } finally {
       setLoading(false);
     }
@@ -201,33 +166,8 @@ const LoginPage: React.FC = () => {
             </button>
           </form>
 
-          {/* Divider */}
-          <div className="flex items-center gap-4 my-6">
-            <div className="flex-1 h-px bg-slate-200 dark:bg-slate-700" />
-            <span className="text-sm text-slate-400">{t('auth.or')}</span>
-            <div className="flex-1 h-px bg-slate-200 dark:bg-slate-700" />
-          </div>
-
-          {/* Google button */}
-          <button
-            onClick={handleGoogleLogin}
-            disabled={loading}
-            className="w-full flex items-center justify-center gap-3 px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors text-sm font-medium text-slate-700 dark:text-slate-200 disabled:opacity-50"
-          >
-            <svg className="w-5 h-5" viewBox="0 0 24 24">
-              <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.27-4.74 3.27-8.1z"/>
-              <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
-              <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
-              <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
-            </svg>
-            Google
-          </button>
-
           <p className="text-center text-sm text-slate-500 dark:text-slate-400 mt-8">
-            {t('auth.noAccount')}{' '}
-            <Link to={`/register${orgSlug ? `?orgSlug=${orgSlug}` : ''}`} className="text-primary-600 font-semibold hover:text-primary-700 dark:text-primary-400">
-              {t('auth.register')}
-            </Link>
+            {t('auth.provisionedAccountHint', 'Доступ к платформе выдаёт администратор вашего учебного центра.')}
           </p>
         </div>
       </div>

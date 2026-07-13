@@ -98,7 +98,7 @@ export const LandingNav: React.FC<{ variant?: 'home' | 'page' }> = ({ variant = 
           ) : (
             <>
               <Link to="/login" className={`hidden sm:inline-flex items-center text-sm font-medium px-3 py-2 transition-colors ${overDark ? 'text-slate-200 hover:text-white' : 'text-slate-600 hover:text-slate-900'}`}>{t('auth.login')}</Link>
-              <Link to="/register" className={`hidden sm:inline-flex items-center text-sm font-semibold px-4 py-2 rounded-lg transition-colors ${overDark ? 'bg-white text-slate-900 hover:bg-slate-100' : 'bg-slate-900 text-white hover:bg-slate-800'}`}>{t('landing.heroCta')}</Link>
+              <Link to="/contact?demo=1" className={`hidden sm:inline-flex items-center text-sm font-semibold px-4 py-2 rounded-lg transition-colors ${overDark ? 'bg-white text-slate-900 hover:bg-slate-100' : 'bg-slate-900 text-white hover:bg-slate-800'}`}>{t('landing.heroCta')}</Link>
             </>
           )}
           <button onClick={() => setOpen(!open)} className={`md:hidden p-2 -mr-2 transition-colors ${overDark ? 'text-white' : 'text-slate-700'}`} aria-label="Menu">
@@ -122,7 +122,7 @@ export const LandingNav: React.FC<{ variant?: 'home' | 'page' }> = ({ variant = 
             ) : (
               <>
                 <Link to="/login" onClick={() => setOpen(false)} className="flex-1 text-center text-sm font-medium text-slate-700 border border-slate-200 rounded-lg py-2.5">{t('auth.login')}</Link>
-                <Link to="/register" onClick={() => setOpen(false)} className="flex-1 text-center text-sm font-semibold text-white bg-slate-900 rounded-lg py-2.5">{t('landing.heroCta')}</Link>
+                <Link to="/contact?demo=1" onClick={() => setOpen(false)} className="flex-1 text-center text-sm font-semibold text-white bg-slate-900 rounded-lg py-2.5">{t('landing.heroCta')}</Link>
               </>
             )}
           </div>
@@ -156,7 +156,7 @@ export const LandingCTA: React.FC<{ title?: string; subtitle?: string }> = ({ ti
         <div className="relative">
           <h2 className="text-3xl sm:text-4xl font-bold tracking-tight text-white">{title || t('landing.ctaTitle')}</h2>
           <p className="mx-auto mt-4 max-w-xl text-lg text-slate-300">{subtitle || t('landing.ctaSubtitle')}</p>
-          <Link to={user ? '/dashboard' : '/register'} className="group mt-8 inline-flex items-center gap-2 rounded-xl bg-white px-7 py-3.5 text-base font-semibold text-slate-900 transition-colors hover:bg-slate-100">
+          <Link to={user ? '/dashboard' : '/contact?demo=1'} className="group mt-8 inline-flex items-center gap-2 rounded-xl bg-white px-7 py-3.5 text-base font-semibold text-slate-900 transition-colors hover:bg-slate-100">
             {user ? (t('nav.dashboard') || 'Dashboard') : t('landing.ctaButton')}
             <ArrowRight className="w-5 h-5 transition-transform group-hover:translate-x-0.5" />
           </Link>

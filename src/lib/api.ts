@@ -177,8 +177,6 @@ export const apiSwitchOrg = (organizationId: string) =>
 /** Switch the caller's active role within their active org (must be a role they hold). */
 export const apiSwitchRole = (role: string) =>
   memberReq('switchRole', 'POST', { role });
-export const apiPublicJoin = (orgSlug: string, requestedRole?: string) =>
-  memberReq<{ status: string; orgId?: string; orgName?: string }>('publicJoin', 'POST', { orgSlug, requestedRole });
 export const apiSetBranchAssignment = (userId: string, organizationId: string, branchIds: string[], primaryBranchId?: string) =>
   memberReq('setBranchAssignment', 'POST', { userId, organizationId, branchIds, primaryBranchId });
 

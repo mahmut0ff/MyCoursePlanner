@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../contexts/AuthContext';
-import { apiGetDashboard, orgGetTimetable, orgGetSchedule, orgGetGroups, orgGetCourses, apiGetMyMemberships, apiPublicJoin } from '../../lib/api';
+import { apiGetDashboard, orgGetTimetable, orgGetSchedule, orgGetGroups, orgGetCourses, apiGetMyMemberships } from '../../lib/api';
 import type { LessonPlan, ExamAttempt, ScheduleEvent, Group, Course } from '../../types';
 import { formatDate } from '../../utils/grading';
 import { BookOpen, Trophy, XCircle, Brain, Target, BarChart3, Flame, Search, Play, Clock, MapPin, CalendarCheck, ArrowRight, GraduationCap, Building2, Hourglass, CheckCircle2, RefreshCw, UsersRound, UserPlus, Award } from 'lucide-react';
@@ -23,7 +23,6 @@ interface PendingMembership {
 const StudentDashboard: React.FC = () => {
   const { t } = useTranslation();
   const { profile, organizationId, refreshProfile } = useAuth();
-  const [searchParams, setSearchParams] = useSearchParams();
   const [lessons, setLessons] = useState<LessonPlan[]>([]);
   const [attempts, setAttempts] = useState<ExamAttempt[]>([]);
   const [loading, setLoading] = useState(true);
@@ -38,17 +37,6 @@ const StudentDashboard: React.FC = () => {
   const [todayLessons, setTodayLessons] = useState<ScheduleEvent[]>([]);
   const [myGroups, setMyGroups] = useState<Group[]>([]);
   const [myCourses, setMyCourses] = useState<Course[]>([]);
-
-  // ── Auto-join from orgSlug query param (after registration redirect) ──
-  useEffect(() => {
-    const orgSlug = searchParams.get('orgSlug');
-    if (orgSlug && profile?.uid) {
-      apiPublicJoin(orgSlug).catch(() => {});
-      // Clean the URL
-      searchParams.delete('orgSlug');
-      setSearchParams(searchParams, { replace: true });
-    }
-  }, [profile?.uid, searchParams, setSearchParams]);
 
   // ── Load pending memberships when student has no org ──
   useEffect(() => {

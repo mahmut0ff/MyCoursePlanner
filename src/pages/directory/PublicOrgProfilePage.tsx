@@ -1,15 +1,14 @@
-import React, { useEffect, useState, useRef, useCallback } from 'react';
-import { useParams, useNavigate, Link, useSearchParams } from 'react-router-dom';
+import React, { useEffect, useState, useRef } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { useAuth } from '../../contexts/AuthContext';
 import {
   MapPin, Mail, Phone, ArrowLeft, Building2,
-  UserPlus, CheckCircle, Clock, FolderOpen,
-  Globe, MessageCircle, Send, AlertCircle,
+  FolderOpen,
+  Globe, MessageCircle, Send,
   FileText, Image as ImageIcon, Map, PhoneCall, LayoutList,
-  CameraOff, ChevronRight, ExternalLink, Sparkles
+  CameraOff, ChevronRight, ExternalLink
 } from 'lucide-react';
-import { apiGetPublicOrgProfile, apiPublicJoin, apiGetAIManagerSettings } from '../../lib/api';
+import { apiGetPublicOrgProfile, apiGetAIManagerSettings } from '../../lib/api';
 import { AIAssistantChat } from '../../components/ui/AIAssistantChat';
 
 /* ═══ Scroll Animation ═══ */
@@ -60,15 +59,10 @@ function getCoverColor(id: string = '') {
 const PublicOrgProfilePage: React.FC = () => {
   const { t } = useTranslation();
   const { slug } = useParams<{ slug: string }>();
-  const [searchParams] = useSearchParams();
-  const { profile } = useAuth();
-  const requestedRole = searchParams.get('role') || profile?.role || 'student';
   const navigate = useNavigate();
 
   const [org, setOrg] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-  const [joining, setJoining] = useState(false);
-  const [joinStatus, setJoinStatus] = useState<string | null>(null);
   const [descExpanded, setDescExpanded] = useState(false);
   const [aiSettings, setAiSettings] = useState<any>(null);
 
@@ -85,22 +79,6 @@ const PublicOrgProfilePage: React.FC = () => {
       .catch(() => {})
       .finally(() => setLoading(false));
   }, [slug]);
-
-  const handleJoin = useCallback(async () => {
-    if (!profile || !slug) return;
-    setJoining(true);
-    try {
-      const result = await apiPublicJoin(slug, requestedRole);
-      setJoinStatus(result.status);
-      if (result.status === 'already_member') {
-        setTimeout(() => navigate('/dashboard'), 1500);
-      }
-    } catch {
-      setJoinStatus('error');
-    } finally {
-      setJoining(false);
-    }
-  }, [profile, slug, navigate, requestedRole]);
 
   // Group branches by city
   const branchesByCity = React.useMemo(() => {
@@ -148,55 +126,6 @@ const PublicOrgProfilePage: React.FC = () => {
     );
   }
 
-  /* ═══ Status Messages ═══ */
-  const statusConfig: Record<string, { text: string; icon: React.ElementType; color: string; bg: string }> = {
-    already_member: { text: t('directory.alreadyMember', 'Вы уже участник ✓'), icon: CheckCircle, color: 'text-emerald-700 dark:text-emerald-400', bg: 'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-800' },
-    pending: { text: t('directory.pending', 'Заявка отправлена ⏳'), icon: Clock, color: 'text-amber-700 dark:text-amber-400', bg: 'bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800' },
-    org_unavailable: { text: t('directory.orgUnavailable', 'Организация временно недоступна'), icon: AlertCircle, color: 'text-red-600', bg: 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800' },
-    org_not_found: { text: t('directory.orgNotFound', 'Организация не найдена'), icon: AlertCircle, color: 'text-red-600', bg: 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800' },
-    error: { text: t('directory.joinError', 'Ошибка при отправке заявки'), icon: AlertCircle, color: 'text-red-600', bg: 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800' },
-  };
-
-  /* ═══ CTA Render ═══ */
-  const renderCTA = (full = false) => {
-    if (joinStatus && statusConfig[joinStatus]) {
-      const s = statusConfig[joinStatus];
-      const Icon = s.icon;
-      return (
-        <div className={`flex items-center justify-center gap-2.5 px-5 py-3 rounded-xl border font-semibold ${s.bg} ${s.color} ${full ? 'w-full' : ''}`}>
-          <Icon className="w-5 h-5" />
-          <span className="text-sm">{s.text}</span>
-        </div>
-      );
-    }
-
-    if (!profile) {
-      return (
-        <Link
-          to={`/login?orgSlug=${slug}${requestedRole === 'teacher' ? '&role=teacher' : ''}`}
-          className={`flex items-center justify-center gap-2 px-6 py-3 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 transition-all text-sm shadow-sm active:scale-[0.98] ${full ? 'w-full' : ''}`}
-        >
-          <UserPlus className="w-5 h-5" />
-          {requestedRole === 'teacher' ? t('directory.joinTeacher', 'Подать заявку (Преподаватель)') : t('directory.joinOrg', 'Вступить в организацию')}
-        </Link>
-      );
-    }
-
-    return (
-      <button
-        onClick={handleJoin}
-        disabled={joining}
-        className={`flex items-center justify-center gap-2.5 px-6 py-3 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 transition-all disabled:opacity-50 text-sm shadow-sm active:scale-[0.98] ${full ? 'w-full' : ''}`}
-      >
-        {joining ? (
-          <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-        ) : (
-          <UserPlus className="w-5 h-5" />
-        )}
-        {requestedRole === 'teacher' ? t('directory.joinTeacher', 'Подать заявку (Преподаватель)') : t('directory.joinOrg', 'Вступить в организацию')}
-      </button>
-    );
-  };
 
   /* ═══ Map URL ═══ */
   const getMapUrl = () => {
@@ -249,11 +178,6 @@ const PublicOrgProfilePage: React.FC = () => {
               <ArrowLeft className="w-4 h-4" />
               <span className="hidden sm:inline">{t('common.back', 'Назад')}</span>
             </button>
-
-            {/* Desktop CTA (on cover) */}
-            <div className="hidden lg:block">
-              {renderCTA()}
-            </div>
           </div>
 
           {/* Profile info */}
@@ -297,11 +221,6 @@ const PublicOrgProfilePage: React.FC = () => {
             </div>
           </div>
         </div>
-      </div>
-
-      {/* ═══ CTA for tablet (between cover and content) ═══ */}
-      <div className="hidden sm:block lg:hidden">
-        {renderCTA(true)}
       </div>
 
       {/* ═══ MAIN CONTENT + SIDEBAR ═══ */}
@@ -449,15 +368,6 @@ const PublicOrgProfilePage: React.FC = () => {
         <div>
           <div className="sticky top-4 space-y-4">
             
-            {/* CTA (desktop sidebar) */}
-            <div className="bg-white dark:bg-slate-800 rounded-xl p-5 border border-slate-200 dark:border-slate-700 hidden lg:block">
-              <div className="flex items-center gap-2 mb-4">
-                <Sparkles className="w-4 h-4 text-indigo-500" />
-                <h3 className="text-sm font-bold text-slate-900 dark:text-white">{t('directory.actions', 'Действия')}</h3>
-              </div>
-              {renderCTA(true)}
-            </div>
-
             {/* Contacts */}
             <Section delay={500}>
               <div className="bg-white dark:bg-slate-800 rounded-xl p-5 border border-slate-200 dark:border-slate-700">
@@ -520,11 +430,6 @@ const PublicOrgProfilePage: React.FC = () => {
             )}
           </div>
         </div>
-      </div>
-
-      {/* ═══ Sticky Mobile CTA ═══ */}
-      <div className="fixed bottom-0 left-0 right-0 bg-white/90 dark:bg-slate-900/90 backdrop-blur-xl border-t border-slate-200/50 dark:border-slate-700/50 p-4 sm:hidden z-40 safe-area-bottom shadow-[0_-8px_30px_rgba(0,0,0,0.08)]">
-        {renderCTA(true)}
       </div>
 
       {aiSettings?.isActive && (

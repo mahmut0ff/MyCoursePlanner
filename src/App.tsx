@@ -11,7 +11,6 @@ import PresenceHeartbeat from './components/presence/PresenceHeartbeat';
 import { lazyRetry } from './lib/lazyRetry';
 
 const LoginPage = lazyRetry(() => import('./pages/auth/LoginPage'));
-const RegisterPage = lazyRetry(() => import('./pages/auth/RegisterPage'));
 const ParentPortalPage = lazyRetry(() => import('./pages/parent/ParentPortalPage'));
 const OnboardingPage = lazyRetry(() => import('./pages/auth/OnboardingPage'));
 const TgLoginPage = lazyRetry(() => import('./pages/auth/TgLoginPage'));
@@ -176,7 +175,10 @@ const App: React.FC = () => {
             <Route path="/privacy" element={<PrivacyPage />} />
             <Route path="/terms" element={<TermsPage />} />
             <Route path="/login" element={<LoginPage />} />
-            <Route path="/register" element={<RegisterPage />} />
+            {/* Self-service registration was removed — accounts are provisioned by
+                admins (teachers/students) and super-admins (owners). Keep the path
+                as a redirect so old links/bookmarks land on the login page. */}
+            <Route path="/register" element={<Navigate to="/login" replace />} />
             <Route path="/tg-login" element={<TgLoginPage />} />
             <Route path="/parent/:token" element={<ParentPortalPage />} />
             <Route path="/onboarding" element={<OnboardingPage />} />

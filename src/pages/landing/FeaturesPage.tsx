@@ -368,7 +368,7 @@ const FeaturesPage: React.FC = () => {
                 <div>
                   <h3 className="text-lg font-bold text-white mb-2">Начнем работу?</h3>
                   <p className="text-white/80 text-sm leading-relaxed mb-4">Вам понравились возможности SabakHub?</p>
-                  <Link to="/register" className="bg-white text-primary-700 px-6 py-2.5 rounded-xl font-bold hover:bg-slate-50 transition-colors inline-block shadow-lg">Попробовать бесплатно</Link>
+                  <Link to="/contact?demo=1" className="bg-white text-primary-700 px-6 py-2.5 rounded-xl font-bold hover:bg-slate-50 transition-colors inline-block shadow-lg">Заказать демо</Link>
                 </div>
               </div>
 

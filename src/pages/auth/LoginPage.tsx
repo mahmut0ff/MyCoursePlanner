@@ -59,9 +59,11 @@ const LoginPage: React.FC = () => {
     }
   };
 
-  // Split the marketing title so the last word carries the landing's amber
-  // highlight mark — the signature move from the hero headline.
-  const titleWords = t('auth.loginTitle', 'Обучение начинается здесь').split(' ');
+  // Split the brand line so the last word carries the landing's amber
+  // highlight mark — the signature move from the hero headline. The left
+  // panel is a brand statement; the greeting lives on the form column so it
+  // stays visible on mobile (where this panel is hidden).
+  const titleWords = t('auth.loginBrandLine', 'Управляйте центром спокойно').split(' ');
   const titleLast = titleWords.length > 1 ? titleWords.pop() : '';
   const titleHead = titleWords.join(' ');
 
@@ -123,7 +125,7 @@ const LoginPage: React.FC = () => {
             {t('auth.loginEyebrow', 'Вход')}
           </p>
           <h2 className="mt-2.5 font-marketing-display text-[clamp(26px,3vw,34px)] font-bold leading-[1.12] tracking-[-0.01em]">
-            {t('auth.welcomeBack', 'С возвращением')}
+            {t('auth.loginTitle', 'Добро пожаловать')}
           </h2>
           <p className="mt-2 text-[15px] leading-relaxed text-ink/65">
             {t('auth.loginSubtitle', 'Войдите в свой аккаунт SabakHub')}
@@ -205,7 +207,7 @@ const LoginPage: React.FC = () => {
           </form>
 
           <p className="mt-8 text-[13px] leading-relaxed text-ink/60">
-            {t('auth.provisionedAccountHint', 'Доступ к платформе выдаёт администратор вашего учебного центра.')}
+            {t('auth.provisionedAccountHint', 'Свободной регистрации нет: аккаунт для входа создаёт администрация вашего центра или наша команда.')}
           </p>
         </div>
       </main>

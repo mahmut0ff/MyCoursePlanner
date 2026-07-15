@@ -5,6 +5,7 @@
 import { adminAuth, adminDb } from './firebase-admin';
 import type { HandlerEvent } from '@netlify/functions';
 import { resolvePermissionSet, deriveLegacyManagerPerms, fullPermissionSet, FULL_ACCESS_ROLES } from './rbac';
+import type { PermissionOverrides } from './rbac';
 
 export interface ManagerPermissions {
   finances: boolean;
@@ -61,9 +62,13 @@ export async function getMembershipData(uid: string, orgId: string): Promise<Rec
 /**
  * Resolve user's role in a specific org via membership subcollection.
  */
-export async function resolveOrgRole(uid: string, orgId: string): Promise<{ role: string | null; roles: string[]; roleId: string | null; branchIds: string[]; primaryBranchId: string | null; permissions: ManagerPermissions }> {
+export async function resolveOrgRole(uid: string, orgId: string): Promise<{ role: string | null; roles: string[]; roleId: string | null; branchIds: string[]; primaryBranchId: string | null; permissions: ManagerPermissions; overrides: PermissionOverrides | null }> {
   const data = await getMembershipData(uid, orgId);
-  if (!data || data.status !== 'active') return { role: null, roles: [], roleId: null, branchIds: [], primaryBranchId: null, permissions: { ...DEFAULT_MANAGER_PERMISSIONS } };
+  if (!data || data.status !== 'active') return { role: null, roles: [], roleId: null, branchIds: [], primaryBranchId: null, permissions: { ...DEFAULT_MANAGER_PERMISSIONS }, overrides: null };
+  const rawOverrides = data.permissionOverrides;
+  const overrides: PermissionOverrides | null = rawOverrides && (rawOverrides.grants?.length || rawOverrides.revokes?.length)
+    ? { grants: rawOverrides.grants || [], revokes: rawOverrides.revokes || [] }
+    : null;
   return {
     role: data.role || null,
     // Multi-role members carry a `roles` array; fall back to the single `role` for legacy docs.
@@ -77,6 +82,7 @@ export async function resolveOrgRole(uid: string, orgId: string): Promise<{ role
       managers: data.permissions?.managers === true,
       branches: data.permissions?.branches === true,
     },
+    overrides,
   };
 }
 
@@ -153,7 +159,7 @@ export async function verifyAuth(event: HandlerEvent): Promise<AuthUser | null> 
       // Layer the custom role's grants only when the active role isn't full-access
       // (admins/owners get everything anyway).
       const effectiveCustomRole = (membership.roleId && !FULL_ACCESS_ROLES.includes(role)) ? customRole : null;
-      rbac = resolvePermissionSet({ baseRole: role, customRole: effectiveCustomRole, legacyManagerPerms: membership.permissions });
+      rbac = resolvePermissionSet({ baseRole: role, customRole: effectiveCustomRole, legacyManagerPerms: membership.permissions, overrides: membership.overrides });
       // Keep the legacy 4-toggle view in sync so existing hasPermission() callers still work.
       permissions = effectiveCustomRole
         ? deriveLegacyManagerPerms(rbac)

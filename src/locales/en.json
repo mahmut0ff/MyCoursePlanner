@@ -63,7 +63,6 @@
     "analytics": "Analytics",
     "aiHub": "AI Hub",
     "aiCoach": "AI Coach",
-    "intake": "Enrollment",
     "auditLogs": "Audit Logs",
     "system": "System",
     "systemHealth": "System Health",
@@ -157,7 +156,27 @@
     "defaultForRole": "Default for role",
     "assignedRole": "Assigned role",
     "assignedRoleDesc": "Pick a role with finely-tuned permissions. Without a role, the default manager permissions apply.",
-    "manageRoles": "Manage roles"
+    "manageRoles": "Manage roles",
+    "copySuffix": "(copy)",
+    "duplicate": "Duplicate",
+    "bulkAssigned": "Role assigned",
+    "selectedCount": "Selected",
+    "assignToSelected": "Assign",
+    "selectAll": "Select all",
+    "fullAccessNoAssign": "Full access — no role to assign",
+    "customAccess": "custom access",
+    "tuneAccess": "Fine-tune access",
+    "tuneAccessFor": "Access settings",
+    "overrideHint": "Grant or restrict specific modules on top of the role.",
+    "changedFromRole": "differs from role",
+    "changes": "changes",
+    "resetToRole": "Reset to role",
+    "overridesSaved": "Access updated",
+    "overridesCleared": "Access reset to role"
+  },
+  "access": {
+    "deniedTitle": "Access restricted",
+    "deniedDesc": "Your role has no access to this section. Contact your organization admin."
   },
   "auth": {
     "login": "Sign In",

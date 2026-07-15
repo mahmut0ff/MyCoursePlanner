@@ -88,7 +88,6 @@ const TITLE_MAP: [string, string, string][] = [
   ['/student/schedule', 'nav.schedule', 'Расписание'],
   ['/students', 'nav.students', 'Студенты'],
   ['/teachers', 'nav.teachers', 'Учителя'],
-  ['/managers', 'nav.managers', 'Менеджеры'],
   ['/courses', 'nav.courses', 'Курсы'],
   ['/lessons', 'nav.lessons', 'Уроки'],
   ['/exams', 'nav.exams', 'Экзамены'],

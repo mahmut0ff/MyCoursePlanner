@@ -3,21 +3,16 @@ import { useTranslation } from 'react-i18next';
 import toast from 'react-hot-toast';
 import {
   Shield, ShieldCheck, Plus, X, Save, Trash2, Edit2,
-  ChevronDown, ChevronRight, Loader2, Lock,
+  Loader2, Lock, Copy, Users,
 } from 'lucide-react';
-import { apiGetRoles, apiCreateRole, apiUpdateRole, apiDeleteRole } from '../../lib/api';
+import { apiGetRoles, apiCreateRole, apiUpdateRole, apiDeleteRole, apiGetTeamMembers } from '../../lib/api';
 import {
-  RESOURCE_GROUPS, RBAC_ACTIONS, ACTION_LABELS,
+  RESOURCE_GROUPS, RBAC_ACTIONS,
   countPermissions, roleAccent, fullPermissionSet,
   MANAGER_DEFAULT, TEACHER_DEFAULT,
-  type OrgRole, type RolePermission, type RbacAction, type ResourceDef,
+  type OrgRole, type RolePermission, type RbacAction,
 } from '../../lib/rbac';
-
-const ACTION_COLORS: Record<RbacAction, string> = {
-  read: 'text-emerald-600 dark:text-emerald-400',
-  write: 'text-blue-600 dark:text-blue-400',
-  delete: 'text-red-500',
-};
+import PermissionGrid from './PermissionGrid';
 
 // Synthetic, read-only reference roles derived from the base-role defaults.
 const SYSTEM_ROLES: (OrgRole & { full?: boolean })[] = [
@@ -31,6 +26,7 @@ const FULL_COUNT = fullPermissionSet().size;
 const RoleMatrix: React.FC<{ isAdmin: boolean }> = ({ isAdmin }) => {
   const { t } = useTranslation();
   const [roles, setRoles] = useState<OrgRole[]>([]);
+  const [counts, setCounts] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(true);
 
   // Drawer / editor state
@@ -45,8 +41,12 @@ const RoleMatrix: React.FC<{ isAdmin: boolean }> = ({ isAdmin }) => {
   const fetchRoles = async () => {
     setLoading(true);
     try {
-      const res = await apiGetRoles();
+      const [res, members] = await Promise.all([apiGetRoles(), apiGetTeamMembers().catch(() => ({ items: [] }))]);
       setRoles(res.items || []);
+      // Tally how many staff hold each custom role, to show usage on the cards.
+      const tally: Record<string, number> = {};
+      (members.items || []).forEach((m: any) => { if (m.roleId) tally[m.roleId] = (tally[m.roleId] || 0) + 1; });
+      setCounts(tally);
     } catch (e) { console.error(e); }
     finally { setLoading(false); }
   };
@@ -67,6 +67,17 @@ const RoleMatrix: React.FC<{ isAdmin: boolean }> = ({ isAdmin }) => {
       ? RESOURCE_GROUPS.flatMap(g => g.resources.map(r => ({ resource: r.id, actions: (r.actions ?? RBAC_ACTIONS) as RbacAction[] })))
       : (role.permissions || []).map(p => ({ resource: p.resource, actions: [...p.actions] }));
     setForm({ name: role.name, description: role.description || '', permissions: perms });
+    setOpen(true);
+  };
+
+  // Clone any role (system or custom) into a fresh, editable draft.
+  const duplicateRole = (role: OrgRole & { full?: boolean }) => {
+    setEditing(null);
+    setViewOnly(false);
+    const perms = role.full
+      ? RESOURCE_GROUPS.flatMap(g => g.resources.map(r => ({ resource: r.id, actions: (r.actions ?? RBAC_ACTIONS) as RbacAction[] })))
+      : (role.permissions || []).map(p => ({ resource: p.resource, actions: [...p.actions] }));
+    setForm({ name: `${role.name} ${t('team.copySuffix', '(копия)')}`, description: role.description || '', permissions: perms });
     setOpen(true);
   };
 
@@ -139,7 +150,14 @@ const RoleMatrix: React.FC<{ isAdmin: boolean }> = ({ isAdmin }) => {
         <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-3">{t('team.systemRoles', 'Системные роли')}</h3>
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
           {SYSTEM_ROLES.map(role => (
-            <RoleCard key={role.id} role={role} count={role.full ? FULL_COUNT : countPermissions(role)} full={role.full} onClick={() => openRole(role)} />
+            <RoleCard
+              key={role.id}
+              role={role}
+              count={role.full ? FULL_COUNT : countPermissions(role)}
+              full={role.full}
+              onClick={() => openRole(role)}
+              onDuplicate={isAdmin ? () => duplicateRole(role) : undefined}
+            />
           ))}
         </div>
       </section>
@@ -169,8 +187,10 @@ const RoleMatrix: React.FC<{ isAdmin: boolean }> = ({ isAdmin }) => {
                 key={role.id}
                 role={role}
                 count={countPermissions(role)}
+                memberCount={counts[role.id] || 0}
                 onClick={() => openRole(role)}
                 onDelete={isAdmin ? () => handleDelete(role) : undefined}
+                onDuplicate={isAdmin ? () => duplicateRole(role) : undefined}
               />
             ))}
           </div>
@@ -256,9 +276,11 @@ const RoleCard: React.FC<{
   role: OrgRole & { full?: boolean };
   count: number;
   full?: boolean;
+  memberCount?: number;
   onClick: () => void;
   onDelete?: () => void;
-}> = ({ role, count, full, onClick, onDelete }) => {
+  onDuplicate?: () => void;
+}> = ({ role, count, full, memberCount, onClick, onDelete, onDuplicate }) => {
   const { t } = useTranslation();
   const accent = roleAccent(role);
   return (
@@ -276,126 +298,49 @@ const RoleCard: React.FC<{
         </div>
       </div>
       <div className="flex items-center justify-between mt-3">
-        {full ? (
-          <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-600 dark:text-emerald-400">
-            <ShieldCheck className="w-3.5 h-3.5" /> {t('team.fullAccess', 'Полный доступ')}
-          </span>
-        ) : (
-          <span className="text-[11px] text-slate-500"><strong className="text-slate-700 dark:text-slate-300">{count}</strong> {t('team.permissions', 'прав')}</span>
-        )}
-        {onDelete && !role.isSystem && (
-          <span
-            role="button"
-            tabIndex={0}
-            onClick={(e) => { e.stopPropagation(); onDelete(); }}
-            onKeyDown={(e) => { if (e.key === 'Enter') { e.stopPropagation(); onDelete(); } }}
-            className="p-1 rounded-md text-slate-300 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 opacity-0 group-hover:opacity-100 transition-all cursor-pointer"
-          >
-            <Trash2 className="w-3.5 h-3.5" />
-          </span>
-        )}
-        {!onDelete && !full && <Edit2 className="w-3.5 h-3.5 text-slate-300 dark:text-slate-600" />}
+        <div className="flex items-center gap-2 min-w-0">
+          {full ? (
+            <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-600 dark:text-emerald-400">
+              <ShieldCheck className="w-3.5 h-3.5" /> {t('team.fullAccess', 'Полный доступ')}
+            </span>
+          ) : (
+            <span className="text-[11px] text-slate-500"><strong className="text-slate-700 dark:text-slate-300">{count}</strong> {t('team.permissions', 'прав')}</span>
+          )}
+          {memberCount !== undefined && memberCount > 0 && (
+            <span className="inline-flex items-center gap-1 text-[11px] text-slate-500 border-l border-slate-200 dark:border-slate-700 pl-2">
+              <Users className="w-3 h-3" /> {memberCount}
+            </span>
+          )}
+        </div>
+        <div className="flex items-center gap-0.5 shrink-0">
+          {onDuplicate && (
+            <span
+              role="button"
+              tabIndex={0}
+              onClick={(e) => { e.stopPropagation(); onDuplicate(); }}
+              onKeyDown={(e) => { if (e.key === 'Enter') { e.stopPropagation(); onDuplicate(); } }}
+              title={t('team.duplicate', 'Дублировать')}
+              className="p-1 rounded-md text-slate-300 hover:text-primary-500 hover:bg-primary-50 dark:hover:bg-primary-900/20 opacity-0 group-hover:opacity-100 transition-all cursor-pointer"
+            >
+              <Copy className="w-3.5 h-3.5" />
+            </span>
+          )}
+          {onDelete && !role.isSystem && (
+            <span
+              role="button"
+              tabIndex={0}
+              onClick={(e) => { e.stopPropagation(); onDelete(); }}
+              onKeyDown={(e) => { if (e.key === 'Enter') { e.stopPropagation(); onDelete(); } }}
+              title={t('common.delete', 'Удалить')}
+              className="p-1 rounded-md text-slate-300 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 opacity-0 group-hover:opacity-100 transition-all cursor-pointer"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+            </span>
+          )}
+          {!onDelete && !onDuplicate && !full && <Edit2 className="w-3.5 h-3.5 text-slate-300 dark:text-slate-600" />}
+        </div>
       </div>
     </button>
-  );
-};
-
-// ─── Permission grid ───
-const PermissionGrid: React.FC<{
-  hasPerm: (r: string, a: RbacAction) => boolean;
-  togglePerm: (r: string, a: RbacAction) => void;
-  toggleAll: (r: string, allowed: RbacAction[]) => void;
-  viewOnly: boolean;
-  openHelp: string | null;
-  setOpenHelp: (v: string | null) => void;
-  collapsed: Record<string, boolean>;
-  setCollapsed: (v: Record<string, boolean>) => void;
-}> = ({ hasPerm, togglePerm, toggleAll, viewOnly, openHelp, setOpenHelp, collapsed, setCollapsed }) => {
-  const { t } = useTranslation();
-  return (
-    <div className="rounded-2xl border border-slate-200 dark:border-slate-700 overflow-hidden">
-      {/* Column header */}
-      <div className="grid grid-cols-[1fr_repeat(3,52px)_44px_28px] items-center gap-1 px-3 py-2 bg-slate-50 dark:bg-slate-800/60 text-[11px] font-semibold text-slate-500">
-        <span>{t('team.resource', 'Раздел')}</span>
-        {RBAC_ACTIONS.map(a => <span key={a} className="text-center">{ACTION_LABELS[a]}</span>)}
-        <span className="text-center">{t('team.all', 'Все')}</span>
-        <span />
-      </div>
-
-      {RESOURCE_GROUPS.map(group => {
-        const isCollapsed = collapsed[group.group];
-        return (
-          <div key={group.group}>
-            <button
-              type="button"
-              onClick={() => setCollapsed({ ...collapsed, [group.group]: !isCollapsed })}
-              className="w-full flex items-center gap-1.5 px-3 py-1.5 bg-slate-100/70 dark:bg-slate-800/40 text-[11px] font-bold uppercase tracking-wider text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"
-            >
-              {isCollapsed ? <ChevronRight className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
-              {group.group}
-            </button>
-            {!isCollapsed && group.resources.map((res: ResourceDef) => {
-              const allowed = (res.actions ?? RBAC_ACTIONS);
-              const allOn = allowed.every(a => hasPerm(res.id, a));
-              return (
-                <div key={res.id} className="relative grid grid-cols-[1fr_repeat(3,52px)_44px_28px] items-center gap-1 px-3 py-2 border-t border-slate-100 dark:border-slate-700/50">
-                  <span className="text-[13px] font-medium text-slate-700 dark:text-slate-200 pl-4 truncate">{res.label}</span>
-                  {RBAC_ACTIONS.map(a => (
-                    <div key={a} className="flex justify-center">
-                      {allowed.includes(a) ? (
-                        <input
-                          type="checkbox"
-                          checked={hasPerm(res.id, a)}
-                          disabled={viewOnly}
-                          onChange={() => togglePerm(res.id, a)}
-                          className="w-4 h-4 rounded accent-primary-600 cursor-pointer disabled:cursor-default"
-                        />
-                      ) : (
-                        <span className="text-slate-300 dark:text-slate-600">—</span>
-                      )}
-                    </div>
-                  ))}
-                  <div className="flex justify-center">
-                    <input
-                      type="checkbox"
-                      checked={allOn}
-                      disabled={viewOnly}
-                      onChange={() => toggleAll(res.id, allowed)}
-                      className="w-4 h-4 rounded accent-primary-600 cursor-pointer disabled:cursor-default"
-                    />
-                  </div>
-                  {/* Help */}
-                  <div className="flex justify-center">
-                    <button
-                      type="button"
-                      onClick={() => setOpenHelp(openHelp === res.id ? null : res.id)}
-                      className="w-5 h-5 rounded-full border border-slate-300 dark:border-slate-600 text-[10px] font-bold text-slate-400 hover:text-primary-500 hover:border-primary-400 transition-colors"
-                    >?</button>
-                  </div>
-                  {openHelp === res.id && (
-                    <>
-                      <div className="fixed inset-0 z-10" onClick={() => setOpenHelp(null)} />
-                      <div className="absolute right-2 top-9 z-20 w-64 p-3 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-xl text-xs">
-                        <div className="flex items-center justify-between mb-2">
-                          <span className="font-bold text-slate-800 dark:text-slate-100">{res.label}</span>
-                          <button onClick={() => setOpenHelp(null)}><X className="w-3.5 h-3.5 text-slate-400" /></button>
-                        </div>
-                        <div className="space-y-1.5">
-                          <p><span className={`font-semibold ${ACTION_COLORS.read}`}>{ACTION_LABELS.read}:</span> <span className="text-slate-500">{res.help.read}</span></p>
-                          {res.help.write && res.help.write !== '—' && <p><span className={`font-semibold ${ACTION_COLORS.write}`}>{ACTION_LABELS.write}:</span> <span className="text-slate-500">{res.help.write}</span></p>}
-                          {res.help.delete && res.help.delete !== '—' && <p><span className={`font-semibold ${ACTION_COLORS.delete}`}>{ACTION_LABELS.delete}:</span> <span className="text-slate-500">{res.help.delete}</span></p>}
-                          {res.help.notes && <p className="pt-1.5 mt-1.5 border-t border-slate-100 dark:border-slate-700 text-amber-600 dark:text-amber-400 italic">💡 {res.help.notes}</p>}
-                        </div>
-                      </div>
-                    </>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        );
-      })}
-    </div>
   );
 };
 

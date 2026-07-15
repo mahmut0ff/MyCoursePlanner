@@ -6,6 +6,7 @@ import { isFirebaseConfigured, requestNotificationPermission, db } from '../lib/
 import { apiSaveFcmToken, apiRemoveFcmToken, apiSwitchOrg, apiSwitchRole } from '../lib/api';
 import { doc, getDoc } from 'firebase/firestore';
 import type { UserProfile, UserRole } from '../types';
+import type { PermissionOverrides } from '../lib/rbac';
 
 // Maps stored membership roles to app-level roles (owner→admin, mentor→teacher).
 const MEMBERSHIP_TO_APP_ROLE: Record<string, UserRole> = {
@@ -42,6 +43,8 @@ interface AuthContextType {
   membershipRoleId: string | null;
   /** Assigned custom RBAC role (id + name + base app role), if any — labels the switcher. */
   membershipRole: { id: string; name: string; baseRole: string } | null;
+  /** Per-member permission overrides (grant/revoke) layered on the resolved role. */
+  membershipOverrides: PermissionOverrides | null;
   /** App-level roles the user holds in the active org (for the role switcher). */
   availableRoles: UserRole[];
   refreshProfile: () => Promise<void>;
@@ -69,6 +72,7 @@ const AuthContext = createContext<AuthContextType>({
   hasPermission: () => false,
   membershipRoleId: null,
   membershipRole: null,
+  membershipOverrides: null,
   availableRoles: [],
   refreshProfile: async () => {},
   switchOrganization: async () => {},
@@ -86,6 +90,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [permissions, setPermissions] = useState<ManagerPermissions>({ ...NO_PERMISSIONS });
   const [membershipRoleId, setMembershipRoleId] = useState<string | null>(null);
   const [membershipRole, setMembershipRole] = useState<{ id: string; name: string; baseRole: string } | null>(null);
+  const [membershipOverrides, setMembershipOverrides] = useState<PermissionOverrides | null>(null);
   const [availableRoles, setAvailableRoles] = useState<UserRole[]>([]);
   const fcmTokenRef = useRef<string | null>(null);
 
@@ -102,6 +107,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const orgId = (p as any)?.activeOrgId || p.organizationId;
         let mRoleId: string | null = null;
         let mRole: { id: string; name: string; baseRole: string } | null = null;
+        let mOverrides: PermissionOverrides | null = null;
         let avail: UserRole[] = [];
         if (orgId && p.role !== 'super_admin') {
           try {
@@ -109,6 +115,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             if (memberDoc.exists()) {
               const mData = memberDoc.data();
               mRoleId = mData.roleId || null;
+              const rawOv = mData.permissionOverrides;
+              mOverrides = rawOv && (rawOv.grants?.length || rawOv.revokes?.length)
+                ? { grants: rawOv.grants || [], revokes: rawOv.revokes || [] }
+                : null;
               // App-level roles this member holds in the org (for the role switcher).
               const rawRoles: string[] = Array.isArray(mData.roles) && mData.roles.length
                 ? mData.roles
@@ -151,6 +161,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
         setMembershipRoleId(mRoleId);
         setMembershipRole(mRole);
+        setMembershipOverrides(mOverrides);
         setAvailableRoles(avail);
       }
     } catch (e) {
@@ -271,6 +282,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         },
         membershipRoleId,
         membershipRole,
+        membershipOverrides,
         availableRoles,
         refreshProfile,
         switchOrganization,

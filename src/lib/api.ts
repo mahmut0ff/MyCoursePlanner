@@ -331,9 +331,6 @@ export const orgGetTeachers = () => orgReq('teachers');
 export const orgCreateTeacher = (data: any) => orgReq('createTeacher', 'POST', data);
 export const orgInviteUser = (email: string, role: string) => orgReq('inviteUser', 'POST', { email, role });
 
-// Managers
-export const orgGetManagers = () => orgReq('managers');
-export const orgCreateManager = (data: any) => orgReq('createManager', 'POST', data);
 /** Create a real account with an arbitrary combination of app roles (multi-role). Admin-only. */
 export const orgCreateUser = (data: { displayName: string; username?: string; email?: string; password: string; roles: string[]; phone?: string; branchIds?: string[]; primaryBranchId?: string | null }) =>
   orgReq('createUser', 'POST', data);
@@ -352,6 +349,9 @@ export const apiUpdateRole = (id: string, data: { name?: string; description?: s
   rolesReq('update', 'POST', { id, ...data });
 export const apiDeleteRole = (id: string) => rolesReq('delete', 'POST', { id });
 export const apiAssignRole = (uid: string, roleId: string | null) => rolesReq('assign', 'POST', { uid, roleId });
+/** Layer per-member permission overrides (grant/revoke) on top of the member's role. Admin-only. */
+export const apiSetMemberOverrides = (uid: string, grants: any[], revokes: any[]) =>
+  rolesReq('setOverrides', 'POST', { uid, grants, revokes });
 
 // Materials
 export const orgGetMaterials = (filters?: Record<string, string>) => orgReq('materials', 'GET', undefined, filters);
@@ -673,41 +673,6 @@ export const apiTgLogin = async (ott: string): Promise<{ customToken: string }> 
   if (!res.ok) throw new Error(data.error || 'Не удалось войти');
   return data;
 };
-
-export interface OrgJoinCodes {
-  studentCode: string;
-  teacherCode: string;
-  studentJoinMode: 'auto' | 'approval';
-  botUsername: string;
-  studentLink: string;
-  teacherLink: string;
-}
-export const apiGetJoinCodes = (): Promise<OrgJoinCodes> =>
-  apiRequest('api-onboarding', 'GET', undefined, { action: 'codes' });
-export const apiRegenerateJoinCode = (role: 'student' | 'teacher'): Promise<{ code: string; link: string }> =>
-  apiRequest('api-onboarding', 'POST', { role }, { action: 'regenerate' });
-export const apiSetStudentJoinMode = (mode: 'auto' | 'approval'): Promise<{ studentJoinMode: string }> =>
-  apiRequest('api-onboarding', 'POST', { mode }, { action: 'setMode' });
-
-export interface InviteGroup { id: string; name: string; courseName: string; studentsCount: number; joinCode: string | null; link: string | null; }
-export const apiGetInviteGroups = (): Promise<{ groups: InviteGroup[] }> =>
-  apiRequest('api-onboarding', 'GET', undefined, { action: 'groups' });
-export const apiGetGroupCode = (groupId: string): Promise<{ code: string; groupName: string; link: string }> =>
-  apiRequest('api-onboarding', 'POST', { groupId }, { action: 'groupCode' });
-export const apiRegenGroupCode = (groupId: string): Promise<{ code: string; groupName: string; link: string }> =>
-  apiRequest('api-onboarding', 'POST', { groupId }, { action: 'regenGroupCode' });
-
-export interface BulkCreateRow { name: string; phone: string; status: string; link?: string; error?: string; }
-export const apiBulkCreate = (data: { students: { name: string; phone: string }[]; role: 'student' | 'teacher'; groupId?: string }): Promise<{ created: number; results: BulkCreateRow[] }> =>
-  apiRequest('api-onboarding', 'POST', data, { action: 'bulkCreate' });
-
-/** AI roster extraction from pasted text or an uploaded image/PDF. */
-export const apiRosterExtract = (data: { prompt?: string; fileUrl?: string }): Promise<{ data: { students: { name: string; phone: string }[] } }> =>
-  apiRequest('api-ai-generate', 'POST', { ...data, type: 'roster_extraction' });
-
-/** Natural-language "add X +996.. to group Y" → pre-created accounts + invite links. */
-export const apiAIRoster = (text: string): Promise<{ data: { results: any[]; reply: string } }> =>
-  apiRequest('api-ai-roster', 'POST', { text });
 
 // ============================================================
 // MEGA RELEASE EXPERIMENTAL API (Homework & Risk)

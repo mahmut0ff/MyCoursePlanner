@@ -63,7 +63,6 @@
     "analytics": "Статистика",
     "aiHub": "AI-борбор",
     "aiCoach": "AI-насаатчы",
-    "intake": "Кабыл алуу",
     "auditLogs": "Аракеттер журналы",
     "system": "Система",
     "systemHealth": "Система абалы",
@@ -148,7 +147,27 @@
     "defaultForRole": "Роль үчүн демейки",
     "assignedRole": "Дайындалган роль",
     "assignedRoleDesc": "Майда жөнгө салынган укуктары бар ролду тандаңыз. Ролсуз менеджердин демейки укуктары колдонулат.",
-    "manageRoles": "Ролдорду тууралоо"
+    "manageRoles": "Ролдорду тууралоо",
+    "copySuffix": "(көчүрмө)",
+    "duplicate": "Көчүрүү",
+    "bulkAssigned": "Роль дайындалды",
+    "selectedCount": "Тандалды",
+    "assignToSelected": "Дайындоо",
+    "selectAll": "Баарын тандоо",
+    "fullAccessNoAssign": "Толук кирүү — роль дайындалбайт",
+    "customAccess": "өзгөчө кирүү",
+    "tuneAccess": "Кирүүнү майда жөнгө салуу",
+    "tuneAccessFor": "Кирүү жөндөөлөрү",
+    "overrideHint": "Ролдун үстүнөн айрым бөлүмдөрдү кошуңуз же чектеңиз.",
+    "changedFromRole": "ролдон айырмаланат",
+    "changes": "өзгөртүү",
+    "resetToRole": "Ролго кайтаруу",
+    "overridesSaved": "Кирүү жаңыртылды",
+    "overridesCleared": "Кирүү ролго кайтарылды"
+  },
+  "access": {
+    "deniedTitle": "Кирүү чектелген",
+    "deniedDesc": "Сиздин ролуңузда бул бөлүмгө укук жок. Уюмдун администраторуна кайрылыңыз."
   },
   "auth": {
     "login": "Кирүү",

@@ -243,7 +243,7 @@ describe('resolveBranchFilter', () => {
 // 6. Membership resolution (user-side doc + org-side mirror fallback)
 // ═════════════════════════════════════════════════════════════════
 
-// Managers created via api-org createManager historically only got the
+// Staff created via api-org (e.g. createUser/createTeacher) may only get the
 // org-side mirror doc (orgMembers/{orgId}/members/{uid}); the fallback keeps
 // them from resolving to "no role" (403 Forbidden on membership endpoints).
 function mockMembershipDb(opts: { userSide?: Record<string, any> | null; orgSide?: Record<string, any> | null }) {
@@ -296,7 +296,7 @@ describe('getMembershipData (org-side mirror fallback)', () => {
 });
 
 describe('resolveOrgRole', () => {
-  const NULL_RESULT = { role: null, roles: [], roleId: null, branchIds: [], primaryBranchId: null, permissions: { ...NO_PERMS } };
+  const NULL_RESULT = { role: null, roles: [], roleId: null, branchIds: [], primaryBranchId: null, permissions: { ...NO_PERMS }, overrides: null };
 
   it('resolves a legacy manager who only has the org-side mirror doc', async () => {
     mockMembershipDb({

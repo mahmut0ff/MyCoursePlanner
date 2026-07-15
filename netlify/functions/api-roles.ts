@@ -9,7 +9,7 @@ import {
   verifyAuth, hasRole, can,
   ok, unauthorized, forbidden, badRequest, notFound, jsonResponse,
 } from './utils/auth';
-import { sanitizePermissions } from './utils/rbac';
+import { sanitizePermissions, sanitizeOverrides } from './utils/rbac';
 
 const now = () => new Date().toISOString();
 
@@ -61,13 +61,20 @@ const handler: Handler = async (event: HandlerEvent) => {
           const held = [m.role, ...(Array.isArray(m.roles) ? m.roles : [])].filter(Boolean);
           return held.some((r: string) => STAFF_ROLES.includes(r));
         })
-        .map((m: any) => ({
-          uid: m.userId, displayName: m.userName, email: m.userEmail,
-          role: m.role,
-          roles: (Array.isArray(m.roles) && m.roles.length ? m.roles : (m.role ? [m.role] : [])),
-          roleId: m.roleId || null,
-          branchIds: m.branchIds || [], status: m.status || 'active',
-        }));
+        .map((m: any) => {
+          const ov = m.permissionOverrides;
+          const overrides = ov && (ov.grants?.length || ov.revokes?.length)
+            ? { grants: ov.grants || [], revokes: ov.revokes || [] }
+            : null;
+          return {
+            uid: m.userId, displayName: m.userName, email: m.userEmail,
+            role: m.role,
+            roles: (Array.isArray(m.roles) && m.roles.length ? m.roles : (m.role ? [m.role] : [])),
+            roleId: m.roleId || null,
+            overrides,
+            branchIds: m.branchIds || [], status: m.status || 'active',
+          };
+        });
 
       // Enrich with profile avatar/email/phone
       if (members.length) {
@@ -184,6 +191,32 @@ const handler: Handler = async (event: HandlerEvent) => {
         .set(update, { merge: true });
 
       return ok({ uid, roleId, roles: update.roles });
+    }
+
+    // ─── Set per-member permission overrides (grant/revoke on top of the role) ───
+    if (action === 'setOverrides') {
+      if (!hasRole(user, 'admin')) return forbidden('Only org admins can adjust member permissions');
+      if (!(await rbacPlanAllowed(orgId))) return badRequest('Тонкая настройка прав требует тариф Профессиональный или выше.');
+      const body = JSON.parse(event.body || '{}');
+      const uid = body.uid;
+      if (!uid) return badRequest('uid is required');
+
+      // Normalize against the catalog; store empty arrays (treated as "no override") when cleared.
+      const sanitized = sanitizeOverrides(body);
+      const clean = { grants: sanitized.grants || [], revokes: sanitized.revokes || [] };
+
+      const memberRef = adminDb.collection('orgMembers').doc(orgId).collection('members').doc(uid);
+      const memberDoc = await memberRef.get();
+      if (!memberDoc.exists) return notFound('Member not found');
+
+      const update = { permissionOverrides: clean, updatedAt: now() };
+      await memberRef.update(update);
+      // Mirror to the user-side membership so verifyAuth resolves the caller's own grants.
+      await adminDb.collection('users').doc(uid).collection('memberships').doc(orgId)
+        .set(update, { merge: true });
+
+      const hasAny = clean.grants.length > 0 || clean.revokes.length > 0;
+      return ok({ uid, permissionOverrides: hasAny ? clean : null });
     }
 
     return badRequest(`Unknown action: ${action}`);

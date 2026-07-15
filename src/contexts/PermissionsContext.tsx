@@ -27,7 +27,7 @@ const PermissionsContext = createContext<PermissionsContextType>({
 export const usePermissions = () => useContext(PermissionsContext);
 
 export const PermissionsProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { role, organizationId, permissions: legacyPerms, membershipRoleId, loading } = useAuth();
+  const { role, organizationId, permissions: legacyPerms, membershipRoleId, membershipOverrides, loading } = useAuth();
   const [customRole, setCustomRole] = useState<OrgRole | null>(null);
   const [roleName, setRoleName] = useState('');
   const [loaded, setLoaded] = useState(false);
@@ -57,8 +57,8 @@ export const PermissionsProvider: React.FC<{ children: React.ReactNode }> = ({ c
   }, [organizationId, membershipRoleId, role, loading]);
 
   const permSet = useMemo(
-    () => resolvePermissionSet({ baseRole: role, customRole, legacyManagerPerms: legacyPerms }),
-    [role, customRole, legacyPerms],
+    () => resolvePermissionSet({ baseRole: role, customRole, legacyManagerPerms: legacyPerms, overrides: membershipOverrides }),
+    [role, customRole, legacyPerms, membershipOverrides],
   );
 
   const value = useMemo<PermissionsContextType>(() => ({

@@ -18,9 +18,9 @@ import {
   Users, Layers, Activity, Flag, Plug, FolderOpen,
   ClipboardList, Radio, LogOut, CreditCard, Trophy,
   Lock, ClipboardCheck,
-  ShieldCheck, Inbox,
+  Inbox,
   NotebookText, NotebookPen, MapPin, UserCog,
-  Sparkles, Send, TrendingDown,
+  Sparkles, TrendingDown,
 } from 'lucide-react';
 
 /* ─── Thin divider between groups ─── */
@@ -167,8 +167,6 @@ const Sidebar: React.FC<{ open: boolean; onClose: () => void; isCollapsed?: bool
               <SectionLabel label={t('nav.secPeople', 'Люди')} isCollapsed={isCollapsed} />
               <NavItem to="/students" icon={Users} label={term(t, instType, 'students')} isCollapsed={isCollapsed} onClose={onClose} />
               <NavItem to="/teachers" icon={UserPlus} label={t('nav.teachers')} isCollapsed={isCollapsed} onClose={onClose} />
-              <NavItem to="/managers" icon={ShieldCheck} label={t('nav.managers', 'Менеджеры')} isCollapsed={isCollapsed} onClose={onClose} />
-              <NavItem to="/enrollment" icon={Send} label={t('nav.intake', 'Набор')} isCollapsed={isCollapsed} onClose={onClose} />
               <NavItem to="/leads" icon={Inbox} label={t('nav.leads', 'Заявки')} isCollapsed={isCollapsed} onClose={onClose} />
               <NavItem to="/team" icon={UserCog} label={t('nav.team', 'Команда и роли')} isCollapsed={isCollapsed} onClose={onClose} locked={!canAccess('rbac')} />
 
@@ -194,32 +192,44 @@ const Sidebar: React.FC<{ open: boolean; onClose: () => void; isCollapsed?: bool
               <NavItem to="/dashboard" icon={LayoutDashboard} label={t('nav.dashboard')} isCollapsed={isCollapsed} onClose={onClose} />
 
               <SectionLabel label={t('nav.secPeople', 'Люди')} isCollapsed={isCollapsed} />
-              <NavItem to="/students" icon={Users} label={term(t, instType, 'students')} isCollapsed={isCollapsed} onClose={onClose} />
-              <NavItem to="/teachers" icon={UserPlus} label={t('nav.teachers')} isCollapsed={isCollapsed} onClose={onClose} />
+              {canRead('students') && (
+                <NavItem to="/students" icon={Users} label={term(t, instType, 'students')} isCollapsed={isCollapsed} onClose={onClose} />
+              )}
+              {canRead('teachers') && (
+                <NavItem to="/teachers" icon={UserPlus} label={t('nav.teachers')} isCollapsed={isCollapsed} onClose={onClose} />
+              )}
               {canRead('leads') && (
                 <NavItem to="/leads" icon={Inbox} label={t('nav.leads', 'Заявки')} isCollapsed={isCollapsed} onClose={onClose} />
-              )}
-              {canRead('team') && (
-                <NavItem to="/managers" icon={ShieldCheck} label={t('nav.managers', 'Менеджеры')} isCollapsed={isCollapsed} onClose={onClose} />
-              )}
-              {canRead('settings') && (
-                <NavItem to="/enrollment" icon={Send} label={t('nav.intake', 'Набор')} isCollapsed={isCollapsed} onClose={onClose} />
               )}
               {canRead('team') && (
                 <NavItem to="/team" icon={UserCog} label={t('nav.team', 'Команда и роли')} isCollapsed={isCollapsed} onClose={onClose} locked={!canAccess('rbac')} />
               )}
 
               <SectionLabel label={t('nav.secLearning', 'Обучение')} isCollapsed={isCollapsed} />
-              <NavItem to="/courses" icon={FolderOpen} label={t('nav.courses')} isCollapsed={isCollapsed} onClose={onClose} />
-              <NavItem to="/groups" icon={Layers} label={term(t, instType, 'groups')} isCollapsed={isCollapsed} onClose={onClose} />
-              <NavItem to="/lessons" icon={BookOpen} label={t('nav.lessons')} isCollapsed={isCollapsed} onClose={onClose} />
-              <NavItem to="/exams" icon={ClipboardList} label={t('nav.exams')} isCollapsed={isCollapsed} onClose={onClose} />
-              <NavItem to="/schedule" icon={Calendar} label={t('nav.schedule')} isCollapsed={isCollapsed} onClose={onClose} />
-              <NavItem to="/materials" icon={FileText} label={t('nav.materials')} isCollapsed={isCollapsed} onClose={onClose} />
-              <NavItem to="/quiz/library" icon={Gamepad2} label={t('nav.quizLibrary')} isCollapsed={isCollapsed} onClose={onClose} />
+              {canRead('courses') && (
+                <NavItem to="/courses" icon={FolderOpen} label={t('nav.courses')} isCollapsed={isCollapsed} onClose={onClose} />
+              )}
+              {canRead('groups') && (
+                <NavItem to="/groups" icon={Layers} label={term(t, instType, 'groups')} isCollapsed={isCollapsed} onClose={onClose} />
+              )}
+              {canRead('lessons') && (
+                <NavItem to="/lessons" icon={BookOpen} label={t('nav.lessons')} isCollapsed={isCollapsed} onClose={onClose} />
+              )}
+              {canRead('exams') && (
+                <NavItem to="/exams" icon={ClipboardList} label={t('nav.exams')} isCollapsed={isCollapsed} onClose={onClose} />
+              )}
+              {canRead('schedule') && (
+                <NavItem to="/schedule" icon={Calendar} label={t('nav.schedule')} isCollapsed={isCollapsed} onClose={onClose} />
+              )}
+              {canRead('materials') && (
+                <NavItem to="/materials" icon={FileText} label={t('nav.materials')} isCollapsed={isCollapsed} onClose={onClose} />
+              )}
+              {canRead('quizzes') && (
+                <NavItem to="/quiz/library" icon={Gamepad2} label={t('nav.quizLibrary')} isCollapsed={isCollapsed} onClose={onClose} />
+              )}
 
               <SectionLabel label={t('nav.secManagement', 'Управление')} isCollapsed={isCollapsed} />
-              {canRead('settings') && (
+              {canRead('ai') && (
                 <NavItem to="/ai" icon={Sparkles} label={t('nav.aiHub', 'AI-центр')} isCollapsed={isCollapsed} onClose={onClose} locked={!canAccess('ai')} />
               )}
               {canRead('finances') && (
@@ -231,7 +241,9 @@ const Sidebar: React.FC<{ open: boolean; onClose: () => void; isCollapsed?: bool
               {canRead('settings') && (
                 <NavItem to="/org-settings" icon={Settings} label={t('nav.orgSettings', 'Настройки')} isCollapsed={isCollapsed} onClose={onClose} />
               )}
-              <NavItem to="/gradebook" icon={TableProperties} label={t('nav.gradebook', 'Успеваемость')} isCollapsed={isCollapsed} onClose={onClose} locked={!canAccess('gradebook')} />
+              {canRead('gradebook') && (
+                <NavItem to="/gradebook" icon={TableProperties} label={t('nav.gradebook', 'Успеваемость')} isCollapsed={isCollapsed} onClose={onClose} locked={!canAccess('gradebook')} />
+              )}
               {canRead('analytics') && (
                 <NavItem to="/teacher-analytics" icon={BarChart3} label={t('nav.analytics')} isCollapsed={isCollapsed} onClose={onClose} locked={!canAccess('advancedAnalytics')} />
               )}

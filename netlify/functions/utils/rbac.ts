@@ -10,6 +10,12 @@ export interface RolePermission {
   actions: RbacAction[];
 }
 
+/** Per-member overrides layered on top of a resolved role (grants add, revokes remove). */
+export interface PermissionOverrides {
+  grants?: RolePermission[];
+  revokes?: RolePermission[];
+}
+
 export interface LegacyManagerPerms {
   finances?: boolean;
   settings?: boolean;
@@ -36,6 +42,7 @@ export const RESOURCE_ACTIONS: Record<string, RbacAction[]> = {
   gradebook: ['read', 'write', 'delete'],
   homework: ['read', 'write', 'delete'],
   results: ['read'],
+  ai: ['read', 'write'],
   finances: ['read', 'write', 'delete'],
   certificates: ['read', 'write', 'delete'],
   branches: ['read', 'write', 'delete'],
@@ -62,6 +69,7 @@ export const TEACHER_DEFAULT: RolePermission[] = [
 
 export const MANAGER_DEFAULT: RolePermission[] = [
   ...ro(['dashboard', 'analytics', 'results']),
+  ...rw(['ai']),
   ...rwd(['students', 'teachers', 'leads', 'courses', 'groups', 'lessons', 'materials', 'schedule', 'exams', 'rooms', 'quizzes', 'gradebook', 'homework', 'certificates']),
 ];
 
@@ -90,25 +98,50 @@ export function expandPermissions(permissions?: RolePermission[] | null): Set<st
   return set;
 }
 
+/** Layer per-member overrides onto a resolved permission set (grants add, revokes remove). */
+export function applyOverrides(base: Set<string>, overrides?: PermissionOverrides | null): Set<string> {
+  if (!overrides || (!overrides.grants?.length && !overrides.revokes?.length)) return base;
+  const out = new Set(base);
+  (overrides.grants || []).forEach(p => (p.actions || []).forEach(a => out.add(`${p.resource}:${a}`)));
+  (overrides.revokes || []).forEach(p => (p.actions || []).forEach(a => out.delete(`${p.resource}:${a}`)));
+  return out;
+}
+
 /**
  * Resolve a member's effective permission set.
- * Precedence: full-access base role → assigned custom role → system default (+ legacy toggles).
+ * Precedence: full-access base role → assigned custom role → system default (+ legacy toggles),
+ * then per-member overrides are layered on top (never for full-access roles).
  */
 export function resolvePermissionSet(args: {
   baseRole?: string | null;
   customRole?: { name?: string; permissions?: RolePermission[] } | null;
   legacyManagerPerms?: LegacyManagerPerms;
+  overrides?: PermissionOverrides | null;
 }): Set<string> {
-  const { baseRole, customRole, legacyManagerPerms } = args;
+  const { baseRole, customRole, legacyManagerPerms, overrides } = args;
   if (baseRole && FULL_ACCESS_ROLES.includes(baseRole)) return fullPermissionSet();
+  let base: Set<string>;
   if (customRole) {
     if (customRole.name?.trim().toLowerCase() === 'admin') return fullPermissionSet();
-    return expandPermissions(customRole.permissions);
+    base = expandPermissions(customRole.permissions);
+  } else if (baseRole === 'teacher' || baseRole === 'mentor') {
+    base = expandPermissions(TEACHER_DEFAULT);
+  } else if (baseRole === 'manager') {
+    base = expandPermissions([...MANAGER_DEFAULT, ...legacyManagerGrants(legacyManagerPerms)]);
+  } else if (baseRole === 'student') {
+    base = expandPermissions(STUDENT_DEFAULT);
+  } else {
+    base = new Set();
   }
-  if (baseRole === 'teacher' || baseRole === 'mentor') return expandPermissions(TEACHER_DEFAULT);
-  if (baseRole === 'manager') return expandPermissions([...MANAGER_DEFAULT, ...legacyManagerGrants(legacyManagerPerms)]);
-  if (baseRole === 'student') return expandPermissions(STUDENT_DEFAULT);
-  return new Set();
+  return applyOverrides(base, overrides);
+}
+
+/** Validate & normalize an incoming overrides object against the catalog. */
+export function sanitizeOverrides(input: any): PermissionOverrides {
+  return {
+    grants: sanitizePermissions(input?.grants),
+    revokes: sanitizePermissions(input?.revokes),
+  };
 }
 
 /** Derive the legacy 4 manager booleans from a granular set (backward compat). */

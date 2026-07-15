@@ -63,7 +63,6 @@
     "analytics": "Статистика",
     "aiHub": "AI-центр",
     "aiCoach": "AI-наставник",
-    "intake": "Набор",
     "auditLogs": "Журнал действий",
     "system": "Система",
     "systemHealth": "Состояние системы",
@@ -123,7 +122,6 @@
     "sectionExams": "Экзамены и тесты",
     "certificates": "Сертификаты",
     "achievements": "Достижения",
-    "managers": "Менеджеры",
     "team": "Команда и роли"
   },
   "team": {
@@ -160,7 +158,27 @@
     "defaultForRole": "По умолчанию для роли",
     "assignedRole": "Назначенная роль",
     "assignedRoleDesc": "Выберите роль с детально настроенными правами. Без роли применяются права по умолчанию для менеджера.",
-    "manageRoles": "Настроить роли"
+    "manageRoles": "Настроить роли",
+    "copySuffix": "(копия)",
+    "duplicate": "Дублировать",
+    "bulkAssigned": "Роль назначена",
+    "selectedCount": "Выбрано",
+    "assignToSelected": "Назначить",
+    "selectAll": "Выбрать всех",
+    "fullAccessNoAssign": "Полный доступ — роль не назначается",
+    "customAccess": "особый доступ",
+    "tuneAccess": "Тонкая настройка доступа",
+    "tuneAccessFor": "Настройка доступа",
+    "overrideHint": "Точечно расширьте или ограничьте доступ поверх роли.",
+    "changedFromRole": "отличается от роли",
+    "changes": "изменений",
+    "resetToRole": "Сбросить к роли",
+    "overridesSaved": "Доступ настроен",
+    "overridesCleared": "Доступ сброшен к роли"
+  },
+  "access": {
+    "deniedTitle": "Доступ ограничен",
+    "deniedDesc": "У вашей роли нет прав на этот раздел. Обратитесь к администратору организации."
   },
   "auth": {
     "login": "Войти",

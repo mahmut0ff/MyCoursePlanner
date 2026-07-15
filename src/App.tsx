@@ -5,6 +5,7 @@ import { AuthProvider } from './contexts/AuthContext';
 import { ThemeProvider, useTheme } from './contexts/ThemeContext';
 import ProtectedRoute from './components/auth/ProtectedRoute';
 import PlanGuard from './components/guards/PlanGuard';
+import PermissionRoute from './components/guards/PermissionRoute';
 import ErrorBoundary from './components/common/ErrorBoundary';
 import AppLayout from './components/layout/AppLayout';
 import PresenceHeartbeat from './components/presence/PresenceHeartbeat';
@@ -79,7 +80,6 @@ const FinancesPage = lazyRetry(() => import('./pages/finances/FinancesPage'));
 const GroupsPage = lazyRetry(() => import('./pages/groups/GroupsPage'));
 const StudentsPage = lazyRetry(() => import('./pages/students/StudentsPage'));
 const TeachersPage = lazyRetry(() => import('./pages/teachers/TeachersPage'));
-const ManagersPage = lazyRetry(() => import('./pages/managers/ManagersPage'));
 const TeamRolesPage = lazyRetry(() => import('./pages/team/TeamRolesPage'));
 const MaterialsPage = lazyRetry(() => import('./pages/materials/MaterialsPage'));
 const SchedulePage = lazyRetry(() => import('./pages/schedule/SchedulePage'));
@@ -96,7 +96,6 @@ const TeacherSettingsPage = lazyRetry(() => import('./pages/teacher-settings/Tea
 // Detail Pages
 const StudentDetailPage = lazyRetry(() => import('./pages/students/StudentDetailPage'));
 const TeacherDetailPage = lazyRetry(() => import('./pages/teachers/TeacherDetailPage'));
-const ManagerDetailPage = lazyRetry(() => import('./pages/managers/ManagerDetailPage'));
 const CourseDetailPage = lazyRetry(() => import('./pages/courses/CourseDetailPage'));
 const GroupDetailPage = lazyRetry(() => import('./pages/groups/GroupDetailPage'));
 const OrgUserDetailPage = lazyRetry(() => import('./pages/org-users/OrgUserDetailPage'));
@@ -115,9 +114,6 @@ const AIHubPage = lazyRetry(() => import('./pages/ai/AIHubPage'));
 
 // AI Coach (student-facing tutor / practice / plan / speaking)
 const StudentAICoachPage = lazyRetry(() => import('./pages/student/StudentAICoachPage'));
-
-// Enrollment (Telegram join links / QR)
-const EnrollmentPage = lazyRetry(() => import('./pages/enrollment/EnrollmentPage'));
 
 // Admin Pages
 const AdminDashboardPage = lazyRetry(() => import('./pages/admin/AdminDashboardPage'));
@@ -204,27 +200,27 @@ const App: React.FC = () => {
             <Route path="dashboard" element={<DashboardPage />} />
 
             {/* Smart Journal & Gradebook */}
-            <Route path="gradebook" element={<ProtectedRoute allowedRoles={['admin', 'manager', 'teacher']}><PlanGuard feature="gradebook"><GradebookPage /></PlanGuard></ProtectedRoute>} />
-            <Route path="journal" element={<ProtectedRoute allowedRoles={['admin', 'manager', 'teacher']}><PlanGuard feature="gradebook"><JournalPage /></PlanGuard></ProtectedRoute>} />
-            <Route path="teacher-analytics" element={<ProtectedRoute allowedRoles={['admin', 'manager', 'teacher']}><PlanGuard feature="advancedAnalytics"><AdminGradebookAnalytics /></PlanGuard></ProtectedRoute>} />
-            <Route path="risk-dashboard" element={<ProtectedRoute allowedRoles={['admin', 'manager', 'teacher']}><PlanGuard feature="advancedAnalytics"><StudentRiskDashboard /></PlanGuard></ProtectedRoute>} />
-            <Route path="homework/review" element={<ProtectedRoute allowedRoles={['admin', 'manager', 'teacher']}><HomeworkReviewPage /></ProtectedRoute>} />
+            <Route path="gradebook" element={<ProtectedRoute allowedRoles={['admin', 'manager', 'teacher']}><PermissionRoute resource="gradebook"><PlanGuard feature="gradebook"><GradebookPage /></PlanGuard></PermissionRoute></ProtectedRoute>} />
+            <Route path="journal" element={<ProtectedRoute allowedRoles={['admin', 'manager', 'teacher']}><PermissionRoute resource="gradebook"><PlanGuard feature="gradebook"><JournalPage /></PlanGuard></PermissionRoute></ProtectedRoute>} />
+            <Route path="teacher-analytics" element={<ProtectedRoute allowedRoles={['admin', 'manager', 'teacher']}><PermissionRoute resource="analytics"><PlanGuard feature="advancedAnalytics"><AdminGradebookAnalytics /></PlanGuard></PermissionRoute></ProtectedRoute>} />
+            <Route path="risk-dashboard" element={<ProtectedRoute allowedRoles={['admin', 'manager', 'teacher']}><PermissionRoute resource="analytics"><PlanGuard feature="advancedAnalytics"><StudentRiskDashboard /></PlanGuard></PermissionRoute></ProtectedRoute>} />
+            <Route path="homework/review" element={<ProtectedRoute allowedRoles={['admin', 'manager', 'teacher']}><PermissionRoute resource="homework"><HomeworkReviewPage /></PermissionRoute></ProtectedRoute>} />
 
             {/* Lessons */}
-            <Route path="lessons" element={<ProtectedRoute allowedRoles={['admin', 'manager', 'teacher', 'student']}><LessonListPage /></ProtectedRoute>} />
-            <Route path="lessons/new" element={<ProtectedRoute allowedRoles={['admin', 'manager', 'teacher']}><LessonEditPage /></ProtectedRoute>} />
-            <Route path="lessons/:id" element={<ProtectedRoute allowedRoles={['admin', 'manager', 'teacher', 'student']}><LessonViewPage /></ProtectedRoute>} />
-            <Route path="lessons/:id/edit" element={<ProtectedRoute allowedRoles={['admin', 'manager', 'teacher']}><LessonEditPage /></ProtectedRoute>} />
+            <Route path="lessons" element={<ProtectedRoute allowedRoles={['admin', 'manager', 'teacher', 'student']}><PermissionRoute resource="lessons"><LessonListPage /></PermissionRoute></ProtectedRoute>} />
+            <Route path="lessons/new" element={<ProtectedRoute allowedRoles={['admin', 'manager', 'teacher']}><PermissionRoute resource="lessons" action="write"><LessonEditPage /></PermissionRoute></ProtectedRoute>} />
+            <Route path="lessons/:id" element={<ProtectedRoute allowedRoles={['admin', 'manager', 'teacher', 'student']}><PermissionRoute resource="lessons"><LessonViewPage /></PermissionRoute></ProtectedRoute>} />
+            <Route path="lessons/:id/edit" element={<ProtectedRoute allowedRoles={['admin', 'manager', 'teacher']}><PermissionRoute resource="lessons" action="write"><LessonEditPage /></PermissionRoute></ProtectedRoute>} />
 
             {/* Exams */}
-            <Route path="exams" element={<ProtectedRoute allowedRoles={['admin', 'manager', 'teacher']}><ExamListPage /></ProtectedRoute>} />
-            <Route path="exams/new" element={<ProtectedRoute allowedRoles={['admin', 'manager', 'teacher']}><ExamEditPage /></ProtectedRoute>} />
-            <Route path="exams/:id" element={<ProtectedRoute allowedRoles={['admin', 'manager', 'teacher']}><ExamViewPage /></ProtectedRoute>} />
-            <Route path="exams/:id/edit" element={<ProtectedRoute allowedRoles={['admin', 'manager', 'teacher']}><ExamEditPage /></ProtectedRoute>} />
+            <Route path="exams" element={<ProtectedRoute allowedRoles={['admin', 'manager', 'teacher']}><PermissionRoute resource="exams"><ExamListPage /></PermissionRoute></ProtectedRoute>} />
+            <Route path="exams/new" element={<ProtectedRoute allowedRoles={['admin', 'manager', 'teacher']}><PermissionRoute resource="exams" action="write"><ExamEditPage /></PermissionRoute></ProtectedRoute>} />
+            <Route path="exams/:id" element={<ProtectedRoute allowedRoles={['admin', 'manager', 'teacher']}><PermissionRoute resource="exams"><ExamViewPage /></PermissionRoute></ProtectedRoute>} />
+            <Route path="exams/:id/edit" element={<ProtectedRoute allowedRoles={['admin', 'manager', 'teacher']}><PermissionRoute resource="exams" action="write"><ExamEditPage /></PermissionRoute></ProtectedRoute>} />
 
             {/* Rooms */}
-            <Route path="rooms" element={<ProtectedRoute allowedRoles={['admin', 'manager', 'teacher']}><RoomListPage /></ProtectedRoute>} />
-            <Route path="rooms/:id" element={<ProtectedRoute allowedRoles={['admin', 'manager', 'teacher']}><RoomPage /></ProtectedRoute>} />
+            <Route path="rooms" element={<ProtectedRoute allowedRoles={['admin', 'manager', 'teacher']}><PermissionRoute resource="rooms"><RoomListPage /></PermissionRoute></ProtectedRoute>} />
+            <Route path="rooms/:id" element={<ProtectedRoute allowedRoles={['admin', 'manager', 'teacher']}><PermissionRoute resource="rooms"><RoomPage /></PermissionRoute></ProtectedRoute>} />
 
             {/* Student */}
             <Route path="join" element={<JoinRoomPage />} />
@@ -247,11 +243,11 @@ const App: React.FC = () => {
 
 
             {/* ═══ Quiz System ═══ */}
-            <Route path="quiz/library" element={<ProtectedRoute allowedRoles={['admin', 'manager', 'teacher']}><QuizLibraryPage /></ProtectedRoute>} />
-            <Route path="quiz/new" element={<ProtectedRoute allowedRoles={['admin', 'manager', 'teacher']}><QuizBuilderPage /></ProtectedRoute>} />
-            <Route path="quiz/:id/edit" element={<ProtectedRoute allowedRoles={['admin', 'manager', 'teacher']}><QuizBuilderPage /></ProtectedRoute>} />
-            <Route path="quiz/sessions" element={<ProtectedRoute allowedRoles={['admin', 'manager', 'teacher']}><SessionHistoryPage /></ProtectedRoute>} />
-            <Route path="quiz/analytics/:id" element={<ProtectedRoute allowedRoles={['admin', 'manager', 'teacher']}><SessionAnalyticsPage /></ProtectedRoute>} />
+            <Route path="quiz/library" element={<ProtectedRoute allowedRoles={['admin', 'manager', 'teacher']}><PermissionRoute resource="quizzes"><QuizLibraryPage /></PermissionRoute></ProtectedRoute>} />
+            <Route path="quiz/new" element={<ProtectedRoute allowedRoles={['admin', 'manager', 'teacher']}><PermissionRoute resource="quizzes" action="write"><QuizBuilderPage /></PermissionRoute></ProtectedRoute>} />
+            <Route path="quiz/:id/edit" element={<ProtectedRoute allowedRoles={['admin', 'manager', 'teacher']}><PermissionRoute resource="quizzes" action="write"><QuizBuilderPage /></PermissionRoute></ProtectedRoute>} />
+            <Route path="quiz/sessions" element={<ProtectedRoute allowedRoles={['admin', 'manager', 'teacher']}><PermissionRoute resource="quizzes"><SessionHistoryPage /></PermissionRoute></ProtectedRoute>} />
+            <Route path="quiz/analytics/:id" element={<ProtectedRoute allowedRoles={['admin', 'manager', 'teacher']}><PermissionRoute resource="quizzes"><SessionAnalyticsPage /></PermissionRoute></ProtectedRoute>} />
             <Route path="profile" element={<StudentProfilePage />} />
 
             {/* Billing & Payments */}
@@ -260,23 +256,20 @@ const App: React.FC = () => {
             <Route path="payment/failure" element={<PaymentFailurePage />} />
 
             {/* ═══ Org Admin: Education ═══ */}
-            <Route path="courses" element={<ProtectedRoute allowedRoles={['admin', 'manager', 'teacher']}><CoursesPage /></ProtectedRoute>} />
+            <Route path="courses" element={<ProtectedRoute allowedRoles={['admin', 'manager', 'teacher']}><PermissionRoute resource="courses"><CoursesPage /></PermissionRoute></ProtectedRoute>} />
             <Route path="courses/:id" element={<ProtectedRoute allowedRoles={['admin', 'manager', 'teacher', 'student']}><CourseDetailPage /></ProtectedRoute>} />
-            <Route path="finances" element={<ProtectedRoute allowedRoles={['admin', 'manager']}><PlanGuard feature="finances"><FinancesPage /></PlanGuard></ProtectedRoute>} />
-            <Route path="groups" element={<ProtectedRoute allowedRoles={['admin', 'manager', 'teacher']}><GroupsPage /></ProtectedRoute>} />
-            <Route path="groups/:id" element={<ProtectedRoute allowedRoles={['admin', 'manager', 'teacher']}><GroupDetailPage /></ProtectedRoute>} />
-            <Route path="materials" element={<ProtectedRoute allowedRoles={['admin', 'manager', 'teacher']}><MaterialsPage /></ProtectedRoute>} />
+            <Route path="finances" element={<ProtectedRoute allowedRoles={['admin', 'manager']}><PermissionRoute resource="finances"><PlanGuard feature="finances"><FinancesPage /></PlanGuard></PermissionRoute></ProtectedRoute>} />
+            <Route path="groups" element={<ProtectedRoute allowedRoles={['admin', 'manager', 'teacher']}><PermissionRoute resource="groups"><GroupsPage /></PermissionRoute></ProtectedRoute>} />
+            <Route path="groups/:id" element={<ProtectedRoute allowedRoles={['admin', 'manager', 'teacher']}><PermissionRoute resource="groups"><GroupDetailPage /></PermissionRoute></ProtectedRoute>} />
+            <Route path="materials" element={<ProtectedRoute allowedRoles={['admin', 'manager', 'teacher']}><PermissionRoute resource="materials"><MaterialsPage /></PermissionRoute></ProtectedRoute>} />
 
             {/* ═══ Org Admin: People ═══ */}
-            <Route path="leads" element={<ProtectedRoute allowedRoles={['admin', 'manager']}><AILeadsPage /></ProtectedRoute>} />
-            <Route path="enrollment" element={<ProtectedRoute allowedRoles={['admin', 'manager']}><EnrollmentPage /></ProtectedRoute>} />
-            <Route path="students" element={<ProtectedRoute allowedRoles={['admin', 'manager']}><StudentsPage /></ProtectedRoute>} />
-            <Route path="students/:uid" element={<ProtectedRoute allowedRoles={['admin', 'manager', 'teacher']}><StudentDetailPage /></ProtectedRoute>} />
-            <Route path="teachers" element={<ProtectedRoute allowedRoles={['admin', 'manager']}><TeachersPage /></ProtectedRoute>} />
-            <Route path="teachers/:uid" element={<ProtectedRoute allowedRoles={['admin', 'manager']}><TeacherDetailPage /></ProtectedRoute>} />
-            <Route path="managers" element={<ProtectedRoute allowedRoles={['admin', 'manager']}><ManagersPage /></ProtectedRoute>} />
-            <Route path="managers/:uid" element={<ProtectedRoute allowedRoles={['admin', 'manager']}><ManagerDetailPage /></ProtectedRoute>} />
-            <Route path="team" element={<ProtectedRoute allowedRoles={['admin', 'manager']}><PlanGuard feature="rbac"><TeamRolesPage /></PlanGuard></ProtectedRoute>} />
+            <Route path="leads" element={<ProtectedRoute allowedRoles={['admin', 'manager']}><PermissionRoute resource="leads"><AILeadsPage /></PermissionRoute></ProtectedRoute>} />
+            <Route path="students" element={<ProtectedRoute allowedRoles={['admin', 'manager']}><PermissionRoute resource="students"><StudentsPage /></PermissionRoute></ProtectedRoute>} />
+            <Route path="students/:uid" element={<ProtectedRoute allowedRoles={['admin', 'manager', 'teacher']}><PermissionRoute resource="students"><StudentDetailPage /></PermissionRoute></ProtectedRoute>} />
+            <Route path="teachers" element={<ProtectedRoute allowedRoles={['admin', 'manager']}><PermissionRoute resource="teachers"><TeachersPage /></PermissionRoute></ProtectedRoute>} />
+            <Route path="teachers/:uid" element={<ProtectedRoute allowedRoles={['admin', 'manager']}><PermissionRoute resource="teachers"><TeacherDetailPage /></PermissionRoute></ProtectedRoute>} />
+            <Route path="team" element={<ProtectedRoute allowedRoles={['admin', 'manager']}><PermissionRoute resource="team"><PlanGuard feature="rbac"><TeamRolesPage /></PlanGuard></PermissionRoute></ProtectedRoute>} />
             <Route path="org-users" element={<ProtectedRoute allowedRoles={['admin']}><OrgUsersPage /></ProtectedRoute>} />
             <Route path="org-users/:uid" element={<ProtectedRoute allowedRoles={['admin']}><OrgUserDetailPage /></ProtectedRoute>} />
 
@@ -287,11 +280,11 @@ const App: React.FC = () => {
             <Route path="teacher-settings" element={<ProtectedRoute allowedRoles={['teacher']}><TeacherSettingsPage /></ProtectedRoute>} />
 
             {/* ═══ Org Admin: Organization ═══ */}
-            <Route path="schedule" element={<ProtectedRoute allowedRoles={['admin', 'manager', 'teacher']}><SchedulePage /></ProtectedRoute>} />
-            <Route path="results" element={<ProtectedRoute allowedRoles={['admin', 'manager', 'teacher']}><OrgResultsPage /></ProtectedRoute>} />
-            <Route path="branches" element={<ProtectedRoute allowedRoles={['admin', 'manager']}><PlanGuard feature="branches"><BranchesPage /></PlanGuard></ProtectedRoute>} />
-            <Route path="org-settings" element={<ProtectedRoute allowedRoles={['admin', 'manager']}><OrgSettingsPage /></ProtectedRoute>} />
-            <Route path="ai" element={<ProtectedRoute allowedRoles={['admin', 'manager']}><AIHubPage /></ProtectedRoute>} />
+            <Route path="schedule" element={<ProtectedRoute allowedRoles={['admin', 'manager', 'teacher']}><PermissionRoute resource="schedule"><SchedulePage /></PermissionRoute></ProtectedRoute>} />
+            <Route path="results" element={<ProtectedRoute allowedRoles={['admin', 'manager', 'teacher']}><PermissionRoute resource="results"><OrgResultsPage /></PermissionRoute></ProtectedRoute>} />
+            <Route path="branches" element={<ProtectedRoute allowedRoles={['admin', 'manager']}><PermissionRoute resource="branches"><PlanGuard feature="branches"><BranchesPage /></PlanGuard></PermissionRoute></ProtectedRoute>} />
+            <Route path="org-settings" element={<ProtectedRoute allowedRoles={['admin', 'manager']}><PermissionRoute resource="settings"><OrgSettingsPage /></PermissionRoute></ProtectedRoute>} />
+            <Route path="ai" element={<ProtectedRoute allowedRoles={['admin', 'manager']}><PermissionRoute resource="ai"><AIHubPage /></PermissionRoute></ProtectedRoute>} />
 
             {/* ═══ Super Admin Panel ═══ */}
             <Route path="admin" element={<ProtectedRoute allowedRoles={['super_admin']}><AdminDashboardPage /></ProtectedRoute>} />

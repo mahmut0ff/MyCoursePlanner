@@ -20,6 +20,16 @@ export interface RolePermission {
   actions: RbacAction[];
 }
 
+/**
+ * Per-member permission overrides, layered on top of the member's resolved role.
+ * `grants` add `resource:action`s the role doesn't give; `revokes` remove ones it does.
+ * Never applied to full-access roles (admin/owner) — they always keep everything.
+ */
+export interface PermissionOverrides {
+  grants?: RolePermission[];
+  revokes?: RolePermission[];
+}
+
 /** A reusable org-level role (template) that members can be assigned. */
 export interface OrgRole {
   id: string;
@@ -144,6 +154,11 @@ export const RESOURCE_GROUPS: ResourceGroup[] = [
   {
     group: 'Управление',
     resources: [
+      { id: 'ai', label: 'AI-центр', actions: ['read', 'write'], help: {
+        read: 'Доступ к AI-центру: ассистент, аналитика и генерация',
+        write: 'Запуск AI-действий и применение рекомендаций',
+        notes: 'Доступно на тарифе Профессиональный и выше.',
+      } },
       { id: 'finances', label: 'Финансы', help: {
         read: 'Просмотр транзакций, счетов и платёжных планов',
         write: 'Создание транзакций, ведение оплат',
@@ -215,6 +230,7 @@ export const TEACHER_DEFAULT: RolePermission[] = [
 /** Manager base: broad operational CRUD; finances/settings/team/branches gated by legacy toggles. */
 export const MANAGER_DEFAULT: RolePermission[] = [
   ...ro(['dashboard', 'analytics', 'results']),
+  ...rw(['ai']),
   ...rwd(['students', 'teachers', 'leads', 'courses', 'groups', 'lessons', 'materials', 'schedule', 'exams', 'rooms', 'quizzes', 'gradebook', 'homework', 'certificates']),
 ];
 
@@ -264,26 +280,71 @@ export function expandPermissions(permissions: RolePermission[] | undefined | nu
   return set;
 }
 
+/** Layer per-member overrides onto a resolved permission set (grants add, revokes remove). */
+export function applyOverrides(base: Set<string>, overrides?: PermissionOverrides | null): Set<string> {
+  if (!overrides || (!overrides.grants?.length && !overrides.revokes?.length)) return base;
+  const out = new Set(base);
+  (overrides.grants || []).forEach(p => (p.actions || []).forEach(a => out.add(`${p.resource}:${a}`)));
+  (overrides.revokes || []).forEach(p => (p.actions || []).forEach(a => out.delete(`${p.resource}:${a}`)));
+  return out;
+}
+
 /**
  * Resolve the effective permission set for a member.
- * Precedence: full-access role → assigned custom role → system-role default (+ legacy toggles).
+ * Precedence: full-access role → assigned custom role → system-role default (+ legacy toggles),
+ * then per-member overrides are layered on top (never for full-access roles).
  */
 export function resolvePermissionSet(args: {
   baseRole?: string | null;
   customRole?: OrgRole | null;
   legacyManagerPerms?: LegacyManagerPerms;
+  overrides?: PermissionOverrides | null;
 }): Set<string> {
-  const { baseRole, customRole, legacyManagerPerms } = args;
+  const { baseRole, customRole, legacyManagerPerms, overrides } = args;
+  // Full-access roles are unconditional — overrides can never restrict an owner/admin.
   if (baseRole && FULL_ACCESS_ROLES.includes(baseRole)) return fullPermissionSet();
+
+  let base: Set<string>;
   if (customRole) {
     // An assigned custom role named like admin is treated as full access too.
     if (customRole.name?.trim().toLowerCase() === 'admin') return fullPermissionSet();
-    return expandPermissions(customRole.permissions);
+    base = expandPermissions(customRole.permissions);
+  } else if (baseRole === 'teacher' || baseRole === 'mentor') {
+    base = expandPermissions(TEACHER_DEFAULT);
+  } else if (baseRole === 'manager') {
+    base = expandPermissions([...MANAGER_DEFAULT, ...legacyManagerGrants(legacyManagerPerms)]);
+  } else if (baseRole === 'student') {
+    base = expandPermissions(STUDENT_DEFAULT);
+  } else {
+    base = new Set();
   }
-  if (baseRole === 'teacher' || baseRole === 'mentor') return expandPermissions(TEACHER_DEFAULT);
-  if (baseRole === 'manager') return expandPermissions([...MANAGER_DEFAULT, ...legacyManagerGrants(legacyManagerPerms)]);
-  if (baseRole === 'student') return expandPermissions(STUDENT_DEFAULT);
-  return new Set();
+  return applyOverrides(base, overrides);
+}
+
+/**
+ * Compute the override delta between a member's role baseline and an edited effective set.
+ * Both inputs are flat `resource:action` sets. Returns grants (added) and revokes (removed),
+ * restricted to the given resource catalog so stray ids never persist.
+ */
+export function diffOverrides(
+  baseline: Set<string>,
+  edited: Set<string>,
+  resources: string[] = ALL_RESOURCES,
+): PermissionOverrides {
+  const grantsByRes: Record<string, RbacAction[]> = {};
+  const revokesByRes: Record<string, RbacAction[]> = {};
+  for (const resource of resources) {
+    for (const action of (RESOURCE_ACTIONS[resource] || RBAC_ACTIONS)) {
+      const key = `${resource}:${action}`;
+      const inBase = baseline.has(key);
+      const inEdit = edited.has(key);
+      if (inEdit && !inBase) (grantsByRes[resource] ||= []).push(action);
+      if (!inEdit && inBase) (revokesByRes[resource] ||= []).push(action);
+    }
+  }
+  const toArr = (m: Record<string, RbacAction[]>): RolePermission[] =>
+    Object.entries(m).map(([resource, actions]) => ({ resource, actions }));
+  return { grants: toArr(grantsByRes), revokes: toArr(revokesByRes) };
 }
 
 /** Count granted actions across a role's permissions (for role cards). */

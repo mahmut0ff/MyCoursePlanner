@@ -4,6 +4,24 @@
     "offline": "Offline",
     "lastSeen": "last seen {{time}}"
   },
+  "roster": {
+    "bulk": {
+      "selected": "Selected",
+      "selectAll": "Select all",
+      "migrate": "Migrate",
+      "toGroup": "To group",
+      "toBranch": "To branch",
+      "movedToGroup": "Migrated to group",
+      "movedToBranch": "Migrated to branch",
+      "deleted": "Deleted",
+      "noop": "Nothing changed",
+      "skipped": "Skipped: {{count}}",
+      "deleteStudentsTitle": "Delete students?",
+      "deleteTeachersTitle": "Delete teachers?",
+      "deleteCount": "Will be deleted",
+      "deleteDesc": "They will be removed from the organization and from every group. Anyone with a login keeps their account — only their link to this organization is removed. This cannot be undone."
+    }
+  },
   "inst": {
     "center": "Training center",
     "centerDesc": "Courses and groups, 100-point scale",

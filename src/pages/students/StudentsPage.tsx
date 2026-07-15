@@ -3,12 +3,14 @@ import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../contexts/AuthContext';
 import { usePlanGate } from '../../contexts/PlanContext';
+import { usePermissions } from '../../contexts/PermissionsContext';
 import {
   orgGetStudents,
   orgGetGroups,
   orgGetCourses,
   orgCreateStudent,
   orgBulkCreateStudents,
+  orgListBranches,
   apiGetOrgMembers,
   apiAcceptMembership,
   apiRejectMembership,
@@ -18,10 +20,11 @@ import {
   orgRejectCourseRequest
 } from '../../lib/api';
 import { Users, Search, Mail, RefreshCw, CheckCircle, XCircle, UserPlus, Phone, Filter, X, SortAsc, SortDesc, Trash2, Plus, Lightbulb, Link as LinkIcon, Copy, BookOpen, UsersRound, Upload, KeyRound, Eye, EyeOff, Calendar } from 'lucide-react';
-import type { UserProfile, Group } from '../../types';
+import type { UserProfile, Group, Branch } from '../../types';
 import toast from 'react-hot-toast';
 import { PinnedBadgesDisplay } from '../../lib/badges';
 import BranchFilter from '../../components/ui/BranchFilter';
+import BulkActionBar from '../../components/roster/BulkActionBar';
 import EmptyState from '../../components/ui/EmptyState';
 import { ListSkeleton } from '../../components/ui/Skeleton';
 
@@ -33,6 +36,12 @@ const StudentsPage: React.FC = () => {
   const navigate = useNavigate();
   const { profile, organizationId } = useAuth();
   const { limits } = usePlanGate();
+  const { canWrite, canDelete, loaded: permsLoaded } = usePermissions();
+
+  // Selection exists to feed the bulk bar, so it appears whenever at least one bulk
+  // action is available: migrating takes students:write, deleting students:delete.
+  // The bar gates each action on its own grant, and the server enforces both.
+  const bulkEnabled = permsLoaded && (canWrite('students') || canDelete('students'));
 
   const [activeTab, setActiveTab] = useState<'students' | 'applications' | 'courseRequests'>('students');
   const [expandedAvatar, setExpandedAvatar] = useState<string | null>(null);
@@ -83,6 +92,10 @@ const StudentsPage: React.FC = () => {
   // Branch filter for the list
   const [branchFilter, setBranchFilter] = useState<string | null>(null);
 
+  // Bulk selection (desktop table only — the mobile layout has no checkbox column)
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [branches, setBranches] = useState<Branch[]>([]);
+
   // Onboarding hint
   const [hintDismissed, setHintDismissed] = useState(() => localStorage.getItem('students_invite_hint_dismissed') === '1');
   const [hintCopied, setHintCopied] = useState(false);
@@ -130,6 +143,15 @@ const StudentsPage: React.FC = () => {
     } catch { /* silent */ }
   };
 
+  // Destinations for bulk branch migration. The endpoint already narrows a
+  // branch-scoped manager to their own branches, so this list is safe to offer whole.
+  const loadBranches = async () => {
+    try {
+      const data = await orgListBranches();
+      setBranches(Array.isArray(data) ? data : []);
+    } catch { /* silent — orgs without branches simply get no branch action */ }
+  };
+
   const loadApplications = async (silent = false) => {
     if (!organizationId) return;
     if (!silent) setLoadingApps(true);
@@ -163,8 +185,14 @@ const StudentsPage: React.FC = () => {
     loadCourseRequests();
   }, [organizationId, branchFilter]);
 
+  useEffect(() => { if (bulkEnabled) loadBranches(); }, [organizationId, bulkEnabled]);
+
   // Reset page when filters change
   useEffect(() => setPage(1), [search, selectedGroup, statusFilter, sortField, sortDir]);
+
+  // A selection only means something for rows still on screen — drop it whenever the
+  // filtered set changes under it, so a bulk action can't hit rows you can no longer see.
+  useEffect(() => setSelected(new Set()), [search, selectedGroup, statusFilter, branchFilter]);
 
   // Filtered & sorted students
   const filteredStudents = useMemo(() => {
@@ -443,6 +471,20 @@ const StudentsPage: React.FC = () => {
     }
   };
 
+  // ─── Bulk selection ───
+  // Select-all spans every filtered student, not just the current page — the action
+  // bar always shows the resulting count, so nothing is selected invisibly.
+  const toggleSelect = (uid: string) =>
+    setSelected(prev => { const n = new Set(prev); n.has(uid) ? n.delete(uid) : n.add(uid); return n; });
+  const allSelected = filteredStudents.length > 0 && filteredStudents.every(s => selected.has(s.uid));
+  const toggleSelectAll = () =>
+    setSelected(allSelected ? new Set() : new Set(filteredStudents.map(s => s.uid)));
+
+  // Columns shift by one when the checkbox column is present.
+  const gridCols = bulkEnabled
+    ? 'md:grid-cols-[28px_1fr_180px_120px_130px_100px]'
+    : 'md:grid-cols-[1fr_180px_120px_130px_100px]';
+
   // Get group name for a student
   const getStudentGroups = (uid: string): string[] => {
     return groups
@@ -621,6 +663,18 @@ const StudentsPage: React.FC = () => {
             </div>
           )}
 
+          {/* Bulk actions — renders itself only when something is selected */}
+          <div className="mb-4 empty:mb-0">
+            <BulkActionBar
+              kind="student"
+              selected={selected}
+              branches={branches}
+              groups={groups}
+              onClear={() => setSelected(new Set())}
+              onDone={() => { setSelected(new Set()); loadStudents(true); loadGroups(); }}
+            />
+          </div>
+
           {filteredStudents.length === 0 ? (
             <EmptyState
               icon={Users}
@@ -632,7 +686,18 @@ const StudentsPage: React.FC = () => {
           ) : (
             <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl overflow-hidden">
               {/* Table header */}
-              <div className="hidden md:grid grid-cols-[1fr_180px_120px_130px_100px] gap-3 px-5 py-3 border-b border-slate-100 dark:border-slate-700 bg-slate-50/80 dark:bg-slate-800/80 text-[11px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+              <div className={`hidden md:grid ${gridCols} gap-3 px-5 py-3 border-b border-slate-100 dark:border-slate-700 bg-slate-50/80 dark:bg-slate-800/80 text-[11px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500`}>
+                {bulkEnabled && (
+                  <span className="flex items-center">
+                    <input
+                      type="checkbox"
+                      checked={allSelected}
+                      onChange={toggleSelectAll}
+                      className="w-4 h-4 rounded accent-primary-600 cursor-pointer"
+                      title={t('roster.bulk.selectAll', 'Выбрать всех')}
+                    />
+                  </span>
+                )}
                 <span className="cursor-pointer hover:text-slate-600 dark:hover:text-slate-300 flex items-center gap-1 select-none" onClick={() => toggleSort('name')}>
                   {t('org.results.student')}
                   {sortField === 'name' && (sortDir === 'asc' ? <SortAsc className="w-3 h-3" /> : <SortDesc className="w-3 h-3" />)}
@@ -652,8 +717,20 @@ const StudentsPage: React.FC = () => {
                   <div
                     key={s.uid}
                     onClick={() => navigate(`/students/${s.uid}`)}
-                    className="cursor-pointer group flex flex-col md:grid md:grid-cols-[1fr_180px_120px_130px_100px] gap-2 md:gap-3 items-center px-5 py-3.5 border-b border-slate-100 dark:border-slate-700/50 last:border-b-0 hover:bg-primary-50/40 dark:hover:bg-primary-900/10 transition-colors"
+                    className={`cursor-pointer group flex flex-col md:grid ${gridCols} gap-2 md:gap-3 items-center px-5 py-3.5 border-b border-slate-100 dark:border-slate-700/50 last:border-b-0 hover:bg-primary-50/40 dark:hover:bg-primary-900/10 transition-colors`}
                   >
+                    {/* Select — the whole row navigates, so keep the click to itself */}
+                    {bulkEnabled && (
+                      <div className="hidden md:flex items-center" onClick={e => e.stopPropagation()}>
+                        <input
+                          type="checkbox"
+                          checked={selected.has(s.uid)}
+                          onChange={() => toggleSelect(s.uid)}
+                          className="w-4 h-4 rounded accent-primary-600 cursor-pointer"
+                        />
+                      </div>
+                    )}
+
                     {/* Name + avatar */}
                     <div className="flex items-center gap-3 min-w-0 w-full">
                       {s.avatarUrl ? (

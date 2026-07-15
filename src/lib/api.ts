@@ -331,6 +331,22 @@ export const orgGetTeachers = () => orgReq('teachers');
 export const orgCreateTeacher = (data: any) => orgReq('createTeacher', 'POST', data);
 export const orgInviteUser = (email: string, role: string) => orgReq('inviteUser', 'POST', { email, role });
 
+// ---- Bulk roster operations (students & teachers) ----
+// `kind` selects the roster and the permission the server enforces:
+// student → students:write, teacher → teachers:write.
+export type BulkKind = 'student' | 'teacher';
+export interface BulkResult { deleted?: number; moved?: number; skipped: number; purged?: number }
+
+/** Remove members from the org: memberships + group rosters, and the profile of record-only members. */
+export const orgBulkDeleteMembers = (kind: BulkKind, uids: string[]) =>
+  orgReq<BulkResult>('bulkDeleteMembers', 'POST', { kind, uids });
+/** Migrate members to a branch — replaces their branch assignment. */
+export const orgBulkSetBranch = (kind: BulkKind, uids: string[], branchId: string) =>
+  orgReq<BulkResult>('bulkSetBranch', 'POST', { kind, uids, branchId });
+/** Migrate members to a group — leaves every other group first. */
+export const orgBulkSetGroup = (kind: BulkKind, uids: string[], groupId: string) =>
+  orgReq<BulkResult>('bulkSetGroup', 'POST', { kind, uids, groupId });
+
 /** Create a real account with an arbitrary combination of app roles (multi-role). Admin-only. */
 export const orgCreateUser = (data: { displayName: string; username?: string; email?: string; password: string; roles: string[]; phone?: string; branchIds?: string[]; primaryBranchId?: string | null }) =>
   orgReq('createUser', 'POST', data);

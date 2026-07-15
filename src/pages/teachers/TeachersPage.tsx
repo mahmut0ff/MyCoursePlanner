@@ -5,6 +5,7 @@ import {
   orgGetTeachers,
   orgCreateTeacher,
   orgInviteUser,
+  orgListBranches,
   apiGetOrgMembers,
   apiAcceptMembership,
   apiRejectMembership,
@@ -12,10 +13,12 @@ import {
 } from '../../lib/api';
 import { usePlanGate } from '../../contexts/PlanContext';
 import { useAuth } from '../../contexts/AuthContext';
+import { usePermissions } from '../../contexts/PermissionsContext';
 import { UserPlus, Search, Mail, RefreshCw, Send, Phone, CheckCircle, XCircle, Lightbulb, Copy, X, Plus, KeyRound, Eye, EyeOff } from 'lucide-react';
 import toast from 'react-hot-toast';
-import type { UserProfile } from '../../types';
+import type { UserProfile, Group, Branch } from '../../types';
 import EmptyState from '../../components/ui/EmptyState';
+import BulkActionBar from '../../components/roster/BulkActionBar';
 import { ListSkeleton } from '../../components/ui/Skeleton';
 import { useOrgPresence } from '../../hooks/useOrgPresence';
 import { PresenceBadge, PresenceDot } from '../../components/presence/PresenceBadge';
@@ -24,13 +27,24 @@ const TeachersPage: React.FC = () => {
   const { t } = useTranslation();
   const { limits } = usePlanGate();
   const { profile, role, organizationId } = useAuth();
+  const { canWrite, canDelete, loaded: permsLoaded } = usePermissions();
   const navigate = useNavigate();
   const presence = useOrgPresence(organizationId);
+
+  // Selection exists to feed the bulk bar, so it appears whenever at least one bulk
+  // action is available: migrating takes teachers:write, deleting teachers:delete.
+  // The bar gates each action on its own grant, and the server enforces both.
+  const bulkEnabled = permsLoaded && (canWrite('teachers') || canDelete('teachers'));
 
   const [activeTab, setActiveTab] = useState<'teachers' | 'applications'>('teachers');
 
   const [teachers, setTeachers] = useState<UserProfile[]>([]);
   const [loading, setLoading] = useState(true);
+
+  // Bulk selection (desktop table only — the mobile layout has no checkbox column)
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [branches, setBranches] = useState<Branch[]>([]);
+  const [groups, setGroups] = useState<Group[]>([]);
   
   const [applications, setApplications] = useState<any[]>([]);
   const [loadingApps, setLoadingApps] = useState(false);
@@ -67,8 +81,8 @@ const TeachersPage: React.FC = () => {
         (u: any) => u.role === 'teacher'
       );
       if (role === 'student' && profile?.uid) {
-        const groups: any[] = await orgGetGroups().catch(() => []);
-        const myGroups = groups.filter((g: any) => g.studentIds?.includes(profile.uid));
+        const allGroups: any[] = await orgGetGroups().catch(() => []);
+        const myGroups = allGroups.filter((g: any) => g.studentIds?.includes(profile.uid));
         const myTeacherIds = new Set(myGroups.flatMap((g: any) => g.teacherIds || []));
         teachersOnly = teachersOnly.filter((t: any) => myTeacherIds.has(t.uid));
       }
@@ -93,12 +107,42 @@ const TeachersPage: React.FC = () => {
     }
   };
 
+  // Destinations for bulk migration. Only fetched for members who can actually run
+  // a bulk action, so a read-only viewer costs nothing extra. orgListBranches already
+  // narrows a branch-scoped manager to their own branches.
+  const loadBulkTargets = async () => {
+    const [b, g] = await Promise.all([
+      orgListBranches().catch(() => []),
+      orgGetGroups().catch(() => []),
+    ]);
+    setBranches(Array.isArray(b) ? b : []);
+    setGroups(Array.isArray(g) ? g : []);
+  };
+
   useEffect(() => {
     loadTeachers();
     loadApplications();
   }, [organizationId]);
 
+  useEffect(() => { if (bulkEnabled) loadBulkTargets(); }, [organizationId, bulkEnabled]);
+
   const filtered = teachers.filter((t) => t.displayName?.toLowerCase().includes(search.toLowerCase()) || t.email?.toLowerCase().includes(search.toLowerCase()));
+
+  // A selection only means something for rows still on screen — drop it when the
+  // search narrows the list under it.
+  useEffect(() => setSelected(new Set()), [search]);
+
+  // ─── Bulk selection ───
+  const toggleSelect = (uid: string) =>
+    setSelected(prev => { const n = new Set(prev); n.has(uid) ? n.delete(uid) : n.add(uid); return n; });
+  const allSelected = filtered.length > 0 && filtered.every(x => selected.has(x.uid));
+  const toggleSelectAll = () =>
+    setSelected(allSelected ? new Set() : new Set(filtered.map(x => x.uid)));
+
+  // Columns shift by one when the checkbox column is present.
+  const gridCols = bulkEnabled
+    ? 'md:grid-cols-[28px_1fr_190px_130px_150px]'
+    : 'md:grid-cols-[1fr_190px_130px_150px]';
 
   const resetCreateForm = () => {
     setCreateForm({ displayName: '', phone: '', username: '', password: '' });
@@ -296,6 +340,18 @@ const TeachersPage: React.FC = () => {
             </div>
           </div>
 
+          {/* Bulk actions — renders itself only when something is selected */}
+          <div className="mb-4 empty:mb-0">
+            <BulkActionBar
+              kind="teacher"
+              selected={selected}
+              branches={branches}
+              groups={groups}
+              onClear={() => setSelected(new Set())}
+              onDone={() => { setSelected(new Set()); loadTeachers(true); loadBulkTargets(); }}
+            />
+          </div>
+
           {filtered.length === 0 ? (
             <EmptyState
               icon={UserPlus}
@@ -307,7 +363,18 @@ const TeachersPage: React.FC = () => {
           ) : (
             <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl overflow-hidden">
               {/* Table header */}
-              <div className="hidden md:grid grid-cols-[1fr_190px_130px_150px] gap-3 px-5 py-3 border-b border-slate-100 dark:border-slate-700 bg-slate-50/80 dark:bg-slate-800/80 text-[11px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+              <div className={`hidden md:grid ${gridCols} gap-3 px-5 py-3 border-b border-slate-100 dark:border-slate-700 bg-slate-50/80 dark:bg-slate-800/80 text-[11px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500`}>
+                {bulkEnabled && (
+                  <span className="flex items-center">
+                    <input
+                      type="checkbox"
+                      checked={allSelected}
+                      onChange={toggleSelectAll}
+                      className="w-4 h-4 rounded accent-primary-600 cursor-pointer"
+                      title={t('roster.bulk.selectAll', 'Выбрать всех')}
+                    />
+                  </span>
+                )}
                 <span>{t('nav.teachers')}</span>
                 <span>{t('common.email', 'Email')}</span>
                 <span>{t('common.phone')}</span>
@@ -321,8 +388,20 @@ const TeachersPage: React.FC = () => {
                 <div
                   key={teacher.uid}
                   onClick={() => navigate(`/teachers/${teacher.uid}`)}
-                  className="cursor-pointer group flex flex-col md:grid md:grid-cols-[1fr_190px_130px_150px] gap-2 md:gap-3 items-center px-5 py-3.5 border-b border-slate-100 dark:border-slate-700/50 last:border-b-0 hover:bg-primary-50/40 dark:hover:bg-primary-900/10 transition-colors"
+                  className={`cursor-pointer group flex flex-col md:grid ${gridCols} gap-2 md:gap-3 items-center px-5 py-3.5 border-b border-slate-100 dark:border-slate-700/50 last:border-b-0 hover:bg-primary-50/40 dark:hover:bg-primary-900/10 transition-colors`}
                 >
+                  {/* Select — the whole row navigates, so keep the click to itself */}
+                  {bulkEnabled && (
+                    <div className="hidden md:flex items-center" onClick={e => e.stopPropagation()}>
+                      <input
+                        type="checkbox"
+                        checked={selected.has(teacher.uid)}
+                        onChange={() => toggleSelect(teacher.uid)}
+                        className="w-4 h-4 rounded accent-primary-600 cursor-pointer"
+                      />
+                    </div>
+                  )}
+
                   {/* Name + avatar */}
                   <div className="flex items-center gap-3 min-w-0 w-full">
                     <div className="relative shrink-0">

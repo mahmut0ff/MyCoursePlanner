@@ -208,6 +208,97 @@ async function getTeacherGroupPolicy(orgId: string): Promise<{ manage: boolean; 
   }
 }
 
+/* ─── Bulk roster operations ─────────────────────────────────────────────── */
+// Backing for the multi-select bars on the students and teachers pages: delete,
+// migrate to a branch, migrate to a group. One code path serves both rosters —
+// `kind` picks the roster and, with it, the permission that gates the call
+// (student → students:write, teacher → teachers:write).
+
+const BULK_MAX = 500;
+
+type BulkKind = 'student' | 'teacher';
+
+/** Roles that put a member on each roster. Admins/owners are handled separately. */
+const BULK_KIND_ROLES: Record<BulkKind, string[]> = {
+  student: ['student'],
+  teacher: ['teacher', 'mentor'],
+};
+
+/** The RBAC resource whose `write` grant gates bulk ops on a roster. */
+const bulkResource = (kind: BulkKind) => (kind === 'student' ? 'students' : 'teachers');
+
+/** The group roster array a kind lives in. */
+const bulkGroupField = (kind: BulkKind) => (kind === 'student' ? 'studentIds' : 'teacherIds');
+
+/** Profile flag marking a record-only member (created by the org, no auth account). */
+const bulkOfflineFlag = (kind: BulkKind) => (kind === 'student' ? 'offlineStudent' : 'offlineTeacher');
+
+/**
+ * Parse the shared part of every bulk body: the roster `kind` and the `uids` it
+ * addresses. An unknown kind is rejected rather than defaulted — a typo must not
+ * silently retarget the other roster (and with it, the other permission).
+ */
+export function parseBulkBody(body: any): { kind: BulkKind; uids: string[] } | { error: ReturnType<typeof badRequest> } {
+  const kind = body.kind;
+  if (kind !== 'student' && kind !== 'teacher') return { error: badRequest("kind must be 'student' or 'teacher'") };
+  const raw: any[] = Array.isArray(body.uids) ? body.uids : [];
+  const uids = [...new Set(raw.filter((u) => typeof u === 'string' && u.trim()).map((u: string) => u.trim()))];
+  if (uids.length === 0) return { error: badRequest('uids array required') };
+  if (uids.length > BULK_MAX) return { error: badRequest(`Максимум ${BULK_MAX} записей за одну операцию`) };
+  return { kind, uids };
+}
+
+/**
+ * Narrow `uids` to the members a bulk action may actually touch.
+ *
+ * Each target must be a member of THIS org holding the addressed role, so a uid
+ * from another tenant — or a teacher passed to a student-kind call — is dropped
+ * rather than acted on. Admins, owners and the caller are never targetable: a
+ * bulk op must not be able to decapitate the org or lock out the person running
+ * it. Branch-scoped managers are narrowed to their own branches, mirroring what
+ * the `students` list does, so they can never act on rows they cannot see.
+ *
+ * Anything dropped is reported back as `skipped` rather than failing the call:
+ * one stale uid in a 200-row selection shouldn't sink the other 199.
+ */
+export async function resolveBulkTargets(
+  user: AuthUser,
+  orgId: string,
+  kind: BulkKind,
+  uids: string[],
+): Promise<{ targets: string[]; members: Record<string, any> }> {
+  const members = await getDocsByIds(`orgMembers/${orgId}/members`, uids);
+  const branchScoped = hasRole(user, 'manager') && user.branchIds.length > 0;
+  const targets = uids.filter((uid) => {
+    const m = members[uid];
+    if (!m) return false;                                  // not a member of this org
+    if (uid === user.uid) return false;                    // never act on yourself
+    if (memberHoldsRole(m, ['owner', 'admin'])) return false;
+    if (!memberHoldsRole(m, BULK_KIND_ROLES[kind])) return false;
+    if (branchScoped) {
+      const b: string[] = m.branchIds || [];
+      if (b.length > 0 && !b.some((id: string) => user.branchIds.includes(id))) return false;
+    }
+    return true;
+  });
+  return { targets, members };
+}
+
+/** Remove `uids` from the `field` roster of every group that lists any of them. */
+async function purgeFromGroups(orgId: string, field: string, uids: string[]) {
+  const snap = await orgQuery('groups', orgId).get();
+  const hit = new Set(uids);
+  const dirty = snap.docs.filter((d: any) => ((d.data()[field] || []) as string[]).some((id) => hit.has(id)));
+  for (let i = 0; i < dirty.length; i += 200) {
+    const batch = adminDb.batch();
+    for (const d of dirty.slice(i, i + 200)) {
+      batch.update(d.ref, { [field]: FieldValue.arrayRemove(...uids), updatedAt: now() });
+    }
+    await batch.commit();
+  }
+  return dirty.length;
+}
+
 /* ═══════════════════════════════════════════════ */
 /*  Handler                                        */
 /* ═══════════════════════════════════════════════ */
@@ -1046,6 +1137,149 @@ const handler: Handler = async (event: HandlerEvent) => {
         if (e.code === 'auth/user-not-found') return badRequest('Аккаунт не найден в системе аутентификации');
         throw e;
       }
+    }
+
+    // ═══ BULK ROSTER OPS (delete / migrate branch / migrate group) ═══
+
+    if (action === 'bulkDeleteMembers') {
+      const err = requireOrgStaff(user); if (err) return err;
+      const parsed = parseBulkBody(JSON.parse(event.body || '{}'));
+      if ('error' in parsed) return parsed.error;
+      const { kind, uids } = parsed;
+      // Deleting takes the `delete` grant, not `write` — migrating someone between
+      // groups and erasing them are different powers, and the catalog separates them.
+      if (!can(user, bulkResource(kind), 'delete')) return forbidden('Недостаточно прав для этого действия');
+
+      const { targets } = await resolveBulkTargets(user, orgId, kind, uids);
+      if (targets.length === 0) return ok({ deleted: 0, skipped: uids.length, purged: 0 });
+
+      // 1 ─ Drop both membership mirrors. verifyAuth reads the user-side doc and
+      //     every roster reads the org-side one, so a half-delete would leave the
+      //     member visible in one of the two.
+      for (let i = 0; i < targets.length; i += 200) {
+        const batch = adminDb.batch();
+        for (const uid of targets.slice(i, i + 200)) {
+          batch.delete(adminDb.collection('orgMembers').doc(orgId).collection('members').doc(uid));
+          batch.delete(adminDb.collection('users').doc(uid).collection('memberships').doc(orgId));
+        }
+        await batch.commit();
+      }
+
+      // 2 ─ Drop them from every group roster, so deletes don't leave ghost ids in
+      //     studentIds/teacherIds — the journal, gradebook and group pages read those.
+      await purgeFromGroups(orgId, bulkGroupField(kind), targets);
+
+      // 3 ─ A record-only member exists purely as this org's roster row: no auth
+      //     account, no way to sign in and reach the profile again. Once the last
+      //     membership is gone the profile is unreachable, so delete it too rather
+      //     than orphan it. Anyone with a real login keeps their profile — only
+      //     their tie to this org is removed.
+      const profiles = await getDocsByIds('users', targets);
+      const offlineFlag = bulkOfflineFlag(kind);
+      const candidates = targets.filter((uid) => {
+        const p = profiles[uid];
+        return p && p[offlineFlag] === true && p.createdByOrg === true;
+      });
+      const orphaned = (await Promise.all(candidates.map(async (uid) => {
+        // Re-check after the delete above: a profile shared with a second org must
+        // survive this org's cleanup.
+        const left = await adminDb.collection('users').doc(uid).collection('memberships').limit(1).get();
+        return left.empty ? uid : null;
+      }))).filter(Boolean) as string[];
+      for (let i = 0; i < orphaned.length; i += 400) {
+        const batch = adminDb.batch();
+        for (const uid of orphaned.slice(i, i + 400)) batch.delete(adminDb.collection('users').doc(uid));
+        await batch.commit();
+      }
+
+      return ok({ deleted: targets.length, skipped: uids.length - targets.length, purged: orphaned.length });
+    }
+
+    if (action === 'bulkSetBranch') {
+      const err = requireOrgStaff(user); if (err) return err;
+      const body = JSON.parse(event.body || '{}');
+      const parsed = parseBulkBody(body);
+      if ('error' in parsed) return parsed.error;
+      const { kind, uids } = parsed;
+      if (!can(user, bulkResource(kind), 'write')) return forbidden('Недостаточно прав для этого действия');
+
+      const branchId = String(body.branchId || '').trim();
+      if (!branchId) return badRequest('branchId required');
+      const branchDoc = await adminDb.collection('branches').doc(branchId).get();
+      if (!branchDoc.exists || branchDoc.data()?.organizationId !== orgId) return notFound('Branch not found');
+      // A branch-scoped manager may only migrate people into a branch they hold —
+      // otherwise they could push members somewhere they can no longer see.
+      if (hasRole(user, 'manager') && user.branchIds.length > 0 && !user.branchIds.includes(branchId)) {
+        return forbidden('Нет доступа к этому филиалу');
+      }
+
+      const { targets } = await resolveBulkTargets(user, orgId, kind, uids);
+      if (targets.length === 0) return ok({ moved: 0, skipped: uids.length });
+
+      // Migration replaces the assignment rather than appending: a member ends up in
+      // exactly the destination branch. set(merge) rather than update() so this never
+      // throws on a membership that only exists in one mirror.
+      const patch = { branchIds: [branchId], primaryBranchId: branchId, updatedAt: now() };
+      for (let i = 0; i < targets.length; i += 200) {
+        const batch = adminDb.batch();
+        for (const uid of targets.slice(i, i + 200)) {
+          batch.set(adminDb.collection('orgMembers').doc(orgId).collection('members').doc(uid), patch, { merge: true });
+          batch.set(adminDb.collection('users').doc(uid).collection('memberships').doc(orgId), patch, { merge: true });
+        }
+        await batch.commit();
+      }
+
+      return ok({ moved: targets.length, skipped: uids.length - targets.length, branchId });
+    }
+
+    if (action === 'bulkSetGroup') {
+      const err = requireOrgStaff(user); if (err) return err;
+      const body = JSON.parse(event.body || '{}');
+      const parsed = parseBulkBody(body);
+      if ('error' in parsed) return parsed.error;
+      const { kind, uids } = parsed;
+      if (!can(user, bulkResource(kind), 'write')) return forbidden('Недостаточно прав для этого действия');
+
+      const groupId = String(body.groupId || '').trim();
+      if (!groupId) return badRequest('groupId required');
+      const groupDoc = await adminDb.collection('groups').doc(groupId).get();
+      if (!groupDoc.exists || groupDoc.data()?.organizationId !== orgId) return notFound('Group not found');
+
+      const { targets } = await resolveBulkTargets(user, orgId, kind, uids);
+      if (targets.length === 0) return ok({ moved: 0, skipped: uids.length });
+
+      const field = bulkGroupField(kind);
+
+      // Migration = leave every other group, then join the destination. A roster is
+      // an array and a member can sit in many groups at once, so without the removal
+      // pass a "move" would silently pile up memberships instead of moving anyone.
+      const snap = await orgQuery('groups', orgId).get();
+      const hit = new Set(targets);
+      const leaving = snap.docs.filter((d: any) =>
+        d.id !== groupId && ((d.data()[field] || []) as string[]).some((id) => hit.has(id)));
+      for (let i = 0; i < leaving.length; i += 200) {
+        const batch = adminDb.batch();
+        for (const d of leaving.slice(i, i + 200)) {
+          batch.update(d.ref, { [field]: FieldValue.arrayRemove(...targets), updatedAt: now() });
+        }
+        await batch.commit();
+      }
+      await adminDb.collection('groups').doc(groupId).update({
+        [field]: FieldValue.arrayUnion(...targets),
+        updatedAt: now(),
+      });
+
+      // Students joining a priced course get a payment plan, exactly as a fresh
+      // import would. syncPaymentPlans skips anyone who already has one, so
+      // migrating within the same course is a no-op here.
+      if (kind === 'student') {
+        const courseId = groupDoc.data()?.courseId;
+        if (courseId) {
+          await syncPaymentPlans(orgId, groupDoc.data()?.branchId || null, courseId, targets).catch(console.error);
+        }
+      }
+
+      return ok({ moved: targets.length, skipped: uids.length - targets.length, groupId });
     }
 
     // ═══ TEACHERS (everyone who holds a teaching role in this org, incl. multi-role) ═══

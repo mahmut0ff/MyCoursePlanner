@@ -325,12 +325,13 @@ export function resolvePermissionSet(args: {
  * Compute the override delta between a member's role baseline and an edited effective set.
  * Both inputs are flat `resource:action` sets. Returns grants (added) and revokes (removed),
  * restricted to the given resource catalog so stray ids never persist.
+ * Both arrays are always present (possibly empty), hence the Required<> return.
  */
 export function diffOverrides(
   baseline: Set<string>,
   edited: Set<string>,
   resources: string[] = ALL_RESOURCES,
-): PermissionOverrides {
+): Required<PermissionOverrides> {
   const grantsByRes: Record<string, RbacAction[]> = {};
   const revokesByRes: Record<string, RbacAction[]> = {};
   for (const resource of resources) {

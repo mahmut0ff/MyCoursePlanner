@@ -164,10 +164,11 @@ const Sidebar: React.FC<{ open: boolean; onClose: () => void; isCollapsed?: bool
             <>
               <NavItem to="/dashboard" icon={LayoutDashboard} label={t('nav.dashboard')} isCollapsed={isCollapsed} onClose={onClose} />
 
+              {/* People, ordered by the funnel: lead → enrolled student → teacher → internal team. */}
               <SectionLabel label={t('nav.secPeople', 'Люди')} isCollapsed={isCollapsed} />
+              <NavItem to="/leads" icon={Inbox} label={t('nav.leads', 'Заявки')} isCollapsed={isCollapsed} onClose={onClose} />
               <NavItem to="/students" icon={Users} label={term(t, instType, 'students')} isCollapsed={isCollapsed} onClose={onClose} />
               <NavItem to="/teachers" icon={UserPlus} label={t('nav.teachers')} isCollapsed={isCollapsed} onClose={onClose} />
-              <NavItem to="/leads" icon={Inbox} label={t('nav.leads', 'Заявки')} isCollapsed={isCollapsed} onClose={onClose} />
               <NavItem to="/team" icon={UserCog} label={t('nav.team', 'Команда и роли')} isCollapsed={isCollapsed} onClose={onClose} locked={!canAccess('rbac')} />
 
               <SectionLabel label={t('nav.secLearning', 'Обучение')} isCollapsed={isCollapsed} />
@@ -191,15 +192,16 @@ const Sidebar: React.FC<{ open: boolean; onClose: () => void; isCollapsed?: bool
             <>
               <NavItem to="/dashboard" icon={LayoutDashboard} label={t('nav.dashboard')} isCollapsed={isCollapsed} onClose={onClose} />
 
+              {/* People, ordered by the funnel: lead → enrolled student → teacher → internal team. */}
               <SectionLabel label={t('nav.secPeople', 'Люди')} isCollapsed={isCollapsed} />
+              {canRead('leads') && (
+                <NavItem to="/leads" icon={Inbox} label={t('nav.leads', 'Заявки')} isCollapsed={isCollapsed} onClose={onClose} />
+              )}
               {canRead('students') && (
                 <NavItem to="/students" icon={Users} label={term(t, instType, 'students')} isCollapsed={isCollapsed} onClose={onClose} />
               )}
               {canRead('teachers') && (
                 <NavItem to="/teachers" icon={UserPlus} label={t('nav.teachers')} isCollapsed={isCollapsed} onClose={onClose} />
-              )}
-              {canRead('leads') && (
-                <NavItem to="/leads" icon={Inbox} label={t('nav.leads', 'Заявки')} isCollapsed={isCollapsed} onClose={onClose} />
               )}
               {canRead('team') && (
                 <NavItem to="/team" icon={UserCog} label={t('nav.team', 'Команда и роли')} isCollapsed={isCollapsed} onClose={onClose} locked={!canAccess('rbac')} />

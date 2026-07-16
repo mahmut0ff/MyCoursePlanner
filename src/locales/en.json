@@ -816,8 +816,6 @@
     "students": {
       "total": "students",
       "empty": "No students found",
-      "activeTabs": "Active Students",
-      "applicationsTab": "Applications",
       "create": "Create Student",
       "createDesc": "Create a new student account for your organization",
       "namePlaceholder": "Full name",
@@ -845,11 +843,9 @@
       "namePlaceholder": "Full name",
       "passwordPlaceholder": "Password (min 6 characters)",
       "phonePlaceholder": "Phone number (optional)",
-      "invite": "Invite Teacher",
       "empty": "No teachers yet",
       "roleTeacher": "Teacher",
       "roleAdmin": "Director",
-      "sendInvite": "Send Invite",
       "courses": "Courses",
       "groups": "Groups",
       "created": "Teacher created!",
@@ -865,10 +861,7 @@
       "passwordTooShort": "Password must be at least 6 characters",
       "emptyDesc": "Add your first teacher",
       "hintTitle": "How to add a teacher?",
-      "hintAddTitle": "Add directly",
-      "hintAddDesc": "click “Add”, enter the full name and set a login and password. Hand these to the teacher — no self-registration needed.",
-      "hintInviteTitle": "Invite by Email",
-      "hintInviteDesc": "if the teacher already has an account, send an invite by email with the “Invite” button."
+      "hintAddDesc": "Click “Add”, enter the full name and set a login and password. Hand these to the teacher — no self-registration needed."
     },
     "teach": {
       "mine": "Mine",

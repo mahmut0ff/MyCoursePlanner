@@ -2,7 +2,6 @@ import React, { useEffect, useState, useMemo, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../contexts/AuthContext';
-import { usePlanGate } from '../../contexts/PlanContext';
 import { usePermissions } from '../../contexts/PermissionsContext';
 import {
   orgGetStudents,
@@ -11,15 +10,9 @@ import {
   orgCreateStudent,
   orgBulkCreateStudents,
   orgListBranches,
-  apiGetOrgMembers,
-  apiAcceptMembership,
-  apiRejectMembership,
-  apiDeleteMember,
-  orgGetCourseRequests,
-  orgApproveCourseRequest,
-  orgRejectCourseRequest
+  apiDeleteMember
 } from '../../lib/api';
-import { Users, Search, Mail, RefreshCw, CheckCircle, XCircle, UserPlus, Phone, Filter, X, SortAsc, SortDesc, Trash2, Plus, Lightbulb, Link as LinkIcon, Copy, BookOpen, UsersRound, Upload, KeyRound, Eye, EyeOff, Calendar, Building2 } from 'lucide-react';
+import { Users, Search, RefreshCw, CheckCircle, XCircle, UserPlus, Phone, Filter, X, SortAsc, SortDesc, Trash2, Plus, Lightbulb, Copy, BookOpen, UsersRound, Upload, KeyRound, Eye, EyeOff, Calendar, Building2 } from 'lucide-react';
 import type { UserProfile, Group, Branch } from '../../types';
 import toast from 'react-hot-toast';
 import { PinnedBadgesDisplay } from '../../lib/badges';
@@ -35,7 +28,6 @@ const StudentsPage: React.FC = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { profile, organizationId } = useAuth();
-  const { limits } = usePlanGate();
   const { canWrite, canDelete, loaded: permsLoaded } = usePermissions();
 
   // Selection exists to feed the bulk bar, so it appears whenever at least one bulk
@@ -43,19 +35,10 @@ const StudentsPage: React.FC = () => {
   // The bar gates each action on its own grant, and the server enforces both.
   const bulkEnabled = permsLoaded && (canWrite('students') || canDelete('students'));
 
-  const [activeTab, setActiveTab] = useState<'students' | 'applications' | 'courseRequests'>('students');
   const [expandedAvatar, setExpandedAvatar] = useState<string | null>(null);
 
   const [students, setStudents] = useState<UserProfile[]>([]);
   const [loading, setLoading] = useState(true);
-  
-  const [applications, setApplications] = useState<any[]>([]);
-  const [loadingApps, setLoadingApps] = useState(false);
-
-  const [courseRequests, setCourseRequests] = useState<any[]>([]);
-  const [loadingCourseReqs, setLoadingCourseReqs] = useState(false);
-  const [showCourseReqModal, setShowCourseReqModal] = useState(false);
-  const [selectedCourseReq, setSelectedCourseReq] = useState<any>(null);
 
   // Search & Filters
   const [search, setSearch] = useState('');
@@ -98,23 +81,10 @@ const StudentsPage: React.FC = () => {
 
   // Onboarding hint
   const [hintDismissed, setHintDismissed] = useState(() => localStorage.getItem('students_invite_hint_dismissed') === '1');
-  const [hintCopied, setHintCopied] = useState(false);
 
   const dismissHint = () => {
     setHintDismissed(true);
     localStorage.setItem('students_invite_hint_dismissed', '1');
-  };
-
-  // Public invite URL
-  const orgSlug = organizationId || '';
-  const publicInviteUrl = orgSlug ? `${window.location.origin}/org/${orgSlug}` : '';
-
-  const copyInviteLink = () => {
-    if (!publicInviteUrl) return;
-    navigator.clipboard.writeText(publicInviteUrl);
-    setHintCopied(true);
-    toast.success(t('common.copied', 'Ссылка скопирована!'));
-    setTimeout(() => setHintCopied(false), 2000);
   };
 
   // Pagination
@@ -153,37 +123,10 @@ const StudentsPage: React.FC = () => {
     } catch { /* silent — orgs without branches simply get no branch action */ }
   };
 
-  const loadApplications = async (silent = false) => {
-    if (!organizationId) return;
-    if (!silent) setLoadingApps(true);
-    try {
-      const apps = await apiGetOrgMembers(organizationId, 'pending', 'student');
-      setApplications(apps);
-    } catch (e: any) {
-      if (!silent) toast.error(e.message || t('common.loadError', 'Ошибка загрузки'));
-    } finally {
-      if (!silent) setLoadingApps(false);
-    }
-  };
-
-  const loadCourseRequests = async (silent = false) => {
-    if (!silent) setLoadingCourseReqs(true);
-    try {
-      const reqs = await orgGetCourseRequests();
-      setCourseRequests(reqs || []);
-    } catch (e: any) {
-      // silent or error
-    } finally {
-      if (!silent) setLoadingCourseReqs(false);
-    }
-  };
-
   useEffect(() => {
     loadStudents();
     loadGroups();
     loadCourses();
-    loadApplications();
-    loadCourseRequests();
   }, [organizationId, branchFilter]);
 
   useEffect(() => { loadBranches(); }, [organizationId]);
@@ -250,69 +193,6 @@ const StudentsPage: React.FC = () => {
 
     return result;
   }, [students, search, selectedGroup, groups, sortField, sortDir, statusFilter, branchNameById]);
-
-  const handleApprove = async (userId: string) => {
-    if (!organizationId) return;
-
-    if (limits.maxStudents !== -1 && students.length >= limits.maxStudents) {
-      toast.error(t('org.settings.maxStudentsReached', 'Достигнут лимит студентов для вашего тарифа'));
-      return;
-    }
-
-    try {
-      await apiAcceptMembership(userId, organizationId);
-      // Optimistic: remove from local applications list immediately
-      setApplications(prev => prev.filter(a => a.userId !== userId));
-      toast.success(t('directory.applicationApproved', 'Заявка одобрена!'));
-      // Silent background refresh
-      loadStudents(true);
-    } catch (e: any) {
-      toast.error(e.message);
-      loadApplications(true); // Restore real state on error
-    }
-  };
-
-  const handleReject = async (userId: string) => {
-    if (!organizationId) return;
-    try {
-      await apiRejectMembership(userId, organizationId);
-      // Optimistic: remove from local list immediately
-      setApplications(prev => prev.filter(a => a.userId !== userId));
-      toast.success(t('directory.applicationRejected', 'Заявка отклонена'));
-    } catch (e: any) {
-      toast.error(e.message);
-      loadApplications(true); // Restore real state on error
-    }
-  };
-
-  const handleApproveCourseReq = async (groupId: string) => {
-    if (!selectedCourseReq || !groupId) return;
-    const reqId = selectedCourseReq.id;
-    try {
-      await orgApproveCourseRequest(reqId, groupId);
-      // Optimistic: remove from local list
-      setCourseRequests(prev => prev.filter(r => r.id !== reqId));
-      toast.success('Заявка на курс одобрена, студент добавлен в группу');
-      setShowCourseReqModal(false);
-      setSelectedCourseReq(null);
-      loadGroups(); // Refresh group counts silently
-    } catch (e: any) {
-      toast.error(e.message || 'Error');
-      loadCourseRequests(true); // Restore real state on error
-    }
-  };
-
-  const handleRejectCourseReq = async (reqId: string) => {
-    try {
-      await orgRejectCourseRequest(reqId);
-      // Optimistic: remove from local list
-      setCourseRequests(prev => prev.filter(r => r.id !== reqId));
-      toast.success('Заявка на курс отклонена');
-    } catch (e: any) {
-      toast.error(e.message || 'Error');
-      loadCourseRequests(true); // Restore real state on error
-    }
-  };
 
   const toggleSort = (field: SortField) => {
     if (sortField === field) {
@@ -526,11 +406,11 @@ const StudentsPage: React.FC = () => {
         <div>
           <h1 className="text-3xl font-extrabold text-slate-900 dark:text-white mb-2">{t('nav.students')}</h1>
           <p className="text-slate-500 dark:text-slate-400 text-sm">
-            {activeTab === 'students' ? `${students.filter(s => ((s as any).status || 'active') === 'active').length} ${t('org.students.total')}` : activeTab === 'applications' ? `${applications.length} ${t('org.students.applicationsCount', 'заявок')}` : `${courseRequests.length} заявок на курсы`}
+            {`${students.filter(s => ((s as any).status || 'active') === 'active').length} ${t('org.students.total')}`}
           </p>
         </div>
         <div className="flex items-center gap-3 w-full sm:w-auto">
-          <button onClick={() => { loadStudents(); loadGroups(); loadApplications(); }} className="p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-xl transition-colors">
+          <button onClick={() => { loadStudents(); loadGroups(); }} className="p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-xl transition-colors">
             <RefreshCw className="w-4 h-4" />
           </button>
           <button onClick={() => { setImportResult(null); setShowImportModal(true); }} className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 px-4 py-2.5 rounded-xl text-sm font-semibold flex justify-center items-center gap-2 transition-all shrink-0">
@@ -542,38 +422,6 @@ const StudentsPage: React.FC = () => {
             {t('org.students.create', 'Добавить студента')}
           </button>
         </div>
-      </div>
-
-      {/* Tabs */}
-      <div className="flex gap-4 border-b border-slate-200 dark:border-slate-700 mb-6">
-        <button
-          onClick={() => setActiveTab('students')}
-          className={`pb-2.5 text-sm font-semibold border-b-2 transition-colors ${activeTab === 'students' ? 'border-slate-900 dark:border-white text-slate-900 dark:text-white' : 'border-transparent text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}
-        >
-          {t('org.students.activeTabs', 'Активные студенты')}
-        </button>
-        <button
-          onClick={() => setActiveTab('applications')}
-          className={`pb-2.5 text-sm font-semibold border-b-2 transition-colors flex items-center gap-2 ${activeTab === 'applications' ? 'border-slate-900 dark:border-white text-slate-900 dark:text-white' : 'border-transparent text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}
-        >
-          {t('org.students.applicationsTab', 'Заявки')}
-          {applications.length > 0 && (
-            <span className="bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full">
-              {applications.length}
-            </span>
-          )}
-        </button>
-        <button
-          onClick={() => setActiveTab('courseRequests')}
-          className={`pb-2.5 text-sm font-semibold border-b-2 transition-colors flex items-center gap-2 ${activeTab === 'courseRequests' ? 'border-slate-900 dark:border-white text-slate-900 dark:text-white' : 'border-transparent text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}
-        >
-          Заявки на курсы
-          {courseRequests.length > 0 && (
-            <span className="bg-amber-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full">
-              {courseRequests.length}
-            </span>
-          )}
-        </button>
       </div>
 
       {/* Onboarding Hint for Managers */}
@@ -595,43 +443,9 @@ const StudentsPage: React.FC = () => {
               <h3 className="text-sm font-bold text-amber-900 dark:text-amber-200 mb-2">
                 {t('org.students.hintTitle', 'Как добавить студентов?')}
               </h3>
-              <div className="space-y-2">
-                <div className="flex items-start gap-2">
-                  <span className="w-5 h-5 rounded-full bg-amber-400/20 text-amber-700 dark:text-amber-300 flex items-center justify-center shrink-0 text-[10px] font-bold mt-0.5">1</span>
-                  <p className="text-xs text-amber-800/80 dark:text-amber-300/80">
-                    <span className="font-semibold text-amber-800 dark:text-amber-200">{t('org.students.hintWay1Title', 'Создать вручную')}</span> — {t('org.students.hintWay1DescV2', 'нажмите «Добавить студента». По умолчанию это запись для журнала и оплат (без входа). Чтобы ученик мог заходить сам — включите «Дать доступ» и задайте логин с паролем. Список целиком удобнее завести через «Импорт».')}
-                  </p>
-                </div>
-                <div className="flex items-start gap-2">
-                  <span className="w-5 h-5 rounded-full bg-amber-400/20 text-amber-700 dark:text-amber-300 flex items-center justify-center shrink-0 text-[10px] font-bold mt-0.5">2</span>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-xs text-amber-800/80 dark:text-amber-300/80">
-                      <span className="font-semibold text-amber-800 dark:text-amber-200">{t('org.students.hintWay2Title', 'Отправить ссылку')}</span> — {t('org.students.hintWay2Desc', 'поделитесь публичной ссылкой, и студенты зарегистрируются сами:')}
-                    </p>
-                    {publicInviteUrl && (
-                      <div className="mt-1.5 flex items-center gap-1.5">
-                        <div className="flex items-center gap-1.5 bg-white/80 dark:bg-slate-800/60 border border-amber-200/60 dark:border-amber-700/30 rounded-lg px-2.5 py-1.5 min-w-0 flex-1">
-                          <LinkIcon className="w-3 h-3 text-amber-500 shrink-0" />
-                          <span className="text-[11px] text-amber-700 dark:text-amber-300 truncate font-mono">{publicInviteUrl}</span>
-                        </div>
-                        <button
-                          onClick={copyInviteLink}
-                          className="shrink-0 flex items-center gap-1 px-2 py-1.5 rounded-lg text-[11px] font-medium bg-amber-500/10 hover:bg-amber-500/20 text-amber-700 dark:text-amber-300 border border-amber-300/50 dark:border-amber-600/30 transition-colors"
-                        >
-                          {hintCopied ? <CheckCircle className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
-                          {hintCopied ? t('common.copied', 'Скопировано') : t('common.copy', 'Копировать')}
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                </div>
-                <div className="flex items-start gap-2">
-                  <span className="w-5 h-5 rounded-full bg-amber-400/20 text-amber-700 dark:text-amber-300 flex items-center justify-center shrink-0 text-[10px] font-bold mt-0.5">3</span>
-                  <p className="text-xs text-amber-800/80 dark:text-amber-300/80">
-                    <span className="font-semibold text-amber-800 dark:text-amber-200">{t('org.students.hintWay3Title', 'Заявки')}</span> — {t('org.students.hintWay3Desc', 'студенты, перешедшие по ссылке, появятся во вкладке «Заявки», где вы сможете одобрить или отклонить их.')}
-                  </p>
-                </div>
-              </div>
+              <p className="text-xs text-amber-800/80 dark:text-amber-300/80">
+                {t('org.students.hintWay1DescV2', 'Нажмите «Добавить студента». По умолчанию это запись для журнала и оплат (без входа). Чтобы ученик мог заходить сам — включите «Дать доступ» и задайте логин с паролем. Список целиком удобнее завести через «Импорт».')}
+              </p>
             </div>
           </div>
         </div>
@@ -639,8 +453,7 @@ const StudentsPage: React.FC = () => {
 
       {error && <div className="mb-6 px-4 py-3 bg-red-500/10 border border-red-500/20 rounded-xl text-sm text-red-600 dark:text-red-400">{error}</div>}
 
-      {activeTab === 'students' && (
-        <>
+      <>
           {/* Unified Filter Bar */}
           <div className="bg-white dark:bg-slate-800 p-4 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 mb-8 flex flex-col md:flex-row md:items-center gap-4">
             <div className="flex-1 relative">
@@ -868,142 +681,7 @@ const StudentsPage: React.FC = () => {
               </div>
             </div>
           )}
-        </>
-      )}
-
-      {activeTab === 'applications' && (
-        <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl overflow-hidden">
-          {loadingApps ? (
-            <ListSkeleton rows={4} />
-          ) : applications.length === 0 ? (
-            <EmptyState
-              icon={UserPlus}
-              title={t('org.students.noApplications', 'Нет входящих заявок')}
-              description="Когда студенты подадут заявки, они появятся здесь"
-            />
-          ) : (
-            <>
-              <div className="hidden md:grid grid-cols-[1fr_200px_120px_100px] gap-3 px-5 py-3 border-b border-slate-100 dark:border-slate-700 bg-slate-50/80 dark:bg-slate-800/80 text-[11px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
-                <span>{t('org.results.student')}</span>
-                <span>{t('common.email', 'Email')}</span>
-                <span>{t('common.date')}</span>
-                <span className="text-right">{t('common.actions')}</span>
-              </div>
-              {applications.map((app) => (
-                <div key={app.id} className="flex flex-col md:grid md:grid-cols-[1fr_200px_120px_100px] gap-2 md:gap-3 items-center px-5 py-3.5 border-b border-slate-100 dark:border-slate-700/50 last:border-b-0 hover:bg-primary-50/40 dark:hover:bg-primary-900/10 transition-colors">
-                  <div className="flex items-center gap-3 min-w-0 w-full">
-                    {(app as any).userAvatarUrl ? (
-                      <img src={(app as any).userAvatarUrl} alt="" className="w-9 h-9 rounded-full object-cover shrink-0" />
-                    ) : (
-                      <div className="w-9 h-9 bg-amber-500 rounded-full flex items-center justify-center text-xs text-white font-bold shrink-0">{app.userName?.[0]?.toUpperCase() || '?'}</div>
-                    )}
-                    <span className="text-sm font-bold text-slate-900 dark:text-white truncate">{app.userName}</span>
-                  </div>
-                  <div className="hidden md:flex items-center gap-1.5 text-[11px] text-slate-500 dark:text-slate-400 truncate">
-                    <Mail className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                    <span className="truncate">{app.userEmail}</span>
-                  </div>
-                  <div className="hidden md:block text-[11px] text-slate-500">{new Date(app.createdAt).toLocaleDateString()}</div>
-                  <div className="flex justify-end gap-2">
-                    <button onClick={() => handleApprove(app.userId)} className="p-1.5 text-emerald-600 bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-900/20 dark:hover:bg-emerald-900/30 rounded-lg transition-colors" title={t('common.accept')}>
-                      <CheckCircle className="w-4 h-4" />
-                    </button>
-                    <button onClick={() => handleReject(app.userId)} className="p-1.5 text-red-600 bg-red-50 hover:bg-red-100 dark:bg-red-900/20 dark:hover:bg-red-900/30 rounded-lg transition-colors" title={t('common.reject')}>
-                      <XCircle className="w-4 h-4" />
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </>
-          )}
-        </div>
-      )}
-
-      {activeTab === 'courseRequests' && (
-        <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl overflow-hidden">
-          {loadingCourseReqs ? (
-            <ListSkeleton rows={4} />
-          ) : courseRequests.length === 0 ? (
-            <EmptyState
-              icon={BookOpen}
-              title="Нет заявок на курсы"
-              description="Заявки студентов на курсы появятся здесь"
-            />
-          ) : (
-            <>
-              <div className="hidden md:grid grid-cols-[1fr_200px_120px_100px] gap-3 px-5 py-3 border-b border-slate-100 dark:border-slate-700 bg-slate-50/80 dark:bg-slate-800/80 text-[11px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
-                <span>Студент</span>
-                <span>Курс</span>
-                <span>Дата</span>
-                <span className="text-right">Действия</span>
-              </div>
-              {courseRequests.map((req) => (
-                <div key={req.id} className="flex flex-col md:grid md:grid-cols-[1fr_200px_120px_100px] gap-2 md:gap-3 items-center px-5 py-3.5 border-b border-slate-100 dark:border-slate-700/50 last:border-b-0 hover:bg-primary-50/40 dark:hover:bg-primary-900/10 transition-colors">
-                  <div className="flex items-center gap-3 min-w-0 w-full">
-                    {req.userAvatarUrl ? (
-                      <img src={req.userAvatarUrl} alt="" className="w-9 h-9 rounded-full object-cover shrink-0" />
-                    ) : (
-                      <div className="w-9 h-9 bg-violet-500 rounded-full flex items-center justify-center text-xs text-white font-bold shrink-0">{req.userName?.[0]?.toUpperCase() || '?'}</div>
-                    )}
-                    <div>
-                      <span className="block text-sm font-bold text-slate-900 dark:text-white truncate">{req.userName}</span>
-                      <span className="block md:hidden text-[10px] text-slate-500 truncate">{req.courseName}</span>
-                    </div>
-                  </div>
-                  <div className="hidden md:flex items-center gap-1.5 text-sm font-semibold text-slate-700 dark:text-slate-300 truncate">
-                    <span className="truncate">{req.courseName}</span>
-                  </div>
-                  <div className="hidden md:block text-[11px] text-slate-500">{new Date(req.createdAt).toLocaleDateString()}</div>
-                  <div className="flex justify-end gap-2">
-                    <button onClick={() => { setSelectedCourseReq(req); setShowCourseReqModal(true); }} className="px-3 py-1.5 text-xs font-bold text-white bg-emerald-500 hover:bg-emerald-600 rounded-lg shadow-sm transition-all" title={t('common.accept')}>
-                      Одобрить
-                    </button>
-                    <button onClick={() => handleRejectCourseReq(req.id)} className="p-1.5 text-red-600 bg-red-50 hover:bg-red-100 dark:bg-red-900/20 dark:hover:bg-red-900/30 rounded-lg transition-colors" title={t('common.reject')}>
-                      <XCircle className="w-4 h-4" />
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </>
-          )}
-        </div>
-      )}
-
-      {showCourseReqModal && selectedCourseReq && (
-         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4" onClick={() => { setShowCourseReqModal(false); setSelectedCourseReq(null); }}>
-           <div className="bg-white dark:bg-slate-800 rounded-3xl p-8 w-full max-w-md shadow-2xl" onClick={e => e.stopPropagation()}>
-             <h2 className="text-xl font-bold text-slate-900 dark:text-white mb-2">Одобрение заявки на курс</h2>
-             <p className="text-sm text-slate-600 dark:text-slate-400 mb-6">Студент <span className="font-bold">{selectedCourseReq.userName}</span> хочет на курс <span className="font-bold">{selectedCourseReq.courseName}</span>. Выберите группу для зачисления:</p>
-             
-             <div className="space-y-4">
-               {groups.filter(g => g.courseId === selectedCourseReq.courseId).length > 0 ? (
-                 <div className="grid grid-cols-1 gap-2">
-                   {groups.filter(g => g.courseId === selectedCourseReq.courseId).map(g => (
-                     <button
-                       key={g.id}
-                       onClick={() => handleApproveCourseReq(g.id)}
-                       className="p-3 text-left border border-slate-200 dark:border-slate-700 rounded-xl hover:border-violet-500 hover:bg-violet-50 dark:hover:bg-violet-900/20 transition-all group"
-                     >
-                       <div className="font-bold text-slate-900 dark:text-white group-hover:text-violet-700 dark:group-hover:text-violet-300">{g.name}</div>
-                       <div className="text-xs text-slate-500">{g.studentIds?.length || 0} студентов</div>
-                     </button>
-                   ))}
-                 </div>
-               ) : (
-                 <div className="p-4 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-xl text-amber-700 dark:text-amber-400 text-sm">
-                   У этого курса пока нет ни одной группы. Создайте группу в карточке курса, прежде чем одобрять заявку.
-                 </div>
-               )}
-             </div>
-
-             <div className="flex justify-end mt-6">
-               <button onClick={() => { setShowCourseReqModal(false); setSelectedCourseReq(null); }} className="px-5 py-2.5 rounded-xl text-sm font-semibold text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800 transition-colors">
-                 Отмена
-               </button>
-             </div>
-           </div>
-         </div>
-      )}
+      </>
 
       {/* Create Student Modal */}
       {showCreateModal && (

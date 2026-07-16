@@ -4,17 +4,13 @@ import { useTranslation } from 'react-i18next';
 import {
   orgGetTeachers,
   orgCreateTeacher,
-  orgInviteUser,
   orgListBranches,
-  apiGetOrgMembers,
-  apiAcceptMembership,
-  apiRejectMembership,
   orgGetGroups
 } from '../../lib/api';
 import { usePlanGate } from '../../contexts/PlanContext';
 import { useAuth } from '../../contexts/AuthContext';
 import { usePermissions } from '../../contexts/PermissionsContext';
-import { UserPlus, Search, Mail, RefreshCw, Send, Phone, CheckCircle, XCircle, Lightbulb, Copy, X, Plus, KeyRound, Eye, EyeOff } from 'lucide-react';
+import { UserPlus, Search, Mail, RefreshCw, Phone, CheckCircle, Lightbulb, Copy, X, Plus, KeyRound, Eye, EyeOff } from 'lucide-react';
 import toast from 'react-hot-toast';
 import type { UserProfile, Group, Branch } from '../../types';
 import EmptyState from '../../components/ui/EmptyState';
@@ -36,8 +32,6 @@ const TeachersPage: React.FC = () => {
   // The bar gates each action on its own grant, and the server enforces both.
   const bulkEnabled = permsLoaded && (canWrite('teachers') || canDelete('teachers'));
 
-  const [activeTab, setActiveTab] = useState<'teachers' | 'applications'>('teachers');
-
   const [teachers, setTeachers] = useState<UserProfile[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -45,16 +39,9 @@ const TeachersPage: React.FC = () => {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [branches, setBranches] = useState<Branch[]>([]);
   const [groups, setGroups] = useState<Group[]>([]);
-  
-  const [applications, setApplications] = useState<any[]>([]);
-  const [loadingApps, setLoadingApps] = useState(false);
 
   const [search, setSearch] = useState('');
-  const [showInvite, setShowInvite] = useState(false);
-  const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
-  const [inviteEmail, setInviteEmail] = useState('');
 
   // Direct add (create a teacher account with credentials) — mirrors the student add flow
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -94,19 +81,6 @@ const TeachersPage: React.FC = () => {
     }
   };
 
-  const loadApplications = async (silent = false) => {
-    if (!organizationId) return;
-    if (!silent) setLoadingApps(true);
-    try {
-      const apps = await apiGetOrgMembers(organizationId, 'pending', 'teacher');
-      setApplications(apps);
-    } catch (e: any) {
-      if (!silent) toast.error(e.message || t('common.loadError', 'Ошибка загрузки'));
-    } finally {
-      if (!silent) setLoadingApps(false);
-    }
-  };
-
   // Destinations for bulk migration. Only fetched for members who can actually run
   // a bulk action, so a read-only viewer costs nothing extra. orgListBranches already
   // narrows a branch-scoped manager to their own branches.
@@ -121,7 +95,6 @@ const TeachersPage: React.FC = () => {
 
   useEffect(() => {
     loadTeachers();
-    loadApplications();
   }, [organizationId]);
 
   useEffect(() => { if (bulkEnabled) loadBulkTargets(); }, [organizationId, bulkEnabled]);
@@ -188,57 +161,6 @@ const TeachersPage: React.FC = () => {
     }
   };
 
-  const handleInvite = async () => {
-    if (!inviteEmail.trim()) return;
-
-    if (limits.maxTeachers !== -1 && teachers.length >= limits.maxTeachers) {
-      toast.error(t('org.settings.maxTeachersReached', 'Достигнут лимит преподавателей для вашего тарифа'));
-      return;
-    }
-
-    setSaving(true); setError('');
-    try {
-      await orgInviteUser(inviteEmail.trim(), 'teacher');
-      setShowInvite(false); setInviteEmail('');
-      setSuccess(t('org.teachers.inviteSent')); setTimeout(() => setSuccess(''), 3000);
-    } catch (e: any) { setError(e.message || t('common.loadError', 'Ошибка')); }
-    finally { setSaving(false); }
-  };
-
-  const handleApprove = async (userId: string) => {
-    if (!organizationId) return;
-
-    if (limits.maxTeachers !== -1 && teachers.length >= limits.maxTeachers) {
-      toast.error(t('org.settings.maxTeachersReached', 'Достигнут лимит преподавателей для вашего тарифа'));
-      return;
-    }
-
-    try {
-      await apiAcceptMembership(userId, organizationId);
-      // Optimistic: remove from local list immediately
-      setApplications(prev => prev.filter(a => a.userId !== userId));
-      toast.success(t('directory.applicationApproved', 'Заявка одобрена!'));
-      // Silent background refresh
-      loadTeachers(true);
-    } catch (e: any) {
-      toast.error(e.message);
-      loadApplications(true); // Restore real state on error
-    }
-  };
-
-  const handleReject = async (userId: string) => {
-    if (!organizationId) return;
-    try {
-      await apiRejectMembership(userId, organizationId);
-      // Optimistic: remove from local list immediately
-      setApplications(prev => prev.filter(a => a.userId !== userId));
-      toast.success(t('directory.applicationRejected', 'Заявка отклонена'));
-    } catch (e: any) {
-      toast.error(e.message);
-      loadApplications(true); // Restore real state on error
-    }
-  };
-
   if (loading) return <ListSkeleton rows={6} />;
 
   return (
@@ -249,43 +171,18 @@ const TeachersPage: React.FC = () => {
         <div>
           <h1 className="text-3xl font-extrabold text-slate-900 dark:text-white mb-2">{t('nav.teachers')}</h1>
           <p className="text-slate-500 dark:text-slate-400 text-sm">
-            {activeTab === 'teachers' ? `${teachers.length} ${t('org.teachers.total')}` : `${applications.length} заявок`}
+            {`${teachers.length} ${t('org.teachers.total')}`}
           </p>
         </div>
         <div className="flex items-center gap-3 w-full sm:w-auto">
-          <button onClick={() => { loadTeachers(); loadApplications(); }} className="p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-xl transition-colors">
+          <button onClick={() => loadTeachers()} className="p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-xl transition-colors">
             <RefreshCw className="w-4 h-4" />
-          </button>
-          <button onClick={() => setShowInvite(true)} className="flex-1 sm:flex-none bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 px-4 py-2.5 rounded-xl text-sm font-semibold flex justify-center items-center gap-2 transition-all shrink-0">
-            <Mail className="w-4 h-4" />
-            {t('org.teachers.invite')}
           </button>
           <button onClick={() => setShowCreateModal(true)} className="flex-1 sm:flex-none bg-slate-900 hover:bg-slate-800 text-white dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100 px-4 py-2.5 rounded-xl text-sm font-semibold flex justify-center items-center gap-2 transition-all shadow-sm hover:shadow-md shrink-0">
             <Plus className="w-4 h-4" />
             {t('org.teachers.add', 'Добавить')}
           </button>
         </div>
-      </div>
-
-      {/* Tabs */}
-      <div className="flex gap-4 border-b border-slate-200 dark:border-slate-700 mb-6">
-        <button
-          onClick={() => setActiveTab('teachers')}
-          className={`pb-2.5 text-sm font-semibold border-b-2 transition-colors ${activeTab === 'teachers' ? 'border-slate-900 dark:border-white text-slate-900 dark:text-white' : 'border-transparent text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}
-        >
-          Активные преподаватели
-        </button>
-        <button
-          onClick={() => setActiveTab('applications')}
-          className={`pb-2.5 text-sm font-semibold border-b-2 transition-colors flex items-center gap-2 ${activeTab === 'applications' ? 'border-slate-900 dark:border-white text-slate-900 dark:text-white' : 'border-transparent text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}
-        >
-          Заявки
-          {applications.length > 0 && (
-            <span className="bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full">
-              {applications.length}
-            </span>
-          )}
-        </button>
       </div>
 
       {/* Onboarding Hint for Managers */}
@@ -307,30 +204,17 @@ const TeachersPage: React.FC = () => {
               <h3 className="text-sm font-bold text-slate-900 dark:text-white mb-2">
                 {t('org.teachers.hintTitle', 'Как добавить преподавателя?')}
               </h3>
-              <div className="space-y-2">
-                <div className="flex items-start gap-2">
-                  <span className="w-5 h-5 rounded-full bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 flex items-center justify-center shrink-0 text-[10px] font-bold mt-0.5">1</span>
-                  <p className="text-xs text-slate-600 dark:text-slate-400">
-                    <span className="font-semibold text-slate-800 dark:text-slate-200">{t('org.teachers.hintAddTitle', 'Добавить напрямую')}</span> — {t('org.teachers.hintAddDesc', 'нажмите «Добавить», введите ФИО и задайте логин с паролем. Передайте эти данные преподавателю — самому регистрироваться не нужно.')}
-                  </p>
-                </div>
-                <div className="flex items-start gap-2">
-                  <span className="w-5 h-5 rounded-full bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 flex items-center justify-center shrink-0 text-[10px] font-bold mt-0.5">2</span>
-                  <p className="text-xs text-slate-600 dark:text-slate-400">
-                    <span className="font-semibold text-slate-800 dark:text-slate-200">{t('org.teachers.hintInviteTitle', 'Пригласить по Email')}</span> — {t('org.teachers.hintInviteDesc', 'если у преподавателя уже есть аккаунт в системе, отправьте приглашение по email кнопкой «Пригласить».')}
-                  </p>
-                </div>
-              </div>
+              <p className="text-xs text-slate-600 dark:text-slate-400">
+                {t('org.teachers.hintAddDesc', 'Нажмите «Добавить», введите ФИО и задайте логин с паролем. Передайте эти данные преподавателю — самому регистрироваться не нужно.')}
+              </p>
             </div>
           </div>
         </div>
       )}
 
       {error && <div className="mb-6 px-4 py-3 bg-red-500/10 border border-red-500/20 rounded-xl text-sm text-red-600 dark:text-red-400">{error}</div>}
-      {success && <div className="mb-6 px-4 py-3 bg-emerald-500/10 border border-emerald-500/20 rounded-xl text-sm text-emerald-600 dark:text-emerald-400">{success}</div>}
 
-      {activeTab === 'teachers' && (
-        <>
+      <>
           {/* Unified Filter Bar */}
           <div className="bg-white dark:bg-slate-800 p-4 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 mb-8 flex flex-col md:flex-row md:items-center gap-4">
             <div className="flex-1 relative">
@@ -450,56 +334,7 @@ const TeachersPage: React.FC = () => {
               })}
             </div>
           )}
-        </>
-      )}
-
-      {activeTab === 'applications' && (
-        <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl overflow-hidden">
-          {loadingApps ? (
-            <ListSkeleton rows={4} />
-          ) : applications.length === 0 ? (
-            <EmptyState
-              icon={UserPlus}
-              title="Нет входящих заявок"
-              description="Когда преподаватели подадут заявки, они появятся здесь"
-            />
-          ) : (
-            <>
-              <div className="hidden md:grid grid-cols-[1fr_200px_120px_100px] gap-3 px-5 py-3 border-b border-slate-100 dark:border-slate-700 bg-slate-50/80 dark:bg-slate-800/80 text-[11px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
-                <span>Сотрудник</span>
-                <span>{t('common.email', 'Email')}</span>
-                <span>{t('common.date')}</span>
-                <span className="text-right">{t('common.actions')}</span>
-              </div>
-              {applications.map((app) => (
-                <div key={app.id} className="flex flex-col md:grid md:grid-cols-[1fr_200px_120px_100px] gap-2 md:gap-3 items-center px-5 py-3.5 border-b border-slate-100 dark:border-slate-700/50 last:border-b-0 hover:bg-primary-50/40 dark:hover:bg-primary-900/10 transition-colors">
-                  <div className="flex items-center gap-3 min-w-0 w-full">
-                    {(app as any).userAvatarUrl ? (
-                      <img src={(app as any).userAvatarUrl} alt="" className="w-9 h-9 rounded-full object-cover shrink-0" />
-                    ) : (
-                      <div className="w-9 h-9 bg-violet-500 rounded-full flex items-center justify-center text-xs text-white font-bold shrink-0">{app.userName?.[0]?.toUpperCase() || '?'}</div>
-                    )}
-                    <span className="text-sm font-bold text-slate-900 dark:text-white truncate">{app.userName}</span>
-                  </div>
-                  <div className="hidden md:flex items-center gap-1.5 text-[11px] text-slate-500 dark:text-slate-400 truncate">
-                    <Mail className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                    <span className="truncate">{app.userEmail}</span>
-                  </div>
-                  <div className="hidden md:block text-[11px] text-slate-500">{new Date(app.createdAt).toLocaleDateString()}</div>
-                  <div className="flex justify-end gap-2">
-                    <button onClick={() => handleApprove(app.userId)} className="p-1.5 text-emerald-600 bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-900/20 dark:hover:bg-emerald-900/30 rounded-lg transition-colors" title={t('common.accept')}>
-                      <CheckCircle className="w-4 h-4" />
-                    </button>
-                    <button onClick={() => handleReject(app.userId)} className="p-1.5 text-red-600 bg-red-50 hover:bg-red-100 dark:bg-red-900/20 dark:hover:bg-red-900/30 rounded-lg transition-colors" title={t('common.reject')}>
-                      <XCircle className="w-4 h-4" />
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </>
-          )}
-        </div>
-      )}
+      </>
 
       {/* Create Teacher Modal — add a teacher directly, no self-registration */}
       {showCreateModal && (
@@ -614,37 +449,6 @@ const TeachersPage: React.FC = () => {
         </div>
       )}
 
-      {/* Invite Teacher Modal */}
-      {showInvite && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => setShowInvite(false)}>
-          <div className="bg-white dark:bg-slate-800 rounded-3xl p-8 w-full max-w-md shadow-2xl" onClick={(e) => e.stopPropagation()}>
-            <h2 className="text-xl font-bold text-slate-900 dark:text-white mb-1">{t('org.teachers.invite')}</h2>
-            <p className="text-xs text-slate-500 mb-6">{t('org.teachers.inviteDesc')}</p>
-            <div>
-              <label className="text-xs font-semibold text-slate-500 mb-1 block">Email</label>
-              <div className="relative">
-                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                <input
-                  type="email"
-                  value={inviteEmail}
-                  onChange={(e) => setInviteEmail(e.target.value)}
-                  placeholder={t('org.teachers.inviteEmailPlaceholder')}
-                  className="w-full bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl pl-10 pr-4 py-3 text-sm focus:ring-2 focus:ring-slate-900 focus:border-slate-900 dark:focus:ring-white outline-none"
-                  autoFocus
-                />
-              </div>
-            </div>
-            <div className="flex justify-end gap-3 mt-8">
-              <button onClick={() => setShowInvite(false)} className="px-5 py-2.5 rounded-xl text-sm font-semibold text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800 transition-colors">{t('common.cancel')}</button>
-              <button onClick={handleInvite} disabled={saving || !inviteEmail.trim()}
-                className="px-5 py-2.5 rounded-xl text-sm font-semibold bg-slate-900 text-white hover:bg-slate-800 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2">
-                <Send className="w-4 h-4" />
-                {saving ? '...' : t('org.teachers.sendInvite')}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 };

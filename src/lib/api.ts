@@ -155,14 +155,6 @@ const memberReq = <T = any>(action: string, method = 'GET', body?: any, extra?: 
 export const apiGetMyMemberships = () => memberReq('myMemberships');
 export const apiGetOrgMembers = (orgId: string, status?: string, role?: string) =>
   memberReq('orgMembers', 'GET', undefined, { orgId, ...(status ? { status } : {}), ...(role ? { role } : {}) });
-export const apiApplyToOrg = (organizationId: string, role?: string) =>
-  memberReq('apply', 'POST', { organizationId, role });
-export const apiInviteToOrg = (email: string, organizationId: string, role?: string) =>
-  memberReq('invite', 'POST', { email, organizationId, role });
-export const apiAcceptMembership = (userId: string, organizationId: string) =>
-  memberReq('accept', 'POST', { userId, organizationId });
-export const apiRejectMembership = (userId: string, organizationId: string) =>
-  memberReq('reject', 'POST', { userId, organizationId });
 export const apiLeaveMembership = (organizationId: string) =>
   memberReq('leave', 'POST', { organizationId });
 export const apiRemoveMember = (userId: string, organizationId: string) =>
@@ -303,15 +295,9 @@ export const orgGetCourse = (id: string) => orgReq('course', 'GET', undefined, {
 export const orgCreateCourse = (data: any) => orgReq('createCourse', 'POST', data);
 export const orgUpdateCourse = (data: any) => orgReq('updateCourse', 'POST', data);
 export const orgDeleteCourse = (id: string) => orgReq('deleteCourse', 'POST', { id });
-export const orgEnrollInCourse = (courseId: string) => orgReq('enrollInCourse', 'POST', { courseId });
 // Teacher self-service: add/remove yourself as a teacher of a course (own uid only)
 export const orgTeacherJoinCourse = (courseId: string) => orgReq('teacherJoinCourse', 'POST', { courseId });
 export const orgTeacherLeaveCourse = (courseId: string) => orgReq('teacherLeaveCourse', 'POST', { courseId });
-
-// Course Requests
-export const orgGetCourseRequests = () => orgReq('getCourseRequests');
-export const orgApproveCourseRequest = (requestId: string, groupId: string) => orgReq('approveCourseRequest', 'POST', { requestId, groupId });
-export const orgRejectCourseRequest = (requestId: string) => orgReq('rejectCourseRequest', 'POST', { requestId });
 
 // Groups
 export const orgGetGroups = (courseId?: string) => orgReq('groups', 'GET', undefined, courseId ? { courseId } : undefined);

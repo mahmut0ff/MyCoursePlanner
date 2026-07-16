@@ -19,7 +19,7 @@ import {
   orgApproveCourseRequest,
   orgRejectCourseRequest
 } from '../../lib/api';
-import { Users, Search, Mail, RefreshCw, CheckCircle, XCircle, UserPlus, Phone, Filter, X, SortAsc, SortDesc, Trash2, Plus, Lightbulb, Link as LinkIcon, Copy, BookOpen, UsersRound, Upload, KeyRound, Eye, EyeOff, Calendar } from 'lucide-react';
+import { Users, Search, Mail, RefreshCw, CheckCircle, XCircle, UserPlus, Phone, Filter, X, SortAsc, SortDesc, Trash2, Plus, Lightbulb, Link as LinkIcon, Copy, BookOpen, UsersRound, Upload, KeyRound, Eye, EyeOff, Calendar, Building2 } from 'lucide-react';
 import type { UserProfile, Group, Branch } from '../../types';
 import toast from 'react-hot-toast';
 import { PinnedBadgesDisplay } from '../../lib/badges';
@@ -28,7 +28,7 @@ import BulkActionBar from '../../components/roster/BulkActionBar';
 import EmptyState from '../../components/ui/EmptyState';
 import { ListSkeleton } from '../../components/ui/Skeleton';
 
-type SortField = 'name' | 'email' | 'date';
+type SortField = 'name' | 'branch' | 'date';
 type SortDir = 'asc' | 'desc';
 
 const StudentsPage: React.FC = () => {
@@ -143,8 +143,9 @@ const StudentsPage: React.FC = () => {
     } catch { /* silent */ }
   };
 
-  // Destinations for bulk branch migration. The endpoint already narrows a
-  // branch-scoped manager to their own branches, so this list is safe to offer whole.
+  // Branch names for the "Филиал" column and destinations for bulk branch
+  // migration. The endpoint already narrows a branch-scoped manager to their
+  // own branches, so this list is safe to offer whole.
   const loadBranches = async () => {
     try {
       const data = await orgListBranches();
@@ -185,7 +186,7 @@ const StudentsPage: React.FC = () => {
     loadCourseRequests();
   }, [organizationId, branchFilter]);
 
-  useEffect(() => { if (bulkEnabled) loadBranches(); }, [organizationId, bulkEnabled]);
+  useEffect(() => { loadBranches(); }, [organizationId]);
 
   // Reset page when filters change
   useEffect(() => setPage(1), [search, selectedGroup, statusFilter, sortField, sortDir]);
@@ -193,6 +194,18 @@ const StudentsPage: React.FC = () => {
   // A selection only means something for rows still on screen — drop it whenever the
   // filtered set changes under it, so a bulk action can't hit rows you can no longer see.
   useEffect(() => setSelected(new Set()), [search, selectedGroup, statusFilter, branchFilter]);
+
+  // Branch names by id — feeds the "Филиал" column and branch sorting.
+  const branchNameById = useMemo(() => {
+    const map: Record<string, string> = {};
+    branches.forEach(b => { map[b.id] = b.name; });
+    return map;
+  }, [branches]);
+
+  const getStudentBranchNames = (s: UserProfile): string[] =>
+    (((s as any).branchIds || []) as string[])
+      .map(id => branchNameById[id])
+      .filter(Boolean);
 
   // Filtered & sorted students
   const filteredStudents = useMemo(() => {
@@ -227,8 +240,8 @@ const StudentsPage: React.FC = () => {
       let cmp = 0;
       if (sortField === 'name') {
         cmp = (a.displayName || '').localeCompare(b.displayName || '', 'ru');
-      } else if (sortField === 'email') {
-        cmp = (a.email || '').localeCompare(b.email || '');
+      } else if (sortField === 'branch') {
+        cmp = getStudentBranchNames(a).join(', ').localeCompare(getStudentBranchNames(b).join(', '), 'ru');
       } else if (sortField === 'date') {
         cmp = new Date(a.createdAt || 0).getTime() - new Date(b.createdAt || 0).getTime();
       }
@@ -236,7 +249,7 @@ const StudentsPage: React.FC = () => {
     });
 
     return result;
-  }, [students, search, selectedGroup, groups, sortField, sortDir, statusFilter]);
+  }, [students, search, selectedGroup, groups, sortField, sortDir, statusFilter, branchNameById]);
 
   const handleApprove = async (userId: string) => {
     if (!organizationId) return;
@@ -482,14 +495,25 @@ const StudentsPage: React.FC = () => {
 
   // Columns shift by one when the checkbox column is present.
   const gridCols = bulkEnabled
-    ? 'md:grid-cols-[28px_1fr_180px_120px_130px_100px]'
-    : 'md:grid-cols-[1fr_180px_120px_130px_100px]';
+    ? 'md:grid-cols-[28px_1fr_140px_110px_150px_140px_100px]'
+    : 'md:grid-cols-[1fr_140px_110px_150px_140px_100px]';
 
   // Get group name for a student
   const getStudentGroups = (uid: string): string[] => {
     return groups
       .filter(g => (g.studentIds || []).includes(uid))
       .map(g => g.name);
+  };
+
+  // Course names for a student — derived from the groups they belong to.
+  const getStudentCourses = (uid: string): string[] => {
+    const courseIds = new Set(
+      groups
+        .filter(g => (g.studentIds || []).includes(uid))
+        .map(g => g.courseId)
+        .filter(Boolean)
+    );
+    return courses.filter(c => courseIds.has(c.id)).map(c => c.title).filter(Boolean);
   };
 
   if (loading) return <ListSkeleton rows={6} />;
@@ -702,17 +726,20 @@ const StudentsPage: React.FC = () => {
                   {t('org.results.student')}
                   {sortField === 'name' && (sortDir === 'asc' ? <SortAsc className="w-3 h-3" /> : <SortDesc className="w-3 h-3" />)}
                 </span>
-                <span className="cursor-pointer hover:text-slate-600 dark:hover:text-slate-300 flex items-center gap-1 select-none" onClick={() => toggleSort('email')}>
-                  Email
-                  {sortField === 'email' && (sortDir === 'asc' ? <SortAsc className="w-3 h-3" /> : <SortDesc className="w-3 h-3" />)}
+                <span className="cursor-pointer hover:text-slate-600 dark:hover:text-slate-300 flex items-center gap-1 select-none" onClick={() => toggleSort('branch')}>
+                  {t('common.branch', 'Филиал')}
+                  {sortField === 'branch' && (sortDir === 'asc' ? <SortAsc className="w-3 h-3" /> : <SortDesc className="w-3 h-3" />)}
                 </span>
                 <span>{t('common.phone')}</span>
+                <span>{t('nav.courses', 'Курсы')}</span>
                 <span>{t('org.students.groupCol', 'Группа')}</span>
                 <span>{t('common.status')}</span>
               </div>
 
               {paginatedStudents.map((s) => {
                 const studentGroupNames = getStudentGroups(s.uid);
+                const studentCourseNames = getStudentCourses(s.uid);
+                const studentBranchNames = getStudentBranchNames(s);
                 return (
                   <div
                     key={s.uid}
@@ -745,7 +772,7 @@ const StudentsPage: React.FC = () => {
                         </h3>
                         {/* Mobile-only meta */}
                         <div className="flex items-center gap-2 mt-1 md:hidden flex-wrap">
-                          {s.email && <span className="text-[10px] text-slate-400 flex items-center gap-1"><Mail className="w-3 h-3" />{s.email}</span>}
+                          {studentBranchNames.length > 0 && <span className="text-[10px] text-slate-400 flex items-center gap-1"><Building2 className="w-3 h-3" />{studentBranchNames.join(', ')}</span>}
                           {s.phone && <span className="text-[10px] text-slate-400 flex items-center gap-1"><Phone className="w-3 h-3" />{s.phone}</span>}
                           <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${(s as any).status === 'expelled' ? 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400' : 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400'}`}>
                             {(s as any).status === 'expelled' ? t('common.expelled', 'Отчислен') : t('common.active', 'Активен')}
@@ -754,10 +781,13 @@ const StudentsPage: React.FC = () => {
                       </div>
                     </div>
 
-                    {/* Email */}
-                    <div className="hidden md:flex items-center gap-1.5 text-[11px] text-slate-500 dark:text-slate-400 truncate">
-                      <Mail className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                      <span className="truncate">{s.email}</span>
+                    {/* Branch */}
+                    <div className="hidden md:flex items-center gap-1.5 text-[11px] text-slate-500 dark:text-slate-400 min-w-0">
+                      {studentBranchNames.length > 0 ? (
+                        <><Building2 className="w-3.5 h-3.5 text-slate-400 shrink-0" /><span className="truncate" title={studentBranchNames.join(', ')}>{studentBranchNames.join(', ')}</span></>
+                      ) : (
+                        <span className="text-slate-300 dark:text-slate-600">—</span>
+                      )}
                     </div>
 
                     {/* Phone */}
@@ -766,6 +796,22 @@ const StudentsPage: React.FC = () => {
                         <><Phone className="w-3.5 h-3.5 text-slate-400" /><span>{s.phone}</span></>
                       ) : (
                         <span className="text-slate-300 dark:text-slate-600">—</span>
+                      )}
+                    </div>
+
+                    {/* Courses */}
+                    <div className="hidden md:flex flex-wrap gap-1 min-w-0">
+                      {studentCourseNames.length > 0 ? (
+                        <>
+                          {studentCourseNames.slice(0, 2).map((name, i) => (
+                            <span key={i} className="text-[10px] px-1.5 py-0.5 rounded bg-violet-500/10 text-violet-600 dark:text-violet-400 font-medium truncate max-w-[110px]" title={name}>{name}</span>
+                          ))}
+                          {studentCourseNames.length > 2 && (
+                            <span className="text-[10px] px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-700 text-slate-500 font-medium" title={studentCourseNames.slice(2).join(', ')}>+{studentCourseNames.length - 2}</span>
+                          )}
+                        </>
+                      ) : (
+                        <span className="text-[10px] text-slate-300 dark:text-slate-600">—</span>
                       )}
                     </div>
 

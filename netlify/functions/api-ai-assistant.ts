@@ -85,12 +85,75 @@ async function dispatch(
 // Small helpers
 // ─────────────────────────────────────────────────────────────────────────────
 
-const norm = (s: any) => String(s || '').toLowerCase().trim();
-const matches = (query: any, ...fields: any[]) => {
+// Case/accent-tolerant normalization: lowercased, ё→е, punctuation→space.
+// Handles ЗАГЛАВНЫЕ vs строчные and stray dots/commas so name search is robust.
+const norm = (s: any) => String(s || '').toLowerCase().replace(/ё/g, 'е').replace(/[^\p{L}\p{N}]+/gu, ' ').trim();
+
+function editDistance(a: string, b: string): number {
+  const m = a.length, n = b.length;
+  if (!m) return n;
+  if (!n) return m;
+  let prev = Array.from({ length: n + 1 }, (_, i) => i);
+  for (let i = 1; i <= m; i++) {
+    const cur = [i];
+    for (let j = 1; j <= n; j++) {
+      cur[j] = Math.min(prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
+    }
+    prev = cur;
+  }
+  return prev[n];
+}
+
+/**
+ * Fuzzy relevance of a query to a row's fields. 0 = no match, 1 = exact/substring.
+ * Every query token must have a close counterpart token in some field (substring
+ * or small edit distance), so "Абдуллох" matches the group "АБДУЛЛАХ" (о↔а) and
+ * "махмутов" matches "Махмутов А". Lets the MODEL do the final disambiguation.
+ */
+function matchScore(query: any, ...fields: any[]): number {
   const q = norm(query);
-  if (!q) return true;
-  return fields.some(f => norm(f).includes(q));
-};
+  if (!q) return 1;
+  const qTokens = q.split(' ').filter(Boolean);
+  let best = 0;
+  for (const f of fields) {
+    const target = norm(f);
+    if (!target) continue;
+    if (target.includes(q)) { best = Math.max(best, 1); continue; }
+    const tTokens = target.split(' ').filter(Boolean);
+    let sum = 0, ok = true;
+    for (const qt of qTokens) {
+      let tokBest = 0;
+      for (const tt of tTokens) {
+        if (qt === tt) { tokBest = 1; break; }
+        // Substring / fuzzy only for non-trivial tokens — otherwise a 1-letter
+        // group suffix like "А" (in «Махмутов А») would match any word with "а".
+        const shorter = Math.min(qt.length, tt.length);
+        if (shorter < 3) continue;
+        if (tt.includes(qt) || qt.includes(tt)) { tokBest = Math.max(tokBest, 0.9); continue; }
+        const sim = 1 - editDistance(qt, tt) / Math.max(qt.length, tt.length);
+        tokBest = Math.max(tokBest, sim);
+      }
+      if (tokBest < 0.6) ok = false;
+      sum += tokBest;
+    }
+    if (ok) best = Math.max(best, 0.5 + (sum / qTokens.length) * 0.4);
+  }
+  return best;
+}
+
+/**
+ * Filter + rank rows by a fuzzy query. Confident matches (score ≥ 0.6) are
+ * returned best-first; when nothing clears the bar, the closest few candidates
+ * are returned instead so the model can spell-correct or ask — never a bare
+ * "not found" when a near-match exists on screen.
+ */
+function rankByQuery<T>(rows: T[], query: any, fieldsFn: (r: T) => any[]): T[] {
+  if (!norm(query)) return rows;
+  const scored = rows.map(r => ({ r, s: matchScore(query, ...fieldsFn(r)) }));
+  const strong = scored.filter(x => x.s >= 0.6).sort((a, b) => b.s - a.s);
+  if (strong.length) return strong.map(x => x.r);
+  return scored.filter(x => x.s > 0.3).sort((a, b) => b.s - a.s).slice(0, 8).map(x => x.r);
+}
 /** Trim a list for the model: first MAX_LIST rows + total count. */
 const page = <T>(rows: T[]) => ({
   total: rows.length,
@@ -152,7 +215,7 @@ const TOOLS: ToolSpec[] = [
         const inGroup = new Set(g.studentIds || []);
         rows = rows.filter(r => inGroup.has(r.uid));
       }
-      rows = rows.filter(r => matches(args.query, r.displayName, r.phone));
+      rows = rankByQuery(rows, args.query, r => [r.displayName, r.phone]);
       return page(rows.map(r => ({
         id: r.uid, name: r.displayName, phone: r.phone || '', status: r.status || 'active',
       })));
@@ -172,8 +235,7 @@ const TOOLS: ToolSpec[] = [
     summary: () => 'Поиск преподавателей',
     run: async (_u, event, args) => {
       const rows: any[] = await dispatch(orgHandler, event, 'GET', { action: 'teachers' });
-      return page(rows
-        .filter(r => matches(args.query, r.displayName, r.phone))
+      return page(rankByQuery(rows, args.query, r => [r.displayName, r.phone])
         .map(r => ({ id: r.uid, name: r.displayName, phone: r.phone || '', role: r.role })));
     },
   },
@@ -198,8 +260,7 @@ const TOOLS: ToolSpec[] = [
       if (args.courseId) params.courseId = str(args.courseId);
       if (args.branchId) params.branchId = str(args.branchId);
       const rows: any[] = await dispatch(orgHandler, event, 'GET', params);
-      return page(rows
-        .filter(r => matches(args.query, r.name, r.courseName))
+      return page(rankByQuery(rows, args.query, r => [r.name, r.courseName])
         .map(r => ({
           id: r.id, name: r.name, courseName: (r.courseName || '').trim(), courseId: r.courseId,
           students: (r.studentIds || []).length, status: r.status || 'active', branchId: r.branchId || null,
@@ -246,8 +307,7 @@ const TOOLS: ToolSpec[] = [
     summary: () => 'Список курсов',
     run: async (_u, event, args) => {
       const rows: any[] = await dispatch(orgHandler, event, 'GET', { action: 'courses' });
-      return page(rows
-        .filter(r => matches(args.query, r.title, r.subject))
+      return page(rankByQuery(rows, args.query, r => [r.title, r.subject])
         .map(r => ({
           id: r.id, title: (r.title || '').trim(), price: r.price || 0,
           paymentFormat: r.paymentFormat || 'one-time', status: r.status, branchId: r.branchId || null,
@@ -843,9 +903,9 @@ function buildSystemInstruction(user: AuthUser, orgName: string, toolNames: stri
     'Правила работы:',
     '1. Прежде чем выполнять действие над людьми/группами/курсами — ВСЕГДА найди их через инструменты чтения (list_students, list_groups, list_courses…) и используй настоящие id. НИКОГДА не выдумывай id.',
     '2. Действия-изменения не выполняются сразу: интерфейс покажет пользователю карточку подтверждения. Поэтому НЕ спрашивай «вы уверены?» — просто вызывай инструмент. В аргументы *Name/*Title передавай реальные названия — их увидит пользователь.',
-    '3. Если найдено несколько подходящих людей (тёзки) — уточни у пользователя, кого он имел в виду, показав варианты с телефонами.',
+    '3. Имена и названия часто записаны по-разному (Абдуллох/Абдуллах, разный регистр, лишние пробелы). Инструменты поиска уже учитывают неточности и возвращают БЛИЖАЙШИЕ совпадения. Поэтому если в результате есть похожий вариант — считай, что нашёл его (не отвечай «не найдено», когда есть близкое совпадение). Если совпадений несколько (тёзки) — уточни у пользователя, показав варианты с телефонами.',
     '4. Если данных недостаточно (нет обязательного поля) — задай короткий уточняющий вопрос.',
-    '5. Если инструмент вернул ошибку или пустой результат — честно скажи об этом.',
+    '5. Если инструмент действительно вернул пустой список (совсем ничего похожего) — честно скажи об этом и предложи показать полный список.',
     `6. Отвечай кратко и по делу, на ${LANG_NAMES[lang] || LANG_NAMES.ru} языке. Для списков используй маркированные строки, важное выделяй **жирным**. Не используй таблицы и заголовки.`,
     '7. Ты работаешь только с данными этого центра. На посторонние темы отвечай, что ты ассистент центра.',
     '',
@@ -876,19 +936,22 @@ async function runChatTurn(user: AuthUser, event: HandlerEvent, body: any) {
   const contents = toContents(body.messages);
   if (!contents.length) return badRequest('messages required');
 
+  const genOpts = { systemInstruction, ...(decls.length ? { tools: [{ functionDeclarations: decls }] } : {}) };
   for (let loop = 0; loop < MAX_LOOPS; loop++) {
-    const result = await generateWithFallback(
-      { systemInstruction, ...(decls.length ? { tools: [{ functionDeclarations: decls }] } : {}) },
-      { contents },
-    );
-    const resp = result.response;
     // Both accessors throw (GoogleGenerativeAIResponseError) when the candidate
     // has a bad finish reason (SAFETY/RECITATION/LANGUAGE) or the prompt was
     // blocked — so guard them and degrade gracefully instead of 500-ing.
+    // gemini-2.5-flash also occasionally returns an EMPTY turn (no text, no call —
+    // e.g. MALFORMED_FUNCTION_CALL); retry the generation once before giving up.
     let calls: Array<{ name: string; args: any }> = [];
     let text = '';
-    try { calls = resp.functionCalls?.() || []; } catch { calls = []; }
-    try { text = resp.text() || ''; } catch { /* function-call-only or blocked */ }
+    for (let attempt = 0; attempt < 2; attempt++) {
+      const result = await generateWithFallback(genOpts, { contents });
+      const resp = result.response;
+      try { calls = resp.functionCalls?.() || []; } catch { calls = []; }
+      try { text = resp.text() || ''; } catch { /* function-call-only or blocked */ }
+      if (calls.length || text) break;
+    }
 
     if (!calls.length) {
       recordAiUsage(user.organizationId, 'assistant');

@@ -804,11 +804,16 @@ const handler: Handler = async (event: HandlerEvent) => {
         .filter((m: any) => memberHoldsRole(m, ['student']));
 
       // Branch scoping in memory (the query above is unscoped by branch).
-      if (params.branchId) {
-        filtered = filtered.filter((s: any) => s.branchIds.includes(params.branchId));
-      } else if (hasRole(user, 'manager') && user.branchIds.length > 0) {
+      // Use resolveBranchFilter so a branch-scoped manager can't read a branch
+      // they aren't assigned to — even when they (or the AI copilot) pass an
+      // explicit branchId. Mirrors the courses/groups/schedule actions.
+      const studentBranchScope = resolveBranchFilter(user, params.branchId);
+      if (studentBranchScope === '__DENIED__') return ok([]);
+      if (typeof studentBranchScope === 'string') {
+        filtered = filtered.filter((s: any) => s.branchIds.includes(studentBranchScope));
+      } else if (Array.isArray(studentBranchScope)) {
         filtered = filtered.filter((s: any) =>
-          s.branchIds.length === 0 || s.branchIds.some((id: string) => user.branchIds.includes(id))
+          s.branchIds.length === 0 || s.branchIds.some((id: string) => studentBranchScope.includes(id))
         );
       }
 

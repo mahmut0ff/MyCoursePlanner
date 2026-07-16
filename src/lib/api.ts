@@ -37,7 +37,12 @@ async function apiRequest<T = any>(
 
   if (!res.ok) {
     const errorData = await res.json().catch(() => ({ error: res.statusText }));
-    throw new Error(errorData.error || `API error: ${res.status}`);
+    const err = new Error(errorData.error || `API error: ${res.status}`);
+    // Preserve HTTP status + any structured `code` so callers can branch on them
+    // (e.g. plan gating) instead of brittle message string-matching.
+    (err as any).status = res.status;
+    if (errorData.code) (err as any).code = errorData.code;
+    throw err;
   }
 
   return res.json();
@@ -631,6 +636,14 @@ export const apiAIManagerChat = (organizationId: string, messages: any[]) =>
 
 export const apiGetAIManagerUsage = (organizationId: string) =>
   apiRequest('api-ai-org-manager', 'GET', undefined, { action: 'getUsage', organizationId });
+
+// ---- AI Admin Assistant (floating staff copilot) ----
+export const apiAssistantCapabilities = () =>
+  apiRequest('api-ai-assistant', 'GET', undefined, { action: 'capabilities' });
+export const apiAssistantChat = (messages: { role: string; content: string }[], lang?: string) =>
+  apiRequest('api-ai-assistant', 'POST', { messages, lang }, { action: 'chat' });
+export const apiAssistantExecute = (tool: string, args: any) =>
+  apiRequest('api-ai-assistant', 'POST', { tool, args }, { action: 'execute' });
 
 // ---- AI Insights (owner analyst + churn) ----
 export const apiAIInsightsAsk = (question: string) =>

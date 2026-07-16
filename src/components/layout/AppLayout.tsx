@@ -65,6 +65,7 @@ const SubscriptionGuard: React.FC<{ children: React.ReactNode }> = ({ children }
 import { apiGetOrganization } from '../../lib/api';
 import PWAInstallPrompt from '../pwa/PWAInstallPrompt';
 import NetworkStatusBar from '../network/NetworkStatusBar';
+import AdminCopilotWidget from '../ai/AdminCopilotWidget';
 
 const AppLayout: React.FC = () => {
   const { isSuperAdmin, organizationId } = useAuth();
@@ -138,6 +139,8 @@ const AppLayout: React.FC = () => {
           </SubscriptionGuard>
         </div>
       </div>
+      {/* Floating AI copilot for staff — bottom-right, RBAC/plan-gated server-side */}
+      <AdminCopilotWidget />
     </OrgContext.Provider>
     </PermissionsProvider>
     </PlanProvider>

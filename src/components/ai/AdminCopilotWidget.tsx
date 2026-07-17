@@ -13,10 +13,14 @@ import { useTranslation } from 'react-i18next';
 import {
   Sparkles, X, Send, Loader2, RotateCcw, Check, AlertTriangle, Trash2,
   UserPlus, Users, BookOpen, CalendarPlus, CalendarX, Banknote, ArrowRightLeft,
-  Pencil, Wand2, ShieldAlert, Lock,
+  Pencil, Wand2, ShieldAlert, Lock, Paperclip,
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
-import { apiAssistantChat, apiAssistantExecute, apiAssistantCapabilities } from '../../lib/api';
+import {
+  apiAssistantChat, apiAssistantExecute, apiAssistantCapabilities,
+  apiAssistantImportParse, apiAssistantImportCommit,
+} from '../../lib/api';
+import ImportPreviewCard, { type ImportPlan, type ImportResult } from './ImportPreviewCard';
 
 type ActionStatus = 'pending' | 'running' | 'done' | 'cancelled' | 'error';
 
@@ -34,6 +38,8 @@ interface Msg {
   role: 'user' | 'assistant';
   content: string;
   actions?: ActionItem[];
+  thumbs?: string[];          // data-URL previews of attached screenshots (user turn)
+  importPlan?: ImportPlan;    // screenshot-import preview (assistant turn)
 }
 
 const TOOL_ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
@@ -103,6 +109,41 @@ function resultLine(tool: string, result: any, t: (k: string, o?: any) => string
   return '';
 }
 
+// ── Screenshot import: attach + client-side downscale ──
+const MAX_IMPORT_IMAGES = 6;
+const MAX_IMAGE_DIM = 1600;   // keep OCR legible while staying under the body limit
+
+interface PendingImage { id: string; dataUrl: string; mimeType: string; data: string }
+
+/** Downscale to ≤MAX_IMAGE_DIM and re-encode as JPEG so several screenshots fit
+ *  in one request body (Netlify functions cap the payload at a few MB). */
+function compressImage(file: File): Promise<PendingImage> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      const scale = Math.min(1, MAX_IMAGE_DIM / Math.max(img.width, img.height));
+      const w = Math.max(1, Math.round(img.width * scale));
+      const h = Math.max(1, Math.round(img.height * scale));
+      const canvas = document.createElement('canvas');
+      canvas.width = w; canvas.height = h;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) { reject(new Error('no canvas context')); return; }
+      ctx.drawImage(img, 0, 0, w, h);
+      const dataUrl = canvas.toDataURL('image/jpeg', 0.82);
+      resolve({
+        id: `img${Math.random().toString(36).slice(2)}`,
+        dataUrl,
+        mimeType: 'image/jpeg',
+        data: dataUrl.split(',')[1] || '',
+      });
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('image load failed')); };
+    img.src = url;
+  });
+}
+
 const AdminCopilotWidget: React.FC = () => {
   const { t, i18n } = useTranslation();
   const { role, organizationId, isSuperAdmin } = useAuth();
@@ -113,10 +154,13 @@ const AdminCopilotWidget: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [caps, setCaps] = useState<{ tools: Array<{ name: string }>; aiEnabled: boolean } | null>(null);
   const [planLocked, setPlanLocked] = useState(false);
+  const [images, setImages] = useState<PendingImage[]>([]);
+  const [attaching, setAttaching] = useState(false);
   const endRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const fabRef = useRef<HTMLButtonElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const visible = !isSuperAdmin && !!organizationId && organizationId !== 'personal'
     && ['admin', 'manager', 'teacher'].includes(role || '');
@@ -163,9 +207,41 @@ const AdminCopilotWidget: React.FC = () => {
     };
   }, [open]);
 
+  // Screenshot import path: OCR the attached images into an editable preview.
+  const runImport = useCallback(async (hint: string) => {
+    const imgs = images;
+    setImages([]);
+    setMessages(prev => [...prev, {
+      id: `u${Date.now()}`, role: 'user', content: hint, thumbs: imgs.map(i => i.dataUrl),
+    }]);
+    setLoading(true);
+    try {
+      const res: any = await apiAssistantImportParse(
+        imgs.map(i => ({ mimeType: i.mimeType, data: i.data })), hint, i18n.language,
+      );
+      const hasRows = (res?.groups?.length || 0) + (res?.ungrouped?.length || 0) > 0;
+      setMessages(prev => [...prev, hasRows
+        ? { id: `a${Date.now()}`, role: 'assistant', content: '', importPlan: res as ImportPlan }
+        : { id: `a${Date.now()}`, role: 'assistant',
+            content: t('assistant.import.empty', 'Не удалось распознать студентов на изображении. Попробуйте более чёткий или крупный скриншот.') },
+      ]);
+    } catch (err: any) {
+      if (err?.code === 'plan') setPlanLocked(true);
+      setMessages(prev => [...prev, {
+        id: `a${Date.now()}`, role: 'assistant',
+        content: `⚠️ ${err?.message || t('assistant.error', 'Не удалось получить ответ. Попробуйте ещё раз.')}`,
+      }]);
+    } finally {
+      setLoading(false);
+      inputRef.current?.focus();
+    }
+  }, [images, i18n.language, t]);
+
   const send = useCallback(async (text: string) => {
     const trimmed = text.trim();
-    if (!trimmed || loading) return;
+    if (loading) return;
+    if (images.length > 0) { setInput(''); await runImport(trimmed); return; }
+    if (!trimmed) return;
     setInput('');
     const userMsg: Msg = { id: `u${Date.now()}`, role: 'user', content: trimmed };
     const next = [...messages, userMsg];
@@ -190,7 +266,25 @@ const AdminCopilotWidget: React.FC = () => {
       setLoading(false);
       inputRef.current?.focus();
     }
-  }, [messages, loading, i18n.language, t]);
+  }, [messages, loading, i18n.language, t, images, runImport]);
+
+  // Compress + queue picked screenshots (capped at MAX_IMPORT_IMAGES).
+  const pickImages = useCallback(async (files: FileList | null) => {
+    if (!files?.length) return;
+    setAttaching(true);
+    try {
+      const room = Math.max(0, MAX_IMPORT_IMAGES - images.length);
+      const chosen = Array.from(files).filter(f => f.type.startsWith('image/')).slice(0, room);
+      const done = await Promise.all(chosen.map(f => compressImage(f).catch(() => null)));
+      const ok = done.filter((x): x is PendingImage => !!x);
+      if (ok.length) setImages(prev => [...prev, ...ok].slice(0, MAX_IMPORT_IMAGES));
+    } finally {
+      setAttaching(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  }, [images]);
+
+  const runCommit = useCallback((payload: any): Promise<ImportResult> => apiAssistantImportCommit(payload), []);
 
   const setAction = (msgId: string, idx: number, patch: Partial<ActionItem>) => {
     setMessages(prev => prev.map(m => m.id !== msgId ? m : {
@@ -270,7 +364,7 @@ const AdminCopilotWidget: React.FC = () => {
             <div className="flex items-center gap-1 shrink-0">
               {messages.length > 0 && (
                 <button
-                  onClick={() => setMessages([])}
+                  onClick={() => { setMessages([]); setImages([]); }}
                   className="p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
                   title={t('assistant.clear', 'Очистить диалог')}
                 >
@@ -321,9 +415,30 @@ const AdminCopilotWidget: React.FC = () => {
                   </div>
                 )}
 
-                {messages.map(msg => (
+                {messages.map(msg => {
+                  // Screenshot-import preview spans the full width of the thread.
+                  if (msg.importPlan) {
+                    return (
+                      <div key={msg.id} className="w-full">
+                        <ImportPreviewCard plan={msg.importPlan} onImport={runCommit} onCancel={() => {}} />
+                      </div>
+                    );
+                  }
+                  return (
                   <div key={msg.id} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                     <div className={`max-w-[88%] space-y-2 ${msg.role === 'user' ? 'items-end' : 'items-start'}`}>
+                      {msg.thumbs && msg.thumbs.length > 0 && (
+                        <div className="flex flex-wrap gap-1.5 justify-end">
+                          {msg.thumbs.map((src, i) => (
+                            <img
+                              key={i}
+                              src={src}
+                              alt=""
+                              className="w-16 h-16 rounded-lg object-cover border border-slate-200 dark:border-slate-700"
+                            />
+                          ))}
+                        </div>
+                      )}
                       {msg.content && (
                         <div className={`rounded-2xl px-3.5 py-2.5 text-sm whitespace-pre-wrap break-words ${
                           msg.role === 'user'
@@ -408,7 +523,8 @@ const AdminCopilotWidget: React.FC = () => {
                       })}
                     </div>
                   </div>
-                ))}
+                  );
+                })}
 
                 {loading && (
                   <div className="flex justify-start">
@@ -437,25 +553,73 @@ const AdminCopilotWidget: React.FC = () => {
                     ))}
                   </div>
                 )}
-                <div className="relative flex items-center">
-                  <input
-                    ref={inputRef}
-                    type="text"
-                    value={input}
-                    onChange={e => setInput(e.target.value)}
-                    onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(input); } }}
-                    placeholder={t('assistant.placeholder', 'Например: добавь студента Иванов Иван…')}
-                    className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-full pl-4 pr-11 py-2.5 text-sm text-slate-900 dark:text-slate-100 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                    disabled={loading}
-                  />
-                  <button
-                    onClick={() => send(input)}
-                    disabled={!input.trim() || loading}
-                    className="absolute right-1.5 w-8 h-8 flex items-center justify-center bg-primary-600 hover:bg-primary-700 disabled:bg-slate-300 dark:disabled:bg-slate-700 text-white rounded-full transition-colors"
-                    aria-label={t('assistant.send', 'Отправить')}
-                  >
-                    {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
-                  </button>
+                {/* Attached screenshots (pending import) */}
+                {(images.length > 0 || attaching) && (
+                  <div className="flex flex-wrap gap-2 mb-2.5">
+                    {images.map(img => (
+                      <div key={img.id} className="relative w-14 h-14">
+                        <img src={img.dataUrl} alt="" className="w-14 h-14 rounded-lg object-cover border border-slate-200 dark:border-slate-700" />
+                        <button
+                          onClick={() => setImages(prev => prev.filter(x => x.id !== img.id))}
+                          className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-slate-700 hover:bg-slate-900 text-white flex items-center justify-center shadow"
+                          aria-label={t('assistant.import.remove', 'Убрать')}
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                      </div>
+                    ))}
+                    {attaching && (
+                      <div className="w-14 h-14 rounded-lg border border-dashed border-slate-300 dark:border-slate-600 flex items-center justify-center">
+                        <Loader2 className="w-4 h-4 animate-spin text-slate-400" />
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  className="hidden"
+                  onChange={e => pickImages(e.target.files)}
+                />
+
+                <div className="flex items-end gap-1.5">
+                  {has('bulk_create_students') && (
+                    <button
+                      type="button"
+                      onClick={() => fileInputRef.current?.click()}
+                      disabled={loading || images.length >= MAX_IMPORT_IMAGES}
+                      className="shrink-0 w-9 h-9 flex items-center justify-center rounded-full text-slate-500 dark:text-slate-400 hover:text-primary-600 dark:hover:text-primary-400 hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                      aria-label={t('assistant.import.attach', 'Прикрепить скриншот')}
+                      title={t('assistant.import.attachHint', 'Импорт студентов со скриншота списка')}
+                    >
+                      <Paperclip className="w-5 h-5" />
+                    </button>
+                  )}
+                  <div className="relative flex-1">
+                    <input
+                      ref={inputRef}
+                      type="text"
+                      value={input}
+                      onChange={e => setInput(e.target.value)}
+                      onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(input); } }}
+                      placeholder={images.length > 0
+                        ? t('assistant.import.hintPh', 'Комментарий к импорту (необязательно)…')
+                        : t('assistant.placeholder', 'Например: добавь студента Иванов Иван…')}
+                      className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-full pl-4 pr-11 py-2.5 text-sm text-slate-900 dark:text-slate-100 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                      disabled={loading}
+                    />
+                    <button
+                      onClick={() => send(input)}
+                      disabled={(!input.trim() && images.length === 0) || loading}
+                      className="absolute right-1.5 top-1/2 -translate-y-1/2 w-8 h-8 flex items-center justify-center bg-primary-600 hover:bg-primary-700 disabled:bg-slate-300 dark:disabled:bg-slate-700 text-white rounded-full transition-colors"
+                      aria-label={t('assistant.send', 'Отправить')}
+                    >
+                      {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+                    </button>
+                  </div>
                 </div>
                 <p className="text-[10px] text-center text-slate-400 dark:text-slate-500 mt-1.5">
                   {t('assistant.disclaimer', 'ИИ может ошибаться — проверяйте действия перед подтверждением.')}

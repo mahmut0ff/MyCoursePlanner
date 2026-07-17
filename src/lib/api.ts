@@ -630,6 +630,13 @@ export const apiAssistantChat = (messages: { role: string; content: string }[], 
   apiRequest('api-ai-assistant', 'POST', { messages, lang }, { action: 'chat' });
 export const apiAssistantExecute = (tool: string, args: any) =>
   apiRequest('api-ai-assistant', 'POST', { tool, args }, { action: 'execute' });
+export const apiAssistantImportParse = (
+  images: { mimeType: string; data: string }[],
+  hint?: string,
+  lang?: string,
+) => apiRequest('api-ai-assistant', 'POST', { images, hint, lang }, { action: 'import_parse' });
+export const apiAssistantImportCommit = (payload: any) =>
+  apiRequest('api-ai-assistant', 'POST', payload, { action: 'import_commit' });
 
 // ---- AI Insights (owner analyst + churn) ----
 export const apiAIInsightsAsk = (question: string) =>

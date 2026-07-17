@@ -25,7 +25,7 @@ import {
   verifyAuth, jsonResponse, ok, badRequest, unauthorized, forbidden,
   isStaff, can, hasRole, hasPermission, type AuthUser,
 } from './utils/auth';
-import { generateWithFallback, hasGeminiKey, aiAllowed, recordAiUsage } from './utils/ai';
+import { generateWithFallback, hasGeminiKey, aiAllowed, recordAiUsage, parseJsonLoose } from './utils/ai';
 import { rateLimiters, getRateLimitKey } from './utils/rate-limiter';
 import { adminDb, getDocsByIds } from './utils/firebase-admin';
 import { handler as orgHandler } from './api-org';
@@ -163,6 +163,86 @@ const page = <T>(rows: T[]) => ({
 const str = (v: any) => (v === undefined || v === null ? '' : String(v));
 const joinNames = (list: string[], max = 5) =>
   list.slice(0, max).join(', ') + (list.length > max ? ` и ещё ${list.length - max}` : '');
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Roster fuzzy-matching (shared by the screenshot importer)
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Two name tokens are "close" if one contains the other (≥3 chars) or their edit
+ * distance is within ~1/3 of the longer token. Absorbs the misspellings paper
+ * rosters are full of — Фатиха/Фотиха (о↔а), Хабибулаев/Хабибуллоев (doubled
+ * consonants), Саидакмал/Саидкамол (transposition).
+ */
+function tokensClose(a: string, b: string): boolean {
+  if (a === b) return true;
+  const shorter = Math.min(a.length, b.length);
+  if (shorter >= 3 && (a.includes(b) || b.includes(a))) return true;
+  const tol = Math.max(1, Math.floor(Math.max(a.length, b.length) / 3));
+  return editDistance(a, b) <= tol;
+}
+
+/** Fraction of the shorter name's tokens that find a close counterpart (0..1). */
+function nameSimilarity(a: string, b: string): number {
+  const at = norm(a).split(' ').filter(Boolean);
+  const bt = norm(b).split(' ').filter(Boolean);
+  if (!at.length || !bt.length) return 0;
+  const used = new Set<number>();
+  let matched = 0;
+  for (const t of at) {
+    for (let j = 0; j < bt.length; j++) {
+      if (used.has(j)) continue;
+      if (tokensClose(t, bt[j])) { used.add(j); matched++; break; }
+    }
+  }
+  return matched / Math.min(at.length, bt.length);
+}
+
+const digitsOnly = (s: any) => String(s || '').replace(/\D/g, '');
+
+interface RosterEntry { uid: string; name: string; phone: string }
+
+/**
+ * Find the existing roster student a parsed row most likely duplicates. A phone
+ * that matches on ≥7 digits is decisive; otherwise names must align on nearly
+ * every token — and a single-token name ("Али") must match exactly, so common
+ * first names don't get flagged as dupes of each other.
+ */
+function findDuplicate(name: string, phone: string, roster: RosterEntry[]): (RosterEntry & { reason: string }) | null {
+  const ph = digitsOnly(phone);
+  if (ph.length >= 7) {
+    const byPhone = roster.find(r => { const rp = digitsOnly(r.phone); return rp.length >= 7 && rp === ph; });
+    if (byPhone) return { ...byPhone, reason: 'phone' };
+  }
+  let best: RosterEntry | null = null;
+  let bestScore = 0;
+  for (const r of roster) {
+    const s = nameSimilarity(name, r.name);
+    if (s > bestScore) { bestScore = s; best = r; }
+  }
+  if (best && bestScore >= 0.75) {
+    const aTok = norm(name).split(' ').filter(Boolean).length;
+    const bTok = norm(best.name).split(' ').filter(Boolean).length;
+    // Multi-token names need broad token agreement. A single-token roster name
+    // («Али») must match EXACTLY — otherwise it swallows «Алиев Руслан», because
+    // similarity is normalized by the shorter (1-token) side.
+    const singleExact = aTok === 1 && bTok === 1 && norm(name) === norm(best.name);
+    if (Math.min(aTok, bTok) >= 2 || singleExact) return { ...best, reason: 'name' };
+  }
+  return null;
+}
+
+/** Best existing group whose name fuzzily matches a parsed heading (or null). */
+function matchGroup<T extends { name?: any }>(name: string, groups: T[]): T | null {
+  if (!norm(name)) return null;
+  let best: T | null = null;
+  let bestScore = 0;
+  for (const g of groups) {
+    const s = matchScore(name, g.name);
+    if (s > bestScore) { bestScore = s; best = g; }
+  }
+  return bestScore >= 0.6 ? best : null;
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Tool registry
@@ -1006,6 +1086,278 @@ async function runChatTurn(user: AuthUser, event: HandlerEvent, body: any) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Screenshot importer: OCR a roster from images → editable preview → commit.
+//
+// Two extra actions on this function, gated exactly like a student write:
+//   • import_parse  (POST) — Gemini vision reads the screenshots, the server
+//     matches each name against the roster (dup detection) and each heading
+//     against existing groups, and returns an editable PLAN (no writes).
+//   • import_commit (POST) — the user-approved plan: create any new groups,
+//     bulk-create students into their groups, enroll chosen duplicates. Every
+//     write dispatches to api-org, inheriting RBAC / seat-limits / payment-plan
+//     sync — the model never touches this path, the human confirms the whole
+//     import as a single action.
+// ─────────────────────────────────────────────────────────────────────────────
+
+const MAX_IMPORT_IMAGES = 6;
+const MAX_IMPORT_BYTES = 12 * 1024 * 1024; // decoded, across all images
+
+interface ExtractedRoster {
+  groups: Array<{ name: string; students: Array<{ name: string; phone: string }> }>;
+  ungrouped: Array<{ name: string; phone: string }>;
+}
+
+/** Ask Gemini vision to transcribe the screenshots into a grouped roster. */
+async function visionExtractRoster(
+  images: Array<{ mimeType: string; data: string }>,
+  hint: string,
+  lang: string,
+): Promise<ExtractedRoster> {
+  const systemInstruction = [
+    'Ты извлекаешь список студентов из фотографий/скриншотов (рукописные списки, таблицы Excel, сообщения в мессенджерах).',
+    'Верни СТРОГО JSON такого вида (без пояснений, без markdown):',
+    '{"groups":[{"name":"<название группы как на изображении>","students":[{"name":"Фамилия Имя","phone":"<телефон или пусто>"}]}],"ungrouped":[{"name":"Фамилия Имя","phone":""}]}',
+    'Правила:',
+    '- Если на изображении есть заголовки/названия групп (или несколько таблиц/колонок для разных групп) — раздели студентов по этим группам, используя название группы как "name".',
+    '- Студентов без явной группы помещай в "ungrouped".',
+    '- Если группа всего одна и её название не подписано — оставь groups[].name пустым, всех студентов положи в эту одну группу.',
+    '- Сохраняй ОРИГИНАЛЬНОЕ написание имён (не исправляй и не транслитерируй). Убирай номер по списку в начале строки ("1.", "12)").',
+    '- Телефон — только если он явно указан рядом с именем; иначе пустая строка. Не выдумывай телефоны и имена.',
+    '- Не добавляй строки-заголовки таблицы ("ФИО", "Имя", "№", "Итого") как студентов.',
+  ].join('\n');
+
+  const userText = hint && hint.trim()
+    ? `Дополнительный контекст от пользователя: ${hint.trim()}`
+    : 'Извлеки список студентов с этих изображений.';
+
+  const parts: any[] = [
+    { text: userText },
+    ...images.map(im => ({ inlineData: { mimeType: im.mimeType, data: im.data } })),
+  ];
+
+  const result = await generateWithFallback(
+    { json: true, systemInstruction },
+    { contents: [{ role: 'user', parts }] },
+  );
+  let text = '';
+  try { text = result.response.text() || ''; } catch { text = ''; }
+  if (!text.trim()) return { groups: [], ungrouped: [] };
+
+  let parsed: any;
+  try { parsed = parseJsonLoose(text); } catch { return { groups: [], ungrouped: [] }; }
+
+  const cleanRow = (r: any) => ({ name: str(r?.name ?? r?.fullName ?? r).trim(), phone: str(r?.phone).trim() });
+  const groups = (Array.isArray(parsed?.groups) ? parsed.groups : [])
+    .map((g: any) => ({
+      name: str(g?.name).trim(),
+      students: (Array.isArray(g?.students) ? g.students : []).map(cleanRow).filter((s: any) => s.name),
+    }))
+    .filter((g: any) => g.students.length);
+  const ungrouped = (Array.isArray(parsed?.ungrouped) ? parsed.ungrouped : [])
+    .map(cleanRow).filter((s: any) => s.name);
+  return { groups, ungrouped };
+}
+
+/** Enrich the raw extraction with dup flags, group matches and org catalogs. */
+async function buildImportPlan(user: AuthUser, event: HandlerEvent, extracted: ExtractedRoster) {
+  const [students, groups, courses, branchesRes] = await Promise.all([
+    dispatch(orgHandler, event, 'GET', { action: 'students' }).catch(() => []),
+    dispatch(orgHandler, event, 'GET', { action: 'groups' }).catch(() => []),
+    dispatch(orgHandler, event, 'GET', { action: 'courses' }).catch(() => []),
+    dispatch(branchesHandler, event, 'GET', { action: 'list' }).catch(() => ({ branches: [] })),
+  ]);
+
+  const roster: RosterEntry[] = (students as any[] || [])
+    .map(r => ({ uid: r.uid, name: str(r.displayName), phone: str(r.phone) }));
+  const groupList = (groups as any[] || []).map(g => ({
+    id: g.id, name: str(g.name), courseName: str(g.courseName).trim(), courseId: str(g.courseId), branchId: g.branchId || null,
+  }));
+
+  const markStudent = (s: { name: string; phone: string }) => {
+    const dup = findDuplicate(s.name, s.phone, roster);
+    return { name: s.name, phone: s.phone, duplicate: dup ? { uid: dup.uid, name: dup.name, phone: dup.phone } : null };
+  };
+
+  const outGroups = extracted.groups.map((g, i) => {
+    const match = g.name ? matchGroup(g.name, groupList) : null;
+    return {
+      key: `g${i}`,
+      parsedName: g.name,
+      existingGroupId: match?.id || null,
+      existingGroupName: match?.name || null,
+      courseId: match?.courseId || null,
+      courseName: match?.courseName || null,
+      branchId: match?.branchId || null,
+      students: g.students.map(markStudent),
+    };
+  }).filter(g => g.students.length);
+  const ungrouped = extracted.ungrouped.map(markStudent);
+
+  const allStudents = [...outGroups.flatMap(g => g.students), ...ungrouped];
+  const branchesArr: any[] = (branchesRes as any)?.branches || (branchesRes as any) || [];
+
+  return {
+    groups: outGroups,
+    ungrouped,
+    catalog: {
+      groups: groupList.map(g => ({ id: g.id, name: g.name, courseName: g.courseName })),
+      courses: (courses as any[] || []).map(c => ({
+        id: c.id, title: str(c.title).trim(), paymentFormat: c.paymentFormat || 'one-time', price: c.price || 0,
+      })),
+      branches: branchesArr.map((b: any) => ({ id: b.id, name: b.name })),
+    },
+    canCreateGroups: can(user, 'groups', 'write'),
+    counts: {
+      students: allStudents.length,
+      groups: outGroups.length,
+      duplicates: allStudents.filter(s => s.duplicate).length,
+    },
+  };
+}
+
+async function runImportParse(user: AuthUser, event: HandlerEvent, body: any) {
+  const rawImages = Array.isArray(body.images) ? body.images : [];
+  if (!rawImages.length) return badRequest('Прикрепите хотя бы один скриншот');
+  if (rawImages.length > MAX_IMPORT_IMAGES) return badRequest(`Не более ${MAX_IMPORT_IMAGES} изображений за раз`);
+
+  const images: Array<{ mimeType: string; data: string }> = [];
+  let bytes = 0;
+  for (const im of rawImages) {
+    const mimeType = str(im?.mimeType) || 'image/jpeg';
+    const data = str(im?.data);
+    if (!data) continue;
+    if (!/^image\/(png|jpe?g|webp)$/i.test(mimeType)) return badRequest('Поддерживаются PNG, JPEG или WEBP');
+    bytes += Math.floor(data.length * 0.75);
+    images.push({ mimeType, data });
+  }
+  if (!images.length) return badRequest('Пустые изображения');
+  if (bytes > MAX_IMPORT_BYTES) return badRequest('Слишком большие изображения — уменьшите или отправьте меньше за раз');
+
+  const lang = ['ru', 'en', 'kg'].includes(body.lang) ? body.lang : 'ru';
+  const extracted = await visionExtractRoster(images, str(body.hint), lang);
+  if (!extracted.groups.length && !extracted.ungrouped.length) {
+    return ok({ empty: true, groups: [], ungrouped: [], catalog: { groups: [], courses: [], branches: [] }, canCreateGroups: can(user, 'groups', 'write'), counts: { students: 0, groups: 0, duplicates: 0 } });
+  }
+  const plan = await buildImportPlan(user, event, extracted);
+  recordAiUsage(user.organizationId, 'assistant_import');
+  return ok(plan);
+}
+
+async function runImportCommit(user: AuthUser, event: HandlerEvent, body: any) {
+  const groups: any[] = Array.isArray(body.groups) ? body.groups : [];
+  const looseFromBody: any[] = Array.isArray(body.ungrouped?.newStudents) ? body.ungrouped.newStudents : [];
+  const defaultBranch = str(body.branchId);
+  const enrollmentDate = /^\d{4}-\d{2}-\d{2}$/.test(str(body.enrollmentDate)) ? str(body.enrollmentDate) : '';
+  const canGroups = can(user, 'groups', 'write');
+
+  // Only enroll uids that are genuinely members of this org (the client sends the
+  // dup uids it surfaced, but never trust that blindly for a group write).
+  const roster: any[] = await dispatch(orgHandler, event, 'GET', { action: 'students' }).catch(() => []);
+  const validUids = new Set((roster || []).map((r: any) => r.uid));
+
+  const branchArgs = (b: string) => (b ? { branchIds: [b], primaryBranchId: b } : {});
+  const toStudent = (s: any) => ({ displayName: str(s?.name ?? s?.displayName).trim(), phone: str(s?.phone) });
+
+  let createdStudents = 0;
+  let enrolledExisting = 0;
+  let skipped = 0;
+  const createdGroups: Array<{ id: string; name: string }> = [];
+  const failures: Array<{ name: string; reason: string }> = [];
+  const loose: any[] = looseFromBody.map(toStudent).filter(s => s.displayName);
+
+  for (const g of groups) {
+    const newStudents = (Array.isArray(g.newStudents) ? g.newStudents : []).map(toStudent).filter((s: any) => s.displayName);
+    const enrollUids = (Array.isArray(g.enrollUids) ? g.enrollUids : []).map(str).filter((u: string) => validUids.has(u));
+    const branchId = str(g.branchId) || defaultBranch;
+    const label = str(g.name) || str(g.groupName) || 'группа';
+
+    let groupId = '';
+    let isNewGroup = false;
+
+    if (g.mode === 'existing' && g.groupId) {
+      groupId = str(g.groupId);
+    } else if (g.mode === 'new') {
+      if (!canGroups) {
+        failures.push({ name: label, reason: 'Нет прав на создание групп' });
+        loose.push(...newStudents);           // still add the people to the center
+        skipped += enrollUids.length;
+        continue;
+      }
+      if (!g.courseId) {
+        failures.push({ name: label, reason: 'Не выбран курс для новой группы' });
+        loose.push(...newStudents);
+        skipped += enrollUids.length;
+        continue;
+      }
+      try {
+        const course = await adminDb.collection('courses').doc(str(g.courseId)).get();
+        const ownCourse = course.exists && course.data()!.organizationId === user.organizationId;
+        const created = await dispatch(orgHandler, event, 'POST', { action: 'createGroup' }, {
+          name: str(g.name).trim() || label,
+          courseId: str(g.courseId),
+          courseName: ownCourse ? course.data()!.title || '' : '',
+          studentIds: enrollUids,             // existing dupes go straight into the new group
+          ...(branchId ? { branchId } : {}),
+        });
+        groupId = created.id;
+        isNewGroup = true;
+        createdGroups.push({ id: created.id, name: created.name || str(g.name) });
+        enrolledExisting += enrollUids.length;
+      } catch (e: any) {
+        failures.push({ name: label, reason: e?.message || 'Не удалось создать группу' });
+        loose.push(...newStudents);
+        skipped += enrollUids.length;
+        continue;
+      }
+    } else {
+      // 'skip' — don't touch groups; just register the new people in the center.
+      loose.push(...newStudents);
+      skipped += enrollUids.length;           // dupes can't be enrolled without a group
+      continue;
+    }
+
+    if (newStudents.length) {
+      try {
+        const res = await dispatch(orgHandler, event, 'POST', { action: 'bulkCreateStudents' }, {
+          students: newStudents, groupId, ...branchArgs(branchId), ...(enrollmentDate ? { enrollmentDate } : {}),
+        });
+        createdStudents += res.created || 0;
+        skipped += res.skipped || 0;
+      } catch (e: any) {
+        failures.push({ name: label, reason: e?.message || 'Не удалось добавить студентов' });
+      }
+    }
+
+    // Enroll existing dupes into an EXISTING group (new groups already got them).
+    if (!isNewGroup && enrollUids.length) {
+      try {
+        const full = await dispatch(orgHandler, event, 'GET', { action: 'group', id: groupId });
+        const merged = Array.from(new Set([...(full.studentIds || []), ...enrollUids]));
+        await dispatch(orgHandler, event, 'POST', { action: 'updateGroup' }, { id: groupId, studentIds: merged });
+        enrolledExisting += enrollUids.length;
+      } catch (e: any) {
+        failures.push({ name: label, reason: e?.message || 'Не удалось зачислить существующих' });
+      }
+    }
+  }
+
+  if (loose.length) {
+    try {
+      const res = await dispatch(orgHandler, event, 'POST', { action: 'bulkCreateStudents' }, {
+        students: loose, ...branchArgs(defaultBranch), ...(enrollmentDate ? { enrollmentDate } : {}),
+      });
+      createdStudents += res.created || 0;
+      skipped += res.skipped || 0;
+    } catch (e: any) {
+      failures.push({ name: 'без группы', reason: e?.message || 'Не удалось добавить студентов' });
+    }
+  }
+
+  recordAiUsage(user.organizationId, 'assistant_import_commit');
+  return ok({ createdStudents, enrolledExisting, createdGroups, skipped, failures });
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Handler
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -1042,6 +1394,21 @@ const handler: Handler = async (event: HandlerEvent) => {
         return jsonResponse(429, { error: 'Слишком много запросов — подождите минуту.' });
       }
       return await runChatTurn(user, event, body);
+    }
+
+    // Screenshot importer — same student-write gate as create_student, plus the
+    // AI rate limit on the (vision) parse call.
+    if (action === 'import_parse' || action === 'import_commit') {
+      if (!(hasRole(user, 'admin', 'manager') && can(user, 'students', 'write'))) {
+        return forbidden('Недостаточно прав для импорта студентов');
+      }
+      if (action === 'import_parse') {
+        if (rateLimiters.ai.isLimited(getRateLimitKey(event, user.uid))) {
+          return jsonResponse(429, { error: 'Слишком много запросов — подождите минуту.' });
+        }
+        return await runImportParse(user, event, body);
+      }
+      return await runImportCommit(user, event, body);
     }
 
     if (action === 'execute') {

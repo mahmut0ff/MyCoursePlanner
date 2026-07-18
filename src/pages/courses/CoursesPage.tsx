@@ -99,7 +99,7 @@ const CoursesPage: React.FC = () => {
     });
   }, [courses, search, statusFilter, subjectFilter, branchFilter, role, viewMode, myCourseIds]);
 
-  const getStudentCount = (courseId: string) => groups.filter((g: any) => g.courseId === courseId).reduce((sum: number, g: any) => sum + (g.studentIds?.length || 0), 0);
+  const getStudentCount = (courseId: string) => new Set(groups.filter((g: any) => g.courseId === courseId).flatMap((g: any) => g.studentIds || [])).size;
   const getGroupCount = (courseId: string) => groups.filter((g: any) => g.courseId === courseId).length;
 
   const openCreate = () => { setEditing(null); setForm({ title: '', description: '', subject: '', status: 'draft', price: 0, paymentFormat: 'monthly', durationMonths: 1, branchId: '' }); setShowModal(true); };

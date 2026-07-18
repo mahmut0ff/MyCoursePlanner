@@ -36,3 +36,9 @@ npm-debug.log*
 firebase-debug.log
 .firebase/
 .impeccable/
+
+# Scratch files from local debugging — these have held live Firebase API keys
+# and minted auth tokens (admin.env.tmp, teacher.token.tmp). Never commit them.
+*.tmp
+*.tmp.cjs
+*.token

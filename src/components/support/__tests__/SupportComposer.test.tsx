@@ -25,10 +25,15 @@ vi.mock('../../../lib/useSupport', () => ({
   SUPPORT_MAX_FILE_SIZE: 50 * 1024 * 1024,
 }));
 
+const copilotVisible = vi.fn(() => false);
+vi.mock('../../ai/useCopilotVisible', () => ({
+  useCopilotVisible: () => copilotVisible(),
+}));
+
 function setup(props: Partial<React.ComponentProps<typeof SupportComposer>> = {}) {
   const onSend = vi.fn().mockResolvedValue(undefined);
   const onCancelReply = vi.fn();
-  render(
+  const { container } = render(
     <SupportComposer
       uploadUserId="user_alice"
       replyTo={null}
@@ -38,10 +43,33 @@ function setup(props: Partial<React.ComponentProps<typeof SupportComposer>> = {}
       {...props}
     />,
   );
-  return { onSend, onCancelReply, field: screen.getByRole('textbox') as HTMLTextAreaElement };
+  return {
+    onSend, onCancelReply, container,
+    field: screen.getByRole('textbox') as HTMLTextAreaElement,
+  };
 }
 
-beforeEach(() => vi.clearAllMocks());
+beforeEach(() => {
+  vi.clearAllMocks();
+  copilotVisible.mockReturnValue(false);
+});
+
+describe('SupportComposer — copilot collision', () => {
+  // Regression: the copilot FAB is `fixed` bottom-right at z-[60], so it painted
+  // over the send button and swallowed the click. Sending looked like a no-op —
+  // no toast, no network request.
+  it('reserves the corner while the copilot FAB is on screen', () => {
+    copilotVisible.mockReturnValue(true);
+    const { container } = setup();
+    expect(container.firstElementChild?.className).toContain('pr-[5.5rem]');
+  });
+
+  it('claims no extra space when the FAB is absent', () => {
+    copilotVisible.mockReturnValue(false);
+    const { container } = setup();
+    expect(container.firstElementChild?.className).not.toContain('pr-[5.5rem]');
+  });
+});
 
 describe('SupportComposer — quick replies', () => {
   it('ships fifteen templates', () => {

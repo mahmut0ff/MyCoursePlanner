@@ -5,6 +5,7 @@ import { Paperclip, Send, X, FileText, Zap, Loader2 } from 'lucide-react';
 import type { MessageAttachment, SupportMessage } from '../../types';
 import { SUPPORT_QUICK_REPLIES, filterQuickReplies } from '../../lib/supportQuickReplies';
 import { uploadSupportAttachment, SUPPORT_MAX_FILE_SIZE } from '../../lib/useSupport';
+import { useCopilotVisible } from '../ai/useCopilotVisible';
 
 interface Props {
   /** Thread owner's uid — the Storage folder attachments go into. */
@@ -140,9 +141,16 @@ export default function SupportComposer({
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); submit(); }
   };
 
+  // The AI copilot is a `fixed` FAB pinned to the bottom-right at z-[60], which
+  // is exactly where the send button lands on a full-height chat. It painted
+  // over the button and swallowed the click — sending appeared to do nothing.
+  // Reserve its footprint (56px button + 20px inset) when it is actually on
+  // screen, so the two never share a pixel.
+  const copilotVisible = useCopilotVisible();
+
   return (
-    <div className="relative border-t border-slate-200 dark:border-slate-700
-      bg-white dark:bg-slate-900 px-3 py-2.5">
+    <div className={`relative border-t border-slate-200 dark:border-slate-700
+      bg-white dark:bg-slate-900 pl-3 py-2.5 ${copilotVisible ? 'pr-[5.5rem]' : 'pr-3'}`}>
 
       {menuOpen && (
         <>

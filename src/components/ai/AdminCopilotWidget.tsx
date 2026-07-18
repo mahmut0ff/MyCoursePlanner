@@ -15,8 +15,7 @@ import {
   UserPlus, Users, BookOpen, CalendarPlus, CalendarX, Banknote, ArrowRightLeft,
   Pencil, Wand2, ShieldAlert, Lock, Paperclip,
 } from 'lucide-react';
-import { useAuth } from '../../contexts/AuthContext';
-import { usePermissions } from '../../contexts/PermissionsContext';
+import { useCopilotVisible } from './useCopilotVisible';
 import {
   apiAssistantChat, apiAssistantExecute, apiAssistantCapabilities,
   apiAssistantImportParse, apiAssistantImportCommit,
@@ -147,8 +146,6 @@ function compressImage(file: File): Promise<PendingImage> {
 
 const AdminCopilotWidget: React.FC = () => {
   const { t, i18n } = useTranslation();
-  const { organizationId, isSuperAdmin } = useAuth();
-  const { canRead, loaded: permsLoaded } = usePermissions();
 
   const [open, setOpen] = useState(false);
   const [messages, setMessages] = useState<Msg[]>([]);
@@ -164,13 +161,9 @@ const AdminCopilotWidget: React.FC = () => {
   const panelRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Gated on the `ai` grant rather than a role list, so this follows RBAC like every
-  // other module: admins always pass, managers hold it by default (revocable on
-  // /team), and teachers/students hold it only if an admin deliberately grants it.
-  // Waiting for `permsLoaded` keeps the button from flashing in before the grants
-  // that would hide it have arrived.
-  const visible = !isSuperAdmin && !!organizationId && organizationId !== 'personal'
-    && permsLoaded && canRead('ai');
+  // Shared with the support composer, which must reserve this corner — see the
+  // note in useCopilotVisible.
+  const visible = useCopilotVisible();
 
   // Capabilities (for chips + plan gate) — once, on first open.
   useEffect(() => {

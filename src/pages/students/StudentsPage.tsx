@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useMemo, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../contexts/AuthContext';
 import { useBranch } from '../../contexts/BranchContext';
@@ -13,13 +13,17 @@ import {
   orgListBranches,
   apiDeleteMember
 } from '../../lib/api';
-import { Users, Search, RefreshCw, CheckCircle, XCircle, UserPlus, Phone, Filter, X, SortAsc, SortDesc, Trash2, Plus, Lightbulb, Copy, BookOpen, UsersRound, Upload, KeyRound, Eye, EyeOff, Calendar, Building2 } from 'lucide-react';
+import { Users, Search, RefreshCw, CheckCircle, XCircle, UserPlus, Phone, Filter, X, SortAsc, SortDesc, Trash2, Plus, Lightbulb, Copy, BookOpen, UsersRound, Upload, KeyRound, Eye, EyeOff, Calendar, Building2, Wallet, Sparkles } from 'lucide-react';
 import type { UserProfile, Group, Branch } from '../../types';
 import toast from 'react-hot-toast';
 import { PinnedBadgesDisplay } from '../../lib/badges';
 import BulkActionBar from '../../components/roster/BulkActionBar';
 import EmptyState from '../../components/ui/EmptyState';
 import { ListSkeleton } from '../../components/ui/Skeleton';
+import StudentRiskDot, { riskSummary } from '../../components/students/StudentRiskDot';
+import { useStudentRisks, isFlagged } from '../../hooks/useStudentRisks';
+import { usePlanGate } from '../../contexts/PlanContext';
+import ChurnInsightsModal from '../../components/ai/ChurnInsightsModal';
 
 type SortField = 'name' | 'branch' | 'date';
 type SortDir = 'asc' | 'desc';
@@ -30,6 +34,12 @@ const StudentsPage: React.FC = () => {
   const { organizationId } = useAuth();
   const { activeBranchId } = useBranch();
   const { canWrite, canDelete, loaded: permsLoaded } = usePermissions();
+  const { canAccess } = usePlanGate();
+
+  // Risk lives here now instead of on its own page — the signal has to reach the
+  // screen people actually work on. Failure is silent: no dots, list unaffected.
+  const { riskByStudent } = useStudentRisks();
+  const [churnOpen, setChurnOpen] = useState(false);
 
   // Selection exists to feed the bulk bar, so it appears whenever at least one bulk
   // action is available: migrating takes students:write, deleting students:delete.
@@ -48,6 +58,10 @@ const StudentsPage: React.FC = () => {
   const [sortField, setSortField] = useState<SortField>('name');
   const [sortDir, setSortDir] = useState<SortDir>('asc');
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'expelled'>('active');
+  // `?risk=1` lets the dashboard tile land straight on the filtered roster —
+  // it's where the retired risk page's entry points now point.
+  const [searchParams] = useSearchParams();
+  const [riskOnly, setRiskOnly] = useState(searchParams.get('risk') === '1');
 
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
@@ -131,11 +145,11 @@ const StudentsPage: React.FC = () => {
   useEffect(() => { loadBranches(); }, [organizationId]);
 
   // Reset page when filters change
-  useEffect(() => setPage(1), [search, selectedGroup, statusFilter, sortField, sortDir, activeBranchId]);
+  useEffect(() => setPage(1), [search, selectedGroup, statusFilter, riskOnly, sortField, sortDir, activeBranchId]);
 
   // A selection only means something for rows still on screen — drop it whenever the
   // filtered set changes under it, so a bulk action can't hit rows you can no longer see.
-  useEffect(() => setSelected(new Set()), [search, selectedGroup, statusFilter, activeBranchId]);
+  useEffect(() => setSelected(new Set()), [search, selectedGroup, statusFilter, riskOnly, activeBranchId]);
 
   // Branch names by id — feeds the "Филиал" column and branch sorting.
   const branchNameById = useMemo(() => {
@@ -177,6 +191,13 @@ const StudentsPage: React.FC = () => {
       result = result.filter(s => ((s as any).status || 'active') === statusFilter);
     }
 
+    // "В зоне риска" — the replacement for the old risk dashboard: same answer to
+    // "кому звонить сегодня", but inside the list that already has the phone
+    // number and the actions next to each name.
+    if (riskOnly) {
+      result = result.filter(s => isFlagged(riskByStudent[s.uid]));
+    }
+
     // Sort
     result.sort((a, b) => {
       let cmp = 0;
@@ -191,7 +212,14 @@ const StudentsPage: React.FC = () => {
     });
 
     return result;
-  }, [students, search, selectedGroup, groups, sortField, sortDir, statusFilter, branchNameById]);
+  }, [students, search, selectedGroup, groups, sortField, sortDir, statusFilter, branchNameById, riskOnly, riskByStudent]);
+
+  // Count over active students only — an expelled student can't churn, and
+  // counting them would make the chip disagree with what it filters to.
+  const flaggedCount = useMemo(
+    () => students.filter(s => ((s as any).status || 'active') === 'active' && isFlagged(riskByStudent[s.uid])).length,
+    [students, riskByStudent],
+  );
 
   const toggleSort = (field: SortField) => {
     if (sortField === field) {
@@ -420,6 +448,16 @@ const StudentsPage: React.FC = () => {
           <button onClick={() => { loadStudents(); loadGroups(); }} className="p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-xl transition-colors">
             <RefreshCw className="w-4 h-4" />
           </button>
+          {/* Moved here from the retired risk dashboard — it belongs next to the
+              roster it analyses. Only offered when someone is actually at risk. */}
+          {canAccess('ai') && flaggedCount > 0 && (
+            <button
+              onClick={() => setChurnOpen(true)}
+              className="shrink-0 inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-br from-violet-600 to-indigo-600 text-white text-sm font-semibold shadow-sm hover:opacity-90 transition-opacity"
+            >
+              <Sparkles className="w-4 h-4" /> AI-анализ оттока
+            </button>
+          )}
           {/* Both endpoints require students:write — a read-only member used to see
               these and only find out on the 403. */}
           {permsLoaded && canWrite('students') && (
@@ -502,6 +540,28 @@ const StudentsPage: React.FC = () => {
                   </button>
                 ))}
               </div>
+
+              {/* Only offered when there is something to see — a permanently
+                  greyed-out "0" chip is noise on a healthy roster. Stays visible
+                  while the filter is on, so arriving via ?risk=1 (or the count
+                  dropping to zero) can never strand the user on an empty list
+                  with no way to switch it off. */}
+              {(flaggedCount > 0 || riskOnly) && (
+                <button
+                  onClick={() => setRiskOnly(v => !v)}
+                  aria-pressed={riskOnly}
+                  title="Показать только тех, кто требует внимания"
+                  className={`shrink-0 flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold border transition-colors ${
+                    riskOnly
+                      ? 'bg-red-500 border-red-500 text-white'
+                      : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:border-red-300 dark:hover:border-red-800'
+                  }`}
+                >
+                  <span className={`w-2 h-2 rounded-full ${riskOnly ? 'bg-white' : 'bg-red-500'}`} />
+                  В зоне риска
+                  <span className={riskOnly ? 'text-white/80' : 'text-slate-400'}>{flaggedCount}</span>
+                </button>
+              )}
             </div>
           </div>
 
@@ -527,8 +587,8 @@ const StudentsPage: React.FC = () => {
           {filteredStudents.length === 0 ? (
             <EmptyState
               icon={Users}
-              title={search || selectedGroup !== 'all' ? t('org.students.noSearchResults', 'Студенты не найдены') : t('org.students.empty')}
-              description={search || selectedGroup !== 'all' ? 'Попробуйте изменить фильтры поиска' : 'Добавьте первого студента'}
+              title={search || selectedGroup !== 'all' || riskOnly ? t('org.students.noSearchResults', 'Студенты не найдены') : t('org.students.empty')}
+              description={search || selectedGroup !== 'all' || riskOnly ? 'Попробуйте изменить фильтры поиска' : 'Добавьте первого студента'}
               actionLabel={permsLoaded && canWrite('students') ? t('org.students.create', 'Добавить студента') : undefined}
               onAction={permsLoaded && canWrite('students') ? () => setShowCreateModal(true) : undefined}
             />
@@ -585,16 +645,36 @@ const StudentsPage: React.FC = () => {
 
                     {/* Name + avatar */}
                     <div className="flex items-center gap-3 min-w-0 w-full">
-                      {s.avatarUrl ? (
-                        <img src={s.avatarUrl} alt="" className="w-9 h-9 rounded-full object-cover shadow-sm bg-slate-100 dark:bg-slate-700 shrink-0 hover:scale-110 transition-transform cursor-pointer" onClick={(e) => { e.stopPropagation(); setExpandedAvatar(s.avatarUrl!); }} />
-                      ) : (
-                        <div className="w-9 h-9 bg-primary-600 rounded-full flex items-center justify-center text-xs text-white font-bold shadow-sm shrink-0">{s.displayName?.[0]?.toUpperCase() || '?'}</div>
-                      )}
+                      {/* The risk dot rides on the avatar, so the signal is where
+                          the eye already lands when scanning names. */}
+                      <div className="relative shrink-0">
+                        {s.avatarUrl ? (
+                          <img src={s.avatarUrl} alt="" className="w-9 h-9 rounded-full object-cover shadow-sm bg-slate-100 dark:bg-slate-700 hover:scale-110 transition-transform cursor-pointer" onClick={(e) => { e.stopPropagation(); setExpandedAvatar(s.avatarUrl!); }} />
+                        ) : (
+                          <div className="w-9 h-9 bg-primary-600 rounded-full flex items-center justify-center text-xs text-white font-bold shadow-sm">{s.displayName?.[0]?.toUpperCase() || '?'}</div>
+                        )}
+                        <StudentRiskDot risk={riskByStudent[s.uid]} className="absolute -top-0.5 -right-0.5" />
+                      </div>
                       <div className="min-w-0 flex-1">
                         <h3 className="text-sm font-bold text-slate-900 dark:text-white truncate group-hover:text-primary-600 dark:group-hover:text-primary-400 transition-colors flex items-center gap-2">
                           {s.displayName}
                           <PinnedBadgesDisplay badges={s.pinnedBadges} />
+                          {/* Debt is a separate problem for a separate person —
+                              the bookkeeper, not the curator — so it gets its own
+                              badge instead of being folded into the risk dot. */}
+                          {riskByStudent[s.uid]?.hasOverduePayment && (
+                            <span title="Просрочена оплата" className="shrink-0 inline-flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-400">
+                              <Wallet className="w-3 h-3" /> Долг
+                            </span>
+                          )}
                         </h3>
+                        {/* The reason in plain words, not just a coloured dot —
+                            "почему" was the question the old page never answered. */}
+                        {(riskByStudent[s.uid]?.reasons?.length ?? 0) > 0 && (
+                          <p className="text-[11px] text-red-600/90 dark:text-red-400/90 truncate mt-0.5" title={riskSummary(riskByStudent[s.uid])}>
+                            {riskByStudent[s.uid].reasons!.join(' · ')}
+                          </p>
+                        )}
                         {/* Mobile-only meta */}
                         <div className="flex items-center gap-2 mt-1 md:hidden flex-wrap">
                           {studentBranchNames.length > 0 && <span className="text-[10px] text-slate-400 flex items-center gap-1"><Building2 className="w-3 h-3" />{studentBranchNames.join(', ')}</span>}
@@ -963,6 +1043,8 @@ const StudentsPage: React.FC = () => {
           </div>
         </div>
       )}
+
+      <ChurnInsightsModal open={churnOpen} onClose={() => setChurnOpen(false)} />
     </div>
   );
 };

@@ -69,7 +69,6 @@ const JoinQuizPage = lazyRetry(() => import('./pages/quiz/JoinQuizPage'));
 const QuizPlayPage = lazyRetry(() => import('./pages/quiz/QuizPlayPage'));
 
 // Mega Features
-const StudentRiskDashboard = lazyRetry(() => import('./pages/teacher-analytics/StudentRiskDashboard'));
 const HomeworkReviewPage = lazyRetry(() => import('./pages/homework/HomeworkReviewPage'));
 
 
@@ -205,7 +204,6 @@ const App: React.FC = () => {
             <Route path="gradebook" element={<ProtectedRoute><PermissionRoute resource="gradebook"><PlanGuard feature="gradebook"><GradebookPage /></PlanGuard></PermissionRoute></ProtectedRoute>} />
             <Route path="journal" element={<ProtectedRoute><PermissionRoute resource="gradebook"><PlanGuard feature="gradebook"><JournalPage /></PlanGuard></PermissionRoute></ProtectedRoute>} />
             <Route path="teacher-analytics" element={<ProtectedRoute><PermissionRoute resource="analytics"><PlanGuard feature="advancedAnalytics"><AdminGradebookAnalytics /></PlanGuard></PermissionRoute></ProtectedRoute>} />
-            <Route path="risk-dashboard" element={<ProtectedRoute><PermissionRoute resource="analytics"><PlanGuard feature="advancedAnalytics"><StudentRiskDashboard /></PlanGuard></PermissionRoute></ProtectedRoute>} />
             <Route path="homework/review" element={<ProtectedRoute><PermissionRoute resource="homework"><HomeworkReviewPage /></PermissionRoute></ProtectedRoute>} />
 
             {/* Lessons */}

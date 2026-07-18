@@ -79,11 +79,6 @@ export const PAGE_HELP_DATA: Record<string, PageHelpConfig> = {
     featuresIcons: [BarChart3, TrendingDown],
     tipsCount: 0
   },
-  '/risk-dashboard': {
-    id: 'risk_dashboard',
-    featuresIcons: [TrendingDown, Users],
-    tipsCount: 1
-  },
   '/org-settings': {
     id: 'org_settings',
     featuresIcons: [Building2, FolderOpen],

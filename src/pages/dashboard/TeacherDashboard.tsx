@@ -11,7 +11,7 @@ import type { LessonPlan, Exam, ExamRoom, ExamAttempt, Group, UserProfile } from
 import { formatDate } from '../../utils/grading';
 import {
   ArrowRight, Plus, Users, MailOpen, UserCircle2,
-  UsersRound, FileText, Monitor, Gamepad2, History, BarChart3, Activity, TrendingDown,
+  UsersRound, FileText, Monitor, Gamepad2, History, BarChart3, Activity,
   BookOpen, ClipboardList, ChevronRight,
 } from 'lucide-react';
 import TeacherOnboardingWizard from '../../components/onboarding/TeacherOnboardingWizard';
@@ -242,7 +242,6 @@ export const TeacherDashboardView: React.FC<TeacherDashboardViewProps> = ({
                     { to: '/quiz/sessions', icon: History, label: t('nav.quizSessions') },
                     { to: '/results', icon: BarChart3, label: t('nav.results') },
                     { to: '/teacher-analytics', icon: Activity, label: t('nav.analytics') },
-                    { to: '/risk-dashboard', icon: TrendingDown, label: t('nav.riskDashboard', 'Светофор рисков') },
                     { to: '/teacher-profile', icon: UserCircle2, label: t('nav.myProfile') },
                   ].map(link => (
                     <Link

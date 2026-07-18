@@ -16,7 +16,7 @@ import {
   ClipboardCheck,
   Inbox,
   NotebookText, NotebookPen, MapPin, UserCog,
-  Sparkles, TrendingDown, LifeBuoy,
+  Sparkles, LifeBuoy,
 } from 'lucide-react';
 
 /**
@@ -134,7 +134,6 @@ export function useNavModel(instType?: string): NavSectionDef[] {
         { id: 'ai', to: '/ai', icon: Sparkles, label: t('nav.aiHub', 'AI-центр'), locked: !canAccess('ai') },
         { id: 'finances', to: '/finances', icon: CreditCard, label: t('nav.finances', 'Финансы'), locked: !canAccess('finances') },
         { id: 'analytics', to: '/teacher-analytics', icon: BarChart3, label: t('nav.analytics'), locked: !canAccess('advancedAnalytics') },
-        { id: 'riskDashboard', to: '/risk-dashboard', icon: TrendingDown, label: t('nav.riskDashboard', 'Светофор рисков'), locked: !canAccess('advancedAnalytics') },
       ],
     });
   }
@@ -173,7 +172,6 @@ export function useNavModel(instType?: string): NavSectionDef[] {
     if (canRead('settings')) management.push({ id: 'orgSettings', to: '/org-settings', icon: Settings, label: t('nav.orgSettings', 'Настройки') });
     if (canRead('gradebook')) management.push({ id: 'gradebook', to: '/gradebook', icon: TableProperties, label: t('nav.gradebook', 'Успеваемость'), locked: !canAccess('gradebook') });
     if (canRead('analytics')) management.push({ id: 'analytics', to: '/teacher-analytics', icon: BarChart3, label: t('nav.analytics'), locked: !canAccess('advancedAnalytics') });
-    if (canRead('analytics')) management.push({ id: 'riskDashboard', to: '/risk-dashboard', icon: TrendingDown, label: t('nav.riskDashboard', 'Светофор рисков'), locked: !canAccess('advancedAnalytics') });
     sections.push({ id: 'management', label: t('nav.secManagement', 'Управление'), items: management });
   }
 

@@ -244,7 +244,9 @@ const AdminDashboard: React.FC = () => {
   };
   const attention = [
     showFinance && (financeCur?.overdueCount || 0) > 0 && { icon: CreditCard, color: 'red', label: 'Просроченные платежи', count: financeCur.overdueCount, to: '/finances' },
-    (overview?.risk?.total || 0) > 0 && { icon: AlertTriangle, color: 'orange', label: 'Ученики в зоне риска', count: overview.risk.total, to: '/risk-dashboard' },
+    // `attention` (churn + debt), not `total` (churn only): this tile links to the
+    // students list filtered by the same rule, so the two must show one number.
+    (overview?.risk?.attention ?? overview?.risk?.total ?? 0) > 0 && { icon: AlertTriangle, color: 'orange', label: 'Ученики в зоне риска', count: overview.risk.attention ?? overview.risk.total, to: '/students?risk=1' },
     (overview?.leads?.new || 0) > 0 && { icon: Inbox, color: 'blue', label: 'Новые заявки', count: overview.leads.new, to: '/leads' },
     (overview?.pendingHomework || 0) > 0 && { icon: FileText, color: 'slate', label: 'Непроверенные ДЗ', count: overview.pendingHomework, to: '/homework/review' },
   ].filter(Boolean) as { icon: React.ElementType; color: string; label: string; count: number; to: string }[];

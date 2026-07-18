@@ -9,9 +9,10 @@
  */
 import type { Handler, HandlerEvent } from '@netlify/functions';
 import { adminDb, getDocsByIds } from './utils/firebase-admin';
-import { verifyAuth, ok, unauthorized, forbidden, badRequest, jsonResponse, hasRole } from './utils/auth';
+import { verifyAuth, ok, unauthorized, forbidden, badRequest, jsonResponse, hasRole, memberHoldsRole } from './utils/auth';
 import { rateLimiters, getRateLimitKey } from './utils/rate-limiter';
 import { getModel, parseJsonLoose, aiAllowed, hasGeminiKey, recordAiUsage } from './utils/ai';
+import { computeStudentRisk } from './utils/risk';
 
 function monthStartISO(offset = 0): string {
   const d = new Date();
@@ -123,14 +124,19 @@ function snapshotToText(s: OrgSnapshot): string {
   ].join('\n');
 }
 
-// ── Churn: lightweight per-student risk computation (mirrors api-risk) ──
+// ── Churn: per-student risk over the org roster (formula in utils/risk.ts) ──
 async function computeRisk(orgId: string) {
   const memberSnap = await adminDb.collection('orgMembers').doc(orgId).collection('members')
-    .where('role', '==', 'student').where('status', '==', 'active').get();
+    .where('status', '==', 'active').get();
   if (memberSnap.empty) return [];
 
   const memberByUid = new Map<string, any>();
-  memberSnap.docs.forEach(d => { const data = d.data(); memberByUid.set(data.userId || d.id, data); });
+  memberSnap.docs.forEach(d => {
+    const data = d.data();
+    if (!memberHoldsRole(data, ['student'])) return;
+    memberByUid.set(data.userId || d.id, data);
+  });
+  if (memberByUid.size === 0) return [];
   const studentIds = Array.from(memberByUid.keys());
 
   const usersMap = new Map<string, any>(Object.entries(await getDocsByIds('users', studentIds)));
@@ -151,46 +157,26 @@ async function computeRisk(orgId: string) {
     journalByStudent.get(data.studentId)!.push(data);
   });
 
-  const now = Date.now();
+  const nowMs = Date.now();
   return studentIds.map(uid => {
     const profile = usersMap.get(uid) || {};
     const member = memberByUid.get(uid) || {};
-    const sAttempts = attemptsByStudent.get(uid) || [];
-    const sJournal = journalByStudent.get(uid) || [];
-
-    const hasScores = sAttempts.length > 0;
-    const avgScore = hasScores ? Math.round(sAttempts.reduce((a, c) => a + (c.percentage || 0), 0) / sAttempts.length) : 0;
-    const missed = sJournal.filter(j => j.attendance === 'absent').length;
-    const attendanceRate = sJournal.length ? Math.round(((sJournal.length - missed) / sJournal.length) * 100) : 100;
-
-    // Only students who actually started (took an exam or showed up at least once)
-    // can be a churn risk — a just-added student with no history is not "inactive".
-    const attendedCount = sJournal.filter(j => j.attendance && j.attendance !== 'absent').length;
-    const everEngaged = sAttempts.length > 0 || attendedCount > 0;
-
-    // Days since last *real* activity — never account/enrollment creation, which
-    // would make freshly-added students look inactive for weeks.
-    const dates: Date[] = [];
-    sAttempts.forEach(a => { const d = a.submittedAt || a.createdAt; if (d) dates.push(new Date(d)); });
-    sJournal.forEach(j => { if (j.date && j.attendance !== 'absent') dates.push(new Date(j.date)); });
-    dates.sort((a, b) => b.getTime() - a.getTime());
-    const enrolledAt = new Date(member.joinedAt || member.createdAt || profile.createdAt || now);
-    const daysSinceLastActive = dates.length > 0
-      ? Math.floor((now - dates[0].getTime()) / 86400000)
-      : Math.max(0, Math.floor((now - enrolledAt.getTime()) / 86400000));
-
-    let riskLevel: 'low' | 'medium' | 'high' = 'low';
-    if (everEngaged && (daysSinceLastActive > 7 || (hasScores && avgScore < 50) || attendanceRate < 50)) riskLevel = 'high';
-    else if (everEngaged && (daysSinceLastActive > 4 || (hasScores && avgScore < 70) || attendanceRate < 80)) riskLevel = 'medium';
+    const r = computeStudentRisk({
+      enrolledAt: member.joinedAt || member.createdAt || profile.createdAt,
+      attempts: attemptsByStudent.get(uid) || [],
+      journal: journalByStudent.get(uid) || [],
+      nowMs,
+    });
 
     return {
       studentId: uid,
       studentName: profile.displayName || member.userName || 'Ученик',
-      riskLevel,
-      averageScore: hasScores ? avgScore : null,
-      attendanceRate,
-      daysSinceLastActive,
-      examsTaken: sAttempts.length,
+      riskLevel: r.riskLevel,
+      averageScore: r.examsTaken > 0 ? r.averageScore : null,
+      attendanceRate: r.attendanceRate,
+      daysSinceLastActive: r.daysSinceLastActive,
+      examsTaken: r.examsTaken,
+      reasons: r.reasons,
     };
   });
 }

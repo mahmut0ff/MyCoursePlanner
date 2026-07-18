@@ -104,7 +104,9 @@ const handler: Handler = async (event: HandlerEvent) => {
         'risk_alert',
         `⚠️ Требуют внимания: ${atRisk.length}`,
         `${listed}${more}`,
-        '/risk-dashboard',
+        // The standalone risk dashboard is gone; the roster filtered to the
+        // flagged students is where you can actually act on this alert.
+        '/students?risk=1',
       ).catch(() => {});
       alertsSent++;
     }

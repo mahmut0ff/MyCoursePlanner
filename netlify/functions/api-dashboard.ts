@@ -3,7 +3,8 @@
  */
 import type { Handler, HandlerEvent } from '@netlify/functions';
 import { adminDb } from './utils/firebase-admin';
-import { verifyAuth, isStaff, hasRole, getOrgFilter, resolveBranchFilter, ok, unauthorized, forbidden, jsonResponse } from './utils/auth';
+import { verifyAuth, isStaff, hasRole, getOrgFilter, resolveBranchFilter, memberInBranchScope, memberHoldsRole, ok, unauthorized, forbidden, jsonResponse } from './utils/auth';
+import { computeStudentRisk, needsAttention } from './utils/risk';
 
 /** ISO timestamp for the 1st of the month, `offset` months back (0 = this month). */
 function monthStartISO(offset = 0): string {
@@ -121,12 +122,21 @@ const handler: Handler = async (event: HandlerEvent) => {
       adminDb.collection('homework_submissions').where('organizationId', '==', orgFilter).where('status', '==', 'pending').count().get().catch(() => emptyCount),
     ]);
 
-    const members = memberSnap.docs.map(d => ({ id: d.id, ...(d.data() as any) }));
-    const students = members.filter(m => m.role === 'student');
-    const teachers = members.filter(m => ['teacher', 'mentor'].includes(m.role)).length;
+    // Scope the roster to the selected branch, the same way the students list
+    // does. Without this the overview counted the whole org while the list next
+    // to it counted one branch — the mismatch that made these tiles untrustworthy.
+    const overviewScope = resolveBranchFilter(user, params.branchId);
+    if (overviewScope === '__DENIED__') return forbidden();
+
+    const members = memberSnap.docs
+      .map(d => ({ id: d.id, ...(d.data() as any) }))
+      .filter(m => memberInBranchScope(m.branchIds, overviewScope));
+    const students = members.filter(m => memberHoldsRole(m, ['student']));
+    const teachers = members.filter(m => memberHoldsRole(m, ['teacher', 'mentor'])).length;
     const memberByUid = new Map<string, any>();
     students.forEach(m => memberByUid.set(m.userId || m.id, m));
     const studentIds = Array.from(memberByUid.keys());
+    const studentIdSet = new Set(studentIds);
 
     const sinceOf = (m: any) => m.joinedAt || m.createdAt || '';
     const newThisMonth = students.filter(m => sinceOf(m) >= monthStart).length;
@@ -141,20 +151,22 @@ const handler: Handler = async (event: HandlerEvent) => {
     const newLastMonthToDate = students.filter(m => { const s = sinceOf(m); return s >= lastMonthStart && s <= lmCutoff; }).length;
 
     // Group attempts & attendance by student (single pass each).
+    // Every aggregate below is derived from the in-scope roster only, so a branch
+    // view reports that branch's performance rather than the whole org's.
     const attemptsByStudent = new Map<string, any[]>();
-    const allAttempts = (attemptSnap?.docs || []).map(d => d.data() as any);
+    const allAttempts = (attemptSnap?.docs || []).map(d => d.data() as any).filter(a => studentIdSet.has(a.studentId));
     allAttempts.forEach(a => {
       if (!attemptsByStudent.has(a.studentId)) attemptsByStudent.set(a.studentId, []);
       attemptsByStudent.get(a.studentId)!.push(a);
     });
     const journalByStudent = new Map<string, any[]>();
-    const allJournal = (journalSnap?.docs || []).map(d => d.data() as any);
+    const allJournal = (journalSnap?.docs || []).map(d => d.data() as any).filter(j => studentIdSet.has(j.studentId));
     allJournal.forEach(j => {
       if (!journalByStudent.has(j.studentId)) journalByStudent.set(j.studentId, []);
       journalByStudent.get(j.studentId)!.push(j);
     });
     const overdueStudents = new Set<string>();
-    (overdueSnap?.docs || []).forEach(d => { const s = (d.data() as any).studentId; if (s) overdueStudents.add(s); });
+    (overdueSnap?.docs || []).forEach(d => { const s = (d.data() as any).studentId; if (s && studentIdSet.has(s)) overdueStudents.add(s); });
 
     const avgScore = allAttempts.length
       ? Math.round(allAttempts.reduce((s, a) => s + (a.percentage || 0), 0) / allAttempts.length)
@@ -165,23 +177,27 @@ const handler: Handler = async (event: HandlerEvent) => {
     const rateAvg = allJournal.length ? Math.round(((allJournal.length - totalAbsences) / allJournal.length) * 100) : null;
     const absencesThisMonth = allJournal.filter(j => j.attendance === 'absent' && (j.date || '') >= monthStart).length;
 
-    // Risk counts — mirror api-risk thresholds so the dashboard count matches the Risk page.
-    let riskHigh = 0, riskMedium = 0;
+    // Risk counts — same shared formula api-risk uses, so this tile and the
+    // students list can never disagree again. `overdue` is counted separately:
+    // debt is a finance problem, not churn (see utils/risk.ts).
+    let riskHigh = 0, riskMedium = 0, riskOverdue = 0, riskAttention = 0;
     studentIds.forEach(uid => {
-      const sa = attemptsByStudent.get(uid) || [];
-      const sj = journalByStudent.get(uid) || [];
       const member = memberByUid.get(uid) || {};
-      const hasScores = sa.length > 0;
-      const avg = hasScores ? Math.round(sa.reduce((s, a) => s + (a.percentage || 0), 0) / sa.length) : 0;
-      const missed = sj.filter(j => j.attendance === 'absent').length;
-      const attendanceRate = sj.length ? Math.round(((sj.length - missed) / sj.length) * 100) : 100;
-      const dates = [new Date(member.createdAt || nowMs).getTime()];
-      sa.forEach(a => a.createdAt && dates.push(new Date(a.createdAt).getTime()));
-      sj.forEach(j => j.date && dates.push(new Date(j.date).getTime()));
-      const daysSince = Math.floor((nowMs - Math.max(...dates)) / 86400000);
-      const overdue = overdueStudents.has(uid);
-      if (daysSince > 7 || (hasScores && avg < 50) || attendanceRate < 50 || overdue) riskHigh++;
-      else if (daysSince > 4 || (hasScores && avg < 70) || attendanceRate < 80) riskMedium++;
+      const r = computeStudentRisk({
+        enrolledAt: member.joinedAt || member.createdAt,
+        attempts: attemptsByStudent.get(uid) || [],
+        journal: journalByStudent.get(uid) || [],
+        hasOverduePayment: overdueStudents.has(uid),
+        nowMs,
+      });
+      if (r.riskLevel === 'high') riskHigh++;
+      else if (r.riskLevel === 'medium') riskMedium++;
+      if (r.hasOverduePayment) riskOverdue++;
+      // `attention` is the headcount the "В зоне риска" chip on the students list
+      // filters to. The dashboard tile links straight there, so it must count the
+      // same people — a tile whose number shrinks when you click it is exactly the
+      // kind of mismatch that made the old risk screen untrustworthy.
+      if (needsAttention(r)) riskAttention++;
     });
 
     const leads = (leadSnap?.docs || []).map(d => d.data() as any);
@@ -192,7 +208,7 @@ const handler: Handler = async (event: HandlerEvent) => {
       teachers,
       performance: { avgScore, attemptsThisMonth },
       attendance: { rateAvg, absencesThisMonth },
-      risk: { high: riskHigh, medium: riskMedium, total: riskHigh + riskMedium },
+      risk: { high: riskHigh, medium: riskMedium, total: riskHigh + riskMedium, overdue: riskOverdue, attention: riskAttention },
       leads: {
         total: leads.length,
         new: leadCount('new'),

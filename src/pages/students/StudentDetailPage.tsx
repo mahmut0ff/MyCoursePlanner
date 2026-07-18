@@ -9,10 +9,12 @@ import MemberRolesEditor from '../../components/shared/MemberRolesEditor';
 import {
   ArrowLeft, Mail, Trophy, Calendar, BarChart3, Users, Phone, MapPin,
   BookOpen, Zap, Target, Clock, CheckCircle, Plus, X, Loader2,
-  Flame, Copy, Star, Shield, Link2, ExternalLink, CreditCard, Receipt, KeyRound, Sparkles, Pencil
+  Flame, Copy, Star, Shield, Link2, ExternalLink, CreditCard, Receipt, KeyRound, Sparkles, Pencil,
+  AlertTriangle, Wallet
 } from 'lucide-react';
 import type { UserProfile, ExamAttempt, Group } from '../../types';
 import { PinnedBadgesDisplay } from '../../lib/badges';
+import { useStudentRisks } from '../../hooks/useStudentRisks';
 import toast from 'react-hot-toast';
 
 /* ─── palette matching kahoot/quiz ─── */
@@ -35,6 +37,11 @@ const StudentDetailPage: React.FC = () => {
   const { canAccess } = usePlanGate();
   const [reportOpen, setReportOpen] = useState(false);
   const isAdmin = role === 'admin' || role === 'manager' || role === 'super_admin';
+
+  // Why this student is flagged in the roster — the answer the retired risk
+  // dashboard never gave. Same server-computed reasons drive both screens.
+  const { riskByStudent } = useStudentRisks();
+  const risk = uid ? riskByStudent[uid] : undefined;
   const [allGroups, setAllGroups] = useState<Group[]>([]);
   const [groups, setGroups] = useState<Group[]>([]);
   
@@ -399,6 +406,55 @@ const StudentDetailPage: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* ═══ Attention block ═══
+          Renders only when there is something to say, so a healthy student's
+          card stays clean. Engagement and debt are shown as separate problems:
+          they land on different desks. */}
+      {risk && (risk.riskLevel !== 'low' || risk.hasOverduePayment) && (
+        <div className={`mb-6 rounded-2xl border p-4 ${
+          risk.riskLevel === 'high'
+            ? 'bg-red-50 dark:bg-red-900/15 border-red-200 dark:border-red-900/50'
+            : 'bg-amber-50 dark:bg-amber-900/15 border-amber-200 dark:border-amber-900/40'
+        }`}>
+          <div className="flex items-start gap-3">
+            <AlertTriangle className={`w-5 h-5 shrink-0 mt-0.5 ${risk.riskLevel === 'high' ? 'text-red-500' : 'text-amber-500'}`} />
+            <div className="min-w-0 flex-1">
+              <h3 className={`text-sm font-bold ${risk.riskLevel === 'high' ? 'text-red-800 dark:text-red-200' : 'text-amber-800 dark:text-amber-200'}`}>
+                {risk.riskLevel === 'high' ? 'Требует внимания' : 'Стоит присмотреться'}
+              </h3>
+
+              {risk.reasons && risk.reasons.length > 0 ? (
+                <ul className="mt-2 flex flex-wrap gap-1.5">
+                  {risk.reasons.map((r, i) => (
+                    <li key={i} className="text-[11px] font-semibold px-2 py-1 rounded-lg bg-white/70 dark:bg-slate-800/60 text-slate-700 dark:text-slate-200">
+                      {r}
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="mt-1 text-xs text-slate-600 dark:text-slate-300">
+                  {risk.hasActivity === false
+                    ? 'Ещё не начинал(а) заниматься — нет посещений и сданных работ.'
+                    : 'Показатели ниже нормы.'}
+                </p>
+              )}
+
+              {risk.hasOverduePayment && (
+                <p className="mt-2 inline-flex items-center gap-1.5 text-[11px] font-bold px-2 py-1 rounded-lg bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300">
+                  <Wallet className="w-3.5 h-3.5" /> Просрочена оплата — это вопрос к бухгалтерии, не к оттоку
+                </p>
+              )}
+
+              <p className="mt-2 text-[11px] text-slate-500 dark:text-slate-400">
+                {risk.hasActivity === false
+                  ? <>Добавлен(а) {risk.daysSinceEnrolled ?? risk.daysSinceLastActive} дн. назад · посещений пока нет</>
+                  : <>Последняя активность: {risk.daysSinceLastActive} дн. назад · посещаемость {risk.attendanceRate}%</>}
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ═══ Stats Grid ═══ */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mb-6">

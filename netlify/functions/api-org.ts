@@ -7,7 +7,7 @@ import { adminAuth, adminDb, getDocsByIds } from './utils/firebase-admin';
 import {
   verifyAuth, isStaff, isSuperAdmin, hasRole, hasPermission, can, getOrgFilter,
   ok, unauthorized, forbidden, badRequest, notFound, jsonResponse,
-  resolveBranchFilter, userHasBranchAccess,
+  resolveBranchFilter, userHasBranchAccess, memberInBranchScope, memberHoldsRole,
   type AuthUser,
 } from './utils/auth';
 import { createNotification, notifyOrgAdmins, notifyGroupMembers } from './utils/notifications';
@@ -18,17 +18,6 @@ import { billingPeriodKey, billingDeadlineISO } from './utils/billing';
 /*  Helpers                                        */
 /* ═══════════════════════════════════════════════ */
 const now = () => new Date().toISOString();
-
-/**
- * A member "holds" an app role if it's their primary `role` OR appears in their
- * multi-role `roles[]` set. Used so a multi-role member (e.g. teacher + manager)
- * shows up under every list they belong to, not just their primary role. Falls
- * back to the single `role` field for legacy members that have no `roles` array.
- */
-function memberHoldsRole(m: { role?: string; roles?: string[] }, wanted: string[]): boolean {
-  const held = new Set<string>([m.role, ...(Array.isArray(m.roles) ? m.roles : [])].filter(Boolean) as string[]);
-  return wanted.some((r) => held.has(r));
-}
 
 // ─── Schedule conflict detection ───────────────────────────────────────────
 // Authoritative server-side check so EVERY path (manual create, drag&drop, paste,
@@ -681,13 +670,7 @@ const handler: Handler = async (event: HandlerEvent) => {
       // explicit branchId. Mirrors the courses/groups/schedule actions.
       const studentBranchScope = resolveBranchFilter(user, params.branchId);
       if (studentBranchScope === '__DENIED__') return ok([]);
-      if (typeof studentBranchScope === 'string') {
-        filtered = filtered.filter((s: any) => s.branchIds.includes(studentBranchScope));
-      } else if (Array.isArray(studentBranchScope)) {
-        filtered = filtered.filter((s: any) =>
-          s.branchIds.length === 0 || s.branchIds.some((id: string) => studentBranchScope.includes(id))
-        );
-      }
+      filtered = filtered.filter((s: any) => memberInBranchScope(s.branchIds, studentBranchScope));
 
       // Enrich with user profile data (avatarUrl, phone, city, createdAt).
       // Uses a single batched getAll() instead of sequential `in` queries so this

@@ -378,3 +378,36 @@ export function resolveBranchFilter(user: AuthUser, requestedBranchId?: string |
   // course/group/event from a one-branch member.
   return user.branchIds;
 }
+
+/**
+ * Applies a resolveBranchFilter() result to one member's branch assignment.
+ *
+ * Callers used to hand-roll this three-way match (string / array / null) at each
+ * call site, which is how api-risk ended up with no branch filter at all while
+ * the students list had one — the same roster, two different answers.
+ *
+ * `'__DENIED__'` must be handled by the caller (return an empty list) before
+ * calling this.
+ */
+export function memberInBranchScope(
+  memberBranchIds: string[] | undefined | null,
+  scope: string | null | string[],
+): boolean {
+  if (scope === null || scope === '__DENIED__') return scope === null;
+  const ids = Array.isArray(memberBranchIds) ? memberBranchIds : [];
+  if (typeof scope === 'string') return ids.includes(scope);
+  // Array form = "the branches this member may see". An unassigned member is
+  // org-wide and stays visible, mirroring userHasBranchAccess().
+  return ids.length === 0 || ids.some(id => scope.includes(id));
+}
+
+/**
+ * A member "holds" an app role if it's their primary `role` OR appears in their
+ * multi-role `roles[]` set, so a multi-role member (e.g. teacher + student)
+ * shows up under every list they belong to. Falls back to the single `role`
+ * field for legacy members that have no `roles` array.
+ */
+export function memberHoldsRole(m: { role?: string; roles?: string[] }, wanted: string[]): boolean {
+  const held = new Set<string>([m.role, ...(Array.isArray(m.roles) ? m.roles : [])].filter(Boolean) as string[]);
+  return wanted.some(r => held.has(r));
+}

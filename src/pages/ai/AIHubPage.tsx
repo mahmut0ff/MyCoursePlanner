@@ -55,11 +55,11 @@ const TOOLS: ToolDef[] = [
     key: 'churn',
     title: 'AI-анализ оттока',
     desc: 'Кто из учеников может уйти, почему и что сделать — с вероятностью и рекомендацией для менеджера.',
-    where: 'Аналитика → Группа риска',
+    where: 'Ученики → В зоне риска',
     icon: TrendingDown,
     accent: 'bg-rose-100 text-rose-600 dark:bg-rose-900/30 dark:text-rose-400',
     action: 'navigate',
-    to: '/risk-dashboard',
+    to: '/students?risk=1',
     gated: true,
   },
   {

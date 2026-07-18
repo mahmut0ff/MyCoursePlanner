@@ -231,6 +231,12 @@ export interface StudentRiskProfile {
   daysSinceEnrolled?: number;
   hasActivity?: boolean; // false = newly added, no engagement yet (not a churn risk)
   missedAssignments: number;
+  missedLessons?: number;
+  /** Plain-language engagement reasons ("не был(а) 12 дн."). Never includes debt. */
+  reasons?: string[];
+  scoreTrend?: 'up' | 'down' | 'flat';
+  /** Finance signal, deliberately kept out of `riskLevel` — it gets its own badge. */
+  hasOverduePayment?: boolean;
   notes?: string[];
 }
 

@@ -16,7 +16,7 @@ import {
   apiRestoreStudent,
   apiGetPaymentPlans
 } from '../../lib/api';
-import { Users, Search, RefreshCw, CheckCircle, XCircle, UserPlus, Phone, Filter, X, SortAsc, SortDesc, Trash2, Plus, Lightbulb, Copy, BookOpen, UsersRound, Upload, KeyRound, Eye, EyeOff, Calendar, Building2, Wallet, Sparkles, Pencil, Receipt, UserMinus, UserCheck } from 'lucide-react';
+import { Users, Search, RefreshCw, CheckCircle, XCircle, UserPlus, Phone, Filter, X, SortAsc, SortDesc, Trash2, Plus, Lightbulb, Copy, BookOpen, UsersRound, Upload, KeyRound, Eye, EyeOff, Calendar, Building2, Wallet, Sparkles, Pencil, Receipt, UserMinus, UserCheck, History, MessageCircle } from 'lucide-react';
 import type { UserProfile, Group, Branch } from '../../types';
 import toast from 'react-hot-toast';
 import { PinnedBadgesDisplay } from '../../lib/badges';
@@ -30,7 +30,9 @@ import ChurnInsightsModal from '../../components/ai/ChurnInsightsModal';
 import RowMenu, { type RowMenuItem } from '../../components/ui/RowMenu';
 import AcceptPaymentModal, { type PayablePlan } from '../../components/finance/AcceptPaymentModal';
 import CreatePaymentPlanModal from '../../components/finance/CreatePaymentPlanModal';
+import PaymentHistoryModal from '../../components/finance/PaymentHistoryModal';
 import EditStudentModal from '../../components/students/EditStudentModal';
+import MoveStudentModal from '../../components/roster/MoveStudentModal';
 
 type SortField = 'name' | 'branch' | 'date';
 type SortDir = 'asc' | 'desc';
@@ -82,7 +84,9 @@ const StudentsPage: React.FC = () => {
   const [plans, setPlans] = useState<any[]>([]);
   const [payFor, setPayFor] = useState<{ student: UserProfile; plans: PayablePlan[] } | null>(null);
   const [billFor, setBillFor] = useState<UserProfile | null>(null);
+  const [historyFor, setHistoryFor] = useState<UserProfile | null>(null);
   const [editing, setEditing] = useState<UserProfile | null>(null);
+  const [moveFor, setMoveFor] = useState<{ student: UserProfile; mode: 'group' | 'branch' } | null>(null);
 
   // Create student modal
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -172,13 +176,17 @@ const StudentsPage: React.FC = () => {
   useEffect(loadPlans, [financeEnabled, organizationId, activeBranchId]);
 
   // Непогашенные счета по студенту — источник пункта «Принять оплату».
-  const unpaidByStudent = useMemo(() => {
-    const map: Record<string, PayablePlan[]> = {};
+  // Отдельно считаем, есть ли счета вообще: без них нечего показывать в истории.
+  const { unpaidByStudent, billedStudents } = useMemo(() => {
+    const unpaid: Record<string, PayablePlan[]> = {};
+    const billed = new Set<string>();
     for (const p of plans) {
+      const id = String(p.studentId);
+      billed.add(id);
       if (Math.max(0, (p.totalAmount || 0) - (p.paidAmount || 0)) <= 0) continue;
-      (map[String(p.studentId)] ||= []).push(p);
+      (unpaid[id] ||= []).push(p);
     }
-    return map;
+    return { unpaidByStudent: unpaid, billedStudents: billed };
   }, [plans]);
 
   // Reset page when filters change
@@ -470,19 +478,37 @@ const StudentsPage: React.FC = () => {
     const unpaid = unpaidByStudent[s.uid] || [];
     const debt = unpaid.reduce((sum, p) => sum + Math.max(0, (p.totalAmount || 0) - (p.paidAmount || 0)), 0);
 
-    if (financeEnabled && !expelled) {
-      if (unpaid.length > 0) {
+    if (financeEnabled) {
+      if (unpaid.length > 0 && !expelled) {
         items.push({
           label: `Принять оплату · ${debt.toLocaleString()} с.`,
           icon: Wallet,
           onSelect: () => setPayFor({ student: s, plans: unpaid }),
         });
       }
-      items.push({ label: 'Выставить счёт', icon: Receipt, onSelect: () => setBillFor(s) });
+      if (!expelled) items.push({ label: 'Выставить счёт', icon: Receipt, onSelect: () => setBillFor(s) });
+      if (billedStudents.has(s.uid)) {
+        items.push({ label: 'История оплат', icon: History, onSelect: () => setHistoryFor(s) });
+      }
+    }
+
+    // Связаться — самое частое действие сразу после «увидел долг», поэтому
+    // отдельным блоком и без всяких прав: телефон уже виден в этой же строке.
+    const waPhone = (s.phone || '').replace(/\D/g, '');
+    if (s.phone) {
+      items.push({ label: 'Позвонить', icon: Phone, separated: items.length > 0, onSelect: () => { window.location.href = `tel:${s.phone}`; } });
+      // Короткие номера без кода страны wa.me не откроет — не предлагаем.
+      if (waPhone.length >= 10) {
+        items.push({ label: 'Написать в WhatsApp', icon: MessageCircle, onSelect: () => window.open(`https://wa.me/${waPhone}`, '_blank', 'noopener') });
+      }
     }
 
     if (permsLoaded && canWrite('students')) {
       items.push({ label: t('common.edit', 'Редактировать'), icon: Pencil, separated: items.length > 0, onSelect: () => setEditing(s) });
+      if (!expelled) {
+        if (groups.length > 0) items.push({ label: 'Перевести в группу', icon: UsersRound, onSelect: () => setMoveFor({ student: s, mode: 'group' }) });
+        if (branches.length > 0) items.push({ label: 'Перевести в филиал', icon: Building2, onSelect: () => setMoveFor({ student: s, mode: 'branch' }) });
+      }
       items.push(
         expelled
           ? { label: 'Восстановить', icon: UserCheck, separated: true, onSelect: () => handleRestore(s) }
@@ -1157,6 +1183,27 @@ const StudentsPage: React.FC = () => {
           studentName={billFor.displayName || ''}
           onClose={() => setBillFor(null)}
           onSuccess={loadPlans}
+        />
+      )}
+
+      {historyFor && (
+        <PaymentHistoryModal
+          studentId={historyFor.uid}
+          studentName={historyFor.displayName || ''}
+          onClose={() => setHistoryFor(null)}
+        />
+      )}
+
+      {moveFor && (
+        <MoveStudentModal
+          uid={moveFor.student.uid}
+          studentName={moveFor.student.displayName || ''}
+          mode={moveFor.mode}
+          groups={groups}
+          branches={branches}
+          current={moveFor.mode === 'group' ? getStudentGroups(moveFor.student.uid) : getStudentBranchNames(moveFor.student)}
+          onClose={() => setMoveFor(null)}
+          onDone={() => { loadStudents(true); loadGroups(); }}
         />
       )}
 

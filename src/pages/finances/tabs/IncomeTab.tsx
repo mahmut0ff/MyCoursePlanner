@@ -1,11 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { apiGetPaymentPlans, apiGetTransactions, apiDeletePaymentPlan } from '../../../lib/api';
+import { apiGetPaymentPlans, apiDeletePaymentPlan } from '../../../lib/api';
 import { orgGetStudents } from '../../../lib/api';
-import { CheckCircle2, AlertCircle, Clock, Search, Plus, CreditCard, History, X, Users, Trash2, Download, MinusCircle } from 'lucide-react';
+import { CheckCircle2, AlertCircle, Clock, Search, Plus, CreditCard, History, Users, Trash2, Download, MinusCircle } from 'lucide-react';
 import toast from 'react-hot-toast';
 import AcceptPaymentModal from '../../../components/finance/AcceptPaymentModal';
 import CreatePaymentPlanModal from '../../../components/finance/CreatePaymentPlanModal';
+import PaymentHistoryModal from '../../../components/finance/PaymentHistoryModal';
 
 interface PaymentPlan {
   id: string;
@@ -17,18 +18,6 @@ interface PaymentPlan {
   paidAmount: number;
   status: 'pending' | 'partial' | 'paid' | 'overdue';
   deadline?: string;
-  createdAt: string;
-}
-
-interface Transaction {
-  id: string;
-  type: 'income' | 'expense';
-  amount: number;
-  date: string;
-  description?: string;
-  studentId?: string;
-  paymentPlanId?: string;
-  paymentMethod?: string;
   createdAt: string;
 }
 
@@ -95,10 +84,6 @@ const IncomeTab: React.FC = () => {
   const [allStudents, setAllStudents] = useState<any[]>([]);
   const [studentsLoading, setStudentsLoading] = useState(true);
 
-  // History
-  const [history, setHistory] = useState<Transaction[]>([]);
-  const [historyLoading, setHistoryLoading] = useState(false);
-
   const load = () => {
     setLoading(true);
     apiGetPaymentPlans()
@@ -140,16 +125,9 @@ const IncomeTab: React.FC = () => {
     } catch (e: any) { toast.error(e.message); }
   };
 
-  // PAYMENT HISTORY — server-side filtering
-  const openHistory = async (plan: PaymentPlan) => {
+  const openHistory = (plan: PaymentPlan) => {
     setSelectedPlan(plan);
     setModal('history');
-    setHistoryLoading(true);
-    try {
-      const txs = await apiGetTransactions({ paymentPlanId: plan.id } as any);
-      setHistory(Array.isArray(txs) ? txs : []);
-    } catch { setHistory([]); }
-    finally { setHistoryLoading(false); }
   };
 
   // UNIFIED ROWS — все счета + все активные студенты без единого счёта.
@@ -414,58 +392,12 @@ const IncomeTab: React.FC = () => {
         />
       )}
 
-      {/* ─── HISTORY MODAL ─── */}
       {modal === 'history' && selectedPlan && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-slate-800 rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden">
-            <div className="p-6 border-b border-slate-100 dark:border-slate-700 flex items-center justify-between">
-              <div>
-                <h2 className="text-lg font-bold text-slate-900 dark:text-white">История оплат</h2>
-                <p className="text-sm text-slate-500 mt-0.5">{selectedPlan.studentName || selectedPlan.studentId}</p>
-              </div>
-              <button onClick={() => setModal('none')} className="p-1 text-slate-400 hover:text-slate-600"><X className="w-5 h-5" /></button>
-            </div>
-            <div className="p-6">
-              <div className="mb-5">
-                <div className="flex justify-between text-sm mb-2">
-                  <span className="text-slate-500">Прогресс оплаты</span>
-                  <span className="font-bold text-slate-900 dark:text-white">
-                    {selectedPlan.paidAmount.toLocaleString()} / {selectedPlan.totalAmount.toLocaleString()} с.
-                  </span>
-                </div>
-                <div className="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-3 overflow-hidden">
-                  <div className="bg-gradient-to-r from-emerald-400 to-emerald-600 h-3 rounded-full transition-all duration-500"
-                    style={{ width: `${Math.min(100, (selectedPlan.paidAmount / selectedPlan.totalAmount) * 100)}%` }} />
-                </div>
-              </div>
-              {historyLoading ? (
-                <div className="py-6 text-center text-slate-500 animate-pulse">Загрузка...</div>
-              ) : history.length === 0 ? (
-                <div className="py-6 text-center text-slate-400">Нет истории оплат</div>
-              ) : (
-                <div className="space-y-3 max-h-64 overflow-y-auto">
-                  {history.map((tx) => (
-                    <div key={tx.id} className="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-900 rounded-xl">
-                      <div className="flex items-center gap-3">
-                        <div className="p-2 bg-emerald-100 dark:bg-emerald-900/30 rounded-lg">
-                          <CreditCard className="w-4 h-4 text-emerald-600" />
-                        </div>
-                        <div>
-                          <p className="text-sm font-medium text-slate-900 dark:text-white">+{tx.amount.toLocaleString()} с.</p>
-                          <p className="text-xs text-slate-500">
-                            {new Date(tx.date || tx.createdAt).toLocaleDateString()}
-                            {tx.paymentMethod && <span className="ml-1.5">· {tx.paymentMethod === 'card' ? '💳' : tx.paymentMethod === 'transfer' ? '🏦' : '💵'}</span>}
-                          </p>
-                        </div>
-                      </div>
-                      {tx.description && <p className="text-xs text-slate-400 max-w-[140px] truncate">{tx.description}</p>}
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
+        <PaymentHistoryModal
+          plan={selectedPlan}
+          studentName={selectedPlan.studentName || selectedPlan.studentId}
+          onClose={() => setModal('none')}
+        />
       )}
     </div>
   );

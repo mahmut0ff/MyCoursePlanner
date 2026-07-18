@@ -1,9 +1,11 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { apiGetPaymentPlans, apiCreatePaymentPlan, apiCreateTransaction, apiGetTransactions, apiDeletePaymentPlan } from '../../../lib/api';
+import { apiGetPaymentPlans, apiGetTransactions, apiDeletePaymentPlan } from '../../../lib/api';
 import { orgGetStudents } from '../../../lib/api';
 import { CheckCircle2, AlertCircle, Clock, Search, Plus, CreditCard, History, X, Users, Trash2, Download, MinusCircle } from 'lucide-react';
 import toast from 'react-hot-toast';
+import AcceptPaymentModal from '../../../components/finance/AcceptPaymentModal';
+import CreatePaymentPlanModal from '../../../components/finance/CreatePaymentPlanModal';
 
 interface PaymentPlan {
   id: string;
@@ -87,25 +89,11 @@ const IncomeTab: React.FC = () => {
   // Modal state
   const [modal, setModal] = useState<ModalType>('none');
   const [selectedPlan, setSelectedPlan] = useState<PaymentPlan | null>(null);
-  const [saving, setSaving] = useState(false);
+  // Кого выставляем счёт — саму форму держит CreatePaymentPlanModal
+  const [createFor, setCreateFor] = useState({ studentId: '', studentName: '' });
 
-  // Pay modal form
-  const [payAmount, setPayAmount] = useState('');
-  const [payComment, setPayComment] = useState('');
-  const [payMethod, setPayMethod] = useState('cash');
-
-  // Create plan form
-  const [newPlan, setNewPlan] = useState({
-    studentId: '', studentName: '', courseId: '', courseName: '',
-    totalAmount: '', deadline: '',
-  });
-
-  // Student autocomplete + unified list
   const [allStudents, setAllStudents] = useState<any[]>([]);
   const [studentsLoading, setStudentsLoading] = useState(true);
-  const [studentQuery, setStudentQuery] = useState('');
-  const [showStudentDropdown, setShowStudentDropdown] = useState(false);
-  const studentInputRef = useRef<HTMLInputElement>(null);
 
   // History
   const [history, setHistory] = useState<Transaction[]>([]);
@@ -130,79 +118,16 @@ const IncomeTab: React.FC = () => {
       .finally(() => setStudentsLoading(false));
   }, []);
 
-  // В счёт выставляем только активных студентов
-  const filteredStudents = allStudents.filter(s => !isExpelled(s)).filter(s =>
-    (s.displayName?.toLowerCase() || '').includes(studentQuery.toLowerCase()) ||
-    (s.email?.toLowerCase() || '').includes(studentQuery.toLowerCase())
-  ).slice(0, 8);
-
   // ACCEPT PAYMENT
   const openPayModal = (plan: PaymentPlan) => {
     setSelectedPlan(plan);
-    setPayAmount(String(plan.totalAmount - plan.paidAmount));
-    setPayComment('');
-    setPayMethod('cash');
     setModal('pay');
-  };
-
-  const handlePay = async () => {
-    if (!selectedPlan || !payAmount || Number(payAmount) <= 0) return;
-    setSaving(true);
-    try {
-      await apiCreateTransaction({
-        type: 'income',
-        amount: Number(payAmount),
-        date: new Date().toISOString(),
-        categoryId: 'course_fee',
-        paymentPlanId: selectedPlan.id,
-        studentId: selectedPlan.studentId,
-        courseId: selectedPlan.courseId,
-        paymentMethod: payMethod,
-        description: payComment || `Оплата: ${selectedPlan.studentName || selectedPlan.studentId}`,
-      });
-      setModal('none');
-      toast.success('Оплата принята');
-      load();
-    } catch (e: any) { toast.error(e.message); }
-    finally { setSaving(false); }
   };
 
   // CREATE PLAN — открывается из строки студента, студент уже выбран
   const openCreateFor = (studentId: string, studentName: string) => {
-    setNewPlan({ studentId, studentName, courseId: '', courseName: '', totalAmount: '', deadline: '' });
-    setStudentQuery(studentName);
-    setShowStudentDropdown(false);
+    setCreateFor({ studentId, studentName });
     setModal('create');
-  };
-
-  const selectStudent = (student: any) => {
-    setNewPlan({ ...newPlan, studentId: student.uid || student.id, studentName: student.displayName || '' });
-    setStudentQuery(student.displayName || '');
-    setShowStudentDropdown(false);
-  };
-
-  const handleCreate = async () => {
-    if (!newPlan.studentId || !newPlan.totalAmount) {
-      toast.error('Выберите студента и укажите сумму');
-      return;
-    }
-    setSaving(true);
-    try {
-      await apiCreatePaymentPlan({
-        studentId: newPlan.studentId,
-        studentName: newPlan.studentName,
-        courseId: newPlan.courseId || 'general',
-        courseName: newPlan.courseName || 'Общий',
-        totalAmount: Number(newPlan.totalAmount),
-        paidAmount: 0,
-        status: 'pending',
-        deadline: newPlan.deadline || null,
-      });
-      setModal('none');
-      toast.success('Счёт создан');
-      load();
-    } catch (e: any) { toast.error(e.message); }
-    finally { setSaving(false); }
   };
 
   // DELETE PLAN
@@ -471,157 +396,22 @@ const IncomeTab: React.FC = () => {
         </div>
       )}
 
-      {/* ─── PAY MODAL ─── */}
       {modal === 'pay' && selectedPlan && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-slate-800 rounded-2xl w-full max-w-md shadow-2xl overflow-hidden">
-            <div className="p-6 border-b border-slate-100 dark:border-slate-700 flex items-center justify-between">
-              <h2 className="text-lg font-bold text-slate-900 dark:text-white">Принять оплату</h2>
-              <button onClick={() => setModal('none')} className="p-1 text-slate-400 hover:text-slate-600"><X className="w-5 h-5" /></button>
-            </div>
-            <div className="p-6 space-y-4">
-              <div className="bg-slate-50 dark:bg-slate-900 rounded-xl p-4">
-                <p className="font-medium text-slate-900 dark:text-white">{selectedPlan.studentName || selectedPlan.studentId}</p>
-                <p className="text-sm text-slate-500 mt-1">{selectedPlan.courseName || selectedPlan.courseId}</p>
-                <div className="flex justify-between mt-3 text-sm">
-                  <span className="text-slate-500">Остаток:</span>
-                  <span className="font-bold text-amber-600">{(selectedPlan.totalAmount - selectedPlan.paidAmount).toLocaleString()} с.</span>
-                </div>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Сумма (с.)</label>
-                <input type="number" autoFocus min="1" max={selectedPlan.totalAmount - selectedPlan.paidAmount}
-                  value={payAmount} onChange={(e) => setPayAmount(e.target.value)}
-                  className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 text-lg font-bold" placeholder="0"
-                />
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Способ оплаты</label>
-                  <select value={payMethod} onChange={(e) => setPayMethod(e.target.value)}
-                    className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2.5 text-sm">
-                    <option value="cash">💵 Наличные</option>
-                    <option value="card">💳 Карта</option>
-                    <option value="transfer">🏦 Перевод</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Комментарий</label>
-                  <input type="text" value={payComment} onChange={(e) => setPayComment(e.target.value)}
-                    className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2.5 text-sm"
-                    placeholder="Наличные / Перевод..."
-                  />
-                </div>
-              </div>
-            </div>
-            <div className="p-6 border-t border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 flex justify-end gap-3">
-              <button onClick={() => setModal('none')} className="px-4 py-2 text-sm font-medium text-slate-600 dark:text-slate-400">Отмена</button>
-              <button onClick={handlePay} disabled={saving || !payAmount || Number(payAmount) <= 0}
-                className="bg-emerald-500 hover:bg-emerald-600 disabled:opacity-50 text-white px-5 py-2 rounded-xl text-sm font-bold transition-all flex items-center gap-2">
-                <CreditCard className="w-4 h-4" />
-                {saving ? 'Сохранение...' : 'Подтвердить оплату'}
-              </button>
-            </div>
-          </div>
-        </div>
+        <AcceptPaymentModal
+          plans={[selectedPlan]}
+          onClose={() => setModal('none')}
+          onSuccess={load}
+        />
       )}
 
-      {/* ─── CREATE PLAN MODAL (with student autocomplete) ─── */}
       {modal === 'create' && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-slate-800 rounded-2xl w-full max-w-md shadow-2xl overflow-hidden">
-            <div className="p-6 border-b border-slate-100 dark:border-slate-700 flex items-center justify-between">
-              <h2 className="text-lg font-bold text-slate-900 dark:text-white">Новый счёт на оплату</h2>
-              <button onClick={() => setModal('none')} className="p-1 text-slate-400 hover:text-slate-600"><X className="w-5 h-5" /></button>
-            </div>
-            <div className="p-6 space-y-4">
-              {/* Student Autocomplete */}
-              <div className="relative">
-                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Студент *</label>
-                <input
-                  ref={studentInputRef}
-                  type="text"
-                  autoFocus={!newPlan.studentId}
-                  value={studentQuery}
-                  onChange={(e) => {
-                    setStudentQuery(e.target.value);
-                    setShowStudentDropdown(true);
-                    if (!e.target.value) setNewPlan({ ...newPlan, studentId: '', studentName: '' });
-                  }}
-                  onFocus={() => setShowStudentDropdown(true)}
-                  className={`w-full bg-slate-50 dark:bg-slate-900 border rounded-xl px-4 py-2.5 text-sm ${
-                    newPlan.studentId ? 'border-emerald-400 bg-emerald-50/50 dark:bg-emerald-900/10' : 'border-slate-200 dark:border-slate-700'
-                  }`}
-                  placeholder="Начните вводить имя студента..."
-                />
-                {newPlan.studentId && (
-                  <div className="absolute right-3 top-[34px] text-emerald-500">
-                    <CheckCircle2 className="w-4 h-4" />
-                  </div>
-                )}
-                {showStudentDropdown && studentQuery && !newPlan.studentId && (
-                  <div className="absolute z-10 top-full left-0 right-0 mt-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-lg max-h-48 overflow-y-auto">
-                    {filteredStudents.length === 0 ? (
-                      <div className="px-4 py-3 text-sm text-slate-400">Студенты не найдены</div>
-                    ) : (
-                      filteredStudents.map(s => (
-                        <button
-                          key={s.uid || s.id}
-                          type="button"
-                          onClick={() => selectStudent(s)}
-                          className="w-full px-4 py-2.5 text-left hover:bg-slate-50 dark:hover:bg-slate-700 flex items-center gap-3 transition-colors"
-                        >
-                          {s.avatarUrl ? (
-                            <img src={s.avatarUrl} className="w-7 h-7 rounded-full object-cover" alt="" />
-                          ) : (
-                            <div className="w-7 h-7 rounded-full bg-blue-500 flex items-center justify-center text-[10px] text-white font-bold">
-                              {s.displayName?.[0]?.toUpperCase() || '?'}
-                            </div>
-                          )}
-                          <div>
-                            <p className="text-sm font-medium text-slate-900 dark:text-white">{s.displayName}</p>
-                            <p className="text-[11px] text-slate-400">{s.email}</p>
-                          </div>
-                        </button>
-                      ))
-                    )}
-                  </div>
-                )}
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Курс / Предмет</label>
-                <input type="text" value={newPlan.courseName}
-                  onChange={(e) => setNewPlan({ ...newPlan, courseName: e.target.value })}
-                  className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-sm"
-                  placeholder="Английский язык"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Сумма (сом) *</label>
-                <input type="number" min="1" autoFocus={!!newPlan.studentId} value={newPlan.totalAmount}
-                  onChange={(e) => setNewPlan({ ...newPlan, totalAmount: e.target.value })}
-                  className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 text-lg font-bold"
-                  placeholder="5000"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Срок оплаты</label>
-                <input type="date" value={newPlan.deadline}
-                  onChange={(e) => setNewPlan({ ...newPlan, deadline: e.target.value })}
-                  className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-sm"
-                />
-              </div>
-            </div>
-            <div className="p-6 border-t border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 flex justify-end gap-3">
-              <button onClick={() => setModal('none')} className="px-4 py-2 text-sm font-medium text-slate-600 dark:text-slate-400">Отмена</button>
-              <button onClick={handleCreate}
-                disabled={saving || !newPlan.studentId || !newPlan.totalAmount}
-                className="bg-emerald-500 hover:bg-emerald-600 disabled:opacity-50 text-white px-5 py-2 rounded-xl text-sm font-bold transition-all">
-                {saving ? 'Создание...' : 'Создать счёт'}
-              </button>
-            </div>
-          </div>
-        </div>
+        <CreatePaymentPlanModal
+          studentId={createFor.studentId}
+          studentName={createFor.studentName}
+          students={activeStudents}
+          onClose={() => setModal('none')}
+          onSuccess={load}
+        />
       )}
 
       {/* ─── HISTORY MODAL ─── */}

@@ -6,6 +6,7 @@
  * GET    ?action=publicMembers&orgId=X      → list public org members (for public profile)
  * POST   ?action=leave                      → user leaves an org
  * POST   ?action=remove                     → org removes a member
+ * POST   ?action=restore                    → org restores an expelled student
  * POST   ?action=changeRole                 → set member's role(s) (single or multi-role)
  * POST   ?action=switchOrg                  → switch user's active org context
  * POST   ?action=switchRole                 → switch caller's active role within their active org
@@ -272,6 +273,34 @@ const handler: Handler = async (event: HandlerEvent) => {
         .collection('members').doc(body.userId).update(update);
 
       return ok({ removed: true });
+    }
+
+    // ═══ POST: Restore an expelled student ═══
+    // Отчисление — единственное действие над студентом, которое до сих пор было
+    // необратимым: вернуть его можно было только заведя заново, потеряв журнал и
+    // историю оплат. Восстановление намеренно уже, чем remove: только студенты и
+    // только из 'expelled'. Возвращать сюда сотрудников нельзя — их доступ живёт
+    // в RBAC, а не в статусе членства.
+    if (event.httpMethod === 'POST' && action === 'restore') {
+      const body = JSON.parse(event.body || '{}');
+      if (!body.userId || !body.organizationId) return badRequest('userId and organizationId required');
+
+      const callerRole = await getOrgRole(user.uid, body.organizationId);
+      if (!isSuperAdmin(user) && !['admin', 'owner', 'manager'].includes(callerRole || '')) return forbidden();
+
+      const targetMembership = await getMembership(body.userId, body.organizationId) as any;
+      if (!targetMembership) return notFound('Member not found');
+      if (targetMembership.role !== 'student') return badRequest('Only students can be restored');
+      if (targetMembership.status !== 'expelled') return badRequest('Member is not expelled');
+
+      const ts = now();
+      const update = { status: 'active', leftAt: null, updatedAt: ts };
+      await adminDb.collection('users').doc(body.userId)
+        .collection('memberships').doc(body.organizationId).update(update);
+      await adminDb.collection('orgMembers').doc(body.organizationId)
+        .collection('members').doc(body.userId).update(update);
+
+      return ok({ restored: true });
     }
 
     // ═══ POST: Delete member permanently ═══

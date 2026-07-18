@@ -11,9 +11,12 @@ import {
   orgCreateStudent,
   orgBulkCreateStudents,
   orgListBranches,
-  apiDeleteMember
+  apiDeleteMember,
+  apiRemoveMember,
+  apiRestoreStudent,
+  apiGetPaymentPlans
 } from '../../lib/api';
-import { Users, Search, RefreshCw, CheckCircle, XCircle, UserPlus, Phone, Filter, X, SortAsc, SortDesc, Trash2, Plus, Lightbulb, Copy, BookOpen, UsersRound, Upload, KeyRound, Eye, EyeOff, Calendar, Building2, Wallet, Sparkles } from 'lucide-react';
+import { Users, Search, RefreshCw, CheckCircle, XCircle, UserPlus, Phone, Filter, X, SortAsc, SortDesc, Trash2, Plus, Lightbulb, Copy, BookOpen, UsersRound, Upload, KeyRound, Eye, EyeOff, Calendar, Building2, Wallet, Sparkles, Pencil, Receipt, UserMinus, UserCheck } from 'lucide-react';
 import type { UserProfile, Group, Branch } from '../../types';
 import toast from 'react-hot-toast';
 import { PinnedBadgesDisplay } from '../../lib/badges';
@@ -24,6 +27,10 @@ import StudentRiskDot, { riskSummary } from '../../components/students/StudentRi
 import { useStudentRisks, isFlagged } from '../../hooks/useStudentRisks';
 import { usePlanGate } from '../../contexts/PlanContext';
 import ChurnInsightsModal from '../../components/ai/ChurnInsightsModal';
+import RowMenu, { type RowMenuItem } from '../../components/ui/RowMenu';
+import AcceptPaymentModal, { type PayablePlan } from '../../components/finance/AcceptPaymentModal';
+import CreatePaymentPlanModal from '../../components/finance/CreatePaymentPlanModal';
+import EditStudentModal from '../../components/students/EditStudentModal';
 
 type SortField = 'name' | 'branch' | 'date';
 type SortDir = 'asc' | 'desc';
@@ -66,6 +73,16 @@ const StudentsPage: React.FC = () => {
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
   const [error, setError] = useState('');
+
+  // ─── Row actions ───
+  // Счета нужны прямо в списке, чтобы «Принять оплату» открывалось отсюда, а не
+  // через переход в финансы. Тянем их только тем, кому финансы вообще доступны:
+  // и тариф, и права проверяются до запроса, иначе получим 403 на каждой загрузке.
+  const financeEnabled = permsLoaded && canWrite('finances') && canAccess('finances');
+  const [plans, setPlans] = useState<any[]>([]);
+  const [payFor, setPayFor] = useState<{ student: UserProfile; plans: PayablePlan[] } | null>(null);
+  const [billFor, setBillFor] = useState<UserProfile | null>(null);
+  const [editing, setEditing] = useState<UserProfile | null>(null);
 
   // Create student modal
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -143,6 +160,26 @@ const StudentsPage: React.FC = () => {
   }, [organizationId, activeBranchId]);
 
   useEffect(() => { loadBranches(); }, [organizationId]);
+
+  // Как и студенты, счета отфильтрованы активным филиалом на стороне api-слоя.
+  const loadPlans = () => {
+    if (!financeEnabled) { setPlans([]); return; }
+    apiGetPaymentPlans()
+      .then((data: any) => setPlans(Array.isArray(data) ? data : []))
+      .catch(() => { /* тихо: без счетов список остаётся рабочим, просто без денежных действий */ });
+  };
+
+  useEffect(loadPlans, [financeEnabled, organizationId, activeBranchId]);
+
+  // Непогашенные счета по студенту — источник пункта «Принять оплату».
+  const unpaidByStudent = useMemo(() => {
+    const map: Record<string, PayablePlan[]> = {};
+    for (const p of plans) {
+      if (Math.max(0, (p.totalAmount || 0) - (p.paidAmount || 0)) <= 0) continue;
+      (map[String(p.studentId)] ||= []).push(p);
+    }
+    return map;
+  }, [plans]);
 
   // Reset page when filters change
   useEffect(() => setPage(1), [search, selectedGroup, statusFilter, riskOnly, sortField, sortDir, activeBranchId]);
@@ -382,11 +419,10 @@ const StudentsPage: React.FC = () => {
   const safePage = Math.min(page, totalPages);
   const paginatedStudents = filteredStudents.slice((safePage - 1) * pageSize, safePage * pageSize);
 
-  const handleDeleteExpelled = async (e: React.MouseEvent, uid: string) => {
-    e.stopPropagation();
+  const handleDeleteExpelled = async (uid: string) => {
     if (!organizationId) return;
     if (!window.confirm(t('org.students.confirmDeleteExpelled', 'Вы уверены что хотите полностью удалить этого студента из организации? Это действие необратимо.'))) return;
-    
+
     setDeletingId(uid);
     try {
       await apiDeleteMember(uid, organizationId);
@@ -397,6 +433,68 @@ const StudentsPage: React.FC = () => {
     } finally {
       setDeletingId(null);
     }
+  };
+
+  // Отчисление обратимо, поэтому предупреждение мягче, чем у полного удаления.
+  const setStatusLocally = (uid: string, status: 'active' | 'expelled') =>
+    setStudents(prev => prev.map(s => (s.uid === uid ? ({ ...s, status } as any) : s)));
+
+  const handleExpel = async (s: UserProfile) => {
+    if (!organizationId) return;
+    if (!window.confirm(`Отчислить ${s.displayName || 'студента'}? Журнал и история оплат сохранятся — студента можно будет восстановить.`)) return;
+    try {
+      await apiRemoveMember(s.uid, organizationId);
+      toast.success('Студент отчислен');
+      setStatusLocally(s.uid, 'expelled');
+    } catch (err: any) {
+      toast.error(err.message || 'Error');
+    }
+  };
+
+  const handleRestore = async (s: UserProfile) => {
+    if (!organizationId) return;
+    try {
+      await apiRestoreStudent(s.uid, organizationId);
+      toast.success('Студент восстановлен');
+      setStatusLocally(s.uid, 'active');
+    } catch (err: any) {
+      toast.error(err.message || 'Error');
+    }
+  };
+
+  // Одно меню на строку: список действий зависит от прав и от того, отчислен ли
+  // студент. Пустой массив — RowMenu не рисует кнопку вообще.
+  const buildRowMenu = (s: UserProfile): RowMenuItem[] => {
+    const items: RowMenuItem[] = [];
+    const expelled = (s as any).status === 'expelled';
+    const unpaid = unpaidByStudent[s.uid] || [];
+    const debt = unpaid.reduce((sum, p) => sum + Math.max(0, (p.totalAmount || 0) - (p.paidAmount || 0)), 0);
+
+    if (financeEnabled && !expelled) {
+      if (unpaid.length > 0) {
+        items.push({
+          label: `Принять оплату · ${debt.toLocaleString()} с.`,
+          icon: Wallet,
+          onSelect: () => setPayFor({ student: s, plans: unpaid }),
+        });
+      }
+      items.push({ label: 'Выставить счёт', icon: Receipt, onSelect: () => setBillFor(s) });
+    }
+
+    if (permsLoaded && canWrite('students')) {
+      items.push({ label: t('common.edit', 'Редактировать'), icon: Pencil, separated: items.length > 0, onSelect: () => setEditing(s) });
+      items.push(
+        expelled
+          ? { label: 'Восстановить', icon: UserCheck, separated: true, onSelect: () => handleRestore(s) }
+          : { label: 'Отчислить', icon: UserMinus, danger: true, separated: true, onSelect: () => handleExpel(s) },
+      );
+    }
+
+    if (expelled && permsLoaded && canDelete('students')) {
+      items.push({ label: t('common.delete', 'Удалить навсегда'), icon: Trash2, danger: true, onSelect: () => handleDeleteExpelled(s.uid) });
+    }
+
+    return items;
   };
 
   // ─── Bulk selection ───
@@ -410,8 +508,8 @@ const StudentsPage: React.FC = () => {
 
   // Columns shift by one when the checkbox column is present.
   const gridCols = bulkEnabled
-    ? 'md:grid-cols-[28px_1fr_140px_110px_150px_140px_100px]'
-    : 'md:grid-cols-[1fr_140px_110px_150px_140px_100px]';
+    ? 'md:grid-cols-[28px_1fr_140px_110px_150px_140px_100px_44px]'
+    : 'md:grid-cols-[1fr_140px_110px_150px_140px_100px_44px]';
 
   // Get group name for a student
   const getStudentGroups = (uid: string): string[] => {
@@ -619,6 +717,7 @@ const StudentsPage: React.FC = () => {
                 <span>{t('nav.courses', 'Курсы')}</span>
                 <span>{t('org.students.groupCol', 'Группа')}</span>
                 <span>{t('common.status')}</span>
+                <span className="sr-only">{t('common.actions', 'Действия')}</span>
               </div>
 
               {paginatedStudents.map((s) => {
@@ -629,7 +728,7 @@ const StudentsPage: React.FC = () => {
                   <div
                     key={s.uid}
                     onClick={() => navigate(`/students/${s.uid}`)}
-                    className={`cursor-pointer group flex flex-col md:grid ${gridCols} gap-2 md:gap-3 items-center px-5 py-3.5 border-b border-slate-100 dark:border-slate-700/50 last:border-b-0 hover:bg-primary-50/40 dark:hover:bg-primary-900/10 transition-colors`}
+                    className={`relative cursor-pointer group flex flex-col md:grid ${gridCols} gap-2 md:gap-3 items-center px-5 py-3.5 border-b border-slate-100 dark:border-slate-700/50 last:border-b-0 hover:bg-primary-50/40 dark:hover:bg-primary-900/10 transition-colors`}
                   >
                     {/* Select — the whole row navigates, so keep the click to itself */}
                     {bulkEnabled && (
@@ -655,7 +754,7 @@ const StudentsPage: React.FC = () => {
                         )}
                         <StudentRiskDot risk={riskByStudent[s.uid]} className="absolute -top-0.5 -right-0.5" />
                       </div>
-                      <div className="min-w-0 flex-1">
+                      <div className="min-w-0 flex-1 pr-8 md:pr-0">
                         <h3 className="text-sm font-bold text-slate-900 dark:text-white truncate group-hover:text-primary-600 dark:group-hover:text-primary-400 transition-colors flex items-center gap-2">
                           {s.displayName}
                           <PinnedBadgesDisplay badges={s.pinnedBadges} />
@@ -743,16 +842,14 @@ const StudentsPage: React.FC = () => {
                       ) : (
                         <span className="text-[10px] px-2 py-1 rounded-full font-bold bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400">{t('common.active', 'Активен')}</span>
                       )}
-                      {(s as any).status === 'expelled' && (
-                        <button
-                          onClick={(e) => handleDeleteExpelled(e, s.uid)}
-                          disabled={deletingId === s.uid}
-                          className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-all"
-                          title={t('common.delete', 'Удалить навсегда')}
-                        >
-                          {deletingId === s.uid ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
-                        </button>
-                      )}
+                    </div>
+
+                    {/* Actions — на мобиле карточка вертикальная, поэтому меню
+                        прижато к верхнему правому углу вместо своей колонки. */}
+                    <div className="absolute top-3 right-3 md:static md:flex md:justify-end">
+                      {deletingId === s.uid
+                        ? <RefreshCw className="w-4 h-4 m-1.5 animate-spin text-slate-400" />
+                        : <RowMenu items={buildRowMenu(s)} />}
                     </div>
                   </div>
                 );
@@ -1042,6 +1139,33 @@ const StudentsPage: React.FC = () => {
             </button>
           </div>
         </div>
+      )}
+
+      {/* Row action modals — общие с разделом финансов и карточкой студента */}
+      {payFor && (
+        <AcceptPaymentModal
+          plans={payFor.plans}
+          studentName={payFor.student.displayName}
+          onClose={() => setPayFor(null)}
+          onSuccess={loadPlans}
+        />
+      )}
+
+      {billFor && (
+        <CreatePaymentPlanModal
+          studentId={billFor.uid}
+          studentName={billFor.displayName || ''}
+          onClose={() => setBillFor(null)}
+          onSuccess={loadPlans}
+        />
+      )}
+
+      {editing && (
+        <EditStudentModal
+          student={editing}
+          onClose={() => setEditing(null)}
+          onSaved={(patch) => setStudents(prev => prev.map(s => (s.uid === editing.uid ? ({ ...s, ...patch } as UserProfile) : s)))}
+        />
       )}
 
       <ChurnInsightsModal open={churnOpen} onClose={() => setChurnOpen(false)} />

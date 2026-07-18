@@ -2,6 +2,7 @@ import React, { useEffect, useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../contexts/AuthContext';
+import { useBranch } from '../../contexts/BranchContext';
 import { orgGetCourses, orgCreateCourse, orgUpdateCourse, orgDeleteCourse, orgGetGroups, orgTeacherJoinCourse, orgTeacherLeaveCourse } from '../../lib/api';
 import { Plus, Search, Trash2, Edit, BookOpen, FileText, Users, Building2, Filter, UserPlus, LogOut } from 'lucide-react';
 import type { Course, Group } from '../../types';
@@ -14,6 +15,7 @@ type StatusFilter = 'all' | 'published' | 'draft';
 const CoursesPage: React.FC = () => {
   const { t } = useTranslation();
   const { role, profile } = useAuth();
+  const { activeBranchId } = useBranch();
   const isAdmin = role === 'admin' || role === 'manager';
   const isStaff = role === 'admin' || role === 'manager' || role === 'teacher';
   const [courses, setCourses] = useState<Course[]>([]);
@@ -37,7 +39,6 @@ const CoursesPage: React.FC = () => {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
   const [subjectFilter, setSubjectFilter] = useState('all');
-  const [branchFilter, setBranchFilter] = useState<string | null>(null);
 
   const load = () => {
     setLoading(true); setError('');
@@ -51,9 +52,10 @@ const CoursesPage: React.FC = () => {
     }).catch((e) => setError(e.message || 'Error')).finally(() => setLoading(false));
   };
 
+  // activeBranchId: the api layer stamps it onto the GET, so a branch switch must refetch.
   useEffect(() => {
     load();
-  }, [role, profile?.uid]);
+  }, [role, profile?.uid, activeBranchId]);
 
   // Courses this teacher is linked to — directly (course.teacherIds) or via a group they teach
   const myCourseIds = useMemo(() => {
@@ -94,15 +96,14 @@ const CoursesPage: React.FC = () => {
       const matchesSearch = c.title.toLowerCase().includes(search.toLowerCase()) || c.subject?.toLowerCase().includes(search.toLowerCase());
       const matchesStatus = statusFilter === 'all' || c.status === statusFilter;
       const matchesSubject = subjectFilter === 'all' || c.subject === subjectFilter;
-      const matchesBranch = !branchFilter || (c as any).branchId === branchFilter;
-      return matchesSearch && matchesStatus && matchesSubject && matchesBranch;
+      return matchesSearch && matchesStatus && matchesSubject;
     });
-  }, [courses, search, statusFilter, subjectFilter, branchFilter, role, viewMode, myCourseIds]);
+  }, [courses, search, statusFilter, subjectFilter, role, viewMode, myCourseIds]);
 
   const getStudentCount = (courseId: string) => new Set(groups.filter((g: any) => g.courseId === courseId).flatMap((g: any) => g.studentIds || [])).size;
   const getGroupCount = (courseId: string) => groups.filter((g: any) => g.courseId === courseId).length;
 
-  const openCreate = () => { setEditing(null); setForm({ title: '', description: '', subject: '', status: 'draft', price: 0, paymentFormat: 'monthly', durationMonths: 1, branchId: '' }); setShowModal(true); };
+  const openCreate = () => { setEditing(null); setForm({ title: '', description: '', subject: '', status: 'draft', price: 0, paymentFormat: 'monthly', durationMonths: 1, branchId: activeBranchId || '' }); setShowModal(true); };
   const openEdit = (c: Course) => { setEditing(c); setForm({ title: c.title, description: c.description || '', subject: c.subject || '', status: c.status as any || 'draft', price: c.price || 0, paymentFormat: c.paymentFormat || 'monthly', durationMonths: c.durationMonths || 1, branchId: (c as any).branchId || '' }); setShowModal(true); };
 
   const handleSave = async () => {
@@ -167,8 +168,6 @@ const CoursesPage: React.FC = () => {
               </select>
             </div>
           )}
-
-          <BranchFilter value={branchFilter} onChange={setBranchFilter} compact />
 
           {role === 'teacher' && (
             <div className="flex gap-1 bg-slate-100 dark:bg-slate-900 rounded-lg p-1 shrink-0">
@@ -351,7 +350,7 @@ const CoursesPage: React.FC = () => {
               </div>
               <div>
                 <label className="text-xs font-semibold text-slate-500 mb-1 block flex items-center gap-1">
-                  <Building2 className="w-3.5 h-3.5" /> Филиал
+                  <Building2 className="w-3.5 h-3.5" /> {t('common.branch', 'Филиал')}
                 </label>
                 <BranchFilter
                   value={form.branchId || null}

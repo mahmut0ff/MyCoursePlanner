@@ -63,6 +63,14 @@
     "superAdmin": "СУПЕР АДМИН",
     "signOut": "Выйти"
   },
+  "branch": {
+    "allBranches": "Все филиалы",
+    "allData": "Все данные центра",
+    "branch": "Филиал",
+    "sectionLabel": "Филиал",
+    "switchBranch": "Переключить филиал",
+    "manageBranches": "Управлять филиалами"
+  },
   "nav": {
     "dashboard": "Главная",
     "overview": "Обзор",
@@ -910,6 +918,7 @@
     "trialEnds": "Пробный период до"
   },
   "common": {
+    "branch": "Филиал",
     "selectFile": "Выберите файл",
     "loading": "Загрузка...",
     "save": "Сохранить",

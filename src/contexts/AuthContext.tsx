@@ -47,6 +47,11 @@ interface AuthContextType {
   membershipOverrides: PermissionOverrides | null;
   /** App-level roles the user holds in the active org (for the role switcher). */
   availableRoles: UserRole[];
+  /** Branches assigned to the active membership. Empty = org-wide (all branches),
+   *  matching resolveBranchFilter() in netlify/functions/utils/auth.ts. */
+  branchIds: string[];
+  /** Membership's default branch — seeds the sidebar branch switcher on first load. */
+  primaryBranchId: string | null;
   refreshProfile: () => Promise<void>;
   /** Switch the user's active organization context and refresh profile. */
   switchOrganization: (orgId: string) => Promise<void>;
@@ -74,6 +79,8 @@ const AuthContext = createContext<AuthContextType>({
   membershipRole: null,
   membershipOverrides: null,
   availableRoles: [],
+  branchIds: [],
+  primaryBranchId: null,
   refreshProfile: async () => {},
   switchOrganization: async () => {},
   switchRole: async () => {},
@@ -92,6 +99,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [membershipRole, setMembershipRole] = useState<{ id: string; name: string; baseRole: string } | null>(null);
   const [membershipOverrides, setMembershipOverrides] = useState<PermissionOverrides | null>(null);
   const [availableRoles, setAvailableRoles] = useState<UserRole[]>([]);
+  const [branchIds, setBranchIds] = useState<string[]>([]);
+  const [primaryBranchId, setPrimaryBranchId] = useState<string | null>(null);
   const fcmTokenRef = useRef<string | null>(null);
 
   // Ref keeps the latest firebase user available synchronously for refreshProfile,
@@ -109,12 +118,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         let mRole: { id: string; name: string; baseRole: string } | null = null;
         let mOverrides: PermissionOverrides | null = null;
         let avail: UserRole[] = [];
+        let mBranchIds: string[] = [];
+        let mPrimaryBranchId: string | null = null;
         if (orgId && p.role !== 'super_admin') {
           try {
             const memberDoc = await getDoc(doc(db, 'users', user.uid, 'memberships', orgId));
             if (memberDoc.exists()) {
               const mData = memberDoc.data();
               mRoleId = mData.roleId || null;
+              mBranchIds = Array.isArray(mData.branchIds) ? mData.branchIds : [];
+              mPrimaryBranchId = mData.primaryBranchId || null;
               const rawOv = mData.permissionOverrides;
               mOverrides = rawOv && (rawOv.grants?.length || rawOv.revokes?.length)
                 ? { grants: rawOv.grants || [], revokes: rawOv.revokes || [] }
@@ -163,6 +176,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setMembershipRole(mRole);
         setMembershipOverrides(mOverrides);
         setAvailableRoles(avail);
+        setBranchIds(mBranchIds);
+        setPrimaryBranchId(mPrimaryBranchId);
       }
     } catch (e) {
       console.error('Failed to load user profile:', e);
@@ -284,6 +299,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         membershipRole,
         membershipOverrides,
         availableRoles,
+        branchIds,
+        primaryBranchId,
         refreshProfile,
         switchOrganization,
         switchRole,

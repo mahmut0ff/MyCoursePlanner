@@ -2,6 +2,7 @@ import React, { useEffect, useState, useMemo, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../contexts/AuthContext';
+import { useBranch } from '../../contexts/BranchContext';
 import { usePermissions } from '../../contexts/PermissionsContext';
 import {
   orgGetStudents,
@@ -16,7 +17,6 @@ import { Users, Search, RefreshCw, CheckCircle, XCircle, UserPlus, Phone, Filter
 import type { UserProfile, Group, Branch } from '../../types';
 import toast from 'react-hot-toast';
 import { PinnedBadgesDisplay } from '../../lib/badges';
-import BranchFilter from '../../components/ui/BranchFilter';
 import BulkActionBar from '../../components/roster/BulkActionBar';
 import EmptyState from '../../components/ui/EmptyState';
 import { ListSkeleton } from '../../components/ui/Skeleton';
@@ -28,6 +28,7 @@ const StudentsPage: React.FC = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { profile, organizationId } = useAuth();
+  const { activeBranchId } = useBranch();
   const { canWrite, canDelete, loaded: permsLoaded } = usePermissions();
 
   // Selection exists to feed the bulk bar, so it appears whenever at least one bulk
@@ -72,9 +73,6 @@ const StudentsPage: React.FC = () => {
   const [importResult, setImportResult] = useState<{ created: number; skipped?: number } | null>(null);
   const importFileRef = useRef<HTMLInputElement>(null);
 
-  // Branch filter for the list
-  const [branchFilter, setBranchFilter] = useState<string | null>(null);
-
   // Bulk selection (desktop table only — the mobile layout has no checkbox column)
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [branches, setBranches] = useState<Branch[]>([]);
@@ -93,7 +91,7 @@ const StudentsPage: React.FC = () => {
 
   const loadStudents = (silent = false) => { 
     if (!silent) { setLoading(true); setError(''); }
-    orgGetStudents(branchFilter || undefined)
+    orgGetStudents()
       .then(setStudents)
       .catch((e) => { if (!silent) setError(e.message || 'Error'); })
       .finally(() => { if (!silent) setLoading(false); }); 
@@ -123,20 +121,21 @@ const StudentsPage: React.FC = () => {
     } catch { /* silent — orgs without branches simply get no branch action */ }
   };
 
+  // activeBranchId: the api layer stamps it onto the GET, so a branch switch must refetch.
   useEffect(() => {
     loadStudents();
     loadGroups();
     loadCourses();
-  }, [organizationId, branchFilter]);
+  }, [organizationId, activeBranchId]);
 
   useEffect(() => { loadBranches(); }, [organizationId]);
 
   // Reset page when filters change
-  useEffect(() => setPage(1), [search, selectedGroup, statusFilter, sortField, sortDir]);
+  useEffect(() => setPage(1), [search, selectedGroup, statusFilter, sortField, sortDir, activeBranchId]);
 
   // A selection only means something for rows still on screen — drop it whenever the
   // filtered set changes under it, so a bulk action can't hit rows you can no longer see.
-  useEffect(() => setSelected(new Set()), [search, selectedGroup, statusFilter, branchFilter]);
+  useEffect(() => setSelected(new Set()), [search, selectedGroup, statusFilter, activeBranchId]);
 
   // Branch names by id — feeds the "Филиал" column and branch sorting.
   const branchNameById = useMemo(() => {
@@ -226,6 +225,13 @@ const StudentsPage: React.FC = () => {
         groupId: createForm.groupId,
       };
       if (createForm.enrollmentDate) payload.enrollmentDate = createForm.enrollmentDate;
+      // Writes are never auto-stamped, so hand the active branch over explicitly —
+      // otherwise the new student lands org-wide and vanishes from the very list
+      // that created them.
+      if (activeBranchId) {
+        payload.branchIds = [activeBranchId];
+        payload.primaryBranchId = activeBranchId;
+      }
       if (giveLogin) {
         payload.username = createForm.username.trim().toLowerCase();
         payload.password = createForm.password;
@@ -315,6 +321,7 @@ const StudentsPage: React.FC = () => {
         courseId: importCourseId || undefined,
         groupId: importGroupId || undefined,
         enrollmentDate: importEnrollmentDate || undefined,
+        ...(activeBranchId ? { branchIds: [activeBranchId], primaryBranchId: activeBranchId } : {}),
       });
       setImportResult({ created: res?.created || 0, skipped: res?.skipped || 0 });
       toast.success(t('org.students.imported', `Импортировано: ${res?.created || 0}`));
@@ -413,19 +420,26 @@ const StudentsPage: React.FC = () => {
           <button onClick={() => { loadStudents(); loadGroups(); }} className="p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-xl transition-colors">
             <RefreshCw className="w-4 h-4" />
           </button>
-          <button onClick={() => { setImportResult(null); setShowImportModal(true); }} className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 px-4 py-2.5 rounded-xl text-sm font-semibold flex justify-center items-center gap-2 transition-all shrink-0">
-            <Upload className="w-4 h-4" />
-            {t('org.students.import', 'Импорт')}
-          </button>
-          <button onClick={() => setShowCreateModal(true)} className="flex-1 sm:flex-none bg-slate-900 hover:bg-slate-800 text-white dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100 px-4 py-2.5 rounded-xl text-sm font-semibold flex justify-center items-center gap-2 transition-all shadow-sm hover:shadow-md shrink-0">
-            <Plus className="w-4 h-4" />
-            {t('org.students.create', 'Добавить студента')}
-          </button>
+          {/* Both endpoints require students:write — a read-only member used to see
+              these and only find out on the 403. */}
+          {permsLoaded && canWrite('students') && (
+            <>
+              <button onClick={() => { setImportResult(null); setShowImportModal(true); }} className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 px-4 py-2.5 rounded-xl text-sm font-semibold flex justify-center items-center gap-2 transition-all shrink-0">
+                <Upload className="w-4 h-4" />
+                {t('org.students.import', 'Импорт')}
+              </button>
+              <button onClick={() => setShowCreateModal(true)} className="flex-1 sm:flex-none bg-slate-900 hover:bg-slate-800 text-white dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100 px-4 py-2.5 rounded-xl text-sm font-semibold flex justify-center items-center gap-2 transition-all shadow-sm hover:shadow-md shrink-0">
+                <Plus className="w-4 h-4" />
+                {t('org.students.create', 'Добавить студента')}
+              </button>
+            </>
+          )}
         </div>
       </div>
 
       {/* Onboarding Hint for Managers */}
-      {!hintDismissed && (profile?.role === 'admin' || profile?.role === 'manager' || profile?.role === 'super_admin') && (
+      {/* The hint explains how to add students — only useful to someone who can. */}
+      {!hintDismissed && permsLoaded && canWrite('students') && (
         <div className="mb-6 relative overflow-hidden bg-gradient-to-r from-amber-50 via-orange-50 to-yellow-50 dark:from-amber-900/20 dark:via-orange-900/15 dark:to-yellow-900/10 border border-amber-200/80 dark:border-amber-700/40 rounded-2xl p-4 shadow-sm">
           <button
             onClick={dismissHint}
@@ -480,8 +494,6 @@ const StudentsPage: React.FC = () => {
                 </div>
               )}
 
-              <BranchFilter value={branchFilter} onChange={setBranchFilter} compact />
-
               <div className="flex gap-1 bg-slate-100 dark:bg-slate-900 rounded-lg p-1 shrink-0 ml-2">
                 {(['active', 'expelled', 'all'] as const).map((s) => (
                   <button key={s} onClick={() => setStatusFilter(s)}
@@ -517,8 +529,8 @@ const StudentsPage: React.FC = () => {
               icon={Users}
               title={search || selectedGroup !== 'all' ? t('org.students.noSearchResults', 'Студенты не найдены') : t('org.students.empty')}
               description={search || selectedGroup !== 'all' ? 'Попробуйте изменить фильтры поиска' : 'Добавьте первого студента'}
-              actionLabel={t('org.students.create', 'Добавить студента')}
-              onAction={() => setShowCreateModal(true)}
+              actionLabel={permsLoaded && canWrite('students') ? t('org.students.create', 'Добавить студента') : undefined}
+              onAction={permsLoaded && canWrite('students') ? () => setShowCreateModal(true) : undefined}
             />
           ) : (
             <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl overflow-hidden">

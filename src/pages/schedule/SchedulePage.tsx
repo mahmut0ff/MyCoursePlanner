@@ -5,6 +5,7 @@ import { Plus, ChevronLeft, ChevronRight, Clock, Trash2, Calendar, MapPin, Repea
 import type { ScheduleEvent, ScheduleEventType, Group } from '../../types';
 import { useAuth } from '../../contexts/AuthContext';
 import { usePlanGate } from '../../contexts/PlanContext';
+import { useBranch } from '../../contexts/BranchContext';
 import BranchFilter from '../../components/ui/BranchFilter';
 import ScheduleReviewModal from '../../components/ai/ScheduleReviewModal';
 
@@ -21,6 +22,7 @@ const SchedulePage: React.FC = () => {
   const { t } = useTranslation();
   const { role } = useAuth();
   const { canAccess } = usePlanGate();
+  const { activeBranchId } = useBranch();
   const canEdit = role === 'admin' || role === 'manager' || role === 'super_admin';
   const [aiReviewOpen, setAiReviewOpen] = useState(false);
   const [aiEvents, setAiEvents] = useState<any[]>([]);
@@ -41,7 +43,6 @@ const SchedulePage: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'timetable' | 'events'>('timetable');
   const [mobileView, setMobileView] = useState<'week' | 'day'>('week');
   const [selectedDay, setSelectedDay] = useState(0);
-  const [branchId, setBranchId] = useState<string | null>(null);
 
   // Auto-refresh current time every minute
   const [currentMins, setCurrentMins] = useState(() => new Date().getHours() * 60 + new Date().getMinutes());
@@ -81,20 +82,20 @@ const SchedulePage: React.FC = () => {
   const loadAll = () => {
     setLoading(true); setError('');
     Promise.all([
-      orgGetTimetable(undefined, branchId || undefined).then(setTimetableEvents).catch(() => {}),
+      orgGetTimetable().then(setTimetableEvents).catch(() => {}),
       (() => {
         const getLocalDateStr = (d: Date) => {
           return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
         };
         const from = getLocalDateStr(weekDays[0]);
         const to = getLocalDateStr(weekDays[6]);
-        return orgGetSchedule(from, to, undefined, branchId || undefined).then(setCalendarEvents).catch(() => {});
+        return orgGetSchedule(from, to).then(setCalendarEvents).catch(() => {});
       })(),
       orgGetGroups().then(setGroups).catch(() => {})
     ]).finally(() => setLoading(false));
   };
 
-  useEffect(loadAll, [weekDays, branchId]);
+  useEffect(loadAll, [weekDays, activeBranchId]);
 
   const prevWeek = () => setCurrent((d) => { const n = new Date(d); n.setDate(n.getDate() - 7); return n; });
   const nextWeek = () => setCurrent((d) => { const n = new Date(d); n.setDate(n.getDate() + 7); return n; });
@@ -537,7 +538,6 @@ const SchedulePage: React.FC = () => {
         </div>
 
         <div className="flex items-center gap-2 w-full sm:w-fit">
-          <BranchFilter value={branchId} onChange={setBranchId} />
           {/* Clipboard indicator */}
           {canEdit && clipboard && (
             <button
@@ -572,7 +572,7 @@ const SchedulePage: React.FC = () => {
             </button>
           )}
           <button onClick={() => {
-            setForm(f => ({ ...f, type: activeTab === 'timetable' ? 'lesson' : 'exam', branchId: branchId || undefined }));
+            setForm(f => ({ ...f, type: activeTab === 'timetable' ? 'lesson' : 'exam', branchId: activeBranchId || undefined }));
             setShowCreate(true);
           }} className="flex items-center gap-2 px-5 py-2.5 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-xl text-sm font-semibold hover:bg-slate-800 dark:hover:bg-slate-100 transition-colors w-full sm:w-fit justify-center">
             <Plus className="w-4 h-4" />{t('org.schedule.addEvent', 'Добавить')}
@@ -762,11 +762,11 @@ const SchedulePage: React.FC = () => {
                                 startTime: clipboard.event.startTime || '09:00',
                                 endTime: clipboard.event.endTime || '10:00',
                                 date: '',
-                                branchId: branchId || undefined
+                                branchId: activeBranchId || undefined
                               });
                               setShowPasteModal(true);
                             } else {
-                              setForm(f => ({ ...f, type: 'lesson', dayOfWeek: dayIdx, branchId: branchId || undefined }));
+                              setForm(f => ({ ...f, type: 'lesson', dayOfWeek: dayIdx, branchId: activeBranchId || undefined }));
                               setShowCreate(true);
                             }
                           }}
@@ -927,11 +927,11 @@ const SchedulePage: React.FC = () => {
                                   startTime: clipboard.event.startTime || '09:00',
                                   endTime: clipboard.event.endTime || '10:00',
                                   date: dayStr,
-                                  branchId: branchId || undefined
+                                  branchId: activeBranchId || undefined
                                 });
                                 setShowPasteModal(true);
                               } else {
-                                setForm(f => ({ ...f, type: 'exam', date: dayStr, branchId: branchId || undefined }));
+                                setForm(f => ({ ...f, type: 'exam', date: dayStr, branchId: activeBranchId || undefined }));
                                 setShowCreate(true);
                               }
                             }}
@@ -1035,7 +1035,7 @@ const SchedulePage: React.FC = () => {
                     startTime: clipboard.event.startTime || '09:00',
                     endTime: clipboard.event.endTime || '10:00',
                     date: '',
-                    branchId: branchId || undefined
+                    branchId: activeBranchId || undefined
                   });
                 } else {
                   setPasteForm({
@@ -1043,7 +1043,7 @@ const SchedulePage: React.FC = () => {
                     startTime: clipboard.event.startTime || '09:00',
                     endTime: clipboard.event.endTime || '10:00',
                     date: contextMenu.event.date || '',
-                    branchId: branchId || undefined
+                    branchId: activeBranchId || undefined
                   });
                 }
                 setShowPasteModal(true);

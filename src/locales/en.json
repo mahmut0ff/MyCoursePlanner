@@ -63,6 +63,14 @@
     "superAdmin": "SUPER ADMIN",
     "signOut": "Sign out"
   },
+  "branch": {
+    "allBranches": "All branches",
+    "allData": "All center data",
+    "branch": "Branch",
+    "sectionLabel": "Branch",
+    "switchBranch": "Switch branch",
+    "manageBranches": "Manage branches"
+  },
   "assistant": {
     "title": "AI Assistant",
     "subtitle": "Run your center with commands",
@@ -792,6 +800,7 @@
     "limits": "Limits"
   },
   "common": {
+    "branch": "Branch",
     "selectFile": "Select File",
     "loading": "Loading...",
     "save": "Save",

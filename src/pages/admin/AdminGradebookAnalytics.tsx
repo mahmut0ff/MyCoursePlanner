@@ -1,11 +1,11 @@
 import { useMemo, useState, useEffect } from 'react';
-import { 
-  orgGetCourses, 
-  orgGetStudents, 
+import { useBranch } from '../../contexts/BranchContext';
+import {
+  orgGetCourses,
+  orgGetStudents,
   orgGetTeachers,
   orgGetGrades,
-  orgGetJournal,
-  orgListBranches
+  orgGetJournal
 } from '../../lib/api';
 import type { Course, UserProfile, GradeEntry, JournalEntry } from '../../types';
 import { BarChart3, TrendingUp, GraduationCap, AlertTriangle, Download, ClipboardList, CheckCircle2, Filter, TrendingDown, BookOpen } from 'lucide-react';
@@ -40,32 +40,27 @@ function getPeriodStart(period: Period): Date {
   }
 }
 
-interface Branch { id: string; name: string; }
-
 export default function AdminGradebookAnalytics() {
+  const { activeBranchId } = useBranch();
   const [loading, setLoading] = useState(true);
   const [students, setStudents] = useState<UserProfile[]>([]);
   const [teachers, setTeachers] = useState<UserProfile[]>([]);
   const [grades, setGrades] = useState<GradeEntry[]>([]);
   const [journals, setJournals] = useState<JournalEntry[]>([]);
-  const [branches, setBranches] = useState<Branch[]>([]);
   const [period, setPeriod] = useState<Period>('all');
-  const [branchId, setBranchId] = useState('');
 
   useEffect(() => {
     const fetchData = async () => {
       try {
         setLoading(true);
-        const [cRes, sRes, tRes, bRes] = await Promise.all([
+        const [cRes, sRes, tRes] = await Promise.all([
           orgGetCourses(),
           orgGetStudents(),
           orgGetTeachers(),
-          orgListBranches().catch(() => []),
         ]);
-        
+
         setStudents(sRes as UserProfile[]);
         setTeachers(tRes as UserProfile[]);
-        setBranches(Array.isArray(bRes) ? bRes as Branch[] : []);
 
         // Fetch all grades and journals for all courses
         const allGrades = await Promise.all((cRes as Course[]).map(c => orgGetGrades(c.id).catch(() => [])));
@@ -81,7 +76,7 @@ export default function AdminGradebookAnalytics() {
       }
     };
     fetchData();
-  }, []);
+  }, [activeBranchId]);
 
   // ── Filter data by period + branch ──
   const filteredData = useMemo(() => {
@@ -101,10 +96,11 @@ export default function AdminGradebookAnalytics() {
       fJournals = fJournals.filter(j => j.date ? new Date(j.date).getTime() >= periodMs : false);
     }
 
-    // Branch filter
-    if (branchId) {
+    // Branch filter — api-gradebook ignores branchId, so grades/journals are still
+    // scoped client-side via the students of the active branch.
+    if (activeBranchId) {
       const branchStudentIds = new Set(
-        students.filter((s: any) => s.branchId === branchId || (s.branchIds || []).includes(branchId)).map(s => s.uid)
+        students.filter((s: any) => s.branchId === activeBranchId || (s.branchIds || []).includes(activeBranchId)).map(s => s.uid)
       );
       fGrades = fGrades.filter(g => branchStudentIds.has(g.studentId));
       fJournals = fJournals.filter(j => branchStudentIds.has(j.studentId));
@@ -112,7 +108,7 @@ export default function AdminGradebookAnalytics() {
     }
 
     return { grades: fGrades, journals: fJournals, students: fStudents };
-  }, [grades, journals, students, period, branchId]);
+  }, [grades, journals, students, period, activeBranchId]);
 
   const metrics = useMemo(() => {
     const { grades: fg, journals: fj, students: fs } = filteredData;
@@ -235,16 +231,6 @@ export default function AdminGradebookAnalytics() {
             </button>
           ))}
         </div>
-        {branches.length > 1 && (
-          <select
-            value={branchId}
-            onChange={e => setBranchId(e.target.value)}
-            className="text-xs bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-0 rounded-lg px-3 py-1.5 focus:ring-1 focus:ring-slate-400"
-          >
-            <option value="">Все филиалы</option>
-            {branches.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
-          </select>
-        )}
       </div>
 
       {!metrics ? (

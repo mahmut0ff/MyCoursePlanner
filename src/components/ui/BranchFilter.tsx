@@ -30,8 +30,6 @@ interface BranchFilterProps {
   mode?: 'dropdown' | 'select';
 }
 
-const STORAGE_KEY = 'mycourseplanner_branch_filter';
-
 const BranchFilter: React.FC<BranchFilterProps> = ({ allowedBranchIds, value, onChange, hideAll, compact, mode = 'dropdown' }) => {
   const { t } = useTranslation();
   const [branches, setBranches] = useState<BranchItem[]>([]);
@@ -51,17 +49,10 @@ const BranchFilter: React.FC<BranchFilterProps> = ({ allowedBranchIds, value, on
           : list;
         setBranches(filtered);
 
-        // Auto-select if only one branch
+        // Auto-select if only one branch — a create form should not make the user
+        // pick the only option there is.
         if (filtered.length === 1 && !value) {
           onChange(filtered[0].id);
-        }
-
-        // Restore from localStorage
-        if (!value && filtered.length > 1) {
-          const stored = localStorage.getItem(STORAGE_KEY);
-          if (stored && filtered.some(b => b.id === stored)) {
-            onChange(stored);
-          }
         }
       })
       .catch(() => setBranches([]))
@@ -104,11 +95,6 @@ const BranchFilter: React.FC<BranchFilterProps> = ({ allowedBranchIds, value, on
   const handleSelect = (branchId: string | null) => {
     onChange(branchId);
     setOpen(false);
-    if (branchId) {
-      localStorage.setItem(STORAGE_KEY, branchId);
-    } else {
-      localStorage.removeItem(STORAGE_KEY);
-    }
   };
 
   // ─── Native <select> mode — safe inside modals/forms ───

@@ -4,6 +4,7 @@ import Sidebar from './Sidebar.tsx';
 import Topbar from './Topbar.tsx';
 import { PlanProvider, usePlanGate } from '../../contexts/PlanContext';
 import { PermissionsProvider } from '../../contexts/PermissionsContext';
+import { BranchProvider, useBranch } from '../../contexts/BranchContext';
 import { OrgContext } from '../../contexts/OrgContext';
 import { useAuth } from '../../contexts/AuthContext';
 import { useTranslation } from 'react-i18next';
@@ -62,6 +63,27 @@ const SubscriptionGuard: React.FC<{ children: React.ReactNode }> = ({ children }
   );
 };
 
+/**
+ * Holds the routed page back until the active branch is known.
+ *
+ * Pages key their load effects on `activeBranchId`, which starts as null and only
+ * resolves once the branch list returns. Rendering them before that means every page
+ * fetches org-wide, paints, then refetches scoped — wasted requests, a visible flash,
+ * and a branch-scoped member briefly seeing the whole org. The sidebar stays mounted
+ * either way, so the shell still paints immediately.
+ */
+const BranchGate: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const { loading } = useBranch();
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-20" role="status" aria-label="Loading">
+        <div className="w-8 h-8 border-4 border-slate-200 border-t-slate-600 rounded-full animate-spin dark:border-slate-700 dark:border-t-slate-400" />
+      </div>
+    );
+  }
+  return <>{children}</>;
+};
+
 import { apiGetOrganization } from '../../lib/api';
 import PWAInstallPrompt from '../pwa/PWAInstallPrompt';
 import NetworkStatusBar from '../network/NetworkStatusBar';
@@ -99,6 +121,9 @@ const AppLayout: React.FC = () => {
 
   return (
     <>
+    {/* BranchProvider sits outside PlanProvider: branch selection must work on every
+        plan, even though the /branches management page itself is plan-gated. */}
+    <BranchProvider>
     <PlanProvider>
     <PermissionsProvider>
     <OrgContext.Provider value={{ orgData, institutionType: orgData?.institutionType || 'center' }}>
@@ -131,7 +156,9 @@ const AppLayout: React.FC = () => {
                       <div className="w-8 h-8 border-4 border-slate-200 border-t-slate-600 rounded-full animate-spin dark:border-slate-700 dark:border-t-slate-400" />
                     </div>
                   }>
-                    <Outlet />
+                    <BranchGate>
+                      <Outlet />
+                    </BranchGate>
                   </Suspense>
                 </div>
               </div>
@@ -144,6 +171,7 @@ const AppLayout: React.FC = () => {
     </OrgContext.Provider>
     </PermissionsProvider>
     </PlanProvider>
+    </BranchProvider>
     <PWAInstallPrompt />
     <NetworkStatusBar />
     </>

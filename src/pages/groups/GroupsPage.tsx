@@ -2,6 +2,8 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../contexts/AuthContext';
+import { usePermissions } from '../../contexts/PermissionsContext';
+import { useBranch } from '../../contexts/BranchContext';
 import { orgGetGroups, orgCreateGroup, orgDeleteGroup, orgGetCourses, orgGetTeachers, orgTeacherJoinGroup, orgTeacherLeaveGroup, orgGetSettings } from '../../lib/api';
 import { Users, Plus, Search, Trash2, RefreshCw, Loader2, BookOpen, Building2, UserPlus, LogOut } from 'lucide-react';
 import type { Group, GroupStatus, Course, UserProfile } from '../../types';
@@ -19,7 +21,12 @@ const GROUP_STATUS_PILL: Record<Exclude<GroupStatus, 'active'>, { label: string;
 const GroupsPage: React.FC = () => {
   const { t } = useTranslation();
   const { role, profile } = useAuth();
+  const { activeBranchId } = useBranch();
+  const { canDelete } = usePermissions();
   const isAdmin = role === 'admin' || role === 'manager' || role === 'super_admin';
+  // The delete button also needs the grant: a manager whose groups:delete was revoked
+  // via per-member overrides used to see it and only learn on the 403.
+  const canDeleteGroups = isAdmin && canDelete('groups');
   
   const [groups, setGroups] = useState<Group[]>([]);
   const [courses, setCourses] = useState<Course[]>([]);
@@ -60,7 +67,8 @@ const GroupsPage: React.FC = () => {
     .finally(() => setLoading(false));
   };
 
-  useEffect(() => { load(); }, [role, profile?.uid]);
+  // activeBranchId: the api layer stamps it onto the GET, so a branch switch must refetch.
+  useEffect(() => { load(); }, [role, profile?.uid, activeBranchId]);
 
   // Teachers need to know whether the org lets them manage their own groups.
   useEffect(() => {
@@ -192,7 +200,8 @@ const GroupsPage: React.FC = () => {
                   <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Студенты</th>
                   <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Учителя</th>
                   <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Создана</th>
-                  {(isAdmin || role === 'teacher') && <th className="px-6 py-4 text-right text-xs font-bold text-slate-500 uppercase tracking-wider">{isAdmin ? 'Действия' : 'Преподавание'}</th>}
+                  {/* Mirrors the cell below exactly, or the column count drifts from the header. */}
+                  {(canDeleteGroups || role === 'teacher') && <th className="px-6 py-4 text-right text-xs font-bold text-slate-500 uppercase tracking-wider">{canDeleteGroups ? 'Действия' : 'Преподавание'}</th>}
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-200 dark:divide-slate-700">
@@ -266,7 +275,7 @@ const GroupsPage: React.FC = () => {
                       <td className="px-6 py-4 text-sm font-medium text-slate-500 dark:text-slate-400">
                         {g.createdAt ? new Date(g.createdAt).toLocaleDateString() : '—'}
                       </td>
-                      {isAdmin ? (
+                      {canDeleteGroups ? (
                         <td className="px-6 py-4 text-right">
                           <button
                             onClick={(e) => { e.stopPropagation(); handleDelete(g.id); }}

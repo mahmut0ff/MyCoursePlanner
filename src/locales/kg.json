@@ -63,6 +63,14 @@
     "superAdmin": "СУПЕР АДМИН",
     "signOut": "Чыгуу"
   },
+  "branch": {
+    "allBranches": "Бардык филиалдар",
+    "allData": "Борбордун бардык маалыматы",
+    "branch": "Филиал",
+    "sectionLabel": "Филиал",
+    "switchBranch": "Филиалды которуштуруу",
+    "manageBranches": "Филиалдарды башкаруу"
+  },
   "assistant": {
     "title": "AI-жардамчы",
     "subtitle": "Борборду буйруктар менен башкаруу",
@@ -712,6 +720,7 @@
     "limits": "Лимиттер"
   },
   "common": {
+    "branch": "Филиал",
     "selectFile": "Файлды тандаңыз",
     "loading": "Жүктөлүүдө...",
     "save": "Сактоо",

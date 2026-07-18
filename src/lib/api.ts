@@ -16,6 +16,54 @@ async function getAuthHeaders(): Promise<Record<string, string>> {
   };
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Active branch (филиал) — global read scope
+//
+// The sidebar branch switcher owns this value; BranchContext pushes it here on
+// every change. It is stamped onto GET requests so every list/read endpoint gets
+// scoped without threading a `branchId` argument through ~40 call sites.
+//
+// `null` means «Все филиалы» — nothing is sent, and the server falls back to the
+// member's own scope via resolveBranchFilter() in functions/utils/auth.ts.
+// ─────────────────────────────────────────────────────────────────────────────
+
+let activeBranchId: string | null = null;
+
+/** Set by BranchContext. Plain module state — keeps this file free of React deps. */
+export const setActiveBranchId = (branchId: string | null) => { activeBranchId = branchId; };
+
+export const getActiveBranchId = () => activeBranchId;
+
+/**
+ * Endpoints whose GET reads are branch-scopable. An allowlist rather than a
+ * denylist: an unrecognised `branchId` is inert server-side, so opting endpoints
+ * in deliberately beats discovering a wrong one by its silence.
+ *
+ * Deliberately excluded:
+ *  - `api-branches`  — the branch list itself must never filter by the selection,
+ *                      or picking a branch would collapse the switcher to one item.
+ *  - `api-admin*` / `api-platform` — super_admin has no branch scope at all.
+ */
+const BRANCH_SCOPED_ENDPOINTS = new Set([
+  'api-org',
+  'api-dashboard',
+  'api-finance-metrics',
+  'api-finance-plans',
+  'api-finance-transactions',
+  'api-lessons',
+  'api-exams',
+  'api-rooms',
+  'api-attempts',
+  'api-gradebook',
+  'api-homework',
+  'api-risk',
+  'api-roles',
+  'api-users',
+  'api-transfers',
+  'api-certificates',
+  'api-notifications',
+]);
+
 async function apiRequest<T = any>(
   endpoint: string,
   method: string = 'GET',
@@ -23,8 +71,22 @@ async function apiRequest<T = any>(
   params?: Record<string, string>
 ): Promise<T> {
   let url = `${API_BASE}/${endpoint}`;
-  if (params) {
-    const searchParams = new URLSearchParams(params);
+
+  // Stamp the active branch onto reads only. Never onto a POST/PUT: auto-stamping
+  // a mutation would silently re-home the record being edited, so writes must pass
+  // branchId explicitly. An explicit caller-supplied branchId always wins.
+  let effectiveParams = params;
+  if (
+    method === 'GET' &&
+    activeBranchId &&
+    BRANCH_SCOPED_ENDPOINTS.has(endpoint) &&
+    !params?.branchId
+  ) {
+    effectiveParams = { ...(params || {}), branchId: activeBranchId };
+  }
+
+  if (effectiveParams) {
+    const searchParams = new URLSearchParams(effectiveParams);
     url += `?${searchParams.toString()}`;
   }
 
@@ -313,7 +375,7 @@ export const orgTeacherLeaveGroup = (groupId: string) => orgReq('teacherLeaveGro
 // Students
 export const orgGetStudents = (branchId?: string) => orgReq('students', 'GET', undefined, branchId ? { branchId } : undefined);
 export const orgCreateStudent = (data: any) => orgReq('createStudent', 'POST', data);
-export const orgBulkCreateStudents = (data: { students: { displayName: string; phone?: string }[]; courseId?: string; groupId?: string; enrollmentDate?: string }) => orgReq('bulkCreateStudents', 'POST', data);
+export const orgBulkCreateStudents = (data: { students: { displayName: string; phone?: string }[]; courseId?: string; groupId?: string; enrollmentDate?: string; branchIds?: string[]; primaryBranchId?: string }) => orgReq('bulkCreateStudents', 'POST', data);
 export const orgUpdateStudent = (data: any) => orgReq('updateStudent', 'POST', data);
 export const orgResetStudentPassword = (uid: string, password: string) => orgReq('resetStudentPassword', 'POST', { uid, password });
 

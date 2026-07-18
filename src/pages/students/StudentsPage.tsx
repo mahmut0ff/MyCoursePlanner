@@ -27,7 +27,7 @@ type SortDir = 'asc' | 'desc';
 const StudentsPage: React.FC = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const { profile, organizationId } = useAuth();
+  const { organizationId } = useAuth();
   const { activeBranchId } = useBranch();
   const { canWrite, canDelete, loaded: permsLoaded } = usePermissions();
 

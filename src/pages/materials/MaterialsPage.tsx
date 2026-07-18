@@ -42,7 +42,7 @@ const formatBytes = (bytes?: number) => {
 
 const MaterialsPage: React.FC = () => {
   const { t } = useTranslation();
-  const { profile, role } = useAuth();
+  const { profile } = useAuth();
   const { canAccess } = usePlanGate();
   const { canWrite, canDelete } = usePermissions();
   // Delete used to be gated on `super_admin || manager`, which hid it from every

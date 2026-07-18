@@ -10,7 +10,13 @@ import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { apiGetTelegramStatus, apiGenerateTelegramLink, apiUnlinkTelegram } from '../../lib/api';
-import { CheckCircle2, Loader2, ExternalLink, X, Unlink, Bell } from 'lucide-react';
+import {
+  CheckCircle2, Loader2, ExternalLink, X, Unlink, Bell,
+  ClipboardList, CalendarX2, FileCheck2, GraduationCap, DoorOpen, BookOpen,
+  Receipt, Wallet, Users, CalendarClock, CalendarSync,
+  UserPlus, Inbox, PhoneCall, AlertTriangle, TimerReset, Sunrise, BarChart3, UserMinus, Lightbulb,
+  type LucideIcon,
+} from 'lucide-react';
 
 /* ─── Inline Telegram SVG icon ─── */
 const TelegramIcon: React.FC<{ className?: string }> = ({ className }) => (
@@ -19,36 +25,56 @@ const TelegramIcon: React.FC<{ className?: string }> = ({ className }) => (
   </svg>
 );
 
-/* Notification descriptions per role */
-const getRoleNotifications = (role: string) => {
+interface NotificationItem {
+  Icon: LucideIcon;
+  text: string;
+  /** Tailwind text colour for the icon — keeps the list as scannable as the old emoji did. */
+  tone: string;
+}
+
+/**
+ * What each role actually receives, mirroring the backend dispatch sites in
+ * netlify/functions/utils/notifications.ts and its callers. Keep in sync when
+ * adding a new NotificationType.
+ */
+const getRoleNotifications = (role: string): NotificationItem[] => {
   switch (role) {
     case 'student':
       return [
-        { icon: '📝', text: 'Новые оценки в журнале' },
-        { icon: '📅', text: 'Пропуски занятий' },
-        { icon: '✅', text: 'Оценка домашних заданий' },
-        { icon: '📊', text: 'Результаты экзаменов' },
-        { icon: '🎯', text: 'Открытие экзаменов' },
-        { icon: '📖', text: 'Новые уроки' },
-        { icon: '💰', text: 'Подтверждение оплаты' },
-        { icon: '📚', text: 'Добавление в группу' },
+        { Icon: ClipboardList, text: 'Новые оценки в журнале', tone: 'text-blue-500' },
+        { Icon: CalendarX2, text: 'Пропуски занятий', tone: 'text-rose-500' },
+        { Icon: FileCheck2, text: 'Проверка домашних заданий', tone: 'text-emerald-500' },
+        { Icon: GraduationCap, text: 'Результаты экзаменов', tone: 'text-violet-500' },
+        { Icon: DoorOpen, text: 'Открытие экзаменов', tone: 'text-amber-500' },
+        { Icon: BookOpen, text: 'Новые уроки', tone: 'text-sky-500' },
+        { Icon: Users, text: 'Добавление в группу', tone: 'text-indigo-500' },
+        { Icon: CalendarClock, text: 'Напоминание о занятиях на завтра', tone: 'text-cyan-500' },
+        { Icon: CalendarSync, text: 'Изменения и отмены в расписании', tone: 'text-orange-500' },
+        { Icon: Receipt, text: 'Счета и напоминания об оплате', tone: 'text-amber-600' },
+        { Icon: Wallet, text: 'Подтверждение оплаты', tone: 'text-emerald-600' },
       ];
     case 'teacher':
       return [
-        { icon: '📝', text: 'Студент сдал домашнее задание' },
-        { icon: '📊', text: 'Студент завершил экзамен' },
-        { icon: '📩', text: 'Новые заявки студентов' },
+        { Icon: GraduationCap, text: 'Студент завершил экзамен', tone: 'text-violet-500' },
+        { Icon: CalendarClock, text: 'Напоминание о занятиях на завтра', tone: 'text-cyan-500' },
+        { Icon: CalendarSync, text: 'Изменения и отмены в расписании', tone: 'text-orange-500' },
       ];
     case 'admin':
     case 'owner':
     case 'manager':
       return [
-        { icon: '💰', text: 'Получение оплаты' },
-        { icon: '👋', text: 'Новые студенты' },
-        { icon: '📩', text: 'Заявки на вступление' },
-        { icon: '📚', text: 'Записи в группы' },
-        { icon: '📝', text: 'Сдача домашних заданий' },
-        { icon: '⏰', text: 'Напоминания о триале' },
+        { Icon: Wallet, text: 'Получение оплаты', tone: 'text-emerald-600' },
+        { Icon: AlertTriangle, text: 'Просроченные платежи и должники', tone: 'text-rose-500' },
+        { Icon: Inbox, text: 'Заявки на вступление', tone: 'text-blue-500' },
+        { Icon: UserPlus, text: 'Новые студенты', tone: 'text-indigo-500' },
+        { Icon: Users, text: 'Записи в группы', tone: 'text-sky-500' },
+        { Icon: FileCheck2, text: 'Сдача домашних заданий', tone: 'text-emerald-500' },
+        { Icon: PhoneCall, text: 'Новые заявки и лиды', tone: 'text-fuchsia-500' },
+        { Icon: Sunrise, text: 'Утренняя сводка по школе', tone: 'text-amber-500' },
+        { Icon: BarChart3, text: 'Сводка за неделю', tone: 'text-violet-500' },
+        { Icon: AlertTriangle, text: 'Ученики в зоне риска', tone: 'text-orange-500' },
+        { Icon: UserMinus, text: 'Изменения в команде', tone: 'text-slate-500' },
+        { Icon: TimerReset, text: 'Напоминания о триале', tone: 'text-cyan-500' },
       ];
     default:
       return [];
@@ -231,10 +257,10 @@ const TelegramNotifyButton: React.FC<Props> = ({ isCollapsed, onClose }) => {
               <p className="text-sm font-semibold text-slate-800 dark:text-slate-200 mb-3">
                 {isLinked ? 'Вы получаете:' : 'Вы будете получать:'}
               </p>
-              <div className="space-y-1.5 mb-5">
+              <div className="space-y-1.5 mb-5 max-h-[42vh] overflow-y-auto -mr-2 pr-2">
                 {notifications.map((n, i) => (
                   <div key={i} className="flex items-center gap-2.5 px-3 py-2 rounded-lg bg-slate-50 dark:bg-slate-700/50">
-                    <span className="text-base shrink-0">{n.icon}</span>
+                    <n.Icon className={`w-4 h-4 shrink-0 ${n.tone}`} />
                     <span className="text-[13px] text-slate-700 dark:text-slate-300">{n.text}</span>
                   </div>
                 ))}
@@ -242,9 +268,10 @@ const TelegramNotifyButton: React.FC<Props> = ({ isCollapsed, onClose }) => {
 
               {/* Recommendation */}
               {!isLinked && !linkData && (
-                <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-xl px-4 py-3 mb-5">
+                <div className="flex items-start gap-2 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-xl px-4 py-3 mb-5">
+                  <Lightbulb className="w-4 h-4 shrink-0 mt-0.5 text-blue-500" />
                   <p className="text-[13px] text-blue-700 dark:text-blue-400">
-                    💡 <strong>Рекомендуем включить</strong> — вы не пропустите важные события и сможете реагировать мгновенно.
+                    <strong>Рекомендуем включить</strong> — вы не пропустите важные события и сможете реагировать мгновенно.
                   </p>
                 </div>
               )}

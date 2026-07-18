@@ -224,6 +224,13 @@ const handler: Handler = async (event: HandlerEvent) => {
     lessonsQuery = lessonsQuery.where('branchId', '==', branchScope);
     examsQuery = examsQuery.where('branchId', '==', branchScope);
     roomsQuery = roomsQuery.where('branchId', '==', branchScope);
+  } else if (Array.isArray(branchScope) && branchScope.length > 0 && branchScope.length <= 30) {
+    // Multi-branch scope: Firestore `in` caps at 30 values. Beyond that the counts
+    // stay org-wide rather than throwing — no org assigns one member that many
+    // branches, and an over-broad count beats a failed dashboard.
+    lessonsQuery = lessonsQuery.where('branchId', 'in', branchScope);
+    examsQuery = examsQuery.where('branchId', 'in', branchScope);
+    roomsQuery = roomsQuery.where('branchId', 'in', branchScope);
   }
 
   let lessonsSnap, examsSnap, roomsSnap;

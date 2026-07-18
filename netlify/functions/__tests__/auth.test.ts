@@ -218,9 +218,12 @@ describe('resolveBranchFilter', () => {
     expect(resolveBranchFilter(makeUser({ role: 'teacher', branchIds: [] }))).toBeNull();
   });
 
-  it('teacher with 1 branch, no filter → their branch', () => {
+  // The derived default scope is always the array form. Callers read a bare string
+  // as "this exact branch was requested" and drop org-wide (branchId: null) records,
+  // which would hide every shared course/group/event from a one-branch member.
+  it('teacher with 1 branch, no filter → array of their branches', () => {
     const user = makeUser({ role: 'teacher', branchIds: ['b1'] });
-    expect(resolveBranchFilter(user)).toBe('b1');
+    expect(resolveBranchFilter(user)).toEqual(['b1']);
   });
 
   it('teacher with 2 branches, no filter → array of branches', () => {
@@ -236,6 +239,19 @@ describe('resolveBranchFilter', () => {
   it('teacher requests alien branch → __DENIED__ sentinel', () => {
     const user = makeUser({ role: 'teacher', branchIds: ['b1'] });
     expect(resolveBranchFilter(user, 'b99')).toBe('__DENIED__');
+  });
+
+  // An org-wide (unassigned) member is unrestricted, but the branch filter in their UI
+  // must still narrow the list — otherwise picking a branch is a silent no-op for
+  // everyone who isn't an admin.
+  it('org-wide manager requests a branch → that branch', () => {
+    const user = makeUser({ role: 'manager', branchIds: [] });
+    expect(resolveBranchFilter(user, 'b1')).toBe('b1');
+  });
+
+  it('org-wide teacher requests a branch → that branch', () => {
+    const user = makeUser({ role: 'teacher', branchIds: [] });
+    expect(resolveBranchFilter(user, 'b1')).toBe('b1');
   });
 });
 

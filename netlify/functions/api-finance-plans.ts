@@ -4,7 +4,7 @@
  */
 import type { Handler, HandlerEvent } from '@netlify/functions';
 import { adminDb, getDocsByIds } from './utils/firebase-admin';
-import { verifyAuth, isStaff, hasPermission, can, getOrgFilter, resolveBranchFilter, ok, unauthorized, forbidden, badRequest, notFound, jsonResponse } from './utils/auth';
+import { verifyAuth, can, getOrgFilter, resolveBranchFilter, ok, unauthorized, forbidden, badRequest, notFound, jsonResponse } from './utils/auth';
 
 const COLLECTION = 'studentPaymentPlans';
 
@@ -52,9 +52,8 @@ const handler: Handler = async (event: HandlerEvent) => {
   try {
     // GET Payment Plans
     if (event.httpMethod === 'GET') {
-      if (!isStaff(user)) return forbidden();
-      if (user.role === 'teacher') return forbidden('Teachers cannot access finance plans');
-      if (!hasPermission(user, 'finances')) return forbidden('No access to finances module');
+      // The grant is the gate — see api-finance-metrics.ts.
+      if (!can(user, 'finances', 'read')) return forbidden('No access to finances module');
 
       const orgFilter = getOrgFilter(user);
       if (!orgFilter) return badRequest('Organization context required');
@@ -132,8 +131,6 @@ const handler: Handler = async (event: HandlerEvent) => {
 
     // POST Create Payment Plan (Usually auto-created, but allow manual creation)
     if (event.httpMethod === 'POST') {
-      if (user.role === 'teacher' || user.role === 'student') return forbidden();
-      if (!hasPermission(user, 'finances')) return forbidden('No access to finances module');
       if (!can(user, 'finances', 'write')) return forbidden('Недостаточно прав для этого действия');
 
       const body = JSON.parse(event.body || '{}');
@@ -189,8 +186,6 @@ const handler: Handler = async (event: HandlerEvent) => {
 
     // PUT Update Payment Plan
     if (event.httpMethod === 'PUT') {
-      if (user.role === 'teacher' || user.role === 'student') return forbidden();
-      if (!hasPermission(user, 'finances')) return forbidden('No access to finances module');
       if (!can(user, 'finances', 'write')) return forbidden('Недостаточно прав для этого действия');
 
       const body = JSON.parse(event.body || '{}');
@@ -208,8 +203,6 @@ const handler: Handler = async (event: HandlerEvent) => {
 
     // DELETE Payment Plan
     if (event.httpMethod === 'DELETE') {
-      if (user.role === 'teacher' || user.role === 'student') return forbidden();
-      if (!hasPermission(user, 'finances')) return forbidden('No access to finances module');
       if (!can(user, 'finances', 'delete')) return forbidden('Недостаточно прав для этого действия');
 
       const planId = (event.queryStringParameters || {}).id;

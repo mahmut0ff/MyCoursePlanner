@@ -63,22 +63,25 @@ const handler: Handler = async (event: HandlerEvent) => {
   try {
     // ═══ LIST BRANCHES ═══
     if (action === 'list' && event.httpMethod === 'GET') {
-      if (!isStaff(user)) return forbidden();
-
       const snap = await orgQuery('branches', orgId)
         .where('isActive', '==', true)
         .get();
       const branches = snap.docs.map((d: any) => ({ id: d.id, ...d.data() }));
 
-      // Manager: filter to assigned branches only
-      if (hasRole(user, 'manager')) {
-        const membership = await adminDb.collection('users').doc(user.uid)
-          .collection('memberships').doc(orgId).get();
-        const assignedBranchIds = membership.data()?.branchIds || [];
-        if (assignedBranchIds.length > 0) {
-          return ok(branches.filter((b: any) => assignedBranchIds.includes(b.id)));
-        }
+      // Admins/owners see every branch. Everyone else is narrowed to their
+      // assignment — regardless of base role, since a branch-scoped teacher or
+      // custom role is just as restricted as a manager. The list offered here must
+      // match what resolveBranchFilter() lets through, otherwise picking a branch
+      // yields a silently empty page. `user.branchIds` is already on the session,
+      // so no second membership read is needed.
+      if (!hasRole(user, 'admin') && user.branchIds.length > 0) {
+        return ok(branches.filter((b: any) => user.branchIds.includes(b.id)));
       }
+
+      // Non-staff (students/parents) reach this only when they hold no assignment.
+      // They have no branch scope to offer, and the full org branch list is not
+      // theirs to enumerate — so the sidebar switcher simply won't render for them.
+      if (!isStaff(user)) return ok([]);
 
       return ok(branches);
     }

@@ -7,7 +7,7 @@ import { adminAuth, adminDb, getDocsByIds } from './utils/firebase-admin';
 import {
   verifyAuth, isStaff, isSuperAdmin, hasRole, hasPermission, can, getOrgFilter,
   ok, unauthorized, forbidden, badRequest, notFound, jsonResponse,
-  resolveBranchFilter,
+  resolveBranchFilter, userHasBranchAccess,
   type AuthUser,
 } from './utils/auth';
 import { createNotification, notifyOrgAdmins, notifyGroupMembers } from './utils/notifications';
@@ -268,7 +268,10 @@ export async function resolveBulkTargets(
   uids: string[],
 ): Promise<{ targets: string[]; members: Record<string, any> }> {
   const members = await getDocsByIds(`orgMembers/${orgId}/members`, uids);
-  const branchScoped = hasRole(user, 'manager') && user.branchIds.length > 0;
+  // Anyone holding a branch assignment is scoped by it — a custom role based on
+  // 'teacher' is no less restricted than a manager, so key off the assignment
+  // rather than the literal role.
+  const branchScoped = !isSuperAdmin(user) && !hasRole(user, 'admin') && user.branchIds.length > 0;
   const targets = uids.filter((uid) => {
     const m = members[uid];
     if (!m) return false;                                  // not a member of this org
@@ -1081,9 +1084,9 @@ const handler: Handler = async (event: HandlerEvent) => {
       if (!branchId) return badRequest('branchId required');
       const branchDoc = await adminDb.collection('branches').doc(branchId).get();
       if (!branchDoc.exists || branchDoc.data()?.organizationId !== orgId) return notFound('Branch not found');
-      // A branch-scoped manager may only migrate people into a branch they hold —
+      // A branch-scoped member may only migrate people into a branch they hold —
       // otherwise they could push members somewhere they can no longer see.
-      if (hasRole(user, 'manager') && user.branchIds.length > 0 && !user.branchIds.includes(branchId)) {
+      if (!userHasBranchAccess(user, branchId)) {
         return forbidden('Нет доступа к этому филиалу');
       }
 
@@ -1169,8 +1172,18 @@ const handler: Handler = async (event: HandlerEvent) => {
         })
         .filter((m: any) => memberHoldsRole(m, ['teacher', 'admin', 'owner', 'mentor']));
 
-      if (params.branchId) {
-        members = members.filter((m: any) => m.branchIds.includes(params.branchId));
+      // Branch scoping, same as the students action — a branch-scoped member must
+      // not enumerate staff (or their uids, which feed bulk actions) outside their
+      // branches. Org-wide staff carry no branchIds and stay visible to everyone;
+      // they teach across branches, so hiding them would empty the teacher pickers.
+      const teacherBranchScope = resolveBranchFilter(user, params.branchId);
+      if (teacherBranchScope === '__DENIED__') return ok([]);
+      if (typeof teacherBranchScope === 'string') {
+        members = members.filter((m: any) => m.branchIds.length === 0 || m.branchIds.includes(teacherBranchScope));
+      } else if (Array.isArray(teacherBranchScope)) {
+        members = members.filter((m: any) =>
+          m.branchIds.length === 0 || m.branchIds.some((id: string) => teacherBranchScope.includes(id))
+        );
       }
 
       // Enrich with user profile data (avatarUrl, phone, city, createdAt)
@@ -1564,7 +1577,6 @@ const handler: Handler = async (event: HandlerEvent) => {
     }
 
     if (action === 'createEvent') {
-      if (!hasRole(user, 'admin', 'manager')) return forbidden('Only admins and managers can modify the schedule');
       if (!can(user, 'schedule', 'write')) return forbidden('Недостаточно прав для этого действия');
       const body = JSON.parse(event.body || '{}');
       const isRecurring = body.recurring === true;
@@ -1604,7 +1616,6 @@ const handler: Handler = async (event: HandlerEvent) => {
     }
 
     if (action === 'updateEvent') {
-      if (!hasRole(user, 'admin', 'manager')) return forbidden('Only admins and managers can modify the schedule');
       if (!can(user, 'schedule', 'write')) return forbidden('Недостаточно прав для этого действия');
       const body = JSON.parse(event.body || '{}');
       if (!body.id) return badRequest('id required');
@@ -1648,7 +1659,6 @@ const handler: Handler = async (event: HandlerEvent) => {
     }
 
     if (action === 'deleteEvent') {
-      if (!hasRole(user, 'admin', 'manager')) return forbidden('Only admins and managers can modify the schedule');
       if (!can(user, 'schedule', 'delete')) return forbidden('Недостаточно прав для этого действия');
       const body = JSON.parse(event.body || '{}');
       if (!body.id) return badRequest('id required');

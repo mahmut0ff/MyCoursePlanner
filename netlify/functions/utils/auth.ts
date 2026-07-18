@@ -161,9 +161,11 @@ export async function verifyAuth(event: HandlerEvent): Promise<AuthUser | null> 
       const effectiveCustomRole = (membership.roleId && !FULL_ACCESS_ROLES.includes(role)) ? customRole : null;
       rbac = resolvePermissionSet({ baseRole: role, customRole: effectiveCustomRole, legacyManagerPerms: membership.permissions, overrides: membership.overrides });
       // Keep the legacy 4-toggle view in sync so existing hasPermission() callers still work.
-      permissions = effectiveCustomRole
-        ? deriveLegacyManagerPerms(rbac)
-        : membership.permissions;
+      // Always derived from the resolved set: the legacy toggles are already folded into
+      // `rbac` for a plain manager, so this round-trips for them — while a member whose
+      // finances/branches grant arrives via a custom role or a per-member override finally
+      // shows up here too (and a revoke correctly subtracts).
+      permissions = deriveLegacyManagerPerms(rbac);
     }
 
     // Super admins and org admins/owners get unrestricted grants.
@@ -234,13 +236,24 @@ export function hasRole(user: AuthUser, ...roles: AuthUser['role'][]): boolean {
 }
 
 /**
- * Check if a manager has a specific module permission.
- * Admin/owner/super_admin always return true. Teachers/students always false.
+ * Legacy module-permission check, kept for older call sites.
+ * Backed by the granular grant set so a custom role or a per-member override can
+ * satisfy it — gating on `role === 'manager'` used to make those grants unusable.
+ * Prefer can(user, resource, action) in new code.
  */
+const LEGACY_PERMISSION_RESOURCE: Record<keyof ManagerPermissions, string> = {
+  finances: 'finances',
+  settings: 'settings',
+  managers: 'team',
+  branches: 'branches',
+};
+
 export function hasPermission(user: AuthUser, key: keyof ManagerPermissions): boolean {
   if (isSuperAdmin(user) || hasRole(user, 'admin')) return true;
-  if (user.role !== 'manager') return false;
-  return user.permissions[key] === true;
+  if (can(user, LEGACY_PERMISSION_RESOURCE[key], 'read')) return true;
+  // Back-compat tail: an AuthUser assembled without a resolved grant set still
+  // answers from the raw toggles, exactly as before.
+  return user.role === 'manager' && user.permissions[key] === true;
 }
 
 /**
@@ -339,22 +352,29 @@ export function requireBranchScope(user: AuthUser, branchId: string | undefined 
  * - admin/owner + filter requested → requested branchId
  * - manager/teacher → forced to their branchIds (or requested if subset)
  * - student → their branchIds if any, else null (org-wide)
+ *
+ * A requested branch always *narrows* — it can never widen someone's scope — so it
+ * is honoured for every role. Ignoring it for org-wide members is what used to make
+ * the branch filter a no-op for anyone who isn't an admin.
  */
 export function resolveBranchFilter(user: AuthUser, requestedBranchId?: string | null): string | null | string[] {
   // Admins and super_admins can see everything or filter by choice
   if (isSuperAdmin(user) || hasRole(user, 'admin')) {
     return requestedBranchId || null;
   }
-  // Users with no branch assignments see org-wide data
+  // Users with no branch assignments see org-wide data — but still honour an
+  // explicitly requested branch, otherwise their UI filter does nothing.
   if (user.branchIds.length === 0) {
-    return null;
+    return requestedBranchId || null;
   }
   // If a specific branch was requested, validate access
   if (requestedBranchId) {
     if (user.branchIds.includes(requestedBranchId)) return requestedBranchId;
     return '__DENIED__'; // sentinel: will result in empty query
   }
-  // Default: scope to user's assigned branches
-  if (user.branchIds.length === 1) return user.branchIds[0];
-  return user.branchIds; // array for multi-branch scope
+  // Default: scope to user's assigned branches. Always the array form, even for a
+  // single branch — callers treat a bare string as "this exact branch was asked for"
+  // and drop org-wide (branchId: null) entities, which would hide every shared
+  // course/group/event from a one-branch member.
+  return user.branchIds;
 }

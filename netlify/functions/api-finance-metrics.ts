@@ -4,7 +4,7 @@
  */
 import type { Handler, HandlerEvent } from '@netlify/functions';
 import { adminDb } from './utils/firebase-admin';
-import { verifyAuth, isStaff, hasPermission, getOrgFilter, resolveBranchFilter, ok, unauthorized, forbidden, badRequest, jsonResponse } from './utils/auth';
+import { verifyAuth, can, getOrgFilter, resolveBranchFilter, ok, unauthorized, forbidden, badRequest, jsonResponse } from './utils/auth';
 
 function getPeriodRange(period: string): { startIso: string; endIso: string } {
   const now = new Date();
@@ -50,8 +50,10 @@ const handler: Handler = async (event: HandlerEvent) => {
   try {
     // GET Metrics
     if (event.httpMethod === 'GET') {
-      if (!isStaff(user) || user.role === 'teacher') return forbidden();
-      if (!hasPermission(user, 'finances')) return forbidden('No access to finances module');
+      // The grant is the gate. Role checks used to sit in front of it, which made a
+      // finances grant on a teacher-based custom role impossible to use; plain
+      // teachers hold no finances:read, so nothing widens here.
+      if (!can(user, 'finances', 'read')) return forbidden('No access to finances module');
 
       const orgFilter = getOrgFilter(user);
       if (!orgFilter) return badRequest('Organization context required');

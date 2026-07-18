@@ -6,7 +6,11 @@ const COLLECTION = 'users';
 
 export const getUser = async (uid: string): Promise<UserProfile | null> => {
   const snap = await getDoc(doc(db, COLLECTION, uid));
-  return snap.exists() ? ({ id: snap.id, ...snap.data() } as unknown as UserProfile) : null;
+  // The document id IS the auth uid, and `uid` is what UserProfile declares and every
+  // caller reads (`profile.uid`). Most user docs carry no `uid` field of their own, so
+  // mapping the id to `id` left `profile.uid` undefined — silently breaking every
+  // "is this me?" check. Spread first so the doc id wins over any stale stored `uid`.
+  return snap.exists() ? ({ ...snap.data(), uid: snap.id } as unknown as UserProfile) : null;
 };
 
 export const createUser = async (

@@ -3,7 +3,6 @@ import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../contexts/AuthContext';
 import { apiGetOrgMembers, orgGetGroups, orgGetCourses } from '../../lib/api';
 import { Users, Mail, Phone, ShieldCheck, GraduationCap } from 'lucide-react';
-import StudentOrgFilter from '../../components/ui/StudentOrgFilter';
 
 export default function StudentTeachersPage() {
   const { t } = useTranslation();
@@ -107,7 +106,6 @@ export default function StudentTeachersPage() {
             </p>
           </div>
         </div>
-        <StudentOrgFilter currentOrgId={profile?.activeOrgId} />
       </div>
 
       {error && (

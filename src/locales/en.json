@@ -845,6 +845,8 @@
     "saving": "Saving..."
   },
   "org": {
+    "activeOrg": "Active learning center",
+    "switchHint": "You belong to several learning centers. Choose which one to work in — the interface switches right away.",
     "courses": {
       "subtitle": "Manage your courses and curricula",
       "create": "Create Course",

@@ -4,7 +4,6 @@ import { useAuth } from '../../contexts/AuthContext';
 import { orgGetCourses, orgGetGroups } from '../../lib/api';
 import { FolderOpen, Users, BookOpen } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import StudentOrgFilter from '../../components/ui/StudentOrgFilter';
 import type { Course } from '../../types';
 
 const StudentCoursesPage: React.FC = () => {
@@ -80,7 +79,6 @@ const StudentCoursesPage: React.FC = () => {
             </p>
           </div>
         </div>
-        <StudentOrgFilter currentOrgId={profile?.activeOrgId} />
       </div>
 
       {error && (

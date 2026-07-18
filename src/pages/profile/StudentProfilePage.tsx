@@ -15,6 +15,7 @@ import type { GamificationData } from '../../types';
 import { PinnedBadgesDisplay } from '../../lib/badges';
 import TelegramLinkCard from '../../components/telegram/TelegramLinkCard';
 import ActiveRoleCard from '../../components/shared/ActiveRoleCard';
+import ActiveOrgCard from '../../components/shared/ActiveOrgCard';
 
 const StudentProfilePage: React.FC = () => {
   const { t } = useTranslation();
@@ -164,6 +165,7 @@ const StudentProfilePage: React.FC = () => {
       </div>
 
       {/* Active role switcher — only shows for members holding more than one role */}
+      <ActiveOrgCard className="mb-6" />
       <ActiveRoleCard className="mb-6" />
 
       {

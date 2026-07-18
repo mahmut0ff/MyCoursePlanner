@@ -3,7 +3,6 @@ import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../contexts/AuthContext';
 import { orgGetGroups, orgGetCourses } from '../../lib/api';
 import { Users, FolderOpen, MessageCircle } from 'lucide-react';
-import StudentOrgFilter from '../../components/ui/StudentOrgFilter';
 import type { Group, Course } from '../../types';
 
 export default function StudentGroupsPage() {
@@ -64,7 +63,6 @@ export default function StudentGroupsPage() {
             </p>
           </div>
         </div>
-        <StudentOrgFilter currentOrgId={profile?.activeOrgId} />
       </div>
 
       {error && (

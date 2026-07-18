@@ -387,6 +387,7 @@ export const orgResetStudentPassword = (uid: string, password: string) => orgReq
 // Teachers
 export const orgGetTeachers = () => orgReq('teachers');
 export const orgCreateTeacher = (data: any) => orgReq('createTeacher', 'POST', data);
+export const orgUpdateTeacher = (data: any) => orgReq('updateTeacher', 'POST', data);
 export const orgInviteUser = (email: string, role: string) => orgReq('inviteUser', 'POST', { email, role });
 
 // ---- Bulk roster operations (students & teachers) ----

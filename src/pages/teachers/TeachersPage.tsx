@@ -5,19 +5,35 @@ import {
   orgGetTeachers,
   orgCreateTeacher,
   orgListBranches,
-  orgGetGroups
+  orgGetGroups,
+  apiDeleteMember
 } from '../../lib/api';
 import { usePlanGate } from '../../contexts/PlanContext';
 import { useAuth } from '../../contexts/AuthContext';
 import { usePermissions } from '../../contexts/PermissionsContext';
-import { UserPlus, Search, Mail, RefreshCw, Phone, CheckCircle, Lightbulb, Copy, X, Plus, KeyRound, Eye, EyeOff } from 'lucide-react';
+import { UserPlus, Search, Mail, RefreshCw, Phone, CheckCircle, Lightbulb, Copy, X, Plus, KeyRound, Eye, EyeOff, MessageCircle, Trash2, Pencil } from 'lucide-react';
 import toast from 'react-hot-toast';
 import type { UserProfile, Group, Branch } from '../../types';
 import EmptyState from '../../components/ui/EmptyState';
+import RowMenu, { type RowMenuItem } from '../../components/ui/RowMenu';
+import EditTeacherModal from '../../components/teachers/EditTeacherModal';
 import BulkActionBar from '../../components/roster/BulkActionBar';
 import { ListSkeleton } from '../../components/ui/Skeleton';
 import { useOrgPresence } from '../../hooks/useOrgPresence';
 import { PresenceBadge, PresenceDot } from '../../components/presence/PresenceBadge';
+
+/**
+ * Номер для wa.me: только цифры, без «+», обязательно с кодом страны — на
+ * локальный `0700 99 88 77` WhatsApp открывает пустой чат, а не преподавателя.
+ * Ведущий 0 у 10-значного номера — кыргызстанский местный формат (его же
+ * подсказывает плейсхолдер «+996 …» в форме добавления), меняем его на 996.
+ * Всё, что не похоже на номер, пункт меню просто не получает.
+ */
+const toWhatsappNumber = (phone?: string): string | null => {
+  const digits = (phone || '').replace(/[^0-9]/g, '');
+  if (/^0\d{9}$/.test(digits)) return `996${digits.slice(1)}`;
+  return digits.length >= 11 ? digits : null;
+};
 
 const TeachersPage: React.FC = () => {
   const { t } = useTranslation();
@@ -31,9 +47,12 @@ const TeachersPage: React.FC = () => {
   // action is available: migrating takes teachers:write, deleting teachers:delete.
   // The bar gates each action on its own grant, and the server enforces both.
   const bulkEnabled = permsLoaded && (canWrite('teachers') || canDelete('teachers'));
+  const mayAdd = permsLoaded && canWrite('teachers');
 
   const [teachers, setTeachers] = useState<UserProfile[]>([]);
   const [loading, setLoading] = useState(true);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [editing, setEditing] = useState<UserProfile | null>(null);
 
   // Bulk selection (desktop table only — the mobile layout has no checkbox column)
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -119,8 +138,97 @@ const TeachersPage: React.FC = () => {
 
   // Columns shift by one when the checkbox column is present.
   const gridCols = bulkEnabled
-    ? 'md:grid-cols-[28px_1fr_190px_130px_150px]'
-    : 'md:grid-cols-[1fr_190px_130px_150px]';
+    ? 'md:grid-cols-[28px_1fr_190px_130px_150px_44px]'
+    : 'md:grid-cols-[1fr_190px_130px_150px_44px]';
+
+  const copy = async (value: string, label: string) => {
+    try {
+      await navigator.clipboard.writeText(value);
+      toast.success(t('common.copied', 'Скопировано'));
+    } catch {
+      toast.error(`${label}: ${value}`);
+    }
+  };
+
+  // Удаление сотрудника необратимо. У преподавателей нет мягкого «отчислить», как
+  // у студентов: api-memberships кладёт им status:'removed', список тянет только
+  // 'active', а restore серверу разрешён исключительно для студентов — доступ
+  // сотрудника живёт в RBAC, а не в статусе членства. Поэтому здесь сразу delete,
+  // с той же формулировкой, что и в BulkActionBar.
+  const handleDelete = async (teacher: UserProfile) => {
+    if (!organizationId) return;
+    const name = teacher.displayName || t('nav.teachers');
+    if (!window.confirm(
+      `Удалить ${name} из организации? Преподаватель будет исключён из всех групп. Аккаунт для входа сохранится — удалится только связь с организацией. Действие необратимо.`
+    )) return;
+
+    setDeletingId(teacher.uid);
+    try {
+      await apiDeleteMember(teacher.uid, organizationId);
+      toast.success(t('org.teachers.deleted', 'Преподаватель удалён из организации'));
+      setTeachers(prev => prev.filter(x => x.uid !== teacher.uid));
+      setSelected(prev => { const n = new Set(prev); n.delete(teacher.uid); return n; });
+    } catch (e: any) {
+      toast.error(e.message || 'Error');
+    } finally {
+      setDeletingId(null);
+    }
+  };
+
+  // Одно меню на строку. Контакты строятся из тех же полей, что уже показаны в
+  // строке, так что ничего нового они не раскрывают и правами не закрыты.
+  // Пустой массив — RowMenu не рисует кнопку вообще.
+  const buildRowMenu = (teacher: UserProfile): RowMenuItem[] => {
+    const items: RowMenuItem[] = [];
+    const waNumber = toWhatsappNumber(teacher.phone);
+
+    if (waNumber) {
+      items.push({
+        label: t('common.writeWhatsapp', 'Написать в WhatsApp'),
+        icon: MessageCircle,
+        onSelect: () => window.open(`https://wa.me/${waNumber}`, '_blank', 'noopener,noreferrer'),
+      });
+    }
+    if (teacher.email) {
+      items.push({
+        label: t('common.writeEmail', 'Написать на почту'),
+        icon: Mail,
+        onSelect: () => { window.location.href = `mailto:${teacher.email}`; },
+      });
+    }
+    if (teacher.phone) {
+      items.push({
+        label: t('common.copyPhone', 'Скопировать телефон'),
+        icon: Copy,
+        onSelect: () => copy(teacher.phone!, t('common.phone', 'Телефон')),
+      });
+    }
+
+    if (permsLoaded && canWrite('teachers')) {
+      items.push({
+        label: t('common.edit', 'Редактировать'),
+        icon: Pencil,
+        separated: items.length > 0,
+        onSelect: () => setEditing(teacher),
+      });
+    }
+
+    // Себя из организации через этот список не удалить — для выхода есть «Покинуть
+    // организацию» в профиле, и там другой серверный путь.
+    if (permsLoaded && canDelete('teachers') && teacher.uid !== profile?.uid) {
+      items.push({
+        // Свой ключ, а не common.delete: тот уже переведён как просто «Удалить»
+        // и съел бы уточнение, что удаляется членство, а не аккаунт.
+        label: t('org.teachers.removeFromOrg', 'Удалить из организации'),
+        icon: Trash2,
+        danger: true,
+        separated: items.length > 0,
+        onSelect: () => handleDelete(teacher),
+      });
+    }
+
+    return items;
+  };
 
   const resetCreateForm = () => {
     setCreateForm({ displayName: '', phone: '', username: '', password: '' });
@@ -183,10 +291,12 @@ const TeachersPage: React.FC = () => {
           <button onClick={() => loadTeachers()} className="p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-xl transition-colors">
             <RefreshCw className="w-4 h-4" />
           </button>
-          <button onClick={() => setShowCreateModal(true)} className="flex-1 sm:flex-none bg-slate-900 hover:bg-slate-800 text-white dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100 px-4 py-2.5 rounded-xl text-sm font-semibold flex justify-center items-center gap-2 transition-all shadow-sm hover:shadow-md shrink-0">
-            <Plus className="w-4 h-4" />
-            {t('org.teachers.add', 'Добавить')}
-          </button>
+          {mayAdd && (
+            <button onClick={() => setShowCreateModal(true)} className="flex-1 sm:flex-none bg-slate-900 hover:bg-slate-800 text-white dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100 px-4 py-2.5 rounded-xl text-sm font-semibold flex justify-center items-center gap-2 transition-all shadow-sm hover:shadow-md shrink-0">
+              <Plus className="w-4 h-4" />
+              {t('org.teachers.add', 'Добавить')}
+            </button>
+          )}
         </div>
       </div>
 
@@ -246,8 +356,8 @@ const TeachersPage: React.FC = () => {
               icon={UserPlus}
               title={search ? 'Преподаватели не найдены' : t('org.teachers.empty')}
               description={search ? 'Попробуйте изменить поисковый запрос' : t('org.teachers.emptyDesc', 'Добавьте первого преподавателя')}
-              actionLabel={t('org.teachers.add', 'Добавить')}
-              onAction={() => setShowCreateModal(true)}
+              actionLabel={mayAdd ? t('org.teachers.add', 'Добавить') : undefined}
+              onAction={mayAdd ? () => setShowCreateModal(true) : undefined}
             />
           ) : (
             <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl overflow-hidden">
@@ -268,6 +378,7 @@ const TeachersPage: React.FC = () => {
                 <span>{t('common.email', 'Email')}</span>
                 <span>{t('common.phone')}</span>
                 <span>{t('common.status', 'Статус')}</span>
+                <span className="sr-only">{t('common.actions', 'Действия')}</span>
               </div>
 
               {filtered.map((teacher) => {
@@ -277,7 +388,7 @@ const TeachersPage: React.FC = () => {
                 <div
                   key={teacher.uid}
                   onClick={() => navigate(`/teachers/${teacher.uid}`)}
-                  className={`cursor-pointer group flex flex-col md:grid ${gridCols} gap-2 md:gap-3 items-center px-5 py-3.5 border-b border-slate-100 dark:border-slate-700/50 last:border-b-0 hover:bg-primary-50/40 dark:hover:bg-primary-900/10 transition-colors`}
+                  className={`relative cursor-pointer group flex flex-col md:grid ${gridCols} gap-2 md:gap-3 items-center px-5 py-3.5 border-b border-slate-100 dark:border-slate-700/50 last:border-b-0 hover:bg-primary-50/40 dark:hover:bg-primary-900/10 transition-colors`}
                 >
                   {/* Select — the whole row navigates, so keep the click to itself */}
                   {bulkEnabled && (
@@ -291,8 +402,8 @@ const TeachersPage: React.FC = () => {
                     </div>
                   )}
 
-                  {/* Name + avatar */}
-                  <div className="flex items-center gap-3 min-w-0 w-full">
+                  {/* Name + avatar — на мобиле уступаем место меню в углу */}
+                  <div className="flex items-center gap-3 min-w-0 w-full pr-8 md:pr-0">
                     <div className="relative shrink-0">
                       {teacher.avatarUrl ? (
                         <img src={teacher.avatarUrl} alt="" className="w-9 h-9 rounded-full object-cover shadow-sm bg-slate-100 dark:bg-slate-700 hover:scale-110 transition-transform" />
@@ -334,12 +445,28 @@ const TeachersPage: React.FC = () => {
                   <div className="hidden md:block">
                     <PresenceBadge online={online} lastSeenMs={lastSeenMs} />
                   </div>
+
+                  {/* Actions — на мобиле карточка вертикальная, поэтому меню
+                      прижато к верхнему правому углу вместо своей колонки. */}
+                  <div className="absolute top-3 right-3 md:static md:flex md:justify-end">
+                    {deletingId === teacher.uid
+                      ? <RefreshCw className="w-4 h-4 m-1.5 animate-spin text-slate-400" />
+                      : <RowMenu items={buildRowMenu(teacher)} />}
+                  </div>
                 </div>
                 );
               })}
             </div>
           )}
       </>
+
+      {editing && (
+        <EditTeacherModal
+          teacher={editing as any}
+          onClose={() => setEditing(null)}
+          onSaved={patch => setTeachers(prev => prev.map(x => (x.uid === editing.uid ? { ...x, ...patch } : x)))}
+        />
+      )}
 
       {/* Create Teacher Modal — add a teacher directly, no self-registration */}
       {showCreateModal && (

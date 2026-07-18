@@ -1292,6 +1292,52 @@ const handler: Handler = async (event: HandlerEvent) => {
       }
     }
 
+    // Правка карточки преподавателя. Зеркало updateStudent, но с двумя отличиями:
+    // цель обязана держать преподавательскую роль (иначе через этот путь можно было
+    // бы править профиль директора, у которого те же teachers:write не спрашиваются),
+    // и в белом списке нет username — смена логина трогает вход в систему и живёт
+    // отдельно. Роли и статус здесь не меняются: это RBAC, а не карточка.
+    if (action === 'updateTeacher') {
+      const err = requireOrgStaff(user); if (err) return err;
+      if (!can(user, 'teachers', 'write')) return forbidden('Недостаточно прав для этого действия');
+      const body = JSON.parse(event.body || '{}');
+      if (!body.uid) return badRequest('uid required');
+
+      const memberDoc = await adminDb.collection('orgMembers').doc(orgId)
+        .collection('members').doc(body.uid).get();
+      if (!memberDoc.exists) return notFound();
+      const member = memberDoc.data() as any;
+      if (!memberHoldsRole(member, ['teacher', 'mentor'])) {
+        return badRequest('Этот участник не преподаватель');
+      }
+      // Филиальный менеджер не должен править сотрудников чужих филиалов. Без
+      // запрошенного филиала scope — это либо null (общеорганизационный доступ),
+      // либо массив своих филиалов; в обоих случаях общеорганизационный препод
+      // (без branchIds) остаётся доступен — ровно как в выдаче списка выше.
+      if (!memberInBranchScope(member.branchIds || [], resolveBranchFilter(user, undefined))) {
+        return forbidden();
+      }
+
+      const userDoc = await adminDb.collection('users').doc(body.uid).get();
+      if (!userDoc.exists) return notFound();
+
+      const ALLOWED_FIELDS = ['displayName', 'phone', 'city', 'bio', 'avatarUrl', 'country'];
+      const updateData: Record<string, any> = { updatedAt: now() };
+      for (const key of ALLOWED_FIELDS) {
+        if (body[key] !== undefined) updateData[key] = body[key];
+      }
+      await adminDb.collection('users').doc(body.uid).update(updateData);
+
+      // orgMembers держит денормализованное имя — списки читают его, не профиль.
+      if (body.displayName) {
+        await adminDb.collection('orgMembers').doc(orgId)
+          .collection('members').doc(body.uid)
+          .update({ userName: body.displayName, updatedAt: now() }).catch(() => {});
+      }
+
+      return ok({ uid: body.uid, updated: true });
+    }
+
     // ═══ CREATE USER (real account with an arbitrary combination of app roles) ═══
     if (action === 'createUser') {
       // Admin-only: this can grant admin/manager, so managers may not use it (anti-escalation).

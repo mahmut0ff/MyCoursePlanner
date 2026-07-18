@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../contexts/AuthContext';
 import { adminGetAnalytics } from '../../lib/api';
+import SidebarCustomizerCard from '../../components/shared/SidebarCustomizerCard';
 import {
   User, Users, Palette, Bell, Puzzle, CreditCard, Mail,
   Globe, Shield, Database, Save, Eye, EyeOff,
@@ -64,6 +65,11 @@ const ProfileTab: React.FC = () => {
           <span className="inline-flex px-2 py-0.5 rounded text-xs font-medium bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-400 mt-1 capitalize">{profile?.role?.replace('_', ' ')}</span>
         </div>
       </div>
+
+      {/* Super admins reach settings here rather than /org-settings, so the sidebar
+          customizer has to be mounted on this page too — otherwise they are the one
+          role that cannot trim their own menu. */}
+      <SidebarCustomizerCard />
 
       {/* Profile Form */}
       <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-6">

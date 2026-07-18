@@ -19,6 +19,7 @@ import toast from 'react-hot-toast';
 import { Link } from 'lucide-react';
 import ActiveRoleCard from '../../components/shared/ActiveRoleCard';
 import ActiveOrgCard from '../../components/shared/ActiveOrgCard';
+import SidebarCustomizerCard from '../../components/shared/SidebarCustomizerCard';
 
 type Tab = 'general' | 'academic' | 'visitcard' | 'integrations' | 'notifications' | 'data' | 'limits';
 
@@ -642,6 +643,7 @@ const OrgSettingsPage: React.FC = () => {
       {/* Active role switcher — only shows for members holding more than one role */}
       <ActiveOrgCard className="mb-6" />
       <ActiveRoleCard className="mb-6" />
+      <SidebarCustomizerCard className="mb-6" />
 
       {/* Tabbed layout */}
       <div className="flex flex-col md:flex-row gap-6 min-h-[calc(100vh-8rem)]">

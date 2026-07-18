@@ -2,25 +2,15 @@ import React from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../contexts/AuthContext';
-import { usePlanGate } from '../../contexts/PlanContext';
-import { usePermissions } from '../../contexts/PermissionsContext';
-import { term } from '../../lib/terminology';
+import { useSidebarPrefs } from '../../lib/sidebarPrefs';
 import { signOut } from '../../services/auth.service';
+import { useNavModel } from './navModel';
 
 import BranchSwitcher from './BranchSwitcher';
 import TelegramNotifyButton from '../telegram/TelegramNotifyButton';
 import SidebarTips from './SidebarTips';
 import {
-  Building2, Calendar, FileText,
-  LayoutDashboard, Monitor,
-  Settings, BookOpen, UserPlus,
-  BarChart3, Gamepad2, ChevronDown, TableProperties,
-  Users, Layers, Activity, Flag, Plug, FolderOpen,
-  ClipboardList, Radio, LogOut, CreditCard, Trophy,
-  Lock, ClipboardCheck,
-  Inbox,
-  NotebookText, NotebookPen, MapPin, UserCog,
-  Sparkles, TrendingDown,
+  Settings, ChevronDown, LogOut, Lock,
 } from 'lucide-react';
 
 /* ─── Thin divider between groups ─── */
@@ -75,9 +65,7 @@ const NavItem: React.FC<{
 
 const Sidebar: React.FC<{ open: boolean; onClose: () => void; isCollapsed?: boolean; onToggleCollapse?: () => void; orgData?: any }> = ({ open, onClose, isCollapsed, onToggleCollapse, orgData }) => {
   const { t } = useTranslation();
-  const { profile, role, isSuperAdmin, isTeacher, isManager, organizationId, membershipRole } = useAuth();
-  const { canAccess } = usePlanGate();
-  const { canRead } = usePermissions();
+  const { profile, role, isSuperAdmin, isTeacher, membershipRole } = useAuth();
   const navigate = useNavigate();
 
   const handleSignOut = async () => { await signOut(); navigate('/login'); };
@@ -88,8 +76,14 @@ const Sidebar: React.FC<{ open: boolean; onClose: () => void; isCollapsed?: bool
   };
 
   const isAdmin = role === 'admin';
-  const teacherWithOrg = isTeacher && !!organizationId;
-  const instType = orgData?.institutionType;
+
+  // The menu is data (navModel) minus whatever this person chose to hide. Hiding
+  // is cosmetic — RBAC still owns access, the routes stay reachable.
+  const sections = useNavModel(orgData?.institutionType);
+  const { isHidden } = useSidebarPrefs(profile?.uid);
+  const visibleSections = sections
+    .map((s) => ({ ...s, items: s.items.filter((it) => !isHidden(it.id)) }))
+    .filter((s) => s.items.length > 0);
 
   // Localized label for the ACTIVE role — matches the org switcher and role switcher.
   // Uses the assigned custom RBAC role's own name when the active role is its base.
@@ -140,247 +134,27 @@ const Sidebar: React.FC<{ open: boolean; onClose: () => void; isCollapsed?: bool
 
         {/* ═══ Navigation ═══ */}
         <nav className="flex-1 px-2 py-2 space-y-0.5 overflow-y-auto scrollbar-thin scrollbar-thumb-slate-700">
-
-          {/* ──────── SUPER ADMIN ──────── */}
-          {isSuperAdmin && (
-            <>
-              <NavItem to="/admin" end icon={LayoutDashboard} label={t('nav.overview')} isCollapsed={isCollapsed} onClose={onClose} />
-
-              <SectionLabel label={t('nav.secManagement', 'Управление')} isCollapsed={isCollapsed} />
-              <NavItem to="/admin/organizations" icon={Building2} label={t('nav.organizations')} isCollapsed={isCollapsed} onClose={onClose} />
-              <NavItem to="/admin/demo-requests" icon={Inbox} label={t('nav.demoRequests', 'Заявки на демо')} isCollapsed={isCollapsed} onClose={onClose} />
-              <NavItem to="/admin/users" icon={Users} label={t('nav.users')} isCollapsed={isCollapsed} onClose={onClose} />
-              <NavItem to="/admin/billing" icon={CreditCard} label={t('nav.billing')} isCollapsed={isCollapsed} onClose={onClose} />
-              <NavItem to="/admin/plans" icon={Layers} label={t('nav.plans')} isCollapsed={isCollapsed} onClose={onClose} />
-
-              <SectionLabel label={t('nav.secSystem', 'Система')} isCollapsed={isCollapsed} />
-              <NavItem to="/admin/audit-logs" icon={Activity} label={t('nav.auditLogs')} isCollapsed={isCollapsed} onClose={onClose} />
-              <NavItem to="/admin/system-health" icon={Monitor} label={t('nav.systemHealth')} isCollapsed={isCollapsed} onClose={onClose} />
-              <NavItem to="/admin/feature-flags" icon={Flag} label={t('nav.featureFlags')} isCollapsed={isCollapsed} onClose={onClose} />
-              <NavItem to="/admin/integrations" icon={Plug} label={t('nav.integrations')} isCollapsed={isCollapsed} onClose={onClose} />
-            </>
-          )}
-
-          {/* ──────── ORG ADMIN ──────── */}
-          {isAdmin && !isSuperAdmin && (
-            <>
-              <NavItem to="/dashboard" icon={LayoutDashboard} label={t('nav.dashboard')} isCollapsed={isCollapsed} onClose={onClose} />
-
-              {/* People, ordered by the funnel: lead → enrolled student → teacher → internal team. */}
-              <SectionLabel label={t('nav.secPeople', 'Люди')} isCollapsed={isCollapsed} />
-              <NavItem to="/leads" icon={Inbox} label={t('nav.leads', 'Заявки')} isCollapsed={isCollapsed} onClose={onClose} />
-              <NavItem to="/students" icon={Users} label={term(t, instType, 'students')} isCollapsed={isCollapsed} onClose={onClose} />
-              <NavItem to="/teachers" icon={UserPlus} label={t('nav.teachers')} isCollapsed={isCollapsed} onClose={onClose} />
-              <NavItem to="/team" icon={UserCog} label={t('nav.team', 'Команда и роли')} isCollapsed={isCollapsed} onClose={onClose} locked={!canAccess('rbac')} />
-
-              <SectionLabel label={t('nav.secLearning', 'Обучение')} isCollapsed={isCollapsed} />
-              <NavItem to="/courses" icon={FolderOpen} label={t('nav.courses')} isCollapsed={isCollapsed} onClose={onClose} />
-              <NavItem to="/lessons" icon={BookOpen} label={t('nav.lessons')} isCollapsed={isCollapsed} onClose={onClose} />
-              <NavItem to="/exams" icon={ClipboardList} label={t('nav.exams')} isCollapsed={isCollapsed} onClose={onClose} />
-              <NavItem to="/schedule" icon={Calendar} label={t('nav.schedule')} isCollapsed={isCollapsed} onClose={onClose} />
-              <NavItem to="/materials" icon={FileText} label={t('nav.materials')} isCollapsed={isCollapsed} onClose={onClose} />
-              <NavItem to="/quiz/library" icon={Gamepad2} label={t('nav.quizLibrary')} isCollapsed={isCollapsed} onClose={onClose} />
-
-              <SectionLabel label={t('nav.secManagement', 'Управление')} isCollapsed={isCollapsed} />
-              <NavItem to="/ai" icon={Sparkles} label={t('nav.aiHub', 'AI-центр')} isCollapsed={isCollapsed} onClose={onClose} locked={!canAccess('ai')} />
-              <NavItem to="/finances" icon={CreditCard} label={t('nav.finances', 'Финансы')} isCollapsed={isCollapsed} onClose={onClose} locked={!canAccess('finances')} />
-              <NavItem to="/teacher-analytics" icon={BarChart3} label={t('nav.analytics')} isCollapsed={isCollapsed} onClose={onClose} locked={!canAccess('advancedAnalytics')} />
-              <NavItem to="/risk-dashboard" icon={TrendingDown} label={t('nav.riskDashboard', 'Светофор рисков')} isCollapsed={isCollapsed} onClose={onClose} locked={!canAccess('advancedAnalytics')} />
-            </>
-          )}
-
-          {/* ──────── MANAGER ──────── */}
-          {isManager && !isSuperAdmin && (
-            <>
-              <NavItem to="/dashboard" icon={LayoutDashboard} label={t('nav.dashboard')} isCollapsed={isCollapsed} onClose={onClose} />
-
-              {/* People, ordered by the funnel: lead → enrolled student → teacher → internal team. */}
-              <SectionLabel label={t('nav.secPeople', 'Люди')} isCollapsed={isCollapsed} />
-              {canRead('leads') && (
-                <NavItem to="/leads" icon={Inbox} label={t('nav.leads', 'Заявки')} isCollapsed={isCollapsed} onClose={onClose} />
-              )}
-              {canRead('students') && (
-                <NavItem to="/students" icon={Users} label={term(t, instType, 'students')} isCollapsed={isCollapsed} onClose={onClose} />
-              )}
-              {canRead('teachers') && (
-                <NavItem to="/teachers" icon={UserPlus} label={t('nav.teachers')} isCollapsed={isCollapsed} onClose={onClose} />
-              )}
-              {canRead('team') && (
-                <NavItem to="/team" icon={UserCog} label={t('nav.team', 'Команда и роли')} isCollapsed={isCollapsed} onClose={onClose} locked={!canAccess('rbac')} />
-              )}
-
-              <SectionLabel label={t('nav.secLearning', 'Обучение')} isCollapsed={isCollapsed} />
-              {canRead('courses') && (
-                <NavItem to="/courses" icon={FolderOpen} label={t('nav.courses')} isCollapsed={isCollapsed} onClose={onClose} />
-              )}
-              {canRead('groups') && (
-                <NavItem to="/groups" icon={Layers} label={term(t, instType, 'groups')} isCollapsed={isCollapsed} onClose={onClose} />
-              )}
-              {canRead('lessons') && (
-                <NavItem to="/lessons" icon={BookOpen} label={t('nav.lessons')} isCollapsed={isCollapsed} onClose={onClose} />
-              )}
-              {canRead('exams') && (
-                <NavItem to="/exams" icon={ClipboardList} label={t('nav.exams')} isCollapsed={isCollapsed} onClose={onClose} />
-              )}
-              {canRead('schedule') && (
-                <NavItem to="/schedule" icon={Calendar} label={t('nav.schedule')} isCollapsed={isCollapsed} onClose={onClose} />
-              )}
-              {canRead('materials') && (
-                <NavItem to="/materials" icon={FileText} label={t('nav.materials')} isCollapsed={isCollapsed} onClose={onClose} />
-              )}
-              {canRead('quizzes') && (
-                <NavItem to="/quiz/library" icon={Gamepad2} label={t('nav.quizLibrary')} isCollapsed={isCollapsed} onClose={onClose} />
-              )}
-
-              <SectionLabel label={t('nav.secManagement', 'Управление')} isCollapsed={isCollapsed} />
-              {canRead('ai') && (
-                <NavItem to="/ai" icon={Sparkles} label={t('nav.aiHub', 'AI-центр')} isCollapsed={isCollapsed} onClose={onClose} locked={!canAccess('ai')} />
-              )}
-              {canRead('finances') && (
-                <NavItem to="/finances" icon={CreditCard} label={t('nav.finances', 'Финансы')} isCollapsed={isCollapsed} onClose={onClose} locked={!canAccess('finances')} />
-              )}
-              {canRead('branches') && (
-                <NavItem to="/branches" icon={MapPin} label={t('nav.branches', 'Филиалы')} isCollapsed={isCollapsed} onClose={onClose} locked={!canAccess('branches')} />
-              )}
-              {canRead('settings') && (
-                <NavItem to="/org-settings" icon={Settings} label={t('nav.orgSettings', 'Настройки')} isCollapsed={isCollapsed} onClose={onClose} />
-              )}
-              {canRead('gradebook') && (
-                <NavItem to="/gradebook" icon={TableProperties} label={t('nav.gradebook', 'Успеваемость')} isCollapsed={isCollapsed} onClose={onClose} locked={!canAccess('gradebook')} />
-              )}
-              {canRead('analytics') && (
-                <NavItem to="/teacher-analytics" icon={BarChart3} label={t('nav.analytics')} isCollapsed={isCollapsed} onClose={onClose} locked={!canAccess('advancedAnalytics')} />
-              )}
-              {canRead('analytics') && (
-                <NavItem to="/risk-dashboard" icon={TrendingDown} label={t('nav.riskDashboard', 'Светофор рисков')} isCollapsed={isCollapsed} onClose={onClose} locked={!canAccess('advancedAnalytics')} />
-              )}
-            </>
-          )}
-
-          {/* ──────── TEACHER ──────── */}
-          {isTeacher && !isSuperAdmin && (
-            <>
-              <NavItem to="/dashboard" icon={LayoutDashboard} label={t('nav.dashboard')} isCollapsed={isCollapsed} onClose={onClose} />
-
-              {/* Permission-gated, like the manager menu above: the teacher branch is
-                  also what a custom role with baseRole 'teacher' gets, so hard-coding
-                  it by role both hid modules such a role was granted and left dead
-                  links behind a per-member revoke. */}
-              {teacherWithOrg && (
-                <>
-                  <SectionLabel label={t('nav.secLearning', 'Обучение')} isCollapsed={isCollapsed} />
-                  {canRead('students') && (
-                    <NavItem to="/students" icon={Users} label={term(t, instType, 'students')} isCollapsed={isCollapsed} onClose={onClose} />
-                  )}
-                  {canRead('groups') && (
-                    <NavItem to="/groups" icon={Layers} label={term(t, instType, 'groups')} isCollapsed={isCollapsed} onClose={onClose} />
-                  )}
-                  {canRead('gradebook') && (
-                    <NavItem to="/journal" icon={NotebookPen} label={t('nav.journal', 'Журнал')} isCollapsed={isCollapsed} onClose={onClose} locked={!canAccess('gradebook')} />
-                  )}
-                  {canRead('homework') && (
-                    <NavItem to="/homework/review" icon={ClipboardCheck} label={t('nav.homeworkReview', 'Проверка ДЗ')} isCollapsed={isCollapsed} onClose={onClose} />
-                  )}
-                  {canRead('gradebook') && (
-                    <NavItem to="/gradebook" icon={TableProperties} label={t('nav.gradebook', 'Оценки')} isCollapsed={isCollapsed} onClose={onClose} locked={!canAccess('gradebook')} />
-                  )}
-
-                  <SectionLabel label={t('nav.secContent', 'Контент')} isCollapsed={isCollapsed} />
-                  {canRead('courses') && (
-                    <NavItem to="/courses" icon={FolderOpen} label={t('nav.courses')} isCollapsed={isCollapsed} onClose={onClose} />
-                  )}
-                  {canRead('lessons') && (
-                    <NavItem to="/lessons" icon={BookOpen} label={t('nav.lessons')} isCollapsed={isCollapsed} onClose={onClose} />
-                  )}
-                  {canRead('exams') && (
-                    <NavItem to="/exams" icon={ClipboardList} label={t('nav.exams')} isCollapsed={isCollapsed} onClose={onClose} />
-                  )}
-                  {canRead('schedule') && (
-                    <NavItem to="/schedule" icon={Calendar} label={t('nav.schedule')} isCollapsed={isCollapsed} onClose={onClose} />
-                  )}
-                  {canRead('materials') && (
-                    <NavItem to="/materials" icon={FileText} label={t('nav.materials')} isCollapsed={isCollapsed} onClose={onClose} />
-                  )}
-                  {canRead('quizzes') && (
-                    <NavItem to="/quiz/library" icon={Gamepad2} label={t('nav.quizLibrary')} isCollapsed={isCollapsed} onClose={onClose} />
-                  )}
-
-                  {/* Modules only a custom teacher-based role is ever granted — absent
-                      from TEACHER_DEFAULT, so a plain teacher renders none of these. */}
-                  {(canRead('leads') || canRead('teachers') || canRead('team') || canRead('ai') || canRead('finances') || canRead('branches') || canRead('settings')) && (
-                    <SectionLabel label={t('nav.secManagement', 'Управление')} isCollapsed={isCollapsed} />
-                  )}
-                  {canRead('leads') && (
-                    <NavItem to="/leads" icon={Inbox} label={t('nav.leads', 'Заявки')} isCollapsed={isCollapsed} onClose={onClose} />
-                  )}
-                  {canRead('teachers') && (
-                    <NavItem to="/teachers" icon={UserPlus} label={t('nav.teachers')} isCollapsed={isCollapsed} onClose={onClose} />
-                  )}
-                  {canRead('team') && (
-                    <NavItem to="/team" icon={UserCog} label={t('nav.team', 'Команда и роли')} isCollapsed={isCollapsed} onClose={onClose} locked={!canAccess('rbac')} />
-                  )}
-                  {canRead('ai') && (
-                    <NavItem to="/ai" icon={Sparkles} label={t('nav.aiHub', 'AI-центр')} isCollapsed={isCollapsed} onClose={onClose} locked={!canAccess('ai')} />
-                  )}
-                  {canRead('finances') && (
-                    <NavItem to="/finances" icon={CreditCard} label={t('nav.finances', 'Финансы')} isCollapsed={isCollapsed} onClose={onClose} locked={!canAccess('finances')} />
-                  )}
-                  {canRead('branches') && (
-                    <NavItem to="/branches" icon={MapPin} label={t('nav.branches', 'Филиалы')} isCollapsed={isCollapsed} onClose={onClose} locked={!canAccess('branches')} />
-                  )}
-                  {canRead('settings') && (
-                    <NavItem to="/org-settings" icon={Settings} label={t('nav.orgSettings', 'Настройки')} isCollapsed={isCollapsed} onClose={onClose} />
-                  )}
-                </>
-              )}
-
-              {/* Independent teacher (no org) */}
-              {!teacherWithOrg && (
-                <>
-                  <SectionLabel label={t('nav.secContent', 'Контент')} isCollapsed={isCollapsed} />
-                  <NavItem to="/lessons" icon={BookOpen} label={t('nav.myLessons', 'Мои уроки')} isCollapsed={isCollapsed} onClose={onClose} />
-                  <NavItem to="/materials" icon={FileText} label={t('nav.myMaterials', 'Мои материалы')} isCollapsed={isCollapsed} onClose={onClose} />
-                  <NavItem to="/exams" icon={ClipboardList} label={t('nav.myExams', 'Мои экзамены')} isCollapsed={isCollapsed} onClose={onClose} />
-                  <NavItem to="/quiz/library" icon={Gamepad2} label={t('nav.quizLibrary')} isCollapsed={isCollapsed} onClose={onClose} />
-
-                  <Divider />
-                  <NavItem to="/catalog" icon={Building2} label={t('nav.findCenter', 'Каталог Организаций')} isCollapsed={isCollapsed} onClose={onClose} />
-                </>
-              )}
-            </>
-          )}
-
-          {/* ──────── STUDENT ──────── */}
-          {role === 'student' && (
-            <>
-              <NavItem to="/dashboard" icon={LayoutDashboard} label={t('nav.dashboard')} isCollapsed={isCollapsed} onClose={onClose} />
-
-              {!!organizationId && (
-                <>
-                  <NavItem to="/diary" icon={NotebookText} label={t('nav.diary', 'Дневник')} isCollapsed={isCollapsed} onClose={onClose} />
-
-                  <SectionLabel label={t('nav.secLearning', 'Обучение')} isCollapsed={isCollapsed} />
-                  <NavItem to="/student/courses" icon={FolderOpen} label={t('nav.myCourses', 'Курсы')} isCollapsed={isCollapsed} onClose={onClose} />
-                  <NavItem to="/lessons" icon={BookOpen} label={t('nav.lessons')} isCollapsed={isCollapsed} onClose={onClose} />
-                  <NavItem to="/student/homework" icon={ClipboardCheck} label={t('nav.myHomework', 'Мои ДЗ')} isCollapsed={isCollapsed} onClose={onClose} />
-                  <NavItem to="/student/schedule" icon={Calendar} label={t('nav.schedule')} isCollapsed={isCollapsed} onClose={onClose} />
-                  {(orgData?.planId === 'professional' || orgData?.planId === 'enterprise') && (
-                    <NavItem to="/ai-coach" icon={Sparkles} label={t('nav.aiCoach', 'AI-наставник')} isCollapsed={isCollapsed} onClose={onClose} />
-                  )}
-
-                  <Divider />
-                  <NavItem to="/join" icon={Radio} label={t('nav.joinTest', 'Войти в тест')} isCollapsed={isCollapsed} onClose={onClose} />
-                </>
-              )}
-
-              {!organizationId && (
-                <NavItem to="/catalog" icon={Building2} label={t('nav.findCenter', 'Найти учебный центр')} isCollapsed={isCollapsed} onClose={onClose} />
-              )}
-
-              <Divider />
-              <NavItem to="/achievements" icon={Trophy} label={t('nav.achievements', 'Достижения')} isCollapsed={isCollapsed} onClose={onClose} />
-            </>
-          )}
+          {visibleSections.map((section, i) => (
+            <React.Fragment key={section.id}>
+              {/* Captioned groups get their label; the ungrouped trailing ones (join a
+                  test, achievements, catalog) keep the thin rule they had before. */}
+              {section.label
+                ? <SectionLabel label={section.label} isCollapsed={isCollapsed} />
+                : i > 0 && <Divider />}
+              {section.items.map((item) => (
+                <NavItem
+                  key={item.id}
+                  to={item.to}
+                  end={item.end}
+                  icon={item.icon}
+                  label={item.label}
+                  locked={item.locked}
+                  isCollapsed={isCollapsed}
+                  onClose={onClose}
+                />
+              ))}
+            </React.Fragment>
+          ))}
         </nav>
 
         {/* ═══ Tips ═══ */}

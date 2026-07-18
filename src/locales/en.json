@@ -219,6 +219,11 @@
     "achievements": "Achievements",
     "team": "Team & Roles"
   },
+  "sidebar": {
+    "customize": "Menu setup",
+    "customizeHint": "Choose which items appear in the side menu. This only changes the menu and does not affect access rights.",
+    "showAll": "Show all"
+  },
   "team": {
     "title": "Team & Roles",
     "subtitle": "Manage staff and fine-tune their access permissions (RBAC).",

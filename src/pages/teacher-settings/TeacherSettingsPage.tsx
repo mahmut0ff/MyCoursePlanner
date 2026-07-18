@@ -9,6 +9,7 @@ import { updateUser } from '../../services/users.service';
 import AvatarCropper from '../../components/ui/AvatarCropper';
 import ActiveRoleCard from '../../components/shared/ActiveRoleCard';
 import ActiveOrgCard from '../../components/shared/ActiveOrgCard';
+import SidebarCustomizerCard from '../../components/shared/SidebarCustomizerCard';
 import {
   User, Globe, Bell, Lock, Save, Loader2, CheckCircle2, Eye, EyeOff, Phone, Camera,
   FileText, Trash2, Upload
@@ -225,6 +226,7 @@ const TeacherSettingsPage: React.FC = () => {
       {/* Active role switcher — only shows for members holding more than one role */}
       <ActiveOrgCard className="mb-6" />
       <ActiveRoleCard className="mb-6" />
+      <SidebarCustomizerCard className="mb-6" />
 
       <div className="flex flex-col md:flex-row gap-6">
         {/* Sidebar */}

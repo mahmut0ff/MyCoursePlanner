@@ -16,6 +16,7 @@ import { PinnedBadgesDisplay } from '../../lib/badges';
 import TelegramLinkCard from '../../components/telegram/TelegramLinkCard';
 import ActiveRoleCard from '../../components/shared/ActiveRoleCard';
 import ActiveOrgCard from '../../components/shared/ActiveOrgCard';
+import SidebarCustomizerCard from '../../components/shared/SidebarCustomizerCard';
 
 const StudentProfilePage: React.FC = () => {
   const { t } = useTranslation();
@@ -167,6 +168,7 @@ const StudentProfilePage: React.FC = () => {
       {/* Active role switcher — only shows for members holding more than one role */}
       <ActiveOrgCard className="mb-6" />
       <ActiveRoleCard className="mb-6" />
+      <SidebarCustomizerCard className="mb-6" />
 
       {
         <div className="space-y-6">

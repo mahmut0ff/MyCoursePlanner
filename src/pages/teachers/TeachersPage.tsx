@@ -64,8 +64,13 @@ const TeachersPage: React.FC = () => {
     if (!silent) { setLoading(true); setError(''); }
     try {
       const data: any = await orgGetTeachers();
+      // Mirror the server's union semantics (memberHoldsRole in api-org.ts), narrowed
+      // to the teaching roles: a multi-role member (manager + teacher) or a mentor
+      // belongs here too. Matching on the primary `role` alone dropped them.
+      // Admins/owners stay excluded — the endpoint returns them, but listing them
+      // would both pollute this page and inflate the plan-limit check below.
       let teachersOnly = (Array.isArray(data) ? data : []).filter(
-        (u: any) => u.role === 'teacher'
+        (u: any) => [u.role, ...(u.roles || [])].some((r: string) => r === 'teacher' || r === 'mentor')
       );
       if (role === 'student' && profile?.uid) {
         const allGroups: any[] = await orgGetGroups().catch(() => []);

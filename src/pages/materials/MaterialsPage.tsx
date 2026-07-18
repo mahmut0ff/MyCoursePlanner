@@ -4,6 +4,7 @@ import { orgGetMaterials, orgCreateMaterial, orgDeleteMaterial, apiAIGenerate, a
 import { uploadFile } from '../../services/storage.service';
 import { useAuth } from '../../contexts/AuthContext';
 import { usePlanGate } from '../../contexts/PlanContext';
+import { usePermissions } from '../../contexts/PermissionsContext';
 import { 
   FileText, Search, Trash2, ExternalLink, RefreshCw, 
   UploadCloud, File as FileIcon, FileImage, FileAudio, FileVideo, 
@@ -43,7 +44,11 @@ const MaterialsPage: React.FC = () => {
   const { t } = useTranslation();
   const { profile, role } = useAuth();
   const { canAccess } = usePlanGate();
-  const isAdmin = role === 'super_admin' || role === 'manager';
+  const { canWrite, canDelete } = usePermissions();
+  // Delete used to be gated on `super_admin || manager`, which hid it from every
+  // teacher and teacher-based custom role — all of whom hold materials:delete.
+  const canDeleteMaterials = canDelete('materials');
+  const canUploadMaterials = canWrite('materials');
   const orgId = profile?.activeOrgId;
 
   const [materials, setMaterials] = useState<Material[]>([]);
@@ -249,10 +254,12 @@ const MaterialsPage: React.FC = () => {
           <button onClick={load} className="p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg transition-colors">
             <RefreshCw className="w-4 h-4" />
           </button>
-          <button onClick={() => setShowCreate(true)} className="bg-primary-500 hover:bg-primary-600 text-white px-4 py-2 rounded-lg font-medium flex items-center gap-2 transition-colors shadow-sm shadow-primary-500/20">
-            <UploadCloud className="w-4 h-4" />
-            <span>{t('org.materials.add', 'Загрузить файл')}</span>
-          </button>
+          {canUploadMaterials && (
+            <button onClick={() => setShowCreate(true)} className="bg-primary-500 hover:bg-primary-600 text-white px-4 py-2 rounded-lg font-medium flex items-center gap-2 transition-colors shadow-sm shadow-primary-500/20">
+              <UploadCloud className="w-4 h-4" />
+              <span>{t('org.materials.add', 'Загрузить файл')}</span>
+            </button>
+          )}
         </div>
       </div>
 
@@ -286,8 +293,8 @@ const MaterialsPage: React.FC = () => {
           icon={FileText}
           title={search ? t('common.noResults', 'Ничего не найдено') : t('org.materials.empty', 'Материалов пока нет')}
           description={search ? '' : t('org.materials.emptyDesc', 'Загрузите файлы, документы или добавьте полезные ссылки для ваших курсов.')}
-          actionLabel={!search ? t('org.materials.add', 'Добавить первый материал') : undefined}
-          onAction={!search ? () => setShowCreate(true) : undefined}
+          actionLabel={!search && canUploadMaterials ? t('org.materials.add', 'Добавить первый материал') : undefined}
+          onAction={!search && canUploadMaterials ? () => setShowCreate(true) : undefined}
         />
       ) : viewMode === 'grid' ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
@@ -340,7 +347,7 @@ const MaterialsPage: React.FC = () => {
                       <FolderPlus className="w-4 h-4" />
                     </button>
                   )}
-                  {isAdmin && (
+                  {canDeleteMaterials && (
                     <button onClick={(e) => handleDelete(m.id, e)} className="p-2 bg-red-500 text-white hover:bg-red-600 rounded-full shadow-lg transition-transform hover:scale-110 tooltip" data-tip="Удалить">
                       <Trash2 className="w-4 h-4" />
                     </button>
@@ -391,7 +398,7 @@ const MaterialsPage: React.FC = () => {
                       <a href={getViewerUrl(m.url, m.mimeType || 'unknown', m.title) || m.url} target="_blank" rel="noreferrer" onClick={e => e.stopPropagation()} className="p-1.5 text-slate-400 hover:text-emerald-500 hover:bg-slate-100 dark:hover:bg-slate-700 rounded transition-colors tooltip" data-tip="Внешняя ссылка">
                         <ExternalLink className="w-4 h-4" />
                       </a>
-                      {isAdmin && (
+                      {canDeleteMaterials && (
                         <button onClick={(e) => handleDelete(m.id, e)} className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded transition-colors tooltip" data-tip="Удалить">
                           <Trash2 className="w-4 h-4" />
                         </button>

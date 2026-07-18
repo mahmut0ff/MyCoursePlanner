@@ -164,11 +164,17 @@ export async function createNotification(payload: NotificationPayload): Promise<
 }
 
 /**
- * Notify all admins and managers of an organization.
+ * Notify all admins and managers of an organization, plus any extra recipients.
  * Uses the orgMembers sub-collection for reliable multi-tenant membership lookup.
+ *
+ * Teachers are NOT part of the admin roles — pass them via `extraRecipientIds`
+ * when an event concerns them (e.g. a homework submission reaching the teacher
+ * who assigned it). Recipients are deduped, so an admin who is also an extra
+ * recipient is only notified once.
  */
 export async function notifyOrgAdmins(
-  orgId: string, type: NotificationType, title: string, message: string, link?: string
+  orgId: string, type: NotificationType, title: string, message: string, link?: string,
+  extraRecipientIds: string[] = []
 ): Promise<void> {
   const snap = await adminDb.collection('orgMembers').doc(orgId)
     .collection('members')
@@ -178,8 +184,12 @@ export async function notifyOrgAdmins(
     const role = d.data().role;
     return ['admin', 'owner', 'manager'].includes(role);
   });
-  const promises = admins.map(d =>
-    createNotification({ recipientId: d.data().userId || d.id, type, title, message, link, organizationId: orgId })
+  const recipients = new Set<string>([
+    ...admins.map(d => d.data().userId || d.id),
+    ...extraRecipientIds.filter(Boolean),
+  ]);
+  const promises = [...recipients].map(uid =>
+    createNotification({ recipientId: uid, type, title, message, link, organizationId: orgId })
   );
   await Promise.allSettled(promises);
 }

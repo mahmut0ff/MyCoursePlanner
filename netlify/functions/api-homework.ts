@@ -13,6 +13,31 @@ const COLLECTION = 'homework_submissions';
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
 
+/**
+ * Resolve the teachers responsible for a lesson: its author plus the teachers of
+ * every group the lesson is assigned to. Best-effort — a missing lesson or group
+ * just degrades to notifying the org admins alone.
+ */
+async function resolveLessonTeacherIds(lessonId: string): Promise<string[]> {
+  const ids = new Set<string>();
+  try {
+    const lessonSnap = await adminDb.collection('lessons').doc(lessonId).get();
+    if (!lessonSnap.exists) return [];
+    const lesson = lessonSnap.data() || {};
+    if (lesson.authorId) ids.add(String(lesson.authorId));
+
+    const groupIds: string[] = Array.isArray(lesson.groupIds) ? lesson.groupIds : [];
+    const groups = await Promise.all(
+      groupIds.slice(0, 20).map(gid => adminDb.collection('groups').doc(gid).get().catch(() => null))
+    );
+    for (const g of groups) {
+      const teacherIds = g?.data()?.teacherIds;
+      if (Array.isArray(teacherIds)) teacherIds.forEach((id: any) => { if (id) ids.add(String(id)); });
+    }
+  } catch { /* best-effort — notifications must never block a submission */ }
+  return [...ids];
+}
+
 export const handler: Handler = async (event: HandlerEvent) => {
   if (event.httpMethod === 'OPTIONS') return jsonResponse(204, '');
 
@@ -99,26 +124,32 @@ export const handler: Handler = async (event: HandlerEvent) => {
       maxPoints: body.maxPoints || 10
     };
 
+    // Notify the org admins AND the teachers responsible for the lesson —
+    // notifyOrgAdmins on its own resolves to admin/owner/manager only, so the
+    // teacher who assigned the homework would never hear about the submission.
+    const notifyStaff = (title: string, message: string) =>
+      resolveLessonTeacherIds(body.lessonId)
+        .then(teacherIds => notifyOrgAdmins(
+          body.organizationId, 'homework_submitted', title, message,
+          `/lessons/${body.lessonId}`,
+          teacherIds.filter(id => id !== user.uid),
+        ))
+        .catch(() => {});
+
     if (!existSnap.empty) {
       const docRef = existSnap.docs[0].ref;
       await docRef.update(data);
-      // Notify teachers about re-submission
-      notifyOrgAdmins(
-        body.organizationId, 'homework_submitted',
+      notifyStaff(
         'Домашнее задание обновлено',
         `${user.displayName} обновил(а) ДЗ: ${body.lessonTitle || 'Урок'}`,
-        `/lessons/${body.lessonId}`,
-      ).catch(() => {});
+      );
       return ok({ id: docRef.id, ...data });
     } else {
       const ref = await adminDb.collection(COLLECTION).add(data);
-      // Notify teachers about new submission
-      notifyOrgAdmins(
-        body.organizationId, 'homework_submitted',
+      notifyStaff(
         'Новое домашнее задание',
         `${user.displayName} сдал(а) ДЗ: ${body.lessonTitle || 'Урок'}`,
-        `/lessons/${body.lessonId}`,
-      ).catch(() => {});
+      );
       return ok({ id: ref.id, ...data });
     }
   }

@@ -55,6 +55,7 @@ const getRoleNotifications = (role: string): NotificationItem[] => {
       ];
     case 'teacher':
       return [
+        { Icon: FileCheck2, text: 'Сдача домашних заданий', tone: 'text-emerald-500' },
         { Icon: GraduationCap, text: 'Студент завершил экзамен', tone: 'text-violet-500' },
         { Icon: CalendarClock, text: 'Напоминание о занятиях на завтра', tone: 'text-cyan-500' },
         { Icon: CalendarSync, text: 'Изменения и отмены в расписании', tone: 'text-orange-500' },

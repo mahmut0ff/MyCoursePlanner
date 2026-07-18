@@ -16,7 +16,7 @@ import {
   ClipboardCheck,
   Inbox,
   NotebookText, NotebookPen, MapPin, UserCog,
-  Sparkles, TrendingDown,
+  Sparkles, TrendingDown, LifeBuoy,
 } from 'lucide-react';
 
 /**
@@ -283,6 +283,21 @@ export function useNavModel(instType?: string): NavSectionDef[] {
       ],
     });
   }
+
+  /* ──────── SUPPORT (every role) ──────── */
+  // Appended outside the role branches on purpose: support is the one
+  // destination that must never be gated. No canRead(), no canAccess() — a user
+  // locked out of a feature, or on a plan that doesn't include it, is precisely
+  // the one who needs to reach us. It stays hideable via sidebar prefs like any
+  // other item, since that is cosmetic and personal.
+  sections.push({
+    id: 'support',
+    items: [
+      isSuperAdmin
+        ? { id: 'admin.support', to: '/admin/support', icon: LifeBuoy, label: t('nav.support', 'Поддержка') }
+        : { id: 'support', to: '/support', icon: LifeBuoy, label: t('nav.support', 'Поддержка') },
+    ],
+  });
 
   // A section with nothing in it must not leave a stray caption (or divider)
   // behind — the teacher menu already did this by hand for «Управление».

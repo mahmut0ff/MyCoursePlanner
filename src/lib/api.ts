@@ -3,6 +3,9 @@
  * Multi-tenant aware: all requests include Firebase ID token.
  */
 import { auth } from './firebase';
+import type {
+  MessageAttachment, SupportMessage, SupportThreadStatus, SupportUserInfo,
+} from '../types';
 
 const API_BASE = '/.netlify/functions';
 
@@ -637,6 +640,34 @@ export const apiModerateChatMessage = (roomId: string, messageId: string) =>
 
 export const apiNotifyChatMessage = (roomId: string, text: string, senderName: string) =>
   apiRequest('api-chat', 'POST', { roomId, text, senderName }, { action: 'notifyMessage' });
+
+// ============================================================
+// SUPPORT DESK API
+// ============================================================
+//
+// Reads are onSnapshot subscriptions (see lib/useSupport.ts) — only writes and
+// the cross-org user lookup come through here. `threadId` is meaningful for the
+// super admin answering someone else's thread; for everyone else the server
+// pins it to their own uid and ignores whatever is sent.
+
+export const apiSupportSend = (payload: {
+  threadId?: string;
+  text: string;
+  attachments?: MessageAttachment[];
+  replyTo?: { messageId: string };
+}) => apiRequest<SupportMessage>('api-support', 'POST', payload, { action: 'send' });
+
+export const apiSupportMarkRead = (threadId?: string) =>
+  apiRequest('api-support', 'POST', { threadId }, { action: 'markRead' });
+
+export const apiSupportDeleteMessage = (messageId: string, threadId?: string) =>
+  apiRequest('api-support', 'POST', { threadId, messageId }, { action: 'deleteMessage' });
+
+export const apiSupportSetStatus = (threadId: string, status: SupportThreadStatus) =>
+  apiRequest('api-support', 'POST', { threadId, status }, { action: 'setStatus' });
+
+export const apiSupportUserInfo = (userId: string) =>
+  apiRequest<SupportUserInfo>('api-support', 'GET', undefined, { action: 'userInfo', userId });
 
 // ============================================================
 // FINANCE SYSTEM API

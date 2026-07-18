@@ -230,6 +230,30 @@ service cloud.firestore {
       }
     }
 
+    // 10b. Support desk — one thread per user, doc id === uid.
+    //
+    // Reads are direct (the UI is a live onSnapshot); every write goes through
+    // api-support with the Admin SDK. That split is deliberate: `senderSide`,
+    // the denormalised org/role snapshot and the unread counters decide what the
+    // super admin sees, so none of them may be client-writable.
+    match /supportThreads/{userId} {
+      allow read: if isSuperAdmin() || (request.auth != null && request.auth.uid == userId);
+      allow write: if false;
+
+      match /messages/{messageId} {
+        allow read: if isSuperAdmin() || (request.auth != null && request.auth.uid == userId);
+        allow write: if false;
+      }
+
+      // Typing indicators are ephemeral, self-keyed and carry nothing worth
+      // spoofing, so they are the one part of a thread written client-side.
+      match /typing/{typingUserId} {
+        allow read: if isSuperAdmin() || (request.auth != null && request.auth.uid == userId);
+        allow write, delete: if request.auth != null && request.auth.uid == typingUserId
+                             && (isSuperAdmin() || request.auth.uid == userId);
+      }
+    }
+
     // 11. System Data (Admins only)
     match /subscriptions/{subId} { allow read, write: if isSuperAdmin(); }
     match /payments/{paymentId} { allow read, write: if isSuperAdmin(); }

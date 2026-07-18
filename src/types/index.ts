@@ -1205,7 +1205,10 @@ export interface ChatRoom {
 
 export interface MessageAttachment {
   id: string;
-  type: 'image' | 'file';
+  // 'video' is only ever produced by the support desk, which renders it as an
+  // inline player; chat classifies the same upload as 'file'. Widening the union
+  // is safe — every consumer already has a fallback branch for 'file'.
+  type: 'image' | 'video' | 'file';
   fileName: string;
   mimeType: string;
   fileSize: number;
@@ -1238,6 +1241,84 @@ export interface OrganizationChatSettings {
   allowFileUploads: boolean;
   allowImageUploads: boolean;
   maxFileSize: number; // in bytes
+}
+
+// ---- Support (platform helpdesk) ----
+//
+// Deliberately NOT modelled on ChatRoom. A support conversation crosses the org
+// boundary — one side is a member of some org, the other is the platform super
+// admin who belongs to none — so participant-scoped rules and the mandatory
+// `organizationId` that `chatRooms` is built on do not apply here.
+//
+// One thread per user, keyed by uid: the user opens «Поддержка» and is already
+// in their conversation, with no «create a ticket» step. `status` gives the
+// super admin triage without fragmenting the history.
+
+export type SupportThreadStatus = 'new' | 'open' | 'closed';
+/** Which side of the desk a message came from. Never trust the client for this. */
+export type SupportSide = 'user' | 'support';
+
+export interface SupportThread {
+  id: string;              // === userId
+  userId: string;
+  userName: string;
+  userEmail: string;
+  userAvatarUrl?: string;
+  /** Denormalised so the admin inbox lists threads without N cross-org reads. */
+  userRole: string;
+  organizationId: string | null;
+  organizationName: string | null;
+  status: SupportThreadStatus;
+  lastMessageAt: string;
+  lastMessagePreview: string;
+  lastMessageFrom: SupportSide;
+  /** Per-side counters — a single `unread` flag can't serve both inboxes. */
+  unreadForSupport: number;
+  unreadForUser: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface SupportMessage {
+  id: string;
+  threadId: string;
+  senderId: string;
+  senderName: string;
+  senderSide: SupportSide;
+  text: string;
+  attachments?: MessageAttachment[];
+  replyTo?: {
+    messageId: string;
+    text: string;
+    senderName: string;
+  };
+  createdAt: string;
+  updatedAt: string;
+  deletedAt?: string;
+  deletedBy?: string;
+}
+
+/** Right-hand panel payload — assembled server-side, crosses org boundaries. */
+export interface SupportUserInfo {
+  uid: string;
+  email: string;
+  displayName: string;
+  avatarUrl?: string;
+  role: string;
+  phone?: string;
+  city?: string;
+  createdAt?: string;
+  lastSignInAt?: string;
+  disabled?: boolean;
+  organizationId: string | null;
+  organizationName: string | null;
+  organizationSlug?: string | null;
+  planId?: string | null;
+  institutionType?: string | null;
+  branchNames: string[];
+  membershipRole?: string | null;
+  customRoleName?: string | null;
+  memberships: { organizationId: string; organizationName: string; role: string; status: string }[];
 }
 
 // ============================================================

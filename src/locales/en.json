@@ -217,7 +217,8 @@
     "sectionExams": "Exams & Tests",
     "certificates": "Certificates",
     "achievements": "Achievements",
-    "team": "Team & Roles"
+    "team": "Team & Roles",
+    "support": "Support"
   },
   "sidebar": {
     "customize": "Menu setup",
@@ -2098,5 +2099,141 @@
     "ctaBtn": "Book a demo",
     "ctaTg": "Message us on Telegram",
     "footerCity": "Bishkek, Kyrgyzstan"
+  },
+  "support": {
+    "title": "Support",
+    "subtitle": "Ask the SabakHub team — you can attach a screenshot or a video.",
+    "teamName": "SabakHub Support",
+    "responseTime": "We usually reply within one business day",
+    "threadClosedHint": "Request closed — write to reopen it",
+    "emptyTitle": "How can we help?",
+    "emptyBody": "Describe the question in your own words. A screenshot or a short screen recording helps us sort it out faster.",
+    "placeholder": "Write a message…",
+    "placeholderUser": "Describe your question or problem…",
+    "placeholderAdmin": "Reply to the user… “/” for quick replies",
+    "noMessages": "No messages here yet.",
+    "send": "Send",
+    "attach": "Attach a file",
+    "attachment": "Attachment",
+    "reply": "Reply",
+    "replyingTo": "Replying to {{name}}",
+    "messageDeleted": "Message deleted",
+    "messageDeletedToast": "Message deleted",
+    "confirmDelete": "Click again to delete",
+    "deleteFailed": "Could not delete the message",
+    "sendFailed": "Could not send the message",
+    "uploadFailed": "Could not upload the file",
+    "fileTooLarge": "File “{{name}}” is larger than 50 MB",
+    "typing": "{{name}} is typing…",
+    "quickReplies": "Quick replies",
+    "quickRepliesTitle": "Quick replies (or type “/”)",
+    "quickRepliesHint": "↑↓ to choose · Enter to insert",
+    "quickRepliesEmpty": "Nothing found",
+    "inboxTitle": "Support",
+    "inboxSubtitle": "Requests from platform users",
+    "searchPlaceholder": "Name, email, org, uid…",
+    "filterAll": "All",
+    "noThreads": "No requests yet",
+    "noMatches": "Nothing found",
+    "selectThread": "Pick a request on the left to open the conversation.",
+    "noOrg": "No organization",
+    "noOrgLong": "This user does not belong to an organization",
+    "youPrefix": "You: ",
+    "justNow": "just now",
+    "minsAgo": "{{n}} min",
+    "hoursAgo": "{{n}} h",
+    "close": "Close request",
+    "reopen": "Reopen",
+    "statusChanged": "Status updated",
+    "statusFailed": "Could not change the status",
+    "copied": "Copied",
+    "copyFailed": "Could not copy",
+    "userInfo": "About the user",
+    "infoEmpty": "User details will appear here",
+    "secAccount": "Account",
+    "secOrg": "Learning centre",
+    "secMemberships": "All organizations",
+    "phone": "Phone",
+    "city": "City",
+    "registered": "Registered",
+    "lastSignIn": "Last sign-in",
+    "orgName": "Organization",
+    "plan": "Plan",
+    "orgRole": "Role in the org",
+    "branches": "Branches",
+    "openProfile": "Open profile",
+    "accountDisabled": "Account disabled",
+    "status": {
+      "new": "New",
+      "open": "In progress",
+      "closed": "Closed"
+    },
+    "quick": {
+      "greeting": {
+        "title": "Greeting",
+        "body": "Hello! Thanks for contacting SabakHub support. I am looking into your question now."
+      },
+      "inProgress": {
+        "title": "Taken in progress",
+        "body": "I have taken your request in progress. I am looking into it and will get back to you shortly."
+      },
+      "needDetails": {
+        "title": "Need details",
+        "body": "To look into this properly, could you tell me:\n1. Which page does the problem occur on?\n2. What were you doing just before it?\n3. What happened instead of what you expected?"
+      },
+      "needScreenshot": {
+        "title": "Ask for a screenshot",
+        "body": "Could you send a screenshot or a short screen recording? That lets me see the problem through your eyes and answer faster. Use the paperclip button below to attach a file."
+      },
+      "reproSteps": {
+        "title": "Steps to reproduce",
+        "body": "Could you describe step by step what to do to make the error happen again? If it does not happen every time, let me know how often."
+      },
+      "clearCache": {
+        "title": "Clear the cache",
+        "body": "Could you try reloading the page with a cache clear: Ctrl + F5 (Windows) or Cmd + Shift + R (Mac). That often clears the problem straight away."
+      },
+      "tryAnotherBrowser": {
+        "title": "Try another browser",
+        "body": "Could you check whether the problem also happens in another browser or in a private window? That tells us whether it is a browser extension or the platform itself."
+      },
+      "accessRights": {
+        "title": "Access rights",
+        "body": "This looks like an access-rights issue. Permissions are managed by the learning centre owner under “Team & roles” — ask them to open the section you need for your role."
+      },
+      "planLimit": {
+        "title": "Plan limitation",
+        "body": "This feature is available on a higher plan. You can compare what each plan includes and switch under “Subscription” in the organization settings."
+      },
+      "payment": {
+        "title": "Billing question",
+        "body": "For billing and invoices: the “Subscription” section in the organization settings shows your current plan, the next charge date and the payment history. If a payment has not shown up within an hour, write here and we will check it manually."
+      },
+      "bugAccepted": {
+        "title": "Bug passed to the developers",
+        "body": "Confirmed — this is a bug on our side. I have passed it to the developers and will write here as soon as the fix ships. Thanks for reporting it!"
+      },
+      "featureRequest": {
+        "title": "Feature request noted",
+        "body": "Thanks for the idea — I have added it to our feature-request list. We prioritise work by how many people ask for it, so your vote counts."
+      },
+      "fixed": {
+        "title": "Fixed",
+        "body": "The fix is live. Please reload the page (Ctrl + F5) and check — it should all work now. Let me know if anything is still off."
+      },
+      "waitingReply": {
+        "title": "Waiting for your reply",
+        "body": "I am waiting on your clarification to continue. If the question has already resolved itself, just say so and I will close the request."
+      },
+      "closing": {
+        "title": "Closing the request",
+        "body": "Glad it is sorted! I am closing this request. If you need anything else, write in this same chat — the history is kept."
+      }
+    },
+    "aria": {
+      "threadList": "Request list",
+      "conversation": "Conversation",
+      "userPanel": "User information"
+    }
   }
 }

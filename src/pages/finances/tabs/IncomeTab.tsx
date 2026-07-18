@@ -396,6 +396,8 @@ const IncomeTab: React.FC = () => {
         <PaymentHistoryModal
           plan={selectedPlan}
           studentName={selectedPlan.studentName || selectedPlan.studentId}
+          canRefund
+          onRefunded={load}
           onClose={() => setModal('none')}
         />
       )}

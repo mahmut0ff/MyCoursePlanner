@@ -32,6 +32,7 @@ import AcceptPaymentModal, { type PayablePlan } from '../../components/finance/A
 import CreatePaymentPlanModal from '../../components/finance/CreatePaymentPlanModal';
 import PaymentHistoryModal from '../../components/finance/PaymentHistoryModal';
 import EditStudentModal from '../../components/students/EditStudentModal';
+import StudentAccessModal from '../../components/students/StudentAccessModal';
 import MoveStudentModal from '../../components/roster/MoveStudentModal';
 
 type SortField = 'name' | 'branch' | 'date';
@@ -85,6 +86,7 @@ const StudentsPage: React.FC = () => {
   const [payFor, setPayFor] = useState<{ student: UserProfile; plans: PayablePlan[] } | null>(null);
   const [billFor, setBillFor] = useState<UserProfile | null>(null);
   const [historyFor, setHistoryFor] = useState<UserProfile | null>(null);
+  const [accessFor, setAccessFor] = useState<UserProfile | null>(null);
   const [editing, setEditing] = useState<UserProfile | null>(null);
   const [moveFor, setMoveFor] = useState<{ student: UserProfile; mode: 'group' | 'branch' } | null>(null);
 
@@ -188,6 +190,14 @@ const StudentsPage: React.FC = () => {
     }
     return { unpaidByStudent: unpaid, billedStudents: billed };
   }, [plans]);
+
+  const unpaidFor = (uid: string) => unpaidByStudent[uid] || [];
+  const debtFor = (uid: string) =>
+    unpaidFor(uid).reduce((sum, p) => sum + Math.max(0, (p.totalAmount || 0) - (p.paidAmount || 0)), 0);
+
+  // Вход есть, если у записи появился email и она перестала быть офлайновой —
+  // ровно то, что ставит бэкенд при выдаче доступа.
+  const hasLogin = (s: UserProfile) => !!s.email && (s as any).offlineStudent !== true;
 
   // Reset page when filters change
   useEffect(() => setPage(1), [search, selectedGroup, statusFilter, riskOnly, sortField, sortDir, activeBranchId]);
@@ -475,17 +485,10 @@ const StudentsPage: React.FC = () => {
   const buildRowMenu = (s: UserProfile): RowMenuItem[] => {
     const items: RowMenuItem[] = [];
     const expelled = (s as any).status === 'expelled';
-    const unpaid = unpaidByStudent[s.uid] || [];
-    const debt = unpaid.reduce((sum, p) => sum + Math.max(0, (p.totalAmount || 0) - (p.paidAmount || 0)), 0);
 
+    // «Принять оплату» здесь намеренно нет: оно вынесено видимой кнопкой в саму
+    // строку — это самое частое действие, и прятать его за меню было бы странно.
     if (financeEnabled) {
-      if (unpaid.length > 0 && !expelled) {
-        items.push({
-          label: `Принять оплату · ${debt.toLocaleString()} с.`,
-          icon: Wallet,
-          onSelect: () => setPayFor({ student: s, plans: unpaid }),
-        });
-      }
       if (!expelled) items.push({ label: 'Выставить счёт', icon: Receipt, onSelect: () => setBillFor(s) });
       if (billedStudents.has(s.uid)) {
         items.push({ label: 'История оплат', icon: History, onSelect: () => setHistoryFor(s) });
@@ -508,6 +511,11 @@ const StudentsPage: React.FC = () => {
       if (!expelled) {
         if (groups.length > 0) items.push({ label: 'Перевести в группу', icon: UsersRound, onSelect: () => setMoveFor({ student: s, mode: 'group' }) });
         if (branches.length > 0) items.push({ label: 'Перевести в филиал', icon: Building2, onSelect: () => setMoveFor({ student: s, mode: 'branch' }) });
+        items.push({
+          label: hasLogin(s) ? 'Сменить пароль' : 'Выдать доступ',
+          icon: KeyRound,
+          onSelect: () => setAccessFor(s),
+        });
       }
       items.push(
         expelled
@@ -786,12 +794,26 @@ const StudentsPage: React.FC = () => {
                           <PinnedBadgesDisplay badges={s.pinnedBadges} />
                           {/* Debt is a separate problem for a separate person —
                               the bookkeeper, not the curator — so it gets its own
-                              badge instead of being folded into the risk dot. */}
-                          {riskByStudent[s.uid]?.hasOverduePayment && (
+                              badge instead of being folded into the risk dot.
+                              Кому долг можно закрыть — бейдж сразу и есть кнопка
+                              приёма оплаты: сигнал и действие в одном месте. */}
+                          {financeEnabled && debtFor(s.uid) > 0 && (s as any).status !== 'expelled' ? (
+                            <button
+                              onClick={(e) => { e.stopPropagation(); setPayFor({ student: s, plans: unpaidFor(s.uid) }); }}
+                              title="Принять оплату"
+                              className={`shrink-0 inline-flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded transition-colors ${
+                                riskByStudent[s.uid]?.hasOverduePayment
+                                  ? 'bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-400 hover:bg-orange-200 dark:hover:bg-orange-900/60'
+                                  : 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600'
+                              }`}
+                            >
+                              <Wallet className="w-3 h-3" /> {debtFor(s.uid).toLocaleString()} с.
+                            </button>
+                          ) : riskByStudent[s.uid]?.hasOverduePayment ? (
                             <span title="Просрочена оплата" className="shrink-0 inline-flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-400">
                               <Wallet className="w-3 h-3" /> Долг
                             </span>
-                          )}
+                          ) : null}
                         </h3>
                         {/* The reason in plain words, not just a coloured dot —
                             "почему" was the question the old page never answered. */}
@@ -1190,7 +1212,21 @@ const StudentsPage: React.FC = () => {
         <PaymentHistoryModal
           studentId={historyFor.uid}
           studentName={historyFor.displayName || ''}
+          canRefund={financeEnabled}
+          onRefunded={loadPlans}
           onClose={() => setHistoryFor(null)}
+        />
+      )}
+
+      {accessFor && (
+        <StudentAccessModal
+          uid={accessFor.uid}
+          studentName={accessFor.displayName || ''}
+          hasLogin={hasLogin(accessFor)}
+          currentLogin={(accessFor as any).username || accessFor.email}
+          onClose={() => setAccessFor(null)}
+          onGranted={({ email }) => setStudents(prev => prev.map(s =>
+            s.uid === accessFor.uid ? ({ ...s, email, offlineStudent: false } as any) : s))}
         />
       )}
 

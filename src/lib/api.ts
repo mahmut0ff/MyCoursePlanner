@@ -383,6 +383,8 @@ export const orgCreateStudent = (data: any) => orgReq('createStudent', 'POST', d
 export const orgBulkCreateStudents = (data: { students: { displayName: string; phone?: string }[]; courseId?: string; groupId?: string; enrollmentDate?: string; branchIds?: string[]; primaryBranchId?: string }) => orgReq('bulkCreateStudents', 'POST', data);
 export const orgUpdateStudent = (data: any) => orgReq('updateStudent', 'POST', data);
 export const orgResetStudentPassword = (uid: string, password: string) => orgReq('resetStudentPassword', 'POST', { uid, password });
+export const orgGrantStudentLogin = (data: { uid: string; username: string; password: string; email?: string }) =>
+  orgReq('grantStudentLogin', 'POST', data);
 
 // Teachers
 export const orgGetTeachers = () => orgReq('teachers');

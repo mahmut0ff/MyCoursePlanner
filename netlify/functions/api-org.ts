@@ -957,6 +957,72 @@ const handler: Handler = async (event: HandlerEvent) => {
       return ok({ uid: body.uid, updated: true });
     }
 
+    // Выдать вход студенту, заведённому без него (через «Добавить» без доступа
+    // или импортом). До этого логин можно было получить только при создании, а
+    // заводить студента заново означало бросить его журнал, оплаты и группы.
+    //
+    // Ключевой момент: аккаунт создаётся с УЖЕ существующим uid. У офлайн-студента
+    // это обычный id документа, и Firebase Auth принимает его как uid, поэтому
+    // ничего мигрировать не нужно — все ссылки на студента остаются валидными.
+    if (action === 'grantStudentLogin') {
+      const err = requireOrgStaff(user); if (err) return err;
+      if (!can(user, 'students', 'write')) return forbidden('Недостаточно прав для этого действия');
+      const body = JSON.parse(event.body || '{}');
+      if (!body.uid) return badRequest('uid required');
+      if (typeof body.password !== 'string' || body.password.length < 6) {
+        return badRequest('Пароль — минимум 6 символов');
+      }
+
+      const member = await adminDb.collection('orgMembers').doc(orgId).collection('members').doc(body.uid).get();
+      if (!member.exists) return notFound();
+      if (member.data()?.role !== 'student') return badRequest('Действие доступно только для студентов');
+
+      const userRef = adminDb.collection('users').doc(body.uid);
+      const userDoc = await userRef.get();
+      if (!userDoc.exists) return notFound();
+      const data = userDoc.data() || {};
+      // Уже есть вход — это смена пароля, у неё свой экшен со своими проверками.
+      if (data.offlineStudent !== true && data.email) {
+        return badRequest('У этого ученика уже есть вход. Используйте смену пароля.');
+      }
+
+      const username = String(body.username || '').toLowerCase().trim().replace(/[^a-z0-9_]/g, '');
+      if (username.length < 3) return badRequest('Логин — минимум 3 символа');
+      const taken = await adminDb.collection('users').where('username', '==', username).limit(1).get();
+      if (!taken.empty) return badRequest('Этот логин уже занят');
+
+      const loginEmail = (body.email && String(body.email).trim())
+        ? String(body.email).trim().toLowerCase()
+        : `${username}@student.sabakhub.app`;
+      const dupEmail = await adminDb.collection('users').where('email', '==', loginEmail).limit(1).get();
+      if (!dupEmail.empty) return badRequest('Пользователь с таким email уже существует');
+
+      try {
+        await adminAuth.createUser({
+          uid: body.uid,
+          email: loginEmail,
+          password: body.password,
+          displayName: data.displayName || member.data()?.userName || undefined,
+        });
+      } catch (e: any) {
+        if (e.code === 'auth/uid-already-exists') return badRequest('У этого ученика уже есть аккаунт входа');
+        if (e.code === 'auth/email-already-exists') return badRequest('Пользователь с таким email уже существует');
+        throw e;
+      }
+
+      await userRef.update({
+        email: loginEmail,
+        username,
+        offlineStudent: false,
+        hasLogin: true,
+        updatedAt: now(),
+      });
+      await adminDb.collection('orgMembers').doc(orgId).collection('members').doc(body.uid)
+        .update({ userEmail: loginEmail, offlineStudent: false, updatedAt: now() }).catch(() => {});
+
+      return ok({ uid: body.uid, username, email: loginEmail });
+    }
+
     if (action === 'resetStudentPassword') {
       const body = JSON.parse(event.body || '{}');
       if (!body.uid || !body.password) return badRequest('uid and password required');

@@ -13,7 +13,13 @@ const EXPENSE_CATEGORIES = [
   { id: 'transport', label: 'Транспорт', color: '#8b5cf6' },
   { id: 'equipment', label: 'Оборудование', color: '#f97316' },
   { id: 'other', label: 'Прочее', color: '#64748b' },
+  // Возвраты заводятся только из истории оплат студента: там расход
+  // привязывается к счёту и снимает долг. Руками такой расход создать нельзя —
+  // он бы ушёл в никуда, не тронув ни один счёт, поэтому в форме его нет.
+  { id: 'refund', label: 'Возврат', color: '#e11d48', systemOnly: true },
 ];
+
+const PICKABLE_CATEGORIES = EXPENSE_CATEGORIES.filter(c => !(c as any).systemOnly);
 
 const getCategoryLabel = (id: string) => EXPENSE_CATEGORIES.find(c => c.id === id)?.label || id;
 const getCategoryColor = (id: string) => EXPENSE_CATEGORIES.find(c => c.id === id)?.color || '#64748b';
@@ -248,7 +254,7 @@ const ExpensesTab: React.FC = () => {
               <div>
                 <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Категория</label>
                 <div className="grid grid-cols-4 gap-2">
-                  {EXPENSE_CATEGORIES.map(c => (
+                  {PICKABLE_CATEGORIES.map(c => (
                     <button
                       key={c.id}
                       type="button"

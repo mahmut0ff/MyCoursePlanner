@@ -117,6 +117,34 @@ const handler: Handler = async (event: HandlerEvent) => {
         }
       }
 
+      // Возврат: расход, привязанный к счёту. Зеркало приёма оплаты — деньги
+      // уходят из кассы и одновременно снимаются с оплаченного по счёту, поэтому
+      // у студента снова появляется долг. Сам доход при этом не трогаем: отчёт за
+      // уже закрытый период не должен меняться задним числом.
+      if (data.type === 'expense' && data.paymentPlanId) {
+        const planRef = adminDb.collection('studentPaymentPlans').doc(data.paymentPlanId);
+        await adminDb.runTransaction(async (t) => {
+          const doc = await t.get(planRef);
+          if (!doc.exists) return;
+          const planData = doc.data()!;
+          const newPaidAmount = Math.max(0, (planData.paidAmount || 0) - data.amount);
+          let status = 'partial';
+          if (newPaidAmount >= (planData.totalAmount || 0)) status = 'paid';
+          else if (newPaidAmount === 0) status = 'pending';
+          t.update(planRef, { paidAmount: newPaidAmount, status, updatedAt: new Date().toISOString() });
+        });
+
+        if (data.studentId && orgFilter) {
+          createNotification({
+            recipientId: data.studentId,
+            type: 'payment_received',
+            title: 'Оформлен возврат',
+            message: `Возврат ${data.amount} сом по счёту.`,
+            organizationId: orgFilter,
+          }).catch(() => {});
+        }
+      }
+
       return ok({ id: ref.id, ...data });
     }
 
@@ -178,14 +206,16 @@ const handler: Handler = async (event: HandlerEvent) => {
       const orgFilter = getOrgFilter(user);
       if (existing.organizationId !== orgFilter) return forbidden();
 
-      // Reverse payment plan if linked
-      if (existing.paymentPlanId && existing.type === 'income') {
+      // Reverse payment plan if linked. Направление зависит от типа: удаление
+      // оплаты снимает сумму с оплаченного, удаление возврата — возвращает её.
+      if (existing.paymentPlanId && (existing.type === 'income' || existing.type === 'expense')) {
+        const sign = existing.type === 'income' ? -1 : 1;
         const planRef = adminDb.collection('studentPaymentPlans').doc(existing.paymentPlanId);
         await adminDb.runTransaction(async (t) => {
           const planDoc = await t.get(planRef);
           if (planDoc.exists) {
             const planData = planDoc.data()!;
-            const newPaid = Math.max(0, (planData.paidAmount || 0) - (existing.amount || 0));
+            const newPaid = Math.max(0, (planData.paidAmount || 0) + sign * (existing.amount || 0));
             let status = 'partial';
             if (newPaid >= planData.totalAmount) status = 'paid';
             else if (newPaid === 0) status = 'pending';

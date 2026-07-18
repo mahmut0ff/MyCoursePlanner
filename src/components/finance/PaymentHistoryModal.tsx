@@ -1,7 +1,8 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { apiGetTransactions } from '../../lib/api';
-import { CreditCard, X } from 'lucide-react';
+import { CreditCard, Undo2, X } from 'lucide-react';
 import type { PayablePlan } from './AcceptPaymentModal';
+import RefundModal, { type RefundableTx } from './RefundModal';
 
 interface Props {
   /** Один счёт — с полосой прогресса. Взаимоисключимо со studentId. */
@@ -9,25 +10,37 @@ interface Props {
   /** Все оплаты студента по всем его счетам. */
   studentId?: string;
   studentName: string;
+  /** Возврат оформляется по конкретной оплате, поэтому живёт здесь, а не в меню. */
+  canRefund?: boolean;
+  /** Возврат меняет долг по счёту — вызывающему нужно перечитать счета. */
+  onRefunded?: () => void;
   onClose: () => void;
 }
 
 const methodIcon = (m?: string) => (m === 'card' ? '💳' : m === 'transfer' ? '🏦' : '💵');
 
-const PaymentHistoryModal: React.FC<Props> = ({ plan, studentId, studentName, onClose }) => {
+const PaymentHistoryModal: React.FC<Props> = ({ plan, studentId, studentName, canRefund, onRefunded, onClose }) => {
   const [history, setHistory] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refundFor, setRefundFor] = useState<RefundableTx | null>(null);
 
-  useEffect(() => {
-    // Оба фильтра серверные — тянуть всю кассу ради одной карточки не нужно.
-    const filters = plan ? { paymentPlanId: plan.id } : { studentId, type: 'income' };
+  // Возвраты приходят тем же запросом: расход по этому же счёту/студенту.
+  // Показываем их вперемешку с оплатами, чтобы «оплатил и вернул» читалось
+  // как одна история, а не как необъяснимо пропавшие деньги.
+  const load = useCallback(() => {
+    const filters = plan ? { paymentPlanId: plan.id } : { studentId };
     apiGetTransactions(filters as any)
-      .then((txs: any) => setHistory(Array.isArray(txs) ? txs.filter((t: any) => t.type === 'income') : []))
+      .then((txs: any) => setHistory(Array.isArray(txs) ? txs : []))
       .catch(() => setHistory([]))
       .finally(() => setLoading(false));
   }, [plan, studentId]);
 
-  const total = history.reduce((sum, tx) => sum + (tx.amount || 0), 0);
+  useEffect(load, [load]);
+
+  // Чистая сумма: оплаты минус возвраты. Показывать одни поступления было бы
+  // враньём — деньги могли уже уйти обратно.
+  const net = history.reduce((sum, tx) => sum + (tx.type === 'expense' ? -1 : 1) * (tx.amount || 0), 0);
+  const refunded = history.some(tx => tx.type === 'expense');
 
   return (
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={onClose}>
@@ -57,8 +70,8 @@ const PaymentHistoryModal: React.FC<Props> = ({ plan, studentId, studentName, on
             // По студенту прогресса нет — счетов может быть несколько, поэтому
             // осмысленная сводка здесь только одна: сколько всего заплачено.
             <div className="mb-5 flex justify-between text-sm">
-              <span className="text-slate-500">Всего оплачено</span>
-              <span className="font-bold text-emerald-600">{total.toLocaleString()} с.</span>
+              <span className="text-slate-500">{refunded ? 'Оплачено за вычетом возвратов' : 'Всего оплачено'}</span>
+              <span className="font-bold text-emerald-600">{net.toLocaleString()} с.</span>
             </div>
           )}
 
@@ -68,27 +81,54 @@ const PaymentHistoryModal: React.FC<Props> = ({ plan, studentId, studentName, on
             <div className="py-6 text-center text-slate-400">Нет истории оплат</div>
           ) : (
             <div className="space-y-3 max-h-64 overflow-y-auto">
-              {history.map(tx => (
-                <div key={tx.id} className="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-900 rounded-xl">
-                  <div className="flex items-center gap-3">
-                    <div className="p-2 bg-emerald-100 dark:bg-emerald-900/30 rounded-lg">
-                      <CreditCard className="w-4 h-4 text-emerald-600" />
+              {history.map(tx => {
+                const isRefund = tx.type === 'expense';
+                return (
+                  <div key={tx.id} className="flex items-center justify-between gap-2 p-3 bg-slate-50 dark:bg-slate-900 rounded-xl">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className={`p-2 rounded-lg ${isRefund ? 'bg-rose-100 dark:bg-rose-900/30' : 'bg-emerald-100 dark:bg-emerald-900/30'}`}>
+                        {isRefund ? <Undo2 className="w-4 h-4 text-rose-600" /> : <CreditCard className="w-4 h-4 text-emerald-600" />}
+                      </div>
+                      <div className="min-w-0">
+                        <p className={`text-sm font-medium ${isRefund ? 'text-rose-600' : 'text-slate-900 dark:text-white'}`}>
+                          {isRefund ? '−' : '+'}{tx.amount?.toLocaleString()} с.
+                          {isRefund && <span className="ml-1.5 text-[10px] font-bold uppercase tracking-wide">возврат</span>}
+                        </p>
+                        <p className="text-xs text-slate-500 truncate">
+                          {new Date(tx.date || tx.createdAt).toLocaleDateString()}
+                          {tx.paymentMethod && <span className="ml-1.5">· {methodIcon(tx.paymentMethod)}</span>}
+                          {tx.description && <span className="ml-1.5">· {tx.description}</span>}
+                        </p>
+                      </div>
                     </div>
-                    <div>
-                      <p className="text-sm font-medium text-slate-900 dark:text-white">+{tx.amount?.toLocaleString()} с.</p>
-                      <p className="text-xs text-slate-500">
-                        {new Date(tx.date || tx.createdAt).toLocaleDateString()}
-                        {tx.paymentMethod && <span className="ml-1.5">· {methodIcon(tx.paymentMethod)}</span>}
-                      </p>
-                    </div>
+                    {canRefund && !isRefund && (
+                      <button
+                        onClick={() => setRefundFor(tx)}
+                        className="shrink-0 inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[11px] font-bold text-rose-600 bg-rose-50 hover:bg-rose-100 dark:bg-rose-900/20 dark:hover:bg-rose-900/40 transition-colors"
+                      >
+                        <Undo2 className="w-3.5 h-3.5" /> Возврат
+                      </button>
+                    )}
                   </div>
-                  {tx.description && <p className="text-xs text-slate-400 max-w-[140px] truncate">{tx.description}</p>}
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>
       </div>
+
+      {/* Гасим всплытие: иначе клик по фону возврата дошёл бы до фона истории и
+          закрыл оба окна разом. */}
+      {refundFor && (
+        <div onClick={e => e.stopPropagation()}>
+          <RefundModal
+            tx={refundFor}
+            studentName={studentName}
+            onClose={() => setRefundFor(null)}
+            onSuccess={() => { load(); onRefunded?.(); }}
+          />
+        </div>
+      )}
     </div>
   );
 };

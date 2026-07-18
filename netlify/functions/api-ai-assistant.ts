@@ -1370,8 +1370,12 @@ const handler: Handler = async (event: HandlerEvent) => {
   try {
     const user = await verifyAuth(event);
     if (!user) return unauthorized();
-    // Staff only — students/parents never get the admin copilot.
-    if (!isStaff(user)) return forbidden();
+    // Gated on the `ai` grant, not on being staff. `isStaff` includes teachers, so
+    // the previous check let every teacher drive the copilot even though nothing in
+    // the product grants them it — and hiding the button client-side alone would
+    // have left the endpoint open. Admins always pass; managers hold `ai` by default
+    // and can have it revoked on /team.
+    if (!can(user, 'ai', 'read')) return forbidden();
     if (!user.organizationId) return badRequest('Нет активной организации');
 
     let body: any = {};

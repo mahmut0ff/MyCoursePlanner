@@ -509,44 +509,42 @@ const SchedulePage: React.FC = () => {
 
   return (
     <div className="space-y-6" onClick={() => setSelectedEvent(null)}>
-      <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-4">
-        <div>
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-3">
+        <div className="min-w-0">
           <h1 className="text-2xl font-bold text-slate-900 dark:text-white">
             {t('nav.schedule')}
           </h1>
           <p className="text-sm text-slate-500 dark:text-slate-400 max-w-lg mt-1">{t('org.schedule.subtitle', 'Расписание занятий, экзаменов и мероприятий')}</p>
         </div>
-        
+
         {/* Modern Tabs */}
-        <div className="flex-1 max-w-xl mx-auto xl:mx-0 w-full xl:w-auto overflow-x-auto hide-scrollbar">
-          <div className="flex p-1 bg-slate-100 dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 min-w-max">
-            <button 
-              onClick={() => setActiveTab('timetable')} 
-              className={`flex-1 px-5 py-2.5 text-sm font-semibold rounded-lg transition-all flex items-center justify-center gap-2 ${activeTab === 'timetable' ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200'}`}
-            >
-              <Repeat className="w-4 h-4" />
-              {t('schedule.timetableTab', 'Расписание уроков')}
-            </button>
-            <button 
-              onClick={() => setActiveTab('events')} 
-              className={`flex-1 px-5 py-2.5 text-sm font-semibold rounded-lg transition-all flex items-center justify-center gap-2 ${activeTab === 'events' ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200'}`}
-            >
-              <Calendar className="w-4 h-4" />
-              {t('schedule.eventsTab', 'События и экзамены')}
-            </button>
-          </div>
+        <div className="flex shrink-0 p-1 bg-slate-100 dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700">
+          <button
+            onClick={() => setActiveTab('timetable')}
+            className={`px-3.5 py-1.5 text-[13px] font-semibold rounded-lg transition-all flex items-center justify-center gap-1.5 whitespace-nowrap ${activeTab === 'timetable' ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200'}`}
+          >
+            <Repeat className="w-4 h-4 shrink-0" />
+            {t('schedule.timetableTab', 'Расписание уроков')}
+          </button>
+          <button
+            onClick={() => setActiveTab('events')}
+            className={`px-3.5 py-1.5 text-[13px] font-semibold rounded-lg transition-all flex items-center justify-center gap-1.5 whitespace-nowrap ${activeTab === 'events' ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200'}`}
+          >
+            <Calendar className="w-4 h-4 shrink-0" />
+            {t('schedule.eventsTab', 'События и экзамены')}
+          </button>
         </div>
 
-        <div className="flex items-center gap-2 w-full sm:w-fit">
+        <div className="flex items-center gap-2 ml-auto">
           {/* Clipboard indicator */}
           {canEdit && clipboard && (
             <button
               onClick={() => setShowPasteModal(true)}
-              className="flex items-center gap-2 px-4 py-2.5 text-sm font-bold rounded-xl bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400 border border-emerald-200/50 dark:border-emerald-800/40 hover:bg-emerald-100 dark:hover:bg-emerald-900/30 transition-all shadow-sm group"
+              className="flex items-center gap-1.5 px-3 py-1.5 text-[13px] font-bold rounded-xl bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400 border border-emerald-200/50 dark:border-emerald-800/40 hover:bg-emerald-100 dark:hover:bg-emerald-900/30 transition-all shadow-sm group"
               title={t('schedule.pasteHint', 'Ctrl+V — Вставить')}
             >
-              <Clipboard className="w-4 h-4" />
-              <span className="truncate max-w-[140px]">{clipboard.event.title}</span>
+              <Clipboard className="w-4 h-4 shrink-0" />
+              <span className="truncate max-w-[110px]">{clipboard.event.title}</span>
               <kbd className="hidden sm:inline text-[9px] px-1.5 py-0.5 bg-emerald-200/50 dark:bg-emerald-800/50 rounded font-mono">Ctrl+V</kbd>
               <X className="w-3.5 h-3.5 opacity-0 group-hover:opacity-100 transition-opacity" onClick={(e) => { e.stopPropagation(); setClipboard(null); }} />
             </button>
@@ -565,17 +563,17 @@ const SchedulePage: React.FC = () => {
                 })));
                 setAiReviewOpen(true);
               }}
-              className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold text-white bg-gradient-to-br from-violet-600 to-indigo-600 hover:opacity-90 transition-opacity shadow-sm shrink-0"
+              className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-[13px] font-semibold text-white bg-gradient-to-br from-violet-600 to-indigo-600 hover:opacity-90 transition-opacity shadow-sm shrink-0"
               title="AI-анализ расписания"
             >
-              <Sparkles className="w-4 h-4" /><span className="hidden sm:inline">AI-анализ</span>
+              <Sparkles className="w-4 h-4 shrink-0" /><span className="hidden sm:inline">AI-анализ</span>
             </button>
           )}
           <button onClick={() => {
             setForm(f => ({ ...f, type: activeTab === 'timetable' ? 'lesson' : 'exam', branchId: activeBranchId || undefined }));
             setShowCreate(true);
-          }} className="flex items-center gap-2 px-5 py-2.5 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-xl text-sm font-semibold hover:bg-slate-800 dark:hover:bg-slate-100 transition-colors w-full sm:w-fit justify-center">
-            <Plus className="w-4 h-4" />{t('org.schedule.addEvent', 'Добавить')}
+          }} className="flex items-center gap-1.5 px-3.5 py-1.5 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-xl text-[13px] font-semibold hover:bg-slate-800 dark:hover:bg-slate-100 transition-colors shrink-0 justify-center">
+            <Plus className="w-4 h-4 shrink-0" />{t('org.schedule.addEvent', 'Добавить')}
           </button>
         </div>
       </div>

@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { 
-  orgGetCourses, 
-  orgGetGroups, 
-  orgGetStudents, 
-  orgGetJournal, 
+  orgGetCourses,
+  orgGetGroups,
+  orgGetStudents,
+  orgGetTeachers,
+  orgGetJournal,
   orgSaveJournal,
   orgBulkAttendance,
   apiAwardXP,
@@ -71,10 +72,17 @@ const JournalPage: React.FC = () => {
   const [courses, setCourses] = useState<Course[]>([]);
   const [allGroups, setAllGroups] = useState<Group[]>([]);
   const [allStudents, setAllStudents] = useState<UserProfile[]>([]);
+  const [allTeachers, setAllTeachers] = useState<UserProfile[]>([]);
 
   const [selectedCourseId, setSelectedCourseId] = useState<string>('');
   const [selectedGroupId, setSelectedGroupId] = useState<string>('');
   const [date, setDate] = useState<string>(todayFormatted);
+  // Фактическая длительность занятия (мин) для payroll-сессии. Пусто = неизвестно (null),
+  // движок расчёта не начислит по per_hour, но per_lesson/per_student честно посчитаются.
+  const [sessionDuration, setSessionDuration] = useState<string>('');
+  // Явный выбор «кто вёл занятие» — нужен ТОЛЬКО когда у группы несколько преподавателей.
+  // Пусто = не указан (сервер запишет teacherId: null, а не угадает по отметившему журнал).
+  const [selectedTeacherId, setSelectedTeacherId] = useState<string>('');
   
   const [schema, setSchema] = useState<GradeSchema>(defaultSchema);
   const [entries, setEntries] = useState<Record<string, JournalEntry>>({});
@@ -125,11 +133,14 @@ const JournalPage: React.FC = () => {
       orgGetCourses().catch(() => []),
       orgGetGroups().catch(() => []),
       orgGetStudents().catch(() => []),
+      // Преподаватели группы — для селектора «Кто вёл занятие?» (нужны имена по uid).
+      orgGetTeachers().catch(() => []),
     ])
-    .then(([coursesRes, groupsRes, studentsRes]) => {
+    .then(([coursesRes, groupsRes, studentsRes, teachersRes]) => {
       let c = Array.isArray(coursesRes) ? coursesRes : [];
       let g = Array.isArray(groupsRes) ? groupsRes : [];
       const s = Array.isArray(studentsRes) ? studentsRes : [];
+      const tch = Array.isArray(teachersRes) ? teachersRes : [];
 
       if (role === 'teacher' && profile?.uid) {
         g = g.filter((group: Group) => group.teacherIds?.includes(profile.uid));
@@ -140,6 +151,7 @@ const JournalPage: React.FC = () => {
       setCourses(c);
       setAllGroups(g);
       setAllStudents(s);
+      setAllTeachers(tch);
 
       if (c.length > 0) {
         setSelectedCourseId(c[0].id);
@@ -226,6 +238,51 @@ const JournalPage: React.FC = () => {
     return allStudents.filter(s => group.studentIds.includes(s.uid));
   }, [selectedGroupId, allGroups, allStudents]);
 
+  // Преподаватели выбранной группы (uid → профиль) для селектора «Кто вёл занятие?».
+  const groupTeachers = useMemo<UserProfile[]>(() => {
+    const group = allGroups.find(g => g.id === selectedGroupId);
+    const teacherIds = group?.teacherIds || [];
+    return teacherIds.map(id => {
+      const found = allTeachers.find(tt => tt.uid === id);
+      // Фолбэк, если препод не пришёл в списке (напр. роль manager+teacher): показываем uid.
+      return found || ({ uid: id, displayName: '', email: '' } as UserProfile);
+    });
+  }, [allGroups, selectedGroupId, allTeachers]);
+
+  // У группы больше одного преподавателя → нужен явный выбор, кто реально вёл.
+  const isMultiTeacher = groupTeachers.length > 1;
+
+  // При смене группы задаём дефолт селектора: если у группы несколько преподов и текущий
+  // пользователь — один из них, предлагаем его (частый кейс: препод отмечает своё занятие);
+  // иначе оставляем «не указан». Для групп с 0/1 преподом селектор не нужен — очищаем.
+  useEffect(() => {
+    const group = allGroups.find(g => g.id === selectedGroupId);
+    const teacherIds = group?.teacherIds || [];
+    if (teacherIds.length > 1) {
+      setSelectedTeacherId(profile?.uid && teacherIds.includes(profile.uid) ? profile.uid : '');
+    } else {
+      setSelectedTeacherId('');
+    }
+  }, [selectedGroupId, allGroups, profile?.uid]);
+
+  // Кто вёл занятие (для lessonSessions → payroll). НИКОГДА не угадываем по отметившему:
+  // единственный препод группы → он автоматически; несколько → явный выбор пользователя;
+  // ноль/не выбран → undefined (сервер честно запишет teacherId: null).
+  const resolvedTeacherId = useMemo<string | undefined>(() => {
+    const group = allGroups.find(g => g.id === selectedGroupId);
+    const teacherIds = group?.teacherIds || [];
+    if (teacherIds.length === 1) return teacherIds[0];
+    if (teacherIds.length > 1) return selectedTeacherId || undefined;
+    return undefined;
+  }, [allGroups, selectedGroupId, selectedTeacherId]);
+
+  // Общие поля payroll-сессии для всех вызовов orgBulkAttendance (одна точка правды).
+  const buildSessionOpts = () => ({
+    groupId: selectedGroupId || undefined,
+    teacherId: resolvedTeacherId,
+    durationMinutes: sessionDuration.trim() ? Number(sessionDuration) : undefined,
+  });
+
 
   const [selectedLessonId, setSelectedLessonId] = useState<string | null>(null);
 
@@ -256,7 +313,7 @@ const JournalPage: React.FC = () => {
         note: e.note,
         lessonId: finalLessonId || undefined
       }));
-      const res = await orgBulkAttendance(selectedCourseId, date, bulkData);
+      const res = await orgBulkAttendance(selectedCourseId, date, bulkData, buildSessionOpts());
       const newEntries = { ...entries };
       (res as JournalEntry[]).forEach(e => {
         newEntries[e.studentId] = e;
@@ -412,7 +469,7 @@ const JournalPage: React.FC = () => {
     });
 
     try {
-      const res = await orgBulkAttendance(selectedCourseId, date, bulkData);
+      const res = await orgBulkAttendance(selectedCourseId, date, bulkData, buildSessionOpts());
       const newEntries = { ...entries };
       (res as JournalEntry[]).forEach(e => {
         newEntries[e.studentId] = e;
@@ -442,7 +499,7 @@ const JournalPage: React.FC = () => {
     });
 
     try {
-      const res = await orgBulkAttendance(selectedCourseId, date, bulkData);
+      const res = await orgBulkAttendance(selectedCourseId, date, bulkData, buildSessionOpts());
       const newEntries = { ...entries };
       (res as JournalEntry[]).forEach(e => {
         newEntries[e.studentId] = e;
@@ -598,7 +655,48 @@ const JournalPage: React.FC = () => {
             )}
           </div>
           {canEdit && (
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3 flex-wrap">
+              {/* «Кто вёл» — только для групп с несколькими преподами: сервер больше не
+                  угадывает по отметившему журнал, поэтому атрибуцию задаёт страница. */}
+              {isMultiTeacher && (
+                <div className="flex items-center gap-2">
+                  <label htmlFor="session-teacher" className="text-xs font-medium text-slate-500 dark:text-slate-400 whitespace-nowrap">
+                    {t('journal.sessionTeacher', 'Кто вёл')}
+                  </label>
+                  <select
+                    id="session-teacher"
+                    value={selectedTeacherId}
+                    onChange={(e) => setSelectedTeacherId(e.target.value)}
+                    title={t('journal.sessionTeacherHint', 'Преподаватель, который провёл занятие — для расчёта зарплаты')}
+                    className="px-3 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-medium outline-none focus:border-primary-500 transition-colors shadow-sm"
+                  >
+                    <option value="">{t('journal.sessionTeacherUnset', 'Не указан')}</option>
+                    {groupTeachers.map(tt => (
+                      <option key={tt.uid} value={tt.uid}>
+                        {tt.displayName || tt.email || tt.uid}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+              {/* Длительность занятия → payroll (per_hour). Пусто = длительность неизвестна. */}
+              <div className="flex items-center gap-2">
+                <label htmlFor="session-duration" className="text-xs font-medium text-slate-500 dark:text-slate-400 whitespace-nowrap">
+                  {t('journal.sessionDuration', 'Длительность (мин)')}
+                </label>
+                <input
+                  id="session-duration"
+                  type="number"
+                  min={0}
+                  step={5}
+                  inputMode="numeric"
+                  placeholder="—"
+                  value={sessionDuration}
+                  onChange={(e) => setSessionDuration(e.target.value)}
+                  title={t('journal.sessionDurationHint', 'Фактическая длительность занятия для расчёта зарплаты по часам')}
+                  className="w-20 px-3 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-medium outline-none focus:border-primary-500 transition-colors shadow-sm"
+                />
+              </div>
               <button
                 onClick={() => setShowDictator(true)}
                 disabled={loadingData || bulking || groupStudents.length === 0}

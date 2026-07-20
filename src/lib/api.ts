@@ -5,6 +5,7 @@
 import { auth } from './firebase';
 import type {
   MessageAttachment, SupportMessage, SupportThreadStatus, SupportUserInfo,
+  CompensationRule, PayComponent, PayrollPeriod, PayrollLine,
 } from '../types';
 
 const API_BASE = '/.netlify/functions';
@@ -65,6 +66,15 @@ const BRANCH_SCOPED_ENDPOINTS = new Set([
   'api-transfers',
   'api-certificates',
   'api-notifications',
+  // Зарплатные чтения филиалуемы, поэтому оба эндпоинта в аллоулисте:
+  // ставка несёт branchId (как и сотрудник, которому она назначена), а строки
+  // ведомости наследуют филиал через сессии и выручку. Директор сети, выбрав
+  // филиал в переключателе, ожидает увидеть ведомость этого филиала — без
+  // штампа он получил бы суммы по всей организации и утвердил бы чужие деньги.
+  // Записи (POST/PUT) штамп не получают: и здесь это критично — авто-штамп на
+  // POST переселил бы ставку в другой филиал при простом сохранении.
+  'api-payroll',
+  'api-payroll-rules',
 ]);
 
 async function apiRequest<T = any>(
@@ -103,6 +113,21 @@ async function apiRequest<T = any>(
   if (!res.ok) {
     const errorData = await res.json().catch(() => ({ error: res.statusText }));
     const err = new Error(errorData.error || `API error: ${res.status}`);
+    // Carry the full parsed error body so callers can read structured fields off a
+    // failed response — e.g. DebtsTab reads `linkedTransactions` off the 409 that
+    // guards deleting a plan with linked payments (`e.linkedTransactions`). The
+    // fields are copied straight onto the error AND kept on `.body` for callers
+    // that prefer the namespaced form. `.message` is deliberately left untouched:
+    // a body key named `message` is dropped from the spread so existing callers
+    // that string-match `e.message` keep working. Reserved fields (status/code) are
+    // re-asserted last so a same-named body key can never shadow them.
+    //
+    // Error body shape: { error?: string; code?: string; [field: string]: unknown }
+    // — `error` becomes `.message`; every other field appears on both `err` and
+    // `err.body`.
+    const { message: _ignoredBodyMessage, ...bodyFields } = errorData as Record<string, unknown>;
+    Object.assign(err, bodyFields);
+    (err as any).body = errorData;
     // Preserve HTTP status + any structured `code` so callers can branch on them
     // (e.g. plan gating) instead of brittle message string-matching.
     (err as any).status = res.status;
@@ -493,8 +518,17 @@ export const orgSaveGradeSchema = (data: any) => gbReq('schema', 'POST', data);
 export const orgGetJournal = (courseId?: string, filters?: Record<string, string>) =>
   gbReq('journal', 'GET', undefined, { ...(courseId ? { courseId } : {}), ...filters });
 export const orgSaveJournal = (data: any) => gbReq('journal', 'POST', data);
-export const orgBulkAttendance = (courseId: string, date: string, entries: any[]) =>
-  gbReq('bulkAttendance', 'POST', { courseId, date, entries });
+/**
+ * session — необязательные поля для payroll (lessonSessions). Старые вызовы их не шлют:
+ * тогда сервер пишет только журнал, как раньше, и сессию не создаёт.
+ */
+export const orgBulkAttendance = (
+  courseId: string,
+  date: string,
+  entries: any[],
+  session?: { groupId?: string; teacherId?: string; durationMinutes?: number },
+) =>
+  gbReq('bulkAttendance', 'POST', { courseId, date, entries, ...(session || {}) });
 
 // ============================================================
 // BRANCHES API (via api-branches)
@@ -678,8 +712,19 @@ export const apiSupportUserInfo = (userId: string) =>
 // FINANCE SYSTEM API
 // ============================================================
 
-export const apiGetTransactions = (filters?: { branchId?: string; startDate?: string; endDate?: string }) =>
-  apiRequest('api-finance-transactions', 'GET', undefined, filters as any);
+// Все поля необязательны — сервер фильтрует по тем, что пришли. `paymentPlanId` и
+// `studentId` названы явно, чтобы PaymentHistoryModal обходился без `as any`.
+export const apiGetTransactions = (filters?: {
+  branchId?: string;
+  startDate?: string;
+  endDate?: string;
+  period?: string;
+  type?: string;
+  categoryId?: string;
+  courseId?: string;
+  paymentPlanId?: string;
+  studentId?: string;
+}) => apiRequest('api-finance-transactions', 'GET', undefined, filters as any);
 
 export const apiCreateTransaction = (data: any) =>
   apiRequest('api-finance-transactions', 'POST', data);
@@ -699,11 +744,21 @@ export const apiCreatePaymentPlan = (data: any) =>
 export const apiUpdatePaymentPlan = (planId: string, data: any) =>
   apiRequest('api-finance-plans', 'PUT', { planId, ...data });
 
-export const apiDeletePaymentPlan = (id: string) =>
-  apiRequest('api-finance-plans', 'DELETE', undefined, { id });
+// `force` acknowledges the 409 guard: the server refuses to delete a plan that
+// still has linked transactions (the 409 body carries `linkedTransactions` so the
+// UI can say how many operations would be orphaned). Without a way to pass it,
+// any plan that ever received a payment was undeletable from the UI.
+export const apiDeletePaymentPlan = (id: string, force?: boolean) =>
+  apiRequest('api-finance-plans', 'DELETE', undefined, force ? { id, force: 'true' } : { id });
 
-export const apiGetFinanceMetrics = (params?: { branchId?: string; period?: string }) =>
-  apiRequest('api-finance-metrics', 'GET', undefined, params as any);
+// startDate/endDate — произвольный диапазон; сервер берёт его вместо `period`,
+// только если пришли ОБА (иначе молча падает обратно на именованный период).
+export const apiGetFinanceMetrics = (params?: {
+  branchId?: string;
+  period?: string;
+  startDate?: string;
+  endDate?: string;
+}) => apiRequest('api-finance-metrics', 'GET', undefined, params as any);
 
 // ============================================================
 // AI ORGANIZATION MANAGER API
@@ -850,3 +905,106 @@ export const apiUpdateSyllabus = (id: string, data: any) =>
   apiRequest('api-syllabuses', 'PUT', { ...data, id });
 export const apiDeleteSyllabus = (id: string) =>
   apiRequest('api-syllabuses', 'DELETE', undefined, { id });
+
+// ============================================================
+// PAYROLL API (зарплата преподавателей)
+//
+// Два эндпоинта: `api-payroll-rules` — CRUD по ставкам (compensationRules),
+// `api-payroll` — жизненный цикл ведомости (calculate → approve → pay) и чтения.
+// Действие на api-payroll передаётся query-параметром `action` и для GET, и для
+// POST — как в api-gradebook/api-org.
+//
+// Деньги на сервере — целые минорные единицы (amountMinor/percentBp/…Minor).
+// Клиент их НЕ пересчитывает по дороге: форматирование — formatMoney на месте
+// показа, иначе округление разъедется с расчётным листом.
+// ============================================================
+
+const payrollReq = <T = any>(action: string, method = 'GET', body?: any, extra?: Record<string, string>) =>
+  apiRequest<T>('api-payroll', method, body, { action, ...extra });
+
+// ---- Ставки (compensationRules) ----
+
+export const apiGetCompensationRules = (filters?: { teacherId?: string; status?: string; branchId?: string }) =>
+  apiRequest<CompensationRule[]>('api-payroll-rules', 'GET', undefined, filters as any);
+
+export const apiCreateCompensationRule = (data: {
+  teacherId: string;
+  label: string;
+  components: PayComponent[];
+  effectiveFrom: string;
+  effectiveTo?: string | null;
+  branchId?: string | null;
+}) => apiRequest<CompensationRule>('api-payroll-rules', 'POST', data);
+
+// Ставки append-only: изменение закрывает effectiveTo старой версии и вставляет
+// новую с supersedesId, поэтому ответ — НОВОЕ правило, а не отредактированное.
+// Сервер правит только эти поля: effectiveFrom задаётся при создании и не меняется.
+export const apiUpdateCompensationRule = (data: {
+  id: string;              // сервер принимает и `ruleId`; шлём `id` — как везде в этом файле
+  label?: string;
+  components?: PayComponent[];
+  effectiveTo?: string | null;
+  status?: 'active' | 'archived';
+}) => apiRequest<CompensationRule>('api-payroll-rules', 'PUT', data);
+
+// `force` подтверждает 409-гард: сервер отказывается удалить ставку, на которую
+// уже ссылаются строки ведомости (тело 409 говорит сколько). Тот же приём, что у
+// apiDeletePaymentPlan — не осиротить аудиторский след молча.
+export const apiDeleteCompensationRule = (id: string, force?: boolean) =>
+  apiRequest('api-payroll-rules', 'DELETE', undefined, force ? { id, force: 'true' } : { id });
+
+// ---- Периоды и строки ведомости ----
+
+export const apiGetPayrollPeriods = (filters?: { period?: string; state?: string; branchId?: string }) =>
+  payrollReq<PayrollPeriod[]>('periods', 'GET', undefined, filters as any);
+
+// Период целиком: шапка, строки и диагностики «почему сумма такая».
+// Ответ ПЛОСКИЙ — поля периода лежат в корне, рядом с lines/diagnostics, а не в
+// отдельном ключе `period` (`period` в корне — это 'YYYY-MM' самого периода).
+export const apiGetPayrollPeriod = (periodId: string) =>
+  payrollReq<PayrollPeriod & { lines: PayrollLine[]; diagnostics: any[] }>(
+    'period', 'GET', undefined, { id: periodId },
+  );
+
+// Пересчёт: полная пересборка строк source:'rule'; ручные бонусы/штрафы её
+// переживают. Законен только в draft/calculated — утверждённый период заморожен.
+export const apiCalculatePayroll = (data: { period: string; branchId?: string | null }) =>
+  payrollReq('calculate', 'POST', data);
+
+/**
+ * Ручная строка (бонус/штраф) либо правка уже посчитанной.
+ * Без `lineId` — создание ручной строки (нужны teacherId, source, amountMinor);
+ * с `lineId` — правка: `amountMinor` допустим только для ручных строк,
+ * расчётную можно лишь переопределить через `overrideMinor` + обязательную
+ * `overrideReason` (`overrideMinor: null` снимает правку).
+ * `amountMinor` для штрафа сервер сам приводит к отрицательному — знак не шлём.
+ */
+export const apiSetPayrollLine = (data: {
+  periodId: string;
+  lineId?: string;
+  teacherId?: string;
+  source?: 'manual_bonus' | 'manual_penalty';
+  amountMinor?: number;
+  overrideMinor?: number | null;
+  overrideReason?: string | null;
+  note?: string;
+}) => payrollReq('line', 'POST', data);
+
+// Удалить можно только ручную строку: расчётная уходит пересчётом, а не удалением.
+export const apiDeletePayrollLine = (lineId: string) =>
+  payrollReq('line', 'DELETE', undefined, { id: lineId });
+
+// Заморозка: totalMinor и снапшоты запечатываются, пересчёт больше невозможен.
+export const apiApprovePayroll = (periodId: string) =>
+  payrollReq('approve', 'POST', { periodId });
+
+// Выплата: разворачивает утверждённые строки в расходные financeTransactions.
+// Идемпотентна на сервере (пропускает уже выплаченные строки), но UI всё равно
+// обязан спросить подтверждение — это единственный шаг, двигающий деньги.
+export const apiPayPayroll = (data: { periodId: string; date?: string; paymentMethod?: string | null }) =>
+  payrollReq('pay', 'POST', data);
+
+// Зарплатный баланс: начислено (утверждённое) − выдано (выплаченное).
+// Сервер считает по всем преподавателям сразу — фильтр только по филиалу.
+export const apiGetPayrollBalance = (filters?: { branchId?: string }) =>
+  payrollReq<any[]>('balance', 'GET', undefined, filters as any);

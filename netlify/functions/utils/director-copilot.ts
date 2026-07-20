@@ -13,6 +13,7 @@
 import { adminDb } from './firebase-admin';
 import { generateWithFallback, hasGeminiKey, recordAiUsage } from './ai';
 import { createNotification } from './notifications';
+import { isDebtBearingPlan, planDebt } from './payment-plans';
 
 const RU_MONTHS = ['Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь', 'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'];
 
@@ -105,9 +106,8 @@ export async function buildDirectorSnapshot(orgId: string): Promise<DirectorSnap
   const debtors: { name: string; amount: number; daysOverdue: number }[] = [];
   if (planSnap) for (const p of planSnap.docs) {
     const plan = p.data() as any;
-    if (plan.status === 'paid') continue;
-    const debt = Math.max(0, (plan.totalAmount || 0) - (plan.paidAmount || 0));
-    if (debt <= 0) continue;
+    if (!isDebtBearingPlan(plan)) continue;
+    const debt = planDebt(plan);
     debtTotal += debt;
     let daysOverdue = 0;
     if (plan.deadline) {
@@ -264,9 +264,10 @@ export async function remindOrgDebtors(orgId: string): Promise<{ sent: number; s
   const eligible: { doc: any; plan: any; debt: number }[] = [];
   for (const doc of snap.docs) {
     const plan = doc.data() as any;
-    if (plan.status === 'paid' || !plan.studentId) continue;
-    const debt = Math.max(0, (plan.totalAmount || 0) - (plan.paidAmount || 0));
-    if (debt <= 0) continue;
+    // Cancelled plans are written off — never chase a student for money we've
+    // already stopped claiming.
+    if (!plan.studentId || !isDebtBearingPlan(plan)) continue;
+    const debt = planDebt(plan);
     if (plan.lastDebtReminderDate === today) { skipped++; continue; } // don't double-nudge today
     eligible.push({ doc, plan, debt });
   }
@@ -409,9 +410,10 @@ export async function sendDebtorDraft(orgId: string, draftText: string): Promise
   const eligible: { plan: any; debt: number; id: string }[] = [];
   for (const doc of snap.docs) {
     const plan = doc.data() as any;
-    if (plan.status === 'paid' || !plan.studentId) continue;
-    const debt = Math.max(0, (plan.totalAmount || 0) - (plan.paidAmount || 0));
-    if (debt > 0) eligible.push({ plan, debt, id: doc.id });
+    // Same write-off rule as remindOrgDebtors — a broadcast must not reach
+    // students whose plan the academy already cancelled.
+    if (!plan.studentId || !isDebtBearingPlan(plan)) continue;
+    eligible.push({ plan, debt: planDebt(plan), id: doc.id });
   }
   await Promise.allSettled(eligible.map(({ plan, debt, id }) => createNotification({
     recipientId: plan.studentId,

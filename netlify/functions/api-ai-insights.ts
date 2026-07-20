@@ -13,6 +13,7 @@ import { verifyAuth, ok, unauthorized, forbidden, badRequest, jsonResponse, hasR
 import { rateLimiters, getRateLimitKey } from './utils/rate-limiter';
 import { getModel, parseJsonLoose, aiAllowed, hasGeminiKey, recordAiUsage } from './utils/ai';
 import { computeStudentRisk } from './utils/risk';
+import { isDebtBearingPlan, planDebt } from './utils/payment-plans';
 
 function monthStartISO(offset = 0): string {
   const d = new Date();
@@ -67,8 +68,11 @@ async function gatherSnapshot(orgId: string): Promise<OrgSnapshot> {
   let debt = 0, overduePlans = 0;
   for (const p of planSnap?.docs || []) {
     const plan = p.data() as any;
-    if (plan.status === 'paid') continue;
-    debt += Math.max(0, (plan.totalAmount || 0) - (plan.paidAmount || 0));
+    // Same debt definition as api-finance-metrics: written-off ('cancelled') and
+    // settled plans are excluded, so the AI analyst can't quote a debt figure the
+    // owner's own dashboard contradicts.
+    if (!isDebtBearingPlan(plan)) continue;
+    debt += planDebt(plan);
     if (plan.status === 'overdue') overduePlans++;
   }
 

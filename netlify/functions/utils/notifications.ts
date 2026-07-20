@@ -60,7 +60,11 @@ export type NotificationType =
   | 'weekly_digest'
   | 'risk_alert'
   | 'lead_followup'
-  | 'new_lead';
+  | 'new_lead'
+  // Ведомость по зарплате рассчитана кроном и ждёт проверки человеком.
+  // Выплата без утверждения не производится, поэтому это именно напоминание
+  // директору, а не отчёт о движении денег.
+  | 'payroll_ready';
 
 interface NotificationPayload {
   recipientId: string;

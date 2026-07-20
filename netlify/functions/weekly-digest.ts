@@ -13,6 +13,7 @@ import type { Handler, HandlerEvent } from '@netlify/functions';
 import { adminDb } from './utils/firebase-admin';
 import { notifyOrgAdmins } from './utils/notifications';
 import { jsonResponse } from './utils/auth';
+import { isDebtBearingPlan, planDebt } from './utils/payment-plans';
 
 function fmt(n: number): string {
   try { return Math.round(n).toLocaleString('ru-RU'); } catch { return String(Math.round(n)); }
@@ -59,8 +60,10 @@ const handler: Handler = async (event: HandlerEvent) => {
       let overdue = 0;
       for (const p of planSnap.docs) {
         const plan = p.data() as any;
-        if (plan.status === 'paid') continue;
-        debt += Math.max(0, (plan.totalAmount || 0) - (plan.paidAmount || 0));
+        // Cancelled (written-off) and settled plans are not debt — the digest has
+        // to show the same number as the finance dashboard.
+        if (!isDebtBearingPlan(plan)) continue;
+        debt += planDebt(plan);
         if (plan.status === 'overdue') overdue++;
       }
 

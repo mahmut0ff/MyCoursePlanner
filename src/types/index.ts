@@ -32,6 +32,7 @@ export interface PlanLimits {
   customBranding: boolean;
   // Feature gating
   financesEnabled: boolean;
+  payrollEnabled: boolean; // зарплатный модуль учителей — professional+ (чувствительнее финансов)
   gradebookEnabled: boolean;
   certificatesEnabled: boolean;
   branchesEnabled: boolean;
@@ -42,13 +43,14 @@ export interface PlanLimits {
 
 /** Canonical feature keys for plan gating */
 export type PlanFeature =
-  | 'finances' | 'gradebook' | 'certificates'
+  | 'finances' | 'payroll' | 'gradebook' | 'certificates'
   | 'branches' | 'advancedAnalytics' | 'rbac'
   | 'ai' | 'aiAnalytics';
 
 /** Map PlanFeature → PlanLimits key */
 export const FEATURE_TO_LIMIT: Record<PlanFeature, keyof PlanLimits> = {
   finances: 'financesEnabled',
+  payroll: 'payrollEnabled',
   gradebook: 'gradebookEnabled',
   certificates: 'certificatesEnabled',
   branches: 'branchesEnabled',
@@ -61,6 +63,7 @@ export const FEATURE_TO_LIMIT: Record<PlanFeature, keyof PlanLimits> = {
 /** Minimum plan required per feature (for UpgradeWall display) */
 export const FEATURE_MIN_PLAN: Record<PlanFeature, PlanId> = {
   finances: 'professional',
+  payroll: 'professional',
   gradebook: 'professional',
   certificates: 'professional',
   advancedAnalytics: 'professional',
@@ -84,7 +87,7 @@ export const PLANS: Plan[] = [
       'Auto-grading',
       'Email support',
     ],
-    limits: { maxStudents: 50, maxTeachers: 5, maxExams: 20, aiEnabled: false, aiAnalytics: false, prioritySupport: false, dedicatedSupport: false, customBranding: false, financesEnabled: false, gradebookEnabled: false, certificatesEnabled: false, branchesEnabled: false, advancedAnalytics: false, rbacEnabled: false },
+    limits: { maxStudents: 50, maxTeachers: 5, maxExams: 20, aiEnabled: false, aiAnalytics: false, prioritySupport: false, dedicatedSupport: false, customBranding: false, financesEnabled: false, payrollEnabled: false, gradebookEnabled: false, certificatesEnabled: false, branchesEnabled: false, advancedAnalytics: false, rbacEnabled: false },
   },
   {
     id: 'professional',
@@ -99,7 +102,7 @@ export const PLANS: Plan[] = [
       'Performance analytics',
       'Priority support',
     ],
-    limits: { maxStudents: 200, maxTeachers: 20, maxExams: -1, aiEnabled: true, aiAnalytics: false, prioritySupport: true, dedicatedSupport: false, customBranding: false, financesEnabled: true, gradebookEnabled: true, certificatesEnabled: true, branchesEnabled: false, advancedAnalytics: true, rbacEnabled: true },
+    limits: { maxStudents: 200, maxTeachers: 20, maxExams: -1, aiEnabled: true, aiAnalytics: false, prioritySupport: true, dedicatedSupport: false, customBranding: false, financesEnabled: true, payrollEnabled: true, gradebookEnabled: true, certificatesEnabled: true, branchesEnabled: false, advancedAnalytics: true, rbacEnabled: true },
   },
   {
     id: 'enterprise',
@@ -115,7 +118,7 @@ export const PLANS: Plan[] = [
       'Dedicated support manager',
       'API access',
     ],
-    limits: { maxStudents: -1, maxTeachers: -1, maxExams: -1, aiEnabled: true, aiAnalytics: true, prioritySupport: true, dedicatedSupport: true, customBranding: true, financesEnabled: true, gradebookEnabled: true, certificatesEnabled: true, branchesEnabled: true, advancedAnalytics: true, rbacEnabled: true },
+    limits: { maxStudents: -1, maxTeachers: -1, maxExams: -1, aiEnabled: true, aiAnalytics: true, prioritySupport: true, dedicatedSupport: true, customBranding: true, financesEnabled: true, payrollEnabled: true, gradebookEnabled: true, certificatesEnabled: true, branchesEnabled: true, advancedAnalytics: true, rbacEnabled: true },
   },
 ];
 
@@ -1333,19 +1336,28 @@ export interface SupportUserInfo {
 // ============================================================
 
 export type PaymentFormat = 'one-time' | 'monthly';
-export type PaymentStatus = 'paid' | 'partial' | 'overdue' | 'pending';
+/** `cancelled` пишет api-org при выходе студента из группы по нетронутому счёту. */
+export type PaymentStatus = 'paid' | 'partial' | 'overdue' | 'pending' | 'cancelled';
 export type TransactionType = 'income' | 'expense';
 
 export interface StudentPaymentPlan {
   id: string;
   organizationId: string;
-  branchId?: string;
+  branchId?: string | null; // null = счёт вне филиала
   studentId: string;
-  courseId: string;
-  totalAmount: number;   // Expected total payment
-  paidAmount: number;    // Collected amount
-  status: PaymentStatus; // Auto-calculated based on amounts & dates
-  nextDueDate?: string;  // For monthly
+  studentName?: string; // денормализация на запись, для списков без join
+  courseId: string; // литерал 'general' у счетов, созданных вручную
+  courseName?: string;
+  totalAmount: number; // сколько должны заплатить
+  paidAmount: number;  // сколько уже пришло
+  status: PaymentStatus;
+  deadline?: string; // настоящий срок оплаты, по нему считается просрочка
+  /** @deprecated Пишется api-org.ts, но не читается ни одним потребителем — ориентируйтесь на `deadline`. */
+  nextDueDate?: string;
+  billingType?: 'monthly'; // счёт создан ежемесячным биллингом
+  period?: string;         // 'YYYY-MM', период ежемесячного счёта
+  autoBilled?: boolean;    // выставлен monthly-billing, а не человеком
+  lastDebtReminderDate?: string; // защита от повторной рассылки о долге
   createdAt: string;
   updatedAt: string;
 }
@@ -1353,22 +1365,240 @@ export interface StudentPaymentPlan {
 export interface FinancialTransaction {
   id: string;
   organizationId: string;
-  branchId?: string; // Crucial for multi-branch P&L reporting
+  branchId?: string | null; // разделение P&L по филиалам
   type: TransactionType;
   amount: number;
-  currency: string; // e.g. 'KZT', 'USD'
-  date: string; // Payment date
-  
-  // Categorization
-  categoryId: string; // e.g. 'course_fee', 'salary', 'rent', 'marketing'
-  
-  // Associated entities for analytics tracing
+  /** @deprecated Объявлено, но не пишется ни одним путём кода — сумма всегда в сомах. */
+  currency?: string;
+  date: string;
+
+  categoryId: string; // 'course_fee', 'salary', 'rent', 'marketing'...
+  description?: string;
+  paymentMethod?: 'cash' | 'card' | 'transfer'; // выбирается в форме приёма оплаты
+
+  // Привязки для аналитики
   paymentPlanId?: string;
   studentId?: string;
   courseId?: string;
-  
-  description: string;
+  groupId?: string;
+  teacherId?: string;
+
+  /**
+   * Проставляются только на транзакциях-выплатах зарплаты (шаг «оплатить» периода).
+   * Идемпотентность выплаты держится на запросе financeTransactions по РАВЕНСТВУ
+   * payrollPeriodId: уже выплаченные строки узнаются по payrollLineId и
+   * пропускаются при повторном вызове. Не переименовывать и не делать составными —
+   * составные индексы не задеплоены, запрос обязан оставаться equality-only.
+   */
+  payrollPeriodId?: string;
+  payrollLineId?: string;
+
   createdBy: string;
+  createdAt: string;
+  updatedAt?: string;
+
+  // Обогащение на чтении: подставляет GET api-finance-transactions, в Firestore не хранится.
+  studentName?: string;
+  courseName?: string;
+  createdByName?: string;
+}
+
+/** Точка графика доход/расход. Дата строго 'YYYY-MM-DD' — AdminDashboard режет её посимвольно. */
+export interface FinanceChartPoint {
+  date: string;
+  income: number;
+  expense: number;
+}
+
+export interface FinanceCategoryBucket {
+  categoryId: string;
+  amount: number;
+  count: number;
+}
+
+export interface FinanceMethodBucket {
+  paymentMethod: string;
+  amount: number;
+  count: number;
+}
+
+export interface CourseProfitability {
+  courseId: string; // 'general' — корзина «Без курса», всегда сортируется последней
+  courseName: string;
+  income: number;
+  expense: number;
+  net: number;
+  studentCount: number;
+}
+
+/**
+ * Ответ GET api-finance-metrics.
+ *
+ * unassignedBranch* — СПРАВКА, а не отдельное слагаемое: это записи без branchId.
+ * Без фильтра филиала они уже входят в соответствующий итог, с фильтром — не
+ * входят и объясняют разрыв между суммой филиалов и итогом по организации.
+ * Никогда не складывайте их с итогом и не вычитайте из него.
+ */
+export interface FinanceMetrics {
+  period: string;
+  startDate: string; // ISO, граница окна (не 'YYYY-MM-DD')
+  endDate: string;
+  totalIncome: number;
+  totalExpense: number;
+  netProfit: number;
+  totalActiveDebt: number;
+  /** Алиас totalActiveDebt. Оставлен ради существующих потребителей. */
+  outstandingDebt: number;
+  overdueCount: number;
+  debtorCount: number;
+  chartData: FinanceChartPoint[];
+  expenseByCategory: FinanceCategoryBucket[];
+  incomeByMethod: FinanceMethodBucket[];
+  courseProfitability: CourseProfitability[];
+  unattributedExpense: number;
+  unassignedBranchIncome: number;
+  unassignedBranchExpense: number;
+  unassignedBranchDebt: number;
+  previous: { totalIncome: number; totalExpense: number; netProfit: number };
+  /**
+   * false, когда `previous` — нулевая база, а не настоящее окно сравнения:
+   * period='all' (предыдущего окна нет) либо предыдущее окно целиком раньше первой
+   * записи. UI обязан показать «—» вместо роста в %, иначе деление на 0 даёт
+   * Infinity%/NaN%.
+   */
+  previousComparable: boolean;
+}
+
+// ============================================================
+// Payroll Module (Teacher Compensation)
+// Деньги на сервере — целые минорные единицы; финансовая транзакция при выплате
+// конвертирует в сомы на границе. Все коллекции server-mediated (Admin SDK).
+// ============================================================
+
+/**
+ * Неизменяемая запись «урок состоялся» (коллекция `lessonSessions`). Пишется в
+ * том же batch, что и журнал, при отметке посещаемости. Единственный источник
+ * для per_lesson/per_hour/per_student — никогда scheduleEvents.
+ */
+export interface LessonSession {
+  id: string;
+  organizationId: string;
+  branchId: string | null;      // из группы/курса, как штампуется филиал в финансах
+  groupId: string;
+  courseId: string;
+  /**
+   * null = вели несколько учителей и никто не выбран. Такая сессия не принадлежит
+   * никому: per_lesson/per_hour/per_student её ПРОПУСКАЮТ. Никогда не выводится из
+   * того, кто отметил журнал (createdBy/confirmedBy) — это приписало бы чужую оплату.
+   */
+  teacherId: string | null;
+  date: string;                 // 'YYYY-MM-DD'
+  /** null = длительность неизвестна → per_hour эту сессию пропускает: видимый ноль лучше догадки. */
+  durationMinutes: number | null;
+  status: 'held' | 'cancelled';
+  headcount: number;            // сколько присутствовало → база для per_student
+  sourceEventId: string | null; // из какого шаблона scheduleEvent материализована, если был
+  confirmedBy: string;
+  confirmedAt: string;
+  createdAt: string;
+}
+
+/** Область действия компонента: пусто/отсутствует = все курсы и группы учителя. */
+export interface RuleScope {
+  courseIds?: string[];
+  groupIds?: string[];
+}
+
+/**
+ * Компонент ставки. Сумма компонентов = заработок правила.
+ * amountMinor — целые минорные единицы; percentBp — базисные пункты (2000 = 20%).
+ */
+export type PayComponent =
+  | { kind: 'salary'; amountMinor: number } // фиксированный оклад; даёт строку даже при нулевой активности
+  | { kind: 'percent_revenue'; percentBp: number; base: 'collected'; scope: RuleScope } // % от СОБРАННОЙ наличности в окне
+  | { kind: 'per_lesson'; amountMinor: number; scope: RuleScope }  // × число held-сессий в scope
+  | { kind: 'per_hour'; amountMinor: number; scope: RuleScope }    // amountMinor за 60 мин; пропорция по durationMinutes
+  | { kind: 'per_student'; amountMinor: number; scope: RuleScope }; // × Σ headcount по held-сессиям в scope
+
+/**
+ * Карточка ставки (коллекция `compensationRules`) — append-only, датируется
+ * периодом действия. Инвариант: одно активное правило на учителя на период.
+ * Изменение ставки закрывает effectiveTo старого правила и вставляет новую
+ * версию с supersedesId.
+ */
+export interface CompensationRule {
+  id: string;
+  organizationId: string;
+  teacherId: string;            // может быть синтетический id offline-учителя — не полагаться на Auth-аккаунт
+  branchId: string | null;
+  label: string;                // «Оклад + 20% с группы А» — показывается на расчётном листе дословно
+  status: 'active' | 'archived';
+  components: PayComponent[];
+  effectiveFrom: string;        // 'YYYY-MM' включительно
+  effectiveTo: string | null;   // 'YYYY-MM' включительно; null = бессрочно
+  supersedesId: string | null;  // цепочка аудита «почему изменилась оплата»
+  createdBy: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/** Состояние периода. approve замораживает; approved/paid НИКОГДА не пересчитывается. */
+export type PayrollPeriodState = 'draft' | 'calculated' | 'approved' | 'paid';
+
+/**
+ * Период начисления зарплаты — жизненный цикл draft→calculated→approved→paid.
+ * windowStart/windowEnd замораживаются при первом calculate.
+ */
+export interface PayrollPeriod {
+  id: string;
+  organizationId: string;
+  period: string;               // 'YYYY-MM'
+  branchId: string | null;
+  state: PayrollPeriodState;
+  windowStart: string;          // окно собранной выручки и сессий; ЗАМОРОЖЕНО при первом calculate
+  windowEnd: string;
+  calculatedAt?: string;
+  calculatedBy?: string;
+  approvedAt?: string;
+  approvedBy?: string;
+  paidAt?: string;
+  paidBy?: string;
+  totalMinor: number;           // заморожен при approve
+  createdAt: string;
+  updatedAt: string;
+}
+
+/** Откуда взялась строка ведомости. */
+export type PayrollLineSource = 'rule' | 'manual_bonus' | 'manual_penalty' | 'refund_adjustment';
+
+/**
+ * Строка расчётной ведомости. source:'rule' пересобирается при каждом calculate;
+ * isManual (премия/штраф) переживает пересчёт. finalMinor = COALESCE(override, computed).
+ */
+export interface PayrollLine {
+  id: string;
+  organizationId: string;
+  periodId: string;
+  period: string;               // 'YYYY-MM'
+  teacherId: string;
+  teacherName: string;          // денормализовано для расчётного листа
+  ruleId: string | null;        // null у ручных строк
+  /**
+   * ЗАМОРОЖЕННОЕ разрешённое правило плюс пофакторные литеральные входы
+   * (revenueBaseMinor, sourceTxnIds, sessionCount, sourceSessionIds…), чтобы
+   * число можно было восстановить, не пересчитывая. У ручных строк — {}.
+   */
+  ruleSnapshot: Record<string, unknown>;
+  source: PayrollLineSource;
+  isManual: boolean;            // премия/штраф; ПЕРЕЖИВАЕТ пересчёт
+  originPeriodId: string | null; // для корректировок закрытого периода, перенесённых вперёд
+  computedMinor: number;
+  overrideMinor: number | null; // сумма, переопределённая директором
+  overrideReason: string | null;
+  finalMinor: number;           // COALESCE(override, computed)
+  note?: string;
+  branchId?: string | null;
+  createdBy?: string;           // пишется только на ручных строках
   createdAt: string;
 }
 

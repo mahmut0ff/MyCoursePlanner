@@ -16,6 +16,7 @@ import type { Handler, HandlerEvent } from '@netlify/functions';
 import { adminDb } from './utils/firebase-admin';
 import { createNotification, notifyOrgAdmins } from './utils/notifications';
 import { jsonResponse } from './utils/auth';
+import { isDebtBearingPlan, planDebt } from './utils/payment-plans';
 
 const COLLECTION = 'studentPaymentPlans';
 // Remind the student this many days BEFORE the deadline (0 = on the day).
@@ -34,7 +35,11 @@ const handler: Handler = async (event: HandlerEvent) => {
   const today = now.toISOString().split('T')[0];
 
   try {
-    // Plans that still owe money (paid plans are excluded).
+    // Plans that still owe money. The status allow-list already excludes both
+    // 'paid' and the written-off 'cancelled' (api-org.ts sets it when a student
+    // leaves a group with an untouched plan); isDebtBearingPlan below re-asserts
+    // that per-plan so this cron can never message a written-off student even if
+    // this query is ever widened.
     const snap = await adminDb.collection(COLLECTION)
       .where('status', 'in', ['pending', 'partial', 'overdue'])
       .get();
@@ -49,8 +54,11 @@ const handler: Handler = async (event: HandlerEvent) => {
 
       if (!plan.deadline || !plan.studentId || !plan.organizationId) continue;
 
-      const debt = Math.max(0, (plan.totalAmount || 0) - (plan.paidAmount || 0));
-      if (debt <= 0) continue;
+      // Defence in depth: the status allow-list above already keeps 'cancelled'
+      // out, but this cron is the only consumer that *messages* students, so the
+      // write-off rule is re-asserted here rather than trusted from the query.
+      if (!isDebtBearingPlan(plan)) continue;
+      const debt = planDebt(plan);
 
       const deadline = new Date(plan.deadline);
       if (isNaN(deadline.getTime())) continue;

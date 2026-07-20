@@ -12,6 +12,7 @@ import {
   resolveBranchFilter, memberInBranchScope, memberHoldsRole,
 } from './utils/auth';
 import { computeStudentRisk } from './utils/risk';
+import { isDebtBearingPlan } from './utils/payment-plans';
 
 export const handler: Handler = async (event: HandlerEvent) => {
   if (event.httpMethod === 'OPTIONS') return jsonResponse(204, '');
@@ -95,10 +96,14 @@ export const handler: Handler = async (event: HandlerEvent) => {
       journalByStudent.get(data.studentId)!.push(data);
     });
 
+    // status == 'overdue' already rules out written-off ('cancelled') plans; the
+    // shared predicate additionally requires a positive balance, so this badge
+    // matches the debt the finance screens show (same rule as api-dashboard).
     const overdueStudents = new Set<string>();
     overdueSnap.docs.forEach(doc => {
-      const s = (doc.data() as any).studentId;
-      if (s) overdueStudents.add(s);
+      const plan = doc.data() as any;
+      if (!isDebtBearingPlan(plan)) return;
+      if (plan.studentId) overdueStudents.add(plan.studentId);
     });
 
     const nowMs = Date.now();

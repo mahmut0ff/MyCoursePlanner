@@ -5,6 +5,7 @@ import type { Handler, HandlerEvent } from '@netlify/functions';
 import { adminDb } from './utils/firebase-admin';
 import { verifyAuth, isStaff, hasRole, getOrgFilter, resolveBranchFilter, memberInBranchScope, memberHoldsRole, ok, unauthorized, forbidden, jsonResponse } from './utils/auth';
 import { computeStudentRisk, needsAttention } from './utils/risk';
+import { isDebtBearingPlan } from './utils/payment-plans';
 
 /** ISO timestamp for the 1st of the month, `offset` months back (0 = this month). */
 function monthStartISO(offset = 0): string {
@@ -172,8 +173,16 @@ const handler: Handler = async (event: HandlerEvent) => {
       if (!journalByStudent.has(j.studentId)) journalByStudent.set(j.studentId, []);
       journalByStudent.get(j.studentId)!.push(j);
     });
+    // The query already pins status == 'overdue' (so a written-off 'cancelled'
+    // plan can't reach here), but the shared predicate also drops plans whose
+    // balance has since been settled while the status label lagged behind — a
+    // student who owes nothing must not be badged as a payment risk.
     const overdueStudents = new Set<string>();
-    (overdueSnap?.docs || []).forEach(d => { const s = (d.data() as any).studentId; if (s && studentIdSet.has(s)) overdueStudents.add(s); });
+    (overdueSnap?.docs || []).forEach(d => {
+      const plan = d.data() as any;
+      if (!isDebtBearingPlan(plan)) return;
+      if (plan.studentId && studentIdSet.has(plan.studentId)) overdueStudents.add(plan.studentId);
+    });
 
     const avgScore = allAttempts.length
       ? Math.round(allAttempts.reduce((s, a) => s + (a.percentage || 0), 0) / allAttempts.length)

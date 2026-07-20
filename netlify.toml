@@ -52,6 +52,12 @@
 [functions."monthly-billing"]
   schedule = "0 6 1 * *"
 
+# Monthly payroll accrual: open the previous month's payslip period and run the
+# first calculation. Never approves and never pays — money needs a human.
+# An hour after monthly-billing so that month's invoices are already in place.
+[functions."payroll-accrual"]
+  schedule = "0 7 1 * *"
+
 # Evening reminder of tomorrow's lessons to students & teachers.
 [functions."lesson-reminders"]
   schedule = "0 14 * * *"

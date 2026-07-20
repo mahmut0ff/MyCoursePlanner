@@ -1,7 +1,10 @@
 import React, { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { apiCreateTransaction } from '../../lib/api';
 import { Undo2, X } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { CURRENCY_SUFFIX, formatMoney } from '../../lib/money';
+import { PAYMENT_METHODS } from '../../pages/finances/expenseCategories';
 
 export interface RefundableTx {
   id: string;
@@ -30,6 +33,7 @@ interface Props {
  * что у студента снова появляется долг.
  */
 const RefundModal: React.FC<Props> = ({ tx, studentName, onClose, onSuccess }) => {
+  const { t } = useTranslation();
   const [amount, setAmount] = useState(String(tx.amount || 0));
   const [method, setMethod] = useState('cash');
   const [comment, setComment] = useState('');
@@ -53,13 +57,13 @@ const RefundModal: React.FC<Props> = ({ tx, studentName, onClose, onSuccess }) =
         studentId: tx.studentId,
         courseId: tx.courseId,
         paymentMethod: method,
-        description: comment || `Возврат: ${studentName}`,
+        description: comment || `${t('finances.refund', 'Возврат')}: ${studentName}`,
       });
-      toast.success('Возврат оформлен');
+      toast.success(t('finances.refundDone', 'Возврат оформлен'));
       onSuccess();
       onClose();
     } catch (e: any) {
-      toast.error(e.message || 'Ошибка');
+      toast.error(e.message || t('finances.error', 'Ошибка'));
     } finally {
       setSaving(false);
     }
@@ -71,59 +75,63 @@ const RefundModal: React.FC<Props> = ({ tx, studentName, onClose, onSuccess }) =
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[60] flex items-center justify-center p-4" onClick={() => { if (!saving) onClose(); }}>
       <div className="bg-white dark:bg-slate-800 rounded-2xl w-full max-w-md shadow-2xl overflow-hidden" onClick={e => e.stopPropagation()}>
         <div className="p-6 border-b border-slate-100 dark:border-slate-700 flex items-center justify-between">
-          <h2 className="text-lg font-bold text-slate-900 dark:text-white">Возврат средств</h2>
+          <h2 className="text-lg font-bold text-slate-900 dark:text-white">{t('finances.refundTitle', 'Возврат средств')}</h2>
           <button onClick={onClose} className="p-1 text-slate-400 hover:text-slate-600"><X className="w-5 h-5" /></button>
         </div>
         <div className="p-6 space-y-4">
           <div className="bg-slate-50 dark:bg-slate-900 rounded-xl p-4">
             <p className="font-medium text-slate-900 dark:text-white">{studentName}</p>
             <div className="flex justify-between mt-2 text-sm">
-              <span className="text-slate-500">Оплата от {paidOn}:</span>
-              <span className="font-bold text-emerald-600">{tx.amount.toLocaleString()} с.</span>
+              <span className="text-slate-500">{t('finances.paymentDated', 'Оплата от')} {paidOn}:</span>
+              <span className="font-bold text-emerald-600">{formatMoney(tx.amount)}</span>
             </div>
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Сумма возврата (с.)</label>
+            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+              {t('finances.refundAmount', 'Сумма возврата')} ({CURRENCY_SUFFIX})
+            </label>
             <input
               type="number" autoFocus min="1" max={tx.amount}
               value={amount} onChange={e => setAmount(e.target.value)}
               className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 text-lg font-bold dark:text-white"
             />
             {value > tx.amount && (
-              <p className="text-[11px] text-red-500 mt-1">Больше суммы этой оплаты — максимум {tx.amount.toLocaleString()} с.</p>
+              <p className="text-[11px] text-red-500 mt-1">
+                {t('finances.refundTooLarge', 'Больше суммы этой оплаты — максимум')} {formatMoney(tx.amount)}
+              </p>
             )}
           </div>
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Способ</label>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">{t('finances.method', 'Способ')}</label>
               <select value={method} onChange={e => setMethod(e.target.value)}
                 className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2.5 text-sm dark:text-white">
-                <option value="cash">💵 Наличные</option>
-                <option value="card">💳 Карта</option>
-                <option value="transfer">🏦 Перевод</option>
+                {PAYMENT_METHODS.map(m => (
+                  <option key={m.id} value={m.id}>{m.icon} {t(m.labelKey, m.fallback)}</option>
+                ))}
               </select>
             </div>
             <div>
-              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Причина</label>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">{t('finances.reason', 'Причина')}</label>
               <input type="text" value={comment} onChange={e => setComment(e.target.value)}
                 className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2.5 text-sm dark:text-white"
-                placeholder="Отказ от курса..."
+                placeholder={t('finances.refundReasonPlaceholder', 'Отказ от курса...')}
               />
             </div>
           </div>
 
           <p className="text-[11px] text-amber-800 dark:text-amber-200 bg-amber-50 dark:bg-amber-900/20 border border-amber-200/60 dark:border-amber-700/30 rounded-xl px-3 py-2">
-            Возврат попадёт в «Расходы», а по счёту снова появится долг на эту сумму. Исходная оплата останется в истории.
+            {t('finances.refundNote', 'Возврат попадёт в «Расходы», а по счёту снова появится долг на эту сумму. Исходная оплата останется в истории.')}
           </p>
         </div>
         <div className="p-6 border-t border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 flex justify-end gap-3">
-          <button onClick={onClose} className="px-4 py-2 text-sm font-medium text-slate-600 dark:text-slate-400">Отмена</button>
+          <button onClick={onClose} className="px-4 py-2 text-sm font-medium text-slate-600 dark:text-slate-400">{t('finances.cancel', 'Отмена')}</button>
           <button onClick={handleRefund} disabled={saving || invalid}
             className="bg-rose-600 hover:bg-rose-700 disabled:opacity-50 text-white px-5 py-2 rounded-xl text-sm font-bold transition-all flex items-center gap-2">
             <Undo2 className="w-4 h-4" />
-            {saving ? 'Оформление...' : 'Оформить возврат'}
+            {saving ? t('finances.processing', 'Оформление...') : t('finances.submitRefund', 'Оформить возврат')}
           </button>
         </div>
       </div>

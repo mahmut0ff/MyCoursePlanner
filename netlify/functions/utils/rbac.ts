@@ -44,6 +44,7 @@ export const RESOURCE_ACTIONS: Record<string, RbacAction[]> = {
   results: ['read'],
   ai: ['read', 'write'],
   finances: ['read', 'write', 'delete'],
+  payroll: ['read', 'write', 'delete'],
   certificates: ['read', 'write', 'delete'],
   branches: ['read', 'write', 'delete'],
   analytics: ['read'],

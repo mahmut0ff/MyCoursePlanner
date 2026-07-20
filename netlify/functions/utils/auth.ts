@@ -402,6 +402,40 @@ export function memberInBranchScope(
 }
 
 /**
+ * Applies a resolveBranchFilter() result to a single record that carries ONE
+ * `branchId` (finance transactions, payment plans) — the money-record twin of
+ * memberInBranchScope() — but deliberately NOT its "unassigned = org-wide"
+ * semantics.
+ *
+ * A record with no branchId is UNATTRIBUTED money, not org-wide money, and it is
+ * excluded whenever a filter is active — both for an explicitly requested branch
+ * and for a member restricted to branchIds[]. Two reasons this has to be strict:
+ *  - project invariant "specific branch = strict match": including branch-less
+ *    rows in every branch made branch A total = branch B total = org total, and
+ *    A + B wildly exceeded the org total;
+ *  - a member scoped to one branch would otherwise read the whole legacy
+ *    branch-less ledger they were never granted.
+ * The excluded bucket is not hidden: api-finance-metrics reports it explicitly
+ * as unassignedBranchIncome / unassignedBranchExpense so the UI can label it
+ * "не привязано к филиалу", which is honest in a way that smearing the same
+ * money across every branch never was.
+ *
+ * `'__DENIED__'` should be handled by the caller (403 / empty list) first.
+ */
+export function recordInBranchScope(
+  recordBranchId: string | null | undefined,
+  scope: string | null | string[],
+): boolean {
+  if (scope === null) return true;
+  if (scope === '__DENIED__') return false;
+  // Empty array = no branches assigned = nothing to narrow by; keep everything.
+  if (Array.isArray(scope) && scope.length === 0) return true;
+  if (!recordBranchId) return false; // unattributed — excluded under any active filter
+  if (typeof scope === 'string') return recordBranchId === scope;
+  return scope.includes(recordBranchId);
+}
+
+/**
  * A member "holds" an app role if it's their primary `role` OR appears in their
  * multi-role `roles[]` set, so a multi-role member (e.g. teacher + student)
  * shows up under every list they belong to. Falls back to the single `role`

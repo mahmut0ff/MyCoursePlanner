@@ -3,43 +3,14 @@
  * Enriches results with student/course names from users/courses collections.
  */
 import type { Handler, HandlerEvent } from '@netlify/functions';
-import { adminDb, getDocsByIds } from './utils/firebase-admin';
-import { verifyAuth, can, getOrgFilter, resolveBranchFilter, ok, unauthorized, forbidden, badRequest, notFound, jsonResponse } from './utils/auth';
+import { adminDb } from './utils/firebase-admin';
+import { verifyAuth, can, getOrgFilter, resolveBranchFilter, recordInBranchScope, requireBranchScope, ok, unauthorized, forbidden, badRequest, notFound, jsonResponse } from './utils/auth';
+import { batchGetUserNames, batchGetCourseNames } from './utils/finance-names';
 
 const COLLECTION = 'studentPaymentPlans';
 
-/**
- * Batch-fetch display names for a set of user IDs.
- * Returns a Map<uid, displayName>.
- */
-async function batchGetUserNames(uids: string[]): Promise<Map<string, string>> {
-  const nameMap = new Map<string, string>();
-  if (uids.length === 0) return nameMap;
-
-  const docs = await getDocsByIds('users', uids, ['displayName', 'firstName', 'lastName', 'name']);
-  for (const [id, d] of Object.entries(docs)) {
-    const name = d.displayName
-      || [d.firstName, d.lastName].filter(Boolean).join(' ')
-      || d.name
-      || '';
-    nameMap.set(id, name);
-  }
-  return nameMap;
-}
-
-/**
- * Batch-fetch course titles for a set of course IDs within an org.
- */
-async function batchGetCourseNames(orgId: string, courseIds: string[]): Promise<Map<string, string>> {
-  const nameMap = new Map<string, string>();
-  if (courseIds.length === 0 || !orgId) return nameMap;
-
-  const docs = await getDocsByIds('courses', courseIds, ['title', 'name']);
-  for (const [id, d] of Object.entries(docs)) {
-    nameMap.set(id, d.title || d.name || '');
-  }
-  return nameMap;
-}
+/** Зеркало union-типа PaymentStatus из src/types/index.ts. Держите синхронно. */
+const PAYMENT_STATUSES = ['paid', 'partial', 'overdue', 'pending', 'cancelled'];
 
 const handler: Handler = async (event: HandlerEvent) => {
   if (event.httpMethod === 'OPTIONS') return jsonResponse(204, '');
@@ -69,35 +40,49 @@ const handler: Handler = async (event: HandlerEvent) => {
       let results = snap.docs.map(doc => ({ id: doc.id, ...doc.data() as any }));
 
       // Memory filter
-      if (typeof branchFilter === 'string') {
-        results = results.filter(r => r.branchId === branchFilter);
-      } else if (Array.isArray(branchFilter) && branchFilter.length > 0) {
-        results = results.filter(r => branchFilter.includes(r.branchId));
+      results = results.filter(r => recordInBranchScope(r.branchId, branchFilter));
+
+      // ── Auto-detect overdue: promote plans whose deadline has passed ──
+      // This runs BEFORE the status filter: promoting after it made `?status=overdue`
+      // miss the very rows that were about to flip, while `?status=pending` returned
+      // rows whose status field already read 'overdue' by the time the client saw them.
+      const nowIso = new Date().toISOString();
+      const toPromote = results.filter(r =>
+        r.deadline &&
+        r.deadline < nowIso &&
+        (r.status === 'pending' || r.status === 'partial')
+      );
+      for (const r of toPromote) r.status = 'overdue';
+
+      // Awaited batches instead of N un-awaited writes: Netlify tears the function
+      // down once the response returns, which silently dropped the stragglers.
+      // Chunked at 450 because Firestore rejects a batch over 500 writes — one
+      // giant batch meant an org past 500 stale plans failed EVERY promotion
+      // commit forever while the response still claimed they were persisted.
+      const CHUNK = 450;
+      for (let i = 0; i < toPromote.length; i += CHUNK) {
+        const chunk = toPromote.slice(i, i + CHUNK);
+        const batch = adminDb.batch();
+        for (const r of chunk) {
+          batch.update(adminDb.collection(COLLECTION).doc(r.id), { status: 'overdue', updatedAt: nowIso });
+        }
+        try {
+          await batch.commit();
+        } catch (err) {
+          // Still return the computed 'overdue' status — it is derived from the
+          // deadline and is what the director must see. The failure is logged for
+          // us, NOT stamped onto the row: this endpoint's contract is a bare array
+          // of plan documents, and an extra `statusPersisted` field appears in
+          // every consumer that spreads the row (and in CSV exports) as a phantom
+          // column. The next GET recomputes and retries the commit anyway.
+          console.error(`Overdue promotion failed for ${chunk.length} plan(s):`, err);
+        }
       }
+
       if (params.status) {
         results = results.filter(r => r.status === params.status);
       }
 
-      // ── Auto-detect overdue: update plans whose deadline has passed ──
-      const nowIso = new Date().toISOString();
-      const overdueUpdates: Promise<void>[] = [];
-      for (const r of results) {
-        if (
-          r.deadline &&
-          r.deadline < nowIso &&
-          (r.status === 'pending' || r.status === 'partial')
-        ) {
-          r.status = 'overdue';
-          overdueUpdates.push(
-            adminDb.collection(COLLECTION).doc(r.id).update({ status: 'overdue', updatedAt: nowIso }).then(() => {}).catch(() => {})
-          );
-        }
-      }
-      // Fire-and-forget batch update (don't block response)
-      if (overdueUpdates.length > 0) {
-        Promise.all(overdueUpdates).catch(() => {});
-      }
-      
       // Memory sort
       results.sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
 
@@ -141,6 +126,31 @@ const handler: Handler = async (event: HandlerEvent) => {
       const orgFilter = getOrgFilter(user);
       if (!orgFilter) return badRequest('Organization context required');
 
+      // totalAmount — деньги: строка '5000' раньше уезжала в документ как есть, а
+      // потом любой пересчёт долга склеивал её со суммой оплаты вместо сложения.
+      const totalAmount = Number(body.totalAmount);
+      if (!Number.isFinite(totalAmount) || totalAmount < 0) {
+        return badRequest('totalAmount должен быть неотрицательным числом');
+      }
+      const paidAmount = Math.max(0, Number(body.paidAmount) || 0);
+
+      // Статус проверяем тем же списком, что и PUT: неизвестная строка выпала бы из
+      // КАЖДОГО фильтра по статусу и сделала счёт невидимым для долгов и рассылки.
+      const status = body.status ?? 'pending';
+      if (!PAYMENT_STATUSES.includes(status)) {
+        return badRequest(`Недопустимый статус счёта. Допустимые: ${PAYMENT_STATUSES.join(', ')}.`);
+      }
+
+      // Единственная финансовая мутация, которая раньше НЕ проверяла филиал: тело
+      // спредилось в документ целиком, поэтому сотрудник, ограниченный филиалом А,
+      // мог создать счёт с branchId филиала Б, просто прислав его в теле. Резолвим
+      // тем же фолбэком, что и приём оплаты в api-finance-transactions
+      // (нет привязанного счёта, поэтому только body → primaryBranchId → null), и
+      // проверяем ТО, ЧТО РЕАЛЬНО ЗАПИШЕМ.
+      const branchId = body.branchId ?? user.primaryBranchId ?? null;
+      const branchError = requireBranchScope(user, branchId);
+      if (branchError) return branchError;
+
       // Denormalize: resolve names at write time so future reads are instant
       let studentName = body.studentName || '';
       let courseName = body.courseName || '';
@@ -169,16 +179,28 @@ const handler: Handler = async (event: HandlerEvent) => {
       await Promise.all(nameFetches);
 
       const now = new Date().toISOString();
-      const data = {
-        ...body,
+      // Явный аллоулист вместо `...body`: клиент не может протолкнуть organizationId,
+      // произвольный branchId или служебные поля. Набор зеркалит то, что реально
+      // пишут CreatePaymentPlanModal и syncPaymentPlans в api-org.ts.
+      const data: Record<string, any> = {
+        studentId: body.studentId,
         studentName,
+        courseId: body.courseId,
         courseName,
+        totalAmount,
+        paidAmount,
+        status, // 'paid' | 'partial' | 'overdue' | 'pending' | 'cancelled'
+        deadline: body.deadline ?? null,
+        branchId,
         organizationId: orgFilter,
-        paidAmount: body.paidAmount || 0,
-        status: body.status || 'pending', // 'paid' | 'partial' | 'overdue' | 'pending'
         createdAt: now,
         updatedAt: now,
       };
+      // Теги ежемесячного биллинга переносим только когда они присланы, чтобы
+      // ручной счёт не притворялся авто-выставленным (см. syncPaymentPlans).
+      if (body.billingType !== undefined) data.billingType = body.billingType;
+      if (body.period !== undefined) data.period = body.period;
+      if (body.nextDueDate !== undefined) data.nextDueDate = body.nextDueDate;
 
       const ref = await adminDb.collection(COLLECTION).add(data);
       return ok({ id: ref.id, ...data });
@@ -191,14 +213,49 @@ const handler: Handler = async (event: HandlerEvent) => {
       const body = JSON.parse(event.body || '{}');
       if (!body.planId) return badRequest('planId required');
 
-      const { planId, ...updateFields } = body;
-      updateFields.updatedAt = new Date().toISOString();
+      const docRef = adminDb.collection(COLLECTION).doc(body.planId);
+      const doc = await docRef.get();
+      if (!doc.exists) return notFound('Payment plan not found');
 
-      const docRef = adminDb.collection(COLLECTION).doc(planId);
-      await docRef.update(updateFields);
+      const orgFilter = getOrgFilter(user);
+      const existing = doc.data()!;
+      // Without this, any finances:write holder could rewrite any plan in any org
+      // by guessing an id — the body used to be spread in blind.
+      if (existing.organizationId !== orgFilter) return forbidden();
 
-      const updated = await docRef.get();
-      return ok({ id: updated.id, ...updated.data() });
+      const branchError = requireBranchScope(user, existing.branchId);
+      if (branchError) return branchError;
+
+      // Explicit allowlist. organizationId/studentId/createdAt are identity and must
+      // never move; paidAmount is owned by the transaction side effects, so letting a
+      // PUT set it directly would desync the plan from its payment history.
+      const updates: any = { updatedAt: new Date().toISOString() };
+      if (body.totalAmount !== undefined) {
+        const totalAmount = Number(body.totalAmount);
+        if (!Number.isFinite(totalAmount) || totalAmount < 0) return badRequest('totalAmount должен быть неотрицательным числом');
+        updates.totalAmount = totalAmount;
+      }
+      if (body.deadline !== undefined) updates.deadline = body.deadline;
+      // Статус проходил насквозь без проверки: любая строка ('оплачено', 'done',
+      // опечатка) оседала в документе и выпадала из КАЖДОГО фильтра по статусу —
+      // счёт становился невидимым и для долгов, и для просрочки, и для рассылки.
+      if (body.status !== undefined) {
+        if (!PAYMENT_STATUSES.includes(body.status)) {
+          return badRequest(`Недопустимый статус счёта. Допустимые: ${PAYMENT_STATUSES.join(', ')}.`);
+        }
+        updates.status = body.status;
+      }
+      if (body.courseId !== undefined) updates.courseId = body.courseId;
+      if (body.courseName !== undefined) updates.courseName = body.courseName;
+      if (body.studentName !== undefined) updates.studentName = body.studentName;
+      if (body.branchId !== undefined) {
+        const targetBranchError = requireBranchScope(user, body.branchId);
+        if (targetBranchError) return targetBranchError;
+        updates.branchId = body.branchId;
+      }
+
+      await docRef.update(updates);
+      return ok({ id: doc.id, ...existing, ...updates });
     }
 
     // DELETE Payment Plan
@@ -214,6 +271,24 @@ const handler: Handler = async (event: HandlerEvent) => {
 
       const orgFilter = getOrgFilter(user);
       if (doc.data()?.organizationId !== orgFilter) return forbidden();
+
+      // Deleting the plan orphans its transactions (dangling paymentPlanId), and an
+      // orphaned payment can no longer be refunded or traced back to a debt. Make the
+      // caller acknowledge that instead of silently shredding the audit trail.
+      // Two equality clauses — still no composite index needed. The organizationId
+      // clause is not optional: without it the count included foreign-tenant rows,
+      // which both leaked a cross-tenant number in the 409 body and let another
+      // org's document block a legitimate delete.
+      const linkedSnap = await adminDb.collection('financeTransactions')
+        .where('paymentPlanId', '==', planId)
+        .where('organizationId', '==', orgFilter)
+        .get();
+      if (linkedSnap.size > 0 && params.force !== 'true') {
+        return jsonResponse(409, {
+          error: `К этому счёту привязано операций: ${linkedSnap.size}. Удаление оставит их без счёта.`,
+          linkedTransactions: linkedSnap.size,
+        });
+      }
 
       await docRef.delete();
       return ok({ deleted: true, id: planId });

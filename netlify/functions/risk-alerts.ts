@@ -16,6 +16,7 @@ import type { Handler, HandlerEvent } from '@netlify/functions';
 import { adminDb } from './utils/firebase-admin';
 import { notifyOrgAdmins } from './utils/notifications';
 import { jsonResponse } from './utils/auth';
+import { isDebtBearingPlan, planDebt } from './utils/payment-plans';
 
 const ABSENCE_WINDOW_DAYS = 30;
 const ABSENCE_THRESHOLD = 3;
@@ -63,8 +64,11 @@ const handler: Handler = async (event: HandlerEvent) => {
       const overdueByStudent = new Map<string, number>();
       for (const p of overdueSnap.docs) {
         const data = p.data() as any;
-        const debt = Math.max(0, (data.totalAmount || 0) - (data.paidAmount || 0));
-        overdueByStudent.set(data.studentId, (overdueByStudent.get(data.studentId) || 0) + debt);
+        // status == 'overdue' already excludes written-off ('cancelled') plans; the
+        // shared predicate also drops fully-settled ones, so we never tell an owner
+        // a student "просрочена оплата" when the balance is zero.
+        if (!isDebtBearingPlan(data)) continue;
+        overdueByStudent.set(data.studentId, (overdueByStudent.get(data.studentId) || 0) + planDebt(data));
       }
 
       // Average exam/quiz score (only trust it once there are ≥2 graded attempts).

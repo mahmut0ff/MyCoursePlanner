@@ -1,6 +1,7 @@
 import type { ElementType } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../contexts/AuthContext';
+import { useBranch } from '../../contexts/BranchContext';
 import { useOrg } from '../../contexts/OrgContext';
 import { usePlanGate } from '../../contexts/PlanContext';
 import { usePermissions } from '../../contexts/PermissionsContext';
@@ -44,12 +45,79 @@ export interface NavSectionDef {
   items: NavItemDef[];
 }
 
+/**
+ * Branch scoping — which switcher state a destination is meaningful in.
+ *
+ * The branch switcher has two modes: «Все филиалы» (`activeBranchId === null`)
+ * and one specific branch. A destination whose data carries no `branchId` shows
+ * the same org-wide list in both modes, so offering it under a branch is a lie;
+ * a destination whose data IS branch-scoped is only ever a partial view under
+ * «Все филиалы». Either way the menu promises a filter it does not apply, so the
+ * entry is dropped in the mode where it does not belong.
+ *
+ * Keyed by nav id, not per role branch: an id means the same destination for
+ * every role (see the header note above), so `courses` is classified once and
+ * the admin, manager, teacher and student menus all inherit it.
+ *
+ * Anything in NEITHER set stays visible in both modes — that is the default and
+ * the right answer whenever a page reads sensibly org-wide *and* per branch
+ * (dashboard, people lists, analytics), whenever the entry is the only route to
+ * a destination, or whenever the server does not honour `branchId` yet.
+ *
+ * `team` and `orgSettings` are the only-route case and must stay unscoped even
+ * though neither is branch-aware: nothing in the app links to /team except this
+ * menu, so scoping it would leave a branch-selected admin no way to reach RBAC
+ * at all; and the footer gear in Sidebar.tsx exists only for super_admin, admin
+ * and teacher, so a manager under a branch would lose /org-settings — which is
+ * also the only surface where SidebarCustomizerCard is mounted for them, i.e.
+ * the trimmed menu could not even be un-trimmed. Give each a second entry point
+ * before moving it into ALL_BRANCHES_ONLY.
+ *
+ * `lessons` and `exams` are the stale-server case on purpose:
+ * LessonPlan/Exam declare `branchId` and both endpoints sit in api.ts's
+ * BRANCH_SCOPED_ENDPOINTS, but api-lessons.ts and api-exams.ts never read the
+ * param, so the lists do not actually narrow. Move them into ONE_BRANCH_ONLY
+ * once those functions filter server-side.
+ */
+const ALL_BRANCHES_ONLY = new Set<string>([
+  // Course = the org-wide catalogue. The branch lives on Group ("this course,
+  // in this branch, for these students") — see the comment on Course in types.
+  'courses', 'studentCourses',
+  'materials', 'quizLibrary',   // library content, org-wide
+  'leads',                      // no branchId on leads
+  'ai',                         // org-wide insights hub
+  // Safe to scope only because the BranchSwitcher's own footer carries a
+  // «Управлять филиалами» link to /branches, so this is never the last way in.
+  'branches',
+]);
+
+const ONE_BRANCH_ONLY = new Set<string>([
+  'groups',                          // the canonical branch carrier
+  'schedule', 'studentSchedule',     // ScheduleEvent.branchId
+  'finances',                        // FinancialTransaction/PaymentPlan branchId
+  'journal', 'gradebook',            // branch enters via the group behind each entry
+]);
+
+export interface NavModelOptions {
+  /**
+   * Apply the branch-scope filter above. Default true. The sidebar personalisation
+   * card passes `false`: it must list every entry the user is entitled to, or an
+   * item hidden by the current branch mode could never be toggled back on.
+   */
+  branchScope?: boolean;
+}
+
 /** Nav the CURRENT user is entitled to see, before personal hide-preferences. */
-export function useNavModel(instType?: string): NavSectionDef[] {
+export function useNavModel(instType?: string, opts?: NavModelOptions): NavSectionDef[] {
   const { t } = useTranslation();
   const { role, isSuperAdmin, isTeacher, isManager, organizationId } = useAuth();
   const { canAccess } = usePlanGate();
   const { canRead } = usePermissions();
+  // `canSwitch` (more than one branch) — not just `activeBranchId` — because a
+  // single-branch org auto-selects that branch and one with no branches can only
+  // ever be null. Scoping either would permanently amputate half their menu for
+  // a distinction they cannot make.
+  const { activeBranchId, canSwitch } = useBranch();
   // planId comes from the org document, not PlanContext: PlanContext skips the
   // subscription fetch for students, so its planId is always 'starter' there.
   const { orgData } = useOrg();
@@ -307,7 +375,21 @@ export function useNavModel(instType?: string): NavSectionDef[] {
     ],
   });
 
+  // Branch scope, last: it trims what the role branches above assembled, so a
+  // destination still has to be granted by RBAC before the switcher can hide it.
+  // Cosmetic like sidebar prefs — the route and the API stay reachable, and
+  // flipping the switcher back restores the entry.
+  const scoped =
+    canSwitch && opts?.branchScope !== false
+      ? sections.map((s) => ({
+          ...s,
+          items: s.items.filter((it) =>
+            activeBranchId === null ? !ONE_BRANCH_ONLY.has(it.id) : !ALL_BRANCHES_ONLY.has(it.id),
+          ),
+        }))
+      : sections;
+
   // A section with nothing in it must not leave a stray caption (or divider)
   // behind — the teacher menu already did this by hand for «Управление».
-  return sections.filter((s) => s.items.length > 0);
+  return scoped.filter((s) => s.items.length > 0);
 }

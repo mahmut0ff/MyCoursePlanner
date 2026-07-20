@@ -24,7 +24,11 @@ const SidebarCustomizerCard: React.FC<{ className?: string }> = ({ className }) 
   // Same institution type the sidebar passes, so «Ученики»/«Классы» read
   // identically in both places instead of falling back to the generic terms.
   const { institutionType } = useOrg();
-  const sections = useNavModel(institutionType);
+  // branchScope: false — the live menu drops entries that do not belong to the
+  // current branch-switcher mode, but this card must offer every entry the user
+  // is entitled to. Filtering here would make «Курсы» untoggleable while a
+  // branch is selected, and silently reword the list as the switcher moves.
+  const sections = useNavModel(institutionType, { branchScope: false });
   const { hidden, isHidden, toggle, reset } = useSidebarPrefs(profile?.uid);
 
   // Nothing to customise (e.g. model still deriving) — stay out of the way.

@@ -10,6 +10,7 @@ interface GradeCellProps {
   onChange: (value: number | null, displayValue: string | undefined, status: GradeStatus, comment?: string) => void;
   tabIndex?: number;
   isSyncing?: boolean;
+  readOnly?: boolean;
 }
 
 const statusColors: Record<GradeStatus, string> = {
@@ -20,7 +21,7 @@ const statusColors: Record<GradeStatus, string> = {
   missing: 'bg-violet-500/10 text-violet-600 dark:text-violet-400',
 };
 
-const GradeCell: React.FC<GradeCellProps> = ({ studentId, itemId, value, schema, onChange, tabIndex, isSyncing }) => {
+const GradeCell: React.FC<GradeCellProps> = ({ studentId, itemId, value, schema, onChange, tabIndex, isSyncing, readOnly = false }) => {
   const [editing, setEditing] = useState(false);
   const [tempVal, setTempVal] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
@@ -92,6 +93,9 @@ const GradeCell: React.FC<GradeCellProps> = ({ studentId, itemId, value, schema,
 
   const handleKeyDownNormal = (e: React.KeyboardEvent<HTMLDivElement>) => {
     if (editing) return;
+    // Read-only viewers keep focus and arrow-key navigation (handled by the grid's
+    // window listener) — only the edit/clear keys are inert.
+    if (readOnly) return;
 
     if (e.key === 'Enter') {
       e.preventDefault();
@@ -127,9 +131,10 @@ const GradeCell: React.FC<GradeCellProps> = ({ studentId, itemId, value, schema,
     <div
       ref={cellRef}
       tabIndex={tabIndex}
-      className={`w-full h-full min-h-[48px] flex flex-col items-center justify-center outline-none cursor-cell transition-all ring-inset focus:ring-2 focus:ring-primary-400 hover:bg-slate-50/80 dark:hover:bg-slate-700/50 group relative ${statusColors[status]}`}
+      className={`w-full h-full min-h-[48px] flex flex-col items-center justify-center outline-none ${readOnly ? 'cursor-default' : 'cursor-cell'} transition-all ring-inset focus:ring-2 focus:ring-primary-400 hover:bg-slate-50/80 dark:hover:bg-slate-700/50 group relative ${statusColors[status]}`}
       onClick={() => {
          // Single click to edit for ease.
+         if (readOnly) return;
          setTempVal(displayVal);
          setEditing(true);
       }}

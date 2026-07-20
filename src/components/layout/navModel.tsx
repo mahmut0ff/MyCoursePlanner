@@ -119,9 +119,15 @@ export function useNavModel(instType?: string): NavSectionDef[] {
       label: t('nav.secLearning', 'Обучение'),
       items: [
         { id: 'courses', to: '/courses', icon: FolderOpen, label: t('nav.courses') },
+        { id: 'groups', to: '/groups', icon: Layers, label: term(t, inst, 'groups') },
         { id: 'lessons', to: '/lessons', icon: BookOpen, label: t('nav.lessons') },
         { id: 'exams', to: '/exams', icon: ClipboardList, label: t('nav.exams') },
         { id: 'schedule', to: '/schedule', icon: Calendar, label: t('nav.schedule') },
+        // The admin menu had no way into the gradebook at all: /gradebook and
+        // /journal were reachable only by typing the URL. No canRead() guard here
+        // because the whole admin branch is unguarded — admins hold every grant.
+        { id: 'journal', to: '/journal', icon: NotebookPen, label: t('nav.journal', 'Журнал'), locked: !canAccess('gradebook') },
+        { id: 'gradebook', to: '/gradebook', icon: TableProperties, label: t('nav.gradebook', 'Оценки'), locked: !canAccess('gradebook') },
         { id: 'materials', to: '/materials', icon: FileText, label: t('nav.materials') },
         { id: 'quizLibrary', to: '/quiz/library', icon: Gamepad2, label: t('nav.quizLibrary') },
       ],
@@ -161,6 +167,11 @@ export function useNavModel(instType?: string): NavSectionDef[] {
     if (canRead('lessons')) learning.push({ id: 'lessons', to: '/lessons', icon: BookOpen, label: t('nav.lessons') });
     if (canRead('exams')) learning.push({ id: 'exams', to: '/exams', icon: ClipboardList, label: t('nav.exams') });
     if (canRead('schedule')) learning.push({ id: 'schedule', to: '/schedule', icon: Calendar, label: t('nav.schedule') });
+    // Both gradebook destinations sit here, next to the courses and groups they
+    // read from — same order as the teacher and admin menus. Gradebook used to be
+    // the lone entry under «Управление» and /journal was missing entirely.
+    if (canRead('gradebook')) learning.push({ id: 'journal', to: '/journal', icon: NotebookPen, label: t('nav.journal', 'Журнал'), locked: !canAccess('gradebook') });
+    if (canRead('gradebook')) learning.push({ id: 'gradebook', to: '/gradebook', icon: TableProperties, label: t('nav.gradebook', 'Оценки'), locked: !canAccess('gradebook') });
     if (canRead('materials')) learning.push({ id: 'materials', to: '/materials', icon: FileText, label: t('nav.materials') });
     if (canRead('quizzes')) learning.push({ id: 'quizLibrary', to: '/quiz/library', icon: Gamepad2, label: t('nav.quizLibrary') });
     sections.push({ id: 'learning', label: t('nav.secLearning', 'Обучение'), items: learning });
@@ -170,7 +181,6 @@ export function useNavModel(instType?: string): NavSectionDef[] {
     if (canRead('finances')) management.push({ id: 'finances', to: '/finances', icon: CreditCard, label: t('nav.finances', 'Финансы'), locked: !canAccess('finances') });
     if (canRead('branches')) management.push({ id: 'branches', to: '/branches', icon: MapPin, label: t('nav.branches', 'Филиалы'), locked: !canAccess('branches') });
     if (canRead('settings')) management.push({ id: 'orgSettings', to: '/org-settings', icon: Settings, label: t('nav.orgSettings', 'Настройки') });
-    if (canRead('gradebook')) management.push({ id: 'gradebook', to: '/gradebook', icon: TableProperties, label: t('nav.gradebook', 'Успеваемость'), locked: !canAccess('gradebook') });
     if (canRead('analytics')) management.push({ id: 'analytics', to: '/teacher-analytics', icon: BarChart3, label: t('nav.analytics'), locked: !canAccess('advancedAnalytics') });
     sections.push({ id: 'management', label: t('nav.secManagement', 'Управление'), items: management });
   }

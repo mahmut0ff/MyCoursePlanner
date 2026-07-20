@@ -6,7 +6,7 @@
 import type { Handler, HandlerEvent } from '@netlify/functions';
 import { adminDb } from './utils/firebase-admin';
 import {
-  verifyAuth, isStaff, hasRole, can,
+  verifyAuth, hasRole, can,
   ok, unauthorized, forbidden, badRequest, notFound, jsonResponse,
   type AuthUser,
 } from './utils/auth';
@@ -56,14 +56,18 @@ const handler: Handler = async (event: HandlerEvent) => {
   const action = params.action || '';
   const orgId = user.organizationId;
 
-  // RBAC: gradebook mutations require the matching grant (admins always pass).
-  // Student self-reads (grades/journal GET) are unaffected.
-  if (event.httpMethod === 'POST') {
-    if (action === 'deleteGrade') {
-      if (!can(user, 'gradebook', 'delete')) return forbidden('Недостаточно прав для этого действия');
-    } else if (['grade', 'bulkGrades', 'schema', 'journal', 'bulkAttendance'].includes(action)) {
-      if (!can(user, 'gradebook', 'write')) return forbidden('Недостаточно прав для этого действия');
-    }
+  // RBAC: every gradebook operation is gated on the `gradebook` grant — reads
+  // included. This used to be a per-action `isStaff()` check, which matched only
+  // the four built-in roles: a custom role holding gradebook:read was granted the
+  // sidebar link and the route, then got a 403 from the API. Gating on the grant
+  // makes the resolved permission set the single source of truth, and closes the
+  // GET schema branch, which had no check at all.
+  // Students are exempt: their grades/journal GET branches below narrow to own uid.
+  if (!hasRole(user, 'student')) {
+    const needed = event.httpMethod === 'POST'
+      ? (action === 'deleteGrade' ? 'delete' : 'write')
+      : 'read';
+    if (!can(user, 'gradebook', needed)) return forbidden('Недостаточно прав для этого действия');
   }
 
   try {
@@ -83,7 +87,6 @@ const handler: Handler = async (event: HandlerEvent) => {
       }
 
       if (!courseId) return badRequest('courseId required');
-      if (!isStaff(user)) return forbidden();
       const hasAccess = await verifyCourseAccess(user, courseId);
       if (!hasAccess) return forbidden();
 
@@ -100,7 +103,6 @@ const handler: Handler = async (event: HandlerEvent) => {
      * Uses version for optimistic locking.
      */
     if (action === 'grade' && event.httpMethod === 'POST') {
-      if (!isStaff(user)) return forbidden();
       const body = JSON.parse(event.body || '{}');
       const { studentId, courseId, lessonId, assignmentId, value, displayValue, type, maxValue, status, comment, version } = body;
       if (!studentId || !courseId) return badRequest('studentId and courseId required');
@@ -190,7 +192,6 @@ const handler: Handler = async (event: HandlerEvent) => {
 
     /** POST bulkGrades — batch upsert multiple grades atomically */
     if (action === 'bulkGrades' && event.httpMethod === 'POST') {
-      if (!isStaff(user)) return forbidden();
       const body = JSON.parse(event.body || '{}');
       const { grades, courseId } = body;
       if (!courseId || !Array.isArray(grades)) return badRequest('courseId and grades[] required');
@@ -281,7 +282,6 @@ const handler: Handler = async (event: HandlerEvent) => {
 
     /** DELETE grade */
     if (action === 'deleteGrade' && event.httpMethod === 'POST') {
-      if (!isStaff(user)) return forbidden();
       const body = JSON.parse(event.body || '{}');
       if (!body.id) return badRequest('id required');
       const doc = await adminDb.collection('grades').doc(body.id).get();
@@ -303,7 +303,6 @@ const handler: Handler = async (event: HandlerEvent) => {
     }
 
     if (action === 'schema' && event.httpMethod === 'POST') {
-      if (!isStaff(user)) return forbidden();
       const body = JSON.parse(event.body || '{}');
       const { courseId, gradingType, scale, passThreshold, rules } = body;
       if (!courseId) return badRequest('courseId required');
@@ -350,7 +349,6 @@ const handler: Handler = async (event: HandlerEvent) => {
       }
 
       if (!courseId) return badRequest('courseId required');
-      if (!isStaff(user)) return forbidden();
       let q: any = orgQuery('journal', orgId).where('courseId', '==', courseId);
       if (studentId) q = q.where('studentId', '==', studentId);
       const snap = await q.get();
@@ -366,7 +364,6 @@ const handler: Handler = async (event: HandlerEvent) => {
      * Unique key: (studentId + courseId + date)
      */
     if (action === 'journal' && event.httpMethod === 'POST') {
-      if (!isStaff(user)) return forbidden();
       const body = JSON.parse(event.body || '{}');
       const { studentId, courseId, date, attendance, participation, note, flags, version } = body;
       if (!studentId || !courseId || !date) return badRequest('studentId, courseId, date required');
@@ -426,13 +423,133 @@ const handler: Handler = async (event: HandlerEvent) => {
 
     /** POST bulkAttendance — mark attendance for all students in a course for a date */
     if (action === 'bulkAttendance' && event.httpMethod === 'POST') {
-      if (!isStaff(user)) return forbidden();
       const body = JSON.parse(event.body || '{}');
-      const { courseId, date, entries } = body;
+      // groupId/teacherId/durationMinutes — аддитивные поля для payroll (lessonSessions).
+      // Старые вызовы их не шлют: тогда пишем только журнал, как раньше.
+      const { courseId, date, entries, groupId, teacherId, durationMinutes } = body;
       if (!courseId || !date || !Array.isArray(entries)) return badRequest('courseId, date, entries[] required');
 
       const hasAccess = await verifyCourseAccess(user, courseId);
       if (!hasAccess) return forbidden();
+
+      // ── lessonSessions: подготавливаем данные ДО батча, чтобы запись «урок состоялся»
+      // легла в тот же commit, что и журнал (атомарность: либо и то и другое, либо ничего).
+      // groupId — единственный факт, которого нет в journal; без него сессию не пишем.
+      let sessionRef: FirebaseFirestore.DocumentReference | null = null;
+      let sessionData: Record<string, any> | null = null;
+      let sessionIsUpdate = false;
+      if (groupId) {
+        // Читаем группу: и cross-tenant проверка, и источник teacherId/branchId/courseId.
+        const groupDoc = await adminDb.collection('groups').doc(groupId).get();
+        if (!groupDoc.exists || groupDoc.data()!.organizationId !== orgId) {
+          return badRequest('groupId invalid for this organization');
+        }
+        const group = groupDoc.data()!;
+
+        // teacherId: явный из тела → ЕДИНСТВЕННЫЙ препод группы → null.
+        // НИКОГДА не user.uid (это createdBy — кто отметил журнал, а не кто вёл занятие).
+        // null — честная «неатрибутированная сессия»: per_hour/per_lesson/per_student
+        // такие сессии просто пропускают, спорную атрибуцию director поправит вручную.
+        // `??`, не `||`: пустой строкой teacherId не бывает, а null от нескольких преподов
+        // должен падать в null, а не срабатывать как falsy-фолбэк на user.uid.
+        const groupTeacherIds: string[] = Array.isArray(group.teacherIds) ? group.teacherIds : [];
+        const resolvedTeacherId: string | null =
+          teacherId ?? (groupTeacherIds.length === 1 ? groupTeacherIds[0] : null);
+
+        // Consistency: сессия принадлежит ГРУППЕ, и группа — источник истины «какой курс
+        // она ведёт». При расхождении request.courseId с group.courseId пишем сессию с
+        // групповым courseId (и логируем): чужой courseId сломал бы scope в payroll
+        // (per_lesson/per_hour/per_student фильтруют сессии по courseIds). Пропускать сессию
+        // нельзя — иначе «урок состоялся» потеряется и учитель недополучит оплату.
+        let sessionCourseId = courseId;
+        if (group.courseId && group.courseId !== courseId) {
+          console.warn(
+            `bulkAttendance: courseId mismatch for group ${groupId} — request=${courseId}, group=${group.courseId}. Writing lessonSession with group's courseId.`,
+          );
+          sessionCourseId = group.courseId;
+        }
+
+        // branchId зеркалит финансовый модуль: сначала филиал группы, затем курса, иначе null.
+        let branchId: string | null = group.branchId ?? null;
+        if (branchId == null) {
+          const courseDoc = await adminDb.collection('courses').doc(sessionCourseId).get();
+          branchId = courseDoc.exists ? (courseDoc.data()!.branchId ?? null) : null;
+        }
+
+        // headcount = присутствовавшие: present + late (опоздавший всё равно был на занятии).
+        // Считаем по фактически размеченным записям — это база для per_student в payroll.
+        const headcount = entries.filter((e: any) => {
+          const a = e.attendance || 'present';
+          return a === 'present' || a === 'late';
+        }).length;
+
+        // Идемпотентность: дедуп по (organizationId, groupId, date) — повторная отправка
+        // переклички за тот же день обновляет сессию, а не плодит дубли. Запрос equality-only.
+        const existingSession = await orgQuery('lessonSessions', orgId)
+          .where('groupId', '==', groupId)
+          .where('date', '==', date)
+          .limit(1).get();
+
+        if (!existingSession.empty) {
+          sessionIsUpdate = true;
+          sessionRef = existingSession.docs[0].ref;
+          sessionData = {
+            teacherId: resolvedTeacherId,
+            branchId,
+            courseId: sessionCourseId,
+            headcount,
+            status: 'held',
+            confirmedBy: user.uid,
+            confirmedAt: now(),
+            updatedAt: now(),
+          };
+          // durationMinutes перезаписываем только если явно прислан (в т.ч. null «очистить»);
+          // иначе не затираем ранее сохранённую длительность/sourceEventId на повторной отметке.
+          if (durationMinutes !== undefined) sessionData.durationMinutes = durationMinutes;
+        } else {
+          // durationMinutes/sourceEventId берём из расписания, не хардкодим. Один equality-read
+          // scheduleEvents по группе (приемлемо — раз на группу в день, только при создании).
+          // В JS выбираем: датированное событие на эту дату, иначе рекуррентное по дню недели.
+          let sourceEventId: string | null = null;
+          let plannedDuration: number | null = null;
+          const evSnap = await orgQuery('scheduleEvents', orgId)
+            .where('groupId', '==', groupId)
+            .get();
+          if (!evSnap.empty) {
+            const evs = evSnap.docs.map((d) => ({ id: d.id, ...(d.data() as any) }));
+            // Дата → день недели в проектной нумерации 0=Пн..6=Вс (как в lesson-reminders.ts).
+            // UTC-разбор 'YYYY-MM-DD', чтобы локальная TZ не сдвинула день.
+            const weekday = (new Date(`${date}T00:00:00Z`).getUTCDay() + 6) % 7;
+            const match =
+              evs.find((e) => !e.recurring && e.date === date) ??
+              evs.find((e) => e.recurring && e.dayOfWeek === weekday);
+            if (match) {
+              sourceEventId = match.id;
+              if (typeof match.duration === 'number') plannedDuration = match.duration;
+            }
+          }
+
+          sessionRef = adminDb.collection('lessonSessions').doc();
+          sessionData = {
+            organizationId: orgId,
+            branchId,
+            groupId,
+            courseId: sessionCourseId,
+            teacherId: resolvedTeacherId,
+            date,
+            // Явный body.durationMinutes побеждает; иначе плановая из scheduleEvent;
+            // иначе честный null. null-сессию per_hour пропускает (нельзя пропорционировать
+            // неизвестное время) — видимый ноль вместо догадки.
+            durationMinutes: durationMinutes !== undefined ? durationMinutes : plannedDuration,
+            status: 'held',
+            headcount,
+            sourceEventId,
+            confirmedBy: user.uid,
+            confirmedAt: now(),
+            createdAt: now(),
+          };
+        }
+      }
 
       const batch = adminDb.batch();
       const results: any[] = [];
@@ -468,6 +585,12 @@ const handler: Handler = async (event: HandlerEvent) => {
           batch.set(ref, data);
           results.push({ id: ref.id, ...data });
         }
+      }
+
+      // Сессия — в тот же батч, что и журнал: атомарный commit «урок состоялся».
+      if (sessionRef && sessionData) {
+        if (sessionIsUpdate) batch.update(sessionRef, sessionData);
+        else batch.set(sessionRef, sessionData);
       }
 
       await batch.commit();

@@ -15,6 +15,7 @@ import GradeSchemaConfig from '../../components/gradebook/GradeSchemaConfig';
 import { BookOpen, Settings, AlertCircle, RefreshCcw } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useAuth } from '../../contexts/AuthContext';
+import { usePermissions } from '../../contexts/PermissionsContext';
 import { useOrg } from '../../contexts/OrgContext';
 import { getInstitution } from '../../lib/terminology';
 import { getPreset } from '../../lib/gradePresets';
@@ -38,12 +39,20 @@ function makeDefaultSchema(presetId: string | undefined, courseId = ''): GradeSc
 const GradebookPage: React.FC = () => {
   const { t } = useTranslation();
   const { role, profile } = useAuth();
+  const { canWrite } = usePermissions();
   const { institutionType } = useOrg();
   const defaultPresetId = getInstitution(institutionType).defaultGradePresetId;
+  // Mirrors JournalPage: editing follows the resolved gradebook grant, not the base
+  // role, so a viewer-only role sees the grid but cannot write — matching the API.
+  const isReadOnly = !canWrite('gradebook');
   const [courses, setCourses] = useState<Course[]>([]);
   const [selectedCourseId, setSelectedCourseId] = useState<string>('');
-  
-  const [students, setStudents] = useState<UserProfile[]>([]);
+  // Empty = «все группы» (the union of the course's groups), which is what the page
+  // used to show unconditionally with no way to narrow it down.
+  const [selectedGroupId, setSelectedGroupId] = useState<string>('');
+  const [courseGroups, setCourseGroups] = useState<Group[]>([]);
+
+  const [allStudents, setAllStudents] = useState<UserProfile[]>([]);
   const [grades, setGrades] = useState<Record<string, GradeEntry>>({});
   const [schema, setSchema] = useState<GradeSchema>(() => makeDefaultSchema(defaultPresetId));
   const [syncStatus, setSyncStatus] = useState<Record<string, boolean>>({});
@@ -92,18 +101,14 @@ const GradebookPage: React.FC = () => {
       ]);
 
       // Filter groups for this course
-      let courseGroups = (allGroups as Group[]).filter(g => g.courseId === courseId);
-      
+      let groups = (allGroups as Group[]).filter(g => g.courseId === courseId);
+
       if (role === 'teacher' && profile?.uid) {
-         courseGroups = courseGroups.filter((g: Group) => g.teacherIds?.includes(profile.uid));
+         groups = groups.filter((g: Group) => g.teacherIds?.includes(profile.uid));
       }
 
-      const studentIds = new Set<string>();
-      courseGroups.forEach(g => g.studentIds.forEach(id => studentIds.add(id)));
-      
-      const enrolledStudents = (allStudents as UserProfile[]).filter(s => studentIds.has(s.uid));
-      setStudents(enrolledStudents);
-
+      setCourseGroups(groups);
+      setAllStudents(allStudents as UserProfile[]);
 
       setSchema(schemaRes || makeDefaultSchema(defaultPresetId, courseId));
 
@@ -125,6 +130,22 @@ const GradebookPage: React.FC = () => {
       loadData(selectedCourseId);
     }
   }, [selectedCourseId, courses]);
+
+  // A group filter only makes sense within one course, so drop it when the course
+  // changes rather than leaving a stale id that matches nothing.
+  useEffect(() => {
+    setSelectedGroupId('');
+  }, [selectedCourseId]);
+
+  /** Roster for the grid: one group when filtered, otherwise every group's students. */
+  const students = useMemo(() => {
+    const groups = selectedGroupId
+      ? courseGroups.filter(g => g.id === selectedGroupId)
+      : courseGroups;
+    const studentIds = new Set<string>();
+    groups.forEach(g => g.studentIds.forEach(id => studentIds.add(id)));
+    return allStudents.filter(s => studentIds.has(s.uid));
+  }, [courseGroups, selectedGroupId, allStudents]);
 
   const handleGradeChange = (studentId: string, itemId: string, value: number | null, displayValue: string | undefined, status: any, comment?: string) => {
     const key = `${studentId}_${itemId}`;
@@ -253,6 +274,19 @@ const GradebookPage: React.FC = () => {
             ))}
           </select>
 
+          {courseGroups.length > 0 && (
+            <select
+              className="px-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-medium outline-none focus:border-primary-500 transition-colors shadow-sm cursor-pointer"
+              value={selectedGroupId}
+              onChange={(e) => setSelectedGroupId(e.target.value)}
+            >
+              <option value="">{t('gradebook.allGroups', 'Все группы')}</option>
+              {courseGroups.map(g => (
+                <option key={g.id} value={g.id}>{g.name}</option>
+              ))}
+            </select>
+          )}
+
           <button
             onClick={() => loadData(selectedCourseId)}
             className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors border border-transparent dark:hover:border-slate-700"
@@ -261,13 +295,15 @@ const GradebookPage: React.FC = () => {
             <RefreshCcw className="w-4 h-4" />
           </button>
 
-          <button
-            onClick={() => setShowConfig(true)}
-            className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700/50 shadow-sm transition-colors"
-          >
-            <Settings className="w-4 h-4 text-slate-400" />
-            <span className="hidden sm:inline">{t('gradebook.schemaBtn', 'Настройка шкалы')}</span>
-          </button>
+          {!isReadOnly && (
+            <button
+              onClick={() => setShowConfig(true)}
+              className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700/50 shadow-sm transition-colors"
+            >
+              <Settings className="w-4 h-4 text-slate-400" />
+              <span className="hidden sm:inline">{t('gradebook.schemaBtn', 'Настройка шкалы')}</span>
+            </button>
+          )}
         </div>
       </div>
 
@@ -291,6 +327,7 @@ const GradebookPage: React.FC = () => {
             schema={schema}
             onGradeChange={handleGradeChange}
             syncStatus={syncStatus}
+            readOnly={isReadOnly}
           />
         </div>
       )}

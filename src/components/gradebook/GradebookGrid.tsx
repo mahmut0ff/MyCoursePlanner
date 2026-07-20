@@ -17,9 +17,10 @@ interface GradebookGridProps {
   schema: GradeSchema;
   onGradeChange: (studentId: string, itemId: string, value: number | null, displayValue: string | undefined, status: any, comment?: string) => void;
   syncStatus?: Record<string, boolean>; // Key: studentId_itemId -> true if saving
+  readOnly?: boolean;                   // viewer holds gradebook:read but not :write
 }
 
-const GradebookGrid: React.FC<GradebookGridProps> = ({ students, columns, grades, schema, onGradeChange, syncStatus = {} }) => {
+const GradebookGrid: React.FC<GradebookGridProps> = ({ students, columns, grades, schema, onGradeChange, syncStatus = {}, readOnly = false }) => {
   const gridRef = useRef<HTMLDivElement>(null);
   const [voiceTarget, setVoiceTarget] = useState<ColumnDef | null>(null);
 
@@ -109,13 +110,15 @@ const GradebookGrid: React.FC<GradebookGridProps> = ({ students, columns, grades
                   {col.title}
                 </div>
                 <div className="text-[10px] uppercase font-bold text-slate-400 dark:text-slate-500 mt-1">{col.type}</div>
-                <button 
-                  onClick={() => setVoiceTarget(col)}
-                  className="absolute top-2 right-1.5 opacity-0 group-hover:opacity-100 p-1.5 rounded-lg bg-indigo-50 dark:bg-indigo-900/30 text-indigo-500 hover:bg-indigo-100 dark:hover:bg-indigo-800/50 transition-all shadow-sm"
-                  title="Голосовое выставление оценок"
-                >
-                  <Mic className="w-4 h-4" />
-                </button>
+                {!readOnly && (
+                  <button
+                    onClick={() => setVoiceTarget(col)}
+                    className="absolute top-2 right-1.5 opacity-0 group-hover:opacity-100 p-1.5 rounded-lg bg-indigo-50 dark:bg-indigo-900/30 text-indigo-500 hover:bg-indigo-100 dark:hover:bg-indigo-800/50 transition-all shadow-sm"
+                    title="Голосовое выставление оценок"
+                  >
+                    <Mic className="w-4 h-4" />
+                  </button>
+                )}
               </th>
             ))}
           </tr>
@@ -178,6 +181,7 @@ const GradebookGrid: React.FC<GradebookGridProps> = ({ students, columns, grades
                           schema={schema}
                           tabIndex={0}
                           isSyncing={syncStatus[key]}
+                          readOnly={readOnly}
                           onChange={(val, disp, status, comment) => onGradeChange(student.uid, col.id, val, disp, status, comment)}
                         />
                       </div>

@@ -16,8 +16,7 @@ import {
 } from '../../lib/api';
 import type { Course, Group, UserProfile, JournalEntry, AttendanceStatus, ParticipationLevel, GradeSchema, GradeEntry } from '../../types';
 import GradeCell from '../../components/gradebook/GradeCell';
-import VoiceGradeDictator from '../../components/gradebook/VoiceGradeDictator';
-import { ClipboardList, Calendar, AlertCircle, AlertTriangle, RefreshCcw, UserCheck, CheckCircle2, XCircle, Clock, FileWarning, Trophy, TrendingUp, Loader2, Mic } from 'lucide-react';
+import { ClipboardList, Calendar, AlertCircle, AlertTriangle, RefreshCcw, UserCheck, CheckCircle2, XCircle, Clock, FileWarning, Trophy, TrendingUp, Loader2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useAuth } from '../../contexts/AuthContext';
 import { usePermissions } from '../../contexts/PermissionsContext';
@@ -74,7 +73,6 @@ const JournalPage: React.FC = () => {
   const [allStudents, setAllStudents] = useState<UserProfile[]>([]);
   const [allTeachers, setAllTeachers] = useState<UserProfile[]>([]);
 
-  const [selectedCourseId, setSelectedCourseId] = useState<string>('');
   const [selectedGroupId, setSelectedGroupId] = useState<string>('');
   const [date, setDate] = useState<string>(todayFormatted);
   // Фактическая длительность занятия (мин) для payroll-сессии. Пусто = неизвестно (null),
@@ -97,7 +95,6 @@ const JournalPage: React.FC = () => {
   const [loadingData, setLoadingData] = useState(false);
   const [bulking, setBulking] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [showDictator, setShowDictator] = useState(false);
 
   const timersRef = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
 
@@ -153,8 +150,8 @@ const JournalPage: React.FC = () => {
       setAllStudents(s);
       setAllTeachers(tch);
 
-      if (c.length > 0) {
-        setSelectedCourseId(c[0].id);
+      if (g.length > 0) {
+        setSelectedGroupId(g[0].id);
       }
     })
     .catch((e: any) => {
@@ -167,18 +164,25 @@ const JournalPage: React.FC = () => {
     .finally(() => setLoading(false));
   }, []);
 
-  // 2. Set default group when course changes
-  const courseGroups = useMemo(() => allGroups.filter(g => g.courseId === selectedCourseId), [allGroups, selectedCourseId]);
-  
-  useEffect(() => {
-    if (courseGroups.length > 0) {
-      if (!courseGroups.find(g => g.id === selectedGroupId)) {
-        setSelectedGroupId(courseGroups[0].id);
+  // 2. Курс больше не выбирается вручную — он выводится из выбранной группы.
+  const selectedCourseId = useMemo(
+    () => allGroups.find(g => g.id === selectedGroupId)?.courseId || '',
+    [allGroups, selectedGroupId]
+  );
+
+  // В селекторе группы разложены по курсам через <optgroup>: курс остаётся виден
+  // как контекст, но фильтровать по нему больше не нужно.
+  const groupsByCourse = useMemo(() => {
+    const buckets = new Map<string, { title: string; groups: Group[] }>();
+    allGroups.forEach(g => {
+      const key = g.courseId || '';
+      if (!buckets.has(key)) {
+        buckets.set(key, { title: courses.find(c => c.id === key)?.title || 'Без курса', groups: [] });
       }
-    } else {
-      setSelectedGroupId('');
-    }
-  }, [courseGroups, selectedCourseId]);
+      buckets.get(key)!.groups.push(g);
+    });
+    return Array.from(buckets.values()).sort((a, b) => a.title.localeCompare(b.title));
+  }, [allGroups, courses]);
 
   // 3. Load journal and grades when date/course changes
   const loadContentAndGrades = async () => {
@@ -483,38 +487,6 @@ const JournalPage: React.FC = () => {
     }
   };
 
-  const handleApplyDictation = async (dictatedGrades: { studentId: string; status?: string; comment?: string }[]) => {
-    if (!canEdit || !selectedCourseId) return;
-    setBulking(true);
-
-    const bulkData = dictatedGrades.map(g => {
-      const existing = entries[g.studentId];
-      return {
-        studentId: g.studentId,
-        attendance: (g.status || 'present') as AttendanceStatus,
-        participation: existing?.participation,
-        note: g.comment || existing?.note,
-        lessonId: existing?.lessonId || selectedLessonId || undefined
-      };
-    });
-
-    try {
-      const res = await orgBulkAttendance(selectedCourseId, date, bulkData, buildSessionOpts());
-      const newEntries = { ...entries };
-      (res as JournalEntry[]).forEach(e => {
-        newEntries[e.studentId] = e;
-      });
-      setEntries(newEntries);
-      toast.success('Отметки применены');
-    } catch(e: any) {
-      toast.error(e.message || 'Ошибка применения');
-    } finally {
-      setBulking(false);
-    }
-  };
-
-
-
   if (loading) {
     return <div className="flex justify-center py-20"><div className="w-8 h-8 border-2 border-slate-400 rounded-full animate-spin border-t-transparent" /></div>;
   }
@@ -529,12 +501,12 @@ const JournalPage: React.FC = () => {
     );
   }
 
-  if (courses.length === 0) {
+  if (allGroups.length === 0) {
     return (
       <div className="max-w-4xl mx-auto py-20 text-center">
         <ClipboardList className="w-16 h-16 text-slate-300 mx-auto mb-4" />
-        <h2 className="text-xl font-bold text-slate-900 dark:text-white mb-2">{t('journal.noCourses', 'Нет курсов')}</h2>
-        <p className="text-slate-500 text-sm">{t('journal.noCoursesDesc', 'Создайте курс, чтобы начать вести переклички')}</p>
+        <h2 className="text-xl font-bold text-slate-900 dark:text-white mb-2">{t('journal.noGroups', 'Нет групп')}</h2>
+        <p className="text-slate-500 text-sm">{t('journal.noGroupsDesc', 'Создайте группу, чтобы начать вести переклички')}</p>
       </div>
     );
   }
@@ -568,26 +540,16 @@ const JournalPage: React.FC = () => {
           <div className="flex flex-wrap items-center gap-3">
             <select
               className="w-full sm:w-auto px-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-medium outline-none focus:border-primary-500 transition-colors shadow-sm cursor-pointer"
-              value={selectedCourseId}
-              onChange={(e) => setSelectedCourseId(e.target.value)}
-            >
-              {courses.map(c => (
-                <option key={c.id} value={c.id}>{c.title}</option>
-              ))}
-            </select>
-
-            <select
-              className="w-full sm:w-auto px-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-medium outline-none focus:border-primary-500 transition-colors shadow-sm cursor-pointer"
               value={selectedGroupId}
               onChange={(e) => setSelectedGroupId(e.target.value)}
             >
-              {courseGroups.length === 0 ? (
-                <option value="">Нет групп</option>
-              ) : (
-                courseGroups.map(g => (
-                  <option key={g.id} value={g.id}>{g.name}</option>
-                ))
-              )}
+              {groupsByCourse.map(bucket => (
+                <optgroup key={bucket.title} label={bucket.title}>
+                  {bucket.groups.map(g => (
+                    <option key={g.id} value={g.id}>{g.name}</option>
+                  ))}
+                </optgroup>
+              ))}
             </select>
 
             {/* Quick Dates */}
@@ -697,14 +659,6 @@ const JournalPage: React.FC = () => {
                   className="w-20 px-3 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-medium outline-none focus:border-primary-500 transition-colors shadow-sm"
                 />
               </div>
-              <button
-                onClick={() => setShowDictator(true)}
-                disabled={loadingData || bulking || groupStudents.length === 0}
-                className="flex items-center gap-2 px-4 py-2 bg-indigo-500 hover:bg-indigo-600 text-white text-sm font-medium rounded-xl transition-colors disabled:opacity-50 shadow-sm"
-              >
-                <Mic className="w-4 h-4" />
-                Голосовой ввод
-              </button>
               <button
                 onClick={handleMarkAllPresent}
                 disabled={loadingData || bulking || groupStudents.length === 0}
@@ -1004,14 +958,6 @@ const JournalPage: React.FC = () => {
         )}
       </div>
 
-      <VoiceGradeDictator 
-        isOpen={showDictator} 
-        onClose={() => setShowDictator(false)} 
-        column={{ title: date }} 
-        students={groupStudents} 
-        mode="journal"
-        onApply={handleApplyDictation}
-      />
     </div>
   );
 };

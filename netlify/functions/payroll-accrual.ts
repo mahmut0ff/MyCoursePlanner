@@ -95,11 +95,13 @@ const handler: Handler = async (event: HandlerEvent) => {
     let orgsConsidered = 0;
     let orgsSkippedPlan = 0;
     let orgsSkippedExisting = 0;
+    let orgsSkippedBranchScheme = 0;
     let periodsOpened = 0;
     let linesCreated = 0;
 
     // Уведомления — ПОСЛЕ коммита, чтобы упавший push не откатывал ведомость.
     const notifyQueue: { orgId: string; periodId: string; teachers: number; totalMinor: number }[] = [];
+    const branchSchemeNotices: { orgId: string; openCount: number }[] = [];
 
     for (const [orgId, rules] of rulesByOrg) {
       orgsConsidered++;
@@ -113,11 +115,30 @@ const handler: Handler = async (event: HandlerEvent) => {
       // ── Идемпотентность: по равенству period, не по времени запуска ──────
       // Любое состояние считается «уже открыто»: повторный прогон не имеет права
       // ни продублировать черновик, ни тем более тронуть approved/paid.
+      //
+      // Проверка НАМЕРЕННО не сужается филиалом. Месяц в этой системе покрывается
+      // либо одной общей ведомостью, либо отдельными филиальными (взаимное
+      // исключение, см. coversSameTeachers в api-payroll.ts). Любая уже открытая
+      // ведомость за этот месяц — в том числе филиальная, заведённая директором
+      // руками, — означает, что месяц уже кем-то покрыт, и общая ведомость от
+      // крона наложилась бы на неё, оплатив тех же преподавателей второй раз.
       const existing = await adminDb.collection(PERIODS)
         .where('organizationId', '==', orgId)
         .where('period', '==', period)
         .get();
-      if (!existing.empty) { orgsSkippedExisting++; continue; }
+      if (!existing.empty) {
+        orgsSkippedExisting++;
+        // Если месяц начат ФИЛИАЛЬНЫМИ ведомостями, крон дальше не помощник:
+        // достроить недостающие филиалы он не может, не рискуя охватом. Молча
+        // не покрыть половину академии зарплатой — худший из возможных исходов,
+        // поэтому директору уходит явное уведомление, а не тишина.
+        const branchScheme = existing.docs.some((d) => (d.data() as any).branchId != null);
+        if (branchScheme) {
+          orgsSkippedBranchScheme++;
+          branchSchemeNotices.push({ orgId, openCount: existing.size });
+        }
+        continue;
+      }
 
       // ── Данные для расчёта ───────────────────────────────────────────────
       // Только равенство по организации; окно применяет ядро. Намеренно НЕ
@@ -194,9 +215,15 @@ const handler: Handler = async (event: HandlerEvent) => {
       const periodRef = adminDb.collection(PERIODS).doc();
       const totalMinor = result.lines.reduce((sum, l) => sum + l.computedMinor, 0);
 
-      // Один общеорганизационный период (branchId: null). Крон не разрезает
-      // ведомость по филиалам: он не знает, как директор хочет делить выплаты, а
-      // отфильтровать строки по филиалу в UI можно и по факту.
+      // ОДИН общеорганизационный период (branchId: null) — сознательно, а не по
+      // недосмотру. Рассматривали «по ведомости на каждый филиал с активными
+      // ставками» и отвергли: ставка с branchId === null (а таких большинство —
+      // это дефолт формы) не попадает НИ В ОДНУ филиальную ведомость, потому что
+      // recordInBranchScope(null, 'A') === false. Крон, режущий по филиалам,
+      // молча не начислил бы таким преподавателям ничего — а невидимый ноль в
+      // зарплате хуже, чем ведомость, которую директор потом отфильтрует в UI.
+      // Общая ведомость — единственная форма, покрывающая КАЖДУЮ ставку ровно раз.
+      // Организации, ведущие месяц филиальными ведомостями, отсеяны выше.
       const writes: { ref: FirebaseFirestore.DocumentReference; data: Record<string, any> }[] = [{
         ref: periodRef,
         data: {
@@ -274,6 +301,18 @@ const handler: Handler = async (event: HandlerEvent) => {
       )
     ));
 
+    await Promise.allSettled(branchSchemeNotices.map((n) =>
+      notifyOrgAdmins(
+        n.orgId,
+        'payroll_ready',
+        'Проверьте ведомости по филиалам',
+        `За ${period} уже открыты ведомости по филиалам (${n.openCount}). Автоматический расчёт по всей ` +
+        'организации в этом случае не запускается — он оплатил бы тех же преподавателей второй раз. ' +
+        'Откройте расчёт по каждому оставшемуся филиалу вручную.',
+        '/payroll',
+      )
+    ));
+
     return jsonResponse(200, {
       success: true,
       period,
@@ -282,6 +321,7 @@ const handler: Handler = async (event: HandlerEvent) => {
       orgsConsidered,
       orgsSkippedPlan,
       orgsSkippedExisting,
+      orgsSkippedBranchScheme,
       periodsOpened,
       linesCreated,
     });

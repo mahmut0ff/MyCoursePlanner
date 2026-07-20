@@ -48,6 +48,7 @@ import {
   PERIOD_STATE_STYLE,
   somInputToMinor,
 } from '../payrollFormat';
+import { allocatePayout } from '../payrollPayout';
 
 /** Ведомость целиком: шапка периода + строки + диагностики. */
 type Sheet = PayrollPeriod & { lines: PayrollLine[]; diagnostics: PayrollDiagnostic[] };
@@ -175,9 +176,28 @@ const SheetTab: React.FC = () => {
       || collator.compare(a.teacherName || a.teacherId, b.teacherName || b.teacherId));
   }, [lines]);
 
-  const totalMinor = useMemo(
-    () => lines.reduce((sum, l) => sum + (l.finalMinor || 0), 0),
-    [lines],
+  /**
+   * ДВА РАЗНЫХ ЧИСЛА, и путать их нельзя.
+   *
+   * netAccruedMinor — сумма всех finalMinor. Это то, что сервер замораживает на
+   * периоде при утверждении.
+   *
+   * payableMinor — то, что реально уйдёт из кассы. Штраф гасится положительными
+   * строками ТОГО ЖЕ преподавателя и упирается в ноль: отрицательного расхода в
+   * кассе не бывает. Поэтому минус одного человека НЕ уменьшает выплату другим,
+   * а простая сумма finalMinor занижала бы выплату.
+   */
+  const payout = useMemo(() => allocatePayout(lines), [lines]);
+  const totalMinor = payout.netAccruedMinor;
+  const payableMinor = payout.payableMinor;
+  const unrecoveredMinor = payout.unrecoveredMinor;
+
+  /** Перечисление «у кого штраф не погасился» — одной фразой для подвала и диалога. */
+  const unrecoveredNames = useMemo(
+    () => payout.unrecoveredTeachers
+      .map(row => `${row.teacherName || teacherName(row.teacherId)} (${formatMinor(row.unrecoveredMinor)})`)
+      .join(', '),
+    [payout.unrecoveredTeachers, teacherName],
   );
 
   // Пагинация как в «Ставках» и «Долгах»: PAGE_SIZE 50, safePage зажимает
@@ -264,6 +284,10 @@ const SheetTab: React.FC = () => {
       // 207: часть строк не записалась. Сервер намеренно оставляет период
       // неутверждённым к выплате, чтобы повтор дописал остаток — говорим это вслух.
       if (Array.isArray(res?.failed) && res.failed.length) {
+        // Обещание «не задвоится» здесь ЗАКОНННО: расход пишется под
+        // детерминированным id payoutTxId(periodId, lineId) через t.create() —
+        // Firestore физически не хранит два документа с одним id. Если сервер
+        // когда-нибудь вернётся к случайным id, эту фразу надо смягчить обратно.
         toast.error(t('payroll.payPartial', 'Записано строк: {{ok}}, не прошло: {{bad}}. Повторите выплату — уже выплаченное не задвоится.', {
           ok: res.written ?? 0,
           bad: res.failed.length,
@@ -333,7 +357,11 @@ const SheetTab: React.FC = () => {
         t('payroll.colComputed', 'Расчётная сумма'),
         t('payroll.colOverride', 'Правка'),
         t('payroll.colReason', 'Причина правки'),
-        t('payroll.colFinal', 'К выплате'),
+        t('payroll.colFinal', 'Начислено по строке'),
+        // Отдельная колонка, потому что сумма колонки «Начислено» НЕ равна тому,
+        // что уйдёт из кассы: штрафы гасятся строками того же преподавателя.
+        // Сумма именно этой колонки сходится с итогом на экране и с расходами.
+        t('payroll.colPayable', 'Уйдёт из кассы'),
       ],
       sortedLines.map(line => [
         line.teacherName || teacherName(line.teacherId),
@@ -347,6 +375,7 @@ const SheetTab: React.FC = () => {
         line.overrideMinor === null || line.overrideMinor === undefined ? '' : line.overrideMinor / 100,
         line.overrideReason || '',
         (line.finalMinor || 0) / 100,
+        (payout.payableByLineId.get(line.id) ?? 0) / 100,
       ]),
     );
     // Филиал в имени файла: две выгрузки за один месяц — общеорганизационная и
@@ -445,7 +474,14 @@ const SheetTab: React.FC = () => {
           <div className="flex items-center gap-3">
             <div className="text-right">
               <p className="text-xs text-slate-500">{t('payroll.totalLabel', 'Итого к выплате')}</p>
-              <p className="text-lg font-bold text-slate-900 dark:text-white">{formatMinor(totalMinor)}</p>
+              <p className="text-lg font-bold text-slate-900 dark:text-white">{formatMinor(payableMinor)}</p>
+              {/* Начисленное показываем ТОЛЬКО когда оно разошлось с кассой: иначе
+                  два одинаковых числа рядом читаются как ошибка. */}
+              {unrecoveredMinor > 0 && (
+                <p className="text-[11px] text-slate-500 mt-0.5">
+                  {t('payroll.totalAccruedAside', 'начислено нетто {{net}}', { net: formatMinor(totalMinor) })}
+                </p>
+              )}
             </div>
             {sortedLines.length > 0 && (
               <button
@@ -534,7 +570,7 @@ const SheetTab: React.FC = () => {
                       <th className="px-5 py-3.5 font-medium text-slate-500">{t('payroll.colTeacher', 'Преподаватель')}</th>
                       <th className="px-5 py-3.5 font-medium text-slate-500">{t('payroll.colBreakdown', 'Расшифровка')}</th>
                       <th className="px-5 py-3.5 font-medium text-slate-500 text-right">{t('payroll.colComputed', 'Расчётная сумма')}</th>
-                      <th className="px-5 py-3.5 font-medium text-slate-500 text-right">{t('payroll.colFinal', 'К выплате')}</th>
+                      <th className="px-5 py-3.5 font-medium text-slate-500 text-right">{t('payroll.colFinal', 'Начислено по строке')}</th>
                       <th className="px-5 py-3.5 font-medium text-slate-500 text-right">{t('payroll.colActions', 'Действия')}</th>
                     </tr>
                   </thead>
@@ -607,9 +643,42 @@ const SheetTab: React.FC = () => {
                     })}
                   </tbody>
                   <tfoot className="bg-slate-50 dark:bg-slate-800/50 border-t border-slate-200 dark:border-slate-700">
+                    {/* Когда штрафы у кого-то не погасились, подвал показывает ТРИ
+                        строки, а не одну: сумма колонки, сколько из неё не
+                        удержалось и сколько на самом деле уйдёт из кассы. Иначе
+                        колонка «К выплате» не сходится с итогом, и директор
+                        решает, что экран врёт. */}
+                    {unrecoveredMinor > 0 && (
+                      <>
+                        <tr>
+                          <td className="px-5 py-2.5 text-slate-500" colSpan={3}>
+                            {t('payroll.totalAccruedRow', 'Начислено нетто (сумма колонки)')}
+                          </td>
+                          <td className="px-5 py-2.5 text-right text-slate-500 whitespace-nowrap">
+                            {formatMinor(totalMinor)}
+                          </td>
+                          <td />
+                        </tr>
+                        <tr>
+                          <td className="px-5 py-2.5 text-rose-700 dark:text-rose-300" colSpan={3}>
+                            {t('payroll.unrecoveredRow', 'Штрафы, которые не из чего удержать: {{names}}', { names: unrecoveredNames })}
+                            <span className="block text-[11px] text-slate-500 mt-0.5 font-normal">
+                              {t(
+                                'payroll.unrecoveredHint',
+                                'Выплата такому преподавателю равна нулю — отрицательный расход в кассе невозможен. Остаток НЕ переносится в следующий месяц и не удерживается из уже выданного: чтобы его вернуть, заведите штраф в открытом периоде вручную.',
+                              )}
+                            </span>
+                          </td>
+                          <td className="px-5 py-2.5 text-right text-rose-700 dark:text-rose-300 whitespace-nowrap">
+                            +{formatMinor(unrecoveredMinor)}
+                          </td>
+                          <td />
+                        </tr>
+                      </>
+                    )}
                     <tr>
                       <td className="px-5 py-3.5 font-bold text-slate-900 dark:text-white" colSpan={3}>
-                        {t('payroll.totalLabel', 'Итого к выплате')}
+                        {t('payroll.totalPayableLabel', 'Уйдёт из кассы')}
                         {/* Оговорка обязательна на многостраничной ведомости: без
                             неё итог читается как сумма видимых строк. */}
                         {lineTotalPages > 1 && (
@@ -619,7 +688,7 @@ const SheetTab: React.FC = () => {
                         )}
                       </td>
                       <td className="px-5 py-3.5 text-right font-bold text-slate-900 dark:text-white whitespace-nowrap">
-                        {formatMinor(totalMinor)}
+                        {formatMinor(payableMinor)}
                       </td>
                       <td />
                     </tr>
@@ -727,8 +796,16 @@ const SheetTab: React.FC = () => {
             <h3 className="text-sm font-semibold text-slate-900 dark:text-white">
               {t('payroll.balanceTitle', 'Зарплатный баланс')}
             </h3>
+            {/* Таблица считает НАЧИСЛЕНИЕ минус КАССУ по всем утверждённым
+                месяцам сразу, поэтому её колонки намеренно не сходятся с
+                итогом ведомости выше — и об этом надо сказать, иначе расхождение
+                читается как ошибка. Минус здесь бывает двух родов: переплата и
+                непогашенный штраф. */}
             <p className="text-xs text-slate-500">
-              {t('payroll.balanceHint', 'Начислено по утверждённым ведомостям минус фактически выданное')}
+              {t(
+                'payroll.balanceHint',
+                'Начислено по утверждённым ведомостям минус фактически выданное — по всем месяцам сразу, а не за выбранный. Минус означает либо переплату, либо штраф, который не из чего было удержать.',
+              )}
             </p>
           </div>
           <div className="overflow-x-auto">
@@ -773,10 +850,27 @@ const SheetTab: React.FC = () => {
         open={confirmApprove}
         busy={busy}
         title={t('payroll.approve', 'Утвердить')}
-        message={t(
-          'payroll.approveConfirmScoped',
-          'Ведомость за {{period}} ({{scope}}) будет запечатана: пересчёт, правки сумм, премии и штрафы после этого станут невозможны. Итог {{total}} зафиксируется окончательно. Поздние корректировки нужно будет вносить в следующем открытом месяце.',
-          { period: formatPeriodLabel(period), scope: scopeLabel, total: formatMinor(totalMinor) },
+        message={(
+          <div className="space-y-2">
+            {/* Здесь {{total}} — именно НЕТТО-начисление: сервер замораживает на
+                периоде totalMinor, то есть сумму строк, а не выплату. */}
+            <p>
+              {t(
+                'payroll.approveConfirmScoped',
+                'Ведомость за {{period}} ({{scope}}) будет запечатана: пересчёт, правки сумм, премии и штрафы после этого станут невозможны. Итог {{total}} зафиксируется окончательно. Поздние корректировки нужно будет вносить в следующем открытом месяце.',
+                { period: formatPeriodLabel(period), scope: scopeLabel, total: formatMinor(totalMinor) },
+              )}
+            </p>
+            {unrecoveredMinor > 0 && (
+              <p className="text-slate-500">
+                {t(
+                  'payroll.approveConfirmPayoutNote',
+                  'Из кассы при выплате уйдёт {{payable}}: у {{names}} штрафы превысили начисленное, и выплата им обнуляется — отрицательный расход невозможен.',
+                  { payable: formatMinor(payableMinor), names: unrecoveredNames },
+                )}
+              </p>
+            )}
+          </div>
         )}
         confirmLabel={t('payroll.approveConfirmLabel', 'Утвердить и заморозить')}
         onConfirm={runApprove}
@@ -788,10 +882,32 @@ const SheetTab: React.FC = () => {
         danger
         busy={busy}
         title={t('payroll.pay', 'Выплатить')}
-        message={t(
-          'payroll.payConfirm',
-          'По каждой строке будет создан расход в Финансы → Расходы, категория «Зарплата», на общую сумму {{total}}. Отменить это отсюда нельзя — ошибочные записи придётся править в разделе Финансы вручную.',
-          { total: formatMinor(totalMinor) },
+        message={(
+          <div className="space-y-2">
+            {/* {{total}} — ДЕНЬГИ ИЗ КАССЫ, а не сумма колонки: подтверждают
+                именно перевод, и число в диалоге обязано совпасть с расходами. */}
+            <p>
+              {t(
+                'payroll.payConfirm',
+                'По каждой строке будет создан расход в Финансы → Расходы, категория «Зарплата», на общую сумму {{total}}. Отменить это отсюда нельзя — ошибочные записи придётся править в разделе Финансы вручную.',
+                { total: formatMinor(payableMinor) },
+              )}
+            </p>
+            {unrecoveredMinor > 0 && (
+              <p className="text-rose-700 dark:text-rose-300">
+                {t(
+                  'payroll.payConfirmUnrecovered',
+                  'Начислено нетто {{net}}, но выплата составит {{payable}}: у {{names}} штрафы превысили начисленное, выплата им равна нулю. Непогашенный остаток {{unrecovered}} никуда не переносится и из уже выданного не удерживается — если его нужно вернуть, заведите штраф в открытом периоде.',
+                  {
+                    net: formatMinor(totalMinor),
+                    payable: formatMinor(payableMinor),
+                    unrecovered: formatMinor(unrecoveredMinor),
+                    names: unrecoveredNames,
+                  },
+                )}
+              </p>
+            )}
+          </div>
         )}
         confirmLabel={t('payroll.payConfirmLabel', 'Выплатить и записать в расходы')}
         onConfirm={runPay}

@@ -17,10 +17,16 @@
  *    изменение ставки создают НОВУЮ строку в следующем открытом периоде
  *    (originPeriodId), а не переписывают историю задним числом.
  *
- * 3. ВЫПЛАТА ИДЕМПОТЕНТНА И АТОМАРНА. Перед записью расходов читаем
- *    financeTransactions по равенству payrollPeriodId и пропускаем уже
- *    выплаченные строки. Каждая запись идёт через runTransaction с ПОВТОРНОЙ
- *    проверкой организации внутри — предварительная проверка не атомарна записи.
+ * 3. ВЫПЛАТА ИДЕМПОТЕНТНА И АТОМАРНА. Идентификатор расходного документа
+ *    ДЕТЕРМИНИРОВАН — payoutTxId(периодId, строкаId) — и создаётся через
+ *    t.create() после t.get() ТОГО ЖЕ документа внутри транзакции. Поэтому две
+ *    одновременные выплаты конфликтуют на реальном документе, и вторая падает,
+ *    а не коммитится. Предварительное чтение оставлено только как дешёвый
+ *    быстрый путь: корректность на нём не держится.
+ *
+ * 3a. МЕСЯЦ НЕ ПОКРЫВАЕТСЯ ДВАЖДЫ. Общая ведомость «Все филиалы» и ведомость
+ *    филиала за один месяц взаимно исключены (см. coversSameTeachers): иначе
+ *    один преподаватель попадает в обе и получает зарплату по разу за каждую.
  *
  * 4. ЧИСЛА НЕ ВЫДУМЫВАЮТСЯ. Диагностики движка сохраняются на периоде и
  *    отдаются UI как «Пропущенные записи»: директор должен видеть, ПОЧЕМУ сумма
@@ -195,6 +201,96 @@ function frozenError(state: string) {
         : 'Период утверждён — изменения запрещены. Проведите корректировку в текущем открытом периоде.',
     state,
   });
+}
+
+/**
+ * ── ПОКРЫТИЕ МЕСЯЦА ──────────────────────────────────────────────────────────
+ *
+ * ВЫБРАННАЯ МОДЕЛЬ, одной фразой для директора: месяц закрывается ЛИБО одной
+ * общей ведомостью «Все филиалы», ЛИБО отдельными ведомостями по филиалам.
+ * Смешивать в одном месяце нельзя.
+ *
+ * Почему именно так. Общая ведомость (branchId: null) собирает ставки ВСЕХ
+ * филиалов: recordInBranchScope(rule.branchId, null) пропускает всё. Значит
+ * общая и филиальная ведомости за один и тот же месяц содержат ОДНУ И ТУ ЖЕ
+ * строку преподавателя, а ключ идемпотентности выплаты — (periodId, lineId) —
+ * у них разный. Оплатив обе, организация выдаст один оклад дважды, положит в
+ * кассу два расхода и задвоит начисление в «зарплатном балансе».
+ *
+ * Альтернативу «общая ведомость исключает уже покрытых филиальной» отвергли
+ * сознательно: она делает состав ведомости зависящим от того, что и в каком
+ * порядке директор открывал раньше, и объяснить непрофильному человеку, почему
+ * в общей ведомости нет половины преподавателей, невозможно. Взаимное
+ * исключение объяснимо одной строкой и проверяется одним сравнением.
+ *
+ * Две РАЗНЫЕ филиальные ведомости не конфликтуют: у ставки ровно один branchId,
+ * и в ведомость филиала A она попадает только при branchId === 'A'.
+ */
+function coversSameTeachers(a: string | null, b: string | null): boolean {
+  // Одинаковый охват — это тот же самый документ (личность ведомости), а не конфликт.
+  if (a === b) return false;
+  // Разные значения пересекаются РОВНО тогда, когда одно из них «вся организация».
+  return a === null || b === null;
+}
+
+/** Ведомости того же месяца, чей охват пересекается с запрошенным (кроме себя самой). */
+function findCoverageConflicts(
+  periodsOfMonth: PeriodDoc[],
+  branchId: string | null,
+  selfId: string | null,
+): PeriodDoc[] {
+  return periodsOfMonth.filter(
+    (p) => p.id !== selfId && coversSameTeachers(p.branchId ?? null, branchId),
+  );
+}
+
+/**
+ * Русский 409 на пересечение охвата. Текст обязан назвать МЕСЯЦ, КАКАЯ ведомость
+ * уже закрывает его и ЧТО делать — «конфликт» без выхода директор прочитать не
+ * сможет. Выход всегда один: доработать месяц в той схеме, в которой он начат.
+ */
+function coverageConflictError(period: string, requested: string | null, conflict: PeriodDoc) {
+  const conflictIsOrgWide = (conflict.branchId ?? null) === null;
+  const error = conflictIsOrgWide
+    ? `За ${period} уже открыта общая ведомость по всей организации — она включает и этот филиал. ` +
+      'Месяц закрывается ЛИБО одной общей ведомостью, ЛИБО отдельными по филиалам: иначе преподаватель ' +
+      'получит зарплату дважды. Откройте ведомость «Все филиалы» за этот месяц и работайте в ней.'
+    : `За ${period} уже открыта ведомость филиала — общая ведомость включила бы тех же преподавателей повторно. ` +
+      'Месяц закрывается ЛИБО одной общей ведомостью, ЛИБО отдельными по филиалам: иначе преподаватель ' +
+      'получит зарплату дважды. Выберите филиал и рассчитайте оставшиеся филиалы отдельными ведомостями.';
+  return jsonResponse(409, {
+    error,
+    code: 'period_coverage_conflict',
+    period,
+    requestedBranchId: requested,
+    conflictPeriodId: conflict.id,
+    conflictBranchId: conflict.branchId ?? null,
+    conflictState: conflict.state,
+  });
+}
+
+/**
+ * Детерминированный id расходного документа выплаты.
+ *
+ * Единственная настоящая гарантия «не выплатить дважды»: Firestore не может
+ * хранить два документа с одним id, поэтому дубликат физически невозможен —
+ * в отличие от предварительного чтения, которое не атомарно записи.
+ *
+ * Санитайзер не косметика: id документа не должен содержать '/', быть '.'/'..'
+ * или матчить /^__.*__$/. periodId и lineId здесь всегда автоid Firestore
+ * (20 символов [A-Za-z0-9]), но полагаться на это нельзя — id приходит из базы.
+ * Преобразование чисто функциональное, поэтому одно и то же (period, line) даёт
+ * один и тот же id при любом повторе.
+ */
+function payoutTxId(periodId: string, lineId: string): string {
+  const safe = (s: string) => String(s).replace(/[^A-Za-z0-9_-]/g, '-').slice(0, 300);
+  return `pay_${safe(periodId)}_${safe(lineId)}`;
+}
+
+/** Firestore ALREADY_EXISTS (code 6) — расход по этой строке уже создан кем-то другим. */
+const DUPLICATE_PAYOUT = 'PAYROLL_DUPLICATE_PAYOUT';
+function isDuplicatePayout(err: any): boolean {
+  return err?.message === DUPLICATE_PAYOUT || err?.code === 6 || /already exists/i.test(String(err?.message || ''));
 }
 
 /**
@@ -444,11 +540,28 @@ const handler: Handler = async (event: HandlerEvent) => {
       //
       // Ищем по (организация, период) равенством; филиал сверяем в JS, потому что
       // branchId бывает null, а разложить это на равенство нельзя.
-      const existing = (await fetchPeriods(orgFilter, period)).find((p) => (p.branchId ?? null) === branchId) || null;
+      const periodsOfMonth = await fetchPeriods(orgFilter, period);
+      const existing = periodsOfMonth.find((p) => (p.branchId ?? null) === branchId) || null;
 
       // Правило 3: утверждённое не пересчитывается ни при каких условиях.
       if (existing && (existing.state === 'approved' || existing.state === 'paid')) {
         return frozenError(existing.state);
+      }
+
+      // ── Взаимное исключение охвата (см. coversSameTeachers) ──
+      // Единственное место, где это вообще можно запретить: ведомость создаётся
+      // только здесь. Без этой проверки общая ведомость за июль и ведомость
+      // филиала A за июль сосуществуют, обе содержат строку преподавателя A и
+      // обе выплачиваются — ключ идемпотентности (periodId, lineId) у них разный.
+      const conflicts = findCoverageConflicts(periodsOfMonth, branchId, existing?.id ?? null);
+      if (conflicts.length) {
+        // Утверждённая/выплаченная перевешивает: именно она уже унесла деньги,
+        // и назвать в ошибке нужно её, а не случайный черновик.
+        const worst =
+          conflicts.find((p) => p.state === 'paid') ||
+          conflicts.find((p) => p.state === 'approved') ||
+          conflicts[0];
+        return coverageConflictError(period, branchId, worst);
       }
 
       // Окно ЗАМОРАЖИВАЕТСЯ при первом расчёте: пересчёт в августе не должен
@@ -491,8 +604,22 @@ const handler: Handler = async (event: HandlerEvent) => {
 
       // Ведомость филиала берёт только ставки этого филиала: org-wide правило,
       // применённое в каждом филиале, выплатило бы оклад по разу на филиал.
-      const rules: CompensationRule[] = rulesSnap.docs
-        .map((d) => ({ id: d.id, ...(d.data() as any) }))
+      const allRuleDocs = rulesSnap.docs.map((d) => ({ id: d.id, ...(d.data() as any) }));
+
+      // Обратная сторона того же решения: в ведомости филиала ставка без филиала
+      // не участвует нигде — и человек молча остаётся без денег. Недоплата тише
+      // переплаты и потому опаснее, поэтому такие ставки попадают в диагностику.
+      const orgWideSkipped = branchId
+        ? allRuleDocs.filter(
+            (r: any) =>
+              r.status === 'active' &&
+              (r.branchId ?? null) === null &&
+              r.effectiveFrom <= period &&
+              (r.effectiveTo == null || period <= r.effectiveTo)
+          )
+        : [];
+
+      const rules: CompensationRule[] = allRuleDocs
         .filter((r: any) => recordInBranchScope(r.branchId ?? null, branchId))
         .map((r: any) => ({
           id: r.id,
@@ -625,7 +752,20 @@ const handler: Handler = async (event: HandlerEvent) => {
         // Предварительный итог: до approve он может измениться, поэтому
         // окончательным его считать нельзя — approve запечатывает свой.
         totalMinor,
-        diagnostics: pruneUndefined(result.diagnostics),
+        diagnostics: pruneUndefined([
+          ...result.diagnostics,
+          ...(orgWideSkipped.length
+            ? [{
+                code: 'rule_org_wide_skipped' as const,
+                message:
+                  `Ставок без филиала: ${orgWideSkipped.length}. В ведомость филиала они не входят — ` +
+                  'иначе оклад начислялся бы заново в каждом филиале. Укажите филиал в ставке ' +
+                  'или рассчитайте ведомость по всей организации, иначе эти преподаватели не получат оплату.',
+                count: orgWideSkipped.length,
+                sample: orgWideSkipped.slice(0, 5).map((r: any) => r.id),
+              }]
+            : []),
+        ]),
         updatedAt: now,
       };
       await periodRef.update(periodUpdate);
@@ -844,6 +984,19 @@ const handler: Handler = async (event: HandlerEvent) => {
         });
       }
 
+      // ── Второй рубеж покрытия ──
+      // calculate не даёт СОЗДАТЬ пересекающуюся ведомость, но пары, заведённые
+      // до этой проверки, уже лежат в базе. Деньги уходят здесь, поэтому здесь же
+      // проверяем ещё раз — и блокируем, только если пересекающаяся ведомость
+      // реально унесла деньги (approved/paid). Ложных срабатываний нет: две
+      // ведомости РАЗНЫХ филиалов по построению не пересекаются.
+      const monthPeriods = await fetchPeriods(orgFilter, period.period);
+      const sealedConflict = findCoverageConflicts(monthPeriods, period.branchId ?? null, periodId)
+        .find((p) => p.state === 'approved' || p.state === 'paid');
+      if (sealedConflict) {
+        return coverageConflictError(period.period, period.branchId ?? null, sealedConflict);
+      }
+
       let payoutDate = new Date().toISOString();
       if (body.date) {
         const parsed = parseRangeBoundary(String(body.date), 'start');
@@ -851,9 +1004,12 @@ const handler: Handler = async (event: HandlerEvent) => {
         payoutDate = parsed.toISOString();
       }
 
-      // ── ИДЕМПОТЕНТНОСТЬ ПЕРВЫМ ДЕЛОМ ──
-      // Равенство по организации и периоду; какие строки уже закрыты, разбираем
-      // в JS. Без этого повторный клик выдал бы зарплату дважды.
+      // ── БЫСТРЫЙ ПУТЬ, А НЕ ГАРАНТИЯ ──
+      // Это чтение НЕ атомарно последующей записи: два одновременных клика оба
+      // прочитают «не выплачено» и оба пойдут писать. Настоящая защита — ниже,
+      // в детерминированном id расходного документа (payoutTxId) и t.create().
+      // Здесь мы лишь дёшево отсекаем заведомо повторный вызов, не гоняя
+      // транзакцию на каждую уже закрытую строку.
       const paidSnap = await adminDb
         .collection(TRANSACTIONS)
         .where('organizationId', '==', orgFilter)
@@ -870,6 +1026,10 @@ const handler: Handler = async (event: HandlerEvent) => {
       const written: string[] = [];
       const failed: Array<{ lineId: string; error: string }> = [];
       const skipped: string[] = [];
+      // Строки, по которым расход уже существовал в момент записи: гонка или
+      // ретрай долетевшего запроса. Итог верный (ровно один расход), но факт
+      // сообщается явно, а не прячется в общий skipped.
+      const duplicatesBlocked: string[] = [];
       const now = new Date().toISOString();
 
       for (const line of lines) {
@@ -887,7 +1047,9 @@ const handler: Handler = async (event: HandlerEvent) => {
         }
 
         const attribution = deriveScopeAttribution(line.ruleSnapshot);
-        const txRef = adminDb.collection(TRANSACTIONS).doc();
+        // Детерминированный id: один и тот же (период, строка) не может дать два
+        // документа, сколько бы запросов ни пришло параллельно.
+        const txRef = adminDb.collection(TRANSACTIONS).doc(payoutTxId(periodId, line.id));
         const data = pruneUndefined({
           type: 'expense',
           amount: minorToSom(amountMinor),
@@ -916,16 +1078,33 @@ const handler: Handler = async (event: HandlerEvent) => {
             // Проверка организации ПОВТОРЯЕТСЯ внутри транзакции: чтение,
             // авторизовавшее запись, ей не атомарно.
             const snap = await t.get(periodRef);
-            t.set(txRef, data);
             if (!snap.exists) throw new Error('Ведомость не найдена');
             const fresh = snap.data() as any;
             if (fresh.organizationId !== orgFilter) throw new Error('Ведомость другой организации');
             if (fresh.state !== 'approved' && fresh.state !== 'paid') {
               throw new Error('Ведомость больше не утверждена');
             }
+
+            // Читаем ИМЕННО тот документ, который собираемся создать. Без этого
+            // транзакция не конфликтует ни с чем: Firestore откатывает её только
+            // при конкурентной записи в ПРОЧИТАННЫЙ документ, а periodRef никто
+            // не пишет — поэтому раньше два параллельных запроса коммитились оба.
+            const existingTx = await t.get(txRef);
+            if (existingTx.exists) throw new Error(DUPLICATE_PAYOUT);
+
+            // create, а не set: set перезаписал бы уже существующий расход молча.
+            t.create(txRef, data);
           });
           written.push(line.id);
         } catch (err: any) {
+          if (isDuplicatePayout(err)) {
+            // Не провал: расход по строке существует ровно в одном экземпляре —
+            // именно этого мы и добивались. Период вправе стать 'paid'.
+            console.warn(`payroll: дубликат выплаты заблокирован, строка ${line.id}`);
+            duplicatesBlocked.push(line.id);
+            skipped.push(line.id);
+            continue;
+          }
           failed.push({ lineId: line.id, error: err?.message || 'Ошибка записи' });
         }
       }
@@ -956,6 +1135,7 @@ const handler: Handler = async (event: HandlerEvent) => {
         written: written.length,
         writtenLineIds: written,
         skipped: skipped.length,
+        duplicatesBlocked: duplicatesBlocked.length,
         failed,
         warnings,
       };

@@ -17,7 +17,7 @@ import {
   ClipboardCheck,
   Inbox,
   NotebookText, NotebookPen, MapPin, UserCog,
-  Sparkles, LifeBuoy,
+  Sparkles, LifeBuoy, Wallet,
 } from 'lucide-react';
 
 /**
@@ -95,6 +95,7 @@ const ONE_BRANCH_ONLY = new Set<string>([
   'groups',                          // the canonical branch carrier
   'schedule', 'studentSchedule',     // ScheduleEvent.branchId
   'finances',                        // FinancialTransaction/PaymentPlan branchId
+  'payroll',                         // ведомость — один документ на филиал, объединению негде жить
   'journal', 'gradebook',            // branch enters via the group behind each entry
 ]);
 
@@ -207,6 +208,7 @@ export function useNavModel(instType?: string, opts?: NavModelOptions): NavSecti
       items: [
         { id: 'ai', to: '/ai', icon: Sparkles, label: t('nav.aiHub', 'AI-центр'), locked: !canAccess('ai') },
         { id: 'finances', to: '/finances', icon: CreditCard, label: t('nav.finances', 'Финансы'), locked: !canAccess('finances') },
+        { id: 'payroll', to: '/payroll', icon: Wallet, label: t('nav.payroll', 'Зарплата'), locked: !canAccess('payroll') },
         { id: 'analytics', to: '/teacher-analytics', icon: BarChart3, label: t('nav.analytics'), locked: !canAccess('advancedAnalytics') },
       ],
     });
@@ -247,6 +249,7 @@ export function useNavModel(instType?: string, opts?: NavModelOptions): NavSecti
     const management: NavItemDef[] = [];
     if (canRead('ai')) management.push({ id: 'ai', to: '/ai', icon: Sparkles, label: t('nav.aiHub', 'AI-центр'), locked: !canAccess('ai') });
     if (canRead('finances')) management.push({ id: 'finances', to: '/finances', icon: CreditCard, label: t('nav.finances', 'Финансы'), locked: !canAccess('finances') });
+    if (canRead('payroll')) management.push({ id: 'payroll', to: '/payroll', icon: Wallet, label: t('nav.payroll', 'Зарплата'), locked: !canAccess('payroll') });
     if (canRead('branches')) management.push({ id: 'branches', to: '/branches', icon: MapPin, label: t('nav.branches', 'Филиалы'), locked: !canAccess('branches') });
     if (canRead('settings')) management.push({ id: 'orgSettings', to: '/org-settings', icon: Settings, label: t('nav.orgSettings', 'Настройки') });
     if (canRead('analytics')) management.push({ id: 'analytics', to: '/teacher-analytics', icon: BarChart3, label: t('nav.analytics'), locked: !canAccess('advancedAnalytics') });
@@ -293,6 +296,7 @@ export function useNavModel(instType?: string, opts?: NavModelOptions): NavSecti
       if (canRead('team')) management.push({ id: 'team', to: '/team', icon: UserCog, label: t('nav.team', 'Команда и роли'), locked: !canAccess('rbac') });
       if (canRead('ai')) management.push({ id: 'ai', to: '/ai', icon: Sparkles, label: t('nav.aiHub', 'AI-центр'), locked: !canAccess('ai') });
       if (canRead('finances')) management.push({ id: 'finances', to: '/finances', icon: CreditCard, label: t('nav.finances', 'Финансы'), locked: !canAccess('finances') });
+      if (canRead('payroll')) management.push({ id: 'payroll', to: '/payroll', icon: Wallet, label: t('nav.payroll', 'Зарплата'), locked: !canAccess('payroll') });
       if (canRead('branches')) management.push({ id: 'branches', to: '/branches', icon: MapPin, label: t('nav.branches', 'Филиалы'), locked: !canAccess('branches') });
       if (canRead('settings')) management.push({ id: 'orgSettings', to: '/org-settings', icon: Settings, label: t('nav.orgSettings', 'Настройки') });
       sections.push({ id: 'management', label: t('nav.secManagement', 'Управление'), items: management });

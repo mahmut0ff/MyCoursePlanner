@@ -106,7 +106,11 @@ export type DiagnosticCode =
   | 'revenue_unattributed'
   | 'teacher_without_rule'
   | 'overlapping_rules'
-  | 'rule_no_components';
+  | 'rule_no_components'
+  // Ставка без филиала в ведомости филиала: платить её здесь нельзя (в каждом
+  // филиале — оклад по разу), но и промолчать нельзя, иначе преподаватель
+  // просто не получит денег и никто этого не заметит.
+  | 'rule_org_wide_skipped';
 
 /**
  * Структурная диагностика для блока «Пропущенные записи».

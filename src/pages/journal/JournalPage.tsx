@@ -19,6 +19,7 @@ import GradeCell from '../../components/gradebook/GradeCell';
 import { ClipboardList, Calendar, AlertCircle, AlertTriangle, RefreshCcw, UserCheck, CheckCircle2, XCircle, Clock, FileWarning, Trophy, TrendingUp, Loader2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useAuth } from '../../contexts/AuthContext';
+import { useBranch } from '../../contexts/BranchContext';
 import { usePermissions } from '../../contexts/PermissionsContext';
 
 
@@ -63,6 +64,7 @@ const defaultSchema: GradeSchema = {
 const JournalPage: React.FC = () => {
   const { t } = useTranslation();
   const { role, profile } = useAuth();
+  const { activeBranchId } = useBranch();
   const { canWrite } = usePermissions();
   // Read-only is driven by the resolved gradebook grant, not the base role — a manager
   // (or custom role) with gradebook:write can mark attendance/grades, matching the backend.
@@ -150,9 +152,9 @@ const JournalPage: React.FC = () => {
       setAllStudents(s);
       setAllTeachers(tch);
 
-      if (g.length > 0) {
-        setSelectedGroupId(g[0].id);
-      }
+      // Сбрасываем выбор на первую группу нового филиала — при смене филиала
+      // прежний id уже не принадлежит выборке, и курс из него не выведется.
+      setSelectedGroupId(g.length > 0 ? g[0].id : '');
     })
     .catch((e: any) => {
       if (e.message?.includes('403') || e.message?.includes('Forbidden')) {
@@ -162,7 +164,9 @@ const JournalPage: React.FC = () => {
       }
     })
     .finally(() => setLoading(false));
-  }, []);
+    // activeBranchId: api-слой штампует его на GET, поэтому смена филиала обязана
+    // перезагрузить курсы/группы/студентов — иначе журнал показывает прежний филиал.
+  }, [activeBranchId]);
 
   // 2. Курс больше не выбирается вручную — он выводится из выбранной группы.
   const selectedCourseId = useMemo(
@@ -505,8 +509,18 @@ const JournalPage: React.FC = () => {
     return (
       <div className="max-w-4xl mx-auto py-20 text-center">
         <ClipboardList className="w-16 h-16 text-slate-300 mx-auto mb-4" />
-        <h2 className="text-xl font-bold text-slate-900 dark:text-white mb-2">{t('journal.noGroups', 'Нет групп')}</h2>
-        <p className="text-slate-500 text-sm">{t('journal.noGroupsDesc', 'Создайте группу, чтобы начать вести переклички')}</p>
+        {/* Под выбранным филиалом список пуст по фильтру, а не потому что групп нет
+            вовсе — «создайте группу» тут отправило бы плодить дубли. */}
+        <h2 className="text-xl font-bold text-slate-900 dark:text-white mb-2">
+          {activeBranchId
+            ? t('journal.noGroupsInBranch', 'В этом филиале нет групп')
+            : t('journal.noGroups', 'Нет групп')}
+        </h2>
+        <p className="text-slate-500 text-sm">
+          {activeBranchId
+            ? t('journal.noGroupsInBranchDesc', 'Выберите «Все филиалы» или назначьте группам этот филиал')
+            : t('journal.noGroupsDesc', 'Создайте группу, чтобы начать вести переклички')}
+        </p>
       </div>
     );
   }

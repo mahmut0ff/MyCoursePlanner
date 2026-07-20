@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
 // firebase-admin is mocked wholesale: auth.ts pulls adminAuth/adminDb and
 // finance-names.ts pulls getDocsByIds at module load.
@@ -28,6 +28,9 @@ import { handler as plansHandler } from '../api-finance-plans';
 import { handler as metricsHandler } from '../api-finance-metrics';
 import { handler as trxHandler } from '../api-finance-transactions';
 import { parseRangeBoundary, getPeriodRange, getPreviousRange, resolveRange } from '../utils/finance-period';
+import { isDeadlineMissed, isPlanOverdue, orgDayKey, daysUntilDeadline } from '../utils/payment-plans';
+import { handler as debtRemindersHandler } from '../debt-reminders';
+import { createNotification } from '../utils/notifications';
 
 const event = (method: string, query?: any, body?: any) => ({
   httpMethod: method,
@@ -642,5 +645,346 @@ describe('api-finance-transactions GET — shared period parsing', () => {
     const res: any = await trxHandler(
       event('GET', { startDate: 'garbage', endDate: '2026-01-31' }), {} as any, () => {});
     expect(res.statusCode).toBe(400);
+  });
+});
+
+describe('isDeadlineMissed — a whole day of grace, not a lexicographic accident', () => {
+  // 20 July 2026, mid-morning UTC. The bug window is exactly this: any moment on
+  // the due date itself, where the naive `deadline < now.toISOString()` was
+  // already true because '2026-07-20' is a PREFIX of '2026-07-20T09:15:...'.
+  const now = new Date('2026-07-20T09:15:00.000Z');
+
+  it('is NOT missed on the due date itself — both stored deadline shapes', () => {
+    expect(isDeadlineMissed('2026-07-20', now)).toBe(false);
+    expect(isDeadlineMissed('2026-07-20T00:00:00.000Z', now)).toBe(false);
+    // Even a deadline stamped earlier on the due day is still "pay by end of day".
+    expect(isDeadlineMissed('2026-07-20T00:00:01.000Z', now)).toBe(false);
+  });
+
+  it('IS missed once the whole day has passed — both stored deadline shapes', () => {
+    expect(isDeadlineMissed('2026-07-19', now)).toBe(true);
+    expect(isDeadlineMissed('2026-07-19T23:59:59.999Z', now)).toBe(true);
+  });
+
+  it('is not missed for a future deadline, and never for a missing/garbage one', () => {
+    expect(isDeadlineMissed('2026-07-21', now)).toBe(false);
+    expect(isDeadlineMissed(null, now)).toBe(false);
+    expect(isDeadlineMissed(undefined, now)).toBe(false);
+    expect(isDeadlineMissed('', now)).toBe(false);
+    expect(isDeadlineMissed('не дата', now)).toBe(false);
+  });
+
+  it('accepts a Date / Firestore Timestamp deadline, not only a string', () => {
+    expect(isDeadlineMissed(new Date('2026-07-19T00:00:00.000Z'), now)).toBe(true);
+    expect(isDeadlineMissed(new Date('2026-07-20T00:00:00.000Z'), now)).toBe(false);
+    const ts = { toDate: () => new Date('2026-07-19T00:00:00.000Z') };
+    expect(isDeadlineMissed(ts, now)).toBe(true);
+  });
+
+  // Этот тест раньше назывался "isPlanOverdue trusts an already-written overdue
+  // status regardless of deadline" и закреплял БАГ как намерение: предикат
+  // возвращал true по записанному статусу, не глядя на срок. Снять 'overdue'
+  // при этом было некому (derivePlanStatus его сознательно сохраняет), поэтому
+  // продление срока не работало: счёт навсегда оставался в KPI долга, в списке
+  // должников и в рассылке «Просрочена оплата». Теперь правило обратное — и
+  // проверяется строже, а не слабее: срок решает В ОБЕ стороны.
+  it('isPlanOverdue lets the deadline overrule a stale overdue status, both ways', () => {
+    // Продлённый в будущее срок СНИМАЕТ просрочку, хотя статус ещё 'overdue'.
+    expect(isPlanOverdue({ status: 'overdue', deadline: '2026-12-31' }, now)).toBe(false);
+    // Срок сегодня — тоже ещё не просрочка (целый день на оплату).
+    expect(isPlanOverdue({ status: 'overdue', deadline: '2026-07-20' }, now)).toBe(false);
+    // А истёкший срок ставит просрочку независимо от того, что записано.
+    expect(isPlanOverdue({ status: 'overdue', deadline: '2026-07-19' }, now)).toBe(true);
+    expect(isPlanOverdue({ status: 'pending', deadline: '2026-07-20' }, now)).toBe(false);
+    expect(isPlanOverdue({ status: 'pending', deadline: '2026-07-19' }, now)).toBe(true);
+  });
+
+  it('falls back to the written status only when there is no usable deadline', () => {
+    // Вычислить нечего — доверяем тому, что записано, иначе просрочка по плану
+    // без срока молча исчезла бы из долга.
+    expect(isPlanOverdue({ status: 'overdue', deadline: null }, now)).toBe(true);
+    expect(isPlanOverdue({ status: 'overdue' }, now)).toBe(true);
+    expect(isPlanOverdue({ status: 'overdue', deadline: 'не дата' }, now)).toBe(true);
+    expect(isPlanOverdue({ status: 'pending', deadline: null }, now)).toBe(false);
+    expect(isPlanOverdue(null, now)).toBe(false);
+  });
+});
+
+describe('the day boundary is the ORG day (UTC+6), not UTC', () => {
+  // Рынок — Центральная Азия. Граница суток обязана переворачиваться в местную
+  // полночь: иначе срок «20-е» доживал до 06:00 21-го по-местному.
+  it('is already the next local day at 01:00 local, though UTC still says yesterday', () => {
+    // 2026-07-20T19:30Z === 2026-07-21 01:30 в Бишкеке.
+    const afterLocalMidnight = new Date('2026-07-20T19:30:00.000Z');
+    expect(orgDayKey(afterLocalMidnight)).toBe('2026-07-21');
+    // Срок «20 июля» истёк — местные сутки кончились, хотя по UTC ещё 20-е.
+    expect(isDeadlineMissed('2026-07-20', afterLocalMidnight)).toBe(true);
+    expect(daysUntilDeadline('2026-07-20', afterLocalMidnight)).toBe(-1);
+  });
+
+  it('is still the same local day just BEFORE local midnight', () => {
+    // 2026-07-20T17:30Z === 2026-07-20 23:30 в Бишкеке.
+    const beforeLocalMidnight = new Date('2026-07-20T17:30:00.000Z');
+    expect(orgDayKey(beforeLocalMidnight)).toBe('2026-07-20');
+    expect(isDeadlineMissed('2026-07-20', beforeLocalMidnight)).toBe(false);
+    expect(daysUntilDeadline('2026-07-20', beforeLocalMidnight)).toBe(0);
+  });
+
+  it('counts whole calendar days, not ms/86400000 with a rounding accident', () => {
+    const now = new Date('2026-07-20T09:15:00.000Z');
+    expect(daysUntilDeadline('2026-07-20', now)).toBe(0);
+    expect(daysUntilDeadline('2026-07-21', now)).toBe(1);
+    expect(daysUntilDeadline('2026-07-23', now)).toBe(3);
+    expect(daysUntilDeadline('2026-07-19', now)).toBe(-1);
+    // Ключевое расхождение со старой формулой: срок с ненулевым временем.
+    // Math.ceil((18:00 − 09:15)/сутки) давал 1 («оплата завтра») для срока СЕГОДНЯ.
+    expect(daysUntilDeadline('2026-07-20T18:00:00.000Z', now)).toBe(0);
+    expect(daysUntilDeadline(null, now)).toBeNull();
+    expect(daysUntilDeadline('не дата', now)).toBeNull();
+  });
+});
+
+describe('overdue promotion & counting — plans and metrics must agree', () => {
+  // Frozen mid-morning on 20 July 2026: every "due today" row below sits inside
+  // the exact window where the old bare-date-vs-ISO comparison mis-fired.
+  const NOW = new Date('2026-07-20T09:15:00.000Z');
+
+  /**
+   * Every plan is debt-bearing and pending, so nothing but the deadline decides
+   * the outcome — and metrics' isDebtBearingPlan pre-filter cannot mask a
+   * disagreement between the two endpoints.
+   */
+  const planRows = [
+    { id: 'todayBare', organizationId: 'org1', studentId: 's1', status: 'pending', totalAmount: 1000, paidAmount: 0, branchId: 'A', deadline: '2026-07-20' },
+    { id: 'todayIso', organizationId: 'org1', studentId: 's2', status: 'pending', totalAmount: 1000, paidAmount: 0, branchId: 'A', deadline: '2026-07-20T00:00:00.000Z' },
+    { id: 'yesterdayBare', organizationId: 'org1', studentId: 's3', status: 'pending', totalAmount: 1000, paidAmount: 0, branchId: 'A', deadline: '2026-07-19' },
+    { id: 'yesterdayIso', organizationId: 'org1', studentId: 's4', status: 'pending', totalAmount: 1000, paidAmount: 0, branchId: 'A', deadline: '2026-07-19T00:00:00.000Z' },
+    { id: 'future', organizationId: 'org1', studentId: 's5', status: 'pending', totalAmount: 1000, paidAmount: 0, branchId: 'A', deadline: '2026-08-01' },
+    { id: 'noDeadline', organizationId: 'org1', studentId: 's6', status: 'pending', totalAmount: 1000, paidAmount: 0, branchId: 'A', deadline: null },
+  ];
+
+  /** Wires both collections off the same fixture, plus a no-op promotion batch. */
+  function wire(plans: any[], trxs: any[] = []) {
+    const updates: Array<[string, any]> = [];
+    (adminDb.batch as any).mockImplementation(() => ({
+      update: vi.fn((ref: any, data: any) => { updates.push([ref?.id, data]); }),
+      commit: vi.fn().mockResolvedValue(undefined),
+    }));
+    const query = (rows: any[]): any => {
+      const q: any = {
+        where: vi.fn(() => q),
+        get: vi.fn().mockResolvedValue({ docs: rows.map(r => ({ id: r.id, data: () => r })), size: rows.length, empty: !rows.length }),
+      };
+      return q;
+    };
+    const plansQuery = query(plans);
+    plansQuery.doc = vi.fn((id: string) => ({ id }));
+    const trxQuery = query(trxs);
+    (adminDb.collection as any).mockImplementation((name: string) =>
+      name === 'studentPaymentPlans' ? plansQuery : trxQuery);
+    return { updates };
+  }
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.useFakeTimers();
+    vi.setSystemTime(NOW);
+  });
+  afterEach(() => vi.useRealTimers());
+
+  it('does not promote a plan due TODAY, in either stored deadline shape', async () => {
+    (verifyAuth as any).mockResolvedValue(staff(['finances:read']));
+    wire(planRows);
+    const res: any = await plansHandler(event('GET'), {} as any, () => {});
+    expect(res.statusCode).toBe(200);
+    const byId = new Map(JSON.parse(res.body).map((r: any) => [r.id, r.status]));
+    // THE fix: at 00:00 on the due date these used to read 'overdue' already,
+    // pulling the student into the debtor list and the reminder cron.
+    expect(byId.get('todayBare')).toBe('pending');
+    expect(byId.get('todayIso')).toBe('pending');
+    expect(byId.get('future')).toBe('pending');
+    expect(byId.get('noDeadline')).toBe('pending');
+  });
+
+  it('DOES promote a plan due yesterday, in either stored deadline shape', async () => {
+    (verifyAuth as any).mockResolvedValue(staff(['finances:read']));
+    const { updates } = wire(planRows);
+    const res: any = await plansHandler(event('GET'), {} as any, () => {});
+    const byId = new Map(JSON.parse(res.body).map((r: any) => [r.id, r.status]));
+    expect(byId.get('yesterdayBare')).toBe('overdue');
+    expect(byId.get('yesterdayIso')).toBe('overdue');
+    // And exactly those two are persisted — no early write for the due-today rows.
+    expect(updates.map(([id]) => id).sort()).toEqual(['yesterdayBare', 'yesterdayIso']);
+  });
+
+  it('metrics counts the same two overdue plans as the plans endpoint promotes', async () => {
+    (verifyAuth as any).mockResolvedValue(staff(['finances:read']));
+    wire(planRows);
+    const plansRes: any = await plansHandler(event('GET'), {} as any, () => {});
+    const promoted = JSON.parse(plansRes.body).filter((r: any) => r.status === 'overdue').length;
+
+    wire(planRows);
+    (verifyAuth as any).mockResolvedValue(staff(['finances:read']));
+    const metricsRes: any = await metricsHandler(event('GET', { period: 'all' }), {} as any, () => {});
+    expect(metricsRes.statusCode).toBe(200);
+    const { overdueCount } = JSON.parse(metricsRes.body);
+
+    // The shared predicate is the point: these two numbers can no longer drift.
+    expect(promoted).toBe(2);
+    expect(overdueCount).toBe(promoted);
+  });
+
+  describe('unassignedBranch* — org-wide figures stay behind org-wide scope', () => {
+    const trxRows = [
+      { id: 'x1', organizationId: 'org1', type: 'income', amount: 700, branchId: null, date: new Date(2026, 6, 15, 12).toISOString() },
+      { id: 'x2', organizationId: 'org1', type: 'expense', amount: 200, branchId: null, date: new Date(2026, 6, 15, 12).toISOString() },
+      { id: 'x3', organizationId: 'org1', type: 'income', amount: 999, branchId: 'A', date: new Date(2026, 6, 15, 12).toISOString() },
+    ];
+    const unassignedDebtPlan = [
+      ...planRows,
+      { id: 'orphanDebt', organizationId: 'org1', studentId: 's7', status: 'pending', totalAmount: 400, paidAmount: 0, branchId: null, deadline: '2026-08-01' },
+    ];
+    const window = { startDate: '2026-07-01', endDate: '2026-07-31' };
+
+    it('gives an unrestricted member the real unassigned figures', async () => {
+      (verifyAuth as any).mockResolvedValue(staff(['finances:read'])); // branchIds: []
+      wire(unassignedDebtPlan, trxRows);
+      const res: any = await metricsHandler(event('GET', window), {} as any, () => {});
+      expect(res.statusCode).toBe(200);
+      const b = JSON.parse(res.body);
+      expect(b.unassignedBranchIncome).toBe(700);
+      expect(b.unassignedBranchExpense).toBe(200);
+      expect(b.unassignedBranchDebt).toBe(400);
+    });
+
+    it('zeroes them for a branch-restricted member — no org-wide money leak', async () => {
+      (verifyAuth as any).mockResolvedValue(
+        staff(['finances:read'], { branchIds: ['A'], primaryBranchId: 'A' }));
+      wire(unassignedDebtPlan, trxRows);
+      const res: any = await metricsHandler(event('GET', window), {} as any, () => {});
+      expect(res.statusCode).toBe(200);
+      const b = JSON.parse(res.body);
+      // The fields must still EXIST — the UI reads them unconditionally.
+      expect(b).toHaveProperty('unassignedBranchIncome');
+      expect(b).toHaveProperty('unassignedBranchExpense');
+      expect(b).toHaveProperty('unassignedBranchDebt');
+      expect(b.unassignedBranchIncome).toBe(0);
+      expect(b.unassignedBranchExpense).toBe(0);
+      expect(b.unassignedBranchDebt).toBe(0);
+      // ...while the figures they ARE entitled to still come through.
+      expect(b.totalIncome).toBe(999);
+    });
+
+    it('keeps the real figures for an admin who has narrowed the UI to one branch', async () => {
+      // A director filtering to branch A must still see the size of the
+      // "not attached to a branch" bucket — that is what the field is for.
+      (verifyAuth as any).mockResolvedValue(staff([], { role: 'admin' }));
+      wire(unassignedDebtPlan, trxRows);
+      const res: any = await metricsHandler(
+        event('GET', { ...window, branchId: 'A' }), {} as any, () => {});
+      expect(res.statusCode).toBe(200);
+      const b = JSON.parse(res.body);
+      expect(b.unassignedBranchIncome).toBe(700);
+      expect(b.unassignedBranchDebt).toBe(400);
+      expect(b.totalIncome).toBe(999); // but the totals are branch-scoped
+    });
+  });
+});
+
+describe('one overdue rule across debt-reminders and the metrics surface', () => {
+  // Часы заморожены: раньше эти проверки зависели бы от реальной даты запуска.
+  const NOW = new Date('2026-07-20T09:15:00.000Z'); // 15:15 в дне организации
+
+  /**
+   * 'extended' — ровно тот случай, ради которого чинилось правило: директор
+   * ПРОДЛИЛ срок, а в документе всё ещё лежит статус 'overdue'.
+   */
+  const planRows = [
+    { id: 'extended', organizationId: 'org1', studentId: 'sExt', studentName: 'Продлённый', status: 'overdue', totalAmount: 1000, paidAmount: 0, branchId: 'A', deadline: '2026-08-15' },
+    { id: 'late', organizationId: 'org1', studentId: 'sLate', studentName: 'Опоздавший', status: 'pending', totalAmount: 1000, paidAmount: 0, branchId: 'A', deadline: '2026-07-17' },
+    { id: 'dueToday', organizationId: 'org1', studentId: 'sToday', studentName: 'Сегодняшний', status: 'pending', totalAmount: 1000, paidAmount: 0, branchId: 'A', deadline: '2026-07-20' },
+  ];
+
+  /** Wires plans for both the cron (doc.ref.update) and the endpoints (batch). */
+  function wire(plans: any[]) {
+    const writes: Array<[string, any]> = [];
+    (adminDb.batch as any).mockImplementation(() => ({
+      update: vi.fn((ref: any, data: any) => { writes.push([ref?.id, data]); }),
+      commit: vi.fn().mockResolvedValue(undefined),
+    }));
+    const q: any = {
+      where: vi.fn(() => q),
+      get: vi.fn().mockResolvedValue({
+        docs: plans.map(r => ({
+          id: r.id,
+          data: () => r,
+          ref: { id: r.id, update: vi.fn(async (d: any) => { writes.push([r.id, d]); }) },
+        })),
+        size: plans.length,
+        empty: !plans.length,
+      }),
+      doc: vi.fn((id: string) => ({ id })),
+    };
+    const empty: any = { where: vi.fn(() => empty), get: vi.fn().mockResolvedValue({ docs: [], size: 0, empty: true }) };
+    (adminDb.collection as any).mockImplementation((name: string) =>
+      name === 'studentPaymentPlans' ? q : empty);
+    return { writes };
+  }
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.useFakeTimers();
+    vi.setSystemTime(NOW);
+  });
+  afterEach(() => vi.useRealTimers());
+
+  it('stops calling an extended plan overdue, and clears the stale status', async () => {
+    const { writes } = wire(planRows);
+    const res: any = await debtRemindersHandler(event('POST'), {} as any, () => {});
+    const body = JSON.parse(res.body);
+
+    expect(body.markedOverdue).toBe(1);  // только 'late'
+    expect(body.clearedOverdue).toBe(1); // 'extended' разжалован обратно
+    // Статус снят на выведенный из сумм, а не оставлен 'overdue' навсегда.
+    expect(writes).toContainEqual(['extended', expect.objectContaining({ status: 'pending' })]);
+  });
+
+  it('never sends «Просрочена оплата» for money that is no longer late', async () => {
+    wire(planRows);
+    await debtRemindersHandler(event('POST'), {} as any, () => {});
+    const calls = (createNotification as any).mock.calls.map((c: any[]) => c[0]);
+    // Студент с продлённым сроком не получает НИЧЕГО о просрочке.
+    expect(calls.find((c: any) => c.recipientId === 'sExt')).toBeUndefined();
+    // А те, кому положено, получают ровно свой текст.
+    expect(calls.find((c: any) => c.recipientId === 'sLate')?.title).toBe('Просрочена оплата');
+    expect(calls.find((c: any) => c.recipientId === 'sToday')?.title).toBe('Напоминание об оплате');
+    expect(calls.find((c: any) => c.recipientId === 'sToday')?.message).toContain('сегодня');
+  });
+
+  it('agrees with the metrics overdue count on the very same fixture', async () => {
+    wire(planRows);
+    const cronRes: any = await debtRemindersHandler(event('POST'), {} as any, () => {});
+    const cronOverdue = JSON.parse(cronRes.body).markedOverdue;
+
+    wire(planRows);
+    (verifyAuth as any).mockResolvedValue(staff(['finances:read']));
+    const metricsRes: any = await metricsHandler(event('GET', { period: 'all' }), {} as any, () => {});
+    expect(metricsRes.statusCode).toBe(200);
+
+    // Обе поверхности видят ровно одну просрочку — 'late'. До общего предиката
+    // метрики считали 'extended' просроченным (по записанному статусу), а cron
+    // слал по нему напоминания: два разных ответа на один вопрос.
+    expect(cronOverdue).toBe(1);
+    expect(JSON.parse(metricsRes.body).overdueCount).toBe(1);
+  });
+
+  it('promotes in api-finance-plans exactly what the cron promotes', async () => {
+    wire(planRows);
+    (verifyAuth as any).mockResolvedValue(staff(['finances:read']));
+    const res: any = await plansHandler(event('GET'), {} as any, () => {});
+    const rows = JSON.parse(res.body);
+    const byId = new Map(rows.map((r: any) => [r.id, r.status]));
+    expect(byId.get('late')).toBe('overdue');
+    expect(byId.get('dueToday')).toBe('pending');
   });
 });

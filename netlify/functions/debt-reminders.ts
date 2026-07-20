@@ -5,7 +5,12 @@
  * owe money and have a deadline, then:
  *   - reminds the student a few days before the deadline (and on the day),
  *   - marks plans overdue once the deadline passes (and notifies org admins once),
+ *   - clears overdue again when a director extends the deadline,
  *   - keeps nudging overdue students every few days.
+ *
+ * The overdue rule itself is NOT local: it comes from utils/payment-plans.ts, so
+ * this cron, api-finance-plans (which writes the status) and api-finance-metrics
+ * (which counts it) can never disagree about who is late.
  *
  * Delivery reuses the shared notification helper → in-app + FCM push + Telegram.
  * Idempotent: at most one reminder per plan per calendar day (lastDebtReminderDate).
@@ -16,7 +21,14 @@ import type { Handler, HandlerEvent } from '@netlify/functions';
 import { adminDb } from './utils/firebase-admin';
 import { createNotification, notifyOrgAdmins } from './utils/notifications';
 import { jsonResponse } from './utils/auth';
-import { isDebtBearingPlan, planDebt } from './utils/payment-plans';
+import {
+  isDebtBearingPlan,
+  planDebt,
+  isDeadlineMissed,
+  daysUntilDeadline,
+  orgDayKey,
+} from './utils/payment-plans';
+import { derivePlanStatus } from './utils/finance-names';
 
 const COLLECTION = 'studentPaymentPlans';
 // Remind the student this many days BEFORE the deadline (0 = on the day).
@@ -32,7 +44,9 @@ const handler: Handler = async (event: HandlerEvent) => {
   if (event.httpMethod === 'OPTIONS') return jsonResponse(204, '');
 
   const now = new Date();
-  const today = now.toISOString().split('T')[0];
+  // День организации, а не UTC: ключ идемпотентности («одно напоминание в день»)
+  // обязан переворачиваться в ту же полночь, что и сам срок оплаты.
+  const today = orgDayKey(now);
 
   try {
     // Plans that still owe money. The status allow-list already excludes both
@@ -47,6 +61,7 @@ const handler: Handler = async (event: HandlerEvent) => {
     let scanned = 0;
     let sent = 0;
     let markedOverdue = 0;
+    let clearedOverdue = 0;
 
     for (const doc of snap.docs) {
       const plan = doc.data() as any;
@@ -60,14 +75,20 @@ const handler: Handler = async (event: HandlerEvent) => {
       if (!isDebtBearingPlan(plan)) continue;
       const debt = planDebt(plan);
 
-      const deadline = new Date(plan.deadline);
-      if (isNaN(deadline.getTime())) continue;
-      const daysLeft = Math.ceil((deadline.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+      // Общий предикат просрочки (utils/payment-plans.ts) вместо третьей местной
+      // реализации. Здесь стояло `Math.ceil((deadline - now) / 86400000) < 0`:
+      // оно совпадало с общим правилом лишь случайно (для срока в полночь ceil
+      // даёт -0) и расходилось с ним для срока с ненулевым временем. А это
+      // единственный потребитель, который ПИШЕТ СТУДЕНТУ, — расхождение здесь
+      // стоит дороже всего.
+      const daysLeft = daysUntilDeadline(plan.deadline, now);
+      if (daysLeft === null) continue; // срок нечитаем — напоминать не о чем
+      const missed = isDeadlineMissed(plan.deadline, now);
 
       const courseSuffix = plan.courseName ? ` за «${plan.courseName}»` : '';
 
       // ─── Transition to overdue + notify admins once ───
-      if (daysLeft < 0 && plan.status !== 'overdue') {
+      if (missed && plan.status !== 'overdue') {
         await doc.ref.update({ status: 'overdue', updatedAt: now.toISOString() }).catch(() => {});
         markedOverdue++;
         await notifyOrgAdmins(
@@ -79,17 +100,29 @@ const handler: Handler = async (event: HandlerEvent) => {
         ).catch(() => {});
       }
 
+      // ─── Обратный переход: срок продлили — просрочка снимается ───
+      // Симметрия к ветке выше, и единственное место, где она возможна:
+      // derivePlanStatus сохраняет 'overdue' именно потому, что не видит deadline.
+      // Без этого продление срока не снимало статус никогда, и счёт навсегда
+      // оставался в KPI долга и в списке должников. Новый статус выводим БЕЗ
+      // currentStatus — иначе ladder вернёт то же 'overdue'.
+      if (!missed && plan.status === 'overdue') {
+        const restored = derivePlanStatus(plan.paidAmount || 0, plan.totalAmount);
+        await doc.ref.update({ status: restored, updatedAt: now.toISOString() }).catch(() => {});
+        clearedOverdue++;
+      }
+
       // ─── Decide whether a student reminder is due today ───
       let due = false;
       let title = '';
       let message = '';
 
-      if (daysLeft >= 0 && BEFORE_DAYS.includes(daysLeft)) {
+      if (!missed && BEFORE_DAYS.includes(daysLeft)) {
         due = true;
         const when = daysLeft === 0 ? 'сегодня' : daysLeft === 1 ? 'завтра' : `через ${daysLeft} дн.`;
         title = 'Напоминание об оплате';
         message = `Оплата ${when}: ${fmtAmount(debt)} с.${courseSuffix}.`;
-      } else if (daysLeft < 0) {
+      } else if (missed) {
         const overdueDays = Math.abs(daysLeft);
         if (overdueDays % OVERDUE_EVERY_DAYS === 0) {
           due = true;
@@ -104,7 +137,7 @@ const handler: Handler = async (event: HandlerEvent) => {
 
       await createNotification({
         recipientId: plan.studentId,
-        type: daysLeft < 0 ? 'payment_overdue' : 'payment_due',
+        type: missed ? 'payment_overdue' : 'payment_due',
         title,
         message,
         link: '/diary',
@@ -116,7 +149,7 @@ const handler: Handler = async (event: HandlerEvent) => {
       sent++;
     }
 
-    return jsonResponse(200, { success: true, scanned, sent, markedOverdue });
+    return jsonResponse(200, { success: true, scanned, sent, markedOverdue, clearedOverdue });
   } catch (error: any) {
     console.error('Debt reminders error:', error);
     return jsonResponse(500, { error: error.message });

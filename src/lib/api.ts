@@ -927,6 +927,10 @@ const payrollReq = <T = any>(action: string, method = 'GET', body?: any, extra?:
 export const apiGetCompensationRules = (filters?: { teacherId?: string; status?: string; branchId?: string }) =>
   apiRequest<CompensationRule[]>('api-payroll-rules', 'GET', undefined, filters as any);
 
+// branchId передаётся ЯВНО — POST штампа активного филиала не получает. Пропуск
+// поля не «наследует филиал», а отдаёт решение серверному умолчанию, и ставка
+// оседает не там, где директор её заводил. `null` — законный выбор: ставка на всю
+// организацию, но выбор осознанный.
 export const apiCreateCompensationRule = (data: {
   teacherId: string;
   label: string;
@@ -968,8 +972,19 @@ export const apiGetPayrollPeriod = (periodId: string) =>
 
 // Пересчёт: полная пересборка строк source:'rule'; ручные бонусы/штрафы её
 // переживают. Законен только в draft/calculated — утверждённый период заморожен.
+//
+// branchId ОБЯЗАН уехать в теле. Это POST, а POST штамп активного филиала не
+// получает (см. apiRequest выше), тогда как последующее чтение ведомости — GET —
+// штампуется. Без явной передачи расчёт сохранял бы период с branchId: null,
+// а перезагрузка искала бы период выбранного филиала и не находила ничего:
+// ведомость исчезала бы сразу после расчёта. Плюс расчёт шёл бы по всей
+// организации. Значение по умолчанию берём из активного филиала, но вызывающий
+// код всё равно передаёт его явно — умолчание здесь страховка, а не контракт.
 export const apiCalculatePayroll = (data: { period: string; branchId?: string | null }) =>
-  payrollReq('calculate', 'POST', data);
+  payrollReq('calculate', 'POST', {
+    ...data,
+    branchId: data.branchId === undefined ? activeBranchId : data.branchId,
+  });
 
 /**
  * Ручная строка (бонус/штраф) либо правка уже посчитанной.

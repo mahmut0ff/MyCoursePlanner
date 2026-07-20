@@ -6,6 +6,7 @@ import type { Handler, HandlerEvent } from '@netlify/functions';
 import { adminDb } from './utils/firebase-admin';
 import { verifyAuth, can, getOrgFilter, resolveBranchFilter, recordInBranchScope, requireBranchScope, ok, unauthorized, forbidden, badRequest, notFound, jsonResponse } from './utils/auth';
 import { batchGetUserNames, batchGetCourseNames } from './utils/finance-names';
+import { isDeadlineMissed } from './utils/payment-plans';
 
 const COLLECTION = 'studentPaymentPlans';
 
@@ -46,10 +47,17 @@ const handler: Handler = async (event: HandlerEvent) => {
       // This runs BEFORE the status filter: promoting after it made `?status=overdue`
       // miss the very rows that were about to flip, while `?status=pending` returned
       // rows whose status field already read 'overdue' by the time the client saw them.
-      const nowIso = new Date().toISOString();
+      //
+      // Просрочка наступает, только когда ДЕНЬ срока истёк целиком, — предикат
+      // общий с api-finance-metrics (utils/payment-plans.ts). Раньше здесь стояло
+      // `r.deadline < nowIso`: голая дата '2026-07-20' лексикографически меньше
+      // полного ISO '2026-07-20T09:15:00.000Z', поэтому счёт становился
+      // просроченным в 00:00 того самого дня, когда его только предстояло
+      // оплатить, — и студенту уходило напоминание о ещё не просроченных деньгах.
+      const now = new Date();
+      const nowIso = now.toISOString();
       const toPromote = results.filter(r =>
-        r.deadline &&
-        r.deadline < nowIso &&
+        isDeadlineMissed(r.deadline, now) &&
         (r.status === 'pending' || r.status === 'partial')
       );
       for (const r of toPromote) r.status = 'overdue';

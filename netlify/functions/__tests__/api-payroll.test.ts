@@ -336,6 +336,64 @@ describe('api-payroll — филиальное разграничение', () =
     expect(lines.map((l) => l.teacherId)).toEqual(['t2']);
   });
 
+  it('сохраняет филиал на ведомости, и последующее чтение по филиалу её находит', async () => {
+    (verifyAuth as any).mockResolvedValue(staff(['payroll:write', 'payroll:read']));
+    const res = await calculate({ branchId: 'B' });
+    expect(res.statusCode).toBe(200);
+    expect(JSON.parse(res.body).branchId).toBe('B');
+
+    const period = db.rows('payrollPeriods')[0];
+    expect(period.branchId).toBe('B');
+    // Именно этот GET делает UI после расчёта — он штампован филиалом. Раньше
+    // расчёт писал branchId: null, и ведомость исчезала сразу после расчёта.
+    const list = await handler(
+      event('GET', { action: 'periods', period: july, branchId: 'B' }), {} as any, () => {},
+    ) as any;
+    expect(list.statusCode).toBe(200);
+    expect(JSON.parse(list.body).map((p: any) => p.id)).toEqual([period.id]);
+  });
+
+  it('не отдаёт общеорганизационную ведомость участнику, ограниченному филиалом', async () => {
+    (verifyAuth as any).mockResolvedValue(staff(['payroll:write'], { branchIds: ['A'], primaryBranchId: 'A' }));
+    // Филиал не назван — это «Все филиалы». Для такого участника расчёт по всей
+    // организации означал бы зарплату филиалов, которых он не видит.
+    const res = await calculate();
+    expect(res.statusCode).toBe(403);
+    expect(JSON.parse(res.body).error).toMatch(/Выберите филиал/i);
+    expect(db.rows('payrollPeriods')).toHaveLength(0);
+
+    // Свой филиал он рассчитать вправе.
+    const own = await calculate({ branchId: 'A' });
+    expect(own.statusCode).toBe(200);
+    expect(db.rows('payrollPeriods')[0].branchId).toBe('A');
+  });
+
+  it('общеорганизационная и филиальная ведомость за один месяц — разные документы', async () => {
+    (verifyAuth as any).mockResolvedValue(staff(['payroll:write', 'payroll:read']));
+    await calculate();                  // «Все филиалы» → branchId null
+    await calculate({ branchId: 'B' }); // тот же июль, но филиал B
+
+    const periods = db.rows('payrollPeriods');
+    expect(periods).toHaveLength(2);
+    expect(periods.map((p) => p.branchId).sort()).toEqual(['B', null]);
+    // Личность — тройка (организация, период, филиал): второй расчёт завёл новую
+    // ведомость, а не переписал общеорганизационную.
+    expect(new Set(periods.map((p) => p.id)).size).toBe(2);
+
+    // Общеорганизационная считала по всей организации (t1), филиальная — только по B (t2).
+    const orgWide = periods.find((p) => p.branchId === null)!;
+    const branchB = periods.find((p) => p.branchId === 'B')!;
+    const linesOf = (id: string) => db.rows('payrollLines').filter((l) => l.periodId === id);
+    expect(linesOf(orgWide.id).map((l) => l.teacherId).sort()).toEqual(['t1', 't2']);
+    expect(linesOf(branchB.id).map((l) => l.teacherId)).toEqual(['t2']);
+
+    // И выбор филиала в чтении не смешивает их: строгое совпадение, без org-wide.
+    const list = await handler(
+      event('GET', { action: 'periods', period: july, branchId: 'B' }), {} as any, () => {},
+    ) as any;
+    expect(JSON.parse(list.body).map((p: any) => p.id)).toEqual([branchB.id]);
+  });
+
   it('скрывает ведомость чужого филиала из детального чтения', async () => {
     (verifyAuth as any).mockResolvedValue(staff(['payroll:write', 'payroll:read']));
     await calculate({ branchId: 'B' });

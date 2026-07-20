@@ -417,12 +417,33 @@ const handler: Handler = async (event: HandlerEvent) => {
       const period = String(body.period || '').trim();
       if (!isPeriodKey(period)) return badRequest('period обязателен в формате YYYY-MM');
 
-      const branchId = body.branchId ?? null;
+      // ── Филиал ведомости ──
+      // Разрешаем его тем же контрактом, что и финансовые эндпоинты
+      // (resolveBranchFilter), а не сырым body.branchId: сырое значение null
+      // означало бы «вся организация» для КОГО УГОДНО, и сотрудник, ограниченный
+      // одним филиалом, одним расчётом получил бы зарплату чужих филиалов.
+      const branchFilter = resolveBranchFilter(user, body.branchId ?? null);
+      if (branchFilter === '__DENIED__') return forbidden('Access denied to requested branch');
+      // Массив — это «филиалы, которые участник вправе видеть» при невыбранном
+      // филиале. Для ЧТЕНИЯ такое объединение законно, для ЗАПИСИ нет: ведомость
+      // — один документ с одним branchId, и сохранить объединение в него нельзя.
+      // Заставляем назвать филиал явно, вместо того чтобы молча выбрать первый.
+      if (Array.isArray(branchFilter)) {
+        return forbidden(
+          'Выберите филиал: ведомость по всей организации может рассчитать только сотрудник без ограничения по филиалам.',
+        );
+      }
+      const branchId: string | null = branchFilter;
       const branchError = requireBranchScope(user, branchId);
       if (branchError) return branchError;
 
-      // Ищем существующую ведомость по (организация, период); филиал сверяем в
-      // JS, потому что branchId бывает null, а разложить это на равенство нельзя.
+      // Личность ведомости — ТРОЙКА (организация, период, филиал). Ведомость
+      // филиала и ведомость «Все филиалы» за один и тот же месяц — два разных
+      // документа, и перезаписать друг друга они не могут: найденной считается
+      // только та, у которой branchId совпадает буквально.
+      //
+      // Ищем по (организация, период) равенством; филиал сверяем в JS, потому что
+      // branchId бывает null, а разложить это на равенство нельзя.
       const existing = (await fetchPeriods(orgFilter, period)).find((p) => (p.branchId ?? null) === branchId) || null;
 
       // Правило 3: утверждённое не пересчитывается ни при каких условиях.

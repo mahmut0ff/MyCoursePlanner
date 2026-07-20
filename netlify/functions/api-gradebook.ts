@@ -45,6 +45,69 @@ async function verifyCourseAccess(user: AuthUser, courseId: string): Promise<boo
   return false;
 }
 
+/**
+ * Результат авторизации ГРУППЫ под запись lessonSession.
+ * `crossTenant` отделяет атаку от ошибки данных, и от этого зависит радиус поражения:
+ * чужой орг — отказ всему запросу, всё остальное — пропуск ТОЛЬКО сессии.
+ */
+type GroupSessionAuth =
+  | { ok: true }
+  | { ok: false; crossTenant: boolean; reason: string };
+
+/**
+ * Доступ к ГРУППЕ (а не к курсу) — для записи lessonSession.
+ * Курсовой проверки мало: одному courseId соответствует много групп, поэтому
+ * verifyCourseAccess(courseId) пропускал запись сессии в ЛЮБУЮ группу орга с тем же
+ * курсом. Сессия — основание для зарплаты, так что авторизуем именно тот объект,
+ * в который пишем: орг + совпадение курса + реальная связь пользователя с ГРУППОЙ.
+ *
+ * Для teacher требуется членство именно в group.teacherIds. Фолбэк на курс убран
+ * намеренно: любой препод, числящийся на курсе, мог приписать занятие (а значит и
+ * зарплату) чужой группе того же курса. Отметить журнал он по-прежнему может —
+ * ужесточается только атрибуция сессии.
+ */
+function authorizeGroupForSession(
+  user: AuthUser,
+  group: FirebaseFirestore.DocumentData,
+  courseId: string,
+): GroupSessionAuth {
+  // 1. Cross-tenant isolation — единственный случай, который валит весь запрос.
+  if (group.organizationId !== user.organizationId) {
+    return { ok: false, crossTenant: true, reason: 'группа принадлежит другой организации' };
+  }
+
+  // 2. Группа — источник истины «какой курс она ведёт». Расхождение с request.courseId
+  // означает, что урок нельзя достоверно атрибутировать. Молча «чинить» courseId нельзя,
+  // но и журнал ронять нельзя: группа может быть «Без курса» (UI это допускает).
+  if (!group.courseId || group.courseId !== courseId) {
+    return {
+      ok: false,
+      crossTenant: false,
+      reason: `курс группы (${group.courseId || 'не задан'}) не совпадает с курсом запроса (${courseId})`,
+    };
+  }
+
+  // 3. Роли — как и везде в этом файле, не-преподаватели гейтятся списком штатных ролей
+  // (грант gradebook:write уже проверен на входе в handler).
+  if (['admin', 'manager', 'owner'].includes(user.role)) return { ok: true };
+
+  if (user.role === 'teacher') {
+    const groupTeacherIds = Array.isArray(group.teacherIds) ? group.teacherIds : [];
+    if (groupTeacherIds.includes(user.uid)) return { ok: true };
+    return {
+      ok: false,
+      crossTenant: false,
+      reason: 'преподаватель не ведёт эту группу (членство в курсе сессию не даёт)',
+    };
+  }
+
+  return {
+    ok: false,
+    crossTenant: false,
+    reason: `роль ${user.role} не может фиксировать проведённое занятие`,
+  };
+}
+
 const handler: Handler = async (event: HandlerEvent) => {
   if (event.httpMethod === 'OPTIONS') return jsonResponse(204, '');
 
@@ -438,114 +501,140 @@ const handler: Handler = async (event: HandlerEvent) => {
       let sessionRef: FirebaseFirestore.DocumentReference | null = null;
       let sessionData: Record<string, any> | null = null;
       let sessionIsUpdate = false;
+      // Радиус поражения: журнал — основная функция этого эндпоинта, и он НЕ должен
+      // падать из-за проблем атрибуции зарплаты. Поэтому любая неудача авторизации
+      // группы (кроме чужого орга) пропускает ТОЛЬКО сессию с диагностикой в лог:
+      // отсутствующая сессия — видимый ноль в payroll (правило «не выдумывать число»),
+      // а потерянная запись в журнале — потеря данных.
+      let skipSessionReason: string | null = null;
+
       if (groupId) {
-        // Читаем группу: и cross-tenant проверка, и источник teacherId/branchId/courseId.
+        // Читаем группу: и авторизация, и источник teacherId/branchId.
         const groupDoc = await adminDb.collection('groups').doc(groupId).get();
-        if (!groupDoc.exists || groupDoc.data()!.organizationId !== orgId) {
-          return badRequest('groupId invalid for this organization');
-        }
-        const group = groupDoc.data()!;
+        const group = groupDoc.exists ? groupDoc.data()! : null;
 
-        // teacherId: явный из тела → ЕДИНСТВЕННЫЙ препод группы → null.
-        // НИКОГДА не user.uid (это createdBy — кто отметил журнал, а не кто вёл занятие).
-        // null — честная «неатрибутированная сессия»: per_hour/per_lesson/per_student
-        // такие сессии просто пропускают, спорную атрибуцию director поправит вручную.
-        // `??`, не `||`: пустой строкой teacherId не бывает, а null от нескольких преподов
-        // должен падать в null, а не срабатывать как falsy-фолбэк на user.uid.
-        const groupTeacherIds: string[] = Array.isArray(group.teacherIds) ? group.teacherIds : [];
-        const resolvedTeacherId: string | null =
-          teacherId ?? (groupTeacherIds.length === 1 ? groupTeacherIds[0] : null);
+        // Авторизуем САМУ группу, а не только курс: verifyCourseAccess выше проверил курс,
+        // но сессия пишется на группу. Внутри — орг, совпадение courseId и связь с группой.
+        const auth: GroupSessionAuth = group
+          ? authorizeGroupForSession(user, group, courseId)
+          : { ok: false, crossTenant: false, reason: `группа ${groupId} не найдена` };
 
-        // Consistency: сессия принадлежит ГРУППЕ, и группа — источник истины «какой курс
-        // она ведёт». При расхождении request.courseId с group.courseId пишем сессию с
-        // групповым courseId (и логируем): чужой courseId сломал бы scope в payroll
-        // (per_lesson/per_hour/per_student фильтруют сессии по courseIds). Пропускать сессию
-        // нельзя — иначе «урок состоялся» потеряется и учитель недополучит оплату.
-        let sessionCourseId = courseId;
-        if (group.courseId && group.courseId !== courseId) {
-          console.warn(
-            `bulkAttendance: courseId mismatch for group ${groupId} — request=${courseId}, group=${group.courseId}. Writing lessonSession with group's courseId.`,
-          );
-          sessionCourseId = group.courseId;
-        }
+        // Чужая организация — это атака, а не опечатка: отказываем всему запросу.
+        if (!auth.ok && auth.crossTenant) return forbidden();
 
-        // branchId берём у ГРУППЫ — она единственный носитель филиала. Курс к филиалу
-        // не привязан (см. action 'courses' в api-org.ts), поэтому fallback на курс убран.
-        const branchId: string | null = group.branchId ?? null;
+        if (!auth.ok) skipSessionReason = auth.reason;
 
-        // headcount = присутствовавшие: present + late (опоздавший всё равно был на занятии).
-        // Считаем по фактически размеченным записям — это база для per_student в payroll.
-        const headcount = entries.filter((e: any) => {
-          const a = e.attendance || 'present';
-          return a === 'present' || a === 'late';
-        }).length;
+        // `group` не может быть null при auth.ok — проверки орга/курса требуют документа.
+        if (auth.ok && group) {
+          const groupTeacherIds: string[] = Array.isArray(group.teacherIds) ? group.teacherIds : [];
 
-        // Идемпотентность: дедуп по (organizationId, groupId, date) — повторная отправка
-        // переклички за тот же день обновляет сессию, а не плодит дубли. Запрос equality-only.
-        const existingSession = await orgQuery('lessonSessions', orgId)
-          .where('groupId', '==', groupId)
-          .where('date', '==', date)
-          .limit(1).get();
-
-        if (!existingSession.empty) {
-          sessionIsUpdate = true;
-          sessionRef = existingSession.docs[0].ref;
-          sessionData = {
-            teacherId: resolvedTeacherId,
-            branchId,
-            courseId: sessionCourseId,
-            headcount,
-            status: 'held',
-            confirmedBy: user.uid,
-            confirmedAt: now(),
-            updatedAt: now(),
-          };
-          // durationMinutes перезаписываем только если явно прислан (в т.ч. null «очистить»);
-          // иначе не затираем ранее сохранённую длительность/sourceEventId на повторной отметке.
-          if (durationMinutes !== undefined) sessionData.durationMinutes = durationMinutes;
-        } else {
-          // durationMinutes/sourceEventId берём из расписания, не хардкодим. Один equality-read
-          // scheduleEvents по группе (приемлемо — раз на группу в день, только при создании).
-          // В JS выбираем: датированное событие на эту дату, иначе рекуррентное по дню недели.
-          let sourceEventId: string | null = null;
-          let plannedDuration: number | null = null;
-          const evSnap = await orgQuery('scheduleEvents', orgId)
-            .where('groupId', '==', groupId)
-            .get();
-          if (!evSnap.empty) {
-            const evs = evSnap.docs.map((d) => ({ id: d.id, ...(d.data() as any) }));
-            // Дата → день недели в проектной нумерации 0=Пн..6=Вс (как в lesson-reminders.ts).
-            // UTC-разбор 'YYYY-MM-DD', чтобы локальная TZ не сдвинула день.
-            const weekday = (new Date(`${date}T00:00:00Z`).getUTCDay() + 6) % 7;
-            const match =
-              evs.find((e) => !e.recurring && e.date === date) ??
-              evs.find((e) => e.recurring && e.dayOfWeek === weekday);
-            if (match) {
-              sourceEventId = match.id;
-              if (typeof match.duration === 'number') plannedDuration = match.duration;
-            }
+          // Явный teacherId принимаем ТОЛЬКО если это реально препод этой группы. Раньше он
+          // писался как есть — любой, кто может отметить журнал, мог приписать урок (а значит
+          // и зарплату) произвольному uid. Тихого фолбэка нет намеренно: он спрятал бы
+          // настоящую ошибку (отметили не того) за правдоподобной сессией.
+          // `!= null` — явный null трактуем как «не прислали» (см. `??` ниже).
+          if (teacherId != null && !groupTeacherIds.includes(teacherId)) {
+            return badRequest('Указанный преподаватель не ведёт эту группу');
           }
 
-          sessionRef = adminDb.collection('lessonSessions').doc();
-          sessionData = {
-            organizationId: orgId,
-            branchId,
-            groupId,
-            courseId: sessionCourseId,
-            teacherId: resolvedTeacherId,
-            date,
-            // Явный body.durationMinutes побеждает; иначе плановая из scheduleEvent;
-            // иначе честный null. null-сессию per_hour пропускает (нельзя пропорционировать
-            // неизвестное время) — видимый ноль вместо догадки.
-            durationMinutes: durationMinutes !== undefined ? durationMinutes : plannedDuration,
-            status: 'held',
-            headcount,
-            sourceEventId,
-            confirmedBy: user.uid,
-            confirmedAt: now(),
-            createdAt: now(),
-          };
+          // teacherId: явный из тела → ЕДИНСТВЕННЫЙ препод группы → null.
+          // НИКОГДА не user.uid (это createdBy — кто отметил журнал, а не кто вёл занятие).
+          // null — честная «неатрибутированная сессия»: per_hour/per_lesson/per_student
+          // такие сессии просто пропускают, спорную атрибуцию director поправит вручную.
+          // `??`, не `||`: пустой строкой teacherId не бывает, а null от нескольких преподов
+          // должен падать в null, а не срабатывать как falsy-фолбэк на user.uid.
+          const resolvedTeacherId: string | null =
+            teacherId ?? (groupTeacherIds.length === 1 ? groupTeacherIds[0] : null);
+
+          // courseId сессии == request.courseId: authorizeGroupForSession уже потребовал
+          // равенства с group.courseId, поэтому расхождения здесь быть не может.
+          const sessionCourseId = courseId;
+
+          // branchId берём у ГРУППЫ — она единственный носитель филиала. Курс к филиалу
+          // не привязан (см. action 'courses' в api-org.ts), поэтому fallback на курс убран.
+          const branchId: string | null = group.branchId ?? null;
+
+          // headcount = присутствовавшие: present + late (опоздавший всё равно был на занятии).
+          // Считаем по фактически размеченным записям — это база для per_student в payroll.
+          const headcount = entries.filter((e: any) => {
+            const a = e.attendance || 'present';
+            return a === 'present' || a === 'late';
+          }).length;
+
+          // Идемпотентность: дедуп по (organizationId, groupId, date) — повторная отправка
+          // переклички за тот же день обновляет сессию, а не плодит дубли. Запрос equality-only.
+          const existingSession = await orgQuery('lessonSessions', orgId)
+            .where('groupId', '==', groupId)
+            .where('date', '==', date)
+            .limit(1).get();
+
+          if (!existingSession.empty) {
+            sessionIsUpdate = true;
+            sessionRef = existingSession.docs[0].ref;
+            sessionData = {
+              teacherId: resolvedTeacherId,
+              branchId,
+              courseId: sessionCourseId,
+              headcount,
+              status: 'held',
+              confirmedBy: user.uid,
+              confirmedAt: now(),
+              updatedAt: now(),
+            };
+            // durationMinutes перезаписываем только если явно прислан (в т.ч. null «очистить»);
+            // иначе не затираем ранее сохранённую длительность/sourceEventId на повторной отметке.
+            if (durationMinutes !== undefined) sessionData.durationMinutes = durationMinutes;
+          } else {
+            // durationMinutes/sourceEventId берём из расписания, не хардкодим. Один equality-read
+            // scheduleEvents по группе (приемлемо — раз на группу в день, только при создании).
+            // В JS выбираем: датированное событие на эту дату, иначе рекуррентное по дню недели.
+            let sourceEventId: string | null = null;
+            let plannedDuration: number | null = null;
+            const evSnap = await orgQuery('scheduleEvents', orgId)
+              .where('groupId', '==', groupId)
+              .get();
+            if (!evSnap.empty) {
+              const evs = evSnap.docs.map((d) => ({ id: d.id, ...(d.data() as any) }));
+              // Дата → день недели в проектной нумерации 0=Пн..6=Вс (как в lesson-reminders.ts).
+              // UTC-разбор 'YYYY-MM-DD', чтобы локальная TZ не сдвинула день.
+              const weekday = (new Date(`${date}T00:00:00Z`).getUTCDay() + 6) % 7;
+              const match =
+                evs.find((e) => !e.recurring && e.date === date) ??
+                evs.find((e) => e.recurring && e.dayOfWeek === weekday);
+              if (match) {
+                sourceEventId = match.id;
+                if (typeof match.duration === 'number') plannedDuration = match.duration;
+              }
+            }
+
+            sessionRef = adminDb.collection('lessonSessions').doc();
+            sessionData = {
+              organizationId: orgId,
+              branchId,
+              groupId,
+              courseId: sessionCourseId,
+              teacherId: resolvedTeacherId,
+              date,
+              // Явный body.durationMinutes побеждает; иначе плановая из scheduleEvent;
+              // иначе честный null. null-сессию per_hour пропускает (нельзя пропорционировать
+              // неизвестное время) — видимый ноль вместо догадки.
+              durationMinutes: durationMinutes !== undefined ? durationMinutes : plannedDuration,
+              status: 'held',
+              headcount,
+              sourceEventId,
+              confirmedBy: user.uid,
+              confirmedAt: now(),
+              createdAt: now(),
+            };
+          }
         }
+      }
+
+      // Диагностика вместо тихой потери: сессии не будет, и в payroll это видимый ноль.
+      if (skipSessionReason) {
+        console.warn(
+          `api-gradebook bulkAttendance: lessonSession пропущена (groupId=${groupId}, date=${date}, uid=${user.uid}): ${skipSessionReason}`,
+        );
       }
 
       const batch = adminDb.batch();

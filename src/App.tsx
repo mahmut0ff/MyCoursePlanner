@@ -76,6 +76,7 @@ const HomeworkReviewPage = lazyRetry(() => import('./pages/homework/HomeworkRevi
 // Org Pages
 const CoursesPage = lazyRetry(() => import('./pages/courses/CoursesPage'));
 const FinancesPage = lazyRetry(() => import('./pages/finances/FinancesPage'));
+const PayrollPage = lazyRetry(() => import('./pages/payroll/PayrollPage'));
 const GroupsPage = lazyRetry(() => import('./pages/groups/GroupsPage'));
 const StudentsPage = lazyRetry(() => import('./pages/students/StudentsPage'));
 const TeachersPage = lazyRetry(() => import('./pages/teachers/TeachersPage'));
@@ -262,6 +263,7 @@ const App: React.FC = () => {
             <Route path="groups" element={<ProtectedRoute><PermissionRoute resource="groups"><GroupsPage /></PermissionRoute></ProtectedRoute>} />
             <Route path="groups/:id" element={<ProtectedRoute><PermissionRoute resource="groups"><GroupDetailPage /></PermissionRoute></ProtectedRoute>} />
             <Route path="materials" element={<ProtectedRoute><PermissionRoute resource="materials"><MaterialsPage /></PermissionRoute></ProtectedRoute>} />
+            <Route path="payroll" element={<ProtectedRoute><PermissionRoute resource="payroll"><PlanGuard feature="payroll"><PayrollPage /></PlanGuard></PermissionRoute></ProtectedRoute>} />
 
             {/* ═══ Org Admin: People ═══ */}
             <Route path="leads" element={<ProtectedRoute><PermissionRoute resource="leads"><AILeadsPage /></PermissionRoute></ProtectedRoute>} />

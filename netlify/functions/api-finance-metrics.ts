@@ -4,10 +4,10 @@
  */
 import type { Handler, HandlerEvent } from '@netlify/functions';
 import { adminDb } from './utils/firebase-admin';
-import { verifyAuth, can, getOrgFilter, resolveBranchFilter, recordInBranchScope, ok, unauthorized, forbidden, badRequest, jsonResponse } from './utils/auth';
+import { verifyAuth, can, getOrgFilter, resolveBranchFilter, recordInBranchScope, isSuperAdmin, hasRole, ok, unauthorized, forbidden, badRequest, jsonResponse } from './utils/auth';
 import { batchGetCourseNames } from './utils/finance-names';
 import { resolveRange, getPreviousRange } from './utils/finance-period';
-import { isDebtBearingPlan, planDebt } from './utils/payment-plans';
+import { isDebtBearingPlan, planDebt, isPlanOverdue } from './utils/payment-plans';
 
 /** Sort a {amount} bucket map into a desc-by-amount array. */
 function toSortedBuckets<K extends string>(
@@ -39,6 +39,20 @@ const handler: Handler = async (event: HandlerEvent) => {
       const params = event.queryStringParameters || {};
       const branchFilter = resolveBranchFilter(user, params.branchId);
       if (branchFilter === '__DENIED__') return forbidden('Access denied');
+
+      // ── Кому вообще можно показывать справку «без филиала» ──
+      // unassignedBranch* считаются ДО филиального фильтра и потому по определению
+      // шире любого филиального среза: это деньги всей организации. Директору поле
+      // и нужно — оно объясняет разрыв между суммой филиалов и итогом по орг.
+      // Сотруднику, запертому в своих филиалах, показывать его нельзя: он бы читал
+      // орг-уровневые суммы, к которым доступа не имеет.
+      //
+      // Смотрим на СОБСТВЕННОЕ ограничение вызывающего, а не на выбранный им
+      // фильтр: директор, переключивший UI на один филиал, обязан и дальше видеть
+      // размер корзины «не привязано к филиалу». Поля не убираем — UI читает их
+      // безусловно; ограниченному участнику отдаём нули.
+      const canReadOrgWide =
+        isSuperAdmin(user) || hasRole(user, 'admin') || (user.branchIds?.length ?? 0) === 0;
 
       const period = params.period || 'current_month';
       // Окно считает общий util: transactions разбирает те же параметры тем же
@@ -167,7 +181,7 @@ const handler: Handler = async (event: HandlerEvent) => {
       let totalActiveDebt = 0;
       let unassignedBranchDebt = 0;
       let overdueCount = 0;
-      const nowIso = new Date().toISOString();
+      const now = new Date();
       const debtors = new Set<string>();
 
       plansSnap.docs.forEach(d => {
@@ -188,10 +202,11 @@ const handler: Handler = async (event: HandlerEvent) => {
 
         totalActiveDebt += debt;
         if (data.studentId) debtors.add(data.studentId);
-        // Auto-detect overdue: if deadline passed and not paid
-        if (data.status === 'overdue' || (data.deadline && data.deadline < nowIso)) {
-          overdueCount++;
-        }
+        // Просрочка — общий предикат с api-finance-plans (utils/payment-plans.ts).
+        // Здесь стоял свой инлайновый `data.deadline < nowIso`, сравнивавший голую
+        // дату с полным ISO: КАЖДЫЙ счёт со сроком «сегодня» уже с полуночи падал
+        // в этот счётчик, и дашборд показывал просрочку, которой ещё нет.
+        if (isPlanOverdue(data, now)) overdueCount++;
       });
 
       const chartData = [...dailyMap.entries()]
@@ -232,9 +247,10 @@ const handler: Handler = async (event: HandlerEvent) => {
         overdueCount,
         debtorCount: debtors.size,
         chartData,
-        unassignedBranchIncome,
-        unassignedBranchExpense,
-        unassignedBranchDebt,
+        // Нули, а не отсутствие полей — см. canReadOrgWide выше.
+        unassignedBranchIncome: canReadOrgWide ? unassignedBranchIncome : 0,
+        unassignedBranchExpense: canReadOrgWide ? unassignedBranchExpense : 0,
+        unassignedBranchDebt: canReadOrgWide ? unassignedBranchDebt : 0,
         expenseByCategory: toSortedBuckets(expenseByCategoryMap, 'categoryId'),
         incomeByMethod: toSortedBuckets(incomeByMethodMap, 'paymentMethod'),
         courseProfitability,

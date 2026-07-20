@@ -1,7 +1,9 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Link } from 'react-router-dom';
 import { Banknote, Download, Search, Undo2, Wallet } from 'lucide-react';
 import { apiGetTransactions } from '../../../lib/api';
+import { orgDayKey } from '../../../lib/payment-plans';
 import { useBranch } from '../../../contexts/BranchContext';
 import { usePermissions } from '../../../contexts/PermissionsContext';
 import RefundModal from '../../../components/finance/RefundModal';
@@ -23,6 +25,10 @@ interface Props {
   onRangeChange: (next: FinanceRange) => void;
   filters: PaymentsFilters;
   onFiltersChange: (next: PaymentsFilters) => void;
+  /** Ограничить журнал одним студентом (?student=<uid>). Пусто — показываем всех. */
+  studentId?: string;
+  /** Сообщить странице имя того студента — для подписи на чипе фильтра. */
+  onStudentNameResolved?: (name: string) => void;
 }
 
 /**
@@ -58,6 +64,38 @@ const formatTxDate = (raw: string): string => {
   return Number.isNaN(ms) ? '—' : new Date(ms).toLocaleDateString();
 };
 
+/** Календарный день строки в дне организации, или null если дата нечитаема. */
+const dayKeyOf = (raw: unknown): string | null => {
+  if (!raw) return null;
+  const ms = new Date(raw as any).getTime();
+  return Number.isNaN(ms) ? null : orgDayKey(new Date(ms));
+};
+
+/**
+ * День, когда платёж ВНЕСЛИ в систему, если он заметно расходится с датой, когда
+ * деньги реально пришли. Иначе null — подпись не рисуем.
+ *
+ * Зачем: `date` — день, который назвал кассир, `createdAt` — момент ввода. Пока
+ * задним числом провести оплату было нельзя, они совпадали; теперь нет. Без этой
+ * подписи директор, сверяющий кассу, не отличит запись, сделанную задним числом,
+ * от сделанной в тот же день, — и будет искать несуществующее расхождение.
+ *
+ * Порог — БОЛЬШЕ одного календарного дня, а не «любое расхождение»: закрыть
+ * кассу на следующее утро — нормальная практика администратора, и помечать этим
+ * половину журнала значит обесценить пометку. Дни считаем через orgDayKey, а не
+ * по зоне браузера: директор в Бишкеке и функция в UTC должны видеть одну границу
+ * суток, иначе вечерний платёж «внесён завтра» у одного и «сегодня» у другого.
+ */
+const lateEntryDate = (tx: any): string | null => {
+  const paidDay = dayKeyOf(tx?.date);
+  const typedDay = dayKeyOf(tx?.createdAt);
+  if (!paidDay || !typedDay) return null;
+  const asUtc = (key: string) => Date.parse(`${key}T00:00:00.000Z`);
+  const gapDays = Math.round((asUtc(typedDay) - asUtc(paidDay)) / 86_400_000);
+  if (gapDays <= 1) return null;
+  return new Date(tx.createdAt).toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
+};
+
 /**
  * Журнал платежей — закрытие кассы.
  *
@@ -65,7 +103,14 @@ const formatTxDate = (raw: string): string => {
  * пришло за период и сколько из этого наличными. Долги (кому выставлен счёт)
  * живут на соседней вкладке — здесь только фактические поступления.
  */
-const PaymentsTab: React.FC<Props> = ({ range, onRangeChange, filters, onFiltersChange }) => {
+const PaymentsTab: React.FC<Props> = ({
+  range,
+  onRangeChange,
+  filters,
+  onFiltersChange,
+  studentId = '',
+  onStudentNameResolved,
+}) => {
   const { t } = useTranslation();
   const { activeBranchId } = useBranch();
   const { canWrite, loaded: permsLoaded } = usePermissions();
@@ -118,6 +163,10 @@ const PaymentsTab: React.FC<Props> = ({ range, onRangeChange, filters, onFilters
   const filtered = useMemo(() => {
     const q = filters.search.trim().toLowerCase();
     return sorted.filter(tx => {
+      // Пришли по ссылке с карточки студента (?student=<uid>) — только его оплаты.
+      // Фильтруем на клиенте, а не новым параметром запроса: набор уже в руках,
+      // а у GET api-finance-transactions не должно появляться новых обязательных полей.
+      if (studentId && String(tx.studentId || '') !== studentId) return false;
       if (filters.method && (tx.paymentMethod || UNKNOWN_METHOD) !== filters.method) return false;
       if (!q) return true;
       return (
@@ -126,7 +175,15 @@ const PaymentsTab: React.FC<Props> = ({ range, onRangeChange, filters, onFilters
         String(tx.description || '').toLowerCase().includes(q)
       );
     });
-  }, [sorted, filters.search, filters.method]);
+  }, [sorted, filters.search, filters.method, studentId]);
+
+  // Имя для чипа «отфильтровано по студенту» на странице: в журнале лежит снимок
+  // имени, поэтому оно есть даже у студента, которого уже нет в ростере.
+  useEffect(() => {
+    if (!studentId || !onStudentNameResolved) return;
+    const name = rows.find(tx => String(tx.studentId || '') === studentId)?.studentName;
+    if (name) onStudentNameResolved(String(name));
+  }, [studentId, rows, onStudentNameResolved]);
 
   // Итоги считаем по отфильтрованному списку: кассир сверяет ящик именно с тем,
   // что видит на экране, а не со скрытой полной выборкой.
@@ -312,16 +369,36 @@ const PaymentsTab: React.FC<Props> = ({ range, onRangeChange, filters, onFilters
                   {pageRows.map(tx => {
                     const when = txDate(tx);
                     const menu = buildRowMenu(tx);
+                    const recordedOn = lateEntryDate(tx);
+                    const rowStudentId = String(tx.studentId || '');
                     return (
                       <tr key={tx.id} className="hover:bg-slate-50 dark:hover:bg-slate-700/30 transition-colors">
                         <td className="px-5 py-3.5 text-slate-500 whitespace-nowrap">
                           {/* Старые строки могут нести непарсящуюся дату — не рисуем
                               «Invalid Date», а показываем прочерк, как в сортировке. */}
                           {formatTxDate(when)}
+                          {/* Дата — это когда деньги пришли. Если запись сделали заметно
+                              позже, тихо говорим когда: иначе сверка кассы не сходится. */}
+                          {recordedOn && (
+                            <span className="block text-[11px] text-slate-400 leading-tight mt-0.5">
+                              {t('finances.recordedOn', 'внесено {{date}}', { date: recordedOn })}
+                            </span>
+                          )}
                         </td>
                         <td className="px-5 py-3.5 font-medium text-slate-900 dark:text-white whitespace-nowrap">
-                          {/* Старые записи приходят без имён — показываем прочерк, но никогда undefined */}
-                          {tx.studentName || '—'}
+                          {/* Старые записи приходят без имён — показываем прочерк, но никогда undefined.
+                              Есть uid — имя ведёт в карточку студента. */}
+                          {tx.studentName && rowStudentId ? (
+                            <Link
+                              to={`/students/${rowStudentId}`}
+                              title={t('finances.openStudentCard', 'Открыть карточку студента')}
+                              className="hover:text-sky-600 dark:hover:text-sky-400 hover:underline transition-colors"
+                            >
+                              {tx.studentName}
+                            </Link>
+                          ) : (
+                            tx.studentName || '—'
+                          )}
                         </td>
                         <td className="px-5 py-3.5 text-slate-500 whitespace-nowrap">{tx.courseName || '—'}</td>
                         <td className="px-5 py-3.5 font-bold text-emerald-600 whitespace-nowrap">

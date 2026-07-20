@@ -1,7 +1,7 @@
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useSearchParams } from 'react-router-dom';
-import { CreditCard } from 'lucide-react';
+import { Link, useSearchParams } from 'react-router-dom';
+import { CreditCard, UserRound, X } from 'lucide-react';
 import OverviewTab from './tabs/OverviewTab';
 import DebtsTab from './tabs/DebtsTab';
 import PaymentsTab from './tabs/PaymentsTab';
@@ -30,11 +30,34 @@ export interface ExpensesFilters {
   page: number;
 }
 
-const TABS: { id: FinanceTab; labelKey: string; fallback: string }[] = [
-  { id: 'overview', labelKey: 'finances.overview', fallback: 'Обзор' },
-  { id: 'debts', labelKey: 'finances.debts', fallback: 'Долги' },
-  { id: 'payments', labelKey: 'finances.payments', fallback: 'Платежи' },
-  { id: 'expenses', labelKey: 'finances.expenses', fallback: 'Расходы' },
+/**
+ * Подпись у каждой вкладки своя: «Счета» и «Платежи» — это состояние и события,
+ * и их путали. Счёт живёт долго и меняется (выставили → частично оплатили →
+ * погасили), платёж — единичный факт прихода денег. Один счёт закрывается
+ * несколькими платежами, поэтому это две таблицы, а не одна.
+ *
+ * Вкладка называется «Счета», а не «Долги», потому что показывает ВСЕ счета,
+ * включая полностью оплаченные: прежнее название обещало подмножество, а внутри
+ * было всё множество — отсюда и вопрос «в чём разница». Фильтр «только должники»
+ * остался внутри вкладки.
+ */
+const TABS: { id: FinanceTab; labelKey: string; fallback: string; hintKey: string; hint: string }[] = [
+  {
+    id: 'overview', labelKey: 'finances.overview', fallback: 'Обзор',
+    hintKey: 'finances.hintOverview', hint: 'Сколько заработали, на что потратили и что осталось',
+  },
+  {
+    id: 'debts', labelKey: 'finances.invoices', fallback: 'Счета',
+    hintKey: 'finances.hintInvoices', hint: 'Кому выставлены счета и кто сколько должен',
+  },
+  {
+    id: 'payments', labelKey: 'finances.payments', fallback: 'Платежи',
+    hintKey: 'finances.hintPayments', hint: 'Что фактически пришло в кассу за период',
+  },
+  {
+    id: 'expenses', labelKey: 'finances.expenses', fallback: 'Расходы',
+    hintKey: 'finances.hintExpenses', hint: 'Куда ушли деньги за период',
+  },
 ];
 
 const TAB_IDS = TABS.map(t => t.id);
@@ -84,10 +107,38 @@ const FinancesPage: React.FC = () => {
   const [paymentsFilters, setPaymentsFilters] = useState<PaymentsFilters>({ search: '', method: '', page: 1 });
   const [expensesFilters, setExpensesFilters] = useState<ExpensesFilters>({ search: '', categoryId: '', page: 1 });
 
-  const subtitle = useMemo(
-    () => t('finances.subtitle', 'Выручка, долги, касса и расходы'),
-    [t]
-  );
+  // Подпись под заголовком объясняет ИМЕННО открытую вкладку. «Счета» и
+  // «Платежи» соседствуют и на вид про одно и то же — одна строка снимает
+  // вопрос в момент, когда он возникает, а не в справке.
+  const subtitle = useMemo(() => {
+    const tab = TABS.find(x => x.id === activeTab);
+    return tab ? t(tab.hintKey, tab.hint) : t('finances.subtitle', 'Выручка, счета, касса и расходы');
+  }, [t, activeTab]);
+
+  /**
+   * ?student=<uid> — сюда ведёт карточка студента («Все операции» →
+   * ?tab=debts&student=<uid>). Раздел финансов и карточка студента были двумя
+   * мирами без единого перехода: администратор видел долг на карточке и не мог
+   * попасть к нему в финансах иначе, чем набрав имя в поиске.
+   *
+   * uid живёт в URL, а не в состоянии: ссылку на «долги вот этого студента»
+   * должно быть можно переслать и положить в закладки.
+   */
+  const studentFilter = searchParams.get('student') || '';
+  const [studentFilterName, setStudentFilterName] = useState('');
+
+  // Сменился uid — прежнее имя врёт до тех пор, пока вкладка не подскажет новое.
+  useEffect(() => setStudentFilterName(''), [studentFilter]);
+
+  const clearStudentFilter = useCallback(() => {
+    const next = new URLSearchParams(searchParams);
+    next.delete('student');
+    setSearchParams(next, { replace: true });
+  }, [searchParams, setSearchParams]);
+
+  // Обзор и Расходы про одного студента не рассказывают — там чип был бы обещанием
+  // фильтра, которого нет.
+  const showStudentChip = Boolean(studentFilter) && (activeTab === 'debts' || activeTab === 'payments');
 
   return (
     <div className="space-y-6">
@@ -123,15 +174,47 @@ const FinancesPage: React.FC = () => {
         </div>
       </div>
 
+      {showStudentChip && (
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="inline-flex items-center gap-2 pl-3 pr-1.5 py-1.5 rounded-full text-sm bg-sky-50 dark:bg-sky-900/20 text-sky-800 dark:text-sky-300 border border-sky-200/70 dark:border-sky-800/60">
+            <UserRound className="w-3.5 h-3.5 shrink-0" />
+            <span>
+              {t('finances.filteredToStudent', 'Только один студент')}:{' '}
+              <Link to={`/students/${studentFilter}`} className="font-semibold hover:underline">
+                {studentFilterName || t('finances.selectedStudent', 'выбранный студент')}
+              </Link>
+            </span>
+            <button
+              type="button"
+              onClick={clearStudentFilter}
+              aria-label={t('finances.clearStudentFilter', 'Показать всех студентов')}
+              title={t('finances.clearStudentFilter', 'Показать всех студентов')}
+              className="p-1 rounded-full hover:bg-sky-100 dark:hover:bg-sky-800/50 transition-colors"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          </span>
+        </div>
+      )}
+
       <div className="min-h-[500px]">
         {activeTab === 'overview' && <OverviewTab range={range} onRangeChange={setRange} />}
-        {activeTab === 'debts' && <DebtsTab filters={debtsFilters} onFiltersChange={setDebtsFilters} />}
+        {activeTab === 'debts' && (
+          <DebtsTab
+            filters={debtsFilters}
+            onFiltersChange={setDebtsFilters}
+            studentId={studentFilter}
+            onStudentNameResolved={setStudentFilterName}
+          />
+        )}
         {activeTab === 'payments' && (
           <PaymentsTab
             range={range}
             onRangeChange={setRange}
             filters={paymentsFilters}
             onFiltersChange={setPaymentsFilters}
+            studentId={studentFilter}
+            onStudentNameResolved={setStudentFilterName}
           />
         )}
         {activeTab === 'expenses' && (

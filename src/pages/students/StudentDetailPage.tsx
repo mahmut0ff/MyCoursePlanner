@@ -5,7 +5,10 @@ import { orgGetStudents, orgGetResults, orgGetGroups, orgUpdateGroup, apiRemoveM
 import AcceptPaymentModal from '../../components/finance/AcceptPaymentModal';
 import EditStudentModal from '../../components/students/EditStudentModal';
 import { useAuth } from '../../contexts/AuthContext';
+import { useBranch } from '../../contexts/BranchContext';
 import { usePlanGate } from '../../contexts/PlanContext';
+import { planDebt, isDebtBearingPlan, isWrittenOffPlan, isPlanOverdue } from '../../lib/payment-plans';
+import { formatMoney } from '../../lib/money';
 import ReportCommentModal from '../../components/ai/ReportCommentModal';
 import MemberRolesEditor from '../../components/shared/MemberRolesEditor';
 import {
@@ -29,6 +32,30 @@ const C = {
   teal: '#0aa08a',
 };
 
+/**
+ * Подписи статусов счёта — те же ключи и та же палитра, что на вкладке «Долги».
+ * Карточка студента и финансы обязаны говорить об одном счёте одно и то же:
+ * расхождение между ними и породило жалобу про «долг, которого нет».
+ */
+const PLAN_STATUS: Record<string, { key: string; fallback: string; cls: string }> = {
+  paid: { key: 'finances.statusPaid', fallback: 'Оплачено', cls: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400' },
+  overdue: { key: 'finances.statusOverdue', fallback: 'Просрочено', cls: 'bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400' },
+  partial: { key: 'finances.statusPartial', fallback: 'Частично', cls: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400' },
+  pending: { key: 'finances.statusPending', fallback: 'Ожидает', cls: 'bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-400' },
+  cancelled: { key: 'finances.statusCancelled', fallback: 'Отменён', cls: 'bg-slate-100 text-slate-400 line-through dark:bg-slate-800 dark:text-slate-500' },
+};
+
+/**
+ * Возврат — это расход с категорией `refund`. Раньше «История оплат» брала
+ * только `type === 'income'`, поэтому студент, которому деньги вернули, до
+ * последнего выглядел полностью оплатившим. Возврат обязан быть виден рядом с
+ * оплатой, которую он отменяет.
+ */
+const isRefundTx = (tx: any) => tx?.type === 'expense' && tx?.categoryId === 'refund';
+
+/** Сумма счёта известна: у легаси-счетов её может не быть вовсе. */
+const hasKnownTotal = (plan: any) => Number.isFinite(Number(plan?.totalAmount));
+
 const StudentDetailPage: React.FC = () => {
   const { uid } = useParams<{ uid: string }>();
   const navigate = useNavigate();
@@ -36,6 +63,7 @@ const StudentDetailPage: React.FC = () => {
   const [student, setStudent] = useState<UserProfile | null>(null);
   const [results, setResults] = useState<ExamAttempt[]>([]);
   const { role, organizationId } = useAuth();
+  const { activeBranchId } = useBranch();
   const { canAccess } = usePlanGate();
   const [reportOpen, setReportOpen] = useState(false);
   const isAdmin = role === 'admin' || role === 'manager' || role === 'super_admin';
@@ -100,11 +128,18 @@ const StudentDetailPage: React.FC = () => {
   };
 
   // Fetch finances
+  //
+  // studentId уходит на сервер, а не отсекается здесь. Дело не только в объёме:
+  // GET транзакций обрезан серверным потолком (TRANSACTIONS_FETCH_CAP), и в
+  // крупной академии старые оплаты этого студента просто не попадали в ответ —
+  // клиентский фильтр отбирал из уже усечённой выборки, и оплаченный счёт на
+  // карточке выглядел неоплаченным. Фильтр оставлен вторым рубежом: если сервер
+  // однажды проигнорирует параметр, чужие деньги всё равно не попадут в карточку.
   const loadFinances = async () => {
     try {
       const [plans, txs] = await Promise.all([
-        apiGetPaymentPlans(),
-        apiGetTransactions(),
+        apiGetPaymentPlans({ studentId: uid }),
+        apiGetTransactions({ studentId: uid }),
       ]);
       setPaymentPlans((plans || []).filter((p: any) => p.studentId === uid));
       setTransactions((txs || []).filter((t: any) => t.studentId === uid));
@@ -126,7 +161,8 @@ const StudentDetailPage: React.FC = () => {
       // Finances are admin/manager-only in the UI — skip the fetch for teachers.
       isAdmin ? loadFinances() : Promise.resolve(),
     ]).finally(() => setLoading(false));
-  }, [uid]);
+    // activeBranchId: the api layer stamps it onto the GET, so a branch switch must refetch.
+  }, [uid, activeBranchId]);
 
   /* ─── derived stats ─── */
   const stats = useMemo(() => {
@@ -156,6 +192,28 @@ const StudentDetailPage: React.FC = () => {
     });
     return buckets;
   }, [results]);
+
+  /* ─── финансы: имена счетов и лента операций ─── */
+
+  // Счёт по id — чтобы у каждой оплаты было видно, что именно она погасила.
+  const planNameById = useMemo(() => {
+    const map: Record<string, string> = {};
+    for (const p of paymentPlans) {
+      const name = p.courseName || t('finances.plan', 'Счёт');
+      if (p?.id) map[String(p.id)] = name;
+    }
+    return map;
+  }, [paymentPlans, t]);
+
+  // Оплаты и возвраты в одной ленте, новыми вперёд. Возврат раньше просто
+  // отсутствовал в истории, и студент с возвращёнными деньгами выглядел так,
+  // будто заплатил всё. Прочие расходы сюда не относятся — они не про студента.
+  const ledger = useMemo(
+    () => transactions
+      .filter(tx => tx.type === 'income' || isRefundTx(tx))
+      .sort((a, b) => new Date(b.date || b.createdAt || 0).getTime() - new Date(a.date || a.createdAt || 0).getTime()),
+    [transactions],
+  );
 
   const formatTime = (seconds: number) => {
     if (seconds < 60) return `${seconds}с`;
@@ -584,48 +642,122 @@ const StudentDetailPage: React.FC = () => {
                   <p className="text-[11px] text-slate-400 text-center py-2">Счетов не найдено</p>
                 ) : (
                   paymentPlans.map(plan => {
-                    const debt = Math.max(0, plan.totalAmount - plan.paidAmount);
+                    // Единое правило из src/lib/payment-plans — то же, по которому
+                    // считают долг сервер и финансы. Своей арифметики здесь больше нет.
+                    const writtenOff = isWrittenOffPlan(plan);
+                    const owes = isDebtBearingPlan(plan);
+                    const debt = planDebt(plan);
+                    const totalKnown = hasKnownTotal(plan);
+                    const overdue = !writtenOff && isPlanOverdue(plan);
+                    // Просрочку показываем по сроку, а не по записанному статусу:
+                    // продлённый срок обязан снимать «Просрочено».
+                    const cfg = PLAN_STATUS[overdue ? 'overdue' : plan.status] || PLAN_STATUS.pending;
                     return (
-                      <div key={plan.id} className="bg-slate-50 dark:bg-slate-700/50 rounded-lg p-3 border border-slate-100 dark:border-slate-600">
-                        <div className="flex items-center justify-between mb-1">
-                          <span className="text-xs font-bold text-slate-800 dark:text-slate-200">{plan.courseName || 'Счёт'}</span>
-                          <span className={`text-[10px] px-1.5 py-0.5 rounded font-bold ${debt > 0 ? 'bg-amber-100 text-amber-700' : 'bg-emerald-100 text-emerald-700'}`}>
-                            {debt > 0 ? 'Долг' : 'Оплачено'}
+                      <div key={plan.id} className={`bg-slate-50 dark:bg-slate-700/50 rounded-lg p-3 border border-slate-100 dark:border-slate-600 ${writtenOff ? 'opacity-60' : ''}`}>
+                        <div className="flex items-center justify-between gap-2 mb-1">
+                          <span className={`text-xs font-bold ${writtenOff ? 'text-slate-500 line-through' : 'text-slate-800 dark:text-slate-200'}`}>
+                            {plan.courseName || t('finances.plan', 'Счёт')}
+                          </span>
+                          <span className={`shrink-0 text-[10px] px-1.5 py-0.5 rounded font-bold ${cfg.cls}`}>
+                            {t(cfg.key, cfg.fallback)}
                           </span>
                         </div>
-                        <div className="text-[10px] text-slate-500 mb-2 flex justify-between">
-                          <span>Сумма: {plan.totalAmount} c.</span>
-                          <span>Оплачено: {plan.paidAmount} c.</span>
+                        <div className="text-[10px] text-slate-500 mb-1 flex justify-between gap-2">
+                          {/* Неизвестную сумму нельзя печатать уверенным нулём:
+                              раньше totalAmount: undefined давал NaN, счёт молча
+                              становился «Оплачено», и реальный долг исчезал с карточки. */}
+                          <span>
+                            {t('finances.colTotal', 'Сумма')}: {totalKnown
+                              ? formatMoney(plan.totalAmount)
+                              : <span className="font-bold text-rose-500">{t('finances.amountUnknown', 'не указана')}</span>}
+                          </span>
+                          <span>{t('finances.colPaid', 'Оплачено')}: {formatMoney(plan.paidAmount)}</span>
                         </div>
-                        {debt > 0 && (
+                        {/* Администратор должен уметь ответить «почему он должен 3000?»
+                            прямо с карточки — поэтому долг и срок, а не только суммы. */}
+                        <div className="text-[10px] text-slate-500 mb-2 flex justify-between gap-2">
+                          <span>
+                            {t('finances.colDebt', 'Долг')}:{' '}
+                            <span className={`font-bold ${writtenOff ? 'text-slate-400' : owes ? 'text-amber-600' : 'text-emerald-600'}`}>
+                              {writtenOff || !totalKnown || debt === 0 ? '—' : formatMoney(debt)}
+                            </span>
+                          </span>
+                          {plan.deadline && (
+                            <span className={overdue ? 'font-bold text-rose-500' : ''}>
+                              {t('finances.colDeadline', 'Срок')}: {new Date(plan.deadline).toLocaleDateString()}
+                            </span>
+                          )}
+                        </div>
+                        {writtenOff ? (
+                          // Списанный счёт не предлагаем принимать: income с
+                          // allowRevive воскресил бы списание обратно в долг.
+                          <p className="text-[10px] text-slate-400 leading-snug">
+                            {t('finances.writtenOffHint', 'Счёт списан — денег по нему академия больше не ждёт.')}
+                          </p>
+                        ) : owes ? (
                           <button
                             onClick={() => setPayModalPlan(plan)}
                             className="w-full mt-1 bg-emerald-50 text-emerald-600 hover:bg-emerald-100 border border-emerald-200 px-2 py-1.5 rounded-md text-[11px] font-bold transition-colors"
                           >
-                            Принять оплату: {debt} c.
+                            {t('finances.acceptPayment', 'Принять оплату')}: {formatMoney(debt)}
                           </button>
-                        )}
+                        ) : null}
                       </div>
                     );
                   })
                 )}
 
-                {transactions.length > 0 && (
+                {ledger.length > 0 && (
                   <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-700">
-                    <h4 className="text-[10px] font-bold text-slate-500 uppercase mb-2">История оплат</h4>
+                    <h4 className="text-[10px] font-bold text-slate-500 uppercase mb-2">
+                      {t('finances.paymentHistory', 'История оплат')}
+                    </h4>
                     <div className="space-y-2 max-h-40 overflow-y-auto">
-                      {transactions.filter(t => t.type === 'income').map(tx => (
-                        <div key={tx.id} className="flex items-center justify-between text-[11px]">
-                          <div className="flex items-center gap-1.5">
-                            <Receipt className="w-3 h-3 text-emerald-500" />
-                            <span className="text-slate-600 dark:text-slate-300">{new Date(tx.date || tx.createdAt).toLocaleDateString()}</span>
+                      {ledger.map(tx => {
+                        const refund = isRefundTx(tx);
+                        // По какому счёту прошли деньги — то, чего карточке не хватало
+                        // больше всего: сумма без счёта не отвечает на «за что».
+                        const forPlan = tx.paymentPlanId ? planNameById[tx.paymentPlanId] : undefined;
+                        return (
+                          <div key={tx.id} className="flex items-start justify-between gap-2 text-[11px]">
+                            <div className="min-w-0">
+                              <div className="flex items-center gap-1.5">
+                                <Receipt className={`w-3 h-3 shrink-0 ${refund ? 'text-rose-500' : 'text-emerald-500'}`} />
+                                {/* Дата операции — когда деньги реально приняли (tx.date).
+                                    createdAt это лишь момент ввода в систему, и именно
+                                    его академия видела вместо дня оплаты. */}
+                                <span className="text-slate-600 dark:text-slate-300">
+                                  {new Date(tx.date || tx.createdAt).toLocaleDateString()}
+                                </span>
+                                {refund && (
+                                  <span className="shrink-0 text-[9px] font-bold px-1 py-0.5 rounded bg-rose-100 text-rose-600 dark:bg-rose-900/30 dark:text-rose-400">
+                                    {t('finances.refundBadge', 'возврат')}
+                                  </span>
+                                )}
+                              </div>
+                              {forPlan && (
+                                <p className="text-[10px] text-slate-400 truncate pl-[18px]" title={forPlan}>{forPlan}</p>
+                              )}
+                            </div>
+                            <span className={`shrink-0 font-bold ${refund ? 'text-rose-600' : 'text-emerald-600'}`}>
+                              {refund ? '−' : '+'}{formatMoney(tx.amount)}
+                            </span>
                           </div>
-                          <span className="font-bold text-emerald-600">+{tx.amount} c.</span>
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   </div>
                 )}
+
+                {/* Путь от «почему долг?» к полному реестру: карточка отвечает
+                    коротко, финансы — полностью, по тому же студенту. */}
+                <button
+                  onClick={() => navigate(`/finances?tab=debts&student=${uid}`)}
+                  className="w-full mt-1 flex items-center justify-center gap-1.5 text-[11px] font-bold text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 transition-colors"
+                >
+                  {t('finances.openInFinances', 'Открыть в финансах')}
+                  <ExternalLink className="w-3 h-3" />
+                </button>
               </div>
             </div>
           )}

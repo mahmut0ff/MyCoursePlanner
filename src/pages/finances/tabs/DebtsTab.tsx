@@ -15,9 +15,11 @@ import {
   Users,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { Link } from 'react-router-dom';
 import { apiDeletePaymentPlan, apiGetPaymentPlans, orgGetStudents } from '../../../lib/api';
 import { useBranch } from '../../../contexts/BranchContext';
 import { formatMoney } from '../../../lib/money';
+import { isDebtBearingPlan, isWrittenOffPlan, planDebt } from '../../../lib/payment-plans';
 import { buildCsv, downloadCsv, formatCsvDate } from '../../../lib/csv';
 import EmptyState from '../../../components/ui/EmptyState';
 import { ListSkeleton } from '../../../components/ui/Skeleton';
@@ -32,6 +34,10 @@ import type { DebtsFilters } from '../FinancesPage';
 interface Props {
   filters: DebtsFilters;
   onFiltersChange: (next: DebtsFilters) => void;
+  /** Ограничить вкладку одним студентом (?student=<uid>). Пусто — показываем всех. */
+  studentId?: string;
+  /** Сообщить странице имя того студента — для подписи на чипе фильтра. */
+  onStudentNameResolved?: (name: string) => void;
 }
 
 type PlanStatus = 'pending' | 'partial' | 'paid' | 'overdue' | 'cancelled';
@@ -70,9 +76,11 @@ const STATUS_STYLES: Record<PlanStatus, { fallback: string; key: string; bg: str
 
 const isExpelled = (s: any) => (s?.status || 'active') === 'expelled';
 const studentKey = (s: any) => String(s.uid || s.id);
-const debtOf = (p: PaymentPlan) => Math.max(0, (p.totalAmount || 0) - (p.paidAmount || 0));
-/** Отменённый счёт не долг: ни в сумму, ни в просрочку он не входит. */
-const isWrittenOff = (p: PaymentPlan) => p.status === 'cancelled';
+
+// Арифметику долга и правило «отменённый счёт — не долг» держит src/lib/payment-plans:
+// одно определение на клиент и на функции. Здесь когда-то жила своя пара
+// debtOf/isWrittenOff — ровно из-за таких копий карточка студента и раздел
+// финансов разошлись и академия увидела долг, которого нет.
 
 // Имя строки-счёта: снимок имени в самом счёте → актуальное имя из ростера →
 // нейтральная подпись. Голый studentId (20-значный Firestore-id) как имя не
@@ -99,28 +107,52 @@ type Row =
   | { kind: 'plan'; plan: PaymentPlan; student?: any }
   | { kind: 'student'; student: any };
 
-const StudentCell: React.FC<{ name: string; email?: string; avatarUrl?: string }> = ({ name, email, avatarUrl }) => (
-  <div className="flex items-center gap-3">
-    {avatarUrl ? (
-      <img src={avatarUrl} className="w-8 h-8 rounded-full object-cover shrink-0" alt="" />
-    ) : (
-      <div className="w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center text-[11px] text-white font-bold shrink-0">
-        {name?.[0]?.toUpperCase() || '?'}
+/**
+ * Ячейка со студентом. Имя — ссылка на карточку, когда uid известен: раздел
+ * финансов и карточка студента до сих пор были двумя мирами без единого
+ * перехода между ними, хотя studentId лежит прямо в строке. Uid нет (легаси-счёт
+ * удалённого студента) — остаётся простой текст, а не битая ссылка.
+ */
+const StudentCell: React.FC<{ name: string; email?: string; avatarUrl?: string; studentId?: string }> = ({
+  name,
+  email,
+  avatarUrl,
+  studentId,
+}) => {
+  const { t } = useTranslation();
+  return (
+    <div className="flex items-center gap-3">
+      {avatarUrl ? (
+        <img src={avatarUrl} className="w-8 h-8 rounded-full object-cover shrink-0" alt="" />
+      ) : (
+        <div className="w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center text-[11px] text-white font-bold shrink-0">
+          {name?.[0]?.toUpperCase() || '?'}
+        </div>
+      )}
+      <div>
+        {studentId ? (
+          <Link
+            to={`/students/${studentId}`}
+            title={t('finances.openStudentCard', 'Открыть карточку студента')}
+            className="font-medium text-slate-900 dark:text-white leading-tight hover:text-sky-600 dark:hover:text-sky-400 hover:underline transition-colors"
+          >
+            {name}
+          </Link>
+        ) : (
+          <p className="font-medium text-slate-900 dark:text-white leading-tight">{name}</p>
+        )}
+        {email && <p className="text-[11px] text-slate-400 leading-tight mt-0.5">{email}</p>}
       </div>
-    )}
-    <div>
-      <p className="font-medium text-slate-900 dark:text-white leading-tight">{name}</p>
-      {email && <p className="text-[11px] text-slate-400 leading-tight mt-0.5">{email}</p>}
     </div>
-  </div>
-);
+  );
+};
 
 /**
  * «Долги» — кто сколько должен прямо сейчас. Периода у вкладки нет намеренно:
  * долг это состояние, а не окно во времени; вопрос «сколько нам должны за
  * март» задаётся на вкладке «Платежи».
  */
-const DebtsTab: React.FC<Props> = ({ filters, onFiltersChange }) => {
+const DebtsTab: React.FC<Props> = ({ filters, onFiltersChange, studentId = '', onStudentNameResolved }) => {
   const { t } = useTranslation();
   const { activeBranchId } = useBranch();
 
@@ -220,6 +252,10 @@ const DebtsTab: React.FC<Props> = ({ filters, onFiltersChange }) => {
     const q = filters.search.trim().toLowerCase();
     const status = filters.status;
     return allRows.filter(r => {
+      // Пришли по ссылке с карточки студента (?student=<uid>) — показываем только его.
+      if (studentId && (r.kind === 'plan' ? String(r.plan.studentId) : studentKey(r.student)) !== studentId) {
+        return false;
+      }
       if (r.kind === 'plan') {
         const p = r.plan;
         // Ищем по тому же имени, что рисует строка: у легаси-счёта без studentName
@@ -239,7 +275,18 @@ const DebtsTab: React.FC<Props> = ({ filters, onFiltersChange }) => {
         (s.email?.toLowerCase() || '').includes(q);
       return match && (!status || status === 'no_plan');
     });
-  }, [allRows, filters.search, filters.status]);
+  }, [allRows, filters.search, filters.status, studentId]);
+
+  // Имя для чипа «отфильтровано по студенту» на странице: берём из ростера, а
+  // если студента там уже нет — из снимка имени в самом счёте.
+  useEffect(() => {
+    if (!studentId || !onStudentNameResolved) return;
+    const name =
+      studentById.get(studentId)?.displayName ||
+      plans.find(p => String(p.studentId) === studentId)?.studentName ||
+      '';
+    if (name) onStudentNameResolved(name);
+  }, [studentId, studentById, plans, onStudentNameResolved]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const safePage = Math.min(Math.max(1, filters.page), totalPages);
@@ -249,8 +296,10 @@ const DebtsTab: React.FC<Props> = ({ filters, onFiltersChange }) => {
   );
 
   const stats = useMemo(() => ({
-    totalDebt: visiblePlans.reduce((sum, p) => sum + (isWrittenOff(p) ? 0 : debtOf(p)), 0),
-    overdueCount: visiblePlans.filter(p => p.status === 'overdue' && !isWrittenOff(p)).length,
+    // Один предикат решает и «входит ли счёт в сумму», и «показывать ли долг в
+    // строке»: пока это были два разных условия, они и разъехались.
+    totalDebt: visiblePlans.reduce((sum, p) => sum + (isDebtBearingPlan(p) ? planDebt(p) : 0), 0),
+    overdueCount: visiblePlans.filter(p => p.status === 'overdue' && isDebtBearingPlan(p)).length,
     paidCount: visiblePlans.filter(p => p.status === 'paid').length,
     unbilledCount: unbilledStudents.length,
   }), [visiblePlans, unbilledStudents]);
@@ -316,7 +365,9 @@ const DebtsTab: React.FC<Props> = ({ filters, onFiltersChange }) => {
           // «с.», и таблица перестала бы считать колонку числовой.
           p.totalAmount ?? 0,
           p.paidAmount ?? 0,
-          debtOf(p),
+          // Списанный счёт выгружаем с нулевым долгом — иначе выгрузка спорила бы
+          // с экраном, где по нему стоит прочерк.
+          isDebtBearingPlan(p) ? planDebt(p) : 0,
           cfg ? t(cfg.key, cfg.fallback) : p.status,
           formatCsvDate(p.deadline),
         ];
@@ -463,7 +514,7 @@ const DebtsTab: React.FC<Props> = ({ filters, onFiltersChange }) => {
                       return (
                         <tr key={`student-${studentKey(s)}`} className="hover:bg-slate-50 dark:hover:bg-slate-700/30 transition-colors">
                           <td className="px-5 py-3.5 whitespace-nowrap">
-                            <StudentCell name={s.displayName || '—'} email={s.email} avatarUrl={s.avatarUrl} />
+                            <StudentCell name={s.displayName || '—'} email={s.email} avatarUrl={s.avatarUrl} studentId={studentKey(s)} />
                           </td>
                           <td className="px-5 py-3.5 text-slate-400 whitespace-nowrap">—</td>
                           <td className="px-5 py-3.5 text-slate-400 whitespace-nowrap">—</td>
@@ -486,15 +537,23 @@ const DebtsTab: React.FC<Props> = ({ filters, onFiltersChange }) => {
                       );
                     }
                     const p = row.plan;
-                    const debt = debtOf(p);
+                    const debt = planDebt(p);
+                    const owes = isDebtBearingPlan(p);
                     const cfg = STATUS_STYLES[p.status] || STATUS_STYLES.pending;
                     const Icon = cfg.icon;
                     const displayName = resolvePlanName(p, row.student, namePlaceholder);
-                    const writtenOff = isWrittenOff(p);
+                    const writtenOff = isWrittenOffPlan(p);
                     return (
                       <tr key={`plan-${p.id}`} className={`hover:bg-slate-50 dark:hover:bg-slate-700/30 transition-colors ${writtenOff ? 'opacity-60' : ''}`}>
                         <td className="px-5 py-3.5 whitespace-nowrap">
-                          <StudentCell name={displayName} email={row.student?.email} avatarUrl={row.student?.avatarUrl} />
+                          {/* Ссылку даём только когда студент ещё в ростере: у счёта
+                              удалённого студента карточки уже нет. */}
+                          <StudentCell
+                            name={displayName}
+                            email={row.student?.email}
+                            avatarUrl={row.student?.avatarUrl}
+                            studentId={row.student ? String(p.studentId) : undefined}
+                          />
                         </td>
                         <td className="px-5 py-3.5 text-slate-500 whitespace-nowrap">{p.courseName || p.courseId || '—'}</td>
                         <td className={`px-5 py-3.5 font-medium whitespace-nowrap ${writtenOff ? 'text-slate-400 line-through' : 'text-slate-900 dark:text-white'}`}>
@@ -502,9 +561,10 @@ const DebtsTab: React.FC<Props> = ({ filters, onFiltersChange }) => {
                         </td>
                         <td className="px-5 py-3.5 text-emerald-600 font-medium whitespace-nowrap">{formatMoney(p.paidAmount)}</td>
                         <td className="px-5 py-3.5 whitespace-nowrap">
-                          {/* Отменённый счёт списан — показывать по нему долг было бы враньём. */}
-                          <span className={`font-bold ${writtenOff ? 'text-slate-400' : debt > 0 ? 'text-amber-600' : 'text-emerald-600'}`}>
-                            {writtenOff || debt === 0 ? '—' : formatMoney(debt)}
+                          {/* Отменённый счёт списан — показывать по нему долг было бы враньём.
+                              Решает isDebtBearingPlan, тот же предикат, что и в сумме сверху. */}
+                          <span className={`font-bold ${writtenOff ? 'text-slate-400' : owes ? 'text-amber-600' : 'text-emerald-600'}`}>
+                            {owes ? formatMoney(debt) : '—'}
                           </span>
                         </td>
                         <td className="px-5 py-3.5 whitespace-nowrap">

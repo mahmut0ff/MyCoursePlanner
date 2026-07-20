@@ -243,7 +243,9 @@ const AdminDashboard: React.FC = () => {
     slate: 'bg-slate-100 text-slate-500 dark:bg-slate-700 dark:text-slate-300',
   };
   const attention = [
-    showFinance && (financeCur?.overdueCount || 0) > 0 && { icon: CreditCard, color: 'red', label: 'Просроченные платежи', count: financeCur.overdueCount, to: '/finances' },
+    // ?tab=debts, а не голый /finances: плитка про долг, а голая ссылка роняла
+    // директора на «Обзор», откуда до списка должников ещё один клик.
+    showFinance && (financeCur?.overdueCount || 0) > 0 && { icon: CreditCard, color: 'red', label: 'Просроченные платежи', count: financeCur.overdueCount, to: '/finances?tab=debts' },
     // `attention` (churn + debt), not `total` (churn only): this tile links to the
     // students list filtered by the same rule, so the two must show one number.
     (overview?.risk?.attention ?? overview?.risk?.total ?? 0) > 0 && { icon: AlertTriangle, color: 'orange', label: 'Ученики в зоне риска', count: overview.risk.attention ?? overview.risk.total, to: '/students?risk=1' },
@@ -382,7 +384,8 @@ const AdminDashboard: React.FC = () => {
                     {studentsDelta > 0 ? <ArrowUpRight className="w-3 h-3" /> : <ArrowDownRight className="w-3 h-3" />} {studentsDelta > 0 ? '+' : ''}{studentsDelta} к прошлому
                   </span>
                 : <span className="text-[11px] text-slate-400">в этом месяце</span>} />
-            <KpiCard label="Долги" value={`${fmt(financeCur.outstandingDebt)} с.`} icon={AlertTriangle} highlight to="/finances"
+            {/* Плитка про долг ведёт сразу на «Долги», а не на «Обзор». */}
+            <KpiCard label="Долги" value={`${fmt(financeCur.outstandingDebt)} с.`} icon={AlertTriangle} highlight to="/finances?tab=debts"
               iconBg="bg-amber-100 text-amber-600 dark:bg-amber-900/40"
               sub={<>
                 <span className="text-[11px] text-amber-700 dark:text-amber-500 font-medium">{financeCur.overdueCount || 0} {plural(financeCur.overdueCount || 0, 'просрочка', 'просрочки', 'просрочек')}</span>

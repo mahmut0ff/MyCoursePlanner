@@ -4,7 +4,15 @@ import { apiCreateTransaction } from '../../lib/api';
 import { Undo2, X } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { CURRENCY_SUFFIX, formatMoney } from '../../lib/money';
+import { orgDayKey } from '../../lib/payment-plans';
 import { PAYMENT_METHODS } from '../../pages/finances/expenseCategories';
+
+/**
+ * Насколько глубоко в прошлое можно поставить дату возврата. Дублирует константу
+ * api-finance-transactions намеренно: здесь это ТОЛЬКО подсказка для календаря
+ * (min/max в <input type="date">), а правило живёт на сервере и проверяется там.
+ */
+const MAX_BACKDATE_DAYS = 60;
 
 export interface RefundableTx {
   id: string;
@@ -39,19 +47,47 @@ const RefundModal: React.FC<Props> = ({ tx, studentName, onClose, onSuccess }) =
   const [comment, setComment] = useState('');
   const [saving, setSaving] = useState(false);
 
+  // День организации, а не браузера — см. тот же комментарий в AcceptPaymentModal.
+  const today = orgDayKey();
+  const earliestDate = orgDayKey(new Date(Date.now() - MAX_BACKDATE_DAYS * 86_400_000));
+  const [date, setDate] = useState(today);
+  const [dateError, setDateError] = useState('');
+  const [submitError, setSubmitError] = useState('');
+
   const value = Number(amount);
   // Вернуть больше, чем было заплачено этой транзакцией, нельзя — иначе
   // «возврат» превращается в произвольную выдачу денег из кассы.
   const invalid = !amount || value <= 0 || value > tx.amount;
 
+  /** Русская причина, почему такую дату принимать нельзя, или '' если можно. */
+  const dateProblem = (): string => {
+    if (!date || Number.isNaN(new Date(date).getTime())) {
+      return t('finances.dateInvalid', 'Укажите корректную дату');
+    }
+    if (date > today) {
+      return t('finances.refundDateFuture', 'Дата возврата не может быть в будущем — деньги ещё не выданы');
+    }
+    if (date < earliestDate) {
+      return t('finances.dateTooOld', 'Задним числом можно провести не более 60 дней. Более старая запись — это исправление отчётности, а не касса.');
+    }
+    return '';
+  };
+
   const handleRefund = async () => {
     if (invalid) return;
+    // Проверяем до конструктора Date: пустой input даёт '', и new Date('') бросил бы.
+    const problem = dateProblem();
+    if (problem) { setDateError(problem); return; }
     setSaving(true);
+    setSubmitError('');
     try {
       await apiCreateTransaction({
         type: 'expense',
         amount: value,
-        date: new Date().toISOString(),
+        // Дата, КОГДА деньги реально вернули из кассы, а не когда возврат
+        // оформляют в системе: хардкод new Date() ставил день ввода и разводил
+        // кассовый отчёт с тем, что было в ящике.
+        date: new Date(date).toISOString(),
         categoryId: 'refund',
         paymentPlanId: tx.paymentPlanId,
         studentId: tx.studentId,
@@ -63,6 +99,7 @@ const RefundModal: React.FC<Props> = ({ tx, studentName, onClose, onSuccess }) =
       onSuccess();
       onClose();
     } catch (e: any) {
+      setSubmitError(e.message || t('finances.error', 'Ошибка'));
       toast.error(e.message || t('finances.error', 'Ошибка'));
     } finally {
       setSaving(false);
@@ -103,6 +140,27 @@ const RefundModal: React.FC<Props> = ({ tx, studentName, onClose, onSuccess }) =
             )}
           </div>
 
+          <div>
+            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+              {t('finances.refundDate', 'Дата возврата')}
+            </label>
+            <input
+              type="date"
+              value={date}
+              min={earliestDate}
+              max={today}
+              onChange={e => { setDate(e.target.value); if (dateError) setDateError(''); }}
+              aria-invalid={!!dateError}
+              className={`w-full bg-slate-50 dark:bg-slate-900 border rounded-xl px-3 py-2.5 text-sm dark:text-white ${
+                dateError ? 'border-rose-400 dark:border-rose-500' : 'border-slate-200 dark:border-slate-700'
+              }`}
+            />
+            {dateError
+              ? <p className="text-xs text-rose-500 mt-1">{dateError}</p>
+              : <p className="text-[11px] text-slate-400 mt-1">
+                  {t('finances.refundDateHint', 'Когда деньги реально вернули студенту, а не когда оформляете возврат в системе.')}
+                </p>}
+          </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">{t('finances.method', 'Способ')}</label>
@@ -125,6 +183,12 @@ const RefundModal: React.FC<Props> = ({ tx, studentName, onClose, onSuccess }) =
           <p className="text-[11px] text-amber-800 dark:text-amber-200 bg-amber-50 dark:bg-amber-900/20 border border-amber-200/60 dark:border-amber-700/30 rounded-xl px-3 py-2">
             {t('finances.refundNote', 'Возврат попадёт в «Расходы», а по счёту снова появится долг на эту сумму. Исходная оплата останется в истории.')}
           </p>
+
+          {submitError && (
+            <p className="text-xs text-rose-800 dark:text-rose-200 bg-rose-50 dark:bg-rose-900/20 border border-rose-200/60 dark:border-rose-700/30 rounded-xl px-3 py-2">
+              {submitError}
+            </p>
+          )}
         </div>
         <div className="p-6 border-t border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 flex justify-end gap-3">
           <button onClick={onClose} className="px-4 py-2 text-sm font-medium text-slate-600 dark:text-slate-400">{t('finances.cancel', 'Отмена')}</button>

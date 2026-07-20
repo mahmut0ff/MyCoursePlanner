@@ -395,7 +395,7 @@ describe('api-finance-transactions POST — groupId stamping on income', () => {
    * a foreign-tenant group being matched rather than silently passing. groupRows
    * are filtered by the recorded clauses, exactly like the plans-DELETE harness.
    */
-  function wirePost(groupRows: any[]) {
+  function wirePost(groupRows: any[], payrollRows: any[] = []) {
     const written: any[] = [];
     const setSpy = vi.fn(async (d: any) => { written.push(d); });
     const groupClauses: Array<[string, any]> = [];
@@ -407,17 +407,34 @@ describe('api-finance-transactions POST — groupId stamping on income', () => {
           .map(r => ({ id: r.id, data: () => r })),
       })),
     };
+    // payrollPeriods: the same equality-only shape. Recording the clauses proves
+    // the org scope is really on the query — an unscoped read here would let one
+    // academy's approved payroll block another academy's cash desk.
+    const payrollClauses: Array<[string, any]> = [];
+    const payrollQuery: any = {
+      where: vi.fn((field: string, _op: string, value: any) => { payrollClauses.push([field, value]); return payrollQuery; }),
+      get: vi.fn(async () => {
+        const docs = payrollRows
+          .filter(r => payrollClauses.every(([f, v]) => r[f] === v))
+          .map(r => ({ id: r.id, data: () => r }));
+        return { empty: docs.length === 0, docs };
+      }),
+    };
     (adminDb.collection as any).mockImplementation((name: string) => {
       if (name === 'groups') return groupsQuery;
+      if (name === 'payrollPeriods') return payrollQuery;
       if (name === 'financeTransactions') return { doc: vi.fn(() => ({ id: 'newTx1', set: setSpy })) };
       // studentPaymentPlans etc. — inert missing doc.
       return { doc: vi.fn(() => ({ get: vi.fn().mockResolvedValue({ exists: false }) })) };
     });
-    return { written, setSpy, groupClauses };
+    return { written, setSpy, groupClauses, payrollClauses };
   }
 
+  // Дата берётся от текущего дня организации, а не прибивается литералом: сервер
+  // теперь отвергает будущее и слишком старое, и захардкоженный день сломал бы
+  // эти тесты назавтра — по причине, к groupId никакого отношения не имеющей.
   const incomeBody = (extra: any = {}) => ({
-    type: 'income', amount: 500, date: '2026-07-20', categoryId: 'tuition',
+    type: 'income', amount: 500, date: orgDayKey(), categoryId: 'tuition',
     studentId: 's1', courseId: 'c1', ...extra,
   });
 
@@ -495,6 +512,240 @@ describe('api-finance-transactions POST — groupId stamping on income', () => {
     expect(res.statusCode).toBe(200);
     expect(written[0].groupId).toBeNull();
     expect(groupClauses).toHaveLength(0);
+  });
+});
+
+/**
+ * Дата операции задаётся кассиром, а не берётся из new Date().
+ *
+ * Реальная жалоба академии: деньги приняли в понедельник, внесли в четверг —
+ * и в кассовой ленте появился четверг. Теперь дату присылает форма, поэтому
+ * доверять ей нельзя: сервер и есть правило, а min/max в календаре — удобство.
+ */
+describe('api-finance-transactions — дата операции и заморозка зарплатной ведомости', () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  const dayShift = (days: number) => orgDayKey(new Date(Date.now() + days * 86_400_000));
+  const isoShift = (days: number) => new Date(Date.now() + days * 86_400_000).toISOString();
+
+  /** Утверждённая ведомость, окно которой накрывает «десять дней назад». */
+  const approvedPeriod = (extra: any = {}) => ({
+    id: 'per1', organizationId: 'org1', period: '2026-06',
+    state: 'approved', windowStart: isoShift(-20), windowEnd: isoShift(-5), ...extra,
+  });
+
+  function wireCreate(payrollRows: any[] = []) {
+    const written: any[] = [];
+    const setSpy = vi.fn(async (d: any) => { written.push(d); });
+    const payrollClauses: Array<[string, any]> = [];
+    const payrollQuery: any = {
+      where: vi.fn((f: string, _op: string, v: any) => { payrollClauses.push([f, v]); return payrollQuery; }),
+      get: vi.fn(async () => {
+        const docs = payrollRows
+          .filter(r => payrollClauses.every(([f, v]) => r[f] === v))
+          .map(r => ({ id: r.id, data: () => r }));
+        return { empty: docs.length === 0, docs };
+      }),
+    };
+    const groupsQuery: any = { where: vi.fn(() => groupsQuery), get: vi.fn(async () => ({ docs: [] })) };
+    (adminDb.collection as any).mockImplementation((name: string) => {
+      if (name === 'payrollPeriods') return payrollQuery;
+      if (name === 'groups') return groupsQuery;
+      if (name === 'financeTransactions') return { doc: vi.fn(() => ({ id: 'tx1', set: setSpy })) };
+      return { doc: vi.fn(() => ({ get: vi.fn().mockResolvedValue({ exists: false }) })) };
+    });
+    return { written, payrollQuery, payrollClauses };
+  }
+
+  const income = (extra: any = {}) => ({
+    type: 'income', amount: 500, date: dayShift(0), categoryId: 'course_fee', ...extra,
+  });
+
+  const post = (body: any) => trxHandler(event('POST', {}, body), {} as any, () => {}) as any;
+
+  it('сохраняет платёж задним числом ровно той датой, которую назвал кассир', async () => {
+    (verifyAuth as any).mockResolvedValue(staff(['finances:write']));
+    const { written } = wireCreate();
+    const paidOn = dayShift(-3);
+    const res = await post(income({ date: paidOn }));
+    expect(res.statusCode).toBe(200);
+    // Дословно, без подмены на «сейчас»: именно это и было сломано.
+    expect(written[0].date).toBe(paidOn);
+    // createdAt штампуется отдельно и остаётся моментом ввода — разрыв между
+    // ними и есть след того, что операция проведена задним числом.
+    expect(written[0].createdAt).not.toBe(paidOn);
+  });
+
+  it('отвергает дату в будущем — непоступивших денег не бывает', async () => {
+    (verifyAuth as any).mockResolvedValue(staff(['finances:write']));
+    const { written } = wireCreate();
+    const res = await post(income({ date: dayShift(1) }));
+    expect(res.statusCode).toBe(400);
+    expect(JSON.parse(res.body).error).toContain('будущем');
+    expect(written).toHaveLength(0);
+  });
+
+  it('отвергает дату глубже 60 дней — это уже исправление отчётности', async () => {
+    (verifyAuth as any).mockResolvedValue(staff(['finances:write']));
+    const { written } = wireCreate();
+    const res = await post(income({ date: dayShift(-61) }));
+    expect(res.statusCode).toBe(400);
+    expect(written).toHaveLength(0);
+
+    // Граница включительна: ровно 60 дней назад — ещё касса.
+    const edge = wireCreate();
+    const edgeRes = await post(income({ date: dayShift(-60) }));
+    expect(edgeRes.statusCode).toBe(200);
+    expect(edge.written).toHaveLength(1);
+  });
+
+  it('отвергает мусор вместо даты, а не пишет его в ленту', async () => {
+    (verifyAuth as any).mockResolvedValue(staff(['finances:write']));
+    const { written } = wireCreate();
+    const res = await post(income({ date: 'вчера' }));
+    expect(res.statusCode).toBe(400);
+    expect(written).toHaveLength(0);
+  });
+
+  it('409, когда дата попадает в утверждённую ведомость: иначе преподаватель молча недополучит', async () => {
+    (verifyAuth as any).mockResolvedValue(staff(['finances:write']));
+    const { written, payrollClauses } = wireCreate([approvedPeriod()]);
+    const res = await post(income({ date: dayShift(-10) }));
+    expect(res.statusCode).toBe(409);
+    const payload = JSON.parse(res.body);
+    expect(payload.code).toBe('payroll_period_frozen');
+    expect(payload.period).toBe('2026-06'); // текст обязан назвать месяц
+    // Запрос равенства со скоупом организации — composite-индексов нет.
+    expect(payrollClauses).toEqual([['organizationId', 'org1']]);
+    // Никакого «всё равно провести»: операция не записана.
+    expect(written).toHaveLength(0);
+  });
+
+  it('409 и для выплаченной ведомости', async () => {
+    (verifyAuth as any).mockResolvedValue(staff(['finances:write']));
+    const { written } = wireCreate([approvedPeriod({ state: 'paid' })]);
+    const res = await post(income({ date: dayShift(-10) }));
+    expect(res.statusCode).toBe(409);
+    expect(written).toHaveLength(0);
+  });
+
+  it('пропускает ту же дату, когда ведомость ещё черновик или расчёт', async () => {
+    for (const state of ['draft', 'calculated']) {
+      vi.clearAllMocks();
+      (verifyAuth as any).mockResolvedValue(staff(['finances:write']));
+      const { written } = wireCreate([approvedPeriod({ state })]);
+      const res = await post(income({ date: dayShift(-10) }));
+      expect(res.statusCode).toBe(200);
+      expect(written).toHaveLength(1);
+    }
+  });
+
+  it('пропускает дату вне окна утверждённой ведомости', async () => {
+    (verifyAuth as any).mockResolvedValue(staff(['finances:write']));
+    const { written } = wireCreate([approvedPeriod()]);
+    const res = await post(income({ date: dayShift(-2) })); // окно кончилось на -5
+    expect(res.statusCode).toBe(200);
+    expect(written).toHaveLength(1);
+  });
+
+  it('не блокирует академию без зарплаты и не читает периоды на расходе', async () => {
+    (verifyAuth as any).mockResolvedValue(staff(['finances:write']));
+    const noPayroll = wireCreate([]);
+    const res = await post(income({ date: dayShift(-10) }));
+    expect(res.statusCode).toBe(200);
+    expect(noPayroll.written).toHaveLength(1);
+
+    // Расход в базу процентной оплаты не входит — лишнего чтения быть не должно.
+    vi.clearAllMocks();
+    (verifyAuth as any).mockResolvedValue(staff(['finances:write']));
+    const expense = wireCreate([approvedPeriod()]);
+    const expRes = await post(income({ type: 'expense', date: dayShift(-10) }));
+    expect(expRes.statusCode).toBe(200);
+    expect(expense.payrollClauses).toHaveLength(0);
+  });
+
+  // ── PUT ──
+  function wireUpdate(existing: any, payrollRows: any[] = []) {
+    const updates: any[] = [];
+    const docRef = {
+      get: vi.fn(async () => ({ exists: true, id: 'tx1', data: () => existing })),
+      update: vi.fn(async (u: any) => { updates.push(u); }),
+    };
+    const payrollClauses: Array<[string, any]> = [];
+    const payrollQuery: any = {
+      where: vi.fn((f: string, _op: string, v: any) => { payrollClauses.push([f, v]); return payrollQuery; }),
+      get: vi.fn(async () => {
+        const docs = payrollRows
+          .filter(r => payrollClauses.every(([f, v]) => r[f] === v))
+          .map(r => ({ id: r.id, data: () => r }));
+        return { empty: docs.length === 0, docs };
+      }),
+    };
+    (adminDb.collection as any).mockImplementation((name: string) => {
+      if (name === 'payrollPeriods') return payrollQuery;
+      return { doc: vi.fn(() => docRef) };
+    });
+    return { updates, payrollClauses };
+  }
+
+  const storedIncome = (extra: any = {}) => ({
+    type: 'income', amount: 500, date: dayShift(-1), categoryId: 'course_fee',
+    organizationId: 'org1', branchId: null, paymentPlanId: null, ...extra,
+  });
+
+  const put = (body: any) => trxHandler(event('PUT', {}, body), {} as any, () => {}) as any;
+
+  it('PUT штампует updatedBy — до этого у правки не было автора вообще', async () => {
+    (verifyAuth as any).mockResolvedValue(staff(['finances:write']));
+    const { updates } = wireUpdate(storedIncome());
+    const res = await put({ id: 'tx1', description: 'уточнение' });
+    expect(res.statusCode).toBe(200);
+    expect(updates[0].updatedBy).toBe('u1');
+    expect(updates[0].updatedAt).toBeTruthy();
+  });
+
+  it('PUT проверяет ту же границу дат, что и POST', async () => {
+    (verifyAuth as any).mockResolvedValue(staff(['finances:write']));
+    const future = wireUpdate(storedIncome());
+    expect((await put({ id: 'tx1', date: dayShift(1) })).statusCode).toBe(400);
+    expect(future.updates).toHaveLength(0);
+
+    vi.clearAllMocks();
+    (verifyAuth as any).mockResolvedValue(staff(['finances:write']));
+    const old = wireUpdate(storedIncome());
+    expect((await put({ id: 'tx1', date: dayShift(-61) })).statusCode).toBe(400);
+    expect(old.updates).toHaveLength(0);
+  });
+
+  it('PUT отказывает переносу доход В утверждённое окно', async () => {
+    (verifyAuth as any).mockResolvedValue(staff(['finances:write']));
+    const { updates } = wireUpdate(storedIncome(), [approvedPeriod()]);
+    const res = await put({ id: 'tx1', date: dayShift(-10) });
+    expect(res.statusCode).toBe(409);
+    expect(JSON.parse(res.body).code).toBe('payroll_period_frozen');
+    expect(updates).toHaveLength(0);
+  });
+
+  it('PUT отказывает и переносу доход ИЗ утверждённого окна — процент уже начислен', async () => {
+    (verifyAuth as any).mockResolvedValue(staff(['finances:write']));
+    // Текущая дата операции внутри закрытого окна, новая — снаружи.
+    const { updates } = wireUpdate(storedIncome({ date: dayShift(-10) }), [approvedPeriod()]);
+    const res = await put({ id: 'tx1', date: dayShift(-2) });
+    expect(res.statusCode).toBe(409);
+    expect(updates).toHaveLength(0);
+  });
+
+  it('PUT не читает периоды, когда дату не меняют или строка не доход', async () => {
+    (verifyAuth as any).mockResolvedValue(staff(['finances:write']));
+    const noDate = wireUpdate(storedIncome(), [approvedPeriod()]);
+    expect((await put({ id: 'tx1', amount: 700 })).statusCode).toBe(200);
+    expect(noDate.payrollClauses).toHaveLength(0);
+
+    vi.clearAllMocks();
+    (verifyAuth as any).mockResolvedValue(staff(['finances:write']));
+    const refund = wireUpdate(storedIncome({ type: 'expense' }), [approvedPeriod()]);
+    expect((await put({ id: 'tx1', date: dayShift(-10) })).statusCode).toBe(200);
+    expect(refund.payrollClauses).toHaveLength(0);
   });
 });
 

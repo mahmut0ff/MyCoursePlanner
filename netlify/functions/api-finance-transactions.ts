@@ -7,8 +7,125 @@ import { verifyAuth, can, getOrgFilter, resolveBranchFilter, recordInBranchScope
 import { createNotification, notifyOrgAdmins } from './utils/notifications';
 import { batchGetUserNames, batchGetCourseNames, derivePlanStatus } from './utils/finance-names';
 import { resolveRange } from './utils/finance-period';
+import { orgDayKey } from './utils/payment-plans';
 
 const COLLECTION = 'financeTransactions';
+const PAYROLL_PERIODS = 'payrollPeriods';
+
+/**
+ * На сколько дней назад касса может датировать операцию.
+ *
+ * Реальный случай — «деньги приняли в понедельник, внесли в четверг» — это
+ * единицы дней; двух месяцев хватает с большим запасом. Дальше начинается уже не
+ * касса, а исправление сданной отчётности: такая правка не должна проходить
+ * незаметно, обычным нажатием «Подтвердить оплату», поэтому её здесь нет.
+ */
+export const MAX_BACKDATE_DAYS = 60;
+
+/** 'YYYY-MM-DD' из даты операции, или null если строка не дата. */
+function dayKeyOf(raw: unknown): string | null {
+  if (typeof raw !== 'string') return null;
+  const day = raw.slice(0, 10);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(day)) return null;
+  if (Number.isNaN(Date.parse(raw))) return null;
+  return day;
+}
+
+/**
+ * Проверка даты кассовой операции. Возвращает русское сообщение или null.
+ *
+ * ВПЕРЁД нельзя вообще: деньги, которых ещё не принесли, — не доход. Дата в
+ * будущем раздувает выручку текущего отчёта и создаёт оплату, которой нет в кассе.
+ *
+ * НАЗАД — не глубже MAX_BACKDATE_DAYS (см. комментарий у константы).
+ *
+ * «Сегодня» берём в дне ОРГАНИЗАЦИИ (orgDayKey), а не в UTC: функция всегда
+ * исполняется в UTC, а рынок — UTC+6, и граница суток уехала бы на шесть часов.
+ * Вечерний платёж, который в Бишкеке уже «сегодняшний», сервер по UTC счёл бы
+ * завтрашним и отверг как будущий — на глазах у кассира с деньгами в руках.
+ *
+ * Клиентские min/max — только удобство: правило здесь.
+ */
+function validateOperationDay(raw: unknown, now: Date = new Date()): string | null {
+  const day = dayKeyOf(raw);
+  if (!day) return 'Некорректная дата операции — ожидается формат ГГГГ-ММ-ДД';
+  const today = orgDayKey(now);
+  if (day > today) return `Дата операции не может быть в будущем (сегодня ${today}). Деньги, которые ещё не поступили, — не доход.`;
+  const earliest = orgDayKey(new Date(now.getTime() - MAX_BACKDATE_DAYS * 86_400_000));
+  if (day < earliest) {
+    return `Дата операции не может быть раньше ${earliest} — задним числом можно провести не более ${MAX_BACKDATE_DAYS} дней. Более старая запись это исправление отчётности, а не касса.`;
+  }
+  return null;
+}
+
+interface FrozenPeriodHit {
+  id: string;
+  period: string;
+  state: string;
+}
+
+/**
+ * Утверждённая или выплаченная зарплатная ведомость, окно которой накрывает
+ * любую из переданных дат. null — такой нет (в том числе когда организация
+ * зарплатой вообще не пользуется: периодов ноль, значит и блокировать нечего).
+ *
+ * ── Зачем это на пути платежа ──
+ * Процентная оплата преподавателя считается по доходам, ДАТА которых попала в
+ * окно ведомости. Утверждённая ведомость заморожена намеренно и пересчёту не
+ * подлежит. Значит платёж, датированный внутрь такого окна, попадает в базу,
+ * которую уже никогда не пересчитают, а следующий период его не возьмёт — по
+ * дате он не его. Преподаватель молча недополучает, и об этом никто не узнает.
+ * Предупреждение с кнопкой «всё равно провести» именно этот баг и создало бы,
+ * поэтому здесь отказ, а не предупреждение.
+ *
+ * Один equality-запрос `where organizationId ==` — composite-индексы не
+ * задеплоены, поэтому окно и состояние отбираем уже в JS.
+ *
+ * Сравниваем эпохи миллисекунд включительно по обеим границам — ровно тем же
+ * правилом, что и txInWindow в payroll-engine. Это не совпадение, а требование:
+ * отказывать надо там и только там, где платёж РЕАЛЬНО попал бы в базу процента.
+ */
+async function findFrozenPayrollPeriod(orgId: string, dates: unknown[]): Promise<FrozenPeriodHit | null> {
+  const stamps = dates
+    .map(d => (typeof d === 'string' ? Date.parse(d) : NaN))
+    .filter(ms => !Number.isNaN(ms));
+  if (!stamps.length) return null;
+
+  const snap = await adminDb.collection(PAYROLL_PERIODS).where('organizationId', '==', orgId).get();
+  if (snap.empty) return null;
+
+  for (const doc of snap.docs) {
+    const period = doc.data() as any;
+    if (period.state !== 'approved' && period.state !== 'paid') continue;
+    const startMs = Date.parse(period.windowStart || '');
+    const endMs = Date.parse(period.windowEnd || '');
+    if (Number.isNaN(startMs) || Number.isNaN(endMs)) continue;
+    if (stamps.some(ms => ms >= startMs && ms <= endMs)) {
+      return { id: doc.id, period: String(period.period || ''), state: String(period.state) };
+    }
+  }
+  return null;
+}
+
+/**
+ * 409 на попытку датировать доход внутрь закрытой ведомости. Текст обязан
+ * назвать МЕСЯЦ и сказать, ЧТО делать, — «конфликт» без выхода кассир прочитать
+ * не сможет. `code` даёт интерфейсу возможность показать это как отдельный
+ * случай, а не как безымянную ошибку сети.
+ */
+function frozenPayrollError(hit: FrozenPeriodHit) {
+  const verb = hit.state === 'paid' ? 'выплачена' : 'утверждена';
+  return jsonResponse(409, {
+    error:
+      `Зарплатная ведомость за ${hit.period} уже ${verb}. Платёж этой датой изменил бы базу ` +
+      'процентной оплаты, а пересчитать закрытую ведомость нельзя — преподаватель молча ' +
+      'недополучит. Укажите дату в текущем, ещё не закрытом периоде.',
+    code: 'payroll_period_frozen',
+    period: hit.period,
+    periodId: hit.id,
+    state: hit.state,
+  });
+}
 
 /**
  * Hard ceiling on rows returned by GET. Exported so the client can compare it
@@ -117,8 +234,20 @@ const handler: Handler = async (event: HandlerEvent) => {
         return badRequest('amount должен быть положительным числом');
       }
 
+      // Дата теперь приходит из формы (деньги приняли в понедельник, внесли в
+      // четверг), поэтому её больше нельзя считать доверенной «сейчас».
+      const postDateError = validateOperationDay(body.date);
+      if (postDateError) return badRequest(postDateError);
+
       const orgFilter = getOrgFilter(user);
       if (!orgFilter) return badRequest('Organization context required');
+
+      // Только доход и только один запрос: расход в базу процента не входит, а
+      // организация без зарплатных периодов не получит ни одной блокировки.
+      if (body.type === 'income') {
+        const frozen = await findFrozenPayrollPeriod(orgFilter, [body.date]);
+        if (frozen) return frozenPayrollError(frozen);
+      }
 
       const strictBranchError = requireBranchScope(user, body.branchId);
       if (strictBranchError) return strictBranchError;
@@ -311,7 +440,26 @@ const handler: Handler = async (event: HandlerEvent) => {
       const putBranchError = requireBranchScope(user, existing.branchId);
       if (putBranchError) return putBranchError;
 
-      const updates: any = { updatedAt: new Date().toISOString() };
+      if (body.date !== undefined) {
+        const putDateError = validateOperationDay(body.date);
+        if (putDateError) return badRequest(putDateError);
+
+        if (existing.type === 'income') {
+          // Проверяем ОБЕ даты — новую и текущую. Перенос доход ВНУТРЬ закрытой
+          // ведомости добавляет процентную базу, которую уже не пересчитают; но
+          // перенос ИЗ неё наружу так же необратим и вреднее: деньги, по которым
+          // преподавателю уже начислили процент, уедут в открытый период и
+          // попадут в базу второй раз. Обе даты уже на руках, лишнего чтения нет.
+          const frozen = await findFrozenPayrollPeriod(existing.organizationId, [body.date, existing.date]);
+          if (frozen) return frozenPayrollError(frozen);
+        }
+      }
+
+      // updatedBy: до появления задним числом проставляемой даты правка операции
+      // не оставляла вообще НИКАКОГО следа об авторе — только updatedAt. Теперь
+      // правкой можно перенести деньги между месяцами, и «кто это сделал»
+      // становится главным вопросом к строке.
+      const updates: any = { updatedAt: new Date().toISOString(), updatedBy: user.uid };
       if (body.amount !== undefined) updates.amount = Number(body.amount);
       if (body.description !== undefined) updates.description = body.description;
       if (body.date !== undefined) updates.date = body.date;

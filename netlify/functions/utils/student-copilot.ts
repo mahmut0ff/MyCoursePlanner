@@ -19,6 +19,7 @@ import { generateWithFallback, hasGeminiKey, recordAiUsage } from './ai';
 import { resolveOrgRole } from './auth';
 import { buildLessonContext } from './lessons';
 import { matchRosterByName } from './copilot-actions';
+import { isDebtBearingPlan, planDebt } from './payment-plans';
 import { toTelegramHtml, type DirectorChatMessage } from './director-copilot';
 
 const todayStr = () => new Date().toISOString().slice(0, 10);
@@ -170,11 +171,14 @@ export async function buildStudentSnapshot(orgId: string, studentUid: string, na
   }
 
   // ── Debt (unpaid balance across non-paid plans) ──
+  // Через общее правило: пропускать только 'paid' мало — списанный счёт тоже не
+  // долг, а этот текст читает САМ СТУДЕНТ. Требовать деньги, от которых академия
+  // уже отказалась, хуже, чем промолчать.
   let debt = 0;
   for (const p of (planSnap?.docs || [])) {
     const plan = p.data() as any;
-    if (plan.status === 'paid') continue;
-    debt += Math.max(0, (plan.totalAmount || 0) - (plan.paidAmount || 0));
+    if (!isDebtBearingPlan(plan)) continue;
+    debt += planDebt(plan);
   }
 
   // ── Exams: latest attempt + accumulated weak topics ──

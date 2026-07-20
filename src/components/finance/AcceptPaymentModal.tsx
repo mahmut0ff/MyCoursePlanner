@@ -4,7 +4,15 @@ import { apiCreateTransaction } from '../../lib/api';
 import { CreditCard, X } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { CURRENCY_SUFFIX, formatMoney } from '../../lib/money';
+import { orgDayKey, isDebtBearingPlan, planDebt } from '../../lib/payment-plans';
 import { PAYMENT_METHODS } from '../../pages/finances/expenseCategories';
+
+/**
+ * Насколько глубоко в прошлое можно поставить дату оплаты. Дублирует константу
+ * api-finance-transactions намеренно: здесь это ТОЛЬКО подсказка для календаря
+ * (min/max в <input type="date">), а правило живёт на сервере и проверяется там.
+ */
+const MAX_BACKDATE_DAYS = 60;
 
 export interface PayablePlan {
   id: string;
@@ -24,7 +32,9 @@ interface Props {
   onSuccess: () => void;
 }
 
-const debtOf = (p: PayablePlan) => Math.max(0, (p.totalAmount || 0) - (p.paidAmount || 0));
+// Через общее правило, а не своей арифметикой: списанный счёт остатка не имеет,
+// а приём оплаты по нему воскрешает списание (сервер разрешает revive на доходе).
+const debtOf = (p: PayablePlan) => (isDebtBearingPlan(p) ? planDebt(p) : 0);
 
 /**
  * Единственное место, где принимается оплата. Раньше эта форма жила инлайном в
@@ -43,6 +53,18 @@ const AcceptPaymentModal: React.FC<Props> = ({ plans, studentName, onClose, onSu
   const [comment, setComment] = useState('');
   const [saving, setSaving] = useState(false);
 
+  // Границы календаря считаем в дне ОРГАНИЗАЦИИ, а не браузера: рынок — UTC+6,
+  // и машина в другой зоне сдвинула бы «сегодня» на сутки, из-за чего кассир
+  // либо не смог бы поставить сегодняшнее число, либо поставил бы завтрашнее.
+  const today = orgDayKey();
+  const earliestDate = orgDayKey(new Date(Date.now() - MAX_BACKDATE_DAYS * 86_400_000));
+  const [date, setDate] = useState(today);
+  const [dateError, setDateError] = useState('');
+  // Отказ сервера показываем В ОКНЕ, а не только тостом: 409 про закрытую
+  // зарплатную ведомость — это текст, который нужно дочитать и осмыслить,
+  // а тост исчезает раньше, чем его успевают прочесть.
+  const [submitError, setSubmitError] = useState('');
+
   // Смена счёта переставляет сумму на остаток нового — иначе можно молча
   // отправить остаток от предыдущего.
   const selectPlan = (id: string) => {
@@ -53,14 +75,36 @@ const AcceptPaymentModal: React.FC<Props> = ({ plans, studentName, onClose, onSu
 
   const name = studentName || plan?.studentName || plan?.studentId || '';
 
+  /** Русская причина, почему такую дату принимать нельзя, или '' если можно. */
+  const dateProblem = (): string => {
+    if (!date || Number.isNaN(new Date(date).getTime())) {
+      return t('finances.dateInvalid', 'Укажите корректную дату');
+    }
+    if (date > today) {
+      return t('finances.dateFuture', 'Дата оплаты не может быть в будущем — деньги ещё не поступили');
+    }
+    if (date < earliestDate) {
+      return t('finances.dateTooOld', 'Задним числом можно провести не более 60 дней. Более старая запись — это исправление отчётности, а не касса.');
+    }
+    return '';
+  };
+
   const handlePay = async () => {
     if (!plan || !amount || Number(amount) <= 0) return;
+    // Проверяем до конструктора Date: пустой input даёт '', и new Date('') бросил бы.
+    const problem = dateProblem();
+    if (problem) { setDateError(problem); return; }
     setSaving(true);
+    setSubmitError('');
     try {
       await apiCreateTransaction({
         type: 'income',
         amount: Number(amount),
-        date: new Date().toISOString(),
+        // Дата, КОГДА студент отдал деньги, а не когда их вносят в систему.
+        // Раньше здесь стояло new Date().toISOString(), и оплата понедельника,
+        // внесённая в четверг, ложилась в кассу четвергом — отчёты за оба дня
+        // расходились с реальностью, и академия не могла это исправить.
+        date: new Date(date).toISOString(),
         categoryId: 'course_fee',
         paymentPlanId: plan.id,
         studentId: plan.studentId,
@@ -76,6 +120,7 @@ const AcceptPaymentModal: React.FC<Props> = ({ plans, studentName, onClose, onSu
       onSuccess();
       onClose();
     } catch (e: any) {
+      setSubmitError(e.message || t('finances.error', 'Ошибка'));
       toast.error(e.message || t('finances.error', 'Ошибка'));
     } finally {
       setSaving(false);
@@ -125,6 +170,27 @@ const AcceptPaymentModal: React.FC<Props> = ({ plans, studentName, onClose, onSu
               placeholder="0"
             />
           </div>
+          <div>
+            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+              {t('finances.paymentDate', 'Дата оплаты')}
+            </label>
+            <input
+              type="date"
+              value={date}
+              min={earliestDate}
+              max={today}
+              onChange={e => { setDate(e.target.value); if (dateError) setDateError(''); }}
+              aria-invalid={!!dateError}
+              className={`w-full bg-slate-50 dark:bg-slate-900 border rounded-xl px-3 py-2.5 text-sm dark:text-white ${
+                dateError ? 'border-rose-400 dark:border-rose-500' : 'border-slate-200 dark:border-slate-700'
+              }`}
+            />
+            {dateError
+              ? <p className="text-xs text-rose-500 mt-1">{dateError}</p>
+              : <p className="text-[11px] text-slate-400 mt-1">
+                  {t('finances.paymentDateHint', 'Когда студент реально отдал деньги, а не когда вы вносите оплату в систему.')}
+                </p>}
+          </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">{t('finances.paymentMethod', 'Способ оплаты')}</label>
@@ -143,6 +209,11 @@ const AcceptPaymentModal: React.FC<Props> = ({ plans, studentName, onClose, onSu
               />
             </div>
           </div>
+          {submitError && (
+            <p className="text-xs text-rose-800 dark:text-rose-200 bg-rose-50 dark:bg-rose-900/20 border border-rose-200/60 dark:border-rose-700/30 rounded-xl px-3 py-2">
+              {submitError}
+            </p>
+          )}
         </div>
         <div className="p-6 border-t border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 flex justify-end gap-3">
           <button onClick={onClose} className="px-4 py-2 text-sm font-medium text-slate-600 dark:text-slate-400">{t('finances.cancel', 'Отмена')}</button>

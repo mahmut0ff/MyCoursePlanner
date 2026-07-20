@@ -123,8 +123,11 @@ function requireOrgStaff(user: AuthUser) {
 
 /**
  * Helper to auto-generate payment plans for students enrolled in a priced course.
+ *
+ * Экспортируется ради теста: «уже выставлен счёт?» — это правило про деньги, и
+ * проверять его надо напрямую, а не через HTTP-обвязку (ср. parseBulkBody ниже).
  */
-async function syncPaymentPlans(orgId: string, branchId: string | null, courseId: string, studentIds: string[]) {
+export async function syncPaymentPlans(orgId: string, branchId: string | null, courseId: string, studentIds: string[]) {
   if (!studentIds || studentIds.length === 0) return;
   
   const courseDoc = await adminDb.collection('courses').doc(courseId).get();
@@ -133,12 +136,30 @@ async function syncPaymentPlans(orgId: string, branchId: string | null, courseId
   
   if (!courseData.price || courseData.price <= 0) return; // Free course
 
-  // One bulk query instead of N individual queries
+  // One bulk query instead of N individual queries.
+  // Equality-only (organizationId + courseId): составные индексы не задеплоены,
+  // поэтому статус отсеиваем в JS, а не ещё одним .where.
   const existingSnap = await adminDb.collection('studentPaymentPlans')
     .where('organizationId', '==', orgId)
     .where('courseId', '==', courseId)
     .get();
-  const existingStudentIds = new Set(existingSnap.docs.map(d => d.data().studentId));
+
+  // «Уже выставлен счёт» — это ЖИВОЙ счёт. Списанный (status: 'cancelled') таким
+  // не считается: его пишет этот же файл, когда студента убирают из группы с
+  // нетронутым планом (см. removedStudents в updateGroup). Раньше статус здесь не
+  // проверялся, и получалась тихая потеря выручки: студент ушёл → план списан →
+  // студента вернули в группу того же курса → syncPaymentPlans видел списанный
+  // план, решал, что счёт уже есть, и не создавал ничего. Студент учится и НЕ
+  // оплачивается, причём об этом никто и нигде не сообщает.
+  //
+  // Исключаем РОВНО 'cancelled'. 'paid' и 'partial' исключать нельзя: вернувшийся
+  // студент, который уже заплатил (или доплачивает), должен сохранить свой план,
+  // а не получить второй счёт за то же обучение.
+  const existingStudentIds = new Set(
+    existingSnap.docs
+      .filter(d => d.data().status !== 'cancelled')
+      .map(d => d.data().studentId),
+  );
 
   // Collect new plans to create
   const isMonthly = courseData.paymentFormat === 'monthly';

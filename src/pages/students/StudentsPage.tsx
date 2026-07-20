@@ -20,6 +20,8 @@ import { Users, Search, RefreshCw, CheckCircle, XCircle, UserPlus, Phone, Filter
 import type { UserProfile, Group, Branch } from '../../types';
 import toast from 'react-hot-toast';
 import { PinnedBadgesDisplay } from '../../lib/badges';
+import { planDebt, isDebtBearingPlan } from '../../lib/payment-plans';
+import { formatMoney } from '../../lib/money';
 import BulkActionBar from '../../components/roster/BulkActionBar';
 import EmptyState from '../../components/ui/EmptyState';
 import { ListSkeleton } from '../../components/ui/Skeleton';
@@ -185,15 +187,18 @@ const StudentsPage: React.FC = () => {
     for (const p of plans) {
       const id = String(p.studentId);
       billed.add(id);
-      if (Math.max(0, (p.totalAmount || 0) - (p.paidAmount || 0)) <= 0) continue;
+      // Общее правило из src/lib/payment-plans: списанный (cancelled) счёт долгом
+      // не считается и «Принять оплату» по нему не предлагается — приём дохода
+      // воскресил бы списание. Здесь это раньше держалось лишь на том, что у
+      // отменённых счетов обычно нулевой остаток.
+      if (!isDebtBearingPlan(p)) continue;
       (unpaid[id] ||= []).push(p);
     }
     return { unpaidByStudent: unpaid, billedStudents: billed };
   }, [plans]);
 
   const unpaidFor = (uid: string) => unpaidByStudent[uid] || [];
-  const debtFor = (uid: string) =>
-    unpaidFor(uid).reduce((sum, p) => sum + Math.max(0, (p.totalAmount || 0) - (p.paidAmount || 0)), 0);
+  const debtFor = (uid: string) => unpaidFor(uid).reduce((sum, p) => sum + planDebt(p), 0);
 
   // Вход есть, если у записи появился email и она перестала быть офлайновой —
   // ровно то, что ставит бэкенд при выдаче доступа.
@@ -807,7 +812,7 @@ const StudentsPage: React.FC = () => {
                                   : 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600'
                               }`}
                             >
-                              <Wallet className="w-3 h-3" /> {debtFor(s.uid).toLocaleString()} с.
+                              <Wallet className="w-3 h-3" /> {formatMoney(debtFor(s.uid))}
                             </button>
                           ) : riskByStudent[s.uid]?.hasOverduePayment ? (
                             <span title="Просрочена оплата" className="shrink-0 inline-flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-400">

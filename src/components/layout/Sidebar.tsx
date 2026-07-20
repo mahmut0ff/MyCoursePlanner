@@ -106,8 +106,9 @@ const Sidebar: React.FC<{ open: boolean; onClose: () => void; isCollapsed?: bool
       <aside role="navigation" aria-label={t('nav.mainNavigation', 'Main navigation')} className={`fixed top-0 left-0 bottom-0 w-60 ${isCollapsed ? 'lg:w-[72px]' : 'lg:w-60'} bg-white dark:bg-[#0f172a] border-r border-slate-200 dark:border-slate-700/50 z-40 transform transition-[width,transform] duration-300 lg:translate-x-0 ${open ? 'translate-x-0' : '-translate-x-full'} flex flex-col`} style={{ paddingTop: 'var(--safe-area-top)' }}>
 
         {/* ═══ Header ═══ */}
-        <div className="flex items-center gap-3 px-4 py-4 border-b border-slate-200 dark:border-white/5 h-[69px]">
-          <img src={orgData?.logo || orgData?.branding?.logoUrl || "/icons/logo.png"} alt={orgData?.name || "SabakHub"} className="h-9 w-auto object-contain shrink-0" />
+        {/* h-16 matches the Topbar so the two bottom borders line up across the fold. */}
+        <div className="flex items-center gap-2.5 px-4 border-b border-slate-200 dark:border-white/5 h-16 shrink-0">
+          <img src={orgData?.logo || orgData?.branding?.logoUrl || "/icons/logo.png"} alt={orgData?.name || "SabakHub"} className="h-8 w-auto object-contain shrink-0" />
           <div className={`flex-1 min-w-0 ${isCollapsed ? 'lg:hidden' : ''}`}>
             <span className="font-bold text-[15px] text-slate-900 dark:text-white leading-none tracking-tight truncate block">{orgData?.name && orgData.name !== 'New Organization' ? orgData.name : t('app.name')}</span>
             {isSuperAdmin && (
@@ -118,7 +119,7 @@ const Sidebar: React.FC<{ open: boolean; onClose: () => void; isCollapsed?: bool
             <button
               onClick={onToggleCollapse}
               aria-label={isCollapsed ? t('nav.expandSidebar', 'Expand sidebar') : t('nav.collapseSidebar', 'Collapse sidebar')}
-              className="p-1.5 text-slate-400 hover:text-slate-900 hover:bg-slate-100 dark:text-slate-500 dark:hover:text-white dark:hover:bg-white/10 hidden lg:flex items-center justify-center transition-colors absolute -right-3 top-5 bg-white dark:bg-[#0f172a] border border-slate-200 dark:border-slate-700/50 shadow-lg z-50 rounded-full"
+              className="p-1.5 text-slate-400 hover:text-slate-900 hover:bg-slate-100 dark:text-slate-500 dark:hover:text-white dark:hover:bg-white/10 hidden lg:flex items-center justify-center transition-colors absolute -right-3 top-4 bg-white dark:bg-[#0f172a] border border-slate-200 dark:border-slate-700/50 shadow-lg z-50 rounded-full"
             >
               <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-300 ${isCollapsed ? '-rotate-90' : 'rotate-90'}`} />
             </button>

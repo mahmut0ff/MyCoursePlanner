@@ -82,6 +82,21 @@ const CreatePaymentPlanModal: React.FC<Props> = ({ studentId, studentName, stude
     }));
   };
 
+  /**
+   * Счёт выставляется только по курсу, который реально продают: архивный курс
+   * закрыт, черновик ещё не готов к набору — предлагать их в биллинге нельзя.
+   * Отсекаем по чёрному списку, а не по `=== 'published'`: у старых курсов
+   * status в Firestore может отсутствовать, и белый список спрятал бы их все.
+   *
+   * Последнее условие оставляет уже выбранный курс в списке, даже если его
+   * успели заархивировать: иначе при редактировании счёта его собственный курс
+   * молча исчезал бы из select, а вместе с ним и привязка счёта к курсу.
+   */
+  const visibleCourses = useMemo(
+    () => courses.filter(c => (c.status !== 'archived' && c.status !== 'draft') || c.id === form.courseId),
+    [courses, form.courseId]
+  );
+
   const selectedCourse = courses.find(c => c.id === form.courseId);
   const canSubmit = !!form.studentId && !!form.totalAmount && !!form.courseId;
 
@@ -176,7 +191,7 @@ const CreatePaymentPlanModal: React.FC<Props> = ({ studentId, studentName, stude
             <select value={form.courseId} onChange={e => selectCourse(e.target.value)}
               className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-sm dark:text-white">
               <option value="">{t('finances.selectCourse', 'Выберите курс...')}</option>
-              {courses.map(c => (
+              {visibleCourses.map(c => (
                 <option key={c.id} value={c.id}>
                   {c.title}{hasPrice(c) ? ` — ${formatMoney(c.price)}` : ''}
                 </option>

@@ -54,10 +54,12 @@ describe('BranchSwitcher', () => {
     expect(screen.getByText('Все филиалы')).toBeInTheDocument();
   });
 
-  it('shows the active branch name and its city', () => {
+  // The trigger is a single-line pill, so the city rides along in the tooltip
+  // instead of a second row of text.
+  it('shows the active branch name, with its city in the title', () => {
     setup({ activeBranchId: 'b1', activeBranch: BRANCHES[0] });
     expect(screen.getByText('Центральный')).toBeInTheDocument();
-    expect(screen.getByText('Ош')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Переключить филиал' })).toHaveAttribute('title', 'Центральный — Ош');
   });
 
   it('lists «Все филиалы» plus every branch on open', async () => {

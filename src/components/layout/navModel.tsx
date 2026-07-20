@@ -271,11 +271,14 @@ export function useNavModel(instType?: string, opts?: NavModelOptions): NavSecti
     // links behind a per-member revoke.
     if (teacherWithOrg) {
       const learning: NavItemDef[] = [];
-      if (canRead('students')) learning.push({ id: 'students', to: '/students', icon: Users, label: term(t, inst, 'students') });
+      // No `students` entry: a teacher works group-first, and every student they
+      // actually teach is one click away inside their group. The org-wide roster
+      // is a management view, so it stays out of the teacher menu — /students
+      // itself is still reachable for a custom role that links there.
       if (canRead('groups')) learning.push({ id: 'groups', to: '/groups', icon: Layers, label: term(t, inst, 'groups') });
       if (canRead('gradebook')) learning.push({ id: 'journal', to: '/journal', icon: NotebookPen, label: t('nav.journal', 'Журнал'), locked: !canAccess('gradebook') });
-      if (canRead('homework')) learning.push({ id: 'homeworkReview', to: '/homework/review', icon: ClipboardCheck, label: t('nav.homeworkReview', 'Проверка ДЗ') });
       if (canRead('gradebook')) learning.push({ id: 'gradebook', to: '/gradebook', icon: TableProperties, label: t('nav.gradebook', 'Оценки'), locked: !canAccess('gradebook') });
+      if (canRead('homework')) learning.push({ id: 'homeworkReview', to: '/homework/review', icon: ClipboardCheck, label: t('nav.homeworkReview', 'Проверка ДЗ') });
       sections.push({ id: 'learning', label: t('nav.secLearning', 'Обучение'), items: learning });
 
       const content: NavItemDef[] = [];

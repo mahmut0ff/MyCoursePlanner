@@ -40,9 +40,9 @@ const handler: Handler = async (event: HandlerEvent) => {
     const membersSnap = await adminDb.collection('orgMembers').doc(orgFilter)
       .collection('members').where('status', '==', 'active').get();
 
-    // Get entity counts
-    const [coursesSnap, groupsSnap, examsSnap] = await Promise.all([
-      adminDb.collection('courses').where('organizationId', '==', orgFilter).get(),
+    // Get entity counts. Курсы не читаем: у них нет branchId, а «курсы филиала»
+    // выводятся из его групп (см. ниже).
+    const [groupsSnap, examsSnap] = await Promise.all([
       adminDb.collection('groups').where('organizationId', '==', orgFilter).get(),
       adminDb.collection('exams').where('organizationId', '==', orgFilter).get(),
     ]);
@@ -59,9 +59,13 @@ const handler: Handler = async (event: HandlerEvent) => {
       const students = branchMembers.filter((m: any) => m.data().role === 'student').length;
       const teachers = branchMembers.filter((m: any) => ['teacher', 'mentor', 'admin', 'owner'].includes(m.data().role)).length;
 
-      // Count entities tagged to this branch
-      const courses = coursesSnap.docs.filter((c: any) => c.data().branchId === bId).length;
-      const groups = groupsSnap.docs.filter((g: any) => g.data().branchId === bId).length;
+      // Count entities tagged to this branch.
+      // Курс сам по себе к филиалу не привязан (общий каталог), поэтому «курсы филиала» =
+      // сколько РАЗНЫХ курсов здесь реально ведётся, считая по группам этого филиала.
+      // Курс с группами в двух филиалах честно попадает в оба.
+      const branchGroups = groupsSnap.docs.filter((g: any) => g.data().branchId === bId);
+      const courses = new Set(branchGroups.map((g: any) => g.data().courseId).filter(Boolean)).size;
+      const groups = branchGroups.length;
       const exams = examsSnap.docs.filter((e: any) => e.data().branchId === bId).length;
 
       return {
@@ -87,7 +91,10 @@ const handler: Handler = async (event: HandlerEvent) => {
       city: '',
       students: unassignedMembers.filter((m: any) => m.data().role === 'student').length,
       teachers: unassignedMembers.filter((m: any) => ['teacher', 'mentor'].includes(m.data().role)).length,
-      courses: coursesSnap.docs.filter((c: any) => !c.data().branchId).length,
+      // Те же правила, что и выше: курсы считаем через группы без филиала.
+      courses: new Set(
+        groupsSnap.docs.filter((g: any) => !g.data().branchId).map((g: any) => g.data().courseId).filter(Boolean)
+      ).size,
       groups: groupsSnap.docs.filter((g: any) => !g.data().branchId).length,
       exams: examsSnap.docs.filter((e: any) => !e.data().branchId).length,
     };

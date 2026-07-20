@@ -61,9 +61,17 @@ const handler: Handler = async (event: HandlerEvent) => {
         .where('organizationId', '==', orgId)
         .where('courseId', '==', courseId)
         .get();
+      // Филиал счёта берём у ГРУППЫ студента: курс к филиалу не привязан. Первая
+      // группа с филиалом выигрывает — студент в двух филиалах по одному курсу
+      // это аномалия, и счёт всё равно должен куда-то быть отнесён.
       const studentIds = new Set<string>();
+      const studentBranch = new Map<string, string>();
       for (const g of groupSnap.docs) {
-        for (const sid of (g.data().studentIds || [])) studentIds.add(sid);
+        const gBranchId = g.data().branchId || null;
+        for (const sid of (g.data().studentIds || [])) {
+          studentIds.add(sid);
+          if (gBranchId && !studentBranch.has(sid)) studentBranch.set(sid, gBranchId);
+        }
       }
       if (studentIds.size === 0) continue;
 
@@ -88,7 +96,7 @@ const handler: Handler = async (event: HandlerEvent) => {
           const ref = adminDb.collection(PLANS).doc();
           batch.set(ref, {
             organizationId: orgId,
-            branchId: course.branchId || null,
+            branchId: studentBranch.get(studentId) || null,
             studentId,
             courseId,
             courseName: course.title || '',

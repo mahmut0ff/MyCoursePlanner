@@ -4,9 +4,8 @@ import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../contexts/AuthContext';
 import { useBranch } from '../../contexts/BranchContext';
 import { orgGetCourses, orgCreateCourse, orgUpdateCourse, orgDeleteCourse, orgGetGroups, orgTeacherJoinCourse, orgTeacherLeaveCourse } from '../../lib/api';
-import { Plus, Search, Trash2, Edit, BookOpen, FileText, Users, Building2, Filter, UserPlus, LogOut } from 'lucide-react';
+import { Plus, Search, Trash2, Edit, BookOpen, FileText, Users, Filter, UserPlus, LogOut } from 'lucide-react';
 import type { Course, Group } from '../../types';
-import BranchFilter from '../../components/ui/BranchFilter';
 import EmptyState from '../../components/ui/EmptyState';
 import { ListSkeleton } from '../../components/ui/Skeleton';
 
@@ -30,8 +29,7 @@ const CoursesPage: React.FC = () => {
   const [form, setForm] = useState<{
     title: string; description: string; subject: string; status: 'draft' | 'published';
     price?: number; paymentFormat?: 'one-time' | 'monthly'; durationMonths?: number;
-    branchId?: string;
-  }>({ title: '', description: '', subject: '', status: 'draft', price: 0, paymentFormat: 'monthly', durationMonths: 1, branchId: '' });
+  }>({ title: '', description: '', subject: '', status: 'draft', price: 0, paymentFormat: 'monthly', durationMonths: 1 });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
 
@@ -52,7 +50,9 @@ const CoursesPage: React.FC = () => {
     }).catch((e) => setError(e.message || 'Error')).finally(() => setLoading(false));
   };
 
-  // activeBranchId: the api layer stamps it onto the GET, so a branch switch must refetch.
+  // activeBranchId: курсы приходят org-wide (филиал держит только группа), но список
+  // ГРУПП тут же branch-scoped, а от него зависят счётчики групп/студентов на карточках
+  // и myCourseIds. Поэтому переключение филиала всё ещё требует рефетча.
   useEffect(() => {
     load();
   }, [role, profile?.uid, activeBranchId]);
@@ -103,8 +103,8 @@ const CoursesPage: React.FC = () => {
   const getStudentCount = (courseId: string) => new Set(groups.filter((g: any) => g.courseId === courseId).flatMap((g: any) => g.studentIds || [])).size;
   const getGroupCount = (courseId: string) => groups.filter((g: any) => g.courseId === courseId).length;
 
-  const openCreate = () => { setEditing(null); setForm({ title: '', description: '', subject: '', status: 'draft', price: 0, paymentFormat: 'monthly', durationMonths: 1, branchId: activeBranchId || '' }); setShowModal(true); };
-  const openEdit = (c: Course) => { setEditing(c); setForm({ title: c.title, description: c.description || '', subject: c.subject || '', status: c.status as any || 'draft', price: c.price || 0, paymentFormat: c.paymentFormat || 'monthly', durationMonths: c.durationMonths || 1, branchId: (c as any).branchId || '' }); setShowModal(true); };
+  const openCreate = () => { setEditing(null); setForm({ title: '', description: '', subject: '', status: 'draft', price: 0, paymentFormat: 'monthly', durationMonths: 1 }); setShowModal(true); };
+  const openEdit = (c: Course) => { setEditing(c); setForm({ title: c.title, description: c.description || '', subject: c.subject || '', status: c.status as any || 'draft', price: c.price || 0, paymentFormat: c.paymentFormat || 'monthly', durationMonths: c.durationMonths || 1 }); setShowModal(true); };
 
   const handleSave = async () => {
     if (!form.title.trim()) return;
@@ -261,9 +261,12 @@ const CoursesPage: React.FC = () => {
                 </div>
               </div>
 
-              {/* Subject */}
+              {/* Subject — предмет необязателен, поэтому пустой бейдж не рисуем вовсе:
+                  плашка с «—» читалась как «что-то сломалось», а не «поле не заполнено». */}
               <div className="hidden md:flex flex-col gap-1 min-w-0">
-                <span className="bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider truncate text-center">{course.subject || '—'}</span>
+                {course.subject && (
+                  <span className="bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider truncate text-center">{course.subject}</span>
+                )}
                 {(course.price && course.price > 0) ? (
                   <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 text-center">{course.price} сом</span>
                 ) : null}
@@ -347,17 +350,6 @@ const CoursesPage: React.FC = () => {
                   <label className="text-xs font-semibold text-slate-500 mb-1 block">Стоимость</label>
                   <input type="number" min="0" placeholder="0" value={form.price} onChange={(e) => setForm(f => ({ ...f, price: Number(e.target.value) }))} className="w-full bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-slate-900 focus:border-slate-900 dark:focus:ring-white outline-none" />
                 </div>
-              </div>
-              <div>
-                <label className="text-xs font-semibold text-slate-500 mb-1 block flex items-center gap-1">
-                  <Building2 className="w-3.5 h-3.5" /> {t('common.branch', 'Филиал')}
-                </label>
-                <BranchFilter
-                  value={form.branchId || null}
-                  onChange={(id) => setForm(f => ({ ...f, branchId: id || '' }))}
-                  hideAll={false}
-                  mode="select"
-                />
               </div>
             </div>
             <div className="flex justify-end gap-3 mt-8">

@@ -662,10 +662,11 @@ export interface Syllabus {
 
 export type CourseStatus = 'draft' | 'published' | 'archived';
 
+// Курс НЕ имеет branchId: это общеорганизационный каталог. К филиалу привязывается
+// Group (ниже) — она и есть «этот курс, в этом филиале, для этих студентов».
 export interface Course {
   id: string;
   organizationId: string;
-  branchId?: string;
   title: string;
   description: string;
   subject: string;

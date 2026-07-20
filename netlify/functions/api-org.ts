@@ -307,18 +307,18 @@ const handler: Handler = async (event: HandlerEvent) => {
   try {
     // ═══ COURSES ═══
     if (action === 'courses') {
-      const branchScope = resolveBranchFilter(user, params.branchId);
-      let query = orgQuery('courses', orgId);
-      if (branchScope === '__DENIED__') return ok([]);
-      if (typeof branchScope === 'string') query = query.where('branchId', '==', branchScope) as any;
+      // Курсы НЕ привязаны к филиалу — это общеорганизационный каталог. К филиалу
+      // привязывается ГРУППА (см. action 'groups'), а курс — то, что группа ведёт.
+      // Раньше здесь стоял strict-фильтр по branchId, и при выборе конкретного
+      // филиала в переключателе любой курс без branchId (или с чужим) пропадал из
+      // ответа целиком. Из-за этого у преподавателя «терялся» курс его же группы:
+      // /courses, Журнал и Оценки достают курс по group.courseId, а самого курса в
+      // списке уже не было. Филиалом отфильтруются группы — этого достаточно.
+      const query = orgQuery('courses', orgId);
       let snap;
       try { snap = await query.orderBy('createdAt', 'desc').limit(200).get(); }
       catch { snap = await query.get(); }
       let list = snap.docs.map((d: any) => ({ id: d.id, ...d.data() }));
-      // For multi-branch array scope, filter in memory
-      if (Array.isArray(branchScope)) {
-        list = list.filter((c: any) => !c.branchId || branchScope.includes(c.branchId));
-      }
       // Teacher-only filtering: only show assigned entities (skip for admins/managers)
       if (params.teacherOnly === 'true' && !hasRole(user, 'admin', 'manager')) {
         const teacherGroupsSnap = await adminDb.collection('groups')
@@ -353,7 +353,6 @@ const handler: Handler = async (event: HandlerEvent) => {
       if (!body.title) return badRequest('title required');
       const data = {
         organizationId: orgId,
-        branchId: body.branchId || null,
         title: body.title,
         description: body.description || '',
         subject: body.subject || '',
@@ -385,7 +384,8 @@ const handler: Handler = async (event: HandlerEvent) => {
       if (!doc.exists || doc.data()?.organizationId !== orgId) return notFound();
       // Whitelist mutable fields so a blind body spread can't overwrite
       // organizationId / createdBy / createdAt (mirrors updateStudent).
-      const ALLOWED_FIELDS = ['title', 'description', 'subject', 'teacherIds', 'lessonIds', 'status', 'coverImageUrl', 'price', 'paymentFormat', 'durationMonths', 'branchId'];
+      // branchId намеренно НЕ в списке: курс общеорганизационный, филиал держит группа.
+      const ALLOWED_FIELDS = ['title', 'description', 'subject', 'teacherIds', 'lessonIds', 'status', 'coverImageUrl', 'price', 'paymentFormat', 'durationMonths'];
       const fields: Record<string, any> = { updatedAt: now() };
       for (const key of ALLOWED_FIELDS) {
         if (body[key] !== undefined) fields[key] = body[key];

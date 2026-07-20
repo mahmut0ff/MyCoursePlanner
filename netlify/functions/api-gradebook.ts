@@ -469,12 +469,9 @@ const handler: Handler = async (event: HandlerEvent) => {
           sessionCourseId = group.courseId;
         }
 
-        // branchId зеркалит финансовый модуль: сначала филиал группы, затем курса, иначе null.
-        let branchId: string | null = group.branchId ?? null;
-        if (branchId == null) {
-          const courseDoc = await adminDb.collection('courses').doc(sessionCourseId).get();
-          branchId = courseDoc.exists ? (courseDoc.data()!.branchId ?? null) : null;
-        }
+        // branchId берём у ГРУППЫ — она единственный носитель филиала. Курс к филиалу
+        // не привязан (см. action 'courses' в api-org.ts), поэтому fallback на курс убран.
+        const branchId: string | null = group.branchId ?? null;
 
         // headcount = присутствовавшие: present + late (опоздавший всё равно был на занятии).
         // Считаем по фактически размеченным записям — это база для per_student в payroll.

@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Plus, Search, Calendar as CalendarIcon, Receipt, Trash2, Pencil, X, Download } from 'lucide-react';
 import toast from 'react-hot-toast';
@@ -15,6 +15,8 @@ import { ListSkeleton, Skeleton } from '../../../components/ui/Skeleton';
 import ConfirmDialog from '../../../components/ui/ConfirmDialog';
 import RowMenu from '../../../components/ui/RowMenu';
 import type { RowMenuItem } from '../../../components/ui/RowMenu';
+import LazyListFooter from '../../../components/ui/LazyListFooter';
+import { useLazyList } from '../../../hooks/useLazyList';
 import { formatMoney, formatMoneySigned } from '../../../lib/money';
 import { buildCsv, downloadCsv, formatCsvDate } from '../../../lib/csv';
 import {
@@ -37,7 +39,6 @@ interface Props {
   onFiltersChange: (next: ExpensesFilters) => void;
 }
 
-const PAGE_SIZE = 50;
 
 const emptyForm = {
   id: '',
@@ -100,17 +101,6 @@ const ExpensesTab: React.FC<Props> = ({ range, onRangeChange, filters, onFilters
       .catch(() => {});
   }, [activeBranchId]);
 
-  // Сброс страницы при смене периода и филиала. Первый прогон пропускаем:
-  // фильтры живут на странице, и возврат на вкладку не должен терять страницу.
-  const filtersRef = useRef(filters);
-  filtersRef.current = filters;
-  const mounted = useRef(false);
-  useEffect(() => {
-    if (!mounted.current) { mounted.current = true; return; }
-    const current = filtersRef.current;
-    if (current.page !== 1) onFiltersChange({ ...current, page: 1 });
-  }, [activeBranchId, range.period, range.startDate, range.endDate, onFiltersChange]);
-
   const courseName = (tx: any): string => {
     if (tx.courseName) return tx.courseName;
     const found = courses.find(c => c.id === tx.courseId);
@@ -144,14 +134,11 @@ const ExpensesTab: React.FC<Props> = ({ range, onRangeChange, filters, onFilters
   // как «расходы за период» и недосчитаются.
   const isFiltered = !!filters.categoryId || filters.search.trim() !== '';
 
-  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
-  const safePage = Math.min(Math.max(1, filters.page), totalPages);
-  const pageRows = useMemo(
-    () => filtered.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE),
-    [filtered, safePage]
-  );
-
-  const setPage = (page: number) => onFiltersChange({ ...filters, page });
+  // Ленивый рендер вместо страниц. Период и филиал входят в ключ сброса: они
+  // меняют выборку целиком, и досмотренный хвост прошлого периода тут не к месту.
+  const { visible: pageRows, total: rowsTotal, hasMore, sentinelRef, loadMore } = useLazyList(filtered, {
+    resetKey: `${filters.search}|${filters.categoryId}|${activeBranchId || ''}|${range.period}|${range.startDate}|${range.endDate}`,
+  });
 
   const openCreate = () => {
     setForm({ ...emptyForm, date: new Date().toISOString().slice(0, 10) });
@@ -319,14 +306,14 @@ const ExpensesTab: React.FC<Props> = ({ range, onRangeChange, filters, onFilters
             <input
               type="text"
               value={filters.search}
-              onChange={e => onFiltersChange({ ...filters, search: e.target.value, page: 1 })}
+              onChange={e => onFiltersChange({ ...filters, search: e.target.value })}
               placeholder={t('finances.searchExpense', 'Поиск по описанию...')}
               className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl pl-10 pr-4 py-2.5 text-sm dark:text-white"
             />
           </div>
           <select
             value={filters.categoryId}
-            onChange={e => onFiltersChange({ ...filters, categoryId: e.target.value, page: 1 })}
+            onChange={e => onFiltersChange({ ...filters, categoryId: e.target.value })}
             aria-label={t('finances.colCategory', 'Категория')}
             className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2.5 text-sm dark:text-white"
           >
@@ -429,19 +416,13 @@ const ExpensesTab: React.FC<Props> = ({ range, onRangeChange, filters, onFilters
             </div>
           </div>
 
-          {/* Pagination */}
-          {totalPages > 1 && (
-            <div className="flex items-center justify-between mt-4 px-1">
-              <p className="text-sm text-slate-500">
-                {(safePage - 1) * PAGE_SIZE + 1}–{Math.min(safePage * PAGE_SIZE, filtered.length)} {t('common.of', 'из')} {filtered.length}
-              </p>
-              <div className="flex items-center gap-1">
-                <button onClick={() => setPage(Math.max(1, safePage - 1))} disabled={safePage <= 1} className="px-3 py-1.5 text-sm font-medium rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 disabled:opacity-40 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors">←</button>
-                <span className="text-sm font-medium text-slate-500 px-2">{safePage} / {totalPages}</span>
-                <button onClick={() => setPage(Math.min(totalPages, safePage + 1))} disabled={safePage >= totalPages} className="px-3 py-1.5 text-sm font-medium rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 disabled:opacity-40 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors">→</button>
-              </div>
-            </div>
-          )}
+          <LazyListFooter
+            visibleCount={pageRows.length}
+            total={rowsTotal}
+            hasMore={hasMore}
+            sentinelRef={sentinelRef}
+            onLoadMore={loadMore}
+          />
         </>
       )}
 

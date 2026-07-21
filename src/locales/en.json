@@ -852,7 +852,9 @@
     "saving": "Saving...",
     "of": "of",
     "add": "Add",
-    "accessDenied": "No access to this data"
+    "accessDenied": "No access to this data",
+    "lazyShown": "Showing {{shown}} of {{total}}",
+    "showMore": "Show more"
   },
   "org": {
     "activeOrg": "Active learning center",

@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   AlertCircle,
@@ -26,6 +26,8 @@ import { ListSkeleton } from '../../../components/ui/Skeleton';
 import ConfirmDialog from '../../../components/ui/ConfirmDialog';
 import RowMenu from '../../../components/ui/RowMenu';
 import type { RowMenuItem } from '../../../components/ui/RowMenu';
+import LazyListFooter from '../../../components/ui/LazyListFooter';
+import { useLazyList } from '../../../hooks/useLazyList';
 import AcceptPaymentModal from '../../../components/finance/AcceptPaymentModal';
 import CreatePaymentPlanModal from '../../../components/finance/CreatePaymentPlanModal';
 import PaymentHistoryModal from '../../../components/finance/PaymentHistoryModal';
@@ -58,7 +60,6 @@ interface PaymentPlan {
 
 type ModalType = 'none' | 'pay' | 'create' | 'history';
 
-const PAGE_SIZE = 50;
 
 // Один коллатор на модуль: прежняя вкладка звала localeCompare на каждое
 // сравнение, то есть строила новый Intl.Collator тысячи раз за сортировку.
@@ -194,23 +195,11 @@ const DebtsTab: React.FC<Props> = ({ filters, onFiltersChange, studentId = '', o
     // activeBranchId: the api layer stamps it onto the GET, so a branch switch must refetch.
   }, [load, activeBranchId]);
 
-  // Смена филиала меняет весь набор строк — оставаться на 7-й странице бессмысленно.
-  const filtersRef = useRef(filters);
-  filtersRef.current = filters;
-  const onChangeRef = useRef(onFiltersChange);
-  onChangeRef.current = onFiltersChange;
-  const mounted = useRef(false);
-  useEffect(() => {
-    if (!mounted.current) { mounted.current = true; return; }
-    if (filtersRef.current.page !== 1) onChangeRef.current({ ...filtersRef.current, page: 1 });
-  }, [activeBranchId]);
-
   // Подпись для счёта, чей студент выпал из ростера и у которого нет снимка имени.
   const namePlaceholder = t('finances.studentRemoved', 'Студент удалён');
 
-  const setSearch = (search: string) => onFiltersChange({ ...filters, search, page: 1 });
-  const setStatus = (status: string) => onFiltersChange({ ...filters, status, page: 1 });
-  const setPage = (page: number) => onFiltersChange({ ...filters, page });
+  const setSearch = (search: string) => onFiltersChange({ ...filters, search });
+  const setStatus = (status: string) => onFiltersChange({ ...filters, status });
 
   // ── Производные данные. Всё под useMemo: раньше карта студентов, фильтрация
   // и сортировка всего массива пересчитывались на каждое нажатие клавиши.
@@ -288,12 +277,11 @@ const DebtsTab: React.FC<Props> = ({ filters, onFiltersChange, studentId = '', o
     if (name) onStudentNameResolved(name);
   }, [studentId, studentById, plans, onStudentNameResolved]);
 
-  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
-  const safePage = Math.min(Math.max(1, filters.page), totalPages);
-  const pageRows = useMemo(
-    () => filtered.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE),
-    [filtered, safePage]
-  );
+  // Ленивый рендер вместо страниц. Сбрасываемся по значениям фильтров, а не по
+  // самому массиву: перезагрузка после оплаты не должна отматывать список назад.
+  const { visible: pageRows, total, hasMore, sentinelRef, loadMore } = useLazyList(filtered, {
+    resetKey: `${filters.search}|${filters.status}|${studentId || ''}|${activeBranchId || ''}`,
+  });
 
   const stats = useMemo(() => ({
     // Один предикат решает и «входит ли счёт в сумму», и «показывать ли долг в
@@ -595,19 +583,13 @@ const DebtsTab: React.FC<Props> = ({ filters, onFiltersChange, studentId = '', o
             </div>
           </div>
 
-          {/* Пагинация */}
-          {totalPages > 1 && (
-            <div className="flex items-center justify-between mt-4 px-1">
-              <p className="text-sm text-slate-500">
-                {(safePage - 1) * PAGE_SIZE + 1}–{Math.min(safePage * PAGE_SIZE, filtered.length)} из {filtered.length}
-              </p>
-              <div className="flex items-center gap-1">
-                <button onClick={() => setPage(Math.max(1, safePage - 1))} disabled={safePage <= 1} className="px-3 py-1.5 text-sm font-medium rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 disabled:opacity-40 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors">←</button>
-                <span className="text-sm font-medium text-slate-500 px-2">{safePage} / {totalPages}</span>
-                <button onClick={() => setPage(Math.min(totalPages, safePage + 1))} disabled={safePage >= totalPages} className="px-3 py-1.5 text-sm font-medium rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 disabled:opacity-40 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors">→</button>
-              </div>
-            </div>
-          )}
+          <LazyListFooter
+            visibleCount={pageRows.length}
+            total={total}
+            hasMore={hasMore}
+            sentinelRef={sentinelRef}
+            onLoadMore={loadMore}
+          />
         </>
       )}
 

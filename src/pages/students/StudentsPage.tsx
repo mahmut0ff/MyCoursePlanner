@@ -30,6 +30,8 @@ import { useStudentRisks, isFlagged } from '../../hooks/useStudentRisks';
 import { usePlanGate } from '../../contexts/PlanContext';
 import ChurnInsightsModal from '../../components/ai/ChurnInsightsModal';
 import RowMenu, { type RowMenuItem } from '../../components/ui/RowMenu';
+import LazyListFooter from '../../components/ui/LazyListFooter';
+import { useLazyList } from '../../hooks/useLazyList';
 import AcceptPaymentModal, { type PayablePlan } from '../../components/finance/AcceptPaymentModal';
 import CreatePaymentPlanModal from '../../components/finance/CreatePaymentPlanModal';
 import PaymentHistoryModal from '../../components/finance/PaymentHistoryModal';
@@ -124,11 +126,7 @@ const StudentsPage: React.FC = () => {
     localStorage.setItem('students_invite_hint_dismissed', '1');
   };
 
-  // Pagination
-  const [page, setPage] = useState(1);
-  const pageSize = 50;
-
-  const loadStudents = (silent = false) => { 
+  const loadStudents = (silent = false) => {
     if (!silent) { setLoading(true); setError(''); }
     orgGetStudents()
       .then(setStudents)
@@ -203,9 +201,6 @@ const StudentsPage: React.FC = () => {
   // Вход есть, если у записи появился email и она перестала быть офлайновой —
   // ровно то, что ставит бэкенд при выдаче доступа.
   const hasLogin = (s: UserProfile) => !!s.email && (s as any).offlineStudent !== true;
-
-  // Reset page when filters change
-  useEffect(() => setPage(1), [search, selectedGroup, statusFilter, riskOnly, sortField, sortDir, activeBranchId]);
 
   // A selection only means something for rows still on screen — drop it whenever the
   // filtered set changes under it, so a bulk action can't hit rows you can no longer see.
@@ -437,10 +432,18 @@ const StudentsPage: React.FC = () => {
     return groups.filter(g => g.courseId === createForm.courseId);
   }, [groups, createForm.courseId]);
 
-  // Pagination computation
-  const totalPages = Math.max(1, Math.ceil(filteredStudents.length / pageSize));
-  const safePage = Math.min(page, totalPages);
-  const paginatedStudents = filteredStudents.slice((safePage - 1) * pageSize, safePage * pageSize);
+  // Ленивый рендер вместо страниц: ростер на тысячу человек больше не строит
+  // тысячу карточек сразу. Ключ сброса — фильтры и сортировка, но НЕ сам массив:
+  // тихий refetch после правки студента иначе отмотал бы список к началу.
+  const {
+    visible: paginatedStudents,
+    total: studentsTotal,
+    hasMore,
+    sentinelRef,
+    loadMore,
+  } = useLazyList(filteredStudents, {
+    resetKey: `${search}|${selectedGroup}|${statusFilter}|${riskOnly}|${sortField}|${sortDir}|${activeBranchId || ''}`,
+  });
 
   const handleDeleteExpelled = async (uid: string) => {
     if (!organizationId) return;
@@ -910,19 +913,13 @@ const StudentsPage: React.FC = () => {
             </div>
           )}
 
-          {/* Pagination */}
-          {totalPages > 1 && (
-            <div className="flex items-center justify-between mt-4 px-1">
-              <p className="text-sm text-slate-500">
-                {(safePage - 1) * pageSize + 1}–{Math.min(safePage * pageSize, filteredStudents.length)} из {filteredStudents.length}
-              </p>
-              <div className="flex items-center gap-1">
-                <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={safePage <= 1} className="px-3 py-1.5 text-sm font-medium rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 disabled:opacity-40 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors">←</button>
-                <span className="text-sm font-medium text-slate-500 px-2">{safePage} / {totalPages}</span>
-                <button onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={safePage >= totalPages} className="px-3 py-1.5 text-sm font-medium rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 disabled:opacity-40 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors">→</button>
-              </div>
-            </div>
-          )}
+          <LazyListFooter
+            visibleCount={paginatedStudents.length}
+            total={studentsTotal}
+            hasMore={hasMore}
+            sentinelRef={sentinelRef}
+            onLoadMore={loadMore}
+          />
       </>
 
       {/* Create Student Modal */}

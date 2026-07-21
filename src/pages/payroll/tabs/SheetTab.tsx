@@ -33,6 +33,8 @@ import { usePermissions } from '../../../contexts/PermissionsContext';
 import EmptyState from '../../../components/ui/EmptyState';
 import { ListSkeleton } from '../../../components/ui/Skeleton';
 import ConfirmDialog from '../../../components/ui/ConfirmDialog';
+import LazyListFooter from '../../../components/ui/LazyListFooter';
+import { useLazyList } from '../../../hooks/useLazyList';
 import { CURRENCY_SUFFIX } from '../../../lib/money';
 import { buildCsv, downloadCsv } from '../../../lib/csv';
 import type { PayrollLine, PayrollPeriod, PayrollPeriodState } from '../../../types';
@@ -61,7 +63,6 @@ interface BalanceRow {
   balanceMinor: number;
 }
 
-const PAGE_SIZE = 50;
 
 const collator = new Intl.Collator('ru');
 
@@ -104,9 +105,6 @@ const SheetTab: React.FC = () => {
 
   const [manual, setManual] = useState({ teacherId: '', source: 'manual_bonus', amount: '', note: '' });
 
-  const [linePage, setLinePage] = useState(1);
-  const [balancePage, setBalancePage] = useState(1);
-
   /**
    * Чья это ведомость — словами. Ведомость филиала и ведомость «Все филиалы» за
    * один месяц это РАЗНЫЕ документы с разными суммами; без подписи директор
@@ -148,9 +146,6 @@ const SheetTab: React.FC = () => {
     load();
     // activeBranchId: the api layer stamps it onto the GET, so a branch switch must refetch.
   }, [load, activeBranchId]);
-
-  // Смена филиала или месяца меняет весь набор строк — оставаться на дальней странице бессмысленно.
-  useEffect(() => { setLinePage(1); setBalancePage(1); }, [activeBranchId, period]);
 
   const state: PayrollPeriodState = sheet?.state ?? 'draft';
   const stateStyle = PERIOD_STATE_STYLE[state];
@@ -200,22 +195,24 @@ const SheetTab: React.FC = () => {
     [payout.unrecoveredTeachers, teacherName],
   );
 
-  // Пагинация как в «Ставках» и «Долгах»: PAGE_SIZE 50, safePage зажимает
-  // страницу, если список усох. Итог в подвале считается по ВСЕМ строкам, а не по
-  // видимой странице — «Итого» за одну страницу было бы ложью.
-  const lineTotalPages = Math.max(1, Math.ceil(sortedLines.length / PAGE_SIZE));
-  const safeLinePage = Math.min(Math.max(1, linePage), lineTotalPages);
-  const linePageRows = useMemo(
-    () => sortedLines.slice((safeLinePage - 1) * PAGE_SIZE, safeLinePage * PAGE_SIZE),
-    [sortedLines, safeLinePage],
-  );
+  // Ленивый рендер как в «Ставках» и «Долгах». Итог в подвале по-прежнему
+  // считается по ВСЕМ строкам, а не по отрисованным — «Итого» за видимый кусок
+  // было бы ложью. Ключ сброса — месяц и филиал: это другая ведомость.
+  const {
+    visible: linePageRows,
+    total: lineTotal,
+    hasMore: lineHasMore,
+    sentinelRef: lineSentinelRef,
+    loadMore: loadMoreLines,
+  } = useLazyList(sortedLines, { resetKey: `${period}|${activeBranchId || ''}` });
 
-  const balanceTotalPages = Math.max(1, Math.ceil(balance.length / PAGE_SIZE));
-  const safeBalancePage = Math.min(Math.max(1, balancePage), balanceTotalPages);
-  const balancePageRows = useMemo(
-    () => balance.slice((safeBalancePage - 1) * PAGE_SIZE, safeBalancePage * PAGE_SIZE),
-    [balance, safeBalancePage],
-  );
+  const {
+    visible: balancePageRows,
+    total: balanceTotal,
+    hasMore: balanceHasMore,
+    sentinelRef: balanceSentinelRef,
+    loadMore: loadMoreBalance,
+  } = useLazyList(balance, { resetKey: `${period}|${activeBranchId || ''}` });
 
   // ── Гейты жизненного цикла ────────────────────────────────────────────────
   const calculateGate: Gate = frozen
@@ -396,27 +393,6 @@ const SheetTab: React.FC = () => {
       </span>
     );
   };
-
-  /** Разметка постраничной навигации со «Студентов»; на экране их две, поэтому вынесена. */
-  const Pager: React.FC<{
-    page: number;
-    totalPages: number;
-    total: number;
-    onPage: (next: number) => void;
-  }> = ({ page, totalPages, total, onPage }) => (
-    totalPages > 1 ? (
-      <div className="flex items-center justify-between mt-4 px-1">
-        <p className="text-sm text-slate-500">
-          {(page - 1) * PAGE_SIZE + 1}–{Math.min(page * PAGE_SIZE, total)} из {total}
-        </p>
-        <div className="flex items-center gap-1">
-          <button onClick={() => onPage(Math.max(1, page - 1))} disabled={page <= 1} className="px-3 py-1.5 text-sm font-medium rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 disabled:opacity-40 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors">←</button>
-          <span className="text-sm font-medium text-slate-500 px-2">{page} / {totalPages}</span>
-          <button onClick={() => onPage(Math.min(totalPages, page + 1))} disabled={page >= totalPages} className="px-3 py-1.5 text-sm font-medium rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 disabled:opacity-40 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors">→</button>
-        </div>
-      </div>
-    ) : null
-  );
 
   const StepButton: React.FC<{
     gate: Gate;
@@ -679,9 +655,9 @@ const SheetTab: React.FC = () => {
                     <tr>
                       <td className="px-5 py-3.5 font-bold text-slate-900 dark:text-white" colSpan={3}>
                         {t('payroll.totalPayableLabel', 'Уйдёт из кассы')}
-                        {/* Оговорка обязательна на многостраничной ведомости: без
-                            неё итог читается как сумма видимых строк. */}
-                        {lineTotalPages > 1 && (
+                        {/* Пока ведомость дорисована не до конца, оговорка обязательна:
+                            без неё итог читается как сумма видимых строк. */}
+                        {lineHasMore && (
                           <span className="ml-2 text-[11px] font-normal text-slate-500">
                             {t('payroll.totalAllPages', 'по всем строкам ведомости, а не по странице')}
                           </span>
@@ -698,11 +674,12 @@ const SheetTab: React.FC = () => {
             </div>
           )}
 
-          <Pager
-            page={safeLinePage}
-            totalPages={lineTotalPages}
-            total={sortedLines.length}
-            onPage={setLinePage}
+          <LazyListFooter
+            visibleCount={linePageRows.length}
+            total={lineTotal}
+            hasMore={lineHasMore}
+            sentinelRef={lineSentinelRef}
+            onLoadMore={loadMoreLines}
           />
 
           {/* Ручные премии и штрафы */}
@@ -837,11 +814,12 @@ const SheetTab: React.FC = () => {
             </table>
           </div>
         </div>
-        <Pager
-          page={safeBalancePage}
-          totalPages={balanceTotalPages}
-          total={balance.length}
-          onPage={setBalancePage}
+        <LazyListFooter
+          visibleCount={balancePageRows.length}
+          total={balanceTotal}
+          hasMore={balanceHasMore}
+          sentinelRef={balanceSentinelRef}
+          onLoadMore={loadMoreBalance}
         />
         </>
       )}

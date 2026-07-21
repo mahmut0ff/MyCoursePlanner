@@ -15,19 +15,16 @@ export type FinanceTab = 'overview' | 'debts' | 'payments' | 'expenses';
 export interface DebtsFilters {
   search: string;
   status: string;
-  page: number;
 }
 
 export interface PaymentsFilters {
   search: string;
   method: string;
-  page: number;
 }
 
 export interface ExpensesFilters {
   search: string;
   categoryId: string;
-  page: number;
 }
 
 /**
@@ -103,9 +100,9 @@ const FinancesPage: React.FC = () => {
   );
 
   const [range, setRange] = useState<FinanceRange>(DEFAULT_RANGE);
-  const [debtsFilters, setDebtsFilters] = useState<DebtsFilters>({ search: '', status: '', page: 1 });
-  const [paymentsFilters, setPaymentsFilters] = useState<PaymentsFilters>({ search: '', method: '', page: 1 });
-  const [expensesFilters, setExpensesFilters] = useState<ExpensesFilters>({ search: '', categoryId: '', page: 1 });
+  const [debtsFilters, setDebtsFilters] = useState<DebtsFilters>({ search: '', status: '' });
+  const [paymentsFilters, setPaymentsFilters] = useState<PaymentsFilters>({ search: '', method: '' });
+  const [expensesFilters, setExpensesFilters] = useState<ExpensesFilters>({ search: '', categoryId: '' });
 
   // Подпись под заголовком объясняет ИМЕННО открытую вкладку. «Счета» и
   // «Платежи» соседствуют и на вид про одно и то же — одна строка снимает

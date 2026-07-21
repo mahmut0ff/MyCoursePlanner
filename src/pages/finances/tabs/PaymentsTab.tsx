@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { Banknote, Download, Search, Undo2, Wallet } from 'lucide-react';
@@ -12,6 +12,8 @@ import EmptyState from '../../../components/ui/EmptyState';
 import { ListSkeleton } from '../../../components/ui/Skeleton';
 import RowMenu from '../../../components/ui/RowMenu';
 import type { RowMenuItem } from '../../../components/ui/RowMenu';
+import LazyListFooter from '../../../components/ui/LazyListFooter';
+import { useLazyList } from '../../../hooks/useLazyList';
 import PeriodFilter from '../components/PeriodFilter';
 import { toTransactionParams, periodSlug } from '../financePeriod';
 import type { FinanceRange } from '../financePeriod';
@@ -39,8 +41,6 @@ interface Props {
  * начнёт появляться на полных выборках.
  */
 const FETCH_CAP = 5000;
-
-const PAGE_SIZE = 50;
 
 /** Ключ группировки по кассе: пустой способ — отдельная строка «не указан». */
 const UNKNOWN_METHOD = '';
@@ -140,21 +140,7 @@ const PaymentsTab: React.FC<Props> = ({
     // activeBranchId: the api layer stamps it onto the GET, so a branch switch must refetch.
   }, [load, activeBranchId]);
 
-  // Смена филиала сдвигает весь набор строк — оставаться на 7-й странице бессмысленно.
-  // Но родитель нарочно поднимает состояние фильтров, чтобы страница пережила
-  // переключение вкладок; поэтому сбрасываем только на РЕАЛЬНОЙ смене филиала, а
-  // не при монтировании — иначе каждый возврат на вкладку швыряет на 1-ю страницу.
-  const prevBranchId = useRef(activeBranchId);
-  useEffect(() => {
-    if (prevBranchId.current === activeBranchId) return;
-    prevBranchId.current = activeBranchId;
-    onFiltersChange({ ...filters, page: 1 });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeBranchId]);
-
-  const setFilter = (patch: Partial<PaymentsFilters>) =>
-    // Любой фильтр меняет длину списка, поэтому страницу сбрасываем всегда.
-    onFiltersChange({ ...filters, ...patch, page: 1 });
+  const setFilter = (patch: Partial<PaymentsFilters>) => onFiltersChange({ ...filters, ...patch });
 
   // Сортируем один раз после загрузки: пересортировка на каждое нажатие клавиши
   // в поиске — то, из-за чего старая вкладка доходов подтормаживала.
@@ -210,12 +196,12 @@ const PaymentsTab: React.FC<Props> = ({
     };
   }, [filtered]);
 
-  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
-  const safePage = Math.min(Math.max(1, filters.page), totalPages);
-  const pageRows = useMemo(
-    () => filtered.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE),
-    [filtered, safePage]
-  );
+  // Ленивый рендер вместо страниц. Ключ сброса — сами фильтры, а не массив
+  // filtered: тихая перезагрузка после возврата или смены филиала не должна
+  // схлопывать список обратно к первой порции под уже пролистанным кассиром.
+  const { visible: pageRows, total, hasMore, sentinelRef, loadMore } = useLazyList(filtered, {
+    resetKey: `${filters.search}|${filters.method}|${studentId || ''}|${activeBranchId || ''}`,
+  });
 
   // Сервер отдаёт голый массив без общего количества: равенство лимиту —
   // единственный доступный признак того, что часть периода не доехала.
@@ -422,27 +408,13 @@ const PaymentsTab: React.FC<Props> = ({
             </div>
           </div>
 
-          {/* Pagination */}
-          {totalPages > 1 && (
-            <div className="flex items-center justify-between mt-4 px-1">
-              <p className="text-sm text-slate-500">
-                {(safePage - 1) * PAGE_SIZE + 1}–{Math.min(safePage * PAGE_SIZE, filtered.length)} из {filtered.length}
-              </p>
-              <div className="flex items-center gap-1">
-                <button
-                  onClick={() => onFiltersChange({ ...filters, page: Math.max(1, safePage - 1) })}
-                  disabled={safePage <= 1}
-                  className="px-3 py-1.5 text-sm font-medium rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 disabled:opacity-40 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors"
-                >←</button>
-                <span className="text-sm font-medium text-slate-500 px-2">{safePage} / {totalPages}</span>
-                <button
-                  onClick={() => onFiltersChange({ ...filters, page: Math.min(totalPages, safePage + 1) })}
-                  disabled={safePage >= totalPages}
-                  className="px-3 py-1.5 text-sm font-medium rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 disabled:opacity-40 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors"
-                >→</button>
-              </div>
-            </div>
-          )}
+          <LazyListFooter
+            visibleCount={pageRows.length}
+            total={total}
+            hasMore={hasMore}
+            sentinelRef={sentinelRef}
+            onLoadMore={loadMore}
+          />
         </>
       )}
 

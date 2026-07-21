@@ -17,11 +17,11 @@ import { ListSkeleton } from '../../../components/ui/Skeleton';
 import ConfirmDialog from '../../../components/ui/ConfirmDialog';
 import RowMenu from '../../../components/ui/RowMenu';
 import type { RowMenuItem } from '../../../components/ui/RowMenu';
+import LazyListFooter from '../../../components/ui/LazyListFooter';
+import { useLazyList } from '../../../hooks/useLazyList';
 import type { CompensationRule, Course, Group } from '../../../types';
 import RuleEditorModal from '../components/RuleEditorModal';
 import { describeComponents, describeEffective, describeScope, type Translate } from '../payrollFormat';
-
-const PAGE_SIZE = 50;
 
 const collator = new Intl.Collator('ru');
 
@@ -51,7 +51,6 @@ const RulesTab: React.FC = () => {
 
   const [search, setSearch] = useState('');
   const [status, setStatus] = useState('');
-  const [page, setPage] = useState(1);
 
   const [editor, setEditor] = useState<{ open: boolean; rule: RuleRow | null }>({ open: false, rule: null });
   const [pendingDelete, setPendingDelete] = useState<RuleRow | null>(null);
@@ -81,9 +80,6 @@ const RulesTab: React.FC = () => {
     load();
     // activeBranchId: the api layer stamps it onto the GET, so a branch switch must refetch.
   }, [load, activeBranchId]);
-
-  // Смена филиала меняет весь набор строк — оставаться на дальней странице бессмысленно.
-  useEffect(() => { setPage(1); }, [activeBranchId]);
 
   // Имя курса или группы по id — для читаемой области действия компонента.
   const nameById = useMemo(() => {
@@ -116,12 +112,11 @@ const RulesTab: React.FC = () => {
       || (b.effectiveFrom || '').localeCompare(a.effectiveFrom || ''));
   }, [rules, search, status, nameOfRule]);
 
-  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
-  const safePage = Math.min(Math.max(1, page), totalPages);
-  const pageRows = useMemo(
-    () => filtered.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE),
-    [filtered, safePage],
-  );
+  // Ленивый рендер вместо страниц; ключ сброса — фильтры и филиал, а не сам
+  // массив, иначе перезагрузка после правки ставки отматывала бы список назад.
+  const { visible: pageRows, total, hasMore, sentinelRef, loadMore } = useLazyList(filtered, {
+    resetKey: `${search}|${status}|${activeBranchId || ''}`,
+  });
 
   /** 409 бывает двух видов: замороженная ведомость (запрет) и черновые строки (можно force). */
   const runDelete = async (rule: RuleRow, force: boolean) => {
@@ -213,14 +208,14 @@ const RulesTab: React.FC = () => {
             <input
               type="text"
               value={search}
-              onChange={e => { setSearch(e.target.value); setPage(1); }}
+              onChange={e => setSearch(e.target.value)}
               placeholder={t('payroll.searchRules', 'Поиск по преподавателю или названию...')}
               className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl pl-10 pr-4 py-2.5 text-sm"
             />
           </div>
           <select
             value={status}
-            onChange={e => { setStatus(e.target.value); setPage(1); }}
+            onChange={e => setStatus(e.target.value)}
             aria-label={t('payroll.allStatuses', 'Все статусы')}
             className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2.5 text-sm"
           >
@@ -318,18 +313,13 @@ const RulesTab: React.FC = () => {
             </div>
           </div>
 
-          {totalPages > 1 && (
-            <div className="flex items-center justify-between mt-4 px-1">
-              <p className="text-sm text-slate-500">
-                {(safePage - 1) * PAGE_SIZE + 1}–{Math.min(safePage * PAGE_SIZE, filtered.length)} из {filtered.length}
-              </p>
-              <div className="flex items-center gap-1">
-                <button onClick={() => setPage(Math.max(1, safePage - 1))} disabled={safePage <= 1} className="px-3 py-1.5 text-sm font-medium rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 disabled:opacity-40 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors">←</button>
-                <span className="text-sm font-medium text-slate-500 px-2">{safePage} / {totalPages}</span>
-                <button onClick={() => setPage(Math.min(totalPages, safePage + 1))} disabled={safePage >= totalPages} className="px-3 py-1.5 text-sm font-medium rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 disabled:opacity-40 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors">→</button>
-              </div>
-            </div>
-          )}
+          <LazyListFooter
+            visibleCount={pageRows.length}
+            total={total}
+            hasMore={hasMore}
+            sentinelRef={sentinelRef}
+            onLoadMore={loadMore}
+          />
         </>
       )}
 

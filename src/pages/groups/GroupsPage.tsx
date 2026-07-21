@@ -5,8 +5,13 @@ import { useAuth } from '../../contexts/AuthContext';
 import { usePermissions } from '../../contexts/PermissionsContext';
 import { useBranch } from '../../contexts/BranchContext';
 import { orgGetGroups, orgCreateGroup, orgDeleteGroup, orgGetCourses, orgGetTeachers, orgTeacherJoinGroup, orgTeacherLeaveGroup, orgGetSettings } from '../../lib/api';
-import { Users, Plus, Search, Trash2, RefreshCw, Loader2, BookOpen, Building2, UserPlus, LogOut } from 'lucide-react';
+import { Users, Plus, Search, Trash2, RefreshCw, Loader2, BookOpen, Building2, UserPlus, LogOut, GripVertical, ListRestart } from 'lucide-react';
+import { DndContext, closestCenter, PointerSensor, KeyboardSensor, useSensor, useSensors } from '@dnd-kit/core';
+import type { DragEndEvent } from '@dnd-kit/core';
+import { SortableContext, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 import type { Group, GroupStatus, Course, UserProfile } from '../../types';
+import { useGroupOrder } from '../../lib/groupOrderPrefs';
 import BranchFilter from '../../components/ui/BranchFilter';
 
 // Compact status pill for the table — only rendered for non-active groups so an
@@ -14,6 +19,37 @@ import BranchFilter from '../../components/ui/BranchFilter';
 const GROUP_STATUS_PILL: Record<Exclude<GroupStatus, 'active'>, { label: string; className: string }> = {
   completed: { label: 'Завершена', className: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' },
   archived: { label: 'В архиве', className: 'bg-slate-200 text-slate-600 dark:bg-slate-700/60 dark:text-slate-400' },
+};
+
+/**
+ * A table row the user can drag to rearrange. The drag listeners live on the grip
+ * alone, never on the row: the row itself is a navigation target, and binding them
+ * to it would turn every click into a potential drag.
+ */
+const SortableGroupRow: React.FC<{ id: string; onClick: () => void; children: React.ReactNode }> = ({ id, onClick, children }) => {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
+  return (
+    <tr
+      ref={setNodeRef}
+      style={{ transform: CSS.Transform.toString(transform), transition }}
+      onClick={onClick}
+      className={`group/row hover:bg-slate-50 dark:hover:bg-slate-700/50 cursor-pointer transition-colors ${isDragging ? 'relative z-10 opacity-60 bg-white shadow-lg dark:bg-slate-800' : ''}`}
+    >
+      <td className="pl-4 pr-1 py-4 w-8">
+        {/* touch-none: without it a touch drag scrolls the page instead of moving the row. */}
+        <button
+          {...attributes}
+          {...listeners}
+          onClick={(e) => e.stopPropagation()}
+          className="touch-none p-1 -m-1 rounded-lg text-slate-300 dark:text-slate-600 hover:text-slate-500 dark:hover:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 cursor-grab active:cursor-grabbing opacity-0 group-hover/row:opacity-100 focus-visible:opacity-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-500/50 transition-all"
+          title="Перетащите, чтобы изменить порядок"
+        >
+          <GripVertical className="w-4 h-4" />
+        </button>
+      </td>
+      {children}
+    </tr>
+  );
 };
 
 
@@ -80,10 +116,26 @@ const GroupsPage: React.FC = () => {
     return () => { cancelled = true; };
   }, [role]);
 
-  const filtered = groups.filter((g) => {
+  // Manual arrangement is per-user and local — dragging never touches the group record.
+  const { order, hasCustomOrder, reorder, reset: resetOrder } = useGroupOrder(profile?.uid);
+  const ordered = order(groups);
+  const filtered = ordered.filter((g) => {
     if (role === 'teacher' && viewMode === 'mine' && !g.teacherIds?.includes(profile?.uid || '')) return false;
     return g.name.toLowerCase().includes(search.toLowerCase());
   });
+
+  const sensors = useSensors(
+    // A short threshold so a click on the grip still reads as a click, not a drag.
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  );
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    // Only the rows actually on screen may move; everything filtered out keeps its place.
+    reorder(ordered.map((g) => g.id), filtered.map((g) => g.id), String(active.id), String(over.id));
+  };
 
   // Teacher self-service: add/remove yourself as a teacher of this group
   const toggleTeachGroup = async (group: Group, e: React.MouseEvent) => {
@@ -136,6 +188,15 @@ const GroupsPage: React.FC = () => {
           </p>
         </div>
         <div className="flex items-center gap-2">
+          {hasCustomOrder && (
+            <button
+              onClick={resetOrder}
+              className="p-2 text-slate-400 hover:text-slate-700 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors"
+              title={t('org.groups.resetOrder', 'Сбросить свой порядок групп')}
+            >
+              <ListRestart className="w-5 h-5" />
+            </button>
+          )}
           <button onClick={load} className="p-2 text-slate-400 hover:text-slate-700 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors"><RefreshCw className="w-5 h-5" /></button>
           {canCreate && (
             <button onClick={() => setShowModal(true)} className="bg-emerald-500 hover:bg-emerald-600 text-white px-5 py-2.5 rounded-xl text-sm font-bold flex items-center gap-2 transition-all shadow-md shadow-emerald-500/20 active:scale-95">
@@ -190,11 +251,14 @@ const GroupsPage: React.FC = () => {
         </div>
       ) : (
         /* ═══ Premium Data Table ═══ */
+        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
         <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-sm overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse">
               <thead>
                 <tr className="bg-slate-50 dark:bg-slate-900/50 border-b border-slate-200 dark:border-slate-700">
+                  {/* Drag handle column — mirrors the grip cell below, or the column count drifts. */}
+                  <th className="w-8 pl-4 pr-1" />
                   <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Группа</th>
                   <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Курс</th>
                   <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Студенты</th>
@@ -205,6 +269,7 @@ const GroupsPage: React.FC = () => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-200 dark:divide-slate-700">
+                <SortableContext items={filtered.map((g) => g.id)} strategy={verticalListSortingStrategy}>
                 {filtered.map((g) => {
                   const studentCount = g.studentIds?.length || 0;
                   const groupTeacherIds = g.teacherIds || [];
@@ -214,10 +279,10 @@ const GroupsPage: React.FC = () => {
                   const canDeleteOwn = teacherCanManage && !!(profile?.uid && g.createdBy === profile.uid);
 
                   return (
-                    <tr 
-                      key={g.id} 
+                    <SortableGroupRow
+                      key={g.id}
+                      id={g.id}
                       onClick={() => navigate(`/groups/${g.id}`)}
-                      className="group/row hover:bg-slate-50 dark:hover:bg-slate-700/50 cursor-pointer transition-colors"
                     >
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-4">
@@ -307,13 +372,15 @@ const GroupsPage: React.FC = () => {
                           </div>
                         </td>
                       ) : null}
-                    </tr>
+                    </SortableGroupRow>
                   );
                 })}
+                </SortableContext>
               </tbody>
             </table>
           </div>
         </div>
+        </DndContext>
       )}
 
       {/* Create Modal */}

@@ -7,7 +7,7 @@ import EditStudentModal from '../../components/students/EditStudentModal';
 import { useAuth } from '../../contexts/AuthContext';
 import { useBranch } from '../../contexts/BranchContext';
 import { usePlanGate } from '../../contexts/PlanContext';
-import { planDebt, isDebtBearingPlan, isWrittenOffPlan, isPlanOverdue } from '../../lib/payment-plans';
+import { planDebt, isDebtBearingPlan, isWrittenOffPlan, isPlanOverdue, planPeriodKey } from '../../lib/payment-plans';
 import { formatMoney } from '../../lib/money';
 import ReportCommentModal from '../../components/ai/ReportCommentModal';
 import MemberRolesEditor from '../../components/shared/MemberRolesEditor';
@@ -42,7 +42,7 @@ const PLAN_STATUS: Record<string, { key: string; fallback: string; cls: string }
   overdue: { key: 'finances.statusOverdue', fallback: 'Просрочено', cls: 'bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400' },
   partial: { key: 'finances.statusPartial', fallback: 'Частично', cls: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400' },
   pending: { key: 'finances.statusPending', fallback: 'Ожидает', cls: 'bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-400' },
-  cancelled: { key: 'finances.statusCancelled', fallback: 'Отменён', cls: 'bg-slate-100 text-slate-400 line-through dark:bg-slate-800 dark:text-slate-500' },
+  cancelled: { key: 'finances.statusWrittenOff', fallback: 'Списан', cls: 'bg-slate-100 text-slate-400 line-through dark:bg-slate-800 dark:text-slate-500' },
 };
 
 /**
@@ -55,6 +55,14 @@ const isRefundTx = (tx: any) => tx?.type === 'expense' && tx?.categoryId === 're
 
 /** Сумма счёта известна: у легаси-счетов её может не быть вовсе. */
 const hasKnownTotal = (plan: any) => Number.isFinite(Number(plan?.totalAmount));
+
+/** 'YYYY-MM' → «Июль 2026». Пусто, если ключ пуст. Тот же язык, что на «Оплаты за месяц». */
+const monthLabel = (key: string | null): string => {
+  if (!key) return '';
+  const [y, m] = key.split('-').map(Number);
+  const s = new Date(Date.UTC(y, m - 1, 1)).toLocaleDateString('ru-RU', { month: 'long', year: 'numeric', timeZone: 'UTC' });
+  return s.charAt(0).toUpperCase() + s.slice(1);
+};
 
 const StudentDetailPage: React.FC = () => {
   const { uid } = useParams<{ uid: string }>();
@@ -639,9 +647,9 @@ const StudentDetailPage: React.FC = () => {
               </div>
               <div className="p-4 space-y-3">
                 {paymentPlans.length === 0 ? (
-                  <p className="text-[11px] text-slate-400 text-center py-2">Счетов не найдено</p>
+                  <p className="text-[11px] text-slate-400 text-center py-2">Начислений пока нет</p>
                 ) : (
-                  paymentPlans.map(plan => {
+                  [...paymentPlans].sort((a, b) => (planPeriodKey(b) || '').localeCompare(planPeriodKey(a) || '')).map(plan => {
                     // Единое правило из src/lib/payment-plans — то же, по которому
                     // считают долг сервер и финансы. Своей арифметики здесь больше нет.
                     const writtenOff = isWrittenOffPlan(plan);
@@ -655,39 +663,44 @@ const StudentDetailPage: React.FC = () => {
                     return (
                       <div key={plan.id} className={`bg-slate-50 dark:bg-slate-700/50 rounded-lg p-3 border border-slate-100 dark:border-slate-600 ${writtenOff ? 'opacity-60' : ''}`}>
                         <div className="flex items-center justify-between gap-2 mb-1">
-                          <span className={`text-xs font-bold ${writtenOff ? 'text-slate-500 line-through' : 'text-slate-800 dark:text-slate-200'}`}>
-                            {plan.courseName || t('finances.plan', 'Счёт')}
-                          </span>
+                          <div className="min-w-0">
+                            {/* Заголовок строки — МЕСЯЦ, а не «Счёт»: карточка теперь
+                                про «оплату за месяц», как и раздел финансов. У легаси-
+                                плана без периода откатываемся на название курса. */}
+                            <span className={`text-xs font-bold ${writtenOff ? 'text-slate-500 line-through' : 'text-slate-800 dark:text-slate-200'}`}>
+                              {monthLabel(planPeriodKey(plan)) || plan.courseName || t('finances.payment', 'Оплата')}
+                            </span>
+                            {monthLabel(planPeriodKey(plan)) && plan.courseName && (
+                              <span className="block text-[10px] text-slate-400 truncate">{plan.courseName}</span>
+                            )}
+                          </div>
                           <span className={`shrink-0 text-[10px] px-1.5 py-0.5 rounded font-bold ${cfg.cls}`}>
                             {t(cfg.key, cfg.fallback)}
                           </span>
                         </div>
-                        <div className="text-[10px] text-slate-500 mb-1 flex justify-between gap-2">
-                          {/* Неизвестную сумму нельзя печатать уверенным нулём:
-                              раньше totalAmount: undefined давал NaN, счёт молча
-                              становился «Оплачено», и реальный долг исчезал с карточки. */}
-                          <span>
-                            {t('finances.colTotal', 'Сумма')}: {totalKnown
-                              ? formatMoney(plan.totalAmount)
-                              : <span className="font-bold text-rose-500">{t('finances.amountUnknown', 'не указана')}</span>}
-                          </span>
-                          <span>{t('finances.colPaid', 'Оплачено')}: {formatMoney(plan.paidAmount)}</span>
-                        </div>
-                        {/* Администратор должен уметь ответить «почему он должен 3000?»
-                            прямо с карточки — поэтому долг и срок, а не только суммы. */}
-                        <div className="text-[10px] text-slate-500 mb-2 flex justify-between gap-2">
-                          <span>
-                            {t('finances.colDebt', 'Долг')}:{' '}
-                            <span className={`font-bold ${writtenOff ? 'text-slate-400' : owes ? 'text-amber-600' : 'text-emerald-600'}`}>
-                              {writtenOff || !totalKnown || debt === 0 ? '—' : formatMoney(debt)}
-                            </span>
-                          </span>
-                          {plan.deadline && (
-                            <span className={overdue ? 'font-bold text-rose-500' : ''}>
-                              {t('finances.colDeadline', 'Срок')}: {new Date(plan.deadline).toLocaleDateString()}
-                            </span>
-                          )}
-                        </div>
+                        {/* Одна денежная строка вместо Сумма/Оплачено/Долг: должен —
+                            «к оплате», оплачено — сумма оплаты, списан — молчим (ниже
+                            есть поясняющая подпись). Неизвестную сумму по-прежнему не
+                            печатаем нулём — легаси-план честно говорит «не указана». */}
+                        {!writtenOff && (
+                          <div className="text-[10px] text-slate-500 mb-2">
+                            {owes ? (
+                              <>
+                                {t('finances.toPay', 'К оплате')}:{' '}
+                                <span className="font-bold text-amber-600">
+                                  {totalKnown ? formatMoney(debt) : <span className="text-rose-500">{t('finances.amountUnknown', 'не указана')}</span>}
+                                </span>
+                                {plan.deadline && (
+                                  <span className={overdue ? 'font-bold text-rose-500' : 'text-slate-400'}>
+                                    {' '}· {t('finances.until', 'до')} {new Date(plan.deadline).toLocaleDateString()}
+                                  </span>
+                                )}
+                              </>
+                            ) : (
+                              <>{t('finances.colPaid', 'Оплачено')}: <span className="font-bold text-emerald-600">{formatMoney(plan.paidAmount)}</span></>
+                            )}
+                          </div>
+                        )}
                         {writtenOff ? (
                           // Списанный счёт не предлагаем принимать: income с
                           // allowRevive воскресил бы списание обратно в долг.

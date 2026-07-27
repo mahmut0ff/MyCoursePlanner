@@ -136,6 +136,27 @@ export function isDeadlineMissed(deadline: unknown, now: Date = new Date()): boo
   return day < orgDayKey(now);
 }
 
+/** Ключ месяца 'YYYY-MM' для даты (по дню организации, чтобы не съезжать по зоне). */
+export function monthKey(now: Date = new Date()): string {
+  return orgDayKey(now).slice(0, 7);
+}
+
+/**
+ * Месяц, к которому относится начисление, 'YYYY-MM'. Явный `period` — истина;
+ * у легаси-планов без него берём месяц срока, а если и его нет — месяц создания.
+ * null только когда не читается вообще ничего.
+ *
+ * Нужен, чтобы помесячный экран мог сгруппировать ВСЕ планы по месяцам, а не
+ * только новые: старые ручные счета «period» не несут, но у них есть срок или
+ * дата создания, и терять их из месячного среза нельзя.
+ */
+export function planPeriodKey(plan: any): string | null {
+  if (typeof plan?.period === 'string' && /^\d{4}-\d{2}$/.test(plan.period)) return plan.period;
+  const day = deadlineDayKey(plan?.deadline)
+    ?? (typeof plan?.createdAt === 'string' ? plan.createdAt.slice(0, 10) : null);
+  return day && /^\d{4}-\d{2}/.test(day) ? day.slice(0, 7) : null;
+}
+
 /**
  * True когда счёт следует показывать как просроченный.
  *

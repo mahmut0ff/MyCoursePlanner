@@ -819,7 +819,7 @@ const StudentsPage: React.FC = () => {
                             </button>
                           ) : riskByStudent[s.uid]?.hasOverduePayment ? (
                             <span title="Просрочена оплата" className="shrink-0 inline-flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-400">
-                              <Wallet className="w-3 h-3" /> Долг
+                              <Wallet className="w-3 h-3" /> Не оплачено
                             </span>
                           ) : null}
                         </h3>

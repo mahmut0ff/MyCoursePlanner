@@ -751,6 +751,20 @@ export const apiUpdatePaymentPlan = (planId: string, data: any) =>
 export const apiDeletePaymentPlan = (id: string, force?: boolean) =>
   apiRequest('api-finance-plans', 'DELETE', undefined, force ? { id, force: 'true' } : { id });
 
+// «Начислить за месяц»: per-student помесячные начисления. Суммы приходят с клиента
+// (перенос из прошлого месяца, поправленный менеджером). Сервер идемпотентен —
+// у кого начисление за period уже есть, того пропускает (возвращает created/skipped).
+export interface MonthlyCharge {
+  studentId: string;
+  studentName?: string;
+  courseId: string;
+  courseName?: string;
+  amount: number;
+  branchId?: string | null;
+}
+export const apiBillMonth = (data: { period: string; dueDay?: number; charges: MonthlyCharge[] }) =>
+  apiRequest('api-finance-billing', 'POST', data);
+
 // startDate/endDate — произвольный диапазон; сервер берёт его вместо `period`,
 // только если пришли ОБА (иначе молча падает обратно на именованный период).
 export const apiGetFinanceMetrics = (params?: {

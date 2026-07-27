@@ -3,11 +3,12 @@ import { useTranslation } from 'react-i18next';
 import { Link, useSearchParams } from 'react-router-dom';
 import { CreditCard, UserRound, X } from 'lucide-react';
 import OverviewTab from './tabs/OverviewTab';
-import DebtsTab from './tabs/DebtsTab';
+import MonthTab from './tabs/MonthTab';
 import PaymentsTab from './tabs/PaymentsTab';
 import ExpensesTab from './tabs/ExpensesTab';
 import { DEFAULT_RANGE } from './financePeriod';
 import type { FinanceRange } from './financePeriod';
+import { monthKey } from '../../lib/payment-plans';
 
 export type FinanceTab = 'overview' | 'debts' | 'payments' | 'expenses';
 
@@ -44,8 +45,8 @@ const TABS: { id: FinanceTab; labelKey: string; fallback: string; hintKey: strin
     hintKey: 'finances.hintOverview', hint: 'Сколько заработали, на что потратили и что осталось',
   },
   {
-    id: 'debts', labelKey: 'finances.invoices', fallback: 'Счета',
-    hintKey: 'finances.hintInvoices', hint: 'Кому выставлены счета и кто сколько должен',
+    id: 'debts', labelKey: 'finances.monthTab', fallback: 'Оплаты за месяц',
+    hintKey: 'finances.hintMonth', hint: 'Кто оплатил за этот месяц, а кто ещё нет',
   },
   {
     id: 'payments', labelKey: 'finances.payments', fallback: 'Платежи',
@@ -100,6 +101,9 @@ const FinancesPage: React.FC = () => {
   );
 
   const [range, setRange] = useState<FinanceRange>(DEFAULT_RANGE);
+  // Месяц поднят на страницу по той же причине, что и фильтры: вкладки
+  // размонтируются при переключении, а выбранный месяц терять не хочется.
+  const [month, setMonth] = useState<string>(() => monthKey());
   const [debtsFilters, setDebtsFilters] = useState<DebtsFilters>({ search: '', status: '' });
   const [paymentsFilters, setPaymentsFilters] = useState<PaymentsFilters>({ search: '', method: '' });
   const [expensesFilters, setExpensesFilters] = useState<ExpensesFilters>({ search: '', categoryId: '' });
@@ -197,9 +201,11 @@ const FinancesPage: React.FC = () => {
       <div className="min-h-[500px]">
         {activeTab === 'overview' && <OverviewTab range={range} onRangeChange={setRange} />}
         {activeTab === 'debts' && (
-          <DebtsTab
+          <MonthTab
             filters={debtsFilters}
             onFiltersChange={setDebtsFilters}
+            month={month}
+            onMonthChange={setMonth}
             studentId={studentFilter}
             onStudentNameResolved={setStudentFilterName}
           />

@@ -146,6 +146,20 @@ const MonthTab: React.FC<Props> = ({ filters, onFiltersChange, month, onMonthCha
     [plans, month, studentById]
   );
 
+  // Что реально показываем и считаем на «кто оплатил за месяц»: только живые,
+  // ещё числящиеся студенты. Убираем ДВА вида шума, которые ни оплатить, ни
+  // взыскать нельзя, а в счётчиках они раздували «ещё не оплатили»:
+  //  • списанный счёт (status: 'cancelled') — денег по нему академия не ждёт;
+  //  • удалённого из системы студента — его нет в ростере (orgGetStudents
+  //    отдаёт ПОЛНЫЙ список active+expelled без лимита), значит студентов с
+  //    неразрешимым studentId не существует, а не «не долистали».
+  // monthPlans при этом трогать нельзя: дедуп «Начислить» (candidates) обязан
+  // видеть ВСЕ счёта месяца, иначе выставит повторно.
+  const activePlans = useMemo(
+    () => monthPlans.filter(p => studentById.has(String(p.studentId)) && !isWrittenOffPlan(p)),
+    [monthPlans, studentById]
+  );
+
   // Перенос суммы: самое свежее по месяцу начисление на (студент, курс).
   const lastAmountByKey = useMemo(() => {
     const best = new Map<string, { period: string; amount: number }>();
@@ -192,19 +206,16 @@ const MonthTab: React.FC<Props> = ({ filters, onFiltersChange, month, onMonthCha
     return [...byKey.values()].sort((a, b) => collator.compare(a.studentName, b.studentName));
   }, [groups, studentById, monthPlans, lastAmountByKey, coursePriceById]);
 
-  const stats = useMemo(() => {
-    const billable = monthPlans.filter(p => !isWrittenOffPlan(p));
-    return {
-      total: billable.length,
-      paid: billable.filter(p => p.status === 'paid').length,
-      collected: billable.reduce((sum, p) => sum + (Number(p.paidAmount) || 0), 0),
-      unpaid: billable.filter(p => isDebtBearingPlan(p)).length,
-    };
-  }, [monthPlans]);
+  const stats = useMemo(() => ({
+    total: activePlans.length,
+    paid: activePlans.filter(p => p.status === 'paid').length,
+    collected: activePlans.reduce((sum, p) => sum + (Number(p.paidAmount) || 0), 0),
+    unpaid: activePlans.filter(p => isDebtBearingPlan(p)).length,
+  }), [activePlans]);
 
   const filtered = useMemo(() => {
     const q = filters.search.trim().toLowerCase();
-    return monthPlans
+    return activePlans
       .filter(p => {
         if (studentId && String(p.studentId) !== studentId) return false;
         if (!q) return true;
@@ -216,7 +227,7 @@ const MonthTab: React.FC<Props> = ({ filters, onFiltersChange, month, onMonthCha
         const bn = b.studentName || studentById.get(String(b.studentId))?.displayName || '';
         return collator.compare(an, bn) || collator.compare(a.courseName || '', b.courseName || '');
       });
-  }, [monthPlans, filters.search, studentId, studentById]);
+  }, [activePlans, filters.search, studentId, studentById]);
 
   useEffect(() => {
     if (!studentId || !onStudentNameResolved) return;

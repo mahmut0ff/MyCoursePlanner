@@ -9,7 +9,7 @@ import {
   Save, Building2, GraduationCap, Check, Bell, BarChart3,
   Database, Camera, Loader2, MapPin, Phone, Mail, Clock,
   QrCode, Download, Send, MessageCircle, Printer, Copy, CheckCircle, Globe,
-  School, Languages, Users
+  School, Languages, Users, SlidersHorizontal
 } from 'lucide-react';
 import type { OrgSettings } from '../../types';
 import { INSTITUTION_LIST } from '../../lib/terminology';
@@ -21,10 +21,11 @@ import ActiveRoleCard from '../../components/shared/ActiveRoleCard';
 import ActiveOrgCard from '../../components/shared/ActiveOrgCard';
 import SidebarCustomizerCard from '../../components/shared/SidebarCustomizerCard';
 
-type Tab = 'general' | 'academic' | 'visitcard' | 'integrations' | 'notifications' | 'data' | 'limits';
+type Tab = 'general' | 'menu' | 'academic' | 'visitcard' | 'integrations' | 'notifications' | 'data' | 'limits';
 
 const TABS: { id: Tab; icon: React.ElementType; labelKey: string }[] = [
   { id: 'general', icon: Building2, labelKey: 'org.settings.general' },
+  { id: 'menu', icon: SlidersHorizontal, labelKey: 'sidebar.customize' },
   { id: 'academic', icon: GraduationCap, labelKey: 'org.settings.academic' },
   { id: 'visitcard', icon: QrCode, labelKey: 'org.settings.visitCardTab' },
   { id: 'integrations', icon: Link, labelKey: 'Интеграции' },
@@ -614,6 +615,7 @@ const OrgSettingsPage: React.FC = () => {
   const renderTab = () => {
     switch (activeTab) {
       case 'general': return <GeneralTab settings={settings} update={update} />;
+      case 'menu': return <SidebarCustomizerCard />;
       case 'academic': return <AcademicTab settings={settings} update={update} />;
       case 'visitcard': return <VisitCardTab settings={settings} update={update} />;
       case 'integrations': return <IntegrationsTab organizationId={settings.organizationId} />;
@@ -643,7 +645,6 @@ const OrgSettingsPage: React.FC = () => {
       {/* Active role switcher — only shows for members holding more than one role */}
       <ActiveOrgCard className="mb-6" />
       <ActiveRoleCard className="mb-6" />
-      <SidebarCustomizerCard className="mb-6" />
 
       {/* Tabbed layout */}
       <div className="flex flex-col md:flex-row gap-6 min-h-[calc(100vh-8rem)]">

@@ -20,7 +20,7 @@ import { Users, Search, RefreshCw, CheckCircle, XCircle, UserPlus, Phone, Filter
 import type { UserProfile, Group, Branch } from '../../types';
 import toast from 'react-hot-toast';
 import { PinnedBadgesDisplay } from '../../lib/badges';
-import { planDebt, isDebtBearingPlan } from '../../lib/payment-plans';
+import { planDebt, isDebtBearingPlan, isPlanOverdue } from '../../lib/payment-plans';
 import { formatMoney } from '../../lib/money';
 import BulkActionBar from '../../components/roster/BulkActionBar';
 import EmptyState from '../../components/ui/EmptyState';
@@ -197,6 +197,13 @@ const StudentsPage: React.FC = () => {
 
   const unpaidFor = (uid: string) => unpaidByStudent[uid] || [];
   const debtFor = (uid: string) => unpaidFor(uid).reduce((sum, p) => sum + planDebt(p), 0);
+  // Просрочка — по СРОКУ реального счёта этого списка (isPlanOverdue), а не по
+  // отдельному риск-сигналу. Иначе бейдж расходится с карточкой студента: та
+  // считает долг/просрочку из того же счёта в текущем филиале, а api-risk берёт
+  // просрочку из зафиксированного поля status по всей организации — оно не
+  // снимается при продлении срока и не знает про филиал. Из-за этого оплаченный
+  // студент получал «Не оплачено».
+  const isOverdueFor = (uid: string) => unpaidFor(uid).some(p => isPlanOverdue(p));
 
   // Вход есть, если у записи появился email и она перестала быть офлайновой —
   // ровно то, что ставит бэкенд при выдаче доступа.
@@ -810,17 +817,13 @@ const StudentsPage: React.FC = () => {
                               onClick={(e) => { e.stopPropagation(); setPayFor({ student: s, plans: unpaidFor(s.uid) }); }}
                               title="Принять оплату"
                               className={`shrink-0 inline-flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded transition-colors ${
-                                riskByStudent[s.uid]?.hasOverduePayment
+                                isOverdueFor(s.uid)
                                   ? 'bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-400 hover:bg-orange-200 dark:hover:bg-orange-900/60'
                                   : 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600'
                               }`}
                             >
                               <Wallet className="w-3 h-3" /> {formatMoney(debtFor(s.uid))}
                             </button>
-                          ) : riskByStudent[s.uid]?.hasOverduePayment ? (
-                            <span title="Просрочена оплата" className="shrink-0 inline-flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-400">
-                              <Wallet className="w-3 h-3" /> Не оплачено
-                            </span>
                           ) : null}
                         </h3>
                         {/* The reason in plain words, not just a coloured dot —

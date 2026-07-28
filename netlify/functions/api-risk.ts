@@ -9,10 +9,10 @@ import type { Handler, HandlerEvent } from '@netlify/functions';
 import { adminDb, getDocsByIds } from './utils/firebase-admin';
 import {
   verifyAuth, ok, unauthorized, badRequest, jsonResponse,
-  resolveBranchFilter, memberInBranchScope, memberHoldsRole,
+  resolveBranchFilter, memberInBranchScope, memberHoldsRole, recordInBranchScope,
 } from './utils/auth';
 import { computeStudentRisk } from './utils/risk';
-import { isDebtBearingPlan } from './utils/payment-plans';
+import { isDebtBearingPlan, isPlanOverdue } from './utils/payment-plans';
 
 export const handler: Handler = async (event: HandlerEvent) => {
   if (event.httpMethod === 'OPTIONS') return jsonResponse(204, '');
@@ -75,11 +75,14 @@ export const handler: Handler = async (event: HandlerEvent) => {
 
     // 2-4. Load the signals. Equality-only queries — see the Firestore index note
     // in CLAUDE.md; filtering happens in memory.
-    const [attemptsSnap, journalSnap, overdueSnap] = await Promise.all([
+    const [attemptsSnap, journalSnap, plansSnap] = await Promise.all([
       adminDb.collection('examAttempts').where('organizationId', '==', orgId).get(),
       adminDb.collection('journal').where('organizationId', '==', orgId).get(),
-      adminDb.collection('studentPaymentPlans')
-        .where('organizationId', '==', orgId).where('status', '==', 'overdue').get(),
+      // ВСЕ счёта организации, а не только `status == 'overdue'`: просрочку решаем
+      // по СРОКУ (isPlanOverdue ниже), а не по зафиксированному полю status. Оно
+      // не снимается при продлении срока и не знает про филиал, из-за чего оплаченный
+      // студент горел «Не оплачено». Equality-only — без составного индекса (CLAUDE.md).
+      adminDb.collection('studentPaymentPlans').where('organizationId', '==', orgId).get(),
     ]);
 
     const attemptsByStudent = new Map<string, any[]>();
@@ -96,14 +99,22 @@ export const handler: Handler = async (event: HandlerEvent) => {
       journalByStudent.get(data.studentId)!.push(data);
     });
 
-    // status == 'overdue' already rules out written-off ('cancelled') plans; the
-    // shared predicate additionally requires a positive balance, so this badge
-    // matches the debt the finance screens show (same rule as api-dashboard).
+    // Просрочка = счёт с непогашенным остатком, чей СРОК истёк, В ТЕКУЩЕМ филиале.
+    // Ровно те же предикаты (isDebtBearingPlan + isPlanOverdue) и та же ветка
+    // филиала (recordInBranchScope), что на финансовых экранах и в карточке
+    // студента, — поэтому «Не оплачено», точка риска и раздел финансов больше не
+    // расходятся. Раньше здесь стоял сырой `status == 'overdue'`: он оставался на
+    // счёте после продления срока и после оплаты через другой счёт, и был
+    // общеорганизационным — оплаченный студент в чужом филиале попадал в должники.
+    const nowForOverdue = new Date();
     const overdueStudents = new Set<string>();
-    overdueSnap.docs.forEach(doc => {
+    plansSnap.docs.forEach(doc => {
       const plan = doc.data() as any;
+      if (!plan.studentId) return;
+      if (!recordInBranchScope(plan.branchId, branchScope)) return;
       if (!isDebtBearingPlan(plan)) return;
-      if (plan.studentId) overdueStudents.add(plan.studentId);
+      if (!isPlanOverdue(plan, nowForOverdue)) return;
+      overdueStudents.add(plan.studentId);
     });
 
     const nowMs = Date.now();

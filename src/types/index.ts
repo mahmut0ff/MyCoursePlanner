@@ -1348,7 +1348,14 @@ export interface StudentPaymentPlan {
   studentName?: string; // денормализация на запись, для списков без join
   courseId: string; // литерал 'general' у счетов, созданных вручную
   courseName?: string;
-  totalAmount: number; // сколько должны заплатить
+  totalAmount: number; // сколько должны заплатить (после скидки — реальная сумма к оплате)
+  /**
+   * Полная (прайсовая) сумма до скидки — обычно цена курса на момент выставления.
+   * Разница `listAmount − totalAmount` и есть скидка. Необязательное: у легаси-
+   * счетов его нет (тогда скидки нет). Пишется биллингом; захватывается сервером
+   * при уменьшении totalAmount, чтобы «сколько недополучено» не терялось.
+   */
+  listAmount?: number;
   paidAmount: number;  // сколько уже пришло
   status: PaymentStatus;
   deadline?: string; // настоящий срок оплаты, по нему считается просрочка

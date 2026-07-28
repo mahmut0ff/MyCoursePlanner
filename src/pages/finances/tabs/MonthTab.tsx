@@ -11,15 +11,17 @@ import {
   Clock,
   History,
   MinusCircle,
+  Pencil,
   Search,
+  Tag,
   Trash2,
   Wallet,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { apiDeletePaymentPlan, apiGetPaymentPlans, orgGetGroups, orgGetStudents } from '../../../lib/api';
+import { apiDeletePaymentPlan, apiGetPaymentPlans, orgGetCourses, orgGetGroups, orgGetStudents } from '../../../lib/api';
 import { useBranch } from '../../../contexts/BranchContext';
 import { formatMoney } from '../../../lib/money';
-import { isDebtBearingPlan, isWrittenOffPlan, isPlanOverdue, planDebt, planPeriodKey } from '../../../lib/payment-plans';
+import { isDebtBearingPlan, isWrittenOffPlan, isPlanOverdue, planDebt, planDiscount, planPeriodKey } from '../../../lib/payment-plans';
 import EmptyState from '../../../components/ui/EmptyState';
 import { ListSkeleton } from '../../../components/ui/Skeleton';
 import ConfirmDialog from '../../../components/ui/ConfirmDialog';
@@ -29,6 +31,7 @@ import LazyListFooter from '../../../components/ui/LazyListFooter';
 import { useLazyList } from '../../../hooks/useLazyList';
 import AcceptPaymentModal from '../../../components/finance/AcceptPaymentModal';
 import PaymentHistoryModal from '../../../components/finance/PaymentHistoryModal';
+import EditPlanAmountModal from '../../../components/finance/EditPlanAmountModal';
 import BillMonthModal from '../../../components/finance/BillMonthModal';
 import type { BillCandidate } from '../../../components/finance/BillMonthModal';
 import type { DebtsFilters } from '../FinancesPage';
@@ -50,6 +53,7 @@ interface PaymentPlan {
   courseId?: string;
   courseName?: string;
   totalAmount: number;
+  listAmount?: number;
   paidAmount: number;
   status: string;
   deadline?: string;
@@ -57,7 +61,7 @@ interface PaymentPlan {
   createdAt?: string;
 }
 
-type ModalType = 'none' | 'pay' | 'history';
+type ModalType = 'none' | 'pay' | 'history' | 'editAmount';
 
 const collator = new Intl.Collator('ru');
 const isExpelled = (s: any) => (s?.status || 'active') === 'expelled';
@@ -88,6 +92,7 @@ const MonthTab: React.FC<Props> = ({ filters, onFiltersChange, month, onMonthCha
   const [plans, setPlans] = useState<PaymentPlan[]>([]);
   const [allStudents, setAllStudents] = useState<any[]>([]);
   const [groups, setGroups] = useState<any[]>([]);
+  const [courses, setCourses] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -104,11 +109,12 @@ const MonthTab: React.FC<Props> = ({ filters, onFiltersChange, month, onMonthCha
   const load = useCallback(() => {
     setLoading(true);
     setError('');
-    Promise.all([apiGetPaymentPlans(), orgGetStudents(), orgGetGroups()])
-      .then(([planData, studentData, groupData]: [any, any, any]) => {
+    Promise.all([apiGetPaymentPlans(), orgGetStudents(), orgGetGroups(), orgGetCourses()])
+      .then(([planData, studentData, groupData, courseData]: [any, any, any, any]) => {
         setPlans(Array.isArray(planData) ? planData : []);
         setAllStudents(Array.isArray(studentData) ? studentData : []);
         setGroups(Array.isArray(groupData) ? groupData : []);
+        setCourses(Array.isArray(courseData) ? courseData : []);
       })
       .catch((e: any) => setError(e?.message || t('finances.loadFailed', 'Не удалось загрузить данные')))
       .finally(() => setLoading(false));
@@ -122,6 +128,17 @@ const MonthTab: React.FC<Props> = ({ filters, onFiltersChange, month, onMonthCha
   const setSearch = (search: string) => onFiltersChange({ ...filters, search });
 
   const studentById = useMemo(() => new Map(allStudents.map(s => [studentKey(s), s])), [allStudents]);
+
+  // Цена курса по id — прайсовая база: подставляем в «Начислить» для новых
+  // студентов и передаём как listAmount, чтобы скидка считалась от цены курса.
+  const coursePriceById = useMemo(() => {
+    const m = new Map<string, number>();
+    for (const c of courses) {
+      const price = Number(c.price);
+      if (Number.isFinite(price)) m.set(String(c.id), price);
+    }
+    return m;
+  }, [courses]);
 
   // Начисления выбранного месяца, без отчисленных студентов.
   const monthPlans = useMemo(
@@ -157,18 +174,23 @@ const MonthTab: React.FC<Props> = ({ filters, onFiltersChange, month, onMonthCha
         if (!student || isExpelled(student)) continue;
         const k = `${sid}|${courseId}`;
         if (billed.has(k) || byKey.has(k)) continue;
+        // Сумма к оплате: перенос из прошлого месяца → цена курса → null.
+        // Новый студент без истории теперь начисляется по цене курса (её всё ещё
+        // можно поправить в окне), а не оставляет менеджера гадать сумму.
+        const price = coursePriceById.get(String(courseId)) ?? null;
         byKey.set(k, {
           studentId: String(sid),
           studentName: student.displayName || '',
           courseId,
           courseName: g.courseName || g.name || '',
           branchId: g.branchId || null,
-          amount: lastAmountByKey.get(k)?.amount ?? null,
+          amount: lastAmountByKey.get(k)?.amount ?? price,
+          listAmount: price,
         });
       }
     }
     return [...byKey.values()].sort((a, b) => collator.compare(a.studentName, b.studentName));
-  }, [groups, studentById, monthPlans, lastAmountByKey]);
+  }, [groups, studentById, monthPlans, lastAmountByKey, coursePriceById]);
 
   const stats = useMemo(() => {
     const billable = monthPlans.filter(p => !isWrittenOffPlan(p));
@@ -208,6 +230,7 @@ const MonthTab: React.FC<Props> = ({ filters, onFiltersChange, month, onMonthCha
 
   const openPay = (plan: PaymentPlan) => { setSelectedPlan(plan); setModal('pay'); };
   const openHistory = (plan: PaymentPlan) => { setSelectedPlan(plan); setModal('history'); };
+  const openEditAmount = (plan: PaymentPlan) => { setSelectedPlan(plan); setModal('editAmount'); };
 
   const runDelete = async (plan: PaymentPlan, force: boolean) => {
     setDeleting(true);
@@ -231,6 +254,7 @@ const MonthTab: React.FC<Props> = ({ filters, onFiltersChange, month, onMonthCha
   };
 
   const rowMenu = (p: PaymentPlan): RowMenuItem[] => [
+    ...(isWrittenOffPlan(p) ? [] : [{ label: t('finances.editAmount', 'Изменить сумму'), icon: Pencil, onSelect: () => openEditAmount(p) }]),
     { label: t('finances.paymentHistory', 'История оплат'), icon: History, onSelect: () => openHistory(p) },
     { label: t('finances.deleteCharge', 'Удалить начисление'), icon: Trash2, danger: true, separated: true, onSelect: () => setPendingDelete(p) },
   ];
@@ -361,6 +385,15 @@ const MonthTab: React.FC<Props> = ({ filters, onFiltersChange, month, onMonthCha
                               <span className="font-bold">· {formatMoney(planDebt(p))}</span>
                             )}
                           </span>
+                          {/* Скидка от цены курса — не долг. Показываем рядом со статусом. */}
+                          {!writtenOff && planDiscount(p) > 0 && (
+                            <span
+                              className="ml-2 inline-flex items-center gap-1 text-[11px] text-emerald-600 font-medium align-middle"
+                              title={`${t('finances.coursePrice', 'Цена курса')} ${formatMoney(p.listAmount || 0)}`}
+                            >
+                              <Tag className="w-3 h-3" /> {t('finances.discount', 'Скидка')} {formatMoney(planDiscount(p))}
+                            </span>
+                          )}
                         </td>
                         <td className="px-5 py-3.5 text-right whitespace-nowrap">
                           <div className="flex items-center justify-end gap-1">
@@ -414,6 +447,14 @@ const MonthTab: React.FC<Props> = ({ filters, onFiltersChange, month, onMonthCha
 
       {modal === 'pay' && selectedPlan && (
         <AcceptPaymentModal plans={[selectedPlan]} onClose={() => setModal('none')} onSuccess={load} />
+      )}
+
+      {modal === 'editAmount' && selectedPlan && (
+        <EditPlanAmountModal
+          plan={selectedPlan}
+          onClose={() => setModal('none')}
+          onSuccess={() => { setModal('none'); load(); }}
+        />
       )}
 
       {modal === 'history' && selectedPlan && (

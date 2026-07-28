@@ -13,6 +13,7 @@
  */
 export {
   planDebt,
+  planDiscount,
   isDebtBearingPlan,
   isWrittenOffPlan,
   orgDayKey,

@@ -101,6 +101,9 @@ const handler: Handler = async (event: HandlerEvent) => {
             courseId,
             courseName: course.title || '',
             totalAmount: price,
+            // Прайсовая цена курса — база для скидки, если сумму к оплате
+            // позже уменьшат вручную. Пока равна totalAmount (скидки нет).
+            listAmount: price,
             paidAmount: 0,
             status: 'pending',
             billingType: 'monthly',

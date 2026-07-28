@@ -3,11 +3,12 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { orgGetStudents, orgGetResults, orgGetGroups, orgUpdateGroup, apiRemoveMember, apiGetPaymentPlans, apiGetTransactions, orgResetStudentPassword } from '../../lib/api';
 import AcceptPaymentModal from '../../components/finance/AcceptPaymentModal';
+import EditPlanAmountModal from '../../components/finance/EditPlanAmountModal';
 import EditStudentModal from '../../components/students/EditStudentModal';
 import { useAuth } from '../../contexts/AuthContext';
 import { useBranch } from '../../contexts/BranchContext';
 import { usePlanGate } from '../../contexts/PlanContext';
-import { planDebt, isDebtBearingPlan, isWrittenOffPlan, isPlanOverdue, planPeriodKey } from '../../lib/payment-plans';
+import { planDebt, isDebtBearingPlan, isWrittenOffPlan, isPlanOverdue, planDiscount, planPeriodKey } from '../../lib/payment-plans';
 import { formatMoney } from '../../lib/money';
 import ReportCommentModal from '../../components/ai/ReportCommentModal';
 import MemberRolesEditor from '../../components/shared/MemberRolesEditor';
@@ -15,7 +16,7 @@ import {
   ArrowLeft, Mail, Trophy, Calendar, BarChart3, Users, Phone, MapPin,
   BookOpen, Zap, Target, Clock, CheckCircle, Plus, X, Loader2,
   Flame, Copy, Star, Shield, Link2, ExternalLink, CreditCard, Receipt, KeyRound, Sparkles, Pencil,
-  AlertTriangle, Wallet
+  AlertTriangle, Wallet, Tag
 } from 'lucide-react';
 import type { UserProfile, ExamAttempt, Group } from '../../types';
 import { PinnedBadgesDisplay } from '../../lib/badges';
@@ -93,6 +94,7 @@ const StudentDetailPage: React.FC = () => {
   const [paymentPlans, setPaymentPlans] = useState<any[]>([]);
   const [transactions, setTransactions] = useState<any[]>([]);
   const [payModalPlan, setPayModalPlan] = useState<any | null>(null);
+  const [editPlan, setEditPlan] = useState<any | null>(null);
 
   // Login / password reset
   const [showPwReset, setShowPwReset] = useState(false);
@@ -674,9 +676,22 @@ const StudentDetailPage: React.FC = () => {
                               <span className="block text-[10px] text-slate-400 truncate">{plan.courseName}</span>
                             )}
                           </div>
-                          <span className={`shrink-0 text-[10px] px-1.5 py-0.5 rounded font-bold ${cfg.cls}`}>
-                            {t(cfg.key, cfg.fallback)}
-                          </span>
+                          <div className="shrink-0 flex items-center gap-1">
+                            <span className={`text-[10px] px-1.5 py-0.5 rounded font-bold ${cfg.cls}`}>
+                              {t(cfg.key, cfg.fallback)}
+                            </span>
+                            {/* Изменить сумму к оплате — скидка задаётся здесь же, где виден счёт. */}
+                            {!writtenOff && (
+                              <button
+                                onClick={() => setEditPlan(plan)}
+                                title={t('finances.editAmount', 'Изменить сумму')}
+                                aria-label={t('finances.editAmount', 'Изменить сумму')}
+                                className="p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors"
+                              >
+                                <Pencil className="w-3 h-3" />
+                              </button>
+                            )}
+                          </div>
                         </div>
                         {/* Одна денежная строка вместо Сумма/Оплачено/Долг: должен —
                             «к оплате», оплачено — сумма оплаты, списан — молчим (ниже
@@ -699,6 +714,15 @@ const StudentDetailPage: React.FC = () => {
                             ) : (
                               <>{t('finances.colPaid', 'Оплачено')}: <span className="font-bold text-emerald-600">{formatMoney(plan.paidAmount)}</span></>
                             )}
+                          </div>
+                        )}
+                        {/* Скидка от цены курса — это НЕ долг. Ровно то, чего не хватало
+                            карточке: «недоплата» относительно прайса объяснена явно. */}
+                        {!writtenOff && planDiscount(plan) > 0 && (
+                          <div className="text-[10px] text-emerald-600 font-medium mb-2 flex items-center gap-1">
+                            <Tag className="w-3 h-3 shrink-0" />
+                            {t('finances.discount', 'Скидка')}: {formatMoney(planDiscount(plan))}
+                            <span className="text-slate-400 font-normal">· {t('finances.coursePrice', 'Цена курса')} {formatMoney(plan.listAmount || 0)}</span>
                           </div>
                         )}
                         {writtenOff ? (
@@ -839,6 +863,14 @@ const StudentDetailPage: React.FC = () => {
           studentName={student.displayName}
           onClose={() => setPayModalPlan(null)}
           onSuccess={loadFinances}
+        />
+      )}
+
+      {editPlan && (
+        <EditPlanAmountModal
+          plan={{ ...editPlan, studentName: editPlan.studentName || student.displayName }}
+          onClose={() => setEditPlan(null)}
+          onSuccess={() => { setEditPlan(null); loadFinances(); }}
         />
       )}
 

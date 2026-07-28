@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { apiCreateTransaction } from '../../lib/api';
+import { apiCreateTransaction, apiUpdatePaymentPlan } from '../../lib/api';
 import { CreditCard, X } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { CURRENCY_SUFFIX, formatMoney } from '../../lib/money';
@@ -51,6 +51,9 @@ const AcceptPaymentModal: React.FC<Props> = ({ plans, studentName, onClose, onSu
   const [amount, setAmount] = useState(String(debt));
   const [method, setMethod] = useState('cash');
   const [comment, setComment] = useState('');
+  // «Оплачено полностью»: студент платит по скидке, остаток — не долг. Закрываем
+  // счёт по факту (см. settle на сервере), а не оставляем «Частично».
+  const [settle, setSettle] = useState(false);
   const [saving, setSaving] = useState(false);
 
   // Границы календаря считаем в дне ОРГАНИЗАЦИИ, а не браузера: рынок — UTC+6,
@@ -69,9 +72,13 @@ const AcceptPaymentModal: React.FC<Props> = ({ plans, studentName, onClose, onSu
   // отправить остаток от предыдущего.
   const selectPlan = (id: string) => {
     setPlanId(id);
+    setSettle(false);
     const next = plans.find(p => p.id === id);
     if (next) setAmount(String(debtOf(next)));
   };
+
+  // Остаток, который спишется скидкой, если отметить «оплачено полностью».
+  const discountPreview = settle ? Math.max(0, debt - (Number(amount) || 0)) : 0;
 
   const name = studentName || plan?.studentName || plan?.studentId || '';
 
@@ -116,6 +123,16 @@ const AcceptPaymentModal: React.FC<Props> = ({ plans, studentName, onClose, onSu
         paymentMethod: method,
         description: comment || `${t('finances.paymentFor', 'Оплата')}: ${name}`,
       });
+      // Платёж проведён. Списание остатка скидкой — отдельный, необязательный шаг:
+      // его провал не должен выглядеть как провал оплаты, иначе повтор задвоил бы
+      // платёж. Поэтому у него свой try, а не общий catch ниже.
+      if (settle && Number(amount) < debt) {
+        try {
+          await apiUpdatePaymentPlan(plan.id, { settle: true });
+        } catch {
+          toast.error(t('finances.settleFailed', 'Оплата принята, но остаток не списан скидкой — измените «к оплате» вручную.'));
+        }
+      }
       toast.success(t('finances.paymentAccepted', 'Оплата принята'));
       onSuccess();
       onClose();
@@ -170,6 +187,26 @@ const AcceptPaymentModal: React.FC<Props> = ({ plans, studentName, onClose, onSu
               placeholder="0"
             />
           </div>
+          {/* Скидка: студент платит меньше остатка, и это НЕ долг. Отметка
+              закрывает счёт по факту оплаты, остаток уходит в скидку. */}
+          {debt > 0 && (
+            <label className="flex items-start gap-2.5 cursor-pointer select-none bg-slate-50 dark:bg-slate-900/40 rounded-xl px-3 py-2.5 border border-slate-200 dark:border-slate-700">
+              <input
+                type="checkbox"
+                checked={settle}
+                onChange={e => setSettle(e.target.checked)}
+                className="mt-0.5 w-4 h-4 shrink-0 accent-emerald-500"
+              />
+              <span className="text-xs text-slate-600 dark:text-slate-300 leading-snug">
+                {t('finances.settleInFull', 'Оплачено полностью — остаток списать как скидку')}
+                {discountPreview > 0 && (
+                  <span className="block text-[11px] font-bold text-emerald-600 mt-0.5">
+                    {t('finances.discount', 'Скидка')}: {formatMoney(discountPreview)}
+                  </span>
+                )}
+              </span>
+            </label>
+          )}
           <div>
             <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
               {t('finances.paymentDate', 'Дата оплаты')}

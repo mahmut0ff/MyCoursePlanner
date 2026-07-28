@@ -5,7 +5,7 @@
 import type { Handler, HandlerEvent } from '@netlify/functions';
 import { adminDb } from './utils/firebase-admin';
 import { verifyAuth, can, getOrgFilter, resolveBranchFilter, recordInBranchScope, requireBranchScope, ok, unauthorized, forbidden, badRequest, notFound, jsonResponse } from './utils/auth';
-import { batchGetUserNames, batchGetCourseNames } from './utils/finance-names';
+import { batchGetUserNames, batchGetCourseNames, derivePlanStatus } from './utils/finance-names';
 import { isDeadlineMissed } from './utils/payment-plans';
 
 const COLLECTION = 'studentPaymentPlans';
@@ -234,6 +234,30 @@ const handler: Handler = async (event: HandlerEvent) => {
       const branchError = requireBranchScope(user, existing.branchId);
       if (branchError) return branchError;
 
+      const existingPaid = Math.max(0, Number(existing.paidAmount) || 0);
+      const existingTotal = Number(existing.totalAmount) || 0;
+
+      // ── «Оплачено полностью» (скидка) ────────────────────────────────────────
+      // Закрываем счёт по факту принятых денег: остаток становится СКИДКОЙ, а не
+      // долгом. Приходит из окна приёма оплаты сразу после самого платежа, поэтому
+      // paidAmount уже обновлён транзакцией и читается свежим.
+      //
+      // Списанный (cancelled) счёт так не закрываем — это воскресило бы ручное
+      // списание в оплату (тот же инвариант, что у derivePlanStatus/allowRevive).
+      // totalAmount только ОПУСКАЕМ до оплаченного (min): «полностью» не должно
+      // превращаться в переплату, если случайно нажали при уже оплаченном счёте.
+      if (body.settle === true) {
+        if (existing.status === 'cancelled') return badRequest('Списанный счёт нельзя закрыть оплатой');
+        const settledTotal = Math.min(existingTotal, existingPaid);
+        const updates: any = { updatedAt: new Date().toISOString(), totalAmount: settledTotal, status: 'paid' };
+        // listAmount фиксирует полную (прайсовую) цену, чтобы показать размер
+        // скидки. Уже заданный (цена курса с биллинга) не трогаем; иначе берём
+        // прежнюю сумму к оплате как «полную».
+        if (existing.listAmount === undefined) updates.listAmount = existingTotal;
+        await docRef.update(updates);
+        return ok({ id: doc.id, ...existing, ...updates });
+      }
+
       // Explicit allowlist. organizationId/studentId/createdAt are identity and must
       // never move; paidAmount is owned by the transaction side effects, so letting a
       // PUT set it directly would desync the plan from its payment history.
@@ -241,7 +265,22 @@ const handler: Handler = async (event: HandlerEvent) => {
       if (body.totalAmount !== undefined) {
         const totalAmount = Number(body.totalAmount);
         if (!Number.isFinite(totalAmount) || totalAmount < 0) return badRequest('totalAmount должен быть неотрицательным числом');
+        // Сумму к оплате нельзя опустить ниже уже принятых денег: это не скидка,
+        // а переплата — для возврата денег есть отдельный поток (RefundModal).
+        if (totalAmount < existingPaid) return badRequest(`Сумма к оплате не может быть меньше уже оплаченного (${existingPaid}).`);
         updates.totalAmount = totalAmount;
+        // Прайсовую цену держим как максимум виденного: снижение totalAmount — это
+        // скидка, и «полную» цену терять нельзя. У свежего счёта listAmount уже
+        // равен цене курса; у легаси берём прежний totalAmount.
+        const priorList = existing.listAmount === undefined ? existingTotal : (Number(existing.listAmount) || 0);
+        updates.listAmount = Math.max(priorList, totalAmount);
+        // Статус пересчитываем от новой суммы, если его явно не прислали: снижение
+        // «к оплате» до уже оплаченного обязано переводить счёт в «Оплачено» —
+        // иначе остаётся «Частично» с долгом, которого больше нет (та самая
+        // жалоба «оплачено, но показывает не оплачено»).
+        if (body.status === undefined) {
+          updates.status = derivePlanStatus(existingPaid, totalAmount, existing.status);
+        }
       }
       if (body.deadline !== undefined) updates.deadline = body.deadline;
       // Статус проходил насквозь без проверки: любая строка ('оплачено', 'done',

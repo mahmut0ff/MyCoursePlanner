@@ -760,6 +760,8 @@ export interface MonthlyCharge {
   courseId: string;
   courseName?: string;
   amount: number;
+  /** Полная (прайсовая) цена курса — по ней сервер считает скидку. */
+  listAmount?: number;
   branchId?: string | null;
 }
 export const apiBillMonth = (data: { period: string; dueDay?: number; charges: MonthlyCharge[] }) =>

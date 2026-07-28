@@ -31,6 +31,8 @@ interface ChargeInput {
   courseId?: string;
   courseName?: string;
   amount?: number | string;
+  /** Полная (прайсовая) цена курса — по ней считается скидка. Необязательна. */
+  listAmount?: number | string;
   branchId?: string | null;
 }
 
@@ -73,12 +75,16 @@ const handler: Handler = async (event: HandlerEvent) => {
     // Ветки прав по филиалу проверяем на каждом заряде: клиент шлёт только то,
     // что видит в ростере, но доверять этому нельзя. Падаем громко, а не тихо
     // пропускаем чужой филиал.
-    interface Charge { studentId: string; studentName: string; courseId: string; courseName: string; amount: number; branchId: string | null; }
+    interface Charge { studentId: string; studentName: string; courseId: string; courseName: string; amount: number; listAmount: number; branchId: string | null; }
     const normalized: Charge[] = [];
     for (const c of charges) {
       if (!c.studentId || !c.courseId) return badRequest('У начисления нет studentId или courseId');
       const amount = Number(c.amount);
       if (!Number.isFinite(amount) || amount <= 0) return badRequest('Сумма начисления должна быть больше нуля');
+      // Прайсовая цена (для скидки): не ниже суммы к оплате. Если клиент её не
+      // прислал или прислал меньше начисления — скидки нет, listAmount = amount.
+      const list = Number(c.listAmount);
+      const listAmount = Number.isFinite(list) && list > amount ? list : amount;
       // Филиал: явный с клиента → основной филиал пользователя → без филиала.
       const branchId = c.branchId ?? (user as any).primaryBranchId ?? null;
       const branchError = requireBranchScope(user, branchId);
@@ -89,6 +95,7 @@ const handler: Handler = async (event: HandlerEvent) => {
         courseId: c.courseId,
         courseName: c.courseName || '',
         amount,
+        listAmount,
         branchId,
       });
     }
@@ -135,6 +142,7 @@ const handler: Handler = async (event: HandlerEvent) => {
           courseId: c.courseId,
           courseName: c.courseName,
           totalAmount: c.amount,
+          listAmount: c.listAmount,
           paidAmount: 0,
           status: 'pending',
           billingType: 'monthly',

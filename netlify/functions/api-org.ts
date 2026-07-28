@@ -174,6 +174,9 @@ export async function syncPaymentPlans(orgId: string, branchId: string | null, c
         courseId,
         courseName: courseData.title || '',
         totalAmount: courseData.price,
+        // Прайсовая цена = цена курса на момент зачисления. Пока скидки нет
+        // (== totalAmount); появится, когда сумму к оплате уменьшат вручную.
+        listAmount: courseData.price,
         paidAmount: 0,
         status: 'pending',
         nextDueDate: isMonthly ? new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString() : null,

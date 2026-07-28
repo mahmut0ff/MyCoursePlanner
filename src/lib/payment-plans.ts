@@ -34,6 +34,22 @@ export function planDebt(plan: any): number {
 }
 
 /**
+ * Скидка по счёту: насколько сумма к оплате (`totalAmount`) ниже полной,
+ * прайсовой (`listAmount`, обычно цена курса). Floored at 0 — если listAmount не
+ * задан, меньше totalAmount или нечитаем, скидки нет (0), а не отрицательное число.
+ *
+ * Это ЕДИНСТВЕННОЕ определение скидки, общее для карточки студента и финансов, —
+ * ровно как planDebt: обе поверхности обязаны показывать по одному счёту одно и
+ * то же число. «Долг, которого нет» родился из открытого кода на местах; скидку
+ * не повторяем той же ошибкой.
+ */
+export function planDiscount(plan: any): number {
+  const list = Number(plan?.listAmount);
+  if (!Number.isFinite(list)) return 0;
+  return Math.max(0, list - (Number(plan?.totalAmount) || 0));
+}
+
+/**
  * True when a plan still represents money the org is owed: it is neither paid nor
  * cancelled AND it has a positive outstanding balance.
  *

@@ -28,7 +28,7 @@ import { handler as plansHandler } from '../api-finance-plans';
 import { handler as metricsHandler } from '../api-finance-metrics';
 import { handler as trxHandler } from '../api-finance-transactions';
 import { parseRangeBoundary, getPeriodRange, getPreviousRange, resolveRange } from '../utils/finance-period';
-import { isDeadlineMissed, isPlanOverdue, orgDayKey, daysUntilDeadline } from '../utils/payment-plans';
+import { isDeadlineMissed, isPlanOverdue, orgDayKey, daysUntilDeadline, planDiscount } from '../utils/payment-plans';
 import { handler as debtRemindersHandler } from '../debt-reminders';
 import { createNotification } from '../utils/notifications';
 
@@ -383,6 +383,118 @@ describe('api-finance-plans POST — branch scoping & allowlist', () => {
 
     const badRes: any = await plansHandler(event('POST', {}, body({ totalAmount: 'garbage' })), {} as any, () => {});
     expect(badRes.statusCode).toBe(400);
+  });
+});
+
+describe('planDiscount — скидка от прайсовой цены', () => {
+  it('is the gap between listAmount and totalAmount', () => {
+    expect(planDiscount({ listAmount: 3500, totalAmount: 2000 })).toBe(1500);
+  });
+
+  it('is zero when there is no listAmount (legacy plan) — never guesses a discount', () => {
+    expect(planDiscount({ totalAmount: 2000 })).toBe(0);
+    expect(planDiscount({ listAmount: undefined, totalAmount: 2000 })).toBe(0);
+  });
+
+  it('floors at zero — a full-price or over-billed plan is not a negative discount', () => {
+    expect(planDiscount({ listAmount: 3500, totalAmount: 3500 })).toBe(0);
+    expect(planDiscount({ listAmount: 3500, totalAmount: 4000 })).toBe(0);
+  });
+
+  it('ignores an unreadable listAmount rather than producing NaN', () => {
+    expect(planDiscount({ listAmount: 'nonsense', totalAmount: 2000 })).toBe(0);
+  });
+});
+
+describe('api-finance-plans PUT — сумма к оплате и «оплачено полностью» (скидка)', () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  /** Mocks the single plan doc and captures what .update() is asked to write. */
+  function wirePut(planData: any) {
+    const updateSpy = vi.fn().mockResolvedValue(undefined);
+    const missingDoc = { get: vi.fn().mockResolvedValue({ exists: false }) };
+    (adminDb.collection as any).mockImplementation((name: string) => {
+      if (name === 'studentPaymentPlans') {
+        return {
+          doc: vi.fn(() => ({
+            get: vi.fn().mockResolvedValue({ exists: !!planData, id: 'plan1', data: () => planData }),
+            update: updateSpy,
+          })),
+        };
+      }
+      return { doc: vi.fn(() => missingDoc) }; // users / courses name lookups
+    });
+    return { updateSpy };
+  }
+
+  it('settle closes the plan at what was paid; the remainder becomes a discount', async () => {
+    (verifyAuth as any).mockResolvedValue(staff(['finances:write']));
+    const { updateSpy } = wirePut({ organizationId: 'org1', totalAmount: 3500, listAmount: 3500, paidAmount: 2000, status: 'partial', branchId: null });
+
+    const res: any = await plansHandler(event('PUT', {}, { planId: 'plan1', settle: true }), {} as any, () => {});
+    expect(res.statusCode).toBe(200);
+    const upd = updateSpy.mock.calls[0][0];
+    expect(upd.totalAmount).toBe(2000);   // closed at paidAmount
+    expect(upd.status).toBe('paid');
+    expect(upd.listAmount).toBeUndefined(); // already 3500 — not overwritten
+    const body = JSON.parse(res.body);
+    expect(planDiscount(body)).toBe(1500);  // 3500 − 2000
+    expect(body).toMatchObject({ totalAmount: 2000, listAmount: 3500, status: 'paid' });
+  });
+
+  it('settle captures listAmount for a legacy plan that has none, so the discount is visible', async () => {
+    (verifyAuth as any).mockResolvedValue(staff(['finances:write']));
+    const { updateSpy } = wirePut({ organizationId: 'org1', totalAmount: 3500, paidAmount: 2000, status: 'partial', branchId: null });
+
+    const res: any = await plansHandler(event('PUT', {}, { planId: 'plan1', settle: true }), {} as any, () => {});
+    expect(res.statusCode).toBe(200);
+    const upd = updateSpy.mock.calls[0][0];
+    expect(upd.totalAmount).toBe(2000);
+    expect(upd.listAmount).toBe(3500); // captured from the pre-settle total
+    expect(planDiscount(JSON.parse(res.body))).toBe(1500);
+  });
+
+  it('settle refuses to revive a written-off (cancelled) plan', async () => {
+    (verifyAuth as any).mockResolvedValue(staff(['finances:write']));
+    const { updateSpy } = wirePut({ organizationId: 'org1', totalAmount: 3500, paidAmount: 0, status: 'cancelled', branchId: null });
+
+    const res: any = await plansHandler(event('PUT', {}, { planId: 'plan1', settle: true }), {} as any, () => {});
+    expect(res.statusCode).toBe(400);
+    expect(updateSpy).not.toHaveBeenCalled();
+  });
+
+  it('lowering the amount due to what was paid clears the phantom debt (status → paid) and records the discount', async () => {
+    (verifyAuth as any).mockResolvedValue(staff(['finances:write']));
+    const { updateSpy } = wirePut({ organizationId: 'org1', totalAmount: 3500, listAmount: 3500, paidAmount: 2000, status: 'partial', branchId: null });
+
+    const res: any = await plansHandler(event('PUT', {}, { planId: 'plan1', totalAmount: 2000 }), {} as any, () => {});
+    expect(res.statusCode).toBe(200);
+    const upd = updateSpy.mock.calls[0][0];
+    expect(upd.totalAmount).toBe(2000);
+    expect(upd.status).toBe('paid');       // re-derived from (paid 2000 ≥ new total 2000)
+    expect(upd.listAmount).toBe(3500);     // price reference preserved → discount 1500
+  });
+
+  it('refuses to set the amount due below what was already paid — that is a refund, not a discount', async () => {
+    (verifyAuth as any).mockResolvedValue(staff(['finances:write']));
+    const { updateSpy } = wirePut({ organizationId: 'org1', totalAmount: 3500, paidAmount: 2000, status: 'partial', branchId: null });
+
+    const res: any = await plansHandler(event('PUT', {}, { planId: 'plan1', totalAmount: 1500 }), {} as any, () => {});
+    expect(res.statusCode).toBe(400);
+    expect(updateSpy).not.toHaveBeenCalled();
+  });
+
+  it('raising the amount due keeps it a debt and invents no discount', async () => {
+    (verifyAuth as any).mockResolvedValue(staff(['finances:write']));
+    const { updateSpy } = wirePut({ organizationId: 'org1', totalAmount: 3500, listAmount: 3500, paidAmount: 2000, status: 'partial', branchId: null });
+
+    const res: any = await plansHandler(event('PUT', {}, { planId: 'plan1', totalAmount: 4000 }), {} as any, () => {});
+    expect(res.statusCode).toBe(200);
+    const upd = updateSpy.mock.calls[0][0];
+    expect(upd.totalAmount).toBe(4000);
+    expect(upd.status).toBe('partial');    // still owed
+    expect(upd.listAmount).toBe(4000);     // list tracks the higher price → no discount
+    expect(planDiscount(JSON.parse(res.body))).toBe(0);
   });
 });
 

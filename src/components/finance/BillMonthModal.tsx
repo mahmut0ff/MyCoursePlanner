@@ -13,8 +13,10 @@ export interface BillCandidate {
   courseId: string;
   courseName: string;
   branchId: string | null;
-  /** Перенос из прошлого месяца; null — прошлого начисления не было, ставит менеджер. */
+  /** Сумма к оплате: перенос из прошлого месяца → цена курса → null (ставит менеджер). */
   amount: number | null;
+  /** Полная (прайсовая) цена курса — по ней показываем и считаем скидку. */
+  listAmount: number | null;
 }
 
 interface Props {
@@ -72,6 +74,8 @@ const BillMonthModal: React.FC<Props> = ({ period, periodLabel, candidates, onCl
         courseId: r.courseId,
         courseName: r.courseName,
         amount: Number(r.amountText),
+        // Прайсовая цена курса → сервер посчитает скидку, если начислили меньше.
+        listAmount: r.listAmount ?? undefined,
         branchId: r.branchId,
       }));
       const res = await apiBillMonth({ period, charges });
@@ -107,32 +111,43 @@ const BillMonthModal: React.FC<Props> = ({ period, periodLabel, candidates, onCl
               {t('finances.billMonthHint', 'Суммы перенесены из прошлого месяца — поправьте, где нужно. Снимите галочку, чтобы пропустить.')}
             </p>
             <div className="p-5 space-y-2 overflow-y-auto">
-              {rows.map(r => (
-                <div key={r.key} className="flex items-center gap-3 bg-slate-50 dark:bg-slate-900/40 rounded-xl px-3 py-2">
-                  <input
-                    type="checkbox"
-                    checked={r.include}
-                    onChange={e => patch(r.key, { include: e.target.checked })}
-                    aria-label={r.studentName}
-                    className="w-4 h-4 shrink-0 accent-emerald-500"
-                  />
-                  <div className="min-w-0 flex-1">
-                    <p className="text-sm font-medium text-slate-800 dark:text-slate-200 truncate">{r.studentName}</p>
-                    <p className="text-[11px] text-slate-400 truncate">{r.courseName || r.courseId}</p>
-                  </div>
-                  <div className="flex items-center gap-1 shrink-0">
+              {rows.map(r => {
+                // Скидка = цена курса − начисленная сумма. Показываем живьём, чтобы
+                // менеджер видел, что ставит меньше прайса осознанно, а не по ошибке.
+                const discount = r.listAmount != null ? Math.max(0, r.listAmount - Number(r.amountText || 0)) : 0;
+                return (
+                  <div key={r.key} className="flex items-center gap-3 bg-slate-50 dark:bg-slate-900/40 rounded-xl px-3 py-2">
                     <input
-                      type="number"
-                      min="0"
-                      value={r.amountText}
-                      onChange={e => patch(r.key, { amountText: e.target.value })}
-                      placeholder="0"
-                      className="w-24 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-1.5 text-sm text-right font-medium dark:text-white"
+                      type="checkbox"
+                      checked={r.include}
+                      onChange={e => patch(r.key, { include: e.target.checked })}
+                      aria-label={r.studentName}
+                      className="w-4 h-4 shrink-0 accent-emerald-500"
                     />
-                    <span className="text-[11px] text-slate-400 w-6">{CURRENCY_SUFFIX}</span>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-medium text-slate-800 dark:text-slate-200 truncate">{r.studentName}</p>
+                      <p className="text-[11px] text-slate-400 truncate">{r.courseName || r.courseId}</p>
+                      {discount > 0 && (
+                        <p className="text-[11px] text-emerald-600 font-medium">
+                          {t('finances.discount', 'Скидка')}: {formatMoney(discount)}
+                          <span className="text-slate-400 font-normal"> · {t('finances.coursePrice', 'Цена курса')} {formatMoney(r.listAmount!)}</span>
+                        </p>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-1 shrink-0">
+                      <input
+                        type="number"
+                        min="0"
+                        value={r.amountText}
+                        onChange={e => patch(r.key, { amountText: e.target.value })}
+                        placeholder="0"
+                        className="w-24 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-1.5 text-sm text-right font-medium dark:text-white"
+                      />
+                      <span className="text-[11px] text-slate-400 w-6">{CURRENCY_SUFFIX}</span>
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </>
         )}

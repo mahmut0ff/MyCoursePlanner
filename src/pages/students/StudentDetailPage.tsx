@@ -8,7 +8,7 @@ import EditStudentModal from '../../components/students/EditStudentModal';
 import { useAuth } from '../../contexts/AuthContext';
 import { useBranch } from '../../contexts/BranchContext';
 import { usePlanGate } from '../../contexts/PlanContext';
-import { planDebt, isDebtBearingPlan, isWrittenOffPlan, isPlanOverdue, planDiscount, planPeriodKey } from '../../lib/payment-plans';
+import { planDebt, isDebtBearingPlan, isWrittenOffPlan, isPlanOverdue, planDiscount, planPeriodKey, planProgressKey } from '../../lib/payment-plans';
 import { formatMoney } from '../../lib/money';
 import ReportCommentModal from '../../components/ai/ReportCommentModal';
 import MemberRolesEditor from '../../components/shared/MemberRolesEditor';
@@ -40,7 +40,8 @@ const C = {
  */
 const PLAN_STATUS: Record<string, { key: string; fallback: string; cls: string }> = {
   paid: { key: 'finances.statusPaid', fallback: 'Оплачено', cls: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400' },
-  overdue: { key: 'finances.statusOverdue', fallback: 'Просрочено', cls: 'bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400' },
+  // «Просрочено» больше не бейдж, а отдельная метка «срок прошёл» рядом со статусом
+  // (см. ниже): бейдж теперь выражает ТОЛЬКО прогресс оплаты и не затирает «Частично».
   partial: { key: 'finances.statusPartial', fallback: 'Частично', cls: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400' },
   pending: { key: 'finances.statusPending', fallback: 'Ожидает', cls: 'bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-400' },
   cancelled: { key: 'finances.statusWrittenOff', fallback: 'Списан', cls: 'bg-slate-100 text-slate-400 line-through dark:bg-slate-800 dark:text-slate-500' },
@@ -659,9 +660,10 @@ const StudentDetailPage: React.FC = () => {
                     const debt = planDebt(plan);
                     const totalKnown = hasKnownTotal(plan);
                     const overdue = !writtenOff && isPlanOverdue(plan);
-                    // Просрочку показываем по сроку, а не по записанному статусу:
-                    // продлённый срок обязан снимать «Просрочено».
-                    const cfg = PLAN_STATUS[overdue ? 'overdue' : plan.status] || PLAN_STATUS.pending;
+                    // Бейдж = ТОЛЬКО прогресс оплаты (ждём / частично / оплачено / списан);
+                    // просрочка — отдельная метка ниже, а не подмена статуса. Правило в
+                    // общем предикате, чтобы бейдж совпадал на всех финансовых экранах.
+                    const cfg = PLAN_STATUS[planProgressKey(plan)];
                     return (
                       <div key={plan.id} className={`bg-slate-50 dark:bg-slate-700/50 rounded-lg p-3 border border-slate-100 dark:border-slate-600 ${writtenOff ? 'opacity-60' : ''}`}>
                         <div className="flex items-center justify-between gap-2 mb-1">
@@ -680,6 +682,16 @@ const StudentDetailPage: React.FC = () => {
                             <span className={`text-[10px] px-1.5 py-0.5 rounded font-bold ${cfg.cls}`}>
                               {t(cfg.key, cfg.fallback)}
                             </span>
+                            {/* «Срок прошёл» — отдельная метка, а не подмена статуса:
+                                видно и что платили (бейдж), и что с опозданием (метка). */}
+                            {overdue && (
+                              <span
+                                title={t('finances.overdueTagHint', 'Снимется, когда оплатят полностью или продлят срок.')}
+                                className="text-[10px] px-1.5 py-0.5 rounded font-bold bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400"
+                              >
+                                {t('finances.overdueTag', 'срок прошёл')}
+                              </span>
+                            )}
                             {/* Изменить сумму к оплате — скидка задаётся здесь же, где виден счёт. */}
                             {!writtenOff && (
                               <button
@@ -693,20 +705,29 @@ const StudentDetailPage: React.FC = () => {
                             )}
                           </div>
                         </div>
-                        {/* Одна денежная строка вместо Сумма/Оплачено/Долг: должен —
-                            «к оплате», оплачено — сумма оплаты, списан — молчим (ниже
-                            есть поясняющая подпись). Неизвестную сумму по-прежнему не
-                            печатаем нулём — легаси-план честно говорит «не указана». */}
+                        {/* Денежная строка ВСЕГДА показывает прогресс: сколько внесли,
+                            из какой суммы и сколько осталось. Раньше при долге печатался
+                            только остаток, и внесённый платёж не оставлял на карточке
+                            следа — отсюда «я же оплатил, почему просрочка?». Списанный
+                            счёт молчит (ниже есть поясняющая подпись); у легаси-плана без
+                            суммы месяца не врём нулём. */}
                         {!writtenOff && (
                           <div className="text-[10px] text-slate-500 mb-2">
-                            {owes ? (
+                            {!totalKnown ? (
                               <>
-                                {t('finances.toPay', 'К оплате')}:{' '}
-                                <span className="font-bold text-amber-600">
-                                  {totalKnown ? formatMoney(debt) : <span className="text-rose-500">{t('finances.amountUnknown', 'не указана')}</span>}
+                                {t('finances.colPaid', 'Оплачено')}: <span className="font-bold text-emerald-600">{formatMoney(plan.paidAmount)}</span>
+                                {' · '}<span className="text-rose-400">{t('finances.amountNotSet', 'сумма не указана')}</span>
+                              </>
+                            ) : owes ? (
+                              <>
+                                {t('finances.colPaid', 'Оплачено')}:{' '}
+                                <span className="font-bold text-emerald-600">{formatMoney(plan.paidAmount || 0)}</span>
+                                {' '}{t('finances.outOf', 'из')} {formatMoney(plan.totalAmount)} ·{' '}
+                                <span className={overdue ? 'font-bold text-rose-500' : 'font-bold text-amber-600'}>
+                                  {t('finances.remainingInline', 'осталось')} {formatMoney(debt)}
                                 </span>
                                 {plan.deadline && (
-                                  <span className={overdue ? 'font-bold text-rose-500' : 'text-slate-400'}>
+                                  <span className={overdue ? 'text-rose-500' : 'text-slate-400'}>
                                     {' '}· {t('finances.until', 'до')} {new Date(plan.deadline).toLocaleDateString()}
                                   </span>
                                 )}

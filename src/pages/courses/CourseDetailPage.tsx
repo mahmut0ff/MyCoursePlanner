@@ -2,8 +2,9 @@ import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { orgGetCourse, orgUpdateCourse, orgDeleteCourse, orgGetGroups, orgCreateGroup, orgEnrollInGroup } from '../../lib/api';
-import { ArrowLeft, BookOpen, Calendar, Users, FileText, Edit, Trash2, Plus, MessageSquare, Coins, LayoutGrid } from 'lucide-react';
+import { ArrowLeft, BookOpen, Calendar, Users, FileText, Edit, Trash2, Plus, MessageSquare, Coins, LayoutGrid, Building2 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
+import { useBranch } from '../../contexts/BranchContext';
 import type { Course, Group } from '../../types';
 import toast from 'react-hot-toast';
 import { SyllabusBuilder } from '../../components/syllabuses/SyllabusBuilder';
@@ -13,6 +14,7 @@ const CourseDetailPage: React.FC = () => {
   const navigate = useNavigate();
   const { t } = useTranslation();
   const { role, profile } = useAuth();
+  const { activeBranchId, branches, canSwitch } = useBranch();
   const isAdmin = role === 'admin' || role === 'manager';
   const isStudent = role === 'student';
 
@@ -61,9 +63,26 @@ const CourseDetailPage: React.FC = () => {
       .finally(() => setLoading(false));
   };
 
+  // Re-fetch when the branch switches: groups (and the stat cards driven by them)
+  // are branch-scoped server-side, so the whole page follows the active branch.
   useEffect(() => {
     loadData();
-  }, [id]);
+  }, [id, activeBranchId]);
+
+  // Per-branch split of this course's groups. Meaningful only on «Все филиалы»,
+  // where `groups` spans every branch (a picked branch scopes it to one).
+  const branchSplit = React.useMemo(() => {
+    const acc: Record<string, { groups: number; students: Set<string> }> = {};
+    groups.forEach((g) => {
+      const bid = g.branchId || '__none__';
+      acc[bid] = acc[bid] || { groups: 0, students: new Set() };
+      acc[bid].groups++;
+      (g.studentIds || []).forEach((s) => acc[bid].students.add(s));
+    });
+    return Object.entries(acc)
+      .map(([bid, v]) => ({ bid, name: bid === '__none__' ? 'Без филиала' : (branches.find(b => b.id === bid)?.name || 'Филиал'), groups: v.groups, students: v.students.size }))
+      .sort((a, b) => b.groups - a.groups);
+  }, [groups, branches]);
 
   const handleUpdateCourse = async () => {
     if (!course || !editForm.title.trim()) return;
@@ -268,6 +287,39 @@ const CourseDetailPage: React.FC = () => {
         </div>
       </div>
       
+      {/* Per-branch activity — only on «Все филиалы», where groups span every branch */}
+      {!activeBranchId && canSwitch && groups.length > 0 && (
+        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-3xl p-6 md:p-8 shadow-sm">
+          <div className="flex items-center gap-3 mb-5">
+            <div className="p-2 bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400 rounded-xl">
+              <Building2 className="w-5 h-5" />
+            </div>
+            <div>
+              <h2 className="text-xl font-bold text-slate-900 dark:text-white tracking-tight">По филиалам</h2>
+              <p className="text-xs text-slate-500 dark:text-slate-400">Активность этого курса в каждом филиале</p>
+            </div>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            {branchSplit.map((b) => (
+              <div key={b.bid} className={`rounded-2xl border p-4 ${b.bid === '__none__' ? 'border-amber-200 bg-amber-50 dark:border-amber-800/50 dark:bg-amber-900/15' : 'border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-800/50'}`}>
+                <span className={`block text-sm font-bold truncate mb-3 ${b.bid === '__none__' ? 'text-amber-800 dark:text-amber-300' : 'text-slate-900 dark:text-white'}`}>{b.name}</span>
+                <div className="flex items-end gap-4">
+                  <div className="flex items-baseline gap-1.5">
+                    <span className="text-2xl font-extrabold text-slate-900 dark:text-white">{b.groups}</span>
+                    <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide">групп</span>
+                  </div>
+                  <div className="flex items-baseline gap-1.5">
+                    <span className="text-2xl font-extrabold text-slate-900 dark:text-white">{b.students}</span>
+                    <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide">студ.</span>
+                  </div>
+                </div>
+                {b.bid === '__none__' && <p className="text-[11px] text-amber-700 dark:text-amber-400 mt-2 font-medium">Группам не назначен филиал</p>}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Syllabus Builder Section */}
       {isAdmin && (
         <SyllabusBuilder courseId={course.id} />

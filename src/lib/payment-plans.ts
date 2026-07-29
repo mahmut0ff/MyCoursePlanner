@@ -69,6 +69,27 @@ export function isWrittenOffPlan(plan: any): boolean {
 }
 
 /**
+ * Прогресс оплаты для БЕЙДЖА карточки: 'pending' | 'partial' | 'paid' | 'cancelled'.
+ *
+ * Это ось «сколько оплачено», ОТДЕЛЬНАЯ от оси «в срок / просрочено» (isPlanOverdue).
+ * Их нельзя сливать в один бейдж: раньше просрочка затирала статус, и частичная
+ * оплата просроченного месяца показывалась голым «Просрочено» — платёж, который
+ * менеджер только что внёс, пропадал с карточки, и он справедливо не понимал, куда
+ * делись деньги. Просрочку показываем ОТДЕЛЬНОЙ меткой рядом, а не вместо статуса.
+ *
+ * 'paid' требует известной ПОЛОЖИТЕЛЬНОЙ суммы — как derivePlanStatus: план без
+ * суммы (легаси) не может быть «оплачен полностью», иначе первый же платёж выдавал
+ * бы «Оплачено» по неизвестному итогу.
+ */
+export function planProgressKey(plan: any): 'pending' | 'partial' | 'paid' | 'cancelled' {
+  if (isWrittenOffPlan(plan)) return 'cancelled';
+  const total = Number(plan?.totalAmount);
+  const totalKnown = Number.isFinite(total) && total > 0;
+  if (totalKnown && !isDebtBearingPlan(plan)) return 'paid';
+  return Number(plan?.paidAmount) > 0 ? 'partial' : 'pending';
+}
+
+/**
  * Календарный день срока в виде 'YYYY-MM-DD', или null если срока нет / он мусорный.
  *
  * Реальные документы несут ОБЕ формы: часть писателей кладёт голую дату

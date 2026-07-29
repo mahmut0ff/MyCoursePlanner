@@ -14,7 +14,7 @@ type StatusFilter = 'all' | 'published' | 'draft';
 const CoursesPage: React.FC = () => {
   const { t } = useTranslation();
   const { role, profile } = useAuth();
-  const { activeBranchId } = useBranch();
+  const { activeBranchId, activeBranch, branches, canSwitch } = useBranch();
   const isAdmin = role === 'admin' || role === 'manager';
   const isStaff = role === 'admin' || role === 'manager' || role === 'teacher';
   const [courses, setCourses] = useState<Course[]>([]);
@@ -93,15 +93,40 @@ const CoursesPage: React.FC = () => {
   const filtered = useMemo(() => {
     return courses.filter((c) => {
       if (role === 'teacher' && viewMode === 'mine' && !myCourseIds.has(c.id)) return false;
+      // With a branch picked, `groups` is already scoped to it — hide courses that
+      // don't run in this branch, so the list shows only the branch's courses.
+      if (activeBranchId && !groups.some((g: any) => g.courseId === c.id)) return false;
       const matchesSearch = c.title.toLowerCase().includes(search.toLowerCase()) || c.subject?.toLowerCase().includes(search.toLowerCase());
       const matchesStatus = statusFilter === 'all' || c.status === statusFilter;
       const matchesSubject = subjectFilter === 'all' || c.subject === subjectFilter;
       return matchesSearch && matchesStatus && matchesSubject;
     });
-  }, [courses, search, statusFilter, subjectFilter, role, viewMode, myCourseIds]);
+  }, [courses, groups, activeBranchId, search, statusFilter, subjectFilter, role, viewMode, myCourseIds]);
 
   const getStudentCount = (courseId: string) => new Set(groups.filter((g: any) => g.courseId === courseId).flatMap((g: any) => g.studentIds || [])).size;
   const getGroupCount = (courseId: string) => groups.filter((g: any) => g.courseId === courseId).length;
+
+  const branchNameById = useMemo(() => {
+    const m: Record<string, string> = {};
+    branches.forEach(b => { m[b.id] = b.name; });
+    return m;
+  }, [branches]);
+
+  // Per-branch split for a course. `groups` is org-wide only under «Все филиалы»
+  // (a picked branch scopes it server-side), so this is rendered only there — it
+  // lets you see each branch's load side by side without switching.
+  const branchBreakdown = (courseId: string) => {
+    const acc: Record<string, { groups: number; students: Set<string> }> = {};
+    groups.filter((g: any) => g.courseId === courseId).forEach((g: any) => {
+      const bid = g.branchId || '__none__';
+      acc[bid] = acc[bid] || { groups: 0, students: new Set() };
+      acc[bid].groups++;
+      (g.studentIds || []).forEach((s: string) => acc[bid].students.add(s));
+    });
+    return Object.entries(acc)
+      .map(([bid, v]) => ({ bid, name: bid === '__none__' ? 'Без филиала' : (branchNameById[bid] || 'Филиал'), groups: v.groups, students: v.students.size }))
+      .sort((a, b) => b.groups - a.groups);
+  };
 
   const openCreate = () => { setEditing(null); setForm({ title: '', description: '', subject: '', status: 'draft', price: 0, paymentFormat: 'monthly', durationMonths: 1 }); setShowModal(true); };
   const openEdit = (c: Course) => { setEditing(c); setForm({ title: c.title, description: c.description || '', subject: c.subject || '', status: c.status as any || 'draft', price: c.price || 0, paymentFormat: c.paymentFormat || 'monthly', durationMonths: c.durationMonths || 1 }); setShowModal(true); };
@@ -130,7 +155,9 @@ const CoursesPage: React.FC = () => {
       <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-6">
         <div>
           <h1 className="text-3xl font-extrabold text-slate-900 dark:text-white mb-2">{t('nav.courses', 'Курсы')}</h1>
-          <p className="text-slate-500 dark:text-slate-400 text-sm">{filtered.length} доступных курсов</p>
+          <p className="text-slate-500 dark:text-slate-400 text-sm">
+            {activeBranch ? `${filtered.length} курсов · филиал «${activeBranch.name}»` : `${filtered.length} доступных курсов`}
+          </p>
         </div>
 
         <div className="flex items-center gap-3 w-full sm:w-auto">
@@ -234,6 +261,20 @@ const CoursesPage: React.FC = () => {
                   </h3>
                   {course.description && (
                     <p className="text-[11px] text-slate-400 truncate mt-0.5 hidden lg:block">{course.description}</p>
+                  )}
+                  {/* Per-branch split — only on «Все филиалы», where `groups` spans all branches */}
+                  {!activeBranchId && canSwitch && (
+                    <div className="hidden md:flex items-center gap-1 mt-1 flex-wrap">
+                      {branchBreakdown(course.id).map((b) => (
+                        <span
+                          key={b.bid}
+                          title={`${b.groups} групп · ${b.students} студентов`}
+                          className={`text-[10px] font-semibold px-1.5 py-0.5 rounded ${b.bid === '__none__' ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300' : 'bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-200'}`}
+                        >
+                          {b.name} · {b.groups}
+                        </span>
+                      ))}
+                    </div>
                   )}
                   {/* Mobile-only meta */}
                   <div className="flex items-center gap-2 mt-1 md:hidden flex-wrap">

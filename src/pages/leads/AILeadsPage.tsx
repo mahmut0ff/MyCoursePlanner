@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { collection, query, orderBy, onSnapshot, doc, updateDoc, deleteDoc, addDoc } from 'firebase/firestore';
 import { db } from '../../lib/firebase';
 import { useAuth } from '../../contexts/AuthContext';
-import { Phone, MessageSquare, CheckCircle, Clock, Trash2, Plus, X, Inbox, Target, ChevronDown } from 'lucide-react';
+import { Phone, MessageSquare, CheckCircle, Clock, Trash2, Plus, X, Inbox, Target, ChevronDown, Pencil } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { format } from 'date-fns';
 
@@ -46,8 +46,9 @@ const AILeadsPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   
-  // Modal state
+  // Modal state — shared by create and edit; editingId === null means "create"
   const [modalOpen, setModalOpen] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [newName, setNewName] = useState('');
   const [newPhone, setNewPhone] = useState('');
   const [newReason, setNewReason] = useState('');
@@ -103,7 +104,31 @@ const AILeadsPage: React.FC = () => {
     }
   };
 
-  const handleAddLead = async (e: React.FormEvent) => {
+  const openCreate = () => {
+    setEditingId(null);
+    setNewName('');
+    setNewPhone('');
+    setNewReason('');
+    setModalOpen(true);
+  };
+
+  const openEdit = (lead: AILead) => {
+    setEditingId(lead.id);
+    setNewName(lead.name);
+    setNewPhone(lead.phone);
+    setNewReason(lead.reason);
+    setModalOpen(true);
+  };
+
+  const closeModal = () => {
+    setModalOpen(false);
+    setEditingId(null);
+    setNewName('');
+    setNewPhone('');
+    setNewReason('');
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!organizationId || !profile) return;
     if (!newName.trim() || !newPhone.trim()) {
@@ -113,44 +138,52 @@ const AILeadsPage: React.FC = () => {
 
     setCreating(true);
     try {
-      const managerName = profile.displayName || 'Менеджер';
-      
-      await addDoc(collection(db, 'organizations', organizationId, 'aiLeads'), {
-        name: newName.trim(),
-        phone: newPhone.trim(),
-        reason: newReason.trim() || 'Новая заявка',
-        source: 'manual',
-        createdBy: managerName,
-        status: 'new',
-        createdAt: new Date().toISOString()
-      });
-      
-      // Trigger telegram notification
-      if (firebaseUser) {
-        const token = await firebaseUser.getIdToken();
-        fetch('/.netlify/functions/api-notifications?action=notifyNewLead', {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            name: newName.trim(),
-            phone: newPhone.trim(),
-            reason: newReason.trim(),
-            source: 'manual'
-          })
-        }).catch(e => console.error('Failed to notify about new lead:', e));
+      if (editingId) {
+        // Правим только поля из формы — статус, источник и дата создания остаются как есть.
+        await updateDoc(doc(db, 'organizations', organizationId, 'aiLeads', editingId), {
+          name: newName.trim(),
+          phone: newPhone.trim(),
+          reason: newReason.trim() || 'Новая заявка',
+        });
+        toast.success('Заявка обновлена');
+      } else {
+        const managerName = profile.displayName || 'Менеджер';
+
+        await addDoc(collection(db, 'organizations', organizationId, 'aiLeads'), {
+          name: newName.trim(),
+          phone: newPhone.trim(),
+          reason: newReason.trim() || 'Новая заявка',
+          source: 'manual',
+          createdBy: managerName,
+          status: 'new',
+          createdAt: new Date().toISOString()
+        });
+
+        // Trigger telegram notification
+        if (firebaseUser) {
+          const token = await firebaseUser.getIdToken();
+          fetch('/.netlify/functions/api-notifications?action=notifyNewLead', {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              name: newName.trim(),
+              phone: newPhone.trim(),
+              reason: newReason.trim(),
+              source: 'manual'
+            })
+          }).catch(e => console.error('Failed to notify about new lead:', e));
+        }
+
+        toast.success('Заявка добавлена');
       }
-      
-      toast.success('Заявка добавлена');
-      setModalOpen(false);
-      setNewName('');
-      setNewPhone('');
-      setNewReason('');
+
+      closeModal();
     } catch (err) {
       console.error(err);
-      toast.error('Не удалось создать заявку');
+      toast.error(editingId ? 'Не удалось обновить заявку' : 'Не удалось создать заявку');
     } finally {
       setCreating(false);
     }
@@ -175,7 +208,7 @@ const AILeadsPage: React.FC = () => {
           </p>
         </div>
         <button
-          onClick={() => setModalOpen(true)}
+          onClick={openCreate}
           className="h-9 px-4 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-lg text-sm font-semibold hover:opacity-90 transition-opacity flex items-center gap-1.5 shrink-0"
         >
           <Plus className="w-4 h-4" />
@@ -249,6 +282,15 @@ const AILeadsPage: React.FC = () => {
                     title="Показать цель заявки"
                   >
                     <ChevronDown className={`w-4 h-4 transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`} />
+                  </button>
+
+                  {/* Edit */}
+                  <button
+                    onClick={() => openEdit(lead)}
+                    className="w-7 h-7 flex items-center justify-center rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors shrink-0"
+                    title="Редактировать"
+                  >
+                    <Pencil className="w-3.5 h-3.5" />
                   </button>
 
                   {/* Delete */}
@@ -360,16 +402,16 @@ const AILeadsPage: React.FC = () => {
 
       {/* Add Lead Modal */}
       {modalOpen && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => setModalOpen(false)}>
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={closeModal}>
           <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in-95" onClick={e => e.stopPropagation()}>
             <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-700 flex items-center justify-between">
-              <h2 className="text-lg font-bold text-slate-900 dark:text-white">Добавить заявку</h2>
-              <button onClick={() => setModalOpen(false)} className="p-2 -mr-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 rounded-lg transition-colors">
+              <h2 className="text-lg font-bold text-slate-900 dark:text-white">{editingId ? 'Редактировать заявку' : 'Добавить заявку'}</h2>
+              <button onClick={closeModal} className="p-2 -mr-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 rounded-lg transition-colors">
                 <X className="w-5 h-5" />
               </button>
             </div>
-            
-            <form onSubmit={handleAddLead} className="p-6 space-y-4">
+
+            <form onSubmit={handleSubmit} className="p-6 space-y-4">
               <div>
                 <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5 ml-1">
                   Имя клиента
@@ -414,7 +456,7 @@ const AILeadsPage: React.FC = () => {
               <div className="pt-2 flex justify-end gap-3">
                 <button
                   type="button"
-                  onClick={() => setModalOpen(false)}
+                  onClick={closeModal}
                   className="btn-ghost"
                 >
                   Отмена

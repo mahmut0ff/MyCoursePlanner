@@ -9,7 +9,7 @@
  */
 import type { Handler, HandlerEvent } from '@netlify/functions';
 import { adminDb, getDocsByIds } from './utils/firebase-admin';
-import { verifyAuth, ok, unauthorized, forbidden, badRequest, jsonResponse, hasRole, memberHoldsRole } from './utils/auth';
+import { verifyAuth, can, ok, unauthorized, forbidden, badRequest, jsonResponse, hasRole, memberHoldsRole } from './utils/auth';
 import { rateLimiters, getRateLimitKey } from './utils/rate-limiter';
 import { getModel, parseJsonLoose, aiAllowed, hasGeminiKey, recordAiUsage } from './utils/ai';
 import { computeStudentRisk } from './utils/risk';
@@ -28,19 +28,25 @@ interface OrgSnapshot {
   teachers: number;
   performance: { avgScore: number | null; attemptsThisMonth: number };
   attendance: { rateAvg: number | null; absencesThisMonth: number };
-  finance: { incomeThisMonth: number; incomeLastMonth: number; expenseThisMonth: number; debt: number; overduePlans: number };
+  // Present only when the caller holds `finance_overview:read`. A cashier
+  // (finances CRUD without finance_overview) gets it undefined, so no revenue/
+  // profit/expense figure ever reaches the model prompt.
+  finance?: { incomeThisMonth: number; incomeLastMonth: number; expenseThisMonth: number; debt: number; overduePlans: number };
   leads: { total: number; newThisMonth: number; resolved: number; bySource: Record<string, number> };
   courses: { title: string; price?: number; format?: string }[];
 }
 
-async function gatherSnapshot(orgId: string): Promise<OrgSnapshot> {
+async function gatherSnapshot(orgId: string, includeFinance: boolean): Promise<OrgSnapshot> {
   const monthStart = monthStartISO(0);
   const lastMonthStart = monthStartISO(1);
 
+  // The finance collections are read ONLY for callers allowed to see aggregates.
+  // Skipping the query (not just hiding the result) is defense in depth: without
+  // finance_overview, the money never leaves Firestore, so it can't leak into the prompt.
   const [memberSnap, txSnap, planSnap, leadSnap, attemptSnap, journalSnap, courseSnap] = await Promise.all([
     adminDb.collection('orgMembers').doc(orgId).collection('members').get(),
-    adminDb.collection('financeTransactions').where('organizationId', '==', orgId).get().catch(() => null),
-    adminDb.collection('studentPaymentPlans').where('organizationId', '==', orgId).get().catch(() => null),
+    includeFinance ? adminDb.collection('financeTransactions').where('organizationId', '==', orgId).get().catch(() => null) : Promise.resolve(null),
+    includeFinance ? adminDb.collection('studentPaymentPlans').where('organizationId', '==', orgId).get().catch(() => null) : Promise.resolve(null),
     adminDb.collection('organizations').doc(orgId).collection('aiLeads').get().catch(() => null),
     adminDb.collection('examAttempts').where('organizationId', '==', orgId).get().catch(() => null),
     adminDb.collection('journal').where('organizationId', '==', orgId).get().catch(() => null),
@@ -52,28 +58,32 @@ async function gatherSnapshot(orgId: string): Promise<OrgSnapshot> {
   const teachers = members.filter(m => m.role === 'teacher' && m.status === 'active').length;
   const newStudents = students.filter(m => (m.joinedAt || m.createdAt) >= monthStart).length;
 
-  let incomeThisMonth = 0, incomeLastMonth = 0, expenseThisMonth = 0;
-  for (const t of txSnap?.docs || []) {
-    const tx = t.data() as any;
-    const when = tx.date || tx.createdAt || '';
-    const amount = Number(tx.amount || 0);
-    if (tx.type === 'income') {
-      if (when >= monthStart) incomeThisMonth += amount;
-      else if (when >= lastMonthStart && when < monthStart) incomeLastMonth += amount;
-    } else if (tx.type === 'expense' && when >= monthStart) {
-      expenseThisMonth += amount;
+  let finance: OrgSnapshot['finance'];
+  if (includeFinance) {
+    let incomeThisMonth = 0, incomeLastMonth = 0, expenseThisMonth = 0;
+    for (const t of txSnap?.docs || []) {
+      const tx = t.data() as any;
+      const when = tx.date || tx.createdAt || '';
+      const amount = Number(tx.amount || 0);
+      if (tx.type === 'income') {
+        if (when >= monthStart) incomeThisMonth += amount;
+        else if (when >= lastMonthStart && when < monthStart) incomeLastMonth += amount;
+      } else if (tx.type === 'expense' && when >= monthStart) {
+        expenseThisMonth += amount;
+      }
     }
-  }
 
-  let debt = 0, overduePlans = 0;
-  for (const p of planSnap?.docs || []) {
-    const plan = p.data() as any;
-    // Same debt definition as api-finance-metrics: written-off ('cancelled') and
-    // settled plans are excluded, so the AI analyst can't quote a debt figure the
-    // owner's own dashboard contradicts.
-    if (!isDebtBearingPlan(plan)) continue;
-    debt += planDebt(plan);
-    if (plan.status === 'overdue') overduePlans++;
+    let debt = 0, overduePlans = 0;
+    for (const p of planSnap?.docs || []) {
+      const plan = p.data() as any;
+      // Same debt definition as api-finance-metrics: written-off ('cancelled') and
+      // settled plans are excluded, so the AI analyst can't quote a debt figure the
+      // owner's own dashboard contradicts.
+      if (!isDebtBearingPlan(plan)) continue;
+      debt += planDebt(plan);
+      if (plan.status === 'overdue') overduePlans++;
+    }
+    finance = { incomeThisMonth, incomeLastMonth, expenseThisMonth, debt, overduePlans };
   }
 
   const leadDocs = (leadSnap?.docs || []).map(d => d.data() as any);
@@ -103,7 +113,7 @@ async function gatherSnapshot(orgId: string): Promise<OrgSnapshot> {
     teachers,
     performance: { avgScore, attemptsThisMonth },
     attendance: { rateAvg, absencesThisMonth },
-    finance: { incomeThisMonth, incomeLastMonth, expenseThisMonth, debt, overduePlans },
+    finance,
     leads: {
       total: leadDocs.length,
       newThisMonth: leadDocs.filter(l => (l.createdAt || '') >= monthStart).length,
@@ -116,16 +126,28 @@ async function gatherSnapshot(orgId: string): Promise<OrgSnapshot> {
 
 function snapshotToText(s: OrgSnapshot): string {
   const pct = (n: number | null) => (n === null ? 'нет данных' : `${n}%`);
-  return [
+  const lines = [
     `АКТИВНЫЕ УЧЕНИКИ: ${s.students.active} (новых в этом месяце: ${s.students.newThisMonth})`,
     `ПРЕПОДАВАТЕЛИ: ${s.teachers}`,
     `СРЕДНИЙ БАЛЛ ПО ТЕСТАМ: ${pct(s.performance.avgScore)} (попыток в этом месяце: ${s.performance.attemptsThisMonth})`,
     `ПОСЕЩАЕМОСТЬ: ${pct(s.attendance.rateAvg)} (пропусков в этом месяце: ${s.attendance.absencesThisMonth})`,
-    `ФИНАНСЫ: доход за текущий месяц ${Math.round(s.finance.incomeThisMonth)}, за прошлый месяц ${Math.round(s.finance.incomeLastMonth)}, расходы текущего месяца ${Math.round(s.finance.expenseThisMonth)}`,
-    `ДОЛГИ: ${Math.round(s.finance.debt)} (просроченных планов оплаты: ${s.finance.overduePlans})`,
+  ];
+  // Finance lines appear only for callers with finance_overview. Otherwise a
+  // redaction marker tells the model to decline money questions honestly rather
+  // than invent a number — there are no figures in the prompt to leak.
+  if (s.finance) {
+    lines.push(
+      `ФИНАНСЫ: доход за текущий месяц ${Math.round(s.finance.incomeThisMonth)}, за прошлый месяц ${Math.round(s.finance.incomeLastMonth)}, расходы текущего месяца ${Math.round(s.finance.expenseThisMonth)}`,
+      `ДОЛГИ: ${Math.round(s.finance.debt)} (просроченных планов оплаты: ${s.finance.overduePlans})`,
+    );
+  } else {
+    lines.push('ФИНАНСЫ: скрыто — у пользователя нет доступа к финансовой сводке (выручка, прибыль, расходы, долги недоступны). На вопросы о деньгах ответь, что доступа к финансам нет.');
+  }
+  lines.push(
     `ЗАЯВКИ (лиды): всего ${s.leads.total}, новых в этом месяце ${s.leads.newThisMonth}, закрыто ${s.leads.resolved}, по источникам ${JSON.stringify(s.leads.bySource)}`,
     `КУРСЫ (${s.courses.length}): ${s.courses.map(c => c.title + (c.price ? ` — ${c.price}` : '')).join('; ') || 'нет'}`,
-  ].join('\n');
+  );
+  return lines.join('\n');
 }
 
 // ── Churn: per-student risk over the org roster (formula in utils/risk.ts) ──
@@ -208,7 +230,12 @@ export const handler: Handler = async (event: HandlerEvent) => {
       const { question } = JSON.parse(event.body || '{}');
       if (!question || !String(question).trim()) return badRequest('question required');
 
-      const snapshot = await gatherSnapshot(orgId);
+      // High-level finance figures (выручка/прибыль/расходы/долги) are gated by
+      // finance_overview, not the role check above — otherwise a «Кассир» (manager
+      // base role, finances CRUD, no finance_overview) could read revenue/profit here
+      // even though every direct finance surface hides it. can() passes admins/owners.
+      const canSeeFinance = can(user, 'finance_overview', 'read');
+      const snapshot = await gatherSnapshot(orgId, canSeeFinance);
       const model = getModel({ json: true });
       const prompt = `Ты — AI бизнес-аналитик учебного центра. Отвечай ТОЛЬКО на основе приведённых данных. Если данных для ответа недостаточно — честно скажи об этом и предложи, что отслеживать. Отвечай на русском, кратко и по делу, с конкретными цифрами. Не выдумывай.
 

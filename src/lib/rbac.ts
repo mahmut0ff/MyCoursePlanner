@@ -160,10 +160,17 @@ export const RESOURCE_GROUPS: ResourceGroup[] = [
         notes: 'Доступно на тарифе Профессиональный и выше.',
       } },
       { id: 'finances', label: 'Финансы', help: {
-        read: 'Просмотр транзакций, счетов и платёжных планов',
-        write: 'Создание транзакций, ведение оплат',
+        read: 'Просмотр оплат, счетов и платёжных планов',
+        write: 'Приём оплат, возвраты, ведение начислений',
         delete: 'Удаление финансовых записей',
-        notes: 'Доступно на тарифе Профессиональный и выше.',
+        notes: 'Доступно на тарифе Профессиональный и выше. Операционка по оплатам — без сводных цифр дохода и прибыли (см. «Финансы: сводка и прибыль»).',
+      } },
+      // Отдельный ресурс поверх `finances`: гейтит ТОЛЬКО высокоуровневые цифры —
+      // вкладку «Обзор», расходы, движение средств и прибыльность курсов. Кассир
+      // с `finances` (rwd) без этого права ведёт оплаты, но не видит выручку/прибыль.
+      { id: 'finance_overview', label: 'Финансы: сводка и прибыль', actions: ['read'], help: {
+        read: 'Обзор: выручка, чистая прибыль, маржа, движение средств, расходы и прибыльность курсов',
+        notes: 'Без него пользователь ведёт оплаты, но не видит суммарные доход/прибыль, итоги кассы и расходы. Доступно на тарифе Профессиональный и выше.',
       } },
       { id: 'payroll', label: 'Зарплата', help: {
         read: 'Просмотр правил начисления и зарплатных ведомостей',
@@ -258,7 +265,13 @@ export interface LegacyManagerPerms {
 function legacyManagerGrants(perms?: LegacyManagerPerms): RolePermission[] {
   if (!perms) return [];
   const out: RolePermission[] = [];
-  if (perms.finances) out.push({ resource: 'finances', actions: [...allowedFor('finances')] });
+  if (perms.finances) {
+    out.push({ resource: 'finances', actions: [...allowedFor('finances')] });
+    // Legacy «finances» was full finance access, sweeping cards included, so it
+    // must keep the high-level overview — otherwise turning on granular RBAC would
+    // silently strip revenue/profit from a manager who already had it.
+    out.push({ resource: 'finance_overview', actions: [...allowedFor('finance_overview')] });
+  }
   if (perms.settings) out.push({ resource: 'settings', actions: [...allowedFor('settings')] });
   if (perms.managers) out.push({ resource: 'team', actions: [...allowedFor('team')] });
   if (perms.branches) out.push({ resource: 'branches', actions: [...allowedFor('branches')] });

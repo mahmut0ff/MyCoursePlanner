@@ -896,7 +896,7 @@ describe('api-finance-metrics — custom date range', () => {
   });
 
   it('answers 400 (not 500) on a malformed date', async () => {
-    (verifyAuth as any).mockResolvedValue(staff(['finances:read']));
+    (verifyAuth as any).mockResolvedValue(staff(['finance_overview:read']));
     const res: any = await metricsHandler(
       event('GET', { startDate: 'garbage', endDate: '2026-01-31' }), {} as any, () => {});
     expect(res.statusCode).toBe(400);
@@ -904,14 +904,14 @@ describe('api-finance-metrics — custom date range', () => {
   });
 
   it('answers 400 when the range is inverted', async () => {
-    (verifyAuth as any).mockResolvedValue(staff(['finances:read']));
+    (verifyAuth as any).mockResolvedValue(staff(['finance_overview:read']));
     const res: any = await metricsHandler(
       event('GET', { startDate: '2026-03-01', endDate: '2026-01-01' }), {} as any, () => {});
     expect(res.statusCode).toBe(400);
   });
 
   it('accepts a full-ISO range that used to throw RangeError and 500', async () => {
-    (verifyAuth as any).mockResolvedValue(staff(['finances:read']));
+    (verifyAuth as any).mockResolvedValue(staff(['finance_overview:read']));
     const res: any = await metricsHandler(
       event('GET', { startDate: '2026-01-01T00:00:00.000Z', endDate: '2026-01-31T23:59:59.999Z' }),
       {} as any, () => {});
@@ -919,7 +919,7 @@ describe('api-finance-metrics — custom date range', () => {
   });
 
   it('accepts a bare YYYY-MM-DD range and keeps the documented response shape', async () => {
-    (verifyAuth as any).mockResolvedValue(staff(['finances:read']));
+    (verifyAuth as any).mockResolvedValue(staff(['finance_overview:read']));
     const res: any = await metricsHandler(
       event('GET', { startDate: '2026-01-01', endDate: '2026-01-31' }), {} as any, () => {});
     expect(res.statusCode).toBe(200);
@@ -957,7 +957,9 @@ describe('api-finance-transactions GET — shared period parsing', () => {
       }),
     };
     (adminDb.collection as any).mockImplementation(() => q);
-    (verifyAuth as any).mockResolvedValue(staff(['finances:read']));
+    // Transactions need finances:read; the cross-endpoint metrics check needs
+    // finance_overview:read — this block exercises both, so grant both.
+    (verifyAuth as any).mockResolvedValue(staff(['finances:read', 'finance_overview:read']));
   });
 
   const ids = (res: any) => JSON.parse(res.body).map((r: any) => r.id).sort();
@@ -1187,7 +1189,7 @@ describe('overdue promotion & counting — plans and metrics must agree', () => 
     const promoted = JSON.parse(plansRes.body).filter((r: any) => r.status === 'overdue').length;
 
     wire(planRows);
-    (verifyAuth as any).mockResolvedValue(staff(['finances:read']));
+    (verifyAuth as any).mockResolvedValue(staff(['finance_overview:read']));
     const metricsRes: any = await metricsHandler(event('GET', { period: 'all' }), {} as any, () => {});
     expect(metricsRes.statusCode).toBe(200);
     const { overdueCount } = JSON.parse(metricsRes.body);
@@ -1210,7 +1212,7 @@ describe('overdue promotion & counting — plans and metrics must agree', () => 
     const window = { startDate: '2026-07-01', endDate: '2026-07-31' };
 
     it('gives an unrestricted member the real unassigned figures', async () => {
-      (verifyAuth as any).mockResolvedValue(staff(['finances:read'])); // branchIds: []
+      (verifyAuth as any).mockResolvedValue(staff(['finance_overview:read'])); // branchIds: []
       wire(unassignedDebtPlan, trxRows);
       const res: any = await metricsHandler(event('GET', window), {} as any, () => {});
       expect(res.statusCode).toBe(200);
@@ -1222,7 +1224,7 @@ describe('overdue promotion & counting — plans and metrics must agree', () => 
 
     it('zeroes them for a branch-restricted member — no org-wide money leak', async () => {
       (verifyAuth as any).mockResolvedValue(
-        staff(['finances:read'], { branchIds: ['A'], primaryBranchId: 'A' }));
+        staff(['finances:read', 'finance_overview:read'], { branchIds: ['A'], primaryBranchId: 'A' }));
       wire(unassignedDebtPlan, trxRows);
       const res: any = await metricsHandler(event('GET', window), {} as any, () => {});
       expect(res.statusCode).toBe(200);
@@ -1330,7 +1332,7 @@ describe('one overdue rule across debt-reminders and the metrics surface', () =>
     const cronOverdue = JSON.parse(cronRes.body).markedOverdue;
 
     wire(planRows);
-    (verifyAuth as any).mockResolvedValue(staff(['finances:read']));
+    (verifyAuth as any).mockResolvedValue(staff(['finance_overview:read']));
     const metricsRes: any = await metricsHandler(event('GET', { period: 'all' }), {} as any, () => {});
     expect(metricsRes.statusCode).toBe(200);
 

@@ -113,7 +113,10 @@ const PaymentsTab: React.FC<Props> = ({
 }) => {
   const { t } = useTranslation();
   const { activeBranchId } = useBranch();
-  const { canWrite, loaded: permsLoaded } = usePermissions();
+  const { canWrite, canRead, loaded: permsLoaded } = usePermissions();
+  // Итог кассы за период — сводная цифра дохода. Роль с CRUD оплат, но без
+  // `finance_overview`, ведёт платежи построчно и этот агрегат не видит.
+  const canOverview = canRead('finance_overview');
 
   const [rows, setRows] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -248,7 +251,9 @@ const PaymentsTab: React.FC<Props> = ({
     <div className="space-y-4">
       <PeriodFilter value={range} onChange={onRangeChange} />
 
-      {/* Касса за период: сначала общая сумма, потом разбивка по способам */}
+      {/* Касса за период: общий итог + разбивка по способам. Это сводная цифра
+          дохода, поэтому только для роли с правом «Финансы: сводка и прибыль». */}
+      {canOverview && (
       <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-5">
         <div className="flex flex-col sm:flex-row sm:items-center gap-4 sm:gap-8">
           <div className="flex items-center gap-3">
@@ -275,6 +280,7 @@ const PaymentsTab: React.FC<Props> = ({
           </div>
         </div>
       </div>
+      )}
 
       {truncated && (
         <div className="p-4 text-sm text-amber-800 dark:text-amber-200 bg-amber-50 dark:bg-amber-900/20 border border-amber-200/60 dark:border-amber-700/30 rounded-xl">

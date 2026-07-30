@@ -83,3 +83,29 @@ describe('sanitizeOverrides', () => {
     expect(sanitizeOverrides({ grants: 'nope' })).toEqual({ grants: [], revokes: [] });
   });
 });
+
+describe('finance_overview — payments CRUD without the high-level view', () => {
+  it('a payments-only custom role gets finances rwd but NOT the overview', () => {
+    const set = resolvePermissionSet({
+      baseRole: 'manager',
+      customRole: { name: 'Кассир', permissions: [{ resource: 'finances', actions: ['read', 'write', 'delete'] }] },
+    });
+    // Operational payments CRUD is fully granted…
+    expect(set.has('finances:read')).toBe(true);
+    expect(set.has('finances:write')).toBe(true);
+    expect(set.has('finances:delete')).toBe(true);
+    // …while the aggregate income/profit view stays hidden — the whole point.
+    expect(set.has('finance_overview:read')).toBe(false);
+  });
+
+  it('keeps the overview for a legacy manager whose finances toggle was on', () => {
+    const set = resolvePermissionSet({ baseRole: 'manager', legacyManagerPerms: { finances: true } });
+    expect(set.has('finances:read')).toBe(true);
+    // Legacy finances was full access — enabling granular RBAC must not strip it.
+    expect(set.has('finance_overview:read')).toBe(true);
+  });
+
+  it('gives full-access roles the overview automatically', () => {
+    expect(resolvePermissionSet({ baseRole: 'admin' }).has('finance_overview:read')).toBe(true);
+  });
+});

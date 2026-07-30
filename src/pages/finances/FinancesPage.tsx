@@ -9,6 +9,7 @@ import ExpensesTab from './tabs/ExpensesTab';
 import { DEFAULT_RANGE } from './financePeriod';
 import type { FinanceRange } from './financePeriod';
 import { monthKey } from '../../lib/payment-plans';
+import { usePermissions } from '../../contexts/PermissionsContext';
 
 export type FinanceTab = 'overview' | 'debts' | 'payments' | 'expenses';
 
@@ -58,18 +59,14 @@ const TABS: { id: FinanceTab; labelKey: string; fallback: string; hintKey: strin
   },
 ];
 
-const TAB_IDS = TABS.map(t => t.id);
-
 // Вкладка «Доходы и Долги» разъехалась на «Долги» (кому мы выставили счёт) и
 // «Платежи» (что реально пришло в кассу). Старые ссылки и закладки ведут на
 // ?tab=income — перенаправляем их на «Долги», прежнее содержимое той вкладки.
 const LEGACY_TABS: Record<string, FinanceTab> = { income: 'debts' };
 
-const resolveTab = (raw: string | null): FinanceTab => {
-  if (!raw) return 'overview';
-  if (LEGACY_TABS[raw]) return LEGACY_TABS[raw];
-  return (TAB_IDS as string[]).includes(raw) ? (raw as FinanceTab) : 'overview';
-};
+// Вкладки, показывающие высокоуровневые цифры (доход, прибыль, расходы). Их
+// прячем от роли без `finance_overview`: она ведёт оплаты, но сводных сумм не видит.
+const OVERVIEW_TABS = new Set<FinanceTab>(['overview', 'expenses']);
 
 /**
  * Раздел финансов: четыре вкладки, по одной на вопрос, который задаёт директор.
@@ -84,20 +81,36 @@ const resolveTab = (raw: string | null): FinanceTab => {
  */
 const FinancesPage: React.FC = () => {
   const { t } = useTranslation();
+  const { canRead } = usePermissions();
   const [searchParams, setSearchParams] = useSearchParams();
 
-  const activeTab = resolveTab(searchParams.get('tab'));
+  // Право на сводные цифры. Без него из набора вкладок выпадают «Обзор» и
+  // «Расходы», а дефолтной становится «Оплаты за месяц» — операционка кассира.
+  const canOverview = canRead('finance_overview');
+  const visibleTabs = useMemo(
+    () => (canOverview ? TABS : TABS.filter(tab => !OVERVIEW_TABS.has(tab.id))),
+    [canOverview]
+  );
+  const defaultTab: FinanceTab = canOverview ? 'overview' : 'debts';
+
+  // Резолвим строго в разрешённый набор: закладка на ?tab=overview у кассира не
+  // должна рисовать запрещённую вкладку — уводим на дефолтную.
+  const activeTab = useMemo<FinanceTab>(() => {
+    const raw = searchParams.get('tab');
+    const mapped = raw && LEGACY_TABS[raw] ? LEGACY_TABS[raw] : raw;
+    return mapped && visibleTabs.some(tab => tab.id === mapped) ? (mapped as FinanceTab) : defaultTab;
+  }, [searchParams, visibleTabs, defaultTab]);
 
   const selectTab = useCallback(
     (tab: FinanceTab) => {
       const next = new URLSearchParams(searchParams);
-      if (tab === 'overview') next.delete('tab');
+      if (tab === defaultTab) next.delete('tab');
       else next.set('tab', tab);
       // replace: переключение вкладки не должно засорять историю браузера —
       // «назад» обязано уводить со страницы финансов, а не по вкладкам.
       setSearchParams(next, { replace: true });
     },
-    [searchParams, setSearchParams]
+    [searchParams, setSearchParams, defaultTab]
   );
 
   const [range, setRange] = useState<FinanceRange>(DEFAULT_RANGE);
@@ -157,7 +170,7 @@ const FinancesPage: React.FC = () => {
           aria-label={t('nav.finances', 'Финансы')}
           className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-xl overflow-x-auto"
         >
-          {TABS.map(tab => (
+          {visibleTabs.map(tab => (
             <button
               key={tab.id}
               role="tab"

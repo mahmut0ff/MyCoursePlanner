@@ -28,10 +28,11 @@ const handler: Handler = async (event: HandlerEvent) => {
   try {
     // GET Metrics
     if (event.httpMethod === 'GET') {
-      // The grant is the gate. Role checks used to sit in front of it, which made a
-      // finances grant on a teacher-based custom role impossible to use; plain
-      // teachers hold no finances:read, so nothing widens here.
-      if (!can(user, 'finances', 'read')) return forbidden('No access to finances module');
+      // Gated by `finance_overview`, NOT `finances`: this endpoint returns the
+      // high-level view (revenue, profit, margin, expenses, course profitability).
+      // A payments-only role holds `finances` (rwd) but not `finance_overview`, so
+      // it can run the operational tabs yet never see the aggregate income/profit.
+      if (!can(user, 'finance_overview', 'read')) return forbidden('No access to finance overview');
 
       const orgFilter = getOrgFilter(user);
       if (!orgFilter) return badRequest('Organization context required');

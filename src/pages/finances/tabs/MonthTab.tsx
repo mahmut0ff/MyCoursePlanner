@@ -20,6 +20,7 @@ import {
 import toast from 'react-hot-toast';
 import { apiDeletePaymentPlan, apiGetPaymentPlans, orgGetCourses, orgGetGroups, orgGetStudents } from '../../../lib/api';
 import { useBranch } from '../../../contexts/BranchContext';
+import { usePermissions } from '../../../contexts/PermissionsContext';
 import { formatMoney } from '../../../lib/money';
 import { isDebtBearingPlan, isWrittenOffPlan, isPlanOverdue, planDebt, planDiscount, planPeriodKey } from '../../../lib/payment-plans';
 import EmptyState from '../../../components/ui/EmptyState';
@@ -88,6 +89,10 @@ function monthLabel(key: string): string {
 const MonthTab: React.FC<Props> = ({ filters, onFiltersChange, month, onMonthChange, studentId = '', onStudentNameResolved }) => {
   const { t } = useTranslation();
   const { activeBranchId } = useBranch();
+  const { canRead } = usePermissions();
+  // «Собрано за месяц» — сводная сумма дохода. Роль с оплатами, но без
+  // `finance_overview`, видит счётчики «оплатили / не оплатили», но не сумму.
+  const canOverview = canRead('finance_overview');
 
   const [plans, setPlans] = useState<PaymentPlan[]>([]);
   const [allStudents, setAllStudents] = useState<any[]>([]);
@@ -300,8 +305,9 @@ const MonthTab: React.FC<Props> = ({ filters, onFiltersChange, month, onMonthCha
         </button>
       </div>
 
-      {/* Сводка за месяц */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+      {/* Сводка за месяц. Счётчики оплат — операционные, их видит и кассир;
+          «Собрано» — сводная сумма, только для роли с `finance_overview`. */}
+      <div className={`grid grid-cols-1 gap-3 ${canOverview ? 'sm:grid-cols-3' : 'sm:grid-cols-2'}`}>
         <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-4 flex items-center gap-3">
           <div className="p-2.5 bg-emerald-100 dark:bg-emerald-900/30 rounded-xl"><CheckCircle2 className="w-5 h-5 text-emerald-600" /></div>
           <div>
@@ -309,13 +315,15 @@ const MonthTab: React.FC<Props> = ({ filters, onFiltersChange, month, onMonthCha
             <p className="text-lg font-bold text-slate-900 dark:text-white">{stats.paid} <span className="text-sm font-normal text-slate-400">{t('finances.outOf', 'из')} {stats.total}</span></p>
           </div>
         </div>
-        <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-4 flex items-center gap-3">
-          <div className="p-2.5 bg-sky-100 dark:bg-sky-900/30 rounded-xl"><Wallet className="w-5 h-5 text-sky-600" /></div>
-          <div>
-            <p className="text-xs text-slate-500">{t('finances.collectedMonth', 'Собрано за месяц')}</p>
-            <p className="text-lg font-bold text-emerald-600">{formatMoney(stats.collected)}</p>
+        {canOverview && (
+          <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-4 flex items-center gap-3">
+            <div className="p-2.5 bg-sky-100 dark:bg-sky-900/30 rounded-xl"><Wallet className="w-5 h-5 text-sky-600" /></div>
+            <div>
+              <p className="text-xs text-slate-500">{t('finances.collectedMonth', 'Собрано за месяц')}</p>
+              <p className="text-lg font-bold text-emerald-600">{formatMoney(stats.collected)}</p>
+            </div>
           </div>
-        </div>
+        )}
         <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-4 flex items-center gap-3">
           <div className="p-2.5 bg-rose-100 dark:bg-rose-900/30 rounded-xl"><AlertCircle className="w-5 h-5 text-rose-600" /></div>
           <div>

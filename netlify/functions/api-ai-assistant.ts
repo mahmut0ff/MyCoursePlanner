@@ -268,6 +268,9 @@ const S = SchemaType;
 const kindPerm = (kind: any): 'students' | 'teachers' => (kind === 'teacher' ? 'teachers' : 'students');
 const financeRead = (u: AuthUser) => !hasRole(u, 'teacher', 'student') && hasPermission(u, 'finances') && can(u, 'finances', 'read');
 const financeWrite = (u: AuthUser) => !hasRole(u, 'teacher', 'student') && hasPermission(u, 'finances') && can(u, 'finances', 'write');
+// High-level finance figures (доход/прибыль) sit behind `finance_overview`, mirroring
+// api-finance-metrics — a payments-only operator must not read them via the assistant.
+const financeOverviewRead = (u: AuthUser) => !hasRole(u, 'teacher', 'student') && can(u, 'finance_overview', 'read');
 
 const TOOLS: ToolSpec[] = [
   // ═══ READ ═══
@@ -464,7 +467,7 @@ const TOOLS: ToolSpec[] = [
   {
     name: 'finance_metrics',
     kind: 'read',
-    allowed: financeRead,
+    allowed: financeOverviewRead,
     decl: {
       description: 'Финансовые показатели: доход, расход, прибыль, активная задолженность.',
       parameters: {

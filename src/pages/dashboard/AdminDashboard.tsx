@@ -109,7 +109,10 @@ const AdminDashboard: React.FC = () => {
   const { profile, organizationId, role } = useAuth();
   const { canRead } = usePermissions();
   const { canAccess, loading: planLoading } = usePlanGate();
-  const canSeeFinance = role === 'admin' || canRead('finances');
+  // Дашбордные KPI — это выручка/прибыль/маржа, т.е. высокоуровневые цифры.
+  // Гейтим их отдельным правом: роль с CRUD оплат (finances), но без
+  // finance_overview, финансовый блок здесь не видит.
+  const canSeeFinance = role === 'admin' || canRead('finance_overview');
 
   const [loading, setLoading] = useState(true);
   const [branchData, setBranchData] = useState<any>(null);

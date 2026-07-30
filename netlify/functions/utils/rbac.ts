@@ -44,6 +44,9 @@ export const RESOURCE_ACTIONS: Record<string, RbacAction[]> = {
   results: ['read'],
   ai: ['read', 'write'],
   finances: ['read', 'write', 'delete'],
+  // Read-only gate for the high-level finance view (Обзор, расходы, прибыльность).
+  // Held separately from `finances` so a payments-only role can be CRUD without stats.
+  finance_overview: ['read'],
   payroll: ['read', 'write', 'delete'],
   certificates: ['read', 'write', 'delete'],
   branches: ['read', 'write', 'delete'],
@@ -80,7 +83,12 @@ export const STUDENT_DEFAULT: RolePermission[] = ro(['dashboard', 'lessons', 're
 function legacyManagerGrants(perms?: LegacyManagerPerms): RolePermission[] {
   if (!perms) return [];
   const out: RolePermission[] = [];
-  if (perms.finances) out.push({ resource: 'finances', actions: [...allowedFor('finances')] });
+  if (perms.finances) {
+    out.push({ resource: 'finances', actions: [...allowedFor('finances')] });
+    // Legacy «finances» was full finance access — keep the high-level overview too,
+    // so enabling granular RBAC never silently strips revenue/profit from a manager.
+    out.push({ resource: 'finance_overview', actions: [...allowedFor('finance_overview')] });
+  }
   if (perms.settings) out.push({ resource: 'settings', actions: [...allowedFor('settings')] });
   if (perms.managers) out.push({ resource: 'team', actions: [...allowedFor('team')] });
   if (perms.branches) out.push({ resource: 'branches', actions: [...allowedFor('branches')] });

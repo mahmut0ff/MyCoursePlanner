@@ -51,6 +51,10 @@ export const RESOURCE_ACTIONS: Record<string, RbacAction[]> = {
   certificates: ['read', 'write', 'delete'],
   branches: ['read', 'write', 'delete'],
   analytics: ['read'],
+  // Read-only gate for the teacher activity log + KPI dashboard (Активность
+  // преподавателей). Held separately so a director can grant activity oversight
+  // without handing over the whole analytics/finance surface.
+  teacher_activity: ['read'],
   dashboard: ['read'],
   settings: ['read', 'write'],
 };

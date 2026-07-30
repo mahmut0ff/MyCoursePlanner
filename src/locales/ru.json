@@ -87,6 +87,7 @@
     "plans": "Тарифы",
     "insights": "Аналитика",
     "analytics": "Статистика",
+    "teacherActivity": "Активность",
     "aiHub": "AI-центр",
     "aiCoach": "AI-наставник",
     "auditLogs": "Журнал действий",
@@ -1427,6 +1428,50 @@
     "newPw": "Новый пароль",
     "confirmPw": "Подтвердите пароль",
     "updatePw": "Обновить пароль"
+  },
+  "teacherActivity": {
+    "title": "Активность преподавателей",
+    "subtitle": "Кто ставит оценки и посещаемость, проверяет ДЗ, создаёт материалы и когда заходит — с KPI по каждому преподавателю.",
+    "loadFailed": "Не удалось загрузить активность",
+    "export": "Экспорт CSV",
+    "activeTeachers": "Активных преподавателей",
+    "totalActions": "Всего действий",
+    "avgPerTeacher": "В среднем на преподавателя",
+    "topTeacher": "Лидер",
+    "emptyTitle": "Пока нет данных об активности",
+    "emptyDesc": "Как только преподаватели начнут ставить оценки, отмечать посещаемость и создавать материалы, здесь появятся их активность и KPI.",
+    "lastAction": "посл. действие {{time}}",
+    "noActivity": "нет активности",
+    "consistency": "Стабильность",
+    "activeDaysShort": "Активных дней",
+    "breakdown": "Разбивка",
+    "timeline": "Последние действия",
+    "period": {
+      "current_month": "Этот месяц",
+      "last_month": "Прошлый месяц",
+      "quarter": "Квартал",
+      "year": "Год",
+      "all": "Всё время"
+    },
+    "col": {
+      "teacher": "Преподаватель",
+      "grades": "Оценки",
+      "attendance": "Посещ.",
+      "hw": "ДЗ",
+      "created": "Создано",
+      "logins": "Входы",
+      "activeDays": "Дней"
+    },
+    "type": {
+      "grade_set": "Оценки",
+      "attendance_marked": "Посещаемость",
+      "homework_checked": "Проверка ДЗ",
+      "homework_created": "Создание ДЗ",
+      "lesson_created": "Уроки",
+      "quiz_created": "Квизы",
+      "exam_created": "Экзамены",
+      "login": "Входы"
+    }
   },
   "teacherAnalytics": {
     "title": "Аналитика",

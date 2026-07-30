@@ -6,6 +6,7 @@ import type { Handler, HandlerEvent } from '@netlify/functions';
 import { adminDb } from './utils/firebase-admin';
 import { verifyAuth, isStaff, can, forbidden, ok, unauthorized, badRequest, notFound, jsonResponse } from './utils/auth';
 import { createNotification, notifyOrgAdmins } from './utils/notifications';
+import { recordTeacherActivity } from './utils/teacher-activity';
 import { rateLimiters, getRateLimitKey } from './utils/rate-limiter';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 
@@ -183,6 +184,11 @@ export const handler: Handler = async (event: HandlerEvent) => {
       }).catch(() => {});
     }
     
+    await recordTeacherActivity({
+      organizationId: user.organizationId, actorId: user.uid, actorName: user.displayName, actorRole: user.role,
+      type: 'homework_checked', branchId: user.primaryBranchId, entityId: id, entityLabel: hwData?.lessonTitle || null,
+      meta: { studentId: hwData?.studentId || null, finalScore: body.finalScore ?? null },
+    });
     return ok({ success: true });
   }
 

@@ -9,6 +9,7 @@ import PermissionRoute from './components/guards/PermissionRoute';
 import ErrorBoundary from './components/common/ErrorBoundary';
 import AppLayout from './components/layout/AppLayout';
 import PresenceHeartbeat from './components/presence/PresenceHeartbeat';
+import LoginActivityPing from './components/presence/LoginActivityPing';
 import { lazyRetry } from './lib/lazyRetry';
 
 const LoginPage = lazyRetry(() => import('./pages/auth/LoginPage'));
@@ -91,6 +92,7 @@ const TeacherProfilePage = lazyRetry(() => import('./pages/teacher-profile/Teach
 const TeacherInvitesPage = lazyRetry(() => import('./pages/invites/TeacherInvitesPage'));
 const NotificationsPage = lazyRetry(() => import('./pages/notifications/NotificationsPage'));
 const TeacherSettingsPage = lazyRetry(() => import('./pages/teacher-settings/TeacherSettingsPage'));
+const TeacherActivityPage = lazyRetry(() => import('./pages/teacher-activity/TeacherActivityPage'));
 // TeacherAnalyticsPage route uses AdminGradebookAnalytics component
 
 // Detail Pages
@@ -161,6 +163,7 @@ const App: React.FC = () => {
       <BrowserRouter>
         <ThemedToaster />
         <PresenceHeartbeat />
+        <LoginActivityPing />
         <Suspense fallback={<div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-slate-900"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div></div>}>
         <Routes>
           {/* Public */}
@@ -205,6 +208,7 @@ const App: React.FC = () => {
             <Route path="gradebook" element={<ProtectedRoute><PermissionRoute resource="gradebook"><PlanGuard feature="gradebook"><GradebookPage /></PlanGuard></PermissionRoute></ProtectedRoute>} />
             <Route path="journal" element={<ProtectedRoute><PermissionRoute resource="gradebook"><PlanGuard feature="gradebook"><JournalPage /></PlanGuard></PermissionRoute></ProtectedRoute>} />
             <Route path="teacher-analytics" element={<ProtectedRoute><PermissionRoute resource="analytics"><PlanGuard feature="advancedAnalytics"><AdminGradebookAnalytics /></PlanGuard></PermissionRoute></ProtectedRoute>} />
+            <Route path="teacher-activity" element={<ProtectedRoute><PermissionRoute resource="teacher_activity"><TeacherActivityPage /></PermissionRoute></ProtectedRoute>} />
             <Route path="homework/review" element={<ProtectedRoute><PermissionRoute resource="homework"><HomeworkReviewPage /></PermissionRoute></ProtectedRoute>} />
 
             {/* Lessons */}

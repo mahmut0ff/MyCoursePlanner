@@ -5,6 +5,7 @@ import type { Handler, HandlerEvent } from '@netlify/functions';
 import { adminDb } from './utils/firebase-admin';
 import { verifyAuth, isStaff, can, getOrgFilter, ok, unauthorized, forbidden, badRequest, notFound, jsonResponse, isSuperAdmin } from './utils/auth';
 import { getOrgLimits } from './utils/plan-limits';
+import { recordTeacherActivity } from './utils/teacher-activity';
 
 const COLLECTION = 'exams';
 
@@ -162,6 +163,10 @@ const handler: Handler = async (event: HandlerEvent) => {
       organizationId: user.organizationId || '', createdAt: now, updatedAt: now,
     };
     const ref = await adminDb.collection(COLLECTION).add(data);
+    await recordTeacherActivity({
+      organizationId: user.organizationId, actorId: user.uid, actorName: user.displayName, actorRole: user.role,
+      type: 'exam_created', branchId: user.primaryBranchId, entityId: ref.id, entityLabel: body.title,
+    });
     return ok({ id: ref.id, ...data });
   }
 

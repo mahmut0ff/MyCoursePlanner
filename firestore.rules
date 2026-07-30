@@ -258,6 +258,9 @@ service cloud.firestore {
     match /subscriptions/{subId} { allow read, write: if isSuperAdmin(); }
     match /payments/{paymentId} { allow read, write: if isSuperAdmin(); }
     match /auditLogs/{logId} { allow read, write: if isSuperAdmin(); }
+    // Teacher activity log + KPI — written by the mutation endpoints and read by
+    // api-teacher-activity (Admin SDK bypasses rules). Clients never touch it.
+    match /teacherActivity/{docId} { allow read, write: if false; }
     match /featureFlags/{flagId} { allow read: if request.auth != null; allow write: if isSuperAdmin(); }
     match /orgOverrides/{overrideId} { allow read, write: if isSuperAdmin(); }
     match /orgNotes/{noteId} { allow read, write: if isSuperAdmin(); }

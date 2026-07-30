@@ -158,6 +158,7 @@
     "plans": "Plans",
     "insights": "Insights",
     "analytics": "Analytics",
+    "teacherActivity": "Activity",
     "aiHub": "AI Hub",
     "aiCoach": "AI Coach",
     "auditLogs": "Audit Logs",
@@ -1152,6 +1153,50 @@
     "newPw": "New Password",
     "confirmPw": "Confirm Password",
     "updatePw": "Update Password"
+  },
+  "teacherActivity": {
+    "title": "Teacher activity",
+    "subtitle": "Who grades, marks attendance, checks homework, creates materials and when they sign in — with a KPI per teacher.",
+    "loadFailed": "Failed to load activity",
+    "export": "Export CSV",
+    "activeTeachers": "Active teachers",
+    "totalActions": "Total actions",
+    "avgPerTeacher": "Average per teacher",
+    "topTeacher": "Top performer",
+    "emptyTitle": "No activity yet",
+    "emptyDesc": "Once teachers start grading, marking attendance and creating materials, their activity and KPI will appear here.",
+    "lastAction": "last action {{time}}",
+    "noActivity": "no activity",
+    "consistency": "Consistency",
+    "activeDaysShort": "Active days",
+    "breakdown": "Breakdown",
+    "timeline": "Recent actions",
+    "period": {
+      "current_month": "This month",
+      "last_month": "Last month",
+      "quarter": "Quarter",
+      "year": "Year",
+      "all": "All time"
+    },
+    "col": {
+      "teacher": "Teacher",
+      "grades": "Grades",
+      "attendance": "Attend.",
+      "hw": "HW",
+      "created": "Created",
+      "logins": "Logins",
+      "activeDays": "Days"
+    },
+    "type": {
+      "grade_set": "Grades",
+      "attendance_marked": "Attendance",
+      "homework_checked": "Homework check",
+      "homework_created": "Homework created",
+      "lesson_created": "Lessons",
+      "quiz_created": "Quizzes",
+      "exam_created": "Exams",
+      "login": "Logins"
+    }
   },
   "teacherAnalytics": {
     "title": "Analytics",

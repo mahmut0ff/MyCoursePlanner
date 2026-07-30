@@ -5,6 +5,7 @@ import type { Handler, HandlerEvent } from '@netlify/functions';
 import { adminDb } from './utils/firebase-admin';
 import { verifyAuth, isStaff, can, getOrgFilter, ok, unauthorized, forbidden, badRequest, notFound, jsonResponse, isSuperAdmin } from './utils/auth';
 import { notifyOrgStudents } from './utils/notifications';
+import { recordTeacherActivity } from './utils/teacher-activity';
 
 const COLLECTION = 'lessonPlans';
 
@@ -118,6 +119,22 @@ const handler: Handler = async (event: HandlerEvent) => {
         `Опубликован урок «${body.title}»`,
         '/lessons',
       ).catch(() => {});
+    }
+    // Задание ДЗ едет полем урока (body.homework), отдельного эндпоинта нет —
+    // поэтому «создание ДЗ» фиксируем здесь, когда поле непустое.
+    const hasHomework = !!body.homework && (typeof body.homework === 'string'
+      ? body.homework.trim().length > 0
+      : typeof body.homework === 'object' && Object.keys(body.homework).length > 0);
+    await recordTeacherActivity({
+      organizationId: user.organizationId, actorId: user.uid, actorName: user.displayName, actorRole: user.role,
+      type: 'lesson_created', branchId: user.primaryBranchId, entityId: ref.id, entityLabel: body.title,
+      meta: { status: data.status },
+    });
+    if (hasHomework) {
+      await recordTeacherActivity({
+        organizationId: user.organizationId, actorId: user.uid, actorName: user.displayName, actorRole: user.role,
+        type: 'homework_created', branchId: user.primaryBranchId, entityId: ref.id, entityLabel: body.title,
+      });
     }
     return ok({ id: ref.id, ...data });
   }

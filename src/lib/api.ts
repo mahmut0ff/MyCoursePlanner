@@ -75,6 +75,9 @@ const BRANCH_SCOPED_ENDPOINTS = new Set([
   // POST переселил бы ставку в другой филиал при простом сохранении.
   'api-payroll',
   'api-payroll-rules',
+  // KPI преподавателей филиалуется по членству преподавателя: директор сети,
+  // выбрав филиал, видит активность его преподавателей.
+  'api-teacher-activity',
 ]);
 
 async function apiRequest<T = any>(
@@ -775,6 +778,24 @@ export const apiGetFinanceMetrics = (params?: {
   startDate?: string;
   endDate?: string;
 }) => apiRequest('api-finance-metrics', 'GET', undefined, params as any);
+
+// ============================================================
+// TEACHER ACTIVITY / KPI API
+// ============================================================
+
+// branchId штампуется интерцептором из активного филиала (GET), период — 'current_month'
+// по умолчанию (см. getPeriodRange на сервере). Требует право teacher_activity:read.
+export const apiGetTeacherActivity = (params?: { branchId?: string; period?: string }) =>
+  apiRequest('api-teacher-activity', 'GET', undefined, params as any);
+
+// Лента действий одного преподавателя за период (для карточки).
+export const apiGetTeacherTimeline = (teacherId: string, params?: { branchId?: string; period?: string }) =>
+  apiRequest('api-teacher-activity', 'GET', undefined, { action: 'timeline', teacherId, ...(params || {}) } as any);
+
+// Служебный пинг «вошёл в систему» — шлёт сам сотрудник о себе (дедуп на сервере
+// до одного события в день). Право teacher_activity не требуется.
+export const apiPingTeacherActivity = () =>
+  apiRequest('api-teacher-activity', 'POST', {}, { action: 'ping' });
 
 // ============================================================
 // AI ORGANIZATION MANAGER API

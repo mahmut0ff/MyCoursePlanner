@@ -11,6 +11,7 @@ import {
   type AuthUser,
 } from './utils/auth';
 import { createNotification } from './utils/notifications';
+import { recordTeacherActivity } from './utils/teacher-activity';
 
 const now = () => new Date().toISOString();
 
@@ -215,6 +216,10 @@ const handler: Handler = async (event: HandlerEvent) => {
           }).catch(() => {});
         }
 
+        await recordTeacherActivity({
+          organizationId: orgId, actorId: user.uid, actorName: user.displayName, actorRole: user.role,
+          type: 'grade_set', branchId: user.primaryBranchId, entityId: doc.id, meta: { courseId, studentId, mode: 'update' },
+        });
         return ok({ id: doc.id, ...data, ...updates });
       }
 
@@ -250,6 +255,10 @@ const handler: Handler = async (event: HandlerEvent) => {
         }).catch(() => {});
       }
 
+      await recordTeacherActivity({
+        organizationId: orgId, actorId: user.uid, actorName: user.displayName, actorRole: user.role,
+        type: 'grade_set', branchId: user.primaryBranchId, entityId: ref.id, meta: { courseId, studentId, mode: 'create' },
+      });
       return ok({ id: ref.id, ...gradeData });
     }
 
@@ -340,6 +349,11 @@ const handler: Handler = async (event: HandlerEvent) => {
         }
       }
 
+      await recordTeacherActivity({
+        organizationId: orgId, actorId: user.uid, actorName: user.displayName, actorRole: user.role,
+        type: 'grade_set', branchId: user.primaryBranchId, entityId: courseId, entityLabel: courseName,
+        count: results.length, meta: { courseId, mode: 'bulk' },
+      });
       return ok(results);
     }
 
@@ -452,6 +466,10 @@ const handler: Handler = async (event: HandlerEvent) => {
         if (note !== undefined) updates.note = note;
         if (flags !== undefined) updates.flags = flags;
         await doc.ref.update(updates);
+        await recordTeacherActivity({
+          organizationId: orgId, actorId: user.uid, actorName: user.displayName, actorRole: user.role,
+          type: 'attendance_marked', branchId: user.primaryBranchId, entityId: doc.id, meta: { courseId, studentId, date, mode: 'update' },
+        });
         return ok({ id: doc.id, ...data, ...updates });
       }
 
@@ -481,6 +499,10 @@ const handler: Handler = async (event: HandlerEvent) => {
         }).catch(() => {});
       }
 
+      await recordTeacherActivity({
+        organizationId: orgId, actorId: user.uid, actorName: user.displayName, actorRole: user.role,
+        type: 'attendance_marked', branchId: user.primaryBranchId, entityId: ref.id, meta: { courseId, studentId, date, mode: 'create' },
+      });
       return ok({ id: ref.id, ...journalData });
     }
 
@@ -697,6 +719,11 @@ const handler: Handler = async (event: HandlerEvent) => {
         }
       }
 
+      await recordTeacherActivity({
+        organizationId: orgId, actorId: user.uid, actorName: user.displayName, actorRole: user.role,
+        type: 'attendance_marked', branchId: user.primaryBranchId, entityId: groupId || courseId,
+        count: results.length, meta: { courseId, date, groupId: groupId || null, mode: 'bulk' },
+      });
       return ok(results);
     }
 

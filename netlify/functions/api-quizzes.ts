@@ -10,6 +10,7 @@
 import type { Handler, HandlerEvent } from '@netlify/functions';
 import { adminDb, getDocsByIds } from './utils/firebase-admin';
 import { verifyAuth, hasRole, can, ok, unauthorized, badRequest, forbidden, notFound, jsonResponse } from './utils/auth';
+import { recordTeacherActivity } from './utils/teacher-activity';
 
 const QUIZZES = 'quizzes';
 const SHARES = 'quizShares';
@@ -307,6 +308,10 @@ const handler: Handler = async (event: HandlerEvent) => {
     };
 
     const ref = await adminDb.collection(QUIZZES).add(quizData);
+    await recordTeacherActivity({
+      organizationId: user.organizationId, actorId: user.uid, actorName: user.displayName, actorRole: user.role,
+      type: 'quiz_created', branchId: user.primaryBranchId, entityId: ref.id, entityLabel: quizData.title,
+    });
     return ok({ id: ref.id, ...quizData });
   }
 

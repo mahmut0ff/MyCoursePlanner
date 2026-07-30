@@ -17,7 +17,7 @@ import type { Handler, HandlerEvent } from '@netlify/functions';
 import { adminDb } from './utils/firebase-admin';
 import {
   verifyAuth, can, isStaff, getOrgFilter,
-  resolveBranchFilter, memberInBranchScope, memberHoldsRole,
+  resolveBranchFilter, memberHoldsRole,
   ok, unauthorized, forbidden, badRequest, jsonResponse,
 } from './utils/auth';
 import { getPeriodRange } from './utils/finance-period';
@@ -82,6 +82,25 @@ interface MemberDoc {
   branchIds?: string[];
 }
 
+/**
+ * Филиал для преподавателя: тот, у кого НЕТ branchIds — общеорганизационный
+ * (ведёт по всем филиалам) и виден в любом филиале; только назначенных в филиал
+ * сужаем по выбранному. Это ровно семантика api-org (action=teachers).
+ *
+ * НЕ используем memberInBranchScope: при строковом scope (админ выбрал конкретный
+ * филиал) он прячет безфилиальных преподавателей — а когда весь штат
+ * общеорганизационный, это давало 0 преподавателей (0/0) на странице активности,
+ * хотя на «Преподавателях» они все видны.
+ */
+function teacherInBranchScope(branchIds: string[] | undefined, scope: string | null | string[]): boolean {
+  if (scope === null) return true;
+  if (scope === '__DENIED__') return false;
+  const ids = Array.isArray(branchIds) ? branchIds : [];
+  if (ids.length === 0) return true; // общеорганизационный — виден в любом филиале
+  const want = Array.isArray(scope) ? scope : [scope];
+  return ids.some(id => want.includes(id));
+}
+
 /** Преподаватели организации, активные и в области выбранного филиала. */
 async function fetchTeachingRoster(
   orgId: string, scope: string | null | string[],
@@ -91,7 +110,7 @@ async function fetchTeachingRoster(
   return snap.docs
     .map(d => ({ id: d.id, ...(d.data() as Record<string, unknown>) } as MemberDoc))
     .filter(m => memberHoldsRole(m, TEACHING_ROLES))
-    .filter(m => memberInBranchScope(m.branchIds, scope))
+    .filter(m => teacherInBranchScope(m.branchIds, scope))
     .map(m => ({ id: m.userId || m.id, name: m.name || m.userName }));
 }
 

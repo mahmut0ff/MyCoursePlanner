@@ -116,6 +116,13 @@ const PaymentHistoryModal: React.FC<Props> = ({ plan, studentId, studentName, ca
                           {tx.paymentMethod && <span className="ml-1.5">· {methodIcon(tx.paymentMethod)}</span>}
                           {tx.description && <span className="ml-1.5">· {tx.description}</span>}
                         </p>
+                        {/* Кто провёл операцию: для оплаты — принял деньги, для
+                            возврата — оформил его. Старые записи без имени строку не рисуют. */}
+                        {tx.createdByName && (
+                          <p className="text-xs text-slate-400 truncate">
+                            {isRefund ? t('finances.refundedBy', 'Вернул') : t('finances.colAcceptedBy', 'Принял')}: {tx.createdByName}
+                          </p>
+                        )}
                       </div>
                     </div>
                     {canRefund && !isRefund && (

@@ -2070,6 +2070,7 @@
     "chartIncome": "Income",
     "chartExpense": "Expense",
     "colAcceptedBy": "Accepted by",
+    "refundedBy": "Refunded by",
     "colComment": "Comment",
     "refund": "Refund",
     "receivedTotal": "Received in the period",

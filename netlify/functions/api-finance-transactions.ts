@@ -187,17 +187,19 @@ const handler: Handler = async (event: HandlerEvent) => {
 
       results = results.slice(0, TRANSACTIONS_FETCH_CAP);
 
-      // ── Enrich income rows with names, mirroring api-finance-plans.ts ──
+      // ── Enrich rows with names, mirroring api-finance-plans.ts ──
       // A cash-close ledger has to answer "who took this money and for what", and
-      // `createdBy` alone is a uid nobody can read off a screen.
+      // `createdBy` alone is a uid nobody can read off a screen. Student/course names
+      // are income-only, but the operator is resolved for EVERY row: the payment-
+      // history modal mixes payments and refunds and shows who processed each.
       const studentIdsToFetch = new Set<string>();
       const courseIdsToFetch = new Set<string>();
       const creatorIdsToFetch = new Set<string>();
       for (const r of results) {
+        if (r.createdBy && !r.createdByName) creatorIdsToFetch.add(r.createdBy);
         if (r.type !== 'income') continue;
         if (r.studentId && !r.studentName) studentIdsToFetch.add(r.studentId);
         if (r.courseId && r.courseId !== 'general' && !r.courseName) courseIdsToFetch.add(r.courseId);
-        if (r.createdBy && !r.createdByName) creatorIdsToFetch.add(r.createdBy);
       }
 
       // One users lookup for students and creators together — they share a collection.
@@ -207,10 +209,10 @@ const handler: Handler = async (event: HandlerEvent) => {
       ]);
 
       for (const r of results) {
+        if (!r.createdByName && r.createdBy && userNames.has(r.createdBy)) r.createdByName = userNames.get(r.createdBy);
         if (r.type !== 'income') continue;
         if (!r.studentName && r.studentId && userNames.has(r.studentId)) r.studentName = userNames.get(r.studentId);
         if (!r.courseName && r.courseId && courseNames.has(r.courseId)) r.courseName = courseNames.get(r.courseId);
-        if (!r.createdByName && r.createdBy && userNames.has(r.createdBy)) r.createdByName = userNames.get(r.createdBy);
       }
 
       return ok(results);

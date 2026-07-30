@@ -2349,6 +2349,7 @@
     "chartIncome": "Доход",
     "chartExpense": "Расход",
     "colAcceptedBy": "Принял",
+    "refundedBy": "Вернул",
     "colComment": "Комментарий",
     "refund": "Возврат",
     "receivedTotal": "Поступило за период",

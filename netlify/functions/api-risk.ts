@@ -8,7 +8,7 @@
 import type { Handler, HandlerEvent } from '@netlify/functions';
 import { adminDb, getDocsByIds } from './utils/firebase-admin';
 import {
-  verifyAuth, ok, unauthorized, badRequest, jsonResponse,
+  verifyAuth, ok, unauthorized, badRequest, forbidden, jsonResponse, isSuperAdmin,
   resolveBranchFilter, memberInBranchScope, memberHoldsRole, recordInBranchScope,
 } from './utils/auth';
 import { computeStudentRisk } from './utils/risk';
@@ -26,6 +26,15 @@ export const handler: Handler = async (event: HandlerEvent) => {
   const orgId = params.orgId;
 
   if (!orgId) return badRequest('orgId required');
+
+  // `orgId` arrives from the query string and used to be trusted as-is: any
+  // authenticated user could ask for another academy's id and get back its whole
+  // roster — names, avatars, attendance rate and an overdue-payment flag per
+  // student. Nothing downstream caught it, because resolveBranchFilter scopes
+  // BRANCHES, never the organization, and every query below filters on the
+  // caller-supplied orgId. Super admins keep cross-org reads (the same rule
+  // getOrgFilter applies); everyone else is pinned to their own membership.
+  if (!isSuperAdmin(user) && orgId !== user.organizationId) return forbidden();
 
   // The client stamps the active branch onto this GET (api.ts BRANCH_SCOPED_ENDPOINTS).
   // This endpoint used to read only orgId and silently drop it, so picking a branch

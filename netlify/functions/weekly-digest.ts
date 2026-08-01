@@ -13,7 +13,7 @@ import type { Handler, HandlerEvent } from '@netlify/functions';
 import { adminDb } from './utils/firebase-admin';
 import { notifyOrgAdmins } from './utils/notifications';
 import { jsonResponse } from './utils/auth';
-import { isDebtBearingPlan, planDebt } from './utils/payment-plans';
+import { isDebtBearingPlan, planDebt, isPlanOverdue } from './utils/payment-plans';
 
 function fmt(n: number): string {
   try { return Math.round(n).toLocaleString('ru-RU'); } catch { return String(Math.round(n)); }
@@ -64,7 +64,9 @@ const handler: Handler = async (event: HandlerEvent) => {
         // to show the same number as the finance dashboard.
         if (!isDebtBearingPlan(plan)) continue;
         debt += planDebt(plan);
-        if (plan.status === 'overdue') overdue++;
+        // Просрочка по СРОКУ (isPlanOverdue), не по сырому статусу: совпадает с
+        // дашбордом и не «залипает» после продления срока.
+        if (isPlanOverdue(plan)) overdue++;
       }
 
       const activeStudents = memberSnap.docs.filter(d => (d.data() as any).status === 'active').length;

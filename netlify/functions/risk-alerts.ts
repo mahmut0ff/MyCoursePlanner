@@ -16,7 +16,7 @@ import type { Handler, HandlerEvent } from '@netlify/functions';
 import { adminDb } from './utils/firebase-admin';
 import { notifyOrgAdmins } from './utils/notifications';
 import { jsonResponse } from './utils/auth';
-import { isDebtBearingPlan, planDebt } from './utils/payment-plans';
+import { isDebtBearingPlan, planDebt, isPlanOverdue } from './utils/payment-plans';
 
 const ABSENCE_WINDOW_DAYS = 30;
 const ABSENCE_THRESHOLD = 3;
@@ -58,16 +58,18 @@ const handler: Handler = async (event: HandlerEvent) => {
         absencesByStudent.set(data.studentId, (absencesByStudent.get(data.studentId) || 0) + 1);
       }
 
-      // Overdue payments.
+      // Overdue payments — by DEADLINE (isPlanOverdue), not the raw 'overdue' status.
+      // Same predicate as api-risk and the finance screens, so a director isn't told
+      // "просрочена оплата" for a plan whose deadline was extended, and a truly
+      // past-deadline plan still stored 'pending' isn't missed.
+      const nowForOverdue = new Date();
       const overdueSnap = await adminDb.collection('studentPaymentPlans')
-        .where('organizationId', '==', orgId).where('status', '==', 'overdue').get();
+        .where('organizationId', '==', orgId).get();
       const overdueByStudent = new Map<string, number>();
       for (const p of overdueSnap.docs) {
         const data = p.data() as any;
-        // status == 'overdue' already excludes written-off ('cancelled') plans; the
-        // shared predicate also drops fully-settled ones, so we never tell an owner
-        // a student "просрочена оплата" when the balance is zero.
         if (!isDebtBearingPlan(data)) continue;
+        if (!isPlanOverdue(data, nowForOverdue)) continue;
         overdueByStudent.set(data.studentId, (overdueByStudent.get(data.studentId) || 0) + planDebt(data));
       }
 

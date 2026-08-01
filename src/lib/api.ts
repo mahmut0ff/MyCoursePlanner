@@ -117,7 +117,7 @@ async function apiRequest<T = any>(
     const errorData = await res.json().catch(() => ({ error: res.statusText }));
     const err = new Error(errorData.error || `API error: ${res.status}`);
     // Carry the full parsed error body so callers can read structured fields off a
-    // failed response — e.g. DebtsTab reads `linkedTransactions` off the 409 that
+    // failed response — e.g. MonthTab reads `linkedTransactions` off the 409 that
     // guards deleting a plan with linked payments (`e.linkedTransactions`). The
     // fields are copied straight onto the error AND kept on `.body` for callers
     // that prefer the namespaced form. `.message` is deliberately left untouched:

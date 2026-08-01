@@ -2489,7 +2489,6 @@
     "colForMonth": "За месяц",
     "statusWrittenOff": "Списан",
     "statusPaidMonth": "Оплачено",
-    "statusUnpaid": "Не оплачено",
     "noChargesMonth": "За этот месяц ещё не начисляли",
     "noChargesHint": "Нажмите «Начислить за месяц», чтобы выставить оплату студентам.",
     "tryOtherSearch": "Попробуйте изменить поиск",

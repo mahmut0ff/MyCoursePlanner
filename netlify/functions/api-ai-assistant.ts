@@ -33,7 +33,7 @@ import { handler as branchesHandler } from './api-branches';
 import { handler as financePlansHandler } from './api-finance-plans';
 import { handler as financeTxHandler } from './api-finance-transactions';
 import { handler as financeMetricsHandler } from './api-finance-metrics';
-import { isDebtBearingPlan, planDebt } from './utils/payment-plans';
+import { isDebtBearingPlan, planDebt, isPlanOverdue, planProgressKey } from './utils/payment-plans';
 
 const MAX_LOOPS = 5;          // read-tool rounds per turn
 const MAX_LIST = 30;          // rows fed back to the model per read tool
@@ -513,7 +513,11 @@ const TOOLS: ToolSpec[] = [
         // Через общее правило: списанный счёт долгом не считается НИКОГДА, а не
         // только когда спросили про должников. Иначе на «покажи счета Ивана»
         // модель получала debt по списанному счёту и докладывала его как долг.
-        debt: isDebtBearingPlan(p) ? planDebt(p) : 0, status: p.status, deadline: p.deadline || null,
+        // Статус для модели — по СРОКУ (isPlanOverdue), не по сырому p.status: GET
+        // промоутит pending→overdue по сроку, но НЕ демоутит устаревший 'overdue'
+        // после продления срока — иначе модель докладывала бы ложную просрочку.
+        debt: isDebtBearingPlan(p) ? planDebt(p) : 0,
+        status: isPlanOverdue(p) ? 'overdue' : planProgressKey(p), deadline: p.deadline || null,
       }));
       if (args.onlyDebtors) rows = rows.filter(r => r.debt > 0);
       rows.sort((a, b) => b.debt - a.debt);

@@ -22,7 +22,7 @@ import { apiDeletePaymentPlan, apiGetPaymentPlans, orgGetCourses, orgGetGroups, 
 import { useBranch } from '../../../contexts/BranchContext';
 import { usePermissions } from '../../../contexts/PermissionsContext';
 import { formatMoney } from '../../../lib/money';
-import { isDebtBearingPlan, isWrittenOffPlan, isPlanOverdue, planDebt, planDiscount, planPeriodKey } from '../../../lib/payment-plans';
+import { isDebtBearingPlan, isWrittenOffPlan, isPlanOverdue, planDebt, planDiscount, planPeriodKey, planProgressKey } from '../../../lib/payment-plans';
 import EmptyState from '../../../components/ui/EmptyState';
 import { ListSkeleton } from '../../../components/ui/Skeleton';
 import ConfirmDialog from '../../../components/ui/ConfirmDialog';
@@ -79,6 +79,19 @@ function monthLabel(key: string): string {
   const [y, m] = key.split('-').map(Number);
   return new Date(Date.UTC(y, m - 1, 1)).toLocaleDateString('ru-RU', { month: 'long', year: 'numeric', timeZone: 'UTC' });
 }
+
+/**
+ * Бейдж строки = ТОЛЬКО прогресс оплаты (planProgressKey). Просрочка — отдельная
+ * ось (метка «срок прошёл» по isPlanOverdue), а не подмена статуса. Ключ 'pending'
+ * нейтрально-серый: неоплаченный, но ещё не просроченный счёт — это «Ожидает», а
+ * не «Не оплачено» красным. Иначе оплата 28-го выглядела долгом уже 1-го числа.
+ */
+const PROGRESS_META: Record<string, { key: string; fallback: string; cls: string; Icon: typeof Clock }> = {
+  paid: { key: 'finances.statusPaidMonth', fallback: 'Оплачено', cls: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400', Icon: CheckCircle2 },
+  partial: { key: 'finances.statusPartial', fallback: 'Частично', cls: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400', Icon: Clock },
+  pending: { key: 'finances.statusPending', fallback: 'Ожидает', cls: 'bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-400', Icon: Clock },
+  cancelled: { key: 'finances.statusWrittenOff', fallback: 'Списан', cls: 'bg-slate-100 text-slate-400 line-through dark:bg-slate-800 dark:text-slate-500', Icon: Ban },
+};
 
 /**
  * «Оплаты за месяц» — что заплатили за выбранный месяц и кто ещё нет. Это тот же
@@ -213,7 +226,10 @@ const MonthTab: React.FC<Props> = ({ filters, onFiltersChange, month, onMonthCha
 
   const stats = useMemo(() => ({
     total: activePlans.length,
-    paid: activePlans.filter(p => p.status === 'paid').length,
+    // По тому же предикату, что и бейджи строк (planProgressKey), а не по сырому
+    // p.status: легаси-план без суммы со status:'paid' иначе считался бы «оплачен»
+    // в тайле, но рисовался «Частично» в строке — тайл и строки противоречили бы.
+    paid: activePlans.filter(p => planProgressKey(p) === 'paid').length,
     collected: activePlans.reduce((sum, p) => sum + (Number(p.paidAmount) || 0), 0),
     unpaid: activePlans.filter(p => isDebtBearingPlan(p)).length,
   }), [activePlans]);
@@ -275,14 +291,8 @@ const MonthTab: React.FC<Props> = ({ filters, onFiltersChange, month, onMonthCha
     { label: t('finances.deleteCharge', 'Удалить начисление'), icon: Trash2, danger: true, separated: true, onSelect: () => setPendingDelete(p) },
   ];
 
-  // Статус строки за месяц: списан → просрочено → оплачено → частично → не оплачено.
-  const statusBadge = (p: PaymentPlan) => {
-    if (isWrittenOffPlan(p)) return { key: 'finances.statusWrittenOff', fallback: 'Списан', cls: 'bg-slate-100 text-slate-400 line-through dark:bg-slate-800 dark:text-slate-500', Icon: Ban };
-    if (isPlanOverdue(p)) return { key: 'finances.statusOverdue', fallback: 'Просрочено', cls: 'bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400', Icon: AlertCircle };
-    if (p.status === 'paid') return { key: 'finances.statusPaidMonth', fallback: 'Оплачено', cls: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400', Icon: CheckCircle2 };
-    if (p.status === 'partial') return { key: 'finances.statusPartial', fallback: 'Частично', cls: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400', Icon: Clock };
-    return { key: 'finances.statusUnpaid', fallback: 'Не оплачено', cls: 'bg-rose-50 text-rose-600 dark:bg-rose-900/20 dark:text-rose-300', Icon: Clock };
-  };
+  // Статус строки живёт в PROGRESS_META (прогресс оплаты) + отдельная метка
+  // «срок прошёл» по isPlanOverdue. Единой плашки «Просрочено» больше нет.
 
   return (
     <div className="space-y-4">
@@ -325,7 +335,10 @@ const MonthTab: React.FC<Props> = ({ filters, onFiltersChange, month, onMonthCha
           </div>
         )}
         <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-4 flex items-center gap-3">
-          <div className="p-2.5 bg-rose-100 dark:bg-rose-900/30 rounded-xl"><AlertCircle className="w-5 h-5 text-rose-600" /></div>
+          {/* «Ещё не оплатили» — операционный счётчик «сколько ещё собрать», не тревога:
+              1-го числа ВСЕ свежие счета ещё не оплачены, и это норма. Поэтому
+              нейтральный янтарный, а не красный. Красный — только реальная просрочка. */}
+          <div className="p-2.5 bg-amber-100 dark:bg-amber-900/30 rounded-xl"><Clock className="w-5 h-5 text-amber-600" /></div>
           <div>
             <p className="text-xs text-slate-500">{t('finances.unpaidCount', 'Ещё не оплатили')}</p>
             <p className="text-lg font-bold text-slate-900 dark:text-white">{stats.unpaid}</p>
@@ -380,9 +393,12 @@ const MonthTab: React.FC<Props> = ({ filters, onFiltersChange, month, onMonthCha
                   {pageRows.map(p => {
                     const student = studentById.get(String(p.studentId));
                     const name = p.studentName || student?.displayName || t('finances.studentRemoved', 'Студент удалён');
-                    const badge = statusBadge(p);
+                    const pk = planProgressKey(p);
+                    const meta = PROGRESS_META[pk];
                     const owes = isDebtBearingPlan(p);
                     const writtenOff = isWrittenOffPlan(p);
+                    // Просрочка — отдельная ось (метка «срок прошёл»), не подмена статуса.
+                    const overdue = !writtenOff && isPlanOverdue(p);
                     return (
                       <tr key={p.id} className={`hover:bg-slate-50 dark:hover:bg-slate-700/30 transition-colors ${writtenOff ? 'opacity-60' : ''}`}>
                         <td className="px-5 py-3.5 whitespace-nowrap">
@@ -394,16 +410,34 @@ const MonthTab: React.FC<Props> = ({ filters, onFiltersChange, month, onMonthCha
                         </td>
                         <td className="px-5 py-3.5 text-slate-500 whitespace-nowrap">{p.courseName || p.courseId || '—'}</td>
                         <td className="px-5 py-3.5 whitespace-nowrap">
-                          <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${badge.cls}`}>
-                            <badge.Icon className="w-3.5 h-3.5" />
-                            {t(badge.key, badge.fallback)}
-                            {p.status === 'partial' && !writtenOff && (
+                          <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${meta.cls}`}>
+                            <meta.Icon className="w-3.5 h-3.5" />
+                            {t(meta.key, meta.fallback)}
+                            {pk === 'partial' && (
                               <span className="font-bold">· {formatMoney(p.paidAmount)} {t('finances.outOf', 'из')} {formatMoney(p.totalAmount)}</span>
                             )}
-                            {owes && p.status !== 'partial' && !isPlanOverdue(p) && (
+                            {pk === 'pending' && owes && (
                               <span className="font-bold">· {formatMoney(planDebt(p))}</span>
                             )}
                           </span>
+                          {/* Срок оплаты неоплаченного счёта: нейтрально «до 10.08», не тревожно.
+                              Раньше любой неоплаченный (в т.ч. ещё не подошедший по сроку) горел
+                              красным «Не оплачено» — и оплата 28-го выглядела долгом уже 1-го.
+                              Теперь до срока это спокойное «Ожидает · до <дата>». */}
+                          {owes && p.deadline && (
+                            <span className={`ml-2 text-[11px] align-middle ${overdue ? 'text-rose-500 font-bold' : 'text-slate-400'}`}>
+                              {t('finances.until', 'до')} {new Date(p.deadline).toLocaleDateString()}
+                            </span>
+                          )}
+                          {/* «Срок прошёл» — отдельная красная метка, только когда срок реально прошёл. */}
+                          {overdue && (
+                            <span
+                              title={t('finances.overdueTagHint', 'Снимется, когда оплатят полностью или продлят срок.')}
+                              className="ml-2 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400 align-middle"
+                            >
+                              <AlertCircle className="w-3 h-3" /> {t('finances.overdueTag', 'срок прошёл')}
+                            </span>
+                          )}
                           {/* Скидка от цены курса — не долг. Показываем рядом со статусом. */}
                           {!writtenOff && planDiscount(p) > 0 && (
                             <span

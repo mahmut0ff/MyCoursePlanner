@@ -13,7 +13,7 @@
 import { adminDb } from './firebase-admin';
 import { generateWithFallback, hasGeminiKey, recordAiUsage } from './ai';
 import { createNotification } from './notifications';
-import { isDebtBearingPlan, planDebt } from './payment-plans';
+import { isDebtBearingPlan, planDebt, isPlanOverdue, daysUntilDeadline } from './payment-plans';
 
 const RU_MONTHS = ['Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь', 'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'];
 
@@ -109,12 +109,13 @@ export async function buildDirectorSnapshot(orgId: string): Promise<DirectorSnap
     if (!isDebtBearingPlan(plan)) continue;
     const debt = planDebt(plan);
     debtTotal += debt;
-    let daysOverdue = 0;
-    if (plan.deadline) {
-      const dl = new Date(plan.deadline);
-      if (!isNaN(dl.getTime())) { const d = Math.floor((now.getTime() - dl.getTime()) / (1000 * 60 * 60 * 24)); if (d > 0) daysOverdue = d; }
-    }
-    if ((plan.status === 'overdue' || daysOverdue > 0) && plan.studentId) overdueStudentIds.add(plan.studentId);
+    // Просрочка — по СРОКУ через общий предикат (день организации, UTC+6), а не по
+    // сырому статусу и не по разнице миллисекунд: продлённый срок оставался
+    // «просрочкой», а граница суток уезжала на 6 часов. Тот же isPlanOverdue и та же
+    // логика дней (daysUntilDeadline), что в api-risk и на всех экранах.
+    const du = daysUntilDeadline(plan.deadline, now);
+    const daysOverdue = du !== null && du < 0 ? -du : 0;
+    if (isPlanOverdue(plan, now) && plan.studentId) overdueStudentIds.add(plan.studentId);
     debtors.push({ name: plan.studentName || 'Студент', amount: debt, daysOverdue });
   }
   debtors.sort((a, b) => b.amount - a.amount);
@@ -275,10 +276,13 @@ export async function remindOrgDebtors(orgId: string): Promise<{ sent: number; s
   // Parallelize so a big debtor list doesn't blow the webhook's execution budget.
   await Promise.allSettled(eligible.map(async ({ doc, plan, debt }) => {
     const courseSuffix = plan.courseName ? ` за «${plan.courseName}»` : '';
+    // «Просрочена оплата» vs нейтральное «Напоминание» — по сроку (isPlanOverdue),
+    // а не по сырому статусу: продлили срок — студент не получит «просрочено».
+    const overdue = isPlanOverdue(plan);
     await createNotification({
       recipientId: plan.studentId,
-      type: plan.status === 'overdue' ? 'payment_overdue' : 'payment_due',
-      title: plan.status === 'overdue' ? 'Просрочена оплата' : 'Напоминание об оплате',
+      type: overdue ? 'payment_overdue' : 'payment_due',
+      title: overdue ? 'Просрочена оплата' : 'Напоминание об оплате',
       message: `Задолженность: ${fmt(debt)} с.${courseSuffix}.`,
       link: '/diary',
       organizationId: orgId,
@@ -417,7 +421,8 @@ export async function sendDebtorDraft(orgId: string, draftText: string): Promise
   }
   await Promise.allSettled(eligible.map(({ plan, debt, id }) => createNotification({
     recipientId: plan.studentId,
-    type: plan.status === 'overdue' ? 'payment_overdue' : 'payment_due',
+    // Категория уведомления — по сроку, не по сырому статусу (заголовок уже нейтральный).
+    type: isPlanOverdue(plan) ? 'payment_overdue' : 'payment_due',
     title: 'Напоминание об оплате',
     message: `${draftText}\n\n💳 Ваша задолженность: ${fmt(debt)} с.`,
     link: '/diary',

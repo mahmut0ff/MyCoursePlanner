@@ -5,7 +5,7 @@ import type { Handler, HandlerEvent } from '@netlify/functions';
 import { adminDb } from './utils/firebase-admin';
 import { verifyAuth, isStaff, hasRole, getOrgFilter, resolveBranchFilter, memberInBranchScope, memberHoldsRole, ok, unauthorized, forbidden, jsonResponse } from './utils/auth';
 import { computeStudentRisk, needsAttention } from './utils/risk';
-import { isDebtBearingPlan } from './utils/payment-plans';
+import { isDebtBearingPlan, isPlanOverdue } from './utils/payment-plans';
 
 /** ISO timestamp for the 1st of the month, `offset` months back (0 = this month). */
 function monthStartISO(offset = 0): string {
@@ -121,12 +121,12 @@ const handler: Handler = async (event: HandlerEvent) => {
     const nowMs = Date.now();
     const emptyCount = { data: () => ({ count: 0 }) };
 
-    const [memberSnap, leadSnap, attemptSnap, journalSnap, overdueSnap, hwCountSnap] = await Promise.all([
+    const [memberSnap, leadSnap, attemptSnap, journalSnap, plansSnap, hwCountSnap] = await Promise.all([
       adminDb.collection('orgMembers').doc(orgFilter).collection('members').where('status', '==', 'active').get(),
       adminDb.collection('organizations').doc(orgFilter).collection('aiLeads').get().catch(() => null),
       adminDb.collection('examAttempts').where('organizationId', '==', orgFilter).get().catch(() => null),
       adminDb.collection('journal').where('organizationId', '==', orgFilter).get().catch(() => null),
-      adminDb.collection('studentPaymentPlans').where('organizationId', '==', orgFilter).where('status', '==', 'overdue').get().catch(() => null),
+      adminDb.collection('studentPaymentPlans').where('organizationId', '==', orgFilter).get().catch(() => null),
       adminDb.collection('homework_submissions').where('organizationId', '==', orgFilter).where('status', '==', 'pending').count().get().catch(() => emptyCount),
     ]);
 
@@ -173,15 +173,19 @@ const handler: Handler = async (event: HandlerEvent) => {
       if (!journalByStudent.has(j.studentId)) journalByStudent.set(j.studentId, []);
       journalByStudent.get(j.studentId)!.push(j);
     });
-    // The query already pins status == 'overdue' (so a written-off 'cancelled'
-    // plan can't reach here), but the shared predicate also drops plans whose
-    // balance has since been settled while the status label lagged behind — a
-    // student who owes nothing must not be badged as a payment risk.
+    // Просрочка — по СРОКУ (isPlanOverdue), не по сырому статусу 'overdue': тот же
+    // предикат, что в api-risk и на экранах, поэтому этот тайл и список учеников
+    // считают одних и тех же людей. Раньше запрос пинил status == 'overdue' —
+    // продлённый срок оставлял ученика в «просрочке», а реально просроченный, но
+    // ещё числящийся 'pending', в неё не попадал.
+    const nowForOverdue = new Date();
     const overdueStudents = new Set<string>();
-    (overdueSnap?.docs || []).forEach(d => {
+    (plansSnap?.docs || []).forEach(d => {
       const plan = d.data() as any;
+      if (!plan.studentId || !studentIdSet.has(plan.studentId)) return;
       if (!isDebtBearingPlan(plan)) return;
-      if (plan.studentId && studentIdSet.has(plan.studentId)) overdueStudents.add(plan.studentId);
+      if (!isPlanOverdue(plan, nowForOverdue)) return;
+      overdueStudents.add(plan.studentId);
     });
 
     const avgScore = allAttempts.length

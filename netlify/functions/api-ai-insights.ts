@@ -13,7 +13,7 @@ import { verifyAuth, can, ok, unauthorized, forbidden, badRequest, jsonResponse,
 import { rateLimiters, getRateLimitKey } from './utils/rate-limiter';
 import { getModel, parseJsonLoose, aiAllowed, hasGeminiKey, recordAiUsage } from './utils/ai';
 import { computeStudentRisk } from './utils/risk';
-import { isDebtBearingPlan, planDebt } from './utils/payment-plans';
+import { isDebtBearingPlan, planDebt, isPlanOverdue } from './utils/payment-plans';
 
 function monthStartISO(offset = 0): string {
   const d = new Date();
@@ -81,7 +81,8 @@ async function gatherSnapshot(orgId: string, includeFinance: boolean): Promise<O
       // owner's own dashboard contradicts.
       if (!isDebtBearingPlan(plan)) continue;
       debt += planDebt(plan);
-      if (plan.status === 'overdue') overduePlans++;
+      // Просрочка по СРОКУ (isPlanOverdue), не по сырому статусу — как в api-finance-metrics.
+      if (isPlanOverdue(plan)) overduePlans++;
     }
     finance = { incomeThisMonth, incomeLastMonth, expenseThisMonth, debt, overduePlans };
   }

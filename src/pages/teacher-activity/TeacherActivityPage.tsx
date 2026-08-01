@@ -5,6 +5,7 @@ import { ru, enUS, type Locale } from 'date-fns/locale';
 import {
   Activity, GraduationCap, CalendarCheck, CheckSquare, FilePlus2,
   ClipboardList, Gamepad2, BookOpen, LogIn, Download, ArrowUpDown, X, Users, Zap, Trophy,
+  UserPlus, UserCheck, UserMinus, FolderPlus, FolderMinus,
   type LucideIcon,
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
@@ -64,13 +65,31 @@ const TYPE_META: Record<string, { label: string; icon: LucideIcon; color: string
   quiz_created: { label: 'Квизы', icon: Gamepad2, color: 'text-cyan-500' },
   exam_created: { label: 'Экзамены', icon: ClipboardList, color: 'text-rose-500' },
   login: { label: 'Входы', icon: LogIn, color: 'text-slate-400' },
+  student_created: { label: 'Заведено студентов', icon: UserPlus, color: 'text-teal-500' },
+  student_enrolled: { label: 'Зачислено в группы', icon: UserCheck, color: 'text-sky-500' },
+  student_removed: { label: 'Отчислено', icon: UserMinus, color: 'text-orange-500' },
+  group_created: { label: 'Создано групп', icon: FolderPlus, color: 'text-indigo-500' },
+  group_deleted: { label: 'Удалено групп', icon: FolderMinus, color: 'text-slate-400' },
 };
 
+/** Типы, из которых складывается колонка «Контингент» — работа со списками людей. */
+const ROSTER_TYPES = ['student_created', 'student_enrolled', 'student_removed', 'group_created', 'group_deleted'] as const;
+
 const PERIODS = ['current_month', 'last_month', 'quarter', 'year', 'all'] as const;
-type SortKey = 'name' | 'grade_set' | 'attendance_marked' | 'homework_checked' | 'created' | 'login' | 'activeDays' | 'kpiScore';
+type SortKey = 'name' | 'grade_set' | 'attendance_marked' | 'homework_checked' | 'created' | 'roster' | 'login' | 'activeDays' | 'kpiScore';
 
 const createdOf = (r: KpiRow) =>
   (r.counts.exam_created || 0) + (r.counts.quiz_created || 0) + (r.counts.lesson_created || 0) + (r.counts.homework_created || 0);
+
+const rosterOf = (r: KpiRow) => ROSTER_TYPES.reduce((s, t) => s + (r.counts[t] || 0), 0);
+
+/** Кого затронуло действие — денормализованные имена из события (см. logRoster на сервере). */
+function peopleOf(meta: Record<string, unknown> | null): { names: string[]; more: number } {
+  const raw = Array.isArray(meta?.people) ? (meta!.people as { id?: string; name?: string }[]) : [];
+  const names = raw.map(p => (p?.name || '').trim()).filter(Boolean);
+  const total = typeof meta?.peopleTotal === 'number' ? (meta!.peopleTotal as number) : raw.length;
+  return { names, more: Math.max(0, total - raw.length) };
+}
 
 const scoreTone = (s: number) =>
   s >= 70 ? { text: 'text-emerald-600 dark:text-emerald-400', bar: 'bg-emerald-500' }
@@ -124,6 +143,7 @@ const TeacherActivityPage: React.FC = () => {
       switch (sort.key) {
         case 'name': return r.name.toLowerCase();
         case 'created': return createdOf(r);
+        case 'roster': return rosterOf(r);
         case 'grade_set': return r.counts.grade_set || 0;
         case 'attendance_marked': return r.counts.attendance_marked || 0;
         case 'homework_checked': return r.counts.homework_checked || 0;
@@ -144,10 +164,10 @@ const TeacherActivityPage: React.FC = () => {
     setSort(s => (s.key === key ? { key, dir: s.dir === 'asc' ? 'desc' : 'asc' } : { key, dir: key === 'name' ? 'asc' : 'desc' }));
 
   const exportCsv = () => {
-    const headers = ['Преподаватель', 'Оценки', 'Посещаемость', 'Проверка ДЗ', 'Создано', 'Входы', 'Активных дней', 'KPI'];
+    const headers = ['Преподаватель', 'Оценки', 'Посещаемость', 'Проверка ДЗ', 'Создано', 'Контингент', 'Входы', 'Активных дней', 'KPI'];
     const body = sortedRows.map(r => [
       r.name, r.counts.grade_set || 0, r.counts.attendance_marked || 0, r.counts.homework_checked || 0,
-      createdOf(r), r.counts.login || 0, r.activeDays, r.kpiScore,
+      createdOf(r), rosterOf(r), r.counts.login || 0, r.activeDays, r.kpiScore,
     ]);
     downloadCsv(`teacher-activity-${period}.csv`, buildCsv(headers, body));
   };
@@ -247,6 +267,7 @@ const TeacherActivityPage: React.FC = () => {
                       <Th label={t('teacherActivity.col.attendance', 'Посещ.')} sortKey="attendance_marked" sort={sort} onSort={toggleSort} />
                       <Th label={t('teacherActivity.col.hw', 'ДЗ')} sortKey="homework_checked" sort={sort} onSort={toggleSort} />
                       <Th label={t('teacherActivity.col.created', 'Создано')} sortKey="created" sort={sort} onSort={toggleSort} />
+                      <Th label={t('teacherActivity.col.roster', 'Контингент')} sortKey="roster" sort={sort} onSort={toggleSort} />
                       <Th label={t('teacherActivity.col.logins', 'Входы')} sortKey="login" sort={sort} onSort={toggleSort} />
                       <Th label={t('teacherActivity.col.activeDays', 'Дней')} sortKey="activeDays" sort={sort} onSort={toggleSort} />
                       <Th label="KPI" sortKey="kpiScore" sort={sort} onSort={toggleSort} />
@@ -282,6 +303,7 @@ const TeacherActivityPage: React.FC = () => {
                           <NumCell v={r.counts.attendance_marked || 0} />
                           <NumCell v={r.counts.homework_checked || 0} />
                           <NumCell v={createdOf(r)} />
+                          <NumCell v={rosterOf(r)} />
                           <NumCell v={r.counts.login || 0} />
                           <NumCell v={r.activeDays} />
                           <td className="px-5 py-3.5">
@@ -413,6 +435,7 @@ const TeacherDrawer: React.FC<{
               {events.map(e => {
                 const meta = TYPE_META[e.type] || { label: e.type, icon: Activity, color: 'text-slate-400' };
                 const Icon = meta.icon;
+                const { names, more } = peopleOf(e.meta);
                 return (
                   <li key={e.id} className="flex items-start gap-3">
                     <div className="w-7 h-7 rounded-lg bg-slate-100 dark:bg-slate-800 flex items-center justify-center shrink-0">
@@ -424,6 +447,12 @@ const TeacherDrawer: React.FC<{
                         {e.count > 1 && <span className="text-slate-400"> ×{e.count}</span>}
                       </p>
                       {e.entityLabel && <p className="text-xs text-slate-400 truncate">{e.entityLabel}</p>}
+                      {names.length > 0 && (
+                        <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                          {names.join(', ')}
+                          {more > 0 && <span className="text-slate-400"> {t('teacherActivity.andMore', { count: more, defaultValue: 'и ещё {{count}}' })}</span>}
+                        </p>
+                      )}
                     </div>
                     <span className="text-[11px] text-slate-400 whitespace-nowrap shrink-0">{rel(e.createdAt)}</span>
                   </li>

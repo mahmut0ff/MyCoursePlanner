@@ -52,7 +52,8 @@ export interface ResourceDef {
   label: string;
   /** Restrict which actions make sense for this resource (e.g. read-only screens). */
   actions?: RbacAction[];
-  help: { read: string; write?: string; delete?: string; notes?: string };
+  /** Пояснения по действиям — только для тех, что у ресурса вообще есть. */
+  help: { read?: string; write?: string; delete?: string; notes?: string };
 }
 
 export interface ResourceGroup {
@@ -85,6 +86,15 @@ export const RESOURCE_GROUPS: ResourceGroup[] = [
         read: 'Просмотр заявок и воронки лидов',
         write: 'Создание и ведение лидов, смена статуса',
         delete: 'Удаление лидов',
+      } },
+      // Модификатор поверх «Студенты» и «Группы» (как finance_overview поверх
+      // «Финансов»): снимает ограничение «только свои». Преподаватель по умолчанию
+      // ведёт лишь группы, где он числится; с этим правом он работает с контингентом
+      // всей организации — как менеджер. ЧТО именно можно (смотреть / изменять /
+      // удалять) по-прежнему решают галочки в «Студентах» и «Группах».
+      { id: 'roster_management', label: 'Контингент: полное управление', actions: ['write'], help: {
+        write: 'Заводить, редактировать и удалять любых студентов и любые группы организации, а не только свои',
+        notes: 'Для преподавателя-куратора. Работает в паре с правами «Студенты» и «Группы»: здесь снимается ограничение «только свои», а объём действий задают их галочки. Админам и менеджерам доступно по роли.',
       } },
     ],
   },
@@ -247,10 +257,15 @@ export const TEACHER_DEFAULT: RolePermission[] = [
   ...rwd(['lessons', 'exams', 'rooms', 'quizzes', 'materials', 'homework', 'gradebook']),
 ];
 
-/** Manager base: broad operational CRUD; finances/settings/team/branches gated by legacy toggles. */
+/**
+ * Manager base: broad operational CRUD; finances/settings/team/branches gated by legacy toggles.
+ * `roster_management` is listed explicitly so the matrix shows what a manager really
+ * has — the server also grants it by role, but an unchecked box would lie.
+ */
 export const MANAGER_DEFAULT: RolePermission[] = [
   ...ro(['dashboard', 'analytics', 'results']),
   ...rw(['ai']),
+  ...rw(['roster_management']),
   ...rwd(['students', 'teachers', 'leads', 'courses', 'groups', 'lessons', 'materials', 'schedule', 'exams', 'rooms', 'quizzes', 'gradebook', 'homework', 'certificates']),
 ];
 
@@ -372,6 +387,55 @@ export function diffOverrides(
   const toArr = (m: Record<string, RbacAction[]>): RolePermission[] =>
     Object.entries(m).map(([resource, actions]) => ({ resource, actions }));
   return { grants: toArr(grantsByRes), revokes: toArr(revokesByRes) };
+}
+
+// ─── Быстрые наборы прав (пресеты) ───
+
+/**
+ * Именованный набор `resource:action`, который выдаётся/снимается одним кликом.
+ *
+ * Нужен там, где полезное право — это не одна галочка, а связка: «преподаватель
+ * ведёт контингент» = модификатор roster_management плюс CRUD по студентам и
+ * группам. Ставить семь галочек вручную (и помнить, какие именно) — ровно тот
+ * случай, ради которого пресет и существует. Пресет ничего не хранит: он просто
+ * правит тот же набор, что и матрица, поэтому остаётся видимым и редактируемым
+ * галочка за галочкой.
+ */
+export interface AccessPreset {
+  id: string;
+  label: string;
+  description: string;
+  /** Ключи `resource:action`, которые включает набор. */
+  keys: string[];
+}
+
+export const ACCESS_PRESETS: AccessPreset[] = [
+  {
+    id: 'roster_manager',
+    label: 'Ведение студентов и групп',
+    description: 'Заводит, редактирует и удаляет студентов и группы по всей организации — как менеджер. Для преподавателя-куратора, который набирает свои группы сам.',
+    keys: [
+      'roster_management:write',
+      'students:read', 'students:write', 'students:delete',
+      'groups:read', 'groups:write', 'groups:delete',
+    ],
+  },
+];
+
+/** Набор выдан целиком? (частично включённый пресет считается выключенным) */
+export function presetActive(set: Set<string>, preset: AccessPreset): boolean {
+  return preset.keys.every(k => set.has(k));
+}
+
+/**
+ * Включить/выключить набор поверх текущего множества прав.
+ * Выключение снимает только ключи набора — остальные правки в матрице не трогает.
+ */
+export function togglePreset(set: Set<string>, preset: AccessPreset): Set<string> {
+  const next = new Set(set);
+  const on = presetActive(set, preset);
+  preset.keys.forEach(k => (on ? next.delete(k) : next.add(k)));
+  return next;
 }
 
 /** Count granted actions across a role's permissions (for role cards). */

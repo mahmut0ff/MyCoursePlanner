@@ -104,7 +104,7 @@ const PermissionGrid: React.FC<{
                           <button onClick={() => setOpenHelp(null)}><X className="w-3.5 h-3.5 text-slate-400" /></button>
                         </div>
                         <div className="space-y-1.5">
-                          <p><span className={`font-semibold ${ACTION_COLORS.read}`}>{ACTION_LABELS.read}:</span> <span className="text-slate-500">{res.help.read}</span></p>
+                          {res.help.read && <p><span className={`font-semibold ${ACTION_COLORS.read}`}>{ACTION_LABELS.read}:</span> <span className="text-slate-500">{res.help.read}</span></p>}
                           {res.help.write && res.help.write !== '—' && <p><span className={`font-semibold ${ACTION_COLORS.write}`}>{ACTION_LABELS.write}:</span> <span className="text-slate-500">{res.help.write}</span></p>}
                           {res.help.delete && res.help.delete !== '—' && <p><span className={`font-semibold ${ACTION_COLORS.delete}`}>{ACTION_LABELS.delete}:</span> <span className="text-slate-500">{res.help.delete}</span></p>}
                           {res.help.notes && <p className="pt-1.5 mt-1.5 border-t border-slate-100 dark:border-slate-700 text-amber-600 dark:text-amber-400 italic">💡 {res.help.notes}</p>}

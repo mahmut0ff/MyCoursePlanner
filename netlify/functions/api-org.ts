@@ -6,11 +6,13 @@ import type { Handler, HandlerEvent } from '@netlify/functions';
 import { adminAuth, adminDb, getDocsByIds } from './utils/firebase-admin';
 import {
   verifyAuth, isStaff, isSuperAdmin, hasRole, hasPermission, can, getOrgFilter,
+  isRosterManager,
   ok, unauthorized, forbidden, badRequest, notFound, jsonResponse,
   resolveBranchFilter, userHasBranchAccess, memberInBranchScope, memberHoldsRole,
   type AuthUser,
 } from './utils/auth';
 import { createNotification, notifyOrgAdmins, notifyGroupMembers } from './utils/notifications';
+import { recordTeacherActivity } from './utils/teacher-activity';
 import { FieldValue } from 'firebase-admin/firestore';
 import { getOrgLimits } from './utils/plan-limits';
 import { billingPeriodKey, billingDeadlineISO } from './utils/billing';
@@ -119,6 +121,62 @@ function requireOrgStaff(user: AuthUser) {
   if (!user.organizationId) return forbidden();
   if (!isStaff(user)) return forbidden();
   return null;
+}
+
+/** Сколько имён кладём в событие журнала — чтобы импорт на 500 человек не раздул документ. */
+const ACTIVITY_PEOPLE_CAP = 25;
+
+type RosterActivityType =
+  | 'student_created' | 'student_enrolled' | 'student_removed' | 'group_created' | 'group_deleted';
+
+/**
+ * Журнал «кто кого и когда»: действия с контингентом пишутся в teacherActivity
+ * там же, где происходят, с актёром из проверенного токена — подделать авторство
+ * с клиента нельзя (та же логика, что у оценок и посещаемости).
+ *
+ * `people` — те, кого действие затронуло: в ленте нужно видеть не только
+ * «зачислил 12 человек», но и кого именно, поэтому имена денормализуем прямо в
+ * событие (иначе отчисленного студента потом уже не по кому резолвить).
+ * Best-effort: recordTeacherActivity глотает свои ошибки и не валит мутацию.
+ */
+function logRoster(
+  user: AuthUser,
+  type: RosterActivityType,
+  opts: {
+    entityId?: string | null;
+    entityLabel?: string | null;
+    count?: number;
+    people?: { id: string; name: string }[];
+    meta?: Record<string, unknown>;
+  },
+) {
+  const all = (opts.people || []).filter(p => p.id || p.name);
+  return recordTeacherActivity({
+    organizationId: user.organizationId,
+    actorId: user.uid,
+    actorName: user.displayName,
+    actorRole: user.role,
+    type,
+    branchId: user.primaryBranchId,
+    entityId: opts.entityId ?? null,
+    entityLabel: opts.entityLabel ?? null,
+    count: opts.count ?? 1,
+    meta: {
+      ...(opts.meta || {}),
+      ...(all.length ? { people: all.slice(0, ACTIVITY_PEOPLE_CAP), peopleTotal: all.length } : {}),
+    },
+  });
+}
+
+/** Имена участников для журнала: сперва то, что уже под рукой, иначе профиль. */
+async function namesForActivity(uids: string[], known: Record<string, any> = {}): Promise<{ id: string; name: string }[]> {
+  const need = uids.filter(id => !known[id]);
+  let fetched: Record<string, any> = {};
+  if (need.length) fetched = await getDocsByIds('users', need.slice(0, ACTIVITY_PEOPLE_CAP)).catch(() => ({}));
+  return uids.map(id => {
+    const src = known[id] || fetched[id] || {};
+    return { id, name: src.userName || src.displayName || '' };
+  });
 }
 
 /**
@@ -465,9 +523,10 @@ const handler: Handler = async (event: HandlerEvent) => {
     if (action === 'createGroup') {
       const err = requireOrgStaff(user); if (err) return err;
       if (!can(user, 'groups', 'write')) return forbidden('Недостаточно прав для этого действия');
-      // Teachers can create groups only when the org enabled the "manage own groups"
-      // policy. Admins/managers always may (their groups:write is unconditional).
-      const isPrivileged = hasRole(user, 'admin', 'manager') || isSuperAdmin(user);
+      // Кто распоряжается группами всей организации: админ/менеджер по роли либо
+      // преподаватель с точечным roster_management:write. Остальным преподавателям
+      // создание доступно только по орг-политике «свои группы».
+      const isPrivileged = isRosterManager(user);
       if (!isPrivileged && !(await getTeacherGroupPolicy(orgId)).manage) {
         return forbidden('Создание групп недоступно для преподавателей');
       }
@@ -491,10 +550,24 @@ const handler: Handler = async (event: HandlerEvent) => {
         createdAt: now(), updatedAt: now(),
       };
       const ref = await adminDb.collection('groups').add(data);
-      
+
+      await logRoster(user, 'group_created', {
+        entityId: ref.id, entityLabel: data.name,
+        meta: { courseId: data.courseId, courseName: data.courseName || null, students: data.studentIds.length },
+      });
+      // Стартовый состав — это тоже «кого зачислили», иначе группа, собранная
+      // сразу с учениками, не оставит в журнале ни одной записи о них.
+      if (data.studentIds.length) {
+        await logRoster(user, 'student_enrolled', {
+          entityId: ref.id, entityLabel: data.name, count: data.studentIds.length,
+          people: await namesForActivity(data.studentIds),
+          meta: { groupId: ref.id, source: 'createGroup' },
+        });
+      }
+
       // Auto-generate payment plans
       await syncPaymentPlans(orgId, data.branchId, data.courseId, data.studentIds).catch(console.error);
-      
+
       return ok({ id: ref.id, ...data });
     }
 
@@ -507,15 +580,17 @@ const handler: Handler = async (event: HandlerEvent) => {
       if (!doc.exists || doc.data()?.organizationId !== orgId) return notFound();
       const oldData = doc.data()!;
 
-      // Field-level authorization. Admins/managers manage the whole group record.
-      // Teachers also hold groups:write, but their scope depends on ownership:
+      // Field-level authorization. Roster managers (админ/менеджер по роли или
+      // преподаватель с roster_management:write) правят запись группы целиком.
+      // Остальные преподаватели тоже держат groups:write, но их объём зависит от
+      // отношения к группе:
       //   • a teacher who OWNS the group (createdBy) AND whose org enabled the
       //     "manage own groups" policy gets the full editor, like a manager;
       //   • otherwise a teacher who merely TEACHES the group may only advance
       //     syllabus progress / lifecycle status — never reassign people or move
       //     the group. Anything outside their scope is dropped (whitelist), and a
       //     teacher with no relationship to the group is refused outright.
-      const isPrivileged = hasRole(user, 'admin', 'manager') || isSuperAdmin(user);
+      const isPrivileged = isRosterManager(user);
       let fullEditor = isPrivileged;
       // Whether a teacher who merely teaches the group may change its lifecycle
       // status (active/completed/archived) — an admin-controlled org policy.
@@ -557,6 +632,22 @@ const handler: Handler = async (event: HandlerEvent) => {
         const oldStudents: string[] = oldData.studentIds || [];
         const newStudents: string[] = fields.studentIds || [];
         const addedStudents = newStudents.filter((sid: string) => !oldStudents.includes(sid));
+        const droppedStudents = oldStudents.filter((sid: string) => !newStudents.includes(sid));
+        // Кто кого добавил/убрал из группы — в журнал активности, с именами.
+        if (addedStudents.length) {
+          await logRoster(user, 'student_enrolled', {
+            entityId: id, entityLabel: updatedData.name || null, count: addedStudents.length,
+            people: await namesForActivity(addedStudents),
+            meta: { groupId: id, source: 'updateGroup' },
+          });
+        }
+        if (droppedStudents.length) {
+          await logRoster(user, 'student_removed', {
+            entityId: id, entityLabel: updatedData.name || null, count: droppedStudents.length,
+            people: await namesForActivity(droppedStudents),
+            meta: { groupId: id, source: 'updateGroup', scope: 'group' },
+          });
+        }
         for (const sid of addedStudents) {
           createNotification({
             recipientId: sid,
@@ -569,7 +660,7 @@ const handler: Handler = async (event: HandlerEvent) => {
         }
 
         // Cancel pending payment plans for removed students
-        const removedStudents = oldStudents.filter((sid: string) => !newStudents.includes(sid));
+        const removedStudents = droppedStudents;
         if (removedStudents.length > 0 && updatedData.courseId) {
           const plansSnap = await adminDb.collection('studentPaymentPlans')
             .where('organizationId', '==', orgId)
@@ -595,16 +686,21 @@ const handler: Handler = async (event: HandlerEvent) => {
       if (!body.id) return badRequest('id required');
       const doc = await adminDb.collection('groups').doc(body.id).get();
       if (!doc.exists || doc.data()?.organizationId !== orgId) return notFound();
-      // Admins/managers delete any group (needs groups:delete). Teachers may delete
+      // Roster managers delete any group (needs groups:delete). Teachers may delete
       // only groups they own, and only when the org enabled the policy.
-      const isPrivileged = hasRole(user, 'admin', 'manager') || isSuperAdmin(user);
+      const isPrivileged = isRosterManager(user);
       if (isPrivileged) {
         if (!can(user, 'groups', 'delete')) return forbidden('Недостаточно прав для этого действия');
       } else {
         const ownsGroup = doc.data()?.createdBy === user.uid && (await getTeacherGroupPolicy(orgId)).manage;
         if (!ownsGroup) return forbidden('Можно удалять только свои группы');
       }
+      const deletedGroup = doc.data() || {};
       await adminDb.collection('groups').doc(body.id).delete();
+      await logRoster(user, 'group_deleted', {
+        entityId: body.id, entityLabel: deletedGroup.name || null,
+        meta: { courseId: deletedGroup.courseId || null, students: (deletedGroup.studentIds || []).length },
+      });
       return ok({ deleted: true });
     }
 
@@ -713,7 +809,10 @@ const handler: Handler = async (event: HandlerEvent) => {
     }
 
     if (action === 'createStudent') {
-      if (!hasRole(user, 'admin', 'manager')) return forbidden();
+      const err = requireOrgStaff(user); if (err) return err;
+      // Заводить студентов может тот, кто ведёт контингент организации: админ и
+      // менеджер по роли, преподаватель — по выданному roster_management:write.
+      if (!isRosterManager(user)) return forbidden('Недостаточно прав для этого действия');
       if (!can(user, 'students', 'write')) return forbidden('Недостаточно прав для этого действия');
       const body = JSON.parse(event.body || '{}');
       if (!body.displayName) return badRequest('displayName required');
@@ -816,6 +915,12 @@ const handler: Handler = async (event: HandlerEvent) => {
           joinedAt: now()
         });
 
+        await logRoster(user, 'student_created', {
+          entityId: studentUid, entityLabel: body.displayName,
+          people: [{ id: studentUid, name: body.displayName }],
+          meta: { hasLogin: wantsLogin, groupId: body.groupId || null, branchId: body.primaryBranchId || null },
+        });
+
         // Auto-enroll in group if provided
         if (body.groupId) {
           const groupDoc = await adminDb.collection('groups').doc(body.groupId).get();
@@ -823,6 +928,11 @@ const handler: Handler = async (event: HandlerEvent) => {
             await adminDb.collection('groups').doc(body.groupId).update({
               studentIds: FieldValue.arrayUnion(studentUid),
               updatedAt: now(),
+            });
+            await logRoster(user, 'student_enrolled', {
+              entityId: body.groupId, entityLabel: groupDoc.data()?.name || null,
+              people: [{ id: studentUid, name: body.displayName }],
+              meta: { groupId: body.groupId, source: 'createStudent' },
             });
             // Auto-generate payment plans for the course
             const courseId = body.courseId || groupDoc.data()?.courseId;
@@ -841,7 +951,8 @@ const handler: Handler = async (event: HandlerEvent) => {
     }
 
     if (action === 'bulkCreateStudents') {
-      if (!hasRole(user, 'admin', 'manager')) return forbidden();
+      const err = requireOrgStaff(user); if (err) return err;
+      if (!isRosterManager(user)) return forbidden('Недостаточно прав для этого действия');
       if (!can(user, 'students', 'write')) return forbidden('Недостаточно прав для этого действия');
       const body = JSON.parse(event.body || '{}');
       const rows: any[] = Array.isArray(body.students) ? body.students : [];
@@ -926,6 +1037,16 @@ const handler: Handler = async (event: HandlerEvent) => {
         await batch.commit();
       }
 
+      // Имена здесь уже есть — берём их из самого импорта, без похода в профили.
+      const importedPeople = allowed.map((r, i) => ({ id: createdUids[i], name: r.displayName }));
+      if (createdUids.length > 0) {
+        await logRoster(user, 'student_created', {
+          entityLabel: `Импорт: ${createdUids.length}`, count: createdUids.length,
+          people: importedPeople,
+          meta: { source: 'bulkImport', skipped, groupId: body.groupId || null },
+        });
+      }
+
       // Enroll the whole batch into a group + auto-generate payment plans
       if (body.groupId && createdUids.length > 0) {
         const groupDoc = await adminDb.collection('groups').doc(body.groupId).get();
@@ -933,6 +1054,11 @@ const handler: Handler = async (event: HandlerEvent) => {
           await adminDb.collection('groups').doc(body.groupId).update({
             studentIds: FieldValue.arrayUnion(...createdUids),
             updatedAt: ts,
+          });
+          await logRoster(user, 'student_enrolled', {
+            entityId: body.groupId, entityLabel: groupDoc.data()?.name || null, count: createdUids.length,
+            people: importedPeople,
+            meta: { groupId: body.groupId, source: 'bulkImport' },
           });
           const courseId = body.courseId || groupDoc.data()?.courseId;
           if (courseId) {
@@ -1053,9 +1179,9 @@ const handler: Handler = async (event: HandlerEvent) => {
       if (String(body.password).length < 6) return badRequest('Пароль — минимум 6 символов');
 
       // Who may reset a student's password:
-      //  • admin/manager with students:write → any student in the org
+      //  • roster manager with students:write → any student in the org
       //  • teacher → only students enrolled in a group they teach (own-groups scope)
-      const canManageAllStudents = hasRole(user, 'admin', 'manager') && can(user, 'students', 'write');
+      const canManageAllStudents = isRosterManager(user) && can(user, 'students', 'write');
       const isTeacher = hasRole(user, 'teacher');
       if (!canManageAllStudents && !isTeacher) return forbidden('Недостаточно прав для этого действия');
 
@@ -1100,8 +1226,18 @@ const handler: Handler = async (event: HandlerEvent) => {
       // groups and erasing them are different powers, and the catalog separates them.
       if (!can(user, bulkResource(kind), 'delete')) return forbidden('Недостаточно прав для этого действия');
 
-      const { targets } = await resolveBulkTargets(user, orgId, kind, uids);
+      const { targets, members } = await resolveBulkTargets(user, orgId, kind, uids);
       if (targets.length === 0) return ok({ deleted: 0, skipped: uids.length, purged: 0 });
+
+      // Пишем в журнал ДО удаления: имена берём из ростер-документов, которые
+      // сейчас исчезнут — после удаления восстанавливать их будет не по чему.
+      if (kind === 'student') {
+        await logRoster(user, 'student_removed', {
+          count: targets.length,
+          people: targets.map(uid => ({ id: uid, name: members[uid]?.userName || '' })),
+          meta: { source: 'bulkDelete', scope: 'organization' },
+        });
+      }
 
       // 1 ─ Drop both membership mirrors. verifyAuth reads the user-side doc and
       //     every roster reads the org-side one, so a half-delete would leave the
@@ -1195,7 +1331,7 @@ const handler: Handler = async (event: HandlerEvent) => {
       const groupDoc = await adminDb.collection('groups').doc(groupId).get();
       if (!groupDoc.exists || groupDoc.data()?.organizationId !== orgId) return notFound('Group not found');
 
-      const { targets } = await resolveBulkTargets(user, orgId, kind, uids);
+      const { targets, members } = await resolveBulkTargets(user, orgId, kind, uids);
       if (targets.length === 0) return ok({ moved: 0, skipped: uids.length });
 
       const field = bulkGroupField(kind);
@@ -1218,6 +1354,14 @@ const handler: Handler = async (event: HandlerEvent) => {
         [field]: FieldValue.arrayUnion(...targets),
         updatedAt: now(),
       });
+
+      if (kind === 'student') {
+        await logRoster(user, 'student_enrolled', {
+          entityId: groupId, entityLabel: groupDoc.data()?.name || null, count: targets.length,
+          people: await namesForActivity(targets, members),
+          meta: { groupId, source: 'bulkSetGroup' },
+        });
+      }
 
       // Students joining a priced course get a payment plan, exactly as a fresh
       // import would. syncPaymentPlans skips anyone who already has one, so

@@ -23,7 +23,7 @@ import type { Handler, HandlerEvent } from '@netlify/functions';
 import { SchemaType } from '@google/generative-ai';
 import {
   verifyAuth, jsonResponse, ok, badRequest, unauthorized, forbidden,
-  isStaff, can, hasRole, hasPermission, type AuthUser,
+  isStaff, can, hasRole, hasPermission, isRosterManager, type AuthUser,
 } from './utils/auth';
 import { generateWithFallback, hasGeminiKey, aiAllowed, recordAiUsage, parseJsonLoose } from './utils/ai';
 import { rateLimiters, getRateLimitKey } from './utils/rate-limiter';
@@ -525,7 +525,7 @@ const TOOLS: ToolSpec[] = [
   {
     name: 'create_student',
     kind: 'write',
-    allowed: u => hasRole(u, 'admin', 'manager') && can(u, 'students', 'write'),
+    allowed: u => isRosterManager(u) && can(u, 'students', 'write'),
     decl: {
       description: 'Добавить нового студента (запись без логина). Перед добавлением проверь через list_students, нет ли уже такого — чтобы не создать дубль.',
       parameters: {
@@ -552,7 +552,7 @@ const TOOLS: ToolSpec[] = [
   {
     name: 'bulk_create_students',
     kind: 'write',
-    allowed: u => hasRole(u, 'admin', 'manager') && can(u, 'students', 'write'),
+    allowed: u => isRosterManager(u) && can(u, 'students', 'write'),
     decl: {
       description: 'Массово добавить нескольких студентов одной операцией (например, продиктованный список).',
       parameters: {
@@ -1410,7 +1410,7 @@ const handler: Handler = async (event: HandlerEvent) => {
     // Screenshot importer — same student-write gate as create_student, plus the
     // AI rate limit on the (vision) parse call.
     if (action === 'import_parse' || action === 'import_commit') {
-      if (!(hasRole(user, 'admin', 'manager') && can(user, 'students', 'write'))) {
+      if (!(isRosterManager(user) && can(user, 'students', 'write'))) {
         return forbidden('Недостаточно прав для импорта студентов');
       }
       if (action === 'import_parse') {

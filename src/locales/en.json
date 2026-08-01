@@ -276,6 +276,7 @@
     "changedFromRole": "differs from role",
     "changes": "changes",
     "resetToRole": "Reset to role",
+    "presets": "Quick presets",
     "overridesSaved": "Access updated",
     "overridesCleared": "Access reset to role"
   },
@@ -1184,6 +1185,7 @@
       "attendance": "Attend.",
       "hw": "HW",
       "created": "Created",
+      "roster": "Roster",
       "logins": "Logins",
       "activeDays": "Days"
     },
@@ -1195,8 +1197,14 @@
       "lesson_created": "Lessons",
       "quiz_created": "Quizzes",
       "exam_created": "Exams",
-      "login": "Logins"
-    }
+      "login": "Logins",
+      "student_created": "Students added",
+      "student_enrolled": "Enrolled in groups",
+      "student_removed": "Removed",
+      "group_created": "Groups created",
+      "group_deleted": "Groups deleted"
+    },
+    "andMore": "and {{count}} more"
   },
   "teacherAnalytics": {
     "title": "Analytics",

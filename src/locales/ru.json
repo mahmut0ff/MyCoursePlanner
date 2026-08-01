@@ -207,6 +207,7 @@
     "changedFromRole": "отличается от роли",
     "changes": "изменений",
     "resetToRole": "Сбросить к роли",
+    "presets": "Быстрые наборы",
     "overridesSaved": "Доступ настроен",
     "overridesCleared": "Доступ сброшен к роли"
   },
@@ -1459,6 +1460,7 @@
       "attendance": "Посещ.",
       "hw": "ДЗ",
       "created": "Создано",
+      "roster": "Контингент",
       "logins": "Входы",
       "activeDays": "Дней"
     },
@@ -1470,8 +1472,14 @@
       "lesson_created": "Уроки",
       "quiz_created": "Квизы",
       "exam_created": "Экзамены",
-      "login": "Входы"
-    }
+      "login": "Входы",
+      "student_created": "Заведено студентов",
+      "student_enrolled": "Зачислено в группы",
+      "student_removed": "Отчислено",
+      "group_created": "Создано групп",
+      "group_deleted": "Удалено групп"
+    },
+    "andMore": "и ещё {{count}}"
   },
   "teacherAnalytics": {
     "title": "Аналитика",

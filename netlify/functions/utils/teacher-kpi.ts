@@ -22,6 +22,15 @@ export const ACTIVITY_WEIGHTS = {
   quiz_created: 3,
   exam_created: 5,
   login: 0.5,
+  // Работа с контингентом (кто кого и когда завёл/зачислил). Вес 0 у удаления и
+  // отчисления намеренно: это тоже работа и она обязана быть в журнале, но платить
+  // за неё очками — значит поощрять чистку списков ради KPI. В счётчиках и ленте
+  // такие события видны наравне с остальными.
+  student_created: 2,
+  student_enrolled: 1,
+  student_removed: 0,
+  group_created: 3,
+  group_deleted: 0,
 } as const;
 
 export type ActivityType = keyof typeof ACTIVITY_WEIGHTS;

@@ -1,10 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import toast from 'react-hot-toast';
-import { Search, Loader2, ShieldCheck, Users as UsersIcon, Mail, UserPlus, Check, SlidersHorizontal, X, Save } from 'lucide-react';
+import { Search, Loader2, ShieldCheck, Users as UsersIcon, Mail, UserPlus, Check, SlidersHorizontal, X, Save, Zap } from 'lucide-react';
 import { apiGetTeamMembers, apiGetRoles, apiAssignRole, apiSetMemberOverrides, orgCreateUser } from '../../lib/api';
 import {
   roleAccent, resolvePermissionSet, applyOverrides, diffOverrides,
+  ACCESS_PRESETS, presetActive, togglePreset,
   type OrgRole, type PermissionOverrides, type RbacAction,
 } from '../../lib/rbac';
 import PermissionGrid from './PermissionGrid';
@@ -393,7 +394,43 @@ const MembersTab: React.FC<{ isAdmin: boolean }> = ({ isAdmin }) => {
               {ovDiffCount > 0 && <span className="ml-auto font-semibold text-amber-600 dark:text-amber-400">{ovDiffCount} {t('team.changes', 'изменений')}</span>}
             </div>
 
-            <div className="flex-1 overflow-y-auto px-5 py-4">
+            <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
+              {/* Быстрые наборы: одна кнопка вместо семи галочек в разных разделах.
+                  Пресет правит тот же набор прав, что и матрица ниже, поэтому сразу
+                  видно, что именно он включил, и любую галочку можно доснять руками. */}
+              <div>
+                <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-2">
+                  {t('team.presets', 'Быстрые наборы')}
+                </p>
+                <div className="space-y-2">
+                  {ACCESS_PRESETS.map(p => {
+                    const on = presetActive(ovSet, p);
+                    return (
+                      <button
+                        key={p.id}
+                        type="button"
+                        onClick={() => setOvSet(prev => togglePreset(prev, p))}
+                        className={`w-full text-left p-3 rounded-xl border transition-colors ${
+                          on
+                            ? 'border-primary-400 bg-primary-50 dark:bg-primary-500/10 dark:border-primary-500/50'
+                            : 'border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800'
+                        }`}
+                      >
+                        <span className="flex items-center gap-2">
+                          <span className={`w-6 h-6 rounded-lg flex items-center justify-center shrink-0 ${
+                            on ? 'bg-primary-500 text-white' : 'bg-slate-100 dark:bg-slate-700 text-slate-400'
+                          }`}>
+                            {on ? <Check className="w-3.5 h-3.5" /> : <Zap className="w-3.5 h-3.5" />}
+                          </span>
+                          <span className="text-[13px] font-semibold text-slate-800 dark:text-slate-100">{p.label}</span>
+                        </span>
+                        <span className="block mt-1.5 text-[11px] leading-snug text-slate-500 dark:text-slate-400">{p.description}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
               <PermissionGrid
                 hasPerm={ovHas}
                 togglePerm={ovToggle}

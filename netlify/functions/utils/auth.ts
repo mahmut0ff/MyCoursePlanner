@@ -236,6 +236,24 @@ export function hasRole(user: AuthUser, ...roles: AuthUser['role'][]): boolean {
 }
 
 /**
+ * «Ведёт контингент всей организации»: заводит студентов и распоряжается любыми
+ * группами, а не только теми, где сам преподаёт.
+ *
+ * Это ИМЕННО та привилегия, которую раньше кодировал захардкоженный
+ * `hasRole(user, 'admin', 'manager')` на createStudent / createGroup / updateGroup:
+ * не «что можно делать», а «на кого распространяется». Преподавателю она выдаётся
+ * точечно правом `roster_management:write` (см. utils/rbac) — у роли teacher по
+ * умолчанию её нет, поэтому поведение существующих преподавателей не меняется.
+ *
+ * Объём действий эта функция НЕ определяет: рядом всегда остаётся проверка
+ * can(user, 'students'|'groups', action) — просмотр/изменение/удаление по-прежнему
+ * задаются галочками соответствующих разделов.
+ */
+export function isRosterManager(user: AuthUser): boolean {
+  return isSuperAdmin(user) || hasRole(user, 'admin', 'manager') || can(user, 'roster_management', 'write');
+}
+
+/**
  * Legacy module-permission check, kept for older call sites.
  * Backed by the granular grant set so a custom role or a per-member override can
  * satisfy it — gating on `role === 'manager'` used to make those grants unusable.

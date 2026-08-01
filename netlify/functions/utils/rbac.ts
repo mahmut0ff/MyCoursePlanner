@@ -31,6 +31,10 @@ export const RESOURCE_ACTIONS: Record<string, RbacAction[]> = {
   teachers: ['read', 'write', 'delete'],
   team: ['read', 'write', 'delete'],
   leads: ['read', 'write', 'delete'],
+  // Модификатор поверх students/groups: снимает у преподавателя ограничение
+  // «только свои группы» и открывает контингент всей организации. Что именно
+  // разрешено — по-прежнему решают students:* / groups:*. См. isRosterManager.
+  roster_management: ['write'],
   courses: ['read', 'write', 'delete'],
   groups: ['read', 'write', 'delete'],
   lessons: ['read', 'write', 'delete'],
@@ -78,6 +82,9 @@ export const TEACHER_DEFAULT: RolePermission[] = [
 export const MANAGER_DEFAULT: RolePermission[] = [
   ...ro(['dashboard', 'analytics', 'results']),
   ...rw(['ai']),
+  // Явно, хотя isRosterManager даёт это менеджеру и по роли: матрица прав должна
+  // показывать реальное положение дел, а не пустую галочку.
+  ...rw(['roster_management']),
   ...rwd(['students', 'teachers', 'leads', 'courses', 'groups', 'lessons', 'materials', 'schedule', 'exams', 'rooms', 'quizzes', 'gradebook', 'homework', 'certificates']),
 ];
 

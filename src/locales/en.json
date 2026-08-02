@@ -2698,7 +2698,10 @@
     "colBranch": "Branch",
     "orgWideRule": "Whole organization",
     "orgWideRuleHint": "Applies organization-wide. A rule like this is NOT included in a specific branch sheet — that branch needs its own.",
-    "staleSheet": "The sheet on screen does not match the selected month or branch. Refresh the data."
+    "staleSheet": "The sheet on screen does not match the selected month or branch. Refresh the data.",
+    "totalLabelPaid": "Paid out",
+    "diagOrgWideSkipped": "Organization-wide rules were left out of this sheet",
+    "diagSample": "Example records: {{ids}}"
   },
   "journal": {
     "subtitle": "Daily attendance and notes",

@@ -11,7 +11,16 @@ const FORMULA_PREFIX = /^[=+\-@]/;
 export const escapeCsvCell = (value: unknown): string => {
   if (value == null) return '';
   let s = String(value);
-  if (FORMULA_PREFIX.test(s)) s = `'${s}`;
+  // ЧИСЛО остаётся числом. Защита от формул нужна для текста, который вводят
+  // руками; к числовому значению она неприменима: '-' входит в FORMULA_PREFIX,
+  // и штраф −5000 выгружался как текст «'-5000». Колонка со штрафами переставала
+  // суммироваться, а выгрузку открывают именно чтобы сверить её с экраном.
+  //
+  // Послабление РОВНО для `typeof value === 'number'` — так суммы и передаёт
+  // экспорт ведомости. Числовая на вид СТРОКА по-прежнему экранируется: строкой
+  // приходит пользовательский ввод, и ослаблять там защиту незачем.
+  const isNumber = typeof value === 'number' && Number.isFinite(value);
+  if (!isNumber && FORMULA_PREFIX.test(s)) s = `'${s}`;
   if (NEEDS_QUOTING.test(s)) s = `"${s.replace(/"/g, '""')}"`;
   return s;
 };

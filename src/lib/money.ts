@@ -13,14 +13,28 @@ export const CURRENCY_SUFFIX = 'с.';
  */
 const LOCALE = 'ru-RU';
 
+/**
+ * Число денег без валюты.
+ *
+ * Целые суммы — без дробной части: «12 500», а не «12 500,00». Дробные —
+ * РОВНО две цифры. Голый `toLocaleString` давал по одной значащей цифре, и
+ * зарплата 30 000,50 печаталась как «30 000,5 с.» — читается как ошибка ввода
+ * или как «пять тыйынов». В деньгах дробная часть либо есть целиком, либо её
+ * нет вовсе.
+ */
+const formatAmount = (v: number): string =>
+  Number.isInteger(v)
+    ? v.toLocaleString(LOCALE)
+    : v.toLocaleString(LOCALE, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
 export const formatMoney = (n?: number | null): string =>
-  `${Number(n || 0).toLocaleString(LOCALE)} ${CURRENCY_SUFFIX}`;
+  `${formatAmount(Number(n || 0))} ${CURRENCY_SUFFIX}`;
 
 /** Для дельт: настоящий минус «−», как в истории платежей. */
 export const formatMoneySigned = (n?: number | null): string => {
   const v = Number(n || 0);
   const sign = v < 0 ? '−' : '+';
-  return `${sign}${Math.abs(v).toLocaleString(LOCALE)} ${CURRENCY_SUFFIX}`;
+  return `${sign}${formatAmount(Math.abs(v))} ${CURRENCY_SUFFIX}`;
 };
 
 /** Счётчики (студенты, транзакции) — те же разделители, но без валюты. */

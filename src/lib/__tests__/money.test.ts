@@ -62,3 +62,22 @@ describe('formatPercent', () => {
     expect(formatPercent(NaN)).toBe('—');
   });
 });
+
+describe('formatMoney — дробная часть', () => {
+  // «30 000,5 с.» читается как ошибка ввода или как пять тыйынов. В деньгах
+  // дробная часть либо есть целиком (две цифры), либо её нет вовсе.
+  it('дробные суммы показывает ровно с двумя знаками', () => {
+    expect(nbsp(formatMoney(30000.5))).toBe('30 000,50 с.');
+    expect(formatMoney(0.05)).toBe('0,05 с.');
+  });
+
+  it('целые суммы оставляет без дробной части', () => {
+    expect(nbsp(formatMoney(12500))).toBe('12 500 с.');
+    expect(formatMoney(0)).toBe('0 с.');
+  });
+
+  it('то же правило со знаком', () => {
+    expect(nbsp(formatMoneySigned(-30000.5))).toBe('−30 000,50 с.');
+    expect(nbsp(formatMoneySigned(1200))).toBe('+1 200 с.');
+  });
+});

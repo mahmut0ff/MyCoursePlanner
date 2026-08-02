@@ -486,7 +486,15 @@ const SheetTab: React.FC = () => {
           </div>
           <div className="flex items-center gap-3">
             <div className="text-right">
-              <p className="text-xs text-slate-500">{t('payroll.totalLabel', 'Итого к выплате')}</p>
+              {/* После выплаты «Итого к выплате» — уже неправда: деньги ушли,
+                  и то же число теперь означает «выплачено». Одна и та же
+                  подпись на двух состояниях заставляла директора гадать,
+                  осталось это отдать или уже отдали. */}
+              <p className="text-xs text-slate-500">
+                {state === 'paid'
+                  ? t('payroll.totalLabelPaid', 'Выплачено')
+                  : t('payroll.totalLabel', 'Итого к выплате')}
+              </p>
               <p className="text-lg font-bold text-slate-900 dark:text-white">{formatMinor(payableMinor)}</p>
               {/* Начисленное показываем ТОЛЬКО когда оно разошлось с кассой: иначе
                   два одинаковых числа рядом читаются как ошибка. */}

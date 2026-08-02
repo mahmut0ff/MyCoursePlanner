@@ -28,6 +28,9 @@ const CODE_TITLES: Record<string, { key: string; fallback: string }> = {
   teacher_without_rule: { key: 'payroll.diagNoRule', fallback: 'Преподаватели без ставки' },
   overlapping_rules: { key: 'payroll.diagOverlap', fallback: 'Пересекающиеся ставки' },
   rule_no_components: { key: 'payroll.diagNoComponents', fallback: 'Ставка без компонентов' },
+  // Диагностика есть в движке (api-payroll), а заголовка ей не завели — и
+  // менеджеру показывался сырой машинный код `rule_org_wide_skipped`.
+  rule_org_wide_skipped: { key: 'payroll.diagOrgWideSkipped', fallback: 'Ставки без филиала не вошли в ведомость' },
 };
 
 /**
@@ -45,12 +48,19 @@ const DiagnosticsPanel: React.FC<Props> = ({ diagnostics, teacherName }) => {
   // Диагностики приходят и построчные, и глобальные — одинаковые схлопываем,
   // иначе одна и та же причина повторится столько раз, сколько у неё строк.
   const groups = useMemo(() => {
-    const map = new Map<string, { code: string; count: number; messages: Set<string>; teachers: Set<string> }>();
+    const map = new Map<string, {
+      code: string; count: number; messages: Set<string>; teachers: Set<string>; sample: Set<string>;
+    }>();
     for (const d of diagnostics ?? []) {
-      const entry = map.get(d.code) ?? { code: d.code, count: 0, messages: new Set<string>(), teachers: new Set<string>() };
+      const entry = map.get(d.code)
+        ?? { code: d.code, count: 0, messages: new Set<string>(), teachers: new Set<string>(), sample: new Set<string>() };
       entry.count += Number(d.count || 0);
       entry.messages.add(d.message);
       if (d.teacherId) entry.teachers.add(d.teacherId);
+      // `sample` теряется при схлопывании по коду — а это единственное, что
+      // отвечает на «КОГО чинить»: без него блок сообщает «пропущено 7 занятий»
+      // и не говорит, каких именно, так что исправить их невозможно.
+      for (const id of ((d as any).sample ?? [])) entry.sample.add(String(id));
       map.set(d.code, entry);
     }
     return [...map.values()];
@@ -107,6 +117,14 @@ const DiagnosticsPanel: React.FC<Props> = ({ diagnostics, teacherName }) => {
                   {teachers.length > 0 && (
                     <p className="text-[11px] text-amber-700/80 dark:text-amber-400/80 mt-1">
                       {t('payroll.diagTeachers', 'Преподаватели: {{names}}', { names: teachers.join(', ') })}
+                    </p>
+                  )}
+                  {group.sample.size > 0 && (
+                    <p className="text-[11px] text-amber-700/80 dark:text-amber-400/80 mt-1 break-all">
+                      {t('payroll.diagSample', 'Примеры записей: {{ids}}', {
+                        ids: [...group.sample].slice(0, 5).join(', '),
+                      })}
+                      {group.sample.size > 5 ? ' …' : ''}
                     </p>
                   )}
                 </li>

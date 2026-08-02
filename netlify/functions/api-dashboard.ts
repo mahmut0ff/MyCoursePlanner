@@ -3,7 +3,7 @@
  */
 import type { Handler, HandlerEvent } from '@netlify/functions';
 import { adminDb } from './utils/firebase-admin';
-import { verifyAuth, isStaff, hasRole, getOrgFilter, resolveBranchFilter, memberInBranchScope, memberHoldsRole, ok, unauthorized, forbidden, jsonResponse } from './utils/auth';
+import { verifyAuth, isStaff, hasRole, getOrgFilter, resolveBranchFilter, memberInBranchScope, memberHoldsRole, recordInBranchScope, ok, unauthorized, forbidden, jsonResponse } from './utils/auth';
 import { computeStudentRisk, needsAttention } from './utils/risk';
 import { isDebtBearingPlan, isPlanOverdue } from './utils/payment-plans';
 
@@ -178,11 +178,23 @@ const handler: Handler = async (event: HandlerEvent) => {
     // считают одних и тех же людей. Раньше запрос пинил status == 'overdue' —
     // продлённый срок оставлял ученика в «просрочке», а реально просроченный, но
     // ещё числящийся 'pending', в неё не попадал.
+    //
+    // Филиал у СЧЁТА проверяется отдельно от филиала у СТУДЕНТА, и одного
+    // `studentIdSet` мало. api-risk (куда ведёт эта же плитка ссылкой
+    // /students?risk=1) отбрасывает счета через recordInBranchScope, а здесь
+    // такой проверки не было — значит два экрана считали разные множества:
+    //  • счёт без branchId учитывался тут и не учитывался там (массовый случай:
+    //    ручные счета до фикса branchId и любые легаси-начисления);
+    //  • счёт ЧУЖОГО филиала у студента, состоящего в выбранном, добавлял
+    //    плитке +1 там, где список показывал 0.
+    // Плитке в AdminDashboard прямо предписано совпадать со списком, куда она
+    // ведёт, — теперь у обоих одна ось филиала.
     const nowForOverdue = new Date();
     const overdueStudents = new Set<string>();
     (plansSnap?.docs || []).forEach(d => {
       const plan = d.data() as any;
       if (!plan.studentId || !studentIdSet.has(plan.studentId)) return;
+      if (!recordInBranchScope(plan.branchId, overviewScope)) return;
       if (!isDebtBearingPlan(plan)) return;
       if (!isPlanOverdue(plan, nowForOverdue)) return;
       overdueStudents.add(plan.studentId);

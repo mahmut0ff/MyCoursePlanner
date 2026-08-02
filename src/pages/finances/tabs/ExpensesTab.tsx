@@ -184,10 +184,18 @@ const ExpensesTab: React.FC<Props> = ({ range, onRangeChange, filters, onFilters
         courseId: form.courseId,
       };
       if (editing) {
+        // Филиал при правке НЕ трогаем: операция уже отнесена к филиалу, и
+        // переключатель в сайдбаре не повод её перевешивать.
         await apiUpdateTransaction({ id: form.id, ...payload });
         toast.success(t('finances.expenseUpdated', 'Расход обновлён'));
       } else {
-        await apiCreateTransaction({ type: 'expense', ...payload });
+        // Перехватчик в src/lib/api.ts штампует филиал только на GET, поэтому
+        // созданный расход уходил в `user.primaryBranchId ?? null`. У директора
+        // сети (primaryBranchId пуст) это «без филиала»: тост «Расход добавлен»
+        // есть, а строки в списке нет — тот же GET фильтрует по выбранному
+        // филиалу. У сотрудника расход молча оседал в его домашнем филиале
+        // вместо выбранного.
+        await apiCreateTransaction({ type: 'expense', branchId: activeBranchId, ...payload });
         toast.success(t('finances.expenseAdded', 'Расход добавлен'));
       }
       setShowModal(false);

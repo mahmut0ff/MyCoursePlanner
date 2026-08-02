@@ -16,6 +16,7 @@ export {
   planDiscount,
   isDebtBearingPlan,
   isWrittenOffPlan,
+  isUntouchedPlan,
   planProgressKey,
   orgDayKey,
   daysUntilDeadline,

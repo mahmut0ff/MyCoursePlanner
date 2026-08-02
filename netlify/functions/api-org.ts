@@ -16,6 +16,7 @@ import { recordTeacherActivity } from './utils/teacher-activity';
 import { FieldValue } from 'firebase-admin/firestore';
 import { getOrgLimits } from './utils/plan-limits';
 import { billingPeriodKey, billingDeadlineISO } from './utils/billing';
+import { isUntouchedPlan } from './utils/payment-plans';
 /* ═══════════════════════════════════════════════ */
 /*  Helpers                                        */
 /* ═══════════════════════════════════════════════ */
@@ -669,7 +670,14 @@ const handler: Handler = async (event: HandlerEvent) => {
           const cancelBatch = adminDb.batch();
           plansSnap.docs.forEach(d => {
             const pd = d.data();
-            if (removedStudents.includes(pd.studentId) && pd.status === 'pending' && (pd.paidAmount || 0) === 0) {
+            // Нетронутость решает ФАКТ ОПЛАТЫ, а не статус (isUntouchedPlan).
+            // Здесь стояло `pd.status === 'pending'`, и списание работало только
+            // для счетов, чей срок ещё не наступил: статус 'overdue' проставляет
+            // посторонний код — ночной крон debt-reminders и GET
+            // api-finance-plans, — просто по истечении срока, без единого рубля
+            // движения. Ушёл студент через день после дедлайна — счёт не
+            // списывался никогда и оставался в долге академии навсегда.
+            if (removedStudents.includes(pd.studentId) && isUntouchedPlan(pd)) {
               cancelBatch.update(d.ref, { status: 'cancelled', updatedAt: now() });
             }
           });
@@ -697,11 +705,39 @@ const handler: Handler = async (event: HandlerEvent) => {
       }
       const deletedGroup = doc.data() || {};
       await adminDb.collection('groups').doc(body.id).delete();
+
+      // Списываем нетронутые счета учеников удалённой группы — тем же правилом,
+      // что и при выходе одного ученика из неё (updateGroup выше).
+      //
+      // Асимметрия была странной: убрать студента из группы — счёт списывается,
+      // удалить группу целиком вместе со всеми студентами — счета живут дальше.
+      // Начисления оставались в дебиторке за курс, которого для этих учеников
+      // больше нет, а закрыть их было нечем: группы уже не существует.
+      // Оплаченные и частично оплаченные не трогаем — за ними стоят настоящие
+      // деньги, и их судьбу решает человек.
+      const affectedStudents: string[] = Array.isArray(deletedGroup.studentIds) ? deletedGroup.studentIds : [];
+      let cancelledPlans = 0;
+      if (affectedStudents.length > 0 && deletedGroup.courseId) {
+        const plansSnap = await adminDb.collection('studentPaymentPlans')
+          .where('organizationId', '==', orgId)
+          .where('courseId', '==', deletedGroup.courseId)
+          .get();
+        const cancelBatch = adminDb.batch();
+        plansSnap.docs.forEach(d => {
+          const pd = d.data();
+          if (affectedStudents.includes(pd.studentId) && isUntouchedPlan(pd)) {
+            cancelBatch.update(d.ref, { status: 'cancelled', updatedAt: now() });
+            cancelledPlans++;
+          }
+        });
+        if (cancelledPlans > 0) await cancelBatch.commit().catch(console.error);
+      }
+
       await logRoster(user, 'group_deleted', {
         entityId: body.id, entityLabel: deletedGroup.name || null,
-        meta: { courseId: deletedGroup.courseId || null, students: (deletedGroup.studentIds || []).length },
+        meta: { courseId: deletedGroup.courseId || null, students: affectedStudents.length, cancelledPlans },
       });
-      return ok({ deleted: true });
+      return ok({ deleted: true, cancelledPlans });
     }
 
     if (action === 'enrollInGroup') {

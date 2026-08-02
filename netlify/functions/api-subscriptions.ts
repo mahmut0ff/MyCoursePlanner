@@ -9,10 +9,30 @@
  */
 import type { Handler, HandlerEvent } from '@netlify/functions';
 import { adminDb } from './utils/firebase-admin';
-import { verifyAuth, isSuperAdmin, ok, unauthorized, forbidden, badRequest, notFound, jsonResponse } from './utils/auth';
+import { verifyAuth, isSuperAdmin, hasRole, ok, unauthorized, forbidden, badRequest, notFound, jsonResponse } from './utils/auth';
 import { computePaidUntil, GRACE_DAYS } from './utils/subscription';
 
 const COLLECTION = 'subscriptions';
+
+/**
+ * Может ли вызывающий распоряжаться подпиской организации.
+ *
+ * И POST (смена тарифа), и PUT (отмена/возобновление) проверяли ровно одно:
+ * что организация в запросе — его собственная. Роль не проверял никто, хотя
+ * комментарий над POST прямо обещал «Only admin of the org or super_admin».
+ * Поэтому любой участник — ученик, родитель с логином ученика, преподаватель —
+ * мог одним HTTP-запросом:
+ *   • POST {planId:'enterprise'} — бесплатно поднять организации тариф;
+ *   • POST {planId:'starter'}    — обрушить её до лимитов Starter и выключить AI;
+ *   • PUT  {action:'cancel'}     — отменить подписку всему персоналу.
+ * Кнопки на это есть только на /billing, но эндпоинт отвечает и без кнопок.
+ *
+ * Владелец академии — роль 'admin' (owner-роли в модели нет); менеджер деньгами
+ * организации не распоряжается, поэтому в гейт не входит.
+ */
+function canManageSubscription(user: { role: string }): boolean {
+  return isSuperAdmin(user as any) || hasRole(user as any, 'admin');
+}
 
 const PLAN_PRICES: Record<string, number> = {
   starter: 1990,
@@ -137,6 +157,7 @@ const handler: Handler = async (event: HandlerEvent) => {
 
     // Only admin of the org or super_admin can change plan
     if (orgId !== user.organizationId && !isSuperAdmin(user)) return forbidden();
+    if (!canManageSubscription(user)) return forbidden('Only the organization admin can change the plan');
 
     const now = new Date().toISOString();
     const newDailyRate = Math.round((PLAN_PRICES[body.planId] / 30) * 100) / 100;
@@ -241,6 +262,7 @@ const handler: Handler = async (event: HandlerEvent) => {
     if (!orgId) return badRequest('organizationId required');
 
     if (orgId !== user.organizationId && !isSuperAdmin(user)) return forbidden();
+    if (!canManageSubscription(user)) return forbidden('Only the organization admin can manage the subscription');
 
     const snap = await adminDb.collection(COLLECTION)
       .where('organizationId', '==', orgId).limit(1).get();
@@ -270,11 +292,29 @@ const handler: Handler = async (event: HandlerEvent) => {
       const subData = snap.docs[0].data();
       const { effectiveBalance } = calculateEffectiveBalance(subData);
 
+      // Действует ли подписка — решают ДВЕ модели, и ручная (paidUntil) главнее
+      // легаси-баланса. Ровно этот порядок применяет GET выше; здесь его не
+      // было, и «Возобновить» смотрело только на баланс.
+      //
+      // Для организации на ручной модели баланс равен нулю ВСЕГДА (её никто не
+      // пополняет — суперадмин просто двигает дату), поэтому возобновление
+      // записывало обратно 'expired'. А как только статус не 'cancelled',
+      // BillingPage прячет обе кнопки — выйти из блокировки изнутри
+      // организации становилось нечем, требовался суперадмин.
+      const paidInfo = computePaidUntil(subData.paidUntil);
+      const stillPaid = paidInfo.hasPaidUntil ? !paidInfo.isPastGrace : effectiveBalance > 0;
+
       await snap.docs[0].ref.update({
-        status: effectiveBalance > 0 ? 'active' : 'expired',
+        status: stillPaid ? 'active' : 'expired',
         cancelledAt: null,
       });
-      return ok({ reactivated: true, effectiveBalance });
+
+      // `organizations.status` здесь сознательно НЕ трогаем. В 'suspended' его
+      // переводит не только авто-просрочка, но и суперадмин — вручную. Снимать
+      // блокировку по кнопке владельца академии значило бы дать ему отменять
+      // решение суперадмина, то есть закрыть одну дыру в правах и открыть
+      // другую. Возобновление отвечает только за состояние подписки.
+      return ok({ reactivated: true, effectiveBalance, status: stillPaid ? 'active' : 'expired' });
     }
 
     return badRequest('Invalid action');

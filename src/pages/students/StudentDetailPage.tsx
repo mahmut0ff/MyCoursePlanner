@@ -587,8 +587,9 @@ const StudentDetailPage: React.FC = () => {
                   onClick={() => setConfirm({ kind: 'unassign', groupId: g.id, groupName: g.name })}
                   aria-label={`Открепить от группы ${g.name}`}
                   // Видно всегда, а не по hover: действие, доступное только наведением,
-                  // недоступно с клавиатуры и с телефона.
-                  className="p-0.5 rounded-md text-slate-400 hover:text-rose-600 hover:bg-white dark:hover:bg-slate-800 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-500"
+                  // недоступно с клавиатуры и с телефона. slate-500, а не 400:
+                  // иконка — графический объект, ему нужен контраст ≥3:1.
+                  className="p-0.5 rounded-md text-slate-500 dark:text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 hover:bg-white dark:hover:bg-slate-800 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-500"
                 >
                   <X className="w-3.5 h-3.5" />
                 </button>

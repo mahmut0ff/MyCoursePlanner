@@ -1,322 +1,660 @@
-import React, { useEffect, useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { Link, useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { orgGetTeachers, orgGetGroups, orgUpdateGroup, apiGetTeacherProfile } from '../../lib/api';
-import { ArrowLeft, Mail, Calendar, BookOpen, Briefcase, Phone, MapPin, GraduationCap, Award, Users, Plus, X } from 'lucide-react';
-import type { UserProfile, TeacherProfile, Group } from '../../types';
+import {
+  orgGetTeachers, orgGetGroups, orgUpdateGroup,
+  apiGetTeacherActivity, apiGetTeacherTimeline,
+} from '../../lib/api';
+import {
+  ArrowLeft, MessageCircle, Mail, Copy, Plus, X, AlertTriangle,
+  Pencil, RotateCcw, Briefcase, GraduationCap, CalendarCheck, CheckSquare,
+  FilePlus2, BookOpen, Gamepad2, ClipboardList, LogIn, UserPlus, UserCheck,
+  UserMinus, FolderPlus, FolderMinus, ExternalLink,
+} from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
+import type { UserProfile, Group } from '../../types';
 import toast from 'react-hot-toast';
 import { useAuth } from '../../contexts/AuthContext';
+import { useBranch } from '../../contexts/BranchContext';
+import { usePermissions } from '../../contexts/PermissionsContext';
+import { useOrgPresence } from '../../hooks/useOrgPresence';
+import { PresenceDot } from '../../components/presence/PresenceBadge';
 import MemberRolesEditor from '../../components/shared/MemberRolesEditor';
+import EditTeacherModal from '../../components/teachers/EditTeacherModal';
+import ConfirmDialog from '../../components/ui/ConfirmDialog';
+import EmptyState from '../../components/ui/EmptyState';
+import { Skeleton } from '../../components/ui/Skeleton';
+import RowMenu, { type RowMenuItem } from '../../components/ui/RowMenu';
 
-const C = {
-  purple: '#46178f',
-  blue: '#1368ce',
-  green: '#26890c',
-  red: '#e21b3c',
-  yellow: '#d89e00',
-  teal: '#0aa08a',
+/**
+ * Карточка преподавателя — экран НАГРУЗКИ И АКТИВНОСТИ.
+ *
+ * Раньше страница была резюме: «О себе», «Опыт работы», «Образование»,
+ * «Сертификаты» — четыре текстовых блока, которые преподаватель заполнял сам и
+ * которые почти всегда были пусты. Резюме удалено из продукта целиком, и это
+ * обнажило настоящий вопрос администратора о преподавателе: сколько он ведёт,
+ * что он делает в системе и когда его последний раз видели. Ровно на него
+ * страница теперь и отвечает — из уже существующих teacherActivity и KPI,
+ * тех же, что питают раздел «Активность».
+ *
+ * Оформление намеренно то же, что на карточке студента: одна колонка, пол 14px,
+ * tabular-nums, цвет только как код состояния, заголовок секции над контейнером.
+ */
+
+// Те же ключи и подписи, что в разделе «Активность» — две поверхности об одном
+// и том же действии обязаны говорить одинаково.
+const TYPE_META: Record<string, { label: string; icon: LucideIcon; color: string }> = {
+  grade_set: { label: 'Оценки', icon: GraduationCap, color: 'text-blue-500' },
+  attendance_marked: { label: 'Посещаемость', icon: CalendarCheck, color: 'text-emerald-500' },
+  homework_checked: { label: 'Проверка ДЗ', icon: CheckSquare, color: 'text-violet-500' },
+  homework_created: { label: 'Создание ДЗ', icon: FilePlus2, color: 'text-fuchsia-500' },
+  lesson_created: { label: 'Уроки', icon: BookOpen, color: 'text-amber-500' },
+  quiz_created: { label: 'Квизы', icon: Gamepad2, color: 'text-cyan-500' },
+  exam_created: { label: 'Экзамены', icon: ClipboardList, color: 'text-rose-500' },
+  login: { label: 'Входы', icon: LogIn, color: 'text-slate-400' },
+  student_created: { label: 'Заведено студентов', icon: UserPlus, color: 'text-teal-500' },
+  student_enrolled: { label: 'Зачислено в группы', icon: UserCheck, color: 'text-sky-500' },
+  student_removed: { label: 'Отчислено', icon: UserMinus, color: 'text-orange-500' },
+  group_created: { label: 'Создано групп', icon: FolderPlus, color: 'text-indigo-500' },
+  group_deleted: { label: 'Удалено групп', icon: FolderMinus, color: 'text-slate-400' },
+};
+
+const PERIODS: { id: string; label: string }[] = [
+  { id: 'current_month', label: 'Этот месяц' },
+  { id: 'last_month', label: 'Прошлый месяц' },
+  { id: 'quarter', label: 'Квартал' },
+  { id: 'year', label: 'Год' },
+];
+
+interface KpiRow {
+  teacherId: string;
+  name: string;
+  counts: Record<string, number>;
+  totalActions: number;
+  activeDays: number;
+  engagementPoints: number;
+  consistencyPct: number;
+  kpiScore: number;
+  lastActivityAt: string | null;
+}
+
+interface TimelineEvent {
+  id: string;
+  type: string;
+  count: number;
+  entityId: string | null;
+  entityLabel: string | null;
+  createdAt: string | null;
+  meta: Record<string, unknown> | null;
+}
+
+const scoreTone = (s: number) =>
+  s >= 70 ? 'text-emerald-600 dark:text-emerald-400'
+    : s >= 40 ? 'text-amber-600 dark:text-amber-400'
+      : 'text-rose-600 dark:text-rose-400';
+
+const plural = (n: number, one: string, few: string, many: string) => {
+  const mod10 = n % 10;
+  const mod100 = n % 100;
+  if (mod10 === 1 && mod100 !== 11) return one;
+  if (mod10 >= 2 && mod10 <= 4 && (mod100 < 10 || mod100 >= 20)) return few;
+  return many;
+};
+
+/** Короткие номера без кода страны wa.me не откроет — то же правило, что в списках. */
+const toWhatsappNumber = (phone?: string) => {
+  const digits = (phone || '').replace(/\D/g, '');
+  return digits.length >= 10 ? digits : null;
+};
+
+const relativeDay = (iso: string | null): string => {
+  if (!iso) return '—';
+  const days = Math.floor((Date.now() - new Date(iso).getTime()) / 86_400_000);
+  if (days <= 0) return 'сегодня';
+  if (days === 1) return 'вчера';
+  return `${days} ${plural(days, 'день', 'дня', 'дней')} назад`;
 };
 
 const TeacherDetailPage: React.FC = () => {
   const { uid } = useParams<{ uid: string }>();
-  const navigate = useNavigate();
   const { t } = useTranslation();
   const { role, organizationId } = useAuth();
-  const canAssign = role === 'admin' || role === 'manager' || role === 'super_admin';
-  const canEditRoles = role === 'admin' || role === 'super_admin';
+  const { activeBranchId, setActiveBranch, branches } = useBranch();
+  const { loaded: permsLoaded, canRead, canWrite } = usePermissions();
+  const presence = useOrgPresence(organizationId);
+
+  const isOrgAdmin = role === 'admin' || role === 'super_admin';
+  const canEditTeachers = permsLoaded && canWrite('teachers');
+  // Активность и KPI — отдельное право: его специально выдают тем, кто следит за
+  // работой преподавателей, и оно не должно протекать всем, кто видит карточку.
+  const canSeeActivity = permsLoaded && canRead('teacher_activity');
 
   const [teacher, setTeacher] = useState<UserProfile | null>(null);
-  const [profile, setProfile] = useState<TeacherProfile | null>(null);
-  const [groups, setGroups] = useState<Group[]>([]);
+  const [allGroups, setAllGroups] = useState<Group[]>([]);
+  const [kpi, setKpi] = useState<KpiRow | null>(null);
+  const [events, setEvents] = useState<TimelineEvent[] | null>(null);
+  const [period, setPeriod] = useState('current_month');
   const [loading, setLoading] = useState(true);
+  const [failed, setFailed] = useState<{ groups?: boolean; activity?: boolean }>({});
 
-  // Assignment Modal
-  const [showAssignModal, setShowAssignModal] = useState(false);
+  const [showEdit, setShowEdit] = useState(false);
+  const [showAssign, setShowAssign] = useState(false);
   const [selectedGroupId, setSelectedGroupId] = useState('');
   const [assigning, setAssigning] = useState(false);
+  const [unassign, setUnassign] = useState<{ id: string; name: string } | null>(null);
+  const [unassignBusy, setUnassignBusy] = useState(false);
+
+  const groups = useMemo(
+    () => allGroups.filter(g => g.teacherIds?.includes(uid!)),
+    [allGroups, uid],
+  );
+
+  const studentCount = useMemo(
+    // Один ученик может быть в двух группах одного преподавателя — считаем людей, а не места.
+    () => new Set(groups.flatMap(g => g.studentIds || [])).size,
+    [groups],
+  );
+
+  const loadActivity = useCallback(async () => {
+    const [kpiRes, tl] = await Promise.all([
+      apiGetTeacherActivity({ period }),
+      apiGetTeacherTimeline(uid!, { period }),
+    ]);
+    setKpi((kpiRes?.rows || []).find((r: KpiRow) => r.teacherId === uid) || null);
+    setEvents(tl?.events || []);
+  }, [uid, period]);
 
   useEffect(() => {
-    if (!uid) return;
+    if (!uid || !permsLoaded) return;
     setLoading(true);
-    Promise.all([
-      orgGetTeachers().then((all: UserProfile[]) => setTeacher(all.find((u) => u.uid === uid) || null)),
-      apiGetTeacherProfile(uid).then((d: any) => setProfile(d)).catch(() => null),
-      orgGetGroups().then((all: Group[]) => setGroups(all)).catch(() => []),
-    ]).finally(() => setLoading(false));
-  }, [uid]);
+    setFailed({});
+    Promise.allSettled([
+      orgGetTeachers().then((all: UserProfile[]) => setTeacher(all.find(u => u.uid === uid) || null)),
+      orgGetGroups().then(setAllGroups),
+      canSeeActivity ? loadActivity() : Promise.resolve(),
+    ]).then(([, grp, act]) => {
+      setFailed({
+        groups: grp.status === 'rejected',
+        activity: canSeeActivity && act.status === 'rejected',
+      });
+      if (grp.status === 'rejected') setAllGroups([]);
+    }).finally(() => setLoading(false));
+    // activeBranchId: api-слой штампует филиал на GET — переключение это перезагрузка.
+  }, [uid, activeBranchId, permsLoaded, canSeeActivity, loadActivity]);
 
-  // Handle assigning a teacher to a group
-  const handleAssignGroup = async () => {
+  const retryActivity = useCallback(() => {
+    loadActivity()
+      .then(() => setFailed(f => ({ ...f, activity: false })))
+      .catch(() => setFailed(f => ({ ...f, activity: true })));
+  }, [loadActivity]);
+
+  const handleAssign = async () => {
     if (!selectedGroupId || !uid) return;
-    const targetGroup = groups.find(g => g.id === selectedGroupId);
-    if (!targetGroup) return;
-
+    const target = allGroups.find(g => g.id === selectedGroupId);
+    if (!target) return;
     setAssigning(true);
     try {
-      const currentTeacherIds = targetGroup.teacherIds || [];
-      if (!currentTeacherIds.includes(uid)) {
-        await orgUpdateGroup({
-          id: targetGroup.id,
-          teacherIds: [...currentTeacherIds, uid]
-        });
-        
-        // Update local state
-        setGroups(groups.map(g => 
-          g.id === targetGroup.id 
-            ? { ...g, teacherIds: [...currentTeacherIds, uid] }
-            : g
-        ));
-        toast.success(t('common.saved', 'Преподаватель назначен!'));
-      } else {
-         toast.error('Преподаватель уже прикреплен к этой группе');
+      const ids = target.teacherIds || [];
+      if (!ids.includes(uid)) {
+        await orgUpdateGroup({ id: target.id, teacherIds: [...ids, uid] });
+        setAllGroups(prev => prev.map(g => (g.id === target.id ? { ...g, teacherIds: [...ids, uid] } : g)));
+        toast.success('Преподаватель назначен на группу');
       }
-      setShowAssignModal(false);
+      setShowAssign(false);
       setSelectedGroupId('');
     } catch (e: any) {
-      toast.error(e.message || 'Error assigning teacher');
+      toast.error(e.message || 'Не удалось назначить');
     } finally {
       setAssigning(false);
     }
   };
 
-  const handleUnassignGroup = async (groupId: string) => {
-    const targetGroup = groups.find(g => g.id === groupId);
-    if (!targetGroup || !uid) return;
-    
-    // confirm
-    if (!window.confirm('Открепить преподавателя от группы?')) return;
-
+  const runUnassign = async () => {
+    if (!unassign || !uid) return;
+    setUnassignBusy(true);
     try {
-      const currentTeacherIds = targetGroup.teacherIds || [];
-      const updatedIds = currentTeacherIds.filter(id => id !== uid);
-      
-      await orgUpdateGroup({
-        id: targetGroup.id,
-        teacherIds: updatedIds
-      });
-      
-      setGroups(groups.map(g => 
-        g.id === targetGroup.id 
-          ? { ...g, teacherIds: updatedIds }
-          : g
-      ));
-      toast.success('Преподаватель откреплен');
+      const target = allGroups.find(g => g.id === unassign.id);
+      if (target) {
+        const ids = (target.teacherIds || []).filter(id => id !== uid);
+        await orgUpdateGroup({ id: target.id, teacherIds: ids });
+        setAllGroups(prev => prev.map(g => (g.id === target.id ? { ...g, teacherIds: ids } : g)));
+        toast.success('Преподаватель откреплён от группы');
+      }
+      setUnassign(null);
     } catch (e: any) {
-      toast.error(e.message || 'Error unassigning');
+      toast.error(e.message || 'Не удалось открепить');
+    } finally {
+      setUnassignBusy(false);
     }
   };
 
-  if (loading) return (
-    <div className="flex items-center justify-center py-20">
-      <div className="w-10 h-10 border-4 rounded-full animate-spin" style={{ borderColor: `${C.purple}30`, borderTopColor: C.purple }} />
-    </div>
-  );
+  if (loading) return <DetailSkeleton />;
 
-  if (!teacher) return (
-    <div className="text-center py-20">
-      <Briefcase className="w-14 h-14 mx-auto mb-3" style={{ color: C.purple, opacity: 0.2 }} />
-      <p className="text-sm font-bold text-slate-500">{t('common.notFound')}</p>
-      <button onClick={() => navigate('/teachers')} className="mt-3 text-sm font-bold hover:underline" style={{ color: C.purple }}>{t('common.back')}</button>
-    </div>
-  );
+  if (!teacher) {
+    const branchScoped = !!activeBranchId && branches.length > 1;
+    return (
+      <div className="max-w-2xl mx-auto py-10">
+        <EmptyState
+          icon={Briefcase}
+          title={branchScoped ? 'Преподавателя нет в выбранном филиале' : 'Преподаватель не найден'}
+          description={branchScoped
+            ? 'Запись может относиться к другому филиалу — покажите все филиалы, чтобы её увидеть.'
+            : 'Запись удалена или ссылка устарела.'}
+          actionLabel={branchScoped ? 'Показать все филиалы' : 'К списку преподавателей'}
+          {...(branchScoped
+            ? { onAction: () => setActiveBranch(null) }
+            : { actionLink: '/teachers' })}
+        />
+      </div>
+    );
+  }
 
-  const subjectsArr = profile?.subjects ? profile.subjects.split(',').map(s => s.trim()).filter(Boolean) : [];
-  const teacherGroups = groups.filter(g => g.teacherIds?.includes(uid!));
-  const availableGroups = groups.filter(g => !(g.teacherIds || []).includes(uid!));
+  const online = presence.isOnline(teacher.uid);
+  const waNumber = toWhatsappNumber(teacher.phone);
+
+  const menuItems: RowMenuItem[] = [];
+  if (waNumber) {
+    menuItems.push({
+      label: t('common.writeWhatsapp', 'Написать в WhatsApp'),
+      icon: MessageCircle,
+      onSelect: () => window.open(`https://wa.me/${waNumber}`, '_blank', 'noopener,noreferrer'),
+    });
+  }
+  if (teacher.email) {
+    menuItems.push({
+      label: t('common.writeEmail', 'Написать на почту'),
+      icon: Mail,
+      onSelect: () => { window.location.href = `mailto:${teacher.email}`; },
+    });
+  }
+  if (teacher.phone) {
+    menuItems.push({
+      label: t('common.copyPhone', 'Скопировать телефон'),
+      icon: Copy,
+      onSelect: () => { navigator.clipboard.writeText(teacher.phone!); toast.success('Скопировано'); },
+    });
+  }
+  if (canEditTeachers) {
+    menuItems.push({
+      label: t('common.edit', 'Редактировать'),
+      icon: Pencil,
+      separated: menuItems.length > 0,
+      onSelect: () => setShowEdit(true),
+    });
+  }
+  if (canSeeActivity) {
+    menuItems.push({
+      label: 'Открыть в «Активности»',
+      icon: ExternalLink,
+      separated: menuItems.length > 0,
+      onSelect: () => { window.location.href = '/teacher-activity'; },
+    });
+  }
+
+  const breakdown = Object.keys(TYPE_META)
+    .map(type => ({ type, ...TYPE_META[type], value: kpi?.counts[type] || 0 }))
+    .filter(b => b.value > 0);
 
   return (
-    <div className="max-w-5xl mx-auto pb-10">
-      <button onClick={() => navigate('/teachers')} className="flex items-center gap-1.5 text-sm font-bold mb-4 transition-all hover:gap-2.5" style={{ color: C.purple }}>
-        <ArrowLeft className="w-4 h-4" />{t('common.back')}
-      </button>
+    <div className="max-w-5xl mx-auto pb-16">
+      <Link
+        to="/teachers"
+        className="inline-flex items-center gap-1.5 text-sm font-medium text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white transition-colors mb-5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 rounded"
+      >
+        <ArrowLeft className="w-4 h-4" />{t('nav.teachers', 'Преподаватели')}
+      </Link>
 
-      {/* Hero Profile Card */}
-      <div className="relative bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl overflow-hidden mb-6 shadow-sm">
-        <div className="h-28 sm:h-32 relative overflow-hidden" style={{ background: `linear-gradient(135deg, ${C.purple} 0%, ${C.blue} 50%, ${C.teal} 100%)` }}>
-          <div className="absolute inset-0 opacity-10" style={{ backgroundImage: 'url("data:image/svg+xml,%3Csvg width=\'60\' height=\'60\' viewBox=\'0 0 60 60\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cpath d=\'M30 5 L55 17.5 L55 42.5 L30 55 L5 42.5 L5 17.5 Z\' fill=\'none\' stroke=\'white\' stroke-width=\'1\'/%3E%3C/svg%3E")', backgroundSize: '60px 60px' }} />
-          
-          <div className="absolute bottom-3 right-4 flex items-center gap-3">
-             <div className="flex items-center gap-1 bg-white/20 backdrop-blur-sm text-white px-2.5 py-1 rounded-full">
-               <Calendar className="w-3.5 h-3.5" />
-               <span className="text-[11px] font-bold">с {new Date(teacher.createdAt).toLocaleDateString()}</span>
-             </div>
-          </div>
+      {/* ═══ Идентичность ═══ */}
+      <header className="flex items-start gap-4 mb-6">
+        <div className="relative shrink-0">
+          {teacher.avatarUrl ? (
+            <img src={teacher.avatarUrl} alt="" className="w-14 h-14 rounded-2xl object-cover" />
+          ) : (
+            <div className="w-14 h-14 rounded-2xl flex items-center justify-center text-xl font-semibold bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-200">
+              {teacher.displayName?.[0]?.toUpperCase() || '?'}
+            </div>
+          )}
+          <PresenceDot
+            online={online}
+            className="absolute -bottom-0.5 -right-0.5 w-3 h-3 ring-2 ring-white dark:ring-slate-900 rounded-full"
+            title={online ? 'В сети' : undefined}
+          />
         </div>
 
-        <div className="px-6 pb-6 relative">
-          {/* Avatar */}
-          <div className="absolute -top-10 left-6">
-            {teacher.avatarUrl ? (
-              <img src={teacher.avatarUrl} alt="" className="w-20 h-20 rounded-2xl object-cover shadow-xl ring-4 ring-white dark:ring-slate-800" />
+        <div className="min-w-0 flex-1">
+          <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">{teacher.displayName}</h1>
+          <p className="mt-1 text-sm text-slate-500 dark:text-slate-400 flex flex-wrap items-center gap-x-2 gap-y-1">
+            <span>{online ? 'В сети' : `Активность: ${relativeDay(kpi?.lastActivityAt ?? null)}`}</span>
+            {teacher.email && <><Dot />{teacher.email}</>}
+            {teacher.phone && (
+              <>
+                <Dot />
+                <a
+                  href={`tel:${teacher.phone}`}
+                  className="font-medium text-slate-700 hover:text-primary-600 dark:text-slate-200 dark:hover:text-primary-400 transition-colors"
+                >
+                  {teacher.phone}
+                </a>
+                {waNumber && (
+                  <a
+                    href={`https://wa.me/${waNumber}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    aria-label={`Написать ${teacher.displayName} в WhatsApp`}
+                    className="text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors"
+                  >
+                    <MessageCircle className="w-4 h-4" />
+                  </a>
+                )}
+              </>
+            )}
+            {(teacher as any).city && <><Dot />{(teacher as any).city}</>}
+          </p>
+        </div>
+
+        <div className="shrink-0 flex items-center gap-2">
+          {canEditTeachers && (
+            <button
+              onClick={() => setShowEdit(true)}
+              className="hidden sm:inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-sm font-medium text-slate-700 bg-slate-100 hover:bg-slate-200 dark:text-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 transition-colors"
+            >
+              <Pencil className="w-4 h-4" />{t('common.edit', 'Редактировать')}
+            </button>
+          )}
+          <RowMenu items={menuItems} />
+        </div>
+      </header>
+
+      {/* ═══ Полоса нагрузки ═══ */}
+      <dl className="grid grid-cols-2 md:grid-cols-4 rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 divide-x divide-y md:divide-y-0 divide-slate-200 dark:divide-slate-700 overflow-hidden mb-8">
+        <Metric label="Групп" value={String(groups.length)} />
+        <Metric
+          label="Учеников"
+          value={String(studentCount)}
+          hint={groups.length > 1 ? 'без повторов' : undefined}
+        />
+        {canSeeActivity ? (
+          <>
+            <Metric
+              label="Активных дней"
+              value={kpi ? String(kpi.activeDays) : '—'}
+              hint={kpi ? `стабильность ${kpi.consistencyPct}%` : undefined}
+            />
+            <Metric
+              label="KPI"
+              value={kpi ? String(kpi.kpiScore) : '—'}
+              valueClass={kpi ? scoreTone(kpi.kpiScore) : undefined}
+              hint={kpi ? `${kpi.totalActions} ${plural(kpi.totalActions, 'действие', 'действия', 'действий')}` : undefined}
+            />
+          </>
+        ) : (
+          <>
+            <Metric label="Последняя активность" value={relativeDay(kpi?.lastActivityAt ?? null)} />
+            <Metric label="Статус" value={online ? 'В сети' : 'Не в сети'} />
+          </>
+        )}
+      </dl>
+
+      {/* ═══ Нагрузка: группы ═══ */}
+      <section className="mb-8">
+        <SectionHeading title="Группы" meta={groups.length > 0 ? `${groups.length}` : undefined} />
+        <div className="rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 overflow-hidden">
+          {failed.groups ? (
+            <div className="p-4"><LoadError onRetry={() => window.location.reload()} /></div>
+          ) : groups.length === 0 ? (
+            <p className="px-4 py-6 text-sm text-slate-500 dark:text-slate-400 text-center">
+              Преподаватель не ведёт ни одной группы
+              {canEditTeachers && (
+                <> · <button onClick={() => setShowAssign(true)} className="font-medium text-primary-600 dark:text-primary-400 hover:underline">назначить</button></>
+              )}
+            </p>
+          ) : (
+            <ul className="divide-y divide-slate-100 dark:divide-slate-700">
+              {groups.map(g => (
+                <li key={g.id} className="px-4 py-3 flex items-center justify-between gap-3">
+                  <Link to={`/groups/${g.id}`} className="min-w-0 flex-1 group">
+                    <p className="text-sm font-medium text-slate-900 dark:text-white truncate group-hover:text-primary-600 dark:group-hover:text-primary-400 transition-colors">
+                      {g.name}
+                    </p>
+                    <p className="text-xs text-slate-500 dark:text-slate-400 truncate">
+                      {g.courseName || 'Без курса'} · <span className="tabular-nums">{(g.studentIds || []).length}</span> {plural((g.studentIds || []).length, 'ученик', 'ученика', 'учеников')}
+                    </p>
+                  </Link>
+                  {canEditTeachers && (
+                    <button
+                      onClick={() => setUnassign({ id: g.id, name: g.name })}
+                      aria-label={`Открепить от группы ${g.name}`}
+                      // Видно всегда, а не по hover: действие только по наведению
+                      // недоступно с клавиатуры и с телефона. slate-500, а не 400:
+                      // иконка — графический объект, ему нужен контраст ≥3:1.
+                      className="shrink-0 p-1.5 rounded-lg text-slate-500 dark:text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:text-rose-400 dark:hover:bg-rose-900/20 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-500"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  )}
+                </li>
+              ))}
+            </ul>
+          )}
+          {canEditTeachers && groups.length > 0 && (
+            <div className="px-4 py-3 border-t border-slate-100 dark:border-slate-700">
+              <button
+                onClick={() => setShowAssign(true)}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-sm font-medium border border-dashed border-slate-300 dark:border-slate-600 text-slate-500 hover:text-primary-600 hover:border-primary-400 dark:hover:text-primary-400 transition-colors"
+              >
+                <Plus className="w-3.5 h-3.5" />Назначить группу
+              </button>
+            </div>
+          )}
+        </div>
+      </section>
+
+      {/* ═══ Активность ═══ */}
+      {canSeeActivity && (
+        <section className="mb-8">
+          <SectionHeading
+            title="Активность"
+            action={{ label: 'Весь раздел', to: '/teacher-activity' }}
+          />
+          <div className="rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 overflow-hidden">
+            <div className="px-4 py-3 border-b border-slate-100 dark:border-slate-700 flex flex-wrap gap-1.5">
+              {PERIODS.map(p => (
+                <button
+                  key={p.id}
+                  onClick={() => setPeriod(p.id)}
+                  aria-pressed={period === p.id}
+                  className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                    period === p.id
+                      ? 'bg-primary-600 text-white'
+                      : 'text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600'
+                  }`}
+                >
+                  {p.label}
+                </button>
+              ))}
+            </div>
+
+            {failed.activity ? (
+              <div className="p-4"><LoadError onRetry={retryActivity} /></div>
+            ) : breakdown.length === 0 && (events?.length ?? 0) === 0 ? (
+              <p className="px-4 py-6 text-sm text-slate-500 dark:text-slate-400 text-center">
+                За выбранный период действий не зафиксировано
+              </p>
             ) : (
-              <div className="w-20 h-20 rounded-2xl flex items-center justify-center text-2xl text-white font-extrabold shadow-xl ring-4 ring-white dark:ring-slate-800" style={{ background: `linear-gradient(135deg, ${C.purple} 0%, ${C.blue} 100%)` }}>
-                {teacher.displayName?.[0]?.toUpperCase() || '?'}
-              </div>
+              <>
+                {breakdown.length > 0 && (
+                  <ul className="grid grid-cols-2 sm:grid-cols-3 gap-px bg-slate-100 dark:bg-slate-700 border-b border-slate-100 dark:border-slate-700">
+                    {breakdown.map(b => (
+                      <li key={b.type} className="bg-white dark:bg-slate-800 px-4 py-3 flex items-center gap-2.5">
+                        <b.icon className={`w-4 h-4 shrink-0 ${b.color}`} aria-hidden />
+                        <div className="min-w-0">
+                          <p className="text-base font-semibold tabular-nums text-slate-900 dark:text-white leading-tight">{b.value}</p>
+                          <p className="text-xs text-slate-500 dark:text-slate-400 truncate">{t(`teacherActivity.type.${b.type}`, b.label)}</p>
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+
+                {events && events.length > 0 && (
+                  <ul className="divide-y divide-slate-100 dark:divide-slate-700 max-h-80 overflow-y-auto">
+                    {events.slice(0, 30).map(ev => {
+                      const meta = TYPE_META[ev.type];
+                      const Icon = meta?.icon || CalendarCheck;
+                      return (
+                        <li key={ev.id} className="px-4 py-2.5 flex items-start gap-3">
+                          <Icon className={`w-4 h-4 mt-0.5 shrink-0 ${meta?.color || 'text-slate-400'}`} aria-hidden />
+                          <div className="min-w-0 flex-1">
+                            <p className="text-sm text-slate-900 dark:text-white">
+                              {t(`teacherActivity.type.${ev.type}`, meta?.label || ev.type)}
+                              {ev.count > 1 && <span className="ml-1.5 text-slate-500 dark:text-slate-400 tabular-nums">×{ev.count}</span>}
+                            </p>
+                            {ev.entityLabel && (
+                              <p className="text-xs text-slate-500 dark:text-slate-400 truncate">{ev.entityLabel}</p>
+                            )}
+                          </div>
+                          <span className="shrink-0 text-xs text-slate-500 dark:text-slate-400 tabular-nums">
+                            {ev.createdAt ? new Date(ev.createdAt).toLocaleDateString('ru-RU') : ''}
+                          </span>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                )}
+              </>
             )}
           </div>
-
-          <div className="pt-12 sm:pt-2 sm:ml-24 flex items-start justify-between flex-wrap gap-4">
-             <div>
-                <h1 className="text-xl font-extrabold text-slate-900 dark:text-white">{teacher.displayName}</h1>
-                <div className="flex items-center gap-1.5 mt-1 mb-2">
-                   <span className="flex items-center gap-1 text-[11px] font-bold bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 px-2 py-0.5 rounded uppercase tracking-wider">
-                     <Briefcase className="w-3 h-3" /> {profile?.specialization || t('teacher.role', 'Преподаватель')}
-                   </span>
-                </div>
-                <div className="flex flex-wrap items-center gap-3">
-                  <span className="text-xs text-slate-500 flex items-center gap-1"><Mail className="w-3.5 h-3.5" />{teacher.email}</span>
-                  {teacher.phone && <span className="text-xs text-slate-500 flex items-center gap-1"><Phone className="w-3.5 h-3.5" />{teacher.phone}</span>}
-                  {profile?.city && <span className="text-xs text-slate-500 flex items-center gap-1"><MapPin className="w-3.5 h-3.5" />{profile.city}</span>}
-                </div>
-             </div>
-
-             {subjectsArr.length > 0 && (
-                <div className="flex flex-col items-start sm:items-end gap-1.5 flex-shrink-0">
-                  <span className="text-[10px] text-slate-400 font-medium uppercase tracking-widest leading-none">Предметы</span>
-                  <div className="flex flex-wrap gap-1.5 justify-end">
-                    {subjectsArr.map((s, i) => (
-                      <span key={i} className="px-2 py-0.5 rounded text-[10px] font-bold" style={{ backgroundColor: `${C.purple}15`, color: C.purple }}>{s}</span>
-                    ))}
-                  </div>
-                </div>
-             )}
-          </div>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        
-        {/* Main Content Info */}
-        <div className="lg:col-span-2 space-y-6">
-          {profile?.bio && (
-            <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-6 shadow-sm">
-              <div className="flex items-center gap-2 mb-3">
-                <BookOpen className="w-5 h-5 text-slate-400" />
-                <h2 className="text-sm font-extrabold text-slate-900 dark:text-white uppercase tracking-wider">О себе</h2>
-              </div>
-              <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed whitespace-pre-line font-medium">{profile.bio}</p>
-            </div>
-          )}
-
-          {profile?.experience && (
-            <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-6 shadow-sm">
-              <div className="flex items-center gap-2 mb-3">
-                <Briefcase className="w-5 h-5 text-slate-400" />
-                <h2 className="text-sm font-extrabold text-slate-900 dark:text-white uppercase tracking-wider">Опыт работы</h2>
-              </div>
-              <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed whitespace-pre-line font-medium">{profile.experience}</p>
-            </div>
-          )}
-          
-          {profile?.education && (
-            <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-6 shadow-sm">
-              <div className="flex items-center gap-2 mb-3">
-                <GraduationCap className="w-5 h-5 text-slate-400" />
-                <h2 className="text-sm font-extrabold text-slate-900 dark:text-white uppercase tracking-wider">Образование</h2>
-              </div>
-              <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed whitespace-pre-line font-medium">{profile.education}</p>
-            </div>
-          )}
-
-          {profile?.certificates && (
-            <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-6 shadow-sm">
-              <div className="flex items-center gap-2 mb-3">
-                <Award className="w-5 h-5 text-slate-400" />
-                <h2 className="text-sm font-extrabold text-slate-900 dark:text-white uppercase tracking-wider">Сертификаты</h2>
-              </div>
-              <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed whitespace-pre-line font-medium">{profile.certificates}</p>
-            </div>
-          )}
-
-          {!profile?.bio && !profile?.experience && !profile?.education && !profile?.certificates && (
-            <div className="text-center py-12 border-2 border-dashed border-slate-200 dark:border-slate-700 rounded-2xl">
-              <p className="text-slate-400 font-bold">{t('teacher.noProfileYet', 'Профиль пока не заполнен')}</p>
-            </div>
-          )}
-        </div>
-
-        {/* Sidebar: Roles + Assigned Groups */}
-        <div className="space-y-6">
-           {canEditRoles && organizationId && (
-             <MemberRolesEditor uid={teacher.uid} orgId={organizationId} />
-           )}
-           <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl overflow-hidden shadow-sm">
-              <div className="px-5 py-4 border-b border-slate-100 dark:border-slate-700 flex items-center justify-between">
-                 <div className="flex items-center gap-2">
-                   <Users className="w-4 h-4 text-slate-400" />
-                   <h3 className="font-extrabold text-sm text-slate-900 dark:text-white uppercase tracking-wider">Группы</h3>
-                 </div>
-                 {canAssign && (
-                   <button onClick={() => setShowAssignModal(true)} className="p-1 text-slate-400 hover:text-white hover:bg-violet-500 rounded transition-colors" title="Добавить группу">
-                      <Plus className="w-4 h-4" />
-                   </button>
-                 )}
-              </div>
-              
-              <div className="p-3 divide-y divide-slate-50 dark:divide-slate-700/50">
-                {teacherGroups.length === 0 ? (
-                  <p className="text-[11px] text-slate-500 text-center py-4 font-medium">Нет прикрепленных групп</p>
-                ) : (
-                  teacherGroups.map(g => (
-                    <div key={g.id} className="py-2.5 px-2 flex items-center justify-between group">
-                       <div className="flex-1 cursor-pointer" onClick={() => navigate(`/groups/${g.id}`)}>
-                          <p className="text-xs font-bold text-slate-900 dark:text-white group-hover:text-primary-500 transition-colors truncate">{g.name}</p>
-                          <p className="text-[10px] text-slate-400 truncate mt-0.5">{g.courseName}</p>
-                       </div>
-                       {canAssign && (
-                         <button onClick={() => handleUnassignGroup(g.id)} className="opacity-0 group-hover:opacity-100 p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded transition-all">
-                           <X className="w-3.5 h-3.5" />
-                         </button>
-                       )}
-                    </div>
-                  ))
-                )}
-              </div>
-           </div>
-        </div>
-      </div>
-
-      {/* Assign Modal */}
-      {showAssignModal && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => setShowAssignModal(false)}>
-          <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 w-full max-w-sm shadow-2xl" onClick={e => e.stopPropagation()}>
-             <h2 className="text-lg font-bold text-slate-900 dark:text-white mb-2">Назначить группу</h2>
-             <p className="text-xs text-slate-500 mb-4">Выберите группу для преподавателя <b>{teacher.displayName}</b>. Преподаватель получит доступ к материалам курса.</p>
-             
-             {availableGroups.length === 0 ? (
-               <div className="bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400 p-3 rounded-lg text-xs mb-4">
-                 Нет доступных групп для назначения.
-               </div>
-             ) : (
-               <select 
-                 value={selectedGroupId} 
-                 onChange={e => setSelectedGroupId(e.target.value)}
-                 className="w-full bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-xl px-4 py-2.5 text-sm font-medium text-slate-900 dark:text-white outline-none focus:border-violet-500 mb-5"
-               >
-                 <option value="">-- Выберите группу --</option>
-                 {availableGroups.map(g => (
-                   <option key={g.id} value={g.id}>{g.name} ({g.courseName || 'Без курса'})</option>
-                 ))}
-               </select>
-             )}
-
-             <div className="flex justify-end gap-2">
-               <button onClick={() => setShowAssignModal(false)} className="px-4 py-2 text-xs font-bold text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-xl transition-colors">
-                 Отмена
-               </button>
-               <button 
-                 onClick={handleAssignGroup} 
-                 disabled={!selectedGroupId || assigning}
-                 className="bg-violet-500 hover:bg-violet-600 text-white px-5 py-2 rounded-xl text-xs font-bold disabled:opacity-50 transition-colors shadow-md shadow-violet-500/20"
-               >
-                 {assigning ? 'Назначение...' : 'Назначить'}
-               </button>
-             </div>
-          </div>
-        </div>
+        </section>
       )}
+
+      {/* ═══ Роли ═══ */}
+      {isOrgAdmin && organizationId && (
+        <section>
+          <SectionHeading title="Роли и доступ" />
+          <div className="rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-4 py-3.5">
+            <MemberRolesEditor uid={teacher.uid} orgId={organizationId} />
+          </div>
+        </section>
+      )}
+
+      {/* ═══ Модальные окна ═══ */}
+      {showEdit && (
+        <EditTeacherModal
+          teacher={teacher as any}
+          onClose={() => setShowEdit(false)}
+          onSaved={patch => setTeacher({ ...teacher, ...patch } as UserProfile)}
+        />
+      )}
+
+      {showAssign && (
+        <ConfirmDialog
+          open
+          title="Назначить группу"
+          confirmLabel={assigning ? 'Назначаем…' : 'Назначить'}
+          busy={assigning || !selectedGroupId}
+          onConfirm={handleAssign}
+          onClose={() => { setShowAssign(false); setSelectedGroupId(''); }}
+          message={
+            <div>
+              <p className="mb-3">
+                Выберите группу для <b>{teacher.displayName}</b>. Преподаватель получит доступ к материалам курса.
+              </p>
+              {allGroups.filter(g => !(g.teacherIds || []).includes(uid!)).length === 0 ? (
+                <p className="text-amber-700 dark:text-amber-300">Свободных групп нет — во всех уже есть этот преподаватель.</p>
+              ) : (
+                <select
+                  value={selectedGroupId}
+                  onChange={e => setSelectedGroupId(e.target.value)}
+                  aria-label="Группа"
+                  className="w-full bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-xl px-4 py-2.5 text-sm font-medium text-slate-900 dark:text-white outline-none focus:border-primary-500"
+                >
+                  <option value="">— Выберите группу —</option>
+                  {allGroups.filter(g => !(g.teacherIds || []).includes(uid!)).map(g => (
+                    <option key={g.id} value={g.id}>{g.name}{g.courseName ? ` (${g.courseName})` : ''}</option>
+                  ))}
+                </select>
+              )}
+            </div>
+          }
+        />
+      )}
+
+      <ConfirmDialog
+        open={!!unassign}
+        busy={unassignBusy}
+        title="Открепить от группы?"
+        confirmLabel="Открепить"
+        message={<>Преподаватель перестанет вести группу <b>{unassign?.name}</b> и потеряет доступ к её материалам. Журнал и оценки сохранятся.</>}
+        onConfirm={runUnassign}
+        onClose={() => setUnassign(null)}
+      />
     </div>
   );
 };
+
+/* ─── Мелкие части ─── */
+
+const Dot: React.FC = () => <span aria-hidden className="text-slate-300 dark:text-slate-600">·</span>;
+
+const SectionHeading: React.FC<{
+  title: string;
+  meta?: string;
+  action?: { label: string; to: string };
+}> = ({ title, meta, action }) => (
+  // Заголовок над контейнером, а не внутри: иначе получается карточка в карточке.
+  <div className="flex items-baseline justify-between gap-3 mb-2.5">
+    <h2 className="text-sm font-semibold text-slate-900 dark:text-white">
+      {title}
+      {meta && <span className="ml-2 font-normal text-slate-500 dark:text-slate-400 tabular-nums">{meta}</span>}
+    </h2>
+    {action && (
+      <Link to={action.to} className="shrink-0 text-sm font-medium text-primary-600 dark:text-primary-400 hover:underline">
+        {action.label}
+      </Link>
+    )}
+  </div>
+);
+
+const Metric: React.FC<{
+  label: string;
+  value: string;
+  hint?: string;
+  valueClass?: string;
+}> = ({ label, value, hint, valueClass }) => (
+  <div className="px-4 py-3">
+    <dt className="text-xs font-medium text-slate-500 dark:text-slate-400">{label}</dt>
+    <dd className={`mt-0.5 text-xl font-semibold tabular-nums ${valueClass || 'text-slate-900 dark:text-white'}`}>{value}</dd>
+    {hint && <p className="text-xs text-slate-500 dark:text-slate-400">{hint}</p>}
+  </div>
+);
+
+const LoadError: React.FC<{ onRetry: () => void }> = ({ onRetry }) => (
+  <p className="text-sm text-slate-600 dark:text-slate-300 flex items-center gap-2">
+    <AlertTriangle className="w-4 h-4 text-amber-500 shrink-0" aria-hidden />
+    Не удалось загрузить
+    <button onClick={onRetry} className="inline-flex items-center gap-1 font-medium text-primary-600 dark:text-primary-400 hover:underline">
+      <RotateCcw className="w-3.5 h-3.5" />Повторить
+    </button>
+  </p>
+);
+
+/** Скелет вместо спиннера: экран сразу показывает свою форму. */
+const DetailSkeleton: React.FC = () => (
+  <div className="max-w-5xl mx-auto" aria-busy="true" aria-label="Загрузка карточки преподавателя">
+    <Skeleton className="h-5 w-32 mb-5" />
+    <div className="flex items-start gap-4 mb-6">
+      <Skeleton className="w-14 h-14 rounded-2xl shrink-0" />
+      <div className="flex-1">
+        <Skeleton className="h-7 w-52 mb-2" />
+        <Skeleton className="h-4 w-72" />
+      </div>
+    </div>
+    <Skeleton className="h-20 w-full rounded-2xl mb-8" />
+    <Skeleton className="h-4 w-16 mb-2.5" />
+    <Skeleton className="h-32 w-full rounded-2xl mb-8" />
+    <Skeleton className="h-4 w-24 mb-2.5" />
+    <Skeleton className="h-48 w-full rounded-2xl" />
+  </div>
+);
 
 export default TeacherDetailPage;

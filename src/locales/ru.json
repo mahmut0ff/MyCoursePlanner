@@ -2463,7 +2463,8 @@
     "overdueTag": "срок прошёл",
     "overdueTagHint": "Снимется, когда оплатят полностью или продлят срок.",
     "amountNotSet": "сумма не указана",
-    "payment": "Оплата"
+    "payment": "Оплата",
+    "studentOutOfScope": "Студент вне текущего среза"
   },
   "telegram": {
     "title": "Telegram-уведомления",

@@ -1574,7 +1574,8 @@
     "hintExpenses": "Бул мезгилде акча кайда кетти",
     "amountUnknown": "көрсөтүлгөн эмес",
     "writtenOffHint": "Эсеп эсептен чыгарылган — академия бул акчаны мындан ары күтпөйт.",
-    "openInFinances": "Каржыдан ачуу"
+    "openInFinances": "Каржыдан ачуу",
+    "studentOutOfScope": "Студент учурдагы тизмеде жок"
   },
   "telegram": {
     "title": "Telegram-билдирүүлөр",

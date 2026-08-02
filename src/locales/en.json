@@ -2175,7 +2175,8 @@
     "hintExpenses": "Where the money went this period",
     "amountUnknown": "not set",
     "writtenOffHint": "This invoice is written off — the academy no longer expects the money.",
-    "openInFinances": "Open in Finances"
+    "openInFinances": "Open in Finances",
+    "studentOutOfScope": "Student outside the current view"
   },
   "telegram": {
     "title": "Telegram Notifications",

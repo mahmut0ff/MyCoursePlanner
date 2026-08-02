@@ -22,7 +22,11 @@ const toDateInput = (iso?: string | null): string => {
   return d.toISOString().split('T')[0];
 };
 
-type ManageState = { orgId: string; name: string; planId: string; date: string; status: string };
+type ManageState = {
+  orgId: string; name: string; planId: string; date: string; status: string;
+  /** Статус подписки до открытия окна — см. NON_PAYING в handleSave. */
+  originalStatus: string;
+};
 
 const AdminBillingPage: React.FC = () => {
   const { t } = useTranslation();
@@ -54,12 +58,25 @@ const AdminBillingPage: React.FC = () => {
   const trialCount = filtered.filter(s => s.status === 'trial').length;
   const suspendedCount = filtered.filter(s => ['suspended', 'expired', 'cancelled'].includes(s.status)).length;
 
+  // Статусы, которые окно «Управление» НЕ вправе переписывать.
+  //
+  // Оно предлагает выбор из двух состояний — «активна» и «заблокирована», — и
+  // при сохранении писало ровно одно из них. Организация на пробном периоде или
+  // с подаренным тарифом попадала в ветку «активна», то есть простое открытие
+  // окна и нажатие «Сохранить» (даже без правок) превращало её в ПЛАТНУЮ: она
+  // попадала в MRR и в счётчик активных, хотя денег за неё не приходило.
+  // Комментарии к MRR прямо говорят, что trial и gifted выручки не дают.
+  const NON_PAYING = ['trial', 'gifted'];
+
   const openManage = (s: any) => setManage({
     orgId: s.organizationId,
     name: s.organizationName || s.organizationId,
     planId: s.planId || 'starter',
     date: toDateInput(s.paidUntil),
     status: ['suspended', 'expired', 'cancelled'].includes(s.status) ? 'suspended' : 'active',
+    // Исходный статус запоминаем, чтобы вернуть его нетронутым, если суперадмин
+    // блокировку не выбирал.
+    originalStatus: String(s.status || ''),
   });
 
   const bumpDate = (days: number) => {
@@ -79,7 +96,15 @@ const AdminBillingPage: React.FC = () => {
       await adminSetSubscription(manage.orgId, {
         planId: manage.planId,
         paidUntil,
-        status: manage.status === 'suspended' ? 'suspended' : 'active',
+        // Блокировку ставим всегда, когда её выбрали. А «активна» по не-платящей
+        // организации не отправляем вовсе: trial и подаренный тариф остаются
+        // собой, пока суперадмин явно не заблокировал её. Сервер такую же
+        // оговорку делает и для импликации «есть дата → active».
+        ...(manage.status === 'suspended'
+          ? { status: 'suspended' as const }
+          : NON_PAYING.includes(manage.originalStatus)
+            ? {}
+            : { status: 'active' as const }),
       });
       toast.success(t('common.saved', 'Сохранено'));
       setManage(null);

@@ -569,8 +569,19 @@ const handler: Handler = async (event: HandlerEvent) => {
       }
 
       // Status: explicit, or implied 'active' when a future paid-through date is given.
+      //
+      // Импликация НЕ применяется к не-платящим статусам. Пробный период и
+      // подаренный тариф тоже имеют дату «оплачено до», и без этой оговорки
+      // достаточно было открыть окно «Управление» и нажать «Сохранить», ничего
+      // не меняя: организация становилась 'active', попадала в MRR и в счётчик
+      // активных — хотя денег за неё не приходило. Комментарии к расчёту MRR
+      // прямо требуют обратного: trial и gifted выручки не дают.
+      const NON_PAYING_STATUSES = ['trial', 'gifted'];
+      const subStatusNow = String((await adminDb.collection('subscriptions')
+        .where('organizationId', '==', body.organizationId).limit(1).get())
+        .docs[0]?.data()?.status || '');
       let status = body.status;
-      if (!status && body.paidUntil) {
+      if (!status && body.paidUntil && !NON_PAYING_STATUSES.includes(subStatusNow)) {
         const due = new Date(body.paidUntil).getTime();
         if (!isNaN(due) && due > Date.now()) status = 'active';
       }

@@ -172,6 +172,28 @@ const MonthTab: React.FC<Props> = ({
     return m;
   }, [courses]);
 
+  /**
+   * Курсы, которые действительно оплачиваются ПОМЕСЯЧНО.
+   *
+   * «Начислить за месяц» предлагало студентов любых курсов, включая разовые
+   * (`paymentFormat: 'one-time'`), и выставляло им полную цену курса — каждый
+   * месяц заново. Автоматический крон так не делает: он берёт только
+   * `paymentFormat == 'monthly'`, то есть ручной путь противоречил
+   * автоматическому на одних и тех же данных.
+   *
+   * Отсутствующий формат считаем помесячным: у легаси-курсов поля нет, а
+   * форма курса подставляет 'monthly' по умолчанию — белый список отсёк бы их
+   * все. Разовый счёт по-прежнему выставляется кнопкой «Выставить счёт» на
+   * карточке студента.
+   */
+  const monthlyCourseIds = useMemo(() => {
+    const s = new Set<string>();
+    for (const c of courses) {
+      if ((c.paymentFormat ?? 'monthly') === 'monthly') s.add(String(c.id));
+    }
+    return s;
+  }, [courses]);
+
   // Начисления выбранного месяца, без отчисленных студентов.
   //
   // В режиме «все неоплаченные» фильтр по месяцу снимается: долг живёт не в
@@ -241,6 +263,11 @@ const MonthTab: React.FC<Props> = ({
     for (const g of groups) {
       const courseId = g.courseId;
       if (!courseId) continue;
+      // Разовый курс помесячно не начисляют — см. monthlyCourseIds.
+      if (!monthlyCourseIds.has(String(courseId))) continue;
+      // Закрытая группа тоже не порождает начислений: тот же фильтр, что и в
+      // кроне monthly-billing. Пустой status = легаси-активная.
+      if (g.status && g.status !== 'active') continue;
       for (const sid of (g.studentIds || [])) {
         const student = studentById.get(String(sid));
         if (!student || isExpelled(student)) continue;
@@ -262,7 +289,7 @@ const MonthTab: React.FC<Props> = ({
       }
     }
     return [...byKey.values()].sort((a, b) => collator.compare(a.studentName, b.studentName));
-  }, [groups, studentById, monthPlans, lastAmountByKey, coursePriceById]);
+  }, [groups, studentById, monthPlans, lastAmountByKey, coursePriceById, monthlyCourseIds]);
 
   const stats = useMemo(() => ({
     total: activePlans.length,

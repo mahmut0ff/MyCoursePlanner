@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../contexts/AuthContext';
 import { usePermissions } from '../../contexts/PermissionsContext';
 import { usePlanGate } from '../../contexts/PlanContext';
+import { useBranch } from '../../contexts/BranchContext';
 import {
   GraduationCap, UsersRound, Settings, Sparkles, GitBranch, MapPin,
   FileText, Gamepad2, TrendingUp, Bell, Bot, BarChart3, ChevronRight,
@@ -109,6 +110,7 @@ const AdminDashboard: React.FC = () => {
   const { profile, organizationId, role } = useAuth();
   const { canRead } = usePermissions();
   const { canAccess, loading: planLoading } = usePlanGate();
+  const { activeBranchId } = useBranch();
   // Дашбордные KPI — это выручка/прибыль/маржа, т.е. высокоуровневые цифры.
   // Гейтим их отдельным правом: роль с CRUD оплат (finances), но без
   // finance_overview, финансовый блок здесь не видит.
@@ -127,7 +129,18 @@ const AdminDashboard: React.FC = () => {
   const [chartPeriod, setChartPeriod] = useState<Period>('current_month');
   const [chartMetrics, setChartMetrics] = useState<any>(null);
 
+  // activeBranchId в зависимостях — обязателен, а не для порядка. Почти всё,
+  // что грузит этот эффект (api-dashboard, api-org, api-lessons,
+  // api-finance-metrics), перечислено в BRANCH_SCOPED_ENDPOINTS, и перехватчик
+  // в src/lib/api.ts подставляет филиал в КАЖДЫЙ такой GET. С пустым массивом
+  // зависимостей запросы уходили ровно один раз — при монтировании, до того как
+  // BranchContext успевал восстановить выбранный филиал. В итоге дашборд
+  // открывался с общеорганизационными цифрами и оставался с ними навсегда:
+  // переключение филиала меняло всё приложение, кроме главного экрана. Устаревал
+  // не только блок финансов — «Новые ученики», «Ученики в зоне риска», воронка
+  // заявок и «Сегодня» в расписании тоже.
   useEffect(() => {
+    setLoading(true);
     const todayISO = new Date().toISOString().slice(0, 10);
     const dow = appDayOfWeek();
 
@@ -167,14 +180,15 @@ const AdminDashboard: React.FC = () => {
 
     Promise.all(loads).finally(() => setLoading(false));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [activeBranchId]);
 
   // Cashflow chart period (separate from the at-a-glance KPIs which stay month-to-date).
+  // activeBranchId здесь по той же причине: график тоже читает api-finance-metrics.
   useEffect(() => {
     if (!canSeeFinance) return;
     if (chartPeriod === 'current_month') { setChartMetrics(null); return; }
     apiGetFinanceMetrics({ period: chartPeriod }).then(setChartMetrics).catch(() => {});
-  }, [chartPeriod, canSeeFinance]);
+  }, [chartPeriod, canSeeFinance, activeBranchId]);
 
   // Lazy, cached-per-day AI "focus of the day" — at most one call per owner per day.
   useEffect(() => {

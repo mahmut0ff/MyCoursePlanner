@@ -348,6 +348,10 @@ const handler: Handler = async (event: HandlerEvent) => {
       // НЕИЗВЕСТЕН — а `remaining` так и остаётся 0, и студент получал
       // «Оплата завершена полностью!» по счёту, которого больше нет.
       let planBalanceKnown = false;
+      // Переплата: сколько сверх остатка попросили провести. Заполняется ВНУТРИ
+      // транзакции, ошибка возвращается уже снаружи — бросать из транзакции
+      // нельзя, Firestore воспримет это как повод к повтору.
+      let overpay: { by: number; outstanding: number } | null = null;
 
       if (!planSideEffect) {
         await ref.set(data);
@@ -359,22 +363,59 @@ const handler: Handler = async (event: HandlerEvent) => {
         const sign = data.type === 'income' ? 1 : -1;
         const planRef = adminDb.collection('studentPaymentPlans').doc(data.paymentPlanId);
         await adminDb.runTransaction(async (t) => {
+          overpay = null; // транзакция может быть перезапущена — состояние сбрасываем
           // Firestore requires every read to precede every write in a transaction.
           const doc = await t.get(planRef);
-          t.set(ref, data);
-          if (!doc.exists) return;
-          const planData = doc.data()!;
+          const planData = doc.exists ? doc.data()! : null;
           // Re-checked inside the transaction: the pre-read that authorized this
           // is not atomic with the write.
-          if (planData.organizationId !== orgFilter) return;
-          const newPaidAmount = Math.max(0, (planData.paidAmount || 0) + sign * amount);
-          remaining = Math.max(0, (planData.totalAmount || 0) - newPaidAmount);
+          const planUsable = planData !== null && planData.organizationId === orgFilter;
+
+          // ── Переплату отвергаем, а не принимаем молча ──
+          // Клиент блокирует ввод больше остатка, но правило про деньги обязано
+          // жить на сервере: `max` в разметке ничего не гарантирует, а эндпоинт
+          // открыт всякому с правом finances:write. Раньше лишний ноль (50 000
+          // вместо 5 000) проходил насквозь: paidAmount уезжал выше totalAmount,
+          // planDebt зажимался в ноль, счёт зеленел «Оплачено», и отличить
+          // переплату от нормальной оплаты в списке было нечем.
+          //
+          // Проверяем ВНУТРИ транзакции, по свежему остатку: иначе две
+          // параллельные оплаты пролезли бы мимо проверки вдвоём. Проверка
+          // стоит ДО первой записи — ранний выход не должен оставить в кассе
+          // расход без пересчёта счёта.
+          //
+          // Только на приёме денег (sign === 1) и только по счёту с известной
+          // положительной суммой: у легаси-счёта без суммы ограничивать нечем,
+          // а возврат уменьшает paidAmount и переплатой быть не может.
+          if (planUsable && sign === 1) {
+            const planTotal = Number(planData!.totalAmount);
+            if (Number.isFinite(planTotal) && planTotal > 0) {
+              const outstanding = Math.max(0, planTotal - (planData!.paidAmount || 0));
+              if (amount > outstanding) {
+                overpay = { by: amount - outstanding, outstanding };
+                return; // ничего не пишем — ошибку вернём после транзакции
+              }
+            }
+          }
+
+          t.set(ref, data);
+          if (!planUsable) return;
+          const newPaidAmount = Math.max(0, (planData!.paidAmount || 0) + sign * amount);
+          remaining = Math.max(0, (planData!.totalAmount || 0) - newPaidAmount);
           planBalanceKnown = true;
           // Приём новой оплаты — осознанное действие по этому счёту, поэтому он
           // может «оживить» списанный (cancelled) счёт. Возврат — не может.
-          const status = derivePlanStatus(newPaidAmount, planData.totalAmount, planData.status, sign === 1);
+          const status = derivePlanStatus(newPaidAmount, planData!.totalAmount, planData!.status, sign === 1);
           t.update(planRef, { paidAmount: newPaidAmount, status, updatedAt: new Date().toISOString() });
         });
+
+        if (overpay) {
+          const o = overpay as { by: number; outstanding: number };
+          return badRequest(
+            `Сумма больше остатка по счёту. Остаток: ${o.outstanding}, превышение: ${o.by}. `
+            + 'Если студент платит вперёд, проведите остаток по этому счёту, а излишек — отдельной оплатой по счёту следующего месяца.'
+          );
+        }
       }
 
       if (data.type === 'income' && data.paymentPlanId) {

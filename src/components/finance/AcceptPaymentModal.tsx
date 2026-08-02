@@ -106,6 +106,16 @@ const AcceptPaymentModal: React.FC<Props> = ({ plans, initialPlanId, studentName
   // Остаток, который спишется скидкой, если отметить «оплачено полностью».
   const discountPreview = settle ? Math.max(0, debt - (Number(amount) || 0)) : 0;
 
+  // ── Переплата ──
+  // `max` на <input type="number"> не мешает отправке формы — это подсказка
+  // для стрелок и валидации браузера, которую React-обработчик не спрашивает.
+  // Поэтому лишний ноль (50 000 вместо 5 000) проходил молча: счёт зеленел
+  // «Оплачено», planDebt зажимался в ноль, и в списке переплата ничем не
+  // отличалась от обычной оплаты. Кассир своей ошибки не видел вовсе — сводный
+  // тайл «Собрано за месяц» показывают только с правом finance_overview.
+  const entered = Number(amount);
+  const isOverpay = Number.isFinite(entered) && debt > 0 && entered > debt;
+
   const name = studentName || plan?.studentName || plan?.studentId || '';
 
   /** Русская причина, почему такую дату принимать нельзя, или '' если можно. */
@@ -123,7 +133,7 @@ const AcceptPaymentModal: React.FC<Props> = ({ plans, initialPlanId, studentName
   };
 
   const handlePay = async () => {
-    if (!plan || !amount || Number(amount) <= 0) return;
+    if (!plan || !amount || Number(amount) <= 0 || isOverpay) return;
     // Проверяем до конструктора Date: пустой input даёт '', и new Date('') бросил бы.
     const problem = dateProblem();
     if (problem) { setDateError(problem); return; }
@@ -212,9 +222,17 @@ const AcceptPaymentModal: React.FC<Props> = ({ plans, initialPlanId, studentName
             <input
               type="number" autoFocus min="1" max={debt}
               value={amount} onChange={e => setAmount(e.target.value)}
-              className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 text-lg font-bold dark:text-white"
+              aria-invalid={isOverpay}
+              className={`w-full bg-slate-50 dark:bg-slate-900 border rounded-xl px-4 py-3 text-lg font-bold dark:text-white ${
+                isOverpay ? 'border-rose-400 dark:border-rose-500' : 'border-slate-200 dark:border-slate-700'
+              }`}
               placeholder="0"
             />
+            {isOverpay && (
+              <p className="text-xs text-rose-500 mt-1">
+                {t('finances.overpayBlocked', 'Больше остатка ({{debt}}) принять нельзя. Если студент заплатил вперёд, примите остаток здесь, а излишек — отдельной оплатой по счёту следующего месяца.', { debt: formatMoney(debt) })}
+              </p>
+            )}
           </div>
           {/* Скидка: студент платит меньше остатка, и это НЕ долг. Отметка
               закрывает счёт по факту оплаты, остаток уходит в скидку. */}
@@ -283,7 +301,7 @@ const AcceptPaymentModal: React.FC<Props> = ({ plans, initialPlanId, studentName
         </div>
         <div className="p-6 border-t border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 flex justify-end gap-3">
           <button onClick={onClose} className="px-4 py-2 text-sm font-medium text-slate-600 dark:text-slate-400">{t('finances.cancel', 'Отмена')}</button>
-          <button onClick={handlePay} disabled={saving || !amount || Number(amount) <= 0}
+          <button onClick={handlePay} disabled={saving || !amount || Number(amount) <= 0 || isOverpay}
             className="bg-emerald-500 hover:bg-emerald-600 disabled:opacity-50 text-white px-5 py-2 rounded-xl text-sm font-bold transition-all flex items-center gap-2">
             <CreditCard className="w-4 h-4" />
             {saving ? t('finances.saving', 'Сохранение...') : t('finances.confirmPayment', 'Подтвердить оплату')}

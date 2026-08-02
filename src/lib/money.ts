@@ -62,6 +62,32 @@ export const formatPercent = (n?: number | null): string => {
  *
  * Пустой/битый ключ даёт '' — вызывающий сам решает, что показать вместо.
  */
+/**
+ * Календарный ДЕНЬ значения в виде «10.08.2026».
+ *
+ * Принимает и голую дату 'YYYY-MM-DD', и полный ISO — и в обоих случаях
+ * показывает ТОТ ЖЕ день, что записан, не пересчитывая его в зону браузера.
+ *
+ * Именно пересчёт и был ошибкой: срок оплаты сервер пишет концом суток
+ * ('2026-08-10T23:59:59.000Z'), и `new Date(...).toLocaleDateString()` в
+ * UTC+6 рисовал 11 августа. Экран называл срок на день позже настоящего и
+ * расходился с ручными счетами, где срок хранится голой датой. Для срока и
+ * даты операции важен ДЕНЬ, а не момент, поэтому берём первые десять символов —
+ * ровно так же, как deadlineDayKey в src/lib/payment-plans.ts.
+ *
+ * Нечитаемое значение даёт '—', а не «Invalid Date».
+ */
+export const formatDayKey = (value?: unknown): string => {
+  if (!value) return '—';
+  const raw = value instanceof Date ? value.toISOString() : String(value);
+  const day = raw.slice(0, 10);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(day)) return '—';
+  const [y, m, d] = day.split('-').map(Number);
+  return new Date(Date.UTC(y, m - 1, d)).toLocaleDateString(LOCALE, {
+    day: '2-digit', month: '2-digit', year: 'numeric', timeZone: 'UTC',
+  });
+};
+
 export const formatMonthKey = (key?: string | null): string => {
   if (!key || !/^\d{4}-\d{2}$/.test(key)) return '';
   const [y, m] = key.split('-').map(Number);

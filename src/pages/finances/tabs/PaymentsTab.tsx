@@ -18,7 +18,7 @@ import PeriodFilter from '../components/PeriodFilter';
 import { toTransactionParams, periodSlug, branchSlug } from '../financePeriod';
 import type { FinanceRange } from '../financePeriod';
 import { PAYMENT_METHODS, getMethodLabel } from '../expenseCategories';
-import { formatMoney, formatNumber } from '../../../lib/money';
+import { formatMoney, formatNumber, formatDayKey } from '../../../lib/money';
 import { buildCsv, downloadCsv, formatCsvDate } from '../../../lib/csv';
 import type { PaymentsFilters } from '../FinancesPage';
 
@@ -58,11 +58,7 @@ const txTime = (tx: any): number => {
  * Дата для ячейки. Пустая или непарсящаяся строка (легаси-записи такое несут) —
  * прочерк, а не «Invalid Date». Та же защита от NaN, что и в сортировке.
  */
-const formatTxDate = (raw: string): string => {
-  if (!raw) return '—';
-  const ms = new Date(raw).getTime();
-  return Number.isNaN(ms) ? '—' : new Date(ms).toLocaleDateString();
-};
+const formatTxDate = (raw: string): string => formatDayKey(raw);
 
 /** Календарный день строки в дне организации, или null если дата нечитаема. */
 const dayKeyOf = (raw: unknown): string | null => {

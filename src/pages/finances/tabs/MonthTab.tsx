@@ -21,7 +21,7 @@ import toast from 'react-hot-toast';
 import { apiDeletePaymentPlan, apiGetPaymentPlans, orgGetCourses, orgGetGroups, orgGetStudents } from '../../../lib/api';
 import { useBranch } from '../../../contexts/BranchContext';
 import { usePermissions } from '../../../contexts/PermissionsContext';
-import { formatMoney, formatMonthKey } from '../../../lib/money';
+import { formatMoney, formatMonthKey, formatDayKey } from '../../../lib/money';
 import { isDebtBearingPlan, isWrittenOffPlan, isPlanOverdue, planDebt, planDiscount, planPeriodKey, planProgressKey } from '../../../lib/payment-plans';
 import EmptyState from '../../../components/ui/EmptyState';
 import { ListSkeleton } from '../../../components/ui/Skeleton';
@@ -528,7 +528,7 @@ const MonthTab: React.FC<Props> = ({
                               Теперь до срока это спокойное «Ожидает · до <дата>». */}
                           {owes && p.deadline && (
                             <span className={`ml-2 text-[11px] align-middle ${overdue ? 'text-rose-500 font-bold' : 'text-slate-400'}`}>
-                              {t('finances.until', 'до')} {new Date(p.deadline).toLocaleDateString()}
+                              {t('finances.until', 'до')} {formatDayKey(p.deadline)}
                             </span>
                           )}
                           {/* «Срок прошёл» — отдельная красная метка, только когда срок реально прошёл. */}

@@ -2228,7 +2228,7 @@
     "remaining": "Остаток",
     "amount": "Сумма",
     "comment": "Комментарий",
-    "commentPlaceholder": "Наличные / Перевод / ...",
+    "commentPlaceholder": "Например: оплата за март",
     "confirmPayment": "Подтвердить оплату",
     "create": "Создать счёт",
     "studentPlaceholder": "Алишер Каримов",

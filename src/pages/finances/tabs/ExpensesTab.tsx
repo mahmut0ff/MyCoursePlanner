@@ -18,7 +18,8 @@ import RowMenu from '../../../components/ui/RowMenu';
 import type { RowMenuItem } from '../../../components/ui/RowMenu';
 import LazyListFooter from '../../../components/ui/LazyListFooter';
 import { useLazyList } from '../../../hooks/useLazyList';
-import { formatMoney, formatMoneySigned } from '../../../lib/money';
+import { formatMoney, formatMoneySigned, formatDayKey } from '../../../lib/money';
+import { orgDayKey } from '../../../lib/payment-plans';
 import { buildCsv, downloadCsv, formatCsvDate } from '../../../lib/csv';
 import {
   EXPENSE_CATEGORIES,
@@ -46,7 +47,7 @@ const emptyForm = {
   amount: '',
   categoryId: 'other',
   description: '',
-  date: new Date().toISOString().slice(0, 10),
+  date: orgDayKey(),
   // День операции на момент открытия формы. Нужен, чтобы при сохранении
   // отличить «дату поменяли» от «дату не трогали»: сервер валидирует любую
   // ПРИШЕДШУЮ дату окном в 60 дней, и безусловная отправка делала старый расход
@@ -155,13 +156,16 @@ const ExpensesTab: React.FC<Props> = ({ range, onRangeChange, filters, onFilters
   });
 
   const openCreate = () => {
-    setForm({ ...emptyForm, date: new Date().toISOString().slice(0, 10) });
+    // «Сегодня» в дне ОРГАНИЗАЦИИ (UTC+6), а не в UTC: у машины в другой зоне
+    // ночной расход датировался вчерашним числом, а на границе месяца уезжал в
+    // уже закрытый месяц — и в отчёт текущего не попадал вовсе.
+    setForm({ ...emptyForm, date: orgDayKey() });
     setDateError('');
     setShowModal(true);
   };
 
   const openEdit = (tx: any) => {
-    const day = (tx.date || '').slice(0, 10) || new Date().toISOString().slice(0, 10);
+    const day = (tx.date || '').slice(0, 10) || orgDayKey();
     setForm({
       id: tx.id,
       amount: String(tx.amount ?? ''),
@@ -420,7 +424,7 @@ const ExpensesTab: React.FC<Props> = ({ range, onRangeChange, filters, onFilters
                         <td className="px-5 py-3.5 text-slate-500">
                           <div className="flex items-center gap-2">
                             <CalendarIcon className="w-3.5 h-3.5 text-slate-400" />
-                            {formatCsvDate(tx.date)}
+                            {formatDayKey(tx.date)}
                           </div>
                         </td>
                         <td className="px-5 py-3.5">

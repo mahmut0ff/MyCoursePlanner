@@ -461,6 +461,22 @@ const handler: Handler = async (event: HandlerEvent) => {
         }
       }
 
+      // ── Второй потолок: по СЧЁТУ, а не по конкретной оплате ──
+      // Проверка выше опирается на refundOfTransactionId, а у возвратов,
+      // созданных до появления этого поля, его нет — они не попадают в сумму
+      // `alreadyRefunded` и остаются невидимыми. Ограничение по счёту закрывает
+      // и их: вернуть больше, чем по счёту вообще получено, нельзя ни через
+      // какую комбинацию старых и новых возвратов.
+      if (data.type === 'expense' && data.paymentPlanId) {
+        const planSnap = await adminDb.collection('studentPaymentPlans').doc(data.paymentPlanId).get();
+        const planPaid = Number(planSnap.data()?.paidAmount);
+        if (planSnap.exists && Number.isFinite(planPaid) && amount > planPaid) {
+          return badRequest(
+            `Вернуть можно не больше оплаченного по счёту: ${Math.max(0, planPaid)}.`
+          );
+        }
+      }
+
       if (!planSideEffect) {
         await ref.set(data);
       } else {
@@ -657,18 +673,44 @@ const handler: Handler = async (event: HandlerEvent) => {
         const sign = existing.type === 'income' ? 1 : -1;
         const diff = sign * (updates.amount - (existing.amount || 0));
         const planRef = adminDb.collection('studentPaymentPlans').doc(existing.paymentPlanId);
+        let putOverpay: { by: number; ceiling: number } | null = null;
         await adminDb.runTransaction(async (t) => {
+          putOverpay = null; // транзакция может быть перезапущена
           // Firestore requires every read to precede every write in a transaction.
           const planDoc = await t.get(planRef);
+          const planData = planDoc.exists ? planDoc.data()! : null;
+          const planUsable = planData !== null && planData.organizationId === orgFilter;
+
+          // Потолок действует и здесь. POST переплату отвергает, а PUT применял
+          // любую сумму: достаточно было принять 5 000, а потом «поправить» их
+          // на 50 000 — тот же результат через соседний глагол. Проверка стоит
+          // ДО первой записи, иначе ранний выход оставил бы операцию исправленной
+          // при нетронутом счёте.
+          if (planUsable && diff > 0) {
+            const planTotal = Number(planData!.totalAmount);
+            if (Number.isFinite(planTotal) && planTotal > 0) {
+              const ceiling = Math.max(0, planTotal - (planData!.paidAmount || 0));
+              if (diff > ceiling) {
+                putOverpay = { by: diff - ceiling, ceiling };
+                return;
+              }
+            }
+          }
+
           t.update(docRef, updates);
-          if (!planDoc.exists) return;
-          const planData = planDoc.data()!;
-          if (planData.organizationId !== orgFilter) return;
-          const newPaid = Math.max(0, (planData.paidAmount || 0) + diff);
+          if (!planUsable) return;
+          const newPaid = Math.max(0, (planData!.paidAmount || 0) + diff);
           // Правка старой операции не должна воскрешать списанный счёт.
-          const status = derivePlanStatus(newPaid, planData.totalAmount, planData.status);
+          const status = derivePlanStatus(newPaid, planData!.totalAmount, planData!.status);
           t.update(planRef, { paidAmount: newPaid, status, updatedAt: new Date().toISOString() });
         });
+
+        if (putOverpay) {
+          const o = putOverpay as { by: number; ceiling: number };
+          return badRequest(
+            `Новая сумма больше остатка по счёту. Добавить можно не больше ${o.ceiling}, превышение: ${o.by}.`
+          );
+        }
       }
 
       return ok({ id: doc.id, ...existing, ...updates });

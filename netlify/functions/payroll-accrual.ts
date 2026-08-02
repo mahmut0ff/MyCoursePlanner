@@ -258,6 +258,15 @@ const handler: Handler = async (event: HandlerEvent) => {
             teacherId: line.teacherId,
             teacherName: names.get(line.teacherId) || '',
             ruleId: line.ruleId,
+            // Филиал строки — филиал её ставки, ровно как в ручном расчёте
+            // (api-payroll.ts, `ruleBranch`). Крон его не писал вовсе, и строка
+            // уходила без филиала: выплата по ней создавала расход «не
+            // привязанный к филиалу», а стоило директору один раз нажать
+            // «Пересчитать» — та же строка внезапно обретала филиал, и зарплата
+            // за один и тот же месяц переезжала между срезами отчётности.
+            // Период здесь всегда общеорганизационный (branchId: null, см. ниже),
+            // поэтому фолбэк — null.
+            branchId: rules.find((r) => r.id === line.ruleId)?.branchId ?? null,
             // Замороженное правило + литеральные входы каждого компонента
             // (revenueBaseMinor, sourceTxnIds, sessionCount, sourceSessionIds…):
             // директор обязан восстановить сумму, не пересчитывая её заново.

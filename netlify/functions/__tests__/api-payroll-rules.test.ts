@@ -329,6 +329,40 @@ describe('api-payroll-rules POST — the one-active-rule invariant', () => {
     expect(sets[0].effectiveFrom).toBe('2026-07');
   });
 
+  it('возобновляет бессрочную ставку после временной, а не отменяет её навсегда', async () => {
+    (verifyAuth as any).mockResolvedValue(staff(WRITE));
+    const { sets, updates } = wire({ rules: [openEnded] });
+
+    // Исключение на один месяц: «в июле платим иначе».
+    const res: any = await rulesHandler(
+      event('POST', {}, validBody({ effectiveFrom: '2026-07', effectiveTo: '2026-07' })), {} as any, () => {});
+    expect(res.statusCode).toBe(200);
+
+    // Прежняя закрыта июнем…
+    expect(updates).toHaveLength(1);
+    expect(updates[0].effectiveTo).toBe('2026-06');
+
+    // …и возобновлена с августа теми же компонентами, снова бессрочно.
+    expect(sets).toHaveLength(2);
+    const resumed = sets.find((s: any) => s.resumesRuleId === 'old1');
+    expect(resumed).toBeDefined();
+    expect(resumed.effectiveFrom).toBe('2026-08');
+    expect(resumed.effectiveTo).toBeNull();
+    expect(resumed.label).toBe('Старая ставка');
+    expect(resumed.status).toBe('active');
+  });
+
+  it('не возобновляет ставку, если новая бессрочная — это настоящая замена', async () => {
+    (verifyAuth as any).mockResolvedValue(staff(WRITE));
+    const { sets } = wire({ rules: [openEnded] });
+
+    const res: any = await rulesHandler(
+      event('POST', {}, validBody({ effectiveFrom: '2026-07' })), {} as any, () => {});
+    expect(res.statusCode).toBe(200);
+    // Только новая ставка — продолжения быть не должно.
+    expect(sets).toHaveLength(1);
+  });
+
   it('rolls the year back correctly when the new rule starts in January', async () => {
     (verifyAuth as any).mockResolvedValue(staff(WRITE));
     const { updates } = wire({ rules: [{ ...openEnded, effectiveFrom: '2025-03' }] });

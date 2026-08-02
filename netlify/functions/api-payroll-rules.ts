@@ -54,6 +54,14 @@ function prevPeriod(period: string): string {
   return `${year}-${String(month - 1).padStart(2, '0')}`;
 }
 
+/** Следующий месяц: '2026-12' → '2027-01'. */
+function nextPeriod(period: string): string {
+  const year = Number(period.slice(0, 4));
+  const month = Number(period.slice(5, 7));
+  if (month === 12) return `${year + 1}-01`;
+  return `${year}-${String(month + 1).padStart(2, '0')}`;
+}
+
 /** Пересекаются ли два закрытых-справа интервала месяцев (обе границы включительно). */
 function periodsOverlap(aFrom: string, aTo: string | null, bFrom: string, bTo: string | null): boolean {
   return aFrom <= (bTo || OPEN_END) && bFrom <= (aTo || OPEN_END);
@@ -344,6 +352,8 @@ const handler: Handler = async (event: HandlerEvent) => {
           );
 
           const toClose: Array<{ ref: FirebaseFirestore.DocumentReference; from: string }> = [];
+          // Ставки, которые надо ВОЗОБНОВИТЬ после временной — см. ниже.
+          const toResume: Array<{ id: string; data: FirebaseFirestore.DocumentData }> = [];
           for (const doc of supersededDocs) {
             if (!doc.exists) continue;
             const d = doc.data()!;
@@ -357,12 +367,48 @@ const handler: Handler = async (event: HandlerEvent) => {
               throw new RuleConflictError(d.id || doc.id);
             }
             toClose.push({ ref: doc.ref, from: d.effectiveFrom });
+
+            // ── Временная ставка не отменяет постоянную ──
+            // Новая ставка с КОНЕЧНЫМ сроком — это исключение на месяц-другой
+            // («в декабре платим иначе»). Действующая при этом закрывалась
+            // предыдущим месяцем и не возобновлялась никогда: после месяца
+            // исключения преподаватель оставался вообще без ставки, ведомость
+            // молча не начисляла ему ничего, а диагностика говорила лишь «нет
+            // ставки» — будто её и не заводили.
+            //
+            // Поэтому продолжение прежней ставки создаём сразу: те же
+            // компоненты, с месяца после исключения и до её собственного конца
+            // (или бессрочно, если он был открыт).
+            const oldEnd: string | null = d.effectiveTo ?? null;
+            if (effectiveTo && (oldEnd === null || oldEnd > effectiveTo)) {
+              toResume.push({ id: doc.id, data: d });
+            }
           }
 
           for (const c of toClose) {
             t.update(c.ref, { effectiveTo: closeAt, updatedAt: now });
           }
           t.set(newRef, data);
+
+          for (const r of toResume) {
+            const resumeRef = adminDb.collection(COLLECTION).doc();
+            t.set(resumeRef, {
+              teacherId: r.data.teacherId,
+              branchId: r.data.branchId ?? null,
+              label: r.data.label,
+              status: 'active',
+              components: r.data.components,
+              effectiveFrom: nextPeriod(effectiveTo as string),
+              effectiveTo: r.data.effectiveTo ?? null,
+              // Аудит: на ком стоит эта ставка и чьим продолжением является.
+              supersedesId: newRef.id,
+              resumesRuleId: r.id,
+              organizationId: orgFilter,
+              createdBy: user.uid,
+              createdAt: now,
+              updatedAt: now,
+            });
+          }
         });
       } catch (err: any) {
         if (err instanceof RuleConflictError) {

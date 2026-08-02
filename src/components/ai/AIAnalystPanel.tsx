@@ -1,5 +1,5 @@
 import React, { useRef, useState, useEffect } from 'react';
-import { Sparkles, Send, Loader2, BarChart3, TrendingUp } from 'lucide-react';
+import { Send, Loader2, ArrowUpRight, RotateCcw } from 'lucide-react';
 import { apiAIInsightsAsk } from '../../lib/api';
 
 interface Highlight { label: string; value: string }
@@ -41,64 +41,78 @@ const AIAnalystPanel: React.FC = () => {
     }
   };
 
+  const started = messages.length > 0;
+
   return (
-    <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl overflow-hidden flex flex-col">
-      <div className="flex items-center gap-3 px-5 py-4 border-b border-slate-100 dark:border-slate-700">
-        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-500 to-indigo-600 text-white flex items-center justify-center shadow-sm">
-          <Sparkles className="w-5 h-5" />
-        </div>
+    <section
+      aria-labelledby="ai-analyst-heading"
+      className="h-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl flex flex-col overflow-hidden"
+    >
+      <div className="flex items-start justify-between gap-3 px-5 pt-5">
         <div>
-          <h3 className="font-semibold text-slate-900 dark:text-white">AI-аналитик</h3>
-          <p className="text-xs text-slate-500 dark:text-slate-400">Спросите что угодно о вашем центре — отвечаю по вашим данным</p>
+          <h2 id="ai-analyst-heading" className="font-semibold text-slate-900 dark:text-white">AI-аналитик</h2>
+          <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">
+            Спросите о центре обычными словами — отвечу по вашим цифрам за текущий период.
+          </p>
         </div>
+        {started && (
+          <button
+            onClick={() => setMessages([])}
+            className="shrink-0 inline-flex items-center gap-1.5 h-8 px-2.5 rounded-lg text-xs font-medium text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700/60 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"
+          >
+            <RotateCcw className="w-3.5 h-3.5" /> Заново
+          </button>
+        )}
       </div>
 
-      <div ref={scrollRef} className="px-5 py-4 space-y-4 max-h-[420px] overflow-y-auto min-h-[160px]">
-        {messages.length === 0 && (
-          <div className="space-y-3">
-            <p className="text-sm text-slate-500 dark:text-slate-400">Примеры вопросов:</p>
-            <div className="flex flex-wrap gap-2">
-              {SUGGESTIONS.map((s) => (
+      <div
+        ref={scrollRef}
+        className={`px-5 py-4 space-y-5 overflow-y-auto flex-1 ${started ? 'max-h-[460px] min-h-[240px]' : ''}`}
+      >
+        {!started && (
+          <ul className="divide-y divide-slate-100 dark:divide-slate-700/70 -mx-2">
+            {SUGGESTIONS.map((s) => (
+              <li key={s}>
                 <button
-                  key={s}
                   onClick={() => ask(s)}
-                  className="text-left text-xs px-3 py-1.5 rounded-full border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:border-primary-300 hover:text-primary-600 dark:hover:text-primary-400 transition-colors"
+                  className="group w-full flex items-center gap-3 px-2 py-2.5 text-left rounded-lg hover:bg-slate-50 dark:hover:bg-slate-700/40 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"
                 >
-                  {s}
+                  <span className="flex-1 text-sm text-slate-700 dark:text-slate-200">{s}</span>
+                  <ArrowUpRight className="w-4 h-4 shrink-0 text-slate-300 dark:text-slate-600 group-hover:text-primary-600 dark:group-hover:text-primary-400 transition-colors" />
                 </button>
-              ))}
-            </div>
-          </div>
+              </li>
+            ))}
+          </ul>
         )}
 
         {messages.map((m, i) => (
-          <div key={i} className={m.role === 'user' ? 'flex justify-end' : 'flex justify-start'}>
-            {m.role === 'user' ? (
-              <div className="max-w-[85%] bg-primary-600 text-white rounded-2xl rounded-br-md px-4 py-2.5 text-sm">{m.content}</div>
-            ) : (
-              <div className="max-w-[90%] w-full">
-                <div className="bg-slate-50 dark:bg-slate-700/40 border border-slate-100 dark:border-slate-700 rounded-2xl rounded-bl-md px-4 py-3 text-sm text-slate-700 dark:text-slate-200 leading-relaxed whitespace-pre-wrap">
-                  {m.content}
-                </div>
-                {m.highlights && m.highlights.length > 0 && (
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mt-2">
-                    {m.highlights.map((h, j) => (
-                      <div key={j} className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-2.5">
-                        <p className="text-[10px] font-bold uppercase tracking-wide text-slate-400 truncate">{h.label}</p>
-                        <p className="text-sm font-bold text-slate-900 dark:text-white truncate">{h.value}</p>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
+          m.role === 'user' ? (
+            <p key={i} className="text-[15px] font-semibold text-slate-900 dark:text-white max-w-[65ch]">
+              {m.content}
+            </p>
+          ) : (
+            <div key={i} className="space-y-3">
+              <p className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed whitespace-pre-wrap max-w-[68ch]">
+                {m.content}
+              </p>
+              {m.highlights && m.highlights.length > 0 && (
+                <dl className="flex flex-wrap gap-x-8 gap-y-3 pt-3 border-t border-slate-100 dark:border-slate-700">
+                  {m.highlights.map((h, j) => (
+                    <div key={j} className="min-w-0">
+                      <dt className="text-xs text-slate-500 dark:text-slate-400 truncate">{h.label}</dt>
+                      <dd className="text-lg font-semibold text-slate-900 dark:text-white truncate tabular-nums">{h.value}</dd>
+                    </div>
+                  ))}
+                </dl>
+              )}
+            </div>
+          )
         ))}
 
         {loading && (
-          <div className="flex items-center gap-2 text-sm text-slate-400">
-            <Loader2 className="w-4 h-4 animate-spin" /> Анализирую данные…
-          </div>
+          <p className="flex items-center gap-2 text-sm text-slate-500 dark:text-slate-400">
+            <Loader2 className="w-4 h-4 animate-spin motion-reduce:animate-none" /> Считаю по вашим данным…
+          </p>
         )}
       </div>
 
@@ -106,31 +120,24 @@ const AIAnalystPanel: React.FC = () => {
         onSubmit={(e) => { e.preventDefault(); ask(input); }}
         className="border-t border-slate-100 dark:border-slate-700 p-3 flex items-center gap-2"
       >
-        <div className="flex-1 relative">
-          <BarChart3 className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-300 dark:text-slate-600" />
-          <input
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            placeholder="Например: какой курс самый прибыльный?"
-            className="w-full h-10 pl-9 pr-3 rounded-xl bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 text-sm text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-primary-500/40"
-          />
-        </div>
+        <label htmlFor="ai-analyst-input" className="sr-only">Вопрос AI-аналитику</label>
+        <input
+          id="ai-analyst-input"
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          placeholder="Например: какой курс самый прибыльный?"
+          className="flex-1 h-10 px-3 rounded-xl bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 text-sm text-slate-800 dark:text-slate-100 placeholder:text-slate-500 dark:placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-primary-500/40 focus:border-primary-400 transition-colors"
+        />
         <button
           type="submit"
           disabled={loading || !input.trim()}
-          className="h-10 px-4 rounded-xl bg-primary-600 hover:bg-primary-700 text-white text-sm font-semibold flex items-center gap-1.5 disabled:opacity-50 transition-colors"
+          className="h-10 px-4 rounded-xl bg-primary-600 hover:bg-primary-700 active:bg-primary-800 text-white text-sm font-semibold flex items-center gap-1.5 disabled:opacity-40 disabled:pointer-events-none transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-800"
         >
-          {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+          {loading ? <Loader2 className="w-4 h-4 animate-spin motion-reduce:animate-none" /> : <Send className="w-4 h-4" />}
           <span className="hidden sm:inline">Спросить</span>
         </button>
       </form>
-
-      <div className="px-5 pb-3 -mt-1">
-        <p className="text-[11px] text-slate-400 flex items-center gap-1">
-          <TrendingUp className="w-3 h-3" /> Ответы основаны только на ваших реальных данных за текущий период.
-        </p>
-      </div>
-    </div>
+    </section>
   );
 };
 

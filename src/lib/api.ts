@@ -808,9 +808,6 @@ export const apiUpdateAIManagerSettings = (data: any) =>
 export const apiAIManagerChat = (organizationId: string, messages: any[]) =>
   apiRequest('api-ai-org-manager', 'POST', { messages }, { action: 'chat', organizationId });
 
-export const apiGetAIManagerUsage = (organizationId: string) =>
-  apiRequest('api-ai-org-manager', 'GET', undefined, { action: 'getUsage', organizationId });
-
 // ---- AI Admin Assistant (floating staff copilot) ----
 export const apiAssistantCapabilities = () =>
   apiRequest('api-ai-assistant', 'GET', undefined, { action: 'capabilities' });

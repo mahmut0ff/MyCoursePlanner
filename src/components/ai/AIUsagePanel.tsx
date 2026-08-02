@@ -1,35 +1,22 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { doc, onSnapshot } from 'firebase/firestore';
 import { db } from '../../lib/firebase';
 import { useAuth } from '../../contexts/AuthContext';
-import { Activity, Gauge } from 'lucide-react';
+import { aiFeatureLabel } from '../../lib/aiFeatureLabels';
 
-const FEATURE_LABELS: Record<string, string> = {
-  insights_ask: 'AI-аналитик',
-  insights_churn: 'Анализ оттока',
-  tutor: 'AI-репетитор',
-  practice: 'Тренировки',
-  explain: 'Разбор ошибок',
-  studyplan: 'Планы обучения',
-  speaking: 'Разговорный партнёр',
-  generate_quiz: 'Генерация викторин',
-  generate_exam: 'Генерация экзаменов',
-  generate_lesson_and_quiz: 'Конструктор уроков',
-  generate_syllabus_extraction: 'Импорт силлабуса',
-  generate_material_summary: 'Анализ материалов',
-  generate_lesson_assist: 'Помощник урока',
-  generate_report_comment: 'Комментарии в табель',
-  generate_marketing_post: 'Маркетинг',
-  generate_translate: 'Переводы',
-};
+const VISIBLE_ROWS = 6;
 
-const PALETTE = ['bg-violet-500', 'bg-indigo-500', 'bg-blue-500', 'bg-emerald-500', 'bg-amber-500', 'bg-rose-500', 'bg-teal-500', 'bg-pink-500'];
-
+/**
+ * Month-to-date readout of what the AI actually did for the org.
+ * Ranked ledger, not a chart: the bar is the row's own background, so the list
+ * stays legible at a glance and needs no colour key.
+ */
 const AIUsagePanel: React.FC = () => {
   const { organizationId } = useAuth();
   const [total, setTotal] = useState(0);
   const [features, setFeatures] = useState<Record<string, number>>({});
   const [loaded, setLoaded] = useState(false);
+  const [expanded, setExpanded] = useState(false);
 
   useEffect(() => {
     if (!organizationId) { setLoaded(true); return; }
@@ -44,56 +31,81 @@ const AIUsagePanel: React.FC = () => {
     return () => unsub();
   }, [organizationId]);
 
-  const rows = Object.entries(features)
-    .filter(([, v]) => v > 0)
-    .sort((a, b) => b[1] - a[1]);
-  const max = rows.length ? rows[0][1] : 1;
+  const rows = useMemo(
+    () => Object.entries(features)
+      .filter(([, v]) => v > 0)
+      .map(([key, value]) => ({ key, value, label: aiFeatureLabel(key) }))
+      .sort((a, b) => b.value - a.value || a.label.localeCompare(b.label, 'ru')),
+    [features],
+  );
+
+  const max = rows.length ? rows[0].value : 1;
+  const shown = expanded ? rows : rows.slice(0, VISIBLE_ROWS);
+  const hidden = rows.length - shown.length;
   const monthLabel = new Date().toLocaleDateString('ru-RU', { month: 'long', year: 'numeric' });
 
   return (
-    <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-5">
-      <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center gap-2">
-          <div className="w-9 h-9 rounded-xl bg-indigo-100 text-indigo-600 dark:bg-indigo-900/30 dark:text-indigo-400 flex items-center justify-center">
-            <Gauge className="w-5 h-5" />
-          </div>
-          <div>
-            <h3 className="font-semibold text-slate-900 dark:text-white">Использование AI</h3>
-            <p className="text-xs text-slate-500 dark:text-slate-400 capitalize">{monthLabel}</p>
-          </div>
+    <section
+      aria-labelledby="ai-usage-heading"
+      className="h-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-5 flex flex-col"
+    >
+      <div className="flex items-baseline justify-between gap-3">
+        <div className="min-w-0">
+          <h2 id="ai-usage-heading" className="font-semibold text-slate-900 dark:text-white">Что делал ИИ</h2>
+          <p className="text-xs text-slate-500 dark:text-slate-400 first-letter:uppercase">{monthLabel}</p>
         </div>
-        <div className="text-right">
-          <p className="text-2xl font-bold text-slate-900 dark:text-white leading-none">{total}</p>
-          <p className="text-[11px] text-slate-400 uppercase tracking-wide">запросов</p>
-        </div>
+        <p className="shrink-0 text-sm text-slate-500 dark:text-slate-400 tabular-nums">
+          <span className="text-slate-900 dark:text-white font-semibold">{total}</span>{' '}
+          {plural(total, 'запрос', 'запроса', 'запросов')}
+        </p>
       </div>
 
       {!loaded ? (
-        <div className="h-20 flex items-center justify-center">
-          <div className="w-5 h-5 border-2 border-slate-200 border-t-slate-500 rounded-full animate-spin dark:border-slate-700" />
-        </div>
-      ) : rows.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-6 text-center">
-          <Activity className="w-8 h-8 text-slate-300 dark:text-slate-600 mb-2" />
-          <p className="text-sm text-slate-500 dark:text-slate-400">В этом месяце AI ещё не использовался.</p>
-        </div>
-      ) : (
-        <div className="space-y-2.5">
-          {rows.map(([key, value], i) => (
-            <div key={key}>
-              <div className="flex items-center justify-between text-sm mb-1">
-                <span className="text-slate-600 dark:text-slate-300 truncate pr-2">{FEATURE_LABELS[key] || key}</span>
-                <span className="font-semibold text-slate-900 dark:text-white shrink-0">{value}</span>
-              </div>
-              <div className="h-1.5 rounded-full bg-slate-100 dark:bg-slate-700 overflow-hidden">
-                <div className={`h-full rounded-full ${PALETTE[i % PALETTE.length]}`} style={{ width: `${Math.max(6, Math.round((value / max) * 100))}%` }} />
-              </div>
-            </div>
+        <div className="mt-4 space-y-2" aria-hidden="true">
+          {[70, 52, 38].map((w) => (
+            <div key={w} className="h-8 rounded-lg bg-slate-100 dark:bg-slate-700/50 animate-pulse" style={{ width: `${w}%` }} />
           ))}
         </div>
+      ) : rows.length === 0 ? (
+        <p className="mt-4 text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
+          В этом месяце ИИ ещё не работал. Задайте вопрос аналитику слева — это самый быстрый способ начать.
+        </p>
+      ) : (
+        <>
+          <ul className="mt-4 space-y-1 flex-1">
+            {shown.map((row) => (
+              <li key={row.key} className="relative flex items-center justify-between gap-3 h-8 px-2 rounded-lg overflow-hidden">
+                <span
+                  aria-hidden="true"
+                  className="absolute inset-y-0 left-0 rounded-lg bg-primary-500/10 dark:bg-primary-400/15"
+                  style={{ width: `${Math.max(8, Math.round((row.value / max) * 100))}%` }}
+                />
+                <span className="relative truncate text-sm text-slate-700 dark:text-slate-200">{row.label}</span>
+                <span className="relative shrink-0 text-sm font-semibold text-slate-900 dark:text-white tabular-nums">{row.value}</span>
+              </li>
+            ))}
+          </ul>
+
+          {hidden > 0 && (
+            <button
+              onClick={() => setExpanded(true)}
+              className="mt-1 self-start inline-flex items-center min-h-[36px] px-2 -ml-2 rounded-lg text-xs font-medium text-primary-600 dark:text-primary-400 hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"
+            >
+              Ещё {hidden} {plural(hidden, 'функция', 'функции', 'функций')}
+            </button>
+          )}
+        </>
       )}
-    </div>
+    </section>
   );
 };
+
+/** Russian numeric agreement — "1 запрос / 2 запроса / 5 запросов". */
+function plural(n: number, one: string, few: string, many: string): string {
+  const mod10 = n % 10, mod100 = n % 100;
+  if (mod10 === 1 && mod100 !== 11) return one;
+  if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) return few;
+  return many;
+}
 
 export default AIUsagePanel;

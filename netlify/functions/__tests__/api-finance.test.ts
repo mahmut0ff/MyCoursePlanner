@@ -27,7 +27,7 @@ import { derivePlanStatus } from '../utils/finance-names';
 import { handler as plansHandler } from '../api-finance-plans';
 import { handler as metricsHandler } from '../api-finance-metrics';
 import { handler as trxHandler } from '../api-finance-transactions';
-import { parseRangeBoundary, getPeriodRange, getPreviousRange, resolveRange } from '../utils/finance-period';
+import { parseRangeBoundary, getPeriodRange, getPreviousRange, resolveRange, normalizeTxDate } from '../utils/finance-period';
 import { isDeadlineMissed, isPlanOverdue, orgDayKey, daysUntilDeadline, planDiscount } from '../utils/payment-plans';
 import { handler as debtRemindersHandler } from '../debt-reminders';
 import { createNotification } from '../utils/notifications';
@@ -107,6 +107,48 @@ describe('derivePlanStatus', () => {
 
   it('keeps cancelled outranking overdue — a write-off wins over a deadline', () => {
     expect(derivePlanStatus(500, 1000, 'cancelled')).toBe('cancelled');
+  });
+});
+
+describe('окно периода живёт в дне организации (UTC+6), а не в UTC', () => {
+  // Границы дня в календаре организации — это 18:00 UTC предыдущих суток.
+  const orgDayStartIso = (y: number, m: number, d: number) =>
+    new Date(Date.UTC(y, m, d) - 6 * 3600_000).toISOString();
+
+  it('в ночные часы «этот месяц» не отдаёт предыдущий месяц', () => {
+    // 2026-08-01T02:00:00Z — это ещё 1 августа по UTC, но уже 08:00 1 августа в
+    // Бишкеке. Обе стороны сходятся: месяц августовский.
+    const { startIso } = getPeriodRange('current_month', new Date('2026-08-01T02:00:00.000Z'));
+    expect(startIso).toBe(orgDayStartIso(2026, 7, 1));
+
+    // 2026-07-31T20:00:00Z — по UTC ещё июль, а в Бишкеке уже 1 августа.
+    // Раньше здесь отдавался ИЮЛЬ, и вкладка «Оплаты за месяц» (она считает
+    // месяц через orgDayKey) расходилась с «Обзором» на целый месяц.
+    const night = getPeriodRange('current_month', new Date('2026-07-31T20:00:00.000Z'));
+    expect(night.startIso).toBe(orgDayStartIso(2026, 7, 1));
+  });
+
+  it('платёж сегодняшнего дня организации не выпадает за правую границу', () => {
+    // 20:00 UTC 15 августа = 02:00 16 августа в Бишкеке. Операция, датированная
+    // «сегодня» глазами организации, обязана попасть в окно.
+    const now = new Date('2026-08-15T20:00:00.000Z');
+    const { startIso, endIso } = getPeriodRange('current_month', now);
+    const todayPayment = orgDayStartIso(2026, 7, 16); // начало 16 августа в дне орг.
+    expect(todayPayment >= startIso).toBe(true);
+    expect(todayPayment <= endIso).toBe(true);
+  });
+
+  it('голая дата операции сравнима с границами окна', () => {
+    // AI-копилот кладёт `date` как 'YYYY-MM-DD'. Лексикографически такая строка
+    // меньше полного ISO того же дня, и операция ПЕРВОГО дня окна отсекалась.
+    const { startIso, endIso } = getPeriodRange('current_month', new Date('2026-08-15T09:00:00.000Z'));
+    const firstDay = normalizeTxDate('2026-08-01');
+    expect(firstDay >= startIso).toBe(true);
+    expect(firstDay <= endIso).toBe(true);
+  });
+
+  it('полный ISO нормализация не трогает', () => {
+    expect(normalizeTxDate('2026-08-01T05:00:00.000Z')).toBe('2026-08-01T05:00:00.000Z');
   });
 });
 

@@ -6,7 +6,7 @@ import type { Handler, HandlerEvent } from '@netlify/functions';
 import { adminDb } from './utils/firebase-admin';
 import { verifyAuth, can, getOrgFilter, resolveBranchFilter, recordInBranchScope, isSuperAdmin, hasRole, ok, unauthorized, forbidden, badRequest, jsonResponse } from './utils/auth';
 import { batchGetCourseNames } from './utils/finance-names';
-import { resolveRange, getPreviousRange } from './utils/finance-period';
+import { resolveRange, getPreviousRange, normalizeTxDate } from './utils/finance-period';
 import { isDebtBearingPlan, planDebt, isPlanOverdue } from './utils/payment-plans';
 
 /**
@@ -114,7 +114,9 @@ const handler: Handler = async (event: HandlerEvent) => {
       trxsSnap.docs.forEach(d => {
         const data = d.data();
         const amount = Number(data.amount) || 0;
-        const date = data.date || '';
+        // Голая дата 'YYYY-MM-DD' (её кладёт AI-копилот) лексикографически
+        // меньше полного ISO того же дня и отсекалась левой границей окна.
+        const date = normalizeTxDate(data.date);
 
         // ── unassignedBranch* — точная семантика, не перепутайте в UI ──
         // Это записи В ОКНЕ ПЕРИОДА, у которых НЕТ branchId. Они считаются
@@ -196,7 +198,12 @@ const handler: Handler = async (event: HandlerEvent) => {
           courseBucket(bucketCourseId).expense += amount;
         }
 
-        const dateKey = date.slice(0, 10); // YYYY-MM-DD
+        // День для графика берём из ИСХОДНОЙ строки, а не из нормализованной:
+        // normalizeTxDate разворачивает голую дату в момент начала дня
+        // организации ('2026-08-02' → '2026-08-01T18:00:00Z'), и срез первых
+        // десяти символов от него дал бы ПРЕДЫДУЩИЙ день. Нормализация нужна для
+        // сравнения с границами окна, а не для подписи столбца.
+        const dateKey = String(data.date || '').slice(0, 10); // YYYY-MM-DD
         if (!dateKey) return;
         const entry = dailyMap.get(dateKey) || { income: 0, expense: 0 };
         if (data.type === 'income') entry.income += amount;

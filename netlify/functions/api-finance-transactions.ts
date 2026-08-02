@@ -6,7 +6,7 @@ import { adminDb } from './utils/firebase-admin';
 import { verifyAuth, can, getOrgFilter, resolveBranchFilter, recordInBranchScope, requireBranchScope, ok, unauthorized, forbidden, badRequest, notFound, jsonResponse } from './utils/auth';
 import { createNotification, notifyOrgAdmins } from './utils/notifications';
 import { batchGetUserNames, batchGetCourseNames, derivePlanStatus } from './utils/finance-names';
-import { resolveRange } from './utils/finance-period';
+import { resolveRange, normalizeTxDate } from './utils/finance-period';
 import { orgDayKey } from './utils/payment-plans';
 
 const COLLECTION = 'financeTransactions';
@@ -220,8 +220,10 @@ const handler: Handler = async (event: HandlerEvent) => {
       // и молчаливый дефолт «этот месяц» просто спрятал бы её.
       const range = resolveRange(params, null);
       if ('error' in range) return badRequest(range.error);
-      if (range.startIso) results = results.filter(r => (r.date || '') >= range.startIso!);
-      if (range.endIso) results = results.filter(r => (r.date || '') <= range.endIso!);
+      // normalizeTxDate: голая дата 'YYYY-MM-DD' сравнима с полным ISO только после
+      // разворота в момент — иначе операция первого дня окна выпадала из выборки.
+      if (range.startIso) results = results.filter(r => normalizeTxDate(r.date) >= range.startIso!);
+      if (range.endIso) results = results.filter(r => normalizeTxDate(r.date) <= range.endIso!);
 
       if (params.paymentPlanId) results = results.filter(r => r.paymentPlanId === params.paymentPlanId);
       if (params.studentId) results = results.filter(r => r.studentId === params.studentId);

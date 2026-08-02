@@ -17,42 +17,98 @@ export const DATE_FORMAT_ERROR = 'Некорректный формат даты
 export const DATE_ORDER_ERROR = 'Дата начала не может быть позже даты окончания.';
 
 /**
+ * ── Границы считаются в КАЛЕНДАРЕ ОРГАНИЗАЦИИ (UTC+6), а не в зоне сервера ──
+ *
+ * Netlify-функция всегда выполняется в UTC, поэтому `new Date(y, m, d)` и
+ * `setHours` строили сутки по UTC, тогда как весь остальной финансовый контур
+ * живёт в дне организации (orgDayKey в src/lib/payment-plans.ts). Расхождение
+ * существовало ровно в окне 18:00–24:00 UTC — это 00:00–06:00 по Бишкеку, шесть
+ * часов каждую ночь:
+ *   • платёж, датированный сегодняшним по календарю организации днём, оказывался
+ *     ПОЗЖЕ правой границы и выпадал разом из «Этого месяца», «Квартала» и
+ *     «Года» — и в «Обзоре», и в «Платежах», потому что окно у них общее;
+ *   • в ночь на 1-е число «Этот месяц» отдавал ещё ПРЕДЫДУЩИЙ месяц и расходился
+ *     с вкладкой «Оплаты за месяц», которая считает месяц через orgDayKey.
+ * Директор видел, как деньги пропадают из отчёта и возвращаются к утру.
+ *
+ * Смещение продублировано намеренно: этот util обязан оставаться без импортов —
+ * его подключают «горячие» функции. Появится часовой пояс у организации — обе
+ * константы должны стать одним параметром, а не разъехаться.
+ */
+const ORG_OFFSET_MS = 6 * 60 * 60 * 1000;
+
+/** Календарные компоненты момента ГЛАЗАМИ ОРГАНИЗАЦИИ. */
+function orgParts(d: Date): { y: number; m: number; day: number } {
+  const shifted = new Date(d.getTime() + ORG_OFFSET_MS);
+  return { y: shifted.getUTCFullYear(), m: shifted.getUTCMonth(), day: shifted.getUTCDate() };
+}
+
+/**
+ * Момент времени, который в календаре организации выглядит как указанные
+ * компоненты. Именно он сравним с полем `date` операции (оно хранится как
+ * абсолютный ISO-момент).
+ */
+function orgInstant(y: number, m: number, day: number, h = 0, mi = 0, s = 0, ms = 0): Date {
+  return new Date(Date.UTC(y, m, day, h, mi, s, ms) - ORG_OFFSET_MS);
+}
+
+const orgDayStart = (y: number, m: number, day: number) => orgInstant(y, m, day, 0, 0, 0, 0);
+const orgDayEnd = (y: number, m: number, day: number) => orgInstant(y, m, day, 23, 59, 59, 999);
+
+/**
+ * Значение поля `date` операции, приведённое к сравнимому с границами виду.
+ *
+ * Почти все писатели кладут полный ISO, но AI-копилот кладёт голую дату
+ * 'YYYY-MM-DD' (api-ai-assistant → POST api-finance-transactions без
+ * нормализации). Лексикографически такая строка МЕНЬШЕ полного ISO того же дня,
+ * поэтому операция, датированная ПЕРВЫМ днём окна, отсекалась левой границей — и
+ * «Обзор», и «Платежи» её не показывали. Сравниваем однородное с однородным:
+ * голая дата разворачивается в начало того же дня организации.
+ */
+export function normalizeTxDate(raw: unknown): string {
+  const value = String(raw ?? '');
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return value;
+  const [y, m, day] = value.split('-').map(Number);
+  return orgDayStart(y, m - 1, day).toISOString();
+}
+
+/**
  * Границы именованного периода. Конец всегда «сегодня, конец суток», кроме
  * завершившихся периодов (last_month), у которых конец — их собственный.
  */
 export function getPeriodRange(period: string, now: Date = new Date()): { startIso: string; endIso: string } {
+  const { y, m, day } = orgParts(now);
   let start: Date;
-  let end = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
+  let end = orgDayEnd(y, m, day);
 
   switch (period) {
     case 'last_month': {
-      start = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+      start = orgDayStart(y, m - 1, 1);
       // Day 0 of this month is the last day of the previous one, but it lands at
       // 00:00 local — which excluded every transaction booked on that final day.
-      end = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59, 999);
+      end = orgDayEnd(y, m, 0);
       break;
     }
     case 'quarter': {
-      const qMonth = Math.floor(now.getMonth() / 3) * 3;
-      start = new Date(now.getFullYear(), qMonth, 1);
+      const qMonth = Math.floor(m / 3) * 3;
+      start = orgDayStart(y, qMonth, 1);
       break;
     }
     case 'half_year':
-      start = new Date(now.getFullYear(), now.getMonth() - 6, 1);
+      start = orgDayStart(y, m - 6, 1);
       break;
     case 'year':
-      start = new Date(now.getFullYear(), 0, 1);
+      start = orgDayStart(y, 0, 1);
       break;
     case 'all':
-      start = new Date(2020, 0, 1);
+      start = orgDayStart(2020, 0, 1);
       break;
     case 'current_month':
     default:
-      start = new Date(now.getFullYear(), now.getMonth(), 1);
+      start = orgDayStart(y, m, 1);
       break;
   }
 
-  start.setHours(0, 0, 0, 0);
   return { startIso: start.toISOString(), endIso: end.toISOString() };
 }
 
@@ -82,12 +138,26 @@ export function parseRangeBoundary(raw: string, edge: 'start' | 'end'): Date | n
   const value = String(raw ?? '').trim();
   if (!value) return null;
   const isBareDate = /^\d{4}-\d{2}-\d{2}$/.test(value);
-  const d = new Date(isBareDate ? `${value}T00:00:00` : value);
+  if (isBareDate) {
+    // Голая дата — это ДЕНЬ в календаре организации, а не момент по UTC:
+    // пользователь выбрал её в календаре, глядя на своё «сегодня».
+    const [y, m, day] = value.split('-').map(Number);
+    // Date.UTC молча переполняется ('2026-13-45' превратился бы в февраль 2027),
+    // тогда как раньше эту строку отбраковывал сам конструктор Date. Проверяем,
+    // что компоненты вернулись теми же, — иначе это не дата, и вызывающий обязан
+    // ответить 400, а не считать отчёт по выдуманному дню.
+    const probe = new Date(Date.UTC(y, m - 1, day));
+    if (probe.getUTCFullYear() !== y || probe.getUTCMonth() !== m - 1 || probe.getUTCDate() !== day) {
+      return null;
+    }
+    return edge === 'start' ? orgDayStart(y, m - 1, day) : orgDayEnd(y, m - 1, day);
+  }
+  const d = new Date(value);
   if (Number.isNaN(d.getTime())) return null;
-  // Either input form is normalised to the whole day it names.
-  if (edge === 'start') d.setHours(0, 0, 0, 0);
-  else d.setHours(23, 59, 59, 999);
-  return d;
+  // Полный ISO — конкретный момент; разворачиваем его в те сутки, которые он
+  // называет ДЛЯ ОРГАНИЗАЦИИ.
+  const p = orgParts(d);
+  return edge === 'start' ? orgDayStart(p.y, p.m, p.day) : orgDayEnd(p.y, p.m, p.day);
 }
 
 export interface RangeParams {
@@ -155,16 +225,16 @@ export function resolveRange(
  * See getPreviousRange() for why the comparison is built this way.
  */
 function shiftStartBack(period: string, start: Date): Date {
-  const y = start.getFullYear();
-  const m = start.getMonth();
-  const d = start.getDate();
+  // Шагаем по календарю ОРГАНИЗАЦИИ — иначе сдвинутое окно съезжало бы на сутки
+  // относительно текущего в те же ночные шесть часов.
+  const { y, m, day } = orgParts(start);
   switch (period) {
-    case 'quarter': return new Date(y, m - 3, d);
-    case 'half_year': return new Date(y, m - 6, d);
-    case 'year': return new Date(y - 1, m, d);
+    case 'quarter': return orgDayStart(y, m - 3, day);
+    case 'half_year': return orgDayStart(y, m - 6, day);
+    case 'year': return orgDayStart(y - 1, m, day);
     case 'last_month':
     case 'current_month':
-    default: return new Date(y, m - 1, d);
+    default: return orgDayStart(y, m - 1, day);
   }
 }
 
@@ -207,8 +277,9 @@ export function getPreviousRange(
     };
   }
 
+  // shiftStartBack уже возвращает начало дня организации — второй нормализации
+  // не нужно, а `setHours` здесь снова увёл бы границу в зону сервера.
   const prevStart = shiftStartBack(period, new Date(startIso));
-  prevStart.setHours(0, 0, 0, 0);
   const prevStartMs = prevStart.getTime();
 
   // Завершившийся период сравнивается с ПОЛНЫМ предыдущим: до мгновения перед

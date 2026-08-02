@@ -214,7 +214,19 @@ const handler: Handler = async (event: HandlerEvent) => {
       const snap = await query.get();
       let results = snap.docs.map((doc: any) => ({ id: doc.id, ...doc.data() as any }));
 
-      results = results.filter((r: any) => recordInBranchScope(r.branchId, branchFilter));
+      // ── Общеорганизационные ставки видны в ЛЮБОМ филиальном срезе ──
+      // recordInBranchScope(null, 'centr') === false, поэтому ставка без филиала
+      // (а таких большинство: RulesTab филиал в теле не шлёт) просто исчезала из
+      // списка, стоило выбрать филиал. Менеджер видел пустой раздел «Ставки» и
+      // заводил новую — а сервер, сохраняя её, закрывал действующую, о которой
+      // менеджеру не сказали.
+      //
+      // Утечкой это не является: ставка без филиала — не данные соседнего
+      // филиала, а умолчание всей организации, и движок про неё этому же
+      // пользователю УЖЕ докладывает диагностикой 'rule_org_wide_skipped'.
+      // Показать её честнее, чем спрятать. Клиент помечает такие строки
+      // отдельной группой.
+      results = results.filter((r: any) => r.branchId == null || recordInBranchScope(r.branchId, branchFilter));
 
       // Сортировка в памяти: orderBy в запросе потребовал бы composite-индекс.
       // Свежие периоды действия сверху, при равенстве — новые записи первыми.

@@ -2689,7 +2689,10 @@
     "payConfirm": "An expense will be created in Finances → Expenses under the \"Payroll\" category for every line, totalling {{total}}. This cannot be undone from here — mistakes will have to be fixed by hand in Finances.",
     "payConfirmUnrecovered": "Net accrued is {{net}}, but the payout will be {{payable}}: for {{names}} the deductions exceeded the accrual, so their payout is zero. The uncovered remainder of {{unrecovered}} is carried nowhere and is not taken back from what was already paid — to recover it, add a deduction in an open period.",
     "payConfirmLabel": "Pay out and record as expenses",
-    "deleteLineConfirm": "The line will be removed from the sheet permanently."
+    "deleteLineConfirm": "The line will be removed from the sheet permanently.",
+    "colBranch": "Branch",
+    "orgWideRule": "Whole organization",
+    "orgWideRuleHint": "Applies organization-wide. A rule like this is NOT included in a specific branch sheet — that branch needs its own."
   },
   "journal": {
     "subtitle": "Daily attendance and notes",

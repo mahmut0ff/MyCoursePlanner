@@ -36,7 +36,15 @@ type RuleRow = CompensationRule & { teacherName?: string };
 const RulesTab: React.FC = () => {
   const { t } = useTranslation();
   const tr = t as unknown as Translate;
-  const { activeBranchId } = useBranch();
+  const { activeBranchId, branches } = useBranch();
+  // Имя филиала по id — для колонки «Филиал». Ставка без филиала действует на
+  // всю организацию, и это ОТДЕЛЬНОЕ состояние, а не «филиал не заполнили»:
+  // расчёт филиальной ведомости такие ставки пропускает (диагностика
+  // rule_org_wide_skipped), поэтому менеджер обязан их различать.
+  const branchNameById = useMemo(
+    () => new Map(branches.map(b => [b.id, b.name])),
+    [branches]
+  );
   const { can } = usePermissions();
 
   const canWrite = can('payroll', 'write');
@@ -263,6 +271,7 @@ const RulesTab: React.FC = () => {
                     <th className="px-5 py-3.5 font-medium text-slate-500">{t('payroll.colTeacher', 'Преподаватель')}</th>
                     <th className="px-5 py-3.5 font-medium text-slate-500">{t('payroll.colFormula', 'Из чего складывается')}</th>
                     <th className="px-5 py-3.5 font-medium text-slate-500">{t('payroll.colPeriod', 'Период действия')}</th>
+                    <th className="px-5 py-3.5 font-medium text-slate-500">{t('payroll.colBranch', 'Филиал')}</th>
                     <th className="px-5 py-3.5 font-medium text-slate-500">{t('payroll.colStatus', 'Статус')}</th>
                     <th className="px-5 py-3.5 font-medium text-slate-500 text-right">{t('payroll.colActions', 'Действия')}</th>
                   </tr>
@@ -292,6 +301,20 @@ const RulesTab: React.FC = () => {
                         </td>
                         <td className="px-5 py-3.5 align-top text-slate-500 whitespace-nowrap">
                           {describeEffective(rule.effectiveFrom, rule.effectiveTo, tr)}
+                        </td>
+                        <td className="px-5 py-3.5 align-top whitespace-nowrap">
+                          {rule.branchId ? (
+                            <span className="text-slate-700 dark:text-slate-300">
+                              {branchNameById.get(rule.branchId) || rule.branchId}
+                            </span>
+                          ) : (
+                            <span
+                              className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-medium bg-slate-100 text-slate-600 dark:bg-slate-700/50 dark:text-slate-300"
+                              title={t('payroll.orgWideRuleHint', 'Действует на всю организацию. В ведомость КОНКРЕТНОГО филиала такая ставка не входит — для филиала нужна своя.')}
+                            >
+                              {t('payroll.orgWideRule', 'Вся организация')}
+                            </span>
+                          )}
                         </td>
                         <td className="px-5 py-3.5 align-top whitespace-nowrap">
                           <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${

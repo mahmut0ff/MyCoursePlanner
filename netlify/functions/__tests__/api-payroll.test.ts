@@ -273,6 +273,34 @@ describe('api-payroll calculate — идемпотентность и перес
     expect(lines.find((l) => l.source === 'rule')!.id).not.toBe(ruleLineIdBefore);
   });
 
+  it('ручная правка суммы расчётной строки переживает пересчёт вместе с причиной', async () => {
+    await calculate();
+    const periodId = db.rows('payrollPeriods')[0].id;
+    const lineId = db.rows('payrollLines').find((l) => l.source === 'rule')!.id;
+
+    // Директор договорился о другой сумме и объяснил почему.
+    const edited = await handler(
+      event('POST', { action: 'line' }, { periodId, lineId, overrideMinor: 2500000, overrideReason: 'Договорились на 25 000' }),
+      {} as any, () => {},
+    ) as any;
+    expect(edited.statusCode).toBe(200);
+
+    const res = await calculate();
+    const body = JSON.parse(res.body);
+
+    const rebuilt = db.rows('payrollLines').filter((l) => l.source === 'rule');
+    expect(rebuilt).toHaveLength(1);
+    // Расчётная сумма пересчитана заново…
+    expect(rebuilt[0].computedMinor).toBe(3000000 + 200000);
+    // …а решение человека и его объяснение сохранены.
+    expect(rebuilt[0].overrideMinor).toBe(2500000);
+    expect(rebuilt[0].overrideReason).toBe('Договорились на 25 000');
+    expect(rebuilt[0].finalMinor).toBe(2500000);
+    // Итог ведомости считается по правке, а не по расчётной сумме.
+    expect(db.rows('payrollPeriods')[0].totalMinor).toBe(2500000);
+    expect(body.overridesCarried).toBe(1);
+  });
+
   it('штраф хранится отрицательным, каким бы знаком его ни прислали', async () => {
     await calculate();
     const periodId = db.rows('payrollPeriods')[0].id;

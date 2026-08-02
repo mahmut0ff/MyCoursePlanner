@@ -720,10 +720,37 @@ const handler: Handler = async (event: HandlerEvent) => {
         ops.push((batch) => batch.delete(ref));
       }
 
+      // ── Ручная правка суммы ПЕРЕЖИВАЕТ пересчёт ──
+      // Комментарий выше обещает, что решение человека не сотрёт автоматический
+      // расчёт, но защищал он только ОТДЕЛЬНЫЕ ручные строки — премии и штрафы.
+      // Правка суммы РАСЧЁТНОЙ строки (overrideMinor вместе с обязательной
+      // причиной) живёт на строке источника 'rule', и её сносило удалением
+      // выше: без подтверждения и без следа, вместе с пометкой «Изменено
+      // вручную: причина» в таблице и колонками «Правка» / «Причина правки» в
+      // CSV-выгрузке. Директор, поправивший сумму и нажавший «Пересчитать»,
+      // терял и число, и объяснение, почему оно такое.
+      //
+      // Переносим по паре (преподаватель, ставка): именно она определяет строку,
+      // и именно её пересчёт воспроизводит заново.
+      // ruleId у строки объявлен как `string | null` (ручные строки ставки не
+      // имеют), поэтому нормализуем: у строк источника 'rule' он есть всегда.
+      const overrideKey = (teacherId: string, ruleId: string | null) => `${teacherId}::${ruleId ?? ''}`;
+      const carriedOverrides = new Map<string, { minor: number; reason: string | null }>();
+      for (const line of ruleLines) {
+        if (line.overrideMinor == null) continue;
+        carriedOverrides.set(overrideKey(line.teacherId, line.ruleId), {
+          minor: line.overrideMinor,
+          reason: line.overrideReason ?? null,
+        });
+      }
+      let overridesCarried = 0;
+
       let totalMinor = manualLines.reduce((sum, l) => sum + (l.finalMinor || 0), 0);
       for (const computed of result.lines) {
         const ref = adminDb.collection(LINES).doc();
         const ruleBranch = rules.find((r) => r.id === computed.ruleId)?.branchId ?? branchId;
+        const carried = carriedOverrides.get(overrideKey(computed.teacherId, computed.ruleId));
+        if (carried) overridesCarried++;
         const data = pruneUndefined({
           organizationId: orgFilter,
           periodId,
@@ -746,14 +773,16 @@ const handler: Handler = async (event: HandlerEvent) => {
           isManual: false,
           originPeriodId: null,
           computedMinor: computed.computedMinor,
-          overrideMinor: null,
-          overrideReason: null,
-          finalMinor: computed.computedMinor,
+          // Расчётная сумма пересчитана заново, а ручная правка сохранена: она
+          // и есть решение человека о ЗАКОНЧЕННОЙ сумме строки.
+          overrideMinor: carried ? carried.minor : null,
+          overrideReason: carried ? carried.reason : null,
+          finalMinor: carried ? carried.minor : computed.computedMinor,
           diagnostics: computed.diagnostics,
           branchId: ruleBranch,
           createdAt: now,
         });
-        totalMinor += computed.computedMinor;
+        totalMinor += carried ? carried.minor : computed.computedMinor;
         ops.push((batch) => batch.set(ref, data));
       }
 
@@ -795,6 +824,10 @@ const handler: Handler = async (event: HandlerEvent) => {
         // значило бы иметь два источника правды для замороженного окна.
         ...periodUpdate,
         lineCount: result.lines.length + manualLines.length,
+        // Сколько ручных правок сумм пережило пересчёт. Возвращаем явно, чтобы
+        // интерфейс мог сказать об этом вслух: молчаливое сохранение чужого
+        // решения так же непонятно, как молчаливое стирание.
+        overridesCarried,
       });
     }
 

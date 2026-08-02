@@ -1,12 +1,11 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { useAuth } from '../../contexts/AuthContext';
 import { getLessonPlans } from '../../services/lessons.service';
 import { getExams } from '../../services/exams.service';
 import { getActiveRooms } from '../../services/rooms.service';
 import {
-  BookOpen, ClipboardList, Radio, UserCircle2, ChevronRight,
+  BookOpen, ClipboardList, Radio, ChevronRight,
 } from 'lucide-react';
 
 interface Step {
@@ -25,7 +24,6 @@ interface Step {
  */
 const TeacherOnboardingWizard: React.FC = () => {
   const { t } = useTranslation();
-  const { profile } = useAuth();
   const [lessons, setLessons] = useState<any[]>([]);
   const [exams, setExams] = useState<any[]>([]);
   const [rooms, setRooms] = useState<any[]>([]);
@@ -46,15 +44,9 @@ const TeacherOnboardingWizard: React.FC = () => {
     }).finally(() => setLoading(false));
   }, []);
 
+  // Шага «Заполните профиль» больше нет: резюме преподавателя удалено из продукта,
+  // а `setupLabel` считает total от steps.length, поэтому счётчик подстроился сам.
   const steps: Step[] = useMemo(() => [
-    {
-      id: 'profile',
-      title: t('teacherOnboarding.step1', 'Заполните профиль'),
-      desc: t('teacherOnboarding.step1Desc', 'Добавьте фото, предметы и опыт'),
-      icon: UserCircle2,
-      link: '/teacher-profile',
-      done: Boolean(profile?.displayName && (profile as any)?.bio),
-    },
     {
       id: 'lesson',
       title: t('teacherOnboarding.step2', 'Создайте первый урок'),
@@ -79,7 +71,7 @@ const TeacherOnboardingWizard: React.FC = () => {
       link: '/rooms',
       done: rooms.length > 0,
     },
-  ], [lessons, exams, rooms, profile, t]);
+  ], [lessons, exams, rooms, t]);
 
   const completedCount = steps.filter((s) => s.done).length;
   const allDone = completedCount === steps.length;

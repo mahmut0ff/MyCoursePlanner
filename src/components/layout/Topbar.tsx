@@ -107,7 +107,6 @@ const TITLE_MAP: [string, string, string][] = [
   ['/quiz/library', 'nav.quizLibrary', 'Викторины'],
   ['/org-settings', 'nav.settings', 'Настройки'],
   ['/teacher-settings', 'nav.settings', 'Настройки'],
-  ['/teacher-profile', 'nav.profile', 'Профиль'],
   ['/profile', 'nav.profile', 'Профиль'],
   ['/billing', 'nav.billing', 'Биллинг'],
   ['/rooms', 'nav.examRooms', 'Комнаты'],

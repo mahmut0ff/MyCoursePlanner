@@ -88,7 +88,6 @@ const OrgResultsPage = lazyRetry(() => import('./pages/results/ResultsPage'));
 const OrgUsersPage = lazyRetry(() => import('./pages/org-users/OrgUsersPage'));
 const OrgSettingsPage = lazyRetry(() => import('./pages/org-settings/OrgSettingsPage'));
 const BranchesPage = lazyRetry(() => import('./pages/branches/BranchesPage'));
-const TeacherProfilePage = lazyRetry(() => import('./pages/teacher-profile/TeacherProfilePage'));
 const TeacherInvitesPage = lazyRetry(() => import('./pages/invites/TeacherInvitesPage'));
 const NotificationsPage = lazyRetry(() => import('./pages/notifications/NotificationsPage'));
 const TeacherSettingsPage = lazyRetry(() => import('./pages/teacher-settings/TeacherSettingsPage'));
@@ -280,7 +279,6 @@ const App: React.FC = () => {
             <Route path="org-users/:uid" element={<ProtectedRoute allowedRoles={['admin']}><OrgUserDetailPage /></ProtectedRoute>} />
 
             {/* ═══ Teacher (global) ═══ */}
-            <Route path="teacher-profile" element={<ProtectedRoute allowedRoles={['teacher']}><TeacherProfilePage /></ProtectedRoute>} />
             <Route path="invites" element={<ProtectedRoute allowedRoles={['teacher']}><TeacherInvitesPage /></ProtectedRoute>} />
             <Route path="notifications" element={<ProtectedRoute allowedRoles={['admin', 'manager', 'teacher', 'student']}><NotificationsPage /></ProtectedRoute>} />
             <Route path="teacher-settings" element={<ProtectedRoute allowedRoles={['teacher']}><TeacherSettingsPage /></ProtectedRoute>} />

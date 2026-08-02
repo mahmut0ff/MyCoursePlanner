@@ -163,47 +163,29 @@ const handler: Handler = async (event: HandlerEvent) => {
           updatedAt: now(),
         };
         await adminDb.collection('teacherSettings').doc(user.uid).set(settings, { merge: true });
-        // Also update displayName in users collection if provided
-        if (body.displayName) {
-          await adminDb.collection('users').doc(user.uid).update({ displayName: body.displayName, updatedAt: now() });
+        // Профильные поля пишутся в `users`. Телефон сюда приходил всегда
+        // (TeacherSettingsPage шлёт его в том же теле), но записывался только
+        // displayName — телефон молча пропадал. Раньше это была мелочь, потому что
+        // преподаватель мог поправить себя на странице резюме; теперь настройки —
+        // единственное его самообслуживание, и терять поле нельзя.
+        const userPatch: Record<string, unknown> = {};
+        if (typeof body.displayName === 'string' && body.displayName.trim()) userPatch.displayName = body.displayName.trim();
+        if (typeof body.phone === 'string') userPatch.phone = body.phone.trim();
+        if (typeof body.city === 'string') userPatch.city = body.city.trim();
+        if (Object.keys(userPatch).length > 0) {
+          userPatch.updatedAt = now();
+          await adminDb.collection('users').doc(user.uid).update(userPatch);
         }
         return ok({ uid: user.uid, ...settings });
       }
     }
 
-    if (action === 'teacherProfile') {
-      if (event.httpMethod === 'GET') {
-        const uid = params.uid || user.uid;
-        const doc = await adminDb.collection('teacherProfiles').doc(uid).get();
-        if (!doc.exists) return ok({ uid, bio: '', specialization: '', experience: '', avatarUrl: '', socialLinks: [], resumeUrl: '', resumeFileName: '' });
-        return ok({ uid, ...doc.data() });
-      }
-      if (event.httpMethod === 'PUT' || event.httpMethod === 'POST') {
-        const body = JSON.parse(event.body || '{}');
-        const profileData = {
-          bio: body.bio || '',
-          specialization: body.specialization || '',
-          experience: body.experience || '',
-          avatarUrl: body.avatarUrl || '',
-          socialLinks: body.socialLinks || [],
-          education: body.education || '',
-          certificates: body.certificates || '',
-          subjects: body.subjects || '',
-          city: body.city || '',
-          resumeUrl: body.resumeUrl || '',
-          resumeFileName: body.resumeFileName || '',
-          updatedAt: now(),
-        };
-        await adminDb.collection('teacherProfiles').doc(user.uid).set(profileData, { merge: true });
-
-        // Sync avatarUrl to users collection so managers can see it
-        if (body.avatarUrl) {
-          await adminDb.collection('users').doc(user.uid).update({ avatarUrl: body.avatarUrl, updatedAt: now() }).catch(() => null);
-        }
-
-        return ok({ uid: user.uid, ...profileData });
-      }
-    }
+    // Ветка `teacherProfile` (резюме преподавателя: bio / опыт / образование /
+    // сертификаты / PDF) удалена вместе с продуктовой функцией. Заодно закрыт её
+    // сквозной GET: он читал teacherProfiles/{uid} по одному лишь verifyAuth, без
+    // проверки роли и организации, поэтому любой авторизованный — включая ученика
+    // и человека из ЧУЖОЙ академии — мог прочитать резюме преподавателя по uid.
+    // Документы в Firestore намеренно оставлены нетронутыми.
 
     if (action === 'generateParentKey' && event.httpMethod === 'POST') {
       const body = JSON.parse(event.body || '{}');

@@ -264,8 +264,6 @@ export interface UserProfile {
   city?: string;
   country?: string;
   phone?: string;
-  resumeUrl?: string;              // PDF resume download URL
-  resumeFileName?: string;         // PDF resume original file name
   enrollmentDate?: string;         // Дата поступления (YYYY-MM-DD) — optional, manager-set
   createdAt: string;
   updatedAt: string;
@@ -348,22 +346,6 @@ export interface GamificationData {
   orgXpBreakdown?: Record<string, number>;
   level: GamificationLevel;
   levelDefs?: { level: number; xp: number; title: string }[];
-}
-
-export interface TeacherProfile {
-  uid: string;
-  bio: string;
-  specialization: string;
-  experience: string;
-  avatarUrl: string;
-  socialLinks: { platform: string; url: string }[];
-  education?: string;
-  certificates?: string;
-  subjects?: string;
-  city?: string;
-  resumeUrl?: string;
-  resumeFileName?: string;
-  updatedAt: string;
 }
 
 export interface Invite {

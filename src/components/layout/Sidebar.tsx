@@ -71,7 +71,9 @@ const Sidebar: React.FC<{ open: boolean; onClose: () => void; isCollapsed?: bool
   const handleSignOut = async () => { await signOut(); navigate('/login'); };
 
   const goProfile = () => {
-    navigate(role === 'teacher' ? '/teacher-profile' : '/profile');
+    // Резюме преподавателя удалено вместе со страницей /teacher-profile; всё, что
+    // преподаватель правит о себе, живёт в настройках.
+    navigate(role === 'teacher' ? '/teacher-settings' : '/profile');
     if (window.innerWidth < 1024) onClose();
   };
 

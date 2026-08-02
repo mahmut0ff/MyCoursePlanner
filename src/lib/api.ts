@@ -565,8 +565,6 @@ export const apiDeclineInvite = (inviteId: string) => userReq('declineInvite', '
 export const apiLeaveOrganization = () => userReq('leaveOrganization', 'POST');
 
 // Teacher Profile
-export const apiGetTeacherProfile = (uid?: string) => userReq('teacherProfile', 'GET', undefined, uid ? { uid } : undefined);
-export const apiUpdateTeacherProfile = (data: any) => userReq('teacherProfile', 'PUT', data);
 
 // Teacher Settings
 export const apiGetTeacherSettings = () => userReq('teacherSettings');

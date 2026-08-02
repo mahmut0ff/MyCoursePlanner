@@ -185,7 +185,6 @@
     "examsSection": "Exams",
     "people": "People",
     "teacherSection": "Teacher",
-    "myProfile": "My Profile",
     "invites": "Invitations",
     "vacancies": "Vacancies",
     "myApplications": "My Applications",
@@ -1003,14 +1002,10 @@
       "scalePoints": "Points"
     }
   },
-  "teacher": {
-    "leaveOrg": "Leave organization",
-    "leaveOrgConfirm": "Are you sure you want to leave? You will lose access to all data."
-  },
   "teacherDashboard": {
     "subtitle": "Your teaching panel",
     "getStarted": "Getting Started",
-    "getStartedDesc": "Fill out your profile, find a job or teach independently",
+    "getStartedDesc": "You are not part of an academy yet. Once you are invited, your groups, schedule and gradebook will appear here.",
     "myLessons": "My Lessons",
     "myExams": "My Exams",
     "activeRooms": "Active Rooms",
@@ -1035,7 +1030,6 @@
     "subtitleNoOrg": "You are an independent teacher",
     "newLesson": "New Lesson",
     "newExam": "New Exam",
-    "fillProfile": "Complete Profile",
     "browseVacancies": "Browse Vacancies",
     "pendingInvites": "You have {{count}} pending invitations",
     "pass": "Passed",
@@ -1938,8 +1932,6 @@
     "title": "Get Started",
     "stepsCompleted": "steps completed",
     "dismiss": "Dismiss",
-    "step1": "Complete your profile",
-    "step1Desc": "Add photo, subjects and experience",
     "step2": "Create your first lesson",
     "step2Desc": "Add materials and content",
     "step3": "Create a test",

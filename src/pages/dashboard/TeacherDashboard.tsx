@@ -10,7 +10,7 @@ import { apiGetPendingInviteCount } from '../../lib/api';
 import type { LessonPlan, Exam, ExamRoom, ExamAttempt, Group, UserProfile } from '../../types';
 import { formatDate } from '../../utils/grading';
 import {
-  ArrowRight, Plus, Users, MailOpen, UserCircle2,
+  ArrowRight, Plus, Users, MailOpen,
   UsersRound, FileText, Monitor, Gamepad2, History, BarChart3, Activity,
   BookOpen, ClipboardList, ChevronRight,
 } from 'lucide-react';
@@ -89,15 +89,19 @@ export const TeacherDashboardView: React.FC<TeacherDashboardViewProps> = ({
             <div className="card p-5 sm:p-6">
               <h2 className="font-semibold text-slate-900 dark:text-white mb-1.5">{t('teacherDashboard.getStarted')}</h2>
               <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">{t('teacherDashboard.getStartedDesc')}</p>
-              <div className="flex flex-wrap gap-3">
-                <Link to="/teacher-profile" className="btn-primary text-sm flex items-center gap-2"><UserCircle2 className="w-4 h-4" />{t('teacherDashboard.fillProfile')}</Link>
-                {inviteCount > 0 && (
-                  <Link to="/invites" className="btn-secondary text-sm flex items-center gap-2">
-                    <MailOpen className="w-4 h-4" />{t('teacherDashboard.viewInvites')}
-                    <span className="bg-red-500 text-white text-[10px] font-bold min-w-[18px] h-[18px] flex items-center justify-center rounded-full px-1">{inviteCount}</span>
-                  </Link>
-                )}
-              </div>
+              {/* Кнопка «Заполнить профиль» вела в удалённое резюме. Без неё при нуле
+                  приглашений остался бы заголовок с текстом и пустой строкой кнопок,
+                  поэтому пустой случай теперь говорит, чего именно ждать. */}
+              {inviteCount > 0 ? (
+                <Link to="/invites" className="btn-primary text-sm inline-flex items-center gap-2">
+                  <MailOpen className="w-4 h-4" />{t('teacherDashboard.viewInvites')}
+                  <span className="bg-white/20 text-white text-xs font-semibold min-w-[20px] h-5 flex items-center justify-center rounded-full px-1.5 tabular-nums">{inviteCount}</span>
+                </Link>
+              ) : (
+                <p className="text-sm text-slate-500 dark:text-slate-400">
+                  {t('teacherDashboard.awaitingInvite', 'Приглашений пока нет. Попросите администратора академии пригласить вас — после этого здесь появятся ваши группы и расписание.')}
+                </p>
+              )}
             </div>
           )}
 
@@ -242,7 +246,6 @@ export const TeacherDashboardView: React.FC<TeacherDashboardViewProps> = ({
                     { to: '/quiz/sessions', icon: History, label: t('nav.quizSessions') },
                     { to: '/results', icon: BarChart3, label: t('nav.results') },
                     { to: '/teacher-analytics', icon: Activity, label: t('nav.analytics') },
-                    { to: '/teacher-profile', icon: UserCircle2, label: t('nav.myProfile') },
                   ].map(link => (
                     <Link
                       key={link.to}

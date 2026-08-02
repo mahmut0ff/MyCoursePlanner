@@ -62,6 +62,7 @@ const handler: Handler = async (event: HandlerEvent) => {
     let sent = 0;
     let markedOverdue = 0;
     let clearedOverdue = 0;
+    let adminsNotified = 0;
     let skippedInactive = 0;
 
     // Кому организация ещё вправе выставлять требования. Отчисленный студент
@@ -130,9 +131,24 @@ const handler: Handler = async (event: HandlerEvent) => {
       const courseSuffix = plan.courseName ? ` за «${plan.courseName}»` : '';
 
       // ─── Transition to overdue + notify admins once ───
+      //
+      // ── Уведомление админам НЕ привязано к записи статуса ──
+      // Раньше обе вещи стояли под одним условием `plan.status !== 'overdue'`,
+      // и уведомление практически никогда не уходило: статус 'overdue' успевает
+      // проставить ПОСТОРОННИЙ код — GET api-finance-plans пишет его при первом
+      // же открытии раздела финансов. К ночному прогону крона статус уже был
+      // 'overdue', условие не выполнялось, и директор про просрочку не узнавал.
+      //
+      // Поэтому у уведомления свой признак «уже сообщали» — overdueNotifiedAt.
+      // Он снимается вместе с самой просрочкой (ветка ниже), так что после
+      // продления срока и повторного его истечения директор получит сообщение
+      // снова — это разные события.
       if (missed && plan.status !== 'overdue') {
         await doc.ref.update({ status: 'overdue', updatedAt: now.toISOString() }).catch(() => {});
         markedOverdue++;
+      }
+      if (missed && !plan.overdueNotifiedAt) {
+        await doc.ref.update({ overdueNotifiedAt: now.toISOString() }).catch(() => {});
         await notifyOrgAdmins(
           plan.organizationId,
           'payment_overdue',
@@ -140,6 +156,7 @@ const handler: Handler = async (event: HandlerEvent) => {
           `${plan.studentName || 'Студент'} — просрочка ${fmtAmount(debt)} с.${courseSuffix}.`,
           '/finances',
         ).catch(() => {});
+        adminsNotified++;
       }
 
       // ─── Обратный переход: срок продлили — просрочка снимается ───
@@ -152,6 +169,12 @@ const handler: Handler = async (event: HandlerEvent) => {
         const restored = derivePlanStatus(plan.paidAmount || 0, plan.totalAmount);
         await doc.ref.update({ status: restored, updatedAt: now.toISOString() }).catch(() => {});
         clearedOverdue++;
+      }
+      // Признак «директору уже сообщали» снимаем вместе с самой просрочкой:
+      // если срок продлили, а потом он снова истёк — это новое событие, и
+      // молчать о нём нельзя.
+      if (!missed && plan.overdueNotifiedAt) {
+        await doc.ref.update({ overdueNotifiedAt: null }).catch(() => {});
       }
 
       // ─── Decide whether a student reminder is due today ───
@@ -191,7 +214,7 @@ const handler: Handler = async (event: HandlerEvent) => {
       sent++;
     }
 
-    return jsonResponse(200, { success: true, scanned, sent, markedOverdue, clearedOverdue, skippedInactive });
+    return jsonResponse(200, { success: true, scanned, sent, markedOverdue, clearedOverdue, skippedInactive, adminsNotified });
   } catch (error: any) {
     console.error('Debt reminders error:', error);
     return jsonResponse(500, { error: error.message });

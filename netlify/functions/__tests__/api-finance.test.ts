@@ -30,7 +30,7 @@ import { handler as trxHandler } from '../api-finance-transactions';
 import { parseRangeBoundary, getPeriodRange, getPreviousRange, resolveRange, normalizeTxDate } from '../utils/finance-period';
 import { isDeadlineMissed, isPlanOverdue, orgDayKey, daysUntilDeadline, planDiscount } from '../utils/payment-plans';
 import { handler as debtRemindersHandler } from '../debt-reminders';
-import { createNotification } from '../utils/notifications';
+import { createNotification, notifyOrgAdmins } from '../utils/notifications';
 
 const event = (method: string, query?: any, body?: any) => ({
   httpMethod: method,
@@ -1377,6 +1377,40 @@ describe('one overdue rule across debt-reminders and the metrics surface', () =>
     expect(calls.find((c: any) => c.recipientId === 'sLate')?.title).toBe('Просрочена оплата');
     expect(calls.find((c: any) => c.recipientId === 'sToday')?.title).toBe('Напоминание об оплате');
     expect(calls.find((c: any) => c.recipientId === 'sToday')?.message).toContain('сегодня');
+  });
+
+  it('сообщает директору о просрочке, даже если статус уже проставлен чужим кодом', async () => {
+    // 'extended' держит статус 'overdue' при живом сроке — а вот 'late' реально
+    // просрочен и статус ему проставит уже этот прогон. Ключевой случай другой:
+    // счёт, которому 'overdue' записал GET api-finance-plans при открытии
+    // раздела финансов. Раньше уведомление стояло под тем же условием, что и
+    // запись статуса, и по такому счёту не уходило НИКОГДА.
+    const alreadyMarked = {
+      id: 'marked', organizationId: 'org1', studentId: 'sMarked', studentName: 'Помеченный',
+      status: 'overdue', totalAmount: 1000, paidAmount: 0, branchId: 'A', deadline: '2026-07-17',
+    };
+    wire([alreadyMarked], ['sMarked']);
+    const res: any = await debtRemindersHandler(event('POST'), {} as any, () => {});
+    const body = JSON.parse(res.body);
+
+    // Статус не менялся — он уже был 'overdue'…
+    expect(body.markedOverdue).toBe(0);
+    // …а директор всё равно узнал.
+    expect(body.adminsNotified).toBe(1);
+    expect(notifyOrgAdmins).toHaveBeenCalledWith(
+      'org1', 'payment_overdue', 'Просрочен платёж', expect.stringContaining('Помеченный'), '/finances',
+    );
+  });
+
+  it('не повторяет уведомление директору по одному и тому же счёту', async () => {
+    const alreadyNotified = {
+      id: 'notified', organizationId: 'org1', studentId: 'sN', studentName: 'Уже сообщали',
+      status: 'overdue', totalAmount: 1000, paidAmount: 0, branchId: 'A', deadline: '2026-07-17',
+      overdueNotifiedAt: '2026-07-18T09:00:00.000Z',
+    };
+    wire([alreadyNotified], ['sN']);
+    const res: any = await debtRemindersHandler(event('POST'), {} as any, () => {});
+    expect(JSON.parse(res.body).adminsNotified).toBe(0);
   });
 
   it('не требует денег у отчисленного студента', async () => {

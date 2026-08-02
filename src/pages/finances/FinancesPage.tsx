@@ -154,17 +154,20 @@ const FinancesPage: React.FC = () => {
    * на пустой экран «За этот месяц ещё не начисляли», пока чип сверху уверял
    * «Только один студент: Айгуль».
    */
-  const unpaidOnly = searchParams.get('unpaid') === '1' || Boolean(studentFilter);
+  // ВАЖНО: приход с карточки студента снимает фильтр МЕСЯЦА, но не включает
+  // «только должники». Промежуточная версия выводила unpaidOnly из studentFilter
+  // и тем самым прятала ОПЛАЧЕННЫЕ счета: студент, заплативший за август, при
+  // переходе с карточки давал пустой экран с текстом «За этот месяц ещё не
+  // начисляли» — то есть ровно ту ложь, ради устранения которой режим и делался.
+  const unpaidOnly = searchParams.get('unpaid') === '1';
+  const allMonths = unpaidOnly || Boolean(studentFilter);
   const setUnpaidOnly = useCallback(
     (next: boolean) => {
       const params = new URLSearchParams(searchParams);
       if (next) params.set('unpaid', '1');
-      else {
-        params.delete('unpaid');
-        // Фильтр по студенту сам включает режим — снимаем и его, иначе галочка
-        // выглядела бы залипшей.
-        params.delete('student');
-      }
+      else params.delete('unpaid');
+      // `student` НЕ трогаем: фильтр по студенту и «только должники» — разные
+      // оси, и снятие галочки не должно молча терять выбранного человека.
       setSearchParams(params, { replace: true });
     },
     [searchParams, setSearchParams]
@@ -266,6 +269,7 @@ const FinancesPage: React.FC = () => {
             studentId={studentFilter}
             onStudentNameResolved={setStudentFilterName}
             unpaidOnly={unpaidOnly}
+            allMonths={allMonths}
             onUnpaidOnlyChange={setUnpaidOnly}
           />
         )}

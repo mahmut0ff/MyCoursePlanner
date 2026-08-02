@@ -54,6 +54,27 @@ function prevPeriod(period: string): string {
   return `${year}-${String(month - 1).padStart(2, '0')}`;
 }
 
+/**
+ * Запрет на ЗАПИСЬ по общеорганизационной ставке для сотрудника, запертого в
+ * филиалах.
+ *
+ * requireBranchScope пропускает `branchId === null` безусловно — «сущность
+ * общеорганизационная, доступна всем». Для СПИСКА это верно и намеренно: такая
+ * ставка не данные соседнего филиала, а умолчание организации, и движок про неё
+ * этому же пользователю докладывает диагностикой. Для записи — неверно:
+ * менеджер одного филиала иначе переименовал бы, переписал компоненты или
+ * заархивировал общую ставку преподавателя, который в его филиале никогда не
+ * работал, и тот перестал бы начисляться ВЕЗДЕ.
+ *
+ * Распоряжается такой ставкой тот, кто сам не ограничен филиалом, — директор
+ * сети.
+ */
+function requireOrgWideRuleAccess(user: any, ruleBranchId: unknown) {
+  if (ruleBranchId != null) return null;
+  if ((user.branchIds?.length ?? 0) === 0) return null;
+  return forbidden('Общеорганизационную ставку может менять только сотрудник без ограничения по филиалам');
+}
+
 /** Следующий месяц: '2026-12' → '2027-01'. */
 function nextPeriod(period: string): string {
   const year = Number(period.slice(0, 4));
@@ -445,6 +466,8 @@ const handler: Handler = async (event: HandlerEvent) => {
 
       const branchError = requireBranchScope(user, existing.branchId);
       if (branchError) return branchError;
+      const orgWideError = requireOrgWideRuleAccess(user, existing.branchId);
+      if (orgWideError) return orgWideError;
 
       // Правка ставки, по которой уже утверждена (или выплачена) ведомость —
       // это переписывание истории: снапшоты строк заморожены, а карточка под
@@ -511,6 +534,8 @@ const handler: Handler = async (event: HandlerEvent) => {
 
       const branchError = requireBranchScope(user, existing.branchId);
       if (branchError) return branchError;
+      const orgWideError = requireOrgWideRuleAccess(user, existing.branchId);
+      if (orgWideError) return orgWideError;
 
       const usage = await inspectRuleUsage(orgFilter, ruleId);
 

@@ -143,6 +143,26 @@ function payrollManagedError(existing: FirebaseFirestore.DocumentData) {
   });
 }
 
+/**
+ * Влияет ли операция на БАЗУ процентной зарплаты.
+ *
+ * payroll-engine считает базу как `netMinor = grossMinor - refundMinor`, где
+ * refundTx — это расходы, привязанные к счёту (`type === 'expense' &&
+ * paymentPlanId`, см. api-payroll и payroll-accrual). То есть возврат — такое же
+ * слагаемое базы, как и доход, только с обратным знаком.
+ *
+ * Проверка заморозки изначально смотрела только на доход, и вторая половина базы
+ * оставалась открытой: возврат, датированный внутрь утверждённой ведомости,
+ * проходил свободно и уменьшал базу, по которой преподавателю УЖЕ выплатили
+ * процент. Удаление такого возврата — зеркальный случай: база закрытой ведомости
+ * поднимается, и процент оказывается недоплаченным. Ни то, ни другое пересчитать
+ * нельзя.
+ */
+function affectsPayrollBase(type: unknown, paymentPlanId: unknown): boolean {
+  if (type === 'income') return true;
+  return type === 'expense' && Boolean(paymentPlanId);
+}
+
 function frozenPayrollError(hit: FrozenPeriodHit) {
   const verb = hit.state === 'paid' ? 'выплачена' : 'утверждена';
   return jsonResponse(409, {
@@ -293,9 +313,11 @@ const handler: Handler = async (event: HandlerEvent) => {
       const orgFilter = getOrgFilter(user);
       if (!orgFilter) return badRequest('Organization context required');
 
-      // Только доход и только один запрос: расход в базу процента не входит, а
-      // организация без зарплатных периодов не получит ни одной блокировки.
-      if (body.type === 'income') {
+      // База процента — это доход МИНУС возвраты (payroll-engine: netMinor =
+      // grossMinor - refundMinor), поэтому «расход в базу не входит» неверно:
+      // возврат, привязанный к счёту, попадает в refundTx и уменьшает ту же
+      // базу. Проверяем оба слагаемых, иначе половина базы остаётся открытой.
+      if (affectsPayrollBase(body.type, body.paymentPlanId)) {
         const frozen = await findFrozenPayrollPeriod(orgFilter, [body.date]);
         if (frozen) return frozenPayrollError(frozen);
       }
@@ -580,7 +602,7 @@ const handler: Handler = async (event: HandlerEvent) => {
       // преподаватель молча получит процент от суммы, которой больше нет.
       // Правка прочих полей (описание, курс, способ оплаты) базу не трогает и
       // остаётся разрешённой.
-      if (existing.type === 'income' && body.amount !== undefined && Number(body.amount) !== Number(existing.amount)) {
+      if (affectsPayrollBase(existing.type, existing.paymentPlanId) && body.amount !== undefined && Number(body.amount) !== Number(existing.amount)) {
         const frozenByAmount = await findFrozenPayrollPeriod(existing.organizationId, [existing.date]);
         if (frozenByAmount) return frozenPayrollError(frozenByAmount);
       }
@@ -589,7 +611,7 @@ const handler: Handler = async (event: HandlerEvent) => {
         const putDateError = validateOperationDay(body.date);
         if (putDateError) return badRequest(putDateError);
 
-        if (existing.type === 'income') {
+        if (affectsPayrollBase(existing.type, existing.paymentPlanId)) {
           // Проверяем ОБЕ даты — новую и текущую. Перенос доход ВНУТРЬ закрытой
           // ведомости добавляет процентную базу, которую уже не пересчитают; но
           // перенос ИЗ неё наружу так же необратим и вреднее: деньги, по которым
@@ -675,9 +697,10 @@ const handler: Handler = async (event: HandlerEvent) => {
       const deletePayrollLock = payrollManagedError(existing);
       if (deletePayrollLock) return deletePayrollLock;
 
-      // Удаление дохода из закрытого окна — та же потеря базы процента, что и
-      // правка его суммы, только полная. Отказываем по тому же правилу.
-      if (existing.type === 'income') {
+      // Удаление операции из закрытого окна — та же потеря базы процента, что и
+      // правка её суммы, только полная. Возврат тоже считается: его удаление
+      // ПОДНИМАЕТ базу закрытой ведомости.
+      if (affectsPayrollBase(existing.type, existing.paymentPlanId)) {
         const frozenByDelete = await findFrozenPayrollPeriod(existing.organizationId, [existing.date]);
         if (frozenByDelete) return frozenPayrollError(frozenByDelete);
       }

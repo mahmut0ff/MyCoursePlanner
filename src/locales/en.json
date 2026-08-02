@@ -2231,7 +2231,12 @@
     "refundDateFuture": "A refund cannot be dated in the future — the money has not been handed back yet",
     "refundDate": "Refund date",
     "refundDateHint": "When the money was actually returned to the student, not when you record it.",
-    "progressNetOfRefunds": "Refunds are already deducted: {{gross}} received, {{back}} returned."
+    "progressNetOfRefunds": "Refunds are already deducted: {{gross}} received, {{back}} returned.",
+    "allMonthsHint": "Showing invoices for every month, paid ones included. The tiles above count the selected month only.",
+    "shownRowsDebt": "On screen: {{n}} invoices, debt {{sum}}",
+    "noUnpaidAtAll": "Nothing outstanding",
+    "noChargesAtAll": "No invoices",
+    "noChargesAtAllHint": "No invoices matched the current view."
   },
   "telegram": {
     "title": "Telegram Notifications",

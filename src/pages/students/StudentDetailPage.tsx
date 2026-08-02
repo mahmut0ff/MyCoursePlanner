@@ -24,7 +24,7 @@ import {
   planDebt, isDebtBearingPlan, isWrittenOffPlan, isPlanOverdue, planDiscount,
   planPeriodKey, planProgressKey, daysUntilDeadline,
 } from '../../lib/payment-plans';
-import { formatMoney } from '../../lib/money';
+import { formatMoney, formatDayKey } from '../../lib/money';
 import ReportCommentModal from '../../components/ai/ReportCommentModal';
 import MemberRolesEditor from '../../components/shared/MemberRolesEditor';
 import {
@@ -701,7 +701,7 @@ const StudentDetailPage: React.FC = () => {
                                 </span>
                                 {plan.deadline && (
                                   <span className={overdue ? 'text-rose-600 dark:text-rose-400' : ''}>
-                                    {' '}· {t('finances.until', 'до')} {new Date(plan.deadline).toLocaleDateString('ru-RU')}
+                                    {' '}· {t('finances.until', 'до')} {formatDayKey(plan.deadline)}
                                   </span>
                                 )}
                               </>

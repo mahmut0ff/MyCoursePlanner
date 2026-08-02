@@ -56,6 +56,15 @@ interface Props {
    * студент: Айгуль». Менеджер решал, что долг погашен или что карточка врёт.
    */
   unpaidOnly?: boolean;
+  /**
+   * Снять фильтр МЕСЯЦА — ось, отдельная от «только должники».
+   *
+   * Приход с карточки студента обязан показать все его счета за все месяцы,
+   * ВКЛЮЧАЯ оплаченные: иначе заплативший студент снова даёт пустой экран с
+   * текстом «За этот месяц ещё не начисляли» — ровно та ложь, ради устранения
+   * которой режим и заводился.
+   */
+  allMonths?: boolean;
   onUnpaidOnlyChange?: (next: boolean) => void;
 }
 
@@ -112,7 +121,7 @@ const PROGRESS_META: Record<string, { key: string; fallback: string; cls: string
  */
 const MonthTab: React.FC<Props> = ({
   filters, onFiltersChange, month, onMonthChange, studentId = '', onStudentNameResolved,
-  unpaidOnly = false, onUnpaidOnlyChange,
+  unpaidOnly = false, allMonths = false, onUnpaidOnlyChange,
 }) => {
   const { t } = useTranslation();
   const { activeBranchId } = useBranch();
@@ -200,9 +209,9 @@ const MonthTab: React.FC<Props> = ({
   // одном месяце, и вопрос «кто должен» на месячном срезе не имеет ответа.
   const monthPlans = useMemo(
     () => plans.filter(p =>
-      (unpaidOnly || planPeriodKey(p) === month)
+      (allMonths || planPeriodKey(p) === month)
       && !isExpelled(studentById.get(String(p.studentId)))),
-    [plans, month, studentById, unpaidOnly]
+    [plans, month, studentById, allMonths]
   );
 
   // Что реально показываем и считаем на «кто оплатил за месяц». Убираем ровно
@@ -291,15 +300,24 @@ const MonthTab: React.FC<Props> = ({
     return [...byKey.values()].sort((a, b) => collator.compare(a.studentName, b.studentName));
   }, [groups, studentById, monthPlans, lastAmountByKey, coursePriceById, monthlyCourseIds]);
 
+  // Сводка ВСЕГДА про выбранный месяц, даже когда список показывает все месяцы.
+  // Иначе подписи («Оплачено по начислениям месяца», «Оплатили X из Y») врут:
+  // директор, открывший плитку «Долги», читал бы двухлетний итог как августовский.
+  const monthScoped = useMemo(
+    () => activePlans.filter(p => planPeriodKey(p) === month),
+    [activePlans, month]
+  );
+
   const stats = useMemo(() => ({
-    total: activePlans.length,
+    total: monthScoped.length,
     // По тому же предикату, что и бейджи строк (planProgressKey), а не по сырому
     // p.status: легаси-план без суммы со status:'paid' иначе считался бы «оплачен»
     // в тайле, но рисовался «Частично» в строке — тайл и строки противоречили бы.
-    paid: activePlans.filter(p => planProgressKey(p) === 'paid').length,
-    collected: activePlans.reduce((sum, p) => sum + (Number(p.paidAmount) || 0), 0),
-    unpaid: activePlans.filter(p => isDebtBearingPlan(p)).length,
-  }), [activePlans]);
+    paid: monthScoped.filter(p => planProgressKey(p) === 'paid').length,
+    collected: monthScoped.reduce((sum, p) => sum + (Number(p.paidAmount) || 0), 0),
+    unpaid: monthScoped.filter(p => isDebtBearingPlan(p)).length,
+  }), [monthScoped]);
+
 
   const filtered = useMemo(() => {
     const q = filters.search.trim().toLowerCase();
@@ -328,8 +346,16 @@ const MonthTab: React.FC<Props> = ({
     if (name) onStudentNameResolved(name);
   }, [studentId, studentById, plans, onStudentNameResolved]);
 
+  /** Долг по тому, что РЕАЛЬНО на экране: подпись для режима «все месяцы». */
+  const shownDebt = useMemo(
+    () => filtered.reduce((sum, p) => sum + planDebt(p), 0),
+    [filtered]
+  );
+
   const { visible: pageRows, total, hasMore, sentinelRef, loadMore } = useLazyList(filtered, {
-    resetKey: `${filters.search}|${month}|${studentId || ''}|${activeBranchId || ''}`,
+    // Режим и фильтр «только должники» меняют выборку целиком — без них в ключе
+    // досмотренный хвост прежнего среза оставался на экране.
+    resetKey: `${filters.search}|${month}|${studentId || ''}|${activeBranchId || ''}|${allMonths ? 'all' : 'm'}|${unpaidOnly ? 'u' : ''}|${filters.status}`,
   });
 
   const openPay = (plan: PaymentPlan) => { setSelectedPlan(plan); setModal('pay'); };
@@ -383,7 +409,7 @@ const MonthTab: React.FC<Props> = ({
             кнопка была бы обещанием действия без адресата. */}
         <button
           onClick={() => setShowBill(true)}
-          disabled={unpaidOnly}
+          disabled={allMonths}
           className="inline-flex items-center gap-2 bg-emerald-500 hover:bg-emerald-600 disabled:opacity-40 disabled:cursor-not-allowed text-white px-4 py-2.5 rounded-xl text-sm font-bold transition-colors shrink-0"
         >
           <CalendarPlus className="w-4 h-4" />{t('finances.billMonth', 'Начислить за месяц')}
@@ -417,7 +443,7 @@ const MonthTab: React.FC<Props> = ({
               </p>
               <p className="text-lg font-bold text-emerald-600">{formatMoney(stats.collected)}</p>
               <Link
-                to={`/finances?tab=payments&period=${month}`}
+                to="/finances?tab=payments"
                 className="text-[11px] text-slate-400 hover:text-sky-600 dark:hover:text-sky-400 hover:underline"
               >
                 {t('finances.cashForPeriodLink', 'Что пришло в кассу за период →')}
@@ -475,9 +501,18 @@ const MonthTab: React.FC<Props> = ({
         )}
       </div>
 
-      {unpaidOnly && (
+      {allMonths && (
         <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-900/50 rounded-xl px-4 py-2.5 text-xs text-amber-800 dark:text-amber-300">
-          {t('finances.allUnpaidHint', 'Показаны все счета с непогашенным остатком за любые месяцы. Выбор месяца и начисление в этом режиме не действуют.')}
+          {unpaidOnly
+            ? t('finances.allUnpaidHint', 'Показаны все счета с непогашенным остатком за любые месяцы. Выбор месяца и начисление в этом режиме не действуют.')
+            : t('finances.allMonthsHint', 'Показаны счета за все месяцы, включая оплаченные. Плитки выше считают только выбранный месяц.')}
+          {' '}
+          <span className="font-semibold">
+            {t('finances.shownRowsDebt', 'На экране: {{n}} счетов, долг {{sum}}', {
+              n: filtered.length,
+              sum: formatMoney(shownDebt),
+            })}
+          </span>
         </div>
       )}
 
@@ -492,11 +527,24 @@ const MonthTab: React.FC<Props> = ({
       ) : filtered.length === 0 ? (
         <EmptyState
           icon={MinusCircle}
-          title={filters.search ? t('finances.nothingFound', 'Ничего не найдено') : t('finances.noChargesMonth', 'За этот месяц ещё не начисляли')}
+          // В режиме «все месяцы» текст про начисление за месяц — ложь: месяц не
+          // выбран, а кнопка, на которую он ссылается, отключена. Пустой экран
+          // здесь значит «долгов нет» либо «счетов у этого студента нет».
+          title={
+            filters.search
+              ? t('finances.nothingFound', 'Ничего не найдено')
+              : unpaidOnly
+                ? t('finances.noUnpaidAtAll', 'Непогашенных счетов нет')
+                : allMonths
+                  ? t('finances.noChargesAtAll', 'Счетов нет')
+                  : t('finances.noChargesMonth', 'За этот месяц ещё не начисляли')
+          }
           description={
             filters.search
               ? t('finances.tryOtherSearch', 'Попробуйте изменить поиск')
-              : t('finances.noChargesHint', 'Нажмите «Начислить за месяц», чтобы выставить оплату студентам.')
+              : allMonths
+                ? t('finances.noChargesAtAllHint', 'По выбранному срезу счетов не нашлось.')
+                : t('finances.noChargesHint', 'Нажмите «Начислить за месяц», чтобы выставить оплату студентам.')
           }
         />
       ) : (

@@ -17,7 +17,7 @@ import { jsonResponse } from './utils/auth';
 import { computePaidUntil, GRACE_DAYS } from './utils/subscription';
 import { notifySuperAdminTelegram } from './utils/notifications';
 
-const PLAN_PRICES: Record<string, number> = { starter: 1990, professional: 4990, enterprise: 14900 };
+import { planPrice } from '../../src/lib/subscription-plans';
 // Warn this many days before the due date.
 const WARN_WITHIN_DAYS = 3;
 
@@ -68,16 +68,16 @@ const handler: Handler = async (event: HandlerEvent) => {
     if (soon.length) {
       lines.push('\n⏳ <b>Скоро истекает:</b>');
       soon.sort((a, b) => a.days - b.days)
-        .forEach((o) => lines.push(`• ${o.name} — через ${o.days} дн. (${PLAN_PRICES[o.plan] || 0} сом)`));
+        .forEach((o) => lines.push(`• ${o.name} — через ${o.days} дн. (${planPrice(o.plan)} сом)`));
     }
     if (overdue.length) {
       lines.push('\n🔴 <b>Просрочено (льготный период):</b>');
       overdue.sort((a, b) => b.days - a.days)
-        .forEach((o) => lines.push(`• ${o.name} — ${o.days} дн. назад (${PLAN_PRICES[o.plan] || 0} сом)`));
+        .forEach((o) => lines.push(`• ${o.name} — ${o.days} дн. назад (${planPrice(o.plan)} сом)`));
     }
     if (blocked.length) {
       lines.push(`\n⛔️ <b>Заблокированы автоматически</b> (прошло ${GRACE_DAYS} дн. после срока):`);
-      blocked.forEach((o) => lines.push(`• ${o.name} (${PLAN_PRICES[o.plan] || 0} сом)`));
+      blocked.forEach((o) => lines.push(`• ${o.name} (${planPrice(o.plan)} сом)`));
     }
     lines.push('\nНапишите владельцам с напоминанием об оплате. Продлить/включить — в суперадминке → Биллинг.');
 

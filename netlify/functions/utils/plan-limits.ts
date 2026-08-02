@@ -1,4 +1,5 @@
 import { adminDb } from './firebase-admin';
+import { normalizePlanId } from '../../../src/lib/subscription-plans';
 
 export const PLAN_LIMITS: Record<string, { maxStudents: number; maxTeachers: number; maxExams: number }> = {
   starter: { maxStudents: 50, maxTeachers: 5, maxExams: 20 },
@@ -25,8 +26,13 @@ export async function getOrgLimits(organizationId: string) {
     // 1. Get Plan ID
     const orgDoc = await adminDb.collection('organizations').doc(organizationId).get();
     if (orgDoc.exists) {
-      const planId = orgDoc.data()?.planId;
-      if (planId && PLAN_LIMITS[planId]) {
+      // Канонизируем id перед поиском лимитов. PLAN_LIMITS знает только новые
+      // идентификаторы, а в базе у части организаций лежат исторические 'pro' и
+      // 'expert' — для них поиск не находил ничего, и лимиты молча падали до
+      // Starter: 50 учеников на академии, которая платит как за Professional.
+      // AI_MANAGER_PLANS ниже эти id знает — расхождение и было ошибкой.
+      const planId = normalizePlanId(orgDoc.data()?.planId);
+      if (PLAN_LIMITS[planId]) {
         limits = { ...PLAN_LIMITS[planId] };
       }
     }

@@ -4,7 +4,7 @@ import { adminGetSubscriptions, adminSetSubscription } from '../../lib/api';
 import { CreditCard, Banknote, Ban, Clock, Search, Settings2, Loader2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
-const PLAN_PRICES: Record<string, number> = { starter: 1990, professional: 4990, enterprise: 14900 };
+import { planPrice } from '../../lib/subscription-plans';
 
 /** ISO paidUntil → whole days left (negative when overdue), or null. */
 const daysLeft = (paidUntil?: string | null): number | null => {
@@ -49,7 +49,7 @@ const AdminBillingPage: React.FC = () => {
   if (search) filtered = subs.filter(s => s.organizationName?.toLowerCase().includes(search.toLowerCase()) || s.organizationId?.includes(search));
 
   // MRR counts PAYING subscriptions only — trial and gifted generate no revenue.
-  const totalMRR = filtered.filter(s => s.status === 'active').reduce((sum, s) => sum + (PLAN_PRICES[s.planId] || 0), 0);
+  const totalMRR = filtered.filter(s => s.status === 'active').reduce((sum, s) => sum + (planPrice(s.planId)), 0);
   const activeCount = filtered.filter(s => s.status === 'active').length;
   const trialCount = filtered.filter(s => s.status === 'trial').length;
   const suspendedCount = filtered.filter(s => ['suspended', 'expired', 'cancelled'].includes(s.status)).length;
@@ -156,7 +156,7 @@ const AdminBillingPage: React.FC = () => {
               <tr key={s.id} className="hover:bg-slate-50 dark:bg-slate-700/50">
                 <td className="px-4 py-3"><p className="text-sm font-medium text-slate-900 dark:text-white">{s.organizationName}</p><p className="text-xs text-slate-400 dark:text-slate-500">{s.organizationId?.slice(0, 12)}...</p></td>
                 <td className="px-4 py-3"><span className={`inline-flex px-2 py-0.5 rounded text-xs font-medium ${s.planId === 'enterprise' ? 'bg-amber-100 text-amber-800' : s.planId === 'professional' ? 'bg-violet-100 text-violet-800' : 'bg-blue-100 text-blue-800'}`}>{t(`admin.plans.${s.planId}`) as string}</span></td>
-                <td className="px-4 py-3 text-sm font-medium text-slate-900 dark:text-white">{(PLAN_PRICES[s.planId] || 0).toLocaleString()} сом/мес</td>
+                <td className="px-4 py-3 text-sm font-medium text-slate-900 dark:text-white">{(planPrice(s.planId)).toLocaleString()} сом/мес</td>
                 <td className="px-4 py-3"><span className={`inline-flex px-2 py-0.5 rounded text-xs font-medium ${s.status === 'active' ? 'bg-emerald-100 text-emerald-700' : s.status === 'trial' ? 'bg-amber-100 text-amber-700' : s.status === 'gifted' ? 'bg-violet-100 text-violet-700' : 'bg-red-100 text-red-700'}`}>{t(`admin.statuses.${s.status}`) as string}</span></td>
                 <td className="px-4 py-3">{daysBadge(s)}</td>
                 <td className="px-4 py-3">

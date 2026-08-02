@@ -46,6 +46,7 @@
 import type { Handler, HandlerEvent } from '@netlify/functions';
 import { adminDb, adminAuth } from './utils/firebase-admin';
 import { verifyAuth, isSuperAdmin, jsonResponse, unauthorized, forbidden, badRequest, ok, notFound } from './utils/auth';
+import { planPrice } from '../../src/lib/subscription-plans';
 import type { AuthUser } from './utils/auth';
 import { notifyAllSuperAdmins, notifySuperAdminTelegram } from './utils/notifications';
 import { rateLimiters, getRateLimitKey } from './utils/rate-limiter';
@@ -622,13 +623,14 @@ const handler: Handler = async (event: HandlerEvent) => {
       const users = usersSnap.docs.map(d => d.data() as any);
       const subs = subsSnap.docs.map(d => d.data() as any);
 
-      const planPrices: Record<string, number> = { starter: 1990, professional: 4990, enterprise: 14900 };
       const activeOrgs = orgs.filter(o => o.status === 'active');
       // MRR = recurring revenue from PAYING subscriptions only.
       // Trial and gifted subscriptions generate no revenue and must NOT be counted.
       const mrr = subs
         .filter(s => s.status === 'active')
-        .reduce((sum, s) => sum + (planPrices[s.planId] || 0), 0);
+        // planPrice знает и legacy-id ('pro'/'expert'); локальная таблица их не знала,
+        // и такие организации давали 0 к MRR — платящие, но невидимые в выручке.
+        .reduce((sum, s) => sum + planPrice(s.planId), 0);
 
       // Monthly trends (last 6 months)
       const now = new Date();

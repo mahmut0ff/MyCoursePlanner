@@ -11,6 +11,7 @@ import type { Handler, HandlerEvent } from '@netlify/functions';
 import { adminDb } from './utils/firebase-admin';
 import { verifyAuth, isSuperAdmin, hasRole, ok, unauthorized, forbidden, badRequest, notFound, jsonResponse } from './utils/auth';
 import { computePaidUntil, GRACE_DAYS } from './utils/subscription';
+import { isKnownPlanId, planRank, planDailyRate } from '../../src/lib/subscription-plans';
 
 const COLLECTION = 'subscriptions';
 
@@ -34,17 +35,9 @@ function canManageSubscription(user: { role: string }): boolean {
   return isSuperAdmin(user as any) || hasRole(user as any, 'admin');
 }
 
-const PLAN_PRICES: Record<string, number> = {
-  starter: 1990,
-  professional: 4990,
-  enterprise: 14900,
-};
-
-const PLAN_ORDER: Record<string, number> = {
-  starter: 0,
-  professional: 1,
-  enterprise: 2,
-};
+// Прайс и старшинство тарифов живут в общем модуле (src/lib/subscription-plans.ts):
+// эта таблица была скопирована пять раз, и копии разошлись не значениями, а
+// ОХВАТОМ — legacy-id 'pro'/'expert' знала лишь часть из них.
 
 /**
  * Calculate effective balance on-the-fly.
@@ -153,14 +146,14 @@ const handler: Handler = async (event: HandlerEvent) => {
     const orgId = body.organizationId || user.organizationId;
     if (!orgId) return badRequest('organizationId required');
     if (!body.planId) return badRequest('planId required');
-    if (!PLAN_PRICES[body.planId]) return badRequest('Invalid planId');
+    if (!isKnownPlanId(body.planId)) return badRequest('Invalid planId');
 
     // Only admin of the org or super_admin can change plan
     if (orgId !== user.organizationId && !isSuperAdmin(user)) return forbidden();
     if (!canManageSubscription(user)) return forbidden('Only the organization admin can change the plan');
 
     const now = new Date().toISOString();
-    const newDailyRate = Math.round((PLAN_PRICES[body.planId] / 30) * 100) / 100;
+    const newDailyRate = planDailyRate(body.planId);
 
     // Find existing subscription
     const existingSnap = await adminDb.collection(COLLECTION)
@@ -174,8 +167,8 @@ const handler: Handler = async (event: HandlerEvent) => {
       const { effectiveBalance } = calculateEffectiveBalance(existingSub);
 
       // Determine if upgrade or downgrade
-      const isUpgrade = (PLAN_ORDER[body.planId] || 0) > (PLAN_ORDER[currentPlan] || 0);
-      const isDowngrade = (PLAN_ORDER[body.planId] || 0) < (PLAN_ORDER[currentPlan] || 0);
+      const isUpgrade = planRank(body.planId) > planRank(currentPlan);
+      const isDowngrade = planRank(body.planId) < planRank(currentPlan);
 
       // For both upgrade and downgrade: keep the balance, change the daily rate
       // Upgrade: balance depletes faster (higher daily rate)

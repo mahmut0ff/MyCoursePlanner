@@ -349,8 +349,24 @@ const MonthTab: React.FC<Props> = ({ filters, onFiltersChange, month, onMonthCha
           <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-4 flex items-center gap-3">
             <div className="p-2.5 bg-sky-100 dark:bg-sky-900/30 rounded-xl"><Wallet className="w-5 h-5 text-sky-600" /></div>
             <div>
-              <p className="text-xs text-slate-500">{t('finances.collectedMonth', 'Собрано за месяц')}</p>
+              {/* Подпись называет БАЗУ, а не просто «Собрано за месяц».
+                  Это сумма paidAmount по НАЧИСЛЕНИЯМ выбранного месяца, а
+                  соседняя вкладка «Платежи» суммирует транзакции по ДАТЕ КАССЫ.
+                  Числа законно расходятся — аванс за следующий месяц, оплата
+                  прошлого счёта, возврат, — но раньше обе подписи выглядели
+                  синонимами, и на вопрос «сколько собрали в июле» экран давал
+                  два разных ответа без единого пояснения, какой из них нести
+                  директору. */}
+              <p className="text-xs text-slate-500">
+                {t('finances.collectedByCharges', 'Оплачено по начислениям месяца')}
+              </p>
               <p className="text-lg font-bold text-emerald-600">{formatMoney(stats.collected)}</p>
+              <Link
+                to={`/finances?tab=payments&period=${month}`}
+                className="text-[11px] text-slate-400 hover:text-sky-600 dark:hover:text-sky-400 hover:underline"
+              >
+                {t('finances.cashForPeriodLink', 'Что пришло в кассу за период →')}
+              </Link>
             </div>
           </div>
         )}

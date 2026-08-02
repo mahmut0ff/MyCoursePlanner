@@ -222,9 +222,13 @@ const OverviewTab: React.FC<Props> = ({ range, onRangeChange }) => {
       [t('finances.kpi', 'Показатель'), t('finances.profit', 'Чистая прибыль'), metrics.netProfit || 0, ''],
       [
         t('finances.kpi', 'Показатель'),
-        t('finances.debt', 'Дебиторская задолженность'),
+        // В файле периода эта строка обязана назвать себя иначе: остальные три
+        // показателя посчитаны ЗА ПЕРИОД, а долг — на момент выгрузки. Без
+        // оговорки выгрузку за прошлый месяц прочтут как «столько нам были
+        // должны в том месяце», а это долг на сегодня.
+        `${t('finances.debt', 'Дебиторская задолженность')} (${t('finances.debtAsOfToday', 'на сегодня, независимо от периода')})`,
         metrics.outstandingDebt || 0,
-        `${t('finances.overdueCount', 'Просрочено')}: ${metrics.overdueCount || 0}`,
+        `${t('finances.overdueCountUnits', 'Просрочено счетов')}: ${metrics.overdueCount || 0}; ${t('finances.debtorCountUnits', 'Должников (человек)')}: ${metrics.debtorCount || 0}`,
       ],
       ...categories.map(c => [
         t('finances.expenseByCategory', 'Расходы по категориям'),
@@ -320,8 +324,15 @@ const OverviewTab: React.FC<Props> = ({ range, onRangeChange }) => {
             <div className="bg-white dark:bg-slate-800 p-5 rounded-2xl border border-amber-200 dark:border-amber-900/50 relative overflow-hidden">
               <div className="absolute top-0 right-0 w-16 h-16 bg-gradient-to-br from-amber-400/20 to-orange-500/0 rounded-bl-full" />
               <div className="flex items-center justify-between mb-2 relative z-10">
+                {/* «На сегодня» — не украшение. Соседние три плитки считаются
+                    за ВЫБРАННЫЙ период, а долг — это состояние на сейчас: он не
+                    меняется при переключении на «Прошлый месяц», и без подписи
+                    это читается как поломка фильтра. */}
                 <p className="text-sm font-medium text-amber-700 dark:text-amber-500">
                   {t('finances.debt', 'Дебиторская задолженность')}
+                  <span className="block text-[11px] font-normal text-amber-600/70 dark:text-amber-500/70">
+                    {t('finances.debtAsOfToday', 'на сегодня, независимо от периода')}
+                  </span>
                 </p>
                 <div className="p-2 bg-amber-100 dark:bg-amber-900/50 text-amber-600 rounded-lg">
                   <DollarSign className="w-4 h-4" />
@@ -330,8 +341,12 @@ const OverviewTab: React.FC<Props> = ({ range, onRangeChange }) => {
               <h3 className="text-2xl font-bold text-slate-900 dark:text-white relative z-10">
                 {formatMoney(metrics?.outstandingDebt)}
               </h3>
+              {/* Единицы обязательны: «Просрочено: 7 · Должников: 4» без них
+                  читается как два счётчика одного и того же, хотя первое — это
+                  СЧЕТА, а второе — ЛЮДИ (у одного человека может быть несколько
+                  просроченных счетов). */}
               <p className="text-xs text-amber-600/70 dark:text-amber-500/70 mt-2 relative z-10">
-                {t('finances.overdueCount', 'Просрочено')}: {formatNumber(metrics?.overdueCount)} · {t('finances.debtorCount', 'Должников')}: {formatNumber(metrics?.debtorCount)}
+                {t('finances.overdueCountUnits', 'Просрочено счетов')}: {formatNumber(metrics?.overdueCount)} · {t('finances.debtorCountUnits', 'Должников (человек)')}: {formatNumber(metrics?.debtorCount)}
               </p>
             </div>
           </div>

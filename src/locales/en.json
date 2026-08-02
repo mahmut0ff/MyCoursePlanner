@@ -2184,7 +2184,12 @@
     "openPayroll": "Open Payroll",
     "receivedFiltered": "Received (filtered)",
     "scopeBranch": "Branch: {{name}}",
-    "scopeOrgWide": "All branches"
+    "scopeOrgWide": "All branches",
+    "debtAsOfToday": "as of today, regardless of the period",
+    "overdueCountUnits": "Overdue invoices",
+    "debtorCountUnits": "Debtors (people)",
+    "collectedByCharges": "Paid against this month's charges",
+    "cashForPeriodLink": "What actually reached the till →"
   },
   "telegram": {
     "title": "Telegram Notifications",

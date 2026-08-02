@@ -1583,7 +1583,12 @@
     "openPayroll": "«Эмгек акыны» ачуу",
     "receivedFiltered": "Чыпка боюнча түшкөн",
     "scopeBranch": "Филиал: {{name}}",
-    "scopeOrgWide": "Бардык филиалдар"
+    "scopeOrgWide": "Бардык филиалдар",
+    "debtAsOfToday": "бүгүнкү абалда, мезгилге көз карандысыз",
+    "overdueCountUnits": "Мөөнөтү өткөн эсептер",
+    "debtorCountUnits": "Карыздарлар (адам)",
+    "collectedByCharges": "Айдын эсептери боюнча төлөндү",
+    "cashForPeriodLink": "Кассага эмне түшкөнү →"
   },
   "telegram": {
     "title": "Telegram-билдирүүлөр",

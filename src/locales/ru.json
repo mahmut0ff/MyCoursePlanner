@@ -2472,7 +2472,12 @@
     "openPayroll": "Открыть «Зарплату»",
     "receivedFiltered": "Поступило по фильтру",
     "scopeBranch": "Филиал: {{name}}",
-    "scopeOrgWide": "Все филиалы"
+    "scopeOrgWide": "Все филиалы",
+    "debtAsOfToday": "на сегодня, независимо от периода",
+    "overdueCountUnits": "Просрочено счетов",
+    "debtorCountUnits": "Должников (человек)",
+    "collectedByCharges": "Оплачено по начислениям месяца",
+    "cashForPeriodLink": "Что пришло в кассу за период →"
   },
   "telegram": {
     "title": "Telegram-уведомления",

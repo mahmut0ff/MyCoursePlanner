@@ -261,7 +261,23 @@ const handler: Handler = async (event: HandlerEvent) => {
       if (body.settle === true) {
         if (existing.status === 'cancelled') return badRequest('Списанный счёт нельзя закрыть оплатой');
         const settledTotal = Math.min(existingTotal, existingPaid);
-        const updates: any = { updatedAt: new Date().toISOString(), totalAmount: settledTotal, status: 'paid' };
+        const updates: any = {
+          updatedAt: new Date().toISOString(),
+          totalAmount: settledTotal,
+          status: 'paid',
+          // РАЗОВОЕ прощение остатка, а не новая цена для этого студента.
+          //
+          // Различать это обязательно: «Оплаты за месяц» переносят сумму
+          // прошлого начисления на следующий месяц, и без пометки списанный
+          // остаток превращался в постоянную цену. Простили 500 один раз — и
+          // студент платит на 500 меньше каждый месяц, пока кто-нибудь не
+          // заметит и не вернёт цену руками.
+          //
+          // Договорную цену менеджер задаёт другим действием — правкой «суммы к
+          // оплате» (ветка totalAmount ниже), и вот она переносится дальше
+          // намеренно.
+          settledByDiscount: true,
+        };
         // listAmount фиксирует полную (прайсовую) цену, чтобы показать размер
         // скидки. Уже заданный (цена курса с биллинга) не трогаем; иначе берём
         // прежнюю сумму к оплате как «полную».

@@ -497,7 +497,13 @@ const handler: Handler = async (event: HandlerEvent) => {
       if (branchScope === '__DENIED__') return ok([]);
       if (typeof branchScope === 'string') query = query.where('branchId', '==', branchScope) as any;
       let snap;
-      try { snap = await query.orderBy('createdAt', 'desc').limit(200).get(); }
+      // Лимит 200 подрезал список молча, а он питает не только экран групп:
+      // «Начислить за месяц» строит кандидатов из групп, поэтому в большой
+      // академии часть студентов просто не предлагалась к начислению — без
+      // единого признака в интерфейсе. Фолбэк ниже (когда индекса нет) и так
+      // тянет ВСЁ, то есть охват зависел от наличия индекса. 2000 — заведомо
+      // выше любого реального числа групп, и запрос остаётся ограниченным.
+      try { snap = await query.orderBy('createdAt', 'desc').limit(2000).get(); }
       catch { snap = await query.get(); }
       let list = snap.docs.map((d: any) => ({ id: d.id, ...d.data() }));
       if (Array.isArray(branchScope)) {

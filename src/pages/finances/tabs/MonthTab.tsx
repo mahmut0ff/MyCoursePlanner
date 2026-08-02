@@ -190,10 +190,19 @@ const MonthTab: React.FC<Props> = ({ filters, onFiltersChange, month, onMonthCha
   );
 
   // Перенос суммы: самое свежее по месяцу начисление на (студент, курс).
+  //
+  // По счёту, закрытому разовой скидкой (settledByDiscount — отметка «оплачено
+  // полностью» в приёме оплаты), переносим ПРАЙСОВУЮ цену, а не урезанную.
+  // Иначе прощённые один раз 500 сом становились постоянной ценой: следующий
+  // месяц предлагался на 500 дешевле, и так до тех пор, пока кто-нибудь не
+  // заметит. Договорную цену задают правкой «суммы к оплате» — она переносится
+  // дальше, и это осознанно.
   const lastAmountByKey = useMemo(() => {
     const best = new Map<string, { period: string; amount: number }>();
     for (const p of plans) {
-      const amt = Number(p.totalAmount);
+      const amt = (p as any).settledByDiscount
+        ? Number((p as any).listAmount ?? p.totalAmount)
+        : Number(p.totalAmount);
       if (!Number.isFinite(amt)) continue;
       const k = `${p.studentId}|${p.courseId}`;
       const per = planPeriodKey(p) || '';

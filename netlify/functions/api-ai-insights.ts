@@ -9,7 +9,7 @@
  */
 import type { Handler, HandlerEvent } from '@netlify/functions';
 import { adminDb, getDocsByIds } from './utils/firebase-admin';
-import { verifyAuth, can, ok, unauthorized, forbidden, badRequest, jsonResponse, hasRole, memberHoldsRole } from './utils/auth';
+import { verifyAuth, can, ok, unauthorized, forbidden, badRequest, jsonResponse, hasRole, memberHoldsRole, resolveBranchFilter, memberInBranchScope, recordInBranchScope } from './utils/auth';
 import { rateLimiters, getRateLimitKey } from './utils/rate-limiter';
 import { getModel, parseJsonLoose, aiAllowed, hasGeminiKey, recordAiUsage } from './utils/ai';
 import { computeStudentRisk } from './utils/risk';
@@ -36,7 +36,22 @@ interface OrgSnapshot {
   courses: { title: string; price?: number; format?: string }[];
 }
 
-async function gatherSnapshot(orgId: string, includeFinance: boolean): Promise<OrgSnapshot> {
+/**
+ * Срез организации для аналитика.
+ *
+ * `branchScope` — результат resolveBranchFilter: null (вся организация), строка
+ * (один филиал) или массив филиалов сотрудника. Раньше параметра не было вовсе,
+ * и аналитик отвечал по всей академии, пока весь остальной интерфейс показывал
+ * выбранный филиал: владелец получал два разных ответа на один вопрос, причём
+ * тот, что от AI, выглядел авторитетнее. Филиалуем ровно тем же набором
+ * предикатов, что и дашборды, — memberInBranchScope для людей и
+ * recordInBranchScope для записей.
+ */
+async function gatherSnapshot(
+  orgId: string,
+  includeFinance: boolean,
+  branchScope: string | string[] | null,
+): Promise<OrgSnapshot> {
   const monthStart = monthStartISO(0);
   const lastMonthStart = monthStartISO(1);
 
@@ -53,16 +68,22 @@ async function gatherSnapshot(orgId: string, includeFinance: boolean): Promise<O
     adminDb.collection('courses').where('organizationId', '==', orgId).get().catch(() => null),
   ]);
 
-  const members = memberSnap.docs.map(d => d.data() as any);
+  const members = memberSnap.docs
+    .map(d => ({ id: d.id, ...(d.data() as any) }))
+    .filter(m => memberInBranchScope(m.branchIds, branchScope));
   const students = members.filter(m => m.role === 'student' && m.status === 'active');
   const teachers = members.filter(m => m.role === 'teacher' && m.status === 'active').length;
   const newStudents = students.filter(m => (m.joinedAt || m.createdAt) >= monthStart).length;
+  // Ученики в срезе — по ним фильтруем оценки и посещаемость: у попыток и
+  // журнала своего branchId нет, филиал у них наследуется от ученика.
+  const studentIdSet = new Set(students.map(m => m.userId || m.id));
 
   let finance: OrgSnapshot['finance'];
   if (includeFinance) {
     let incomeThisMonth = 0, incomeLastMonth = 0, expenseThisMonth = 0;
     for (const t of txSnap?.docs || []) {
       const tx = t.data() as any;
+      if (!recordInBranchScope(tx.branchId, branchScope)) continue;
       const when = tx.date || tx.createdAt || '';
       const amount = Number(tx.amount || 0);
       if (tx.type === 'income') {
@@ -76,6 +97,7 @@ async function gatherSnapshot(orgId: string, includeFinance: boolean): Promise<O
     let debt = 0, overduePlans = 0;
     for (const p of planSnap?.docs || []) {
       const plan = p.data() as any;
+      if (!recordInBranchScope(plan.branchId, branchScope)) continue;
       // Same debt definition as api-finance-metrics: written-off ('cancelled') and
       // settled plans are excluded, so the AI analyst can't quote a debt figure the
       // owner's own dashboard contradicts.
@@ -91,13 +113,15 @@ async function gatherSnapshot(orgId: string, includeFinance: boolean): Promise<O
   const bySource: Record<string, number> = {};
   for (const l of leadDocs) bySource[l.source || 'unknown'] = (bySource[l.source || 'unknown'] || 0) + 1;
 
-  const attempts = (attemptSnap?.docs || []).map(d => d.data() as any);
+  const attempts = (attemptSnap?.docs || []).map(d => d.data() as any)
+    .filter(a => studentIdSet.has(a.studentId));
   const avgScore = attempts.length
     ? Math.round(attempts.reduce((a, c) => a + (c.percentage || 0), 0) / attempts.length)
     : null;
   const attemptsThisMonth = attempts.filter(a => (a.createdAt || '') >= monthStart).length;
 
-  const journal = (journalSnap?.docs || []).map(d => d.data() as any);
+  const journal = (journalSnap?.docs || []).map(d => d.data() as any)
+    .filter(j => studentIdSet.has(j.studentId));
   const absences = journal.filter(j => j.attendance === 'absent');
   const rateAvg = journal.length
     ? Math.round(((journal.length - absences.length) / journal.length) * 100)
@@ -152,7 +176,7 @@ function snapshotToText(s: OrgSnapshot): string {
 }
 
 // ── Churn: per-student risk over the org roster (formula in utils/risk.ts) ──
-async function computeRisk(orgId: string) {
+async function computeRisk(orgId: string, branchScope: string | string[] | null) {
   const memberSnap = await adminDb.collection('orgMembers').doc(orgId).collection('members')
     .where('status', '==', 'active').get();
   if (memberSnap.empty) return [];
@@ -161,6 +185,9 @@ async function computeRisk(orgId: string) {
   memberSnap.docs.forEach(d => {
     const data = d.data();
     if (!memberHoldsRole(data, ['student'])) return;
+    // Тот же филиальный предикат, что в api-risk: анализ оттока по выбранному
+    // филиалу обязан говорить о тех же людях, что и список учеников.
+    if (!memberInBranchScope(data.branchIds, branchScope)) return;
     memberByUid.set(data.userId || d.id, data);
   });
   if (memberByUid.size === 0) return [];
@@ -226,6 +253,12 @@ export const handler: Handler = async (event: HandlerEvent) => {
   const action = event.queryStringParameters?.action || 'ask';
   const orgId = user.organizationId;
 
+  // Филиал приходит явным параметром: это POST, и авто-штамп на записи в
+  // src/lib/api.ts намеренно не работает. Разрешаем его так же, как читающие
+  // эндпоинты, — сотрудник не может запросить чужой филиал.
+  const branchScope = resolveBranchFilter(user, event.queryStringParameters?.branchId);
+  if (branchScope === '__DENIED__') return forbidden('Access denied to requested branch');
+
   try {
     if (action === 'ask') {
       const { question } = JSON.parse(event.body || '{}');
@@ -236,7 +269,7 @@ export const handler: Handler = async (event: HandlerEvent) => {
       // base role, finances CRUD, no finance_overview) could read revenue/profit here
       // even though every direct finance surface hides it. can() passes admins/owners.
       const canSeeFinance = can(user, 'finance_overview', 'read');
-      const snapshot = await gatherSnapshot(orgId, canSeeFinance);
+      const snapshot = await gatherSnapshot(orgId, canSeeFinance, branchScope);
       const model = getModel({ json: true });
       const prompt = `Ты — AI бизнес-аналитик учебного центра. Отвечай ТОЛЬКО на основе приведённых данных. Если данных для ответа недостаточно — честно скажи об этом и предложи, что отслеживать. Отвечай на русском, кратко и по делу, с конкретными цифрами. Не выдумывай.
 
@@ -255,7 +288,7 @@ ${snapshotToText(snapshot)}
 
     if (action === 'churn') {
       const { limit } = JSON.parse(event.body || '{}');
-      const all = await computeRisk(orgId);
+      const all = await computeRisk(orgId, branchScope);
       const atRisk = all.filter(s => s.riskLevel !== 'low')
         .sort((a, b) => (a.riskLevel === 'high' ? 0 : 1) - (b.riskLevel === 'high' ? 0 : 1) || b.daysSinceLastActive - a.daysSinceLastActive)
         .slice(0, Math.min(Number(limit) || 12, 20));

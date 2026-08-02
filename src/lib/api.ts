@@ -827,10 +827,16 @@ export const apiAssistantImportCommit = (payload: any) =>
   apiRequest('api-ai-assistant', 'POST', payload, { action: 'import_commit' });
 
 // ---- AI Insights (owner analyst + churn) ----
+// Филиал передаём ЯВНО: это POST, а перехватчик штампует только GET (иначе
+// сохранение мутации переселяло бы запись в другой филиал). Без него аналитик
+// отвечал про выручку и долги по всей организации, пока весь остальной экран
+// показывал один филиал, — и владелец получал два разных ответа на один вопрос.
+const branchParam = (): Record<string, string> =>
+  (activeBranchId ? { branchId: activeBranchId } : {});
 export const apiAIInsightsAsk = (question: string) =>
-  apiRequest('api-ai-insights', 'POST', { question }, { action: 'ask' });
+  apiRequest('api-ai-insights', 'POST', { question }, { action: 'ask', ...branchParam() });
 export const apiAIChurn = (limit?: number) =>
-  apiRequest('api-ai-insights', 'POST', { limit }, { action: 'churn' });
+  apiRequest('api-ai-insights', 'POST', { limit }, { action: 'churn', ...branchParam() });
 export const apiAIScheduleReview = (events: any[]) =>
   apiRequest('api-ai-insights', 'POST', { events }, { action: 'schedule' });
 

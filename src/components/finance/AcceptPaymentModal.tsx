@@ -3,8 +3,8 @@ import { useTranslation } from 'react-i18next';
 import { apiCreateTransaction, apiUpdatePaymentPlan } from '../../lib/api';
 import { CreditCard, X } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { CURRENCY_SUFFIX, formatMoney } from '../../lib/money';
-import { orgDayKey, isDebtBearingPlan, planDebt } from '../../lib/payment-plans';
+import { CURRENCY_SUFFIX, formatMoney, formatMonthKey } from '../../lib/money';
+import { orgDayKey, isDebtBearingPlan, planDebt, planPeriodKey } from '../../lib/payment-plans';
 import { PAYMENT_METHODS } from '../../pages/finances/expenseCategories';
 
 /**
@@ -22,15 +22,37 @@ export interface PayablePlan {
   courseName?: string;
   totalAmount: number;
   paidAmount: number;
+  /** Поля, по которым planPeriodKey определяет месяц начисления, — для подписи счёта. */
+  period?: string;
+  deadline?: unknown;
+  createdAt?: string;
+  status?: string;
 }
 
 interface Props {
   /** Счета с непогашенным остатком. Больше одного — сверху появляется выбор. */
   plans: PayablePlan[];
+  /**
+   * Какой счёт открыть. Без него окно вставало на plans[0] — и кнопка «Принять
+   * оплату» у КОНКРЕТНОЙ строки списка открывала чужой счёт: жмут на июле с
+   * остатком 3 000, а окно показывает август с остатком 5 000 и предзаполняет
+   * его. Даже исправив сумму вручную, кассир зачислял деньги не в тот месяц, и
+   * июль оставался просроченным. Расхождение было видно только по цифре
+   * остатка — в выпадающем списке месяц не назывался вовсе.
+   */
+  initialPlanId?: string;
   studentName?: string;
   onClose: () => void;
   onSuccess: () => void;
 }
+
+/** «Английский · август 2026 г. — остаток 3 000 с.» — месяц обязателен: без него
+ *  два помесячных счёта по одному курсу в списке неразличимы. */
+const planOptionLabel = (p: PayablePlan, fallback: string, remainderWord: string): string => {
+  const month = formatMonthKey(planPeriodKey(p));
+  const course = p.courseName || p.courseId || fallback;
+  return `${course}${month ? ` · ${month}` : ''} — ${remainderWord} ${formatMoney(debtOf(p))}`;
+};
 
 // Через общее правило, а не своей арифметикой: списанный счёт остатка не имеет,
 // а приём оплаты по нему воскрешает списание (сервер разрешает revive на доходе).
@@ -42,9 +64,13 @@ const debtOf = (p: PayablePlan) => (isDebtBearingPlan(p) ? planDebt(p) : 0);
  * оригиналом и перестала писать paymentMethod, из-за чего оплаты из профиля
  * приходили в кассу без способа оплаты.
  */
-const AcceptPaymentModal: React.FC<Props> = ({ plans, studentName, onClose, onSuccess }) => {
+const AcceptPaymentModal: React.FC<Props> = ({ plans, initialPlanId, studentName, onClose, onSuccess }) => {
   const { t } = useTranslation();
-  const [planId, setPlanId] = useState(plans[0]?.id || '');
+  // Открываемся на запрошенном счёте; plans[0] — фолбэк для точек входа, где
+  // конкретного счёта нет (кнопка в шапке карточки, мобильная панель).
+  const [planId, setPlanId] = useState(
+    (initialPlanId && plans.some(p => p.id === initialPlanId) ? initialPlanId : plans[0]?.id) || ''
+  );
   const plan = plans.find(p => p.id === planId) || plans[0];
   const debt = plan ? debtOf(plan) : 0;
 
@@ -164,12 +190,15 @@ const AcceptPaymentModal: React.FC<Props> = ({ plans, studentName, onClose, onSu
               >
                 {plans.map(p => (
                   <option key={p.id} value={p.id}>
-                    {p.courseName || p.courseId || t('finances.plan', 'Счёт')} — {t('finances.remainder', 'остаток')} {formatMoney(debtOf(p))}
+                    {planOptionLabel(p, t('finances.plan', 'Счёт'), t('finances.remainder', 'остаток'))}
                   </option>
                 ))}
               </select>
             ) : (
-              <p className="text-sm text-slate-500 mt-1">{plan.courseName || plan.courseId}</p>
+              <p className="text-sm text-slate-500 mt-1">
+                {plan.courseName || plan.courseId}
+                {formatMonthKey(planPeriodKey(plan)) && ` · ${formatMonthKey(planPeriodKey(plan))}`}
+              </p>
             )}
             <div className="flex justify-between mt-3 text-sm">
               <span className="text-slate-500">{t('finances.remainderLabel', 'Остаток')}:</span>

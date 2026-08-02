@@ -944,6 +944,11 @@ const StudentDetailPage: React.FC = () => {
       {payModalPlan && (
         <AcceptPaymentModal
           plans={payablePlans.length > 0 ? payablePlans : [payModalPlan]}
+          // Открываем ИМЕННО тот счёт, чью кнопку нажали. Список передаётся
+          // целиком, чтобы кассир мог переключиться, не закрывая окно, но
+          // выбор строки терять нельзя: без этого окно вставало на plans[0] и
+          // деньги уходили в чужой месяц.
+          initialPlanId={payModalPlan.id}
           studentName={student.displayName}
           onClose={() => setPayModalPlan(null)}
           onSuccess={reloadFinances}

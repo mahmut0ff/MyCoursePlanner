@@ -21,7 +21,7 @@ import toast from 'react-hot-toast';
 import { apiDeletePaymentPlan, apiGetPaymentPlans, orgGetCourses, orgGetGroups, orgGetStudents } from '../../../lib/api';
 import { useBranch } from '../../../contexts/BranchContext';
 import { usePermissions } from '../../../contexts/PermissionsContext';
-import { formatMoney } from '../../../lib/money';
+import { formatMoney, formatMonthKey } from '../../../lib/money';
 import { isDebtBearingPlan, isWrittenOffPlan, isPlanOverdue, planDebt, planDiscount, planPeriodKey, planProgressKey } from '../../../lib/payment-plans';
 import EmptyState from '../../../components/ui/EmptyState';
 import { ListSkeleton } from '../../../components/ui/Skeleton';
@@ -75,10 +75,9 @@ function shiftMonth(key: string, delta: number): string {
   return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}`;
 }
 
-function monthLabel(key: string): string {
-  const [y, m] = key.split('-').map(Number);
-  return new Date(Date.UTC(y, m - 1, 1)).toLocaleDateString('ru-RU', { month: 'long', year: 'numeric', timeZone: 'UTC' });
-}
+// Подпись месяца — общий форматтер (src/lib/money.ts): помесячный срез, выбор
+// счёта при приёме оплаты и история платежей обязаны называть месяц одинаково.
+const monthLabel = formatMonthKey;
 
 /**
  * Бейдж строки = ТОЛЬКО прогресс оплаты (planProgressKey). Просрочка — отдельная

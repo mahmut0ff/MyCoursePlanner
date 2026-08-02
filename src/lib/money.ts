@@ -35,3 +35,23 @@ export const formatPercent = (n?: number | null): string => {
   const rounded = Math.round(n);
   return `${rounded < 0 ? '−' : '+'}${Math.abs(rounded)}%`;
 };
+
+/**
+ * Ключ месяца 'YYYY-MM' → «август 2026 г.».
+ *
+ * Живёт здесь, а не копией в каждой вкладке, ровно по той же причине, что и
+ * formatMoney: месяц начисления подписывается на нескольких экранах сразу
+ * (помесячный срез, выбор счёта при приёме оплаты, история платежей), и они
+ * обязаны называть один и тот же месяц одинаково. UTC в опциях обязателен —
+ * без него `new Date(Date.UTC(...))` в зоне западнее Гринвича отрисовал бы
+ * ПРЕДЫДУЩИЙ месяц.
+ *
+ * Пустой/битый ключ даёт '' — вызывающий сам решает, что показать вместо.
+ */
+export const formatMonthKey = (key?: string | null): string => {
+  if (!key || !/^\d{4}-\d{2}$/.test(key)) return '';
+  const [y, m] = key.split('-').map(Number);
+  return new Date(Date.UTC(y, m - 1, 1)).toLocaleDateString(LOCALE, {
+    month: 'long', year: 'numeric', timeZone: 'UTC',
+  });
+};

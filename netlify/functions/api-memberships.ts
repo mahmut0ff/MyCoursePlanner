@@ -16,7 +16,7 @@ import type { Handler, HandlerEvent } from '@netlify/functions';
 import { adminDb, getDocsByIds } from './utils/firebase-admin';
 import { verifyAuth, isSuperAdmin, getMembershipData, ok, unauthorized, forbidden, badRequest, notFound, jsonResponse } from './utils/auth';
 import { notifyOrgAdmins } from './utils/notifications';
-import { orgDayKey } from './utils/payment-plans';
+import { orgDayKey, isDebtBearingPlan, isUntouchedPlan, planDebt } from './utils/payment-plans';
 
 const now = () => new Date().toISOString();
 
@@ -357,6 +357,43 @@ const handler: Handler = async (event: HandlerEvent) => {
       const targetMembership = await getMembership(body.userId, body.organizationId) as any;
       if (!targetMembership) return notFound('Member not found');
       if (targetMembership.role === 'owner') return badRequest('Cannot remove organization owner');
+
+      // ── Долг нельзя удалить вместе с человеком ──
+      // Полное удаление стирало обе записи членства и не трогало счета вовсе.
+      // После этого долг продолжал считаться в «Дебиторской задолженности» и в
+      // «Должниках» (api-finance-metrics читает только счета, без джойна с
+      // членством), а сам человек исчезал из ростера, из списка учеников и из
+      // рисков. Директор видел сумму и не мог найти, чья она и как её закрыть.
+      //
+      // Поэтому спрашиваем: либо разберитесь со счетами, либо подтвердите
+      // удаление — тогда нетронутые счета списываются, как при выходе из группы.
+      // Оплаченные частично не трогаем никогда: за ними стоят настоящие деньги.
+      const plansSnap = await adminDb.collection('studentPaymentPlans')
+        .where('organizationId', '==', body.organizationId)
+        .where('studentId', '==', body.userId)
+        .get();
+      const debtPlans = plansSnap.docs.filter(d => isDebtBearingPlan(d.data()));
+      if (debtPlans.length > 0 && body.force !== true) {
+        const debtTotal = debtPlans.reduce((sum, d) => sum + planDebt(d.data()), 0);
+        return jsonResponse(409, {
+          error: `У этого участника есть неоплаченные счета: ${debtPlans.length} на сумму ${debtTotal}. `
+            + 'После удаления долг останется в отчётах, а закрыть его будет негде. '
+            + 'Примите оплату, спишите счета — или подтвердите удаление, и нетронутые счета спишутся автоматически.',
+          code: 'member_has_debt',
+          debtPlans: debtPlans.length,
+          debtTotal,
+        });
+      }
+      if (debtPlans.length > 0) {
+        const writeOff = adminDb.batch();
+        let cancelled = 0;
+        for (const d of debtPlans) {
+          if (!isUntouchedPlan(d.data())) continue;
+          writeOff.update(d.ref, { status: 'cancelled', updatedAt: now() });
+          cancelled++;
+        }
+        if (cancelled > 0) await writeOff.commit().catch(console.error);
+      }
 
       // Ставки закрываем ДО удаления членства: после него роль уже не прочитать,
       // а ставка осталась бы активной навсегда — её владельца больше нет ни в

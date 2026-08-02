@@ -462,7 +462,26 @@ const StudentsPage: React.FC = () => {
       toast.success(t('org.students.deleted', 'Студент полностью удален'));
       setStudents(prev => prev.filter(s => s.uid !== uid));
     } catch (err: any) {
-      toast.error(err.message || 'Error');
+      // 409 `member_has_debt` — не отказ, а вопрос: у студента остались
+      // неоплаченные счета. Удалить его молча нельзя — долг продолжит считаться
+      // в отчётах, а закрыть его будет негде. Спрашиваем, назвав сумму, и при
+      // подтверждении сервер сам спишет нетронутые счета.
+      if (err?.status === 409 && err?.code === 'member_has_debt') {
+        const proceed = window.confirm(
+          `${err.message}\n\n${t('org.students.confirmDeleteWithDebt', 'Удалить всё равно и списать нетронутые счета?')}`
+        );
+        if (proceed) {
+          try {
+            await apiDeleteMember(uid, organizationId, true);
+            toast.success(t('org.students.deleted', 'Студент полностью удален'));
+            setStudents(prev => prev.filter(s => s.uid !== uid));
+          } catch (e: any) {
+            toast.error(e?.message || 'Error');
+          }
+        }
+      } else {
+        toast.error(err.message || 'Error');
+      }
     } finally {
       setDeletingId(null);
     }

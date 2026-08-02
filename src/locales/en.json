@@ -898,7 +898,8 @@
       "enrollmentDate": "Enrollment date",
       "enrolledOn": "Enrolled",
       "editTitle": "Edit student",
-      "editDesc": "Update the student's details and save."
+      "editDesc": "Update the student's details and save.",
+      "confirmDeleteWithDebt": "Delete anyway and write off the untouched invoices?"
     },
     "teachers": {
       "total": "teachers",

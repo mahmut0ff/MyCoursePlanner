@@ -254,8 +254,13 @@ export const apiRemoveMember = (userId: string, organizationId: string) =>
   memberReq('remove', 'POST', { userId, organizationId });
 export const apiRestoreStudent = (userId: string, organizationId: string) =>
   memberReq('restore', 'POST', { userId, organizationId });
-export const apiDeleteMember = (userId: string, organizationId: string) =>
-  memberReq('delete', 'POST', { userId, organizationId });
+/**
+ * Полное удаление участника. `force` — подтверждение после 409 `member_has_debt`:
+ * у человека остались неоплаченные счета, и без подтверждения сервер удалять
+ * отказывается (иначе долг остаётся в отчётах, а закрыть его негде).
+ */
+export const apiDeleteMember = (userId: string, organizationId: string, force?: boolean) =>
+  memberReq('delete', 'POST', { userId, organizationId, ...(force ? { force: true } : {}) });
 export const apiChangeMemberRole = (userId: string, organizationId: string, newRole: string) =>
   memberReq('changeRole', 'POST', { userId, organizationId, newRole });
 /** Set a member's full role set (multi-role). `roles[0]` becomes the primary role. */

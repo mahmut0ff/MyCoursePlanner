@@ -19,7 +19,7 @@ import type { Handler, HandlerEvent } from '@netlify/functions';
 import { adminDb } from './utils/firebase-admin';
 import { verifyAuth, can, getOrgFilter, requireBranchScope, ok, unauthorized, forbidden, badRequest, jsonResponse } from './utils/auth';
 import { createNotification } from './utils/notifications';
-import { billingDeadlineISO, monthlyPlanId } from './utils/billing';
+import { billingDeadlineISO, monthlyPlanId, isAlreadyExists } from './utils/billing';
 
 const COLLECTION = 'studentPaymentPlans';
 const PERIOD_RE = /^\d{4}-\d{2}$/;
@@ -111,7 +111,7 @@ const handler: Handler = async (event: HandlerEvent) => {
       byCourse.set(c.courseId, list);
     }
 
-    const toCreate: Charge[] = [];
+    let toCreate: Charge[] = [];
     let skipped = 0;
     for (const [courseId, list] of byCourse) {
       const billedSnap = await adminDb.collection(COLLECTION)
@@ -138,6 +138,12 @@ const handler: Handler = async (event: HandlerEvent) => {
     // переходим к поштучной записи: реальный дубль пропускаем, остальные счёта
     // чанка обязаны быть выставлены.
     let raced = 0;
+    // Реально записанные начисления. Уведомлять и считать «начислено» можно
+    // ТОЛЬКО по ним: раньше при полном провале чанка toCreate оставался
+    // нетронутым, ответ рапортовал created = 30 при нуле созданных, а всем
+    // тридцати студентам уходило второе «Выставлен счёт за обучение» по счёту,
+    // который выставил параллельный менеджер.
+    const written: Charge[] = [];
     for (let i = 0; i < toCreate.length; i += CHUNK) {
       const slice = toCreate.slice(i, i + CHUNK);
       const docFor = (c: Charge) => ({
@@ -151,18 +157,26 @@ const handler: Handler = async (event: HandlerEvent) => {
       }
       try {
         await batch.commit();
+        written.push(...slice);
       } catch {
         for (const c of slice) {
           const { ref, data } = docFor(c);
           try {
             await ref.create(data);
-          } catch {
+            written.push(c);
+          } catch (e: any) {
+            // Дубль (ALREADY_EXISTS) — штатный исход гонки, его пропускаем.
+            // ЛЮБАЯ другая ошибка (нет связи, таймаут, отказ в правах) означает,
+            // что счёт не выставлен, и выдавать это за успех нельзя: менеджер
+            // увидит «Начислено» и больше к этому месяцу не вернётся.
+            if (!isAlreadyExists(e)) throw e;
             raced++;
             skipped++;
           }
         }
       }
     }
+    toCreate = written;
 
     // Тело документа начисления — одно на оба пути записи (батч и поштучный).
     function planDataFor(c: Charge) {
@@ -203,7 +217,7 @@ const handler: Handler = async (event: HandlerEvent) => {
       });
     }));
 
-    return ok({ success: true, period, created: toCreate.length, skipped });
+    return ok({ success: true, period, created: toCreate.length, skipped, raced });
   } catch (error: any) {
     console.error('Per-student billing error:', error);
     return jsonResponse(500, { error: error.message });

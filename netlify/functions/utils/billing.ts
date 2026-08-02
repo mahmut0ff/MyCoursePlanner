@@ -67,11 +67,38 @@ export function billingDeadlineISO(d: Date, dueDay = 10, now: Date = new Date())
   const year = d.getFullYear();
   const month = d.getMonth();
 
-  const candidate = endOfDueDay(year, month, dueDay);
+  // Сдвигаем, ПОКА срок не окажется в будущем, а не ровно на один месяц.
+  //
+  // Однократный сдвиг закрывал только начисление за текущий месяц. Но месяц в
+  // «Оплатах за месяц» переключается стрелками, и кнопка «Начислить за месяц»
+  // ими не ограничена: менеджер 3 августа возвращается на июнь, чтобы добить
+  // пропущенного студента, — кандидат 10.06 сдвигался на 10.07 и всё равно
+  // оставался в прошлом. Счёт снова рождался просроченным, студенту немедленно
+  // уходило «Оплатить до 10.07», и debt-reminders сразу считал его должником.
+  //
   // Сравниваем календарные ДНИ в зоне организации (UTC+6): функция выполняется
   // на Netlify в UTC, и сравнение моментов сдвигало бы границу суток на шесть
   // часов — ровно та ошибка, из-за которой существует orgDayKey.
-  if (candidate.toISOString().slice(0, 10) >= orgDayKey(now)) return candidate.toISOString();
+  const today = orgDayKey(now);
+  // Верхняя граница нужна только как страховка от бесконечного цикла на
+  // мусорной дате: 120 месяцев заведомо перекрывают любой реальный разрыв.
+  for (let shift = 0; shift < 120; shift++) {
+    const candidate = endOfDueDay(year, month + shift, dueDay);
+    if (candidate.toISOString().slice(0, 10) >= today) return candidate.toISOString();
+  }
+  return endOfDueDay(year, month + 120, dueDay).toISOString();
+}
 
-  return endOfDueDay(year, month + 1, dueDay).toISOString();
+/**
+ * Ошибка Firestore «документ уже существует» (gRPC ALREADY_EXISTS = 6).
+ *
+ * Нужна там, где запись идёт через `create` ради идемпотентности: дубль — это
+ * штатный исход гонки, а вот таймаут или отказ в правах означают, что счёт НЕ
+ * выставлен. Ловить их одним `catch {}` значило выдавать потерянные начисления
+ * за успешный прогон — крон помесячный, и вернуться к пропущенному месяцу уже
+ * нечем.
+ */
+export function isAlreadyExists(err: unknown): boolean {
+  const e = err as any;
+  return e?.code === 6 || e?.code === 'already-exists' || /already exists/i.test(String(e?.message || ''));
 }

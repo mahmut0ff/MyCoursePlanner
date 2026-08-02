@@ -20,7 +20,7 @@ import type { Handler, HandlerEvent } from '@netlify/functions';
 import { adminDb } from './utils/firebase-admin';
 import { createNotification } from './utils/notifications';
 import { jsonResponse } from './utils/auth';
-import { billingPeriodKey, billingDeadlineISO, monthlyPlanId } from './utils/billing';
+import { billingPeriodKey, billingDeadlineISO, monthlyPlanId, isAlreadyExists } from './utils/billing';
 import { cronAccessError } from './utils/cron-auth';
 
 const PLANS = 'studentPaymentPlans';
@@ -190,7 +190,14 @@ const handler: Handler = async (event: HandlerEvent) => {
                 updatedAt: ts,
               });
               written.push(studentId);
-            } catch { /* уже выставлен параллельным писателем */ }
+            } catch (e) {
+              // Дубль — штатный исход гонки. ЛЮБАЯ другая ошибка (contention,
+              // UNAVAILABLE, DEADLINE_EXCEEDED) означает, что счёт не выставлен;
+              // проглотить её здесь значило бы вернуть {success:true,
+              // coursesFailed:0} по курсу, который остался без начислений на
+              // целый месяц. Пробрасываем — пусть её посчитает per-course catch.
+              if (!isAlreadyExists(e)) throw e;
+            }
           }
           invoicesCreated += written.length;
           // Из списка на уведомление убираем тех, кому счёт не создавали.

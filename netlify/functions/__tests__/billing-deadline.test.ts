@@ -50,3 +50,24 @@ describe('billingPeriodKey', () => {
     expect(billingPeriodKey(new Date(2026, 11, 1))).toBe('2026-12');
   });
 });
+
+describe('billingDeadlineISO — разрыв больше одного месяца', () => {
+  const day = (iso: string) => iso.slice(0, 10);
+
+  it('начисление за ДАВНО прошедший период всё равно получает срок в будущем', () => {
+    // Менеджер 3 августа возвращается стрелками на июнь и добивает пропущенного
+    // студента. Однократный сдвиг дал бы 10.07 — тоже в прошлом.
+    const deadline = billingDeadlineISO(new Date(2026, 5, 1), 10, new Date('2026-08-03T09:00:00Z'));
+    expect(day(deadline)).toBe('2026-08-10');
+  });
+
+  it('разрыв в полгода тоже закрывается', () => {
+    const deadline = billingDeadlineISO(new Date(2026, 0, 1), 10, new Date('2026-08-03T09:00:00Z'));
+    expect(day(deadline)).toBe('2026-08-10');
+  });
+
+  it('если день срока текущего месяца уже прошёл — берётся следующий месяц', () => {
+    const deadline = billingDeadlineISO(new Date(2026, 7, 1), 10, new Date('2026-08-11T09:00:00Z'));
+    expect(day(deadline)).toBe('2026-09-10');
+  });
+});

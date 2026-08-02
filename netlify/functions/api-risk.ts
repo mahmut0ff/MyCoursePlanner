@@ -9,7 +9,7 @@ import type { Handler, HandlerEvent } from '@netlify/functions';
 import { adminDb, getDocsByIds } from './utils/firebase-admin';
 import {
   verifyAuth, ok, unauthorized, badRequest, forbidden, jsonResponse, isSuperAdmin,
-  resolveBranchFilter, memberInBranchScope, memberHoldsRole, recordInBranchScope,
+  isStaff, can, resolveBranchFilter, memberInBranchScope, memberHoldsRole, recordInBranchScope,
 } from './utils/auth';
 import { computeStudentRisk } from './utils/risk';
 import { isDebtBearingPlan, isPlanOverdue } from './utils/payment-plans';
@@ -35,6 +35,28 @@ export const handler: Handler = async (event: HandlerEvent) => {
   // caller-supplied orgId. Super admins keep cross-org reads (the same rule
   // getOrgFilter applies); everyone else is pinned to their own membership.
   if (!isSuperAdmin(user) && orgId !== user.organizationId) return forbidden();
+
+  // ── Совпадения организации НЕДОСТАТОЧНО ──
+  // Проверка выше закрыла чтение ЧУЖОЙ академии, но не чтение собственной кем
+  // угодно из неё. А отдаёт эндпоинт поимённый профиль КАЖДОГО активного
+  // ученика: имя, аватар, средний балл, посещаемость и признак просроченной
+  // оплаты. Ученик знает свой organizationId — он приходит в каждом ответе
+  // api-auth-check, — и одним GET получал список, кто из одноклассников не
+  // платит и у кого какие прогулы.
+  //
+  // Гейт тот же, что у любого другого чтения ростера: сотрудник + право на
+  // students. Соседние эндпоинты именно так и устроены (api-teacher-activity —
+  // teacher_activity:read, api-finance-metrics — finance_overview:read); здесь
+  // не было ни одного.
+  if (!isStaff(user)) return forbidden('Staff access required');
+  if (!can(user, 'students', 'read')) return forbidden('No access to students');
+
+  // Признак долга — финансовая величина, и видеть её должен тот, кому вообще
+  // показывают деньги. Преподавателю без доступа к финансам риск считается без
+  // этой составляющей: лучше профиль без денежной причины, чем денежная
+  // причина тому, кто не должен знать сумм. Ровно так же поступает
+  // api-finance-metrics с unassignedBranch* — поле остаётся, значение гасится.
+  const canSeeMoney = can(user, 'finances', 'read');
 
   // The client stamps the active branch onto this GET (api.ts BRANCH_SCOPED_ENDPOINTS).
   // This endpoint used to read only orgId and silently drop it, so picking a branch
@@ -91,7 +113,12 @@ export const handler: Handler = async (event: HandlerEvent) => {
       // по СРОКУ (isPlanOverdue ниже), а не по зафиксированному полю status. Оно
       // не снимается при продлении срока и не знает про филиал, из-за чего оплаченный
       // студент горел «Не оплачено». Equality-only — без составного индекса (CLAUDE.md).
-      adminDb.collection('studentPaymentPlans').where('organizationId', '==', orgId).get(),
+      // Читаем только если вызывающему вообще показывают деньги: у преподавателя
+      // без доступа к финансам признак долга всё равно будет погашен (canSeeMoney),
+      // и полное чтение коллекции счетов стало бы платой ни за что.
+      canSeeMoney
+        ? adminDb.collection('studentPaymentPlans').where('organizationId', '==', orgId).get()
+        : null,
     ]);
 
     const attemptsByStudent = new Map<string, any[]>();
@@ -117,7 +144,7 @@ export const handler: Handler = async (event: HandlerEvent) => {
     // общеорганизационным — оплаченный студент в чужом филиале попадал в должники.
     const nowForOverdue = new Date();
     const overdueStudents = new Set<string>();
-    plansSnap.docs.forEach(doc => {
+    (plansSnap?.docs || []).forEach(doc => {
       const plan = doc.data() as any;
       if (!plan.studentId) return;
       if (!recordInBranchScope(plan.branchId, branchScope)) return;
@@ -133,7 +160,7 @@ export const handler: Handler = async (event: HandlerEvent) => {
         enrolledAt: student.enrolledAt,
         attempts: attemptsByStudent.get(student.uid) || [],
         journal: journalByStudent.get(student.uid) || [],
-        hasOverduePayment: overdueStudents.has(student.uid),
+        hasOverduePayment: canSeeMoney && overdueStudents.has(student.uid),
         nowMs,
       });
 

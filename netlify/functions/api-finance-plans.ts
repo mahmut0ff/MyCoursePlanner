@@ -159,6 +159,11 @@ const handler: Handler = async (event: HandlerEvent) => {
       const branchError = requireBranchScope(user, branchId);
       if (branchError) return branchError;
 
+      // Полная (прайсовая) цена. Ниже суммы к оплате она смысла не имеет —
+      // тогда скидки просто нет и listAmount совпадает с totalAmount.
+      const listRaw = Number(body.listAmount);
+      const listAmount = Number.isFinite(listRaw) && listRaw > totalAmount ? listRaw : totalAmount;
+
       // Denormalize: resolve names at write time so future reads are instant
       let studentName = body.studentName || '';
       let courseName = body.courseName || '';
@@ -199,6 +204,13 @@ const handler: Handler = async (event: HandlerEvent) => {
         paidAmount,
         status, // 'paid' | 'partial' | 'overdue' | 'pending' | 'cancelled'
         deadline: body.deadline ?? null,
+        // Прайсовая цена — база, от которой считается скидка (planDiscount =
+        // listAmount − totalAmount). Ручной счёт её не нёс вообще, поэтому
+        // скидка по нему всегда выходила нулевой, даже когда менеджер
+        // сознательно выставлял сумму ниже цены курса. Правило то же, что в
+        // api-finance-billing: принимаем только СТРОГО большую сумму, иначе
+        // клиент мог бы нарисовать скидку из воздуха или отрицательную.
+        listAmount: listAmount,
         branchId,
         organizationId: orgFilter,
         createdAt: now,

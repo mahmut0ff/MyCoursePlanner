@@ -113,9 +113,21 @@ const CreatePaymentPlanModal: React.FC<Props> = ({ studentId, studentName, stude
         courseId: form.courseId,
         courseName: form.courseName || t('finances.noCourseName', 'Общий'),
         totalAmount: Number(form.totalAmount),
+        // Прайсовая цена курса — база для скидки. Без неё planDiscount по
+        // ручному счёту всегда 0, и «сколько недополучили» теряется навсегда:
+        // сумму-то менеджер уменьшил, а с чего именно — уже не восстановить.
+        // Сервер примет её, только если она выше суммы к оплате.
+        listAmount: hasPrice(selectedCourse) ? selectedCourse.price : undefined,
         paidAmount: 0,
         status: 'pending',
         deadline: form.deadline || null,
+        // Филиал НЕ проставляется перехватчиком: он штампует только GET-запросы
+        // (см. src/lib/api.ts). Без явной передачи счёт уходил в
+        // `user.primaryBranchId ?? null` — то есть у директора сети падал в
+        // «без филиала» и пропадал с экрана, с которого его только что
+        // выставили, а у сотрудника молча оседал в его домашнем филиале, а не
+        // в том, что выбран в переключателе.
+        branchId: activeBranchId,
       });
       toast.success(t('finances.planCreated', 'Счёт создан'));
       onSuccess();

@@ -2178,7 +2178,8 @@
     "openInFinances": "Open in Finances",
     "studentOutOfScope": "Student outside the current view",
     "overpayBlocked": "Cannot accept more than the remaining {{debt}}. If the student paid ahead, take the remainder here and the surplus as a separate payment against next month's invoice.",
-    "fromPayroll": "Payroll payout — edit it in the Salary section"
+    "fromPayroll": "Payroll payout — edit it in the Salary section",
+    "deleteRefundWarning": "This is a refund against a student invoice. Deleting it also reverses the write-back: the amount returns to «paid» and the student's debt drops by {{amount}}."
   },
   "telegram": {
     "title": "Telegram Notifications",

@@ -46,6 +46,11 @@ const emptyForm = {
   categoryId: 'other',
   description: '',
   date: new Date().toISOString().slice(0, 10),
+  // День операции на момент открытия формы. Нужен, чтобы при сохранении
+  // отличить «дату поменяли» от «дату не трогали»: сервер валидирует любую
+  // ПРИШЕДШУЮ дату окном в 60 дней, и безусловная отправка делала старый расход
+  // нередактируемым вообще.
+  originalDate: '',
   paymentMethod: 'cash',
   courseId: '',
 };
@@ -155,12 +160,14 @@ const ExpensesTab: React.FC<Props> = ({ range, onRangeChange, filters, onFilters
   };
 
   const openEdit = (tx: any) => {
+    const day = (tx.date || '').slice(0, 10) || new Date().toISOString().slice(0, 10);
     setForm({
       id: tx.id,
       amount: String(tx.amount ?? ''),
       categoryId: tx.categoryId || 'other',
       description: tx.description || '',
-      date: (tx.date || '').slice(0, 10) || new Date().toISOString().slice(0, 10),
+      date: day,
+      originalDate: day,
       paymentMethod: tx.paymentMethod || 'cash',
       courseId: tx.courseId || '',
     });
@@ -192,9 +199,20 @@ const ExpensesTab: React.FC<Props> = ({ range, onRangeChange, filters, onFilters
         courseId: form.courseId,
       };
       if (editing) {
-        // Филиал при правке НЕ трогаем: операция уже отнесена к филиалу, и
-        // переключатель в сайдбаре не повод её перевешивать.
-        await apiUpdateTransaction({ id: form.id, ...payload });
+        // Дату отправляем ТОЛЬКО если её действительно меняли.
+        //
+        // Сервер валидирует любую пришедшую дату окном «не в будущем и не глубже
+        // 60 дней» (validateOperationDay), а форма слала её всегда — включая
+        // случай, когда правили одно описание. Поэтому расход старше двух
+        // месяцев не редактировался в принципе: приходил отказ про дату, которую
+        // никто не трогал, и понять его было невозможно.
+        //
+        // Сравниваем по КАЛЕНДАРНОМУ ДНЮ: в форме поле — YYYY-MM-DD, а в базе
+        // полный ISO, и посимвольное сравнение объявляло бы изменением каждое
+        // открытие окна.
+        const dateChanged = form.date !== form.originalDate;
+        const { date, ...rest } = payload;
+        await apiUpdateTransaction({ id: form.id, ...rest, ...(dateChanged ? { date } : {}) });
         toast.success(t('finances.expenseUpdated', 'Расход обновлён'));
       } else {
         // Перехватчик в src/lib/api.ts штампует филиал только на GET, поэтому
@@ -592,6 +610,19 @@ const ExpensesTab: React.FC<Props> = ({ range, onRangeChange, filters, onFilters
                 <b>{getCategoryLabel(deleteTarget.categoryId, t)} · {formatMoney(deleteTarget.amount)}</b>
                 {deleteTarget.description ? ` — ${deleteTarget.description}` : ''}
               </>
+            )}
+            {/* Удаление возврата — не только строка в отчёте: сервер возвращает
+                сумму обратно в «оплачено» по счёту, то есть меняет ДОЛГ студента.
+                Диалог, обещающий лишь «перестанет учитываться в отчётах», об
+                этом молчал, и менеджер узнавал о смене долга постфактум. */}
+            {deleteTarget && isRefund(deleteTarget) && (
+              <span className="block mt-2 text-amber-700 dark:text-amber-400">
+                {t(
+                  'finances.deleteRefundWarning',
+                  'Это возврат по счёту студента. Вместе с ним отменится и списание: сумма вернётся в «оплачено», и долг студента уменьшится на {{amount}}.',
+                  { amount: formatMoney(deleteTarget.amount) }
+                )}
+              </span>
             )}
           </span>
         }

@@ -331,6 +331,14 @@ const handler: Handler = async (event: HandlerEvent) => {
       const orgFilter = getOrgFilter(user);
       if (doc.data()?.organizationId !== orgFilter) return forbidden();
 
+      // Филиал проверяем по СОХРАНЁННОМУ значению — ровно как PUT выше. Без
+      // этого удаление было единственной мутацией счёта, обходящей филиальный
+      // контур: сотрудник, ограниченный филиалом А, не мог ни увидеть, ни
+      // отредактировать счёт филиала Б, но мог удалить его по угаданному id —
+      // а удаление необратимо и уносит с собой связь с уже принятыми оплатами.
+      const planBranchError = requireBranchScope(user, doc.data()?.branchId);
+      if (planBranchError) return planBranchError;
+
       // Deleting the plan orphans its transactions (dangling paymentPlanId), and an
       // orphaned payment can no longer be refunded or traced back to a debt. Make the
       // caller acknowledge that instead of silently shredding the audit trail.

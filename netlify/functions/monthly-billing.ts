@@ -45,6 +45,21 @@ const handler: Handler = async (event: HandlerEvent) => {
     let coursesProcessed = 0;
     let invoicesCreated = 0;
     let studentsBilled = 0;
+    let coursesFailed = 0;
+    let skippedExpelled = 0;
+
+    // Активные участники организации — по ним отсеиваем отчисленных. Читаем один
+    // раз на организацию за прогон: курсов у неё много, а членство одно.
+    const activeStudentsByOrg = new Map<string, Set<string>>();
+    const loadActiveStudents = async (orgId: string): Promise<Set<string>> => {
+      const cached = activeStudentsByOrg.get(orgId);
+      if (cached) return cached;
+      const snap = await adminDb.collection('orgMembers').doc(orgId).collection('members')
+        .where('status', '==', 'active').get();
+      const ids = new Set<string>(snap.docs.map(d => (d.data() as any).userId || d.id));
+      activeStudentsByOrg.set(orgId, ids);
+      return ids;
+    };
 
     for (const courseDoc of courseSnap.docs) {
       const course = courseDoc.data() as any;
@@ -55,6 +70,12 @@ const handler: Handler = async (event: HandlerEvent) => {
 
       const courseId = courseDoc.id;
       const orgId = course.organizationId;
+
+      // Падение на одном курсе не должно уносить весь прогон. Раньше весь цикл
+      // стоял под общим try: первая же ошибка (нет прав на документ, таймаут,
+      // битые данные) обрывала месяц, а крон запускается РАЗ В МЕСЯЦ — догнать
+      // пропущенное было уже нечем, и часть академии оставалась без счетов молча.
+      try {
 
       // Active students = union of studentIds across the course's groups.
       const groupSnap = await adminDb.collection('groups')
@@ -67,11 +88,27 @@ const handler: Handler = async (event: HandlerEvent) => {
       const studentIds = new Set<string>();
       const studentBranch = new Map<string, string>();
       for (const g of groupSnap.docs) {
-        const gBranchId = g.data().branchId || null;
-        for (const sid of (g.data().studentIds || [])) {
+        const gData = g.data() as any;
+        // Только ЖИВЫЕ группы. Курс может годами оставаться опубликованным с
+        // ценой, а группа при этом закрыта ещё весной — и счета продолжали
+        // выставляться людям, которые давно не учатся. Пустой status считаем
+        // активным: у легаси-групп поля нет, и белый список стёр бы их все.
+        if (gData.status && gData.status !== 'active') continue;
+        const gBranchId = gData.branchId || null;
+        for (const sid of (gData.studentIds || [])) {
           studentIds.add(sid);
           if (gBranchId && !studentBranch.has(sid)) studentBranch.set(sid, gBranchId);
         }
+      }
+      if (studentIds.size === 0) continue;
+
+      // Отчисленных не выставляем. Список группы их не теряет (сама группа —
+      // это состав, а не статус), поэтому крон продолжал начислять человеку,
+      // который ушёл: счёт уходил в долг организации, студенту летели
+      // напоминания, а на «Оплатах за месяц» строки не было вовсе.
+      const activeStudents = await loadActiveStudents(orgId);
+      for (const sid of [...studentIds]) {
+        if (!activeStudents.has(sid)) { studentIds.delete(sid); skippedExpelled++; }
       }
       if (studentIds.size === 0) continue;
 
@@ -134,9 +171,20 @@ const handler: Handler = async (event: HandlerEvent) => {
           metadata: { courseId, period },
         })
       ));
+
+      } catch (courseError: any) {
+        // Логируем и идём дальше: остальные курсы и организации обязаны получить
+        // свои счета. Число попавших сюда возвращаем в ответе, чтобы прогон с
+        // частичным провалом нельзя было принять за успешный.
+        coursesFailed++;
+        console.error(`Monthly billing failed for course ${courseId} (org ${orgId}):`, courseError);
+      }
     }
 
-    return jsonResponse(200, { success: true, period, coursesProcessed, studentsBilled, invoicesCreated });
+    return jsonResponse(200, {
+      success: true, period, coursesProcessed, studentsBilled, invoicesCreated,
+      coursesFailed, skippedExpelled,
+    });
   } catch (error: any) {
     console.error('Monthly billing error:', error);
     return jsonResponse(500, { error: error.message });

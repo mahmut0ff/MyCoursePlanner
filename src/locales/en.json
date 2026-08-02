@@ -2102,7 +2102,7 @@
     "expenseByCategory": "Expenses by category",
     "expenseByCategoryHint": "Where the money went in the selected period",
     "courseProfit": "Course profitability",
-    "courseProfitCaveat": "Gross margin: only expenses linked to a course are counted. Teacher payroll is not allocated across courses.",
+    "courseProfitCaveat": "Gross margin: only expenses attributed to a course are counted. Teacher salaries are not distributed across courses — they sit entirely in «Расходы без курса» below.",
     "noCourseData": "No course data",
     "noCourseDataHint": "Courses will show up here once they have payments or expenses.",
     "net": "Net",

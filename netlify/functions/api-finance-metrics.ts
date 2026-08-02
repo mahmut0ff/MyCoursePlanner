@@ -9,6 +9,13 @@ import { batchGetCourseNames } from './utils/finance-names';
 import { resolveRange, getPreviousRange } from './utils/finance-period';
 import { isDebtBearingPlan, planDebt, isPlanOverdue } from './utils/payment-plans';
 
+/**
+ * Категория расхода, которой помечаются выплаты зарплаты (api-payroll пишет её
+ * же). Прибыльность курсов такие расходы по курсам не разносит — см. развёрнутое
+ * объяснение в цикле ниже.
+ */
+const SALARY_CATEGORY = 'salary';
+
 /** Sort a {amount} bucket map into a desc-by-amount array. */
 function toSortedBuckets<K extends string>(
   map: Map<string, { amount: number; count: number }>,
@@ -159,14 +166,34 @@ const handler: Handler = async (event: HandlerEvent) => {
 
         if (data.type === 'expense') {
           totalExpense += amount;
-          if (!data.courseId) unattributedExpense += amount;
 
           const cat = data.categoryId || 'unknown';
           const c = expenseByCategoryMap.get(cat) || { amount: 0, count: 0 };
           c.amount += amount; c.count++;
           expenseByCategoryMap.set(cat, c);
 
-          courseBucket(data.courseId || 'general').expense += amount;
+          // ── Зарплата НЕ разносится по курсам ──
+          // Ровно это обещает подпись под таблицей «Прибыльность курсов»:
+          // «Валовая маржа: учтены только расходы, привязанные к курсу.
+          // Зарплаты преподавателей по курсам не распределяются». Обещание было
+          // ложным на двух путях: ставка со scope из одного курса отдаёт этот
+          // courseId выплате (deriveScopeAttribution), а ручной расход категории
+          // «Зарплата» можно привязать к курсу прямо в форме.
+          //
+          // Итог хуже, чем просто неточная подпись: курсы становились
+          // НЕСОПОСТАВИМЫМИ между собой. У курса, где ставка настроена на один
+          // курс, маржа падала на всю зарплату; у соседнего, где та же ставка
+          // покрывает два курса, — не падала вовсе. Директор сравнивал числа,
+          // которые считаются по разным правилам.
+          //
+          // Правило одно и оно совпадает с подписью: зарплата в бакет курса не
+          // идёт, а попадает в «Без курса» и в «Расходы без курса» — там её
+          // видно, и общая прибыль от этого не меняется.
+          const isSalary = cat === SALARY_CATEGORY;
+          const bucketCourseId = isSalary ? 'general' : (data.courseId || 'general');
+          if (isSalary || !data.courseId) unattributedExpense += amount;
+
+          courseBucket(bucketCourseId).expense += amount;
         }
 
         const dateKey = date.slice(0, 10); // YYYY-MM-DD

@@ -38,6 +38,7 @@ import {
   type FinanceTxLike,
   type LessonSessionLike,
 } from './utils/payroll-engine';
+import { cronAccessError } from './utils/cron-auth';
 
 const RULES = 'compensationRules';
 const PERIODS = 'payrollPeriods';
@@ -63,6 +64,11 @@ function fmtMinor(minor: number): string {
 
 const handler: Handler = async (event: HandlerEvent) => {
   if (event.httpMethod === 'OPTIONS') return jsonResponse(204, '');
+
+  // Публичный HTTP-адрес есть и у запланированной функции: без этой проверки
+  // прогон мог запустить кто угодно и сколько угодно раз.
+  const cronDenied = await cronAccessError(event);
+  if (cronDenied) return cronDenied;
 
   const runDate = new Date();
   // Период считается ОДИН раз на весь прогон: если функция перевалит полночь

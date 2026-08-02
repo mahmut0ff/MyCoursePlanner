@@ -29,6 +29,7 @@ import {
   orgDayKey,
 } from './utils/payment-plans';
 import { derivePlanStatus } from './utils/finance-names';
+import { cronAccessError } from './utils/cron-auth';
 
 const COLLECTION = 'studentPaymentPlans';
 // Remind the student this many days BEFORE the deadline (0 = on the day).
@@ -42,6 +43,11 @@ function fmtAmount(n: number): string {
 
 const handler: Handler = async (event: HandlerEvent) => {
   if (event.httpMethod === 'OPTIONS') return jsonResponse(204, '');
+
+  // Публичный HTTP-адрес есть и у запланированной функции: без этой проверки
+  // прогон мог запустить кто угодно и сколько угодно раз.
+  const cronDenied = await cronAccessError(event);
+  if (cronDenied) return cronDenied;
 
   const now = new Date();
   // День организации, а не UTC: ключ идемпотентности («одно напоминание в день»)

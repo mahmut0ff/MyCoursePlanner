@@ -21,6 +21,7 @@ import { adminDb } from './utils/firebase-admin';
 import { createNotification } from './utils/notifications';
 import { jsonResponse } from './utils/auth';
 import { billingPeriodKey, billingDeadlineISO, monthlyPlanId } from './utils/billing';
+import { cronAccessError } from './utils/cron-auth';
 
 const PLANS = 'studentPaymentPlans';
 
@@ -30,6 +31,11 @@ function fmtAmount(n: number): string {
 
 const handler: Handler = async (event: HandlerEvent) => {
   if (event.httpMethod === 'OPTIONS') return jsonResponse(204, '');
+
+  // Публичный HTTP-адрес есть и у запланированной функции: без этой проверки
+  // прогон мог запустить кто угодно и сколько угодно раз.
+  const cronDenied = await cronAccessError(event);
+  if (cronDenied) return cronDenied;
 
   const runDate = new Date();
   const period = billingPeriodKey(runDate);

@@ -572,6 +572,19 @@ const handler: Handler = async (event: HandlerEvent) => {
       const payrollLock = payrollManagedError(existing);
       if (payrollLock) return payrollLock;
 
+      // ── База процента защищена не только от переноса ДАТЫ ──
+      // Ниже проверяется, не уводит ли правка дату внутрь закрытой ведомости.
+      // Но процент считается от СУММЫ дохода, а не от факта его существования:
+      // изменить сумму платежа, УЖЕ попавшего в замороженное окно, — это ровно
+      // тот же ущерб. Пересчитать закрытую ведомость нельзя, поэтому
+      // преподаватель молча получит процент от суммы, которой больше нет.
+      // Правка прочих полей (описание, курс, способ оплаты) базу не трогает и
+      // остаётся разрешённой.
+      if (existing.type === 'income' && body.amount !== undefined && Number(body.amount) !== Number(existing.amount)) {
+        const frozenByAmount = await findFrozenPayrollPeriod(existing.organizationId, [existing.date]);
+        if (frozenByAmount) return frozenPayrollError(frozenByAmount);
+      }
+
       if (body.date !== undefined) {
         const putDateError = validateOperationDay(body.date);
         if (putDateError) return badRequest(putDateError);
@@ -661,6 +674,13 @@ const handler: Handler = async (event: HandlerEvent) => {
 
       const deletePayrollLock = payrollManagedError(existing);
       if (deletePayrollLock) return deletePayrollLock;
+
+      // Удаление дохода из закрытого окна — та же потеря базы процента, что и
+      // правка его суммы, только полная. Отказываем по тому же правилу.
+      if (existing.type === 'income') {
+        const frozenByDelete = await findFrozenPayrollPeriod(existing.organizationId, [existing.date]);
+        if (frozenByDelete) return frozenPayrollError(frozenByDelete);
+      }
 
       // Reverse payment plan if linked. Направление зависит от типа: удаление
       // оплаты снимает сумму с оплаченного, удаление возврата — возвращает её.

@@ -889,17 +889,37 @@ describe('api-finance-transactions — дата операции и заморо
     expect(updates).toHaveLength(0);
   });
 
-  it('PUT не читает периоды, когда дату не меняют или строка не доход', async () => {
+  it('PUT не читает периоды, когда ни дата, ни сумма не меняются', async () => {
     (verifyAuth as any).mockResolvedValue(staff(['finances:write']));
-    const noDate = wireUpdate(storedIncome(), [approvedPeriod()]);
-    expect((await put({ id: 'tx1', amount: 700 })).statusCode).toBe(200);
-    expect(noDate.payrollClauses).toHaveLength(0);
+    const descOnly = wireUpdate(storedIncome(), [approvedPeriod()]);
+    expect((await put({ id: 'tx1', description: 'уточнили назначение' })).statusCode).toBe(200);
+    expect(descOnly.payrollClauses).toHaveLength(0);
 
     vi.clearAllMocks();
     (verifyAuth as any).mockResolvedValue(staff(['finances:write']));
     const refund = wireUpdate(storedIncome({ type: 'expense' }), [approvedPeriod()]);
     expect((await put({ id: 'tx1', date: dayShift(-10) })).statusCode).toBe(200);
     expect(refund.payrollClauses).toHaveLength(0);
+  });
+
+  it('не даёт изменить СУММУ дохода, уже попавшего в закрытую ведомость', async () => {
+    // Процент считается от суммы, а не от факта существования платежа. Правка
+    // суммы внутри замороженного окна — та же потеря базы, что и перенос даты:
+    // пересчитать закрытую ведомость нельзя, преподаватель молча недополучит.
+    (verifyAuth as any).mockResolvedValue(staff(['finances:write']));
+    const { updates } = wireUpdate(storedIncome({ date: dayShift(-10) }), [approvedPeriod()]);
+    const res = await put({ id: 'tx1', amount: 700 });
+    expect(res.statusCode).toBe(409);
+    expect(JSON.parse(res.body).code).toBe('payroll_period_frozen');
+    expect(updates).toHaveLength(0);
+  });
+
+  it('сумму дохода ВНЕ закрытого окна править можно', async () => {
+    (verifyAuth as any).mockResolvedValue(staff(['finances:write']));
+    // Дата операции — сегодня, закрытая ведомость её окном не накрывает.
+    const { updates } = wireUpdate(storedIncome(), [approvedPeriod()]);
+    expect((await put({ id: 'tx1', amount: 700 })).statusCode).toBe(200);
+    expect(updates).toHaveLength(1);
   });
 });
 

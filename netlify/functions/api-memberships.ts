@@ -16,6 +16,7 @@ import type { Handler, HandlerEvent } from '@netlify/functions';
 import { adminDb, getDocsByIds } from './utils/firebase-admin';
 import { verifyAuth, isSuperAdmin, getMembershipData, ok, unauthorized, forbidden, badRequest, notFound, jsonResponse } from './utils/auth';
 import { notifyOrgAdmins } from './utils/notifications';
+import { orgDayKey } from './utils/payment-plans';
 
 const now = () => new Date().toISOString();
 
@@ -252,6 +253,43 @@ const handler: Handler = async (event: HandlerEvent) => {
     }
 
     // ═══ POST: Remove member ═══
+    /**
+     * Закрывает действующие ставки преподавателя, покидающего организацию.
+     *
+     * Строки ведомости строятся ИЗ СТАВОК (payroll-engine смотрит только на
+     * rule.status и окно effectiveFrom/effectiveTo), а членство используется там
+     * лишь для диагностики «нет ставки». Поэтому увольнение не влияло на
+     * зарплату вообще: ставка «оклад 30 000» с открытым effectiveTo оставалась
+     * активной, и 1-го числа крон payroll-accrual создавал ведомость со строкой
+     * уволенного — с его именем (users-док никуда не делся) и полной суммой.
+     * Директор утверждал ведомость и выплачивал деньги человеку, который здесь
+     * больше не работает.
+     *
+     * Закрываем ТЕКУЩИМ месяцем, а не архивируем: ведомости прошлых месяцев
+     * должны пересчитываться по тем ставкам, что действовали тогда, а месяц
+     * увольнения человек отработал хотя бы частично. Прекращаются только
+     * будущие начисления.
+     */
+    async function closeTeacherRules(organizationId: string, userId: string, roles: string[]): Promise<number> {
+      if (!roles.some(r => r === 'teacher' || r === 'mentor')) return 0;
+      const month = orgDayKey().slice(0, 7); // 'YYYY-MM' в дне организации
+      // Только равенства — составной индекс не нужен (CLAUDE.md).
+      const snap = await adminDb.collection('compensationRules')
+        .where('organizationId', '==', organizationId)
+        .where('teacherId', '==', userId)
+        .where('status', '==', 'active')
+        .get();
+      const open = snap.docs.filter(d => {
+        const to = (d.data() as any).effectiveTo;
+        return !to || to > month;
+      });
+      if (open.length === 0) return 0;
+      const batch = adminDb.batch();
+      for (const d of open) batch.update(d.ref, { effectiveTo: month, updatedAt: now() });
+      await batch.commit();
+      return open.length;
+    }
+
     if (event.httpMethod === 'POST' && action === 'remove') {
       const body = JSON.parse(event.body || '{}');
       if (!body.userId || !body.organizationId) return badRequest('userId and organizationId required');
@@ -272,7 +310,12 @@ const handler: Handler = async (event: HandlerEvent) => {
       await adminDb.collection('orgMembers').doc(body.organizationId)
         .collection('members').doc(body.userId).update(update);
 
-      return ok({ removed: true });
+      const rulesClosed = await closeTeacherRules(
+        body.organizationId, body.userId,
+        [targetMembership.role, ...(targetMembership.roles || [])].filter(Boolean),
+      ).catch(() => 0);
+
+      return ok({ removed: true, rulesClosed });
     }
 
     // ═══ POST: Restore an expelled student ═══
@@ -315,12 +358,20 @@ const handler: Handler = async (event: HandlerEvent) => {
       if (!targetMembership) return notFound('Member not found');
       if (targetMembership.role === 'owner') return badRequest('Cannot remove organization owner');
 
+      // Ставки закрываем ДО удаления членства: после него роль уже не прочитать,
+      // а ставка осталась бы активной навсегда — её владельца больше нет ни в
+      // одном списке, и заметить строку в ведомости было бы неоткуда.
+      const rulesClosed = await closeTeacherRules(
+        body.organizationId, body.userId,
+        [targetMembership.role, ...(targetMembership.roles || [])].filter(Boolean),
+      ).catch(() => 0);
+
       await adminDb.collection('users').doc(body.userId)
         .collection('memberships').doc(body.organizationId).delete();
       await adminDb.collection('orgMembers').doc(body.organizationId)
         .collection('members').doc(body.userId).delete();
 
-      return ok({ deleted: true });
+      return ok({ deleted: true, rulesClosed });
     }
 
     // ═══ POST: Change role (single legacy `newRole`, or multi-role `roles[]`) ═══

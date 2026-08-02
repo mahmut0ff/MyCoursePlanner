@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { planProgressKey, isPlanOverdue } from '../payment-plans';
+import { planProgressKey, isPlanOverdue, isDebtBearingPlan } from '../payment-plans';
 
 // Фиксированное «сегодня», чтобы просрочка была детерминированной.
 const NOW = new Date('2026-07-28T12:00:00Z');
@@ -53,5 +53,30 @@ describe('planProgressKey — бейдж = только прогресс опл�
   it('легаси-план без суммы месяца не выдаётся за «Оплачено» после первого платежа', () => {
     expect(planProgressKey({ paidAmount: 2000, status: 'partial', deadline: past })).toBe('partial');
     expect(planProgressKey({ paidAmount: 0, status: 'pending' })).toBe('pending');
+  });
+});
+
+describe('счёт с нулевой суммой к оплате', () => {
+  // Ноль ставят осознанно: стипендия 100% или обнуление ошибочного начисления.
+  // Платить по такому счёту нечего, и долга по нему нет — значит он закрыт.
+  const freeplan = { totalAmount: 0, paidAmount: 0, status: 'pending', deadline: '2020-01-01' };
+
+  it('показывается «Оплачено», а не вечное «Ожидает»', () => {
+    expect(planProgressKey(freeplan)).toBe('paid');
+  });
+
+  it('не считается просроченным, хотя срок давно в прошлом', () => {
+    expect(isPlanOverdue(freeplan, new Date('2026-08-02T09:00:00Z'))).toBe(false);
+  });
+
+  it('долга по нему нет', () => {
+    expect(isDebtBearingPlan(freeplan)).toBe(false);
+  });
+
+  // Легаси-счёт БЕЗ суммы — это не ноль: сумма неизвестна, и «оплачен» он быть
+  // не может, иначе первый же платёж закрывал бы неизвестный итог.
+  it('счёт без суммы по-прежнему не считается оплаченным', () => {
+    expect(planProgressKey({ paidAmount: 0, status: 'pending' })).toBe('pending');
+    expect(planProgressKey({ paidAmount: 500, status: 'pending' })).toBe('partial');
   });
 });

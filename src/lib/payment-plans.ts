@@ -106,6 +106,19 @@ export function isUntouchedPlan(plan: any): boolean {
 export function planProgressKey(plan: any): 'pending' | 'partial' | 'paid' | 'cancelled' {
   if (isWrittenOffPlan(plan)) return 'cancelled';
   const total = Number(plan?.totalAmount);
+  // Сумма к оплате РОВНО НОЛЬ — это закрытый счёт, а не «легаси без суммы».
+  //
+  // Ноль ставят осознанно: стипендия 100%, обнуление ошибочного начисления. По
+  // такому счёту платить нечего, и долга по нему нет ни в одном агрегаторе. Но
+  // условие `total > 0` относило его к неизвестной сумме, и он навсегда
+  // оставался «Ожидает» — с красной меткой «срок прошёл» рядом, потому что
+  // дедлайн у него, разумеется, в прошлом. Закрыть его было нечем: платить
+  // нечего, а «оплачено полностью» требует хотя бы одного платежа.
+  //
+  // Отличаем ноль от отсутствия суммы: Number(undefined) даёт NaN, Number(null)
+  // и Number('') дают 0, поэтому проверяем и исходное значение на пустоту.
+  const amountRecorded = plan?.totalAmount !== undefined && plan?.totalAmount !== null && plan?.totalAmount !== '';
+  if (amountRecorded && Number.isFinite(total) && total === 0) return 'paid';
   const totalKnown = Number.isFinite(total) && total > 0;
   if (totalKnown && !isDebtBearingPlan(plan)) return 'paid';
   return Number(plan?.paidAmount) > 0 ? 'partial' : 'pending';
@@ -234,6 +247,10 @@ export function planPeriodKey(plan: any): string | null {
  */
 export function isPlanOverdue(plan: any, now: Date = new Date()): boolean {
   if (!plan) return false;
+  // Просрочка — это про деньги, которых ждут. По счёту с нулевой суммой к оплате
+  // не ждут ничего, поэтому «срок прошёл» на нём — ложная тревога: метка висела
+  // вечно, снять её было нечем, и она красила в красное счёт без долга.
+  if (planProgressKey(plan) === 'paid') return false;
   // Погашенный или списанный счёт просроченным не бывает: просрочка — это про
   // деньги, которых ждут. Без этой проверки «просроченным» становился ЛЮБОЙ
   // оплаченный счёт, ведь его срок по определению уже в прошлом — карточка

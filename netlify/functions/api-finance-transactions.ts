@@ -113,6 +113,36 @@ async function findFrozenPayrollPeriod(orgId: string, dates: unknown[]): Promise
  * не сможет. `code` даёт интерфейсу возможность показать это как отдельный
  * случай, а не как безымянную ошибку сети.
  */
+/**
+ * 409 на правку или удаление расхода, ПОРОЖДЁННОГО выплатой зарплаты.
+ *
+ * Такие расходы создаёт ветка pay в api-payroll с детерминированным id
+ * payoutTxId(periodId, lineId) и ключами идемпотентности payrollPeriodId /
+ * payrollLineId. На вкладке «Расходы» они выглядели обычными строками: гейт
+ * стоял только на finances write/delete, про зарплату сервер не спрашивал.
+ *
+ * Последствия необратимы ровно из-за идемпотентности. Стоило поменять категорию,
+ * сумму или удалить строку — и «Выдано» в зарплатном балансе навсегда
+ * расходилось с закрытой ведомостью: повторно «Выплатить» уже нельзя (и
+ * alreadyPaid, и t.create по тому же id отвергнут запись), а восстановить расход
+ * из интерфейса зарплаты нечем. Кассир без доступа к модулю зарплат при этом
+ * ломал именно зарплатные данные.
+ *
+ * Правка таких сумм — операция раздела «Зарплата», а не кассы.
+ */
+function payrollManagedError(existing: FirebaseFirestore.DocumentData) {
+  if (!existing.payrollPeriodId && !existing.payrollLineId) return null;
+  return jsonResponse(409, {
+    error:
+      'Это выплата по зарплатной ведомости, а не обычный расход. Изменить или удалить её ' +
+      'здесь нельзя: повторно провести выплату модуль зарплаты уже не даст, и «Выдано» ' +
+      'навсегда разойдётся с ведомостью. Работайте с ней в разделе «Зарплата».',
+    code: 'payroll_managed_transaction',
+    payrollPeriodId: existing.payrollPeriodId ?? null,
+    payrollLineId: existing.payrollLineId ?? null,
+  });
+}
+
 function frozenPayrollError(hit: FrozenPeriodHit) {
   const verb = hit.state === 'paid' ? 'выплачена' : 'утверждена';
   return jsonResponse(409, {
@@ -520,6 +550,9 @@ const handler: Handler = async (event: HandlerEvent) => {
       const putBranchError = requireBranchScope(user, existing.branchId);
       if (putBranchError) return putBranchError;
 
+      const payrollLock = payrollManagedError(existing);
+      if (payrollLock) return payrollLock;
+
       if (body.date !== undefined) {
         const putDateError = validateOperationDay(body.date);
         if (putDateError) return badRequest(putDateError);
@@ -606,6 +639,9 @@ const handler: Handler = async (event: HandlerEvent) => {
       // чужих денег, причём необратимая.
       const deleteBranchError = requireBranchScope(user, existing.branchId);
       if (deleteBranchError) return deleteBranchError;
+
+      const deletePayrollLock = payrollManagedError(existing);
+      if (deletePayrollLock) return deletePayrollLock;
 
       // Reverse payment plan if linked. Направление зависит от типа: удаление
       // оплаты снимает сумму с оплаченного, удаление возврата — возвращает её.

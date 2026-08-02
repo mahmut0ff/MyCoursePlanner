@@ -2177,7 +2177,8 @@
     "writtenOffHint": "This invoice is written off — the academy no longer expects the money.",
     "openInFinances": "Open in Finances",
     "studentOutOfScope": "Student outside the current view",
-    "overpayBlocked": "Cannot accept more than the remaining {{debt}}. If the student paid ahead, take the remainder here and the surplus as a separate payment against next month's invoice."
+    "overpayBlocked": "Cannot accept more than the remaining {{debt}}. If the student paid ahead, take the remainder here and the surplus as a separate payment against next month's invoice.",
+    "fromPayroll": "Payroll payout — edit it in the Salary section"
   },
   "telegram": {
     "title": "Telegram Notifications",

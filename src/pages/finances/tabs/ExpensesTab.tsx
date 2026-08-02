@@ -57,6 +57,14 @@ type ExpenseForm = typeof emptyForm;
 // разошлась бы со счётом, который её породил.
 const isRefund = (tx: any): boolean => tx?.categoryId === 'refund' || !!tx?.paymentPlanId;
 
+/**
+ * Расход, порождённый выплатой зарплатной ведомости. Его нельзя ни править, ни
+ * удалять из кассы: у выплаты детерминированный id и ключи идемпотентности,
+ * поэтому восстановить её модуль зарплаты уже не сможет, а «Выдано» в
+ * зарплатном балансе навсегда разойдётся с ведомостью. Сервер отвечает 409.
+ */
+const isPayrollManaged = (tx: any): boolean => !!tx?.payrollPeriodId || !!tx?.payrollLineId;
+
 const ExpensesTab: React.FC<Props> = ({ range, onRangeChange, filters, onFiltersChange }) => {
   const { t } = useTranslation();
   const { activeBranchId } = useBranch();
@@ -248,6 +256,11 @@ const ExpensesTab: React.FC<Props> = ({ range, onRangeChange, filters, onFilters
 
   const buildRowMenu = (tx: any): RowMenuItem[] => {
     const items: RowMenuItem[] = [];
+    // Выплата по зарплатной ведомости — не касса, а закрытый документ раздела
+    // «Зарплата». Сервер отвечает на её правку и удаление 409, поэтому и пунктов
+    // меню быть не должно: кнопка, которая гарантированно упадёт, хуже её
+    // отсутствия. Подпись в строке объясняет, куда идти (см. рендер ниже).
+    if (isPayrollManaged(tx)) return items;
     if (!isRefund(tx)) {
       items.push({
         label: t('finances.editExpense', 'Редактировать'),
@@ -404,6 +417,12 @@ const ExpensesTab: React.FC<Props> = ({ range, onRangeChange, filters, onFilters
                             <p className="text-[11px] text-slate-400 mt-1">
                               {t('finances.fromRefund', 'Из возврата оплаты')}
                               {tx.studentName ? ` · ${tx.studentName}` : ''}
+                            </p>
+                          )}
+                          {/* Строка ведомости: объясняем, почему у неё нет действий. */}
+                          {isPayrollManaged(tx) && (
+                            <p className="text-[11px] text-slate-400 mt-1">
+                              {t('finances.fromPayroll', 'Выплата по ведомости — правится в разделе «Зарплата»')}
                             </p>
                           )}
                         </td>

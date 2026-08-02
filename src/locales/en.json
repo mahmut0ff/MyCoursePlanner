@@ -2181,7 +2181,10 @@
     "fromPayroll": "Payroll payout — edit it in the Salary section",
     "deleteRefundWarning": "This is a refund against a student invoice. Deleting it also reverses the write-back: the amount returns to «paid» and the student's debt drops by {{amount}}.",
     "salaryGoesToPayroll": "Record salaries in the Payroll section — only there does a payout reach the salary balance and stay protected from being paid twice.",
-    "openPayroll": "Open Payroll"
+    "openPayroll": "Open Payroll",
+    "receivedFiltered": "Received (filtered)",
+    "scopeBranch": "Branch: {{name}}",
+    "scopeOrgWide": "All branches"
   },
   "telegram": {
     "title": "Telegram Notifications",

@@ -15,7 +15,7 @@ import type { RowMenuItem } from '../../../components/ui/RowMenu';
 import LazyListFooter from '../../../components/ui/LazyListFooter';
 import { useLazyList } from '../../../hooks/useLazyList';
 import PeriodFilter from '../components/PeriodFilter';
-import { toTransactionParams, periodSlug } from '../financePeriod';
+import { toTransactionParams, periodSlug, branchSlug } from '../financePeriod';
 import type { FinanceRange } from '../financePeriod';
 import { PAYMENT_METHODS, getMethodLabel } from '../expenseCategories';
 import { formatMoney, formatNumber } from '../../../lib/money';
@@ -166,6 +166,10 @@ const PaymentsTab: React.FC<Props> = ({
     });
   }, [sorted, filters.search, filters.method, studentId]);
 
+  // Активен ли срез. Зеркало ExpensesTab: там эта же величина уже переключает
+  // подпись итога, и две соседние вкладки обязаны вести себя одинаково.
+  const isFiltered = !!filters.method || filters.search.trim() !== '' || !!studentId;
+
   // Имя для чипа «отфильтровано по студенту» на странице: в журнале лежит снимок
   // имени, поэтому оно есть даже у студента, которого уже нет в ростере.
   useEffect(() => {
@@ -232,7 +236,7 @@ const PaymentsTab: React.FC<Props> = ({
         tx.description || '',
       ])
     );
-    downloadCsv(`payments_${periodSlug(range)}.csv`, csv);
+    downloadCsv(`payments_${periodSlug(range)}${branchSlug(activeBranchId)}.csv`, csv);
   };
 
   const buildRowMenu = (tx: any): RowMenuItem[] => {
@@ -261,10 +265,24 @@ const PaymentsTab: React.FC<Props> = ({
               <Wallet className="w-5 h-5 text-emerald-600" />
             </div>
             <div>
-              <p className="text-xs text-slate-500">{t('finances.receivedTotal', 'Поступило за период')}</p>
+              {/* Итог считается по `filtered`, то есть по СРЕЗУ: поиск, способ
+                  оплаты и ?student=<uid> из URL его урезают. Подпись обязана
+                  это сказать — иначе менеджер набирает в поиске имя, чтобы
+                  проверить одну оплату, большая зелёная цифра бесшумно падает
+                  с 845 000 до 6 000, и она же уезжает в отчёт как касса за
+                  месяц. Соседние «Расходы» ровно так и подписаны. */}
+              <p className="text-xs text-slate-500">
+                {isFiltered
+                  ? t('finances.receivedFiltered', 'Поступило по фильтру')
+                  : t('finances.receivedTotal', 'Поступило за период')}
+                {isFiltered && (
+                  <span className="text-amber-500"> · {t('finances.filteredSubtotal', 'отфильтровано')}</span>
+                )}
+              </p>
               <p className="text-2xl font-bold text-emerald-600">{formatMoney(totals.total)}</p>
               <p className="text-[11px] text-slate-400 mt-0.5">
                 {t('finances.paymentsCount', 'платежей')}: {formatNumber(filtered.length)}
+                {isFiltered && <> {t('common.of', 'из')} {formatNumber(rows.length)}</>}
               </p>
             </div>
           </div>

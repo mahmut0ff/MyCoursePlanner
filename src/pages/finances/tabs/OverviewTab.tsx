@@ -19,7 +19,7 @@ import { useBranch } from '../../../contexts/BranchContext';
 import { formatMoney, formatMoneySigned, formatPercent, formatNumber } from '../../../lib/money';
 import { buildCsv, downloadCsv } from '../../../lib/csv';
 import { getCategoryColor, getCategoryLabel } from '../expenseCategories';
-import { toMetricsParams, periodSlug } from '../financePeriod';
+import { toMetricsParams, periodSlug, branchSlug } from '../financePeriod';
 import type { FinanceRange } from '../financePeriod';
 import PeriodFilter from '../components/PeriodFilter';
 import { Skeleton, CardSkeleton } from '../../../components/ui/Skeleton';
@@ -240,7 +240,7 @@ const OverviewTab: React.FC<Props> = ({ range, onRangeChange }) => {
       ]),
     ];
     const [headers, ...body] = rows;
-    downloadCsv(`finance_overview_${periodSlug(range)}.csv`, buildCsv(headers as string[], body));
+    downloadCsv(`finance_overview_${periodSlug(range)}${branchSlug(activeBranchId)}.csv`, buildCsv(headers as string[], body));
   }, [metrics, categories, courses, range, t]);
 
   return (

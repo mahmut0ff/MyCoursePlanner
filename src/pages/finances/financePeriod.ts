@@ -65,3 +65,13 @@ export const toTransactionParams = (r: FinanceRange): Record<string, string> =>
 /** Человекочитаемое имя периода для заголовков и имён CSV-файлов. */
 export const periodSlug = (r: FinanceRange): string =>
   isCompleteCustomRange(r) ? `${r.startDate}_${r.endDate}` : r.period;
+
+/**
+ * Суффикс филиала для имени выгрузки: `-<branchId>` либо пусто для «Все филиалы».
+ *
+ * Без него две выгрузки за один месяц — общеорганизационная и филиальная — имеют
+ * ОДНО имя файла и перезаписывают друг друга в «Загрузках», а открыв такой файл
+ * назавтра, понять, чьи это деньги, уже нельзя. Ровно эту проблему уже решает
+ * выгрузка зарплатной ведомости (SheetTab).
+ */
+export const branchSlug = (branchId?: string | null): string => (branchId ? `-${branchId}` : '');

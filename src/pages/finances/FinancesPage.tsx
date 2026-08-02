@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useSearchParams } from 'react-router-dom';
-import { CreditCard, UserRound, X } from 'lucide-react';
+import { Building2, CreditCard, UserRound, X } from 'lucide-react';
 import OverviewTab from './tabs/OverviewTab';
 import MonthTab from './tabs/MonthTab';
 import PaymentsTab from './tabs/PaymentsTab';
@@ -10,6 +10,7 @@ import { DEFAULT_RANGE } from './financePeriod';
 import type { FinanceRange } from './financePeriod';
 import { monthKey } from '../../lib/payment-plans';
 import { usePermissions } from '../../contexts/PermissionsContext';
+import { useBranch } from '../../contexts/BranchContext';
 
 export type FinanceTab = 'overview' | 'debts' | 'payments' | 'expenses';
 
@@ -82,6 +83,7 @@ const OVERVIEW_TABS = new Set<FinanceTab>(['overview', 'expenses']);
 const FinancesPage: React.FC = () => {
   const { t } = useTranslation();
   const { canRead } = usePermissions();
+  const { activeBranch } = useBranch();
   const [searchParams, setSearchParams] = useSearchParams();
 
   // Право на сводные цифры. Без него из набора вкладок выпадают «Обзор» и
@@ -162,7 +164,22 @@ const FinancesPage: React.FC = () => {
             <CreditCard className="w-6 h-6 text-emerald-500" />
             {t('nav.finances', 'Финансы')}
           </h1>
-          <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">{subtitle}</p>
+          <div className="flex items-center gap-2 flex-wrap mt-1">
+            <p className="text-sm text-slate-500 dark:text-slate-400">{subtitle}</p>
+            {/* ЧЬИ это деньги — обязательная часть любой финансовой цифры.
+                Все GET-запросы раздела штампуются активным филиалом, а сам
+                переключатель живёт в сайдбаре, который на мобильном свёрнут.
+                Администратор, у которого со вчера выбран «Восток», читал
+                «Поступило за период» и нёс это директору как выручку академии.
+                Приём взят из ведомости зарплаты — там чип области стоит рядом
+                с месяцем ровно по этой причине. */}
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-slate-100 text-slate-600 dark:bg-slate-700/50 dark:text-slate-300">
+              <Building2 className="w-3 h-3 shrink-0" />
+              {activeBranch
+                ? t('finances.scopeBranch', 'Филиал: {{name}}', { name: activeBranch.name })
+                : t('finances.scopeOrgWide', 'Все филиалы')}
+            </span>
+          </div>
         </div>
 
         <div

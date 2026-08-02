@@ -29,7 +29,7 @@ import {
   getMethodLabel,
 } from '../expenseCategories';
 import PeriodFilter from '../components/PeriodFilter';
-import { PERIOD_PRESETS, isCompleteCustomRange, periodSlug, toTransactionParams } from '../financePeriod';
+import { PERIOD_PRESETS, isCompleteCustomRange, periodSlug, branchSlug, toTransactionParams } from '../financePeriod';
 import type { FinanceRange } from '../financePeriod';
 import type { ExpensesFilters } from '../FinancesPage';
 
@@ -270,7 +270,7 @@ const ExpensesTab: React.FC<Props> = ({ range, onRangeChange, filters, onFilters
         tx.description || '',
       ])
     );
-    downloadCsv(`expenses_${periodSlug(range)}.csv`, csv);
+    downloadCsv(`expenses_${periodSlug(range)}${branchSlug(activeBranchId)}.csv`, csv);
   };
 
   const buildRowMenu = (tx: any): RowMenuItem[] => {

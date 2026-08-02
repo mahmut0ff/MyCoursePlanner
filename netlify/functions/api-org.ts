@@ -16,7 +16,7 @@ import { recordTeacherActivity } from './utils/teacher-activity';
 import { FieldValue } from 'firebase-admin/firestore';
 import { getOrgLimits } from './utils/plan-limits';
 import { billingPeriodKey, billingDeadlineISO } from './utils/billing';
-import { isUntouchedPlan } from './utils/payment-plans';
+import { isUntouchedPlan, orgDayKey, planPeriodKey } from './utils/payment-plans';
 /* ═══════════════════════════════════════════════ */
 /*  Helpers                                        */
 /* ═══════════════════════════════════════════════ */
@@ -724,19 +724,59 @@ const handler: Handler = async (event: HandlerEvent) => {
       const affectedStudents: string[] = Array.isArray(deletedGroup.studentIds) ? deletedGroup.studentIds : [];
       let cancelledPlans = 0;
       if (affectedStudents.length > 0 && deletedGroup.courseId) {
+        // ── Списываем УЗКО: только то, что удаление группы действительно отменяет ──
+        // Счёт живёт по ключу (студент × курс × ПЕРИОД) и к группе не привязан
+        // вовсе, поэтому выборка по одному courseId захватывает всю историю
+        // курса. Без двух ограничений ниже удаление одной закрытой группы
+        // списывало студенту и неоплаченные апрель с маем, которые академия ещё
+        // взыскивала, и текущий счёт, по которому он учится в другой группе
+        // того же курса. Долг при этом исчезает молча: 'cancelled' отбрасывают
+        // ВСЕ агрегаторы (isDebtBearingPlan), а крон помесячного начисления
+        // считает месяц уже покрытым и счёт не перевыставит — это потеря
+        // выручки, а не только потеря долга.
+        //
+        // 1. Студент, оставшийся в другой ЖИВОЙ группе того же курса, продолжает
+        //    учиться — его счета не наши.
+        const otherGroupsSnap = await adminDb.collection('groups')
+          .where('organizationId', '==', orgId)
+          .where('courseId', '==', deletedGroup.courseId)
+          .get();
+        const stillEnrolled = new Set<string>();
+        otherGroupsSnap.docs.forEach(g => {
+          if (g.id === body.id) return;
+          const gd = g.data() as any;
+          if (gd.status && gd.status !== 'active') return;
+          for (const sid of (gd.studentIds || [])) stillEnrolled.add(String(sid));
+        });
+
+        // 2. Только ТЕКУЩИЙ и будущие периоды. Прошлые месяцы — это уже
+        //    оказанная услуга, и списывать их за человека нельзя.
+        const currentPeriod = orgDayKey().slice(0, 7);
+
         const plansSnap = await adminDb.collection('studentPaymentPlans')
           .where('organizationId', '==', orgId)
           .where('courseId', '==', deletedGroup.courseId)
           .get();
-        const cancelBatch = adminDb.batch();
-        plansSnap.docs.forEach(d => {
+        const toCancel = plansSnap.docs.filter(d => {
           const pd = d.data();
-          if (affectedStudents.includes(pd.studentId) && isUntouchedPlan(pd)) {
-            cancelBatch.update(d.ref, { status: 'cancelled', updatedAt: now() });
-            cancelledPlans++;
-          }
+          if (!affectedStudents.includes(pd.studentId)) return false;
+          if (stillEnrolled.has(String(pd.studentId))) return false;
+          if (!isUntouchedPlan(pd)) return false;
+          const period = planPeriodKey(pd);
+          return !!period && period >= currentPeriod;
         });
-        if (cancelledPlans > 0) await cancelBatch.commit().catch(console.error);
+
+        // Чанкуем: батч Firestore держит 500 операций, а у большой группы счетов
+        // может быть больше. Ошибку НЕ глотаем — иначе ответ и аудит рапортуют
+        // о списании, которого не произошло.
+        for (let i = 0; i < toCancel.length; i += 400) {
+          const batch = adminDb.batch();
+          for (const d of toCancel.slice(i, i + 400)) {
+            batch.update(d.ref, { status: 'cancelled', updatedAt: now() });
+          }
+          await batch.commit();
+          cancelledPlans += Math.min(400, toCancel.length - i);
+        }
       }
 
       await logRoster(user, 'group_deleted', {

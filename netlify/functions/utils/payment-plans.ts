@@ -18,6 +18,7 @@ export {
   isWrittenOffPlan,
   isUntouchedPlan,
   planProgressKey,
+  planPeriodKey,
   orgDayKey,
   daysUntilDeadline,
   isDeadlineMissed,

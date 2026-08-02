@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { Plus, Search, Calendar as CalendarIcon, Receipt, Trash2, Pencil, X, Download } from 'lucide-react';
 import toast from 'react-hot-toast';
@@ -515,6 +516,14 @@ const ExpensesTab: React.FC<Props> = ({ range, onRangeChange, filters, onFilters
                     </button>
                   ))}
                 </div>
+                {/* Зарплаты в списке нет намеренно — говорим об этом здесь, а не
+                    оставляем менеджера искать пропавшую категорию. */}
+                <p className="text-[11px] text-slate-400 mt-2">
+                  {t('finances.salaryGoesToPayroll', 'Зарплату проводите в разделе «Зарплата» — только там выплата попадает в зарплатный баланс и не задваивается.')}{' '}
+                  <Link to="/payroll" className="text-blue-600 dark:text-blue-400 hover:underline">
+                    {t('finances.openPayroll', 'Открыть «Зарплату»')}
+                  </Link>
+                </p>
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>

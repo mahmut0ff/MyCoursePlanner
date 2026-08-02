@@ -15,7 +15,19 @@ export interface ExpenseCategory {
 }
 
 export const EXPENSE_CATEGORIES: ExpenseCategory[] = [
-  { id: 'salary', labelKey: 'finances.catSalary', fallback: 'Зарплата', color: '#6366f1' },
+  // Зарплата заводится ТОЛЬКО выплатой ведомости в разделе «Зарплата»: там на
+  // расходе появляются teacherId и ключи идемпотентности payrollPeriodId /
+  // payrollLineId, по которым «Выдано» сходится с начисленным.
+  //
+  // Ручной расход этой категории их не несёт по определению, поэтому в
+  // зарплатный баланс он не попадал вовсе — преподаватель, которому выплатили
+  // руками, выглядел как «начислено, не выдано». А дальше «Выплатить» из раздела
+  // зарплаты создавало ВТОРОЙ расход: ключи идемпотентности у ручной строки
+  // отсутствуют, и повтор ничем не блокировался. Деньги уходили дважды.
+  //
+  // Категория остаётся в разбивке расходов и в фильтре — она нужна для чтения
+  // истории; убрана только из формы создания.
+  { id: 'salary', labelKey: 'finances.catSalary', fallback: 'Зарплата', color: '#6366f1', systemOnly: true },
   { id: 'rent', labelKey: 'finances.catRent', fallback: 'Аренда', color: '#f59e0b' },
   { id: 'marketing', labelKey: 'finances.catMarketing', fallback: 'Маркетинг', color: '#10b981' },
   { id: 'supplies', labelKey: 'finances.catSupplies', fallback: 'Канцтовары', color: '#06b6d4' },

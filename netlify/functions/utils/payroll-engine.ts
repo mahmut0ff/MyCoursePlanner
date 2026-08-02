@@ -260,25 +260,45 @@ function toEpochMs(raw: string): number {
   const value = String(raw ?? '').trim();
   if (!value) return NaN;
   const isBareDate = /^\d{4}-\d{2}-\d{2}$/.test(value);
-  return new Date(isBareDate ? `${value}T00:00:00` : value).getTime();
+  if (!isBareDate) return new Date(value).getTime();
+  // Голая дата — день КАЛЕНДАРЯ ОРГАНИЗАЦИИ, как и в normalizeTxDate
+  // (finance-period.ts). Прежняя локальная полночь на Netlify означала полночь
+  // UTC и расходилась с границами окна на шесть часов.
+  const [y, m, d] = value.split('-').map(Number);
+  return Date.UTC(y, m - 1, d) - ORG_OFFSET_MS;
 }
 
 /**
- * Границы окна как календарный день 'YYYY-MM-DD' по ЛОКАЛЬНОЙ зоне.
+ * Смещение календаря организации от UTC (UTC+6, Asia/Bishkek).
  *
- * Резать ISO-строку посимвольно здесь нельзя, и это не мелочь. getPeriodRange
- * (finance-period.ts) строит окно от локальной полуночи и только потом зовёт
- * toISOString(): в Бишкеке (UTC+6) начало июля превращается в
- * '2026-06-30T18:00:00.000Z', и наивный slice(0,10) дал бы '2026-06-30' —
- * занятия 30 июня попали бы в июльскую зарплату. Разбор обратно в локальные
- * компоненты — точная инверсия того, как окно собрали, поэтому он
- * round-trip'ится и в UTC (CI), и в зоне академии.
+ * Дублирует ORG_DAY_UTC_OFFSET_MINUTES из src/lib/payment-plans.ts и
+ * ORG_OFFSET_MS из utils/finance-period.ts — ядро расчёта намеренно оставлено
+ * без импортов. Появится часовой пояс у организации — менять надо ВСЕ ТРИ.
+ */
+const ORG_OFFSET_MS = 6 * 60 * 60 * 1000;
+
+/**
+ * Границы окна как календарный день 'YYYY-MM-DD' в КАЛЕНДАРЕ ОРГАНИЗАЦИИ.
+ *
+ * Резать ISO-строку посимвольно здесь нельзя, и это не мелочь: getPeriodRange
+ * (finance-period.ts) строит окно от полуночи ДНЯ ОРГАНИЗАЦИИ и только потом
+ * зовёт toISOString(), поэтому начало июля выглядит как
+ * '2026-06-30T18:00:00.000Z'. Наивный slice(0,10) дал бы '2026-06-30', и
+ * занятия 30 июня попали бы в июльскую ведомость — то есть были бы оплачены
+ * дважды, ведь июньская ведомость их уже оплатила.
+ *
+ * Разбор обязан быть ТОЧНОЙ ИНВЕРСИЕЙ сборки окна. Раньше окно строилось от
+ * локальной полуночи сервера, и инверсией были локальные компоненты; теперь
+ * окно строится в дне организации — значит и разбирать надо им. Это не
+ * косметика: пока две половины расходились, июльская ведомость покрывала 32 дня
+ * (30.06–31.07), и каждый урок последнего дня месяца оплачивался в двух
+ * ведомостях подряд.
  */
 function toLocalDay(raw: string): string {
   const ms = toEpochMs(raw);
   if (Number.isNaN(ms)) return '';
-  const d = new Date(ms);
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  const d = new Date(ms + ORG_OFFSET_MS);
+  return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}-${String(d.getUTCDate()).padStart(2, '0')}`;
 }
 
 /** Транзакция внутри окна. ОБЕ границы включительно. */

@@ -152,6 +152,24 @@ describe('окно периода живёт в дне организации (U
   });
 });
 
+/**
+ * Компоненты момента в КАЛЕНДАРЕ ОРГАНИЗАЦИИ (UTC+6).
+ *
+ * Границы финансовых окон строятся в нём, а не в зоне машины. Проверять их
+ * локальными геттерами значит проверять часовой пояс раннера: в Бишкеке
+ * (машина разработчика) он совпадает с орг-днём и всё сходится, а в UTC (CI и
+ * Netlify) те же выражения дают предыдущие сутки.
+ */
+const ORG_OFFSET_MS = 6 * 60 * 60 * 1000;
+const orgParts = (d: Date): [number, number, number] => {
+  const s = new Date(d.getTime() + ORG_OFFSET_MS);
+  return [s.getUTCFullYear(), s.getUTCMonth(), s.getUTCDate()];
+};
+const orgClock = (d: Date): [number, number, number, number] => {
+  const s = new Date(d.getTime() + ORG_OFFSET_MS);
+  return [s.getUTCHours(), s.getUTCMinutes(), s.getUTCSeconds(), s.getUTCMilliseconds()];
+};
+
 describe('getPreviousRange — completed vs in-progress windows', () => {
   // 19 July 2026, mid-month: 'current_month' is in progress, 'last_month' is closed.
   const now = new Date(2026, 6, 19, 12, 0, 0);
@@ -161,8 +179,8 @@ describe('getPreviousRange — completed vs in-progress windows', () => {
     const { prevStartIso, prevEndIso } = getPreviousRange('current_month', startIso, endIso, false, now);
     const from = new Date(prevStartIso);
     const to = new Date(prevEndIso);
-    expect([from.getFullYear(), from.getMonth(), from.getDate()]).toEqual([2026, 5, 1]);
-    expect([to.getFullYear(), to.getMonth(), to.getDate()]).toEqual([2026, 5, 19]);
+    expect(orgParts(from)).toEqual([2026, 5, 1]);
+    expect(orgParts(to)).toEqual([2026, 5, 19]);
   });
 
   it('compares a COMPLETED month against the FULL preceding month', () => {
@@ -172,8 +190,8 @@ describe('getPreviousRange — completed vs in-progress windows', () => {
     const to = new Date(prevEndIso);
     // June is compared against ALL of May, not a truncated 19-day slice:
     // truncating shrank the base and inflated every growth percentage.
-    expect([from.getFullYear(), from.getMonth(), from.getDate()]).toEqual([2026, 4, 1]);
-    expect([to.getFullYear(), to.getMonth(), to.getDate()]).toEqual([2026, 4, 31]);
+    expect(orgParts(from)).toEqual([2026, 4, 1]);
+    expect(orgParts(to)).toEqual([2026, 4, 31]);
     // And it abuts the current window without overlapping it.
     expect(to.getTime()).toBe(new Date(startIso).getTime() - 1);
   });
@@ -201,8 +219,9 @@ describe('resolveRange — one parser, both endpoints', () => {
     const trx = resolveRange(params, null) as any;
     expect(metrics).toEqual(trx);
     expect(metrics.isCustomRange).toBe(true);
-    expect(new Date(metrics.startIso).getDate()).toBe(1);
-    expect(new Date(metrics.endIso).getHours()).toBe(23);
+    // В календаре организации: начало 1 марта, конец — 23:59 5 марта.
+    expect(orgParts(new Date(metrics.startIso))).toEqual([2026, 2, 1]);
+    expect(orgClock(new Date(metrics.endIso))[0]).toBe(23);
   });
 
   it('resolves a preset identically for both endpoints', () => {
@@ -925,13 +944,17 @@ describe('api-finance-transactions — дата операции и заморо
 
 describe('parseRangeBoundary', () => {
   it('accepts a bare YYYY-MM-DD and snaps to the day boundaries', () => {
+    // Границы — сутки КАЛЕНДАРЯ ОРГАНИЗАЦИИ, поэтому и проверяем их в нём.
+    // Локальные компоненты здесь были бы проверкой зоны машины, а не правила:
+    // в Бишкеке они совпадают с орг-днём, а на Netlify (UTC) — нет.
     const from = parseRangeBoundary('2026-01-01', 'start')!;
     expect(from).not.toBeNull();
-    expect([from.getFullYear(), from.getMonth(), from.getDate()]).toEqual([2026, 0, 1]);
-    expect([from.getHours(), from.getMinutes(), from.getSeconds(), from.getMilliseconds()]).toEqual([0, 0, 0, 0]);
+    expect(orgParts(from)).toEqual([2026, 0, 1]);
+    expect(orgClock(from)).toEqual([0, 0, 0, 0]);
 
     const to = parseRangeBoundary('2026-01-31', 'end')!;
-    expect([to.getHours(), to.getMinutes(), to.getSeconds(), to.getMilliseconds()]).toEqual([23, 59, 59, 999]);
+    expect(orgParts(to)).toEqual([2026, 0, 31]);
+    expect(orgClock(to)).toEqual([23, 59, 59, 999]);
   });
 
   it('accepts a full ISO timestamp — the transactions endpoint already sends one', () => {
@@ -996,16 +1019,18 @@ describe('api-finance-metrics — custom date range', () => {
 });
 
 describe('api-finance-transactions GET — shared period parsing', () => {
-  // Dates are built in LOCAL time on purpose. The server expands a bare
-  // YYYY-MM-DD into a whole *local* day, so a fixture pinned to a UTC instant
-  // would pass or fail depending on the machine's timezone rather than on the
-  // behaviour under test. t2 sits late on the last day of the window — that is
-  // the row the unexpanded end boundary used to drop.
-  const local = (y: number, m: number, d: number, h: number) => new Date(y, m, d, h, 0, 0, 0).toISOString();
+  // Даты строятся по часам КАЛЕНДАРЯ ОРГАНИЗАЦИИ: сервер разворачивает голую
+  // YYYY-MM-DD именно в его сутки. Локальные компоненты (прежний вариант)
+  // проверяли бы зону раннера — в Бишкеке она совпадает с орг-днём, а в UTC
+  // строка t2 «22:00 31 января» оказывается уже 1 февраля для академии, и
+  // фикстура начинала жить своей жизнью. t2 сидит поздно в последний день окна —
+  // это та строка, которую роняла нераскрытая правая граница.
+  const orgTime = (y: number, m: number, d: number, h: number) =>
+    new Date(Date.UTC(y, m, d, h) - ORG_OFFSET_MS).toISOString();
   const rows = [
-    { id: 't1', organizationId: 'org1', type: 'income', amount: 100, date: local(2026, 0, 1, 9) },
-    { id: 't2', organizationId: 'org1', type: 'income', amount: 200, date: local(2026, 0, 31, 22) },
-    { id: 't3', organizationId: 'org1', type: 'expense', amount: 300, date: local(2026, 2, 15, 9) },
+    { id: 't1', organizationId: 'org1', type: 'income', amount: 100, date: orgTime(2026, 0, 1, 9) },
+    { id: 't2', organizationId: 'org1', type: 'income', amount: 200, date: orgTime(2026, 0, 31, 22) },
+    { id: 't3', organizationId: 'org1', type: 'expense', amount: 300, date: orgTime(2026, 2, 15, 9) },
   ];
 
   beforeEach(() => {
@@ -1032,7 +1057,7 @@ describe('api-finance-transactions GET — shared period parsing', () => {
     expect(ids(res)).toEqual(['t1', 't2', 't3']);
   });
 
-  it('accepts a bare YYYY-MM-DD pair and expands it to whole local days', async () => {
+  it('accepts a bare YYYY-MM-DD pair and expands it to whole organization days', async () => {
     const res: any = await trxHandler(
       event('GET', { startDate: '2026-01-01', endDate: '2026-01-31' }), {} as any, () => {});
     expect(res.statusCode).toBe(200);

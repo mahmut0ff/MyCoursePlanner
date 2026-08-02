@@ -39,8 +39,19 @@ const PERIOD = '2026-07';
  * нельзя: в зоне академии (UTC+6) такая строка описывает не июль, а июль,
  * сдвинутый на шесть часов, и тест ловил бы часовой пояс машины, а не логику.
  */
-const WINDOW_START = new Date(2026, 6, 1, 0, 0, 0, 0).toISOString();
-const WINDOW_END = new Date(2026, 6, 31, 23, 59, 59, 999).toISOString();
+// Окно строится в КАЛЕНДАРЕ ОРГАНИЗАЦИИ (UTC+6) — ровно так его отдаёт
+// getPeriodRange в проде. Локальные компоненты (new Date(2026, 6, 1)) здесь
+// использовать нельзя: на машине разработчика в Бишкеке они совпадают с
+// орг-днём и тест проходит, а на Netlify (UTC) окно съезжает на шесть часов —
+// правая граница уползает на 1 августа, и занятие 1-го числа попадает сразу в
+// две соседние ведомости.
+const ORG_OFFSET_MS = 6 * 60 * 60 * 1000;
+const orgDayStartIso = (y: number, m: number, d: number) =>
+  new Date(Date.UTC(y, m, d) - ORG_OFFSET_MS).toISOString();
+const orgDayEndIso = (y: number, m: number, d: number) =>
+  new Date(Date.UTC(y, m, d, 23, 59, 59, 999) - ORG_OFFSET_MS).toISOString();
+const WINDOW_START = orgDayStartIso(2026, 6, 1);
+const WINDOW_END = orgDayEndIso(2026, 6, 31);
 /** Соседние мгновения ВНЕ окна — считаются от границ, а не от календаря UTC. */
 const JUST_BEFORE = new Date(new Date(WINDOW_START).getTime() - 1).toISOString();
 const JUST_AFTER = new Date(new Date(WINDOW_END).getTime() + 1).toISOString();

@@ -143,6 +143,33 @@ const FinancesPage: React.FC = () => {
   const studentFilter = searchParams.get('student') || '';
   const [studentFilterName, setStudentFilterName] = useState('');
 
+  /**
+   * Режим «все неоплаченные» (?unpaid=1) — живёт в URL по той же причине, что и
+   * `student`: ссылку «вот кто должен» нужно уметь переслать и положить в
+   * закладки.
+   *
+   * Приход С КАРТОЧКИ СТУДЕНТА включает его сам, даже без параметра. Долг на
+   * карточке — это сумма по ВСЕМ непогашенным счетам за все месяцы, а вкладка
+   * жёстко фильтрована текущим месяцем: переход «Открыть в финансах» приводил
+   * на пустой экран «За этот месяц ещё не начисляли», пока чип сверху уверял
+   * «Только один студент: Айгуль».
+   */
+  const unpaidOnly = searchParams.get('unpaid') === '1' || Boolean(studentFilter);
+  const setUnpaidOnly = useCallback(
+    (next: boolean) => {
+      const params = new URLSearchParams(searchParams);
+      if (next) params.set('unpaid', '1');
+      else {
+        params.delete('unpaid');
+        // Фильтр по студенту сам включает режим — снимаем и его, иначе галочка
+        // выглядела бы залипшей.
+        params.delete('student');
+      }
+      setSearchParams(params, { replace: true });
+    },
+    [searchParams, setSearchParams]
+  );
+
   // Сменился uid — прежнее имя врёт до тех пор, пока вкладка не подскажет новое.
   useEffect(() => setStudentFilterName(''), [studentFilter]);
 
@@ -238,6 +265,8 @@ const FinancesPage: React.FC = () => {
             onMonthChange={setMonth}
             studentId={studentFilter}
             onStudentNameResolved={setStudentFilterName}
+            unpaidOnly={unpaidOnly}
+            onUnpaidOnlyChange={setUnpaidOnly}
           />
         )}
         {activeTab === 'payments' && (

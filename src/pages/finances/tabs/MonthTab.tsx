@@ -45,6 +45,18 @@ interface Props {
   /** Ограничить одним студентом (?student=<uid>). Пусто — показываем всех. */
   studentId?: string;
   onStudentNameResolved?: (name: string) => void;
+  /**
+   * Режим «все неоплаченные»: месяц перестаёт быть жёстким фильтром.
+   *
+   * Экран отвечал только на вопрос «кто оплатил за ЭТОТ месяц», а директор
+   * спрашивает «кто должен». Долг же копится по РАЗНЫМ месяцам: у студента с
+   * долгом 12 000 это июнь и июль, а за август ему ещё не начисляли — и переход
+   * «Открыть в финансах» с его карточки приводил на заведомо пустой экран
+   * «За этот месяц ещё не начисляли», пока чип сверху уверял «Только один
+   * студент: Айгуль». Менеджер решал, что долг погашен или что карточка врёт.
+   */
+  unpaidOnly?: boolean;
+  onUnpaidOnlyChange?: (next: boolean) => void;
 }
 
 interface PaymentPlan {
@@ -98,7 +110,10 @@ const PROGRESS_META: Record<string, { key: string; fallback: string; cls: string
  * студент за один курс за месяц. Ежемесячная сумма у каждого своя и переносится
  * из прошлого месяца при «Начислить».
  */
-const MonthTab: React.FC<Props> = ({ filters, onFiltersChange, month, onMonthChange, studentId = '', onStudentNameResolved }) => {
+const MonthTab: React.FC<Props> = ({
+  filters, onFiltersChange, month, onMonthChange, studentId = '', onStudentNameResolved,
+  unpaidOnly = false, onUnpaidOnlyChange,
+}) => {
   const { t } = useTranslation();
   const { activeBranchId } = useBranch();
   const { canRead } = usePermissions();
@@ -158,9 +173,14 @@ const MonthTab: React.FC<Props> = ({ filters, onFiltersChange, month, onMonthCha
   }, [courses]);
 
   // Начисления выбранного месяца, без отчисленных студентов.
+  //
+  // В режиме «все неоплаченные» фильтр по месяцу снимается: долг живёт не в
+  // одном месяце, и вопрос «кто должен» на месячном срезе не имеет ответа.
   const monthPlans = useMemo(
-    () => plans.filter(p => planPeriodKey(p) === month && !isExpelled(studentById.get(String(p.studentId)))),
-    [plans, month, studentById]
+    () => plans.filter(p =>
+      (unpaidOnly || planPeriodKey(p) === month)
+      && !isExpelled(studentById.get(String(p.studentId)))),
+    [plans, month, studentById, unpaidOnly]
   );
 
   // Что реально показываем и считаем на «кто оплатил за месяц». Убираем ровно
@@ -259,6 +279,11 @@ const MonthTab: React.FC<Props> = ({ filters, onFiltersChange, month, onMonthCha
     return activePlans
       .filter(p => {
         if (studentId && String(p.studentId) !== studentId) return false;
+        // «Только должники» — заявленный в типе DebtsFilters.status фильтр,
+        // который до сих пор нигде не отрисовывался. В режиме «все
+        // неоплаченные» он включён по определению: иначе экран показал бы и
+        // закрытые счета всех месяцев сразу.
+        if ((unpaidOnly || filters.status === 'unpaid') && !isDebtBearingPlan(p)) return false;
         if (!q) return true;
         const name = (p.studentName || studentById.get(String(p.studentId))?.displayName || '').toLowerCase();
         return name.includes(q) || (p.courseName?.toLowerCase() || '').includes(q);
@@ -268,7 +293,7 @@ const MonthTab: React.FC<Props> = ({ filters, onFiltersChange, month, onMonthCha
         const bn = b.studentName || studentById.get(String(b.studentId))?.displayName || '';
         return collator.compare(an, bn) || collator.compare(a.courseName || '', b.courseName || '');
       });
-  }, [activePlans, filters.search, studentId, studentById]);
+  }, [activePlans, filters.search, filters.status, studentId, studentById, unpaidOnly]);
 
   useEffect(() => {
     if (!studentId || !onStudentNameResolved) return;
@@ -327,9 +352,12 @@ const MonthTab: React.FC<Props> = ({ filters, onFiltersChange, month, onMonthCha
             <ChevronRight className="w-4 h-4" />
           </button>
         </div>
+        {/* В режиме «все неоплаченные» месяц не выбран, и начислять не за что —
+            кнопка была бы обещанием действия без адресата. */}
         <button
           onClick={() => setShowBill(true)}
-          className="inline-flex items-center gap-2 bg-emerald-500 hover:bg-emerald-600 text-white px-4 py-2.5 rounded-xl text-sm font-bold transition-colors shrink-0"
+          disabled={unpaidOnly}
+          className="inline-flex items-center gap-2 bg-emerald-500 hover:bg-emerald-600 disabled:opacity-40 disabled:cursor-not-allowed text-white px-4 py-2.5 rounded-xl text-sm font-bold transition-colors shrink-0"
         >
           <CalendarPlus className="w-4 h-4" />{t('finances.billMonth', 'Начислить за месяц')}
         </button>
@@ -378,21 +406,53 @@ const MonthTab: React.FC<Props> = ({ filters, onFiltersChange, month, onMonthCha
           <div>
             <p className="text-xs text-slate-500">{t('finances.unpaidCount', 'Ещё не оплатили')}</p>
             <p className="text-lg font-bold text-slate-900 dark:text-white">{stats.unpaid}</p>
+            {/* Счётчик, который ведёт к списку: раньше он называл число и не
+                давал способа увидеть, кто за ним стоит. */}
+            {onUnpaidOnlyChange && !unpaidOnly && stats.unpaid > 0 && (
+              <button
+                type="button"
+                onClick={() => onUnpaidOnlyChange(true)}
+                className="text-[11px] text-slate-400 hover:text-amber-600 dark:hover:text-amber-400 hover:underline"
+              >
+                {t('finances.showAllUnpaidShort', 'Показать всех должников →')}
+              </button>
+            )}
           </div>
         </div>
       </div>
 
-      {/* Поиск */}
-      <div className="relative sm:w-72">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-        <input
-          type="text"
-          value={filters.search}
-          onChange={e => setSearch(e.target.value)}
-          placeholder={t('finances.searchStudent', 'Поиск по студенту или курсу...')}
-          className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl pl-10 pr-4 py-2.5 text-sm"
-        />
+      {/* Поиск + режим «все неоплаченные» */}
+      <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+        <div className="relative sm:w-72">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+          <input
+            type="text"
+            value={filters.search}
+            onChange={e => setSearch(e.target.value)}
+            placeholder={t('finances.searchStudent', 'Поиск по студенту или курсу...')}
+            className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl pl-10 pr-4 py-2.5 text-sm"
+          />
+        </div>
+        {/* Единственный способ ответить на «кто должен»: долг копится по разным
+            месяцам, и месячный срез на этот вопрос не отвечает в принципе. */}
+        {onUnpaidOnlyChange && (
+          <label className="inline-flex items-center gap-2 cursor-pointer select-none text-sm text-slate-600 dark:text-slate-300 shrink-0">
+            <input
+              type="checkbox"
+              checked={unpaidOnly}
+              onChange={e => onUnpaidOnlyChange(e.target.checked)}
+              className="w-4 h-4 accent-amber-500"
+            />
+            {t('finances.showAllUnpaid', 'Все неоплаченные, за любой месяц')}
+          </label>
+        )}
       </div>
+
+      {unpaidOnly && (
+        <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-900/50 rounded-xl px-4 py-2.5 text-xs text-amber-800 dark:text-amber-300">
+          {t('finances.allUnpaidHint', 'Показаны все счета с непогашенным остатком за любые месяцы. Выбор месяца и начисление в этом режиме не действуют.')}
+        </div>
+      )}
 
       {/* Таблица */}
       {loading ? (

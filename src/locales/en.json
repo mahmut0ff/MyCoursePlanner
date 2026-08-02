@@ -2189,7 +2189,10 @@
     "overdueCountUnits": "Overdue invoices",
     "debtorCountUnits": "Debtors (people)",
     "collectedByCharges": "Paid against this month's charges",
-    "cashForPeriodLink": "What actually reached the till →"
+    "cashForPeriodLink": "What actually reached the till →",
+    "showAllUnpaid": "All unpaid, any month",
+    "showAllUnpaidShort": "Show all debtors →",
+    "allUnpaidHint": "Showing every invoice with an outstanding balance, across all months. Month selection and billing do not apply in this mode."
   },
   "telegram": {
     "title": "Telegram Notifications",

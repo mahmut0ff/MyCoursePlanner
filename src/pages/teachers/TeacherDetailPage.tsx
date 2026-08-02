@@ -64,7 +64,19 @@ const PERIODS: { id: string; label: string }[] = [
   { id: 'last_month', label: 'Прошлый месяц' },
   { id: 'quarter', label: 'Квартал' },
   { id: 'year', label: 'Год' },
+  { id: 'all', label: 'Всё время' },
 ];
+
+/**
+ * Карточка открывается на КВАРТАЛЕ, а не на «этом месяце».
+ *
+ * «Этот месяц» — правильный дефолт для раздела «Активность», где преподавателей
+ * сравнивают друг с другом в одном окне. На личной карточке он врёт: первого
+ * числа окно шириной в один день, а если месяц начался с выходных — в один
+ * уикенд, и самый активный преподаватель академии открывается с нулями и
+ * красным KPI. Скользящий квартал никогда не бывает пустым по календарю.
+ */
+const DEFAULT_PERIOD = 'quarter';
 
 interface KpiRow {
   teacherId: string;
@@ -133,7 +145,7 @@ const TeacherDetailPage: React.FC = () => {
   const [allGroups, setAllGroups] = useState<Group[]>([]);
   const [kpi, setKpi] = useState<KpiRow | null>(null);
   const [events, setEvents] = useState<TimelineEvent[] | null>(null);
-  const [period, setPeriod] = useState('current_month');
+  const [period, setPeriod] = useState(DEFAULT_PERIOD);
   const [loading, setLoading] = useState(true);
   const [failed, setFailed] = useState<{ groups?: boolean; activity?: boolean }>({});
 
@@ -152,6 +164,11 @@ const TeacherDetailPage: React.FC = () => {
   const studentCount = useMemo(
     // Один ученик может быть в двух группах одного преподавателя — считаем людей, а не места.
     () => new Set(groups.flatMap(g => g.studentIds || [])).size,
+    [groups],
+  );
+
+  const courseCount = useMemo(
+    () => new Set(groups.map(g => g.courseId || g.courseName).filter(Boolean)).size,
     [groups],
   );
 
@@ -250,6 +267,11 @@ const TeacherDetailPage: React.FC = () => {
   }
 
   const online = presence.isOnline(teacher.uid);
+  // ВАЖНО: kpi.lastActivityAt считается ТОЛЬКО по событиям внутри выбранного
+  // периода (teacher-kpi.ts), поэтому «последняя активность» из него не может
+  // быть раньше начала окна и в первые дни месяца всегда пуста. Присутствие —
+  // абсолютное, и на вопрос «когда его последний раз видели» отвечает честно.
+  const lastSeenMs = presence.lastSeenMs(teacher.uid);
   const waNumber = toWhatsappNumber(teacher.phone);
 
   const menuItems: RowMenuItem[] = [];
@@ -324,7 +346,7 @@ const TeacherDetailPage: React.FC = () => {
         <div className="min-w-0 flex-1">
           <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">{teacher.displayName}</h1>
           <p className="mt-1 text-sm text-slate-500 dark:text-slate-400 flex flex-wrap items-center gap-x-2 gap-y-1">
-            <span>{online ? 'В сети' : `Активность: ${relativeDay(kpi?.lastActivityAt ?? null)}`}</span>
+            <span>{online ? 'В сети' : lastSeenMs ? `Был(а) в сети ${relativeDay(new Date(lastSeenMs).toISOString())}` : 'Не в сети'}</span>
             {teacher.email && <><Dot />{teacher.email}</>}
             {teacher.phone && (
               <>
@@ -365,34 +387,23 @@ const TeacherDetailPage: React.FC = () => {
         </div>
       </header>
 
-      {/* ═══ Полоса нагрузки ═══ */}
+      {/* ═══ Полоса нагрузки ═══
+          Только то, что НЕ зависит от выбранного периода. KPI, активные дни и
+          стабильность отсюда убраны намеренно: это величины за окно, и наверху,
+          вдали от переключателя периода, их ноль читался как приговор
+          преподавателю, а не как факт о двух выходных днях. */}
       <dl className="grid grid-cols-2 md:grid-cols-4 rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 divide-x divide-y md:divide-y-0 divide-slate-200 dark:divide-slate-700 overflow-hidden mb-8">
         <Metric label="Групп" value={String(groups.length)} />
+        <Metric label="Курсов" value={String(courseCount)} />
         <Metric
           label="Учеников"
           value={String(studentCount)}
           hint={groups.length > 1 ? 'без повторов' : undefined}
         />
-        {canSeeActivity ? (
-          <>
-            <Metric
-              label="Активных дней"
-              value={kpi ? String(kpi.activeDays) : '—'}
-              hint={kpi ? `стабильность ${kpi.consistencyPct}%` : undefined}
-            />
-            <Metric
-              label="KPI"
-              value={kpi ? String(kpi.kpiScore) : '—'}
-              valueClass={kpi ? scoreTone(kpi.kpiScore) : undefined}
-              hint={kpi ? `${kpi.totalActions} ${plural(kpi.totalActions, 'действие', 'действия', 'действий')}` : undefined}
-            />
-          </>
-        ) : (
-          <>
-            <Metric label="Последняя активность" value={relativeDay(kpi?.lastActivityAt ?? null)} />
-            <Metric label="Статус" value={online ? 'В сети' : 'Не в сети'} />
-          </>
-        )}
+        <Metric
+          label="Был(а) в сети"
+          value={online ? 'сейчас' : lastSeenMs ? relativeDay(new Date(lastSeenMs).toISOString()) : '—'}
+        />
       </dl>
 
       {/* ═══ Нагрузка: группы ═══ */}
@@ -474,12 +485,44 @@ const TeacherDetailPage: React.FC = () => {
               ))}
             </div>
 
+            {/* KPI живёт здесь, вплотную к переключателю периода, потому что это
+                величина ЗА ОКНО, а не свойство преподавателя. И он относительный:
+                вовлечённость нормируется на самого активного коллегу в этом же
+                окне (teacher-kpi.ts, engagement = points / cohortMax), поэтому
+                «0» значит «в этом окне действий нет», а не «плохо работает». */}
+            {!failed.activity && (
+              <dl className="grid grid-cols-3 divide-x divide-slate-200 dark:divide-slate-700 border-b border-slate-100 dark:border-slate-700">
+                <Metric
+                  label="KPI за период"
+                  value={kpi ? String(kpi.kpiScore) : '—'}
+                  valueClass={kpi && kpi.totalActions > 0 ? scoreTone(kpi.kpiScore) : undefined}
+                  hint="относительно коллег"
+                />
+                <Metric label="Активных дней" value={kpi ? String(kpi.activeDays) : '—'} />
+                <Metric
+                  label="Действий"
+                  value={kpi ? String(kpi.totalActions) : '—'}
+                  hint={kpi ? `стабильность ${kpi.consistencyPct}%` : undefined}
+                />
+              </dl>
+            )}
+
             {failed.activity ? (
               <div className="p-4"><LoadError onRetry={retryActivity} /></div>
             ) : breakdown.length === 0 && (events?.length ?? 0) === 0 ? (
-              <p className="px-4 py-6 text-sm text-slate-500 dark:text-slate-400 text-center">
-                За выбранный период действий не зафиксировано
-              </p>
+              <div className="px-4 py-6 text-center">
+                <p className="text-sm text-slate-500 dark:text-slate-400">
+                  За выбранный период действий не зафиксировано
+                </p>
+                {period !== 'all' && (
+                  <button
+                    onClick={() => setPeriod('all')}
+                    className="mt-1.5 text-sm font-medium text-primary-600 dark:text-primary-400 hover:underline"
+                  >
+                    Посмотреть за всё время
+                  </button>
+                )}
+              </div>
             ) : (
               <>
                 {breakdown.length > 0 && (

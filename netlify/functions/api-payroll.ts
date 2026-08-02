@@ -451,18 +451,34 @@ const handler: Handler = async (event: HandlerEvent) => {
 
       // Начислено считается только по ЗАМОРОЖЕННЫМ периодам: черновик — это
       // намерение, а не обязательство, и попадать в баланс он не должен.
-      const sealedPeriodIds = new Set(
-        periods
-          .filter((p) => (p.state === 'approved' || p.state === 'paid') && recordInBranchScope(p.branchId, branchFilter))
-          .map((p) => p.id),
-      );
+      //
+      // ── Обе половины баланса живут на ОДНОЙ оси филиала ──
+      // Раньше «начислено» фильтровалось по филиалу ВЕДОМОСТИ, а «выдано» —
+      // по филиалу РАСХОДА, который создаётся из `line.branchId ?? period.branchId`
+      // (см. ветку pay ниже). Оси расходились ровно там, где строка несёт свой
+      // филиал, а ведомость — нет: директор считает общую ведомость
+      // (period.branchId = null), строка получает филиал своей ставки, расход —
+      // филиал строки. Переключаемся на «Центр» — и строка показывает
+      // «Начислено 0, Выдано 30 000, Баланс −30 000», то есть баланс не сходится
+      // сам с собой. Менеджер, запертый в одном филиале, правды не увидит вовсе:
+      // переключиться на «Все филиалы» он не может.
+      //
+      // Поэтому фильтр по филиалу снят с ПЕРИОДА и перенесён на СТРОКУ, и
+      // выражение филиала строки дословно то же, что у расхода.
+      const sealedPeriodBranch = new Map<string, string | null>();
+      for (const p of periods) {
+        if (p.state !== 'approved' && p.state !== 'paid') continue;
+        sealedPeriodBranch.set(p.id, (p as any).branchId ?? null);
+      }
 
       const accrued = new Map<string, number>();
       const names = new Map<string, string>();
       for (const doc of linesSnap.docs) {
         const line = doc.data() as any;
-        if (!sealedPeriodIds.has(line.periodId)) continue;
+        if (!sealedPeriodBranch.has(line.periodId)) continue;
         if (!line.teacherId) continue;
+        const lineBranchId = line.branchId ?? sealedPeriodBranch.get(line.periodId) ?? null;
+        if (!recordInBranchScope(lineBranchId, branchFilter)) continue;
         accrued.set(line.teacherId, (accrued.get(line.teacherId) || 0) + (line.finalMinor || 0));
         if (line.teacherName) names.set(line.teacherId, line.teacherName);
       }

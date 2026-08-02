@@ -104,6 +104,8 @@ export async function buildDirectorSnapshot(orgId: string): Promise<DirectorSnap
   let debtTotal = 0;
   const overdueStudentIds = new Set<string>();
   const debtors: { name: string; amount: number; daysOverdue: number }[] = [];
+  // Ключ — человек: у одного студента может быть несколько непогашенных счетов.
+  const debtorByPerson = new Map<string, { name: string; amount: number; daysOverdue: number }>();
   if (planSnap) for (const p of planSnap.docs) {
     const plan = p.data() as any;
     if (!isDebtBearingPlan(plan)) continue;
@@ -116,8 +118,22 @@ export async function buildDirectorSnapshot(orgId: string): Promise<DirectorSnap
     const du = daysUntilDeadline(plan.deadline, now);
     const daysOverdue = du !== null && du < 0 ? -du : 0;
     if (isPlanOverdue(plan, now) && plan.studentId) overdueStudentIds.add(plan.studentId);
-    debtors.push({ name: plan.studentName || 'Студент', amount: debt, daysOverdue });
+    // Копим по ЧЕЛОВЕКУ, а не по счёту. Раньше в список попадала каждая
+    // непогашенная строка, и «должников всего» считало СЧЕТА: студент с долгами
+    // за июнь и июль давал двойку. Финансовый экран считает `debtorCount` через
+    // Set по studentId — то есть людей, — и два ответа на один вопрос
+    // расходились тем сильнее, чем дольше копился долг. У бота ответ авторитетнее
+    // на вид и проверить его неоткуда.
+    const personKey = plan.studentId || `name:${plan.studentName || 'Студент'}`;
+    const existing = debtorByPerson.get(personKey);
+    if (existing) {
+      existing.amount += debt;
+      existing.daysOverdue = Math.max(existing.daysOverdue, daysOverdue);
+    } else {
+      debtorByPerson.set(personKey, { name: plan.studentName || 'Студент', amount: debt, daysOverdue });
+    }
   }
+  debtors.push(...debtorByPerson.values());
   debtors.sort((a, b) => b.amount - a.amount);
 
   // ── Students / teachers / groups ──

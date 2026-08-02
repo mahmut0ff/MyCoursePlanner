@@ -577,9 +577,17 @@ const handler: Handler = async (event: HandlerEvent) => {
       // активных — хотя денег за неё не приходило. Комментарии к расчёту MRR
       // прямо требуют обратного: trial и gifted выручки не дают.
       const NON_PAYING_STATUSES = ['trial', 'gifted'];
-      const subStatusNow = String((await adminDb.collection('subscriptions')
-        .where('organizationId', '==', body.organizationId).limit(1).get())
-        .docs[0]?.data()?.status || '');
+      // Подписку читаем ОДИН раз: и чтобы узнать текущий статус для оговорки
+      // ниже, и чтобы дальше в неё же записать.
+      const subSnap = await adminDb.collection('subscriptions')
+        .where('organizationId', '==', body.organizationId).limit(1).get();
+      const subStatusNow = String(subSnap.docs[0]?.data()?.status || '');
+
+      // ЯВНЫЙ body.status применяется всегда — это решение суперадмина, и им же
+      // отработавший трайл переводится в платящие. Оговорка касается только
+      // НЕЯВНОЙ импликации «прислали дату → значит active»: у пробного периода и
+      // подаренного тарифа дата «оплачено до» тоже есть, и без неё сохранение
+      // одной лишь даты молча делало организацию платящей.
       let status = body.status;
       if (!status && body.paidUntil && !NON_PAYING_STATUSES.includes(subStatusNow)) {
         const due = new Date(body.paidUntil).getTime();
@@ -591,7 +599,6 @@ const handler: Handler = async (event: HandlerEvent) => {
         if (status === 'active') subUpdate.cancelledAt = null;
       }
 
-      const subSnap = await adminDb.collection('subscriptions').where('organizationId', '==', body.organizationId).limit(1).get();
       if (!subSnap.empty) {
         await subSnap.docs[0].ref.update(subUpdate);
       } else {

@@ -6,6 +6,14 @@ import toast from 'react-hot-toast';
 
 import { planPrice } from '../../lib/subscription-plans';
 
+/**
+ * Состояния подписки, которые НЕ означают платящего клиента. Селект «Управления»
+ * показывает их как есть, и пока суперадмин не выбрал другое, статус в базе не
+ * трогается: иначе открыть окно и нажать «Сохранить» значило перевести пробную
+ * организацию в платящие и подмешать её в MRR.
+ */
+const NON_PAYING_STATUSES = ['trial', 'gifted'];
+
 /** ISO paidUntil → whole days left (negative when overdue), or null. */
 const daysLeft = (paidUntil?: string | null): number | null => {
   if (!paidUntil) return null;
@@ -24,7 +32,7 @@ const toDateInput = (iso?: string | null): string => {
 
 type ManageState = {
   orgId: string; name: string; planId: string; date: string; status: string;
-  /** Статус подписки до открытия окна — см. NON_PAYING в handleSave. */
+  /** Статус подписки до открытия окна — показываем его в подписи селекта. */
   originalStatus: string;
 };
 
@@ -58,22 +66,15 @@ const AdminBillingPage: React.FC = () => {
   const trialCount = filtered.filter(s => s.status === 'trial').length;
   const suspendedCount = filtered.filter(s => ['suspended', 'expired', 'cancelled'].includes(s.status)).length;
 
-  // Статусы, которые окно «Управление» НЕ вправе переписывать.
-  //
-  // Оно предлагает выбор из двух состояний — «активна» и «заблокирована», — и
-  // при сохранении писало ровно одно из них. Организация на пробном периоде или
-  // с подаренным тарифом попадала в ветку «активна», то есть простое открытие
-  // окна и нажатие «Сохранить» (даже без правок) превращало её в ПЛАТНУЮ: она
-  // попадала в MRR и в счётчик активных, хотя денег за неё не приходило.
-  // Комментарии к MRR прямо говорят, что trial и gifted выручки не дают.
-  const NON_PAYING = ['trial', 'gifted'];
-
   const openManage = (s: any) => setManage({
     orgId: s.organizationId,
     name: s.organizationName || s.organizationId,
     planId: s.planId || 'starter',
     date: toDateInput(s.paidUntil),
-    status: ['suspended', 'expired', 'cancelled'].includes(s.status) ? 'suspended' : 'active',
+    status: ['suspended', 'expired', 'cancelled'].includes(s.status)
+      ? 'suspended'
+      // Не-платящее состояние показываем как есть — см. селект в разметке.
+      : NON_PAYING_STATUSES.includes(String(s.status || '')) ? String(s.status) : 'active',
     // Исходный статус запоминаем, чтобы вернуть его нетронутым, если суперадмин
     // блокировку не выбирал.
     originalStatus: String(s.status || ''),
@@ -96,15 +97,18 @@ const AdminBillingPage: React.FC = () => {
       await adminSetSubscription(manage.orgId, {
         planId: manage.planId,
         paidUntil,
-        // Блокировку ставим всегда, когда её выбрали. А «активна» по не-платящей
-        // организации не отправляем вовсе: trial и подаренный тариф остаются
-        // собой, пока суперадмин явно не заблокировал её. Сервер такую же
-        // оговорку делает и для импликации «есть дата → active».
-        ...(manage.status === 'suspended'
-          ? { status: 'suspended' as const }
-          : NON_PAYING.includes(manage.originalStatus)
-            ? {}
-            : { status: 'active' as const }),
+        // Не-платящее состояние оставлено в селекте как есть — статус не
+        // отправляем вовсе, в базе он не меняется. Любое другое значение
+        // суперадмин выбрал осознанно, и оно применяется: перевод отработавшего
+        // трайла в платящие делается ровно здесь и больше нигде.
+        //
+        // Промежуточная версия этой правки не отправляла статус для trial НИКОГДА
+        // и тем самым выключила конверсию: сохранялась только дата, статус
+        // оставался 'trial', PlanContext считал подписку истёкшей, и оплатившая
+        // академия оставалась заблокированной.
+        ...(NON_PAYING_STATUSES.includes(manage.status)
+          ? {}
+          : { status: manage.status === 'suspended' ? ('suspended' as const) : ('active' as const) }),
       });
       toast.success(t('common.saved', 'Сохранено'));
       setManage(null);
@@ -219,7 +223,20 @@ const AdminBillingPage: React.FC = () => {
             </div>
 
             <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">{t('admin.billing.status')}</label>
+            {/* Для не-платящей организации (пробный период, подарен) селект
+                начинается с ЕЁ СОБСТВЕННОГО состояния, а не с «Активен».
+                Иначе открыть окно и нажать «Сохранить», ничего не трогая,
+                означало перевести её в платящие: она попадала в MRR и в счётчик
+                активных, хотя денег не приходило. Перевод в платящие остаётся
+                возможным — но как ЯВНЫЙ выбор «Активен». */}
             <select value={manage.status} onChange={(e) => setManage({ ...manage, status: e.target.value })} className="input mb-5">
+              {NON_PAYING_STATUSES.includes(manage.originalStatus) && (
+                <option value={manage.originalStatus}>
+                  {manage.originalStatus === 'trial'
+                    ? t('admin.statuses.trial', 'Пробный период')
+                    : t('admin.statuses.gifted', 'Подарен')}
+                </option>
+              )}
               <option value="active">{t('admin.statuses.active', 'Активен')}</option>
               <option value="suspended">{t('admin.statuses.suspended', 'Отключён')}</option>
             </select>

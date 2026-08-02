@@ -1271,7 +1271,7 @@ describe('one overdue rule across debt-reminders and the metrics surface', () =>
   ];
 
   /** Wires plans for both the cron (doc.ref.update) and the endpoints (batch). */
-  function wire(plans: any[]) {
+  function wire(plans: any[], activeStudentIds: string[] = plans.map(p => p.studentId)) {
     const writes: Array<[string, any]> = [];
     (adminDb.batch as any).mockImplementation(() => ({
       update: vi.fn((ref: any, data: any) => { writes.push([ref?.id, data]); }),
@@ -1291,8 +1291,19 @@ describe('one overdue rule across debt-reminders and the metrics surface', () =>
       doc: vi.fn((id: string) => ({ id })),
     };
     const empty: any = { where: vi.fn(() => empty), get: vi.fn().mockResolvedValue({ docs: [], size: 0, empty: true }) };
+    // Членство организации: debt-reminders спрашивает его, чтобы не слать
+    // требования оплаты отчисленным. По умолчанию все студенты фикстуры активны —
+    // отдельный тест ниже отчисляет одного и проверяет, что ему не пишут.
+    const members: any = {
+      where: vi.fn(() => members),
+      get: vi.fn().mockResolvedValue({
+        docs: activeStudentIds.map(uid => ({ id: uid, data: () => ({ userId: uid, status: 'active' }) })),
+        empty: activeStudentIds.length === 0,
+      }),
+    };
+    const orgMembers: any = { doc: vi.fn(() => ({ collection: vi.fn(() => members) })) };
     (adminDb.collection as any).mockImplementation((name: string) =>
-      name === 'studentPaymentPlans' ? q : empty);
+      name === 'studentPaymentPlans' ? q : name === 'orgMembers' ? orgMembers : empty);
     return { writes };
   }
 
@@ -1324,6 +1335,20 @@ describe('one overdue rule across debt-reminders and the metrics surface', () =>
     expect(calls.find((c: any) => c.recipientId === 'sLate')?.title).toBe('Просрочена оплата');
     expect(calls.find((c: any) => c.recipientId === 'sToday')?.title).toBe('Напоминание об оплате');
     expect(calls.find((c: any) => c.recipientId === 'sToday')?.message).toContain('сегодня');
+  });
+
+  it('не требует денег у отчисленного студента', async () => {
+    // 'sLate' ушёл из академии — его нет среди активных участников. Счёт при
+    // этом жив (списывается только нетронутый), и раньше крон продолжал слать
+    // семье «Оплата просрочена» ночью, без ведома менеджера.
+    wire(planRows, ['sExt', 'sToday']);
+    const res: any = await debtRemindersHandler(event('POST'), {} as any, () => {});
+    const calls = (createNotification as any).mock.calls.map((c: any[]) => c[0]);
+
+    expect(calls.find((c: any) => c.recipientId === 'sLate')).toBeUndefined();
+    expect(JSON.parse(res.body).skippedInactive).toBe(1);
+    // Активные студенты продолжают получать своё — правило точечное.
+    expect(calls.find((c: any) => c.recipientId === 'sToday')?.title).toBe('Напоминание об оплате');
   });
 
   it('agrees with the metrics overdue count on the very same fixture', async () => {

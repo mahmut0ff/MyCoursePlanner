@@ -62,6 +62,39 @@ const handler: Handler = async (event: HandlerEvent) => {
     let sent = 0;
     let markedOverdue = 0;
     let clearedOverdue = 0;
+    let skippedInactive = 0;
+
+    // Кому организация ещё вправе выставлять требования. Отчисленный студент
+    // продолжал получать «Оплата просрочена»: счёт остаётся жить (списывается
+    // только нетронутый), а этот крон смотрел лишь на сам счёт. Для семьи это
+    // выглядит как требование денег после ухода из школы, и менеджер об этом
+    // даже не знает — рассылка идёт молча, ночью.
+    //
+    // Читаем членство ОДИН раз на организацию за прогон и кэшируем: счетов
+    // тысячи, организаций десятки.
+    const activeByOrg = new Map<string, Set<string>>();
+    const isActiveStudent = async (orgId: string, studentId: string): Promise<boolean> => {
+      let ids = activeByOrg.get(orgId);
+      if (!ids) {
+        try {
+          const memberSnap = await adminDb.collection('orgMembers').doc(orgId).collection('members')
+            .where('status', '==', 'active').get();
+          ids = new Set<string>(memberSnap.docs.map(d => (d.data() as any).userId || d.id));
+        } catch (e) {
+          // Членство не прочиталось. Молча замолчать по всей организации нельзя:
+          // это остановило бы ВСЕ напоминания и выглядело бы как «должники сами
+          // рассосались». Возвращаемся к прежнему поведению (напоминаем) и
+          // оставляем след в логах — лишнее письмо дешевле пропавшей выручки.
+          console.error(`debt-reminders: membership read failed for org ${orgId}:`, e);
+          activeByOrg.set(orgId, null as any);
+          return true;
+        }
+        activeByOrg.set(orgId, ids);
+      }
+      // null — маркер «прочитать не удалось» (см. catch выше).
+      if (ids === null) return true;
+      return ids.has(studentId);
+    };
 
     for (const doc of snap.docs) {
       const plan = doc.data() as any;
@@ -73,6 +106,15 @@ const handler: Handler = async (event: HandlerEvent) => {
       // out, but this cron is the only consumer that *messages* students, so the
       // write-off rule is re-asserted here rather than trusted from the query.
       if (!isDebtBearingPlan(plan)) continue;
+
+      // Отчисленному не пишем. Статус счёта при этом НЕ трогаем: долг перед
+      // академией мог остаться настоящим, и решать его судьбу — дело менеджера,
+      // а не ночного крона. Мы лишь перестаём требовать деньги автоматически.
+      if (!(await isActiveStudent(plan.organizationId, plan.studentId))) {
+        skippedInactive++;
+        continue;
+      }
+
       const debt = planDebt(plan);
 
       // Общий предикат просрочки (utils/payment-plans.ts) вместо третьей местной
@@ -149,7 +191,7 @@ const handler: Handler = async (event: HandlerEvent) => {
       sent++;
     }
 
-    return jsonResponse(200, { success: true, scanned, sent, markedOverdue, clearedOverdue });
+    return jsonResponse(200, { success: true, scanned, sent, markedOverdue, clearedOverdue, skippedInactive });
   } catch (error: any) {
     console.error('Debt reminders error:', error);
     return jsonResponse(500, { error: error.message });

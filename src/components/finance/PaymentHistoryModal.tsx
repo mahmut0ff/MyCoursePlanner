@@ -50,6 +50,15 @@ const PaymentHistoryModal: React.FC<Props> = ({ plan, studentId, studentName, ca
     [history]
   );
   const refunded = useMemo(() => history.some(tx => tx.type === 'expense'), [history]);
+  /** Валовой приход и сумма возвратов — чтобы объяснить, из чего сложилось чистое. */
+  const gross = useMemo(
+    () => history.reduce((sum, tx) => sum + (tx.type === 'income' ? (tx.amount || 0) : 0), 0),
+    [history]
+  );
+  const refundedTotal = useMemo(
+    () => history.reduce((sum, tx) => sum + (tx.type === 'expense' ? (tx.amount || 0) : 0), 0),
+    [history]
+  );
 
   return (
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={onClose}>
@@ -74,6 +83,19 @@ const PaymentHistoryModal: React.FC<Props> = ({ plan, studentId, studentName, ca
                 <div className="bg-gradient-to-r from-emerald-400 to-emerald-600 h-3 rounded-full transition-all duration-500"
                   style={{ width: `${plan.totalAmount > 0 ? Math.min(100, (plan.paidAmount / plan.totalAmount) * 100) : 0}%` }} />
               </div>
+              {/* Возврат уменьшает `paidAmount`, поэтому шапка показывает уже
+                  ЧИСТУЮ сумму — а список под ней перечисляет и приход, и
+                  возврат по отдельности. Без этой строки два блока выглядят
+                  противоречащими друг другу: «оплачено 0» над записью о платеже
+                  на 5 000. Говорим прямо, что возвраты уже вычтены. */}
+              {refunded && (
+                <p className="text-[11px] text-slate-400 mt-1.5">
+                  {t('finances.progressNetOfRefunds', 'Возвраты уже вычтены: пришло {{gross}}, вернули {{back}}.', {
+                    gross: formatMoney(gross),
+                    back: formatMoney(refundedTotal),
+                  })}
+                </p>
+              )}
             </div>
           ) : !loading && history.length > 0 && (
             // По студенту прогресса нет — счетов может быть несколько, поэтому

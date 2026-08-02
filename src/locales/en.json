@@ -2230,7 +2230,8 @@
     "billMonthConfirm": "Bill",
     "refundDateFuture": "A refund cannot be dated in the future — the money has not been handed back yet",
     "refundDate": "Refund date",
-    "refundDateHint": "When the money was actually returned to the student, not when you record it."
+    "refundDateHint": "When the money was actually returned to the student, not when you record it.",
+    "progressNetOfRefunds": "Refunds are already deducted: {{gross}} received, {{back}} returned."
   },
   "telegram": {
     "title": "Telegram Notifications",

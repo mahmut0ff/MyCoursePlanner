@@ -20,7 +20,7 @@ import type { Handler, HandlerEvent } from '@netlify/functions';
 import { adminDb } from './utils/firebase-admin';
 import { createNotification } from './utils/notifications';
 import { jsonResponse } from './utils/auth';
-import { billingPeriodKey, billingDeadlineISO } from './utils/billing';
+import { billingPeriodKey, billingDeadlineISO, monthlyPlanId } from './utils/billing';
 
 const PLANS = 'studentPaymentPlans';
 
@@ -124,14 +124,18 @@ const handler: Handler = async (event: HandlerEvent) => {
       if (toBill.length === 0) continue;
 
       // Create invoices in chunked batches (1 write each).
+      // Id детерминированный (utils/billing.monthlyPlanId) и запись через
+      // `create`: дедуп выше — это чтение перед записью, и между ними помещается
+      // ручное «Начислить за месяц» из интерфейса. Теперь второй счёт за тот же
+      // месяц отвергает база, кто бы его ни писал.
       const CHUNK = 400;
       const createdForNotify: string[] = [];
       for (let i = 0; i < toBill.length; i += CHUNK) {
         const slice = toBill.slice(i, i + CHUNK);
         const batch = adminDb.batch();
         for (const studentId of slice) {
-          const ref = adminDb.collection(PLANS).doc();
-          batch.set(ref, {
+          const ref = adminDb.collection(PLANS).doc(monthlyPlanId(orgId, courseId, studentId, period));
+          batch.create(ref, {
             organizationId: orgId,
             branchId: studentBranch.get(studentId) || null,
             studentId,
@@ -152,8 +156,45 @@ const handler: Handler = async (event: HandlerEvent) => {
           });
           createdForNotify.push(studentId);
         }
-        await batch.commit();
-        invoicesCreated += slice.length;
+        try {
+          await batch.commit();
+          invoicesCreated += slice.length;
+        } catch {
+          // Батч падает целиком, если хоть один счёт уже создан параллельно.
+          // Дописываем поштучно: настоящий дубль пропускаем, остальным ученикам
+          // чанка счета обязаны появиться. Уведомляем только реально созданных.
+          const written: string[] = [];
+          for (const studentId of slice) {
+            try {
+              await adminDb.collection(PLANS).doc(monthlyPlanId(orgId, courseId, studentId, period)).create({
+                organizationId: orgId,
+                branchId: studentBranch.get(studentId) || null,
+                studentId,
+                courseId,
+                courseName: course.title || '',
+                totalAmount: price,
+                listAmount: price,
+                paidAmount: 0,
+                status: 'pending',
+                billingType: 'monthly',
+                period,
+                deadline,
+                autoBilled: true,
+                createdAt: ts,
+                updatedAt: ts,
+              });
+              written.push(studentId);
+            } catch { /* уже выставлен параллельным писателем */ }
+          }
+          invoicesCreated += written.length;
+          // Из списка на уведомление убираем тех, кому счёт не создавали.
+          const writtenSet = new Set(written);
+          for (let k = createdForNotify.length - 1; k >= 0; k--) {
+            if (slice.includes(createdForNotify[k]) && !writtenSet.has(createdForNotify[k])) {
+              createdForNotify.splice(k, 1);
+            }
+          }
+        }
       }
       studentsBilled += createdForNotify.length;
 

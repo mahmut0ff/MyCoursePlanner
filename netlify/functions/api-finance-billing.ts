@@ -19,7 +19,7 @@ import type { Handler, HandlerEvent } from '@netlify/functions';
 import { adminDb } from './utils/firebase-admin';
 import { verifyAuth, can, getOrgFilter, requireBranchScope, ok, unauthorized, forbidden, badRequest, jsonResponse } from './utils/auth';
 import { createNotification } from './utils/notifications';
-import { billingDeadlineISO } from './utils/billing';
+import { billingDeadlineISO, monthlyPlanId } from './utils/billing';
 
 const COLLECTION = 'studentPaymentPlans';
 const PERIOD_RE = /^\d{4}-\d{2}$/;
@@ -129,32 +129,62 @@ const handler: Handler = async (event: HandlerEvent) => {
     }
 
     // ── 3. Пишем начисления чанками ──────────────────────────────────────────
+    // `create` по ДЕТЕРМИНИРОВАННОМУ id (см. monthlyPlanId): дедуп выше — это
+    // чтение перед записью, а между ними помещается второй запрос. Два
+    // менеджера, нажавшие «Начислить за месяц» одновременно, выставляли студенту
+    // два одинаковых счёта, и оба получали успех. Теперь дубль отвергает база.
+    //
+    // Батч падает целиком, если хоть один документ уже есть, поэтому на отказе
+    // переходим к поштучной записи: реальный дубль пропускаем, остальные счёта
+    // чанка обязаны быть выставлены.
+    let raced = 0;
     for (let i = 0; i < toCreate.length; i += CHUNK) {
       const slice = toCreate.slice(i, i + CHUNK);
+      const docFor = (c: Charge) => ({
+        ref: adminDb.collection(COLLECTION).doc(monthlyPlanId(orgId, c.courseId, c.studentId, period)),
+        data: planDataFor(c),
+      });
       const batch = adminDb.batch();
       for (const c of slice) {
-        const ref = adminDb.collection(COLLECTION).doc();
-        batch.set(ref, {
-          organizationId: orgId,
-          branchId: c.branchId,
-          studentId: c.studentId,
-          studentName: c.studentName,
-          courseId: c.courseId,
-          courseName: c.courseName,
-          totalAmount: c.amount,
-          listAmount: c.listAmount,
-          paidAmount: 0,
-          status: 'pending',
-          billingType: 'monthly',
-          period,
-          deadline,
-          // Начислил менеджер, а не крон: не выдаём это за авто-выставление.
-          autoBilled: false,
-          createdAt: ts,
-          updatedAt: ts,
-        });
+        const { ref, data } = docFor(c);
+        batch.create(ref, data);
       }
-      await batch.commit();
+      try {
+        await batch.commit();
+      } catch {
+        for (const c of slice) {
+          const { ref, data } = docFor(c);
+          try {
+            await ref.create(data);
+          } catch {
+            raced++;
+            skipped++;
+          }
+        }
+      }
+    }
+
+    // Тело документа начисления — одно на оба пути записи (батч и поштучный).
+    function planDataFor(c: Charge) {
+      return {
+        organizationId: orgId,
+        branchId: c.branchId,
+        studentId: c.studentId,
+        studentName: c.studentName,
+        courseId: c.courseId,
+        courseName: c.courseName,
+        totalAmount: c.amount,
+        listAmount: c.listAmount,
+        paidAmount: 0,
+        status: 'pending',
+        billingType: 'monthly',
+        period,
+        deadline,
+        // Начислил менеджер, а не крон: не выдаём это за авто-выставление.
+        autoBilled: false,
+        createdAt: ts,
+        updatedAt: ts,
+      };
     }
 
     // ── 4. Уведомляем студентов (best-effort, как в monthly-billing) ─────────

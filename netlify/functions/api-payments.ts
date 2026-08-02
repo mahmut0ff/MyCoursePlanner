@@ -6,7 +6,8 @@
  */
 import type { Handler, HandlerEvent } from '@netlify/functions';
 import { adminDb } from './utils/firebase-admin';
-import { verifyAuth, ok, unauthorized, badRequest, notFound, jsonResponse } from './utils/auth';
+import { verifyAuth, isSuperAdmin, ok, unauthorized, forbidden, badRequest, notFound, jsonResponse } from './utils/auth';
+import { isKnownPlanId, planPrice } from '../../src/lib/subscription-plans';
 import * as crypto from 'crypto';
 
 const COLLECTION = 'payments';
@@ -46,13 +47,30 @@ const handler: Handler = async (event: HandlerEvent) => {
     const snap = await adminDb.collection(COLLECTION)
       .where('orderId', '==', params.orderId).limit(1).get();
     if (snap.empty) return notFound('Payment not found');
-    return ok({ id: snap.docs[0].id, ...snap.docs[0].data() });
+    const payment = snap.docs[0].data() as any;
+    // orderId — это единственный ключ поиска, и он не секрет: он попадает в
+    // URL возврата с платёжной страницы и в письма шлюза. Без проверки
+    // организации любой аутентифицированный пользователь мог прочитать чужой
+    // платёж — сумму, тариф и uid плательщика — просто подставив чужой orderId.
+    if (!isSuperAdmin(user) && payment.organizationId && payment.organizationId !== user.organizationId) {
+      return forbidden();
+    }
+    return ok({ id: snap.docs[0].id, ...payment });
   }
 
   // POST — create payment
   if (event.httpMethod === 'POST') {
     const body = JSON.parse(event.body || '{}');
-    if (!body.planId || !body.amount) return badRequest('planId and amount required');
+    if (!body.planId) return badRequest('planId required');
+    if (!isKnownPlanId(body.planId)) return badRequest('Invalid planId');
+
+    // ── Цену назначает сервер, а не плательщик ──
+    // Раньше сумма приходила в теле (`body.amount`) и уходила в шлюз как есть,
+    // ни с чем не сверенная: `{planId:'enterprise', amount:1}` создавал платёж
+    // за Enterprise на один сом, а вебхук потом начислял период по тарифу.
+    // Тариф из тела брать можно — это ВЫБОР пользователя; цену тарифа брать из
+    // тела нельзя, это факт о прайсе.
+    const amount = planPrice(body.planId);
 
     if (!FREEDOMPAY_MERCHANT_ID || !FREEDOMPAY_SECRET_KEY) {
       return jsonResponse(503, { error: 'Payment system not configured. Set FREEDOMPAY_MERCHANT_ID and FREEDOMPAY_SECRET_KEY.' });
@@ -67,7 +85,7 @@ const handler: Handler = async (event: HandlerEvent) => {
       userId: user.uid,
       organizationId: user.organizationId || '',
       planId: body.planId,
-      amount: body.amount,
+      amount,
       currency: 'KGS',
       status: 'pending',
       createdAt: now,
@@ -79,7 +97,7 @@ const handler: Handler = async (event: HandlerEvent) => {
     const fpParams: Record<string, string> = {
       pg_merchant_id: FREEDOMPAY_MERCHANT_ID,
       pg_order_id: orderId,
-      pg_amount: String(body.amount),
+      pg_amount: String(amount),
       pg_currency: 'KGS',
       pg_description: `SabakHub — ${body.planId} plan`,
       pg_salt: salt,

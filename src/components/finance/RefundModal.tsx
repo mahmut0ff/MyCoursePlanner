@@ -89,6 +89,10 @@ const RefundModal: React.FC<Props> = ({ tx, studentName, onClose, onSuccess }) =
         // кассовый отчёт с тем, что было в ящике.
         date: new Date(date).toISOString(),
         categoryId: 'refund',
+        // Связь с возвращаемой оплатой. По ней сервер суммирует уже проведённые
+        // возвраты и не даёт вернуть больше, чем было получено: без неё возврат
+        // был безымянным расходом, и один и тот же платёж возвращался дважды.
+        refundOfTransactionId: tx.id,
         paymentPlanId: tx.paymentPlanId,
         studentId: tx.studentId,
         courseId: tx.courseId,

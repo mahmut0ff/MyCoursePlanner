@@ -333,6 +333,10 @@ const handler: Handler = async (event: HandlerEvent) => {
         courseId: body.courseId ?? null,
         groupId: resolvedGroupId,
         teacherId: body.teacherId ?? null,
+        // Какую именно оплату возвращаем. Без этой связи возврат был безымянным
+        // расходом, и повторный возврат по одной и той же оплате ничем не
+        // отличался от первого (см. проверку суммы возвратов ниже).
+        refundOfTransactionId: body.refundOfTransactionId ?? null,
         branchId,
         organizationId: orgFilter,
         createdBy: user.uid,
@@ -352,6 +356,39 @@ const handler: Handler = async (event: HandlerEvent) => {
       // транзакции, ошибка возвращается уже снаружи — бросать из транзакции
       // нельзя, Firestore воспримет это как повод к повтору.
       let overpay: { by: number; outstanding: number } | null = null;
+
+      // ── Возврат не может превысить возвращаемую оплату ──
+      // RefundModal сверял сумму только с самой транзакцией, а связи «этот
+      // возврат — по вот той оплате» в базе не было. Поэтому по оплате 5 000
+      // можно было оформить возврат 5 000 дважды: первый раз paidAmount падал в
+      // ноль, второй — уже ни на что не влиял (Math.max(0, …) съедал разницу),
+      // и в кассе появлялся расход 5 000 БЕЗ единого следа на стороне счёта.
+      // Исходная оплата при этом оставалась непомеченной, с живой кнопкой
+      // «Возврат», а на вкладке «Платежи» (выборка type:'income') выглядела
+      // нетронутой.
+      //
+      // Считаем уже проведённые возвраты по этой оплате и отвергаем превышение.
+      // Два равенства — составной индекс не нужен (CLAUDE.md).
+      if (data.refundOfTransactionId) {
+        const sourceSnap = await adminDb.collection(COLLECTION).doc(data.refundOfTransactionId).get();
+        if (!sourceSnap.exists || sourceSnap.data()!.organizationId !== orgFilter) {
+          return badRequest('Оплата, по которой оформляется возврат, не найдена');
+        }
+        const sourceAmount = Number(sourceSnap.data()!.amount) || 0;
+        const priorSnap = await adminDb.collection(COLLECTION)
+          .where('organizationId', '==', orgFilter)
+          .where('refundOfTransactionId', '==', data.refundOfTransactionId)
+          .get();
+        const alreadyRefunded = priorSnap.docs.reduce((sum, d) => sum + (Number(d.data().amount) || 0), 0);
+        const refundable = Math.max(0, sourceAmount - alreadyRefunded);
+        if (amount > refundable) {
+          return badRequest(
+            refundable === 0
+              ? `Эта оплата уже возвращена полностью (${alreadyRefunded}).`
+              : `Вернуть можно не больше ${refundable}: по этой оплате уже возвращено ${alreadyRefunded} из ${sourceAmount}.`
+          );
+        }
+      }
 
       if (!planSideEffect) {
         await ref.set(data);

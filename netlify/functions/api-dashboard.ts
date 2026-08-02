@@ -3,7 +3,7 @@
  */
 import type { Handler, HandlerEvent } from '@netlify/functions';
 import { adminDb } from './utils/firebase-admin';
-import { verifyAuth, isStaff, hasRole, getOrgFilter, resolveBranchFilter, memberInBranchScope, memberHoldsRole, recordInBranchScope, ok, unauthorized, forbidden, jsonResponse } from './utils/auth';
+import { verifyAuth, isStaff, hasRole, can, getOrgFilter, resolveBranchFilter, memberInBranchScope, memberHoldsRole, recordInBranchScope, ok, unauthorized, forbidden, jsonResponse } from './utils/auth';
 import { computeStudentRisk, needsAttention } from './utils/risk';
 import { isDebtBearingPlan, isPlanOverdue } from './utils/payment-plans';
 
@@ -133,6 +133,8 @@ const handler: Handler = async (event: HandlerEvent) => {
     // Scope the roster to the selected branch, the same way the students list
     // does. Without this the overview counted the whole org while the list next
     // to it counted one branch — the mismatch that made these tiles untrustworthy.
+    // Признак долга — финансовая величина: см. тот же гейт в api-risk.
+    const canSeeMoney = can(user, 'finances', 'read');
     const overviewScope = resolveBranchFilter(user, params.branchId);
     if (overviewScope === '__DENIED__') return forbidden();
 
@@ -219,7 +221,11 @@ const handler: Handler = async (event: HandlerEvent) => {
         enrolledAt: member.joinedAt || member.createdAt,
         attempts: attemptsByStudent.get(uid) || [],
         journal: journalByStudent.get(uid) || [],
-        hasOverduePayment: overdueStudents.has(uid),
+        // Тот же денежный гейт, что в api-risk: без доступа к финансам признак
+        // долга в риск не входит. Иначе плитка «Ученики в зоне риска» и список
+        // /students?risk=1, куда она ведёт, снова считали бы РАЗНЫХ людей —
+        // теперь уже не из-за филиала, а из-за прав вызывающего.
+        hasOverduePayment: canSeeMoney && overdueStudents.has(uid),
         nowMs,
       });
       if (r.riskLevel === 'high') riskHigh++;

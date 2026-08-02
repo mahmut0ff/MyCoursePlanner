@@ -73,7 +73,7 @@ function isPeriodKey(value: unknown): boolean {
 }
 
 /**
- * Окно месяца по ключу 'YYYY-MM' — ЛОКАЛЬНОЕ, обе границы включительно.
+ * Окно месяца по ключу 'YYYY-MM' — в дне ОРГАНИЗАЦИИ, обе границы включительно.
  *
  * Построено ровно как ветка last_month в getPeriodRange (finance-period.ts):
  * `new Date(y, m, 0, 23,59,59,999)` — нулевой день следующего месяца это
@@ -83,12 +83,21 @@ function isPeriodKey(value: unknown): boolean {
  * Обратная проверка через billingPeriodKey не формальность: она гарантирует, что
  * payroll и выставление счетов понимают «2026-07» одинаково.
  */
+/** Смещение календаря организации — то же, что в finance-period.ts и payroll-engine.ts. */
+const ORG_OFFSET_MS = 6 * 60 * 60 * 1000;
+
 function monthWindow(period: string): { windowStart: string; windowEnd: string } | null {
   const [y, m] = period.split('-').map(Number);
   if (!Number.isFinite(y) || !Number.isFinite(m)) return null;
-  const start = new Date(y, m - 1, 1, 0, 0, 0, 0);
-  const end = new Date(y, m, 0, 23, 59, 59, 999);
-  if (billingPeriodKey(start) !== period) return null;
+  // Окно строится в КАЛЕНДАРЕ ОРГАНИЗАЦИИ (UTC+6) — как getPeriodRange, из
+  // которого ту же ведомость открывает крон. Пока здесь стояли локальные
+  // компоненты, один и тот же ключ месяца давал ДВА разных окна: ручной расчёт
+  // на Netlify (UTC) охватывал 01.07–31.07 по UTC, а крон — те же даты в дне
+  // организации. Ведомость за один месяц меняла охват в зависимости от того,
+  // кто её посчитал, и «Пересчитать» сдвигало суммы без единой правки данных.
+  const start = new Date(Date.UTC(y, m - 1, 1) - ORG_OFFSET_MS);
+  const end = new Date(Date.UTC(y, m, 0, 23, 59, 59, 999) - ORG_OFFSET_MS);
+  if (billingPeriodKey(new Date(Date.UTC(y, m - 1, 1))) !== period) return null;
   return { windowStart: start.toISOString(), windowEnd: end.toISOString() };
 }
 

@@ -36,6 +36,12 @@ const COLLECTION = 'studentPaymentPlans';
 const BEFORE_DAYS = [3, 1, 0];
 // Once overdue, nudge again every N days.
 const OVERDUE_EVERY_DAYS = 3;
+/**
+ * Насколько свежей должна быть просрочка, чтобы о ней уведомляли директора.
+ * Отсекает разовую лавину по историческим долгам при первом прогоне после
+ * появления overdueNotifiedAt — см. развёрнутое объяснение у самой проверки.
+ */
+const OVERDUE_NOTIFY_WINDOW_DAYS = 14;
 
 function fmtAmount(n: number): string {
   try { return Number(n || 0).toLocaleString('ru-RU'); } catch { return String(n || 0); }
@@ -153,7 +159,17 @@ const handler: Handler = async (event: HandlerEvent) => {
         await doc.ref.update({ status: 'overdue', updatedAt: now.toISOString() }).catch(() => {});
         markedOverdue++;
       }
-      if (missed && !plan.overdueNotifiedAt) {
+      // Порог по СВЕЖЕСТИ просрочки, а не только по отсутствию отметки.
+      //
+      // Поля overdueNotifiedAt нет ни в одном документе, созданном до его
+      // появления, и «нет поля» здесь читается как «ещё не сообщали». Без
+      // порога первый же ночной прогон после релиза отправил бы уведомление по
+      // КАЖДОМУ исторически просроченному счёту: в академии с тремя сотнями
+      // должников это триста писем каждому админу подряд — про долги, о которых
+      // они знают месяцами. Свежая просрочка (в пределах окна) — это событие,
+      // месячная — фоновое состояние, и о нём директор узнаёт из отчётов.
+      const overdueRecently = daysLeft !== null && daysLeft >= -OVERDUE_NOTIFY_WINDOW_DAYS;
+      if (missed && overdueRecently && !plan.overdueNotifiedAt) {
         await doc.ref.update({ overdueNotifiedAt: now.toISOString() }).catch(() => {});
         await notifyOrgAdmins(
           plan.organizationId,

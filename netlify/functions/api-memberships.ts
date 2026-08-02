@@ -249,7 +249,11 @@ const handler: Handler = async (event: HandlerEvent) => {
         '/students',
       ).catch(() => {});
 
-      return ok({ left: true });
+      // Уход по собственной инициативе закрывает ставку так же, как удаление
+      // менеджером: иначе ведомость продолжала бы начислять ушедшему.
+      const leftRulesClosed = await closeTeacherRules(body.organizationId, user.uid).catch(() => 0);
+
+      return ok({ left: true, rulesClosed: leftRulesClosed });
     }
 
     // ═══ POST: Remove member ═══
@@ -270,8 +274,12 @@ const handler: Handler = async (event: HandlerEvent) => {
      * увольнения человек отработал хотя бы частично. Прекращаются только
      * будущие начисления.
      */
-    async function closeTeacherRules(organizationId: string, userId: string, roles: string[]): Promise<number> {
-      if (!roles.some(r => r === 'teacher' || r === 'mentor')) return 0;
+    async function closeTeacherRules(organizationId: string, userId: string): Promise<number> {
+      // Роль НЕ проверяем. Ставка не появляется сама: если она есть, её завёл
+      // человек — и не важно, числится ли владелец 'teacher', 'mentor' или
+      // преподающим 'admin'. Прежняя проверка ролей молча пропускала как раз
+      // последний случай, а завести такому сотруднику ставку интерфейс
+      // позволяет.
       const month = orgDayKey().slice(0, 7); // 'YYYY-MM' в дне организации
       // Только равенства — составной индекс не нужен (CLAUDE.md).
       const snap = await adminDb.collection('compensationRules')
@@ -310,10 +318,7 @@ const handler: Handler = async (event: HandlerEvent) => {
       await adminDb.collection('orgMembers').doc(body.organizationId)
         .collection('members').doc(body.userId).update(update);
 
-      const rulesClosed = await closeTeacherRules(
-        body.organizationId, body.userId,
-        [targetMembership.role, ...(targetMembership.roles || [])].filter(Boolean),
-      ).catch(() => 0);
+      const rulesClosed = await closeTeacherRules(body.organizationId, body.userId).catch(() => 0);
 
       return ok({ removed: true, rulesClosed });
     }
@@ -398,10 +403,7 @@ const handler: Handler = async (event: HandlerEvent) => {
       // Ставки закрываем ДО удаления членства: после него роль уже не прочитать,
       // а ставка осталась бы активной навсегда — её владельца больше нет ни в
       // одном списке, и заметить строку в ведомости было бы неоткуда.
-      const rulesClosed = await closeTeacherRules(
-        body.organizationId, body.userId,
-        [targetMembership.role, ...(targetMembership.roles || [])].filter(Boolean),
-      ).catch(() => 0);
+      const rulesClosed = await closeTeacherRules(body.organizationId, body.userId).catch(() => 0);
 
       await adminDb.collection('users').doc(body.userId)
         .collection('memberships').doc(body.organizationId).delete();

@@ -55,7 +55,10 @@ const PLAN_ORDER: Record<PlanId, number> = {
 /** Известен ли идентификатор вообще (с учётом legacy). */
 export function isKnownPlanId(planId?: string | null): boolean {
   if (!planId) return false;
-  return planId in PLAN_PRICES || planId in LEGACY_PLAN_ALIASES;
+  // Object.hasOwn, а не `in`: `in` находит и ключи ПРОТОТИПА, поэтому
+  // planId: 'constructor' проходил валидацию как «известный тариф», а
+  // normalizePlanId ниже вернул бы по нему функцию вместо строки.
+  return Object.hasOwn(PLAN_PRICES, planId) || Object.hasOwn(LEGACY_PLAN_ALIASES, planId);
 }
 
 /**
@@ -65,8 +68,9 @@ export function isKnownPlanId(planId?: string | null): boolean {
  */
 export function normalizePlanId(planId?: string | null): PlanId {
   if (!planId) return 'starter';
-  if (planId in PLAN_PRICES) return planId as PlanId;
-  return LEGACY_PLAN_ALIASES[planId] || 'starter';
+  if (Object.hasOwn(PLAN_PRICES, planId)) return planId as PlanId;
+  if (Object.hasOwn(LEGACY_PLAN_ALIASES, planId)) return LEGACY_PLAN_ALIASES[planId];
+  return 'starter';
 }
 
 /** Цена тарифа в сомах. Legacy-id стоит столько же, сколько тариф, которым он стал. */

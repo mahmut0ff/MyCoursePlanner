@@ -117,6 +117,17 @@ const SheetTab: React.FC = () => {
   const load = useCallback(async () => {
     setLoading(true);
     setError('');
+    // Сбрасываем ведомость СРАЗУ, а не только при успехе.
+    //
+    // Прежде `sheet` держался до прихода новых данных и оставался на экране при
+    // ошибке загрузки. Это не косметика: пока на месте ведомость ЧУЖОГО месяца
+    // или филиала, кнопки «Утвердить» и «Выплатить» действуют именно на неё —
+    // runApprove/runPay берут sheet.id. Директор переключал месяц, видел
+    // знакомые суммы и утверждал (или выплачивал в кассу) не тот документ.
+    // Пустой экран на время загрузки честнее — данные, которые точно не про
+    // выбранный период, показывать нельзя.
+    setSheet(null);
+    setBalance([]);
     try {
       const [periodsData, balanceData, teacherData] = await Promise.all([
         apiGetPayrollPeriods({ period }),
@@ -258,8 +269,24 @@ const SheetTab: React.FC = () => {
     }
   };
 
+  /**
+   * Совпадает ли ведомость на экране с тем, что выбрано СЕЙЧАС.
+   *
+   * Последняя линия обороны перед необратимым действием: даже если состояние
+   * разъехалось (гонка загрузок, ошибка), утверждать и выплачивать документ
+   * чужого месяца или филиала нельзя.
+   */
+  const sheetMatchesSelection = (s: Sheet | null): boolean =>
+    !!s && s.period === period && ((s as any).branchId ?? null) === (activeBranchId ?? null);
+
   const runApprove = async () => {
     if (!sheet) return;
+    if (!sheetMatchesSelection(sheet)) {
+      toast.error(t('payroll.staleSheet', 'Ведомость на экране не совпадает с выбранным месяцем или филиалом. Обновите данные.'));
+      setConfirmApprove(false);
+      await load();
+      return;
+    }
     setBusy(true);
     try {
       await apiApprovePayroll(sheet.id);
@@ -275,6 +302,12 @@ const SheetTab: React.FC = () => {
 
   const runPay = async () => {
     if (!sheet) return;
+    if (!sheetMatchesSelection(sheet)) {
+      toast.error(t('payroll.staleSheet', 'Ведомость на экране не совпадает с выбранным месяцем или филиалом. Обновите данные.'));
+      setConfirmPay(false);
+      await load();
+      return;
+    }
     setBusy(true);
     try {
       const res: any = await apiPayPayroll({ periodId: sheet.id });
@@ -404,7 +437,11 @@ const SheetTab: React.FC = () => {
     <div className="flex-1 min-w-[12rem]">
       <button
         onClick={onClick}
-        disabled={!gate.enabled || busy || !canWrite}
+        // `loading || error` — часть условия, а не украшение: пока идёт загрузка,
+        // на экране ещё нет ведомости выбранного месяца, а после ошибки нет
+        // достоверных данных вообще. Клик в этот момент действовал на то, что
+        // осталось от предыдущего показа.
+        disabled={!gate.enabled || busy || !canWrite || loading || !!error}
         className={`w-full px-4 py-2.5 rounded-xl text-sm font-bold flex items-center justify-center gap-2 transition-colors ${
           primary && gate.enabled
             ? 'bg-indigo-600 hover:bg-indigo-700 text-white'

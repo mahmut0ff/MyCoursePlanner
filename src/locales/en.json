@@ -2695,7 +2695,8 @@
     "deleteLineConfirm": "The line will be removed from the sheet permanently.",
     "colBranch": "Branch",
     "orgWideRule": "Whole organization",
-    "orgWideRuleHint": "Applies organization-wide. A rule like this is NOT included in a specific branch sheet — that branch needs its own."
+    "orgWideRuleHint": "Applies organization-wide. A rule like this is NOT included in a specific branch sheet — that branch needs its own.",
+    "staleSheet": "The sheet on screen does not match the selected month or branch. Refresh the data."
   },
   "journal": {
     "subtitle": "Daily attendance and notes",

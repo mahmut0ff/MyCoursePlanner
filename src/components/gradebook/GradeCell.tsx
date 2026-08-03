@@ -37,6 +37,40 @@ const GradeCell: React.FC<GradeCellProps> = ({ studentId, itemId, value, schema,
     }
   }, [editing]);
 
+  /**
+   * Ячейка, оставшаяся В РЕЖИМЕ ВВОДА, при уходе со страницы фиксирует значение.
+   *
+   * Это была самая дорогая потеря во всём журнале. Набранное живёт в локальном
+   * `tempVal` и уходит наружу только по blur/Enter/Tab. Закрытие вкладки blur не
+   * вызывает — преподаватель вводил последнюю оценку и закрывал ноутбук, а она
+   * не доходила даже до состояния страницы, не то что до сервера. Снаружи это
+   * выглядело как «журнал не сохраняет оценки».
+   *
+   * `visibilitychange` приходит раньше, чем страницу выгрузят (в том числе при
+   * закрытии крышки), поэтому здесь ещё можно успеть отдать значение в очередь
+   * сохранения — она сама отправит его тем же событием.
+   */
+  // Свежие значения держим в ref, чтобы слушатели вешались один раз за сеанс
+  // редактирования, а не переподписывались на каждое нажатие клавиши.
+  const commitRef = useRef<() => void>(() => {});
+  commitRef.current = () => {
+    if (tempVal !== displayVal) commitValue(tempVal);
+    setEditing(false);
+  };
+
+  useEffect(() => {
+    if (!editing) return;
+    const commitIfHidden = () => {
+      if (document.visibilityState === 'hidden') commitRef.current();
+    };
+    document.addEventListener('visibilitychange', commitIfHidden);
+    window.addEventListener('pagehide', commitIfHidden);
+    return () => {
+      document.removeEventListener('visibilitychange', commitIfHidden);
+      window.removeEventListener('pagehide', commitIfHidden);
+    };
+  }, [editing]);
+
   const commitValue = (valToCommit: string) => {
     let numVal: number | null = null;
     let dispVal: string | undefined = undefined;

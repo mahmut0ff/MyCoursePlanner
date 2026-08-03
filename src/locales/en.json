@@ -2769,6 +2769,13 @@
     "sessionTeacherHint": "The teacher who ran the lesson — used for payroll",
     "sessionTeacherUnset": "Not specified",
     "sessionDuration": "Duration (min)",
-    "sessionDurationHint": "Actual lesson duration, used for hourly payroll"
+    "sessionDurationHint": "Actual lesson duration, used for hourly payroll",
+    "allSaved": "All changes saved",
+    "savedAt": "Saved at {{time}}",
+    "saving": "Saving…",
+    "unsaved": "Unsaved: {{n}}",
+    "saveFailed": "Not saved: {{n}}",
+    "saveNow": "Save",
+    "retrySave": "Retry"
   }
 }

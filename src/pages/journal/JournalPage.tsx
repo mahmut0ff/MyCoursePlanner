@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { 
   orgGetCourses,
@@ -16,6 +16,8 @@ import {
 } from '../../lib/api';
 import type { Course, Group, UserProfile, JournalEntry, AttendanceStatus, ParticipationLevel, GradeSchema, GradeEntry } from '../../types';
 import GradeCell from '../../components/gradebook/GradeCell';
+import SaveStatus from '../../components/gradebook/SaveStatus';
+import { useSaveQueue, type SaveQueueState } from '../../hooks/useSaveQueue';
 import { ClipboardList, Calendar, AlertCircle, AlertTriangle, RefreshCcw, UserCheck, CheckCircle2, XCircle, Clock, FileWarning, Trophy, TrendingUp, Loader2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useAuth } from '../../contexts/AuthContext';
@@ -98,7 +100,27 @@ const JournalPage: React.FC = () => {
   const [bulking, setBulking] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const timersRef = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
+  // Две очереди — посещаемость и оценки пишутся разными эндпоинтами, но статус
+  // для преподавателя один: «всё записано» или «нет». Отметка отправляется
+  // почти сразу (её ставят кликом и больше не трогают), оценка — с паузой,
+  // потому что её набирают посимвольно.
+  const entryQueue = useSaveQueue<JournalEntry>({ save: orgSaveJournal, delay: 50 });
+  const gradeQueue = useSaveQueue<GradeEntry>({ save: orgSaveGrade, delay: 400 });
+
+  /** Сводное состояние обеих очередей: отказ важнее записи, запись важнее покоя. */
+  const saveState: SaveQueueState =
+    entryQueue.state === 'error' || gradeQueue.state === 'error' ? 'error'
+      : entryQueue.state === 'saving' || gradeQueue.state === 'saving' ? 'saving'
+        : entryQueue.state === 'dirty' || gradeQueue.state === 'dirty' ? 'dirty'
+          : 'idle';
+
+  const saveAll = useCallback(() => {
+    void Promise.all([entryQueue.flush(), gradeQueue.flush()]);
+  }, [entryQueue, gradeQueue]);
+
+  const retryAll = useCallback(() => {
+    void Promise.all([entryQueue.retryFailed(), gradeQueue.retryFailed()]);
+  }, [entryQueue, gradeQueue]);
 
   const isDateValidForEditing = useMemo(() => {
     if (isReadOnly) return false;
@@ -368,37 +390,30 @@ const JournalPage: React.FC = () => {
     setEntries(prev => ({ ...prev, [studentId]: newEntry }));
     setEntrySyncStatus(prev => ({ ...prev, [studentId]: true }));
 
-    // Debounce save
-    if (timersRef.current[studentId]) clearTimeout(timersRef.current[studentId]);
-    timersRef.current[studentId] = setTimeout(async () => {
-      try {
-        const result = await orgSaveJournal(newEntry);
+    // Запись ведёт очередь: она досылает всё при уходе со страницы и держит
+    // честный счётчик несохранённого. Прежний собственный таймер этого не умел —
+    // отметка, поставленная за 400 мс до закрытия вкладки, исчезала бесследно.
+    entryQueue.queue(studentId, newEntry, {
+      onSuccess: (result) => {
         setEntries(prev => ({ ...prev, [studentId]: result as JournalEntry }));
-
+        setEntrySyncStatus(prev => ({ ...prev, [studentId]: false }));
         if (field === 'attendance') {
           apiAwardXP({
             type: 'attendance',
             studentId,
             status: value,
             sourceType: 'attendance',
-            sourceId: (result as JournalEntry).id
+            sourceId: (result as JournalEntry).id,
           }).catch(console.error);
         }
-      } catch (err: any) {
-        toast.error('Failed to save entry');
-        if (prevEntry) {
-          setEntries(prev => ({ ...prev, [studentId]: prevEntry }));
-        } else {
-          setEntries(prev => {
-            const next = { ...prev };
-            delete next[studentId];
-            return next;
-          });
-        }
-      } finally {
+      },
+      onError: () => {
+        // Значение НЕ откатываем: преподаватель его поставил, оно на экране, и
+        // индикатор сверху показывает, что оно не записано. Молчаливый откат
+        // выглядел как «оценка сама исчезла».
         setEntrySyncStatus(prev => ({ ...prev, [studentId]: false }));
-      }
-    }, field === 'note' ? 500 : 50);
+      },
+    });
   };
 
   const handleGradeChange = (studentId: string, itemId: string, value: number | null, displayValue: string | undefined, status: any, comment?: string) => {
@@ -429,36 +444,25 @@ const JournalPage: React.FC = () => {
     setGrades(prev => ({ ...prev, [key]: newEntry }));
     setSyncStatus(prev => ({ ...prev, [key]: true }));
 
-    if (timersRef.current[key]) clearTimeout(timersRef.current[key]);
-    timersRef.current[key] = setTimeout(async () => {
-      try {
-        const result = await orgSaveGrade(newEntry);
+    gradeQueue.queue(key, newEntry, {
+      onSuccess: (result: any) => {
         setGrades(prev => ({ ...prev, [key]: result as GradeEntry }));
-
+        setSyncStatus(prev => ({ ...prev, [key]: false }));
         if (typeof newEntry.value === 'number' && schema.gradingType === 'points' && schema.scale.max > 0) {
           apiAwardXP({
             type: 'grade',
             studentId,
             scorePct: (newEntry.value / schema.scale.max) * 100,
             sourceType: 'grade',
-            sourceId: result.id
+            sourceId: result.id,
           }).catch(console.error);
         }
-      } catch (err: any) {
-        toast.error('Ошибка сохранения оценки');
-        if (prevEntry) {
-          setGrades(prev => ({ ...prev, [key]: prevEntry }));
-        } else {
-          setGrades(prev => {
-            const next = { ...prev };
-            delete next[key];
-            return next;
-          });
-        }
-      } finally {
+      },
+      onError: () => {
+        // См. комментарий в handleEntryChange: откат убран намеренно.
         setSyncStatus(prev => ({ ...prev, [key]: false }));
-      }
-    }, 400);
+      },
+    });
   };
 
   const handleMarkAllPresent = async () => {
@@ -544,12 +548,27 @@ const JournalPage: React.FC = () => {
                 )}
               </h1>
               <p className="text-sm text-slate-500 dark:text-slate-400">
-                {isReadOnly 
-                  ? 'Режим только для чтения' 
+                {isReadOnly
+                  ? 'Режим только для чтения'
                   : t('journal.subtitle', 'Ежедневная перекличка и заметки')}
               </p>
             </div>
           </div>
+
+          {/* Статус записи. Стоит рядом с заголовком, а не у таблицы: это ответ
+              на вопрос «всё записалось?», который задают, уже собираясь уйти со
+              страницы, — и искать его в этот момент не должно быть нужно. */}
+          {canEdit && (
+            <SaveStatus
+              state={saveState}
+              pendingCount={entryQueue.pendingCount + gradeQueue.pendingCount}
+              savingCount={entryQueue.savingCount + gradeQueue.savingCount}
+              failedCount={entryQueue.failedCount + gradeQueue.failedCount}
+              lastSavedAt={Math.max(entryQueue.lastSavedAt ?? 0, gradeQueue.lastSavedAt ?? 0) || null}
+              onSave={saveAll}
+              onRetry={retryAll}
+            />
+          )}
 
           <div className="flex flex-wrap items-center gap-3">
             <select

@@ -119,6 +119,56 @@ const handler: Handler = async (event: HandlerEvent) => {
         }
       }
 
+      // ── Кто остался без имени и ПОЧЕМУ ──
+      // Выше имя берётся из `users` без филиального фильтра, поэтому пустым оно
+      // остаётся ровно в одном случае: документа пользователя нет. Такие счета —
+      // осиротевшие: студента удалили из системы, а его начисление осталось жить
+      // и продолжает считаться в дебиторке.
+      //
+      // Зеркало членства (orgMembers) переживает удаление user-дока и хранит
+      // userName, поэтому сначала спрашиваем его. Что осталось неопознанным
+      // после этого — действительно потерянный студент, и интерфейс обязан
+      // сказать это прямо, а не прятать строку и не сваливать на филиал:
+      // менеджер должен видеть, чей это долг и что с ним можно сделать.
+      // Читаем ТОЧЕЧНО, по конкретным id, а не всю коллекцию участников: список
+      // счетов открывают постоянно, а осиротевших среди них единицы. Документ
+      // участника лежит под ключом uid (см. api-memberships), поэтому прямое
+      // чтение возможно. Верхняя граница — страховка от вырожденного случая,
+      // когда имён нет у сотен строк сразу.
+      const unnamedIds = [...new Set(
+        results.filter(r => r.studentId && !r.studentName).map(r => String(r.studentId))
+      )].slice(0, 50);
+
+      if (unnamedIds.length) {
+        // Дозаполнение имени — косметика. Уронить из-за неё ВЕСЬ список счетов
+        // (деньги!) нельзя, поэтому неудача читается как «уточнить не смогли»:
+        // строки останутся с прежней подписью, но экран покажет суммы.
+        // try/catch ВНУТРИ async-колбэка, а не .catch() на промисе: обращение к
+        // подколлекции может бросить синхронно, и такой отказ мимо .catch()
+        // унёс бы весь ответ в 500.
+        const members = await Promise.all(unnamedIds.map(async (id) => {
+          try {
+            const d = await adminDb.collection('orgMembers').doc(orgFilter)
+              .collection('members').doc(id).get();
+            return [id, d.exists ? (d.data() as any) : null] as const;
+          } catch {
+            return [id, undefined] as const;
+          }
+        }));
+
+        const memberById = new Map(members);
+        for (const r of results) {
+          if (!r.studentId || r.studentName) continue;
+          if (!memberById.has(String(r.studentId))) continue;
+          const member = memberById.get(String(r.studentId));
+          // undefined — чтение не удалось, выводов не делаем.
+          if (member === undefined) continue;
+          if (member?.userName) r.studentName = member.userName;
+          // null — членства нет вовсе: студент удалён из организации.
+          if (member === null) r.studentMissing = true;
+        }
+      }
+
       return ok(results);
     }
 

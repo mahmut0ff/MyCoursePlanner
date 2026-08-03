@@ -81,6 +81,11 @@ interface PaymentPlan {
   deadline?: string;
   period?: string;
   createdAt?: string;
+  /**
+   * Сервер не нашёл студента ни в `users`, ни в зеркале членства: его удалили
+   * из организации, а начисление осталось и продолжает считаться в дебиторке.
+   */
+  studentMissing?: boolean;
 }
 
 type ModalType = 'none' | 'pay' | 'history' | 'editAmount';
@@ -563,13 +568,16 @@ const MonthTab: React.FC<Props> = ({
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-700/50">
                   {pageRows.map(p => {
                     const student = studentById.get(String(p.studentId));
-                    // Студента может не быть в ростере по двум разным причинам —
-                    // удалён из системы ИЛИ приписан к другому филиалу (ростер
-                    // тоже филиальный). Различить их на клиенте нечем, поэтому
-                    // подпись нейтральная: «вне текущего среза». Имя почти всегда
-                    // берётся из денормализованного p.studentName и до неё не
-                    // доходит.
-                    const name = p.studentName || student?.displayName || t('finances.studentOutOfScope', 'Студент вне текущего среза');
+                    // Имя приходит с сервера: он дозаполняет его из `users`, а
+                    // затем из зеркала членства — обе выборки общеорганизационные,
+                    // поэтому филиал имя потерять не может. Если имени нет и
+                    // сервер поставил studentMissing, студента удалили из
+                    // организации, а начисление осталось: так и пишем, вместо
+                    // прежней догадки «вне текущего среза», которая называла
+                    // причиной филиал и не давала менеджеру ничего.
+                    const name = p.studentName
+                      || student?.displayName
+                      || t('finances.studentDeleted', 'Студент удалён из организации');
                     const pk = planProgressKey(p);
                     const meta = PROGRESS_META[pk];
                     const owes = isDebtBearingPlan(p);
@@ -582,7 +590,21 @@ const MonthTab: React.FC<Props> = ({
                           {student ? (
                             <Link to={`/students/${p.studentId}`} className="font-medium text-slate-900 dark:text-white hover:text-sky-600 dark:hover:text-sky-400 hover:underline transition-colors">{name}</Link>
                           ) : (
-                            <span className="font-medium text-slate-900 dark:text-white">{name}</span>
+                            <span className="font-medium text-slate-900 dark:text-white">
+                              {name}
+                              {/* Осиротевшее начисление: карточки студента нет,
+                                  а долг живёт. Без этой метки строка выглядит
+                                  сбоем загрузки, и менеджер не понимает, что
+                                  счёт надо закрыть или удалить здесь. */}
+                              {p.studentMissing && (
+                                <span
+                                  className="ml-2 align-middle text-xs font-normal px-1.5 py-0.5 rounded bg-slate-100 text-slate-500 dark:bg-slate-700 dark:text-slate-400"
+                                  title={t('finances.orphanPlanHint', 'Студента больше нет в организации, а начисление осталось и считается в дебиторке. Закройте его или удалите.')}
+                                >
+                                  {t('finances.orphanPlan', 'начисление осиротело')}
+                                </span>
+                              )}
+                            </span>
                           )}
                         </td>
                         <td className="px-5 py-3.5 text-slate-500 whitespace-nowrap">{p.courseName || p.courseId || '—'}</td>

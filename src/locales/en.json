@@ -2235,10 +2235,7 @@
     "shownRowsDebt": "On screen: {{n}} invoices, debt {{sum}}",
     "noUnpaidAtAll": "Nothing outstanding",
     "noChargesAtAll": "No invoices",
-    "noChargesAtAllHint": "No invoices matched the current view.",
-    "studentDeleted": "Student removed from the organization",
-    "orphanPlan": "orphaned charge",
-    "orphanPlanHint": "The student is no longer in the organization but the charge remains and still counts towards receivables. Settle or delete it."
+    "noChargesAtAllHint": "No invoices matched the current view."
   },
   "telegram": {
     "title": "Telegram Notifications",

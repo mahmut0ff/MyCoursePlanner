@@ -212,9 +212,16 @@ const MonthTab: React.FC<Props> = ({
   //
   // В режиме «все неоплаченные» фильтр по месяцу снимается: долг живёт не в
   // одном месяце, и вопрос «кто должен» на месячном срезе не имеет ответа.
+  //
+  // Начисления без студента (studentMissing — сервер не нашёл его ни в `users`,
+  // ни в зеркале членства ни под одним ключом) в список НЕ попадают. Это не
+  // операционная строка: имени нет, карточки нет, решить по ней ничего нельзя —
+  // такая строка только отнимает внимание на экране, где принимают оплаты.
+  // Это дефект данных, и чинится он чисткой, а не показом в ежедневной работе.
   const monthPlans = useMemo(
     () => plans.filter(p =>
-      (allMonths || planPeriodKey(p) === month)
+      !p.studentMissing
+      && (allMonths || planPeriodKey(p) === month)
       && !isExpelled(studentById.get(String(p.studentId)))),
     [plans, month, studentById, allMonths]
   );
@@ -568,16 +575,10 @@ const MonthTab: React.FC<Props> = ({
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-700/50">
                   {pageRows.map(p => {
                     const student = studentById.get(String(p.studentId));
-                    // Имя приходит с сервера: он дозаполняет его из `users`, а
-                    // затем из зеркала членства — обе выборки общеорганизационные,
-                    // поэтому филиал имя потерять не может. Если имени нет и
-                    // сервер поставил studentMissing, студента удалили из
-                    // организации, а начисление осталось: так и пишем, вместо
-                    // прежней догадки «вне текущего среза», которая называла
-                    // причиной филиал и не давала менеджеру ничего.
-                    const name = p.studentName
-                      || student?.displayName
-                      || t('finances.studentDeleted', 'Студент удалён из организации');
+                    // Имя приходит с сервера (users → зеркало членства, обе
+                    // выборки общеорганизационные). Строки, для которых имени нет
+                    // вообще, до таблицы не доходят — их отсекает monthPlans.
+                    const name = p.studentName || student?.displayName || '—';
                     const pk = planProgressKey(p);
                     const meta = PROGRESS_META[pk];
                     const owes = isDebtBearingPlan(p);
@@ -590,21 +591,7 @@ const MonthTab: React.FC<Props> = ({
                           {student ? (
                             <Link to={`/students/${p.studentId}`} className="font-medium text-slate-900 dark:text-white hover:text-sky-600 dark:hover:text-sky-400 hover:underline transition-colors">{name}</Link>
                           ) : (
-                            <span className="font-medium text-slate-900 dark:text-white">
-                              {name}
-                              {/* Осиротевшее начисление: карточки студента нет,
-                                  а долг живёт. Без этой метки строка выглядит
-                                  сбоем загрузки, и менеджер не понимает, что
-                                  счёт надо закрыть или удалить здесь. */}
-                              {p.studentMissing && (
-                                <span
-                                  className="ml-2 align-middle text-xs font-normal px-1.5 py-0.5 rounded bg-slate-100 text-slate-500 dark:bg-slate-700 dark:text-slate-400"
-                                  title={t('finances.orphanPlanHint', 'Студента больше нет в организации, а начисление осталось и считается в дебиторке. Закройте его или удалите.')}
-                                >
-                                  {t('finances.orphanPlan', 'начисление осиротело')}
-                                </span>
-                              )}
-                            </span>
+                            <span className="font-medium text-slate-900 dark:text-white">{name}</span>
                           )}
                         </td>
                         <td className="px-5 py-3.5 text-slate-500 whitespace-nowrap">{p.courseName || p.courseId || '—'}</td>

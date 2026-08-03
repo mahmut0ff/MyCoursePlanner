@@ -130,42 +130,44 @@ const handler: Handler = async (event: HandlerEvent) => {
       // после этого — действительно потерянный студент, и интерфейс обязан
       // сказать это прямо, а не прятать строку и не сваливать на филиал:
       // менеджер должен видеть, чей это долг и что с ним можно сделать.
-      // Читаем ТОЧЕЧНО, по конкретным id, а не всю коллекцию участников: список
-      // счетов открывают постоянно, а осиротевших среди них единицы. Документ
-      // участника лежит под ключом uid (см. api-memberships), поэтому прямое
-      // чтение возможно. Верхняя граница — страховка от вырожденного случая,
-      // когда имён нет у сотен строк сразу.
-      const unnamedIds = [...new Set(
+      const unnamedIds = new Set(
         results.filter(r => r.studentId && !r.studentName).map(r => String(r.studentId))
-      )].slice(0, 50);
+      );
 
-      if (unnamedIds.length) {
+      if (unnamedIds.size) {
+        // Индексируем участников по ОБОИМ ключам — по id документа и по полю
+        // userId. Точечное чтение `.doc(studentId)` здесь не годится: часть
+        // документов ключуется uid'ом и поля userId не имеет, часть наоборот, и
+        // адресный запрос промахивался бы ровно по тем строкам, ради которых он
+        // делается. Так же индексируют участников api-risk и director-copilot.
+        //
         // Дозаполнение имени — косметика. Уронить из-за неё ВЕСЬ список счетов
-        // (деньги!) нельзя, поэтому неудача читается как «уточнить не смогли»:
-        // строки останутся с прежней подписью, но экран покажет суммы.
-        // try/catch ВНУТРИ async-колбэка, а не .catch() на промисе: обращение к
-        // подколлекции может бросить синхронно, и такой отказ мимо .catch()
-        // унёс бы весь ответ в 500.
-        const members = await Promise.all(unnamedIds.map(async (id) => {
-          try {
-            const d = await adminDb.collection('orgMembers').doc(orgFilter)
-              .collection('members').doc(id).get();
-            return [id, d.exists ? (d.data() as any) : null] as const;
-          } catch {
-            return [id, undefined] as const;
+        // (деньги!) нельзя: при отказе строки просто останутся без уточнения.
+        let memberByKey: Map<string, any> | null = null;
+        try {
+          const memberSnap = await adminDb.collection('orgMembers').doc(orgFilter)
+            .collection('members').get();
+          memberByKey = new Map<string, any>();
+          for (const d of memberSnap.docs) {
+            const data = d.data() as any;
+            memberByKey.set(String(d.id), data);
+            if (data.userId) memberByKey.set(String(data.userId), data);
           }
-        }));
+        } catch {
+          memberByKey = null;
+        }
 
-        const memberById = new Map(members);
-        for (const r of results) {
-          if (!r.studentId || r.studentName) continue;
-          if (!memberById.has(String(r.studentId))) continue;
-          const member = memberById.get(String(r.studentId));
-          // undefined — чтение не удалось, выводов не делаем.
-          if (member === undefined) continue;
-          if (member?.userName) r.studentName = member.userName;
-          // null — членства нет вовсе: студент удалён из организации.
-          if (member === null) r.studentMissing = true;
+        if (memberByKey) {
+          for (const r of results) {
+            if (!r.studentId || r.studentName) continue;
+            const member = memberByKey.get(String(r.studentId));
+            if (member?.userName) r.studentName = member.userName;
+            // Ни под одним ключом — студента в организации действительно нет, а
+            // начисление осталось. Это редкий случай (осиротевший счёт), и
+            // помечаем его ТОЛЬКО здесь: раньше тот же признак выставлялся при
+            // любом промахе адресного чтения и оговаривал живых учеников.
+            else if (!member) r.studentMissing = true;
+          }
         }
       }
 

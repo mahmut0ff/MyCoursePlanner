@@ -862,7 +862,13 @@ const handler: Handler = async (event: HandlerEvent) => {
       let filtered = snap.docs
         .map((d: any) => {
           const data = d.data();
-          return { uid: data.userId, displayName: data.userName, email: data.userEmail, role: data.role, roles: data.roles || [], branchIds: data.branchIds || [], primaryBranchId: data.primaryBranchId || null, status: data.status || 'active' };
+          // `userId || d.id` — тот же приём, что в api-risk, debt-reminders,
+          // monthly-billing и ещё семи местах: у части документов участников
+          // поля userId нет, и документ ключуется самим uid. Здесь запасного
+          // варианта не было, поэтому такой ученик получал uid: undefined и
+          // пропадал из ростера — а его начисление, у которого studentId на
+          // месте, оставалось в списке оплат строкой без имени.
+          return { uid: data.userId || d.id, displayName: data.userName, email: data.userEmail, role: data.role, roles: data.roles || [], branchIds: data.branchIds || [], primaryBranchId: data.primaryBranchId || null, status: data.status || 'active' };
         })
         .filter((m: any) => memberHoldsRole(m, ['student']));
 

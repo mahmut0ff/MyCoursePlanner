@@ -14,6 +14,14 @@ dist/
 .env.production
 .env.*.local
 
+# Service account keys — приватные ключи Firebase Admin, в git им не место
+serviceAccount*.json
+service-account*.json
+*-firebase-adminsdk-*.json
+
+# Выгрузки scripts/reset-finances.mjs — финансовые данные студентов
+finance-backup/
+
 # IDE / Editor
 .vscode/
 .idea/

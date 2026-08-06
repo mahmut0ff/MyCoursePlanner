@@ -19,7 +19,12 @@
       "deleteStudentsTitle": "Delete students?",
       "deleteTeachersTitle": "Delete teachers?",
       "deleteCount": "Will be deleted",
-      "deleteDesc": "They will be removed from the organization and from every group. Anyone with a login keeps their account — only their link to this organization is removed. This cannot be undone."
+      "deleteDesc": "They will be removed from the organization and from every group. Anyone with a login keeps their account — only their link to this organization is removed. This cannot be undone.",
+      "migrateToGroup": "Migrate to group",
+      "migrateToBranch": "Migrate to branch",
+      "alreadyInGroup": "Everyone selected is already in this group",
+      "alreadyInBranch": "Everyone selected is already in this branch",
+      "alreadyCount": "Already there: {{count}}"
     }
   },
   "inst": {

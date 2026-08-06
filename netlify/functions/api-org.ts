@@ -359,6 +359,39 @@ export async function resolveBulkTargets(
   return { targets, members };
 }
 
+/**
+ * Which targets a branch migration would actually change.
+ *
+ * Reporting every target as «Переведено» even when the destination is where they
+ * already sit is how a mis-clicked action passes for a successful one: the bar
+ * has two identical arrows, and a branch migration that changes nothing answered
+ * with the same green toast as a real move. The count must mean something.
+ */
+export function branchTargetsNeedingChange(
+  targets: string[],
+  members: Record<string, any>,
+  branchId: string,
+): string[] {
+  return targets.filter((uid) => {
+    const m = members[uid] || {};
+    const current: string[] = m.branchIds || [];
+    return m.primaryBranchId !== branchId || current.length !== 1 || current[0] !== branchId;
+  });
+}
+
+/**
+ * Which targets a group migration would actually change: anyone not already in
+ * the destination, plus anyone who has another group to leave first.
+ */
+export function groupTargetsNeedingChange(
+  targets: string[],
+  destinationRoster: string[],
+  leaving: Set<string>,
+): string[] {
+  const inDestination = new Set(destinationRoster);
+  return targets.filter((uid) => !inDestination.has(uid) || leaving.has(uid));
+}
+
 /** Remove `uids` from the `field` roster of every group that lists any of them. */
 async function purgeFromGroups(orgId: string, field: string, uids: string[]) {
   const snap = await orgQuery('groups', orgId).get();
@@ -1387,23 +1420,31 @@ const handler: Handler = async (event: HandlerEvent) => {
         return forbidden('Нет доступа к этому филиалу');
       }
 
-      const { targets } = await resolveBulkTargets(user, orgId, kind, uids);
+      const { targets, members } = await resolveBulkTargets(user, orgId, kind, uids);
       if (targets.length === 0) return ok({ moved: 0, skipped: uids.length });
+
+      // Only those whose assignment actually differs — see branchTargetsNeedingChange.
+      const changing = branchTargetsNeedingChange(targets, members, branchId);
 
       // Migration replaces the assignment rather than appending: a member ends up in
       // exactly the destination branch. set(merge) rather than update() so this never
       // throws on a membership that only exists in one mirror.
       const patch = { branchIds: [branchId], primaryBranchId: branchId, updatedAt: now() };
-      for (let i = 0; i < targets.length; i += 200) {
+      for (let i = 0; i < changing.length; i += 200) {
         const batch = adminDb.batch();
-        for (const uid of targets.slice(i, i + 200)) {
+        for (const uid of changing.slice(i, i + 200)) {
           batch.set(adminDb.collection('orgMembers').doc(orgId).collection('members').doc(uid), patch, { merge: true });
           batch.set(adminDb.collection('users').doc(uid).collection('memberships').doc(orgId), patch, { merge: true });
         }
         await batch.commit();
       }
 
-      return ok({ moved: targets.length, skipped: uids.length - targets.length, branchId });
+      return ok({
+        moved: changing.length,
+        skipped: uids.length - targets.length,
+        unchanged: targets.length - changing.length,
+        branchId,
+      });
     }
 
     if (action === 'bulkSetGroup') {
@@ -1431,24 +1472,35 @@ const handler: Handler = async (event: HandlerEvent) => {
       const hit = new Set(targets);
       const leaving = snap.docs.filter((d: any) =>
         d.id !== groupId && ((d.data()[field] || []) as string[]).some((id) => hit.has(id)));
-      for (let i = 0; i < leaving.length; i += 200) {
-        const batch = adminDb.batch();
-        for (const d of leaving.slice(i, i + 200)) {
-          batch.update(d.ref, { [field]: FieldValue.arrayRemove(...targets), updatedAt: now() });
-        }
-        await batch.commit();
-      }
-      await adminDb.collection('groups').doc(groupId).update({
-        [field]: FieldValue.arrayUnion(...targets),
-        updatedAt: now(),
-      });
+      const leavingIds = new Set<string>();
+      leaving.forEach((d: any) => ((d.data()[field] || []) as string[]).forEach((id) => {
+        if (hit.has(id)) leavingIds.add(id);
+      }));
 
-      if (kind === 'student') {
-        await logRoster(user, 'student_enrolled', {
-          entityId: groupId, entityLabel: groupDoc.data()?.name || null, count: targets.length,
-          people: await namesForActivity(targets, members),
-          meta: { groupId, source: 'bulkSetGroup' },
+      // Anyone already sitting in the destination with no other group to leave is
+      // not "moved" — saying otherwise makes a no-op indistinguishable from a move.
+      const changing = groupTargetsNeedingChange(targets, (groupDoc.data()?.[field] || []) as string[], leavingIds);
+
+      if (changing.length > 0) {
+        for (let i = 0; i < leaving.length; i += 200) {
+          const batch = adminDb.batch();
+          for (const d of leaving.slice(i, i + 200)) {
+            batch.update(d.ref, { [field]: FieldValue.arrayRemove(...targets), updatedAt: now() });
+          }
+          await batch.commit();
+        }
+        await adminDb.collection('groups').doc(groupId).update({
+          [field]: FieldValue.arrayUnion(...targets),
+          updatedAt: now(),
         });
+
+        if (kind === 'student') {
+          await logRoster(user, 'student_enrolled', {
+            entityId: groupId, entityLabel: groupDoc.data()?.name || null, count: changing.length,
+            people: await namesForActivity(changing, members),
+            meta: { groupId, source: 'bulkSetGroup' },
+          });
+        }
       }
 
       // Students joining a priced course get a payment plan, exactly as a fresh
@@ -1461,7 +1513,12 @@ const handler: Handler = async (event: HandlerEvent) => {
         }
       }
 
-      return ok({ moved: targets.length, skipped: uids.length - targets.length, groupId });
+      return ok({
+        moved: changing.length,
+        skipped: uids.length - targets.length,
+        unchanged: targets.length - changing.length,
+        groupId,
+      });
     }
 
     // ═══ TEACHERS (everyone who holds a teaching role in this org, incl. multi-role) ═══

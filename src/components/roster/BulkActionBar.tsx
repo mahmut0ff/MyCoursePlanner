@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import toast from 'react-hot-toast';
-import { Loader2, Trash2, X, ArrowRight, AlertTriangle } from 'lucide-react';
+import { Loader2, Trash2, X, ArrowRight, AlertTriangle, Users, Building2 } from 'lucide-react';
 import {
   orgBulkDeleteMembers,
   orgBulkSetBranch,
@@ -56,11 +56,20 @@ const BulkActionBar: React.FC<BulkActionBarProps> = ({ kind, selected, branches,
   // whose grants were revoked would flash an enabled Delete button.
   if (!loaded || (!mayMigrate && !mayDelete) || uids.length === 0) return null;
 
-  /** Report a bulk result. `skipped` covers rows the server refused to touch. */
-  const finish = (res: BulkResult, msg: string) => {
+  /**
+   * Report a bulk result. `skipped` covers rows the server refused to touch;
+   * `unchanged` covers rows that were already at the destination — those must not
+   * read as a move, or pressing the wrong action looks exactly like the right one.
+   */
+  const finish = (res: BulkResult, msg: string, alreadyThere?: string) => {
     const n = res.deleted ?? res.moved ?? 0;
+    const unchanged = res.unchanged ?? 0;
     if (n > 0) toast.success(`${msg} · ${n}`);
+    else if (unchanged > 0 && alreadyThere) toast(alreadyThere, { icon: 'ℹ️' });
     else if (!res.skipped) toast(t('roster.bulk.noop', 'Ничего не изменено'));
+    if (n > 0 && unchanged > 0) {
+      toast(t('roster.bulk.alreadyCount', 'Уже там: {{count}}', { count: unchanged }), { icon: 'ℹ️' });
+    }
     if (res.skipped > 0) {
       toast(t('roster.bulk.skipped', 'Пропущено: {{count}}', { count: res.skipped }), { icon: '⚠️' });
     }
@@ -68,10 +77,10 @@ const BulkActionBar: React.FC<BulkActionBarProps> = ({ kind, selected, branches,
   };
 
   /** Returns whether the call landed, so a failure leaves the form (and modal) intact to retry. */
-  const run = async (job: Job, fn: () => Promise<BulkResult>, msg: string): Promise<boolean> => {
+  const run = async (job: Job, fn: () => Promise<BulkResult>, msg: string, alreadyThere?: string): Promise<boolean> => {
     setBusy(job);
     try {
-      finish(await fn(), msg);
+      finish(await fn(), msg, alreadyThere);
       return true;
     } catch (e: any) {
       toast.error(e.message || t('common.error', 'Ошибка'));
@@ -82,15 +91,23 @@ const BulkActionBar: React.FC<BulkActionBarProps> = ({ kind, selected, branches,
   };
 
   const migrateGroup = async () => {
-    if (await run('group', () => orgBulkSetGroup(kind, uids, groupId), t('roster.bulk.movedToGroup', 'Переведено в группу'))) {
-      setGroupId('');
-    }
+    const ok = await run(
+      'group',
+      () => orgBulkSetGroup(kind, uids, groupId),
+      t('roster.bulk.movedToGroup', 'Переведено в группу'),
+      t('roster.bulk.alreadyInGroup', 'Все выбранные уже в этой группе'),
+    );
+    if (ok) setGroupId('');
   };
 
   const migrateBranch = async () => {
-    if (await run('branch', () => orgBulkSetBranch(kind, uids, branchId), t('roster.bulk.movedToBranch', 'Переведено в филиал'))) {
-      setBranchId('');
-    }
+    const ok = await run(
+      'branch',
+      () => orgBulkSetBranch(kind, uids, branchId),
+      t('roster.bulk.movedToBranch', 'Переведено в филиал'),
+      t('roster.bulk.alreadyInBranch', 'Все выбранные уже в этом филиале'),
+    );
+    if (ok) setBranchId('');
   };
 
   const remove = async () => {
@@ -100,8 +117,11 @@ const BulkActionBar: React.FC<BulkActionBarProps> = ({ kind, selected, branches,
   };
 
   const selectCls = 'input text-sm !py-1.5 max-w-[180px]';
+  // The destination name alone can't tell you which migration you're about to run —
+  // in a real org a group and a branch are both called «Махмутов А» / «Зайнабетдинов».
+  // So the button carries the destination TYPE, not a bare arrow.
   const goCls =
-    'p-1.5 rounded-lg bg-primary-600 text-white hover:bg-primary-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors shrink-0';
+    'inline-flex items-center gap-1 pl-2 pr-2.5 py-1.5 rounded-lg text-sm font-semibold bg-primary-600 text-white hover:bg-primary-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors shrink-0';
 
   return (
     <>
@@ -114,7 +134,8 @@ const BulkActionBar: React.FC<BulkActionBarProps> = ({ kind, selected, branches,
           {/* Migrate to a group */}
           {mayMigrate && groups.length > 0 && (
             <div className="flex items-center gap-1.5">
-              <select value={groupId} onChange={e => setGroupId(e.target.value)} className={selectCls} disabled={busy !== null}>
+              <Users className="w-4 h-4 text-primary-600/70 dark:text-primary-400/70 shrink-0" />
+              <select value={groupId} onChange={e => setGroupId(e.target.value)} className={selectCls} disabled={busy !== null} aria-label={t('roster.bulk.toGroup', 'В группу')}>
                 <option value="">{t('roster.bulk.toGroup', 'В группу')}…</option>
                 {groups.map(g => (
                   <option key={g.id} value={g.id}>{g.name}</option>
@@ -124,9 +145,10 @@ const BulkActionBar: React.FC<BulkActionBarProps> = ({ kind, selected, branches,
                 onClick={migrateGroup}
                 disabled={!groupId || busy !== null}
                 className={goCls}
-                title={t('roster.bulk.migrate', 'Перевести')}
+                title={t('roster.bulk.migrateToGroup', 'Перевести в группу')}
               >
                 {busy === 'group' ? <Loader2 className="w-4 h-4 animate-spin" /> : <ArrowRight className="w-4 h-4" />}
+                {t('roster.bulk.toGroup', 'В группу')}
               </button>
             </div>
           )}
@@ -134,7 +156,8 @@ const BulkActionBar: React.FC<BulkActionBarProps> = ({ kind, selected, branches,
           {/* Migrate to a branch — orgs without branches never see this */}
           {mayMigrate && branches.length > 0 && (
             <div className="flex items-center gap-1.5">
-              <select value={branchId} onChange={e => setBranchId(e.target.value)} className={selectCls} disabled={busy !== null}>
+              <Building2 className="w-4 h-4 text-primary-600/70 dark:text-primary-400/70 shrink-0" />
+              <select value={branchId} onChange={e => setBranchId(e.target.value)} className={selectCls} disabled={busy !== null} aria-label={t('roster.bulk.toBranch', 'В филиал')}>
                 <option value="">{t('roster.bulk.toBranch', 'В филиал')}…</option>
                 {branches.map(b => (
                   <option key={b.id} value={b.id}>{b.name}</option>
@@ -144,9 +167,10 @@ const BulkActionBar: React.FC<BulkActionBarProps> = ({ kind, selected, branches,
                 onClick={migrateBranch}
                 disabled={!branchId || busy !== null}
                 className={goCls}
-                title={t('roster.bulk.migrate', 'Перевести')}
+                title={t('roster.bulk.migrateToBranch', 'Перевести в филиал')}
               >
                 {busy === 'branch' ? <Loader2 className="w-4 h-4 animate-spin" /> : <ArrowRight className="w-4 h-4" />}
+                {t('roster.bulk.toBranch', 'В филиал')}
               </button>
             </div>
           )}

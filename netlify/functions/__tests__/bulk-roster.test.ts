@@ -9,7 +9,12 @@ vi.mock('../utils/firebase-admin', () => ({
   getDocsByIds: vi.fn(),
 }));
 
-import { parseBulkBody, resolveBulkTargets } from '../api-org';
+import {
+  parseBulkBody,
+  resolveBulkTargets,
+  branchTargetsNeedingChange,
+  groupTargetsNeedingChange,
+} from '../api-org';
 import { can } from '../utils/auth';
 import { getDocsByIds } from '../utils/firebase-admin';
 
@@ -212,5 +217,62 @@ describe('resolveBulkTargets', () => {
     mockRoster({ s1: student('s1') });
     await resolveBulkTargets(makeUser(), 'org-1', 'student', ['s1']);
     expect(getDocsByIds).toHaveBeenCalledWith('orgMembers/org-1/members', ['s1']);
+  });
+});
+
+// ═════════════════════════════════════════════════════════════════
+// «Переведено» must mean something moved
+//
+// The bar puts the group action and the branch action side by side, and in a
+// real org both destinations are named after a person («Махмутов А» is a group,
+// «Зайнабетдинов» is a branch). Press the wrong one and the old code answered
+// with the same green «Переведено · 2» as a real migration — every target was
+// counted whether or not it changed. That is how a group transfer that never
+// ran looked like one that did.
+// ═════════════════════════════════════════════════════════════════
+
+describe('branchTargetsNeedingChange', () => {
+  const at = (branch: string) => ({ branchIds: [branch], primaryBranchId: branch });
+
+  it('reports nobody when everyone is already in the destination branch', () => {
+    const members = { a: at('b1'), b: at('b1') };
+    expect(branchTargetsNeedingChange(['a', 'b'], members, 'b1')).toEqual([]);
+  });
+
+  it('reports only those actually changing branch', () => {
+    const members = { a: at('b1'), b: at('b2') };
+    expect(branchTargetsNeedingChange(['a', 'b'], members, 'b1')).toEqual(['b']);
+  });
+
+  it('counts a member with no branch at all', () => {
+    expect(branchTargetsNeedingChange(['a'], { a: {} }, 'b1')).toEqual(['a']);
+  });
+
+  it('counts a member who is in the destination plus another branch — migration narrows to one', () => {
+    const members = { a: { branchIds: ['b1', 'b2'], primaryBranchId: 'b1' } };
+    expect(branchTargetsNeedingChange(['a'], members, 'b1')).toEqual(['a']);
+  });
+
+  it('counts a member whose primary branch disagrees with the assignment', () => {
+    const members = { a: { branchIds: ['b1'], primaryBranchId: null } };
+    expect(branchTargetsNeedingChange(['a'], members, 'b1')).toEqual(['a']);
+  });
+});
+
+describe('groupTargetsNeedingChange', () => {
+  it('reports nobody when everyone is already in the destination and nowhere else', () => {
+    expect(groupTargetsNeedingChange(['a', 'b'], ['a', 'b', 'c'], new Set())).toEqual([]);
+  });
+
+  it('reports those not yet in the destination', () => {
+    expect(groupTargetsNeedingChange(['a', 'b'], ['a'], new Set())).toEqual(['b']);
+  });
+
+  it('counts someone already in the destination who still has another group to leave', () => {
+    expect(groupTargetsNeedingChange(['a'], ['a'], new Set(['a']))).toEqual(['a']);
+  });
+
+  it('handles an empty destination roster', () => {
+    expect(groupTargetsNeedingChange(['a', 'b'], [], new Set())).toEqual(['a', 'b']);
   });
 });

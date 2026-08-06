@@ -429,7 +429,8 @@ export const orgInviteUser = (email: string, role: string) => orgReq('inviteUser
 // `kind` selects the roster and the permission the server enforces:
 // student → students:write, teacher → teachers:write.
 export type BulkKind = 'student' | 'teacher';
-export interface BulkResult { deleted?: number; moved?: number; skipped: number; purged?: number }
+/** `unchanged` — targets already at the destination; they are NOT counted as moved. */
+export interface BulkResult { deleted?: number; moved?: number; skipped: number; purged?: number; unchanged?: number }
 
 /** Remove members from the org: memberships + group rosters, and the profile of record-only members. */
 export const orgBulkDeleteMembers = (kind: BulkKind, uids: string[]) =>

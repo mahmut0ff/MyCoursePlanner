@@ -9,6 +9,7 @@ import { showGamificationToasts } from '../../components/gamification/Gamificati
 import { toast } from 'react-hot-toast';
 import type { LessonPlan, HomeworkSubmission } from '../../types';
 import { formatDate } from '../../utils/grading';
+import { getVideoEmbedUrl, isDirectVideoFile } from '../../utils/videoEmbed';
 import { generateHTML } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import LinkExtension from '@tiptap/extension-link';
@@ -48,14 +49,6 @@ const getFileLabel = (type: string): string => {
   if (type.includes('presentation') || type.includes('powerpoint')) return 'PowerPoint';
   if (type.includes('spreadsheet') || type.includes('excel')) return 'Excel';
   return 'Файл';
-};
-
-const getEmbedUrl = (url: string) => {
-  if (!url) return '';
-  if (url.includes('youtu.be/')) return url.replace('youtu.be/', 'youtube.com/embed/');
-  if (url.includes('youtube.com/watch?v=')) return url.replace('watch?v=', 'embed/').split('&')[0];
-  if (url.includes('vimeo.com/')) return url.replace('vimeo.com/', 'player.vimeo.com/video/');
-  return url;
 };
 
 const LessonViewPage: React.FC = () => {
@@ -252,6 +245,8 @@ const LessonViewPage: React.FC = () => {
 
   const attachments = lesson.attachments || [];
   const hw = lesson.homework;
+  const videoEmbedUrl = lesson.videoUrl ? getVideoEmbedUrl(lesson.videoUrl) : null;
+  const videoIsFile = !videoEmbedUrl && !!lesson.videoUrl && isDirectVideoFile(lesson.videoUrl);
 
   return (
     <div className={presentationMode ? 'fixed inset-0 z-[100] bg-slate-50 dark:bg-slate-900 overflow-y-auto px-4 py-8 md:p-12 lg:px-32 xl:px-64 animate-in fade-in zoom-in-95 duration-200' : 'max-w-7xl mx-auto'}>
@@ -319,17 +314,42 @@ const LessonViewPage: React.FC = () => {
             <span className="text-slate-400">{formatDate(lesson.createdAt)}</span>
           </div>
 
-          {/* Embedded Video */}
-          {lesson.videoUrl && (
+          {/* Embedded Video — only players our CSP can frame; the rest get a link. */}
+          {videoEmbedUrl && (
             <div className="mb-10 w-full rounded-2xl overflow-hidden shadow-lg border border-slate-200/50 dark:border-slate-700/50 bg-black aspect-video relative group">
-              <iframe 
-                src={getEmbedUrl(lesson.videoUrl)} 
+              <iframe
+                src={videoEmbedUrl}
                 title={lesson.title}
-                className="w-full h-full" 
+                className="w-full h-full"
                 allowFullScreen
                 allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
               ></iframe>
             </div>
+          )}
+
+          {videoIsFile && (
+            <div className="mb-10 w-full rounded-2xl overflow-hidden shadow-lg border border-slate-200/50 dark:border-slate-700/50 bg-black aspect-video">
+              <video src={lesson.videoUrl} controls preload="metadata" className="w-full h-full" />
+            </div>
+          )}
+
+          {lesson.videoUrl && !videoEmbedUrl && !videoIsFile && (
+            <a
+              href={lesson.videoUrl}
+              target="_blank"
+              rel="noreferrer noopener"
+              className="mb-10 flex items-center gap-3 p-4 rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 hover:border-primary-300 dark:hover:border-primary-500/50 transition-colors group"
+            >
+              <div className="w-10 h-10 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex items-center justify-center shrink-0">
+                <Film className="w-5 h-5 text-violet-500" />
+              </div>
+              <div className="min-w-0">
+                <p className="text-sm font-semibold text-slate-800 dark:text-slate-200 group-hover:text-primary-600 dark:group-hover:text-primary-400 transition-colors">
+                  {t('lessons.openVideo', 'Открыть видео-лекцию')}
+                </p>
+                <p className="text-[11px] text-slate-500 truncate">{lesson.videoUrl}</p>
+              </div>
+            </a>
           )}
 
           {/* Core Materials Section BEFORE LONGREAD */}

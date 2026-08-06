@@ -357,7 +357,8 @@
     "notFound": "Урок не найден",
     "contentError": "Не удалось отобразить содержание.",
     "byAuthor": "Автор",
-    "watchVideo": "Смотреть видео"
+    "watchVideo": "Смотреть видео",
+    "openVideo": "Открыть видео-лекцию"
   },
   "gradebook": {
     "subtitle": "Smart Journal + Universal Gradebook",

@@ -356,7 +356,8 @@
     "delete": "Өчүрүү",
     "cancel": "Жокко чыгаруу",
     "createdBy": "Автор",
-    "lastUpdated": "Жаңыланган"
+    "lastUpdated": "Жаңыланган",
+    "openVideo": "Видео-лекцияны ачуу"
   },
   "exams": {
     "title": "Экзамендер",

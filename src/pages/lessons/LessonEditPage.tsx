@@ -15,6 +15,7 @@ import { createLessonPlan, getLessonPlan, updateLessonPlan } from '../../service
 import { uploadLessonCover, uploadLessonAttachment, deleteLessonAttachment } from '../../services/storage.service';
 import type { LessonAttachment, Material, Group } from '../../types';
 import { orgGetMaterials, orgGetGroups } from '../../lib/api';
+import { getVideoEmbedUrl, isDirectVideoFile } from '../../utils/videoEmbed';
 
 import {
   Save, ArrowLeft, Bold, Italic, Strikethrough, Heading1, Heading2, List,
@@ -646,8 +647,14 @@ const LessonEditPage: React.FC = () => {
                 Видео-лекция (YouTube/Vimeo)
               </label>
               <input value={videoUrl} onChange={(e) => setVideoUrl(e.target.value)} className="input text-sm" placeholder="https://youtube.com/watch?v=..." />
-              {videoUrl && (
-                 <p className="text-[10px] text-slate-400 mt-1.5">Видео будет встроено в начало урока.</p>
+              {videoUrl.trim() && (
+                 getVideoEmbedUrl(videoUrl) || isDirectVideoFile(videoUrl) ? (
+                   <p className="text-[10px] text-slate-400 mt-1.5">Видео будет встроено в начало урока.</p>
+                 ) : (
+                   <p className="text-[10px] text-amber-600 dark:text-amber-500 mt-1.5">
+                     Встроить такую ссылку нельзя — в уроке она откроется как ссылка. Плеером показываются YouTube и Vimeo.
+                   </p>
+                 )
               )}
             </div>
           </div>

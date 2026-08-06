@@ -363,7 +363,8 @@
     "contentError": "Не удалось отобразить содержание.",
     "byAuthor": "Автор",
     "watchVideo": "Смотреть видео",
-    "openVideo": "Открыть видео-лекцию"
+    "openVideo": "Открыть видео-лекцию",
+    "groupGone": "Группа удалена"
   },
   "gradebook": {
     "subtitle": "Smart Journal + Universal Gradebook",

@@ -276,13 +276,13 @@ const LessonEditPage: React.FC = () => {
         data.homework = null;
       }
 
-      // Add group linkage
-      const selectedGroupNames = selectedGroups.map(gid => {
-        const g = groups.find(gr => gr.id === gid);
-        return g?.name || '';
-      }).filter(Boolean);
+      // Group linkage. Only the ids go up: the server reads the names off the
+      // group documents and keeps `groupNames` aligned with `groupIds` index for
+      // index. Building the pair here could not do that — `groups` is scoped to
+      // the active branch, so a group we can't see dropped out of the names array
+      // while its id stayed in `groupIds`, shifting every later name onto the
+      // wrong group and leaving the last one with no name at all.
       data.groupIds = selectedGroups;
-      data.groupNames = selectedGroupNames;
       
       let savedLessonId = id;
       if (isEdit && id) {

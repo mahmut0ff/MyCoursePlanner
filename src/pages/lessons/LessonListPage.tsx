@@ -1,7 +1,7 @@
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useState, useMemo, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { apiGetLessons, apiGetLesson, apiCreateLesson, apiTransferRequest } from '../../lib/api';
+import { apiGetLessons, apiGetLesson, apiCreateLesson, apiTransferRequest, orgGetGroups } from '../../lib/api';
 import { useAuth } from '../../contexts/AuthContext';
 import { usePlanGate } from '../../contexts/PlanContext';
 import type { LessonPlan } from '../../types';
@@ -27,6 +27,7 @@ const LessonListPage: React.FC = () => {
   const [subjectFilter, setSubjectFilter] = useState('all');
   const [levelFilter, setLevelFilter] = useState('all');
   const [groupFilter, setGroupFilter] = useState('all');
+  const [groupNameById, setGroupNameById] = useState<Record<string, string>>({});
   const [isAIModalOpen, setIsAIModalOpen] = useState(false);
 
   const isStaff = role === 'admin' || role === 'manager' || role === 'teacher';
@@ -43,9 +44,43 @@ const LessonListPage: React.FC = () => {
       .finally(() => setLoading(false));
   };
 
+  // The live catalog beats the copy stored on the lesson: it survives a rename,
+  // and it names groups on lessons saved before the server started deriving
+  // `groupNames` itself. Failure is silent — the stored names still work.
+  const loadGroupNames = () => {
+    orgGetGroups()
+      .then((data) => {
+        const map: Record<string, string> = {};
+        (Array.isArray(data) ? data : []).forEach((g: { id: string; name?: string }) => {
+          if (g?.id && g.name) map[g.id] = g.name;
+        });
+        setGroupNameById(map);
+      })
+      .catch(() => { /* silent */ });
+  };
+
   useEffect(() => {
     loadLessons();
+    loadGroupNames();
   }, []);
+
+  /**
+   * Group labels for one lesson: live catalog first, then the copy stored on the
+   * lesson, and never the raw id.
+   *
+   * The stored copy is only consulted when it is the same length as `groupIds` —
+   * older lessons were saved with a shorter names array, and pairing those by
+   * index hands each group its neighbour's name. Better no name than a wrong one.
+   */
+  const lessonGroupLabels = useCallback((l: LessonPlan): { id: string; label: string }[] => {
+    const ids = l.groupIds || [];
+    const stored = l.groupNames || [];
+    const storedIsUsable = stored.length === ids.length;
+    return ids.map((gid, i) => ({
+      id: gid,
+      label: groupNameById[gid] || (storedIsUsable ? stored[i] : '') || t('lessons.groupGone', 'Группа удалена'),
+    }));
+  }, [groupNameById, t]);
 
   const handleDuplicate = async (e: React.MouseEvent, lesson: LessonPlan) => {
     e.preventDefault();
@@ -93,12 +128,12 @@ const LessonListPage: React.FC = () => {
   const uniqueGroups = useMemo(() => {
     const map = new Map<string, string>();
     lessons.forEach(l => {
-      (l.groupIds || []).forEach((gid, i) => {
-        if (!map.has(gid)) map.set(gid, (l.groupNames || [])[i] || gid);
+      lessonGroupLabels(l).forEach(({ id, label }) => {
+        if (!map.has(id)) map.set(id, label);
       });
     });
-    return Array.from(map.entries()); // [[id, name], ...]
-  }, [lessons]);
+    return Array.from(map.entries()); // [[id, label], ...]
+  }, [lessons, lessonGroupLabels]);
 
   const filtered = useMemo(() => {
     return lessons.filter((l) => {
@@ -263,17 +298,23 @@ const LessonListPage: React.FC = () => {
                   <span className="text-[10px] text-slate-400 text-center">{lesson.level}</span>
                 </div>
 
-                {/* Groups */}
+                {/* Groups — labelled through the same resolver as the filter, so a
+                    badge and the dropdown can never disagree about a group. */}
                 <div className="hidden md:flex flex-wrap gap-1 justify-start">
-                  {(lesson.groupNames || []).slice(0, 2).map((gn, i) => (
-                    <span key={i} className="bg-violet-50 dark:bg-violet-900/20 text-violet-600 dark:text-violet-400 px-1.5 py-0.5 rounded text-[10px] font-bold truncate max-w-[90px]">{gn}</span>
-                  ))}
-                  {(lesson.groupNames || []).length > 2 && (
-                    <span className="text-[10px] text-slate-400">+{lesson.groupNames!.length - 2}</span>
-                  )}
-                  {(lesson.groupNames || []).length === 0 && (
-                    <span className="text-[10px] text-slate-400">—</span>
-                  )}
+                  {(() => {
+                    const labels = lessonGroupLabels(lesson).map(g => g.label);
+                    if (labels.length === 0) return <span className="text-[10px] text-slate-400">—</span>;
+                    return (
+                      <>
+                        {labels.slice(0, 2).map((label, i) => (
+                          <span key={i} className="bg-violet-50 dark:bg-violet-900/20 text-violet-600 dark:text-violet-400 px-1.5 py-0.5 rounded text-[10px] font-bold truncate max-w-[90px]">{label}</span>
+                        ))}
+                        {labels.length > 2 && (
+                          <span className="text-[10px] text-slate-400">+{labels.length - 2}</span>
+                        )}
+                      </>
+                    );
+                  })()}
                 </div>
 
                 {/* Duration */}

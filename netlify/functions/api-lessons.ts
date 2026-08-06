@@ -2,12 +2,50 @@
  * API: Lessons — CRUD (org-scoped).
  */
 import type { Handler, HandlerEvent } from '@netlify/functions';
-import { adminDb } from './utils/firebase-admin';
+import { adminDb, getDocsByIds } from './utils/firebase-admin';
 import { verifyAuth, isStaff, can, getOrgFilter, ok, unauthorized, forbidden, badRequest, notFound, jsonResponse, isSuperAdmin } from './utils/auth';
 import { notifyOrgStudents } from './utils/notifications';
 import { recordTeacherActivity } from './utils/teacher-activity';
 
 const COLLECTION = 'lessonPlans';
+
+/**
+ * Read the group names off the group documents, index for index with `groupIds`.
+ *
+ * `groupNames` is denormalised so lists don't have to join, and it used to be
+ * whatever the client sent. That is how a raw document id ended up in the group
+ * filter on the lessons page: the editor built the names from its own group list
+ * — scoped to the active branch — and dropped the ones it couldn't resolve, so
+ * the array came in shorter than `groupIds`, every later name landed on the wrong
+ * group, and the last id had no name to pair with. Names also went stale on
+ * rename, and any other write path (AI factory, duplication) set ids with no
+ * names at all.
+ *
+ * Derived here instead: one source of truth, always aligned, always current.
+ * Ids that no longer resolve to a group in this org are dropped — a lesson
+ * should not stay linked to a group that was deleted.
+ */
+export async function resolveGroupLinkage(
+  rawIds: unknown,
+  organizationId: string,
+): Promise<{ groupIds: string[]; groupNames: string[] }> {
+  const ids = Array.isArray(rawIds)
+    ? [...new Set(rawIds.filter((g): g is string => typeof g === 'string' && !!g.trim()).map((g) => g.trim()))]
+    : [];
+  if (ids.length === 0) return { groupIds: [], groupNames: [] };
+
+  const docs = await getDocsByIds('groups', ids);
+  const groupIds: string[] = [];
+  const groupNames: string[] = [];
+  for (const id of ids) {
+    const g = docs[id];
+    if (!g) continue;
+    if (organizationId && g.organizationId && g.organizationId !== organizationId) continue;
+    groupIds.push(id);
+    groupNames.push(g.name || '');
+  }
+  return { groupIds, groupNames };
+}
 
 const handler: Handler = async (event: HandlerEvent) => {
   if (event.httpMethod === 'OPTIONS') return jsonResponse(204, '');
@@ -99,13 +137,13 @@ const handler: Handler = async (event: HandlerEvent) => {
     const body = JSON.parse(event.body || '{}');
     if (!body.title) return badRequest('title required');
     const now = new Date().toISOString();
+    const linkage = await resolveGroupLinkage(body.groupIds, user.organizationId || '');
     const data = {
       ...body,
       authorId: user.uid,
       authorName: user.displayName,
       organizationId: user.organizationId || '',
-      groupIds: body.groupIds || [],
-      groupNames: body.groupNames || [],
+      ...linkage,
       status: body.status || 'draft',
       createdAt: now,
       updatedAt: now,
@@ -144,6 +182,15 @@ const handler: Handler = async (event: HandlerEvent) => {
     const body = JSON.parse(event.body || '{}');
     if (!body.id) return badRequest('id required');
     const { id, ...updateFields } = body;
+    // Same rule as on create: the names come from the group documents, never from
+    // the payload. A partial update that mentions neither key leaves the linkage
+    // alone; one that carries names without ids has its names dropped rather than
+    // trusted — it must not be able to rewrite the roster it isn't addressing.
+    if ('groupIds' in updateFields) {
+      Object.assign(updateFields, await resolveGroupLinkage(updateFields.groupIds, user.organizationId || ''));
+    } else {
+      delete updateFields.groupNames;
+    }
     updateFields.updatedAt = new Date().toISOString();
     await adminDb.collection(COLLECTION).doc(id).update(updateFields);
     const updated = await adminDb.collection(COLLECTION).doc(id).get();

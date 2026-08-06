@@ -411,7 +411,8 @@
     "enterYoutubeUrl": "Enter YouTube URL:",
     "titleSubjectRequired": "Title and subject are required",
     "saveFailed": "Failed to save lesson",
-    "openVideo": "Open the video lecture"
+    "openVideo": "Open the video lecture",
+    "groupGone": "Group deleted"
   },
   "exams": {
     "title": "Exams",

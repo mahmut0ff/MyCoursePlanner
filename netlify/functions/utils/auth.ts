@@ -86,6 +86,67 @@ export async function resolveOrgRole(uid: string, orgId: string): Promise<{ role
   };
 }
 
+/** A caller's role + resolved grants in one specific org. See resolveOrgGrants. */
+export interface OrgStanding {
+  role: AuthUser['role'];
+  grants: Set<string>;
+}
+
+/** Membership role → app role (owner and admin are the same thing for permissions). */
+const ORG_ROLE_TO_APP_ROLE: Record<string, AuthUser['role']> = {
+  owner: 'admin',
+  admin: 'admin',
+  manager: 'manager',
+  teacher: 'teacher',
+  mentor: 'teacher',
+  student: 'student',
+};
+
+/** Read an org's custom role doc. Missing/unreadable → system defaults, never a hard failure. */
+async function loadCustomRole(orgId: string, roleId: string): Promise<{ name?: string; baseRole?: string; permissions?: any[] } | null> {
+  try {
+    const roleDoc = await adminDb.collection('organizations').doc(orgId)
+      .collection('roles').doc(roleId).get();
+    if (!roleDoc.exists) return null;
+    const rd = roleDoc.data()!;
+    return { name: rd.name, baseRole: rd.baseRole, permissions: rd.permissions };
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Resolve a caller's effective grants IN A SPECIFIC ORG.
+ *
+ * `user.rbac` is resolved once, for the caller's ACTIVE org. Endpoints that take
+ * an `organizationId` in the request body must not authorize against it: the two
+ * can differ, and then the answer would describe the wrong tenant. This
+ * re-resolves membership → custom role → per-member overrides for the org
+ * actually being acted on; when it is the active org we reuse what verifyAuth
+ * already computed instead of paying for the reads again.
+ *
+ * `null` = not an active member of that org (the caller has no standing there).
+ */
+export async function resolveOrgGrants(user: AuthUser, orgId: string): Promise<OrgStanding | null> {
+  if (isSuperAdmin(user)) return { role: 'super_admin', grants: fullPermissionSet() };
+  if (user.organizationId && orgId === user.organizationId) return { role: user.role, grants: user.rbac };
+
+  const membership = await resolveOrgRole(user.uid, orgId);
+  if (!membership.role) return null;
+  const role = ORG_ROLE_TO_APP_ROLE[membership.role] || (membership.role as AuthUser['role']);
+  if (FULL_ACCESS_ROLES.includes(role)) return { role, grants: fullPermissionSet() };
+  const customRole = membership.roleId ? await loadCustomRole(orgId, membership.roleId) : null;
+  return {
+    role,
+    grants: resolvePermissionSet({
+      baseRole: role,
+      customRole,
+      legacyManagerPerms: membership.permissions,
+      overrides: membership.overrides,
+    }),
+  };
+}
+
 /**
  * Verify the Firebase ID token from the Authorization header.
  * Resolves role from membership (preferred) then falls back to flat user.role.
@@ -118,36 +179,17 @@ export async function verifyAuth(event: HandlerEvent): Promise<AuthUser | null> 
 
       // Resolve the assigned custom role once — we need its base role (which becomes a
       // switchable app role) as well as its granular permission set.
-      let customRole: { name?: string; baseRole?: string; permissions?: any[] } | null = null;
-      if (membership.roleId) {
-        try {
-          const roleDoc = await adminDb.collection('organizations').doc(organizationId)
-            .collection('roles').doc(membership.roleId).get();
-          if (roleDoc.exists) {
-            const rd = roleDoc.data()!;
-            customRole = { name: rd.name, baseRole: rd.baseRole, permissions: rd.permissions };
-          }
-        } catch { /* fall through to system defaults */ }
-      }
+      const customRole = membership.roleId ? await loadCustomRole(organizationId, membership.roleId) : null;
 
       if (membership.role) {
-        // Map membership roles to AuthUser roles
-        const roleMap: Record<string, AuthUser['role']> = {
-          owner: 'admin',
-          admin: 'admin',
-          manager: 'manager',
-          teacher: 'teacher',
-          mentor: 'teacher',
-          student: 'student',
-        };
-        const primaryRole = roleMap[membership.role] || role;
+        const primaryRole = ORG_ROLE_TO_APP_ROLE[membership.role] || role;
         // Multi-role: honor the user's chosen active role ONLY if it's one the
         // membership actually grants. Otherwise fall back to the primary role.
         // This is the server-side guard against privilege escalation.
-        const allowedRoles = membership.roles.map((r) => roleMap[r] || r);
+        const allowedRoles = membership.roles.map((r) => ORG_ROLE_TO_APP_ROLE[r] || r);
         // An assigned custom role's base role is also a valid role to switch into.
         if (customRole?.baseRole) {
-          const mappedBase = roleMap[customRole.baseRole] || (customRole.baseRole as AuthUser['role']);
+          const mappedBase = ORG_ROLE_TO_APP_ROLE[customRole.baseRole] || (customRole.baseRole as AuthUser['role']);
           if (!allowedRoles.includes(mappedBase)) allowedRoles.push(mappedBase);
         }
         const active = userData?.activeRole as AuthUser['role'] | undefined;
@@ -250,7 +292,17 @@ export function hasRole(user: AuthUser, ...roles: AuthUser['role'][]): boolean {
  * задаются галочками соответствующих разделов.
  */
 export function isRosterManager(user: AuthUser): boolean {
-  return isSuperAdmin(user) || hasRole(user, 'admin', 'manager') || can(user, 'roster_management', 'write');
+  return standingIsRosterManager({ role: user.role, grants: user.rbac });
+}
+
+/**
+ * Та же привилегия, но от пары «роль + гранты», а не от AuthUser: ручки, которым
+ * организация приходит телом запроса, резолвят её через resolveOrgGrants и должны
+ * получать ТОТ ЖЕ ответ. Одна реализация — чтобы две проверки не разъехались.
+ */
+export function standingIsRosterManager(standing: OrgStanding): boolean {
+  if (standing.role === 'super_admin' || standing.role === 'admin' || standing.role === 'manager') return true;
+  return standing.grants?.has('roster_management:write') === true;
 }
 
 /**

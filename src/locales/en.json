@@ -907,7 +907,10 @@
       "enrolledOn": "Enrolled",
       "editTitle": "Edit student",
       "editDesc": "Update the student's details and save.",
-      "confirmDeleteWithDebt": "Delete anyway and write off the untouched invoices?"
+      "confirmDeleteWithDebt": "Delete anyway and write off the untouched invoices?",
+      "allCourses": "All courses",
+      "filterByCourse": "Filter by course",
+      "filterByGroup": "Filter by group"
     },
     "teachers": {
       "total": "teachers",

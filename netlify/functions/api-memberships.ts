@@ -14,7 +14,8 @@
  */
 import type { Handler, HandlerEvent } from '@netlify/functions';
 import { adminDb, getDocsByIds } from './utils/firebase-admin';
-import { verifyAuth, isSuperAdmin, getMembershipData, ok, unauthorized, forbidden, badRequest, notFound, jsonResponse } from './utils/auth';
+import type { AuthUser } from './utils/auth';
+import { verifyAuth, isSuperAdmin, getMembershipData, memberHoldsRole, resolveOrgGrants, standingIsRosterManager, ok, unauthorized, forbidden, badRequest, notFound, jsonResponse } from './utils/auth';
 import { notifyOrgAdmins } from './utils/notifications';
 import { orgDayKey, isDebtBearingPlan, isUntouchedPlan, planDebt } from './utils/payment-plans';
 
@@ -35,6 +36,80 @@ async function getOrgRole(userId: string, orgId: string): Promise<string | null>
   if (!m || m.status !== 'active') return null;
   return m.role || null;
 }
+
+/**
+ * Какой раздел прав распоряжается судьбой этого участника.
+ *
+ * Отчисление и удаление — операции над РОСТЕРОМ, а не над «участниками вообще»,
+ * поэтому спрашиваем то же право, что и экран, с которого действие запускают:
+ * студентов закрывает раздел «Студенты», преподавателей — «Преподаватели»,
+ * управленцев — «Команда и роли». Так галочка, поставленная директором в /team,
+ * действительно означает то, что про неё написано в каталоге.
+ *
+ * Лестница идёт от старшей роли к младшей, а не наоборот: у мульти-ролевого
+ * участника решает САМАЯ привилегированная его роль. Иначе достаточно было бы
+ * выдать человеку вдобавок роль студента, чтобы его стало можно убрать правом на
+ * контингент — то есть «Студенты: удаление» дотягивалось бы до руководства.
+ */
+function rosterResourceFor(member: { role?: string; roles?: string[] }): string {
+  if (memberHoldsRole(member, ['owner', 'admin'])) return 'team';
+  // Преподаватель-управленец удаляется со страницы «Преподаватели», где кнопка
+  // закрыта правом teachers:delete — сервер должен спрашивать то же самое.
+  if (memberHoldsRole(member, ['teacher', 'mentor'])) return 'teachers';
+  if (memberHoldsRole(member, ['manager'])) return 'team';
+  return 'students';
+}
+
+/**
+ * Право на действие с участником — по гранту, а не по названию роли.
+ *
+ * Раньше здесь стоял захардкоженный список ['admin','owner','manager']. Из-за
+ * него весь RBAC мимо этих трёх ручек проходил впустую: сотруднику выдавали в
+ * /team кастомную роль с «Студенты: удаление», интерфейс честно показывал ему
+ * «Отчислить» (клиент-то спрашивает грант), а сервер отвечал 403 «insufficient
+ * role» — потому что в членстве у него значилось, например, 'teacher'. Тем же
+ * молчаливым способом отваливался мульти-ролевой участник: getOrgRole читает
+ * только первичный `role`, и менеджер с primary 'teacher' прав не имел.
+ *
+ * Гранты резолвим для ОРГАНИЗАЦИИ ИЗ ЗАПРОСА, а не для активной организации
+ * вызывающего: у ручек org приходит телом, и эти две могут не совпадать.
+ */
+async function requireMemberPermission(
+  user: AuthUser,
+  orgId: string,
+  member: { role?: string; roles?: string[] },
+  action: 'write' | 'delete',
+): Promise<ReturnType<typeof forbidden> | null> {
+  const standing = await resolveOrgGrants(user, orgId);
+  if (!standing) return forbidden();
+  const resource = rosterResourceFor(member);
+  // Над студентами — тот же двойной гейт, что на createStudent и на группах:
+  // «ведение контингента» решает, НА КОГО распространяются полномочия (вся
+  // организация, а не только свои группы), а students:* — что именно можно.
+  // Иначе преподаватель, которому выдали students:delete для своих подопечных,
+  // мог бы отчислить кого угодно в организации.
+  if (resource === 'students' && !standingIsRosterManager(standing)) {
+    return forbidden('Нужно право «Контингент: полное управление» — оно открывает работу со всем ростером организации, а не только со своими группами.');
+  }
+  // Отказ называет недостающую галочку. Директор, выдавший роль, иначе видит
+  // только «недостаточно прав» и не знает, что именно дописать в /team.
+  if (!standing.grants.has(`${resource}:${action}`)) {
+    return forbidden(`Недостаточно прав: нужно «${RESOURCE_LABEL[resource]}: ${ACTION_LABEL[action]}».`);
+  }
+  return null;
+}
+
+// Названия из каталога ролей (src/lib/rbac.ts) — отказ должен звучать теми же
+// словами, что подписаны у галочек в /team.
+const RESOURCE_LABEL: Record<string, string> = {
+  students: 'Студенты',
+  teachers: 'Преподаватели',
+  team: 'Команда и роли',
+};
+const ACTION_LABEL: Record<'write' | 'delete', string> = {
+  write: 'изменение',
+  delete: 'удаление',
+};
 
 const handler: Handler = async (event: HandlerEvent) => {
   if (event.httpMethod === 'OPTIONS') return jsonResponse(204, '');
@@ -302,13 +377,20 @@ const handler: Handler = async (event: HandlerEvent) => {
       const body = JSON.parse(event.body || '{}');
       if (!body.userId || !body.organizationId) return badRequest('userId and organizationId required');
 
-      const callerRole = await getOrgRole(user.uid, body.organizationId);
-      if (!isSuperAdmin(user) && !['admin', 'owner', 'manager'].includes(callerRole || '')) return forbidden();
-
-      // Cannot remove owner
+      // Право спрашиваем ПОСЛЕ того, как узнали, кого убираем: раздел прав
+      // зависит от роли цели (см. rosterResourceFor).
       const targetMembership = await getMembership(body.userId, body.organizationId) as any;
       if (!targetMembership) return notFound('Member not found');
-      if (targetMembership.role === 'owner') return badRequest('Cannot remove organization owner');
+      // Владельца не убирает никто — даже суперадмин: сначала передача владения.
+      // memberHoldsRole, а не `role === 'owner'`: у мульти-ролевого владельца
+      // первичной может стоять другая роль, и прежняя проверка его пропускала.
+      if (memberHoldsRole(targetMembership, ['owner'])) return badRequest('Cannot remove organization owner');
+
+      // Отчисление — это `delete` по каталогу («Удаление и отчисление студентов»),
+      // а не `write`: перевести студента в другую группу и убрать его из
+      // организации — разные полномочия.
+      const denied = await requireMemberPermission(user, body.organizationId, targetMembership, 'delete');
+      if (denied) return denied;
 
       const ts = now();
       const newStatus = targetMembership.role === 'student' ? 'expelled' : 'removed';
@@ -333,13 +415,14 @@ const handler: Handler = async (event: HandlerEvent) => {
       const body = JSON.parse(event.body || '{}');
       if (!body.userId || !body.organizationId) return badRequest('userId and organizationId required');
 
-      const callerRole = await getOrgRole(user.uid, body.organizationId);
-      if (!isSuperAdmin(user) && !['admin', 'owner', 'manager'].includes(callerRole || '')) return forbidden();
-
       const targetMembership = await getMembership(body.userId, body.organizationId) as any;
       if (!targetMembership) return notFound('Member not found');
       if (targetMembership.role !== 'student') return badRequest('Only students can be restored');
       if (targetMembership.status !== 'expelled') return badRequest('Member is not expelled');
+
+      // Восстановление ничего не разрушает — это `write`, как и правка карточки.
+      const denied = await requireMemberPermission(user, body.organizationId, targetMembership, 'write');
+      if (denied) return denied;
 
       const ts = now();
       const update = { status: 'active', leftAt: null, updatedAt: ts };
@@ -356,12 +439,12 @@ const handler: Handler = async (event: HandlerEvent) => {
       const body = JSON.parse(event.body || '{}');
       if (!body.userId || !body.organizationId) return badRequest('userId and organizationId required');
 
-      const callerRole = await getOrgRole(user.uid, body.organizationId);
-      if (!isSuperAdmin(user) && !['admin', 'owner', 'manager'].includes(callerRole || '')) return forbidden();
-
       const targetMembership = await getMembership(body.userId, body.organizationId) as any;
       if (!targetMembership) return notFound('Member not found');
-      if (targetMembership.role === 'owner') return badRequest('Cannot remove organization owner');
+      if (memberHoldsRole(targetMembership, ['owner'])) return badRequest('Cannot remove organization owner');
+
+      const denied = await requireMemberPermission(user, body.organizationId, targetMembership, 'delete');
+      if (denied) return denied;
 
       // ── Долг нельзя удалить вместе с человеком ──
       // Полное удаление стирало обе записи членства и не трогало счета вовсе.

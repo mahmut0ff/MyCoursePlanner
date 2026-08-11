@@ -1052,7 +1052,10 @@
       "enrolledOn": "Поступил",
       "editTitle": "Редактировать студента",
       "editDesc": "Измените данные студента и сохраните.",
-      "confirmDeleteWithDebt": "Удалить всё равно и списать нетронутые счета?"
+      "confirmDeleteWithDebt": "Удалить всё равно и списать нетронутые счета?",
+      "allCourses": "Все курсы",
+      "filterByCourse": "Фильтр по курсу",
+      "filterByGroup": "Фильтр по группе"
     },
     "teachers": {
       "total": "преподавателей",

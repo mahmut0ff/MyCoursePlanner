@@ -45,10 +45,18 @@ type SortDir = 'asc' | 'desc';
 const StudentsPage: React.FC = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const { organizationId } = useAuth();
+  const { role, organizationId } = useAuth();
   const { activeBranchId } = useBranch();
-  const { canWrite, canDelete, loaded: permsLoaded } = usePermissions();
+  const { can, canWrite, canDelete, loaded: permsLoaded } = usePermissions();
   const { canAccess } = usePlanGate();
+
+  // Зеркало серверного isRosterManager (utils/auth.ts), как на карточке студента:
+  // «ведение контингента» решает, распространяются ли права на весь ростер
+  // организации или только на свои группы. Отчисление и удаление своей области
+  // видимости не имеют, поэтому без этой привилегии сервер их не пропустит —
+  // и предлагать их в меню значило бы обещать то, чего не будет.
+  const isRosterManager = role === 'admin' || role === 'super_admin' || role === 'manager'
+    || can('roster_management', 'write');
 
   // Risk lives here now instead of on its own page — the signal has to reach the
   // screen people actually work on. Failure is silent: no dots, list unaffected.
@@ -69,6 +77,9 @@ const StudentsPage: React.FC = () => {
   const [search, setSearch] = useState('');
   const [groups, setGroups] = useState<Group[]>([]);
   const [selectedGroup, setSelectedGroup] = useState<string>('all');
+  // Курс — не поле студента: связь идёт через группы (group.courseId). Поэтому
+  // фильтр по курсу разворачивается в набор его групп, а не в сравнение по полю.
+  const [selectedCourse, setSelectedCourse] = useState<string>('all');
   const [sortField, setSortField] = useState<SortField>('name');
   const [sortDir, setSortDir] = useState<SortDir>('asc');
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'expelled'>('active');
@@ -211,7 +222,7 @@ const StudentsPage: React.FC = () => {
 
   // A selection only means something for rows still on screen — drop it whenever the
   // filtered set changes under it, so a bulk action can't hit rows you can no longer see.
-  useEffect(() => setSelected(new Set()), [search, selectedGroup, statusFilter, riskOnly, activeBranchId]);
+  useEffect(() => setSelected(new Set()), [search, selectedGroup, selectedCourse, statusFilter, riskOnly, activeBranchId]);
 
   // Branch names by id — feeds the "Филиал" column and branch sorting.
   const branchNameById = useMemo(() => {
@@ -225,6 +236,22 @@ const StudentsPage: React.FC = () => {
       .map(id => branchNameById[id])
       .filter(Boolean);
 
+  // Группы выбранного курса. Показывать все — значит предлагать комбинацию,
+  // которая гарантированно даёт пустой список (группа не с этого курса), и
+  // пользователь не поймёт, почему никого нет.
+  const visibleGroups = useMemo(
+    () => (selectedCourse === 'all' ? groups : groups.filter(g => String(g.courseId) === selectedCourse)),
+    [groups, selectedCourse],
+  );
+
+  // Смена курса не должна оставлять выбранной группу с другого курса — иначе
+  // фильтры молча противоречат друг другу.
+  useEffect(() => {
+    if (selectedGroup !== 'all' && !visibleGroups.some(g => g.id === selectedGroup)) {
+      setSelectedGroup('all');
+    }
+  }, [visibleGroups, selectedGroup]);
+
   // Filtered & sorted students
   const filteredStudents = useMemo(() => {
     let result = [...students];
@@ -237,6 +264,16 @@ const StudentsPage: React.FC = () => {
         s.email?.toLowerCase().includes(q) ||
         s.phone?.toLowerCase().includes(q)
       );
+    }
+
+    // Filter by course — через все его группы разом.
+    if (selectedCourse !== 'all') {
+      const idsOnCourse = new Set<string>();
+      for (const g of groups) {
+        if (String(g.courseId) !== selectedCourse) continue;
+        for (const sid of (g.studentIds || [])) idsOnCourse.add(String(sid));
+      }
+      result = result.filter(s => idsOnCourse.has(s.uid));
     }
 
     // Filter by group
@@ -274,7 +311,7 @@ const StudentsPage: React.FC = () => {
     });
 
     return result;
-  }, [students, search, selectedGroup, groups, sortField, sortDir, statusFilter, branchNameById, riskOnly, riskByStudent]);
+  }, [students, search, selectedGroup, selectedCourse, groups, sortField, sortDir, statusFilter, branchNameById, riskOnly, riskByStudent]);
 
   // Count over active students only — an expelled student can't churn, and
   // counting them would make the chip disagree with what it filters to.
@@ -449,7 +486,7 @@ const StudentsPage: React.FC = () => {
     sentinelRef,
     loadMore,
   } = useLazyList(filteredStudents, {
-    resetKey: `${search}|${selectedGroup}|${statusFilter}|${riskOnly}|${sortField}|${sortDir}|${activeBranchId || ''}`,
+    resetKey: `${search}|${selectedGroup}|${selectedCourse}|${statusFilter}|${riskOnly}|${sortField}|${sortDir}|${activeBranchId || ''}`,
   });
 
   const handleDeleteExpelled = async (uid: string) => {
@@ -551,15 +588,21 @@ const StudentsPage: React.FC = () => {
           onSelect: () => setAccessFor(s),
         });
       }
-      items.push(
-        expelled
-          ? { label: 'Восстановить', icon: UserCheck, separated: true, onSelect: () => handleRestore(s) }
-          : { label: 'Отчислить', icon: UserMinus, danger: true, separated: true, onSelect: () => handleExpel(s) },
-      );
+      // Восстановление — обычная правка карточки: возвращает статус 'active' и
+      // ничего не разрушает.
+      if (expelled) items.push({ label: 'Восстановить', icon: UserCheck, separated: true, onSelect: () => handleRestore(s) });
     }
 
-    if (expelled && permsLoaded && canDelete('students')) {
-      items.push({ label: t('common.delete', 'Удалить навсегда'), icon: Trash2, danger: true, onSelect: () => handleDeleteExpelled(s.uid) });
+    // Отчисление и полное удаление живут под ОДНИМ правом «Студенты: удаление» —
+    // так и написано в каталоге ролей («Удаление и отчисление студентов»), и так
+    // же считает сервер. Раньше «Отчислить» показывалось по `write`, и сотрудник
+    // с правом на правку видел пункт, который на сервере всегда отвечал 403.
+    if (permsLoaded && isRosterManager && canDelete('students')) {
+      if (expelled) {
+        items.push({ label: t('common.delete', 'Удалить навсегда'), icon: Trash2, danger: true, separated: true, onSelect: () => handleDeleteExpelled(s.uid) });
+      } else {
+        items.push({ label: 'Отчислить', icon: UserMinus, danger: true, separated: true, onSelect: () => handleExpel(s) });
+      }
     }
 
     return items;
@@ -686,12 +729,34 @@ const StudentsPage: React.FC = () => {
             </div>
 
             <div className="flex items-center gap-3 overflow-x-auto pb-1 md:pb-0">
-              {groups.length > 0 && (
+              {courses.length > 0 && (
+                <div className="flex items-center gap-2 shrink-0">
+                  <BookOpen className="w-4 h-4 text-slate-400" />
+                  <select
+                    value={selectedCourse}
+                    onChange={e => setSelectedCourse(e.target.value)}
+                    aria-label={t('org.students.filterByCourse', 'Фильтр по курсу')}
+                    className="input text-sm py-2 bg-slate-50 dark:bg-slate-900 border-none"
+                  >
+                    <option value="all">{t('org.students.allCourses', 'Все курсы')}</option>
+                    {courses.map((c: any) => (
+                      <option key={c.id} value={c.id}>{c.title || c.name || c.id}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
+              {visibleGroups.length > 0 && (
                 <div className="flex items-center gap-2 shrink-0">
                   <Filter className="w-4 h-4 text-slate-400" />
-                  <select value={selectedGroup} onChange={e => setSelectedGroup(e.target.value)} className="input text-sm py-2 bg-slate-50 dark:bg-slate-900 border-none">
+                  <select
+                    value={selectedGroup}
+                    onChange={e => setSelectedGroup(e.target.value)}
+                    aria-label={t('org.students.filterByGroup', 'Фильтр по группе')}
+                    className="input text-sm py-2 bg-slate-50 dark:bg-slate-900 border-none"
+                  >
                     <option value="all">{t('org.students.allGroups', 'Все группы')}</option>
-                    {groups.map(g => (
+                    {visibleGroups.map(g => (
                       <option key={g.id} value={g.id}>{g.name}</option>
                     ))}
                   </select>
@@ -732,7 +797,7 @@ const StudentsPage: React.FC = () => {
           </div>
 
           {/* Results Count */}
-          {(search || selectedGroup !== 'all') && (
+          {(search || selectedGroup !== 'all' || selectedCourse !== 'all') && (
             <div className="mb-4 text-sm text-slate-500 dark:text-slate-400">
               {t('org.students.found', 'Найдено')}: <span className="font-semibold text-slate-700 dark:text-slate-300">{filteredStudents.length}</span> {t('org.students.ofTotal', 'из')} {students.length}
             </div>
@@ -753,8 +818,8 @@ const StudentsPage: React.FC = () => {
           {filteredStudents.length === 0 ? (
             <EmptyState
               icon={Users}
-              title={search || selectedGroup !== 'all' || riskOnly ? t('org.students.noSearchResults', 'Студенты не найдены') : t('org.students.empty')}
-              description={search || selectedGroup !== 'all' || riskOnly ? 'Попробуйте изменить фильтры поиска' : 'Добавьте первого студента'}
+              title={search || selectedGroup !== 'all' || selectedCourse !== 'all' || riskOnly ? t('org.students.noSearchResults', 'Студенты не найдены') : t('org.students.empty')}
+              description={search || selectedGroup !== 'all' || selectedCourse !== 'all' || riskOnly ? 'Попробуйте изменить фильтры поиска' : 'Добавьте первого студента'}
               actionLabel={permsLoaded && canWrite('students') ? t('org.students.create', 'Добавить студента') : undefined}
               onAction={permsLoaded && canWrite('students') ? () => setShowCreateModal(true) : undefined}
             />

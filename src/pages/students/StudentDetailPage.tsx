@@ -401,14 +401,20 @@ const StudentDetailPage: React.FC = () => {
       if (branches.length > 0) menuItems.push({ label: 'Перевести в филиал', icon: Building2, onSelect: () => setMoveMode('branch') });
       menuItems.push({ label: hasLogin ? 'Сменить пароль' : 'Выдать доступ', icon: KeyRound, onSelect: () => setShowAccessModal(true) });
     }
-    menuItems.push(
-      expelled
-        ? { label: 'Восстановить', icon: UserCheck, separated: true, onSelect: handleRestore }
-        : { label: 'Отчислить', icon: UserMinus, danger: true, separated: true, onSelect: () => setConfirm({ kind: 'expel' }) },
-    );
+    // Восстановление — обычная правка карточки: возвращает статус 'active' и
+    // ничего не разрушает.
+    if (expelled) menuItems.push({ label: 'Восстановить', icon: UserCheck, separated: true, onSelect: handleRestore });
   }
-  if (expelled && canPurgeStudent) {
-    menuItems.push({ label: t('common.delete', 'Удалить навсегда'), icon: Trash2, danger: true, onSelect: () => navigate('/students') });
+  // Отчисление и полное удаление — одно право «Студенты: удаление»: так написано
+  // в каталоге ролей («Удаление и отчисление студентов»), и так же считает сервер.
+  // Раньше «Отчислить» показывалось по `write`, и сотрудник с правом на правку
+  // видел пункт, который на сервере всегда отвечал 403.
+  if (canPurgeStudent) {
+    if (expelled) {
+      menuItems.push({ label: t('common.delete', 'Удалить навсегда'), icon: Trash2, danger: true, separated: true, onSelect: () => navigate('/students') });
+    } else {
+      menuItems.push({ label: 'Отчислить', icon: UserMinus, danger: true, separated: true, onSelect: () => setConfirm({ kind: 'expel' }) });
+    }
   }
 
   const showMoneyProblem = canSeeMoney && money.overdue.length > 0;

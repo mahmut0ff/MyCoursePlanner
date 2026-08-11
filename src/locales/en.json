@@ -1952,7 +1952,9 @@
     "newOneOff": "One-off lesson",
     "newWeekly": "Weekly lesson",
     "updated": "Lesson updated",
-    "upcoming": "Upcoming one-off"
+    "upcoming": "Upcoming one-off",
+    "addOnDay": "Schedule a lesson on this day",
+    "groupEmptyFiltered": "This group has no lessons in that classroom"
   },
   "teacherOnboarding": {
     "title": "Get Started",

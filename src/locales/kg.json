@@ -1351,7 +1351,9 @@
     "newOneOff": "Бир жолку сабак",
     "newWeekly": "Жумалык сабак",
     "updated": "Сабак жаңырды",
-    "upcoming": "Жакынкы бир жолкулар"
+    "upcoming": "Жакынкы бир жолкулар",
+    "addOnDay": "Бул күнгө сабак коюу",
+    "groupEmptyFiltered": "Бул кабинетте топтун сабагы жок"
   },
   "teacherOnboarding": {
     "title": "Ишти баштаңыз",

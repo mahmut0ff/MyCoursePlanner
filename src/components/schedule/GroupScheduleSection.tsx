@@ -1,18 +1,34 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { CalendarDays, Clock, MapPin, Pencil, Plus, Repeat, Trash2, X } from 'lucide-react';
+import { CalendarDays, MapPin, Plus, Trash2, X } from 'lucide-react';
 import toast from 'react-hot-toast';
 import {
   orgGetTimetable, orgGetSchedule, orgCreateEvent, orgUpdateEvent, orgDeleteEvent,
+  orgListClassrooms,
 } from '../../lib/api';
 import { usePermissions } from '../../contexts/PermissionsContext';
 import { timeToMins, minsToTime } from '../../lib/scheduleTime';
+import { sameRoom, normalizeRoom } from '../../lib/classrooms';
 import ClassroomSelect from '../ui/ClassroomSelect';
 import ConfirmDialog from '../ui/ConfirmDialog';
-import type { Group, ScheduleEvent } from '../../types';
+import type { Classroom, Group, ScheduleEvent } from '../../types';
 
+const DAY_SHORT = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
 const DAY_NAMES = ['Понедельник', 'Вторник', 'Среда', 'Четверг', 'Пятница', 'Суббота', 'Воскресенье'];
 const DEFAULT_SLOT_MINUTES = 60;
+
+/** Сегодняшний день в конвенции приложения (0=Пн … 6=Вс). */
+const todayDow = () => (new Date().getDay() + 6) % 7;
+
+/**
+ * «2026-08-20» → «20 авг». Разбираем по частям, а не через Date(строка): та
+ * читается как UTC-полночь и в минусовых зонах показывает предыдущий день.
+ */
+const shortDate = (iso: string, locale: string) => {
+  const [y, m, d] = iso.split('-').map(Number);
+  if (!y || !m || !d) return iso;
+  return new Date(y, m - 1, d).toLocaleDateString(locale, { day: 'numeric', month: 'short' });
+};
 
 /** Подпись кабинета: справочник имеет приоритет над устаревшим свободным текстом. */
 const roomLabel = (ev: { classroomName?: string; location?: string }) =>
@@ -58,7 +74,7 @@ interface GroupScheduleSectionProps {
  * такой проверки неизбежно разъезжалась бы с серверной.
  */
 const GroupScheduleSection: React.FC<GroupScheduleSectionProps> = ({ group, canEdit }) => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { canDelete } = usePermissions();
   const [timetable, setTimetable] = useState<ScheduleEvent[]>([]);
   const [upcoming, setUpcoming] = useState<ScheduleEvent[]>([]);
@@ -70,8 +86,12 @@ const GroupScheduleSection: React.FC<GroupScheduleSectionProps> = ({ group, canE
   const [canForce, setCanForce] = useState(false);
   const [pendingDelete, setPendingDelete] = useState<ScheduleEvent | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [classrooms, setClassrooms] = useState<Classroom[]>([]);
+  /** '' — все, '__none__' — занятия без кабинета, иначе id кабинета. */
+  const [roomFilter, setRoomFilter] = useState('');
 
   const canRemove = canDelete('schedule');
+  const today = todayDow();
 
   const load = useCallback(() => {
     setLoading(true);
@@ -80,30 +100,56 @@ const GroupScheduleSection: React.FC<GroupScheduleSectionProps> = ({ group, canE
     Promise.all([
       orgGetTimetable(group.id).then((r: any) => (Array.isArray(r) ? r : [])).catch(() => [] as ScheduleEvent[]),
       orgGetSchedule(from, to, group.id).then((r: any) => (Array.isArray(r) ? r : [])).catch(() => [] as ScheduleEvent[]),
-    ]).then(([tt, ev]) => {
+      orgListClassrooms(group.branchId).then((r: any) => (Array.isArray(r) ? r : [])).catch(() => [] as Classroom[]),
+    ]).then(([tt, ev, cls]) => {
       setTimetable(tt);
       setUpcoming(ev);
+      setClassrooms(cls);
     }).finally(() => setLoading(false));
-  }, [group.id]);
+  }, [group.id, group.branchId]);
 
   useEffect(load, [load]);
 
-  const byDay = useMemo(() => {
-    const map = new Map<number, ScheduleEvent[]>();
-    for (const e of timetable) {
-      const d = e.dayOfWeek ?? 0;
-      if (!map.has(d)) map.set(d, []);
-      map.get(d)!.push(e);
-    }
-    for (const list of map.values()) {
-      list.sort((a, b) => (timeToMins(a.startTime) ?? 0) - (timeToMins(b.startTime) ?? 0));
-    }
-    return [...map.entries()].sort((a, b) => a[0] - b[0]);
-  }, [timetable]);
+  const matchesRoom = useCallback((ev: ScheduleEvent) => {
+    if (!roomFilter) return true;
+    if (roomFilter === '__none__') return !roomLabel(ev);
+    const c = classrooms.find(x => x.id === roomFilter);
+    return c ? sameRoom({ classroomId: c.id, classroomName: c.name }, ev) : true;
+  }, [roomFilter, classrooms]);
 
-  const openCreate = (recurring: boolean) => {
+  /**
+   * Кабинеты, которые группа действительно занимает. Фильтр показываем только
+   * когда их больше одного — иначе это переключатель с единственным исходом.
+   */
+  const usedRooms = useMemo(() => {
+    const keys = new Set<string>();
+    for (const e of [...timetable, ...upcoming]) {
+      keys.add(normalizeRoom(roomLabel(e)));
+    }
+    return keys;
+  }, [timetable, upcoming]);
+
+  const filterOptions = useMemo(
+    () => classrooms.filter(c => usedRooms.has(normalizeRoom(c.name))),
+    [classrooms, usedRooms],
+  );
+  const showFilter = usedRooms.size > 1;
+
+  /** Недельная сетка: семь колонок всегда, чтобы читалась вся неделя разом. */
+  const week = useMemo(() => DAY_SHORT.map((_, day) =>
+    timetable
+      .filter(e => (e.dayOfWeek ?? 0) === day && matchesRoom(e))
+      .sort((a, b) => (timeToMins(a.startTime) ?? 0) - (timeToMins(b.startTime) ?? 0))),
+    [timetable, matchesRoom]);
+
+  const visibleUpcoming = useMemo(
+    () => upcoming.filter(matchesRoom), [upcoming, matchesRoom]);
+
+  const hasAnything = week.some(d => d.length) || visibleUpcoming.length > 0;
+
+  const openCreate = (recurring: boolean, dayOfWeek?: number) => {
     setError(''); setCanForce(false);
-    setForm(emptyForm(recurring));
+    setForm({ ...emptyForm(recurring), dayOfWeek: dayOfWeek ?? 0 });
     setModalOpen(true);
   };
 
@@ -186,107 +232,184 @@ const GroupScheduleSection: React.FC<GroupScheduleSectionProps> = ({ group, canE
     }
   };
 
-  const renderRow = (ev: ScheduleEvent, showDate = false) => (
-    <div
-      key={ev.id}
-      className="flex items-center gap-3 px-4 py-2.5 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-700/30 transition-colors group"
-    >
-      <span className="inline-flex items-center gap-1.5 text-sm font-semibold text-slate-900 dark:text-white tabular-nums shrink-0">
-        <Clock className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-        {ev.startTime}{ev.endTime ? `–${ev.endTime}` : ''}
-      </span>
-      {showDate && ev.date && (
-        <span className="text-xs font-medium text-slate-500 dark:text-slate-400 shrink-0">{ev.date}</span>
-      )}
-      {roomLabel(ev) ? (
-        <span className="inline-flex items-center gap-1 text-xs font-medium text-slate-500 dark:text-slate-400 min-w-0">
+  /**
+   * Занятие в недельной полосе. Время — главное, кабинет подписью под ним.
+   * Тело плитки открывает правку, удаление живёт отдельной кнопкой: вложенные
+   * друг в друга кнопки невалидны, а держать удаление только на hover нельзя —
+   * на тач-экранах его тогда не достать.
+   */
+  const renderLesson = (ev: ScheduleEvent, dateLabel?: string) => {
+    const room = roomLabel(ev);
+    const body = (
+      <>
+        <span className="block text-sm font-bold text-slate-900 dark:text-white tabular-nums leading-tight">
+          {ev.startTime}{ev.endTime ? `–${ev.endTime}` : ''}
+        </span>
+        {dateLabel && (
+          <span className="block text-[11px] font-semibold text-slate-500 dark:text-slate-400 mt-0.5">
+            {dateLabel}
+          </span>
+        )}
+        <span className="mt-1 flex items-center gap-1 text-[11px] font-medium text-slate-500 dark:text-slate-400 min-w-0">
           <MapPin className="w-3 h-3 shrink-0" />
-          <span className="truncate">{roomLabel(ev)}</span>
+          <span className="truncate">{room || t('classrooms.none', 'Без кабинета')}</span>
         </span>
-      ) : (
-        <span className="text-xs font-medium text-slate-400 dark:text-slate-500 italic">
-          {t('classrooms.none', 'Без кабинета')}
-        </span>
-      )}
-      <div className="ml-auto flex items-center gap-1 shrink-0 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
-        {canEdit && (
+      </>
+    );
+
+    return (
+      <div
+        key={ev.id}
+        className="group/lesson relative rounded-xl bg-slate-50 dark:bg-slate-900/40 border border-transparent hover:border-slate-200 dark:hover:border-slate-700 transition-colors"
+      >
+        {canEdit ? (
           <button
             onClick={() => openEdit(ev)}
-            title={t('common.edit', 'Изменить')}
-            className="p-1.5 rounded-lg text-slate-500 hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors"
+            aria-label={`${t('common.edit', 'Изменить')}: ${ev.startTime}${room ? `, ${room}` : ''}`}
+            className="w-full text-left px-3 py-2.5 pr-8 rounded-xl focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-900 dark:focus-visible:ring-white"
           >
-            <Pencil className="w-3.5 h-3.5" />
+            {body}
           </button>
+        ) : (
+          <div className="px-3 py-2.5">{body}</div>
         )}
+
         {canRemove && (
           <button
             onClick={() => setPendingDelete(ev)}
+            aria-label={`${t('common.delete', 'Удалить')} ${ev.startTime}`}
             title={t('common.delete', 'Удалить')}
-            className="p-1.5 rounded-lg text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+            // slate-500, а не slate-400: иконка на плитке slate-50 иначе даёт ~2.5:1
+            // и не дотягивает до порога 3:1 для нетекстовых элементов.
+            className="absolute top-1 right-1 p-1.5 rounded-lg text-slate-500 dark:text-slate-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 opacity-70 sm:opacity-0 group-hover/lesson:opacity-100 focus-visible:opacity-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-500 transition-opacity"
           >
             <Trash2 className="w-3.5 h-3.5" />
           </button>
         )}
       </div>
-    </div>
-  );
+    );
+  };
 
   return (
-    <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl overflow-hidden shadow-sm">
-      <div className="px-5 py-4 border-b border-slate-200 dark:border-slate-700 flex items-center gap-3">
+    <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-3xl overflow-hidden shadow-sm mb-8">
+      <div className="px-5 sm:px-6 py-4 border-b border-slate-200 dark:border-slate-700 flex flex-wrap items-center gap-x-3 gap-y-2">
         <CalendarDays className="w-4 h-4 text-slate-400 shrink-0" />
         <h2 className="font-extrabold uppercase tracking-wider text-sm text-slate-900 dark:text-white">
           {t('schedule.groupSchedule', 'Расписание группы')}
         </h2>
-        {canEdit && (
-          <div className="ml-auto flex items-center gap-2">
-            <button
-              onClick={() => openCreate(true)}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-slate-900 dark:bg-white text-white dark:text-slate-900 hover:bg-slate-800 dark:hover:bg-slate-100 transition-colors"
-            >
-              <Plus className="w-3.5 h-3.5" />{t('schedule.addWeekly', 'Урок в неделю')}
-            </button>
-            <button
-              onClick={() => openCreate(false)}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-700/50 hover:bg-slate-200 dark:hover:bg-slate-600/50 transition-colors"
-            >
-              <Plus className="w-3.5 h-3.5" />{t('schedule.addOneOff', 'Разовое')}
-            </button>
-          </div>
-        )}
+
+        <div className="ml-auto flex flex-wrap items-center gap-2">
+          {showFilter && (
+            <label className="flex items-center gap-1.5">
+              <span className="sr-only">{t('schedule.filterByClassroom', 'Фильтр по кабинету')}</span>
+              <MapPin className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+              <select
+                value={roomFilter}
+                onChange={e => setRoomFilter(e.target.value)}
+                className={`text-xs font-semibold rounded-xl border px-2.5 py-1.5 bg-white dark:bg-slate-800 transition-colors ${
+                  roomFilter
+                    ? 'border-slate-900 dark:border-white text-slate-900 dark:text-white'
+                    : 'border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300'
+                }`}
+              >
+                <option value="">{t('classrooms.all', 'Все кабинеты')}</option>
+                {filterOptions.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                <option value="__none__">{t('classrooms.withoutRoom', 'Без кабинета')}</option>
+              </select>
+            </label>
+          )}
+
+          {canEdit && (
+            <>
+              <button
+                onClick={() => openCreate(true)}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-slate-900 dark:bg-white text-white dark:text-slate-900 hover:bg-slate-800 dark:hover:bg-slate-100 transition-colors"
+              >
+                <Plus className="w-3.5 h-3.5" />{t('schedule.addWeekly', 'Урок в неделю')}
+              </button>
+              <button
+                onClick={() => openCreate(false)}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-700/50 hover:bg-slate-200 dark:hover:bg-slate-600/50 transition-colors"
+              >
+                <Plus className="w-3.5 h-3.5" />{t('schedule.addOneOff', 'Разовое')}
+              </button>
+            </>
+          )}
+        </div>
       </div>
 
-      <div className="p-3">
+      <div className="p-4 sm:p-5">
         {loading ? (
-          <div className="px-2 py-6 space-y-2">
-            {[0, 1, 2].map(i => (
-              <div key={i} className="h-9 rounded-xl bg-slate-100 dark:bg-slate-700/40 animate-pulse" />
+          <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2">
+            {DAY_SHORT.map((_, i) => (
+              <div key={i} className="h-24 rounded-xl bg-slate-100 dark:bg-slate-700/40 animate-pulse" />
             ))}
           </div>
-        ) : !byDay.length && !upcoming.length ? (
-          <p className="px-2 py-8 text-center text-sm font-medium text-slate-400 dark:text-slate-500">
-            {t('schedule.groupEmpty', 'У группы пока нет занятий в расписании')}
+        ) : !hasAnything ? (
+          <p className="py-8 text-center text-sm font-medium text-slate-500 dark:text-slate-400">
+            {roomFilter
+              ? t('schedule.groupEmptyFiltered', 'В этом кабинете у группы занятий нет')
+              : t('schedule.groupEmpty', 'У группы пока нет занятий в расписании')}
           </p>
         ) : (
-          <div className="space-y-4">
-            {byDay.map(([day, list]) => (
-              <div key={day}>
-                <p className="px-4 pb-1 text-[11px] font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500 flex items-center gap-1.5">
-                  <Repeat className="w-3 h-3" />{DAY_NAMES[day] || ''}
-                </p>
-                {list.map(ev => renderRow(ev))}
-              </div>
-            ))}
+          <>
+            {/* Вся неделя в ряд: семь колонок читаются как одна картина, а пустой
+                день сразу видно — по стопке из одних занятых дней этого не понять. */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2">
+              {week.map((list, day) => {
+                const isToday = day === today;
+                return (
+                  <div key={day} className="min-w-0">
+                    <p className={`px-1 pb-1.5 text-[11px] font-bold uppercase tracking-widest ${
+                      isToday
+                        ? 'text-slate-900 dark:text-white'
+                        : 'text-slate-500 dark:text-slate-400'
+                    }`}>
+                      <span className="lg:hidden">{DAY_NAMES[day]}</span>
+                      <span className="hidden lg:inline">{DAY_SHORT[day]}</span>
+                      {isToday && (
+                        <span className="ml-1 font-semibold normal-case tracking-normal text-slate-400 dark:text-slate-500">
+                          · {t('schedule.today', 'сегодня')}
+                        </span>
+                      )}
+                    </p>
 
-            {upcoming.length > 0 && (
-              <div>
-                <p className="px-4 pb-1 text-[11px] font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500">
+                    <div className="space-y-1.5">
+                      {list.map(ev => renderLesson(ev))}
+
+                      {list.length === 0 && (
+                        canEdit && !roomFilter ? (
+                          // Пустой день — это ещё и самое естественное место, чтобы
+                          // поставить в него урок.
+                          <button
+                            onClick={() => openCreate(true, day)}
+                            aria-label={`${t('schedule.addOnDay', 'Поставить урок в этот день')}: ${DAY_NAMES[day]}`}
+                            title={t('schedule.addOnDay', 'Поставить урок в этот день')}
+                            className="w-full h-[62px] rounded-xl border border-dashed border-slate-200 dark:border-slate-700 text-slate-300 dark:text-slate-600 hover:border-slate-400 hover:text-slate-500 dark:hover:border-slate-500 dark:hover:text-slate-400 focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-900 dark:focus-visible:ring-white transition-colors flex items-center justify-center"
+                          >
+                            <Plus className="w-4 h-4" />
+                          </button>
+                        ) : (
+                          <div className="h-[62px] rounded-xl border border-dashed border-slate-200 dark:border-slate-700" />
+                        )
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {visibleUpcoming.length > 0 && (
+              <div className="mt-5 pt-4 border-t border-slate-100 dark:border-slate-700/50">
+                <p className="pb-2 text-[11px] font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400">
                   {t('schedule.upcoming', 'Ближайшие разовые')}
                 </p>
-                {upcoming.map(ev => renderRow(ev, true))}
+                <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2">
+                  {visibleUpcoming.map(ev => renderLesson(ev, ev.date ? shortDate(ev.date, i18n.language) : undefined))}
+                </div>
               </div>
             )}
-          </div>
+          </>
         )}
       </div>
 

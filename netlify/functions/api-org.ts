@@ -17,6 +17,7 @@ import { FieldValue } from 'firebase-admin/firestore';
 import { getOrgLimits } from './utils/plan-limits';
 import { billingPeriodKey, billingDeadlineISO } from './utils/billing';
 import { isUntouchedPlan, orgDayKey, planPeriodKey } from './utils/payment-plans';
+import { roomKeys, sameRoom } from './utils/classrooms';
 /* ═══════════════════════════════════════════════ */
 /*  Helpers                                        */
 /* ═══════════════════════════════════════════════ */
@@ -50,27 +51,76 @@ interface ConflictCandidate {
   teacherId?: string | null;
   groupId?: string | null;
   location?: string | null;
+  classroomId?: string | null;
+  classroomName?: string | null;
+  branchId?: string | null;
+}
+
+/**
+ * Виртуальные кабинеты («Онлайн», «Zoom») вмещают сколько угодно занятий сразу,
+ * поэтому накладок по ним не бывает. Запрос — только равенства, без индекса.
+ */
+async function virtualClassroomIds(orgId: string): Promise<Set<string>> {
+  const snap = await adminDb.collection('classrooms')
+    .where('organizationId', '==', orgId)
+    .where('isVirtual', '==', true)
+    .get();
+  return new Set(snap.docs.map((d: any) => d.id));
+}
+
+/** YYYY-MM-DD for "today", used to ignore events that are already in the past. */
+function todayStr(): string {
+  return new Date().toISOString().slice(0, 10);
 }
 
 interface ConflictHit { id: string; title: string; kind: 'teacher' | 'room' | 'group'; startTime: string; endTime: string; }
+
+/**
+ * Приводит кабинет из тела запроса к трём полям события.
+ *
+ * Принимаем и справочный classroomId, и старый свободный текст location — второй
+ * путь нужен, пока не все экраны переехали, и для импорта расписания. Подпись
+ * всегда дублируется в location, чтобы уже существующие читатели не сломались.
+ */
+async function resolveClassroom(
+  orgId: string,
+  body: { classroomId?: string | null; location?: string | null },
+): Promise<{ classroomId: string | null; classroomName: string; location: string } | { error: string }> {
+  if (body.classroomId) {
+    const doc = await adminDb.collection('classrooms').doc(body.classroomId).get();
+    if (!doc.exists || doc.data()?.organizationId !== orgId) return { error: 'Кабинет не найден' };
+    const name = String(doc.data()?.name || '');
+    return { classroomId: doc.id, classroomName: name, location: name };
+  }
+  const free = String(body.location || '').trim();
+  return { classroomId: null, classroomName: '', location: free };
+}
 
 /**
  * Find scheduling conflicts: an existing event sharing the same teacher, group or
  * room and overlapping in time on the same calendar slot. Handles recurring↔recurring
  * (same weekday), dated↔dated (same date) and a dated event landing on a recurring weekday.
  */
-async function detectScheduleConflicts(orgId: string, cand: ConflictCandidate, excludeId?: string): Promise<ConflictHit[]> {
+export async function detectScheduleConflicts(orgId: string, cand: ConflictCandidate, excludeId?: string): Promise<ConflictHit[]> {
   const candStart = timeToMinutes(cand.startTime);
   if (candStart === null) return [];
   const candEnd = timeToMinutes(cand.endTime) ?? candStart + (Number(cand.duration) || 45);
 
-  const room = (cand.location || '').trim().toLowerCase();
+  // Кабинет может быть задан справочником (classroomId) или ещё старым текстом
+  // (location) — roomKeys выдаёт оба ключа, поэтому переехавшее и непереехавшее
+  // событие всё равно узнают друг друга.
+  const candRoomKeys = roomKeys(cand);
   const teacherId = cand.teacherId || null;
   const groupId = cand.groupId || null;
-  if (!teacherId && !groupId && !room) return []; // nothing that can clash
+  if (!teacherId && !groupId && !candRoomKeys.length) return []; // nothing that can clash
 
-  const snap = await adminDb.collection('scheduleEvents').where('organizationId', '==', orgId).get();
+  const [snap, virtualRooms] = await Promise.all([
+    adminDb.collection('scheduleEvents').where('organizationId', '==', orgId).get(),
+    candRoomKeys.length ? virtualClassroomIds(orgId) : Promise.resolve(new Set<string>()),
+  ]);
+  const candRoomIsVirtual = !!cand.classroomId && virtualRooms.has(cand.classroomId);
   const hits: ConflictHit[] = [];
+  const today = todayStr();
 
   for (const doc of snap.docs) {
     if (doc.id === excludeId) continue;
@@ -83,7 +133,9 @@ async function detectScheduleConflicts(orgId: string, cand: ConflictCandidate, e
     } else if (!cand.recurring && !e.recurring) {
       sameSlot = !!cand.date && e.date === cand.date;
     } else if (cand.recurring && !e.recurring) {
-      sameSlot = !!e.date && cand.dayOfWeek === appDayOfWeek(e.date);
+      // A weekly lesson only has to dodge one-off events that are still ahead of us.
+      // Without the date floor, a single exam last March would block that weekday forever.
+      sameSlot = !!e.date && e.date >= today && cand.dayOfWeek === appDayOfWeek(e.date);
     } else { // cand dated, e recurring
       sameSlot = !!cand.date && e.dayOfWeek === appDayOfWeek(cand.date);
     }
@@ -95,11 +147,19 @@ async function detectScheduleConflicts(orgId: string, cand: ConflictCandidate, e
     const eEnd = timeToMinutes(e.endTime) ?? eStart + (Number(e.duration) || 45);
     if (Math.max(candStart, eStart) >= Math.min(candEnd, eEnd)) continue;
 
-    // What resource clashes? Teacher/group are physically impossible; room is a resource clash.
+    // What resource clashes? Teacher/group are physically impossible anywhere, so they
+    // are checked across branches. A room clash is scoped to the branch — «Каб. 301»
+    // in two buildings is two different rooms — and virtual rooms never clash at all.
+    const sameBranch = (cand.branchId || null) === (e.branchId || null);
+    const roomClash = !candRoomIsVirtual
+      && sameBranch
+      && !(e.classroomId && virtualRooms.has(e.classroomId))
+      && sameRoom(cand, e);
+
     let kind: ConflictHit['kind'] | null = null;
     if (teacherId && e.teacherId && e.teacherId === teacherId) kind = 'teacher';
     else if (groupId && e.groupId && e.groupId === groupId) kind = 'group';
-    else if (room && e.location && String(e.location).trim().toLowerCase() === room) kind = 'room';
+    else if (roomClash) kind = 'room';
     if (!kind) continue;
 
     hits.push({ id: doc.id, title: e.title || 'Занятие', kind, startTime: e.startTime || '', endTime: e.endTime || '' });
@@ -1934,7 +1994,12 @@ const handler: Handler = async (event: HandlerEvent) => {
 
     // ═══ SCHEDULE ═══
     if (action === 'schedule') {
-      const branchScope = resolveBranchFilter(user, params.branchId);
+      // Запрос по конкретной группе уже сужен самой группой, и выбор филиала в
+      // сайдбаре здесь только мешает: у части групп филиал не проставлен, их
+      // занятия тоже без филиала, а под конкретным филиалом записи без него
+      // отбрасываются — расписание в карточке группы оказывалось пустым.
+      // Собственный скоуп пользователя при этом сохраняется.
+      const branchScope = resolveBranchFilter(user, params.groupId ? undefined : params.branchId);
       let query = orgQuery('scheduleEvents', orgId);
 
       // Timetable mode: fetch recurring weekly lessons by dayOfWeek
@@ -1991,6 +2056,10 @@ const handler: Handler = async (event: HandlerEvent) => {
       if (!body.title || !body.startTime) return badRequest('title and startTime required');
       if (!isRecurring && !body.date) return badRequest('date required for non-recurring events');
       if (isRecurring && (body.dayOfWeek === undefined || body.dayOfWeek === null)) return badRequest('dayOfWeek required for recurring events');
+
+      const room = await resolveClassroom(orgId, body);
+      if ('error' in room) return badRequest(room.error);
+
       const data: Record<string, any> = {
         organizationId: orgId,
         branchId: body.branchId || null,
@@ -2005,7 +2074,10 @@ const handler: Handler = async (event: HandlerEvent) => {
         date: isRecurring ? null : body.date,
         startTime: body.startTime,
         endTime: body.endTime || '', duration: body.duration || 45,
-        location: body.location || '', notes: body.notes || '',
+        classroomId: room.classroomId, classroomName: room.classroomName,
+        // location держим в синхроне с classroomName: по нему читают дашборды,
+        // студенческое расписание и AI-эндпоинты, ещё не знающие о справочнике.
+        location: room.location, notes: body.notes || '',
         createdAt: now(), updatedAt: now(),
       };
       // Block double-booking (teacher / group / room) unless explicitly forced.
@@ -2015,7 +2087,9 @@ const handler: Handler = async (event: HandlerEvent) => {
           dayOfWeek: isRecurring ? Number(body.dayOfWeek) : null,
           date: isRecurring ? null : body.date,
           startTime: body.startTime, endTime: body.endTime, duration: body.duration,
-          teacherId: body.teacherId, groupId: body.groupId, location: body.location,
+          teacherId: body.teacherId, groupId: body.groupId,
+          classroomId: room.classroomId, classroomName: room.classroomName, location: room.location,
+          branchId: body.branchId || null,
         });
         if (conflicts.length) return jsonResponse(409, { error: conflictMessage(conflicts), conflicts });
       }
@@ -2031,6 +2105,20 @@ const handler: Handler = async (event: HandlerEvent) => {
       if (!doc.exists || doc.data()?.organizationId !== orgId) return notFound();
       const before = doc.data()!;
       const { id, force, ...fields } = body;
+
+      // Кабинет пересобираем, только если о нём вообще что-то прислали — иначе
+      // правка времени обнулила бы аудиторию.
+      if (fields.classroomId !== undefined || fields.location !== undefined) {
+        const room = await resolveClassroom(orgId, {
+          classroomId: fields.classroomId !== undefined ? fields.classroomId : before.classroomId,
+          location: fields.location !== undefined ? fields.location : before.location,
+        });
+        if ('error' in room) return badRequest(room.error);
+        fields.classroomId = room.classroomId;
+        fields.classroomName = room.classroomName;
+        fields.location = room.location;
+      }
+
       // Re-check conflicts against the event's resulting state (covers drag&drop moves).
       if (force !== true) {
         const m = { ...before, ...fields };
@@ -2039,15 +2127,17 @@ const handler: Handler = async (event: HandlerEvent) => {
           dayOfWeek: m.recurring ? Number(m.dayOfWeek) : null,
           date: m.recurring ? null : m.date,
           startTime: m.startTime, endTime: m.endTime, duration: m.duration,
-          teacherId: m.teacherId, groupId: m.groupId, location: m.location,
+          teacherId: m.teacherId, groupId: m.groupId,
+          classroomId: m.classroomId, classroomName: m.classroomName, location: m.location,
+          branchId: m.branchId || null,
         }, id);
         if (conflicts.length) return jsonResponse(409, { error: conflictMessage(conflicts), conflicts });
       }
       fields.updatedAt = now();
       await adminDb.collection('scheduleEvents').doc(id).update(fields);
 
-      // Notify the group when the time / date / location actually changes.
-      const changed = ['startTime', 'endTime', 'date', 'dayOfWeek', 'location'].some(
+      // Notify the group when the time / date / classroom actually changes.
+      const changed = ['startTime', 'endTime', 'date', 'dayOfWeek', 'location', 'classroomId'].some(
         k => fields[k] !== undefined && fields[k] !== before[k]
       );
       if (changed && before.groupId) {

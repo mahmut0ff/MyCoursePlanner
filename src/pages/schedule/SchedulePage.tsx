@@ -1,17 +1,29 @@
 import React, { useEffect, useState, useMemo, useCallback, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
-import { orgGetSchedule, orgGetTimetable, orgCreateEvent, orgDeleteEvent, orgUpdateEvent, orgGetGroups } from '../../lib/api';
-import { Plus, ChevronLeft, ChevronRight, Clock, Trash2, Calendar, MapPin, Repeat, Copy, Clipboard, GripVertical, X, Sparkles } from 'lucide-react';
-import type { ScheduleEvent, ScheduleEventType, Group } from '../../types';
-import { useAuth } from '../../contexts/AuthContext';
+import { orgGetSchedule, orgGetTimetable, orgCreateEvent, orgDeleteEvent, orgUpdateEvent, orgGetGroups, orgListClassrooms } from '../../lib/api';
+import { Plus, ChevronLeft, ChevronRight, Clock, Trash2, Calendar, MapPin, Repeat, Copy, Clipboard, GripVertical, X, Sparkles, Pencil } from 'lucide-react';
+import type { ScheduleEvent, ScheduleEventType, Group, Classroom } from '../../types';
+import { timeToMins, minsToTime, appDayOfWeek, slotSpan, spansOverlap } from '../../lib/scheduleTime';
+import { sameRoom } from '../../lib/classrooms';
+import { usePermissions } from '../../contexts/PermissionsContext';
 import { usePlanGate } from '../../contexts/PlanContext';
 import { useBranch } from '../../contexts/BranchContext';
 import BranchFilter from '../../components/ui/BranchFilter';
+import ClassroomSelect from '../../components/ui/ClassroomSelect';
 import ScheduleReviewModal from '../../components/ai/ScheduleReviewModal';
 
 const DAY_NAMES = ['Вс', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб'];
 
 const HOURS = Array.from({ length: 14 }, (_, i) => i + 7);
+
+const DEFAULT_SLOT_MINUTES = 60;
+
+/**
+ * Подпись кабинета. Справочник имеет приоритет, свободный текст — запасной путь
+ * для занятий, созданных до его появления.
+ */
+const roomLabel = (ev: { classroomName?: string; location?: string }) =>
+  ev.classroomName || ev.location || '';
 
 interface ClipboardEvent {
   event: ScheduleEvent;
@@ -20,25 +32,37 @@ interface ClipboardEvent {
 
 const SchedulePage: React.FC = () => {
   const { t } = useTranslation();
-  const { role } = useAuth();
+  const { canWrite } = usePermissions();
   const { canAccess } = usePlanGate();
   const { activeBranchId } = useBranch();
-  const canEdit = role === 'admin' || role === 'manager' || role === 'super_admin';
+  // RBAC is the single access surface: the server gates on schedule:write, so a
+  // teacher holding that grant must see the same controls a manager does.
+  const canEdit = canWrite('schedule');
   const [aiReviewOpen, setAiReviewOpen] = useState(false);
   const [aiEvents, setAiEvents] = useState<any[]>([]);
 
   const [timetableEvents, setTimetableEvents] = useState<ScheduleEvent[]>([]);
   const [calendarEvents, setCalendarEvents] = useState<ScheduleEvent[]>([]);
+  const [classrooms, setClassrooms] = useState<Classroom[]>([]);
+  /** '' — все кабинеты, '__none__' — занятия без кабинета, иначе id кабинета. */
+  const [classroomFilter, setClassroomFilter] = useState('');
   const [groups, setGroups] = useState<Group[]>([]);
   const [loading, setLoading] = useState(true);
   const [current, setCurrent] = useState(new Date());
   const [showCreate, setShowCreate] = useState(false);
   const [form, setForm] = useState<{
     title: string; date: string; dayOfWeek: number; startTime: string; endTime: string;
-    type: ScheduleEventType; duration: number; location: string; branchId?: string; groupId?: string;
-  }>({ title: '', date: '', dayOfWeek: 0, startTime: '09:00', endTime: '10:00', type: 'lesson', duration: 60, location: '' });
+    type: ScheduleEventType; duration: number; location: string; classroomId?: string | null;
+    branchId?: string; groupId?: string;
+    /** Заполнен → модалка правит существующее занятие, пусто → создаёт новое. */
+    editingId?: string | null;
+    /** Правим ли запись недельного расписания (иначе — разовое событие). */
+    editingRecurring?: boolean;
+  }>({ title: '', date: '', dayOfWeek: 0, startTime: '09:00', endTime: '10:00', type: 'lesson', duration: 60, location: '', classroomId: null, editingId: null });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  // Which pending action a conflict blocked, so the banner can offer "поставить всё равно".
+  const [conflictRetry, setConflictRetry] = useState<'create' | 'paste' | null>(null);
   
   const [activeTab, setActiveTab] = useState<'timetable' | 'events'>('timetable');
   const [mobileView, setMobileView] = useState<'week' | 'day'>('week');
@@ -91,7 +115,8 @@ const SchedulePage: React.FC = () => {
         const to = getLocalDateStr(weekDays[6]);
         return orgGetSchedule(from, to).then(setCalendarEvents).catch(() => {});
       })(),
-      orgGetGroups().then(setGroups).catch(() => {})
+      orgGetGroups().then(setGroups).catch(() => {}),
+      orgListClassrooms().then((r: any) => setClassrooms(Array.isArray(r) ? r : [])).catch(() => {}),
     ]).finally(() => setLoading(false));
   };
 
@@ -162,62 +187,66 @@ const SchedulePage: React.FC = () => {
     dayOfWeek: number; startTime: string; endTime: string; date: string; branchId?: string;
   }>({ dayOfWeek: 0, startTime: '09:00', endTime: '10:00', date: '' });
 
-  const handlePaste = async () => {
+  const handlePaste = async (force = false) => {
     if (!clipboard) return;
     setSaving(true);
-    setError('');
+    setError(''); setConflictRetry(null);
     try {
       const src = clipboard.event;
-      
-      // Conflict formatting wrapper
-      const durationHours = (() => {
-        const [sh, sm] = (pasteForm.startTime || '09:00').split(':').map(Number);
-        const [eh, em] = (pasteForm.endTime || '10:00').split(':').map(Number);
-        return (eh * 60 + em) - (sh * 60 + sm);
-      })();
+      const isRecurring = activeTab === 'timetable';
 
-      const conflict = checkConflict({
-        ...pasteForm,
-        location: src.location,
-        teacherId: (src as any).teacherId,
-        groupId: (src as any).groupId,
-        duration: durationHours
-      });
-      
-      if (conflict) {
-        setError(conflict);
-        setSaving(false);
-        return;
+      const startMins = timeToMins(pasteForm.startTime) ?? 0;
+      const pastedDuration = Math.max(5, (timeToMins(pasteForm.endTime) ?? startMins + DEFAULT_SLOT_MINUTES) - startMins);
+
+      if (!force) {
+        const conflict = checkConflict({
+          ...pasteForm,
+          recurring: isRecurring,
+          location: src.location,
+          teacherId: (src as any).teacherId,
+          groupId: (src as any).groupId,
+          duration: pastedDuration,
+        });
+
+        if (conflict) {
+          setError(conflict);
+          setConflictRetry('paste');
+          setSaving(false);
+          return;
+        }
       }
 
-      if (activeTab === 'timetable') {
+      // Everything that identifies the lesson travels with the copy — the dated branch
+      // used to drop group/course/teacher, leaving an orphan block on the calendar.
+      const pastePayload = {
+        title: src.title,
+        startTime: pasteForm.startTime,
+        endTime: pasteForm.endTime,
+        duration: pastedDuration,
+        classroomId: (src as any).classroomId || null,
+        location: src.location,
+        groupId: (src as any).groupId,
+        courseId: (src as any).courseId,
+        teacherId: (src as any).teacherId,
+        branchId: pasteForm.branchId,
+        force,
+      };
+
+      if (isRecurring) {
         const created = await orgCreateEvent({
-          title: src.title,
-          startTime: pasteForm.startTime,
-          endTime: pasteForm.endTime,
+          ...pastePayload,
           type: 'lesson',
-          duration: src.duration,
-          location: src.location,
           recurring: true,
           dayOfWeek: pasteForm.dayOfWeek,
-          groupId: (src as any).groupId,
-          courseId: (src as any).courseId,
-          teacherId: (src as any).teacherId,
-          branchId: pasteForm.branchId,
         });
         setTimetableEvents((p) => [...p, created]);
       } else {
         if (!pasteForm.date) return;
         const created = await orgCreateEvent({
-          title: src.title,
+          ...pastePayload,
           date: pasteForm.date,
-          startTime: pasteForm.startTime,
-          endTime: pasteForm.endTime,
           type: src.type,
-          duration: src.duration,
-          location: src.location,
           recurring: false,
-          branchId: pasteForm.branchId,
         });
         setCalendarEvents((p) => [...p, created]);
       }
@@ -225,6 +254,7 @@ const SchedulePage: React.FC = () => {
       showToast(t('schedule.pasted', 'Занятие вставлено!'));
     } catch (e: any) {
       setError(e.message || t('common.error'));
+      if (!force) setConflictRetry('paste');
     } finally {
       setSaving(false);
     }
@@ -356,32 +386,39 @@ const SchedulePage: React.FC = () => {
   }, [draggedEvent, canEdit, weekDays, handleDragEnd, showToast, t]);
 
   const checkConflict = (testEv: Partial<ScheduleEvent>, ignoreId?: string) => {
-    let dayOfWeek = testEv.dayOfWeek;
-    if (testEv.date) {
-      const d = new Date(testEv.date);
-      dayOfWeek = d.getDay() === 0 ? 6 : d.getDay() - 1;
-    }
+    // A recurring lesson is identified by its weekday, a one-off by its date.
+    // Reading `date` first would misfire whenever a stale date lingers in the form,
+    // so the caller's intent (`recurring`) decides which one we trust.
+    const isRecurring = testEv.recurring === true;
+    const dayOfWeek = isRecurring
+      ? testEv.dayOfWeek
+      : (testEv.date ? appDayOfWeek(testEv.date) : testEv.dayOfWeek);
+    const onDate = isRecurring ? null : (testEv.date || null);
 
-    const startMins = (() => { const [h, m] = (testEv.startTime || '00:00').split(':').map(Number); return h * 60 + m; })();
-    const endMins = (() => { const [h, m] = (testEv.endTime || '00:00').split(':').map(Number); return h * 60 + m; })();
+    const candSpan = slotSpan(testEv);
+    if (!candSpan) return null;
 
+    // A weekly lesson occupies the slot on every matching date, so it is always in
+    // the pool; dated events only clash with the exact same date.
     const pool = [
       ...timetableEvents.filter(e => e.dayOfWeek === dayOfWeek),
+      ...(onDate ? calendarEvents.filter(e => e.date === onDate) : []),
     ];
-    if (testEv.date) {
-      pool.push(...calendarEvents.filter(e => e.date === testEv.date));
-    }
 
     for (const e of pool) {
       if (e.id === ignoreId) continue;
-      
-      const eStart = (() => { const [h, m] = (e.startTime || '00:00').split(':').map(Number); return h * 60 + m; })();
-      const eEnd = (() => { const [h, m] = (e.endTime || '00:00').split(':').map(Number); return h * 60 + m; })();
-      
-      const overlaps = Math.max(startMins, eStart) < Math.min(endMins, eEnd);
-      if (overlaps) {
-        if (testEv.location && e.location && testEv.location.trim() !== '' && testEv.location.toLowerCase().trim() === e.location.toLowerCase().trim()) {
-          return `Конфликт: Кабинет "${e.location}" уже занят занятием "${e.title}" (${e.startTime}-${e.endTime})`;
+
+      const eSpan = slotSpan(e);
+      if (!eSpan) continue;
+
+      if (spansOverlap(candSpan, eSpan)) {
+        // Кабинет сравниваем той же логикой, что и сервер: по classroomId ИЛИ по
+        // нормализованному названию, и только внутри одного филиала — иначе
+        // «Каб. 301» в двух зданиях читались бы как один кабинет.
+        const sameBranch = ((testEv as any).branchId || null) === (e.branchId || null);
+        if (sameBranch && sameRoom(testEv as any, e)) {
+          const label = e.classroomName || e.location;
+          return `Конфликт: Кабинет "${label}" уже занят занятием "${e.title}" (${e.startTime}-${e.endTime})`;
         }
         if (testEv.teacherId && e.teacherId && testEv.teacherId === e.teacherId) {
           return `Конфликт: У преподавателя уже стоит занятие "${e.title}" (${e.startTime}-${e.endTime})`;
@@ -394,58 +431,71 @@ const SchedulePage: React.FC = () => {
     return null;
   };
 
-  const handleCreate = async () => {
+  const handleCreate = async (force = false) => {
     if (!form.title.trim()) return;
-    setSaving(true); setError('');
+    // При правке вид занятия задан самой записью, а не открытой вкладкой:
+    // недельный урок остаётся недельным, даже если смотреть на него из «Событий».
+    const isRecurring = form.editingId ? !!form.editingRecurring : activeTab === 'timetable';
+    setSaving(true); setError(''); setConflictRetry(null);
     try {
-      const durationMins = (() => {
-        const [sh, sm] = (form.startTime || '09:00').split(':').map(Number);
-        const [eh, em] = (form.endTime || '10:00').split(':').map(Number);
-        return (eh * 60 + em) - (sh * 60 + sm);
-      })();
+      // Duration is derived, never the untouched form default — the server stores it
+      // and other views (ongoing highlight, group card) position blocks from it.
+      const startMins = timeToMins(form.startTime) ?? 0;
+      const durationMins = Math.max(5, (timeToMins(form.endTime) ?? startMins + DEFAULT_SLOT_MINUTES) - startMins);
 
-      const conflict = checkConflict({ ...form, duration: durationMins });
-      if (conflict) {
-        setError(conflict);
-        setSaving(false);
-        return;
+      if (!force) {
+        // Правя занятие, само с собой оно конфликтовать не должно.
+        const conflict = checkConflict(
+          { ...form, recurring: isRecurring, duration: durationMins },
+          form.editingId || undefined,
+        );
+        if (conflict) {
+          setError(conflict);
+          setConflictRetry('create');
+          setSaving(false);
+          return;
+        }
       }
 
-      if (activeTab === 'timetable') {
-        // create recurring lesson
-        const created = await orgCreateEvent({
-          title: form.title,
-          startTime: form.startTime,
-          endTime: form.endTime,
-          type: 'lesson',
-          duration: form.duration,
-          location: form.location,
-          recurring: true,
-          dayOfWeek: form.dayOfWeek,
-          branchId: form.branchId,
-          groupId: form.groupId,
-        });
+      const payload = {
+        title: form.title,
+        startTime: form.startTime,
+        endTime: form.endTime,
+        duration: durationMins,
+        classroomId: form.classroomId || null,
+        location: form.location,
+        branchId: form.branchId,
+        groupId: form.groupId,
+        force,
+      };
+
+      const shape = isRecurring
+        ? { type: 'lesson' as const, recurring: true, dayOfWeek: form.dayOfWeek }
+        : { date: form.date, type: form.type, recurring: false };
+      if (!isRecurring && !form.date) return;
+
+      if (form.editingId) {
+        await orgUpdateEvent({ id: form.editingId, ...payload, ...shape });
+        // Правка отражается на месте — перезагружать неделю целиком незачем.
+        const patch = (e: ScheduleEvent) =>
+          e.id === form.editingId ? { ...e, ...payload, ...shape } as ScheduleEvent : e;
+        if (isRecurring) setTimetableEvents((p) => p.map(patch));
+        else setCalendarEvents((p) => p.map(patch));
+        showToast(t('schedule.updated', 'Занятие обновлено'));
+      } else if (isRecurring) {
+        const created = await orgCreateEvent({ ...payload, ...shape });
         setTimetableEvents((p) => [...p, created]);
       } else {
-        // create date-based event
-        if (!form.date) return;
-        const created = await orgCreateEvent({
-          title: form.title,
-          date: form.date,
-          startTime: form.startTime,
-          endTime: form.endTime,
-          type: form.type,
-          duration: form.duration,
-          location: form.location,
-          recurring: false,
-          branchId: form.branchId,
-          groupId: form.groupId,
-        });
+        const created = await orgCreateEvent({ ...payload, ...shape });
         setCalendarEvents((p) => [...p, created]);
       }
       setShowCreate(false);
-      setForm({ title: '', date: '', dayOfWeek: 0, startTime: '09:00', endTime: '10:00', type: activeTab === 'timetable' ? 'lesson' : 'exam', duration: 60, location: '' });
-    } catch (e: any) { setError(e.message || t('common.error')); }
+    } catch (e: any) {
+      setError(e.message || t('common.error'));
+      // The server runs the same check across the whole org, so it can reject what
+      // the local week-scoped check passed. Offer the same override.
+      if (!force) setConflictRetry('create');
+    }
     finally { setSaving(false); }
   };
 
@@ -463,6 +513,97 @@ const SchedulePage: React.FC = () => {
   const todayD = new Date();
   const todayStr = `${todayD.getFullYear()}-${String(todayD.getMonth() + 1).padStart(2, '0')}-${String(todayD.getDate()).padStart(2, '0')}`;
   const todayDayOfWeek = (() => { const d = new Date().getDay(); return d === 0 ? 6 : d - 1; })(); // 0=Mon
+
+  /**
+   * First hour of the grid that nothing occupies yet on that slot. Without this the
+   * modal always opened at 09:00, so every second lesson of a day collided with the
+   * first one and the conflict check read as "you may only book one lesson per day".
+   */
+  const nextFreeStart = (dayOfWeek: number, date?: string) => {
+    const taken = [
+      ...timetableEvents.filter(e => e.dayOfWeek === dayOfWeek),
+      ...(date ? calendarEvents.filter(e => e.date === date) : []),
+    ].map(slotSpan).filter((s): s is [number, number] => s !== null);
+
+    for (const h of HOURS) {
+      const slot: [number, number] = [h * 60, h * 60 + DEFAULT_SLOT_MINUTES];
+      if (!taken.some(busy => spansOverlap(slot, busy))) return minsToTime(slot[0]);
+    }
+    return '09:00';
+  };
+
+  /**
+   * Opens the create modal on a clean form. It must REPLACE the state, not merge into
+   * it: a date left over from the events tab used to survive into a timetable create
+   * and silently point the conflict check at the wrong weekday.
+   */
+  const openCreate = (prefill?: { dayOfWeek?: number; date?: string; startTime?: string }) => {
+    const startTime = prefill?.startTime || '09:00';
+    const startMins = timeToMins(startTime) ?? 9 * 60;
+    setError(''); setConflictRetry(null);
+    setForm({
+      title: '',
+      date: prefill?.date || '',
+      dayOfWeek: prefill?.dayOfWeek ?? todayDayOfWeek,
+      startTime,
+      endTime: minsToTime(startMins + DEFAULT_SLOT_MINUTES),
+      type: activeTab === 'timetable' ? 'lesson' : 'exam',
+      duration: DEFAULT_SLOT_MINUTES,
+      location: '',
+      classroomId: null,
+      branchId: activeBranchId || undefined,
+      groupId: undefined,
+      editingId: null,
+    });
+    setShowCreate(true);
+  };
+
+  /** Открывает ту же модалку на существующем занятии. */
+  const openEdit = (ev: ScheduleEvent, isTimetable: boolean) => {
+    const startMins = timeToMins(ev.startTime) ?? 9 * 60;
+    const endTime = ev.endTime || minsToTime(startMins + (Number(ev.duration) || DEFAULT_SLOT_MINUTES));
+    setError(''); setConflictRetry(null); setContextMenu(null); setSelectedEvent(null);
+    setForm({
+      title: ev.title || '',
+      date: ev.date || '',
+      dayOfWeek: ev.dayOfWeek ?? (ev.date ? appDayOfWeek(ev.date) : todayDayOfWeek),
+      startTime: ev.startTime || '09:00',
+      endTime,
+      type: ev.type || 'lesson',
+      duration: Number(ev.duration) || DEFAULT_SLOT_MINUTES,
+      location: roomLabel(ev),
+      classroomId: ev.classroomId || null,
+      branchId: ev.branchId || undefined,
+      groupId: ev.groupId || undefined,
+      editingId: ev.id,
+      editingRecurring: isTimetable,
+    });
+    setShowCreate(true);
+  };
+
+  /**
+   * Фильтр по кабинету. Применяется ТОЛЬКО к отрисовке: проверка накладок обязана
+   * видеть все занятия, иначе выбранный фильтр «разрешал» бы ставить урок поверх
+   * скрытого.
+   */
+  const matchesClassroom = useCallback((ev: ScheduleEvent) => {
+    if (!classroomFilter) return true;
+    if (classroomFilter === '__none__') return !roomLabel(ev);
+    const c = classrooms.find(x => x.id === classroomFilter);
+    // Кабинет опознаётся и по ссылке, и по названию — иначе занятия, ещё не
+    // переехавшие на справочник, выпадали бы из своего же кабинета.
+    return c ? sameRoom({ classroomId: c.id, classroomName: c.name }, ev) : true;
+  }, [classroomFilter, classrooms]);
+
+  const visibleTimetable = useMemo(
+    () => timetableEvents.filter(matchesClassroom), [timetableEvents, matchesClassroom]);
+  const visibleCalendar = useMemo(
+    () => calendarEvents.filter(matchesClassroom), [calendarEvents, matchesClassroom]);
+
+  // Какие поля показывать в модалке. При правке решает сама запись, а не вкладка:
+  // недельный урок нельзя молча превратить в разовое событие только потому, что
+  // его открыли с другой вкладки.
+  const modalIsRecurring = form.editingId ? !!form.editingRecurring : activeTab === 'timetable';
 
   const isEventOngoing = (ev: ScheduleEvent, isTimetable: boolean) => {
     if (isTimetable) {
@@ -495,6 +636,7 @@ const SchedulePage: React.FC = () => {
         onDragStart={(e) => handleEventDragStart(e, ev)}
         onDragEnd={handleDragEnd}
         onClick={() => canEdit && setSelectedEvent({ event: ev, isTimetable: false })}
+        onDoubleClick={(e) => { e.stopPropagation(); if (canEdit) openEdit(ev, false); }}
         onContextMenu={(e) => handleContextMenu(e, ev, false)}
       >
         <div className="flex items-center justify-between">
@@ -502,7 +644,12 @@ const SchedulePage: React.FC = () => {
           <span className="font-bold truncate flex-1">{ev.title}</span>
           <button onClick={(e) => { e.stopPropagation(); handleDelete(ev.id, false); }} className="opacity-0 group-hover:opacity-100 text-red-500 transition-opacity"><Trash2 className="w-2.5 h-2.5" /></button>
         </div>
-        <span className="flex items-center gap-0.5 text-[8px] opacity-80"><Clock className="w-2 h-2" />{ev.startTime}</span>
+        <div className="flex items-center gap-1.5 text-[8px] opacity-80 min-w-0">
+          <span className="flex items-center gap-0.5 shrink-0"><Clock className="w-2 h-2" />{ev.startTime}</span>
+          {roomLabel(ev) && (
+            <span className="flex items-center gap-0.5 truncate"><MapPin className="w-2 h-2 shrink-0" />{roomLabel(ev)}</span>
+          )}
+        </div>
       </div>
     );
   };
@@ -536,6 +683,26 @@ const SchedulePage: React.FC = () => {
         </div>
 
         <div className="flex items-center gap-2 ml-auto">
+          {/* Фильтр по кабинету — прячем, пока справочник пуст, чтобы не занимать место. */}
+          {classrooms.length > 0 && (
+            <label className="flex items-center gap-1.5 shrink-0">
+              <span className="sr-only">{t('schedule.filterByClassroom', 'Фильтр по кабинету')}</span>
+              <MapPin className="w-4 h-4 text-slate-400 shrink-0" />
+              <select
+                value={classroomFilter}
+                onChange={(e) => setClassroomFilter(e.target.value)}
+                className={`text-[13px] font-semibold rounded-xl border px-2.5 py-1.5 bg-white dark:bg-slate-800 transition-colors ${
+                  classroomFilter
+                    ? 'border-slate-900 dark:border-white text-slate-900 dark:text-white'
+                    : 'border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400'
+                }`}
+              >
+                <option value="">{t('classrooms.all', 'Все кабинеты')}</option>
+                <option value="__none__">{t('classrooms.withoutRoom', 'Без кабинета')}</option>
+                {classrooms.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+              </select>
+            </label>
+          )}
           {/* Clipboard indicator */}
           {canEdit && clipboard && (
             <button
@@ -559,7 +726,7 @@ const SchedulePage: React.FC = () => {
                   startTime: ev.startTime,
                   endTime: ev.endTime,
                   group: groups.find((g) => g.id === (ev as any).groupId)?.name || null,
-                  location: ev.location || null,
+                  location: roomLabel(ev) || null,
                 })));
                 setAiReviewOpen(true);
               }}
@@ -569,10 +736,7 @@ const SchedulePage: React.FC = () => {
               <Sparkles className="w-4 h-4 shrink-0" /><span className="hidden sm:inline">AI-анализ</span>
             </button>
           )}
-          <button onClick={() => {
-            setForm(f => ({ ...f, type: activeTab === 'timetable' ? 'lesson' : 'exam', branchId: activeBranchId || undefined }));
-            setShowCreate(true);
-          }} className="flex items-center gap-1.5 px-3.5 py-1.5 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-xl text-[13px] font-semibold hover:bg-slate-800 dark:hover:bg-slate-100 transition-colors shrink-0 justify-center">
+          <button onClick={() => openCreate()} className="flex items-center gap-1.5 px-3.5 py-1.5 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-xl text-[13px] font-semibold hover:bg-slate-800 dark:hover:bg-slate-100 transition-colors shrink-0 justify-center">
             <Plus className="w-4 h-4 shrink-0" />{t('org.schedule.addEvent', 'Добавить')}
           </button>
         </div>
@@ -580,7 +744,20 @@ const SchedulePage: React.FC = () => {
 
       <ScheduleReviewModal open={aiReviewOpen} onClose={() => setAiReviewOpen(false)} events={aiEvents} />
 
-      {error && <div className="px-5 py-3.5 bg-red-500/10 border border-red-500/20 rounded-2xl text-sm font-medium text-red-600 dark:text-red-400">{error}</div>}
+      {error && (
+        <div className="px-5 py-3.5 bg-red-500/10 border border-red-500/20 rounded-2xl text-sm font-medium text-red-600 dark:text-red-400 flex flex-wrap items-center justify-between gap-3">
+          <span>{error}</span>
+          {conflictRetry && canEdit && (
+            <button
+              onClick={() => (conflictRetry === 'paste' ? handlePaste(true) : handleCreate(true))}
+              disabled={saving}
+              className="shrink-0 px-3.5 py-1.5 rounded-xl text-[13px] font-semibold text-white bg-red-600 hover:bg-red-700 disabled:opacity-50 transition-colors"
+            >
+              {t('schedule.forceCreate', 'Поставить всё равно')}
+            </button>
+          )}
+        </div>
+      )}
 
       {/* Week Navigator — only for Events tab */}
       {activeTab === 'events' && (
@@ -601,7 +778,7 @@ const SchedulePage: React.FC = () => {
           {activeTab === 'timetable' && (() => {
             // Gather lessons per day, sorted by time
             const lessonsByDay = dayNames.map((_, dayIdx) =>
-              timetableEvents
+              visibleTimetable
                 .filter(e => (e as any).dayOfWeek === dayIdx)
                 .sort((a, b) => (a.startTime || '').localeCompare(b.startTime || ''))
             );
@@ -674,6 +851,7 @@ const SchedulePage: React.FC = () => {
                                 onDragStart={(e) => { e.stopPropagation(); handleDragStart(e, lesson); }}
                                 onDragEnd={handleDragEnd}
                                 onClick={(e) => { e.stopPropagation(); canEdit && setSelectedEvent({ event: lesson, isTimetable: true }); }}
+                                onDoubleClick={(e) => { e.stopPropagation(); if (canEdit) openEdit(lesson, true); }}
                                 onContextMenu={(e) => handleContextMenu(e, lesson, true)}
                               >
                                 {/* Left accent bar */}
@@ -704,13 +882,20 @@ const SchedulePage: React.FC = () => {
                                   <span className={`text-[10px] font-medium inline-flex items-center gap-0.5 mt-0.5 ${ongoing ? 'text-rose-600 dark:text-rose-400 font-bold' : 'text-slate-500 dark:text-slate-400'}`}>
                                     <Clock className={`w-2.5 h-2.5 shrink-0 ${ongoing ? 'text-rose-500 animate-pulse' : 'text-slate-400'}`} />{lesson.startTime}–{lesson.endTime}
                                   </span>
+                                  {/* Кабинет виден сразу: раньше он был только в подсказке при наведении. */}
+                                  {roomLabel(lesson) && (
+                                    <span className="text-[10px] font-medium inline-flex items-center gap-0.5 mt-0.5 text-slate-500 dark:text-slate-400 max-w-full">
+                                      <MapPin className="w-2.5 h-2.5 shrink-0 text-slate-400" />
+                                      <span className="truncate">{roomLabel(lesson)}</span>
+                                    </span>
+                                  )}
                                 </div>
 
                                 {/* Location tooltip — appears on hover to the right */}
-                                {lesson.location && (
+                                {roomLabel(lesson) && (
                                   <div className="absolute left-full top-1/2 -translate-y-1/2 ml-2 z-50 hidden group-hover/card:block pointer-events-none">
                                     <div className="relative bg-slate-900 dark:bg-white text-white dark:text-slate-900 text-[11px] font-semibold px-3 py-1.5 rounded-lg shadow-xl whitespace-nowrap">
-                                      <MapPin className="w-3 h-3 inline-block mr-1 -mt-0.5" />{lesson.location}
+                                      <MapPin className="w-3 h-3 inline-block mr-1 -mt-0.5" />{roomLabel(lesson)}
                                       <div className="absolute right-full top-1/2 -translate-y-1/2 border-[5px] border-transparent border-r-slate-900 dark:border-r-white" />
                                     </div>
                                   </div>
@@ -736,7 +921,7 @@ const SchedulePage: React.FC = () => {
                   ))}
 
                   {/* Empty state — if no lessons at all */}
-                  {maxRows <= 1 && timetableEvents.length === 0 && (
+                  {maxRows <= 1 && visibleTimetable.length === 0 && (
                     <div className="py-16 flex flex-col items-center justify-center text-center">
                       <Calendar className="w-12 h-12 text-slate-200 dark:text-slate-700 mb-3" />
                       <p className="text-sm font-bold text-slate-400 dark:text-slate-500">{t('schedule.noLessons', 'Нет занятий')}</p>
@@ -764,8 +949,7 @@ const SchedulePage: React.FC = () => {
                               });
                               setShowPasteModal(true);
                             } else {
-                              setForm(f => ({ ...f, type: 'lesson', dayOfWeek: dayIdx, branchId: activeBranchId || undefined }));
-                              setShowCreate(true);
+                              openCreate({ dayOfWeek: dayIdx, startTime: nextFreeStart(dayIdx) });
                             }
                           }}
                           className={`border-r border-slate-100 dark:border-slate-700/50 last:border-r-0 py-2 flex items-center justify-center gap-1 text-[10px] font-bold transition-colors ${
@@ -824,7 +1008,7 @@ const SchedulePage: React.FC = () => {
                   </div>
                   {weekDays.map((day, di) => {
                     const dayStr = `${day.getFullYear()}-${String(day.getMonth() + 1).padStart(2, '0')}-${String(day.getDate()).padStart(2, '0')}`;
-                    const dayEvents = calendarEvents.filter((e) => e.date === dayStr && !(e as any).recurring);
+                    const dayEvents = visibleCalendar.filter((e) => e.date === dayStr && !(e as any).recurring);
                     const isDropCol = isDragging && dragOverDay === di;
                     return (
                       <div
@@ -929,8 +1113,7 @@ const SchedulePage: React.FC = () => {
                                 });
                                 setShowPasteModal(true);
                               } else {
-                                setForm(f => ({ ...f, type: 'exam', date: dayStr, branchId: activeBranchId || undefined }));
-                                setShowCreate(true);
+                                openCreate({ date: dayStr, startTime: nextFreeStart(appDayOfWeek(dayStr), dayStr) });
                               }
                             }}
                             className={`border-r border-slate-100 dark:border-slate-700/50 last:border-r-0 py-2 flex items-center justify-center gap-1 text-[10px] font-bold transition-colors ${
@@ -954,7 +1137,7 @@ const SchedulePage: React.FC = () => {
                 {(() => {
                   const dDay = weekDays[selectedDay];
                   const dayStr = dDay ? `${dDay.getFullYear()}-${String(dDay.getMonth() + 1).padStart(2, '0')}-${String(dDay.getDate()).padStart(2, '0')}` : '';
-                  const dayEvents = calendarEvents.filter((e) => e.date === dayStr && !(e as any).recurring);
+                  const dayEvents = visibleCalendar.filter((e) => e.date === dayStr && !(e as any).recurring);
                   
                   if (dayEvents.length === 0) return (
                     <div className="bg-white/50 dark:bg-slate-800/30 border border-amber-200/50 dark:border-slate-700/50 rounded-3xl p-10 text-center backdrop-blur-sm">
@@ -1015,6 +1198,13 @@ const SchedulePage: React.FC = () => {
           className="fixed z-[100] bg-white dark:bg-slate-800 rounded-2xl shadow-2xl border border-slate-200/80 dark:border-slate-700/50 py-2 px-1 min-w-[180px] animate-in zoom-in-95 fade-in duration-150"
           style={{ left: contextMenu.x, top: contextMenu.y }}
         >
+          <button
+            onClick={() => openEdit(contextMenu.event, contextMenu.isTimetable)}
+            className="flex items-center gap-3 w-full px-4 py-2.5 text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700/50 rounded-xl transition-colors"
+          >
+            <Pencil className="w-4 h-4 text-slate-500" />
+            {t('common.edit', 'Изменить')}
+          </button>
           <button
             onClick={() => handleCopy(contextMenu.event)}
             className="flex items-center gap-3 w-full px-4 py-2.5 text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700/50 rounded-xl transition-colors"
@@ -1134,7 +1324,7 @@ const SchedulePage: React.FC = () => {
             <div className="flex justify-end gap-3 mt-8">
               <button onClick={() => setShowPasteModal(false)} className="px-5 py-2.5 rounded-xl font-bold text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors text-sm">{t('common.cancel', 'Отмена')}</button>
               <button
-                onClick={handlePaste}
+                onClick={() => handlePaste()}
                 disabled={saving || (activeTab === 'events' && !pasteForm.date)}
                 className="flex items-center gap-2 px-6 py-2.5 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-xl text-sm font-semibold hover:bg-slate-800 dark:hover:bg-slate-100 transition-colors disabled:opacity-50"
               >
@@ -1151,14 +1341,27 @@ const SchedulePage: React.FC = () => {
         <div className="fixed inset-0 bg-slate-900/40 dark:bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in duration-200" onClick={() => setShowCreate(false)}>
           <div className="bg-white dark:bg-slate-800 rounded-[2rem] p-6 sm:p-8 w-full max-w-md shadow-2xl border border-slate-200/50 dark:border-slate-700/50 animate-in zoom-in-95 duration-200" onClick={(e) => e.stopPropagation()}>
             <h2 className="text-xl font-bold text-slate-900 dark:text-white mb-6">
-              {activeTab === 'timetable' ? t('schedule.newTimetableLesson', 'Новый урок в расписании') : t('schedule.newEvent', 'Новое событие')}
+              {form.editingId
+                ? (form.editingRecurring
+                  ? t('schedule.editTimetableLesson', 'Изменить урок в расписании')
+                  : t('schedule.editEvent', 'Изменить событие'))
+                : (activeTab === 'timetable'
+                  ? t('schedule.newTimetableLesson', 'Новый урок в расписании')
+                  : t('schedule.newEvent', 'Новое событие'))}
             </h2>
             <div className="space-y-4">
               <div>
                 <label className="text-[11px] font-bold text-slate-500 uppercase tracking-widest mb-1.5 block">{t('common.branch', 'Филиал')}</label>
-                <BranchFilter 
-                  value={form.branchId || null} 
-                  onChange={(val) => setForm(f => ({ ...f, branchId: val || undefined }))} 
+                <BranchFilter
+                  value={form.branchId || null}
+                  // The group list below is filtered by branch, so a group from the old
+                  // branch must go too — otherwise the select renders blank while still
+                  // submitting the hidden groupId.
+                  onChange={(val) => setForm(f => (
+                    f.groupId && groups.find(g => g.id === f.groupId)?.branchId !== (val || undefined)
+                      ? { ...f, branchId: val || undefined, groupId: undefined, title: '' }
+                      : { ...f, branchId: val || undefined }
+                  ))}
                   mode="select"
                 />
               </div>
@@ -1200,7 +1403,7 @@ const SchedulePage: React.FC = () => {
               </div>
 
               {/* Timetable: Day of Week selector */}
-              {activeTab === 'timetable' ? (
+              {modalIsRecurring ? (
                 <div>
                   <label className="text-[11px] font-bold text-slate-500 uppercase tracking-widest mb-1.5 block">{t('schedule.dayOfWeek', 'День недели')}</label>
                   <div className="grid grid-cols-7 gap-1.5">
@@ -1233,7 +1436,18 @@ const SchedulePage: React.FC = () => {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="text-[11px] font-bold text-slate-500 uppercase tracking-widest mb-1.5 block">{t('org.schedule.startTime', 'Начало')}</label>
-                  <input type="time" value={form.startTime} onChange={(e) => setForm((f) => ({ ...f, startTime: e.target.value }))} className="input bg-slate-50 dark:bg-slate-900/50" />
+                  {/* Moving the start drags the end with it, keeping the span the user chose. */}
+                  <input type="time" value={form.startTime} onChange={(e) => setForm((f) => {
+                    const prevStart = timeToMins(f.startTime);
+                    const nextStart = timeToMins(e.target.value);
+                    const prevEnd = timeToMins(f.endTime);
+                    const span = prevStart !== null && prevEnd !== null && prevEnd > prevStart
+                      ? prevEnd - prevStart
+                      : DEFAULT_SLOT_MINUTES;
+                    return nextStart === null
+                      ? { ...f, startTime: e.target.value }
+                      : { ...f, startTime: e.target.value, endTime: minsToTime(nextStart + span) };
+                  })} className="input bg-slate-50 dark:bg-slate-900/50" />
                 </div>
                 <div>
                   <label className="text-[11px] font-bold text-slate-500 uppercase tracking-widest mb-1.5 block">{t('org.schedule.endTime', 'Конец')}</label>
@@ -1241,16 +1455,18 @@ const SchedulePage: React.FC = () => {
                 </div>
               </div>
 
-              {/* Location */}
+              {/* Classroom */}
               <div>
                 <label className="text-[11px] font-bold text-slate-500 uppercase tracking-widest mb-1.5 block">{t('schedule.classroom', 'Аудитория / Кабинет')}</label>
-                <input placeholder="напр. Каб. 305" value={form.location}
-                  onChange={(e) => setForm((f) => ({ ...f, location: e.target.value }))}
-                  className="input bg-slate-50 dark:bg-slate-900/50" />
+                <ClassroomSelect
+                  branchId={form.branchId || null}
+                  value={{ classroomId: form.classroomId || null, location: form.location }}
+                  onChange={(v) => setForm((f) => ({ ...f, classroomId: v.classroomId, location: v.location }))}
+                />
               </div>
 
-              {/* Event type — only for Events tab */}
-              {activeTab === 'events' && (
+              {/* Event type — only for dated events */}
+              {!modalIsRecurring && (
                 <div>
                   <label className="text-[11px] font-bold text-slate-500 uppercase tracking-widest mb-1.5 block">{t('org.schedule.eventType', 'Тип')}</label>
                   <select value={form.type} onChange={(e) => setForm((f) => ({ ...f, type: e.target.value as any }))} className="input bg-slate-50 dark:bg-slate-900/50">
@@ -1260,11 +1476,28 @@ const SchedulePage: React.FC = () => {
                 </div>
               )}
             </div>
+
+            {/* The page-level banner sits behind the overlay, so the modal states its own error. */}
+            {error && (
+              <div className="mt-5 px-4 py-3 bg-red-500/10 border border-red-500/20 rounded-2xl text-sm font-medium text-red-600 dark:text-red-400 space-y-2.5">
+                <p>{error}</p>
+                {conflictRetry === 'create' && (
+                  <button
+                    onClick={() => handleCreate(true)}
+                    disabled={saving}
+                    className="px-3.5 py-1.5 rounded-xl text-[13px] font-semibold text-white bg-red-600 hover:bg-red-700 disabled:opacity-50 transition-colors"
+                  >
+                    {t('schedule.forceCreate', 'Поставить всё равно')}
+                  </button>
+                )}
+              </div>
+            )}
+
             <div className="flex justify-end gap-3 mt-8">
               <button onClick={() => setShowCreate(false)} className="px-5 py-2.5 rounded-xl font-bold text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors text-sm">{t('common.cancel', 'Отмена')}</button>
-              <button 
-                onClick={handleCreate} 
-                disabled={saving || !form.title.trim() || (activeTab === 'events' && !form.date)} 
+              <button
+                onClick={() => handleCreate()}
+                disabled={saving || !form.title.trim() || (!modalIsRecurring && !form.date)}
                 className="px-6 py-2.5 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-xl text-sm font-semibold hover:bg-slate-800 dark:hover:bg-slate-100 transition-colors disabled:opacity-50"
               >
                 {saving ? '...' : t('common.save', 'Сохранить')}

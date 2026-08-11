@@ -7,6 +7,8 @@ import type { Group, GroupStatus, Course, UserProfile, Syllabus } from '../../ty
 import toast from 'react-hot-toast';
 import { useAuth } from '../../contexts/AuthContext';
 import BranchFilter from '../../components/ui/BranchFilter';
+import GroupScheduleSection from '../../components/schedule/GroupScheduleSection';
+import { usePermissions } from '../../contexts/PermissionsContext';
 
 // Lifecycle statuses a group can move between, with their badge/menu styling.
 const GROUP_STATUS_META: Record<GroupStatus, { label: string; icon: typeof PlayCircle; badge: string; dot: string }> = {
@@ -38,6 +40,7 @@ const GroupDetailPage: React.FC = () => {
   const navigate = useNavigate();
   const { t } = useTranslation();
   const { role, profile } = useAuth();
+  const { canWrite: canWriteSchedule } = usePermissions();
   const isAdmin = role === 'admin' || role === 'manager' || role === 'super_admin';
 
   const [group, setGroup] = useState<Group | null>(null);
@@ -324,6 +327,10 @@ const GroupDetailPage: React.FC = () => {
   // their own groups. The backend enforces the same own-groups scope, so keep the
   // toggle read-only for teachers viewing a group they don't teach.
   const canEditProgress = isAdmin || isMyGroup;
+  // Расписание гейтится своим ресурсом, а не правами на группу: сервер проверяет
+  // schedule:write (api-org.ts, createEvent/updateEvent), и подменять это ролью
+  // значило бы прятать кнопку у преподавателя, которому право реально выдано.
+  const canEditSchedule = canWriteSchedule('schedule');
 
   const availableTeachers = allTeachers.filter(t => !currentTeacherIds.includes(t.uid));
   const availableStudents = allStudents.filter(s => !currentStudentIds.includes(s.uid));
@@ -557,6 +564,8 @@ const GroupDetailPage: React.FC = () => {
           )}
         </div>
       )}
+
+      <GroupScheduleSection group={group} canEdit={canEditSchedule} />
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
          {/* Main Column */}

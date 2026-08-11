@@ -217,6 +217,30 @@ export interface Branch {
   updatedAt: string;
 }
 
+// ---- Classrooms (физические кабинеты) ----
+
+// Не путать с ExamRoom: те — виртуальные комнаты для экзаменов (коллекция
+// examRooms). Здесь — настоящие помещения, в которых стоят занятия.
+export interface Classroom {
+  id: string;
+  organizationId: string;
+  /** Кабинет всегда принадлежит зданию. null = кабинет ещё не распределён по филиалам. */
+  branchId?: string | null;
+  name: string;
+  /** normalizeRoom(name): по нему ищем совпадения и держим уникальность в филиале. */
+  nameKey: string;
+  capacity?: number | null;
+  floor?: string | null;
+  /** Цвет блока в сетке «по кабинетам». */
+  color?: string | null;
+  /** «Онлайн» / «Zoom»: такой кабинет вмещает сколько угодно занятий сразу и не даёт накладок. */
+  isVirtual?: boolean;
+  notes?: string;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
 // ---- Users ----
 
 export type RiskLevel = 'high' | 'medium' | 'low';
@@ -738,6 +762,14 @@ export interface ScheduleEvent {
   startTime: string;   // HH:mm
   endTime: string;     // HH:mm
   duration: number;    // minutes
+  classroomId?: string | null;
+  classroomName?: string;   // денормализовано, как groupName/courseName/teacherName
+  /**
+   * УСТАРЕЛО в пользу classroomId/classroomName, но не удаляется: так подписаны все
+   * события, созданные до справочника кабинетов. Сервер держит поле в актуальном
+   * состоянии (пишет в него classroomName), поэтому старые читатели продолжают
+   * работать. Показывать всегда как `classroomName || location`.
+   */
   location?: string;
   notes?: string;
   createdAt: string;

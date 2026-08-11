@@ -17,7 +17,7 @@ import {
   ClipboardCheck,
   Inbox,
   NotebookText, NotebookPen, MapPin, UserCog,
-  Sparkles, LifeBuoy, Wallet,
+  Sparkles, LifeBuoy, Wallet, DoorOpen,
 } from 'lucide-react';
 
 /**
@@ -91,6 +91,10 @@ const ALL_BRANCHES_ONLY = new Set<string>([
   'branches',
 ]);
 
+// `classrooms` НАМЕРЕННО не входит ни в один из наборов, хотя кабинет и несёт
+// branchId: страница осмысленна в обоих режимах — «Все филиалы» показывают весь
+// справочник, конкретный филиал сужает до своих аудиторий. Это прямое требование,
+// а не недосмотр: не переносите её в ONE_BRANCH_ONLY.
 const ONE_BRANCH_ONLY = new Set<string>([
   'groups',                          // the canonical branch carrier
   'schedule', 'studentSchedule',     // ScheduleEvent.branchId
@@ -192,6 +196,7 @@ export function useNavModel(instType?: string, opts?: NavModelOptions): NavSecti
         { id: 'lessons', to: '/lessons', icon: BookOpen, label: t('nav.lessons') },
         { id: 'exams', to: '/exams', icon: ClipboardList, label: t('nav.exams') },
         { id: 'schedule', to: '/schedule', icon: Calendar, label: t('nav.schedule') },
+        { id: 'classrooms', to: '/classrooms', icon: DoorOpen, label: t('nav.classrooms', 'Кабинеты') },
         // The admin menu had no way into the gradebook at all: /gradebook and
         // /journal were reachable only by typing the URL. No canRead() guard here
         // because the whole admin branch is unguarded — admins hold every grant.
@@ -238,6 +243,7 @@ export function useNavModel(instType?: string, opts?: NavModelOptions): NavSecti
     if (canRead('lessons')) learning.push({ id: 'lessons', to: '/lessons', icon: BookOpen, label: t('nav.lessons') });
     if (canRead('exams')) learning.push({ id: 'exams', to: '/exams', icon: ClipboardList, label: t('nav.exams') });
     if (canRead('schedule')) learning.push({ id: 'schedule', to: '/schedule', icon: Calendar, label: t('nav.schedule') });
+    if (canRead('classrooms')) learning.push({ id: 'classrooms', to: '/classrooms', icon: DoorOpen, label: t('nav.classrooms', 'Кабинеты') });
     // Both gradebook destinations sit here, next to the courses and groups they
     // read from — same order as the teacher and admin menus. Gradebook used to be
     // the lone entry under «Управление» and /journal was missing entirely.
@@ -288,6 +294,7 @@ export function useNavModel(instType?: string, opts?: NavModelOptions): NavSecti
       if (canRead('lessons')) content.push({ id: 'lessons', to: '/lessons', icon: BookOpen, label: t('nav.lessons') });
       if (canRead('exams')) content.push({ id: 'exams', to: '/exams', icon: ClipboardList, label: t('nav.exams') });
       if (canRead('schedule')) content.push({ id: 'schedule', to: '/schedule', icon: Calendar, label: t('nav.schedule') });
+      if (canRead('classrooms')) content.push({ id: 'classrooms', to: '/classrooms', icon: DoorOpen, label: t('nav.classrooms', 'Кабинеты') });
       if (canRead('materials')) content.push({ id: 'materials', to: '/materials', icon: FileText, label: t('nav.materials') });
       if (canRead('quizzes')) content.push({ id: 'quizLibrary', to: '/quiz/library', icon: Gamepad2, label: t('nav.quizLibrary') });
       sections.push({ id: 'content', label: t('nav.secContent', 'Контент'), items: content });

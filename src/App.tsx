@@ -84,6 +84,7 @@ const TeachersPage = lazyRetry(() => import('./pages/teachers/TeachersPage'));
 const TeamRolesPage = lazyRetry(() => import('./pages/team/TeamRolesPage'));
 const MaterialsPage = lazyRetry(() => import('./pages/materials/MaterialsPage'));
 const SchedulePage = lazyRetry(() => import('./pages/schedule/SchedulePage'));
+const ClassroomsPage = lazyRetry(() => import('./pages/classrooms/ClassroomsPage'));
 const OrgResultsPage = lazyRetry(() => import('./pages/results/ResultsPage'));
 const OrgUsersPage = lazyRetry(() => import('./pages/org-users/OrgUsersPage'));
 const OrgSettingsPage = lazyRetry(() => import('./pages/org-settings/OrgSettingsPage'));
@@ -285,6 +286,7 @@ const App: React.FC = () => {
 
             {/* ═══ Org Admin: Organization ═══ */}
             <Route path="schedule" element={<ProtectedRoute><PermissionRoute resource="schedule"><SchedulePage /></PermissionRoute></ProtectedRoute>} />
+            <Route path="classrooms" element={<ProtectedRoute><PermissionRoute resource="classrooms"><ClassroomsPage /></PermissionRoute></ProtectedRoute>} />
             <Route path="results" element={<ProtectedRoute><PermissionRoute resource="results"><OrgResultsPage /></PermissionRoute></ProtectedRoute>} />
             <Route path="branches" element={<ProtectedRoute><PermissionRoute resource="branches"><PlanGuard feature="branches"><BranchesPage /></PlanGuard></PermissionRoute></ProtectedRoute>} />
             <Route path="org-settings" element={<ProtectedRoute><PermissionRoute resource="settings"><OrgSettingsPage /></PermissionRoute></ProtectedRoute>} />

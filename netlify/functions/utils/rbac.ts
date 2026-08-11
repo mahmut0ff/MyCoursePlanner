@@ -40,6 +40,9 @@ export const RESOURCE_ACTIONS: Record<string, RbacAction[]> = {
   lessons: ['read', 'write', 'delete'],
   materials: ['read', 'write', 'delete'],
   schedule: ['read', 'write', 'delete'],
+  // Справочник физических аудиторий (коллекция classrooms). Отдельно от `rooms`,
+  // которые означают ЭКЗАМЕНАЦИОННЫЕ комнаты (examRooms) и есть у каждого препода.
+  classrooms: ['read', 'write', 'delete'],
   exams: ['read', 'write', 'delete'],
   rooms: ['read', 'write', 'delete'],
   quizzes: ['read', 'write', 'delete'],
@@ -74,7 +77,9 @@ const ro = (resources: string[]): RolePermission[] =>
   resources.map(r => ({ resource: r, actions: ['read' as RbacAction] }));
 
 export const TEACHER_DEFAULT: RolePermission[] = [
-  ...ro(['dashboard', 'students', 'results', 'analytics']),
+  // Кабинеты — только чтение: преподаватель ставит занятие в существующую
+  // аудиторию и смотрит, свободна ли она, но справочником не распоряжается.
+  ...ro(['dashboard', 'students', 'results', 'analytics', 'classrooms']),
   ...rw(['courses', 'groups', 'schedule']),
   ...rwd(['lessons', 'exams', 'rooms', 'quizzes', 'materials', 'homework', 'gradebook']),
 ];
@@ -85,7 +90,7 @@ export const MANAGER_DEFAULT: RolePermission[] = [
   // Явно, хотя isRosterManager даёт это менеджеру и по роли: матрица прав должна
   // показывать реальное положение дел, а не пустую галочку.
   ...rw(['roster_management']),
-  ...rwd(['students', 'teachers', 'leads', 'courses', 'groups', 'lessons', 'materials', 'schedule', 'exams', 'rooms', 'quizzes', 'gradebook', 'homework', 'certificates']),
+  ...rwd(['students', 'teachers', 'leads', 'courses', 'groups', 'lessons', 'materials', 'schedule', 'classrooms', 'exams', 'rooms', 'quizzes', 'gradebook', 'homework', 'certificates']),
 ];
 
 export const STUDENT_DEFAULT: RolePermission[] = ro(['dashboard', 'lessons', 'results']);

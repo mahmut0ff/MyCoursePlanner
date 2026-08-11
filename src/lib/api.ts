@@ -6,6 +6,7 @@ import { auth } from './firebase';
 import type {
   MessageAttachment, SupportMessage, SupportThreadStatus, SupportUserInfo,
   CompensationRule, PayComponent, PayrollPeriod, PayrollLine,
+  Classroom,
 } from '../types';
 
 const API_BASE = '/.netlify/functions';
@@ -78,6 +79,9 @@ const BRANCH_SCOPED_ENDPOINTS = new Set([
   // KPI преподавателей филиалуется по членству преподавателя: директор сети,
   // выбрав филиал, видит активность его преподавателей.
   'api-teacher-activity',
+  // Кабинет принадлежит зданию: «Все филиалы» — весь справочник, конкретный
+  // филиал — только его аудитории. Хендлер читает params.branchId (см. action=list).
+  'api-classrooms',
 ]);
 
 async function apiRequest<T = any>(
@@ -555,6 +559,28 @@ export const orgAssignUserToBranch = (userId: string, branchId: string) =>
   brReq('assignUser', 'POST', { userId, branchId });
 export const orgRemoveUserFromBranch = (userId: string, branchId: string) =>
   brReq('removeUser', 'POST', { userId, branchId });
+
+// ============================================================
+// CLASSROOMS API (физические кабинеты; не путать с api-rooms — там экзамены)
+// ============================================================
+
+const clsReq = <T = any>(action: string, method = 'GET', body?: any, extra?: Record<string, string>) =>
+  apiRequest<T>('api-classrooms', method, body, { action, ...extra });
+
+/**
+ * Список слушается переключателя филиалов — branchId штампует GET-интерцептор.
+ * Явный branchId его перебивает: в форме занятия кабинеты должны следовать за
+ * филиалом, выбранным В ФОРМЕ, а не за тем, что стоит в сайдбаре.
+ */
+export const orgListClassrooms = (branchId?: string | null) =>
+  clsReq<Classroom[]>('list', 'GET', undefined, branchId ? { branchId } : undefined);
+export const orgGetClassroom = (id: string) => clsReq<Classroom>('get', 'GET', undefined, { id });
+// POST штамп филиала НЕ получает: branchId кладётся в тело формой, иначе кабинет
+// сохранится с branchId: null и пропадёт при выборе конкретного филиала.
+export const orgCreateClassroom = (data: Partial<Classroom>) => clsReq<Classroom>('create', 'POST', data);
+export const orgUpdateClassroom = (data: Partial<Classroom> & { id: string }) => clsReq<Classroom>('update', 'POST', data);
+export const orgArchiveClassroom = (id: string) =>
+  clsReq<{ archived: boolean; affectedEvents: number }>('archive', 'POST', { id });
 
 // ============================================================
 // TEACHER / INVITES API (via api-users, works without org)

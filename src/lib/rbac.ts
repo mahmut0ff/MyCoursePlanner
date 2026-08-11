@@ -126,6 +126,12 @@ export const RESOURCE_GROUPS: ResourceGroup[] = [
         write: 'Создание и редактирование событий расписания',
         delete: 'Удаление событий расписания',
       } },
+      { id: 'classrooms', label: 'Кабинеты', help: {
+        read: 'Просмотр кабинетов и их занятости',
+        write: 'Создание и редактирование кабинетов',
+        delete: 'Архивация кабинетов',
+        notes: 'Физические аудитории. Экзаменационные комнаты — это отдельный раздел «Комнаты экзаменов».',
+      } },
     ],
   },
   {
@@ -218,10 +224,11 @@ export const RESOURCE_GROUPS: ResourceGroup[] = [
         read: 'Доступ к главной панели и сводным показателям',
         notes: 'Определяет, видит ли пользователь сводный экран.',
       } },
-      { id: 'settings', label: 'Настройки организации', help: {
+      // Настройки не удаляются: сервер знает только read/write, и галочку
+      // «Удаление» он молча вырезал при сохранении. Приводим каталог к правде.
+      { id: 'settings', label: 'Настройки организации', actions: ['read', 'write'], help: {
         read: 'Просмотр настроек организации',
         write: 'Редактирование профиля, уведомлений и интеграций',
-        delete: '—',
       } },
     ],
   },
@@ -252,7 +259,9 @@ const ro = (resources: string[]): RolePermission[] =>
  * server-side checks never regresses an existing teacher.
  */
 export const TEACHER_DEFAULT: RolePermission[] = [
-  ...ro(['dashboard', 'students', 'results', 'analytics']),
+  // Кабинеты — только чтение: преподаватель ставит занятие в существующую
+  // аудиторию и смотрит, свободна ли она, но справочником не распоряжается.
+  ...ro(['dashboard', 'students', 'results', 'analytics', 'classrooms']),
   ...rw(['courses', 'groups', 'schedule']),
   ...rwd(['lessons', 'exams', 'rooms', 'quizzes', 'materials', 'homework', 'gradebook']),
 ];
@@ -266,7 +275,7 @@ export const MANAGER_DEFAULT: RolePermission[] = [
   ...ro(['dashboard', 'analytics', 'results']),
   ...rw(['ai']),
   ...rw(['roster_management']),
-  ...rwd(['students', 'teachers', 'leads', 'courses', 'groups', 'lessons', 'materials', 'schedule', 'exams', 'rooms', 'quizzes', 'gradebook', 'homework', 'certificates']),
+  ...rwd(['students', 'teachers', 'leads', 'courses', 'groups', 'lessons', 'materials', 'schedule', 'classrooms', 'exams', 'rooms', 'quizzes', 'gradebook', 'homework', 'certificates']),
 ];
 
 /** Student: minimal — they don't use the staff matrix, but provide a sane fallback. */

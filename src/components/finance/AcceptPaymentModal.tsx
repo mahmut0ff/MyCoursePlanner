@@ -4,7 +4,7 @@ import { apiCreateTransaction, apiUpdatePaymentPlan } from '../../lib/api';
 import { CreditCard, X } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { CURRENCY_SUFFIX, formatMoney, formatMonthKey } from '../../lib/money';
-import { orgDayKey, isDebtBearingPlan, planDebt, planPeriodKey } from '../../lib/payment-plans';
+import { orgDayKey, isDebtBearingPlan, isWrittenOffPlan, planDebt, planPeriodKey } from '../../lib/payment-plans';
 import { PAYMENT_METHODS } from '../../pages/finances/expenseCategories';
 
 /**
@@ -99,6 +99,8 @@ const AcceptPaymentModal: React.FC<Props> = ({ plans, initialPlanId, studentName
   const selectPlan = (id: string) => {
     setPlanId(id);
     setSettle(false);
+    // Согласие поднять сумму относилось к прежнему счёту — на новом его нет.
+    setRaiseTotal(false);
     const next = plans.find(p => p.id === id);
     if (next) setAmount(String(debtOf(next)));
   };
@@ -115,6 +117,28 @@ const AcceptPaymentModal: React.FC<Props> = ({ plans, initialPlanId, studentName
   // тайл «Собрано за месяц» показывают только с правом finance_overview.
   const entered = Number(amount);
   const isOverpay = Number.isFinite(entered) && debt > 0 && entered > debt;
+
+  // ── Индивидуальная цена ──
+  // Часть студентов занимается дороже прайса курса, а счёт выставляется по
+  // цене курса — и внести их реальную оплату было нельзя вообще: потолок
+  // отвергал всё, что выше остатка, а поднять сумму счёта отсюда было негде.
+  // Совет из старого текста ошибки («излишек — оплатой за следующий месяц»)
+  // для этого случая неверен: деньги не за следующий месяц.
+  //
+  // Поэтому предлагаем поднять сумму счёта до внесённой — явной отметкой, а не
+  // молча: именно эта явность и отличает договорную цену от лишнего нуля.
+  // Правка переносится на следующие месяцы (см. lastAmountByKey в MonthTab),
+  // так что повторять её каждый месяц не придётся.
+  //
+  // Списанный счёт так поднимать нельзя — это воскресило бы списание, ровно как
+  // и у settle. Для него остаётся прежний запрет.
+  const canRaiseTotal = plan ? !isWrittenOffPlan(plan) : false;
+  const [raiseTotal, setRaiseTotal] = useState(false);
+  const applyRaise = isOverpay && canRaiseTotal && raiseTotal;
+  // Новая сумма к оплате = уже оплаченное + вносимое, чтобы остаток совпал с
+  // платежом ровно и серверный потолок пропустил его.
+  const raisedTotal = applyRaise ? (Number(plan?.paidAmount) || 0) + entered : 0;
+  const blockedByOverpay = isOverpay && !applyRaise;
 
   const name = studentName || plan?.studentName || plan?.studentId || '';
 
@@ -133,13 +157,28 @@ const AcceptPaymentModal: React.FC<Props> = ({ plans, initialPlanId, studentName
   };
 
   const handlePay = async () => {
-    if (!plan || !amount || Number(amount) <= 0 || isOverpay) return;
+    if (!plan || !amount || Number(amount) <= 0 || blockedByOverpay) return;
     // Проверяем до конструктора Date: пустой input даёт '', и new Date('') бросил бы.
     const problem = dateProblem();
     if (problem) { setDateError(problem); return; }
     setSaving(true);
     setSubmitError('');
     try {
+      // Сумму счёта поднимаем ДО платежа: серверный потолок считает остаток по
+      // свежему документу и иначе отверг бы оплату. Если этот шаг не прошёл —
+      // платёж не отправляем вовсе, иначе он упёрся бы в тот же потолок и
+      // кассир увидел бы невнятный отказ вместо причины.
+      if (applyRaise) {
+        try {
+          await apiUpdatePaymentPlan(plan.id, { totalAmount: raisedTotal });
+        } catch (e: any) {
+          const msg = e?.message || t('finances.error', 'Ошибка');
+          setSubmitError(t('finances.raiseFailed', 'Не удалось поднять сумму счёта: {{msg}}', { msg }));
+          setSaving(false);
+          return;
+        }
+      }
+
       await apiCreateTransaction({
         type: 'income',
         amount: Number(amount),
@@ -173,8 +212,22 @@ const AcceptPaymentModal: React.FC<Props> = ({ plans, initialPlanId, studentName
       onSuccess();
       onClose();
     } catch (e: any) {
-      setSubmitError(e.message || t('finances.error', 'Ошибка'));
-      toast.error(e.message || t('finances.error', 'Ошибка'));
+      const msg = e.message || t('finances.error', 'Ошибка');
+      // Сумму подняли, а платёж не прошёл (закрытая ведомость, сеть) — счёт
+      // остался бы раздутым, и студент получил бы долг, которого он не делал.
+      // Возвращаем прежнюю сумму; если и это не вышло, говорим об этом прямо,
+      // потому что молчание здесь стоит денег.
+      if (applyRaise) {
+        try {
+          await apiUpdatePaymentPlan(plan.id, { totalAmount: Number(plan.totalAmount) || 0 });
+        } catch {
+          setSubmitError(t('finances.raiseRollbackFailed', 'Оплата не прошла ({{msg}}), а сумма счёта осталась поднятой до {{total}}. Верните её вручную через «Сумму к оплате».', { msg, total: formatMoney(raisedTotal) }));
+          toast.error(msg);
+          return;
+        }
+      }
+      setSubmitError(msg);
+      toast.error(msg);
     } finally {
       setSaving(false);
     }
@@ -220,23 +273,47 @@ const AcceptPaymentModal: React.FC<Props> = ({ plans, initialPlanId, studentName
               {t('finances.amount', 'Сумма')} ({CURRENCY_SUFFIX})
             </label>
             <input
-              type="number" autoFocus min="1" max={debt}
+              // Без max: сумма выше остатка — законный случай (договорная цена),
+              // и браузерная валидация мешала бы её набрать. Правило живёт ниже,
+              // в blockedByOverpay, и на сервере.
+              type="number" autoFocus min="1"
               value={amount} onChange={e => setAmount(e.target.value)}
-              aria-invalid={isOverpay}
+              aria-invalid={blockedByOverpay}
               className={`w-full bg-slate-50 dark:bg-slate-900 border rounded-xl px-4 py-3 text-lg font-bold dark:text-white ${
-                isOverpay ? 'border-rose-400 dark:border-rose-500' : 'border-slate-200 dark:border-slate-700'
+                blockedByOverpay ? 'border-rose-400 dark:border-rose-500' : 'border-slate-200 dark:border-slate-700'
               }`}
               placeholder="0"
             />
             {isOverpay && (
-              <p className="text-xs text-rose-500 mt-1">
-                {t('finances.overpayBlocked', 'Больше остатка ({{debt}}) принять нельзя. Если студент заплатил вперёд, примите остаток здесь, а излишек — отдельной оплатой по счёту следующего месяца.', { debt: formatMoney(debt) })}
+              <p className={`text-xs mt-1 ${applyRaise ? 'text-slate-500 dark:text-slate-400' : 'text-rose-500'}`}>
+                {applyRaise
+                  ? t('finances.overpayRaising', 'Сумма счёта станет {{total}} — столько этот студент и платит.', { total: formatMoney(raisedTotal) })
+                  : t('finances.overpayNeedsChoice', 'Это больше остатка ({{debt}}). Если у студента договорная цена — отметьте ниже, и сумма счёта поднимется. Если он платит вперёд, проведите излишек отдельной оплатой по счёту следующего месяца.', { debt: formatMoney(debt) })}
               </p>
             )}
           </div>
+
+          {/* Договорная цена: студент платит БОЛЬШЕ прайса курса. Поднимаем сумму
+              счёта до внесённой — зеркало «оплачено полностью» на другую сторону. */}
+          {isOverpay && canRaiseTotal && (
+            <label className="flex items-start gap-2.5 cursor-pointer select-none bg-amber-50 dark:bg-amber-900/15 rounded-xl px-3 py-2.5 border border-amber-200 dark:border-amber-800/40">
+              <input
+                type="checkbox"
+                checked={raiseTotal}
+                onChange={e => setRaiseTotal(e.target.checked)}
+                className="mt-0.5 w-4 h-4 shrink-0 accent-amber-500"
+              />
+              <span className="text-xs text-amber-900 dark:text-amber-200 leading-snug">
+                {t('finances.raiseTotalToPaid', 'Индивидуальная цена — поднять сумму счёта до внесённой')}
+                <span className="block text-[11px] text-amber-700 dark:text-amber-300/80 mt-0.5">
+                  {t('finances.raiseTotalHint', 'Новая сумма перенесётся на следующие месяцы — каждый раз править не придётся.')}
+                </span>
+              </span>
+            </label>
+          )}
           {/* Скидка: студент платит меньше остатка, и это НЕ долг. Отметка
               закрывает счёт по факту оплаты, остаток уходит в скидку. */}
-          {debt > 0 && (
+          {debt > 0 && !isOverpay && (
             <label className="flex items-start gap-2.5 cursor-pointer select-none bg-slate-50 dark:bg-slate-900/40 rounded-xl px-3 py-2.5 border border-slate-200 dark:border-slate-700">
               <input
                 type="checkbox"
@@ -301,7 +378,7 @@ const AcceptPaymentModal: React.FC<Props> = ({ plans, initialPlanId, studentName
         </div>
         <div className="p-6 border-t border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 flex justify-end gap-3">
           <button onClick={onClose} className="px-4 py-2 text-sm font-medium text-slate-600 dark:text-slate-400">{t('finances.cancel', 'Отмена')}</button>
-          <button onClick={handlePay} disabled={saving || !amount || Number(amount) <= 0 || isOverpay}
+          <button onClick={handlePay} disabled={saving || !amount || Number(amount) <= 0 || blockedByOverpay}
             className="bg-emerald-500 hover:bg-emerald-600 disabled:opacity-50 text-white px-5 py-2 rounded-xl text-sm font-bold transition-all flex items-center gap-2">
             <CreditCard className="w-4 h-4" />
             {saving ? t('finances.saving', 'Сохранение...') : t('finances.confirmPayment', 'Подтвердить оплату')}

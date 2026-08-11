@@ -2172,7 +2172,7 @@
     "coursePriceMissing": "This course has no price set — enter the amount manually",
     "coursePrice": "Course price",
     "amountDue": "Amount due",
-    "amountDueHint": "The real amount to collect. If it's below the course price, the difference becomes a discount, not a debt.",
+    "amountDueHint": "The real amount due. Below list price the gap becomes a discount, not debt; above it becomes the student's agreed rate.",
     "amountBelowPaid": "Cannot be less than already paid ({{paid}}).",
     "amountSaved": "Amount due updated",
     "editAmount": "Edit amount",
@@ -2204,7 +2204,6 @@
     "amountUnknown": "not set",
     "writtenOffHint": "This invoice is written off — the academy no longer expects the money.",
     "openInFinances": "Open in Finances",
-    "overpayBlocked": "Cannot accept more than the remaining {{debt}}. If the student paid ahead, take the remainder here and the surplus as a separate payment against next month's invoice.",
     "fromPayroll": "Payroll payout — edit it in the Salary section",
     "deleteRefundWarning": "This is a refund against a student invoice. Deleting it also reverses the write-back: the amount returns to «paid» and the student's debt drops by {{amount}}.",
     "salaryGoesToPayroll": "Record salaries in the Payroll section — only there does a payout reach the salary balance and stay protected from being paid twice.",
@@ -2262,7 +2261,15 @@
     "shownRowsDebt": "On screen: {{n}} invoices, debt {{sum}}",
     "noUnpaidAtAll": "Nothing outstanding",
     "noChargesAtAll": "No invoices",
-    "noChargesAtAllHint": "No invoices matched the current view."
+    "noChargesAtAllHint": "No invoices matched the current view.",
+    "overpayNeedsChoice": "That is more than the remainder ({{debt}}). If this student has an agreed rate, tick below and the invoice amount will rise. If they are paying ahead, record the excess against next month.",
+    "overpayRaising": "The invoice amount becomes {{total}} — that is what this student pays.",
+    "raiseTotalToPaid": "Individual rate — raise the invoice to the amount entered",
+    "raiseTotalHint": "The new amount carries over to following months — no need to redo it each time.",
+    "raiseFailed": "Could not raise the invoice amount: {{msg}}",
+    "surcharge": "Above list",
+    "surchargeHint": "Becomes this student's agreed rate and carries over to following months.",
+    "raiseRollbackFailed": "The payment failed ({{msg}}) and the invoice amount is still raised to {{total}}. Restore it manually via «Amount due»."
   },
   "telegram": {
     "title": "Telegram Notifications",

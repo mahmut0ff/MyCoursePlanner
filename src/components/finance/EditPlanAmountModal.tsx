@@ -48,6 +48,9 @@ const EditPlanAmountModal: React.FC<Props> = ({ plan, onClose, onSuccess }) => {
   const belowPaid = parsed && value < paid;
   const valid = parsed && value >= 0 && value >= paid;
   const discount = parsed ? Math.max(0, reference - value) : 0;
+  // Обратная сторона скидки: студент занимается дороже прайса. Отдельного поля
+  // под это нет и не нужно — сумма к оплате и есть его цена, а разница выводится.
+  const surcharge = parsed ? Math.max(0, value - reference) : 0;
 
   const handleSave = async () => {
     if (!valid) return;
@@ -112,9 +115,16 @@ const EditPlanAmountModal: React.FC<Props> = ({ plan, onClose, onSuccess }) => {
               <p className="text-xs text-emerald-600 font-medium mt-1">
                 {t('finances.discount', 'Скидка')}: {formatMoney(discount)}
               </p>
+            ) : surcharge > 0 ? (
+              <p className="text-xs text-amber-600 font-medium mt-1">
+                {t('finances.surcharge', 'Выше прайса')}: {formatMoney(surcharge)}
+                <span className="block text-[11px] text-slate-400 font-normal mt-0.5">
+                  {t('finances.surchargeHint', 'Станет договорной ценой этого студента и перенесётся на следующие месяцы.')}
+                </span>
+              </p>
             ) : (
               <p className="text-[11px] text-slate-400 mt-1">
-                {t('finances.amountDueHint', 'Реальная сумма к оплате. Если ниже цены курса — разница станет скидкой, а не долгом.')}
+                {t('finances.amountDueHint', 'Реальная сумма к оплате. Ниже прайса — разница станет скидкой, а не долгом; выше — договорной ценой студента.')}
               </p>
             )}
           </div>

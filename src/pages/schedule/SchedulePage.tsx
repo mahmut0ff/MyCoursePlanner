@@ -1,11 +1,14 @@
 import React, { useEffect, useState, useMemo, useCallback, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { orgGetSchedule, orgGetTimetable, orgCreateEvent, orgDeleteEvent, orgUpdateEvent, orgGetGroups, orgListClassrooms } from '../../lib/api';
-import { Plus, ChevronLeft, ChevronRight, Clock, Trash2, Calendar, MapPin, Repeat, Copy, Clipboard, GripVertical, X, Sparkles, Pencil } from 'lucide-react';
+import { Plus, ChevronLeft, ChevronRight, ChevronDown, Clock, Trash2, Calendar, MapPin, Repeat, Copy, Clipboard, GripVertical, X, Sparkles, Pencil, RefreshCw } from 'lucide-react';
 import type { ScheduleEvent, ScheduleEventType, Group, Classroom } from '../../types';
 import { timeToMins, minsToTime, appDayOfWeek, slotSpan, spansOverlap } from '../../lib/scheduleTime';
 import { sameRoom } from '../../lib/classrooms';
+import { groupByRoom, roomFieldsOf, sectionKeyOf, NO_ROOM, type RoomSection } from '../../lib/scheduleRooms';
+import { cacheKey, useCachedResource } from '../../lib/apiCache';
 import { usePermissions } from '../../contexts/PermissionsContext';
+import { useAuth } from '../../contexts/AuthContext';
 import { usePlanGate } from '../../contexts/PlanContext';
 import { useBranch } from '../../contexts/BranchContext';
 import BranchFilter from '../../components/ui/BranchFilter';
@@ -25,6 +28,17 @@ const DEFAULT_SLOT_MINUTES = 60;
 const roomLabel = (ev: { classroomName?: string; location?: string }) =>
   ev.classroomName || ev.location || '';
 
+/** Дата в местном виде YYYY-MM-DD. new Date(строка) читает её как UTC и в минусовых зонах промахивается на день. */
+const localDateStr = (d: Date) =>
+  `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+
+const asList = <T,>(r: any): T[] => (Array.isArray(r) ? r : []);
+
+/** Стабильные пустышки: кешу и хукам нужен неизменный identity начального значения. */
+const NO_EVENTS: ScheduleEvent[] = [];
+const NO_CLASSROOMS: Classroom[] = [];
+const NO_GROUPS: Group[] = [];
+
 interface ClipboardEvent {
   event: ScheduleEvent;
   action: 'copy';
@@ -34,20 +48,18 @@ const SchedulePage: React.FC = () => {
   const { t } = useTranslation();
   const { canWrite } = usePermissions();
   const { canAccess } = usePlanGate();
-  const { activeBranchId } = useBranch();
+  const { activeBranchId, branches, loading: branchLoading } = useBranch();
+  const { firebaseUser, organizationId } = useAuth();
   // RBAC is the single access surface: the server gates on schedule:write, so a
   // teacher holding that grant must see the same controls a manager does.
   const canEdit = canWrite('schedule');
   const [aiReviewOpen, setAiReviewOpen] = useState(false);
   const [aiEvents, setAiEvents] = useState<any[]>([]);
 
-  const [timetableEvents, setTimetableEvents] = useState<ScheduleEvent[]>([]);
-  const [calendarEvents, setCalendarEvents] = useState<ScheduleEvent[]>([]);
-  const [classrooms, setClassrooms] = useState<Classroom[]>([]);
   /** '' — все кабинеты, '__none__' — занятия без кабинета, иначе id кабинета. */
   const [classroomFilter, setClassroomFilter] = useState('');
-  const [groups, setGroups] = useState<Group[]>([]);
-  const [loading, setLoading] = useState(true);
+  /** Явно свёрнутые/развёрнутые кабинеты. Чего здесь нет — решает наличие занятий. */
+  const [roomOpen, setRoomOpen] = useState<Record<string, boolean>>({});
   const [current, setCurrent] = useState(new Date());
   const [showCreate, setShowCreate] = useState(false);
   const [form, setForm] = useState<{
@@ -78,6 +90,8 @@ const SchedulePage: React.FC = () => {
   // Drag & Drop state
   const [draggedEvent, setDraggedEvent] = useState<ScheduleEvent | null>(null);
   const [dragOverDay, setDragOverDay] = useState<number | null>(null);
+  /** Ключ секции-кабинета под курсором: подсветить надо одну ячейку, а не колонку во всех таблицах. */
+  const [dragOverRoom, setDragOverRoom] = useState<string | null>(null);
   const [dragOverHour, setDragOverHour] = useState<number | null>(null);
   const [isDragging, setIsDragging] = useState(false);
 
@@ -102,25 +116,60 @@ const SchedulePage: React.FC = () => {
   const weekStart = useMemo(() => { const d = new Date(current); d.setDate(d.getDate() - d.getDay() + 1); return d; }, [current]);
   const weekDays = useMemo(() => Array.from({ length: 7 }, (_, i) => { const d = new Date(weekStart); d.setDate(d.getDate() + i); return d; }), [weekStart]);
 
-  // Load all data
-  const loadAll = () => {
-    setLoading(true); setError('');
-    Promise.all([
-      orgGetTimetable().then(setTimetableEvents).catch(() => {}),
-      (() => {
-        const getLocalDateStr = (d: Date) => {
-          return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-        };
-        const from = getLocalDateStr(weekDays[0]);
-        const to = getLocalDateStr(weekDays[6]);
-        return orgGetSchedule(from, to).then(setCalendarEvents).catch(() => {});
-      })(),
-      orgGetGroups().then(setGroups).catch(() => {}),
-      orgListClassrooms().then((r: any) => setClassrooms(Array.isArray(r) ? r : [])).catch(() => {}),
-    ]).finally(() => setLoading(false));
-  };
+  // ======== ДАННЫЕ ========
+  // Каждый список кешируется под своим ключом и живёт своей жизнью: смена недели
+  // больше не перезапрашивает недельное расписание, группы и кабинеты — они от
+  // недели не зависят. Экран рисуется из прошлого ответа сразу, сеть догоняет.
+  //
+  // Ключ описывает ВСЁ, от чего зависит ответ: пользователь (кеш переживает выход
+  // из аккаунта), организация и активный филиал (его штампует GET-перехватчик
+  // api.ts, в аргументах вызова он не виден).
+  //
+  // Пока филиал не определился, ключа НЕТ и запросов тоже: иначе первый ответ
+  // приходил бы по всей организации, попадал в кеш под «ещё не выбранным»
+  // филиалом и на секунду показывал чужое здание.
+  const ready = !!firebaseUser && !branchLoading;
+  const scope = cacheKey(firebaseUser?.uid, organizationId, activeBranchId);
+  const weekFrom = localDateStr(weekDays[0]);
+  const weekTo = localDateStr(weekDays[6]);
 
-  useEffect(loadAll, [weekDays, activeBranchId]);
+  const timetableRes = useCachedResource<ScheduleEvent[]>(
+    ready ? cacheKey('sch.timetable', scope) : null,
+    () => orgGetTimetable().then(asList<ScheduleEvent>),
+    NO_EVENTS,
+  );
+  const weekRes = useCachedResource<ScheduleEvent[]>(
+    ready ? cacheKey('sch.week', scope, weekFrom, weekTo) : null,
+    () => orgGetSchedule(weekFrom, weekTo).then(asList<ScheduleEvent>),
+    NO_EVENTS,
+  );
+  const classroomsRes = useCachedResource<Classroom[]>(
+    ready ? cacheKey('sch.classrooms', scope) : null,
+    () => orgListClassrooms().then(asList<Classroom>),
+    NO_CLASSROOMS,
+  );
+  const groupsRes = useCachedResource<Group[]>(
+    ready ? cacheKey('sch.groups', scope) : null,
+    () => orgGetGroups().then(asList<Group>),
+    NO_GROUPS,
+  );
+
+  const timetableEvents = timetableRes.data;
+  const setTimetableEvents = timetableRes.setData;
+  const calendarEvents = weekRes.data;
+  const setCalendarEvents = weekRes.setData;
+  const classrooms = classroomsRes.data;
+  const groups = groupsRes.data;
+
+  // Спиннер во весь экран — только пока ждём ПЕРВЫЙ ответ и показывать нечего.
+  // Есть данные прошлого захода → рисуем их и обновляем на месте. Ответ, который
+  // не пришёл (нет прав на справочник кабинетов, оборвалась сеть), спиннер тоже
+  // снимает: иначе страница крутилась бы вечно из-за одного из четырёх списков.
+  const awaitingFirst = (r: { loaded: boolean; busy: boolean }) => !r.loaded && r.busy;
+  const loading = !ready || (activeTab === 'timetable'
+    ? awaitingFirst(timetableRes) || awaitingFirst(classroomsRes)
+    : awaitingFirst(weekRes));
+  const refreshing = timetableRes.busy || weekRes.busy || classroomsRes.busy || groupsRes.busy;
 
   const prevWeek = () => setCurrent((d) => { const n = new Date(d); n.setDate(n.getDate() - 7); return n; });
   const nextWeek = () => setCurrent((d) => { const n = new Date(d); n.setDate(n.getDate() + 7); return n; });
@@ -185,6 +234,8 @@ const SchedulePage: React.FC = () => {
   const [showPasteModal, setShowPasteModal] = useState(false);
   const [pasteForm, setPasteForm] = useState<{
     dayOfWeek: number; startTime: string; endTime: string; date: string; branchId?: string;
+    /** Кабинет, в чью таблицу вставляют. Не задан — занятие сохраняет кабинет источника. */
+    room?: { classroomId: string | null; location: string };
   }>({ dayOfWeek: 0, startTime: '09:00', endTime: '10:00', date: '' });
 
   const handlePaste = async (force = false) => {
@@ -197,12 +248,17 @@ const SchedulePage: React.FC = () => {
 
       const startMins = timeToMins(pasteForm.startTime) ?? 0;
       const pastedDuration = Math.max(5, (timeToMins(pasteForm.endTime) ?? startMins + DEFAULT_SLOT_MINUTES) - startMins);
+      // Вставка из таблицы кабинета кладёт занятие в ЭТОТ кабинет; из меню и по
+      // Ctrl+V кабинет наследуется от источника.
+      const room = pasteForm.room
+        ?? { classroomId: (src as any).classroomId || null, location: src.location || '' };
 
       if (!force) {
         const conflict = checkConflict({
           ...pasteForm,
           recurring: isRecurring,
-          location: src.location,
+          classroomId: room.classroomId,
+          location: room.location,
           teacherId: (src as any).teacherId,
           groupId: (src as any).groupId,
           duration: pastedDuration,
@@ -223,8 +279,8 @@ const SchedulePage: React.FC = () => {
         startTime: pasteForm.startTime,
         endTime: pasteForm.endTime,
         duration: pastedDuration,
-        classroomId: (src as any).classroomId || null,
-        location: src.location,
+        classroomId: room.classroomId,
+        location: room.location,
         groupId: (src as any).groupId,
         courseId: (src as any).courseId,
         teacherId: (src as any).teacherId,
@@ -283,27 +339,39 @@ const SchedulePage: React.FC = () => {
   const handleDragEnd = useCallback(() => {
     setDraggedEvent(null);
     setDragOverDay(null);
+    setDragOverRoom(null);
     setDragOverHour(null);
     setIsDragging(false);
   }, []);
 
-  const handleDragOverDay = useCallback((e: React.DragEvent, dayIdx: number) => {
+  const handleDragOverDay = useCallback((e: React.DragEvent, dayIdx: number, roomKey: string) => {
     e.preventDefault();
     e.dataTransfer.dropEffect = 'move';
     setDragOverDay(dayIdx);
+    setDragOverRoom(roomKey);
   }, []);
 
   const handleDragLeaveDay = useCallback(() => {
     setDragOverDay(null);
+    setDragOverRoom(null);
   }, []);
 
-  const handleDropOnDay = useCallback(async (e: React.DragEvent, targetDayOfWeek: number) => {
+  /**
+   * Перенос урока внутри недельной сетки. Таблиц теперь столько, сколько
+   * кабинетов, поэтому перетаскивание меняет и день, и кабинет: строка «куда»
+   * определяется тем, в чью таблицу отпустили.
+   */
+  const handleDropOnDay = useCallback(async (e: React.DragEvent, targetDayOfWeek: number, section: RoomSection) => {
     e.preventDefault();
     setDragOverDay(null);
+    setDragOverRoom(null);
     if (!draggedEvent || !canEdit) return;
 
     const fromDay = (draggedEvent as any).dayOfWeek;
-    if (fromDay === targetDayOfWeek) {
+    const room = roomFieldsOf(section);
+    const sameSlot = fromDay === targetDayOfWeek
+      && sectionKeyOf(draggedEvent, classrooms) === section.key;
+    if (sameSlot) {
       handleDragEnd();
       return;
     }
@@ -312,20 +380,24 @@ const SchedulePage: React.FC = () => {
       await orgUpdateEvent({
         id: draggedEvent.id,
         dayOfWeek: targetDayOfWeek,
+        classroomId: room.classroomId,
+        location: room.location,
       });
       setTimetableEvents((prev) =>
         prev.map((ev) =>
           ev.id === draggedEvent.id
-            ? { ...ev, dayOfWeek: targetDayOfWeek } as any
+            ? { ...ev, dayOfWeek: targetDayOfWeek, ...room } as any
             : ev
         )
       );
       showToast(t('schedule.moved', 'Занятие перемещено!'));
     } catch (err: any) {
+      // 409 = накладка, сервер видит всю организацию. Текст объясняет, чем занято;
+      // «поставить всё равно» живёт в модалке правки, а не в перетаскивании.
       setError(err.message || t('common.error'));
     }
     handleDragEnd();
-  }, [draggedEvent, canEdit, handleDragEnd, showToast, t]);
+  }, [draggedEvent, canEdit, classrooms, setTimetableEvents, handleDragEnd, showToast, t]);
 
   // ======== DRAG & DROP — EVENTS (between dates / hours) ========
   const handleEventDragStart = useCallback((e: React.DragEvent, event: ScheduleEvent) => {
@@ -383,7 +455,7 @@ const SchedulePage: React.FC = () => {
       setError(err.message || t('common.error'));
     }
     handleDragEnd();
-  }, [draggedEvent, canEdit, weekDays, handleDragEnd, showToast, t]);
+  }, [draggedEvent, canEdit, weekDays, setCalendarEvents, handleDragEnd, showToast, t]);
 
   const checkConflict = (testEv: Partial<ScheduleEvent>, ignoreId?: string) => {
     // A recurring lesson is identified by its weekday, a one-off by its date.
@@ -519,11 +591,15 @@ const SchedulePage: React.FC = () => {
    * modal always opened at 09:00, so every second lesson of a day collided with the
    * first one and the conflict check read as "you may only book one lesson per day".
    */
-  const nextFreeStart = (dayOfWeek: number, date?: string) => {
+  const nextFreeStart = (dayOfWeek: number, date?: string, section?: RoomSection) => {
     const taken = [
       ...timetableEvents.filter(e => e.dayOfWeek === dayOfWeek),
       ...(date ? calendarEvents.filter(e => e.date === date) : []),
-    ].map(slotSpan).filter((s): s is [number, number] => s !== null);
+    ]
+      // Занятость считаем по тому кабинету, в чью таблицу нажали: кабинет свободен
+      // в 09:00, даже если в это время идёт урок в соседнем.
+      .filter(e => !section || sectionKeyOf(e, classrooms) === section.key)
+      .map(slotSpan).filter((s): s is [number, number] => s !== null);
 
     for (const h of HOURS) {
       const slot: [number, number] = [h * 60, h * 60 + DEFAULT_SLOT_MINUTES];
@@ -536,10 +612,15 @@ const SchedulePage: React.FC = () => {
    * Opens the create modal on a clean form. It must REPLACE the state, not merge into
    * it: a date left over from the events tab used to survive into a timetable create
    * and silently point the conflict check at the wrong weekday.
+   *
+   * `section` — кабинет, из чьей таблицы нажали «Добавить»: он подставляется в
+   * форму вместе со своим филиалом, иначе список кабинетов в модалке окажется
+   * из другого здания и подставленный кабинет отрисуется пустой строкой.
    */
-  const openCreate = (prefill?: { dayOfWeek?: number; date?: string; startTime?: string }) => {
+  const openCreate = (prefill?: { dayOfWeek?: number; date?: string; startTime?: string; section?: RoomSection }) => {
     const startTime = prefill?.startTime || '09:00';
     const startMins = timeToMins(startTime) ?? 9 * 60;
+    const room = prefill?.section ? roomFieldsOf(prefill.section) : null;
     setError(''); setConflictRetry(null);
     setForm({
       title: '',
@@ -549,9 +630,9 @@ const SchedulePage: React.FC = () => {
       endTime: minsToTime(startMins + DEFAULT_SLOT_MINUTES),
       type: activeTab === 'timetable' ? 'lesson' : 'exam',
       duration: DEFAULT_SLOT_MINUTES,
-      location: '',
-      classroomId: null,
-      branchId: activeBranchId || undefined,
+      location: room?.location || '',
+      classroomId: room?.classroomId || null,
+      branchId: prefill?.section?.classroom?.branchId || activeBranchId || undefined,
       groupId: undefined,
       editingId: null,
     });
@@ -582,23 +663,44 @@ const SchedulePage: React.FC = () => {
   };
 
   /**
+   * Недельное расписание, разложенное по кабинетам: одна таблица на кабинет.
+   * Кабинет справочника остаётся в списке, даже когда занятий в нём нет, — это
+   * готовое место, куда ставят урок, а не отсутствующая строка.
+   */
+  const roomSections = useMemo(
+    () => groupByRoom(timetableEvents, classrooms), [timetableEvents, classrooms]);
+
+  /**
+   * Справочник кабинетов не заведён и делить нечего: показываем одну таблицу без
+   * заголовка — ровно так, как страница выглядела до разбивки по кабинетам.
+   */
+  const bareTimetable = roomSections.length === 1 && roomSections[0].key === NO_ROOM;
+
+  /**
    * Фильтр по кабинету. Применяется ТОЛЬКО к отрисовке: проверка накладок обязана
    * видеть все занятия, иначе выбранный фильтр «разрешал» бы ставить урок поверх
    * скрытого.
    */
-  const matchesClassroom = useCallback((ev: ScheduleEvent) => {
-    if (!classroomFilter) return true;
-    if (classroomFilter === '__none__') return !roomLabel(ev);
-    const c = classrooms.find(x => x.id === classroomFilter);
-    // Кабинет опознаётся и по ссылке, и по названию — иначе занятия, ещё не
-    // переехавшие на справочник, выпадали бы из своего же кабинета.
-    return c ? sameRoom({ classroomId: c.id, classroomName: c.name }, ev) : true;
-  }, [classroomFilter, classrooms]);
+  const visibleSections = useMemo(
+    () => (classroomFilter ? roomSections.filter(s => s.key === classroomFilter) : roomSections),
+    [roomSections, classroomFilter]);
 
-  const visibleTimetable = useMemo(
-    () => timetableEvents.filter(matchesClassroom), [timetableEvents, matchesClassroom]);
+  // Сетка событий остаётся общей, но кабинет опознаётся тем же разбором, что и в
+  // таблицах: иначе фильтр и заголовки таблиц отвечали бы по-разному.
   const visibleCalendar = useMemo(
-    () => calendarEvents.filter(matchesClassroom), [calendarEvents, matchesClassroom]);
+    () => (classroomFilter
+      ? calendarEvents.filter(ev => sectionKeyOf(ev, classrooms) === classroomFilter)
+      : calendarEvents),
+    [calendarEvents, classrooms, classroomFilter]);
+
+  /**
+   * Секция раскрыта, пока её не свернули руками; пустые кабинеты по умолчанию
+   * сложены — иначе справочник из тридцати аудиторий превращает страницу в
+   * километр пустых таблиц.
+   */
+  const isRoomOpen = (section: RoomSection) => roomOpen[section.key] ?? section.events.length > 0;
+  const toggleRoom = (key: string, open: boolean) =>
+    setRoomOpen(prev => ({ ...prev, [key]: !open }));
 
   // Какие поля показывать в модалке. При правке решает сама запись, а не вкладка:
   // недельный урок нельзя молча превратить в разовое событие только потому, что
@@ -615,6 +717,249 @@ const SchedulePage: React.FC = () => {
     const startMins = h * 60 + m;
     const endMins = startMins + (ev.duration || 45);
     return currentMins >= startMins && currentMins < endMins;
+  };
+
+  /** Подпись кабинета в шапке его таблицы. */
+  const sectionTitle = (section: RoomSection) =>
+    section.kind === 'none' ? t('classrooms.withoutRoom', 'Без кабинета') : section.title;
+
+  /**
+   * Недельная таблица ОДНОГО кабинета: семь колонок-дней, строки — уроки по
+   * порядку. Сетка по часам здесь не нужна: второй урок дня идёт после первого
+   * независимо от того, сколько между ними минут.
+   *
+   * `bare` — в организации ещё не заведено ни одного кабинета и все занятия
+   * лежат в единственной секции «без кабинета»: шапка над одной таблицей была бы
+   * шумом, поэтому её не рисуем.
+   */
+  const renderRoomSection = (section: RoomSection, bare: boolean) => {
+    const lessonsByDay = dayNames.map((_, dayIdx) =>
+      section.events
+        .filter(e => (e as any).dayOfWeek === dayIdx)
+        .sort((a, b) => (a.startTime || '').localeCompare(b.startTime || ''))
+    );
+    const maxRows = Math.max(1, ...lessonsByDay.map(d => d.length));
+    // Выбранный фильтр раскрывает кабинет всегда: иначе он показал бы одну
+    // свёрнутую полоску вместо расписания, за которым в него и пришли.
+    const open = bare || !!classroomFilter || isRoomOpen(section);
+    // Филиал в подписи — только под «Все филиалы»: одноимённые кабинеты двух
+    // зданий иначе неразличимы, а внутри одного филиала это лишнее слово.
+    const branchName = !activeBranchId && section.classroom?.branchId
+      ? branches.find(b => b.id === section.classroom?.branchId)?.name || null
+      : null;
+
+    return (
+      <div key={section.key} className="bg-white dark:bg-slate-800/80 border border-slate-200/80 dark:border-slate-700/50 rounded-2xl overflow-hidden shadow-sm backdrop-blur-sm">
+        {!bare && (
+          <button
+            type="button"
+            onClick={(e) => { e.stopPropagation(); toggleRoom(section.key, open); }}
+            aria-expanded={open}
+            className="w-full flex items-center gap-2 px-4 py-3 text-left hover:bg-slate-50 dark:hover:bg-slate-700/30 transition-colors"
+          >
+            <ChevronDown className={`w-4 h-4 shrink-0 text-slate-400 transition-transform ${open ? '' : '-rotate-90'}`} />
+            <MapPin className="w-4 h-4 shrink-0 text-slate-400" />
+            <span className="text-sm font-bold text-slate-900 dark:text-white truncate">{sectionTitle(section)}</span>
+            {section.classroom?.capacity ? (
+              <span className="shrink-0 text-[11px] font-semibold text-slate-500 dark:text-slate-400">
+                {section.classroom.capacity} {t('classrooms.seatsShort', 'мест')}
+              </span>
+            ) : null}
+            {branchName && (
+              <span className="shrink-0 text-[11px] font-semibold text-slate-500 dark:text-slate-400 truncate">· {branchName}</span>
+            )}
+            {section.kind === 'legacy' && (
+              <span className="shrink-0 text-[10px] font-bold uppercase tracking-wider text-amber-600 dark:text-amber-400">
+                {t('classrooms.notInCatalog', 'не из справочника')}
+              </span>
+            )}
+            <span className={`ml-auto shrink-0 text-[11px] font-bold px-2 py-0.5 rounded-lg ${
+              section.events.length
+                ? 'bg-slate-100 dark:bg-slate-700/60 text-slate-600 dark:text-slate-300'
+                : 'text-slate-500 dark:text-slate-400'
+            }`}>
+              {section.events.length || t('classrooms.noLessons', 'нет занятий')}
+            </span>
+          </button>
+        )}
+
+        {open && (
+          <>
+            {/* ── Шапка таблицы: дни недели ── */}
+            <div className={`grid grid-cols-[48px_repeat(7,1fr)] ${bare ? 'border-b' : 'border-y'} border-slate-200 dark:border-slate-700/60`}>
+              {/* # column */}
+              <div className="px-1 py-3 border-r border-slate-100 dark:border-slate-700/50 bg-slate-50/80 dark:bg-slate-800/60 flex items-center justify-center">
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">#</span>
+              </div>
+              {dayNames.map((dayName, dayIdx) => {
+                const isToday = dayIdx === todayDayOfWeek;
+                const isDropTarget = isDragging && dragOverRoom === section.key && dragOverDay === dayIdx;
+                return (
+                  <div
+                    key={dayIdx}
+                    className={`px-2 py-3 text-center border-r border-slate-100 dark:border-slate-700/50 last:border-r-0 transition-colors
+                      ${isDropTarget ? 'bg-slate-100 dark:bg-slate-700/30' : isToday ? 'bg-slate-100 dark:bg-slate-700/30' : 'bg-slate-50/50 dark:bg-slate-800/40'}`}
+                    onDragOver={(e) => handleDragOverDay(e, dayIdx, section.key)}
+                    onDragLeave={handleDragLeaveDay}
+                    onDrop={(e) => handleDropOnDay(e, dayIdx, section)}
+                  >
+                    <p className={`text-[10px] font-bold uppercase tracking-wider ${isToday ? 'text-slate-900 dark:text-white' : 'text-slate-400 dark:text-slate-500'}`}>{dayNamesFull[dayIdx]}</p>
+                    <p className={`text-sm font-black mt-0.5 ${isToday ? 'text-slate-900 dark:text-white' : 'text-slate-600 dark:text-slate-300'}`}>{dayName}</p>
+                    {isToday && <span className="inline-block mt-1 text-[8px] font-bold text-white bg-slate-900 dark:bg-white dark:text-slate-900 px-1.5 py-px rounded-full">{t('schedule.today', 'Сегодня')}</span>}
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* ── Тело таблицы: строки уроков ── */}
+            <div>
+              {Array.from({ length: maxRows }).map((_, rowIdx) => (
+                <div key={rowIdx} className="grid grid-cols-[48px_repeat(7,1fr)] border-b border-slate-100 dark:border-slate-700/30 last:border-b-0">
+                  {/* Row number */}
+                  <div className="border-r border-slate-100 dark:border-slate-700/50 bg-slate-50/50 dark:bg-slate-800/30 flex items-center justify-center">
+                    <span className="text-[10px] font-bold text-slate-400">{rowIdx + 1}</span>
+                  </div>
+                  {dayNames.map((_, dayIdx) => {
+                    const lesson = lessonsByDay[dayIdx][rowIdx];
+                    const isDropTarget = isDragging && dragOverRoom === section.key && dragOverDay === dayIdx;
+                    const isBeingDragged = lesson && draggedEvent?.id === lesson.id;
+                    const isSelected = lesson && selectedEvent?.event.id === lesson.id;
+                    const ongoing = lesson && isEventOngoing(lesson, true);
+
+                    return (
+                      <div
+                        key={dayIdx}
+                        className={`relative border-r border-slate-100 dark:border-slate-700/50 last:border-r-0 min-h-[72px] min-w-0 p-1 transition-colors
+                          ${isDropTarget ? 'bg-slate-100/50 dark:bg-slate-700/20' : ''}`}
+                        onDragOver={(e) => handleDragOverDay(e, dayIdx, section.key)}
+                        onDragLeave={handleDragLeaveDay}
+                        onDrop={(e) => handleDropOnDay(e, dayIdx, section)}
+                      >
+                        {lesson ? (
+                          <div
+                            className={`group/card relative h-full rounded-xl p-2 border transition-all duration-200 overflow-hidden ${
+                              canEdit ? 'cursor-grab active:cursor-grabbing' : ''
+                            } ${isBeingDragged ? 'opacity-30 scale-95' : 'hover:shadow-md hover:-translate-y-0.5'} ${
+                              ongoing
+                                ? 'bg-rose-50 dark:bg-rose-900/20 border-rose-500/50 ring-2 ring-rose-500/30'
+                                : isSelected
+                                  ? 'bg-slate-100 dark:bg-slate-700/40 border-slate-300 dark:border-slate-600 ring-2 ring-slate-400/30'
+                                  : 'bg-white dark:bg-slate-800 border-slate-100 dark:border-slate-700/50 hover:border-slate-300 dark:hover:border-slate-600'
+                            }`}
+                            draggable={canEdit}
+                            onDragStart={(e) => { e.stopPropagation(); handleDragStart(e, lesson); }}
+                            onDragEnd={handleDragEnd}
+                            onClick={(e) => { e.stopPropagation(); canEdit && setSelectedEvent({ event: lesson, isTimetable: true }); }}
+                            onDoubleClick={(e) => { e.stopPropagation(); if (canEdit) openEdit(lesson, true); }}
+                            onContextMenu={(e) => handleContextMenu(e, lesson, true)}
+                          >
+                            {/* Left accent bar */}
+                            <div className="absolute left-0 top-0 bottom-0 w-1 rounded-l-xl bg-slate-900 dark:bg-white/80" />
+
+                            {/* Action buttons */}
+                            <div className="absolute top-1 right-1 flex items-center gap-0.5 opacity-0 group-hover/card:opacity-100 transition-opacity z-10">
+                              {canEdit && (
+                                <button
+                                  onClick={(e) => { e.stopPropagation(); handleCopy(lesson); }}
+                                  className="p-1 rounded-md text-slate-400 hover:text-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700 transition-all"
+                                  title={t('schedule.copy', 'Копировать')}
+                                >
+                                  <Copy className="w-3 h-3" />
+                                </button>
+                              )}
+                              <button
+                                onClick={(e) => { e.stopPropagation(); handleDelete(lesson.id, true); }}
+                                className="p-1 rounded-md text-red-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/30 transition-all"
+                              >
+                                <Trash2 className="w-3 h-3" />
+                              </button>
+                            </div>
+
+                            {/* Content */}
+                            <div className="pl-2 min-w-0 overflow-hidden">
+                              <p className="text-[12px] font-bold text-slate-800 dark:text-white leading-snug truncate pr-8">{lesson.title}</p>
+                              <span className={`text-[10px] font-medium inline-flex items-center gap-0.5 mt-0.5 ${ongoing ? 'text-rose-600 dark:text-rose-400 font-bold' : 'text-slate-500 dark:text-slate-400'}`}>
+                                <Clock className={`w-2.5 h-2.5 shrink-0 ${ongoing ? 'text-rose-500 animate-pulse' : 'text-slate-400'}`} />{lesson.startTime}–{lesson.endTime}
+                              </span>
+                              {/* Кабинет назван в шапке таблицы — в плитке он был бы повтором,
+                                  кроме случая единственной таблицы «без кабинета». */}
+                              {bare && roomLabel(lesson) && (
+                                <span className="text-[10px] font-medium inline-flex items-center gap-0.5 mt-0.5 text-slate-500 dark:text-slate-400 max-w-full">
+                                  <MapPin className="w-2.5 h-2.5 shrink-0 text-slate-400" />
+                                  <span className="truncate">{roomLabel(lesson)}</span>
+                                </span>
+                              )}
+                              {lesson.teacherName && (
+                                <span className="block text-[10px] font-medium text-slate-500 dark:text-slate-400 truncate mt-0.5">
+                                  {lesson.teacherName}
+                                </span>
+                              )}
+                            </div>
+
+                            {/* Drag handle */}
+                            {canEdit && <GripVertical className="absolute bottom-1 right-1 w-3 h-3 text-slate-300 dark:text-slate-600 opacity-0 group-hover/card:opacity-60 transition-opacity" />}
+                          </div>
+                        ) : (
+                          /* Empty cell — drop target */
+                          isDropTarget && (
+                            <div className="h-full flex items-center justify-center">
+                              <div className="text-[10px] font-bold text-slate-500 dark:text-slate-400 flex items-center gap-1 animate-pulse">
+                                <Plus className="w-3.5 h-3.5" />{t('schedule.dropHere', 'Сюда')}
+                              </div>
+                            </div>
+                          )
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              ))}
+            </div>
+
+            {/* ── Paste / Add strip ── */}
+            {canEdit && !isDragging && (
+              <div className="border-t border-slate-200 dark:border-slate-700/50 bg-slate-50/50 dark:bg-slate-800/30">
+                <div className="grid grid-cols-[48px_repeat(7,1fr)]">
+                  <div className="border-r border-slate-100 dark:border-slate-700/50" />
+                  {dayNames.map((_, dayIdx) => (
+                    <button
+                      key={dayIdx}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        // Занятие заводится сразу в тот кабинет, из чьей таблицы нажали,
+                        // и в филиал этого кабинета — иначе выбор пришлось бы повторять руками.
+                        const branchId = section.classroom?.branchId || activeBranchId || undefined;
+                        if (clipboard) {
+                          setPasteForm({
+                            dayOfWeek: dayIdx,
+                            startTime: clipboard.event.startTime || '09:00',
+                            endTime: clipboard.event.endTime || '10:00',
+                            date: '',
+                            branchId,
+                            room: roomFieldsOf(section),
+                          });
+                          setShowPasteModal(true);
+                        } else {
+                          openCreate({ dayOfWeek: dayIdx, startTime: nextFreeStart(dayIdx, undefined, section), section });
+                        }
+                      }}
+                      className={`border-r border-slate-100 dark:border-slate-700/50 last:border-r-0 py-2 flex items-center justify-center gap-1 text-[10px] font-bold transition-colors ${
+                        clipboard
+                          ? 'text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/20'
+                          : 'text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700/30'
+                      }`}
+                    >
+                      {clipboard ? <Clipboard className="w-3 h-3" /> : <Plus className="w-3 h-3" />}
+                      {clipboard ? t('schedule.paste', 'Вставить') : t('schedule.add', 'Добавить')}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+          </>
+        )}
+      </div>
+    );
   };
 
   const renderEventBlock = (ev: ScheduleEvent, top: number, styleProps?: { left?: string; width?: string }) => {
@@ -662,6 +1007,14 @@ const SchedulePage: React.FC = () => {
             {t('nav.schedule')}
           </h1>
           <p className="text-sm text-slate-500 dark:text-slate-400 max-w-lg mt-1">{t('org.schedule.subtitle', 'Расписание занятий, экзаменов и мероприятий')}</p>
+          {/* Данные на экране из прошлого ответа — говорим, что сверяемся с сервером.
+              Спиннер во весь экран здесь был бы обманом: показывать уже есть что. */}
+          {refreshing && !loading && (
+            <span className="mt-1 inline-flex items-center gap-1.5 text-[11px] font-semibold text-slate-500 dark:text-slate-400">
+              <RefreshCw className="w-3 h-3 animate-spin" />
+              {t('schedule.refreshing', 'Обновляем…')}
+            </span>
+          )}
         </div>
 
         {/* Modern Tabs */}
@@ -683,8 +1036,9 @@ const SchedulePage: React.FC = () => {
         </div>
 
         <div className="flex items-center gap-2 ml-auto">
-          {/* Фильтр по кабинету — прячем, пока справочник пуст, чтобы не занимать место. */}
-          {classrooms.length > 0 && (
+          {/* Фильтр = переход к одной таблице. Список строим из тех же секций, что
+              и таблицы, поэтому в нём нет вариантов, которым ничего не соответствует. */}
+          {roomSections.length > 1 && (
             <label className="flex items-center gap-1.5 shrink-0">
               <span className="sr-only">{t('schedule.filterByClassroom', 'Фильтр по кабинету')}</span>
               <MapPin className="w-4 h-4 text-slate-400 shrink-0" />
@@ -698,8 +1052,9 @@ const SchedulePage: React.FC = () => {
                 }`}
               >
                 <option value="">{t('classrooms.all', 'Все кабинеты')}</option>
-                <option value="__none__">{t('classrooms.withoutRoom', 'Без кабинета')}</option>
-                {classrooms.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                {roomSections.map(s => (
+                  <option key={s.key} value={s.key}>{sectionTitle(s)}</option>
+                ))}
               </select>
             </label>
           )}
@@ -775,199 +1130,21 @@ const SchedulePage: React.FC = () => {
           {/* ============================================== */}
           {/* TAB 1: TIMETABLE VIEW — BY DAY OF WEEK         */}
           {/* ============================================== */}
-          {activeTab === 'timetable' && (() => {
-            // Gather lessons per day, sorted by time
-            const lessonsByDay = dayNames.map((_, dayIdx) =>
-              visibleTimetable
-                .filter(e => (e as any).dayOfWeek === dayIdx)
-                .sort((a, b) => (a.startTime || '').localeCompare(b.startTime || ''))
-            );
-            const maxRows = Math.max(1, ...lessonsByDay.map(d => d.length));
-
-            return (
-              <div className="bg-white dark:bg-slate-800/80 border border-slate-200/80 dark:border-slate-700/50 rounded-2xl overflow-hidden shadow-sm backdrop-blur-sm">
-                {/* ── Table Header: Days of week ── */}
-                <div className="grid grid-cols-[48px_repeat(7,1fr)] border-b border-slate-200 dark:border-slate-700/60">
-                  {/* # column */}
-                  <div className="px-1 py-3 border-r border-slate-100 dark:border-slate-700/50 bg-slate-50/80 dark:bg-slate-800/60 flex items-center justify-center">
-                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">#</span>
-                  </div>
-                  {dayNames.map((dayName, dayIdx) => {
-                    const isToday = dayIdx === todayDayOfWeek;
-                    const isDropTarget = isDragging && dragOverDay === dayIdx;
-                    return (
-                      <div
-                        key={dayIdx}
-                        className={`px-2 py-3 text-center border-r border-slate-100 dark:border-slate-700/50 last:border-r-0 transition-colors
-                          ${isDropTarget ? 'bg-slate-100 dark:bg-slate-700/30' : isToday ? 'bg-slate-100 dark:bg-slate-700/30' : 'bg-slate-50/50 dark:bg-slate-800/40'}`}
-                        onDragOver={(e) => handleDragOverDay(e, dayIdx)}
-                        onDragLeave={handleDragLeaveDay}
-                        onDrop={(e) => handleDropOnDay(e, dayIdx)}
-                      >
-                        <p className={`text-[10px] font-bold uppercase tracking-wider ${isToday ? 'text-slate-900 dark:text-white' : 'text-slate-400 dark:text-slate-500'}`}>{dayNamesFull[dayIdx]}</p>
-                        <p className={`text-sm font-black mt-0.5 ${isToday ? 'text-slate-900 dark:text-white' : 'text-slate-600 dark:text-slate-300'}`}>{dayName}</p>
-                        {isToday && <span className="inline-block mt-1 text-[8px] font-bold text-white bg-slate-900 dark:bg-white dark:text-slate-900 px-1.5 py-px rounded-full">{t('schedule.today', 'Сегодня')}</span>}
-                      </div>
-                    );
-                  })}
+          {activeTab === 'timetable' && (roomSections.length === 0 ? (
+            <div className="bg-white dark:bg-slate-800/80 border border-slate-200/80 dark:border-slate-700/50 rounded-2xl py-16 flex flex-col items-center justify-center text-center shadow-sm">
+              <Calendar className="w-12 h-12 text-slate-200 dark:text-slate-700 mb-3" />
+              <p className="text-sm font-bold text-slate-400 dark:text-slate-500">{t('schedule.noLessons', 'Нет занятий')}</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {visibleSections.map((section) => renderRoomSection(section, bareTimetable))}
+              {visibleSections.length === 0 && (
+                <div className="bg-white dark:bg-slate-800/80 border border-slate-200/80 dark:border-slate-700/50 rounded-2xl py-12 text-center shadow-sm">
+                  <p className="text-sm font-bold text-slate-400 dark:text-slate-500">{t('schedule.noLessons', 'Нет занятий')}</p>
                 </div>
-
-                {/* ── Table Body: Lesson rows ── */}
-                <div>
-                  {Array.from({ length: maxRows }).map((_, rowIdx) => (
-                    <div key={rowIdx} className="grid grid-cols-[48px_repeat(7,1fr)] border-b border-slate-100 dark:border-slate-700/30 last:border-b-0">
-                      {/* Row number */}
-                      <div className="border-r border-slate-100 dark:border-slate-700/50 bg-slate-50/50 dark:bg-slate-800/30 flex items-center justify-center">
-                        <span className="text-[10px] font-bold text-slate-400">{rowIdx + 1}</span>
-                      </div>
-                      {dayNames.map((_, dayIdx) => {
-                        const lesson = lessonsByDay[dayIdx][rowIdx];
-                        const isDropTarget = isDragging && dragOverDay === dayIdx;
-                        const isBeingDragged = lesson && draggedEvent?.id === lesson.id;
-                        const isSelected = lesson && selectedEvent?.event.id === lesson.id;
-                        const ongoing = lesson && isEventOngoing(lesson, true);
-
-                         return (
-                          <div
-                            key={dayIdx}
-                            className={`relative border-r border-slate-100 dark:border-slate-700/50 last:border-r-0 min-h-[72px] min-w-0 p-1 transition-colors
-                              ${isDropTarget ? 'bg-slate-100/50 dark:bg-slate-700/20' : ''}`}
-                            onDragOver={(e) => handleDragOverDay(e, dayIdx)}
-                            onDragLeave={handleDragLeaveDay}
-                            onDrop={(e) => handleDropOnDay(e, dayIdx)}
-                          >
-                            {lesson ? (
-                              <div
-                                className={`group/card relative h-full rounded-xl p-2 border transition-all duration-200 overflow-hidden ${
-                                  canEdit ? 'cursor-grab active:cursor-grabbing' : ''
-                                } ${isBeingDragged ? 'opacity-30 scale-95' : 'hover:shadow-md hover:-translate-y-0.5'} ${
-                                  ongoing
-                                    ? 'bg-rose-50 dark:bg-rose-900/20 border-rose-500/50 ring-2 ring-rose-500/30'
-                                    : isSelected
-                                      ? 'bg-slate-100 dark:bg-slate-700/40 border-slate-300 dark:border-slate-600 ring-2 ring-slate-400/30'
-                                      : 'bg-white dark:bg-slate-800 border-slate-100 dark:border-slate-700/50 hover:border-slate-300 dark:hover:border-slate-600'
-                                }`}
-                                draggable={canEdit}
-                                onDragStart={(e) => { e.stopPropagation(); handleDragStart(e, lesson); }}
-                                onDragEnd={handleDragEnd}
-                                onClick={(e) => { e.stopPropagation(); canEdit && setSelectedEvent({ event: lesson, isTimetable: true }); }}
-                                onDoubleClick={(e) => { e.stopPropagation(); if (canEdit) openEdit(lesson, true); }}
-                                onContextMenu={(e) => handleContextMenu(e, lesson, true)}
-                              >
-                                {/* Left accent bar */}
-                                <div className="absolute left-0 top-0 bottom-0 w-1 rounded-l-xl bg-slate-900 dark:bg-white/80" />
-
-                                {/* Action buttons */}
-                                <div className="absolute top-1 right-1 flex items-center gap-0.5 opacity-0 group-hover/card:opacity-100 transition-opacity z-10">
-                                  {canEdit && (
-                                    <button
-                                      onClick={(e) => { e.stopPropagation(); handleCopy(lesson); }}
-                                      className="p-1 rounded-md text-slate-400 hover:text-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700 transition-all"
-                                      title={t('schedule.copy', 'Копировать')}
-                                    >
-                                      <Copy className="w-3 h-3" />
-                                    </button>
-                                  )}
-                                  <button
-                                    onClick={(e) => { e.stopPropagation(); handleDelete(lesson.id, true); }}
-                                    className="p-1 rounded-md text-red-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/30 transition-all"
-                                  >
-                                    <Trash2 className="w-3 h-3" />
-                                  </button>
-                                </div>
-
-                                {/* Content */}
-                                <div className="pl-2 min-w-0 overflow-hidden">
-                                  <p className="text-[12px] font-bold text-slate-800 dark:text-white leading-snug truncate pr-8">{lesson.title}</p>
-                                  <span className={`text-[10px] font-medium inline-flex items-center gap-0.5 mt-0.5 ${ongoing ? 'text-rose-600 dark:text-rose-400 font-bold' : 'text-slate-500 dark:text-slate-400'}`}>
-                                    <Clock className={`w-2.5 h-2.5 shrink-0 ${ongoing ? 'text-rose-500 animate-pulse' : 'text-slate-400'}`} />{lesson.startTime}–{lesson.endTime}
-                                  </span>
-                                  {/* Кабинет виден сразу: раньше он был только в подсказке при наведении. */}
-                                  {roomLabel(lesson) && (
-                                    <span className="text-[10px] font-medium inline-flex items-center gap-0.5 mt-0.5 text-slate-500 dark:text-slate-400 max-w-full">
-                                      <MapPin className="w-2.5 h-2.5 shrink-0 text-slate-400" />
-                                      <span className="truncate">{roomLabel(lesson)}</span>
-                                    </span>
-                                  )}
-                                </div>
-
-                                {/* Location tooltip — appears on hover to the right */}
-                                {roomLabel(lesson) && (
-                                  <div className="absolute left-full top-1/2 -translate-y-1/2 ml-2 z-50 hidden group-hover/card:block pointer-events-none">
-                                    <div className="relative bg-slate-900 dark:bg-white text-white dark:text-slate-900 text-[11px] font-semibold px-3 py-1.5 rounded-lg shadow-xl whitespace-nowrap">
-                                      <MapPin className="w-3 h-3 inline-block mr-1 -mt-0.5" />{roomLabel(lesson)}
-                                      <div className="absolute right-full top-1/2 -translate-y-1/2 border-[5px] border-transparent border-r-slate-900 dark:border-r-white" />
-                                    </div>
-                                  </div>
-                                )}
-
-                                {/* Drag handle */}
-                                {canEdit && <GripVertical className="absolute bottom-1 right-1 w-3 h-3 text-slate-300 dark:text-slate-600 opacity-0 group-hover/card:opacity-60 transition-opacity" />}
-                              </div>
-                            ) : (
-                              /* Empty cell — drop target */
-                              isDropTarget && (
-                                <div className="h-full flex items-center justify-center">
-                                  <div className="text-[10px] font-bold text-slate-500 dark:text-slate-400 flex items-center gap-1 animate-pulse">
-                                    <Plus className="w-3.5 h-3.5" />{t('schedule.dropHere', 'Сюда')}
-                                  </div>
-                                </div>
-                              )
-                            )}
-                          </div>
-                        );
-                      })}
-                    </div>
-                  ))}
-
-                  {/* Empty state — if no lessons at all */}
-                  {maxRows <= 1 && visibleTimetable.length === 0 && (
-                    <div className="py-16 flex flex-col items-center justify-center text-center">
-                      <Calendar className="w-12 h-12 text-slate-200 dark:text-slate-700 mb-3" />
-                      <p className="text-sm font-bold text-slate-400 dark:text-slate-500">{t('schedule.noLessons', 'Нет занятий')}</p>
-                    </div>
-                  )}
-                </div>
-
-                {/* ── Paste / Add strip ── */}
-                {canEdit && !isDragging && (
-                  <div className="border-t border-slate-200 dark:border-slate-700/50 bg-slate-50/50 dark:bg-slate-800/30">
-                    <div className="grid grid-cols-[48px_repeat(7,1fr)]">
-                      <div className="border-r border-slate-100 dark:border-slate-700/50" />
-                      {dayNames.map((_, dayIdx) => (
-                        <button
-                          key={dayIdx}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            if (clipboard) {
-                              setPasteForm({
-                                dayOfWeek: dayIdx,
-                                startTime: clipboard.event.startTime || '09:00',
-                                endTime: clipboard.event.endTime || '10:00',
-                                date: '',
-                                branchId: activeBranchId || undefined
-                              });
-                              setShowPasteModal(true);
-                            } else {
-                              openCreate({ dayOfWeek: dayIdx, startTime: nextFreeStart(dayIdx) });
-                            }
-                          }}
-                          className={`border-r border-slate-100 dark:border-slate-700/50 last:border-r-0 py-2 flex items-center justify-center gap-1 text-[10px] font-bold transition-colors ${
-                            clipboard
-                              ? 'text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/20'
-                              : 'text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700/30'
-                          }`}
-                        >
-                          {clipboard ? <Clipboard className="w-3 h-3" /> : <Plus className="w-3 h-3" />}
-                          {clipboard ? t('schedule.paste', 'Вставить') : t('schedule.add', 'Добавить')}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-            );
-          })()}
+              )}
+            </div>
+          ))}
 
           {/* ============================================== */}
           {/* TAB 2: EVENTS & EXAMS GRID (Date-based)        */}

@@ -53,15 +53,31 @@ const ClassroomSelect: React.FC<ClassroomSelectProps> = ({ branchId, value, onCh
   }, [branchId]);
 
   /**
-   * Старый свободный текст, которому не нашлось кабинета в справочнике. Держим
+   * Кабинет занятия, которому не нашлось строки в загруженном справочнике. Держим
    * его отдельным пунктом, иначе открытие формы на редактирование молча стёрло бы
    * аудиторию у события.
+   *
+   * Таких случаев два, и оба обязаны выглядеть одинаково честно:
+   *  - старый свободный текст, ещё не переехавший в справочник;
+   *  - НАСТОЯЩАЯ ссылка на кабинет, которого нет в этом списке: он в архиве, в
+   *    другом филиале или список просто не отдался. Раньше select показывал в
+   *    таком случае «Без кабинета», продолжая хранить прежний classroomId, —
+   *    подпись врала о том, что сохранится.
    */
-  const legacyText = useMemo(() => {
-    if (value.classroomId || !value.location.trim()) return '';
+  const orphan = useMemo((): { label: string; linked: boolean } | null => {
+    if (loading) return null;
+    if (value.classroomId) {
+      if (classrooms.some(c => c.id === value.classroomId)) return null;
+      return {
+        label: value.location.trim() || t('classrooms.unknownRoom', 'кабинет вне списка'),
+        linked: true,
+      };
+    }
+    if (!value.location.trim()) return null;
     const key = normalizeRoom(value.location);
-    return classrooms.some(c => normalizeRoom(c.name) === key) ? '' : value.location.trim();
-  }, [value.classroomId, value.location, classrooms]);
+    if (classrooms.some(c => normalizeRoom(c.name) === key)) return null;
+    return { label: value.location.trim(), linked: false };
+  }, [loading, value.classroomId, value.location, classrooms, t]);
 
   // Свободный текст, совпавший с кабинетом справочника, привязываем сразу — иначе
   // такое событие продолжит считаться «без кабинета» на странице кабинетов.
@@ -74,7 +90,9 @@ const ClassroomSelect: React.FC<ClassroomSelectProps> = ({ branchId, value, onCh
 
   const handleSelect = (id: string) => {
     if (!id) return onChange({ classroomId: null, location: '' });
-    if (id === '__legacy__') return onChange({ classroomId: null, location: legacyText });
+    // Вернуться к исходному кабинету = оставить всё как было, вместе со ссылкой:
+    // сбрасывать её в null значило бы отвязать занятие от кабинета молча.
+    if (id === '__legacy__') return onChange({ ...value });
     const c = classrooms.find(x => x.id === id);
     onChange(c ? { classroomId: c.id, location: c.name } : { classroomId: null, location: '' });
   };
@@ -96,7 +114,11 @@ const ClassroomSelect: React.FC<ClassroomSelectProps> = ({ branchId, value, onCh
     }
   };
 
-  const selectedValue = value.classroomId || (legacyText ? '__legacy__' : '');
+  // Пункт выбираем по тому, что реально есть в списке: ссылка на отсутствующий
+  // кабинет иначе выбрала бы первый пункт — «Без кабинета».
+  const selectedValue = orphan
+    ? '__legacy__'
+    : (value.classroomId || '');
 
   return (
     <div className="space-y-2">
@@ -110,9 +132,11 @@ const ClassroomSelect: React.FC<ClassroomSelectProps> = ({ branchId, value, onCh
           <option value="">
             {loading ? t('common.loading', 'Загрузка…') : t('classrooms.none', 'Без кабинета')}
           </option>
-          {legacyText && (
+          {orphan && (
             <option value="__legacy__">
-              {legacyText} — {t('classrooms.notInCatalog', 'не из справочника')}
+              {orphan.label} — {orphan.linked
+                ? t('classrooms.notInBranchList', 'нет в списке этого филиала')
+                : t('classrooms.notInCatalog', 'не из справочника')}
             </option>
           )}
           {classrooms.map(c => (
@@ -126,7 +150,9 @@ const ClassroomSelect: React.FC<ClassroomSelectProps> = ({ branchId, value, onCh
         {canCreate && !creating && (
           <button
             type="button"
-            onClick={() => { setCreating(true); setNewName(legacyText); setError(''); }}
+            // Заводя кабинет, подставляем текущую подпись: чаще всего справочник
+            // и пополняют именно тем, что уже написано в занятии от руки.
+            onClick={() => { setCreating(true); setNewName(orphan?.linked ? '' : orphan?.label || ''); setError(''); }}
             disabled={disabled}
             title={t('classrooms.addNew', 'Добавить кабинет')}
             className="shrink-0 p-2.5 rounded-xl bg-slate-100 dark:bg-slate-700/50 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600/50 transition-colors disabled:opacity-50"

@@ -1,10 +1,11 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { apiCreatePaymentPlan, orgGetCourses } from '../../lib/api';
+import { apiCreatePaymentPlan, apiGetStudentTuitions, orgGetCourses } from '../../lib/api';
 import { useBranch } from '../../contexts/BranchContext';
 import { CheckCircle2, X } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { CURRENCY_SUFFIX, formatMoney } from '../../lib/money';
+import { tuitionKey, tuitionRateMap } from '../../lib/tuition';
 import type { Course } from '../../types';
 
 interface Props {
@@ -43,6 +44,8 @@ const CreatePaymentPlanModal: React.FC<Props> = ({ studentId, studentName, stude
   const [showDropdown, setShowDropdown] = useState(false);
   const [saving, setSaving] = useState(false);
   const [courses, setCourses] = useState<Course[]>([]);
+  /** Договорные цены: Map<'studentId|courseId', сумма>. */
+  const [tuitions, setTuitions] = useState<Map<string, number>>(() => new Map());
   // Автоподстановка цены не должна затирать введённое руками: как только
   // директор поправил сумму, смена курса её больше не трогает.
   const [amountTouched, setAmountTouched] = useState(false);
@@ -51,8 +54,27 @@ const CreatePaymentPlanModal: React.FC<Props> = ({ studentId, studentName, stude
     orgGetCourses()
       .then((data: Course[]) => setCourses(Array.isArray(data) ? data : []))
       .catch(() => setCourses([]));
+    // Ставки — уточнение к подстановке суммы: их отсутствие не должно мешать
+    // выставить счёт руками.
+    apiGetStudentTuitions()
+      .then(rows => setTuitions(tuitionRateMap(Array.isArray(rows) ? rows : [])))
+      .catch(() => setTuitions(new Map()));
     // activeBranchId: the api layer stamps it onto the GET, so a branch switch must refetch.
   }, [activeBranchId]);
+
+  /**
+   * Что подставить в сумму: договорная цена студента, иначе цена курса.
+   *
+   * Тот же приоритет, что у всех автоматических начислений (src/lib/tuition.ts).
+   * Подставлять прайс тому, у кого есть своя цена, значит предлагать менеджеру
+   * ошибку по умолчанию — и она уйдёт в счёт, если он не заметит.
+   */
+  const proposedAmount = (studentId: string, courseId: string): string | null => {
+    const rate = tuitions.get(tuitionKey(studentId, courseId));
+    if (rate !== undefined) return String(rate);
+    const course = courses.find(c => c.id === courseId);
+    return hasPrice(course) ? String(course.price) : null;
+  };
 
   const pickable = students !== undefined;
 
@@ -65,21 +87,35 @@ const CreatePaymentPlanModal: React.FC<Props> = ({ studentId, studentName, stude
   }, [students, query]);
 
   const selectStudent = (s: any) => {
-    setForm(f => ({ ...f, studentId: String(s.uid || s.id), studentName: s.displayName || '' }));
+    const uid = String(s.uid || s.id);
+    setForm(f => {
+      // Сумма зависит от ПАРЫ студент+курс, поэтому смена студента пересчитывает
+      // её так же, как смена курса: у другого человека своя цена.
+      const proposed = f.courseId ? proposedAmount(uid, f.courseId) : null;
+      return {
+        ...f,
+        studentId: uid,
+        studentName: s.displayName || '',
+        totalAmount: !amountTouched && proposed !== null ? proposed : f.totalAmount,
+      };
+    });
     setQuery(s.displayName || '');
     setShowDropdown(false);
   };
 
   const selectCourse = (id: string) => {
     const course = courses.find(c => c.id === id);
-    setForm(f => ({
-      ...f,
-      courseId: id,
-      // Название курса храним в счёте копией: курс могут переименовать или
-      // удалить, а в истории платежей строка должна остаться читаемой.
-      courseName: course ? course.title : '',
-      totalAmount: !amountTouched && hasPrice(course) ? String(course.price) : f.totalAmount,
-    }));
+    setForm(f => {
+      const proposed = f.studentId ? proposedAmount(f.studentId, id) : (hasPrice(course) ? String(course.price) : null);
+      return {
+        ...f,
+        courseId: id,
+        // Название курса храним в счёте копией: курс могут переименовать или
+        // удалить, а в истории платежей строка должна остаться читаемой.
+        courseName: course ? course.title : '',
+        totalAmount: !amountTouched && proposed !== null ? proposed : f.totalAmount,
+      };
+    });
   };
 
   /**
@@ -98,6 +134,10 @@ const CreatePaymentPlanModal: React.FC<Props> = ({ studentId, studentName, stude
   );
 
   const selectedCourse = courses.find(c => c.id === form.courseId);
+  /** Договорная цена выбранной пары — показываем, откуда взялась подставленная сумма. */
+  const agreedRate = form.studentId && form.courseId
+    ? tuitions.get(tuitionKey(form.studentId, form.courseId))
+    : undefined;
   const canSubmit = !!form.studentId && !!form.totalAmount && !!form.courseId;
 
   const handleCreate = async () => {
@@ -230,6 +270,14 @@ const CreatePaymentPlanModal: React.FC<Props> = ({ studentId, studentName, stude
               className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 text-lg font-bold dark:text-white"
               placeholder="5000"
             />
+            {agreedRate !== undefined && (
+              <p className="text-[11px] text-emerald-600 font-medium mt-1">
+                {t('finances.agreedPriceFull', 'Своя цена студента')}: {formatMoney(agreedRate)}
+                {hasPrice(selectedCourse) && (
+                  <span className="text-slate-400 font-normal"> · {t('finances.coursePrice', 'Цена курса')} {formatMoney(selectedCourse.price)}</span>
+                )}
+              </p>
+            )}
           </div>
           <div>
             <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">{t('finances.deadline', 'Срок оплаты')}</label>

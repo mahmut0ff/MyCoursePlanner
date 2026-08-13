@@ -261,6 +261,10 @@ service cloud.firestore {
     // Teacher activity log + KPI — written by the mutation endpoints and read by
     // api-teacher-activity (Admin SDK bypasses rules). Clients never touch it.
     match /teacherActivity/{docId} { allow read, write: if false; }
+    // Договорная цена обучения (студент × курс) — пишется и читается только
+    // бэкендом (api-finance-tuition + пути начисления, Admin SDK минует правила).
+    // Клиенту сюда нельзя тем более: это сумма, из которой считается его долг.
+    match /studentTuitions/{docId} { allow read, write: if false; }
     match /featureFlags/{flagId} { allow read: if request.auth != null; allow write: if isSuperAdmin(); }
     match /orgOverrides/{overrideId} { allow read, write: if isSuperAdmin(); }
     match /orgNotes/{noteId} { allow read, write: if isSuperAdmin(); }

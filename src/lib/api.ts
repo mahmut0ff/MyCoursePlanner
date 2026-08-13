@@ -800,6 +800,50 @@ export interface MonthlyCharge {
 export const apiBillMonth = (data: { period: string; dueDay?: number; charges: MonthlyCharge[] }) =>
   apiRequest('api-finance-billing', 'POST', data);
 
+// ── Договорная цена обучения (студент × курс) ────────────────────────────────
+// Сумма к оплате принадлежит СТУДЕНТУ, а не курсу: цена курса осталась прайсом
+// по умолчанию. Правила приоритета — в src/lib/tuition.ts, их же читает сервер.
+
+export interface StudentTuitionRate {
+  id: string;
+  studentId: string;
+  courseId: string;
+  amount: number;
+  studentName?: string;
+  courseName?: string;
+  updatedAt?: string;
+}
+
+export interface SetTuitionInput {
+  studentIds: string[];
+  /** Id курса, либо TUITION_ALL_COURSES — по всем курсам каждого студента. */
+  courseId: string;
+  /** null — снять договорную цену, вернув студента на цену курса. */
+  amount: number | null;
+  /** Переписать уже выставленные НЕОПЛАЧЕННЫЕ начисления этой суммой. */
+  applyToUnpaid?: boolean;
+  /** 'YYYY-MM' — ограничить применение одним месяцем. */
+  period?: string;
+}
+
+export interface SetTuitionResult {
+  saved: number;
+  cleared: number;
+  /** Не участники организации, не студенты или чужой филиал — сервер их не тронул. */
+  skippedStudents: number;
+  updatedPlans: number;
+  /** Начисления, где новая сумма ниже уже принятых денег (это возврат, не скидка). */
+  skippedPlans: number;
+  /** «Все курсы» не нашли ни одной активной группы у выбранных студентов. */
+  noCourses?: boolean;
+}
+
+export const apiGetStudentTuitions = () =>
+  apiRequest<StudentTuitionRate[]>('api-finance-tuition', 'GET');
+
+export const apiSetStudentTuition = (data: SetTuitionInput) =>
+  apiRequest<SetTuitionResult>('api-finance-tuition', 'POST', data);
+
 // startDate/endDate — произвольный диапазон; сервер берёт его вместо `period`,
 // только если пришли ОБА (иначе молча падает обратно на именованный период).
 export const apiGetFinanceMetrics = (params?: {

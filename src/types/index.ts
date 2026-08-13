@@ -1383,6 +1383,32 @@ export interface StudentPaymentPlan {
   updatedAt: string;
 }
 
+/**
+ * Индивидуальная стоимость обучения для пары (студент × курс) — «договорная цена».
+ *
+ * Приоритетнее `course.price`: цена курса остаётся прайсом (значение по умолчанию
+ * и база, от которой считается скидка), а платит студент столько, сколько
+ * записано здесь. Отсутствие документа = «по цене курса»; `amount: 0` = заданная
+ * нулевая ставка (стипендиат), по такой паре начисления не выставляются.
+ *
+ * Пишется и читается только сервером (api-finance-tuition, syncPaymentPlans,
+ * monthly-billing); в firestore.rules коллекция закрыта для клиента.
+ */
+export interface StudentTuition {
+  id: string;
+  organizationId: string;
+  studentId: string;
+  courseId: string;
+  amount: number;
+  /** Денормализация на запись — чтобы список ставок читался без join'ов. */
+  studentName?: string;
+  courseName?: string;
+  /** uid сотрудника, установившего цену: это деньги, и след нужен. */
+  updatedBy?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface FinancialTransaction {
   id: string;
   organizationId: string;

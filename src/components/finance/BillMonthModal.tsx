@@ -13,10 +13,19 @@ export interface BillCandidate {
   courseId: string;
   courseName: string;
   branchId: string | null;
-  /** Сумма к оплате: перенос из прошлого месяца → цена курса → null (ставит менеджер). */
+  /** Сумма: договорная цена → перенос из прошлого месяца → цена курса → null. */
   amount: number | null;
   /** Полная (прайсовая) цена курса — по ней показываем и считаем скидку. */
   listAmount: number | null;
+  /**
+   * Сумма пришла из договорной цены студента, а не из переноса/прайса.
+   *
+   * Разница видима на экране намеренно: менеджер должен отличать «столько он
+   * платит по договорённости» от «столько было в прошлом месяце». Второе можно
+   * править не задумываясь, первое — осознанное решение, и правка здесь его НЕ
+   * меняет: договорная цена задаётся действием «Сумма оплаты».
+   */
+  agreed?: boolean;
 }
 
 interface Props {
@@ -183,7 +192,17 @@ const BillMonthModal: React.FC<Props> = ({ period, periodLabel, candidates, onCl
                     />
                     <div className="min-w-0 flex-1">
                       <p className="text-sm font-medium text-slate-800 dark:text-slate-200 truncate">{r.studentName}</p>
-                      <p className="text-[11px] text-slate-400 truncate">{r.courseName || r.courseId}</p>
+                      <p className="text-[11px] text-slate-400 truncate">
+                        {r.courseName || r.courseId}
+                        {/* Откуда взялась сумма — это то, что менеджер решает
+                            глазами: своя цена правится осознанно, перенос из
+                            прошлого месяца — на ходу. */}
+                        {r.agreed && (
+                          <span className="ml-1.5 text-emerald-600 font-medium">
+                            · {t('finances.agreedPrice', 'своя цена')}
+                          </span>
+                        )}
+                      </p>
                       {discount > 0 && (
                         <p className="text-[11px] text-emerald-600 font-medium">
                           {t('finances.discount', 'Скидка')}: {formatMoney(discount)}

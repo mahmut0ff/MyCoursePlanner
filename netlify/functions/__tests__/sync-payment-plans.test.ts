@@ -31,7 +31,8 @@ vi.mock('../utils/notifications', () => ({
 }));
 
 import { syncPaymentPlans } from '../api-org';
-import { adminDb } from '../utils/firebase-admin';
+import { adminDb, getDocsByIds } from '../utils/firebase-admin';
+import { tuitionDocId } from '../utils/tuition';
 
 // ── Harness ──────────────────────────────────────────────────────
 // Плоский двойник Firestore: курс по id, планы одним снапшотом, батч, который
@@ -42,9 +43,20 @@ let written: any[] = [];
 /** Условия .where(), с которыми ушёл запрос планов — сторож equality-only. */
 let planWhere: any[][] = [];
 
-function wire(course: any | null, plans: any[]) {
+/**
+ * @param rates договорные цены студентов по курсу 'c1': { s1: 4000 }. Читаются
+ * точечно по детерминированному id (getDocsByIds), а не запросом, — поэтому
+ * планового снапшота они не касаются и `planWhere` не засоряют.
+ */
+function wire(course: any | null, plans: any[], rates: Record<string, number> = {}) {
   written = [];
   planWhere = [];
+
+  const rateDocs: Record<string, any> = {};
+  for (const [studentId, amount] of Object.entries(rates)) {
+    rateDocs[tuitionDocId('org-1', studentId, 'c1')] = { organizationId: 'org-1', studentId, courseId: 'c1', amount };
+  }
+  (getDocsByIds as any).mockResolvedValue(rateDocs);
 
   const planQuery: any = {
     where: vi.fn((...args: any[]) => { planWhere.push(args); return planQuery; }),
@@ -143,6 +155,49 @@ describe('a returning student with a live plan is never double-billed', () => {
 
     // s2 — списан (счёт нужен), s4 — новичок. s1/s3 держат живые планы.
     expect(written.map((w) => w.studentId).sort()).toEqual(['s2', 's4']);
+  });
+});
+
+// ═════════════════════════════════════════════════════════════════
+// Договорная цена студента старше цены курса
+// ═════════════════════════════════════════════════════════════════
+
+describe('individual tuition beats the course price', () => {
+  it('bills the student his own amount, keeping the course price as the list price', async () => {
+    wire(COURSE, [], { s1: 2000 });
+    await syncPaymentPlans('org-1', null, 'c1', ['s1']);
+
+    expect(written).toHaveLength(1);
+    // Сумма к оплате — договорная; прайс сохранён, иначе скидка (1000) исчезнет
+    // из отчётов навсегда: восстановить её потом будет не по чему.
+    expect(written[0]).toMatchObject({ studentId: 's1', totalAmount: 2000, listAmount: 3000 });
+  });
+
+  it('never lets the list price fall below what the student actually pays', async () => {
+    // Платит ВЫШЕ прайса — скидка обязана быть нулевой, а не отрицательной.
+    wire(COURSE, [], { s1: 5000 });
+    await syncPaymentPlans('org-1', null, 'c1', ['s1']);
+    expect(written[0]).toMatchObject({ totalAmount: 5000, listAmount: 5000 });
+  });
+
+  it('bills only the students who have a rate when the course itself is free', async () => {
+    // Академия держит суммы у учеников, а карточку курса оставила без цены.
+    // Раньше выход по `price <= 0` был безусловным — не создавалось ничего.
+    wire({ ...COURSE, price: 0 }, [], { s1: 2500 });
+    await syncPaymentPlans('org-1', null, 'c1', ['s1', 's2']);
+
+    expect(written).toHaveLength(1);
+    expect(written[0]).toMatchObject({ studentId: 's1', totalAmount: 2500 });
+  });
+
+  it('creates nothing for a student whose agreed price is zero', async () => {
+    // Ноль — ЗАДАННАЯ цена (стипендиат), а не «цена не указана»: счёт на ноль
+    // это строка-призрак в списке должников, а не деньги.
+    wire(COURSE, [], { s1: 0 });
+    await syncPaymentPlans('org-1', null, 'c1', ['s1', 's2']);
+
+    expect(written.map(w => w.studentId)).toEqual(['s2']);
+    expect(written[0]).toMatchObject({ totalAmount: 3000 });
   });
 });
 

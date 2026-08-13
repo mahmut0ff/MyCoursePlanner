@@ -22,6 +22,7 @@ import { createNotification } from './utils/notifications';
 import { jsonResponse } from './utils/auth';
 import { billingPeriodKey, billingDeadlineISO, monthlyPlanId, isAlreadyExists } from './utils/billing';
 import { cronAccessError } from './utils/cron-auth';
+import { loadTuitionRates, effectiveChargeAmount } from './utils/tuition';
 
 const PLANS = 'studentPaymentPlans';
 
@@ -71,7 +72,13 @@ const handler: Handler = async (event: HandlerEvent) => {
       const course = courseDoc.data() as any;
       const price = Number(course.price || 0);
       // Only bill live courses — skip drafts and archived ones.
-      if (price <= 0 || !course.organizationId || course.status !== 'published') continue;
+      //
+      // Нулевая цена курса больше НЕ повод пропустить его целиком: с появлением
+      // договорных цен (utils/tuition.ts) сумма живёт у студента, а не у курса.
+      // Академия, которая держит цену не в карточке курса, а у каждого ученика,
+      // раньше не получала от крона ни одного счёта — и не понимала почему.
+      // Кого начислять по нулю, решаем ниже, поштучно.
+      if (!course.organizationId || course.status !== 'published') continue;
       coursesProcessed++;
 
       const courseId = courseDoc.id;
@@ -129,6 +136,49 @@ const handler: Handler = async (event: HandlerEvent) => {
       const toBill = [...studentIds].filter(sid => !alreadyBilled.has(sid));
       if (toBill.length === 0) continue;
 
+      // ── Сколько платит каждый ────────────────────────────────────────────
+      // Договорная цена студента (utils/tuition.ts) старше цены курса. Раньше
+      // крон выставлял ВСЕМ одинаковый `course.price`, и каждое первое число
+      // месяца затирал любую индивидуальную договорённость: менеджер правил
+      // сумму руками, а через месяц она возвращалась к прайсу.
+      const rates = await loadTuitionRates(orgId, courseId, toBill);
+      const amountFor = (sid: string) => effectiveChargeAmount(rates.get(sid) ?? null, price);
+      // Нулевая сумма — это «не начислять»: бесплатный курс или стипендиат с
+      // договорной ценой 0. Счёт на ноль не деньги, а строка-призрак в списке
+      // должников.
+      const billable = toBill.filter(sid => amountFor(sid) > 0);
+      if (billable.length === 0) continue;
+
+      /**
+       * Тело месячного начисления. Одно на оба пути записи — батч и поштучный
+       * фолбэк: раньше объект был выписан дважды, и любое поле, добавленное в
+       * одном месте, тихо отсутствовало у счетов, созданных после гонки.
+       */
+      const planFor = (studentId: string) => {
+        const amount = amountFor(studentId);
+        return {
+          organizationId: orgId,
+          branchId: studentBranch.get(studentId) || null,
+          studentId,
+          courseId,
+          courseName: course.title || '',
+          totalAmount: amount,
+          // Прайсовая цена курса — база для скидки. У студента с договорной
+          // ценой разница «прайс − его сумма» и есть скидка, и показывается она
+          // сама (planDiscount). Ниже суммы к оплате прайс не опускаем: у того,
+          // кто платит ВЫШЕ прайса, отрицательной скидки быть не должно.
+          listAmount: Math.max(price, amount),
+          paidAmount: 0,
+          status: 'pending',
+          billingType: 'monthly',
+          period,
+          deadline,
+          autoBilled: true,
+          createdAt: ts,
+          updatedAt: ts,
+        };
+      };
+
       // Create invoices in chunked batches (1 write each).
       // Id детерминированный (utils/billing.monthlyPlanId) и запись через
       // `create`: дедуп выше — это чтение перед записью, и между ними помещается
@@ -136,30 +186,12 @@ const handler: Handler = async (event: HandlerEvent) => {
       // месяц отвергает база, кто бы его ни писал.
       const CHUNK = 400;
       const createdForNotify: string[] = [];
-      for (let i = 0; i < toBill.length; i += CHUNK) {
-        const slice = toBill.slice(i, i + CHUNK);
+      for (let i = 0; i < billable.length; i += CHUNK) {
+        const slice = billable.slice(i, i + CHUNK);
         const batch = adminDb.batch();
         for (const studentId of slice) {
           const ref = adminDb.collection(PLANS).doc(monthlyPlanId(orgId, courseId, studentId, period));
-          batch.create(ref, {
-            organizationId: orgId,
-            branchId: studentBranch.get(studentId) || null,
-            studentId,
-            courseId,
-            courseName: course.title || '',
-            totalAmount: price,
-            // Прайсовая цена курса — база для скидки, если сумму к оплате
-            // позже уменьшат вручную. Пока равна totalAmount (скидки нет).
-            listAmount: price,
-            paidAmount: 0,
-            status: 'pending',
-            billingType: 'monthly',
-            period,
-            deadline,
-            autoBilled: true,
-            createdAt: ts,
-            updatedAt: ts,
-          });
+          batch.create(ref, planFor(studentId));
           createdForNotify.push(studentId);
         }
         try {
@@ -172,23 +204,8 @@ const handler: Handler = async (event: HandlerEvent) => {
           const written: string[] = [];
           for (const studentId of slice) {
             try {
-              await adminDb.collection(PLANS).doc(monthlyPlanId(orgId, courseId, studentId, period)).create({
-                organizationId: orgId,
-                branchId: studentBranch.get(studentId) || null,
-                studentId,
-                courseId,
-                courseName: course.title || '',
-                totalAmount: price,
-                listAmount: price,
-                paidAmount: 0,
-                status: 'pending',
-                billingType: 'monthly',
-                period,
-                deadline,
-                autoBilled: true,
-                createdAt: ts,
-                updatedAt: ts,
-              });
+              await adminDb.collection(PLANS).doc(monthlyPlanId(orgId, courseId, studentId, period))
+                .create(planFor(studentId));
               written.push(studentId);
             } catch (e) {
               // Дубль — штатный исход гонки. ЛЮБАЯ другая ошибка (contention,
@@ -219,7 +236,9 @@ const handler: Handler = async (event: HandlerEvent) => {
           recipientId: studentId,
           type: 'payment_due',
           title: 'Выставлен счёт за обучение',
-          message: `Счёт за ${periodLabel}: ${fmtAmount(price)} с.${courseSuffix}. Оплатить до ${new Date(deadline).toLocaleDateString('ru-RU')}.`,
+          // Сумма в уведомлении — ЕГО сумма, а не цена курса: студенту с
+          // договорной ценой уходило «5000», а в кабинете висел счёт на 4000.
+          message: `Счёт за ${periodLabel}: ${fmtAmount(amountFor(studentId))} с.${courseSuffix}. Оплатить до ${new Date(deadline).toLocaleDateString('ru-RU')}.`,
           link: '/diary',
           organizationId: orgId,
           metadata: { courseId, period },

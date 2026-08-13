@@ -64,9 +64,11 @@ const StudentsPage: React.FC = () => {
   const [churnOpen, setChurnOpen] = useState(false);
 
   // Selection exists to feed the bulk bar, so it appears whenever at least one bulk
-  // action is available: migrating takes students:write, deleting students:delete.
+  // action is available: migrating takes students:write, deleting students:delete,
+  // назначение суммы оплаты — finances:write (это деньги, а не ростер, и кассир
+  // без прав на контингент обязан уметь проставить цены).
   // The bar gates each action on its own grant, and the server enforces both.
-  const bulkEnabled = permsLoaded && (canWrite('students') || canDelete('students'));
+  const bulkEnabled = permsLoaded && (canWrite('students') || canDelete('students') || canWrite('finances'));
 
   const [expandedAvatar, setExpandedAvatar] = useState<string | null>(null);
 

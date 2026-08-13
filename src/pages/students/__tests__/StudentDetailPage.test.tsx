@@ -31,6 +31,11 @@ vi.mock('../../../lib/api', () => ({
   apiGetTransactions: vi.fn(),
   apiGenerateParentKey: vi.fn(),
   apiRevokeParentKey: vi.fn(),
+  // Блок «Стоимость обучения» едет вместе с деньгами: незаявленная здесь ручка
+  // не просто «не мокнута» — вызов несуществующей функции роняет loadFinances
+  // целиком, и секция оплат уходит в ошибку загрузки.
+  orgGetCourses: vi.fn(),
+  apiGetStudentTuitions: vi.fn(),
 }));
 
 vi.mock('../../../contexts/AuthContext', () => ({ useAuth: vi.fn() }));
@@ -105,6 +110,8 @@ const setup = (opts: {
   api.orgGetResults.mockResolvedValue([]);
   api.orgGetGroups.mockResolvedValue([]);
   api.apiGetTransactions.mockResolvedValue([]);
+  api.orgGetCourses.mockResolvedValue([]);
+  api.apiGetStudentTuitions.mockResolvedValue([]);
   api.apiGetPaymentPlans.mockImplementation(() =>
     plansReject ? Promise.reject(new Error('Forbidden')) : Promise.resolve(plans));
 

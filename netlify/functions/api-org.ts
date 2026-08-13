@@ -17,6 +17,7 @@ import { FieldValue } from 'firebase-admin/firestore';
 import { getOrgLimits } from './utils/plan-limits';
 import { billingPeriodKey, billingDeadlineISO } from './utils/billing';
 import { isUntouchedPlan, orgDayKey, planPeriodKey } from './utils/payment-plans';
+import { loadTuitionRates, effectiveChargeAmount } from './utils/tuition';
 import { roomKeys, sameRoom } from './utils/classrooms';
 /* ═══════════════════════════════════════════════ */
 /*  Helpers                                        */
@@ -252,8 +253,17 @@ export async function syncPaymentPlans(orgId: string, branchId: string | null, c
   const courseDoc = await adminDb.collection('courses').doc(courseId).get();
   if (!courseDoc.exists) return;
   const courseData = courseDoc.data()!;
-  
-  if (!courseData.price || courseData.price <= 0) return; // Free course
+
+  // Договорные цены зачисляемых. Сумма к оплате берётся у СТУДЕНТА, и только
+  // при её отсутствии — из курса (utils/tuition.ts): цена курса стала прайсом
+  // по умолчанию, а не единственной истиной.
+  const rates = await loadTuitionRates(orgId, courseId, studentIds);
+  const price = Number(courseData.price) || 0;
+
+  // Бесплатный курс — но только если ни у кого нет своей цены. Раньше выход был
+  // безусловным, и академия, которая держит суммы у учеников, а карточку курса
+  // оставила без цены, не получала при зачислении ни одного счёта.
+  if (price <= 0 && rates.size === 0) return;
 
   // One bulk query instead of N individual queries.
   // Equality-only (organizationId + courseId): составные индексы не задеплоены,
@@ -286,16 +296,21 @@ export async function syncPaymentPlans(orgId: string, branchId: string | null, c
   const newPlans: any[] = [];
   for (const studentId of studentIds) {
     if (!existingStudentIds.has(studentId)) {
+      const amount = effectiveChargeAmount(rates.get(studentId) ?? null, price);
+      // Ноль — «платить нечего»: бесплатный курс или договорная цена 0
+      // (стипендиат). Счёт на ноль не выставляем, как и раньше.
+      if (amount <= 0) continue;
       newPlans.push({
         organizationId: orgId,
         branchId: branchId || null,
         studentId,
         courseId,
         courseName: courseData.title || '',
-        totalAmount: courseData.price,
-        // Прайсовая цена = цена курса на момент зачисления. Пока скидки нет
-        // (== totalAmount); появится, когда сумму к оплате уменьшат вручную.
-        listAmount: courseData.price,
+        totalAmount: amount,
+        // Прайсовая цена = цена курса на момент зачисления; разница с суммой к
+        // оплате и есть скидка. Ниже суммы к оплате не опускаем — у платящего
+        // выше прайса скидка должна быть нулевой, а не отрицательной.
+        listAmount: Math.max(price, amount),
         paidAmount: 0,
         status: 'pending',
         nextDueDate: isMonthly ? new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString() : null,

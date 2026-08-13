@@ -2,13 +2,14 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import {
-  orgGetStudents, orgGetResults, orgGetGroups, orgUpdateGroup, apiRemoveMember,
-  apiRestoreStudent, apiGetPaymentPlans, apiGetTransactions,
+  orgGetStudents, orgGetResults, orgGetGroups, orgGetCourses, orgUpdateGroup, apiRemoveMember,
+  apiRestoreStudent, apiGetPaymentPlans, apiGetTransactions, apiGetStudentTuitions,
 } from '../../lib/api';
 import AcceptPaymentModal, { type PayablePlan } from '../../components/finance/AcceptPaymentModal';
 import CreatePaymentPlanModal from '../../components/finance/CreatePaymentPlanModal';
 import PaymentHistoryModal from '../../components/finance/PaymentHistoryModal';
 import EditPlanAmountModal from '../../components/finance/EditPlanAmountModal';
+import SetTuitionModal from '../../components/finance/SetTuitionModal';
 import EditStudentModal from '../../components/students/EditStudentModal';
 import StudentAccessModal from '../../components/students/StudentAccessModal';
 import MoveStudentModal from '../../components/roster/MoveStudentModal';
@@ -22,8 +23,9 @@ import { usePermissions } from '../../contexts/PermissionsContext';
 import { usePlanGate } from '../../contexts/PlanContext';
 import {
   planDebt, isDebtBearingPlan, isWrittenOffPlan, isPlanOverdue, planDiscount,
-  planPeriodKey, planProgressKey, daysUntilDeadline,
+  planPeriodKey, planProgressKey, daysUntilDeadline, monthKey,
 } from '../../lib/payment-plans';
+import { tuitionKey, tuitionRateMap } from '../../lib/tuition';
 import { formatMoney, formatDayKey } from '../../lib/money';
 import ReportCommentModal from '../../components/ai/ReportCommentModal';
 import MemberRolesEditor from '../../components/shared/MemberRolesEditor';
@@ -124,6 +126,9 @@ const StudentDetailPage: React.FC = () => {
   const [allGroups, setAllGroups] = useState<Group[]>([]);
   const [paymentPlans, setPaymentPlans] = useState<any[]>([]);
   const [transactions, setTransactions] = useState<any[]>([]);
+  /** Договорные цены студента: Map<'studentId|courseId', сумма>. */
+  const [tuitions, setTuitions] = useState<Map<string, number>>(() => new Map());
+  const [courses, setCourses] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   /**
    * Ошибка никогда не превращается в факт. Раньше `loadFinances` глотал 403
@@ -154,6 +159,8 @@ const StudentDetailPage: React.FC = () => {
   // ─── Модальные окна и подтверждения ───
   const [payModalPlan, setPayModalPlan] = useState<any | null>(null);
   const [editPlan, setEditPlan] = useState<any | null>(null);
+  /** Строка «Стоимость обучения», для которой открыли окно суммы оплаты. */
+  const [tuitionRow, setTuitionRow] = useState<{ courseId: string; courseName: string; amount: number | null; agreed: boolean } | null>(null);
   const [showBillModal, setShowBillModal] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
   const [showAccessModal, setShowAccessModal] = useState(false);
@@ -176,16 +183,61 @@ const StudentDetailPage: React.FC = () => {
     [allGroups, uid],
   );
 
+  /**
+   * «Сколько этот студент платит за каждый курс» — по одной строке на курс.
+   *
+   * Курсы берём из групп студента ПЛЮС те, где у него уже задана договорная цена.
+   * Второе не избыточно: студент мог выйти из группы, а цена осталась — и если
+   * не показать её здесь, снять её будет негде, а при возврате в группу она
+   * молча применится к первому же начислению.
+   */
+  const tuitionRows = useMemo(() => {
+    const priceById = new Map<string, number | null>(
+      courses.map((c: any) => [String(c.id), typeof c.price === 'number' ? c.price : null]),
+    );
+    const titleById = new Map<string, string>(courses.map((c: any) => [String(c.id), c.title || '']));
+    const rows = new Map<string, { courseId: string; courseName: string; price: number | null; amount: number | null; agreed: boolean }>();
+
+    const add = (courseId: string, fallbackName: string) => {
+      if (!courseId || rows.has(courseId)) return;
+      const rate = tuitions.get(tuitionKey(uid!, courseId));
+      const price = priceById.get(courseId) ?? null;
+      rows.set(courseId, {
+        courseId,
+        courseName: titleById.get(courseId) || fallbackName || courseId,
+        price,
+        amount: rate !== undefined ? rate : price,
+        agreed: rate !== undefined,
+      });
+    };
+
+    for (const g of groups) add(String(g.courseId || ''), (g as any).courseName || '');
+    for (const [key] of tuitions) {
+      const [studentId, courseId] = key.split('|');
+      if (studentId === uid) add(courseId, '');
+    }
+    return [...rows.values()];
+  }, [groups, courses, tuitions, uid]);
+
   const loadFinances = useCallback(async () => {
     // studentId уходит на сервер, а не отсекается здесь: GET транзакций обрезан
     // серверным потолком, и в крупной академии старые оплаты просто не попадали
     // в ответ. Клиентский фильтр оставлен вторым рубежом.
-    const [plans, txs] = await Promise.all([
+    //
+    // Договорные цены и курсы едут здесь же, а не в общем эффекте страницы:
+    // после установки цены блок обязан перерисоваться, а перерисовывает его
+    // именно reloadFinances. Обе — уточнение к деньгам, поэтому их отказ гасит
+    // только свой блок (catch → пусто), а не всю секцию оплат.
+    const [plans, txs, rates, courseList] = await Promise.all([
       apiGetPaymentPlans({ studentId: uid }),
       apiGetTransactions({ studentId: uid }),
+      apiGetStudentTuitions().catch(() => []),
+      orgGetCourses().catch(() => []),
     ]);
     setPaymentPlans((plans || []).filter((p: any) => p.studentId === uid));
     setTransactions((txs || []).filter((t: any) => t.studentId === uid));
+    setTuitions(tuitionRateMap(Array.isArray(rates) ? rates : []));
+    setCourses(Array.isArray(courseList) ? courseList : []);
   }, [uid]);
 
   const reloadFinances = useCallback(() => {
@@ -623,6 +675,51 @@ const StudentDetailPage: React.FC = () => {
             title="Оплаты"
             action={{ label: 'Открыть в финансах', to: `/finances?tab=debts&student=${uid}` }}
           />
+          {/* ── Стоимость обучения ──
+              Отвечает на вопрос «сколько он платит», отдельно от «сколько уже
+              заплатил». Раньше цену можно было узнать только по сумме последнего
+              начисления — то есть постфактум и только если начисление есть. */}
+          {!failed.finance && tuitionRows.length > 0 && (
+            <div className="mb-3 rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 overflow-hidden">
+              <div className="px-4 py-2.5 border-b border-slate-100 dark:border-slate-700 flex items-center gap-2">
+                <Tag className="w-3.5 h-3.5 text-slate-400" />
+                <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Стоимость обучения</p>
+              </div>
+              <ul className="divide-y divide-slate-100 dark:divide-slate-700">
+                {tuitionRows.map(row => (
+                  <li key={row.courseId} className="px-4 py-2.5 flex items-center justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="text-sm text-slate-900 dark:text-white truncate">{row.courseName}</p>
+                      <p className="text-[11px] text-slate-400">
+                        {row.agreed ? (
+                          <>
+                            <span className="text-emerald-600 dark:text-emerald-400 font-medium">своя цена</span>
+                            {row.price !== null && <> · цена курса <span className="tabular-nums">{formatMoney(row.price)}</span></>}
+                          </>
+                        ) : row.price !== null ? 'по цене курса' : 'цена не задана'}
+                      </p>
+                    </div>
+                    <div className="shrink-0 flex items-center gap-1.5">
+                      <span className={`text-sm font-semibold tabular-nums ${row.agreed ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-700 dark:text-slate-300'}`}>
+                        {row.amount === null ? '—' : formatMoney(row.amount)}
+                      </span>
+                      {canTakeMoney && !expelled && (
+                        <button
+                          onClick={() => setTuitionRow(row)}
+                          title="Изменить сумму оплаты"
+                          aria-label={`Изменить сумму оплаты: ${row.courseName}`}
+                          className="p-1 rounded-md text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"
+                        >
+                          <Pencil className="w-3.5 h-3.5" />
+                        </button>
+                      )}
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
           <div className="rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 overflow-hidden">
             {failed.finance ? (
               <div className="p-4"><LoadError onRetry={reloadFinances} /></div>
@@ -966,6 +1063,22 @@ const StudentDetailPage: React.FC = () => {
           plan={{ ...editPlan, studentName: editPlan.studentName || student.displayName }}
           onClose={() => setEditPlan(null)}
           onSuccess={() => { setEditPlan(null); reloadFinances(); }}
+        />
+      )}
+
+      {tuitionRow && (
+        <SetTuitionModal
+          studentIds={[uid!]}
+          studentLabel={`${student.displayName} · ${tuitionRow.courseName}`}
+          courseId={tuitionRow.courseId}
+          // Подставляем только ЗАДАННУЮ цену: цена курса в этом поле выглядела бы
+          // как уже назначенная договорная, и «Сохранить» превратил бы прайс в
+          // персональную цену одним неосознанным нажатием.
+          initialAmount={tuitionRow.agreed ? tuitionRow.amount : null}
+          period={monthKey()}
+          periodLabel={monthLabel(monthKey())}
+          onClose={() => setTuitionRow(null)}
+          onSuccess={() => { setTuitionRow(null); reloadFinances(); }}
         />
       )}
 

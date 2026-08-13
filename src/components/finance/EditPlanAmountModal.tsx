@@ -2,11 +2,13 @@ import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Tag, X } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { apiUpdatePaymentPlan } from '../../lib/api';
+import { apiUpdatePaymentPlan, apiSetStudentTuition } from '../../lib/api';
 import { CURRENCY_SUFFIX, formatMoney } from '../../lib/money';
 
 export interface EditablePlan {
   id: string;
+  /** Нужен, чтобы правку можно было запомнить договорной ценой студента. */
+  studentId?: string;
   studentName?: string;
   courseName?: string;
   courseId?: string;
@@ -42,6 +44,19 @@ const EditPlanAmountModal: React.FC<Props> = ({ plan, onClose, onSuccess }) => {
 
   const [amount, setAmount] = useState(String(Number(plan.totalAmount) || 0));
   const [saving, setSaving] = useState(false);
+  /**
+   * Запомнить правку договорной ценой студента.
+   *
+   * Выключено по умолчанию НАМЕРЕННО. Правка суммы месяца — чаще всего разовая
+   * уступка («в этот раз простим 500»), и делать из неё постоянную цену молча
+   * значит навсегда снизить платёж, пока кто-нибудь случайно не заметит. Та же
+   * причина, по которой у «оплачено полностью» есть отдельная пометка
+   * settledByDiscount. Постоянная цена — осознанный выбор, поэтому галочка.
+   */
+  const [remember, setRemember] = useState(false);
+  // Ставка адресуется паре «студент × курс»; счёт вне курса ('general') такой
+  // пары не образует — запоминать его не за что.
+  const canRemember = !!plan.studentId && !!plan.courseId && plan.courseId !== 'general';
 
   const value = Number(amount);
   const parsed = amount !== '' && Number.isFinite(value);
@@ -58,6 +73,24 @@ const EditPlanAmountModal: React.FC<Props> = ({ plan, onClose, onSuccess }) => {
     try {
       await apiUpdatePaymentPlan(plan.id, { totalAmount: value });
       toast.success(t('finances.amountSaved', 'Сумма к оплате обновлена'));
+      if (remember && canRemember) {
+        // Отдельным вызовом и в отдельном try: сумма месяца уже сохранена, и
+        // отказ на второй ручке не должен выглядеть провалом первой — иначе
+        // менеджер повторит правку по счёту, где она уже применена.
+        try {
+          await apiSetStudentTuition({
+            studentIds: [plan.studentId!],
+            courseId: plan.courseId!,
+            amount: value,
+            // Этот счёт уже обновлён выше; трогать соседние месяцы правка
+            // одного месяца не должна.
+            applyToUnpaid: false,
+          });
+          toast.success(t('finances.tuitionRemembered', 'Сумма запомнена как договорная цена'));
+        } catch (e: any) {
+          toast.error(e?.message || t('finances.tuitionRememberFailed', 'Сумма месяца сохранена, но договорную цену записать не удалось'));
+        }
+      }
       onSuccess();
       onClose();
     } catch (e: any) {
@@ -128,6 +161,23 @@ const EditPlanAmountModal: React.FC<Props> = ({ plan, onClose, onSuccess }) => {
               </p>
             )}
           </div>
+
+          {canRemember && (
+            <label className="flex items-start gap-2.5 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={remember}
+                onChange={e => setRemember(e.target.checked)}
+                className="w-4 h-4 mt-0.5 accent-emerald-500 shrink-0"
+              />
+              <span className="text-sm text-slate-700 dark:text-slate-300">
+                {t('finances.rememberAsTuition', 'Запомнить как постоянную сумму')}
+                <span className="block text-[11px] text-slate-400">
+                  {t('finances.rememberAsTuitionHint', 'Студент будет платить столько и в следующие месяцы. Без галочки правка касается только этого счёта.')}
+                </span>
+              </span>
+            </label>
+          )}
         </div>
 
         <div className="p-6 border-t border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 flex justify-end gap-3">

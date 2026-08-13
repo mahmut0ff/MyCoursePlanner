@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import toast from 'react-hot-toast';
-import { Loader2, Trash2, X, ArrowRight, AlertTriangle, Users, Building2 } from 'lucide-react';
+import { Loader2, Trash2, X, ArrowRight, AlertTriangle, Users, Building2, BadgePercent } from 'lucide-react';
 import {
   orgBulkDeleteMembers,
   orgBulkSetBranch,
@@ -10,6 +10,9 @@ import {
   type BulkResult,
 } from '../../lib/api';
 import { usePermissions } from '../../contexts/PermissionsContext';
+import SetTuitionModal from '../finance/SetTuitionModal';
+import { monthKey } from '../../lib/payment-plans';
+import { formatMonthKey } from '../../lib/money';
 import type { Branch, Group } from '../../types';
 
 interface BulkActionBarProps {
@@ -45,16 +48,26 @@ const BulkActionBar: React.FC<BulkActionBarProps> = ({ kind, selected, branches,
   const [branchId, setBranchId] = useState('');
   const [busy, setBusy] = useState<Job | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [showTuition, setShowTuition] = useState(false);
 
   const uids = useMemo(() => [...selected], [selected]);
   const resource = kind === 'student' ? 'students' : 'teachers';
   const mayMigrate = canWrite(resource);
   const mayDelete = canDelete(resource);
+  // Договорная цена — деньги, а не ростер, поэтому грант финансовый. Тот, кто
+  // ведёт контингент, не обязан назначать цены; тот, кто ведёт кассу — обязан.
+  // Преподавателям цену за обучение не назначают, отсюда привязка к kind.
+  const mayPrice = kind === 'student' && canWrite('finances');
 
   // `loaded` matters here: a restricted member's custom role resolves async, and
   // until it settles they fall back to their base role's defaults — a manager
   // whose grants were revoked would flash an enabled Delete button.
-  if (!loaded || (!mayMigrate && !mayDelete) || uids.length === 0) return null;
+  if (!loaded || (!mayMigrate && !mayDelete && !mayPrice) || uids.length === 0) return null;
+
+  // Применять сумму можно только к начислениям КОНКРЕТНОГО месяца, и в ростере
+  // месяц не выбирают — берём текущий. Прошлые месяцы правятся из финансов, где
+  // месяц виден и переключается осознанно.
+  const period = monthKey();
 
   /**
    * Report a bulk result. `skipped` covers rows the server refused to touch;
@@ -175,6 +188,17 @@ const BulkActionBar: React.FC<BulkActionBarProps> = ({ kind, selected, branches,
             </div>
           )}
 
+          {mayPrice && (
+            <button
+              onClick={() => setShowTuition(true)}
+              disabled={busy !== null}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-semibold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 dark:text-emerald-400 dark:bg-emerald-900/20 dark:hover:bg-emerald-900/30 disabled:opacity-40 transition-colors shrink-0"
+            >
+              <BadgePercent className="w-4 h-4" />
+              {t('roster.bulk.setTuition', 'Сумма оплаты')}
+            </button>
+          )}
+
           {mayDelete && (
             <button
               onClick={() => setConfirmDelete(true)}
@@ -195,6 +219,16 @@ const BulkActionBar: React.FC<BulkActionBarProps> = ({ kind, selected, branches,
           </button>
         </div>
       </div>
+
+      {showTuition && (
+        <SetTuitionModal
+          studentIds={uids}
+          period={period}
+          periodLabel={formatMonthKey(period)}
+          onClose={() => setShowTuition(false)}
+          onSuccess={onDone}
+        />
+      )}
 
       {confirmDelete && (
         <div

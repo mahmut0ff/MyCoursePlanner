@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import {
   AlertCircle,
+  BadgePercent,
   Ban,
   CalendarPlus,
   CheckCircle2,
@@ -16,13 +17,15 @@ import {
   Tag,
   Trash2,
   Wallet,
+  X,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { apiDeletePaymentPlan, apiGetPaymentPlans, orgGetCourses, orgGetGroups, orgGetStudents } from '../../../lib/api';
+import { apiDeletePaymentPlan, apiGetPaymentPlans, apiGetStudentTuitions, orgGetCourses, orgGetGroups, orgGetStudents } from '../../../lib/api';
 import { useBranch } from '../../../contexts/BranchContext';
 import { usePermissions } from '../../../contexts/PermissionsContext';
 import { formatMoney, formatMonthKey, formatDayKey } from '../../../lib/money';
 import { isDebtBearingPlan, isWrittenOffPlan, isPlanOverdue, planDebt, planDiscount, planPeriodKey, planProgressKey } from '../../../lib/payment-plans';
+import { tuitionKey, tuitionRateMap } from '../../../lib/tuition';
 import EmptyState from '../../../components/ui/EmptyState';
 import { ListSkeleton } from '../../../components/ui/Skeleton';
 import ConfirmDialog from '../../../components/ui/ConfirmDialog';
@@ -33,6 +36,7 @@ import { useLazyList } from '../../../hooks/useLazyList';
 import AcceptPaymentModal from '../../../components/finance/AcceptPaymentModal';
 import PaymentHistoryModal from '../../../components/finance/PaymentHistoryModal';
 import EditPlanAmountModal from '../../../components/finance/EditPlanAmountModal';
+import SetTuitionModal from '../../../components/finance/SetTuitionModal';
 import BillMonthModal from '../../../components/finance/BillMonthModal';
 import type { BillCandidate } from '../../../components/finance/BillMonthModal';
 import type { DebtsFilters } from '../FinancesPage';
@@ -130,21 +134,30 @@ const MonthTab: React.FC<Props> = ({
 }) => {
   const { t } = useTranslation();
   const { activeBranchId } = useBranch();
-  const { canRead } = usePermissions();
+  const { canRead, canWrite } = usePermissions();
   // «Собрано за месяц» — сводная сумма дохода. Роль с оплатами, но без
   // `finance_overview`, видит счётчики «оплатили / не оплатили», но не сумму.
   const canOverview = canRead('finance_overview');
+  // Договорная цена — мутация денег, поэтому и выделение строк появляется только
+  // у того, кто вправе её задать: выбор без единого доступного действия — это
+  // обещание, которое экран не выполнит.
+  const canPrice = canWrite('finances');
 
   const [plans, setPlans] = useState<PaymentPlan[]>([]);
   const [allStudents, setAllStudents] = useState<any[]>([]);
   const [groups, setGroups] = useState<any[]>([]);
   const [courses, setCourses] = useState<any[]>([]);
+  /** Договорные цены: Map<'studentId|courseId', сумма>. */
+  const [tuitions, setTuitions] = useState<Map<string, number>>(() => new Map());
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
   const [modal, setModal] = useState<ModalType>('none');
   const [selectedPlan, setSelectedPlan] = useState<PaymentPlan | null>(null);
   const [showBill, setShowBill] = useState(false);
+  /** Выделение строк для массовой установки суммы. Ключ — id начисления. */
+  const [selected, setSelected] = useState<Set<string>>(() => new Set());
+  const [showTuition, setShowTuition] = useState(false);
 
   // Удаление в два шага — как на прежней вкладке: если к начислению привязаны
   // оплаты, сервер отвечает 409 и мы переспрашиваем, назвав их число.
@@ -155,12 +168,19 @@ const MonthTab: React.FC<Props> = ({
   const load = useCallback(() => {
     setLoading(true);
     setError('');
-    Promise.all([apiGetPaymentPlans(), orgGetStudents(), orgGetGroups(), orgGetCourses()])
-      .then(([planData, studentData, groupData, courseData]: [any, any, any, any]) => {
+    Promise.all([
+      apiGetPaymentPlans(), orgGetStudents(), orgGetGroups(), orgGetCourses(),
+      // Договорные цены — уточнение к суммам, а не сами суммы: если ручка
+      // отказала, экран оплат обязан открыться всё равно. Иначе одна недоступная
+      // ручка гасит весь раздел денег.
+      apiGetStudentTuitions().catch(() => []),
+    ])
+      .then(([planData, studentData, groupData, courseData, tuitionData]: [any, any, any, any, any]) => {
         setPlans(Array.isArray(planData) ? planData : []);
         setAllStudents(Array.isArray(studentData) ? studentData : []);
         setGroups(Array.isArray(groupData) ? groupData : []);
         setCourses(Array.isArray(courseData) ? courseData : []);
+        setTuitions(tuitionRateMap(Array.isArray(tuitionData) ? tuitionData : []));
       })
       .catch((e: any) => setError(e?.message || t('finances.loadFailed', 'Не удалось загрузить данные')))
       .finally(() => setLoading(false));
@@ -294,23 +314,29 @@ const MonthTab: React.FC<Props> = ({
         if (!student || isExpelled(student)) continue;
         const k = `${sid}|${courseId}`;
         if (billed.has(k) || byKey.has(k)) continue;
-        // Сумма к оплате: перенос из прошлого месяца → цена курса → null.
-        // Новый студент без истории теперь начисляется по цене курса (её всё ещё
-        // можно поправить в окне), а не оставляет менеджера гадать сумму.
+        // Сумма к оплате: ДОГОВОРНАЯ ЦЕНА → перенос из прошлого месяца → цена
+        // курса → null.
+        //
+        // Договорная цена (src/lib/tuition.ts) стоит первой намеренно: её задали
+        // явным действием «Сумма оплаты», и она обязана быть сильнее следа
+        // прошлого месяца. Иначе разовая правка суммы в июле переспорила бы
+        // цену, которую менеджер только что назначил на весь год.
         const price = coursePriceById.get(String(courseId)) ?? null;
+        const rate = tuitions.get(tuitionKey(String(sid), String(courseId)));
         byKey.set(k, {
           studentId: String(sid),
           studentName: student.displayName || '',
           courseId,
           courseName: g.courseName || g.name || '',
           branchId: g.branchId || null,
-          amount: lastAmountByKey.get(k)?.amount ?? price,
+          amount: rate ?? lastAmountByKey.get(k)?.amount ?? price,
           listAmount: price,
+          agreed: rate !== undefined,
         });
       }
     }
     return [...byKey.values()].sort((a, b) => collator.compare(a.studentName, b.studentName));
-  }, [groups, studentById, monthPlans, lastAmountByKey, coursePriceById, monthlyCourseIds]);
+  }, [groups, studentById, monthPlans, lastAmountByKey, coursePriceById, monthlyCourseIds, tuitions]);
 
   // Сводка ВСЕГДА про выбранный месяц, даже когда список показывает все месяцы.
   // Иначе подписи («Оплачено по начислениям месяца», «Оплатили X из Y») врут:
@@ -368,6 +394,52 @@ const MonthTab: React.FC<Props> = ({
     // Режим и фильтр «только должники» меняют выборку целиком — без них в ключе
     // досмотренный хвост прежнего среза оставался на экране.
     resetKey: `${filters.search}|${month}|${studentId || ''}|${activeBranchId || ''}|${allMonths ? 'all' : 'm'}|${unpaidOnly ? 'u' : ''}|${filters.status}`,
+  });
+
+  // Выделение обязано жить в границах ТОГО, что на экране. Месяц, поиск, филиал
+  // и режим меняют набор строк целиком, а невидимое выделение — это действие по
+  // строкам, которых менеджер уже не видит (та же защита стоит в ростере).
+  useEffect(() => {
+    setSelected(new Set());
+  }, [filters.search, filters.status, month, studentId, activeBranchId, allMonths, unpaidOnly]);
+
+  const toggleRow = (id: string) => setSelected(prev => {
+    const next = new Set(prev);
+    if (next.has(id)) next.delete(id); else next.add(id);
+    return next;
+  });
+
+  /** Выделенное, срезанное по видимому списку — источник для массового действия. */
+  const selectedPlans = useMemo(() => filtered.filter(p => selected.has(p.id)), [filtered, selected]);
+
+  const selectedStudentIds = useMemo(
+    () => [...new Set(selectedPlans.map(p => String(p.studentId)))],
+    [selectedPlans]
+  );
+
+  /**
+   * Один курс на всё выделение — окно открывается сразу на нём. Разные курсы —
+   * курс выберет менеджер: угадывать за него нечего. Литерал 'general' (счёт вне
+   * курса) курсом не считается: договорная цена — это цена ОБУЧЕНИЯ, и ставить
+   * её «за учебники» не за что.
+   */
+  const selectedCourseId = useMemo(() => {
+    const ids = new Set(selectedPlans.map(p => String(p.courseId || '')));
+    if (ids.size !== 1) return '';
+    const only = [...ids][0];
+    return !only || only === 'general' ? '' : only;
+  }, [selectedPlans]);
+
+  // Мастер-галочка действует на ДОСМОТРЕННЫЕ строки (pageRows), а не на весь
+  // отфильтрованный список: список догружается по мере прокрутки, и «выбрать
+  // всех» захватывал бы то, чего на экране ещё нет.
+  const allVisibleSelected = pageRows.length > 0 && pageRows.every(p => selected.has(p.id));
+  const toggleAllVisible = () => setSelected(prev => {
+    const next = new Set(prev);
+    for (const p of pageRows) {
+      if (allVisibleSelected) next.delete(p.id); else next.add(p.id);
+    }
+    return next;
   });
 
   const openPay = (plan: PaymentPlan) => { setSelectedPlan(plan); setModal('pay'); };
@@ -513,6 +585,37 @@ const MonthTab: React.FC<Props> = ({
         )}
       </div>
 
+      {/* Панель массового действия. Появляется только вместе с выделением —
+          пустая полоса «Выбрано: 0» занимала бы место круглый год. */}
+      {canPrice && selectedPlans.length > 0 && (
+        <div className="flex flex-wrap items-center gap-3 px-4 py-3 rounded-xl bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-500/30">
+          <span className="text-sm font-semibold text-emerald-800 dark:text-emerald-300">
+            {t('finances.tuitionSelectedRows', 'Выбрано начислений: {{n}}', { n: selectedPlans.length })}
+            {selectedStudentIds.length !== selectedPlans.length && (
+              <span className="font-normal text-emerald-700/70 dark:text-emerald-400/70">
+                {' '}· {t('finances.tuitionSelectedStudents', 'студентов: {{n}}', { n: selectedStudentIds.length })}
+              </span>
+            )}
+          </span>
+          <div className="flex items-center gap-2 ml-auto">
+            <button
+              onClick={() => setShowTuition(true)}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-semibold bg-emerald-500 hover:bg-emerald-600 text-white transition-colors"
+            >
+              <BadgePercent className="w-4 h-4" />
+              {t('roster.bulk.setTuition', 'Сумма оплаты')}
+            </button>
+            <button
+              onClick={() => setSelected(new Set())}
+              className="p-1.5 rounded-lg text-emerald-700/60 hover:text-emerald-800 dark:text-emerald-400/60 dark:hover:text-emerald-300"
+              title={t('finances.cancel', 'Отмена')}
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+      )}
+
       {allMonths && (
         <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-900/50 rounded-xl px-4 py-2.5 text-xs text-amber-800 dark:text-amber-300">
           {unpaidOnly
@@ -566,6 +669,18 @@ const MonthTab: React.FC<Props> = ({
               <table className="w-full text-left text-sm">
                 <thead className="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-700">
                   <tr>
+                    {canPrice && (
+                      <th className="pl-5 pr-2 py-3.5 w-10">
+                        <input
+                          type="checkbox"
+                          checked={allVisibleSelected}
+                          onChange={toggleAllVisible}
+                          className="w-4 h-4 accent-emerald-500 align-middle"
+                          title={t('roster.bulk.selectAll', 'Выбрать всех')}
+                          aria-label={t('roster.bulk.selectAll', 'Выбрать всех')}
+                        />
+                      </th>
+                    )}
                     <th className="px-5 py-3.5 font-medium text-slate-500">{t('finances.colStudent', 'Студент')}</th>
                     <th className="px-5 py-3.5 font-medium text-slate-500">{t('finances.colGroup', 'Группа')}</th>
                     <th className="px-5 py-3.5 font-medium text-slate-500">{t('finances.colForMonth', 'За месяц')}</th>
@@ -583,10 +698,24 @@ const MonthTab: React.FC<Props> = ({
                     const meta = PROGRESS_META[pk];
                     const owes = isDebtBearingPlan(p);
                     const writtenOff = isWrittenOffPlan(p);
+                    // Договорная цена пары «студент × курс», если она задана.
+                    const agreedAmount = tuitions.get(tuitionKey(String(p.studentId), String(p.courseId || '')));
+                    const hasAgreedPrice = agreedAmount !== undefined;
                     // Просрочка — отдельная ось (метка «срок прошёл»), не подмена статуса.
                     const overdue = !writtenOff && isPlanOverdue(p);
                     return (
-                      <tr key={p.id} className={`hover:bg-slate-50 dark:hover:bg-slate-700/30 transition-colors ${writtenOff ? 'opacity-60' : ''}`}>
+                      <tr key={p.id} className={`hover:bg-slate-50 dark:hover:bg-slate-700/30 transition-colors ${writtenOff ? 'opacity-60' : ''} ${selected.has(p.id) ? 'bg-emerald-50/60 dark:bg-emerald-900/10' : ''}`}>
+                        {canPrice && (
+                          <td className="pl-5 pr-2 py-3.5">
+                            <input
+                              type="checkbox"
+                              checked={selected.has(p.id)}
+                              onChange={() => toggleRow(p.id)}
+                              className="w-4 h-4 accent-emerald-500 align-middle"
+                              aria-label={name}
+                            />
+                          </td>
+                        )}
                         <td className="px-5 py-3.5 whitespace-nowrap">
                           {student ? (
                             <Link to={`/students/${p.studentId}`} className="font-medium text-slate-900 dark:text-white hover:text-sky-600 dark:hover:text-sky-400 hover:underline transition-colors">{name}</Link>
@@ -594,7 +723,17 @@ const MonthTab: React.FC<Props> = ({
                             <span className="font-medium text-slate-900 dark:text-white">{name}</span>
                           )}
                         </td>
-                        <td className="px-5 py-3.5 text-slate-500 whitespace-nowrap">{p.courseName || p.courseId || '—'}</td>
+                        <td className="px-5 py-3.5 text-slate-500 whitespace-nowrap">
+                          {p.courseName || p.courseId || '—'}
+                          {/* «Своя цена» — признак того, что сумма пришла из
+                              договорённости, а не из прайса: без него менеджер не
+                              отличает счёт со скидкой от счёта с опечаткой. */}
+                          {hasAgreedPrice && (
+                            <span className="block text-[11px] text-emerald-600 font-medium">
+                              {t('finances.agreedPrice', 'своя цена')}: {formatMoney(agreedAmount!)}
+                            </span>
+                          )}
+                        </td>
                         <td className="px-5 py-3.5 whitespace-nowrap">
                           <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${meta.cls}`}>
                             <meta.Icon className="w-3.5 h-3.5" />
@@ -703,6 +842,26 @@ const MonthTab: React.FC<Props> = ({
           canRefund
           onRefunded={load}
           onClose={() => setModal('none')}
+        />
+      )}
+
+      {showTuition && selectedStudentIds.length > 0 && (
+        <SetTuitionModal
+          studentIds={selectedStudentIds}
+          studentLabel={selectedStudentIds.length === 1 ? (selectedPlans[0]?.studentName || undefined) : undefined}
+          courseId={selectedCourseId || undefined}
+          // Подставляем текущую цену только когда адресат ровно один: у пачки
+          // студентов «текущая» сумма у каждого своя, и показать одну из них
+          // значило бы соврать про остальных.
+          initialAmount={
+            selectedStudentIds.length === 1 && selectedCourseId
+              ? tuitions.get(tuitionKey(selectedStudentIds[0], selectedCourseId)) ?? null
+              : null
+          }
+          period={month}
+          periodLabel={monthLabel(month)}
+          onClose={() => setShowTuition(false)}
+          onSuccess={() => { setSelected(new Set()); load(); }}
         />
       )}
 

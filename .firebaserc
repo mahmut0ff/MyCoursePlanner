@@ -2,6 +2,6 @@
   "projects": {
     "default": "confident-totem-426112-j6",
     "staging": "planula-staging",
-    "production": "planula-prod"
+    "production": "confident-totem-426112-j6"
   }
 }

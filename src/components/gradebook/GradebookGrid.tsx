@@ -3,6 +3,7 @@ import GradeCell from './GradeCell';
 import VoiceGradeDictator from './VoiceGradeDictator';
 import { Mic } from 'lucide-react';
 import type { GradeEntry, GradeSchema, UserProfile } from '../../types';
+import { entryNumericValue } from '../../lib/gradePresets';
 
 export interface ColumnDef {
   id: string; // lessonId or date string
@@ -130,9 +131,12 @@ const GradebookGrid: React.FC<GradebookGridProps> = ({ students, columns, grades
             let maxPoints = 0;
             columns.forEach(col => {
               const entry = grades[`${student.uid}_${col.id}`];
-              if (entry?.value && typeof entry.value === 'number') {
-                totalPoints += entry.value;
-                maxPoints += (entry.maxValue || schema.scale.max || 100);
+              // Буквы и зачёты тоже считаются: у отметок, поставленных до перевода
+              // в числа, эквивалент восстанавливается из displayValue по шкале.
+              const num = entryNumericValue(entry, schema);
+              if (num !== null) {
+                totalPoints += num;
+                maxPoints += (entry?.maxValue || schema.scale.max || 100);
               }
             });
             const avgPct = maxPoints > 0 ? Math.round((totalPoints / maxPoints) * 100) : null;

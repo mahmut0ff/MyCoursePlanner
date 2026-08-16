@@ -25,7 +25,7 @@ import { useBranch } from '../../contexts/BranchContext';
 import { usePermissions } from '../../contexts/PermissionsContext';
 import { useOrg } from '../../contexts/OrgContext';
 import { getInstitution } from '../../lib/terminology';
-import { makeDefaultSchema } from '../../lib/gradePresets';
+import { makeDefaultSchema, describeSchema, entryNumericValue } from '../../lib/gradePresets';
 
 
 function getLocalISODate(d: Date) {
@@ -723,8 +723,13 @@ const JournalPage: React.FC = () => {
                       <div className="flex flex-col items-center">
                         <span>Оценка</span>
                         {schema && (
-                          <span className="text-[10px] bg-primary-100 text-primary-700 dark:bg-primary-900/30 dark:text-primary-400 px-1.5 py-0.5 rounded mt-1 font-semibold" title={`Макс балл: ${schema.scale.max}`}>
-                             М: {schema.scale.max}
+                          <span
+                            className="text-[10px] bg-primary-100 text-primary-700 dark:bg-primary-900/30 dark:text-primary-400 px-1.5 py-0.5 rounded mt-1 font-semibold"
+                            title={`Шкала курса: ${describeSchema(schema)}. Настраивается в разделе «Оценки» → «Шкала».`}
+                          >
+                            {schema.gradingType === 'points' || schema.gradingType === 'percent'
+                              ? `М: ${schema.scale.max}`
+                              : describeSchema(schema)}
                           </span>
                         )}
                       </div>
@@ -891,14 +896,15 @@ const JournalPage: React.FC = () => {
                 // scale change doesn't retroactively rescale history: dividing an old
                 // «87 из 100» by a freshly saved max of 5 used to yield 1740% and put
                 // the student at the top of the ranking.
+                // Буквы и зачёты участвуют наравне с баллами: у каждой отметки есть
+                // числовой эквивалент по шкале курса (у старых — восстановленный).
                 const studentGrades = Object.entries(grades)
                   .filter(([key]) => key.startsWith(`${student.uid}_`))
-                  .map(([, g]) => g)
-                  .filter(g => typeof g.value === 'number');
+                  .map(([, g]) => g);
 
                 const scored = studentGrades
-                  .map(g => ({ value: g.value as number, max: g.maxValue || schema.scale.max || 100 }))
-                  .filter(g => g.max > 0);
+                  .map(g => ({ value: entryNumericValue(g, schema), max: g.maxValue || schema.scale.max || 100 }))
+                  .filter((g): g is { value: number; max: number } => g.value !== null && g.max > 0);
 
                 const gradePct = scored.length > 0
                   ? Math.round(scored.reduce((sum, g) => sum + (g.value / g.max) * 100, 0) / scored.length)
@@ -912,9 +918,9 @@ const JournalPage: React.FC = () => {
                   ? Math.round((scored.reduce((sum, g) => sum + g.value, 0) / scored.length) * 10) / 10
                   : 0;
 
-                // Overall score: 40% attendance + 60% grade. A course graded by letters
-                // or зачёт/незачёт has no numeric grades at all — weighting 60% of a
-                // zero would cap every student at 40, so attendance carries it alone.
+                // Overall score: 40% attendance + 60% grade. Пока по студенту нет ни
+                // одной оценки, вес 60% от нуля прижимал бы всех к 40 — тогда балл
+                // держит одна посещаемость.
                 const overallScore = scored.length > 0
                   ? Math.round(attendancePct * 0.4 + gradePct * 0.6)
                   : attendancePct;

@@ -18,7 +18,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { usePermissions } from '../../contexts/PermissionsContext';
 import { useOrg } from '../../contexts/OrgContext';
 import { getInstitution } from '../../lib/terminology';
-import { makeDefaultSchema } from '../../lib/gradePresets';
+import { makeDefaultSchema, describeSchema } from '../../lib/gradePresets';
 
 const GradebookPage: React.FC = () => {
   const { t } = useTranslation();
@@ -282,10 +282,15 @@ const GradebookPage: React.FC = () => {
           {!isReadOnly && (
             <button
               onClick={() => setShowConfig(true)}
+              title={t('gradebook.schemaBtn', 'Настройка шкалы')}
               className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700/50 shadow-sm transition-colors"
             >
               <Settings className="w-4 h-4 text-slate-400" />
-              <span className="hidden sm:inline">{t('gradebook.schemaBtn', 'Настройка шкалы')}</span>
+              {/* Текущая шкала прямо на кнопке: иначе узнать, что выбрано, можно
+                  было только открыв модалку. */}
+              <span className="hidden sm:inline">
+                {t('gradebook.schemaBtnShort', 'Шкала')}: <span className="font-semibold">{describeSchema(schema)}</span>
+              </span>
             </button>
           )}
         </div>
@@ -325,6 +330,7 @@ const GradebookPage: React.FC = () => {
         <GradeSchemaConfig
           key={selectedCourseId}
           courseId={selectedCourseId}
+          courseTitle={courses.find(c => c.id === selectedCourseId)?.title}
           schema={schema}
           isOpen={showConfig}
           onClose={() => setShowConfig(false)}

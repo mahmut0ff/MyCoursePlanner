@@ -5,9 +5,11 @@ import {
   orgGetStudents,
   orgGetTeachers,
   orgGetGrades,
-  orgGetJournal
+  orgGetJournal,
+  orgGetGradeSchema
 } from '../../lib/api';
-import type { Course, UserProfile, GradeEntry, JournalEntry } from '../../types';
+import type { Course, UserProfile, GradeEntry, GradeSchema, JournalEntry } from '../../types';
+import { entryNumericValue } from '../../lib/gradePresets';
 import { BarChart3, TrendingUp, GraduationCap, AlertTriangle, Download, ClipboardList, CheckCircle2, Filter, TrendingDown, BookOpen } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -47,6 +49,7 @@ export default function AdminGradebookAnalytics() {
   const [teachers, setTeachers] = useState<UserProfile[]>([]);
   const [grades, setGrades] = useState<GradeEntry[]>([]);
   const [journals, setJournals] = useState<JournalEntry[]>([]);
+  const [schemas, setSchemas] = useState<Record<string, GradeSchema>>({});
   const [period, setPeriod] = useState<Period>('all');
 
   useEffect(() => {
@@ -65,9 +68,17 @@ export default function AdminGradebookAnalytics() {
         // Fetch all grades and journals for all courses
         const allGrades = await Promise.all((cRes as Course[]).map(c => orgGetGrades(c.id).catch(() => [])));
         const allJournals = await Promise.all((cRes as Course[]).map(c => orgGetJournal(c.id).catch(() => [])));
-        
+        // Шкалы курсов нужны, чтобы буквы и зачёты, выставленные до перевода
+        // отметок в числа, тоже попали в средние, а не выпали из статистики.
+        const allSchemas = await Promise.all(
+          (cRes as Course[]).map(c => orgGetGradeSchema(c.id).catch(() => null))
+        );
+
         setGrades(allGrades.flat() as GradeEntry[]);
         setJournals(allJournals.flat() as JournalEntry[]);
+        setSchemas(Object.fromEntries(
+          (cRes as Course[]).map((c, i) => [c.id, allSchemas[i] as GradeSchema | null]).filter(([, s]) => !!s)
+        ) as Record<string, GradeSchema>);
 
       } catch (err: any) {
         toast.error(err.message || 'Ошибка загрузки аналитики');
@@ -110,13 +121,25 @@ export default function AdminGradebookAnalytics() {
     return { grades: fGrades, journals: fJournals, students: fStudents };
   }, [grades, journals, students, period, activeBranchId]);
 
+  /** Оценка в процентах от максимума своей шкалы, или null — если её не выразить числом. */
+  const gradePercentOf = (g: GradeEntry): number | null => {
+    const schema = schemas[g.courseId];
+    const value = entryNumericValue(g, schema);
+    const max = g.maxValue || schema?.scale?.max || 0;
+    if (value === null || max <= 0) return null;
+    return (value / max) * 100;
+  };
+
   const metrics = useMemo(() => {
     const { grades: fg, journals: fj, students: fs } = filteredData;
     if (!fg.length && !fj.length) return null;
 
-    // Averages
-    const numericGrades = fg.filter(g => typeof g.value === 'number' && typeof g.maxValue === 'number' && g.maxValue > 0);
-    const avgScore = numericGrades.length ? numericGrades.reduce((sum, g) => sum + ((g.value as number) / g.maxValue! * 100), 0) / numericGrades.length : 0;
+    // Averages. Отметка может быть нечисловой («A», «Зачёт») — тогда её значение
+    // восстанавливается по шкале курса, иначе такие курсы вообще не попадали в средние.
+    const numericGrades = fg
+      .map(g => ({ pct: gradePercentOf(g), studentId: g.studentId }))
+      .filter((g): g is { pct: number; studentId: string } => g.pct !== null);
+    const avgScore = numericGrades.length ? numericGrades.reduce((sum, g) => sum + g.pct, 0) / numericGrades.length : 0;
 
     // Attendance Rate
     const totalAttendance = fj.length;
@@ -128,9 +151,8 @@ export default function AdminGradebookAnalytics() {
     const defaultStats = () => ({ totalGrades: 0, gradeSum: 0, totalAtt: 0, presentAtt: 0, gradePercent: 0, attPercent: 100 });
     numericGrades.forEach(g => {
       if (!studentStats[g.studentId]) studentStats[g.studentId] = defaultStats();
-      const pct = (g.value as number) / g.maxValue! * 100;
       studentStats[g.studentId].totalGrades++;
-      studentStats[g.studentId].gradeSum += pct;
+      studentStats[g.studentId].gradeSum += g.pct;
     });
     fj.forEach(j => {
       if (!studentStats[j.studentId]) studentStats[j.studentId] = defaultStats();
@@ -162,7 +184,7 @@ export default function AdminGradebookAnalytics() {
       studentStats,
       studentsCount: fs.length,
     };
-  }, [filteredData]);
+  }, [filteredData, schemas]);
 
   // ── CSV Export ──
   const handleExport = () => {

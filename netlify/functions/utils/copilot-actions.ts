@@ -12,6 +12,10 @@
  *   - set grades   → gradebook:write   (teachers by default, admins, managers…)
  * Owners/admins always pass. Students/parents never reach here.
  *
+ * Каждое действие с журналом (оценки, посещаемость, заметки) пишет событие в
+ * teacherActivity — те же типы и веса, что на вебе, иначе преподаватель,
+ * ведущий журнал из Telegram, не набирал бы KPI вовсе.
+ *
  * Gemini does the natural-language → structured-action step via function-calling
  * (same proven pattern as the customer sales bot's addLeadToDatabase). We execute
  * the tool calls directly via the Admin SDK and reply with a deterministic
@@ -24,6 +28,7 @@ import { createNotification, notifyOrgAdmins } from './notifications';
 import { createPendingInvite } from './onboarding';
 import { resolveOrgRole } from './auth';
 import { resolvePermissionSet, fullPermissionSet, FULL_ACCESS_ROLES } from './rbac';
+import { recordTeacherActivity } from './teacher-activity';
 import { TELEGRAM_BOT_USERNAME } from './telegram';
 import {
   buildDirectorSnapshot, renderSnapshotText, toTelegramHtml,
@@ -48,6 +53,7 @@ export interface StaffContext {
   membershipRole: string;   // raw membership role (owner/admin/manager/teacher…)
   baseRole: string;         // mapped (admin/manager/teacher)
   name: string;
+  primaryBranchId: string | null; // из membership — тот же филиал, что verifyAuth кладёт в события активности
   rbac: Set<string>;
   isDirector: boolean;      // owner/admin/manager — gets analytics Q&A too
 }
@@ -115,6 +121,11 @@ export async function resolveStaffByChat(chatId: string): Promise<StaffContext |
     membershipRole: membership.role,
     baseRole,
     name: userData.displayName || '',
+    // Как в verifyAuth: филиал берём из членства (primaryBranchId), а если он не
+    // задан, но человек привязан ровно к одному филиалу — из него. Иначе null:
+    // общеорганизационный сотрудник, событие без филиала.
+    primaryBranchId: membership.primaryBranchId
+      || (membership.branchIds.length === 1 ? membership.branchIds[0] : null),
     rbac,
     isDirector: ['admin', 'manager'].includes(baseRole),
   };
@@ -486,6 +497,37 @@ function buildSystemInstruction(staff: StaffContext, ctx: TurnContext, toolNames
 
 const esc = (s: string) => String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
+/**
+ * Событие в журнал активности преподавателя — ровно то же, что пишет
+ * api-gradebook на веб-пути. Без этого работа из Telegram не попадала в KPI:
+ * препод, ведущий журнал голосом, выглядел бездельником, и терялись не только
+ * счётчики, но и активные дни (половина балла — стабильность).
+ *
+ * Пишем одно событие с `count` на весь пакет — как bulkGrades/bulkAttendance;
+ * `entityId` пуст, потому что пакет из Telegram может охватывать разные курсы.
+ * `source: 'telegram'` в meta оставляет возможность посчитать долю бота.
+ * Актёр — `staff.uid` из resolveStaffByChat (привязка чата к аккаунту), то есть
+ * авторство так же неподделываемо, как на вебе.
+ */
+async function logJournalActivity(
+  staff: StaffContext,
+  type: 'grade_set' | 'attendance_marked',
+  count: number,
+  meta: Record<string, unknown>,
+): Promise<void> {
+  if (count <= 0) return; // ничего не записалось — нечего и засчитывать
+  await recordTeacherActivity({
+    organizationId: staff.orgId,
+    actorId: staff.uid,
+    actorName: staff.name,
+    actorRole: staff.baseRole,
+    type,
+    branchId: staff.primaryBranchId,
+    count,
+    meta: { ...meta, source: 'telegram' },
+  });
+}
+
 async function executeSetGrades(staff: StaffContext, ctx: TurnContext, args: any): Promise<string> {
   if (!can(staff, 'gradebook', 'write')) return '⚠️ У вас нет прав на выставление оценок.';
   const date = normalizeGradeDate(args?.date, ctx.todayISO);
@@ -525,6 +567,8 @@ async function executeSetGrades(staff: StaffContext, ctx: TurnContext, args: any
       notFound.push(esc(entry.name));
     }
   }
+
+  await logJournalActivity(staff, 'grade_set', done.length, { date, mode: 'bulk' });
 
   const header = date === ctx.todayISO ? '📝 <b>Оценки выставлены</b> (сегодня):' : `📝 <b>Оценки выставлены</b> (${date}):`;
   let out = done.length ? `${header}\n${done.join('\n')}` : '⚠️ Не удалось выставить оценки.';
@@ -652,6 +696,8 @@ async function executeSetAttendance(staff: StaffContext, ctx: TurnContext, args:
     ? await applyJournalUpserts(staff, date, list.map(t => ({ entry: t.entry, patch: { attendance: t.status } })))
     : { okIds: new Set<string>(), failed: [] as string[] };
 
+  await logJournalActivity(staff, 'attendance_marked', okIds.size, { date, mode: 'bulk' });
+
   // Notify absent students (fire-and-forget), mirroring api-gradebook's bulkAttendance.
   for (const t of list) {
     if (t.status !== 'absent' || !okIds.has(t.entry.studentId)) continue;
@@ -697,6 +743,10 @@ async function executeAddNote(staff: StaffContext, ctx: TurnContext, args: any):
   const { okIds, failed } = targets.length
     ? await applyJournalUpserts(staff, date, targets.map(t => ({ entry: t.entry, patch: { note: t.note } })))
     : { okIds: new Set<string>(), failed: [] as string[] };
+
+  // Тип тот же, что и у посещаемости: на вебе запись в журнал (включая заметку
+  // без отметки) тоже логируется как attendance_marked — отдельного типа нет.
+  await logJournalActivity(staff, 'attendance_marked', okIds.size, { date, mode: 'note' });
 
   const done = targets.filter(t => okIds.has(t.entry.studentId))
     .map(t => `• <b>${esc(t.entry.name)}</b>: ${esc(t.note)}`);

@@ -22,6 +22,9 @@ service-account*.json
 # Выгрузки scripts/reset-finances.mjs — финансовые данные студентов
 finance-backup/
 
+# Бэкап оценок перед миграцией шкалы — персональные данные учеников
+grades-backup/
+
 # IDE / Editor
 .vscode/
 .idea/

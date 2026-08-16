@@ -1,92 +1,45 @@
 /**
- * API: Payroll Compensation Rules — карточки ставок учителей (`compensationRules`).
+ * API: Payroll Compensation Rules — ставки преподавателей (`compensationRules`).
  *
- * Правило append-only и датируется периодом действия. Ключевой инвариант:
- * ОДНО активное правило на учителя на период. Изменение ставки не правит старое
- * правило, а закрывает его `effectiveTo` и вставляет новую версию с `supersedesId`
- * — иначе расчётный лист за закрытый месяц начинает пересказывать историю задним
- * числом («почему изменилась оплата» перестаёт иметь ответ).
+ * ОДНА СТАВКА НА ПРЕПОДАВАТЕЛЯ и никаких сроков действия. Это главное отличие
+ * от прежней модели: раньше ставка датировалась периодом, правка закрывала
+ * старую версию и вставляла новую, а редактор спрашивал «действует с» и
+ * «действует по». Директор мыслит не так — у преподавателя просто есть ставка,
+ * и она такая, какая сейчас.
+ *
+ * ФИЛИАЛА У СТАВКИ ТОЖЕ НЕТ. «Двадцать процентов» — свойство человека, а не
+ * здания, и преподаватель спокойно ведёт группы в двух филиалах сразу. Прежняя
+ * модель «ставка на каждый филиал» на реальных данных давала ровно две беды:
+ * ставка, заведённая «не там», молча не начисляла ничего, а у одного человека
+ * копились документы-двойники. По филиалам раскладывается уже НАЧИСЛЕННОЕ —
+ * при выплате, пропорционально тому, где заработано (см. buildBranchShares).
+ *
+ * История прошлых месяцев от этого не страдает, и это надо понимать: её защищают
+ * не даты, а замороженный снапшот строки (PayrollLine.ruleSnapshot) плюс запрет
+ * пересчитывать утверждённый период. Правка ставки в августе физически не может
+ * тронуть июльские числа — июль не пересчитывается ни одним путём кода.
+ *
+ * Отсюда же детерминированный id документа (см. ruleDocId): «ставка Азизы» —
+ * это ОДИН документ, и две одновременные записи не могут породить двух ставок,
+ * из которых расчёт молча выберет одну. Документы прежней филиальной схемы
+ * схлопываются в него при первом же сохранении (см. `stale` ниже) — отдельная
+ * миграция для этого не нужна.
  *
  * Все запросы здесь — ТОЛЬКО на равенство: composite-индексы в этом проекте не
- * деплоятся (см. monthly-billing.ts). Сортировка и пересечение периодов — в JS.
+ * деплоятся (см. monthly-billing.ts). Сортировка — в JS.
  */
 import type { Handler, HandlerEvent } from '@netlify/functions';
-import { adminDb, getDocsByIds } from './utils/firebase-admin';
+import { adminDb } from './utils/firebase-admin';
 import { batchGetUserNames } from './utils/finance-names';
 import {
-  verifyAuth, can, getOrgFilter, resolveBranchFilter, recordInBranchScope, requireBranchScope,
+  verifyAuth, can, getOrgFilter,
   ok, unauthorized, forbidden, badRequest, notFound, jsonResponse,
 } from './utils/auth';
 
 const COLLECTION = 'compensationRules';
-const LINES_COLLECTION = 'payrollLines';
-const PERIODS_COLLECTION = 'payrollPeriods';
-
-/** Зеркало union-типа CompensationRule['status'] из src/types/index.ts. Держите синхронно. */
-const RULE_STATUSES = ['active', 'archived'];
 
 /** Зеркало PayComponent.kind из src/types/index.ts. Держите синхронно. */
-const COMPONENT_KINDS = ['salary', 'percent_revenue', 'per_lesson', 'per_hour', 'per_student'];
-
-/**
- * 'YYYY-MM' с проверкой номера месяца. Строже, чем /^\d{4}-\d{2}$/, намеренно:
- * '2026-13' прошёл бы слабую проверку, а потом навсегда выпал бы из сравнений
- * с реальными периодами (мы сравниваем периоды лексикографически, и '2026-13'
- * больше любого настоящего месяца этого года). Формат — семантика
- * billingPeriodKey, чтобы зарплата и биллинг понимали «2026-07» одинаково.
- */
-const PERIOD_RE = /^\d{4}-(0[1-9]|1[0-2])$/;
-
-/** Заглушка «бессрочно» для сравнения периодов. Лексикографически больше любого месяца. */
-const OPEN_END = '9999-12';
-
-/** Состояния периода, после которых правило уже участвовало в замороженной ведомости. */
-const FROZEN_STATES = ['approved', 'paid'];
-
-/** Сигнальная ошибка из runTransaction → 409 (внутри транзакции нельзя вернуть Response). */
-class RuleConflictError extends Error {}
-
-/** Месяц перед указанным: '2026-01' → '2025-12'. Без Date — формат тот же, что у billingPeriodKey. */
-function prevPeriod(period: string): string {
-  const year = Number(period.slice(0, 4));
-  const month = Number(period.slice(5, 7));
-  if (month === 1) return `${year - 1}-12`;
-  return `${year}-${String(month - 1).padStart(2, '0')}`;
-}
-
-/**
- * Запрет на ЗАПИСЬ по общеорганизационной ставке для сотрудника, запертого в
- * филиалах.
- *
- * requireBranchScope пропускает `branchId === null` безусловно — «сущность
- * общеорганизационная, доступна всем». Для СПИСКА это верно и намеренно: такая
- * ставка не данные соседнего филиала, а умолчание организации, и движок про неё
- * этому же пользователю докладывает диагностикой. Для записи — неверно:
- * менеджер одного филиала иначе переименовал бы, переписал компоненты или
- * заархивировал общую ставку преподавателя, который в его филиале никогда не
- * работал, и тот перестал бы начисляться ВЕЗДЕ.
- *
- * Распоряжается такой ставкой тот, кто сам не ограничен филиалом, — директор
- * сети.
- */
-function requireOrgWideRuleAccess(user: any, ruleBranchId: unknown) {
-  if (ruleBranchId != null) return null;
-  if ((user.branchIds?.length ?? 0) === 0) return null;
-  return forbidden('Общеорганизационную ставку может менять только сотрудник без ограничения по филиалам');
-}
-
-/** Следующий месяц: '2026-12' → '2027-01'. */
-function nextPeriod(period: string): string {
-  const year = Number(period.slice(0, 4));
-  const month = Number(period.slice(5, 7));
-  if (month === 12) return `${year + 1}-01`;
-  return `${year}-${String(month + 1).padStart(2, '0')}`;
-}
-
-/** Пересекаются ли два закрытых-справа интервала месяцев (обе границы включительно). */
-function periodsOverlap(aFrom: string, aTo: string | null, bFrom: string, bTo: string | null): boolean {
-  return aFrom <= (bTo || OPEN_END) && bFrom <= (aTo || OPEN_END);
-}
+const COMPONENT_KINDS = ['salary', 'percent_revenue'];
 
 /** Целые минорные единицы: дробь здесь — это молча потерянные копейки в расчёте. */
 function isPositiveMinor(value: unknown): value is number {
@@ -94,121 +47,76 @@ function isPositiveMinor(value: unknown): value is number {
 }
 
 /**
- * Область действия компонента. Явный аллоулист: в снапшот строки ведомости
- * scope уезжает целиком и замораживается, поэтому мусорные поля оттуда уже
- * не вычистить.
+ * Детерминированный id ставки: (организация, преподаватель).
+ *
+ * Настоящая гарантия «одна ставка на преподавателя»: Firestore не хранит два
+ * документа с одним id, поэтому дубликат физически невозможен — в отличие от
+ * проверки «а нет ли уже ставки?», которая не атомарна последующей записи.
+ *
+ * Хвост `_org` СОХРАНЁН намеренно, хотя филиала больше нет: ровно такой id уже
+ * носят все общеорганизационные ставки (а их большинство — это было умолчание
+ * формы). Убрать сегмент значило бы осиротить и их тоже, то есть выдумать
+ * миграцию там, где её можно не делать.
+ *
+ * Санитайзер не косметика: id документа не должен содержать '/', быть '.'/'..'
+ * или матчить /^__.*__$/. Преобразование чисто функциональное, поэтому одна и та
+ * же пара всегда даёт один и тот же id.
  */
-function normalizeScope(raw: any): { scope?: { courseIds?: string[]; groupIds?: string[] }; error?: string } {
-  if (raw === undefined || raw === null) return { scope: {} };
-  if (typeof raw !== 'object' || Array.isArray(raw)) return { error: 'scope должен быть объектом' };
-  const scope: { courseIds?: string[]; groupIds?: string[] } = {};
-  for (const key of ['courseIds', 'groupIds'] as const) {
-    const list = raw[key];
-    if (list === undefined || list === null) continue;
-    if (!Array.isArray(list) || list.some((v: any) => typeof v !== 'string' || !v)) {
-      return { error: `scope.${key} должен быть массивом идентификаторов` };
-    }
-    scope[key] = Array.from(new Set(list as string[]));
-  }
-  return { scope };
+function ruleDocId(orgId: string, teacherId: string): string {
+  const safe = (s: string) => String(s).replace(/[^A-Za-z0-9_-]/g, '-').slice(0, 200);
+  return `rate_${safe(orgId)}_${safe(teacherId)}_org`;
 }
 
 /**
- * Валидация и нормализация компонентов ставки. Возвращает НОВЫЕ объекты, а не
- * присланные: тело никогда не спредится в документ, иначе клиент протолкнул бы
- * в замороженный снапшот произвольные поля.
+ * Валидация и нормализация оплаты. Возвращает НОВЫЕ объекты, а не присланные:
+ * тело никогда не спредится в документ, иначе клиент протолкнул бы в
+ * замороженный снапшот произвольные поля.
+ *
+ * Видов ровно два. Прежние «за занятие», «за час» и «за студента» удалены: они
+ * считались по отметкам посещаемости, и зарплата человека молча зависела от
+ * того, ведёт ли кто-то журнал.
  */
 function normalizeComponents(raw: any): { components?: any[]; error?: string } {
   if (!Array.isArray(raw) || raw.length === 0) {
-    return { error: 'Правило должно содержать хотя бы один компонент' };
+    return { error: 'Укажите оплату: процент или фиксированную сумму' };
   }
   const components: any[] = [];
+  const seen = new Set<string>();
   for (let i = 0; i < raw.length; i++) {
     const c = raw[i];
-    const at = `Компонент №${i + 1}`;
+    const at = `Оплата №${i + 1}`;
     if (!c || typeof c !== 'object' || Array.isArray(c)) return { error: `${at}: ожидается объект` };
     if (!COMPONENT_KINDS.includes(c.kind)) {
-      return { error: `${at}: недопустимый тип «${c.kind}». Допустимые: ${COMPONENT_KINDS.join(', ')}.` };
+      return {
+        error: `${at}: недопустимый вид оплаты «${c.kind}». Допустимы только процент и фиксированная сумма.`,
+      };
     }
+    // Два процента в одной ставке — это не «сложная схема», а ошибка ввода:
+    // расчёт сложил бы их и заплатил вдвое.
+    if (seen.has(c.kind)) return { error: `${at}: вид оплаты «${c.kind}» указан дважды` };
+    seen.add(c.kind);
 
     if (c.kind === 'salary') {
       if (!isPositiveMinor(c.amountMinor)) {
-        return { error: `${at} (оклад): amountMinor должен быть целым положительным числом в минорных единицах` };
+        return { error: `${at}: сумма должна быть целым положительным числом в минорных единицах` };
       }
       components.push({ kind: 'salary', amountMinor: c.amountMinor });
       continue;
     }
 
-    const { scope, error: scopeError } = normalizeScope(c.scope);
-    if (scopeError) return { error: `${at}: ${scopeError}` };
-
-    if (c.kind === 'percent_revenue') {
-      // Базисные пункты: 2000 = 20%. Целое — потому что процент нигде не
-      // умножается на float, доля считается как minor * bp / 10000.
-      if (typeof c.percentBp !== 'number' || !Number.isSafeInteger(c.percentBp) || c.percentBp < 1 || c.percentBp > 10000) {
-        return { error: `${at} (процент): percentBp должен быть целым числом от 1 до 10000 (базисные пункты, 2000 = 20%)` };
-      }
-      // База сейчас единственная — СОБРАННАЯ касса. Оставлять поле свободным
-      // нельзя: движок читает его буквально и на неизвестной базе посчитал бы ноль.
-      if (c.base !== 'collected') {
-        return { error: `${at} (процент): base должен быть 'collected' — процент считается от СОБРАННЫХ денег` };
-      }
-      components.push({ kind: 'percent_revenue', percentBp: c.percentBp, base: 'collected', scope });
-      continue;
+    // Базисные пункты: 2000 = 20%. Целое — потому что процент нигде не
+    // умножается на float, доля считается как minor * bp / 10000.
+    if (typeof c.percentBp !== 'number' || !Number.isSafeInteger(c.percentBp) || c.percentBp < 1 || c.percentBp > 10000) {
+      return { error: `${at}: процент должен быть целым числом от 1 до 10000 базисных пунктов (2000 = 20%)` };
     }
-
-    // per_lesson / per_hour / per_student
-    if (!isPositiveMinor(c.amountMinor)) {
-      return { error: `${at}: amountMinor должен быть целым положительным числом в минорных единицах` };
+    // База сейчас единственная — СОБРАННАЯ касса. Оставлять поле свободным
+    // нельзя: движок читает его буквально и на неизвестной базе посчитал бы ноль.
+    if (c.base !== undefined && c.base !== 'collected') {
+      return { error: `${at}: процент считается только от СОБРАННЫХ денег (base: 'collected')` };
     }
-    components.push({ kind: c.kind, amountMinor: c.amountMinor, scope });
+    components.push({ kind: 'percent_revenue', percentBp: c.percentBp, base: 'collected' });
   }
   return { components };
-}
-
-/** Валидация пары дат действия правила. */
-function validateEffective(effectiveFrom: any, effectiveTo: any): string | null {
-  if (typeof effectiveFrom !== 'string' || !PERIOD_RE.test(effectiveFrom)) {
-    return 'effectiveFrom должен быть месяцем в формате ГГГГ-ММ';
-  }
-  if (effectiveTo !== null && effectiveTo !== undefined) {
-    if (typeof effectiveTo !== 'string' || !PERIOD_RE.test(effectiveTo)) {
-      return 'effectiveTo должен быть месяцем в формате ГГГГ-ММ либо null';
-    }
-    if (effectiveTo < effectiveFrom) {
-      return 'effectiveTo не может быть раньше effectiveFrom';
-    }
-  }
-  return null;
-}
-
-/**
- * Использовалось ли правило в уже замороженной ведомости.
- *
- * Два equality-клауза по payrollLines, затем периоды читаются по id (getAll, не
- * запрос) — ни одного индекса. organizationId в запросе не опционален: без него
- * строка чужого тенанта заблокировала бы легитимную правку и заодно раскрыла бы
- * факт её существования (тот же урок, что в api-finance-plans DELETE).
- */
-async function inspectRuleUsage(orgFilter: string, ruleId: string): Promise<{ lineCount: number; frozenStates: string[] }> {
-  const linesSnap = await adminDb.collection(LINES_COLLECTION)
-    .where('ruleId', '==', ruleId)
-    .where('organizationId', '==', orgFilter)
-    .get();
-
-  if (linesSnap.size === 0) return { lineCount: 0, frozenStates: [] };
-
-  const periodIds = Array.from(new Set(
-    linesSnap.docs.map((d: any) => d.data()?.periodId).filter(Boolean),
-  ));
-  const periods = await getDocsByIds(PERIODS_COLLECTION, periodIds, ['state', 'organizationId']);
-
-  const frozenStates: string[] = [];
-  for (const p of Object.values(periods) as any[]) {
-    if (p.organizationId !== orgFilter) continue;
-    if (FROZEN_STATES.includes(p.state)) frozenStates.push(p.state);
-  }
-  return { lineCount: linesSnap.size, frozenStates };
 }
 
 const handler: Handler = async (event: HandlerEvent) => {
@@ -227,41 +135,17 @@ const handler: Handler = async (event: HandlerEvent) => {
       const orgFilter = getOrgFilter(user);
       if (!orgFilter) return badRequest('Organization context required');
 
-      const branchFilter = resolveBranchFilter(user, params.branchId);
-      if (branchFilter === '__DENIED__') return forbidden('Access denied to requested branch');
-
       let query: FirebaseFirestore.Query = adminDb.collection(COLLECTION).where('organizationId', '==', orgFilter);
       // Только равенства — несколько таких клауз индекса не требуют.
       if (params.teacherId) query = query.where('teacherId', '==', params.teacherId);
-      if (params.status) {
-        if (!RULE_STATUSES.includes(params.status)) {
-          return badRequest(`Недопустимый статус ставки. Допустимые: ${RULE_STATUSES.join(', ')}.`);
-        }
-        query = query.where('status', '==', params.status);
-      }
 
       const snap = await query.get();
-      let results = snap.docs.map((doc: any) => ({ id: doc.id, ...doc.data() as any }));
-
-      // ── Общеорганизационные ставки видны в ЛЮБОМ филиальном срезе ──
-      // recordInBranchScope(null, 'centr') === false, поэтому ставка без филиала
-      // (а таких большинство: RulesTab филиал в теле не шлёт) просто исчезала из
-      // списка, стоило выбрать филиал. Менеджер видел пустой раздел «Ставки» и
-      // заводил новую — а сервер, сохраняя её, закрывал действующую, о которой
-      // менеджеру не сказали.
-      //
-      // Утечкой это не является: ставка без филиала — не данные соседнего
-      // филиала, а умолчание всей организации, и движок про неё этому же
-      // пользователю УЖЕ докладывает диагностикой 'rule_org_wide_skipped'.
-      // Показать её честнее, чем спрятать. Клиент помечает такие строки
-      // отдельной группой.
-      results = results.filter((r: any) => r.branchId == null || recordInBranchScope(r.branchId, branchFilter));
-
-      // Сортировка в памяти: orderBy в запросе потребовал бы composite-индекс.
-      // Свежие периоды действия сверху, при равенстве — новые записи первыми.
-      results.sort((a: any, b: any) =>
-        (b.effectiveFrom || '').localeCompare(a.effectiveFrom || '')
-        || new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
+      // Фильтра по филиалу здесь нет и быть не должно. Список обязан показывать
+      // РОВНО ТО, что видит расчёт, а расчёт после отвязки читает все ставки
+      // организации — включая доставшиеся от филиальной схемы. Спрятать такую
+      // ставку значило бы оставить директора в неведении о документе, по
+      // которому ему завтра начислят зарплату.
+      const results = snap.docs.map((doc: any) => ({ id: doc.id, ...doc.data() as any }));
 
       const teacherNames = await batchGetUserNames(
         results.map((r: any) => r.teacherId).filter(Boolean),
@@ -270,11 +154,17 @@ const handler: Handler = async (event: HandlerEvent) => {
         if (r.teacherId) r.teacherName = teacherNames.get(r.teacherId) || '';
       }
 
+      // Сортировка в памяти: orderBy в запросе потребовал бы composite-индекс.
+      results.sort((a: any, b: any) =>
+        String(a.teacherName || a.teacherId).localeCompare(String(b.teacherName || b.teacherId), 'ru'));
+
       // Голый массив — договорённость дома (как api-finance-plans GET).
       return ok(results);
     }
 
-    // ── POST: создать ставку ───────────────────────────────────────────────
+    // ── POST: задать ставку преподавателю (создание И правка) ──────────────
+    // Один эндпоинт на оба случая намеренно: у преподавателя ставка ровно одна,
+    // и «создать» против «изменить» — различие для базы, а не для человека.
     if (event.httpMethod === 'POST') {
       if (!can(user, 'payroll', 'write')) return forbidden('Недостаточно прав для этого действия');
 
@@ -285,237 +175,63 @@ const handler: Handler = async (event: HandlerEvent) => {
 
       if (!body.teacherId || typeof body.teacherId !== 'string') return badRequest('teacherId обязателен');
 
-      const label = typeof body.label === 'string' ? body.label.trim() : '';
-      if (!label) return badRequest('Название ставки обязательно — оно печатается на расчётном листе');
-
-      const effectiveError = validateEffective(body.effectiveFrom, body.effectiveTo);
-      if (effectiveError) return badRequest(effectiveError);
-      const effectiveFrom: string = body.effectiveFrom;
-      const effectiveTo: string | null = body.effectiveTo ?? null;
-
       const { components, error: componentsError } = normalizeComponents(body.components);
       if (componentsError) return badRequest(componentsError);
 
-      // Учитель должен быть членом ЭТОЙ организации. Читаем orgMembers по id
+      // Преподаватель должен быть членом ЭТОЙ организации. Читаем orgMembers по id
       // (getDoc, не запрос): это работает и для offlineTeacher — синтетического
       // id без Firebase Auth, — поэтому проверять наличие Auth-аккаунта нельзя.
       const memberDoc = await adminDb.collection('orgMembers').doc(orgFilter)
         .collection('members').doc(body.teacherId).get();
       if (!memberDoc.exists) return badRequest('Преподаватель не найден в этой организации');
 
-      // Резолвим филиал тем же фолбэком, что и финансы, и проверяем ТО, ЧТО
-      // РЕАЛЬНО ЗАПИШЕМ, — иначе сотрудник, ограниченный филиалом А, завёл бы
-      // ставку в филиале Б, просто прислав его id в теле.
-      const branchId = body.branchId ?? user.primaryBranchId ?? null;
-      const branchError = requireBranchScope(user, branchId);
-      if (branchError) return branchError;
-
-      // ── Инвариант «одно активное правило на учителя на период» ───────────
-      // Два equality-клауза, пересечение периодов считаем в JS.
-      const activeSnap = await adminDb.collection(COLLECTION)
-        .where('organizationId', '==', orgFilter)
-        .where('teacherId', '==', body.teacherId)
-        .where('status', '==', 'active')
-        .get();
-
-      const overlapping = activeSnap.docs
-        .map((d: any) => ({ id: d.id, ...d.data() as any }))
-        .filter((r: any) => periodsOverlap(r.effectiveFrom, r.effectiveTo ?? null, effectiveFrom, effectiveTo));
-
-      // Настоящий конфликт (не преемственность): старое правило начинается не
-      // РАНЬШЕ нового, значит закрыть его предыдущим месяцем нельзя — получится
-      // правило с пустым или отрицательным сроком действия. Это ошибка ввода
-      // (директор перепутал даты), а не смена ставки.
-      const genuineConflict = overlapping.find((r: any) => !(r.effectiveFrom < effectiveFrom));
-      if (genuineConflict) {
-        return jsonResponse(409, {
-          error: `У преподавателя уже есть активная ставка «${genuineConflict.label || genuineConflict.id}» `
-            + `с ${genuineConflict.effectiveFrom} по ${genuineConflict.effectiveTo || 'бессрочно'}, и она пересекается с новой. `
-            + `Новая ставка должна начинаться позже действующей — тогда действующая закроется автоматически.`,
-          conflictRuleId: genuineConflict.id,
-        });
-      }
-
-      const closeAt = prevPeriod(effectiveFrom);
       const now = new Date().toISOString();
-      const newRef = adminDb.collection(COLLECTION).doc();
+      const ref = adminDb.collection(COLLECTION).doc(ruleDocId(orgFilter, body.teacherId));
+      const existing = await ref.get();
 
-      // Явный аллоулист. organizationId/createdBy/status/supersedesId — служебные,
-      // их ставит сервер: клиент не должен уметь создать чужую или сразу
-      // «архивную» ставку, ни подделать цепочку аудита.
+      // Явный аллоулист. organizationId/createdBy — служебные, их ставит сервер:
+      // клиент не должен уметь создать ставку в чужой организации. Поля branchId
+      // здесь нет намеренно, и стирать его у легаси-документа отдельно не нужно:
+      // batch.set ниже — ПОЛНАЯ перезапись без merge, поле уходит само.
       const data: Record<string, any> = {
         teacherId: body.teacherId,
-        branchId,
-        label,
-        status: 'active',
         components,
-        effectiveFrom,
-        effectiveTo,
-        // Цепочка «почему изменилась оплата»: на кого встали. Если закрываем
-        // несколько — ссылаемся на самое позднее из них.
-        supersedesId: overlapping.length
-          ? overlapping.slice().sort((a: any, b: any) => (b.effectiveFrom || '').localeCompare(a.effectiveFrom || ''))[0].id
-          : null,
         organizationId: orgFilter,
-        createdBy: user.uid,
-        createdAt: now,
+        createdBy: existing.exists ? (existing.data() as any).createdBy ?? user.uid : user.uid,
+        createdAt: existing.exists ? (existing.data() as any).createdAt ?? now : now,
+        updatedBy: user.uid,
         updatedAt: now,
       };
 
-      // Закрытие старых правил и вставка нового — одна транзакция: между двумя
-      // отдельными записями существует момент, когда у учителя либо две активные
-      // ставки, либо ни одной, и расчёт, попавший в эту щель, посчитает неверно.
-      try {
-        await adminDb.runTransaction(async (t) => {
-          // Firestore требует, чтобы все чтения шли до всех записей.
-          const supersededDocs = await Promise.all(
-            overlapping.map((r: any) => t.get(adminDb.collection(COLLECTION).doc(r.id))),
-          );
+      // ── Самолечение от прежних моделей ──
+      // Ставки успели побывать датированными версиями с автоid, а затем —
+      // отдельным документом на каждый филиал; у одного преподавателя их
+      // накапливалось несколько. Расчёт из нескольких выбрал бы одну (с
+      // диагностикой), но правка через этот эндпоинт трогала бы только
+      // канонический документ — то есть директор менял бы ставку, а начислялась
+      // бы старая. Поэтому ЛЮБЫЕ другие документы того же преподавателя
+      // удаляются тем же батчем, что и запись: сверки по филиалу здесь больше
+      // нет, иначе филиальный двойник пережил бы сохранение и продолжил спорить
+      // с канонической ставкой за то, сколько человеку платить.
+      const siblings = await adminDb.collection(COLLECTION)
+        .where('organizationId', '==', orgFilter)
+        .where('teacherId', '==', body.teacherId)
+        .get();
+      const stale = siblings.docs.filter((d: any) => d.id !== ref.id);
 
-          const toClose: Array<{ ref: FirebaseFirestore.DocumentReference; from: string }> = [];
-          // Ставки, которые надо ВОЗОБНОВИТЬ после временной — см. ниже.
-          const toResume: Array<{ id: string; data: FirebaseFirestore.DocumentData }> = [];
-          for (const doc of supersededDocs) {
-            if (!doc.exists) continue;
-            const d = doc.data()!;
-            // Проверка организации повторяется ВНУТРИ транзакции: чтение,
-            // которое авторизовало эту запись, не атомарно с ней.
-            if (d.organizationId !== orgFilter) continue;
-            // Правило могли заархивировать или подвинуть, пока мы считали.
-            if (d.status !== 'active') continue;
-            if (!periodsOverlap(d.effectiveFrom, d.effectiveTo ?? null, effectiveFrom, effectiveTo)) continue;
-            if (!(d.effectiveFrom < effectiveFrom)) {
-              throw new RuleConflictError(d.id || doc.id);
-            }
-            toClose.push({ ref: doc.ref, from: d.effectiveFrom });
+      const batch = adminDb.batch();
+      batch.set(ref, data);
+      for (const doc of stale) batch.delete(doc.ref);
+      await batch.commit();
 
-            // ── Временная ставка не отменяет постоянную ──
-            // Новая ставка с КОНЕЧНЫМ сроком — это исключение на месяц-другой
-            // («в декабре платим иначе»). Действующая при этом закрывалась
-            // предыдущим месяцем и не возобновлялась никогда: после месяца
-            // исключения преподаватель оставался вообще без ставки, ведомость
-            // молча не начисляла ему ничего, а диагностика говорила лишь «нет
-            // ставки» — будто её и не заводили.
-            //
-            // Поэтому продолжение прежней ставки создаём сразу: те же
-            // компоненты, с месяца после исключения и до её собственного конца
-            // (или бессрочно, если он был открыт).
-            const oldEnd: string | null = d.effectiveTo ?? null;
-            if (effectiveTo && (oldEnd === null || oldEnd > effectiveTo)) {
-              toResume.push({ id: doc.id, data: d });
-            }
-          }
-
-          for (const c of toClose) {
-            t.update(c.ref, { effectiveTo: closeAt, updatedAt: now });
-          }
-          t.set(newRef, data);
-
-          for (const r of toResume) {
-            const resumeRef = adminDb.collection(COLLECTION).doc();
-            t.set(resumeRef, {
-              teacherId: r.data.teacherId,
-              branchId: r.data.branchId ?? null,
-              label: r.data.label,
-              status: 'active',
-              components: r.data.components,
-              effectiveFrom: nextPeriod(effectiveTo as string),
-              effectiveTo: r.data.effectiveTo ?? null,
-              // Аудит: на ком стоит эта ставка и чьим продолжением является.
-              supersedesId: newRef.id,
-              resumesRuleId: r.id,
-              organizationId: orgFilter,
-              createdBy: user.uid,
-              createdAt: now,
-              updatedAt: now,
-            });
-          }
-        });
-      } catch (err: any) {
-        if (err instanceof RuleConflictError) {
-          return jsonResponse(409, {
-            error: 'Действующая ставка преподавателя изменилась во время сохранения и теперь конфликтует с новой. Откройте список ставок заново и повторите.',
-            conflictRuleId: err.message,
-          });
-        }
-        throw err;
-      }
-
-      return ok({ id: newRef.id, ...data });
+      return ok({ id: ref.id, ...data, replacedLegacyRules: stale.length });
     }
 
-    // ── PUT: правка ставки ─────────────────────────────────────────────────
-    if (event.httpMethod === 'PUT') {
-      if (!can(user, 'payroll', 'write')) return forbidden('Недостаточно прав для этого действия');
-
-      const body = JSON.parse(event.body || '{}');
-      const ruleId = body.ruleId || body.id;
-      if (!ruleId) return badRequest('ruleId required');
-
-      const orgFilter = getOrgFilter(user);
-      if (!orgFilter) return badRequest('Organization context required');
-
-      const docRef = adminDb.collection(COLLECTION).doc(ruleId);
-      const doc = await docRef.get();
-      if (!doc.exists) return notFound('Ставка не найдена');
-
-      const existing = doc.data()!;
-      // Без этого любой держатель payroll:write переписал бы ставку в чужой
-      // организации, просто угадав id.
-      if (existing.organizationId !== orgFilter) return forbidden();
-
-      const branchError = requireBranchScope(user, existing.branchId);
-      if (branchError) return branchError;
-      const orgWideError = requireOrgWideRuleAccess(user, existing.branchId);
-      if (orgWideError) return orgWideError;
-
-      // Правка ставки, по которой уже утверждена (или выплачена) ведомость —
-      // это переписывание истории: снапшоты строк заморожены, а карточка под
-      // ними поехала бы, и расчётный лист перестал бы объяснять сам себя.
-      const usage = await inspectRuleUsage(orgFilter, ruleId);
-      if (usage.frozenStates.length > 0) {
-        return jsonResponse(409, {
-          error: 'По этой ставке уже утверждена ведомость — менять её нельзя. Создайте новую версию ставки с более поздней датой начала: действующая закроется автоматически.',
-          frozenStates: Array.from(new Set(usage.frozenStates)),
-        });
-      }
-
-      // Явный аллоулист безопасных полей. teacherId/effectiveFrom/organizationId/
-      // createdBy/supersedesId — идентичность и аудит: перенос ставки на другого
-      // учителя или на другой месяц обязан быть новой версией, а не правкой.
-      const updates: Record<string, any> = { updatedAt: new Date().toISOString() };
-
-      if (body.label !== undefined) {
-        const label = typeof body.label === 'string' ? body.label.trim() : '';
-        if (!label) return badRequest('Название ставки обязательно — оно печатается на расчётном листе');
-        updates.label = label;
-      }
-
-      if (body.components !== undefined) {
-        const { components, error: componentsError } = normalizeComponents(body.components);
-        if (componentsError) return badRequest(componentsError);
-        updates.components = components;
-      }
-
-      if (body.effectiveTo !== undefined) {
-        // Валидируем против СУЩЕСТВУЮЩЕГО effectiveFrom: его менять нельзя.
-        const effectiveError = validateEffective(existing.effectiveFrom, body.effectiveTo);
-        if (effectiveError) return badRequest(effectiveError);
-        updates.effectiveTo = body.effectiveTo ?? null;
-      }
-
-      if (body.status !== undefined) {
-        if (!RULE_STATUSES.includes(body.status)) {
-          return badRequest(`Недопустимый статус ставки. Допустимые: ${RULE_STATUSES.join(', ')}.`);
-        }
-        updates.status = body.status;
-      }
-
-      await docRef.update(updates);
-      return ok({ id: doc.id, ...existing, ...updates });
-    }
-
-    // ── DELETE: удалить ставку ─────────────────────────────────────────────
+    // ── DELETE: убрать ставку ──────────────────────────────────────────────
+    // Без гардов «по ставке уже утверждена ведомость»: строки ведомости несут
+    // собственный замороженный снапшот и не читают карточку ставки, поэтому
+    // удаление ничего в истории не ломает. Оно лишь означает «этому человеку
+    // больше не начислять».
     if (event.httpMethod === 'DELETE') {
       if (!can(user, 'payroll', 'delete')) return forbidden('Недостаточно прав для этого действия');
 
@@ -530,35 +246,9 @@ const handler: Handler = async (event: HandlerEvent) => {
       if (!doc.exists) return notFound('Ставка не найдена');
 
       const existing = doc.data()!;
+      // Без этого любой держатель payroll:delete снёс бы ставку в чужой
+      // организации, просто угадав id.
       if (existing.organizationId !== orgFilter) return forbidden();
-
-      const branchError = requireBranchScope(user, existing.branchId);
-      if (branchError) return branchError;
-      const orgWideError = requireOrgWideRuleAccess(user, existing.branchId);
-      if (orgWideError) return orgWideError;
-
-      const usage = await inspectRuleUsage(orgFilter, ruleId);
-
-      // Утверждённая или выплаченная ведомость — это бухгалтерский документ.
-      // Удаление ставки под ним оставляет строки со ссылкой в никуда и лишает
-      // директора ответа на вопрос «по какой ставке я это заплатил». force тут
-      // НЕ помогает намеренно: архивация решает ту же задачу без потери аудита.
-      if (usage.frozenStates.length > 0) {
-        return jsonResponse(409, {
-          error: 'По этой ставке уже утверждена ведомость — удалить её нельзя. Заархивируйте ставку: она перестанет участвовать в расчётах, но история сохранится.',
-          frozenStates: Array.from(new Set(usage.frozenStates)),
-          payrollLines: usage.lineCount,
-        });
-      }
-
-      // Черновые строки ведомости тоже осиротеют, но это поправимо пересчётом —
-      // достаточно заставить вызывающего подтвердить (как api-finance-plans).
-      if (usage.lineCount > 0 && params.force !== 'true') {
-        return jsonResponse(409, {
-          error: `К этой ставке привязано строк ведомости: ${usage.lineCount}. Удаление оставит их без ставки.`,
-          payrollLines: usage.lineCount,
-        });
-      }
 
       await docRef.delete();
       return ok({ deleted: true, id: ruleId });

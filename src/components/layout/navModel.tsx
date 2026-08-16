@@ -95,11 +95,16 @@ const ALL_BRANCHES_ONLY = new Set<string>([
 // branchId: страница осмысленна в обоих режимах — «Все филиалы» показывают весь
 // справочник, конкретный филиал сужает до своих аудиторий. Это прямое требование,
 // а не недосмотр: не переносите её в ONE_BRANCH_ONLY.
+//
+// `payroll` — тоже намеренно вне обоих наборов, но по другой причине: зарплата
+// вообще не филиалуется. Ставка одна на преподавателя, ведомость одна на месяц,
+// а филиалы — лишь разрез начисленной суммы («где заработано»). Под «Все филиалы»
+// раздел показывал бы ровно то же, что под конкретным, поэтому прятать его в
+// каком-либо режиме значило бы отнять единственный вход в зарплату без причины.
 const ONE_BRANCH_ONLY = new Set<string>([
   'groups',                          // the canonical branch carrier
   'schedule', 'studentSchedule',     // ScheduleEvent.branchId
   'finances',                        // FinancialTransaction/PaymentPlan branchId
-  'payroll',                         // ведомость — один документ на филиал, объединению негде жить
   'journal', 'gradebook',            // branch enters via the group behind each entry
 ]);
 

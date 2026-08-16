@@ -7,7 +7,7 @@
  * границе формы, и больше нигде — иначе округление разъедется с расчётным
  * листом, который считал сервер.
  */
-import type { PayComponent, PayrollPeriodState, RuleScope } from '../../types';
+import type { PayComponent, PayrollPeriodState } from '../../types';
 import { formatMoney } from '../../lib/money';
 
 /**
@@ -70,92 +70,43 @@ export const percentInputToBp = (raw: string): number | null => {
 /** «20%» из 2000. */
 export const formatPercentBp = (bp?: number | null): string => `${bpToPercentInput(bp) || '0'}%`;
 
-/** Компоненты ставки по видам — порядок задаёт и список в редакторе. */
-export const COMPONENT_KINDS: PayComponent['kind'][] = [
-  'salary',
-  'percent_revenue',
-  'per_lesson',
-  'per_hour',
-  'per_student',
-];
-
 /**
- * Виды, которые считаются ТОЛЬКО по журналу посещаемости. Про них редактор
- * обязан сказать прямым текстом: без отметки посещаемости с выбранной группой
- * запись урока не рождается, и зарплата молча выходит меньше настоящей.
+ * Виды оплаты — ровно два, процент первым: так платят чаще, и первым в списке
+ * должно стоять то, что выбирают.
  */
-export const SESSION_BASED_KINDS: PayComponent['kind'][] = ['per_lesson', 'per_hour', 'per_student'];
+export const COMPONENT_KINDS: PayComponent['kind'][] = ['percent_revenue', 'salary'];
 
-export const isSessionBased = (kind: PayComponent['kind']): boolean => SESSION_BASED_KINDS.includes(kind);
-
-/** Название вида компонента для выпадающего списка. */
+/** Название вида оплаты для переключателя. */
 export const componentKindLabel = (kind: PayComponent['kind'], t: Translate): string => {
   switch (kind) {
-    case 'salary': return t('payroll.kindSalary', 'Оклад');
-    case 'percent_revenue': return t('payroll.kindPercent', 'Процент от собранного');
-    case 'per_lesson': return t('payroll.kindPerLesson', 'За занятие');
-    case 'per_hour': return t('payroll.kindPerHour', 'За час');
-    case 'per_student': return t('payroll.kindPerStudent', 'За студента');
+    case 'percent_revenue': return t('payroll.kindPercent', 'Процент с оплат студентов');
+    case 'salary': return t('payroll.kindSalary', 'Фиксированная сумма');
     default: return String(kind);
   }
 };
 
 /**
- * Компонент одной строкой по-русски: «Оклад 30 000 с.», «20% от собранного».
- * Директор читает ставку, а не JSON, поэтому список правил рисуется отсюда.
+ * Ставка одной строкой по-русски: «30 000 с. в месяц», «20% с оплат студентов».
+ * Директор читает ставку, а не JSON, поэтому список рисуется отсюда.
  */
 export const describeComponent = (component: PayComponent, t: Translate): string => {
   switch (component.kind) {
     case 'salary':
-      return t('payroll.summarySalary', 'Оклад {{amount}}', { amount: formatMinor(component.amountMinor) });
+      return t('payroll.summarySalary', '{{amount}} в месяц', { amount: formatMinor(component.amountMinor) });
     case 'percent_revenue':
-      return t('payroll.summaryPercent', '{{percent}} от собранного', { percent: formatPercentBp(component.percentBp) });
-    case 'per_lesson':
-      return t('payroll.summaryPerLesson', '{{amount}} за занятие', { amount: formatMinor(component.amountMinor) });
-    case 'per_hour':
-      return t('payroll.summaryPerHour', '{{amount}} за час', { amount: formatMinor(component.amountMinor) });
-    case 'per_student':
-      return t('payroll.summaryPerStudent', '{{amount}} за студента', { amount: formatMinor(component.amountMinor) });
+      return t('payroll.summaryPercent', '{{percent}} с оплат студентов', { percent: formatPercentBp(component.percentBp) });
     default:
-      return '';
+      // Устаревший вид из прежней модели (за занятие/час/студента). Он больше не
+      // начисляется, и молчать об этом нельзя: человек недосчитается денег.
+      return t('payroll.summaryLegacy', 'Устаревший вид оплаты — задайте ставку заново');
   }
 };
 
-/** «Оклад 30 000 с. + 20% от собранного» — вся ставка одной фразой. */
+/** Вся ставка одной фразой. */
 export const describeComponents = (components: PayComponent[] | undefined, t: Translate): string => {
   const list = (components ?? []).map(c => describeComponent(c, t)).filter(Boolean);
-  return list.length ? list.join(' + ') : t('payroll.noComponents', 'Компонентов нет');
+  return list.length ? list.join(' + ') : t('payroll.noComponents', 'Ставка не задана');
 };
-
-/** Пусто = все курсы и группы преподавателя. Именно так это читает движок. */
-export const describeScope = (
-  scope: RuleScope | undefined,
-  nameOf: (id: string) => string,
-  t: Translate,
-): string => {
-  const groupIds = scope?.groupIds ?? [];
-  const courseIds = scope?.courseIds ?? [];
-  if (!groupIds.length && !courseIds.length) return t('payroll.scopeAll', 'Все курсы и группы');
-  // Приоритет ровно как в matchesScope движка: если названы группы, курсы НЕ
-  // учитываются вовсе. Перечислять их через запятую значило бы обещать
-  // объединение, которого движок не делает, — а разница здесь в зарплате.
-  if (groupIds.length) {
-    const groups = groupIds.map(nameOf).filter(Boolean).join(', ');
-    return courseIds.length
-      // Старые ставки успели сохранить и то и другое — говорим, что реально считается.
-      ? t('payroll.scopeGroupsOverCourses', 'Группы: {{groups}} (выбранные курсы не учитываются)', { groups })
-      : t('payroll.scopeGroupsOnly', 'Группы: {{groups}}', { groups });
-  }
-  return t('payroll.scopeCoursesOnly', 'Курсы: {{courses}}', {
-    courses: courseIds.map(nameOf).filter(Boolean).join(', '),
-  });
-};
-
-/** Период действия ставки: обе границы включительно, null справа = бессрочно. */
-export const describeEffective = (from: string, to: string | null | undefined, t: Translate): string =>
-  to
-    ? t('payroll.effectiveRange', 'с {{from}} по {{to}}', { from, to })
-    : t('payroll.effectiveOpen', 'с {{from}}, бессрочно', { from });
 
 /** Оформление бейджа состояния ведомости. Прогресс читается цветом. */
 export const PERIOD_STATE_STYLE: Record<PayrollPeriodState, { key: string; fallback: string; badge: string }> = {

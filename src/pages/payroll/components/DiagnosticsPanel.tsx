@@ -20,27 +20,27 @@ interface Props {
 
 /** Заголовок группы по коду. Сообщение с сервера уже по-русски — заголовок его называет. */
 const CODE_TITLES: Record<string, { key: string; fallback: string }> = {
-  session_no_teacher: { key: 'payroll.diagNoTeacher', fallback: 'Занятия без преподавателя' },
-  session_no_duration: { key: 'payroll.diagNoDuration', fallback: 'Занятия без длительности' },
-  percent_scope_empty: { key: 'payroll.diagScopeEmpty', fallback: 'Процент без области действия' },
+  teacher_without_groups: { key: 'payroll.diagNoGroups', fallback: 'Преподаватель без групп' },
   percent_base_negative: { key: 'payroll.diagBaseNegative', fallback: 'Возвраты превысили сборы' },
-  revenue_unattributed: { key: 'payroll.diagUnattributed', fallback: 'Выручка вне областей действия' },
+  payment_without_group: { key: 'payroll.diagNoGroupOnPayment', fallback: 'Платежи без привязки к группе' },
   teacher_without_rule: { key: 'payroll.diagNoRule', fallback: 'Преподаватели без ставки' },
-  overlapping_rules: { key: 'payroll.diagOverlap', fallback: 'Пересекающиеся ставки' },
-  rule_no_components: { key: 'payroll.diagNoComponents', fallback: 'Ставка без компонентов' },
-  // Диагностика есть в движке (api-payroll), а заголовка ей не завели — и
-  // менеджеру показывался сырой машинный код `rule_org_wide_skipped`.
+  duplicate_rules: { key: 'payroll.diagDuplicateRules', fallback: 'У преподавателя несколько ставок' },
+  rule_no_components: { key: 'payroll.diagNoComponents', fallback: 'Ставка без оплаты' },
+  // Код ИСТОРИЧЕСКИЙ: движок его больше не выдаёт — ставки перестали быть
+  // филиальными, и пропускать по этой причине стало нечего. Заголовок остаётся
+  // ради уже замороженных ведомостей: они несут этот код навсегда, а без записи
+  // директор увидел бы в них сырое `rule_org_wide_skipped`.
   rule_org_wide_skipped: { key: 'payroll.diagOrgWideSkipped', fallback: 'Ставки без филиала не вошли в ведомость' },
 };
 
 /**
  * «Пропущенные записи» — это функция, а не лог ошибок.
  *
- * Сумма в ведомости может быть меньше ожидаемой по совершенно законным
- * причинам: занятие отмечено без преподавателя, у урока не проставлена
- * длительность, платёж пришёл мимо всех областей действия. Директор, который
- * этого не видит, либо переплатит, либо недоплатит человеку и не узнает об этом.
- * Поэтому блок стоит НАД таблицей и не сворачивается по умолчанию.
+ * Сумма может быть меньше ожидаемой по совершенно законным причинам: платёж
+ * пришёл без привязки к группе, преподаватель не назначен ни в одну группу,
+ * ставка не заведена. Директор, который этого не видит, либо переплатит, либо
+ * недоплатит человеку и не узнает об этом. Поэтому блок стоит НАД списком и не
+ * сворачивается по умолчанию.
  */
 const DiagnosticsPanel: React.FC<Props> = ({ diagnostics, teacherName }) => {
   const { t } = useTranslation();
@@ -75,7 +75,7 @@ const DiagnosticsPanel: React.FC<Props> = ({ diagnostics, teacherName }) => {
             {t('payroll.diagnosticsClean', 'Пропущенных записей нет')}
           </p>
           <p className="text-xs text-emerald-700/80 dark:text-emerald-400/80 mt-0.5">
-            {t('payroll.diagnosticsCleanHint', 'Все занятия и платежи в этом месяце учтены ставками.')}
+            {t('payroll.diagnosticsCleanHint', 'Все оплаты этого месяца привязаны к группам и учтены ставками.')}
           </p>
         </div>
       </div>

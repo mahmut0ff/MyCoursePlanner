@@ -17,7 +17,7 @@ import { adminDb, getDocsByIds } from './utils/firebase-admin';
 import type { AuthUser } from './utils/auth';
 import { verifyAuth, isSuperAdmin, getMembershipData, memberHoldsRole, resolveOrgGrants, standingIsRosterManager, ok, unauthorized, forbidden, badRequest, notFound, jsonResponse } from './utils/auth';
 import { notifyOrgAdmins } from './utils/notifications';
-import { orgDayKey, isDebtBearingPlan, isUntouchedPlan, planDebt } from './utils/payment-plans';
+import { isDebtBearingPlan, isUntouchedPlan, planDebt } from './utils/payment-plans';
 
 const now = () => new Date().toISOString();
 
@@ -333,21 +333,21 @@ const handler: Handler = async (event: HandlerEvent) => {
 
     // ═══ POST: Remove member ═══
     /**
-     * Закрывает действующие ставки преподавателя, покидающего организацию.
+     * Убирает ставку преподавателя, покидающего организацию.
      *
-     * Строки ведомости строятся ИЗ СТАВОК (payroll-engine смотрит только на
-     * rule.status и окно effectiveFrom/effectiveTo), а членство используется там
+     * Строки ведомости строятся ИЗ СТАВОК, а членство payroll-engine использует
      * лишь для диагностики «нет ставки». Поэтому увольнение не влияло на
-     * зарплату вообще: ставка «оклад 30 000» с открытым effectiveTo оставалась
-     * активной, и 1-го числа крон payroll-accrual создавал ведомость со строкой
-     * уволенного — с его именем (users-док никуда не делся) и полной суммой.
-     * Директор утверждал ведомость и выплачивал деньги человеку, который здесь
-     * больше не работает.
+     * зарплату вообще: ставка «30 000 в месяц» оставалась, и 1-го числа крон
+     * payroll-accrual создавал ведомость со строкой уволенного — с его именем
+     * (users-док никуда не делся) и полной суммой. Директор утверждал ведомость
+     * и выплачивал деньги человеку, который здесь больше не работает.
      *
-     * Закрываем ТЕКУЩИМ месяцем, а не архивируем: ведомости прошлых месяцев
-     * должны пересчитываться по тем ставкам, что действовали тогда, а месяц
-     * увольнения человек отработал хотя бы частично. Прекращаются только
-     * будущие начисления.
+     * Удаляем, а не помечаем: у ставки больше нет ни статуса, ни срока
+     * действия — «убрать ставку» и есть способ прекратить начисления. Историю
+     * это не трогает: уже посчитанные ведомости несут замороженный снапшот и
+     * карточку ставки не читают. Незакрытый ТЕКУЩИЙ месяц после этого
+     * начислится нулём, поэтому увольнять правильно после расчёта месяца — на
+     * это и рассчитан порядок «Рассчитать → Утвердить → Выплатить».
      */
     async function closeTeacherRules(organizationId: string, userId: string): Promise<number> {
       // Роль НЕ проверяем. Ставка не появляется сама: если она есть, её завёл
@@ -355,22 +355,16 @@ const handler: Handler = async (event: HandlerEvent) => {
       // преподающим 'admin'. Прежняя проверка ролей молча пропускала как раз
       // последний случай, а завести такому сотруднику ставку интерфейс
       // позволяет.
-      const month = orgDayKey().slice(0, 7); // 'YYYY-MM' в дне организации
       // Только равенства — составной индекс не нужен (CLAUDE.md).
       const snap = await adminDb.collection('compensationRules')
         .where('organizationId', '==', organizationId)
         .where('teacherId', '==', userId)
-        .where('status', '==', 'active')
         .get();
-      const open = snap.docs.filter(d => {
-        const to = (d.data() as any).effectiveTo;
-        return !to || to > month;
-      });
-      if (open.length === 0) return 0;
+      if (snap.empty) return 0;
       const batch = adminDb.batch();
-      for (const d of open) batch.update(d.ref, { effectiveTo: month, updatedAt: now() });
+      for (const d of snap.docs) batch.delete(d.ref);
       await batch.commit();
-      return open.length;
+      return snap.size;
     }
 
     if (event.httpMethod === 'POST' && action === 'remove') {

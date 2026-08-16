@@ -1526,8 +1526,12 @@ export interface FinanceMetrics {
 
 /**
  * Неизменяемая запись «урок состоялся» (коллекция `lessonSessions`). Пишется в
- * том же batch, что и журнал, при отметке посещаемости. Единственный источник
- * для per_lesson/per_hour/per_student — никогда scheduleEvents.
+ * том же batch, что и журнал, при отметке посещаемости.
+ *
+ * Зарплата её БОЛЬШЕ НЕ ЧИТАЕТ: оплата за занятие, за час и за студента удалена
+ * (см. PayComponent), потому что ставила зарплату человека в зависимость от
+ * того, ведёт ли кто-то журнал. Запись остаётся как факт «занятие проведено» —
+ * это законный след посещаемости сам по себе.
  */
 export interface LessonSession {
   id: string;
@@ -1536,59 +1540,68 @@ export interface LessonSession {
   groupId: string;
   courseId: string;
   /**
-   * null = вели несколько учителей и никто не выбран. Такая сессия не принадлежит
-   * никому: per_lesson/per_hour/per_student её ПРОПУСКАЮТ. Никогда не выводится из
-   * того, кто отметил журнал (createdBy/confirmedBy) — это приписало бы чужую оплату.
+   * null = вели несколько учителей и никто не выбран. Никогда не выводится из
+   * того, кто отметил журнал (createdBy/confirmedBy) — это приписало бы занятие
+   * не тому человеку.
    */
   teacherId: string | null;
   date: string;                 // 'YYYY-MM-DD'
-  /** null = длительность неизвестна → per_hour эту сессию пропускает: видимый ноль лучше догадки. */
   durationMinutes: number | null;
   status: 'held' | 'cancelled';
-  headcount: number;            // сколько присутствовало → база для per_student
+  headcount: number;            // сколько присутствовало
   sourceEventId: string | null; // из какого шаблона scheduleEvent материализована, если был
   confirmedBy: string;
   confirmedAt: string;
   createdAt: string;
 }
 
-/** Область действия компонента: пусто/отсутствует = все курсы и группы учителя. */
-export interface RuleScope {
-  courseIds?: string[];
-  groupIds?: string[];
-}
-
 /**
- * Компонент ставки. Сумма компонентов = заработок правила.
+ * Вид оплаты преподавателя. РОВНО ДВА, и это продуктовое решение.
+ *
+ * `percent_revenue` — процент от денег, которые реально принесли студенты его
+ * групп (группы берутся из `Group.teacherIds`, а не из настройки в ставке).
+ * `salary` — фиксированная сумма за месяц.
+ *
  * amountMinor — целые минорные единицы; percentBp — базисные пункты (2000 = 20%).
  */
 export type PayComponent =
-  | { kind: 'salary'; amountMinor: number } // фиксированный оклад; даёт строку даже при нулевой активности
-  | { kind: 'percent_revenue'; percentBp: number; base: 'collected'; scope: RuleScope } // % от СОБРАННОЙ наличности в окне
-  | { kind: 'per_lesson'; amountMinor: number; scope: RuleScope }  // × число held-сессий в scope
-  | { kind: 'per_hour'; amountMinor: number; scope: RuleScope }    // amountMinor за 60 мин; пропорция по durationMinutes
-  | { kind: 'per_student'; amountMinor: number; scope: RuleScope }; // × Σ headcount по held-сессиям в scope
+  | { kind: 'salary'; amountMinor: number }
+  | { kind: 'percent_revenue'; percentBp: number; base: 'collected' };
 
 /**
- * Карточка ставки (коллекция `compensationRules`) — append-only, датируется
- * периодом действия. Инвариант: одно активное правило на учителя на период.
- * Изменение ставки закрывает effectiveTo старого правила и вставляет новую
- * версию с supersedesId.
+ * Ставка преподавателя (коллекция `compensationRules`) — ОДНА на человека, без
+ * срока действия и без филиала: у преподавателя просто есть ставка, и она
+ * такая, какая сейчас.
+ *
+ * Филиала нет намеренно: преподаватель ведёт группы в нескольких зданиях, а
+ * «двадцать процентов» — свойство человека. По филиалам раскладывается уже
+ * НАЧИСЛЕННОЕ (`PayrollLine.branchShares`).
+ *
+ * Историю прошлых месяцев держат не даты, а замороженный `PayrollLine.
+ * ruleSnapshot` и запрет пересчитывать утверждённый период.
  */
 export interface CompensationRule {
   id: string;
   organizationId: string;
   teacherId: string;            // может быть синтетический id offline-учителя — не полагаться на Auth-аккаунт
-  branchId: string | null;
-  label: string;                // «Оклад + 20% с группы А» — показывается на расчётном листе дословно
-  status: 'active' | 'archived';
   components: PayComponent[];
-  effectiveFrom: string;        // 'YYYY-MM' включительно
-  effectiveTo: string | null;   // 'YYYY-MM' включительно; null = бессрочно
-  supersedesId: string | null;  // цепочка аудита «почему изменилась оплата»
   createdBy: string;
   createdAt: string;
+  updatedBy?: string;
   updatedAt: string;
+}
+
+/**
+ * Доля филиала в начисленном — атрибуция, а не расчёт. Сумма долей равна сумме
+ * строки; выплата разворачивает разложение в отдельный расход на филиал, чтобы
+ * здание видело свою главную статью затрат.
+ */
+export interface PayrollBranchShare {
+  branchId: string | null;      // null — филиал не определён (нет групп, премия, штраф)
+  weight: number;               // вес доли: собранные деньги филиала либо число групп
+  groupIds: string[];
+  groupId?: string | null;      // атрибуция доли, если группа в филиале одна
+  courseId?: string | null;
 }
 
 /** Состояние периода. approve замораживает; approved/paid НИКОГДА не пересчитывается. */
@@ -1602,7 +1615,8 @@ export interface PayrollPeriod {
   id: string;
   organizationId: string;
   period: string;               // 'YYYY-MM'
-  branchId: string | null;
+  /** ЛЕГАСИ: ведомости прежней филиальной модели. Новые поле не несут. */
+  branchId?: string | null;
   state: PayrollPeriodState;
   windowStart: string;          // окно собранной выручки и сессий; ЗАМОРОЖЕНО при первом calculate
   windowEnd: string;
@@ -1646,7 +1660,10 @@ export interface PayrollLine {
   overrideReason: string | null;
   finalMinor: number;           // COALESCE(override, computed)
   note?: string;
+  /** ЛЕГАСИ: строки прежней филиальной модели. Новые несут `branchShares`. */
   branchId?: string | null;
+  /** Разложение суммы по филиалам; заморожено при расчёте, из него строится выплата. */
+  branchShares?: PayrollBranchShare[];
   createdBy?: string;           // пишется только на ручных строках
   createdAt: string;
 }

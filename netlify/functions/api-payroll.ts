@@ -24,9 +24,19 @@
  *    а не коммитится. Предварительное чтение оставлено только как дешёвый
  *    быстрый путь: корректность на нём не держится.
  *
- * 3a. МЕСЯЦ НЕ ПОКРЫВАЕТСЯ ДВАЖДЫ. Общая ведомость «Все филиалы» и ведомость
- *    филиала за один месяц взаимно исключены (см. coversSameTeachers): иначе
- *    один преподаватель попадает в обе и получает зарплату по разу за каждую.
+ * 3a. МЕСЯЦ НЕ ПОКРЫВАЕТСЯ ДВАЖДЫ. Зарплата общеорганизационная: одна ведомость
+ *    на (организацию, месяц), филиальных больше не создаётся. Но в базе они
+ *    есть — от прежней модели, — и опознавать их обязательно: ведомость филиала
+ *    и общая ведомость того же месяца содержат ОДНУ И ТУ ЖЕ строку
+ *    преподавателя, а ключ идемпотентности выплаты у них разный (см.
+ *    coversSameTeachers). Оплатив обе, организация выдала бы оклад дважды.
+ *
+ * 3b. ФИЛИАЛ — ТОЛЬКО АТРИБУЦИЯ. Ни ставка, ни ведомость филиалом не сужаются:
+ *    преподаватель ведёт группы в нескольких зданиях, и «двадцать процентов»
+ *    относятся к человеку. Зато готовая сумма РАСКЛАДЫВАЕТСЯ по филиалам
+ *    пропорционально тому, где собраны деньги (buildBranchShares), и в кассу
+ *    уходит по расходу на филиал — иначе здание показывало бы прибыль без своей
+ *    главной статьи затрат.
  *
  * 4. ЧИСЛА НЕ ВЫДУМЫВАЮТСЯ. Диагностики движка сохраняются на периоде и
  *    отдаются UI как «Пропущенные записи»: директор должен видеть, ПОЧЕМУ сумма
@@ -37,25 +47,31 @@
 import type { Handler, HandlerEvent } from '@netlify/functions';
 import { adminDb } from './utils/firebase-admin';
 import {
-  verifyAuth, can, getOrgFilter, resolveBranchFilter, recordInBranchScope,
-  requireBranchScope, memberInBranchScope, memberHoldsRole,
+  verifyAuth, can, getOrgFilter, memberHoldsRole,
   ok, unauthorized, forbidden, badRequest, notFound, jsonResponse,
 } from './utils/auth';
-import { batchGetUserNames } from './utils/finance-names';
+import { batchGetUserNames, batchGetCourseNames } from './utils/finance-names';
 import { parseRangeBoundary } from './utils/finance-period';
 import { billingPeriodKey } from './utils/billing';
 import {
   computePayroll,
+  buildTeacherScopes,
+  buildBranchShares,
+  allocateByShares,
+  collectTeacherRevenue,
+  filterWindow,
+  toMinor,
+  type BranchShare,
   type CompensationRule,
   type FinanceTxLike,
-  type LessonSessionLike,
+  type GroupLike,
   type Diagnostic,
 } from './utils/payroll-engine';
 
 const PERIODS = 'payrollPeriods';
 const LINES = 'payrollLines';
 const RULES = 'compensationRules';
-const SESSIONS = 'lessonSessions';
+const GROUPS = 'groups';
 const TRANSACTIONS = 'financeTransactions';
 
 /** Категория расхода, в которую падает выплата. На неё же смотрит «зарплатный баланс». */
@@ -146,7 +162,12 @@ interface PeriodDoc {
   id: string;
   organizationId: string;
   period: string;
-  branchId: string | null;
+  /**
+   * ЛЕГАСИ. Новые ведомости филиала не несут — зарплата общеорганизационная.
+   * Поле читается только у документов прежней модели, чтобы их опознать и не
+   * оплатить месяц дважды (см. coversSameTeachers).
+   */
+  branchId?: string | null;
   state: 'draft' | 'calculated' | 'approved' | 'paid';
   windowStart: string;
   windowEnd: string;
@@ -168,7 +189,13 @@ interface LineDoc {
   computedMinor: number;
   overrideMinor: number | null;
   finalMinor: number;
+  /**
+   * ЛЕГАСИ (строки прежней филиальной модели). Новые строки филиала не несут —
+   * вместо одного значения на строке лежит `branchShares`: разложение суммы по
+   * филиалам, из которого выплата делает по расходу на филиал.
+   */
   branchId?: string | null;
+  branchShares?: BranchShare[];
   [key: string]: any;
 }
 
@@ -215,25 +242,20 @@ function frozenError(state: string) {
 /**
  * ── ПОКРЫТИЕ МЕСЯЦА ──────────────────────────────────────────────────────────
  *
- * ВЫБРАННАЯ МОДЕЛЬ, одной фразой для директора: месяц закрывается ЛИБО одной
- * общей ведомостью «Все филиалы», ЛИБО отдельными ведомостями по филиалам.
- * Смешивать в одном месяце нельзя.
+ * МОДЕЛЬ, одной фразой для директора: за месяц одна ведомость, и она общая по
+ * всей организации.
  *
- * Почему именно так. Общая ведомость (branchId: null) собирает ставки ВСЕХ
- * филиалов: recordInBranchScope(rule.branchId, null) пропускает всё. Значит
- * общая и филиальная ведомости за один и тот же месяц содержат ОДНУ И ТУ ЖЕ
- * строку преподавателя, а ключ идемпотентности выплаты — (periodId, lineId) —
- * у них разный. Оплатив обе, организация выдаст один оклад дважды, положит в
- * кассу два расхода и задвоит начисление в «зарплатном балансе».
+ * Проверка ниже осталась не от старой модели, а РАДИ неё: в базе лежат
+ * ведомости, посчитанные по филиалам, — их больше не создать, но они есть, и
+ * общая ведомость того же месяца содержит ТУ ЖЕ строку преподавателя. Ключ
+ * идемпотентности выплаты — (periodId, lineId) — у них разный, поэтому оплата
+ * обеих выдала бы один оклад дважды, положила в кассу два расхода и задвоила
+ * начисление в «зарплатном балансе». Ничто другое в этом файле от такого не
+ * защищает: allocatePayable считает в пределах ОДНОГО периода, а payoutTxId
+ * строит id из его же id.
  *
- * Альтернативу «общая ведомость исключает уже покрытых филиальной» отвергли
- * сознательно: она делает состав ведомости зависящим от того, что и в каком
- * порядке директор открывал раньше, и объяснить непрофильному человеку, почему
- * в общей ведомости нет половины преподавателей, невозможно. Взаимное
- * исключение объяснимо одной строкой и проверяется одним сравнением.
- *
- * Две РАЗНЫЕ филиальные ведомости не конфликтуют: у ставки ровно один branchId,
- * и в ведомость филиала A она попадает только при branchId === 'A'.
+ * Между двумя новыми ведомостями (обе без филиала) функция молчит:
+ * coversSameTeachers(null, null) === false — ложных 409 не будет.
  */
 function coversSameTeachers(a: string | null, b: string | null): boolean {
   // Одинаковый охват — это тот же самый документ (личность ведомости), а не конфликт.
@@ -256,17 +278,17 @@ function findCoverageConflicts(
 /**
  * Русский 409 на пересечение охвата. Текст обязан назвать МЕСЯЦ, КАКАЯ ведомость
  * уже закрывает его и ЧТО делать — «конфликт» без выхода директор прочитать не
- * сможет. Выход всегда один: доработать месяц в той схеме, в которой он начат.
+ * сможет.
+ *
+ * Выход тут ровно один и он не про филиалы: незакрытую ведомость прежней модели
+ * поглощает «Пересчитать» (см. calculate), а закрытую — не поглощает ничто,
+ * потому что деньги по ней уже ушли.
  */
 function coverageConflictError(period: string, requested: string | null, conflict: PeriodDoc) {
-  const conflictIsOrgWide = (conflict.branchId ?? null) === null;
-  const error = conflictIsOrgWide
-    ? `За ${period} уже открыта общая ведомость по всей организации — она включает и этот филиал. ` +
-      'Месяц закрывается ЛИБО одной общей ведомостью, ЛИБО отдельными по филиалам: иначе преподаватель ' +
-      'получит зарплату дважды. Откройте ведомость «Все филиалы» за этот месяц и работайте в ней.'
-    : `За ${period} уже открыта ведомость филиала — общая ведомость включила бы тех же преподавателей повторно. ` +
-      'Месяц закрывается ЛИБО одной общей ведомостью, ЛИБО отдельными по филиалам: иначе преподаватель ' +
-      'получит зарплату дважды. Выберите филиал и рассчитайте оставшиеся филиалы отдельными ведомостями.';
+  const error =
+    `За ${period} уже есть ведомость, посчитанная по филиалу (${conflict.state === 'paid' ? 'выплачена' : 'утверждена'}), ` +
+    'и она уже включает этих преподавателей. Общая ведомость за тот же месяц начислила бы им второй раз. ' +
+    'Зарплата за этот месяц закрыта — корректировки вносите премией или штрафом в текущем открытом месяце.';
   return jsonResponse(409, {
     error,
     code: 'period_coverage_conflict',
@@ -279,6 +301,29 @@ function coverageConflictError(period: string, requested: string | null, conflic
 }
 
 /**
+ * Ведомость месяца, когда их в базе оказалось несколько (наследие филиальной
+ * модели). Побеждает САМАЯ ЗАКРЫТАЯ: деньги важнее черновика, и показать
+ * директору черновик, пока рядом лежит выплаченная ведомость, значило бы
+ * предложить ему посчитать месяц заново поверх выданных денег.
+ *
+ * Дальше — общеорганизационная вперёд филиальной (она и есть новая модель), и
+ * стабильный тай-брейк по id, чтобы выбор не зависел от порядка выборки.
+ */
+const SHEET_RANK: Record<string, number> = { paid: 3, approved: 2, calculated: 1, draft: 0 };
+
+function pickMonthSheet(periodsOfMonth: PeriodDoc[]): PeriodDoc | null {
+  if (!periodsOfMonth.length) return null;
+  return [...periodsOfMonth].sort((a, b) => {
+    const rank = (SHEET_RANK[b.state] ?? 0) - (SHEET_RANK[a.state] ?? 0);
+    if (rank) return rank;
+    const aOrgWide = (a.branchId ?? null) === null ? 0 : 1;
+    const bOrgWide = (b.branchId ?? null) === null ? 0 : 1;
+    if (aOrgWide !== bOrgWide) return aOrgWide - bOrgWide;
+    return a.id < b.id ? -1 : a.id > b.id ? 1 : 0;
+  })[0];
+}
+
+/**
  * Детерминированный id расходного документа выплаты.
  *
  * Единственная настоящая гарантия «не выплатить дважды»: Firestore не может
@@ -288,12 +333,21 @@ function coverageConflictError(period: string, requested: string | null, conflic
  * Санитайзер не косметика: id документа не должен содержать '/', быть '.'/'..'
  * или матчить /^__.*__$/. periodId и lineId здесь всегда автоid Firestore
  * (20 символов [A-Za-z0-9]), но полагаться на это нельзя — id приходит из базы.
- * Преобразование чисто функциональное, поэтому одно и то же (period, line) даёт
- * один и тот же id при любом повторе.
+ * Преобразование чисто функциональное, поэтому одна и та же тройка даёт один и
+ * тот же id при любом повторе.
+ *
+ * ФИЛИАЛ В КЛЮЧЕ: одна строка ведомости разворачивается в НЕСКОЛЬКО расходов —
+ * по одному на филиал, где преподаватель заработал (см. branchShares). Без
+ * третьего сегмента второй расход той же строки не смог бы создаться вовсе.
  */
-function payoutTxId(periodId: string, lineId: string): string {
+function payoutTxId(periodId: string, lineId: string, branchKey: string): string {
   const safe = (s: string) => String(s).replace(/[^A-Za-z0-9_-]/g, '-').slice(0, 300);
-  return `pay_${safe(periodId)}_${safe(lineId)}`;
+  return `pay_${safe(periodId)}_${safe(lineId)}_${safe(branchKey)}`;
+}
+
+/** Ключ филиала в идемпотентности выплаты. `null` — «филиал не определён». */
+function branchKeyOf(branchId: string | null | undefined): string {
+  return branchId ?? 'org';
 }
 
 /** Firestore ALREADY_EXISTS (code 6) — расход по этой строке уже создан кем-то другим. */
@@ -347,22 +401,97 @@ function allocatePayable(lines: LineDoc[]): { payable: Map<string, number>; unre
 /**
  * Курс/группа для расходной строки — только если атрибуция ОДНОЗНАЧНА.
  *
- * Снапшот правила может называть несколько групп и курсов; приписать расход
- * одному из них наугад значит соврать отчёту о рентабельности курса. Несколько
- * или ноль — пишем null, как это делает резолв groupId на доходе.
+ * У преподавателя одной группы зарплата целиком относится к этой группе и её
+ * курсу, и рентабельность курса это учитывает. У преподавателя нескольких групп
+ * приписать расход одной из них наугад значит соврать отчёту, поэтому пишем
+ * null — ровно как резолв groupId на доходе, который тоже не угадывает.
+ *
+ * Считается один раз, при расчёте, и лежит на строке: выплата не должна заново
+ * выводить атрибуцию из состава групп, который к тому моменту мог измениться.
  */
-function deriveScopeAttribution(ruleSnapshot: any): { courseId: string | null; groupId: string | null } {
-  const components: any[] = Array.isArray(ruleSnapshot?.components) ? ruleSnapshot.components : [];
-  const courseIds = new Set<string>();
-  const groupIds = new Set<string>();
-  for (const c of components) {
-    for (const id of c?.scope?.courseIds ?? []) courseIds.add(id);
-    for (const id of c?.scope?.groupIds ?? []) groupIds.add(id);
-  }
-  return {
-    courseId: courseIds.size === 1 ? [...courseIds][0] : null,
-    groupId: groupIds.size === 1 ? [...groupIds][0] : null,
+function deriveAttribution(
+  groupIds: string[],
+  courseByGroupId: Map<string, string | null>,
+): { courseId: string | null; groupId: string | null } {
+  if (groupIds.length !== 1) return { courseId: null, groupId: null };
+  return { groupId: groupIds[0], courseId: courseByGroupId.get(groupIds[0]) ?? null };
+}
+
+/**
+ * Доля филиала в строке ведомости — с готовой атрибуцией на курс и группу.
+ *
+ * Хранится на строке в замороженном виде по той же причине, что и `courseId`
+ * выше: состав групп к моменту выплаты успевает измениться, а расход обязан
+ * лечь туда, где деньги были заработаны, а не туда, где преподаватель числится
+ * сегодня.
+ */
+interface LineBranchShare extends BranchShare {
+  courseId: string | null;
+  groupId: string | null;
+}
+
+/**
+ * Разложить группы преподавателя по филиалам и приписать каждой доле курс.
+ *
+ * Внутри одного филиала действует то же правило однозначности, что и для всей
+ * строки: одна группа — есть атрибуция, несколько — null. Так рентабельность
+ * курса выигрывает ровно там, где ответ известен точно.
+ */
+function buildLineBranchShares(
+  groupIds: string[],
+  byGroup: { id: string; paidMinor: number }[],
+  branchByGroupId: Map<string, string | null>,
+  courseByGroupId: Map<string, string | null>,
+): LineBranchShare[] {
+  return buildBranchShares(groupIds, byGroup, branchByGroupId).map((share) => ({
+    ...share,
+    ...deriveAttribution(share.groupIds, courseByGroupId),
+  }));
+}
+
+/**
+ * Пустое разложение — это не «денег нет», а «не к чему привязать»: премия, штраф
+ * или преподаватель без групп. Такая сумма всё равно обязана попасть в кассу,
+ * поэтому уходит одним расходом без филиала, а не растворяется.
+ */
+function sharesOrFallback(shares: LineBranchShare[] | undefined | null): LineBranchShare[] {
+  return shares?.length ? shares : [{ branchId: null, weight: 1, groupIds: [], courseId: null, groupId: null }];
+}
+
+/**
+ * Платежи, разложенные ГРУППА → СТУДЕНТ, в минорных единицах.
+ *
+ * Правило суммирования дословно то же, что в collectTeacherRevenue (плюс доход,
+ * минус возврат по той же группе), поэтому сумма студентов внутри группы всегда
+ * сходится с итогом группы, а сумма групп — с базой процента. Расхождение здесь
+ * читалось бы как «экран врёт», и никакая подпись это не спасла бы.
+ *
+ * Платёж без студента (общий взнос на группу) в разбивку не попадает, но в итоге
+ * группы остаётся — экран показывает такую разницу отдельной строкой.
+ */
+function nestPaymentsByGroup(
+  groupIds: Set<string>,
+  incomeTx: FinanceTxLike[],
+  refundTx: FinanceTxLike[],
+): Map<string, Map<string, number>> {
+  const nested = new Map<string, Map<string, number>>();
+  const add = (groupId: string, studentId: string, minor: number) => {
+    const byStudent = nested.get(groupId) ?? new Map<string, number>();
+    byStudent.set(studentId, (byStudent.get(studentId) || 0) + minor);
+    nested.set(groupId, byStudent);
   };
+  // toMinor, а не Math.round(amount*100): конвертация обязана быть той же самой,
+  // что в ядре, иначе строка студента разойдётся с базой на тыйын — и объяснить
+  // эту копейку будет нечем.
+  for (const tx of incomeTx) {
+    if (!tx.groupId || !groupIds.has(tx.groupId) || !tx.studentId) continue;
+    add(tx.groupId, tx.studentId, toMinor(Number(tx.amount || 0)));
+  }
+  for (const tx of refundTx) {
+    if (!tx.groupId || !groupIds.has(tx.groupId) || !tx.studentId) continue;
+    add(tx.groupId, tx.studentId, -Math.abs(toMinor(Number(tx.amount || 0))));
+  }
+  return nested;
 }
 
 // ============================================================
@@ -388,11 +517,7 @@ const handler: Handler = async (event: HandlerEvent) => {
     if (action === 'periods' && event.httpMethod === 'GET') {
       if (!can(user, 'payroll', 'read')) return forbidden('Нет доступа к модулю зарплаты');
 
-      const branchFilter = resolveBranchFilter(user, params.branchId);
-      if (branchFilter === '__DENIED__') return forbidden('Access denied to requested branch');
-
       let periods = await fetchPeriods(orgFilter, params.period);
-      periods = periods.filter((p) => recordInBranchScope(p.branchId, branchFilter));
       if (params.state) periods = periods.filter((p) => p.state === params.state);
       // Сортировка в JS: orderBy поверх where требует composite-индекса.
       periods.sort((a, b) => (a.period < b.period ? 1 : a.period > b.period ? -1 : 0));
@@ -411,8 +536,6 @@ const handler: Handler = async (event: HandlerEvent) => {
 
       const period = await loadPeriod(periodId, orgFilter);
       if (!period) return notFound('Ведомость не найдена');
-      const branchError = requireBranchScope(user, period.branchId);
-      if (branchError) return branchError;
 
       const lines = await fetchLines(orgFilter, periodId);
 
@@ -445,9 +568,6 @@ const handler: Handler = async (event: HandlerEvent) => {
     if (action === 'balance' && event.httpMethod === 'GET') {
       if (!can(user, 'payroll', 'read')) return forbidden('Нет доступа к модулю зарплаты');
 
-      const branchFilter = resolveBranchFilter(user, params.branchId);
-      if (branchFilter === '__DENIED__') return forbidden('Access denied to requested branch');
-
       const [periods, linesSnap, txSnap] = await Promise.all([
         fetchPeriods(orgFilter),
         adminDb.collection(LINES).where('organizationId', '==', orgFilter).get(),
@@ -461,33 +581,23 @@ const handler: Handler = async (event: HandlerEvent) => {
       // Начислено считается только по ЗАМОРОЖЕННЫМ периодам: черновик — это
       // намерение, а не обязательство, и попадать в баланс он не должен.
       //
-      // ── Обе половины баланса живут на ОДНОЙ оси филиала ──
-      // Раньше «начислено» фильтровалось по филиалу ВЕДОМОСТИ, а «выдано» —
-      // по филиалу РАСХОДА, который создаётся из `line.branchId ?? period.branchId`
-      // (см. ветку pay ниже). Оси расходились ровно там, где строка несёт свой
-      // филиал, а ведомость — нет: директор считает общую ведомость
-      // (period.branchId = null), строка получает филиал своей ставки, расход —
-      // филиал строки. Переключаемся на «Центр» — и строка показывает
-      // «Начислено 0, Выдано 30 000, Баланс −30 000», то есть баланс не сходится
-      // сам с собой. Менеджер, запертый в одном филиале, правды не увидит вовсе:
-      // переключиться на «Все филиалы» он не может.
-      //
-      // Поэтому фильтр по филиалу снят с ПЕРИОДА и перенесён на СТРОКУ, и
-      // выражение филиала строки дословно то же, что у расхода.
-      const sealedPeriodBranch = new Map<string, string | null>();
+      // Филиала здесь нет ни на одной половине, и это не упрощение, а условие
+      // сходимости: баланс — это «сколько человеку ещё должны», а долг у
+      // организации перед ним ОДИН, сколько бы зданий он ни объезжал за месяц.
+      // Пока половины резались по филиалу, начисление и выплата раскладывались
+      // по разным осям, и строка честно показывала «Начислено 0, Выдано 30 000».
+      const sealedPeriodIds = new Set<string>();
       for (const p of periods) {
         if (p.state !== 'approved' && p.state !== 'paid') continue;
-        sealedPeriodBranch.set(p.id, (p as any).branchId ?? null);
+        sealedPeriodIds.add(p.id);
       }
 
       const accrued = new Map<string, number>();
       const names = new Map<string, string>();
       for (const doc of linesSnap.docs) {
         const line = doc.data() as any;
-        if (!sealedPeriodBranch.has(line.periodId)) continue;
+        if (!sealedPeriodIds.has(line.periodId)) continue;
         if (!line.teacherId) continue;
-        const lineBranchId = line.branchId ?? sealedPeriodBranch.get(line.periodId) ?? null;
-        if (!recordInBranchScope(lineBranchId, branchFilter)) continue;
         accrued.set(line.teacherId, (accrued.get(line.teacherId) || 0) + (line.finalMinor || 0));
         if (line.teacherName) names.set(line.teacherId, line.teacherName);
       }
@@ -497,7 +607,6 @@ const handler: Handler = async (event: HandlerEvent) => {
         const tx = doc.data() as any;
         if (tx.type !== 'expense') continue;
         if (!tx.teacherId) continue;
-        if (!recordInBranchScope(tx.branchId, branchFilter)) continue;
         // Сомы → минорные единицы через целочисленное округление, чтобы разность
         // с начисленным считалась в одних единицах.
         const minor = Math.round(Number(tx.amount || 0) * 100);
@@ -529,6 +638,278 @@ const handler: Handler = async (event: HandlerEvent) => {
     }
 
     // ─────────────────────────────────────────────────────────
+    // GET overview — зарплата ОТ ПРЕПОДАВАТЕЛЯ, а не от настроек
+    // ─────────────────────────────────────────────────────────
+    //
+    // Один запрос отвечает на весь вопрос директора: кто преподаёт, какие у него
+    // группы, кто в них учится, сколько эти люди заплатили в выбранном месяце и
+    // сколько из этого выходит зарплата. Раньше ответ собирался из двух вкладок и
+    // трёх запросов, и связь «заплатили столько → значит зарплата такая» нигде не
+    // была видна целиком.
+    //
+    // Суммы берутся тем же кодом, что и расчёт (collectTeacherRevenue из
+    // payroll-engine): разбивка, которая не сходится со строкой ведомости,
+    // бесполезна — именно ею спор с преподавателем и заканчивается.
+    if (action === 'overview' && event.httpMethod === 'GET') {
+      if (!can(user, 'payroll', 'read')) return forbidden('Нет доступа к модулю зарплаты');
+
+      const period = String(params.period || '').trim() || billingPeriodKey(new Date());
+      if (!isPeriodKey(period)) return badRequest('period обязателен в формате YYYY-MM');
+
+      const derived = monthWindow(period);
+      if (!derived) return badRequest('Некорректный период. Ожидается YYYY-MM.');
+
+      // Ведомость месяца — одна. Если их в базе несколько (наследие филиальной
+      // модели), берём самую закрытую: см. pickMonthSheet.
+      const periodsOfMonth = await fetchPeriods(orgFilter, period);
+      const sheet = pickMonthSheet(periodsOfMonth);
+
+      // Окно ведомости, если она уже посчитана: оно ЗАМОРОЖЕНО, и предпросмотр
+      // обязан считаться по нему же, иначе экран и строки разойдутся числами.
+      const windowStart = sheet?.windowStart || derived.windowStart;
+      const windowEnd = sheet?.windowEnd || derived.windowEnd;
+
+      const [rulesSnap, txSnap, groupsSnap, membersSnap, branchesSnap, sheetLines] = await Promise.all([
+        adminDb.collection(RULES).where('organizationId', '==', orgFilter).get(),
+        adminDb.collection(TRANSACTIONS).where('organizationId', '==', orgFilter).get(),
+        adminDb.collection(GROUPS).where('organizationId', '==', orgFilter).get(),
+        adminDb.collection('orgMembers').doc(orgFilter).collection('members').get(),
+        // Филиалы нужны не для фильтрации, а для подписи: «в каком здании
+        // заработано» — это то, что директор ищет глазами, а id ему ничего не говорит.
+        adminDb.collection('branches').where('organizationId', '==', orgFilter).get(),
+        sheet ? fetchLines(orgFilter, sheet.id) : Promise.resolve([] as LineDoc[]),
+      ]);
+      const branchNameById = new Map<string, string>(
+        branchesSnap.docs.map((d) => [d.id, String((d.data() as any).name || '')]),
+      );
+
+      // Ни одной филиальной резки ниже — ни у ставок, ни у групп, ни у денег, ни
+      // у преподавателей. Снимать их можно только ВМЕСТЕ: оставить филиальный
+      // фильтр на деньгах при общеорганизационной ставке значило бы платить
+      // «двадцать процентов от всей организации» с выручки одного здания.
+      const rules: CompensationRule[] = rulesSnap.docs
+        .map((d) => ({ id: d.id, ...(d.data() as any) }))
+        .map((r: any) => ({
+          id: r.id,
+          organizationId: r.organizationId,
+          teacherId: r.teacherId,
+          components: Array.isArray(r.components) ? r.components : [],
+          updatedAt: r.updatedAt,
+        }));
+
+      const groups: GroupLike[] = groupsSnap.docs
+        .map((d) => ({ id: d.id, ...(d.data() as any) }))
+        .map((g: any) => ({
+          id: g.id,
+          name: g.name || '',
+          courseId: g.courseId ?? null,
+          courseName: g.courseName || '',
+          // Филиал группы в расчёт не входит — только в атрибуцию: экран
+          // показывает, в каком здании заработано, и туда же уйдёт расход.
+          branchId: g.branchId ?? null,
+          teacherIds: Array.isArray(g.teacherIds) ? g.teacherIds : [],
+          studentIds: Array.isArray(g.studentIds) ? g.studentIds : [],
+        }));
+      const groupById = new Map(groups.map((g) => [g.id, g]));
+      const branchByGroupId = new Map<string, string | null>(groups.map((g) => [g.id, g.branchId ?? null]));
+      const courseByGroupId = new Map<string, string | null>(groups.map((g) => [g.id, g.courseId ?? null]));
+
+      const allTx = txSnap.docs.map((d) => ({ id: d.id, ...(d.data() as any) }));
+      const toTxLike = (t: any): FinanceTxLike => ({
+        id: t.id,
+        amount: Number(t.amount || 0),
+        date: t.date,
+        type: t.type,
+        categoryId: t.categoryId,
+        groupId: t.groupId ?? null,
+        courseId: t.courseId ?? null,
+        studentId: t.studentId ?? null,
+        paymentPlanId: t.paymentPlanId ?? null,
+      });
+      // Окно применяем ОДИН раз, тем же кодом, что и ядро расчёта.
+      const incomeTx = filterWindow(allTx.filter((t: any) => t.type === 'income').map(toTxLike), windowStart, windowEnd);
+      const refundTx = filterWindow(
+        allTx.filter((t: any) => t.type === 'expense' && t.paymentPlanId).map(toTxLike),
+        windowStart,
+        windowEnd,
+      );
+
+      const members = membersSnap.docs.map((d) => ({ id: d.id, ...(d.data() as any) }));
+      const teacherMembers = members
+        .filter((m: any) => m.status !== 'inactive' && memberHoldsRole(m, ['teacher']));
+      const knownTeacherIds = teacherMembers.map((m: any) => m.uid || m.id);
+
+      // Имена из orgMembers идут ПЕРВЫМИ: у оффлайн-студента и оффлайн-учителя
+      // нет документа в `users`, и без этой карты они остались бы голыми id.
+      const nameByKey = new Map<string, string>();
+      for (const m of members) {
+        const name = String(m.userName || m.displayName || m.name || '').trim();
+        if (!name) continue;
+        nameByKey.set(m.id, name);
+        if (m.uid) nameByKey.set(String(m.uid), name);
+      }
+
+      const scopes = buildTeacherScopes(groups);
+
+      // Предпросмотр: те же входы, что у расчёта. Пока ведомости нет, он и есть
+      // ответ «сколько выйдет»; когда есть — служит сверкой.
+      const preview = computePayroll({
+        period,
+        windowStart,
+        windowEnd,
+        rules,
+        incomeTx,
+        refundTx,
+        groups,
+        knownTeacherIds,
+      });
+      const previewByTeacher = new Map(preview.lines.map((l) => [l.teacherId, l]));
+      const ruleByTeacher = new Map(rules.map((r) => [r.teacherId, r]));
+
+      // Строки ведомости: расчётная — одна на преподавателя, ручные (премия,
+      // штраф) — сколько угодно.
+      const ruleLineByTeacher = new Map<string, LineDoc>();
+      const manualLinesByTeacher = new Map<string, LineDoc[]>();
+      for (const line of sheetLines) {
+        if (line.isManual) {
+          const list = manualLinesByTeacher.get(line.teacherId) ?? [];
+          list.push(line);
+          manualLinesByTeacher.set(line.teacherId, list);
+        } else {
+          ruleLineByTeacher.set(line.teacherId, line);
+        }
+      }
+
+      // Преподаватели, о которых вообще идёт речь: сотрудники с ролью, плюс те,
+      // у кого есть группы или ставка (роль могли снять, а группа осталась —
+      // человек не должен исчезнуть из зарплаты молча).
+      const teacherIds = [...new Set([
+        ...knownTeacherIds,
+        ...scopes.keys(),
+        ...rules.map((r) => r.teacherId),
+        ...sheetLines.map((l) => l.teacherId),
+      ])].filter(Boolean);
+
+      const missingNames = teacherIds.filter((id) => !nameByKey.has(id));
+      const studentIdsAll = new Set<string>();
+      for (const id of teacherIds) {
+        for (const sid of scopes.get(id)?.studentIds ?? []) studentIdsAll.add(sid);
+      }
+      for (const sid of studentIdsAll) if (!nameByKey.has(sid)) missingNames.push(sid);
+      if (missingNames.length) {
+        const fetched = await batchGetUserNames(missingNames);
+        for (const [id, name] of fetched) if (name) nameByKey.set(id, name);
+      }
+
+      // Курс группы: название денормализовано не везде, поэтому недостающие
+      // дочитываем разом.
+      const missingCourseIds = [...new Set(
+        groups.filter((g) => g.courseId && !g.courseName).map((g) => g.courseId as string),
+      )];
+      const courseNames = missingCourseIds.length
+        ? await batchGetCourseNames(orgFilter, missingCourseIds)
+        : new Map<string, string>();
+
+      const nameOf = (id: string) => nameByKey.get(id) || '';
+
+      const teachers = teacherIds.map((teacherId) => {
+        const scope = scopes.get(teacherId) ?? { groupIds: [], studentIds: [] };
+        const revenue = collectTeacherRevenue(scope, incomeTx, refundTx);
+        const paidByGroup = new Map(revenue.byGroup.map((s) => [s.id, s.paidMinor]));
+        const nested = nestPaymentsByGroup(new Set(scope.groupIds), incomeTx, refundTx);
+
+        const groupRows = scope.groupIds.map((groupId) => {
+          const group = groupById.get(groupId);
+          const paidByStudent = nested.get(groupId) ?? new Map<string, number>();
+          const roster = group?.studentIds ?? [];
+          const students = roster.map((studentId) => ({
+            studentId,
+            studentName: nameOf(studentId),
+            paidMinor: paidByStudent.get(studentId) || 0,
+            former: false,
+          }));
+          // Заплатил и ушёл из группы в том же месяце — его деньги в базе есть,
+          // и строка обязана быть, иначе сумма студентов не сойдётся с группой.
+          for (const [studentId, paidMinor] of paidByStudent) {
+            if (!studentId || roster.includes(studentId)) continue;
+            students.push({ studentId, studentName: nameOf(studentId), paidMinor, former: true });
+          }
+          students.sort((a, b) => b.paidMinor - a.paidMinor
+            || String(a.studentName || a.studentId).localeCompare(String(b.studentName || b.studentId), 'ru'));
+          const branchId = group?.branchId ?? null;
+          return {
+            groupId,
+            name: group?.name || groupId,
+            courseId: group?.courseId ?? null,
+            courseName: group?.courseName || (group?.courseId ? courseNames.get(group.courseId) || '' : ''),
+            branchId,
+            branchName: branchId ? branchNameById.get(branchId) || '' : '',
+            studentCount: roster.length,
+            collectedMinor: paidByGroup.get(groupId) || 0,
+            students,
+          };
+        });
+
+        const line = ruleLineByTeacher.get(teacherId) || null;
+        const manual = manualLinesByTeacher.get(teacherId) ?? [];
+        const previewLine = previewByTeacher.get(teacherId) || null;
+
+        // ── Сколько заработано в каждом филиале ──
+        // Один преподаватель ведёт группы в разных зданиях, и «сколько ему» без
+        // ответа «за что и где» не проверяется. Разложение то же самое, что
+        // уйдёт в кассу расходами: у посчитанной строки берём ЗАМОРОЖЕННОЕ (на
+        // нём и построена выплата), у предпросмотра считаем на лету.
+        const accruedMinor = line ? line.finalMinor : (previewLine?.computedMinor ?? 0);
+        const shares = (line?.branchShares as LineBranchShare[] | undefined)
+          ?? buildLineBranchShares(scope.groupIds, revenue.byGroup, branchByGroupId, courseByGroupId);
+        const byBranch = accruedMinor > 0
+          ? allocateByShares(accruedMinor, sharesOrFallback(shares)).map((a) => ({
+              branchId: a.branchId,
+              branchName: a.branchId ? branchNameById.get(a.branchId) || '' : '',
+              amountMinor: a.amountMinor,
+              groupIds: a.groupIds,
+            }))
+          : [];
+
+        return {
+          teacherId,
+          teacherName: nameOf(teacherId) || line?.teacherName || '',
+          rule: ruleByTeacher.get(teacherId) || null,
+          groups: groupRows,
+          studentCount: scope.studentIds.length,
+          collectedMinor: revenue.grossMinor,
+          refundMinor: revenue.refundMinor,
+          baseMinor: Math.max(0, revenue.netMinor),
+          // Что выйдет по действующей ставке на сегодняшних данных.
+          previewMinor: previewLine ? previewLine.computedMinor : null,
+          previewComponents: previewLine ? previewLine.components : [],
+          diagnostics: previewLine ? previewLine.diagnostics : [],
+          // Разложение начисленного по филиалам. Сумма РАВНА начисленному:
+          // остаток от деления раздаётся по наибольшему остатку, а не теряется.
+          byBranch,
+          // Что уже зафиксировано в ведомости (если она посчитана).
+          line,
+          manualLines: manual,
+        };
+      });
+
+      teachers.sort((a, b) =>
+        String(a.teacherName || a.teacherId).localeCompare(String(b.teacherName || b.teacherId), 'ru'));
+
+      return ok({
+        period,
+        windowStart,
+        windowEnd,
+        sheet,
+        lines: sheetLines,
+        // Диагностики ведомости — замороженные; без ведомости показываем те, что
+        // получились бы прямо сейчас.
+        diagnostics: sheet ? (sheet.diagnostics ?? []) : preview.diagnostics,
+        teachers,
+      });
+    }
+
+    // ─────────────────────────────────────────────────────────
     // POST calculate — идемпотентная полная пересборка
     // ─────────────────────────────────────────────────────────
     if (action === 'calculate' && event.httpMethod === 'POST') {
@@ -538,56 +919,27 @@ const handler: Handler = async (event: HandlerEvent) => {
       const period = String(body.period || '').trim();
       if (!isPeriodKey(period)) return badRequest('period обязателен в формате YYYY-MM');
 
-      // ── Филиал ведомости ──
-      // Разрешаем его тем же контрактом, что и финансовые эндпоинты
-      // (resolveBranchFilter), а не сырым body.branchId: сырое значение null
-      // означало бы «вся организация» для КОГО УГОДНО, и сотрудник, ограниченный
-      // одним филиалом, одним расчётом получил бы зарплату чужих филиалов.
-      const branchFilter = resolveBranchFilter(user, body.branchId ?? null);
-      if (branchFilter === '__DENIED__') return forbidden('Access denied to requested branch');
-      // Массив — это «филиалы, которые участник вправе видеть» при невыбранном
-      // филиале. Для ЧТЕНИЯ такое объединение законно, для ЗАПИСИ нет: ведомость
-      // — один документ с одним branchId, и сохранить объединение в него нельзя.
-      // Заставляем назвать филиал явно, вместо того чтобы молча выбрать первый.
-      if (Array.isArray(branchFilter)) {
-        return forbidden(
-          'Выберите филиал: ведомость по всей организации может рассчитать только сотрудник без ограничения по филиалам.',
-        );
-      }
-      const branchId: string | null = branchFilter;
-      const branchError = requireBranchScope(user, branchId);
-      if (branchError) return branchError;
-
-      // Личность ведомости — ТРОЙКА (организация, период, филиал). Ведомость
-      // филиала и ведомость «Все филиалы» за один и тот же месяц — два разных
-      // документа, и перезаписать друг друга они не могут: найденной считается
-      // только та, у которой branchId совпадает буквально.
-      //
-      // Ищем по (организация, период) равенством; филиал сверяем в JS, потому что
-      // branchId бывает null, а разложить это на равенство нельзя.
+      // ── Личность ведомости — ПАРА (организация, период) ──
+      // Филиал в неё не входит: зарплата общеорганизационная, и «ведомость
+      // филиала» больше не существует как понятие. Права на расчёт — только
+      // право payroll:write выше: сузить их филиалом теперь не по чему.
       const periodsOfMonth = await fetchPeriods(orgFilter, period);
-      const existing = periodsOfMonth.find((p) => (p.branchId ?? null) === branchId) || null;
 
-      // Правило 3: утверждённое не пересчитывается ни при каких условиях.
-      if (existing && (existing.state === 'approved' || existing.state === 'paid')) {
-        return frozenError(existing.state);
+      // ЗАКРЫТОЕ НЕ ПЕРЕСЧИТЫВАЕТСЯ — независимо от того, чем оно закрыто. Ищем
+      // среди ВСЕХ ведомостей месяца, включая доставшиеся от филиальной модели:
+      // деньги по ним уже ушли, и посчитать месяц заново значило бы начислить
+      // тем же людям второй раз.
+      const sealed = periodsOfMonth.find((p) => p.state === 'approved' || p.state === 'paid');
+      if (sealed) {
+        return (sealed.branchId ?? null) === null
+          ? frozenError(sealed.state)
+          : coverageConflictError(period, null, sealed);
       }
 
-      // ── Взаимное исключение охвата (см. coversSameTeachers) ──
-      // Единственное место, где это вообще можно запретить: ведомость создаётся
-      // только здесь. Без этой проверки общая ведомость за июль и ведомость
-      // филиала A за июль сосуществуют, обе содержат строку преподавателя A и
-      // обе выплачиваются — ключ идемпотентности (periodId, lineId) у них разный.
-      const conflicts = findCoverageConflicts(periodsOfMonth, branchId, existing?.id ?? null);
-      if (conflicts.length) {
-        // Утверждённая/выплаченная перевешивает: именно она уже унесла деньги,
-        // и назвать в ошибке нужно её, а не случайный черновик.
-        const worst =
-          conflicts.find((p) => p.state === 'paid') ||
-          conflicts.find((p) => p.state === 'approved') ||
-          conflicts[0];
-        return coverageConflictError(period, branchId, worst);
-      }
+      // Незакрытые ведомости месяца: одну усыновляем, остальные поглощаем ниже.
+      const openPeriods = periodsOfMonth.filter((p) => p.state !== 'approved' && p.state !== 'paid');
+      const existing = pickMonthSheet(openPeriods);
+      const absorbed = openPeriods.filter((p) => p.id !== existing?.id);
 
       // Окно ЗАМОРАЖИВАЕТСЯ при первом расчёте: пересчёт в августе не должен
       // менять июльские границы и втягивать в июль чужие платежи.
@@ -606,7 +958,6 @@ const handler: Handler = async (event: HandlerEvent) => {
         await periodRef.set({
           organizationId: orgFilter,
           period,
-          branchId,
           state: 'draft',
           windowStart,
           windowEnd,
@@ -617,50 +968,47 @@ const handler: Handler = async (event: HandlerEvent) => {
       }
 
       // ── Выборка входов. Всё равенством, окно — в JS. ──
-      const [rulesSnap, txSnap, sessionsSnap, membersSnap] = await Promise.all([
-        adminDb.collection(RULES)
-          .where('organizationId', '==', orgFilter)
-          .where('status', '==', 'active')
-          .get(),
+      const [rulesSnap, txSnap, groupsSnap, membersSnap] = await Promise.all([
+        adminDb.collection(RULES).where('organizationId', '==', orgFilter).get(),
         adminDb.collection(TRANSACTIONS).where('organizationId', '==', orgFilter).get(),
-        adminDb.collection(SESSIONS).where('organizationId', '==', orgFilter).get(),
+        adminDb.collection(GROUPS).where('organizationId', '==', orgFilter).get(),
         adminDb.collection('orgMembers').doc(orgFilter).collection('members').get(),
       ]);
 
-      // Ведомость филиала берёт только ставки этого филиала: org-wide правило,
-      // применённое в каждом филиале, выплатило бы оклад по разу на филиал.
-      const allRuleDocs = rulesSnap.docs.map((d) => ({ id: d.id, ...(d.data() as any) }));
-
-      // Обратная сторона того же решения: в ведомости филиала ставка без филиала
-      // не участвует нигде — и человек молча остаётся без денег. Недоплата тише
-      // переплаты и потому опаснее, поэтому такие ставки попадают в диагностику.
-      const orgWideSkipped = branchId
-        ? allRuleDocs.filter(
-            (r: any) =>
-              r.status === 'active' &&
-              (r.branchId ?? null) === null &&
-              r.effectiveFrom <= period &&
-              (r.effectiveTo == null || period <= r.effectiveTo)
-          )
-        : [];
-
-      const rules: CompensationRule[] = allRuleDocs
-        .filter((r: any) => recordInBranchScope(r.branchId ?? null, branchId))
+      // ── Никаких филиальных фильтров: ни ставки, ни группы, ни деньги, ни люди ──
+      // Снимать их можно только ВМЕСТЕ. Оставить филиальную резку на деньгах при
+      // общеорганизационной ставке значило бы платить процент «за организацию» с
+      // выручки одного здания; оставить на группах — потерять половину студентов
+      // преподавателя, который ездит между филиалами.
+      const rules: CompensationRule[] = rulesSnap.docs
+        .map((d) => ({ id: d.id, ...(d.data() as any) }))
         .map((r: any) => ({
           id: r.id,
           organizationId: r.organizationId,
           teacherId: r.teacherId,
-          branchId: r.branchId ?? null,
-          label: r.label ?? '',
-          status: r.status,
           components: Array.isArray(r.components) ? r.components : [],
-          effectiveFrom: r.effectiveFrom,
-          effectiveTo: r.effectiveTo ?? null,
+          // Решает спор «какая ставка настоящая», если от филиальной модели
+          // осталось несколько документов (см. resolveRules).
+          updatedAt: r.updatedAt,
         }));
 
-      const allTx = txSnap.docs
+      // Группы — источник «его студенты» и «его деньги», а их филиал — источник
+      // АТРИБУЦИИ: по нему готовая сумма раскладывается на расходы зданий.
+      const groups: GroupLike[] = groupsSnap.docs
         .map((d) => ({ id: d.id, ...(d.data() as any) }))
-        .filter((t: any) => recordInBranchScope(t.branchId ?? null, branchId));
+        .map((g: any) => ({
+          id: g.id,
+          name: g.name || '',
+          courseId: g.courseId ?? null,
+          courseName: g.courseName || '',
+          branchId: g.branchId ?? null,
+          teacherIds: Array.isArray(g.teacherIds) ? g.teacherIds : [],
+          studentIds: Array.isArray(g.studentIds) ? g.studentIds : [],
+        }));
+      const courseByGroupId = new Map<string, string | null>(groups.map((g) => [g.id, g.courseId ?? null]));
+      const branchByGroupId = new Map<string, string | null>(groups.map((g) => [g.id, g.branchId ?? null]));
+
+      const allTx = txSnap.docs.map((d) => ({ id: d.id, ...(d.data() as any) }));
 
       const toTxLike = (t: any): FinanceTxLike => ({
         id: t.id,
@@ -679,27 +1027,11 @@ const handler: Handler = async (event: HandlerEvent) => {
       // POST). Именно он уменьшает базу процента, а не произвольный расход.
       const refundTx = allTx.filter((t: any) => t.type === 'expense' && t.paymentPlanId).map(toTxLike);
 
-      const sessions: LessonSessionLike[] = sessionsSnap.docs
-        .map((d) => ({ id: d.id, ...(d.data() as any) }))
-        .filter((s: any) => recordInBranchScope(s.branchId ?? null, branchId))
-        .map((s: any) => ({
-          id: s.id,
-          groupId: s.groupId ?? null,
-          courseId: s.courseId ?? null,
-          // Не подставляем никакой фолбэк: null здесь ЗНАЧИМ — сессия ничья.
-          teacherId: s.teacherId ?? null,
-          date: s.date,
-          durationMinutes: typeof s.durationMinutes === 'number' ? s.durationMinutes : null,
-          status: s.status,
-          headcount: Number(s.headcount || 0),
-        }));
-
-      // Полный список учителей нужен только чтобы список «нет ставки» был полным:
-      // без него в него попадёт лишь тот, у кого есть проведённые сессии в окне.
+      // Полный список преподавателей нужен только чтобы список «нет ставки» был
+      // полным: без него в него попадёт лишь тот, у кого есть группы.
       const knownTeacherIds = membersSnap.docs
         .map((d) => ({ id: d.id, ...(d.data() as any) }))
         .filter((m: any) => m.status !== 'inactive' && memberHoldsRole(m, ['teacher']))
-        .filter((m: any) => memberInBranchScope(m.branchIds, branchId))
         .map((m: any) => m.uid || m.id);
 
       const result = computePayroll({
@@ -709,21 +1041,54 @@ const handler: Handler = async (event: HandlerEvent) => {
         rules,
         incomeTx,
         refundTx,
-        sessions,
+        groups,
         knownTeacherIds,
       });
 
       // ── Пересборка строк ──
       const currentLines = await fetchLines(orgFilter, periodId);
+
+      // ── Поглощение незакрытых ведомостей прежней модели ──
+      // За месяц могло остаться несколько филиальных черновиков. Просто
+      // игнорировать их нельзя: они видны в списке, их строки попадают в
+      // «зарплатный баланс», и месяц навсегда упирался бы в 409 — удаления
+      // ведомости в интерфейсе нет. Поэтому одну усыновляем (её id и стал
+      // periodId), а из остальных забираем ТОЛЬКО решения человека — премии и
+      // штрафы: расчётные строки воспроизводятся заново из тех же данных, и
+      // тащить их значило бы задвоить начисление.
+      const absorbedLines: LineDoc[] = [];
+      for (const stale of absorbed) {
+        absorbedLines.push(...(await fetchLines(orgFilter, stale.id)));
+      }
+      const ops: Array<(batch: FirebaseFirestore.WriteBatch) => void> = [];
+      const carriedManual: LineDoc[] = [];
+      for (const line of absorbedLines) {
+        const ref = adminDb.collection(LINES).doc(line.id);
+        if (line.isManual) {
+          carriedManual.push({ ...line, periodId, period });
+          // Переезд, а не копия: иначе премия existed бы дважды — в поглощённой
+          // ведомости и в этой.
+          ops.push((batch) => batch.update(ref, { periodId, period, branchId: null, updatedAt: now }));
+        } else {
+          ops.push((batch) => batch.delete(ref));
+        }
+      }
+      for (const stale of absorbed) {
+        const ref = adminDb.collection(PERIODS).doc(stale.id);
+        ops.push((batch) => batch.delete(ref));
+      }
+
       // Ручные премии и штрафы ПЕРЕЖИВАЮТ пересчёт: их вводил человек, и стереть
       // их автоматическим расчётом значило бы потерять решение директора.
       const ruleLines = currentLines.filter((l) => l.source === 'rule' && !l.isManual);
-      const manualLines = currentLines.filter((l) => !(l.source === 'rule' && !l.isManual));
+      const manualLines = [
+        ...currentLines.filter((l) => !(l.source === 'rule' && !l.isManual)),
+        ...carriedManual,
+      ];
 
       const teacherIds = result.lines.map((l) => l.teacherId);
       const names = await batchGetUserNames(teacherIds);
 
-      const ops: Array<(batch: FirebaseFirestore.WriteBatch) => void> = [];
       for (const line of ruleLines) {
         const ref = adminDb.collection(LINES).doc(line.id);
         ops.push((batch) => batch.delete(ref));
@@ -754,12 +1119,38 @@ const handler: Handler = async (event: HandlerEvent) => {
       }
       let overridesCarried = 0;
 
+      // Веса для разложения по филиалам. У процента они уже посчитаны движком и
+      // лежат в снапшоте; у ОКЛАДА базы нет вовсе, поэтому считаем те же деньги
+      // тем же кодом — иначе оклад целиком свалился бы в один филиал, и здание,
+      // где человек отработал полмесяца, показало бы прибыль без его зарплаты.
+      const splitScopes = buildTeacherScopes(groups);
+      const windowIncome = filterWindow(incomeTx, windowStart, windowEnd);
+      const windowRefund = filterWindow(refundTx, windowStart, windowEnd);
+
       let totalMinor = manualLines.reduce((sum, l) => sum + (l.finalMinor || 0), 0);
       for (const computed of result.lines) {
         const ref = adminDb.collection(LINES).doc();
-        const ruleBranch = rules.find((r) => r.id === computed.ruleId)?.branchId ?? branchId;
         const carried = carriedOverrides.get(overrideKey(computed.teacherId, computed.ruleId));
         if (carried) overridesCarried++;
+        const lineGroupIds = computed.ruleSnapshot.groupIds ?? [];
+        const attribution = deriveAttribution(lineGroupIds, courseByGroupId);
+        // Разложение по филиалам ЗАМОРАЖИВАЕТСЯ вместе со строкой: выплата не
+        // должна выводить его заново из состава групп, который к тому моменту
+        // мог измениться. Веса берём из той же разбивки по группам, что легла в
+        // снапшот, — тогда расходы зданий сходятся с объяснением на экране.
+        const percentBasis = computed.components.find((c) => c.kind === 'percent_revenue')?.basis;
+        const byGroupForSplit = percentBasis?.byGroup
+          ?? collectTeacherRevenue(
+            splitScopes.get(computed.teacherId) ?? { groupIds: [], studentIds: [] },
+            windowIncome,
+            windowRefund,
+          ).byGroup;
+        const branchShares = buildLineBranchShares(
+          lineGroupIds,
+          byGroupForSplit,
+          branchByGroupId,
+          courseByGroupId,
+        );
         const data = pruneUndefined({
           organizationId: orgFilter,
           periodId,
@@ -767,9 +1158,9 @@ const handler: Handler = async (event: HandlerEvent) => {
           teacherId: computed.teacherId,
           teacherName: names.get(computed.teacherId) || '',
           ruleId: computed.ruleId,
-          // Замороженный снапшот: разрешённое правило ПЛЮС литеральные входы
-          // каждого компонента (revenueBaseMinor, sourceTxnIds, sessionCount…),
-          // чтобы число можно было восстановить, не пересчитывая.
+          // Замороженный снапшот: ставка ПЛЮС литеральные входы каждого
+          // компонента (revenueBaseMinor, sourceTxnIds, разбивка по группам и
+          // студентам), чтобы число можно было восстановить, не пересчитывая.
           ruleSnapshot: {
             ...computed.ruleSnapshot,
             computed: computed.components.map((c) => ({
@@ -778,6 +1169,12 @@ const handler: Handler = async (event: HandlerEvent) => {
               basis: c.basis,
             })),
           },
+          // Атрибуция расхода: заполнена только когда группа однозначна.
+          courseId: attribution.courseId,
+          groupId: attribution.groupId,
+          // Сколько этой строки заработано в каждом филиале. Выплата развернёт
+          // разложение в отдельный расход на филиал.
+          branchShares,
           source: 'rule' as const,
           isManual: false,
           originPeriodId: null,
@@ -788,7 +1185,6 @@ const handler: Handler = async (event: HandlerEvent) => {
           overrideReason: carried ? carried.reason : null,
           finalMinor: carried ? carried.minor : computed.computedMinor,
           diagnostics: computed.diagnostics,
-          branchId: ruleBranch,
           createdAt: now,
         });
         totalMinor += carried ? carried.minor : computed.computedMinor;
@@ -803,23 +1199,15 @@ const handler: Handler = async (event: HandlerEvent) => {
         windowEnd,
         calculatedAt: now,
         calculatedBy: user.uid,
+        // Стираем филиал с усыновлённого документа прежней модели: после расчёта
+        // это обычная общеорганизационная ведомость, и опознаваться как
+        // «филиальная» она больше не должна — иначе проверка покрытия сочла бы её
+        // конфликтующей с ней же самой в следующем месяце.
+        branchId: null,
         // Предварительный итог: до approve он может измениться, поэтому
         // окончательным его считать нельзя — approve запечатывает свой.
         totalMinor,
-        diagnostics: pruneUndefined([
-          ...result.diagnostics,
-          ...(orgWideSkipped.length
-            ? [{
-                code: 'rule_org_wide_skipped' as const,
-                message:
-                  `Ставок без филиала: ${orgWideSkipped.length}. В ведомость филиала они не входят — ` +
-                  'иначе оклад начислялся бы заново в каждом филиале. Укажите филиал в ставке ' +
-                  'или рассчитайте ведомость по всей организации, иначе эти преподаватели не получат оплату.',
-                count: orgWideSkipped.length,
-                sample: orgWideSkipped.slice(0, 5).map((r: any) => r.id),
-              }]
-            : []),
-        ]),
+        diagnostics: pruneUndefined(result.diagnostics),
         updatedAt: now,
       };
       await periodRef.update(periodUpdate);
@@ -828,7 +1216,6 @@ const handler: Handler = async (event: HandlerEvent) => {
         id: periodId,
         organizationId: orgFilter,
         period,
-        branchId,
         // windowStart/windowEnd приходят из periodUpdate — дублировать их здесь
         // значило бы иметь два источника правды для замороженного окна.
         ...periodUpdate,
@@ -837,6 +1224,8 @@ const handler: Handler = async (event: HandlerEvent) => {
         // интерфейс мог сказать об этом вслух: молчаливое сохранение чужого
         // решения так же непонятно, как молчаливое стирание.
         overridesCarried,
+        // Сколько ведомостей прежней филиальной модели поглощено этим расчётом.
+        absorbedLegacyPeriods: absorbed.map((p) => p.id),
       });
     }
 
@@ -852,8 +1241,6 @@ const handler: Handler = async (event: HandlerEvent) => {
 
       const period = await loadPeriod(periodId, orgFilter);
       if (!period) return notFound('Ведомость не найдена');
-      const branchError = requireBranchScope(user, period.branchId);
-      if (branchError) return branchError;
       if (period.state === 'approved' || period.state === 'paid') return frozenError(period.state);
 
       const now = new Date().toISOString();
@@ -939,7 +1326,9 @@ const handler: Handler = async (event: HandlerEvent) => {
         overrideReason: null,
         finalMinor: computedMinor,
         note: String(body.note ?? ''),
-        branchId: period.branchId ?? null,
+        // Ни филиала, ни разложения: премию и штраф выписывает человек, они не
+        // «заработаны» ни в одном здании, и приписать их какому-то из них значило
+        // бы выдумать атрибуцию. В кассу такая строка уходит одним расходом.
         createdBy: user.uid,
         createdAt: now,
       });
@@ -964,8 +1353,6 @@ const handler: Handler = async (event: HandlerEvent) => {
 
       const period = await loadPeriod(line.periodId, orgFilter);
       if (!period) return notFound('Ведомость не найдена');
-      const branchError = requireBranchScope(user, period.branchId);
-      if (branchError) return branchError;
       if (period.state === 'approved' || period.state === 'paid') return frozenError(period.state);
       if (!line.isManual) return badRequest('Расчётную строку удалить нельзя — запустите пересчёт');
 
@@ -985,8 +1372,6 @@ const handler: Handler = async (event: HandlerEvent) => {
 
       const period = await loadPeriod(periodId, orgFilter);
       if (!period) return notFound('Ведомость не найдена');
-      const branchError = requireBranchScope(user, period.branchId);
-      if (branchError) return branchError;
 
       // Утверждать можно ТОЛЬКО посчитанное. Черновик не утверждается (нечего
       // замораживать), утверждённое — уже заморожено.
@@ -1030,8 +1415,6 @@ const handler: Handler = async (event: HandlerEvent) => {
 
       const period = await loadPeriod(periodId, orgFilter);
       if (!period) return notFound('Ведомость не найдена');
-      const branchError = requireBranchScope(user, period.branchId);
-      if (branchError) return branchError;
 
       // 'paid' допускается сознательно: повторный вызов — это дозапись того, что
       // не прошло в прошлый раз, и он обязан быть безопасным.
@@ -1044,10 +1427,11 @@ const handler: Handler = async (event: HandlerEvent) => {
 
       // ── Второй рубеж покрытия ──
       // calculate не даёт СОЗДАТЬ пересекающуюся ведомость, но пары, заведённые
-      // до этой проверки, уже лежат в базе. Деньги уходят здесь, поэтому здесь же
-      // проверяем ещё раз — и блокируем, только если пересекающаяся ведомость
-      // реально унесла деньги (approved/paid). Ложных срабатываний нет: две
-      // ведомости РАЗНЫХ филиалов по построению не пересекаются.
+      // прежней филиальной моделью, уже лежат в базе. Деньги уходят здесь,
+      // поэтому здесь же проверяем ещё раз — и блокируем, только если
+      // пересекающаяся ведомость реально унесла деньги (approved/paid). Ложных
+      // срабатываний нет: две новые ведомости обе без филиала, а
+      // coversSameTeachers(null, null) === false.
       const monthPeriods = await fetchPeriods(orgFilter, period.period);
       const sealedConflict = findCoverageConflicts(monthPeriods, period.branchId ?? null, periodId)
         .find((p) => p.state === 'approved' || p.state === 'paid');
@@ -1073,26 +1457,46 @@ const handler: Handler = async (event: HandlerEvent) => {
         .where('organizationId', '==', orgFilter)
         .where('payrollPeriodId', '==', periodId)
         .get();
-      const alreadyPaid = new Set<string>(
-        paidSnap.docs.map((d) => (d.data() as any).payrollLineId).filter(Boolean),
-      );
+      // Идемпотентность на ДВУХ уровнях, и оба обязательны.
+      //
+      // Строка разворачивается в несколько расходов — по одному на филиал, — и
+      // после частичного сбоя повтор обязан дописать ровно недостающие. Поэтому
+      // ключ теперь пара (строка, филиал).
+      //
+      // Но расходы, выплаченные ДО этого перехода, филиального ключа не несут:
+      // они закрывают строку ЦЕЛИКОМ. Не различить их значило бы при повторной
+      // выплате выдать те же деньги заново, уже по частям.
+      const paidWholeLine = new Set<string>();
+      const paidShare = new Set<string>();
+      for (const doc of paidSnap.docs) {
+        const tx = doc.data() as any;
+        if (!tx.payrollLineId) continue;
+        if (tx.payrollBranchKey) paidShare.add(`${tx.payrollLineId}::${tx.payrollBranchKey}`);
+        else paidWholeLine.add(tx.payrollLineId);
+      }
 
       const lines = await fetchLines(orgFilter, periodId);
       const { payable, unrecovered } = allocatePayable(lines);
 
       const periodRef = adminDb.collection(PERIODS).doc(periodId);
-      const written: string[] = [];
+      // Множества, а не массивы: одна строка теперь порождает несколько расходов,
+      // и «записано строк: 3» при трёх расходах ОДНОГО человека было бы враньём в
+      // тосте. Отдельно считаем сами расходы — это разные факты.
+      const written = new Set<string>();
+      let writtenExpenses = 0;
       const failed: Array<{ lineId: string; error: string }> = [];
-      const skipped: string[] = [];
+      const skipped = new Set<string>();
       // Строки, по которым расход уже существовал в момент записи: гонка или
       // ретрай долетевшего запроса. Итог верный (ровно один расход), но факт
       // сообщается явно, а не прячется в общий skipped.
-      const duplicatesBlocked: string[] = [];
+      const duplicatesBlocked = new Set<string>();
       const now = new Date().toISOString();
 
       for (const line of lines) {
-        if (alreadyPaid.has(line.id)) {
-          skipped.push(line.id);
+        // Строка, закрытая расходом прежней схемы (без филиального ключа), уже
+        // выплачена целиком — разбивать её задним числом нечем и незачем.
+        if (paidWholeLine.has(line.id)) {
+          skipped.add(line.id);
           continue;
         }
         const amountMinor = payable.get(line.id) ?? 0;
@@ -1100,70 +1504,99 @@ const handler: Handler = async (event: HandlerEvent) => {
         // строго положителен, а видимый ноль — это сигнал «ставка отработала, но
         // начислять было не с чего», а не платёж.
         if (amountMinor <= 0) {
-          skipped.push(line.id);
+          skipped.add(line.id);
           continue;
         }
 
-        const attribution = deriveScopeAttribution(line.ruleSnapshot);
-        // Детерминированный id: один и тот же (период, строка) не может дать два
-        // документа, сколько бы запросов ни пришло параллельно.
-        const txRef = adminDb.collection(TRANSACTIONS).doc(payoutTxId(periodId, line.id));
-        const data = pruneUndefined({
-          type: 'expense',
-          amount: minorToSom(amountMinor),
-          date: payoutDate,
-          categoryId: SALARY_CATEGORY,
-          description: `Зарплата за ${period.period} — ${line.teacherName || line.teacherId}`,
-          currency: null,
-          paymentMethod: body.paymentMethod ?? null,
-          paymentPlanId: null,
-          studentId: null,
-          courseId: attribution.courseId,
-          groupId: attribution.groupId,
-          teacherId: line.teacherId,
-          branchId: line.branchId ?? period.branchId ?? null,
-          organizationId: orgFilter,
-          // Ключи идемпотентности: по ним и только по ним повтор находит уже
-          // выплаченное.
-          payrollPeriodId: periodId,
-          payrollLineId: line.id,
-          createdBy: user.uid,
-          createdAt: now,
-        });
+        // ── Разворот строки в расходы по филиалам ──
+        // Веса заморожены при расчёте; здесь только делим сумму К ВЫПЛАТЕ (она
+        // меньше начисленной, если штраф погасил часть) и следим, чтобы сумма
+        // расходов равнялась ей до тыйына.
+        const shares = sharesOrFallback(line.branchShares as LineBranchShare[] | undefined);
+        const allocations = allocateByShares(amountMinor, shares);
 
-        try {
-          await adminDb.runTransaction(async (t) => {
-            // Проверка организации ПОВТОРЯЕТСЯ внутри транзакции: чтение,
-            // авторизовавшее запись, ей не атомарно.
-            const snap = await t.get(periodRef);
-            if (!snap.exists) throw new Error('Ведомость не найдена');
-            const fresh = snap.data() as any;
-            if (fresh.organizationId !== orgFilter) throw new Error('Ведомость другой организации');
-            if (fresh.state !== 'approved' && fresh.state !== 'paid') {
-              throw new Error('Ведомость больше не утверждена');
-            }
+        for (const allocation of allocations) {
+          // Нулевая доля расхода не порождает: филиал, где в этом месяце ничего
+          // не собрано, не должен получить строку «Зарплата 0 с.».
+          if (allocation.amountMinor <= 0) continue;
 
-            // Читаем ИМЕННО тот документ, который собираемся создать. Без этого
-            // транзакция не конфликтует ни с чем: Firestore откатывает её только
-            // при конкурентной записи в ПРОЧИТАННЫЙ документ, а periodRef никто
-            // не пишет — поэтому раньше два параллельных запроса коммитились оба.
-            const existingTx = await t.get(txRef);
-            if (existingTx.exists) throw new Error(DUPLICATE_PAYOUT);
-
-            // create, а не set: set перезаписал бы уже существующий расход молча.
-            t.create(txRef, data);
-          });
-          written.push(line.id);
-        } catch (err: any) {
-          if (isDuplicatePayout(err)) {
-            // Не провал: расход по строке существует ровно в одном экземпляре —
-            // именно этого мы и добивались. Период вправе стать 'paid'.
-            console.warn(`payroll: дубликат выплаты заблокирован, строка ${line.id}`);
-            duplicatesBlocked.push(line.id);
-            skipped.push(line.id);
+          const branchKey = branchKeyOf(allocation.branchId);
+          if (paidShare.has(`${line.id}::${branchKey}`)) {
+            skipped.add(line.id);
             continue;
           }
-          failed.push({ lineId: line.id, error: err?.message || 'Ошибка записи' });
+
+          // Детерминированный id: одна и та же тройка (период, строка, филиал)
+          // не может дать два документа, сколько бы запросов ни пришло
+          // параллельно.
+          const txRef = adminDb.collection(TRANSACTIONS).doc(payoutTxId(periodId, line.id, branchKey));
+          const data = pruneUndefined({
+            type: 'expense',
+            amount: minorToSom(allocation.amountMinor),
+            date: payoutDate,
+            categoryId: SALARY_CATEGORY,
+            description: `Зарплата за ${period.period} — ${line.teacherName || line.teacherId}`,
+            currency: null,
+            paymentMethod: body.paymentMethod ?? null,
+            paymentPlanId: null,
+            studentId: null,
+            // Атрибуция посчитана при расчёте и лежит на доле: выводить её здесь
+            // заново значило бы считать по составу групп, который с тех пор мог
+            // измениться, и расход уехал бы не в тот курс. У доли она точнее, чем
+            // у строки: «одна группа в этом филиале» бывает и тогда, когда у
+            // преподавателя групп много.
+            courseId: allocation.courseId ?? line.courseId ?? null,
+            groupId: allocation.groupId ?? line.groupId ?? null,
+            teacherId: line.teacherId,
+            // Филиал доли: у легаси-строки — её собственный, у ручной премии —
+            // null (заработана не в здании, а решением директора).
+            branchId: allocation.branchId ?? line.branchId ?? null,
+            organizationId: orgFilter,
+            // Ключи идемпотентности: по ним и только по ним повтор находит уже
+            // выплаченное. payrollBranchKey отличает новую схему от прежней,
+            // где одна строка закрывалась одним расходом.
+            payrollPeriodId: periodId,
+            payrollLineId: line.id,
+            payrollBranchKey: branchKey,
+            createdBy: user.uid,
+            createdAt: now,
+          });
+
+          try {
+            await adminDb.runTransaction(async (t) => {
+              // Проверка организации ПОВТОРЯЕТСЯ внутри транзакции: чтение,
+              // авторизовавшее запись, ей не атомарно.
+              const snap = await t.get(periodRef);
+              if (!snap.exists) throw new Error('Ведомость не найдена');
+              const fresh = snap.data() as any;
+              if (fresh.organizationId !== orgFilter) throw new Error('Ведомость другой организации');
+              if (fresh.state !== 'approved' && fresh.state !== 'paid') {
+                throw new Error('Ведомость больше не утверждена');
+              }
+
+              // Читаем ИМЕННО тот документ, который собираемся создать. Без этого
+              // транзакция не конфликтует ни с чем: Firestore откатывает её только
+              // при конкурентной записи в ПРОЧИТАННЫЙ документ, а periodRef никто
+              // не пишет — поэтому раньше два параллельных запроса коммитились оба.
+              const existingTx = await t.get(txRef);
+              if (existingTx.exists) throw new Error(DUPLICATE_PAYOUT);
+
+              // create, а не set: set перезаписал бы уже существующий расход молча.
+              t.create(txRef, data);
+            });
+            written.add(line.id);
+            writtenExpenses++;
+          } catch (err: any) {
+            if (isDuplicatePayout(err)) {
+              // Не провал: расход по этой доле существует ровно в одном
+              // экземпляре — именно этого мы и добивались.
+              console.warn(`payroll: дубликат выплаты заблокирован, строка ${line.id}, филиал ${branchKey}`);
+              duplicatesBlocked.add(line.id);
+              skipped.add(line.id);
+              continue;
+            }
+            failed.push({ lineId: line.id, error: err?.message || 'Ошибка записи' });
+          }
         }
       }
 
@@ -1190,10 +1623,13 @@ const handler: Handler = async (event: HandlerEvent) => {
       const payload = {
         id: periodId,
         state: failed.length ? period.state : 'paid',
-        written: written.length,
-        writtenLineIds: written,
-        skipped: skipped.length,
-        duplicatesBlocked: duplicatesBlocked.length,
+        written: written.size,
+        writtenLineIds: [...written],
+        // Сколько расходных документов реально создано: у преподавателя,
+        // работающего в двух филиалах, их больше, чем строк.
+        writtenExpenses,
+        skipped: skipped.size,
+        duplicatesBlocked: duplicatesBlocked.size,
         failed,
         warnings,
       };

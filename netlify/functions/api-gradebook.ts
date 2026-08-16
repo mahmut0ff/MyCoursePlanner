@@ -59,13 +59,14 @@ type GroupSessionAuth =
  * Доступ к ГРУППЕ (а не к курсу) — для записи lessonSession.
  * Курсовой проверки мало: одному courseId соответствует много групп, поэтому
  * verifyCourseAccess(courseId) пропускал запись сессии в ЛЮБУЮ группу орга с тем же
- * курсом. Сессия — основание для зарплаты, так что авторизуем именно тот объект,
- * в который пишем: орг + совпадение курса + реальная связь пользователя с ГРУППОЙ.
+ * курсом. Сессия — учётная запись о проведённом занятии, так что авторизуем именно
+ * тот объект, в который пишем: орг + совпадение курса + реальная связь пользователя
+ * с ГРУППОЙ.
  *
  * Для teacher требуется членство именно в group.teacherIds. Фолбэк на курс убран
- * намеренно: любой препод, числящийся на курсе, мог приписать занятие (а значит и
- * зарплату) чужой группе того же курса. Отметить журнал он по-прежнему может —
- * ужесточается только атрибуция сессии.
+ * намеренно: любой препод, числящийся на курсе, мог приписать занятие чужой группе
+ * того же курса. Отметить журнал он по-прежнему может — ужесточается только
+ * атрибуция сессии.
  */
 function authorizeGroupForSession(
   user: AuthUser,
@@ -509,8 +510,8 @@ const handler: Handler = async (event: HandlerEvent) => {
     /** POST bulkAttendance — mark attendance for all students in a course for a date */
     if (action === 'bulkAttendance' && event.httpMethod === 'POST') {
       const body = JSON.parse(event.body || '{}');
-      // groupId/teacherId/durationMinutes — аддитивные поля для payroll (lessonSessions).
-      // Старые вызовы их не шлют: тогда пишем только журнал, как раньше.
+      // groupId/teacherId/durationMinutes — аддитивные поля записи «урок состоялся»
+      // (lessonSessions). Старые вызовы их не шлют: тогда пишем только журнал.
       const { courseId, date, entries, groupId, teacherId, durationMinutes } = body;
       if (!courseId || !date || !Array.isArray(entries)) return badRequest('courseId, date, entries[] required');
 
@@ -520,14 +521,16 @@ const handler: Handler = async (event: HandlerEvent) => {
       // ── lessonSessions: подготавливаем данные ДО батча, чтобы запись «урок состоялся»
       // легла в тот же commit, что и журнал (атомарность: либо и то и другое, либо ничего).
       // groupId — единственный факт, которого нет в journal; без него сессию не пишем.
+      // Зарплата эту запись больше НЕ читает (оплата за занятие/час/голову удалена):
+      // это самостоятельный след «занятие проведено, вёл такой-то».
       let sessionRef: FirebaseFirestore.DocumentReference | null = null;
       let sessionData: Record<string, any> | null = null;
       let sessionIsUpdate = false;
       // Радиус поражения: журнал — основная функция этого эндпоинта, и он НЕ должен
-      // падать из-за проблем атрибуции зарплаты. Поэтому любая неудача авторизации
+      // падать из-за проблем атрибуции занятия. Поэтому любая неудача авторизации
       // группы (кроме чужого орга) пропускает ТОЛЬКО сессию с диагностикой в лог:
-      // отсутствующая сессия — видимый ноль в payroll (правило «не выдумывать число»),
-      // а потерянная запись в журнале — потеря данных.
+      // отсутствующая сессия — отсутствующая справка, а потерянная запись в
+      // журнале — потеря данных.
       let skipSessionReason: string | null = null;
 
       if (groupId) {
@@ -561,8 +564,8 @@ const handler: Handler = async (event: HandlerEvent) => {
 
           // teacherId: явный из тела → ЕДИНСТВЕННЫЙ препод группы → null.
           // НИКОГДА не user.uid (это createdBy — кто отметил журнал, а не кто вёл занятие).
-          // null — честная «неатрибутированная сессия»: per_hour/per_lesson/per_student
-          // такие сессии просто пропускают, спорную атрибуцию director поправит вручную.
+          // null — честная «неатрибутированная сессия»: приписать занятие тому, кто
+          // отметил журнал, значит соврать в отчётности о нагрузке.
           // `??`, не `||`: пустой строкой teacherId не бывает, а null от нескольких преподов
           // должен падать в null, а не срабатывать как falsy-фолбэк на user.uid.
           const resolvedTeacherId: string | null =
@@ -577,7 +580,7 @@ const handler: Handler = async (event: HandlerEvent) => {
           const branchId: string | null = group.branchId ?? null;
 
           // headcount = присутствовавшие: present + late (опоздавший всё равно был на занятии).
-          // Считаем по фактически размеченным записям — это база для per_student в payroll.
+          // Считаем по фактически размеченным записям.
           const headcount = entries.filter((e: any) => {
             const a = e.attendance || 'present';
             return a === 'present' || a === 'late';
@@ -638,8 +641,8 @@ const handler: Handler = async (event: HandlerEvent) => {
               teacherId: resolvedTeacherId,
               date,
               // Явный body.durationMinutes побеждает; иначе плановая из scheduleEvent;
-              // иначе честный null. null-сессию per_hour пропускает (нельзя пропорционировать
-              // неизвестное время) — видимый ноль вместо догадки.
+              // иначе честный null: подставить «обычные 90 минут» значит записать
+              // время, которого никто не подтверждал.
               durationMinutes: durationMinutes !== undefined ? durationMinutes : plannedDuration,
               status: 'held',
               headcount,
@@ -652,7 +655,7 @@ const handler: Handler = async (event: HandlerEvent) => {
         }
       }
 
-      // Диагностика вместо тихой потери: сессии не будет, и в payroll это видимый ноль.
+      // Диагностика вместо тихой потери: записи «урок состоялся» не будет.
       if (skipSessionReason) {
         console.warn(
           `api-gradebook bulkAttendance: lessonSession пропущена (groupId=${groupId}, date=${date}, uid=${user.uid}): ${skipSessionReason}`,

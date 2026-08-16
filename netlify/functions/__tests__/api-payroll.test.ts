@@ -21,7 +21,8 @@ vi.mock('../utils/auth', async (importOriginal) => {
 });
 
 // Крон рассылает уведомления через notifyOrgAdmins — сеть в тесте не нужна,
-// но ФАКТ вызова проверяется: молчаливый пропуск филиальной схемы это баг.
+// но ФАКТ вызова проверяется: ведомость, о которой директору никто не сказал,
+// не будет ни проверена, ни выплачена.
 vi.mock('../utils/notifications', () => ({ notifyOrgAdmins: vi.fn().mockResolvedValue(undefined) }));
 
 import { adminDb } from '../utils/firebase-admin';
@@ -160,40 +161,38 @@ const july = '2026-07';
 const local = (y: number, m: number, d: number, h = 12) => new Date(y, m, d, h, 0, 0, 0).toISOString();
 
 const baseSeed = () => ({
+  // Филиала у ставки нет: «двадцать процентов» — свойство человека, а не здания.
   compensationRules: [
     {
-      id: 'rule1', organizationId: 'org1', teacherId: 't1', branchId: null,
-      label: 'Оклад + 20% с группы А', status: 'active',
+      id: 'rule1', organizationId: 'org1', teacherId: 't1',
       components: [
         { kind: 'salary', amountMinor: 3000000 },
-        { kind: 'percent_revenue', percentBp: 2000, base: 'collected', scope: { groupIds: ['g1'] } },
+        { kind: 'percent_revenue', percentBp: 2000, base: 'collected' },
       ],
-      effectiveFrom: '2026-01', effectiveTo: null,
     },
     // Чужая организация — не должна попасть ни в одну ведомость.
     {
-      id: 'ruleForeign', organizationId: 'org2', teacherId: 'tX', branchId: null,
-      label: 'Чужая', status: 'active',
+      id: 'ruleForeign', organizationId: 'org2', teacherId: 'tX',
       components: [{ kind: 'salary', amountMinor: 9999999 }],
-      effectiveFrom: '2026-01', effectiveTo: null,
     },
   ],
   financeTransactions: [
-    { id: 'inc1', organizationId: 'org1', type: 'income', amount: 5000, date: local(2026, 6, 10), categoryId: 'tuition', groupId: 'g1', courseId: 'c1', branchId: null, paymentPlanId: 'p1' },
-    { id: 'inc2', organizationId: 'org1', type: 'income', amount: 5000, date: local(2026, 6, 20), categoryId: 'tuition', groupId: 'g1', courseId: 'c1', branchId: null, paymentPlanId: 'p2' },
+    { id: 'inc1', organizationId: 'org1', type: 'income', amount: 5000, date: local(2026, 6, 10), categoryId: 'tuition', groupId: 'g1', courseId: 'c1', studentId: 'st1', branchId: null, paymentPlanId: 'p1' },
+    { id: 'inc2', organizationId: 'org1', type: 'income', amount: 5000, date: local(2026, 6, 20), categoryId: 'tuition', groupId: 'g1', courseId: 'c1', studentId: 'st2', branchId: null, paymentPlanId: 'p2' },
     // Вне окна — август.
-    { id: 'inc3', organizationId: 'org1', type: 'income', amount: 9000, date: local(2026, 7, 3), categoryId: 'tuition', groupId: 'g1', courseId: 'c1', branchId: null, paymentPlanId: 'p3' },
-    { id: 'incForeign', organizationId: 'org2', type: 'income', amount: 7000, date: local(2026, 6, 12), categoryId: 'tuition', groupId: 'g1', courseId: 'c1', branchId: null, paymentPlanId: 'pX' },
+    { id: 'inc3', organizationId: 'org1', type: 'income', amount: 9000, date: local(2026, 7, 3), categoryId: 'tuition', groupId: 'g1', courseId: 'c1', studentId: 'st1', branchId: null, paymentPlanId: 'p3' },
+    { id: 'incForeign', organizationId: 'org2', type: 'income', amount: 7000, date: local(2026, 6, 12), categoryId: 'tuition', groupId: 'g1', courseId: 'c1', studentId: 'stX', branchId: null, paymentPlanId: 'pX' },
   ],
-  lessonSessions: [
-    { id: 's1', organizationId: 'org1', groupId: 'g1', courseId: 'c1', teacherId: 't1', date: '2026-07-05', durationMinutes: 90, status: 'held', headcount: 8, branchId: null },
-    // Ничья сессия: teacherId null — не начисляется никому.
-    { id: 's2', organizationId: 'org1', groupId: 'g1', courseId: 'c1', teacherId: null, date: '2026-07-06', durationMinutes: 90, status: 'held', headcount: 8, branchId: null },
+  // Группы — источник «чьи студенты и чьи деньги»: процент считается по ним.
+  groups: [
+    { id: 'g1', organizationId: 'org1', name: 'Группа 1', courseId: 'c1', teacherIds: ['t1'], studentIds: ['st1', 'st2'], branchId: null },
   ],
   payrollPeriods: [],
   payrollLines: [],
   'orgMembers/org1/members': [
     { id: 't1', uid: 't1', role: 'teacher', status: 'active', branchIds: [] },
+    { id: 'st1', uid: 'st1', role: 'student', status: 'active', userName: 'Айбек', branchIds: [] },
+    { id: 'st2', uid: 'st2', role: 'student', status: 'active', userName: 'Бермет', branchIds: [] },
   ],
 });
 
@@ -312,26 +311,35 @@ describe('api-payroll calculate — идемпотентность и перес
     expect(penalty.finalMinor).toBe(-20000);
   });
 
-  it('не начисляет сессию без преподавателя и сообщает об этом диагностикой', async () => {
+  it('не начисляет процент с платежа без группы и сообщает об этом диагностикой', async () => {
+    // Оплата студента его группы, но не привязанная к группе: в базу она не
+    // входит, и молчать об этом нельзя — иначе сумма просто меньше ожидаемой.
+    db.set('financeTransactions', {
+      id: 'incNoGroup', organizationId: 'org1', type: 'income', amount: 3000,
+      date: local(2026, 6, 15), categoryId: 'tuition', groupId: null, courseId: 'c1',
+      studentId: 'st1', branchId: null, paymentPlanId: 'p9',
+    });
     await calculate();
+
+    const line = db.rows('payrollLines')[0];
+    expect(line.computedMinor).toBe(3000000 + 200000); // 3000 в базу не вошли
+
     const diagnostics = db.rows('payrollPeriods')[0].diagnostics as any[];
-    const orphan = diagnostics.find((d) => d.code === 'session_no_teacher');
+    const orphan = diagnostics.find((d) => d.code === 'payment_without_group');
     expect(orphan).toBeTruthy();
-    expect(orphan.count).toBe(1);
-    expect(orphan.sample).toContain('s2');
+    expect(orphan.sample).toContain('incNoGroup');
   });
 
   it('запрашивает входы только равенством — никаких orderBy/limit', async () => {
     await calculate();
-    for (const name of ['compensationRules', 'financeTransactions', 'lessonSessions', 'payrollLines', 'payrollPeriods']) {
+    for (const name of ['compensationRules', 'financeTransactions', 'groups', 'payrollLines', 'payrollPeriods']) {
       // Клаузы записаны — значит выборка шла через where, а мок не поддерживает
       // ничего, кроме равенства: любой orderBy/limit упал бы здесь.
       expect(db.clauses(name).every(([f]) => typeof f === 'string')).toBe(true);
     }
     expect(db.clauses('compensationRules')).toContainEqual(['organizationId', 'org1']);
-    expect(db.clauses('compensationRules')).toContainEqual(['status', 'active']);
     expect(db.clauses('financeTransactions')).toContainEqual(['organizationId', 'org1']);
-    expect(db.clauses('lessonSessions')).toContainEqual(['organizationId', 'org1']);
+    expect(db.clauses('groups')).toContainEqual(['organizationId', 'org1']);
   });
 
   it('не видит данных чужой организации', async () => {
@@ -356,164 +364,151 @@ describe('api-payroll calculate — идемпотентность и перес
   });
 });
 
-describe('api-payroll — филиальное разграничение', () => {
+/**
+ * Ведомость ОДНА на (организацию, месяц), филиал её не режет. Но в базе лежат
+ * ведомости прежней филиальной модели, и весь смысл тестов ниже — что новая
+ * модель не оплатит их людей второй раз и не оставит месяц навсегда закрытым.
+ */
+describe('api-payroll — ведомость общая, филиал только атрибутирует', () => {
   let db: ReturnType<typeof makeDb>;
   beforeEach(() => {
     vi.clearAllMocks();
     const seed: any = baseSeed();
+    // Второй преподаватель на окладе: он и есть тот, кого филиальная модель
+    // умела оплатить дважды.
     seed.compensationRules.push({
-      id: 'ruleB', organizationId: 'org1', teacherId: 't2', branchId: 'B',
-      label: 'Оклад Б', status: 'active',
+      id: 'ruleT2', organizationId: 'org1', teacherId: 't2',
       components: [{ kind: 'salary', amountMinor: 1000000 }],
-      effectiveFrom: '2026-01', effectiveTo: null,
     });
     db = makeDb(seed);
-  });
-
-  it('не даёт рассчитать ведомость чужого филиала', async () => {
-    (verifyAuth as any).mockResolvedValue(staff(['payroll:write'], { branchIds: ['A'], primaryBranchId: 'A' }));
-    const res = await calculate({ branchId: 'B' });
-    expect(res.statusCode).toBe(403);
-    expect(db.rows('payrollPeriods')).toHaveLength(0);
-  });
-
-  it('ведомость филиала берёт только ставки этого филиала', async () => {
-    (verifyAuth as any).mockResolvedValue(staff(['payroll:write']));
-    await calculate({ branchId: 'B' });
-    const lines = db.rows('payrollLines');
-    // Org-wide ставка t1 не начисляется в филиальной ведомости: иначе один оклад
-    // выплатился бы по разу на каждый филиал.
-    expect(lines.map((l) => l.teacherId)).toEqual(['t2']);
-  });
-
-  it('сохраняет филиал на ведомости, и последующее чтение по филиалу её находит', async () => {
     (verifyAuth as any).mockResolvedValue(staff(['payroll:write', 'payroll:read']));
+  });
+
+  /** Ведомость прежней модели: тот же месяц, но посчитанная по филиалу. */
+  const legacyBranchSheet = (state: string) => ({
+    id: 'legacyB', organizationId: 'org1', period: july, branchId: 'B',
+    state, windowStart: '', windowEnd: '', totalMinor: 1000000,
+  });
+
+  it('считает всех преподавателей одной ведомостью, а branchId в теле игнорирует', async () => {
     const res = await calculate({ branchId: 'B' });
     expect(res.statusCode).toBe(200);
-    expect(JSON.parse(res.body).branchId).toBe('B');
+    // Филиала у ведомости нет: и «B» из тела, и охват «только филиал B» —
+    // понятия, которых в модели больше не существует.
+    expect(JSON.parse(res.body).branchId).toBeNull();
+
+    const periods = db.rows('payrollPeriods');
+    expect(periods).toHaveLength(1);
+    expect(periods[0].branchId).toBeNull();
+    // Оба преподавателя в одной ведомости: разложить их по зданиям значило бы
+    // потерять того, у кого группы в двух филиалах сразу.
+    expect(db.rows('payrollLines').map((l) => l.teacherId).sort()).toEqual(['t1', 't2']);
+  });
+
+  it('сотрудник, закреплённый за филиалом, считает и читает ту же общую ведомость', async () => {
+    (verifyAuth as any).mockResolvedValue(
+      staff(['payroll:write', 'payroll:read'], { branchIds: ['A'], primaryBranchId: 'A' }),
+    );
+    const res = await calculate();
+    expect(res.statusCode).toBe(200);
 
     const period = db.rows('payrollPeriods')[0];
-    expect(period.branchId).toBe('B');
-    // Именно этот GET делает UI после расчёта — он штампован филиалом. Раньше
-    // расчёт писал branchId: null, и ведомость исчезала сразу после расчёта.
-    const list = await handler(
-      event('GET', { action: 'periods', period: july, branchId: 'B' }), {} as any, () => {},
-    ) as any;
-    expect(list.statusCode).toBe(200);
-    expect(JSON.parse(list.body).map((p: any) => p.id)).toEqual([period.id]);
+    expect(period.branchId).toBeNull();
+    expect(db.rows('payrollLines').map((l) => l.teacherId).sort()).toEqual(['t1', 't2']);
+
+    // И читает её же: прятать общую ведомость от филиального менеджера значило
+    // бы показать ему пустой раздел зарплаты.
+    const read = await handler(event('GET', { action: 'period', id: period.id }), {} as any, () => {}) as any;
+    expect(read.statusCode).toBe(200);
   });
 
-  it('не отдаёт общеорганизационную ведомость участнику, ограниченному филиалом', async () => {
-    (verifyAuth as any).mockResolvedValue(staff(['payroll:write'], { branchIds: ['A'], primaryBranchId: 'A' }));
-    // Филиал не назван — это «Все филиалы». Для такого участника расчёт по всей
-    // организации означал бы зарплату филиалов, которых он не видит.
+  it('ЗАКРЫТАЯ легаси-ведомость филиала не даёт пересчитать месяц', async () => {
+    // Деньги по ней уже посчитаны и утверждены; общая ведомость начислила бы тем
+    // же людям второй раз. Это главная защита от двойной выплаты.
+    db.set('payrollPeriods', legacyBranchSheet('approved'));
+
     const res = await calculate();
-    expect(res.statusCode).toBe(403);
-    expect(JSON.parse(res.body).error).toMatch(/Выберите филиал/i);
-    expect(db.rows('payrollPeriods')).toHaveLength(0);
-
-    // Свой филиал он рассчитать вправе.
-    const own = await calculate({ branchId: 'A' });
-    expect(own.statusCode).toBe(200);
-    expect(db.rows('payrollPeriods')[0].branchId).toBe('A');
-  });
-
-  it('месяц не покрывается дважды: после общей ведомости филиальная за тот же месяц отклоняется', async () => {
-    (verifyAuth as any).mockResolvedValue(staff(['payroll:write', 'payroll:read']));
-    await calculate(); // «Все филиалы» → branchId null, включает t1 И t2
-
-    const res = await calculate({ branchId: 'B' });
     expect(res.statusCode).toBe(409);
     const body = JSON.parse(res.body);
     expect(body.code).toBe('period_coverage_conflict');
     // Текст обязан назвать месяц и подсказать выход, а не просто «конфликт».
     expect(body.error).toContain(july);
-    expect(body.error).toMatch(/Все филиалы/);
-    expect(body.conflictBranchId).toBeNull();
-
-    // Вторая ведомость не создана — иначе t2 попал бы в обе и был бы оплачен дважды.
-    expect(db.rows('payrollPeriods')).toHaveLength(1);
-    expect(db.rows('payrollPeriods')[0].branchId).toBeNull();
-  });
-
-  it('и в обратную сторону: после филиальной ведомости общая за тот же месяц отклоняется', async () => {
-    (verifyAuth as any).mockResolvedValue(staff(['payroll:write', 'payroll:read']));
-    await calculate({ branchId: 'B' });
-
-    const res = await calculate();
-    expect(res.statusCode).toBe(409);
-    const body = JSON.parse(res.body);
-    expect(body.code).toBe('period_coverage_conflict');
     expect(body.conflictBranchId).toBe('B');
-    expect(body.error).toMatch(/Выберите филиал/);
+    expect(body.conflictState).toBe('approved');
 
+    // Вторая ведомость не создана и строк не появилось.
     expect(db.rows('payrollPeriods')).toHaveLength(1);
-    expect(db.rows('payrollPeriods')[0].branchId).toBe('B');
+    expect(db.rows('payrollLines')).toHaveLength(0);
   });
 
-  it('две РАЗНЫЕ филиальные ведомости за месяц сосуществуют — их охваты не пересекаются', async () => {
-    (verifyAuth as any).mockResolvedValue(staff(['payroll:write', 'payroll:read']));
-    expect((await calculate({ branchId: 'A' })).statusCode).toBe(200);
-    expect((await calculate({ branchId: 'B' })).statusCode).toBe(200);
+  it('ВЫПЛАТА блокируется, если месяц уже закрыт легаси-ведомостью филиала', async () => {
+    await calculate();
+    const periodId = db.rows('payrollPeriods')[0].id;
+    await handler(event('POST', { action: 'approve' }, { periodId }), {} as any, () => {});
 
-    const periods = db.rows('payrollPeriods');
-    expect(periods).toHaveLength(2);
-    expect(periods.map((p) => p.branchId).sort()).toEqual(['A', 'B']);
+    // Ведомость филиала, уже выплаченная, всплывает в базе после утверждения
+    // общей. Деньги уходят в pay — там и обязан стоять второй рубеж.
+    db.set('payrollPeriods', legacyBranchSheet('paid'));
 
-    // У ставки ровно один branchId, поэтому один преподаватель не может попасть
-    // в обе: t2 (филиал B) есть только в ведомости B.
-    const linesOf = (id: string) => db.rows('payrollLines').filter((l) => l.periodId === id);
-    const branchB = periods.find((p) => p.branchId === 'B')!;
-    const branchA = periods.find((p) => p.branchId === 'A')!;
-    expect(linesOf(branchB.id).map((l) => l.teacherId)).toEqual(['t2']);
-    expect(linesOf(branchA.id).map((l) => l.teacherId)).toEqual([]);
-
-    // Выбор филиала в чтении не смешивает их: строгое совпадение.
-    const list = await handler(
-      event('GET', { action: 'periods', period: july, branchId: 'B' }), {} as any, () => {},
-    ) as any;
-    expect(JSON.parse(list.body).map((p: any) => p.id)).toEqual([branchB.id]);
-  });
-
-  it('пересчёт СВОЕЙ ведомости конфликтом не считается', async () => {
-    (verifyAuth as any).mockResolvedValue(staff(['payroll:write', 'payroll:read']));
-    await calculate({ branchId: 'B' });
-    // Ведомость B уже существует; повторный расчёт того же охвата обязан пройти,
-    // а не наткнуться на «конфликт» с самой собой.
-    const again = await calculate({ branchId: 'B' });
-    expect(again.statusCode).toBe(200);
-    expect(db.rows('payrollPeriods')).toHaveLength(1);
-  });
-
-  it('выплата блокируется, если месяц уже закрыт пересекающейся ведомостью (легаси-данные)', async () => {
-    (verifyAuth as any).mockResolvedValue(staff(['payroll:write', 'payroll:read']));
-    await calculate({ branchId: 'B' });
-    const branchPeriod = db.rows('payrollPeriods')[0];
-    await handler(event('POST', { action: 'approve' }, { periodId: branchPeriod.id }), {} as any, () => {});
-
-    // Пара, заведённая ДО появления проверки в calculate: общая ведомость за тот
-    // же июль, уже выплаченная. Деньги уходят в pay — там и обязан стоять рубеж.
-    db.set('payrollPeriods', {
-      id: 'legacyOrgWide', organizationId: 'org1', period: july, branchId: null,
-      state: 'paid', windowStart: '', windowEnd: '', totalMinor: 1000000,
-    });
-
-    const res = await handler(
-      event('POST', { action: 'pay' }, { periodId: branchPeriod.id }), {} as any, () => {},
-    ) as any;
+    const res = await handler(event('POST', { action: 'pay' }, { periodId }), {} as any, () => {}) as any;
     expect(res.statusCode).toBe(409);
     expect(JSON.parse(res.body).code).toBe('period_coverage_conflict');
     expect(db.rows('financeTransactions').filter((t) => t.categoryId === 'salary')).toHaveLength(0);
   });
 
-  it('скрывает ведомость чужого филиала из детального чтения', async () => {
-    (verifyAuth as any).mockResolvedValue(staff(['payroll:write', 'payroll:read']));
-    await calculate({ branchId: 'B' });
-    const periodId = db.rows('payrollPeriods')[0].id;
+  it('НЕЗАКРЫТУЮ легаси-ведомость расчёт поглощает: премия переезжает, второй ведомости не остаётся', async () => {
+    await calculate();
+    const sheetId = db.rows('payrollPeriods')[0].id;
 
-    (verifyAuth as any).mockResolvedValue(staff(['payroll:read'], { branchIds: ['A'], primaryBranchId: 'A' }));
-    const res = await handler(event('GET', { action: 'period', id: periodId }), {} as any, () => {}) as any;
-    expect(res.statusCode).toBe(403);
+    // Черновик прежней модели за тот же июль. Просто игнорировать его нельзя: он
+    // виден в списке, его строки попадают в «зарплатный баланс», а удаления
+    // ведомости в интерфейсе нет — месяц упирался бы в 409 навсегда.
+    db.set('payrollPeriods', legacyBranchSheet('calculated'));
+    db.set('payrollLines', {
+      id: 'legacyBonus', organizationId: 'org1', periodId: 'legacyB', period: july,
+      teacherId: 't2', teacherName: '', ruleId: null, source: 'manual_bonus', isManual: true,
+      computedMinor: 70000, overrideMinor: null, finalMinor: 70000, note: 'За выпускной', branchId: 'B',
+    });
+    db.set('payrollLines', {
+      id: 'legacyRule', organizationId: 'org1', periodId: 'legacyB', period: july,
+      teacherId: 't2', ruleId: 'ruleT2', source: 'rule', isManual: false,
+      computedMinor: 1000000, overrideMinor: null, finalMinor: 1000000, branchId: 'B',
+    });
+
+    const res = await calculate();
+    expect(res.statusCode).toBe(200);
+    const body = JSON.parse(res.body);
+    expect(body.id).toBe(sheetId);
+    expect(body.absorbedLegacyPeriods).toEqual(['legacyB']);
+
+    // Ведомость за месяц осталась одна.
+    const periods = db.rows('payrollPeriods');
+    expect(periods).toHaveLength(1);
+    expect(periods[0].id).toBe(sheetId);
+
+    const lines = db.rows('payrollLines');
+    // Решение человека переехало дословно…
+    const bonus = lines.find((l) => l.id === 'legacyBonus')!;
+    expect(bonus.periodId).toBe(sheetId);
+    expect(bonus.finalMinor).toBe(70000);
+    expect(bonus.note).toBe('За выпускной');
+    expect(bonus.branchId).toBeNull();
+    // …а расчётная строка поглощённой ведомости выброшена: она воспроизводится
+    // из тех же данных, и тащить её значило бы задвоить начисление t2.
+    expect(lines.some((l) => l.id === 'legacyRule')).toBe(false);
+    expect(lines.filter((l) => l.source === 'rule').map((l) => l.teacherId).sort()).toEqual(['t1', 't2']);
+    // Итог: 3 200 000 (t1) + 1 000 000 (t2) + 70 000 переехавшей премии.
+    expect(periods[0].totalMinor).toBe(3200000 + 1000000 + 70000);
+  });
+
+  it('пересчёт СВОЕЙ ведомости конфликтом не считается', async () => {
+    await calculate();
+    // Ведомость уже существует; повторный расчёт обязан пройти, а не наткнуться
+    // на «конфликт» с самой собой — coversSameTeachers(null, null) === false.
+    const again = await calculate();
+    expect(again.statusCode).toBe(200);
+    expect(JSON.parse(again.body).absorbedLegacyPeriods).toEqual([]);
+    expect(db.rows('payrollPeriods')).toHaveLength(1);
   });
 });
 
@@ -700,6 +695,10 @@ describe('api-payroll pay — идемпотентность и расходы �
     expect(tx.teacherId).toBe('t1');
     expect(tx.payrollPeriodId).toBe(periodId);
     expect(tx.payrollLineId).toBe(db.rows('payrollLines')[0].id);
+    // Ключ филиала отличает новую схему от прежней, где одна строка закрывалась
+    // одним расходом; 'org' — «филиал не определён», а не «вся организация».
+    expect(tx.payrollBranchKey).toBe('org');
+    expect(tx.branchId).toBeNull();
     expect(tx.createdBy).toBe('director1');
     // Сомы на границе: 3 200 000 тыйын = 32 000.00 с.
     expect(tx.amount).toBe(32000);
@@ -719,13 +718,15 @@ describe('api-payroll pay — идемпотентность и расходы �
     expect(salaryRows().map((t) => t.id).sort()).toEqual(afterFirst);
   });
 
-  it('id расхода детерминирован по (период, строка) — повтор не может создать второй документ', async () => {
+  it('id расхода детерминирован по (период, строка, филиал) — повтор не может создать второй документ', async () => {
     await pay();
     const lineId = db.rows('payrollLines')[0].id;
     const tx = salaryRows()[0];
-    // Не автоид: id выводится из ключей идемпотентности, поэтому одна строка
+    // Не автоид: id выводится из ключей идемпотентности, поэтому одна доля
     // физически не может дать два документа — Firestore не хранит два id.
-    expect(tx.id).toBe(`pay_${periodId}_${lineId}`);
+    // Третий сегмент — филиал доли ('org', когда его нет): без него второй
+    // расход той же строки не смог бы создаться вовсе.
+    expect(tx.id).toBe(`pay_${periodId}_${lineId}_org`);
     expect(tx.id).not.toMatch(/^auto\d+$/);
     // Легальный id документа Firestore: без '/', не '.'/'..', не /^__.*__$/.
     expect(tx.id).toMatch(/^[A-Za-z0-9_-]+$/);
@@ -814,11 +815,105 @@ describe('api-payroll pay — идемпотентность и расходы �
     expect(rows[0].amount * 100).toBe(db.rows('payrollPeriods')[0].totalMinor);
   });
 
+  it('строка, закрытая расходом ПРЕЖНЕЙ схемы, не оплачивается повторно по частям', async () => {
+    // Расход, выплаченный до появления филиального ключа: он закрывает строку
+    // ЦЕЛИКОМ. Не различить его значило бы выдать те же деньги заново, уже
+    // разложенными по зданиям.
+    const lineId = db.rows('payrollLines')[0].id;
+    db.set('financeTransactions', {
+      id: 'legacyPayout', organizationId: 'org1', type: 'expense', amount: 32000,
+      date: '2026-08-01T00:00:00.000Z', categoryId: 'salary', teacherId: 't1',
+      payrollPeriodId: periodId, payrollLineId: lineId,
+    });
+
+    const res = await pay();
+    expect(res.statusCode).toBe(200);
+    expect(JSON.parse(res.body).written).toBe(0);
+    expect(JSON.parse(res.body).skipped).toBe(1);
+    // Ни одного нового расхода: в кассе остался ровно тот, что был.
+    expect(salaryRows().map((t) => t.id)).toEqual(['legacyPayout']);
+  });
+
   it('требует payroll:write на выплату', async () => {
     (verifyAuth as any).mockResolvedValue(staff(['payroll:read']));
     const res = await pay();
     expect(res.statusCode).toBe(403);
     expect(salaryRows()).toHaveLength(0);
+  });
+});
+
+/**
+ * Преподаватель ведёт группы в двух зданиях. Ставка у него одна (она про
+ * человека), а расход в кассе обязан лечь туда, где деньги заработаны, — иначе
+ * филиал показывает прибыль без своей главной статьи затрат.
+ */
+describe('api-payroll pay — разворот строки в расходы по филиалам', () => {
+  let db: ReturnType<typeof makeDb>;
+  let periodId: string;
+
+  /** Одна ставка (50% собранного), две группы в разных филиалах, деньги в обеих. */
+  const splitSeed = () => {
+    const seed: any = baseSeed();
+    seed.compensationRules = [{
+      id: 'rule1', organizationId: 'org1', teacherId: 't1',
+      components: [{ kind: 'percent_revenue', percentBp: 5000, base: 'collected' }],
+    }];
+    seed.groups = [
+      { id: 'g1', organizationId: 'org1', name: 'Группа A', courseId: 'c1', teacherIds: ['t1'], studentIds: ['st1'], branchId: 'A' },
+      { id: 'g2', organizationId: 'org1', name: 'Группа B', courseId: 'c2', teacherIds: ['t1'], studentIds: ['st2'], branchId: 'B' },
+    ];
+    seed.financeTransactions = [
+      { id: 'incA', organizationId: 'org1', type: 'income', amount: 6000, date: local(2026, 6, 10), categoryId: 'tuition', groupId: 'g1', courseId: 'c1', studentId: 'st1', branchId: 'A', paymentPlanId: 'p1' },
+      { id: 'incB', organizationId: 'org1', type: 'income', amount: 4000, date: local(2026, 6, 12), categoryId: 'tuition', groupId: 'g2', courseId: 'c2', studentId: 'st2', branchId: 'B', paymentPlanId: 'p2' },
+    ];
+    return seed;
+  };
+
+  beforeEach(async () => {
+    vi.clearAllMocks();
+    db = makeDb(splitSeed());
+    (verifyAuth as any).mockResolvedValue(staff(['payroll:write', 'payroll:read']));
+    await calculate();
+    periodId = db.rows('payrollPeriods')[0].id;
+    await handler(event('POST', { action: 'approve' }, { periodId }), {} as any, () => {});
+  });
+
+  const pay = () => handler(event('POST', { action: 'pay' }, { periodId }), {} as any, () => {}) as any;
+  const salaryRows = () => db.rows('financeTransactions').filter((t) => t.categoryId === 'salary');
+
+  it('одна строка даёт ДВА расхода с разными филиалами, а их сумма равна выплате', async () => {
+    const res = await pay();
+    expect(res.statusCode).toBe(200);
+    const body = JSON.parse(res.body);
+    // Строка одна, а расходов два — это разные факты, и путать их в отчёте
+    // нельзя: «выплачено 2» про одного преподавателя читалось бы как двойная
+    // выплата.
+    expect(body.written).toBe(1);
+    expect(body.writtenExpenses).toBe(2);
+
+    const rows = salaryRows().sort((a, b) => String(a.branchId).localeCompare(String(b.branchId)));
+    expect(rows.map((t) => t.branchId)).toEqual(['A', 'B']);
+    // 50% от 10 000 с. = 5 000 с., поделённые по деньгам зданий (6 000 : 4 000).
+    expect(rows.map((t) => t.amount)).toEqual([3000, 2000]);
+    // Сумма расходов сходится с замороженным итогом ведомости ДО тыйына.
+    expect(rows.reduce((s, t) => s + t.amount, 0) * 100).toBe(db.rows('payrollPeriods')[0].totalMinor);
+    // Атрибуция берётся у доли: внутри филиала группа однозначна, хотя у
+    // преподавателя их несколько.
+    expect(rows.map((t) => t.groupId)).toEqual(['g1', 'g2']);
+    expect(rows.map((t) => t.courseId)).toEqual(['c1', 'c2']);
+  });
+
+  it('идемпотентен по (строка, филиал): повтор не пишет ни одного лишнего расхода', async () => {
+    await pay();
+    const afterFirst = salaryRows().map((t) => t.id).sort();
+
+    const second = await pay();
+    expect(second.statusCode).toBe(200);
+    expect(JSON.parse(second.body).written).toBe(0);
+    expect(JSON.parse(second.body).writtenExpenses).toBe(0);
+    // Обе доли нашлись выплаченными, и строка целиком ушла в пропущенные.
+    expect(JSON.parse(second.body).skipped).toBe(1);
+    expect(salaryRows().map((t) => t.id).sort()).toEqual(afterFirst);
   });
 });
 
@@ -867,15 +962,13 @@ describe('api-payroll balance — начислено минус выдано', (
 describe('payroll-accrual (крон) — покрытие месяца в многофилиальной академии', () => {
   let db: ReturnType<typeof makeDb>;
 
-  /** Сид крона: тарифный гейт + ставки двух филиалов и одна общеорганизационная. */
+  /** Сид крона: тарифный гейт + две ставки, ни одна из которых не привязана к зданию. */
   const cronSeed = () => {
     const seed: any = baseSeed();
     seed.organizations = [{ id: 'org1', planId: 'professional' }];
     seed.compensationRules.push({
-      id: 'ruleB', organizationId: 'org1', teacherId: 't2', branchId: 'B',
-      label: 'Оклад Б', status: 'active',
+      id: 'ruleT2', organizationId: 'org1', teacherId: 't2',
       components: [{ kind: 'salary', amountMinor: 1000000 }],
-      effectiveFrom: '2026-01', effectiveTo: null,
     });
     return seed;
   };
@@ -892,22 +985,26 @@ describe('payroll-accrual (крон) — покрытие месяца в мно
 
   const runCron = () => accrualHandler(event('POST'), {} as any, () => {}) as any;
 
-  it('открывает ОДНУ общую ведомость, покрывающую и филиальные, и общеорганизационные ставки', async () => {
+  it('открывает ОДНУ общую ведомость на всех преподавателей и зовёт директора её проверить', async () => {
     const res = await runCron();
     expect(res.statusCode).toBe(200);
     expect(JSON.parse(res.body).periodsOpened).toBe(1);
 
     const periods = db.rows('payrollPeriods');
     expect(periods).toHaveLength(1);
-    // Не по ведомости на филиал: ставка с branchId === null не попала бы ни в
-    // одну из них (recordInBranchScope(null,'B') === false), и t1 остался бы
-    // без начисления молча.
-    expect(periods[0].branchId).toBeNull();
+    // Филиала на документе нет вовсе: ведомость общеорганизационная, и поле,
+    // которое опознаёт легаси-документы, новая ведомость нести не должна.
+    expect(periods[0].branchId).toBeUndefined();
     expect(periods[0].period).toBe(july);
     expect(periods[0].state).toBe('calculated');
 
     const lines = db.rows('payrollLines').filter((l) => l.periodId === periods[0].id);
     expect(lines.map((l) => l.teacherId).sort()).toEqual(['t1', 't2']);
+
+    // Крон не утверждает и не платит — он только считает, поэтому обязан позвать
+    // человека: ведомость, о которой никто не узнал, так и не будет выплачена.
+    expect((notifyOrgAdmins as any).mock.calls[0][0]).toBe('org1');
+    expect((notifyOrgAdmins as any).mock.calls[0][1]).toBe('payroll_ready');
   });
 
   it('повторный прогон не открывает вторую ведомость за тот же месяц', async () => {
@@ -918,8 +1015,8 @@ describe('payroll-accrual (крон) — покрытие месяца в мно
     expect(db.rows('payrollPeriods')).toHaveLength(1);
   });
 
-  it('пропускает организацию, которая ведёт месяц ФИЛИАЛЬНЫМИ ведомостями, и говорит об этом вслух', async () => {
-    // Директор уже открыл июль по филиалу B руками.
+  it('легаси-ведомость филиала за тот же месяц считается покрытием — крон её не накрывает общей', async () => {
+    // Июль уже закрыт по филиалу B прежней моделью.
     db.set('payrollPeriods', {
       id: 'manualB', organizationId: 'org1', period: july, branchId: 'B',
       state: 'approved', windowStart: '', windowEnd: '', totalMinor: 1000000,
@@ -928,17 +1025,12 @@ describe('payroll-accrual (крон) — покрытие месяца в мно
     const res = await runCron();
     const body = JSON.parse(res.body);
     expect(body.periodsOpened).toBe(0);
-    expect(body.orgsSkippedBranchScheme).toBe(1);
-    // Общая ведомость наложилась бы на филиальную и оплатила бы t2 второй раз.
+    expect(body.orgsSkippedExisting).toBe(1);
+    // Общая ведомость наложилась бы на филиальную и начислила бы t2 второй раз.
+    // Разгребает такой месяц человек — «Пересчитать» в интерфейсе.
     expect(db.rows('payrollPeriods')).toHaveLength(1);
     expect(db.rows('payrollPeriods')[0].id).toBe('manualB');
-
-    // Пропуск не молчаливый: не покрыть половину академии зарплатой — худший исход.
-    const notices = (notifyOrgAdmins as any).mock.calls.filter((c: any[]) =>
-      /филиал/i.test(String(c[3] ?? '')),
-    );
-    expect(notices).toHaveLength(1);
-    expect(notices[0][0]).toBe('org1');
+    expect(db.rows('payrollLines')).toHaveLength(0);
   });
 
   it('не открывает ведомость организации на тарифе без зарплатного модуля', async () => {
@@ -971,17 +1063,24 @@ describe('api-payroll periods/period — чтения', () => {
   });
 
   it('отдаёт строки и диагностики вместе с периодом', async () => {
+    // Преподаватель без ставки строки не даёт, поэтому увидеть его можно ТОЛЬКО
+    // в диагностиках — иначе он молча выпадает из зарплаты.
+    db.set('orgMembers/org1/members', { id: 't9', uid: 't9', role: 'teacher', status: 'active', branchIds: [] });
+    await calculate();
+
     const periodId = db.rows('payrollPeriods')[0].id;
     const res = await handler(event('GET', { action: 'period', id: periodId }), {} as any, () => {}) as any;
     expect(res.statusCode).toBe(200);
     const body = JSON.parse(res.body);
     expect(body.lines).toHaveLength(1);
     expect(body.lines[0].finalMinor).toBe(3200000);
-    expect(body.diagnostics.some((d: any) => d.code === 'session_no_teacher')).toBe(true);
+    const withoutRule = body.diagnostics.find((d: any) => d.code === 'teacher_without_rule');
+    expect(withoutRule).toBeTruthy();
+    expect(withoutRule.sample).toContain('t9');
   });
 
   it('не отдаёт ведомость чужой организации', async () => {
-    db.set('payrollPeriods', { id: 'foreign', organizationId: 'org2', period: july, branchId: null, state: 'calculated' });
+    db.set('payrollPeriods', { id: 'foreign', organizationId: 'org2', period: july, state: 'calculated' });
     const res = await handler(event('GET', { action: 'period', id: 'foreign' }), {} as any, () => {}) as any;
     expect(res.statusCode).toBe(404);
   });

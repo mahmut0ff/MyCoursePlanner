@@ -48,6 +48,10 @@ export const getActiveBranchId = () => activeBranchId;
  *  - `api-branches`  — the branch list itself must never filter by the selection,
  *                      or picking a branch would collapse the switcher to one item.
  *  - `api-admin*` / `api-platform` — super_admin has no branch scope at all.
+ *  - `api-payroll` / `api-payroll-rules` — зарплата общеорганизационная: ставка одна
+ *                      на преподавателя, ведомость одна на месяц, и ни та ни другая
+ *                      филиала не несут. Штамп активного филиала на их чтениях
+ *                      означал бы пустой экран — сервер не нашёл бы ничего.
  */
 const BRANCH_SCOPED_ENDPOINTS = new Set([
   'api-org',
@@ -67,15 +71,6 @@ const BRANCH_SCOPED_ENDPOINTS = new Set([
   'api-transfers',
   'api-certificates',
   'api-notifications',
-  // Зарплатные чтения филиалуемы, поэтому оба эндпоинта в аллоулисте:
-  // ставка несёт branchId (как и сотрудник, которому она назначена), а строки
-  // ведомости наследуют филиал через сессии и выручку. Директор сети, выбрав
-  // филиал в переключателе, ожидает увидеть ведомость этого филиала — без
-  // штампа он получил бы суммы по всей организации и утвердил бы чужие деньги.
-  // Записи (POST/PUT) штамп не получают: и здесь это критично — авто-штамп на
-  // POST переселил бы ставку в другой филиал при простом сохранении.
-  'api-payroll',
-  'api-payroll-rules',
   // KPI преподавателей филиалуется по членству преподавателя: директор сети,
   // выбрав филиал, видит активность его преподавателей.
   'api-teacher-activity',
@@ -532,8 +527,8 @@ export const orgGetJournal = (courseId?: string, filters?: Record<string, string
   gbReq('journal', 'GET', undefined, { ...(courseId ? { courseId } : {}), ...filters });
 export const orgSaveJournal = (data: any) => gbReq('journal', 'POST', data);
 /**
- * session — необязательные поля для payroll (lessonSessions). Старые вызовы их не шлют:
- * тогда сервер пишет только журнал, как раньше, и сессию не создаёт.
+ * session — необязательные поля записи «урок состоялся» (lessonSessions). Старые
+ * вызовы их не шлют: тогда сервер пишет только журнал и сессию не создаёт.
  */
 export const orgBulkAttendance = (
   courseId: string,
@@ -1062,42 +1057,48 @@ const payrollReq = <T = any>(action: string, method = 'GET', body?: any, extra?:
 
 // ---- Ставки (compensationRules) ----
 
-export const apiGetCompensationRules = (filters?: { teacherId?: string; status?: string; branchId?: string }) =>
+export const apiGetCompensationRules = (filters?: { teacherId?: string }) =>
   apiRequest<CompensationRule[]>('api-payroll-rules', 'GET', undefined, filters as any);
 
-// branchId передаётся ЯВНО — POST штампа активного филиала не получает. Пропуск
-// поля не «наследует филиал», а отдаёт решение серверному умолчанию, и ставка
-// оседает не там, где директор её заводил. `null` — законный выбор: ставка на всю
-// организацию, но выбор осознанный.
-export const apiCreateCompensationRule = (data: {
+/**
+ * Задать ставку преподавателю. Один вызов и на создание, и на правку: ставка у
+ * человека ровно одна, документ детерминирован ПАРОЙ (организация,
+ * преподаватель), поэтому повтор перезаписывает, а не плодит.
+ *
+ * Филиала здесь нет и быть не может: преподаватель ведёт группы в нескольких
+ * филиалах по одной и той же ставке, а филиальные ставки давали одному человеку
+ * несколько разных цен часа — и невозможность сказать, какая из них настоящая.
+ */
+export const apiSaveCompensationRule = (data: {
   teacherId: string;
-  label: string;
   components: PayComponent[];
-  effectiveFrom: string;
-  effectiveTo?: string | null;
-  branchId?: string | null;
 }) => apiRequest<CompensationRule>('api-payroll-rules', 'POST', data);
 
-// Ставки append-only: изменение закрывает effectiveTo старой версии и вставляет
-// новую с supersedesId, поэтому ответ — НОВОЕ правило, а не отредактированное.
-// Сервер правит только эти поля: effectiveFrom задаётся при создании и не меняется.
-export const apiUpdateCompensationRule = (data: {
-  id: string;              // сервер принимает и `ruleId`; шлём `id` — как везде в этом файле
-  label?: string;
-  components?: PayComponent[];
-  effectiveTo?: string | null;
-  status?: 'active' | 'archived';
-}) => apiRequest<CompensationRule>('api-payroll-rules', 'PUT', data);
+// Убрать ставку: «этому человеку больше не начислять». Историю это не трогает —
+// строки уже посчитанных ведомостей несут собственный замороженный снапшот и
+// карточку ставки не читают.
+export const apiDeleteCompensationRule = (id: string) =>
+  apiRequest('api-payroll-rules', 'DELETE', undefined, { id });
 
-// `force` подтверждает 409-гард: сервер отказывается удалить ставку, на которую
-// уже ссылаются строки ведомости (тело 409 говорит сколько). Тот же приём, что у
-// apiDeletePaymentPlan — не осиротить аудиторский след молча.
-export const apiDeleteCompensationRule = (id: string, force?: boolean) =>
-  apiRequest('api-payroll-rules', 'DELETE', undefined, force ? { id, force: 'true' } : { id });
+// ---- Зарплата по преподавателю ----
+
+/**
+ * Всё за месяц одним запросом: преподаватели, их группы и студенты, кто сколько
+ * заплатил, что выйдет по ставке и что уже зафиксировано в ведомости.
+ *
+ * Суммы считает сервер тем же кодом, что и расчёт ведомости, — клиент их не
+ * пересчитывает и не досчитывает: разбивка, не сходящаяся со строкой, хуже
+ * отсутствующей.
+ *
+ * Филиал не фильтр, а разрез: у каждого преподавателя приходит `byBranch` —
+ * где именно заработана сумма. Начисление остаётся общеорганизационным.
+ */
+export const apiGetPayrollOverview = (filters?: { period?: string }) =>
+  payrollReq<any>('overview', 'GET', undefined, filters as any);
 
 // ---- Периоды и строки ведомости ----
 
-export const apiGetPayrollPeriods = (filters?: { period?: string; state?: string; branchId?: string }) =>
+export const apiGetPayrollPeriods = (filters?: { period?: string; state?: string }) =>
   payrollReq<PayrollPeriod[]>('periods', 'GET', undefined, filters as any);
 
 // Период целиком: шапка, строки и диагностики «почему сумма такая».
@@ -1111,18 +1112,11 @@ export const apiGetPayrollPeriod = (periodId: string) =>
 // Пересчёт: полная пересборка строк source:'rule'; ручные бонусы/штрафы её
 // переживают. Законен только в draft/calculated — утверждённый период заморожен.
 //
-// branchId ОБЯЗАН уехать в теле. Это POST, а POST штамп активного филиала не
-// получает (см. apiRequest выше), тогда как последующее чтение ведомости — GET —
-// штампуется. Без явной передачи расчёт сохранял бы период с branchId: null,
-// а перезагрузка искала бы период выбранного филиала и не находила ничего:
-// ведомость исчезала бы сразу после расчёта. Плюс расчёт шёл бы по всей
-// организации. Значение по умолчанию берём из активного филиала, но вызывающий
-// код всё равно передаёт его явно — умолчание здесь страховка, а не контракт.
-export const apiCalculatePayroll = (data: { period: string; branchId?: string | null }) =>
-  payrollReq('calculate', 'POST', {
-    ...data,
-    branchId: data.branchId === undefined ? activeBranchId : data.branchId,
-  });
+// Кроме месяца передавать нечего: ведомость одна на организацию, и филиал в теле
+// сервер бы всё равно проигнорировал. Разрез по филиалам приезжает обратно —
+// строка несёт branchShares, а выплата разворачивает её в расход на каждый филиал.
+export const apiCalculatePayroll = (data: { period: string }) =>
+  payrollReq('calculate', 'POST', { period: data.period });
 
 /**
  * Ручная строка (бонус/штраф) либо правка уже посчитанной.
@@ -1158,6 +1152,6 @@ export const apiPayPayroll = (data: { periodId: string; date?: string; paymentMe
   payrollReq('pay', 'POST', data);
 
 // Зарплатный баланс: начислено (утверждённое) − выдано (выплаченное).
-// Сервер считает по всем преподавателям сразу — фильтр только по филиалу.
-export const apiGetPayrollBalance = (filters?: { branchId?: string }) =>
-  payrollReq<any[]>('balance', 'GET', undefined, filters as any);
+// Сервер считает по всем преподавателям организации сразу — фильтровать нечем.
+export const apiGetPayrollBalance = () =>
+  payrollReq<any[]>('balance', 'GET');

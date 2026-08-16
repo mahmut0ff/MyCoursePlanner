@@ -5,62 +5,73 @@
  * поэтому она обязана покрываться юнит-тестами без мока базы. Эндпоинт
  * (api-payroll) отвечает за выборку и запись; здесь — только арифметика.
  *
+ * ДВА ВИДА ОПЛАТЫ И БОЛЬШЕ НИКАКИХ. Фиксированная сумма («оклад») и процент от
+ * денег, которые реально принесли студенты преподавателя. Оплата за занятие, за
+ * час и за голову удалены сознательно: они считались по отметкам посещаемости
+ * (lessonSessions), то есть зарплата человека молча зависела от того, ведёт ли
+ * кто-то журнал. Директор про такую связь не знает и узнаёт по недоплате.
+ *
  * Три вещи, ради которых этот файл выглядит именно так:
  *
  * 1. ДЕНЬГИ — ЦЕЛЫЕ МИНОРНЫЕ ЕДИНИЦЫ ОТ ВХОДА ДО ВЫХОДА. `FinancialTransaction.
  *    amount` хранится в сомах (float), поэтому конвертация сом→тыйын происходит
  *    ровно один раз, на границе (toMinor), а дальше вся математика целочисленная.
- *    Процент и часы НИКОГДА не считаются float-умножением — см. divRoundHalfUp.
+ *    Процент НИКОГДА не считается float-умножением — см. divRoundHalfUp.
  *    Округление ОДИН раз, HALF_UP, на строке заработка: округлять каждую
  *    транзакцию отдельно значит копить копеечный дрейф в зарплате человека.
  *
- * 2. НИКОГДА НЕ ВЫДУМЫВАТЬ ЧИСЛО. per_lesson/per_hour/per_student читают только
- *    lessonSessions со status 'held'. Сессия с teacherId === null не принадлежит
- *    никому (у группы несколько учителей и никто не выбран) — она пропускается, а
- *    не приписывается тому, кто отметил журнал. Сессия с durationMinutes === null
- *    не почасовая. Нехватка данных = видимый ноль + явная диагностика.
+ * 2. ЧЬИ ЭТО ДЕНЬГИ — РЕШАЕТ СОСТАВ ГРУПП, А НЕ НАСТРОЙКА. База процента это
+ *    платежи по группам, где преподаватель числится (`Group.teacherIds`).
+ *    Раньше область действия отмечалась галочками в карточке ставки, и забытая
+ *    галочка давала честный ноль. Теперь спрашивать нечего: выбрал
+ *    преподавателя — видно его группы, его студентов и что они заплатили.
  *
  * 3. ДИАГНОСТИКИ — ПОЛНОЦЕННАЯ ФУНКЦИЯ, А НЕ ЛОГИ. Каждый пропущенный или
  *    неатрибутируемый вход возвращается структурно, чтобы UI показал
  *    «Пропущенные записи». Директор должен видеть, ПОЧЕМУ сумма меньше
  *    ожидаемой, а не гадать.
  *
- * Типы ниже — зеркало src/types/index.ts (LessonSession, RuleScope, PayComponent,
- * CompensationRule). netlify/functions ни на что из src/ не ссылается (см.
- * api-finance-plans.ts, где так же продублирован PaymentStatus) — tsconfig.
- * functions.json включает только netlify/functions/**. Держите синхронно.
+ * Типы ниже — зеркало src/types/index.ts (PayComponent, CompensationRule).
+ * netlify/functions ни на что из src/ не ссылается (см. api-finance-plans.ts,
+ * где так же продублирован PaymentStatus) — tsconfig.functions.json включает
+ * только netlify/functions/**. Держите синхронно.
  */
 
 // ============================================================
 // Входные структурные типы (зеркало src/types/index.ts)
 // ============================================================
 
-/** Область действия компонента. Пусто/отсутствует = все курсы учителя. */
-export interface RuleScope {
-  courseIds?: string[];
-  groupIds?: string[];
-}
-
-/** Компонент ставки. Сумма компонентов = заработок правила. */
+/**
+ * Вид оплаты. Ровно два, и это продуктовое решение, а не текущее состояние:
+ * директор академии рассуждает «Азизе — двадцать процентов» либо «Азизе —
+ * тридцать тысяч». Всё остальное требовало данных, которых в базе нет.
+ */
 export type PayComponent =
   | { kind: 'salary'; amountMinor: number }
-  | { kind: 'percent_revenue'; percentBp: number; base: 'collected'; scope: RuleScope }
-  | { kind: 'per_lesson'; amountMinor: number; scope: RuleScope }
-  | { kind: 'per_hour'; amountMinor: number; scope: RuleScope }
-  | { kind: 'per_student'; amountMinor: number; scope: RuleScope };
+  | { kind: 'percent_revenue'; percentBp: number; base: 'collected' };
 
-/** Карточка ставки, датированная периодом действия ('YYYY-MM', обе границы включительно). */
+/**
+ * Ставка преподавателя. БЕЗ срока действия и БЕЗ филиала: ставка одна на
+ * (организация, преподаватель) и действует сейчас.
+ *
+ * Датированных версий больше нет намеренно. История прошлых месяцев защищена не
+ * ими, а замороженным снапшотом строки ведомости (PayrollLine.ruleSnapshot) и
+ * запретом пересчитывать утверждённый период: правка ставки в августе не может
+ * тронуть июльские числа, потому что июль вообще не пересчитывается.
+ *
+ * Филиала у ставки нет тоже намеренно: преподаватель ведёт группы в нескольких
+ * зданиях, и «двадцать процентов» относятся к человеку, а не к адресу. По
+ * филиалам раскладывается уже НАЧИСЛЕННОЕ (см. GroupLike.branchId).
+ *
+ * `updatedAt` не участвует в арифметике — он решает, какая ставка победит, если
+ * в базе их осталось несколько от прежней филиальной модели (см. resolveRules).
+ */
 export interface CompensationRule {
   id: string;
   organizationId?: string;
   teacherId: string;
-  branchId?: string | null;
-  label?: string;
-  status: 'active' | 'archived';
   components: PayComponent[];
-  effectiveFrom: string;
-  effectiveTo: string | null;
-  supersedesId?: string | null;
+  updatedAt?: string;
 }
 
 /**
@@ -79,18 +90,23 @@ export interface FinanceTxLike {
   paymentPlanId?: string | null;
 }
 
-/** Запись «урок состоялся». Единственный источник для per_lesson/per_hour/per_student. */
-export interface LessonSessionLike {
+/**
+ * Группа: кто ведёт и кто учится. Единственный источник «чьи это студенты».
+ *
+ * `branchId` НЕ участвует в расчёте: зарплата общеорганизационная, и сузить по
+ * филиалу базу процента значило бы платить ставку всей организации от денег
+ * одного здания. Поле нужно только для АТРИБУЦИИ — разложить готовую сумму по
+ * филиалам, когда она уже посчитана (преподаватель может вести группы в
+ * нескольких филиалах, и расход в кассе обязан это показывать).
+ */
+export interface GroupLike {
   id: string;
-  groupId?: string | null;
+  name?: string;
   courseId?: string | null;
-  /** null = не определён (несколько учителей, никто не выбран). НИКОГДА не из createdBy. */
-  teacherId: string | null;
-  date: string;
-  /** null = неизвестна → не почасовая. */
-  durationMinutes: number | null;
-  status: 'held' | 'cancelled';
-  headcount?: number;
+  courseName?: string;
+  branchId?: string | null;
+  teacherIds?: string[];
+  studentIds?: string[];
 }
 
 // ============================================================
@@ -99,18 +115,12 @@ export interface LessonSessionLike {
 
 /** Коды диагностик. Стабильны — UI и тесты завязаны на них. */
 export type DiagnosticCode =
-  | 'session_no_teacher'
-  | 'session_no_duration'
-  | 'percent_scope_empty'
+  | 'teacher_without_groups'
   | 'percent_base_negative'
-  | 'revenue_unattributed'
+  | 'payment_without_group'
   | 'teacher_without_rule'
-  | 'overlapping_rules'
-  | 'rule_no_components'
-  // Ставка без филиала в ведомости филиала: платить её здесь нельзя (в каждом
-  // филиале — оклад по разу), но и промолчать нельзя, иначе преподаватель
-  // просто не получит денег и никто этого не заметит.
-  | 'rule_org_wide_skipped';
+  | 'duplicate_rules'
+  | 'rule_no_components';
 
 /**
  * Структурная диагностика для блока «Пропущенные записи».
@@ -126,27 +136,32 @@ export interface Diagnostic {
   ruleId?: string;
 }
 
+/** Сколько денег принесла одна группа (или один студент) в окне периода. */
+export interface RevenueSlice {
+  id: string;
+  paidMinor: number;
+}
+
 /**
  * Литеральные входы компонента — то, что замораживается в PayrollLine.ruleSnapshot.
- * Директор должен восстановить число, не пересчитывая: отсюда sourceTxnIds/
- * sourceSessionIds и промежуточные grossMinor/refundMinor.
+ * Директор должен восстановить число, не пересчитывая: отсюда sourceTxnIds,
+ * промежуточные grossMinor/refundMinor и разбивка по группам и студентам.
  */
 export interface ComponentBasis {
   amountMinor?: number;
   percentBp?: number;
   base?: 'collected';
-  scope?: RuleScope;
-  /** Собрано в окне по scope (минорные единицы). */
+  /** Собрано в окне по группам преподавателя (минорные единицы). */
   grossMinor?: number;
-  /** Возвраты в окне по тому же scope (положительное число, вычитается). */
+  /** Возвраты в окне по тем же группам (положительное число, вычитается). */
   refundMinor?: number;
   /** gross − refund, с клампом в ноль. Именно от него берётся процент. */
   revenueBaseMinor?: number;
+  /** Группы преподавателя, попавшие в базу, и сколько принесла каждая. */
+  byGroup?: RevenueSlice[];
+  /** Кто из студентов сколько заплатил. Сумма равна grossMinor. */
+  byStudent?: RevenueSlice[];
   sourceTxnIds?: string[];
-  sessionCount?: number;
-  minutesTotal?: number;
-  studentTotal?: number;
-  sourceSessionIds?: string[];
 }
 
 export interface ComputedComponent {
@@ -162,10 +177,9 @@ export interface ComputedLine {
   /** Замороженное разрешённое правило — источник PayrollLine.ruleSnapshot. */
   ruleSnapshot: {
     ruleId: string;
-    label: string;
-    effectiveFrom: string;
-    effectiveTo: string | null;
     components: PayComponent[];
+    /** Группы преподавателя на момент расчёта: по ним считался процент. */
+    groupIds: string[];
   };
   computedMinor: number;
   components: ComputedComponent[];
@@ -175,21 +189,21 @@ export interface ComputedLine {
 export interface PayrollInputs {
   /** 'YYYY-MM' — период начисления (семантика billingPeriodKey). */
   period: string;
-  /** ISO-границы окна собранной выручки и сессий. ОБЕ ВКЛЮЧИТЕЛЬНО. */
+  /** ISO-границы окна собранной выручки. ОБЕ ВКЛЮЧИТЕЛЬНО. */
   windowStart: string;
   windowEnd: string;
-  /** Правила организации; активное на период выбирается здесь. */
+  /** Ставки организации (по одной на преподавателя). */
   rules: CompensationRule[];
-  /** Доходные транзакции в окне (уже отфильтрованы по орг./филиалу). */
+  /** Доходные транзакции в окне (уже отфильтрованы по организации). */
   incomeTx: FinanceTxLike[];
   /** Возвраты в окне — уменьшают базу процента. Знак суммы не важен. */
   refundTx: FinanceTxLike[];
-  /** lessonSessions в окне. */
-  sessions: LessonSessionLike[];
+  /** Группы организации: из них выводится «его группы» и «его студенты». */
+  groups: GroupLike[];
   /**
-   * Полный список учителей организации, необязательный. Нужен только чтобы
-   * список «нет ставки» был полным: без него учитель попадёт в диагностику,
-   * только если у него есть проведённые сессии в окне.
+   * Полный список преподавателей организации, необязательный. Нужен только чтобы
+   * список «нет ставки» был полным: без него преподаватель попадёт в диагностику,
+   * только если у него есть группы.
    */
   knownTeacherIds?: string[];
 }
@@ -219,8 +233,7 @@ export function roundHalfUp(value: number): number {
  * Целочисленное деление с округлением HALF_UP — БЕЗ float-умножения.
  *
  * Ради этого и написано: `base * percentBp / 10000` через float даёт разные
- * копейки на разных суммах, а `hours * amountMinor` — тем более (1/60 в двоичной
- * дроби непредставима). Здесь числитель считается точно в целых, а деление с
+ * копейки на разных суммах. Здесь числитель считается точно в целых, а деление с
  * остатком даёт ровно одно детерминированное округление.
  */
 export function divRoundHalfUp(numerator: number, denominator: number): number {
@@ -248,25 +261,8 @@ export function toMinor(som: number): number {
 }
 
 // ============================================================
-// Окно и scope
+// Окно
 // ============================================================
-
-/**
- * Момент времени для сравнения с окном. Принимает и голую 'YYYY-MM-DD', и полный
- * ISO — ровно как parseRangeBoundary в finance-period.ts: голая дата
- * раскрывается в локальную полночь, чтобы окно и лента размечали день одинаково.
- */
-function toEpochMs(raw: string): number {
-  const value = String(raw ?? '').trim();
-  if (!value) return NaN;
-  const isBareDate = /^\d{4}-\d{2}-\d{2}$/.test(value);
-  if (!isBareDate) return new Date(value).getTime();
-  // Голая дата — день КАЛЕНДАРЯ ОРГАНИЗАЦИИ, как и в normalizeTxDate
-  // (finance-period.ts). Прежняя локальная полночь на Netlify означала полночь
-  // UTC и расходилась с границами окна на шесть часов.
-  const [y, m, d] = value.split('-').map(Number);
-  return Date.UTC(y, m - 1, d) - ORG_OFFSET_MS;
-}
 
 /**
  * Смещение календаря организации от UTC (UTC+6, Asia/Bishkek).
@@ -278,27 +274,19 @@ function toEpochMs(raw: string): number {
 const ORG_OFFSET_MS = 6 * 60 * 60 * 1000;
 
 /**
- * Границы окна как календарный день 'YYYY-MM-DD' в КАЛЕНДАРЕ ОРГАНИЗАЦИИ.
- *
- * Резать ISO-строку посимвольно здесь нельзя, и это не мелочь: getPeriodRange
- * (finance-period.ts) строит окно от полуночи ДНЯ ОРГАНИЗАЦИИ и только потом
- * зовёт toISOString(), поэтому начало июля выглядит как
- * '2026-06-30T18:00:00.000Z'. Наивный slice(0,10) дал бы '2026-06-30', и
- * занятия 30 июня попали бы в июльскую ведомость — то есть были бы оплачены
- * дважды, ведь июньская ведомость их уже оплатила.
- *
- * Разбор обязан быть ТОЧНОЙ ИНВЕРСИЕЙ сборки окна. Раньше окно строилось от
- * локальной полуночи сервера, и инверсией были локальные компоненты; теперь
- * окно строится в дне организации — значит и разбирать надо им. Это не
- * косметика: пока две половины расходились, июльская ведомость покрывала 32 дня
- * (30.06–31.07), и каждый урок последнего дня месяца оплачивался в двух
- * ведомостях подряд.
+ * Момент времени для сравнения с окном. Принимает и голую 'YYYY-MM-DD', и полный
+ * ISO — ровно как parseRangeBoundary в finance-period.ts: голая дата
+ * раскрывается в полночь ДНЯ ОРГАНИЗАЦИИ, чтобы окно и лента размечали день
+ * одинаково. Прежняя локальная полночь на Netlify означала полночь UTC и
+ * расходилась с границами окна на шесть часов.
  */
-function toLocalDay(raw: string): string {
-  const ms = toEpochMs(raw);
-  if (Number.isNaN(ms)) return '';
-  const d = new Date(ms + ORG_OFFSET_MS);
-  return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}-${String(d.getUTCDate()).padStart(2, '0')}`;
+function toEpochMs(raw: string): number {
+  const value = String(raw ?? '').trim();
+  if (!value) return NaN;
+  const isBareDate = /^\d{4}-\d{2}-\d{2}$/.test(value);
+  if (!isBareDate) return new Date(value).getTime();
+  const [y, m, d] = value.split('-').map(Number);
+  return Date.UTC(y, m - 1, d) - ORG_OFFSET_MS;
 }
 
 /** Транзакция внутри окна. ОБЕ границы включительно. */
@@ -309,39 +297,14 @@ function txInWindow(tx: FinanceTxLike, startMs: number, endMs: number): boolean 
 }
 
 /**
- * Сессия внутри окна — сравнение СТРОК 'YYYY-MM-DD', а не моментов.
- *
- * Сессия суточной точности, окно — мгновения. Гонять её через часовые пояса
- * значит рисковать тем, что урок 31-го числа выпадет из июля из-за смещения
- * зоны сервера. Директор мыслит «уроки за июль», и лексикографическое сравнение
- * дат даёт ровно это, независимо от TZ.
+ * Окно как предикат для вызывающего. Экспортируется, чтобы экран «зарплата по
+ * преподавателю» отбирал ровно те же платежи, что и расчёт: разбивка, которая не
+ * сходится с начисленной суммой, хуже отсутствующей.
  */
-function sessionInWindow(session: LessonSessionLike, startDay: string, endDay: string): boolean {
-  const day = String(session.date ?? '').slice(0, 10);
-  if (!day) return false;
-  return day >= startDay && day <= endDay;
-}
-
-/** Scope без единого id — «все курсы учителя». */
-function isScopeEmpty(scope: RuleScope | undefined): boolean {
-  return !(scope?.groupIds?.length) && !(scope?.courseIds?.length);
-}
-
-/**
- * Совпадение со scope. Приоритет: groupIds важнее courseIds — группа точнее
- * курса, и если названы обе, имелась в виду группа.
- * Пустой scope = совпадает со всем (вызывающий решает, законно ли это здесь).
- */
-function matchesScope(
-  scope: RuleScope | undefined,
-  groupId: string | null | undefined,
-  courseId: string | null | undefined,
-): boolean {
-  const groupIds = scope?.groupIds ?? [];
-  const courseIds = scope?.courseIds ?? [];
-  if (groupIds.length) return !!groupId && groupIds.includes(groupId);
-  if (courseIds.length) return !!courseId && courseIds.includes(courseId);
-  return true;
+export function filterWindow<T extends FinanceTxLike>(list: T[], windowStart: string, windowEnd: string): T[] {
+  const startMs = toEpochMs(windowStart);
+  const endMs = toEpochMs(windowEnd);
+  return (list ?? []).filter((tx) => txInWindow(tx, startMs, endMs));
 }
 
 function sample(ids: string[]): string[] {
@@ -349,32 +312,65 @@ function sample(ids: string[]): string[] {
 }
 
 // ============================================================
-// Разрешение правил
+// Группы преподавателя
 // ============================================================
 
-/** Правило действует в периоде: строковое сравнение 'YYYY-MM' здесь корректно и намеренно. */
-function isRuleActiveForPeriod(rule: CompensationRule, period: string): boolean {
-  if (rule.status !== 'active') return false;
-  if (!rule.effectiveFrom || rule.effectiveFrom > period) return false;
-  const to = rule.effectiveTo;
-  if (to !== null && to !== undefined && period > to) return false;
-  return true;
+export interface TeacherScope {
+  /** Группы, где преподаватель числится. Порядок — как во входном списке. */
+  groupIds: string[];
+  /** Студенты этих групп, без повторов. */
+  studentIds: string[];
 }
 
 /**
- * Одно активное правило на учителя на период — это инвариант записи. Если их
- * два, это ошибка данных: суммировать их МОЛЧА нельзя (человек получил бы
- * двойную ставку), поэтому выбираем детерминированно — свежайший effectiveFrom,
- * при равенстве меньший id — и обязательно сообщаем.
+ * Кто кого ведёт. Один проход по группам: у организации их сотни, а не тысячи,
+ * и строить индекс на каждого преподавателя отдельно незачем.
+ *
+ * Группа без teacherIds не принадлежит никому — её деньги не попадут ни в чью
+ * базу. Это ровно то же решение, что «сессия без преподавателя не оплачивается
+ * никому»: приписать группу тому, кто её создал, значило бы выдумать деньги.
+ */
+export function buildTeacherScopes(groups: GroupLike[]): Map<string, TeacherScope> {
+  const scopes = new Map<string, TeacherScope>();
+  for (const group of groups ?? []) {
+    if (!group?.id) continue;
+    for (const teacherId of group.teacherIds ?? []) {
+      if (!teacherId) continue;
+      const scope = scopes.get(teacherId) ?? { groupIds: [], studentIds: [] };
+      if (!scope.groupIds.includes(group.id)) scope.groupIds.push(group.id);
+      for (const studentId of group.studentIds ?? []) {
+        if (studentId && !scope.studentIds.includes(studentId)) scope.studentIds.push(studentId);
+      }
+      scopes.set(teacherId, scope);
+    }
+  }
+  return scopes;
+}
+
+// ============================================================
+// Разрешение ставок
+// ============================================================
+
+/**
+ * Одна ставка на преподавателя — это инвариант записи (api-payroll-rules пишет
+ * ставку в документ с детерминированным id). Если их всё же две (данные
+ * пережили старую модель — сначала версии со сроком действия, потом отдельная
+ * ставка на каждый филиал), суммировать МОЛЧА нельзя: человек получил бы
+ * двойную ставку.
+ *
+ * ПОБЕЖДАЕТ ПОСЛЕДНЯЯ ОТРЕДАКТИРОВАННАЯ (больший `updatedAt`), и только при
+ * равенстве — меньший id. Прежний порядок «просто меньший id» на реальных
+ * данных выбирал НЕ ТУ: канонический документ называется `rate_{org}_{t}_org`,
+ * а филиальный — `rate_{org}_{t}_alay`, и 'a' < 'o', то есть директор правил
+ * ставку, а начислялась старая филиальная. Тай-брейк по времени правки — это
+ * самолечение на чтении: платим по тому, что человек трогал последним.
  */
 export function resolveRules(
   rules: CompensationRule[],
-  period: string,
 ): { resolved: Map<string, CompensationRule>; diagnostics: Diagnostic[] } {
   const byTeacher = new Map<string, CompensationRule[]>();
-  for (const rule of rules) {
+  for (const rule of rules ?? []) {
     if (!rule || !rule.teacherId) continue;
-    if (!isRuleActiveForPeriod(rule, period)) continue;
     const list = byTeacher.get(rule.teacherId) ?? [];
     list.push(rule);
     byTeacher.set(rule.teacherId, list);
@@ -385,16 +381,19 @@ export function resolveRules(
 
   for (const [teacherId, list] of byTeacher) {
     const sorted = [...list].sort((a, b) => {
-      if (a.effectiveFrom !== b.effectiveFrom) return a.effectiveFrom < b.effectiveFrom ? 1 : -1;
+      const at = String(a.updatedAt ?? '');
+      const bt = String(b.updatedAt ?? '');
+      if (at !== bt) return at < bt ? 1 : -1;
       return a.id < b.id ? -1 : a.id > b.id ? 1 : 0;
     });
     resolved.set(teacherId, sorted[0]);
     if (sorted.length > 1) {
       diagnostics.push({
-        code: 'overlapping_rules',
+        code: 'duplicate_rules',
         message:
-          `У преподавателя несколько действующих ставок на ${period} (${sorted.length}). ` +
-          `Взята самая поздняя (${sorted[0].effectiveFrom}); остальные проигнорированы. Закройте лишние.`,
+          `У преподавателя несколько ставок (${sorted.length}) — так быть не должно. ` +
+          'Взята та, которую правили последней; откройте карточку преподавателя и ' +
+          'сохраните ставку — лишние удалятся сами.',
         count: sorted.length,
         sample: sample(sorted.map((r) => r.id)),
         teacherId,
@@ -410,30 +409,226 @@ export function resolveRules(
 // Компоненты
 // ============================================================
 
+/** Суммирование срезов по ключу с сохранением порядка первого появления. */
+function pushSlice(map: Map<string, number>, key: string | null | undefined, minor: number): void {
+  if (!key) return;
+  map.set(key, (map.get(key) || 0) + minor);
+}
+
+function toSlices(map: Map<string, number>): RevenueSlice[] {
+  // Сортировка по убыванию суммы: разбивку читают сверху, и первым должен идти
+  // тот, кто принёс больше всех.
+  return [...map.entries()]
+    .map(([id, paidMinor]) => ({ id, paidMinor }))
+    .sort((a, b) => b.paidMinor - a.paidMinor || (a.id < b.id ? -1 : 1));
+}
+
+/** Что принесли группы преподавателя за окно — общая часть расчёта и экрана. */
+export interface TeacherRevenue {
+  /** Собрано по группам преподавателя (минорные единицы). */
+  grossMinor: number;
+  /** Возвраты по тем же группам, положительным числом. */
+  refundMinor: number;
+  /** gross − refund. МОЖЕТ БЫТЬ отрицательным: кламп — дело начисления, не сбора. */
+  netMinor: number;
+  byGroup: RevenueSlice[];
+  byStudent: RevenueSlice[];
+  sourceTxnIds: string[];
+  /** Возвраты, попавшие в вычет, — для диагностики «возвратов больше сборов». */
+  refundTxnIds: string[];
+}
+
 /**
- * % от СОБРАННОЙ наличности: база = доходы в окне по scope МИНУС возвраты в окне
- * по тому же scope.
+ * Деньги групп преподавателя за окно: платежи МИНУС возвраты, с разбивкой.
  *
- * Пустой scope здесь НЕ значит «все курсы учителя», в отличие от посессионных
- * компонентов. Причина ассиметрии: у сессии есть teacherId, а у выручки его нет.
- * Пустой scope на проценте молча забрал бы выручку ВСЕЙ организации в базу
- * одного человека, поэтому это ноль с диагностикой, а не догадка.
+ * Экспортируется намеренно: этим же кодом экран показывает «кто сколько
+ * заплатил», а движок берёт от результата процент. Две отдельные реализации
+ * разошлись бы, и разбивка перестала бы объяснять сумму в ведомости — а именно
+ * ради этого объяснения экран и существует.
+ */
+export function collectTeacherRevenue(
+  scope: TeacherScope,
+  incomeTx: FinanceTxLike[],
+  refundTx: FinanceTxLike[],
+): TeacherRevenue {
+  const groupIds = new Set(scope.groupIds);
+  const matchedIncome = (incomeTx ?? []).filter((tx) => !!tx.groupId && groupIds.has(tx.groupId));
+  const matchedRefunds = (refundTx ?? []).filter((tx) => !!tx.groupId && groupIds.has(tx.groupId));
+
+  // Суммируем в ЦЕЛЫХ минорных единицах: каждая транзакция конвертируется один
+  // раз, процент берётся от суммы. Брать процент с каждой транзакции отдельно
+  // значило бы округлять N раз и копить расхождение.
+  const byGroup = new Map<string, number>();
+  const byStudent = new Map<string, number>();
+  let grossMinor = 0;
+  for (const tx of matchedIncome) {
+    const minor = toMinor(tx.amount);
+    grossMinor += minor;
+    pushSlice(byGroup, tx.groupId, minor);
+    pushSlice(byStudent, tx.studentId, minor);
+  }
+  // Возврат в базе хранится положительной суммой на расходной строке; abs
+  // защищает и от вызывающего, который передаст его уже со знаком минус.
+  let refundMinor = 0;
+  for (const tx of matchedRefunds) {
+    const minor = Math.abs(toMinor(tx.amount));
+    refundMinor += minor;
+    // Возврат уменьшает и разбивку: строка студента обязана показывать, сколько
+    // он в итоге ОСТАВИЛ в кассе, иначе сумма строк не сойдётся с базой.
+    pushSlice(byGroup, tx.groupId, -minor);
+    pushSlice(byStudent, tx.studentId, -minor);
+  }
+
+  return {
+    grossMinor,
+    refundMinor,
+    netMinor: grossMinor - refundMinor,
+    byGroup: toSlices(byGroup),
+    byStudent: toSlices(byStudent),
+    sourceTxnIds: matchedIncome.map((tx) => tx.id),
+    refundTxnIds: matchedRefunds.map((tx) => tx.id),
+  };
+}
+
+// ============================================================
+// Разложение начисленного по филиалам
+// ============================================================
+
+/**
+ * Доля одного филиала в зарплате преподавателя.
+ *
+ * Ставка филиала не имеет (см. CompensationRule), но РАСХОД в кассе — имеет:
+ * иначе филиал, где человек отработал месяц, показывает прибыль без своей
+ * главной статьи затрат. Преподаватель при этом спокойно ведёт группы в двух
+ * зданиях, поэтому «филиал строки» — это не одно значение, а разложение.
+ */
+export interface BranchShare {
+  /** null — филиал не определён: у групп его нет, либо групп нет вовсе. */
+  branchId: string | null;
+  /** Вес доли. Не деньги: смысл имеет только отношение к сумме весов. */
+  weight: number;
+  /** Группы преподавателя в этом филиале — источник атрибуции расхода. */
+  groupIds: string[];
+}
+
+/** Доля с посчитанной суммой. Сумма всех amountMinor РАВНА распределяемой. */
+export type BranchAllocation<T extends BranchShare = BranchShare> = T & { amountMinor: number };
+
+/**
+ * Веса филиалов для одного преподавателя.
+ *
+ * Основной вес — ДЕНЬГИ: сколько собрано по группам этого филиала (byGroup уже
+ * посчитан для процента и лежит в замороженном снапшоте). Так зарплата ложится
+ * туда, откуда пришла выручка, — при любом виде оплаты, включая оклад.
+ *
+ * Если денег в месяце не было вовсе (новый филиал, месяц без оплат, чистый
+ * оклад), веса вырождаются в КОЛИЧЕСТВО ГРУПП: делить нечем, но и свалить всю
+ * сумму в один филиал нельзя — это соврало бы отчёту ровно так же.
+ *
+ * Отрицательные срезы (возвратов больше сборов) клампятся в ноль: отрицательный
+ * вес перевернул бы распределение и увёл деньги в чужой филиал.
+ */
+export function buildBranchShares(
+  groupIds: string[],
+  byGroup: RevenueSlice[],
+  branchByGroupId: Map<string, string | null>,
+): BranchShare[] {
+  if (!groupIds?.length) return [];
+
+  const paidByGroup = new Map<string, number>((byGroup ?? []).map((s) => [s.id, s.paidMinor]));
+  // Порядок филиалов — порядок первого появления группы: он детерминирован
+  // порядком выборки групп, значит и распределение остатка воспроизводимо.
+  const order: (string | null)[] = [];
+  const buckets = new Map<string | null, BranchShare>();
+
+  for (const groupId of groupIds) {
+    const branchId = branchByGroupId.get(groupId) ?? null;
+    let bucket = buckets.get(branchId);
+    if (!bucket) {
+      bucket = { branchId, weight: 0, groupIds: [] };
+      buckets.set(branchId, bucket);
+      order.push(branchId);
+    }
+    bucket.groupIds.push(groupId);
+    bucket.weight += Math.max(0, paidByGroup.get(groupId) || 0);
+  }
+
+  const shares = order.map((branchId) => buckets.get(branchId)!);
+  const totalWeight = shares.reduce((sum, s) => sum + s.weight, 0);
+  if (totalWeight > 0) return shares;
+
+  // Денег не было ни в одном филиале — делим по числу групп.
+  return shares.map((s) => ({ ...s, weight: s.groupIds.length }));
+}
+
+/**
+ * Разложить сумму по долям БЕЗ потери копейки.
+ *
+ * Наибольший остаток: сначала целая часть, затем единицы остатка уходят долям с
+ * наибольшей дробной частью. Наивное округление каждой доли отдельно даёт сумму,
+ * не равную исходной, — а это расход в кассе, который обязан сойтись с
+ * начислением до тыйына.
+ */
+export function allocateByShares<T extends BranchShare>(
+  totalMinor: number,
+  shares: T[],
+): BranchAllocation<T>[] {
+  if (!shares?.length) return [];
+  if (shares.length === 1) return [{ ...shares[0], amountMinor: totalMinor }];
+
+  const totalWeight = shares.reduce((sum, s) => sum + s.weight, 0);
+  // Вырожденный случай (все веса нулевые): вся сумма первой доле — иначе она
+  // растворилась бы, и расход разошёлся бы с начислением.
+  if (totalWeight <= 0) {
+    return shares.map((s, i) => ({ ...s, amountMinor: i === 0 ? totalMinor : 0 }));
+  }
+
+  const parts = shares.map((s) => {
+    const exact = (totalMinor * s.weight) / totalWeight;
+    const floor = Math.floor(exact);
+    return { share: s, amountMinor: floor, remainder: exact - floor };
+  });
+
+  let leftover = totalMinor - parts.reduce((sum, p) => sum + p.amountMinor, 0);
+  const byRemainder = [...parts].sort(
+    (a, b) =>
+      b.remainder - a.remainder ||
+      b.share.weight - a.share.weight ||
+      String(a.share.branchId ?? '').localeCompare(String(b.share.branchId ?? '')),
+  );
+  for (let i = 0; leftover > 0 && i < byRemainder.length; i++, leftover--) {
+    byRemainder[i].amountMinor += 1;
+  }
+
+  return parts.map((p) => ({ ...p.share, amountMinor: p.amountMinor }));
+}
+
+/**
+ * % от СОБРАННОЙ наличности: база = платежи в окне по ГРУППАМ ПРЕПОДАВАТЕЛЯ
+ * МИНУС возвраты в окне по тем же группам.
+ *
+ * «Собранное», а не «выставленное», — сознательно: счёт это намерение, а
+ * зарплата платится из денег, которые уже в кассе. Возврат уменьшает базу
+ * текущего месяца; отрицательная база КЛАМПИТСЯ В НОЛЬ — отрицательной зарплаты
+ * не бывает, и удержаний из уже выданного тоже.
  */
 function computePercentRevenue(
   component: Extract<PayComponent, { kind: 'percent_revenue' }>,
   incomeTx: FinanceTxLike[],
   refundTx: FinanceTxLike[],
-  ctx: { teacherId: string; ruleId: string; consumedTxIds: Set<string> },
+  ctx: { teacherId: string; ruleId: string; scope: TeacherScope },
 ): ComputedComponent {
   const diagnostics: Diagnostic[] = [];
-  const scope = component.scope;
 
-  if (isScopeEmpty(scope)) {
+  if (ctx.scope.groupIds.length === 0) {
+    // Не ошибка расчёта, а отсутствие входных данных: платить процент не с чего,
+    // пока преподаватель не назначен ни в одну группу. Молчаливый ноль в
+    // зарплате человека недопустим, поэтому причина называется прямо.
     diagnostics.push({
-      code: 'percent_scope_empty',
+      code: 'teacher_without_groups',
       message:
-        'У процентного компонента не выбраны группы или курсы. Выручка не привязана к преподавателю, ' +
-        'поэтому пустая область даёт 0 — укажите группы или курсы в ставке.',
+        'У преподавателя нет ни одной группы, поэтому процент считать не с чего — начислено 0. ' +
+        'Назначьте преподавателя в группы, и оплаты его студентов попадут в базу.',
       count: 1,
       teacherId: ctx.teacherId,
       ruleId: ctx.ruleId,
@@ -444,47 +639,34 @@ function computePercentRevenue(
       basis: {
         percentBp: component.percentBp,
         base: component.base,
-        scope: scope ?? {},
         grossMinor: 0,
         refundMinor: 0,
         revenueBaseMinor: 0,
+        byGroup: [],
+        byStudent: [],
         sourceTxnIds: [],
       },
       diagnostics,
     };
   }
 
-  const matchedIncome = incomeTx.filter((tx) => matchesScope(scope, tx.groupId, tx.courseId));
-  const matchedRefunds = refundTx.filter((tx) => matchesScope(scope, tx.groupId, tx.courseId));
+  const revenue = collectTeacherRevenue(ctx.scope, incomeTx, refundTx);
 
-  // Суммируем в ЦЕЛЫХ минорных единицах: каждая транзакция конвертируется один
-  // раз, процент берётся от суммы. Брать процент с каждой транзакции отдельно
-  // значило бы округлять N раз и копить расхождение.
-  let grossMinor = 0;
-  for (const tx of matchedIncome) grossMinor += toMinor(tx.amount);
-  // Возврат в базе хранится положительной суммой на расходной строке; abs
-  // защищает и от вызывающего, который передаст его уже со знаком минус.
-  let refundMinor = 0;
-  for (const tx of matchedRefunds) refundMinor += Math.abs(toMinor(tx.amount));
-
-  const netMinor = grossMinor - refundMinor;
   // Кламп в ноль: возвраты больше сборов НЕ превращаются в отрицательный
   // заработок и не отбирают уже выданное. Продукт: «никогда не clawback».
-  const revenueBaseMinor = Math.max(0, netMinor);
-  if (netMinor < 0) {
+  const revenueBaseMinor = Math.max(0, revenue.netMinor);
+  if (revenue.netMinor < 0) {
     diagnostics.push({
       code: 'percent_base_negative',
       message:
-        `Возвраты превысили сборы по этой области (${(netMinor / 100).toFixed(2)} с.). ` +
-        'Компонент обнулён — удержания из зарплаты не делаются.',
-      count: matchedRefunds.length,
-      sample: sample(matchedRefunds.map((tx) => tx.id)),
+        `Возвраты превысили сборы по группам преподавателя (${(revenue.netMinor / 100).toFixed(2)} с.). ` +
+        'Начислено 0 — удержания из зарплаты не делаются.',
+      count: revenue.refundTxnIds.length,
+      sample: sample(revenue.refundTxnIds),
       teacherId: ctx.teacherId,
       ruleId: ctx.ruleId,
     });
   }
-
-  for (const tx of matchedIncome) ctx.consumedTxIds.add(tx.id);
 
   return {
     kind: 'percent_revenue',
@@ -493,122 +675,14 @@ function computePercentRevenue(
     basis: {
       percentBp: component.percentBp,
       base: component.base,
-      scope,
-      grossMinor,
-      refundMinor,
+      grossMinor: revenue.grossMinor,
+      refundMinor: revenue.refundMinor,
       revenueBaseMinor,
-      sourceTxnIds: matchedIncome.map((tx) => tx.id),
+      byGroup: revenue.byGroup,
+      byStudent: revenue.byStudent,
+      sourceTxnIds: revenue.sourceTxnIds,
     },
     diagnostics,
-  };
-}
-
-/**
- * Сессии, за которые платят по этому компоненту: только 'held', только этого
- * учителя, только в scope. Сессия с teacherId === null не принадлежит никому и
- * сюда не попадает ни при каком scope — глобальная диагностика о ней есть
- * отдельно, в computePayroll.
- */
-function billableSessions(
-  sessions: LessonSessionLike[],
-  teacherId: string,
-  scope: RuleScope | undefined,
-): LessonSessionLike[] {
-  return sessions.filter(
-    (s) =>
-      s.status === 'held' &&
-      // Проверка на null формально избыточна (null никогда не равен непустому
-      // teacherId правила), но оставлена намеренно: это и есть правило «сессия без
-      // учителя не принадлежит никому», и оно не должно молча зависеть от того,
-      // как когда-нибудь перепишут сравнение строкой ниже.
-      s.teacherId !== null &&
-      s.teacherId === teacherId &&
-      matchesScope(scope, s.groupId, s.courseId),
-  );
-}
-
-function computePerLesson(
-  component: Extract<PayComponent, { kind: 'per_lesson' }>,
-  sessions: LessonSessionLike[],
-  teacherId: string,
-): ComputedComponent {
-  const matched = billableSessions(sessions, teacherId, component.scope);
-  return {
-    kind: 'per_lesson',
-    earnedMinor: matched.length * component.amountMinor,
-    basis: {
-      amountMinor: component.amountMinor,
-      scope: component.scope,
-      sessionCount: matched.length,
-      sourceSessionIds: matched.map((s) => s.id),
-    },
-    diagnostics: [],
-  };
-}
-
-/**
- * Почасовая: amountMinor за 60 минут. Сессия без durationMinutes НЕ почасовая —
- * подставить «обычные 90 минут» значило бы выдумать деньги, поэтому она
- * исключается и обязательно называется в диагностике с количеством.
- */
-function computePerHour(
-  component: Extract<PayComponent, { kind: 'per_hour' }>,
-  sessions: LessonSessionLike[],
-  ctx: { teacherId: string; ruleId: string },
-): ComputedComponent {
-  const matched = billableSessions(sessions, ctx.teacherId, component.scope);
-  const withDuration = matched.filter((s) => typeof s.durationMinutes === 'number');
-  const skipped = matched.filter((s) => typeof s.durationMinutes !== 'number');
-
-  const minutesTotal = withDuration.reduce((sum, s) => sum + (s.durationMinutes as number), 0);
-
-  const diagnostics: Diagnostic[] = [];
-  if (skipped.length) {
-    diagnostics.push({
-      code: 'session_no_duration',
-      message:
-        `Пропущено занятий без указанной длительности: ${skipped.length}. ` +
-        'Почасовая оплата по ним не начислена — проставьте длительность в журнале.',
-      count: skipped.length,
-      sample: sample(skipped.map((s) => s.id)),
-      teacherId: ctx.teacherId,
-      ruleId: ctx.ruleId,
-    });
-  }
-
-  return {
-    kind: 'per_hour',
-    // minutesTotal * amountMinor — точное целое; делим на 60 с единственным HALF_UP.
-    earnedMinor: divRoundHalfUp(minutesTotal * component.amountMinor, 60),
-    basis: {
-      amountMinor: component.amountMinor,
-      scope: component.scope,
-      sessionCount: withDuration.length,
-      minutesTotal,
-      sourceSessionIds: withDuration.map((s) => s.id),
-    },
-    diagnostics,
-  };
-}
-
-function computePerStudent(
-  component: Extract<PayComponent, { kind: 'per_student' }>,
-  sessions: LessonSessionLike[],
-  teacherId: string,
-): ComputedComponent {
-  const matched = billableSessions(sessions, teacherId, component.scope);
-  const studentTotal = matched.reduce((sum, s) => sum + (s.headcount || 0), 0);
-  return {
-    kind: 'per_student',
-    earnedMinor: studentTotal * component.amountMinor,
-    basis: {
-      amountMinor: component.amountMinor,
-      scope: component.scope,
-      sessionCount: matched.length,
-      studentTotal,
-      sourceSessionIds: matched.map((s) => s.id),
-    },
-    diagnostics: [],
   };
 }
 
@@ -619,9 +693,9 @@ function computePerStudent(
 /**
  * Считает строки ведомости по уже выбранным данным.
  *
- * Контракт: одна строка на КАЖДОЕ разрешённое активное правило — даже при нулевой
- * активности. Пустая строка это сигнал «ставка отработала, начислять было не с
- * чего», а её отсутствие директор прочитает как сбой расчёта.
+ * Контракт: одна строка на КАЖДУЮ ставку — даже при нулевой активности. Пустая
+ * строка это сигнал «ставка есть, начислять было не с чего», а её отсутствие
+ * директор прочитает как сбой расчёта.
  *
  * Окно применяется здесь ещё раз, хотя вызывающий уже отфильтровал выборку: обе
  * границы ВКЛЮЧИТЕЛЬНЫ, и это свойство должно принадлежать ядру, а не эндпоинту,
@@ -630,18 +704,14 @@ function computePerStudent(
 export function computePayroll(inputs: PayrollInputs): PayrollResult {
   const startMs = toEpochMs(inputs.windowStart);
   const endMs = toEpochMs(inputs.windowEnd);
-  const startDay = toLocalDay(inputs.windowStart);
-  const endDay = toLocalDay(inputs.windowEnd);
 
   const incomeTx = (inputs.incomeTx ?? []).filter((tx) => txInWindow(tx, startMs, endMs));
   const refundTx = (inputs.refundTx ?? []).filter((tx) => txInWindow(tx, startMs, endMs));
-  const sessions = (inputs.sessions ?? []).filter((s) => sessionInWindow(s, startDay, endDay));
 
-  const { resolved, diagnostics: ruleDiagnostics } = resolveRules(inputs.rules ?? [], inputs.period);
+  const scopes = buildTeacherScopes(inputs.groups ?? []);
+  const { resolved, diagnostics: ruleDiagnostics } = resolveRules(inputs.rules ?? []);
 
   const globalDiagnostics: Diagnostic[] = [];
-  const consumedTxIds = new Set<string>();
-  let hasPercentComponent = false;
 
   const lines: ComputedLine[] = [];
   // Детерминированный порядок строк — от него зависит воспроизводимость расчёта.
@@ -649,6 +719,7 @@ export function computePayroll(inputs: PayrollInputs): PayrollResult {
 
   for (const teacherId of teacherIds) {
     const rule = resolved.get(teacherId)!;
+    const scope = scopes.get(teacherId) ?? { groupIds: [], studentIds: [] };
     const components: ComputedComponent[] = [];
     const lineDiagnostics: Diagnostic[] = ruleDiagnostics.filter((d) => d.teacherId === teacherId);
 
@@ -656,19 +727,20 @@ export function computePayroll(inputs: PayrollInputs): PayrollResult {
     if (!ruleComponents.length) {
       lineDiagnostics.push({
         code: 'rule_no_components',
-        message: 'В ставке нет ни одного компонента — начислять нечего. Отредактируйте ставку.',
+        message: 'В ставке не указан ни процент, ни сумма — начислять нечего. Откройте ставку и задайте оплату.',
         count: 1,
         teacherId,
         ruleId: rule.id,
       });
     }
 
+    let hasPercent = false;
     for (const component of ruleComponents) {
       switch (component.kind) {
         case 'salary':
-          // Оклад платится всегда: это и значит «фиксированный». Найм в середине
-          // месяца даёт полный месяц на периоде effectiveFrom — директор мыслит
-          // целыми месяцами, и так же начисляет monthly-billing.
+          // Фиксированная сумма платится всегда: это и значит «фиксированная».
+          // Найм в середине месяца даёт полный месяц — директор мыслит целыми
+          // месяцами, и так же начисляет monthly-billing.
           components.push({
             kind: 'salary',
             earnedMinor: component.amountMinor,
@@ -677,26 +749,47 @@ export function computePayroll(inputs: PayrollInputs): PayrollResult {
           });
           break;
         case 'percent_revenue':
-          hasPercentComponent = true;
+          hasPercent = true;
           components.push(
-            computePercentRevenue(component, incomeTx, refundTx, {
-              teacherId,
-              ruleId: rule.id,
-              consumedTxIds,
-            }),
+            computePercentRevenue(component, incomeTx, refundTx, { teacherId, ruleId: rule.id, scope }),
           );
           break;
-        case 'per_lesson':
-          components.push(computePerLesson(component, sessions, teacherId));
-          break;
-        case 'per_hour':
-          components.push(computePerHour(component, sessions, { teacherId, ruleId: rule.id }));
-          break;
-        case 'per_student':
-          components.push(computePerStudent(component, sessions, teacherId));
-          break;
         default:
+          // Компонент неизвестного вида (пережиток удалённых «за занятие/час/
+          // студента»). Считать его нечем, но и промолчать нельзя — иначе
+          // человек недосчитается денег без единого следа.
+          lineDiagnostics.push({
+            code: 'rule_no_components',
+            message:
+              `В ставке остался устаревший вид оплаты «${String((component as any)?.kind ?? '')}» — он больше не поддерживается ` +
+              'и не начислен. Откройте ставку и выберите процент или фиксированную сумму.',
+            count: 1,
+            teacherId,
+            ruleId: rule.id,
+          });
           break;
+      }
+    }
+
+    // Платежи ЕГО студентов, не привязанные к группе, в базу процента не
+    // попадают: атрибуция денег в этой системе идёт через группу (см. резолв
+    // groupId в api-finance-transactions). Молча потерять их нельзя — именно
+    // они объясняют, почему сумма меньше ожидаемой.
+    if (hasPercent && scope.studentIds.length) {
+      const students = new Set(scope.studentIds);
+      const orphanPayments = incomeTx.filter((tx) => !tx.groupId && !!tx.studentId && students.has(tx.studentId));
+      if (orphanPayments.length) {
+        const totalMinor = orphanPayments.reduce((sum, tx) => sum + toMinor(tx.amount), 0);
+        lineDiagnostics.push({
+          code: 'payment_without_group',
+          message:
+            `Платежей его студентов без привязки к группе: ${orphanPayments.length} на ${(totalMinor / 100).toFixed(2)} с. ` +
+            'В базу процента они не вошли — откройте платёж в Финансах и укажите группу.',
+          count: orphanPayments.length,
+          sample: sample(orphanPayments.map((tx) => tx.id)),
+          teacherId,
+          ruleId: rule.id,
+        });
       }
     }
 
@@ -707,12 +800,11 @@ export function computePayroll(inputs: PayrollInputs): PayrollResult {
       ruleId: rule.id,
       ruleSnapshot: {
         ruleId: rule.id,
-        label: rule.label ?? '',
-        effectiveFrom: rule.effectiveFrom,
-        effectiveTo: rule.effectiveTo ?? null,
         components: ruleComponents,
+        groupIds: scope.groupIds,
       },
-      // Компоненты складываются: «оклад + %» — одно правило, две строки расчёта.
+      // Компоненты складываются. Форма даёт выбрать ровно один вид, но модель
+      // сумму поддерживает — «оклад + процент» останется вопросом одной галочки.
       computedMinor: components.reduce((sum, c) => sum + c.earnedMinor, 0),
       components,
       diagnostics: lineDiagnostics,
@@ -721,55 +813,20 @@ export function computePayroll(inputs: PayrollInputs): PayrollResult {
 
   // --- Глобальные диагностики -------------------------------------------
 
-  // Сессии без учителя: не начислены НИКОМУ и никогда не будут, пока в журнале
-  // не выберут преподавателя.
-  const orphanSessions = sessions.filter((s) => s.status === 'held' && s.teacherId === null);
-  if (orphanSessions.length) {
-    globalDiagnostics.push({
-      code: 'session_no_teacher',
-      message:
-        `Занятий без указанного преподавателя: ${orphanSessions.length}. ` +
-        'Они не начислены никому — выберите преподавателя в журнале.',
-      count: orphanSessions.length,
-      sample: sample(orphanSessions.map((s) => s.id)),
-    });
-  }
-
-  // Учителя без ставки: строки нет, поэтому единственный способ их увидеть —
-  // список «нет ставки».
-  const activeTeacherIds = new Set<string>();
-  for (const s of sessions) {
-    if (s.status === 'held' && s.teacherId) activeTeacherIds.add(s.teacherId);
-  }
+  // Преподаватели без ставки: строки нет, поэтому единственный способ их увидеть
+  // — этот список.
+  const activeTeacherIds = new Set<string>(scopes.keys());
   for (const id of inputs.knownTeacherIds ?? []) activeTeacherIds.add(id);
   const withoutRule = [...activeTeacherIds].filter((id) => !resolved.has(id)).sort();
   if (withoutRule.length) {
     globalDiagnostics.push({
       code: 'teacher_without_rule',
       message:
-        `Преподавателей без действующей ставки на ${inputs.period}: ${withoutRule.length}. ` +
-        'Им ничего не начислено — заведите ставку.',
+        `Преподавателей без ставки: ${withoutRule.length}. ` +
+        'Им ничего не начислено — задайте процент или фиксированную сумму.',
       count: withoutRule.length,
       sample: sample(withoutRule),
     });
-  }
-
-  // Выручка мимо всех областей. Сообщаем, ТОЛЬКО если процентные компоненты
-  // вообще есть: в академии на чистых окладах вся выручка «ничья» по
-  // определению, и такая диагностика была бы шумом на пустом месте.
-  if (hasPercentComponent) {
-    const unattributed = incomeTx.filter((tx) => !consumedTxIds.has(tx.id));
-    if (unattributed.length) {
-      const totalMinor = unattributed.reduce((sum, tx) => sum + toMinor(tx.amount), 0);
-      globalDiagnostics.push({
-        code: 'revenue_unattributed',
-        message:
-          `Платежей вне областей действия ставок: ${unattributed.length} на ${(totalMinor / 100).toFixed(2)} с. ` +
-          'С них процент не начислен — проверьте группы и курсы в ставках.',
-        count: unattributed.length,
-        sample: sample(unattributed.map((tx) => tx.id)),
-      });
-    }
   }
 
   // Один плоский список для UI; построчные копии остаются в line.diagnostics

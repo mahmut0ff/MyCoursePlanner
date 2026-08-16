@@ -13,6 +13,8 @@ import {
   apiGetLessons,
   apiUpdateUser,
   adminGetDemoRequests,
+  apiGetPayrollOverview,
+  apiGetCompensationRules,
 } from '../api';
 
 /** Last URL the api client fetched. */
@@ -60,6 +62,18 @@ describe('api client — active branch scoping', () => {
     setActiveBranchId('b2');
     await orgListBranches();
 
+    expect(lastUrl()).not.toContain('branchId');
+  });
+
+  it('never scopes payroll reads', async () => {
+    // Зарплата общеорганизационная: ставка одна на преподавателя, ведомость одна
+    // на месяц. Штамп филиала здесь не сузил бы выборку, а обнулил её — сервер
+    // искал бы документы с branchId, которого у них нет, и экран был бы пустым.
+    setActiveBranchId('b2');
+    await apiGetPayrollOverview({ period: '2026-08' });
+    expect(lastUrl()).not.toContain('branchId');
+
+    await apiGetCompensationRules();
     expect(lastUrl()).not.toContain('branchId');
   });
 

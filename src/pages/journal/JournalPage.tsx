@@ -23,6 +23,9 @@ import toast from 'react-hot-toast';
 import { useAuth } from '../../contexts/AuthContext';
 import { useBranch } from '../../contexts/BranchContext';
 import { usePermissions } from '../../contexts/PermissionsContext';
+import { useOrg } from '../../contexts/OrgContext';
+import { getInstitution } from '../../lib/terminology';
+import { makeDefaultSchema } from '../../lib/gradePresets';
 
 
 function getLocalISODate(d: Date) {
@@ -50,17 +53,6 @@ const attendanceIcons: Record<AttendanceStatus, React.ReactNode> = {
   excused: <FileWarning className="w-5 h-5 text-slate-400" />
 };
 
-const defaultSchema: GradeSchema = {
-  id: '',
-  courseId: '',
-  organizationId: '',
-  gradingType: 'points',
-  scale: { min: 0, max: 100 },
-  passThreshold: 50,
-  createdAt: '',
-  updatedAt: '',
-};
-
 
 
 const JournalPage: React.FC = () => {
@@ -68,6 +60,10 @@ const JournalPage: React.FC = () => {
   const { role, profile } = useAuth();
   const { activeBranchId } = useBranch();
   const { canWrite } = usePermissions();
+  const { institutionType } = useOrg();
+  // Same fallback the gradebook uses, so a course with no saved schema shows one
+  // scale in both places instead of a hard-coded 0–100 here.
+  const defaultPresetId = getInstitution(institutionType).defaultGradePresetId;
   // Read-only is driven by the resolved gradebook grant, not the base role — a manager
   // (or custom role) with gradebook:write can mark attendance/grades, matching the backend.
   const isReadOnly = !canWrite('gradebook');
@@ -79,14 +75,15 @@ const JournalPage: React.FC = () => {
 
   const [selectedGroupId, setSelectedGroupId] = useState<string>('');
   const [date, setDate] = useState<string>(todayFormatted);
-  // Фактическая длительность занятия (мин) для payroll-сессии. Пусто = неизвестно (null),
-  // движок расчёта не начислит по per_hour, но per_lesson/per_student честно посчитаются.
+  // Фактическая длительность занятия (мин) в записи «урок состоялся».
+  // Пусто = неизвестно (null): подставить типовые 90 минут значило бы записать
+  // время, которого никто не подтверждал.
   const [sessionDuration, setSessionDuration] = useState<string>('');
   // Явный выбор «кто вёл занятие» — нужен ТОЛЬКО когда у группы несколько преподавателей.
   // Пусто = не указан (сервер запишет teacherId: null, а не угадает по отметившему журнал).
   const [selectedTeacherId, setSelectedTeacherId] = useState<string>('');
   
-  const [schema, setSchema] = useState<GradeSchema>(defaultSchema);
+  const [schema, setSchema] = useState<GradeSchema>(() => makeDefaultSchema(defaultPresetId));
   const [entries, setEntries] = useState<Record<string, JournalEntry>>({});
   const [allJournalEntries, setAllJournalEntries] = useState<JournalEntry[]>([]);
   const [courseJournalDates, setCourseJournalDates] = useState<string[]>([]);
@@ -222,7 +219,7 @@ const JournalPage: React.FC = () => {
          apiGetLessons().catch(() => [])
       ]);
 
-      setSchema(schemaRes || { ...defaultSchema, courseId: selectedCourseId });
+      setSchema(schemaRes || makeDefaultSchema(defaultPresetId, selectedCourseId));
 
       const allLessons = Array.isArray(lessonsRes) ? lessonsRes : [];
       setCourseLessons(allLessons.filter(l => l.courseId === selectedCourseId));
@@ -295,7 +292,7 @@ const JournalPage: React.FC = () => {
     }
   }, [selectedGroupId, allGroups, profile?.uid]);
 
-  // Кто вёл занятие (для lessonSessions → payroll). НИКОГДА не угадываем по отметившему:
+  // Кто вёл занятие (для записи lessonSessions). НИКОГДА не угадываем по отметившему:
   // единственный препод группы → он автоматически; несколько → явный выбор пользователя;
   // ноль/не выбран → undefined (сервер честно запишет teacherId: null).
   const resolvedTeacherId = useMemo<string | undefined>(() => {
@@ -306,7 +303,7 @@ const JournalPage: React.FC = () => {
     return undefined;
   }, [allGroups, selectedGroupId, selectedTeacherId]);
 
-  // Общие поля payroll-сессии для всех вызовов orgBulkAttendance (одна точка правды).
+  // Общие поля записи занятия для всех вызовов orgBulkAttendance (одна точка правды).
   const buildSessionOpts = () => ({
     groupId: selectedGroupId || undefined,
     teacherId: resolvedTeacherId,
@@ -662,7 +659,7 @@ const JournalPage: React.FC = () => {
                     id="session-teacher"
                     value={selectedTeacherId}
                     onChange={(e) => setSelectedTeacherId(e.target.value)}
-                    title={t('journal.sessionTeacherHint', 'Преподаватель, который провёл занятие — для расчёта зарплаты')}
+                    title={t('journal.sessionTeacherHint', 'Преподаватель, который фактически провёл это занятие')}
                     className="px-3 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-medium outline-none focus:border-primary-500 transition-colors shadow-sm"
                   >
                     <option value="">{t('journal.sessionTeacherUnset', 'Не указан')}</option>
@@ -674,7 +671,7 @@ const JournalPage: React.FC = () => {
                   </select>
                 </div>
               )}
-              {/* Длительность занятия → payroll (per_hour). Пусто = длительность неизвестна. */}
+              {/* Фактическая длительность занятия. Пусто = неизвестна. */}
               <div className="flex items-center gap-2">
                 <label htmlFor="session-duration" className="text-xs font-medium text-slate-500 dark:text-slate-400 whitespace-nowrap">
                   {t('journal.sessionDuration', 'Длительность (мин)')}
@@ -688,7 +685,7 @@ const JournalPage: React.FC = () => {
                   placeholder="—"
                   value={sessionDuration}
                   onChange={(e) => setSessionDuration(e.target.value)}
-                  title={t('journal.sessionDurationHint', 'Фактическая длительность занятия для расчёта зарплаты по часам')}
+                  title={t('journal.sessionDurationHint', 'Сколько минут фактически шло занятие')}
                   className="w-20 px-3 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-medium outline-none focus:border-primary-500 transition-colors shadow-sm"
                 />
               </div>
@@ -888,22 +885,41 @@ const JournalPage: React.FC = () => {
                 const presentCount = studentEntries.filter(e => e.attendance === 'present' || e.attendance === 'late').length;
                 const attendancePct = Math.round((presentCount / totalDates) * 100);
 
-                // Average grade
+                // Average grade, normalised per entry.
+                //
+                // Each grade carries the maximum it was given out of (`maxValue`), so a
+                // scale change doesn't retroactively rescale history: dividing an old
+                // «87 из 100» by a freshly saved max of 5 used to yield 1740% and put
+                // the student at the top of the ranking.
                 const studentGrades = Object.entries(grades)
                   .filter(([key]) => key.startsWith(`${student.uid}_`))
-                  .map(([, g]) => g.value)
-                  .filter((v): v is number => typeof v === 'number');
-                  
-                const avgGrade = studentGrades.length > 0
-                  ? Math.round(studentGrades.reduce((sum, v) => sum + v, 0) / studentGrades.length)
+                  .map(([, g]) => g)
+                  .filter(g => typeof g.value === 'number');
+
+                const scored = studentGrades
+                  .map(g => ({ value: g.value as number, max: g.maxValue || schema.scale.max || 100 }))
+                  .filter(g => g.max > 0);
+
+                const gradePct = scored.length > 0
+                  ? Math.round(scored.reduce((sum, g) => sum + (g.value / g.max) * 100, 0) / scored.length)
                   : 0;
+
+                // The «4.6 / 5» badge only reads right while every grade shares one max;
+                // across a scale change we fall back to showing the percentage.
                 const maxGrade = schema.scale.max || 100;
-                const gradePct = maxGrade > 0 ? Math.round((avgGrade / maxGrade) * 100) : 0;
+                const sameScale = scored.length > 0 && scored.every(g => g.max === maxGrade);
+                const avgGrade = sameScale
+                  ? Math.round((scored.reduce((sum, g) => sum + g.value, 0) / scored.length) * 10) / 10
+                  : 0;
 
-                // Overall score: 40% attendance + 60% grade
-                const overallScore = Math.round(attendancePct * 0.4 + gradePct * 0.6);
+                // Overall score: 40% attendance + 60% grade. A course graded by letters
+                // or зачёт/незачёт has no numeric grades at all — weighting 60% of a
+                // zero would cap every student at 40, so attendance carries it alone.
+                const overallScore = scored.length > 0
+                  ? Math.round(attendancePct * 0.4 + gradePct * 0.6)
+                  : attendancePct;
 
-                return { student, attendancePct, avgGrade, maxGrade, gradePct, overallScore, totalEntries: studentEntries.length };
+                return { student, attendancePct, avgGrade, maxGrade, sameScale, gradePct, overallScore, totalEntries: studentEntries.length };
               })
               .sort((a, b) => b.overallScore - a.overallScore);
 
@@ -941,9 +957,9 @@ const JournalPage: React.FC = () => {
                         }`}>
                           {r.attendancePct}% посещ.
                         </span>
-                        {r.avgGrade > 0 && (
+                        {r.gradePct > 0 && (
                           <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-700 px-1.5 py-0.5 rounded">
-                            {r.avgGrade}/{r.maxGrade}
+                            {r.sameScale ? `${r.avgGrade}/${r.maxGrade}` : `${r.gradePct}% успев.`}
                           </span>
                         )}
                       </div>

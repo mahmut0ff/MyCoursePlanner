@@ -1,4 +1,4 @@
-import type { GradingType, GradeScale } from '../types';
+import type { GradingType, GradeScale, GradeSchema } from '../types';
 
 /**
  * Ready-made grading scales.
@@ -72,4 +72,27 @@ export const GRADE_PRESETS: GradePreset[] = [
 
 export function getPreset(id?: string | null): GradePreset | undefined {
   return GRADE_PRESETS.find((p) => p.id === id);
+}
+
+/**
+ * Fallback schema for a course that has none saved yet, seeded from the
+ * institution's default grading preset.
+ *
+ * Shared by the gradebook and the journal on purpose: the journal used to carry
+ * its own hard-coded 0–100 fallback, so an unconfigured course in a school
+ * (5-point institution default) showed «М: 100» in the journal and a 5-point
+ * scale in the gradebook.
+ */
+export function makeDefaultSchema(presetId: string | undefined, courseId = ''): GradeSchema {
+  const preset = getPreset(presetId);
+  return {
+    id: '',
+    courseId,
+    organizationId: '',
+    gradingType: preset?.gradingType || 'points',
+    scale: preset?.scale || { min: 0, max: 100 },
+    passThreshold: preset?.passThreshold ?? 50,
+    createdAt: '',
+    updatedAt: '',
+  };
 }

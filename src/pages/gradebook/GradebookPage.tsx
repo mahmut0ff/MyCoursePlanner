@@ -18,23 +18,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { usePermissions } from '../../contexts/PermissionsContext';
 import { useOrg } from '../../contexts/OrgContext';
 import { getInstitution } from '../../lib/terminology';
-import { getPreset } from '../../lib/gradePresets';
-
-/** Build the fallback schema for a course that has none yet, seeded from the
- *  institution's default grading preset. */
-function makeDefaultSchema(presetId: string | undefined, courseId = ''): GradeSchema {
-  const preset = getPreset(presetId);
-  return {
-    id: '',
-    courseId,
-    organizationId: '',
-    gradingType: preset?.gradingType || 'points',
-    scale: preset?.scale || { min: 0, max: 100 },
-    passThreshold: preset?.passThreshold ?? 50,
-    createdAt: '',
-    updatedAt: '',
-  };
-}
+import { makeDefaultSchema } from '../../lib/gradePresets';
 
 const GradebookPage: React.FC = () => {
   const { t } = useTranslation();
@@ -332,13 +316,21 @@ const GradebookPage: React.FC = () => {
         </div>
       )}
 
-      <GradeSchemaConfig
-        courseId={selectedCourseId}
-        schema={schema}
-        isOpen={showConfig}
-        onClose={() => setShowConfig(false)}
-        onSaved={setSchema}
-      />
+      {/* Mounted only while open, and keyed by course: the modal seeds its fields from
+          `schema` once, at mount. Rendered unconditionally it mounted with the page —
+          before the course's saved schema had loaded — so «Настройка шкалы» always
+          opened on the institution default and saving it back silently reset the
+          course's real scale. */}
+      {showConfig && (
+        <GradeSchemaConfig
+          key={selectedCourseId}
+          courseId={selectedCourseId}
+          schema={schema}
+          isOpen={showConfig}
+          onClose={() => setShowConfig(false)}
+          onSaved={setSchema}
+        />
+      )}
     </div>
   );
 };

@@ -53,3 +53,4 @@ firebase-debug.log
 *.tmp
 *.tmp.cjs
 *.token
+tuition-backup/

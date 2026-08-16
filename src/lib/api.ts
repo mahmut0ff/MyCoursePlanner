@@ -822,7 +822,13 @@ export interface SetTuitionInput {
   amount: number | null;
   /** Переписать уже выставленные НЕОПЛАЧЕННЫЕ начисления этой суммой. */
   applyToUnpaid?: boolean;
-  /** 'YYYY-MM' — ограничить применение одним месяцем. */
+  /**
+   * Насколько назад применять: 'all' (по умолчанию) — все неоплаченные месяцы,
+   * 'period' — только `period`. Долг складывается из счетов РАЗНЫХ месяцев,
+   * поэтому месяц — сужение, а не норма.
+   */
+  applyScope?: 'all' | 'period';
+  /** 'YYYY-MM' — месяц для applyScope: 'period'. */
   period?: string;
 }
 
@@ -843,6 +849,24 @@ export const apiGetStudentTuitions = () =>
 
 export const apiSetStudentTuition = (data: SetTuitionInput) =>
   apiRequest<SetTuitionResult>('api-finance-tuition', 'POST', data);
+
+export interface ReapplyTuitionResult {
+  /** Начислений, приведённых к договорной цене студента. */
+  updatedPlans: number;
+  /** Пропущено: новая сумма ниже уже принятых денег (это возврат, не скидка). */
+  skippedPlans: number;
+  /** Скольких студентов это коснулось. */
+  students: number;
+  /** Договорных цен в организации нет — пересчитывать не по чему. */
+  noRates?: boolean;
+}
+
+/**
+ * Привести уже выставленные неоплаченные начисления к действующим договорным
+ * ценам. Идемпотентно: строки, где сумма уже верна, не трогаются.
+ */
+export const apiReapplyStudentTuitions = () =>
+  apiRequest<ReapplyTuitionResult>('api-finance-tuition', 'POST', { action: 'reapply' });
 
 // startDate/endDate — произвольный диапазон; сервер берёт его вместо `period`,
 // только если пришли ОБА (иначе молча падает обратно на именованный период).

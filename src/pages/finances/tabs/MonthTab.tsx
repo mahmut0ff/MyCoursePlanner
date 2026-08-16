@@ -20,7 +20,7 @@ import {
   X,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { apiDeletePaymentPlan, apiGetPaymentPlans, apiGetStudentTuitions, orgGetCourses, orgGetGroups, orgGetStudents } from '../../../lib/api';
+import { apiDeletePaymentPlan, apiGetPaymentPlans, apiGetStudentTuitions, apiReapplyStudentTuitions, orgGetCourses, orgGetGroups, orgGetStudents } from '../../../lib/api';
 import { useBranch } from '../../../contexts/BranchContext';
 import { usePermissions } from '../../../contexts/PermissionsContext';
 import { formatMoney, formatMonthKey, formatDayKey } from '../../../lib/money';
@@ -157,6 +157,9 @@ const MonthTab: React.FC<Props> = ({
   const [showBill, setShowBill] = useState(false);
   /** Выделение строк для массовой установки суммы. Ключ — id начисления. */
   const [selected, setSelected] = useState<Set<string>>(() => new Set());
+  /** Разовый пересчёт неоплаченных начислений по договорным ценам. */
+  const [reapplyOpen, setReapplyOpen] = useState(false);
+  const [reapplying, setReapplying] = useState(false);
   const [showTuition, setShowTuition] = useState(false);
 
   // Удаление в два шага — как на прежней вкладке: если к начислению привязаны
@@ -442,6 +445,37 @@ const MonthTab: React.FC<Props> = ({
     return next;
   });
 
+  /**
+   * Пересчёт долга по договорным ценам. Нужен там, где цены назначали уже после
+   * того, как счета были выставлены: неоплаченные начисления остались по цене
+   * курса, и долг складывался из суммы, которую студент никогда не был должен.
+   * Операция идемпотентна, поэтому повторное нажатие безопасно.
+   */
+  const runReapply = async () => {
+    setReapplying(true);
+    try {
+      const res = await apiReapplyStudentTuitions();
+      if (res?.noRates) {
+        toast(t('finances.reapplyNoRates', 'Договорных цен пока нет — пересчитывать не по чему'), { icon: 'ℹ️' });
+      } else if (!res?.updatedPlans) {
+        toast.success(t('finances.reapplyNothing', 'Все начисления уже по договорным ценам'));
+      } else {
+        toast.success(t('finances.reapplyDone', 'Пересчитано начислений: {{n}} · студентов: {{s}}', {
+          n: res.updatedPlans, s: res.students,
+        }));
+      }
+      if (res?.skippedPlans) {
+        toast(t('finances.tuitionPlansSkipped', 'Пропущено начислений (оплачено больше новой суммы): {{n}}', { n: res.skippedPlans }), { icon: '⚠️' });
+      }
+      setReapplyOpen(false);
+      load();
+    } catch (e: any) {
+      toast.error(e?.message || t('finances.error', 'Ошибка'));
+    } finally {
+      setReapplying(false);
+    }
+  };
+
   const openPay = (plan: PaymentPlan) => { setSelectedPlan(plan); setModal('pay'); };
   const openHistory = (plan: PaymentPlan) => { setSelectedPlan(plan); setModal('history'); };
   const openEditAmount = (plan: PaymentPlan) => { setSelectedPlan(plan); setModal('editAmount'); };
@@ -489,15 +523,29 @@ const MonthTab: React.FC<Props> = ({
             <ChevronRight className="w-4 h-4" />
           </button>
         </div>
-        {/* В режиме «все неоплаченные» месяц не выбран, и начислять не за что —
-            кнопка была бы обещанием действия без адресата. */}
-        <button
-          onClick={() => setShowBill(true)}
-          disabled={allMonths}
-          className="inline-flex items-center gap-2 bg-emerald-500 hover:bg-emerald-600 disabled:opacity-40 disabled:cursor-not-allowed text-white px-4 py-2.5 rounded-xl text-sm font-bold transition-colors shrink-0"
-        >
-          <CalendarPlus className="w-4 h-4" />{t('finances.billMonth', 'Начислить за месяц')}
-        </button>
+        <div className="flex items-center gap-2 shrink-0">
+          {/* Пересчёт по договорным ценам — мутация денег, поэтому только у того,
+              кто вправе эти цены задавать. */}
+          {canPrice && (
+            <button
+              onClick={() => setReapplyOpen(true)}
+              className="inline-flex items-center gap-2 border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 px-3 py-2.5 rounded-xl text-sm font-semibold transition-colors"
+              title={t('finances.reapplyHint', 'Привести неоплаченные начисления к суммам, которые платят сами студенты')}
+            >
+              <BadgePercent className="w-4 h-4" />
+              <span className="hidden sm:inline">{t('finances.reapply', 'Пересчитать по своим ценам')}</span>
+            </button>
+          )}
+          {/* В режиме «все неоплаченные» месяц не выбран, и начислять не за что —
+              кнопка была бы обещанием действия без адресата. */}
+          <button
+            onClick={() => setShowBill(true)}
+            disabled={allMonths}
+            className="inline-flex items-center gap-2 bg-emerald-500 hover:bg-emerald-600 disabled:opacity-40 disabled:cursor-not-allowed text-white px-4 py-2.5 rounded-xl text-sm font-bold transition-colors"
+          >
+            <CalendarPlus className="w-4 h-4" />{t('finances.billMonth', 'Начислить за месяц')}
+          </button>
+        </div>
       </div>
 
       {/* Сводка за месяц. Счётчики оплат — операционные, их видит и кассир;
@@ -806,6 +854,19 @@ const MonthTab: React.FC<Props> = ({
         confirmLabel={t('finances.delete', 'Удалить')}
         onConfirm={() => pendingDelete && runDelete(pendingDelete, false)}
         onClose={() => setPendingDelete(null)}
+      />
+
+      <ConfirmDialog
+        open={reapplyOpen}
+        busy={reapplying}
+        title={t('finances.reapply', 'Пересчитать по своим ценам')}
+        message={t(
+          'finances.reapplyConfirm',
+          'Неоплаченные начисления станут по той сумме, которую платит сам студент («Стоимость обучения» в его карточке). Оплаченные и списанные счета не тронем, ниже уже принятых денег сумму не опустим.',
+        )}
+        confirmLabel={t('finances.reapplyConfirmLabel', 'Пересчитать')}
+        onConfirm={runReapply}
+        onClose={() => { if (!reapplying) setReapplyOpen(false); }}
       />
 
       <ConfirmDialog

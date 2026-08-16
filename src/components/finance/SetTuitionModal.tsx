@@ -36,9 +36,17 @@ interface Props {
  * ── Почему галочка «применить к неоплаченным» включена по умолчанию ──
  * Менеджер, поставивший цену 15-го числа, ждёт увидеть её в текущем месяце. Без
  * применения он записывает 4000 и тут же видит в списке 5000 — и справедливо
- * решает, что не сохранилось. Трогаем при этом РОВНО неоплаченные начисления
- * выбранного месяца: погашенный счёт не воскрешаем в долг задним числом, а
- * списанный оставляем списанным.
+ * решает, что не сохранилось. Трогаем при этом РОВНО неоплаченные начисления:
+ * погашенный счёт не воскрешаем в долг задним числом, а списанный оставляем
+ * списанным.
+ *
+ * ── Почему по умолчанию ВСЕ месяцы, а не выбранный ──
+ * Долг копится по разным месяцам. Применяя цену к одному месяцу, мы оставляли
+ * июньский и июльский счета по цене курса — и долг студента складывался из
+ * прайса, который к нему никогда не относился. «Только за месяц» осталось
+ * рядом: цена может начать действовать с сентября, а долг за июль — остаться
+ * прежним. Разовая правка суммы ОДНОГО счёта живёт не здесь, а в
+ * EditPlanAmountModal.
  */
 const SetTuitionModal: React.FC<Props> = ({
   studentIds, studentLabel, courseId: fixedCourseId, initialAmount, period, periodLabel, onClose, onSuccess,
@@ -50,6 +58,8 @@ const SetTuitionModal: React.FC<Props> = ({
     initialAmount === null || initialAmount === undefined ? '' : String(initialAmount)
   );
   const [applyToUnpaid, setApplyToUnpaid] = useState(true);
+  /** Куда применять: во все неоплаченные месяцы или только в выбранный. */
+  const [applyScope, setApplyScope] = useState<'all' | 'period'>('all');
   const [busy, setBusy] = useState<'save' | 'clear' | null>(null);
 
   useEffect(() => {
@@ -106,6 +116,7 @@ const SetTuitionModal: React.FC<Props> = ({
         courseId,
         amount: clear ? null : value,
         applyToUnpaid: clear ? false : applyToUnpaid,
+        applyScope,
         period,
       });
       report(
@@ -194,21 +205,61 @@ const SetTuitionModal: React.FC<Props> = ({
             )}
           </div>
 
-          <label className="flex items-start gap-2.5 cursor-pointer select-none">
-            <input
-              type="checkbox"
-              checked={applyToUnpaid}
-              onChange={e => setApplyToUnpaid(e.target.checked)}
-              disabled={busy !== null}
-              className="w-4 h-4 mt-0.5 accent-emerald-500 shrink-0"
-            />
-            <span className="text-sm text-slate-700 dark:text-slate-300">
-              {t('finances.tuitionApply', 'Применить к неоплаченным начислениям за {{month}}', { month: periodLabel })}
-              <span className="block text-[11px] text-slate-400">
-                {t('finances.tuitionApplyHint', 'Оплаченные и списанные счета не трогаем.')}
+          <div className="space-y-2">
+            <label className="flex items-start gap-2.5 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={applyToUnpaid}
+                onChange={e => setApplyToUnpaid(e.target.checked)}
+                disabled={busy !== null}
+                className="w-4 h-4 mt-0.5 accent-emerald-500 shrink-0"
+              />
+              <span className="text-sm text-slate-700 dark:text-slate-300">
+                {t('finances.tuitionApply', 'Применить к неоплаченным начислениям')}
+                <span className="block text-[11px] text-slate-400">
+                  {t('finances.tuitionApplyHint', 'Оплаченные и списанные счета не трогаем.')}
+                </span>
               </span>
-            </span>
-          </label>
+            </label>
+
+            {/* Область применения. Показывается только когда есть что применять:
+                при снятой галочке выбор месяца ни на что не влияет и был бы
+                ложным органом управления. */}
+            {applyToUnpaid && (
+              <div className="ml-7 space-y-1.5">
+                <label className="flex items-start gap-2.5 cursor-pointer select-none">
+                  <input
+                    type="radio" name="tuition-scope" value="all"
+                    checked={applyScope === 'all'}
+                    onChange={() => setApplyScope('all')}
+                    disabled={busy !== null}
+                    className="w-3.5 h-3.5 mt-0.5 accent-emerald-500 shrink-0"
+                  />
+                  <span className="text-[13px] text-slate-700 dark:text-slate-300">
+                    {t('finances.tuitionScopeAll', 'За все месяцы')}
+                    <span className="block text-[11px] text-slate-400">
+                      {t('finances.tuitionScopeAllHint', 'Весь долг студента по этому курсу пересчитается по его сумме.')}
+                    </span>
+                  </span>
+                </label>
+                <label className="flex items-start gap-2.5 cursor-pointer select-none">
+                  <input
+                    type="radio" name="tuition-scope" value="period"
+                    checked={applyScope === 'period'}
+                    onChange={() => setApplyScope('period')}
+                    disabled={busy !== null}
+                    className="w-3.5 h-3.5 mt-0.5 accent-emerald-500 shrink-0"
+                  />
+                  <span className="text-[13px] text-slate-700 dark:text-slate-300">
+                    {t('finances.tuitionScopePeriod', 'Только за {{month}}', { month: periodLabel })}
+                    <span className="block text-[11px] text-slate-400">
+                      {t('finances.tuitionScopePeriodHint', 'Долг за прошлые месяцы останется прежним.')}
+                    </span>
+                  </span>
+                </label>
+              </div>
+            )}
+          </div>
         </div>
 
         <div className="p-6 border-t border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 flex items-center justify-between gap-3">

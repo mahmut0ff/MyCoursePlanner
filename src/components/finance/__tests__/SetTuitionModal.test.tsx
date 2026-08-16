@@ -87,6 +87,9 @@ describe('SetTuitionModal', () => {
       // Галочка «применить к неоплаченным» включена по умолчанию: менеджер,
       // назначивший цену 15-го, ждёт увидеть её в текущем месяце.
       applyToUnpaid: true,
+      // ...и по ВСЕМ неоплаченным месяцам: долг состоит из счетов разных
+      // месяцев, и починка одного оставляла остальной долг по цене курса.
+      applyScope: 'all',
       period: '2026-08',
     }));
     expect(onSuccess).toHaveBeenCalled();
@@ -101,6 +104,28 @@ describe('SetTuitionModal', () => {
     await waitFor(() => expect(apiMock.apiSetStudentTuition).toHaveBeenCalledWith(
       expect.objectContaining({ applyToUnpaid: false })
     ));
+  });
+
+  it('can narrow the rewrite to the selected month', async () => {
+    // Цена может начать действовать с сентября, а долг за июль — остаться
+    // прежним. Это сужение, поэтому его выбирают явно.
+    setup({ courseId: 'c1' });
+    fireEvent.change(amountInput(), { target: { value: '3500' } });
+    fireEvent.click(screen.getByRole('radio', { name: /Только за август 2026/ }));
+    fireEvent.click(saveButton());
+
+    await waitFor(() => expect(apiMock.apiSetStudentTuition).toHaveBeenCalledWith(
+      expect.objectContaining({ applyScope: 'period', period: '2026-08' })
+    ));
+  });
+
+  it('hides the scope choice when nothing will be rewritten', async () => {
+    // При снятой галочке выбор месяца ни на что не влияет: живой орган
+    // управления, который ничего не меняет, — ложь о том, что делает форма.
+    setup({ courseId: 'c1' });
+    expect(screen.getAllByRole('radio')).toHaveLength(2);
+    fireEvent.click(screen.getByRole('checkbox'));
+    expect(screen.queryByRole('radio')).toBeNull();
   });
 
   it('sends zero as a real price, not as an empty field', async () => {

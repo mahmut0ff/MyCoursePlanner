@@ -62,10 +62,12 @@ function wire(opts: {
   members?: Record<string, any>;
   plans?: any[];
   groups?: any[];
+  /** Уже сохранённые договорные цены — их читает пересчёт (action: 'reapply'). */
+  rates?: any[];
   /** Курс → чья это организация. По умолчанию все курсы наши. */
   courseOrgs?: Record<string, string>;
 } = {}) {
-  const { members = {}, plans = [], groups = [], courseOrgs = {} } = opts;
+  const { members = {}, plans = [], groups = [], rates = [], courseOrgs = {} } = opts;
   writes = [];
 
   (getDocsByIds as any).mockImplementation(async (path: string, ids: string[]) => {
@@ -90,7 +92,7 @@ function wire(opts: {
   };
 
   (adminDb.collection as any).mockImplementation((name: string) => {
-    if (name === 'studentTuitions') return { doc: (id: string) => ({ __id: id }) };
+    if (name === 'studentTuitions') return { ...queryOver(rates), doc: (id: string) => ({ __id: id }) };
     if (name === 'studentPaymentPlans') return { ...queryOver(plans), doc: (id: string) => ({ __id: id }) };
     if (name === 'groups') return queryOver(groups);
     return queryOver([]);
@@ -331,17 +333,40 @@ describe('api-finance-tuition · применение к неоплаченны�
     expect(writes.find(w => w.op === 'update')?.data).toMatchObject({ totalAmount: 4000, status: 'paid' });
   });
 
-  it('touches only the requested month', async () => {
+  it('touches only the requested month when the scope is narrowed to it', async () => {
     wire({
       members: { s1: member() },
       plans: [plan({ __id: 'aug' }), plan({ __id: 'jul', period: '2026-07' })],
     });
     const res = await post({
-      studentIds: ['s1'], courseId: 'c1', amount: 4000, applyToUnpaid: true, period: '2026-08',
+      studentIds: ['s1'], courseId: 'c1', amount: 4000,
+      applyToUnpaid: true, applyScope: 'period', period: '2026-08',
     });
 
     expect(res.body.updatedPlans).toBe(1);
     expect(writes.find(w => w.op === 'update')?.id).toBe('aug');
+  });
+
+  it('by default rewrites EVERY unpaid month, not just the current one', async () => {
+    // Долг копится по разным месяцам. Пока чинился один, июньский и июльский
+    // счета оставались по цене курса — и долг студента складывался из прайса,
+    // которого он никогда не был должен.
+    wire({
+      members: { s1: member() },
+      plans: [
+        plan({ __id: 'aug' }),
+        plan({ __id: 'jul', period: '2026-07' }),
+        plan({ __id: 'jun', period: '2026-06' }),
+      ],
+    });
+    const res = await post({
+      studentIds: ['s1'], courseId: 'c1', amount: 4000, applyToUnpaid: true, period: '2026-08',
+    });
+
+    expect(res.body.updatedPlans).toBe(3);
+    expect(writes.filter(w => w.op === 'update').map(w => w.id).sort())
+      .toEqual(['aug', 'jul', 'jun']);
+    expect(writes.filter(w => w.op === 'update').every(w => w.data.totalAmount === 4000)).toBe(true);
   });
 
   it('changes nothing already issued unless asked to', async () => {
@@ -350,6 +375,65 @@ describe('api-finance-tuition · применение к неоплаченны�
 
     expect(res.body.updatedPlans).toBe(0);
     expect(writes.every(w => w.op === 'set')).toBe(true);
+  });
+
+  it('reapply brings every unpaid charge to the rate the student actually pays', async () => {
+    // Разовый пересчёт для академии, назначавшей цены уже после выставления
+    // счетов: долг там сложился из ЦЕНЫ КУРСА, которую никто не был должен.
+    wire({
+      members: { s1: member() },
+      rates: [{ organizationId: ORG, studentId: 's1', courseId: 'c1', amount: 4000 }],
+      plans: [
+        plan({ __id: 'aug' }),
+        plan({ __id: 'jul', period: '2026-07' }),
+        plan({ __id: 'other', studentId: 's2' }),
+        plan({ __id: 'paid', paidAmount: 5000, status: 'paid' }),
+        plan({ __id: 'cancelled', status: 'cancelled' }),
+      ],
+    });
+    const res = await post({ action: 'reapply' });
+
+    expect(res.body).toMatchObject({ updatedPlans: 2, skippedPlans: 0, students: 1 });
+    expect(writes.map(w => w.id).sort()).toEqual(['aug', 'jul']);
+  });
+
+  it('reapply is idempotent — a charge already at the rate is left alone', async () => {
+    wire({
+      members: { s1: member() },
+      rates: [{ organizationId: ORG, studentId: 's1', courseId: 'c1', amount: 5000 }],
+      plans: [plan()],
+    });
+    const res = await post({ action: 'reapply' });
+
+    expect(res.body.updatedPlans).toBe(0);
+    expect(writes).toHaveLength(0);
+  });
+
+  it('reapply refuses to drop a charge below money already taken', async () => {
+    wire({
+      members: { s1: member() },
+      rates: [{ organizationId: ORG, studentId: 's1', courseId: 'c1', amount: 4000 }],
+      plans: [plan({ paidAmount: 4500, status: 'partial' })],
+    });
+    const res = await post({ action: 'reapply' });
+
+    expect(res.body).toMatchObject({ updatedPlans: 0, skippedPlans: 1 });
+    expect(writes).toHaveLength(0);
+  });
+
+  it('reapply never touches a student from another branch', async () => {
+    (verifyAuth as any).mockResolvedValue(
+      staff(['finances:read', 'finances:write'], { role: 'manager', branchIds: ['b1'] })
+    );
+    wire({
+      members: { s1: member({ branchIds: ['b2'] }) },
+      rates: [{ organizationId: ORG, studentId: 's1', courseId: 'c1', amount: 4000 }],
+      plans: [plan()],
+    });
+    const res = await post({ action: 'reapply' });
+
+    expect(res.body.updatedPlans).toBe(0);
+    expect(writes).toHaveLength(0);
   });
 
   it('never rewrites another student sharing the same course', async () => {

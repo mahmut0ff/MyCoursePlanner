@@ -196,6 +196,27 @@ const baseSeed = () => ({
   ],
 });
 
+/**
+ * Двое преподавателей с положительными строками — минимальная ведомость, на
+ * которой «выплатить всем» и «выплатить одному» вообще различимы: у t1 группа и
+ * процент, у t2 голый оклад без групп.
+ *
+ * Имена лежат в orgMembers, а не в `users`: история выплат читает их именно
+ * оттуда, и без имени строка «кому заплатили» показывала бы голый id.
+ */
+const twoTeacherSeed = () => {
+  const seed: any = baseSeed();
+  seed.compensationRules.push({
+    id: 'ruleT2', organizationId: 'org1', teacherId: 't2',
+    components: [{ kind: 'salary', amountMinor: 1000000 }],
+  });
+  seed['orgMembers/org1/members'] = [
+    ...seed['orgMembers/org1/members'].map((m: any) => (m.id === 't1' ? { ...m, userName: 'Азиза' } : m)),
+    { id: 't2', uid: 't2', role: 'teacher', status: 'active', userName: 'Бакыт', branchIds: [] },
+  ];
+  return seed;
+};
+
 async function calculate(body: any = {}) {
   return handler(event('POST', { action: 'calculate' }, { period: july, ...body }), {} as any, () => {}) as any;
 }
@@ -914,6 +935,499 @@ describe('api-payroll pay — разворот строки в расходы п
     // Обе доли нашлись выплаченными, и строка целиком ушла в пропущенные.
     expect(JSON.parse(second.body).skipped).toBe(1);
     expect(salaryRows().map((t) => t.id).sort()).toEqual(afterFirst);
+  });
+});
+
+/**
+ * «Филиала нет» в этой базе выглядит тремя способами: null, undefined и ПУСТАЯ
+ * СТРОКА. Последняя опаснее двух первых: она проходит `??`, и ключ
+ * идемпотентности выплаты выходит пустым — а пустой `payrollBranchKey` на
+ * расходе ЛОЖЕН, потому что означает «строка закрыта целиком по прежней схеме».
+ */
+describe('api-payroll pay — пустой branchId не должен ронять идемпотентность долей', () => {
+  let db: ReturnType<typeof makeDb>;
+  let periodId: string;
+
+  /** Одна ставка (50% собранного), две группы: у одной филиал — ПУСТАЯ СТРОКА. */
+  const emptyBranchSeed = () => {
+    const seed: any = baseSeed();
+    seed.compensationRules = [{
+      id: 'rule1', organizationId: 'org1', teacherId: 't1',
+      components: [{ kind: 'percent_revenue', percentBp: 5000, base: 'collected' }],
+    }];
+    seed.groups = [
+      // Именно так группа без филиала и лежит в базе после форм, которые пишут
+      // пустую строку вместо null.
+      { id: 'g1', organizationId: 'org1', name: 'Группа без филиала', courseId: 'c1', teacherIds: ['t1'], studentIds: ['st1'], branchId: '' },
+      { id: 'g2', organizationId: 'org1', name: 'Группа B', courseId: 'c2', teacherIds: ['t1'], studentIds: ['st2'], branchId: 'B' },
+    ];
+    seed.financeTransactions = [
+      { id: 'incEmpty', organizationId: 'org1', type: 'income', amount: 6000, date: local(2026, 6, 10), categoryId: 'tuition', groupId: 'g1', courseId: 'c1', studentId: 'st1', branchId: null, paymentPlanId: 'p1' },
+      { id: 'incB', organizationId: 'org1', type: 'income', amount: 4000, date: local(2026, 6, 12), categoryId: 'tuition', groupId: 'g2', courseId: 'c2', studentId: 'st2', branchId: 'B', paymentPlanId: 'p2' },
+    ];
+    return seed;
+  };
+
+  beforeEach(async () => {
+    vi.clearAllMocks();
+    db = makeDb(emptyBranchSeed());
+    (verifyAuth as any).mockResolvedValue(staff(['payroll:write', 'payroll:read']));
+    await calculate();
+    periodId = db.rows('payrollPeriods')[0].id;
+    await handler(event('POST', { action: 'approve' }, { periodId }), {} as any, () => {});
+  });
+
+  const pay = () => handler(event('POST', { action: 'pay' }, { periodId }), {} as any, () => {}) as any;
+  const salaryRows = () => db.rows('financeTransactions').filter((t) => t.categoryId === 'salary');
+
+  // Откат нормализации (`g.branchId ?? null` вместо `|| null`): доля унесла бы
+  // branchId '' и легла бы в кассу с payrollBranchKey '' — ключом, который
+  // повторная выплата читает как «строка уже закрыта целиком».
+  it('пишет обе доли с НЕПУСТЫМ ключом филиала, а их сумма равна выплате', async () => {
+    const res = await pay();
+    expect(res.statusCode).toBe(200);
+
+    const rows = salaryRows();
+    expect(rows).toHaveLength(2);
+    // 'org' — это «филиал не определён», и он обязан быть НЕПУСТЫМ: пустая
+    // строка в этом поле ложна, а не просто некрасива.
+    expect(rows.map((t) => t.payrollBranchKey).sort()).toEqual(['B', 'org']);
+    for (const t of rows) expect(t.payrollBranchKey).toBeTruthy();
+    // 50% от 10 000 с. = 5 000 с., и расходы сходятся с итогом до тыйына.
+    expect(rows.reduce((s, t) => s + t.amount, 0) * 100).toBe(db.rows('payrollPeriods')[0].totalMinor);
+
+    const second = await pay();
+    expect(second.statusCode).toBe(200);
+    expect(JSON.parse(second.body).writtenExpenses).toBe(0);
+    expect(salaryRows()).toHaveLength(2);
+  });
+
+  // Здесь потеря денег и становится видимой: с пустым ключом повтор счёл бы
+  // строку выплаченной ЦЕЛИКОМ (paidWholeLine) и не дописал бы вторую долю
+  // никогда — без единой ошибки в логах.
+  it('после частичного сбоя ДОПИСЫВАЕТ недостающую долю, а не считает строку закрытой', async () => {
+    const realTx = (adminDb.runTransaction as any).getMockImplementation();
+    let call = 0;
+    (adminDb.runTransaction as any).mockImplementation(async (fn: any) => {
+      call++;
+      // Первая доля (группа без филиала) записалась, на второй сеть моргнула.
+      if (call === 2) throw new Error('сеть моргнула');
+      return realTx(fn);
+    });
+
+    const first = await pay();
+    expect(first.statusCode).toBe(207);
+    expect(salaryRows()).toHaveLength(1);
+    expect(salaryRows()[0].payrollBranchKey).toBe('org');
+    // Период не помечен выплаченным — иначе дописывать было бы уже нечего.
+    expect(db.rows('payrollPeriods')[0].state).toBe('approved');
+
+    (adminDb.runTransaction as any).mockImplementation(realTx);
+    const second = await pay();
+    expect(second.statusCode).toBe(200);
+
+    const rows = salaryRows();
+    expect(rows).toHaveLength(2);
+    expect(rows.map((t) => t.payrollBranchKey).sort()).toEqual(['B', 'org']);
+    // Преподаватель получил всё начисленное, а не только первую долю.
+    expect(rows.reduce((s, t) => s + t.amount, 0) * 100).toBe(db.rows('payrollPeriods')[0].totalMinor);
+    expect(db.rows('payrollPeriods')[0].state).toBe('paid');
+  });
+
+  // Откат branchKeyOf (`??` вместо `||`): пустой филиал ЗАМОРОЖЕННОЙ доли дошёл
+  // бы до кассы дословно — payrollBranchKey '' и id расхода с пустым хвостом.
+  it('замороженная доля с пустым филиалом даёт ключ «org», а не пустой', async () => {
+    vi.clearAllMocks();
+    const seed: any = emptyBranchSeed();
+    // Ведомость, посчитанная ДО нормализации: доля несёт branchId '' дословно,
+    // и оживить её может только пересчёт месяца — которого может и не быть.
+    seed.payrollPeriods = [{
+      id: 'sheetOld', organizationId: 'org1', period: july, state: 'approved',
+      windowStart: '', windowEnd: '', totalMinor: 500000,
+    }];
+    seed.payrollLines = [{
+      id: 'lineOld', organizationId: 'org1', periodId: 'sheetOld', period: july,
+      teacherId: 't1', teacherName: 'Азиза', ruleId: 'rule1', source: 'rule', isManual: false,
+      computedMinor: 500000, overrideMinor: null, finalMinor: 500000,
+      branchShares: [
+        { branchId: '', weight: 600000, groupIds: ['g1'], courseId: 'c1', groupId: 'g1' },
+        { branchId: 'B', weight: 400000, groupIds: ['g2'], courseId: 'c2', groupId: 'g2' },
+      ],
+    }];
+    db = makeDb(seed);
+    (verifyAuth as any).mockResolvedValue(staff(['payroll:write', 'payroll:read']));
+
+    const res = await handler(event('POST', { action: 'pay' }, { periodId: 'sheetOld' }), {} as any, () => {}) as any;
+    expect(res.statusCode).toBe(200);
+
+    const rows = salaryRows();
+    expect(rows).toHaveLength(2);
+    expect(rows.map((t) => t.payrollBranchKey).sort()).toEqual(['B', 'org']);
+    // Хвост id — тот же ключ: пустой сегмент сделал бы id неотличимым от
+    // «строка выплачена целиком».
+    expect(rows.map((t) => t.id).sort()).toEqual(['pay_sheetOld_lineOld_B', 'pay_sheetOld_lineOld_org']);
+    expect(rows.reduce((s, t) => s + t.amount, 0)).toBe(5000);
+  });
+});
+
+/**
+ * Директор платит не «месяц целиком», а людей — по одному, по мере того как они
+ * приходят за деньгами. Раньше это был один вызов «выплатить всем», и любой
+ * другой сценарий приходилось изображать вручную в кассе.
+ *
+ * Главное свойство здесь не «расход создался», а ЧТО ОСТАЛОСЬ ПОСЛЕ: месяц
+ * закрывается только вместе с последней строкой, иначе выплата первому человеку
+ * прятала бы кнопку выплаты от остальных.
+ */
+describe('api-payroll pay — выплата выборочно, по одному преподавателю', () => {
+  let db: ReturnType<typeof makeDb>;
+  let periodId: string;
+
+  beforeEach(async () => {
+    vi.clearAllMocks();
+    db = makeDb(twoTeacherSeed());
+    (verifyAuth as any).mockResolvedValue(staff(['payroll:write', 'payroll:read']));
+    await calculate();
+    periodId = db.rows('payrollPeriods')[0].id;
+    await handler(event('POST', { action: 'approve' }, { periodId }), {} as any, () => {});
+  });
+
+  const pay = (body: any = {}) =>
+    handler(event('POST', { action: 'pay' }, { periodId, ...body }), {} as any, () => {}) as any;
+
+  const salaryRows = () =>
+    db.rows('financeTransactions')
+      .filter((t) => t.categoryId === 'salary')
+      .sort((a, b) => String(a.teacherId).localeCompare(String(b.teacherId)));
+
+  // Откат к «выплатить можно только всем»: t2 получил бы деньги, которых у
+  // директора сейчас нет, — а именно ради этого выплата и делится по людям.
+  it('платит ТОЛЬКО выбранному и оставляет месяц утверждённым', async () => {
+    const res = await pay({ teacherIds: ['t1'] });
+    expect(res.statusCode).toBe(200);
+    const body = JSON.parse(res.body);
+
+    expect(body.written).toBe(1);
+    expect(body.writtenExpenses).toBe(1);
+    // Месяц не закрыт: деньги получил один из двоих.
+    expect(body.fullyPaid).toBe(false);
+    expect(body.remainingTeacherIds).toEqual(['t2']);
+
+    // В кассе ровно один расход, и он на выбранного человека.
+    const rows = salaryRows();
+    expect(rows).toHaveLength(1);
+    expect(rows[0].teacherId).toBe('t1');
+    expect(rows[0].amount).toBe(32000);
+
+    // Состояние ведомости — approved, а не paid: пометить её выплаченной значило
+    // бы спрятать кнопку выплаты от t2 и оставить его без денег навсегда.
+    expect(body.state).toBe('approved');
+    expect(db.rows('payrollPeriods')[0].state).toBe('approved');
+  });
+
+  // Защищает вторую половину сценария: «выплатить всем» после частной выплаты
+  // обязано ДОПЛАТИТЬ остальных, а не выдать первому второй раз.
+  it('следующая выплата дописывает остальных, закрывает месяц и не платит первому дважды', async () => {
+    await pay({ teacherIds: ['t1'] });
+    const firstTxId = salaryRows()[0].id;
+
+    const res = await pay();
+    expect(res.statusCode).toBe(200);
+    const body = JSON.parse(res.body);
+
+    // Записана только строка t2; строка t1 нашлась закрытой и ушла в пропущенные.
+    expect(body.written).toBe(1);
+    expect(body.writtenExpenses).toBe(1);
+    expect(body.skipped).toBe(1);
+    expect(body.fullyPaid).toBe(true);
+    expect(body.remainingTeacherIds).toEqual([]);
+    // Последняя строка закрыта — вот теперь месяц выплачен.
+    expect(db.rows('payrollPeriods')[0].state).toBe('paid');
+
+    const rows = salaryRows();
+    expect(rows.map((t) => t.teacherId)).toEqual(['t1', 't2']);
+    expect(rows.map((t) => t.amount)).toEqual([32000, 10000]);
+    // Расход первого — тот же самый документ: детерминированный id физически не
+    // даёт создать второй, сколько бы раз ни нажали «Выплатить всем».
+    expect(rows[0].id).toBe(firstTxId);
+  });
+
+  // Молчаливый пропуск незнакомого id читался бы в интерфейсе как «выплачено»,
+  // хотя человек денег не увидел: id могли опечатать, а ведомость — пересчитать.
+  it('отказывает на незнакомом teacherId и не выдаёт денег НИКОМУ из списка', async () => {
+    const res = await pay({ teacherIds: ['t1', 'tX'] });
+    expect(res.statusCode).toBe(400);
+    // Сообщение обязано назвать виновника — иначе его не найти в списке из
+    // тридцати человек.
+    expect(JSON.parse(res.body).error).toContain('tX');
+
+    // Ни одного расхода: отказ целиком, а не «частично выплачено».
+    expect(salaryRows()).toHaveLength(0);
+    expect(db.rows('payrollPeriods')[0].state).toBe('approved');
+  });
+
+  // Штраф гасит начисление ВНУТРИ преподавателя, поэтому выплата одному человеку
+  // не должна зависеть от того, кого ещё отметили галочкой: в кассу уходит нетто.
+  it('выдаёт НЕТТО, когда у выбранного есть штраф', async () => {
+    // Ведомость нужна неутверждённая: штраф вносится до заморозки.
+    vi.clearAllMocks();
+    db = makeDb(twoTeacherSeed());
+    (verifyAuth as any).mockResolvedValue(staff(['payroll:write', 'payroll:read']));
+    await calculate();
+    const pid = db.rows('payrollPeriods')[0].id;
+    await handler(
+      event('POST', { action: 'line' }, { periodId: pid, teacherId: 't1', source: 'manual_penalty', amountMinor: 200000 }),
+      {} as any, () => {},
+    );
+    await handler(event('POST', { action: 'approve' }, { periodId: pid }), {} as any, () => {});
+
+    const res = await handler(
+      event('POST', { action: 'pay' }, { periodId: pid, teacherIds: ['t1'] }),
+      {} as any, () => {},
+    ) as any;
+    expect(res.statusCode).toBe(200);
+    const body = JSON.parse(res.body);
+
+    const rows = salaryRows();
+    // Штрафная строка расхода не порождает — она уменьшает выплату.
+    expect(rows).toHaveLength(1);
+    expect(rows[0].teacherId).toBe('t1');
+    expect(rows[0].amount).toBe(30000); // (3 200 000 − 200 000) тыйын
+    // Сумма расходов равна НЕТТО-начислению выбранного, до тыйына.
+    expect(rows.reduce((s, t) => s + t.amount, 0) * 100).toBe(3200000 - 200000);
+    expect(body.written).toBe(1);
+    expect(body.skipped).toBe(1);
+    // И второй преподаватель по-прежнему ждёт своих денег.
+    expect(body.fullyPaid).toBe(false);
+    expect(body.remainingTeacherIds).toEqual(['t2']);
+  });
+
+  // Выплата — это деньги, и утверждение ведомости остаётся её единственным
+  // разрешением: выборочность не должна была стать обходным путём.
+  it('не выплачивает выборочно неутверждённую ведомость', async () => {
+    db.set('payrollPeriods', { ...db.rows('payrollPeriods')[0], state: 'calculated' });
+    const res = await pay({ teacherIds: ['t1'] });
+    expect(res.statusCode).toBe(409);
+    expect(salaryRows()).toHaveLength(0);
+  });
+});
+
+/**
+ * «Не понятно, где смотреть историю выплат» — вопрос, на который раздел не
+ * отвечал вовсе: деньги уходили расходами в кассу и растворялись там среди
+ * аренды и рекламы.
+ *
+ * Источник истории — САМА КАССА, а не отдельный журнал: второй список рядом с
+ * кассой умел бы с ней разойтись, и тогда правдой не был бы ни один.
+ */
+describe('api-payroll payouts — история выплат', () => {
+  let db: ReturnType<typeof makeDb>;
+  let periodId: string;
+  let payoutTxId: string;
+
+  beforeEach(async () => {
+    vi.clearAllMocks();
+    db = makeDb(twoTeacherSeed());
+    (verifyAuth as any).mockResolvedValue(staff(['payroll:write', 'payroll:read']));
+    await calculate();
+    periodId = db.rows('payrollPeriods')[0].id;
+    await handler(event('POST', { action: 'approve' }, { periodId }), {} as any, () => {});
+    // Зарплата за ИЮЛЬ, выданная в АВГУСТЕ — обычный случай, а не исключение.
+    await handler(
+      event('POST', { action: 'pay' }, { periodId, teacherIds: ['t1'], date: '2026-08-05' }),
+      {} as any, () => {},
+    );
+    payoutTxId = db.rows('financeTransactions').find((t) => t.payrollLineId)!.id;
+
+    // Расход категории «Зарплата», заведённый руками в кассе: тоже выданные
+    // деньги, и прятать их нельзя — но у него нет ни ведомости, ни строки.
+    db.set('financeTransactions', {
+      id: 'cashManual', organizationId: 'org1', type: 'expense', amount: 5000,
+      date: '2026-08-20T09:00:00.000Z', categoryId: 'salary', teacherId: 't2',
+      description: 'Аванс наличными', paymentMethod: 'cash',
+    });
+    // Доход той же категории: деньги пришли, а не ушли. В историю выплат он не
+    // выплата, а ошибка на весь экран.
+    db.set('financeTransactions', {
+      id: 'salaryIncome', organizationId: 'org1', type: 'income', amount: 1000,
+      date: '2026-08-21T09:00:00.000Z', categoryId: 'salary', teacherId: 't1',
+    });
+  });
+
+  const payouts = (query: any = {}) =>
+    handler(event('GET', { action: 'payouts', ...query }), {} as any, () => {}) as any;
+
+  it('собирает расходы «Зарплаты» свежими сверху и не считает выплатой доход', async () => {
+    const res = await payouts();
+    expect(res.statusCode).toBe(200);
+    const rows = JSON.parse(res.body);
+
+    // Ровно две выплаты: доход категории «Зарплата» в историю не попал.
+    expect(rows.map((r: any) => r.id)).toEqual(['cashManual', payoutTxId]);
+    expect(rows.some((r: any) => r.id === 'salaryIncome')).toBe(false);
+
+    // Проведённая выплата: месяц берётся с ВЕДОМОСТИ, а не из даты расхода —
+    // зарплату за июль выдают в августе, и «за что заплатили» это про июль.
+    const byLine = rows[1];
+    expect(byLine.manual).toBe(false);
+    expect(byLine.periodId).toBe(periodId);
+    expect(byLine.period).toBe(july);
+    expect(byLine.teacherId).toBe('t1');
+    // Имя из orgMembers: у оффлайн-преподавателя нет документа в `users`, и без
+    // этой карты строка показывала бы голый id.
+    expect(byLine.teacherName).toBe('Азиза');
+    expect(byLine.amountMinor).toBe(3200000);
+
+    // Ручной расход: денег он выдал столько же честно, но ведомости за ним нет.
+    const manual = rows[0];
+    expect(manual.manual).toBe(true);
+    expect(manual.periodId).toBeNull();
+    expect(manual.period).toBeNull();
+    expect(manual.teacherId).toBe('t2');
+    expect(manual.teacherName).toBe('Бакыт');
+    expect(manual.amountMinor).toBe(500000);
+    expect(manual.paymentMethod).toBe('cash');
+    expect(manual.description).toBe('Аванс наличными');
+  });
+
+  it('фильтрует по преподавателю и по месяцу начисления', async () => {
+    // «Сколько я отдал этому человеку» — вопрос из карточки преподавателя.
+    const byTeacher = JSON.parse((await payouts({ teacherId: 't2' })).body);
+    expect(byTeacher.map((r: any) => r.id)).toEqual(['cashManual']);
+
+    // Фильтр по месяцу — это месяц НАЧИСЛЕНИЯ: ручной расход без ведомости в
+    // него не попадает, потому что неизвестно, за что он.
+    const byPeriod = JSON.parse((await payouts({ period: july })).body);
+    expect(byPeriod.map((r: any) => r.id)).toEqual([payoutTxId]);
+  });
+
+  it('требует payroll:read — история выплат это зарплатные данные', async () => {
+    (verifyAuth as any).mockResolvedValue(staff(['finances:read']));
+    expect((await payouts()).statusCode).toBe(403);
+  });
+});
+
+/**
+ * Экран зарплаты отвечает на вопрос «сколько и за что» ТЕМ ЖЕ кодом, что и
+ * деньги. Разбивка, которая не сходится со строкой ведомости и с расходами в
+ * кассе, бесполезна — именно ею спор с преподавателем и заканчивается.
+ */
+describe('api-payroll overview — экран не расходится с расчётом и выплатой', () => {
+  let db: ReturnType<typeof makeDb>;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    (verifyAuth as any).mockResolvedValue(staff(['payroll:write', 'payroll:read']));
+  });
+
+  const overview = (period = july) =>
+    handler(event('GET', { action: 'overview', period }), {} as any, () => {}) as any;
+  const teacherOf = (res: any, teacherId: string) =>
+    JSON.parse(res.body).teachers.find((t: any) => t.teacherId === teacherId);
+
+  // Откат к наивной карте по teacherId: побеждал бы ПОСЛЕДНИЙ документ в
+  // порядке выборки, то есть здесь — старая ставка. Экран показывал бы 10 000,
+  // а деньги считались бы по 40 000: одна строка, два разных числа.
+  it('при двух ставках показывает ТУ ЖЕ, по которой посчитан предпросмотр', async () => {
+    const seed: any = baseSeed();
+    // Порядок подобран так, чтобы наивная карта выбрала СТАРУЮ ставку:
+    // resolveRules берёт ту, которую правили последней.
+    seed.compensationRules = [
+      {
+        id: 'ruleFresh', organizationId: 'org1', teacherId: 't1',
+        updatedAt: '2026-08-01T10:00:00.000Z',
+        components: [{ kind: 'salary', amountMinor: 4000000 }],
+      },
+      {
+        id: 'ruleStale', organizationId: 'org1', teacherId: 't1',
+        updatedAt: '2026-01-01T10:00:00.000Z',
+        components: [{ kind: 'salary', amountMinor: 1000000 }],
+      },
+    ];
+    db = makeDb(seed);
+
+    const res = await overview();
+    expect(res.statusCode).toBe(200);
+    const t1 = teacherOf(res, 't1');
+
+    expect(t1.rule.id).toBe('ruleFresh');
+    expect(t1.rule.components[0].amountMinor).toBe(4000000);
+    // Карточка ставки и число под ней — из одного источника.
+    expect(t1.previewMinor).toBe(4000000);
+  });
+
+  // Откат к «досчитать разбивку по сегодняшним группам»: экран показал бы две
+  // доли (A и B) там, где касса создаст ОДИН расход без филиала.
+  it('у посчитанной строки без branchShares даёт одну долю «без филиала» — ровно то, что сделает выплата', async () => {
+    const seed: any = baseSeed();
+    seed.groups = [
+      { id: 'g1', organizationId: 'org1', name: 'Группа A', courseId: 'c1', teacherIds: ['t1'], studentIds: ['st1'], branchId: 'A' },
+      { id: 'g2', organizationId: 'org1', name: 'Группа B', courseId: 'c2', teacherIds: ['t1'], studentIds: ['st2'], branchId: 'B' },
+    ];
+    seed.financeTransactions = [
+      { id: 'incA', organizationId: 'org1', type: 'income', amount: 6000, date: local(2026, 6, 10), categoryId: 'tuition', groupId: 'g1', courseId: 'c1', studentId: 'st1', branchId: 'A', paymentPlanId: 'p1' },
+      { id: 'incB', organizationId: 'org1', type: 'income', amount: 4000, date: local(2026, 6, 12), categoryId: 'tuition', groupId: 'g2', courseId: 'c2', studentId: 'st2', branchId: 'B', paymentPlanId: 'p2' },
+    ];
+    // Ведомость, посчитанная ДО перехода на разложение: строка branchShares не
+    // несёт вовсе.
+    seed.payrollPeriods = [{
+      id: 'sheetJuly', organizationId: 'org1', period: july, state: 'calculated',
+      windowStart: '', windowEnd: '', totalMinor: 500000,
+    }];
+    seed.payrollLines = [{
+      id: 'lineNoShares', organizationId: 'org1', periodId: 'sheetJuly', period: july,
+      teacherId: 't1', teacherName: 'Азиза', ruleId: 'rule1', source: 'rule', isManual: false,
+      computedMinor: 500000, overrideMinor: null, finalMinor: 500000,
+    }];
+    db = makeDb(seed);
+
+    const res = await overview();
+    expect(res.statusCode).toBe(200);
+    const t1 = teacherOf(res, 't1');
+
+    expect(t1.byBranch).toHaveLength(1);
+    expect(t1.byBranch[0].branchId).toBeNull();
+    expect(t1.byBranch[0].amountMinor).toBe(500000);
+
+    // И это не «удобное» число: выплата действительно создаёт один расход без
+    // филиала — экран и касса обязаны говорить одно и то же.
+    await handler(event('POST', { action: 'approve' }, { periodId: 'sheetJuly' }), {} as any, () => {});
+    const paid = await handler(event('POST', { action: 'pay' }, { periodId: 'sheetJuly' }), {} as any, () => {}) as any;
+    expect(paid.statusCode).toBe(200);
+
+    const salary = db.rows('financeTransactions').filter((t) => t.categoryId === 'salary');
+    expect(salary).toHaveLength(1);
+    expect(salary[0].branchId).toBeNull();
+    expect(salary[0].amount * 100).toBe(t1.byBranch[0].amountMinor);
+  });
+
+  // «Сколько ему ещё нужно отдать» экран обязан брать из КАССЫ, а не из
+  // состояния ведомости: после выплаты одному месяц остаётся утверждённым, и
+  // вывести остаток из «выплачено/не выплачено» невозможно в принципе.
+  it('после выплаты одному показывает выданное ему и остаток по остальным', async () => {
+    db = makeDb(twoTeacherSeed());
+    await calculate();
+    const periodId = db.rows('payrollPeriods')[0].id;
+    await handler(event('POST', { action: 'approve' }, { periodId }), {} as any, () => {});
+    await handler(event('POST', { action: 'pay' }, { periodId, teacherIds: ['t1'] }), {} as any, () => {});
+
+    const res = await overview();
+    expect(res.statusCode).toBe(200);
+
+    // Получивший деньги: должны были столько же, сколько выдали, — остаток ноль.
+    const t1 = teacherOf(res, 't1');
+    expect(t1.payableMinor).toBe(3200000);
+    expect(t1.paidMinor).toBe(3200000);
+    expect(t1.remainingMinor).toBe(0);
+
+    // Не получивший: ему должны ровно всё начисленное.
+    const t2 = teacherOf(res, 't2');
+    expect(t2.payableMinor).toBe(1000000);
+    expect(t2.paidMinor).toBe(0);
+    expect(t2.remainingMinor).toBe(t2.payableMinor);
+
+    // И ведомость всё ещё утверждена — кнопки выплаты обязаны остаться живыми.
+    expect(JSON.parse(res.body).sheet.state).toBe('approved');
   });
 });
 

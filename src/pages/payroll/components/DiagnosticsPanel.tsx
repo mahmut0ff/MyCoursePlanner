@@ -30,7 +30,7 @@ const CODE_TITLES: Record<string, { key: string; fallback: string }> = {
   // филиальными, и пропускать по этой причине стало нечего. Заголовок остаётся
   // ради уже замороженных ведомостей: они несут этот код навсегда, а без записи
   // директор увидел бы в них сырое `rule_org_wide_skipped`.
-  rule_org_wide_skipped: { key: 'payroll.diagOrgWideSkipped', fallback: 'Ставки без филиала не вошли в ведомость' },
+  rule_org_wide_skipped: { key: 'payroll.diagOrgWideSkipped', fallback: 'Ставки без филиала не вошли в расчёт' },
 };
 
 /**
@@ -93,7 +93,7 @@ const DiagnosticsPanel: React.FC<Props> = ({ diagnostics, teacherName }) => {
           <p className="text-xs text-amber-800/80 dark:text-amber-400/80 mt-0.5">
             {t(
               'payroll.diagnosticsHint',
-              'Эти данные не попали в расчёт. Пока они не исправлены, суммы в ведомости ниже фактических.',
+              'Эти данные не попали в расчёт. Пока они не исправлены, суммы ниже фактических.',
             )}
           </p>
 

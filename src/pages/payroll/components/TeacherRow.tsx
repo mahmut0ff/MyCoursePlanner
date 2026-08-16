@@ -2,20 +2,24 @@ import React from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   Building2,
+  CheckCircle2,
   ChevronDown,
+  History,
   Minus,
   Pencil,
   Plus,
   Trash2,
   UserRound,
   Users,
+  Wallet,
 } from 'lucide-react';
-import type { PayComponent, PayrollLine } from '../../../types';
+import type { PayComponent, PayrollLine, PayrollPayout } from '../../../types';
 import {
   describeComponents,
   formatMinor,
   formatMinorSigned,
   formatPercentBp,
+  formatPeriodLabel,
   type Translate,
 } from '../payrollFormat';
 
@@ -66,6 +70,12 @@ export interface OverviewTeacher {
   baseMinor: number;
   previewMinor: number | null;
   previewComponents: { kind: string; earnedMinor: number; basis?: Record<string, any> }[];
+  /** Сколько всего уйдёт из кассы по этому месяцу — уже после погашения штрафов. */
+  payableMinor: number;
+  /** Сколько по этому месяцу ему уже выдано (по кассе, а не по ведомости). */
+  paidMinor: number;
+  /** Остаток: payable минус paid, не меньше нуля. */
+  remainingMinor: number;
   line: PayrollLine | null;
   manualLines: PayrollLine[];
 }
@@ -79,6 +89,13 @@ interface Props {
   frozen: boolean;
   /** Премию и штраф некуда записать, пока ведомость месяца не рассчитана. */
   canAddManual: boolean;
+  /** Можно ли выплатить именно этому человеку прямо сейчас (права + утверждённый месяц). */
+  canPayTeacher: boolean;
+  /** Почему выплатить нельзя — одной фразой под серой кнопкой. Пусто, когда можно. */
+  payoutHint: string;
+  /** Выплаты ЭТОМУ преподавателю: когда и сколько выдали. Свежие сверху — так их отдаёт сервер. */
+  payouts: PayrollPayout[];
+  onPayTeacher: () => void;
   onEditRate: () => void;
   onAddManual: (source: 'manual_bonus' | 'manual_penalty') => void;
   onEditAmount: (line: PayrollLine) => void;
@@ -114,6 +131,19 @@ const describeBasis = (
 };
 
 /**
+ * Дата выплаты по-русски: «14 авг. 2026».
+ *
+ * В кассе дата лежит и как 'YYYY-MM-DD', и как полная ISO-метка (у старых
+ * расходов) — обе разбирает Date, а нераспознанное показываем как есть: сырая
+ * строка честнее пустоты на месте выданных денег.
+ */
+const formatPayoutDate = (raw: string): string => {
+  const date = new Date(raw);
+  if (Number.isNaN(date.getTime())) return raw || '—';
+  return date.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short', year: 'numeric' });
+};
+
+/**
  * Преподаватель как строка ведомости и как раскрывающаяся карточка.
  *
  * Свёрнутый вид отвечает на «сколько ему»; раскрытый — на «почему столько»:
@@ -122,6 +152,7 @@ const describeBasis = (
  */
 const TeacherRow: React.FC<Props> = ({
   teacher, expanded, onToggle, canWrite, canDeleteLine, frozen, canAddManual,
+  canPayTeacher, payoutHint, payouts, onPayTeacher,
   onEditRate, onAddManual, onEditAmount, onDeleteLine,
 }) => {
   const { t } = useTranslation();
@@ -146,6 +177,20 @@ const TeacherRow: React.FC<Props> = ({
    */
   const byBranch = teacher.byBranch ?? [];
   const showByBranch = byBranch.length > 1;
+
+  /**
+   * Деньги месяца. «Выдано» и «Осталось» считает сервер по кассе, поэтому здесь
+   * их только читают: остаток, посчитанный на клиенте из начисления, разошёлся бы
+   * с реальными расходами ровно в тот момент, когда часть денег уже выдали.
+   */
+  const payableMinor = teacher.payableMinor ?? 0;
+  const paidMinor = teacher.paidMinor ?? 0;
+  const remainingMinor = teacher.remainingMinor ?? 0;
+  // Блок про деньги нужен, только когда деньги есть: у преподавателя без
+  // начислений он был бы строкой нулей и учил бы пропускать этот блок вообще.
+  const showMoney = payableMinor > 0 || paidMinor > 0;
+  // История приходит отдельным запросом и в первый кадр может не успеть.
+  const teacherPayouts = payouts ?? [];
 
   return (
     <div className="border-b border-slate-100 dark:border-slate-700/50 last:border-0">
@@ -205,11 +250,77 @@ const TeacherRow: React.FC<Props> = ({
               {formatMinorSigned(manualTotal)}
             </p>
           )}
+          {/* Выдано и остаток — прямо в свёрнутой строке: «кому ещё должен» это
+              вопрос по всему списку сразу, и раскрывать ради него каждого — не ответ.
+              Пока не выдано ничего, строка молчит: нулём здесь сказать нечего. */}
+          {paidMinor > 0 && (
+            <>
+              <p className="text-[11px] whitespace-nowrap text-emerald-600 dark:text-emerald-400">
+                {t('payroll.paidOut', 'Выдано')} {formatMinor(paidMinor)}
+              </p>
+              {remainingMinor > 0 && (
+                <p className="text-[11px] whitespace-nowrap text-amber-600 dark:text-amber-400">
+                  {t('payroll.remaining', 'Осталось выдать')} {formatMinor(remainingMinor)}
+                </p>
+              )}
+            </>
+          )}
         </div>
       </button>
 
       {expanded && (
         <div className="px-4 sm:px-5 pb-5 space-y-4">
+          {/* ── Деньги: сколько выдано и сколько ещё должны ── */}
+          {showMoney && (
+            <div className="rounded-xl bg-slate-50 dark:bg-slate-900/40 p-4 space-y-2">
+              <div className="flex items-baseline justify-between gap-3">
+                <span className="text-sm text-slate-600 dark:text-slate-300 inline-flex items-center gap-1.5">
+                  <Wallet className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                  {t('payroll.paidOut', 'Выдано')}
+                </span>
+                <span className="text-sm font-medium text-slate-900 dark:text-white whitespace-nowrap">
+                  {formatMinor(paidMinor)}
+                </span>
+              </div>
+
+              {remainingMinor > 0 ? (
+                <div className="flex items-baseline justify-between gap-3">
+                  <span className="text-sm text-slate-600 dark:text-slate-300">
+                    {t('payroll.remaining', 'Осталось выдать')}
+                  </span>
+                  <span className="text-sm font-bold text-amber-600 dark:text-amber-400 whitespace-nowrap">
+                    {formatMinor(remainingMinor)}
+                  </span>
+                </div>
+              ) : paidMinor > 0 ? (
+                <p className="text-sm font-medium text-emerald-600 dark:text-emerald-400 inline-flex items-center gap-1.5">
+                  <CheckCircle2 className="w-4 h-4 shrink-0" />
+                  {t('payroll.allPaid', 'Всё выдано')}
+                </p>
+              ) : null}
+
+              {/* Выплата по одному человеку. Кнопка остаётся и после того, как
+                  часть людей закрыта: месяц переходит в «выплачено» только на
+                  последней строке, и до тех пор платить есть кому. */}
+              {remainingMinor > 0 && (
+                <div className="pt-1">
+                  <button
+                    onClick={onPayTeacher}
+                    disabled={!canPayTeacher}
+                    className="px-4 py-2 rounded-xl text-sm font-bold inline-flex items-center gap-2 transition-colors bg-emerald-600 hover:bg-emerald-700 text-white disabled:opacity-50 disabled:hover:bg-emerald-600"
+                  >
+                    <Wallet className="w-4 h-4" />
+                    {t('payroll.payOne', 'Выплатить')}
+                  </button>
+                  {/* Серая кнопка сама не объясняет, почему она серая. */}
+                  {payoutHint && (
+                    <p className="text-[11px] text-slate-500 mt-1.5">{payoutHint}</p>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+
           {/* ── Как получилась сумма ── */}
           <div className="rounded-xl bg-slate-50 dark:bg-slate-900/40 p-4 space-y-2">
             <div className="flex items-center justify-between gap-3">
@@ -414,6 +525,35 @@ const TeacherRow: React.FC<Props> = ({
                   <Pencil className="w-3.5 h-3.5" />{t('payroll.editAmount', 'Изменить сумму')}
                 </button>
               )}
+            </div>
+          )}
+
+          {/* ── Выплаты этому преподавателю ── */}
+          {teacherPayouts.length > 0 && (
+            <div className="rounded-xl bg-slate-50 dark:bg-slate-900/40 p-4 space-y-2">
+              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide inline-flex items-center gap-1.5">
+                <History className="w-3.5 h-3.5" />
+                {t('payroll.historyTeacher', 'Выплаты этому преподавателю')}
+              </p>
+              <ul className="space-y-1.5">
+                {teacherPayouts.map(payout => (
+                  <li key={payout.id} className="flex items-baseline justify-between gap-3">
+                    <span className="text-sm text-slate-600 dark:text-slate-300 min-w-0 truncate">
+                      {formatPayoutDate(payout.date)}
+                      {/* Месяц НАЧИСЛЕНИЯ, а не выдачи: зарплату за июль выдают в
+                          августе, и без этой подписи выплата уезжает не в тот месяц. */}
+                      <span className="text-[11px] text-slate-400 ml-1.5">
+                        {payout.period
+                          ? t('payroll.historyForPeriod', 'за {{period}}', { period: formatPeriodLabel(payout.period) })
+                          : t('payroll.historyManual', 'заведено вручную в кассе')}
+                      </span>
+                    </span>
+                    <span className="text-sm font-medium text-slate-900 dark:text-white whitespace-nowrap">
+                      {formatMinor(payout.amountMinor)}
+                    </span>
+                  </li>
+                ))}
+              </ul>
             </div>
           )}
         </div>

@@ -18,6 +18,7 @@ vi.mock('../utils/auth', async (importOriginal) => {
 import { adminDb, getDocsByIds } from '../utils/firebase-admin';
 import { verifyAuth } from '../utils/auth';
 import { handler as rulesHandler } from '../api-payroll-rules';
+import { ensureTeacherRate } from '../utils/payroll-default-rate';
 
 const event = (method: string, query?: any, body?: any) => ({
   httpMethod: method,
@@ -73,17 +74,43 @@ function seededQuery(rows: any[]) {
  * Wires the collection surface this endpoint touches.
  *  - compensationRules: seeded rules + .doc() for the canonical rate document
  *  - orgMembers/{org}/members/{teacher}: membership existence
+ *  - orgMembers/{org}/members: весь состав организации (раздача умолчания)
+ *  - organizations/{org}: ЖИВОЙ документ — update() пишет в него, get() читает из
+ *    него же, поэтому «сохранили умолчание и перечитали» проверяется на одних
+ *    данных, а не на двух независимо засеянных копиях.
  * The batch is executed for real against doc stubs, so the self-healing delete of
  * legacy duplicates is observable rather than assumed.
  */
-function wire(opts: { rules?: any[]; member?: boolean; ruleDoc?: any } = {}) {
+function wire(opts: {
+  rules?: any[];
+  member?: boolean;
+  ruleDoc?: any;
+  /** Состав организации для ?action=applyDefault: role/roles/status как в базе. */
+  members?: any[];
+  /** Поле payrollDefaultRate документа организации; undefined — умолчания нет. */
+  defaultRate?: any;
+  /** Чем падает create() — провизионирование не имеет права уронить заведение. */
+  createFails?: any;
+} = {}) {
   const rules = opts.rules || [];
   const memberExists = opts.member !== false;
+  const members = opts.members || [];
 
   const sets: any[] = [];
+  const creates: any[] = [];
   const batchDeletes: string[] = [];
+  const orgUpdates: any[] = [];
   const deleteSpy = vi.fn().mockResolvedValue(undefined);
   const commitSpy = vi.fn().mockResolvedValue(undefined);
+  /**
+   * Размер КАЖДОГО батча по отдельности, а не суммарное число операций.
+   * Firestore роняет батч на 501 операции целиком, поэтому «всего 480 записей»
+   * ничего не говорит: важно, что ни один батч не перевалил лимит.
+   */
+  const batches: Array<{ ops: number }> = [];
+
+  const orgDoc: Record<string, any> = {};
+  if (opts.defaultRate !== undefined) orgDoc.payrollDefaultRate = opts.defaultRate;
 
   const rulesQuery = seededQuery(rules);
 
@@ -94,17 +121,36 @@ function wire(opts: { rules?: any[]; member?: boolean; ruleDoc?: any } = {}) {
       return { exists: !!seeded, id, data: () => seeded };
     }),
     delete: deleteSpy,
+    // Провизионирование пишет create(), а не set(): параллельное заведение того же
+    // человека не должно затереть ставку, которую уже назначили руками.
+    create: vi.fn(async (data: any) => {
+      if (opts.createFails) throw opts.createFails;
+      creates.push({ id, ...data });
+    }),
   });
 
   (adminDb.collection as any).mockImplementation((name: string) => {
     if (name === 'compensationRules') {
       return { ...rulesQuery.q, doc: vi.fn((id?: string) => ruleDocRef(id || 'auto1')) };
     }
+    if (name === 'organizations') {
+      return {
+        doc: vi.fn(() => ({
+          get: vi.fn(async () => ({ exists: true, data: () => orgDoc })),
+          update: vi.fn(async (patch: any) => { orgUpdates.push(patch); Object.assign(orgDoc, patch); }),
+        })),
+      };
+    }
     if (name === 'orgMembers') {
       return {
         doc: vi.fn(() => ({
           collection: vi.fn(() => ({
             doc: vi.fn(() => ({ get: vi.fn().mockResolvedValue({ exists: memberExists }) })),
+            get: vi.fn(async () => ({
+              size: members.length,
+              empty: members.length === 0,
+              docs: members.map(m => ({ id: m.id, data: () => m })),
+            })),
           })),
         })),
       };
@@ -112,15 +158,19 @@ function wire(opts: { rules?: any[]; member?: boolean; ruleDoc?: any } = {}) {
     return rulesQuery.q;
   });
 
-  (adminDb.batch as any).mockImplementation(() => ({
-    set: (ref: any, data: any) => { sets.push({ id: ref.id, ...data }); },
-    delete: (ref: any) => { batchDeletes.push(ref.id); },
-    commit: commitSpy,
-  }));
+  (adminDb.batch as any).mockImplementation(() => {
+    const current = { ops: 0 };
+    batches.push(current);
+    return {
+      set: (ref: any, data: any) => { current.ops++; sets.push({ id: ref.id, ...data }); },
+      delete: (ref: any) => { current.ops++; batchDeletes.push(ref.id); },
+      commit: commitSpy,
+    };
+  });
 
   (getDocsByIds as any).mockResolvedValue({});
 
-  return { sets, batchDeletes, deleteSpy, commitSpy, rulesClauses: rulesQuery.clauses };
+  return { sets, creates, batchDeletes, orgUpdates, orgDoc, deleteSpy, commitSpy, batches, rulesClauses: rulesQuery.clauses };
 }
 
 const validBody = (extra: any = {}) => ({
@@ -130,6 +180,21 @@ const validBody = (extra: any = {}) => ({
 });
 
 const WRITE = ['payroll:write'];
+
+/** Умолчание организации — «как мы обычно платим»: двадцать процентов кассы. */
+const DEFAULT_COMPONENTS = [{ kind: 'percent_revenue', percentBp: 2000, base: 'collected' }];
+const DEFAULT_RATE = {
+  components: DEFAULT_COMPONENTS,
+  updatedAt: '2026-08-01T00:00:00.000Z',
+  updatedBy: 'director',
+};
+
+/**
+ * Мёртвая ставка прежней модели. Движок такие не начисляет, поэтому человек с
+ * ней получает ноль ровно как человек без ставки — в этой организации три ставки
+ * из четырёх именно такие, так что случай не гипотетический.
+ */
+const DEAD_COMPONENTS = [{ kind: 'per_student', amountMinor: 100000 }];
 
 describe('api-payroll-rules POST — валидация двух видов оплаты', () => {
   beforeEach(() => vi.clearAllMocks());
@@ -391,6 +456,51 @@ describe('api-payroll-rules DELETE', () => {
     expect(deleteSpy).toHaveBeenCalled();
   });
 
+  // «Убрать ставку» значит «этому человеку больше не начислять». Откат правки
+  // (удаление одного документа по id) оставил бы филиального двойника, и он
+  // продолжил бы начислять деньги при том, что в интерфейсе ставка убрана.
+  const duplicatedRules = () => [
+    { id: rateId('t1'), organizationId: 'org1', teacherId: 't1', components: [] },
+    { id: 'rate_org1_t1_alay', organizationId: 'org1', teacherId: 't1', branchId: 'alay', components: [] },
+    { id: rateId('t2'), organizationId: 'org1', teacherId: 't2', components: [] },
+  ];
+
+  it('сносит ВСЕ ставки преподавателя, а не только документ по id', async () => {
+    (verifyAuth as any).mockResolvedValue(staff(DELETE_GRANT));
+    const { batchDeletes, deleteSpy } = wire({ rules: duplicatedRules() });
+
+    const res: any = await rulesHandler(event('DELETE', { id: rateId('t1') }), {} as any, () => {});
+    expect(res.statusCode).toBe(200);
+    const body = JSON.parse(res.body);
+    expect(body.deleted).toBe(true);
+    expect(body.alsoDeleted).toBe(1);
+    // Оба документа ушли одним батчем; одиночного удаления не было.
+    expect(batchDeletes.sort()).toEqual(['rate_org1_t1_alay', rateId('t1')].sort());
+    expect(deleteSpy).not.toHaveBeenCalled();
+    // Чужая ставка не тронута: граница — преподаватель, а не организация целиком.
+    expect(batchDeletes).not.toContain(rateId('t2'));
+  });
+
+  it('удаление ЛЕГАСИ-двойника уносит и каноническую ставку', async () => {
+    (verifyAuth as any).mockResolvedValue(staff(DELETE_GRANT));
+    const { batchDeletes } = wire({ rules: duplicatedRules() });
+
+    // Директор видит в списке филиальный документ и снимает именно его. Оставить
+    // канонический значило бы и дальше платить по «убранной» ставке.
+    const res: any = await rulesHandler(event('DELETE', { id: 'rate_org1_t1_alay' }), {} as any, () => {});
+    expect(res.statusCode).toBe(200);
+    expect(JSON.parse(res.body).alsoDeleted).toBe(1);
+    expect(batchDeletes.sort()).toEqual(['rate_org1_t1_alay', rateId('t1')].sort());
+  });
+
+  it('ищет двойников только равенствами по организации и преподавателю', async () => {
+    (verifyAuth as any).mockResolvedValue(staff(DELETE_GRANT));
+    const { rulesClauses } = wire({ rules: duplicatedRules() });
+    await rulesHandler(event('DELETE', { id: rateId('t1') }), {} as any, () => {});
+    expect(rulesClauses).toContainEqual(['organizationId', 'org1']);
+    expect(rulesClauses).toContainEqual(['teacherId', 't1']);
+  });
+
   it('требует payroll:delete — payroll:write недостаточно', async () => {
     (verifyAuth as any).mockResolvedValue(staff(WRITE));
     const { deleteSpy } = wire({ ruleDoc: rule });
@@ -445,6 +555,486 @@ describe('api-payroll-rules GET', () => {
     wire({ rules: rows });
     const res: any = await rulesHandler(event('GET'), {} as any, () => {});
     expect(res.statusCode).toBe(403);
+  });
+});
+
+describe('api-payroll-rules ?action=default — умолчание организации', () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it('до первой настройки отдаёт default: null — это состояние, а не ошибка', async () => {
+    (verifyAuth as any).mockResolvedValue(staff(['payroll:read']));
+    wire();
+    const res: any = await rulesHandler(event('GET', { action: 'default' }), {} as any, () => {});
+    // Интерфейс по этому null говорит вслух «не задана — новые преподаватели
+    // начисляются нулём». Ответь ручка 404 или списком ставок — сказать было бы нечего.
+    expect(res.statusCode).toBe(200);
+    expect(JSON.parse(res.body).default).toBeNull();
+  });
+
+  it('сохранённое умолчание перечитывается тем же GET', async () => {
+    (verifyAuth as any).mockResolvedValue(staff(['payroll:read', 'payroll:write']));
+    wire();
+
+    const saved: any = await rulesHandler(event('POST', { action: 'default' }, {
+      components: [{ kind: 'percent_revenue', percentBp: 2000 }],
+    }), {} as any, () => {});
+    expect(saved.statusCode).toBe(200);
+
+    const res: any = await rulesHandler(event('GET', { action: 'default' }), {} as any, () => {});
+    const def = JSON.parse(res.body).default;
+    // Нормализованная оплата, а не присланная: у процента проставлена база.
+    expect(def.components).toEqual([{ kind: 'percent_revenue', percentBp: 2000, base: 'collected' }]);
+    expect(def.updatedBy).toBe('u1');
+    expect(def.updatedAt).toBeTruthy();
+  });
+
+  it('умолчание кладётся полем payrollDefaultRate документа организации', async () => {
+    (verifyAuth as any).mockResolvedValue(staff(WRITE));
+    const { orgUpdates, orgDoc } = wire();
+    const res: any = await rulesHandler(event('POST', { action: 'default' }, {
+      components: [{ kind: 'salary', amountMinor: 5000000 }],
+    }), {} as any, () => {});
+
+    expect(res.statusCode).toBe(200);
+    expect(orgUpdates).toHaveLength(1);
+    // Настройка организации, а не отдельная сущность: коллекции под один объект нет.
+    expect(orgDoc.payrollDefaultRate.components).toEqual([{ kind: 'salary', amountMinor: 5000000 }]);
+    expect(orgDoc.payrollDefaultRate.updatedBy).toBe('u1');
+  });
+
+  it('валидирует оплату ровно как обычную ставку — иначе умолчание раздало бы мусор', async () => {
+    (verifyAuth as any).mockResolvedValue(staff(WRITE));
+    const { orgUpdates } = wire();
+
+    const bad = [
+      { components: [{ kind: 'percent_revenue', percentBp: 0, base: 'collected' }] },
+      { components: [{ kind: 'percent_revenue', percentBp: 10001, base: 'collected' }] },
+      { components: [{ kind: 'percent_revenue', percentBp: 20.5, base: 'collected' }] },
+      { components: [] },
+      { components: DEAD_COMPONENTS },                       // удалённый вид оплаты
+      { components: [{ kind: 'salary', amountMinor: 0 }] },
+      {},                                                    // components вообще нет
+    ];
+    for (const body of bad) {
+      const res: any = await rulesHandler(event('POST', { action: 'default' }, body), {} as any, () => {});
+      expect(res.statusCode).toBe(400);
+    }
+    // Ни одна невалидная попытка не оседает в документе организации.
+    expect(orgUpdates).toHaveLength(0);
+  });
+
+  it('components: null убирает умолчание — новые преподаватели снова заводятся без ставки', async () => {
+    (verifyAuth as any).mockResolvedValue(staff(['payroll:read', 'payroll:write']));
+    const { orgDoc } = wire({ defaultRate: DEFAULT_RATE });
+
+    const res: any = await rulesHandler(event('POST', { action: 'default' }, { components: null }), {} as any, () => {});
+    expect(res.statusCode).toBe(200);
+    expect(JSON.parse(res.body).cleared).toBe(true);
+    expect(orgDoc.payrollDefaultRate).toBeNull();
+
+    const after: any = await rulesHandler(event('GET', { action: 'default' }), {} as any, () => {});
+    expect(JSON.parse(after.body).default).toBeNull();
+  });
+
+  it('мёртвое умолчание прежнего вида читается как отсутствующее', async () => {
+    (verifyAuth as any).mockResolvedValue(staff(['payroll:read']));
+    wire({ defaultRate: { components: DEAD_COMPONENTS, updatedBy: 'director' } });
+    const res: any = await rulesHandler(event('GET', { action: 'default' }), {} as any, () => {});
+    // Показать такое умолчание как рабочее значило бы обещать деньги, которых
+    // движок не начислит: раздавать по нему нечего.
+    expect(JSON.parse(res.body).default).toBeNull();
+  });
+
+  it('требует payroll:write на запись и payroll:read на чтение', async () => {
+    (verifyAuth as any).mockResolvedValue(staff(['payroll:read']));
+    const { orgUpdates } = wire();
+    const write: any = await rulesHandler(event('POST', { action: 'default' }, {
+      components: DEFAULT_COMPONENTS,
+    }), {} as any, () => {});
+    expect(write.statusCode).toBe(403);
+    expect(orgUpdates).toHaveLength(0);
+
+    (verifyAuth as any).mockResolvedValue(staff(['finances:read']));
+    const read: any = await rulesHandler(event('GET', { action: 'default' }), {} as any, () => {});
+    expect(read.statusCode).toBe(403);
+  });
+});
+
+describe('api-payroll-rules ?action=applyDefault — разовая раздача умолчания', () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  /**
+   * Состав организации. t2 совмещает менеджера с преподаванием — раздача обязана
+   * видеть его по roles[], а не только по основной роли.
+   *
+   * Статусы здесь РЕАЛЬНЫЕ — те, что пишет код: увольнение ставит 'removed'
+   * (api-memberships:391), уход по своей воле — 'left' (api-memberships:300,
+   * api-users:120), отчисление — 'expelled', заявка на вступление — 'pending'
+   * (join-approvals:153). Значения 'inactive' в базе нет ни у одного документа:
+   * его не пишет ни один путь. Пока в сиде стоял именно 'inactive', проверка
+   * «ушедших не трогаем» была ложно-зелёной — чёрный список
+   * `status !== 'inactive'` пропускал их всех до единого.
+   *
+   * У t1 поля статуса нет вовсе — так выглядят членства прежних лет.
+   */
+  const membersSeed = () => ([
+    { id: 't1', role: 'teacher' },                                   // без ставки
+    { id: 't2', role: 'manager', roles: ['manager', 'teacher'] },    // живая ставка
+    { id: 't3', role: 'teacher' },                                   // мёртвая ставка
+    { id: 's1', role: 'student' },
+    { id: 'm1', role: 'manager' },
+    { id: 'fired', role: 'teacher', status: 'removed' },             // уволен
+    { id: 'quit', role: 'teacher', status: 'left' },                 // ушёл сам
+    // Отчисление ставит 'expelled' по ОСНОВНОЙ роли (api-memberships:391),
+    // поэтому документ с таким статусом и преподавательской ролью — это
+    // студент-совместитель. Роль teacher у него остаётся, и раздача обязана
+    // пройти мимо: человек в организации больше не работает.
+    { id: 'expelled', role: 'student', roles: ['student', 'teacher'], status: 'expelled' },
+    { id: 'applicant', role: 'teacher', status: 'pending' },         // заявка, ещё не принят
+  ]);
+
+  /** У t3 ставка прежней модели, да ещё и филиальным двойником — обе мертвы. */
+  const rulesSeed = () => ([
+    { id: rateId('t2'), organizationId: 'org1', teacherId: 't2', components: [{ kind: 'salary', amountMinor: 5000000 }] },
+    { id: 'rate_org1_t3_alay', organizationId: 'org1', teacherId: 't3', branchId: 'alay', components: DEAD_COMPONENTS },
+  ]);
+
+  /**
+   * Два документа одного человека: свежий МЁРТВЫЙ (прежний вид оплаты, поздний
+   * updatedAt) и старый ЖИВОЙ. Начисляют по одному — победителю resolveRules,
+   * то есть по свежему, — значит денег преподаватель не увидит, хотя «живая
+   * ставка у него есть».
+   */
+  const splitRules = () => ([
+    { id: 'rate_org1_t9_alay', organizationId: 'org1', teacherId: 't9', branchId: 'alay',
+      components: DEAD_COMPONENTS, updatedAt: '2026-08-10T00:00:00.000Z' },
+    { id: 'legacyDated_t9', organizationId: 'org1', teacherId: 't9',
+      components: DEFAULT_COMPONENTS, updatedAt: '2026-01-05T00:00:00.000Z' },
+  ]);
+
+  it('без заданного умолчания отказывает — раздавать нечего', async () => {
+    (verifyAuth as any).mockResolvedValue(staff(WRITE));
+    const { sets, commitSpy } = wire({ members: membersSeed() });
+    const res: any = await rulesHandler(event('POST', { action: 'applyDefault' }, {}), {} as any, () => {});
+    // Не «ноль назначено», а внятный отказ: иначе директор решил бы, что ставки
+    // розданы, и узнал бы правду в день зарплаты.
+    expect(res.statusCode).toBe(400);
+    expect(sets).toHaveLength(0);
+    expect(commitSpy).not.toHaveBeenCalled();
+  });
+
+  it('назначает ставку ТОЛЬКО тем, у кого её нет', async () => {
+    (verifyAuth as any).mockResolvedValue(staff(WRITE));
+    const { sets, commitSpy } = wire({
+      members: membersSeed(), rules: rulesSeed(), defaultRate: DEFAULT_RATE,
+    });
+    const res: any = await rulesHandler(event('POST', { action: 'applyDefault' }, {}), {} as any, () => {});
+
+    expect(res.statusCode).toBe(200);
+    const body = JSON.parse(res.body);
+    expect(body.created).toBe(1);
+    expect(body.teacherIds).toEqual(['t1']);
+    // Живая ставка t2 не перезаписана: раздача — догонялка, а не выравнивание.
+    expect(sets.map((s: any) => s.id)).toEqual([rateId('t1')]);
+    expect(sets[0].components).toEqual(DEFAULT_COMPONENTS);
+    expect(sets[0].organizationId).toBe('org1');
+    expect(sets[0].teacherId).toBe('t1');
+    // След происхождения: видно, что ставку никто не назначал руками.
+    expect(sets[0].fromDefault).toBe(true);
+    expect(sets[0].createdBy).toBe('u1');
+    expect(commitSpy).toHaveBeenCalledTimes(1);
+  });
+
+  it('не трогает студентов, менеджеров и всех, кто уже не работает', async () => {
+    (verifyAuth as any).mockResolvedValue(staff(WRITE));
+    const { sets } = wire({ members: membersSeed(), rules: rulesSeed(), defaultRate: DEFAULT_RATE });
+    const res: any = await rulesHandler(event('POST', { action: 'applyDefault' }, {}), {} as any, () => {});
+
+    const body = JSON.parse(res.body);
+    // Ставка студенту — не безобидный лишний документ: она попадёт в раздел
+    // зарплат строкой человека, которому никто не собирался платить.
+    //
+    // Уволенный, ушедший, отчисленный и заявитель — тем более: роль
+    // преподавателя в их членстве ОСТАЁТСЯ, а ставку увольнение удалило
+    // намеренно (closeTeacherRules). Верни фильтр к чёрному списку
+    // `status !== 'inactive'` — и все четверо снова получат ставку, потому что
+    // 'inactive' не пишет ни один путь кода; это и есть та правка, которую
+    // тест закрепляет.
+    for (const outsider of ['s1', 'm1', 'fired', 'quit', 'expelled', 'applicant']) {
+      expect(body.teacherIds).not.toContain(outsider);
+      expect(sets.map((s: any) => s.id)).not.toContain(rateId(outsider));
+    }
+    // Ровно один назначенный, а не пятеро: считаем поимённо И по числу.
+    expect(body.created).toBe(1);
+    expect(sets).toHaveLength(1);
+  });
+
+  it('членство БЕЗ поля статуса — действующее: у старожилов его просто нет', async () => {
+    (verifyAuth as any).mockResolvedValue(staff(WRITE));
+    const { sets } = wire({
+      members: [
+        { id: 'oldTimer', role: 'teacher' },                 // документ прежних лет: поля status нет
+        { id: 'gone', role: 'teacher', status: 'removed' },  // контрольный уволенный
+      ],
+      defaultRate: DEFAULT_RATE,
+    });
+    const res: any = await rulesHandler(event('POST', { action: 'applyDefault' }, {}), {} as any, () => {});
+
+    // Сузь предикат до строгого `status === 'active'` — и преподаватель, который
+    // работает в академии дольше, чем существует поле статуса, молча выпал бы из
+    // раздачи и остался бы с нулевой зарплатой.
+    expect(JSON.parse(res.body).teacherIds).toEqual(['oldTimer']);
+    expect(sets.map((s: any) => s.id)).toEqual([rateId('oldTimer')]);
+  });
+
+  it('мёртвую ставку без флага не заменяет, но называет её вслух через legacyRates', async () => {
+    (verifyAuth as any).mockResolvedValue(staff(WRITE));
+    const { sets, batchDeletes } = wire({
+      members: membersSeed(), rules: rulesSeed(), defaultRate: DEFAULT_RATE,
+    });
+    const res: any = await rulesHandler(event('POST', { action: 'applyDefault' }, {}), {} as any, () => {});
+
+    const body = JSON.parse(res.body);
+    expect(body.teacherIds).not.toContain('t3');
+    expect(body.skipped).toBe(2);            // t2 со ставкой + t3 с мёртвой
+    // Главное число этой ручки: у t3 ставка формально есть, а денег не будет.
+    // Молчать о нём нельзя — интерфейс по нему и предлагает замену.
+    expect(body.legacyRates).toBe(1);
+    expect(body.replacedLegacy).toBe(false);
+    expect(sets.map((s: any) => s.id)).toEqual([rateId('t1')]);
+    expect(batchDeletes).toEqual([]);
+  });
+
+  it('с replaceLegacy заменяет мёртвую ставку, а её двойника сносит тем же батчем', async () => {
+    (verifyAuth as any).mockResolvedValue(staff(WRITE));
+    const { sets, batchDeletes, commitSpy } = wire({
+      members: membersSeed(), rules: rulesSeed(), defaultRate: DEFAULT_RATE,
+    });
+    const res: any = await rulesHandler(event('POST', { action: 'applyDefault' }, {
+      replaceLegacy: true,
+    }), {} as any, () => {});
+
+    const body = JSON.parse(res.body);
+    expect(body.created).toBe(2);
+    expect(body.teacherIds.sort()).toEqual(['t1', 't3']);
+    expect(body.replacedLegacy).toBe(true);
+    expect(body.legacyRates).toBe(1);
+    // Новая ставка легла в канонический документ...
+    expect(sets.map((s: any) => s.id).sort()).toEqual([rateId('t1'), rateId('t3')].sort());
+    expect(sets.find((s: any) => s.id === rateId('t3')).components).toEqual(DEFAULT_COMPONENTS);
+    // ...а филиальный двойник ушёл тем же батчем: переживи он раздачу, расчёт
+    // продолжил бы спорить сам с собой о том, какая ставка настоящая.
+    expect(batchDeletes).toEqual(['rate_org1_t3_alay']);
+    expect(commitSpy).toHaveBeenCalledTimes(1);
+  });
+
+  it('живая, но ПРОИГРАВШАЯ ставка не спасает — решает победитель resolveRules', async () => {
+    (verifyAuth as any).mockResolvedValue(staff(WRITE));
+    const { sets, batchDeletes } = wire({
+      members: [{ id: 't9', role: 'teacher' }], rules: splitRules(), defaultRate: DEFAULT_RATE,
+    });
+    const res: any = await rulesHandler(event('POST', { action: 'applyDefault' }, {}), {} as any, () => {});
+
+    const body = JSON.parse(res.body);
+    // Живой документ у человека есть — но начисляют не по нему, а по свежему,
+    // мёртвому. Проверка «хоть один документ живой» (как было до правки) дала бы
+    // здесь legacyRates: 0 и молчаливый skipped: преподаватель не попадал бы ни
+    // в раздачу, ни в предложение «заменить мёртвые» — то есть не чинился НИКОГДА.
+    expect(body.legacyRates).toBe(1);
+    expect(body.teacherIds).toEqual([]);
+    expect(body.created).toBe(0);
+    expect(body.skipped).toBe(1);
+    expect(sets).toHaveLength(0);
+    expect(batchDeletes).toEqual([]);
+  });
+
+  it('replaceLegacy чинит и такого преподавателя — оба прежних документа уходят', async () => {
+    (verifyAuth as any).mockResolvedValue(staff(WRITE));
+    const { sets, batchDeletes, commitSpy } = wire({
+      members: [{ id: 't9', role: 'teacher' }], rules: splitRules(), defaultRate: DEFAULT_RATE,
+    });
+    const res: any = await rulesHandler(event('POST', { action: 'applyDefault' }, {
+      replaceLegacy: true,
+    }), {} as any, () => {});
+
+    const body = JSON.parse(res.body);
+    // До правки флаг был бессилен именно здесь: человек с живой, но проигравшей
+    // ставкой не считался целью, и нажатие «заменить мёртвые» его не касалось.
+    expect(body.created).toBe(1);
+    expect(body.teacherIds).toEqual(['t9']);
+    expect(sets.map((s: any) => s.id)).toEqual([rateId('t9')]);
+    expect(sets[0].components).toEqual(DEFAULT_COMPONENTS);
+    // Ставка теперь ровно одна: и филиальный двойник, и датированный документ
+    // прежней схемы снесены тем же батчем — переживи любой из них раздачу, спор
+    // «какая ставка настоящая» продолжился бы на следующем расчёте.
+    expect(batchDeletes.sort()).toEqual(['legacyDated_t9', 'rate_org1_t9_alay']);
+    expect(commitSpy).toHaveBeenCalledTimes(1);
+  });
+
+  it('число на кнопке и результат раздачи считает ОДИН И ТОТ ЖЕ код', async () => {
+    (verifyAuth as any).mockResolvedValue(staff(['payroll:read', ...WRITE]));
+    const { sets } = wire({
+      members: [...membersSeed(), { id: 't9', role: 'teacher' }],
+      rules: [...rulesSeed(), ...splitRules()],
+      defaultRate: DEFAULT_RATE,
+    });
+
+    // То, что интерфейс печатает на кнопке.
+    const shownRes: any = await rulesHandler(event('GET', { action: 'default' }), {} as any, () => {});
+    const shown = JSON.parse(shownRes.body);
+    expect(shown.withoutRate).toBe(1);   // t1 — совсем без ставки
+    expect(shown.legacyRates).toBe(2);   // t3 (мёртвая) и t9 (мёртвая победила живую)
+
+    // То, что раздача делает на ТЕХ ЖЕ данных.
+    const appliedRes: any = await rulesHandler(event('POST', { action: 'applyDefault' }, {}), {} as any, () => {});
+    const applied = JSON.parse(appliedRes.body);
+
+    // Важны не сами числа, а их равенство. Пока счёт для кнопки жил на клиенте,
+    // он шёл по списку экрана — а тот шире состава: в нём уволенные со строками
+    // прошлых месяцев и люди без преподавательской роли. Кнопка обещала «назначить
+    // пятерым», раздача назначала одному, и объяснить разницу было нечем.
+    expect(applied.created).toBe(shown.withoutRate);
+    expect(applied.legacyRates).toBe(shown.legacyRates);
+    expect(sets).toHaveLength(shown.withoutRate);
+
+    // И второе обещание кнопки: «заменить мёртвые» назначит withoutRate + legacyRates.
+    const replacedRes: any = await rulesHandler(event('POST', { action: 'applyDefault' }, {
+      replaceLegacy: true,
+    }), {} as any, () => {});
+    expect(JSON.parse(replacedRes.body).created).toBe(shown.withoutRate + shown.legacyRates);
+  });
+
+  it('раздача на сотни преподавателей режется на батчи по 450 операций', async () => {
+    (verifyAuth as any).mockResolvedValue(staff(WRITE));
+    const TEACHERS = 240;
+    const ids = Array.from({ length: TEACHERS }, (_, i) => `t${i + 1}`);
+    const { sets, batchDeletes, commitSpy, batches } = wire({
+      members: ids.map(id => ({ id, role: 'teacher' })),
+      // У каждого — мёртвый двойник прежней схемы, поэтому раздача и ПИШЕТ ставку,
+      // и СНОСИТ документ: операций вдвое больше, чем людей.
+      rules: ids.map(id => ({
+        id: `rate_org1_${id}_alay`, organizationId: 'org1', teacherId: id, components: DEAD_COMPONENTS,
+      })),
+      defaultRate: DEFAULT_RATE,
+    });
+
+    const res: any = await rulesHandler(event('POST', { action: 'applyDefault' }, {
+      replaceLegacy: true,
+    }), {} as any, () => {});
+
+    expect(res.statusCode).toBe(200);
+    expect(JSON.parse(res.body).created).toBe(TEACHERS);
+    expect(sets.length + batchDeletes.length).toBe(TEACHERS * 2);   // 480 операций
+
+    // Верни один неограниченный батч — и раздача не сделает НИЧЕГО: Firestore
+    // отвергает батч на 501 операции целиком, а не «первые 500 из 501». Академия
+    // на две сотни преподавателей с двойниками этот порог переходит спокойно.
+    expect(commitSpy).toHaveBeenCalledTimes(2);
+    expect(batches.map(b => b.ops)).toEqual([450, 30]);
+    for (const b of batches) expect(b.ops).toBeLessThanOrEqual(450);
+  });
+
+  it('когда все со ставкой — ничего не пишет и батч не коммитит', async () => {
+    (verifyAuth as any).mockResolvedValue(staff(WRITE));
+    const { sets, commitSpy } = wire({
+      members: [{ id: 't2', role: 'teacher' }],
+      rules: [{ id: rateId('t2'), organizationId: 'org1', teacherId: 't2', components: DEFAULT_COMPONENTS }],
+      defaultRate: DEFAULT_RATE,
+    });
+    const res: any = await rulesHandler(event('POST', { action: 'applyDefault' }, {}), {} as any, () => {});
+
+    const body = JSON.parse(res.body);
+    expect(body.created).toBe(0);
+    expect(body.teacherIds).toEqual([]);
+    expect(body.skipped).toBe(1);
+    expect(body.legacyRates).toBe(0);
+    expect(sets).toHaveLength(0);
+    // Пустой commit — лишний запрос на каждое нажатие «назначить всем».
+    expect(commitSpy).not.toHaveBeenCalled();
+  });
+
+  it('читает ставки одним равенством по организации — composite-индексов тут нет', async () => {
+    (verifyAuth as any).mockResolvedValue(staff(WRITE));
+    const { rulesClauses } = wire({ members: membersSeed(), rules: rulesSeed(), defaultRate: DEFAULT_RATE });
+    await rulesHandler(event('POST', { action: 'applyDefault' }, {}), {} as any, () => {});
+    expect(rulesClauses).toEqual([['organizationId', 'org1']]);
+  });
+
+  it('требует payroll:write — payroll:read раздать ставки не даёт', async () => {
+    (verifyAuth as any).mockResolvedValue(staff(['payroll:read']));
+    const { sets, commitSpy } = wire({ members: membersSeed(), defaultRate: DEFAULT_RATE });
+    const res: any = await rulesHandler(event('POST', { action: 'applyDefault' }, {
+      replaceLegacy: true,
+    }), {} as any, () => {});
+    expect(res.statusCode).toBe(403);
+    expect(sets).toHaveLength(0);
+    expect(commitSpy).not.toHaveBeenCalled();
+  });
+});
+
+describe('payroll-default-rate.ensureTeacherRate — ставка в момент заведения', () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it('выдаёт умолчание преподавателю, у которого ставки нет', async () => {
+    const { creates } = wire({ defaultRate: DEFAULT_RATE });
+    const result = await ensureTeacherRate('org1', 't7', 'boss');
+
+    expect(result).toBe('created');
+    // Тот же детерминированный документ, в который пишет ручка: иначе у человека
+    // оказалось бы две ставки, из которых расчёт молча выбрал бы одну.
+    expect(creates).toHaveLength(1);
+    expect(creates[0].id).toBe(rateId('t7'));
+    expect(creates[0].components).toEqual(DEFAULT_COMPONENTS);
+    expect(creates[0].teacherId).toBe('t7');
+    expect(creates[0].organizationId).toBe('org1');
+    expect(creates[0].createdBy).toBe('boss');
+    expect(creates[0].fromDefault).toBe(true);
+  });
+
+  it('без умолчания не выдумывает ставку', async () => {
+    const { creates } = wire();
+    const result = await ensureTeacherRate('org1', 't7', 'boss');
+    // Система не имеет права решить за организацию, сколько человеку платить:
+    // «ставка не задана» честнее выдуманного числа.
+    expect(result).toBe('no_default');
+    expect(creates).toHaveLength(0);
+  });
+
+  it('не трогает ЛЮБУЮ существующую ставку — даже мёртвую прежнего вида', async () => {
+    const { creates } = wire({
+      defaultRate: DEFAULT_RATE,
+      rules: [{ id: 'rate_org1_t7_alay', organizationId: 'org1', teacherId: 't7', components: DEAD_COMPONENTS }],
+    });
+    const result = await ensureTeacherRate('org1', 't7', 'boss');
+    // Вторая ставка поверх старой дала бы спор о том, по какой платить. Мёртвую
+    // разбирает явная раздача с replaceLegacy, а не молчаливое провизионирование.
+    expect(result).toBe('has_rate');
+    expect(creates).toHaveLength(0);
+  });
+
+  it('не бросает при отказе записи — заведение преподавателя важнее ставки', async () => {
+    const spy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const { creates } = wire({ defaultRate: DEFAULT_RATE, createFails: new Error('PERMISSION_DENIED') });
+
+    // Если бы исключение уходило наружу, зарплатная настройка роняла бы создание
+    // преподавателя: не создать ставку терпимо, не создать человека — нет.
+    await expect(ensureTeacherRate('org1', 't7', 'boss')).resolves.toBe('error');
+    expect(creates).toHaveLength(0);
+    spy.mockRestore();
+  });
+
+  it('гонку с уже созданной ставкой (ALREADY_EXISTS) считает успехом, а не сбоем', async () => {
+    const { creates } = wire({ defaultRate: DEFAULT_RATE, createFails: Object.assign(new Error('x'), { code: 6 }) });
+    const result = await ensureTeacherRate('org1', 't7', 'boss');
+    expect(result).toBe('has_rate');
+    expect(creates).toHaveLength(0);
+  });
+
+  it('без организации или преподавателя не ходит в базу', async () => {
+    const { creates } = wire({ defaultRate: DEFAULT_RATE });
+    await expect(ensureTeacherRate('', 't7', 'boss')).resolves.toBe('error');
+    await expect(ensureTeacherRate('org1', '', 'boss')).resolves.toBe('error');
+    expect(creates).toHaveLength(0);
   });
 });
 

@@ -35,6 +35,11 @@ import {
   verifyAuth, can, getOrgFilter,
   ok, unauthorized, forbidden, badRequest, notFound, jsonResponse,
 } from './utils/auth';
+import { memberHoldsRole } from './utils/auth';
+import {
+  ruleDocId, readDefaultRate, buildRuleDoc, componentsArePayable, membershipIsActive,
+} from './utils/payroll-default-rate';
+import { resolveRules } from './utils/payroll-engine';
 
 const COLLECTION = 'compensationRules';
 
@@ -46,26 +51,9 @@ function isPositiveMinor(value: unknown): value is number {
   return typeof value === 'number' && Number.isSafeInteger(value) && value > 0;
 }
 
-/**
- * Детерминированный id ставки: (организация, преподаватель).
- *
- * Настоящая гарантия «одна ставка на преподавателя»: Firestore не хранит два
- * документа с одним id, поэтому дубликат физически невозможен — в отличие от
- * проверки «а нет ли уже ставки?», которая не атомарна последующей записи.
- *
- * Хвост `_org` СОХРАНЁН намеренно, хотя филиала больше нет: ровно такой id уже
- * носят все общеорганизационные ставки (а их большинство — это было умолчание
- * формы). Убрать сегмент значило бы осиротить и их тоже, то есть выдумать
- * миграцию там, где её можно не делать.
- *
- * Санитайзер не косметика: id документа не должен содержать '/', быть '.'/'..'
- * или матчить /^__.*__$/. Преобразование чисто функциональное, поэтому одна и та
- * же пара всегда даёт один и тот же id.
- */
-function ruleDocId(orgId: string, teacherId: string): string {
-  const safe = (s: string) => String(s).replace(/[^A-Za-z0-9_-]/g, '-').slice(0, 200);
-  return `rate_${safe(orgId)}_${safe(teacherId)}_org`;
-}
+// Детерминированный id ставки и работа со «ставкой по умолчанию» живут в общем
+// модуле: их же зовут провизионирование преподавателя и раздача умолчания, и
+// вторая копия правила «один документ на пару» разошлась бы с первой.
 
 /**
  * Валидация и нормализация оплаты. Возвращает НОВЫЕ объекты, а не присланные:
@@ -119,6 +107,63 @@ function normalizeComponents(raw: any): { components?: any[]; error?: string } {
   return { components };
 }
 
+/** Лимит батча Firestore — 500 операций; берём с запасом, как monthly-billing и api-payroll. */
+const BATCH_CHUNK = 450;
+
+/** Батчи по BATCH_CHUNK операций. Организация на сотню преподавателей с двойниками
+ *  легко переваливает лимит, а батч на 501 операции падает целиком. */
+async function commitChunked(ops: Array<(batch: FirebaseFirestore.WriteBatch) => void>): Promise<void> {
+  for (let i = 0; i < ops.length; i += BATCH_CHUNK) {
+    const batch = adminDb.batch();
+    for (const op of ops.slice(i, i + BATCH_CHUNK)) op(batch);
+    await batch.commit();
+  }
+}
+
+/**
+ * Кому назначать ставку по умолчанию, а кому нет.
+ *
+ * Вынесено отдельно, потому что ответ нужен ДВАЖДЫ: в разовой раздаче и в
+ * ответе GET ?action=default, откуда интерфейс берёт число для кнопки. Два
+ * независимых подсчёта — гарантированное расхождение: кнопка обещала бы одно
+ * число, а раздача делала другое.
+ *
+ * «Есть ли живая ставка» решается ТЕМ ЖЕ правилом, что и в расчёте: победителем
+ * среди документов человека (см. resolveRules — свежий updatedAt, при равенстве
+ * меньший id). Проверять «хоть один документ живой» было бы неверно: платит
+ * движок по одному, и живая, но проигравшая ставка денег не приносит.
+ */
+function planDefaultRateTargets(
+  membersSnap: FirebaseFirestore.QuerySnapshot,
+  rulesByTeacher: Map<string, any[]>,
+  replaceLegacy: boolean,
+): { targets: string[]; skipped: number; legacy: number } {
+  const teachers = membersSnap.docs
+    .map((d) => ({ id: d.id, ...(d.data() as any) }))
+    // Только те, кто работает СЕЙЧАС: уволенному ставку выдавать нельзя — это
+    // воскресило бы документ, который увольнение удалило намеренно.
+    .filter((m: any) => membershipIsActive(m) && memberHoldsRole(m, ['teacher']))
+    .map((m: any) => String(m.uid || m.id))
+    .filter(Boolean);
+
+  const targets: string[] = [];
+  let skipped = 0;
+  let legacy = 0;
+  for (const teacherId of teachers) {
+    const own = rulesByTeacher.get(teacherId) ?? [];
+    if (!own.length) { targets.push(teacherId); continue; }
+    const winner = resolveRules(own as any).resolved.get(teacherId);
+    if (winner && componentsArePayable((winner as any).components)) { skipped++; continue; }
+    // Ставка есть, но начислять по ней нечего: прежние «за занятие», «за час»,
+    // «за студента» движок не считает, и человек получает ноль ровно как без
+    // ставки. Молча заменять всё же нельзя — это чужое решение, пусть и мёртвое.
+    legacy++;
+    if (replaceLegacy) targets.push(teacherId);
+    else skipped++;
+  }
+  return { targets, skipped, legacy };
+}
+
 const handler: Handler = async (event: HandlerEvent) => {
   if (event.httpMethod === 'OPTIONS') return jsonResponse(204, '');
 
@@ -128,6 +173,131 @@ const handler: Handler = async (event: HandlerEvent) => {
   const params = event.queryStringParameters || {};
 
   try {
+    const action = params.action || '';
+
+    // ── GET ?action=default — ставка по умолчанию организации ──────────────
+    // Отдельная ветка ДО общего GET: без неё запрос ушёл бы в список ставок и
+    // вернул массив там, где интерфейс ждёт настройку.
+    if (action === 'default' && event.httpMethod === 'GET') {
+      if (!can(user, 'payroll', 'read')) return forbidden('Нет доступа к модулю зарплат');
+
+      const orgFilter = getOrgFilter(user);
+      if (!orgFilter) return badRequest('Organization context required');
+
+      const [def, membersSnap, rulesSnap] = await Promise.all([
+        readDefaultRate(orgFilter),
+        adminDb.collection('orgMembers').doc(orgFilter).collection('members').get(),
+        adminDb.collection(COLLECTION).where('organizationId', '==', orgFilter).get(),
+      ]);
+
+      const rulesByTeacher = new Map<string, any[]>();
+      for (const d of rulesSnap.docs) {
+        const r = { id: d.id, ...(d.data() as any) };
+        if (!r.teacherId) continue;
+        rulesByTeacher.set(r.teacherId, [...(rulesByTeacher.get(r.teacherId) ?? []), r]);
+      }
+      // Число для кнопки считает СЕРВЕР и ровно тем же кодом, что раздаёт. Клиент
+      // считал по списку экрана — а он шире: в нём есть уволенные со строками
+      // прошлых месяцев и люди без роли преподавателя. Кнопка обещала «назначить
+      // пятерым», раздача назначала двоим, и разницу невозможно было объяснить.
+      const plan = planDefaultRateTargets(membersSnap, rulesByTeacher, false);
+
+      // null — законный ответ «умолчания нет», а не ошибка: до первой настройки
+      // организация именно в этом состоянии.
+      return ok({
+        default: def,
+        /** Активные преподаватели без действующей ставки — кому назначит раздача. */
+        withoutRate: plan.targets.length,
+        /** Из них те, у кого ставка есть, но мёртвая: чинится только заменой. */
+        legacyRates: plan.legacy,
+      });
+    }
+
+    // ── POST ?action=default — задать или убрать умолчание ─────────────────
+    if (action === 'default' && event.httpMethod === 'POST') {
+      if (!can(user, 'payroll', 'write')) return forbidden('Недостаточно прав для этого действия');
+
+      const orgFilter = getOrgFilter(user);
+      if (!orgFilter) return badRequest('Organization context required');
+
+      const body = JSON.parse(event.body || '{}');
+      const now = new Date().toISOString();
+
+      // Пустое тело (components: null) — «убрать умолчание». Новые преподаватели
+      // после этого заводятся без ставки, а уже выданные ставки остаются: они
+      // самостоятельные документы, а не ссылки на настройку.
+      if (body.components === null) {
+        await adminDb.collection('organizations').doc(orgFilter)
+          .update({ payrollDefaultRate: null, updatedAt: now });
+        return ok({ default: null, cleared: true });
+      }
+
+      const { components, error: componentsError } = normalizeComponents(body.components);
+      if (componentsError) return badRequest(componentsError);
+
+      const payload = { components, updatedAt: now, updatedBy: user.uid };
+      await adminDb.collection('organizations').doc(orgFilter)
+        .update({ payrollDefaultRate: payload, updatedAt: now });
+
+      return ok({ default: payload });
+    }
+
+    // ── POST ?action=applyDefault — раздать умолчание тем, у кого ставки нет ──
+    //
+    // Автоматическая выдача работает для тех, кого заводят ПОСЛЕ настройки
+    // умолчания (см. ensureTeacherRate в провизионировании). Уже работающие
+    // преподаватели остались бы без ставки навсегда, поэтому здесь — разовая
+    // раздача, и она ЯВНАЯ: директор нажимает кнопку и видит, скольким людям
+    // сейчас назначится оплата. Делать это молча, фоном, нельзя — это деньги.
+    if (action === 'applyDefault' && event.httpMethod === 'POST') {
+      if (!can(user, 'payroll', 'write')) return forbidden('Недостаточно прав для этого действия');
+
+      const orgFilter = getOrgFilter(user);
+      if (!orgFilter) return badRequest('Organization context required');
+
+      const body = JSON.parse(event.body || '{}');
+      const def = await readDefaultRate(orgFilter);
+      if (!def) return badRequest('Сначала задайте ставку по умолчанию — раздавать нечего');
+
+      const [membersSnap, rulesSnap] = await Promise.all([
+        adminDb.collection('orgMembers').doc(orgFilter).collection('members').get(),
+        adminDb.collection(COLLECTION).where('organizationId', '==', orgFilter).get(),
+      ]);
+
+      const rulesByTeacher = new Map<string, any[]>();
+      for (const d of rulesSnap.docs) {
+        const r = { id: d.id, ...(d.data() as any) };
+        if (!r.teacherId) continue;
+        rulesByTeacher.set(r.teacherId, [...(rulesByTeacher.get(r.teacherId) ?? []), r]);
+      }
+
+      const replaceLegacy = body.replaceLegacy === true;
+      const plan = planDefaultRateTargets(membersSnap, rulesByTeacher, replaceLegacy);
+
+      const now = new Date().toISOString();
+      const ops: Array<(batch: FirebaseFirestore.WriteBatch) => void> = [];
+      for (const teacherId of plan.targets) {
+        const ref = adminDb.collection(COLLECTION).doc(ruleDocId(orgFilter, teacherId));
+        ops.push((batch) => batch.set(ref, buildRuleDoc(orgFilter, teacherId, def.components, user.uid, now)));
+        // Устаревшие двойники сносим тем же проходом — иначе расчёт продолжил бы
+        // спорить сам с собой о том, какая ставка настоящая.
+        for (const stale of rulesByTeacher.get(teacherId) ?? []) {
+          if (stale.id !== ref.id) ops.push((batch) => batch.delete(adminDb.collection(COLLECTION).doc(stale.id)));
+        }
+      }
+      await commitChunked(ops);
+
+      return ok({
+        created: plan.targets.length,
+        teacherIds: plan.targets,
+        skipped: plan.skipped,
+        // Сколько ставок мертвы (устаревший вид оплаты). Интерфейс предлагает по
+        // этому числу заменить их, а не молчит о том, что люди получат ноль.
+        legacyRates: plan.legacy,
+        replacedLegacy: replaceLegacy,
+      });
+    }
+
     // ── GET: список ставок организации ─────────────────────────────────────
     if (event.httpMethod === 'GET') {
       if (!can(user, 'payroll', 'read')) return forbidden('Нет доступа к модулю зарплат');
@@ -250,8 +420,29 @@ const handler: Handler = async (event: HandlerEvent) => {
       // организации, просто угадав id.
       if (existing.organizationId !== orgFilter) return forbidden();
 
-      await docRef.delete();
-      return ok({ deleted: true, id: ruleId });
+      // «Убрать ставку» значит «этому человеку больше не начислять», поэтому
+      // сносим ВСЕ его ставки, а не только выбранный документ. Иначе двойник,
+      // доставшийся от филиальной модели, продолжил бы начислять деньги — при
+      // том что в интерфейсе ставка выглядит убранной. Ровно так же поступает
+      // сохранение (см. `stale` выше) и увольнение (closeTeacherRules).
+      const siblings = existing.teacherId
+        ? await adminDb.collection(COLLECTION)
+            .where('organizationId', '==', orgFilter)
+            .where('teacherId', '==', existing.teacherId)
+            .get()
+        : null;
+      const alsoDeleted = (siblings?.docs ?? []).filter((d: any) => d.id !== ruleId);
+
+      if (alsoDeleted.length) {
+        const batch = adminDb.batch();
+        batch.delete(docRef);
+        for (const d of alsoDeleted) batch.delete(d.ref);
+        await batch.commit();
+      } else {
+        await docRef.delete();
+      }
+
+      return ok({ deleted: true, id: ruleId, alsoDeleted: alsoDeleted.length });
     }
 
     return jsonResponse(405, { error: 'Method not allowed' });

@@ -50,6 +50,9 @@ import {
   verifyAuth, can, getOrgFilter, memberHoldsRole,
   ok, unauthorized, forbidden, badRequest, notFound, jsonResponse,
 } from './utils/auth';
+// Статус членства проверяем ОДНИМ предикатом с раздачей ставок: список «кому
+// начислять» и список «кому назначить ставку» обязаны совпадать по составу.
+import { membershipIsActive } from './utils/payroll-default-rate';
 import { batchGetUserNames, batchGetCourseNames } from './utils/finance-names';
 import { parseRangeBoundary } from './utils/finance-period';
 import { billingPeriodKey } from './utils/billing';
@@ -60,6 +63,7 @@ import {
   allocateByShares,
   collectTeacherRevenue,
   filterWindow,
+  resolveRules,
   toMinor,
   type BranchShare,
   type CompensationRule,
@@ -233,8 +237,8 @@ function frozenError(state: string) {
   return jsonResponse(409, {
     error:
       state === 'paid'
-        ? 'Период уже выплачен — изменения запрещены. Проведите корректировку в текущем открытом периоде.'
-        : 'Период утверждён — изменения запрещены. Проведите корректировку в текущем открытом периоде.',
+        ? 'Зарплата за этот месяц уже выплачена — изменить её нельзя. Корректировки вносите премией или штрафом в текущем открытом месяце.'
+        : 'Месяц утверждён — изменить его нельзя. Корректировки вносите премией или штрафом в текущем открытом месяце.',
     state,
   });
 }
@@ -286,8 +290,8 @@ function findCoverageConflicts(
  */
 function coverageConflictError(period: string, requested: string | null, conflict: PeriodDoc) {
   const error =
-    `За ${period} уже есть ведомость, посчитанная по филиалу (${conflict.state === 'paid' ? 'выплачена' : 'утверждена'}), ` +
-    'и она уже включает этих преподавателей. Общая ведомость за тот же месяц начислила бы им второй раз. ' +
+    `За ${period} уже есть расчёт по филиалу (${conflict.state === 'paid' ? 'выплачен' : 'утверждён'}), ` +
+    'и он уже включает этих преподавателей. Общий расчёт за тот же месяц начислил бы им второй раз. ' +
     'Зарплата за этот месяц закрыта — корректировки вносите премией или штрафом в текущем открытом месяце.';
   return jsonResponse(409, {
     error,
@@ -345,9 +349,17 @@ function payoutTxId(periodId: string, lineId: string, branchKey: string): string
   return `pay_${safe(periodId)}_${safe(lineId)}_${safe(branchKey)}`;
 }
 
-/** Ключ филиала в идемпотентности выплаты. `null` — «филиал не определён». */
+/**
+ * Ключ филиала в идемпотентности выплаты. «Филиал не определён» — это и null, и
+ * undefined, и ПУСТАЯ СТРОКА.
+ *
+ * Пустая строка здесь не педантизм: `?? ` её пропускает, и ключ вышел бы
+ * пустым — а пустой `payrollBranchKey` на расходе ложен, значит повторная
+ * выплата приняла бы строку за оплаченную по прежней схеме и молча не дописала
+ * остальные доли. Потерянные деньги без единой ошибки в логах.
+ */
 function branchKeyOf(branchId: string | null | undefined): string {
-  return branchId ?? 'org';
+  return branchId || 'org';
 }
 
 /** Firestore ALREADY_EXISTS (code 6) — расход по этой строке уже создан кем-то другим. */
@@ -535,7 +547,7 @@ const handler: Handler = async (event: HandlerEvent) => {
       if (!periodId) return badRequest('id обязателен');
 
       const period = await loadPeriod(periodId, orgFilter);
-      if (!period) return notFound('Ведомость не найдена');
+      if (!period) return notFound('Расчёт за этот месяц не найден');
 
       const lines = await fetchLines(orgFilter, periodId);
 
@@ -638,6 +650,86 @@ const handler: Handler = async (event: HandlerEvent) => {
     }
 
     // ─────────────────────────────────────────────────────────
+    // GET payouts — история выплат: кому, когда, сколько
+    // ─────────────────────────────────────────────────────────
+    //
+    // «Где посмотреть, кому и когда я заплатил» — вопрос, на который раздел не
+    // отвечал вовсе: выплаты уходили расходами в кассу и там растворялись среди
+    // аренды и рекламы. Здесь они собраны обратно, в порядке от свежих к старым.
+    //
+    // Источник — САМА КАССА, а не отдельный журнал: деньги считаются выданными
+    // ровно тогда, когда расход существует. Второй список рядом с кассой умел бы
+    // с ней разойтись, и тогда правдой не был бы ни один.
+    if (action === 'payouts' && event.httpMethod === 'GET') {
+      if (!can(user, 'payroll', 'read')) return forbidden('Нет доступа к модулю зарплаты');
+
+      const [txSnap, periods, membersSnap, branchesSnap] = await Promise.all([
+        adminDb
+          .collection(TRANSACTIONS)
+          .where('organizationId', '==', orgFilter)
+          .where('categoryId', '==', SALARY_CATEGORY)
+          .get(),
+        fetchPeriods(orgFilter),
+        adminDb.collection('orgMembers').doc(orgFilter).collection('members').get(),
+        adminDb.collection('branches').where('organizationId', '==', orgFilter).get(),
+      ]);
+
+      const periodKeyById = new Map(periods.map((p) => [p.id, p.period]));
+      const branchNameById = new Map<string, string>(
+        branchesSnap.docs.map((d) => [d.id, String((d.data() as any).name || '')]),
+      );
+      // Имена из orgMembers идут первыми: у оффлайн-преподавателя нет документа в
+      // `users`, и в истории он остался бы голым id.
+      const nameByKey = new Map<string, string>();
+      for (const d of membersSnap.docs) {
+        const m = d.data() as any;
+        const name = String(m.userName || m.displayName || m.name || '').trim();
+        if (!name) continue;
+        nameByKey.set(d.id, name);
+        if (m.uid) nameByKey.set(String(m.uid), name);
+      }
+
+      let rows = txSnap.docs
+        .map((d) => ({ id: d.id, ...(d.data() as any) }))
+        .filter((tx: any) => tx.type === 'expense')
+        .map((tx: any) => ({
+          id: tx.id,
+          date: tx.date || tx.createdAt || '',
+          teacherId: tx.teacherId || null,
+          teacherName: tx.teacherId ? nameByKey.get(tx.teacherId) || '' : '',
+          amountMinor: Math.round(Number(tx.amount || 0) * 100),
+          periodId: tx.payrollPeriodId ?? null,
+          // Месяц берём с ведомости, а не из даты расхода: зарплату за июль
+          // выдают в августе, и «выплата за июль» — это про начисление.
+          period: tx.payrollPeriodId ? periodKeyById.get(tx.payrollPeriodId) ?? null : null,
+          branchId: tx.branchId ?? null,
+          branchName: tx.branchId ? branchNameById.get(tx.branchId) || '' : '',
+          paymentMethod: tx.paymentMethod ?? null,
+          // Расход категории «Зарплата», заведённый руками в кассе, — тоже
+          // выданные деньги, и прятать его нельзя. Но и путать с проведённой
+          // выплатой не стоит: у него нет ни ведомости, ни строки.
+          manual: !tx.payrollLineId,
+          description: tx.description || '',
+        }));
+
+      if (params.teacherId) rows = rows.filter((r) => r.teacherId === params.teacherId);
+      if (params.period) rows = rows.filter((r) => r.period === params.period);
+
+      // Сортировка в JS: orderBy поверх двух равенств потребовал бы composite-индекс.
+      rows.sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : (a.id < b.id ? 1 : -1)));
+
+      const missing = [...new Set(rows.filter((r) => r.teacherId && !r.teacherName).map((r) => r.teacherId as string))];
+      if (missing.length) {
+        const fetched = await batchGetUserNames(missing);
+        for (const row of rows) {
+          if (row.teacherId && !row.teacherName) row.teacherName = fetched.get(row.teacherId) || '';
+        }
+      }
+
+      return ok(rows);
+    }
+
+    // ─────────────────────────────────────────────────────────
     // GET overview — зарплата ОТ ПРЕПОДАВАТЕЛЯ, а не от настроек
     // ─────────────────────────────────────────────────────────
     //
@@ -657,7 +749,7 @@ const handler: Handler = async (event: HandlerEvent) => {
       if (!isPeriodKey(period)) return badRequest('period обязателен в формате YYYY-MM');
 
       const derived = monthWindow(period);
-      if (!derived) return badRequest('Некорректный период. Ожидается YYYY-MM.');
+      if (!derived) return badRequest('Неверный месяц. Ожидается формат ГГГГ-ММ, например 2026-08.');
 
       // Ведомость месяца — одна. Если их в базе несколько (наследие филиальной
       // модели), берём самую закрытую: см. pickMonthSheet.
@@ -706,12 +798,12 @@ const handler: Handler = async (event: HandlerEvent) => {
           courseName: g.courseName || '',
           // Филиал группы в расчёт не входит — только в атрибуцию: экран
           // показывает, в каком здании заработано, и туда же уйдёт расход.
-          branchId: g.branchId ?? null,
+          branchId: g.branchId || null,
           teacherIds: Array.isArray(g.teacherIds) ? g.teacherIds : [],
           studentIds: Array.isArray(g.studentIds) ? g.studentIds : [],
         }));
       const groupById = new Map(groups.map((g) => [g.id, g]));
-      const branchByGroupId = new Map<string, string | null>(groups.map((g) => [g.id, g.branchId ?? null]));
+      const branchByGroupId = new Map<string, string | null>(groups.map((g) => [g.id, g.branchId || null]));
       const courseByGroupId = new Map<string, string | null>(groups.map((g) => [g.id, g.courseId ?? null]));
 
       const allTx = txSnap.docs.map((d) => ({ id: d.id, ...(d.data() as any) }));
@@ -736,7 +828,7 @@ const handler: Handler = async (event: HandlerEvent) => {
 
       const members = membersSnap.docs.map((d) => ({ id: d.id, ...(d.data() as any) }));
       const teacherMembers = members
-        .filter((m: any) => m.status !== 'inactive' && memberHoldsRole(m, ['teacher']));
+        .filter((m: any) => membershipIsActive(m) && memberHoldsRole(m, ['teacher']));
       const knownTeacherIds = teacherMembers.map((m: any) => m.uid || m.id);
 
       // Имена из orgMembers идут ПЕРВЫМИ: у оффлайн-студента и оффлайн-учителя
@@ -764,7 +856,32 @@ const handler: Handler = async (event: HandlerEvent) => {
         knownTeacherIds,
       });
       const previewByTeacher = new Map(preview.lines.map((l) => [l.teacherId, l]));
-      const ruleByTeacher = new Map(rules.map((r) => [r.teacherId, r]));
+      // Ставка для экрана берётся ТЕМ ЖЕ разрешением, что и для расчёта. Наивная
+      // карта по teacherId отдавала бы последнюю в порядке выборки, и при двух
+      // документах (наследие прежних моделей) экран показывал бы одну ставку, а
+      // деньги считались бы по другой — спор с преподавателем на ровном месте.
+      const { resolved: ruleByTeacher } = resolveRules(rules);
+
+      // ── Сколько человеку уже выдали и сколько ещё должны ЗА ЭТОТ МЕСЯЦ ──
+      // Считаем по кассе, а не по состоянию ведомости: после выплаты одному
+      // преподавателю месяц остаётся «утверждённым», и единственная правда о том,
+      // кто уже получил деньги, — существующие расходы. `payable`, а не
+      // «начислено»: штраф гасит начисленное, и должны мы именно остаток.
+      const { payable: payableByLineId } = allocatePayable(sheetLines);
+      const payableByTeacher = new Map<string, number>();
+      for (const line of sheetLines) {
+        const minor = Math.max(0, payableByLineId.get(line.id) ?? 0);
+        payableByTeacher.set(line.teacherId, (payableByTeacher.get(line.teacherId) || 0) + minor);
+      }
+      const paidByTeacher = new Map<string, number>();
+      if (sheet) {
+        for (const tx of allTx) {
+          if (tx.type !== 'expense' || tx.categoryId !== SALARY_CATEGORY) continue;
+          if (tx.payrollPeriodId !== sheet.id || !tx.teacherId) continue;
+          const minor = Math.round(Number(tx.amount || 0) * 100);
+          paidByTeacher.set(tx.teacherId, (paidByTeacher.get(tx.teacherId) || 0) + minor);
+        }
+      }
 
       // Строки ведомости: расчётная — одна на преподавателя, ручные (премия,
       // штраф) — сколько угодно.
@@ -860,8 +977,14 @@ const handler: Handler = async (event: HandlerEvent) => {
         // уйдёт в кассу расходами: у посчитанной строки берём ЗАМОРОЖЕННОЕ (на
         // нём и построена выплата), у предпросмотра считаем на лету.
         const accruedMinor = line ? line.finalMinor : (previewLine?.computedMinor ?? 0);
-        const shares = (line?.branchShares as LineBranchShare[] | undefined)
-          ?? buildLineBranchShares(scope.groupIds, revenue.byGroup, branchByGroupId, courseByGroupId);
+        // У ПОСЧИТАННОЙ строки разложение берём только замороженное — ровно то, по
+        // которому пойдёт выплата. Досчитывать его на лету было бы удобнее, но
+        // экран показал бы разбивку по двум филиалам там, где касса создаст один
+        // расход «без филиала»: строки, посчитанные до перехода, branchShares не
+        // несут вовсе, и оживить их может лишь пересчёт месяца.
+        const shares = line
+          ? (line.branchShares as LineBranchShare[] | undefined)
+          : buildLineBranchShares(scope.groupIds, revenue.byGroup, branchByGroupId, courseByGroupId);
         const byBranch = accruedMinor > 0
           ? allocateByShares(accruedMinor, sharesOrFallback(shares)).map((a) => ({
               branchId: a.branchId,
@@ -887,6 +1010,12 @@ const handler: Handler = async (event: HandlerEvent) => {
           // Разложение начисленного по филиалам. Сумма РАВНА начисленному:
           // остаток от деления раздаётся по наибольшему остатку, а не теряется.
           byBranch,
+          // Деньги: сколько уйдёт из кассы, сколько уже ушло, сколько осталось.
+          // «Осталось» не выводится из состояния ведомости — она остаётся
+          // утверждённой, пока не выплачен последний человек.
+          payableMinor: payableByTeacher.get(teacherId) || 0,
+          paidMinor: paidByTeacher.get(teacherId) || 0,
+          remainingMinor: Math.max(0, (payableByTeacher.get(teacherId) || 0) - (paidByTeacher.get(teacherId) || 0)),
           // Что уже зафиксировано в ведомости (если она посчитана).
           line,
           manualLines: manual,
@@ -944,7 +1073,7 @@ const handler: Handler = async (event: HandlerEvent) => {
       // Окно ЗАМОРАЖИВАЕТСЯ при первом расчёте: пересчёт в августе не должен
       // менять июльские границы и втягивать в июль чужие платежи.
       const derived = monthWindow(period);
-      if (!derived) return badRequest('Некорректный период. Ожидается YYYY-MM.');
+      if (!derived) return badRequest('Неверный месяц. Ожидается формат ГГГГ-ММ, например 2026-08.');
       const windowStart = existing?.windowStart || derived.windowStart;
       const windowEnd = existing?.windowEnd || derived.windowEnd;
 
@@ -1001,12 +1130,12 @@ const handler: Handler = async (event: HandlerEvent) => {
           name: g.name || '',
           courseId: g.courseId ?? null,
           courseName: g.courseName || '',
-          branchId: g.branchId ?? null,
+          branchId: g.branchId || null,
           teacherIds: Array.isArray(g.teacherIds) ? g.teacherIds : [],
           studentIds: Array.isArray(g.studentIds) ? g.studentIds : [],
         }));
       const courseByGroupId = new Map<string, string | null>(groups.map((g) => [g.id, g.courseId ?? null]));
-      const branchByGroupId = new Map<string, string | null>(groups.map((g) => [g.id, g.branchId ?? null]));
+      const branchByGroupId = new Map<string, string | null>(groups.map((g) => [g.id, g.branchId || null]));
 
       const allTx = txSnap.docs.map((d) => ({ id: d.id, ...(d.data() as any) }));
 
@@ -1031,7 +1160,7 @@ const handler: Handler = async (event: HandlerEvent) => {
       // полным: без него в него попадёт лишь тот, у кого есть группы.
       const knownTeacherIds = membersSnap.docs
         .map((d) => ({ id: d.id, ...(d.data() as any) }))
-        .filter((m: any) => m.status !== 'inactive' && memberHoldsRole(m, ['teacher']))
+        .filter((m: any) => membershipIsActive(m) && memberHoldsRole(m, ['teacher']))
         .map((m: any) => m.uid || m.id);
 
       const result = computePayroll({
@@ -1240,7 +1369,7 @@ const handler: Handler = async (event: HandlerEvent) => {
       if (!periodId) return badRequest('periodId обязателен');
 
       const period = await loadPeriod(periodId, orgFilter);
-      if (!period) return notFound('Ведомость не найдена');
+      if (!period) return notFound('Расчёт за этот месяц не найден');
       if (period.state === 'approved' || period.state === 'paid') return frozenError(period.state);
 
       const now = new Date().toISOString();
@@ -1352,7 +1481,7 @@ const handler: Handler = async (event: HandlerEvent) => {
       if (line.organizationId !== orgFilter) return forbidden();
 
       const period = await loadPeriod(line.periodId, orgFilter);
-      if (!period) return notFound('Ведомость не найдена');
+      if (!period) return notFound('Расчёт за этот месяц не найден');
       if (period.state === 'approved' || period.state === 'paid') return frozenError(period.state);
       if (!line.isManual) return badRequest('Расчётную строку удалить нельзя — запустите пересчёт');
 
@@ -1371,7 +1500,7 @@ const handler: Handler = async (event: HandlerEvent) => {
       if (!periodId) return badRequest('periodId обязателен');
 
       const period = await loadPeriod(periodId, orgFilter);
-      if (!period) return notFound('Ведомость не найдена');
+      if (!period) return notFound('Расчёт за этот месяц не найден');
 
       // Утверждать можно ТОЛЬКО посчитанное. Черновик не утверждается (нечего
       // замораживать), утверждённое — уже заморожено.
@@ -1379,8 +1508,8 @@ const handler: Handler = async (event: HandlerEvent) => {
         return jsonResponse(409, {
           error:
             period.state === 'draft'
-              ? 'Ведомость не рассчитана — сначала выполните расчёт.'
-              : 'Ведомость уже утверждена.',
+              ? 'Месяц ещё не рассчитан — сначала нажмите «Рассчитать».'
+              : 'Месяц уже утверждён.',
           state: period.state,
         });
       }
@@ -1414,13 +1543,13 @@ const handler: Handler = async (event: HandlerEvent) => {
       if (!periodId) return badRequest('periodId обязателен');
 
       const period = await loadPeriod(periodId, orgFilter);
-      if (!period) return notFound('Ведомость не найдена');
+      if (!period) return notFound('Расчёт за этот месяц не найден');
 
       // 'paid' допускается сознательно: повторный вызов — это дозапись того, что
       // не прошло в прошлый раз, и он обязан быть безопасным.
       if (period.state !== 'approved' && period.state !== 'paid') {
         return jsonResponse(409, {
-          error: 'Выплатить можно только утверждённую ведомость.',
+          error: 'Выплатить можно только утверждённый месяц.',
           state: period.state,
         });
       }
@@ -1475,8 +1604,30 @@ const handler: Handler = async (event: HandlerEvent) => {
         else paidWholeLine.add(tx.payrollLineId);
       }
 
-      const lines = await fetchLines(orgFilter, periodId);
-      const { payable, unrecovered } = allocatePayable(lines);
+      const allLines = await fetchLines(orgFilter, periodId);
+      // Погашение штрафов считается по ВСЕМ строкам преподавателя, а не по
+      // выбранным: иначе выплата одному человеку меняла бы сумму от того, кого
+      // ещё отметили галочкой. Само распределение внутри преподавателя замкнуто,
+      // поэтому платить подмножество ЛЮДЕЙ безопасно.
+      const { payable, unrecovered } = allocatePayable(allLines);
+
+      // ── Выплата выборочно ──
+      // Пустой список — «всем»: так «Выплатить всем» остаётся тем же вызовом, что
+      // и раньше, а «выплатить одному» не требует отдельной ветки кода.
+      const requestedTeachers: string[] = Array.isArray(body.teacherIds)
+        ? body.teacherIds.map((id: unknown) => String(id)).filter(Boolean)
+        : [];
+      const teacherFilter = requestedTeachers.length ? new Set(requestedTeachers) : null;
+      if (teacherFilter) {
+        const known = new Set(allLines.map((l) => l.teacherId));
+        const unknown = requestedTeachers.filter((id) => !known.has(id));
+        // Молчаливый пропуск незнакомого id читался бы как «выплатил», хотя денег
+        // человек не увидел: имя могли опечатать, а ведомость — пересчитать.
+        if (unknown.length) {
+          return badRequest(`В расчёте за этот месяц нет строк преподавателя: ${unknown.join(', ')}`);
+        }
+      }
+      const lines = teacherFilter ? allLines.filter((l) => teacherFilter.has(l.teacherId)) : allLines;
 
       const periodRef = adminDb.collection(PERIODS).doc(periodId);
       // Множества, а не массивы: одна строка теперь порождает несколько расходов,
@@ -1484,7 +1635,16 @@ const handler: Handler = async (event: HandlerEvent) => {
       // тосте. Отдельно считаем сами расходы — это разные факты.
       const written = new Set<string>();
       let writtenExpenses = 0;
+      // Доли, закрытые ИМЕННО ЭТИМ вызовом. Нужны, чтобы в конце ответить на
+      // вопрос «месяц выплачен целиком?»: перечитывать кассу после записи было бы
+      // честнее, но это лишний круг чтений ради факта, который мы и так знаем.
+      const coveredNow = new Set<string>();
       const failed: Array<{ lineId: string; error: string }> = [];
+      // Строки, по которым в этот заход не создано НИ ОДНОГО расхода. Множество
+      // наполняется в конце обхода строки, а не по ходу: доля может пропуститься
+      // (уже оплачена, нулевая), пока соседняя записывается, и строка, попавшая
+      // разом и в «записано», и в «пропущено», превратила бы отчёт о выплате в
+      // загадку.
       const skipped = new Set<string>();
       // Строки, по которым расход уже существовал в момент записи: гонка или
       // ретрай долетевшего запроса. Итог верный (ровно один расход), но факт
@@ -1521,10 +1681,8 @@ const handler: Handler = async (event: HandlerEvent) => {
           if (allocation.amountMinor <= 0) continue;
 
           const branchKey = branchKeyOf(allocation.branchId);
-          if (paidShare.has(`${line.id}::${branchKey}`)) {
-            skipped.add(line.id);
-            continue;
-          }
+          if (paidShare.has(`${line.id}::${branchKey}`)) continue;
+          coveredNow.add(`${line.id}::${branchKey}`);
 
           // Детерминированный id: одна и та же тройка (период, строка, филиал)
           // не может дать два документа, сколько бы запросов ни пришло
@@ -1549,8 +1707,11 @@ const handler: Handler = async (event: HandlerEvent) => {
             groupId: allocation.groupId ?? line.groupId ?? null,
             teacherId: line.teacherId,
             // Филиал доли: у легаси-строки — её собственный, у ручной премии —
-            // null (заработана не в здании, а решением директора).
-            branchId: allocation.branchId ?? line.branchId ?? null,
+            // null (заработана не в здании, а решением директора). Пустую строку
+            // приводим к null тем же правилом, что и ключ выше: «Финансы» ищут
+            // расходы без филиала сравнением с null, и запись с '' выпала бы из
+            // обеих выборок разом — и филиальной, и «без филиала».
+            branchId: allocation.branchId || line.branchId || null,
             organizationId: orgFilter,
             // Ключи идемпотентности: по ним и только по ним повтор находит уже
             // выплаченное. payrollBranchKey отличает новую схему от прежней,
@@ -1567,11 +1728,11 @@ const handler: Handler = async (event: HandlerEvent) => {
               // Проверка организации ПОВТОРЯЕТСЯ внутри транзакции: чтение,
               // авторизовавшее запись, ей не атомарно.
               const snap = await t.get(periodRef);
-              if (!snap.exists) throw new Error('Ведомость не найдена');
+              if (!snap.exists) throw new Error('Расчёт за этот месяц не найден');
               const fresh = snap.data() as any;
-              if (fresh.organizationId !== orgFilter) throw new Error('Ведомость другой организации');
+              if (fresh.organizationId !== orgFilter) throw new Error('Расчёт другой организации');
               if (fresh.state !== 'approved' && fresh.state !== 'paid') {
-                throw new Error('Ведомость больше не утверждена');
+                throw new Error('Месяц больше не утверждён');
               }
 
               // Читаем ИМЕННО тот документ, который собираемся создать. Без этого
@@ -1592,18 +1753,41 @@ const handler: Handler = async (event: HandlerEvent) => {
               // экземпляре — именно этого мы и добивались.
               console.warn(`payroll: дубликат выплаты заблокирован, строка ${line.id}, филиал ${branchKey}`);
               duplicatesBlocked.add(line.id);
-              skipped.add(line.id);
               continue;
             }
             failed.push({ lineId: line.id, error: err?.message || 'Ошибка записи' });
           }
         }
+
+        // Все доли строки оказались уже оплаченными или нулевыми — денег в этот
+        // заход по ней не ушло, и отчёт обязан назвать её пропущенной.
+        if (!written.has(line.id) && !failed.some((f) => f.lineId === line.id)) skipped.add(line.id);
       }
 
-      // Статус 'paid' ставится ТОЛЬКО когда прошли все записи. Соврать здесь
-      // значит потерять невыплаченные строки навсегда: повторный запуск уже
-      // ничего бы не дописал, а баланс молча разошёлся бы.
-      if (!failed.length) {
+      // ── Когда месяц можно назвать выплаченным ──
+      // Раньше хватало «не было отказов»: выплата шла всем сразу, и других строк
+      // не оставалось. Теперь платить можно по одному человеку, и тот же признак
+      // объявил бы месяц закрытым после первой же выплаты — а остальные так и
+      // остались бы без денег, причём «Выплатить» стало бы недоступно.
+      //
+      // Поэтому считаем ПОКРЫТИЕ: каждая доля каждой строки, по которой вообще
+      // причитаются деньги, должна быть закрыта расходом — уже существовавшим,
+      // созданным сейчас или (для строк прежней схемы) закрывшим строку целиком.
+      const isCovered = (line: LineDoc): boolean => {
+        if (paidWholeLine.has(line.id)) return true;
+        const amountMinor = payable.get(line.id) ?? 0;
+        if (amountMinor <= 0) return true;
+        return allocateByShares(amountMinor, sharesOrFallback(line.branchShares as LineBranchShare[] | undefined))
+          .filter((a) => a.amountMinor > 0)
+          .every((a) => {
+            const key = `${line.id}::${branchKeyOf(a.branchId)}`;
+            return paidShare.has(key) || coveredNow.has(key);
+          });
+      };
+      const remainingLines = allLines.filter((l) => !isCovered(l));
+      const fullyPaid = !failed.length && remainingLines.length === 0;
+
+      if (fullyPaid) {
         await periodRef.update({
           state: 'paid',
           paidAt: now,
@@ -1622,7 +1806,7 @@ const handler: Handler = async (event: HandlerEvent) => {
 
       const payload = {
         id: periodId,
-        state: failed.length ? period.state : 'paid',
+        state: fullyPaid ? 'paid' : period.state,
         written: written.size,
         writtenLineIds: [...written],
         // Сколько расходных документов реально создано: у преподавателя,
@@ -1630,6 +1814,11 @@ const handler: Handler = async (event: HandlerEvent) => {
         writtenExpenses,
         skipped: skipped.size,
         duplicatesBlocked: duplicatesBlocked.size,
+        // Кому ещё не выдали. Интерфейс говорит это вслух после выплаты одному:
+        // «выплачено Азизе, осталось трое» — иначе директор не отличит
+        // «заплатил всем» от «заплатил первому в списке».
+        remainingTeacherIds: [...new Set(remainingLines.map((l) => l.teacherId))],
+        fullyPaid,
         failed,
         warnings,
       };

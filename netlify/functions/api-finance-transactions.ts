@@ -134,9 +134,9 @@ function payrollManagedError(existing: FirebaseFirestore.DocumentData) {
   if (!existing.payrollPeriodId && !existing.payrollLineId) return null;
   return jsonResponse(409, {
     error:
-      'Это выплата по зарплатной ведомости, а не обычный расход. Изменить или удалить её ' +
+      'Это выплата зарплаты, а не обычный расход. Изменить или удалить её ' +
       'здесь нельзя: повторно провести выплату модуль зарплаты уже не даст, и «Выдано» ' +
-      'навсегда разойдётся с ведомостью. Работайте с ней в разделе «Зарплата».',
+      'навсегда разойдётся с расчётом зарплаты. Работайте с ней в разделе «Зарплата».',
     code: 'payroll_managed_transaction',
     payrollPeriodId: existing.payrollPeriodId ?? null,
     payrollLineId: existing.payrollLineId ?? null,
@@ -167,9 +167,9 @@ function frozenPayrollError(hit: FrozenPeriodHit) {
   const verb = hit.state === 'paid' ? 'выплачена' : 'утверждена';
   return jsonResponse(409, {
     error:
-      `Зарплатная ведомость за ${hit.period} уже ${verb}. Платёж этой датой изменил бы базу ` +
-      'процентной оплаты, а пересчитать закрытую ведомость нельзя — преподаватель молча ' +
-      'недополучит. Укажите дату в текущем, ещё не закрытом периоде.',
+      `Зарплата за ${hit.period} уже ${verb}. Платёж этой датой изменил бы базу ` +
+      'процентной оплаты, а пересчитать закрытый месяц нельзя — преподаватель молча ' +
+      'недополучит. Укажите дату в текущем, ещё не закрытом месяце.',
     code: 'payroll_period_frozen',
     period: hit.period,
     periodId: hit.id,

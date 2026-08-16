@@ -1668,4 +1668,26 @@ export interface PayrollLine {
   createdAt: string;
 }
 
+/**
+ * Строка истории выплат — расход кассы категории «Зарплата», прочитанный
+ * обратно. Отдельного журнала выплат нет намеренно: деньги считаются выданными
+ * ровно тогда, когда существует расход, и второй список умел бы с кассой
+ * разойтись.
+ */
+export interface PayrollPayout {
+  id: string;                   // id расходной транзакции
+  date: string;
+  teacherId: string | null;
+  teacherName: string;
+  amountMinor: number;
+  periodId: string | null;
+  period: string | null;        // 'YYYY-MM' — месяц НАЧИСЛЕНИЯ, не выдачи
+  branchId: string | null;
+  branchName: string;
+  paymentMethod: string | null;
+  /** Расход заведён руками в кассе, а не проведён выплатой: ведомости у него нет. */
+  manual: boolean;
+  description: string;
+}
+
 

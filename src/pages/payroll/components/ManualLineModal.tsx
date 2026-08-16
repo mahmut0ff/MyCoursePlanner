@@ -89,7 +89,7 @@ const ManualLineModal: React.FC<Props> = ({ periodId, teacherId, teacherName, so
 
           <div>
             <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
-              {t('payroll.amountField', 'Сумма')} *
+              {t('payroll.plainAmountField', 'Сумма')} *
             </label>
             <div className="flex items-center gap-2">
               <input
@@ -125,7 +125,7 @@ const ManualLineModal: React.FC<Props> = ({ periodId, teacherId, teacherName, so
             />
             {/* Строку без объяснения через месяц не прочитает и тот, кто её завёл. */}
             <p className="text-[11px] text-slate-400 mt-1">
-              {t('payroll.noteHint', 'Останется в ведомости и в выгрузке — по нему потом и вспомнят, за что.')}
+              {t('payroll.noteHint', 'Останется в расчёте и в выгрузке — по нему потом и вспомнят, за что.')}
             </p>
           </div>
         </div>

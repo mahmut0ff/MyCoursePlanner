@@ -5,7 +5,7 @@
 import { auth } from './firebase';
 import type {
   MessageAttachment, SupportMessage, SupportThreadStatus, SupportUserInfo,
-  CompensationRule, PayComponent, PayrollPeriod, PayrollLine,
+  CompensationRule, PayComponent, PayrollPeriod, PayrollLine, PayrollPayout,
   Classroom,
 } from '../types';
 
@@ -1080,6 +1080,48 @@ export const apiSaveCompensationRule = (data: {
 export const apiDeleteCompensationRule = (id: string) =>
   apiRequest('api-payroll-rules', 'DELETE', undefined, { id });
 
+// ---- Ставка по умолчанию ----
+
+/**
+ * Умолчание организации: «как мы обычно платим преподавателю». Его получает
+ * КАЖДЫЙ новый преподаватель в момент заведения — иначе человек живёт в разделе
+ * со строкой «Ставка не задана» и начисляется нулём до дня выдачи зарплаты.
+ *
+ * `null` в ответе — законное состояние «умолчание не задано», а не ошибка.
+ */
+export const apiGetPayrollDefaultRate = () =>
+  apiRequest<{ default: { components: PayComponent[]; updatedAt?: string; updatedBy?: string } | null }>(
+    'api-payroll-rules', 'GET', undefined, { action: 'default' },
+  );
+
+/**
+ * Задать умолчание или убрать его (`components: null`).
+ *
+ * Убранное умолчание не отменяет уже выданные ставки: это самостоятельные
+ * документы, а не ссылки на настройку. Меняется только то, что достанется
+ * следующему заведённому преподавателю.
+ */
+export const apiSetPayrollDefaultRate = (components: PayComponent[] | null) =>
+  apiRequest('api-payroll-rules', 'POST', { components }, { action: 'default' });
+
+/**
+ * Разовая раздача умолчания тем, кто уже работает: автоматика действует с
+ * момента настройки и вперёд, а людей, заведённых раньше, надо догнать явно.
+ *
+ * `replaceLegacy` заменяет МЁРТВЫЕ ставки прежних моделей («за занятие», «за
+ * час», «за студента»): формально ставка есть, но движок её не начисляет, и
+ * человек получает ноль ровно как без ставки. Молча такое не заменяем — это
+ * чужое решение, пусть и переставшее работать.
+ */
+export const apiApplyPayrollDefaultRate = (data?: { replaceLegacy?: boolean }) =>
+  apiRequest<{
+    created: number;
+    teacherIds: string[];
+    skipped: number;
+    legacyRates: number;
+    replacedLegacy: boolean;
+  }>('api-payroll-rules', 'POST', data ?? {}, { action: 'applyDefault' });
+
 // ---- Зарплата по преподавателю ----
 
 /**
@@ -1145,13 +1187,32 @@ export const apiDeletePayrollLine = (lineId: string) =>
 export const apiApprovePayroll = (periodId: string) =>
   payrollReq('approve', 'POST', { periodId });
 
-// Выплата: разворачивает утверждённые строки в расходные financeTransactions.
-// Идемпотентна на сервере (пропускает уже выплаченные строки), но UI всё равно
-// обязан спросить подтверждение — это единственный шаг, двигающий деньги.
-export const apiPayPayroll = (data: { periodId: string; date?: string; paymentMethod?: string | null }) =>
-  payrollReq('pay', 'POST', data);
+/**
+ * Выплата: разворачивает утверждённые строки в расходные financeTransactions.
+ * Идемпотентна на сервере (пропускает уже выплаченные доли), но UI всё равно
+ * обязан спросить подтверждение — это единственный шаг, двигающий деньги.
+ *
+ * `teacherIds` — выплата ВЫБОРОЧНО. Пропуск поля означает «всем»: так кнопка
+ * «Выплатить всем» и кнопка в строке преподавателя — один и тот же вызов, а не
+ * две расходящиеся ветки. Месяц становится «выплаченным» только когда закрыта
+ * последняя строка, поэтому выплата одному не прячет остальных.
+ */
+export const apiPayPayroll = (data: {
+  periodId: string;
+  teacherIds?: string[];
+  date?: string;
+  paymentMethod?: string | null;
+}) => payrollReq('pay', 'POST', data);
 
 // Зарплатный баланс: начислено (утверждённое) − выдано (выплаченное).
 // Сервер считает по всем преподавателям организации сразу — фильтровать нечем.
 export const apiGetPayrollBalance = () =>
   payrollReq<any[]>('balance', 'GET');
+
+/**
+ * История выплат — кому, когда и сколько выдали. Источник тот же, что у кассы
+ * (расходы категории «Зарплата»), поэтому разойтись с «Финансами» она не может.
+ * Без фильтров — вся история организации, свежие сверху.
+ */
+export const apiGetPayrollPayouts = (filters?: { teacherId?: string; period?: string }) =>
+  payrollReq<PayrollPayout[]>('payouts', 'GET', undefined, filters as any);

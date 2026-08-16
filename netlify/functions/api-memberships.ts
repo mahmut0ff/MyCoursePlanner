@@ -18,6 +18,7 @@ import type { AuthUser } from './utils/auth';
 import { verifyAuth, isSuperAdmin, getMembershipData, memberHoldsRole, resolveOrgGrants, standingIsRosterManager, ok, unauthorized, forbidden, badRequest, notFound, jsonResponse } from './utils/auth';
 import { notifyOrgAdmins } from './utils/notifications';
 import { isDebtBearingPlan, isUntouchedPlan, planDebt } from './utils/payment-plans';
+import { ensureTeacherRate, membershipIsActive } from './utils/payroll-default-rate';
 
 const now = () => new Date().toISOString();
 
@@ -516,7 +517,13 @@ const handler: Handler = async (event: HandlerEvent) => {
       // Upsert with merge rather than update() so assigning roles never throws on a
       // membership doc that only exists in one mirror (or not yet at all). When the
       // doc is new we seed identity fields from the user's profile.
-      const existing = await getMembership(body.userId, body.organizationId) as any;
+      //
+      // Читаем ДО записи и через getMembershipData: снимок «кем человек был»
+      // нужен ниже, чтобы отличить выдачу роли преподавателя от правки ролей
+      // того, кто ей уже был. Локальный getMembership смотрит только
+      // пользовательское зеркало, а односторонние членства здесь бывают — на
+      // них защита от воскрешения зарплатной ставки просто не сработала бы.
+      const existing = await getMembershipData(body.userId, body.organizationId) as any;
       const targetUserDoc = await adminDb.collection('users').doc(body.userId).get();
       const targetUserData = targetUserDoc.data() || {};
       const baseIdentity = existing ? {} : {
@@ -553,7 +560,37 @@ const handler: Handler = async (event: HandlerEvent) => {
         });
       }
 
-      return ok({ roleChanged: true, role: roles[0], roles });
+      // Роль преподавателя выдают и здесь — менеджеру, которого посадили вести
+      // группу, или человеку, заведённому раньше без роли. Для зарплаты это то
+      // же событие, что и создание карточки преподавателя, поэтому ставка по
+      // умолчанию выдаётся и тут: иначе половина людей приходила бы в раздел
+      // «Зарплата» без ставки в зависимости от того, каким путём их завели.
+      //
+      // Событие — именно ПОЯВЛЕНИЕ роли, а не её наличие. Редакторы ролей шлют
+      // весь набор целиком, поэтому «числится преподавателем» истинно на каждом
+      // сохранении: добавили человеку роль менеджера — и ставка, которую
+      // директор осознанно убрал, воскресла бы вместе с ней.
+      //
+      // Ровно 'teacher', без 'mentor': зарплатный раздел считает преподавателями
+      // только эту роль (memberHoldsRole(m, ['teacher']) в api-payroll), и ставка
+      // у наставника оказалась бы документом, которым никто не пользуется.
+      //
+      // Статус тоже проверяем: у уволенного (status 'removed') роль в членстве
+      // остаётся, и правка ролей выдала бы ему ставку заново.
+      //
+      // Смотрим на снимок `existing`, снятый ДО записи ролей: после неё в базе
+      // уже лежит новый набор, и «раньше был преподавателем» стало бы истиной
+      // всегда — ставка не выдалась бы никому и никогда.
+      const wasTeacher = !!existing && memberHoldsRole(existing, ['teacher']);
+      // Тот же предикат, что у зарплаты (utils/payroll-default-rate), а не своя
+      // копия: расходиться этим двум спискам нельзя.
+      const becameTeacher = roles.includes('teacher') && !wasTeacher
+        && membershipIsActive(existing ?? {});
+      const defaultRateApplied = becameTeacher
+        ? (await ensureTeacherRate(body.organizationId, body.userId, user.uid)) === 'created'
+        : false;
+
+      return ok({ roleChanged: true, role: roles[0], roles, defaultRateApplied });
     }
 
     // ═══ POST: Set branch assignment ═══

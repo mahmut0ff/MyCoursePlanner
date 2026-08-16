@@ -445,7 +445,7 @@ const ExpensesTab: React.FC<Props> = ({ range, onRangeChange, filters, onFilters
                           {/* Строка ведомости: объясняем, почему у неё нет действий. */}
                           {isPayrollManaged(tx) && (
                             <p className="text-[11px] text-slate-400 mt-1">
-                              {t('finances.fromPayroll', 'Выплата по ведомости — правится в разделе «Зарплата»')}
+                              {t('finances.fromPayroll', 'Выплата зарплаты — правится в разделе «Зарплата»')}
                             </p>
                           )}
                         </td>

@@ -314,7 +314,7 @@ const handler: Handler = async (event: HandlerEvent) => {
       notifyOrgAdmins(
         n.orgId,
         'payroll_ready',
-        'Ведомость по зарплате готова к проверке',
+        'Зарплата за месяц посчитана — проверьте',
         `Расчёт за ${period}: ${n.teachers} преподавател(я/ей) на ${fmtMinor(n.totalMinor)} с. ` +
         'Проверьте суммы и утвердите — без утверждения выплата не производится.',
         '/payroll',

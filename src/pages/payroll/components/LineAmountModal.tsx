@@ -48,7 +48,7 @@ const LineAmountModal: React.FC<Props> = ({ periodId, line, onClose, onSaved }) 
       } else if (manual) {
         const amountMinor = somInputToMinor(amount);
         if (amountMinor === null) {
-          setError(t('payroll.badAmount', 'укажите сумму больше нуля'));
+          setError(t('payroll.badAmount', 'Укажите сумму больше нуля'));
           setSaving(false);
           return;
         }
@@ -58,7 +58,7 @@ const LineAmountModal: React.FC<Props> = ({ periodId, line, onClose, onSaved }) 
       } else {
         const overrideMinor = somInputToMinor(amount);
         if (overrideMinor === null) {
-          setError(t('payroll.badAmount', 'укажите сумму больше нуля'));
+          setError(t('payroll.badAmount', 'Укажите сумму больше нуля'));
           setSaving(false);
           return;
         }
@@ -113,7 +113,7 @@ const LineAmountModal: React.FC<Props> = ({ periodId, line, onClose, onSaved }) 
 
           <div>
             <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
-              {manual ? t('payroll.amountField', 'Сумма') : t('payroll.overrideAmount', 'Сумма к выплате')} *
+              {manual ? t('payroll.plainAmountField', 'Сумма') : t('payroll.overrideAmount', 'Сумма к выплате')} *
             </label>
             <div className="flex items-center gap-2">
               <input

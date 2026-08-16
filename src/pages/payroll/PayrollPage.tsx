@@ -21,6 +21,7 @@ import {
   apiDeletePayrollLine,
   apiGetPayrollBalance,
   apiGetPayrollOverview,
+  apiGetPayrollPayouts,
   apiPayPayroll,
 } from '../../lib/api';
 import { usePermissions } from '../../contexts/PermissionsContext';
@@ -32,11 +33,13 @@ import { useLazyList } from '../../hooks/useLazyList';
 import { buildCsv, downloadCsv } from '../../lib/csv';
 import { formatDayKey } from '../../lib/money';
 import { orgDayKey } from '../../lib/payment-plans';
-import type { PayrollLine, PayrollPeriod, PayrollPeriodState } from '../../types';
+import type { PayrollLine, PayrollPayout, PayrollPeriod, PayrollPeriodState } from '../../types';
+import DefaultRateCard from './components/DefaultRateCard';
 import DiagnosticsPanel from './components/DiagnosticsPanel';
 import type { PayrollDiagnostic } from './components/DiagnosticsPanel';
 import LineAmountModal from './components/LineAmountModal';
 import ManualLineModal from './components/ManualLineModal';
+import PayoutHistory from './components/PayoutHistory';
 import RateModal from './components/RateModal';
 import TeacherRow from './components/TeacherRow';
 import type { OverviewTeacher } from './components/TeacherRow';
@@ -71,6 +74,13 @@ interface BalanceRow {
 
 /** Можно ли действие в этом состоянии и, если нет, почему — по-русски. */
 interface Gate { enabled: boolean; reason: string }
+
+/**
+ * Один и тот же пустой массив для всех, кому ничего не выдавали: новый литерал
+ * на каждый рендер менял бы проп у каждой строки списка без единого изменения
+ * данных.
+ */
+const NO_PAYOUTS: PayrollPayout[] = [];
 
 /**
  * Граница окна расчёта человеческим днём.
@@ -112,6 +122,7 @@ const PayrollPage: React.FC = () => {
   const [period, setPeriod] = useState(currentPeriodKey());
   const [data, setData] = useState<Overview | null>(null);
   const [balance, setBalance] = useState<BalanceRow[]>([]);
+  const [payouts, setPayouts] = useState<PayrollPayout[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
@@ -124,6 +135,8 @@ const PayrollPage: React.FC = () => {
   const [pendingLineDelete, setPendingLineDelete] = useState<PayrollLine | null>(null);
   const [confirmApprove, setConfirmApprove] = useState(false);
   const [confirmPay, setConfirmPay] = useState(false);
+  /** Кому выплачиваем поштучно; null — диалог закрыт. */
+  const [payFor, setPayFor] = useState<OverviewTeacher | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -133,19 +146,32 @@ const PayrollPage: React.FC = () => {
     // runApprove/runPay берут id из этого же состояния.
     setData(null);
     setBalance([]);
+    setPayouts([]);
     try {
-      const [overview, balanceData] = await Promise.all([
+      // История выплат идёт тем же кругом: после выплаты страница перезагружается
+      // целиком, и список «кому уже выдали» обязан обновиться вместе с суммами —
+      // иначе директор увидит новое «осталось» рядом со старой историей.
+      const [overview, balanceData, payoutsData] = await Promise.all([
         apiGetPayrollOverview({ period }),
         apiGetPayrollBalance(),
+        apiGetPayrollPayouts(),
       ]);
       setData(overview as Overview);
       setBalance(Array.isArray(balanceData) ? balanceData : []);
+      setPayouts(Array.isArray(payoutsData) ? payoutsData : []);
     } catch (e: any) {
       setError(e?.message || t('payroll.loadFailed', 'Не удалось загрузить данные'));
     } finally {
       setLoading(false);
     }
-  }, [period, t]);
+    // `t` намеренно НЕ в зависимостях, хотя используется в catch. Загрузчик висит
+    // в useEffect, поэтому любая смена ссылки на `t` — это ещё три запроса к
+    // серверу: при переключении языка страница перезагружалась целиком ради
+    // одной строки сообщения об ошибке. Хуже другое: стоит `t` стать нестабильной
+    // (так ведёт себя мок в тестах), и цикл «запрос → состояние → рендер →
+    // запрос» уже не остановить — экран висит, не падая.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [period]);
 
   useEffect(() => {
     load();
@@ -157,6 +183,24 @@ const PayrollPage: React.FC = () => {
   const frozen = state === 'approved' || state === 'paid';
   const lines = useMemo(() => data?.lines ?? [], [data]);
   const teachers = useMemo(() => data?.teachers ?? [], [data]);
+
+  /**
+   * История, разложенная по преподавателям, — чтобы строка человека отвечала
+   * «когда ему платили» без отдельного запроса на каждое раскрытие.
+   *
+   * Берём ВСЕ месяцы, а не выбранный: вопрос «сколько я ему уже отдал» не
+   * заканчивается на границе месяца, а выплату за июль делают в августе.
+   */
+  const payoutsByTeacher = useMemo(() => {
+    const map = new Map<string, PayrollPayout[]>();
+    for (const row of payouts) {
+      if (!row.teacherId) continue;
+      const list = map.get(row.teacherId);
+      if (list) list.push(row);
+      else map.set(row.teacherId, [row]);
+    }
+    return map;
+  }, [payouts]);
 
   /**
    * Какие дни попали в расчёт. Название месяца этого не отвечает: в ведомости
@@ -200,6 +244,23 @@ const PayrollPage: React.FC = () => {
   const payableMinor = sheet ? payout.payableMinor : previewTotalMinor;
   const unrecoveredMinor = payout.unrecoveredMinor;
 
+  /**
+   * Сколько по этому месяцу ЕЩЁ уйдёт из кассы. Раньше это совпадало с
+   * payableMinor, потому что месяц выплачивался целиком. Теперь выплата бывает
+   * поштучной, и «уйдёт payableMinor» после первой же такой выплаты — неправда:
+   * чужая доля уже в кассе. Считаем по остаткам, которые вернул сервер.
+   */
+  const remainingTotalMinor = useMemo(
+    () => teachers.reduce((sum, x) => sum + (x.remainingMinor ?? 0), 0),
+    [teachers],
+  );
+
+  /** Сколько по этому месяцу уже реально ушло из кассы. */
+  const paidTotalMinor = useMemo(
+    () => teachers.reduce((sum, x) => sum + (x.paidMinor ?? 0), 0),
+    [teachers],
+  );
+
   const unrecoveredNames = useMemo(
     () => payout.unrecoveredTeachers
       .map(row => `${row.teacherName || teacherName(row.teacherId)} (${formatMinor(row.unrecoveredMinor)})`)
@@ -241,6 +302,29 @@ const PayrollPage: React.FC = () => {
     if (state !== 'approved') return { enabled: false, reason: t('payroll.gatePayNotApproved', 'Выплатить можно только утверждённое.') };
     return { enabled: true, reason: '' };
   })();
+
+  /**
+   * Выплата ОДНОМУ человеку. Гейт свой, а не общий: месяц переходит в
+   * «выплачено» только когда закрыта последняя строка, поэтому после выплаты
+   * первому ведомость остаётся утверждённой, и кнопки в строках обязаны
+   * продолжать работать. Состояние paid тоже пропускаем — там просто ни у кого
+   * не остаётся долга, и это скажет сама строка.
+   */
+  const teacherPayGate: Gate = sheet && (state === 'approved' || state === 'paid')
+    ? { enabled: true, reason: '' }
+    : {
+        enabled: false,
+        reason: t('payroll.payNotApproved', 'Сначала утвердите месяц — выплатить можно только утверждённое.'),
+      };
+
+  const canPayTeacher = teacherPayGate.enabled && canWrite && !busy && !loading && !error;
+  // Причина молчащей кнопки, а не сама блокировка: busy и загрузка проходят
+  // сами, объяснять их незачем.
+  const payoutHint = !teacherPayGate.enabled
+    ? teacherPayGate.reason
+    : canWrite
+      ? ''
+      : t('payroll.noWriteRight', 'Нет прав на изменение зарплаты.');
 
   /**
    * Совпадает ли ведомость на экране с тем, что выбрано СЕЙЧАС. Последняя линия
@@ -286,6 +370,19 @@ const PayrollPage: React.FC = () => {
     }
   };
 
+  /**
+   * Хвост любой выплаты: предупреждения сервера и — главное — сколько человек
+   * ещё ждут денег. Без этой строки «заплатил всем» и «заплатил одному»
+   * заканчиваются одинаковым зелёным тостом и не различаются на глаз.
+   */
+  const reportPayResult = (res: any) => {
+    for (const warning of res?.warnings ?? []) toast(warning.message, { icon: '⚠️' });
+    const remaining = Array.isArray(res?.remainingTeacherIds) ? res.remainingTeacherIds.length : 0;
+    if (res?.fullyPaid === false && remaining > 0) {
+      toast(t('payroll.payRemaining', 'Осталось выплатить: {{count}}', { count: remaining }));
+    }
+  };
+
   const runPay = async () => {
     if (!sheet) return;
     if (!sheetMatchesSelection()) {
@@ -307,8 +404,39 @@ const PayrollPage: React.FC = () => {
       } else {
         toast.success(t('payroll.paid', 'Зарплата выплачена и записана в расходы'));
       }
-      for (const warning of res?.warnings ?? []) toast(warning.message, { icon: '⚠️' });
+      reportPayResult(res);
       setConfirmPay(false);
+      await load();
+    } catch (e: any) {
+      toast.error(e?.message || t('payroll.payFailed', 'Не удалось провести выплату'));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  /** Выплата одному человеку — тот же эндпоинт, только со списком из одного id. */
+  const runPayTeacher = async () => {
+    if (!sheet || !payFor) return;
+    if (!sheetMatchesSelection()) {
+      toast.error(t('payroll.staleSheet', 'Данные на экране не совпадают с выбранным месяцем. Обновите страницу.'));
+      setPayFor(null);
+      await load();
+      return;
+    }
+    const name = payFor.teacherName || payFor.teacherId;
+    setBusy(true);
+    try {
+      const res: any = await apiPayPayroll({ periodId: sheet.id, teacherIds: [payFor.teacherId] });
+      if (Array.isArray(res?.failed) && res.failed.length) {
+        toast.error(t('payroll.payPartial', 'Записано строк: {{ok}}, не прошло: {{bad}}. Повторите выплату — уже выплаченное не задвоится.', {
+          ok: res.written ?? 0,
+          bad: res.failed.length,
+        }));
+      } else {
+        toast.success(t('payroll.payOneDone', 'Выплачено: {{name}}', { name }));
+      }
+      reportPayResult(res);
+      setPayFor(null);
       await load();
     } catch (e: any) {
       toast.error(e?.message || t('payroll.payFailed', 'Не удалось провести выплату'));
@@ -440,7 +568,9 @@ const PayrollPage: React.FC = () => {
           </div>
           <div className="flex items-center gap-3">
             <div className="text-right">
-              {/* После выплаты «к выплате» — уже неправда: деньги ушли. */}
+              {/* Главное число — то, что ЕЩЁ предстоит отдать. После выплаты
+                  части людей «к выплате: 4 200 000» было бы прямым враньём:
+                  половина этих денег уже в кассе как расход. */}
               <p className="text-xs text-slate-500">
                 {state === 'paid'
                   ? t('payroll.totalLabelPaid', 'Выплачено')
@@ -448,7 +578,19 @@ const PayrollPage: React.FC = () => {
                     ? t('payroll.totalLabel', 'Итого к выплате')
                     : t('payroll.totalLabelPreview', 'Выйдет по ставкам')}
               </p>
-              <p className="text-lg font-bold text-slate-900 dark:text-white">{formatMinor(payableMinor)}</p>
+              <p className="text-lg font-bold text-slate-900 dark:text-white">
+                {formatMinor(state === 'paid' ? paidTotalMinor : sheet ? remainingTotalMinor : payableMinor)}
+              </p>
+              {/* Выплата пошла, но не закончилась: без этой строки директор видит
+                  уменьшившееся число и не понимает, куда делась разница. */}
+              {state !== 'paid' && paidTotalMinor > 0 && (
+                <p className="text-[11px] text-slate-500 mt-0.5">
+                  {t('payroll.totalPaidAside', 'выдано {{paid}} из {{total}}', {
+                    paid: formatMinor(paidTotalMinor),
+                    total: formatMinor(payableMinor),
+                  })}
+                </p>
+              )}
               {unrecoveredMinor > 0 && (
                 <p className="text-[11px] text-slate-500 mt-0.5">
                   {t('payroll.totalAccruedAside', 'начислено нетто {{net}}', { net: formatMinor(totalMinor) })}
@@ -484,14 +626,27 @@ const PayrollPage: React.FC = () => {
             onClick={() => setConfirmApprove(true)}
           />
           <ArrowRight className="hidden sm:block w-4 h-4 text-slate-300 mt-3 shrink-0" />
+          {/* «Всем», а не просто «Выплатить»: рядом, в строке преподавателя,
+              теперь есть выплата поштучно, и кнопки должны различаться словами. */}
           <StepButton
             gate={payGate}
             icon={Banknote}
-            label={t('payroll.pay', 'Выплатить')}
+            label={t('payroll.payAll', 'Выплатить всем')}
             primary={state === 'approved'}
             onClick={() => setConfirmPay(true)}
           />
         </div>
+
+        {/* Что означают три шага. Названия кнопок говорят, ЧТО нажать, но не
+            говорят, что произойдёт и что после этого нельзя откатить: «утвердить»
+            звучит как галочка, а на деле замораживает суммы навсегда. Строка
+            висит всегда — читать её нужно как раз до первого нажатия. */}
+        <p className="text-[11px] text-slate-500 leading-snug">
+          {t(
+            'payroll.lifecycleHint',
+            'Рассчитать — зафиксировать суммы за месяц. Утвердить — запретить изменения. Выплатить — записать расходы в кассу.',
+          )}
+        </p>
 
         {!sheet && !loading && !error && (
           <p className="text-xs text-slate-500">
@@ -515,6 +670,11 @@ const PayrollPage: React.FC = () => {
           </div>
         )}
       </div>
+
+      {/* Настройка раздела, а не месяца: ставка по умолчанию живёт вне
+          выбранного периода, поэтому стоит под шапкой месяца и не зависит от
+          её состояния. */}
+      <DefaultRateCard canWrite={canWrite} onApplied={load} />
 
       {loading ? (
         <ListSkeleton rows={6} />
@@ -568,10 +728,14 @@ const PayrollPage: React.FC = () => {
                       canDeleteLine={canDeleteLine}
                       frozen={frozen}
                       canAddManual={canWrite && !frozen && Boolean(sheet)}
+                      canPayTeacher={canPayTeacher}
+                      payoutHint={payoutHint}
+                      payouts={payoutsByTeacher.get(teacher.teacherId) ?? NO_PAYOUTS}
                       onEditRate={() => setRateFor(teacher)}
                       onAddManual={source => setManualFor({ teacher, source })}
                       onEditAmount={line => setEditingLine(line)}
                       onDeleteLine={line => setPendingLineDelete(line)}
+                      onPayTeacher={() => setPayFor(teacher)}
                     />
                   ))}
                 </div>
@@ -587,7 +751,7 @@ const PayrollPage: React.FC = () => {
 
               {canWrite && !sheet && (
                 <p className="text-xs text-slate-500 px-1">
-                  {t('payroll.manualNeedsSheet', 'Премии и штрафы можно добавить после расчёта месяца — им нужна ведомость, в которой они сохранятся.')}
+                  {t('payroll.manualNeedsSheet', 'Премии и штрафы можно добавить после того, как месяц рассчитан — им нужен расчёт, в котором они сохранятся.')}
                 </p>
               )}
             </>
@@ -645,6 +809,11 @@ const PayrollPage: React.FC = () => {
         </div>
       )}
 
+      {/* История выплат — под балансом: баланс отвечает «сколько должны», а
+          история «кому и когда уже отдали». Это соседние вопросы, и ответ на
+          второй раньше приходилось искать в кассе среди аренды и рекламы. */}
+      {!loading && !error && <PayoutHistory payouts={payouts} />}
+
       <ConfirmDialog
         open={confirmApprove}
         busy={busy}
@@ -678,14 +847,16 @@ const PayrollPage: React.FC = () => {
         open={confirmPay}
         danger
         busy={busy}
-        title={t('payroll.pay', 'Выплатить')}
+        title={t('payroll.payAll', 'Выплатить всем')}
         message={(
           <div className="space-y-2">
             <p>
               {t(
                 'payroll.payConfirm',
                 'По каждому преподавателю будет создан расход в Финансы → Расходы, категория «Зарплата», на общую сумму {{total}}. Отменить это отсюда нельзя — ошибочные записи придётся править в разделе Финансы вручную.',
-                { total: formatMinor(payableMinor) },
+                // Сумма — ОСТАТОК по месяцу: тем, кому уже выплатили поштучно,
+                // второй раз ничего не уйдёт, и обещать полную сумму нельзя.
+                { total: formatMinor(sheet ? remainingTotalMinor : payableMinor) },
               )}
             </p>
             {unrecoveredMinor > 0 && (
@@ -707,6 +878,27 @@ const PayrollPage: React.FC = () => {
         confirmLabel={t('payroll.payConfirmLabel', 'Выплатить и записать в расходы')}
         onConfirm={runPay}
         onClose={() => setConfirmPay(false)}
+      />
+
+      {/* Сумма в подтверждении — ОСТАТОК, а не начисленное: если человеку уже
+          что-то выдали, уйдёт только недостающее, и назвать здесь полную сумму
+          значило бы пообещать выплату дважды. */}
+      <ConfirmDialog
+        open={Boolean(payFor)}
+        danger
+        busy={busy}
+        title={t('payroll.payOne', 'Выплатить')}
+        message={t(
+          'payroll.payOneConfirm',
+          '{{name}} получит {{amount}}. Деньги уйдут расходом в «Финансы» — отменить отсюда нельзя.',
+          {
+            name: payFor?.teacherName || payFor?.teacherId || '',
+            amount: formatMinor(payFor?.remainingMinor ?? 0),
+          },
+        )}
+        confirmLabel={t('payroll.payConfirmLabel', 'Выплатить и записать в расходы')}
+        onConfirm={runPayTeacher}
+        onClose={() => setPayFor(null)}
       />
 
       <ConfirmDialog

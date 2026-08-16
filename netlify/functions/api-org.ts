@@ -19,6 +19,7 @@ import { billingPeriodKey, billingDeadlineISO } from './utils/billing';
 import { isUntouchedPlan, orgDayKey, planPeriodKey } from './utils/payment-plans';
 import { loadTuitionRates, effectiveChargeAmount } from './utils/tuition';
 import { roomKeys, sameRoom } from './utils/classrooms';
+import { ensureTeacherRate } from './utils/payroll-default-rate';
 /* ═══════════════════════════════════════════════ */
 /*  Helpers                                        */
 /* ═══════════════════════════════════════════════ */
@@ -1746,7 +1747,16 @@ const handler: Handler = async (event: HandlerEvent) => {
           joinedAt: now(),
         });
 
-        return ok({ uid: teacherUid, ...profile, login: loginInfo });
+        // Ставка по умолчанию — сразу, в момент заведения. Иначе человек живёт в
+        // разделе «Зарплата» со строкой «Ставка не задана» и начисляется нулём
+        // до тех пор, пока кто-нибудь об этом не вспомнит, — а вспоминают в день
+        // выдачи. Если умолчания у организации нет, не происходит ничего.
+        //
+        // Ошибка здесь НЕ роняет заведение преподавателя (см. ensureTeacherRate):
+        // не создать ставку — видно в разделе, не создать преподавателя — провал.
+        const rateResult = await ensureTeacherRate(orgId, teacherUid, user.uid);
+
+        return ok({ uid: teacherUid, ...profile, login: loginInfo, defaultRateApplied: rateResult === 'created' });
       } catch (e: any) {
         if (e.code === 'auth/email-already-exists') return badRequest('Email уже зарегистрирован в системе');
         if (e.code === 'auth/invalid-password') return badRequest('Пароль слишком слабый (минимум 6 символов)');
@@ -1886,7 +1896,18 @@ const handler: Handler = async (event: HandlerEvent) => {
         await adminDb.collection('orgMembers').doc(orgId).collection('members').doc(uid).set(memberBase);
         await adminDb.collection('users').doc(uid).collection('memberships').doc(orgId).set(memberBase);
 
-        return ok({ uid, ...profile, roles, login: { username: username || undefined, email: loginEmail } });
+        // Ставка по умолчанию — как и в createTeacher. Это ОСНОВНОЙ путь
+        // заведения сотрудника из раздела «Команда», и без этой строки половина
+        // преподавателей появлялась бы в зарплате без ставки в зависимости от
+        // того, какой формой их завели.
+        const defaultRateApplied = roles.includes('teacher')
+          ? (await ensureTeacherRate(orgId, uid, user.uid)) === 'created'
+          : false;
+
+        return ok({
+          uid, ...profile, roles, defaultRateApplied,
+          login: { username: username || undefined, email: loginEmail },
+        });
       } catch (e: any) {
         if (e.code === 'auth/email-already-exists') return badRequest('Email уже зарегистрирован в системе');
         if (e.code === 'auth/invalid-password') return badRequest('Пароль слишком слабый (минимум 6 символов)');

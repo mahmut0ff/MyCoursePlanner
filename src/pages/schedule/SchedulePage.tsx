@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { orgGetSchedule, orgGetTimetable, orgCreateEvent, orgDeleteEvent, orgUpdateEvent, orgGetGroups, orgListClassrooms } from '../../lib/api';
 import { Plus, ChevronLeft, ChevronRight, ChevronDown, Clock, Trash2, Calendar, MapPin, Repeat, Copy, Clipboard, GripVertical, X, Sparkles, Pencil, RefreshCw } from 'lucide-react';
 import type { ScheduleEvent, ScheduleEventType, Group, Classroom } from '../../types';
-import { timeToMins, minsToTime, appDayOfWeek, slotSpan, spansOverlap } from '../../lib/scheduleTime';
+import { timeToMins, minsToTime, appDayOfWeek, slotSpan, spansOverlap, buildTimeRows, timeRowKey, type TimeRow } from '../../lib/scheduleTime';
 import { sameRoom } from '../../lib/classrooms';
 import { groupByRoom, roomFieldsOf, sectionKeyOf, NO_ROOM, type RoomSection } from '../../lib/scheduleRooms';
 import { cacheKey, useCachedResource } from '../../lib/apiCache';
@@ -19,7 +19,14 @@ const DAY_NAMES = ['Вс', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб'];
 
 const HOURS = Array.from({ length: 14 }, (_, i) => i + 7);
 
-const DEFAULT_SLOT_MINUTES = 60;
+/** Длина урока по умолчанию: час двадцать. */
+const DEFAULT_SLOT_MINUTES = 80;
+
+/** Колонка времени + семь дней. Одна на все три части недельной таблицы. */
+const GRID_COLS = 'grid-cols-[56px_repeat(7,1fr)]';
+
+/** Строка-заглушка для кабинета, в котором ещё нет ни одного занятия. */
+const EMPTY_ROW: TimeRow = { startMins: null, endMins: null };
 
 /**
  * Подпись кабинета. Справочник имеет приоритет, свободный текст — запасной путь
@@ -63,14 +70,20 @@ const SchedulePage: React.FC = () => {
   const [current, setCurrent] = useState(new Date());
   const [showCreate, setShowCreate] = useState(false);
   const [form, setForm] = useState<{
-    title: string; date: string; dayOfWeek: number; startTime: string; endTime: string;
+    title: string; date: string;
+    /**
+     * Дни недели урока. При создании их может быть несколько — расписание получит
+     * по записи на каждый; при правке всегда ровно один: запись живёт в одном дне.
+     */
+    days: number[];
+    startTime: string; endTime: string;
     type: ScheduleEventType; duration: number; location: string; classroomId?: string | null;
     branchId?: string; groupId?: string;
     /** Заполнен → модалка правит существующее занятие, пусто → создаёт новое. */
     editingId?: string | null;
     /** Правим ли запись недельного расписания (иначе — разовое событие). */
     editingRecurring?: boolean;
-  }>({ title: '', date: '', dayOfWeek: 0, startTime: '09:00', endTime: '10:00', type: 'lesson', duration: 60, location: '', classroomId: null, editingId: null });
+  }>({ title: '', date: '', days: [0], startTime: '09:00', endTime: '10:20', type: 'lesson', duration: DEFAULT_SLOT_MINUTES, location: '', classroomId: null, editingId: null });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   // Which pending action a conflict blocked, so the banner can offer "поставить всё равно".
@@ -515,14 +528,26 @@ const SchedulePage: React.FC = () => {
       const startMins = timeToMins(form.startTime) ?? 0;
       const durationMins = Math.max(5, (timeToMins(form.endTime) ?? startMins + DEFAULT_SLOT_MINUTES) - startMins);
 
+      // Один урок на день недели: выбор нескольких дней — это несколько уроков,
+      // каждый со своей проверкой накладок.
+      const days = isRecurring ? [...new Set(form.days)].sort((a, b) => a - b) : [0];
+      if (isRecurring && !days.length) { setSaving(false); return; }
+
       if (!force) {
         // Правя занятие, само с собой оно конфликтовать не должно.
-        const conflict = checkConflict(
-          { ...form, recurring: isRecurring, duration: durationMins },
-          form.editingId || undefined,
-        );
-        if (conflict) {
-          setError(conflict);
+        const conflicts = days
+          .map(day => ({
+            day,
+            msg: checkConflict(
+              { ...form, dayOfWeek: day, recurring: isRecurring, duration: durationMins },
+              form.editingId || undefined,
+            ),
+          }))
+          .filter((c): c is { day: number; msg: string } => !!c.msg)
+          // День называем, только когда их несколько: иначе это лишний шум.
+          .map(c => (isRecurring && days.length > 1 ? `${dayNamesFull[c.day]}: ${c.msg}` : c.msg));
+        if (conflicts.length) {
+          setError(conflicts.join('\n'));
           setConflictRetry('create');
           setSaving(false);
           return;
@@ -541,12 +566,13 @@ const SchedulePage: React.FC = () => {
         force,
       };
 
-      const shape = isRecurring
-        ? { type: 'lesson' as const, recurring: true, dayOfWeek: form.dayOfWeek }
+      const shapeOf = (day: number) => isRecurring
+        ? { type: 'lesson' as const, recurring: true, dayOfWeek: day }
         : { date: form.date, type: form.type, recurring: false };
       if (!isRecurring && !form.date) return;
 
       if (form.editingId) {
+        const shape = shapeOf(days[0] ?? 0);
         await orgUpdateEvent({ id: form.editingId, ...payload, ...shape });
         // Правка отражается на месте — перезагружать неделю целиком незачем.
         const patch = (e: ScheduleEvent) =>
@@ -555,10 +581,28 @@ const SchedulePage: React.FC = () => {
         else setCalendarEvents((p) => p.map(patch));
         showToast(t('schedule.updated', 'Занятие обновлено'));
       } else if (isRecurring) {
-        const created = await orgCreateEvent({ ...payload, ...shape });
-        setTimetableEvents((p) => [...p, created]);
+        // Расписание хранит один день на запись, поэтому выбор нескольких дней —
+        // это несколько уроков. Создаём по очереди: параллельные запросы прошли бы
+        // серверную проверку накладок вслепую, не видя друг друга.
+        const created: ScheduleEvent[] = [];
+        const done: number[] = [];
+        try {
+          for (const day of days) {
+            created.push(await orgCreateEvent({ ...payload, ...shapeOf(day) }));
+            done.push(day);
+          }
+        } finally {
+          if (created.length) {
+            setTimetableEvents((p) => [...p, ...created]);
+            // Если середина сорвалась, повтор не должен продублировать созданное.
+            setForm((f) => ({ ...f, days: f.days.filter(d => !done.includes(d)) }));
+          }
+        }
+        if (created.length > 1) {
+          showToast(t('schedule.createdCount', 'Добавлено уроков: {{count}}', { count: created.length }));
+        }
       } else {
-        const created = await orgCreateEvent({ ...payload, ...shape });
+        const created = await orgCreateEvent({ ...payload, ...shapeOf(0) });
         setCalendarEvents((p) => [...p, created]);
       }
       setShowCreate(false);
@@ -625,7 +669,7 @@ const SchedulePage: React.FC = () => {
     setForm({
       title: '',
       date: prefill?.date || '',
-      dayOfWeek: prefill?.dayOfWeek ?? todayDayOfWeek,
+      days: [prefill?.dayOfWeek ?? todayDayOfWeek],
       startTime,
       endTime: minsToTime(startMins + DEFAULT_SLOT_MINUTES),
       type: activeTab === 'timetable' ? 'lesson' : 'exam',
@@ -647,7 +691,7 @@ const SchedulePage: React.FC = () => {
     setForm({
       title: ev.title || '',
       date: ev.date || '',
-      dayOfWeek: ev.dayOfWeek ?? (ev.date ? appDayOfWeek(ev.date) : todayDayOfWeek),
+      days: [ev.dayOfWeek ?? (ev.date ? appDayOfWeek(ev.date) : todayDayOfWeek)],
       startTime: ev.startTime || '09:00',
       endTime,
       type: ev.type || 'lesson',
@@ -685,6 +729,16 @@ const SchedulePage: React.FC = () => {
     () => (classroomFilter ? roomSections.filter(s => s.key === classroomFilter) : roomSections),
     [roomSections, classroomFilter]);
 
+  /**
+   * Общая ось строк для ВСЕХ показанных таблиц: одно время — одна строка, на
+   * одной высоте в каждом кабинете. Строится из показанных секций, поэтому
+   * фильтр по кабинету заодно убирает чужие звонки из оси, а каждое занятие
+   * такой секции гарантированно находит свою строку.
+   */
+  const timeRows = useMemo(
+    () => buildTimeRows(visibleSections.flatMap(s => s.events)),
+    [visibleSections]);
+
   // Сетка событий остаётся общей, но кабинет опознаётся тем же разбором, что и в
   // таблицах: иначе фильтр и заголовки таблиц отвечали бы по-разному.
   const visibleCalendar = useMemo(
@@ -707,6 +761,18 @@ const SchedulePage: React.FC = () => {
   // его открыли с другой вкладки.
   const modalIsRecurring = form.editingId ? !!form.editingRecurring : activeTab === 'timetable';
 
+  /**
+   * Переключатель дня. При создании это набор — урок ставят сразу в несколько дней;
+   * при правке день ровно один, потому что правится одна запись расписания.
+   * Последний выбранный день не снимаем: расписанию некуда было бы ставить урок.
+   */
+  const toggleDay = (day: number) => setForm(f => {
+    if (f.editingId) return { ...f, days: [day] };
+    const on = f.days.includes(day);
+    if (on && f.days.length === 1) return f;
+    return { ...f, days: on ? f.days.filter(d => d !== day) : [...f.days, day].sort((a, b) => a - b) };
+  });
+
   const isEventOngoing = (ev: ScheduleEvent, isTimetable: boolean) => {
     if (isTimetable) {
       if (ev.dayOfWeek !== todayDayOfWeek) return false;
@@ -724,21 +790,134 @@ const SchedulePage: React.FC = () => {
     section.kind === 'none' ? t('classrooms.withoutRoom', 'Без кабинета') : section.title;
 
   /**
-   * Недельная таблица ОДНОГО кабинета: семь колонок-дней, строки — уроки по
-   * порядку. Сетка по часам здесь не нужна: второй урок дня идёт после первого
-   * независимо от того, сколько между ними минут.
+   * «Добавить» из таблицы кабинета: пустая ячейка и полоса снизу ведут в одно и
+   * то же. Занятие заводится сразу в тот кабинет, из чьей таблицы нажали, и в
+   * филиал этого кабинета — иначе выбор пришлось бы повторять руками.
+   */
+  const addAt = (dayIdx: number, section: RoomSection, startTime: string) => {
+    const branchId = section.classroom?.branchId || activeBranchId || undefined;
+    if (clipboard) {
+      // Время берётся с места клика, длительность — у источника.
+      const span = slotSpan(clipboard.event);
+      const length = span ? span[1] - span[0] : DEFAULT_SLOT_MINUTES;
+      const startMins = timeToMins(startTime) ?? 9 * 60;
+      setPasteForm({
+        dayOfWeek: dayIdx,
+        startTime,
+        endTime: minsToTime(startMins + length),
+        date: '',
+        branchId,
+        room: roomFieldsOf(section),
+      });
+      setShowPasteModal(true);
+    } else {
+      openCreate({ dayOfWeek: dayIdx, startTime, section });
+    }
+  };
+
+  /** Плитка урока в недельной таблице. */
+  const renderTimetableCard = (lesson: ScheduleEvent, bare: boolean) => {
+    const isBeingDragged = draggedEvent?.id === lesson.id;
+    const isSelected = selectedEvent?.event.id === lesson.id;
+    const ongoing = isEventOngoing(lesson, true);
+
+    return (
+      <div
+        key={lesson.id}
+        className={`group/card relative flex-1 min-h-0 rounded-xl p-2 border transition-all duration-200 overflow-hidden ${
+          canEdit ? 'cursor-grab active:cursor-grabbing' : ''
+        } ${isBeingDragged ? 'opacity-30 scale-95' : 'hover:shadow-md hover:-translate-y-0.5'} ${
+          ongoing
+            ? 'bg-rose-50 dark:bg-rose-900/20 border-rose-500/50 ring-2 ring-rose-500/30'
+            : isSelected
+              ? 'bg-slate-100 dark:bg-slate-700/40 border-slate-300 dark:border-slate-600 ring-2 ring-slate-400/30'
+              : 'bg-white dark:bg-slate-800 border-slate-100 dark:border-slate-700/50 hover:border-slate-300 dark:hover:border-slate-600'
+        }`}
+        draggable={canEdit}
+        onDragStart={(e) => { e.stopPropagation(); handleDragStart(e, lesson); }}
+        onDragEnd={handleDragEnd}
+        onClick={(e) => { e.stopPropagation(); canEdit && setSelectedEvent({ event: lesson, isTimetable: true }); }}
+        onDoubleClick={(e) => { e.stopPropagation(); if (canEdit) openEdit(lesson, true); }}
+        onContextMenu={(e) => handleContextMenu(e, lesson, true)}
+      >
+        {/* Left accent bar */}
+        <div className="absolute left-0 top-0 bottom-0 w-1 rounded-l-xl bg-slate-900 dark:bg-white/80" />
+
+        {/* Action buttons */}
+        <div className="absolute top-1 right-1 flex items-center gap-0.5 opacity-0 group-hover/card:opacity-100 transition-opacity z-10">
+          {canEdit && (
+            <button
+              onClick={(e) => { e.stopPropagation(); handleCopy(lesson); }}
+              className="p-1 rounded-md text-slate-400 hover:text-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700 transition-all"
+              title={t('schedule.copy', 'Копировать')}
+            >
+              <Copy className="w-3 h-3" />
+            </button>
+          )}
+          <button
+            onClick={(e) => { e.stopPropagation(); handleDelete(lesson.id, true); }}
+            className="p-1 rounded-md text-red-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/30 transition-all"
+          >
+            <Trash2 className="w-3 h-3" />
+          </button>
+        </div>
+
+        {/* Content */}
+        <div className="pl-2 min-w-0 overflow-hidden">
+          <p className="text-[12px] font-bold text-slate-800 dark:text-white leading-snug truncate pr-8">{lesson.title}</p>
+          <span className={`text-[10px] font-medium inline-flex items-center gap-0.5 mt-0.5 ${ongoing ? 'text-rose-600 dark:text-rose-400 font-bold' : 'text-slate-500 dark:text-slate-400'}`}>
+            <Clock className={`w-2.5 h-2.5 shrink-0 ${ongoing ? 'text-rose-500 animate-pulse' : 'text-slate-400'}`} />{lesson.startTime}–{lesson.endTime}
+          </span>
+          {/* Кабинет назван в шапке таблицы — в плитке он был бы повтором,
+              кроме случая единственной таблицы «без кабинета». */}
+          {bare && roomLabel(lesson) && (
+            <span className="text-[10px] font-medium inline-flex items-center gap-0.5 mt-0.5 text-slate-500 dark:text-slate-400 max-w-full">
+              <MapPin className="w-2.5 h-2.5 shrink-0 text-slate-400" />
+              <span className="truncate">{roomLabel(lesson)}</span>
+            </span>
+          )}
+          {lesson.teacherName && (
+            <span className="block text-[10px] font-medium text-slate-500 dark:text-slate-400 truncate mt-0.5">
+              {lesson.teacherName}
+            </span>
+          )}
+        </div>
+
+        {/* Drag handle */}
+        {canEdit && <GripVertical className="absolute bottom-1 right-1 w-3 h-3 text-slate-300 dark:text-slate-600 opacity-0 group-hover/card:opacity-60 transition-opacity" />}
+      </div>
+    );
+  };
+
+  /**
+   * Недельная таблица ОДНОГО кабинета: семь колонок-дней, строка — время начала.
+   *
+   * Ось строк (`timeRows`) общая для всех показанных кабинетов, поэтому строка
+   * читается и поперёк недели, и поперёк таблиц: 09:00 в понедельнике стоит
+   * ровно напротив 09:00 во вторнике и напротив 09:00 в соседнем кабинете.
    *
    * `bare` — в организации ещё не заведено ни одного кабинета и все занятия
    * лежат в единственной секции «без кабинета»: шапка над одной таблицей была бы
    * шумом, поэтому её не рисуем.
    */
-  const renderRoomSection = (section: RoomSection, bare: boolean) => {
-    const lessonsByDay = dayNames.map((_, dayIdx) =>
-      section.events
-        .filter(e => (e as any).dayOfWeek === dayIdx)
-        .sort((a, b) => (a.startTime || '').localeCompare(b.startTime || ''))
-    );
-    const maxRows = Math.max(1, ...lessonsByDay.map(d => d.length));
+  const renderRoomSection = (section: RoomSection, bare: boolean, rows: TimeRow[]) => {
+    // Пустой кабинет всё равно рисует сетку: это готовое место под занятие.
+    const gridRows = rows.length ? rows : [EMPTY_ROW];
+    const rowIndex = new Map<number | null, number>(gridRows.map((r, i) => [r.startMins, i]));
+    // Ячейка — список: сервер не даёт поставить два урока в один кабинет на одно
+    // время, но «поставить всё равно» даёт, и такой урок обязан остаться видимым.
+    const cells: ScheduleEvent[][][] = gridRows.map(() => dayNames.map(() => [] as ScheduleEvent[]));
+    for (const ev of section.events) {
+      const dayIdx = (ev as any).dayOfWeek;
+      if (typeof dayIdx !== 'number' || dayIdx < 0 || dayIdx > 6) continue;
+      // Ось построена из занятий этих же секций, поэтому строка находится всегда.
+      const idx = rowIndex.get(timeRowKey(ev));
+      if (idx === undefined) continue;
+      cells[idx][dayIdx].push(ev);
+    }
+    for (const row of cells) for (const cell of row) {
+      cell.sort((a, b) => (a.endTime || '').localeCompare(b.endTime || ''));
+    }
     // Выбранный фильтр раскрывает кабинет всегда: иначе он показал бы одну
     // свёрнутую полоску вместо расписания, за которым в него и пришли.
     const open = bare || !!classroomFilter || isRoomOpen(section);
@@ -786,10 +965,10 @@ const SchedulePage: React.FC = () => {
         {open && (
           <>
             {/* ── Шапка таблицы: дни недели ── */}
-            <div className={`grid grid-cols-[48px_repeat(7,1fr)] ${bare ? 'border-b' : 'border-y'} border-slate-200 dark:border-slate-700/60`}>
-              {/* # column */}
+            <div className={`grid ${GRID_COLS} ${bare ? 'border-b' : 'border-y'} border-slate-200 dark:border-slate-700/60`}>
+              {/* Колонка времени */}
               <div className="px-1 py-3 border-r border-slate-100 dark:border-slate-700/50 bg-slate-50/80 dark:bg-slate-800/60 flex items-center justify-center">
-                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">#</span>
+                <Clock className="w-3.5 h-3.5 text-slate-400" />
               </div>
               {dayNames.map((dayName, dayIdx) => {
                 const isToday = dayIdx === todayDayOfWeek;
@@ -811,104 +990,61 @@ const SchedulePage: React.FC = () => {
               })}
             </div>
 
-            {/* ── Тело таблицы: строки уроков ── */}
+            {/* ── Тело таблицы: строка = время начала ── */}
             <div>
-              {Array.from({ length: maxRows }).map((_, rowIdx) => (
-                <div key={rowIdx} className="grid grid-cols-[48px_repeat(7,1fr)] border-b border-slate-100 dark:border-slate-700/30 last:border-b-0">
-                  {/* Row number */}
-                  <div className="border-r border-slate-100 dark:border-slate-700/50 bg-slate-50/50 dark:bg-slate-800/30 flex items-center justify-center">
-                    <span className="text-[10px] font-bold text-slate-400">{rowIdx + 1}</span>
+              {gridRows.map((row, rowIdx) => (
+                <div key={row.startMins ?? 'untimed'} className={`grid ${GRID_COLS} border-b border-slate-100 dark:border-slate-700/30 last:border-b-0`}>
+                  {/* Время строки. Конец подписан, только когда он общий у всех
+                      занятий этого звонка — иначе строка врала бы про длительность. */}
+                  <div className="border-r border-slate-100 dark:border-slate-700/50 bg-slate-50/50 dark:bg-slate-800/30 flex flex-col items-center justify-center leading-none gap-0.5">
+                    {row.startMins === null ? (
+                      <span className="text-[10px] font-bold text-slate-300 dark:text-slate-600">—</span>
+                    ) : (
+                      <>
+                        <span className="text-[11px] font-black tabular-nums text-slate-600 dark:text-slate-300">{minsToTime(row.startMins)}</span>
+                        {row.endMins !== null && (
+                          <span className="text-[9px] font-semibold tabular-nums text-slate-400 dark:text-slate-500">{minsToTime(row.endMins)}</span>
+                        )}
+                      </>
+                    )}
                   </div>
                   {dayNames.map((_, dayIdx) => {
-                    const lesson = lessonsByDay[dayIdx][rowIdx];
+                    const lessons = cells[rowIdx][dayIdx];
                     const isDropTarget = isDragging && dragOverRoom === section.key && dragOverDay === dayIdx;
-                    const isBeingDragged = lesson && draggedEvent?.id === lesson.id;
-                    const isSelected = lesson && selectedEvent?.event.id === lesson.id;
-                    const ongoing = lesson && isEventOngoing(lesson, true);
+                    // Пустая ячейка — готовый слот: клик заводит занятие на ЭТО время
+                    // в ЭТОТ кабинет, без выбора часа руками.
+                    const addHere = canEdit && !isDragging && !lessons.length && row.startMins !== null
+                      ? () => addAt(dayIdx, section, minsToTime(row.startMins as number))
+                      : null;
 
                     return (
                       <div
                         key={dayIdx}
                         className={`relative border-r border-slate-100 dark:border-slate-700/50 last:border-r-0 min-h-[72px] min-w-0 p-1 transition-colors
-                          ${isDropTarget ? 'bg-slate-100/50 dark:bg-slate-700/20' : ''}`}
+                          ${isDropTarget ? 'bg-slate-100/50 dark:bg-slate-700/20' : ''}
+                          ${addHere ? 'group/cell cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-700/20' : ''}`}
                         onDragOver={(e) => handleDragOverDay(e, dayIdx, section.key)}
                         onDragLeave={handleDragLeaveDay}
                         onDrop={(e) => handleDropOnDay(e, dayIdx, section)}
+                        onClick={addHere ? (e) => { e.stopPropagation(); addHere(); } : undefined}
                       >
-                        {lesson ? (
-                          <div
-                            className={`group/card relative h-full rounded-xl p-2 border transition-all duration-200 overflow-hidden ${
-                              canEdit ? 'cursor-grab active:cursor-grabbing' : ''
-                            } ${isBeingDragged ? 'opacity-30 scale-95' : 'hover:shadow-md hover:-translate-y-0.5'} ${
-                              ongoing
-                                ? 'bg-rose-50 dark:bg-rose-900/20 border-rose-500/50 ring-2 ring-rose-500/30'
-                                : isSelected
-                                  ? 'bg-slate-100 dark:bg-slate-700/40 border-slate-300 dark:border-slate-600 ring-2 ring-slate-400/30'
-                                  : 'bg-white dark:bg-slate-800 border-slate-100 dark:border-slate-700/50 hover:border-slate-300 dark:hover:border-slate-600'
-                            }`}
-                            draggable={canEdit}
-                            onDragStart={(e) => { e.stopPropagation(); handleDragStart(e, lesson); }}
-                            onDragEnd={handleDragEnd}
-                            onClick={(e) => { e.stopPropagation(); canEdit && setSelectedEvent({ event: lesson, isTimetable: true }); }}
-                            onDoubleClick={(e) => { e.stopPropagation(); if (canEdit) openEdit(lesson, true); }}
-                            onContextMenu={(e) => handleContextMenu(e, lesson, true)}
-                          >
-                            {/* Left accent bar */}
-                            <div className="absolute left-0 top-0 bottom-0 w-1 rounded-l-xl bg-slate-900 dark:bg-white/80" />
-
-                            {/* Action buttons */}
-                            <div className="absolute top-1 right-1 flex items-center gap-0.5 opacity-0 group-hover/card:opacity-100 transition-opacity z-10">
-                              {canEdit && (
-                                <button
-                                  onClick={(e) => { e.stopPropagation(); handleCopy(lesson); }}
-                                  className="p-1 rounded-md text-slate-400 hover:text-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700 transition-all"
-                                  title={t('schedule.copy', 'Копировать')}
-                                >
-                                  <Copy className="w-3 h-3" />
-                                </button>
-                              )}
-                              <button
-                                onClick={(e) => { e.stopPropagation(); handleDelete(lesson.id, true); }}
-                                className="p-1 rounded-md text-red-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/30 transition-all"
-                              >
-                                <Trash2 className="w-3 h-3" />
-                              </button>
-                            </div>
-
-                            {/* Content */}
-                            <div className="pl-2 min-w-0 overflow-hidden">
-                              <p className="text-[12px] font-bold text-slate-800 dark:text-white leading-snug truncate pr-8">{lesson.title}</p>
-                              <span className={`text-[10px] font-medium inline-flex items-center gap-0.5 mt-0.5 ${ongoing ? 'text-rose-600 dark:text-rose-400 font-bold' : 'text-slate-500 dark:text-slate-400'}`}>
-                                <Clock className={`w-2.5 h-2.5 shrink-0 ${ongoing ? 'text-rose-500 animate-pulse' : 'text-slate-400'}`} />{lesson.startTime}–{lesson.endTime}
-                              </span>
-                              {/* Кабинет назван в шапке таблицы — в плитке он был бы повтором,
-                                  кроме случая единственной таблицы «без кабинета». */}
-                              {bare && roomLabel(lesson) && (
-                                <span className="text-[10px] font-medium inline-flex items-center gap-0.5 mt-0.5 text-slate-500 dark:text-slate-400 max-w-full">
-                                  <MapPin className="w-2.5 h-2.5 shrink-0 text-slate-400" />
-                                  <span className="truncate">{roomLabel(lesson)}</span>
-                                </span>
-                              )}
-                              {lesson.teacherName && (
-                                <span className="block text-[10px] font-medium text-slate-500 dark:text-slate-400 truncate mt-0.5">
-                                  {lesson.teacherName}
-                                </span>
-                              )}
-                            </div>
-
-                            {/* Drag handle */}
-                            {canEdit && <GripVertical className="absolute bottom-1 right-1 w-3 h-3 text-slate-300 dark:text-slate-600 opacity-0 group-hover/card:opacity-60 transition-opacity" />}
+                        {lessons.length ? (
+                          <div className="h-full flex flex-col gap-1">
+                            {lessons.map((lesson) => renderTimetableCard(lesson, bare))}
                           </div>
-                        ) : (
-                          /* Empty cell — drop target */
-                          isDropTarget && (
-                            <div className="h-full flex items-center justify-center">
-                              <div className="text-[10px] font-bold text-slate-500 dark:text-slate-400 flex items-center gap-1 animate-pulse">
-                                <Plus className="w-3.5 h-3.5" />{t('schedule.dropHere', 'Сюда')}
-                              </div>
+                        ) : isDropTarget ? (
+                          <div className="h-full flex items-center justify-center">
+                            <div className="text-[10px] font-bold text-slate-500 dark:text-slate-400 flex items-center gap-1 animate-pulse">
+                              <Plus className="w-3.5 h-3.5" />{t('schedule.dropHere', 'Сюда')}
                             </div>
-                          )
-                        )}
+                          </div>
+                        ) : addHere ? (
+                          <div className="h-full flex items-center justify-center opacity-0 group-hover/cell:opacity-100 transition-opacity">
+                            {clipboard
+                              ? <Clipboard className="w-3.5 h-3.5 text-emerald-500" />
+                              : <Plus className="w-3.5 h-3.5 text-slate-400" />}
+                          </div>
+                        ) : null}
                       </div>
                     );
                   })}
@@ -916,32 +1052,23 @@ const SchedulePage: React.FC = () => {
               ))}
             </div>
 
-            {/* ── Paste / Add strip ── */}
+            {/* ── Paste / Add strip: новое время, которого в оси ещё нет ── */}
             {canEdit && !isDragging && (
               <div className="border-t border-slate-200 dark:border-slate-700/50 bg-slate-50/50 dark:bg-slate-800/30">
-                <div className="grid grid-cols-[48px_repeat(7,1fr)]">
+                <div className={`grid ${GRID_COLS}`}>
                   <div className="border-r border-slate-100 dark:border-slate-700/50" />
                   {dayNames.map((_, dayIdx) => (
                     <button
                       key={dayIdx}
                       onClick={(e) => {
                         e.stopPropagation();
-                        // Занятие заводится сразу в тот кабинет, из чьей таблицы нажали,
-                        // и в филиал этого кабинета — иначе выбор пришлось бы повторять руками.
-                        const branchId = section.classroom?.branchId || activeBranchId || undefined;
-                        if (clipboard) {
-                          setPasteForm({
-                            dayOfWeek: dayIdx,
-                            startTime: clipboard.event.startTime || '09:00',
-                            endTime: clipboard.event.endTime || '10:00',
-                            date: '',
-                            branchId,
-                            room: roomFieldsOf(section),
-                          });
-                          setShowPasteModal(true);
-                        } else {
-                          openCreate({ dayOfWeek: dayIdx, startTime: nextFreeStart(dayIdx, undefined, section), section });
-                        }
+                        // Вставка с полосы сохраняет время источника, создание — ищет
+                        // ближайший свободный час в этом же кабинете.
+                        addAt(
+                          dayIdx,
+                          section,
+                          clipboard?.event.startTime || nextFreeStart(dayIdx, undefined, section),
+                        );
                       }}
                       className={`border-r border-slate-100 dark:border-slate-700/50 last:border-r-0 py-2 flex items-center justify-center gap-1 text-[10px] font-bold transition-colors ${
                         clipboard
@@ -1137,7 +1264,7 @@ const SchedulePage: React.FC = () => {
             </div>
           ) : (
             <div className="space-y-3">
-              {visibleSections.map((section) => renderRoomSection(section, bareTimetable))}
+              {visibleSections.map((section) => renderRoomSection(section, bareTimetable, timeRows))}
               {visibleSections.length === 0 && (
                 <div className="bg-white dark:bg-slate-800/80 border border-slate-200/80 dark:border-slate-700/50 rounded-2xl py-12 text-center shadow-sm">
                   <p className="text-sm font-bold text-slate-400 dark:text-slate-500">{t('schedule.noLessons', 'Нет занятий')}</p>
@@ -1582,25 +1709,39 @@ const SchedulePage: React.FC = () => {
               {/* Timetable: Day of Week selector */}
               {modalIsRecurring ? (
                 <div>
-                  <label className="text-[11px] font-bold text-slate-500 uppercase tracking-widest mb-1.5 block">{t('schedule.dayOfWeek', 'День недели')}</label>
+                  <label className="text-[11px] font-bold text-slate-500 uppercase tracking-widest mb-1.5 block">
+                    {t('schedule.dayOfWeek', 'День недели')}
+                    {!form.editingId && (
+                      <span className="ml-1.5 font-semibold normal-case tracking-normal text-slate-400">
+                        {t('schedule.severalDaysHint', '— можно выбрать несколько')}
+                      </span>
+                    )}
+                  </label>
                   <div className="grid grid-cols-7 gap-1.5">
-                    {dayNames.map((name, i) => (
-                      <button
-                        key={i}
-                        type="button"
-                        onClick={() => setForm(f => ({ ...f, dayOfWeek: i }))}
-                        className={`py-2.5 rounded-xl text-xs font-bold transition-all ${form.dayOfWeek === i
-                          ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900 shadow-sm scale-105'
-                          : 'bg-slate-100 dark:bg-slate-700/50 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-600/50'
-                        }`}
-                      >
-                        {name}
-                      </button>
-                    ))}
+                    {dayNames.map((name, i) => {
+                      const on = form.days.includes(i);
+                      return (
+                        <button
+                          key={i}
+                          type="button"
+                          aria-pressed={on}
+                          aria-label={dayNamesFull[i]}
+                          onClick={() => toggleDay(i)}
+                          className={`py-2.5 rounded-xl text-xs font-bold transition-all ${on
+                            ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900 shadow-sm scale-105'
+                            : 'bg-slate-100 dark:bg-slate-700/50 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-600/50'
+                          }`}
+                        >
+                          {name}
+                        </button>
+                      );
+                    })}
                   </div>
                   <p className="mt-1.5 text-[10px] text-slate-400 flex items-center gap-1">
-                    <Repeat className="w-3 h-3" />
-                    {t('schedule.willRepeatEvery', 'Урок будет повторяться каждый')} {dayNamesFull[form.dayOfWeek]?.toLowerCase()}
+                    <Repeat className="w-3 h-3 shrink-0" />
+                    {form.days.length > 1
+                      ? `${t('schedule.willRepeatEveryWeek', 'Уроки будут повторяться каждую неделю:')} ${[...form.days].sort((a, b) => a - b).map(d => dayNamesFull[d]?.toLowerCase()).join(', ')}`
+                      : `${t('schedule.willRepeatEvery', 'Урок будет повторяться каждый')} ${dayNamesFull[form.days[0]]?.toLowerCase() || ''}`}
                   </p>
                 </div>
               ) : (
@@ -1657,7 +1798,8 @@ const SchedulePage: React.FC = () => {
             {/* The page-level banner sits behind the overlay, so the modal states its own error. */}
             {error && (
               <div className="mt-5 px-4 py-3 bg-red-500/10 border border-red-500/20 rounded-2xl text-sm font-medium text-red-600 dark:text-red-400 space-y-2.5">
-                <p>{error}</p>
+                {/* Накладок может быть по одной на день — каждая со своей строки. */}
+                <p className="whitespace-pre-line">{error}</p>
                 {conflictRetry === 'create' && (
                   <button
                     onClick={() => handleCreate(true)}
@@ -1674,7 +1816,7 @@ const SchedulePage: React.FC = () => {
               <button onClick={() => setShowCreate(false)} className="px-5 py-2.5 rounded-xl font-bold text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors text-sm">{t('common.cancel', 'Отмена')}</button>
               <button
                 onClick={() => handleCreate()}
-                disabled={saving || !form.title.trim() || (!modalIsRecurring && !form.date)}
+                disabled={saving || !form.title.trim() || (modalIsRecurring ? !form.days.length : !form.date)}
                 className="px-6 py-2.5 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-xl text-sm font-semibold hover:bg-slate-800 dark:hover:bg-slate-100 transition-colors disabled:opacity-50"
               >
                 {saving ? '...' : t('common.save', 'Сохранить')}

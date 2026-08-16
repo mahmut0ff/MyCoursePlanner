@@ -65,6 +65,53 @@ export function slotsOverlap(a: TimedSlot, b: TimedSlot): boolean {
   return spansOverlap(sa, sb);
 }
 
+/** Строка недельной таблицы: один момент начала для всех семи дней. */
+export interface TimeRow {
+  /** Начало в минутах от полуночи. null — занятия без разбираемого времени. */
+  startMins: number | null;
+  /** Конец, если он общий у всех занятий строки; иначе null — врать нельзя. */
+  endMins: number | null;
+}
+
+/**
+ * Общая временная ось для недельной таблицы: одна строка на каждое НАЧАЛО
+ * занятия, по возрастанию.
+ *
+ * Раньше строкой был порядковый номер урока в дне, и соседние колонки стояли на
+ * одной строке, ничего общего не имея: 08:00 в понедельник рядом с 15:00 во
+ * вторник. Строка-время читается поперёк недели и поперёк таблиц-кабинетов —
+ * ради этого ось строится из занятий ВСЕХ показанных кабинетов сразу.
+ *
+ * Пустых часов ось не заводит: нет занятий в 11:00 — нет и строки. Это не сетка
+ * по часам, а перечень реальных звонков.
+ */
+export function buildTimeRows(slots: TimedSlot[]): TimeRow[] {
+  /** start → общий конец, либо null, когда концы разошлись. */
+  const ends = new Map<number, number | null>();
+  let untimed = false;
+
+  for (const slot of slots) {
+    const span = slotSpan(slot);
+    if (!span) { untimed = true; continue; }
+    const [start, end] = span;
+    if (!ends.has(start)) ends.set(start, end);
+    else if (ends.get(start) !== end) ends.set(start, null);
+  }
+
+  const rows: TimeRow[] = [...ends.entries()]
+    .sort((a, b) => a[0] - b[0])
+    .map(([startMins, endMins]) => ({ startMins, endMins }));
+
+  // Занятие без времени не должно исчезнуть с экрана — ему отводится строка в конце.
+  if (untimed) rows.push({ startMins: null, endMins: null });
+  return rows;
+}
+
+/** Ключ строки для занятия: то же начало, по которому строилась ось. */
+export function timeRowKey(slot: TimedSlot): number | null {
+  return slotSpan(slot)?.[0] ?? null;
+}
+
 /**
  * Gaps left over on a day once `busy` is booked, within [dayStart, dayEnd).
  * Used to answer "when is this classroom free?".

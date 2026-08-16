@@ -15,7 +15,8 @@ import type { Classroom, Group, ScheduleEvent } from '../../types';
 
 const DAY_SHORT = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
 const DAY_NAMES = ['Понедельник', 'Вторник', 'Среда', 'Четверг', 'Пятница', 'Суббота', 'Воскресенье'];
-const DEFAULT_SLOT_MINUTES = 60;
+/** Длина урока по умолчанию: час двадцать. */
+const DEFAULT_SLOT_MINUTES = 80;
 
 /** Сегодняшний день в конвенции приложения (0=Пн … 6=Вс). */
 const todayDow = () => (new Date().getDay() + 6) % 7;
@@ -40,7 +41,11 @@ const localDate = (d: Date) =>
 interface FormState {
   editingId: string | null;
   recurring: boolean;
-  dayOfWeek: number;
+  /**
+   * Дни недели урока. При создании их может быть несколько — в расписание уйдёт
+   * по записи на каждый; при правке всегда один: запись живёт в одном дне.
+   */
+  days: number[];
   date: string;
   startTime: string;
   endTime: string;
@@ -51,10 +56,10 @@ interface FormState {
 const emptyForm = (recurring: boolean): FormState => ({
   editingId: null,
   recurring,
-  dayOfWeek: 0,
+  days: [0],
   date: localDate(new Date()),
   startTime: '09:00',
-  endTime: '10:00',
+  endTime: minsToTime(9 * 60 + DEFAULT_SLOT_MINUTES),
   classroomId: null,
   location: '',
 });
@@ -149,9 +154,21 @@ const GroupScheduleSection: React.FC<GroupScheduleSectionProps> = ({ group, canE
 
   const openCreate = (recurring: boolean, dayOfWeek?: number) => {
     setError(''); setCanForce(false);
-    setForm({ ...emptyForm(recurring), dayOfWeek: dayOfWeek ?? 0 });
+    setForm({ ...emptyForm(recurring), days: [dayOfWeek ?? 0] });
     setModalOpen(true);
   };
+
+  /**
+   * Переключатель дня: при создании — набор (урок сразу в несколько дней), при
+   * правке — ровно один, потому что правится одна запись расписания. Последний
+   * день не снимаем: без дня урок ставить некуда.
+   */
+  const toggleDay = (day: number) => setForm(f => {
+    if (f.editingId) return { ...f, days: [day] };
+    const on = f.days.includes(day);
+    if (on && f.days.length === 1) return f;
+    return { ...f, days: on ? f.days.filter(d => d !== day) : [...f.days, day].sort((a, b) => a - b) };
+  });
 
   const openEdit = (ev: ScheduleEvent) => {
     const start = timeToMins(ev.startTime) ?? 9 * 60;
@@ -159,7 +176,7 @@ const GroupScheduleSection: React.FC<GroupScheduleSectionProps> = ({ group, canE
     setForm({
       editingId: ev.id,
       recurring: !!ev.recurring,
-      dayOfWeek: ev.dayOfWeek ?? 0,
+      days: [ev.dayOfWeek ?? 0],
       date: ev.date || localDate(new Date()),
       startTime: ev.startTime || '09:00',
       endTime: ev.endTime || minsToTime(start + (Number(ev.duration) || DEFAULT_SLOT_MINUTES)),
@@ -193,17 +210,33 @@ const GroupScheduleSection: React.FC<GroupScheduleSectionProps> = ({ group, canE
         force,
       };
 
-      if (form.recurring) {
-        Object.assign(payload, { type: 'lesson', recurring: true, dayOfWeek: form.dayOfWeek });
-      } else {
-        Object.assign(payload, { type: 'lesson', recurring: false, date: form.date });
-      }
+      const days = [...new Set(form.days)].sort((a, b) => a - b);
+      if (form.recurring && !days.length) return;
 
       if (form.editingId) {
+        Object.assign(payload, form.recurring
+          ? { type: 'lesson', recurring: true, dayOfWeek: days[0] }
+          : { type: 'lesson', recurring: false, date: form.date });
         await orgUpdateEvent({ id: form.editingId, ...payload });
         toast.success(t('schedule.updated', 'Занятие обновлено'));
+      } else if (form.recurring) {
+        // Расписание хранит один день на запись: выбранные дни — это столько же
+        // уроков. По очереди, чтобы серверная проверка накладок видела предыдущие.
+        const done: number[] = [];
+        try {
+          for (const day of days) {
+            await orgCreateEvent({ ...payload, type: 'lesson', recurring: true, dayOfWeek: day });
+            done.push(day);
+          }
+        } finally {
+          // Если середина сорвалась, повтор не должен продублировать созданное.
+          if (done.length) setForm(f => ({ ...f, days: f.days.filter(d => !done.includes(d)) }));
+        }
+        toast.success(days.length > 1
+          ? t('schedule.createdCount', 'Добавлено уроков: {{count}}', { count: days.length })
+          : t('schedule.created', 'Занятие добавлено'));
       } else {
-        await orgCreateEvent(payload);
+        await orgCreateEvent({ ...payload, type: 'lesson', recurring: false, date: form.date });
         toast.success(t('schedule.created', 'Занятие добавлено'));
       }
       setModalOpen(false);
@@ -443,21 +476,37 @@ const GroupScheduleSection: React.FC<GroupScheduleSectionProps> = ({ group, canE
                 <div>
                   <label className="text-[11px] font-bold text-slate-500 uppercase tracking-widest mb-1.5 block">
                     {t('schedule.dayOfWeek', 'День недели')}
+                    {!form.editingId && (
+                      <span className="ml-1.5 font-semibold normal-case tracking-normal text-slate-400">
+                        {t('schedule.severalDaysHint', '— можно выбрать несколько')}
+                      </span>
+                    )}
                   </label>
                   <div className="grid grid-cols-7 gap-1.5">
-                    {['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'].map((name, i) => (
-                      <button
-                        key={i}
-                        type="button"
-                        onClick={() => setForm(f => ({ ...f, dayOfWeek: i }))}
-                        className={`py-2 rounded-xl text-xs font-bold transition-all ${form.dayOfWeek === i
-                          ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900'
-                          : 'bg-slate-100 dark:bg-slate-700/50 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-600/50'}`}
-                      >
-                        {name}
-                      </button>
-                    ))}
+                    {DAY_SHORT.map((name, i) => {
+                      const on = form.days.includes(i);
+                      return (
+                        <button
+                          key={i}
+                          type="button"
+                          aria-pressed={on}
+                          aria-label={DAY_NAMES[i]}
+                          onClick={() => toggleDay(i)}
+                          className={`py-2 rounded-xl text-xs font-bold transition-all ${on
+                            ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900'
+                            : 'bg-slate-100 dark:bg-slate-700/50 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-600/50'}`}
+                        >
+                          {name}
+                        </button>
+                      );
+                    })}
                   </div>
+                  {form.days.length > 1 && (
+                    <p className="mt-1.5 text-[11px] font-medium text-slate-500 dark:text-slate-400">
+                      {t('schedule.willRepeatEveryWeek', 'Уроки будут повторяться каждую неделю:')}{' '}
+                      {form.days.map(d => DAY_NAMES[d].toLowerCase()).join(', ')}
+                    </p>
+                  )}
                 </div>
               ) : (
                 <div>
@@ -541,7 +590,7 @@ const GroupScheduleSection: React.FC<GroupScheduleSectionProps> = ({ group, canE
               </button>
               <button
                 onClick={() => save()}
-                disabled={saving || (!form.recurring && !form.date)}
+                disabled={saving || (form.recurring ? !form.days.length : !form.date)}
                 className="px-6 py-2.5 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-xl text-sm font-semibold hover:bg-slate-800 dark:hover:bg-slate-100 transition-colors disabled:opacity-50"
               >
                 {saving ? '…' : t('common.save', 'Сохранить')}

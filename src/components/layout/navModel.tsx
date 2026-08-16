@@ -11,7 +11,7 @@ import {
   Building2, Calendar, FileText,
   LayoutDashboard, Monitor,
   Settings, BookOpen, UserPlus,
-  BarChart3, Gamepad2, TableProperties,
+  Gamepad2, TableProperties,
   Users, Layers, Activity, Flag, Plug, FolderOpen,
   ClipboardList, Radio, CreditCard, Trophy,
   ClipboardCheck,
@@ -214,7 +214,6 @@ export function useNavModel(instType?: string, opts?: NavModelOptions): NavSecti
         { id: 'ai', to: '/ai', icon: Sparkles, label: t('nav.aiHub', 'AI-центр'), locked: !canAccess('ai') },
         { id: 'finances', to: '/finances', icon: CreditCard, label: t('nav.finances', 'Финансы'), locked: !canAccess('finances') },
         { id: 'payroll', to: '/payroll', icon: Wallet, label: t('nav.payroll', 'Зарплата'), locked: !canAccess('payroll') },
-        { id: 'analytics', to: '/teacher-analytics', icon: BarChart3, label: t('nav.analytics'), locked: !canAccess('advancedAnalytics') },
         { id: 'teacherActivity', to: '/teacher-activity', icon: Activity, label: t('nav.teacherActivity', 'Активность') },
       ],
     });
@@ -259,7 +258,6 @@ export function useNavModel(instType?: string, opts?: NavModelOptions): NavSecti
     if (canRead('payroll')) management.push({ id: 'payroll', to: '/payroll', icon: Wallet, label: t('nav.payroll', 'Зарплата'), locked: !canAccess('payroll') });
     if (canRead('branches')) management.push({ id: 'branches', to: '/branches', icon: MapPin, label: t('nav.branches', 'Филиалы'), locked: !canAccess('branches') });
     if (canRead('settings')) management.push({ id: 'orgSettings', to: '/org-settings', icon: Settings, label: t('nav.orgSettings', 'Настройки') });
-    if (canRead('analytics')) management.push({ id: 'analytics', to: '/teacher-analytics', icon: BarChart3, label: t('nav.analytics'), locked: !canAccess('advancedAnalytics') });
     if (canRead('teacher_activity')) management.push({ id: 'teacherActivity', to: '/teacher-activity', icon: Activity, label: t('nav.teacherActivity', 'Активность') });
     sections.push({ id: 'management', label: t('nav.secManagement', 'Управление'), items: management });
   }

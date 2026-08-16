@@ -1628,9 +1628,17 @@ const handler: Handler = async (event: HandlerEvent) => {
       if (members.length > 0) {
         const uids = members.map((t: any) => t.uid);
         const profileMap = await getDocsByIds('users', uids);
+        // Кто из преподавателей подключил Telegram — это внутренняя операционная
+        // информация («кого ещё дожать»), студентам в их версии списка не нужна.
+        // Наружу уходит только флаг: сам chatId — идентификатор чужого чата.
+        const showTelegram = !hasRole(user, 'student');
         enriched = members.map((t: any) => {
           const p = profileMap[t.uid] || {};
-          return { ...t, avatarUrl: p.avatarUrl || p.photoURL || '', phone: p.phone || '', city: p.city || '', bio: p.bio || '', createdAt: p.createdAt || '' };
+          return {
+            ...t,
+            avatarUrl: p.avatarUrl || p.photoURL || '', phone: p.phone || '', city: p.city || '', bio: p.bio || '', createdAt: p.createdAt || '',
+            ...(showTelegram ? { telegramLinked: !!p.telegramChatId, telegramLinkedAt: p.telegramLinkedAt || '' } : {}),
+          };
         });
       }
 

@@ -281,6 +281,8 @@ export interface UserProfile {
   avatarUrl?: string;
   parentPortalKey?: string;        // Used for generating Magic Links for parents
   parentTelegramChatIds?: string[]; // Parent Telegram chats linked to this student (push channel)
+  telegramLinked?: boolean;        // Привязан ли Telegram для уведомлений (только флаг, без chatId)
+  telegramLinkedAt?: string;       // Когда привязан
   pinnedBadges?: string[];         // User's top 3 pinned badges
   bio?: string;
   skills?: string[];

@@ -21,6 +21,28 @@ import BulkActionBar from '../../components/roster/BulkActionBar';
 import { ListSkeleton } from '../../components/ui/Skeleton';
 import { useOrgPresence } from '../../hooks/useOrgPresence';
 import { PresenceBadge, PresenceDot } from '../../components/presence/PresenceBadge';
+import TelegramIcon from '../../components/telegram/TelegramIcon';
+
+/**
+ * Подключены ли преподавателю Telegram-уведомления. Сервер отдаёт только флаг
+ * (`telegramLinked`) и только сотрудникам — в студенческой версии списка поля нет,
+ * поэтому `undefined` означает «не показываем», а не «не подключено».
+ */
+const TelegramStatus: React.FC<{ linked: boolean; label: string; off: string; labelClass?: string }> = ({
+  linked, label, off, labelClass = '',
+}) => (
+  <span
+    className={`inline-flex items-center gap-1.5 px-2 py-1 rounded-lg text-[11px] font-semibold ${
+      linked
+        ? 'bg-[#229ED9]/10 text-[#1a7fb8] dark:text-[#4fb6e6]'
+        : 'bg-slate-100 text-slate-400 dark:bg-slate-700/50 dark:text-slate-500'
+    }`}
+    title={linked ? label : off}
+  >
+    <TelegramIcon className="w-3.5 h-3.5 shrink-0" />
+    <span className={labelClass}>{linked ? label : off}</span>
+  </span>
+);
 
 /**
  * Номер для wa.me: только цифры, без «+», обязательно с кодом страны — на
@@ -137,9 +159,20 @@ const TeachersPage: React.FC = () => {
     setSelected(allSelected ? new Set() : new Set(filtered.map(x => x.uid)));
 
   // Columns shift by one when the checkbox column is present.
+  // Колонка Telegram появляется, только если сервер вообще прислал флаг (сотрудникам).
+  // Классы перечислены целиком: Tailwind сканирует исходник и склеенную строку не найдёт.
+  const showTelegram = teachers.some(x => typeof x.telegramLinked === 'boolean');
+  const tgOn = t('telegram.connectedShort', 'Подключён');
+  const tgOff = t('telegram.notConnectedShort', 'Не подключён');
+  // На планшете колонка Telegram — только значок (44px), подпись приезжает на lg:
+  // иначе шестая колонка съедает ширину имени.
   const gridCols = bulkEnabled
-    ? 'md:grid-cols-[28px_1fr_190px_130px_150px_44px]'
-    : 'md:grid-cols-[1fr_190px_130px_150px_44px]';
+    ? (showTelegram
+        ? 'md:grid-cols-[28px_1fr_170px_120px_44px_140px_44px] lg:grid-cols-[28px_1fr_190px_130px_130px_150px_44px]'
+        : 'md:grid-cols-[28px_1fr_190px_130px_150px_44px]')
+    : (showTelegram
+        ? 'md:grid-cols-[1fr_170px_120px_44px_140px_44px] lg:grid-cols-[1fr_190px_130px_130px_150px_44px]'
+        : 'md:grid-cols-[1fr_190px_130px_150px_44px]');
 
   const copy = async (value: string, label: string) => {
     try {
@@ -377,6 +410,7 @@ const TeachersPage: React.FC = () => {
                 <span>{t('nav.teachers')}</span>
                 <span>{t('common.email', 'Email')}</span>
                 <span>{t('common.phone')}</span>
+                {showTelegram && <span className="truncate">Telegram</span>}
                 <span>{t('common.status', 'Статус')}</span>
                 <span className="sr-only">{t('common.actions', 'Действия')}</span>
               </div>
@@ -422,6 +456,7 @@ const TeachersPage: React.FC = () => {
                       <div className="flex items-center gap-2 mt-1 md:hidden flex-wrap">
                         {teacher.email && <span className="text-[10px] text-slate-400 flex items-center gap-1"><Mail className="w-3 h-3" />{teacher.email}</span>}
                         <PresenceBadge online={online} lastSeenMs={lastSeenMs} />
+                        {showTelegram && <TelegramStatus linked={!!teacher.telegramLinked} label={tgOn} off={tgOff} />}
                       </div>
                     </div>
                   </div>
@@ -440,6 +475,13 @@ const TeachersPage: React.FC = () => {
                       <span className="text-slate-300 dark:text-slate-600">—</span>
                     )}
                   </div>
+
+                  {/* Telegram-уведомления: подключил / не подключил */}
+                  {showTelegram && (
+                    <div className="hidden md:block">
+                      <TelegramStatus linked={!!teacher.telegramLinked} label={tgOn} off={tgOff} labelClass="hidden lg:inline" />
+                    </div>
+                  )}
 
                   {/* Presence status */}
                   <div className="hidden md:block">

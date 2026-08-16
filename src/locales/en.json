@@ -2285,7 +2285,9 @@
     "instructions": "Tap the link below and send /start to the bot:",
     "openBot": "Open bot",
     "manualCode": "Send this code to the bot:",
-    "waiting": "Waiting for link... Code valid for 15 minutes."
+    "waiting": "Waiting for link... Code valid for 15 minutes.",
+    "connectedShort": "Connected",
+    "notConnectedShort": "Not connected"
   },
   "live": {
     "startLesson": "Start Live Lesson",

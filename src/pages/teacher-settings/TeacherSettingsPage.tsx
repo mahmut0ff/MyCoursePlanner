@@ -10,6 +10,7 @@ import AvatarCropper from '../../components/ui/AvatarCropper';
 import ActiveRoleCard from '../../components/shared/ActiveRoleCard';
 import ActiveOrgCard from '../../components/shared/ActiveOrgCard';
 import SidebarCustomizerCard from '../../components/shared/SidebarCustomizerCard';
+import NotificationPreferencesCard from '../../components/notifications/NotificationPreferencesCard';
 import {
   User, Globe, Bell, Lock, Save, Loader2, CheckCircle2, Eye, EyeOff, Phone, Camera,
 } from 'lucide-react';
@@ -44,12 +45,6 @@ const TeacherSettingsPage: React.FC = () => {
   const [showCurrent, setShowCurrent] = useState(false);
   const [showNew, setShowNew] = useState(false);
 
-  // Notifications
-  const [emailNotif, setEmailNotif] = useState(true);
-  const [pushNotif, setPushNotif] = useState(false);
-  const [inviteNotif, setInviteNotif] = useState(true);
-  const [resultNotif, setResultNotif] = useState(true);
-
   // Language
   const [language, setLanguage] = useState('ru');
 
@@ -57,10 +52,6 @@ const TeacherSettingsPage: React.FC = () => {
     apiGetTeacherSettings()
       .then((data: any) => {
         if (data.language) setLanguage(data.language);
-        if (data.emailNotif !== undefined) setEmailNotif(data.emailNotif);
-        if (data.pushNotif !== undefined) setPushNotif(data.pushNotif);
-        if (data.inviteNotif !== undefined) setInviteNotif(data.inviteNotif);
-        if (data.resultNotif !== undefined) setResultNotif(data.resultNotif);
       })
       .catch(() => {})
       .finally(() => setLoading(false));
@@ -74,10 +65,6 @@ const TeacherSettingsPage: React.FC = () => {
         displayName,
         phone: phone.trim(),
         language,
-        emailNotif,
-        pushNotif,
-        inviteNotif,
-        resultNotif,
       });
       setSuccess(t('common.saved') || 'Saved');
       setTimeout(() => setSuccess(''), 3000);
@@ -151,12 +138,6 @@ const TeacherSettingsPage: React.FC = () => {
     { key: 'notifications', label: t('teacherSettings.notifications'), icon: <Bell className="w-4 h-4" /> },
     { key: 'security', label: t('teacherSettings.security'), icon: <Lock className="w-4 h-4" /> },
   ];
-
-  const Toggle = ({ checked, onChange }: { checked: boolean; onChange: (v: boolean) => void }) => (
-    <button onClick={() => onChange(!checked)} className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${checked ? 'bg-primary-600' : 'bg-slate-300 dark:bg-slate-600'}`}>
-      <span className={`inline-block h-3.5 w-3.5 rounded-full bg-white transition-transform ${checked ? 'translate-x-[18px]' : 'translate-x-[3px]'}`} />
-    </button>
-  );
 
   if (loading) return <div className="flex items-center justify-center py-20"><div className="w-8 h-8 border-4 border-slate-200 border-t-slate-600 rounded-full animate-spin dark:border-slate-700 dark:border-t-slate-400" /></div>;
 
@@ -275,29 +256,12 @@ const TeacherSettingsPage: React.FC = () => {
           )}
 
           {activeTab === 'notifications' && (
-            <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-5">
-              <h2 className="text-lg font-semibold text-slate-900 dark:text-white mb-4">{t('teacherSettings.notifSettings')}</h2>
-              <div className="space-y-3">
-                {[
-                  { label: t('teacherSettings.emailNotif'), desc: t('teacherSettings.emailNotifDesc'), value: emailNotif, set: setEmailNotif },
-                  { label: t('teacherSettings.pushNotif'), desc: t('teacherSettings.pushNotifDesc'), value: pushNotif, set: setPushNotif },
-                  { label: t('teacherSettings.inviteNotif'), desc: t('teacherSettings.inviteNotifDesc'), value: inviteNotif, set: setInviteNotif },
-                  { label: t('teacherSettings.resultNotif'), desc: t('teacherSettings.resultNotifDesc'), value: resultNotif, set: setResultNotif },
-                ].map((item, i) => (
-                  <div key={i} className="flex items-center justify-between py-2">
-                    <div>
-                      <p className="text-sm font-medium text-slate-900 dark:text-white">{item.label}</p>
-                      <p className="text-xs text-slate-500 dark:text-slate-400">{item.desc}</p>
-                    </div>
-                    <Toggle checked={item.value} onChange={item.set} />
-                  </div>
-                ))}
-              </div>
-              <button onClick={handleSave} disabled={saving} className="mt-4 bg-primary-600 hover:bg-primary-700 text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2 transition-colors disabled:opacity-50">
-                {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-                {t('common.save')}
-              </button>
-            </div>
+            // Ровно тот же блок, что и на /notifications: набор настроек один,
+            // и две его копии неминуемо разъехались бы. Прежние четыре тумблера
+            // (email/push/приглашения/результаты) писались в собственные поля
+            // teacherSettings, которых доставка уведомлений не читает вовсе, —
+            // то есть выключали ровно ничего.
+            <NotificationPreferencesCard collapsible={false} />
           )}
 
           {activeTab === 'security' && (

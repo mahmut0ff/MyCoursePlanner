@@ -147,19 +147,21 @@ const handler: Handler = async (event: HandlerEvent) => {
     }
     // ═══ TEACHER SETTINGS ═══
     if (action === 'teacherSettings') {
+      // Настройки уведомлений сюда БОЛЬШЕ НЕ ПИШУТСЯ. Поля emailNotif / pushNotif /
+      // inviteNotif / resultNotif жили только здесь, и доставка (utils/notifications)
+      // их не читала никогда — то есть тумблеры в интерфейсе не выключали ничего.
+      // Настоящий набор один на всех: users/{uid}.notificationPreferences, см.
+      // api-notifications ?action=getPreferences. Старые значения в документах
+      // остаются лежать мёртвым грузом и никем не читаются.
       if (event.httpMethod === 'GET') {
         const doc = await adminDb.collection('teacherSettings').doc(user.uid).get();
-        if (!doc.exists) return ok({ uid: user.uid, language: 'ru', emailNotif: true, pushNotif: false, inviteNotif: true, resultNotif: true });
+        if (!doc.exists) return ok({ uid: user.uid, language: 'ru' });
         return ok({ uid: user.uid, ...doc.data() });
       }
       if (event.httpMethod === 'PUT' || event.httpMethod === 'POST') {
         const body = JSON.parse(event.body || '{}');
         const settings: any = {
           language: body.language || 'ru',
-          emailNotif: body.emailNotif ?? true,
-          pushNotif: body.pushNotif ?? false,
-          inviteNotif: body.inviteNotif ?? true,
-          resultNotif: body.resultNotif ?? true,
           updatedAt: now(),
         };
         await adminDb.collection('teacherSettings').doc(user.uid).set(settings, { merge: true });

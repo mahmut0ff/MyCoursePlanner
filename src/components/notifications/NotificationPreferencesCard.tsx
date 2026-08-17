@@ -47,9 +47,18 @@ function Toggle({ checked, disabled, onChange }: { checked: boolean; disabled?: 
   );
 }
 
-export default function NotificationPreferencesCard() {
+interface Props {
+  /**
+   * false — блок раскрыт всегда и без своей шапки: он уже лежит внутри вкладки
+   * «Уведомления», и вторая складка вокруг единственного содержимого вкладки
+   * была бы лишним кликом ни за чем.
+   */
+  collapsible?: boolean;
+}
+
+export default function NotificationPreferencesCard({ collapsible = true }: Props) {
   const { t } = useTranslation();
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(!collapsible);
   const [prefs, setPrefs] = useState<NotificationPreferences>(DEFAULTS);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState<Key | null>(null);
@@ -83,20 +92,30 @@ export default function NotificationPreferencesCard() {
   return (
     <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700
       rounded-2xl overflow-hidden mb-4">
-      <button
-        type="button"
-        onClick={() => setOpen((v) => !v)}
-        aria-expanded={open}
-        className="w-full flex items-center gap-3 px-4 py-3 text-left
-          hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors"
-      >
-        <Settings2 className="w-4 h-4 text-slate-400 shrink-0" />
-        <span className="flex-1 text-sm font-medium text-slate-900 dark:text-white">
-          {t('notifications.prefsTitle', 'Настройки уведомлений')}
-        </span>
-        {loading && <Loader2 className="w-4 h-4 animate-spin text-slate-400" />}
-        <ChevronDown className={`w-4 h-4 text-slate-400 transition-transform ${open ? 'rotate-180' : ''}`} />
-      </button>
+      {collapsible ? (
+        <button
+          type="button"
+          onClick={() => setOpen((v) => !v)}
+          aria-expanded={open}
+          className="w-full flex items-center gap-3 px-4 py-3 text-left
+            hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors"
+        >
+          <Settings2 className="w-4 h-4 text-slate-400 shrink-0" />
+          <span className="flex-1 text-sm font-medium text-slate-900 dark:text-white">
+            {t('notifications.prefsTitle', 'Настройки уведомлений')}
+          </span>
+          {loading && <Loader2 className="w-4 h-4 animate-spin text-slate-400" />}
+          <ChevronDown className={`w-4 h-4 text-slate-400 transition-transform ${open ? 'rotate-180' : ''}`} />
+        </button>
+      ) : (
+        <div className="flex items-center gap-3 px-4 py-3">
+          <Settings2 className="w-4 h-4 text-slate-400 shrink-0" />
+          <h2 className="flex-1 text-sm font-medium text-slate-900 dark:text-white">
+            {t('notifications.prefsTitle', 'Настройки уведомлений')}
+          </h2>
+          {loading && <Loader2 className="w-4 h-4 animate-spin text-slate-400" />}
+        </div>
+      )}
 
       {open && (
         <div className="border-t border-slate-200 dark:border-slate-700 divide-y

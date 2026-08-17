@@ -85,6 +85,15 @@ describe('NotificationPreferencesCard', () => {
     expect(chat).toHaveAttribute('aria-checked', 'false');   // хотя chat: true
   });
 
+  it('внутри вкладки настроек раскрыт сразу и без своей складки', async () => {
+    render(<NotificationPreferencesCard collapsible={false} />);
+
+    // Ни клика: вкладка «Уведомления» — это уже и есть раскрытие.
+    await waitFor(() => expect(apiGetNotificationPreferences).toHaveBeenCalled());
+    expect(screen.getByText('Чат')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { expanded: false })).not.toBeInTheDocument();
+  });
+
   it('показывает ровно те категории, которые сервер учитывает', async () => {
     await open();
     ['Чат', 'Уроки', 'Домашние задания', 'Расписание', 'Экзамены и оценки', 'Все уведомления']

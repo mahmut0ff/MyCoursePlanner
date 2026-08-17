@@ -266,6 +266,37 @@ describe('ChatPage', () => {
     });
   });
 
+  it('пустая комната не считается непрочитанной и помечается прочитанной при открытии', async () => {
+    // Ровно то, что видел пользователь: только что заведённый диалог без единого
+    // сообщения светился синей точкой и давал единицу в заголовке.
+    const fresh: ChatRoom = {
+      ...DM, id: 'room_fresh', lastMessageAt: '', lastMessagePreview: '',
+      participants: {
+        ...DM.participants,
+        u_me: { ...DM.participants.u_me, lastReadAt: '1970-01-01T00:00:00.000Z' },
+      },
+    };
+    mockRooms.mockReturnValue({ rooms: [fresh], loading: false, error: null, nameCache: {}, avatarCache: {} });
+    mockMessages.mockReturnValue({ messages: [], loading: false, loadMore: vi.fn(), hasMore: false });
+
+    renderPage('/chat?room=room_fresh');
+
+    expect(within(screen.getByRole('heading', { level: 1 })).queryByText('1')).not.toBeInTheDocument();
+    // И открытие такой комнаты всё равно проставляет прочтение — иначе повисший
+    // на ней счётчик нечем было бы снять.
+    await waitFor(() => expect(updateLastRead).toHaveBeenCalledWith('room_fresh'));
+  });
+
+  it('комната со старым lastMessageAt, но без сообщения, непрочитанной не считается', () => {
+    // Комнаты, заведённые до починки: время «последнего сообщения» проставлено,
+    // а самого сообщения нет. Фантомная единица не должна пережить обновление.
+    const legacy: ChatRoom = { ...DM, id: 'room_legacy', lastMessagePreview: '' };
+    mockRooms.mockReturnValue({ rooms: [legacy], loading: false, error: null, nameCache: {}, avatarCache: {} });
+
+    renderPage();
+    expect(within(screen.getByRole('heading', { level: 1 })).queryByText('1')).not.toBeInTheDocument();
+  });
+
   it('непрочитанное считается по lastReadAt участника', () => {
     renderPage();
     // lastMessageAt (12:00) позже lastReadAt (10:00) в обеих комнатах → 2.

@@ -251,6 +251,21 @@ describe('api-chat — создание комнат', () => {
     expect(room(id)!.participantIds.sort()).toEqual(['u_student', 'u_teacher']);
   });
 
+  it('пустая комната не притворяется, что в ней что-то было', async () => {
+    as(STUDENT);
+    const id = json(await call('createRoom', 'POST', { type: 'direct', participantIds: ['u_teacher'] })).id;
+    const r = room(id)!;
+
+    // Время «последнего сообщения» у комнаты без сообщений — выдуманная
+    // активность: из-за неё диалог тут же считался непрочитанным у того, кто
+    // его сам и завёл, и в меню висела единица.
+    expect(r.lastMessageAt).toBe('');
+    expect(r.lastMessagePreview).toBe('');
+    // Создателю нечего «не прочитать» в комнате, которую он только что создал.
+    expect(r.participants.u_student.lastReadAt).not.toBe('1970-01-01T00:00:00.000Z');
+    expect(r.participants.u_teacher.lastReadAt).toBe('1970-01-01T00:00:00.000Z');
+  });
+
   it('повторный вызов возвращает ту же комнату и снимает архив', async () => {
     as(STUDENT);
     const first = json(await call('createRoom', 'POST', { type: 'direct', participantIds: ['u_teacher'] }));

@@ -148,7 +148,11 @@ export function useChatRooms(organizationId?: string, includeArchived = false) {
         rData = rData.filter(room => room.organizationId === organizationId);
         rData = rData.filter(room => !room.participants?.[user.uid]?.isRemoved);
         if (!includeArchived) rData = rData.filter(room => !room.isArchived);
-        rData.sort((a, b) => parseTime(b.lastMessageAt) - parseTime(a.lastMessageAt));
+        // У только что заведённой комнаты lastMessageAt пуст (сервер намеренно не
+        // выдумывает активность) — тогда её место в списке определяет createdAt,
+        // иначе новый диалог проваливался бы в самый низ.
+        const rank = (r: ChatRoom) => parseTime(r.lastMessageAt) || parseTime(r.createdAt);
+        rData.sort((a, b) => rank(b) - rank(a));
 
         // Resolve missing displayNames for DM counterparts
         const uidsToResolve: string[] = [];
@@ -404,6 +408,11 @@ export function useUnreadRooms(rooms: ChatRoom[], selfUid?: string): { unreadIds
     for (const room of rooms) {
       const me = room.participants?.[uid];
       if (!me) continue;
+      // Непрочитанное — это непрочитанное СООБЩЕНИЕ, поэтому его наличие мы
+      // требуем явно. Комнаты, заведённые до того, как сервер перестал ставить
+      // пустой комнате lastMessageAt, иначе навсегда остались бы с фантомной
+      // единицей: времени «последнего сообщения» у них нет, а сообщения нет.
+      if (!room.lastMessagePreview) continue;
       const lastMsg = parseTime(room.lastMessageAt);
       const lastRead = parseTime(me.lastReadAt);
       if (lastMsg > 0 && lastMsg > lastRead) unreadIds.add(room.id);

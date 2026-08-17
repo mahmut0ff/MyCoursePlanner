@@ -174,8 +174,11 @@ export default function ChatPage() {
   }, [lastMessageId, typingNames.length]);
 
   // Открытая комната считается прочитанной — и остаётся ею, пока в ней сидят.
+  // Без условия на количество сообщений: пустую комнату тоже надо уметь пометить
+  // прочитанной, иначе повисший на ней счётчик нечем снять — открыл, а единица
+  // всё равно горит.
   useEffect(() => {
-    if (!selected?.id || !messages.length) return;
+    if (!selected?.id) return;
     updateLastRead(selected.id).catch(() => {});
   }, [selected?.id, messages.length, updateLastRead]);
 

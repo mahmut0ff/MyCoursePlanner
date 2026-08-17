@@ -271,7 +271,11 @@ const handler: Handler = async (event: HandlerEvent) => {
           map[uid] = {
             role: adminUid && uid === adminUid ? 'admin' : 'member',
             joinedAt: now(),
-            lastReadAt: '1970-01-01T00:00:00.000Z',
+            // Создателю комнаты нечего в ней «не прочитать»: он только что сам её
+            // и завёл. С эпохой у всех подряд свежесозданный пустой диалог тут же
+            // считался непрочитанным У САМОГО СОЗДАТЕЛЯ — в меню висела единица,
+            // хотя ни одного сообщения не было.
+            lastReadAt: uid === user.uid ? now() : '1970-01-01T00:00:00.000Z',
             isMuted: false,
             isRemoved: false,
             displayName: nameOf(uid),
@@ -306,7 +310,11 @@ const handler: Handler = async (event: HandlerEvent) => {
           createdBy: user.uid,
           participantIds,
           participants: buildParticipants(),
-          lastMessageAt: now(),
+          // Пусто, а не now(): в комнате ещё никто ничего не сказал. Время
+          // «последнего сообщения» у пустой комнаты — это выдуманная активность,
+          // от которой и списку, и счётчику непрочитанного становится дурно.
+          // Порядок в списке при этом не страдает: сортировка падает на createdAt.
+          lastMessageAt: '',
           lastMessagePreview: '',
           isArchived: false,
           createdAt: now(),
@@ -331,7 +339,7 @@ const handler: Handler = async (event: HandlerEvent) => {
         createdBy: user.uid,
         participantIds,
         participants: buildParticipants(user.uid),
-        lastMessageAt: now(),
+        lastMessageAt: '',          // см. комментарий у диалога выше
         lastMessagePreview: '',
         isArchived: false,
         createdAt: now(),

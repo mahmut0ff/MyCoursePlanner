@@ -216,6 +216,34 @@ describe('api-chat — справочник собеседников', () => {
     expect(uids).toEqual(expect.arrayContaining(['u_teacher', 'u_teacher2', 'u_student', 'u_student2']));
   });
 
+  it('под выбранным филиалом сотрудник без филиала остаётся видимым', async () => {
+    // Так устроены боевые данные: студенты закреплены за филиалом, преподаватели
+    // и администрация — нет, они работают на все. Со строгим совпадением
+    // справочник схлопывался до одних студентов, и написать директору было некому.
+    member('u_teacher', 'teacher', 'Преподаватель', { branchIds: [] });
+    member('u_admin', 'admin', 'Админ', { branchIds: [] });
+    member('u_student', 'student', 'Студент', { branchIds: ['branch_a'] });
+    member('u_student2', 'student', 'Второй студент', { branchIds: ['branch_b'] });
+
+    as(ADMIN);
+    const uids = json(await call('directory', 'GET', undefined, { branchId: 'branch_a' }))
+      .items.map((p: any) => p.uid);
+
+    expect(uids).toContain('u_teacher');       // филиала нет → общеорганизационный
+    expect(uids).toContain('u_student');       // свой филиал
+    expect(uids).not.toContain('u_student2');  // чужой филиал — сужение работает
+  });
+
+  it('мультиролевой участник попадает к преподавателям, а не в персонал', async () => {
+    // Менеджер + преподаватель — обычное дело в этой базе; по основной роли
+    // такой человек оседал в «Персонале», хотя ведёт занятия.
+    member('u_dual', 'manager', 'Гульмира Токтосунова', { roles: ['manager', 'teacher'] });
+
+    as(ADMIN);
+    const entry = json(await call('directory', 'GET')).items.find((p: any) => p.uid === 'u_dual');
+    expect(entry.role).toBe('teacher');
+  });
+
   it('не отдаёт контакты: ни email, ни телефона', async () => {
     member('u_student', 'student', 'Студент', { userEmail: 's@a.test' });
     store.set('users/u_student', { displayName: 'Студент', email: 's@a.test', phone: '+996700000000' });

@@ -121,6 +121,26 @@ async function deliverTelegram(d: TelegramDelivery): Promise<string[]> {
 /** Роли, которые считаются «сотрудником» в справочнике собеседников. */
 const STAFF_ROLES = ['owner', 'admin', 'manager', 'teacher', 'mentor'];
 
+/**
+ * Роль участника для справочника — по СОЮЗУ ролей, а не по основной.
+ *
+ * Мультиролевой участник (менеджер + преподаватель) в этой базе обычное дело:
+ * страница преподавателей уже чинила ту же ошибку — «matching on the primary
+ * `role` alone dropped them». По основной роли такой человек попадал в
+ * «Персонал», хотя ведёт занятия, а в комнате оседал неверный orgRole, по
+ * которому потом раскладывается список чатов.
+ *
+ * Преподавание перевешивает администрирование: искать собеседника по «кто мне
+ * ведёт» естественнее, чем по строчке в штатном расписании.
+ */
+function directoryRole(m: { role?: string; roles?: string[] }): string {
+  const held = new Set([m.role, ...(Array.isArray(m.roles) ? m.roles : [])].filter(Boolean) as string[]);
+  for (const r of ['teacher', 'mentor', 'owner', 'admin', 'manager']) {
+    if (held.has(r)) return r;
+  }
+  return m.role || 'student';
+}
+
 export interface DirectoryEntry {
   uid: string;
   name: string;
@@ -135,8 +155,11 @@ export interface DirectoryEntry {
  *  • преподаватель — сотрудники + студенты его групп;
  *  • студент — только сотрудники.
  *
- * Филиал сужает выборку так же, как на остальных списках людей: неназначенный
- * участник виден всегда (он общеорганизационный), см. memberInBranchScope.
+ * Филиал сужает выборку так же, как список преподавателей в api-org: участник
+ * БЕЗ назначенного филиала общеорганизационный и виден всегда. Это не мелочь —
+ * преподаватели и администрация как раз обычно филиала не несут (работают на
+ * все), а студенты несут. Со строгим совпадением справочник под выбранным
+ * филиалом схлопывался до одних студентов: написать директору было некому.
  */
 async function resolveDirectory(
   user: AuthUser,
@@ -147,6 +170,11 @@ async function resolveDirectory(
   const out = new Map<string, DirectoryEntry>();
   if (scope === '__DENIED__') return out;
 
+  // Строку приводим к массиву намеренно: у memberInBranchScope это ровно та
+  // форма, где «участник без филиала остаётся виден». Строковая форма означает
+  // «этот филиал и только он» и выбрасывает неназначенных.
+  const peopleScope = typeof scope === 'string' ? [scope] : scope;
+
   const snap = await adminDb.collection('orgMembers').doc(orgId)
     .collection('members')
     .where('status', '==', 'active')
@@ -155,7 +183,7 @@ async function resolveDirectory(
   const members = snap.docs
     .map((d: any) => ({ id: d.id, ...d.data() }))
     .filter((m: any) => m.userId && m.userId !== user.uid)
-    .filter((m: any) => memberInBranchScope(m.branchIds, scope));
+    .filter((m: any) => memberInBranchScope(m.branchIds, peopleScope));
 
   const isStaffCaller = hasRole(user, 'super_admin', 'admin', 'manager', 'teacher');
   const seesEveryone = isSuperAdmin(user) || isRosterManager(user);
@@ -192,7 +220,7 @@ async function resolveDirectory(
       // Ни email, ни телефона: справочник чата — это «кому написать», а не выгрузка
       // контактов организации.
       name: m.userName || p.displayName || m.userEmail || p.email || '—',
-      role: m.role || 'student',
+      role: directoryRole(m),
       avatarUrl: p.avatarUrl || '',
     });
   }

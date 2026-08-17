@@ -736,6 +736,23 @@
     "features": "Мүмкүнчүлүктөр",
     "limits": "Лимиттер"
   },
+  "teacherSettings": {
+    "title": "Жөндөөлөр",
+    "profile": "Профиль",
+    "language": "Тил",
+    "notifications": "Эскертмелер",
+    "security": "Коопсуздук",
+    "profileInfo": "Жеке маалымат",
+    "displayName": "Аты",
+    "emailLabel": "Email",
+    "languageSettings": "Тил жөндөөлөрү",
+    "appLanguage": "Колдонмонун тили",
+    "changePw": "Сырсөздү өзгөртүү",
+    "currentPw": "Учурдагы сырсөз",
+    "newPw": "Жаңы сырсөз",
+    "confirmPw": "Сырсөздү ырастаңыз",
+    "updatePw": "Сырсөздү жаңылоо"
+  },
   "notifications": {
     "prefsTitle": "Эскертме жөндөөлөрү",
     "prefsAll": "Бардык эскертмелер",

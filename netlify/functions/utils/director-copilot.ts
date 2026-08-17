@@ -14,6 +14,7 @@ import { adminDb } from './firebase-admin';
 import { generateWithFallback, hasGeminiKey, recordAiUsage } from './ai';
 import { createNotification } from './notifications';
 import { isDebtBearingPlan, planDebt, isPlanOverdue, daysUntilDeadline } from './payment-plans';
+import { loadScheduleEvents, renderSchedule } from './schedule-context';
 
 const RU_MONTHS = ['Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь', 'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'];
 
@@ -244,8 +245,23 @@ export function directorMenuKeyboard() {
       [{ text: '🧾 Должники', callback_data: 'dir:debtors' }, { text: '⚠️ Зона риска', callback_data: 'dir:risk' }],
       [{ text: '📞 Заявки', callback_data: 'dir:leads' }, { text: '📊 AI-сводка', callback_data: 'dir:brief' }],
       [{ text: '📨 Напомнить', callback_data: 'dir:remind' }, { text: '✍️ Черновик', callback_data: 'dir:draft' }],
+      [{ text: '🗓 Расписание', callback_data: 'dir:schedule' }],
     ],
   };
+}
+
+/**
+ * Расписание всего центра на ближайшую неделю — вид под кнопку «🗓 Расписание».
+ * Строк намеренно меньше, чем в промпте копилота: у Telegram потолок 4096
+ * символов на сообщение, и обрезанный хвост лучше молчаливой ошибки отправки.
+ */
+export async function renderOrgSchedule(orgId: string): Promise<string> {
+  const events = await loadScheduleEvents(orgId).catch(() => []);
+  const body = renderSchedule(events, {
+    format: 'html', maxLines: 45,
+    emptyText: 'Занятий на ближайшие 7 дней не запланировано.',
+  });
+  return `🗓 <b>Расписание центра</b> — ближайшие 7 дней:\n\n${body}`;
 }
 
 export function renderDebtors(s: DirectorSnapshot): string {

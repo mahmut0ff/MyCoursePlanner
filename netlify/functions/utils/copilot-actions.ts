@@ -34,9 +34,16 @@ import {
   buildDirectorSnapshot, renderSnapshotText, toTelegramHtml,
   type DirectorChatMessage,
 } from './director-copilot';
+import { loadScheduleEvents, scopeEvents, renderSchedule, orgTodayISO } from './schedule-context';
 
 const now = () => new Date().toISOString();
-const todayStr = () => new Date().toISOString().slice(0, 10);
+/**
+ * «Сегодня» — в календаре организации (UTC+6), а не в UTC, в котором исполняется
+ * функция. От этой даты зависят и расписание, и дата урока по умолчанию у оценок
+ * с посещаемостью: с 18:00 UTC (полночь в Бишкеке) преподаватель, диктующий
+ * журнал, получал вчерашний день.
+ */
+const todayStr = () => orgTodayISO();
 const claimLink = (token: string) => `https://t.me/${TELEGRAM_BOT_USERNAME}?start=claim_${token}`;
 const MAX_ROSTER = 250;
 
@@ -72,6 +79,7 @@ interface GradeSchema { gradingType?: string; scale?: { min?: number; max?: numb
 interface TurnContext {
   todayISO: string;
   snapshotText: string | null;
+  scheduleText: string | null;   // ближайшая неделя занятий в области видимости сотрудника
   roster: RosterStudent[];
   schemasByCourse: Map<string, GradeSchema>;
   groups: { id: string; name: string }[];
@@ -245,6 +253,8 @@ async function buildTurnContext(staff: StaffContext): Promise<TurnContext> {
   const todayISO = todayStr();
   const wantsGrades = can(staff, 'gradebook', 'write');
   const wantsPeople = can(staff, 'students', 'write') || can(staff, 'teachers', 'write');
+  // Расписание — то же право, что гейтит get_schedule у веб-ассистента.
+  const wantsSchedule = can(staff, 'schedule', 'read');
 
   // Director analytics snapshot (for management Q&A), best-effort.
   let snapshotText: string | null = null;
@@ -259,10 +269,12 @@ async function buildTurnContext(staff: StaffContext): Promise<TurnContext> {
   const groups: { id: string; name: string }[] = [];
   const schemasByCourse = new Map<string, GradeSchema>();
 
-  if (wantsGrades || wantsPeople) {
+  // Группы читаем и ради расписания: у преподавателя область видимости занятий —
+  // ровно его группы, как на экране «Расписание».
+  if (wantsGrades || wantsPeople || wantsSchedule) {
     const [groupSnap, memberSnap] = await Promise.all([
       adminDb.collection('groups').where('organizationId', '==', staff.orgId).get().catch(() => null),
-      adminDb.collection('orgMembers').doc(staff.orgId).collection('members').get().catch(() => null),
+      wantsGrades ? adminDb.collection('orgMembers').doc(staff.orgId).collection('members').get().catch(() => null) : null,
     ]);
 
     const nameById = new Map<string, string>();
@@ -315,7 +327,23 @@ async function buildTurnContext(staff: StaffContext): Promise<TurnContext> {
     }
   }
 
-  return { todayISO, snapshotText, roster, schemasByCourse, groups };
+  // Расписание на ближайшую неделю. Директор/менеджер видит весь центр, остальные —
+  // свои группы плюс занятия, назначенные лично: ровно как на экране «Расписание».
+  let scheduleText: string | null = null;
+  if (wantsSchedule) {
+    try {
+      const events = await loadScheduleEvents(staff.orgId);
+      const scoped = staff.isDirector
+        ? events
+        : scopeEvents(events, { groupIds: groups.map(g => g.id), teacherId: staff.uid });
+      scheduleText = renderSchedule(scoped, {
+        showTeacher: staff.isDirector,   // преподавателю в своём расписании его имя ни к чему
+        emptyText: 'Занятий на ближайшие 7 дней в расписании нет.',
+      });
+    } catch { scheduleText = null; }
+  }
+
+  return { todayISO, snapshotText, scheduleText, roster, schemasByCourse, groups };
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -473,6 +501,12 @@ function buildSystemInstruction(staff: StaffContext, ctx: TurnContext, toolNames
     ctx.roster.forEach(r => lines.push(`• ${r.name} — ${r.groupName}`));
     if (ctx.roster.length >= MAX_ROSTER) lines.push(`(показаны первые ${MAX_ROSTER})`);
     lines.push('По этим ученикам можно: выставлять оценки, отмечать посещаемость (пришёл/отсутствовал/опоздал/уваж. причина) и добавлять заметки без оценки.');
+  }
+
+  if (ctx.scheduleText) {
+    lines.push('');
+    lines.push(`РАСПИСАНИЕ ЗАНЯТИЙ (${staff.isDirector ? 'весь центр' : 'ваши группы'}, ближайшие 7 дней). На вопросы «когда/во сколько занятие», «что сегодня/завтра», «какое расписание у группы X», «кто ведёт в это время» отвечай ТОЛЬКО отсюда — не выдумывай дни, время и кабинеты. Если нужного дня в списке нет — скажи, что он за пределами ближайшей недели:`);
+    lines.push(ctx.scheduleText);
   }
 
   if ((toolNames.includes('add_student') || toolNames.includes('add_teacher')) && ctx.groups.length) {

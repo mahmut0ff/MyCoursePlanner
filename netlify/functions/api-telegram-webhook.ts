@@ -8,7 +8,7 @@ import { planHasAIManager } from './utils/plan-limits';
 import {
   generateBrief, remindOrgDebtors,
   generateDebtorDraft, sendDebtorDraft,
-  buildDirectorSnapshot, renderDebtors, renderRisk, renderLeads,
+  buildDirectorSnapshot, renderDebtors, renderRisk, renderLeads, renderOrgSchedule,
   directorMenuKeyboard, resolveDirectorByChat,
   type DirectorChatMessage,
 } from './utils/director-copilot';
@@ -18,6 +18,10 @@ import {
   resolveStudentByChat, runStudentTutorTurn,
   resolveParentByChat, runParentTurn,
 } from './utils/student-copilot';
+import {
+  buildScheduleText, buildStudentScheduleText, resolveStaffScope,
+  type RenderScheduleOptions,
+} from './utils/schedule-context';
 import { rateLimiters } from './utils/rate-limiter';
 
 /** Reply keyboard for a staff copilot turn — director quick-actions, or none for teachers. */
@@ -189,6 +193,7 @@ async function handleDirectorCallback(cq: any, botToken: string): Promise<void> 
   // ── Read actions: answer immediately, then send the requested view. ──
   await answer();
   if (action === 'brief') { await send(await generateBrief(dir.orgId, orgName)); return; }
+  if (action === 'schedule') { await send(await renderOrgSchedule(dir.orgId)); return; }
 
   const snap = await buildDirectorSnapshot(dir.orgId);
   if (action === 'debtors') await send(renderDebtors(snap));
@@ -374,11 +379,68 @@ export const handler: Handler = async (event: HandlerEvent) => {
     const setDirectorCommands = () => setBotCommands([
       { command: 'menu', description: '📊 Меню директора' },
       { command: 'brief', description: '☀️ AI-сводка по центру' },
+      { command: 'schedule', description: '🗓 Расписание на неделю' },
       { command: 'login', description: '🔑 Войти в SabakHub' },
     ]);
     const setStaffCommands = () => setBotCommands([
+      { command: 'schedule', description: '🗓 Моё расписание' },
       { command: 'login', description: '🔑 Войти в SabakHub' },
     ]);
+
+    // Расписание того, кто спросил: сотруднику — его область видимости, ученику —
+    // его группы, родителю — по каждому ребёнку. Данные, а не AI: ни ключа Gemini,
+    // ни тарифа Professional тут не требуется. Возвращает false, если чат вообще
+    // ни к кому не привязан (тогда вызывающий подскажет, что делать).
+    const sendScheduleFor = async (): Promise<boolean> => {
+      const view: RenderScheduleOptions = { format: 'html', maxLines: 45 };
+      const header = (body: string) => `🗓 <b>Расписание</b> — ближайшие 7 дней:\n\n${body}`;
+
+      const staff = await resolveStaffByChat(String(chatId));
+      if (staff) {
+        if (!can(staff, 'schedule', 'read')) {
+          await reply('У вас нет доступа к расписанию центра.');
+          return true;
+        }
+        const scope = await resolveStaffScope(staff.orgId, staff.uid, staff.isDirector);
+        const body = await buildScheduleText(staff.orgId, scope, {
+          ...view,
+          showTeacher: staff.isDirector, // своё имя в своём же расписании — шум
+          emptyText: 'Занятий на ближайшие 7 дней не запланировано.',
+        });
+        await sendTg(header(body), staff.isDirector ? directorMenuKeyboard() : undefined);
+        return true;
+      }
+
+      const student = await resolveStudentByChat(String(chatId));
+      if (student) {
+        const body = await buildStudentScheduleText(student.orgId, student.uid, {
+          ...view, emptyText: 'Занятий на ближайшие 7 дней у вас нет.',
+        });
+        await sendTg(header(body));
+        return true;
+      }
+
+      const parent = await resolveParentByChat(String(chatId));
+      if (parent) {
+        // У Telegram потолок 4096 символов на сообщение, а детей может быть
+        // несколько — набираем блоки, пока помещаются, и честно обрываем список.
+        const esc = (s: string) => String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        const blocks: string[] = [];
+        let used = 0;
+        for (const c of parent.children) {
+          const body = await buildStudentScheduleText(c.orgId, c.uid, {
+            ...view, maxLines: 20, emptyText: 'Занятий на ближайшие 7 дней нет.',
+          });
+          const block = `👤 <b>${esc(c.name)}</b>\n${body}`;
+          if (used + block.length > 3500) { blocks.push('…расписание остальных детей — в портале родителя.'); break; }
+          blocks.push(block);
+          used += block.length;
+        }
+        await sendTg(header(blocks.join('\n\n')));
+        return true;
+      }
+      return false;
+    };
 
     if (isGlobalBot) {
       // ─── GLOBAL BOT: registration, account linking & passwordless login ───
@@ -582,22 +644,25 @@ export const handler: Handler = async (event: HandlerEvent) => {
             if (staff.isDirector) {
               await setDirectorCommands();
               await sendTg(
-                '🤖 <b>AI-копилот директора</b>\nСпросите аналитику или поручите действие — текстом или голосом:\n• «Сколько дохода в этом месяце?», «Кто должает?»\n• «Добавь заявку Азиз +99890…»\n• «Добавь ученика Алишер в группу A2»\n• «Отметь, что все пришли», «Усмановой заметка: молодец»\n…или жмите кнопки ниже:',
+                '🤖 <b>AI-копилот директора</b>\nСпросите аналитику или поручите действие — текстом или голосом:\n• «Сколько дохода в этом месяце?», «Кто должает?»\n• «Какое расписание на завтра?», «Во сколько занятие у группы A2?»\n• «Добавь заявку Азиз +99890…»\n• «Добавь ученика Алишер в группу A2»\n• «Отметь, что все пришли», «Усмановой заметка: молодец»\n…или жмите кнопки ниже:',
                 directorMenuKeyboard(),
               );
             } else if (can(staff, 'gradebook', 'write')) {
               await setStaffCommands();
               await sendTg(
-                '🤖 <b>AI-помощник преподавателя</b>\nПишите или диктуйте голосом — например:\n• «Поставь Аброру 4 за сегодня, Мухаммаду 5»\n• «Отметь, что все пришли; Аброр отсутствовал»\n• «Усмановой заметка: молодец на уроке»',
+                '🤖 <b>AI-помощник преподавателя</b>\nПишите или диктуйте голосом — например:\n• «Поставь Аброру 4 за сегодня, Мухаммаду 5»\n• «Отметь, что все пришли; Аброр отсутствовал»\n• «Усмановой заметка: молодец на уроке»\n• «Когда у меня следующий урок?» (или команда /schedule)',
               );
             }
           } else if (!staff) {
             // Students get a tutor nudge so they discover homework help right here.
             const student = await resolveStudentByChat(String(chatId));
-            if (student && planHasAIManager(student.org.planId)) {
-              await sendTg(
-                '🤖 <b>AI-репетитор</b>\nСпросите меня о домашке или учёбе — текстом или голосом. Например:\n• «Объясни Present Perfect»\n• «Какие у меня оценки?»\n• «Что мне подтянуть к тесту?»',
-              );
+            if (student) {
+              await setStaffCommands(); // /schedule + /login — расписание доступно на любом тарифе
+              if (planHasAIManager(student.org.planId)) {
+                await sendTg(
+                  '🤖 <b>AI-репетитор</b>\nСпросите меня о домашке или учёбе — текстом или голосом. Например:\n• «Объясни Present Perfect»\n• «Какие у меня оценки?»\n• «Когда у меня занятия на этой неделе?»\n• «Что мне подтянуть к тесту?»',
+                );
+              }
             }
           }
           return { statusCode: 200, body: 'OK' };
@@ -647,6 +712,14 @@ export const handler: Handler = async (event: HandlerEvent) => {
           await sendTg('🤖 <b>Меню директора</b>\nВыберите действие или просто задайте вопрос текстом:', directorMenuKeyboard());
         } else {
           await reply('Это меню доступно только администраторам центра.');
+        }
+        return { statusCode: 200, body: 'OK' };
+      }
+
+      // (c3.5) /schedule — расписание для всех ролей, без AI и без плана.
+      if (text === '/schedule' || text === '/raspisanie') {
+        if (!(await sendScheduleFor())) {
+          await reply('Ваш Telegram пока не привязан к аккаунту. Откройте ссылку-приглашение от вашего центра.');
         }
         return { statusCode: 200, body: 'OK' };
       }

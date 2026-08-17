@@ -1,9 +1,9 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import { 
-  collection, 
-  query, 
-  where, 
-  orderBy, 
+import {
+  collection,
+  query,
+  where,
+  orderBy,
   onSnapshot,
   doc,
   setDoc,
@@ -13,9 +13,12 @@ import {
   limit
 } from 'firebase/firestore';
 import { db, auth, storage } from './firebase';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
 import type { ChatRoom, ChatMessage, MessageAttachment } from '../types';
 import { apiNotifyChatMessage } from './api';
+
+/** Потолок вложения. Должен совпадать со storage.rules (25 МБ на файл чата). */
+export const CHAT_MAX_FILE_SIZE = 25 * 1024 * 1024;
 
 /** Safely extract a numeric timestamp from Firestore Timestamp or ISO string */
 function parseTime(v: any): number {
@@ -27,18 +30,32 @@ function parseTime(v: any): number {
 
 /**
  * Upload an attachment to Firebase Storage for a specific chat room.
+ * Resumable — иначе у больших файлов не из чего строить прогресс, и композер
+ * висит молча.
  */
 export async function uploadChatAttachment(
-  orgId: string, 
-  roomId: string, 
-  file: File
+  orgId: string,
+  roomId: string,
+  file: File,
+  onProgress?: (percent: number) => void,
 ): Promise<MessageAttachment> {
+  if (file.size > CHAT_MAX_FILE_SIZE) {
+    throw new Error('Файл больше 25 МБ');
+  }
   const extension = file.name.split('.').pop();
   const fileName = `${Date.now()}_${Math.random().toString(36).substring(7)}.${extension}`;
   const filePath = `chat/${orgId}/${roomId}/${fileName}`;
   const storageRef = ref(storage, filePath);
-  
-  await uploadBytes(storageRef, file);
+
+  const task = uploadBytesResumable(storageRef, file, { contentType: file.type });
+  await new Promise<void>((resolve, reject) => {
+    task.on(
+      'state_changed',
+      (snap) => onProgress?.(Math.round((snap.bytesTransferred / snap.totalBytes) * 100)),
+      reject,
+      () => resolve(),
+    );
+  });
   const url = await getDownloadURL(storageRef);
 
   return {
@@ -54,8 +71,14 @@ export async function uploadChatAttachment(
 /**
  * Hook to subscribe to user's chat rooms within an organization.
  * Also resolves display names for DM participants from /users collection.
+ *
+ * Запрос — ОДИН `array-contains` по participantIds, без `organizationId`:
+ * пара «равенство + array-contains» требует составного индекса, а индексы в этом
+ * проекте не деплоятся (скрипты шлют только rules и storage), так что живой чат
+ * падал бы с FAILED_PRECONDITION. Организацию и архив отсеиваем в памяти — там же,
+ * где уже сортируем: комнат у человека десятки, не тысячи.
  */
-export function useChatRooms(organizationId?: string) {
+export function useChatRooms(organizationId?: string, includeArchived = false) {
   const [rooms, setRooms] = useState<ChatRoom[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
@@ -74,16 +97,17 @@ export function useChatRooms(organizationId?: string) {
 
     const q = query(
       collection(db, 'chatRooms'),
-      where('organizationId', '==', organizationId),
       where('participantIds', 'array-contains', user.uid)
     );
 
-    const unsubscribe = onSnapshot(q, 
+    const unsubscribe = onSnapshot(q,
       async (snapshot) => {
         let rData = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as ChatRoom));
-        
+
+        rData = rData.filter(room => room.organizationId === organizationId);
+        rData = rData.filter(room => !room.participants?.[user.uid]?.isRemoved);
+        if (!includeArchived) rData = rData.filter(room => !room.isArchived);
         rData.sort((a, b) => parseTime(b.lastMessageAt) - parseTime(a.lastMessageAt));
-        rData = rData.filter(room => !room.participants[user.uid]?.isRemoved);
 
         // Resolve missing displayNames for DM counterparts
         const uidsToResolve: string[] = [];
@@ -114,7 +138,7 @@ export function useChatRooms(organizationId?: string) {
               } catch {
                 // Firestore rules may block cross-org user reads
               }
-              
+
               // Fallback: try /orgMembers/{orgId}/members/{uid}
               if (organizationId) {
                 try {
@@ -127,7 +151,7 @@ export function useChatRooms(organizationId?: string) {
                   }
                 } catch {}
               }
-              
+
               // Last resort: use uid slice
               newNames[uid] = uid.slice(0, 8) + '...';
             })
@@ -147,17 +171,51 @@ export function useChatRooms(organizationId?: string) {
     );
 
     return () => unsubscribe();
-  }, [organizationId, auth.currentUser?.uid]);
+  }, [organizationId, includeArchived, auth.currentUser?.uid]);
 
   return { rooms, loading, error, nameCache, avatarCache };
 }
 
 /**
- * Hook to subscribe to messages in a specific room with pagination limit.
+ * Как показать комнату в списке: имя, аватар и с кем именно идёт разговор.
+ * Держится рядом с useChatRooms, потому что «имя комнаты» — это три источника
+ * (title группы, denormalised displayName участника, резолв по кэшу), и
+ * расползание этой логики по компонентам как раз и рождает разные подписи
+ * одной комнаты в списке и в шапке.
  */
-export function useChatMessages(roomId?: string, maxLimit = 100) {
+export function chatRoomLabel(
+  room: ChatRoom,
+  selfUid: string,
+  nameCache: Record<string, string> = {},
+  avatarCache: Record<string, string> = {},
+): { title: string; avatarUrl: string; counterpartUid: string | null } {
+  if (room.type === 'group') {
+    return { title: room.title || 'Групповой чат', avatarUrl: room.imageUrl || '', counterpartUid: null };
+  }
+  const other = room.participantIds.find((id) => id !== selfUid) || null;
+  if (!other) return { title: 'Избранное', avatarUrl: '', counterpartUid: null };
+  const p = room.participants?.[other];
+  return {
+    title: p?.displayName || nameCache[other] || '—',
+    avatarUrl: p?.avatarUrl || avatarCache[other] || '',
+    counterpartUid: other,
+  };
+}
+
+/**
+ * Hook to subscribe to messages in a specific room with pagination limit.
+ * `loadMore` расширяет окно подписки — история грузится вверх по требованию,
+ * а не одним запросом на всю комнату.
+ */
+export function useChatMessages(roomId?: string, pageSize = 60) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [loading, setLoading] = useState(true);
+  const [windowSize, setWindowSize] = useState(pageSize);
+  const [reachedStart, setReachedStart] = useState(false);
+
+  // Новая комната — новое окно: иначе открытый ранее длинный диалог заставлял
+  // грузить столько же сообщений и у следующего.
+  useEffect(() => { setWindowSize(pageSize); setReachedStart(false); }, [roomId, pageSize]);
 
   useEffect(() => {
     if (!roomId) {
@@ -170,12 +228,13 @@ export function useChatMessages(roomId?: string, maxLimit = 100) {
     const q = query(
       collection(db, 'chatRooms', roomId, 'messages'),
       orderBy('createdAt', 'desc'),
-      limit(maxLimit)
+      limit(windowSize)
     );
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const msgs = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as ChatMessage));
       setMessages(msgs.reverse());
+      setReachedStart(snapshot.size < windowSize);
       setLoading(false);
     }, (err) => {
       console.warn('[chat] messages listener error:', err);
@@ -183,20 +242,22 @@ export function useChatMessages(roomId?: string, maxLimit = 100) {
     });
 
     return () => unsubscribe();
-  }, [roomId, maxLimit]);
+  }, [roomId, windowSize]);
 
-  return { messages, loading };
+  const loadMore = useCallback(() => setWindowSize((w) => w + pageSize), [pageSize]);
+
+  return { messages, loading, loadMore, hasMore: !reachedStart };
 }
 
 /**
- * Action hook for sending messages via Firestore directly, 
+ * Action hook for sending messages via Firestore directly,
  * utilizing client-side IDs for idempotency.
  */
 export function useChatActions() {
   const sendMessage = useCallback(async (
-    roomId: string, 
-    organizationId: string, 
-    text: string, 
+    roomId: string,
+    organizationId: string,
+    text: string,
     attachments?: MessageAttachment[],
     replyTo?: ChatMessage['replyTo']
   ) => {
@@ -233,7 +294,7 @@ export function useChatActions() {
     await setDoc(msgRef, {
       ...msgData,
       createdAt: serverTimestamp(),
-      updatedAt: serverTimestamp(), 
+      updatedAt: serverTimestamp(),
     });
 
     // Update room metadata
@@ -253,7 +314,7 @@ export function useChatActions() {
     }
 
     // Fire-and-forget notification to other participants
-    apiNotifyChatMessage(roomId, text, senderName).catch(() => {});
+    apiNotifyChatMessage(roomId, text).catch(() => {});
 
     return tempId;
   }, []);
@@ -261,7 +322,7 @@ export function useChatActions() {
   const updateLastRead = useCallback(async (roomId: string) => {
     const user = auth.currentUser;
     if (!user) return;
-    
+
     const roomRef = doc(db, 'chatRooms', roomId);
     try {
       await updateDoc(roomRef, {
@@ -272,33 +333,42 @@ export function useChatActions() {
     }
   }, []);
 
-  return { sendMessage, updateLastRead };
+  const setMuted = useCallback(async (roomId: string, isMuted: boolean) => {
+    const user = auth.currentUser;
+    if (!user) return;
+    const roomRef = doc(db, 'chatRooms', roomId);
+    await updateDoc(roomRef, { [`participants.${user.uid}.isMuted`]: isMuted });
+  }, []);
+
+  return { sendMessage, updateLastRead, setMuted };
 }
 
 /**
- * Derive global unread counts from loaded rooms.
+ * Непрочитанные: набор id комнат + их количество.
+ *
+ * Именно КОМНАТ, а не сообщений: точное число непрочитанных сообщений
+ * потребовало бы счётчика на сервере при каждой отправке, а «5 диалогов ждут
+ * ответа» — ровно то, что нужно бейджу в меню.
  */
-export function useUnreadCount(rooms: ChatRoom[]) {
-  const user = auth.currentUser;
-  
-  const unreadTotal = useMemo(() => {
-    if (!user || !rooms) return 0;
-    
-    return rooms.reduce((acc, room) => {
-      const myParticipant = room.participants[user.uid];
-      if (!myParticipant) return acc;
-      
-      const lastMsg = parseTime(room.lastMessageAt);
-      const lastRead = parseTime(myParticipant.lastReadAt);
-      
-      if (lastMsg > 0 && lastMsg > lastRead) {
-        return acc + 1;
-      }
-      return acc;
-    }, 0);
-  }, [rooms, user]);
+export function useUnreadRooms(rooms: ChatRoom[], selfUid?: string): { unreadIds: Set<string>; unreadTotal: number } {
+  // uid приходит параметром, а не из auth.currentUser: у вызывающих он и так на
+  // руках, а чтение синглтона делало хук незаметно зависимым от глобального
+  // состояния — в тестах он молча считал ноль непрочитанных.
+  const uid = selfUid;
 
-  return unreadTotal;
+  return useMemo(() => {
+    const unreadIds = new Set<string>();
+    if (!uid || !rooms) return { unreadIds, unreadTotal: 0 };
+
+    for (const room of rooms) {
+      const me = room.participants?.[uid];
+      if (!me) continue;
+      const lastMsg = parseTime(room.lastMessageAt);
+      const lastRead = parseTime(me.lastReadAt);
+      if (lastMsg > 0 && lastMsg > lastRead) unreadIds.add(room.id);
+    }
+    return { unreadIds, unreadTotal: unreadIds.size };
+  }, [rooms, uid]);
 }
 
 /**
@@ -361,6 +431,10 @@ export function useTypingStatus(roomId?: string): string[] {
       const names: string[] = [];
       snapshot.docs.forEach((d) => {
         if (d.id !== user?.uid) {
+          // Устаревшая запись (вкладку закрыли, таймер очистки не отработал) не
+          // должна вечно показывать «печатает…».
+          const ts = parseTime(d.data().timestamp);
+          if (ts && Date.now() - ts > 10_000) return;
           names.push(d.data().displayName || 'Someone');
         }
       });

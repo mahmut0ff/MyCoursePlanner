@@ -131,6 +131,7 @@ const AdminSettingsPage = lazyRetry(() => import('./pages/admin/AdminSettingsPag
 const AdminDemoRequestsPage = lazyRetry(() => import('./pages/admin/AdminDemoRequestsPage'));
 const AdminSupportPage = lazyRetry(() => import('./pages/admin/AdminSupportPage'));
 const SupportPage = lazyRetry(() => import('./pages/support/SupportPage'));
+const ChatPage = lazyRetry(() => import('./pages/chat/ChatPage'));
 
 const DocumentViewerPage = lazyRetry(() => import('./pages/viewer/DocumentViewerPage'));
 
@@ -313,6 +314,10 @@ const App: React.FC = () => {
                 org membership or RBAC grants — a user who can't reach a feature
                 is exactly the one who needs to ask about it. */}
             <Route path="support" element={<ProtectedRoute><SupportPage /></ProtectedRoute>} />
+
+            {/* Внутренний чат организации. Гейт — `chat`, а не роль: студенту он
+                тоже нужен, но КОМУ он вправе написать, решает сервер. */}
+            <Route path="chat" element={<ProtectedRoute><PermissionRoute resource="chat"><ChatPage /></PermissionRoute></ProtectedRoute>} />
           </Route>
 
           {/* Fallback */}

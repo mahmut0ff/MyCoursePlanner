@@ -232,6 +232,12 @@ export const RESOURCE_GROUPS: ResourceGroup[] = [
         read: 'Просмотр настроек организации',
         write: 'Редактирование профиля, уведомлений и интеграций',
       } },
+      { id: 'chat', label: 'Чат', help: {
+        read: 'Доступ к внутреннему чату: свои диалоги и группы, ответы в них',
+        write: 'Начинать новые диалоги и создавать групповые чаты',
+        delete: 'Удалять чужие сообщения и архивировать чужие комнаты',
+        notes: 'Своё сообщение автор удаляет и без права «Удаление». Кому именно можно написать, решает сервер: студенту он показывает только сотрудников, преподавателю — сотрудников и студентов его групп.',
+      } },
     ],
   },
 ];
@@ -264,7 +270,7 @@ export const TEACHER_DEFAULT: RolePermission[] = [
   // Кабинеты — только чтение: преподаватель ставит занятие в существующую
   // аудиторию и смотрит, свободна ли она, но справочником не распоряжается.
   ...ro(['dashboard', 'students', 'results', 'analytics', 'classrooms']),
-  ...rw(['courses', 'groups', 'schedule']),
+  ...rw(['courses', 'groups', 'schedule', 'chat']),
   ...rwd(['lessons', 'exams', 'rooms', 'quizzes', 'materials', 'homework', 'gradebook']),
 ];
 
@@ -275,13 +281,18 @@ export const TEACHER_DEFAULT: RolePermission[] = [
  */
 export const MANAGER_DEFAULT: RolePermission[] = [
   ...ro(['dashboard', 'analytics', 'results']),
-  ...rw(['ai']),
+  ...rw(['ai', 'chat']),
   ...rw(['roster_management']),
   ...rwd(['students', 'teachers', 'leads', 'courses', 'groups', 'lessons', 'materials', 'schedule', 'classrooms', 'exams', 'rooms', 'quizzes', 'gradebook', 'homework', 'certificates']),
 ];
 
 /** Student: minimal — they don't use the staff matrix, but provide a sane fallback. */
-export const STUDENT_DEFAULT: RolePermission[] = ro(['dashboard', 'lessons', 'results']);
+// Чат с `write`: студент может начать диалог, но собеседников ему выдаёт сервер
+// (api-chat ?action=directory) — только сотрудники. Группы создавать нельзя.
+export const STUDENT_DEFAULT: RolePermission[] = [
+  ...ro(['dashboard', 'lessons', 'results']),
+  ...rw(['chat']),
+];
 
 export interface LegacyManagerPerms {
   finances?: boolean;

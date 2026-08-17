@@ -35,7 +35,9 @@ const NavItem: React.FC<{
   onClose: () => void;
   end?: boolean;
   locked?: boolean;
-}> = ({ to, icon: Icon, label, isCollapsed, onClose, end, locked }) => {
+  /** Счётчик справа от пункта (непрочитанные чаты). 0 не рисуем. */
+  badge?: number;
+}> = ({ to, icon: Icon, label, isCollapsed, onClose, end, locked, badge }) => {
   const cls = ({ isActive }: { isActive: boolean }) =>
     `flex items-center py-2 rounded-lg text-[13px] font-medium transition-all duration-150 relative group outline-none ${
       isActive ? 'bg-primary-50 text-primary-700 dark:bg-white/10 dark:text-white' : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-white/5 dark:hover:text-slate-200'
@@ -56,6 +58,16 @@ const NavItem: React.FC<{
           />
           <Icon className="w-4 h-4 shrink-0" />
           <span className="label">{label}</span>
+          {!!badge && badge > 0 && (
+            // В свёрнутом меню подписи нет, поэтому счётчик садится точкой на иконку —
+            // иначе он уехал бы за границу узкой колонки.
+            <span className={`shrink-0 ${isCollapsed
+              ? 'lg:absolute lg:top-1 lg:right-1.5 lg:w-2 lg:h-2 lg:p-0 lg:text-[0px] ml-auto'
+              : 'ml-auto'} min-w-[18px] h-[18px] px-1 rounded-full bg-primary-600 text-white
+              text-[10px] font-semibold flex items-center justify-center`}>
+              {badge > 99 ? '99+' : badge}
+            </span>
+          )}
           {locked && <Lock aria-hidden="true" className={`w-3 h-3 ml-auto text-slate-400 dark:text-slate-500 ${isCollapsed ? 'lg:hidden' : ''}`} />}
         </>
       )}
@@ -152,6 +164,7 @@ const Sidebar: React.FC<{ open: boolean; onClose: () => void; isCollapsed?: bool
                   icon={item.icon}
                   label={item.label}
                   locked={item.locked}
+                  badge={item.badge}
                   isCollapsed={isCollapsed}
                   onClose={onClose}
                 />

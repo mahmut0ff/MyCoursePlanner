@@ -17,8 +17,9 @@ import {
   ClipboardCheck,
   Inbox,
   NotebookText, NotebookPen, MapPin, UserCog,
-  Sparkles, LifeBuoy, Wallet, DoorOpen,
+  Sparkles, LifeBuoy, Wallet, DoorOpen, MessageSquare,
 } from 'lucide-react';
+import { useChatRooms, useUnreadRooms } from '../../lib/useChat';
 
 /**
  * The sidebar's menu as data.
@@ -37,6 +38,7 @@ export interface NavItemDef {
   label: string;           // already localized
   end?: boolean;
   locked?: boolean;        // plan-gated (renders the padlock)
+  badge?: number;          // живой счётчик справа (непрочитанные чаты); 0 не рисуется
 }
 
 export interface NavSectionDef {
@@ -120,7 +122,7 @@ export interface NavModelOptions {
 /** Nav the CURRENT user is entitled to see, before personal hide-preferences. */
 export function useNavModel(instType?: string, opts?: NavModelOptions): NavSectionDef[] {
   const { t } = useTranslation();
-  const { role, isSuperAdmin, isTeacher, isManager, organizationId } = useAuth();
+  const { role, isSuperAdmin, isTeacher, isManager, organizationId, firebaseUser } = useAuth();
   const { canAccess } = usePlanGate();
   const { canRead } = usePermissions();
   // `canSwitch` (more than one branch) — not just `activeBranchId` — because a
@@ -131,6 +133,11 @@ export function useNavModel(instType?: string, opts?: NavModelOptions): NavSecti
   // planId comes from the org document, not PlanContext: PlanContext skips the
   // subscription fetch for students, so its planId is always 'starter' there.
   const { orgData } = useOrg();
+  // Бейдж непрочитанных должен жить всегда, а не только на открытой странице
+  // чата, — иначе о новом сообщении узнаёшь, только зайдя в чат. Подписка одна
+  // на приложение: та же, что кормит список комнат.
+  const { rooms: chatRooms } = useChatRooms(organizationId || undefined);
+  const { unreadTotal: chatUnread } = useUnreadRooms(chatRooms, firebaseUser?.uid);
 
   const isAdmin = role === 'admin';
   const teacherWithOrg = isTeacher && !!organizationId;
@@ -376,6 +383,19 @@ export function useNavModel(instType?: string, opts?: NavModelOptions): NavSecti
       id: 'progress',
       items: [
         { id: 'achievements', to: '/achievements', icon: Trophy, label: t('nav.achievements', 'Достижения') },
+      ],
+    });
+  }
+
+  /* ──────── CHAT (every role with an org) ──────── */
+  // Вне роли и вне филиала: комната не принадлежит ни отделению, ни разделу
+  // меню — списки людей филиалуются на входе (справочник собеседников), а уже
+  // начатая переписка не должна исчезать от переключателя.
+  if (organizationId && canRead('chat')) {
+    sections.push({
+      id: 'chat',
+      items: [
+        { id: 'chat', to: '/chat', icon: MessageSquare, label: t('nav.chat', 'Чат'), badge: chatUnread },
       ],
     });
   }

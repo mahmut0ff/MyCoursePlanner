@@ -6,7 +6,7 @@ import { auth } from './firebase';
 import type {
   MessageAttachment, SupportMessage, SupportThreadStatus, SupportUserInfo,
   CompensationRule, PayComponent, PayrollPeriod, PayrollLine, PayrollPayout,
-  Classroom,
+  Classroom, ChatDirectoryEntry,
 } from '../types';
 
 const API_BASE = '/.netlify/functions';
@@ -77,6 +77,10 @@ const BRANCH_SCOPED_ENDPOINTS = new Set([
   // Кабинет принадлежит зданию: «Все филиалы» — весь справочник, конкретный
   // филиал — только его аудитории. Хендлер читает params.branchId (см. action=list).
   'api-classrooms',
+  // Справочник собеседников чата: под выбранным филиалом предлагаем его людей.
+  // Стоит только на GET — валидация участников на POST намеренно смотрит на
+  // ПОЛНЫЙ круг общения, иначе переключатель филиала рвал бы уже начатую беседу.
+  'api-chat',
 ]);
 
 async function apiRequest<T = any>(
@@ -693,6 +697,11 @@ export const apiExportSessionResults = (sessionId: string) =>
 // CHAT SYSTEM API
 // ============================================================
 
+/** Кому текущий пользователь вправе написать — список считает сервер. */
+export const apiGetChatDirectory = () =>
+  apiRequest<{ items: ChatDirectoryEntry[]; canCreateGroup: boolean }>(
+    'api-chat', 'GET', undefined, { action: 'directory' });
+
 export const apiCreateChatRoom = (data: any) =>
   apiRequest('api-chat', 'POST', data, { action: 'createRoom' });
 
@@ -705,8 +714,10 @@ export const apiArchiveChatRoom = (roomId: string, isArchived: boolean) =>
 export const apiModerateChatMessage = (roomId: string, messageId: string) =>
   apiRequest('api-chat', 'POST', { roomId, messageId }, { action: 'moderateMessage' });
 
-export const apiNotifyChatMessage = (roomId: string, text: string, senderName: string) =>
-  apiRequest('api-chat', 'POST', { roomId, text, senderName }, { action: 'notifyMessage' });
+// Имя отправителя сервер берёт сам: подпись под уведомлением — не то, что стоит
+// принимать с клиента.
+export const apiNotifyChatMessage = (roomId: string, text: string) =>
+  apiRequest('api-chat', 'POST', { roomId, text }, { action: 'notifyMessage' });
 
 // ============================================================
 // SUPPORT DESK API

@@ -1261,6 +1261,17 @@ export interface ChatMessage {
   deletedBy?: string;
 }
 
+/**
+ * Один человек в справочнике собеседников (api-chat ?action=directory).
+ * Ни email, ни телефона: это «кому написать», а не выгрузка контактов.
+ */
+export interface ChatDirectoryEntry {
+  uid: string;
+  name: string;
+  role: string;
+  avatarUrl: string;
+}
+
 export interface OrganizationChatSettings {
   organizationId: string;
   canMembersDirectMessageEachOther: boolean;

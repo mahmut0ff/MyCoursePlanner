@@ -190,43 +190,78 @@ service cloud.firestore {
     }
 
     // 10. Chat System
+    //
+    // Комнаты заводит и меняет ТОЛЬКО api-chat (Admin SDK): состав участников,
+    // их роли и флаг isRemoved решают, кто вообще видит переписку, поэтому ни
+    // одно из этих полей не должно быть клиентски-записываемым. Клиенту оставлены
+    // ровно две вещи, без которых чат не работает: пометить комнату прочитанной
+    // и обновить строку последнего сообщения при отправке.
     match /chatRooms/{roomId} {
+      function chatRoom() {
+        return get(/databases/$(database)/documents/chatRooms/$(roomId)).data;
+      }
+
       allow read: if isSuperAdmin() || (request.auth != null && request.auth.uid in resource.data.participantIds);
-      
-      // Allow participant to update ONLY lastMessageAt, lastMessagePreview, updatedAt, and their own lastReadAt
+
+      // hasOnly, а НЕ hasAny: с hasAny условие читалось как «менять можно всё,
+      // кроме чёрного списка», и участник переписывал title/description и — что
+      // хуже — карту participants целиком: снимал себе isRemoved, выдавал себе
+      // role: 'admin', подменял чужие displayName.
       allow update: if isSuperAdmin() || (
-        request.auth != null && 
+        request.auth != null &&
         request.auth.uid in resource.data.participantIds &&
-        request.resource.data.diff(resource.data).affectedKeys().hasAny(['lastMessageAt', 'lastMessagePreview', 'updatedAt', 'participants']) &&
-        (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['id', 'organizationId', 'type', 'participantIds', 'isArchived', 'createdBy']))
+        request.resource.data.diff(resource.data).affectedKeys()
+          .hasOnly(['lastMessageAt', 'lastMessagePreview', 'updatedAt', 'participants']) &&
+        // Внутри participants — только своя запись…
+        request.resource.data.participants.diff(resource.data.participants).affectedKeys()
+          .hasOnly([request.auth.uid]) &&
+        // …и в ней только те два поля, которыми человек распоряжается сам.
+        request.resource.data.participants[request.auth.uid]
+          .diff(resource.data.participants[request.auth.uid]).affectedKeys()
+          .hasOnly(['lastReadAt', 'isMuted'])
       );
 
       // Create/Delete must go through backend
-      allow create, delete: if isSuperAdmin(); 
+      allow create, delete: if isSuperAdmin();
 
-      
+
       match /messages/{messageId} {
-        allow read: if isSuperAdmin() || (request.auth != null && request.auth.uid in get(/databases/$(database)/documents/chatRooms/$(roomId)).data.participantIds);
-        
+        allow read: if isSuperAdmin() || (request.auth != null && request.auth.uid in chatRoom().participantIds);
+
         allow create: if isSuperAdmin() || (
-          request.auth != null && 
+          request.auth != null &&
           request.resource.data.senderId == request.auth.uid &&
-          request.auth.uid in get(/databases/$(database)/documents/chatRooms/$(roomId)).data.participantIds
+          request.auth.uid in chatRoom().participantIds &&
+          // Организацию сообщение наследует от комнаты, а не объявляет само:
+          // иначе чужой orgId в теле увёл бы сообщение из-под серверных проверок
+          // (api-chat сверяет именно это поле, прежде чем модерировать).
+          request.resource.data.organizationId == chatRoom().organizationId &&
+          // Родиться удалённым сообщение не может — «надгробие» ставит только сервер.
+          !request.resource.data.keys().hasAny(['deletedAt', 'deletedBy'])
         );
-        
+
+        // Правка своего сообщения — это правка ТЕКСТА. Прежнее условие сверяло
+        // лишь senderId, поэтому автор мог переписать createdAt, roomId,
+        // organizationId и снять deletedAt с уже удалённого сообщения.
         allow update: if isSuperAdmin() || (
-          request.auth != null && 
+          request.auth != null &&
           resource.data.senderId == request.auth.uid &&
-          request.resource.data.senderId == resource.data.senderId // Prevent sender spoofing on edit
+          !resource.data.keys().hasAny(['deletedAt']) &&
+          request.resource.data.diff(resource.data).affectedKeys()
+            .hasOnly(['text', 'updatedAt', 'editedAt'])
         );
-        
+
         allow delete: if isSuperAdmin(); // Hard delete only via backend
       }
 
-      // Typing indicators: participant can write/delete own entry, read all
+      // Typing indicators: participant can write/delete own entry, read all.
+      // Участие проверяется и на запись: своим uid в чужую комнату мог написать
+      // кто угодно, знающий roomId, — и «печатает…» появлялось от постороннего.
       match /typing/{typingUserId} {
-        allow read: if request.auth != null && request.auth.uid in get(/databases/$(database)/documents/chatRooms/$(roomId)).data.participantIds;
-        allow write, delete: if request.auth != null && request.auth.uid == typingUserId;
+        allow read: if request.auth != null && request.auth.uid in chatRoom().participantIds;
+        allow write, delete: if request.auth != null &&
+          request.auth.uid == typingUserId &&
+          request.auth.uid in chatRoom().participantIds;
       }
     }
 

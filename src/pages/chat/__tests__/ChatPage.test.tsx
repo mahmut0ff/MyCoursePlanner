@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import type { ChatRoom, ChatMessage } from '../../../types';
 
@@ -43,10 +43,11 @@ vi.mock('../../../lib/useChat', async (importOriginal) => {
 
 const apiModerateChatMessage = vi.fn().mockResolvedValue({});
 const apiArchiveChatRoom = vi.fn().mockResolvedValue({});
+const apiGetChatDirectory = vi.fn();
 vi.mock('../../../lib/api', () => ({
   apiModerateChatMessage: (...a: any[]) => apiModerateChatMessage(...a),
   apiArchiveChatRoom: (...a: any[]) => apiArchiveChatRoom(...a),
-  apiGetChatDirectory: vi.fn().mockResolvedValue({ items: [], canCreateGroup: false }),
+  apiGetChatDirectory: (...a: any[]) => apiGetChatDirectory(...a),
   apiCreateChatRoom: vi.fn().mockResolvedValue({ id: 'room_new' }),
   apiUpdateChatParticipants: vi.fn().mockResolvedValue({}),
 }));
@@ -72,7 +73,10 @@ const DM: ChatRoom = {
   participantIds: ['u_me', 'u_them'],
   participants: {
     u_me: { role: 'member', joinedAt: '', lastReadAt: '2026-08-17T10:00:00.000Z', isMuted: false, isRemoved: false },
-    u_them: { role: 'member', joinedAt: '', lastReadAt: '', isMuted: false, isRemoved: false, displayName: 'Айгуль Асанова' },
+    u_them: {
+      role: 'member', joinedAt: '', lastReadAt: '', isMuted: false, isRemoved: false,
+      displayName: 'Айгуль Асанова', orgRole: 'teacher',
+    },
   },
   lastMessageAt: '2026-08-17T12:00:00.000Z',
   lastMessagePreview: 'Айгуль Асанова: до завтра',
@@ -111,6 +115,7 @@ const renderPage = (initial = '/chat') =>
 beforeEach(() => {
   vi.clearAllMocks();
   can.mockReturnValue(true);
+  apiGetChatDirectory.mockResolvedValue({ items: [], canCreateGroup: false });
   mockRooms.mockReturnValue({ rooms: [DM, GROUP], loading: false, error: null, nameCache: {}, avatarCache: {} });
   mockMessages.mockReturnValue({ messages: [message()], loading: false, loadMore: vi.fn(), hasMore: false });
   window.HTMLElement.prototype.scrollIntoView = vi.fn();
@@ -188,9 +193,42 @@ describe('ChatPage', () => {
     expect(screen.queryByText('Айгуль Асанова')).not.toBeInTheDocument();
   });
 
+  it('категории фильтруют список, а группа идёт своей категорией', () => {
+    renderPage();
+    // Диалог с преподавателем виден в «Преподаватели», группа — нет.
+    fireEvent.click(screen.getByRole('button', { name: /Преподаватели/ }));
+    expect(screen.getByText('Айгуль Асанова')).toBeInTheDocument();
+    expect(screen.queryByText('Stem 10:00')).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: /Группы/ }));
+    expect(screen.getByText('Stem 10:00')).toBeInTheDocument();
+    expect(screen.queryByText('Айгуль Асанова')).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: /Студенты/ }));
+    expect(screen.getByText('В этой категории чатов пока нет')).toBeInTheDocument();
+  });
+
+  it('роль собеседника берётся из справочника, если в комнате её нет', async () => {
+    const legacy = { ...DM, participants: { ...DM.participants, u_them: { ...DM.participants.u_them, orgRole: undefined } } };
+    mockRooms.mockReturnValue({ rooms: [legacy], loading: false, error: null, nameCache: {}, avatarCache: {} });
+    apiGetChatDirectory.mockResolvedValue({
+      items: [{ uid: 'u_them', name: 'Айгуль Асанова', role: 'student', avatarUrl: '' }],
+      canCreateGroup: true,
+    });
+
+    renderPage();
+    // Справочник говорит «студент» — комната обязана попасть к студентам,
+    // хотя в самом документе роли нет.
+    await waitFor(() => {
+      fireEvent.click(screen.getByRole('button', { name: /Студенты/ }));
+      expect(screen.getByText('Айгуль Асанова')).toBeInTheDocument();
+    });
+  });
+
   it('непрочитанное считается по lastReadAt участника', () => {
     renderPage();
     // lastMessageAt (12:00) позже lastReadAt (10:00) в обеих комнатах → 2.
-    expect(screen.getByText('2')).toBeInTheDocument();
+    // Ищем именно в заголовке: такое же число есть на чипе «Все».
+    expect(within(screen.getByRole('heading', { level: 1 })).getByText('2')).toBeInTheDocument();
   });
 });

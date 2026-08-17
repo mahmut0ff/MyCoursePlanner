@@ -1165,6 +1165,15 @@
     "fileTooLarge": "File “{{name}}” is larger than 25 MB",
     "uploadFailed": "Could not upload the file",
     "sendFailed": "Could not send the message",
+    "noRoomsInCategory": "No chats in this category yet",
+    "cat": {
+      "all": "All",
+      "students": "Students",
+      "teachers": "Teachers",
+      "staff": "Staff",
+      "groups": "Groups",
+      "other": "Others"
+    },
     "aria": {
       "roomList": "Chat list",
       "conversation": "Conversation"

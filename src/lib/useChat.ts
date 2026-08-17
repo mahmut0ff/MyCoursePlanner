@@ -20,6 +20,47 @@ import { apiNotifyChatMessage } from './api';
 /** Потолок вложения. Должен совпадать со storage.rules (25 МБ на файл чата). */
 export const CHAT_MAX_FILE_SIZE = 25 * 1024 * 1024;
 
+/**
+ * Категории собеседников — один и тот же разрез и в фильтре списка чатов, и в
+ * группировке справочника. Держится здесь, а не в компонентах: две копии этого
+ * соответствия неизбежно разъедутся, и «Преподаватели» в фильтре начнут значить
+ * не то же самое, что «Преподаватели» в диалоге выбора.
+ *
+ * Наставник (mentor) идёт к преподавателям, владелец и менеджер — к персоналу:
+ * для человека, который ищет, с кем поговорить, разница между владельцем и
+ * менеджером не значит ничего, а разница между ними и преподавателем — значит.
+ */
+export type ChatCategory = 'students' | 'teachers' | 'staff';
+
+export const CHAT_CATEGORIES: ChatCategory[] = ['students', 'teachers', 'staff'];
+
+export function categoryOfRole(role?: string | null): ChatCategory | null {
+  if (!role) return null;
+  if (role === 'student') return 'students';
+  if (role === 'teacher' || role === 'mentor') return 'teachers';
+  if (role === 'owner' || role === 'admin' || role === 'manager') return 'staff';
+  return null;
+}
+
+/**
+ * Категория комнаты в списке. У группы собеседник не один, поэтому она своя
+ * отдельная категория, а не «персонал» по создателю.
+ *
+ * Роль собеседника берём сначала из самой комнаты (сервер проставляет `orgRole`
+ * при создании), а если её там нет — из справочника: комнаты, заведённые до
+ * появления этого поля, иначе выпали бы из всех фильтров разом.
+ */
+export function chatRoomCategory(
+  room: ChatRoom,
+  selfUid: string,
+  directoryRoles: Record<string, string> = {},
+): ChatCategory | 'groups' | null {
+  if (room.type === 'group') return 'groups';
+  const other = room.participantIds.find((id) => id !== selfUid);
+  if (!other) return null;
+  return categoryOfRole(room.participants?.[other]?.orgRole || directoryRoles[other]);
+}
+
 /** Safely extract a numeric timestamp from Firestore Timestamp or ISO string */
 function parseTime(v: any): number {
   if (!v) return 0;

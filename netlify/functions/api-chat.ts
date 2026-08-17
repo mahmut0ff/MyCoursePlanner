@@ -170,6 +170,10 @@ const handler: Handler = async (event: HandlerEvent) => {
       const nameOf = (uid: string) =>
         uid === user.uid ? (user.displayName || user.email || '') : (directory.get(uid)?.name || '');
       const avatarOf = (uid: string) => (uid === user.uid ? '' : directory.get(uid)?.avatarUrl || '');
+      // Роль в организации кладём в комнату, чтобы список чатов раскладывался по
+      // категориям (студенты / преподаватели / персонал) без похода за профилем
+      // каждого собеседника на каждый рендер.
+      const orgRoleOf = (uid: string) => (uid === user.uid ? user.role : directory.get(uid)?.role || '');
 
       const buildParticipants = (adminUid?: string) => {
         const map: Record<string, any> = {};
@@ -182,6 +186,7 @@ const handler: Handler = async (event: HandlerEvent) => {
             isRemoved: false,
             displayName: nameOf(uid),
             avatarUrl: avatarOf(uid),
+            orgRole: orgRoleOf(uid),
           };
         }
         return map;
@@ -295,6 +300,7 @@ const handler: Handler = async (event: HandlerEvent) => {
               isRemoved: false,
               displayName: directory.get(uid)?.name || '',
               avatarUrl: directory.get(uid)?.avatarUrl || '',
+              orgRole: directory.get(uid)?.role || '',
             };
           } else if (newParticipantsMap[uid]?.isRemoved) {
             // Re-adding a removed user

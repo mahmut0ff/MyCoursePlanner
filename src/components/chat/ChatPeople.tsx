@@ -4,6 +4,16 @@ import toast from 'react-hot-toast';
 import { X, Search, Users, Loader2, UserMinus, UserPlus, Check } from 'lucide-react';
 import type { ChatDirectoryEntry, ChatRoom } from '../../types';
 import { apiGetChatDirectory, apiCreateChatRoom, apiUpdateChatParticipants } from '../../lib/api';
+import { CHAT_CATEGORIES, categoryOfRole, type ChatCategory } from '../../lib/useChat';
+
+/** Подписи категорий — общие для заголовков в справочнике и чипов в списке чатов. */
+export const CATEGORY_LABELS_RU: Record<string, string> = {
+  students: 'Студенты',
+  teachers: 'Преподаватели',
+  staff: 'Персонал',
+  groups: 'Группы',
+  other: 'Прочие',
+};
 
 const ROLE_LABELS_RU: Record<string, string> = {
   owner: 'Владелец',
@@ -104,8 +114,12 @@ function PersonRow({
   );
 }
 
-/** Загрузка справочника собеседников — общая для обоих диалогов. */
-function useDirectory(open: boolean) {
+/**
+ * Загрузка справочника собеседников. Общая для диалогов и для страницы: список
+ * чатов берёт отсюда роли, чтобы разложить по категориям комнаты, заведённые до
+ * того, как сервер начал проставлять orgRole.
+ */
+export function useDirectory(open: boolean) {
   const [people, setPeople] = useState<ChatDirectoryEntry[]>([]);
   const [canCreateGroup, setCanCreateGroup] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -125,7 +139,27 @@ function useDirectory(open: boolean) {
     return () => { cancelled = true; };
   }, [open]);
 
-  return { people, canCreateGroup, loading };
+  const rolesByUid = useMemo(() => {
+    const out: Record<string, string> = {};
+    people.forEach((p) => { out[p.uid] = p.role; });
+    return out;
+  }, [people]);
+
+  return { people, canCreateGroup, loading, rolesByUid };
+}
+
+/** Люди, разложенные по категориям в порядке CHAT_CATEGORIES; пустые группы отброшены. */
+function byCategory(people: ChatDirectoryEntry[]) {
+  const buckets = new Map<ChatCategory | 'other', ChatDirectoryEntry[]>();
+  for (const p of people) {
+    const key = categoryOfRole(p.role) || 'other';
+    if (!buckets.has(key)) buckets.set(key, []);
+    buckets.get(key)!.push(p);
+  }
+  const order: (ChatCategory | 'other')[] = [...CHAT_CATEGORIES, 'other'];
+  return order
+    .filter((k) => buckets.get(k)?.length)
+    .map((k) => ({ key: k, people: buckets.get(k)! }));
 }
 
 function useSearch(people: ChatDirectoryEntry[], search: string) {
@@ -233,17 +267,29 @@ export function NewChatDialog({ onClose, onCreated }: NewChatProps) {
               ? t('chat.noMatches', 'Никого не нашли')
               : t('chat.noPeople', 'Писать пока некому — в организации нет других активных участников')}
           </div>
-        ) : filtered.map((p) => (
-          <PersonRow
-            key={p.uid}
-            person={p}
-            selected={mode === 'group' ? selected.includes(p.uid) : undefined}
-            onClick={() => {
-              if (busy) return;
-              if (mode === 'direct') createDirect(p.uid);
-              else setSelected((s) => s.includes(p.uid) ? s.filter((x) => x !== p.uid) : [...s, p.uid]);
-            }}
-          />
+        ) : byCategory(filtered).map(({ key, people: bucket }) => (
+          <div key={key}>
+            {/* Липкий заголовок: в организации на сотню человек без него не
+                видно, где кончились студенты и начались преподаватели. */}
+            <div className="sticky top-0 z-10 px-4 py-1.5 text-[11px] font-medium uppercase
+              tracking-wide text-slate-400 bg-white/95 dark:bg-slate-800/95 backdrop-blur
+              border-b border-slate-100 dark:border-slate-700/50">
+              {t(`chat.cat.${key}`, CATEGORY_LABELS_RU[key] || key)}
+              <span className="ml-1.5 normal-case tracking-normal">{bucket.length}</span>
+            </div>
+            {bucket.map((p) => (
+              <PersonRow
+                key={p.uid}
+                person={p}
+                selected={mode === 'group' ? selected.includes(p.uid) : undefined}
+                onClick={() => {
+                  if (busy) return;
+                  if (mode === 'direct') createDirect(p.uid);
+                  else setSelected((s) => s.includes(p.uid) ? s.filter((x) => x !== p.uid) : [...s, p.uid]);
+                }}
+              />
+            ))}
+          </div>
         ))}
       </div>
 

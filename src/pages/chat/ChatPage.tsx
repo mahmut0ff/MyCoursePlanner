@@ -10,13 +10,16 @@ import type { ChatMessage, ChatRoom, MessageAttachment } from '../../types';
 import { useAuth } from '../../contexts/AuthContext';
 import {
   useChatRooms, useChatMessages, useChatActions, useUnreadRooms,
-  useTypingIndicator, useTypingStatus, chatRoomLabel,
+  useTypingIndicator, useTypingStatus, chatRoomLabel, chatRoomCategory,
+  CHAT_CATEGORIES,
 } from '../../lib/useChat';
 import { apiArchiveChatRoom, apiModerateChatMessage } from '../../lib/api';
 import { usePermissions } from '../../contexts/PermissionsContext';
 import ChatMessageBubble from '../../components/chat/ChatMessageBubble';
 import ChatComposer from '../../components/chat/ChatComposer';
-import { NewChatDialog, RoomMembersDialog, ChatAvatar } from '../../components/chat/ChatPeople';
+import {
+  NewChatDialog, RoomMembersDialog, ChatAvatar, useDirectory, CATEGORY_LABELS_RU,
+} from '../../components/chat/ChatPeople';
 // Лайтбокс намеренно переиспользован из поддержки, а не скопирован: это ровно
 // та же задача — открыть картинку из переписки во весь экран.
 import { SupportImageLightbox } from '../../components/support/SupportMessageBubble';
@@ -65,6 +68,7 @@ export default function ChatPage() {
 
   const [showArchived, setShowArchived] = useState(false);
   const [search, setSearch] = useState('');
+  const [category, setCategory] = useState<'all' | 'students' | 'teachers' | 'staff' | 'groups'>('all');
   // На мобиле список и переписка занимают экран по очереди. Начальное состояние
   // читаем из адреса: ссылка из уведомления всегда несёт ?room=…, и открывать по
   // ней список вместо самой переписки — значит терять переход в один клик.
@@ -102,15 +106,31 @@ export default function ChatPage() {
   const endRef = useRef<HTMLDivElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
 
+  // Справочник нужен странице ради ролей: комнаты, заведённые до появления
+  // orgRole, иначе не разложить по категориям.
+  const { rolesByUid } = useDirectory(true);
+
   const filtered = useMemo(() => {
     const needle = search.trim().toLowerCase();
-    if (!needle) return rooms;
     return rooms.filter((room) => {
+      if (category !== 'all' && chatRoomCategory(room, uid, rolesByUid) !== category) return false;
+      if (!needle) return true;
       const { title } = chatRoomLabel(room, uid, nameCache, avatarCache);
       return title.toLowerCase().includes(needle)
         || (room.lastMessagePreview || '').toLowerCase().includes(needle);
     });
-  }, [rooms, search, uid, nameCache, avatarCache]);
+  }, [rooms, search, category, uid, nameCache, avatarCache, rolesByUid]);
+
+  // Счётчики на чипах: пустая категория должна быть видна нулём, а не тем, что
+  // фильтр молча приводит к пустому экрану.
+  const categoryCounts = useMemo(() => {
+    const out: Record<string, number> = { all: rooms.length };
+    for (const room of rooms) {
+      const key = chatRoomCategory(room, uid, rolesByUid);
+      if (key) out[key] = (out[key] || 0) + 1;
+    }
+    return out;
+  }, [rooms, uid, rolesByUid]);
 
   // Ответ, оставшийся от прошлой комнаты, уехал бы цитатой в чужую переписку.
   useEffect(() => { setReplyTo(null); }, [selected?.id]);
@@ -229,6 +249,30 @@ export default function ChatPage() {
               <input type="search" value={search} onChange={(e) => setSearch(e.target.value)}
                 placeholder={t('chat.searchRooms', 'Поиск по чатам…')} className="input pl-9" />
             </div>
+            {/* Категории собеседников. Группа — своя категория: у неё собеседник
+                не один, и приписывать её к персоналу по создателю было бы враньём. */}
+            <div className="flex flex-wrap gap-1">
+              {(['all', ...CHAT_CATEGORIES, 'groups'] as const).map((c) => (
+                <button
+                  key={c}
+                  type="button"
+                  onClick={() => setCategory(c)}
+                  className={`px-2 py-1 rounded-lg text-xs font-medium transition-colors ${category === c
+                    ? 'bg-primary-600 text-white'
+                    : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'}`}
+                >
+                  {c === 'all'
+                    ? t('chat.cat.all', 'Все')
+                    : t(`chat.cat.${c}`, CATEGORY_LABELS_RU[c] || c)}
+                  {!!categoryCounts[c] && (
+                    <span className={category === c ? 'ml-1 text-white/70' : 'ml-1 text-slate-400'}>
+                      {categoryCounts[c]}
+                    </span>
+                  )}
+                </button>
+              ))}
+            </div>
+
             <label className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400 px-0.5">
               <input type="checkbox" checked={showArchived}
                 onChange={(e) => setShowArchived(e.target.checked)}
@@ -248,7 +292,9 @@ export default function ChatPage() {
               <div className="p-8 text-center text-sm text-slate-400">
                 {search
                   ? t('chat.noMatches', 'Никого не нашли')
-                  : t('chat.noRooms', 'Чатов пока нет. Начните первый.')}
+                  : category !== 'all'
+                    ? t('chat.noRoomsInCategory', 'В этой категории чатов пока нет')
+                    : t('chat.noRooms', 'Чатов пока нет. Начните первый.')}
               </div>
             ) : filtered.map((room) => (
               <RoomRow

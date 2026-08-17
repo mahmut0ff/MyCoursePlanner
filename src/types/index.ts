@@ -1203,6 +1203,7 @@ export type ChatMessageType = 'text' | 'image' | 'file' | 'system';
 export type ChatParticipantRole = 'admin' | 'member';
 
 export interface ChatParticipantDetails {
+  /** Роль В КОМНАТЕ (кто ей распоряжается), не в организации. */
   role: ChatParticipantRole;
   joinedAt: string;
   lastReadAt: string;
@@ -1210,6 +1211,12 @@ export interface ChatParticipantDetails {
   isRemoved: boolean;
   displayName?: string;
   avatarUrl?: string;
+  /**
+   * Роль в ОРГАНИЗАЦИИ на момент добавления (student/teacher/manager/…).
+   * Денормализована сервером, чтобы список чатов раскладывался по категориям
+   * без похода за профилем каждого собеседника.
+   */
+  orgRole?: string;
 }
 
 export interface ChatRoom {

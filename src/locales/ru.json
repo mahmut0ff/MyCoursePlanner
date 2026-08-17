@@ -1421,6 +1421,15 @@
     "fileTooLarge": "Файл «{{name}}» больше 25 МБ",
     "uploadFailed": "Не удалось загрузить файл",
     "sendFailed": "Не удалось отправить сообщение",
+    "noRoomsInCategory": "В этой категории чатов пока нет",
+    "cat": {
+      "all": "Все",
+      "students": "Студенты",
+      "teachers": "Преподаватели",
+      "staff": "Персонал",
+      "groups": "Группы",
+      "other": "Прочие"
+    },
     "aria": {
       "roomList": "Список чатов",
       "conversation": "Переписка"

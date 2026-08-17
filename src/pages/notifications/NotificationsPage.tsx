@@ -7,6 +7,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { Bell, Check, ExternalLink, ShieldCheck, XCircle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
+import NotificationPreferencesCard from '../../components/notifications/NotificationPreferencesCard';
 
 interface AppNotification {
   id: string;
@@ -93,6 +94,8 @@ const NotificationsPage: React.FC = () => {
           </button>
         )}
       </div>
+
+      <NotificationPreferencesCard />
 
       {loading ? (
         <div className="flex justify-center py-20">

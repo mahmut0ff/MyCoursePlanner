@@ -1178,6 +1178,25 @@
     }
   },
   "notifications": {
+    "prefsTitle": "Notification settings",
+    "prefsAll": "All notifications",
+    "prefsAllDesc": "Master switch — turns off both push and Telegram messages",
+    "prefsSaveFailed": "Could not save the setting",
+    "prefsChatHint": "A single conversation can be muted with the bell inside the chat — it does not affect the others.",
+    "prefs": {
+      "chat": "Chat",
+      "lessons": "Lessons",
+      "homework": "Homework",
+      "schedule": "Schedule",
+      "exams": "Exams and grades"
+    },
+    "prefsDesc": {
+      "chat": "New messages in the internal chat — in the app and on Telegram",
+      "lessons": "New lessons and materials",
+      "homework": "Submitted and graded work",
+      "schedule": "Class reminders, reschedules, attendance marks",
+      "exams": "Results and posted grades"
+    },
     "title": "Notifications",
     "subtitle": "All your notifications",
     "unread": "unread",

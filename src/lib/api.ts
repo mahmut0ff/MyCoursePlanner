@@ -698,6 +698,25 @@ export const apiExportSessionResults = (sessionId: string) =>
 // ============================================================
 
 /** Кому текущий пользователь вправе написать — список считает сервер. */
+// ─── Личные настройки уведомлений ───
+// Именно тот объект, который читает доставка (utils/notifications → sendPush и
+// телеграм чата), а не декоративные тумблеры в настройках преподавателя.
+export interface NotificationPreferences {
+  pushEnabled: boolean;
+  chat: boolean;
+  lessons: boolean;
+  homework: boolean;
+  schedule: boolean;
+  exams: boolean;
+}
+
+export const apiGetNotificationPreferences = () =>
+  apiRequest<NotificationPreferences>('api-notifications', 'GET', undefined, { action: 'getPreferences' });
+
+export const apiSaveNotificationPreferences = (prefs: NotificationPreferences) =>
+  apiRequest<{ success: boolean; preferences: NotificationPreferences }>(
+    'api-notifications', 'POST', { action: 'savePreferences', ...prefs });
+
 export const apiGetChatDirectory = () =>
   apiRequest<{ items: ChatDirectoryEntry[]; canCreateGroup: boolean }>(
     'api-chat', 'GET', undefined, { action: 'directory' });

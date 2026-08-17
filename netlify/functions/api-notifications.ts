@@ -108,6 +108,11 @@ const handler: Handler = async (event: HandlerEvent) => {
         homework: true,
         schedule: true,
         exams: true,
+        // Сообщения внутреннего чата (в том числе в телеграм). Отдельная
+        // категория, потому что чат частотнее всего остального вместе взятого,
+        // и глушить его хочется независимо. Точечно комнату глушит колокольчик
+        // в самом чате — см. participants[uid].isMuted.
+        chat: true,
       };
       return ok(prefs);
     }
@@ -120,6 +125,7 @@ const handler: Handler = async (event: HandlerEvent) => {
         homework: body.homework !== false,
         schedule: body.schedule !== false,
         exams: body.exams !== false,
+        chat: body.chat !== false,
       };
       await adminDb.collection('users').doc(user.uid).update({
         notificationPreferences: prefs,

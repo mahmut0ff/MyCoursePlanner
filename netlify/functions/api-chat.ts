@@ -25,8 +25,98 @@ import {
   resolveBranchFilter, memberInBranchScope,
   ok, unauthorized, forbidden, badRequest, notFound, jsonResponse,
 } from './utils/auth';
+import { sendTelegramRaw, TELEGRAM_BOT_TOKEN } from './utils/telegram';
 
 const now = () => new Date().toISOString();
+
+/**
+ * Телеграм-уведомления о сообщениях чата.
+ *
+ * Чат — самый частотный источник событий в системе, и пинг на каждое сообщение
+ * превратил бы бота в то, что отключают в первый же день. Поэтому два
+ * предохранителя, и оба нужны:
+ *
+ *  • ЧЕЛОВЕК СЕЙЧАС В ЧАТЕ. Если комната прочитана меньше двух минут назад,
+ *    он смотрит на неё прямо сейчас — дублировать это в телеграм незачем.
+ *  • КУЛДАУН. Об одной комнате пишем не чаще раза в 10 минут: живая переписка
+ *    из тридцати реплик должна дать одно уведомление, а не тридцать.
+ *
+ * Момент последней отправки хранится в самой комнате
+ * (participants[uid].lastTelegramAt) — рядом с lastReadAt, с которым он и
+ * сравнивается. Писать туда может только сервер: клиентские правила пускают
+ * участника лишь в его lastReadAt/isMuted.
+ */
+const TG_ACTIVE_WINDOW_MS = 2 * 60 * 1000;
+const TG_COOLDOWN_MS = 10 * 60 * 1000;
+
+const parseTime = (v: any): number => {
+  if (!v) return 0;
+  const t = typeof v?.toDate === 'function' ? v.toDate().getTime() : new Date(v).getTime();
+  return isNaN(t) ? 0 : t;
+};
+
+/** parse_mode: HTML — «<», «>» и «&» в тексте сломали бы разбор и отправку. */
+const escapeHtml = (s: string) =>
+  s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+interface TelegramDelivery {
+  roomId: string;
+  room: Record<string, any>;
+  senderUid: string;
+  senderName: string;
+  preview: string;
+  /** Уже отфильтрованные получатели: без автора, исключённых и заглушивших комнату. */
+  recipients: string[];
+  /** Базовый адрес приложения — из самого запроса, чтобы не хардкодить домен. */
+  origin: string;
+}
+
+/**
+ * Отправляет уведомления и возвращает uid тех, кому реально написали.
+ * Никогда не бросает: чат не должен падать из-за недоступного телеграма.
+ */
+async function deliverTelegram(d: TelegramDelivery): Promise<string[]> {
+  const nowMs = Date.now();
+
+  // Сначала отсекаем по данным комнаты — чтобы не читать профили тех, кому
+  // мы всё равно не пишем. В группе на 500 человек это разница между 500
+  // чтениями на каждое сообщение и единицами.
+  const eligible = d.recipients.filter((uid) => {
+    const p = d.room.participants?.[uid] || {};
+    if (nowMs - parseTime(p.lastReadAt) < TG_ACTIVE_WINDOW_MS) return false;
+    if (nowMs - parseTime(p.lastTelegramAt) < TG_COOLDOWN_MS) return false;
+    return true;
+  });
+  if (eligible.length === 0) return [];
+
+  const profiles = await getDocsByIds('users', eligible);
+  const isGroup = d.room.type === 'group';
+  const roomTitle = isGroup ? (d.room.title || 'Групповой чат') : d.senderName;
+  const link = d.origin ? `${d.origin}/chat?room=${encodeURIComponent(d.roomId)}` : '';
+
+  const header = `💬 <b>${escapeHtml(roomTitle)}</b>`;
+  const body = isGroup
+    ? `<b>${escapeHtml(d.senderName)}:</b> ${escapeHtml(d.preview)}`
+    : escapeHtml(d.preview);
+  const text = [header, body, link ? `\n<a href="${link}">Открыть чат</a>` : '']
+    .filter(Boolean).join('\n');
+
+  const delivered: string[] = [];
+  await Promise.allSettled(eligible.map(async (uid) => {
+    const profile: any = profiles[uid] || {};
+    const chatId = profile.telegramChatId;
+    if (!chatId) return;
+
+    // Уважаем и общий выключатель уведомлений, и категорию «Чат».
+    const prefs = profile.notificationPreferences || {};
+    if (prefs.pushEnabled === false || prefs.chat === false) return;
+
+    const okSent = await sendTelegramRaw(TELEGRAM_BOT_TOKEN, chatId, text);
+    if (okSent) delivered.push(uid);
+  }));
+
+  return delivered;
+}
 
 /** Роли, которые считаются «сотрудником» в справочнике собеседников. */
 const STAFF_ROLES = ['owner', 'admin', 'manager', 'teacher', 'mentor'];
@@ -418,11 +508,13 @@ const handler: Handler = async (event: HandlerEvent) => {
 
       const batch = adminDb.batch();
       let recipients = 0;
+      const targets: string[] = [];
 
       for (const uid of rData.participantIds) {
         if (uid === user.uid) continue;                       // себе не пишем
         if (rData.participants[uid]?.isRemoved) continue;     // исключённым не пишем
         if (rData.participants[uid]?.isMuted) continue;       // выключил уведомления — уважаем
+        targets.push(uid);
 
         const notifRef = adminDb.collection('notifications').doc(`chat_${uid}_${roomId}`);
         batch.set(notifRef, {
@@ -440,7 +532,29 @@ const handler: Handler = async (event: HandlerEvent) => {
       }
 
       if (recipients) await batch.commit();
-      return ok({ success: true, recipients });
+
+      // Телеграм — best-effort и всегда после записи в колокольчик: отвалившийся
+      // бот не должен ни ронять отправку сообщения, ни съедать уведомление в
+      // приложении.
+      let telegram: string[] = [];
+      try {
+        const origin = event.rawUrl
+          ? new URL(event.rawUrl).origin
+          : (event.headers?.host ? `https://${event.headers.host}` : '');
+        telegram = await deliverTelegram({
+          roomId, room: rData, senderUid: user.uid, senderName: displayName,
+          preview, recipients: targets, origin,
+        });
+        if (telegram.length) {
+          const stamp: Record<string, any> = { updatedAt: now() };
+          telegram.forEach((uid) => { stamp[`participants.${uid}.lastTelegramAt`] = now(); });
+          await roomRef.update(stamp);
+        }
+      } catch (e) {
+        console.warn('chat telegram notify failed (non-fatal):', e);
+      }
+
+      return ok({ success: true, recipients, telegram: telegram.length });
     }
 
     return badRequest(`Unknown action: ${action}`);

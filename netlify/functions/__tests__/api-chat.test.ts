@@ -17,6 +17,28 @@ function applySet(path: string, data: Record<string, any>, merge: boolean) {
   store.set(path, merge ? { ...(store.get(path) || {}), ...data } : { ...data });
 }
 
+/**
+ * `update({'participants.uid.lastTelegramAt': …})` в Firestore — это путь до
+ * вложенного поля, а не ключ с точками. Двойник обязан вести себя так же:
+ * иначе кулдаун телеграма «работал» бы в тесте, ничего на самом деле не
+ * перечитывая.
+ */
+function applyUpdate(path: string, data: Record<string, any>) {
+  if (!store.has(path)) throw new Error(`update on missing doc: ${path}`);
+  const doc = { ...store.get(path)! };
+  for (const [key, value] of Object.entries(data)) {
+    if (!key.includes('.')) { doc[key] = value; continue; }
+    const parts = key.split('.');
+    let cursor: any = doc;
+    for (let i = 0; i < parts.length - 1; i++) {
+      cursor[parts[i]] = { ...(cursor[parts[i]] || {}) };
+      cursor = cursor[parts[i]];
+    }
+    cursor[parts[parts.length - 1]] = value;
+  }
+  store.set(path, doc);
+}
+
 function snapshot(path: string) {
   return {
     exists: store.has(path),
@@ -32,10 +54,7 @@ function makeDoc(path: string): any {
     path,
     get: async () => snapshot(path),
     set: async (data: any, opts?: { merge?: boolean }) => applySet(path, data, !!opts?.merge),
-    update: async (data: any) => {
-      if (!store.has(path)) throw new Error(`update on missing doc: ${path}`);
-      applySet(path, data, true);
-    },
+    update: async (data: any) => applyUpdate(path, data),
     collection: (name: string) => makeCollection(`${path}/${name}`),
   };
 }
@@ -72,7 +91,7 @@ const adminDbMock = {
     const ops: (() => void)[] = [];
     return {
       set: (ref: any, data: any, opts?: any) => { ops.push(() => applySet(ref.path, data, !!opts?.merge)); },
-      update: (ref: any, data: any) => { ops.push(() => applySet(ref.path, data, true)); },
+      update: (ref: any, data: any) => { ops.push(() => applyUpdate(ref.path, data)); },
       commit: async () => { ops.forEach((op) => op()); },
     };
   },
@@ -89,6 +108,10 @@ vi.mock('../utils/firebase-admin', () => ({
 }));
 
 const verifyAuth = vi.fn();
+
+// Bot API дёргается через fetch — подменяем его, чтобы видеть, что и кому ушло.
+const fetchMock = vi.fn(async () => ({ ok: true, text: async () => '' }) as any);
+vi.stubGlobal('fetch', fetchMock);
 
 vi.mock('../utils/auth', async (importOriginal) => ({
   ...(await importOriginal<typeof import('../utils/auth')>()),
@@ -126,7 +149,8 @@ const NO_CHAT = {
 const call = (action: string, method = 'POST', body?: any, extra?: Record<string, string>) =>
   handler({
     httpMethod: method,
-    headers: { authorization: 'Bearer t' },
+    headers: { authorization: 'Bearer t', host: 'sabakhub.test' },
+    rawUrl: 'https://sabakhub.test/.netlify/functions/api-chat',
     queryStringParameters: { action, ...(extra || {}) },
     body: body ? JSON.stringify(body) : undefined,
   } as any, {} as any, (() => {}) as any) as Promise<any>;
@@ -146,6 +170,7 @@ beforeEach(() => {
   store.clear();
   autoId = 0;
   vi.clearAllMocks();
+  fetchMock.mockResolvedValue({ ok: true, text: async () => '' } as any);
 
   member('u_admin', 'admin', 'Админ');
   member('u_teacher', 'teacher', 'Преподаватель');
@@ -428,5 +453,145 @@ describe('api-chat — уведомления', () => {
     const res = await call('notifyMessage', 'POST', { roomId: 'room1', text: 'Я вообще не тут' });
     expect(res.statusCode).toBe(403);
     expect(notifications()).toEqual([]);
+  });
+});
+
+describe('api-chat — телеграм', () => {
+  /** Что реально ушло в Bot API: [{chat_id, text}] */
+  const sent = () => fetchMock.mock.calls.map(([, init]: any) => JSON.parse(init.body));
+
+  const seedRoom = (over: Record<string, any> = {}) => {
+    store.set('chatRooms/room1', {
+      id: 'room1', organizationId: ORG, type: 'group', title: 'Stem 10:00',
+      participantIds: ['u_teacher', 'u_student', 'u_teacher2'],
+      participants: {
+        u_teacher: { role: 'admin', isRemoved: false, isMuted: false, lastReadAt: '' },
+        u_student: { role: 'member', isRemoved: false, isMuted: false, lastReadAt: '' },
+        u_teacher2: { role: 'member', isRemoved: false, isMuted: false, lastReadAt: '' },
+        ...(over.participants || {}),
+      },
+      isArchived: false,
+      ...over,
+    });
+  };
+
+  /** Привязанный телеграм у получателя. */
+  const linkTelegram = (uid: string, chatId: string, prefs?: Record<string, any>) => {
+    store.set(`users/${uid}`, {
+      ...(store.get(`users/${uid}`) || {}),
+      telegramChatId: chatId,
+      ...(prefs ? { notificationPreferences: prefs } : {}),
+    });
+  };
+
+  beforeEach(() => {
+    linkTelegram('u_student', '111');
+    linkTelegram('u_teacher2', '222');
+  });
+
+  it('пишет в телеграм всем, кроме автора, со ссылкой на комнату', async () => {
+    seedRoom();
+    as(TEACHER);
+    await call('notifyMessage', 'POST', { roomId: 'room1', text: 'Завтра контрольная' });
+
+    expect(sent().map((m: any) => m.chat_id).sort()).toEqual(['111', '222']);
+    const msg = sent()[0];
+    expect(msg.text).toContain('Stem 10:00');                       // название группы
+    expect(msg.text).toContain('Преподаватель');                    // автор
+    expect(msg.text).toContain('Завтра контрольная');
+    expect(msg.text).toContain('https://sabakhub.test/chat?room=room1');
+  });
+
+  it('в личной переписке заголовок — имя автора, без второй подписи', async () => {
+    seedRoom({ type: 'direct', title: '', participantIds: ['u_teacher', 'u_student'] });
+    as(TEACHER);
+    await call('notifyMessage', 'POST', { roomId: 'room1', text: 'Здравствуйте' });
+
+    const msg = sent()[0];
+    expect(msg.text).toContain('💬 <b>Преподаватель</b>');
+    expect(msg.text).not.toContain('<b>Преподаватель:</b>');
+  });
+
+  it('не дёргает того, кто прямо сейчас читает комнату', async () => {
+    seedRoom({
+      participants: {
+        u_teacher: { role: 'admin', isRemoved: false, isMuted: false },
+        // Прочитал полминуты назад — он в чате, дублировать в телеграм незачем.
+        u_student: { role: 'member', isRemoved: false, isMuted: false, lastReadAt: new Date(Date.now() - 30_000).toISOString() },
+        u_teacher2: { role: 'member', isRemoved: false, isMuted: false, lastReadAt: '' },
+      },
+    });
+    as(TEACHER);
+    await call('notifyMessage', 'POST', { roomId: 'room1', text: 'Ау' });
+
+    expect(sent().map((m: any) => m.chat_id)).toEqual(['222']);
+  });
+
+  it('о той же комнате не пишет чаще раза в 10 минут', async () => {
+    seedRoom();
+    as(TEACHER);
+
+    await call('notifyMessage', 'POST', { roomId: 'room1', text: 'Раз' });
+    expect(sent()).toHaveLength(2);
+    // Момент отправки записан в саму комнату — по нему и считается кулдаун.
+    expect(room('room1')!.participants.u_student.lastTelegramAt).toBeTruthy();
+
+    await call('notifyMessage', 'POST', { roomId: 'room1', text: 'Два' });
+    await call('notifyMessage', 'POST', { roomId: 'room1', text: 'Три' });
+    expect(sent()).toHaveLength(2);   // живая переписка = одно уведомление
+  });
+
+  it('после кулдауна пишет снова', async () => {
+    seedRoom({
+      participants: {
+        u_teacher: { role: 'admin', isRemoved: false, isMuted: false },
+        u_student: {
+          role: 'member', isRemoved: false, isMuted: false, lastReadAt: '',
+          lastTelegramAt: new Date(Date.now() - 11 * 60_000).toISOString(),
+        },
+        u_teacher2: {
+          role: 'member', isRemoved: false, isMuted: false, lastReadAt: '',
+          lastTelegramAt: new Date(Date.now() - 60_000).toISOString(),
+        },
+      },
+    });
+    as(TEACHER);
+    await call('notifyMessage', 'POST', { roomId: 'room1', text: 'Прошло время' });
+
+    expect(sent().map((m: any) => m.chat_id)).toEqual(['111']);
+  });
+
+  it('молчит для заглушивших комнату и отключивших категорию «чат»', async () => {
+    seedRoom({
+      participants: {
+        u_teacher: { role: 'admin', isRemoved: false, isMuted: false },
+        u_student: { role: 'member', isRemoved: false, isMuted: true, lastReadAt: '' },
+        u_teacher2: { role: 'member', isRemoved: false, isMuted: false, lastReadAt: '' },
+      },
+    });
+    linkTelegram('u_teacher2', '222', { pushEnabled: true, chat: false });
+    as(TEACHER);
+    await call('notifyMessage', 'POST', { roomId: 'room1', text: 'Тишина' });
+
+    expect(sent()).toEqual([]);
+  });
+
+  it('экранирует HTML в тексте — иначе Telegram отвергнет сообщение', async () => {
+    seedRoom({ participantIds: ['u_teacher', 'u_student'] });
+    as(TEACHER);
+    await call('notifyMessage', 'POST', { roomId: 'room1', text: 'a < b & c > d' });
+
+    expect(sent()[0].text).toContain('a &lt; b &amp; c &gt; d');
+  });
+
+  it('отвалившийся телеграм не мешает уведомлению в приложении', async () => {
+    seedRoom();
+    fetchMock.mockRejectedValue(new Error('Telegram down'));
+    as(TEACHER);
+
+    const res = await call('notifyMessage', 'POST', { roomId: 'room1', text: 'Всё равно дойдёт' });
+    expect(res.statusCode).toBe(200);
+    expect(store.has('notifications/chat_u_student_room1')).toBe(true);
+    expect(room('room1')!.participants.u_student.lastTelegramAt).toBeUndefined();
   });
 });

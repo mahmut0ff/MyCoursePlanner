@@ -3036,7 +3036,9 @@
     "applyDefaultLegacyTitle": "Устаревшие ставки",
     "applyDefaultDone": "Ставка назначена: {{count}}",
     "applyDefaultNobody": "Все преподаватели уже со ставкой",
-    "applyDefaultNoRate": "Сначала задайте ставку по умолчанию"
+    "applyDefaultNoRate": "Сначала задайте ставку по умолчанию",
+    "formerTeacher": "Не работает",
+    "formerTeacherHint": "Этого человека уже нет в организации. Ставку задать нельзя — можно только выдать то, что осталось за отработанный месяц."
   },
   "classrooms": {
     "add": "Добавить кабинет",

@@ -2767,7 +2767,9 @@
     "applyDefaultLegacyTitle": "Obsolete pay rates",
     "applyDefaultDone": "Pay rate assigned: {{count}}",
     "applyDefaultNobody": "Every teacher already has a pay rate",
-    "applyDefaultNoRate": "Set the default pay rate first"
+    "applyDefaultNoRate": "Set the default pay rate first",
+    "formerTeacher": "No longer employed",
+    "formerTeacherHint": "This person is no longer in the organization. A pay rate cannot be set — you can only pay out what is left from the month they worked."
   },
   "journal": {
     "subtitle": "Daily attendance and notes",

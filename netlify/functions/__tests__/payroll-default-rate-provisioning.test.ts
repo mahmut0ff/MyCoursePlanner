@@ -35,12 +35,34 @@ const docs: Record<string, any> = {};
 const writes: Array<{ path: string; op: 'set' | 'update' | 'create' | 'delete'; data?: any }> = [];
 /** Сбой записи ставки: подменяет create(), чтобы проверить устойчивость провизионирования. */
 let createFails: Error | null = null;
+/** Сбой записи В ГРУППЫ: батч со снятием преподавателя падает на коммите. */
+let groupWriteFails: Error | null = null;
 let autoId = 0;
+
+/**
+ * Операции FieldValue выполняются, а не записываются как значение.
+ *
+ * Снятие преподавателя с групп идёт через arrayRemove (две одновременные правки
+ * состава не должны затирать друг друга), и хранилище обязано понимать эту
+ * операцию: иначе «убрали из массива» легло бы в поле объектом-сентинелом, и
+ * тест доказывал бы ровно противоположное тому, что происходит в бою.
+ */
+function applyFieldOp(current: any, next: any): any {
+  if (!next || typeof next !== 'object' || !('__op' in next)) return next;
+  const list = Array.isArray(current) ? [...current] : [];
+  if (next.__op === 'arrayRemove') return list.filter((v) => !next.values.includes(v));
+  if (next.__op === 'arrayUnion') return [...list, ...next.values.filter((v: any) => !list.includes(v))];
+  if (next.__op === 'increment') return Number(current || 0) + next.by;
+  if (next.__op === 'serverTimestamp') return new Date().toISOString();
+  return current;
+}
 
 function docRef(path: string): any {
   const id = path.split('/').pop()!;
   return {
     id,
+    // Путь нужен батчу: по нему видно, ЧТО именно он собрался записать.
+    path,
     get: async () => ({ exists: path in docs, id, data: () => docs[path] }),
     set: async (data: any, opts?: { merge?: boolean }) => {
       writes.push({ path, op: 'set', data });
@@ -48,7 +70,12 @@ function docRef(path: string): any {
     },
     update: async (data: any) => {
       writes.push({ path, op: 'update', data });
-      docs[path] = { ...(docs[path] || {}), ...data };
+      const next = { ...(docs[path] || {}) };
+      for (const [field, value] of Object.entries(data)) {
+        if (value && typeof value === 'object' && (value as any).__op === 'delete') { delete next[field]; continue; }
+        next[field] = applyFieldOp(next[field], value);
+      }
+      docs[path] = next;
     },
     // create(), а не set(): именно им пишет ставку ensureTeacherRate, и повтор
     // обязан упереться в ALREADY_EXISTS, а не затереть назначенную руками.
@@ -68,17 +95,24 @@ function docRef(path: string): any {
 }
 
 function collectionRef(path: string): any {
-  const clauses: Array<[string, any]> = [];
+  const clauses: Array<[string, string, any]> = [];
   const ref: any = {
     doc: (docId?: string) => docRef(`${path}/${docId || `auto_${++autoId}`}`),
-    where: (field: string, _op: string, value: any) => { clauses.push([field, value]); return ref; },
+    // Оператор запоминаем: снятие с групп ищет их по 'array-contains', и подмена
+    // этого сравнения равенством не нашла бы НИ ОДНОЙ группы — тест был бы
+    // зелёным, а призраки в базе остались бы.
+    where: (field: string, op: string, value: any) => { clauses.push([field, op, value]); return ref; },
     limit: () => ref,
     orderBy: () => ref,
     get: async () => {
       const prefix = `${path}/`;
       const rows = Object.keys(docs)
         .filter((p) => p.startsWith(prefix) && !p.slice(prefix.length).includes('/'))
-        .filter((p) => clauses.every(([f, v]) => docs[p]?.[f] === v));
+        .filter((p) => clauses.every(([f, op, v]) => {
+          const cell = docs[p]?.[f];
+          if (op === 'array-contains') return Array.isArray(cell) && cell.includes(v);
+          return cell === v;
+        }));
       return {
         empty: rows.length === 0,
         size: rows.length,
@@ -91,14 +125,44 @@ function collectionRef(path: string): any {
 
 const createAuthUser = vi.fn(async (_p: any) => ({ uid: 'new-uid-1' }));
 
+/**
+ * Батч применяет операции только на commit(), как настоящий, — и падает целиком,
+ * если ему велено упасть. Заглушка-пустышка на её месте молча «успевала» бы всё:
+ * тест снятия с групп проходил бы, ничего не сняв.
+ */
+function makeBatch() {
+  const ops: Array<{ path: string; run: () => Promise<void> }> = [];
+  return {
+    set: (ref: any, data: any, opts?: any) => { ops.push({ path: ref.path, run: () => ref.set(data, opts) }); },
+    update: (ref: any, data: any) => { ops.push({ path: ref.path, run: () => ref.update(data) }); },
+    delete: (ref: any) => { ops.push({ path: ref.path, run: () => ref.delete() }); },
+    commit: async () => {
+      if (groupWriteFails && ops.some((o) => String(o.path).startsWith('groups/'))) throw groupWriteFails;
+      for (const op of ops) await op.run();
+    },
+  };
+}
+
 vi.mock('../utils/firebase-admin', () => ({
   adminAuth: { createUser: (p: any) => createAuthUser(p) },
   adminDb: {
     collection: (name: string) => collectionRef(name),
-    batch: () => ({ set: vi.fn(), update: vi.fn(), delete: vi.fn(), commit: async () => {} }),
+    batch: () => makeBatch(),
     runTransaction: vi.fn(),
   },
   getDocsByIds: vi.fn().mockResolvedValue({}),
+}));
+
+// FieldValue — сентинелы, которые понимает docRef.update выше. Настоящий
+// firebase-admin здесь не нужен: базы нет, а смысл операции обязан сохраниться.
+vi.mock('firebase-admin/firestore', () => ({
+  FieldValue: {
+    arrayRemove: (...values: any[]) => ({ __op: 'arrayRemove', values }),
+    arrayUnion: (...values: any[]) => ({ __op: 'arrayUnion', values }),
+    increment: (by: number) => ({ __op: 'increment', by }),
+    serverTimestamp: () => ({ __op: 'serverTimestamp' }),
+    delete: () => ({ __op: 'delete' }),
+  },
 }));
 
 vi.mock('../utils/notifications', () => ({
@@ -176,6 +240,7 @@ beforeEach(() => {
   for (const k of Object.keys(docs)) delete docs[k];
   writes.length = 0;
   createFails = null;
+  groupWriteFails = null;
   autoId = 0;
   createAuthUser.mockClear();
   createAuthUser.mockResolvedValue({ uid: 'new-uid-1' } as any);
@@ -341,6 +406,114 @@ describe('createUser (api-org) — основной путь заведения 
     expect(JSON.parse(res.body).defaultRateApplied).toBe(false);
     expect(ratesCreated()).toHaveLength(0);
     expect(docs['users/new-uid-1']).toBeTruthy();
+  });
+});
+
+/**
+ * УХОД ИЗ ОРГАНИЗАЦИИ ЗАКАНЧИВАЕТСЯ И В ГРУППАХ.
+ *
+ * Раньше увольнение правило только членство и ставку, а uid оставался в
+ * `group.teacherIds` навсегда. Расписание продолжало называть человека ведущим, а
+ * раздел «Зарплата» показывал преподавателя, которому даже ставку не задать:
+ * сервер такого уже не знает и отвечает «Преподаватель не найден в этой
+ * организации». Ровно так в боевой базе и появились двое призраков в группе
+ * «Stem 10:00».
+ */
+describe('remove/delete — человек снимается со ВСЕХ групп организации', () => {
+  const TEACHER = 'teach-1';
+
+  /** Право на удаление преподавателя: раздел «Преподаватели», действие «удаление». */
+  const directorWhoMayFireTeachers = () => {
+    const base = director();
+    return { ...base, rbac: new Set([...base.rbac, 'teachers:delete']) };
+  };
+
+  const post = (action: string, body: Record<string, any>) => membershipsHandler({
+    httpMethod: 'POST',
+    queryStringParameters: { action },
+    headers: {},
+    body: JSON.stringify({ organizationId: ORG, ...body }),
+  } as any, {} as any, () => {}) as Promise<any>;
+
+  const removeMember = (userId = TEACHER) => post('remove', { userId });
+  const deleteMember = (userId = TEACHER) => post('delete', { userId });
+
+  beforeEach(() => {
+    (verifyAuth as any).mockResolvedValue(directorWhoMayFireTeachers());
+    seedMember(TEACHER, { role: 'teacher', roles: ['teacher'] });
+    docs[`users/${TEACHER}`] = { displayName: 'Гульнара', activeOrgId: ORG, role: 'teacher' };
+    docs[`compensationRules/${ruleDocId(ORG, TEACHER)}`] = {
+      teacherId: TEACHER, organizationId: ORG, components: DEFAULT_COMPONENTS,
+    };
+    // Две группы в этой организации плюс одноимённый преподаватель в чужой:
+    // снимать надо ровно свои.
+    docs['groups/g-1'] = {
+      organizationId: ORG, name: 'Stem 10:00',
+      teacherIds: ['keep-1', TEACHER], studentIds: ['st-1', 'st-2'],
+    };
+    docs['groups/g-2'] = {
+      organizationId: ORG, name: 'Робототехника',
+      teacherIds: [TEACHER], studentIds: ['st-3'],
+    };
+    docs['groups/g-foreign'] = {
+      organizationId: 'org-2', name: 'Чужая академия',
+      teacherIds: [TEACHER], studentIds: ['st-9'],
+    };
+  });
+
+  /** Проверка, общая для увольнения и удаления: следов в группах не осталось. */
+  const expectDetachedEverywhere = (res: any) => {
+    expect(res.statusCode).toBe(200);
+    // Число в ответе — чтобы факт был виден вызывающему, а не только в базе.
+    expect(JSON.parse(res.body).groupsDetached).toBe(2);
+    expect(docs['groups/g-1'].teacherIds).toEqual(['keep-1']);
+    expect(docs['groups/g-2'].teacherIds).toEqual([]);
+    // Состав учеников — не наше дело: снимали преподавателя, а не расформировывали группу.
+    expect(docs['groups/g-1'].studentIds).toEqual(['st-1', 'st-2']);
+    expect(docs['groups/g-2'].studentIds).toEqual(['st-3']);
+    // Чужая организация не тронута ни одной правкой.
+    expect(docs['groups/g-foreign'].teacherIds).toEqual([TEACHER]);
+  };
+
+  it('увольнение (remove) снимает преподавателя из обеих групп и закрывает ставку', async () => {
+    const res = await removeMember();
+
+    expectDetachedEverywhere(res);
+    expect(JSON.parse(res.body).rulesClosed).toBe(1);
+    // Членство переведено в 'removed' в обоих зеркалах — по нему зарплата и
+    // решает, кого в списке больше нет.
+    expect(docs[`users/${TEACHER}/memberships/${ORG}`].status).toBe('removed');
+    expect(docs[`orgMembers/${ORG}/members/${TEACHER}`].status).toBe('removed');
+    expect(docs[`compensationRules/${ruleDocId(ORG, TEACHER)}`]).toBeUndefined();
+  });
+
+  it('полное удаление (delete) снимает его из групп так же', async () => {
+    const res = await deleteMember();
+
+    expectDetachedEverywhere(res);
+    // Ссылка на человека пережила бы его самого: членства уже нет, а в составе
+    // группы он есть — и в зарплате тоже.
+    expect(docs[`users/${TEACHER}/memberships/${ORG}`]).toBeUndefined();
+    expect(docs[`orgMembers/${ORG}/members/${TEACHER}`]).toBeUndefined();
+  });
+
+  // Увольнение — это про человека и его доступ; чистка групп лишь сопутствует
+  // ему. Уронить первое из-за второго значило бы оставить уволенного в
+  // организации с полными правами.
+  it('падение записи в группы не отменяет само увольнение', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    groupWriteFails = new Error('Firestore недоступен');
+
+    const res = await removeMember();
+
+    expect(res.statusCode).toBe(200);
+    // Ответ не врёт: групп снято ноль, и это видно вызывающему.
+    expect(JSON.parse(res.body).groupsDetached).toBe(0);
+    expect(docs[`users/${TEACHER}/memberships/${ORG}`].status).toBe('removed');
+    expect(docs[`orgMembers/${ORG}/members/${TEACHER}`].status).toBe('removed');
+    // Группа осталась как была — призрак в ней переживёт сбой, но в зарплату уже
+    // не попадёт: список собирается по участникам организации, а не по группам.
+    expect(docs['groups/g-1'].teacherIds).toEqual(['keep-1', TEACHER]);
   });
 });
 

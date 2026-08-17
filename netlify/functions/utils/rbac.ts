@@ -64,6 +64,11 @@ export const RESOURCE_ACTIONS: Record<string, RbacAction[]> = {
   teacher_activity: ['read'],
   dashboard: ['read'],
   settings: ['read', 'write'],
+  // Внутренний чат организации. `read` — доступ к переписке вообще (участвовать
+  // в своих комнатах и отвечать), `write` — начинать новые диалоги и группы,
+  // `delete` — модерировать чужие сообщения. Своё сообщение автор удаляет и без
+  // `delete`. См. api-chat.ts.
+  chat: ['read', 'write', 'delete'],
 };
 
 export const ALL_RESOURCES = Object.keys(RESOURCE_ACTIONS);
@@ -80,20 +85,27 @@ export const TEACHER_DEFAULT: RolePermission[] = [
   // Кабинеты — только чтение: преподаватель ставит занятие в существующую
   // аудиторию и смотрит, свободна ли она, но справочником не распоряжается.
   ...ro(['dashboard', 'students', 'results', 'analytics', 'classrooms']),
-  ...rw(['courses', 'groups', 'schedule']),
+  ...rw(['courses', 'groups', 'schedule', 'chat']),
   ...rwd(['lessons', 'exams', 'rooms', 'quizzes', 'materials', 'homework', 'gradebook']),
 ];
 
 export const MANAGER_DEFAULT: RolePermission[] = [
   ...ro(['dashboard', 'analytics', 'results']),
-  ...rw(['ai']),
+  ...rw(['ai', 'chat']),
   // Явно, хотя isRosterManager даёт это менеджеру и по роли: матрица прав должна
   // показывать реальное положение дел, а не пустую галочку.
   ...rw(['roster_management']),
   ...rwd(['students', 'teachers', 'leads', 'courses', 'groups', 'lessons', 'materials', 'schedule', 'classrooms', 'exams', 'rooms', 'quizzes', 'gradebook', 'homework', 'certificates']),
 ];
 
-export const STUDENT_DEFAULT: RolePermission[] = ro(['dashboard', 'lessons', 'results']);
+// Студенту чат выдаётся с `write`: начать диалог он может, но КОМУ он вправе
+// написать, решает не эта строка, а серверный справочник (api-chat ?action=directory),
+// который для студента отдаёт только сотрудников. Группы ему по-прежнему
+// недоступны — createRoom отказывает по роли.
+export const STUDENT_DEFAULT: RolePermission[] = [
+  ...ro(['dashboard', 'lessons', 'results']),
+  ...rw(['chat']),
+];
 
 // Legacy toggles were binary "full module access" → grant every allowed action.
 function legacyManagerGrants(perms?: LegacyManagerPerms): RolePermission[] {

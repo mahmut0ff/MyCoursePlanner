@@ -19,6 +19,7 @@ import { verifyAuth, isSuperAdmin, getMembershipData, memberHoldsRole, resolveOr
 import { notifyOrgAdmins } from './utils/notifications';
 import { isDebtBearingPlan, isUntouchedPlan, planDebt } from './utils/payment-plans';
 import { ensureTeacherRate, membershipIsActive } from './utils/payroll-default-rate';
+import { FieldValue } from 'firebase-admin/firestore';
 
 const now = () => new Date().toISOString();
 
@@ -36,6 +37,37 @@ async function getOrgRole(userId: string, orgId: string): Promise<string | null>
   const m = await getMembershipData(userId, orgId);
   if (!m || m.status !== 'active') return null;
   return m.role || null;
+}
+
+/**
+ * Снять преподавателя со всех групп организации.
+ *
+ * Уход из организации обязан заканчиваться здесь, а не только в членстве.
+ * Иначе uid остаётся в `group.teacherIds` навсегда: расписание продолжает
+ * называть его ведущим, а раздел «Зарплата» показывает человека, которому даже
+ * ставку не задать — сервер такого преподавателя уже не знает. Ровно так в
+ * боевой базе и появились призраки в группе «Stem 10:00».
+ *
+ * arrayRemove, а не перезапись массива: две одновременные правки состава группы
+ * не должны затирать друг друга. Ошибка здесь не должна ронять само увольнение,
+ * поэтому вызывающий её глотает — но число тронутых групп возвращается наверх,
+ * чтобы факт был виден в ответе, а не только в базе.
+ */
+async function detachTeacherFromGroups(orgId: string, userId: string): Promise<number> {
+  // Ровно та же пара фильтров, что уже работает в api-org (курсы преподавателя):
+  // равенство по организации плюс array-contains. Ни диапазонов, ни orderBy —
+  // composite-индексы в этом проекте не деплоятся.
+  const snap = await adminDb.collection('groups')
+    .where('organizationId', '==', orgId)
+    .where('teacherIds', 'array-contains', userId)
+    .get();
+  if (snap.empty) return 0;
+  const batch = adminDb.batch();
+  for (const doc of snap.docs) {
+    batch.update(doc.ref, { teacherIds: FieldValue.arrayRemove(userId), updatedAt: now() });
+  }
+  await batch.commit();
+  return snap.size;
 }
 
 /**
@@ -396,8 +428,12 @@ const handler: Handler = async (event: HandlerEvent) => {
         .collection('members').doc(body.userId).update(update);
 
       const rulesClosed = await closeTeacherRules(body.organizationId, body.userId).catch(() => 0);
+      // Со ставкой снимаем и группы: человек больше не ведёт занятия, а его uid,
+      // оставшийся в составе группы, продолжал бы называть его преподавателем в
+      // расписании и в зарплате.
+      const groupsDetached = await detachTeacherFromGroups(body.organizationId, body.userId).catch(() => 0);
 
-      return ok({ removed: true, rulesClosed });
+      return ok({ removed: true, rulesClosed, groupsDetached });
     }
 
     // ═══ POST: Restore an expelled student ═══
@@ -482,13 +518,18 @@ const handler: Handler = async (event: HandlerEvent) => {
       // а ставка осталась бы активной навсегда — её владельца больше нет ни в
       // одном списке, и заметить строку в ведомости было бы неоткуда.
       const rulesClosed = await closeTeacherRules(body.organizationId, body.userId).catch(() => 0);
+      // И группы — по той же причине, что и ставки: после удаления членства роль
+      // уже не прочитать, а ссылка на человека в составе группы пережила бы его
+      // самого. Так в базе и появлялись преподаватели-призраки: в организации их
+      // нет, а в зарплате они есть.
+      const groupsDetached = await detachTeacherFromGroups(body.organizationId, body.userId).catch(() => 0);
 
       await adminDb.collection('users').doc(body.userId)
         .collection('memberships').doc(body.organizationId).delete();
       await adminDb.collection('orgMembers').doc(body.organizationId)
         .collection('members').doc(body.userId).delete();
 
-      return ok({ deleted: true, rulesClosed });
+      return ok({ deleted: true, rulesClosed, groupsDetached });
     }
 
     // ═══ POST: Change role (single legacy `newRole`, or multi-role `roles[]`) ═══

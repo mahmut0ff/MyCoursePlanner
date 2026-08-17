@@ -28,7 +28,8 @@
 import type { Handler, HandlerEvent } from '@netlify/functions';
 import { adminDb } from './utils/firebase-admin';
 import { notifyOrgAdmins } from './utils/notifications';
-import { jsonResponse } from './utils/auth';
+import { jsonResponse, memberHoldsRole } from './utils/auth';
+import { membershipIsActive } from './utils/payroll-default-rate';
 import { billingPeriodKey } from './utils/billing';
 import { getPeriodRange } from './utils/finance-period';
 import { batchGetUserNames } from './utils/finance-names';
@@ -147,8 +148,11 @@ const handler: Handler = async (event: HandlerEvent) => {
       const [txSnap, groupSnap, memberSnap] = await Promise.all([
         adminDb.collection(TRANSACTIONS).where('organizationId', '==', orgId).get(),
         adminDb.collection(GROUPS).where('organizationId', '==', orgId).get(),
-        adminDb.collection('orgMembers').doc(orgId).collection('members')
-          .where('role', '==', 'teacher').get(),
+        // Весь состав, а не `where('role','==','teacher')`: у мульти-ролевого
+        // сотрудника преподавательская роль лежит в `roles[]`, и такой запрос его
+        // терял. Роль и статус проверяем в JS теми же предикатами, что ручной
+        // расчёт, — иначе крон и кнопка «Рассчитать» дали бы разные ведомости.
+        adminDb.collection('orgMembers').doc(orgId).collection('members').get(),
       ]);
 
       const incomeTx: FinanceTxLike[] = [];
@@ -198,15 +202,28 @@ const handler: Handler = async (event: HandlerEvent) => {
       const windowIncome = filterWindow(incomeTx, windowStart, windowEnd);
       const windowRefund = filterWindow(refundTx, windowStart, windowEnd);
 
-      // Полный список преподавателей нужен только ради честного списка «нет
-      // ставки»: без него в диагностику попадёт лишь тот, у кого есть группы.
-      const knownTeacherIds = memberSnap.docs.map(d => (d.data() as any).userId || d.id).filter(Boolean);
+      // Действующие преподаватели организации. Нужны и ради честного списка «нет
+      // ставки», и — главное — чтобы не начислить тому, кого в организации уже
+      // нет: ставка удалённого могла пережить увольнение (прежние модели, ручная
+      // правка), а крон работает без человека и молча создал бы ему строку.
+      const activeTeacherIds = new Set<string>(
+        memberSnap.docs
+          .map(d => ({ id: d.id, ...(d.data() as any) }))
+          .filter((m: any) => membershipIsActive(m) && memberHoldsRole(m, ['teacher']))
+          .map((m: any) => String(m.uid || m.userId || m.id))
+          .filter(Boolean),
+      );
+      const knownTeacherIds = [...activeTeacherIds];
+      // Ставки людей вне этого списка в расчёт не идут — ровно как в ручном
+      // расчёте (api-payroll.ts, ветка calculate), и по той же причине.
+      const payableRules = rules.filter((r: any) => activeTeacherIds.has(String(r.teacherId)));
+      const strandedRules = rules.filter((r: any) => !activeTeacherIds.has(String(r.teacherId)));
 
       const result = computePayroll({
         period,
         windowStart,
         windowEnd,
-        rules,
+        rules: payableRules,
         incomeTx,
         refundTx,
         groups,
@@ -238,7 +255,20 @@ const handler: Handler = async (event: HandlerEvent) => {
           totalMinor,
           // Диагностики сохраняются вместе с периодом, а не пересчитываются на
           // чтении: после заморозки восстановить их будет уже не из чего.
-          diagnostics: result.diagnostics,
+          diagnostics: [
+            ...result.diagnostics,
+            ...(strandedRules.length
+              ? [{
+                  code: 'rule_no_components' as const,
+                  message:
+                    `Ставок у людей, которых нет в организации: ${strandedRules.length}. ` +
+                    'Они не начислены — платить тому, кто уволен или удалён, нельзя. ' +
+                    'Если человек работает, верните его в организацию; иначе уберите ставку.',
+                  count: strandedRules.length,
+                  sample: strandedRules.slice(0, 5).map((r: any) => String(r.teacherId)),
+                }]
+              : []),
+          ],
           autoOpened: true,
           createdAt: ts,
           updatedAt: ts,

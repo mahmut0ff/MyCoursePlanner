@@ -76,6 +76,12 @@ export interface OverviewTeacher {
   paidMinor: number;
   /** Остаток: payable минус paid, не меньше нуля. */
   remainingMinor: number;
+  /**
+   * В организации его уже нет, но строка расчёта за месяц осталась: уволенному
+   * в середине месяца деньги причитаются. Поле необязательное — старый ответ
+   * сервера его не присылает, и отсутствие читается как «работает».
+   */
+  former?: boolean;
   line: PayrollLine | null;
   manualLines: PayrollLine[];
 }
@@ -159,6 +165,12 @@ const TeacherRow: React.FC<Props> = ({
   const tr = t as unknown as Translate;
 
   const hasRule = Boolean(teacher.rule);
+  /**
+   * Уволенный, у которого осталась строка за отработанный месяц. Строку не
+   * прячем — деньги за неё отдать нужно, — но ставку ему уже не задать: сервер
+   * такого человека среди участников не найдёт.
+   */
+  const isFormer = Boolean(teacher.former);
   const line = teacher.line;
   // Пока ведомость не рассчитана, показываем предпросмотр; после — то, что в ней
   // зафиксировано. Смешивать нельзя: это разные обещания.
@@ -205,9 +217,18 @@ const TeacherRow: React.FC<Props> = ({
         />
 
         <div className="min-w-0 flex-1">
-          <p className="font-medium text-slate-900 dark:text-white leading-tight truncate">
-            {teacher.teacherName || teacher.teacherId}
-          </p>
+          <div className="flex items-center gap-2 min-w-0">
+            <p className="font-medium text-slate-900 dark:text-white leading-tight truncate">
+              {teacher.teacherName || teacher.teacherId}
+            </p>
+            {/* Серый, а не красный: человек ушёл — это факт, а не поломка.
+                Красным здесь мы бы просили чинить то, что чинить не нужно. */}
+            {isFormer && (
+              <span className="shrink-0 px-2 py-0.5 rounded-full text-[10px] font-medium bg-slate-100 text-slate-500 dark:bg-slate-700 dark:text-slate-300">
+                {t('payroll.formerTeacher', 'Не работает')}
+              </span>
+            )}
+          </div>
           <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1 text-[11px] text-slate-500">
             <span className="inline-flex items-center gap-1">
               <Users className="w-3 h-3" />
@@ -220,7 +241,9 @@ const TeacherRow: React.FC<Props> = ({
               <span className="text-slate-600 dark:text-slate-400">
                 {describeComponents(teacher.rule?.components, tr)}
               </span>
-            ) : (
+            ) : isFormer ? null : (
+              // Уволенному янтарное «ставка не задана» обещало бы починку,
+              // которой нет: про него всё уже сказал серый тег у имени.
               <span className="text-amber-600 dark:text-amber-400 font-medium">
                 {t('payroll.noRate', 'Ставка не задана')}
               </span>
@@ -327,7 +350,10 @@ const TeacherRow: React.FC<Props> = ({
               <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">
                 {t('payroll.howCounted', 'Как считается')}
               </p>
-              {canWrite && (
+              {/* Уволенному кнопку не показываем совсем: сервер на сохранение
+                  ответит «Преподаватель не найден в этой организации», и вести
+                  человека в этот тупик хуже, чем сразу сказать почему. */}
+              {canWrite && !isFormer && (
                 <button
                   onClick={onEditRate}
                   className="text-xs font-medium text-indigo-600 hover:text-indigo-700 inline-flex items-center gap-1"
@@ -338,10 +364,26 @@ const TeacherRow: React.FC<Props> = ({
               )}
             </div>
 
-            {!hasRule ? (
+            {/* Строка вместо кнопки: объясняет и то, почему ставки не задать, и
+                то, что выплатить остаток всё-таки можно. */}
+            {isFormer && (
               <p className="text-sm text-slate-500">
-                {t('payroll.noRateHint', 'Ставка не задана — начислений не будет. Задайте процент или фиксированную сумму.')}
+                {t(
+                  'payroll.formerTeacherHint',
+                  'Этого человека уже нет в организации. Ставку задать нельзя — можно только выдать то, что осталось за отработанный месяц.',
+                )}
               </p>
+            )}
+
+            {!hasRule ? (
+              // «Задайте процент» уволенному советовать нечего: строкой выше уже
+              // сказано, что задать нельзя, и повтор превратился бы в требование
+              // сделать невозможное.
+              isFormer ? null : (
+                <p className="text-sm text-slate-500">
+                  {t('payroll.noRateHint', 'Ставка не задана — начислений не будет. Задайте процент или фиксированную сумму.')}
+                </p>
+              )
             ) : componentEntries.length === 0 ? (
               <p className="text-sm text-slate-500">{t('payroll.noBasisYet', 'Нечего начислять в этом месяце.')}</p>
             ) : (

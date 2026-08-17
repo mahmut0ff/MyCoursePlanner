@@ -2166,7 +2166,9 @@
     "applyDefaultLegacyTitle": "Эскирген ставкалар",
     "applyDefaultDone": "Ставка дайындалды: {{count}}",
     "applyDefaultNobody": "Бардык мугалимдер ставка менен",
-    "applyDefaultNoRate": "Адегенде демейки ставканы коюңуз"
+    "applyDefaultNoRate": "Адегенде демейки ставканы коюңуз",
+    "formerTeacher": "Иштебейт",
+    "formerTeacherHint": "Бул адам эми уюмда жок. Ставка коюуга болбойт — иштеген айы үчүн калганын гана берүүгө болот."
   },
   "journal": {
     "subtitle": "Күнүмдүк катышуу жана эскертүүлөр",

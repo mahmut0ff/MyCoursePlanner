@@ -897,13 +897,20 @@ const handler: Handler = async (event: HandlerEvent) => {
         }
       }
 
-      // Преподаватели, о которых вообще идёт речь: сотрудники с ролью, плюс те,
-      // у кого есть группы или ставка (роль могли снять, а группа осталась —
-      // человек не должен исчезнуть из зарплаты молча).
+      // ── Кто попадает в список ──
+      // Действующие преподаватели организации ПЛЮС те, у кого в этом месяце уже
+      // есть посчитанная строка: человек мог уволиться в середине месяца, деньги
+      // за отработанное ему всё равно причитаются, и спрятать его значило бы
+      // спрятать долг.
+      //
+      // А вот следа в группе или уцелевшей ставки НЕДОСТАТОЧНО. Удалённый из
+      // организации преподаватель остаётся в `group.teacherIds` (удаление
+      // участника это поле не чистило), и раздел зарплаты показывал призраков —
+      // людей, которым он даже не даёт задать ставку, потому что сервер их не
+      // знает. Такие следы — повод почистить данные, а не платить.
+      const activeTeacherIds = new Set<string>(knownTeacherIds);
       const teacherIds = [...new Set([
         ...knownTeacherIds,
-        ...scopes.keys(),
-        ...rules.map((r) => r.teacherId),
         ...sheetLines.map((l) => l.teacherId),
       ])].filter(Boolean);
 
@@ -997,6 +1004,10 @@ const handler: Handler = async (event: HandlerEvent) => {
         return {
           teacherId,
           teacherName: nameOf(teacherId) || line?.teacherName || '',
+          // Человек уже не работает, но строка за отработанный месяц осталась.
+          // Экран обязан сказать это словами: ставку ему не задать (сервер такого
+          // преподавателя не знает), а деньги по строке — отдать.
+          former: !activeTeacherIds.has(teacherId),
           rule: ruleByTeacher.get(teacherId) || null,
           groups: groupRows,
           studentCount: scope.studentIds.length,
@@ -1109,7 +1120,7 @@ const handler: Handler = async (event: HandlerEvent) => {
       // общеорганизационной ставке значило бы платить процент «за организацию» с
       // выручки одного здания; оставить на группах — потерять половину студентов
       // преподавателя, который ездит между филиалами.
-      const rules: CompensationRule[] = rulesSnap.docs
+      const allRules = rulesSnap.docs
         .map((d) => ({ id: d.id, ...(d.data() as any) }))
         .map((r: any) => ({
           id: r.id,
@@ -1161,7 +1172,18 @@ const handler: Handler = async (event: HandlerEvent) => {
       const knownTeacherIds = membersSnap.docs
         .map((d) => ({ id: d.id, ...(d.data() as any) }))
         .filter((m: any) => membershipIsActive(m) && memberHoldsRole(m, ['teacher']))
-        .map((m: any) => m.uid || m.id);
+        .map((m: any) => String(m.uid || m.id));
+
+      // ── Ставка человека, которого в организации уже нет, денег не начисляет ──
+      // Обычно увольнение сносит ставку само (closeTeacherRules), но документ мог
+      // пережить прежние модели или ручную правку. Начислить по нему — значит
+      // выдать зарплату тому, кто не работает, и заметить это было бы неоткуда:
+      // в кассе появился бы расход с именем, которого нет ни в одном списке.
+      // Поэтому такие ставки в расчёт не идут, но и не молчат — уходят в
+      // диагностику «Пропущенные записи», где директор их и увидит.
+      const activeTeacherIds = new Set<string>(knownTeacherIds);
+      const rules: CompensationRule[] = allRules.filter((r: any) => activeTeacherIds.has(String(r.teacherId)));
+      const strandedRules = allRules.filter((r: any) => !activeTeacherIds.has(String(r.teacherId)));
 
       const result = computePayroll({
         period,
@@ -1336,7 +1358,20 @@ const handler: Handler = async (event: HandlerEvent) => {
         // Предварительный итог: до approve он может измениться, поэтому
         // окончательным его считать нельзя — approve запечатывает свой.
         totalMinor,
-        diagnostics: pruneUndefined(result.diagnostics),
+        diagnostics: pruneUndefined([
+          ...result.diagnostics,
+          ...(strandedRules.length
+            ? [{
+                code: 'rule_no_components' as const,
+                message:
+                  `Ставок у людей, которых нет в организации: ${strandedRules.length}. ` +
+                  'Они не начислены — платить тому, кто уволен или удалён, нельзя. ' +
+                  'Если человек работает, верните его в организацию; иначе уберите ставку.',
+                count: strandedRules.length,
+                sample: strandedRules.slice(0, 5).map((r: any) => String(r.teacherId)),
+              }]
+            : []),
+        ]),
         updatedAt: now,
       };
       await periodRef.update(periodUpdate);

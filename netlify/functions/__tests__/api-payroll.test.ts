@@ -396,10 +396,14 @@ describe('api-payroll — ведомость общая, филиал тольк
     vi.clearAllMocks();
     const seed: any = baseSeed();
     // Второй преподаватель на окладе: он и есть тот, кого филиальная модель
-    // умела оплатить дважды.
+    // умела оплатить дважды. Членство ему нужно настоящее: ставка сама по себе
+    // человека в организацию не возвращает — по ней больше не начисляют.
     seed.compensationRules.push({
       id: 'ruleT2', organizationId: 'org1', teacherId: 't2',
       components: [{ kind: 'salary', amountMinor: 1000000 }],
+    });
+    seed['orgMembers/org1/members'].push({
+      id: 't2', uid: 't2', role: 'teacher', status: 'active', userName: 'Бакыт', branchIds: [],
     });
     db = makeDb(seed);
     (verifyAuth as any).mockResolvedValue(staff(['payroll:write', 'payroll:read']));
@@ -1431,6 +1435,164 @@ describe('api-payroll overview — экран не расходится с ра�
   });
 });
 
+/**
+ * СПИСОК ЗАРПЛАТЫ — ЭТО СПИСОК ЛЮДЕЙ ОРГАНИЗАЦИИ, А НЕ СЛЕДОВ В ДАННЫХ.
+ *
+ * Удаление участника годами не чистило `group.teacherIds`, и в боевой базе так и
+ * лежат двое удалённых в составе группы «Stem 10:00». Экран зарплаты собирал
+ * список в том числе из групп — и показывал призраков: строка есть, а задать
+ * ставку нельзя, потому что сервер такого преподавателя уже не знает
+ * («Преподаватель не найден в этой организации»).
+ *
+ * Отсюда правило, которое здесь и закреплено: в список попадают ДЕЙСТВУЮЩИЕ
+ * участники с ролью преподавателя плюс те, у кого за этот месяц уже посчитана
+ * строка. Второе слагаемое не поблажка: уволенному в середине месяца деньги за
+ * отработанное причитаются, и спрятать его значило бы спрятать долг.
+ */
+describe('api-payroll overview — в списке только те, кто в организации есть', () => {
+  let db: ReturnType<typeof makeDb>;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    (verifyAuth as any).mockResolvedValue(staff(['payroll:write', 'payroll:read']));
+  });
+
+  const overview = (period = july) =>
+    handler(event('GET', { action: 'overview', period }), {} as any, () => {}) as any;
+  const idsOf = (res: any) => JSON.parse(res.body).teachers.map((t: any) => t.teacherId);
+  const teacherOf = (res: any, teacherId: string) =>
+    JSON.parse(res.body).teachers.find((t: any) => t.teacherId === teacherId);
+
+  /** Уволенный преподаватель: членство осталось, но статус уже не 'active'. */
+  const firedMember = {
+    id: 'fired1', uid: 'fired1', role: 'teacher', status: 'removed', userName: 'Уволенный', branchIds: [],
+  };
+
+  // Откат к «собирать преподавателей в том числе из групп»: ровно та строка, на
+  // которую жаловался владелец, — человек в списке есть, а ставку ему не задать.
+  it('след в составе группы преподавателем не делает: удалённого из организации в списке нет', async () => {
+    const seed: any = baseSeed();
+    // Дословно боевая картина: uid остался в teacherIds, участника с таким id нет.
+    seed.groups = [{
+      id: 'g1', organizationId: 'org1', name: 'Stem 10:00', courseId: 'c1',
+      teacherIds: ['t1', 'ghost1'], studentIds: ['st1', 'st2'], branchId: null,
+    }];
+    db = makeDb(seed);
+
+    const res = await overview();
+    expect(res.statusCode).toBe(200);
+    expect(idsOf(res)).not.toContain('ghost1');
+    // Контроль: действующий преподаватель ТОЙ ЖЕ группы на месте — фильтр режет
+    // призраков, а не список.
+    expect(idsOf(res)).toEqual(['t1']);
+  });
+
+  // Уцелевшая ставка — тоже всего лишь след: увольнение сносит ставку, но
+  // документ мог пережить прежние модели или ручную правку.
+  it('уволенный (status removed) без строки расчёта в списке не появляется', async () => {
+    const seed: any = baseSeed();
+    seed['orgMembers/org1/members'].push(firedMember);
+    seed.compensationRules.push({
+      id: 'ruleFired', organizationId: 'org1', teacherId: 'fired1',
+      components: [{ kind: 'salary', amountMinor: 500000 }],
+    });
+    db = makeDb(seed);
+
+    const res = await overview();
+    expect(res.statusCode).toBe(200);
+    expect(idsOf(res)).toEqual(['t1']);
+  });
+
+  // Обратная сторона того же правила: человека уволили в середине месяца, а
+  // строка за отработанное посчитана. Спрятать его — спрятать долг организации.
+  it('уволенный СО СТРОКОЙ за месяц в списке ЕСТЬ: former true и остаток к выдаче виден', async () => {
+    const seed: any = baseSeed();
+    seed['orgMembers/org1/members'].push(firedMember);
+    seed.payrollPeriods = [{
+      id: 'sheetJuly', organizationId: 'org1', period: july, state: 'approved',
+      windowStart: '', windowEnd: '', totalMinor: 1500000,
+    }];
+    seed.payrollLines = [{
+      id: 'lineFired', organizationId: 'org1', periodId: 'sheetJuly', period: july,
+      teacherId: 'fired1', teacherName: 'Уволенный', ruleId: 'ruleFired', source: 'rule',
+      isManual: false, computedMinor: 1500000, overrideMinor: null, finalMinor: 1500000,
+    }];
+    db = makeDb(seed);
+
+    const res = await overview();
+    expect(res.statusCode).toBe(200);
+
+    const fired = teacherOf(res, 'fired1');
+    expect(fired).toBeTruthy();
+    // Экран обязан сказать словами, почему ставку задать нельзя, а деньги — отдать.
+    expect(fired.former).toBe(true);
+    expect(fired.payableMinor).toBe(1500000);
+    expect(fired.paidMinor).toBe(0);
+    expect(fired.remainingMinor).toBe(1500000);
+
+    // Действующий преподаватель рядом «бывшим» не помечается.
+    expect(teacherOf(res, 't1').former).toBe(false);
+  });
+});
+
+/**
+ * Ставка человека, которого в организации нет, денег не начисляет — но и не
+ * молчит: расход в кассе с именем, которого нет ни в одном списке, объяснить
+ * потом нечем.
+ */
+describe('api-payroll calculate — ставки людей, которых нет в организации', () => {
+  let db: ReturnType<typeof makeDb>;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    const seed: any = baseSeed();
+    // Удалённый участник: членства нет вовсе, но ставка и след в группе остались.
+    seed.compensationRules.push({
+      id: 'ruleGhost', organizationId: 'org1', teacherId: 'ghost1',
+      components: [{ kind: 'salary', amountMinor: 5000000 }],
+    });
+    // Уволенный: членство есть, но статус не 'active' — для расчёта это то же самое.
+    seed.compensationRules.push({
+      id: 'ruleFired', organizationId: 'org1', teacherId: 'fired1',
+      components: [{ kind: 'salary', amountMinor: 700000 }],
+    });
+    seed['orgMembers/org1/members'].push({
+      id: 'fired1', uid: 'fired1', role: 'teacher', status: 'removed', userName: 'Уволенный', branchIds: [],
+    });
+    seed.groups = [{
+      id: 'g1', organizationId: 'org1', name: 'Stem 10:00', courseId: 'c1',
+      teacherIds: ['t1', 'ghost1'], studentIds: ['st1', 'st2'], branchId: null,
+    }];
+    db = makeDb(seed);
+    (verifyAuth as any).mockResolvedValue(staff(['payroll:write', 'payroll:read']));
+  });
+
+  it('строки им не создаёт, а в «Пропущенные записи» кладёт поимённо', async () => {
+    const res = await calculate();
+    expect(res.statusCode).toBe(200);
+
+    const lines = db.rows('payrollLines');
+    // Контроль: действующему преподавателю строка создана как обычно — оклад плюс
+    // 20% собранного, ровно как без призраков рядом.
+    expect(lines.map((l) => l.teacherId)).toEqual(['t1']);
+    expect(lines[0].computedMinor).toBe(3000000 + 200000);
+    // Итог месяца — только по действующим: 50 000 и 7 000 в него не вошли.
+    expect(db.rows('payrollPeriods')[0].totalMinor).toBe(3200000);
+
+    // Молчаливый пропуск читался бы как «сумма почему-то меньше»: директор должен
+    // видеть ПОЧЕМУ и кого именно не начислили.
+    const diagnostics = db.rows('payrollPeriods')[0].diagnostics as any[];
+    const stranded = diagnostics.find((d) => /нет в организации/.test(String(d.message || '')));
+    expect(stranded).toBeTruthy();
+    expect(stranded.code).toBe('rule_no_components');
+    expect(stranded.count).toBe(2);
+    expect(stranded.sample).toContain('ghost1');
+    expect(stranded.sample).toContain('fired1');
+    // Та же диагностика уходит в ответ ручки — экран рисует её из него.
+    expect(JSON.parse(res.body).diagnostics).toContainEqual(stranded);
+  });
+});
+
 describe('api-payroll balance — начислено минус выдано', () => {
   let db: ReturnType<typeof makeDb>;
 
@@ -1483,6 +1645,11 @@ describe('payroll-accrual (крон) — покрытие месяца в мно
     seed.compensationRules.push({
       id: 'ruleT2', organizationId: 'org1', teacherId: 't2',
       components: [{ kind: 'salary', amountMinor: 1000000 }],
+    });
+    // Оба преподавателя — действующие участники организации: крон начисляет
+    // работающим людям, а не пережившим их ставкам.
+    seed['orgMembers/org1/members'].push({
+      id: 't2', uid: 't2', role: 'teacher', status: 'active', userName: 'Бакыт', branchIds: [],
     });
     return seed;
   };

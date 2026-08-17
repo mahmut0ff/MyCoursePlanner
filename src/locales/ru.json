@@ -1007,7 +1007,8 @@
     "add": "Добавить",
     "accessDenied": "Нет доступа к данным",
     "lazyShown": "Показано {{shown}} из {{total}}",
-    "showMore": "Показать ещё"
+    "showMore": "Показать ещё",
+    "saved": "Сохранено"
   },
   "org": {
     "activeOrg": "Активный учебный центр",
@@ -1060,7 +1061,8 @@
       "confirmDeleteWithDebt": "Удалить всё равно и списать нетронутые счета?",
       "allCourses": "Все курсы",
       "filterByCourse": "Фильтр по курсу",
-      "filterByGroup": "Фильтр по группе"
+      "filterByGroup": "Фильтр по группе",
+      "create": "Добавить студента"
     },
     "teachers": {
       "total": "преподавателей",
@@ -2102,7 +2104,12 @@
     "place": "место",
     "bestStreak": "лучшая серия",
     "leaderboard": "Таблица лидеров",
-    "backToDashboard": "На главную"
+    "backToDashboard": "На главную",
+    "analytics": "Аналитика викторины",
+    "analyticsNotFound": "Аналитика этой сессии не найдена",
+    "avgCorrect": "В среднем верных",
+    "totalQuestions": "Вопросов",
+    "import": "Импорт"
   },
   "directory": {
     "badge": "Каталог организаций",

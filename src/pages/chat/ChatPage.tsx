@@ -11,14 +11,14 @@ import { useAuth } from '../../contexts/AuthContext';
 import {
   useChatRooms, useChatMessages, useChatActions, useUnreadRooms,
   useTypingIndicator, useTypingStatus, chatRoomLabel, chatRoomCategory,
-  CHAT_CATEGORIES,
+  categoryOfRole, CHAT_CATEGORIES,
 } from '../../lib/useChat';
-import { apiArchiveChatRoom, apiModerateChatMessage } from '../../lib/api';
+import { apiArchiveChatRoom, apiCreateChatRoom, apiModerateChatMessage } from '../../lib/api';
 import { usePermissions } from '../../contexts/PermissionsContext';
 import ChatMessageBubble from '../../components/chat/ChatMessageBubble';
 import ChatComposer from '../../components/chat/ChatComposer';
 import {
-  NewChatDialog, RoomMembersDialog, ChatAvatar, useDirectory, CATEGORY_LABELS_RU,
+  NewGroupDialog, RoomMembersDialog, ChatAvatar, PersonRow, useDirectory, CATEGORY_LABELS_RU,
 } from '../../components/chat/ChatPeople';
 // Лайтбокс намеренно переиспользован из поддержки, а не скопирован: это ровно
 // та же задача — открыть картинку из переписки во весь экран.
@@ -75,7 +75,8 @@ export default function ChatPage() {
   const [mobileView, setMobileView] = useState<'list' | 'chat'>(
     searchParams.get('room') ? 'chat' : 'list',
   );
-  const [newChatOpen, setNewChatOpen] = useState(false);
+  const [newGroupOpen, setNewGroupOpen] = useState(false);
+  const [startingUid, setStartingUid] = useState<string | null>(null);
   const [membersOpen, setMembersOpen] = useState(false);
   const [replyTo, setReplyTo] = useState<ChatMessage | null>(null);
   const [lightbox, setLightbox] = useState<MessageAttachment | null>(null);
@@ -106,31 +107,61 @@ export default function ChatPage() {
   const endRef = useRef<HTMLDivElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  // Справочник нужен странице ради ролей: комнаты, заведённые до появления
-  // orgRole, иначе не разложить по категориям.
-  const { rolesByUid } = useDirectory(true);
+  // Справочник даёт и роли (чтобы разложить по категориям комнаты, заведённые
+  // до появления orgRole), и самих людей — они стоят в списке рядом с чатами.
+  const { people, canCreateGroup, rolesByUid, loading: peopleLoading } = useDirectory(true);
 
-  const filtered = useMemo(() => {
-    const needle = search.trim().toLowerCase();
-    return rooms.filter((room) => {
-      if (category !== 'all' && chatRoomCategory(room, uid, rolesByUid) !== category) return false;
-      if (!needle) return true;
-      const { title } = chatRoomLabel(room, uid, nameCache, avatarCache);
-      return title.toLowerCase().includes(needle)
-        || (room.lastMessagePreview || '').toLowerCase().includes(needle);
-    });
-  }, [rooms, search, category, uid, nameCache, avatarCache, rolesByUid]);
+  const canStartChat = can('chat', 'write');
+  const needle = search.trim().toLowerCase();
 
-  // Счётчики на чипах: пустая категория должна быть видна нулём, а не тем, что
-  // фильтр молча приводит к пустому экрану.
+  const filtered = useMemo(() => rooms.filter((room) => {
+    if (category !== 'all' && chatRoomCategory(room, uid, rolesByUid) !== category) return false;
+    if (!needle) return true;
+    const { title } = chatRoomLabel(room, uid, nameCache, avatarCache);
+    return title.toLowerCase().includes(needle)
+      || (room.lastMessagePreview || '').toLowerCase().includes(needle);
+  }), [rooms, needle, category, uid, nameCache, avatarCache, rolesByUid]);
+
+  // Люди, с которыми переписки ещё нет. Показывать их вперемешку с чатами
+  // нельзя — у чата есть история и время, у человека нет ничего, и общий список
+  // читался бы как «эти вам писали». Поэтому они идут отдельной секцией ниже.
+  const strangers = useMemo(() => {
+    if (!canStartChat) return [];
+    const known = new Set(
+      rooms.filter((r) => r.type === 'direct').map((r) => r.participantIds.find((id) => id !== uid)),
+    );
+    return people
+      .filter((p) => !known.has(p.uid))
+      .filter((p) => category === 'all' || categoryOfRole(p.role) === category)
+      .filter((p) => !needle || p.name.toLowerCase().includes(needle));
+  }, [people, rooms, uid, category, needle, canStartChat]);
+
+  // Счётчик на чипе — сколько всего строк он покажет: и начатых чатов, и людей.
+  // Иначе «Студенты 0» рядом со списком из десяти студентов выглядело бы ложью.
   const categoryCounts = useMemo(() => {
-    const out: Record<string, number> = { all: rooms.length };
-    for (const room of rooms) {
-      const key = chatRoomCategory(room, uid, rolesByUid);
-      if (key) out[key] = (out[key] || 0) + 1;
-    }
+    const out: Record<string, number> = {};
+    const bump = (key: string | null) => { if (key) out[key] = (out[key] || 0) + 1; };
+    const known = new Set(
+      rooms.filter((r) => r.type === 'direct').map((r) => r.participantIds.find((id) => id !== uid)),
+    );
+    rooms.forEach((room) => bump(chatRoomCategory(room, uid, rolesByUid)));
+    if (canStartChat) people.filter((p) => !known.has(p.uid)).forEach((p) => bump(categoryOfRole(p.role)));
+    out.all = rooms.length + (canStartChat ? people.filter((p) => !known.has(p.uid)).length : 0);
     return out;
-  }, [rooms, uid, rolesByUid]);
+  }, [rooms, people, uid, rolesByUid, canStartChat]);
+
+  const startChat = async (personUid: string) => {
+    if (startingUid) return;
+    setStartingUid(personUid);
+    try {
+      const room = await apiCreateChatRoom({ type: 'direct', participantIds: [personUid] });
+      selectRoom(room.id);
+    } catch (e: any) {
+      toast.error(e?.message || t('chat.createFailed', 'Не удалось начать переписку'));
+    } finally {
+      setStartingUid(null);
+    }
+  };
 
   // Ответ, оставшийся от прошлой комнаты, уехал бы цитатой в чужую переписку.
   useEffect(() => { setReplyTo(null); }, [selected?.id]);
@@ -158,7 +189,6 @@ export default function ChatPage() {
   if (!firebaseUser) return null;
 
   const canModerate = can('chat', 'delete');
-  const canStartChat = can('chat', 'write');
   const isRoomAdmin = !!selected && selected.participants?.[uid]?.role === 'admin';
   const isMuted = !!selected && !!selected.participants?.[uid]?.isMuted;
 
@@ -224,11 +254,14 @@ export default function ChatPage() {
             {t('chat.subtitle', 'Переписка внутри учебного центра — с коллегами и студентами')}
           </p>
         </div>
-        {canStartChat && (
-          <button type="button" onClick={() => setNewChatOpen(true)}
+        {/* Диалог один на один здесь не заводится — люди стоят прямо в списке,
+            и переписка начинается кликом по человеку. Кнопка осталась для того,
+            что в один клик не помещается: у группы есть имя и состав. */}
+        {canStartChat && canCreateGroup && (
+          <button type="button" onClick={() => setNewGroupOpen(true)}
             className="btn-primary text-sm flex items-center gap-2">
             <Plus className="w-4 h-4" />
-            {t('chat.newChat', 'Новый чат')}
+            {t('chat.newGroup', 'Новая группа')}
           </button>
         )}
       </div>
@@ -288,26 +321,62 @@ export default function ChatPage() {
                   <div key={i} className="h-16 rounded-lg bg-slate-100 dark:bg-slate-800 animate-pulse" />
                 ))}
               </div>
-            ) : filtered.length === 0 ? (
+            ) : filtered.length === 0 && strangers.length === 0 ? (
               <div className="p-8 text-center text-sm text-slate-400">
                 {search
                   ? t('chat.noMatches', 'Никого не нашли')
                   : category !== 'all'
                     ? t('chat.noRoomsInCategory', 'В этой категории чатов пока нет')
-                    : t('chat.noRooms', 'Чатов пока нет. Начните первый.')}
+                    : t('chat.noPeople', 'Писать пока некому — в организации нет других активных участников')}
               </div>
-            ) : filtered.map((room) => (
-              <RoomRow
-                key={room.id}
-                room={room}
-                selfUid={uid}
-                nameCache={nameCache}
-                avatarCache={avatarCache}
-                active={room.id === selectedId}
-                unread={unreadIds.has(room.id)}
-                onSelect={() => selectRoom(room.id)}
-              />
-            ))}
+            ) : (
+              <>
+                {filtered.map((room) => (
+                  <RoomRow
+                    key={room.id}
+                    room={room}
+                    selfUid={uid}
+                    nameCache={nameCache}
+                    avatarCache={avatarCache}
+                    active={room.id === selectedId}
+                    unread={unreadIds.has(room.id)}
+                    onSelect={() => selectRoom(room.id)}
+                  />
+                ))}
+
+                {/* Люди, с которыми ещё не переписывались, — отдельной секцией
+                    под чатами: у чата есть история и время, у человека нет
+                    ничего, и вперемешку список читался бы как «эти вам писали». */}
+                {strangers.length > 0 && (
+                  <>
+                    <div className="px-3 py-1.5 text-[11px] font-medium uppercase tracking-wide
+                      text-slate-400 bg-slate-50 dark:bg-slate-800/50
+                      border-y border-slate-100 dark:border-slate-800">
+                      {t('chat.startConversation', 'Начать переписку')}
+                      <span className="ml-1.5 normal-case tracking-normal">{strangers.length}</span>
+                    </div>
+                    {strangers.map((p) => (
+                      <PersonRow
+                        key={p.uid}
+                        person={p}
+                        onClick={() => startChat(p.uid)}
+                        trailing={startingUid === p.uid
+                          ? <Loader2 className="w-4 h-4 animate-spin text-primary-500" />
+                          : <MessageSquarePlus className="w-4 h-4 text-slate-300 dark:text-slate-600" />}
+                      />
+                    ))}
+                  </>
+                )}
+
+                {peopleLoading && canStartChat && (
+                  <div className="p-3 space-y-2">
+                    {[0, 1].map((i) => (
+                      <div key={i} className="h-12 rounded-lg bg-slate-100 dark:bg-slate-800 animate-pulse" />
+                    ))}
+                  </div>
+                )}
+              </>
+            )}
           </div>
         </aside>
 
@@ -468,10 +537,10 @@ export default function ChatPage() {
         </section>
       </div>
 
-      {newChatOpen && (
-        <NewChatDialog
-          onClose={() => setNewChatOpen(false)}
-          onCreated={(roomId) => { setNewChatOpen(false); selectRoom(roomId); }}
+      {newGroupOpen && (
+        <NewGroupDialog
+          onClose={() => setNewGroupOpen(false)}
+          onCreated={(roomId) => { setNewGroupOpen(false); selectRoom(roomId); }}
         />
       )}
 

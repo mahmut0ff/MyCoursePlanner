@@ -44,11 +44,12 @@ vi.mock('../../../lib/useChat', async (importOriginal) => {
 const apiModerateChatMessage = vi.fn().mockResolvedValue({});
 const apiArchiveChatRoom = vi.fn().mockResolvedValue({});
 const apiGetChatDirectory = vi.fn();
+const apiCreateChatRoom = vi.fn();
 vi.mock('../../../lib/api', () => ({
   apiModerateChatMessage: (...a: any[]) => apiModerateChatMessage(...a),
   apiArchiveChatRoom: (...a: any[]) => apiArchiveChatRoom(...a),
   apiGetChatDirectory: (...a: any[]) => apiGetChatDirectory(...a),
-  apiCreateChatRoom: vi.fn().mockResolvedValue({ id: 'room_new' }),
+  apiCreateChatRoom: (...a: any[]) => apiCreateChatRoom(...a),
   apiUpdateChatParticipants: vi.fn().mockResolvedValue({}),
 }));
 
@@ -95,6 +96,8 @@ const GROUP: ChatRoom = {
   lastMessagePreview: 'Айгуль Асанова: расписание',
 };
 
+const PERSON = { uid: 'u_new', name: 'Эрмек Абдиев', role: 'manager', avatarUrl: '' };
+
 const message = (over: Partial<ChatMessage> = {}): ChatMessage => ({
   id: 'm1',
   roomId: DM.id,
@@ -116,6 +119,7 @@ beforeEach(() => {
   vi.clearAllMocks();
   can.mockReturnValue(true);
   apiGetChatDirectory.mockResolvedValue({ items: [], canCreateGroup: false });
+  apiCreateChatRoom.mockResolvedValue({ id: 'room_new' });
   mockRooms.mockReturnValue({ rooms: [DM, GROUP], loading: false, error: null, nameCache: {}, avatarCache: {} });
   mockMessages.mockReturnValue({ messages: [message()], loading: false, loadMore: vi.fn(), hasMore: false });
   window.HTMLElement.prototype.scrollIntoView = vi.fn();
@@ -179,10 +183,47 @@ describe('ChatPage', () => {
     expect(screen.getByTitle('Ответить')).toBeInTheDocument();
   });
 
-  it('без chat:write кнопки «Новый чат» нет', () => {
+  it('без chat:write нет ни кнопки группы, ни списка людей', async () => {
+    apiGetChatDirectory.mockResolvedValue({ items: [PERSON], canCreateGroup: true });
     can.mockImplementation((_r: string, action?: string) => action !== 'write');
     renderPage();
-    expect(screen.queryByText('Новый чат')).not.toBeInTheDocument();
+
+    expect(screen.queryByText('Новая группа')).not.toBeInTheDocument();
+    await waitFor(() => expect(apiGetChatDirectory).toHaveBeenCalled());
+    expect(screen.queryByText('Начать переписку')).not.toBeInTheDocument();
+    expect(screen.queryByText('Эрмек Абдиев')).not.toBeInTheDocument();
+  });
+
+  it('кнопка группы скрыта, если сервер её не разрешил (студент)', async () => {
+    apiGetChatDirectory.mockResolvedValue({ items: [PERSON], canCreateGroup: false });
+    renderPage();
+    await waitFor(() => expect(apiGetChatDirectory).toHaveBeenCalled());
+    expect(screen.queryByText('Новая группа')).not.toBeInTheDocument();
+  });
+
+  it('люди без переписки стоят отдельной секцией, клик заводит диалог', async () => {
+    apiGetChatDirectory.mockResolvedValue({ items: [PERSON], canCreateGroup: true });
+    renderPage();
+
+    await waitFor(() => expect(screen.getByText('Эрмек Абдиев')).toBeInTheDocument());
+    expect(screen.getByText('Начать переписку')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByText('Эрмек Абдиев'));
+    await waitFor(() => expect(apiCreateChatRoom).toHaveBeenCalledWith({
+      type: 'direct', participantIds: ['u_new'],
+    }));
+  });
+
+  it('у кого переписка уже есть, тот в секции людей не дублируется', async () => {
+    apiGetChatDirectory.mockResolvedValue({
+      items: [PERSON, { uid: 'u_them', name: 'Айгуль Асанова', role: 'teacher', avatarUrl: '' }],
+      canCreateGroup: true,
+    });
+    renderPage();
+
+    await waitFor(() => expect(screen.getByText('Эрмек Абдиев')).toBeInTheDocument());
+    // Айгуль — уже собеседник в DM, поэтому строкой «начать переписку» не идёт.
+    expect(screen.getAllByText('Айгуль Асанова')).toHaveLength(1);
   });
 
   it('поиск фильтрует список по названию комнаты', () => {

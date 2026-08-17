@@ -73,7 +73,7 @@ function Dialog({ title, onClose, children }: { title: string; onClose: () => vo
   );
 }
 
-function PersonRow({
+export function PersonRow({
   person, selected, onClick, trailing,
 }: {
   person: ChatDirectoryEntry;
@@ -181,37 +181,28 @@ function SearchField({ value, onChange, placeholder }: { value: string; onChange
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Новый диалог / новая группа
+// Новая группа
+//
+// Диалог один на один здесь НЕ заводится: люди, которым можно написать, стоят
+// прямо в списке чатов, и переписка начинается кликом по человеку. Диалог нужен
+// только там, где одним кликом не обойтись — у группы есть название и состав.
 // ─────────────────────────────────────────────────────────────────────────────
 
-interface NewChatProps {
+interface NewGroupProps {
   onClose: () => void;
-  /** Возвращает id созданной (или уже существовавшей) комнаты. */
+  /** Возвращает id созданной комнаты. */
   onCreated: (roomId: string) => void;
 }
 
-export function NewChatDialog({ onClose, onCreated }: NewChatProps) {
+export function NewGroupDialog({ onClose, onCreated }: NewGroupProps) {
   const { t } = useTranslation();
-  const { people, canCreateGroup, loading } = useDirectory(true);
-  const [mode, setMode] = useState<'direct' | 'group'>('direct');
+  const { people, loading } = useDirectory(true);
   const [search, setSearch] = useState('');
   const [selected, setSelected] = useState<string[]>([]);
   const [title, setTitle] = useState('');
   const [busy, setBusy] = useState(false);
 
   const filtered = useSearch(people, search);
-
-  const createDirect = async (uid: string) => {
-    setBusy(true);
-    try {
-      const room = await apiCreateChatRoom({ type: 'direct', participantIds: [uid] });
-      onCreated(room.id);
-    } catch (e: any) {
-      toast.error(e?.message || t('chat.createFailed', 'Не удалось начать переписку'));
-    } finally {
-      setBusy(false);
-    }
-  };
 
   const createGroup = async () => {
     if (!title.trim() || selected.length === 0) return;
@@ -227,29 +218,10 @@ export function NewChatDialog({ onClose, onCreated }: NewChatProps) {
   };
 
   return (
-    <Dialog
-      title={mode === 'direct' ? t('chat.newDirect', 'Новый диалог') : t('chat.newGroup', 'Новая группа')}
-      onClose={onClose}
-    >
+    <Dialog title={t('chat.newGroup', 'Новая группа')} onClose={onClose}>
       <div className="p-4 space-y-3 border-b border-slate-200 dark:border-slate-700">
-        {canCreateGroup && (
-          <div className="flex gap-1">
-            {(['direct', 'group'] as const).map((m) => (
-              <button key={m} type="button" onClick={() => { setMode(m); setSelected([]); }}
-                className={`flex-1 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${mode === m
-                  ? 'bg-primary-600 text-white'
-                  : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700'}`}>
-                {m === 'direct' ? t('chat.tabDirect', 'Диалог') : t('chat.tabGroup', 'Группа')}
-              </button>
-            ))}
-          </div>
-        )}
-
-        {mode === 'group' && (
-          <input value={title} onChange={(e) => setTitle(e.target.value)} className="input"
-            placeholder={t('chat.groupTitlePlaceholder', 'Название группы')} />
-        )}
-
+        <input value={title} onChange={(e) => setTitle(e.target.value)} className="input"
+          placeholder={t('chat.groupTitlePlaceholder', 'Название группы')} />
         <SearchField value={search} onChange={setSearch}
           placeholder={t('chat.searchPeople', 'Поиск по имени…')} />
       </div>
@@ -281,30 +253,24 @@ export function NewChatDialog({ onClose, onCreated }: NewChatProps) {
               <PersonRow
                 key={p.uid}
                 person={p}
-                selected={mode === 'group' ? selected.includes(p.uid) : undefined}
-                onClick={() => {
-                  if (busy) return;
-                  if (mode === 'direct') createDirect(p.uid);
-                  else setSelected((s) => s.includes(p.uid) ? s.filter((x) => x !== p.uid) : [...s, p.uid]);
-                }}
+                selected={selected.includes(p.uid)}
+                onClick={() => setSelected((s) => s.includes(p.uid) ? s.filter((x) => x !== p.uid) : [...s, p.uid])}
               />
             ))}
           </div>
         ))}
       </div>
 
-      {mode === 'group' && (
-        <div className="p-3 border-t border-slate-200 dark:border-slate-700 flex items-center gap-3">
-          <span className="text-xs text-slate-500 dark:text-slate-400 flex-1">
-            {t('chat.selectedCount', 'Выбрано: {{n}}', { n: selected.length })}
-          </span>
-          <button type="button" className="btn-primary text-sm flex items-center gap-2"
-            disabled={busy || !title.trim() || selected.length === 0} onClick={createGroup}>
-            {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Users className="w-4 h-4" />}
-            {t('chat.createGroup', 'Создать')}
-          </button>
-        </div>
-      )}
+      <div className="p-3 border-t border-slate-200 dark:border-slate-700 flex items-center gap-3">
+        <span className="text-xs text-slate-500 dark:text-slate-400 flex-1">
+          {t('chat.selectedCount', 'Выбрано: {{n}}', { n: selected.length })}
+        </span>
+        <button type="button" className="btn-primary text-sm flex items-center gap-2"
+          disabled={busy || !title.trim() || selected.length === 0} onClick={createGroup}>
+          {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Users className="w-4 h-4" />}
+          {t('chat.createGroup', 'Создать')}
+        </button>
+      </div>
     </Dialog>
   );
 }

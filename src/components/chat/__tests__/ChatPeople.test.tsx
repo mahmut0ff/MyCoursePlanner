@@ -1,12 +1,13 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import { NewChatDialog } from '../ChatPeople';
+import { NewGroupDialog } from '../ChatPeople';
 
 /**
  * Справочник собеседников виден только с работающей функцией api-chat, поэтому
  * его раскладку по категориям проверяем здесь: что заголовки идут в заданном
- * порядке, что человек попадает в свою категорию и что выбор действительно
- * заводит комнату.
+ * порядке и что человек попадает в свою категорию. Диалог один на один этим
+ * окном больше не заводится — он начинается кликом в самом списке чатов
+ * (см. ChatPage.test).
  */
 
 vi.mock('react-i18next', () => ({
@@ -42,9 +43,9 @@ beforeEach(() => {
   apiCreateChatRoom.mockResolvedValue({ id: 'room_new' });
 });
 
-describe('NewChatDialog', () => {
+describe('NewGroupDialog', () => {
   it('раскладывает людей по категориям: студенты, преподаватели, персонал', async () => {
-    render(<NewChatDialog onClose={vi.fn()} onCreated={vi.fn()} />);
+    render(<NewGroupDialog onClose={vi.fn()} onCreated={vi.fn()} />);
 
     await waitFor(() => expect(screen.getByText('Айгуль Асанова')).toBeInTheDocument());
 
@@ -53,7 +54,7 @@ describe('NewChatDialog', () => {
   });
 
   it('наставник идёт к преподавателям, владелец — к персоналу', async () => {
-    render(<NewChatDialog onClose={vi.fn()} onCreated={vi.fn()} />);
+    render(<NewGroupDialog onClose={vi.fn()} onCreated={vi.fn()} />);
     await waitFor(() => expect(screen.getByText('Бакыт Кадыров')).toBeInTheDocument());
 
     const groups = [...document.querySelectorAll('div.uppercase')].map((h) => ({
@@ -67,21 +68,29 @@ describe('NewChatDialog', () => {
     expect(staff!.people.join(' ')).toContain('Эрмек Абдиев');
   });
 
-  it('выбор человека заводит диалог и отдаёт его id наверх', async () => {
+  it('выбирает состав и создаёт группу с названием', async () => {
     const onCreated = vi.fn();
-    render(<NewChatDialog onClose={vi.fn()} onCreated={onCreated} />);
+    render(<NewGroupDialog onClose={vi.fn()} onCreated={onCreated} />);
     await waitFor(() => expect(screen.getByText('Нурбек Садыков')).toBeInTheDocument());
 
-    fireEvent.click(screen.getByText('Нурбек Садыков'));
+    // Без названия и состава кнопка заблокирована — пустую группу не создать.
+    const create = screen.getByRole('button', { name: /Создать/ });
+    expect(create).toBeDisabled();
 
+    fireEvent.change(screen.getByPlaceholderText('Название группы'), { target: { value: 'Stem 10:00' } });
+    fireEvent.click(screen.getByText('Нурбек Садыков'));
+    fireEvent.click(screen.getByText('Айгуль Асанова'));
+    expect(screen.getByText('Выбрано: 2')).toBeInTheDocument();
+
+    fireEvent.click(create);
     await waitFor(() => expect(apiCreateChatRoom).toHaveBeenCalledWith({
-      type: 'direct', participantIds: ['u2'],
+      type: 'group', title: 'Stem 10:00', participantIds: ['u2', 'u1'],
     }));
     await waitFor(() => expect(onCreated).toHaveBeenCalledWith('room_new'));
   });
 
   it('поиск сужает список, пустые категории исчезают', async () => {
-    render(<NewChatDialog onClose={vi.fn()} onCreated={vi.fn()} />);
+    render(<NewGroupDialog onClose={vi.fn()} onCreated={vi.fn()} />);
     await waitFor(() => expect(screen.getByText('Айгуль Асанова')).toBeInTheDocument());
 
     fireEvent.change(screen.getByPlaceholderText('Поиск по имени…'), { target: { value: 'нурбек' } });

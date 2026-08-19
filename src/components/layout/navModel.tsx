@@ -98,6 +98,12 @@ const ALL_BRANCHES_ONLY = new Set<string>([
 // справочник, конкретный филиал сужает до своих аудиторий. Это прямое требование,
 // а не недосмотр: не переносите её в ONE_BRANCH_ONLY.
 //
+// `studentRating` — намеренно вне обоих наборов: страница осмысленна и как
+// сводный рейтинг всей сети («Все филиалы»), и как рейтинг одного филиала. Свой
+// фильтр филиала она не заводит — чипы «По филиалам» на ней двигают ЭТОТ
+// переключатель, поэтому спрятать её в одном из режимов значило бы отнять
+// половину сценария.
+//
 // `payroll` — тоже намеренно вне обоих наборов, но по другой причине: зарплата
 // вообще не филиалуется. Ставка одна на преподавателя, ведомость одна на месяц,
 // а филиалы — лишь разрез начисленной суммы («где заработано»). Под «Все филиалы»
@@ -214,6 +220,7 @@ export function useNavModel(instType?: string, opts?: NavModelOptions): NavSecti
         // because the whole admin branch is unguarded — admins hold every grant.
         { id: 'journal', to: '/journal', icon: NotebookPen, label: t('nav.journal', 'Журнал'), locked: !canAccess('gradebook') },
         { id: 'gradebook', to: '/gradebook', icon: TableProperties, label: t('nav.gradebook', 'Оценки'), locked: !canAccess('gradebook') },
+        { id: 'studentRating', to: '/rating', icon: Trophy, label: t('nav.studentRating', 'Рейтинг') },
         { id: 'materials', to: '/materials', icon: FileText, label: t('nav.materials') },
         { id: 'quizLibrary', to: '/quiz/library', icon: Gamepad2, label: t('nav.quizLibrary') },
       ],
@@ -260,6 +267,7 @@ export function useNavModel(instType?: string, opts?: NavModelOptions): NavSecti
     // the lone entry under «Управление» and /journal was missing entirely.
     if (canRead('gradebook')) learning.push({ id: 'journal', to: '/journal', icon: NotebookPen, label: t('nav.journal', 'Журнал'), locked: !canAccess('gradebook') });
     if (canRead('gradebook')) learning.push({ id: 'gradebook', to: '/gradebook', icon: TableProperties, label: t('nav.gradebook', 'Оценки'), locked: !canAccess('gradebook') });
+    if (canRead('analytics')) learning.push({ id: 'studentRating', to: '/rating', icon: Trophy, label: t('nav.studentRating', 'Рейтинг') });
     if (canRead('materials')) learning.push({ id: 'materials', to: '/materials', icon: FileText, label: t('nav.materials') });
     if (canRead('quizzes')) learning.push({ id: 'quizLibrary', to: '/quiz/library', icon: Gamepad2, label: t('nav.quizLibrary') });
     sections.push({ id: 'learning', label: t('nav.secLearning', 'Обучение'), items: learning });
@@ -296,6 +304,7 @@ export function useNavModel(instType?: string, opts?: NavModelOptions): NavSecti
       if (canRead('groups')) learning.push({ id: 'groups', to: '/groups', icon: Layers, label: term(t, inst, 'groups') });
       if (canRead('gradebook')) learning.push({ id: 'journal', to: '/journal', icon: NotebookPen, label: t('nav.journal', 'Журнал'), locked: !canAccess('gradebook') });
       if (canRead('gradebook')) learning.push({ id: 'gradebook', to: '/gradebook', icon: TableProperties, label: t('nav.gradebook', 'Оценки'), locked: !canAccess('gradebook') });
+      if (canRead('analytics')) learning.push({ id: 'studentRating', to: '/rating', icon: Trophy, label: t('nav.studentRating', 'Рейтинг') });
       if (canRead('homework')) learning.push({ id: 'homeworkReview', to: '/homework/review', icon: ClipboardCheck, label: t('nav.homeworkReview', 'Проверка ДЗ') });
       sections.push({ id: 'learning', label: t('nav.secLearning', 'Обучение'), items: learning });
 

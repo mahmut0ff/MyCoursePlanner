@@ -97,6 +97,7 @@ const TITLE_MAP: [string, string, string][] = [
   ['/journal', 'nav.journal', 'Журнал'],
   ['/homework/review', 'nav.homeworkReview', 'Проверка ДЗ'],
   ['/gradebook', 'nav.gradebook', 'Оценки'],
+  ['/rating', 'nav.studentRating', 'Рейтинг'],
   ['/groups', 'nav.groups', 'Группы'],
   ['/branches', 'nav.branches', 'Филиалы'],
   ['/diary', 'nav.diary', 'Дневник'],

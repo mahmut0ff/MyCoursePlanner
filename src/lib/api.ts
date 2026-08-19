@@ -74,6 +74,8 @@ const BRANCH_SCOPED_ENDPOINTS = new Set([
   // KPI преподавателей филиалуется по членству преподавателя: директор сети,
   // выбрав филиал, видит активность его преподавателей.
   'api-teacher-activity',
+  // Рейтинг студентов — по членству студента, ровно как ростер и api-risk.
+  'api-rating',
   // Кабинет принадлежит зданию: «Все филиалы» — весь справочник, конкретный
   // филиал — только его аудитории. Хендлер читает params.branchId (см. action=list).
   'api-classrooms',
@@ -919,6 +921,16 @@ export const apiGetTeacherTimeline = (teacherId: string, params?: { branchId?: s
 // до одного события в день). Право teacher_activity не требуется.
 export const apiPingTeacherActivity = () =>
   apiRequest('api-teacher-activity', 'POST', {}, { action: 'ping' });
+
+// ============================================================
+// STUDENT RATING API
+// ============================================================
+
+// Рейтинг студентов: счётчики «оценки + посещаемость» по паре студент × курс.
+// Формулу и срезы (курс/группа) собирает страница — см. src/lib/student-rating.ts.
+// branchId штампует интерцептор из активного филиала. Требует analytics:read.
+export const apiGetStudentRating = (params?: { branchId?: string; period?: string }) =>
+  apiRequest('api-rating', 'GET', undefined, params as any);
 
 // ============================================================
 // AI ORGANIZATION MANAGER API

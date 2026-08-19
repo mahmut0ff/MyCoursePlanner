@@ -93,6 +93,7 @@ const TeacherInvitesPage = lazyRetry(() => import('./pages/invites/TeacherInvite
 const NotificationsPage = lazyRetry(() => import('./pages/notifications/NotificationsPage'));
 const TeacherSettingsPage = lazyRetry(() => import('./pages/teacher-settings/TeacherSettingsPage'));
 const TeacherActivityPage = lazyRetry(() => import('./pages/teacher-activity/TeacherActivityPage'));
+const StudentRatingPage = lazyRetry(() => import('./pages/rating/StudentRatingPage'));
 // TeacherAnalyticsPage route uses AdminGradebookAnalytics component
 
 // Detail Pages
@@ -210,6 +211,10 @@ const App: React.FC = () => {
             <Route path="journal" element={<ProtectedRoute><PermissionRoute resource="gradebook"><PlanGuard feature="gradebook"><JournalPage /></PlanGuard></PermissionRoute></ProtectedRoute>} />
             <Route path="teacher-analytics" element={<ProtectedRoute><PermissionRoute resource="analytics"><PlanGuard feature="advancedAnalytics"><AdminGradebookAnalytics /></PlanGuard></PermissionRoute></ProtectedRoute>} />
             <Route path="teacher-activity" element={<ProtectedRoute><PermissionRoute resource="teacher_activity"><TeacherActivityPage /></PermissionRoute></ProtectedRoute>} />
+            {/* Рейтинг студентов. Гейт — `analytics` (успеваемость учеников), тот же,
+                что у /teacher-analytics; PlanGuard намеренно нет: это не «продвинутая
+                аналитика», а сводка журнала, доступная всем, у кого журнал есть. */}
+            <Route path="rating" element={<ProtectedRoute><PermissionRoute resource="analytics"><StudentRatingPage /></PermissionRoute></ProtectedRoute>} />
             <Route path="homework/review" element={<ProtectedRoute><PermissionRoute resource="homework"><HomeworkReviewPage /></PermissionRoute></ProtectedRoute>} />
 
             {/* Lessons */}

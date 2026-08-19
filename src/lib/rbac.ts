@@ -325,6 +325,23 @@ function legacyManagerGrants(perms?: LegacyManagerPerms): RolePermission[] {
 /** Roles with unrestricted access to everything. */
 export const FULL_ACCESS_ROLES = ['super_admin', 'admin', 'owner'];
 
+/**
+ * Клиентское зеркало серверного `isRosterManager` (netlify/functions/utils/auth.ts).
+ *
+ * «Ведение контингента» решает, распространяются ли права на ВЕСЬ ростер
+ * организации или только на свои группы: сервер по этому же признаку решает,
+ * отдавать ли преподавателю всю организацию или только его учеников. Условие
+ * было скопировано в трёх местах — держим его одним, иначе экран и сервер
+ * разъезжаются молча.
+ */
+export function hasRosterManagement(
+  role: string | null | undefined,
+  can: (resource: string, action: RbacAction) => boolean,
+): boolean {
+  if (role === 'admin' || role === 'super_admin' || role === 'owner' || role === 'manager') return true;
+  return can('roster_management', 'write');
+}
+
 /** Build the complete `resource:action` set granting everything. */
 export function fullPermissionSet(): Set<string> {
   const set = new Set<string>();

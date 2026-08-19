@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Link, useParams, useNavigate, useSearchParams } from 'react-router-dom';
+import { Link, useParams, useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import {
   orgGetStudents, orgGetResults, orgGetGroups, orgGetCourses, orgUpdateGroup, apiRemoveMember,
@@ -20,6 +20,7 @@ import RowMenu, { type RowMenuItem } from '../../components/ui/RowMenu';
 import { useAuth } from '../../contexts/AuthContext';
 import { useBranch } from '../../contexts/BranchContext';
 import { usePermissions } from '../../contexts/PermissionsContext';
+import { hasRosterManagement } from '../../lib/rbac';
 import { usePlanGate } from '../../contexts/PlanContext';
 import {
   planDebt, isDebtBearingPlan, isWrittenOffPlan, isPlanOverdue, planDiscount,
@@ -114,6 +115,7 @@ const daysWord = (n: number) => `${n} ${plural(n, 'день', 'дня', 'дне�
 const StudentDetailPage: React.FC = () => {
   const { uid } = useParams<{ uid: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
   const { t } = useTranslation();
   const { role, organizationId } = useAuth();
   const { activeBranchId, setActiveBranch, branches } = useBranch();
@@ -146,9 +148,18 @@ const StudentDetailPage: React.FC = () => {
   const isOrgAdmin = role === 'admin' || role === 'super_admin';
   // Зеркало серверного isRosterManager (utils/auth.ts): роль admin/manager ЛИБО
   // явный модификатор roster_management — и всё это ПОВЕРХ прав на students.
-  const isRosterManager = isOrgAdmin || role === 'manager' || can('roster_management', 'write');
+  const isRosterManager = hasRosterManagement(role, can);
   const canEditRoster = permsLoaded && isRosterManager && canWrite('students');
   const canPurgeStudent = permsLoaded && isRosterManager && canDelete('students');
+
+  // Куда возвращает «Назад». Раньше здесь был жёсткий `/students`, и преподаватель,
+  // пришедший из своей группы, выбрасывался в общий ростер организации — вид,
+  // которого у него нет даже в меню. Приоритет у адреса, откуда пришли.
+  const backTo: string = (location.state as { from?: string } | null)?.from
+    || (isRosterManager ? '/students' : '/groups');
+  const backLabel = backTo.startsWith('/groups')
+    ? t('nav.groups', 'Группы')
+    : t('nav.students', 'Студенты');
   const canSeeMoney = permsLoaded && canRead('finances') && canAccess('finances');
   const canTakeMoney = permsLoaded && canWrite('finances') && canAccess('finances');
 
@@ -419,10 +430,10 @@ const StudentDetailPage: React.FC = () => {
           description={branchScoped
             ? 'Запись может относиться к другому филиалу — покажите все филиалы, чтобы её увидеть.'
             : 'Запись удалена или ссылка устарела.'}
-          actionLabel={branchScoped ? 'Показать все филиалы' : 'К списку студентов'}
+          actionLabel={branchScoped ? 'Показать все филиалы' : `К списку: ${backLabel.toLowerCase()}`}
           {...(branchScoped
             ? { onAction: () => setActiveBranch(null) }
-            : { actionLink: '/students' })}
+            : { actionLink: backTo })}
         />
       </div>
     );
@@ -463,7 +474,7 @@ const StudentDetailPage: React.FC = () => {
   // видел пункт, который на сервере всегда отвечал 403.
   if (canPurgeStudent) {
     if (expelled) {
-      menuItems.push({ label: t('common.delete', 'Удалить навсегда'), icon: Trash2, danger: true, separated: true, onSelect: () => navigate('/students') });
+      menuItems.push({ label: t('common.delete', 'Удалить навсегда'), icon: Trash2, danger: true, separated: true, onSelect: () => navigate(backTo) });
     } else {
       menuItems.push({ label: 'Отчислить', icon: UserMinus, danger: true, separated: true, onSelect: () => setConfirm({ kind: 'expel' }) });
     }
@@ -475,10 +486,10 @@ const StudentDetailPage: React.FC = () => {
   return (
     <div className="max-w-5xl mx-auto pb-16">
       <Link
-        to="/students"
+        to={backTo}
         className="inline-flex items-center gap-1.5 text-sm font-medium text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white transition-colors mb-5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 rounded"
       >
-        <ArrowLeft className="w-4 h-4" />{t('nav.students', 'Студенты')}
+        <ArrowLeft className="w-4 h-4" />{backLabel}
       </Link>
 
       {/* ═══ Идентичность ═══ */}

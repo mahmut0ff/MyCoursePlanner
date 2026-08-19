@@ -2,11 +2,18 @@ import React from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { usePermissions } from '../../contexts/PermissionsContext';
 import AccessDenied from '../ui/AccessDenied';
-import type { RbacAction } from '../../lib/rbac';
+import { hasRosterManagement, type RbacAction } from '../../lib/rbac';
 
 interface PermissionRouteProps {
   resource: string;
   action?: RbacAction;
+  /**
+   * Страница управляет ростером организации целиком, а не своими учениками.
+   * Права `students:read` для неё мало: преподаватель им обладает, чтобы видеть
+   * своих в журнале и группах, — но общий список всей организации это уже
+   * управленческий вид (так же считает и меню, см. navModel.tsx).
+   */
+  requireRosterManagement?: boolean;
   children: React.ReactNode;
 }
 
@@ -17,7 +24,7 @@ interface PermissionRouteProps {
  * just the sidebar link. Waits for the (optional) custom-role fetch so it never
  * flashes "denied" before permissions have resolved.
  */
-const PermissionRoute: React.FC<PermissionRouteProps> = ({ resource, action = 'read', children }) => {
+const PermissionRoute: React.FC<PermissionRouteProps> = ({ resource, action = 'read', requireRosterManagement = false, children }) => {
   const { role } = useAuth();
   const { can, loaded } = usePermissions();
 
@@ -32,6 +39,7 @@ const PermissionRoute: React.FC<PermissionRouteProps> = ({ resource, action = 'r
   }
 
   if (!can(resource, action)) return <AccessDenied />;
+  if (requireRosterManagement && !hasRosterManagement(role, can)) return <AccessDenied />;
 
   return <>{children}</>;
 };

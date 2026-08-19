@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../contexts/AuthContext';
 import { useBranch } from '../../contexts/BranchContext';
 import { usePermissions } from '../../contexts/PermissionsContext';
+import { hasRosterManagement } from '../../lib/rbac';
 import {
   orgGetStudents,
   orgGetGroups,
@@ -55,8 +56,7 @@ const StudentsPage: React.FC = () => {
   // организации или только на свои группы. Отчисление и удаление своей области
   // видимости не имеют, поэтому без этой привилегии сервер их не пропустит —
   // и предлагать их в меню значило бы обещать то, чего не будет.
-  const isRosterManager = role === 'admin' || role === 'super_admin' || role === 'manager'
-    || can('roster_management', 'write');
+  const isRosterManager = hasRosterManagement(role, can);
 
   // Risk lives here now instead of on its own page — the signal has to reach the
   // screen people actually work on. Failure is silent: no dots, list unaffected.

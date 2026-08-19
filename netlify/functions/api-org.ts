@@ -981,6 +981,31 @@ const handler: Handler = async (event: HandlerEvent) => {
         })
         .filter((m: any) => memberHoldsRole(m, ['student']));
 
+      // ── Область видимости ростера ──
+      // «Ведение контингента» и раньше решало, распространяются ли права на весь
+      // ростер организации или только на свои группы, но проверялось лишь на
+      // действиях (отчисление, удаление). Чтение списка оставалось общим: любой
+      // преподаватель с `students:read` получал всю организацию с телефонами —
+      // включая учеников, которых не ведёт. Меню /students ему не показывает
+      // (см. navModel.tsx), но одной ссылки хватало, чтобы обойти это.
+      // Исключение — центры, включившие «преподаватель управляет своими
+      // группами» (orgSettings.teacherGroupManagement, по умолчанию выключено):
+      // там преподаватель сам набирает состав группы, а набирать не из кого,
+      // если ростер сужен до уже своих учеников. Это осознанно выданная
+      // привилегия, а не дыра по умолчанию.
+      if (!isRosterManager(user) && !(await getTeacherGroupPolicy(orgId)).manage) {
+        const groupSnap = await adminDb.collection('groups')
+          .where('teacherIds', 'array-contains', user.uid).get().catch(() => null);
+        const ownStudents = new Set<string>();
+        for (const d of (groupSnap?.docs || [])) {
+          const g = d.data() || {};
+          if ((g.organizationId || '') !== orgId) continue;
+          const ids = Array.isArray(g.studentIds) ? g.studentIds : [];
+          for (const id of ids) if (id) ownStudents.add(String(id));
+        }
+        filtered = filtered.filter((s: any) => ownStudents.has(s.uid));
+      }
+
       // Branch scoping in memory (the query above is unscoped by branch).
       // Use resolveBranchFilter so a branch-scoped manager can't read a branch
       // they aren't assigned to — even when they (or the AI copilot) pass an

@@ -592,7 +592,9 @@ const GroupDetailPage: React.FC = () => {
                   ) : (
                     currentStudents.map(s => (
                       <div key={s.uid} className="flex items-center justify-between p-3 hover:bg-slate-50 dark:hover:bg-slate-700/30 transition-colors group">
-                         <div className="flex items-center gap-3 cursor-pointer" onClick={() => navigate(`/students/${s.uid}`)}>
+                         {/* `from` — чтобы «Назад» на карточке вернул в эту группу,
+                             а не в общий ростер организации (преподавателю он закрыт). */}
+                         <div className="flex items-center gap-3 cursor-pointer" onClick={() => navigate(`/students/${s.uid}`, { state: { from: `/groups/${id}` } })}>
                             {s.avatarUrl ? (
                               <img src={s.avatarUrl} alt="" className="w-10 h-10 rounded-full object-cover shadow-sm" />
                             ) : (

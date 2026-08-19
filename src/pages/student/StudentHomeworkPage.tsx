@@ -7,6 +7,7 @@ import {
   ClipboardCheck, Clock, CheckCircle2, AlertCircle, BookOpen,
   FileVideo, ImageIcon, FileAudio, FileArchive, FileText, Inbox, ExternalLink, Sparkles
 } from 'lucide-react';
+import { HomeworkTelegramNotice } from '../../components/lessons/HomeworkTelegramNotice';
 import toast from 'react-hot-toast';
 
 const statusConfig = {
@@ -125,6 +126,11 @@ const StudentHomeworkPage: React.FC = () => {
         </p>
       </div>
 
+      {/* Сдача идёт через бота — на этой странице работы только просматривают */}
+      <div className="mb-6">
+        <HomeworkTelegramNotice />
+      </div>
+
       {/* Filter Tabs */}
       <div className="flex items-center gap-2 mb-6 overflow-x-auto pb-1">
         {([
@@ -165,7 +171,7 @@ const StudentHomeworkPage: React.FC = () => {
           </h3>
           <p className="text-sm text-slate-500 dark:text-slate-400 max-w-sm">
             {filter === 'all' 
-              ? 'Когда учитель задаёт домашнее задание к уроку, вы сможете сдать его на странице урока.'
+              ? 'Когда преподаватель задаст домашнее задание, отправьте работу боту в Telegram — она появится здесь.'
               : 'Попробуйте выбрать другой фильтр для просмотра.'
             }
           </p>

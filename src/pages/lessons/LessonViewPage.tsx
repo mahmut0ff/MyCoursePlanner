@@ -3,7 +3,7 @@ import DOMPurify from 'dompurify';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { deleteLessonPlan } from '../../services/lessons.service';
-import { apiGetLesson, apiAwardXP, apiCreateLesson, apiTransferRequest, orgCreateMaterial, apiStudentGetHomework, apiSubmitHomework } from '../../lib/api';
+import { apiGetLesson, apiAwardXP, apiCreateLesson, apiTransferRequest, orgCreateMaterial, apiStudentGetHomework } from '../../lib/api';
 import { useAuth } from '../../contexts/AuthContext';
 import { showGamificationToasts } from '../../components/gamification/GamificationToasts';
 import { toast } from 'react-hot-toast';
@@ -16,7 +16,7 @@ import LinkExtension from '@tiptap/extension-link';
 import ImageExtension from '@tiptap/extension-image';
 import Youtube from '@tiptap/extension-youtube';
 import FileViewerModal from '../../components/ui/FileViewerModal';
-import { StudentHomeworkForm } from '../../components/lessons/StudentHomeworkForm';
+import { HomeworkTelegramNotice } from '../../components/lessons/HomeworkTelegramNotice';
 import { LessonSubmissionsPanel } from '../../components/lessons/LessonSubmissionsPanel';
 import {
   ArrowLeft, Edit, Trash2, Clock, BookOpen, Paperclip, Download,
@@ -69,7 +69,6 @@ const LessonViewPage: React.FC = () => {
   
   // Homework State
   const [submission, setSubmission] = useState<HomeworkSubmission | null>(null);
-  const [submittingHomework, setSubmittingHomework] = useState(false);
 
 
 
@@ -163,27 +162,6 @@ const LessonViewPage: React.FC = () => {
       toast.error(err.message || 'Ошибка копирования');
     } finally {
       setCopyingAttachment(null);
-    }
-  };
-
-  const handleHomeworkSubmit = async (data: { content: string; attachments: any[] }) => {
-    if (!lesson || !lesson.organizationId) return;
-    setSubmittingHomework(true);
-    try {
-      const res = await apiSubmitHomework({
-        lessonId: lesson.id!,
-        lessonTitle: lesson.title,
-        organizationId: lesson.organizationId,
-        content: data.content,
-        attachments: data.attachments,
-        maxPoints: lesson.homework?.points || 10
-      });
-      setSubmission(res);
-      toast.success('Домашнее задание отправлено на проверку!');
-    } catch (e: any) {
-      toast.error(e.message || 'Ошибка отправки');
-    } finally {
-      setSubmittingHomework(false);
     }
   };
 
@@ -473,26 +451,18 @@ const LessonViewPage: React.FC = () => {
                         </div>
                       )}
 
-                      {/* Resubmit button — only allowed if NOT graded */}
+                      {/* Доработать можно там же, где сдавали — в боте */}
                       {submission.status !== 'graded' && (
-                        <button
-                          onClick={() => setSubmission(null)}
-                          className="mt-4 w-full flex items-center justify-center gap-2 px-4 py-3 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-xl font-semibold text-sm transition-colors"
-                        >
-                          <Edit className="w-4 h-4" />
-                          Редактировать ответ
-                        </button>
+                        <div className="mt-4 flex flex-col sm:flex-row items-center justify-between gap-3 p-3 bg-slate-50 dark:bg-slate-800/50 rounded-xl">
+                          <p className="text-[13px] text-slate-600 dark:text-slate-400">
+                            Нужно дополнить работу? Пришлите файл боту — он добавит его к этой сдаче.
+                          </p>
+                          <HomeworkTelegramNotice compact />
+                        </div>
                       )}
                     </div>
                   ) : (
-                    <StudentHomeworkForm 
-                      lessonId={lesson.id!} 
-                      lessonTitle={lesson.title}
-                      organizationId={lesson.organizationId!}
-                      maxPoints={hw.points}
-                      onSubmit={handleHomeworkSubmit}
-                      isSubmitting={submittingHomework}
-                    />
+                    <HomeworkTelegramNotice />
                   )}
                 </div>
               )}

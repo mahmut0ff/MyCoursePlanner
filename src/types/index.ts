@@ -425,6 +425,12 @@ export interface HomeworkSubmission {
     size: number;
   }[];
   status: 'pending' | 'reviewing' | 'graded';
+  /** Откуда пришла сдача. 'telegram' — из бота (основной путь), 'web' — старые сдачи. */
+  source?: 'web' | 'telegram';
+  /** Сдано после срока по `lesson.homework.dueDate` — считается ботом при приёме. */
+  isLate?: boolean;
+  /** Чат Telegram, из которого пришла сдача (для ответа ученику при проверке). */
+  telegramChatId?: string;
   aiAnalysis?: {
     grade: number;
     suggestions: string;
@@ -1123,6 +1129,18 @@ export interface GradeSchema {
 export type GradeStatus = 'normal' | 'absent' | 'late' | 'excused' | 'missing';
 
 /**
+ * Вид оценки. Отметка за домашнее задание живёт в той же коллекции `grades`,
+ * но НЕ смешивается с успеваемостью: средний балл, рейтинг и аналитика считают
+ * только 'regular'. Отсутствие поля = 'regular' (вся история до разделения).
+ */
+export type GradeKind = 'regular' | 'homework';
+
+/** Оценка за ДЗ или обычная? Одно место правды для всех потребителей `grades`. */
+export function isHomeworkGrade(g: { kind?: GradeKind | string | null }): boolean {
+  return g?.kind === 'homework';
+}
+
+/**
  * Individual grade entry.
  * Idempotent key: (studentId + courseId + lessonId + assignmentId)
  * Uses `version` field for optimistic locking.
@@ -1139,6 +1157,10 @@ export interface GradeEntry {
   maxValue: number;
   status: GradeStatus;
   comment?: string;
+  /** 'homework' — отметка за ДЗ (вне среднего балла). Пусто = обычная оценка. */
+  kind?: GradeKind;
+  /** Сдача, за которую поставлена отметка (если преподаватель оценил из журнала). */
+  homeworkSubmissionId?: string;
   createdBy: string;
   organizationId: string;
   version: number; // optimistic locking
@@ -1148,6 +1170,13 @@ export interface GradeEntry {
 
 export type AttendanceStatus = 'present' | 'absent' | 'late' | 'excused';
 export type ParticipationLevel = 'low' | 'medium' | 'high';
+
+/**
+ * Как ученик сдал домашнее задание — отметка преподавателя в журнале.
+ * Сдача приходит из Telegram-бота; здесь преподаватель фиксирует итог,
+ * в том числе для тех, кто не сдал вовсе (сдачи нет — а отметка нужна).
+ */
+export type HomeworkStatus = 'done' | 'partial' | 'late' | 'missing';
 
 /**
  * Daily journal entry per student per course.
@@ -1160,6 +1189,8 @@ export interface JournalEntry {
   date: string; // YYYY-MM-DD
   attendance: AttendanceStatus;
   participation?: ParticipationLevel;
+  /** Отметка о выполнении ДЗ за этот день (проставляет преподаватель в журнале). */
+  homeworkStatus?: HomeworkStatus;
   lessonId?: string;
   note?: string;
   flags?: string[]; // 'late_submission', 'behavior', etc.

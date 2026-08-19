@@ -9,6 +9,7 @@ import {
   orgGetGradeSchema
 } from '../../lib/api';
 import type { Course, UserProfile, GradeEntry, GradeSchema, JournalEntry } from '../../types';
+import { isHomeworkGrade } from '../../types';
 import { entryNumericValue } from '../../lib/gradePresets';
 import { BarChart3, TrendingUp, GraduationCap, AlertTriangle, Download, ClipboardList, CheckCircle2, Filter, TrendingDown, BookOpen } from 'lucide-react';
 import toast from 'react-hot-toast';
@@ -74,7 +75,9 @@ export default function AdminGradebookAnalytics() {
           (cRes as Course[]).map(c => orgGetGradeSchema(c.id).catch(() => null))
         );
 
-        setGrades(allGrades.flat() as GradeEntry[]);
+        // Аналитика успеваемости считает только оценки за занятия: отметки за ДЗ
+        // живут в той же коллекции, но относятся к KPI преподавателя.
+        setGrades((allGrades.flat() as GradeEntry[]).filter(g => !isHomeworkGrade(g)));
         setJournals(allJournals.flat() as JournalEntry[]);
         setSchemas(Object.fromEntries(
           (cRes as Course[]).map((c, i) => [c.id, allSchemas[i] as GradeSchema | null]).filter(([, s]) => !!s)

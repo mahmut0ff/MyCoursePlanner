@@ -148,7 +148,9 @@ export async function buildStudentSnapshot(orgId: string, studentUid: string, na
   ]);
 
   // ── Grades: % average over numeric grades + the 5 most recent displayed values ──
-  const grades = (gradeSnap?.docs || []).map(d => d.data() as any);
+  // Отметки за ДЗ сюда не идут: репетитор и родитель спрашивают про успеваемость,
+  // а она считается по оценкам за занятия (см. kind в GradeEntry).
+  const grades = (gradeSnap?.docs || []).map(d => d.data() as any).filter(g => g.kind !== 'homework');
   const pcts: number[] = [];
   for (const g of grades) {
     const v = Number(g.value);

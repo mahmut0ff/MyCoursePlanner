@@ -175,6 +175,14 @@ const handler: Handler = async (event: HandlerEvent) => {
       const hasAccess = await verifyCourseAccess(user, courseId);
       if (!hasAccess) return forbidden();
 
+      // Оценка за ДЗ и оценка за урок живут по одному ключу (курс+ученик+урок) и
+      // различаются только видом, поэтому вид входит в ключ. Отбираем его в
+      // памяти, а не пятым where: у всех оценок до разделения поля `kind` нет,
+      // и запрос `kind == 'regular'` их бы не нашёл — на каждую правку старой
+      // оценки заводился бы дубль.
+      const isHomework = body.kind === 'homework';
+      const homeworkSubmissionId = body.homeworkSubmissionId || null;
+
       // Build idempotent key
       const keyParts = [studentId, courseId, lessonId || '_', assignmentId || '_'];
       const idempotentKey = keyParts.join('__');
@@ -184,10 +192,11 @@ const handler: Handler = async (event: HandlerEvent) => {
         .where('courseId', '==', courseId)
         .where('studentId', '==', studentId)
         .where('lessonId', '==', lessonId || null)
-        .limit(1).get();
+        .get();
+      const sameKind = existing.docs.filter((d: any) => (d.data()?.kind === 'homework') === isHomework);
 
-      if (!existing.empty) {
-        const doc = existing.docs[0];
+      if (sameKind.length > 0) {
+        const doc = sameKind[0];
         const data = doc.data();
         // Optimistic locking: check version
         if (version !== undefined && data.version !== undefined && version < data.version) {
@@ -201,6 +210,10 @@ const handler: Handler = async (event: HandlerEvent) => {
         if (maxValue !== undefined) updates.maxValue = maxValue;
         if (status !== undefined) updates.status = status;
         if (comment !== undefined) updates.comment = comment;
+        // Вид проставляем и старым записям: до разделения поля не было, а
+        // потребители среднего балла опираются именно на него.
+        updates.kind = isHomework ? 'homework' : 'regular';
+        if (homeworkSubmissionId) updates.homeworkSubmissionId = homeworkSubmissionId;
         await doc.ref.update(updates);
 
         // ── AUDIT TRAIL: Record grade change history ──
@@ -219,7 +232,9 @@ const handler: Handler = async (event: HandlerEvent) => {
 
         await recordTeacherActivity({
           organizationId: orgId, actorId: user.uid, actorName: user.displayName, actorRole: user.role,
-          type: 'grade_set', branchId: user.primaryBranchId, entityId: doc.id, meta: { courseId, studentId, mode: 'update' },
+          // Проверка ДЗ — отдельный труд и отдельная колонка в KPI.
+          type: isHomework ? 'homework_checked' : 'grade_set',
+          branchId: user.primaryBranchId, entityId: doc.id, meta: { courseId, studentId, mode: 'update' },
         });
         return ok({ id: doc.id, ...data, ...updates });
       }
@@ -235,6 +250,8 @@ const handler: Handler = async (event: HandlerEvent) => {
         maxValue: maxValue || 100,
         status: status || 'normal',
         comment: comment || '',
+        kind: isHomework ? 'homework' : 'regular',
+        homeworkSubmissionId,
         createdBy: user.uid,
         organizationId: orgId,
         version: 1,
@@ -249,16 +266,17 @@ const handler: Handler = async (event: HandlerEvent) => {
         const courseName = courseDoc.data()?.title || '';
         createNotification({
           recipientId: studentId,
-          type: 'grade_posted',
-          title: 'Новая оценка',
-          message: `Оценка: ${displayValue || value}${courseName ? ` по «${courseName}»` : ''}`,
+          type: isHomework ? 'homework_graded' : 'grade_posted',
+          title: isHomework ? 'Оценка за домашнее задание' : 'Новая оценка',
+          message: `${isHomework ? 'ДЗ оценено' : 'Оценка'}: ${displayValue || value}${courseName ? ` по «${courseName}»` : ''}`,
           organizationId: orgId,
         }).catch(() => {});
       }
 
       await recordTeacherActivity({
         organizationId: orgId, actorId: user.uid, actorName: user.displayName, actorRole: user.role,
-        type: 'grade_set', branchId: user.primaryBranchId, entityId: ref.id, meta: { courseId, studentId, mode: 'create' },
+        type: isHomework ? 'homework_checked' : 'grade_set',
+        branchId: user.primaryBranchId, entityId: ref.id, meta: { courseId, studentId, mode: 'create' },
       });
       return ok({ id: ref.id, ...gradeData });
     }
@@ -446,6 +464,12 @@ const handler: Handler = async (event: HandlerEvent) => {
       const { studentId, courseId, date, attendance, participation, note, flags, version } = body;
       if (!studentId || !courseId || !date) return badRequest('studentId, courseId, date required');
 
+      // Отметка о выполнении ДЗ. Хранится в дне журнала, а не в сдаче: отметить
+      // надо и того, кто не сдал ничего, — у него сдачи попросту нет.
+      const HOMEWORK_STATUSES = ['done', 'partial', 'late', 'missing'];
+      const homeworkStatus = body.homeworkStatus === null || HOMEWORK_STATUSES.includes(body.homeworkStatus)
+        ? body.homeworkStatus : undefined;
+
       const hasAccess = await verifyCourseAccess(user, courseId);
       if (!hasAccess) return forbidden();
 
@@ -466,10 +490,18 @@ const handler: Handler = async (event: HandlerEvent) => {
         if (participation !== undefined) updates.participation = participation;
         if (note !== undefined) updates.note = note;
         if (flags !== undefined) updates.flags = flags;
+        if (homeworkStatus !== undefined) updates.homeworkStatus = homeworkStatus;
         await doc.ref.update(updates);
+        // Что именно изменил преподаватель, видно только по сравнению со
+        // старым значением: клиент присылает строку журнала целиком, и по
+        // наличию полей отличить перекличку от проверки ДЗ нельзя.
+        const homeworkChanged = homeworkStatus !== undefined && homeworkStatus !== (data.homeworkStatus ?? null);
+        const attendanceChanged = attendance !== undefined && attendance !== data.attendance;
         await recordTeacherActivity({
           organizationId: orgId, actorId: user.uid, actorName: user.displayName, actorRole: user.role,
-          type: 'attendance_marked', branchId: user.primaryBranchId, entityId: doc.id, meta: { courseId, studentId, date, mode: 'update' },
+          // Отметка «сдал / не сдал» — это проверка ДЗ, а не перекличка.
+          type: homeworkChanged && !attendanceChanged ? 'homework_checked' : 'attendance_marked',
+          branchId: user.primaryBranchId, entityId: doc.id, meta: { courseId, studentId, date, mode: 'update' },
         });
         return ok({ id: doc.id, ...data, ...updates });
       }
@@ -478,6 +510,7 @@ const handler: Handler = async (event: HandlerEvent) => {
         studentId, courseId, date,
         attendance: attendance || 'present',
         participation: participation || null,
+        homeworkStatus: homeworkStatus ?? null,
         note: note || '',
         flags: flags || [],
         createdBy: user.uid,

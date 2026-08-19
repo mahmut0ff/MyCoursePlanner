@@ -102,6 +102,15 @@ export const handler: Handler = async (event: HandlerEvent) => {
 
   // POST: Add submission (root POST with no sub-path action)
   if (event.httpMethod === 'POST' && (action === 'api-homework' || pathSegments.length <= 3)) {
+    // Веб-сдача закрыта: ученики сдают ДЗ только через Telegram-бота
+    // (netlify/functions/utils/homework-inbox.ts). Точка входа осталась одна,
+    // иначе работа, отправленная «мимо» бота, выглядела бы сданной, но не
+    // попадала бы в тот же поток уведомлений преподавателю.
+    if (user.role === 'student') {
+      return jsonResponse(410, {
+        error: 'Домашние задания принимаются в Telegram-боте: откройте бота и нажмите /dz',
+      });
+    }
     const body = JSON.parse(event.body || '{}');
     if (!body.lessonId || !body.content || !body.organizationId) return badRequest('Missing fields');
 

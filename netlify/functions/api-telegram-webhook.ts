@@ -22,6 +22,12 @@ import {
   buildScheduleText, buildStudentScheduleText, resolveStaffScope,
   type RenderScheduleOptions,
 } from './utils/schedule-context';
+import {
+  listOpenHomework, findHomework, homeworkKeyboard, renderHomeworkCard, renderAcceptedText,
+  extractFileRef, storeTelegramFile, ingestHomeworkPart,
+  peekDraft, setDraft, clearDraft,
+  type TelegramFileRef, type OpenHomework,
+} from './utils/homework-inbox';
 import { rateLimiters } from './utils/rate-limiter';
 
 /** Reply keyboard for a staff copilot turn — director quick-actions, or none for teachers. */
@@ -124,6 +130,41 @@ async function handleApprovalCallback(cq: any, botToken: string, appOrigin: stri
       console.warn('Notify approved applicant failed:', e);
     }
   }
+}
+
+/**
+ * Нажата кнопка выбора домашнего задания (callback_data начинается с "hw:").
+ * После выбора чат «залипает» на это задание — всё, что ученик пришлёт дальше,
+ * ляжет в эту работу, пока он не выберет другую или не истечёт черновик.
+ */
+async function handleHomeworkCallback(cq: any, botToken: string): Promise<void> {
+  const chatId = String(cq.from?.id || cq.message?.chat?.id || '');
+  const answer = (text?: string, alert = false) =>
+    fetch(`https://api.telegram.org/bot${botToken}/answerCallbackQuery`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ callback_query_id: cq.id, ...(text ? { text } : {}), show_alert: alert }),
+    }).catch(() => {});
+  const send = (text: string) =>
+    fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ chat_id: chatId, text, parse_mode: 'HTML' }),
+    }).catch(() => {});
+
+  const parts = String(cq.data || '').split(':');
+  if (parts[1] !== 'p' || !parts[2]) { await answer('Неизвестное действие'); return; }
+  const lessonId = parts.slice(2).join(':');
+
+  const student = await resolveStudentByChat(chatId);
+  if (!student) { await answer('Сдавать домашние задания могут только ученики', true); return; }
+
+  const hw = await findHomework(student.orgId, student.uid, lessonId);
+  if (!hw) { await answer('Задание больше не доступно', true); return; }
+
+  await setDraft(chatId, { lessonId: hw.lessonId, studentUid: student.uid, orgId: student.orgId });
+  await answer('Задание выбрано');
+  await send(renderHomeworkCard(hw));
 }
 
 /** Handle a director action-button press (callback_data starts with "dir:"). */
@@ -232,6 +273,8 @@ export const handler: Handler = async (event: HandlerEvent) => {
       const cqData = String(payload.callback_query.data || '');
       if (cqData.startsWith('dir:')) {
         await handleDirectorCallback(payload.callback_query, botToken);
+      } else if (cqData.startsWith('hw:')) {
+        await handleHomeworkCallback(payload.callback_query, botToken);
       } else {
         await handleApprovalCallback(payload.callback_query, botToken, appOrigin);
       }
@@ -239,14 +282,21 @@ export const handler: Handler = async (event: HandlerEvent) => {
     }
 
     const message = payload.message;
-    if (!message || !message.chat || (!message.text && !message.contact && !message.voice)) {
+    // Вложение ученика (фото/документ/видео/аудио) — такой же полноправный вход,
+    // как текст: домашние задания сдаются именно файлами.
+    const fileRef = extractFileRef(message);
+    if (!message || !message.chat || (!message.text && !message.contact && !message.voice && !fileRef)) {
       return { statusCode: 200, body: 'OK' };
     }
 
     const chatId = message.chat.id;
-    const text = message.text || '';
+    // Подпись к фото/файлу — это и есть текст ответа ученика.
+    const text = message.text || message.caption || '';
     const contact = message.contact;
     const voice = message.voice; // Telegram voice note (ogg/opus) — used by the director copilot
+    // Голос отдельно: он давно принадлежит копилотам (диктовка оценок, вопрос
+    // репетитору) и уходит в сдачу ДЗ только когда ученик уже выбрал задание.
+    const homeworkFile: TelegramFileRef | null = fileRef && fileRef.kind !== 'voice' ? fileRef : null;
 
     // A helper to send messages back to Telegram
     const reply = async (replyText: string) => {
@@ -386,6 +436,63 @@ export const handler: Handler = async (event: HandlerEvent) => {
       { command: 'schedule', description: '🗓 Моё расписание' },
       { command: 'login', description: '🔑 Войти в SabakHub' },
     ]);
+    // Ученику первым делом нужна сдача ДЗ — она у него в меню выше расписания.
+    const setStudentCommands = () => setBotCommands([
+      { command: 'dz', description: '📚 Сдать домашнее задание' },
+      { command: 'schedule', description: '🗓 Моё расписание' },
+      { command: 'login', description: '🔑 Войти в SabakHub' },
+    ]);
+
+    // ─── ДОМАШНИЕ ЗАДАНИЯ: сдача через бота ───
+
+    /** Показать кнопки открытых заданий. false — заданий нет (уже отвечено). */
+    const sendHomeworkPicker = async (
+      student: { uid: string; orgId: string }, intro: string,
+    ): Promise<boolean> => {
+      const items = await listOpenHomework(student.orgId, student.uid);
+      if (items.length === 0) {
+        await reply('📚 Открытых домашних заданий сейчас нет.\n\nКак только преподаватель задаст ДЗ, оно появится здесь — я пришлю уведомление.');
+        return false;
+      }
+      await sendTg(intro, homeworkKeyboard(items));
+      return true;
+    };
+
+    /**
+     * Принять присланное в выбранное задание. Файл сначала уезжает в Storage —
+     * если он не влез или Telegram его не отдал, работа не «наполовину сдана»:
+     * ученику честно отвечают, и запись не трогается.
+     */
+    const acceptHomeworkPart = async (
+      student: { uid: string; orgId: string; name: string },
+      hw: OpenHomework,
+      file: TelegramFileRef | null,
+      partText: string,
+    ): Promise<void> => {
+      let attachment: { url: string; name: string; size: number; type: string } | null = null;
+      if (file) {
+        await sendChatAction('upload_document');
+        attachment = await storeTelegramFile(botToken, file, hw.lessonId, student.uid);
+        if (!attachment) {
+          await reply('❌ Не удалось принять файл — возможно, он больше 20 МБ.\n\nПришлите файл поменьше, сфотографируйте работу или напишите ответ текстом.');
+          return;
+        }
+      }
+      if (!attachment && !partText.trim()) return;
+
+      const res = await ingestHomeworkPart({
+        orgId: student.orgId,
+        studentUid: student.uid,
+        studentName: student.name,
+        chatId: String(chatId),
+        homework: hw,
+        text: partText.trim() || undefined,
+        attachment,
+      });
+      // Продлеваем черновик: ученик почти всегда досылает следующий файл.
+      await setDraft(String(chatId), { lessonId: hw.lessonId, studentUid: student.uid, orgId: student.orgId });
+      await sendTg(renderAcceptedText(hw, res));
+    };
 
     // Расписание того, кто спросил: сотруднику — его область видимости, ученику —
     // его группы, родителю — по каждому ребёнку. Данные, а не AI: ни ключа Gemini,
@@ -444,6 +551,39 @@ export const handler: Handler = async (event: HandlerEvent) => {
 
     if (isGlobalBot) {
       // ─── GLOBAL BOT: registration, account linking & passwordless login ───
+
+      // (a-1) Сдача домашнего задания. Идёт раньше копилотов: пока у чата выбран
+      // урок, всё присланное — это работа, а не вопрос репетитору. Черновик
+      // проверяем первым (один doc-get по chatId), чтобы не поднимать профиль
+      // ученика на каждое сообщение в боте.
+      if (homeworkFile || voice || (text && !text.startsWith('/'))) {
+        const draft = await peekDraft(String(chatId));
+        if (homeworkFile || draft) {
+          const student = await resolveStudentByChat(String(chatId));
+          if (student) {
+            const active = draft && draft.studentUid === student.uid && draft.orgId === student.orgId
+              ? draft : null;
+            if (active) {
+              const hw = await findHomework(student.orgId, student.uid, active.lessonId);
+              if (hw) {
+                // Задание уже выбрано — голосовой ответ тоже часть работы, а не
+                // вопрос репетитору.
+                await acceptHomeworkPart(student, hw, homeworkFile || fileRef, text);
+                return { statusCode: 200, body: 'OK' };
+              }
+              // Урок удалили или у него забрали ДЗ — черновик врёт, снимаем его.
+              await clearDraft(String(chatId));
+              await sendHomeworkPicker(student, '📚 Прежнее задание больше не доступно. Выберите, к какому заданию отнести работу:');
+              return { statusCode: 200, body: 'OK' };
+            }
+            if (homeworkFile) {
+              await sendHomeworkPicker(student, '📎 Файл получен. Выберите, к какому заданию его отнести:');
+              return { statusCode: 200, body: 'OK' };
+            }
+            // Текст без выбранного задания — это вопрос репетитору, идём дальше.
+          }
+        }
+      }
 
       // (a0) Voice message from staff → transcribe + act/answer via the copilot.
       // Directors get analytics + actions; teachers dictate grades ("Поставь Аброру 4").
@@ -657,7 +797,10 @@ export const handler: Handler = async (event: HandlerEvent) => {
             // Students get a tutor nudge so they discover homework help right here.
             const student = await resolveStudentByChat(String(chatId));
             if (student) {
-              await setStaffCommands(); // /schedule + /login — расписание доступно на любом тарифе
+              await setStudentCommands(); // /dz + /schedule + /login — без привязки к тарифу
+              await sendTg(
+                '📚 <b>Домашние задания — прямо здесь</b>\nНажмите /dz, выберите задание и пришлите работу: текстом, фото или файлом. Преподаватель увидит её и поставит оценку.',
+              );
               if (planHasAIManager(student.org.planId)) {
                 await sendTg(
                   '🤖 <b>AI-репетитор</b>\nСпросите меня о домашке или учёбе — текстом или голосом. Например:\n• «Объясни Present Perfect»\n• «Какие у меня оценки?»\n• «Когда у меня занятия на этой неделе?»\n• «Что мне подтянуть к тесту?»',
@@ -713,6 +856,18 @@ export const handler: Handler = async (event: HandlerEvent) => {
         } else {
           await reply('Это меню доступно только администраторам центра.');
         }
+        return { statusCode: 200, body: 'OK' };
+      }
+
+      // (c3.4) /dz — выбрать домашнее задание и сдать его прямо здесь.
+      if (text === '/dz' || text === '/homework' || text === '/hw') {
+        const student = await resolveStudentByChat(String(chatId));
+        if (!student) {
+          await reply('Сдавать домашние задания могут ученики центра. Если вы ученик — откройте ссылку-приглашение от вашего центра, чтобы привязать аккаунт.');
+          return { statusCode: 200, body: 'OK' };
+        }
+        await clearDraft(String(chatId)); // выбор начинается заново
+        await sendHomeworkPicker(student, '📚 <b>Ваши домашние задания</b>\nВыберите задание, которое хотите сдать:');
         return { statusCode: 200, body: 'OK' };
       }
 

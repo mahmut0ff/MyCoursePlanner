@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { handler } from '../api-homework';
+import { ingestHomeworkPart, type OpenHomework } from '../utils/homework-inbox';
 import { adminDb } from '../utils/firebase-admin';
 import { verifyAuth } from '../utils/auth';
 
@@ -7,6 +8,8 @@ import { verifyAuth } from '../utils/auth';
 // these tests exercise the full recipient-resolution chain.
 vi.mock('../utils/firebase-admin', () => ({
   adminDb: { collection: vi.fn() },
+  uploadServerFile: vi.fn(),
+  STORAGE_BUCKET: 'test-bucket',
 }));
 
 vi.mock('../utils/auth', () => ({
@@ -38,6 +41,7 @@ vi.mock('@google/generative-ai', () => ({
 }));
 
 const notificationsAdd = vi.fn().mockResolvedValue({ id: 'n1' });
+const submissionsAdd = vi.fn().mockResolvedValue({ id: 'sub-1' });
 
 /**
  * Firestore stub for one submission flow: a lesson authored by `teacher-author`
@@ -58,8 +62,8 @@ function stubFirestore(opts: { lesson?: any; group?: any; members?: any[] } = {}
       return {
         where: vi.fn().mockReturnThis(),
         limit: vi.fn().mockReturnThis(),
-        get: vi.fn().mockResolvedValue({ empty: true }),
-        add: vi.fn().mockResolvedValue({ id: 'sub-1' }),
+        get: vi.fn().mockResolvedValue({ empty: true, docs: [] }),
+        add: submissionsAdd,
       };
     }
     if (col === 'lessons') {
@@ -89,33 +93,45 @@ function stubFirestore(opts: { lesson?: any; group?: any; members?: any[] } = {}
   });
 }
 
-const submitEvent = () => ({
-  httpMethod: 'POST',
-  path: '/.netlify/functions/api-homework',
-  body: JSON.stringify({
-    lessonId: 'lesson-1',
-    lessonTitle: 'Алгебра, урок 3',
-    organizationId: 'org-1',
-    content: 'моё решение',
-  }),
-} as any);
+const homework = (over: Partial<OpenHomework> = {}): OpenHomework => ({
+  lessonId: 'lesson-1',
+  lessonTitle: 'Алгебра, урок 3',
+  homeworkTitle: 'Квадратные уравнения',
+  description: '',
+  dueDate: null,
+  points: 10,
+  groupId: 'group-1',
+  groupName: 'A2',
+  submissionId: null,
+  submittedAt: null,
+  isGraded: false,
+  finalScore: null,
+  ...over,
+});
+
+/** Приём работы из Telegram — единственный путь сдачи после переезда в бота. */
+const submit = () => ingestHomeworkPart({
+  orgId: 'org-1',
+  studentUid: 'student-1',
+  studentName: 'Иван',
+  chatId: '555',
+  homework: homework(),
+  text: 'моё решение',
+});
 
 /** Recipients of the in-app notification docs written so far. */
 const recipients = () => notificationsAdd.mock.calls.map(c => c[0].recipientId).sort();
 
-describe('api-homework — submission notifications', () => {
+describe('homework-inbox — submission notifications', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    (verifyAuth as any).mockResolvedValue({
-      uid: 'student-1', role: 'student', displayName: 'Иван', organizationId: 'org-1',
-    });
+    submissionsAdd.mockResolvedValue({ id: 'sub-1' });
   });
 
   it('notifies the lesson author and the group teacher, not just org admins', async () => {
     stubFirestore();
 
-    const res = await handler(submitEvent(), {} as any);
-    expect(res?.statusCode).toBe(200);
+    await submit();
 
     // Notifications are fire-and-forget, so wait for the chain to settle.
     await vi.waitFor(() => expect(notificationsAdd).toHaveBeenCalledTimes(3));
@@ -129,17 +145,17 @@ describe('api-homework — submission notifications', () => {
       members: [{ userId: 'admin-1', role: 'admin', status: 'active' }],
     });
 
-    await handler(submitEvent(), {} as any);
+    await submit();
 
     await vi.waitFor(() => expect(notificationsAdd).toHaveBeenCalledTimes(1));
     expect(recipients()).toEqual(['admin-1']);
   });
 
   it('never notifies the submitting student', async () => {
-    // A student re-submitting to a lesson they somehow authored.
+    // A student submitting to a lesson they somehow authored.
     stubFirestore({ lesson: { authorId: 'student-1', groupIds: [] } });
 
-    await handler(submitEvent(), {} as any);
+    await submit();
 
     await vi.waitFor(() => expect(notificationsAdd).toHaveBeenCalled());
     expect(recipients()).not.toContain('student-1');
@@ -148,9 +164,60 @@ describe('api-homework — submission notifications', () => {
   it('still notifies org admins when the lesson doc is missing', async () => {
     stubFirestore({ lesson: null });
 
-    await handler(submitEvent(), {} as any);
+    await submit();
 
     await vi.waitFor(() => expect(notificationsAdd).toHaveBeenCalledTimes(1));
     expect(recipients()).toEqual(['admin-1']);
+  });
+
+  it('records the submission as coming from Telegram, and late when past due', async () => {
+    stubFirestore();
+
+    await ingestHomeworkPart({
+      orgId: 'org-1',
+      studentUid: 'student-1',
+      studentName: 'Иван',
+      chatId: '555',
+      homework: homework({ dueDate: '2000-01-01' }),
+      text: 'поздняя работа',
+    });
+
+    const written = submissionsAdd.mock.calls[0][0];
+    expect(written.source).toBe('telegram');
+    expect(written.isLate).toBe(true);
+    expect(written.status).toBe('pending');
+    expect(written.telegramChatId).toBe('555');
+  });
+});
+
+describe('api-homework — web submission is closed', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    stubFirestore();
+  });
+
+  const submitEvent = () => ({
+    httpMethod: 'POST',
+    path: '/.netlify/functions/api-homework',
+    body: JSON.stringify({
+      lessonId: 'lesson-1',
+      lessonTitle: 'Алгебра, урок 3',
+      organizationId: 'org-1',
+      content: 'моё решение',
+    }),
+  } as any);
+
+  it('turns a student away to the Telegram bot instead of accepting the work', async () => {
+    (verifyAuth as any).mockResolvedValue({
+      uid: 'student-1', role: 'student', displayName: 'Иван', organizationId: 'org-1',
+    });
+
+    const res = await handler(submitEvent(), {} as any);
+
+    expect(res?.statusCode).toBe(410);
+    expect(JSON.parse(res!.body as string).error).toMatch(/Telegram/);
+    // Ключевое: работа не записана и никого не потревожила.
+    expect(submissionsAdd).not.toHaveBeenCalled();
+    expect(notificationsAdd).not.toHaveBeenCalled();
   });
 });

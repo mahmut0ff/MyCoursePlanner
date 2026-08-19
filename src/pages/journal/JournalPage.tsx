@@ -12,13 +12,16 @@ import {
   orgGetGradeSchema,
   orgGetGrades,
   orgSaveGrade,
-  apiGetLessons
+  apiGetLessons,
+  apiOrgGetHomeworks
 } from '../../lib/api';
-import type { Course, Group, UserProfile, JournalEntry, AttendanceStatus, ParticipationLevel, GradeSchema, GradeEntry } from '../../types';
+import type { Course, Group, UserProfile, JournalEntry, AttendanceStatus, ParticipationLevel, GradeSchema, GradeEntry, HomeworkStatus, HomeworkSubmission } from '../../types';
+import { isHomeworkGrade } from '../../types';
 import GradeCell from '../../components/gradebook/GradeCell';
 import SaveStatus from '../../components/gradebook/SaveStatus';
 import { useSaveQueue, type SaveQueueState } from '../../hooks/useSaveQueue';
-import { ClipboardList, Calendar, AlertCircle, AlertTriangle, RefreshCcw, UserCheck, CheckCircle2, XCircle, Clock, FileWarning, Trophy, TrendingUp, Loader2 } from 'lucide-react';
+import { ClipboardList, Calendar, AlertCircle, AlertTriangle, RefreshCcw, UserCheck, CheckCircle2, XCircle, Clock, FileWarning, Trophy, TrendingUp, Loader2, Paperclip } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { useAuth } from '../../contexts/AuthContext';
 import { useBranch } from '../../contexts/BranchContext';
@@ -55,6 +58,17 @@ const attendanceIcons: Record<AttendanceStatus, React.ReactNode> = {
 
 
 
+/**
+ * Отметки о сдаче ДЗ. Иконка и цвет — те же, что у посещаемости, чтобы строка
+ * читалась одним взглядом: зелёное — сделано, красное — нет.
+ */
+const homeworkStatusMeta: Record<HomeworkStatus, { label: string; icon: React.ReactNode; activeClass: string }> = {
+  done: { label: 'Сдал', icon: <CheckCircle2 className="w-4 h-4" />, activeClass: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' },
+  partial: { label: 'Частично', icon: <FileWarning className="w-4 h-4" />, activeClass: 'bg-amber-500/10 text-amber-600 dark:text-amber-400' },
+  late: { label: 'С опозданием', icon: <Clock className="w-4 h-4" />, activeClass: 'bg-sky-500/10 text-sky-600 dark:text-sky-400' },
+  missing: { label: 'Не сдал', icon: <XCircle className="w-4 h-4" />, activeClass: 'bg-red-500/10 text-red-600 dark:text-red-400' },
+};
+
 const JournalPage: React.FC = () => {
   const { t } = useTranslation();
   const { role, profile } = useAuth();
@@ -88,6 +102,12 @@ const JournalPage: React.FC = () => {
   const [allJournalEntries, setAllJournalEntries] = useState<JournalEntry[]>([]);
   const [courseJournalDates, setCourseJournalDates] = useState<string[]>([]);
   const [grades, setGrades] = useState<Record<string, GradeEntry>>({});
+  // Отметки за ДЗ живут отдельной картой: ключ у них тот же (ученик + урок),
+  // и в одной карте они затирали бы оценку за занятие.
+  const [homeworkGrades, setHomeworkGrades] = useState<Record<string, GradeEntry>>({});
+  // Что ученик прислал в Telegram по выбранному уроку — чтобы преподаватель
+  // отмечал сдачу, видя работу, а не по памяти.
+  const [submissions, setSubmissions] = useState<Record<string, HomeworkSubmission>>({});
   const [courseLessons, setCourseLessons] = useState<any[]>([]);
   const [syncStatus, setSyncStatus] = useState<Record<string, boolean>>({});
   const [entrySyncStatus, setEntrySyncStatus] = useState<Record<string, boolean>>({});
@@ -238,10 +258,15 @@ const JournalPage: React.FC = () => {
       setEntries(entriesMap);
 
       const gradesMap: Record<string, GradeEntry> = {};
+      const homeworkMap: Record<string, GradeEntry> = {};
       (gradesRes as GradeEntry[]).forEach(g => {
-         if (g.lessonId) gradesMap[`${g.studentId}_${g.lessonId}`] = g;
+         if (!g.lessonId) return;
+         const key = `${g.studentId}_${g.lessonId}`;
+         if (isHomeworkGrade(g)) homeworkMap[key] = g;
+         else gradesMap[key] = g;
       });
       setGrades(gradesMap);
+      setHomeworkGrades(homeworkMap);
     } catch (e: any) {
       if (e.message?.includes('403') || e.message?.includes('Forbidden')) {
         setError(t('common.accessDenied', 'Нет доступа к данным'));
@@ -324,6 +349,26 @@ const JournalPage: React.FC = () => {
     setSelectedLessonId(found);
   }, [selectedCourseId, selectedGroupId, date, groupStudents.length]);
 
+  // Сдачи по выбранному уроку: ученики присылают работы в Telegram, и колонка
+  // «ДЗ» должна показывать, что именно пришло, до того как преподаватель
+  // поставит отметку. Урок не выбран — показывать нечего.
+  useEffect(() => {
+    const orgId = profile?.activeOrgId;
+    if (!selectedLessonId || !orgId) { setSubmissions({}); return; }
+    let cancelled = false;
+    apiOrgGetHomeworks(orgId, selectedLessonId)
+      .then((res: any) => {
+        if (cancelled) return;
+        const map: Record<string, HomeworkSubmission> = {};
+        (Array.isArray(res) ? res : []).forEach((s: HomeworkSubmission) => {
+          if (s?.studentId) map[s.studentId] = s;
+        });
+        setSubmissions(map);
+      })
+      .catch(() => { if (!cancelled) setSubmissions({}); });
+    return () => { cancelled = true; };
+  }, [selectedLessonId, profile?.activeOrgId]);
+
   const handleAttachLesson = async (lessonId: string) => {
     const finalLessonId = lessonId || null;
     setSelectedLessonId(finalLessonId);
@@ -382,6 +427,7 @@ const JournalPage: React.FC = () => {
     if (field === 'attendance') newEntry.attendance = value as AttendanceStatus;
     if (field === 'participation') newEntry.participation = value as ParticipationLevel | undefined;
     if (field === 'note') newEntry.note = value as string;
+    if (field === 'homeworkStatus') newEntry.homeworkStatus = value as HomeworkStatus | undefined;
 
     // Optimistic Update
     setEntries(prev => ({ ...prev, [studentId]: newEntry }));
@@ -460,6 +506,66 @@ const JournalPage: React.FC = () => {
         setSyncStatus(prev => ({ ...prev, [key]: false }));
       },
     });
+  };
+
+  /**
+   * Оценка за домашнее задание. Пишется в ту же коллекцию, что и обычная, но с
+   * kind='homework': в средний балл она не идёт, а в KPI преподавателя попадает
+   * в колонку «ДЗ». Ключ очереди с префиксом hw_, чтобы сохранение оценки за
+   * урок и за ДЗ по одному и тому же ученику не отменяли друг друга.
+   */
+  const handleHomeworkGradeChange = (
+    studentId: string, itemId: string, value: number | null,
+    displayValue: string | undefined, status: any, comment?: string,
+  ) => {
+    if (!canEdit) return;
+
+    const mapKey = `${studentId}_${itemId}`;
+    const queueKey = `hw_${mapKey}`;
+    const prevEntry = homeworkGrades[mapKey];
+    const submission = submissions[studentId];
+
+    const newEntry: GradeEntry = {
+      ...(prevEntry || {}),
+      id: prevEntry?.id || '',
+      studentId,
+      courseId: selectedCourseId,
+      lessonId: itemId,
+      value,
+      displayValue,
+      status,
+      comment,
+      type: schema.gradingType,
+      maxValue: schema.scale.max,
+      kind: 'homework',
+      ...(submission?.id ? { homeworkSubmissionId: submission.id } : {}),
+      version: (prevEntry?.version || 0) + 1,
+      organizationId: '',
+      createdBy: '',
+      createdAt: '',
+      updatedAt: '',
+    };
+
+    setHomeworkGrades(prev => ({ ...prev, [mapKey]: newEntry }));
+    setSyncStatus(prev => ({ ...prev, [queueKey]: true }));
+
+    gradeQueue.queue(queueKey, newEntry, {
+      onSuccess: (result: any) => {
+        setHomeworkGrades(prev => ({ ...prev, [mapKey]: result as GradeEntry }));
+        setSyncStatus(prev => ({ ...prev, [queueKey]: false }));
+      },
+      onError: () => {
+        // См. комментарий в handleEntryChange: откат убран намеренно.
+        setSyncStatus(prev => ({ ...prev, [queueKey]: false }));
+      },
+    });
+
+    // Оценка за ДЗ — это и есть подтверждение, что работа сдана: не заставляем
+    // преподавателя щёлкать статус отдельно, если он его ещё не ставил.
+    const entry = entries[studentId];
+    if (value !== null && !entry?.homeworkStatus) {
+      handleEntryChange(studentId, 'homeworkStatus', submission?.isLate ? 'late' : 'done');
+    }
   };
 
   const handleMarkAllPresent = async () => {
@@ -715,7 +821,7 @@ const JournalPage: React.FC = () => {
         ) : (
           <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl overflow-hidden shadow-sm">
             <div className="overflow-x-auto">
-              <table className="w-full text-left text-sm min-w-[850px]">
+              <table className="w-full text-left text-sm min-w-[1080px]">
                 <thead className="bg-slate-50 dark:bg-slate-900/50 border-b border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400">
                   <tr>
                     <th className="px-5 py-4 font-medium w-[250px]">Студент</th>
@@ -732,6 +838,17 @@ const JournalPage: React.FC = () => {
                               : describeSchema(schema)}
                           </span>
                         )}
+                      </div>
+                    </th>
+                    <th className="px-5 py-4 font-medium text-center w-56 border-r border-slate-200 dark:border-slate-700">
+                      <div className="flex flex-col items-center">
+                        <span>Домашнее задание</span>
+                        <span
+                          className="text-[10px] text-slate-400 mt-1 font-normal"
+                          title="Работы приходят от учеников в Telegram-бот. Отметка и оценка за ДЗ не влияют на средний балл, но идут в KPI преподавателя."
+                        >
+                          сдача и отметка
+                        </span>
                       </div>
                     </th>
                     <th className="px-5 py-4 font-medium text-center w-48">Присутствие</th>
@@ -779,6 +896,79 @@ const JournalPage: React.FC = () => {
                                 {grades[`${student.uid}_${selectedLessonId || date}`]?.displayValue || grades[`${student.uid}_${selectedLessonId || date}`]?.value || <span className="opacity-50">—</span>}
                              </div>
                            )}
+                        </td>
+
+                        {/* Homework: что прислали в Telegram + отметка и оценка за ДЗ */}
+                        <td className="px-3 py-3 border-r border-slate-200 dark:border-slate-700 align-top">
+                          {(() => {
+                            const hwKey = `${student.uid}_${selectedLessonId || date}`;
+                            const submission = submissions[student.uid];
+                            const status = entry?.homeworkStatus;
+                            const attachments = submission?.attachments?.length || 0;
+                            return (
+                              <div className="flex flex-col items-center gap-2">
+                                {/* Что пришло от ученика */}
+                                {submission ? (
+                                  <Link
+                                    to="/homework/review"
+                                    className="inline-flex items-center gap-1.5 text-[11px] font-medium text-primary-600 dark:text-primary-400 hover:underline"
+                                    title={`Сдано ${new Date(submission.submittedAt).toLocaleString('ru-RU')}${submission.isLate ? ' — после срока' : ''}`}
+                                  >
+                                    <Paperclip className="w-3.5 h-3.5" />
+                                    {attachments > 0 ? `Работа · ${attachments} файл(ов)` : 'Работа (текст)'}
+                                    {submission.isLate && <span className="text-amber-600 dark:text-amber-400">· поздно</span>}
+                                  </Link>
+                                ) : (
+                                  <span className="text-[11px] text-slate-400">
+                                    {selectedLessonId ? 'Ничего не прислал' : 'Урок не выбран'}
+                                  </span>
+                                )}
+
+                                {/* Отметка: сдал / частично / с опозданием / не сдал */}
+                                <div className={`inline-flex gap-1 rounded-xl p-1 border ${!canEdit ? 'bg-transparent border-transparent' : 'bg-slate-100 dark:bg-slate-900 border-slate-200 dark:border-slate-700'}`}>
+                                  {(Object.keys(homeworkStatusMeta) as HomeworkStatus[]).map(s => {
+                                    const meta = homeworkStatusMeta[s];
+                                    const isActive = status === s;
+                                    if (!canEdit && !isActive) return null;
+                                    if (!canEdit && isActive) {
+                                      return <div key={s} className={`p-2 rounded-lg ${meta.activeClass}`} title={meta.label}>{meta.icon}</div>;
+                                    }
+                                    return (
+                                      <button
+                                        key={s}
+                                        // Повторный клик снимает отметку: ошибиться на четырёх
+                                        // кнопках легко, а иначе её было бы не убрать.
+                                        onClick={() => handleEntryChange(student.uid, 'homeworkStatus', isActive ? null : s)}
+                                        className={`p-2 rounded-lg transition-all ${isActive ? meta.activeClass : 'opacity-40 hover:opacity-100 hover:bg-slate-200/50 dark:hover:bg-slate-800'}`}
+                                        title={meta.label}
+                                      >
+                                        {meta.icon}
+                                      </button>
+                                    );
+                                  })}
+                                </div>
+
+                                {/* Оценка за ДЗ — отдельная от оценки за занятие */}
+                                <div className="w-28">
+                                  {canEdit ? (
+                                    <GradeCell
+                                      studentId={student.uid}
+                                      itemId={`hw_${selectedLessonId || date}`}
+                                      value={homeworkGrades[hwKey]}
+                                      schema={schema}
+                                      isSyncing={syncStatus[`hw_${hwKey}`]}
+                                      onChange={(val, disp, st, comment) =>
+                                        handleHomeworkGradeChange(student.uid, selectedLessonId || date, val, disp, st, comment)}
+                                    />
+                                  ) : (
+                                    <div className="w-full min-h-[40px] flex items-center justify-center text-slate-500 font-bold">
+                                      {homeworkGrades[hwKey]?.displayValue || homeworkGrades[hwKey]?.value || <span className="opacity-50">—</span>}
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            );
+                          })()}
                         </td>
 
                         {/* Attendance */}

@@ -5,6 +5,8 @@
 import { initializeApp, cert, getApps, type App } from 'firebase-admin/app';
 import { getFirestore, type Firestore } from 'firebase-admin/firestore';
 import { getAuth, type Auth } from 'firebase-admin/auth';
+import { getStorage } from 'firebase-admin/storage';
+import { randomUUID } from 'crypto';
 
 let app: App;
 
@@ -22,6 +24,54 @@ if (getApps().length === 0) {
 
 export const adminDb: Firestore = getFirestore(app);
 export const adminAuth: Auth = getAuth(app);
+
+/**
+ * Бакет Storage для серверных загрузок (файлы ДЗ из Telegram).
+ * initializeApp здесь намеренно без storageBucket — приложение годами работало
+ * без серверных загрузок, и добавлять его в credential-инициализацию значит
+ * менять поведение всех функций. Имя выводим из проекта, как это делает сама
+ * Firebase, но даём переопределить переменной окружения.
+ */
+export const STORAGE_BUCKET: string =
+  process.env.FIREBASE_STORAGE_BUCKET ||
+  process.env.VITE_FIREBASE_STORAGE_BUCKET ||
+  (process.env.FIREBASE_PROJECT_ID ? `${process.env.FIREBASE_PROJECT_ID}.firebasestorage.app` : '');
+
+export interface UploadedFile {
+  url: string;
+  storagePath: string;
+  size: number;
+  contentType: string;
+}
+
+/**
+ * Положить буфер в Storage и вернуть ссылку вида getDownloadURL.
+ *
+ * Ссылка с download-токеном, а не signed URL: подписанная ссылка живёт неделю и
+ * протухает прямо в карточке сдачи, а токен постоянен — ровно то же, что отдаёт
+ * клиентский SDK при загрузке из браузера. Правила Storage admin SDK обходит,
+ * поэтому путь `homeworks/{lessonId}/…` остаётся тем же, что у веб-загрузок.
+ */
+export async function uploadServerFile(
+  storagePath: string,
+  buffer: Buffer,
+  contentType: string,
+): Promise<UploadedFile> {
+  if (!STORAGE_BUCKET) throw new Error('Storage bucket is not configured (FIREBASE_STORAGE_BUCKET)');
+  const token = randomUUID();
+  const file = getStorage(app).bucket(STORAGE_BUCKET).file(storagePath);
+  await file.save(buffer, {
+    resumable: false,
+    contentType,
+    metadata: { contentType, metadata: { firebaseStorageDownloadTokens: token } },
+  });
+  return {
+    url: `https://firebasestorage.googleapis.com/v0/b/${STORAGE_BUCKET}/o/${encodeURIComponent(storagePath)}?alt=media&token=${token}`,
+    storagePath,
+    size: buffer.length,
+    contentType,
+  };
+}
 
 /**
  * Batch-fetch documents by ID from a collection in a single round-trip using

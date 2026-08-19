@@ -10,6 +10,7 @@ import {
   apiAwardXP 
 } from '../../lib/api';
 import type { Course, Group, UserProfile, GradeSchema, GradeEntry } from '../../types';
+import { isHomeworkGrade } from '../../types';
 import GradebookGrid from '../../components/gradebook/GradebookGrid';
 import GradeSchemaConfig from '../../components/gradebook/GradeSchemaConfig';
 import { BookOpen, Settings, AlertCircle, RefreshCcw } from 'lucide-react';
@@ -97,7 +98,9 @@ const GradebookPage: React.FC = () => {
       setSchema(schemaRes || makeDefaultSchema(defaultPresetId, courseId));
 
       const gradesMap: Record<string, GradeEntry> = {};
-      (gradesRes as GradeEntry[]).forEach(g => {
+      // Только оценки за занятия: у отметки за ДЗ тот же ключ (ученик + урок),
+      // и без фильтра она затирала бы в этой таблице обычную оценку.
+      (gradesRes as GradeEntry[]).filter(g => !isHomeworkGrade(g)).forEach(g => {
         gradesMap[`${g.studentId}_${g.lessonId || g.assignmentId}`] = g;
       });
       setGrades(gradesMap);

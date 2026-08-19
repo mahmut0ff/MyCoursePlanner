@@ -181,6 +181,10 @@ export const handler: Handler = async (event: HandlerEvent) => {
       const courseId: string = g.courseId || '';
       if (!studentId || !courseId) continue;
       if (!inScope.has(studentId)) continue;
+      // Оценки за ДЗ — отдельная сущность: они идут в KPI преподавателя, а не в
+      // успеваемость ученика. Смешать их со средним баллом значит поднять
+      // рейтинг тому, кто аккуратно сдаёт домашку, но проваливает занятия.
+      if (g.kind === 'homework') continue;
 
       const ms = gradeInstant(g);
       // Оценка без даты попадает только в «Всё время»: приписать её текущему

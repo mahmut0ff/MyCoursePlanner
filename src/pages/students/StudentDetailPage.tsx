@@ -117,7 +117,7 @@ const StudentDetailPage: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { t } = useTranslation();
-  const { role, organizationId } = useAuth();
+  const { role, organizationId, profile } = useAuth();
   const { activeBranchId, setActiveBranch, branches } = useBranch();
   const { loaded: permsLoaded, can, canRead, canWrite, canDelete } = usePermissions();
   const { canAccess } = usePlanGate();
@@ -349,6 +349,14 @@ const StudentDetailPage: React.FC = () => {
 
   /* ─── Действия ─── */
   const expelled = (student as any)?.status === 'expelled';
+
+  // Выдать логин и сменить пароль вправе не только ведущий контингент: перед
+  // экзаменом доступы раздаёт преподаватель, и гонять его за администратором
+  // ради этого бессмысленно. Область — свои группы, ровно как на сервере
+  // (denyStudentAccessManagement в api-org.ts).
+  const teachesThisStudent = !!profile?.uid && groups.some(g => (g.teacherIds || []).includes(profile.uid));
+  const canManageAccess = permsLoaded && !expelled && (canEditRoster || teachesThisStudent);
+
   const hasLogin = !!student?.email && (student as any)?.offlineStudent !== true;
 
   const handleAssignGroup = async () => {
@@ -955,7 +963,7 @@ const StudentDetailPage: React.FC = () => {
         <SectionHeading title="Доступ и связи" />
         <div className="rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 divide-y divide-slate-100 dark:divide-slate-700">
           {/* Вход в систему */}
-          {canEditRoster && (
+          {canManageAccess && (
             <div className="px-4 py-3.5 flex items-start justify-between gap-3 flex-wrap">
               <div className="min-w-0">
                 <p className="text-sm font-semibold text-slate-900 dark:text-white flex items-center gap-2">

@@ -8,7 +8,8 @@ import { useAuth } from '../../contexts/AuthContext';
 import { orgGetGroups, orgGetResults, apiGradeAttempt } from '../../lib/api';
 import type { Exam, Question, Group, ExamAttempt } from '../../types';
 import { formatDate } from '../../utils/grading';
-import { ArrowLeft, Edit, Trash2, Play, Clock, Target, HelpCircle, Copy, ImageIcon, Volume2, Mic, X, QrCode, Users, Award, ChevronDown } from 'lucide-react';
+import { ArrowLeft, Edit, Trash2, Play, Clock, Target, HelpCircle, Copy, ImageIcon, Volume2, Mic, X, QrCode, Users, Award, ChevronDown, KeyRound } from 'lucide-react';
+import GroupAccessModal from '../../components/students/GroupAccessModal';
 import ExamShareModal from '../../components/exams/ExamShareModal';
 
 const ExamViewPage: React.FC = () => {
@@ -20,6 +21,9 @@ const ExamViewPage: React.FC = () => {
   const [questions, setQuestions] = useState<Question[]>([]);
   const [loading, setLoading] = useState(true);
   const [starting, setStarting] = useState(false);
+  // Раздать логины прямо перед стартом: у части учеников входа ещё нет,
+  // а без него они не зайдут в комнату.
+  const [showGroupAccess, setShowGroupAccess] = useState(false);
   const [showStartModal, setShowStartModal] = useState(false);
   const [groups, setGroups] = useState<Group[]>([]);
   const [notifyOption, setNotifyOption] = useState<'all' | 'group' | 'none'>('none');
@@ -397,6 +401,18 @@ const ExamViewPage: React.FC = () => {
                       <option key={g.id} value={g.id}>{g.name}</option>
                     ))}
                   </select>
+                  {/* Без логина ученик в комнату не войдёт — выдать доступы можно
+                      здесь же, не уходя с экрана запуска. */}
+                  {selectedGroupId && (
+                    <button
+                      type="button"
+                      onClick={() => setShowGroupAccess(true)}
+                      className="mt-2 inline-flex items-center gap-1.5 text-xs font-medium text-primary-600 dark:text-primary-400 hover:underline"
+                    >
+                      <KeyRound className="w-3.5 h-3.5" />
+                      Логины и пароли для этой группы
+                    </button>
+                  )}
                 </div>
               )}
 
@@ -435,6 +451,14 @@ const ExamViewPage: React.FC = () => {
             </div>
           </div>
         </div>
+      )}
+
+      {showGroupAccess && selectedGroupId && (
+        <GroupAccessModal
+          groupId={selectedGroupId}
+          groupName={groups.find(g => g.id === selectedGroupId)?.name || ''}
+          onClose={() => setShowGroupAccess(false)}
+        />
       )}
     </div>
   );

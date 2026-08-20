@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { orgGetGroup, orgGetCourses, orgUpdateGroup, orgGetTeachers, orgGetStudents, apiGetSyllabuses, orgResetStudentPassword, orgGetSettings } from '../../lib/api';
 import { ArrowLeft, Users, BookOpen, Calendar, Link as LinkIcon, Edit2, Check, X, Plus, Briefcase, GraduationCap, Building2, CheckCircle2, Circle, ExternalLink, KeyRound, Copy, Loader2, RefreshCw, Archive, ChevronDown, PlayCircle } from 'lucide-react';
+import GroupAccessModal from '../../components/students/GroupAccessModal';
 import type { Group, GroupStatus, Course, UserProfile, Syllabus } from '../../types';
 import toast from 'react-hot-toast';
 import { useAuth } from '../../contexts/AuthContext';
@@ -48,6 +49,7 @@ const GroupDetailPage: React.FC = () => {
   const [courses, setCourses] = useState<Course[]>([]);
   const [allTeachers, setAllTeachers] = useState<UserProfile[]>([]);
   const [allStudents, setAllStudents] = useState<UserProfile[]>([]);
+  const [showGroupAccess, setShowGroupAccess] = useState(false);
   const [loading, setLoading] = useState(true);
   // Org policies (admin-controlled): may teachers manage groups they own, and may
   // they archive / change the status of groups they teach?
@@ -581,11 +583,24 @@ const GroupDetailPage: React.FC = () => {
                      <GraduationCap className="w-5 h-5 text-emerald-500" />
                      <h2 className="font-extrabold uppercase tracking-wider text-sm">Ученики ({currentStudents.length})</h2>
                   </div>
-                  {canManageGroup && (
-                    <button onClick={() => setShowAddStudent(true)} className="p-1 text-slate-400 hover:text-emerald-500 hover:bg-emerald-50 dark:hover:bg-emerald-500/10 rounded transition-colors" title="Добавить ученика">
-                       <Plus className="w-5 h-5" />
-                    </button>
-                  )}
+                  <div className="flex items-center gap-1">
+                    {/* Раздать доступы перед экзаменом — работа преподавателя,
+                        поэтому кнопка тут, а не только в админском разделе. */}
+                    {currentStudents.length > 0 && (
+                      <button
+                        onClick={() => setShowGroupAccess(true)}
+                        className="p-1 text-slate-400 hover:text-primary-500 hover:bg-primary-50 dark:hover:bg-primary-500/10 rounded transition-colors"
+                        title="Выдать логины и пароли группе"
+                      >
+                        <KeyRound className="w-5 h-5" />
+                      </button>
+                    )}
+                    {canManageGroup && (
+                      <button onClick={() => setShowAddStudent(true)} className="p-1 text-slate-400 hover:text-emerald-500 hover:bg-emerald-50 dark:hover:bg-emerald-500/10 rounded transition-colors" title="Добавить ученика">
+                         <Plus className="w-5 h-5" />
+                      </button>
+                    )}
+                  </div>
                </div>
                <div className="divide-y divide-slate-50 dark:divide-slate-700/50">
                   {currentStudents.length === 0 ? (
@@ -709,6 +724,15 @@ const GroupDetailPage: React.FC = () => {
              </div>
           </div>
         </div>
+      )}
+
+      {/* Выдача логинов и паролей всей группе — раздать перед экзаменом */}
+      {showGroupAccess && group && (
+        <GroupAccessModal
+          groupId={group.id}
+          groupName={group.name}
+          onClose={() => setShowGroupAccess(false)}
+        />
       )}
 
       {/* Add Student Modal */}

@@ -12,6 +12,8 @@ import {
   type AuthUser,
 } from './utils/auth';
 import { createNotification, notifyOrgAdmins, notifyGroupMembers } from './utils/notifications';
+import { issueStudentLogin } from './utils/onboarding';
+import { sendTelegramToUser } from './utils/telegram';
 import { recordTeacherActivity } from './utils/teacher-activity';
 import { FieldValue } from 'firebase-admin/firestore';
 import { getOrgLimits } from './utils/plan-limits';
@@ -391,6 +393,35 @@ async function canWriteEvent(
     if (!(await teachesGroup(orgId, id, user.uid))) return false;
   }
   return true;
+}
+
+/**
+ * Кто вправе распоряжаться входом ученика (выдать логин, сменить пароль).
+ *
+ * Ведущий контингент — по всей организации. Преподаватель — по ученикам СВОИХ
+ * групп: раздать доступы перед экзаменом это его работа, и требовать ради неё
+ * `students:write` (право заводить и править кого угодно в организации) значит
+ * выдать несоразмерно много. Область — та же, что у остальных «своих» действий.
+ *
+ * Возвращает готовый отказ или null, если можно.
+ */
+async function denyStudentAccessManagement(
+  user: any, orgId: string, studentUids: string[],
+): Promise<{ statusCode: number; body: string } | null> {
+  if (isRosterManager(user) && can(user, 'students', 'write')) return null;
+  if (!hasRole(user, 'teacher')) return forbidden('Недостаточно прав для этого действия');
+
+  const groupsSnap = await adminDb.collection('groups')
+    .where('teacherIds', 'array-contains', user.uid).get().catch(() => null);
+  const own = new Set<string>();
+  for (const d of (groupsSnap?.docs || [])) {
+    const g = d.data() || {};
+    if ((g.organizationId || '') !== orgId) continue;
+    for (const id of (Array.isArray(g.studentIds) ? g.studentIds : [])) if (id) own.add(String(id));
+  }
+  const outsider = studentUids.find(uid => !own.has(uid));
+  if (outsider) return forbidden('Выдавать доступ можно только ученикам своих групп');
+  return null;
 }
 
 /* ─── Bulk roster operations ─────────────────────────────────────────────── */
@@ -1375,9 +1406,12 @@ const handler: Handler = async (event: HandlerEvent) => {
     // ничего мигрировать не нужно — все ссылки на студента остаются валидными.
     if (action === 'grantStudentLogin') {
       const err = requireOrgStaff(user); if (err) return err;
-      if (!can(user, 'students', 'write')) return forbidden('Недостаточно прав для этого действия');
       const body = JSON.parse(event.body || '{}');
       if (!body.uid) return badRequest('uid required');
+      // Преподаватель выдаёт доступ ученикам своих групп — иначе перед экзаменом
+      // он вынужден искать администратора.
+      const denied = await denyStudentAccessManagement(user, orgId, [String(body.uid)]);
+      if (denied) return denied;
       if (typeof body.password !== 'string' || body.password.length < 6) {
         return badRequest('Пароль — минимум 6 символов');
       }
@@ -1432,32 +1466,87 @@ const handler: Handler = async (event: HandlerEvent) => {
       return ok({ uid: body.uid, username, email: loginEmail });
     }
 
+    /**
+     * Выдать доступы всей группе разом — сценарий «завтра экзамен, у половины
+     * класса нет входа». Возвращает логины и пароли открытым текстом ОДИН раз:
+     * действующий пароль показать нельзя, он хранится хешем.
+     *
+     * По умолчанию трогает только тех, у кого входа ещё нет: сбрасывать пароль
+     * тому, кто уже успешно заходит, — значит выкинуть его из аккаунта ради
+     * удобства раздачи. Полный сброс возможен, но только явным `resetExisting`.
+     */
+    if (action === 'bulkGroupLogins') {
+      const err = requireOrgStaff(user); if (err) return err;
+      const body = JSON.parse(event.body || '{}');
+      if (!body.groupId) return badRequest('groupId required');
+
+      const groupDoc = await adminDb.collection('groups').doc(String(body.groupId)).get();
+      if (!groupDoc.exists || groupDoc.data()?.organizationId !== orgId) return notFound();
+      const group = groupDoc.data()!;
+      const studentIds: string[] = (Array.isArray(group.studentIds) ? group.studentIds : []).map(String);
+      if (studentIds.length === 0) return ok({ groupName: group.name || '', issued: [], skipped: [], sentToTelegram: 0 });
+
+      const denied = await denyStudentAccessManagement(user, orgId, studentIds);
+      if (denied) return denied;
+
+      const resetExisting = body.resetExisting === true;
+      const sendTelegram = body.sendTelegram !== false; // по умолчанию шлём тем, у кого бот привязан
+
+      const profiles = await getDocsByIds('users', studentIds);
+      const issued: Array<{ uid: string; name: string; username: string; password: string; created: boolean; sent: boolean }> = [];
+      const skipped: Array<{ uid: string; name: string; username: string; reason: string }> = [];
+
+      for (const uid of studentIds) {
+        const p = profiles[uid] || {};
+        const name = p.displayName || 'Ученик';
+        const hasLogin = !!(p.email && p.offlineStudent !== true);
+        if (hasLogin && !resetExisting) {
+          skipped.push({ uid, name, username: p.username || '', reason: 'Вход уже есть' });
+          continue;
+        }
+        try {
+          const cred = await issueStudentLogin(uid, { displayName: name });
+          let sent = false;
+          if (sendTelegram && p.telegramChatId) {
+            sent = await sendTelegramToUser(orgId, uid,
+              `🔑 <b>Ваш вход в SabakHub</b>\n\nЛогин: <code>${cred.username}</code>\nПароль: <code>${cred.password}</code>\n\n` +
+              'Через него можно зайти в приложение и пройти экзамен. Пароль лучше сменить в разделе «Профиль».',
+            ).catch(() => false);
+          }
+          issued.push({ uid, name, username: cred.username, password: cred.password, created: cred.created, sent });
+        } catch (e: any) {
+          skipped.push({ uid, name, username: p.username || '', reason: e?.message || 'Не удалось выдать доступ' });
+        }
+      }
+
+      await recordTeacherActivity({
+        organizationId: orgId, actorId: user.uid, actorName: user.displayName, actorRole: user.role,
+        type: 'student_enrolled', branchId: user.primaryBranchId, entityId: String(body.groupId),
+        entityLabel: group.name || null, count: issued.length,
+        meta: { action: 'bulkGroupLogins', issued: issued.length, reset: resetExisting },
+      }).catch(() => {});
+
+      return ok({
+        groupName: group.name || '',
+        issued,
+        skipped,
+        sentToTelegram: issued.filter(i => i.sent).length,
+      });
+    }
+
     if (action === 'resetStudentPassword') {
       const body = JSON.parse(event.body || '{}');
       if (!body.uid || !body.password) return badRequest('uid and password required');
       if (String(body.password).length < 6) return badRequest('Пароль — минимум 6 символов');
 
-      // Who may reset a student's password:
-      //  • roster manager with students:write → any student in the org
-      //  • teacher → only students enrolled in a group they teach (own-groups scope)
-      const canManageAllStudents = isRosterManager(user) && can(user, 'students', 'write');
-      const isTeacher = hasRole(user, 'teacher');
-      if (!canManageAllStudents && !isTeacher) return forbidden('Недостаточно прав для этого действия');
+      // Кто вправе: ведущий контингент — по всей организации, преподаватель —
+      // по ученикам своих групп. Та же проверка, что и у выдачи логина.
+      const denied = await denyStudentAccessManagement(user, orgId, [String(body.uid)]);
+      if (denied) return denied;
 
       // Student must belong to this org.
       const member = await adminDb.collection('orgMembers').doc(orgId).collection('members').doc(body.uid).get();
       if (!member.exists) return notFound();
-
-      // Teachers are scoped to their own groups: allow the reset only when the teacher
-      // shares a group with this student (assigned as teacher + student is enrolled).
-      if (!canManageAllStudents) {
-        const groupsSnap = await adminDb.collection('groups').where('organizationId', '==', orgId).get();
-        const sharesGroup = groupsSnap.docs.some((g: any) => {
-          const gd = g.data();
-          return (gd.teacherIds || []).includes(user.uid) && (gd.studentIds || []).includes(body.uid);
-        });
-        if (!sharesGroup) return forbidden('Можно менять пароль только студентам из своих групп');
-      }
 
       // Only login-enabled students have an auth account to update.
       const userDoc = await adminDb.collection('users').doc(body.uid).get();

@@ -475,6 +475,30 @@ export const orgResetStudentPassword = (uid: string, password: string) => orgReq
 export const orgGrantStudentLogin = (data: { uid: string; username: string; password: string; email?: string }) =>
   orgReq('grantStudentLogin', 'POST', data);
 
+export interface BulkGroupLogin {
+  uid: string;
+  name: string;
+  username: string;
+  password: string;
+  created: boolean;
+  sent: boolean;
+}
+
+export interface BulkGroupLoginsResult {
+  groupName: string;
+  issued: BulkGroupLogin[];
+  skipped: { uid: string; name: string; username: string; reason: string }[];
+  sentToTelegram: number;
+}
+
+/**
+ * Выдать доступы всей группе разом. Пароли приходят открытым текстом ОДИН раз —
+ * показать действующий нельзя, он хранится хешем.
+ */
+export const orgBulkGroupLogins = (
+  data: { groupId: string; resetExisting?: boolean; sendTelegram?: boolean },
+): Promise<BulkGroupLoginsResult> => orgReq('bulkGroupLogins', 'POST', data);
+
 // Teachers
 export const orgGetTeachers = () => orgReq('teachers');
 export const orgCreateTeacher = (data: any) => orgReq('createTeacher', 'POST', data);

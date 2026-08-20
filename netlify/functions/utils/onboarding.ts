@@ -373,6 +373,53 @@ export async function ensureLoginCredentials(
   return { username, tempPassword };
 }
 
+/**
+ * Выдать ученику вход — одинаково для обоих случаев, которые до этого лечились
+ * разным кодом:
+ *  • офлайн-ученик (запись для журнала и оплат) аккаунта в Auth не имеет, и
+ *    `updateUser` по нему падает с auth/user-not-found — нужен `createUser` с
+ *    ТЕМ ЖЕ uid, иначе журнал, оплаты и группы отвяжутся от человека;
+ *  • у кого вход уже есть — это смена пароля.
+ *
+ * Возвращает логин и пароль в открытом виде РОВНО один раз: показать
+ * действующий пароль невозможно, Firebase хранит его хешем. Поэтому «показать
+ * доступы группе» — это всегда выдача новых, а не просмотр старых.
+ */
+export async function issueStudentLogin(
+  uid: string,
+  opts: { displayName?: string; username?: string; password?: string } = {},
+): Promise<{ username: string; password: string; email: string; created: boolean }> {
+  const ref = adminDb.collection('users').doc(uid);
+  const snap = await ref.get();
+  if (!snap.exists) throw new Error('Пользователь не найден');
+  const data = snap.data()!;
+
+  const username = data.username || opts.username || await freshUsername('student');
+  const email = data.email || `${username}@student.sabakhub.app`;
+  const password = opts.password || genTempPassword();
+  const hadLogin = !!(data.email && data.offlineStudent !== true);
+
+  if (hadLogin) {
+    await adminAuth.updateUser(uid, { password });
+  } else {
+    try {
+      await adminAuth.createUser({
+        uid, email, password,
+        displayName: opts.displayName || data.displayName || undefined,
+      });
+    } catch (e: any) {
+      // Аккаунт в Auth есть, а профиль считал ученика офлайновым — рассинхрон
+      // чиним сменой пароля, а не отказом: преподаватель ждёт доступ, а не разбор.
+      if (e.code === 'auth/uid-already-exists' || e.code === 'auth/email-already-exists') {
+        await adminAuth.updateUser(uid, { password });
+      } else throw e;
+    }
+  }
+
+  await ref.set({ username, email, offlineStudent: false, hasLogin: true, updatedAt: now() }, { merge: true });
+  return { username, password, email, created: !hadLogin };
+}
+
 /** Issue a one-time login token (15-min TTL) for passwordless web sign-in. */
 export async function createLoginToken(uid: string): Promise<string> {
   const ott = randomBytes(24).toString('base64url');

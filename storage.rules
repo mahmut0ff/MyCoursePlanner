@@ -99,6 +99,53 @@ service firebase.storage {
                     || request.resource.contentType.matches('audio/.*'));
     }
 
+    // Материалы урока: обложка `lessons/{id}/cover.*`, картинки в теле
+    // `lessons/{id}/images/*` и вложения `lessons/{id}/attachments/*`. Вложенность
+    // разная, поэтому рекурсивный wildcard — плоский {fileName} ловил бы только
+    // обложку, а картинки и вложения проваливались бы в финальный deny-all.
+    // Права как у `materials`: читает любой авторизованный (ученик открывает урок),
+    // пишет тоже любой — привязку к автору урока правила не выражают, её держит
+    // API поверх.
+    match /lessons/{lessonId}/{allPaths=**} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null &&
+                   request.resource.size < 50 * 1024 * 1024 &&
+                   (request.resource.contentType.matches('image/.*')
+                    || request.resource.contentType.matches('video/.*')
+                    || request.resource.contentType.matches('audio/.*')
+                    || request.resource.contentType == 'application/pdf'
+                    || request.resource.contentType == 'application/msword'
+                    || request.resource.contentType == 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+                    || request.resource.contentType == 'application/vnd.ms-excel'
+                    || request.resource.contentType == 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+                    || request.resource.contentType == 'application/vnd.ms-powerpoint'
+                    || request.resource.contentType == 'application/vnd.openxmlformats-officedocument.presentationml.presentation'
+                    || request.resource.contentType == 'application/zip'
+                    || request.resource.contentType == 'text/plain');
+    }
+
+    // Викторина: медиа вопросов (`quizzes/{id}/media/*`, кладёт преподаватель) и
+    // устные ответы студентов (`quizzes/{sessionId}/answers/*`, webm с микрофона).
+    // Не путать с правилом `quiz/{orgId}` ниже — приложение туда ничего не пишет.
+    match /quizzes/{quizId}/{allPaths=**} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null &&
+                   request.resource.size < 25 * 1024 * 1024 &&
+                   (request.resource.contentType.matches('image/.*')
+                    || request.resource.contentType.matches('video/.*')
+                    || request.resource.contentType.matches('audio/.*'));
+    }
+
+    // Устные ответы на экзамене: `assessments/audio/{roomId}/{questionId}/{uid}.webm`.
+    // Пишет студент во время сдачи, читает преподаватель при проверке.
+    match /assessments/{allPaths=**} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null &&
+                   request.resource.size < 25 * 1024 * 1024 &&
+                   (request.resource.contentType.matches('audio/.*')
+                    || request.resource.contentType.matches('video/.*'));
+    }
+
     // Vacancy photos — authenticated users only, 10MB max
     match /vacancies/{orgId}/{fileName} {
       allow read: if true;

@@ -821,7 +821,7 @@ const JournalPage: React.FC = () => {
         ) : (
           <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl overflow-hidden shadow-sm">
             <div className="overflow-x-auto">
-              <table className="w-full text-left text-sm min-w-[1080px]">
+              <table className="w-full text-left text-sm min-w-[960px]">
                 <thead className="bg-slate-50 dark:bg-slate-900/50 border-b border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400">
                   <tr>
                     <th className="px-5 py-4 font-medium w-[250px]">Студент</th>
@@ -840,16 +840,14 @@ const JournalPage: React.FC = () => {
                         )}
                       </div>
                     </th>
-                    <th className="px-5 py-4 font-medium text-center w-56 border-r border-slate-200 dark:border-slate-700">
-                      <div className="flex flex-col items-center">
-                        <span>Домашнее задание</span>
-                        <span
-                          className="text-[10px] text-slate-400 mt-1 font-normal"
-                          title="Работы приходят от учеников в Telegram-бот. Отметка и оценка за ДЗ не влияют на средний балл, но идут в KPI преподавателя."
-                        >
-                          сдача и отметка
-                        </span>
-                      </div>
+                    {/* ДЗ — намеренно второстепенная колонка: без подложки и рамок,
+                        которые выделяют «Оценку». Всё в одну строку, иначе journal
+                        перестаёт помещаться по ширине. */}
+                    <th
+                      className="px-2 py-4 font-normal text-center w-40 text-slate-400"
+                      title="Работы приходят от учеников в Telegram-бот. Отметка и оценка за ДЗ не влияют на средний балл, но идут в KPI преподавателя."
+                    >
+                      ДЗ
                     </th>
                     <th className="px-5 py-4 font-medium text-center w-48">Присутствие</th>
                     <th className="px-5 py-4 font-medium text-center w-56">Участие</th>
@@ -898,48 +896,53 @@ const JournalPage: React.FC = () => {
                            )}
                         </td>
 
-                        {/* Homework: что прислали в Telegram + отметка и оценка за ДЗ */}
-                        <td className="px-3 py-3 border-r border-slate-200 dark:border-slate-700 align-top">
+                        {/* ДЗ: сдача, отметка и оценка — одной компактной строкой.
+                            Колонка намеренно тише «Оценки»: ни подложки, ни рамок,
+                            иконки мельче, оценка — узкое поле, а не полноценная ячейка. */}
+                        <td className="px-2 py-3">
                           {(() => {
                             const hwKey = `${student.uid}_${selectedLessonId || date}`;
                             const submission = submissions[student.uid];
                             const status = entry?.homeworkStatus;
                             const attachments = submission?.attachments?.length || 0;
+                            const hwGrade = homeworkGrades[hwKey];
                             return (
-                              <div className="flex flex-col items-center gap-2">
-                                {/* Что пришло от ученика */}
+                              <div className="flex items-center justify-center gap-1.5">
+                                {/* Что прислал ученик — только иконка: подпись съедала полколонки */}
                                 {submission ? (
                                   <Link
                                     to="/homework/review"
-                                    className="inline-flex items-center gap-1.5 text-[11px] font-medium text-primary-600 dark:text-primary-400 hover:underline"
-                                    title={`Сдано ${new Date(submission.submittedAt).toLocaleString('ru-RU')}${submission.isLate ? ' — после срока' : ''}`}
+                                    className="relative shrink-0 p-1 rounded-md text-primary-600 dark:text-primary-400 hover:bg-primary-50 dark:hover:bg-primary-900/20 transition-colors"
+                                    title={`Работа сдана ${new Date(submission.submittedAt).toLocaleString('ru-RU')}${submission.isLate ? ' — после срока' : ''}${attachments ? ` · файлов: ${attachments}` : ' · текстом'}`}
                                   >
                                     <Paperclip className="w-3.5 h-3.5" />
-                                    {attachments > 0 ? `Работа · ${attachments} файл(ов)` : 'Работа (текст)'}
-                                    {submission.isLate && <span className="text-amber-600 dark:text-amber-400">· поздно</span>}
+                                    {attachments > 1 && (
+                                      <span className="absolute -top-0.5 -right-0.5 text-[9px] font-bold tabular-nums">{attachments}</span>
+                                    )}
+                                    {submission.isLate && (
+                                      <span className="absolute -bottom-0.5 -right-0.5 w-1.5 h-1.5 rounded-full bg-amber-500" />
+                                    )}
                                   </Link>
                                 ) : (
-                                  <span className="text-[11px] text-slate-400">
-                                    {selectedLessonId ? 'Ничего не прислал' : 'Урок не выбран'}
-                                  </span>
+                                  <span className="shrink-0 w-[22px]" aria-hidden />
                                 )}
 
                                 {/* Отметка: сдал / частично / с опозданием / не сдал */}
-                                <div className={`inline-flex gap-1 rounded-xl p-1 border ${!canEdit ? 'bg-transparent border-transparent' : 'bg-slate-100 dark:bg-slate-900 border-slate-200 dark:border-slate-700'}`}>
-                                  {(Object.keys(homeworkStatusMeta) as HomeworkStatus[]).map(s => {
-                                    const meta = homeworkStatusMeta[s];
-                                    const isActive = status === s;
+                                <div className="inline-flex gap-0.5">
+                                  {(Object.keys(homeworkStatusMeta) as HomeworkStatus[]).map(st => {
+                                    const meta = homeworkStatusMeta[st];
+                                    const isActive = status === st;
                                     if (!canEdit && !isActive) return null;
                                     if (!canEdit && isActive) {
-                                      return <div key={s} className={`p-2 rounded-lg ${meta.activeClass}`} title={meta.label}>{meta.icon}</div>;
+                                      return <div key={st} className={`p-1 rounded-md ${meta.activeClass}`} title={meta.label}>{meta.icon}</div>;
                                     }
                                     return (
                                       <button
-                                        key={s}
+                                        key={st}
                                         // Повторный клик снимает отметку: ошибиться на четырёх
                                         // кнопках легко, а иначе её было бы не убрать.
-                                        onClick={() => handleEntryChange(student.uid, 'homeworkStatus', isActive ? null : s)}
-                                        className={`p-2 rounded-lg transition-all ${isActive ? meta.activeClass : 'opacity-40 hover:opacity-100 hover:bg-slate-200/50 dark:hover:bg-slate-800'}`}
+                                        onClick={() => handleEntryChange(student.uid, 'homeworkStatus', isActive ? null : st)}
+                                        className={`p-1 rounded-md transition-all ${isActive ? meta.activeClass : 'opacity-30 hover:opacity-100 hover:bg-slate-200/60 dark:hover:bg-slate-700'}`}
                                         title={meta.label}
                                       >
                                         {meta.icon}
@@ -948,24 +951,24 @@ const JournalPage: React.FC = () => {
                                   })}
                                 </div>
 
-                                {/* Оценка за ДЗ — отдельная от оценки за занятие */}
-                                <div className="w-28">
-                                  {canEdit ? (
+                                {/* Оценка за ДЗ — узкая и без акцента, в отличие от оценки за занятие */}
+                                {canEdit ? (
+                                  <div className="w-11 shrink-0">
                                     <GradeCell
                                       studentId={student.uid}
                                       itemId={`hw_${selectedLessonId || date}`}
-                                      value={homeworkGrades[hwKey]}
+                                      value={hwGrade}
                                       schema={schema}
                                       isSyncing={syncStatus[`hw_${hwKey}`]}
                                       onChange={(val, disp, st, comment) =>
                                         handleHomeworkGradeChange(student.uid, selectedLessonId || date, val, disp, st, comment)}
                                     />
-                                  ) : (
-                                    <div className="w-full min-h-[40px] flex items-center justify-center text-slate-500 font-bold">
-                                      {homeworkGrades[hwKey]?.displayValue || homeworkGrades[hwKey]?.value || <span className="opacity-50">—</span>}
-                                    </div>
-                                  )}
-                                </div>
+                                  </div>
+                                ) : (
+                                  <span className="w-11 shrink-0 text-center text-sm font-semibold text-slate-600 dark:text-slate-300">
+                                    {hwGrade?.displayValue || hwGrade?.value || <span className="opacity-40">—</span>}
+                                  </span>
+                                )}
                               </div>
                             );
                           })()}

@@ -1,11 +1,16 @@
 import type { Handler, HandlerEvent } from '@netlify/functions';
-import { GoogleGenerativeAI } from '@google/generative-ai';
 import { verifyAuth, isStaff, ok, unauthorized, forbidden, badRequest, jsonResponse } from './utils/auth';
 import { rateLimiters, getRateLimitKey } from './utils/rate-limiter';
-import { recordAiUsage } from './utils/ai';
+import { hasGeminiKey, recordAiUsage } from './utils/ai';
+import { generateAIContent, AIGenerateError } from './utils/ai-generate';
 
-const GEMINI_API_KEY = process.env.GEMINI_API_KEY || '';
-
+/**
+ * Синхронная генерация — для коротких текстовых операций (перевод, комментарий
+ * к отчёту, пост, подсказка в редакторе урока). Всё, что читает приложенный файл
+ * или пишет длинный JSON (экзамен, викторина, урок+квиз), идёт через
+ * `api-ai-generate-background`: на бесплатном плане Netlify синхронная функция
+ * умирает с 504 через 10 секунд, а такая генерация занимает 15–40.
+ */
 const handler: Handler = async (event: HandlerEvent) => {
   if (event.httpMethod === 'OPTIONS') return jsonResponse(204, '');
 
@@ -21,7 +26,7 @@ const handler: Handler = async (event: HandlerEvent) => {
 
   if (event.httpMethod !== 'POST') return jsonResponse(405, { error: 'Method not allowed' });
 
-  if (!GEMINI_API_KEY) {
+  if (!hasGeminiKey()) {
     return jsonResponse(500, { error: 'GEMINI_API_KEY is not configured on the server.' });
   }
 
@@ -33,181 +38,14 @@ const handler: Handler = async (event: HandlerEvent) => {
       return badRequest('Either prompt or fileUrl is required');
     }
 
-    const selectedModel = 'gemini-2.5-flash';
-
-    const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
-    const model = genAI.getGenerativeModel({
-      model: selectedModel,
-      generationConfig: {
-        responseMimeType: 'application/json',
-      },
-    });
-
-    const parts: any[] = [];
-
-    // System instruction injected into the prompt based on the type
-    let systemPrompt = '';
-    if (type === 'quiz') {
-      systemPrompt = `You are an expert educator. Generate a quiz based on the provided material or prompt. 
-Format the response strictly as a JSON array of objects. 
-Each question object MUST have:
-- "type": string (MUST be one of: "multiple_choice", "multi_select", "true_false", "short_answer", "speaking")
-  - "multiple_choice" = single correct answer (radio buttons)
-  - "multi_select" = multiple correct answers (checkboxes)
-  - "true_false" = True/False question
-  - "short_answer" = free text answer
-  - "speaking" = oral/audio response
-- "question": string (the question text)
-- "options": array of strings (required for multiple_choice, multi_select). For "true_false", use ["True", "False"]. Omit for "short_answer" and "speaking".
-- "correctOptionIndices": array of integers — indices of the correct options (required for multiple_choice, multi_select, true_false). For multiple_choice, array has exactly 1 element. For multi_select, array can have multiple. Omit for short_answer and speaking.
-- "keywords": array of strings (only for short_answer — words/phrases used to grade the answer)
-- "explanation": string (brief explanation of the answer)
-
-You must randomly mix and combine the given question types to make the quiz varied and engaging!
-Do not include any extra text, only the JSON array. Make the questions engaging and accurate.`;
-    } else if (type === 'lesson_and_quiz') {
-      systemPrompt = `You are an expert educator. Based on the provided prompt or material, generate BOTH a comprehensive lesson module and a multiple-choice quiz (Kahoot style) covering that exact material.
-Format the response strictly as a JSON object containing two keys: "lesson" and "quiz".
-Requirements for "lesson":
-- "title": string (the topic name)
-- "subject": string (short category like History, Programming, etc.)
-- "duration": integer (estimated reading minutes, 5 to 15)
-- "blocks": array of objects representing the lesson content. Each object must have a "type" ("heading", "paragraph", or "bulletList").
-   - If "heading", include "content" (string) and "level" (integer 1 or 2).
-   - If "paragraph", include "content" (string).
-   - If "bulletList", include "items" (array of strings).
-Requirements for "quiz":
-- An array of exactly 10 question objects. Each object MUST have:
-  - "type": string (MUST be one of: "multiple_choice", "multi_select", "true_false", "short_answer", "speaking")
-    - "multiple_choice" = single correct answer (radio buttons)
-    - "multi_select" = multiple correct answers (checkboxes)
-    - "true_false" = True/False question
-    - "short_answer" = free text answer
-    - "speaking" = oral/audio response
-  - "question": string (engaging question)
-  - "options": array of strings (required for multiple_choice, multi_select). For "true_false", use ["True", "False"]. Omit for short_answer and speaking.
-  - "correctOptionIndices": array of integers — indices of the correct options (required for multiple_choice, multi_select, true_false). Omit for short_answer and speaking.
-  - "keywords": array of strings (only for short_answer)
-  - "explanation": string (brief explanation)
-You must randomly mix and combine the given question types to make the quiz varied and engaging!
-Do not include any extra text, markdown blocks like \`\`\`json, or anything other than the raw JSON object.`;
-    } else if (type === 'material_summary') {
-      systemPrompt = `You are a helpful education AI assistant. Analyze the provided material/document.
-Extract key metadata to categorize it within an educational Learning Management System.
-Format the response strictly as a JSON object containing:
-- "title": string (a short, clear title for the material, max 60 chars)
-- "description": string (a concise 1-3 sentence description of the content)
-- "tags": array of strings (1 to 5 relevant tags, e.g. "Math", "Syllabus", "Guide")
-- "suggestedCategory": string (a single broad category like "Documents", "Media", "Lectures", or specific subject)
-Do not include any extra text, markdown blocks like \`\`\`json, or anything other than the raw JSON object.`;
-    } else if (type === 'syllabus_extraction') {
-      systemPrompt = `You are an expert educator and instructional designer. Extract the course syllabus from the provided document.
-If the document is an image or PDF, parse it carefully.
-Format the response strictly as a JSON object with the following structure:
-- "title": string (the overall course title)
-- "description": string (the course description or objectives)
-- "modules": array of objects representing modules/weeks. Each module MUST have:
-  - "title": string (e.g. "Week 1: Introduction")
-  - "order": integer (e.g. 1, 2, 3)
-  - "items": array of objects representing lessons or topics in this module. Each item MUST have:
-    - "title": string (e.g. "Lecture: Basics", "Quiz 1", etc.)
-    - "type": string (MUST be one of: "lesson", "exam", "topic")
-    - "order": integer
-
-Extract modules and lessons logically based on the document's headings and bullet points.
-Do not include any extra text, markdown blocks like \`\`\`json, or anything other than the raw JSON object.`;
-    } else if (type === 'lesson_assist') {
-      systemPrompt = `You are an expert instructional designer assisting a teacher inside a lesson editor.
-Follow the teacher's instruction applied to their text/topic and return improved lesson content.
-Return strictly a JSON object: { "html": string } where "html" is clean, valid HTML suitable for a rich-text editor.
-Use only these tags: <h2>, <h3>, <p>, <ul>, <li>, <ol>, <strong>, <em>, <blockquote>. No inline styles, no <script>, no markdown.
-Write in the same language as the teacher's text/instruction (default Russian).
-Do not include any extra text outside the JSON object.`;
-    } else if (type === 'report_comment') {
-      systemPrompt = `You are an experienced teacher writing a short, personalized progress comment for a student's report card, based on the provided performance data (grades, attendance, trends).
-Be specific, constructive and warm; mention one strength and one area to improve. Write in Russian.
-Return strictly a JSON object: { "comment": string (2-4 sentences), "short": string (one encouraging sentence for SMS/Telegram) }.
-No markdown, only the raw JSON object.`;
-    } else if (type === 'marketing_post') {
-      systemPrompt = `You are a social-media marketer for a private education center.
-Based on the provided topic/course/offer, write engaging promotional posts. Write in Russian unless the request specifies another language.
-Return strictly a JSON object: { "variants": [{ "caption": string (ready-to-post text with light emoji, 2-5 short lines), "hashtags": [string] (3-7 relevant hashtags without spaces) }] } with exactly 3 distinct variants (different angles/tones).
-No markdown fences, only the raw JSON object.`;
-    } else if (type === 'translate') {
-      systemPrompt = `You are a professional translator for educational content.
-Translate the provided text into the requested target language, preserving meaning, tone and any simple formatting. Do not add commentary.
-Return strictly a JSON object: { "translation": string }. No markdown, only the raw JSON object.`;
-    } else if (type === 'roster_extraction') {
-      systemPrompt = `You extract a people roster from the provided text or image (a photo of a paper journal, a screenshot of a messenger group, a pasted list or table).
-Return strictly a JSON object: { "students": [{ "name": string, "phone": string }] }.
-- "name": full name exactly as written (keep original language/spelling). If only a first name exists, use it.
-- "phone": the person's phone with country code if shown (e.g. +996700123456); if none is visible, use "".
-- Include every distinct person. Skip headers, totals, dates and non-person rows. Do not invent names or numbers.
-Only the raw JSON object, no markdown.`;
-    } else {
-      systemPrompt = `You are an expert educator. Generate an exam based on the provided material or prompt. 
-Format the response strictly as a JSON array of objects. 
-Each question object MUST have:
-- "type": string (MUST be one of: "multiple_choice", "multi_select", "true_false", "short_answer", "speaking")
-  - "multiple_choice" = single correct answer (radio buttons)
-  - "multi_select" = multiple correct answers (checkboxes)
-  - "true_false" = True/False question
-  - "short_answer" = free text answer
-  - "speaking" = oral/audio response
-- "question": string (the test question text)
-- "options": array of strings (required for multiple_choice, multi_select). For "true_false", use ["True", "False"]. Omit for short_answer and speaking.
-- "correctOptionIndices": array of integers — indices of the correct options (required for multiple_choice, multi_select, true_false). For multiple_choice, exactly 1 element. For multi_select, can have multiple. Omit for short_answer and speaking.
-- "keywords": array of strings (only for short_answer — words/phrases used to grade the answer)
-- "points": integer (suggested weight/points for this question, usually 1 to 5 depending on difficulty)
-- "explanation": string (brief explanation)
-
-You must randomly mix and combine the given question types to make the exam varied and engaging!
-Do not include any extra text, only the JSON array.`;
-    }
-
-    parts.push({ text: systemPrompt });
-
-    if (prompt) {
-      parts.push({ text: `User Request: ${prompt}` });
-    }
-
-    // Process file if provided (e.g., PDF or Image from Firebase Storage)
-    if (fileUrl) {
-      try {
-        const response = await fetch(fileUrl);
-        if (!response.ok) throw new Error(`Failed to fetch file: ${response.statusText}`);
-        
-        const arrayBuffer = await response.arrayBuffer();
-        const buffer = Buffer.from(arrayBuffer);
-        const mimeType = response.headers.get('content-type') || 'application/pdf';
-
-        parts.push({
-          inlineData: {
-            data: buffer.toString('base64'),
-            mimeType,
-          },
-        });
-        parts.push({ text: 'Please analyze the attached document/image.' });
-      } catch (fileErr: any) {
-        console.error('File parsing error in AI API:', fileErr);
-        return badRequest(`Failed to process the attached file: ${fileErr.message}`);
-      }
-    }
-
-    // Call Gemini
-    const result = await model.generateContent(parts);
-    const textResp = result.response.text();
-
-    try {
-      const generatedData = JSON.parse(textResp);
-      recordAiUsage(user.organizationId, `generate_${type}`);
-      return ok({ data: generatedData });
-    } catch (parseErr) {
-      console.error('Failed to parse Gemini JSON output:', textResp);
-      return jsonResponse(500, { error: 'AI returned invalid format', rawOutput: textResp });
-    }
-
+    const generatedData = await generateAIContent({ prompt, type, fileUrl });
+    recordAiUsage(user.organizationId, `generate_${type}`);
+    return ok({ data: generatedData });
   } catch (err: any) {
+    if (err instanceof AIGenerateError) {
+      if (err.kind === 'file') return badRequest(err.message);
+      if (err.kind === 'format') return jsonResponse(500, { error: err.message, rawOutput: err.raw });
+    }
     console.error('AI Generator API Error:', err);
     return jsonResponse(500, { error: err.message || 'Internal Server Error' });
   }

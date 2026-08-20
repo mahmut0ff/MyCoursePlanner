@@ -1,8 +1,8 @@
 import React, { useState, useRef } from 'react';
 import { Sparkles, X, FileText, UploadCloud, Loader2, Save, Trash2, Plus } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { apiAIGenerate } from '../../lib/api';
-import { uploadFile } from '../../services/storage.service';
+import { apiAIGenerateJob } from '../../lib/api';
+import { uploadAISource } from '../../services/storage.service';
 import type { SyllabusModule } from '../../types';
 import { generateId } from '../../utils/grading';
 
@@ -39,15 +39,16 @@ export const AISyllabusImportModal: React.FC<Props> = ({ isOpen, onClose, onSucc
     setLoadingState('Загружаем файл в облако...');
 
     try {
-      const ext = file.name.split('.').pop() || 'pdf';
-      const path = `syllabuses/ai-${Date.now()}-${Math.random().toString(36).substring(2)}.${ext}`;
-      const uploadedUrl = await uploadFile(path, file);
+      const uploadedUrl = await uploadAISource(file, 'syllabus-');
       setFileUrl(uploadedUrl);
 
       setLoadingState('ИИ читает документ и извлекает структуру...');
       toast.loading('ИИ анализирует силлабус...', { id: toastId });
       
-      const res = await apiAIGenerate({ type: 'syllabus_extraction', fileUrl: uploadedUrl });
+      const res = await apiAIGenerateJob(
+        { type: 'syllabus_extraction', fileUrl: uploadedUrl },
+        { onWait: (sec) => setLoadingState(`ИИ читает документ и извлекает структуру... ${sec} с`) },
+      );
       
       if (!res.data || !res.data.modules) {
         throw new Error('ИИ вернул неполные данные');

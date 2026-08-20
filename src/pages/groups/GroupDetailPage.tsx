@@ -9,6 +9,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import BranchFilter from '../../components/ui/BranchFilter';
 import GroupScheduleSection from '../../components/schedule/GroupScheduleSection';
 import { usePermissions } from '../../contexts/PermissionsContext';
+import { canEditGroupSchedule } from '../../lib/rbac';
 
 // Lifecycle statuses a group can move between, with their badge/menu styling.
 const GROUP_STATUS_META: Record<GroupStatus, { label: string; icon: typeof PlayCircle; badge: string; dot: string }> = {
@@ -40,7 +41,7 @@ const GroupDetailPage: React.FC = () => {
   const navigate = useNavigate();
   const { t } = useTranslation();
   const { role, profile } = useAuth();
-  const { canWrite: canWriteSchedule } = usePermissions();
+  const { can } = usePermissions();
   const isAdmin = role === 'admin' || role === 'manager' || role === 'super_admin';
 
   const [group, setGroup] = useState<Group | null>(null);
@@ -327,10 +328,12 @@ const GroupDetailPage: React.FC = () => {
   // their own groups. The backend enforces the same own-groups scope, so keep the
   // toggle read-only for teachers viewing a group they don't teach.
   const canEditProgress = isAdmin || isMyGroup;
-  // Расписание гейтится своим ресурсом, а не правами на группу: сервер проверяет
-  // schedule:write (api-org.ts, createEvent/updateEvent), и подменять это ролью
-  // значило бы прятать кнопку у преподавателя, которому право реально выдано.
-  const canEditSchedule = canWriteSchedule('schedule');
+  // Расписание гейтится своими ресурсами, а не ролью: либо `schedule` на всю
+  // организацию, либо узкое `group_schedule` — и тогда только в группе, где
+  // пользователь сам преподаёт. Сервер проверяет ту же пару (canWriteEvent в
+  // api-org.ts), поэтому кнопка появляется ровно там, где запрос пройдёт.
+  const canEditSchedule = canEditGroupSchedule(can, 'write', isMyGroup);
+  const canRemoveSchedule = canEditGroupSchedule(can, 'delete', isMyGroup);
 
   const availableTeachers = allTeachers.filter(t => !currentTeacherIds.includes(t.uid));
   const availableStudents = allStudents.filter(s => !currentStudentIds.includes(s.uid));
@@ -565,7 +568,7 @@ const GroupDetailPage: React.FC = () => {
         </div>
       )}
 
-      <GroupScheduleSection group={group} canEdit={canEditSchedule} />
+      <GroupScheduleSection group={group} canEdit={canEditSchedule} canRemove={canRemoveSchedule} />
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
          {/* Main Column */}

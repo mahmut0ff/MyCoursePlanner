@@ -2,7 +2,7 @@ import React, { useState, useRef, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Sparkles, X, FileText, UploadCloud, Loader2, Mic, MicOff } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { apiAIGenerate } from '../../lib/api';
+import { apiAIGenerateJob } from '../../lib/api';
 import { uploadAISource } from '../../services/storage.service';
 import { useSpeechToText } from '../../hooks/useSpeechToText';
 
@@ -49,7 +49,7 @@ export const AIGeneratorModal: React.FC<Props> = ({ isOpen, onClose, onSuccess, 
     if (isListening) toggleListening();
 
     setLoading(true);
-    const toastId = toast.loading(t('ai.generating', 'Генерация с помощью ИИ... Это может занять несколько секунд.'));
+    const toastId = toast.loading(t('ai.generating', 'Генерация с помощью ИИ... Это может занять до минуты.'));
 
     try {
       let fileUrl = '';
@@ -57,7 +57,16 @@ export const AIGeneratorModal: React.FC<Props> = ({ isOpen, onClose, onSuccess, 
         fileUrl = await uploadAISource(file);
       }
 
-      const res = await apiAIGenerate({ prompt, type, fileUrl });
+      const res = await apiAIGenerateJob(
+        { prompt, type, fileUrl },
+        {
+          onWait: (sec) =>
+            toast.loading(
+              t('ai.generatingElapsed', 'Генерация с помощью ИИ... {{sec}} с', { sec }),
+              { id: toastId },
+            ),
+        },
+      );
       
       if (res.data && Array.isArray(res.data)) {
         toast.success(t('ai.generationSuccess', 'Успешно сгенерировано!'), { id: toastId });

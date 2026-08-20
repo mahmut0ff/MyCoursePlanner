@@ -6,7 +6,6 @@ import {
   orgGetTimetable, orgGetSchedule, orgCreateEvent, orgUpdateEvent, orgDeleteEvent,
   orgListClassrooms,
 } from '../../lib/api';
-import { usePermissions } from '../../contexts/PermissionsContext';
 import { timeToMins, minsToTime } from '../../lib/scheduleTime';
 import { sameRoom, normalizeRoom } from '../../lib/classrooms';
 import ClassroomSelect from '../ui/ClassroomSelect';
@@ -66,8 +65,14 @@ const emptyForm = (recurring: boolean): FormState => ({
 
 interface GroupScheduleSectionProps {
   group: Group;
-  /** Право менять расписание. Сервер гейтит на schedule:write — здесь то же самое. */
+  /**
+   * Право менять расписание этой группы. Считает его страница группы: либо
+   * `schedule:write` на всю организацию, либо `group_schedule:write` у того, кто
+   * эту группу ведёт. Ровно та же пара проверяется на сервере (canWriteEvent).
+   */
   canEdit: boolean;
+  /** Право удалять занятия этой группы — та же пара прав, но по `delete`. */
+  canRemove: boolean;
 }
 
 /**
@@ -78,9 +83,8 @@ interface GroupScheduleSectionProps {
  * загруженный кусок, и его 409 приходит с готовым текстом. Клиентская копия
  * такой проверки неизбежно разъезжалась бы с серверной.
  */
-const GroupScheduleSection: React.FC<GroupScheduleSectionProps> = ({ group, canEdit }) => {
+const GroupScheduleSection: React.FC<GroupScheduleSectionProps> = ({ group, canEdit, canRemove }) => {
   const { t, i18n } = useTranslation();
-  const { canDelete } = usePermissions();
   const [timetable, setTimetable] = useState<ScheduleEvent[]>([]);
   const [upcoming, setUpcoming] = useState<ScheduleEvent[]>([]);
   const [loading, setLoading] = useState(true);
@@ -95,7 +99,6 @@ const GroupScheduleSection: React.FC<GroupScheduleSectionProps> = ({ group, canE
   /** '' — все, '__none__' — занятия без кабинета, иначе id кабинета. */
   const [roomFilter, setRoomFilter] = useState('');
 
-  const canRemove = canDelete('schedule');
   const today = todayDow();
 
   const load = useCallback(() => {

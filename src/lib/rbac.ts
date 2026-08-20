@@ -126,6 +126,16 @@ export const RESOURCE_GROUPS: ResourceGroup[] = [
         write: 'Создание и редактирование событий расписания',
         delete: 'Удаление событий расписания',
       } },
+      // Узкая версия «Расписания» для преподавателя: правит занятия ТОЛЬКО тех
+      // групп, где сам числится преподавателем, и только из карточки группы —
+      // общая страница /schedule остаётся за `schedule`. Держится отдельным
+      // ресурсом, а не действием внутри `schedule`, потому что различается не
+      // объём действий, а область: своя группа против всей организации.
+      { id: 'group_schedule', label: 'Расписание своих групп', actions: ['write', 'delete'], help: {
+        write: 'Ставить и переносить занятия своих групп прямо в карточке группы',
+        delete: 'Снимать занятия своих групп',
+        notes: 'Действует только на странице группы и только там, где преподаватель числится в составе. Общее расписание организации этим правом не открывается — за него отвечает «Расписание».',
+      } },
       { id: 'classrooms', label: 'Кабинеты', help: {
         read: 'Просмотр кабинетов и их занятости',
         write: 'Создание и редактирование кабинетов',
@@ -269,8 +279,12 @@ const ro = (resources: string[]): RolePermission[] =>
 export const TEACHER_DEFAULT: RolePermission[] = [
   // Кабинеты — только чтение: преподаватель ставит занятие в существующую
   // аудиторию и смотрит, свободна ли она, но справочником не распоряжается.
-  ...ro(['dashboard', 'students', 'results', 'analytics', 'classrooms']),
-  ...rw(['courses', 'groups', 'schedule', 'chat']),
+  // Расписание — тоже только чтение: общую страницу /schedule преподаватель
+  // видит целиком, но правит занятия лишь в карточках своих групп, по
+  // `group_schedule`. Право снимается и выдаётся галочками в «Команде».
+  ...ro(['dashboard', 'students', 'results', 'analytics', 'classrooms', 'schedule']),
+  ...rw(['courses', 'groups', 'chat']),
+  ...rwd(['group_schedule']),
   ...rwd(['lessons', 'exams', 'rooms', 'quizzes', 'materials', 'homework', 'gradebook']),
 ];
 
@@ -340,6 +354,22 @@ export function hasRosterManagement(
 ): boolean {
   if (role === 'admin' || role === 'super_admin' || role === 'owner' || role === 'manager') return true;
   return can('roster_management', 'write');
+}
+
+/**
+ * Клиентское зеркало серверного `canWriteEvent` (netlify/functions/api-org.ts).
+ *
+ * Занятие можно править либо правом на всё расписание организации, либо узким
+ * `group_schedule` — и тогда лишь в группе, где пользователь преподаёт. Условие
+ * нужно и на карточке группы, и в тестах, поэтому живёт одной функцией.
+ */
+export function canEditGroupSchedule(
+  can: (resource: string, action: RbacAction) => boolean,
+  action: RbacAction,
+  isOwnGroup: boolean,
+): boolean {
+  if (can('schedule', action)) return true;
+  return isOwnGroup && can('group_schedule', action);
 }
 
 /** Build the complete `resource:action` set granting everything. */

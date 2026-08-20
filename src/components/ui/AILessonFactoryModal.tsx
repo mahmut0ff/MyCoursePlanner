@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { Sparkles, X, FileText, UploadCloud, Loader2, Mic, MicOff, BookOpen } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { apiAIGenerate, apiCreateQuiz, apiSaveQuizQuestions, apiCreateLesson } from '../../lib/api';
+import { apiAIGenerateJob, apiCreateQuiz, apiSaveQuizQuestions, apiCreateLesson } from '../../lib/api';
 import { uploadAISource } from '../../services/storage.service';
 import { useSpeechToText } from '../../hooks/useSpeechToText';
 import { generateId } from '../../utils/grading';
@@ -68,7 +68,10 @@ export const AILessonFactoryModal: React.FC<Props> = ({ isOpen, onClose, onSucce
       }
 
       setLoadingState('Генерация урока и 10 вопросов для квиза. Пожалуйста, подождите...');
-      const res = await apiAIGenerate({ prompt, type: 'lesson_and_quiz', fileUrl });
+      const res = await apiAIGenerateJob(
+        { prompt, type: 'lesson_and_quiz', fileUrl },
+        { onWait: (sec) => setLoadingState(`Генерация урока и 10 вопросов для квиза... ${sec} с`) },
+      );
       
       if (!res.data || !res.data.lesson || !res.data.quiz) {
         throw new Error('ИИ вернул неполные данные');

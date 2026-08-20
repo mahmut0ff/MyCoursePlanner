@@ -215,6 +215,57 @@ export type AIGenerateType =
 export const apiAIGenerate = (data: { prompt?: string; type: AIGenerateType; fileUrl?: string }) =>
   apiRequest('api-ai-generate', 'POST', data);
 
+/**
+ * Тяжёлая генерация (экзамен/викторина по лекции, урок+квиз) через фоновую
+ * функцию с опросом статуса.
+ *
+ * Синхронный `apiAIGenerate` для этих типов не годится: у Netlify на текущем
+ * плане 10 секунд на функцию, а генерация занимает 15–40 — клиент ловил 504.
+ * Фоновая функция отвечает 202 сразу и пишет результат в `aiJobs`, откуда его и
+ * забираем. jobId придумываем здесь, сервер склеивает его с uid — угадать чужой
+ * нельзя.
+ */
+export const apiAIGenerateJob = async (
+  data: { prompt?: string; type: AIGenerateType; fileUrl?: string },
+  opts?: { timeoutMs?: number; onWait?: (elapsedSec: number) => void },
+): Promise<{ data: any }> => {
+  const jobId =
+    typeof crypto !== 'undefined' && 'randomUUID' in crypto
+      ? crypto.randomUUID().replace(/-/g, '')
+      : `${Date.now()}${Math.random().toString(36).slice(2)}`.padEnd(16, '0').slice(0, 32);
+
+  const headers = await getAuthHeaders();
+  const res = await fetch(`${API_BASE}/api-ai-generate-background`, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({ ...data, jobId }),
+  });
+  // Успешный запуск — это 202 Accepted. Тело пустое, читать нечего.
+  if (!res.ok && res.status !== 202) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error(body.error || `Не удалось запустить генерацию (${res.status})`);
+  }
+
+  const startedAt = Date.now();
+  const deadline = startedAt + (opts?.timeoutMs ?? 4 * 60 * 1000);
+  let delay = 1500;
+
+  while (Date.now() < deadline) {
+    await new Promise((r) => setTimeout(r, delay));
+    opts?.onWait?.(Math.round((Date.now() - startedAt) / 1000));
+
+    const job = await apiRequest<{ status: string; data?: any; error?: string }>(
+      'api-ai-job', 'GET', undefined, { jobId },
+    );
+    if (job.status === 'done') return { data: job.data };
+    if (job.status === 'error') throw new Error(job.error || 'Ошибка генерации.');
+    // pending/running — ждём дальше, постепенно разрежая опрос.
+    delay = Math.min(Math.round(delay * 1.3), 5000);
+  }
+
+  throw new Error('ИИ не ответил вовремя. Попробуйте материал покороче или повторите попытку.');
+};
+
 // ---- Attempts ----
 export const apiGetAttempts = () => apiRequest('api-attempts');
 export const apiGetAttempt = (id: string) => apiRequest('api-attempts', 'GET', undefined, { id });

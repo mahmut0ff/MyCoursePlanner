@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
-import { orgGetMaterials, orgCreateMaterial, orgDeleteMaterial, apiAIGenerate, apiTransferRequest, apiGetPersonalLessons } from '../../lib/api';
+import { orgGetMaterials, orgCreateMaterial, orgDeleteMaterial, apiAIGenerateJob, apiTransferRequest, apiGetPersonalLessons } from '../../lib/api';
 import { uploadFile } from '../../services/storage.service';
 import { useAuth } from '../../contexts/AuthContext';
 import { usePlanGate } from '../../contexts/PlanContext';
@@ -117,7 +117,7 @@ const MaterialsPage: React.FC = () => {
   const processWithAI = async (url: string) => {
     try {
       setIsProcessingAI(true);
-      const res = await apiAIGenerate({ type: 'material_summary', fileUrl: url });
+      const res = await apiAIGenerateJob({ type: 'material_summary', fileUrl: url });
       if (res?.data) {
         setForm(f => ({
           ...f,

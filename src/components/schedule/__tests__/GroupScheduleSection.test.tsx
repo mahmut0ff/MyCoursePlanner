@@ -27,7 +27,6 @@ vi.mock('../../../lib/api', () => ({
   orgListClassrooms: vi.fn(),
 }));
 
-vi.mock('../../../contexts/PermissionsContext', () => ({ usePermissions: vi.fn() }));
 vi.mock('react-hot-toast', () => ({
   default: Object.assign(vi.fn(), { success: vi.fn(), error: vi.fn() }),
 }));
@@ -35,20 +34,18 @@ vi.mock('../../ui/ClassroomSelect', () => ({ default: () => <div /> }));
 
 import GroupScheduleSection from '../GroupScheduleSection';
 import * as apiModule from '../../../lib/api';
-import { usePermissions } from '../../../contexts/PermissionsContext';
 
 const api = apiModule as unknown as Record<string, ReturnType<typeof vi.fn>>;
 
 const GROUP = { id: 'g1', name: 'Английский A1', courseId: 'c1', branchId: 'b1' } as any;
 
 const mount = (timetable: unknown[] = []) => {
-  (usePermissions as any).mockReturnValue({ canDelete: () => true });
   api.orgGetTimetable.mockResolvedValue(timetable);
   api.orgGetSchedule.mockResolvedValue([]);
   api.orgListClassrooms.mockResolvedValue([]);
   api.orgCreateEvent.mockResolvedValue({ id: 'e1' });
   api.orgUpdateEvent.mockResolvedValue({});
-  render(<GroupScheduleSection group={GROUP} canEdit />);
+  render(<GroupScheduleSection group={GROUP} canEdit canRemove />);
 };
 
 const day = (name: string) => screen.getByRole('button', { name });

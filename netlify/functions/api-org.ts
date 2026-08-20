@@ -356,6 +356,43 @@ async function getTeacherGroupPolicy(orgId: string): Promise<{ manage: boolean; 
   }
 }
 
+/**
+ * «Расписание своих групп» (`group_schedule`) — узкая версия `schedule` для
+ * преподавателя: ставить, переносить и снимать занятия он может только там, где
+ * сам числится в составе группы, и только через её карточку. Общая страница
+ * расписания и события без группы по-прежнему требуют `schedule:*`.
+ *
+ * Различается тут не объём действий, а ОБЛАСТЬ — ровно как у «ведения
+ * контингента» (isRosterManager), поэтому право и живёт отдельным ресурсом, а не
+ * ещё одной галочкой внутри «Расписания».
+ */
+async function teachesGroup(orgId: string, groupId: unknown, uid: string): Promise<boolean> {
+  if (!groupId || typeof groupId !== 'string') return false;
+  const doc = await adminDb.collection('groups').doc(groupId).get().catch(() => null);
+  const g = doc && doc.exists ? doc.data() : null;
+  if (!g || (g.organizationId || '') !== orgId) return false;
+  return Array.isArray(g.teacherIds) && g.teacherIds.includes(uid);
+}
+
+/**
+ * Право на конкретное занятие: либо расписание всей организации, либо своя
+ * группа по `group_schedule`. `groupIds` — все группы, которых касается запрос
+ * (для переноса это и старая, и новая): узкое право должно покрывать каждую,
+ * иначе им можно было бы утащить занятие в чужую группу.
+ */
+async function canWriteEvent(
+  user: AuthUser, orgId: string, groupIds: unknown[], action: 'write' | 'delete',
+): Promise<boolean> {
+  if (can(user, 'schedule', action)) return true;
+  if (!can(user, 'group_schedule', action)) return false;
+  const ids = [...new Set(groupIds.filter(Boolean).map(String))];
+  if (!ids.length) return false; // событие без группы — это уже общее расписание
+  for (const id of ids) {
+    if (!(await teachesGroup(orgId, id, user.uid))) return false;
+  }
+  return true;
+}
+
 /* ─── Bulk roster operations ─────────────────────────────────────────────── */
 // Backing for the multi-select bars on the students and teachers pages: delete,
 // migrate to a branch, migrate to a group. One code path serves both rosters —
@@ -2119,8 +2156,10 @@ const handler: Handler = async (event: HandlerEvent) => {
     }
 
     if (action === 'createEvent') {
-      if (!can(user, 'schedule', 'write')) return forbidden('Недостаточно прав для этого действия');
       const body = JSON.parse(event.body || '{}');
+      if (!(await canWriteEvent(user, orgId, [body.groupId], 'write'))) {
+        return forbidden('Недостаточно прав для этого действия');
+      }
       const isRecurring = body.recurring === true;
       if (!body.title || !body.startTime) return badRequest('title and startTime required');
       if (!isRecurring && !body.date) return badRequest('date required for non-recurring events');
@@ -2167,13 +2206,16 @@ const handler: Handler = async (event: HandlerEvent) => {
     }
 
     if (action === 'updateEvent') {
-      if (!can(user, 'schedule', 'write')) return forbidden('Недостаточно прав для этого действия');
       const body = JSON.parse(event.body || '{}');
       if (!body.id) return badRequest('id required');
       const doc = await adminDb.collection('scheduleEvents').doc(body.id).get();
       if (!doc.exists || doc.data()?.organizationId !== orgId) return notFound();
       const before = doc.data()!;
       const { id, force, ...fields } = body;
+      // Проверяем и текущую группу занятия, и ту, в которую его переносят.
+      if (!(await canWriteEvent(user, orgId, [before.groupId, fields.groupId], 'write'))) {
+        return forbidden('Недостаточно прав для этого действия');
+      }
 
       // Кабинет пересобираем, только если о нём вообще что-то прислали — иначе
       // правка времени обнулила бы аудиторию.
@@ -2226,13 +2268,15 @@ const handler: Handler = async (event: HandlerEvent) => {
     }
 
     if (action === 'deleteEvent') {
-      if (!can(user, 'schedule', 'delete')) return forbidden('Недостаточно прав для этого действия');
       const body = JSON.parse(event.body || '{}');
       if (!body.id) return badRequest('id required');
       const doc = await adminDb.collection('scheduleEvents').doc(body.id).get();
       const ev = doc.exists ? doc.data()! : null;
       // Only touch events that belong to this org.
       if (ev && ev.organizationId !== orgId) return forbidden();
+      if (!(await canWriteEvent(user, orgId, [ev?.groupId], 'delete'))) {
+        return forbidden('Недостаточно прав для этого действия');
+      }
       await adminDb.collection('scheduleEvents').doc(body.id).delete();
 
       // Notify the group that the lesson was cancelled.

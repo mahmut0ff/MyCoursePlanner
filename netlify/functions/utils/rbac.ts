@@ -40,6 +40,10 @@ export const RESOURCE_ACTIONS: Record<string, RbacAction[]> = {
   lessons: ['read', 'write', 'delete'],
   materials: ['read', 'write', 'delete'],
   schedule: ['read', 'write', 'delete'],
+  // Узкая версия schedule для преподавателя: правка занятий ТОЛЬКО тех групп,
+  // где он числится в teacherIds (и только из карточки группы). Общая страница
+  // расписания по-прежнему требует schedule:*. См. canWriteEvent в api-org.ts.
+  group_schedule: ['write', 'delete'],
   // Справочник физических аудиторий (коллекция classrooms). Отдельно от `rooms`,
   // которые означают ЭКЗАМЕНАЦИОННЫЕ комнаты (examRooms) и есть у каждого препода.
   classrooms: ['read', 'write', 'delete'],
@@ -84,8 +88,12 @@ const ro = (resources: string[]): RolePermission[] =>
 export const TEACHER_DEFAULT: RolePermission[] = [
   // Кабинеты — только чтение: преподаватель ставит занятие в существующую
   // аудиторию и смотрит, свободна ли она, но справочником не распоряжается.
-  ...ro(['dashboard', 'students', 'results', 'analytics', 'classrooms']),
-  ...rw(['courses', 'groups', 'schedule', 'chat']),
+  // Расписание — тоже только чтение: общую страницу /schedule преподаватель
+  // видит целиком, но правит занятия лишь в карточках своих групп, по
+  // `group_schedule`. Право снимается и выдаётся галочками в «Команде».
+  ...ro(['dashboard', 'students', 'results', 'analytics', 'classrooms', 'schedule']),
+  ...rw(['courses', 'groups', 'chat']),
+  ...rwd(['group_schedule']),
   ...rwd(['lessons', 'exams', 'rooms', 'quizzes', 'materials', 'homework', 'gradebook']),
 ];
 

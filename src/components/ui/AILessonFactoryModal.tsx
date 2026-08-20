@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { Sparkles, X, FileText, UploadCloud, Loader2, Mic, MicOff, BookOpen } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { apiAIGenerate, apiCreateQuiz, apiSaveQuizQuestions, apiCreateLesson } from '../../lib/api';
-import { uploadFile } from '../../services/storage.service';
+import { uploadAISource } from '../../services/storage.service';
 import { useSpeechToText } from '../../hooks/useSpeechToText';
 import { generateId } from '../../utils/grading';
 
@@ -64,9 +64,7 @@ export const AILessonFactoryModal: React.FC<Props> = ({ isOpen, onClose, onSucce
       let fileUrl = '';
       if (file) {
         setLoadingState('Загружаем файл для анализа ИИ...');
-        const ext = file.name.split('.').pop() || 'tmp';
-        const path = `ai-uploads/factory-${Date.now()}-${Math.random().toString(36).substring(2)}.${ext}`;
-        fileUrl = await uploadFile(path, file);
+        fileUrl = await uploadAISource(file, 'factory-');
       }
 
       setLoadingState('Генерация урока и 10 вопросов для квиза. Пожалуйста, подождите...');

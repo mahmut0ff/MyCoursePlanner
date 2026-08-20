@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { Sparkles, X, FileText, UploadCloud, Loader2, Mic, MicOff } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { apiAIGenerate } from '../../lib/api';
-import { uploadFile } from '../../services/storage.service';
+import { uploadAISource } from '../../services/storage.service';
 import { useSpeechToText } from '../../hooks/useSpeechToText';
 
 interface Props {
@@ -54,10 +54,7 @@ export const AIGeneratorModal: React.FC<Props> = ({ isOpen, onClose, onSuccess, 
     try {
       let fileUrl = '';
       if (file) {
-        // Upload file to standard materials path to get URL
-        const ext = file.name.split('.').pop() || 'tmp';
-        const path = `ai-uploads/${Date.now()}-${Math.random().toString(36).substring(2)}.${ext}`;
-        fileUrl = await uploadFile(path, file);
+        fileUrl = await uploadAISource(file);
       }
 
       const res = await apiAIGenerate({ prompt, type, fileUrl });

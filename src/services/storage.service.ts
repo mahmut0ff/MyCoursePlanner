@@ -1,5 +1,5 @@
 import { ref, uploadBytes, uploadBytesResumable, getDownloadURL, deleteObject } from 'firebase/storage';
-import { storage } from '../lib/firebase';
+import { auth, storage } from '../lib/firebase';
 
 export const uploadFile = async (
   path: string,
@@ -43,6 +43,19 @@ export const deleteFile = async (path: string): Promise<void> => {
   } catch (e) {
     console.warn('Failed to delete file:', e);
   }
+};
+
+/**
+ * Исходник для ИИ-генерации (лекция, PDF, скан). Путь обязан начинаться с uid —
+ * storage.rules пускают в `ai-uploads/{uid}/` только самого владельца, иначе
+ * прилетает storage/unauthorized.
+ */
+export const uploadAISource = async (file: File, prefix = ''): Promise<string> => {
+  const uid = auth.currentUser?.uid;
+  if (!uid) throw new Error('Требуется вход в систему для загрузки файла.');
+  const ext = (file.name.split('.').pop() || 'tmp').replace(/[^a-zA-Z0-9]/g, '').slice(0, 8) || 'tmp';
+  const name = `${prefix}${Date.now()}-${Math.random().toString(36).substring(2)}.${ext}`;
+  return uploadFile(`ai-uploads/${uid}/${name}`, file);
 };
 
 export const uploadLessonCover = async (lessonId: string, file: File): Promise<string> => {

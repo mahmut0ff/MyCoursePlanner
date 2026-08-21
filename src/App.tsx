@@ -211,10 +211,11 @@ const App: React.FC = () => {
             <Route path="journal" element={<ProtectedRoute><PermissionRoute resource="gradebook"><PlanGuard feature="gradebook"><JournalPage /></PlanGuard></PermissionRoute></ProtectedRoute>} />
             <Route path="teacher-analytics" element={<ProtectedRoute><PermissionRoute resource="analytics"><PlanGuard feature="advancedAnalytics"><AdminGradebookAnalytics /></PlanGuard></PermissionRoute></ProtectedRoute>} />
             <Route path="teacher-activity" element={<ProtectedRoute><PermissionRoute resource="teacher_activity"><TeacherActivityPage /></PermissionRoute></ProtectedRoute>} />
-            {/* Рейтинг студентов. Гейт — `analytics` (успеваемость учеников), тот же,
-                что у /teacher-analytics; PlanGuard намеренно нет: это не «продвинутая
-                аналитика», а сводка журнала, доступная всем, у кого журнал есть. */}
-            <Route path="rating" element={<ProtectedRoute><PermissionRoute resource="analytics"><StudentRatingPage /></PermissionRoute></ProtectedRoute>} />
+            {/* Рейтинг студентов. Свой гейт `student_rating`, а не «Аналитика»:
+                это сводка журнала, и её выдают преподавателю, не открывая ему
+                отчёты по успеваемости целиком. PlanGuard намеренно нет — это не
+                «продвинутая аналитика», а тот же журнал в другом разрезе. */}
+            <Route path="rating" element={<ProtectedRoute><PermissionRoute resource="student_rating"><StudentRatingPage /></PermissionRoute></ProtectedRoute>} />
             <Route path="homework/review" element={<ProtectedRoute><PermissionRoute resource="homework"><HomeworkReviewPage /></PermissionRoute></ProtectedRoute>} />
 
             {/* Lessons */}

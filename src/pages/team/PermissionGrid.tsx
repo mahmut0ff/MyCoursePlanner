@@ -34,10 +34,13 @@ const PermissionGrid: React.FC<{
   return (
     <div className="rounded-2xl border border-slate-200 dark:border-slate-700 overflow-hidden">
       {/* Column header */}
-      <div className="grid grid-cols-[1fr_repeat(3,52px)_44px_28px] items-center gap-1 px-3 py-2 bg-slate-50 dark:bg-slate-800/60 text-[11px] font-semibold text-slate-500">
-        <span>{t('team.resource', 'Раздел')}</span>
-        {RBAC_ACTIONS.map(a => <span key={a} className="text-center">{ACTION_LABELS[a]}</span>)}
-        <span className="text-center">{t('team.all', 'Все')}</span>
+      {/* Колонки под действия — 62px: «Изменение» на 11px шрифта в 52px не влезало,
+          и заголовки наезжали друг на друга. Ширина фиксированная, чтобы галочки
+          стояли одна под другой во всех строках. */}
+      <div className="grid grid-cols-[1fr_repeat(3,62px)_44px_28px] items-center gap-1 px-3 py-2 bg-slate-50 dark:bg-slate-800/60 text-[10px] font-semibold text-slate-500">
+        <span className="text-[11px]">{t('team.resource', 'Раздел')}</span>
+        {RBAC_ACTIONS.map(a => <span key={a} className="text-center leading-tight">{ACTION_LABELS[a]}</span>)}
+        <span className="text-center leading-tight">{t('team.all', 'Все')}</span>
         <span />
       </div>
 
@@ -57,7 +60,7 @@ const PermissionGrid: React.FC<{
               const allowed = (res.actions ?? RBAC_ACTIONS);
               const allOn = allowed.every(a => hasPerm(res.id, a));
               return (
-                <div key={res.id} className="relative grid grid-cols-[1fr_repeat(3,52px)_44px_28px] items-center gap-1 px-3 py-2 border-t border-slate-100 dark:border-slate-700/50">
+                <div key={res.id} className="relative grid grid-cols-[1fr_repeat(3,62px)_44px_28px] items-center gap-1 px-3 py-2 border-t border-slate-100 dark:border-slate-700/50">
                   <span className="text-[13px] font-medium text-slate-700 dark:text-slate-200 pl-4 truncate">{res.label}</span>
                   {RBAC_ACTIONS.map(a => (
                     <div key={a} className="flex justify-center">

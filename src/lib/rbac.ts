@@ -175,6 +175,15 @@ export const RESOURCE_GROUPS: ResourceGroup[] = [
       { id: 'results', label: 'Результаты', actions: ['read'], help: {
         read: 'Просмотр результатов экзаменов организации',
       } },
+      // Страница /rating: поимённая сводка «оценки + посещаемость» по всем ученикам.
+      // Раньше её гейтила «Аналитика» — но это разные вещи: рейтинг читается из
+      // журнала и нужен преподавателю, а «Аналитика» открывает отчёты по
+      // успеваемости целиком. Отдельным ресурсом рейтинг можно выдать (или снять)
+      // не трогая аналитику.
+      { id: 'student_rating', label: 'Рейтинг студентов', actions: ['read'], help: {
+        read: 'Сводный рейтинг учеников по оценкам и посещаемости — по всей академии, курсу или группе',
+        notes: 'Только просмотр, данные берутся из журнала. Считает по всем ученикам организации, а не только по своим группам, — выдавайте так же осознанно, как «Аналитику».',
+      } },
     ],
   },
   {
@@ -282,7 +291,7 @@ export const TEACHER_DEFAULT: RolePermission[] = [
   // Расписание — тоже только чтение: общую страницу /schedule преподаватель
   // видит целиком, но правит занятия лишь в карточках своих групп, по
   // `group_schedule`. Право снимается и выдаётся галочками в «Команде».
-  ...ro(['dashboard', 'students', 'results', 'analytics', 'classrooms', 'schedule']),
+  ...ro(['dashboard', 'students', 'results', 'analytics', 'student_rating', 'classrooms', 'schedule']),
   ...rw(['courses', 'groups', 'chat']),
   ...rwd(['group_schedule']),
   ...rwd(['lessons', 'exams', 'rooms', 'quizzes', 'materials', 'homework', 'gradebook']),
@@ -294,7 +303,7 @@ export const TEACHER_DEFAULT: RolePermission[] = [
  * has — the server also grants it by role, but an unchecked box would lie.
  */
 export const MANAGER_DEFAULT: RolePermission[] = [
-  ...ro(['dashboard', 'analytics', 'results']),
+  ...ro(['dashboard', 'analytics', 'student_rating', 'results']),
   ...rw(['ai', 'chat']),
   ...rw(['roster_management']),
   ...rwd(['students', 'teachers', 'leads', 'courses', 'groups', 'lessons', 'materials', 'schedule', 'classrooms', 'exams', 'rooms', 'quizzes', 'gradebook', 'homework', 'certificates']),
@@ -388,6 +397,20 @@ export function expandPermissions(permissions: RolePermission[] | undefined | nu
     (p.actions || []).forEach(a => set.add(`${p.resource}:${a}`));
   });
   return set;
+}
+
+/**
+ * Обратная операция к expandPermissions: плоский набор `resource:action` →
+ * массив прав роли. Порядок ресурсов берётся из каталога, а действия — из
+ * списка разрешённых, чтобы одинаковый набор всегда сериализовался одинаково.
+ */
+export function permissionsFromSet(set: Set<string>): RolePermission[] {
+  const out: RolePermission[] = [];
+  for (const resource of ALL_RESOURCES) {
+    const actions = (RESOURCE_ACTIONS[resource] || RBAC_ACTIONS).filter(a => set.has(`${resource}:${a}`));
+    if (actions.length) out.push({ resource, actions: [...actions] });
+  }
+  return out;
 }
 
 /** Layer per-member overrides onto a resolved permission set (grants add, revokes remove). */

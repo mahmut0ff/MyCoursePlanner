@@ -73,11 +73,12 @@ export const handler: Handler = async (event: HandlerEvent) => {
   const orgId = user.organizationId;
   if (!orgId) return forbidden();
 
-  // Гейт тот же, что у страницы аналитики успеваемости, на которую этот рейтинг
-  // и опирается: поимённая сводка по всем ученикам — это отчёт, а не собственные
-  // оценки. Ученику `analytics` не выдаётся ни одной ролью по умолчанию.
+  // Гейт — собственный ресурс `student_rating`: поимённая сводка по всем
+  // ученикам организации это отчёт, а не свои оценки, поэтому право отдельное
+  // (студенту оно не выдаётся ни одной ролью по умолчанию) и снимается, не
+  // задевая «Аналитику». Преподавателю и менеджеру входит в набор по умолчанию.
   if (!isStaff(user)) return forbidden('Staff access required');
-  if (!can(user, 'analytics', 'read')) return forbidden('Нет доступа к аналитике');
+  if (!can(user, 'student_rating', 'read')) return forbidden('Нет доступа к рейтингу студентов');
 
   const params = event.queryStringParameters || {};
   const period = params.period || 'all';

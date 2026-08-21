@@ -267,7 +267,7 @@ export function useNavModel(instType?: string, opts?: NavModelOptions): NavSecti
     // the lone entry under «Управление» and /journal was missing entirely.
     if (canRead('gradebook')) learning.push({ id: 'journal', to: '/journal', icon: NotebookPen, label: t('nav.journal', 'Журнал'), locked: !canAccess('gradebook') });
     if (canRead('gradebook')) learning.push({ id: 'gradebook', to: '/gradebook', icon: TableProperties, label: t('nav.gradebook', 'Оценки'), locked: !canAccess('gradebook') });
-    if (canRead('analytics')) learning.push({ id: 'studentRating', to: '/rating', icon: Trophy, label: t('nav.studentRating', 'Рейтинг') });
+    if (canRead('student_rating')) learning.push({ id: 'studentRating', to: '/rating', icon: Trophy, label: t('nav.studentRating', 'Рейтинг') });
     if (canRead('materials')) learning.push({ id: 'materials', to: '/materials', icon: FileText, label: t('nav.materials') });
     if (canRead('quizzes')) learning.push({ id: 'quizLibrary', to: '/quiz/library', icon: Gamepad2, label: t('nav.quizLibrary') });
     sections.push({ id: 'learning', label: t('nav.secLearning', 'Обучение'), items: learning });
@@ -304,7 +304,7 @@ export function useNavModel(instType?: string, opts?: NavModelOptions): NavSecti
       if (canRead('groups')) learning.push({ id: 'groups', to: '/groups', icon: Layers, label: term(t, inst, 'groups') });
       if (canRead('gradebook')) learning.push({ id: 'journal', to: '/journal', icon: NotebookPen, label: t('nav.journal', 'Журнал'), locked: !canAccess('gradebook') });
       if (canRead('gradebook')) learning.push({ id: 'gradebook', to: '/gradebook', icon: TableProperties, label: t('nav.gradebook', 'Оценки'), locked: !canAccess('gradebook') });
-      if (canRead('analytics')) learning.push({ id: 'studentRating', to: '/rating', icon: Trophy, label: t('nav.studentRating', 'Рейтинг') });
+      if (canRead('student_rating')) learning.push({ id: 'studentRating', to: '/rating', icon: Trophy, label: t('nav.studentRating', 'Рейтинг') });
       if (canRead('homework')) learning.push({ id: 'homeworkReview', to: '/homework/review', icon: ClipboardCheck, label: t('nav.homeworkReview', 'Проверка ДЗ') });
       sections.push({ id: 'learning', label: t('nav.secLearning', 'Обучение'), items: learning });
 

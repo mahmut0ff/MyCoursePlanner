@@ -10,9 +10,11 @@ import {
   RESOURCE_GROUPS, RBAC_ACTIONS,
   countPermissions, roleAccent, fullPermissionSet,
   MANAGER_DEFAULT, TEACHER_DEFAULT,
-  type OrgRole, type RolePermission, type RbacAction,
+  expandPermissions, permissionsFromSet, presetActive, togglePreset,
+  type OrgRole, type RolePermission, type RbacAction, type AccessPreset,
 } from '../../lib/rbac';
 import PermissionGrid from './PermissionGrid';
+import AccessPresets from './AccessPresets';
 
 // Synthetic, read-only reference roles derived from the base-role defaults.
 const SYSTEM_ROLES: (OrgRole & { full?: boolean })[] = [
@@ -101,6 +103,18 @@ const RoleMatrix: React.FC<{ isAdmin: boolean }> = ({ isAdmin }) => {
       }
       return { ...prev, permissions: perms };
     });
+  };
+
+  // Быстрые наборы правят те же права, что и матрица: разворачиваем их в плоское
+  // множество, переключаем набор и собираем обратно — так роль можно собрать
+  // одним кликом ровно как в тонкой настройке сотрудника.
+  const presetOn = (preset: AccessPreset) => presetActive(expandPermissions(form.permissions), preset);
+  const applyPreset = (preset: AccessPreset) => {
+    if (viewOnly) return;
+    setForm(prev => ({
+      ...prev,
+      permissions: permissionsFromSet(togglePreset(expandPermissions(prev.permissions), preset)),
+    }));
   };
 
   const toggleAll = (resource: string, allowed: RbacAction[]) => {
@@ -241,16 +255,19 @@ const RoleMatrix: React.FC<{ isAdmin: boolean }> = ({ isAdmin }) => {
                   <p className="text-xs text-slate-500 mt-1">{t('team.fullAccessDesc', 'Администратор имеет неограниченный доступ. Права изменить нельзя.')}</p>
                 </div>
               ) : (
-                <PermissionGrid
-                  hasPerm={hasPerm}
-                  togglePerm={togglePerm}
-                  toggleAll={toggleAll}
-                  viewOnly={viewOnly}
-                  openHelp={openHelp}
-                  setOpenHelp={setOpenHelp}
-                  collapsed={collapsed}
-                  setCollapsed={setCollapsed}
-                />
+                <>
+                  <AccessPresets active={presetOn} onToggle={applyPreset} disabled={viewOnly} />
+                  <PermissionGrid
+                    hasPerm={hasPerm}
+                    togglePerm={togglePerm}
+                    toggleAll={toggleAll}
+                    viewOnly={viewOnly}
+                    openHelp={openHelp}
+                    setOpenHelp={setOpenHelp}
+                    collapsed={collapsed}
+                    setCollapsed={setCollapsed}
+                  />
+                </>
               )}
             </div>
 

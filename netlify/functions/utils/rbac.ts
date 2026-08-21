@@ -62,6 +62,9 @@ export const RESOURCE_ACTIONS: Record<string, RbacAction[]> = {
   certificates: ['read', 'write', 'delete'],
   branches: ['read', 'write', 'delete'],
   analytics: ['read'],
+  // Страница рейтинга студентов (/rating). Отдельно от `analytics`: рейтинг —
+  // сводка журнала и нужна преподавателю, аналитика — отчёты по успеваемости.
+  student_rating: ['read'],
   // Read-only gate for the teacher activity log + KPI dashboard (Активность
   // преподавателей). Held separately so a director can grant activity oversight
   // without handing over the whole analytics/finance surface.
@@ -91,14 +94,14 @@ export const TEACHER_DEFAULT: RolePermission[] = [
   // Расписание — тоже только чтение: общую страницу /schedule преподаватель
   // видит целиком, но правит занятия лишь в карточках своих групп, по
   // `group_schedule`. Право снимается и выдаётся галочками в «Команде».
-  ...ro(['dashboard', 'students', 'results', 'analytics', 'classrooms', 'schedule']),
+  ...ro(['dashboard', 'students', 'results', 'analytics', 'student_rating', 'classrooms', 'schedule']),
   ...rw(['courses', 'groups', 'chat']),
   ...rwd(['group_schedule']),
   ...rwd(['lessons', 'exams', 'rooms', 'quizzes', 'materials', 'homework', 'gradebook']),
 ];
 
 export const MANAGER_DEFAULT: RolePermission[] = [
-  ...ro(['dashboard', 'analytics', 'results']),
+  ...ro(['dashboard', 'analytics', 'student_rating', 'results']),
   ...rw(['ai', 'chat']),
   // Явно, хотя isRosterManager даёт это менеджеру и по роли: матрица прав должна
   // показывать реальное положение дел, а не пустую галочку.

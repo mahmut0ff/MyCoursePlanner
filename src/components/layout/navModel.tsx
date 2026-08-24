@@ -17,7 +17,7 @@ import {
   ClipboardCheck,
   Inbox,
   NotebookText, NotebookPen, MapPin, UserCog,
-  Sparkles, LifeBuoy, Wallet, DoorOpen, MessageSquare,
+  Sparkles, LifeBuoy, Wallet, DoorOpen, MessageSquare, Ban,
 } from 'lucide-react';
 import { useChatRooms, useUnreadRooms } from '../../lib/useChat';
 
@@ -221,6 +221,7 @@ export function useNavModel(instType?: string, opts?: NavModelOptions): NavSecti
         { id: 'journal', to: '/journal', icon: NotebookPen, label: t('nav.journal', 'Журнал'), locked: !canAccess('gradebook') },
         { id: 'gradebook', to: '/gradebook', icon: TableProperties, label: t('nav.gradebook', 'Оценки'), locked: !canAccess('gradebook') },
         { id: 'studentRating', to: '/rating', icon: Trophy, label: t('nav.studentRating', 'Рейтинг') },
+        { id: 'noAdmission', to: '/rating/no-admission', icon: Ban, label: t('nav.noAdmission', 'Недопуск') },
         { id: 'materials', to: '/materials', icon: FileText, label: t('nav.materials') },
         { id: 'quizLibrary', to: '/quiz/library', icon: Gamepad2, label: t('nav.quizLibrary') },
       ],
@@ -268,6 +269,7 @@ export function useNavModel(instType?: string, opts?: NavModelOptions): NavSecti
     if (canRead('gradebook')) learning.push({ id: 'journal', to: '/journal', icon: NotebookPen, label: t('nav.journal', 'Журнал'), locked: !canAccess('gradebook') });
     if (canRead('gradebook')) learning.push({ id: 'gradebook', to: '/gradebook', icon: TableProperties, label: t('nav.gradebook', 'Оценки'), locked: !canAccess('gradebook') });
     if (canRead('student_rating')) learning.push({ id: 'studentRating', to: '/rating', icon: Trophy, label: t('nav.studentRating', 'Рейтинг') });
+    if (canRead('student_rating')) learning.push({ id: 'noAdmission', to: '/rating/no-admission', icon: Ban, label: t('nav.noAdmission', 'Недопуск') });
     if (canRead('materials')) learning.push({ id: 'materials', to: '/materials', icon: FileText, label: t('nav.materials') });
     if (canRead('quizzes')) learning.push({ id: 'quizLibrary', to: '/quiz/library', icon: Gamepad2, label: t('nav.quizLibrary') });
     sections.push({ id: 'learning', label: t('nav.secLearning', 'Обучение'), items: learning });
@@ -305,6 +307,7 @@ export function useNavModel(instType?: string, opts?: NavModelOptions): NavSecti
       if (canRead('gradebook')) learning.push({ id: 'journal', to: '/journal', icon: NotebookPen, label: t('nav.journal', 'Журнал'), locked: !canAccess('gradebook') });
       if (canRead('gradebook')) learning.push({ id: 'gradebook', to: '/gradebook', icon: TableProperties, label: t('nav.gradebook', 'Оценки'), locked: !canAccess('gradebook') });
       if (canRead('student_rating')) learning.push({ id: 'studentRating', to: '/rating', icon: Trophy, label: t('nav.studentRating', 'Рейтинг') });
+      if (canRead('student_rating')) learning.push({ id: 'noAdmission', to: '/rating/no-admission', icon: Ban, label: t('nav.noAdmission', 'Недопуск') });
       if (canRead('homework')) learning.push({ id: 'homeworkReview', to: '/homework/review', icon: ClipboardCheck, label: t('nav.homeworkReview', 'Проверка ДЗ') });
       sections.push({ id: 'learning', label: t('nav.secLearning', 'Обучение'), items: learning });
 

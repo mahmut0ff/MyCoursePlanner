@@ -1,8 +1,10 @@
 import { describe, it, expect } from 'vitest';
 import {
   emptyCounts, mergeCounts, sumCounts, computeMetrics, toneOf,
+  isNotAdmitted, admissionGap, admissionReason, buildRatingRows,
+  NO_ADMISSION_THRESHOLD,
   ATTENDANCE_WEIGHT, GRADE_WEIGHT,
-  type RatingCounts,
+  type RatingCounts, type RatingStudent, type RatingStat,
 } from '../student-rating';
 
 /** Счётчики одного курса: посещаемость задаём напрямую, оценки — списком (значение, максимум). */
@@ -127,5 +129,83 @@ describe('toneOf', () => {
     expect(toneOf(50)).toBe('warn');
     expect(toneOf(49)).toBe('bad');
     expect(toneOf(0)).toBe('bad');
+  });
+});
+
+describe('недопуск: порог, недобор, причина', () => {
+  const m = (att: Parameters<typeof counts>[0], grades: [number, number][] = []) =>
+    computeMetrics(counts(att, grades));
+
+  it('порог — 70, строго ниже; ровно 70 — допущен', () => {
+    expect(NO_ADMISSION_THRESHOLD).toBe(70);
+    expect(isNotAdmitted(m({}, [[69, 100]]))).toBe(true);   // балл 69
+    expect(isNotAdmitted(m({}, [[70, 100]]))).toBe(false);  // балл 70 — на пороге, допущен
+    expect(isNotAdmitted(m({}, [[100, 100]]))).toBe(false);
+  });
+
+  it('без данных недопуска нет — это пустой журнал, а не двойка', () => {
+    expect(isNotAdmitted(computeMetrics(emptyCounts()))).toBe(false);
+    expect(admissionReason(computeMetrics(emptyCounts()))).toBe('none');
+  });
+
+  it('admissionGap — сколько не хватает до порога; 0 у допущенных и без данных', () => {
+    expect(admissionGap(m({}, [[60, 100]]))).toBe(10); // 60 → не хватает 10
+    expect(admissionGap(m({}, [[80, 100]]))).toBe(0);
+    expect(admissionGap(computeMetrics(emptyCounts()))).toBe(0);
+  });
+
+  it('причина: винит только ту половину, что реально ниже порога', () => {
+    // низкая посещаемость, оценки в норме: 40*0.4 + 75*0.6 = 61 < 70
+    expect(admissionReason(m({ present: 2, absent: 3 }, [[75, 100]]))).toBe('attendance');
+    // низкие оценки, посещаемость в норме: 100*0.4 + 40*0.6 = 64 < 70
+    expect(admissionReason(m({ present: 5 }, [[40, 100]]))).toBe('grades');
+    // просели обе: 50*0.4 + 50*0.6 = 50
+    expect(admissionReason(m({ present: 5, absent: 5 }, [[50, 100]]))).toBe('both');
+    // допущен — причины нет
+    expect(admissionReason(m({ present: 9, absent: 1 }, [[90, 100]]))).toBe('none');
+  });
+});
+
+describe('buildRatingRows', () => {
+  const S = (uid: string, name: string, branchIds: string[] = []): RatingStudent => ({ uid, name, avatarUrl: '', branchIds });
+  const st = (studentId: string, courseId: string, c: RatingCounts): RatingStat => ({ studentId, courseId, ...c });
+  const rowsById = (rows: ReturnType<typeof buildRatingRows>) => Object.fromEntries(rows.map(r => [r.student.uid, r]));
+
+  it('ранжирует по баллу; равный балл делит одно место, следующий — со сдвигом', () => {
+    const students = [S('a', 'A'), S('b', 'B'), S('c', 'C')];
+    const stats = [
+      st('a', 'c1', counts({ present: 10 })),          // 100
+      st('b', 'c1', counts({ present: 10 })),          // 100 — ничья
+      st('c', 'c1', counts({ present: 5, absent: 5 })), // 50
+    ];
+    const by = rowsById(buildRatingRows({ students, stats, groups: [], branchName: new Map(), sliceCourseId: null, activeGroup: null }));
+    expect(by.a.rank).toBe(1);
+    expect(by.b.rank).toBe(1);
+    expect(by.c.rank).toBe(3); // ничья съедает 2-е место
+  });
+
+  it('срез по курсу оставляет только его студентов и его счётчики', () => {
+    const students = [S('a', 'A'), S('b', 'B')];
+    const stats = [st('a', 'c1', counts({ present: 5 })), st('b', 'c2', counts({ present: 5 }))];
+    const groups = [{ id: 'g1', name: 'G1', courseId: 'c1', studentIds: ['a'] }] as any;
+    const rows = buildRatingRows({ students, stats, groups, branchName: new Map(), sliceCourseId: 'c1', activeGroup: null });
+    expect(rows.map(r => r.student.uid)).toEqual(['a']); // b целиком в c2 — не в срезе
+  });
+
+  it('студент из группы курса попадает в срез даже без единой отметки', () => {
+    const students = [S('a', 'A')];
+    const groups = [{ id: 'g1', name: 'G1', courseId: 'c1', studentIds: ['a'] }] as any;
+    const rows = buildRatingRows({ students, stats: [], groups, branchName: new Map(), sliceCourseId: 'c1', activeGroup: null });
+    expect(rows).toHaveLength(1);
+    expect(rows[0].metrics.hasData).toBe(false);
+    expect(rows[0].rank).toBeNull();       // без данных места нет
+    expect(rows[0].groupNames).toEqual(['G1']);
+  });
+
+  it('branchNames разворачиваются через переданную карту филиалов', () => {
+    const students = [S('a', 'A', ['br1'])];
+    const stats = [st('a', 'c1', counts({ present: 1 }))];
+    const rows = buildRatingRows({ students, stats, groups: [], branchName: new Map([['br1', 'Центр']]), sliceCourseId: null, activeGroup: null });
+    expect(rows[0].branchNames).toEqual(['Центр']);
   });
 });

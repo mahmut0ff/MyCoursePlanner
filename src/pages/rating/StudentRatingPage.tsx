@@ -8,119 +8,44 @@
  * здесь не заводится.
  *
  * Сервер отдаёт СЧЁТЧИКИ по паре «студент × курс» (api-rating), а срез
- * складывается уже здесь — так смена курса/группы не стоит запроса, а средние
- * считаются из сырых чисел, а не усреднением средних (см. src/lib/student-rating.ts).
+ * складывается уже здесь через общий buildRatingRows — так смена курса/группы не
+ * стоит запроса, а средние считаются из сырых чисел, а не усреднением средних
+ * (см. src/lib/student-rating.ts). Тот же хук и тот же сборщик кормят страницу
+ * недопуска — один срез, одна формула, одно место рейтинга.
  */
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import {
   Trophy, Search, ArrowUpDown, Download, X, BookOpen, Layers, Users,
-  CalendarCheck, GraduationCap, Building2, Info, RefreshCw, ExternalLink,
+  CalendarCheck, GraduationCap, Building2, Info, RefreshCw, Ban,
 } from 'lucide-react';
 import { useBranch } from '../../contexts/BranchContext';
-import { apiGetStudentRating, orgGetCourses, orgGetGroups } from '../../lib/api';
-import type { Course, Group } from '../../types';
 import {
-  emptyCounts, mergeCounts, computeMetrics, toneOf,
-  ATTENDANCE_WEIGHT, GRADE_WEIGHT,
-  type RatingCounts, type RatingMetrics, type RatingTone,
+  emptyCounts, mergeCounts, computeMetrics, toneOf, isNotAdmitted, buildRatingRows,
+  ATTENDANCE_WEIGHT, GRADE_WEIGHT, NO_ADMISSION_THRESHOLD,
+  type RatingCounts, type RatingRow,
 } from '../../lib/student-rating';
+import { useStudentRating, RATING_PERIODS, RATING_PERIOD_FALLBACK, type RatingPeriod } from '../../hooks/useStudentRating';
 import { buildCsv, downloadCsv } from '../../lib/csv';
 import EmptyState from '../../components/ui/EmptyState';
 import { CardSkeleton, ListSkeleton } from '../../components/ui/Skeleton';
 import LazyListFooter from '../../components/ui/LazyListFooter';
 import { useLazyList } from '../../hooks/useLazyList';
+import {
+  TONE, gradeLabel, Avatar, NotAdmittedBadge, SummaryCard, BranchChip, RankBadge,
+} from './ratingShared';
+import RatingStudentDrawer from './RatingStudentDrawer';
 
-// ── Ответ api-rating ──
-interface RatingStudent {
-  uid: string;
-  name: string;
-  avatarUrl: string;
-  branchIds: string[];
-}
-interface RatingStat extends RatingCounts {
-  studentId: string;
-  courseId: string;
-}
-interface RatingResponse {
-  period: { period: string; startIso: string; endIso: string } | null;
-  students: RatingStudent[];
-  stats: RatingStat[];
-}
-
-/** Одна строка таблицы: студент + его показатели в текущем срезе. */
-interface Row {
-  student: RatingStudent;
-  counts: RatingCounts;
-  metrics: RatingMetrics;
-  /** Курсы, по которым у студента есть данные в срезе — для карточки. */
-  byCourse: RatingStat[];
-  groupNames: string[];
-  branchNames: string[];
-  /** Место в рейтинге; null — данных нет, места тоже. */
-  rank: number | null;
-}
-
-const PERIODS = ['current_month', 'quarter', 'year', 'all'] as const;
-type Period = (typeof PERIODS)[number];
-const PERIOD_FALLBACK: Record<Period, string> = {
-  current_month: 'Этот месяц',
-  quarter: 'Квартал',
-  year: 'Год',
-  all: 'Всё время',
-};
-
+type Row = RatingRow;
 type SortKey = 'rank' | 'name' | 'lessons' | 'attendance' | 'grade';
-
-const TONE: Record<RatingTone, { text: string; bar: string; chip: string }> = {
-  good: {
-    text: 'text-emerald-600 dark:text-emerald-400',
-    bar: 'bg-emerald-500',
-    chip: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400',
-  },
-  warn: {
-    text: 'text-amber-600 dark:text-amber-400',
-    bar: 'bg-amber-500',
-    chip: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400',
-  },
-  bad: {
-    text: 'text-rose-600 dark:text-rose-400',
-    bar: 'bg-rose-500',
-    chip: 'bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400',
-  },
-};
-
-/** Медали первой тройки — тот же язык, что в колонке рейтинга внутри журнала. */
-const MEDALS = [
-  'bg-gradient-to-br from-amber-400 to-yellow-500 text-white shadow-sm',
-  'bg-gradient-to-br from-slate-300 to-slate-400 text-white shadow-sm',
-  'bg-gradient-to-br from-amber-600 to-orange-700 text-white shadow-sm',
-];
-
-function initials(name: string): string {
-  const parts = name.trim().split(/\s+/).filter(Boolean);
-  if (!parts.length) return '?';
-  return (parts[0][0] + (parts[1]?.[0] || '')).toUpperCase();
-}
-
-/** «4.6 / 5», а при разных шкалах в срезе — честный процент. */
-function gradeLabel(m: RatingMetrics): string {
-  if (!m.hasGrades) return '—';
-  if (m.avgGrade !== null && m.scaleMax !== null) return `${m.avgGrade} / ${m.scaleMax}`;
-  return `${m.gradePct}%`;
-}
 
 const StudentRatingPage: React.FC = () => {
   const { t } = useTranslation();
   const { activeBranchId, setActiveBranch, branches, canSwitch } = useBranch();
 
-  const [period, setPeriod] = useState<Period>('all');
-  const [data, setData] = useState<RatingResponse | null>(null);
-  const [courses, setCourses] = useState<Course[]>([]);
-  const [groups, setGroups] = useState<Group[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
+  const [period, setPeriod] = useState<RatingPeriod>('all');
+  const { data, courses, groups, loading, error, reload } = useStudentRating(period);
 
   const [search, setSearch] = useState('');
   const [courseId, setCourseId] = useState('all');
@@ -128,34 +53,6 @@ const StudentRatingPage: React.FC = () => {
   const [showEmpty, setShowEmpty] = useState(false);
   const [sort, setSort] = useState<{ key: SortKey; dir: 'asc' | 'desc' }>({ key: 'rank', dir: 'asc' });
   const [selected, setSelected] = useState<Row | null>(null);
-  /** Счётчик ручной перезагрузки: тот же период/филиал должен уметь перезапросить. */
-  const [reloadTick, setReloadTick] = useState(0);
-
-  // activeBranchId в зависимостях: интерцептор штампует филиал на GET, но эффект
-  // сам себя не перезапускает — это первое, что ломается, когда страница
-  // «не слышит» переключатель (см. memory «Global branch scope»).
-  useEffect(() => {
-    let alive = true;
-    setLoading(true);
-    setError('');
-    Promise.all([
-      apiGetStudentRating({ period }),
-      orgGetCourses().catch(() => []),
-      orgGetGroups().catch(() => []),
-    ])
-      .then(([rating, cRes, gRes]) => {
-        if (!alive) return;
-        setData((rating as RatingResponse) || { period: null, students: [], stats: [] });
-        setCourses((cRes as Course[]) || []);
-        setGroups((gRes as Group[]) || []);
-      })
-      .catch((e: any) => {
-        if (!alive) return;
-        setError(e?.message || t('rating.loadFailed', 'Не удалось загрузить рейтинг'));
-      })
-      .finally(() => { if (alive) setLoading(false); });
-    return () => { alive = false; };
-  }, [period, activeBranchId, reloadTick, t]);
 
   const students = data?.students ?? [];
   const stats = data?.stats ?? [];
@@ -185,75 +82,14 @@ const StudentRatingPage: React.FC = () => {
   const activeGroup = groupId !== 'all' ? groupById.get(groupId) || null : null;
   const sliceCourseId = activeGroup ? (activeGroup.courseId || null) : (courseId === 'all' ? null : courseId);
 
-  const rows = useMemo<Row[]>(() => {
-    // Кто числится в курсе по группам — нужен, чтобы студент из группы курса
-    // попадал в срез даже без единой отметки (иначе «нет данных» выглядит как
-    // «его тут нет»).
-    const enrolled = new Map<string, Set<string>>(); // courseId → studentIds
-    const groupsOfStudent = new Map<string, Group[]>();
-    for (const g of groups) {
-      const ids: string[] = Array.isArray(g.studentIds) ? g.studentIds : [];
-      if (g.courseId) {
-        let set = enrolled.get(g.courseId);
-        if (!set) { set = new Set(); enrolled.set(g.courseId, set); }
-        ids.forEach(id => set!.add(id));
-      }
-      ids.forEach(id => {
-        const list = groupsOfStudent.get(id);
-        if (list) list.push(g); else groupsOfStudent.set(id, [g]);
-      });
-    }
-
-    const statsOf = new Map<string, RatingStat[]>();
-    for (const s of stats) {
-      if (sliceCourseId && s.courseId !== sliceCourseId) continue;
-      const list = statsOf.get(s.studentId);
-      if (list) list.push(s); else statsOf.set(s.studentId, [s]);
-    }
-
-    const inSlice = (uid: string): boolean => {
-      if (activeGroup) return (activeGroup.studentIds || []).includes(uid);
-      if (sliceCourseId) return enrolled.get(sliceCourseId)?.has(uid) || statsOf.has(uid);
-      return true;
-    };
-
-    const built: Row[] = [];
-    for (const student of students) {
-      if (!inSlice(student.uid)) continue;
-      const byCourse = statsOf.get(student.uid) || [];
-      const counts = byCourse.reduce<RatingCounts>((acc, s) => mergeCounts(acc, s), emptyCounts());
-      const metrics = computeMetrics(counts);
-
-      const myGroups = (groupsOfStudent.get(student.uid) || [])
-        .filter(g => (activeGroup ? g.id === activeGroup.id : (!sliceCourseId || g.courseId === sliceCourseId)));
-
-      built.push({
-        student,
-        counts,
-        metrics,
-        byCourse,
-        groupNames: myGroups.map(g => g.name).filter(Boolean),
-        branchNames: student.branchIds.map(id => branchName.get(id) || '').filter(Boolean),
-        rank: null,
-      });
-    }
-
-    // Место — по итоговому баллу, одинаковый балл делит одно место. Считается
-    // ДО поиска и до сортировки по колонкам: «12-й в рейтинге» не должно
-    // меняться от того, что список отсортировали по имени или нашли одного.
-    const ranked = built.filter(r => r.metrics.hasData).sort((a, b) => b.metrics.score - a.metrics.score);
-    let lastScore = Number.NaN;
-    let lastRank = 0;
-    ranked.forEach((r, i) => {
-      if (r.metrics.score !== lastScore) { lastRank = i + 1; lastScore = r.metrics.score; }
-      r.rank = lastRank;
-    });
-
-    return built;
-  }, [students, stats, groups, activeGroup, sliceCourseId, branchName]);
+  const rows = useMemo<Row[]>(
+    () => buildRatingRows({ students, stats, groups, branchName, sliceCourseId, activeGroup }),
+    [students, stats, groups, activeGroup, sliceCourseId, branchName],
+  );
 
   const withData = useMemo(() => rows.filter(r => r.metrics.hasData), [rows]);
   const emptyCount = rows.length - withData.length;
+  const notAdmittedCount = useMemo(() => withData.filter(r => isNotAdmitted(r.metrics)).length, [withData]);
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -322,6 +158,7 @@ const StudentRatingPage: React.FC = () => {
       t('rating.col.grade', 'Средний балл'),
       t('rating.gradePct', 'Успеваемость, %'),
       t('rating.col.score', 'Балл рейтинга'),
+      t('noAdmission.badge', 'Не допуск'),
     ];
     const body = filtered.map(r => [
       r.rank ?? '—',
@@ -337,6 +174,7 @@ const StudentRatingPage: React.FC = () => {
       r.metrics.avgGrade ?? '',
       r.metrics.hasGrades ? r.metrics.gradePct : '',
       r.metrics.hasData ? r.metrics.score : '',
+      isNotAdmitted(r.metrics) ? t('noAdmission.yes', 'да') : '',
     ]);
     downloadCsv(`student-rating-${period}.csv`, buildCsv(headers, body));
   };
@@ -360,18 +198,36 @@ const StudentRatingPage: React.FC = () => {
             {t('rating.subtitle', 'Средний балл и посещаемость каждого ученика — по филиалам, курсам и группам.')}
           </p>
         </div>
-        <button
-          onClick={exportCsv}
-          disabled={!filtered.length}
-          className="inline-flex items-center gap-2 px-3.5 py-2 text-sm font-medium rounded-xl border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shrink-0"
-        >
-          <Download className="w-4 h-4" /> {t('rating.export', 'Экспорт CSV')}
-        </button>
+        <div className="flex items-center gap-2 shrink-0">
+          {/* Мост к недопуску: счётчик — живой повод туда зайти, а не украшение */}
+          <Link
+            to="/rating/no-admission"
+            className={`inline-flex items-center gap-2 px-3.5 py-2 text-sm font-medium rounded-xl border transition-colors ${
+              notAdmittedCount > 0
+                ? 'border-rose-200 dark:border-rose-900/50 text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-900/20'
+                : 'border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800'
+            }`}
+          >
+            <Ban className="w-4 h-4" /> {t('nav.noAdmission', 'Недопуск')}
+            {notAdmittedCount > 0 && (
+              <span className="inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full text-xs font-bold bg-rose-500 text-white tabular-nums">
+                {notAdmittedCount}
+              </span>
+            )}
+          </Link>
+          <button
+            onClick={exportCsv}
+            disabled={!filtered.length}
+            className="inline-flex items-center gap-2 px-3.5 py-2 text-sm font-medium rounded-xl border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          >
+            <Download className="w-4 h-4" /> {t('rating.export', 'Экспорт CSV')}
+          </button>
+        </div>
       </div>
 
       {/* ─── Период ─── */}
       <div className="flex flex-wrap gap-1.5">
-        {PERIODS.map(p => (
+        {RATING_PERIODS.map(p => (
           <button
             key={p}
             onClick={() => setPeriod(p)}
@@ -381,7 +237,7 @@ const StudentRatingPage: React.FC = () => {
                 : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700/50'
             }`}
           >
-            {t(`rating.period.${p}`, PERIOD_FALLBACK[p])}
+            {t(`rating.period.${p}`, RATING_PERIOD_FALLBACK[p])}
           </button>
         ))}
       </div>
@@ -421,7 +277,7 @@ const StudentRatingPage: React.FC = () => {
         <div className="p-4 rounded-xl bg-rose-50 dark:bg-rose-900/20 text-rose-600 dark:text-rose-400 text-sm border border-rose-100 dark:border-rose-900/40 flex items-center justify-between gap-3">
           <span>{error}</span>
           <button
-            onClick={() => setReloadTick(n => n + 1)}
+            onClick={reload}
             className="inline-flex items-center gap-1.5 text-xs font-semibold shrink-0 hover:underline"
           >
             <RefreshCw className="w-3.5 h-3.5" /> {t('rating.retry', 'Повторить')}
@@ -601,6 +457,7 @@ const StudentRatingPage: React.FC = () => {
                       {lazy.visible.map(r => {
                         const m = r.metrics;
                         const tone = TONE[toneOf(m.score)];
+                        const blocked = isNotAdmitted(m);
                         return (
                           <tr
                             key={r.student.uid}
@@ -615,15 +472,12 @@ const StudentRatingPage: React.FC = () => {
 
                             <td className="px-4 py-3.5">
                               <div className="flex items-center gap-2.5 min-w-0">
-                                {r.student.avatarUrl ? (
-                                  <img src={r.student.avatarUrl} alt="" className="w-8 h-8 rounded-full object-cover shrink-0" />
-                                ) : (
-                                  <div className="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-700 flex items-center justify-center text-xs font-semibold text-slate-500 dark:text-slate-300 shrink-0">
-                                    {initials(r.student.name)}
-                                  </div>
-                                )}
+                                <Avatar name={r.student.name} url={r.student.avatarUrl} />
                                 <div className="min-w-0">
-                                  <p className="font-medium text-slate-900 dark:text-white truncate max-w-[200px]">{r.student.name}</p>
+                                  <div className="flex items-center gap-2 min-w-0">
+                                    <p className="font-medium text-slate-900 dark:text-white truncate max-w-[200px]">{r.student.name}</p>
+                                    {blocked && <NotAdmittedBadge label={t('noAdmission.badge', 'Не допуск')} title={t('noAdmission.badgeHint', { threshold: NO_ADMISSION_THRESHOLD, defaultValue: 'Рейтинг ниже {{threshold}} баллов' })} />}
+                                  </div>
                                   {r.branchNames.length > 0 && (
                                     <p className="text-xs text-slate-400 truncate max-w-[200px]">{r.branchNames.join(', ')}</p>
                                   )}
@@ -710,13 +564,16 @@ const StudentRatingPage: React.FC = () => {
               <p className="mt-1">
                 {t('rating.formulaFallback', 'Если одной из половин ещё нет (нет оценок или не отмечена посещаемость), балл считается целиком по второй.')}
               </p>
+              <p className="mt-1">
+                {t('rating.formulaNoAdmission', { threshold: NO_ADMISSION_THRESHOLD, defaultValue: 'Балл ниже {{threshold}} — студент попадает в недопуск и получает метку «Не допуск».' })}
+              </p>
             </div>
           </div>
         </>
       )}
 
       {selected && (
-        <StudentCard
+        <RatingStudentDrawer
           key={selected.student.uid}
           row={selected}
           courseTitle={courseTitle}
@@ -727,56 +584,7 @@ const StudentRatingPage: React.FC = () => {
   );
 };
 
-// ── Мелкие части ──
-
-const SummaryCard: React.FC<{
-  icon: React.ElementType;
-  iconClass: string;
-  label: string;
-  value: string;
-  sub?: string;
-}> = ({ icon: Icon, iconClass, label, value, sub }) => (
-  <div className="bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-200 dark:border-slate-700">
-    <div className="flex items-center justify-between mb-2 gap-2">
-      <p className="text-sm font-medium text-slate-500 dark:text-slate-400 truncate">{label}</p>
-      <div className={`p-2 rounded-lg shrink-0 ${iconClass}`}><Icon className="w-4 h-4" /></div>
-    </div>
-    <h3 className="text-2xl font-bold text-slate-900 dark:text-white truncate" title={value}>{value}</h3>
-    {sub && <p className="text-xs text-slate-400 mt-0.5 truncate" title={sub}>{sub}</p>}
-  </div>
-);
-
-const BranchChip: React.FC<{ label: string; count?: number; active: boolean; onClick: () => void }> = ({ label, count, active, onClick }) => (
-  <button
-    onClick={onClick}
-    aria-pressed={active}
-    className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium border transition-colors ${
-      active
-        ? 'bg-primary-500 border-primary-500 text-white'
-        : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:border-primary-300 dark:hover:border-primary-800'
-    }`}
-  >
-    {label}
-    {count !== undefined && (
-      <span className={`text-xs tabular-nums ${active ? 'text-white/70' : 'text-slate-400'}`}>{count}</span>
-    )}
-  </button>
-);
-
-const RankBadge: React.FC<{ rank: number | null }> = ({ rank }) => {
-  if (rank === null) return <span className="text-slate-300 dark:text-slate-600 text-sm">—</span>;
-  const medal = rank <= 3 ? MEDALS[rank - 1] : '';
-  return (
-    <span
-      className={`inline-flex items-center justify-center w-8 h-8 rounded-full text-sm font-extrabold tabular-nums ${
-        medal || 'bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400'
-      }`}
-    >
-      {rank}
-    </span>
-  );
-};
-
+// ── Заголовок колонки с сортировкой (нужен только здесь) ──
 const Th: React.FC<{
   label: string;
   sortKey: SortKey;
@@ -797,130 +605,5 @@ const Th: React.FC<{
     </th>
   );
 };
-
-/** Карточка студента: из чего сложился его балл, курс за курсом. */
-const StudentCard: React.FC<{
-  row: Row;
-  courseTitle: Map<string, string>;
-  onClose: () => void;
-}> = ({ row, courseTitle, onClose }) => {
-  const { t } = useTranslation();
-  const m = row.metrics;
-  const tone = TONE[toneOf(m.score)];
-
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [onClose]);
-
-  return (
-    <div className="fixed inset-0 z-50 flex justify-end" role="dialog" aria-modal="true">
-      <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative w-full max-w-md bg-white dark:bg-slate-900 h-full shadow-xl flex flex-col">
-        <div className="p-5 border-b border-slate-200 dark:border-slate-800 flex items-start justify-between gap-3">
-          <div className="min-w-0">
-            <h2 className="text-lg font-bold text-slate-900 dark:text-white truncate">{row.student.name}</h2>
-            <p className="text-xs text-slate-400 mt-0.5 truncate">
-              {row.rank !== null
-                ? t('rating.placeInRating', { rank: row.rank, defaultValue: '{{rank}}-е место в рейтинге' })
-                : t('rating.noData', 'нет данных')}
-              {row.branchNames.length > 0 && ` · ${row.branchNames.join(', ')}`}
-            </p>
-          </div>
-          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400 shrink-0" aria-label={t('common.close', 'Закрыть')}>
-            <X className="w-5 h-5" />
-          </button>
-        </div>
-
-        <div className="p-5 border-b border-slate-200 dark:border-slate-800 grid grid-cols-3 gap-3">
-          <Stat label={t('rating.col.score', 'Балл')} value={m.hasData ? String(m.score) : '—'} valueClass={m.hasData ? tone.text : undefined} />
-          <Stat label={t('rating.col.attendance', 'Посещаемость')} value={m.hasAttendance ? `${m.attendancePct}%` : '—'} />
-          <Stat label={t('rating.col.grade', 'Средний балл')} value={gradeLabel(m)} />
-        </div>
-
-        {/* Разбивка посещаемости — из этих четырёх чисел и складывается процент */}
-        <div className="p-5 border-b border-slate-200 dark:border-slate-800">
-          <h3 className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-3">
-            {t('rating.attendanceBreakdown', 'Посещаемость')}
-          </h3>
-          <div className="grid grid-cols-4 gap-2">
-            <MiniStat label={t('rating.present', 'Был')} value={row.counts.present} className="text-emerald-600 dark:text-emerald-400" />
-            <MiniStat label={t('rating.late', 'Опоздал')} value={row.counts.late} className="text-amber-600 dark:text-amber-400" />
-            <MiniStat label={t('rating.absent', 'Пропустил')} value={row.counts.absent} className="text-rose-600 dark:text-rose-400" />
-            <MiniStat label={t('rating.excused', 'Уважительная')} value={row.counts.excused} className="text-slate-500 dark:text-slate-400" />
-          </div>
-        </div>
-
-        <div className="p-5 overflow-y-auto flex-1">
-          <h3 className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-3">
-            {t('rating.byCourse', 'По курсам')}
-          </h3>
-          {row.byCourse.length === 0 ? (
-            <p className="text-sm text-slate-400">
-              {t('rating.noCourseData', 'В этом срезе по студенту ещё нет ни оценок, ни отметок посещаемости.')}
-            </p>
-          ) : (
-            <ul className="space-y-2.5">
-              {row.byCourse
-                .map(s => ({ stat: s, metrics: computeMetrics(s) }))
-                .sort((a, b) => b.metrics.score - a.metrics.score)
-                .map(({ stat, metrics }) => (
-                  <li key={stat.courseId} className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60">
-                    <div className="flex items-center justify-between gap-2 mb-2">
-                      <p className="text-sm font-semibold text-slate-900 dark:text-white truncate">
-                        {courseTitle.get(stat.courseId) || stat.courseId}
-                      </p>
-                      <span className={`text-sm font-bold tabular-nums shrink-0 ${TONE[toneOf(metrics.score)].text}`}>
-                        {metrics.score}
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-3 text-xs text-slate-500 dark:text-slate-400">
-                      <span>{t('rating.attendanceShort', 'посещ.')} {metrics.hasAttendance ? `${metrics.attendancePct}%` : '—'}</span>
-                      <span>{t('rating.gradeShort', 'балл')} {gradeLabel(metrics)}</span>
-                      <span className="ml-auto tabular-nums">{metrics.lessons} {t('rating.lessonsShort', 'зан.')}</span>
-                    </div>
-                    <div className="mt-2 h-1.5 rounded-full bg-slate-200 dark:bg-slate-700 overflow-hidden">
-                      <div className={`h-full rounded-full ${TONE[toneOf(metrics.score)].bar}`} style={{ width: `${metrics.score}%` }} />
-                    </div>
-                  </li>
-                ))}
-            </ul>
-          )}
-
-          {row.groupNames.length > 0 && (
-            <p className="mt-4 text-xs text-slate-400">
-              {t('rating.groupsLabel', 'Группы')}: {row.groupNames.join(', ')}
-            </p>
-          )}
-        </div>
-
-        <div className="p-4 border-t border-slate-200 dark:border-slate-800">
-          <Link
-            to={`/students/${row.student.uid}`}
-            className="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-slate-900 text-white dark:bg-white dark:text-slate-900 text-sm font-semibold hover:opacity-90 transition-opacity"
-          >
-            <ExternalLink className="w-4 h-4" />
-            {t('rating.openStudent', 'Открыть карточку студента')}
-          </Link>
-        </div>
-      </div>
-    </div>
-  );
-};
-
-const Stat: React.FC<{ label: string; value: string; valueClass?: string }> = ({ label, value, valueClass }) => (
-  <div className="text-center">
-    <p className={`text-xl font-bold ${valueClass || 'text-slate-900 dark:text-white'}`}>{value}</p>
-    <p className="text-[11px] text-slate-400 mt-0.5">{label}</p>
-  </div>
-);
-
-const MiniStat: React.FC<{ label: string; value: number; className?: string }> = ({ label, value, className }) => (
-  <div className="text-center p-2 rounded-xl bg-slate-50 dark:bg-slate-800/60">
-    <p className={`text-lg font-bold tabular-nums ${className || 'text-slate-900 dark:text-white'}`}>{value}</p>
-    <p className="text-[10px] text-slate-400 leading-tight">{label}</p>
-  </div>
-);
 
 export default StudentRatingPage;

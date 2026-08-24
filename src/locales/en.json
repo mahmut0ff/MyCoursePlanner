@@ -229,7 +229,8 @@
     "classrooms": "Classrooms",
     "orgUsers": "Org users",
     "sectionLearning": "Learning",
-    "studentRating": "Rating"
+    "studentRating": "Rating",
+    "noAdmission": "No admission"
   },
   "sidebar": {
     "customize": "Menu setup",
@@ -3254,6 +3255,7 @@
     "formulaTitle": "How the score is calculated",
     "formula": "{{attendance}}% attendance + {{grade}}% performance. Attendance is the share of marked lessons where the student was present or late. Performance is the average grade as a percentage of its own scale maximum.",
     "formulaFallback": "When one half is missing (no grades, or attendance never marked), the score is based entirely on the other one.",
+    "formulaNoAdmission": "A score below {{threshold}} puts the student on no-admission and gives them the “No admission” label.",
     "placeInRating": "rank {{rank}} in the rating",
     "attendanceBreakdown": "Attendance",
     "byCourse": "By course",
@@ -3263,5 +3265,31 @@
     "lessonsShort": "les.",
     "groupsLabel": "Groups",
     "openStudent": "Open student card"
+  },
+  "noAdmission": {
+    "title": "No admission",
+    "subtitle": "Students whose rating is below {{threshold}}. They need to catch up on attendance or grades.",
+    "badge": "No admission",
+    "badgeHint": "Rating below {{threshold}} points",
+    "yes": "yes",
+    "fullRating": "Full rating",
+    "notAdmitted": "Not admitted",
+    "ofWithData": "of {{count}} with data",
+    "admitted": "Admitted",
+    "threshold": "Admission threshold",
+    "thresholdSub": "this score and above — admitted",
+    "avgBlocked": "Average score of the not admitted",
+    "avgBlockedSub": "on average {{gap}} short",
+    "gapCol": "Gap to threshold",
+    "reasonCol": "Reason",
+    "reasonAttendance": "low attendance",
+    "reasonGrades": "low performance",
+    "reasonBoth": "attendance and grades",
+    "drawerReason": "{{gap}} short of the {{threshold}} threshold — {{reason}}.",
+    "allClearTitle": "Everyone is admitted",
+    "allClearDesc": "No one in this slice dropped below {{threshold}} points. Great work!",
+    "howTitle": "How no-admission is formed",
+    "how": "Rating = {{attendance}}% attendance + {{grade}}% performance. A score below {{threshold}} lands the student here with a “No admission” label. Reach the threshold and the label is removed automatically.",
+    "howData": "Students with no grades and no attendance marked are not included: no-admission is for a low score, not for an empty journal."
   }
 }

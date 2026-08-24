@@ -11,6 +11,7 @@
  * Складывать можно ТОЛЬКО счётчики (`mergeCounts`), поэтому «все курсы» — это
  * сумма сырых чисел, а не среднее средних.
  */
+import type { Group } from '../types';
 
 /** Веса итогового балла. Те же 40/60, что показывает журнал в своей колонке рейтинга. */
 export const ATTENDANCE_WEIGHT = 0.4;
@@ -162,4 +163,174 @@ export function toneOf(value: number): RatingTone {
   if (value >= 80) return 'good';
   if (value >= 50) return 'warn';
   return 'bad';
+}
+
+// ── Недопуск ──
+
+/**
+ * Порог допуска: строго ниже — «недопуск». Один на всё приложение (страница
+ * недопуска, метка в рейтинге, экспорт), поэтому живёт здесь, а не хардкодится
+ * числом по месту. Меняется в одной точке.
+ */
+export const NO_ADMISSION_THRESHOLD = 70;
+
+/**
+ * Студент в недопуске? — только когда есть на чём судить.
+ *
+ * Балл 0 без данных (не отмечали посещаемость и не ставили оценок) — это НЕ ноль
+ * успеваемости, а её отсутствие; вешать за него метку значит наказать за то, что
+ * учителя ещё не заполнили журнал. Поэтому недопуск требует `hasData`: та же
+ * оговорка, по которой рейтинг не считает балл без данных (см. computeMetrics).
+ */
+export function isNotAdmitted(m: RatingMetrics): boolean {
+  return m.hasData && m.score < NO_ADMISSION_THRESHOLD;
+}
+
+/** На сколько баллов недобор до порога (0, если студент допущен или без данных). */
+export function admissionGap(m: RatingMetrics): number {
+  return isNotAdmitted(m) ? NO_ADMISSION_THRESHOLD - m.score : 0;
+}
+
+/** Что тянет балл вниз — для человекочитаемой причины недопуска. */
+export type AdmissionReason = 'attendance' | 'grades' | 'both' | 'none';
+
+/**
+ * Почему студент в недопуске: смотрим, какая из половин ниже порога.
+ *
+ * Половина «не в счёт», если её ещё нет (нет оценок / не отмечали посещаемость):
+ * балл тогда держится целиком на второй, и винить отсутствующую половину нельзя —
+ * ровно так же, как её не винит сам расчёт балла.
+ */
+export function admissionReason(m: RatingMetrics): AdmissionReason {
+  if (!isNotAdmitted(m)) return 'none';
+  const lowAtt = m.hasAttendance && m.attendancePct < NO_ADMISSION_THRESHOLD;
+  const lowGrade = m.hasGrades && m.gradePct < NO_ADMISSION_THRESHOLD;
+  if (lowAtt && lowGrade) return 'both';
+  if (lowAtt) return 'attendance';
+  if (lowGrade) return 'grades';
+  return 'both';
+}
+
+// ── Общие типы среза (сервер api-rating отдаёт то же) ──
+
+/** Студент в выдаче рейтинга. */
+export interface RatingStudent {
+  uid: string;
+  name: string;
+  avatarUrl: string;
+  branchIds: string[];
+}
+
+/** Счётчики одной пары «студент × курс» — плоско, как их отдаёт сервер. */
+export interface RatingStat extends RatingCounts {
+  studentId: string;
+  courseId: string;
+}
+
+/** Ответ api-rating: студенты + сырые счётчики, срез собирается на клиенте. */
+export interface RatingResponse {
+  period: { period: string; startIso: string; endIso: string } | null;
+  students: RatingStudent[];
+  stats: RatingStat[];
+}
+
+/** Одна строка рейтинга: студент + его показатели в текущем срезе. */
+export interface RatingRow {
+  student: RatingStudent;
+  counts: RatingCounts;
+  metrics: RatingMetrics;
+  /** Курсы, по которым у студента есть данные в срезе — для карточки. */
+  byCourse: RatingStat[];
+  groupNames: string[];
+  branchNames: string[];
+  /** Место в рейтинге; null — данных нет, места тоже. */
+  rank: number | null;
+}
+
+export interface RatingRowsInput {
+  students: RatingStudent[];
+  stats: RatingStat[];
+  groups: Group[];
+  /** id филиала → имя, для подписи под именем студента. */
+  branchName: Map<string, string>;
+  /** Курс среза или null для «все курсы». */
+  sliceCourseId: string | null;
+  /** Группа среза или null. Задаёт курс однозначно, поэтому важнее курса. */
+  activeGroup: Group | null;
+}
+
+/**
+ * Собирает строки рейтинга из сырого ответа сервера под выбранный срез.
+ *
+ * Чистая и общая: и таблица рейтинга, и страница недопуска строят строки ровно
+ * так же — один срез, одна формула, одно место рейтинга. Складывает СЧЁТЧИКИ
+ * (mergeCounts), а не проценты (см. WHY в шапке модуля).
+ */
+export function buildRatingRows(input: RatingRowsInput): RatingRow[] {
+  const { students, stats, groups, branchName, sliceCourseId, activeGroup } = input;
+
+  // Кто числится в курсе по группам — нужен, чтобы студент из группы курса
+  // попадал в срез даже без единой отметки (иначе «нет данных» выглядит как
+  // «его тут нет»).
+  const enrolled = new Map<string, Set<string>>(); // courseId → studentIds
+  const groupsOfStudent = new Map<string, Group[]>();
+  for (const g of groups) {
+    const ids: string[] = Array.isArray(g.studentIds) ? g.studentIds : [];
+    if (g.courseId) {
+      let set = enrolled.get(g.courseId);
+      if (!set) { set = new Set(); enrolled.set(g.courseId, set); }
+      ids.forEach(id => set!.add(id));
+    }
+    ids.forEach(id => {
+      const list = groupsOfStudent.get(id);
+      if (list) list.push(g); else groupsOfStudent.set(id, [g]);
+    });
+  }
+
+  const statsOf = new Map<string, RatingStat[]>();
+  for (const s of stats) {
+    if (sliceCourseId && s.courseId !== sliceCourseId) continue;
+    const list = statsOf.get(s.studentId);
+    if (list) list.push(s); else statsOf.set(s.studentId, [s]);
+  }
+
+  const inSlice = (uid: string): boolean => {
+    if (activeGroup) return (activeGroup.studentIds || []).includes(uid);
+    if (sliceCourseId) return enrolled.get(sliceCourseId)?.has(uid) || statsOf.has(uid);
+    return true;
+  };
+
+  const built: RatingRow[] = [];
+  for (const student of students) {
+    if (!inSlice(student.uid)) continue;
+    const byCourse = statsOf.get(student.uid) || [];
+    const counts = byCourse.reduce<RatingCounts>((acc, s) => mergeCounts(acc, s), emptyCounts());
+    const metrics = computeMetrics(counts);
+
+    const myGroups = (groupsOfStudent.get(student.uid) || [])
+      .filter(g => (activeGroup ? g.id === activeGroup.id : (!sliceCourseId || g.courseId === sliceCourseId)));
+
+    built.push({
+      student,
+      counts,
+      metrics,
+      byCourse,
+      groupNames: myGroups.map(g => g.name).filter(Boolean),
+      branchNames: student.branchIds.map(id => branchName.get(id) || '').filter(Boolean),
+      rank: null,
+    });
+  }
+
+  // Место — по итоговому баллу, одинаковый балл делит одно место. Считается ДО
+  // поиска и до сортировки по колонкам: «12-й в рейтинге» не должно меняться от
+  // того, что список отсортировали по имени или нашли одного.
+  const ranked = built.filter(r => r.metrics.hasData).sort((a, b) => b.metrics.score - a.metrics.score);
+  let lastScore = Number.NaN;
+  let lastRank = 0;
+  ranked.forEach((r, i) => {
+    if (r.metrics.score !== lastScore) { lastRank = i + 1; lastScore = r.metrics.score; }
+    r.rank = lastRank;
+  });
+
+  return built;
 }

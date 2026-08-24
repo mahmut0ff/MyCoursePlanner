@@ -94,6 +94,7 @@ const NotificationsPage = lazyRetry(() => import('./pages/notifications/Notifica
 const TeacherSettingsPage = lazyRetry(() => import('./pages/teacher-settings/TeacherSettingsPage'));
 const TeacherActivityPage = lazyRetry(() => import('./pages/teacher-activity/TeacherActivityPage'));
 const StudentRatingPage = lazyRetry(() => import('./pages/rating/StudentRatingPage'));
+const NoAdmissionPage = lazyRetry(() => import('./pages/rating/NoAdmissionPage'));
 // TeacherAnalyticsPage route uses AdminGradebookAnalytics component
 
 // Detail Pages
@@ -216,6 +217,9 @@ const App: React.FC = () => {
                 отчёты по успеваемости целиком. PlanGuard намеренно нет — это не
                 «продвинутая аналитика», а тот же журнал в другом разрезе. */}
             <Route path="rating" element={<ProtectedRoute><PermissionRoute resource="student_rating"><StudentRatingPage /></PermissionRoute></ProtectedRoute>} />
+            {/* Недопуск — тот же гейт `student_rating`: это рейтинг под жёстким
+                срезом (балл ниже порога), а не отдельное право. */}
+            <Route path="rating/no-admission" element={<ProtectedRoute><PermissionRoute resource="student_rating"><NoAdmissionPage /></PermissionRoute></ProtectedRoute>} />
             <Route path="homework/review" element={<ProtectedRoute><PermissionRoute resource="homework"><HomeworkReviewPage /></PermissionRoute></ProtectedRoute>} />
 
             {/* Lessons */}

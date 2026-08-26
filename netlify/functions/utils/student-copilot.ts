@@ -20,6 +20,7 @@ import { resolveOrgRole } from './auth';
 import { buildLessonContext } from './lessons';
 import { matchRosterByName } from './copilot-actions';
 import { isDebtBearingPlan, planDebt } from './payment-plans';
+import { attendanceMark } from './attendance';
 import { buildStudentScheduleText, orgTodayISO } from './schedule-context';
 import { toTelegramHtml, type DirectorChatMessage } from './director-copilot';
 
@@ -123,6 +124,7 @@ export interface StudentSnapshot {
   present30: number;
   absent30: number;
   late30: number;
+  excused30: number;
   debt: number;
   weakTopics: string[];
   lastExam: { title: string; percentage: number } | null;
@@ -165,13 +167,19 @@ export async function buildStudentSnapshot(orgId: string, studentUid: string, na
     .map(g => ({ value: String(g.displayValue || (g.value ?? '—')), date: String(g.lessonId || g.createdAt || '').slice(0, 10) }));
 
   // ── Attendance (last 30 days) ──
-  let present30 = 0, absent30 = 0, late30 = 0;
+  // Отметки разбираем общим `attendanceMark`, и «уважительная» считается
+  // ОТДЕЛЬНО, а не как присутствие: раньше она попадала в `present30`, и текст
+  // «присутствовал 12» читал сам ученик — включая занятия, на которых его не
+  // было. Канон один с журналом и рейтингом (src/lib/attendance.ts).
+  let present30 = 0, absent30 = 0, late30 = 0, excused30 = 0;
   for (const j of (journalSnap?.docs || [])) {
     const x = j.data() as any;
     if (x.date && x.date < since30) continue;
-    if (x.attendance === 'absent') absent30++;
-    else if (x.attendance === 'late') late30++;
-    else if (x.attendance === 'present' || x.attendance === 'excused') present30++;
+    const mark = attendanceMark(x);
+    if (mark === 'absent') absent30++;
+    else if (mark === 'late') late30++;
+    else if (mark === 'excused') excused30++;
+    else present30++;
   }
 
   // ── Debt (unpaid balance across non-paid plans) ──
@@ -197,7 +205,7 @@ export async function buildStudentSnapshot(orgId: string, studentUid: string, na
     attempts.slice(0, 5).flatMap(a => (a.aiFeedback?.weakTopics || [])).filter(Boolean).map(String),
   )).slice(0, 8);
 
-  return { name, gradeAvgPct, recentGrades, present30, absent30, late30, debt, weakTopics, lastExam };
+  return { name, gradeAvgPct, recentGrades, present30, absent30, late30, excused30, debt, weakTopics, lastExam };
 }
 
 /** Render a snapshot as a compact factual block for the prompt. Pure (unit-tested). */
@@ -208,9 +216,10 @@ export function renderStudentSnapshotText(s: StudentSnapshot): string {
   if (s.recentGrades.length) {
     lines.push(`- Последние оценки: ${s.recentGrades.map(g => `${g.value}${g.date ? ` (${g.date})` : ''}`).join(', ')}`);
   }
-  const att = s.present30 + s.absent30 + s.late30;
+  const att = s.present30 + s.absent30 + s.late30 + s.excused30;
   lines.push(att
-    ? `- Посещаемость за 30 дней: присутствовал ${s.present30}, пропусков ${s.absent30}, опозданий ${s.late30}`
+    ? `- Посещаемость за 30 дней: присутствовал ${s.present30}, опозданий ${s.late30}, пропусков ${s.absent30}`
+      + (s.excused30 ? `, по уважительной ${s.excused30}` : '')
     : '- Посещаемость за 30 дней: нет отметок');
   if (s.lastExam) lines.push(`- Последний тест: «${s.lastExam.title}» — ${s.lastExam.percentage}%`);
   if (s.weakTopics.length) lines.push(`- Слабые темы: ${s.weakTopics.join(', ')}`);

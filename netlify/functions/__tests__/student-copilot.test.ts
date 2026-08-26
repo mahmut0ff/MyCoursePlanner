@@ -23,6 +23,7 @@ const base: StudentSnapshot = {
   present30: 0,
   absent30: 0,
   late30: 0,
+  excused30: 0,
   debt: 0,
   weakTopics: [],
   lastExam: null,
@@ -43,7 +44,7 @@ describe('renderStudentSnapshotText — compact, factual, no invented data', () 
     expect(out).toContain('Ученик: Аброр Каримов');
     expect(out).toContain('Средний балл: 82%');
     expect(out).toContain('5 (2026-06-28)');
-    expect(out).toContain('присутствовал 10, пропусков 2, опозданий 1');
+    expect(out).toContain('присутствовал 10, опозданий 1, пропусков 2');
     expect(out).toContain('«Unit 5» — 76%');
     expect(out).toContain('Present Perfect, Conditionals');
     expect(out).toContain('Задолженность по оплате: 1 500 с.'); // ru-RU groups with NBSP
@@ -63,8 +64,17 @@ describe('renderStudentSnapshotText — compact, factual, no invented data', () 
 
   it('shows attendance counts even when grades are absent', () => {
     const out = renderStudentSnapshotText({ ...base, present30: 4, absent30: 0, late30: 0 });
-    expect(out).toContain('присутствовал 4, пропусков 0, опозданий 0');
+    expect(out).toContain('присутствовал 4, опозданий 0, пропусков 0');
     expect(out).toContain('Средний балл: нет оценок');
+  });
+
+  it('«уважительные» считаются отдельно, а не как присутствие', () => {
+    // Раньше excused приплюсовывался к present30, и ученик читал «присутствовал
+    // 6» про занятия, на которых его не было. Теперь это отдельная величина —
+    // и она появляется в тексте только когда есть о чём говорить.
+    const out = renderStudentSnapshotText({ ...base, present30: 4, absent30: 1, late30: 0, excused30: 2 });
+    expect(out).toContain('присутствовал 4, опозданий 0, пропусков 1, по уважительной 2');
+    expect(renderStudentSnapshotText({ ...base, present30: 4 })).not.toContain('по уважительной');
   });
 
   it('omits the debt amount formatting when there is no debt', () => {

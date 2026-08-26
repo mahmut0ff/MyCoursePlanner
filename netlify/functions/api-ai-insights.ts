@@ -13,15 +13,33 @@ import { verifyAuth, can, ok, unauthorized, forbidden, badRequest, jsonResponse,
 import { rateLimiters, getRateLimitKey } from './utils/rate-limiter';
 import { getModel, parseJsonLoose, aiAllowed, hasGeminiKey, recordAiUsage } from './utils/ai';
 import { computeStudentRisk } from './utils/risk';
-import { isDebtBearingPlan, planDebt, isPlanOverdue } from './utils/payment-plans';
+import { isDebtBearingPlan, planDebt, isPlanOverdue, orgDayKey } from './utils/payment-plans';
+import { attendanceRate, wasAbsent } from './utils/attendance';
+import { getPeriodRange } from './utils/finance-period';
 
-function monthStartISO(offset = 0): string {
-  const d = new Date();
-  d.setUTCDate(1);
-  d.setUTCHours(0, 0, 0, 0);
-  d.setUTCMonth(d.getUTCMonth() - offset);
-  return d.toISOString();
-}
+/**
+ * Окна месяцев и приведение даты к календарному дню организации.
+ *
+ * Копия этих правил уже стоит в api-dashboard, и оба файла отвечают на ОДИН
+ * вопрос: «что у центра происходит в этом месяце». Здесь снимок уходит в
+ * промпт AI-советника, чей ответ показывается той же строкой «Фокус дня» на
+ * главной, — поэтому совет обязан опираться ровно на те числа, что нарисованы
+ * рядом в плитках. Раньше тут была своя UTC-арифметика месяца и своё сравнение
+ * строк, и AI мог утверждать «посещаемость 91 %» под плиткой с 90 %.
+ */
+const monthBounds = () => getPeriodRange('current_month');
+const lastMonthBounds = () => getPeriodRange('last_month');
+const dayKeyOf = (value: unknown): string => {
+  const raw = String(value ?? '').trim();
+  if (!raw) return '';
+  if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) return raw;
+  const parsed = new Date(raw);
+  return Number.isNaN(parsed.getTime()) ? raw.slice(0, 10) : orgDayKey(parsed);
+};
+const inDayRange = (value: unknown, startIso: string, endIso: string): boolean => {
+  const day = dayKeyOf(value);
+  return !!day && day >= dayKeyOf(startIso) && day <= dayKeyOf(endIso);
+};
 
 interface OrgSnapshot {
   students: { active: number; newThisMonth: number };
@@ -52,8 +70,8 @@ async function gatherSnapshot(
   includeFinance: boolean,
   branchScope: string | string[] | null,
 ): Promise<OrgSnapshot> {
-  const monthStart = monthStartISO(0);
-  const lastMonthStart = monthStartISO(1);
+  const { startIso: monthStart, endIso: monthEnd } = monthBounds();
+  const { startIso: lastMonthStart, endIso: lastMonthEnd } = lastMonthBounds();
 
   // The finance collections are read ONLY for callers allowed to see aggregates.
   // Skipping the query (not just hiding the result) is defense in depth: without
@@ -73,7 +91,7 @@ async function gatherSnapshot(
     .filter(m => memberInBranchScope(m.branchIds, branchScope));
   const students = members.filter(m => m.role === 'student' && m.status === 'active');
   const teachers = members.filter(m => m.role === 'teacher' && m.status === 'active').length;
-  const newStudents = students.filter(m => (m.joinedAt || m.createdAt) >= monthStart).length;
+  const newStudents = students.filter(m => inDayRange(m.enrollmentDate || m.joinedAt || m.createdAt, monthStart, monthEnd)).length;
   // Ученики в срезе — по ним фильтруем оценки и посещаемость: у попыток и
   // журнала своего branchId нет, филиал у них наследуется от ученика.
   const studentIdSet = new Set(students.map(m => m.userId || m.id));
@@ -87,9 +105,9 @@ async function gatherSnapshot(
       const when = tx.date || tx.createdAt || '';
       const amount = Number(tx.amount || 0);
       if (tx.type === 'income') {
-        if (when >= monthStart) incomeThisMonth += amount;
-        else if (when >= lastMonthStart && when < monthStart) incomeLastMonth += amount;
-      } else if (tx.type === 'expense' && when >= monthStart) {
+        if (inDayRange(when, monthStart, monthEnd)) incomeThisMonth += amount;
+        else if (inDayRange(when, lastMonthStart, lastMonthEnd)) incomeLastMonth += amount;
+      } else if (tx.type === 'expense' && inDayRange(when, monthStart, monthEnd)) {
         expenseThisMonth += amount;
       }
     }
@@ -118,15 +136,15 @@ async function gatherSnapshot(
   const avgScore = attempts.length
     ? Math.round(attempts.reduce((a, c) => a + (c.percentage || 0), 0) / attempts.length)
     : null;
-  const attemptsThisMonth = attempts.filter(a => (a.createdAt || '') >= monthStart).length;
+  const attemptsThisMonth = attempts.filter(a => inDayRange(a.submittedAt || a.createdAt, monthStart, monthEnd)).length;
 
   const journal = (journalSnap?.docs || []).map(d => d.data() as any)
     .filter(j => studentIdSet.has(j.studentId));
-  const absences = journal.filter(j => j.attendance === 'absent');
-  const rateAvg = journal.length
-    ? Math.round(((journal.length - absences.length) / journal.length) * 100)
-    : null;
-  const absencesThisMonth = absences.filter(j => (j.date || '') >= monthStart).length;
+  // Общий канон посещаемости (present + late) — тот же, что у дашборда,
+  // журнала и рейтинга: см. src/lib/attendance.ts.
+  const absences = journal.filter(wasAbsent);
+  const rateAvg = attendanceRate(journal);
+  const absencesThisMonth = absences.filter(j => inDayRange(j.date, monthStart, monthEnd)).length;
 
   const courses = (courseSnap?.docs || []).slice(0, 40).map(d => {
     const c = d.data() as any;
@@ -141,7 +159,7 @@ async function gatherSnapshot(
     finance,
     leads: {
       total: leadDocs.length,
-      newThisMonth: leadDocs.filter(l => (l.createdAt || '') >= monthStart).length,
+      newThisMonth: leadDocs.filter(l => inDayRange(l.createdAt, monthStart, monthEnd)).length,
       resolved: leadDocs.filter(l => l.status === 'resolved').length,
       bySource,
     },

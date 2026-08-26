@@ -51,7 +51,13 @@ const CardTitle: React.FC<{ icon?: React.ElementType; iconClass?: string; childr
   </div>
 );
 
-const PctDelta: React.FC<{ cur: number; prev: number }> = ({ cur, prev }) => {
+/**
+ * Рост к прошлому периоду. `comparable` — ответ сервера на вопрос «а было ли с
+ * чем сравнивать»: без него нулевая база (первый месяц работы центра) молча
+ * выглядела бы как «без изменений».
+ */
+const PctDelta: React.FC<{ cur: number; prev: number; comparable?: boolean }> = ({ cur, prev, comparable = true }) => {
+  if (!comparable) return null;
   if (!prev || prev <= 0) return null;
   const pct = Math.round(((cur - prev) / Math.abs(prev)) * 100);
   if (pct === 0) return <span className="text-[11px] text-slate-400 font-medium">без изменений</span>;
@@ -122,7 +128,6 @@ const AdminDashboard: React.FC = () => {
   const [dashStats, setDashStats] = useState<any>(null);
   const [overview, setOverview] = useState<any>(null);
   const [financeCur, setFinanceCur] = useState<any>(null);
-  const [financePrev, setFinancePrev] = useState<any>(null);
   const [today, setToday] = useState<any[]>([]);
   const [aiFocus, setAiFocus] = useState<string>('');
 
@@ -161,8 +166,9 @@ const AdminDashboard: React.FC = () => {
     ];
 
     if (canSeeFinance) {
+      // Один запрос, а не два: «к прошлому месяцу» считает сам сервер и кладёт в
+      // `previous` — см. развёрнутое объяснение у prevIncome ниже.
       loads.push(apiGetFinanceMetrics({ period: 'current_month' }).then(setFinanceCur).catch(() => setFinanceCur(null)));
-      loads.push(apiGetFinanceMetrics({ period: 'last_month' }).then(setFinancePrev).catch(() => {}));
     }
 
     if (organizationId) {
@@ -211,13 +217,20 @@ const AdminDashboard: React.FC = () => {
 
   const showFinance = canSeeFinance && canAccess('finances') && !!financeCur;
 
-  // Like-for-like month-over-month: compare current month-to-date against last month
-  // up to the same day, computed from last month's daily series.
-  const dayOfMonth = new Date().getDate();
-  const prevSeries: any[] = financePrev?.chartData || [];
-  const prevMTD = prevSeries.filter(r => Number((r.date || '').slice(8, 10)) <= dayOfMonth)
-    .reduce((acc, r) => ({ income: acc.income + (r.income || 0), expense: acc.expense + (r.expense || 0) }), { income: 0, expense: 0 });
-  const prevMTDProfit = prevMTD.income - prevMTD.expense;
+  // ── «К прошлому месяцу» берём у сервера, а не пересчитываем здесь ──
+  // api-finance-metrics уже возвращает `previous` — прошлый месяц, усечённый до
+  // того же прошедшего отрезка (с clamp на коротком месяце), — и финансовый
+  // «Обзор» показывает именно его. Здесь стоял свой пересчёт из chartData
+  // прошлого месяца: он группировал операции по UTC-дню, тогда как сервер
+  // размечает окно днями организации (UTC+6), а отсечку брал из зоны браузера.
+  // Две реализации одного числа расходились на граничных днях — процент роста
+  // на главной не совпадал с процентом в финансах. Плюс это стоило второго
+  // тяжёлого запроса на каждый заход.
+  const prevIncome = Number(financeCur?.previous?.totalIncome || 0);
+  const prevProfit = Number(financeCur?.previous?.netProfit || 0);
+  // Сравнивать не с чем (нет предыдущего окна или оно целиком раньше первой
+  // операции) — сервер честно говорит об этом флагом, и дельту мы не рисуем.
+  const prevComparable = financeCur?.previousComparable === true;
 
   const hour = new Date().getHours();
   const greeting = hour < 12
@@ -243,8 +256,8 @@ const AdminDashboard: React.FC = () => {
     let s = parts.length
       ? `Стоит разобрать сегодня: ${parts.join(' и ')}.`
       : 'Всё под контролем — критичных задач на сегодня нет.';
-    if (showFinance && prevMTD.income > 0) {
-      const pct = Math.round(((financeCur.totalIncome - prevMTD.income) / prevMTD.income) * 100);
+    if (showFinance && prevComparable && prevIncome > 0) {
+      const pct = Math.round(((financeCur.totalIncome - prevIncome) / prevIncome) * 100);
       if (pct > 0) s += ` Выручка на ${pct}% выше, чем на эту дату в прошлом месяце.`;
       else if (pct < 0) s += ` Выручка на ${Math.abs(pct)}% ниже, чем на эту дату в прошлом месяце.`;
     }
@@ -260,18 +273,24 @@ const AdminDashboard: React.FC = () => {
     slate: 'bg-slate-100 text-slate-500 dark:bg-slate-700 dark:text-slate-300',
   };
   const attention = [
-    // ?tab=debts, а не голый /finances: плитка про долг, а голая ссылка роняла
-    // директора на «Обзор», откуда до списка должников ещё один клик.
-    showFinance && (financeCur?.overdueCount || 0) > 0 && { icon: CreditCard, color: 'red', label: 'Просроченные платежи', count: financeCur.overdueCount, to: '/finances?tab=debts&unpaid=1' },
+    // ?overdue=1, а не ?unpaid=1: плитка считает ПРОСРОЧЕННЫЕ счета, а «все
+    // неоплаченные» — множество шире (в него входят и те, чей срок ещё не
+    // наступил). Директор кликал по «7 просроченных» и попадал в список из 40
+    // строк — ровно то расхождение «плитка ≠ экран, куда она ведёт», которого
+    // этот дашборд не должен допускать.
+    showFinance && (financeCur?.overdueCount || 0) > 0 && { icon: CreditCard, color: 'red', label: 'Просроченные платежи', count: financeCur.overdueCount, to: '/finances?tab=debts&overdue=1' },
     // `attention` (churn + debt), not `total` (churn only): this tile links to the
     // students list filtered by the same rule, so the two must show one number.
+    // `risk === null` — у роли нет доступа к ростеру: плитки просто нет, а не «0».
     (overview?.risk?.attention ?? overview?.risk?.total ?? 0) > 0 && { icon: AlertTriangle, color: 'orange', label: 'Ученики в зоне риска', count: overview.risk.attention ?? overview.risk.total, to: '/students?risk=1' },
     (overview?.leads?.new || 0) > 0 && { icon: Inbox, color: 'blue', label: 'Новые заявки', count: overview.leads.new, to: '/leads' },
     (overview?.pendingHomework || 0) > 0 && { icon: FileText, color: 'slate', label: 'Непроверенные ДЗ', count: overview.pendingHomework, to: '/homework/review' },
   ].filter(Boolean) as { icon: React.ElementType; color: string; label: string; count: number; to: string }[];
 
   // ── Leads funnel ──
-  const leads = overview?.leads || { new: 0, contacted: 0, resolved: 0, total: 0 };
+  // `leads === null` — нет права на CRM: карточку не показываем вовсе.
+  const leads = overview?.leads || { new: 0, contacted: 0, resolved: 0, total: 0, unassignedBranch: 0 };
+  const showFunnel = !!overview?.leads;
   const funnel = [
     { label: 'Новые', v: leads.new, bar: 'bg-indigo-300 dark:bg-indigo-500/60' },
     { label: 'В работе', v: leads.contacted, bar: 'bg-indigo-400 dark:bg-indigo-500/80' },
@@ -279,6 +298,39 @@ const AdminDashboard: React.FC = () => {
   ];
   const funnelMax = Math.max(leads.new, leads.contacted, leads.resolved, 1);
   const conversion = leads.total ? Math.round((leads.resolved / leads.total) * 100) : 0;
+
+  // ── Показатели обучения: показываем МЕСЯЦ, а не всю историю ──
+  // Всевременное среднее у центра с двухлетним журналом не двигается — по нему
+  // не видно ни просадки, ни эффекта от мер, а подпись под плиткой при этом
+  // говорила «N тестов в этом месяце», то есть число и его объяснение брались
+  // из разных периодов. Если в этом месяце данных ещё нет, честно падаем на
+  // всевременное значение и ПОДПИСЫВАЕМ его так — молча подменять период
+  // нельзя, иначе цифра снова врёт о том, что она такое.
+  const perf = overview?.performance;
+  const att = overview?.attendance;
+  const monthlyMetric = (
+    thisMonth: number | null | undefined,
+    allTime: number | null | undefined,
+    subThisMonth: string,
+  ): { value: string; sub: string } => {
+    if (thisMonth != null) return { value: `${thisMonth}%`, sub: subThisMonth };
+    if (allTime != null) return { value: `${allTime}%`, sub: 'за всё время · в этом месяце данных нет' };
+    return { value: '—', sub: 'нет данных' };
+  };
+  const score = monthlyMetric(
+    perf?.avgScoreThisMonth, perf?.avgScore,
+    `${perf?.attemptsThisMonth || 0} ${plural(perf?.attemptsThisMonth || 0, 'тест', 'теста', 'тестов')} в этом месяце`,
+  );
+  const attend = monthlyMetric(
+    att?.rateThisMonth, att?.rateAvg,
+    `${att?.lessonsThisMonth || 0} ${plural(att?.lessonsThisMonth || 0, 'отметка', 'отметки', 'отметок')} в этом месяце`,
+  );
+  // Кольца ниже подписываются тем же периодом, что и показанные в них значения.
+  const ringsAreMonthly = perf?.avgScoreThisMonth != null || att?.rateThisMonth != null;
+
+  // Деньги без филиала — справка, а не слагаемое (см. api-finance-metrics).
+  const unassignedIncome = Number(financeCur?.unassignedBranchIncome || 0);
+  const unassignedDebt = Number(financeCur?.unassignedBranchDebt || 0);
 
   const chartData = (chartPeriod === 'current_month' ? financeCur : chartMetrics)?.chartData || [];
   const PERIODS: { id: Period; label: string }[] = [
@@ -288,14 +340,21 @@ const AdminDashboard: React.FC = () => {
     { id: 'year', label: 'Год' },
   ];
 
-  const FunnelCard = (
+  const FunnelCard = !showFunnel ? null : (
     <Card className="p-4 sm:p-5">
       <CardTitle icon={Target} iconClass="text-indigo-500"
         right={<span className="text-[11px] text-slate-400">конверсия {conversion}%</span>}>
         Воронка заявок
       </CardTitle>
       {leads.total === 0 ? (
-        <p className="text-sm text-slate-400 py-6 text-center">Заявок пока нет — подключите Telegram-бот для приёма лидов.</p>
+        <p className="text-sm text-slate-400 py-6 text-center">
+          {leads.unassignedBranch > 0 && activeBranchId
+            // Заявки без филиала в филиальный срез не входят (то же правило, что
+            // у денег). Молчаливый «нет заявок» под выбранным филиалом выглядел
+            // бы поломкой — объясняем, куда они делись.
+            ? `В этом филиале заявок нет. Ещё ${leads.unassignedBranch} — без филиала, они видны в режиме «Все филиалы».`
+            : 'Заявок пока нет — подключите Telegram-бот для приёма лидов.'}
+        </p>
       ) : (
         <div className="space-y-3 mt-1">
           {funnel.map(s => (
@@ -309,6 +368,13 @@ const AdminDashboard: React.FC = () => {
               </div>
             </div>
           ))}
+          <p className="text-[11px] text-slate-400 pt-1">
+            {/* Воронка накопительная: она отвечает на «сколько заявок в каждой
+                стадии СЕЙЧАС», а не «сколько пришло за месяц». Подписываем — иначе
+                конверсия читается как месячная и выглядит застывшей. */}
+            за всё время · {leads.newThisMonth || 0} {plural(leads.newThisMonth || 0, 'новая заявка', 'новые заявки', 'новых заявок')} в этом месяце
+            {leads.unassignedBranch > 0 && activeBranchId ? ` · ещё ${leads.unassignedBranch} без филиала` : ''}
+          </p>
         </div>
       )}
     </Card>
@@ -387,11 +453,11 @@ const AdminDashboard: React.FC = () => {
           <>
             <KpiCard label="Выручка за месяц" value={`${fmt(financeCur.totalIncome)} с.`} icon={TrendingUp}
               iconBg="bg-emerald-50 text-emerald-600 dark:bg-emerald-900/30"
-              sub={<PctDelta cur={financeCur.totalIncome} prev={prevMTD.income} />} />
+              sub={<PctDelta cur={financeCur.totalIncome} prev={prevIncome} comparable={prevComparable} />} />
             <KpiCard label="Чистая прибыль" value={`${fmt(financeCur.netProfit)} с.`} icon={Wallet}
               iconBg="bg-blue-50 text-blue-600 dark:bg-blue-900/30"
               sub={<>
-                <PctDelta cur={financeCur.netProfit} prev={prevMTDProfit} />
+                <PctDelta cur={financeCur.netProfit} prev={prevProfit} comparable={prevComparable} />
                 {financeCur.totalIncome > 0 && <span className="text-[11px] text-slate-400">маржа {Math.round((financeCur.netProfit / financeCur.totalIncome) * 100)}%</span>}
               </>} />
             <KpiCard label="Новые ученики" value={fmt(studentsNew)} icon={UserPlus}
@@ -401,19 +467,32 @@ const AdminDashboard: React.FC = () => {
                     {studentsDelta > 0 ? <ArrowUpRight className="w-3 h-3" /> : <ArrowDownRight className="w-3 h-3" />} {studentsDelta > 0 ? '+' : ''}{studentsDelta} к прошлому
                   </span>
                 : <span className="text-[11px] text-slate-400">в этом месяце</span>} />
-            {/* Плитка про долг ведёт сразу на «Долги», а не на «Обзор». */}
+            {/* Плитка про долг ведёт сразу на «Долги», а не на «Обзор».
+                Число — ВСЯ непогашенная дебиторка (включая счета, чей срок ещё
+                не наступил), поэтому ссылка ведёт в «все неоплаченные»: она
+                открывает ровно то множество, которое здесь просуммировано.
+                Просрочка — отдельная подпись и отдельная ссылка. */}
             <KpiCard label="Долги" value={`${fmt(financeCur.outstandingDebt)} с.`} icon={AlertTriangle} highlight to="/finances?tab=debts&unpaid=1"
               iconBg="bg-amber-100 text-amber-600 dark:bg-amber-900/40"
               sub={<>
-                <span className="text-[11px] text-amber-700 dark:text-amber-500 font-medium">{financeCur.overdueCount || 0} {plural(financeCur.overdueCount || 0, 'просрочка', 'просрочки', 'просрочек')}</span>
+                <span className="text-[11px] text-amber-700 dark:text-amber-500 font-medium">
+                  {(financeCur.overdueCount || 0) > 0
+                    ? `из них ${financeCur.overdueCount} ${plural(financeCur.overdueCount, 'просрочка', 'просрочки', 'просрочек')}`
+                    : 'просрочек нет'}
+                </span>
                 <ChevronRight className="w-3.5 h-3.5 text-amber-600/70" />
               </>} />
           </>
         ) : (
           <>
-            <KpiCard label={t('dashboard.totalStudents', 'Студенты')} value={fmt(dashStats?.totalStudents ?? overview?.students?.active)} icon={GraduationCap}
+            {/* overview.students.active, а НЕ dashStats.totalStudents: последний
+                считается по всей организации и по строгому `role == 'student'`,
+                поэтому под выбранным филиалом плитка показывала цифру всей сети
+                (и теряла учеников с ролью в roles[]). overview считает тот же
+                ростер и тем же memberHoldsRole, что и список /students. */}
+            <KpiCard label={t('dashboard.totalStudents', 'Студенты')} value={fmt(overview?.students?.active ?? dashStats?.totalStudents)} icon={GraduationCap}
               iconBg="bg-indigo-50 text-indigo-600 dark:bg-indigo-900/30"
-              sub={<span className="text-[11px] text-slate-400">активных</span>} />
+              sub={<span className="text-[11px] text-slate-400">{activeBranchId ? 'активных в филиале' : 'активных'}</span>} to="/students" />
             <KpiCard label="Новые ученики" value={fmt(studentsNew)} icon={UserPlus}
               iconBg="bg-emerald-50 text-emerald-600 dark:bg-emerald-900/30"
               sub={studentsDelta !== 0
@@ -421,18 +500,39 @@ const AdminDashboard: React.FC = () => {
                     {studentsDelta > 0 ? <ArrowUpRight className="w-3 h-3" /> : <ArrowDownRight className="w-3 h-3" />} {studentsDelta > 0 ? '+' : ''}{studentsDelta} к прошлому
                   </span>
                 : <span className="text-[11px] text-slate-400">в этом месяце</span>} />
-            <KpiCard label="Средний балл" value={overview?.performance?.avgScore != null ? `${overview.performance.avgScore}%` : '—'} icon={BarChart3}
+            <KpiCard label="Средний балл" value={score.value} icon={BarChart3}
               iconBg="bg-blue-50 text-blue-600 dark:bg-blue-900/30"
-              sub={<span className="text-[11px] text-slate-400">{overview?.performance?.attemptsThisMonth || 0} {plural(overview?.performance?.attemptsThisMonth || 0, 'тест', 'теста', 'тестов')} в этом месяце</span>} />
-            <KpiCard label="Посещаемость" value={overview?.attendance?.rateAvg != null ? `${overview.attendance.rateAvg}%` : '—'} icon={UsersRound}
+              sub={<span className="text-[11px] text-slate-400">{score.sub}</span>} />
+            <KpiCard label="Посещаемость" value={attend.value} icon={UsersRound}
               iconBg="bg-amber-50 text-amber-600 dark:bg-amber-900/30"
-              sub={<span className="text-[11px] text-slate-400">средняя по центру</span>} />
+              sub={<span className="text-[11px] text-slate-400">{attend.sub}</span>} />
           </>
         )}
       </div>
 
+      {/* ── Справка «не привязано к филиалу» ──
+          Под выбранным филиалом записи без branchId в суммы НЕ входят (строгий
+          матч — иначе филиал A = филиал B = вся сеть). Финансовый «Обзор» это
+          объясняет, а главная молчала: директор видел, что филиалы не
+          складываются в общий итог, и списывал разрыв на ошибку в цифрах.
+          Никогда не складываем и не вычитаем — только показываем рядом. */}
+      {showFinance && !!activeBranchId && (unassignedIncome > 0 || unassignedDebt > 0) && (
+        <p className="text-[11px] text-slate-400 -mt-2 px-1">
+          Не привязано к филиалу и потому не вошло в цифры выше:
+          {unassignedIncome > 0 && <> доход {fmt(unassignedIncome)} с.</>}
+          {unassignedIncome > 0 && unassignedDebt > 0 && ' ·'}
+          {unassignedDebt > 0 && <> долг {fmt(unassignedDebt)} с.</>}
+          {' — видно в режиме «Все филиалы».'}
+        </p>
+      )}
+
       {/* ── Main row: signature visual + attention center ── */}
       <div className="flex flex-col lg:flex-row gap-4">
+        {/* Левая колонка: график денег, иначе воронка. Роль без финансов И без
+            доступа к заявкам (например, преподаватель-куратор) не должна
+            получить пустой блок — тогда левой колонки просто нет, а «Требует
+            внимания» занимает всю ширину. */}
+        {(showFinance || showFunnel) && (
         <div className="flex-[2] min-w-0">
           {showFinance ? (
             <Card className="p-4 sm:p-5 h-full">
@@ -483,6 +583,7 @@ const AdminDashboard: React.FC = () => {
             FunnelCard
           )}
         </div>
+        )}
 
         {/* Attention center */}
         <div className="flex-1 min-w-0">
@@ -545,14 +646,28 @@ const AdminDashboard: React.FC = () => {
 
         {/* Learning metrics */}
         <Card className="p-4 sm:p-5">
-          <CardTitle icon={GraduationCap} iconClass="text-slate-400">Показатели обучения</CardTitle>
+          <CardTitle icon={GraduationCap} iconClass="text-slate-400"
+            right={<span className="text-[11px] text-slate-400">{ringsAreMonthly ? 'за этот месяц' : 'за всё время'}</span>}>
+            Показатели обучения
+          </CardTitle>
+          {/* Кольца показывают ТОТ ЖЕ период, что и плитки выше, и период
+              подписан в заголовке: раньше здесь молча висело всевременное
+              среднее рядом со строкой «Тестов сдано в этом месяце». */}
           <div className="flex items-center justify-around mt-1">
-            <Ring value={overview?.performance?.avgScore ?? null} color="#10b981" label="Средний балл" />
-            <Ring value={overview?.attendance?.rateAvg ?? null} color="#3b82f6" label="Посещаемость" />
+            <Ring value={perf?.avgScoreThisMonth ?? perf?.avgScore ?? null} color="#10b981" label="Средний балл" />
+            <Ring value={att?.rateThisMonth ?? att?.rateAvg ?? null} color="#3b82f6" label="Посещаемость" />
           </div>
-          <div className="mt-3 pt-3 border-t border-slate-100 dark:border-slate-700/50 flex items-center justify-between text-xs">
-            <span className="text-slate-500 dark:text-slate-400">Тестов сдано в этом месяце</span>
-            <span className="font-semibold text-slate-900 dark:text-white">{overview?.performance?.attemptsThisMonth ?? 0}</span>
+          <div className="mt-3 pt-3 border-t border-slate-100 dark:border-slate-700/50 space-y-1.5">
+            <div className="flex items-center justify-between text-xs">
+              <span className="text-slate-500 dark:text-slate-400">Тестов сдано в этом месяце</span>
+              <span className="font-semibold text-slate-900 dark:text-white">{perf?.attemptsThisMonth ?? 0}</span>
+            </div>
+            <div className="flex items-center justify-between text-xs">
+              {/* Прогулы — только неуважительные пропуски; посещаемость выше
+                  считает «уважительную» пропуском, но в это число она не идёт. */}
+              <span className="text-slate-500 dark:text-slate-400">Пропусков без причины в этом месяце</span>
+              <span className="font-semibold text-slate-900 dark:text-white">{att?.absencesThisMonth ?? 0}</span>
+            </div>
           </div>
         </Card>
       </div>

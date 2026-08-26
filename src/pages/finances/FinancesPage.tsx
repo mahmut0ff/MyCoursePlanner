@@ -160,14 +160,38 @@ const FinancesPage: React.FC = () => {
   // переходе с карточки давал пустой экран с текстом «За этот месяц ещё не
   // начисляли» — то есть ровно ту ложь, ради устранения которой режим и делался.
   const unpaidOnly = searchParams.get('unpaid') === '1';
-  const allMonths = unpaidOnly || Boolean(studentFilter);
+  /**
+   * ?overdue=1 — «только просроченные»: сюда ведёт плитка «Просроченные
+   * платежи» с главной.
+   *
+   * Отдельный режим, а не оттенок `unpaid`: «неоплачено» и «просрочено» —
+   * РАЗНЫЕ множества (второе строго внутри первого, счёт со сроком в будущем
+   * неоплачен, но не просрочен). Плитка считала просроченные, а вела на
+   * ?unpaid=1 — директор кликал по «7» и видел 40 строк, после чего переставал
+   * верить обоим числам.
+   *
+   * Просрочка всегда подразумевает непогашенный остаток, поэтому режим
+   * включает и «только должники», и снятие месячного фильтра: просроченные
+   * счета лежат в прошлых месяцах, и срез текущего месяца показал бы пустоту.
+   */
+  const overdueOnly = searchParams.get('overdue') === '1';
+  const allMonths = unpaidOnly || overdueOnly || Boolean(studentFilter);
   const setUnpaidOnly = useCallback(
     (next: boolean) => {
       const params = new URLSearchParams(searchParams);
       if (next) params.set('unpaid', '1');
-      else params.delete('unpaid');
+      else { params.delete('unpaid'); params.delete('overdue'); }
       // `student` НЕ трогаем: фильтр по студенту и «только должники» — разные
       // оси, и снятие галочки не должно молча терять выбранного человека.
+      setSearchParams(params, { replace: true });
+    },
+    [searchParams, setSearchParams]
+  );
+  const setOverdueOnly = useCallback(
+    (next: boolean) => {
+      const params = new URLSearchParams(searchParams);
+      if (next) params.set('overdue', '1');
+      else params.delete('overdue');
       setSearchParams(params, { replace: true });
     },
     [searchParams, setSearchParams]
@@ -268,9 +292,11 @@ const FinancesPage: React.FC = () => {
             onMonthChange={setMonth}
             studentId={studentFilter}
             onStudentNameResolved={setStudentFilterName}
-            unpaidOnly={unpaidOnly}
+            unpaidOnly={unpaidOnly || overdueOnly}
+            overdueOnly={overdueOnly}
             allMonths={allMonths}
             onUnpaidOnlyChange={setUnpaidOnly}
+            onOverdueOnlyChange={setOverdueOnly}
           />
         )}
         {activeTab === 'payments' && (

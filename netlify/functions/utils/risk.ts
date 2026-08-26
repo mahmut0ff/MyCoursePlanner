@@ -22,6 +22,8 @@
  *     lesson would show up as "critical churn risk").
  */
 
+import { attendanceRate as computeAttendanceRate, wasPresent, wasAbsent } from './attendance';
+
 export type RiskLevel = 'low' | 'medium' | 'high';
 export type ScoreTrend = 'up' | 'down' | 'flat';
 
@@ -90,14 +92,19 @@ export function computeStudentRisk(signals: RiskSignals): RiskResult {
     ? Math.round(attempts.reduce((acc, a) => acc + (a.percentage || 0), 0) / examsTaken)
     : 0;
 
-  const missedLessons = journal.filter(j => j.attendance === 'absent').length;
-  const attendanceRate = journal.length
-    ? Math.round(((journal.length - missedLessons) / journal.length) * 100)
-    : 100;
+  // «Прогулы» — только неуважительные пропуски: это то число, которое куратор
+  // показывает родителю, и уважительная причина в нём не место.
+  const missedLessons = journal.filter(wasAbsent).length;
+  // Посещаемость — по общему канону (present + late), одному с журналом,
+  // аналитикой и рейтингом: см. src/lib/attendance.ts. Здесь стояла своя
+  // формула (все − absent), из-за которой риск и дашборд считали ученика,
+  // месяц не приходившего «по уважительной», стопроцентно посещающим.
+  // Нет журнала — нет и повода подозревать прогулы, поэтому 100.
+  const attendanceRate = computeAttendanceRate(journal) ?? 100;
 
-  // Has the student ever actually engaged? An exam attempt, or an attendance
-  // record that isn't an absence. Being marked absent is not engagement.
-  const attendedCount = journal.filter(j => j.attendance && j.attendance !== 'absent').length;
+  // Has the student ever actually engaged? An exam attempt, or a lesson they
+  // were actually at. Being marked absent — excused or not — is not engagement.
+  const attendedCount = journal.filter(wasPresent).length;
   const hasActivity = examsTaken > 0 || attendedCount > 0;
 
   // Latest *real* activity: newest exam, or newest day actually present.
@@ -107,7 +114,9 @@ export function computeStudentRisk(signals: RiskSignals): RiskResult {
     if (t !== null && (lastActiveMs === null || t > lastActiveMs)) lastActiveMs = t;
   }
   for (const j of journal) {
-    if (j.attendance === 'absent') continue;
+    // День, когда ученика на занятии не было, активностью не является — и
+    // уважительная причина этого не меняет (тот же канон, что у attendanceRate).
+    if (!wasPresent(j)) continue;
     const t = toMs(j.date);
     if (t !== null && (lastActiveMs === null || t > lastActiveMs)) lastActiveMs = t;
   }

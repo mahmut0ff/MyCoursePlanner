@@ -2594,7 +2594,11 @@
     "toPay": "Amount due",
     "remainingInline": "remaining",
     "amountNotSet": "amount not set",
-    "payment": "Payment"
+    "payment": "Payment",
+    "showOverdueOnly": "Overdue only",
+    "overdueOnlyHint": "Showing only invoices whose due date has already passed, across all months. Same number as the «Overdue payments» tile.",
+    "noOverdueAtAll": "Nothing overdue",
+    "expelledTag": "expelled"
   },
   "telegram": {
     "title": "Telegram Notifications",

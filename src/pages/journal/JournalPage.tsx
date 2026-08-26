@@ -29,6 +29,7 @@ import { usePermissions } from '../../contexts/PermissionsContext';
 import { useOrg } from '../../contexts/OrgContext';
 import { getInstitution } from '../../lib/terminology';
 import { makeDefaultSchema, describeSchema, entryNumericValue } from '../../lib/gradePresets';
+import { wasPresent } from '../../lib/attendance';
 
 
 function getLocalISODate(d: Date) {
@@ -1080,7 +1081,9 @@ const JournalPage: React.FC = () => {
               const ranked = groupStudents.map(student => {
                 // Attendance: count present/late across ALL dates
                 const studentEntries = allJournalEntries.filter(e => e.studentId === student.uid);
-                const presentCount = studentEntries.filter(e => e.attendance === 'present' || e.attendance === 'late').length;
+                // Общий предикат присутствия — один с рейтингом, аналитикой и
+                // дашбордом (src/lib/attendance.ts).
+                const presentCount = studentEntries.filter(wasPresent).length;
                 const attendancePct = Math.round((presentCount / totalDates) * 100);
 
                 // Average grade, normalised per entry.

@@ -1191,6 +1191,11 @@ const handler: Handler = async (event: HandlerEvent) => {
           primaryBranchId: body.primaryBranchId || null,
           createdByOrg: true,
           offlineStudent: !wantsLogin,
+          // Дата поступления дублируется на членство намеренно: по ней считается
+          // набор («Новые ученики» в api-dashboard), а членства и так читаются
+          // целиком — иначе за той же метрикой пришлось бы тянуть ещё и профили
+          // всех учеников. `joinedAt` остаётся техническим «когда завели запись».
+          ...(profile.enrollmentDate ? { enrollmentDate: profile.enrollmentDate } : {}),
           joinedAt: now()
         });
 
@@ -1314,6 +1319,10 @@ const handler: Handler = async (event: HandlerEvent) => {
             primaryBranchId,
             createdByOrg: true,
             offlineStudent: true,
+            // См. createStudent: набор считается по дате поступления, а не по
+            // моменту импорта. Без этого импорт архива из 200 учеников выдавал
+            // «200 новых в этом месяце» на главной.
+            ...(enrollmentDate ? { enrollmentDate } : {}),
             joinedAt: ts,
           });
           batch.set(adminDb.collection('users').doc(uid).collection('memberships').doc(orgId), {
@@ -1387,11 +1396,17 @@ const handler: Handler = async (event: HandlerEvent) => {
       }
       await adminDb.collection('users').doc(body.uid).update(updateData);
 
-      // Also sync displayName to orgMembers if changed
-      if (body.displayName) {
+      // Also sync displayName to orgMembers if changed — вместе с датой
+      // поступления: она живёт на членстве как копия для метрик набора (см.
+      // createStudent), и рассинхрон означал бы, что карточка и главная считают
+      // разные даты для одного ученика.
+      const memberSync: Record<string, any> = {};
+      if (body.displayName) memberSync.userName = body.displayName;
+      if (updateData.enrollmentDate !== undefined) memberSync.enrollmentDate = updateData.enrollmentDate;
+      if (Object.keys(memberSync).length) {
         await adminDb.collection('orgMembers').doc(orgId)
           .collection('members').doc(body.uid)
-          .update({ userName: body.displayName, updatedAt: now() }).catch(() => {});
+          .update({ ...memberSync, updatedAt: now() }).catch(() => {});
       }
 
       return ok({ uid: body.uid, updated: true });
@@ -2508,6 +2523,13 @@ const handler: Handler = async (event: HandlerEvent) => {
     }
 
     // ═══ ORG DASHBOARD STATS ═══
+    // НАМЕРЕННО общеорганизационные и без филиального фильтра: единственный
+    // потребитель — мастер онбординга («создан ли курс», «заведены ли ученики»),
+    // а он спрашивает про организацию целиком. Для KPI-плиток эти числа НЕ
+    // годятся: там нужен филиальный срез и multi-role (memberHoldsRole), и
+    // главная поэтому берёт `students.active` из api-dashboard?action=overview.
+    // Плитка «Студенты» когда-то читала totalStudents и под выбранным филиалом
+    // показывала цифру всей сети.
     if (action === 'dashboardStats') {
       const [coursesSnap, groupsSnap, studentsSnap, teachersSnap, lessonsSnap, examsSnap, roomsSnap, scheduleSnap] = await Promise.all([
         orgQuery('courses', orgId).get(),

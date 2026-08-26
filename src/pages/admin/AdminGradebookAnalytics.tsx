@@ -13,6 +13,7 @@ import { isHomeworkGrade } from '../../types';
 import { entryNumericValue } from '../../lib/gradePresets';
 import { BarChart3, TrendingUp, GraduationCap, AlertTriangle, Download, ClipboardList, CheckCircle2, Filter, TrendingDown, BookOpen } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { wasPresent } from '../../lib/attendance';
 
 // ── Russian pluralization ──────────────────────────
 function pluralize(n: number, one: string, few: string, many: string): string {
@@ -144,9 +145,11 @@ export default function AdminGradebookAnalytics() {
       .filter((g): g is { pct: number; studentId: string } => g.pct !== null);
     const avgScore = numericGrades.length ? numericGrades.reduce((sum, g) => sum + g.pct, 0) / numericGrades.length : 0;
 
-    // Attendance Rate
+    // Attendance Rate — общий предикат (src/lib/attendance.ts), а не своя
+    // строка filter: у этой метрики было четыре разные реализации, и главная
+    // расходилась с этим экраном на долю «уважительных».
     const totalAttendance = fj.length;
-    const presentAttendance = fj.filter(j => j.attendance === 'present' || j.attendance === 'late').length;
+    const presentAttendance = fj.filter(wasPresent).length;
     const attendanceRate = totalAttendance ? (presentAttendance / totalAttendance) * 100 : 0;
 
     // Risk Detection (students with < 60% avg grade OR < 70% attendance)
@@ -160,7 +163,7 @@ export default function AdminGradebookAnalytics() {
     fj.forEach(j => {
       if (!studentStats[j.studentId]) studentStats[j.studentId] = defaultStats();
       studentStats[j.studentId].totalAtt++;
-      if (j.attendance === 'present' || j.attendance === 'late') studentStats[j.studentId].presentAtt++;
+      if (wasPresent(j)) studentStats[j.studentId].presentAtt++;
     });
 
     // Calculate percentages — gradePercent is now real average score, not pass rate

@@ -5,16 +5,70 @@ import type { Handler, HandlerEvent } from '@netlify/functions';
 import { adminDb } from './utils/firebase-admin';
 import { verifyAuth, isStaff, hasRole, can, getOrgFilter, resolveBranchFilter, memberInBranchScope, memberHoldsRole, recordInBranchScope, ok, unauthorized, forbidden, jsonResponse } from './utils/auth';
 import { computeStudentRisk, needsAttention } from './utils/risk';
-import { isDebtBearingPlan, isPlanOverdue } from './utils/payment-plans';
+import { isDebtBearingPlan, isPlanOverdue, orgDayKey } from './utils/payment-plans';
+import { attendanceRate, wasAbsent } from './utils/attendance';
+import { getPeriodRange, getPreviousRange } from './utils/finance-period';
 
-/** ISO timestamp for the 1st of the month, `offset` months back (0 = this month). */
-function monthStartISO(offset = 0): string {
-  const d = new Date();
-  d.setUTCDate(1);
-  d.setUTCHours(0, 0, 0, 0);
-  d.setUTCMonth(d.getUTCMonth() - offset);
-  return d.toISOString();
+/**
+ * Границы «этого месяца» и «прошлого месяца до сегодняшнего числа».
+ *
+ * Считает их тот же util, что размечает периоды в финансах, — и это не
+ * экономия строк. Здесь стояла своя арифметика на setUTCDate/setUTCMonth, то
+ * есть месяц по UTC, тогда как весь денежный контур и просрочка живут в дне
+ * организации (UTC+6). Каждую ночь на 1-е число шесть часов подряд «новые
+ * ученики этого месяца» на главной и «этот месяц» в финансах указывали на
+ * РАЗНЫЕ месяцы.
+ *
+ * `prevEndIso` — правая граница «прошлый месяц до этого же числа»: её усечение
+ * (включая clamp на коротком феврале) уже решено в getPreviousRange, и
+ * повторять это правило здесь значит завести второй его экземпляр.
+ */
+function monthWindows() {
+  const { startIso, endIso } = getPeriodRange('current_month');
+  const { prevStartIso, prevEndIso } = getPreviousRange('current_month', startIso, endIso, false);
+  return { monthStart: startIso, monthEnd: endIso, lastMonthStart: prevStartIso, lastMonthToDateEnd: prevEndIso };
 }
+
+/**
+ * Календарный день события — В КАЛЕНДАРЕ ОРГАНИЗАЦИИ, 'YYYY-MM-DD'.
+ *
+ * Данные приходят в двух формах, и обе нужно уметь сравнить с границей окна:
+ *  • голая дата ('2026-08-01' — journal.date, enrollmentDate) — это УЖЕ день,
+ *    трогать её нельзя;
+ *  • полный ISO ('2026-07-31T19:00:00Z' — joinedAt, submittedAt, createdAt) —
+ *    это МОМЕНТ, и днём он становится только после сдвига в зону организации:
+ *    для Бишкека это уже 1 августа, и запись обязана считаться августовской.
+ *
+ * Прямое сравнение строк не работает ни в ту, ни в другую сторону:
+ * '2026-08-01' < '2026-08-01T00:00:00.000Z' лексикографически (короткая строка —
+ * префикс длинной), из-за чего терялось КАЖДОЕ первое число месяца; а срез
+ * первых десяти символов от границы окна ('2026-07-31T18:00:00.000Z' — начало
+ * августа для UTC+6) назвал бы её 31 июля и втащил в месяц лишний день.
+ * Поэтому к дню приводятся ОБЕ стороны сравнения — и значение, и граница.
+ */
+const dayKeyOf = (value: unknown): string => {
+  const raw = String(value ?? '').trim();
+  if (!raw) return '';
+  if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) return raw;
+  const parsed = new Date(raw);
+  return Number.isNaN(parsed.getTime()) ? raw.slice(0, 10) : orgDayKey(parsed);
+};
+const inDayRange = (value: unknown, startIso: string, endIso: string): boolean => {
+  const day = dayKeyOf(value);
+  return !!day && day >= dayKeyOf(startIso) && day <= dayKeyOf(endIso);
+};
+
+/**
+ * Наборы ролей для подсчёта людей — ОДНИ на весь файл.
+ *
+ * Колонки таблицы филиалов считались по разным правилам: в строке филиала
+ * «Преподаватели» включали admin и owner, а в строке «Не назначены» — нет, и
+ * два числа в одной колонке нельзя было складывать. Плюс матчился строгий
+ * `role`, из-за чего участник с ролью в `roles[]` (учитель + студент) выпадал
+ * из обеих колонок, хотя в ростере и в overview он есть — там memberHoldsRole.
+ */
+const STUDENT_ROLES = ['student'];
+const TEACHER_ROLES = ['teacher', 'mentor'];
 
 const handler: Handler = async (event: HandlerEvent) => {
   if (event.httpMethod === 'OPTIONS') return jsonResponse(204, '');
@@ -57,8 +111,8 @@ const handler: Handler = async (event: HandlerEvent) => {
         const data = m.data();
         return data.branchIds && data.branchIds.includes(bId);
       });
-      const students = branchMembers.filter((m: any) => m.data().role === 'student').length;
-      const teachers = branchMembers.filter((m: any) => ['teacher', 'mentor', 'admin', 'owner'].includes(m.data().role)).length;
+      const students = branchMembers.filter((m: any) => memberHoldsRole(m.data(), STUDENT_ROLES)).length;
+      const teachers = branchMembers.filter((m: any) => memberHoldsRole(m.data(), TEACHER_ROLES)).length;
 
       // Count entities tagged to this branch.
       // Курс сам по себе к филиалу не привязан (общий каталог), поэтому «курсы филиала» =
@@ -90,8 +144,8 @@ const handler: Handler = async (event: HandlerEvent) => {
       branchId: null,
       branchName: 'Не назначены',
       city: '',
-      students: unassignedMembers.filter((m: any) => m.data().role === 'student').length,
-      teachers: unassignedMembers.filter((m: any) => ['teacher', 'mentor'].includes(m.data().role)).length,
+      students: unassignedMembers.filter((m: any) => memberHoldsRole(m.data(), STUDENT_ROLES)).length,
+      teachers: unassignedMembers.filter((m: any) => memberHoldsRole(m.data(), TEACHER_ROLES)).length,
       // Те же правила, что и выше: курсы считаем через группы без филиала.
       courses: new Set(
         groupsSnap.docs.filter((g: any) => !g.data().branchId).map((g: any) => g.data().courseId).filter(Boolean)
@@ -106,7 +160,11 @@ const handler: Handler = async (event: HandlerEvent) => {
       result = result.filter(b => user.branchIds.includes(b.branchId));
     }
 
-    return ok({ branches: result, unassigned, totalBranches: branchesSnap.size });
+    // `totalBranches` — подпись под таблицей («N филиалов»), поэтому это число
+    // ПОКАЗАННЫХ строк, а не всех филиалов организации: менеджеру со своим
+    // одним филиалом таблица честно рисовала одну строку и тут же подписывала
+    // её «4 филиала».
+    return ok({ branches: result, unassigned, totalBranches: result.length });
   }
 
   // ═══ OWNER OVERVIEW (command-center data — growth, performance, attendance, leads, risk) ═══
@@ -116,27 +174,44 @@ const handler: Handler = async (event: HandlerEvent) => {
     if (!orgFilter) return forbidden();
     if (!hasRole(user, 'admin') && !hasRole(user, 'manager')) return forbidden();
 
-    const monthStart = monthStartISO(0);
-    const lastMonthStart = monthStartISO(1);
+    const { monthStart, monthEnd, lastMonthStart, lastMonthToDateEnd } = monthWindows();
     const nowMs = Date.now();
     const emptyCount = { data: () => ({ count: 0 }) };
 
-    const [memberSnap, leadSnap, attemptSnap, journalSnap, plansSnap, hwCountSnap] = await Promise.all([
-      adminDb.collection('orgMembers').doc(orgFilter).collection('members').where('status', '==', 'active').get(),
-      adminDb.collection('organizations').doc(orgFilter).collection('aiLeads').get().catch(() => null),
-      adminDb.collection('examAttempts').where('organizationId', '==', orgFilter).get().catch(() => null),
-      adminDb.collection('journal').where('organizationId', '==', orgFilter).get().catch(() => null),
-      adminDb.collection('studentPaymentPlans').where('organizationId', '==', orgFilter).get().catch(() => null),
-      adminDb.collection('homework_submissions').where('organizationId', '==', orgFilter).where('status', '==', 'pending').count().get().catch(() => emptyCount),
-    ]);
+    // ── Каждая плитка гейтится правом того экрана, куда она ведёт ──
+    // Гейт на весь ответ — только роль, и этого мало: «Ученики в зоне риска»
+    // ведёт в ростер (api-risk требует students:read), «Непроверенные ДЗ» — в
+    // проверку ДЗ (homework), воронка — в /leads. Менеджер без students:read
+    // видел на главной число, а по клику получал пустой экран. Права решаются
+    // ЗДЕСЬ, до чтения: чего нельзя показать, того не надо и читать.
+    const canSeeMoney = can(user, 'finances', 'read');
+    const canSeeStudents = can(user, 'students', 'read');
+    const canSeeLeads = can(user, 'leads', 'read');
+    const canSeeHomework = can(user, 'homework', 'read');
 
     // Scope the roster to the selected branch, the same way the students list
     // does. Without this the overview counted the whole org while the list next
     // to it counted one branch — the mismatch that made these tiles untrustworthy.
-    // Признак долга — финансовая величина: см. тот же гейт в api-risk.
-    const canSeeMoney = can(user, 'finances', 'read');
     const overviewScope = resolveBranchFilter(user, params.branchId);
     if (overviewScope === '__DENIED__') return forbidden();
+
+    const [memberSnap, leadSnap, attemptSnap, journalSnap, plansSnap, hwCountSnap] = await Promise.all([
+      adminDb.collection('orgMembers').doc(orgFilter).collection('members').where('status', '==', 'active').get(),
+      canSeeLeads
+        ? adminDb.collection('organizations').doc(orgFilter).collection('aiLeads').get().catch(() => null)
+        : null,
+      adminDb.collection('examAttempts').where('organizationId', '==', orgFilter).get().catch(() => null),
+      adminDb.collection('journal').where('organizationId', '==', orgFilter).get().catch(() => null),
+      // Счета читаем, только если вызывающему вообще показывают деньги: без
+      // этого права признак долга всё равно гасится ниже, и полное чтение
+      // коллекции счетов было платой ни за что (api-risk уже так и делает).
+      canSeeMoney
+        ? adminDb.collection('studentPaymentPlans').where('organizationId', '==', orgFilter).get().catch(() => null)
+        : null,
+      canSeeHomework
+        ? adminDb.collection('homework_submissions').where('organizationId', '==', orgFilter).where('status', '==', 'pending').count().get().catch(() => emptyCount)
+        : Promise.resolve(emptyCount),
+    ]);
 
     const members = memberSnap.docs
       .map(d => ({ id: d.id, ...(d.data() as any) }))
@@ -148,17 +223,27 @@ const handler: Handler = async (event: HandlerEvent) => {
     const studentIds = Array.from(memberByUid.keys());
     const studentIdSet = new Set(studentIds);
 
-    const sinceOf = (m: any) => m.joinedAt || m.createdAt || '';
-    const newThisMonth = students.filter(m => sinceOf(m) >= monthStart).length;
-    const newLastMonth = students.filter(m => sinceOf(m) >= lastMonthStart && sinceOf(m) < monthStart).length;
-    // Apples-to-apples: last month up to the same day-of-month, so an early-month
-    // comparison isn't distorted (MTD vs full month).
-    const lmStart = new Date(lastMonthStart);
-    const lmDays = new Date(Date.UTC(lmStart.getUTCFullYear(), lmStart.getUTCMonth() + 1, 0)).getUTCDate();
-    const lmCutoff = new Date(Date.UTC(
-      lmStart.getUTCFullYear(), lmStart.getUTCMonth(), Math.min(new Date().getUTCDate(), lmDays), 23, 59, 59, 999,
-    )).toISOString();
-    const newLastMonthToDate = students.filter(m => { const s = sinceOf(m); return s >= lastMonthStart && s <= lmCutoff; }).length;
+    /**
+     * С какого момента ученик считается «новым».
+     *
+     * `enrollmentDate` (дата поступления, её ставит менеджер в карточке и при
+     * импорте) — ПЕРВЕЕ технической `joinedAt`. Иначе метрика меряет работу
+     * оператора, а не набор: импорт архива из 200 учеников давал 200 «новых в
+     * этом месяце», а ученик, оформленный задним числом, в набор не попадал
+     * вовсе. Поля нет — падаем на прежнюю пару joinedAt/createdAt.
+     */
+    const sinceOf = (m: any) => m.enrollmentDate || m.joinedAt || m.createdAt || '';
+    // Сравнение по дням: enrollmentDate — голая дата 'YYYY-MM-DD', joinedAt —
+    // полный ISO. Прямое сравнение строк смешало бы два формата (см. dayKeyOf).
+    const newThisMonth = students.filter(m => inDayRange(sinceOf(m), monthStart, monthEnd)).length;
+    const newLastMonth = students.filter(m => {
+      const day = dayKeyOf(sinceOf(m));
+      return !!day && day >= dayKeyOf(lastMonthStart) && day < dayKeyOf(monthStart);
+    }).length;
+    // Apples-to-apples: прошлый месяц до того же числа, чтобы сравнение в начале
+    // месяца не выглядело обвалом (MTD против полного месяца). Границу считает
+    // getPreviousRange — своей арифметики здесь больше нет.
+    const newLastMonthToDate = students.filter(m => inDayRange(sinceOf(m), lastMonthStart, lastMonthToDateEnd)).length;
 
     // Group attempts & attendance by student (single pass each).
     // Every aggregate below is derived from the in-scope roster only, so a branch
@@ -202,14 +287,38 @@ const handler: Handler = async (event: HandlerEvent) => {
       overdueStudents.add(plan.studentId);
     });
 
-    const avgScore = allAttempts.length
-      ? Math.round(allAttempts.reduce((s, a) => s + (a.percentage || 0), 0) / allAttempts.length)
+    // ── Успеваемость и посещаемость: ЗА МЕСЯЦ и ЗА ВСЁ ВРЕМЯ, раздельно ──
+    // Раньше отдавалось только всевременное среднее, а подпись под плиткой
+    // говорила «N тестов в этом месяце» — то есть число и его объяснение были
+    // из разных периодов. У центра с двухлетней историей всевременное среднее
+    // не двигается вовсе: по нему нельзя увидеть ни просадку месяца, ни эффект
+    // от принятых мер. Отдаём оба: UI показывает месяц, всевременное остаётся
+    // как контекст (и как значение для тех, у кого месяц ещё пустой).
+    const avgOf = (arr: any[]): number | null => arr.length
+      ? Math.round(arr.reduce((sum, a) => sum + (a.percentage || 0), 0) / arr.length)
       : null;
-    const attemptsThisMonth = allAttempts.filter(a => (a.createdAt || a.submittedAt || '') >= monthStart).length;
+    const attemptInstant = (a: any) => a.submittedAt || a.createdAt || '';
+    const attemptsThisMonthList = allAttempts.filter(a => inDayRange(attemptInstant(a), monthStart, monthEnd));
+    const attemptsLastMonthList = allAttempts.filter(a => inDayRange(attemptInstant(a), lastMonthStart, lastMonthToDateEnd));
+    const avgScore = avgOf(allAttempts);
+    const avgScoreThisMonth = avgOf(attemptsThisMonthList);
+    const avgScoreLastMonthToDate = avgOf(attemptsLastMonthList);
+    const attemptsThisMonth = attemptsThisMonthList.length;
 
-    const totalAbsences = allJournal.filter(j => j.attendance === 'absent').length;
-    const rateAvg = allJournal.length ? Math.round(((allJournal.length - totalAbsences) / allJournal.length) * 100) : null;
-    const absencesThisMonth = allJournal.filter(j => j.attendance === 'absent' && (j.date || '') >= monthStart).length;
+    // Посещаемость — общий канон (present + late), один с журналом, аналитикой
+    // и рейтингом: см. src/lib/attendance.ts. Здесь стояла своя формула
+    // (все − absent), по которой «уважительная» шла в присутствие, и главная
+    // показывала процент выше журнала того же центра.
+    const journalThisMonth = allJournal.filter(j => inDayRange(j.date, monthStart, monthEnd));
+    const journalLastMonth = allJournal.filter(j => inDayRange(j.date, lastMonthStart, lastMonthToDateEnd));
+    const rateAvg = attendanceRate(allJournal);
+    const rateThisMonth = attendanceRate(journalThisMonth);
+    const rateLastMonthToDate = attendanceRate(journalLastMonth);
+    // «Прогулы» — только неуважительные пропуски (wasAbsent), и сравнение по
+    // ДНЯМ: `j.date` — голая дата, monthStart — полный ISO, и прямое сравнение
+    // строк молча теряло каждое первое число месяца.
+    const absencesThisMonth = journalThisMonth.filter(wasAbsent).length;
+    const lessonsThisMonth = journalThisMonth.length;
 
     // Risk counts — same shared formula api-risk uses, so this tile and the
     // students list can never disagree again. `overdue` is counted separately:
@@ -218,7 +327,8 @@ const handler: Handler = async (event: HandlerEvent) => {
     studentIds.forEach(uid => {
       const member = memberByUid.get(uid) || {};
       const r = computeStudentRisk({
-        enrolledAt: member.joinedAt || member.createdAt,
+        // Тот же якорь, что в api-risk: зачисление в ЭТУ организацию.
+        enrolledAt: member.enrollmentDate || member.joinedAt || member.createdAt,
         attempts: attemptsByStudent.get(uid) || [],
         journal: journalByStudent.get(uid) || [],
         // Тот же денежный гейт, что в api-risk: без доступа к финансам признак
@@ -238,23 +348,57 @@ const handler: Handler = async (event: HandlerEvent) => {
       if (needsAttention(r)) riskAttention++;
     });
 
-    const leads = (leadSnap?.docs || []).map(d => d.data() as any);
+    // ── Лиды ──
+    // Филиал у заявки такой же обязательный признак, как у счёта: под выбранным
+    // филиалом воронка обязана показывать ЕГО заявки, а не общесетевые. Заявка
+    // из входного тестирования филиал несёт (api-public-exam), заявка из
+    // веб-чата — нет, и по общему правилу для записей (recordInBranchScope)
+    // непривязанная заявка в филиальный срез не попадает. Сколько таких
+    // осталось за кадром, видно по `unassignedBranch` — та же справка, что у
+    // денег в api-finance-metrics, иначе разрыв между филиалом и сетью нечем
+    // объяснить.
+    const allLeads = (leadSnap?.docs || []).map(d => d.data() as any);
+    const leads = allLeads.filter(l => recordInBranchScope(l.branchId, overviewScope));
     const leadCount = (st: string) => leads.filter(l => (l.status || 'new') === st).length;
 
     return ok({
       students: { active: students.length, newThisMonth, newLastMonth, newLastMonthToDate },
       teachers,
-      performance: { avgScore, attemptsThisMonth },
-      attendance: { rateAvg, absencesThisMonth },
-      risk: { high: riskHigh, medium: riskMedium, total: riskHigh + riskMedium, overdue: riskOverdue, attention: riskAttention },
-      leads: {
-        total: leads.length,
-        new: leadCount('new'),
-        contacted: leadCount('contacted'),
-        resolved: leadCount('resolved'),
-        newThisMonth: leads.filter(l => (l.createdAt || '') >= monthStart).length,
+      // `avgScore`/`rateAvg` — за всё время, `*ThisMonth` — за текущий месяц,
+      // `*LastMonthToDate` — прошлый месяц до этого же числа (для дельты).
+      // Плитка обязана подписывать, какой из них показывает.
+      performance: {
+        avgScore,
+        avgScoreThisMonth,
+        avgScoreLastMonthToDate,
+        attemptsThisMonth,
+        attemptsTotal: allAttempts.length,
       },
-      pendingHomework: hwCountSnap.data().count,
+      attendance: {
+        rateAvg,
+        rateThisMonth,
+        rateLastMonthToDate,
+        absencesThisMonth,
+        lessonsThisMonth,
+      },
+      risk: canSeeStudents
+        ? { high: riskHigh, medium: riskMedium, total: riskHigh + riskMedium, overdue: riskOverdue, attention: riskAttention }
+        // Право на ростер решает, показывать ли риск: плитка ведёт в
+        // /students?risk=1, и число, за которым нет доступного экрана, — обещание,
+        // которого интерфейс не выполнит. null (а не нули) — чтобы UI мог
+        // отличить «нет доступа» от «никто не в риске» и просто скрыть плитку.
+        : null,
+      leads: canSeeLeads
+        ? {
+            total: leads.length,
+            new: leadCount('new'),
+            contacted: leadCount('contacted'),
+            resolved: leadCount('resolved'),
+            newThisMonth: leads.filter(l => inDayRange(l.createdAt, monthStart, monthEnd)).length,
+            unassignedBranch: allLeads.length - leads.length,
+          }
+        : null,
+      pendingHomework: canSeeHomework ? hwCountSnap.data().count : null,
     });
   }
 

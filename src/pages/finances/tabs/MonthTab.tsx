@@ -61,6 +61,20 @@ interface Props {
    */
   unpaidOnly?: boolean;
   /**
+   * «Только просроченные» (?overdue=1) — режим, в который ведёт плитка
+   * «Просроченные платежи» с главной.
+   *
+   * Существует отдельно от `unpaidOnly`, потому что это разные множества:
+   * неоплаченный счёт со сроком в будущем просрочкой не является. Пока режима
+   * не было, плитка вела на «все неоплаченные», и её число не совпадало с
+   * длиной списка, который она открывала.
+   *
+   * Предикат — общий `isPlanOverdue` (тот же, что рисует метку «срок прошёл» в
+   * строке и что считает `overdueCount` в api-finance-metrics), поэтому список
+   * и плитка не могут разойтись снова.
+   */
+  overdueOnly?: boolean;
+  /**
    * Снять фильтр МЕСЯЦА — ось, отдельная от «только должники».
    *
    * Приход с карточки студента обязан показать все его счета за все месяцы,
@@ -70,6 +84,7 @@ interface Props {
    */
   allMonths?: boolean;
   onUnpaidOnlyChange?: (next: boolean) => void;
+  onOverdueOnlyChange?: (next: boolean) => void;
 }
 
 interface PaymentPlan {
@@ -130,7 +145,7 @@ const PROGRESS_META: Record<string, { key: string; fallback: string; cls: string
  */
 const MonthTab: React.FC<Props> = ({
   filters, onFiltersChange, month, onMonthChange, studentId = '', onStudentNameResolved,
-  unpaidOnly = false, allMonths = false, onUnpaidOnlyChange,
+  unpaidOnly = false, overdueOnly = false, allMonths = false, onUnpaidOnlyChange, onOverdueOnlyChange,
 }) => {
   const { t } = useTranslation();
   const { activeBranchId } = useBranch();
@@ -236,17 +251,26 @@ const MonthTab: React.FC<Props> = ({
   // В режиме «все неоплаченные» фильтр по месяцу снимается: долг живёт не в
   // одном месяце, и вопрос «кто должен» на месячном срезе не имеет ответа.
   //
+  // В ЭТОМ ЖЕ режиме перестаёт действовать и фильтр отчисленных. Долг ушедшего
+  // студента — такой же долг: он считается в KPI «Долги» и в плитке
+  // «Просроченные платежи», поэтому спрятанный из списка он превращался в
+  // деньги, которые видно в цифре и нельзя закрыть на экране (ровно та же
+  // история, что со счетами без студента — см. ниже). Практически: плитка
+  // показывала 51 просроченный счёт, а список открывал 44. В обычном месячном
+  // срезе отчисленные по-прежнему не нужны — они не участвуют в наборе месяца.
+  //
   // Начисления без студента (studentMissing — сервер не нашёл его ни в `users`,
   // ни в зеркале членства ни под одним ключом) в список НЕ попадают. Это не
   // операционная строка: имени нет, карточки нет, решить по ней ничего нельзя —
   // такая строка только отнимает внимание на экране, где принимают оплаты.
   // Это дефект данных, и чинится он чисткой, а не показом в ежедневной работе.
+  const debtorMode = unpaidOnly || overdueOnly;
   const monthPlans = useMemo(
     () => plans.filter(p =>
       !p.studentMissing
       && (allMonths || planPeriodKey(p) === month)
-      && !isExpelled(studentById.get(String(p.studentId)))),
-    [plans, month, studentById, allMonths]
+      && (debtorMode || !isExpelled(studentById.get(String(p.studentId))))),
+    [plans, month, studentById, allMonths, debtorMode]
   );
 
   // Что реально показываем и считаем на «кто оплатил за месяц». Убираем ровно
@@ -273,6 +297,18 @@ const MonthTab: React.FC<Props> = ({
   const activePlans = useMemo(
     () => monthPlans.filter(p => !isWrittenOffPlan(p)),
     [monthPlans]
+  );
+
+  /**
+   * То же, что activePlans, но БЕЗ месячного среза — за все месяцы сразу.
+   *
+   * Нужен ровно для одного: счётчик просрочки у переключателя «только
+   * просроченные» обязан называть то число, которое этот переключатель откроет.
+   * Просрочка живёт в ПРОШЛЫХ месяцах, поэтому месячный срез для неё бессмыслен.
+   */
+  const allActivePlans = useMemo(
+    () => plans.filter(p => !p.studentMissing && !isWrittenOffPlan(p)),
+    [plans]
   );
 
   // Перенос суммы: самое свежее по месяцу начисление на (студент, курс).
@@ -351,13 +387,17 @@ const MonthTab: React.FC<Props> = ({
 
   const stats = useMemo(() => ({
     total: monthScoped.length,
+    // Просроченные СЧЕТА по ВСЕМ месяцам (см. allActivePlans): просрочка копится
+    // в прошлом, и месячный срез на вопрос «сколько просрочено» не отвечает —
+    // счётчик у переключателя показывал бы 3, а сам режим открывал 51.
+    overdue: allActivePlans.filter(p => isDebtBearingPlan(p) && isPlanOverdue(p)).length,
     // По тому же предикату, что и бейджи строк (planProgressKey), а не по сырому
     // p.status: легаси-план без суммы со status:'paid' иначе считался бы «оплачен»
     // в тайле, но рисовался «Частично» в строке — тайл и строки противоречили бы.
     paid: monthScoped.filter(p => planProgressKey(p) === 'paid').length,
     collected: monthScoped.reduce((sum, p) => sum + (Number(p.paidAmount) || 0), 0),
     unpaid: monthScoped.filter(p => isDebtBearingPlan(p)).length,
-  }), [monthScoped]);
+  }), [monthScoped, allActivePlans]);
 
 
   const filtered = useMemo(() => {
@@ -369,7 +409,9 @@ const MonthTab: React.FC<Props> = ({
         // который до сих пор нигде не отрисовывался. В режиме «все
         // неоплаченные» он включён по определению: иначе экран показал бы и
         // закрытые счета всех месяцев сразу.
-        if ((unpaidOnly || filters.status === 'unpaid') && !isDebtBearingPlan(p)) return false;
+        if ((unpaidOnly || overdueOnly || filters.status === 'unpaid') && !isDebtBearingPlan(p)) return false;
+        // Просрочка — по СРОКУ, общим предикатом (см. overdueOnly в Props).
+        if (overdueOnly && !isPlanOverdue(p)) return false;
         if (!q) return true;
         const name = (p.studentName || studentById.get(String(p.studentId))?.displayName || '').toLowerCase();
         return name.includes(q) || (p.courseName?.toLowerCase() || '').includes(q);
@@ -379,7 +421,7 @@ const MonthTab: React.FC<Props> = ({
         const bn = b.studentName || studentById.get(String(b.studentId))?.displayName || '';
         return collator.compare(an, bn) || collator.compare(a.courseName || '', b.courseName || '');
       });
-  }, [activePlans, filters.search, filters.status, studentId, studentById, unpaidOnly]);
+  }, [activePlans, filters.search, filters.status, studentId, studentById, unpaidOnly, overdueOnly]);
 
   useEffect(() => {
     if (!studentId || !onStudentNameResolved) return;
@@ -396,7 +438,7 @@ const MonthTab: React.FC<Props> = ({
   const { visible: pageRows, total, hasMore, sentinelRef, loadMore } = useLazyList(filtered, {
     // Режим и фильтр «только должники» меняют выборку целиком — без них в ключе
     // досмотренный хвост прежнего среза оставался на экране.
-    resetKey: `${filters.search}|${month}|${studentId || ''}|${activeBranchId || ''}|${allMonths ? 'all' : 'm'}|${unpaidOnly ? 'u' : ''}|${filters.status}`,
+    resetKey: `${filters.search}|${month}|${studentId || ''}|${activeBranchId || ''}|${allMonths ? 'all' : 'm'}|${unpaidOnly ? 'u' : ''}${overdueOnly ? 'o' : ''}|${filters.status}`,
   });
 
   // Выделение обязано жить в границах ТОГО, что на экране. Месяц, поиск, филиал
@@ -404,7 +446,7 @@ const MonthTab: React.FC<Props> = ({
   // строкам, которых менеджер уже не видит (та же защита стоит в ростере).
   useEffect(() => {
     setSelected(new Set());
-  }, [filters.search, filters.status, month, studentId, activeBranchId, allMonths, unpaidOnly]);
+  }, [filters.search, filters.status, month, studentId, activeBranchId, allMonths, unpaidOnly, overdueOnly]);
 
   const toggleRow = (id: string) => setSelected(prev => {
     const next = new Set(prev);
@@ -631,6 +673,23 @@ const MonthTab: React.FC<Props> = ({
             {t('finances.showAllUnpaid', 'Все неоплаченные, за любой месяц')}
           </label>
         )}
+        {/* Вторая ось внутри неоплаченных: «срок уже прошёл». Именно сюда ведёт
+            плитка «Просроченные платежи» с главной, поэтому режим виден и
+            переключаем руками, а не существует только как параметр в URL. */}
+        {onOverdueOnlyChange && (
+          <label className="inline-flex items-center gap-2 cursor-pointer select-none text-sm text-slate-600 dark:text-slate-300 shrink-0">
+            <input
+              type="checkbox"
+              checked={overdueOnly}
+              onChange={e => onOverdueOnlyChange(e.target.checked)}
+              className="w-4 h-4 accent-rose-500"
+            />
+            {t('finances.showOverdueOnly', 'Только просроченные')}
+            {stats.overdue > 0 && (
+              <span className="text-[11px] text-rose-500 font-semibold">{stats.overdue}</span>
+            )}
+          </label>
+        )}
       </div>
 
       {/* Панель массового действия. Появляется только вместе с выделением —
@@ -666,9 +725,11 @@ const MonthTab: React.FC<Props> = ({
 
       {allMonths && (
         <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-900/50 rounded-xl px-4 py-2.5 text-xs text-amber-800 dark:text-amber-300">
-          {unpaidOnly
-            ? t('finances.allUnpaidHint', 'Показаны все счета с непогашенным остатком за любые месяцы. Выбор месяца и начисление в этом режиме не действуют.')
-            : t('finances.allMonthsHint', 'Показаны счета за все месяцы, включая оплаченные. Плитки выше считают только выбранный месяц.')}
+          {overdueOnly
+            ? t('finances.overdueOnlyHint', 'Показаны только счета, срок оплаты которых уже прошёл, за любые месяцы. Это то же число, что на плитке «Просроченные платежи».')
+            : unpaidOnly
+              ? t('finances.allUnpaidHint', 'Показаны все счета с непогашенным остатком за любые месяцы. Выбор месяца и начисление в этом режиме не действуют.')
+              : t('finances.allMonthsHint', 'Показаны счета за все месяцы, включая оплаченные. Плитки выше считают только выбранный месяц.')}
           {' '}
           <span className="font-semibold">
             {t('finances.shownRowsDebt', 'На экране: {{n}} счетов, долг {{sum}}', {
@@ -696,6 +757,8 @@ const MonthTab: React.FC<Props> = ({
           title={
             filters.search
               ? t('finances.nothingFound', 'Ничего не найдено')
+              : overdueOnly
+                ? t('finances.noOverdueAtAll', 'Просроченных счетов нет')
               : unpaidOnly
                 ? t('finances.noUnpaidAtAll', 'Непогашенных счетов нет')
                 : allMonths
@@ -769,6 +832,15 @@ const MonthTab: React.FC<Props> = ({
                             <Link to={`/students/${p.studentId}`} className="font-medium text-slate-900 dark:text-white hover:text-sky-600 dark:hover:text-sky-400 hover:underline transition-colors">{name}</Link>
                           ) : (
                             <span className="font-medium text-slate-900 dark:text-white">{name}</span>
+                          )}
+                          {/* В режиме «кто должен» сюда попадают и ушедшие: их
+                              долг реален и его надо чем-то закрывать. Помечаем,
+                              иначе менеджер не поймёт, почему видит человека,
+                              которого отчислили. */}
+                          {isExpelled(student) && (
+                            <span className="block text-[11px] text-slate-400">
+                              {t('finances.expelledTag', 'отчислен(а)')}
+                            </span>
                           )}
                         </td>
                         <td className="px-5 py-3.5 text-slate-500 whitespace-nowrap">

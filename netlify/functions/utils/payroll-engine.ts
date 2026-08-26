@@ -5,11 +5,18 @@
  * поэтому она обязана покрываться юнит-тестами без мока базы. Эндпоинт
  * (api-payroll) отвечает за выборку и запись; здесь — только арифметика.
  *
- * ДВА ВИДА ОПЛАТЫ И БОЛЬШЕ НИКАКИХ. Фиксированная сумма («оклад») и процент от
- * денег, которые реально принесли студенты преподавателя. Оплата за занятие, за
- * час и за голову удалены сознательно: они считались по отметкам посещаемости
- * (lessonSessions), то есть зарплата человека молча зависела от того, ведёт ли
- * кто-то журнал. Директор про такую связь не знает и узнаёт по недоплате.
+ * ТРИ ВИДА ОПЛАТЫ, И ВСЕ ТРИ СЧИТАЮТСЯ ПО КАССЕ. Фиксированная сумма («оклад»),
+ * процент от денег, которые реально принесли студенты преподавателя, и
+ * фиксированная сумма с каждого ЗАПЛАТИВШЕГО студента. Оплата за занятие, за час
+ * и за голову на уроке удалены сознательно: они считались по отметкам
+ * посещаемости (lessonSessions), то есть зарплата человека молча зависела от
+ * того, ведёт ли кто-то журнал. Директор про такую связь не знает и узнаёт по
+ * недоплате.
+ *
+ * `per_paying_student` старую «оплату за студента» НЕ воскрешает и потому назван
+ * иначе: он смотрит в кассу, а не в журнал. Документы прежней модели с
+ * `kind: 'per_student'` (сумма × Σ headcount) так и остаются неначисляемыми —
+ * иначе ставка «200 за посещение» тихо превратилась бы в «200 за плательщика».
  *
  * Три вещи, ради которых этот файл выглядит именно так:
  *
@@ -42,13 +49,20 @@
 // ============================================================
 
 /**
- * Вид оплаты. Ровно два, и это продуктовое решение, а не текущее состояние:
- * директор академии рассуждает «Азизе — двадцать процентов» либо «Азизе —
- * тридцать тысяч». Всё остальное требовало данных, которых в базе нет.
+ * Вид оплаты. Ровно три, и это продуктовое решение, а не текущее состояние:
+ * директор академии рассуждает «Азизе — двадцать процентов», «Азизе — тридцать
+ * тысяч» либо «Азизе — двести пятьдесят с ученика». Всё остальное требовало
+ * данных, которых в базе нет.
+ *
+ * `per_paying_student` — та же логика, что у процента, но плоской суммой:
+ * `amountMinor` за КАЖДОГО студента его групп, который в этом месяце что-то
+ * заплатил. `base: 'collected'` обязателен и не декоративен — он отличает эту
+ * оплату от одноимённой по смыслу, но посещаемостной ставки прежней модели.
  */
 export type PayComponent =
   | { kind: 'salary'; amountMinor: number }
-  | { kind: 'percent_revenue'; percentBp: number; base: 'collected' };
+  | { kind: 'percent_revenue'; percentBp: number; base: 'collected' }
+  | { kind: 'per_paying_student'; amountMinor: number; base: 'collected' };
 
 /**
  * Ставка преподавателя. БЕЗ срока действия и БЕЗ филиала: ставка одна на
@@ -151,6 +165,8 @@ export interface ComponentBasis {
   amountMinor?: number;
   percentBp?: number;
   base?: 'collected';
+  /** Сколько студентов заплатило в окне — множитель у per_paying_student. */
+  payingStudents?: number;
   /** Собрано в окне по группам преподавателя (минорные единицы). */
   grossMinor?: number;
   /** Возвраты в окне по тем же группам (положительное число, вычитается). */
@@ -686,6 +702,94 @@ function computePercentRevenue(
   };
 }
 
+/**
+ * Плоская сумма С КАЖДОГО ЗАПЛАТИВШЕГО студента: «двести пятьдесят с ученика».
+ *
+ * Считается по той же кассе, что и процент, и отличается только тем, ЧТО в ней
+ * измеряется: не сумма денег, а число людей, которые эти деньги принесли.
+ * Заплативший — тот, у кого в окне ПОЛОЖИТЕЛЬНЫЙ нетто (оплаты минус возвраты)
+ * по группам преподавателя. Именно нетто: студент, которому вернули всё
+ * уплаченное, в этом месяце не заплатил ничего.
+ *
+ * ЧАСТИЧНАЯ ОПЛАТА СЧИТАЕТСЯ ЦЕЛОЙ ГОЛОВОЙ, и это осознанно. Ставка звучит как
+ * «250 с ученика», а не «250 за полностью закрытый счёт»; дробить её по доле
+ * внесённой суммы значило бы объяснять преподавателю дроби вместо людей. Чтобы
+ * число оставалось проверяемым, разбивка (byStudent) уезжает в снапшот и на
+ * экран: там видно поимённо, кто вошёл в множитель.
+ */
+function computePerPayingStudent(
+  component: Extract<PayComponent, { kind: 'per_paying_student' }>,
+  incomeTx: FinanceTxLike[],
+  refundTx: FinanceTxLike[],
+  ctx: { teacherId: string; ruleId: string; scope: TeacherScope },
+): ComputedComponent {
+  const diagnostics: Diagnostic[] = [];
+
+  if (ctx.scope.groupIds.length === 0) {
+    // Как и у процента: не ошибка расчёта, а отсутствие входных данных. Молчать
+    // о нуле в зарплате человека нельзя.
+    diagnostics.push({
+      code: 'teacher_without_groups',
+      message:
+        'У преподавателя нет ни одной группы, поэтому платящих студентов у него нет — начислено 0. ' +
+        'Назначьте преподавателя в группы, и оплаты его студентов попадут в расчёт.',
+      count: 1,
+      teacherId: ctx.teacherId,
+      ruleId: ctx.ruleId,
+    });
+    return {
+      kind: 'per_paying_student',
+      earnedMinor: 0,
+      basis: {
+        amountMinor: component.amountMinor,
+        base: component.base,
+        payingStudents: 0,
+        grossMinor: 0,
+        refundMinor: 0,
+        revenueBaseMinor: 0,
+        byGroup: [],
+        byStudent: [],
+        sourceTxnIds: [],
+      },
+      diagnostics,
+    };
+  }
+
+  const revenue = collectTeacherRevenue(ctx.scope, incomeTx, refundTx);
+  const payingStudents = revenue.byStudent.filter((s) => s.paidMinor > 0).length;
+
+  if (revenue.netMinor < 0) {
+    diagnostics.push({
+      code: 'percent_base_negative',
+      message:
+        `Возвраты превысили сборы по группам преподавателя (${(revenue.netMinor / 100).toFixed(2)} с.). ` +
+        `В расчёт вошли только те, у кого оплаты остались: ${payingStudents}. Удержания из зарплаты не делаются.`,
+      count: revenue.refundTxnIds.length,
+      sample: sample(revenue.refundTxnIds),
+      teacherId: ctx.teacherId,
+      ruleId: ctx.ruleId,
+    });
+  }
+
+  return {
+    kind: 'per_paying_student',
+    // Целые на целое: голов × ставку, ни деления, ни округления.
+    earnedMinor: payingStudents * component.amountMinor,
+    basis: {
+      amountMinor: component.amountMinor,
+      base: component.base,
+      payingStudents,
+      grossMinor: revenue.grossMinor,
+      refundMinor: revenue.refundMinor,
+      revenueBaseMinor: Math.max(0, revenue.netMinor),
+      byGroup: revenue.byGroup,
+      byStudent: revenue.byStudent,
+      sourceTxnIds: revenue.sourceTxnIds,
+    },
+    diagnostics,
+  };
+}
+
 // ============================================================
 // Главная функция
 // ============================================================
@@ -734,7 +838,10 @@ export function computePayroll(inputs: PayrollInputs): PayrollResult {
       });
     }
 
-    let hasPercent = false;
+    // Оплата, которая считается по кассе: и процент, и сумма с плательщика
+    // зависят от того, привязан ли платёж к группе, — значит и предупреждать о
+    // непривязанных платежах нужно при обеих.
+    let usesCollected = false;
     for (const component of ruleComponents) {
       switch (component.kind) {
         case 'salary':
@@ -749,20 +856,26 @@ export function computePayroll(inputs: PayrollInputs): PayrollResult {
           });
           break;
         case 'percent_revenue':
-          hasPercent = true;
+          usesCollected = true;
           components.push(
             computePercentRevenue(component, incomeTx, refundTx, { teacherId, ruleId: rule.id, scope }),
           );
           break;
+        case 'per_paying_student':
+          usesCollected = true;
+          components.push(
+            computePerPayingStudent(component, incomeTx, refundTx, { teacherId, ruleId: rule.id, scope }),
+          );
+          break;
         default:
           // Компонент неизвестного вида (пережиток удалённых «за занятие/час/
-          // студента»). Считать его нечем, но и промолчать нельзя — иначе
-          // человек недосчитается денег без единого следа.
+          // студента» — тех, что считались по журналу). Считать его нечем, но и
+          // промолчать нельзя — иначе человек недосчитается денег без следа.
           lineDiagnostics.push({
             code: 'rule_no_components',
             message:
               `В ставке остался устаревший вид оплаты «${String((component as any)?.kind ?? '')}» — он больше не поддерживается ` +
-              'и не начислен. Откройте ставку и выберите процент или фиксированную сумму.',
+              'и не начислен. Откройте ставку и выберите процент, фиксированную сумму или сумму с ученика.',
             count: 1,
             teacherId,
             ruleId: rule.id,
@@ -775,7 +888,7 @@ export function computePayroll(inputs: PayrollInputs): PayrollResult {
     // попадают: атрибуция денег в этой системе идёт через группу (см. резолв
     // groupId в api-finance-transactions). Молча потерять их нельзя — именно
     // они объясняют, почему сумма меньше ожидаемой.
-    if (hasPercent && scope.studentIds.length) {
+    if (usesCollected && scope.studentIds.length) {
       const students = new Set(scope.studentIds);
       const orphanPayments = incomeTx.filter((tx) => !tx.groupId && !!tx.studentId && students.has(tx.studentId));
       if (orphanPayments.length) {
@@ -784,7 +897,7 @@ export function computePayroll(inputs: PayrollInputs): PayrollResult {
           code: 'payment_without_group',
           message:
             `Платежей его студентов без привязки к группе: ${orphanPayments.length} на ${(totalMinor / 100).toFixed(2)} с. ` +
-            'В базу процента они не вошли — откройте платёж в Финансах и укажите группу.',
+            'В расчёт они не вошли — откройте платёж в Финансах и укажите группу.',
           count: orphanPayments.length,
           sample: sample(orphanPayments.map((tx) => tx.id)),
           teacherId,
@@ -823,7 +936,7 @@ export function computePayroll(inputs: PayrollInputs): PayrollResult {
       code: 'teacher_without_rule',
       message:
         `Преподавателей без ставки: ${withoutRule.length}. ` +
-        'Им ничего не начислено — задайте процент или фиксированную сумму.',
+        'Им ничего не начислено — задайте ставку: процент, сумму за месяц или сумму с ученика.',
       count: withoutRule.length,
       sample: sample(withoutRule),
     });
@@ -837,4 +950,142 @@ export function computePayroll(inputs: PayrollInputs): PayrollResult {
   ];
 
   return { lines, diagnostics };
+}
+
+// ============================================================
+// Прогноз «если оплатят все»
+// ============================================================
+
+/**
+ * Счёт студента за месяц в том виде, в каком его отдаёт Firestore.
+ * `totalAmount` — В СОМАХ (так хранится) и УЖЕ после скидки: это сумма, которую
+ * с человека действительно ждут, а не прайс (см. StudentPaymentPlan.listAmount).
+ */
+export interface PlanLike {
+  id: string;
+  studentId?: string | null;
+  courseId?: string | null;
+  totalAmount?: number | null;
+}
+
+/** Сколько выставлено студентам преподавателя за месяц — вход прогноза. */
+export interface ExpectedRevenue {
+  /** Сумма счетов месяца по его группам (минорные единицы). */
+  expectedMinor: number;
+  /** Сколько РАЗНЫХ студентов в этих счетах. */
+  expectedStudents: number;
+  /** Сколько счетов вошло — чтобы «ноль» отличался от «счетов нет». */
+  planCount: number;
+}
+
+export function emptyExpectedRevenue(): ExpectedRevenue {
+  return { expectedMinor: 0, expectedStudents: 0, planCount: 0 };
+}
+
+/**
+ * Чьи счета чьи: счёт (студент × курс) достаётся каждому преподавателю, у кого
+ * есть группа этого курса с этим студентом.
+ *
+ * Связь именно такая, потому что у счёта НЕТ groupId: он выставляется на пару
+ * (студент, курс), а группа появляется только у платежа (его резолвит
+ * api-finance-transactions). Значит прогноз — это оценка, а не бухгалтерия:
+ *
+ * • студент в двух группах одного курса у РАЗНЫХ преподавателей увидится обоим
+ *   целиком: разложить один счёт между ними нечем, а промолчать хуже — оба
+ *   ведут его занятия;
+ * • счёт, выставленный вручную (курс 'general'), не совпадёт ни с одной группой
+ *   и в прогноз не попадёт.
+ *
+ * Обе оговорки живут в подписи на экране: «если оплатят все» обязано читаться
+ * как ориентир, а не как обещание.
+ */
+export function buildExpectedByTeacher(
+  groups: GroupLike[],
+  plans: PlanLike[],
+): Map<string, ExpectedRevenue> {
+  // Счета по курсу и студенту — один проход вместо поиска по всему списку на
+  // каждого студента каждой группы.
+  const byCourseStudent = new Map<string, PlanLike[]>();
+  for (const plan of plans ?? []) {
+    if (!plan?.id || !plan.studentId || !plan.courseId) continue;
+    const key = `${plan.courseId}|${plan.studentId}`;
+    const list = byCourseStudent.get(key) ?? [];
+    list.push(plan);
+    byCourseStudent.set(key, list);
+  }
+
+  interface Acc { minor: number; students: Set<string>; plans: Set<string> }
+  const acc = new Map<string, Acc>();
+
+  for (const group of groups ?? []) {
+    if (!group?.id || !group.courseId) continue;
+    const teacherIds = (group.teacherIds ?? []).filter(Boolean);
+    if (!teacherIds.length) continue;
+    for (const studentId of group.studentIds ?? []) {
+      if (!studentId) continue;
+      const plansOf = byCourseStudent.get(`${group.courseId}|${studentId}`);
+      if (!plansOf?.length) continue;
+      for (const teacherId of teacherIds) {
+        let bucket = acc.get(teacherId);
+        if (!bucket) {
+          bucket = { minor: 0, students: new Set(), plans: new Set() };
+          acc.set(teacherId, bucket);
+        }
+        for (const plan of plansOf) {
+          // Дедуп по id счёта: студент в двух группах ОДНОГО преподавателя —
+          // это один счёт, а не два. Без этого прогноз удваивался бы у тех, кто
+          // ведёт у человека и основную группу, и подгруппу.
+          if (bucket.plans.has(plan.id)) continue;
+          bucket.plans.add(plan.id);
+          bucket.minor += toMinor(Number(plan.totalAmount || 0));
+        }
+        bucket.students.add(studentId);
+      }
+    }
+  }
+
+  const out = new Map<string, ExpectedRevenue>();
+  for (const [teacherId, bucket] of acc) {
+    out.set(teacherId, {
+      expectedMinor: bucket.minor,
+      expectedStudents: bucket.students.size,
+      planCount: bucket.plans.size,
+    });
+  }
+  return out;
+}
+
+/**
+ * Сколько вышло бы преподавателю, если бы все счета месяца оплатили целиком.
+ *
+ * Тот же переключатель видов оплаты, что и в расчёте, но по выставленному, а не
+ * по собранному: процент берётся от суммы счетов, сумма с ученика умножается на
+ * число студентов со счётом, оклад не зависит ни от чего и остаётся собой.
+ *
+ * Это ПОТОЛОК месяца, а не начисление: он не пишется в ведомость, не участвует
+ * в выплате и существует ровно для одного вопроса директора — «а если все
+ * заплатят?». Начисляется всегда только то, что реально в кассе.
+ */
+export function computePotentialMinor(
+  components: PayComponent[] | undefined,
+  expected: ExpectedRevenue,
+): number {
+  let total = 0;
+  for (const component of components ?? []) {
+    switch (component?.kind) {
+      case 'salary':
+        total += component.amountMinor;
+        break;
+      case 'percent_revenue':
+        total += divRoundHalfUp(Math.max(0, expected.expectedMinor) * component.percentBp, 10000);
+        break;
+      case 'per_paying_student':
+        total += Math.max(0, expected.expectedStudents) * component.amountMinor;
+        break;
+      default:
+        // Устаревший вид оплаты не начисляется — значит и в потолок не входит.
+        break;
+    }
+  }
+  return total;
 }

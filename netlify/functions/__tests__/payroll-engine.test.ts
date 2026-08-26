@@ -3,6 +3,8 @@ import {
   computePayroll,
   buildTeacherScopes,
   collectTeacherRevenue,
+  buildExpectedByTeacher,
+  computePotentialMinor,
   resolveRules,
   buildBranchShares,
   allocateByShares,
@@ -14,6 +16,7 @@ import {
   type FinanceTxLike,
   type GroupLike,
   type PayrollInputs,
+  type PlanLike,
   type DiagnosticCode,
 } from '../utils/payroll-engine';
 
@@ -126,6 +129,9 @@ function run(over: Partial<PayrollInputs> = {}) {
 /** Ставка «процент» — самый частый случай, поэтому вынесен в хелпер. */
 const percent = (bp: number) => [{ kind: 'percent_revenue' as const, percentBp: bp, base: 'collected' as const }];
 const fixed = (amountMinor: number) => [{ kind: 'salary' as const, amountMinor }];
+/** Ставка «сумма с каждого заплатившего ученика». */
+const perStudent = (amountMinor: number) =>
+  [{ kind: 'per_paying_student' as const, amountMinor, base: 'collected' as const }];
 
 function codes(list: { code: DiagnosticCode }[]): DiagnosticCode[] {
   return list.map((d) => d.code);
@@ -642,5 +648,174 @@ describe('allocateByShares — сумма долей равна распреде
 
   it('без долей не выдумывает получателя', () => {
     expect(allocateByShares(500, [])).toEqual([]);
+  });
+});
+
+// ============================================================
+// Сумма с каждого заплатившего ученика
+// ============================================================
+
+describe('оплата «за ученика» (per_paying_student)', () => {
+  it('умножает ставку на число ЗАПЛАТИВШИХ, а не на размер группы', () => {
+    const { lines } = run({
+      rules: [rule({ components: perStudent(25_000) })], // 250 с.
+      // Группа из трёх, заплатили двое: третий множителя не даёт.
+      groups: [group({ studentIds: ['s1', 's2', 's3'] })],
+      incomeTx: [income(3000, { studentId: 's1' }), income(3000, { studentId: 's2' })],
+    });
+    expect(lines[0].computedMinor).toBe(50_000);
+    expect(lines[0].components[0].basis.payingStudents).toBe(2);
+  });
+
+  it('несколько платежей одного студента — это один ученик, а не два', () => {
+    const { lines } = run({
+      rules: [rule({ components: perStudent(25_000) })],
+      incomeTx: [income(1000, { studentId: 's1' }), income(2000, { studentId: 's1' })],
+    });
+    expect(lines[0].components[0].basis.payingStudents).toBe(1);
+    expect(lines[0].computedMinor).toBe(25_000);
+  });
+
+  it('частичная оплата считается целой головой: ставка звучит «250 с ученика»', () => {
+    const { lines } = run({
+      rules: [rule({ components: perStudent(25_000) })],
+      incomeTx: [income(1, { studentId: 's1' })],
+    });
+    expect(lines[0].computedMinor).toBe(25_000);
+  });
+
+  it('полный возврат отменяет оплату студента — в множитель он не входит', () => {
+    const { lines } = run({
+      rules: [rule({ components: perStudent(25_000) })],
+      incomeTx: [income(3000, { studentId: 's1' }), income(3000, { studentId: 's2' })],
+      refundTx: [refund(3000, { studentId: 's1' })],
+    });
+    expect(lines[0].components[0].basis.payingStudents).toBe(1);
+    expect(lines[0].computedMinor).toBe(25_000);
+  });
+
+  it('деньги чужой группы не создают плательщиков', () => {
+    const { lines } = run({
+      rules: [rule({ components: perStudent(25_000) })],
+      incomeTx: [income(5000, { groupId: 'foreign', studentId: 'sX' })],
+    });
+    expect(lines[0].computedMinor).toBe(0);
+  });
+
+  it('без групп — видимый ноль с диагностикой, а не молчание', () => {
+    const { lines } = run({
+      rules: [rule({ components: perStudent(25_000) })],
+      groups: [],
+      incomeTx: [income(5000)],
+    });
+    expect(lines[0].computedMinor).toBe(0);
+    expect(codes(lines[0].diagnostics)).toContain('teacher_without_groups');
+  });
+
+  it('платёж его студента без группы не теряется молча', () => {
+    const { lines } = run({
+      rules: [rule({ components: perStudent(25_000) })],
+      incomeTx: [income(3000, { groupId: null, studentId: 's2' })],
+    });
+    expect(codes(lines[0].diagnostics)).toContain('payment_without_group');
+  });
+
+  it('замораживает разбивку по студентам — множитель проверяется поимённо', () => {
+    const { lines } = run({
+      rules: [rule({ components: perStudent(25_000) })],
+      incomeTx: [income(3000, { studentId: 's1' }), income(1000, { studentId: 's2' })],
+    });
+    const basis = lines[0].components[0].basis;
+    expect(basis.byStudent).toEqual([
+      { id: 's1', paidMinor: 300_000 },
+      { id: 's2', paidMinor: 100_000 },
+    ]);
+    // byGroup нужен разложению по филиалам ровно так же, как у процента.
+    expect(basis.byGroup).toEqual([{ id: 'g1', paidMinor: 400_000 }]);
+  });
+
+  it('устаревшая посещаемостная «за студента» НЕ воскресает', () => {
+    const { lines } = run({
+      // Ставка прежней модели: похожее название, другая арифметика (× headcount).
+      rules: [rule({ components: [{ kind: 'per_student', amountMinor: 25_000 } as any] })],
+      incomeTx: [income(3000, { studentId: 's1' })],
+    });
+    expect(lines[0].computedMinor).toBe(0);
+    expect(codes(lines[0].diagnostics)).toContain('rule_no_components');
+  });
+});
+
+// ============================================================
+// Потолок месяца «если оплатят все»
+// ============================================================
+
+describe('прогноз «если оплатят все»', () => {
+  const plan = (id: string, studentId: string, totalAmount: number, courseId = 'c1'): PlanLike =>
+    ({ id, studentId, courseId, totalAmount });
+
+  it('счёт достаётся преподавателю через его группу того же курса', () => {
+    const expected = buildExpectedByTeacher(
+      [group({ studentIds: ['s1', 's2'] })],
+      [plan('p1', 's1', 3000), plan('p2', 's2', 2000)],
+    );
+    expect(expected.get('t1')).toEqual({ expectedMinor: 500_000, expectedStudents: 2, planCount: 2 });
+  });
+
+  it('счёт чужого курса и счёт чужого студента в прогноз не входят', () => {
+    const expected = buildExpectedByTeacher(
+      [group({ studentIds: ['s1'] })],
+      [plan('p1', 's1', 3000, 'other-course'), plan('p2', 'sX', 4000)],
+    );
+    expect(expected.get('t1')).toBeUndefined();
+  });
+
+  it('студент в двух группах ОДНОГО преподавателя не удваивает счёт', () => {
+    const expected = buildExpectedByTeacher(
+      [group({ id: 'g1', studentIds: ['s1'] }), group({ id: 'g2', studentIds: ['s1'] })],
+      [plan('p1', 's1', 3000)],
+    );
+    expect(expected.get('t1')).toEqual({ expectedMinor: 300_000, expectedStudents: 1, planCount: 1 });
+  });
+
+  it('один счёт у двух преподавателей виден обоим целиком — делить его нечем', () => {
+    const expected = buildExpectedByTeacher(
+      [
+        group({ id: 'g1', teacherIds: ['t1'], studentIds: ['s1'] }),
+        group({ id: 'g2', teacherIds: ['t2'], studentIds: ['s1'] }),
+      ],
+      [plan('p1', 's1', 3000)],
+    );
+    expect(expected.get('t1')?.expectedMinor).toBe(300_000);
+    expect(expected.get('t2')?.expectedMinor).toBe(300_000);
+  });
+
+  it('группа без преподавателя ничей потолок не поднимает', () => {
+    const expected = buildExpectedByTeacher([group({ teacherIds: [] })], [plan('p1', 's1', 3000)]);
+    expect(expected.size).toBe(0);
+  });
+
+  it('потолок процента берётся от ВЫСТАВЛЕННОГО, а не от собранного', () => {
+    expect(computePotentialMinor(percent(2000), {
+      expectedMinor: 1_000_000, expectedStudents: 5, planCount: 5,
+    })).toBe(200_000);
+  });
+
+  it('потолок «за ученика» — ставка × все, кому выставлен счёт', () => {
+    expect(computePotentialMinor(perStudent(25_000), {
+      expectedMinor: 1_000_000, expectedStudents: 5, planCount: 5,
+    })).toBe(125_000);
+  });
+
+  it('оклад от оплат не зависит: его потолок равен ему самому', () => {
+    expect(computePotentialMinor(fixed(3_000_000), {
+      expectedMinor: 0, expectedStudents: 0, planCount: 0,
+    })).toBe(3_000_000);
+  });
+
+  it('устаревший вид оплаты не начисляется — и в потолок не входит', () => {
+    expect(computePotentialMinor(
+      [{ kind: 'per_student', amountMinor: 25_000 } as any],
+      { expectedMinor: 1_000_000, expectedStudents: 5, planCount: 5 },
+    )).toBe(0);
   });
 });

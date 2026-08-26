@@ -469,6 +469,9 @@ const PayrollPage: React.FC = () => {
         t('payroll.colStudents', 'Студентов'),
         t('payroll.colCollected', 'Оплатили студенты'),
         t('payroll.colAccruedShort', 'Начислено'),
+        // Потолок рядом с начисленным: в выгрузке, где считают фонд оплаты
+        // труда, «сколько было бы при полной оплате» — второй нужный столбец.
+        t('payroll.colPotential', 'Если оплатят все'),
         t('payroll.colBonusPenalty', 'Премии и штрафы'),
         // Отдельная колонка, потому что «Начислено» НЕ равно тому, что уйдёт из
         // кассы: штрафы гасятся строками того же преподавателя.
@@ -489,6 +492,9 @@ const PayrollPage: React.FC = () => {
           // таблица перестала бы считать колонку числовой.
           x.collectedMinor / 100,
           accrued / 100,
+          // Ставки нет — потолка нет: пустая ячейка, а не ноль, иначе таблица
+          // сложила бы выдуманные нули в фонд оплаты труда.
+          x.potentialMinor == null ? '' : x.potentialMinor / 100,
           manualMinor / 100,
           sheet ? payable / 100 : accrued / 100,
         ];
@@ -918,6 +924,13 @@ const PayrollPage: React.FC = () => {
           teacherName={rateFor.teacherName}
           rule={rateFor.rule as any}
           baseMinor={rateFor.baseMinor}
+          // Живой пример и потолок считаются на данных ВЫБРАННОГО месяца: те же
+          // числа, что в строке преподавателя, иначе модалка обещала бы одно, а
+          // ведомость показывала другое.
+          payingStudents={rateFor.payingStudents ?? 0}
+          expectedMinor={rateFor.expectedMinor ?? 0}
+          expectedStudents={rateFor.expectedStudents ?? 0}
+          expectedPlanCount={rateFor.expectedPlanCount ?? 0}
           onClose={() => setRateFor(null)}
           onSaved={load}
         />

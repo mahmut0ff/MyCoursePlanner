@@ -71,15 +71,17 @@ export const percentInputToBp = (raw: string): number | null => {
 export const formatPercentBp = (bp?: number | null): string => `${bpToPercentInput(bp) || '0'}%`;
 
 /**
- * Виды оплаты — ровно два, процент первым: так платят чаще, и первым в списке
- * должно стоять то, что выбирают.
+ * Виды оплаты — ровно три, процент первым: так платят чаще, и первым в списке
+ * должно стоять то, что выбирают. Сумма с ученика стоит рядом с процентом, а не
+ * с окладом: обе зависят от оплат студентов, оклад — нет.
  */
-export const COMPONENT_KINDS: PayComponent['kind'][] = ['percent_revenue', 'salary'];
+export const COMPONENT_KINDS: PayComponent['kind'][] = ['percent_revenue', 'per_paying_student', 'salary'];
 
 /** Название вида оплаты для переключателя. */
 export const componentKindLabel = (kind: PayComponent['kind'], t: Translate): string => {
   switch (kind) {
     case 'percent_revenue': return t('payroll.kindPercent', 'Процент с оплат студентов');
+    case 'per_paying_student': return t('payroll.kindPerStudent', 'Сумма за ученика');
     case 'salary': return t('payroll.kindSalary', 'Фиксированная сумма');
     default: return String(kind);
   }
@@ -95,6 +97,12 @@ export const describeComponent = (component: PayComponent, t: Translate): string
       return t('payroll.summarySalary', '{{amount}} в месяц', { amount: formatMinor(component.amountMinor) });
     case 'percent_revenue':
       return t('payroll.summaryPercent', '{{percent}} с оплат студентов', { percent: formatPercentBp(component.percentBp) });
+    case 'per_paying_student':
+      // «С заплативших», а не «с учеников»: платят за тех, кто внёс деньги, и
+      // короткая формулировка обещала бы оплату за весь список.
+      return t('payroll.summaryPerStudent', '{{amount}} с каждого заплатившего ученика', {
+        amount: formatMinor(component.amountMinor),
+      });
     default:
       // Устаревший вид из прежней модели (за занятие/час/студента). Он больше не
       // начисляется, и молчать об этом нельзя: человек недосчитается денег.

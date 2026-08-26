@@ -44,7 +44,7 @@ import { resolveRules } from './utils/payroll-engine';
 const COLLECTION = 'compensationRules';
 
 /** Зеркало PayComponent.kind из src/types/index.ts. Держите синхронно. */
-const COMPONENT_KINDS = ['salary', 'percent_revenue'];
+const COMPONENT_KINDS = ['salary', 'percent_revenue', 'per_paying_student'];
 
 /** Целые минорные единицы: дробь здесь — это молча потерянные копейки в расчёте. */
 function isPositiveMinor(value: unknown): value is number {
@@ -60,13 +60,15 @@ function isPositiveMinor(value: unknown): value is number {
  * тело никогда не спредится в документ, иначе клиент протолкнул бы в
  * замороженный снапшот произвольные поля.
  *
- * Видов ровно два. Прежние «за занятие», «за час» и «за студента» удалены: они
- * считались по отметкам посещаемости, и зарплата человека молча зависела от
- * того, ведёт ли кто-то журнал.
+ * Видов ровно три: процент с оплат, фиксированная сумма за месяц и фиксированная
+ * сумма с каждого заплатившего ученика. Прежние «за занятие», «за час» и «за
+ * студента» удалены: они считались по отметкам посещаемости, и зарплата человека
+ * молча зависела от того, ведёт ли кто-то журнал. `per_paying_student` их не
+ * возвращает — он считает по кассе, поэтому и назван иначе (см. payroll-engine).
  */
 function normalizeComponents(raw: any): { components?: any[]; error?: string } {
   if (!Array.isArray(raw) || raw.length === 0) {
-    return { error: 'Укажите оплату: процент или фиксированную сумму' };
+    return { error: 'Укажите оплату: процент, фиксированную сумму или сумму с ученика' };
   }
   const components: any[] = [];
   const seen = new Set<string>();
@@ -76,7 +78,9 @@ function normalizeComponents(raw: any): { components?: any[]; error?: string } {
     if (!c || typeof c !== 'object' || Array.isArray(c)) return { error: `${at}: ожидается объект` };
     if (!COMPONENT_KINDS.includes(c.kind)) {
       return {
-        error: `${at}: недопустимый вид оплаты «${c.kind}». Допустимы только процент и фиксированная сумма.`,
+        error:
+          `${at}: недопустимый вид оплаты «${c.kind}». ` +
+          'Допустимы процент, фиксированная сумма и сумма с ученика.',
       };
     }
     // Два процента в одной ставке — это не «сложная схема», а ошибка ввода:
@@ -89,6 +93,20 @@ function normalizeComponents(raw: any): { components?: any[]; error?: string } {
         return { error: `${at}: сумма должна быть целым положительным числом в минорных единицах` };
       }
       components.push({ kind: 'salary', amountMinor: c.amountMinor });
+      continue;
+    }
+
+    // Сумма с ученика: та же проверка суммы, что у оклада, ПЛЮС обязательная
+    // база. Записывать base явно необходимо — по нему движок отличает эту оплату
+    // от посещаемостной ставки прежней модели, у которой такого поля нет.
+    if (c.kind === 'per_paying_student') {
+      if (!isPositiveMinor(c.amountMinor)) {
+        return { error: `${at}: сумма за ученика должна быть целым положительным числом в минорных единицах` };
+      }
+      if (c.base !== undefined && c.base !== 'collected') {
+        return { error: `${at}: сумма с ученика считается только по СОБРАННЫМ деньгам (base: 'collected')` };
+      }
+      components.push({ kind: 'per_paying_student', amountMinor: c.amountMinor, base: 'collected' });
       continue;
     }
 

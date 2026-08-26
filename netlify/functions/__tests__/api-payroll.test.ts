@@ -1360,6 +1360,83 @@ describe('api-payroll overview — экран не расходится с ра�
     expect(t1.previewMinor).toBe(4000000);
   });
 
+  // Оплата «за ученика» и потолок месяца: экран обязан отвечать не только
+  // «сколько вышло», но и «сколько вышло бы, если бы заплатили все» — иначе
+  // маленькое число не отличить от низкой ставки.
+  it('считает сумму с заплативших и потолок по счетам месяца', async () => {
+    const seed: any = baseSeed();
+    seed.compensationRules = [{
+      id: 'rule1', organizationId: 'org1', teacherId: 't1',
+      components: [{ kind: 'per_paying_student', amountMinor: 25000, base: 'collected' }],
+    }];
+    seed.groups = [{
+      id: 'g1', organizationId: 'org1', name: 'Группа 1', courseId: 'c1',
+      teacherIds: ['t1'], studentIds: ['st1', 'st2', 'st3'], branchId: null,
+    }];
+    // Заплатил один из трёх.
+    seed.financeTransactions = [
+      { id: 'inc1', organizationId: 'org1', type: 'income', amount: 3000, date: local(2026, 6, 10), categoryId: 'tuition', groupId: 'g1', courseId: 'c1', studentId: 'st1', branchId: null, paymentPlanId: 'p1' },
+    ];
+    seed.studentPaymentPlans = [
+      { id: 'p1', organizationId: 'org1', studentId: 'st1', courseId: 'c1', period: july, totalAmount: 3000, paidAmount: 3000, status: 'paid' },
+      { id: 'p2', organizationId: 'org1', studentId: 'st2', courseId: 'c1', period: july, totalAmount: 3000, paidAmount: 0, status: 'pending' },
+      { id: 'p3', organizationId: 'org1', studentId: 'st3', courseId: 'c1', period: july, totalAmount: 3000, paidAmount: 0, status: 'pending' },
+      // Списанный счёт денег не ждёт — в потолок не входит.
+      { id: 'p4', organizationId: 'org1', studentId: 'st3', courseId: 'c1', period: july, totalAmount: 5000, paidAmount: 0, status: 'cancelled' },
+      // Соседний месяц и чужая организация — тоже мимо.
+      { id: 'p5', organizationId: 'org1', studentId: 'st2', courseId: 'c1', period: '2026-08', totalAmount: 9000, paidAmount: 0, status: 'pending' },
+      { id: 'pX', organizationId: 'org2', studentId: 'stX', courseId: 'c1', period: july, totalAmount: 9000, paidAmount: 0, status: 'pending' },
+    ];
+    db = makeDb(seed);
+
+    const res = await overview();
+    expect(res.statusCode).toBe(200);
+    const t1 = teacherOf(res, 't1');
+
+    // Начислено — по кассе: заплатил один, значит одна ставка.
+    expect(t1.payingStudents).toBe(1);
+    expect(t1.previewMinor).toBe(25000);
+    // Потолок — по счетам месяца: троим выставлено, значит три ставки.
+    expect(t1.expectedStudents).toBe(3);
+    expect(t1.expectedMinor).toBe(900000);
+    expect(t1.expectedPlanCount).toBe(3);
+    expect(t1.potentialMinor).toBe(75000);
+  });
+
+  it('потолок процента считается от выставленного, а не от собранного', async () => {
+    const seed: any = baseSeed();
+    seed.compensationRules = [{
+      id: 'rule1', organizationId: 'org1', teacherId: 't1',
+      components: [{ kind: 'percent_revenue', percentBp: 2000, base: 'collected' }],
+    }];
+    seed.financeTransactions = [
+      { id: 'inc1', organizationId: 'org1', type: 'income', amount: 5000, date: local(2026, 6, 10), categoryId: 'tuition', groupId: 'g1', courseId: 'c1', studentId: 'st1', branchId: null, paymentPlanId: 'p1' },
+    ];
+    seed.studentPaymentPlans = [
+      { id: 'p1', organizationId: 'org1', studentId: 'st1', courseId: 'c1', period: july, totalAmount: 5000, paidAmount: 5000, status: 'paid' },
+      { id: 'p2', organizationId: 'org1', studentId: 'st2', courseId: 'c1', period: july, totalAmount: 5000, paidAmount: 0, status: 'pending' },
+    ];
+    db = makeDb(seed);
+
+    const t1 = teacherOf(await overview(), 't1');
+    expect(t1.previewMinor).toBe(100000);   // 20% от собранных 5 000
+    expect(t1.potentialMinor).toBe(200000); // 20% от выставленных 10 000
+  });
+
+  it('без ставки потолка нет: null, а не ноль', async () => {
+    const seed: any = baseSeed();
+    seed.compensationRules = [];
+    seed.studentPaymentPlans = [
+      { id: 'p1', organizationId: 'org1', studentId: 'st1', courseId: 'c1', period: july, totalAmount: 5000, paidAmount: 0, status: 'pending' },
+    ];
+    db = makeDb(seed);
+
+    const t1 = teacherOf(await overview(), 't1');
+    expect(t1.potentialMinor).toBeNull();
+    // Входы прогноза при этом видны — по ним директор поймёт, из чего он считался.
+    expect(t1.expectedStudents).toBe(1);
+  });
+
   // Откат к «досчитать разбивку по сегодняшним группам»: экран показал бы две
   // доли (A и B) там, где касса создаст ОДИН расход без филиала.
   it('у посчитанной строки без branchShares даёт одну долю «без филиала» — ровно то, что сделает выплата', async () => {

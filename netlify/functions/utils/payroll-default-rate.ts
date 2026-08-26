@@ -23,7 +23,7 @@ const RULES = 'compensationRules';
 const ORGS = 'organizations';
 
 /** Виды оплаты — зеркало PayComponent.kind. Держите синхронно с api-payroll-rules. */
-const COMPONENT_KINDS = ['salary', 'percent_revenue'];
+const COMPONENT_KINDS = ['salary', 'percent_revenue', 'per_paying_student'];
 
 export interface DefaultRate {
   components: any[];

@@ -196,7 +196,7 @@ const DEFAULT_RATE = {
  */
 const DEAD_COMPONENTS = [{ kind: 'per_student', amountMinor: 100000 }];
 
-describe('api-payroll-rules POST — валидация двух видов оплаты', () => {
+describe('api-payroll-rules POST — валидация трёх видов оплаты', () => {
   beforeEach(() => vi.clearAllMocks());
 
   it('отвергает процент вне 1..10000 и дробный', async () => {
@@ -248,6 +248,47 @@ describe('api-payroll-rules POST — валидация двух видов оп
       expect(JSON.parse(res.body).error).toContain('вид оплаты');
     }
     expect(sets).toHaveLength(0);
+  });
+
+  // Оплата «250 с ученика»: сумма с каждого, кто заплатил. Проверяем и то, что
+  // она принимается, и то, что база пишется явно, — по ней движок отличает её от
+  // одноимённой посещаемостной ставки прежней модели.
+  it('принимает сумму с ученика и записывает базу «собранное» явно', async () => {
+    (verifyAuth as any).mockResolvedValue(staff(WRITE));
+    const { sets } = wire();
+
+    const res: any = await rulesHandler(event('POST', {}, validBody({
+      components: [{ kind: 'per_paying_student', amountMinor: 25000 }],
+    })), {} as any, () => {});
+
+    expect(res.statusCode).toBe(200);
+    expect(sets).toHaveLength(1);
+    expect(sets[0].components).toEqual([
+      { kind: 'per_paying_student', amountMinor: 25000, base: 'collected' },
+    ]);
+  });
+
+  it('отвергает нецелую и неположительную сумму с ученика', async () => {
+    (verifyAuth as any).mockResolvedValue(staff(WRITE));
+    const { sets } = wire();
+
+    for (const amountMinor of [250.5, 0, -25000]) {
+      const res: any = await rulesHandler(event('POST', {}, validBody({
+        components: [{ kind: 'per_paying_student', amountMinor }],
+      })), {} as any, () => {});
+      expect(res.statusCode).toBe(400);
+    }
+    expect(sets).toHaveLength(0);
+  });
+
+  it('отвергает базу «за ученика», отличную от собранных денег', async () => {
+    (verifyAuth as any).mockResolvedValue(staff(WRITE));
+    wire();
+    const res: any = await rulesHandler(event('POST', {}, validBody({
+      components: [{ kind: 'per_paying_student', amountMinor: 25000, base: 'invoiced' }],
+    })), {} as any, () => {});
+    expect(res.statusCode).toBe(400);
+    expect(JSON.parse(res.body).error).toContain('collected');
   });
 
   it('отвергает один и тот же вид дважды — расчёт заплатил бы вдвое', async () => {

@@ -56,10 +56,18 @@ import { membershipIsActive } from './utils/payroll-default-rate';
 import { batchGetUserNames, batchGetCourseNames } from './utils/finance-names';
 import { parseRangeBoundary } from './utils/finance-period';
 import { billingPeriodKey } from './utils/billing';
+// Тот же предикат «к какому месяцу счёт» и то же «счёт списан», что у финансов:
+// прогноз «если оплатят все» обязан считать ровно те счета, которые директор
+// видит в разделе «Счета» (см. src/lib/payment-plans — модуль без зависимостей,
+// написанный для обеих сторон).
+import { planPeriodKey, isWrittenOffPlan } from '../../src/lib/payment-plans';
 import {
   computePayroll,
   buildTeacherScopes,
   buildBranchShares,
+  buildExpectedByTeacher,
+  computePotentialMinor,
+  emptyExpectedRevenue,
   allocateByShares,
   collectTeacherRevenue,
   filterWindow,
@@ -69,6 +77,7 @@ import {
   type CompensationRule,
   type FinanceTxLike,
   type GroupLike,
+  type PlanLike,
   type Diagnostic,
 } from './utils/payroll-engine';
 
@@ -77,6 +86,7 @@ const LINES = 'payrollLines';
 const RULES = 'compensationRules';
 const GROUPS = 'groups';
 const TRANSACTIONS = 'financeTransactions';
+const PLANS = 'studentPaymentPlans';
 
 /** Категория расхода, в которую падает выплата. На неё же смотрит «зарплатный баланс». */
 const SALARY_CATEGORY = 'salary';
@@ -761,7 +771,7 @@ const handler: Handler = async (event: HandlerEvent) => {
       const windowStart = sheet?.windowStart || derived.windowStart;
       const windowEnd = sheet?.windowEnd || derived.windowEnd;
 
-      const [rulesSnap, txSnap, groupsSnap, membersSnap, branchesSnap, sheetLines] = await Promise.all([
+      const [rulesSnap, txSnap, groupsSnap, membersSnap, branchesSnap, plansSnap, sheetLines] = await Promise.all([
         adminDb.collection(RULES).where('organizationId', '==', orgFilter).get(),
         adminDb.collection(TRANSACTIONS).where('organizationId', '==', orgFilter).get(),
         adminDb.collection(GROUPS).where('organizationId', '==', orgFilter).get(),
@@ -769,6 +779,12 @@ const handler: Handler = async (event: HandlerEvent) => {
         // Филиалы нужны не для фильтрации, а для подписи: «в каком здании
         // заработано» — это то, что директор ищет глазами, а id ему ничего не говорит.
         adminDb.collection('branches').where('organizationId', '==', orgFilter).get(),
+        // Счета месяца — вход прогноза «если оплатят все». Одним равенством по
+        // организации: месяц отбирается уже в памяти (planPeriodKey), потому что
+        // вторая часть условия потребовала бы составного индекса, а их здесь нет.
+        // Падение выборки прогноз обнуляет, но экран зарплаты не роняет: потолок
+        // — справка, а начисление считается по кассе и без неё.
+        adminDb.collection(PLANS).where('organizationId', '==', orgFilter).get().catch(() => null),
         sheet ? fetchLines(orgFilter, sheet.id) : Promise.resolve([] as LineDoc[]),
       ]);
       const branchNameById = new Map<string, string>(
@@ -842,6 +858,25 @@ const handler: Handler = async (event: HandlerEvent) => {
       }
 
       const scopes = buildTeacherScopes(groups);
+
+      // ── Потолок месяца: «а если все заплатят?» ──
+      // Ставка, привязанная к оплатам, отвечает на «сколько вышло» — и молчит о
+      // том, сколько могло бы выйти. Директор этот второй вопрос задаёт всегда:
+      // без него не понять, зарплата мала из-за ставки или из-за неплатежей.
+      //
+      // Берём счета ЭТОГО месяца (списанные — мимо: с них денег не ждут) и
+      // считаем по ним ту же ставку. Это ориентир, а не начисление: в ведомость
+      // он не пишется и на выплату не влияет.
+      const monthPlans: PlanLike[] = (plansSnap?.docs ?? [])
+        .map((d) => ({ id: d.id, ...(d.data() as any) }))
+        .filter((p: any) => planPeriodKey(p) === period && !isWrittenOffPlan(p))
+        .map((p: any) => ({
+          id: p.id,
+          studentId: p.studentId ?? null,
+          courseId: p.courseId ?? null,
+          totalAmount: Number(p.totalAmount || 0),
+        }));
+      const expectedByTeacher = buildExpectedByTeacher(groups, monthPlans);
 
       // Предпросмотр: те же входы, что у расчёта. Пока ведомости нет, он и есть
       // ответ «сколько выйдет»; когда есть — служит сверкой.
@@ -1001,6 +1036,16 @@ const handler: Handler = async (event: HandlerEvent) => {
             }))
           : [];
 
+        // Потолок считается по ДЕЙСТВУЮЩЕЙ ставке, а не по замороженной строке:
+        // это ответ на «если оплатят все» здесь и сейчас, и сравнивать его нужно
+        // с сегодняшними условиями. Ставки нет — потолка нет (null, а не ноль:
+        // «начислять не по чему» и «выйдет ноль» читаются по-разному).
+        const expected = expectedByTeacher.get(teacherId) ?? emptyExpectedRevenue();
+        const teacherRule = ruleByTeacher.get(teacherId) || null;
+        // Сколько человек заплатило — тот же множитель, что у оплаты «с ученика»,
+        // и он же объясняет разрыв с потолком у процента.
+        const payingStudents = revenue.byStudent.filter((s) => s.paidMinor > 0).length;
+
         return {
           teacherId,
           teacherName: nameOf(teacherId) || line?.teacherName || '',
@@ -1008,12 +1053,21 @@ const handler: Handler = async (event: HandlerEvent) => {
           // Экран обязан сказать это словами: ставку ему не задать (сервер такого
           // преподавателя не знает), а деньги по строке — отдать.
           former: !activeTeacherIds.has(teacherId),
-          rule: ruleByTeacher.get(teacherId) || null,
+          rule: teacherRule,
           groups: groupRows,
           studentCount: scope.studentIds.length,
           collectedMinor: revenue.grossMinor,
           refundMinor: revenue.refundMinor,
           baseMinor: Math.max(0, revenue.netMinor),
+          // Сколько его студентов уже заплатило в этом месяце.
+          payingStudents,
+          // Счета месяца по его группам: сумма, число студентов и сколько счетов
+          // вошло. planCount отличает «все счета на ноль» от «счетов ещё нет».
+          expectedMinor: expected.expectedMinor,
+          expectedStudents: expected.expectedStudents,
+          expectedPlanCount: expected.planCount,
+          // Потолок: что вышло бы по действующей ставке при полной оплате счетов.
+          potentialMinor: teacherRule ? computePotentialMinor(teacherRule.components, expected) : null,
           // Что выйдет по действующей ставке на сегодняшних данных.
           previewMinor: previewLine ? previewLine.computedMinor : null,
           previewComponents: previewLine ? previewLine.components : [],
@@ -1289,8 +1343,12 @@ const handler: Handler = async (event: HandlerEvent) => {
         // должна выводить его заново из состава групп, который к тому моменту
         // мог измениться. Веса берём из той же разбивки по группам, что легла в
         // снапшот, — тогда расходы зданий сходятся с объяснением на экране.
-        const percentBasis = computed.components.find((c) => c.kind === 'percent_revenue')?.basis;
-        const byGroupForSplit = percentBasis?.byGroup
+        // Разбивку берём у ЛЮБОГО компонента, который считался по кассе: и
+        // процент, и сумма с ученика замораживают одну и ту же byGroup. Искать её
+        // только у процента значило бы пересчитывать веса заново там, где они уже
+        // посчитаны и заморожены.
+        const collectedBasis = computed.components.find((c) => Array.isArray(c.basis?.byGroup))?.basis;
+        const byGroupForSplit = collectedBasis?.byGroup
           ?? collectTeacherRevenue(
             splitScopes.get(computed.teacherId) ?? { groupIds: [], studentIds: [] },
             windowIncome,

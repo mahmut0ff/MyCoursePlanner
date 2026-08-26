@@ -68,6 +68,17 @@ export interface OverviewTeacher {
   collectedMinor: number;
   refundMinor: number;
   baseMinor: number;
+  /**
+   * Прогноз «если оплатят все» и его входы. Необязательные: ответ сервера до
+   * этой версии их не присылает, и отсутствие обязано читаться как «потолок
+   * неизвестен», а не как ноль.
+   */
+  payingStudents?: number;
+  expectedMinor?: number;
+  expectedStudents?: number;
+  /** Сколько счетов месяца вошло в прогноз. 0 — считать не по чему. */
+  expectedPlanCount?: number;
+  potentialMinor?: number | null;
   previewMinor: number | null;
   previewComponents: { kind: string; earnedMinor: number; basis?: Record<string, any> }[];
   /** Сколько всего уйдёт из кассы по этому месяцу — уже после погашения штрафов. */
@@ -132,6 +143,18 @@ const describeBasis = (
         })}`
       : base;
   }
+  if (entry.kind === 'per_paying_student') {
+    const base = t('payroll.basisPerStudent', '{{amount}} × {{count}} заплативших', {
+      amount: formatMinor(basis.amountMinor),
+      count: Number(basis.payingStudents || 0),
+    });
+    return Number(basis.refundMinor || 0) > 0
+      ? `${base} ${t('payroll.basisPerStudentRefund', '(оплачено {{gross}}, возвраты {{refund}})', {
+          gross: formatMinor(basis.grossMinor),
+          refund: formatMinor(basis.refundMinor),
+        })}`
+      : base;
+  }
   if (entry.kind === 'salary') return t('payroll.basisSalary', 'Фиксированная сумма за месяц');
   return t('payroll.basisLegacy', 'Устаревший вид оплаты — не начислен');
 };
@@ -177,6 +200,20 @@ const TeacherRow: React.FC<Props> = ({
   const salaryMinor = line ? line.finalMinor : (teacher.previewMinor ?? 0);
   const overridden = Boolean(line && line.overrideMinor !== null && line.overrideMinor !== undefined);
   const manualTotal = teacher.manualLines.reduce((sum, l) => sum + (l.finalMinor || 0), 0);
+
+  /**
+   * Потолок месяца: сколько вышло бы, оплати студенты ВСЕ счета. Он отвечает на
+   * второй вопрос директора — маленькая зарплата это низкая ставка или чужие
+   * неплатежи, — и потому стоит вплотную к начисленному.
+   *
+   * Показываем ТОЛЬКО когда он ВЫШЕ начисленного. Равный потолок не добавляет
+   * ничего, а ниже начисленного он оказывается законно (в этом месяце гасили
+   * долги прошлых), и объяснять это второй строкой дороже, чем промолчать.
+   */
+  const potentialMinor = teacher.potentialMinor ?? null;
+  const showPotential = hasRule && potentialMinor !== null && potentialMinor > salaryMinor;
+  const payingStudents = teacher.payingStudents ?? 0;
+  const expectedStudents = teacher.expectedStudents ?? 0;
 
   const componentEntries = line
     ? ((line.ruleSnapshot as any)?.computed ?? [])
@@ -271,6 +308,16 @@ const TeacherRow: React.FC<Props> = ({
           {manualTotal !== 0 && (
             <p className={`text-[11px] whitespace-nowrap ${manualTotal < 0 ? 'text-rose-600' : 'text-violet-600'}`}>
               {formatMinorSigned(manualTotal)}
+            </p>
+          )}
+          {/* Потолок в свёрнутой строке — коротко и серым: это справка о чужих
+              неплатежах, а не деньги, которые кому-то причитаются. */}
+          {showPotential && (
+            <p
+              className="text-[11px] whitespace-nowrap text-slate-400"
+              title={t('payroll.potentialTitle', 'Если оплатят все счета месяца')}
+            >
+              {t('payroll.potentialShort', 'макс. {{amount}}', { amount: formatMinor(potentialMinor!) })}
             </p>
           )}
           {/* Выдано и остаток — прямо в свёрнутой строке: «кому ещё должен» это
@@ -381,7 +428,7 @@ const TeacherRow: React.FC<Props> = ({
               // сделать невозможное.
               isFormer ? null : (
                 <p className="text-sm text-slate-500">
-                  {t('payroll.noRateHint', 'Ставка не задана — начислений не будет. Задайте процент или фиксированную сумму.')}
+                  {t('payroll.noRateHint', 'Ставка не задана — начислений не будет. Задайте процент, фиксированную сумму или сумму с ученика.')}
                 </p>
               )
             ) : componentEntries.length === 0 ? (
@@ -395,6 +442,26 @@ const TeacherRow: React.FC<Props> = ({
                   </span>
                 </div>
               ))
+            )}
+
+            {/* ── Потолок месяца ── */}
+            {showPotential && (
+              <div className="pt-2 border-t border-slate-200/70 dark:border-slate-700/50 flex items-baseline justify-between gap-3">
+                <span className="text-sm text-slate-500 dark:text-slate-400">
+                  {t('payroll.potentialLine', 'Если оплатят все счета месяца')}
+                  {expectedStudents > 0 && (
+                    <span className="block text-[11px] text-slate-400">
+                      {t('payroll.potentialPaidOf', 'заплатили {{paid}} из {{total}} учеников', {
+                        paid: payingStudents,
+                        total: expectedStudents,
+                      })}
+                    </span>
+                  )}
+                </span>
+                <span className="text-sm font-medium text-slate-500 dark:text-slate-400 whitespace-nowrap">
+                  {formatMinor(potentialMinor!)}
+                </span>
+              </div>
             )}
 
             {overridden && (

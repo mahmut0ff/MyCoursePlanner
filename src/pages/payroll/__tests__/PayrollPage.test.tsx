@@ -423,6 +423,98 @@ describe('PayrollPage', () => {
    * месяце, тогда как раздача смотрит на членства сегодня. Разошедшиеся числа
    * означают, что кнопка обещает одно, а сервер делает другое.
    */
+  /**
+   * Оплата «за ученика» и потолок месяца. Проверяется не арифметика (она в
+   * payroll-engine.test.ts), а то, что экран называет вещи своими именами:
+   * множитель — заплатившие, потолок — «если оплатят все».
+   */
+  describe('сумма с ученика и потолок «если оплатят все»', () => {
+    /** Ставка 250 с ученика: заплатили двое из пяти, кому выставлен счёт. */
+    const NURBEK: OverviewTeacher = {
+      teacherId: 'nurbek',
+      teacherName: 'Нурбек',
+      rule: {
+        id: 'rule-nurbek',
+        components: [{ kind: 'per_paying_student', amountMinor: 25_000, base: 'collected' }],
+      },
+      groups: [],
+      byBranch: [],
+      studentCount: 5,
+      collectedMinor: 600_000,
+      refundMinor: 0,
+      baseMinor: 600_000,
+      payingStudents: 2,
+      expectedMinor: 1_500_000,
+      expectedStudents: 5,
+      expectedPlanCount: 5,
+      potentialMinor: 125_000,
+      previewMinor: 50_000,
+      previewComponents: [{
+        kind: 'per_paying_student',
+        earnedMinor: 50_000,
+        basis: { amountMinor: 25_000, payingStudents: 2 },
+      }],
+      payableMinor: 0,
+      paidMinor: 0,
+      remainingMinor: 0,
+      line: null,
+      manualLines: [],
+    };
+
+    /** Оклад: от оплат не зависит, поэтому потолка у него быть не должно. */
+    const SALARY_ONLY: OverviewTeacher = {
+      ...noRateTeacher('bakyt', 'Бакыт'),
+      rule: { id: 'rule-bakyt', components: [{ kind: 'salary', amountMinor: 1_000_000 }] },
+      previewMinor: 1_000_000,
+      previewComponents: [{ kind: 'salary', earnedMinor: 1_000_000 }],
+      potentialMinor: 1_000_000,
+      expectedPlanCount: 0,
+    };
+
+    const setupMonth = async (teachers: OverviewTeacher[]) => {
+      apiMock.apiGetPayrollOverview.mockImplementation(async (filters?: { period?: string }) => ({
+        period: filters?.period || PERIOD,
+        windowStart: SHEET.windowStart,
+        windowEnd: SHEET.windowEnd,
+        // Ведомости ещё нет: экран показывает предпросмотр, и потолок нужен
+        // именно на этом шаге — до расчёта.
+        sheet: null,
+        lines: [],
+        diagnostics: [],
+        teachers,
+      }));
+      render(
+        <MemoryRouter>
+          <PayrollPage />
+        </MemoryRouter>,
+      );
+      await waitFor(() => expect(screen.getAllByText(teachers[0].teacherName).length).toBeGreaterThan(0));
+    };
+
+    it('называет ставку и множитель словами: с каждого ЗАПЛАТИВШЕГО', async () => {
+      await setupMonth([NURBEK]);
+
+      expect(screen.getByText(/с каждого заплатившего ученика/)).toBeInTheDocument();
+      expandTeacher('Нурбек');
+      expect(screen.getByText(/× 2 заплативших/)).toBeInTheDocument();
+    });
+
+    it('показывает потолок месяца и сколько человек уже заплатило', async () => {
+      await setupMonth([NURBEK]);
+      expandTeacher('Нурбек');
+
+      expect(screen.getByText('Если оплатят все счета месяца')).toBeInTheDocument();
+      expect(screen.getByText('заплатили 2 из 5 учеников')).toBeInTheDocument();
+    });
+
+    it('у оклада потолка нет: он равен начисленному и говорить нечего', async () => {
+      await setupMonth([SALARY_ONLY]);
+      expandTeacher('Бакыт');
+
+      expect(screen.queryByText('Если оплатят все счета месяца')).toBeNull();
+    });
+  });
+
   describe('ставка по умолчанию', () => {
     it('рассказывает про текущее умолчание словами, а не молчит', async () => {
       await setup();

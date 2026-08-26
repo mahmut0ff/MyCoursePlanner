@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { AlertTriangle, Percent, Sparkles, Trash2, UserPlus, Wallet } from 'lucide-react';
+import { AlertTriangle, Percent, Sparkles, Trash2, UserPlus, UserRound, Wallet } from 'lucide-react';
 import toast from 'react-hot-toast';
 import {
   apiApplyPayrollDefaultRate,
@@ -69,6 +69,9 @@ const DefaultRateCard: React.FC<Props> = ({ canWrite, onApplied }) => {
   const [kind, setKind] = useState<RateKind>('percent_revenue');
   const [percent, setPercent] = useState('');
   const [amount, setAmount] = useState('');
+  // Отдельно от оклада: «30 000 в месяц» и «250 с ученика» — разные порядки,
+  // и подставить одно вместо другого значит раздать не ту ставку всем сразу.
+  const [perStudent, setPerStudent] = useState('');
   const [formError, setFormError] = useState('');
   const [saving, setSaving] = useState(false);
 
@@ -111,9 +114,14 @@ const DefaultRateCard: React.FC<Props> = ({ canWrite, onApplied }) => {
   /** Форма всегда открывается на том, что задано сейчас, а не на прошлом вводе. */
   const startEdit = () => {
     const existing = rate?.[0];
-    setKind(existing?.kind === 'salary' ? 'salary' : 'percent_revenue');
+    setKind(
+      existing?.kind === 'salary' || existing?.kind === 'per_paying_student'
+        ? existing.kind
+        : 'percent_revenue',
+    );
     setPercent(existing?.kind === 'percent_revenue' ? bpToPercentInput(existing.percentBp) : '');
     setAmount(existing?.kind === 'salary' ? minorToSomInput(existing.amountMinor) : '');
+    setPerStudent(existing?.kind === 'per_paying_student' ? minorToSomInput(existing.amountMinor) : '');
     setFormError('');
     setEditing(true);
   };
@@ -124,6 +132,11 @@ const DefaultRateCard: React.FC<Props> = ({ canWrite, onApplied }) => {
       const percentBp = percentInputToBp(percent);
       if (percentBp === null) return { error: t('payroll.badPercent', 'Укажите процент от 0,01 до 100') };
       return { components: [{ kind: 'percent_revenue', percentBp, base: 'collected' }] };
+    }
+    if (kind === 'per_paying_student') {
+      const perStudentMinor = somInputToMinor(perStudent);
+      if (perStudentMinor === null) return { error: t('payroll.badAmount', 'Укажите сумму больше нуля') };
+      return { components: [{ kind: 'per_paying_student', amountMinor: perStudentMinor, base: 'collected' }] };
     }
     const amountMinor = somInputToMinor(amount);
     if (amountMinor === null) return { error: t('payroll.badAmount', 'Укажите сумму больше нуля') };
@@ -273,16 +286,18 @@ const DefaultRateCard: React.FC<Props> = ({ canWrite, onApplied }) => {
                 <div className="p-3 text-sm text-red-600 bg-red-50 dark:bg-red-900/10 rounded-xl">{formError}</div>
               )}
 
-              {/* Тот же выбор, что в ставке человека: два вида оплаты и одно
-                  число. Умолчание не может быть богаче того, что оно выдаёт. */}
+              {/* Тот же выбор, что в ставке человека: вид оплаты и одно
+                  число. Умолчание не может быть ни богаче, ни беднее того, что оно выдаёт. */}
               <div>
                 <p className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
                   {t('payroll.rateKindLabel', 'Как платим')}
                 </p>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                  {(['percent_revenue', 'salary'] as RateKind[]).map(option => {
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                  {(['percent_revenue', 'per_paying_student', 'salary'] as RateKind[]).map(option => {
                     const active = kind === option;
-                    const Icon = option === 'percent_revenue' ? Percent : Wallet;
+                    const Icon = option === 'percent_revenue'
+                      ? Percent
+                      : option === 'per_paying_student' ? UserRound : Wallet;
                     return (
                       <button
                         key={option}
@@ -319,6 +334,24 @@ const DefaultRateCard: React.FC<Props> = ({ canWrite, onApplied }) => {
                       className="w-32 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-sm dark:text-white"
                     />
                     <span className="text-sm text-slate-500">%</span>
+                  </div>
+                </div>
+              ) : kind === 'per_paying_student' ? (
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                    {t('payroll.perStudentField', 'Сумма за одного ученика')}
+                  </label>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="text"
+                      inputMode="decimal"
+                      autoFocus
+                      value={perStudent}
+                      onChange={e => setPerStudent(e.target.value)}
+                      placeholder="250"
+                      className="w-40 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-sm dark:text-white"
+                    />
+                    <span className="text-sm text-slate-500">{CURRENCY_SUFFIX}</span>
                   </div>
                 </div>
               ) : (

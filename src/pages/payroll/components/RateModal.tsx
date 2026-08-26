@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Percent, Trash2, Wallet, X } from 'lucide-react';
+import { Percent, Trash2, UserRound, Wallet, X } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { apiDeleteCompensationRule, apiSaveCompensationRule } from '../../../lib/api';
 import { CURRENCY_SUFFIX } from '../../../lib/money';
@@ -22,6 +22,14 @@ interface Props {
   rule: CompensationRule | null;
   /** Сколько собрано по его группам за выбранный месяц — для живого примера. */
   baseMinor: number;
+  /** Сколько его студентов уже заплатило в этом месяце — множитель «за ученика». */
+  payingStudents: number;
+  /** Сумма счетов месяца по его группам — база потолка «если оплатят все». */
+  expectedMinor: number;
+  /** Сколько студентов в этих счетах — множитель потолка у оплаты «за ученика». */
+  expectedStudents: number;
+  /** Сколько счетов вошло: 0 — счетов за месяц нет, и потолок считать не по чему. */
+  expectedPlanCount: number;
   onClose: () => void;
   onSaved: () => void;
 }
@@ -46,19 +54,31 @@ type RateKind = PayComponent['kind'];
  *   начислялась. Где именно заработаны деньги, показывает разбивка в карточке,
  *   а не вторая ставка.
  */
-const RateModal: React.FC<Props> = ({ teacherId, teacherName, rule, baseMinor, onClose, onSaved }) => {
+const RateModal: React.FC<Props> = ({
+  teacherId, teacherName, rule, baseMinor,
+  payingStudents, expectedMinor, expectedStudents, expectedPlanCount,
+  onClose, onSaved,
+}) => {
   const { t } = useTranslation();
   const tr = t as unknown as Translate;
 
   const existing = rule?.components?.[0];
   const [kind, setKind] = useState<RateKind>(
-    existing?.kind === 'salary' ? 'salary' : 'percent_revenue',
+    existing?.kind === 'salary' || existing?.kind === 'per_paying_student'
+      ? existing.kind
+      : 'percent_revenue',
   );
   const [percent, setPercent] = useState(
     existing?.kind === 'percent_revenue' ? bpToPercentInput(existing.percentBp) : '',
   );
   const [amount, setAmount] = useState(
     existing?.kind === 'salary' ? minorToSomInput(existing.amountMinor) : '',
+  );
+  // Отдельное поле, а не общее с окладом: «30 000 в месяц» и «250 с ученика» —
+  // разные порядки чисел, и подставить одно вместо другого значит выписать
+  // человеку ставку, которую никто не задавал.
+  const [perStudent, setPerStudent] = useState(
+    existing?.kind === 'per_paying_student' ? minorToSomInput(existing.amountMinor) : '',
   );
   const [saving, setSaving] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -67,17 +87,46 @@ const RateModal: React.FC<Props> = ({ teacherId, teacherName, rule, baseMinor, o
   /** Живой пример: сколько вышло бы на деньгах ВЫБРАННОГО месяца. */
   const preview = useMemo(() => {
     if (kind === 'salary') return somInputToMinor(amount);
+    if (kind === 'per_paying_student') {
+      const perMinor = somInputToMinor(perStudent);
+      return perMinor === null ? null : perMinor * payingStudents;
+    }
     const bp = percentInputToBp(percent);
     if (bp === null) return null;
     // Та же арифметика, что на сервере: целый числитель, одно деление.
     return Math.round((baseMinor * bp) / 10000);
-  }, [kind, amount, percent, baseMinor]);
+  }, [kind, amount, perStudent, percent, baseMinor, payingStudents]);
+
+  /**
+   * Потолок месяца: то же число, что считает сервер (computePotentialMinor), но
+   * на ещё не сохранённой ставке — иначе «а если все заплатят?» пришлось бы
+   * проверять сохранением.
+   *
+   * null = считать не по чему: счетов за месяц нет. Ноль в этом месте директор
+   * прочитал бы как «по такой ставке он не заработает ничего».
+   */
+  const potential = useMemo(() => {
+    if (kind === 'salary') return somInputToMinor(amount);
+    if (!expectedPlanCount) return null;
+    if (kind === 'per_paying_student') {
+      const perMinor = somInputToMinor(perStudent);
+      return perMinor === null ? null : perMinor * expectedStudents;
+    }
+    const bp = percentInputToBp(percent);
+    if (bp === null) return null;
+    return Math.round((expectedMinor * bp) / 10000);
+  }, [kind, amount, perStudent, percent, expectedMinor, expectedStudents, expectedPlanCount]);
 
   const buildComponents = (): { components?: PayComponent[]; error?: string } => {
     if (kind === 'percent_revenue') {
       const percentBp = percentInputToBp(percent);
       if (percentBp === null) return { error: t('payroll.badPercent', 'Укажите процент от 0,01 до 100') };
       return { components: [{ kind: 'percent_revenue', percentBp, base: 'collected' }] };
+    }
+    if (kind === 'per_paying_student') {
+      const amountMinor = somInputToMinor(perStudent);
+      if (amountMinor === null) return { error: t('payroll.badAmount', 'Укажите сумму больше нуля') };
+      return { components: [{ kind: 'per_paying_student', amountMinor, base: 'collected' }] };
     }
     const amountMinor = somInputToMinor(amount);
     if (amountMinor === null) return { error: t('payroll.badAmount', 'Укажите сумму больше нуля') };
@@ -153,15 +202,17 @@ const RateModal: React.FC<Props> = ({ teacherId, teacherName, rule, baseMinor, o
             <div className="p-3 text-sm text-red-600 bg-red-50 dark:bg-red-900/10 rounded-xl">{error}</div>
           )}
 
-          {/* Два вида оплаты — переключателем, а не списком: выбор ровно один. */}
+          {/* Виды оплаты — переключателем, а не списком: выбор ровно один. */}
           <div>
             <p className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
               {t('payroll.rateKindLabel', 'Как платим')}
             </p>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-              {(['percent_revenue', 'salary'] as RateKind[]).map(option => {
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+              {(['percent_revenue', 'per_paying_student', 'salary'] as RateKind[]).map(option => {
                 const active = kind === option;
-                const Icon = option === 'percent_revenue' ? Percent : Wallet;
+                const Icon = option === 'percent_revenue'
+                  ? Percent
+                  : option === 'per_paying_student' ? UserRound : Wallet;
                 return (
                   <button
                     key={option}
@@ -208,6 +259,32 @@ const RateModal: React.FC<Props> = ({ teacherId, teacherName, rule, baseMinor, o
                 )}
               </p>
             </div>
+          ) : kind === 'per_paying_student' ? (
+            <div>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                {t('payroll.perStudentField', 'Сумма за одного ученика')}
+              </label>
+              <div className="flex items-center gap-2">
+                <input
+                  type="text"
+                  inputMode="decimal"
+                  autoFocus
+                  value={perStudent}
+                  onChange={e => setPerStudent(e.target.value)}
+                  placeholder="250"
+                  className="w-40 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-sm dark:text-white"
+                />
+                <span className="text-sm text-slate-500">{CURRENCY_SUFFIX}</span>
+              </div>
+              {/* Кого считаем — сказано буквально: «заплативших», а не «учеников».
+                  Разница между этими словами и есть вся разница в сумме. */}
+              <p className="text-[11px] text-slate-500 mt-2 leading-snug">
+                {t(
+                  'payroll.perStudentHint',
+                  'Умножается на число студентов его групп, которые заплатили в выбранном месяце — неважно, полностью или частью. Кто не платил, в расчёт не входит; возвраты студента отменяют его оплату.',
+                )}
+              </p>
+            </div>
           ) : (
             <div>
               <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
@@ -235,14 +312,41 @@ const RateModal: React.FC<Props> = ({ teacherId, teacherName, rule, baseMinor, o
           )}
 
           {/* Живой пример на деньгах выбранного месяца: процент в вакууме ничего
-              не говорит, а «20% с 150 000 = 30 000» проверяется взглядом. */}
-          {kind === 'percent_revenue' && preview !== null && (
-            <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-900/50 text-sm text-slate-600 dark:text-slate-300">
-              {t('payroll.ratePreview', 'На деньгах этого месяца: {{percent}} от {{base}} = {{result}}', {
-                percent: `${percent}%`,
-                base: formatMinor(baseMinor),
-                result: formatMinor(preview),
-              })}
+              не говорит, а «20% с 150 000 = 30 000» проверяется взглядом.
+
+              Второй строкой — потолок. Ставка, привязанная к оплатам, без него
+              читается как приговор ставке: директор видит маленькое число и не
+              знает, дело в проценте или в том, что половина ещё не заплатила. */}
+          {kind !== 'salary' && preview !== null && (
+            <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-900/50 text-sm text-slate-600 dark:text-slate-300 space-y-1.5">
+              <p>
+                {kind === 'percent_revenue'
+                  ? t('payroll.ratePreview', 'На деньгах этого месяца: {{percent}} от {{base}} = {{result}}', {
+                      percent: `${percent}%`,
+                      base: formatMinor(baseMinor),
+                      result: formatMinor(preview),
+                    })
+                  : t('payroll.ratePreviewPerStudent', 'На оплатах этого месяца: {{amount}} × {{count}} заплативших = {{result}}', {
+                      amount: formatMinor(somInputToMinor(perStudent) ?? 0),
+                      count: payingStudents,
+                      result: formatMinor(preview),
+                    })}
+              </p>
+              {potential !== null && (
+                <p className="text-slate-500 dark:text-slate-400">
+                  {kind === 'percent_revenue'
+                    ? t('payroll.ratePotentialPercent', 'Если оплатят все счета месяца: {{percent}} от {{base}} = {{result}}', {
+                        percent: `${percent}%`,
+                        base: formatMinor(expectedMinor),
+                        result: formatMinor(potential),
+                      })
+                    : t('payroll.ratePotentialPerStudent', 'Если оплатят все счета месяца: {{amount}} × {{count}} учеников = {{result}}', {
+                        amount: formatMinor(somInputToMinor(perStudent) ?? 0),
+                        count: expectedStudents,
+                        result: formatMinor(potential),
+                      })}
+                </p>
+              )}
             </div>
           )}
         </div>

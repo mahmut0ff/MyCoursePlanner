@@ -1605,17 +1605,21 @@ export interface LessonSession {
 }
 
 /**
- * Вид оплаты преподавателя. РОВНО ДВА, и это продуктовое решение.
+ * Вид оплаты преподавателя. РОВНО ТРИ, и это продуктовое решение.
  *
  * `percent_revenue` — процент от денег, которые реально принесли студенты его
  * групп (группы берутся из `Group.teacherIds`, а не из настройки в ставке).
  * `salary` — фиксированная сумма за месяц.
+ * `per_paying_student` — фиксированная сумма за КАЖДОГО студента его групп,
+ * который в этом месяце заплатил: «250 с ученика». Считается по кассе, как
+ * процент, и потому назван не так, как удалённая посещаемостная «за студента».
  *
  * amountMinor — целые минорные единицы; percentBp — базисные пункты (2000 = 20%).
  */
 export type PayComponent =
   | { kind: 'salary'; amountMinor: number }
-  | { kind: 'percent_revenue'; percentBp: number; base: 'collected' };
+  | { kind: 'percent_revenue'; percentBp: number; base: 'collected' }
+  | { kind: 'per_paying_student'; amountMinor: number; base: 'collected' };
 
 /**
  * Ставка преподавателя (коллекция `compensationRules`) — ОДНА на человека, без

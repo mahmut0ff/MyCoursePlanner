@@ -117,11 +117,14 @@ describe('TeacherDetailPage — что где показано', () => {
     expect(screen.queryByText('KPI')).toBeNull();
   });
 
-  it('KPI подписан как относительный и за период', async () => {
-    setup({ kpiRow: { teacherId: 't1', name: TEACHER.displayName, counts: { grade_set: 12 }, totalActions: 12, activeDays: 6, engagementPoints: 24, consistencyPct: 40, kpiScore: 55, lastActivityAt: '2026-07-30T10:00:00.000Z' } });
+  it('KPI подписан как относительный, нормированный на ученика и за период', async () => {
+    setup({ kpiRow: { teacherId: 't1', name: TEACHER.displayName, counts: { grade_set: 12 }, totalActions: 12, activeDays: 6, engagementPoints: 24, students: 30, groups: 2, intensity: 0.4, engagementPct: 62, consistencyPct: 40, kpiScore: 55, lastActivityAt: '2026-07-30T10:00:00.000Z' } });
     await screen.findByText(TEACHER.displayName);
     expect(await screen.findByText('KPI за период')).toBeInTheDocument();
-    expect(screen.getByText('относительно коллег')).toBeInTheDocument();
+    // «На ученика» — не украшение подписи: объём делится на нагрузку, иначе балл
+    // был бы рейтингом размера контингента (teacher-kpi.ts).
+    expect(screen.getByText('на ученика, к коллегам')).toBeInTheDocument();
+    expect(screen.getByText('вовлечённость 62% · стабильность 40%')).toBeInTheDocument();
     expect(screen.getByText('55')).toBeInTheDocument();
   });
 

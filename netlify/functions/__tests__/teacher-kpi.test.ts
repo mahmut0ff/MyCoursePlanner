@@ -6,6 +6,7 @@ import {
   ACTIVITY_WEIGHTS,
   type ActivityEvent,
   type RosterTeacher,
+  type TeacherWorkload,
 } from '../utils/teacher-kpi';
 
 const roster: RosterTeacher[] = [
@@ -49,8 +50,9 @@ describe('buildKpiRows', () => {
     expect(byId('t2').activeDays).toBe(1);
   });
 
-  it('scores consistency + engagement-relative-to-top, sorted desc', () => {
-    // cohortMax points = 10. t1: cons=2/4=.5, eng=1 -> 75. t2: cons=1/4=.25, eng=1 -> 63.
+  it('scores consistency + engagement, sorted desc', () => {
+    // Нагрузка не передана — знаменатель у всех одинаковый, интенсивности равны
+    // (10 и 10), эталон = лучший. t1: cons=2/4=.5, eng=1 -> 75. t2: cons=.25 -> 63.
     expect(byId('t1').kpiScore).toBe(75);
     expect(byId('t2').kpiScore).toBe(63);
     expect(rows[0].teacherId).toBe('t1'); // highest KPI first
@@ -61,6 +63,7 @@ describe('buildKpiRows', () => {
     expect(totals.activeTeachers).toBe(2);
     expect(totals.totalActions).toBe(16);
     expect(totals.topTeacherId).toBe('t1');
+    expect(totals.typicalIntensity).toBe(10); // медиана работающих: [10, 10]
   });
 
   it('ignores unknown activity types', () => {
@@ -80,6 +83,148 @@ describe('buildKpiRows', () => {
     );
     expect(r2).toHaveLength(1);
     expect(r2[0].name).toBe('Ex-Teacher');
+  });
+});
+
+/**
+ * Главная гарантия рейтинга: сравнивается усердие, а не размер контингента.
+ * До нормировки первое место занимал тот, у кого больше учеников — у него
+ * физически больше оценок и отметок посещаемости за тот же самый труд.
+ */
+describe('buildKpiRows — нормировка на нагрузку', () => {
+  const pair: RosterTeacher[] = [
+    { teacherId: 'big', name: 'Большие группы' },
+    { teacherId: 'small', name: 'Малые группы' },
+  ];
+  // Оба отметили ВСЕХ своих учеников одинаковое число раз: 3 отметки на ученика.
+  const diligent: ActivityEvent[] = [
+    { actorId: 'big', type: 'grade_set', count: 300, dayKey: '2026-07-01', createdAt: '2026-07-01T09:00:00.000Z' },
+    { actorId: 'small', type: 'grade_set', count: 60, dayKey: '2026-07-01', createdAt: '2026-07-01T09:00:00.000Z' },
+  ];
+  const workload: Record<string, TeacherWorkload> = {
+    big: { students: 100, groups: 5 },
+    small: { students: 20, groups: 1 },
+  };
+
+  it('равное усердие при разном числе учеников даёт равный KPI', () => {
+    const { rows } = buildKpiRows(diligent, pair, { expectedActiveDays: 4, workload });
+    const big = rows.find(r => r.teacherId === 'big')!;
+    const small = rows.find(r => r.teacherId === 'small')!;
+    expect(big.intensity).toBe(small.intensity);
+    expect(big.kpiScore).toBe(small.kpiScore);
+    expect(big.engagementPct).toBe(100);
+    expect(small.engagementPct).toBe(100);
+  });
+
+  it('без нагрузки те же события отдали бы победу большому контингенту (регресс, который чиним)', () => {
+    const { rows } = buildKpiRows(diligent, pair, { expectedActiveDays: 4 });
+    const big = rows.find(r => r.teacherId === 'big')!;
+    const small = rows.find(r => r.teacherId === 'small')!;
+    expect(big.kpiScore).toBeGreaterThan(small.kpiScore);
+  });
+
+  it('созданные материалы нормируются на группы, а не на учеников', () => {
+    const { rows } = buildKpiRows(
+      [
+        { actorId: 'big', type: 'lesson_created', count: 5, dayKey: '2026-07-01', createdAt: '2026-07-01T09:00:00.000Z' },
+        { actorId: 'small', type: 'lesson_created', count: 1, dayKey: '2026-07-01', createdAt: '2026-07-01T09:00:00.000Z' },
+      ],
+      pair,
+      { expectedActiveDays: 4, workload },
+    );
+    expect(rows[0].intensity).toBe(rows[1].intensity); // по уроку на группу у обоих
+    expect(rows[0].kpiScore).toBe(rows[1].kpiScore);
+  });
+
+  it('показывает нагрузку в строке — балл не должен быть чёрным ящиком', () => {
+    const { rows } = buildKpiRows(diligent, pair, { expectedActiveDays: 4, workload });
+    const big = rows.find(r => r.teacherId === 'big')!;
+    expect(big.students).toBe(100);
+    expect(big.groups).toBe(5);
+  });
+
+  it('неизвестную нагрузку берёт типичной по школе, а не единицей', () => {
+    const trio: RosterTeacher[] = [
+      { teacherId: 'a', name: 'A' },
+      { teacherId: 'b', name: 'B' },
+      { teacherId: 'nogroups', name: 'Без групп' },
+    ];
+    const { rows } = buildKpiRows(
+      [
+        { actorId: 'a', type: 'grade_set', count: 60, dayKey: '2026-07-01', createdAt: '2026-07-01T09:00:00.000Z' },
+        { actorId: 'b', type: 'grade_set', count: 60, dayKey: '2026-07-01', createdAt: '2026-07-01T09:00:00.000Z' },
+        { actorId: 'nogroups', type: 'grade_set', count: 60, dayKey: '2026-07-01', createdAt: '2026-07-01T09:00:00.000Z' },
+      ],
+      trio,
+      { expectedActiveDays: 4, workload: { a: { students: 20, groups: 1 }, b: { students: 20, groups: 1 } } },
+    );
+    const ghost = rows.find(r => r.teacherId === 'nogroups')!;
+    const a = rows.find(r => r.teacherId === 'a')!;
+    expect(ghost.intensity).toBe(a.intensity); // 60 / типичные 20, а не 60 / 1
+    expect(ghost.students).toBe(0); // в строке — то, что реально известно
+  });
+});
+
+/**
+ * Эталон — медиана×2, но не выше лучшего. Раньше знаменателем был максимум:
+ * один энтузиаст обнулял вовлечённость всей команды.
+ */
+describe('buildKpiRows — эталон вовлечённости', () => {
+  const trio: RosterTeacher[] = [
+    { teacherId: 'a', name: 'A' },
+    { teacherId: 'b', name: 'B' },
+    { teacherId: 'star', name: 'Star' },
+  ];
+  const workload: Record<string, TeacherWorkload> = {
+    a: { students: 10, groups: 1 },
+    b: { students: 10, groups: 1 },
+    star: { students: 10, groups: 1 },
+  };
+
+  it('выброс не обнуляет остальных: типичный получает половину, а не десятую', () => {
+    const { rows } = buildKpiRows(
+      [
+        { actorId: 'a', type: 'grade_set', count: 10, dayKey: '2026-07-01', createdAt: '2026-07-01T09:00:00.000Z' },
+        { actorId: 'b', type: 'grade_set', count: 10, dayKey: '2026-07-01', createdAt: '2026-07-01T09:00:00.000Z' },
+        { actorId: 'star', type: 'grade_set', count: 100, dayKey: '2026-07-01', createdAt: '2026-07-01T09:00:00.000Z' },
+      ],
+      trio,
+      { expectedActiveDays: 4, workload },
+    );
+    const a = rows.find(r => r.teacherId === 'a')!;
+    const star = rows.find(r => r.teacherId === 'star')!;
+    expect(a.engagementPct).toBe(50); // интенсивность 1 при эталоне 2 (медиана 1 × 2)
+    expect(star.engagementPct).toBe(100);
+    expect(rows[0].teacherId).toBe('star');
+  });
+
+  it('в ровной команде полный балл достижим (эталон не выше лучшего)', () => {
+    const { rows } = buildKpiRows(
+      [
+        { actorId: 'a', type: 'grade_set', count: 10, dayKey: '2026-07-01', createdAt: '2026-07-01T09:00:00.000Z' },
+        { actorId: 'b', type: 'grade_set', count: 10, dayKey: '2026-07-01', createdAt: '2026-07-01T09:00:00.000Z' },
+      ],
+      [trio[0], trio[1]],
+      { expectedActiveDays: 4, workload },
+    );
+    expect(rows.every(r => r.engagementPct === 100)).toBe(true);
+  });
+
+  it('ничью разрывает интенсивность, а не число действий', () => {
+    // Одинаковые дни и балл, но у 'big' втрое больше учеников на то же усердие.
+    const { rows } = buildKpiRows(
+      [
+        { actorId: 'big', type: 'grade_set', count: 30, dayKey: '2026-07-01', createdAt: '2026-07-01T09:00:00.000Z' },
+        { actorId: 'small', type: 'grade_set', count: 20, dayKey: '2026-07-01', createdAt: '2026-07-01T09:00:00.000Z' },
+      ],
+      [{ teacherId: 'big', name: 'Big' }, { teacherId: 'small', name: 'Small' }],
+      {
+        expectedActiveDays: 4,
+        workload: { big: { students: 30, groups: 1 }, small: { students: 10, groups: 1 } },
+      },
+    );
+    expect(rows[0].teacherId).toBe('small'); // 2.0 на ученика против 1.0
+    expect(rows[0].totalActions).toBeLessThan(rows[1].totalActions);
   });
 });
 

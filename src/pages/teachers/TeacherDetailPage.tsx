@@ -85,6 +85,10 @@ interface KpiRow {
   totalActions: number;
   activeDays: number;
   engagementPoints: number;
+  students?: number;
+  groups?: number;
+  intensity?: number;
+  engagementPct?: number;
   consistencyPct: number;
   kpiScore: number;
   lastActivityAt: string | null;
@@ -487,22 +491,23 @@ const TeacherDetailPage: React.FC = () => {
 
             {/* KPI живёт здесь, вплотную к переключателю периода, потому что это
                 величина ЗА ОКНО, а не свойство преподавателя. И он относительный:
-                вовлечённость нормируется на самого активного коллегу в этом же
-                окне (teacher-kpi.ts, engagement = points / cohortMax), поэтому
-                «0» значит «в этом окне действий нет», а не «плохо работает». */}
+                объём действий делится на нагрузку (ученики и группы), а результат
+                сравнивается с типичным по школе в этом же окне (teacher-kpi.ts),
+                поэтому «0» значит «в этом окне действий нет», а не «плохо
+                работает», и большой контингент сам по себе балла не прибавляет. */}
             {!failed.activity && (
               <dl className="grid grid-cols-3 divide-x divide-slate-200 dark:divide-slate-700 border-b border-slate-100 dark:border-slate-700">
                 <Metric
                   label="KPI за период"
                   value={kpi ? String(kpi.kpiScore) : '—'}
                   valueClass={kpi && kpi.totalActions > 0 ? scoreTone(kpi.kpiScore) : undefined}
-                  hint="относительно коллег"
+                  hint="на ученика, к коллегам"
                 />
                 <Metric label="Активных дней" value={kpi ? String(kpi.activeDays) : '—'} />
                 <Metric
                   label="Действий"
                   value={kpi ? String(kpi.totalActions) : '—'}
-                  hint={kpi ? `стабильность ${kpi.consistencyPct}%` : undefined}
+                  hint={kpi ? `вовлечённость ${kpi.engagementPct ?? 0}% · стабильность ${kpi.consistencyPct}%` : undefined}
                 />
               </dl>
             )}

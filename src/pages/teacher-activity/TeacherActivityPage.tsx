@@ -20,6 +20,8 @@ import EmptyState from '../../components/ui/EmptyState';
 import { CardSkeleton } from '../../components/ui/Skeleton';
 
 // ── Типы ответа api-teacher-activity ──
+// students/groups/intensity/engagementPct — необязательные: ответ сервера их
+// всегда несёт, но старый закешированный ответ (или тест) может быть без них.
 interface KpiRow {
   teacherId: string;
   name: string;
@@ -27,6 +29,10 @@ interface KpiRow {
   totalActions: number;
   activeDays: number;
   engagementPoints: number;
+  students?: number;
+  groups?: number;
+  intensity?: number;
+  engagementPct?: number;
   consistencyPct: number;
   kpiScore: number;
   lastActivityAt: string | null;
@@ -36,6 +42,7 @@ interface KpiTotals {
   activeTeachers: number;
   totalActions: number;
   avgActionsPerTeacher: number;
+  typicalIntensity?: number;
   topTeacherId: string | null;
 }
 interface KpiResponse {
@@ -76,12 +83,16 @@ const TYPE_META: Record<string, { label: string; icon: LucideIcon; color: string
 const ROSTER_TYPES = ['student_created', 'student_enrolled', 'student_removed', 'group_created', 'group_deleted'] as const;
 
 const PERIODS = ['current_month', 'last_month', 'quarter', 'year', 'all'] as const;
-type SortKey = 'name' | 'grade_set' | 'attendance_marked' | 'homework_checked' | 'created' | 'roster' | 'login' | 'activeDays' | 'kpiScore';
+type SortKey = 'name' | 'students' | 'grade_set' | 'attendance_marked' | 'homework_checked' | 'created' | 'roster' | 'login' | 'activeDays' | 'kpiScore';
 
 const createdOf = (r: KpiRow) =>
   (r.counts.exam_created || 0) + (r.counts.quiz_created || 0) + (r.counts.lesson_created || 0) + (r.counts.homework_created || 0);
 
 const rosterOf = (r: KpiRow) => ROSTER_TYPES.reduce((s, t) => s + (r.counts[t] || 0), 0);
+
+/** Нагрузка человеческим языком — она же знаменатель KPI. */
+const workloadTitle = (r: KpiRow) =>
+  `${r.students || 0} учеников · ${r.groups || 0} групп — на них и делится объём действий`;
 
 /** Кого затронуло действие — денормализованные имена из события (см. logRoster на сервере). */
 function peopleOf(meta: Record<string, unknown> | null): { names: string[]; more: number } {
@@ -142,6 +153,7 @@ const TeacherActivityPage: React.FC = () => {
     const val = (r: KpiRow): number | string => {
       switch (sort.key) {
         case 'name': return r.name.toLowerCase();
+        case 'students': return r.students || 0;
         case 'created': return createdOf(r);
         case 'roster': return rosterOf(r);
         case 'grade_set': return r.counts.grade_set || 0;
@@ -164,10 +176,15 @@ const TeacherActivityPage: React.FC = () => {
     setSort(s => (s.key === key ? { key, dir: s.dir === 'asc' ? 'desc' : 'asc' } : { key, dir: key === 'name' ? 'asc' : 'desc' }));
 
   const exportCsv = () => {
-    const headers = ['Преподаватель', 'Оценки', 'Посещаемость', 'Проверка ДЗ', 'Создано', 'Контингент', 'Входы', 'Активных дней', 'KPI'];
+    const headers = [
+      'Преподаватель', 'Учеников', 'Групп', 'Оценки', 'Посещаемость', 'Проверка ДЗ',
+      'Создано', 'Контингент', 'Входы', 'Активных дней', 'Вовлечённость, %', 'Стабильность, %', 'KPI',
+    ];
     const body = sortedRows.map(r => [
-      r.name, r.counts.grade_set || 0, r.counts.attendance_marked || 0, r.counts.homework_checked || 0,
-      createdOf(r), rosterOf(r), r.counts.login || 0, r.activeDays, r.kpiScore,
+      r.name, r.students || 0, r.groups || 0,
+      r.counts.grade_set || 0, r.counts.attendance_marked || 0, r.counts.homework_checked || 0,
+      createdOf(r), rosterOf(r), r.counts.login || 0, r.activeDays,
+      r.engagementPct ?? 0, r.consistencyPct, r.kpiScore,
     ]);
     downloadCsv(`teacher-activity-${period}.csv`, buildCsv(headers, body));
   };
@@ -189,7 +206,7 @@ const TeacherActivityPage: React.FC = () => {
             {t('teacherActivity.title', 'Активность преподавателей')}
           </h1>
           <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
-            {t('teacherActivity.subtitle', 'Кто ставит оценки и посещаемость, проверяет ДЗ, создаёт материалы и когда заходит — с KPI по каждому преподавателю.')}
+            {t('teacherActivity.subtitle', 'Кто ставит оценки и посещаемость, проверяет ДЗ, создаёт материалы и когда заходит — с KPI по каждому преподавателю. Объём делится на нагрузку, поэтому большие группы сами по себе баллов не дают.')}
           </p>
         </div>
         <button
@@ -263,6 +280,7 @@ const TeacherActivityPage: React.FC = () => {
                   <thead className="bg-slate-50 dark:bg-slate-800/50 text-slate-500 dark:text-slate-400 border-b border-slate-200 dark:border-slate-700">
                     <tr>
                       <Th label={t('teacherActivity.col.teacher', 'Преподаватель')} sortKey="name" sort={sort} onSort={toggleSort} align="left" />
+                      <Th label={t('teacherActivity.col.students', 'Учеников')} sortKey="students" sort={sort} onSort={toggleSort} />
                       <Th label={t('teacherActivity.col.grades', 'Оценки')} sortKey="grade_set" sort={sort} onSort={toggleSort} />
                       <Th label={t('teacherActivity.col.attendance', 'Посещ.')} sortKey="attendance_marked" sort={sort} onSort={toggleSort} />
                       <Th label={t('teacherActivity.col.hw', 'ДЗ')} sortKey="homework_checked" sort={sort} onSort={toggleSort} />
@@ -299,6 +317,10 @@ const TeacherActivityPage: React.FC = () => {
                               </div>
                             </div>
                           </td>
+                          <td className="px-5 py-3.5 tabular-nums text-slate-500 dark:text-slate-400" title={workloadTitle(r)}>
+                            {r.students || 0}
+                            <span className="text-slate-300 dark:text-slate-600"> · {r.groups || 0} гр.</span>
+                          </td>
                           <NumCell v={r.counts.grade_set || 0} />
                           <NumCell v={r.counts.attendance_marked || 0} />
                           <NumCell v={r.counts.homework_checked || 0} />
@@ -306,7 +328,10 @@ const TeacherActivityPage: React.FC = () => {
                           <NumCell v={rosterOf(r)} />
                           <NumCell v={r.counts.login || 0} />
                           <NumCell v={r.activeDays} />
-                          <td className="px-5 py-3.5">
+                          <td
+                            className="px-5 py-3.5"
+                            title={`вовлечённость ${r.engagementPct ?? 0}% · стабильность ${r.consistencyPct}%`}
+                          >
                             <div className="flex items-center gap-2">
                               <div className="w-14 h-1.5 rounded-full bg-slate-100 dark:bg-slate-700 overflow-hidden">
                                 <div className={`h-full rounded-full ${tone.bar}`} style={{ width: `${r.kpiScore}%` }} />
@@ -329,6 +354,7 @@ const TeacherActivityPage: React.FC = () => {
         <TeacherDrawer
           key={selected.teacherId}
           row={selected}
+          typical={totals.typicalIntensity ?? 0}
           period={period}
           online={presence.isOnline(selected.teacherId)}
           lastSeenMs={presence.lastSeenMs(selected.teacherId)}
@@ -360,12 +386,14 @@ const Th: React.FC<{ label: string; sortKey: SortKey; sort: { key: SortKey; dir:
 // ── Боковая карточка преподавателя: разбивка + лента ──
 const TeacherDrawer: React.FC<{
   row: KpiRow;
+  /** Медианная интенсивность по школе — чтобы «вовлечённость» было с чем сравнить. */
+  typical: number;
   period: string;
   online: boolean;
   lastSeenMs: number | null;
   rel: (iso: string | null) => string;
   onClose: () => void;
-}> = ({ row, period, online, lastSeenMs, rel, onClose }) => {
+}> = ({ row, typical, period, online, lastSeenMs, rel, onClose }) => {
   const { t } = useTranslation();
   const [events, setEvents] = useState<TimelineEvent[] | null>(null);
   const [tlError, setTlError] = useState('');
@@ -401,11 +429,28 @@ const TeacherDrawer: React.FC<{
           </button>
         </div>
 
-        {/* KPI + consistency */}
-        <div className="p-5 border-b border-slate-200 dark:border-slate-800 grid grid-cols-3 gap-3">
-          <Stat label="KPI" value={String(row.kpiScore)} valueClass={tone.text} />
-          <Stat label={t('teacherActivity.consistency', 'Стабильность')} value={`${row.consistencyPct}%`} />
-          <Stat label={t('teacherActivity.activeDaysShort', 'Активных дней')} value={String(row.activeDays)} />
+        {/* KPI и то, из чего он сложился: половина за вовлечённость, половина за
+            стабильность. Обе половины на виду — иначе балл читается как приговор
+            без объяснения. Нагрузка рядом, потому что она знаменатель первой. */}
+        <div className="p-5 border-b border-slate-200 dark:border-slate-800">
+          <div className="grid grid-cols-4 gap-2">
+            <Stat label="KPI" value={String(row.kpiScore)} valueClass={tone.text} />
+            <Stat label={t('teacherActivity.engagement', 'Вовлечённость')} value={`${row.engagementPct ?? 0}%`} />
+            <Stat label={t('teacherActivity.consistency', 'Стабильность')} value={`${row.consistencyPct}%`} />
+            <Stat label={t('teacherActivity.activeDaysShort', 'Активных дней')} value={String(row.activeDays)} />
+          </div>
+          <p className="text-[11px] text-slate-400 mt-3 leading-relaxed">
+            {t('teacherActivity.workloadLine', {
+              students: row.students || 0,
+              groups: row.groups || 0,
+              defaultValue: 'Нагрузка: {{students}} учеников · {{groups}} групп.',
+            })}{' '}
+            {t('teacherActivity.engagementHint', {
+              value: row.intensity ?? 0,
+              typical,
+              defaultValue: 'Вовлечённость — действия на единицу нагрузки: {{value}} при типичных по школе {{typical}}.',
+            })}
+          </p>
         </div>
 
         {/* Breakdown */}
@@ -488,7 +533,10 @@ function initials(name: string): string {
 }
 
 function emptyTotals(): KpiTotals {
-  return { teachers: 0, activeTeachers: 0, totalActions: 0, avgActionsPerTeacher: 0, topTeacherId: null };
+  return {
+    teachers: 0, activeTeachers: 0, totalActions: 0,
+    avgActionsPerTeacher: 0, typicalIntensity: 0, topTeacherId: null,
+  };
 }
 
 export default TeacherActivityPage;

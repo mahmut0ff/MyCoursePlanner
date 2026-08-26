@@ -1460,7 +1460,7 @@
   },
   "teacherActivity": {
     "title": "Teacher activity",
-    "subtitle": "Who grades, marks attendance, checks homework, creates materials and when they sign in — with a KPI per teacher.",
+    "subtitle": "Who grades, marks attendance, checks homework, creates materials and when they sign in — with a KPI per teacher. Volume is divided by workload, so big groups alone earn no points.",
     "loadFailed": "Failed to load activity",
     "export": "Export CSV",
     "activeTeachers": "Active teachers",
@@ -1472,7 +1472,10 @@
     "lastAction": "last action {{time}}",
     "noActivity": "no activity",
     "consistency": "Consistency",
+    "engagement": "Engagement",
     "activeDaysShort": "Active days",
+    "workloadLine": "Workload: {{students}} students · {{groups}} groups.",
+    "engagementHint": "Engagement is activity per unit of workload: {{value}} against a school-typical {{typical}}.",
     "breakdown": "Breakdown",
     "timeline": "Recent actions",
     "period": {
@@ -1484,6 +1487,7 @@
     },
     "col": {
       "teacher": "Teacher",
+      "students": "Students",
       "grades": "Grades",
       "attendance": "Attend.",
       "hw": "HW",

@@ -25,7 +25,7 @@ import { batchGetUserNames } from './utils/finance-names';
 import { recordLoginActivity, TEACHER_ACTIVITY_COLLECTION } from './utils/teacher-activity';
 import {
   buildKpiRows, countWorkingDays, orgMonthsBetween,
-  type ActivityEvent, type RosterTeacher, type KpiTotals,
+  type ActivityEvent, type RosterTeacher, type KpiTotals, type TeacherWorkload,
 } from './utils/teacher-kpi';
 
 const TEACHING_ROLES = ['teacher', 'mentor'];
@@ -45,7 +45,10 @@ interface RawActivityDoc {
 }
 
 function emptyTotals(): KpiTotals {
-  return { teachers: 0, activeTeachers: 0, totalActions: 0, avgActionsPerTeacher: 0, topTeacherId: null };
+  return {
+    teachers: 0, activeTeachers: 0, totalActions: 0,
+    avgActionsPerTeacher: 0, typicalIntensity: 0, topTeacherId: null,
+  };
 }
 
 /** Выборка журнала за период. 'all' — одним равенством по org; иначе — месяцы-бакеты. */
@@ -99,6 +102,52 @@ function teacherInBranchScope(branchIds: string[] | undefined, scope: string | n
   if (ids.length === 0) return true; // общеорганизационный — виден в любом филиале
   const want = Array.isArray(scope) ? scope : [scope];
   return ids.some(id => want.includes(id));
+}
+
+interface GroupDoc {
+  teacherIds?: string[];
+  studentIds?: string[];
+  status?: string;
+  updatedAt?: string | null;
+}
+
+/**
+ * Нагрузка преподавателей: сколько учеников и групп ведёт каждый. Это знаменатель
+ * KPI — объём оценок и посещаемости пропорционален контингенту, и без нормировки
+ * рейтинг был «у кого больше учеников» (см. buildKpiRows).
+ *
+ * Одним равенством по организации, без составного индекса. Филиал намеренно НЕ
+ * сужаем: в KPI идут все события преподавателя, значит и нагрузка должна быть
+ * вся — иначе числитель и знаменатель считались бы по разным группам.
+ *
+ * Группа идёт в нагрузку, если она действующая ИЛИ её ещё трогали внутри окна
+ * периода: та, что закрылась до его начала, ничьей нагрузкой уже не была. Состав
+ * берётся текущий — истории членства в группах нет, и для прошлых периодов это
+ * приближение (одинаковое для всех, поэтому сравнение не перекашивает).
+ */
+async function fetchTeacherWorkload(
+  orgId: string, startIso: string,
+): Promise<Record<string, TeacherWorkload>> {
+  const snap = await adminDb.collection('groups')
+    .where('organizationId', '==', orgId).get().catch(() => null);
+  const acc = new Map<string, { groups: number; students: Set<string> }>();
+  for (const d of snap?.docs || []) {
+    const g = (d.data() || {}) as GroupDoc;
+    const finished = g.status === 'completed' || g.status === 'archived';
+    if (finished && !((g.updatedAt || '') >= startIso)) continue;
+    for (const teacherId of Array.isArray(g.teacherIds) ? g.teacherIds : []) {
+      if (!teacherId) continue;
+      const cur = acc.get(teacherId) || { groups: 0, students: new Set<string>() };
+      cur.groups += 1;
+      for (const sid of Array.isArray(g.studentIds) ? g.studentIds : []) {
+        if (sid) cur.students.add(String(sid));
+      }
+      acc.set(teacherId, cur);
+    }
+  }
+  const out: Record<string, TeacherWorkload> = {};
+  for (const [teacherId, v] of acc) out[teacherId] = { students: v.students.size, groups: v.groups };
+  return out;
 }
 
 /** Преподаватели организации, активные и в области выбранного филиала. */
@@ -177,7 +226,10 @@ const handler: Handler = async (event: HandlerEvent) => {
     }
 
     // ── kpi (по умолчанию) ──
-    const roster = await fetchTeachingRoster(orgId, scope);
+    const [roster, workload] = await Promise.all([
+      fetchTeachingRoster(orgId, scope),
+      fetchTeacherWorkload(orgId, startIso),
+    ]);
     const rosterIds = new Set(roster.map(r => r.id));
 
     // Выбранный филиал → только события преподавателей в области; «Все филиалы»
@@ -205,7 +257,7 @@ const handler: Handler = async (event: HandlerEvent) => {
     }));
 
     const expectedActiveDays = countWorkingDays(startIso, endIso);
-    const { rows, totals } = buildKpiRows(events, rosterTeachers, { expectedActiveDays });
+    const { rows, totals } = buildKpiRows(events, rosterTeachers, { expectedActiveDays, workload });
 
     return ok({ period: { period, startIso, endIso, expectedActiveDays }, rows, totals });
   } catch (err: any) {

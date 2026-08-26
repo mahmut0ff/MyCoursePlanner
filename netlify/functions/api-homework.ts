@@ -4,7 +4,7 @@
  */
 import type { Handler, HandlerEvent } from '@netlify/functions';
 import { adminDb } from './utils/firebase-admin';
-import { verifyAuth, isStaff, can, forbidden, ok, unauthorized, badRequest, notFound, jsonResponse } from './utils/auth';
+import { verifyAuth, isStaff, isSuperAdmin, can, forbidden, ok, unauthorized, badRequest, notFound, jsonResponse } from './utils/auth';
 import { createNotification, notifyOrgAdmins } from './utils/notifications';
 import { recordTeacherActivity } from './utils/teacher-activity';
 import { rateLimiters, getRateLimitKey } from './utils/rate-limiter';
@@ -56,9 +56,31 @@ export const handler: Handler = async (event: HandlerEvent) => {
 
   // GET: Read homeworks (Teacher or Student)
   if (event.httpMethod === 'GET') {
+    /**
+     * ── Кто вправе читать ЧУЖИЕ сдачи ──
+     * `orgId` приходил из query и принимался на веру: любой авторизованный
+     * пользователь — включая ученика любой другой академии — мог подставить
+     * чужой organizationId и выгрузить все домашние работы вместе с текстами,
+     * вложениями, оценками и комментариями преподавателя. Ветка «по уроку» была
+     * ещё мягче: ученику хватало передать ЛЮБОЙ orgId, чтобы вместо своей
+     * сдачи получить работы всех одноклассников.
+     *
+     * Правило то же, что у соседних чтений (api-risk, api-teacher-activity):
+     * сотрудник + право на ресурс + своя организация. Супер-админ читает
+     * кросс-орг, как и везде.
+     */
+    const requestedOrg = params.orgId || '';
+    const canReadOrgSubmissions = (): boolean => {
+      if (!requestedOrg) return false;
+      if (isSuperAdmin(user)) return true;
+      if (requestedOrg !== user.organizationId) return false;
+      return isStaff(user) && can(user, 'homework', 'read');
+    };
+
     if (params.lessonId) {
-      if (user.role === 'student' && !params.orgId) {
-        // Student sees own submission
+      if (!canReadOrgSubmissions()) {
+        // Не сотрудник (или чужая организация) — отдаём ровно одну работу:
+        // собственную. Именно её и просит страница урока у ученика.
         const snap = await adminDb.collection(COLLECTION)
           .where('lessonId', '==', params.lessonId)
           .where('studentId', '==', user.uid)
@@ -66,22 +88,22 @@ export const handler: Handler = async (event: HandlerEvent) => {
           .get();
         if (snap.empty) return ok({ _empty: true });
         return ok({ id: snap.docs[0].id, ...snap.docs[0].data() });
-      } else {
-        // Teacher/Admin sees all submissions for a lesson in org
-        const snap = await adminDb.collection(COLLECTION)
-          .where('lessonId', '==', params.lessonId)
-          .where('organizationId', '==', params.orgId || '')
-          .get();
-        const docs = snap.docs.map(d => ({ id: d.id, ...d.data() } as any));
-        docs.sort((a, b) => new Date(b.submittedAt).getTime() - new Date(a.submittedAt).getTime());
-        return ok(docs);
       }
+      // Teacher/Admin sees all submissions for a lesson in org
+      const snap = await adminDb.collection(COLLECTION)
+        .where('lessonId', '==', params.lessonId)
+        .where('organizationId', '==', requestedOrg)
+        .get();
+      const docs = snap.docs.map(d => ({ id: d.id, ...d.data() } as any));
+      docs.sort((a, b) => new Date(b.submittedAt).getTime() - new Date(a.submittedAt).getTime());
+      return ok(docs);
     }
-    
+
     // Org wide submissions for review page
     if (params.orgId) {
+      if (!canReadOrgSubmissions()) return forbidden('No access to homework submissions');
       const snap = await adminDb.collection(COLLECTION)
-        .where('organizationId', '==', params.orgId)
+        .where('organizationId', '==', requestedOrg)
         .get();
       const docs = snap.docs.map(d => ({ id: d.id, ...d.data() } as any));
       docs.sort((a, b) => new Date(b.submittedAt).getTime() - new Date(a.submittedAt).getTime());

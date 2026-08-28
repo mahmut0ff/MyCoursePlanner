@@ -39,7 +39,11 @@ const handler: Handler = async (event: HandlerEvent) => {
       adminDb.collection('scheduleEvents').where('recurring', '==', true).where('dayOfWeek', '==', ourWeekday).get(),
       adminDb.collection('scheduleEvents').where('date', '==', tomorrowStr).get(),
     ]);
-    const events = [...recurringSnap.docs, ...datedSnap.docs].map(d => ({ id: d.id, ...(d.data() as any) }));
+    // Складываем по id, а не простой конкатенацией: один и тот же документ может
+    // прийти из обоих запросов, если у него проставлены и recurring, и date.
+    const eventMap = new Map<string, any>();
+    for (const doc of [...recurringSnap.docs, ...datedSnap.docs]) eventMap.set(doc.id, { id: doc.id, ...(doc.data() as any) });
+    const events = [...eventMap.values()];
     if (events.length === 0) {
       return jsonResponse(200, { success: true, events: 0, reminders: 0 });
     }
@@ -50,12 +54,19 @@ const handler: Handler = async (event: HandlerEvent) => {
 
     // Aggregate per recipient: { orgId, isTeacher, items[] }
     const perUser = new Map<string, { orgId: string; isTeacher: boolean; items: ReminderItem[] }>();
-    const add = (uid: string, orgId: string, asTeacher: boolean, item: ReminderItem) => {
+    // Пара «получатель + занятие»: преподаватель обычно и состоит в group.teacherIds,
+    // и записан в ev.teacherId, поэтому без этого ключа одно занятие попадало в
+    // напоминание дважды. Заодно страхует от дублей внутри самих массивов участников.
+    const seen = new Set<string>();
+    const add = (uid: string, orgId: string, asTeacher: boolean, evId: string, item: ReminderItem) => {
       if (!uid || !orgId) return;
       const cur = perUser.get(uid) || { orgId, isTeacher: false, items: [] };
-      cur.items.push(item);
       if (asTeacher) cur.isTeacher = true;
       perUser.set(uid, cur);
+      const key = `${uid}|${evId}`;
+      if (seen.has(key)) return;
+      seen.add(key);
+      cur.items.push(item);
     };
 
     for (const ev of events) {
@@ -64,17 +75,20 @@ const handler: Handler = async (event: HandlerEvent) => {
       const item: ReminderItem = { time: ev.startTime || '', title: ev.title || 'Занятие', groupName };
 
       if (group) {
-        for (const sid of (group.studentIds || [])) add(sid, ev.organizationId, false, item);
-        for (const tid of (group.teacherIds || [])) add(tid, ev.organizationId, true, item);
+        for (const sid of (group.studentIds || [])) add(sid, ev.organizationId, false, ev.id, item);
+        for (const tid of (group.teacherIds || [])) add(tid, ev.organizationId, true, ev.id, item);
       }
-      if (ev.teacherId) add(ev.teacherId, ev.organizationId, true, item);
+      if (ev.teacherId) add(ev.teacherId, ev.organizationId, true, ev.id, item);
     }
 
     let reminders = 0;
     const tasks: Promise<any>[] = [];
     for (const [uid, info] of perUser) {
       const sorted = info.items.sort((a, b) => a.time.localeCompare(b.time));
-      const lines = sorted.map(it => `• ${it.time} — ${it.title}${it.groupName ? ` (${it.groupName})` : ''}`).join('\n');
+      // Название занятия почти всегда совпадает с названием группы — второй раз его не печатаем.
+      const lines = sorted
+        .map(it => `• ${it.time} — ${it.title}${it.groupName && it.groupName !== it.title ? ` (${it.groupName})` : ''}`)
+        .join('\n');
       const countWord = sorted.length === 1 ? 'занятие' : sorted.length < 5 ? 'занятия' : 'занятий';
       tasks.push(createNotification({
         recipientId: uid,

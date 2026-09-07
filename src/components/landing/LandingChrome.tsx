@@ -4,11 +4,30 @@ import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../contexts/AuthContext';
 import LanguageSwitcher from '../LanguageSwitcher';
 import { Menu, X, MessageCircle, Mail, Phone, MapPin, ArrowRight } from 'lucide-react';
+import { APP_LOGIN_URL, TELEGRAM_LINK, isPlaceholder } from './ctaLinks';
 
 /* ──────────────────────────────────────────────────────────────
    Shared chrome + primitives for every marketing / public page.
    One source of truth for the navbar, footer and section rhythm.
    ────────────────────────────────────────────────────────────── */
+
+/* Every call to action on the public pages points at the same place. Until the
+   owner supplies the Telegram link it keeps its previous destination — the demo
+   request form — rather than a dead URL. */
+export const ChromeCta: React.FC<{ className: string; onClick?: () => void; children: React.ReactNode }> = ({
+  className,
+  onClick,
+  children,
+}) =>
+  isPlaceholder(TELEGRAM_LINK) ? (
+    <Link to="/contact?demo=1" onClick={onClick} className={className}>
+      {children}
+    </Link>
+  ) : (
+    <a href={TELEGRAM_LINK} target="_blank" rel="noopener noreferrer" onClick={onClick} className={className}>
+      {children}
+    </a>
+  );
 
 export const Eyebrow: React.FC<{ children: React.ReactNode; tone?: 'light' | 'dark' }> = ({ children, tone = 'light' }) => (
   <p className={`text-[0.8rem] font-semibold uppercase tracking-[0.18em] ${tone === 'dark' ? 'text-primary-300' : 'text-primary-600'}`}>
@@ -94,11 +113,11 @@ export const LandingNav: React.FC<{ variant?: 'home' | 'page' }> = ({ variant = 
         <div className="flex items-center gap-2">
           <LanguageSwitcher />
           {user ? (
-            <Link to="/dashboard" className={`hidden sm:inline-flex items-center text-sm font-semibold px-4 py-2 rounded-lg transition-colors ${overDark ? 'bg-white text-slate-900 hover:bg-slate-100' : 'bg-slate-900 text-white hover:bg-slate-800'}`}>{t('nav.dashboard') || 'Dashboard'}</Link>
+            <Link to={isPlaceholder(APP_LOGIN_URL) ? '/dashboard' : APP_LOGIN_URL} className={`hidden sm:inline-flex items-center text-sm font-semibold px-4 py-2 rounded-lg transition-colors ${overDark ? 'bg-white text-slate-900 hover:bg-slate-100' : 'bg-slate-900 text-white hover:bg-slate-800'}`}>{t('auth.login')}</Link>
           ) : (
             <>
-              <Link to="/login" className={`hidden sm:inline-flex items-center text-sm font-medium px-3 py-2 transition-colors ${overDark ? 'text-slate-200 hover:text-white' : 'text-slate-600 hover:text-slate-900'}`}>{t('auth.login')}</Link>
-              <Link to="/contact?demo=1" className={`hidden sm:inline-flex items-center text-sm font-semibold px-4 py-2 rounded-lg transition-colors ${overDark ? 'bg-white text-slate-900 hover:bg-slate-100' : 'bg-slate-900 text-white hover:bg-slate-800'}`}>{t('landing.heroCta')}</Link>
+              <Link to={isPlaceholder(APP_LOGIN_URL) ? '/login' : APP_LOGIN_URL} className={`hidden sm:inline-flex items-center text-sm font-medium px-3 py-2 transition-colors ${overDark ? 'text-slate-200 hover:text-white' : 'text-slate-600 hover:text-slate-900'}`}>{t('auth.login')}</Link>
+              <ChromeCta className={`hidden sm:inline-flex items-center text-sm font-semibold px-4 py-2 rounded-lg transition-colors ${overDark ? 'bg-white text-slate-900 hover:bg-slate-100' : 'bg-slate-900 text-white hover:bg-slate-800'}`}>{t('landing.heroCta')}</ChromeCta>
             </>
           )}
           <button onClick={() => setOpen(!open)} className={`md:hidden p-2 -mr-2 transition-colors ${overDark ? 'text-white' : 'text-slate-700'}`} aria-label="Menu">
@@ -118,11 +137,11 @@ export const LandingNav: React.FC<{ variant?: 'home' | 'page' }> = ({ variant = 
           )}
           <div className="flex gap-3 pt-3">
             {user ? (
-              <Link to="/dashboard" onClick={() => setOpen(false)} className="flex-1 text-center text-sm font-semibold text-white bg-slate-900 rounded-lg py-2.5">{t('nav.dashboard') || 'Dashboard'}</Link>
+              <Link to={isPlaceholder(APP_LOGIN_URL) ? '/dashboard' : APP_LOGIN_URL} onClick={() => setOpen(false)} className="flex-1 text-center text-sm font-semibold text-white bg-slate-900 rounded-lg py-2.5">{t('auth.login')}</Link>
             ) : (
               <>
-                <Link to="/login" onClick={() => setOpen(false)} className="flex-1 text-center text-sm font-medium text-slate-700 border border-slate-200 rounded-lg py-2.5">{t('auth.login')}</Link>
-                <Link to="/contact?demo=1" onClick={() => setOpen(false)} className="flex-1 text-center text-sm font-semibold text-white bg-slate-900 rounded-lg py-2.5">{t('landing.heroCta')}</Link>
+                <Link to={isPlaceholder(APP_LOGIN_URL) ? '/login' : APP_LOGIN_URL} onClick={() => setOpen(false)} className="flex-1 text-center text-sm font-medium text-slate-700 border border-slate-200 rounded-lg py-2.5">{t('auth.login')}</Link>
+                <ChromeCta onClick={() => setOpen(false)} className="flex-1 text-center text-sm font-semibold text-white bg-slate-900 rounded-lg py-2.5">{t('landing.heroCta')}</ChromeCta>
               </>
             )}
           </div>
@@ -148,7 +167,6 @@ export const PageHero: React.FC<{ eyebrow?: string; title: string; subtitle?: st
 /** Shared dark call-to-action band used across the public pages. */
 export const LandingCTA: React.FC<{ title?: string; subtitle?: string }> = ({ title, subtitle }) => {
   const { t } = useTranslation();
-  const { firebaseUser: user } = useAuth();
   return (
     <section className="px-6 py-20">
       <div className="relative max-w-5xl mx-auto overflow-hidden rounded-3xl bg-slate-900 px-8 py-16 sm:px-16 sm:py-20 text-center">
@@ -156,10 +174,10 @@ export const LandingCTA: React.FC<{ title?: string; subtitle?: string }> = ({ ti
         <div className="relative">
           <h2 className="text-3xl sm:text-4xl font-bold tracking-tight text-white">{title || t('landing.ctaTitle')}</h2>
           <p className="mx-auto mt-4 max-w-xl text-lg text-slate-300">{subtitle || t('landing.ctaSubtitle')}</p>
-          <Link to={user ? '/dashboard' : '/contact?demo=1'} className="group mt-8 inline-flex items-center gap-2 rounded-xl bg-white px-7 py-3.5 text-base font-semibold text-slate-900 transition-colors hover:bg-slate-100">
-            {user ? (t('nav.dashboard') || 'Dashboard') : t('landing.ctaButton')}
+          <ChromeCta className="group mt-8 inline-flex items-center gap-2 rounded-xl bg-white px-7 py-3.5 text-base font-semibold text-slate-900 transition-colors hover:bg-slate-100">
+            {t('landing.ctaButton')}
             <ArrowRight className="w-5 h-5 transition-transform group-hover:translate-x-0.5" />
-          </Link>
+          </ChromeCta>
         </div>
       </div>
     </section>

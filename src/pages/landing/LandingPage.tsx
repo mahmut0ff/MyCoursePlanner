@@ -5,6 +5,7 @@ import { Menu, X } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import RequestDemoModal from '../../components/landing/RequestDemoModal';
 import LanguageSwitcher from '../../components/LanguageSwitcher';
+import { APP_LOGIN_URL, TELEGRAM_LINK, isPlaceholder } from '../../components/landing/ctaLinks';
 
 /* ──────────────────────────────────────────────────────────────
    SabakHub home page — warm editorial marketing surface.
@@ -26,9 +27,25 @@ const focusRing =
 const focusRingDark =
   'focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2 focus-visible:ring-offset-ink';
 
+/* The landing has exactly one target action; every button below renders through
+   this so the destination can never drift apart between sections. */
+const Cta: React.FC<{ className: string; onFallback: () => void; children: React.ReactNode }> = ({
+  className,
+  onFallback,
+  children,
+}) =>
+  isPlaceholder(TELEGRAM_LINK) ? (
+    <button type="button" onClick={onFallback} className={className}>
+      {children}
+    </button>
+  ) : (
+    <a href={TELEGRAM_LINK} target="_blank" rel="noopener noreferrer" className={className}>
+      {children}
+    </a>
+  );
+
 const LandingPage: React.FC = () => {
   const { t } = useTranslation();
-  const { firebaseUser: user } = useAuth();
   const [demoOpen, setDemoOpen] = useState(false);
   const [inst, setInst] = useState<InstId>('center');
   const [openFaq, setOpenFaq] = useState<number | null>(0);
@@ -39,17 +56,19 @@ const LandingPage: React.FC = () => {
   const terms = {
     students: t(`terms.${inst}.students`),
     group: t(`terms.${inst}.group`),
-    groupsDat: t(`home.fitGroupsDat${suffix}`),
   };
 
-  const faqs = [1, 2, 3, 4].map((n) => ({ q: t(`home.faq${n}Q`), a: t(`home.faq${n}A`) }));
-  const marquee = [1, 2, 3, 4, 5].map((n) => t(`home.marq${n}`));
+  const faqs = [1, 2, 3, 4, 5, 6, 7].map((n) => ({ q: t(`home.faq${n}Q`), a: t(`home.faq${n}A`) }));
+  // Two audiences only — repeated so a single copy of the track still overruns
+  // the widest viewport and the −50% loop stays seamless.
+  const marquee = Array.from({ length: 6 }, () => [t('home.marq1'), t('home.marq2')]).flat();
 
+  // The director's morning opens the day: money first, then the teaching hours.
   const days = [
-    { time: '07:45', title: t('home.day1Title'), desc: t('home.day1Desc', terms) },
-    { time: '12:30', title: t('home.day2Title'), desc: t('home.day2Desc', terms) },
-    { time: '17:10', title: t('home.day3Title'), desc: t('home.day3Desc', terms) },
-    { time: '21:00', title: t('home.day4Title'), desc: t('home.day4Desc', terms), dark: true },
+    { time: '07:30', title: t('home.day1Title'), desc: t('home.day1Desc'), dark: true },
+    { time: '07:45', title: t('home.day2Title'), desc: t('home.day2Desc', terms) },
+    { time: '12:30', title: t('home.day3Title'), desc: t('home.day3Desc', terms) },
+    { time: '17:10', title: t('home.day4Title'), desc: t('home.day4Desc', terms) },
   ];
 
   return (
@@ -64,31 +83,19 @@ const LandingPage: React.FC = () => {
               {t('home.heroEyebrow')}
             </p>
             <h1 className="mt-[22px] text-balance font-marketing-display text-[clamp(34px,4.6vw,64px)] font-bold leading-[1.08] tracking-[-0.01em]">
-              {t('home.heroTitle1')}
-              <br />
-              {t('home.heroTitle2')}{' '}
+              {t('home.heroTitle1')}{' '}
               <span className="shadow-[inset_0_-0.32em_0_rgba(245,158,11,0.5)]">{t('home.heroTitleMark')}</span>.
             </h1>
             <p className="mt-[26px] max-w-[52ch] text-[17px] leading-[1.65] text-ink/70 sm:text-[19px]">
               {t('home.heroSubtitle')}
             </p>
             <div className="mt-9 flex flex-wrap items-center gap-3.5">
-              {user ? (
-                <Link
-                  to="/dashboard"
-                  className={`inline-flex items-center gap-2.5 rounded-full bg-primary-600 px-8 py-4 text-[17px] font-semibold text-white shadow-[0_12px_28px_-8px_rgba(79,70,229,0.45)] transition-[transform,box-shadow] hover:-translate-y-0.5 hover:shadow-[0_18px_34px_-8px_rgba(79,70,229,0.55)] active:scale-[0.98] ${focusRing}`}
-                >
-                  {t('nav.dashboard')} <span aria-hidden>→</span>
-                </Link>
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => setDemoOpen(true)}
-                  className={`inline-flex items-center gap-2.5 rounded-full bg-primary-600 px-8 py-4 text-[17px] font-semibold text-white shadow-[0_12px_28px_-8px_rgba(79,70,229,0.45)] transition-[transform,box-shadow] hover:-translate-y-0.5 hover:shadow-[0_18px_34px_-8px_rgba(79,70,229,0.55)] active:scale-[0.98] ${focusRing}`}
-                >
-                  {t('home.heroCta')} <span aria-hidden>→</span>
-                </button>
-              )}
+              <Cta
+                onFallback={() => setDemoOpen(true)}
+                className={`inline-flex items-center gap-2.5 rounded-full bg-primary-600 px-8 py-4 text-[17px] font-semibold text-white shadow-[0_12px_28px_-8px_rgba(79,70,229,0.45)] transition-[transform,box-shadow] hover:-translate-y-0.5 hover:shadow-[0_18px_34px_-8px_rgba(79,70,229,0.55)] active:scale-[0.98] ${focusRing}`}
+              >
+                {t('home.ctaPrimary')} <span aria-hidden>→</span>
+              </Cta>
               <a
                 href="#day"
                 className={`inline-flex items-center gap-2.5 rounded-full border-[1.5px] border-ink/20 px-[26px] py-4 text-[17px] font-semibold text-ink transition-colors hover:border-ink ${focusRing}`}
@@ -97,9 +104,9 @@ const LandingPage: React.FC = () => {
               </a>
             </div>
             <p className="mt-[26px] text-[15px] text-ink/65">
-              <span className="font-bold text-ink">{t('home.stat1Num')}</span> {t('home.stat1Text')} ·{' '}
-              <span className="font-bold text-ink">{t('home.stat2Num')}</span> {t('home.stat2Text')} ·{' '}
-              {t('home.stat3')}
+              <span className="font-bold text-ink">{t('home.proofOrg')}</span> ·{' '}
+              <span className="font-bold text-ink">{t('home.proofStudents')}</span> · {t('home.proofSince')} ·{' '}
+              {t('home.proofFree')}
             </p>
           </div>
           <HeroVisual />
@@ -150,6 +157,63 @@ const LandingPage: React.FC = () => {
               </p>
             </article>
           ))}
+        </div>
+      </section>
+
+      {/* ═══ Pricing ═══ */}
+      <section id="pricing" className="scroll-mt-0 bg-ink px-5 py-16 text-paper sm:px-8 sm:py-[104px]">
+        <div className="mx-auto max-w-[1240px]">
+          <p className="text-sm font-semibold uppercase tracking-[0.14em] text-amber-500">{t('home.priceEyebrow')}</p>
+          <div className="flex flex-wrap items-end justify-between gap-8">
+            <h2 className="mt-[18px] max-w-[20ch] text-balance font-marketing-display text-[clamp(26px,3vw,42px)] font-bold leading-[1.15]">
+              {t('home.priceTitle')}
+            </h2>
+            <p className="max-w-[36ch] text-[15px] text-paper/60">{t('home.priceDesc')}</p>
+          </div>
+          <div className="mt-10 grid items-stretch gap-5 min-[900px]:grid-cols-3 lg:mt-14">
+            {[
+              { name: t('home.plan1Name'), price: t('home.plan1Price'), desc: t('home.plan1Desc') },
+              { name: t('home.plan2Name'), price: t('home.plan2Price'), desc: t('home.plan2Desc'), popular: true },
+              { name: t('home.plan3Name'), price: t('home.plan3Price'), desc: t('home.plan3Desc') },
+            ].map((plan) => (
+              <div
+                key={plan.name}
+                className={`relative flex flex-col rounded-[28px] p-7 sm:p-9 ${
+                  plan.popular
+                    ? 'bg-paper text-ink shadow-[0_30px_60px_-24px_rgba(0,0,0,0.5)] min-[900px]:-translate-y-3.5'
+                    : 'border border-paper/15'
+                }`}
+              >
+                {plan.popular && (
+                  <span className="absolute -top-[13px] left-9 rounded-full bg-amber-500 px-3.5 py-[5px] text-xs font-bold text-ink">
+                    {t('home.planPopular')}
+                  </span>
+                )}
+                <h3 className="text-[17px] font-semibold">{plan.name}</h3>
+                <p className="mt-[22px] font-marketing-display text-[40px] font-bold leading-none">
+                  {plan.price}{' '}
+                  <span className={`text-[15px] font-normal ${plan.popular ? 'text-ink/60' : 'text-paper/60'}`}>
+                    {t('home.pricePer')}
+                  </span>
+                </p>
+                <p className={`mt-[18px] text-[15px] leading-relaxed ${plan.popular ? 'text-ink/70' : 'text-paper/70'}`}>
+                  {plan.desc}
+                </p>
+                <div className="mt-auto pt-7">
+                  <Cta
+                    onFallback={() => setDemoOpen(true)}
+                    className={`block w-full rounded-full py-3.5 text-center text-[15px] font-semibold transition-colors ${
+                      plan.popular
+                        ? `bg-primary-600 text-white shadow-[0_12px_24px_-8px_rgba(79,70,229,0.5)] hover:bg-primary-700 ${focusRing}`
+                        : `border-[1.5px] border-paper/35 text-paper hover:border-paper ${focusRingDark}`
+                    }`}
+                  >
+                    {t('home.ctaPrimary')}
+                  </Cta>
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       </section>
 
@@ -207,64 +271,6 @@ const LandingPage: React.FC = () => {
         </div>
       </section>
 
-      {/* ═══ Pricing ═══ */}
-      <section id="pricing" className="scroll-mt-0 bg-ink px-5 py-16 text-paper sm:px-8 sm:py-[104px]">
-        <div className="mx-auto max-w-[1240px]">
-          <p className="text-sm font-semibold uppercase tracking-[0.14em] text-amber-500">{t('home.priceEyebrow')}</p>
-          <div className="flex flex-wrap items-end justify-between gap-8">
-            <h2 className="mt-[18px] max-w-[20ch] text-balance font-marketing-display text-[clamp(26px,3vw,42px)] font-bold leading-[1.15]">
-              {t('home.priceTitle')}
-            </h2>
-            <p className="max-w-[36ch] text-[15px] text-paper/60">{t('home.priceDesc')}</p>
-          </div>
-          <div className="mt-10 grid items-stretch gap-5 min-[900px]:grid-cols-3 lg:mt-14">
-            {[
-              { name: t('home.plan1Name'), price: t('home.plan1Price'), desc: t('home.plan1Desc'), cta: t('home.plan1Cta') },
-              { name: t('home.plan2Name'), price: t('home.plan2Price'), desc: t('home.plan2Desc'), cta: t('home.plan2Cta'), popular: true },
-              { name: t('home.plan3Name'), price: t('home.plan3Price'), desc: t('home.plan3Desc'), cta: t('home.plan3Cta') },
-            ].map((plan) => (
-              <div
-                key={plan.name}
-                className={`relative flex flex-col rounded-[28px] p-7 sm:p-9 ${
-                  plan.popular
-                    ? 'bg-paper text-ink shadow-[0_30px_60px_-24px_rgba(0,0,0,0.5)] min-[900px]:-translate-y-3.5'
-                    : 'border border-paper/15'
-                }`}
-              >
-                {plan.popular && (
-                  <span className="absolute -top-[13px] left-9 rounded-full bg-amber-500 px-3.5 py-[5px] text-xs font-bold text-ink">
-                    {t('home.planPopular')}
-                  </span>
-                )}
-                <h3 className="text-[17px] font-semibold">{plan.name}</h3>
-                <p className="mt-[22px] font-marketing-display text-[40px] font-bold leading-none">
-                  {plan.price}{' '}
-                  <span className={`text-[15px] font-normal ${plan.popular ? 'text-ink/60' : 'text-paper/60'}`}>
-                    {t('home.pricePer')}
-                  </span>
-                </p>
-                <p className={`mt-[18px] text-[15px] leading-relaxed ${plan.popular ? 'text-ink/70' : 'text-paper/70'}`}>
-                  {plan.desc}
-                </p>
-                <div className="mt-auto pt-7">
-                  <button
-                    type="button"
-                    onClick={() => setDemoOpen(true)}
-                    className={`block w-full rounded-full py-3.5 text-center text-[15px] font-semibold transition-colors ${
-                      plan.popular
-                        ? `bg-primary-600 text-white shadow-[0_12px_24px_-8px_rgba(79,70,229,0.5)] hover:bg-primary-700 ${focusRing}`
-                        : `border-[1.5px] border-paper/35 text-paper hover:border-paper ${focusRingDark}`
-                    }`}
-                  >
-                    {plan.cta}
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
       {/* ═══ FAQ ═══ */}
       <section id="faq" className="mx-auto max-w-[860px] scroll-mt-24 px-5 py-16 sm:px-8 sm:py-[104px]">
         <h2 className="font-marketing-display text-[clamp(24px,2.6vw,36px)] font-bold">{t('home.faqTitle')}</h2>
@@ -304,22 +310,12 @@ const LandingPage: React.FC = () => {
             </h2>
             <p className="mt-5 text-[17px] leading-relaxed text-white/80">{t('home.ctaDesc')}</p>
             <div className="mt-[34px] flex flex-wrap gap-3.5">
-              {user ? (
-                <Link
-                  to="/dashboard"
-                  className="inline-flex items-center gap-2.5 rounded-full bg-white px-[30px] py-4 text-base font-bold text-ink transition-transform hover:scale-[1.03] focus:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-primary-600"
-                >
-                  {t('nav.dashboard')} <span aria-hidden>→</span>
-                </Link>
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => setDemoOpen(true)}
-                  className="inline-flex items-center gap-2.5 rounded-full bg-white px-[30px] py-4 text-base font-bold text-ink transition-transform hover:scale-[1.03] focus:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-primary-600"
-                >
-                  {t('home.ctaBtn')} <span aria-hidden>→</span>
-                </button>
-              )}
+              <Cta
+                onFallback={() => setDemoOpen(true)}
+                className="inline-flex items-center gap-2.5 rounded-full bg-white px-[30px] py-4 text-base font-bold text-ink transition-transform hover:scale-[1.03] focus:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-primary-600"
+              >
+                {t('home.ctaPrimary')} <span aria-hidden>→</span>
+              </Cta>
               <a
                 href="https://t.me/sabakhub_bot"
                 target="_blank"
@@ -348,8 +344,8 @@ const HomeNav: React.FC<{ onDemo: () => void }> = ({ onDemo }) => {
 
   const anchors = [
     { href: '#day', label: t('home.navHow') },
-    { href: '#fit', label: t('home.navFit') },
     { href: '#pricing', label: t('home.navPricing') },
+    { href: '#fit', label: t('home.navFit') },
     { href: '#faq', label: t('home.navFaq') },
   ];
 
@@ -374,27 +370,28 @@ const HomeNav: React.FC<{ onDemo: () => void }> = ({ onDemo }) => {
             <LanguageSwitcher compact />
           </div>
           {user ? (
+            /* The dark button is the way into the product for someone who already
+               has an account — not a second call to action. */
             <Link
-              to="/dashboard"
+              to={isPlaceholder(APP_LOGIN_URL) ? '/dashboard' : APP_LOGIN_URL}
               className={`rounded-full bg-ink px-5 py-3 text-[15px] font-semibold text-paper transition-transform hover:scale-[1.03] ${focusRing}`}
             >
-              {t('nav.dashboard')}
+              {t('home.navLogin')}
             </Link>
           ) : (
             <>
               <Link
-                to="/login"
+                to={isPlaceholder(APP_LOGIN_URL) ? '/login' : APP_LOGIN_URL}
                 className={`hidden rounded-lg px-3.5 py-2.5 text-[15px] text-ink/70 transition-colors hover:text-ink sm:block ${focusRing}`}
               >
                 {t('home.navLogin')}
               </Link>
-              <button
-                type="button"
-                onClick={onDemo}
+              <Cta
+                onFallback={onDemo}
                 className={`rounded-full bg-ink px-4 py-2.5 text-sm font-semibold text-paper transition-transform hover:scale-[1.03] sm:px-[22px] sm:py-3 sm:text-[15px] ${focusRing}`}
               >
-                {t('home.navDemo')}
-              </button>
+                {t('home.ctaPrimary')}
+              </Cta>
             </>
           )}
           <button
@@ -417,7 +414,11 @@ const HomeNav: React.FC<{ onDemo: () => void }> = ({ onDemo }) => {
             </a>
           ))}
           {!user && (
-            <Link to="/login" onClick={() => setOpen(false)} className="block py-2.5 text-[15px] font-medium text-ink/70 sm:hidden">
+            <Link
+              to={isPlaceholder(APP_LOGIN_URL) ? '/login' : APP_LOGIN_URL}
+              onClick={() => setOpen(false)}
+              className="block py-2.5 text-[15px] font-medium text-ink/70 sm:hidden"
+            >
               {t('home.navLogin')}
             </Link>
           )}
@@ -433,35 +434,23 @@ const HomeNav: React.FC<{ onDemo: () => void }> = ({ onDemo }) => {
 /* ── Hero visual: paper card stack (decorative, fabricated data) ── */
 const HeroVisual: React.FC = () => {
   const { t } = useTranslation();
-  const students = [
-    { init: t('home.visInit1'), name: t('home.visStudent1'), grade: '5', tone: 'bg-primary-50 text-primary-600' },
-    { init: t('home.visInit2'), name: t('home.visStudent2'), grade: '4', tone: 'bg-amber-100 text-amber-700' },
-    { init: t('home.visInit3'), name: t('home.visStudent3'), grade: null, tone: 'bg-violet-100 text-violet-600' },
+  const rows = [
+    { label: t('home.visDirRow1Label'), value: t('home.visDirRow1Value') },
+    { label: t('home.visDirRow2Label'), value: t('home.visDirRow2Value') },
+    { label: t('home.visDirRow3Label'), value: t('home.visDirRow3Value') },
   ];
   return (
     <div aria-hidden className="pointer-events-none relative mx-auto h-[420px] w-full max-w-[560px] select-none sm:h-[460px] lg:max-w-none">
       {/* deep paper sheet behind */}
       <div className="absolute -right-2.5 left-[30px] top-[30px] h-[380px] rotate-3 rounded-[28px] bg-paper-deep" />
-      {/* group card */}
+      {/* director card */}
       <div className="absolute left-0 right-6 top-0 -rotate-[1.5deg] rounded-[28px] bg-white p-7 shadow-[0_30px_60px_-24px_rgba(22,20,31,0.25)]">
-        <div className="flex items-center justify-between gap-3">
-          <span className="text-[15px] font-semibold">{t('home.visGroupTitle')}</span>
-          <span className="rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold text-emerald-700">
-            {t('home.visLessonLive')}
-          </span>
-        </div>
+        <span className="text-[15px] font-semibold">{t('home.visDirTitle')}</span>
         <div className="mt-5 flex flex-col gap-3">
-          {students.map((s) => (
-            <div key={s.name} className="flex items-center gap-3">
-              <span className={`flex h-[34px] w-[34px] items-center justify-center rounded-full text-[13px] font-bold ${s.tone}`}>
-                {s.init}
-              </span>
-              <span className="flex-1 text-sm">{s.name}</span>
-              {s.grade ? (
-                <span className="text-[13px] font-bold text-emerald-600">{s.grade}</span>
-              ) : (
-                <span className="text-[13px] text-ink/40">—</span>
-              )}
+          {rows.map((row) => (
+            <div key={row.label} className="flex items-center justify-between gap-3">
+              <span className="text-sm text-ink/65">{row.label}</span>
+              <span className="whitespace-nowrap text-[15px] font-bold">{row.value}</span>
             </div>
           ))}
         </div>
@@ -472,9 +461,8 @@ const HeroVisual: React.FC = () => {
         <p className="mt-2.5 text-sm leading-normal">{t('home.visTgMsg')}</p>
       </div>
       {/* amber sticker */}
-      <div className="absolute -left-2 bottom-0 -rotate-[4deg] rounded-[18px] bg-amber-500 px-5 py-3.5 text-ink shadow-[0_16px_32px_-14px_rgba(245,158,11,0.6)]">
-        <p className="font-marketing-display text-[22px] font-bold">{t('home.visStickerNum')}</p>
-        <p className="mt-0.5 text-[13px] font-medium">{t('home.visStickerText')}</p>
+      <div className="absolute -left-2 bottom-0 max-w-[214px] -rotate-[4deg] rounded-[18px] bg-amber-500 px-5 py-3.5 text-ink shadow-[0_16px_32px_-14px_rgba(245,158,11,0.6)]">
+        <p className="font-marketing-display text-[15px] font-bold leading-[1.3]">{t('home.visDirSticker')}</p>
       </div>
     </div>
   );

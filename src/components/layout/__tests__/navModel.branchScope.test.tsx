@@ -52,6 +52,7 @@ const setup = (branchOver: any = {}, authOver: any = {}, opts?: NavModelOptions)
 };
 
 const ADMIN = {};
+const MANAGER = { role: 'manager', isManager: true };
 const TEACHER = { role: 'teacher', isTeacher: true };
 const STUDENT = { role: 'student', isTeacher: false };
 
@@ -70,9 +71,6 @@ describe('useNavModel — branch scope filter', () => {
       expect(ids).not.toContain('groups');
       // ...and the rest of each set moves together with its representative.
       expect(ids).toEqual(expect.arrayContaining(['materials', 'quizLibrary', 'leads']));
-      expect(ids).not.toContain('schedule');
-      expect(ids).not.toContain('journal');
-      expect(ids).not.toContain('gradebook');
       expect(ids).not.toContain('finances');
     });
 
@@ -81,7 +79,7 @@ describe('useNavModel — branch scope filter', () => {
 
       expect(ids).toContain('groups');
       expect(ids).not.toContain('courses');
-      expect(ids).toEqual(expect.arrayContaining(['schedule', 'journal', 'gradebook', 'finances']));
+      expect(ids).toContain('finances');
       expect(ids).not.toContain('materials');
       expect(ids).not.toContain('quizLibrary');
       expect(ids).not.toContain('leads');
@@ -94,7 +92,7 @@ describe('useNavModel — branch scope filter', () => {
       const all = setup(ALL_BRANCHES, ADMIN);
       const one = setup(ONE_BRANCH, ADMIN);
 
-      for (const id of ['dashboard', 'lessons', 'exams', 'students']) {
+      for (const id of ['dashboard', 'students', 'teachers', 'payroll']) {
         expect(all).toContain(id);
         expect(one).toContain(id);
       }
@@ -120,6 +118,26 @@ describe('useNavModel — branch scope filter', () => {
   });
 
   describe('the same rule applies to every role', () => {
+    it('filters a manager', () => {
+      const all = setup(ALL_BRANCHES, MANAGER);
+      expect(all).toContain('courses');
+      expect(all).not.toContain('groups');
+      expect(all).not.toContain('schedule');
+      expect(all).not.toContain('journal');
+      expect(all).not.toContain('gradebook');
+      expect(all).not.toContain('finances');
+
+      const one = setup(ONE_BRANCH, MANAGER);
+      expect(one).toEqual(expect.arrayContaining(['groups', 'schedule', 'journal', 'gradebook', 'finances']));
+      expect(one).not.toContain('courses');
+
+      // Unclassified: the same in both modes.
+      for (const id of ['lessons', 'exams', 'classrooms', 'studentRating', 'noAdmission']) {
+        expect(all).toContain(id);
+        expect(one).toContain(id);
+      }
+    });
+
     it('filters a teacher with an org', () => {
       const all = setup(ALL_BRANCHES, TEACHER);
       expect(all).toContain('courses');
@@ -146,6 +164,24 @@ describe('useNavModel — branch scope filter', () => {
       expect(one).not.toContain('studentCourses');
       expect(one).toContain('studentHomework');
     });
+  });
+
+  // Учебная текучка убрана из меню директора намеренно (см. комментарий в
+  // navModel). Сторож здесь нужен потому, что соседние ветки меню эти же пункты
+  // держат, и следующая правка легко вернёт их админу за компанию.
+  it('keeps the learning routine out of the director menu, in both branch modes', () => {
+    const trimmed = ['lessons', 'exams', 'schedule', 'classrooms', 'journal', 'gradebook', 'studentRating', 'noAdmission'];
+
+    for (const branch of [ALL_BRANCHES, ONE_BRANCH, { ...NO_SWITCH, ...ONE_BRANCH }]) {
+      const ids = setup(branch, ADMIN);
+      for (const id of trimmed) expect(ids).not.toContain(id);
+      // А то, ради чего директор сюда ходит, на месте.
+      expect(ids).toEqual(expect.arrayContaining(['dashboard', 'students', 'payroll', 'support']));
+    }
+
+    // И точно так же в карточке персонализации: скрытое меню нельзя вернуть галочкой.
+    const unfiltered = setup(ONE_BRANCH, ADMIN, { branchScope: false });
+    for (const id of trimmed) expect(unfiltered).not.toContain(id);
   });
 
   it('never drops support, in any combination', () => {

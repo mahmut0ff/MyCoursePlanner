@@ -211,17 +211,12 @@ export function useNavModel(instType?: string, opts?: NavModelOptions): NavSecti
       items: [
         { id: 'courses', to: '/courses', icon: FolderOpen, label: t('nav.courses') },
         { id: 'groups', to: '/groups', icon: Layers, label: term(t, inst, 'groups') },
-        { id: 'lessons', to: '/lessons', icon: BookOpen, label: t('nav.lessons') },
-        { id: 'exams', to: '/exams', icon: ClipboardList, label: t('nav.exams') },
-        { id: 'schedule', to: '/schedule', icon: Calendar, label: t('nav.schedule') },
-        { id: 'classrooms', to: '/classrooms', icon: DoorOpen, label: t('nav.classrooms', 'Кабинеты') },
-        // The admin menu had no way into the gradebook at all: /gradebook and
-        // /journal were reachable only by typing the URL. No canRead() guard here
-        // because the whole admin branch is unguarded — admins hold every grant.
-        { id: 'journal', to: '/journal', icon: NotebookPen, label: t('nav.journal', 'Журнал'), locked: !canAccess('gradebook') },
-        { id: 'gradebook', to: '/gradebook', icon: TableProperties, label: t('nav.gradebook', 'Оценки'), locked: !canAccess('gradebook') },
-        { id: 'studentRating', to: '/rating', icon: Trophy, label: t('nav.studentRating', 'Рейтинг') },
-        { id: 'noAdmission', to: '/rating/no-admission', icon: Ban, label: t('nav.noAdmission', 'Недопуск') },
+        // Учебная текучка — уроки, экзамены, расписание, кабинеты, журнал, оценки,
+        // рейтинг и недопуск — намеренно вынесена из меню директора: это работа
+        // преподавателя и менеджера, а не владельца. Маршруты живы и права не
+        // тронуты — админ по-прежнему откроет /journal или /schedule по ссылке из
+        // карточки группы; убран только вход из бокового меню. У менеджера и
+        // преподавателя ниже эти пункты остаются на месте.
         { id: 'materials', to: '/materials', icon: FileText, label: t('nav.materials') },
         { id: 'quizLibrary', to: '/quiz/library', icon: Gamepad2, label: t('nav.quizLibrary') },
       ],

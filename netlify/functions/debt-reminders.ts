@@ -12,7 +12,9 @@
  * this cron, api-finance-plans (which writes the status) and api-finance-metrics
  * (which counts it) can never disagree about who is late.
  *
- * Delivery reuses the shared notification helper → in-app + FCM push + Telegram.
+ * Delivery reuses the shared notification helper → in-app + FCM push + Telegram,
+ * plus WhatsApp for students with no Telegram linked (utils/whatsapp.ts) — the
+ * paying parent is exactly who the free channel usually fails to reach.
  * Idempotent: at most one reminder per plan per calendar day (lastDebtReminderDate).
  *
  * Trigger via: scheduled run, or POST /.netlify/functions/debt-reminders for testing.
@@ -26,10 +28,12 @@ import {
   planDebt,
   isDeadlineMissed,
   daysUntilDeadline,
+  deadlineDayKey,
   orgDayKey,
 } from './utils/payment-plans';
 import { derivePlanStatus } from './utils/finance-names';
 import { cronAccessError } from './utils/cron-auth';
+import { sendWhatsAppToUser, isWhatsAppConfigured } from './utils/whatsapp';
 
 const COLLECTION = 'studentPaymentPlans';
 // Remind the student this many days BEFORE the deadline (0 = on the day).
@@ -47,6 +51,20 @@ function fmtAmount(n: number): string {
   try { return Number(n || 0).toLocaleString('ru-RU'); } catch { return String(n || 0); }
 }
 
+/**
+ * Срок для человека: '2026-07-20' → '20.07.2026'.
+ *
+ * День берём тем же deadlineDayKey, которым считается сама просрочка. Своя
+ * разборка даты здесь означала бы, что родителю можно назвать одно число, а
+ * просрочить счёт — другим: deadline лежит в базе в двух формах (голая дата и
+ * полный ISO), и наивный new Date() уводит день на часовой пояс.
+ */
+function fmtDeadline(deadline: unknown): string {
+  const day = deadlineDayKey(deadline);
+  if (!day) return '';
+  return day.split('-').reverse().join('.');
+}
+
 const handler: Handler = async (event: HandlerEvent) => {
   if (event.httpMethod === 'OPTIONS') return jsonResponse(204, '');
 
@@ -59,6 +77,10 @@ const handler: Handler = async (event: HandlerEvent) => {
   // День организации, а не UTC: ключ идемпотентности («одно напоминание в день»)
   // обязан переворачиваться в ту же полночь, что и сам срок оплаты.
   const today = orgDayKey(now);
+  // Имя и язык одобренного шаблона — из env: пока он на модерации, его имя
+  // может ещё измениться, и это не повод катить релиз.
+  const waTemplate = process.env.WHATSAPP_PAYMENT_TEMPLATE || 'payment_reminder_ru';
+  const waLanguage = process.env.WHATSAPP_TEMPLATE_LANG || 'ru';
 
   try {
     // Plans that still owe money. The status allow-list already excludes both
@@ -72,6 +94,11 @@ const handler: Handler = async (event: HandlerEvent) => {
 
     let scanned = 0;
     let sent = 0;
+    let whatsappSent = 0;
+    // Разбивка по причинам: WhatsApp падает молча (кривой номер — ответ 200 и
+    // тишина), поэтому «ушло всем» и «не ушло никому» обязаны различаться в
+    // логах прогона. no_phone — дыра в контактах, api_error — сторона Meta.
+    const whatsappBy: Record<string, number> = {};
     let markedOverdue = 0;
     let clearedOverdue = 0;
     let adminsNotified = 0;
@@ -232,11 +259,27 @@ const handler: Handler = async (event: HandlerEvent) => {
         metadata: { paymentPlanId: doc.id, amountDue: debt },
       }).catch(() => {});
 
+      // Запасной канал. Решение «писать или нет» принимает sendWhatsAppToUser:
+      // при привязанном Telegram платный шаблон не тратится — то же напоминание
+      // уже ушло бесплатно, а выключенный канал (нет env) стоит ноль запросов.
+      //
+      // Порядок параметров — тело одобренного шаблона: {{1}} имя, {{2}} сумма,
+      // {{3}} срок. Одобрят с другим телом — меняется ТОЛЬКО этот массив.
+      const wa = await sendWhatsAppToUser(plan.studentId, {
+        name: waTemplate,
+        language: waLanguage,
+        params: [plan.studentName || 'Студент', fmtAmount(debt) + ' с.', fmtDeadline(plan.deadline)],
+      });
+      whatsappBy[wa] = (whatsappBy[wa] || 0) + 1;
+      if (wa === 'sent') whatsappSent++;
+
       await doc.ref.update({ lastDebtReminderDate: today }).catch(() => {});
       sent++;
     }
 
-    return jsonResponse(200, { success: true, scanned, sent, markedOverdue, clearedOverdue, skippedInactive, adminsNotified });
+    if (isWhatsAppConfigured()) console.log('debt-reminders WhatsApp:', whatsappBy);
+
+    return jsonResponse(200, { success: true, scanned, sent, whatsappSent, whatsappBy, markedOverdue, clearedOverdue, skippedInactive, adminsNotified });
   } catch (error: any) {
     console.error('Debt reminders error:', error);
     return jsonResponse(500, { error: error.message });

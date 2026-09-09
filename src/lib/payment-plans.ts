@@ -133,7 +133,7 @@ export function planProgressKey(plan: any): 'pending' | 'partial' | 'paid' | 'ca
  * втягивая разбор дат и часовые пояса. Date/Timestamp поддержаны на случай
  * писателя, который положил не строку.
  */
-function deadlineDayKey(deadline: unknown): string | null {
+export function deadlineDayKey(deadline: unknown): string | null {
   let raw: unknown = deadline;
   if (raw instanceof Date) raw = raw.toISOString();
   else if (raw && typeof (raw as any).toDate === 'function') raw = (raw as any).toDate().toISOString();

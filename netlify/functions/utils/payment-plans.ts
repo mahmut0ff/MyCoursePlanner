@@ -21,6 +21,7 @@ export {
   planPeriodKey,
   orgDayKey,
   daysUntilDeadline,
+  deadlineDayKey,
   isDeadlineMissed,
   isPlanOverdue,
 } from '../../../src/lib/payment-plans';

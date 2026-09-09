@@ -5,7 +5,7 @@
  * POST /api-gamification                → award XP / badge (supports exams, lessons, quizzes, orgs, posts)
  */
 import type { Handler, HandlerEvent } from '@netlify/functions';
-import { adminDb } from './utils/firebase-admin';
+import { adminDb, getDocsByIds } from './utils/firebase-admin';
 import { verifyAuth, ok, unauthorized, badRequest, jsonResponse } from './utils/auth';
 
 const COLLECTION = 'gamification';
@@ -84,27 +84,36 @@ const handler: Handler = async (event: HandlerEvent) => {
       if (!orgId) return badRequest('organizationId required');
       
       try {
-        // 1. Get gamification profiles first (these are small)
-        const gamiSnap = await adminDb.collection(COLLECTION).get();
-        const gamiMap = new Map();
-        gamiSnap.docs.forEach(d => gamiMap.set(d.id, d.data()));
-
-        // 2. Filter for users who have XP in this org or generally (to avoid massive user fetches)
-        const activeIds = Array.from(gamiMap.entries())
-          .filter(([_, g]) => g.orgXpBreakdown?.[orgId] > 0 || g.xp > 0)
-          .map(([k]) => k);
-          
-        if (activeIds.length === 0) return ok([]);
-
-        // 3. Fetch user names (batch chunks of 30 if needed, simplified for <30 here, or just fetch all users in org)
+        // Порядок здесь обратный прежнему, и в этом всё дело.
+        //
+        // Раньше первым шагом читалась ВСЯ коллекция `gamification` — по всем
+        // организациям сразу, без фильтра и без лимита, с пометкой «these are
+        // small». Маленькой она быть перестала: при 70 открытиях таблицы
+        // лидеров за полсуток это давало десятки тысяч чтений и было главным
+        // потребителем суточной квоты Firestore, из-за которой 09.09.2026 лёг
+        // весь кабинет. Читались при этом и чужие арендаторы — только чтобы
+        // тут же отфильтроваться в памяти.
+        //
+        // Теперь сначала берём студентов организации (их круг всё равно нужен —
+        // из него имена, аватары и значки), а игровые профили дочитываем ТОЛЬКО
+        // по этим идентификаторам, одним batch-getAll. Стоимость запроса стала
+        // пропорциональна размеру организации, а не всей базы.
         const orgUsersSnap = await adminDb.collection('users')
            .where('activeOrgId', '==', orgId)
            .where('role', '==', 'student')
            .get();
-           
+
+        if (orgUsersSnap.empty) return ok([]);
+
+        // Единственная разница в ответе: если XP нет вообще ни у кого, раньше
+        // возвращался пустой список, а теперь — те же студенты с нулём. Так
+        // ровнее: студенты с нулевым XP и раньше попадали в таблицу, стоило
+        // хоть кому-то в базе набрать очки.
+        const gami = await getDocsByIds(COLLECTION, orgUsersSnap.docs.map(d => d.id));
+
         const leaderboard = orgUsersSnap.docs.map(d => {
            const u = d.data();
-           const g = gamiMap.get(d.id);
+           const g = gami[d.id];
            const xp = g?.orgXpBreakdown?.[orgId] || g?.xp || 0;
            return {
              uid: d.id,

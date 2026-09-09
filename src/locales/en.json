@@ -2424,6 +2424,7 @@
     "allCategories": "All categories",
     "noExpenses": "No expenses",
     "noExpensesHint": "No expenses found for the selected period. Change the period or add an expense.",
+    "noExpensesHintReadOnly": "No expenses found for the selected period. Change the period.",
     "fromRefund": "From a payment refund",
     "editExpenseTitle": "Edit expense",
     "newExpense": "New expense",

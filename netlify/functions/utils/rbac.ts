@@ -55,9 +55,17 @@ export const RESOURCE_ACTIONS: Record<string, RbacAction[]> = {
   results: ['read'],
   ai: ['read', 'write'],
   finances: ['read', 'write', 'delete'],
-  // Read-only gate for the high-level finance view (Обзор, расходы, прибыльность).
-  // Held separately from `finances` so a payments-only role can be CRUD without stats.
+  // Read-only gate for the high-level finance view (Обзор, прибыльность, движение
+  // средств). Held separately from `finances` so a payments-only role can be CRUD
+  // without stats. Сводные суммы — здесь; построчная лента расходов — в `expenses`.
   finance_overview: ['read'],
+  // Хозяйственные расходы (аренда, закупки, зарплата) — отдельно от `finances`,
+  // которое про кассу: приём оплат и возвраты. Кассир обязан вести оплаты, но
+  // тратить деньги академии и читать зарплатные строки пофамильно — не его роль,
+  // а раньше это давала та же галочка `finances`. Возврат под это право не
+  // подпадает: он привязан к счёту студента и остаётся кассовой операцией.
+  // См. isOperatingExpense в api-finance-transactions.ts.
+  expenses: ['read', 'write', 'delete'],
   payroll: ['read', 'write', 'delete'],
   certificates: ['read', 'write', 'delete'],
   branches: ['read', 'write', 'delete'],
@@ -124,9 +132,11 @@ function legacyManagerGrants(perms?: LegacyManagerPerms): RolePermission[] {
   const out: RolePermission[] = [];
   if (perms.finances) {
     out.push({ resource: 'finances', actions: [...allowedFor('finances')] });
-    // Legacy «finances» was full finance access — keep the high-level overview too,
-    // so enabling granular RBAC never silently strips revenue/profit from a manager.
+    // Legacy «finances» was full finance access — keep the high-level overview and
+    // the expense ledger too, so enabling granular RBAC never silently strips
+    // revenue/profit or the ability to book an expense from a manager who had both.
     out.push({ resource: 'finance_overview', actions: [...allowedFor('finance_overview')] });
+    out.push({ resource: 'expenses', actions: [...allowedFor('expenses')] });
   }
   if (perms.settings) out.push({ resource: 'settings', actions: [...allowedFor('settings')] });
   if (perms.managers) out.push({ resource: 'team', actions: [...allowedFor('team')] });

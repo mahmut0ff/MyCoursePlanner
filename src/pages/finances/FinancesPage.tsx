@@ -65,9 +65,15 @@ const TABS: { id: FinanceTab; labelKey: string; fallback: string; hintKey: strin
 // ?tab=income — перенаправляем их на «Долги», прежнее содержимое той вкладки.
 const LEGACY_TABS: Record<string, FinanceTab> = { income: 'debts' };
 
-// Вкладки, показывающие высокоуровневые цифры (доход, прибыль, расходы). Их
-// прячем от роли без `finance_overview`: она ведёт оплаты, но сводных сумм не видит.
-const OVERVIEW_TABS = new Set<FinanceTab>(['overview', 'expenses']);
+// Право, без которого вкладку не показываем. «Обзор» — это сводные цифры
+// (доход, прибыль, маржа) за `finance_overview`; «Расходы» — построчная лента
+// трат академии за отдельный `expenses`. Кассир не видит ни того, ни другого, но
+// это ДВА разных права: бухгалтеру можно отдать расходы, не открывая прибыль.
+// «Оплаты за месяц» и «Платежи» — операционка, их гейтит сам вход в раздел.
+const TAB_PERMISSION: Partial<Record<FinanceTab, string>> = {
+  overview: 'finance_overview',
+  expenses: 'expenses',
+};
 
 /**
  * Раздел финансов: четыре вкладки, по одной на вопрос, который задаёт директор.
@@ -86,14 +92,20 @@ const FinancesPage: React.FC = () => {
   const { activeBranch } = useBranch();
   const [searchParams, setSearchParams] = useSearchParams();
 
-  // Право на сводные цифры. Без него из набора вкладок выпадают «Обзор» и
-  // «Расходы», а дефолтной становится «Оплаты за месяц» — операционка кассира.
-  const canOverview = canRead('finance_overview');
   const visibleTabs = useMemo(
-    () => (canOverview ? TABS : TABS.filter(tab => !OVERVIEW_TABS.has(tab.id))),
-    [canOverview]
+    () => TABS.filter(tab => {
+      const required = TAB_PERMISSION[tab.id];
+      return !required || canRead(required);
+    }),
+    [canRead]
   );
-  const defaultTab: FinanceTab = canOverview ? 'overview' : 'debts';
+  // Дефолт — «Обзор», если он разрешён; иначе первая доступная вкладка, а не
+  // жёстко «Оплаты за месяц»: набор вкладок теперь зависит от двух прав, и
+  // фиксированный дефолт мог бы указывать на скрытую.
+  const defaultTab: FinanceTab = useMemo(
+    () => (visibleTabs.find(tab => tab.id === 'overview') ? 'overview' : (visibleTabs[0]?.id ?? 'debts')),
+    [visibleTabs]
+  );
 
   // Резолвим строго в разрешённый набор: закладка на ?tab=overview у кассира не
   // должна рисовать запрещённую вкладку — уводим на дефолтную.

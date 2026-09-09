@@ -677,7 +677,8 @@ describe('api-finance-transactions POST — groupId stamping on income', () => {
   });
 
   it('does not resolve a group for an expense row', async () => {
-    (verifyAuth as any).mockResolvedValue(staff(['finances:write']));
+    // Расход академии пишется по `expenses:write`, а не по `finances:write`.
+    (verifyAuth as any).mockResolvedValue(staff(['finances:write', 'expenses:write']));
     const { written, groupClauses } = wirePost([
       { id: 'g1', organizationId: 'org1', courseId: 'c1', studentIds: ['s1'] },
     ]);
@@ -830,7 +831,7 @@ describe('api-finance-transactions — дата операции и заморо
 
     // Расход в базу процентной оплаты не входит — лишнего чтения быть не должно.
     vi.clearAllMocks();
-    (verifyAuth as any).mockResolvedValue(staff(['finances:write']));
+    (verifyAuth as any).mockResolvedValue(staff(['finances:write', 'expenses:write']));
     const expense = wireCreate([approvedPeriod()]);
     const expRes = await post(income({ type: 'expense', date: dayShift(-10) }));
     expect(expRes.statusCode).toBe(200);
@@ -915,7 +916,7 @@ describe('api-finance-transactions — дата операции и заморо
     expect(descOnly.payrollClauses).toHaveLength(0);
 
     vi.clearAllMocks();
-    (verifyAuth as any).mockResolvedValue(staff(['finances:write']));
+    (verifyAuth as any).mockResolvedValue(staff(['finances:write', 'expenses:write']));
     const refund = wireUpdate(storedIncome({ type: 'expense' }), [approvedPeriod()]);
     expect((await put({ id: 'tx1', date: dayShift(-10) })).statusCode).toBe(200);
     expect(refund.payrollClauses).toHaveLength(0);
@@ -1045,8 +1046,9 @@ describe('api-finance-transactions GET — shared period parsing', () => {
     };
     (adminDb.collection as any).mockImplementation(() => q);
     // Transactions need finances:read; the cross-endpoint metrics check needs
-    // finance_overview:read — this block exercises both, so grant both.
-    (verifyAuth as any).mockResolvedValue(staff(['finances:read', 'finance_overview:read']));
+    // finance_overview:read; the expense row (t3) needs expenses:read — this block
+    // exercises all three, so grant all three.
+    (verifyAuth as any).mockResolvedValue(staff(['finances:read', 'finance_overview:read', 'expenses:read']));
   });
 
   const ids = (res: any) => JSON.parse(res.body).map((r: any) => r.id).sort();
@@ -1497,5 +1499,166 @@ describe('one overdue rule across debt-reminders and the metrics surface', () =>
     const byId = new Map(rows.map((r: any) => [r.id, r.status]));
     expect(byId.get('late')).toBe('overdue');
     expect(byId.get('dueToday')).toBe('pending');
+  });
+});
+
+/**
+ * Расходы академии — за собственным правом `expenses`, не за `finances`.
+ *
+ * `finances` — это КАССА: принять оплату, оформить возврат. Тратить деньги
+ * академии и читать зарплатные строки пофамильно эта галочка давать не должна,
+ * а до появления `expenses` давала: чтение расходов гейтил finance_overview, а
+ * запись — тот же finances:write, что и приём оплаты.
+ */
+describe('api-finance-transactions — расходы гейтятся правом expenses', () => {
+  const rows = [
+    { id: 'inc', organizationId: 'org1', type: 'income', amount: 100, categoryId: 'course_fee', date: orgDayKey() },
+    { id: 'rent', organizationId: 'org1', type: 'expense', amount: 200, categoryId: 'rent', date: orgDayKey() },
+    { id: 'salary', organizationId: 'org1', type: 'expense', amount: 300, categoryId: 'salary', date: orgDayKey() },
+    // Возврат по счёту — кассовая операция: остаётся видимой кассиру.
+    { id: 'refPlan', organizationId: 'org1', type: 'expense', amount: 40, categoryId: 'refund', paymentPlanId: 'p1', date: orgDayKey() },
+    // Возврат общего платежа: плана нет, распознаётся по категории.
+    { id: 'refBare', organizationId: 'org1', type: 'expense', amount: 50, categoryId: 'refund', date: orgDayKey() },
+  ];
+
+  const wireList = () => {
+    const q: any = {
+      where: vi.fn(() => q),
+      get: vi.fn().mockResolvedValue({ docs: rows.map(r => ({ id: r.id, data: () => r })), size: rows.length, empty: false }),
+    };
+    (adminDb.collection as any).mockImplementation(() => q);
+  };
+
+  /** Одна запись + перехват правки/удаления: PUT и DELETE ходят через .doc(). */
+  const wireOne = (existing: any) => {
+    const updates: any[] = [];
+    const deletes: string[] = [];
+    const docRef = {
+      id: 'tx1',
+      get: vi.fn(async () => ({ exists: true, id: 'tx1', data: () => existing })),
+      update: vi.fn(async (u: any) => { updates.push(u); }),
+      delete: vi.fn(async () => { deletes.push('tx1'); }),
+    };
+    const empty: any = { where: vi.fn(() => empty), get: vi.fn().mockResolvedValue({ empty: true, docs: [] }) };
+    (adminDb.collection as any).mockImplementation((name: string) => {
+      if (name === 'payrollPeriods') return empty;
+      return { doc: vi.fn(() => docRef) };
+    });
+    return { updates, deletes };
+  };
+
+  const expenseBody = (extra: any = {}) => ({
+    type: 'expense', amount: 500, date: orgDayKey(), categoryId: 'rent', ...extra,
+  });
+
+  /** POST-путь: одна новая запись + пустая коллекция зарплатных периодов. */
+  const wireCreateOne = () => {
+    const written: any[] = [];
+    const empty: any = { where: vi.fn(() => empty), get: vi.fn().mockResolvedValue({ empty: true, docs: [] }) };
+    (adminDb.collection as any).mockImplementation((name: string) => {
+      if (name === 'payrollPeriods') return empty;
+      return {
+        doc: vi.fn(() => ({
+          id: 'new',
+          get: vi.fn(async () => ({ exists: false })),
+          set: vi.fn(async (d: any) => { written.push(d); }),
+        })),
+      };
+    });
+    return written;
+  };
+
+  beforeEach(() => vi.clearAllMocks());
+
+  it('прячет хозяйственные расходы от кассира, но оставляет доходы и возвраты', async () => {
+    wireList();
+    (verifyAuth as any).mockResolvedValue(staff(['finances:read', 'finances:write', 'finance_overview:read']));
+    const res: any = await trxHandler(event('GET'), {} as any, () => {});
+    expect(res.statusCode).toBe(200);
+    // finance_overview больше не открывает ленту расходов — только сводные суммы.
+    expect(JSON.parse(res.body).map((r: any) => r.id).sort()).toEqual(['inc', 'refBare', 'refPlan']);
+  });
+
+  it('отдаёт аренду и зарплату держателю expenses:read', async () => {
+    wireList();
+    (verifyAuth as any).mockResolvedValue(staff(['finances:read', 'expenses:read']));
+    const res: any = await trxHandler(event('GET'), {} as any, () => {});
+    expect(JSON.parse(res.body).map((r: any) => r.id).sort()).toEqual(['inc', 'refBare', 'refPlan', 'rent', 'salary']);
+  });
+
+  it('403 на создание расхода кассиром — раньше это давала галочка «Финансы»', async () => {
+    const written = wireCreateOne();
+    (verifyAuth as any).mockResolvedValue(staff(['finances:read', 'finances:write', 'finances:delete']));
+    const res: any = await trxHandler(event('POST', {}, expenseBody()), {} as any, () => {});
+    expect(res.statusCode).toBe(403);
+    expect(written).toHaveLength(0);
+  });
+
+  it('возврат кассиру по-прежнему разрешён — это кассовая операция', async () => {
+    const written = wireCreateOne();
+    (verifyAuth as any).mockResolvedValue(staff(['finances:write']));
+    const res: any = await trxHandler(event('POST', {}, expenseBody({ categoryId: 'refund' })), {} as any, () => {});
+    expect(res.statusCode).toBe(200);
+    expect(written).toHaveLength(1);
+  });
+
+  it('пропускает расход держателю expenses:write без finances:write', async () => {
+    const written = wireCreateOne();
+    (verifyAuth as any).mockResolvedValue(staff(['finances:read', 'expenses:write']));
+    const res: any = await trxHandler(event('POST', {}, expenseBody()), {} as any, () => {});
+    expect(res.statusCode).toBe(200);
+    expect(written).toHaveLength(1);
+  });
+
+  it('403 на правку и удаление расхода без expenses — id строки не помогает', async () => {
+    const stored = {
+      type: 'expense', amount: 200, categoryId: 'rent', organizationId: 'org1',
+      branchId: null, paymentPlanId: null, date: orgDayKey(),
+    };
+
+    const put = wireOne(stored);
+    (verifyAuth as any).mockResolvedValue(staff(['finances:write', 'finances:delete']));
+    const putRes: any = await trxHandler(event('PUT', {}, { id: 'tx1', amount: 999 }), {} as any, () => {});
+    expect(putRes.statusCode).toBe(403);
+    expect(put.updates).toHaveLength(0);
+
+    vi.clearAllMocks();
+    const del = wireOne(stored);
+    (verifyAuth as any).mockResolvedValue(staff(['finances:write', 'finances:delete']));
+    const delRes: any = await trxHandler(event('DELETE', { id: 'tx1' }), {} as any, () => {});
+    expect(delRes.statusCode).toBe(403);
+    expect(del.deletes).toHaveLength(0);
+  });
+
+  it('пускает держателя expenses к правке и удалению расхода', async () => {
+    const stored = {
+      type: 'expense', amount: 200, categoryId: 'rent', organizationId: 'org1',
+      branchId: null, paymentPlanId: null, date: orgDayKey(),
+    };
+
+    const put = wireOne(stored);
+    (verifyAuth as any).mockResolvedValue(staff(['expenses:write', 'expenses:delete']));
+    expect((await trxHandler(event('PUT', {}, { id: 'tx1', amount: 999 }), {} as any, () => {}) as any).statusCode).toBe(200);
+    expect(put.updates).toHaveLength(1);
+
+    vi.clearAllMocks();
+    const del = wireOne(stored);
+    (verifyAuth as any).mockResolvedValue(staff(['expenses:write', 'expenses:delete']));
+    expect((await trxHandler(event('DELETE', { id: 'tx1' }), {} as any, () => {}) as any).statusCode).toBe(200);
+    expect(del.deletes).toEqual(['tx1']);
+  });
+
+  it('не даёт превратить возврат в хозяйственный расход сменой категории', async () => {
+    // Возврат без плана кассиру править можно, но переименование в «Аренду»
+    // создало бы расход, завести который он не вправе. Проверяется и то, чем
+    // строка станет, а не только то, чем она была.
+    const { updates } = wireOne({
+      type: 'expense', amount: 50, categoryId: 'refund', organizationId: 'org1',
+      branchId: null, paymentPlanId: null, date: orgDayKey(),
+    });
+    (verifyAuth as any).mockResolvedValue(staff(['finances:write']));
+    const res: any = await trxHandler(event('PUT', {}, { id: 'tx1', categoryId: 'rent' }), {} as any, () => {});
+    expect(res.statusCode).toBe(403);
+    expect(updates).toHaveLength(0);
   });
 });

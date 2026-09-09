@@ -109,3 +109,58 @@ describe('finance_overview — payments CRUD without the high-level view', () =>
     expect(resolvePermissionSet({ baseRole: 'admin' }).has('finance_overview:read')).toBe(true);
   });
 });
+
+/**
+ * `expenses` — расходы академии отдельно от кассы.
+ *
+ * Раньше галочка «Финансы» разрешала и приём оплат, и трату денег организации, а
+ * ленту расходов (включая зарплаты пофамильно) открывал finance_overview. Теперь
+ * это своё право: кассиру его не выдают, а бухгалтеру можно выдать, не открывая
+ * прибыль.
+ */
+describe('expenses — расходы академии отдельно от кассы', () => {
+  it('кассир с полными правами «Финансы» расходы не получает', () => {
+    const set = resolvePermissionSet({
+      baseRole: 'manager',
+      customRole: { name: 'Кассир', permissions: [{ resource: 'finances', actions: ['read', 'write', 'delete'] }] },
+    });
+    expect(set.has('finances:write')).toBe(true);
+    expect(set.has('expenses:read')).toBe(false);
+    expect(set.has('expenses:write')).toBe(false);
+    expect(set.has('expenses:delete')).toBe(false);
+  });
+
+  it('расходы можно выдать без прибыли — это разные права', () => {
+    const set = resolvePermissionSet({
+      baseRole: 'manager',
+      customRole: {
+        name: 'Бухгалтер',
+        permissions: [
+          { resource: 'finances', actions: ['read'] },
+          { resource: 'expenses', actions: ['read', 'write'] },
+        ],
+      },
+    });
+    expect(set.has('expenses:write')).toBe(true);
+    expect(set.has('expenses:delete')).toBe(false);
+    expect(set.has('finance_overview:read')).toBe(false);
+  });
+
+  it('менеджер со старой галочкой «финансы» расходы сохраняет', () => {
+    // Legacy-тумблер означал полный доступ к финансам, включая расходы, — переход
+    // на гранулярный RBAC не должен молча отнимать то, что уже работало.
+    const set = resolvePermissionSet({ baseRole: 'manager', legacyManagerPerms: { finances: true } });
+    expect(set.has('expenses:read')).toBe(true);
+    expect(set.has('expenses:write')).toBe(true);
+    expect(set.has('expenses:delete')).toBe(true);
+  });
+
+  it('менеджер по умолчанию (без галочки финансов) расходов не имеет', () => {
+    const set = resolvePermissionSet({ baseRole: 'manager' });
+    expect(set.has('expenses:read')).toBe(false);
+  });
+
+  it('полный доступ включает расходы автоматически', () => {
+    expect(resolvePermissionSet({ baseRole: 'admin' }).has('expenses:delete')).toBe(true);
+  });
+});

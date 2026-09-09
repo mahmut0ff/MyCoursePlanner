@@ -11,6 +11,7 @@ import {
   orgGetCourses,
 } from '../../../lib/api';
 import { useBranch } from '../../../contexts/BranchContext';
+import { usePermissions } from '../../../contexts/PermissionsContext';
 import EmptyState from '../../../components/ui/EmptyState';
 import { ListSkeleton, Skeleton } from '../../../components/ui/Skeleton';
 import ConfirmDialog from '../../../components/ui/ConfirmDialog';
@@ -75,6 +76,12 @@ const isPayrollManaged = (tx: any): boolean => !!tx?.payrollPeriodId || !!tx?.pa
 const ExpensesTab: React.FC<Props> = ({ range, onRangeChange, filters, onFiltersChange }) => {
   const { t } = useTranslation();
   const { activeBranchId } = useBranch();
+  // Вкладку открывает `expenses:read`, но читать и тратить — разные права:
+  // бухгалтеру-контролёру расходы показывают без кнопок. Сервер проверяет то же
+  // самое (api-finance-transactions), здесь — чтобы не предлагать заведомый отказ.
+  const { canWrite, canDelete } = usePermissions();
+  const canAddExpense = canWrite('expenses');
+  const canRemoveExpense = canDelete('expenses');
 
   const [transactions, setTransactions] = useState<any[]>([]);
   const [courses, setCourses] = useState<any[]>([]);
@@ -284,20 +291,22 @@ const ExpensesTab: React.FC<Props> = ({ range, onRangeChange, filters, onFilters
     // меню быть не должно: кнопка, которая гарантированно упадёт, хуже её
     // отсутствия. Подпись в строке объясняет, куда идти (см. рендер ниже).
     if (isPayrollManaged(tx)) return items;
-    if (!isRefund(tx)) {
+    if (!isRefund(tx) && canAddExpense) {
       items.push({
         label: t('finances.editExpense', 'Редактировать'),
         icon: Pencil,
         onSelect: () => openEdit(tx),
       });
     }
-    items.push({
-      label: t('finances.deleteExpense', 'Удалить'),
-      icon: Trash2,
-      danger: true,
-      separated: items.length > 0,
-      onSelect: () => setDeleteTarget(tx),
-    });
+    if (canRemoveExpense) {
+      items.push({
+        label: t('finances.deleteExpense', 'Удалить'),
+        icon: Trash2,
+        danger: true,
+        separated: items.length > 0,
+        onSelect: () => setDeleteTarget(tx),
+      });
+    }
     return items;
   };
 
@@ -376,13 +385,15 @@ const ExpensesTab: React.FC<Props> = ({ range, onRangeChange, filters, onFilters
               <Download className="w-3.5 h-3.5" />CSV
             </button>
           )}
-          <button
-            onClick={openCreate}
-            className="bg-rose-500 hover:bg-rose-600 text-white px-4 py-2.5 rounded-xl text-sm font-medium flex items-center gap-2 transition-all shrink-0"
-          >
-            <Plus className="w-4 h-4" />
-            {t('finances.addExpense', 'Добавить расход')}
-          </button>
+          {canAddExpense && (
+            <button
+              onClick={openCreate}
+              className="bg-rose-500 hover:bg-rose-600 text-white px-4 py-2.5 rounded-xl text-sm font-medium flex items-center gap-2 transition-all shrink-0"
+            >
+              <Plus className="w-4 h-4" />
+              {t('finances.addExpense', 'Добавить расход')}
+            </button>
+          )}
         </div>
       </div>
 
@@ -395,9 +406,13 @@ const ExpensesTab: React.FC<Props> = ({ range, onRangeChange, filters, onFilters
         <EmptyState
           icon={Receipt}
           title={t('finances.noExpenses', 'Расходов нет')}
-          description={t('finances.noExpensesHint', 'За выбранный период расходов не найдено. Смените период или добавьте расход.')}
-          actionLabel={t('finances.addExpense', 'Добавить расход')}
-          onAction={openCreate}
+          description={
+            canAddExpense
+              ? t('finances.noExpensesHint', 'За выбранный период расходов не найдено. Смените период или добавьте расход.')
+              : t('finances.noExpensesHintReadOnly', 'За выбранный период расходов не найдено. Смените период.')
+          }
+          actionLabel={canAddExpense ? t('finances.addExpense', 'Добавить расход') : undefined}
+          onAction={canAddExpense ? openCreate : undefined}
         />
       ) : (
         <>

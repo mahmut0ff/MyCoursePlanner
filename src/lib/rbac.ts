@@ -198,14 +198,25 @@ export const RESOURCE_GROUPS: ResourceGroup[] = [
         read: 'Просмотр оплат, счетов и платёжных планов',
         write: 'Приём оплат, возвраты, ведение начислений',
         delete: 'Удаление финансовых записей',
-        notes: 'Доступно на тарифе Профессиональный и выше. Операционка по оплатам — без сводных цифр дохода и прибыли (см. «Финансы: сводка и прибыль»).',
+        notes: 'Доступно на тарифе Профессиональный и выше. Операционка по оплатам — без сводных цифр дохода и прибыли (см. «Финансы: сводка и прибыль») и без расходов академии (см. «Расходы»).',
       } },
       // Отдельный ресурс поверх `finances`: гейтит ТОЛЬКО высокоуровневые цифры —
-      // вкладку «Обзор», расходы, движение средств и прибыльность курсов. Кассир
+      // вкладку «Обзор», движение средств и прибыльность курсов. Кассир
       // с `finances` (rwd) без этого права ведёт оплаты, но не видит выручку/прибыль.
       { id: 'finance_overview', label: 'Финансы: сводка и прибыль', actions: ['read'], help: {
-        read: 'Обзор: выручка, чистая прибыль, маржа, движение средств, расходы и прибыльность курсов',
-        notes: 'Без него пользователь ведёт оплаты, но не видит суммарные доход/прибыль, итоги кассы и расходы. Доступно на тарифе Профессиональный и выше.',
+        read: 'Обзор: выручка, чистая прибыль, маржа, движение средств и прибыльность курсов',
+        notes: 'Без него пользователь ведёт оплаты, но не видит суммарные доход/прибыль и итоги кассы. Построчная лента расходов — отдельное право «Расходы». Доступно на тарифе Профессиональный и выше.',
+      } },
+      // Хозяйственные расходы — свой ресурс, а не действие внутри `finances`.
+      // `finances` — это КАССА (принять оплату, оформить возврат), и раньше та же
+      // галочка позволяла тратить деньги академии и читать зарплатные строки
+      // пофамильно. Возвраты сюда не попадают: они привязаны к счёту студента и
+      // остаются кассовой операцией — иначе кассир не смог бы закрыть возврат.
+      { id: 'expenses', label: 'Расходы', help: {
+        read: 'Вкладка «Расходы»: аренда, закупки, реклама и выплаты зарплаты — построчно',
+        write: 'Заводить и править расходы академии',
+        delete: 'Удалять расходы',
+        notes: 'Работает внутри раздела финансов: чтобы открыть его, нужен ещё просмотр в «Финансах». Возврат студенту сюда не относится — его оформляет касса по правам «Финансы». Строки, созданные выплатой зарплаты, правит только раздел «Зарплата».',
       } },
       { id: 'payroll', label: 'Зарплата', help: {
         read: 'Просмотр ставок преподавателей, расчёта зарплаты за месяц и истории выплат',
@@ -335,9 +346,11 @@ function legacyManagerGrants(perms?: LegacyManagerPerms): RolePermission[] {
   if (perms.finances) {
     out.push({ resource: 'finances', actions: [...allowedFor('finances')] });
     // Legacy «finances» was full finance access, sweeping cards included, so it
-    // must keep the high-level overview — otherwise turning on granular RBAC would
-    // silently strip revenue/profit from a manager who already had it.
+    // must keep the high-level overview and the expense ledger — otherwise turning
+    // on granular RBAC would silently strip revenue/profit (or the ability to book
+    // an expense) from a manager who already had both.
     out.push({ resource: 'finance_overview', actions: [...allowedFor('finance_overview')] });
+    out.push({ resource: 'expenses', actions: [...allowedFor('expenses')] });
   }
   if (perms.settings) out.push({ resource: 'settings', actions: [...allowedFor('settings')] });
   if (perms.managers) out.push({ resource: 'team', actions: [...allowedFor('team')] });

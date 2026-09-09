@@ -163,6 +163,33 @@ function affectsPayrollBase(type: unknown, paymentPlanId: unknown): boolean {
   return type === 'expense' && Boolean(paymentPlanId);
 }
 
+/**
+ * Хозяйственный расход — тот, что гейтится правом `expenses`, а не `finances`.
+ *
+ * В коллекции лежат ДВА разных по смыслу расхода. Первый — деньги академии:
+ * аренда, закупки, реклама и выплаты зарплаты (пофамильно, с суммами). Второй —
+ * возврат студенту: он привязан к его счёту, снимает долг и обязан быть виден в
+ * истории оплат, иначе её итог «оплачено за вычетом возвратов» вычитает то,
+ * чего на экране нет. Возврат оформляет касса, поэтому он остаётся за `finances`.
+ *
+ * Возврат распознаём по ДВУМ признакам: связь со счётом есть не всегда (вернуть
+ * можно и общий платёж без плана — см. RefundModal), поэтому категории 'refund'
+ * достаточно самой по себе.
+ */
+function isOperatingExpense(type: unknown, categoryId: unknown, paymentPlanId: unknown): boolean {
+  if (type !== 'expense') return false;
+  return categoryId !== 'refund' && !paymentPlanId;
+}
+
+/**
+ * Какое право нужно на запись этой операции: расход академии — `expenses`,
+ * всё остальное (приход, возврат) — `finances`. Одна функция на POST/PUT/DELETE,
+ * чтобы «создать можно, удалить нельзя» не разъехалось между глаголами.
+ */
+function writeResourceFor(row: { type?: unknown; categoryId?: unknown; paymentPlanId?: unknown }): 'expenses' | 'finances' {
+  return isOperatingExpense(row.type, row.categoryId, row.paymentPlanId) ? 'expenses' : 'finances';
+}
+
 function frozenPayrollError(hit: FrozenPeriodHit) {
   const verb = hit.state === 'paid' ? 'выплачена' : 'утверждена';
   return jsonResponse(409, {
@@ -213,21 +240,23 @@ const handler: Handler = async (event: HandlerEvent) => {
       // Memory filter
       results = results.filter(r => recordInBranchScope(r.branchId, branchFilter));
 
-      // ── Расходы — это сводная сторона финансов, и она за finance_overview ──
+      // ── Расходы академии — за отдельным правом `expenses` ──
       // Право `finances` (rwd) — про ОПЕРАЦИИ КАССЫ: принять оплату, оформить
-      // возврат. «Кассир» — это ровно такая роль без finance_overview, и от него
-      // экраны «Обзор» и «Расходы» скрыты. Но лента возвращала всё подряд, и
-      // достаточно было запросить её без параметров (или с ?type=expense), чтобы
-      // получить в том числе строки категории 'salary' — пофамильно, с суммами.
-      // Экранного гейта без серверного не бывает.
+      // возврат. «Кассир» — это ровно такая роль, и от него вкладка «Расходы»
+      // скрыта. Но лента возвращала всё подряд, и достаточно было запросить её
+      // без параметров (или с ?type=expense), чтобы получить в том числе строки
+      // категории 'salary' — пофамильно, с суммами. Экранного гейта без
+      // серверного не бывает.
       //
-      // Доходы кассиру нужны по работе и остаются. ВОЗВРАТЫ — тоже: их оформляет
-      // он сам, они привязаны к счёту и обязаны быть видны в истории оплат,
-      // иначе её итог «оплачено за вычетом возвратов» будет вычитать то, чего на
-      // экране нет. Скрываем именно хозяйственные расходы — аренду, закупки и,
-      // главное, зарплаты.
-      if (!can(user, 'finance_overview', 'read')) {
-        results = results.filter(r => r.type !== 'expense' || r.categoryId === 'refund' || !!r.paymentPlanId);
+      // Доходы кассиру нужны по работе и остаются, возвраты — тоже (см.
+      // isOperatingExpense). Скрываем именно хозяйственные расходы.
+      //
+      // Раньше здесь стоял finance_overview: расходы считались частью сводки.
+      // Но сводка — это СУММЫ (их по-прежнему отдаёт api-finance-metrics за
+      // finance_overview), а лента расходов — поимённые строки и право их
+      // заводить; для этого и появился `expenses`.
+      if (!can(user, 'expenses', 'read')) {
+        results = results.filter(r => !isOperatingExpense(r.type, r.categoryId, r.paymentPlanId));
       }
 
       // ── Окно периода ──
@@ -289,7 +318,12 @@ const handler: Handler = async (event: HandlerEvent) => {
 
     // POST Transaction
     if (event.httpMethod === 'POST') {
-      if (!can(user, 'finances', 'write')) return forbidden('Недостаточно прав для этого действия');
+      // Дешёвый отказ до разбора тела: писать в эту коллекцию вправе либо касса,
+      // либо расходы. Какое из двух прав нужно ИМЕННО этой операции, знает только
+      // тело запроса — точную проверку делаем ниже, разобрав его.
+      if (!can(user, 'finances', 'write') && !can(user, 'expenses', 'write')) {
+        return forbidden('Недостаточно прав для этого действия');
+      }
 
       const body = JSON.parse(event.body || '{}');
       if (!body.type || body.amount === undefined || !body.date || !body.categoryId) {
@@ -297,6 +331,18 @@ const handler: Handler = async (event: HandlerEvent) => {
       }
       if (body.type !== 'income' && body.type !== 'expense') {
         return badRequest("type должен быть 'income' или 'expense'");
+      }
+
+      // Расход академии (аренда, закупки, зарплата) — за `expenses`; приход и
+      // возврат — за `finances`. Раньше обе половины открывала одна галочка
+      // `finances:write`, и кассир, которому расходы даже не показывали, мог
+      // завести их запросом.
+      if (!can(user, writeResourceFor(body), 'write')) {
+        return forbidden(
+          isOperatingExpense(body.type, body.categoryId, body.paymentPlanId)
+            ? 'Недостаточно прав для ведения расходов'
+            : 'Недостаточно прав для этого действия'
+        );
       }
       // A string amount used to sail through and then string-concatenate into the
       // plan's paidAmount ('0' + '500' = '0500'), corrupting the debt silently.
@@ -588,7 +634,12 @@ const handler: Handler = async (event: HandlerEvent) => {
 
     // PUT — Update Transaction
     if (event.httpMethod === 'PUT') {
-      if (!can(user, 'finances', 'write')) return forbidden('Недостаточно прав для этого действия');
+      // Как и в POST: широкий предварительный отказ, а точное право выбирается по
+      // СОХРАНЁННОЙ записи — что это, расход академии или кассовая операция,
+      // решает она, а не тело запроса.
+      if (!can(user, 'finances', 'write') && !can(user, 'expenses', 'write')) {
+        return forbidden('Недостаточно прав для этого действия');
+      }
 
       const body = JSON.parse(event.body || '{}');
       if (!body.id) return badRequest('id required');
@@ -600,6 +651,25 @@ const handler: Handler = async (event: HandlerEvent) => {
       const existing = doc.data()!;
       const orgFilter = getOrgFilter(user);
       if (existing.organizationId !== orgFilter) return forbidden();
+
+      // Право на правку — по природе самой записи. Существование проверяем ДО
+      // него намеренно: 404 на чужой id и без того возвращается всем, кто вообще
+      // допущен к коллекции, а вот «есть право или нет» иначе пришлось бы
+      // угадывать по несуществующей строке.
+      //
+      // Проверяем ОБА состояния — до и после правки. PUT умеет менять категорию,
+      // а вместе с ней и природу строки: возврат без плана (категория 'refund')
+      // одним переименованием в «Аренду» становится хозяйственным расходом. Одна
+      // проверка «по существующей» пропустила бы этот переход, вторая «по новой» —
+      // обратный. Нужны обе.
+      const nextShape = {
+        type: existing.type,
+        categoryId: body.categoryId !== undefined ? body.categoryId : existing.categoryId,
+        paymentPlanId: existing.paymentPlanId,
+      };
+      if (!can(user, writeResourceFor(existing), 'write') || !can(user, writeResourceFor(nextShape), 'write')) {
+        return forbidden('Недостаточно прав для ведения расходов');
+      }
 
       // Организация — не единственная граница. Без этой проверки сотрудник,
       // ограниченный филиалом А, правил деньги филиала Б, просто зная id операции.
@@ -718,7 +788,9 @@ const handler: Handler = async (event: HandlerEvent) => {
 
     // DELETE — Remove Transaction
     if (event.httpMethod === 'DELETE') {
-      if (!can(user, 'finances', 'delete')) return forbidden('Недостаточно прав для этого действия');
+      if (!can(user, 'finances', 'delete') && !can(user, 'expenses', 'delete')) {
+        return forbidden('Недостаточно прав для этого действия');
+      }
 
       const txId = params.id;
       if (!txId) return badRequest('id required');
@@ -730,6 +802,11 @@ const handler: Handler = async (event: HandlerEvent) => {
       const existing = doc.data()!;
       const orgFilter = getOrgFilter(user);
       if (existing.organizationId !== orgFilter) return forbidden();
+
+      // Удаление расхода академии — тоже действие над расходами, а не над кассой.
+      if (!can(user, writeResourceFor(existing), 'delete')) {
+        return forbidden('Недостаточно прав для ведения расходов');
+      }
 
       // То же, что и в PUT: удаление чужой по филиалу операции — это тоже правка
       // чужих денег, причём необратимая.

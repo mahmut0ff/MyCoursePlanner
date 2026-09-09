@@ -3,6 +3,7 @@
  * Multi-tenant aware: all requests include Firebase ID token.
  */
 import { auth } from './firebase';
+import i18next from 'i18next';
 import type {
   MessageAttachment, SupportMessage, SupportThreadStatus, SupportUserInfo,
   CompensationRule, PayComponent, PayrollPeriod, PayrollLine, PayrollPayout,
@@ -120,7 +121,22 @@ async function apiRequest<T = any>(
 
   if (!res.ok) {
     const errorData = await res.json().catch(() => ({ error: res.statusText }));
-    const err = new Error(errorData.error || `API error: ${res.status}`);
+    // `backend_unavailable` (503) — это «легла наша база», а не «вы не
+    // авторизованы»: см. unauthorized() в functions/utils/auth.ts. Сообщение с
+    // сервера английское и для показа не годится, а единой точки отрисовки
+    // ошибок в приложении нет — десятки `toast.error(e.message)` по страницам.
+    // Поэтому локализуем у истока: фразу увидят все, кто просто печатает
+    // `e.message`, и ни одну страницу править не пришлось.
+    //
+    // Берём сам `i18next`, а НЕ наш `src/i18n.ts`: тот при импорте тянет
+    // `initReactI18next`, и любой тест с частичным моком `react-i18next`
+    // разваливается, стоит ему хоть транзитивно задеть этот модуль. Инстанс
+    // один и тот же — `src/i18n.ts` инициализирует именно этот синглтон.
+    const err = new Error(
+      errorData.code === 'backend_unavailable'
+        ? i18next.t('common.backendUnavailable')
+        : errorData.error || `API error: ${res.status}`,
+    );
     // Carry the full parsed error body so callers can read structured fields off a
     // failed response — e.g. MonthTab reads `linkedTransactions` off the 409 that
     // guards deleting a plan with linked payments (`e.linkedTransactions`). The

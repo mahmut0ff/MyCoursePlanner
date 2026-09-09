@@ -151,6 +151,61 @@ export async function resolveOrgGrants(user: AuthUser, orgId: string): Promise<O
  * Verify the Firebase ID token from the Authorization header.
  * Resolves role from membership (preferred) then falls back to flat user.role.
  */
+// ─────────────────────────────────────────────────────────────────────────────
+// Почему verifyAuth вернула null
+//
+// Раньше любая осечка внутри неё — просроченный токен и упавшая база одинаково —
+// становилась 401 «Unauthorized». 09.09.2026 это стоило половины дня: кончилась
+// суточная квота Firestore, чтения здесь начали бросать RESOURCE_EXHAUSTED, и
+// весь кабинет у всех пользователей отвечал «вы не авторизованы». Диагностику
+// начали с прав и RBAC — ровно потому, что так выглядел симптом.
+//
+// Причина записывается на сам объект события: он свой у каждого вызова функции,
+// так что параллельные запросы не подсмотрят чужую. Модульная переменная сегодня
+// сработала бы (Lambda держит один запрос на контейнер), но переезд на рантайм с
+// конкурентными вызовами сломал бы её молча и неправильно.
+// ─────────────────────────────────────────────────────────────────────────────
+
+export type AuthFailure = 'credentials' | 'infrastructure';
+
+const authFailures = new WeakMap<HandlerEvent, AuthFailure>();
+
+/**
+ * Ошибки Firebase Auth, означающие «с предъявленным токеном что-то не так».
+ * Список закрытый и намеренно короткий — см. classifyAuthFailure.
+ */
+const CREDENTIAL_AUTH_CODES = new Set([
+  'auth/id-token-expired',
+  'auth/id-token-revoked',
+  'auth/invalid-id-token',
+  'auth/session-cookie-expired',
+  'auth/session-cookie-revoked',
+  'auth/invalid-session-cookie',
+  'auth/argument-error',
+  'auth/user-disabled',
+  'auth/user-not-found',
+]);
+
+/**
+ * «Токен не годится» или «инфраструктура легла»?
+ *
+ * Умолчание — инфраструктура, и это осознанно. Способов предъявить негодный
+ * токен конечное число, и все они перечислены выше; способов сломаться у
+ * Firestore, сети и сервисного аккаунта столько, что перечислять их — значит
+ * рано или поздно проглядеть очередной и снова обвинить пользователя в том,
+ * что лежит у нас.
+ *
+ * Числовые коды — gRPC-статусы Firestore: 8 RESOURCE_EXHAUSTED (кончилась
+ * квота), 14 UNAVAILABLE, 4 DEADLINE_EXCEEDED, 13 INTERNAL. Сюда же 7
+ * PERMISSION_DENIED и 16 UNAUTHENTICATED: они про НАШ сервисный аккаунт, а не
+ * про токен пользователя, — то есть тоже наша беда, а не его.
+ */
+export function classifyAuthFailure(e: unknown): AuthFailure {
+  const code = (e as { code?: unknown } | null | undefined)?.code;
+  if (typeof code === 'string' && CREDENTIAL_AUTH_CODES.has(code)) return 'credentials';
+  return 'infrastructure';
+}
+
 export async function verifyAuth(event: HandlerEvent): Promise<AuthUser | null> {
   try {
     const authHeader = event.headers['authorization'] || event.headers['Authorization'];
@@ -247,7 +302,12 @@ export async function verifyAuth(event: HandlerEvent): Promise<AuthUser | null> 
       rbac,
     };
   } catch (e) {
-    console.error('Auth verification failed:', e);
+    const failure = classifyAuthFailure(e);
+    authFailures.set(event, failure);
+    // Префикс сохранён дословно: по нему ищут в логах при разборе инцидентов.
+    // Классификация добавлена рядом, чтобы из одной строки было видно, чья это
+    // беда — клиента или наша.
+    console.error(`Auth verification failed [${failure}]:`, e);
     return null;
   }
 }
@@ -365,7 +425,18 @@ export const jsonResponse = (statusCode: number, body: any, requestOrigin?: stri
   body: JSON.stringify(body),
 });
 
-export const unauthorized = () => jsonResponse(401, { error: 'Unauthorized' });
+/**
+ * 401 по умолчанию — но если verifyAuth споткнулась о нашу же инфраструктуру
+ * (квота Firestore, недоступная база, сломанный сервисный аккаунт), честнее
+ * ответить 503: токен пользователя тут ни при чём, и «перезайдите» его не
+ * спасёт. Передавайте `event` — без него поведение прежнее.
+ */
+export const unauthorized = (event?: HandlerEvent) => {
+  if (event && authFailures.get(event) === 'infrastructure') {
+    return jsonResponse(503, { error: 'Backend temporarily unavailable', code: 'backend_unavailable' });
+  }
+  return jsonResponse(401, { error: 'Unauthorized' });
+};
 export const forbidden = (msg = 'Forbidden — insufficient role') => jsonResponse(403, { error: msg });
 export const badRequest = (msg: string) => jsonResponse(400, { error: msg });
 export const notFound = (msg = 'Not found') => jsonResponse(404, { error: msg });

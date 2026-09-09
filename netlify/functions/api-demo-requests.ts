@@ -89,7 +89,7 @@ export const handler: Handler = async (event: HandlerEvent) => {
 
   // ─── PROTECTED: super-admin operations ───
   const user = await verifyAuth(event);
-  if (!user) return unauthorized();
+  if (!user) return unauthorized(event);
   if (!isSuperAdmin(user)) return forbidden();
 
   if (event.httpMethod === 'GET') {

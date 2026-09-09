@@ -53,7 +53,7 @@ const handler: Handler = async (event: HandlerEvent) => {
     // --- action: getUsage (current month AI consumption) ---
     if (action === 'getUsage') {
       const user = await verifyAuth(event);
-      if (!user) return unauthorized();
+      if (!user) return unauthorized(event);
       const organizationId = event.queryStringParameters?.organizationId;
       if (!organizationId) return badRequest('organizationId is required');
       if (user.organizationId !== organizationId && user.role !== 'super_admin') return forbidden();
@@ -68,7 +68,7 @@ const handler: Handler = async (event: HandlerEvent) => {
     // --- action: updateSettings ---
     if (action === 'updateSettings') {
       const user = await verifyAuth(event);
-      if (!user) return unauthorized();
+      if (!user) return unauthorized(event);
       
       const body = JSON.parse(event.body || '{}');
       const { organizationId, ...updates } = body;

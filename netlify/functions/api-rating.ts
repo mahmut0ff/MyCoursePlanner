@@ -69,7 +69,7 @@ export const handler: Handler = async (event: HandlerEvent) => {
   if (event.httpMethod !== 'GET') return jsonResponse(405, { error: 'Method not allowed' });
 
   const user = await verifyAuth(event);
-  if (!user) return unauthorized();
+  if (!user) return unauthorized(event);
   const orgId = user.organizationId;
   if (!orgId) return forbidden();
 

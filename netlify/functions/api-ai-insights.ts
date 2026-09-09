@@ -258,7 +258,7 @@ export const handler: Handler = async (event: HandlerEvent) => {
   if (event.httpMethod !== 'POST') return jsonResponse(405, { error: 'Method not allowed' });
 
   const user = await verifyAuth(event);
-  if (!user) return unauthorized();
+  if (!user) return unauthorized(event);
   if (!hasRole(user, 'admin', 'manager', 'super_admin')) return forbidden('Only owners and managers can use AI insights');
   if (!aiAllowed(user)) return forbidden('AI is not available on your plan');
   if (!user.organizationId) return badRequest('No organization context');

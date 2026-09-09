@@ -135,7 +135,7 @@ const handler: Handler = async (event: HandlerEvent) => {
   // ═══ AUTHENTICATED ENDPOINTS ═══
 
   const user = await verifyAuth(event);
-  if (!user) return unauthorized();
+  if (!user) return unauthorized(event);
 
   // GET
   if (event.httpMethod === 'GET') {

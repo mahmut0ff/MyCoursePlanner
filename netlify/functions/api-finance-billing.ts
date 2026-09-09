@@ -50,7 +50,7 @@ const handler: Handler = async (event: HandlerEvent) => {
   if (event.httpMethod === 'OPTIONS') return jsonResponse(204, '');
 
   const user = await verifyAuth(event);
-  if (!user) return unauthorized();
+  if (!user) return unauthorized(event);
 
   if (event.httpMethod !== 'POST') return badRequest('Only POST is supported');
   if (!can(user, 'finances', 'write')) return forbidden('Недостаточно прав для этого действия');

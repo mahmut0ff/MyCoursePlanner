@@ -12,7 +12,7 @@ const handler: Handler = async (event: HandlerEvent) => {
   if (event.httpMethod === 'OPTIONS') return jsonResponse(204, '');
 
   const user = await verifyAuth(event);
-  if (!user) return unauthorized();
+  if (!user) return unauthorized(event);
 
   const params = event.queryStringParameters || {};
   const action = params.action || '';

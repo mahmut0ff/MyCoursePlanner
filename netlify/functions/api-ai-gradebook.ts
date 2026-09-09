@@ -9,7 +9,7 @@ const handler: Handler = async (event: HandlerEvent) => {
   if (event.httpMethod === 'OPTIONS') return jsonResponse(204, '');
 
   const user = await verifyAuth(event);
-  if (!user) return unauthorized();
+  if (!user) return unauthorized(event);
   if (!isStaff(user) && user.role !== 'teacher') return forbidden('Only staff and teachers can use AI grade dictation');
 
   // Rate limit: 10 AI requests per minute per user

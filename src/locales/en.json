@@ -930,6 +930,7 @@
     "logout": "Log out",
     "copy": "Copy",
     "error": "An error occurred",
+    "backendUnavailable": "The database is temporarily unavailable. This isn't a problem with your access — please try again in a few minutes.",
     "email": "Email",
     "optional": "optional",
     "notFound": "Not found",

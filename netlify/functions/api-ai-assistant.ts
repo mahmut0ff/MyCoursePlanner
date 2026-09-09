@@ -1380,7 +1380,7 @@ const handler: Handler = async (event: HandlerEvent) => {
 
   try {
     const user = await verifyAuth(event);
-    if (!user) return unauthorized();
+    if (!user) return unauthorized(event);
     // Gated on the `ai` grant, not on being staff. `isStaff` includes teachers, so
     // the previous check let every teacher drive the copilot even though nothing in
     // the product grants them it — and hiding the button client-side alone would

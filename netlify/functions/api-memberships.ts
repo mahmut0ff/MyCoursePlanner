@@ -187,7 +187,7 @@ const handler: Handler = async (event: HandlerEvent) => {
 
   // All other actions require auth
   const user = await verifyAuth(event);
-  if (!user) return unauthorized();
+  if (!user) return unauthorized(event);
 
   try {
     // ═══ GET: My memberships ═══

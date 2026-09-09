@@ -14,7 +14,7 @@ const handler: Handler = async (event: HandlerEvent) => {
   if (event.httpMethod !== 'POST') return jsonResponse(405, { error: 'POST only' });
 
   const user = await verifyAuth(event);
-  if (!user) return unauthorized();
+  if (!user) return unauthorized(event);
   if (!isSuperAdmin(user)) return forbidden();
 
   const params = event.queryStringParameters || {};

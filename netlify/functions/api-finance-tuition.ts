@@ -134,7 +134,7 @@ const handler: Handler = async (event: HandlerEvent) => {
   if (event.httpMethod === 'OPTIONS') return jsonResponse(204, '');
 
   const user = await verifyAuth(event);
-  if (!user) return unauthorized();
+  if (!user) return unauthorized(event);
 
   const orgId = getOrgFilter(user);
   if (!orgId) return badRequest('Organization context required');

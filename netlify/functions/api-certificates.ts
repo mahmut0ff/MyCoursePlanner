@@ -28,7 +28,7 @@ const handler: Handler = async (event: HandlerEvent) => {
     // List all certificates for a user (cross-org)
     if (params.action === 'myCertificates') {
       const user = await verifyAuth(event);
-      if (!user) return unauthorized();
+      if (!user) return unauthorized(event);
       const uid = params.studentId || user.uid;
       const snap = await adminDb.collection(COLLECTION)
         .where('studentId', '==', uid)
@@ -46,7 +46,7 @@ const handler: Handler = async (event: HandlerEvent) => {
   // POST — generate certificate (auth required)
   if (event.httpMethod === 'POST') {
     const user = await verifyAuth(event);
-    if (!user) return unauthorized();
+    if (!user) return unauthorized(event);
 
     const body = JSON.parse(event.body || '{}');
     if (!body.attemptId) return badRequest('attemptId required');

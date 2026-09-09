@@ -22,7 +22,7 @@ export const handler: Handler = async (event: HandlerEvent) => {
   if (event.httpMethod !== 'POST') return jsonResponse(405, { error: 'Method not allowed' });
 
   const user = await verifyAuth(event);
-  if (!user) return unauthorized();
+  if (!user) return unauthorized(event);
   if (!aiAllowed(user)) return forbidden('AI недоступен на вашем тарифе');
   if (!hasGeminiKey()) return jsonResponse(500, { error: 'GEMINI_API_KEY is not configured on the server.' });
 

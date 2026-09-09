@@ -1,5 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 import type { AuthUser, ManagerPermissions } from '../utils/auth';
+import type { HandlerEvent } from '@netlify/functions';
 
 // Mock firebase-admin to prevent credential initialization in tests
 vi.mock('../utils/firebase-admin', () => ({
@@ -19,8 +20,11 @@ import {
   resolveBranchFilter,
   getMembershipData,
   resolveOrgRole,
+  classifyAuthFailure,
+  verifyAuth,
+  unauthorized,
 } from '../utils/auth';
-import { adminDb } from '../utils/firebase-admin';
+import { adminDb, adminAuth } from '../utils/firebase-admin';
 
 // ── Helpers ──────────────────────────────────────────────────────
 
@@ -333,5 +337,95 @@ describe('resolveOrgRole', () => {
   it('does not resolve a role from an inactive org-side doc', async () => {
     mockMembershipDb({ userSide: null, orgSide: { role: 'manager', status: 'removed' } });
     expect(await resolveOrgRole('u1', 'org1')).toEqual(NULL_RESULT);
+  });
+});
+
+// ═════════════════════════════════════════════════════════════════
+// Отказ авторизации: чья вина — клиента или наша
+// ═════════════════════════════════════════════════════════════════
+
+const bearerEvent = () =>
+  ({ headers: { authorization: 'Bearer any-token' } }) as unknown as HandlerEvent;
+
+/** Ошибка в том виде, в каком её бросает Firebase Admin / gRPC-клиент Firestore. */
+const failWith = (props: Record<string, unknown>) =>
+  Object.assign(new Error('boom'), props);
+
+describe('classifyAuthFailure', () => {
+  it('негодный токен — вина клиента', () => {
+    expect(classifyAuthFailure(failWith({ code: 'auth/id-token-expired' }))).toBe('credentials');
+    expect(classifyAuthFailure(failWith({ code: 'auth/id-token-revoked' }))).toBe('credentials');
+    expect(classifyAuthFailure(failWith({ code: 'auth/argument-error' }))).toBe('credentials');
+  });
+
+  it('исчерпанная квота Firestore — наша инфраструктура, а не вина клиента', () => {
+    // Ровно то, что положило боевой контур 09.09.2026: gRPC 8 RESOURCE_EXHAUSTED.
+    expect(classifyAuthFailure(failWith({ code: 8 }))).toBe('infrastructure');
+  });
+
+  it('прочие сбои Firestore — тоже наши', () => {
+    expect(classifyAuthFailure(failWith({ code: 14 }))).toBe('infrastructure'); // UNAVAILABLE
+    expect(classifyAuthFailure(failWith({ code: 4 }))).toBe('infrastructure');  // DEADLINE_EXCEEDED
+    expect(classifyAuthFailure(failWith({ code: 16 }))).toBe('infrastructure'); // наш сервисный аккаунт
+  });
+
+  it('сетевые и внутренние сбои Firebase Auth не считаются виной токена', () => {
+    expect(classifyAuthFailure(failWith({ code: 'auth/network-request-failed' }))).toBe('infrastructure');
+    expect(classifyAuthFailure(failWith({ code: 'auth/internal-error' }))).toBe('infrastructure');
+  });
+
+  it('неизвестная ошибка трактуется в пользу клиента', () => {
+    // Умолчание — «сломались мы». Иначе любой новый способ упасть снова обвинит
+    // пользователя в том, что лежит на нашей стороне.
+    expect(classifyAuthFailure(new Error('нечто новое'))).toBe('infrastructure');
+    expect(classifyAuthFailure(null)).toBe('infrastructure');
+  });
+});
+
+describe('unauthorized', () => {
+  it('без события отвечает 401, как раньше', () => {
+    const res = unauthorized();
+    expect(res.statusCode).toBe(401);
+    expect(JSON.parse(res.body).error).toBe('Unauthorized');
+  });
+
+  it('401, если событие вообще не проходило через verifyAuth', () => {
+    expect(unauthorized(bearerEvent()).statusCode).toBe(401);
+  });
+
+  it('401, когда verifyAuth споткнулась о просроченный токен', async () => {
+    const errSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const event = bearerEvent();
+    (adminAuth as any).verifyIdToken = vi
+      .fn()
+      .mockRejectedValue(failWith({ code: 'auth/id-token-expired' }));
+
+    expect(await verifyAuth(event)).toBeNull();
+    expect(unauthorized(event).statusCode).toBe(401);
+    errSpy.mockRestore();
+  });
+
+  it('503 с кодом backend_unavailable, когда кончилась квота Firestore', async () => {
+    const errSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const event = bearerEvent();
+    (adminAuth as any).verifyIdToken = vi.fn().mockRejectedValue(failWith({ code: 8 }));
+
+    expect(await verifyAuth(event)).toBeNull();
+    const res = unauthorized(event);
+    expect(res.statusCode).toBe(503);
+    expect(JSON.parse(res.body).code).toBe('backend_unavailable');
+    errSpy.mockRestore();
+  });
+
+  it('причина живёт на своём событии и не протекает в соседний запрос', async () => {
+    const errSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const broken = bearerEvent();
+    (adminAuth as any).verifyIdToken = vi.fn().mockRejectedValue(failWith({ code: 8 }));
+    await verifyAuth(broken);
+
+    // Параллельный запрос без своей осечки обязан получить прежний 401.
+    expect(unauthorized(broken).statusCode).toBe(503);
+    expect(unauthorized(bearerEvent()).statusCode).toBe(401);
+    errSpy.mockRestore();
   });
 });

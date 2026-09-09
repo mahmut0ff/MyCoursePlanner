@@ -2210,6 +2210,7 @@ const handler: Handler = async (event: HandlerEvent) => {
       // отбрасываются — расписание в карточке группы оказывалось пустым.
       // Собственный скоуп пользователя при этом сохраняется.
       const branchScope = resolveBranchFilter(user, params.groupId ? undefined : params.branchId);
+      if (branchScope === '__DENIED__') return ok([]);
       let query = orgQuery('scheduleEvents', orgId);
 
       // Timetable mode: fetch recurring weekly lessons by dayOfWeek
@@ -2221,11 +2222,25 @@ const handler: Handler = async (event: HandlerEvent) => {
         if (params.to) query = query.where('date', '<=', params.to) as any;
       }
       if (params.groupId) query = query.where('groupId', '==', params.groupId) as any;
-      if (branchScope === '__DENIED__') return ok([]);
-      if (typeof branchScope === 'string') query = query.where('branchId', '==', branchScope) as any;
       const snap = await query.get();
       let list = snap.docs.map((d: any) => ({ id: d.id, ...d.data() }));
-      if (Array.isArray(branchScope)) {
+
+      // Филиал сужаем в памяти, а не запросом. Равенство по branchId вместе с
+      // диапазоном по date требует отдельного композитного индекса, а его нет:
+      // для scheduleEvents объявлен ровно один — organizationId + date. Завести
+      // новый нельзя, индексы в этот проект не деплоятся, и
+      // `--only firestore:indexes` снёс бы живые. Пока branchId стоял в запросе,
+      // выбор филиала в сайдбаре ронял расписание целиком: `9 FAILED_PRECONDITION`
+      // на branchId + organizationId + date — страница отдавала ошибку вместо
+      // занятий.
+      //
+      // Цена невелика: выборка уже ограничена окном дат, а мультифилиальному
+      // сотруднику её и так приходилось до-фильтровать здесь же.
+      if (typeof branchScope === 'string') {
+        // Строго, как было в запросе: под конкретным филиалом занятие без
+        // филиала не показываем.
+        list = list.filter((e: any) => e.branchId === branchScope);
+      } else if (Array.isArray(branchScope)) {
         list = list.filter((e: any) => !e.branchId || branchScope.includes(e.branchId));
       }
 

@@ -101,7 +101,6 @@ const JournalPage: React.FC = () => {
   const [schema, setSchema] = useState<GradeSchema>(() => makeDefaultSchema(defaultPresetId));
   const [entries, setEntries] = useState<Record<string, JournalEntry>>({});
   const [allJournalEntries, setAllJournalEntries] = useState<JournalEntry[]>([]);
-  const [courseJournalDates, setCourseJournalDates] = useState<string[]>([]);
   const [grades, setGrades] = useState<Record<string, GradeEntry>>({});
   // Отметки за ДЗ живут отдельной картой: ключ у них тот же (ученик + урок),
   // и в одной карте они затирали бы оценку за занятие.
@@ -147,6 +146,28 @@ const JournalPage: React.FC = () => {
   }, [date, isReadOnly]);
 
   const canEdit = !isReadOnly && isDateValidForEditing;
+
+  /**
+   * История курса с наложенными отметками текущего дня.
+   *
+   * За историей больше не ходим в сеть при каждом переключении даты (см. эффект
+   * загрузки ниже), поэтому только что проставленные отметки надо доложить
+   * поверх: иначе проценты посещаемости и список заполненных дней отставали бы
+   * до перезагрузки курса.
+   */
+  const journalHistory = useMemo(() => {
+    const todayEntries = Object.values(entries);
+    if (!todayEntries.length) return allJournalEntries;
+    const byKey = new Map(allJournalEntries.map(j => [`${j.studentId}|${j.date}`, j]));
+    todayEntries.forEach(e => byKey.set(`${e.studentId}|${e.date}`, e));
+    return Array.from(byKey.values());
+  }, [allJournalEntries, entries]);
+
+  /** Дни, за которые в журнале что-то есть, — свежие сверху. */
+  const courseJournalDates = useMemo(
+    () => Array.from(new Set(journalHistory.map(j => j.date))).sort((a, b) => b.localeCompare(a)),
+    [journalHistory],
+  );
 
   const quickDates = useMemo(() => {
     const datesSet = new Set<string>();
@@ -246,17 +267,9 @@ const JournalPage: React.FC = () => {
       setCourseLessons(allLessons.filter(l => l.courseId === selectedCourseId));
 
       const allEntries = Array.isArray(journalRes) ? journalRes : [];
-      const dateEntries = allEntries.filter((j: any) => j.date === date);
-      
-      const uniqueDates = Array.from(new Set(allEntries.map((j: any) => j.date as string))).sort((a, b) => b.localeCompare(a));
-      setCourseJournalDates(uniqueDates);
-      setAllJournalEntries(allEntries as JournalEntry[]);
 
-      const entriesMap: Record<string, JournalEntry> = {};
-      dateEntries.forEach((j: any) => {
-        entriesMap[j.studentId] = j;
-      });
-      setEntries(entriesMap);
+      
+      setAllJournalEntries(allEntries as JournalEntry[]);
 
       const gradesMap: Record<string, GradeEntry> = {};
       const homeworkMap: Record<string, GradeEntry> = {};
@@ -279,9 +292,21 @@ const JournalPage: React.FC = () => {
     }
   };
 
+  // Сеть — только при смене курса. Раньше в зависимостях стояла ещё и дата, и
+  // переключение дня перечитывало ВСЮ историю журнала и все оценки курса заново
+  // — ради одного дня, который целиком выбирается из уже загруженного. Именно на
+  // этом api-gradebook стал самой вызываемой функцией и одним из главных
+  // потребителей суточной квоты чтений Firestore.
   useEffect(() => {
     loadContentAndGrades();
-  }, [selectedCourseId, date]);
+  }, [selectedCourseId]);
+
+  // День — чистая выборка из уже загруженной истории, без похода в сеть.
+  useEffect(() => {
+    const map: Record<string, JournalEntry> = {};
+    allJournalEntries.filter(j => j.date === date).forEach(j => { map[j.studentId] = j; });
+    setEntries(map);
+  }, [allJournalEntries, date]);
 
   // 4. Derived Data
   const groupStudents = useMemo(() => {
@@ -1080,7 +1105,7 @@ const JournalPage: React.FC = () => {
               
               const ranked = groupStudents.map(student => {
                 // Attendance: count present/late across ALL dates
-                const studentEntries = allJournalEntries.filter(e => e.studentId === student.uid);
+                const studentEntries = journalHistory.filter(e => e.studentId === student.uid);
                 // Общий предикат присутствия — один с рейтингом, аналитикой и
                 // дашбордом (src/lib/attendance.ts).
                 const presentCount = studentEntries.filter(wasPresent).length;

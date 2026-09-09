@@ -3,6 +3,7 @@
  * Multi-tenant aware: resolves role from membership (preferred) or legacy flat field.
  */
 import { adminAuth, adminDb } from './firebase-admin';
+import { createTtlCache } from './ttl-cache';
 import type { HandlerEvent } from '@netlify/functions';
 import { resolvePermissionSet, deriveLegacyManagerPerms, fullPermissionSet, FULL_ACCESS_ROLES } from './rbac';
 import type { PermissionOverrides } from './rbac';
@@ -43,7 +44,51 @@ export interface AuthUser {
  * org before the dual-write fix (e.g. managers) only got the mirror doc —
  * and backfills the user-side doc so the next look-up finds it directly.
  */
+// ─────────────────────────────────────────────────────────────────────────────
+// Кеши авторизации
+//
+// verifyAuth читает Firestore на КАЖДЫЙ запрос к API: документ пользователя,
+// членство, кастомную роль, тариф организации. Открытие страницы — это десятки
+// параллельных запросов, и одни и те же документы перечитываются снова и снова.
+//
+// Что кешируется и почему именно так:
+//   • членство и кастомная роль — TTL 30 с. Правки прав делает администратор
+//     руками, и полминуты задержки приемлемы; больше брать нельзя — отзыв
+//     доступа должен доезжать быстро.
+//   • тариф организации — TTL 5 минут. Меняется вручную и очень редко.
+//
+// Что НЕ кешируется и почему: документ `users/{uid}`. В нём лежат activeOrgId и
+// activeRole, то есть переключение организации и роли. Закешируй его — и человек
+// после переключения роли ещё полминуты видел бы старую. Это одно чтение из
+// четырёх, и оно остаётся честным.
+//
+// Ошибки не кешируются нигде (см. ttl-cache): закешированный сбой квоты
+// растянул бы аварию на весь TTL вместо одного запроса.
+// ─────────────────────────────────────────────────────────────────────────────
+
+const MEMBERSHIP_TTL_MS = 30_000;
+const CUSTOM_ROLE_TTL_MS = 30_000;
+const ORG_PLAN_TTL_MS = 5 * 60_000;
+
+const membershipCache = createTtlCache<Record<string, any> | null>({ ttlMs: MEMBERSHIP_TTL_MS });
+const customRoleCache = createTtlCache<{ name?: string; baseRole?: string; permissions?: any[] } | null>({ ttlMs: CUSTOM_ROLE_TTL_MS });
+const orgPlanCache = createTtlCache<string | null>({ ttlMs: ORG_PLAN_TTL_MS });
+
+/**
+ * Сбросить кеши авторизации. Нужен тестам, чтобы соседние случаи не подсматривали
+ * друг у друга, и на случай, когда требуется гарантированно свежее чтение.
+ */
+export function resetAuthCaches(): void {
+  membershipCache.clear();
+  customRoleCache.clear();
+  orgPlanCache.clear();
+}
+
 export async function getMembershipData(uid: string, orgId: string): Promise<Record<string, any> | null> {
+  return membershipCache.remember(`${uid}|${orgId}`, () => readMembershipData(uid, orgId));
+}
+
+async function readMembershipData(uid: string, orgId: string): Promise<Record<string, any> | null> {
   const userSide = await adminDb.collection('users').doc(uid)
     .collection('memberships').doc(orgId).get();
   if (userSide.exists) return userSide.data()!;
@@ -105,14 +150,31 @@ const ORG_ROLE_TO_APP_ROLE: Record<string, AuthUser['role']> = {
 /** Read an org's custom role doc. Missing/unreadable → system defaults, never a hard failure. */
 async function loadCustomRole(orgId: string, roleId: string): Promise<{ name?: string; baseRole?: string; permissions?: any[] } | null> {
   try {
-    const roleDoc = await adminDb.collection('organizations').doc(orgId)
-      .collection('roles').doc(roleId).get();
-    if (!roleDoc.exists) return null;
-    const rd = roleDoc.data()!;
-    return { name: rd.name, baseRole: rd.baseRole, permissions: rd.permissions };
+    return await customRoleCache.remember(`${orgId}|${roleId}`, () => readCustomRole(orgId, roleId));
   } catch {
+    // Поведение прежнее: сбой чтения роли не валит запрос, откатываемся на
+    // системные умолчания. Но в кеш такой промах не попадает — иначе один сбой
+    // отнял бы у человека его роль на весь TTL. Отсутствующий документ (честный
+    // null) кешируется, а вот ошибка — нет.
     return null;
   }
+}
+
+/** Сырое чтение роли: бросает наверх, чтобы кеш отличил «нет документа» от сбоя. */
+async function readCustomRole(orgId: string, roleId: string): Promise<{ name?: string; baseRole?: string; permissions?: any[] } | null> {
+  const roleDoc = await adminDb.collection('organizations').doc(orgId)
+    .collection('roles').doc(roleId).get();
+  if (!roleDoc.exists) return null;
+  const rd = roleDoc.data()!;
+  return { name: rd.name, baseRole: rd.baseRole, permissions: rd.permissions };
+}
+
+/** Тариф организации — самое редко меняющееся из всего, что читает verifyAuth. */
+async function loadOrgPlan(orgId: string): Promise<string | null> {
+  return orgPlanCache.remember(orgId, async () => {
+    const orgDoc = await adminDb.collection('organizations').doc(orgId).get();
+    return orgDoc.exists ? (orgDoc.data()?.planId || null) : null;
+  });
 }
 
 /**
@@ -280,11 +342,8 @@ export async function verifyAuth(event: HandlerEvent): Promise<AuthUser | null> 
     let planId: string | null = null;
     let aiEnabled = false;
     if (organizationId) {
-      const orgDoc = await adminDb.collection('organizations').doc(organizationId).get();
-      if (orgDoc.exists) {
-        planId = orgDoc.data()?.planId || null;
-        aiEnabled = planId === 'professional' || planId === 'enterprise';
-      }
+      planId = await loadOrgPlan(organizationId);
+      aiEnabled = planId === 'professional' || planId === 'enterprise';
     }
 
     return {

@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import type { AuthUser, ManagerPermissions } from '../utils/auth';
 import type { HandlerEvent } from '@netlify/functions';
 
@@ -23,6 +23,7 @@ import {
   classifyAuthFailure,
   verifyAuth,
   unauthorized,
+  resetAuthCaches,
 } from '../utils/auth';
 import { adminDb, adminAuth } from '../utils/firebase-admin';
 
@@ -46,6 +47,12 @@ function makeUser(overrides: Partial<AuthUser>): AuthUser {
     ...overrides,
   };
 }
+
+// Членство, кастомная роль и тариф кешируются на 30 с / 5 мин внутри контейнера.
+// В бою это экономит чтения Firestore, а в тестах означало бы, что соседний
+// случай подсматривает чужой мок по тому же ключу ('u1','org1' переиспользуется
+// ниже во всех проверках членства). Сбрасываем перед каждым.
+beforeEach(() => resetAuthCaches());
 
 // ═════════════════════════════════════════════════════════════════
 // 1. Role check helpers
@@ -281,7 +288,7 @@ function mockMembershipDb(opts: { userSide?: Record<string, any> | null; orgSide
     }),
   }));
 
-  return { userSideSet, orgSideGet };
+  return { userSideSet, orgSideGet, userSideGet };
 }
 
 describe('getMembershipData (org-side mirror fallback)', () => {
@@ -427,5 +434,56 @@ describe('unauthorized', () => {
     expect(unauthorized(broken).statusCode).toBe(503);
     expect(unauthorized(bearerEvent()).statusCode).toBe(401);
     errSpy.mockRestore();
+  });
+});
+
+// ═════════════════════════════════════════════════════════════════
+// Кеш авторизации: чтения Firestore не должны повторяться
+// ═════════════════════════════════════════════════════════════════
+
+describe('кеш членства', () => {
+  it('повторные обращения за тем же членством не идут в базу', async () => {
+    const { userSideGet } = mockMembershipDb({ userSide: { role: 'teacher', status: 'active' } });
+
+    await getMembershipData('u1', 'org1');
+    await getMembershipData('u1', 'org1');
+    await getMembershipData('u1', 'org1');
+
+    // Ровно ради этого кеш и делался: страница открывает десятки запросов
+    // подряд, а членство у человека одно.
+    expect(userSideGet).toHaveBeenCalledTimes(1);
+  });
+
+  it('ключ различает и человека, и организацию', async () => {
+    const { userSideGet } = mockMembershipDb({ userSide: { role: 'teacher', status: 'active' } });
+
+    await getMembershipData('u1', 'org1');
+    await getMembershipData('u2', 'org1');
+    await getMembershipData('u1', 'org2');
+
+    expect(userSideGet).toHaveBeenCalledTimes(3);
+  });
+
+  it('resetAuthCaches заставляет перечитать', async () => {
+    const { userSideGet } = mockMembershipDb({ userSide: { role: 'teacher', status: 'active' } });
+
+    await getMembershipData('u1', 'org1');
+    resetAuthCaches();
+    await getMembershipData('u1', 'org1');
+
+    expect(userSideGet).toHaveBeenCalledTimes(2);
+  });
+
+  it('сбой чтения не запоминается — следующий запрос пробует снова', async () => {
+    const failing = vi.fn()
+      .mockRejectedValueOnce(Object.assign(new Error('Quota exceeded.'), { code: 8 }))
+      .mockResolvedValueOnce({ exists: true, data: () => ({ role: 'teacher', status: 'active' }) });
+    (adminDb.collection as any).mockImplementation(() => ({
+      doc: () => ({ collection: () => ({ doc: () => ({ get: failing, set: vi.fn() }) }) }),
+    }));
+
+    await expect(getMembershipData('u1', 'org1')).rejects.toThrow('Quota exceeded.');
+    await expect(getMembershipData('u1', 'org1')).resolves.toMatchObject({ role: 'teacher' });
+    expect(failing).toHaveBeenCalledTimes(2);
   });
 });

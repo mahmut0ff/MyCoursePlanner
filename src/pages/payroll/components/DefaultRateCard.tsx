@@ -113,7 +113,10 @@ const DefaultRateCard: React.FC<Props> = ({ canWrite, onApplied }) => {
 
   /** Форма всегда открывается на том, что задано сейчас, а не на прошлом вводе. */
   const startEdit = () => {
-    const existing = rate?.[0];
+    // Именных ставок в умолчании быть не может (сервер их сюда не пускает), но
+    // фильтр стоит: документ мог пережить ручную правку в базе, и тогда форма
+    // молча открылась бы на проценте с пустым полем.
+    const existing = rate?.find(c => c.kind !== 'individual_students');
     setKind(
       existing?.kind === 'salary' || existing?.kind === 'per_paying_student'
         ? existing.kind

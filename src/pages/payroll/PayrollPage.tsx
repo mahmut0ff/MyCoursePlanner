@@ -40,7 +40,7 @@ import type { PayrollDiagnostic } from './components/DiagnosticsPanel';
 import LineAmountModal from './components/LineAmountModal';
 import ManualLineModal from './components/ManualLineModal';
 import PayoutHistory from './components/PayoutHistory';
-import RateModal from './components/RateModal';
+import RateModal, { type RateStudent } from './components/RateModal';
 import TeacherRow from './components/TeacherRow';
 import type { OverviewTeacher } from './components/TeacherRow';
 import {
@@ -183,6 +183,35 @@ const PayrollPage: React.FC = () => {
   const frozen = state === 'approved' || state === 'paid';
   const lines = useMemo(() => data?.lines ?? [], [data]);
   const teachers = useMemo(() => data?.teachers ?? [], [data]);
+
+  /**
+   * Ученики преподавателя для окна ставки — список групп, свёрнутый по ЧЕЛОВЕКУ.
+   *
+   * Свёртка обязательна: студент бывает в двух группах одного преподавателя, и
+   * без неё выбор показал бы его дважды, а суммы оплат разъехались бы с тем, что
+   * считает сервер (там разбивка тоже по ученику, а не по паре ученик-группа).
+   */
+  const rateStudents = useMemo((): RateStudent[] => {
+    if (!rateFor) return [];
+    const paidById = new Map<string, number>();
+    const nameById = new Map<string, string>();
+    for (const group of rateFor.groups ?? []) {
+      for (const student of group.students ?? []) {
+        if (!student.studentId) continue;
+        paidById.set(student.studentId, (paidById.get(student.studentId) || 0) + (student.paidMinor || 0));
+        if (student.studentName) nameById.set(student.studentId, student.studentName);
+      }
+    }
+    const invoicedById = new Map((rateFor.expectedByStudent ?? []).map(s => [s.id, s.paidMinor]));
+    return [...paidById.keys()]
+      .map(studentId => ({
+        studentId,
+        studentName: nameById.get(studentId) || studentId,
+        paidMinor: paidById.get(studentId) || 0,
+        invoicedMinor: invoicedById.get(studentId) || 0,
+      }))
+      .sort((a, b) => a.studentName.localeCompare(b.studentName, 'ru'));
+  }, [rateFor]);
 
   /**
    * История, разложенная по преподавателям, — чтобы строка человека отвечала
@@ -931,6 +960,10 @@ const PayrollPage: React.FC = () => {
           expectedMinor={rateFor.expectedMinor ?? 0}
           expectedStudents={rateFor.expectedStudents ?? 0}
           expectedPlanCount={rateFor.expectedPlanCount ?? 0}
+          // Ученики для именных ставок: список групп, свёрнутый по человеку.
+          // Один ученик может быть в двух группах преподавателя, и две строки в
+          // выборе означали бы две ставки на одного.
+          students={rateStudents}
           onClose={() => setRateFor(null)}
           onSaved={load}
         />

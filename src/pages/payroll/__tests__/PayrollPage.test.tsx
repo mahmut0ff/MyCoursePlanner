@@ -76,6 +76,7 @@ const apiMock = api as unknown as {
   apiGetPayrollDefaultRate: ReturnType<typeof vi.fn>;
   apiSetPayrollDefaultRate: ReturnType<typeof vi.fn>;
   apiApplyPayrollDefaultRate: ReturnType<typeof vi.fn>;
+  apiSaveCompensationRule: ReturnType<typeof vi.fn>;
 };
 
 const PERIOD = '2026-08';
@@ -512,6 +513,124 @@ describe('PayrollPage', () => {
       expandTeacher('Бакыт');
 
       expect(screen.queryByText('Если оплатят все счета месяца')).toBeNull();
+    });
+  });
+
+  /**
+   * Именные ставки за индивидуальные занятия. Проверяется путь целиком — от
+   * выбора ученика до тела запроса: арифметика живёт в payroll-engine.test.ts, а
+   * здесь важно, что окно СОБИРАЕТ ставку так, как её ждёт сервер, и что
+   * индивидуальный ученик вычтен из базы общей ставки прямо на экране.
+   */
+  describe('индивидуальные ученики в ставке', () => {
+    /** Процент по группам + двое учеников, один из которых уже заплатил. */
+    const KANAT: OverviewTeacher = {
+      teacherId: 'kanat',
+      teacherName: 'Канат',
+      rule: { id: 'rule-kanat', components: [{ kind: 'percent_revenue', percentBp: 2000, base: 'collected' }] },
+      groups: [{
+        groupId: 'g9',
+        name: 'Индивидуальные',
+        courseId: 'c1',
+        courseName: 'Английский',
+        branchId: 'b1',
+        branchName: 'Алай',
+        studentCount: 2,
+        collectedMinor: 700_000,
+        students: [
+          { studentId: 's1', studentName: 'Тимур', paidMinor: 400_000, former: false },
+          { studentId: 's2', studentName: 'Алия', paidMinor: 300_000, former: false },
+        ],
+      }],
+      byBranch: [],
+      studentCount: 2,
+      collectedMinor: 700_000,
+      refundMinor: 0,
+      baseMinor: 700_000,
+      payingStudents: 2,
+      // Выставлено БОЛЬШЕ собранного (часть месяца ещё не оплачена): иначе
+      // строка «на деньгах месяца» и строка потолка совпали бы дословно, и тест
+      // не различил бы, какую из них он читает.
+      expectedMinor: 1_000_000,
+      expectedStudents: 2,
+      expectedPlanCount: 2,
+      expectedByStudent: [{ id: 's1', paidMinor: 500_000 }, { id: 's2', paidMinor: 500_000 }],
+      potentialMinor: 200_000,
+      previewMinor: 140_000,
+      previewComponents: [],
+      payableMinor: 0,
+      paidMinor: 0,
+      remainingMinor: 0,
+      line: null,
+      manualLines: [],
+    };
+
+    const openRate = async () => {
+      apiMock.apiGetPayrollOverview.mockImplementation(async (filters?: { period?: string }) => ({
+        period: filters?.period || PERIOD,
+        windowStart: SHEET.windowStart,
+        windowEnd: SHEET.windowEnd,
+        sheet: null,
+        lines: [],
+        diagnostics: [],
+        teachers: [KANAT],
+      }));
+      render(
+        <MemoryRouter>
+          <PayrollPage />
+        </MemoryRouter>,
+      );
+      await waitFor(() => expect(screen.getAllByText('Канат').length).toBeGreaterThan(0));
+      expandTeacher('Канат');
+      fireEvent.click(screen.getByRole('button', { name: 'Изменить ставку' }));
+      return screen.findByRole('dialog');
+    };
+
+    it('сохраняет именную ставку рядом с процентом — одним документом', async () => {
+      const dialog = await openRate();
+
+      fireEvent.click(within(dialog).getByRole('button', { name: 'Добавить ученика' }));
+      fireEvent.change(within(dialog).getByLabelText('Выберите ученика'), { target: { value: 's1' } });
+      fireEvent.change(within(dialog).getByLabelText('Сумма за этого ученика'), { target: { value: '1500' } });
+      fireEvent.click(within(dialog).getByRole('button', { name: 'Сохранить' }));
+
+      await waitFor(() => expect(apiMock.apiSaveCompensationRule).toHaveBeenCalledWith({
+        teacherId: 'kanat',
+        components: [
+          { kind: 'percent_revenue', percentBp: 2000, base: 'collected' },
+          { kind: 'individual_students', rates: [{ studentId: 's1', amountMinor: 150_000 }], base: 'collected' },
+        ],
+      }));
+    });
+
+    it('индивидуальный ученик уходит из базы процента прямо в примере', async () => {
+      const dialog = await openRate();
+
+      // До исключения процент считается со всех денег: 20% от 7 000 с.
+      expect(within(dialog).getByText(/20% от 7 000 с\. = 1 400 с\./)).toBeInTheDocument();
+
+      fireEvent.click(within(dialog).getByRole('button', { name: 'Добавить ученика' }));
+      fireEvent.change(within(dialog).getByLabelText('Выберите ученика'), { target: { value: 's1' } });
+      fireEvent.change(within(dialog).getByLabelText('Сумма за этого ученика'), { target: { value: '1500' } });
+
+      // Деньги Тимура (4 000 с.) из базы изъяты: остаётся 3 000 с., 20% = 600 с.
+      expect(within(dialog).getByText(/20% от 3 000 с\. = 600 с\./)).toBeInTheDocument();
+      // И названы отдельной строкой, а не растворены в итоге.
+      expect(within(dialog).getByText(/Индивидуальные: 1 500 с\. — заплатили 1 из 1 учеников/)).toBeInTheDocument();
+      expect(within(dialog).getByText(/Итого за этот месяц: 2 100 с\./)).toBeInTheDocument();
+      // Потолок пересчитан тем же правилом: счёт Тимура вышел из базы процента,
+      // а его ставка вошла целиком — 20% от 5 000 с. плюс 1 500 с.
+      expect(within(dialog).getByText(/Если оплатят все счета месяца: 2 500 с\./)).toBeInTheDocument();
+    });
+
+    it('строка без ученика не сохраняется молча', async () => {
+      const dialog = await openRate();
+
+      fireEvent.click(within(dialog).getByRole('button', { name: 'Добавить ученика' }));
+      fireEvent.click(within(dialog).getByRole('button', { name: 'Сохранить' }));
+
+      expect(await within(dialog).findByText(/Выберите ученика в именной ставке/)).toBeInTheDocument();
+      expect(apiMock.apiSaveCompensationRule).not.toHaveBeenCalled();
     });
   });
 

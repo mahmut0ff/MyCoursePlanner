@@ -26,6 +26,10 @@ const CODE_TITLES: Record<string, { key: string; fallback: string }> = {
   teacher_without_rule: { key: 'payroll.diagNoRule', fallback: 'Преподаватели без ставки' },
   duplicate_rules: { key: 'payroll.diagDuplicateRules', fallback: 'У преподавателя несколько ставок' },
   rule_no_components: { key: 'payroll.diagNoComponents', fallback: 'Ставка без оплаты' },
+  individual_student_outside_groups: {
+    key: 'payroll.diagIndividualOutside',
+    fallback: 'Индивидуальный ученик вне групп преподавателя',
+  },
   // Код ИСТОРИЧЕСКИЙ: движок его больше не выдаёт — ставки перестали быть
   // филиальными, и пропускать по этой причине стало нечего. Заголовок остаётся
   // ради уже замороженных ведомостей: они несут этот код навсегда, а без записи

@@ -38,6 +38,7 @@ import {
   buildTeacherScopes,
   buildBranchShares,
   collectTeacherRevenue,
+  mergeComponentByGroup,
   filterWindow,
   type CompensationRule,
   type FinanceTxLike,
@@ -284,11 +285,10 @@ const handler: Handler = async (event: HandlerEvent) => {
         // Разложение по филиалам замораживается вместе со строкой — дословно как
         // в ручном расчёте, иначе кроновая и пересчитанная ведомости одного
         // месяца разошлись бы по срезам отчётности.
-        // Любой компонент, посчитанный по кассе (процент или сумма с ученика),
-        // уже несёт разбивку по группам — искать её только у процента значило бы
-        // считать веса заново там, где они заморожены.
-        const collectedBasis = line.components.find((c) => Array.isArray(c.basis?.byGroup))?.basis;
-        const byGroupForSplit = collectedBasis?.byGroup
+        // Разбивки всех компонентов СКЛАДЫВАЮТСЯ: деньги групп и деньги
+        // индивидуальных учеников лежат по разным компонентам, а вес филиала —
+        // это все деньги, заработанные в нём.
+        const byGroupForSplit = mergeComponentByGroup(line.components)
           ?? collectTeacherRevenue(
             splitScopes.get(line.teacherId) ?? { groupIds: [], studentIds: [] },
             windowIncome,

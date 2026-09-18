@@ -44,7 +44,17 @@ import { resolveRules } from './utils/payroll-engine';
 const COLLECTION = 'compensationRules';
 
 /** Зеркало PayComponent.kind из src/types/index.ts. Держите синхронно. */
-const COMPONENT_KINDS = ['salary', 'percent_revenue', 'per_paying_student'];
+const COMPONENT_KINDS = ['salary', 'percent_revenue', 'per_paying_student', 'individual_students'];
+
+/**
+ * Сколько именных ставок принимаем в одной ставке преподавателя.
+ *
+ * Ограничение не от жадности: исключение — это индивидуальные занятия, их у
+ * человека единицы. Список на тысячу имён означает, что кто-то пытается задать
+ * так ОБЫЧНУЮ оплату, а заодно раздувает документ, который читается при каждом
+ * расчёте и замораживается в каждой строке ведомости.
+ */
+const MAX_INDIVIDUAL_RATES = 200;
 
 /** Целые минорные единицы: дробь здесь — это молча потерянные копейки в расчёте. */
 function isPositiveMinor(value: unknown): value is number {
@@ -65,8 +75,16 @@ function isPositiveMinor(value: unknown): value is number {
  * студента» удалены: они считались по отметкам посещаемости, и зарплата человека
  * молча зависела от того, ведёт ли кто-то журнал. `per_paying_student` их не
  * возвращает — он считает по кассе, поэтому и назван иначе (см. payroll-engine).
+ *
+ * Плюс `individual_students` — именные ставки за индивидуальные занятия. В
+ * УМОЛЧАНИЕ организации они не пускаются (`allowIndividual: false`): умолчание
+ * достаётся каждому новому преподавателю, а имя ученика в нём означало бы, что
+ * человеку заводят ставку за занятия, которых он не ведёт.
  */
-function normalizeComponents(raw: any): { components?: any[]; error?: string } {
+function normalizeComponents(
+  raw: any,
+  opts?: { allowIndividual?: boolean },
+): { components?: any[]; error?: string } {
   if (!Array.isArray(raw) || raw.length === 0) {
     return { error: 'Укажите оплату: процент, фиксированную сумму или сумму с ученика' };
   }
@@ -107,6 +125,46 @@ function normalizeComponents(raw: any): { components?: any[]; error?: string } {
         return { error: `${at}: сумма с ученика считается только по СОБРАННЫМ деньгам (base: 'collected')` };
       }
       components.push({ kind: 'per_paying_student', amountMinor: c.amountMinor, base: 'collected' });
+      continue;
+    }
+
+    // Именные ставки: список «ученик → своя сумма» для индивидуальных занятий.
+    // Проверяется строго, потому что это деньги, которые никто больше не
+    // перечитывает: пустой список означал бы компонент, начисляющий ноль, а
+    // повтор ученика — спор о том, какая из двух сумм настоящая.
+    if (c.kind === 'individual_students') {
+      if (!opts?.allowIndividual) {
+        return {
+          error:
+            `${at}: именные ставки за индивидуальные занятия задаются в карточке преподавателя, ` +
+            'а не в ставке по умолчанию.',
+        };
+      }
+      if (!Array.isArray(c.rates) || c.rates.length === 0) {
+        return { error: `${at}: укажите хотя бы одного ученика со своей суммой` };
+      }
+      if (c.rates.length > MAX_INDIVIDUAL_RATES) {
+        return { error: `${at}: учеников со своей суммой не больше ${MAX_INDIVIDUAL_RATES}` };
+      }
+      if (c.base !== undefined && c.base !== 'collected') {
+        return { error: `${at}: своя сумма с ученика считается только по СОБРАННЫМ деньгам (base: 'collected')` };
+      }
+      const rates: any[] = [];
+      const students = new Set<string>();
+      for (let j = 0; j < c.rates.length; j++) {
+        const r = c.rates[j];
+        const rateAt = `${at}, ученик №${j + 1}`;
+        if (!r || typeof r !== 'object' || Array.isArray(r)) return { error: `${rateAt}: ожидается объект` };
+        const studentId = typeof r.studentId === 'string' ? r.studentId.trim() : '';
+        if (!studentId || studentId.length > 200) return { error: `${rateAt}: не указан ученик` };
+        if (students.has(studentId)) return { error: `${rateAt}: ученик указан дважды` };
+        students.add(studentId);
+        if (!isPositiveMinor(r.amountMinor)) {
+          return { error: `${rateAt}: сумма должна быть целым положительным числом в минорных единицах` };
+        }
+        rates.push({ studentId, amountMinor: r.amountMinor });
+      }
+      components.push({ kind: 'individual_students', rates, base: 'collected' });
       continue;
     }
 
@@ -363,7 +421,9 @@ const handler: Handler = async (event: HandlerEvent) => {
 
       if (!body.teacherId || typeof body.teacherId !== 'string') return badRequest('teacherId обязателен');
 
-      const { components, error: componentsError } = normalizeComponents(body.components);
+      // Именные ставки разрешены только здесь: они про КОНКРЕТНОГО человека и
+      // его учеников, а не про то, как организация платит вообще.
+      const { components, error: componentsError } = normalizeComponents(body.components, { allowIndividual: true });
       if (componentsError) return badRequest(componentsError);
 
       // Преподаватель должен быть членом ЭТОЙ организации. Читаем orgMembers по id

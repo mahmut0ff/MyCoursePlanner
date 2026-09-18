@@ -83,6 +83,9 @@ export const componentKindLabel = (kind: PayComponent['kind'], t: Translate): st
     case 'percent_revenue': return t('payroll.kindPercent', 'Процент с оплат студентов');
     case 'per_paying_student': return t('payroll.kindPerStudent', 'Сумма за ученика');
     case 'salary': return t('payroll.kindSalary', 'Фиксированная сумма');
+    // В переключателе этого пункта нет: именные ставки не выбирают вместо
+    // ставки, их добавляют к ней. Название нужно списку и разбивке.
+    case 'individual_students': return t('payroll.kindIndividual', 'Индивидуальные ученики');
     default: return String(kind);
   }
 };
@@ -102,6 +105,12 @@ export const describeComponent = (component: PayComponent, t: Translate): string
       // короткая формулировка обещала бы оплату за весь список.
       return t('payroll.summaryPerStudent', '{{amount}} с каждого заплатившего ученика', {
         amount: formatMinor(component.amountMinor),
+      });
+    case 'individual_students':
+      // Суммы разные у каждого — одной цифрой ставку не описать, поэтому в
+      // сводке стоит число учеников, а суммы видно в карточке ставки.
+      return t('payroll.summaryIndividual', 'своя сумма у {{count}} учеников (индивидуальные)', {
+        count: (component.rates ?? []).length,
       });
     default:
       // Устаревший вид из прежней модели (за занятие/час/студента). Он больше не

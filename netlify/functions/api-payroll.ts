@@ -70,6 +70,7 @@ import {
   emptyExpectedRevenue,
   allocateByShares,
   collectTeacherRevenue,
+  mergeComponentByGroup,
   filterWindow,
   resolveRules,
   toMinor,
@@ -1066,6 +1067,10 @@ const handler: Handler = async (event: HandlerEvent) => {
           expectedMinor: expected.expectedMinor,
           expectedStudents: expected.expectedStudents,
           expectedPlanCount: expected.planCount,
+          // Кому сколько выставлено. Нужно окну ставки: с именными ставками
+          // потолок считается «минус этот ученик, плюс его сумма», и без
+          // разбивки окно обещало бы одно, а ведомость показывала другое.
+          expectedByStudent: expected.byStudent,
           // Потолок: что вышло бы по действующей ставке при полной оплате счетов.
           potentialMinor: teacherRule ? computePotentialMinor(teacherRule.components, expected) : null,
           // Что выйдет по действующей ставке на сегодняшних данных.
@@ -1343,12 +1348,11 @@ const handler: Handler = async (event: HandlerEvent) => {
         // должна выводить его заново из состава групп, который к тому моменту
         // мог измениться. Веса берём из той же разбивки по группам, что легла в
         // снапшот, — тогда расходы зданий сходятся с объяснением на экране.
-        // Разбивку берём у ЛЮБОГО компонента, который считался по кассе: и
-        // процент, и сумма с ученика замораживают одну и ту же byGroup. Искать её
-        // только у процента значило бы пересчитывать веса заново там, где они уже
-        // посчитаны и заморожены.
-        const collectedBasis = computed.components.find((c) => Array.isArray(c.basis?.byGroup))?.basis;
-        const byGroupForSplit = collectedBasis?.byGroup
+        // Разбивки СКЛАДЫВАЮТСЯ по всем компонентам: деньги групп и деньги
+        // индивидуальных учеников лежат в разных компонентах, и первый
+        // попавшийся отдал бы весь расход одному филиалу — тому, где у человека
+        // группы, даже если индивидуального ученика он ведёт в другом.
+        const byGroupForSplit = mergeComponentByGroup(computed.components)
           ?? collectTeacherRevenue(
             splitScopes.get(computed.teacherId) ?? { groupIds: [], studentIds: [] },
             windowIncome,

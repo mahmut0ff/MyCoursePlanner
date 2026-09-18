@@ -291,6 +291,63 @@ describe('api-payroll-rules POST — валидация трёх видов оп
     expect(JSON.parse(res.body).error).toContain('collected');
   });
 
+  // ── Именные ставки за индивидуальные занятия ──────────────────────────
+  // Модификатор поверх обычной ставки: «по группам 20%, с Тимура 1500». Здесь
+  // проверяется ровно то, что защищает деньги: список нормализуется, повтор
+  // ученика не проходит, и в умолчание организации такие ставки не попадают.
+
+  it('принимает именные ставки вместе с обычной и нормализует список', async () => {
+    (verifyAuth as any).mockResolvedValue(staff(WRITE));
+    const { sets } = wire();
+
+    const res: any = await rulesHandler(event('POST', {}, validBody({
+      components: [
+        { kind: 'percent_revenue', percentBp: 2000 },
+        { kind: 'individual_students', rates: [{ studentId: ' s1 ', amountMinor: 150000 }] },
+      ],
+    })), {} as any, () => {});
+
+    expect(res.statusCode).toBe(200);
+    expect(sets[0].components).toEqual([
+      { kind: 'percent_revenue', percentBp: 2000, base: 'collected' },
+      // id ученика обрезан от пробелов, база проставлена явно — как у остальных.
+      { kind: 'individual_students', rates: [{ studentId: 's1', amountMinor: 150000 }], base: 'collected' },
+    ]);
+  });
+
+  it('отвергает пустой список, повтор ученика и нецелую сумму', async () => {
+    (verifyAuth as any).mockResolvedValue(staff(WRITE));
+    const { sets } = wire();
+
+    const bad = [
+      [],
+      [{ studentId: 's1', amountMinor: 150000 }, { studentId: 's1', amountMinor: 120000 }],
+      [{ studentId: 's1', amountMinor: 1500.5 }],
+      [{ studentId: 's1', amountMinor: 0 }],
+      [{ studentId: '', amountMinor: 150000 }],
+    ];
+    for (const rates of bad) {
+      const res: any = await rulesHandler(event('POST', {}, validBody({
+        components: [{ kind: 'individual_students', rates }],
+      })), {} as any, () => {});
+      expect(res.statusCode).toBe(400);
+    }
+    expect(sets).toHaveLength(0);
+  });
+
+  it('именные ставки в умолчание организации не пускаются', async () => {
+    // Умолчание достаётся КАЖДОМУ новому преподавателю: имя ученика в нём
+    // означало бы ставку за занятия, которых человек не ведёт.
+    (verifyAuth as any).mockResolvedValue(staff(WRITE));
+    const { orgUpdates } = wire();
+    const res: any = await rulesHandler(event('POST', { action: 'default' }, {
+      components: [{ kind: 'individual_students', rates: [{ studentId: 's1', amountMinor: 150000 }] }],
+    }), {} as any, () => {});
+
+    expect(res.statusCode).toBe(400);
+    expect(orgUpdates).toHaveLength(0);
+  });
+
   it('отвергает один и тот же вид дважды — расчёт заплатил бы вдвое', async () => {
     (verifyAuth as any).mockResolvedValue(staff(WRITE));
     const { sets } = wire();

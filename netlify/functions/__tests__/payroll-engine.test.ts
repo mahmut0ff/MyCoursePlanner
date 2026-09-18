@@ -132,6 +132,13 @@ const fixed = (amountMinor: number) => [{ kind: 'salary' as const, amountMinor }
 /** Ставка «сумма с каждого заплатившего ученика». */
 const perStudent = (amountMinor: number) =>
   [{ kind: 'per_paying_student' as const, amountMinor, base: 'collected' as const }];
+/** Именные ставки за индивидуальные занятия: «с s1 — 1500». */
+const individual = (...pairs: [string, number][]) =>
+  [{
+    kind: 'individual_students' as const,
+    rates: pairs.map(([studentId, amountMinor]) => ({ studentId, amountMinor })),
+    base: 'collected' as const,
+  }];
 
 function codes(list: { code: DiagnosticCode }[]): DiagnosticCode[] {
   return list.map((d) => d.code);
@@ -746,6 +753,109 @@ describe('оплата «за ученика» (per_paying_student)', () => {
 });
 
 // ============================================================
+// Именные ставки — индивидуальные занятия
+// ============================================================
+
+describe('именные ставки (individual_students)', () => {
+  it('платит свою сумму за того, кто заплатил, и молчит про остальных', () => {
+    const { lines } = run({
+      rules: [rule({ components: individual(['s1', 150_000], ['s2', 120_000]) })],
+      incomeTx: [income(3000, { studentId: 's1' })],
+    });
+    expect(lines[0].computedMinor).toBe(150_000);
+    expect(lines[0].components[0].basis.payingStudents).toBe(1);
+  });
+
+  it('частичная оплата — целая ставка, как и у «250 с ученика»', () => {
+    const { lines } = run({
+      rules: [rule({ components: individual(['s1', 150_000]) })],
+      incomeTx: [income(1, { studentId: 's1' })],
+    });
+    expect(lines[0].computedMinor).toBe(150_000);
+  });
+
+  it('полный возврат отменяет ставку за этого ученика', () => {
+    const { lines } = run({
+      rules: [rule({ components: individual(['s1', 150_000]) })],
+      incomeTx: [income(3000, { studentId: 's1' })],
+      refundTx: [refund(3000, { studentId: 's1' })],
+    });
+    expect(lines[0].computedMinor).toBe(0);
+  });
+
+  it('ГЛАВНОЕ: индивидуальный ученик уходит из базы процента — за него не платят дважды', () => {
+    const { lines } = run({
+      rules: [rule({
+        components: [
+          ...percent(2000),
+          ...individual(['s1', 150_000]),
+        ],
+      })],
+      // s1 — индивидуальный (4000), s2 — обычный ученик группы (3000).
+      incomeTx: [income(4000, { studentId: 's1' }), income(3000, { studentId: 's2' })],
+    });
+    const percentComponent = lines[0].components.find((c) => c.kind === 'percent_revenue')!;
+    // База процента — только деньги s2: 300 000 тыйын, 20% = 60 000.
+    expect(percentComponent.basis.revenueBaseMinor).toBe(300_000);
+    expect(percentComponent.earnedMinor).toBe(60_000);
+    expect(percentComponent.basis.excludedStudentIds).toEqual(['s1']);
+    // Итого: процент по группе + именная ставка.
+    expect(lines[0].computedMinor).toBe(60_000 + 150_000);
+  });
+
+  it('индивидуальный ученик не даёт головы в «сумме с ученика»', () => {
+    const { lines } = run({
+      rules: [rule({
+        components: [
+          ...perStudent(25_000),
+          ...individual(['s1', 150_000]),
+        ],
+      })],
+      incomeTx: [income(4000, { studentId: 's1' }), income(3000, { studentId: 's2' })],
+    });
+    const perHead = lines[0].components.find((c) => c.kind === 'per_paying_student')!;
+    expect(perHead.basis.payingStudents).toBe(1);
+    expect(lines[0].computedMinor).toBe(25_000 + 150_000);
+  });
+
+  it('складывается с окладом: оклад не зависит от оплат, ставка — зависит', () => {
+    const { lines } = run({
+      rules: [rule({ components: [...fixed(3_000_000), ...individual(['s1', 150_000])] })],
+      incomeTx: [income(4000, { studentId: 's1' })],
+    });
+    expect(lines[0].computedMinor).toBe(3_000_000 + 150_000);
+  });
+
+  it('ученик вне его групп не начисляется и не молчит', () => {
+    const { lines } = run({
+      rules: [rule({ components: individual(['sX', 150_000]) })],
+      incomeTx: [income(4000, { groupId: 'foreign', studentId: 'sX' })],
+    });
+    expect(lines[0].computedMinor).toBe(0);
+    expect(codes(lines[0].diagnostics)).toContain('individual_student_outside_groups');
+  });
+
+  it('повтор ученика в списке не начисляется дважды — побеждает первая запись', () => {
+    const { lines } = run({
+      rules: [rule({ components: individual(['s1', 150_000], ['s1', 900_000]) })],
+      incomeTx: [income(3000, { studentId: 's1' })],
+    });
+    expect(lines[0].computedMinor).toBe(150_000);
+  });
+
+  it('замораживает список ставок и разбивку — сумму можно восстановить по строке', () => {
+    const { lines } = run({
+      rules: [rule({ components: individual(['s1', 150_000]) })],
+      incomeTx: [income(3000, { studentId: 's1' }), income(2000, { studentId: 's2' })],
+    });
+    const basis = lines[0].components[0].basis;
+    expect(basis.rates).toEqual([{ studentId: 's1', amountMinor: 150_000 }]);
+    // В разбивке компонента только ЕГО ученик: деньги s2 сюда не относятся.
+    expect(basis.byStudent).toEqual([{ id: 's1', paidMinor: 300_000 }]);
+  });
+});
+
+// ============================================================
 // Потолок месяца «если оплатят все»
 // ============================================================
 
@@ -758,7 +868,14 @@ describe('прогноз «если оплатят все»', () => {
       [group({ studentIds: ['s1', 's2'] })],
       [plan('p1', 's1', 3000), plan('p2', 's2', 2000)],
     );
-    expect(expected.get('t1')).toEqual({ expectedMinor: 500_000, expectedStudents: 2, planCount: 2 });
+    expect(expected.get('t1')).toEqual({
+      expectedMinor: 500_000,
+      expectedStudents: 2,
+      planCount: 2,
+      // Разбивка по ученикам нужна потолку с именными ставками: без неё
+      // индивидуального ученика не вычесть из общей базы.
+      byStudent: [{ id: 's1', paidMinor: 300_000 }, { id: 's2', paidMinor: 200_000 }],
+    });
   });
 
   it('счёт чужого курса и счёт чужого студента в прогноз не входят', () => {
@@ -774,7 +891,12 @@ describe('прогноз «если оплатят все»', () => {
       [group({ id: 'g1', studentIds: ['s1'] }), group({ id: 'g2', studentIds: ['s1'] })],
       [plan('p1', 's1', 3000)],
     );
-    expect(expected.get('t1')).toEqual({ expectedMinor: 300_000, expectedStudents: 1, planCount: 1 });
+    expect(expected.get('t1')).toEqual({
+      expectedMinor: 300_000,
+      expectedStudents: 1,
+      planCount: 1,
+      byStudent: [{ id: 's1', paidMinor: 300_000 }],
+    });
   });
 
   it('один счёт у двух преподавателей виден обоим целиком — делить его нечем', () => {
@@ -796,26 +918,53 @@ describe('прогноз «если оплатят все»', () => {
 
   it('потолок процента берётся от ВЫСТАВЛЕННОГО, а не от собранного', () => {
     expect(computePotentialMinor(percent(2000), {
-      expectedMinor: 1_000_000, expectedStudents: 5, planCount: 5,
+      expectedMinor: 1_000_000, expectedStudents: 5, planCount: 5, byStudent: [],
     })).toBe(200_000);
   });
 
   it('потолок «за ученика» — ставка × все, кому выставлен счёт', () => {
     expect(computePotentialMinor(perStudent(25_000), {
-      expectedMinor: 1_000_000, expectedStudents: 5, planCount: 5,
+      expectedMinor: 1_000_000, expectedStudents: 5, planCount: 5, byStudent: [],
     })).toBe(125_000);
   });
 
   it('оклад от оплат не зависит: его потолок равен ему самому', () => {
     expect(computePotentialMinor(fixed(3_000_000), {
-      expectedMinor: 0, expectedStudents: 0, planCount: 0,
+      expectedMinor: 0, expectedStudents: 0, planCount: 0, byStudent: [],
     })).toBe(3_000_000);
+  });
+
+  it('потолок с именной ставкой: ученик вычтен из общей базы и добавлен своей суммой', () => {
+    // Выставлено 10 000 с. всего, из них 4 000 с. — индивидуальному s1.
+    const expected = {
+      expectedMinor: 1_000_000,
+      expectedStudents: 5,
+      planCount: 5,
+      byStudent: [{ id: 's1', paidMinor: 400_000 }],
+    };
+    // Процент: 20% от 600 000 (без s1) = 120 000, плюс именная ставка 150 000.
+    expect(computePotentialMinor(
+      [...percent(2000), ...individual(['s1', 150_000])],
+      expected,
+    )).toBe(120_000 + 150_000);
+    // «Сумма с ученика»: голов 4 (без s1) × 250 = 100 000, плюс именная ставка.
+    expect(computePotentialMinor(
+      [...perStudent(25_000), ...individual(['s1', 150_000])],
+      expected,
+    )).toBe(100_000 + 150_000);
+  });
+
+  it('счёта нет — именная ставка в потолок не входит и базу не уменьшает', () => {
+    expect(computePotentialMinor(
+      [...percent(2000), ...individual(['sX', 150_000])],
+      { expectedMinor: 1_000_000, expectedStudents: 5, planCount: 5, byStudent: [] },
+    )).toBe(200_000);
   });
 
   it('устаревший вид оплаты не начисляется — и в потолок не входит', () => {
     expect(computePotentialMinor(
       [{ kind: 'per_student', amountMinor: 25_000 } as any],
-      { expectedMinor: 1_000_000, expectedStudents: 5, planCount: 5 },
+      { expectedMinor: 1_000_000, expectedStudents: 5, planCount: 5, byStudent: [] },
     )).toBe(0);
   });
 });

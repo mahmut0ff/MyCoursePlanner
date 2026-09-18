@@ -78,6 +78,8 @@ export interface OverviewTeacher {
   expectedStudents?: number;
   /** Сколько счетов месяца вошло в прогноз. 0 — считать не по чему. */
   expectedPlanCount?: number;
+  /** Кому сколько выставлено за месяц — вход потолка у именных ставок. */
+  expectedByStudent?: { id: string; paidMinor: number }[];
   potentialMinor?: number | null;
   previewMinor: number | null;
   previewComponents: { kind: string; earnedMinor: number; basis?: Record<string, any> }[];
@@ -154,6 +156,14 @@ const describeBasis = (
           refund: formatMinor(basis.refundMinor),
         })}`
       : base;
+  }
+  if (entry.kind === 'individual_students') {
+    // Сколько именных ставок начислено из сколько заданных. «2 из 3» — это и
+    // есть объяснение суммы: третий ученик в этом месяце не заплатил.
+    return t('payroll.basisIndividual', 'своя сумма: {{paid}} из {{count}} учеников заплатили', {
+      paid: Number(basis.payingStudents || 0),
+      count: Array.isArray(basis.rates) ? basis.rates.length : 0,
+    });
   }
   if (entry.kind === 'salary') return t('payroll.basisSalary', 'Фиксированная сумма за месяц');
   return t('payroll.basisLegacy', 'Устаревший вид оплаты — не начислен');

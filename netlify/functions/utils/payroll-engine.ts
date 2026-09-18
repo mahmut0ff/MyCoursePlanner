@@ -13,6 +13,13 @@
  * того, ведёт ли кто-то журнал. Директор про такую связь не знает и узнаёт по
  * недоплате.
  *
+ * ПЛЮС ИСКЛЮЧЕНИЯ ПО УЧЕНИКУ (`individual_students`) — ради индивидуальных
+ * занятий. Ставка вида «250 с ученика» или «20% с групп» описывает поток, где
+ * все ученики равны; за индивидуальные же платят СВОЮ сумму («с Тимура — 1500»).
+ * Это не четвёртый вид оплаты, а модификатор: ученик с исключением уходит из
+ * базы основной ставки целиком (и из процента, и из числа заплативших) и
+ * оплачивается своей суммой. Иначе за него заплатили бы дважды.
+ *
  * `per_paying_student` старую «оплату за студента» НЕ воскрешает и потому назван
  * иначе: он смотрит в кассу, а не в журнал. Документы прежней модели с
  * `kind: 'per_student'` (сумма × Σ headcount) так и остаются неначисляемыми —
@@ -58,11 +65,25 @@
  * `amountMinor` за КАЖДОГО студента его групп, который в этом месяце что-то
  * заплатил. `base: 'collected'` обязателен и не декоративен — он отличает эту
  * оплату от одноимённой по смыслу, но посещаемостной ставки прежней модели.
+ *
+ * `individual_students` — не вид оплаты, а список ИМЕННЫХ исключений: за этих
+ * учеников платят своей суммой, а не общей ставкой (индивидуальные занятия).
+ * Живёт он в том же массиве `components` не из экономии, а по двум причинам:
+ * снапшот строки ведомости замораживает `components` целиком (значит история
+ * защищена тем же механизмом, что и ставка), и удаление ставки уносит
+ * исключения с собой — «больше не начислять» остаётся одним действием.
  */
+export interface IndividualStudentRate {
+  studentId: string;
+  /** Целые минорные единицы. Сумма за ЭТОГО ученика, если он в месяце заплатил. */
+  amountMinor: number;
+}
+
 export type PayComponent =
   | { kind: 'salary'; amountMinor: number }
   | { kind: 'percent_revenue'; percentBp: number; base: 'collected' }
-  | { kind: 'per_paying_student'; amountMinor: number; base: 'collected' };
+  | { kind: 'per_paying_student'; amountMinor: number; base: 'collected' }
+  | { kind: 'individual_students'; rates: IndividualStudentRate[]; base: 'collected' };
 
 /**
  * Ставка преподавателя. БЕЗ срока действия и БЕЗ филиала: ставка одна на
@@ -134,7 +155,9 @@ export type DiagnosticCode =
   | 'payment_without_group'
   | 'teacher_without_rule'
   | 'duplicate_rules'
-  | 'rule_no_components';
+  | 'rule_no_components'
+  /** В исключениях есть ученик, которого нет ни в одной группе преподавателя. */
+  | 'individual_student_outside_groups';
 
 /**
  * Структурная диагностика для блока «Пропущенные записи».
@@ -178,6 +201,14 @@ export interface ComponentBasis {
   /** Кто из студентов сколько заплатил. Сумма равна grossMinor. */
   byStudent?: RevenueSlice[];
   sourceTxnIds?: string[];
+  /** Исключения по ученику, замороженные дословно (только individual_students). */
+  rates?: IndividualStudentRate[];
+  /**
+   * Ученики с индивидуальной ставкой, чьи деньги из ЭТОГО компонента изъяты.
+   * Лежит в снапшоте не для арифметики, а для объяснения: без него «процент
+   * посчитан не от всех денег» выглядит ошибкой расчёта.
+   */
+  excludedStudentIds?: string[];
 }
 
 export interface ComputedComponent {
@@ -455,6 +486,23 @@ export interface TeacherRevenue {
 }
 
 /**
+ * Кого из учеников считать в выборке. Нужен ровно для индивидуальных ставок:
+ * один и тот же код собирает и «деньги всех, КРОМЕ индивидуальных» (база
+ * основной ставки), и «деньги ТОЛЬКО индивидуальных» (их собственный компонент).
+ *
+ * Платёж БЕЗ ученика (`studentId` не заполнен) при исключении остаётся в
+ * выборке, а при `onlyStudentIds` — выпадает: сказать, что он чей-то личный,
+ * нельзя, а молча приписать его индивидуальной ставке значило бы выдумать
+ * деньги. Такие платежи и так видны в диагностике `payment_without_group`.
+ */
+export interface RevenueFilter {
+  /** Ученики, чьи деньги в выборку НЕ входят — их оплачивает своя ставка. */
+  excludeStudentIds?: Set<string>;
+  /** Только эти ученики. Задаётся вместо excludeStudentIds, не вместе с ним. */
+  onlyStudentIds?: Set<string>;
+}
+
+/**
  * Деньги групп преподавателя за окно: платежи МИНУС возвраты, с разбивкой.
  *
  * Экспортируется намеренно: этим же кодом экран показывает «кто сколько
@@ -466,10 +514,19 @@ export function collectTeacherRevenue(
   scope: TeacherScope,
   incomeTx: FinanceTxLike[],
   refundTx: FinanceTxLike[],
+  filter?: RevenueFilter,
 ): TeacherRevenue {
   const groupIds = new Set(scope.groupIds);
-  const matchedIncome = (incomeTx ?? []).filter((tx) => !!tx.groupId && groupIds.has(tx.groupId));
-  const matchedRefunds = (refundTx ?? []).filter((tx) => !!tx.groupId && groupIds.has(tx.groupId));
+  const only = filter?.onlyStudentIds;
+  const excluded = filter?.excludeStudentIds;
+  const studentPasses = (tx: FinanceTxLike): boolean => {
+    if (only) return !!tx.studentId && only.has(tx.studentId);
+    if (excluded?.size) return !tx.studentId || !excluded.has(tx.studentId);
+    return true;
+  };
+  const matched = (tx: FinanceTxLike) => !!tx.groupId && groupIds.has(tx.groupId) && studentPasses(tx);
+  const matchedIncome = (incomeTx ?? []).filter(matched);
+  const matchedRefunds = (refundTx ?? []).filter(matched);
 
   // Суммируем в ЦЕЛЫХ минорных единицах: каждая транзакция конвертируется один
   // раз, процент берётся от суммы. Брать процент с каждой транзакции отдельно
@@ -620,6 +677,34 @@ export function allocateByShares<T extends BranchShare>(
 }
 
 /**
+ * Разбивка по группам, СЛОЖЕННАЯ по всем компонентам строки, — веса филиалов.
+ *
+ * Один компонент брать нельзя с тех пор, как появились именные ставки: деньги
+ * индивидуальных учеников лежат в своём компоненте, а деньги групп — в своём, и
+ * первый попавшийся дал бы половину картины. Преподаватель с процентом в одном
+ * филиале и индивидуальным учеником в другом получил бы расход целиком не там,
+ * где заработал.
+ *
+ * null — ни один компонент разбивки не несёт (чистый оклад): вызывающий тогда
+ * досчитывает её сам, иначе веса выродились бы в «первый филиал забирает всё».
+ */
+export function mergeComponentByGroup(
+  components: Array<{ basis?: ComponentBasis }> | undefined | null,
+): RevenueSlice[] | null {
+  const map = new Map<string, number>();
+  let found = false;
+  for (const component of components ?? []) {
+    const slices = component?.basis?.byGroup;
+    if (!Array.isArray(slices)) continue;
+    found = true;
+    for (const slice of slices) {
+      if (slice?.id) map.set(slice.id, (map.get(slice.id) || 0) + Number(slice.paidMinor || 0));
+    }
+  }
+  return found ? toSlices(map) : null;
+}
+
+/**
  * % от СОБРАННОЙ наличности: база = платежи в окне по ГРУППАМ ПРЕПОДАВАТЕЛЯ
  * МИНУС возвраты в окне по тем же группам.
  *
@@ -632,7 +717,7 @@ function computePercentRevenue(
   component: Extract<PayComponent, { kind: 'percent_revenue' }>,
   incomeTx: FinanceTxLike[],
   refundTx: FinanceTxLike[],
-  ctx: { teacherId: string; ruleId: string; scope: TeacherScope },
+  ctx: { teacherId: string; ruleId: string; scope: TeacherScope; individualStudentIds?: Set<string> },
 ): ComputedComponent {
   const diagnostics: Diagnostic[] = [];
 
@@ -666,7 +751,10 @@ function computePercentRevenue(
     };
   }
 
-  const revenue = collectTeacherRevenue(ctx.scope, incomeTx, refundTx);
+  // Индивидуальные ученики из базы процента ИЗЪЯТЫ: за них платят своей суммой,
+  // и оставить их деньги здесь значило бы заплатить дважды.
+  const excludeStudentIds = ctx.individualStudentIds;
+  const revenue = collectTeacherRevenue(ctx.scope, incomeTx, refundTx, { excludeStudentIds });
 
   // Кламп в ноль: возвраты больше сборов НЕ превращаются в отрицательный
   // заработок и не отбирают уже выданное. Продукт: «никогда не clawback».
@@ -697,6 +785,7 @@ function computePercentRevenue(
       byGroup: revenue.byGroup,
       byStudent: revenue.byStudent,
       sourceTxnIds: revenue.sourceTxnIds,
+      excludedStudentIds: excludeStudentIds?.size ? [...excludeStudentIds] : undefined,
     },
     diagnostics,
   };
@@ -721,7 +810,7 @@ function computePerPayingStudent(
   component: Extract<PayComponent, { kind: 'per_paying_student' }>,
   incomeTx: FinanceTxLike[],
   refundTx: FinanceTxLike[],
-  ctx: { teacherId: string; ruleId: string; scope: TeacherScope },
+  ctx: { teacherId: string; ruleId: string; scope: TeacherScope; individualStudentIds?: Set<string> },
 ): ComputedComponent {
   const diagnostics: Diagnostic[] = [];
 
@@ -755,7 +844,10 @@ function computePerPayingStudent(
     };
   }
 
-  const revenue = collectTeacherRevenue(ctx.scope, incomeTx, refundTx);
+  // Ученик с индивидуальной ставкой в множитель НЕ входит: его оплачивает своя
+  // сумма, а не общая «250 с ученика».
+  const excludeStudentIds = ctx.individualStudentIds;
+  const revenue = collectTeacherRevenue(ctx.scope, incomeTx, refundTx, { excludeStudentIds });
   const payingStudents = revenue.byStudent.filter((s) => s.paidMinor > 0).length;
 
   if (revenue.netMinor < 0) {
@@ -778,6 +870,98 @@ function computePerPayingStudent(
     basis: {
       amountMinor: component.amountMinor,
       base: component.base,
+      payingStudents,
+      grossMinor: revenue.grossMinor,
+      refundMinor: revenue.refundMinor,
+      revenueBaseMinor: Math.max(0, revenue.netMinor),
+      byGroup: revenue.byGroup,
+      byStudent: revenue.byStudent,
+      sourceTxnIds: revenue.sourceTxnIds,
+      excludedStudentIds: excludeStudentIds?.size ? [...excludeStudentIds] : undefined,
+    },
+    diagnostics,
+  };
+}
+
+/**
+ * ИМЕННЫЕ СТАВКИ — индивидуальные занятия: «с Тимура 1500, с Алии 1200».
+ *
+ * Зачем отдельный компонент, а не четвёртый вид оплаты: индивидуальные ученики
+ * почти никогда не заменяют основную ставку целиком — преподаватель ведёт
+ * группы на общих условиях И двоих учеников персонально. Поэтому исключения
+ * СКЛАДЫВАЮТСЯ с любой ставкой (оклад, процент, сумма с ученика), а сами эти
+ * ученики из основной ставки изъяты (см. individualStudentIds в computePayroll).
+ *
+ * Условие начисления то же, что у `per_paying_student`, и это не случайность:
+ * платим за тех, кто в окне ПОЛОЖИТЕЛЬНЫЙ нетто оставил в кассе. Частичная
+ * оплата — целая ставка: «1500 за ученика» не дробится по доле внесённого, ровно
+ * как «250 с ученика».
+ *
+ * Деньги ученика видны только через ГРУППУ преподавателя (собственный
+ * инвариант этого файла: чьи деньги — решает состав групп). Значит и
+ * индивидуальному ученику нужна группа — пусть из одного человека. Ученик,
+ * которого нет ни в одной группе преподавателя, не начислится никогда, и молчать
+ * об этом нельзя: отсюда диагностика individual_student_outside_groups.
+ */
+function computeIndividualStudents(
+  component: Extract<PayComponent, { kind: 'individual_students' }>,
+  incomeTx: FinanceTxLike[],
+  refundTx: FinanceTxLike[],
+  ctx: { teacherId: string; ruleId: string; scope: TeacherScope },
+): ComputedComponent {
+  const diagnostics: Diagnostic[] = [];
+  // Дедуп по ученику: сервер уникальность проверяет, но ядро обязано быть
+  // правильным и на данных, введённых мимо него. Побеждает ПЕРВАЯ запись —
+  // детерминированно и не зависит от порядка чтения.
+  const rates: IndividualStudentRate[] = [];
+  const seen = new Set<string>();
+  for (const rate of component.rates ?? []) {
+    const studentId = String(rate?.studentId ?? '');
+    if (!studentId || seen.has(studentId)) continue;
+    seen.add(studentId);
+    rates.push({ studentId, amountMinor: Number(rate?.amountMinor || 0) });
+  }
+
+  const inScope = new Set(ctx.scope.studentIds);
+  const outside = rates.filter((r) => !inScope.has(r.studentId));
+  if (outside.length) {
+    diagnostics.push({
+      code: 'individual_student_outside_groups',
+      message:
+        `Индивидуальных учеников вне его групп: ${outside.length}. ` +
+        'Их оплаты в расчёт не попадают — деньги привязываются к преподавателю через группу. ' +
+        'Создайте группу на такого ученика (пусть из одного человека) и назначьте в неё преподавателя.',
+      count: outside.length,
+      sample: sample(outside.map((r) => r.studentId)),
+      teacherId: ctx.teacherId,
+      ruleId: ctx.ruleId,
+    });
+  }
+
+  const onlyStudentIds = new Set(rates.map((r) => r.studentId));
+  const revenue = onlyStudentIds.size
+    ? collectTeacherRevenue(ctx.scope, incomeTx, refundTx, { onlyStudentIds })
+    : { grossMinor: 0, refundMinor: 0, netMinor: 0, byGroup: [], byStudent: [], sourceTxnIds: [], refundTxnIds: [] };
+
+  const netByStudent = new Map(revenue.byStudent.map((s) => [s.id, s.paidMinor]));
+  let earnedMinor = 0;
+  let payingStudents = 0;
+  for (const rate of rates) {
+    // Именно нетто: ученику вернули всё уплаченное — значит в этом месяце он не
+    // заплатил ничего, и ставка за него не причитается.
+    if ((netByStudent.get(rate.studentId) || 0) <= 0) continue;
+    earnedMinor += rate.amountMinor;
+    payingStudents += 1;
+  }
+
+  return {
+    kind: 'individual_students',
+    earnedMinor,
+    basis: {
+      base: component.base,
+      // Список замораживается дословно: через месяц «почему 2700» должно
+      // читаться по строке, а не по текущей карточке ставки.
+      rates,
       payingStudents,
       grossMinor: revenue.grossMinor,
       refundMinor: revenue.refundMinor,
@@ -838,6 +1022,18 @@ export function computePayroll(inputs: PayrollInputs): PayrollResult {
       });
     }
 
+    // ── Кого основная ставка не касается ──
+    // Ученики с именной ставкой изымаются из базы процента и из числа
+    // заплативших ДО расчёта компонентов: иначе за индивидуальное занятие
+    // заплатили бы и своей суммой, и общей ставкой. Набор считается один раз и
+    // отдаётся обоим «кассовым» видам оплаты.
+    const individualRates = ruleComponents
+      .filter((c: any): c is Extract<PayComponent, { kind: 'individual_students' }> => c?.kind === 'individual_students')
+      .flatMap((c) => c.rates ?? []);
+    const individualStudentIds = new Set(
+      individualRates.map((r) => String(r?.studentId ?? '')).filter(Boolean),
+    );
+
     // Оплата, которая считается по кассе: и процент, и сумма с плательщика
     // зависят от того, привязан ли платёж к группе, — значит и предупреждать о
     // непривязанных платежах нужно при обеих.
@@ -858,13 +1054,23 @@ export function computePayroll(inputs: PayrollInputs): PayrollResult {
         case 'percent_revenue':
           usesCollected = true;
           components.push(
-            computePercentRevenue(component, incomeTx, refundTx, { teacherId, ruleId: rule.id, scope }),
+            computePercentRevenue(component, incomeTx, refundTx, {
+              teacherId, ruleId: rule.id, scope, individualStudentIds,
+            }),
           );
           break;
         case 'per_paying_student':
           usesCollected = true;
           components.push(
-            computePerPayingStudent(component, incomeTx, refundTx, { teacherId, ruleId: rule.id, scope }),
+            computePerPayingStudent(component, incomeTx, refundTx, {
+              teacherId, ruleId: rule.id, scope, individualStudentIds,
+            }),
+          );
+          break;
+        case 'individual_students':
+          usesCollected = true;
+          components.push(
+            computeIndividualStudents(component, incomeTx, refundTx, { teacherId, ruleId: rule.id, scope }),
           );
           break;
         default:
@@ -976,10 +1182,16 @@ export interface ExpectedRevenue {
   expectedStudents: number;
   /** Сколько счетов вошло — чтобы «ноль» отличался от «счетов нет». */
   planCount: number;
+  /**
+   * Сколько выставлено КАЖДОМУ студенту. Нужен потолку с именными ставками:
+   * индивидуального ученика надо вычесть из общей базы и добавить его ставкой,
+   * а для этого прогноз обязан знать не только сумму, но и кому она выставлена.
+   */
+  byStudent: RevenueSlice[];
 }
 
 export function emptyExpectedRevenue(): ExpectedRevenue {
-  return { expectedMinor: 0, expectedStudents: 0, planCount: 0 };
+  return { expectedMinor: 0, expectedStudents: 0, planCount: 0, byStudent: [] };
 }
 
 /**
@@ -1014,7 +1226,7 @@ export function buildExpectedByTeacher(
     byCourseStudent.set(key, list);
   }
 
-  interface Acc { minor: number; students: Set<string>; plans: Set<string> }
+  interface Acc { minor: number; students: Set<string>; plans: Set<string>; byStudent: Map<string, number> }
   const acc = new Map<string, Acc>();
 
   for (const group of groups ?? []) {
@@ -1028,7 +1240,7 @@ export function buildExpectedByTeacher(
       for (const teacherId of teacherIds) {
         let bucket = acc.get(teacherId);
         if (!bucket) {
-          bucket = { minor: 0, students: new Set(), plans: new Set() };
+          bucket = { minor: 0, students: new Set(), plans: new Set(), byStudent: new Map() };
           acc.set(teacherId, bucket);
         }
         for (const plan of plansOf) {
@@ -1037,7 +1249,9 @@ export function buildExpectedByTeacher(
           // ведёт у человека и основную группу, и подгруппу.
           if (bucket.plans.has(plan.id)) continue;
           bucket.plans.add(plan.id);
-          bucket.minor += toMinor(Number(plan.totalAmount || 0));
+          const planMinor = toMinor(Number(plan.totalAmount || 0));
+          bucket.minor += planMinor;
+          bucket.byStudent.set(studentId, (bucket.byStudent.get(studentId) || 0) + planMinor);
         }
         bucket.students.add(studentId);
       }
@@ -1050,6 +1264,7 @@ export function buildExpectedByTeacher(
       expectedMinor: bucket.minor,
       expectedStudents: bucket.students.size,
       planCount: bucket.plans.size,
+      byStudent: toSlices(bucket.byStudent),
     });
   }
   return out;
@@ -1070,17 +1285,51 @@ export function computePotentialMinor(
   components: PayComponent[] | undefined,
   expected: ExpectedRevenue,
 ): number {
+  // Именные ставки вычитаются из общей базы ровно как в начислении: иначе
+  // потолок был бы выше достижимого — он считал бы индивидуального ученика
+  // дважды, а сравнивать с ним начисленное стало бы бессмысленно.
+  const invoicedByStudent = new Map((expected.byStudent ?? []).map((s) => [s.id, s.paidMinor]));
+  const individualRates = (components ?? [])
+    .filter((c: any) => c?.kind === 'individual_students')
+    .flatMap((c: any) => (c.rates ?? []) as IndividualStudentRate[]);
+  // Дедуп по ученику — тем же правилом «побеждает первая запись», что в
+  // начислении (computeIndividualStudents): два числа на одного человека это
+  // ошибка ввода, и потолок не имеет права разойтись с расчётом в её трактовке.
+  const payableRates = new Map<string, number>();
+  for (const rate of individualRates) {
+    const studentId = String(rate?.studentId ?? '');
+    if (!studentId || payableRates.has(studentId)) continue;
+    // Счёт на ноль (стипендиат) — денег с него не ждут, значит и ставка за него
+    // в потолок не входит: потолок это «если оплатят ВСЁ ВЫСТАВЛЕННОЕ».
+    if ((invoicedByStudent.get(studentId) || 0) <= 0) continue;
+    payableRates.set(studentId, Number(rate.amountMinor || 0));
+  }
+  let excludedMinor = 0;
+  for (const studentId of payableRates.keys()) excludedMinor += invoicedByStudent.get(studentId) || 0;
+  const excludedStudents = payableRates.size;
+
+  // Именные ставки складываются ОДИН раз, вне цикла по компонентам: набор уже
+  // отобран и дедуплицирован, а второй такой компонент в ставке (ошибка ввода)
+  // иначе начислил бы тех же учеников дважды.
   let total = 0;
+  for (const amountMinor of payableRates.values()) total += amountMinor;
+
   for (const component of components ?? []) {
     switch (component?.kind) {
       case 'salary':
         total += component.amountMinor;
         break;
       case 'percent_revenue':
-        total += divRoundHalfUp(Math.max(0, expected.expectedMinor) * component.percentBp, 10000);
+        total += divRoundHalfUp(
+          Math.max(0, expected.expectedMinor - excludedMinor) * component.percentBp,
+          10000,
+        );
         break;
       case 'per_paying_student':
-        total += Math.max(0, expected.expectedStudents) * component.amountMinor;
+        total += Math.max(0, expected.expectedStudents - excludedStudents) * component.amountMinor;
+        break;
+      case 'individual_students':
+        // Уже сложено выше, до цикла.
         break;
       default:
         // Устаревший вид оплаты не начисляется — значит и в потолок не входит.

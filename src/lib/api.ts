@@ -9,6 +9,9 @@ import type {
   CompensationRule, PayComponent, PayrollPeriod, PayrollLine, PayrollPayout,
   Classroom, ChatDirectoryEntry,
 } from '../types';
+import type {
+  Contest, ContestBundle, ContestScoreLogEntry, JudgeContest, JudgeBoard,
+} from './contests';
 
 const API_BASE = '/.netlify/functions';
 
@@ -1349,3 +1352,23 @@ export const apiGetPayrollBalance = () =>
  */
 export const apiGetPayrollPayouts = (filters?: { teacherId?: string; period?: string }) =>
   payrollReq<PayrollPayout[]>('payouts', 'GET', undefined, filters as any);
+
+
+// ---- Конкурсы и олимпиады (api-contests — организатор, api-contest-judge — жюри) ----
+const contestsReq = <T = any>(action: string, method = 'GET', body?: any, params?: Record<string, string>) =>
+  apiRequest<T>('api-contests', method, body, { action, ...(params || {}) });
+const judgeReq = <T = any>(action: string, method = 'GET', body?: any, params?: Record<string, string>) =>
+  apiRequest<T>('api-contest-judge', method, body, { action, ...(params || {}) });
+
+export const apiContestsList = () => contestsReq<Contest[]>('list');
+export const apiContestGet = (id: string) => contestsReq<ContestBundle>('get', 'GET', undefined, { id });
+export const apiContestLog = (id: string, participantId: string) => contestsReq<ContestScoreLogEntry[]>('log', 'GET', undefined, { id, participantId });
+export const apiContestCreate = (data: Partial<Contest>) => contestsReq<Contest>('create', 'POST', data);
+export const apiContestAction = <T = any>(action: string, id: string, data?: Record<string, unknown>) =>
+  contestsReq<T>(action, 'POST', { id, ...(data || {}) });
+
+export const apiJudgeMy = () => judgeReq<{ displayName: string; contests: JudgeContest[] }>('my');
+export const apiJudgeLive = (contestId: string) => judgeReq<JudgeContest>('live', 'GET', undefined, { contestId });
+export const apiJudgeBoard = (contestId: string, categoryId: string) => judgeReq<JudgeBoard>('board', 'GET', undefined, { contestId, categoryId });
+export const apiJudgeScore = (contestId: string, participantId: string, scores: Record<string, number>) =>
+  judgeReq<{ saved: true; total: number; updatedAt: string }>('score', 'POST', { contestId, participantId, scores });

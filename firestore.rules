@@ -12,8 +12,17 @@ service cloud.firestore {
     // OPTIMIZED: worst-case 2 reads (membership check + user doc), not 3.
     // Membership check is cheapest (1 exists() read, no data transfer).
     // If that fails, single user doc read checks both legacy fields.
+    //
+    // Учётка «Жюри» (role == 'jury') доступа к данным организации не получает
+    // никогда — даже если в её документе окажется activeOrgId. Ей нужен только
+    // экран оценивания, а он целиком идёт через api-contest-judge.
+    function isJuryAccount() {
+      let u = /databases/$(database)/documents/users/$(request.auth.uid);
+      return exists(u) && get(u).data.get('role', '') == 'jury';
+    }
+
     function hasOrgAccess(orgId) {
-      return request.auth != null && (
+      return request.auth != null && !isJuryAccount() && (
         exists(/databases/$(database)/documents/users/$(request.auth.uid)/memberships/$(orgId)) ||
         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.organizationId == orgId ||
         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.activeOrgId == orgId
@@ -39,7 +48,7 @@ service cloud.firestore {
 
       allow update: if isSuperAdmin() || (
         request.auth.uid == userId &&
-        !request.resource.data.diff(resource.data).affectedKeys().hasAny(['role', 'organizationId', 'activeOrgId', 'activeRole', 'branchIds'])
+        !request.resource.data.diff(resource.data).affectedKeys().hasAny(['role', 'organizationId', 'activeOrgId', 'activeRole', 'branchIds', 'judgingContestIds', 'juryCreatedByOrg'])
       );
 
       allow delete: if isSuperAdmin();
@@ -306,6 +315,26 @@ service cloud.firestore {
     match /systemErrors/{errorId} { allow read, write: if isSuperAdmin(); }
     match /courseRequests/{reqId} { allow read, write: if false; } // Handled entirely via backend
     match /demoRequests/{reqId} { allow read, write: if false; }   // Handled entirely via backend (api-demo-requests)
+
+    // Конкурсы и олимпиады. Всё — только через api-contests / api-contest-judge:
+    // жюри не должно видеть чужие оценки и общий рейтинг, а клиентское чтение
+    // этих коллекций такую границу обошло бы.
+    match /contests/{docId} { allow read, write: if false; }
+    match /contestParticipants/{docId} { allow read, write: if false; }
+    match /contestJury/{docId} { allow read, write: if false; }
+    match /contestScores/{docId} { allow read, write: if false; }
+    match /contestScoreLog/{docId} { allow read, write: if false; }
+    match /contestResults/{docId} { allow read, write: if false; }
+    // «Живой» документ конкурса для onSnapshot: открытые категории, проект,
+    // вызванный ведущим, ревизия. Оценок и рейтинга в нём нет. Читают жюри
+    // этого конкурса (по uid) и сотрудники организации; пишет только сервер.
+    match /contestLive/{contestId} {
+      allow read: if isSuperAdmin() || (request.auth != null && (
+        request.auth.uid in resource.data.juryUids ||
+        hasOrgAccess(resource.data.organizationId)
+      ));
+      allow write: if false;
+    }
 
     // Telegram onboarding / login — all written & read by the backend (Admin SDK).
     match /orgJoinCodes/{code} { allow read, write: if false; }

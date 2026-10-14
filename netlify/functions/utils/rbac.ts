@@ -84,6 +84,11 @@ export const RESOURCE_ACTIONS: Record<string, RbacAction[]> = {
   // `delete` — модерировать чужие сообщения. Своё сообщение автор удаляет и без
   // `delete`. См. api-chat.ts.
   chat: ['read', 'write', 'delete'],
+  // Конкурсы и олимпиады (api-contests). read — список, мониторинг и итоги;
+  // write — настройка, участники, жюри, открытие оценивания, ведущий, правка
+  // оценок с комментарием, утверждение итогов; delete — удаление участников и
+  // конкурсов. Жюри это право НЕ нужно: оно оценивает по записи в contestJury.
+  contests: ['read', 'write', 'delete'],
 };
 
 export const ALL_RESOURCES = Object.keys(RESOURCE_ACTIONS);

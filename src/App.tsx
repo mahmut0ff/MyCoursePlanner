@@ -6,6 +6,7 @@ import { ThemeProvider, useTheme } from './contexts/ThemeContext';
 import ProtectedRoute from './components/auth/ProtectedRoute';
 import PlanGuard from './components/guards/PlanGuard';
 import PermissionRoute from './components/guards/PermissionRoute';
+import { PermissionsProvider } from './contexts/PermissionsContext';
 import ErrorBoundary from './components/common/ErrorBoundary';
 import AppLayout from './components/layout/AppLayout';
 import PresenceHeartbeat from './components/presence/PresenceHeartbeat';
@@ -137,6 +138,12 @@ const ChatPage = lazyRetry(() => import('./pages/chat/ChatPage'));
 
 const DocumentViewerPage = lazyRetry(() => import('./pages/viewer/DocumentViewerPage'));
 
+// Конкурсы и олимпиады
+const ContestsPage = lazyRetry(() => import('./pages/contests/ContestsPage'));
+const ContestDetailPage = lazyRetry(() => import('./pages/contests/ContestDetailPage'));
+const ContestPrintPage = lazyRetry(() => import('./pages/contests/ContestPrintPage'));
+const JudgePage = lazyRetry(() => import('./pages/judge/JudgePage'));
+
 const ThemedToaster = () => {
   const { isDark } = useTheme();
   return (
@@ -202,6 +209,14 @@ const App: React.FC = () => {
           <Route path="/quiz/sessions/:id" element={<ProtectedRoute allowedRoles={['admin', 'manager', 'teacher']}><LiveSessionDashboard /></ProtectedRoute>} />
 
 
+
+          {/* Оценивание конкурсов — полноэкранно, без меню. ЕДИНСТВЕННЫЙ маршрут,
+              куда пускается учётка «Жюри» (allowJury); все остальные её
+              перенаправляют сюда. Сотрудник, назначенный в жюри, тоже работает здесь. */}
+          <Route path="/judge" element={<ProtectedRoute allowJury><JudgePage /></ProtectedRoute>} />
+
+          {/* Печатные формы конкурса — без меню, чтобы печаталось чисто. */}
+          <Route path="/contests/:id/print" element={<ProtectedRoute><PermissionsProvider><PermissionRoute resource="contests"><ContestPrintPage /></PermissionRoute></PermissionsProvider></ProtectedRoute>} />
 
           {/* App Layout */}
           <Route element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
@@ -302,6 +317,10 @@ const App: React.FC = () => {
             <Route path="branches" element={<ProtectedRoute><PermissionRoute resource="branches"><PlanGuard feature="branches"><BranchesPage /></PlanGuard></PermissionRoute></ProtectedRoute>} />
             <Route path="org-settings" element={<ProtectedRoute><PermissionRoute resource="settings"><OrgSettingsPage /></PermissionRoute></ProtectedRoute>} />
             <Route path="ai" element={<ProtectedRoute><PermissionRoute resource="ai"><AIHubPage /></PermissionRoute></ProtectedRoute>} />
+
+            {/* ═══ Конкурсы и олимпиады — на всех тарифах, без PlanGuard ═══ */}
+            <Route path="contests" element={<ProtectedRoute><PermissionRoute resource="contests"><ContestsPage /></PermissionRoute></ProtectedRoute>} />
+            <Route path="contests/:id" element={<ProtectedRoute><PermissionRoute resource="contests"><ContestDetailPage /></PermissionRoute></ProtectedRoute>} />
 
             {/* ═══ Super Admin Panel ═══ */}
             <Route path="admin" element={<ProtectedRoute allowedRoles={['super_admin']}><AdminDashboardPage /></ProtectedRoute>} />

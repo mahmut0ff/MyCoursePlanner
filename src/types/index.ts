@@ -5,7 +5,9 @@
 
 // ---- Roles ----
 
-export type UserRole = 'super_admin' | 'admin' | 'manager' | 'teacher' | 'student';
+// 'jury' — учётка «только оценивание» конкурсов (см. src/lib/contests.ts): без
+// организации и без доступа к остальной системе ни в интерфейсе, ни через API.
+export type UserRole = 'super_admin' | 'admin' | 'manager' | 'teacher' | 'student' | 'jury';
 
 // ---- Billing Plans ----
 
@@ -291,6 +293,7 @@ export interface UserProfile {
   country?: string;
   phone?: string;
   enrollmentDate?: string;         // Дата поступления (YYYY-MM-DD) — optional, manager-set
+  judgingContestIds?: string[];    // Конкурсы, где человек в жюри (подсказка для меню; доступ проверяет сервер)
   createdAt: string;
   updatedAt: string;
 }

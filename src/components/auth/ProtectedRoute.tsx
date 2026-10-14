@@ -7,9 +7,16 @@ import type { UserRole } from '../../types';
 interface ProtectedRouteProps {
   children: React.ReactNode;
   allowedRoles?: UserRole[];
+  /**
+   * Пускать учётку «Жюри». Только экран оценивания (/judge). Любой другой
+   * защищённый маршрут — включая весь AppLayout — отправляет жюри на /judge.
+   * Это лишь интерфейс: настоящая граница на сервере (verifyAuth без allowJury
+   * отказывает жюри) и в firestore.rules.
+   */
+  allowJury?: boolean;
 }
 
-const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, allowedRoles }) => {
+const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, allowedRoles, allowJury = false }) => {
   const { firebaseUser, profile, loading, configured } = useAuth();
   const { t } = useTranslation();
 
@@ -75,6 +82,8 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, allowedRoles 
     return <Navigate to="/onboarding" replace />;
   }
   
+  if (profile?.role === 'jury' && !allowJury) return <Navigate to="/judge" replace />;
+
   // super_admin can access everything
   if (profile?.role === 'super_admin') return <>{children}</>;
   

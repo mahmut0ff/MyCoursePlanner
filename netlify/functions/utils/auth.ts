@@ -25,7 +25,7 @@ export const DEFAULT_MANAGER_PERMISSIONS: ManagerPermissions = {
 export interface AuthUser {
   uid: string;
   email: string;
-  role: 'super_admin' | 'admin' | 'manager' | 'teacher' | 'student';
+  role: 'super_admin' | 'admin' | 'manager' | 'teacher' | 'student' | 'jury';
   displayName: string;
   organizationId: string | null;
   planId: string | null;
@@ -228,7 +228,7 @@ export async function resolveOrgGrants(user: AuthUser, orgId: string): Promise<O
 // конкурентными вызовами сломал бы её молча и неправильно.
 // ─────────────────────────────────────────────────────────────────────────────
 
-export type AuthFailure = 'credentials' | 'infrastructure';
+export type AuthFailure = 'credentials' | 'infrastructure' | 'jury_restricted';
 
 const authFailures = new WeakMap<HandlerEvent, AuthFailure>();
 
@@ -268,7 +268,24 @@ export function classifyAuthFailure(e: unknown): AuthFailure {
   return 'infrastructure';
 }
 
-export async function verifyAuth(event: HandlerEvent): Promise<AuthUser | null> {
+// ─────────────────────────────────────────────────────────────────────────────
+// Роль «Жюри» — запрет по умолчанию
+//
+// Учётка жюри (users/{uid}.role === 'jury', без членства в организации) должна
+// видеть ТОЛЬКО экран оценивания. Перечислить запрет в каждой из десятков
+// функций — значит рано или поздно забыть его в новой: многие ручки различают
+// лишь «студент / не студент», и жюри по такой проверке прошло бы как персонал.
+// Поэтому наоборот: verifyAuth отказывает жюри ВСЕГДА, а единственная ручка,
+// которой жюри нужно, явно передаёт { allowJury: true } (api-contest-judge).
+// Отказ — 403 с кодом jury_restricted, см. unauthorized().
+// ─────────────────────────────────────────────────────────────────────────────
+
+export interface VerifyAuthOptions {
+  /** Пускать учётку с ролью «Жюри». Только для api-contest-judge. */
+  allowJury?: boolean;
+}
+
+export async function verifyAuth(event: HandlerEvent, opts?: VerifyAuthOptions): Promise<AuthUser | null> {
   try {
     const authHeader = event.headers['authorization'] || event.headers['Authorization'];
     if (!authHeader?.startsWith('Bearer ')) return null;
@@ -289,6 +306,30 @@ export async function verifyAuth(event: HandlerEvent): Promise<AuthUser | null> 
     let permissions: ManagerPermissions = { ...DEFAULT_MANAGER_PERMISSIONS };
     let customRoleId: string | null = null;
     let rbac: Set<string> = new Set();
+
+    // Роль жюри ставит только сервер (api-contests), клиент её поле менять не
+    // может (firestore.rules). Членство в организации жюри не даётся вовсе, но
+    // даже если activeOrgId окажется заполнен — роль не повышается.
+    if (role === 'jury') {
+      if (!opts?.allowJury) {
+        authFailures.set(event, 'jury_restricted');
+        return null;
+      }
+      return {
+        uid: decoded.uid,
+        email: decoded.email || '',
+        role: 'jury',
+        displayName: userData?.displayName || decoded.name || '',
+        organizationId: null,
+        planId: null,
+        aiEnabled: false,
+        branchIds: [],
+        primaryBranchId: null,
+        permissions: { ...DEFAULT_MANAGER_PERMISSIONS },
+        customRoleId: null,
+        rbac: new Set(),
+      };
+    }
 
     if (role !== 'super_admin' && organizationId) {
       const membership = await resolveOrgRole(decoded.uid, organizationId);
@@ -493,6 +534,9 @@ export const jsonResponse = (statusCode: number, body: any, requestOrigin?: stri
 export const unauthorized = (event?: HandlerEvent) => {
   if (event && authFailures.get(event) === 'infrastructure') {
     return jsonResponse(503, { error: 'Backend temporarily unavailable', code: 'backend_unavailable' });
+  }
+  if (event && authFailures.get(event) === 'jury_restricted') {
+    return jsonResponse(403, { error: 'Учётной записи жюри доступно только оценивание', code: 'jury_restricted' });
   }
   return jsonResponse(401, { error: 'Unauthorized' });
 };

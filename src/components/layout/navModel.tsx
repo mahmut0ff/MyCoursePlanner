@@ -17,7 +17,7 @@ import {
   ClipboardCheck,
   Inbox,
   NotebookText, NotebookPen, MapPin, UserCog,
-  Sparkles, LifeBuoy, Wallet, DoorOpen, MessageSquare, Ban,
+  Sparkles, LifeBuoy, Wallet, DoorOpen, MessageSquare, Ban, Medal, Gavel,
 } from 'lucide-react';
 import { useChatRooms, useUnreadRooms } from '../../lib/useChat';
 
@@ -128,7 +128,7 @@ export interface NavModelOptions {
 /** Nav the CURRENT user is entitled to see, before personal hide-preferences. */
 export function useNavModel(instType?: string, opts?: NavModelOptions): NavSectionDef[] {
   const { t } = useTranslation();
-  const { role, isSuperAdmin, isTeacher, isManager, organizationId, firebaseUser } = useAuth();
+  const { role, isSuperAdmin, isTeacher, isManager, organizationId, firebaseUser, profile } = useAuth();
   const { canAccess } = usePlanGate();
   const { canRead } = usePermissions();
   // `canSwitch` (more than one branch) — not just `activeBranchId` — because a
@@ -230,6 +230,7 @@ export function useNavModel(instType?: string, opts?: NavModelOptions): NavSecti
         { id: 'finances', to: '/finances', icon: CreditCard, label: t('nav.finances', 'Финансы'), locked: !canAccess('finances') },
         { id: 'payroll', to: '/payroll', icon: Wallet, label: t('nav.payroll', 'Зарплата'), locked: !canAccess('payroll') },
         { id: 'teacherActivity', to: '/teacher-activity', icon: Activity, label: t('nav.teacherActivity', 'Активность') },
+        { id: 'contests', to: '/contests', icon: Medal, label: t('nav.contests', 'Конкурсы') },
       ],
     });
   }
@@ -276,6 +277,7 @@ export function useNavModel(instType?: string, opts?: NavModelOptions): NavSecti
     if (canRead('branches')) management.push({ id: 'branches', to: '/branches', icon: MapPin, label: t('nav.branches', 'Филиалы'), locked: !canAccess('branches') });
     if (canRead('settings')) management.push({ id: 'orgSettings', to: '/org-settings', icon: Settings, label: t('nav.orgSettings', 'Настройки') });
     if (canRead('teacher_activity')) management.push({ id: 'teacherActivity', to: '/teacher-activity', icon: Activity, label: t('nav.teacherActivity', 'Активность') });
+    if (canRead('contests')) management.push({ id: 'contests', to: '/contests', icon: Medal, label: t('nav.contests', 'Конкурсы') });
     sections.push({ id: 'management', label: t('nav.secManagement', 'Управление'), items: management });
   }
 
@@ -329,6 +331,7 @@ export function useNavModel(instType?: string, opts?: NavModelOptions): NavSecti
       if (canRead('branches')) management.push({ id: 'branches', to: '/branches', icon: MapPin, label: t('nav.branches', 'Филиалы'), locked: !canAccess('branches') });
       if (canRead('settings')) management.push({ id: 'orgSettings', to: '/org-settings', icon: Settings, label: t('nav.orgSettings', 'Настройки') });
       if (canRead('teacher_activity')) management.push({ id: 'teacherActivity', to: '/teacher-activity', icon: Activity, label: t('nav.teacherActivity', 'Активность') });
+      if (canRead('contests')) management.push({ id: 'contests', to: '/contests', icon: Medal, label: t('nav.contests', 'Конкурсы') });
       sections.push({ id: 'management', label: t('nav.secManagement', 'Управление'), items: management });
     }
 
@@ -390,6 +393,20 @@ export function useNavModel(instType?: string, opts?: NavModelOptions): NavSecti
       id: 'progress',
       items: [
         { id: 'achievements', to: '/achievements', icon: Trophy, label: t('nav.achievements', 'Достижения') },
+      ],
+    });
+  }
+
+  /* ──────── ОЦЕНИВАНИЕ (сотрудник или ученик, назначенный в жюри) ──────── */
+  // Вне ролей: в жюри можно назначить любого существующего пользователя.
+  // judgingContestIds — лишь подсказка меню; доступ к оцениванию решает сервер
+  // по записи в contestJury. Учётке с ролью «Жюри» меню не показывается вовсе —
+  // её ProtectedRoute сразу ведёт на /judge.
+  if (profile?.judgingContestIds?.length) {
+    sections.push({
+      id: 'judging',
+      items: [
+        { id: 'judge', to: '/judge', icon: Gavel, label: t('nav.judge', 'Оценивание') },
       ],
     });
   }

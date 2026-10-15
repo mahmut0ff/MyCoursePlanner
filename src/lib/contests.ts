@@ -24,6 +24,14 @@
  */
 
 export type ContestKind = 'olympiad' | 'project_contest' | 'competition' | 'other';
+/**
+ * Как жюри ходит по проектам.
+ *  host — проекты защищаются на сцене по очереди: ведущий вызывает проект с
+ *         мониторинга, у жюри он открывается сам; список проектов вторичен.
+ *  free — жюри ходят по столам сами: главное — список и поиск по номеру,
+ *         автопереходов нет, ведущего на мониторинге нет.
+ */
+export type JudgingMode = 'host' | 'free';
 export type ContestStatus = 'draft' | 'registration' | 'judging' | 'finished';
 /** pending — ещё не начинали; open — жюри оценивает; closed — пауза/закрыто; approved — итоги утверждены. */
 export type CategoryJudging = 'pending' | 'open' | 'closed' | 'approved';
@@ -78,6 +86,7 @@ export interface Contest {
   criteria: ContestCriterion[];
   /** Критерии для разрешения ничьей, в порядке приоритета. */
   tieBreakCriterionIds: string[];
+  judgingMode: JudgingMode;
   /** Растёт на каждом изменении — по нему мониторинг понимает, что пора перечитать. */
   rev: number;
   createdAt: string;
@@ -204,6 +213,7 @@ export interface JudgeContest {
   venue: string;
   status: ContestStatus;
   organizationName: string;
+  judgingMode: JudgingMode;
   criteria: ContestCriterion[];
   categories: { id: string; code: string; name: string; judging: CategoryJudging; currentParticipantId: string | null; currentSetAt: string | null }[];
 }
@@ -240,6 +250,11 @@ export const CONTEST_STATUS_LABELS: Record<ContestStatus, string> = {
 };
 
 export const CONTEST_STATUS_ORDER: ContestStatus[] = ['draft', 'registration', 'judging', 'finished'];
+
+export const JUDGING_MODE_LABELS: Record<JudgingMode, { title: string; hint: string }> = {
+  host: { title: 'Ведущий вызывает проекты', hint: 'Защита на сцене по очереди. Ведущий открывает проект с мониторинга — у жюри он появляется сам.' },
+  free: { title: 'Жюри ходят по столам', hint: 'Каждый член жюри сам выбирает порядок: открывает проект из списка или по номеру.' },
+};
 
 export const JUDGING_LABELS: Record<CategoryJudging, string> = {
   pending: 'Не начато',

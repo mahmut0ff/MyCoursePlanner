@@ -75,7 +75,7 @@ const JuryTab: React.FC<ContestTabProps> = ({ data, act, canEdit, readOnly }) =>
   return (
     <div className="space-y-4">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <p className="text-sm text-slate-500 dark:text-slate-400 max-w-2xl">
+        <p className="text-sm text-slate-500 dark:text-slate-500 dark:text-slate-400 max-w-2xl">
           Член жюри входит по email и паролю и видит только экран оценивания своих категорий — без доступа к остальной системе, без чужих оценок и общего рейтинга.
         </p>
         {editable && (
@@ -97,8 +97,8 @@ const JuryTab: React.FC<ContestTabProps> = ({ data, act, canEdit, readOnly }) =>
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0">
                     <div className="font-bold text-slate-900 dark:text-white truncate">{j.name}</div>
-                    {j.title && <div className="text-[13px] text-slate-500 dark:text-slate-400">{j.title}</div>}
-                    <div className="text-[13px] text-slate-400 truncate">{j.email}</div>
+                    {j.title && <div className="text-[13px] text-slate-500 dark:text-slate-500 dark:text-slate-400">{j.title}</div>}
+                    <div className="text-[13px] text-slate-500 dark:text-slate-400 truncate">{j.email}</div>
                   </div>
                   <span className="text-[11px] font-semibold px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 whitespace-nowrap">{ACCOUNT_LABEL[j.accountType]}</span>
                 </div>
@@ -106,7 +106,7 @@ const JuryTab: React.FC<ContestTabProps> = ({ data, act, canEdit, readOnly }) =>
                   Категории: <b>{j.categoryIds?.length ? pr.cats.map((c) => c.code).join(', ') : 'все'}</b>
                 </div>
                 <div className="mt-3">
-                  <div className="flex justify-between text-[12px] text-slate-500 mb-1"><span>Оценено</span><span className="font-semibold">{pr.done} из {pr.total}</span></div>
+                  <div className="flex justify-between text-[12px] text-slate-600 dark:text-slate-300 mb-1"><span>Оценено по {pr.cats.length === contest.categories.length ? 'всем категориям' : `${pr.cats.length} кат.`}</span><span className="font-semibold">{pr.done} из {pr.total}</span></div>
                   <div className="h-2 rounded-full bg-slate-100 dark:bg-slate-700 overflow-hidden">
                     <div className={`h-full rounded-full ${pct === 100 ? 'bg-emerald-500' : 'bg-primary-500'}`} style={{ width: `${pct}%` }} />
                   </div>
@@ -174,7 +174,7 @@ const JuryTab: React.FC<ContestTabProps> = ({ data, act, canEdit, readOnly }) =>
             </div>
             {creds.note
               ? <WarnNote>{creds.note}</WarnNote>
-              : <p className="text-sm text-slate-500 dark:text-slate-400 flex items-start gap-2"><Smartphone className="w-4 h-4 mt-0.5 shrink-0" />Передайте эти данные члену жюри. С телефона он откроет {window.location.host}/login и сразу попадёт на экран оценивания. Пароль больше не показывается — при необходимости задайте новый.</p>}
+              : <p className="text-sm text-slate-500 dark:text-slate-500 dark:text-slate-400 flex items-start gap-2"><Smartphone className="w-4 h-4 mt-0.5 shrink-0" />Передайте эти данные члену жюри. С телефона он откроет {window.location.host}/login и сразу попадёт на экран оценивания. Пароль больше не показывается — при необходимости задайте новый.</p>}
           </>
         )}
       </Modal>

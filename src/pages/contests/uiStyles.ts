@@ -12,3 +12,6 @@ export const inputCls = 'input bg-slate-50 dark:bg-slate-900/50';
 export function errMessage(e: unknown): string {
   return (e as any)?.message || 'Не удалось выполнить действие';
 }
+
+/** Единое имя категории везде: «A · 12–15 лет». */
+export const categoryLabel = (c: { code: string; ageFrom: number; ageTo: number }) => `${c.code} · ${c.ageFrom}–${c.ageTo} лет`;

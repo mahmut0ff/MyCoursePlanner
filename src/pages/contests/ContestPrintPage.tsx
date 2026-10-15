@@ -24,7 +24,7 @@ const ContestPrintPage: React.FC = () => {
   useEffect(() => { apiContestGet(id).then(setData, (e) => setError(e?.message || 'Ошибка')); }, [id]);
 
   if (error) return <div className="p-8 text-rose-600">{error}</div>;
-  if (!data) return <div className="p-8 text-slate-500">Загрузка…</div>;
+  if (!data) return <div className="p-8 text-slate-600 dark:text-slate-300">Загрузка…</div>;
   const { contest } = data;
   const cats = contest.categories.filter((c) => !categoryFilter || c.id === categoryFilter);
   const set = (k: string, v: string) => setParams((p) => { if (v) p.set(k, v); else p.delete(k); return p; }, { replace: true });
@@ -60,7 +60,7 @@ const ContestPrintPage: React.FC = () => {
       <div className="max-w-[900px] mx-auto px-6 py-6 print:p-0">
         {what !== 'placards' && (
           <header className="mb-5">
-            <div className="text-[11px] uppercase tracking-widest text-slate-500">{CONTEST_KIND_LABELS[contest.kind]}{contest.season ? ` · ${contest.season}` : ''}</div>
+            <div className="text-[11px] uppercase tracking-widest text-slate-600 dark:text-slate-300">{CONTEST_KIND_LABELS[contest.kind]}{contest.season ? ` · ${contest.season}` : ''}</div>
             <h1 className="text-xl font-bold">{contest.title}</h1>
             <div className="text-sm text-slate-600">{[formatContestDate(contest.eventDate), contest.venue].filter(Boolean).join(' · ')}</div>
           </header>
@@ -94,7 +94,7 @@ const ContestPrintPage: React.FC = () => {
           <div className="grid grid-cols-2 gap-4 print:gap-3">
             {cats.flatMap((c) => data.participants.filter((p) => p.categoryId === c.id && p.status !== 'withdrawn')).map((p) => (
               <div key={p.id} className="border-2 border-slate-900 rounded-xl p-5 text-center break-inside-avoid" style={{ minHeight: '120mm', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-                <div className="text-[11px] uppercase tracking-widest text-slate-500">{contest.title}</div>
+                <div className="text-[11px] uppercase tracking-widest text-slate-600 dark:text-slate-300">{contest.title}</div>
                 <div className="font-mono font-black my-4" style={{ fontSize: '72px', lineHeight: 1 }}>{p.number}</div>
                 <div className="text-lg font-bold">{p.projectTitle}</div>
                 <div className="text-sm text-slate-600 mt-1">{p.authors.map((a) => a.name).join(', ')}</div>

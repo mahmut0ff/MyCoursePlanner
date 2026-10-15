@@ -70,6 +70,7 @@ export function normalizeContest(id: string, d: any): Contest {
       id: c.id, name: c.name || '', description: c.description || '', maxScore: num(c.maxScore),
     })),
     tieBreakCriterionIds: Array.isArray(d.tieBreakCriterionIds) ? d.tieBreakCriterionIds : [],
+    judgingMode: d.judgingMode === 'free' ? 'free' : 'host',
     rev: num(d.rev),
     createdAt: d.createdAt || '',
     updatedAt: d.updatedAt || '',
@@ -168,6 +169,7 @@ export function sanitizeMeta(body: any): Partial<Contest> {
   if (body.venue !== undefined) out.venue = str(body.venue, 300);
   if (body.prizeFund !== undefined) out.prizeFund = Math.max(0, num(body.prizeFund));
   if (body.description !== undefined) out.description = str(body.description, 5000);
+  if (body.judgingMode !== undefined) out.judgingMode = body.judgingMode === 'free' ? 'free' : 'host';
   return out;
 }
 

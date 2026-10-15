@@ -142,6 +142,7 @@ const handler: Handler = async (event: HandlerEvent) => {
         categories: [],
         criteria: [],
         tieBreakCriterionIds: [],
+        judgingMode: meta.judgingMode || 'host',
         rev: 0,
         createdAt: now(),
         createdBy: user.uid,
@@ -526,7 +527,11 @@ const handler: Handler = async (event: HandlerEvent) => {
         const cat = fresh.categories.find((x) => x.id === body.categoryId);
         if (!cat) return { error: 'Категория не найдена' };
         if (cat.judging === 'approved') return { error: 'Итоги категории утверждены — оценивание закрыто навсегда' };
-        const categories = fresh.categories.map((x) => (x.id === cat.id ? { ...x, judging: state } : x));
+        // Закрыли категорию — вызванный проект снимается: иначе жюри и
+        // мониторинг продолжали бы показывать «сейчас на оценке».
+        const categories = fresh.categories.map((x) => (x.id === cat.id
+          ? { ...x, judging: state, ...(state === 'closed' ? { currentParticipantId: null, currentSetAt: null } : {}) }
+          : x));
         tx.update(ref, { categories, rev: FieldValue.increment(1), updatedAt: now() });
         return { contest: { ...fresh, categories } };
       });

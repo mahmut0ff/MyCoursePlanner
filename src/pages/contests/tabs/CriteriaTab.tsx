@@ -18,8 +18,8 @@ const Row: React.FC<{ d: Draft; index: number; locked: boolean; onChange: (p: Pa
     <div ref={setNodeRef} style={{ transform: CSS.Transform.toString(transform), transition }}
       className={`${cardCls} p-4 flex gap-3 ${isDragging ? 'relative z-10 shadow-lg' : ''}`}>
       {!locked ? (
-        <button {...attributes} {...listeners} className="touch-none self-start mt-6 text-slate-300 hover:text-slate-500 cursor-grab" aria-label="Перетащить"><GripVertical className="w-4 h-4" /></button>
-      ) : <span className="self-start mt-7 text-sm font-bold text-slate-400 w-4 text-center">{index + 1}</span>}
+        <button {...attributes} {...listeners} className="touch-none self-start mt-6 text-slate-300 hover:text-slate-600 dark:text-slate-300 cursor-grab" aria-label="Перетащить"><GripVertical className="w-4 h-4" /></button>
+      ) : <span className="self-start mt-7 text-sm font-bold text-slate-500 dark:text-slate-400 w-4 text-center">{index + 1}</span>}
       <fieldset disabled={locked} className="flex-1 grid grid-cols-1 sm:grid-cols-[1fr_110px] gap-3">
         <div>
           <Label>Критерий</Label>
@@ -83,12 +83,28 @@ const CriteriaTab: React.FC<ContestTabProps> = ({ data, act, canEdit, readOnly }
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
       <div className="lg:col-span-2 space-y-3">
         {locked && !readOnly && canEdit && (
-          <WarnNote className="flex items-start gap-2"><Lock className="w-4 h-4 mt-0.5 shrink-0" />Оценивание уже началось — критерии зафиксированы, чтобы не испортить выставленные оценки.</WarnNote>
+          <WarnNote className="flex items-start gap-2"><Lock className="w-4 h-4 mt-0.5 shrink-0" aria-hidden />Оценивание уже началось — критерии зафиксированы, чтобы не испортить выставленные оценки. Порядок разрешения ничьей справа менять ещё можно.</WarnNote>
         )}
         <div className={`${cardCls} p-4 flex items-center justify-between`}>
-          <span className="text-sm text-slate-500 dark:text-slate-400">Максимум от одного члена жюри</span>
+          <span className="text-sm text-slate-500 dark:text-slate-500 dark:text-slate-400">Максимум от одного члена жюри</span>
           <span className="text-2xl font-bold text-slate-900 dark:text-white">{total}</span>
         </div>
+        {locked ? (
+          <ol className={`${cardCls} divide-y divide-slate-100 dark:divide-slate-700/60`}>
+            {rows.map((r, i) => (
+              <li key={r.key} className="px-5 py-3 flex gap-3">
+                <span className="w-6 shrink-0 font-bold text-slate-500 dark:text-slate-400">{i + 1}.</span>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-baseline justify-between gap-3">
+                    <span className="font-semibold text-slate-900 dark:text-white">{r.name}</span>
+                    <span className="text-sm text-slate-600 dark:text-slate-300 whitespace-nowrap">до {r.maxScore} баллов</span>
+                  </div>
+                  {r.description && <p className="text-[13px] text-slate-600 dark:text-slate-300 mt-0.5">{r.description}</p>}
+                </div>
+              </li>
+            ))}
+          </ol>
+        ) : (
         <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
           <SortableContext items={rows.map((r) => r.key)} strategy={verticalListSortingStrategy}>
             <div className="space-y-3">
@@ -100,7 +116,8 @@ const CriteriaTab: React.FC<ContestTabProps> = ({ data, act, canEdit, readOnly }
             </div>
           </SortableContext>
         </DndContext>
-        {!rows.length && <p className="text-sm text-slate-400 text-center py-8">Критериев пока нет.</p>}
+        )}
+        {!rows.length && <p className="text-sm text-slate-500 dark:text-slate-400 text-center py-8">Критериев пока нет.</p>}
         {!locked && (
           <div className="flex flex-wrap items-center justify-between gap-3">
             <button onClick={() => setRows((rs) => [...rs, { key: `new-${++keySeq}`, name: '', description: '', maxScore: '20' }])} className={secondaryBtn}><Plus className="w-4 h-4" />Критерий</button>
@@ -111,11 +128,11 @@ const CriteriaTab: React.FC<ContestTabProps> = ({ data, act, canEdit, readOnly }
 
       <aside className={`${cardCls} p-5 h-fit`}>
         <h2 className="font-bold text-slate-900 dark:text-white flex items-center gap-2"><Scale className="w-4 h-4 text-primary-500" />Разрешение ничьей</h2>
-        <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 mb-4">При равных итоговых баллах проекты сравниваются по средним баллам этих критериев — по порядку. Если и они равны — «требуется решение жюри».</p>
+        <p className="text-xs text-slate-500 dark:text-slate-500 dark:text-slate-400 mt-1 mb-4">При равных итоговых баллах проекты сравниваются по средним баллам этих критериев — по порядку. Если и они равны — «требуется решение жюри».</p>
         <ol className="space-y-2">
           {tie.map((id, i) => (
             <li key={id} className="flex items-center gap-2 text-sm">
-              <span className="w-5 text-slate-400 font-bold">{i + 1}.</span>
+              <span className="w-5 text-slate-500 dark:text-slate-400 font-bold">{i + 1}.</span>
               <span className="flex-1 text-slate-800 dark:text-slate-100">{nameOf(id)}</span>
               {!tieLocked && (
                 <>
@@ -133,7 +150,7 @@ const CriteriaTab: React.FC<ContestTabProps> = ({ data, act, canEdit, readOnly }
             {saved.filter((c) => !tie.includes(c.id)).map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
           </select>
         )}
-        {!saved.length && <p className="text-xs text-slate-400">Сначала сохраните критерии.</p>}
+        {!saved.length && <p className="text-xs text-slate-500 dark:text-slate-400">Сначала сохраните критерии.</p>}
         {!tieLocked && locked && tieDirty && (
           <button onClick={saveTie} disabled={saving} className={`${primaryBtn} w-full mt-4`}>Сохранить порядок</button>
         )}

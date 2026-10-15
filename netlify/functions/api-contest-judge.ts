@@ -32,6 +32,7 @@ function juryView(c: Contest, j: ContestJuryMember, orgName: string) {
     venue: c.venue,
     status: c.status,
     organizationName: orgName,
+    judgingMode: c.judgingMode,
     criteria: c.criteria,
     categories: cats.map((cat) => ({
       id: cat.id, code: cat.code, name: cat.name, judging: cat.judging,

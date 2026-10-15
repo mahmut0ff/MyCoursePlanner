@@ -49,7 +49,7 @@ const ContestsPage: React.FC = () => {
           <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white flex items-center gap-2">
             <Trophy className="w-6 h-6 text-primary-500" />{t('nav.contests', 'Конкурсы')}
           </h1>
-          <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
+          <p className="text-sm text-slate-500 dark:text-slate-500 dark:text-slate-400 mt-1">
             {t('contests.subtitle', 'Олимпиады, конкурсы проектов и соревнования с электронным оцениванием жюри')}
           </p>
         </div>
@@ -79,12 +79,12 @@ const ContestsPage: React.FC = () => {
           {list.map((c) => (
             <Link key={c.id} to={`/contests/${c.id}`} className={`${cardCls} p-5 hover:border-slate-300 dark:hover:border-slate-600 transition-colors block`}>
               <div className="flex items-center justify-between gap-2 mb-2">
-                <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">{CONTEST_KIND_LABELS[c.kind]}{c.season ? ` · ${c.season}` : ''}</span>
+                <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">{CONTEST_KIND_LABELS[c.kind]}{c.season ? ` · ${c.season}` : ''}</span>
                 <StatusBadge status={c.status} />
               </div>
               <h2 className="font-bold text-slate-900 dark:text-white leading-snug">{c.title}</h2>
-              {c.theme && <p className="text-sm text-slate-500 dark:text-slate-400 mt-1 line-clamp-2">{c.theme}</p>}
-              <div className="mt-4 space-y-1.5 text-[13px] text-slate-500 dark:text-slate-400">
+              {c.theme && <p className="text-sm text-slate-500 dark:text-slate-500 dark:text-slate-400 mt-1 line-clamp-2">{c.theme}</p>}
+              <div className="mt-4 space-y-1.5 text-[13px] text-slate-500 dark:text-slate-500 dark:text-slate-400">
                 {c.eventDate && <div className="flex items-center gap-2"><CalendarDays className="w-3.5 h-3.5" />{formatDate(c.eventDate)}</div>}
                 {c.venue && <div className="flex items-center gap-2"><MapPin className="w-3.5 h-3.5" /><span className="truncate">{c.venue}</span></div>}
                 <div className="flex items-center gap-2"><Layers className="w-3.5 h-3.5" />

@@ -11,12 +11,13 @@ import ContestMetaFields from '../ContestMetaFields';
 import { JudgingBadge } from '../ui';
 import { cardCls, primaryBtn, secondaryBtn, errMessage } from '../uiStyles';
 
-const OverviewTab: React.FC<ContestTabProps> = ({ data, act, canEdit, canDelete, readOnly }) => {
+const OverviewTab: React.FC<ContestTabProps> = ({ data, act, canEdit, canDelete, readOnly, goTab }) => {
   const { contest, participants, jury } = data;
   const navigate = useNavigate();
   const initial = useMemo(() => ({
     title: contest.title, season: contest.season, kind: contest.kind, theme: contest.theme,
     eventDate: contest.eventDate, venue: contest.venue, prizeFund: String(contest.prizeFund || ''), description: contest.description,
+    judgingMode: contest.judgingMode,
   }), [contest]);
   const [form, setForm] = useState(initial);
   const [saving, setSaving] = useState(false);
@@ -44,9 +45,9 @@ const OverviewTab: React.FC<ContestTabProps> = ({ data, act, canEdit, canDelete,
 
   const stat = (icon: React.ReactNode, label: string, value: React.ReactNode, sub?: React.ReactNode) => (
     <div className={`${cardCls} p-4`}>
-      <div className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-widest text-slate-400">{icon}{label}</div>
+      <div className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400">{icon}{label}</div>
       <div className="text-2xl font-bold text-slate-900 dark:text-white mt-1">{value}</div>
-      {sub && <div className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">{sub}</div>}
+      {sub && <div className="text-xs text-slate-500 dark:text-slate-500 dark:text-slate-400 mt-0.5">{sub}</div>}
     </div>
   );
 
@@ -76,17 +77,20 @@ const OverviewTab: React.FC<ContestTabProps> = ({ data, act, canEdit, canDelete,
               : 'призовой фонд не указан')}
         </div>
         <div className={`${cardCls} p-4`}>
-          <div className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-widest text-slate-400 mb-3"><Layers className="w-3.5 h-3.5" />Категории</div>
+          <div className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400 mb-3"><Layers className="w-3.5 h-3.5" />Категории</div>
           {contest.categories.length ? (
-            <ul className="space-y-2">
+            <ul className="space-y-1">
               {contest.categories.map((c) => (
-                <li key={c.id} className="flex items-center justify-between gap-2 text-sm">
-                  <span className="text-slate-700 dark:text-slate-200"><b>{c.code}</b> · {c.ageFrom}–{c.ageTo} лет · {participants.filter((p) => p.categoryId === c.id && p.status !== 'withdrawn').length} уч.</span>
-                  <JudgingBadge state={c.judging} />
+                <li key={c.id}>
+                  <button onClick={() => goTab(contest.status === 'judging' || contest.status === 'finished' ? 'monitor' : 'categories', c.id)}
+                    className="w-full flex items-center justify-between gap-2 text-sm rounded-lg -mx-2 px-2 py-1.5 hover:bg-slate-50 dark:hover:bg-slate-700/50 text-left">
+                    <span className="text-slate-700 dark:text-slate-200"><b>{c.code}</b> · {c.ageFrom}–{c.ageTo} лет · {participants.filter((p) => p.categoryId === c.id && p.status !== 'withdrawn').length} уч.</span>
+                    <JudgingBadge state={c.judging} />
+                  </button>
                 </li>
               ))}
             </ul>
-          ) : <p className="text-sm text-slate-400">Не заданы</p>}
+          ) : <button onClick={() => goTab('categories')} className="text-sm underline underline-offset-2 text-slate-700 dark:text-slate-200">Задать категории</button>}
         </div>
         {canDelete && !readOnly && (
           <button onClick={() => setConfirmDelete(true)} className={`${secondaryBtn} w-full text-rose-600 dark:text-rose-400`}>

@@ -9,16 +9,21 @@
  * сохранение не дошло из-за сети, оценка встаёт в очередь и отправляется сама,
  * когда связь вернётся; с экрана ничего не пропадает.
  *
- * Ведущий: админ на мониторинге «вызывает» проект — экран открывает его сам,
- * если жюри не в середине ввода; иначе показывает плашку «Ведущий открыл …».
+ * Режим конкурса (contest.judgingMode):
+ *  host — ведущий вызывает проект с мониторинга: экран открывает его сам, если
+ *         жюри не в середине ввода (иначе плашка «Ведущий открыл …»); список
+ *         проектов вторичен.
+ *  free — жюри ходят по столам сами: никаких автопереходов, главное — список и
+ *         поиск по номеру.
  */
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import {
   LogOut, ChevronLeft, ChevronRight, Search, CheckCircle2, Circle, Minus, Plus, Megaphone,
-  WifiOff, Lock, Moon, Sun, Gavel, Trophy, CloudUpload,
+  WifiOff, Lock, Moon, Sun, Gavel, Trophy, CloudUpload, MoreVertical,
 } from 'lucide-react';
+import ConfirmDialog from '../../components/ui/ConfirmDialog';
 import { useAuth } from '../../contexts/AuthContext';
 import { useTheme } from '../../contexts/ThemeContext';
 import { signOut } from '../../services/auth.service';
@@ -59,6 +64,8 @@ const JudgePage: React.FC = () => {
   const [board, setBoard] = useState<JudgeBoard | null>(null);
   const [boardError, setBoardError] = useState('');
   const [online, setOnline] = useState(typeof navigator === 'undefined' ? true : navigator.onLine);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [confirmLogout, setConfirmLogout] = useState(false);
   const [queue, setQueue] = useState<Pending[]>(() => (uid ? lsGet<Pending[]>(queueKey(uid), []) : []));
 
   // ─── Мои конкурсы ───
@@ -90,6 +97,7 @@ const JudgePage: React.FC = () => {
     return base ? { ...base, ...(l ? { judging: l.judging, currentParticipantId: l.currentParticipantId, currentSetAt: l.currentSetAt } : {}) } : undefined;
   };
   const cat = categoryId ? liveCat(categoryId) : undefined;
+  const hostMode = !contest || contest.judgingMode !== 'free';
 
   useEffect(() => {
     if (!contest || categoryId) return;
@@ -148,22 +156,23 @@ const JudgePage: React.FC = () => {
     return () => { window.removeEventListener('online', on); window.removeEventListener('offline', off); clearInterval(t); };
   }, [flush, uid]);
 
-  // ─── Ведущий ───
-  // Новый вызов (другой проект или повторный вызов того же) открывает проект
-  // сам, если жюри не в середине ввода. Иначе — плашка сверху (выводится из
-  // данных, без отдельного состояния): «Ведущий открыл … — перейти».
+  // ─── Ведущий (только в режиме host) ───
+  // НОВЫЙ вызов (другой проект или повторный вызов того же) открывает проект
+  // сам, если жюри не в середине ввода. Вызов, который висел ещё до открытия
+  // экрана, никуда не уводит: его показывает карточка «Сейчас на сцене» в
+  // списке и плашка сверху на экране другого проекта.
   const [dirty, setDirty] = useState(false);
-  const called = cat?.currentParticipantId ? board?.projects.find((p) => p.id === cat.currentParticipantId) : undefined;
+  const called = hostMode && cat?.currentParticipantId ? board?.projects.find((p) => p.id === cat.currentParticipantId) : undefined;
   const callStamp = called ? `${called.id}@${cat?.currentSetAt}` : null;
   const seenCall = useRef<string | null>(null);
   useEffect(() => {
     if (!callStamp || callStamp === seenCall.current || !called) return;
     const first = seenCall.current === null;
     seenCall.current = callStamp;
-    if (called.id === projectId) return;
-    if (first && projectId) return; // открыли экран посреди оценки — не дёргаем
+    if (first || called.id === projectId) return;
     if (!dirty) { go({ p: called.id }); toast(`Ведущий открыл ${called.number}`, { icon: '📣' }); }
   }, [callStamp, called, projectId, dirty, go]);
+  // Плашка — только на экране ДРУГОГО проекта; в списке за это отвечает карточка «Сейчас на сцене».
   const callout = projectId && called && called.id !== projectId ? called : null;
 
   const name = profile?.displayName || '';
@@ -175,14 +184,30 @@ const JudgePage: React.FC = () => {
         <div className="max-w-xl mx-auto px-4 h-14 flex items-center gap-2">
           {(contestId && (categoryId || (contests && contests.length > 1))) ? (
             <button onClick={() => (projectId ? go({ p: null }) : categoryId && contest && contest.categories.length > 1 ? go({ cat: null }) : contests && contests.length > 1 ? go({ c: null, cat: null }) : undefined)}
-              className="p-2 -ml-2 rounded-xl active:bg-slate-100 dark:active:bg-slate-800" aria-label="Назад"><ChevronLeft className="w-6 h-6" /></button>
-          ) : <Gavel className="w-5 h-5 text-primary-500" />}
+              className="w-11 h-11 -ml-2 rounded-xl flex items-center justify-center active:bg-slate-100 dark:active:bg-slate-800" aria-label={projectId ? 'К списку проектов' : 'Назад'}><ChevronLeft className="w-6 h-6" /></button>
+          ) : <Gavel className="w-5 h-5 text-primary-500" aria-hidden />}
           <div className="flex-1 min-w-0">
             <div className="text-[15px] font-bold truncate">{contest ? contest.title : 'Оценивание'}</div>
-            <div className="text-[12px] text-slate-500 truncate">{cat ? `Категория ${cat.code}${cat.name ? ` · ${cat.name}` : ''}` : name}</div>
+            <div className="text-[12px] text-slate-600 dark:text-slate-400 truncate">{cat ? `Категория ${cat.code}${cat.name ? ` · ${cat.name}` : ''}` : name}</div>
           </div>
-          <button onClick={toggle} className="p-2 rounded-xl text-slate-500" aria-label="Тема">{isDark ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}</button>
-          <button onClick={() => signOut()} className="p-2 rounded-xl text-slate-500" aria-label="Выйти"><LogOut className="w-5 h-5" /></button>
+          {/* Одно меню вместо двух соседних иконок: «Выйти» — за подтверждением, чтобы промах пальцем не выкинул из оценивания. */}
+          <div className="relative">
+            <button onClick={() => setMenuOpen((v) => !v)} aria-haspopup="menu" aria-expanded={menuOpen} aria-label="Меню"
+              className="w-11 h-11 -mr-2 rounded-xl flex items-center justify-center text-slate-600 dark:text-slate-300 active:bg-slate-100 dark:active:bg-slate-800"><MoreVertical className="w-5 h-5" /></button>
+            {menuOpen && (
+              <>
+                <div className="fixed inset-0 z-10" onClick={() => setMenuOpen(false)} aria-hidden />
+                <div role="menu" className="absolute right-0 top-full mt-1 z-20 w-56 py-1.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-xl">
+                  <button role="menuitem" onClick={() => { toggle(); setMenuOpen(false); }} className="w-full px-4 py-3 text-left text-[15px] flex items-center gap-3 active:bg-slate-50 dark:active:bg-slate-700/60">
+                    {isDark ? <Sun className="w-5 h-5" aria-hidden /> : <Moon className="w-5 h-5" aria-hidden />}{isDark ? 'Светлая тема' : 'Тёмная тема'}
+                  </button>
+                  <button role="menuitem" onClick={() => { setMenuOpen(false); setConfirmLogout(true); }} className="w-full px-4 py-3 text-left text-[15px] flex items-center gap-3 text-rose-700 dark:text-rose-400 active:bg-rose-50 dark:active:bg-rose-500/10">
+                    <LogOut className="w-5 h-5" aria-hidden />Выйти из учётной записи
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
         </div>
         {(!online || queue.length > 0) && (
           <div className={`px-4 py-2 text-[13px] font-medium flex items-center justify-center gap-2 ${online ? 'bg-sky-100 text-sky-800 dark:bg-sky-500/15 dark:text-sky-200' : 'bg-amber-100 text-amber-900 dark:bg-amber-500/15 dark:text-amber-200'}`}>
@@ -191,11 +216,20 @@ const JudgePage: React.FC = () => {
           </div>
         )}
         {callout && (
-          <button onClick={() => go({ p: callout.id })} className="w-full px-4 py-2.5 bg-emerald-600 text-white text-[14px] font-semibold flex items-center justify-center gap-2">
-            <Megaphone className="w-4 h-4" />Ведущий открыл {callout.number} — перейти
+          <button onClick={() => go({ p: callout.id })} className="w-full min-h-[44px] px-4 py-2.5 bg-emerald-700 text-white text-[14px] font-semibold flex items-center justify-center gap-2">
+            <Megaphone className="w-4 h-4" aria-hidden />Ведущий открыл {callout.number} — перейти
           </button>
         )}
       </header>
+
+      <ConfirmDialog
+        open={confirmLogout}
+        title="Выйти из учётной записи?"
+        message={queue.length ? `Не отправлено оценок: ${queue.length}. Они останутся на этом телефоне и уйдут после следующего входа при наличии связи.` : 'Для входа снова понадобятся email и пароль, выданные организатором.'}
+        confirmLabel="Выйти" danger
+        onConfirm={() => signOut()}
+        onClose={() => setConfirmLogout(false)}
+      />
 
       <main className="max-w-xl mx-auto px-4 py-4 pb-40">
         {loadError && !contests && <Notice tone="error">{loadError}<button onClick={loadMy} className="ml-2 underline">Повторить</button></Notice>}
@@ -211,7 +245,7 @@ const JudgePage: React.FC = () => {
               {contests.map((c) => (
                 <button key={c.id} onClick={() => go({ c: c.id })} className={bigBtn}>
                   <Trophy className="w-6 h-6 text-primary-500 shrink-0" />
-                  <span className="flex-1 min-w-0"><span className="block font-bold truncate">{c.title}</span><span className="block text-[13px] text-slate-500 truncate">{c.organizationName}</span></span>
+                  <span className="flex-1 min-w-0"><span className="block font-bold truncate">{c.title}</span><span className="block text-[13px] text-slate-600 dark:text-slate-400 truncate">{c.organizationName}</span></span>
                   <ChevronRight className="w-5 h-5 text-slate-400" />
                 </button>
               ))}
@@ -242,7 +276,7 @@ const JudgePage: React.FC = () => {
 
         {/* 3. Список проектов */}
         {contest && cat && !projectId && (
-          <ProjectList board={board} error={boardError} cat={cat} max={maxTotal(contest.criteria)} queue={queue}
+          <ProjectList board={board} error={boardError} cat={cat} max={maxTotal(contest.criteria)} queue={queue} hostMode={hostMode}
             onOpen={(id) => go({ p: id })} onRetry={loadBoard} />
         )}
 
@@ -282,8 +316,8 @@ const JudgePage: React.FC = () => {
 // ─── Список проектов ───
 const ProjectList: React.FC<{
   board: JudgeBoard | null; error: string; cat: { code: string; judging: JudgeBoard['category']['judging']; currentParticipantId: string | null };
-  max: number; queue: Pending[]; onOpen: (id: string) => void; onRetry: () => void;
-}> = ({ board, error, cat, max, queue, onOpen, onRetry }) => {
+  max: number; queue: Pending[]; hostMode: boolean; onOpen: (id: string) => void; onRetry: () => void;
+}> = ({ board, error, cat, max, queue, hostMode, onOpen, onRetry }) => {
   const [q, setQ] = useState('');
   if (!board) return error ? <Notice tone="error">{error}<button onClick={onRetry} className="ml-2 underline">Повторить</button></Notice> : <Spinner />;
   const done = board.projects.filter((p) => board.mine[p.id]).length;
@@ -295,30 +329,31 @@ const ProjectList: React.FC<{
     return p.number.toLowerCase().includes(needle) || p.projectTitle.toLowerCase().includes(needle);
   });
   const exact = norm ? board.projects.find((p) => p.number === norm || (/^\d+$/.test(norm) && p.number === `${cat.code}-${norm.padStart(2, '0')}`)) : undefined;
-  const current = cat.currentParticipantId ? board.projects.find((p) => p.id === cat.currentParticipantId) : undefined;
+  const current = hostMode && cat.currentParticipantId ? board.projects.find((p) => p.id === cat.currentParticipantId) : undefined;
+  const left = board.projects.length - done;
 
   return (
     <div className="space-y-3">
       {error && <Notice tone="warn">{error}</Notice>}
       <div className="flex items-center justify-between">
         <JudgingLine state={cat.judging} />
-        <span className="text-[13px] text-slate-500">Оценено <b className="text-slate-900 dark:text-white">{done}</b> из {board.projects.length}</span>
+        <span className="text-[13px] text-slate-600 dark:text-slate-300">Оценено <b className="text-slate-900 dark:text-white">{done}</b> из {board.projects.length}{left > 0 && done > 0 ? ` · осталось ${left}` : ''}</span>
       </div>
-      <div className="h-2 rounded-full bg-slate-200 dark:bg-slate-800 overflow-hidden">
+      <div className="h-2 rounded-full bg-slate-200 dark:bg-slate-800 overflow-hidden" role="progressbar" aria-valuenow={done} aria-valuemax={board.projects.length} aria-label="Оценено проектов">
         <div className="h-full bg-emerald-500 transition-all" style={{ width: `${board.projects.length ? (done / board.projects.length) * 100 : 0}%` }} />
       </div>
 
       {current && (
-        <button onClick={() => onOpen(current.id)} className="w-full rounded-2xl bg-emerald-600 text-white px-4 py-3.5 flex items-center gap-3 text-left">
-          <Megaphone className="w-5 h-5 shrink-0" />
-          <span className="flex-1 min-w-0"><span className="block text-[12px] opacity-90">Сейчас на сцене</span><span className="block font-bold truncate">{current.number} · {current.projectTitle}</span></span>
-          <ChevronRight className="w-5 h-5" />
+        <button onClick={() => onOpen(current.id)} className="w-full rounded-2xl bg-emerald-700 text-white px-4 py-3.5 flex items-center gap-3 text-left">
+          <Megaphone className="w-5 h-5 shrink-0" aria-hidden />
+          <span className="flex-1 min-w-0"><span className="block text-[12px] text-emerald-100">Сейчас на сцене{board.mine[current.id] ? ' · вы уже оценили' : ''}</span><span className="block font-bold truncate">{current.number} · {current.projectTitle}</span></span>
+          <ChevronRight className="w-5 h-5" aria-hidden />
         </button>
       )}
 
       <form onSubmit={(e) => { e.preventDefault(); if (exact) onOpen(exact.id); else if (list.length === 1) onOpen(list[0].id); }} className="relative">
-        <Search className="w-5 h-5 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
-        <input value={q} onChange={(e) => setQ(e.target.value)} placeholder={`Номер проекта, напр. ${cat.code}-03`} enterKeyHint="go" autoCapitalize="characters"
+        <Search className="w-5 h-5 text-slate-500 absolute left-3.5 top-1/2 -translate-y-1/2" aria-hidden />
+        <input value={q} onChange={(e) => setQ(e.target.value)} placeholder={`Номер, напр. ${cat.code}-03`} aria-label="Поиск по номеру проекта" enterKeyHint="go" autoCapitalize="characters"
           className="w-full h-14 rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 pl-11 pr-24 text-lg font-semibold focus:outline-none focus:ring-2 focus:ring-primary-500" />
         {(exact || list.length === 1) && q && <button type="submit" className="absolute right-2 top-1/2 -translate-y-1/2 h-10 px-4 rounded-xl bg-slate-900 text-white dark:bg-white dark:text-slate-900 font-bold">Открыть</button>}
       </form>
@@ -331,14 +366,14 @@ const ProjectList: React.FC<{
           const waiting = queued.has(p.id);
           return (
             <li key={p.id}>
-              <button onClick={() => onOpen(p.id)} className={`${bigBtn} py-3.5 ${p.id === cat.currentParticipantId ? 'ring-2 ring-emerald-500' : ''}`}>
+              <button onClick={() => onOpen(p.id)} className={`${bigBtn} py-3.5 ${hostMode && p.id === cat.currentParticipantId ? 'ring-2 ring-emerald-500' : ''}`}>
                 <span className="font-mono font-black text-lg w-16 shrink-0">{p.number}</span>
                 <span className="flex-1 min-w-0 font-medium truncate">{p.projectTitle || 'Без названия'}</span>
                 {waiting
-                  ? <span className="flex items-center gap-1 text-amber-600 text-[13px] font-semibold"><WifiOff className="w-4 h-4" />не отправлено</span>
+                  ? <span className="flex items-center gap-1 text-amber-700 dark:text-amber-400 text-[13px] font-semibold"><WifiOff className="w-4 h-4" aria-hidden />не отправлено</span>
                   : mine
-                    ? <span className="flex items-center gap-1 text-emerald-600 font-bold"><CheckCircle2 className="w-5 h-5" />{round2(mine.total)}<span className="text-slate-400 text-[12px] font-normal">/{max}</span></span>
-                    : <span className="flex items-center gap-1 text-slate-400 text-[13px]"><Circle className="w-5 h-5" />не оценён</span>}
+                    ? <span className="flex items-center gap-1 text-emerald-700 dark:text-emerald-400 font-bold"><CheckCircle2 className="w-5 h-5" aria-hidden /><span className="sr-only">оценён, </span>{round2(mine.total)}<span className="text-slate-500 dark:text-slate-400 text-[12px] font-normal">/{max}</span></span>
+                    : <span className="flex items-center gap-1 text-slate-600 dark:text-slate-400 text-[13px]"><Circle className="w-5 h-5" aria-hidden />не оценён</span>}
               </button>
             </li>
           );
@@ -387,7 +422,8 @@ const ScoreForm: React.FC<{
     if (Math.round(v * 2) !== v * 2) return [c.id, 'Шаг 0,5'];
     return [c.id, ''];
   }));
-  const filled = criteria.every((c) => vals[c.id] !== '' && vals[c.id] !== undefined);
+  const filledCount = criteria.filter((c) => vals[c.id] !== '' && vals[c.id] !== undefined).length;
+  const filled = filledCount === criteria.length;
   const valid = filled && criteria.every((c) => !errors[c.id]);
 
   const setVal = (id: string, v: string) => { setVals((s) => ({ ...s, [id]: v.replace(',', '.') })); if (state !== 'saving') setState('idle'); };
@@ -432,11 +468,14 @@ const ScoreForm: React.FC<{
           {saved && <span className="text-[13px] text-emerald-600 font-semibold flex items-center gap-1"><CheckCircle2 className="w-4 h-4" />оценён · {round2(saved.total)}</span>}
         </div>
         <h1 className="text-lg font-bold mt-3 leading-snug">{project.projectTitle || 'Без названия'}</h1>
-        {project.authors.length > 0 && <p className="text-[14px] text-slate-500 mt-0.5">{project.authors.join(', ')}</p>}
+        {project.authors.length > 0 && <p className="text-[14px] text-slate-600 dark:text-slate-300 mt-0.5">{project.authors.join(', ')}</p>}
         {project.projectDescription && (
-          <button onClick={() => setShowDesc((s) => !s)} className="text-left text-[14px] text-slate-600 dark:text-slate-300 mt-2">
-            <span className={showDesc ? '' : 'line-clamp-2'}>{project.projectDescription}</span>
-          </button>
+          <div className="mt-2">
+            <p className={`text-[14px] text-slate-600 dark:text-slate-300 ${showDesc ? '' : 'line-clamp-2'}`}>{project.projectDescription}</p>
+            {project.projectDescription.length > 90 && (
+              <button onClick={() => setShowDesc((s) => !s)} aria-expanded={showDesc} className="mt-1 min-h-[36px] text-[14px] font-semibold text-primary-700 dark:text-primary-400">{showDesc ? 'Свернуть' : 'Читать полностью'}</button>
+            )}
+          </div>
         )}
       </section>
 
@@ -448,9 +487,9 @@ const ScoreForm: React.FC<{
           <section key={c.id} className={`rounded-2xl bg-white dark:bg-slate-800 border p-4 ${err ? 'border-rose-400' : 'border-slate-200 dark:border-slate-700'}`}>
             <div className="flex items-start justify-between gap-2">
               <h2 className="font-bold text-[16px] leading-snug">{i + 1}. {c.name}</h2>
-              <span className="text-[13px] text-slate-400 whitespace-nowrap">макс. {c.maxScore}</span>
+              <span className="text-[13px] text-slate-600 dark:text-slate-400 whitespace-nowrap">макс. {c.maxScore}</span>
             </div>
-            {c.description && <p className="text-[14px] text-slate-500 dark:text-slate-400 mt-1">{c.description}</p>}
+            {c.description && <p className="text-[14px] text-slate-600 dark:text-slate-400 mt-1">{c.description}</p>}
             <div className="flex items-center gap-2 mt-3">
               <button onClick={() => step(c.id, -1, c.maxScore)} className="w-14 h-14 rounded-2xl bg-slate-100 dark:bg-slate-700 flex items-center justify-center active:scale-95" aria-label="Минус"><Minus className="w-6 h-6" /></button>
               <input
@@ -460,7 +499,7 @@ const ScoreForm: React.FC<{
               />
               <button onClick={() => step(c.id, 1, c.maxScore)} className="w-14 h-14 rounded-2xl bg-slate-100 dark:bg-slate-700 flex items-center justify-center active:scale-95" aria-label="Плюс"><Plus className="w-6 h-6" /></button>
             </div>
-            {err && <p className="text-[13px] text-rose-600 font-semibold mt-1.5">{err}</p>}
+            {err && <p role="alert" className="text-[13px] text-rose-700 dark:text-rose-400 font-semibold mt-1.5">{err}</p>}
           </section>
         );
       })}
@@ -473,19 +512,19 @@ const ScoreForm: React.FC<{
       {/* Сумма и «Сохранить» — всегда под пальцем */}
       <div className="fixed bottom-0 inset-x-0 z-20 bg-white/95 dark:bg-slate-900/95 backdrop-blur border-t border-slate-200 dark:border-slate-800" style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}>
         <div className="max-w-xl mx-auto px-4 py-3">
-          {message && <p className={`text-[13px] font-medium mb-2 ${state === 'queued' ? 'text-amber-700 dark:text-amber-300' : 'text-rose-600'}`}>{message}</p>}
+          {message && <p role="alert" className={`text-[13px] font-medium mb-2 ${state === 'queued' ? 'text-amber-800 dark:text-amber-300' : 'text-rose-700 dark:text-rose-400'}`}>{message}</p>}
           <div className="flex items-center gap-3">
             <div className="shrink-0">
-              <div className="text-[12px] text-slate-500">Ваша сумма</div>
-              <div className="text-2xl font-black leading-none">{round2(total)}<span className="text-[14px] text-slate-400 font-semibold">/{max}</span></div>
+              <div className="text-[12px] text-slate-600 dark:text-slate-400">Ваша сумма</div>
+              <div className="text-2xl font-black leading-none">{round2(total)}<span className="text-[14px] text-slate-600 dark:text-slate-400 font-semibold">/{max}</span></div>
             </div>
             <button onClick={save} disabled={!valid || state === 'saving' || !open || (!isDirty && !!saved)}
               className={`flex-1 h-14 rounded-2xl text-lg font-bold transition-colors ${!isDirty && saved ? 'bg-emerald-600 text-white' : 'bg-slate-900 text-white dark:bg-white dark:text-slate-900 disabled:opacity-40'}`}>
-              {state === 'saving' ? 'Сохраняю…' : !isDirty && saved ? 'Сохранено ✓' : !filled ? 'Заполните все критерии' : saved ? 'Сохранить изменения' : 'Сохранить'}
+              {state === 'saving' ? 'Сохраняю…' : !isDirty && saved ? 'Сохранено ✓' : !filled ? `Заполнено ${filledCount} из ${criteria.length}` : saved ? 'Сохранить изменения' : 'Сохранить'}
             </button>
           </div>
           {state === 'saved' && !isDirty && next && (
-            <button onClick={() => onNavigate(next.id)} className="w-full mt-2 h-11 rounded-xl text-[15px] font-semibold text-primary-600 dark:text-primary-400 flex items-center justify-center gap-1">Следующий проект: {next.number}<ChevronRight className="w-4 h-4" /></button>
+            <button onClick={() => onNavigate(next.id)} className="w-full mt-2 h-11 rounded-xl text-[15px] font-semibold text-primary-700 dark:text-primary-400 flex items-center justify-center gap-1">Следующий проект: {next.number}<ChevronRight className="w-4 h-4" aria-hidden /></button>
           )}
         </div>
       </div>
@@ -496,10 +535,10 @@ const ScoreForm: React.FC<{
 // ─── Мелочи ───
 const JudgingLine: React.FC<{ state: JudgeBoard['category']['judging'] }> = ({ state }) => {
   const map = {
-    pending: ['text-slate-500', 'Оценивание не началось'],
-    open: ['text-emerald-600', 'Идёт оценивание'],
-    closed: ['text-amber-600', 'Оценивание закрыто'],
-    approved: ['text-primary-600', 'Итоги утверждены'],
+    pending: ['text-slate-600 dark:text-slate-400', 'Оценивание не началось'],
+    open: ['text-emerald-700 dark:text-emerald-400', 'Идёт оценивание'],
+    closed: ['text-amber-700 dark:text-amber-400', 'Оценивание закрыто'],
+    approved: ['text-primary-700 dark:text-primary-400', 'Итоги утверждены'],
   } as const;
   const [cls, label] = map[state];
   return <span className={`flex items-center gap-1.5 text-[13px] font-semibold ${cls}`}>{state === 'open' && <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />}{label}</span>;
@@ -512,13 +551,13 @@ const Notice: React.FC<{ tone: 'error' | 'warn' | 'info'; children: React.ReactN
   return <div className={`rounded-2xl border px-4 py-3 text-[14px] ${cls}`}>{children}</div>;
 };
 
-const Spinner = () => <div className="flex justify-center py-16"><div className="w-8 h-8 border-4 border-slate-200 border-t-slate-600 rounded-full animate-spin dark:border-slate-700 dark:border-t-slate-300" /></div>;
+const Spinner = () => <div className="flex justify-center py-16" role="status" aria-label="Загрузка"><div className="w-8 h-8 border-4 border-slate-200 border-t-slate-600 rounded-full animate-spin dark:border-slate-700 dark:border-t-slate-300" /></div>;
 
 const Empty: React.FC<{ icon: React.ReactNode; title: string; text: string }> = ({ icon, title, text }) => (
   <div className="text-center py-16 px-6">
     <div className="w-16 h-16 mx-auto rounded-2xl bg-slate-100 dark:bg-slate-800 text-slate-400 flex items-center justify-center mb-4">{icon}</div>
     <h2 className="font-bold">{title}</h2>
-    <p className="text-[14px] text-slate-500 mt-1">{text}</p>
+    <p className="text-[14px] text-slate-600 dark:text-slate-400 mt-1">{text}</p>
   </div>
 );
 

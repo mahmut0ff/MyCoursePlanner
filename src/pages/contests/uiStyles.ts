@@ -13,5 +13,6 @@ export function errMessage(e: unknown): string {
   return (e as any)?.message || 'Не удалось выполнить действие';
 }
 
+export const ageRangeLabel = (c: { ageFrom: number; ageTo: number }) => `${c.ageFrom}–${c.ageTo} лет`;
 /** Единое имя категории везде: «A · 12–15 лет». */
-export const categoryLabel = (c: { code: string; ageFrom: number; ageTo: number }) => `${c.code} · ${c.ageFrom}–${c.ageTo} лет`;
+export const categoryLabel = (c: { code: string; ageFrom: number; ageTo: number }) => `${c.code} · ${ageRangeLabel(c)}`;

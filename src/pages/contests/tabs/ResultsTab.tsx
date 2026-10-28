@@ -65,15 +65,17 @@ const ResultsTab: React.FC<ContestTabProps> = ({ data, act, canEdit, readOnly, g
               ? <p className="text-sm text-emerald-700 dark:text-emerald-400 mt-1 flex items-center gap-1.5"><Lock className="w-3.5 h-3.5" aria-hidden />Утверждено {fmt(approved.at)} · {approved.byName}. Места зафиксированы — протокол и CSV выше.</p>
               : <p className="text-sm text-slate-600 dark:text-slate-300 mt-1">Предварительный рейтинг: среднее арифметическое сумм от оценивших жюри.</p>}
           </div>
-          {editable && !approved && (
+          {!approved && (editable || blocker) && (
             <div className="flex flex-col items-start sm:items-end gap-1.5">
-              <button onClick={() => setConfirmApprove(true)} disabled={!!blocker} className={primaryBtn} aria-describedby={blocker ? 'approve-blocker' : undefined}>
-                <ShieldCheck className="w-4 h-4" />Утвердить итоги
-              </button>
+              {editable && (
+                <button onClick={() => setConfirmApprove(true)} disabled={!!blocker} className={primaryBtn} aria-describedby={blocker ? 'approve-blocker' : undefined}>
+                  <ShieldCheck className="w-4 h-4" />Утвердить итоги
+                </button>
+              )}
               {blocker && (
                 <p id="approve-blocker" className="text-[12px] text-slate-600 dark:text-slate-300 sm:text-right max-w-xs">
                   {blocker.text}{' '}
-                  {blocker.action && <button onClick={blocker.action.go} className="underline underline-offset-2 font-medium inline-flex items-center gap-1"><Activity className="w-3 h-3" aria-hidden />{blocker.action.label}</button>}
+                  {editable && blocker.action && <button onClick={blocker.action.go} className="underline underline-offset-2 font-medium inline-flex items-center gap-1"><Activity className="w-3 h-3" aria-hidden />{blocker.action.label}</button>}
                 </p>
               )}
             </div>
@@ -149,7 +151,7 @@ const ResultsTab: React.FC<ContestTabProps> = ({ data, act, canEdit, readOnly, g
           <ul className="space-y-2 text-sm">
             {resolutions.map((x, i) => (
               <li key={i} className="text-slate-600 dark:text-slate-300">
-                {x.participantIds.map((id) => rows.find((row) => row.participantId === id)?.number || '?').join(' > ')} — «{x.comment}» <span className="text-slate-500 dark:text-slate-500 dark:text-slate-400">({x.byName}, {fmt(x.at)})</span>
+                {x.participantIds.map((id) => rows.find((row) => row.participantId === id)?.number || '?').join(' > ')} — «{x.comment}» <span className="text-slate-500 dark:text-slate-400">({x.byName}, {fmt(x.at)})</span>
               </li>
             ))}
           </ul>

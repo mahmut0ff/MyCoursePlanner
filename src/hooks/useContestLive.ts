@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { doc, onSnapshot } from 'firebase/firestore';
 import { db } from '../lib/firebase';
-import type { CategoryJudging, ContestStatus } from '../lib/contests';
+import type { CategoryJudging, ContestStatus, JudgingMode } from '../lib/contests';
 
 /**
  * Живое состояние конкурса: какие категории открыты, какой проект вызвал
@@ -16,6 +16,7 @@ import type { CategoryJudging, ContestStatus } from '../lib/contests';
  */
 export interface ContestLiveState {
   status?: ContestStatus;
+  judgingMode?: JudgingMode;
   rev: number;
   categories: Record<string, { code?: string; name?: string; judging: CategoryJudging; currentParticipantId: string | null; currentSetAt: string | null }>;
 }
@@ -60,7 +61,7 @@ export function useContestLive(
           if (!d) { startPolling(); return; }
           if (timer) { clearInterval(timer); timer = null; }
           setMode('live');
-          setLive({ status: d.status, rev: Number(d.rev) || 0, categories: d.categories || {} });
+          setLive({ status: d.status, judgingMode: d.judgingMode, rev: Number(d.rev) || 0, categories: d.categories || {} });
         },
         () => startPolling(),
       );

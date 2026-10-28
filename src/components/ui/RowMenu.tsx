@@ -16,6 +16,8 @@ interface Props {
   items: RowMenuItem[];
   label?: string;
   className?: string;
+  /** Классы кнопки-триггера; по умолчанию — компактная иконка для строки таблицы. */
+  buttonClassName?: string;
 }
 
 // Ширина рассчитана на самый длинный пункт — «Принять оплату · 12 500 с.»
@@ -26,7 +28,7 @@ const ESTIMATED_ITEM_HEIGHT = 40;
  * Меню действий строки. Рисуется через портал: контейнер таблицы обрезан
  * `overflow-hidden`, внутри него выпадающий список был бы срезан.
  */
-const RowMenu: React.FC<Props> = ({ items, label = 'Действия', className = '' }) => {
+const RowMenu: React.FC<Props> = ({ items, label = 'Действия', className = '', buttonClassName = 'p-1.5 rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors' }) => {
   const [open, setOpen] = useState(false);
   const [pos, setPos] = useState<{ top: number; left: number } | null>(null);
   const btnRef = useRef<HTMLButtonElement>(null);
@@ -79,7 +81,7 @@ const RowMenu: React.FC<Props> = ({ items, label = 'Действия', className
         aria-label={label}
         title={label}
         onClick={() => setOpen(v => !v)}
-        className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
+        className={buttonClassName}
       >
         <MoreVertical className="w-4 h-4" />
       </button>

@@ -6,8 +6,8 @@ import ConfirmDialog from '../../../components/ui/ConfirmDialog';
 import RowMenu from '../../../components/ui/RowMenu';
 import { categoryForAge, participantAge, authorsLabel, PARTICIPANT_STATUS_LABELS, type ContestParticipant, type ParticipantStatus } from '../../../lib/contests';
 import type { ContestTabProps } from '../ContestDetailPage';
-import { Field, Label, Modal, ModalFooter, ParticipantBadge, NumberChip, WarnNote } from '../ui';
-import { cardCls, primaryBtn, secondaryBtn, ghostBtn, inputCls, categoryLabel } from '../uiStyles';
+import { Field, Label, Modal, ModalFooter, ParticipantBadge, NumberChip, WarnNote, Segmented } from '../ui';
+import { cardCls, primaryBtn, secondaryBtn, ghostBtn, inputCls, categoryLabel, ageRangeLabel } from '../uiStyles';
 
 type AuthorDraft = { name: string; age: string };
 type Form = { participantId?: string; authors: AuthorDraft[]; phone: string; city: string; projectTitle: string; projectDescription: string; categoryId: string };
@@ -16,21 +16,16 @@ const emptyForm: Form = { authors: [{ name: '', age: '' }], phone: '', city: '',
 const STATUSES: ParticipantStatus[] = ['registered', 'arrived', 'withdrawn'];
 const STATUS_SHORT: Record<ParticipantStatus, string> = { registered: 'Ждём', arrived: 'Пришёл', withdrawn: 'Снят' };
 
+const STATUS_TONE: Record<ParticipantStatus, string> = {
+  registered: 'bg-slate-700 text-white dark:bg-slate-200 dark:text-slate-900', arrived: 'bg-emerald-600 text-white', withdrawn: 'bg-rose-600 text-white',
+};
+
 /** Переключатель статуса прямо в строке: один контрол вместо трёх иконок. */
-const StatusSwitch: React.FC<{ value: ParticipantStatus; onChange: (s: ParticipantStatus) => void; disabled?: boolean }> = ({ value, onChange, disabled }) => (
-  <div role="radiogroup" aria-label="Статус участника" className="inline-flex rounded-lg border border-slate-200 dark:border-slate-700 p-0.5 bg-slate-50 dark:bg-slate-900/40">
-    {STATUSES.map((s) => {
-      const on = s === value;
-      const tone = s === 'arrived' ? 'bg-emerald-600 text-white' : s === 'withdrawn' ? 'bg-rose-600 text-white' : 'bg-slate-700 text-white dark:bg-slate-200 dark:text-slate-900';
-      return (
-        <button key={s} type="button" role="radio" aria-checked={on} disabled={disabled} title={PARTICIPANT_STATUS_LABELS[s]}
-          onClick={() => !on && onChange(s)}
-          className={`px-2.5 py-1 rounded-md text-[12px] font-semibold transition-colors disabled:opacity-60 ${on ? tone : 'text-slate-600 hover:text-slate-900 dark:text-slate-300 dark:hover:text-white'}`}>
-          {STATUS_SHORT[s]}
-        </button>
-      );
-    })}
-  </div>
+const StatusSwitch: React.FC<{ value: ParticipantStatus; onChange: (s: ParticipantStatus) => void }> = ({ value, onChange }) => (
+  <Segmented label="Статус участника" value={value} onChange={onChange}
+    options={STATUSES.map((s) => ({ value: s, label: STATUS_SHORT[s], title: PARTICIPANT_STATUS_LABELS[s] }))}
+    className="inline-flex rounded-lg border border-slate-200 dark:border-slate-700 p-0.5 bg-slate-50 dark:bg-slate-900/40"
+    optionCls={(on, s) => `px-2.5 py-1 rounded-md text-[12px] font-semibold transition-colors ${on ? STATUS_TONE[s] : 'text-slate-600 hover:text-slate-900 dark:text-slate-300 dark:hover:text-white'}`} />
 );
 
 const ParticipantsTab: React.FC<ContestTabProps> = ({ data, act, canEdit, canDelete, readOnly, categoryId }) => {
@@ -105,15 +100,9 @@ const ParticipantsTab: React.FC<ContestTabProps> = ({ data, act, canEdit, canDel
     setConfirmAll(false);
   };
 
-  const chip = (value: '' | ParticipantStatus, label: string, n?: number) => {
-    const on = status === value;
-    return (
-      <button key={value || 'all'} type="button" aria-pressed={on} onClick={() => setStatus(value)}
-        className={`px-3 py-1.5 rounded-lg text-[13px] font-semibold border transition-colors ${on ? 'bg-slate-900 text-white border-slate-900 dark:bg-white dark:text-slate-900 dark:border-white' : 'border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:border-slate-300'}`}>
-        {label}{n !== undefined && <span className={`ml-1.5 ${on ? 'opacity-80' : 'text-slate-500 dark:text-slate-500 dark:text-slate-400'}`}>{n}</span>}
-      </button>
-    );
-  };
+  const chip = (value: '' | ParticipantStatus, label: string, n: number) => ({
+    value, label: <>{label}<span className={`ml-1.5 ${status === value ? 'opacity-80' : 'text-slate-500 dark:text-slate-400'}`}>{n}</span></>,
+  });
 
   return (
     <div className="space-y-4">
@@ -131,10 +120,9 @@ const ParticipantsTab: React.FC<ContestTabProps> = ({ data, act, canEdit, canDel
       </div>
 
       <div className="flex flex-wrap items-center gap-2">
-        {chip('', 'Все', inScope.length)}
-        {chip('registered', 'Не пришли', counts.registered)}
-        {chip('arrived', 'Пришли', counts.arrived)}
-        {chip('withdrawn', 'Сняты', counts.withdrawn)}
+        <Segmented label="Статус" value={status} onChange={setStatus} className="flex flex-wrap gap-2"
+          options={[chip('', 'Все', inScope.length), chip('registered', 'Не пришли', counts.registered), chip('arrived', 'Пришли', counts.arrived), chip('withdrawn', 'Сняты', counts.withdrawn)]}
+          optionCls={(on) => `px-3 py-1.5 rounded-lg text-[13px] font-semibold border transition-colors ${on ? 'bg-slate-900 text-white border-slate-900 dark:bg-white dark:text-slate-900 dark:border-white' : 'border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:border-slate-300'}`} />
         {editable && markable.length > 0 && (
           <button onClick={() => setConfirmAll(true)} disabled={busy} className={`${secondaryBtn} ml-auto`}>
             <UserCheck className="w-4 h-4" />Отметить всех пришедшими{cat ? ` (${catById.get(cat)?.code})` : ''} · {markable.length}
@@ -168,7 +156,7 @@ const ParticipantsTab: React.FC<ContestTabProps> = ({ data, act, canEdit, canDel
                     <tr key={p.id} className={p.status === 'withdrawn' ? 'opacity-60' : ''}>
                       <td className="px-4 py-3 align-top"><NumberChip value={p.number} /></td>
                       <td className="px-4 py-3 align-top">
-                        <div className="font-semibold text-slate-900 dark:text-white">{p.projectTitle || <span className="text-slate-500 dark:text-slate-500 dark:text-slate-400 font-normal">без названия</span>}</div>
+                        <div className="font-semibold text-slate-900 dark:text-white">{p.projectTitle || <span className="text-slate-500 dark:text-slate-400 font-normal">без названия</span>}</div>
                         <div className="text-slate-600 dark:text-slate-300 text-[13px]">
                           {p.authors.map((a) => `${a.name}${a.age != null ? ` (${a.age})` : ''}`).join(', ')}
                           {p.categoryManual && <span className="ml-1.5 text-[11px] text-amber-700 dark:text-amber-400">· категория вручную</span>}
@@ -220,7 +208,7 @@ const ParticipantsTab: React.FC<ContestTabProps> = ({ data, act, canEdit, canDel
                 ))}
               </div>
               <button type="button" onClick={() => setForm({ ...form, authors: [...form.authors, { name: '', age: '' }] })} className={`${ghostBtn} mt-2`}><Plus className="w-3.5 h-3.5" />Соавтор (командный проект)</button>
-              {form.authors.length > 1 && <p className="text-[12px] text-slate-600 dark:text-slate-500 dark:text-slate-400 mt-1">Категория команды определяется по старшему участнику.</p>}
+              {form.authors.length > 1 && <p className="text-[12px] text-slate-600 dark:text-slate-400 mt-1">Категория команды определяется по старшему участнику.</p>}
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <Field label="Телефон"><input type="tel" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} className={inputCls} /></Field>
@@ -231,7 +219,7 @@ const ParticipantsTab: React.FC<ContestTabProps> = ({ data, act, canEdit, canDel
             <Field label="Категория" hint={autoCat ? undefined : 'Возраст не подходит ни под одну категорию — выберите вручную'}>
               <select value={form.categoryId} onChange={(e) => setForm({ ...form, categoryId: e.target.value })} className={inputCls}>
                 <option value="">{autoCat ? `Авто по возрасту: ${catById.get(autoCat)?.code}` : 'Авто по возрасту: не определена'}</option>
-                {contest.categories.map((c) => <option key={c.id} value={c.id}>{categoryLabel(c)}{c.name && c.name !== `${c.ageFrom}–${c.ageTo} лет` ? ` · ${c.name}` : ''}</option>)}
+                {contest.categories.map((c) => <option key={c.id} value={c.id}>{categoryLabel(c)}{c.name && c.name !== ageRangeLabel(c) ? ` · ${c.name}` : ''}</option>)}
               </select>
             </Field>
             {willRenumber && <WarnNote>Проект перейдёт в категорию {catById.get(targetCat!)?.code} и получит новый номер в ней. Старый номер {editing?.number} больше не будет использован.</WarnNote>}

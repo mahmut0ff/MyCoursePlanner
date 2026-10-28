@@ -2,7 +2,7 @@ import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { CONTEST_KIND_LABELS, JUDGING_MODE_LABELS, type ContestKind, type JudgingMode } from '../../lib/contests';
 import type { MetaForm } from './contestForm';
-import { Field, Label } from './ui';
+import { Field, Label, Segmented } from './ui';
 import { inputCls } from './uiStyles';
 
 /** Поля «паспорта» конкурса — общие для создания и вкладки «Обзор». */
@@ -43,19 +43,17 @@ const ContestMetaFields: React.FC<{ form: MetaForm; setForm: React.Dispatch<Reac
       </Field>
       <div>
         <Label>{t('contests.judgingMode', 'Как работает жюри')}</Label>
-        <div role="radiogroup" className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-          {(Object.keys(JUDGING_MODE_LABELS) as JudgingMode[]).map((m) => {
-            const on = form.judgingMode === m;
-            return (
-              <button key={m} type="button" role="radio" aria-checked={on} disabled={disabled}
-                onClick={() => setForm((f) => ({ ...f, judgingMode: m }))}
-                className={`text-left rounded-2xl border px-4 py-3 transition-colors ${on ? 'border-slate-900 dark:border-white bg-slate-900/[0.03] dark:bg-white/[0.06]' : 'border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600'} disabled:opacity-60`}>
-                <span className="block text-sm font-semibold text-slate-900 dark:text-white">{JUDGING_MODE_LABELS[m].title}</span>
-                <span className="block text-[12px] text-slate-500 dark:text-slate-500 dark:text-slate-400 mt-0.5">{JUDGING_MODE_LABELS[m].hint}</span>
-              </button>
-            );
-          })}
-        </div>
+        <Segmented label={t('contests.judgingMode', 'Как работает жюри')} value={form.judgingMode} disabled={disabled}
+          onChange={(m) => setForm((f) => ({ ...f, judgingMode: m }))}
+          options={(Object.keys(JUDGING_MODE_LABELS) as JudgingMode[]).map((m) => ({
+            value: m,
+            label: <>
+              <span className="block text-sm font-semibold text-slate-900 dark:text-white">{JUDGING_MODE_LABELS[m].title}</span>
+              <span className="block text-[12px] text-slate-500 dark:text-slate-400 mt-0.5">{JUDGING_MODE_LABELS[m].hint}</span>
+            </>,
+          }))}
+          className="grid grid-cols-1 sm:grid-cols-2 gap-2"
+          optionCls={(on) => `text-left rounded-2xl border px-4 py-3 transition-colors disabled:opacity-60 ${on ? 'border-slate-900 dark:border-white bg-slate-900/[0.03] dark:bg-white/[0.06]' : 'border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600'}`} />
       </div>
     </fieldset>
   );

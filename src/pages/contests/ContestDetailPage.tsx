@@ -254,7 +254,7 @@ const ContestDetailPage: React.FC = () => {
         <Link to="/contests" className="inline-flex items-center gap-1 text-sm text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white mb-3"><ArrowLeft className="w-4 h-4" />{t('nav.contests', 'Конкурсы')}</Link>
         <header className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-3">
           <div className="min-w-0">
-            <div className="flex items-center gap-2 flex-wrap text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-500 dark:text-slate-400">
+            <div className="flex items-center gap-2 flex-wrap text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
               <span>{CONTEST_KIND_LABELS[contest.kind]}{contest.season ? ` · ${contest.season}` : ''}</span>
               <StatusBadge status={contest.status} />
               {dayOfContest && mode === 'live' && (
@@ -262,7 +262,7 @@ const ContestDetailPage: React.FC = () => {
               )}
             </div>
             <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white mt-1">{contest.title}</h1>
-            <p className="text-sm text-slate-500 dark:text-slate-500 dark:text-slate-400 mt-1">
+            <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
               {[formatContestDate(contest.eventDate), contest.venue, contest.theme].filter(Boolean).join(' · ')}
             </p>
           </div>
@@ -276,7 +276,7 @@ const ContestDetailPage: React.FC = () => {
           <React.Fragment key={g.label}>
             {gi > 0 && <span aria-hidden className="w-px my-1.5 bg-slate-300 dark:bg-slate-600 shrink-0" />}
             <div className="flex items-center gap-0.5">
-              <span className="hidden md:block px-2 text-[10px] font-bold uppercase tracking-widest text-slate-500 dark:text-slate-500 dark:text-slate-400 whitespace-nowrap select-none" aria-hidden>{g.label}</span>
+              <span className="hidden md:block px-2 text-[10px] font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400 whitespace-nowrap select-none" aria-hidden>{g.label}</span>
               {g.tabs.map((x) => {
                 const active = tab === x.id;
                 return (

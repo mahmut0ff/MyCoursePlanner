@@ -161,6 +161,8 @@ const handler: Handler = async (event: HandlerEvent) => {
       const meta = sanitizeMeta(body);
       if (meta.title === '') return badRequest('Укажите название');
       await adminDb.collection(COL.contests).doc(c.id).update({ ...meta, rev: FieldValue.increment(1), updatedAt: now() });
+      // Режим жюри телефоны жюри читают из живого документа — публикуем.
+      await publishLive({ ...c, ...meta });
       return ok({ ...c, ...meta });
     }
 

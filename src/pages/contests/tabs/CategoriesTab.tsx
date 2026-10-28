@@ -18,7 +18,12 @@ const CategoriesTab: React.FC<ContestTabProps> = ({ data, act, canEdit, readOnly
   const [saving, setSaving] = useState(false);
 
   const disabled = !canEdit || readOnly;
-  const dirty = JSON.stringify(rows) !== JSON.stringify(initial);
+  // Сравниваем только редактируемое: счётчик номеров, оценивание и вызов меняются
+  // в день конкурса сами и не делают черновик «несохранённым».
+  const editableKey = (rs: Draft[]) => JSON.stringify(rs.map((r) => [r.id, r.code, r.name, r.ageFrom, r.ageTo, r.prizes]));
+  const dirty = editableKey(rows) !== editableKey(initial);
+  // Состояние с сервера — черновик держит его на момент открытия вкладки.
+  const serverCat = useMemo(() => new Map(contest.categories.map((c) => [c.id, c])), [contest.categories]);
 
   const parsed = rows.map((r, i) => ({ id: r.id || `new-${i}`, code: r.code, ageFrom: Number(r.ageFrom), ageTo: Number(r.ageTo), prizes: r.prizes }));
   // Пустые поля возраста пока не проверяем — иначе «0» из пустой строки дал бы ложное пересечение.
@@ -49,8 +54,8 @@ const CategoriesTab: React.FC<ContestTabProps> = ({ data, act, canEdit, readOnly
   return (
     <div className="space-y-4">
       <div className={`${cardCls} p-4 flex flex-wrap items-center gap-x-6 gap-y-2 text-sm`}>
-        <span className="text-slate-500 dark:text-slate-500 dark:text-slate-400">Денежные призы: <b className="text-slate-900 dark:text-white">{formatMoney(prizes)}</b></span>
-        <span className="text-slate-500 dark:text-slate-500 dark:text-slate-400">Заявленный фонд: <b className="text-slate-900 dark:text-white">{contest.prizeFund ? formatMoney(contest.prizeFund) : '—'}</b></span>
+        <span className="text-slate-500 dark:text-slate-400">Денежные призы: <b className="text-slate-900 dark:text-white">{formatMoney(prizes)}</b></span>
+        <span className="text-slate-500 dark:text-slate-400">Заявленный фонд: <b className="text-slate-900 dark:text-white">{contest.prizeFund ? formatMoney(contest.prizeFund) : '—'}</b></span>
         {contest.prizeFund > 0 && (
           <span className={`font-semibold ${diff < 0 ? 'text-rose-600 dark:text-rose-400' : diff > 0 ? 'text-amber-600 dark:text-amber-400' : 'text-emerald-600 dark:text-emerald-400'}`}>
             {diff === 0 ? 'Сходится с фондом' : diff > 0 ? `Не распределено: ${formatMoney(diff)}` : `Превышение фонда: ${formatMoney(-diff)}`}
@@ -67,17 +72,19 @@ const CategoriesTab: React.FC<ContestTabProps> = ({ data, act, canEdit, readOnly
 
       {rows.map((r, i) => {
         const count = r.id ? participants.filter((p) => p.categoryId === r.id).length : 0;
-        const codeLocked = !!r.nextSeq && r.nextSeq > 1;
+        const live = r.id ? serverCat.get(r.id) : undefined;
+        const judging = live?.judging;
+        const codeLocked = !!live?.nextSeq && live.nextSeq > 1;
         return (
           <section key={r.id || `new-${i}`} className={`${cardCls} p-5`}>
             <div className="flex items-center justify-between gap-3 mb-4">
               <div className="flex items-center gap-2">
                 <span className="w-9 h-9 rounded-xl bg-slate-900 text-white dark:bg-white dark:text-slate-900 flex items-center justify-center font-bold">{r.code || '?'}</span>
-                <span className="text-sm text-slate-500 dark:text-slate-500 dark:text-slate-400">{count} участн.</span>
-                {r.judging && <JudgingBadge state={r.judging} />}
+                <span className="text-sm text-slate-500 dark:text-slate-400">{count} участн.</span>
+                {judging && <JudgingBadge state={judging} />}
               </div>
               {!disabled && (
-                <button onClick={() => setRows((rs) => rs.filter((_, k) => k !== i))} disabled={count > 0 || (r.judging && r.judging !== 'pending')}
+                <button onClick={() => setRows((rs) => rs.filter((_, k) => k !== i))} disabled={count > 0 || (!!judging && judging !== 'pending')}
                   title={count > 0 ? 'В категории есть участники' : 'Удалить категорию'} className={`${ghostBtn} text-rose-600`}>
                   <Trash2 className="w-4 h-4" />
                 </button>

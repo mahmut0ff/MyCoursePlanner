@@ -141,6 +141,7 @@ export async function publishLive(contest: Contest, juryUids?: string[]): Promis
     organizationId: contest.organizationId,
     contestId: contest.id,
     status: contest.status,
+    judgingMode: contest.judgingMode,
     categories,
     rev: FieldValue.increment(1),
     updatedAt: now(),

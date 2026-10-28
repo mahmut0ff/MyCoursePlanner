@@ -7,17 +7,18 @@ import React, { useEffect, useRef } from 'react';
 import { X } from 'lucide-react';
 import type { CategoryJudging, ContestCategory, ContestStatus, ParticipantStatus } from '../../lib/contests';
 import { CONTEST_STATUS_LABELS, JUDGING_LABELS, PARTICIPANT_STATUS_LABELS } from '../../lib/contests';
+import { ageRangeLabel } from './uiStyles';
 
 
 export const Label: React.FC<{ children: React.ReactNode; htmlFor?: string }> = ({ children, htmlFor }) => (
-  <label htmlFor={htmlFor} className="text-[11px] font-bold text-slate-600 dark:text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-1.5 block">{children}</label>
+  <label htmlFor={htmlFor} className="text-[11px] font-bold text-slate-600 dark:text-slate-400 uppercase tracking-widest mb-1.5 block">{children}</label>
 );
 
 export const Field: React.FC<{ label: string; children: React.ReactNode; hint?: string; className?: string }> = ({ label, children, hint, className }) => (
   <div className={className}>
     <Label>{label}</Label>
     {children}
-    {hint && <p className="text-[12px] text-slate-600 dark:text-slate-500 dark:text-slate-400 mt-1">{hint}</p>}
+    {hint && <p className="text-[12px] text-slate-600 dark:text-slate-400 mt-1">{hint}</p>}
   </div>
 );
 
@@ -45,6 +46,10 @@ export const Modal: React.FC<{
 }> = ({ open, title, onClose, children, footer, wide }) => {
   const boxRef = useRef<HTMLDivElement>(null);
   const openerRef = useRef<HTMLElement | null>(null);
+  // onClose у всех вызывающих — inline-стрелка; будь она в зависимостях,
+  // ловушка фокуса перезапускалась бы на каждом нажатии клавиши.
+  const onCloseRef = useRef(onClose);
+  useEffect(() => { onCloseRef.current = onClose; });
 
   useEffect(() => {
     if (!open) return;
@@ -55,7 +60,7 @@ export const Modal: React.FC<{
     const target = first && first.length > 1 ? first[1] : first?.[0];
     target?.focus();
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') { e.stopPropagation(); onClose(); return; }
+      if (e.key === 'Escape') { onCloseRef.current(); return; }
       if (e.key !== 'Tab' || !box) return;
       const items = Array.from(box.querySelectorAll<HTMLElement>(FOCUSABLE));
       if (!items.length) return;
@@ -69,7 +74,7 @@ export const Modal: React.FC<{
       document.removeEventListener('keydown', onKey);
       openerRef.current?.focus?.();
     };
-  }, [open, onClose]);
+  }, [open]);
 
   if (!open) return null;
   return (
@@ -159,10 +164,39 @@ export const CategoryPicker: React.FC<{
           <span className="text-lg font-bold text-slate-900 dark:text-white">{c.code}</span>
           <span className="flex flex-col gap-0.5">
             <JudgingBadge state={c.judging} />
-            <span className="text-[11px] text-slate-600 dark:text-slate-500 dark:text-slate-400">{extra ? extra(c) : `${c.ageFrom}–${c.ageTo} лет`}</span>
+            <span className="text-[11px] text-slate-600 dark:text-slate-400">{extra ? extra(c) : ageRangeLabel(c)}</span>
           </span>
         </button>
       );
     })}
   </div>
 );
+
+/**
+ * Сегментированный переключатель (статус участника, режим жюри, фильтр):
+ * группа кнопок с aria-pressed — без role="radio", которому нужны стрелки.
+ */
+export function Segmented<T extends string>({ options, value, onChange, label, className, optionCls, disabled }: {
+  options: { value: T; label: React.ReactNode; title?: string }[];
+  value: T;
+  onChange: (v: T) => void;
+  label: string;
+  className?: string;
+  /** Классы кнопки: выбрана ли и какое значение. */
+  optionCls: (on: boolean, value: T) => string;
+  disabled?: boolean;
+}) {
+  return (
+    <div role="group" aria-label={label} className={className}>
+      {options.map((o) => {
+        const on = o.value === value;
+        return (
+          <button key={o.value} type="button" aria-pressed={on} disabled={disabled} title={o.title}
+            onClick={() => !on && onChange(o.value)} className={optionCls(on, o.value)}>
+            {o.label}
+          </button>
+        );
+      })}
+    </div>
+  );
+}

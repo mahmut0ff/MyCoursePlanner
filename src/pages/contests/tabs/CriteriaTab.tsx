@@ -18,7 +18,7 @@ const Row: React.FC<{ d: Draft; index: number; locked: boolean; onChange: (p: Pa
     <div ref={setNodeRef} style={{ transform: CSS.Transform.toString(transform), transition }}
       className={`${cardCls} p-4 flex gap-3 ${isDragging ? 'relative z-10 shadow-lg' : ''}`}>
       {!locked ? (
-        <button {...attributes} {...listeners} className="touch-none self-start mt-6 text-slate-300 hover:text-slate-600 dark:text-slate-300 cursor-grab" aria-label="Перетащить"><GripVertical className="w-4 h-4" /></button>
+        <button {...attributes} {...listeners} className="touch-none self-start mt-6 text-slate-400 hover:text-slate-600 dark:text-slate-500 dark:hover:text-slate-300 cursor-grab" aria-label="Перетащить"><GripVertical className="w-4 h-4" /></button>
       ) : <span className="self-start mt-7 text-sm font-bold text-slate-500 dark:text-slate-400 w-4 text-center">{index + 1}</span>}
       <fieldset disabled={locked} className="flex-1 grid grid-cols-1 sm:grid-cols-[1fr_110px] gap-3">
         <div>
@@ -86,7 +86,7 @@ const CriteriaTab: React.FC<ContestTabProps> = ({ data, act, canEdit, readOnly }
           <WarnNote className="flex items-start gap-2"><Lock className="w-4 h-4 mt-0.5 shrink-0" aria-hidden />Оценивание уже началось — критерии зафиксированы, чтобы не испортить выставленные оценки. Порядок разрешения ничьей справа менять ещё можно.</WarnNote>
         )}
         <div className={`${cardCls} p-4 flex items-center justify-between`}>
-          <span className="text-sm text-slate-500 dark:text-slate-500 dark:text-slate-400">Максимум от одного члена жюри</span>
+          <span className="text-sm text-slate-500 dark:text-slate-400">Максимум от одного члена жюри</span>
           <span className="text-2xl font-bold text-slate-900 dark:text-white">{total}</span>
         </div>
         {locked ? (
@@ -128,7 +128,7 @@ const CriteriaTab: React.FC<ContestTabProps> = ({ data, act, canEdit, readOnly }
 
       <aside className={`${cardCls} p-5 h-fit`}>
         <h2 className="font-bold text-slate-900 dark:text-white flex items-center gap-2"><Scale className="w-4 h-4 text-primary-500" />Разрешение ничьей</h2>
-        <p className="text-xs text-slate-500 dark:text-slate-500 dark:text-slate-400 mt-1 mb-4">При равных итоговых баллах проекты сравниваются по средним баллам этих критериев — по порядку. Если и они равны — «требуется решение жюри».</p>
+        <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 mb-4">При равных итоговых баллах проекты сравниваются по средним баллам этих критериев — по порядку. Если и они равны — «требуется решение жюри».</p>
         <ol className="space-y-2">
           {tie.map((id, i) => (
             <li key={id} className="flex items-center gap-2 text-sm">

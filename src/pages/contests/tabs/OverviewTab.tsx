@@ -9,7 +9,7 @@ import { formatMoney } from '../../../lib/money';
 import type { ContestTabProps } from '../ContestDetailPage';
 import ContestMetaFields from '../ContestMetaFields';
 import { JudgingBadge } from '../ui';
-import { cardCls, primaryBtn, secondaryBtn, errMessage } from '../uiStyles';
+import { cardCls, primaryBtn, secondaryBtn, errMessage, ageRangeLabel } from '../uiStyles';
 
 const OverviewTab: React.FC<ContestTabProps> = ({ data, act, canEdit, canDelete, readOnly, goTab }) => {
   const { contest, participants, jury } = data;
@@ -47,7 +47,7 @@ const OverviewTab: React.FC<ContestTabProps> = ({ data, act, canEdit, canDelete,
     <div className={`${cardCls} p-4`}>
       <div className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400">{icon}{label}</div>
       <div className="text-2xl font-bold text-slate-900 dark:text-white mt-1">{value}</div>
-      {sub && <div className="text-xs text-slate-500 dark:text-slate-500 dark:text-slate-400 mt-0.5">{sub}</div>}
+      {sub && <div className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">{sub}</div>}
     </div>
   );
 
@@ -82,9 +82,9 @@ const OverviewTab: React.FC<ContestTabProps> = ({ data, act, canEdit, canDelete,
             <ul className="space-y-1">
               {contest.categories.map((c) => (
                 <li key={c.id}>
-                  <button onClick={() => goTab(contest.status === 'judging' || contest.status === 'finished' ? 'monitor' : 'categories', c.id)}
+                  <button onClick={() => (contest.status === 'judging' || contest.status === 'finished' ? goTab('monitor', c.id) : goTab('categories'))}
                     className="w-full flex items-center justify-between gap-2 text-sm rounded-lg -mx-2 px-2 py-1.5 hover:bg-slate-50 dark:hover:bg-slate-700/50 text-left">
-                    <span className="text-slate-700 dark:text-slate-200"><b>{c.code}</b> · {c.ageFrom}–{c.ageTo} лет · {participants.filter((p) => p.categoryId === c.id && p.status !== 'withdrawn').length} уч.</span>
+                    <span className="text-slate-700 dark:text-slate-200"><b>{c.code}</b> · {ageRangeLabel(c)} · {participants.filter((p) => p.categoryId === c.id && p.status !== 'withdrawn').length} уч.</span>
                     <JudgingBadge state={c.judging} />
                   </button>
                 </li>

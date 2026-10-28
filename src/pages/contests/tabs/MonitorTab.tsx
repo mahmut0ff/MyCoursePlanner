@@ -20,6 +20,8 @@ const MonitorTab: React.FC<ContestTabProps> = ({ data, act, canEdit, readOnly, g
   const cat = contest.categories.find((c) => c.id === catId);
   const editable = canEdit && !readOnly;
   const hostMode = contest.judgingMode !== 'free';
+  // Вызывать можно до открытия и во время оценивания — как разрешает сервер.
+  const canCall = editable && hostMode && (cat?.judging === 'pending' || cat?.judging === 'open');
   const projects = useMemo(() => participants.filter((p) => p.categoryId === catId && p.status === 'arrived').sort((a, b) => a.seq - b.seq), [participants, catId]);
   const waiting = useMemo(() => participants.filter((p) => p.categoryId === catId && p.status === 'registered').length, [participants, catId]);
   const catJury = useMemo(() => juryForCategory(jury, catId), [jury, catId]);
@@ -84,6 +86,8 @@ const MonitorTab: React.FC<ContestTabProps> = ({ data, act, canEdit, readOnly, g
                         : 'Проверьте рейтинг, разрешите ничьи, если они есть, и утвердите итоги. Пока итоги не утверждены, категорию можно открыть снова.'}
                     </p>
                   </div>
+                  {/* Вызов из старых данных: сервер снимает его при закрытии только с этой версии. */}
+                  {editable && current && <button onClick={() => call(null)} disabled={busy} className={secondaryBtn}><XCircle className="w-4 h-4" />Снять вызов {current.number}</button>}
                   <button onClick={() => goTab('results', cat.id)} className={primaryBtn}><Trophy className="w-4 h-4" />Итоги категории {cat.code}<ChevronRight className="w-4 h-4" /></button>
                 </div>
               ) : hostMode ? (
@@ -107,7 +111,7 @@ const MonitorTab: React.FC<ContestTabProps> = ({ data, act, canEdit, readOnly, g
                   ) : (
                     <div className="flex-1 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                       <p className="text-sm text-slate-600 dark:text-slate-300">Вызовите проект — у всех жюри категории он откроется на телефоне сам.</p>
-                      {editable && projects[0] && <button onClick={() => call(projects[0].id)} disabled={busy} className={primaryBtn}><Megaphone className="w-4 h-4" />Начать с {projects[0].number}</button>}
+                      {canCall && projects[0] && <button onClick={() => call(projects[0].id)} disabled={busy} className={primaryBtn}><Megaphone className="w-4 h-4" />Начать с {projects[0].number}</button>}
                     </div>
                   )}
                 </div>
@@ -202,7 +206,7 @@ const MonitorTab: React.FC<ContestTabProps> = ({ data, act, canEdit, readOnly, g
                             ))}
                             <td className="px-3 py-2.5 text-center font-bold text-slate-900 dark:text-white">{round2(avg)}</td>
                             <td className="px-3 py-2.5 text-right whitespace-nowrap">
-                              {editable && hostMode && cat.judging === 'open' && !isCurrent && (
+                              {canCall && !isCurrent && (
                                 <button onClick={() => call(p.id)} disabled={busy} className={ghostBtn}><Megaphone className="w-4 h-4" aria-hidden />Вызвать</button>
                               )}
                               <button onClick={() => setHistory(p)} className={ghostBtn}><History className="w-4 h-4" aria-hidden />История</button>
@@ -224,7 +228,7 @@ const MonitorTab: React.FC<ContestTabProps> = ({ data, act, canEdit, readOnly, g
                                         const nums = vals.filter((v): v is number => typeof v === 'number');
                                         return (
                                           <tr key={c.id}>
-                                            <td className="pr-4 py-1 text-slate-700 dark:text-slate-200">{c.name} <span className="text-slate-500 dark:text-slate-500 dark:text-slate-400">/ {c.maxScore}</span></td>
+                                            <td className="pr-4 py-1 text-slate-700 dark:text-slate-200">{c.name} <span className="text-slate-500 dark:text-slate-400">/ {c.maxScore}</span></td>
                                             {vals.map((v, k) => <td key={k} className="px-3 py-1 text-center">{v ?? '—'}</td>)}
                                             <td className="px-3 py-1 text-center font-semibold">{nums.length ? round2(nums.reduce((a, b) => a + b, 0) / nums.length) : '—'}</td>
                                           </tr>
@@ -290,11 +294,11 @@ const ScoreEditModal: React.FC<{
       <div className="space-y-2">
         {criteria.map((c) => (
           <div key={c.id} className="grid grid-cols-[1fr_90px] gap-3 items-center">
-            <label htmlFor={`adm-${c.id}`} className="text-sm text-slate-700 dark:text-slate-200">{c.name} <span className="text-slate-500 dark:text-slate-500 dark:text-slate-400">/ {c.maxScore}</span></label>
+            <label htmlFor={`adm-${c.id}`} className="text-sm text-slate-700 dark:text-slate-200">{c.name} <span className="text-slate-500 dark:text-slate-400">/ {c.maxScore}</span></label>
             <input id={`adm-${c.id}`} type="number" inputMode="decimal" min={0} max={c.maxScore} step={0.5} value={vals[c.id]} onChange={(e) => setVals({ ...vals, [c.id]: e.target.value })} className={`${inputCls} text-center`} />
           </div>
         ))}
-        <div className="flex justify-between pt-2 text-sm"><span className="text-slate-600 dark:text-slate-300">Сумма</span><b>{round2(total)}{edit.s ? <span className="text-slate-500 dark:text-slate-500 dark:text-slate-400 font-normal"> (было {round2(edit.s.total)})</span> : null}</b></div>
+        <div className="flex justify-between pt-2 text-sm"><span className="text-slate-600 dark:text-slate-300">Сумма</span><b>{round2(total)}{edit.s ? <span className="text-slate-500 dark:text-slate-400 font-normal"> (было {round2(edit.s.total)})</span> : null}</b></div>
       </div>
       <Field label="Комментарий (обязательно)" hint="Запишется в историю оценок: кто, когда, было/стало и почему.">
         <textarea rows={2} value={comment} onChange={(e) => setComment(e.target.value)} placeholder="Почему оценка исправлена" className={inputCls} />
@@ -327,7 +331,7 @@ const HistoryModal: React.FC<{
           <li key={e.id} className="rounded-2xl border border-slate-200 dark:border-slate-700 p-3 text-sm">
             <div className="flex flex-wrap justify-between gap-2">
               <span><b>{e.byName}</b> {e.byRole === 'admin' ? <span className="text-amber-700 dark:text-amber-400">исправил(а) оценку за {nameOf(e.juryUid)}</span> : e.before ? 'изменил(а) свою оценку' : 'выставил(а) оценку'}</span>
-              <span className="text-slate-500 dark:text-slate-500 dark:text-slate-400">{fmtTime(e.at)}</span>
+              <span className="text-slate-500 dark:text-slate-400">{fmtTime(e.at)}</span>
             </div>
             <div className="mt-1 text-slate-600 dark:text-slate-300">Сумма: {e.before ? `${round2(e.before.total)} → ` : ''}<b>{round2(e.after.total)}</b></div>
             {e.before && diff(e).length > 0 && <div className="text-[12px] text-slate-600 dark:text-slate-300 mt-1">{diff(e).join(' · ')}</div>}

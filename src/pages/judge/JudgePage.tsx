@@ -16,14 +16,15 @@
  *  free — жюри ходят по столам сами: никаких автопереходов, главное — список и
  *         поиск по номеру.
  */
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import {
   LogOut, ChevronLeft, ChevronRight, Search, CheckCircle2, Circle, Minus, Plus, Megaphone,
-  WifiOff, Lock, Moon, Sun, Gavel, Trophy, CloudUpload, MoreVertical,
+  WifiOff, Lock, Moon, Sun, Gavel, Trophy, CloudUpload,
 } from 'lucide-react';
 import ConfirmDialog from '../../components/ui/ConfirmDialog';
+import RowMenu from '../../components/ui/RowMenu';
 import { useAuth } from '../../contexts/AuthContext';
 import { useTheme } from '../../contexts/ThemeContext';
 import { signOut } from '../../services/auth.service';
@@ -64,7 +65,6 @@ const JudgePage: React.FC = () => {
   const [board, setBoard] = useState<JudgeBoard | null>(null);
   const [boardError, setBoardError] = useState('');
   const [online, setOnline] = useState(typeof navigator === 'undefined' ? true : navigator.onLine);
-  const [menuOpen, setMenuOpen] = useState(false);
   const [confirmLogout, setConfirmLogout] = useState(false);
   const [queue, setQueue] = useState<Pending[]>(() => (uid ? lsGet<Pending[]>(queueKey(uid), []) : []));
 
@@ -89,7 +89,7 @@ const JudgePage: React.FC = () => {
   // ─── Живое состояние: открыта ли категория, кого вызвал ведущий ───
   const { live } = useContestLive(contest?.id, async () => {
     const c = await apiJudgeLive(contestId);
-    return { status: c.status, rev: 0, categories: Object.fromEntries(c.categories.map((x) => [x.id, x])) };
+    return { status: c.status, judgingMode: c.judgingMode, rev: 0, categories: Object.fromEntries(c.categories.map((x) => [x.id, x])) };
   }, 6000);
   const liveCat = (id: string) => {
     const base = contest?.categories.find((x) => x.id === id);
@@ -97,7 +97,8 @@ const JudgePage: React.FC = () => {
     return base ? { ...base, ...(l ? { judging: l.judging, currentParticipantId: l.currentParticipantId, currentSetAt: l.currentSetAt } : {}) } : undefined;
   };
   const cat = categoryId ? liveCat(categoryId) : undefined;
-  const hostMode = !contest || contest.judgingMode !== 'free';
+  // Режим — из живого документа: его могут переключить в день конкурса.
+  const hostMode = (live?.judgingMode || contest?.judgingMode) !== 'free';
 
   useEffect(() => {
     if (!contest || categoryId) return;
@@ -166,12 +167,15 @@ const JudgePage: React.FC = () => {
   const callStamp = called ? `${called.id}@${cat?.currentSetAt}` : null;
   const seenCall = useRef<string | null>(null);
   useEffect(() => {
+    if (!board || !live) return;
+    // Точка отсчёта — первое состояние после загрузки списка и live: что висело
+    // на тот момент (или ничего), новым вызовом не считается.
+    if (seenCall.current === null) { seenCall.current = callStamp ?? ''; return; }
     if (!callStamp || callStamp === seenCall.current || !called) return;
-    const first = seenCall.current === null;
     seenCall.current = callStamp;
-    if (first || called.id === projectId) return;
+    if (called.id === projectId) return;
     if (!dirty) { go({ p: called.id }); toast(`Ведущий открыл ${called.number}`, { icon: '📣' }); }
-  }, [callStamp, called, projectId, dirty, go]);
+  }, [board, live, callStamp, called, projectId, dirty, go]);
   // Плашка — только на экране ДРУГОГО проекта; в списке за это отвечает карточка «Сейчас на сцене».
   const callout = projectId && called && called.id !== projectId ? called : null;
 
@@ -191,23 +195,10 @@ const JudgePage: React.FC = () => {
             <div className="text-[12px] text-slate-600 dark:text-slate-400 truncate">{cat ? `Категория ${cat.code}${cat.name ? ` · ${cat.name}` : ''}` : name}</div>
           </div>
           {/* Одно меню вместо двух соседних иконок: «Выйти» — за подтверждением, чтобы промах пальцем не выкинул из оценивания. */}
-          <div className="relative">
-            <button onClick={() => setMenuOpen((v) => !v)} aria-haspopup="menu" aria-expanded={menuOpen} aria-label="Меню"
-              className="w-11 h-11 -mr-2 rounded-xl flex items-center justify-center text-slate-600 dark:text-slate-300 active:bg-slate-100 dark:active:bg-slate-800"><MoreVertical className="w-5 h-5" /></button>
-            {menuOpen && (
-              <>
-                <div className="fixed inset-0 z-10" onClick={() => setMenuOpen(false)} aria-hidden />
-                <div role="menu" className="absolute right-0 top-full mt-1 z-20 w-56 py-1.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-xl">
-                  <button role="menuitem" onClick={() => { toggle(); setMenuOpen(false); }} className="w-full px-4 py-3 text-left text-[15px] flex items-center gap-3 active:bg-slate-50 dark:active:bg-slate-700/60">
-                    {isDark ? <Sun className="w-5 h-5" aria-hidden /> : <Moon className="w-5 h-5" aria-hidden />}{isDark ? 'Светлая тема' : 'Тёмная тема'}
-                  </button>
-                  <button role="menuitem" onClick={() => { setMenuOpen(false); setConfirmLogout(true); }} className="w-full px-4 py-3 text-left text-[15px] flex items-center gap-3 text-rose-700 dark:text-rose-400 active:bg-rose-50 dark:active:bg-rose-500/10">
-                    <LogOut className="w-5 h-5" aria-hidden />Выйти из учётной записи
-                  </button>
-                </div>
-              </>
-            )}
-          </div>
+          <RowMenu label="Меню" buttonClassName="w-11 h-11 -mr-2 rounded-xl flex items-center justify-center text-slate-600 dark:text-slate-300 active:bg-slate-100 dark:active:bg-slate-800" items={[
+            { label: isDark ? 'Светлая тема' : 'Тёмная тема', icon: isDark ? Sun : Moon, onSelect: toggle },
+            { label: 'Выйти из учётной записи', icon: LogOut, danger: true, separated: true, onSelect: () => setConfirmLogout(true) },
+          ]} />
         </div>
         {(!online || queue.length > 0) && (
           <div className={`px-4 py-2 text-[13px] font-medium flex items-center justify-center gap-2 ${online ? 'bg-sky-100 text-sky-800 dark:bg-sky-500/15 dark:text-sky-200' : 'bg-amber-100 text-amber-900 dark:bg-amber-500/15 dark:text-amber-200'}`}>
@@ -405,6 +396,14 @@ const ScoreForm: React.FC<{
   const [state, setState] = useState<'idle' | 'saving' | 'saved' | 'queued' | 'error'>('idle');
   const [message, setMessage] = useState('');
   const [showDesc, setShowDesc] = useState(false);
+  // «Читать полностью» — только если две строки действительно обрезали текст.
+  const descRef = useRef<HTMLParagraphElement>(null);
+  const [clamped, setClamped] = useState(false);
+  useLayoutEffect(() => {
+    const el = descRef.current;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- замер DOM возможен только после отрисовки
+    setClamped(!!el && el.scrollHeight > el.clientHeight);
+  }, [project.projectDescription, showDesc]);
 
   const isDirty = criteria.some((c) => (vals[c.id] ?? '') !== (fromSaved[c.id] ?? ''));
   useEffect(() => { onDirty(isDirty); return () => onDirty(false); }, [isDirty, onDirty]);
@@ -471,8 +470,8 @@ const ScoreForm: React.FC<{
         {project.authors.length > 0 && <p className="text-[14px] text-slate-600 dark:text-slate-300 mt-0.5">{project.authors.join(', ')}</p>}
         {project.projectDescription && (
           <div className="mt-2">
-            <p className={`text-[14px] text-slate-600 dark:text-slate-300 ${showDesc ? '' : 'line-clamp-2'}`}>{project.projectDescription}</p>
-            {project.projectDescription.length > 90 && (
+            <p ref={descRef} className={`text-[14px] text-slate-600 dark:text-slate-300 ${showDesc ? '' : 'line-clamp-2'}`}>{project.projectDescription}</p>
+            {(clamped || showDesc) && (
               <button onClick={() => setShowDesc((s) => !s)} aria-expanded={showDesc} className="mt-1 min-h-[36px] text-[14px] font-semibold text-primary-700 dark:text-primary-400">{showDesc ? 'Свернуть' : 'Читать полностью'}</button>
             )}
           </div>

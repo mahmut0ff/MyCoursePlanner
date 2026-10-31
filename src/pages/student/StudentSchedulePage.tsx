@@ -94,7 +94,7 @@ const StudentSchedulePage: React.FC = () => {
                       <div className="absolute left-0 top-0 bottom-0 w-1 bg-gradient-to-b from-primary-400 to-indigo-500" />
                       
                       <span className="text-[9px] font-bold text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-700/80 px-2 py-0.5 rounded-md uppercase tracking-wider inline-block mb-2">
-                        {idx + 1}-й Урок
+                        {t('student.schedule.lessonN', '{{n}}-й урок', { n: idx + 1 })}
                       </span>
 
                       <div className="flex items-start justify-between">

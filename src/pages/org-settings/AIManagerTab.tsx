@@ -3,8 +3,10 @@ import { Save, Loader2, Plus, Trash2 } from 'lucide-react';
 import { apiGetAIManagerSettings, apiUpdateAIManagerSettings } from '../../lib/api';
 import type { OrgAIManagerSettings, AIManagerFAQ } from '../../types';
 import toast from 'react-hot-toast';
+import { useTranslation } from 'react-i18next';
 
 export const AIManagerTab: React.FC<{ organizationId: string }> = ({ organizationId }) => {
+  const { t } = useTranslation();
   const [settings, setSettings] = useState<OrgAIManagerSettings | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -18,7 +20,7 @@ export const AIManagerTab: React.FC<{ organizationId: string }> = ({ organizatio
       .then((res) => setSettings(res.data))
       .catch((err) => {
         console.error(err);
-        toast.error('Не удалось загрузить настройки AI');
+        toast.error(t('aiManager.loadFailed', 'Не удалось загрузить настройки AI'));
       })
       .finally(() => setLoading(false));
   }, [organizationId]);
@@ -32,10 +34,10 @@ export const AIManagerTab: React.FC<{ organizationId: string }> = ({ organizatio
     setSaving(true);
     try {
       await apiUpdateAIManagerSettings(settings);
-      toast.success('Настройки AI успешно сохранены');
+      toast.success(t('aiManager.saved', 'Настройки AI успешно сохранены'));
     } catch (err: any) {
       console.error(err);
-      toast.error(err.message || 'Ошибка при сохранении настроек AI');
+      toast.error(err.message || t('aiManager.saveFailed', 'Ошибка при сохранении настроек AI'));
     } finally {
       setSaving(false);
     }
@@ -69,7 +71,7 @@ export const AIManagerTab: React.FC<{ organizationId: string }> = ({ organizatio
   }
 
   if (!settings) {
-    return <div className="text-center py-12 text-slate-500">Не удалось загрузить настройки AI.</div>;
+    return <div className="text-center py-12 text-slate-500">{t('aiManager.loadFailedLong', 'Не удалось загрузить настройки AI.')}</div>;
   }
 
   return (
@@ -78,10 +80,10 @@ export const AIManagerTab: React.FC<{ organizationId: string }> = ({ organizatio
       <div className="flex items-center justify-between gap-4 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl px-5 py-4">
         <div>
           <p className="font-semibold text-slate-900 dark:text-white" id="ai-assistant-toggle-label">
-            Ассистент {settings.isActive ? 'включён' : 'выключен'}
+            {settings.isActive ? t('aiManager.stateOn', 'Ассистент включён') : t('aiManager.stateOff', 'Ассистент выключен')}
           </p>
           <p className="text-sm text-slate-500 dark:text-slate-400">
-            {settings.isActive ? 'Отвечает посетителям публичного профиля' : 'Не отвечает — посетители не увидят чат'}
+            {settings.isActive ? t('aiManager.stateOnDesc', 'Отвечает посетителям публичного профиля') : t('aiManager.stateOffDesc', 'Не отвечает — посетители не увидят чат')}
           </p>
         </div>
         <button
@@ -100,54 +102,54 @@ export const AIManagerTab: React.FC<{ organizationId: string }> = ({ organizatio
         <>
           {/* ── Core Instructions ── */}
           <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-5 space-y-4">
-            <h3 className="font-semibold text-slate-900 dark:text-white mb-2">Базовые знания</h3>
+            <h3 className="font-semibold text-slate-900 dark:text-white mb-2">{t('aiManager.coreKnowledge', 'Базовые знания')}</h3>
             
             <div>
               <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
-                Приветственное сообщение (Начальное сообщение)
+                {t('aiManager.greeting', 'Приветственное сообщение (Начальное сообщение)')}
               </label>
               <input
                 type="text"
                 value={settings.greetingMessage || ''}
                 onChange={e => update('greetingMessage', e.target.value)}
                 className="input"
-                placeholder="Здравствуйте! Я ваш AI-ассистент. Чем могу помочь?"
+                placeholder={t('aiManager.greetingPh', 'Здравствуйте! Я ваш AI-ассистент. Чем могу помочь?')}
               />
             </div>
 
             <div>
               <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
-                Об организации (Обучающие данные)
+                {t('aiManager.about', 'Об организации (Обучающие данные)')}
               </label>
               <textarea
                 value={settings.aboutOrganization || ''}
                 onChange={e => update('aboutOrganization', e.target.value)}
                 className="input min-h-[80px]"
-                placeholder="Укажите подробное описание вашей организации: история, миссия, уникальные особенности..."
+                placeholder={t('aiManager.aboutPh', 'Укажите подробное описание вашей организации: история, миссия, уникальные особенности...')}
               />
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               <div>
                 <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
-                  Политика зачисления
+                  {t('aiManager.enrollment', 'Политика зачисления')}
                 </label>
                 <textarea
                   value={settings.enrollmentPolicy || ''}
                   onChange={e => update('enrollmentPolicy', e.target.value)}
                   className="input min-h-[80px]"
-                  placeholder="Как студенты могут записаться? Когда открыт набор?"
+                  placeholder={t('aiManager.enrollmentPh', 'Как студенты могут записаться? Когда открыт набор?')}
                 />
               </div>
               <div>
                 <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
-                  Пользовательские инструкции для AI
+                  {t('aiManager.instructions', 'Пользовательские инструкции для AI')}
                 </label>
                 <textarea
                   value={settings.customInstructions || ''}
                   onChange={e => update('customInstructions', e.target.value)}
                   className="input min-h-[80px]"
-                  placeholder="Например: 'Общайся строго официально' или 'Всегда предлагай скидку'"
+                  placeholder={t('aiManager.instructionsPh', "Например: 'Общайся строго официально' или 'Всегда предлагай скидку'")}
                 />
               </div>
             </div>
@@ -156,19 +158,19 @@ export const AIManagerTab: React.FC<{ organizationId: string }> = ({ organizatio
           {/* ── FAQ Builder ── */}
           <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-5">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="font-semibold text-slate-900 dark:text-white">Часто задаваемые вопросы (FAQ)</h3>
+              <h3 className="font-semibold text-slate-900 dark:text-white">{t('aiManager.faqTitle', 'Часто задаваемые вопросы (FAQ)')}</h3>
               <button onClick={addFAQ} className="btn-secondary py-1.5 text-sm flex items-center gap-1">
-                <Plus className="w-4 h-4" /> Добавить FAQ
+                <Plus className="w-4 h-4" /> {t('aiManager.addFaq', 'Добавить FAQ')}
               </button>
             </div>
             <p className="text-sm text-slate-500 mb-4">
-              Добавление FAQ помогает AI-ассистенту отвечать точнее и надежнее в нестандартных ситуациях.
+              {t('aiManager.faqHint', 'Добавление FAQ помогает AI-ассистенту отвечать точнее и надежнее в нестандартных ситуациях.')}
             </p>
 
             <div className="space-y-3">
               {(!settings.faq || settings.faq.length === 0) ? (
                 <div className="text-center py-6 border-2 border-dashed border-slate-200 dark:border-slate-700 rounded-xl text-slate-400">
-                  Пользовательские FAQ не заданы.
+                  {t('aiManager.faqEmpty', 'Пользовательские FAQ не заданы.')}
                 </div>
               ) : (
                 settings.faq.map((item, index) => (
@@ -179,17 +181,18 @@ export const AIManagerTab: React.FC<{ organizationId: string }> = ({ organizatio
                         value={item.question}
                         onChange={e => updateFAQ(index, 'question', e.target.value)}
                         className="input"
-                        placeholder="Вопрос"
+                        placeholder={t('aiManager.question', 'Вопрос')}
                       />
                       <textarea
                         value={item.answer}
                         onChange={e => updateFAQ(index, 'answer', e.target.value)}
                         className="input min-h-[60px]"
-                        placeholder="Ответ"
+                        placeholder={t('aiManager.answer', 'Ответ')}
                       />
                     </div>
                     <button
                       onClick={() => removeFAQ(index)}
+                      aria-label={t('common.delete', 'Удалить')}
                       className="text-red-400 hover:text-red-500 self-start p-2 opacity-0 group-hover:opacity-100 transition-opacity"
                     >
                       <Trash2 className="w-4 h-4" />
@@ -206,7 +209,7 @@ export const AIManagerTab: React.FC<{ organizationId: string }> = ({ organizatio
       <div className="flex justify-end">
         <button onClick={handleSave} disabled={saving} className="btn-primary flex items-center gap-2">
           {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-          Сохранить настройки AI
+          {t('aiManager.save', 'Сохранить настройки AI')}
         </button>
       </div>
     </div>

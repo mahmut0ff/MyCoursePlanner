@@ -15,14 +15,15 @@ import toast from 'react-hot-toast';
 import { AIGeneratorModal } from '../../components/ui/AIGeneratorModal';
 import FileViewerModal from '../../components/ui/FileViewerModal';
 import { uploadFile } from '../../services/storage.service';
+import i18n from '../../i18n';
 
 const QUESTION_TYPES: { type: QuizQuestionType; label: string; icon: string }[] = [
-  { type: 'single_choice', label: 'Single Choice', icon: '🔘' },
-  { type: 'multiple_choice', label: 'Multiple Choice', icon: '☑️' },
-  { type: 'true_false', label: 'True / False', icon: '✅' },
-  { type: 'matching', label: 'Matching', icon: '🔗' },
-  { type: 'media_question', label: 'Media', icon: '🖼️' },
-  { type: 'speaking', label: 'Speaking', icon: '🎤' },
+  { type: 'single_choice', label: 'Один ответ', icon: '🔘' },
+  { type: 'multiple_choice', label: 'Несколько ответов', icon: '☑️' },
+  { type: 'true_false', label: 'Верно / Неверно', icon: '✅' },
+  { type: 'matching', label: 'Сопоставление', icon: '🔗' },
+  { type: 'media_question', label: 'Медиа', icon: '🖼️' },
+  { type: 'speaking', label: 'Устный ответ', icon: '🎤' },
 ];
 
 const OPTION_COLORS_BG = ['#e21b3c', '#1368ce', '#d89e00', '#26890c', '#864cbf', '#c4162f', '#1057ad', '#b88600'];
@@ -41,7 +42,7 @@ function createEmptyQuestion(order: number, type: QuizQuestionType = 'single_cho
     order,
     text: '',
     options: isTF
-      ? [{ id: generateId(), text: 'True' }, { id: generateId(), text: 'False' }]
+      ? [{ id: generateId(), text: i18n.t('quiz.trueOption', 'Верно') }, { id: generateId(), text: i18n.t('quiz.falseOption', 'Неверно') }]
       : [{ id: generateId(), text: '' }, { id: generateId(), text: '' }, { id: generateId(), text: '' }, { id: generateId(), text: '' }],
     correctAnswers: [],
     timerSeconds: 30,
@@ -78,7 +79,7 @@ const QuizBuilderPage: React.FC = () => {
     const file = e.target.files?.[0];
     if (!file) return;
     if (!id) {
-      toast.error(t('quiz.saveFirstToUpload', 'Please save the quiz first to enable file uploads'));
+      toast.error(t('quiz.saveFirstToUpload', 'Сначала сохраните викторину, чтобы загружать файлы'));
       return;
     }
     setUploadingMedia(true);
@@ -92,7 +93,7 @@ const QuizBuilderPage: React.FC = () => {
         file.type.startsWith('audio/') ? 'audio' : 
         file.type.startsWith('video/') ? 'video' : 'pdf';
       updateQuestion(activeQuestion, { mediaUrl: url, mediaType: mediaType as any });
-      toast.success(t('common.uploadSuccess', 'File uploaded successfully'));
+      toast.success(t('common.uploadSuccess', 'Файл загружен'));
     } catch (err: any) {
       toast.error(err.message || t('common.error'));
     } finally {
@@ -339,7 +340,7 @@ const QuizBuilderPage: React.FC = () => {
                   <button onClick={() => setQuiz({ ...quiz, tags: quiz.tags?.filter(t => t !== tag) })} className="hover:text-red-200 ml-0.5">×</button>
                 </span>
               ))}
-              <input value={tagInput} onChange={e => setTagInput(e.target.value)} onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), addTag())} placeholder="Add tag..." className="text-xs py-0.5 px-2 border border-slate-200 dark:border-slate-700 rounded-lg bg-transparent dark:text-white w-24 outline-none" />
+              <input value={tagInput} onChange={e => setTagInput(e.target.value)} onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), addTag())} placeholder={t('quiz.addTag', 'Добавить тег...')} className="text-xs py-0.5 px-2 border border-slate-200 dark:border-slate-700 rounded-lg bg-transparent dark:text-white w-24 outline-none" />
             </div>
           </div>
         </div>
@@ -407,7 +408,7 @@ const QuizBuilderPage: React.FC = () => {
                 style={{ color: 'var(--kahoot-purple)' }}
               >
                 {QUESTION_TYPES.map(qt => (
-                  <option key={qt.type} value={qt.type}>{qt.icon} {qt.label}</option>
+                  <option key={qt.type} value={qt.type}>{qt.icon} {t(`quiz.qtype.${qt.type}`, qt.label)}</option>
                 ))}
               </select>
               <div className="flex items-center gap-1">
@@ -430,7 +431,7 @@ const QuizBuilderPage: React.FC = () => {
               {/* Media */}
               {['media_question', 'speaking'].includes(currentQ.type) && (
                 <div className="mt-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg p-4">
-                  <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wide mb-2 block">{t('quiz.mediaContent', 'Media Content')}</label>
+                  <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wide mb-2 block">{t('quiz.mediaContent', 'Медиа-контент')}</label>
                   <div className="flex flex-col sm:flex-row sm:items-center gap-2 mb-3">
                     <input 
                       value={currentQ.mediaUrl || ''} 
@@ -445,14 +446,14 @@ const QuizBuilderPage: React.FC = () => {
                         onChange={handleFileUpload}
                         disabled={uploadingMedia || !id}
                         className="absolute inset-0 w-full h-full opacity-0 cursor-pointer disabled:cursor-not-allowed"
-                        title={!id ? t('quiz.saveFirstToUpload', 'Please save the quiz first to enable file uploads') : ''}
+                        title={!id ? t('quiz.saveFirstToUpload', 'Сначала сохраните викторину, чтобы загружать файлы') : ''}
                       />
                       <button 
                         disabled={uploadingMedia || !id}
                         className="w-full sm:w-auto flex items-center justify-center gap-1.5 px-4 py-2 bg-purple-100 hover:bg-purple-200 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300 dark:hover:bg-purple-900/60 rounded-lg text-xs font-semibold transition-colors disabled:opacity-50"
                       >
                         {uploadingMedia ? <div className="w-3.5 h-3.5 border-2 border-purple-400 border-t-purple-700 rounded-full animate-spin" /> : <Upload className="w-3.5 h-3.5" />}
-                        {uploadingMedia ? t('common.uploading', 'Uploading...') : t('quiz.uploadFile', 'Upload File')}
+                        {uploadingMedia ? t('common.uploading', 'Загрузка...') : t('quiz.uploadFile', 'Загрузить файл')}
                       </button>
                     </div>
                   </div>
@@ -482,7 +483,7 @@ const QuizBuilderPage: React.FC = () => {
                   {/* PREVIEW */}
                   {currentQ.mediaUrl && (
                     <div className="mt-2 relative group inline-flex flex-col items-center max-w-full justify-center w-full bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 p-2 overflow-hidden">
-                      {(!currentQ.mediaType || currentQ.mediaType === 'image') && <img src={currentQ.mediaUrl} alt="Preview" className="max-h-56 rounded object-contain w-full" />}
+                      {(!currentQ.mediaType || currentQ.mediaType === 'image') && <img src={currentQ.mediaUrl} alt={t('quiz.preview', 'Предпросмотр')} className="max-h-56 rounded object-contain w-full" />}
                       {currentQ.mediaType === 'audio' && <audio src={currentQ.mediaUrl} controls className="w-full mt-2" />}
                       {currentQ.mediaType === 'video' && <video src={currentQ.mediaUrl} controls className="max-h-56 w-full rounded mt-2" />}
                       
@@ -490,14 +491,14 @@ const QuizBuilderPage: React.FC = () => {
                         <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center pointer-events-none rounded">
                           <button 
                             onClick={(e) => { e.preventDefault(); setPreviewFile({ 
-                              name: currentQ.mediaUrl?.split('/').pop()?.split('?')[0] || 'Media Preview', 
+                              name: currentQ.mediaUrl?.split('/').pop()?.split('?')[0] || t('quiz.mediaPreview', 'Предпросмотр медиа'), 
                               url: currentQ.mediaUrl!, 
                               type: 'image/jpeg' 
                             }); }}
                             className="pointer-events-auto p-3 bg-white/10 backdrop-blur-md hover:bg-white/20 text-white rounded-xl flex items-center gap-2 text-sm font-bold shadow-2xl transform scale-95 group-hover:scale-100 transition-all border border-white/20"
-                            title="View Fullscreen"
+                            title={t('quiz.viewFullscreen', 'Открыть на весь экран')}
                           >
-                            <Maximize2 className="w-5 h-5" /> Fullscreen Preview
+                            <Maximize2 className="w-5 h-5" /> {t('quiz.fullscreenPreview', 'Полноэкранный просмотр')}
                           </button>
                         </div>
                       )}
@@ -577,23 +578,17 @@ const QuizBuilderPage: React.FC = () => {
                 <Clock className="w-4 h-4 text-slate-400" />
                 <span className="text-xs font-semibold text-slate-500">{t('quiz.timer')}</span>
                 <select value={currentQ.timerSeconds} onChange={e => updateQuestion(activeQuestion, { timerSeconds: parseInt(e.target.value) })} className="text-sm font-bold border rounded-lg px-2 py-1 bg-transparent dark:text-white outline-none" style={{ borderColor: 'var(--kahoot-purple)', color: 'var(--kahoot-purple)' }}>
-                  <option value={10}>10s</option>
-                  <option value={15}>15s</option>
-                  <option value={20}>20s</option>
-                  <option value={30}>30s</option>
-                  <option value={45}>45s</option>
-                  <option value={60}>60s</option>
-                  <option value={90}>90s</option>
-                  <option value={120}>2min</option>
+                  {[10, 15, 20, 30, 45, 60, 90].map(s => <option key={s} value={s}>{t('quiz.secondsShort', '{{n}} с', { n: s })}</option>)}
+                  <option value={120}>{t('quiz.minutesShort', '{{n}} мин', { n: 2 })}</option>
                 </select>
               </div>
               <div className="flex items-center gap-2">
                 <span className="text-xs font-semibold text-slate-500">{t('quiz.points')}</span>
                 <select value={currentQ.points} onChange={e => updateQuestion(activeQuestion, { points: parseInt(e.target.value) || 1000 })} className="text-sm font-bold border rounded-lg px-2 py-1 bg-transparent dark:text-white outline-none" style={{ borderColor: 'var(--kahoot-purple)', color: 'var(--kahoot-purple)' }}>
-                  <option value={0}>No points</option>
+                  <option value={0}>{t('quiz.noPoints', 'Без баллов')}</option>
                   <option value={500}>500</option>
-                  <option value={1000}>Standard (1000)</option>
-                  <option value={2000}>Double (2000)</option>
+                  <option value={1000}>{t('quiz.pointsStandard', 'Стандарт (1000)')}</option>
+                  <option value={2000}>{t('quiz.pointsDouble', 'Двойные (2000)')}</option>
                 </select>
               </div>
               <div className="flex items-center gap-2">

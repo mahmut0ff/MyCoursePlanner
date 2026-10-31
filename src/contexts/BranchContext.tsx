@@ -26,27 +26,28 @@ const LEGACY_STORAGE_KEY = 'mycourseplanner_branch_filter';
 
 interface StoredSelection {
   orgId: string;
-  branchId: string;
+  /** `null` — явно выбранные «Все филиалы». */
+  branchId: string | null;
 }
 
-function readStored(orgId: string): string | null {
+/** `undefined` — выбора не было; `null` — явно выбраны «Все филиалы». */
+function readStored(orgId: string): string | null | undefined {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return null;
+    if (!raw) return undefined;
     const parsed: StoredSelection = JSON.parse(raw);
-    return parsed?.orgId === orgId ? parsed.branchId || null : null;
+    if (parsed?.orgId !== orgId) return undefined;
+    return parsed.branchId || null;
   } catch {
-    return null;
+    return undefined;
   }
 }
 
 function writeStored(orgId: string, branchId: string | null) {
   try {
-    if (branchId) {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify({ orgId, branchId }));
-    } else {
-      localStorage.removeItem(STORAGE_KEY);
-    }
+    // «Все» тоже запоминаем: иначе при единственном филиале перезагрузка снова
+    // выбирала его, и всё без branchId пропадало из списков.
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ orgId, branchId }));
   } catch {
     /* private mode / quota — the selection just won't persist */
   }
@@ -80,7 +81,7 @@ const BranchContext = createContext<BranchContextValue>({
 export const useBranch = () => useContext(BranchContext);
 
 export const BranchProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { organizationId, isSuperAdmin, primaryBranchId, loading: authLoading } = useAuth();
+  const { organizationId, isSuperAdmin, primaryBranchId, role, loading: authLoading } = useAuth();
   const [branches, setBranches] = useState<Branch[]>([]);
   const [activeBranchId, setActiveBranchIdState] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -115,11 +116,16 @@ export const BranchProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       // trigger a scope violation.
       const stored = readStored(organizationId);
       let next: string | null = null;
+      // Директор видит и записи без филиала, поэтому единственный филиал ему не
+      // навязываем — это прятало весь старый контингент («Студенты: 0»).
+      const fullAccess = role === 'admin';
       if (stored && list.some(b => b.id === stored)) {
         next = stored;
+      } else if (stored === null) {
+        next = null;
       } else if (primaryBranchId && list.some(b => b.id === primaryBranchId)) {
         next = primaryBranchId;
-      } else if (list.length === 1) {
+      } else if (list.length === 1 && !fullAccess) {
         next = list[0].id;
       }
       applySelection(organizationId, next);
@@ -131,7 +137,7 @@ export const BranchProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     } finally {
       setLoading(false);
     }
-  }, [organizationId, isSuperAdmin, primaryBranchId, applySelection]);
+  }, [organizationId, isSuperAdmin, primaryBranchId, role, applySelection]);
 
   useEffect(() => {
     try { localStorage.removeItem(LEGACY_STORAGE_KEY); } catch { /* ignore */ }

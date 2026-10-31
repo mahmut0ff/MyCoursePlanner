@@ -9,6 +9,7 @@ import { getAllAttempts } from '../../services/attempts.service';
 import { apiGetPendingInviteCount } from '../../lib/api';
 import type { LessonPlan, Exam, ExamRoom, ExamAttempt, Group, UserProfile } from '../../types';
 import { formatDate } from '../../utils/grading';
+import { intlLocale } from '../../lib/locale';
 import {
   ArrowRight, Plus, Users, MailOpen,
   UsersRound, FileText, Monitor, Gamepad2, History, BarChart3, Activity,
@@ -42,7 +43,7 @@ export interface TeacherDashboardViewProps {
 export const TeacherDashboardView: React.FC<TeacherDashboardViewProps> = ({
   firstName, organizationId, lessons, exams, rooms, attempts, inviteCount, wheelProps,
 }) => {
-  const { t, i18n } = useTranslation();
+  const { t } = useTranslation();
 
   // Attempts that deserve a second look: failed or below full score.
   const attentionAttempts = attempts.filter(a => !a.passed || a.percentage < 100).slice(0, 5);
@@ -54,8 +55,7 @@ export const TeacherDashboardView: React.FC<TeacherDashboardViewProps> = ({
       ? t('teacherDashboard.greetingDay', 'Добрый день')
       : t('teacherDashboard.greetingEvening', 'Добрый вечер');
 
-  const dateLocale = i18n.language?.startsWith('kg') ? 'ky' : i18n.language?.startsWith('en') ? 'en' : 'ru';
-  const dateLine = new Date().toLocaleDateString(dateLocale, { weekday: 'long', day: 'numeric', month: 'long' });
+  const dateLine = new Date().toLocaleDateString(intlLocale(), { weekday: 'long', day: 'numeric', month: 'long' });
 
   return (
     <div className="max-w-[1400px] mx-auto">

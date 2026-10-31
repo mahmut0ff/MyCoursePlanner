@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Sparkles, Plus, Trash2, ChevronDown, ChevronUp, Save, UploadCloud, Link2, BookOpen, ClipboardList } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { useTranslation } from 'react-i18next';
 import type { Syllabus } from '../../types';
 import { AISyllabusImportModal } from '../ui/AISyllabusImportModal';
 import { generateId } from '../../utils/grading';
@@ -22,6 +23,7 @@ function move<T>(arr: T[], index: number, dir: -1 | 1): T[] {
 }
 
 export const SyllabusBuilder: React.FC<Props> = ({ courseId }) => {
+  const { t } = useTranslation();
   const [syllabus, setSyllabus] = useState<Syllabus | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -42,8 +44,8 @@ export const SyllabusBuilder: React.FC<Props> = ({ courseId }) => {
           apiGetExams().catch(() => []),
         ]);
         if (syllabusData && syllabusData.length > 0) setSyllabus(syllabusData[0]);
-        setLessons((lessonData as any[]).map((l: any) => ({ id: l.id, title: l.title || 'Без названия' })));
-        setExams((examData as any[]).map((e: any) => ({ id: e.id, title: e.title || 'Без названия' })));
+        setLessons((lessonData as any[]).map((l: any) => ({ id: l.id, title: l.title || t('syllabus.untitled', 'Без названия') })));
+        setExams((examData as any[]).map((e: any) => ({ id: e.id, title: e.title || t('syllabus.untitled', 'Без названия') })));
       } catch (err) {
         console.error('Failed to load syllabus', err);
       } finally {
@@ -86,9 +88,9 @@ export const SyllabusBuilder: React.FC<Props> = ({ courseId }) => {
         ? await apiUpdateSyllabus(normalised.id, normalised)
         : await apiCreateSyllabus(normalised);
       setSyllabus(saved);
-      toast.success('Силлабус успешно сохранён!');
+      toast.success(t('syllabus.saved', 'Силлабус успешно сохранён!'));
     } catch (err: any) {
-      toast.error(err.message || 'Ошибка сохранения силлабуса');
+      toast.error(err.message || t('syllabus.saveFailed', 'Ошибка сохранения силлабуса'));
     } finally {
       setSaving(false);
     }
@@ -97,7 +99,7 @@ export const SyllabusBuilder: React.FC<Props> = ({ courseId }) => {
   const addModule = () => {
     setSyllabus(prev => prev ? {
       ...prev,
-      modules: [...prev.modules, { id: generateId(), title: 'Новый модуль', order: prev.modules.length, items: [] }]
+      modules: [...prev.modules, { id: generateId(), title: t('syllabus.newModule', 'Новый модуль'), order: prev.modules.length, items: [] }]
     } : prev);
   };
 
@@ -121,7 +123,7 @@ export const SyllabusBuilder: React.FC<Props> = ({ courseId }) => {
     setSyllabus(prev => prev ? {
       ...prev, modules: prev.modules.map(m => {
         if (m.id !== modId) return m;
-        return { ...m, items: [...m.items, { id: generateId(), title: 'Новая тема', type: 'lesson', order: m.items.length }] };
+        return { ...m, items: [...m.items, { id: generateId(), title: t('syllabus.newTopic', 'Новая тема'), type: 'lesson', order: m.items.length }] };
       })
     } : null);
   };
@@ -160,7 +162,7 @@ export const SyllabusBuilder: React.FC<Props> = ({ courseId }) => {
         if (m.id !== modId) return m;
         return { ...m, items: m.items.map(i => {
           if (i.id !== itemId) return i;
-          const adopt = ref && (!i.title || i.title === 'Новая тема' || i.title === 'Новый урок');
+          const adopt = ref && (!i.title || i.title === 'Новая тема' || i.title === 'Новый урок' || i.title === t('syllabus.newTopic', 'Новая тема'));
           return { ...i, ...patch, title: adopt ? ref.title : i.title };
         }) };
       })
@@ -198,16 +200,16 @@ export const SyllabusBuilder: React.FC<Props> = ({ courseId }) => {
             <BookOpen className="w-6 h-6" />
           </div>
           <div>
-            <h2 className="text-xl font-bold text-slate-900 dark:text-white tracking-tight">Силлабус курса</h2>
-            <p className="text-xs font-medium text-slate-500">Управляйте программой обучения</p>
+            <h2 className="text-xl font-bold text-slate-900 dark:text-white tracking-tight">{t('syllabus.title', 'Силлабус курса')}</h2>
+            <p className="text-xs font-medium text-slate-500">{t('syllabus.subtitle', 'Управляйте программой обучения')}</p>
           </div>
         </div>
         <div className="flex items-center gap-2">
           <button onClick={() => setAIModalOpen(true)} className="flex items-center gap-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white px-4 py-2 rounded-xl text-sm font-semibold shadow-sm transition-all focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
-            <Sparkles className="w-4 h-4" /> ИИ Импорт (PDF)
+            <Sparkles className="w-4 h-4" /> {t('syllabus.aiImport', 'ИИ Импорт (PDF)')}
           </button>
           {syllabus && (
-            <button onClick={() => setIsExpanded(!isExpanded)} className="p-2 max-w-fit text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl transition-colors" aria-label={isExpanded ? 'Свернуть' : 'Развернуть'}>
+            <button onClick={() => setIsExpanded(!isExpanded)} className="p-2 max-w-fit text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl transition-colors" aria-label={isExpanded ? t('syllabus.collapse', 'Свернуть') : t('syllabus.expand', 'Развернуть')}>
               {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
             </button>
           )}
@@ -220,19 +222,19 @@ export const SyllabusBuilder: React.FC<Props> = ({ courseId }) => {
           <div className="w-16 h-16 bg-slate-100 dark:bg-slate-800 rounded-2xl flex items-center justify-center mx-auto mb-4 text-slate-400">
             <UploadCloud className="w-8 h-8" />
           </div>
-          <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-2">Силлабус не настроен</h3>
-          <p className="text-sm text-slate-500 dark:text-slate-400 max-w-sm mx-auto mb-6">Создайте чёткую программу обучения (Syllabus), чтобы преподаватели следовали расписанию модулей и уроков.</p>
+          <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-2">{t('syllabus.notSet', 'Силлабус не настроен')}</h3>
+          <p className="text-sm text-slate-500 dark:text-slate-400 max-w-sm mx-auto mb-6">{t('syllabus.notSetDesc', 'Создайте чёткую программу обучения (Syllabus), чтобы преподаватели следовали расписанию модулей и уроков.')}</p>
 
           <div className="flex justify-center gap-3">
             <button onClick={() => {
               setSyllabus({
-                id: '', organizationId: '', courseId, title: 'Новый Силлабус', description: '',
-                modules: [{ id: generateId(), title: 'Модуль 1', order: 0, items: [] }],
+                id: '', organizationId: '', courseId, title: t('syllabus.newSyllabus', 'Новый силлабус'), description: '',
+                modules: [{ id: generateId(), title: t('syllabus.moduleN', 'Модуль {{n}}', { n: 1 }), order: 0, items: [] }],
                 isMandatory: false, createdAt: '', updatedAt: ''
               });
               setIsExpanded(true);
             }} className="font-semibold border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-xl px-4 py-2 flex items-center gap-2 transition-colors">
-               Создать вручную
+               {t('syllabus.createManual', 'Создать вручную')}
             </button>
           </div>
         </div>
@@ -245,11 +247,11 @@ export const SyllabusBuilder: React.FC<Props> = ({ courseId }) => {
           <div className="mb-6 bg-white dark:bg-slate-800 p-4 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm flex flex-col md:flex-row items-start gap-4">
              <div className="flex-1 w-full space-y-4">
                <div>
-                  <label className="text-xs font-semibold text-slate-500 mb-1 block">Название программы (Силлабуса)</label>
+                  <label className="text-xs font-semibold text-slate-500 mb-1 block">{t('syllabus.nameLabel', 'Название программы (Силлабуса)')}</label>
                   <input type="text" className="input text-sm font-semibold" value={syllabus.title} onChange={e => setSyllabus({...syllabus, title: e.target.value})} />
                </div>
                <div>
-                  <label className="text-xs font-semibold text-slate-500 mb-1 block">Краткое описание / Цели</label>
+                  <label className="text-xs font-semibold text-slate-500 mb-1 block">{t('syllabus.descLabel', 'Краткое описание / Цели')}</label>
                   <textarea className="input text-sm min-h-[60px]" value={syllabus.description} onChange={e => setSyllabus({...syllabus, description: e.target.value})} />
                </div>
              </div>
@@ -258,8 +260,8 @@ export const SyllabusBuilder: React.FC<Props> = ({ courseId }) => {
                 <label className="flex items-start gap-3 cursor-pointer">
                   <input type="checkbox" checked={syllabus.isMandatory} onChange={e => setSyllabus({...syllabus, isMandatory: e.target.checked})} className="mt-1 w-4 h-4 rounded border-slate-300 dark:border-slate-600 text-indigo-600 focus:ring-indigo-600 bg-white dark:bg-slate-800" />
                   <div>
-                    <span className="block text-sm font-bold text-slate-900 dark:text-white">Обязательная программа</span>
-                    <span className="block text-[11px] text-slate-500 mt-1 leading-tight">Группы этого курса ведут прогресс по этому силлабусу (дорожная карта в карточке группы). При включении в группе появляется бейдж «Обязательная».</span>
+                    <span className="block text-sm font-bold text-slate-900 dark:text-white">{t('syllabus.mandatory', 'Обязательная программа')}</span>
+                    <span className="block text-[11px] text-slate-500 mt-1 leading-tight">{t('syllabus.mandatoryDesc', 'Группы этого курса ведут прогресс по этому силлабусу (дорожная карта в карточке группы). При включении в группе появляется бейдж «Обязательная».')}</span>
                   </div>
                 </label>
              </div>
@@ -270,12 +272,12 @@ export const SyllabusBuilder: React.FC<Props> = ({ courseId }) => {
               <div key={mod.id} className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm">
                  <div className="flex items-center gap-2 p-3 border-b border-slate-100 dark:border-slate-700/50">
                     <div className="flex flex-col">
-                      <button onClick={() => moveModule(mIdx, -1)} disabled={mIdx === 0} className="p-0.5 text-slate-300 hover:text-indigo-500 disabled:opacity-30 disabled:hover:text-slate-300 transition-colors" aria-label="Вверх"><ChevronUp className="w-4 h-4" /></button>
-                      <button onClick={() => moveModule(mIdx, 1)} disabled={mIdx === syllabus.modules.length - 1} className="p-0.5 text-slate-300 hover:text-indigo-500 disabled:opacity-30 disabled:hover:text-slate-300 transition-colors" aria-label="Вниз"><ChevronDown className="w-4 h-4" /></button>
+                      <button onClick={() => moveModule(mIdx, -1)} disabled={mIdx === 0} className="p-0.5 text-slate-300 hover:text-indigo-500 disabled:opacity-30 disabled:hover:text-slate-300 transition-colors" aria-label={t('syllabus.up', 'Вверх')}><ChevronUp className="w-4 h-4" /></button>
+                      <button onClick={() => moveModule(mIdx, 1)} disabled={mIdx === syllabus.modules.length - 1} className="p-0.5 text-slate-300 hover:text-indigo-500 disabled:opacity-30 disabled:hover:text-slate-300 transition-colors" aria-label={t('syllabus.down', 'Вниз')}><ChevronDown className="w-4 h-4" /></button>
                     </div>
-                    <span className="text-xs font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/30 px-2 py-0.5 rounded-md shrink-0">Модуль {mIdx + 1}</span>
-                    <input type="text" value={mod.title} onChange={e => updateModuleTitle(mod.id, e.target.value)} className="flex-1 bg-transparent border-none text-sm font-bold text-slate-900 dark:text-white focus:ring-0 p-0" placeholder="Название модуля" />
-                    <button onClick={() => deleteModule(mod.id)} className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors" aria-label="Удалить модуль">
+                    <span className="text-xs font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/30 px-2 py-0.5 rounded-md shrink-0">{t('syllabus.moduleN', 'Модуль {{n}}', { n: mIdx + 1 })}</span>
+                    <input type="text" value={mod.title} onChange={e => updateModuleTitle(mod.id, e.target.value)} className="flex-1 bg-transparent border-none text-sm font-bold text-slate-900 dark:text-white focus:ring-0 p-0" placeholder={t('syllabus.moduleNamePh', 'Название модуля')} />
+                    <button onClick={() => deleteModule(mod.id)} className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors" aria-label={t('syllabus.deleteModule', 'Удалить модуль')}>
                        <Trash2 className="w-4 h-4" />
                     </button>
                  </div>
@@ -284,25 +286,25 @@ export const SyllabusBuilder: React.FC<Props> = ({ courseId }) => {
                     {mod.items.map((item, iIdx) => (
                       <div key={item.id} className="flex flex-wrap items-center gap-2 py-1.5 px-2 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700/40 rounded-lg group border border-transparent hover:border-slate-100 dark:hover:border-slate-700">
                         <div className="flex flex-col shrink-0">
-                          <button onClick={() => moveItem(mod.id, iIdx, -1)} disabled={iIdx === 0} className="p-0.5 text-slate-300 hover:text-indigo-500 disabled:opacity-30 disabled:hover:text-slate-300 transition-colors" aria-label="Вверх"><ChevronUp className="w-3.5 h-3.5" /></button>
-                          <button onClick={() => moveItem(mod.id, iIdx, 1)} disabled={iIdx === mod.items.length - 1} className="p-0.5 text-slate-300 hover:text-indigo-500 disabled:opacity-30 disabled:hover:text-slate-300 transition-colors" aria-label="Вниз"><ChevronDown className="w-3.5 h-3.5" /></button>
+                          <button onClick={() => moveItem(mod.id, iIdx, -1)} disabled={iIdx === 0} className="p-0.5 text-slate-300 hover:text-indigo-500 disabled:opacity-30 disabled:hover:text-slate-300 transition-colors" aria-label={t('syllabus.up', 'Вверх')}><ChevronUp className="w-3.5 h-3.5" /></button>
+                          <button onClick={() => moveItem(mod.id, iIdx, 1)} disabled={iIdx === mod.items.length - 1} className="p-0.5 text-slate-300 hover:text-indigo-500 disabled:opacity-30 disabled:hover:text-slate-300 transition-colors" aria-label={t('syllabus.down', 'Вниз')}><ChevronDown className="w-3.5 h-3.5" /></button>
                         </div>
                         <div className={`w-2.5 h-2.5 rounded-full shrink-0 ${item.type === 'exam' ? 'bg-red-500' : item.type === 'topic' ? 'bg-slate-400' : 'bg-indigo-500'}`} />
 
                         <select value={item.type} onChange={e => updateItemType(mod.id, item.id, e.target.value as ItemType)} className="text-xs font-medium bg-slate-100 dark:bg-slate-700 border-none rounded-md px-2 py-1 text-slate-600 dark:text-slate-300 focus:ring-0 cursor-pointer">
-                           <option value="topic">Тема</option>
-                           <option value="lesson">Лекция</option>
-                           <option value="exam">Тест</option>
+                           <option value="topic">{t('syllabus.typeTopic', 'Тема')}</option>
+                           <option value="lesson">{t('syllabus.typeLesson', 'Лекция')}</option>
+                           <option value="exam">{t('syllabus.typeExam', 'Тест')}</option>
                         </select>
 
-                        <input type="text" value={item.title} onChange={e => updateItemTitle(mod.id, item.id, e.target.value)} className="flex-1 min-w-[120px] bg-transparent border-none text-sm text-slate-700 dark:text-slate-200 focus:ring-0 p-0" placeholder="Название урока/темы" />
+                        <input type="text" value={item.title} onChange={e => updateItemTitle(mod.id, item.id, e.target.value)} className="flex-1 min-w-[120px] bg-transparent border-none text-sm text-slate-700 dark:text-slate-200 focus:ring-0 p-0" placeholder={t('syllabus.itemNamePh', 'Название урока/темы')} />
 
                         {/* Link to a real lesson / exam */}
                         {item.type === 'lesson' && (
                           <div className="flex items-center gap-1 shrink-0">
                             <Link2 className={`w-3.5 h-3.5 ${item.lessonPlanId ? 'text-emerald-500' : 'text-slate-300 dark:text-slate-600'}`} />
                             <select value={item.lessonPlanId || ''} onChange={e => linkItem(mod.id, item.id, 'lesson', e.target.value)} className="text-xs bg-slate-50 dark:bg-slate-700/60 border border-slate-200 dark:border-slate-600 rounded-md px-1.5 py-1 text-slate-600 dark:text-slate-300 focus:ring-0 cursor-pointer max-w-[160px] truncate">
-                              <option value="">— привязать урок —</option>
+                              <option value="">{t('syllabus.linkLesson', '— привязать урок —')}</option>
                               {lessons.map(l => <option key={l.id} value={l.id}>{l.title}</option>)}
                             </select>
                           </div>
@@ -311,23 +313,23 @@ export const SyllabusBuilder: React.FC<Props> = ({ courseId }) => {
                           <div className="flex items-center gap-1 shrink-0">
                             <Link2 className={`w-3.5 h-3.5 ${item.examId ? 'text-emerald-500' : 'text-slate-300 dark:text-slate-600'}`} />
                             <select value={item.examId || ''} onChange={e => linkItem(mod.id, item.id, 'exam', e.target.value)} className="text-xs bg-slate-50 dark:bg-slate-700/60 border border-slate-200 dark:border-slate-600 rounded-md px-1.5 py-1 text-slate-600 dark:text-slate-300 focus:ring-0 cursor-pointer max-w-[160px] truncate">
-                              <option value="">— привязать тест —</option>
+                              <option value="">{t('syllabus.linkExam', '— привязать тест —')}</option>
                               {exams.map(ex => <option key={ex.id} value={ex.id}>{ex.title}</option>)}
                             </select>
                           </div>
                         )}
 
-                        <button onClick={() => deleteItem(mod.id, item.id)} className="opacity-0 group-hover:opacity-100 p-1 text-slate-300 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded transition-all shrink-0" aria-label="Удалить">
+                        <button onClick={() => deleteItem(mod.id, item.id)} className="opacity-0 group-hover:opacity-100 p-1 text-slate-300 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded transition-all shrink-0" aria-label={t('common.delete', 'Удалить')}>
                            <Trash2 className="w-3.5 h-3.5" />
                         </button>
                       </div>
                     ))}
                     {mod.items.length === 0 && (
-                      <p className="text-xs text-slate-400 px-2 py-1">В модуле пока нет элементов</p>
+                      <p className="text-xs text-slate-400 px-2 py-1">{t('syllabus.moduleEmpty', 'В модуле пока нет элементов')}</p>
                     )}
                     <div className="pt-1">
                       <button onClick={() => addItemToModule(mod.id)} className="flex items-center gap-1.5 text-xs font-semibold text-slate-500 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors">
-                        <Plus className="w-3.5 h-3.5" /> Добавить элемент
+                        <Plus className="w-3.5 h-3.5" /> {t('syllabus.addItem', 'Добавить элемент')}
                       </button>
                     </div>
                  </div>
@@ -337,18 +339,18 @@ export const SyllabusBuilder: React.FC<Props> = ({ courseId }) => {
 
           <div className="mt-4 flex flex-wrap gap-3">
              <button onClick={addModule} className="py-2 px-4 rounded-xl flex items-center gap-2 text-sm font-semibold text-slate-700 dark:text-slate-200 border border-dashed border-slate-300 dark:border-slate-600 hover:border-indigo-400 dark:hover:border-indigo-500 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors">
-               <Plus className="w-4 h-4" /> Добавить Модуль
+               <Plus className="w-4 h-4" /> {t('syllabus.addModule', 'Добавить модуль')}
              </button>
              <div className="flex-1" />
              <button onClick={handleSave} disabled={saving} className="btn-primary py-2 px-6 rounded-xl flex items-center gap-2 shadow-md disabled:opacity-60">
-               {saving ? 'Сохранение...' : <><Save className="w-4 h-4" /> Сохранить Силлабус</>}
+               {saving ? t('common.saving', 'Сохранение...') : <><Save className="w-4 h-4" /> {t('syllabus.save', 'Сохранить силлабус')}</>}
              </button>
           </div>
 
           {/* Linked-content hint */}
           <p className="mt-3 text-[11px] text-slate-400 flex items-center gap-1.5">
             <ClipboardList className="w-3.5 h-3.5" />
-            Привяжите пункты к реальным урокам и тестам — тогда из дорожной карты группы они будут открываться напрямую.
+            {t('syllabus.linkHint', 'Привяжите пункты к реальным урокам и тестам — тогда из дорожной карты группы они будут открываться напрямую.')}
           </p>
 
         </div>

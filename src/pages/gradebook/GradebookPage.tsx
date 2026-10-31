@@ -106,7 +106,7 @@ const GradebookPage: React.FC = () => {
       setGrades(gradesMap);
 
     } catch (e: any) {
-      toast.error(e.message || 'Ошибка загрузки данных');
+      toast.error(e.message || t('gradebook.ui.loadFailed', 'Ошибка загрузки данных'));
     } finally {
       setLoadingData(false);
     }
@@ -179,7 +179,7 @@ const GradebookPage: React.FC = () => {
           }).catch(console.error);
         }
       } catch (err: any) {
-        toast.error('Failed to save grade');
+        toast.error(t('gradebook.ui.saveFailed', 'Не удалось сохранить оценку'));
         // Rollback
         if (prevEntry) {
           setGrades(prev => ({ ...prev, [key]: prevEntry }));
@@ -245,7 +245,7 @@ const GradebookPage: React.FC = () => {
               {t('nav.gradebook', 'Журнал оценок')}
             </h1>
             <p className="text-sm text-slate-500 dark:text-slate-400">
-              {t('gradebook.subtitle', 'Smart Journal + Universal Gradebook')}
+              {t('gradebook.pageSubtitle', 'Журнал посещаемости и оценок')}
             </p>
           </div>
         </div>
@@ -277,7 +277,7 @@ const GradebookPage: React.FC = () => {
           <button
             onClick={() => loadData(selectedCourseId)}
             className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors border border-transparent dark:hover:border-slate-700"
-            title="Refresh"
+            title={t('common.refresh', 'Обновить')}
           >
             <RefreshCcw className="w-4 h-4" />
           </button>
@@ -302,13 +302,13 @@ const GradebookPage: React.FC = () => {
       {loadingData ? (
         <div className="flex-1 flex flex-col items-center justify-center bg-white dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-2xl min-h-[400px]">
           <div className="w-8 h-8 border-2 border-slate-400 border-t-transparent rounded-full animate-spin mb-4" />
-          <p className="text-sm font-medium text-slate-500 animate-pulse">Загрузка журнала...</p>
+          <p className="text-sm font-medium text-slate-500 animate-pulse">{t('gradebook.ui.loading', 'Загрузка журнала...')}</p>
         </div>
       ) : columns.length === 0 ? (
         <div className="flex-1 flex flex-col items-center justify-center bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl min-h-[400px]">
           <AlertCircle className="w-12 h-12 text-slate-300 dark:text-slate-600 mb-3" />
-          <p className="font-medium text-slate-900 dark:text-white mb-1">Нет столбцов для оценки</p>
-          <p className="text-sm text-slate-500">Ожидайте загрузки данных.</p>
+          <p className="font-medium text-slate-900 dark:text-white mb-1">{t('gradebook.ui.noColumns', 'Нет столбцов для оценки')}</p>
+          <p className="text-sm text-slate-500">{t('gradebook.ui.waitData', 'Ожидайте загрузки данных.')}</p>
         </div>
       ) : (
         <div className="flex-1 min-h-0">

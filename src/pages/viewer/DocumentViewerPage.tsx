@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { FileText, Image as ImageIcon, Film, AlertTriangle, Loader2 } from 'lucide-react';
 
 const getViewerUrl = (url: string, type: string): string | null => {
@@ -20,25 +21,26 @@ const getViewerUrl = (url: string, type: string): string | null => {
 };
 
 const DocumentViewerPage: React.FC = () => {
+  const { t } = useTranslation();
   const [searchParams] = useSearchParams();
   const fileUrl = searchParams.get('url');
   const fileType = searchParams.get('type') || '';
-  const fileName = searchParams.get('name') || 'Документ';
+  const fileName = searchParams.get('name') || t('viewer.defaultName', 'Документ');
 
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    document.title = `${fileName} - Просмотр документа`;
+    document.title = `${fileName} - ${t('viewer.pageTitle', 'Просмотр документа')}`;
     return () => { document.title = 'SabakHub'; };
-  }, [fileName]);
+  }, [fileName, t]);
 
   if (!fileUrl) {
     return (
       <div className="min-h-screen bg-slate-50 dark:bg-slate-900 flex items-center justify-center p-4">
         <div className="text-center max-w-sm">
           <AlertTriangle className="w-16 h-16 text-slate-400 mx-auto mb-4" />
-          <h2 className="text-xl font-bold text-slate-900 dark:text-white mb-2">Файл не найден</h2>
-          <p className="text-slate-500 text-sm">Ссылка на документ недействительна или отсутствует.</p>
+          <h2 className="text-xl font-bold text-slate-900 dark:text-white mb-2">{t('viewer.notFound', 'Файл не найден')}</h2>
+          <p className="text-slate-500 text-sm">{t('viewer.invalidLink', 'Ссылка на документ недействительна или отсутствует.')}</p>
         </div>
       </div>
     );
@@ -69,7 +71,7 @@ const DocumentViewerPage: React.FC = () => {
             rel="noreferrer"
             className="flex items-center gap-2 bg-white/10 hover:bg-white/20 text-white px-4 py-1.5 rounded-lg transition-colors text-sm font-medium"
           >
-            Скачать
+            {t('viewer.download', 'Скачать')}
           </a>
         </div>
       </div>
@@ -79,7 +81,7 @@ const DocumentViewerPage: React.FC = () => {
         {loading && (
           <div className="absolute inset-0 flex flex-col items-center justify-center bg-slate-900 z-0">
              <Loader2 className="w-8 h-8 text-primary-500 animate-spin mb-4" />
-             <p className="text-slate-400 text-sm">Загрузка документа...</p>
+             <p className="text-slate-400 text-sm">{t('viewer.loading', 'Загрузка документа...')}</p>
           </div>
         )}
 
@@ -125,10 +127,10 @@ const DocumentViewerPage: React.FC = () => {
           <div className="text-center text-white relative z-10">
             <FileText className="w-16 h-16 mx-auto mb-4 opacity-50" />
             <p className="text-lg font-medium mb-2">{fileName}</p>
-            <p className="text-white/60 text-sm mb-6">Предпросмотр недоступен для этого типа файла</p>
+            <p className="text-white/60 text-sm mb-6">{t('viewer.noPreview', 'Предпросмотр недоступен для этого типа файла')}</p>
             <a href={fileUrl} download={fileName} target="_blank" rel="noreferrer"
               className="inline-flex items-center gap-2 bg-primary-600 hover:bg-primary-500 text-white px-5 py-2.5 rounded-xl transition-colors">
-              Скачать файл
+              {t('viewer.downloadFile', 'Скачать файл')}
             </a>
           </div>
         )}

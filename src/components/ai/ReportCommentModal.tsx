@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { X, MessageSquareText, Loader2, Copy, Check, Sparkles } from 'lucide-react';
 import { apiAIGenerate } from '../../lib/api';
 import toast from 'react-hot-toast';
+import { useTranslation } from 'react-i18next';
 
 /**
  * Generates a personalized report-card comment for a student from their
@@ -13,6 +14,7 @@ const ReportCommentModal: React.FC<{
   studentName: string;
   stats: Record<string, string | number>;
 }> = ({ open, onClose, studentName, stats }) => {
+  const { t } = useTranslation();
   const [note, setNote] = useState('');
   const [loading, setLoading] = useState(false);
   const [comment, setComment] = useState('');
@@ -31,9 +33,9 @@ const ReportCommentModal: React.FC<{
       const res = await apiAIGenerate({ type: 'report_comment', prompt });
       setComment(res?.data?.comment || '');
       setShort(res?.data?.short || '');
-      if (!res?.data?.comment) toast.error('Не удалось сгенерировать');
+      if (!res?.data?.comment) toast.error(t('ai.generateFailed', 'Не удалось сгенерировать'));
     } catch (err: any) {
-      toast.error(err?.message || 'Ошибка генерации');
+      toast.error(err?.message || t('ai.generateError', 'Ошибка генерации'));
     } finally {
       setLoading(false);
     }
@@ -42,7 +44,7 @@ const ReportCommentModal: React.FC<{
   const copy = (text: string, which: 'full' | 'short') => {
     navigator.clipboard.writeText(text);
     setCopied(which);
-    toast.success('Скопировано');
+    toast.success(t('support.copied', 'Скопировано'));
     setTimeout(() => setCopied(null), 2000);
   };
 
@@ -55,29 +57,29 @@ const ReportCommentModal: React.FC<{
               <MessageSquareText className="w-5 h-5" />
             </div>
             <div>
-              <h2 className="text-lg font-bold text-slate-900 dark:text-white">Комментарий в табель</h2>
-              <p className="text-xs text-slate-500 dark:text-slate-400">Персональный отзыв для {studentName}</p>
+              <h2 className="text-lg font-bold text-slate-900 dark:text-white">{t('ai.reportComment.title', 'Комментарий в табель')}</h2>
+              <p className="text-xs text-slate-500 dark:text-slate-400">{t('ai.reportComment.subtitle', 'Персональный отзыв для {{name}}', { name: studentName })}</p>
             </div>
           </div>
-          <button onClick={onClose} className="p-2 -mr-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 rounded-lg transition-colors">
+          <button onClick={onClose} aria-label={t('common.close', 'Закрыть')} className="p-2 -mr-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 rounded-lg transition-colors">
             <X className="w-5 h-5" />
           </button>
         </div>
 
         <div className="p-6 space-y-4 overflow-y-auto">
           <div>
-            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">Заметка (необязательно)</label>
+            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">{t('ai.reportComment.noteLabel', 'Заметка (необязательно)')}</label>
             <textarea
               value={note}
               onChange={(e) => setNote(e.target.value)}
               className="input w-full min-h-[70px] resize-y"
-              placeholder="Например: активен на уроках, но забывает делать домашнее задание"
+              placeholder={t('ai.reportComment.notePh', 'Например: активен на уроках, но забывает делать домашнее задание')}
             />
           </div>
 
           <button onClick={generate} disabled={loading} className="btn-primary w-full flex items-center justify-center gap-2">
             {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
-            {loading ? 'Генерирую…' : comment ? 'Перегенерировать' : 'Сгенерировать комментарий'}
+            {loading ? t('ai.generating', 'Генерирую…') : comment ? t('ai.regenerate', 'Перегенерировать') : t('ai.reportComment.generate', 'Сгенерировать комментарий')}
           </button>
 
           {comment && !loading && (
@@ -86,7 +88,7 @@ const ReportCommentModal: React.FC<{
                 <button onClick={() => copy(comment, 'full')} className="absolute top-3 right-3 p-1.5 rounded-lg text-slate-400 hover:text-primary-600 hover:bg-white dark:hover:bg-slate-800 transition-colors">
                   {copied === 'full' ? <Check className="w-4 h-4 text-emerald-500" /> : <Copy className="w-4 h-4" />}
                 </button>
-                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wide mb-1.5">Для табеля</p>
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wide mb-1.5">{t('ai.reportComment.forReport', 'Для табеля')}</p>
                 <p className="text-sm text-slate-800 dark:text-slate-100 leading-relaxed pr-8">{comment}</p>
               </div>
               {short && (
@@ -94,7 +96,7 @@ const ReportCommentModal: React.FC<{
                   <button onClick={() => copy(short, 'short')} className="absolute top-3 right-3 p-1.5 rounded-lg text-slate-400 hover:text-primary-600 hover:bg-white dark:hover:bg-slate-800 transition-colors">
                     {copied === 'short' ? <Check className="w-4 h-4 text-emerald-500" /> : <Copy className="w-4 h-4" />}
                   </button>
-                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wide mb-1.5">Коротко (SMS / Telegram)</p>
+                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wide mb-1.5">{t('ai.reportComment.short', 'Коротко (SMS / Telegram)')}</p>
                   <p className="text-sm text-slate-800 dark:text-slate-100 leading-relaxed pr-8">{short}</p>
                 </div>
               )}

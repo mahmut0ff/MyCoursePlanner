@@ -23,6 +23,8 @@
  * голосование ляжет отдельной коллекцией и в итоговый балл жюри не вмешивается.
  */
 
+import { localizeField, localizeMap } from './trLabel';
+
 export type ContestKind = 'olympiad' | 'project_contest' | 'competition' | 'other';
 /**
  * Как жюри ходит по проектам.
@@ -234,20 +236,21 @@ export interface JudgeBoard {
 }
 
 // ─── Подписи ───
+// Геттеры (lib/trLabel): на экране — язык интерфейса, на сервере — русский фолбэк.
 
-export const CONTEST_KIND_LABELS: Record<ContestKind, string> = {
+export const CONTEST_KIND_LABELS: Record<ContestKind, string> = localizeMap({
   olympiad: 'Олимпиада',
   project_contest: 'Конкурс проектов',
   competition: 'Соревнование',
   other: 'Мероприятие',
-};
+}, 'contestLabels.kind');
 
-export const CONTEST_STATUS_LABELS: Record<ContestStatus, string> = {
+export const CONTEST_STATUS_LABELS: Record<ContestStatus, string> = localizeMap({
   draft: 'Черновик',
   registration: 'Регистрация',
   judging: 'Оценивание',
   finished: 'Завершён',
-};
+}, 'contestLabels.status');
 
 export const CONTEST_STATUS_ORDER: ContestStatus[] = ['draft', 'registration', 'judging', 'finished'];
 
@@ -255,19 +258,23 @@ export const JUDGING_MODE_LABELS: Record<JudgingMode, { title: string; hint: str
   host: { title: 'Ведущий вызывает проекты', hint: 'Защита на сцене по очереди. Ведущий открывает проект с мониторинга — у жюри он появляется сам.' },
   free: { title: 'Жюри ходят по столам', hint: 'Каждый член жюри сам выбирает порядок: открывает проект из списка или по номеру.' },
 };
+(Object.keys(JUDGING_MODE_LABELS) as JudgingMode[]).forEach(m => {
+  localizeField(JUDGING_MODE_LABELS[m], 'title', `contestLabels.judgingMode.${m}.title`);
+  localizeField(JUDGING_MODE_LABELS[m], 'hint', `contestLabels.judgingMode.${m}.hint`);
+});
 
-export const JUDGING_LABELS: Record<CategoryJudging, string> = {
+export const JUDGING_LABELS: Record<CategoryJudging, string> = localizeMap({
   pending: 'Не начато',
   open: 'Идёт оценивание',
   closed: 'Закрыто',
   approved: 'Итоги утверждены',
-};
+}, 'contestLabels.judging');
 
-export const PARTICIPANT_STATUS_LABELS: Record<ParticipantStatus, string> = {
+export const PARTICIPANT_STATUS_LABELS: Record<ParticipantStatus, string> = localizeMap({
   registered: 'Зарегистрирован',
   arrived: 'Пришёл',
   withdrawn: 'Снят с конкурса',
-};
+}, 'contestLabels.participantStatus');
 
 // ─── Номера, категории, критерии, призы ───
 

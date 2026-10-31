@@ -10,10 +10,14 @@ import { timeToMins, minsToTime } from '../../lib/scheduleTime';
 import { sameRoom, normalizeRoom } from '../../lib/classrooms';
 import ClassroomSelect from '../ui/ClassroomSelect';
 import ConfirmDialog from '../ui/ConfirmDialog';
+import { intlLocale } from '../../lib/locale';
 import type { Classroom, Group, ScheduleEvent } from '../../types';
 
-const DAY_SHORT = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
-const DAY_NAMES = ['Понедельник', 'Вторник', 'Среда', 'Четверг', 'Пятница', 'Суббота', 'Воскресенье'];
+const DAY_SHORT_KEYS = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'];
+const DAY_NAME_KEYS = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
+// Русские фолбэки на случай отсутствующего ключа.
+const DAY_SHORT_RU = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
+const DAY_NAMES_RU = ['Понедельник', 'Вторник', 'Среда', 'Четверг', 'Пятница', 'Суббота', 'Воскресенье'];
 /** Длина урока по умолчанию: час двадцать. */
 const DEFAULT_SLOT_MINUTES = 80;
 
@@ -85,6 +89,8 @@ interface GroupScheduleSectionProps {
  */
 const GroupScheduleSection: React.FC<GroupScheduleSectionProps> = ({ group, canEdit, canRemove }) => {
   const { t, i18n } = useTranslation();
+  const DAY_SHORT = DAY_SHORT_KEYS.map((k, i) => t(`schedule.${k}`, DAY_SHORT_RU[i]));
+  const DAY_NAMES = DAY_NAME_KEYS.map((k, i) => t(`schedule.${k}`, DAY_NAMES_RU[i]));
   const [timetable, setTimetable] = useState<ScheduleEvent[]>([]);
   const [upcoming, setUpcoming] = useState<ScheduleEvent[]>([]);
   const [loading, setLoading] = useState(true);
@@ -144,7 +150,7 @@ const GroupScheduleSection: React.FC<GroupScheduleSectionProps> = ({ group, canE
   const showFilter = usedRooms.size > 1;
 
   /** Недельная сетка: семь колонок всегда, чтобы читалась вся неделя разом. */
-  const week = useMemo(() => DAY_SHORT.map((_, day) =>
+  const week = useMemo(() => DAY_SHORT_KEYS.map((_, day) =>
     timetable
       .filter(e => (e.dayOfWeek ?? 0) === day && matchesRoom(e))
       .sort((a, b) => (timeToMins(a.startTime) ?? 0) - (timeToMins(b.startTime) ?? 0))),
@@ -441,7 +447,7 @@ const GroupScheduleSection: React.FC<GroupScheduleSectionProps> = ({ group, canE
                   {t('schedule.upcoming', 'Ближайшие разовые')}
                 </p>
                 <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2">
-                  {visibleUpcoming.map(ev => renderLesson(ev, ev.date ? shortDate(ev.date, i18n.language) : undefined))}
+                  {visibleUpcoming.map(ev => renderLesson(ev, ev.date ? shortDate(ev.date, intlLocale(i18n.language)) : undefined))}
                 </div>
               </div>
             )}

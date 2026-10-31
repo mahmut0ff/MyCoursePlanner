@@ -1,12 +1,9 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { Globe } from 'lucide-react';
+import { UI_LANGUAGES } from '../lib/locale';
 
-const LANGS = [
-  { code: 'ru', label: 'Русский', flag: '🇷🇺' },
-  { code: 'kg', label: 'Кыргызча', flag: '🇰🇬' },
-  { code: 'en', label: 'English', flag: '🇬🇧' },
-];
+const LANGS = UI_LANGUAGES;
 
 interface Props {
   compact?: boolean;

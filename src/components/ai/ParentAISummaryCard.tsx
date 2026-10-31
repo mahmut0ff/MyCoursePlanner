@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { apiGetParentAISummary } from '../../lib/api';
 import { Sparkles, Loader2, Lightbulb } from 'lucide-react';
 
 /** Parent-facing AI progress summary, generated on demand from the portal token. */
 const ParentAISummaryCard: React.FC<{ token: string }> = ({ token }) => {
+  const { t } = useTranslation();
   const [loading, setLoading] = useState(false);
   const [summary, setSummary] = useState<string | null>(null);
   const [recs, setRecs] = useState<string[]>([]);
@@ -18,10 +20,10 @@ const ParentAISummaryCard: React.FC<{ token: string }> = ({ token }) => {
         setSummary(res.summary);
         setRecs(Array.isArray(res.recommendations) ? res.recommendations : []);
       } else {
-        setError('Сводка пока недоступна. Попробуйте позже.');
+        setError(t('ai.parentSummary.unavailable', 'Сводка пока недоступна. Попробуйте позже.'));
       }
     } catch (err: any) {
-      setError(err?.message || 'Не удалось получить сводку');
+      setError(err?.message || t('ai.parentSummary.error', 'Не удалось получить сводку'));
     } finally {
       setLoading(false);
     }
@@ -33,14 +35,14 @@ const ParentAISummaryCard: React.FC<{ token: string }> = ({ token }) => {
         <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-violet-500 to-indigo-600 text-white flex items-center justify-center">
           <Sparkles className="w-4 h-4" />
         </div>
-        <h2 className="text-lg font-bold text-slate-900 dark:text-white">AI-сводка об успехах</h2>
+        <h2 className="text-lg font-bold text-slate-900 dark:text-white">{t('ai.parentSummary.title', 'AI-сводка об успехах')}</h2>
       </div>
 
       <div className="p-6">
         {!summary && (
           <div className="text-center">
             <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">
-              Получите краткий понятный обзор успехов ребёнка и рекомендации — на основе оценок, заданий и активности.
+              {t('ai.parentSummary.intro', 'Получите краткий понятный обзор успехов ребёнка и рекомендации — на основе оценок, заданий и активности.')}
             </p>
             <button
               onClick={load}
@@ -48,7 +50,7 @@ const ParentAISummaryCard: React.FC<{ token: string }> = ({ token }) => {
               className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-br from-violet-600 to-indigo-600 text-white text-sm font-semibold hover:opacity-90 transition-opacity disabled:opacity-60"
             >
               {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
-              {loading ? 'Готовлю сводку…' : 'Показать AI-сводку'}
+              {loading ? t('ai.parentSummary.loading', 'Готовлю сводку…') : t('ai.parentSummary.cta', 'Показать AI-сводку')}
             </button>
             {error && <p className="text-sm text-red-500 mt-3">{error}</p>}
           </div>

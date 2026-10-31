@@ -7,24 +7,29 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useSearchParams, Link } from 'react-router-dom';
 import { Printer, ArrowLeft } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
+import { intlLocale } from '../../lib/locale';
+import i18n from '../../i18n';
 import { apiContestGet } from '../../lib/api';
-import { CONTEST_KIND_LABELS, formatContestDate, juryForCategory, maxTotal, round2, type ContestBundle } from '../../lib/contests';
+import { formatContestDate, juryForCategory, maxTotal, round2, type ContestBundle } from '../../lib/contests';
 import { categoryRanking, prizeFor } from './results';
+import { kindLabel, ageRangeLabel } from './uiStyles';
 
 type What = 'participants' | 'placards' | 'protocol';
 
 const ContestPrintPage: React.FC = () => {
   const { id = '' } = useParams();
+  const { t } = useTranslation();
   const [params, setParams] = useSearchParams();
   const what = (['participants', 'placards', 'protocol'].includes(params.get('what') || '') ? params.get('what') : 'participants') as What;
   const categoryFilter = params.get('category') || '';
   const [data, setData] = useState<ContestBundle | null>(null);
   const [error, setError] = useState('');
 
-  useEffect(() => { apiContestGet(id).then(setData, (e) => setError(e?.message || 'Ошибка')); }, [id]);
+  useEffect(() => { apiContestGet(id).then(setData, (e) => setError(e?.message || i18n.t('common.error', 'Произошла ошибка'))); }, [id]);
 
   if (error) return <div className="p-8 text-rose-600">{error}</div>;
-  if (!data) return <div className="p-8 text-slate-600">Загрузка…</div>;
+  if (!data) return <div className="p-8 text-slate-600">{t('common.loading', 'Загрузка...')}</div>;
   const { contest } = data;
   const cats = contest.categories.filter((c) => !categoryFilter || c.id === categoryFilter);
   const set = (k: string, v: string) => setParams((p) => { if (v) p.set(k, v); else p.delete(k); return p; }, { replace: true });
@@ -44,23 +49,23 @@ const ContestPrintPage: React.FC = () => {
       `}</style>
 
       <div className="no-print sticky top-0 bg-slate-50 border-b border-slate-200 px-6 py-3 flex flex-wrap items-center gap-3">
-        <Link to={`/contests/${contest.id}`} className="inline-flex items-center gap-1 text-sm text-slate-600 hover:text-slate-900"><ArrowLeft className="w-4 h-4" />К конкурсу</Link>
+        <Link to={`/contests/${contest.id}`} className="inline-flex items-center gap-1 text-sm text-slate-600 hover:text-slate-900"><ArrowLeft className="w-4 h-4" />{t('contests.print.back', 'К конкурсу')}</Link>
         <select value={what} onChange={(e) => set('what', e.target.value)} className="input w-auto">
-          <option value="participants">Список участников</option>
-          <option value="placards">Таблички на столы</option>
-          <option value="protocol">Протокол итогов</option>
+          <option value="participants">{t('contests.print.participants', 'Список участников')}</option>
+          <option value="placards">{t('contests.print.placards', 'Таблички на столы')}</option>
+          <option value="protocol">{t('contests.print.protocol', 'Протокол итогов')}</option>
         </select>
         <select value={categoryFilter} onChange={(e) => set('category', e.target.value)} className="input w-auto">
-          <option value="">Все категории</option>
-          {contest.categories.map((c) => <option key={c.id} value={c.id}>Категория {c.code}</option>)}
+          <option value="">{t('contests.allCategories', 'Все категории')}</option>
+          {contest.categories.map((c) => <option key={c.id} value={c.id}>{t('contests.categoryCode', 'Категория {{code}}', { code: c.code })}</option>)}
         </select>
-        <button onClick={() => window.print()} className="ml-auto inline-flex items-center gap-1.5 px-4 py-2 bg-slate-900 text-white rounded-xl text-sm font-semibold"><Printer className="w-4 h-4" />Печать / PDF</button>
+        <button onClick={() => window.print()} className="ml-auto inline-flex items-center gap-1.5 px-4 py-2 bg-slate-900 text-white rounded-xl text-sm font-semibold"><Printer className="w-4 h-4" />{t('contests.print.printPdf', 'Печать / PDF')}</button>
       </div>
 
       <div className="max-w-[900px] mx-auto px-6 py-6 print:p-0">
         {what !== 'placards' && (
           <header className="mb-5">
-            <div className="text-[11px] uppercase tracking-widest text-slate-600">{CONTEST_KIND_LABELS[contest.kind]}{contest.season ? ` · ${contest.season}` : ''}</div>
+            <div className="text-[11px] uppercase tracking-widest text-slate-600">{kindLabel(contest.kind)}{contest.season ? ` · ${contest.season}` : ''}</div>
             <h1 className="text-xl font-bold">{contest.title}</h1>
             <div className="text-sm text-slate-600">{[formatContestDate(contest.eventDate), contest.venue].filter(Boolean).join(' · ')}</div>
           </header>
@@ -70,9 +75,9 @@ const ContestPrintPage: React.FC = () => {
           const list = data.participants.filter((p) => p.categoryId === c.id && p.status !== 'withdrawn');
           return (
             <section key={c.id} className={ci < cats.length - 1 ? 'page-break mb-8' : ''}>
-              <h2 className="font-bold text-base mb-2">Категория {c.code} · {c.name} ({c.ageFrom}–{c.ageTo} лет) — {list.length} уч.</h2>
+              <h2 className="font-bold text-base mb-2">{t('contests.categoryCode', 'Категория {{code}}', { code: c.code })} · {c.name} ({ageRangeLabel(c)}) — {t('contests.participantsShort', { count: list.length, defaultValue: '{{count}} участн.' })}</h2>
               <table className="print-table">
-                <thead><tr><th style={{ width: 60 }}>№</th><th>ФИО (возраст)</th><th>Проект</th><th>Город / район</th><th>Телефон</th><th style={{ width: 90 }}>Отметка</th></tr></thead>
+                <thead><tr><th style={{ width: 60 }}>№</th><th>{t('contests.print.nameAge', 'ФИО (возраст)')}</th><th>{t('contests.csv.project', 'Проект')}</th><th>{t('contests.part.city', 'Город / район')}</th><th>{t('common.phone', 'Телефон')}</th><th style={{ width: 90 }}>{t('contests.print.mark', 'Отметка')}</th></tr></thead>
                 <tbody>
                   {list.map((p) => (
                     <tr key={p.id}>
@@ -81,7 +86,7 @@ const ContestPrintPage: React.FC = () => {
                       <td>{p.projectTitle}</td>
                       <td>{p.city}</td>
                       <td>{p.phone}</td>
-                      <td>{p.status === 'arrived' ? 'пришёл' : ''}</td>
+                      <td>{p.status === 'arrived' ? t('contests.print.arrived', 'пришёл') : ''}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -111,17 +116,17 @@ const ContestPrintPage: React.FC = () => {
           const rows = r.approved ? [...r.rows].sort((a, b) => (placeOf(a.participantId, a.place) ?? 1e9) - (placeOf(b.participantId, b.place) ?? 1e9)) : r.rows;
           return (
             <section key={c.id} className={ci < cats.length - 1 ? 'page-break mb-8' : ''}>
-              <h2 className="font-bold text-base">Протокол оценивания · категория {c.code} ({c.ageFrom}–{c.ageTo} лет)</h2>
+              <h2 className="font-bold text-base">{t('contests.print.protocolTitle', 'Протокол оценивания · категория {{code}} ({{range}})', { code: c.code, range: ageRangeLabel(c) })}</h2>
               <p className="text-sm mb-3">
-                {r.approved ? `Итоги утверждены ${new Date(r.approved.at).toLocaleString('ru-RU')} (${r.approved.byName}).` : 'ПРЕДВАРИТЕЛЬНЫЕ ИТОГИ — не утверждены.'}
-                {' '}Итоговый балл — среднее арифметическое сумм баллов оценивших членов жюри (максимум {maxTotal(contest.criteria)}).
+                {r.approved ? t('contests.print.approvedAt', 'Итоги утверждены {{at}} ({{by}}).', { at: new Date(r.approved.at).toLocaleString(intlLocale()), by: r.approved.byName }) : t('contests.print.preliminary', 'ПРЕДВАРИТЕЛЬНЫЕ ИТОГИ — не утверждены.')}
+                {' '}{t('contests.print.scoreRule', 'Итоговый балл — среднее арифметическое сумм баллов оценивших членов жюри (максимум {{max}}).', { max: maxTotal(contest.criteria) })}
               </p>
               <table className="print-table">
                 <thead>
                   <tr>
-                    <th>Место</th><th>№</th><th>Проект / авторы</th>
-                    {contest.criteria.map((cr) => <th key={cr.id} title={cr.name}>{cr.name} (ср.)</th>)}
-                    <th>Итог</th><th>Сумма</th><th>Жюри</th><th>Приз</th>
+                    <th>{t('contests.csv.place', 'Место')}</th><th>№</th><th>{t('contests.print.projectAuthors', 'Проект / авторы')}</th>
+                    {contest.criteria.map((cr) => <th key={cr.id} title={cr.name}>{cr.name} ({t('contests.avgShortLower', 'ср.')})</th>)}
+                    <th>{t('contests.res.total', 'Итог')}</th><th>{t('contests.cat.amount', 'Сумма')}</th><th>{t('contests.tabs.jury', 'Жюри')}</th><th>{t('contests.csv.prize', 'Приз')}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -129,7 +134,7 @@ const ContestPrintPage: React.FC = () => {
                     const place = placeOf(row.participantId, row.place);
                     return (
                       <tr key={row.participantId}>
-                        <td style={{ fontWeight: 700 }}>{place ?? '—'}{row.needsDecision && !r.approved ? ' (ничья)' : ''}</td>
+                        <td style={{ fontWeight: 700 }}>{place ?? '—'}{row.needsDecision && !r.approved ? ` (${t('contests.res.tie', 'ничья')})` : ''}</td>
                         <td style={{ fontFamily: 'monospace' }}>{row.number}</td>
                         <td><b>{row.projectTitle}</b><br />{row.authors}</td>
                         {contest.criteria.map((cr) => <td key={cr.id}>{row.juryCount ? round2(row.criterionAverages[cr.id]) : '—'}</td>)}
@@ -143,10 +148,10 @@ const ContestPrintPage: React.FC = () => {
                 </tbody>
               </table>
               {contest.tieBreakCriterionIds.length > 0 && (
-                <p className="text-[12px] mt-2">Порядок разрешения ничьей: {contest.tieBreakCriterionIds.map((tid) => contest.criteria.find((x) => x.id === tid)?.name).filter(Boolean).join(' → ')}.</p>
+                <p className="text-[12px] mt-2">{t('contests.print.tieOrder', 'Порядок разрешения ничьей')}: {contest.tieBreakCriterionIds.map((tid) => contest.criteria.find((x) => x.id === tid)?.name).filter(Boolean).join(' → ')}.</p>
               )}
               {r.resolutions.map((x, i) => (
-                <p key={i} className="text-[12px] mt-1">Решение жюри по ничьей ({x.participantIds.map((pid) => r.rows.find((row) => row.participantId === pid)?.number).join(' > ')}): {x.comment}</p>
+                <p key={i} className="text-[12px] mt-1">{t('contests.res.tieModal', 'Решение жюри по ничьей')} ({x.participantIds.map((pid) => r.rows.find((row) => row.participantId === pid)?.number).join(' > ')}): {x.comment}</p>
               ))}
               <div className="mt-8 grid grid-cols-2 gap-x-10 gap-y-6 text-sm break-inside-avoid">
                 {catJury.map((j) => (

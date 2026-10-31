@@ -9,6 +9,7 @@ import { createNotification, notifyOrgAdmins } from './utils/notifications';
 import { recordTeacherActivity } from './utils/teacher-activity';
 import { rateLimiters, getRateLimitKey } from './utils/rate-limiter';
 import { GoogleGenerativeAI } from '@google/generative-ai';
+import { AI_MODEL } from './utils/ai';
 
 const COLLECTION = 'homework_submissions';
 
@@ -326,7 +327,7 @@ ${hasMedia ? `\nК работе приложено файлов (фото/ска
 
     try {
       const model = genAI.getGenerativeModel({
-        model: 'gemini-2.5-flash',
+        model: AI_MODEL,
         generationConfig: { responseMimeType: 'application/json', temperature: 0.3, maxOutputTokens: 2048 },
       });
       const result = await model.generateContent([{ text: prompt }, ...mediaParts]);

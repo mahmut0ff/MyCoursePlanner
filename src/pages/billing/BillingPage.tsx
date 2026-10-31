@@ -4,6 +4,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { usePlanGate } from '../../contexts/PlanContext';
 import { apiGetSubscription, apiGetBillingHistory, apiCancelSubscription, apiReactivateSubscription } from '../../lib/api';
 import toast from 'react-hot-toast';
+import { intlLocale } from '../../lib/locale';
 import { Check, Crown, BookOpen, Shield, Clock, AlertTriangle, Receipt, History, Gift, RefreshCw, Zap } from 'lucide-react';
 
 const BillingPage: React.FC = () => {
@@ -91,7 +92,7 @@ const BillingPage: React.FC = () => {
 
   // Status badge
   const statusBadge = () => {
-    if (isGifted) return <span className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-bold rounded-full bg-emerald-50 text-emerald-600 dark:bg-emerald-900/20 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800/40"><Gift className="w-3.5 h-3.5" /> Подарен</span>;
+    if (isGifted) return <span className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-bold rounded-full bg-emerald-50 text-emerald-600 dark:bg-emerald-900/20 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800/40"><Gift className="w-3.5 h-3.5" /> {t('billing.giftedBadge', 'Подарен')}</span>;
     if (isActive) return <span className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-bold rounded-full bg-emerald-50 text-emerald-600 dark:bg-emerald-900/20 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800/40"><Check className="w-3.5 h-3.5" /> {t('billing.active', 'Активен')}</span>;
     if (isTrialing) return <span className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-bold rounded-full bg-amber-50 text-amber-600 dark:bg-amber-900/20 dark:text-amber-400 border border-amber-200 dark:border-amber-800/40"><Clock className="w-3.5 h-3.5" /> {t('billing.trial')}</span>;
     if (isCancelled) return <span className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-bold rounded-full bg-red-50 text-red-600 dark:bg-red-900/20 dark:text-red-400 border border-red-200 dark:border-red-800/40">{t('billing.cancelled')}</span>;
@@ -123,7 +124,7 @@ const BillingPage: React.FC = () => {
           <div>
             <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-1">{t('billing.monthly', 'В месяц')}</p>
             <p className="text-lg font-bold text-slate-900 dark:text-white">
-              {isGifted ? t('billing.free', 'Бесплатно') : `${(currentPlanData?.price || 0).toLocaleString()} ${cur}`}
+              {isGifted ? t('billing.free', 'Бесплатно') : `${(currentPlanData?.price || 0).toLocaleString(intlLocale())} ${cur}`}
             </p>
           </div>
 
@@ -135,9 +136,9 @@ const BillingPage: React.FC = () => {
             <p className={`text-lg font-bold ${daysUntilDue !== null && daysUntilDue < 0 ? 'text-red-600 dark:text-red-400' : 'text-slate-900 dark:text-white'}`}>
               {isGifted ? '∞' :
                 isTrialing && subscription?.trialEndsAt
-                  ? new Date(subscription.trialEndsAt).toLocaleDateString()
+                  ? new Date(subscription.trialEndsAt).toLocaleDateString(intlLocale())
                   : paidUntil
-                    ? new Date(paidUntil).toLocaleDateString()
+                    ? new Date(paidUntil).toLocaleDateString(intlLocale())
                     : '—'}
             </p>
           </div>
@@ -147,7 +148,7 @@ const BillingPage: React.FC = () => {
             <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-1">{t('billing.lastPayment', 'Посл. оплата')}</p>
             <p className={`text-lg font-bold ${lastPayment ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-400'}`}>
               {lastPayment
-                ? `${new Date(lastPayment.createdAt).toLocaleDateString()}`
+                ? `${new Date(lastPayment.createdAt).toLocaleDateString(intlLocale())}`
                 : '—'}
             </p>
           </div>
@@ -179,11 +180,11 @@ const BillingPage: React.FC = () => {
           </div>
           {daysUntilDue < 0 ? (
             <p className="text-sm font-semibold text-red-600 dark:text-red-400">
-              {t('billing.overdueBy', 'Оплата просрочена на')} {Math.abs(daysUntilDue)} дн. — {t('billing.pleasePay', 'пожалуйста, продлите тариф.')}
+              {t('billing.overdueBy', 'Оплата просрочена на')} {t('billing.daysShort', '{{count}} дн.', { count: Math.abs(daysUntilDue) })} — {t('billing.pleasePay', 'пожалуйста, продлите тариф.')}
             </p>
           ) : (
             <p className={`text-sm font-semibold ${daysUntilDue <= 3 ? 'text-amber-600 dark:text-amber-400' : 'text-slate-900 dark:text-white'}`}>
-              {t('billing.paidUntil', 'Оплачено до')} {new Date(paidUntil).toLocaleDateString()} · {t('billing.daysLeft', 'осталось')} {daysUntilDue} дн.
+              {t('billing.paidUntil', 'Оплачено до')} {new Date(paidUntil).toLocaleDateString(intlLocale())} · {t('billing.daysLeft', 'осталось')} {t('billing.daysShort', '{{count}} дн.', { count: daysUntilDue })}
             </p>
           )}
           {/* Progress bar (30-day window) */}
@@ -226,13 +227,13 @@ const BillingPage: React.FC = () => {
               <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
                 {t('billing.trialCountdownDesc', 'Осталось {{days}} {{dayWord}}. После этого нужно оплатить тариф.', {
                   days: trialDaysLeft,
-                  dayWord: trialDaysLeft === 1 ? 'день' : trialDaysLeft < 5 ? 'дня' : 'дней'
+                  dayWord: t('billing.dayWord', { count: trialDaysLeft })
                 })}
               </p>
             </div>
             <div className="text-right">
               <p className={`text-3xl font-black ${trialDaysLeft <= 3 ? 'text-red-600' : trialDaysLeft <= 7 ? 'text-amber-600' : 'text-blue-600'}`}>{trialDaysLeft}</p>
-              <p className="text-[10px] text-slate-400 uppercase">{trialDaysLeft === 1 ? 'день' : trialDaysLeft < 5 ? 'дня' : 'дней'}</p>
+              <p className="text-[10px] text-slate-400 uppercase">{t('billing.dayWord', { count: trialDaysLeft })}</p>
             </div>
           </div>
         </div>
@@ -289,9 +290,9 @@ const BillingPage: React.FC = () => {
 
                 {/* Price */}
                 <div className="mb-4">
-                  <span className="text-2xl font-extrabold text-slate-900 dark:text-white">{plan.price.toLocaleString()}</span>
+                  <span className="text-2xl font-extrabold text-slate-900 dark:text-white">{plan.price.toLocaleString(intlLocale())}</span>
                   <span className="text-sm text-slate-400 ml-1">{cur}/{t('landing.perMonth', 'мес')}</span>
-                  <p className="text-[10px] text-slate-400 mt-0.5">{Math.round(plan.price / 30)} {cur}/день</p>
+                  <p className="text-[10px] text-slate-400 mt-0.5">{Math.round(plan.price / 30)} {cur}/{t('billing.perDay', 'день')}</p>
                 </div>
 
                 {/* Features */}
@@ -359,9 +360,9 @@ const BillingPage: React.FC = () => {
                   <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
                     {billingHistory.payments.map((p: any) => (
                       <tr key={p.id} className="hover:bg-slate-50 dark:hover:bg-slate-700/30 transition-colors">
-                        <td className="px-5 py-3 text-slate-700 dark:text-slate-300">{new Date(p.createdAt).toLocaleDateString()} <span className="text-slate-400 text-[10px]">{new Date(p.createdAt).toLocaleTimeString()}</span></td>
+                        <td className="px-5 py-3 text-slate-700 dark:text-slate-300">{new Date(p.createdAt).toLocaleDateString(intlLocale())} <span className="text-slate-400 text-[10px]">{new Date(p.createdAt).toLocaleTimeString(intlLocale())}</span></td>
                         <td className="px-5 py-3 capitalize font-medium text-slate-800 dark:text-slate-200">{p.planId}</td>
-                        <td className="px-5 py-3 font-semibold text-slate-900 dark:text-white">{Number(p.amount).toLocaleString()} {p.currency || 'KGS'}</td>
+                        <td className="px-5 py-3 font-semibold text-slate-900 dark:text-white">{Number(p.amount).toLocaleString(intlLocale())} {p.currency || 'KGS'}</td>
                         <td className="px-5 py-3">
                           <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium capitalize ${statusColor(p.status)}`}>{p.status === 'completed' ? t('billing.paid', 'Оплачено') : p.status === 'pending' ? t('billing.pendingStatus', 'Ожидание') : t('billing.failedStatus', 'Ошибка')}</span>
                         </td>
@@ -392,7 +393,7 @@ const BillingPage: React.FC = () => {
                         {log.action === 'plan_changed' ? t('billing.planChanged', 'Смена тарифа') : log.action === 'plan_gifted' ? '🎁 ' + t('billing.planGifted', 'Тариф подарен') : t('billing.subCancelled', 'Отмена подписки')}
                         {log.metadata?.newPlan && <span className="font-medium capitalize ml-1">→ {log.metadata.newPlan}</span>}
                       </span>
-                      <span className="ml-auto text-[10px] text-slate-400">{log.actorName} · {new Date(log.createdAt).toLocaleDateString()}</span>
+                      <span className="ml-auto text-[10px] text-slate-400">{log.actorName} · {new Date(log.createdAt).toLocaleDateString(intlLocale())}</span>
                     </div>
                   ))}
                 </div>

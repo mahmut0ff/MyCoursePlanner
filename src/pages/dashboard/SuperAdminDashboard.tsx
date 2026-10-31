@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { apiGetPlatformStats, apiGetOrganizations, apiGetSystemLogs, apiUpdateOrganization, apiDeleteOrganization } from '../../lib/api';
+import { intlLocale } from '../../lib/locale';
 import { Building2, Users, DollarSign, TrendingUp, BarChart3, Shield, Activity, Ban, RotateCcw } from 'lucide-react';
 
 const SuperAdminDashboard: React.FC = () => {
@@ -225,7 +226,7 @@ const SuperAdminDashboard: React.FC = () => {
                 <Activity className="w-4 h-4 text-slate-400 shrink-0" />
                 <div className="flex-1 min-w-0">
                   <p className="text-sm text-slate-900 dark:text-white"><span className="font-medium">{log.actorName}</span> — {log.action.replace(/_/g, ' ')}</p>
-                  <p className="text-xs text-slate-500 dark:text-slate-400">{new Date(log.createdAt).toLocaleString()}</p>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">{new Date(log.createdAt).toLocaleString(intlLocale())}</p>
                 </div>
               </div>
             ))}

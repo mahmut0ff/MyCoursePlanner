@@ -11,7 +11,7 @@ const PaymentSuccessPage: React.FC = () => {
         <CheckCircle className="w-10 h-10 text-emerald-600 dark:text-emerald-400" />
       </div>
       <h1 className="text-2xl font-bold text-slate-900 dark:text-white mb-2">{t('payment.success')}</h1>
-      <p className="text-slate-500 dark:text-slate-400 mb-6">Ваша подписка активирована.</p>
+      <p className="text-slate-500 dark:text-slate-400 mb-6">{t('payment.successHint', 'Ваша подписка активирована.')}</p>
       <Link to="/billing" className="btn-primary">{t('payment.backToBilling')}</Link>
     </div>
   );

@@ -4,6 +4,7 @@ import { db } from '../../lib/firebase';
 import { useAuth } from '../../contexts/AuthContext';
 import { Phone, MessageSquare, CheckCircle, Clock, Trash2, Plus, X, Inbox, Target, ChevronDown, Pencil } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { useTranslation } from 'react-i18next';
 import { format } from 'date-fns';
 
 interface AILead {
@@ -27,20 +28,25 @@ interface AILead {
   createdAt: string;
 }
 
-const STATUS_CFG: Record<string, { label: string; icon: React.ReactNode; cls: string }> = {
-  new:       { label: 'Новая',       icon: <Clock className="w-3 h-3" />,          cls: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' },
-  contacted: { label: 'В обработке', icon: <MessageSquare className="w-3 h-3" />,  cls: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400' },
-  resolved:  { label: 'Закрыта',     icon: <CheckCircle className="w-3 h-3" />,    cls: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400' },
-};
-
-const SOURCE_LABEL: Record<string, string> = {
-  telegram_bot: 'TG BOT',
-  test_link:    'PUBLIC TEST',
-  web_chat:     'WEB CHAT',
-  manual:       'ВРУЧНУЮ',
+const STATUS_CFG: Record<string, { icon: React.ReactNode; cls: string }> = {
+  new:       { icon: <Clock className="w-3 h-3" />,          cls: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' },
+  contacted: { icon: <MessageSquare className="w-3 h-3" />,  cls: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400' },
+  resolved:  { icon: <CheckCircle className="w-3 h-3" />,    cls: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400' },
 };
 
 const AILeadsPage: React.FC = () => {
+  const { t } = useTranslation();
+  const STATUS_LABEL: Record<string, string> = {
+    new: t('leads.status.new', 'Новая'),
+    contacted: t('leads.status.contacted', 'В обработке'),
+    resolved: t('leads.status.resolved', 'Закрыта'),
+  };
+  const SOURCE_LABEL: Record<string, string> = {
+    telegram_bot: t('leads.source.telegram_bot', 'TG BOT'),
+    test_link: t('leads.source.test_link', 'PUBLIC TEST'),
+    web_chat: t('leads.source.web_chat', 'WEB CHAT'),
+    manual: t('leads.source.manual', 'ВРУЧНУЮ'),
+  };
   const { organizationId, profile, firebaseUser } = useAuth();
   const [leads, setLeads] = useState<AILead[]>([]);
   const [loading, setLoading] = useState(true);
@@ -74,33 +80,33 @@ const AILeadsPage: React.FC = () => {
       setLoading(false);
     }, (error) => {
       console.error("Error fetching leads:", error);
-      toast.error('Ошибка при загрузке заявок');
+      toast.error(t('leads.loadError', 'Ошибка при загрузке заявок'));
       setLoading(false);
     });
 
     return () => unsubscribe();
-  }, [organizationId]);
+  }, [organizationId, t]);
 
   const updateStatus = async (id: string, newStatus: string) => {
     if (!organizationId) return;
     try {
       await updateDoc(doc(db, 'organizations', organizationId, 'aiLeads', id), { status: newStatus });
-      toast.success('Статус заявки обновлен');
+      toast.success(t('leads.statusUpdated', 'Статус заявки обновлен'));
     } catch (err) {
       console.error(err);
-      toast.error('Не удалось обновить статус');
+      toast.error(t('leads.statusUpdateFailed', 'Не удалось обновить статус'));
     }
   };
   
   const deleteLead = async (id: string) => {
     if (!organizationId) return;
-    if (!window.confirm('Вы точно хотите удалить эту заявку?')) return;
+    if (!window.confirm(t('leads.deleteConfirm', 'Вы точно хотите удалить эту заявку?'))) return;
     try {
       await deleteDoc(doc(db, 'organizations', organizationId, 'aiLeads', id));
-      toast.success('Заявка удалена');
+      toast.success(t('leads.deleted', 'Заявка удалена'));
     } catch (err) {
       console.error(err);
-      toast.error('Не удалось удалить заявку');
+      toast.error(t('leads.deleteFailed', 'Не удалось удалить заявку'));
     }
   };
 
@@ -132,7 +138,7 @@ const AILeadsPage: React.FC = () => {
     e.preventDefault();
     if (!organizationId || !profile) return;
     if (!newName.trim() || !newPhone.trim()) {
-      toast.error('Пожалуйста, заполните имя и телефон');
+      toast.error(t('leads.fillNamePhone', 'Пожалуйста, заполните имя и телефон'));
       return;
     }
 
@@ -143,16 +149,16 @@ const AILeadsPage: React.FC = () => {
         await updateDoc(doc(db, 'organizations', organizationId, 'aiLeads', editingId), {
           name: newName.trim(),
           phone: newPhone.trim(),
-          reason: newReason.trim() || 'Новая заявка',
+          reason: newReason.trim() || t('leads.defaultReason', 'Новая заявка'),
         });
-        toast.success('Заявка обновлена');
+        toast.success(t('leads.updated', 'Заявка обновлена'));
       } else {
-        const managerName = profile.displayName || 'Менеджер';
+        const managerName = profile.displayName || t('leads.defaultManager', 'Менеджер');
 
         await addDoc(collection(db, 'organizations', organizationId, 'aiLeads'), {
           name: newName.trim(),
           phone: newPhone.trim(),
-          reason: newReason.trim() || 'Новая заявка',
+          reason: newReason.trim() || t('leads.defaultReason', 'Новая заявка'),
           source: 'manual',
           createdBy: managerName,
           status: 'new',
@@ -177,13 +183,13 @@ const AILeadsPage: React.FC = () => {
           }).catch(e => console.error('Failed to notify about new lead:', e));
         }
 
-        toast.success('Заявка добавлена');
+        toast.success(t('leads.added', 'Заявка добавлена'));
       }
 
       closeModal();
     } catch (err) {
       console.error(err);
-      toast.error(editingId ? 'Не удалось обновить заявку' : 'Не удалось создать заявку');
+      toast.error(editingId ? t('leads.updateFailed', 'Не удалось обновить заявку') : t('leads.createFailed', 'Не удалось создать заявку'));
     } finally {
       setCreating(false);
     }
@@ -202,9 +208,9 @@ const AILeadsPage: React.FC = () => {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-xl font-bold text-slate-900 dark:text-white">Заявки</h1>
+          <h1 className="text-xl font-bold text-slate-900 dark:text-white">{t('leads.title', 'Заявки')}</h1>
           <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">
-            Входящие заявки от клиентов, телеграм-бота и AI-ассистента.
+            {t('leads.subtitle', 'Входящие заявки от клиентов, телеграм-бота и AI-ассистента.')}
           </p>
         </div>
         <button
@@ -212,7 +218,7 @@ const AILeadsPage: React.FC = () => {
           className="h-9 px-4 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-lg text-sm font-semibold hover:opacity-90 transition-opacity flex items-center gap-1.5 shrink-0"
         >
           <Plus className="w-4 h-4" />
-          Добавить
+          {t('leads.add', 'Добавить')}
         </button>
       </div>
 
@@ -220,8 +226,8 @@ const AILeadsPage: React.FC = () => {
       {leads.length === 0 ? (
         <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-12 text-center">
           <Inbox className="w-12 h-12 mx-auto text-slate-300 dark:text-slate-600 mb-4" />
-          <p className="text-lg font-semibold text-slate-700 dark:text-slate-200">Пока нет заявок</p>
-          <p className="text-sm text-slate-400 mt-1">Как только клиент оставит заявку, она появится здесь.</p>
+          <p className="text-lg font-semibold text-slate-700 dark:text-slate-200">{t('leads.empty', 'Пока нет заявок')}</p>
+          <p className="text-sm text-slate-400 mt-1">{t('leads.emptyText', 'Как только клиент оставит заявку, она появится здесь.')}</p>
         </div>
       ) : (
         <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl overflow-hidden">
@@ -239,7 +245,7 @@ const AILeadsPage: React.FC = () => {
                 <div className="flex items-center gap-3 px-4 py-3 sm:px-5 hover:bg-slate-50 dark:hover:bg-slate-700/30 transition-colors">
                   {/* Status badge */}
                   <span className={`hidden sm:inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide rounded-md shrink-0 ${cfg.cls}`}>
-                    {cfg.icon} {cfg.label}
+                    {cfg.icon} {STATUS_LABEL[lead.status] || STATUS_LABEL.new}
                   </span>
 
                   {/* Name */}
@@ -247,7 +253,7 @@ const AILeadsPage: React.FC = () => {
                     <p className="text-sm font-semibold text-slate-900 dark:text-white truncate">{lead.name}</p>
                     <div className="flex items-center gap-2 mt-0.5">
                       {/* Mobile status */}
-                      <span className={`sm:hidden inline-flex items-center gap-0.5 text-[10px] font-bold ${cfg.cls} px-1.5 py-0.5 rounded`}>{cfg.icon} {cfg.label}</span>
+                      <span className={`sm:hidden inline-flex items-center gap-0.5 text-[10px] font-bold ${cfg.cls} px-1.5 py-0.5 rounded`}>{cfg.icon} {STATUS_LABEL[lead.status] || STATUS_LABEL.new}</span>
                       <a href={`tel:${lead.phone}`} className="text-xs text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 transition-colors flex items-center gap-1">
                         <Phone className="w-3 h-3" />{lead.phone}
                       </a>
@@ -270,16 +276,16 @@ const AILeadsPage: React.FC = () => {
                     onChange={(e) => updateStatus(lead.id, e.target.value)}
                     className="h-8 pl-2 pr-6 text-xs font-medium rounded-lg border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-900/50 text-slate-700 dark:text-slate-300 cursor-pointer focus:outline-none focus:ring-1 focus:ring-slate-300 dark:focus:ring-slate-500 shrink-0"
                   >
-                    <option value="new">Новая</option>
-                    <option value="contacted">Связались</option>
-                    <option value="resolved">Закрыта</option>
+                    <option value="new">{t('leads.status.new', 'Новая')}</option>
+                    <option value="contacted">{t('leads.status.contactedOption', 'Связались')}</option>
+                    <option value="resolved">{t('leads.status.resolved', 'Закрыта')}</option>
                   </select>
 
                   {/* Expand reason */}
                   <button
                     onClick={() => setExpandedId(isExpanded ? null : lead.id)}
                     className={`w-7 h-7 flex items-center justify-center rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 transition-all shrink-0 ${isExpanded ? 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300' : ''}`}
-                    title="Показать цель заявки"
+                    title={t('leads.showReason', 'Показать цель заявки')}
                   >
                     <ChevronDown className={`w-4 h-4 transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`} />
                   </button>
@@ -288,7 +294,7 @@ const AILeadsPage: React.FC = () => {
                   <button
                     onClick={() => openEdit(lead)}
                     className="w-7 h-7 flex items-center justify-center rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors shrink-0"
-                    title="Редактировать"
+                    title={t('leads.edit', 'Редактировать')}
                   >
                     <Pencil className="w-3.5 h-3.5" />
                   </button>
@@ -297,7 +303,7 @@ const AILeadsPage: React.FC = () => {
                   <button
                     onClick={() => deleteLead(lead.id)}
                     className="w-7 h-7 flex items-center justify-center rounded-lg text-slate-300 hover:text-red-500 hover:bg-red-50 dark:text-slate-600 dark:hover:text-red-400 dark:hover:bg-red-900/20 transition-colors shrink-0"
-                    title="Удалить"
+                    title={t('leads.delete', 'Удалить')}
                   >
                     <Trash2 className="w-3.5 h-3.5" />
                   </button>
@@ -308,7 +314,7 @@ const AILeadsPage: React.FC = () => {
                   <div className="px-5 pb-4 pt-1 bg-slate-50/50 dark:bg-slate-900/20 border-t border-slate-100/80 dark:border-slate-700/40 animate-in fade-in slide-in-from-top-1 duration-200">
                     {/* Reason */}
                     <div className="mb-2">
-                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Цель заявки</p>
+                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">{t('leads.reason', 'Цель заявки')}</p>
                       <p className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed">{lead.reason}</p>
                     </div>
 
@@ -324,14 +330,14 @@ const AILeadsPage: React.FC = () => {
                         <div className="absolute top-0 right-0 p-2 opacity-5">
                           <Target className="w-12 h-12 text-indigo-500" />
                         </div>
-                        <p className="text-[10px] font-bold text-indigo-400 uppercase tracking-widest mb-1">Результат тестирования</p>
+                        <p className="text-[10px] font-bold text-indigo-400 uppercase tracking-widest mb-1">{t('leads.testResult', 'Результат тестирования')}</p>
                         <p className="font-semibold text-sm text-slate-900 dark:text-slate-100 mb-1.5 truncate pr-6">{lead.testResult.examTitle}</p>
                         <div className="flex items-end gap-2 flex-wrap">
                           <span className="text-xl font-black text-indigo-600 dark:text-indigo-400 leading-none">{lead.testResult.percentage}%</span>
                           <span className="text-xs font-medium text-slate-400 pb-0.5">{lead.testResult.score} / {lead.testResult.maxScore}</span>
                           {lead.testResult.aiFeedback?.level && (
                             <span className="ml-auto inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-indigo-600 text-white text-xs font-bold">
-                              Уровень: {lead.testResult.aiFeedback.level}
+                              {t('leads.level', 'Уровень: {{level}}', { level: lead.testResult.aiFeedback.level })}
                             </span>
                           )}
                         </div>
@@ -339,9 +345,9 @@ const AILeadsPage: React.FC = () => {
                         {lead.testResult.aiFeedback && (
                           <div className="mt-3 pt-3 border-t border-slate-100 dark:border-slate-700 space-y-3">
                             <div className="flex items-center gap-1.5">
-                              <p className="text-[10px] font-bold text-indigo-500 dark:text-indigo-400 uppercase tracking-wide">✨ AI Анализ</p>
+                              <p className="text-[10px] font-bold text-indigo-500 dark:text-indigo-400 uppercase tracking-wide">{t('leads.aiAnalysis', '✨ AI Анализ')}</p>
                               {lead.testResult.aiFeedback.modelUsed === 'rule-based' && (
-                                <span className="text-[9px] text-slate-400 font-medium">(базовый)</span>
+                                <span className="text-[9px] text-slate-400 font-medium">{t('leads.basic', '(базовый)')}</span>
                               )}
                             </div>
 
@@ -351,7 +357,7 @@ const AILeadsPage: React.FC = () => {
 
                             {Array.isArray(lead.testResult.aiFeedback.strengths) && lead.testResult.aiFeedback.strengths.length > 0 && (
                               <div>
-                                <p className="text-[10px] font-bold text-emerald-500 uppercase tracking-wide mb-1">Сильные стороны</p>
+                                <p className="text-[10px] font-bold text-emerald-500 uppercase tracking-wide mb-1">{t('leads.strengths', 'Сильные стороны')}</p>
                                 <ul className="list-disc list-inside space-y-0.5">
                                   {lead.testResult.aiFeedback.strengths.map((s: string, i: number) => (
                                     <li key={i} className="text-xs text-slate-600 dark:text-slate-300">{s}</li>
@@ -362,7 +368,7 @@ const AILeadsPage: React.FC = () => {
 
                             {Array.isArray(lead.testResult.aiFeedback.weakTopics) && lead.testResult.aiFeedback.weakTopics.length > 0 && (
                               <div>
-                                <p className="text-[10px] font-bold text-amber-500 uppercase tracking-wide mb-1">Слабые темы</p>
+                                <p className="text-[10px] font-bold text-amber-500 uppercase tracking-wide mb-1">{t('leads.weakTopics', 'Слабые темы')}</p>
                                 <ul className="list-disc list-inside space-y-0.5">
                                   {lead.testResult.aiFeedback.weakTopics.map((s: string, i: number) => (
                                     <li key={i} className="text-xs text-slate-600 dark:text-slate-300">{s}</li>
@@ -373,7 +379,7 @@ const AILeadsPage: React.FC = () => {
 
                             {Array.isArray(lead.testResult.aiFeedback.reviewSuggestions) && lead.testResult.aiFeedback.reviewSuggestions.length > 0 && (
                               <div>
-                                <p className="text-[10px] font-bold text-sky-500 uppercase tracking-wide mb-1">Рекомендации</p>
+                                <p className="text-[10px] font-bold text-sky-500 uppercase tracking-wide mb-1">{t('leads.recommendations', 'Рекомендации')}</p>
                                 <ul className="list-disc list-inside space-y-0.5">
                                   {lead.testResult.aiFeedback.reviewSuggestions.map((s: string, i: number) => (
                                     <li key={i} className="text-xs text-slate-600 dark:text-slate-300">{s}</li>
@@ -384,7 +390,7 @@ const AILeadsPage: React.FC = () => {
 
                             {lead.testResult.aiFeedback.teacherNotes && (
                               <div className="bg-slate-50 dark:bg-slate-900/40 rounded-lg p-2.5 border border-slate-100 dark:border-slate-700">
-                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wide mb-0.5">Заметка преподавателю</p>
+                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wide mb-0.5">{t('leads.teacherNote', 'Заметка преподавателю')}</p>
                                 <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed italic">"{lead.testResult.aiFeedback.teacherNotes}"</p>
                               </div>
                             )}
@@ -405,7 +411,7 @@ const AILeadsPage: React.FC = () => {
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={closeModal}>
           <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in-95" onClick={e => e.stopPropagation()}>
             <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-700 flex items-center justify-between">
-              <h2 className="text-lg font-bold text-slate-900 dark:text-white">{editingId ? 'Редактировать заявку' : 'Добавить заявку'}</h2>
+              <h2 className="text-lg font-bold text-slate-900 dark:text-white">{editingId ? t('leads.editTitle', 'Редактировать заявку') : t('leads.addTitle', 'Добавить заявку')}</h2>
               <button onClick={closeModal} className="p-2 -mr-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 rounded-lg transition-colors">
                 <X className="w-5 h-5" />
               </button>
@@ -414,7 +420,7 @@ const AILeadsPage: React.FC = () => {
             <form onSubmit={handleSubmit} className="p-6 space-y-4">
               <div>
                 <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5 ml-1">
-                  Имя клиента
+                  {t('leads.clientName', 'Имя клиента')}
                 </label>
                 <input
                   type="text"
@@ -422,14 +428,14 @@ const AILeadsPage: React.FC = () => {
                   value={newName}
                   onChange={e => setNewName(e.target.value)}
                   className="input w-full"
-                  placeholder="Иван Иванов"
+                  placeholder={t('leads.namePlaceholder', 'Иван Иванов')}
                   autoFocus
                 />
               </div>
               
               <div>
                 <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5 ml-1">
-                  Номер телефона
+                  {t('leads.phone', 'Номер телефона')}
                 </label>
                 <input
                   type="tel"
@@ -443,13 +449,13 @@ const AILeadsPage: React.FC = () => {
 
               <div>
                 <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5 ml-1">
-                  Цель заявки
+                  {t('leads.reason', 'Цель заявки')}
                 </label>
                 <textarea
                   value={newReason}
                   onChange={e => setNewReason(e.target.value)}
                   className="input w-full min-h-[100px] resize-y"
-                  placeholder="Запись на пробный урок..."
+                  placeholder={t('leads.reasonPlaceholder', 'Запись на пробный урок...')}
                 />
               </div>
 
@@ -459,14 +465,14 @@ const AILeadsPage: React.FC = () => {
                   onClick={closeModal}
                   className="btn-ghost"
                 >
-                  Отмена
+                  {t('leads.cancel', 'Отмена')}
                 </button>
                 <button
                   type="submit"
                   disabled={creating}
                   className="h-9 px-5 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-lg text-sm font-semibold hover:opacity-90 transition-opacity disabled:opacity-50"
                 >
-                  {creating ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : 'Сохранить'}
+                  {creating ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : t('leads.save', 'Сохранить')}
                 </button>
               </div>
             </form>

@@ -16,6 +16,7 @@ import { db, auth, storage } from './firebase';
 import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
 import type { ChatRoom, ChatMessage, MessageAttachment } from '../types';
 import { apiNotifyChatMessage } from './api';
+import { trLabel } from './trLabel';
 
 /** Потолок вложения. Должен совпадать со storage.rules (25 МБ на файл чата). */
 export const CHAT_MAX_FILE_SIZE = 25 * 1024 * 1024;
@@ -81,7 +82,7 @@ export async function uploadChatAttachment(
   onProgress?: (percent: number) => void,
 ): Promise<MessageAttachment> {
   if (file.size > CHAT_MAX_FILE_SIZE) {
-    throw new Error('Файл больше 25 МБ');
+    throw new Error(trLabel('chat.fileTooLarge', 'Файл «{{name}}» больше 25 МБ', { name: file.name }));
   }
   const extension = file.name.split('.').pop();
   const fileName = `${Date.now()}_${Math.random().toString(36).substring(7)}.${extension}`;
@@ -235,10 +236,10 @@ export function chatRoomLabel(
   avatarCache: Record<string, string> = {},
 ): { title: string; avatarUrl: string; counterpartUid: string | null } {
   if (room.type === 'group') {
-    return { title: room.title || 'Групповой чат', avatarUrl: room.imageUrl || '', counterpartUid: null };
+    return { title: room.title || trLabel('chat.groupChat', 'Групповой чат'), avatarUrl: room.imageUrl || '', counterpartUid: null };
   }
   const other = room.participantIds.find((id) => id !== selfUid) || null;
-  if (!other) return { title: 'Избранное', avatarUrl: '', counterpartUid: null };
+  if (!other) return { title: trLabel('chat.selfChat', 'Избранное'), avatarUrl: '', counterpartUid: null };
   const p = room.participants?.[other];
   return {
     title: p?.displayName || nameCache[other] || '—',

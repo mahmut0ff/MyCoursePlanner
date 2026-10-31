@@ -8,6 +8,7 @@ import { useBranch } from '../../contexts/BranchContext';
 import type { Course, Group } from '../../types';
 import toast from 'react-hot-toast';
 import { SyllabusBuilder } from '../../components/syllabuses/SyllabusBuilder';
+import { intlLocale } from '../../lib/locale';
 
 const CourseDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -80,9 +81,9 @@ const CourseDetailPage: React.FC = () => {
       (g.studentIds || []).forEach((s) => acc[bid].students.add(s));
     });
     return Object.entries(acc)
-      .map(([bid, v]) => ({ bid, name: bid === '__none__' ? 'Без филиала' : (branches.find(b => b.id === bid)?.name || 'Филиал'), groups: v.groups, students: v.students.size }))
+      .map(([bid, v]) => ({ bid, name: bid === '__none__' ? t('courses.noBranch', 'Без филиала') : (branches.find(b => b.id === bid)?.name || t('common.branch', 'Филиал')), groups: v.groups, students: v.students.size }))
       .sort((a, b) => b.groups - a.groups);
-  }, [groups, branches]);
+  }, [groups, branches, t]);
 
   const handleUpdateCourse = async () => {
     if (!course || !editForm.title.trim()) return;
@@ -91,7 +92,7 @@ const CourseDetailPage: React.FC = () => {
       const u = await orgUpdateCourse({ id: course.id, ...editForm });
       setCourse({ ...course, ...u });
       setShowEditModal(false);
-    } catch (e: any) { setError(e.message || 'Error updating course'); } finally { setSaving(false); }
+    } catch (e: any) { setError(e.message || t('courses.detail.updateFailed', 'Не удалось сохранить курс')); } finally { setSaving(false); }
   };
 
   const handleDeleteCourse = async () => {
@@ -116,7 +117,7 @@ const CourseDetailPage: React.FC = () => {
       setAllGroups(prev => [...prev, created]);
       setShowGroupModal(false);
       setGroupForm({ name: '', chatLinkTitle: '', chatLinkUrl: '' });
-    } catch (e: any) { setError(e.message || 'Error creating group'); } finally { setSaving(false); }
+    } catch (e: any) { setError(e.message || t('groups.detail.saveFailed', 'Не удалось сохранить группу')); } finally { setSaving(false); }
   };
 
   const handleAttachExistingGroup = async () => {
@@ -134,7 +135,7 @@ const CourseDetailPage: React.FC = () => {
         setShowGroupModal(false);
         setExistingGroupId('');
       } catch (e: any) { 
-        setError(e.message || 'Error attaching group'); 
+        setError(e.message || t('courses.detail.attachFailed', 'Не удалось привязать группу')); 
       } finally { 
         setSaving(false); 
       }
@@ -151,7 +152,7 @@ const CourseDetailPage: React.FC = () => {
       setAllGroups(g);
       setGroups(g.filter((gg: Group) => gg.courseId === course?.id));
     } catch (e: any) {
-      toast.error(e.message || 'Ошибка');
+      toast.error(e.message || t('common.error', 'Ошибка'));
     } finally {
       setSaving(false);
     }
@@ -186,7 +187,7 @@ const CourseDetailPage: React.FC = () => {
         {isAdmin && (
           <div className="flex items-center gap-2">
             <button onClick={() => setShowEditModal(true)} className="flex items-center gap-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 px-4 py-2 rounded-xl text-sm font-medium hover:bg-slate-50 dark:hover:bg-slate-700 transition-all text-slate-700 dark:text-slate-300 shadow-sm hover:shadow">
-              <Edit className="w-4 h-4 text-primary-500" /> Редактировать
+              <Edit className="w-4 h-4 text-primary-500" /> {t('common.edit', 'Редактировать')}
             </button>
             <button onClick={handleDeleteCourse} className="flex items-center justify-center w-9 h-9 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl hover:bg-red-50 dark:hover:bg-red-900/20 hover:border-red-200 transition-all text-slate-400 hover:text-red-500 shadow-sm">
               <Trash2 className="w-4 h-4" />
@@ -227,7 +228,7 @@ const CourseDetailPage: React.FC = () => {
                   <span className="italic opacity-80">
                     {isStudent 
                       ? t('studentCourses.noDescription', 'У этого курса пока нет описания.')
-                      : 'Описание курса не добавлено. Добавьте описание, чтобы студентам было проще понять, о чем курс.'}
+                      : t('courses.detail.noDescription', 'Описание курса не добавлено. Добавьте описание, чтобы студентам было проще понять, о чём курс.')}
                   </span>
                 )}
               </p>
@@ -236,15 +237,15 @@ const CourseDetailPage: React.FC = () => {
                 {(course.price && course.price > 0) ? (
                   <div className="flex items-center justify-center gap-2 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400 px-4 py-2 rounded-xl font-bold border border-emerald-100 dark:border-emerald-800/50">
                     <Coins className="w-5 h-5" />
-                    <span className="text-lg">{course.price.toLocaleString()} сом</span>
+                    <span className="text-lg">{t('courses.detail.priceSom', '{{amount}} сом', { amount: course.price.toLocaleString(intlLocale()) })}</span>
                     <span className="text-xs font-medium opacity-70">
-                      /{course.paymentFormat === 'monthly' ? t('common.monthly', 'мес') : t('common.oneTime', 'разово')}
+                      /{course.paymentFormat === 'monthly' ? t('courses.detail.perMonth', 'мес') : t('courses.detail.oneTimeShort', 'разово')}
                     </span>
                   </div>
                 ) : (
                   <div className="flex items-center justify-center gap-2 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 px-4 py-2 rounded-xl font-bold border border-slate-200 dark:border-slate-700">
                     <Coins className="w-5 h-5 opacity-50" />
-                    <span>Бесплатно</span>
+                    <span>{t('courses.detail.free', 'Бесплатно')}</span>
                   </div>
                 )}
               </div>
@@ -252,7 +253,7 @@ const CourseDetailPage: React.FC = () => {
               {isStudent && groups.some(g => g.studentIds?.includes(profile?.uid as string)) && (
                 <div className="mt-6 w-full sm:w-auto px-6 py-3 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400 rounded-xl font-bold border border-emerald-200 dark:border-emerald-800/50 flex items-center justify-center gap-2">
                   <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
-                  Вы учитесь на этом курсе
+                  {t('courses.detail.enrolled', 'Вы учитесь на этом курсе')}
                 </div>
               )}
             </div>
@@ -262,12 +263,12 @@ const CourseDetailPage: React.FC = () => {
               <div className="bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-700/50 p-4 rounded-2xl flex flex-col items-center justify-center text-center">
                 <FileText className="w-6 h-6 text-blue-500 mb-2" />
                 <span className="text-2xl font-bold text-slate-900 dark:text-white">{groups.length}</span>
-                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Групп</span>
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{t('courses.detail.statGroups', 'Групп')}</span>
               </div>
               <div className="bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-700/50 p-4 rounded-2xl flex flex-col items-center justify-center text-center">
                 <Users className="w-6 h-6 text-violet-500 mb-2" />
                 <span className="text-2xl font-bold text-slate-900 dark:text-white">{new Set(groups.flatMap((g) => g.studentIds || [])).size}</span>
-                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Студентов</span>
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{t('courses.detail.statStudents', 'Студентов')}</span>
               </div>
               <div className="bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-700/50 p-4 rounded-2xl col-span-2 flex items-center justify-between text-left">
                 <div className="flex items-center gap-3">
@@ -276,7 +277,7 @@ const CourseDetailPage: React.FC = () => {
                   </div>
                   <div>
                     <span className="block text-sm font-bold text-slate-900 dark:text-white">
-                      {course.createdAt ? new Date(course.createdAt).toLocaleDateString() : '—'}
+                      {course.createdAt ? new Date(course.createdAt).toLocaleDateString(intlLocale()) : '—'}
                     </span>
                     <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider">{t('common.created', 'Создан')}</span>
                   </div>
@@ -295,8 +296,8 @@ const CourseDetailPage: React.FC = () => {
               <Building2 className="w-5 h-5" />
             </div>
             <div>
-              <h2 className="text-xl font-bold text-slate-900 dark:text-white tracking-tight">По филиалам</h2>
-              <p className="text-xs text-slate-500 dark:text-slate-400">Активность этого курса в каждом филиале</p>
+              <h2 className="text-xl font-bold text-slate-900 dark:text-white tracking-tight">{t('courses.byBranch', 'По филиалам')}</h2>
+              <p className="text-xs text-slate-500 dark:text-slate-400">{t('courses.detail.byBranchDesc', 'Активность этого курса в каждом филиале')}</p>
             </div>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
@@ -306,14 +307,14 @@ const CourseDetailPage: React.FC = () => {
                 <div className="flex items-end gap-4">
                   <div className="flex items-baseline gap-1.5">
                     <span className="text-2xl font-extrabold text-slate-900 dark:text-white">{b.groups}</span>
-                    <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide">групп</span>
+                    <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide">{t('courses.groupsLower', 'групп')}</span>
                   </div>
                   <div className="flex items-baseline gap-1.5">
                     <span className="text-2xl font-extrabold text-slate-900 dark:text-white">{b.students}</span>
-                    <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide">студ.</span>
+                    <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide">{t('courses.studentsShort', 'студ.')}</span>
                   </div>
                 </div>
-                {b.bid === '__none__' && <p className="text-[11px] text-amber-700 dark:text-amber-400 mt-2 font-medium">Группам не назначен филиал</p>}
+                {b.bid === '__none__' && <p className="text-[11px] text-amber-700 dark:text-amber-400 mt-2 font-medium">{t('courses.noBranchHint', 'Группам не назначен филиал')}</p>}
               </div>
             ))}
           </div>
@@ -332,11 +333,11 @@ const CourseDetailPage: React.FC = () => {
             <div className="p-2 bg-violet-100 text-violet-600 dark:bg-violet-900/30 dark:text-violet-400 rounded-xl">
               <Users className="w-5 h-5" />
             </div>
-            <h2 className="text-2xl font-bold text-slate-900 dark:text-white tracking-tight">Группы на курсе</h2>
+            <h2 className="text-2xl font-bold text-slate-900 dark:text-white tracking-tight">{t('courses.detail.groupsTitle', 'Группы на курсе')}</h2>
           </div>
           {isAdmin && (
             <button onClick={() => setShowGroupModal(true)} className="bg-slate-900 hover:bg-slate-800 text-white dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100 px-4 py-2.5 rounded-xl text-sm font-semibold flex items-center gap-2 transition-all shadow-sm active:scale-95">
-              <Plus className="w-4 h-4" /> Добавить группу
+              <Plus className="w-4 h-4" /> {t('courses.detail.addGroup', 'Добавить группу')}
             </button>
           )}
         </div>
@@ -344,11 +345,11 @@ const CourseDetailPage: React.FC = () => {
         {groups.length === 0 ? (
           <div className="bg-slate-50 dark:bg-slate-800/30 border border-slate-200 border-dashed dark:border-slate-700 rounded-3xl p-12 text-center">
             <LayoutGrid className="w-12 h-12 text-slate-300 dark:text-slate-600 mx-auto mb-4" />
-            <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-2">Нет привязанных групп</h3>
-            <p className="text-sm text-slate-500 dark:text-slate-400 max-w-sm mx-auto mb-6">Создайте группу и добавьте в неё студентов, чтобы они могли начать обучение на этом курсе.</p>
+            <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-2">{t('courses.detail.noGroups', 'Нет привязанных групп')}</h3>
+            <p className="text-sm text-slate-500 dark:text-slate-400 max-w-sm mx-auto mb-6">{t('courses.detail.noGroupsDesc', 'Создайте группу и добавьте в неё студентов, чтобы они могли начать обучение на этом курсе.')}</p>
             {isAdmin && (
               <button onClick={() => setShowGroupModal(true)} className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white px-5 py-2.5 rounded-xl font-semibold inline-flex items-center gap-2 hover:bg-slate-50 dark:hover:bg-slate-700 transition-all shadow-sm">
-                <Plus className="w-4 h-4" /> Добавить группу
+                <Plus className="w-4 h-4" /> {t('courses.detail.addGroup', 'Добавить группу')}
               </button>
             )}
           </div>
@@ -370,7 +371,7 @@ const CourseDetailPage: React.FC = () => {
                     </div>
                     <div>
                       <h4 className="font-bold text-slate-900 dark:text-white group-hover/item:text-violet-600 dark:group-hover/item:text-violet-400 transition-colors">{group.name}</h4>
-                      <p className="text-xs text-slate-500">{group.studentIds?.length || 0} учеников</p>
+                      <p className="text-xs text-slate-500">{t('teachers.detail.students', { count: group.studentIds?.length || 0 })}</p>
                     </div>
                   </div>
                   {!isStudent && (
@@ -383,18 +384,18 @@ const CourseDetailPage: React.FC = () => {
                   <div className="pt-3 border-t border-slate-100 dark:border-slate-700/50 flex items-center justify-between">
                     <div className="flex items-center gap-2 text-xs font-semibold text-blue-600 dark:text-blue-400">
                       <MessageSquare className="w-3.5 h-3.5" />
-                      {group.chatLinkTitle || 'Чат группы'}
+                      {group.chatLinkTitle || t('groups.detail.groupChat', 'Чат группы')}
                     </div>
                     {isStudent && !group.studentIds?.includes(profile?.uid as string) && (
                       <button 
                          onClick={(e) => { e.stopPropagation(); handleEnrollGroup(group.id); }}
                          className="px-3 py-1 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg text-xs font-bold transition-colors shadow-sm"
                       >
-                         Вступить
+                         {t('courses.detail.join', 'Вступить')}
                       </button>
                     )}
                     {isStudent && group.studentIds?.includes(profile?.uid as string) && (
-                      <span className="text-[10px] font-bold text-emerald-600 bg-emerald-100 px-2 py-0.5 rounded-md">Вы тут</span>
+                      <span className="text-[10px] font-bold text-emerald-600 bg-emerald-100 px-2 py-0.5 rounded-md">{t('courses.detail.youAreHere', 'Вы тут')}</span>
                     )}
                   </div>
                 )}
@@ -405,10 +406,10 @@ const CourseDetailPage: React.FC = () => {
                            onClick={(e) => { e.stopPropagation(); handleEnrollGroup(group.id); }}
                            className="px-3 py-1 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg text-xs font-bold transition-colors shadow-sm"
                         >
-                           Вступить
+                           {t('courses.detail.join', 'Вступить')}
                         </button>
                      ) : (
-                        <span className="text-[10px] font-bold text-emerald-600 bg-emerald-100 px-2 py-0.5 rounded-md">Вы тут</span>
+                        <span className="text-[10px] font-bold text-emerald-600 bg-emerald-100 px-2 py-0.5 rounded-md">{t('courses.detail.youAreHere', 'Вы тут')}</span>
                      )}
                    </div>
                 )}
@@ -422,7 +423,7 @@ const CourseDetailPage: React.FC = () => {
       {showEditModal && isAdmin && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => setShowEditModal(false)}>
           <div className="bg-white dark:bg-slate-800 rounded-3xl p-8 w-full max-w-lg shadow-2xl overflow-y-auto max-h-[90vh]" onClick={(e) => e.stopPropagation()}>
-            <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-6">Редактировать курс</h2>
+            <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-6">{t('courses.detail.editCourse', 'Редактировать курс')}</h2>
             <div className="space-y-4">
               <div>
                 <label className="text-xs font-semibold text-slate-500 mb-1 block">{t('common.name')}</label>
@@ -444,11 +445,11 @@ const CourseDetailPage: React.FC = () => {
                   </select>
                 </div>
                 <div>
-                  <label className="text-xs font-semibold text-slate-500 mb-1 block">Стоимость (с.)</label>
+                  <label className="text-xs font-semibold text-slate-500 mb-1 block">{t('courses.detail.priceLabel', 'Стоимость (с.)')}</label>
                   <input type="number" min="0" placeholder="0" value={editForm.price} onChange={(e) => setEditForm(f => ({ ...f, price: Number(e.target.value) }))} className="w-full bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-slate-900 focus:border-slate-900 dark:focus:ring-white outline-none" />
                 </div>
                 <div className="col-span-2">
-                  <label className="text-xs font-semibold text-slate-500 mb-1 block">Формат оплаты</label>
+                  <label className="text-xs font-semibold text-slate-500 mb-1 block">{t('courses.detail.paymentFormat', 'Формат оплаты')}</label>
                   <select value={editForm.paymentFormat} onChange={(e) => setEditForm(f => ({ ...f, paymentFormat: e.target.value as any }))} className="w-full bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-slate-900 focus:border-slate-900 dark:focus:ring-white outline-none appearance-none">
                     <option value="monthly">{t('common.monthly', 'Ежемесячно')}</option>
                     <option value="one-time">{t('common.oneTime', 'Единоразово')}</option>
@@ -458,7 +459,7 @@ const CourseDetailPage: React.FC = () => {
             </div>
             <div className="flex justify-end gap-3 mt-8">
               <button onClick={() => setShowEditModal(false)} className="px-5 py-2.5 rounded-xl text-sm font-semibold text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-700 transition-colors">{t('common.cancel')}</button>
-              <button onClick={handleUpdateCourse} disabled={saving || !editForm.title.trim()} className="px-5 py-2.5 rounded-xl text-sm font-semibold bg-slate-900 text-white hover:bg-slate-800 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100 transition-all disabled:opacity-50">{saving ? 'Сохранение...' : t('common.save')}</button>
+              <button onClick={handleUpdateCourse} disabled={saving || !editForm.title.trim()} className="px-5 py-2.5 rounded-xl text-sm font-semibold bg-slate-900 text-white hover:bg-slate-800 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100 transition-all disabled:opacity-50">{saving ? t('common.saving', 'Сохранение...') : t('common.save')}</button>
             </div>
           </div>
         </div>
@@ -468,37 +469,37 @@ const CourseDetailPage: React.FC = () => {
       {showGroupModal && isAdmin && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => setShowGroupModal(false)}>
           <div className="bg-white dark:bg-slate-800 rounded-3xl p-8 w-full max-w-md shadow-2xl" onClick={(e) => e.stopPropagation()}>
-            <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-2">Добавить группу</h2>
-            <p className="text-sm text-slate-500 dark:text-slate-400 mb-6 font-medium">Курс: <span className="text-slate-900 dark:text-white font-bold">{course.title}</span></p>
+            <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-2">{t('courses.detail.addGroup', 'Добавить группу')}</h2>
+            <p className="text-sm text-slate-500 dark:text-slate-400 mb-6 font-medium">{t('courses.detail.courseLabel', 'Курс:')} <span className="text-slate-900 dark:text-white font-bold">{course.title}</span></p>
             
             <div className="flex bg-slate-100 dark:bg-slate-900/50 p-1 rounded-xl mb-6">
               <button 
                 onClick={() => setAddMode('new')}
                 className={`flex-1 py-2 text-sm font-bold rounded-lg transition-colors ${addMode === 'new' ? 'bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-sm' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}
               >
-                Создать новую
+                {t('courses.detail.createNew', 'Создать новую')}
               </button>
               <button 
                 onClick={() => setAddMode('existing')}
                 className={`flex-1 py-2 text-sm font-bold rounded-lg transition-colors ${addMode === 'existing' ? 'bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-sm' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}
               >
-                Выбрать существующую
+                {t('courses.detail.pickExisting', 'Выбрать существующую')}
               </button>
             </div>
 
             {addMode === 'new' ? (
               <div className="space-y-4">
                 <div>
-                  <label className="text-xs font-semibold text-slate-500 mb-1 block">Название группы *</label>
-                  <input placeholder="Например: Фронтенд 2024" value={groupForm.name} onChange={(e) => setGroupForm(f => ({ ...f, name: e.target.value }))} className="w-full bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-slate-900 dark:focus:ring-white outline-none" autoFocus />
+                  <label className="text-xs font-semibold text-slate-500 mb-1 block">{t('groups.detail.groupName', 'Название группы')} *</label>
+                  <input placeholder={t('courses.detail.groupNamePh', 'Например: Фронтенд 2024')} value={groupForm.name} onChange={(e) => setGroupForm(f => ({ ...f, name: e.target.value }))} className="w-full bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-slate-900 dark:focus:ring-white outline-none" autoFocus />
                 </div>
                 <div className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-200 dark:border-slate-700">
                   <div className="flex items-center gap-2 mb-3">
                     <MessageSquare className="w-4 h-4 text-slate-500" />
-                    <span className="text-sm font-bold text-slate-900 dark:text-white">Ссылка на чат</span>
+                    <span className="text-sm font-bold text-slate-900 dark:text-white">{t('groups.list.chatLink', 'Ссылка на чат')}</span>
                   </div>
                   <div className="space-y-3">
-                    <input placeholder="Название чата (напр. Telegram)" value={groupForm.chatLinkTitle} onChange={(e) => setGroupForm(f => ({ ...f, chatLinkTitle: e.target.value }))} className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-slate-900 outline-none" />
+                    <input placeholder={t('courses.detail.chatTitlePh', 'Название чата (напр. Telegram)')} value={groupForm.chatLinkTitle} onChange={(e) => setGroupForm(f => ({ ...f, chatLinkTitle: e.target.value }))} className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-slate-900 outline-none" />
                     <input placeholder="https://t.me/..." value={groupForm.chatLinkUrl} onChange={(e) => setGroupForm(f => ({ ...f, chatLinkUrl: e.target.value }))} className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-slate-900 outline-none" />
                   </div>
                 </div>
@@ -506,15 +507,15 @@ const CourseDetailPage: React.FC = () => {
             ) : (
               <div className="space-y-4">
                 <div>
-                  <label className="text-xs font-semibold text-slate-500 mb-1 block">Выберите группу</label>
+                  <label className="text-xs font-semibold text-slate-500 mb-1 block">{t('courses.detail.selectGroup', 'Выберите группу')}</label>
                   <select 
                     value={existingGroupId} 
                     onChange={e => setExistingGroupId(e.target.value)}
                     className="w-full bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-slate-900 dark:focus:ring-white outline-none"
                   >
-                    <option value="">-- Выберите группу --</option>
+                    <option value="">{t('courses.detail.selectGroupOpt', '-- Выберите группу --')}</option>
                     {allGroups.filter(g => g.courseId !== course.id).map(g => (
-                      <option key={g.id} value={g.id}>{g.name} {g.courseId ? `(${g.courseName})` : '(Без курса)'}</option>
+                      <option key={g.id} value={g.id}>{g.name} {g.courseId ? `(${g.courseName})` : `(${t('teachers.detail.noCourse', 'Без курса')})`}</option>
                     ))}
                   </select>
                 </div>
@@ -538,7 +539,7 @@ const CourseDetailPage: React.FC = () => {
                 disabled={saving || (addMode === 'new' ? !groupForm.name.trim() : !existingGroupId)} 
                 className="px-5 py-2.5 rounded-xl text-sm font-semibold bg-slate-900 text-white hover:bg-slate-800 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100 transition-all disabled:opacity-50"
               >
-                {saving ? 'Сохранение...' : (addMode === 'new' ? 'Создать группу' : 'Привязать группу')}
+                {saving ? t('common.saving', 'Сохранение...') : (addMode === 'new' ? t('groups.list.create', 'Создать группу') : t('courses.detail.linkGroup', 'Привязать группу'))}
               </button>
             </div>
           </div>

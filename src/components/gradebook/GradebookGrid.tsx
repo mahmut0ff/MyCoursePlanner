@@ -2,6 +2,7 @@ import React, { useRef, useEffect, useState } from 'react';
 import GradeCell from './GradeCell';
 import VoiceGradeDictator from './VoiceGradeDictator';
 import { Mic } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import type { GradeEntry, GradeSchema, UserProfile } from '../../types';
 import { entryNumericValue } from '../../lib/gradePresets';
 
@@ -22,6 +23,7 @@ interface GradebookGridProps {
 }
 
 const GradebookGrid: React.FC<GradebookGridProps> = ({ students, columns, grades, schema, onGradeChange, syncStatus = {}, readOnly = false }) => {
+  const { t } = useTranslation();
   const gridRef = useRef<HTMLDivElement>(null);
   const [voiceTarget, setVoiceTarget] = useState<ColumnDef | null>(null);
 
@@ -99,23 +101,23 @@ const GradebookGrid: React.FC<GradebookGridProps> = ({ students, columns, grades
         <thead className="sticky top-0 z-30">
           <tr>
             <th className="sticky left-0 bg-slate-50/95 dark:bg-slate-900/95 backdrop-blur-md px-5 py-3 font-semibold text-slate-700 dark:text-slate-300 min-w-[240px] max-w-[280px] border-b border-r border-slate-200 dark:border-slate-800 shadow-[2px_0_10px_-4px_rgba(0,0,0,0.1)]">
-              Студент
+              {t('journal.ui.colStudent', 'Студент')}
             </th>
             {/* Average Score Column */}
             <th className="bg-slate-50/95 dark:bg-slate-900/95 backdrop-blur-md px-4 py-3 font-semibold text-primary-600 dark:text-primary-400 min-w-[100px] border-b border-r border-slate-200 dark:border-slate-800 text-center">
-              Сер. Балл
+              {t('gradebook.ui.avgScore', 'Ср. балл')}
             </th>
             {columns.map((col) => (
               <th key={col.id} className="group relative bg-slate-50/95 dark:bg-slate-900/95 backdrop-blur-md px-4 py-3 font-semibold text-slate-700 dark:text-slate-300 w-32 min-w-[128px] max-w-[160px] text-center border-b border-r border-slate-200 dark:border-slate-800 last:border-r-0">
                 <div className="truncate mx-auto pr-6" title={col.title}>
                   {col.title}
                 </div>
-                <div className="text-[10px] uppercase font-bold text-slate-400 dark:text-slate-500 mt-1">{col.type}</div>
+                <div className="text-[10px] uppercase font-bold text-slate-400 dark:text-slate-500 mt-1">{col.type === 'date' ? t('gradebook.ui.colDate', 'Дата') : col.type === 'lesson' ? t('gradebook.ui.colLesson', 'Урок') : t('gradebook.ui.colAssignment', 'Задание')}</div>
                 {!readOnly && (
                   <button
                     onClick={() => setVoiceTarget(col)}
                     className="absolute top-2 right-1.5 opacity-0 group-hover:opacity-100 p-1.5 rounded-lg bg-indigo-50 dark:bg-indigo-900/30 text-indigo-500 hover:bg-indigo-100 dark:hover:bg-indigo-800/50 transition-all shadow-sm"
-                    title="Голосовое выставление оценок"
+                    title={t('gradebook.ui.voiceTitle', 'Голосовое выставление оценок')}
                   >
                     <Mic className="w-4 h-4" />
                   </button>
@@ -199,7 +201,7 @@ const GradebookGrid: React.FC<GradebookGridProps> = ({ students, columns, grades
           {students.length === 0 && (
             <tr>
               <td colSpan={columns.length + 2} className="px-4 py-12 text-center text-slate-500 dark:text-slate-400">
-                В этой группе или курсе нет студентов.
+                {t('gradebook.ui.noStudents', 'В этой группе или курсе нет студентов.')}
               </td>
             </tr>
           )}

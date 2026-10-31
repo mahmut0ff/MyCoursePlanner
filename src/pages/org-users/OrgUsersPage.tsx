@@ -7,6 +7,8 @@ import type { UserProfile } from '../../types';
 import { PinnedBadgesDisplay } from '../../lib/badges';
 import EmptyState from '../../components/ui/EmptyState';
 import { ListSkeleton } from '../../components/ui/Skeleton';
+import { intlLocale } from '../../lib/locale';
+import i18n from '../../i18n';
 
 const ROLE_COLORS: Record<string, string> = {
   admin: 'bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-400',
@@ -15,16 +17,16 @@ const ROLE_COLORS: Record<string, string> = {
   student: 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300'
 };
 
-const ROLE_LABELS: Record<string, string> = {
-  admin: 'Админ',
-  manager: 'Менеджер',
-  teacher: 'Преподаватель',
-  student: 'Студент',
-  super_admin: 'Супер админ'
-};
-
 const OrgUsersPage: React.FC = () => {
   const { t } = useTranslation();
+  const ROLE_LABELS: Record<string, string> = {
+    owner: t('orgUsers.role.owner', 'Владелец'),
+    admin: t('orgUsers.role.admin', 'Админ'),
+    manager: t('orgUsers.role.manager', 'Менеджер'),
+    teacher: t('orgUsers.role.teacher', 'Преподаватель'),
+    student: t('orgUsers.role.student', 'Студент'),
+    super_admin: t('orgUsers.role.super_admin', 'Супер админ'),
+  };
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -44,7 +46,7 @@ const OrgUsersPage: React.FC = () => {
   const [creating, setCreating] = useState(false);
 
   const CREATE_ROLE_LABELS: Record<string, string> = {
-    admin: 'Директор', manager: 'Менеджер', teacher: 'Преподаватель', student: 'Студент',
+    admin: t('orgUsers.role.director', 'Директор'), manager: t('orgUsers.role.manager', 'Менеджер'), teacher: t('orgUsers.role.teacher', 'Преподаватель'), student: t('orgUsers.role.student', 'Студент'),
   };
   const toggleCreateRole = (r: string) =>
     setCreateRoles((prev) => prev.includes(r) ? prev.filter((x) => x !== r) : [...prev, r]);
@@ -55,10 +57,10 @@ const OrgUsersPage: React.FC = () => {
   };
 
   const handleCreate = async () => {
-    if (!createForm.displayName.trim()) { setError('Укажите имя'); return; }
-    if (!createForm.username.trim() && !createForm.email.trim()) { setError('Укажите логин или email'); return; }
-    if (createForm.password.length < 6) { setError('Пароль минимум 6 символов'); return; }
-    if (createRoles.length === 0) { setError('Выберите хотя бы одну роль'); return; }
+    if (!createForm.displayName.trim()) { setError(t('orgUsers.err.name', 'Укажите имя')); return; }
+    if (!createForm.username.trim() && !createForm.email.trim()) { setError(t('orgUsers.err.loginOrEmail', 'Укажите логин или email')); return; }
+    if (createForm.password.length < 6) { setError(t('orgUsers.err.password', 'Пароль минимум 6 символов')); return; }
+    if (createRoles.length === 0) { setError(t('orgUsers.err.roles', 'Выберите хотя бы одну роль')); return; }
     setCreating(true); setError('');
     try {
       await orgCreateUser({
@@ -71,15 +73,15 @@ const OrgUsersPage: React.FC = () => {
       });
       setShowCreate(false);
       resetCreate();
-      setSuccess('Пользователь создан!');
+      setSuccess(t('orgUsers.created', 'Пользователь создан!'));
       setTimeout(() => setSuccess(''), 3000);
       load();
     } catch (e: any) {
-      setError(e.message || 'Ошибка');
+      setError(e.message || t('orgUsers.err.generic', 'Ошибка'));
     } finally { setCreating(false); }
   };
 
-  const load = () => { setLoading(true); orgGetUsers().then(setUsers).catch((e) => setError(e.message || 'Error')).finally(() => setLoading(false)); };
+  const load = () => { setLoading(true); orgGetUsers().then(setUsers).catch((e) => setError(e.message || i18n.t('orgUsers.err.generic', 'Ошибка'))).finally(() => setLoading(false)); };
   useEffect(load, []);
 
   const filtered = users.filter((u) => {
@@ -92,8 +94,8 @@ const OrgUsersPage: React.FC = () => {
 
   const handleInvite = async () => {
     if (!inviteEmail.trim()) return; setSaving(true); setError('');
-    try { await orgInviteUser(inviteEmail, inviteRole); setShowInvite(false); setInviteEmail(''); setSuccess('Приглашение отправлено!'); setTimeout(() => setSuccess(''), 3000); load(); }
-    catch (e: any) { setError(e.message || 'Error'); } finally { setSaving(false); }
+    try { await orgInviteUser(inviteEmail, inviteRole); setShowInvite(false); setInviteEmail(''); setSuccess(t('orgUsers.invited', 'Приглашение отправлено!')); setTimeout(() => setSuccess(''), 3000); load(); }
+    catch (e: any) { setError(e.message || t('orgUsers.err.generic', 'Ошибка')); } finally { setSaving(false); }
   };
 
   if (loading) return <ListSkeleton rows={6} />;
@@ -113,7 +115,7 @@ const OrgUsersPage: React.FC = () => {
           </button>
           <button onClick={() => { resetCreate(); setError(''); setShowCreate(true); }} className="flex-1 sm:flex-none bg-slate-100 hover:bg-slate-200 text-slate-700 dark:bg-slate-700 dark:text-slate-200 dark:hover:bg-slate-600 px-4 py-2.5 rounded-xl text-sm font-semibold flex justify-center items-center gap-2 transition-all shrink-0">
             <UserPlus className="w-4 h-4" />
-            Создать пользователя
+            {t('orgUsers.createUser', 'Создать пользователя')}
           </button>
           <button onClick={() => setShowInvite(true)} className="flex-1 sm:flex-none bg-slate-900 hover:bg-slate-800 text-white dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100 px-4 py-2.5 rounded-xl text-sm font-semibold flex justify-center items-center gap-2 transition-all shadow-sm hover:shadow-md shrink-0">
             <Plus className="w-4 h-4" />
@@ -152,8 +154,8 @@ const OrgUsersPage: React.FC = () => {
       {filtered.length === 0 ? (
         <EmptyState
           icon={Users}
-          title={search || roleFilter !== 'all' ? 'Пользователи не найдены' : 'Пользователей пока нет'}
-          description={search || roleFilter !== 'all' ? 'Попробуйте изменить фильтры поиска' : 'Пригласите первого пользователя'}
+          title={search || roleFilter !== 'all' ? t('orgUsers.notFound', 'Пользователи не найдены') : t('orgUsers.empty', 'Пользователей пока нет')}
+          description={search || roleFilter !== 'all' ? t('orgUsers.tryFilters', 'Попробуйте изменить фильтры поиска') : t('orgUsers.inviteFirst', 'Пригласите первого пользователя')}
           actionLabel={t('org.users.invite')}
           onAction={() => setShowInvite(true)}
         />
@@ -206,7 +208,7 @@ const OrgUsersPage: React.FC = () => {
 
               {/* Date */}
               <div className="hidden md:block text-[11px] text-slate-400">
-                {u.createdAt ? new Date(u.createdAt).toLocaleDateString() : '—'}
+                {u.createdAt ? new Date(u.createdAt).toLocaleDateString(intlLocale()) : '—'}
               </div>
             </div>
           ))}
@@ -218,7 +220,7 @@ const OrgUsersPage: React.FC = () => {
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => setShowInvite(false)}>
           <div className="bg-white dark:bg-slate-800 rounded-3xl p-8 w-full max-w-md shadow-2xl" onClick={(e) => e.stopPropagation()}>
             <h2 className="text-xl font-bold text-slate-900 dark:text-white mb-1">{t('org.users.invite')}</h2>
-            <p className="text-xs text-slate-500 mb-6">Пригласите пользователя по email и выберите роль</p>
+            <p className="text-xs text-slate-500 mb-6">{t('orgUsers.inviteHint', 'Пригласите пользователя по email и выберите роль')}</p>
             <div className="space-y-4">
               <div>
                 <label className="text-xs font-semibold text-slate-500 mb-1 block">Email</label>
@@ -247,34 +249,34 @@ const OrgUsersPage: React.FC = () => {
       {showCreate && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => { if (!creating) setShowCreate(false); }}>
           <div className="bg-white dark:bg-slate-800 rounded-3xl p-8 w-full max-w-md shadow-2xl max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
-            <h2 className="text-xl font-bold text-slate-900 dark:text-white mb-1 flex items-center gap-2"><UserPlus className="w-5 h-5" /> Создать пользователя</h2>
-            <p className="text-xs text-slate-500 mb-6">Создаёт аккаунт с логином и паролем. Выберите одну или несколько ролей — при нескольких пользователь сможет переключаться между ними.</p>
+            <h2 className="text-xl font-bold text-slate-900 dark:text-white mb-1 flex items-center gap-2"><UserPlus className="w-5 h-5" /> {t('orgUsers.createUser', 'Создать пользователя')}</h2>
+            <p className="text-xs text-slate-500 mb-6">{t('orgUsers.createHint', 'Создаёт аккаунт с логином и паролем. Выберите одну или несколько ролей — при нескольких пользователь сможет переключаться между ними.')}</p>
             <div className="space-y-4">
               <div>
-                <label className="text-xs font-semibold text-slate-500 mb-1 block">Имя *</label>
+                <label className="text-xs font-semibold text-slate-500 mb-1 block">{t('orgUsers.nameRequired', 'Имя *')}</label>
                 <input type="text" value={createForm.displayName} onChange={(e) => setCreateForm(f => ({ ...f, displayName: e.target.value }))}
                   className="w-full bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-slate-900 focus:border-slate-900 dark:focus:ring-white outline-none" autoFocus />
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="text-xs font-semibold text-slate-500 mb-1 block">Логин</label>
+                  <label className="text-xs font-semibold text-slate-500 mb-1 block">{t('orgUsers.login', 'Логин')}</label>
                   <input type="text" value={createForm.username} onChange={(e) => setCreateForm(f => ({ ...f, username: e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, '') }))}
                     placeholder="john_doe" className="w-full bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-slate-900 focus:border-slate-900 dark:focus:ring-white outline-none" />
                 </div>
                 <div>
-                  <label className="text-xs font-semibold text-slate-500 mb-1 block">Email <span className="text-slate-400 font-normal">(необяз.)</span></label>
+                  <label className="text-xs font-semibold text-slate-500 mb-1 block">Email <span className="text-slate-400 font-normal">{t('orgUsers.optionalShort', '(необяз.)')}</span></label>
                   <input type="email" value={createForm.email} onChange={(e) => setCreateForm(f => ({ ...f, email: e.target.value }))}
                     placeholder="user@example.com" className="w-full bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-slate-900 focus:border-slate-900 dark:focus:ring-white outline-none" />
                 </div>
               </div>
-              <p className="text-[11px] text-slate-400 -mt-2">Укажите логин или email — по нему пользователь будет входить.</p>
+              <p className="text-[11px] text-slate-400 -mt-2">{t('orgUsers.loginHint', 'Укажите логин или email — по нему пользователь будет входить.')}</p>
               <div>
-                <label className="text-xs font-semibold text-slate-500 mb-1 block">Пароль *</label>
+                <label className="text-xs font-semibold text-slate-500 mb-1 block">{t('orgUsers.passwordRequired', 'Пароль *')}</label>
                 <input type="text" value={createForm.password} onChange={(e) => setCreateForm(f => ({ ...f, password: e.target.value }))}
-                  placeholder="минимум 6 символов" className="w-full bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 text-sm font-mono focus:ring-2 focus:ring-slate-900 focus:border-slate-900 dark:focus:ring-white outline-none" />
+                  placeholder={t('orgUsers.passwordPlaceholder', 'минимум 6 символов')} className="w-full bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 text-sm font-mono focus:ring-2 focus:ring-slate-900 focus:border-slate-900 dark:focus:ring-white outline-none" />
               </div>
               <div>
-                <label className="text-xs font-semibold text-slate-500 mb-2 block">Роли *</label>
+                <label className="text-xs font-semibold text-slate-500 mb-2 block">{t('orgUsers.rolesRequired', 'Роли *')}</label>
                 <div className="flex gap-2 flex-wrap">
                   {(['admin', 'manager', 'teacher', 'student'] as const).map((r) => {
                     const selected = createRoles.includes(r);
@@ -293,7 +295,7 @@ const OrgUsersPage: React.FC = () => {
               <button onClick={() => setShowCreate(false)} disabled={creating} className="px-5 py-2.5 rounded-xl text-sm font-semibold text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800 transition-colors disabled:opacity-50">{t('common.cancel')}</button>
               <button onClick={handleCreate} disabled={creating || !createForm.displayName.trim() || createRoles.length === 0}
                 className="px-5 py-2.5 rounded-xl text-sm font-semibold bg-slate-900 text-white hover:bg-slate-800 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100 transition-all disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center gap-2">
-                {creating ? <><Loader2 className="w-4 h-4 animate-spin" /> Создание...</> : <>Создать</>}
+                {creating ? <><Loader2 className="w-4 h-4 animate-spin" /> {t('orgUsers.creating', 'Создание...')}</> : <>{t('orgUsers.create', 'Создать')}</>}
               </button>
             </div>
           </div>

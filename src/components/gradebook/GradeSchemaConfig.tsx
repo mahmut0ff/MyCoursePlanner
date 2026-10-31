@@ -60,11 +60,11 @@ const GradeSchemaConfig: React.FC<GradeSchemaConfigProps> = ({ courseId, courseT
   const previewHint = (): string => {
     if (!numeric)
       return choices.length
-        ? `Преподаватель выбирает отметку из списка — вписать что-то другое нельзя. В среднем балле отметка считается по числу под ней (из ${maxVal}).`
-        : 'Символы не заданы — ячейка останется со свободным вводом. Добавьте варианты ниже, чтобы преподаватель выбирал из списка.';
-    if (rangeError) return 'Пока диапазон некорректен, предпросмотр недоступен.';
+        ? t('gradebook.ui.schema.hintChoices', 'Преподаватель выбирает отметку из списка — вписать что-то другое нельзя. В среднем балле отметка считается по числу под ней (из {{max}}).', { max: maxVal })
+        : t('gradebook.ui.schema.hintNoChoices', 'Символы не заданы — ячейка останется со свободным вводом. Добавьте варианты ниже, чтобы преподаватель выбирал из списка.');
+    if (rangeError) return t('gradebook.ui.schema.hintRangeError', 'Пока диапазон некорректен, предпросмотр недоступен.');
     const unit = gradingType === 'percent' ? '%' : '';
-    return `Преподаватель вводит число от ${minVal}${unit} до ${maxVal}${unit}; выход за границы журнал сам подтянет к ближайшей. Сдано — от ${passThreshold}${unit} и выше.`;
+    return t('gradebook.ui.schema.hintNumeric', 'Преподаватель вводит число от {{min}} до {{max}}; выход за границы журнал сам подтянет к ближайшей. Сдано — от {{pass}} и выше.', { min: `${minVal}${unit}`, max: `${maxVal}${unit}`, pass: `${passThreshold}${unit}` });
   };
 
   const applyPreset = (p: GradePreset) => {
@@ -143,9 +143,8 @@ const GradeSchemaConfig: React.FC<GradeSchemaConfigProps> = ({ courseId, courseT
             <Info className="w-4 h-4 text-primary-600 dark:text-primary-400 shrink-0 mt-0.5" />
             <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
               {courseTitle
-                ? <>Шкала действует для курса <span className="font-semibold text-slate-900 dark:text-white">«{courseTitle}»</span> — </>
-                : <>Шкала действует для выбранного курса — </>}
-              и в «Оценках», и в журнале у преподавателя: там будут тот же максимум и те же допустимые значения.
+                ? t('gradebook.ui.schema.scopeCourse', 'Шкала действует для курса «{{course}}» — и в «Оценках», и в журнале у преподавателя: там будут тот же максимум и те же допустимые значения.', { course: courseTitle })
+                : t('gradebook.ui.schema.scopeSelected', 'Шкала действует для выбранного курса — и в «Оценках», и в журнале у преподавателя: там будут тот же максимум и те же допустимые значения.')}
             </p>
           </div>
 
@@ -227,7 +226,7 @@ const GradeSchemaConfig: React.FC<GradeSchemaConfigProps> = ({ courseId, courseT
                 {rangeError && (
                   <p className="col-span-2 flex items-center gap-1.5 text-[11px] font-medium text-red-600 dark:text-red-400">
                     <AlertCircle className="w-3.5 h-3.5 shrink-0" />
-                    Максимум должен быть больше минимума.
+                    {t('gradebook.ui.schema.rangeError', 'Максимум должен быть больше минимума.')}
                   </p>
                 )}
               </div>
@@ -247,11 +246,11 @@ const GradeSchemaConfig: React.FC<GradeSchemaConfigProps> = ({ courseId, courseT
                 {thresholdError ? (
                   <p className="flex items-center gap-1.5 text-[11px] font-medium text-red-600 dark:text-red-400 mt-1">
                     <AlertCircle className="w-3.5 h-3.5 shrink-0" />
-                    Порог должен быть между {minVal} и {maxVal}.
+                    {t('gradebook.ui.schema.thresholdError', 'Порог должен быть между {{min}} и {{max}}.', { min: minVal, max: maxVal })}
                   </p>
                 ) : (
                   <p className="text-[10px] text-slate-500 mt-1">
-                    Для баллов и процентов — минимальное значение. Для букв — индекс успешности.
+                    {t('gradebook.ui.schema.thresholdHint', 'Для баллов и процентов — минимальное значение. Для букв — индекс успешности.')}
                   </p>
                 )}
               </div>
@@ -265,13 +264,13 @@ const GradeSchemaConfig: React.FC<GradeSchemaConfigProps> = ({ courseId, courseT
                     : t('gradebook.labels', 'Символы и диапазоны')}
                 </label>
                 <p className="text-[10px] text-slate-500 mb-3">
-                  Именно из этого списка преподаватель выбирает отметку в журнале.
+                  {t('gradebook.ui.schema.choicesHint', 'Именно из этого списка преподаватель выбирает отметку в журнале.')}
                 </p>
                 {Object.keys(labels).length === 0 ? (
                   <p className="text-xs text-slate-500 italic bg-slate-50 dark:bg-slate-900 p-3 rounded-lg text-center">
                     {gradingType === 'pass_fail'
-                      ? 'Свои варианты не заданы — используются «Зачёт» и «Незачёт».'
-                      : 'Нет заданных символов.'}
+                      ? t('gradebook.ui.schema.noCustomPassFail', 'Свои варианты не заданы — используются «Зачёт» и «Незачёт».')
+                      : t('gradebook.ui.schema.noSymbols', 'Нет заданных символов.')}
                   </p>
                 ) : (
                   <div className="space-y-2">
@@ -326,7 +325,7 @@ const GradeSchemaConfig: React.FC<GradeSchemaConfigProps> = ({ courseId, courseT
               </span>
               {numeric && !rangeError && (
                 <span className="text-[10px] bg-primary-100 text-primary-700 dark:bg-primary-900/30 dark:text-primary-400 px-1.5 py-0.5 rounded font-semibold shrink-0">
-                  М: {maxVal}
+                  {t('journal.ui.maxShort', 'М: {{max}}', { max: maxVal })}
                 </span>
               )}
             </div>
@@ -352,7 +351,7 @@ const GradeSchemaConfig: React.FC<GradeSchemaConfigProps> = ({ courseId, courseT
                     );
                   })
                 ) : (
-                  <span className="text-xs text-slate-400 italic">Нет допустимых значений</span>
+                  <span className="text-xs text-slate-400 italic">{t('gradebook.ui.schema.noValues', 'Нет допустимых значений')}</span>
                 )}
               </div>
               <p className="text-[11px] text-slate-500 leading-relaxed">{previewHint()}</p>

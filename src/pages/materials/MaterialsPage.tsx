@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
+import i18n from '../../i18n';
 import { orgGetMaterials, orgCreateMaterial, orgDeleteMaterial, apiAIGenerateJob, apiTransferRequest, apiGetPersonalLessons } from '../../lib/api';
 import { uploadFile } from '../../services/storage.service';
 import { useAuth } from '../../contexts/AuthContext';
@@ -40,6 +41,9 @@ const formatBytes = (bytes?: number) => {
   return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
 };
 
+// Старые материалы сохранены с категорией 'General' (или 'Общее') — показываем на языке интерфейса.
+const categoryLabel = (c?: string) => (c === 'General' || c === 'Общее' ? i18n.t('materials.categoryGeneral', 'Общее') : c);
+
 const MaterialsPage: React.FC = () => {
   const { t } = useTranslation();
   const { profile } = useAuth();
@@ -69,7 +73,7 @@ const MaterialsPage: React.FC = () => {
   const [isTransferring, setIsTransferring] = useState(false);
 
   const [form, setForm] = useState({ 
-    title: '', url: '', type: 'document', category: 'General', 
+    title: '', url: '', type: 'document', category: t('materials.categoryGeneral', 'Общее'), 
     description: '', tags: [] as string[],
     mimeType: '', sizeBytes: 0, file: null as File | null
   });
@@ -78,7 +82,7 @@ const MaterialsPage: React.FC = () => {
     setLoading(true); 
     orgGetMaterials()
       .then(setMaterials)
-      .catch((e: any) => toast.error(e.message || 'Error'))
+      .catch((e: any) => toast.error(e.message || t('common.error', 'Ошибка')))
       .finally(() => setLoading(false)); 
   };
   
@@ -149,7 +153,7 @@ const MaterialsPage: React.FC = () => {
         const path = `materials/${orgId}/${Date.now()}_${form.file.name.replace(/[^a-zA-Z0-9.-]/g, '_')}`;
         downloadUrl = await uploadFile(path, form.file);
       } else if (!form.url.trim()) {
-        toast.error('URL or File is required');
+        toast.error(t('materials.urlOrFileRequired', 'Укажите ссылку или выберите файл'));
         setIsUploading(false);
         return;
       }
@@ -168,10 +172,10 @@ const MaterialsPage: React.FC = () => {
       const c = await orgCreateMaterial(payload) as Material;
       setMaterials((p) => [c, ...p]);
       setShowCreate(false);
-      setForm({ title: '', url: '', type: 'link', category: 'General', description: '', tags: [], mimeType: '', sizeBytes: 0, file: null });
+      setForm({ title: '', url: '', type: 'link', category: t('materials.categoryGeneral', 'Общее'), description: '', tags: [], mimeType: '', sizeBytes: 0, file: null });
       toast.success(t('materials.created', 'Материал успешно добавлен'));
     } catch (e: any) {
-      toast.error(e.message || 'Error');
+      toast.error(e.message || t('common.error', 'Ошибка'));
     } finally {
       setIsUploading(false);
     }
@@ -198,7 +202,7 @@ const MaterialsPage: React.FC = () => {
       const pLessons = await apiGetPersonalLessons();
       setPersonalLessons(pLessons);
     } catch (err: any) {
-       toast.error(err.message || 'Ошибка загрузки уроков');
+       toast.error(err.message || t('materials.lessonsLoadFailed', 'Ошибка загрузки уроков'));
     } finally {
       setLoadingLessons(false);
     }
@@ -218,7 +222,7 @@ const MaterialsPage: React.FC = () => {
        toast.success(t('materials.transferRequested', 'Запрос на копирование отправлен администратору'));
        setTransferringMaterial(null);
     } catch (err: any) {
-       toast.error(err.message || 'Ошибка при запросе');
+       toast.error(err.message || t('materials.requestFailed', 'Ошибка при запросе'));
     } finally {
        setIsTransferring(false);
     }
@@ -240,18 +244,22 @@ const MaterialsPage: React.FC = () => {
           <div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-lg">
             <button 
               onClick={() => setViewMode('grid')}
+              title={t('materials.viewGrid', 'Плиткой')}
+              aria-label={t('materials.viewGrid', 'Плиткой')}
               className={`p-1.5 rounded-md transition-all ${viewMode === 'grid' ? 'bg-white dark:bg-slate-700 shadow-sm text-primary-500' : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-300'}`}
             >
               <LayoutGrid className="w-4 h-4" />
             </button>
             <button 
               onClick={() => setViewMode('list')}
+              title={t('materials.viewList', 'Списком')}
+              aria-label={t('materials.viewList', 'Списком')}
               className={`p-1.5 rounded-md transition-all ${viewMode === 'list' ? 'bg-white dark:bg-slate-700 shadow-sm text-primary-500' : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-300'}`}
             >
               <List className="w-4 h-4" />
             </button>
           </div>
-          <button onClick={load} className="p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg transition-colors">
+          <button onClick={load} title={t('common.refresh', 'Обновить')} aria-label={t('common.refresh', 'Обновить')} className="p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg transition-colors">
             <RefreshCw className="w-4 h-4" />
           </button>
           {canUploadMaterials && (
@@ -277,7 +285,7 @@ const MaterialsPage: React.FC = () => {
         {categories.length > 0 && (
           <select className="bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-primary-500/20">
             <option value="all">{t('common.allCategories', 'Все категории')}</option>
-            {categories.map(c => <option key={c} value={c}>{c}</option>)}
+            {categories.map(c => <option key={c} value={c}>{categoryLabel(c)}</option>)}
           </select>
         )}
       </div>
@@ -309,7 +317,7 @@ const MaterialsPage: React.FC = () => {
                 {/* Format Badge */}
                 <div className="absolute top-4 right-4 flex items-center gap-2">
                   <span className={`text-[10px] uppercase font-bold px-2 py-1 rounded-md border ${colors} backdrop-blur-md`}>
-                    {m.type}
+                    {['link', 'video', 'document', 'image', 'audio', 'file'].includes(m.type) ? t(`materials.badge.${m.type}`) : m.type}
                   </span>
                 </div>
 
@@ -329,26 +337,26 @@ const MaterialsPage: React.FC = () => {
 
                 <div className="mt-auto pt-4 flex flex-wrap gap-1.5 items-center justify-between border-t border-slate-50 dark:border-slate-700/50">
                   <span className="text-[11px] font-medium text-slate-500 dark:text-slate-400 truncate max-w-[60%]">
-                    {m.category}
+                    {categoryLabel(m.category)}
                   </span>
                   {m.sizeBytes ? <span className="text-[10px] text-slate-400">{formatBytes(m.sizeBytes)}</span> : null}
                 </div>
 
                 {/* Quick actions overlay */}
                 <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
-                  <button onClick={(e) => { e.stopPropagation(); setViewMaterial(m); }} className="p-2 bg-white text-slate-900 hover:text-primary-500 rounded-full shadow-lg transition-transform hover:scale-110 tooltip" data-tip="Просмотр">
+                  <button onClick={(e) => { e.stopPropagation(); setViewMaterial(m); }} className="p-2 bg-white text-slate-900 hover:text-primary-500 rounded-full shadow-lg transition-transform hover:scale-110 tooltip" data-tip={t('materials.view', 'Просмотр')} aria-label={t('materials.view', 'Просмотр')}>
                     <Eye className="w-4 h-4" />
                   </button>
-                  <a href={getViewerUrl(m.url, m.mimeType || 'unknown', m.title) || m.url} target="_blank" rel="noreferrer" onClick={e => e.stopPropagation()} className="p-2 bg-white text-slate-900 hover:text-emerald-500 rounded-full shadow-lg transition-transform hover:scale-110 tooltip" data-tip="Внешняя ссылка">
+                  <a href={getViewerUrl(m.url, m.mimeType || 'unknown', m.title) || m.url} target="_blank" rel="noreferrer" onClick={e => e.stopPropagation()} className="p-2 bg-white text-slate-900 hover:text-emerald-500 rounded-full shadow-lg transition-transform hover:scale-110 tooltip" data-tip={t('materials.externalLink', 'Внешняя ссылка')} aria-label={t('materials.externalLink', 'Внешняя ссылка')}>
                     <ExternalLink className="w-4 h-4" />
                   </a>
                   {profile?.activeOrgId && (
-                    <button onClick={(e) => openTransferModal(e, m)} className="p-2 bg-white text-slate-900 hover:text-indigo-500 rounded-full shadow-lg transition-transform hover:scale-110 tooltip" data-tip="Добавить в мой урок">
+                    <button onClick={(e) => openTransferModal(e, m)} className="p-2 bg-white text-slate-900 hover:text-indigo-500 rounded-full shadow-lg transition-transform hover:scale-110 tooltip" data-tip={t('materials.addToMyLesson', 'Добавить в мой урок')} aria-label={t('materials.addToMyLesson', 'Добавить в мой урок')}>
                       <FolderPlus className="w-4 h-4" />
                     </button>
                   )}
                   {canDeleteMaterials && (
-                    <button onClick={(e) => handleDelete(m.id, e)} className="p-2 bg-red-500 text-white hover:bg-red-600 rounded-full shadow-lg transition-transform hover:scale-110 tooltip" data-tip="Удалить">
+                    <button onClick={(e) => handleDelete(m.id, e)} className="p-2 bg-red-500 text-white hover:bg-red-600 rounded-full shadow-lg transition-transform hover:scale-110 tooltip" data-tip={t('common.delete', 'Удалить')} aria-label={t('common.delete', 'Удалить')}>
                       <Trash2 className="w-4 h-4" />
                     </button>
                   )}
@@ -383,7 +391,7 @@ const MaterialsPage: React.FC = () => {
                     </div>
                   </td>
                   <td className="px-4 py-3 hidden sm:table-cell text-sm text-slate-600 dark:text-slate-400">
-                    {m.category}
+                    {categoryLabel(m.category)}
                   </td>
                   <td className="px-4 py-3 hidden md:table-cell text-sm text-slate-500">
                     {formatBytes(m.sizeBytes)}
@@ -391,15 +399,15 @@ const MaterialsPage: React.FC = () => {
                   <td className="px-4 py-3 text-right">
                     <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                       {profile?.activeOrgId && (
-                        <button onClick={(e) => openTransferModal(e, m)} className="p-1.5 text-slate-400 hover:text-indigo-500 hover:bg-slate-100 dark:hover:bg-slate-700 rounded transition-colors tooltip" data-tip="Добавить в мой урок">
+                        <button onClick={(e) => openTransferModal(e, m)} className="p-1.5 text-slate-400 hover:text-indigo-500 hover:bg-slate-100 dark:hover:bg-slate-700 rounded transition-colors tooltip" data-tip={t('materials.addToMyLesson', 'Добавить в мой урок')} aria-label={t('materials.addToMyLesson', 'Добавить в мой урок')}>
                           <FolderPlus className="w-4 h-4" />
                         </button>
                       )}
-                      <a href={getViewerUrl(m.url, m.mimeType || 'unknown', m.title) || m.url} target="_blank" rel="noreferrer" onClick={e => e.stopPropagation()} className="p-1.5 text-slate-400 hover:text-emerald-500 hover:bg-slate-100 dark:hover:bg-slate-700 rounded transition-colors tooltip" data-tip="Внешняя ссылка">
+                      <a href={getViewerUrl(m.url, m.mimeType || 'unknown', m.title) || m.url} target="_blank" rel="noreferrer" onClick={e => e.stopPropagation()} className="p-1.5 text-slate-400 hover:text-emerald-500 hover:bg-slate-100 dark:hover:bg-slate-700 rounded transition-colors tooltip" data-tip={t('materials.externalLink', 'Внешняя ссылка')} aria-label={t('materials.externalLink', 'Внешняя ссылка')}>
                         <ExternalLink className="w-4 h-4" />
                       </a>
                       {canDeleteMaterials && (
-                        <button onClick={(e) => handleDelete(m.id, e)} className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded transition-colors tooltip" data-tip="Удалить">
+                        <button onClick={(e) => handleDelete(m.id, e)} className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded transition-colors tooltip" data-tip={t('common.delete', 'Удалить')} aria-label={t('common.delete', 'Удалить')}>
                           <Trash2 className="w-4 h-4" />
                         </button>
                       )}
@@ -451,8 +459,8 @@ const MaterialsPage: React.FC = () => {
                     <div className="w-12 h-12 bg-slate-100 dark:bg-slate-800 text-slate-400 group-hover:text-primary-500 group-hover:bg-primary-50 dark:group-hover:bg-primary-900/30 rounded-full flex items-center justify-center transition-colors mb-2">
                       <UploadCloud className="w-6 h-6" />
                     </div>
-                    <p className="text-sm font-medium text-slate-900 dark:text-white">Нажмите для загрузки файла</p>
-                    <p className="text-xs text-slate-500">или просто перетащите его сюда (PDF, DOCX, MP4, PNG)</p>
+                    <p className="text-sm font-medium text-slate-900 dark:text-white">{t('materials.dropzoneTitle', 'Нажмите для загрузки файла')}</p>
+                    <p className="text-xs text-slate-500">{t('materials.dropzoneHint', 'или просто перетащите его сюда (PDF, DOCX, MP4, PNG)')}</p>
                   </div>
                 )}
               </div>
@@ -461,7 +469,7 @@ const MaterialsPage: React.FC = () => {
               {!form.file && (
                 <div className="flex items-center gap-3">
                   <div className="h-px bg-slate-200 dark:bg-slate-700 flex-1" />
-                  <span className="text-xs text-slate-400 font-medium uppercase">или вставьте ссылку</span>
+                  <span className="text-xs text-slate-400 font-medium uppercase">{t('materials.orPasteLink', 'или вставьте ссылку')}</span>
                   <div className="h-px bg-slate-200 dark:bg-slate-700 flex-1" />
                 </div>
               )}
@@ -482,14 +490,14 @@ const MaterialsPage: React.FC = () => {
                 </div>
                 <div>
                   <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1.5">{t('materials.category', 'Категория / Предмет')}</label>
-                  <input placeholder="Например: Математика, Документы" value={form.category} onChange={(e) => setForm(f => ({ ...f, category: e.target.value }))}
+                  <input placeholder={t('materials.categoryPlaceholder', 'Например: Математика, Документы')} value={form.category} onChange={(e) => setForm(f => ({ ...f, category: e.target.value }))}
                     className="w-full bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-sm outline-none focus:border-primary-500 focus:ring-1 focus:ring-primary-500 text-slate-900 dark:text-white transition-all" />
                 </div>
               </div>
 
               <div>
                 <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1.5">{t('common.description', 'Краткое описание (Опционально)')}</label>
-                <textarea placeholder="О чём этот материал..." value={form.description} onChange={(e) => setForm(f => ({ ...f, description: e.target.value }))} rows={2}
+                <textarea placeholder={t('materials.descriptionPlaceholder', 'О чём этот материал...')} value={form.description} onChange={(e) => setForm(f => ({ ...f, description: e.target.value }))} rows={2}
                   className="w-full bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-sm outline-none focus:border-primary-500 focus:ring-1 focus:ring-primary-500 text-slate-900 dark:text-white transition-all resize-none" />
               </div>
 
@@ -523,7 +531,7 @@ const MaterialsPage: React.FC = () => {
                     className="relative overflow-hidden group px-6 py-2.5 bg-gradient-to-r from-violet-500 to-fuchsia-500 text-white rounded-xl text-sm font-bold flex items-center justify-center gap-2 transition-all shadow-md shadow-violet-500/25 shrink-0"
                  >
                    {isProcessingAI ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> : <Sparkles className="w-4 h-4" />}
-                   <span>Заполнить ИИ</span>
+                   <span>{t('materials.fillWithAI', 'Заполнить ИИ')}</span>
                  </button>
               )}
 
@@ -535,7 +543,7 @@ const MaterialsPage: React.FC = () => {
                 {isUploading ? (
                   <>
                     <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                    <span>Загрузка...</span>
+                    <span>{t('common.loading', 'Загрузка...')}</span>
                   </>
                 ) : t('common.save', 'Опубликовать файл')}
               </button>
@@ -557,17 +565,17 @@ const MaterialsPage: React.FC = () => {
            <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={() => !isTransferring && setTransferringMaterial(null)} />
            <div className="relative bg-white dark:bg-slate-800 rounded-2xl shadow-xl w-full max-w-md p-6 max-h-[90vh] flex flex-col">
               <div className="flex justify-between items-center mb-4">
-                 <h2 className="text-xl font-bold dark:text-white">Добавить в личный урок</h2>
+                 <h2 className="text-xl font-bold dark:text-white">{t('materials.transferTitle', 'Добавить в личный урок')}</h2>
                  <button onClick={() => !isTransferring && setTransferringMaterial(null)} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-full transition-colors">
                    <X className="w-5 h-5 dark:text-slate-400" />
                  </button>
               </div>
-              <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">Выберите свой личный урок, в который вы хотите перенести материал "{transferringMaterial.title}". Данная операция требует одобрения администратора.</p>
+              <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">{t('materials.transferHint', 'Выберите свой личный урок, в который вы хотите перенести материал «{{title}}». Данная операция требует одобрения администратора.', { title: transferringMaterial.title })}</p>
               
               {loadingLessons ? (
                  <div className="flex justify-center p-8"><span className="w-8 h-8 border-4 border-slate-400 border-t-transparent rounded-full animate-spin" /></div>
               ) : personalLessons.length === 0 ? (
-                 <div className="text-center p-6 text-slate-500 text-sm">У вас пока нет личных уроков.</div>
+                 <div className="text-center p-6 text-slate-500 text-sm">{t('materials.noPersonalLessons', 'У вас пока нет личных уроков.')}</div>
               ) : (
                  <div className="flex-1 overflow-y-auto min-h-0 space-y-2 mb-6 pr-2">
                     {personalLessons.map(l => (
@@ -584,13 +592,13 @@ const MaterialsPage: React.FC = () => {
               )}
               
               <div className="flex justify-end gap-3 pt-4 border-t border-slate-100 dark:border-slate-700 mt-auto">
-                 <button disabled={isTransferring} onClick={() => setTransferringMaterial(null)} className="btn-ghost">Отмена</button>
+                 <button disabled={isTransferring} onClick={() => setTransferringMaterial(null)} className="btn-ghost">{t('common.cancel', 'Отмена')}</button>
                  <button 
                     disabled={!selectedLessonId || isTransferring} 
                     onClick={handleTransfer}
                     className="btn-primary"
                  >
-                    {isTransferring ? 'Отправка...' : 'Отправить запрос'}
+                    {isTransferring ? t('materials.sending', 'Отправка...') : t('materials.sendRequest', 'Отправить запрос')}
                  </button>
               </div>
            </div>

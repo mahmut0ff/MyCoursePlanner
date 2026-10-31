@@ -1,5 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
+import { intlLocale } from '../../lib/locale';
 import { apiGetParentPortalData } from '../../lib/api';
 import { Trophy, Flame, Play, BookOpen, Star, AlertCircle, Calendar, Send, ChevronRight } from 'lucide-react';
 import { PinnedBadgesDisplay } from '../../lib/badges';
@@ -39,6 +41,7 @@ interface ParentPortalData {
 }
 
 const ParentPortalPage: React.FC = () => {
+  const { t } = useTranslation();
   const { token } = useParams<{ token: string }>();
   const navigate = useNavigate();
   const [data, setData] = useState<ParentPortalData | null>(null);
@@ -47,7 +50,7 @@ const ParentPortalPage: React.FC = () => {
 
   useEffect(() => {
     if (!token) {
-      setError('Неверная ссылка');
+      setError(t('parent.invalidLink', 'Неверная ссылка'));
       setLoading(false);
       return;
     }
@@ -57,10 +60,10 @@ const ParentPortalPage: React.FC = () => {
         setData(res);
       })
       .catch((err) => {
-        setError(err.message || 'Ссылка недействительна или доступ закрыт.');
+        setError(err.message || t('parent.linkExpired', 'Ссылка недействительна или доступ закрыт.'));
       })
       .finally(() => setLoading(false));
-  }, [token]);
+  }, [token, t]);
 
   if (loading) {
     return (
@@ -77,13 +80,13 @@ const ParentPortalPage: React.FC = () => {
           <div className="w-16 h-16 bg-red-100 dark:bg-red-900/30 text-red-500 rounded-full flex items-center justify-center mx-auto mb-4">
             <AlertCircle className="w-8 h-8" />
           </div>
-          <h1 className="text-xl font-bold text-slate-900 dark:text-white mb-2">Доступ закрыт</h1>
+          <h1 className="text-xl font-bold text-slate-900 dark:text-white mb-2">{t('parent.accessClosed', 'Доступ закрыт')}</h1>
           <p className="text-slate-500 dark:text-slate-400 mb-6">{error}</p>
           <button 
             onClick={() => navigate('/')}
             className="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-medium transition-colors"
           >
-            На главную
+            {t('parent.goHome', 'На главную')}
           </button>
         </div>
       </div>
@@ -132,7 +135,7 @@ const ParentPortalPage: React.FC = () => {
           
           <div className="flex-1 text-center sm:text-left pb-2">
             <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 rounded-full text-xs font-semibold uppercase tracking-wide mb-2">
-              Портал для родителей
+              {t('parent.portal', 'Портал для родителей')}
             </div>
             <h1 className="text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight">{student.displayName}</h1>
             {student.pinnedBadges && student.pinnedBadges.length > 0 && (
@@ -153,7 +156,7 @@ const ParentPortalPage: React.FC = () => {
                 <Star className="w-6 h-6 fill-current" />
               </div>
               <div>
-                <p className="text-sm font-medium text-slate-500 dark:text-slate-400">Всего очков (XP)</p>
+                <p className="text-sm font-medium text-slate-500 dark:text-slate-400">{t('parent.totalXp', 'Всего очков (XP)')}</p>
                 <div className="flex items-baseline gap-1">
                   <span className="text-3xl font-bold tracking-tight text-slate-900 dark:text-white">{stats.totalXp}</span>
                   <span className="text-sm text-amber-500 font-medium pb-1">XP</span>
@@ -170,10 +173,10 @@ const ParentPortalPage: React.FC = () => {
                 <Flame className="w-6 h-6 fill-current" />
               </div>
               <div>
-                <p className="text-sm font-medium text-slate-500 dark:text-slate-400">Серия дней</p>
+                <p className="text-sm font-medium text-slate-500 dark:text-slate-400">{t('parent.streak', 'Серия дней')}</p>
                 <div className="flex items-baseline gap-1">
                   <span className="text-3xl font-bold tracking-tight text-slate-900 dark:text-white">{stats.currentStreak}</span>
-                  <span className="text-sm text-slate-500 font-medium pb-1">дней</span>
+                  <span className="text-sm text-slate-500 font-medium pb-1">{t('parent.days', 'дней')}</span>
                 </div>
               </div>
             </div>
@@ -199,7 +202,7 @@ const ParentPortalPage: React.FC = () => {
                     <BookOpen className="w-6 h-6" />
                   </div>
                   <div>
-                    <p className="text-sm font-medium text-slate-500 dark:text-slate-400">Средний балл</p>
+                    <p className="text-sm font-medium text-slate-500 dark:text-slate-400">{t('parent.avgScore', 'Средний балл')}</p>
                     {hasAvg ? (
                       <div className="flex items-baseline gap-1">
                         <span className="text-3xl font-bold tracking-tight text-slate-900 dark:text-white">{avg}</span>
@@ -208,7 +211,7 @@ const ParentPortalPage: React.FC = () => {
                     ) : (
                       <div className="flex items-baseline gap-1">
                         <span className="text-3xl font-bold tracking-tight text-slate-400">—</span>
-                        <span className="text-[13px] font-medium text-slate-400 mb-0.5">пока нет оценок</span>
+                        <span className="text-[13px] font-medium text-slate-400 mb-0.5">{t('parent.noGrades', 'пока нет оценок')}</span>
                       </div>
                     )}
                   </div>
@@ -231,8 +234,8 @@ const ParentPortalPage: React.FC = () => {
                 <Send className="w-6 h-6" />
               </div>
               <div className="flex-1 min-w-0">
-                <h3 className="font-bold text-base sm:text-lg">Подключить Telegram</h3>
-                <p className="text-sm text-white/80">Уведомления о посещаемости, оценках и оплате — прямо в Telegram</p>
+                <h3 className="font-bold text-base sm:text-lg">{t('parent.connectTelegram', 'Подключить Telegram')}</h3>
+                <p className="text-sm text-white/80">{t('parent.telegramHint', 'Уведомления о посещаемости, оценках и оплате — прямо в Telegram')}</p>
               </div>
               <ChevronRight className="w-5 h-5 shrink-0 opacity-80 group-hover:translate-x-0.5 transition-transform" />
             </div>
@@ -252,7 +255,7 @@ const ParentPortalPage: React.FC = () => {
             <div className="w-8 h-8 rounded-lg bg-indigo-50 dark:bg-indigo-900/20 text-indigo-500 flex items-center justify-center">
               <Play className="w-4 h-4 ml-0.5" />
             </div>
-            <h2 className="text-lg font-bold text-slate-900 dark:text-white">Недавние успехи</h2>
+            <h2 className="text-lg font-bold text-slate-900 dark:text-white">{t('parent.recent', 'Недавние успехи')}</h2>
           </div>
           
           {recentResults.length === 0 ? (
@@ -260,8 +263,8 @@ const ParentPortalPage: React.FC = () => {
               <div className="w-16 h-16 bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center mx-auto mb-4">
                 <Calendar className="w-8 h-8 text-slate-300 dark:text-slate-600" />
               </div>
-              <p className="text-slate-500 font-medium">Пока нет завершенных заданий</p>
-              <p className="text-sm text-slate-400 mt-1">Как только студент пройдет тестирование, оно появится здесь.</p>
+              <p className="text-slate-500 font-medium">{t('parent.noResults', 'Пока нет завершенных заданий')}</p>
+              <p className="text-sm text-slate-400 mt-1">{t('parent.noResultsText', 'Как только студент пройдет тестирование, оно появится здесь.')}</p>
             </div>
           ) : (
             <div className="divide-y divide-slate-100 dark:divide-slate-700/50">
@@ -270,9 +273,9 @@ const ParentPortalPage: React.FC = () => {
                   <div>
                     <h3 className="text-base font-semibold text-slate-900 dark:text-white">{result.examTitle}</h3>
                     <div className="flex items-center gap-2 mt-1">
-                      <span className="text-sm text-slate-500">{new Date(result.submittedAt).toLocaleDateString('ru-RU')}</span>
+                      <span className="text-sm text-slate-500">{new Date(result.submittedAt).toLocaleDateString(intlLocale())}</span>
                       <span className="w-1 h-1 bg-slate-300 dark:bg-slate-600 rounded-full"></span>
-                      <span className="text-sm text-slate-500 uppercase">{result.type === 'homework' ? 'Домашка' : result.type === 'quiz' ? 'Квиз' : 'Экзамен'}</span>
+                      <span className="text-sm text-slate-500 uppercase">{result.type === 'homework' ? t('parent.type.homework', 'Домашка') : result.type === 'quiz' ? t('parent.type.quiz', 'Квиз') : t('parent.type.exam', 'Экзамен')}</span>
                     </div>
                   </div>
                   
@@ -289,21 +292,21 @@ const ParentPortalPage: React.FC = () => {
                             {result.score} <span className="text-sm text-slate-400 font-bold">/ {result.maxPoints}</span>
                           </span>
                           <span className="text-xs font-bold uppercase tracking-wider text-indigo-500">
-                            Проверено
+                            {t('parent.checked', 'Проверено')}
                           </span>
                         </>
                       ) : result.type === 'quiz' ? (
                         <>
                           <span className="block text-2xl font-black tracking-tight text-slate-900 dark:text-white">{result.percentage}%</span>
                           <span className="text-xs font-bold uppercase tracking-wider text-indigo-500">
-                            {result.correct ?? 0}/{result.total ?? 0} верных
+                            {t('parent.correct', '{{correct}}/{{total}} верных', { correct: result.correct ?? 0, total: result.total ?? 0 })}
                           </span>
                         </>
                       ) : (
                         <>
                           <span className="block text-2xl font-black tracking-tight text-slate-900 dark:text-white">{result.percentage}%</span>
                           <span className={`text-xs font-bold uppercase tracking-wider ${result.passed ? 'text-emerald-500' : 'text-red-500'}`}>
-                            {result.passed ? 'Сдано' : 'Не сдано'}
+                            {result.passed ? t('parent.passed', 'Сдано') : t('parent.failed', 'Не сдано')}
                           </span>
                         </>
                       )}

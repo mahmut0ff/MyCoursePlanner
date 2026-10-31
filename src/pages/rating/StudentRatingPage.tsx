@@ -326,7 +326,7 @@ const StudentRatingPage: React.FC = () => {
               iconClass="text-amber-500 bg-amber-50 dark:bg-amber-900/30"
               label={t('rating.leader', 'Лидер')}
               value={totals.leader ? totals.leader.student.name : '—'}
-              sub={totals.leader ? t('rating.scorePoints', { score: totals.leader.metrics.score, defaultValue: '{{score}} баллов' }) : undefined}
+              sub={totals.leader ? t('rating.points', { count: totals.leader.metrics.score }) : undefined}
             />
           </div>
 

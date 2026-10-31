@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import type { GradeEntry, GradeSchema, GradeStatus } from '../../types';
 import { Loader2, Check, Eraser } from 'lucide-react';
 import { schemaChoices, choiceNumericValue } from '../../lib/gradePresets';
+import { useTranslation } from 'react-i18next';
 
 interface GradeCellProps {
   studentId: string;
@@ -24,6 +25,7 @@ const statusColors: Record<GradeStatus, string> = {
 };
 
 const GradeCell: React.FC<GradeCellProps> = ({ studentId, itemId, value, schema, onChange, tabIndex, isSyncing, readOnly = false }) => {
+  const { t } = useTranslation();
   const [editing, setEditing] = useState(false);
   const [tempVal, setTempVal] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
@@ -350,7 +352,7 @@ const GradeCell: React.FC<GradeCellProps> = ({ studentId, itemId, value, schema,
               className="w-full flex items-center gap-2 px-2.5 py-2 mt-1 border-t border-slate-100 dark:border-slate-700 text-slate-500 hover:text-red-600 dark:hover:text-red-400 transition-colors"
             >
               <Eraser className="w-3.5 h-3.5 shrink-0" />
-              <span className="text-xs font-medium">Очистить</span>
+              <span className="text-xs font-medium">{t('common.clear', 'Очистить')}</span>
             </button>
           )}
         </div>

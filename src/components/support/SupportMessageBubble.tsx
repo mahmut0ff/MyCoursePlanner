@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { CornerUpLeft, Trash2, FileText, Download } from 'lucide-react';
 import type { SupportMessage, SupportSide, MessageAttachment } from '../../types';
+import { intlLocale } from '../../lib/locale';
 
 interface Props {
   message: SupportMessage;
@@ -17,7 +18,7 @@ interface Props {
 function formatTime(iso: string) {
   const d = new Date(iso);
   if (isNaN(d.getTime())) return '';
-  return d.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+  return d.toLocaleTimeString(intlLocale(), { hour: '2-digit', minute: '2-digit' });
 }
 
 function formatSize(bytes: number) {

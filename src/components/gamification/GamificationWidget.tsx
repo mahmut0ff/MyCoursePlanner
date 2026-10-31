@@ -86,10 +86,10 @@ const GamificationWidget: React.FC = () => {
               <div
                 key={b.id}
                 className="flex items-center gap-1.5 bg-slate-100 dark:bg-slate-700 rounded-full px-3 py-1.5 text-xs"
-                title={b.description}
+                title={t(`gamification.badgesList.${b.id}.description`, b.description)}
               >
                 <span>{b.icon}</span>
-                <span className="font-medium text-slate-700 dark:text-slate-300">{t(`gamification.badges.${b.id}.title`, b.title)}</span>
+                <span className="font-medium text-slate-700 dark:text-slate-300">{t(`gamification.badgesList.${b.id}.title`, b.title)}</span>
               </div>
             ))}
           </div>

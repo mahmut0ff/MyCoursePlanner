@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useOrg } from '../../contexts/OrgContext';
 import { apiAIExplainMistakes } from '../../lib/api';
 import type { QuestionResult } from '../../types';
@@ -11,6 +12,7 @@ interface ExplainItem { question: string; why: string; tip: string }
  * Renders only when the org has AI and there are incorrect answers.
  */
 const MistakeExplainer: React.FC<{ questionResults: QuestionResult[] }> = ({ questionResults }) => {
+  const { t } = useTranslation();
   const { orgData } = useOrg();
   const aiEnabled = orgData?.planId === 'professional' || orgData?.planId === 'enterprise';
   const [loading, setLoading] = useState(false);
@@ -36,7 +38,7 @@ const MistakeExplainer: React.FC<{ questionResults: QuestionResult[] }> = ({ que
       setSummary(d.summary || '');
       setItems(Array.isArray(d.items) ? d.items : []);
     } catch (err: any) {
-      setError(err?.message || 'Не удалось разобрать ошибки');
+      setError(err?.message || t('ai.mistakes.error', 'Не удалось разобрать ошибки'));
     } finally {
       setLoading(false);
     }
@@ -48,17 +50,17 @@ const MistakeExplainer: React.FC<{ questionResults: QuestionResult[] }> = ({ que
         <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-violet-500 to-indigo-600 flex items-center justify-center">
           <Sparkles className="w-4 h-4 text-white" />
         </div>
-        <h2 className="font-semibold text-slate-900 dark:text-white">Разбор ошибок с AI</h2>
+        <h2 className="font-semibold text-slate-900 dark:text-white">{t('ai.mistakes.title', 'Разбор ошибок с AI')}</h2>
       </div>
 
       {!items && (
         <div className="text-center py-2">
           <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">
-            AI объяснит {incorrect.length} {incorrect.length === 1 ? 'ошибку' : 'ошибок'} простыми словами и подскажет, как не ошибаться в следующий раз.
+            {t('ai.mistakes.intro', { count: incorrect.length })}
           </p>
           <button onClick={explain} disabled={loading} className="btn-primary inline-flex items-center gap-2">
             {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
-            {loading ? 'Разбираю…' : 'Разобрать мои ошибки'}
+            {loading ? t('ai.mistakes.loading', 'Разбираю…') : t('ai.mistakes.cta', 'Разобрать мои ошибки')}
           </button>
           {error && <p className="text-sm text-red-500 mt-3">{error}</p>}
         </div>
@@ -73,7 +75,7 @@ const MistakeExplainer: React.FC<{ questionResults: QuestionResult[] }> = ({ que
             </div>
           )}
           {items.length === 0 ? (
-            <p className="text-sm text-slate-500 text-center py-2">Отличная работа — серьёзных ошибок не найдено!</p>
+            <p className="text-sm text-slate-500 text-center py-2">{t('ai.mistakes.none', 'Отличная работа — серьёзных ошибок не найдено!')}</p>
           ) : (
             items.map((it, i) => (
               <div key={i} className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-4">

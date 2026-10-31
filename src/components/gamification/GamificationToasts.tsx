@@ -1,5 +1,6 @@
 import toast from 'react-hot-toast';
 import confetti from 'canvas-confetti';
+import i18n from 'i18next';
 
 export const showGamificationToasts = (newBadges: any[], leveledUp?: boolean) => {
   if (leveledUp) {
@@ -18,9 +19,9 @@ export const showGamificationToasts = (newBadges: any[], leveledUp?: boolean) =>
             ⭐
          </div>
          <div>
-            <p className="text-[10px] sm:text-xs uppercase tracking-wider font-bold text-violet-200 mb-0.5">Повышение!</p>
-            <h3 className="font-extrabold text-lg leading-tight">Новый уровень!</h3>
-            <p className="text-white/80 text-xs mt-1">Вы достигли нового уровня. Так держать!</p>
+            <p className="text-[10px] sm:text-xs uppercase tracking-wider font-bold text-violet-200 mb-0.5">{i18n.t('gamification.levelUpKicker', 'Повышение!')}</p>
+            <h3 className="font-extrabold text-lg leading-tight">{i18n.t('gamification.levelUp', 'Новый уровень!')}</h3>
+            <p className="text-white/80 text-xs mt-1">{i18n.t('gamification.levelUpText', 'Вы достигли нового уровня. Так держать!')}</p>
          </div>
       </div>
     ), { duration: 6000, position: 'top-center' });
@@ -44,9 +45,9 @@ export const showGamificationToasts = (newBadges: any[], leveledUp?: boolean) =>
               {badge.icon}
             </div>
             <div>
-              <p className="text-[10px] sm:text-xs uppercase tracking-wider font-extrabold text-emerald-600 dark:text-emerald-400 mb-0.5">Новое достижение!</p>
-              <h4 className="font-extrabold text-slate-900 dark:text-white text-base leading-tight mb-1">{badge.title}</h4>
-              <p className="text-xs text-slate-600 dark:text-slate-300 line-clamp-2 leading-snug">{badge.description}</p>
+              <p className="text-[10px] sm:text-xs uppercase tracking-wider font-extrabold text-emerald-600 dark:text-emerald-400 mb-0.5">{i18n.t('gamification.newAchievement', 'Новое достижение!')}</p>
+              <h4 className="font-extrabold text-slate-900 dark:text-white text-base leading-tight mb-1">{i18n.t(`gamification.badgesList.${badge.id}.title`, { defaultValue: String(badge.title ?? '') })}</h4>
+              <p className="text-xs text-slate-600 dark:text-slate-300 line-clamp-2 leading-snug">{i18n.t(`gamification.badgesList.${badge.id}.description`, { defaultValue: String(badge.description ?? '') })}</p>
             </div>
           </div>
         ), { duration: 6000, position: 'bottom-center' });

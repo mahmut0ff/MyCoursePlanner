@@ -3,20 +3,22 @@ import type { Editor } from '@tiptap/react';
 import { X, Sparkles, Loader2, Wand2, Check } from 'lucide-react';
 import { apiAIGenerate } from '../../lib/api';
 import toast from 'react-hot-toast';
+import { useTranslation } from 'react-i18next';
 
-interface QuickAction { id: string; label: string; instruction: string }
+interface QuickAction { id: string; labelKey: string; label: string; instruction: string }
 
 const ACTIONS: QuickAction[] = [
-  { id: 'improve', label: 'Улучшить', instruction: 'Улучши и сделай текст более понятным и структурированным, сохрани смысл.' },
-  { id: 'simplify', label: 'Упростить', instruction: 'Перепиши проще, для начинающих, короткими предложениями.' },
-  { id: 'expand', label: 'Расширить', instruction: 'Расширь и дополни деталями, примерами и пояснениями.' },
-  { id: 'summary', label: 'Конспект', instruction: 'Сделай краткий конспект в виде маркированного списка ключевых тезисов.' },
-  { id: 'examples', label: 'Примеры', instruction: 'Добавь 2-3 наглядных примера по теме.' },
-  { id: 'quiz', label: 'Вопросы для проверки', instruction: 'Составь 5 вопросов для самопроверки по этому материалу с краткими ответами.' },
-  { id: 'translate_en', label: 'Перевести на English', instruction: 'Translate this lesson content into English, keeping the formatting.' },
+  { id: 'improve', labelKey: 'ai.lessonCopilot.actImprove', label: 'Улучшить', instruction: 'Улучши и сделай текст более понятным и структурированным, сохрани смысл.' },
+  { id: 'simplify', labelKey: 'ai.lessonCopilot.actSimplify', label: 'Упростить', instruction: 'Перепиши проще, для начинающих, короткими предложениями.' },
+  { id: 'expand', labelKey: 'ai.lessonCopilot.actExpand', label: 'Расширить', instruction: 'Расширь и дополни деталями, примерами и пояснениями.' },
+  { id: 'summary', labelKey: 'ai.lessonCopilot.actSummary', label: 'Конспект', instruction: 'Сделай краткий конспект в виде маркированного списка ключевых тезисов.' },
+  { id: 'examples', labelKey: 'ai.lessonCopilot.actExamples', label: 'Примеры', instruction: 'Добавь 2-3 наглядных примера по теме.' },
+  { id: 'quiz', labelKey: 'ai.lessonCopilot.actQuiz', label: 'Вопросы для проверки', instruction: 'Составь 5 вопросов для самопроверки по этому материалу с краткими ответами.' },
+  { id: 'translate_en', labelKey: 'ai.lessonCopilot.actTranslateEn', label: 'Перевести на English', instruction: 'Translate this lesson content into English, keeping the formatting.' },
 ];
 
 const LessonCoPilotModal: React.FC<{ open: boolean; onClose: () => void; editor: Editor | null }> = ({ open, onClose, editor }) => {
+  const { t } = useTranslation();
   const [instruction, setInstruction] = useState('');
   const [loading, setLoading] = useState(false);
   const [resultHtml, setResultHtml] = useState('');
@@ -34,7 +36,7 @@ const LessonCoPilotModal: React.FC<{ open: boolean; onClose: () => void; editor:
 
   const run = async (instr: string) => {
     const text = instr.trim();
-    if (!text) { toast.error('Опишите, что сделать'); return; }
+    if (!text) { toast.error(t('ai.lessonCopilot.describeTask', 'Опишите, что сделать')); return; }
     const { text: source } = getSource();
     setLoading(true);
     setResultHtml('');
@@ -46,10 +48,10 @@ const LessonCoPilotModal: React.FC<{ open: boolean; onClose: () => void; editor:
       if (typeof html === 'string' && html.trim()) {
         setResultHtml(html);
       } else {
-        toast.error('Не удалось сгенерировать. Попробуйте ещё раз.');
+        toast.error(t('ai.generateFailedRetry', 'Не удалось сгенерировать. Попробуйте ещё раз.'));
       }
     } catch (err: any) {
-      toast.error(err?.message || 'Ошибка генерации');
+      toast.error(err?.message || t('ai.generateError', 'Ошибка генерации'));
     } finally {
       setLoading(false);
     }
@@ -61,7 +63,7 @@ const LessonCoPilotModal: React.FC<{ open: boolean; onClose: () => void; editor:
     if (replace) chain.deleteSelection();
     chain.insertContent(resultHtml).run();
     setInserted(true);
-    toast.success(replace ? 'Заменено' : 'Вставлено в урок');
+    toast.success(replace ? t('ai.lessonCopilot.replaced', 'Заменено') : t('ai.lessonCopilot.inserted', 'Вставлено в урок'));
   };
 
   const { hasSelection } = getSource();
@@ -75,13 +77,13 @@ const LessonCoPilotModal: React.FC<{ open: boolean; onClose: () => void; editor:
               <Wand2 className="w-5 h-5" />
             </div>
             <div>
-              <h2 className="text-lg font-bold text-slate-900 dark:text-white">AI-помощник урока</h2>
+              <h2 className="text-lg font-bold text-slate-900 dark:text-white">{t('ai.lessonCopilot.title', 'AI-помощник урока')}</h2>
               <p className="text-xs text-slate-500 dark:text-slate-400">
-                {hasSelection ? 'Работаю с выделенным фрагментом' : 'Работаю со всем текстом урока'}
+                {hasSelection ? t('ai.lessonCopilot.scopeSelection', 'Работаю с выделенным фрагментом') : t('ai.lessonCopilot.scopeAll', 'Работаю со всем текстом урока')}
               </p>
             </div>
           </div>
-          <button onClick={onClose} className="p-2 -mr-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 rounded-lg transition-colors">
+          <button onClick={onClose} aria-label={t('common.close', 'Закрыть')} className="p-2 -mr-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 rounded-lg transition-colors">
             <X className="w-5 h-5" />
           </button>
         </div>
@@ -95,7 +97,7 @@ const LessonCoPilotModal: React.FC<{ open: boolean; onClose: () => void; editor:
                 disabled={loading}
                 className="px-3 py-1.5 rounded-lg text-xs font-medium border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:border-primary-300 hover:text-primary-600 dark:hover:text-primary-400 transition-colors disabled:opacity-50"
               >
-                {a.label}
+                {t(a.labelKey, a.label)}
               </button>
             ))}
           </div>
@@ -104,18 +106,18 @@ const LessonCoPilotModal: React.FC<{ open: boolean; onClose: () => void; editor:
             <input
               value={instruction}
               onChange={(e) => setInstruction(e.target.value)}
-              placeholder="Или своя инструкция: «добавь раздел про…», «сделай таблицу…»"
+              placeholder={t('ai.lessonCopilot.customPh', 'Или своя инструкция: «добавь раздел про…», «сделай таблицу…»')}
               className="input flex-1"
             />
             <button type="submit" disabled={loading} className="btn-primary flex items-center gap-1.5 shrink-0">
               {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
-              <span className="hidden sm:inline">Создать</span>
+              <span className="hidden sm:inline">{t('common.create', 'Создать')}</span>
             </button>
           </form>
 
           {loading && (
             <div className="flex items-center gap-2 text-sm text-slate-400 py-4">
-              <Loader2 className="w-4 h-4 animate-spin" /> Генерирую…
+              <Loader2 className="w-4 h-4 animate-spin" /> {t('ai.generating', 'Генерирую…')}
             </div>
           )}
 
@@ -126,11 +128,11 @@ const LessonCoPilotModal: React.FC<{ open: boolean; onClose: () => void; editor:
               </div>
               <div className="flex items-center justify-end gap-2">
                 {hasSelection && (
-                  <button onClick={() => insert(true)} className="btn-secondary text-sm">Заменить выделенное</button>
+                  <button onClick={() => insert(true)} className="btn-secondary text-sm">{t('ai.lessonCopilot.replaceSelection', 'Заменить выделенное')}</button>
                 )}
                 <button onClick={() => insert(false)} className="btn-primary text-sm flex items-center gap-1.5">
                   {inserted ? <Check className="w-4 h-4" /> : <Sparkles className="w-4 h-4" />}
-                  Вставить в урок
+                  {t('ai.lessonCopilot.insert', 'Вставить в урок')}
                 </button>
               </div>
             </div>

@@ -4,6 +4,7 @@
  */
 import { auth } from './firebase';
 import i18next from 'i18next';
+import { trLabel } from './trLabel';
 import type {
   MessageAttachment, SupportMessage, SupportThreadStatus, SupportUserInfo,
   CompensationRule, PayComponent, PayrollPeriod, PayrollLine, PayrollPayout,
@@ -189,7 +190,7 @@ export const apiSubmitDemoRequest = async (data: { orgName: string; ownerName: s
   });
   if (!res.ok) {
     const err = await res.json().catch(() => ({ error: res.statusText }));
-    throw new Error(err.error || `Request failed: ${res.status}`);
+    throw new Error(err.error || trLabel('common.requestFailed', 'Ошибка запроса: {{status}}', { status: res.status }));
   }
   return res.json();
 };
@@ -262,7 +263,7 @@ export const apiAIGenerateJob = async (
   // Успешный запуск — это 202 Accepted. Тело пустое, читать нечего.
   if (!res.ok && res.status !== 202) {
     const body = await res.json().catch(() => ({}));
-    throw new Error(body.error || `Не удалось запустить генерацию (${res.status})`);
+    throw new Error(body.error || trLabel('ai.startFailed', 'Не удалось запустить генерацию ({{status}})', { status: res.status }));
   }
 
   const startedAt = Date.now();
@@ -277,12 +278,12 @@ export const apiAIGenerateJob = async (
       'api-ai-job', 'GET', undefined, { jobId },
     );
     if (job.status === 'done') return { data: job.data };
-    if (job.status === 'error') throw new Error(job.error || 'Ошибка генерации.');
+    if (job.status === 'error') throw new Error(job.error || trLabel('ai.jobFailed', 'Ошибка генерации.'));
     // pending/running — ждём дальше, постепенно разрежая опрос.
     delay = Math.min(Math.round(delay * 1.3), 5000);
   }
 
-  throw new Error('ИИ не ответил вовремя. Попробуйте материал покороче или повторите попытку.');
+  throw new Error(trLabel('ai.timeout', 'ИИ не ответил вовремя. Попробуйте материал покороче или повторите попытку.'));
 };
 
 // ---- Attempts ----
@@ -1094,14 +1095,14 @@ export const apiGetParentPortalData = async (token: string) => {
   // Using direct fetch so we can bypass standard auth token interception if not logged in
   const res = await fetch(`/.netlify/functions/api-parent-portal?token=${encodeURIComponent(token)}`);
   const data = await res.json();
-  if (!res.ok) throw new Error(data.error || 'Failed to fetch parent data');
+  if (!res.ok) throw new Error(data.error || trLabel('parent.loadFailed', 'Не удалось загрузить данные'));
   return data;
 };
 
 export const apiGetParentAISummary = async (token: string): Promise<{ summary: string | null; recommendations?: string[]; locked?: boolean }> => {
   const res = await fetch(`/.netlify/functions/api-parent-portal?action=aiSummary&token=${encodeURIComponent(token)}`);
   const data = await res.json();
-  if (!res.ok) throw new Error(data.error || 'Failed to fetch summary');
+  if (!res.ok) throw new Error(data.error || trLabel('parent.summaryFailed', 'Не удалось загрузить сводку'));
   return data;
 };
 
@@ -1114,7 +1115,7 @@ export const apiTgLogin = async (ott: string): Promise<{ customToken: string }> 
     body: JSON.stringify({ ott }),
   });
   const data = await res.json();
-  if (!res.ok) throw new Error(data.error || 'Не удалось войти');
+  if (!res.ok) throw new Error(data.error || trLabel('auth.loginFailed', 'Не удалось войти'));
   return data;
 };
 

@@ -23,6 +23,7 @@ import toast from 'react-hot-toast';
 import { PinnedBadgesDisplay } from '../../lib/badges';
 import { planDebt, isDebtBearingPlan, isPlanOverdue } from '../../lib/payment-plans';
 import { formatMoney } from '../../lib/money';
+import { intlLocale } from '../../lib/locale';
 import BulkActionBar from '../../components/roster/BulkActionBar';
 import EmptyState from '../../components/ui/EmptyState';
 import { ListSkeleton } from '../../components/ui/Skeleton';
@@ -143,7 +144,7 @@ const StudentsPage: React.FC = () => {
     if (!silent) { setLoading(true); setError(''); }
     orgGetStudents()
       .then(setStudents)
-      .catch((e) => { if (!silent) setError(e.message || 'Error'); })
+      .catch((e) => { if (!silent) setError(e.message || t('common.error', 'Ошибка')); })
       .finally(() => { if (!silent) setLoading(false); }); 
   };
 
@@ -303,9 +304,9 @@ const StudentsPage: React.FC = () => {
     result.sort((a, b) => {
       let cmp = 0;
       if (sortField === 'name') {
-        cmp = (a.displayName || '').localeCompare(b.displayName || '', 'ru');
+        cmp = (a.displayName || '').localeCompare(b.displayName || '', intlLocale());
       } else if (sortField === 'branch') {
-        cmp = getStudentBranchNames(a).join(', ').localeCompare(getStudentBranchNames(b).join(', '), 'ru');
+        cmp = getStudentBranchNames(a).join(', ').localeCompare(getStudentBranchNames(b).join(', '), intlLocale());
       } else if (sortField === 'date') {
         cmp = new Date(a.createdAt || 0).getTime() - new Date(b.createdAt || 0).getTime();
       }
@@ -377,7 +378,7 @@ const StudentsPage: React.FC = () => {
         resetCreateForm();
       }
     } catch (e: any) {
-      toast.error(e.message || 'Error');
+      toast.error(e.message || t('common.error', 'Ошибка'));
     } finally {
       setCreating(false);
     }
@@ -453,11 +454,11 @@ const StudentsPage: React.FC = () => {
         ...(activeBranchId ? { branchIds: [activeBranchId], primaryBranchId: activeBranchId } : {}),
       });
       setImportResult({ created: res?.created || 0, skipped: res?.skipped || 0 });
-      toast.success(t('org.students.imported', `Импортировано: ${res?.created || 0}`));
+      toast.success(t('org.students.imported', 'Импортировано: {{count}}', { count: res?.created || 0 }));
       loadStudents();
       loadGroups();
     } catch (e: any) {
-      toast.error(e.message || 'Error');
+      toast.error(e.message || t('common.error', 'Ошибка'));
     } finally {
       setImporting(false);
     }
@@ -507,7 +508,7 @@ const StudentsPage: React.FC = () => {
       // подтверждении сервер сам спишет нетронутые счета.
       if (err?.status === 409 && err?.code === 'member_has_debt') {
         const proceed = window.confirm(
-          `${err.message}\n\n${t('org.students.confirmDeleteWithDebt', 'Удалить всё равно и списать нетронутые счета?')}`
+          `${err.message}\n\n${t('org.students.confirmDeleteWithDebt', 'Удалить всё равно и закрыть его счета?')}`
         );
         if (proceed) {
           try {
@@ -515,11 +516,11 @@ const StudentsPage: React.FC = () => {
             toast.success(t('org.students.deleted', 'Студент полностью удален'));
             setStudents(prev => prev.filter(s => s.uid !== uid));
           } catch (e: any) {
-            toast.error(e?.message || 'Error');
+            toast.error(e?.message || t('common.error', 'Ошибка'));
           }
         }
       } else {
-        toast.error(err.message || 'Error');
+        toast.error(err.message || t('common.error', 'Ошибка'));
       }
     } finally {
       setDeletingId(null);
@@ -532,13 +533,15 @@ const StudentsPage: React.FC = () => {
 
   const handleExpel = async (s: UserProfile) => {
     if (!organizationId) return;
-    if (!window.confirm(`Отчислить ${s.displayName || 'студента'}? Журнал и история оплат сохранятся — студента можно будет восстановить.`)) return;
+    if (!window.confirm(s.displayName
+      ? t('org.students.expelConfirm', 'Отчислить {{name}}? Журнал и история оплат сохранятся — студента можно будет восстановить.', { name: s.displayName })
+      : t('org.students.expelConfirmNoName', 'Отчислить студента? Журнал и история оплат сохранятся — студента можно будет восстановить.'))) return;
     try {
       await apiRemoveMember(s.uid, organizationId);
-      toast.success('Студент отчислен');
+      toast.success(t('org.students.expelled', 'Студент отчислен'));
       setStatusLocally(s.uid, 'expelled');
     } catch (err: any) {
-      toast.error(err.message || 'Error');
+      toast.error(err.message || t('common.error', 'Ошибка'));
     }
   };
 
@@ -546,10 +549,10 @@ const StudentsPage: React.FC = () => {
     if (!organizationId) return;
     try {
       await apiRestoreStudent(s.uid, organizationId);
-      toast.success('Студент восстановлен');
+      toast.success(t('org.students.restored', 'Студент восстановлен'));
       setStatusLocally(s.uid, 'active');
     } catch (err: any) {
-      toast.error(err.message || 'Error');
+      toast.error(err.message || t('common.error', 'Ошибка'));
     }
   };
 
@@ -562,9 +565,9 @@ const StudentsPage: React.FC = () => {
     // «Принять оплату» здесь намеренно нет: оно вынесено видимой кнопкой в саму
     // строку — это самое частое действие, и прятать его за меню было бы странно.
     if (financeEnabled) {
-      if (!expelled) items.push({ label: 'Выставить счёт', icon: Receipt, onSelect: () => setBillFor(s) });
+      if (!expelled) items.push({ label: t('org.students.menu.bill', 'Выставить счёт'), icon: Receipt, onSelect: () => setBillFor(s) });
       if (billedStudents.has(s.uid)) {
-        items.push({ label: 'История оплат', icon: History, onSelect: () => setHistoryFor(s) });
+        items.push({ label: t('finances.paymentHistory', 'История оплат'), icon: History, onSelect: () => setHistoryFor(s) });
       }
     }
 
@@ -572,27 +575,27 @@ const StudentsPage: React.FC = () => {
     // отдельным блоком и без всяких прав: телефон уже виден в этой же строке.
     const waPhone = (s.phone || '').replace(/\D/g, '');
     if (s.phone) {
-      items.push({ label: 'Позвонить', icon: Phone, separated: items.length > 0, onSelect: () => { window.location.href = `tel:${s.phone}`; } });
+      items.push({ label: t('org.students.menu.call', 'Позвонить'), icon: Phone, separated: items.length > 0, onSelect: () => { window.location.href = `tel:${s.phone}`; } });
       // Короткие номера без кода страны wa.me не откроет — не предлагаем.
       if (waPhone.length >= 10) {
-        items.push({ label: 'Написать в WhatsApp', icon: MessageCircle, onSelect: () => window.open(`https://wa.me/${waPhone}`, '_blank', 'noopener') });
+        items.push({ label: t('org.students.menu.whatsapp', 'Написать в WhatsApp'), icon: MessageCircle, onSelect: () => window.open(`https://wa.me/${waPhone}`, '_blank', 'noopener') });
       }
     }
 
     if (permsLoaded && canWrite('students')) {
       items.push({ label: t('common.edit', 'Редактировать'), icon: Pencil, separated: items.length > 0, onSelect: () => setEditing(s) });
       if (!expelled) {
-        if (groups.length > 0) items.push({ label: 'Перевести в группу', icon: UsersRound, onSelect: () => setMoveFor({ student: s, mode: 'group' }) });
-        if (branches.length > 0) items.push({ label: 'Перевести в филиал', icon: Building2, onSelect: () => setMoveFor({ student: s, mode: 'branch' }) });
+        if (groups.length > 0) items.push({ label: t('roster.bulk.migrateToGroup', 'Перевести в группу'), icon: UsersRound, onSelect: () => setMoveFor({ student: s, mode: 'group' }) });
+        if (branches.length > 0) items.push({ label: t('roster.bulk.migrateToBranch', 'Перевести в филиал'), icon: Building2, onSelect: () => setMoveFor({ student: s, mode: 'branch' }) });
         items.push({
-          label: hasLogin(s) ? 'Сменить пароль' : 'Выдать доступ',
+          label: hasLogin(s) ? t('org.students.access.changePassword', 'Сменить пароль') : t('org.students.access.grant', 'Выдать доступ'),
           icon: KeyRound,
           onSelect: () => setAccessFor(s),
         });
       }
       // Восстановление — обычная правка карточки: возвращает статус 'active' и
       // ничего не разрушает.
-      if (expelled) items.push({ label: 'Восстановить', icon: UserCheck, separated: true, onSelect: () => handleRestore(s) });
+      if (expelled) items.push({ label: t('org.students.menu.restore', 'Восстановить'), icon: UserCheck, separated: true, onSelect: () => handleRestore(s) });
     }
 
     // Отчисление и полное удаление живут под ОДНИМ правом «Студенты: удаление» —
@@ -603,7 +606,7 @@ const StudentsPage: React.FC = () => {
       if (expelled) {
         items.push({ label: t('common.delete', 'Удалить навсегда'), icon: Trash2, danger: true, separated: true, onSelect: () => handleDeleteExpelled(s.uid) });
       } else {
-        items.push({ label: 'Отчислить', icon: UserMinus, danger: true, separated: true, onSelect: () => handleExpel(s) });
+        items.push({ label: t('org.students.menu.expel', 'Отчислить'), icon: UserMinus, danger: true, separated: true, onSelect: () => handleExpel(s) });
       }
     }
 
@@ -652,11 +655,15 @@ const StudentsPage: React.FC = () => {
         <div>
           <h1 className="text-3xl font-extrabold text-slate-900 dark:text-white mb-2">{t('nav.students')}</h1>
           <p className="text-slate-500 dark:text-slate-400 text-sm">
-            {`${students.filter(s => ((s as any).status || 'active') === 'active').length} ${t('org.students.total')}`}
+            {(() => {
+              // Счётчик следует вкладке статуса (Активные / Отчисленные / Все), а не всегда активным.
+              const n = statusFilter === 'all' ? students.length : students.filter(s => ((s as any).status || 'active') === statusFilter).length;
+              return t('org.students.count', { count: n });
+            })()}
           </p>
         </div>
         <div className="flex items-center gap-3 w-full sm:w-auto">
-          <button onClick={() => { loadStudents(); loadGroups(); }} className="p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-xl transition-colors">
+          <button onClick={() => { loadStudents(); loadGroups(); }} aria-label={t('common.refresh', 'Обновить')} title={t('common.refresh', 'Обновить')} className="p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-xl transition-colors">
             <RefreshCw className="w-4 h-4" />
           </button>
           {/* Moved here from the retired risk dashboard — it belongs next to the
@@ -666,7 +673,7 @@ const StudentsPage: React.FC = () => {
               onClick={() => setChurnOpen(true)}
               className="shrink-0 inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-br from-violet-600 to-indigo-600 text-white text-sm font-semibold shadow-sm hover:opacity-90 transition-opacity"
             >
-              <Sparkles className="w-4 h-4" /> AI-анализ оттока
+              <Sparkles className="w-4 h-4" /> {t('org.students.churnAnalysis', 'AI-анализ оттока')}
             </button>
           )}
           {/* Both endpoints require students:write — a read-only member used to see
@@ -783,7 +790,7 @@ const StudentsPage: React.FC = () => {
                 <button
                   onClick={() => setRiskOnly(v => !v)}
                   aria-pressed={riskOnly}
-                  title="Показать только тех, кто требует внимания"
+                  title={t('org.students.riskOnlyHint', 'Показать только тех, кто требует внимания')}
                   className={`shrink-0 flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold border transition-colors ${
                     riskOnly
                       ? 'bg-red-500 border-red-500 text-white'
@@ -791,7 +798,7 @@ const StudentsPage: React.FC = () => {
                   }`}
                 >
                   <span className={`w-2 h-2 rounded-full ${riskOnly ? 'bg-white' : 'bg-red-500'}`} />
-                  В зоне риска
+                  {t('org.students.atRisk', 'В зоне риска')}
                   <span className={riskOnly ? 'text-white/80' : 'text-slate-400'}>{flaggedCount}</span>
                 </button>
               )}
@@ -821,7 +828,7 @@ const StudentsPage: React.FC = () => {
             <EmptyState
               icon={Users}
               title={search || selectedGroup !== 'all' || selectedCourse !== 'all' || riskOnly ? t('org.students.noSearchResults', 'Студенты не найдены') : t('org.students.empty')}
-              description={search || selectedGroup !== 'all' || selectedCourse !== 'all' || riskOnly ? 'Попробуйте изменить фильтры поиска' : 'Добавьте первого студента'}
+              description={search || selectedGroup !== 'all' || selectedCourse !== 'all' || riskOnly ? t('org.students.tryOtherFilters', 'Попробуйте изменить фильтры поиска') : t('org.students.addFirst', 'Добавьте первого студента')}
               actionLabel={permsLoaded && canWrite('students') ? t('org.students.create', 'Добавить студента') : undefined}
               onAction={permsLoaded && canWrite('students') ? () => setShowCreateModal(true) : undefined}
             />
@@ -901,7 +908,7 @@ const StudentsPage: React.FC = () => {
                           {financeEnabled && debtFor(s.uid) > 0 && (s as any).status !== 'expelled' ? (
                             <button
                               onClick={(e) => { e.stopPropagation(); setPayFor({ student: s, plans: unpaidFor(s.uid) }); }}
-                              title="Принять оплату"
+                              title={t('org.students.acceptPayment', 'Принять оплату')}
                               className={`shrink-0 inline-flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded transition-colors ${
                                 isOverdueFor(s.uid)
                                   ? 'bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-400 hover:bg-orange-200 dark:hover:bg-orange-900/60'
@@ -1209,7 +1216,7 @@ const StudentsPage: React.FC = () => {
                       value={importText}
                       onChange={e => setImportText(e.target.value)}
                       rows={6}
-                      placeholder={'Айбек Тологонов, +996700112233\nАйгерим Осмонова, +996555998877\n...'}
+                      placeholder={t('org.students.importPlaceholder', 'Айбек Тологонов, +996700112233\nАйгерим Осмонова, +996555998877\n...')}
                       className="w-full bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 text-sm font-mono focus:ring-2 focus:ring-slate-900 focus:border-slate-900 dark:focus:ring-white outline-none resize-y"
                     />
                     <p className="text-[11px] text-slate-400 mt-1">{t('org.students.importParsed', 'Распознано записей')}: <span className="font-semibold text-slate-600 dark:text-slate-300">{parsedImport.length}</span></p>
@@ -1272,7 +1279,7 @@ const StudentsPage: React.FC = () => {
       {expandedAvatar && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4" onClick={() => setExpandedAvatar(null)}>
           <div className="relative max-w-2xl max-h-[90vh] w-full flex justify-center" onClick={e => e.stopPropagation()}>
-            <img src={expandedAvatar} alt="Expanded Avatar" className="max-w-full max-h-[90vh] object-contain rounded-xl shadow-2xl" />
+            <img src={expandedAvatar} alt={t('org.students.avatarAlt', 'Аватар')} className="max-w-full max-h-[90vh] object-contain rounded-xl shadow-2xl" />
             <button onClick={() => setExpandedAvatar(null)} className="absolute -top-12 right-0 p-2 text-white/70 hover:text-white transition-colors bg-black/40 hover:bg-black/60 rounded-full">
               <XCircle className="w-6 h-6" />
             </button>

@@ -199,11 +199,11 @@ const PublicOrgProfilePage: React.FC = () => {
                   <span className="flex items-center gap-1.5"><MapPin className="w-3.5 h-3.5" /> {cities.join(', ')}</span>
                 )}
                 <span className="flex items-center gap-1.5">
-                  <FolderOpen className="w-3.5 h-3.5" /> {org.courses?.length || 0} {t('directory.coursesCount', 'курсов')}
+                  <FolderOpen className="w-3.5 h-3.5" /> {t('directory.coursesN', '{{count}} курсов', { count: org.courses?.length || 0 })}
                 </span>
                 {(org.branchesCount || 0) > 0 && (
                   <span className="flex items-center gap-1.5">
-                    <Building2 className="w-3.5 h-3.5" /> {org.branchesCount} {t('directory.branchCount', 'филиалов')}
+                    <Building2 className="w-3.5 h-3.5" /> {t('directory.branchesN', '{{count}} филиалов', { count: org.branchesCount || 0 })}
                   </span>
                 )}
               </div>
@@ -251,7 +251,7 @@ const PublicOrgProfilePage: React.FC = () => {
                   )}
                 </div>
               ) : (
-                <EmptyState icon={FileText} title="Нет описания" desc="Организация пока не добавила информацию о себе." />
+                <EmptyState icon={FileText} title={t('directory.profile.noDescTitle', 'Нет описания')} desc={t('directory.profile.noDescDesc', 'Организация пока не добавила информацию о себе.')} />
               )}
             </div>
           </Section>
@@ -288,7 +288,7 @@ const PublicOrgProfilePage: React.FC = () => {
                   ))}
                 </div>
               ) : (
-                <EmptyState icon={LayoutList} title="Курсы не добавлены" desc="Открытых курсов пока нет." />
+                <EmptyState icon={LayoutList} title={t('directory.profile.noCoursesTitle', 'Курсы не добавлены')} desc={t('directory.profile.noCoursesDesc', 'Открытых курсов пока нет.')} />
               )}
             </div>
           </Section>
@@ -326,7 +326,7 @@ const PublicOrgProfilePage: React.FC = () => {
                                   target="_blank" rel="noopener noreferrer"
                                   className="flex items-center gap-1 text-xs text-indigo-600 hover:underline dark:text-indigo-400 font-medium"
                                 >
-                                  <Map className="w-3 h-3" /> Карта
+                                  <Map className="w-3 h-3" /> {t('directory.map', 'Карта')}
                                 </a>
                               )}
                             </div>
@@ -337,7 +337,7 @@ const PublicOrgProfilePage: React.FC = () => {
                   ))}
                 </div>
               ) : (
-                <EmptyState icon={Map} title="Нет филиалов" desc="Адреса учебных центров не указаны." />
+                <EmptyState icon={Map} title={t('directory.profile.noBranchesTitle', 'Нет филиалов')} desc={t('directory.profile.noBranchesDesc', 'Адреса учебных центров не указаны.')} />
               )}
             </div>
           </Section>
@@ -358,7 +358,7 @@ const PublicOrgProfilePage: React.FC = () => {
                   ))}
                 </div>
               ) : (
-                <EmptyState icon={CameraOff} title="Нет фотографий" desc="Фотографии пока не загружены." />
+                <EmptyState icon={CameraOff} title={t('directory.profile.noPhotosTitle', 'Нет фотографий')} desc={t('directory.profile.noPhotosDesc', 'Фотографии пока не загружены.')} />
               )}
             </div>
           </Section>
@@ -379,26 +379,26 @@ const PublicOrgProfilePage: React.FC = () => {
                 {hasContacts ? (
                   <div className="flex flex-col gap-2.5">
                     {org.contactPhone && (
-                      <ContactRow href={`tel:${org.contactPhone}`} icon={Phone} label="Телефон" value={org.contactPhone} hoverBorder="border-sky-300" />
+                      <ContactRow href={`tel:${org.contactPhone}`} icon={Phone} label={t('directory.profile.phone', 'Телефон')} value={org.contactPhone} hoverBorder="border-sky-300" />
                     )}
                     {org.contactEmail && (
-                      <ContactRow href={`mailto:${org.contactEmail}`} icon={Mail} label="Почта" value={org.contactEmail} hoverBorder="border-indigo-300" />
+                      <ContactRow href={`mailto:${org.contactEmail}`} icon={Mail} label={t('directory.profile.email', 'Почта')} value={org.contactEmail} hoverBorder="border-indigo-300" />
                     )}
                     {socialLinks.website && (
-                      <ContactRow href={socialLinks.website.startsWith('http') ? socialLinks.website : `https://${socialLinks.website}`} icon={Globe} label="Веб-сайт" value={socialLinks.website} hoverBorder="border-emerald-300" />
+                      <ContactRow href={socialLinks.website.startsWith('http') ? socialLinks.website : `https://${socialLinks.website}`} icon={Globe} label={t('directory.profile.website', 'Веб-сайт')} value={socialLinks.website} hoverBorder="border-emerald-300" />
                     )}
                     {socialLinks.whatsapp && (
-                      <ContactRow href={`https://wa.me/${socialLinks.whatsapp.replace(/[^0-9]/g, '')}`} icon={MessageCircle} label="WhatsApp" value="Написать" hoverBorder="border-green-400" />
+                      <ContactRow href={`https://wa.me/${socialLinks.whatsapp.replace(/[^0-9]/g, '')}`} icon={MessageCircle} label="WhatsApp" value={t('directory.profile.write', 'Написать')} hoverBorder="border-green-400" />
                     )}
                     {socialLinks.telegram && (
-                      <ContactRow href={`https://t.me/${socialLinks.telegram.replace(/^@/, '')}`} icon={Send} label="Telegram" value="Написать" hoverBorder="border-blue-300" />
+                      <ContactRow href={`https://t.me/${socialLinks.telegram.replace(/^@/, '')}`} icon={Send} label="Telegram" value={t('directory.profile.write', 'Написать')} hoverBorder="border-blue-300" />
                     )}
                     {socialLinks.instagram && (
-                      <ContactRow href={`https://instagram.com/${socialLinks.instagram.replace(/^@/, '')}`} icon={ImageIcon} label="Instagram" value="Перейти" hoverBorder="border-pink-300" />
+                      <ContactRow href={`https://instagram.com/${socialLinks.instagram.replace(/^@/, '')}`} icon={ImageIcon} label="Instagram" value={t('directory.profile.open', 'Перейти')} hoverBorder="border-pink-300" />
                     )}
                   </div>
                 ) : (
-                  <EmptyState icon={Mail} title="Контакты не указаны" desc="Контактные данные пока не добавлены." />
+                  <EmptyState icon={Mail} title={t('directory.profile.noContactsTitle', 'Контакты не указаны')} desc={t('directory.profile.noContactsDesc', 'Контактные данные пока не добавлены.')} />
                 )}
               </div>
             </Section>
@@ -419,10 +419,10 @@ const PublicOrgProfilePage: React.FC = () => {
                         allowFullScreen
                         loading="lazy"
                         referrerPolicy="no-referrer-when-downgrade"
-                        title="Branch locations"
+                        title={t('directory.profile.branchLocations', 'Адреса филиалов')}
                       />
                     ) : (
-                      <EmptyState icon={MapPin} title="Карта" desc="Нет координат." />
+                      <EmptyState icon={MapPin} title={t('directory.map', 'Карта')} desc={t('directory.profile.noCoords', 'Нет координат.')} />
                     )}
                   </div>
                 </div>

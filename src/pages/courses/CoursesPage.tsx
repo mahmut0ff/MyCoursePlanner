@@ -8,6 +8,7 @@ import { Plus, Search, Trash2, Edit, BookOpen, FileText, Users, Filter, UserPlus
 import type { Course, Group } from '../../types';
 import EmptyState from '../../components/ui/EmptyState';
 import { ListSkeleton } from '../../components/ui/Skeleton';
+import toast from 'react-hot-toast';
 
 type StatusFilter = 'all' | 'published' | 'draft';
 
@@ -47,7 +48,7 @@ const CoursesPage: React.FC = () => {
       setGroups(g);
       // Store the full list; teachers switch between "Мои"/"Все" via viewMode below.
       setCourses(c);
-    }).catch((e) => setError(e.message || 'Error')).finally(() => setLoading(false));
+    }).catch((e) => setError(e.message || t('common.error', 'Ошибка'))).finally(() => setLoading(false));
   };
 
   // activeBranchId: курсы приходят org-wide (филиал держит только группа), но список
@@ -82,7 +83,7 @@ const CoursesPage: React.FC = () => {
           : [...(c.teacherIds || []), profile.uid],
       } : c));
     } catch (err: any) {
-      setError(err.message || 'Error');
+      setError(err.message || t('common.error', 'Ошибка'));
     } finally {
       setTogglingId(null);
     }
@@ -124,7 +125,7 @@ const CoursesPage: React.FC = () => {
       (g.studentIds || []).forEach((s: string) => acc[bid].students.add(s));
     });
     return Object.entries(acc)
-      .map(([bid, v]) => ({ bid, name: bid === '__none__' ? 'Без филиала' : (branchNameById[bid] || 'Филиал'), groups: v.groups, students: v.students.size }))
+      .map(([bid, v]) => ({ bid, name: bid === '__none__' ? t('courses.noBranch', 'Без филиала') : (branchNameById[bid] || t('common.branch', 'Филиал')), groups: v.groups, students: v.students.size }))
       .sort((a, b) => b.groups - a.groups);
   };
 
@@ -138,12 +139,12 @@ const CoursesPage: React.FC = () => {
       if (editing) { const u = await orgUpdateCourse({ id: editing.id, ...form }); setCourses((p) => p.map((c) => c.id === editing.id ? { ...c, ...u } : c)); }
       else { const c = await orgCreateCourse(form); setCourses((p) => [c, ...p]); }
       setShowModal(false);
-    } catch (e: any) { setError(e.message || 'Error'); } finally { setSaving(false); }
+    } catch (e: any) { setError(e.message || t('common.error', 'Ошибка')); } finally { setSaving(false); }
   };
 
   const handleDelete = async (id: string) => {
     if (!confirm(t('common.confirmDelete'))) return;
-    try { await orgDeleteCourse(id); setCourses((p) => p.filter((c) => c.id !== id)); }
+    try { await orgDeleteCourse(id); setCourses((p) => p.filter((c) => c.id !== id)); toast.success(t('courses.deleted', 'Курс удалён')); }
     catch (e: any) { setError(e.message); }
   };
 
@@ -156,7 +157,7 @@ const CoursesPage: React.FC = () => {
         <div>
           <h1 className="text-3xl font-extrabold text-slate-900 dark:text-white mb-2">{t('nav.courses', 'Курсы')}</h1>
           <p className="text-slate-500 dark:text-slate-400 text-sm">
-            {activeBranch ? `${filtered.length} курсов · филиал «${activeBranch.name}»` : `${filtered.length} доступных курсов`}
+            {activeBranch ? t('courses.list.countInBranch', { count: filtered.length, branch: activeBranch.name }) : t('courses.list.available', { count: filtered.length })}
           </p>
         </div>
 
@@ -180,7 +181,7 @@ const CoursesPage: React.FC = () => {
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Поиск по названию или предмету..."
+            placeholder={t('courses.list.searchPh', 'Поиск по названию или предмету...')}
             className="input pl-9 w-full bg-slate-50 dark:bg-slate-900 border-none focus:ring-2 focus:ring-primary-500/20"
           />
         </div>
@@ -190,7 +191,7 @@ const CoursesPage: React.FC = () => {
             <div className="flex items-center gap-2 shrink-0">
               <Filter className="w-4 h-4 text-slate-400" />
               <select value={subjectFilter} onChange={(e) => setSubjectFilter(e.target.value)} className="input text-sm py-2 bg-slate-50 dark:bg-slate-900 border-none">
-                <option value="all">Все предметы</option>
+                <option value="all">{t('lessons.list.allSubjects', 'Все предметы')}</option>
                 {uniqueSubjects.map(s => <option key={s} value={s}>{s}</option>)}
               </select>
             </div>
@@ -225,8 +226,8 @@ const CoursesPage: React.FC = () => {
       {filtered.length === 0 ? (
         <EmptyState
           icon={BookOpen}
-          title={search || subjectFilter !== 'all' ? 'Ничего не найдено' : t('org.courses.empty', 'Курсов пока нет')}
-          description={search || subjectFilter !== 'all' ? 'Попробуйте изменить фильтры поиска' : t('org.courses.emptyDesc', 'Создайте первый курс для вашей организации')}
+          title={search || subjectFilter !== 'all' ? t('finances.nothingFound', 'Ничего не найдено') : t('org.courses.empty', 'Курсов пока нет')}
+          description={search || subjectFilter !== 'all' ? t('lessons.list.tryOtherFilters', 'Попробуйте изменить фильтры поиска') : t('org.courses.emptyDesc', 'Создайте первый курс для вашей организации')}
           actionLabel={isAdmin ? t('org.courses.create', 'Создать') : undefined}
           onAction={isAdmin ? openCreate : undefined}
         />
@@ -234,11 +235,11 @@ const CoursesPage: React.FC = () => {
         <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl overflow-hidden">
           {/* Table header */}
           <div className="hidden md:grid grid-cols-[1fr_120px_80px_80px_80px_60px] gap-3 px-5 py-3 border-b border-slate-100 dark:border-slate-700 bg-slate-50/80 dark:bg-slate-800/80 text-[11px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
-            <span>Название</span>
-            <span>Предмет</span>
-            <span>Группы</span>
-            <span>Студенты</span>
-            {isStaff && <span>Статус</span>}
+            <span>{t('lessons.titleLabel', 'Название')}</span>
+            <span>{t('lessons.subject', 'Предмет')}</span>
+            <span>{t('nav.groups', 'Группы')}</span>
+            <span>{t('groups.list.colStudents', 'Студенты')}</span>
+            {isStaff && <span>{t('common.status', 'Статус')}</span>}
             {isAdmin && <span></span>}
           </div>
 
@@ -268,7 +269,7 @@ const CoursesPage: React.FC = () => {
                       {branchBreakdown(course.id).map((b) => (
                         <span
                           key={b.bid}
-                          title={`${b.groups} групп · ${b.students} студентов`}
+                          title={t('courses.list.branchTip', 'Групп: {{groups}} · студентов: {{students}}', { groups: b.groups, students: b.students })}
                           className={`text-[10px] font-semibold px-1.5 py-0.5 rounded ${b.bid === '__none__' ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300' : 'bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-200'}`}
                         >
                           {b.name} · {b.groups}
@@ -279,10 +280,10 @@ const CoursesPage: React.FC = () => {
                   {/* Mobile-only meta */}
                   <div className="flex items-center gap-2 mt-1 md:hidden flex-wrap">
                     {course.subject && <span className="bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 px-1.5 py-0.5 rounded text-[10px] font-bold">{course.subject}</span>}
-                    <span className="text-[10px] text-slate-400 flex items-center gap-1"><FileText className="w-3 h-3" />{getGroupCount(course.id)} гр.</span>
+                    <span className="text-[10px] text-slate-400 flex items-center gap-1"><FileText className="w-3 h-3" />{t('courses.list.groupsShort', '{{count}} гр.', { count: getGroupCount(course.id) })}</span>
                     <span className="text-[10px] text-slate-400 flex items-center gap-1"><Users className="w-3 h-3" />{getStudentCount(course.id)}</span>
                     {(course.price && course.price > 0) && (
-                      <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400">{course.price} сом</span>
+                      <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400">{t('courses.detail.priceSom', '{{amount}} сом', { amount: course.price })}</span>
                     )}
                     {isStaff && (
                       <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${course.status === 'published' ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400' : 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400'}`}>
@@ -309,7 +310,7 @@ const CoursesPage: React.FC = () => {
                   <span className="bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider truncate text-center">{course.subject}</span>
                 )}
                 {(course.price && course.price > 0) ? (
-                  <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 text-center">{course.price} сом</span>
+                  <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 text-center">{t('courses.detail.priceSom', '{{amount}} сом', { amount: course.price })}</span>
                 ) : null}
               </div>
 
@@ -337,10 +338,10 @@ const CoursesPage: React.FC = () => {
               {/* Actions: admins edit/delete, teachers join/leave */}
               {isAdmin ? (
                 <div className="hidden md:flex items-center gap-1.5 justify-end">
-                  <button onClick={(e) => { e.stopPropagation(); openEdit(course); }} className="p-1.5 text-slate-400 hover:text-primary-600 dark:hover:text-primary-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-all tooltip" data-tip="Редактировать">
+                  <button onClick={(e) => { e.stopPropagation(); openEdit(course); }} className="p-1.5 text-slate-400 hover:text-primary-600 dark:hover:text-primary-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-all tooltip" data-tip={t('common.edit', 'Редактировать')} aria-label={t('common.edit', 'Редактировать')}>
                     <Edit className="w-3.5 h-3.5" />
                   </button>
-                  <button onClick={(e) => { e.stopPropagation(); handleDelete(course.id); }} className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-all tooltip" data-tip="Удалить">
+                  <button onClick={(e) => { e.stopPropagation(); handleDelete(course.id); }} className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-all tooltip" data-tip={t('common.delete', 'Удалить')} aria-label={t('common.delete', 'Удалить')}>
                     <Trash2 className="w-3.5 h-3.5" />
                   </button>
                 </div>
@@ -388,7 +389,7 @@ const CoursesPage: React.FC = () => {
                   </select>
                 </div>
                 <div>
-                  <label className="text-xs font-semibold text-slate-500 mb-1 block">Стоимость</label>
+                  <label className="text-xs font-semibold text-slate-500 mb-1 block">{t('courses.list.price', 'Стоимость')}</label>
                   <input type="number" min="0" placeholder="0" value={form.price} onChange={(e) => setForm(f => ({ ...f, price: Number(e.target.value) }))} className="w-full bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-slate-900 focus:border-slate-900 dark:focus:ring-white outline-none" />
                 </div>
               </div>

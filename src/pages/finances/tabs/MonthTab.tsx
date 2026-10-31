@@ -257,7 +257,9 @@ const MonthTab: React.FC<Props> = ({
   // деньги, которые видно в цифре и нельзя закрыть на экране (ровно та же
   // история, что со счетами без студента — см. ниже). Практически: плитка
   // показывала 51 просроченный счёт, а список открывал 44. В обычном месячном
-  // срезе отчисленные по-прежнему не нужны — они не участвуют в наборе месяца.
+  // срезе отчисленные не нужны — они не участвуют в наборе месяца. Исключение —
+  // их неоплаченный счёт ЭТОГО месяца: без него экран писал «За этот месяц ещё
+  // не начисляли», хотя счёт есть и висит в дебиторке.
   //
   // Начисления без студента (studentMissing — сервер не нашёл его ни в `users`,
   // ни в зеркале членства ни под одним ключом) в список НЕ попадают. Это не
@@ -269,7 +271,7 @@ const MonthTab: React.FC<Props> = ({
     () => plans.filter(p =>
       !p.studentMissing
       && (allMonths || planPeriodKey(p) === month)
-      && (debtorMode || !isExpelled(studentById.get(String(p.studentId))))),
+      && (debtorMode || !isExpelled(studentById.get(String(p.studentId))) || isDebtBearingPlan(p))),
     [plans, month, studentById, allMonths, debtorMode]
   );
 

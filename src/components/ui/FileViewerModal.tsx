@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { X, Download, Maximize2, Minimize2, FileText, Image as ImageIcon, Film, FileSpreadsheet } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 interface FileViewerModalProps {
   file: { name: string; url: string; type: string } | null;
@@ -40,6 +41,7 @@ const getFileIcon = (type: string) => {
 };
 
 const FileViewerModal: React.FC<FileViewerModalProps> = ({ file, onClose }) => {
+  const { t } = useTranslation();
   const [isFullscreen, setIsFullscreen] = useState(false);
 
   const handleKeydown = useCallback((e: KeyboardEvent) => {
@@ -74,15 +76,15 @@ const FileViewerModal: React.FC<FileViewerModalProps> = ({ file, onClose }) => {
         </div>
         <div className="flex items-center gap-1">
           <a href={url} download={name} target="_blank" rel="noreferrer"
-            className="p-2 text-white/70 hover:text-white hover:bg-white/10 rounded-lg transition-colors" title="Download">
+            className="p-2 text-white/70 hover:text-white hover:bg-white/10 rounded-lg transition-colors" title={t('fileViewer.download', 'Скачать')}>
             <Download className="w-4 h-4" />
           </a>
           <button onClick={(e) => { e.stopPropagation(); setIsFullscreen((p) => !p); }}
-            className="p-2 text-white/70 hover:text-white hover:bg-white/10 rounded-lg transition-colors" title="Fullscreen (F)">
+            className="p-2 text-white/70 hover:text-white hover:bg-white/10 rounded-lg transition-colors" title={t('fileViewer.fullscreen', 'Во весь экран (F)')}>
             {isFullscreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
           </button>
           <button onClick={onClose}
-            className="p-2 text-white/70 hover:text-white hover:bg-white/10 rounded-lg transition-colors" title="Close (Esc)">
+            className="p-2 text-white/70 hover:text-white hover:bg-white/10 rounded-lg transition-colors" title={t('fileViewer.close', 'Закрыть (Esc)')}>
             <X className="w-4 h-4" />
           </button>
         </div>
@@ -96,7 +98,7 @@ const FileViewerModal: React.FC<FileViewerModalProps> = ({ file, onClose }) => {
 
         {isVideo && (
           <video src={url} controls autoPlay className={`max-w-full max-h-full rounded-lg shadow-2xl ${isFullscreen ? 'w-full h-full' : 'max-h-[80vh]'}`}>
-            Your browser does not support the video tag.
+            {t('fileViewer.noVideo', 'Ваш браузер не поддерживает воспроизведение видео.')}
           </video>
         )}
 
@@ -112,10 +114,10 @@ const FileViewerModal: React.FC<FileViewerModalProps> = ({ file, onClose }) => {
           <div className="text-center text-white">
             <FileText className="w-16 h-16 mx-auto mb-4 opacity-50" />
             <p className="text-lg font-medium mb-2">{name}</p>
-            <p className="text-white/60 text-sm mb-6">Предпросмотр недоступен для этого типа файла</p>
+            <p className="text-white/60 text-sm mb-6">{t('fileViewer.noPreview', 'Предпросмотр недоступен для этого типа файла')}</p>
             <a href={url} download={name} target="_blank" rel="noreferrer"
               className="inline-flex items-center gap-2 bg-white/10 hover:bg-white/20 text-white px-5 py-2.5 rounded-xl transition-colors">
-              <Download className="w-4 h-4" /> Скачать файл
+              <Download className="w-4 h-4" /> {t('fileViewer.downloadFile', 'Скачать файл')}
             </a>
           </div>
         )}

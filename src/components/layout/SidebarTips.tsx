@@ -4,6 +4,7 @@
  * Dismissible — once closed it stays hidden (persisted in localStorage).
  */
 import React, { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../contexts/AuthContext';
 import { Lightbulb, X } from 'lucide-react';
 
@@ -85,6 +86,7 @@ interface Props {
 }
 
 const SidebarTips: React.FC<Props> = ({ isCollapsed }) => {
+  const { t } = useTranslation();
   const { role, isSuperAdmin, organizationId } = useAuth();
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isVisible, setIsVisible] = useState(true);
@@ -93,7 +95,8 @@ const SidebarTips: React.FC<Props> = ({ isCollapsed }) => {
   });
 
   const resolvedRole = (role as string) === 'owner' ? 'admin' : role || 'student';
-  const tips = tipsByRole[resolvedRole] || tipsByRole.student;
+  const tipsRole = tipsByRole[resolvedRole] ? resolvedRole : 'student';
+  const tips = tipsByRole[tipsRole];
 
   // Start from a random tip
   useEffect(() => {
@@ -141,13 +144,13 @@ const SidebarTips: React.FC<Props> = ({ isCollapsed }) => {
               : 'opacity-0 -translate-y-1.5'
           }`}
         >
-          {tips[currentIndex]}
+          {tips[currentIndex] && t(`sidebarTips.${tipsRole}.${currentIndex + 1}`, tips[currentIndex])}
         </p>
         <button
           type="button"
           onClick={handleDismiss}
-          aria-label="Скрыть подсказки"
-          title="Скрыть подсказки"
+          aria-label={t('sidebarTips.hide', 'Скрыть подсказки')}
+          title={t('sidebarTips.hide', 'Скрыть подсказки')}
           className="absolute top-1.5 right-1.5 p-1 rounded-md text-slate-400 hover:text-slate-600 hover:bg-slate-100 dark:text-slate-600 dark:hover:text-slate-300 dark:hover:bg-white/5 transition-colors"
         >
           <X className="w-3 h-3" />

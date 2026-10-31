@@ -1,4 +1,5 @@
 import type { GradingType, GradeScale, GradeSchema } from '../types';
+import { trLabel } from './trLabel';
 
 /**
  * Ready-made grading scales.
@@ -186,19 +187,19 @@ export function entryNumericValue(
 export function describeSchema(schema?: SchemaShape | null): string {
   if (!schema?.scale) return '—';
   const preset = detectPreset(schema);
-  if (preset) return preset.label;
+  if (preset) return trLabel(preset.labelKey, preset.label);
   const { min, max } = schema.scale;
   switch (schema.gradingType) {
     case 'pass_fail':
-      return 'Зачёт / Незачёт';
+      return trLabel('gradebook.presetPassFail', 'Зачёт / Незачёт');
     case 'letter':
-      return `Буквенная (${Object.keys(schema.scale.labels || {}).join(', ') || '—'})`;
+      return trLabel('gradebook.scaleLetter', 'Буквенная ({{symbols}})', { symbols: Object.keys(schema.scale.labels || {}).join(', ') || '—' });
     case 'custom':
-      return 'Своя шкала';
+      return trLabel('gradebook.scaleCustom', 'Своя шкала');
     case 'percent':
-      return `Проценты ${min}–${max}`;
+      return trLabel('gradebook.scalePercentRange', 'Проценты {{min}}–{{max}}', { min, max });
     default:
-      return `Баллы ${min}–${max}`;
+      return trLabel('gradebook.scalePointsRange', 'Баллы {{min}}–{{max}}', { min, max });
   }
 }
 

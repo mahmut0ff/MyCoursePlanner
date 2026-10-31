@@ -47,7 +47,7 @@ const ContactPage: React.FC = () => {
                 <form onSubmit={(e) => { e.preventDefault(); setSent(true); }} className="space-y-5">
                   <div>
                     <label className="mb-1.5 block text-sm font-medium text-slate-700">{t('landing.contactName')}</label>
-                    <input type="text" required className={inputClass} placeholder="Айбек Турсунов" />
+                    <input type="text" required className={inputClass} placeholder={t('landing.demo.ownerNamePlaceholder', 'Айбек Турсунов')} />
                   </div>
                   <div>
                     <label className="mb-1.5 block text-sm font-medium text-slate-700">{t('landing.contactEmail')}</label>

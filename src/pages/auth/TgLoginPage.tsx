@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { apiTgLogin } from '../../lib/api';
 import { signInWithToken } from '../../services/auth.service';
 import { Loader2, AlertCircle, Send } from 'lucide-react';
@@ -9,6 +10,7 @@ import { Loader2, AlertCircle, Send } from 'lucide-react';
  * Exchanges the one-time ?ott= token for a Firebase custom token and signs in.
  */
 const TgLoginPage: React.FC = () => {
+  const { t } = useTranslation();
   const [params] = useSearchParams();
   const navigate = useNavigate();
   const [error, setError] = useState('');
@@ -19,7 +21,7 @@ const TgLoginPage: React.FC = () => {
     ran.current = true;
     const ott = params.get('ott');
     if (!ott) {
-      setError('Ссылка неполная. Откройте кнопку входа из Telegram ещё раз.');
+      setError(t('tgLogin.incompleteLink', 'Ссылка неполная. Откройте кнопку входа из Telegram ещё раз.'));
       return;
     }
     (async () => {
@@ -28,7 +30,7 @@ const TgLoginPage: React.FC = () => {
         await signInWithToken(customToken);
         navigate('/dashboard', { replace: true });
       } catch (e: any) {
-        setError(e?.message || 'Не удалось войти. Запросите новую ссылку в боте командой /login.');
+        setError(e?.message || t('tgLogin.failedHint', 'Не удалось войти. Запросите новую ссылку в боте командой /login.'));
       }
     })();
   }, [params, navigate]);
@@ -41,8 +43,8 @@ const TgLoginPage: React.FC = () => {
             <div className="w-14 h-14 mx-auto rounded-2xl bg-gradient-to-br from-sky-500 to-blue-600 text-white flex items-center justify-center mb-5">
               <Send className="w-7 h-7" />
             </div>
-            <h1 className="text-lg font-bold text-slate-900 dark:text-white mb-1">Входим в SabakHub…</h1>
-            <p className="text-sm text-slate-500 dark:text-slate-400 mb-6">Подождите секунду — настраиваем ваш аккаунт.</p>
+            <h1 className="text-lg font-bold text-slate-900 dark:text-white mb-1">{t('tgLogin.signingIn', 'Входим в SabakHub…')}</h1>
+            <p className="text-sm text-slate-500 dark:text-slate-400 mb-6">{t('tgLogin.wait', 'Подождите секунду — настраиваем ваш аккаунт.')}</p>
             <Loader2 className="w-6 h-6 animate-spin text-primary-500 mx-auto" />
           </>
         ) : (
@@ -50,9 +52,9 @@ const TgLoginPage: React.FC = () => {
             <div className="w-14 h-14 mx-auto rounded-full bg-amber-100 dark:bg-amber-900/30 text-amber-600 flex items-center justify-center mb-5">
               <AlertCircle className="w-7 h-7" />
             </div>
-            <h1 className="text-lg font-bold text-slate-900 dark:text-white mb-2">Не удалось войти</h1>
+            <h1 className="text-lg font-bold text-slate-900 dark:text-white mb-2">{t('tgLogin.failed', 'Не удалось войти')}</h1>
             <p className="text-sm text-slate-500 dark:text-slate-400 mb-6">{error}</p>
-            <button onClick={() => navigate('/login')} className="btn-secondary w-full">Войти обычным способом</button>
+            <button onClick={() => navigate('/login')} className="btn-secondary w-full">{t('tgLogin.regularLogin', 'Войти обычным способом')}</button>
           </>
         )}
       </div>

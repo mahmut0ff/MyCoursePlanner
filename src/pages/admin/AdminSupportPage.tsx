@@ -11,6 +11,7 @@ import type { SupportThread, SupportThreadStatus, SupportUserInfo } from '../../
 import { useSupportThreads } from '../../lib/useSupport';
 import { apiSupportUserInfo, apiSupportSetStatus } from '../../lib/api';
 import SupportChatPane from '../../components/support/SupportChatPane';
+import { intlLocale } from '../../lib/locale';
 
 type Filter = SupportThreadStatus | 'all';
 
@@ -36,7 +37,7 @@ function relativeTime(iso: string, t: (k: string, d: string, o?: any) => string)
   if (mins < 60) return t('support.minsAgo', '{{n}} мин', { n: mins });
   const hours = Math.floor(mins / 60);
   if (hours < 24) return t('support.hoursAgo', '{{n}} ч', { n: hours });
-  return new Date(iso).toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit' });
+  return new Date(iso).toLocaleDateString(intlLocale(), { day: '2-digit', month: '2-digit' });
 }
 
 function initials(name: string) {
@@ -400,6 +401,7 @@ function InfoRow({ icon: Icon, label, value, onCopy, href }: {
   onCopy?: () => void;
   href?: string;
 }) {
+  const { t } = useTranslation();
   if (!value) return null;
   return (
     <div className="flex items-start gap-2.5 group">
@@ -422,7 +424,7 @@ function InfoRow({ icon: Icon, label, value, onCopy, href }: {
           onClick={onCopy}
           className="p-1 rounded text-slate-300 hover:text-primary-600 opacity-0
             group-hover:opacity-100 focus:opacity-100 transition-opacity shrink-0"
-          title="Копировать"
+          title={t('common.copy', 'Копировать')}
         >
           <Copy className="w-3 h-3" />
         </button>
@@ -451,7 +453,7 @@ function UserInfoPanel({ thread, info, loading, onCopy, t }: {
   const fmtDate = (iso?: string) => {
     if (!iso) return null;
     const d = new Date(iso);
-    return isNaN(d.getTime()) ? null : d.toLocaleDateString('ru-RU', {
+    return isNaN(d.getTime()) ? null : d.toLocaleDateString(intlLocale(), {
       day: '2-digit', month: 'long', year: 'numeric',
     });
   };

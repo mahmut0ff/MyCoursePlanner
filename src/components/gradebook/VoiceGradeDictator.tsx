@@ -118,7 +118,7 @@ const VoiceGradeDictator: React.FC<VoiceGradeDictatorProps> = ({ isOpen, onClose
         setError(t('gradebook.aiParseError', 'Не удалось распознать оценки'));
       }
     } catch (err: any) {
-      setError(err.message || 'Error processing audio');
+      setError(err.message || t('gradebook.ui.voice.processFailed', 'Не удалось обработать запись'));
     } finally {
       setProcessing(false);
     }
@@ -135,7 +135,7 @@ const VoiceGradeDictator: React.FC<VoiceGradeDictatorProps> = ({ isOpen, onClose
           <div>
             <h3 className="font-bold text-slate-900 dark:text-white flex items-center gap-2">
               <Mic className="w-5 h-5 text-indigo-500" />
-              Голосовое выставление ({column?.title})
+              {t('gradebook.ui.voice.title', 'Голосовое выставление ({{column}})', { column: column?.title })}
             </h3>
             <p className="text-xs font-medium text-slate-500 mt-0.5">Gemini Audio AI Intelligence</p>
           </div>
@@ -150,7 +150,7 @@ const VoiceGradeDictator: React.FC<VoiceGradeDictatorProps> = ({ isOpen, onClose
             <div className="mb-6 p-4 bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/20 text-red-600 dark:text-red-400 text-sm rounded-2xl flex items-start gap-3">
               <AlertCircle className="w-5 h-5 shrink-0 mt-0.5" />
               <div>
-                <p className="font-bold">Ошибка</p>
+                <p className="font-bold">{t('common.error', 'Ошибка')}</p>
                 <p>{error}</p>
               </div>
             </div>
@@ -164,8 +164,8 @@ const VoiceGradeDictator: React.FC<VoiceGradeDictatorProps> = ({ isOpen, onClose
                     <div className="absolute inset-0 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin"></div>
                     <Loader2 className="w-8 h-8 text-indigo-500 animate-spin" />
                   </div>
-                  <h4 className="text-lg font-bold text-slate-900 dark:text-white mb-2">Распознавание речи...</h4>
-                  <p className="text-sm text-slate-500 text-center max-w-xs">Искусственный интеллект анализирует запись и сопоставляет имена учеников.</p>
+                  <h4 className="text-lg font-bold text-slate-900 dark:text-white mb-2">{t('gradebook.ui.voice.recognizing', 'Распознавание речи...')}</h4>
+                  <p className="text-sm text-slate-500 text-center max-w-xs">{t('gradebook.ui.voice.recognizingDesc', 'Искусственный интеллект анализирует запись и сопоставляет имена учеников.')}</p>
                 </>
               ) : (
                 <>
@@ -186,7 +186,7 @@ const VoiceGradeDictator: React.FC<VoiceGradeDictatorProps> = ({ isOpen, onClose
                   </button>
 
                   <h4 className="text-xl font-extrabold text-slate-900 dark:text-white mb-3 text-center">
-                    {recording ? 'Идет запись...' : 'Нажмите чтобы начать'}
+                    {recording ? t('gradebook.ui.voice.recording', 'Идёт запись...') : t('gradebook.ui.voice.tapToStart', 'Нажмите, чтобы начать')}
                   </h4>
                   
                   {recording ? (
@@ -197,8 +197,7 @@ const VoiceGradeDictator: React.FC<VoiceGradeDictatorProps> = ({ isOpen, onClose
                     </div>
                   ) : (
                     <p className="text-sm text-slate-500 text-center max-w-xs font-medium leading-relaxed">
-                      Автоматически распознает <span className="text-indigo-600 dark:text-indigo-400">любой язык</span> речи. 
-                      Просто назовите имена и их оценки.
+                      {t('gradebook.ui.voice.hint', 'Автоматически распознаёт речь на любом языке. Просто назовите имена и их оценки.')}
                     </p>
                   )}
                 </>
@@ -206,15 +205,15 @@ const VoiceGradeDictator: React.FC<VoiceGradeDictatorProps> = ({ isOpen, onClose
             </div>
           ) : (
             <div className="flex flex-col h-[300px]">
-              <h4 className="text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-3 ml-1">Распознанные оценки:</h4>
+              <h4 className="text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-3 ml-1">{t('gradebook.ui.voice.parsed', 'Распознанные оценки:')}</h4>
               
               {parsedGrades.length === 0 ? (
                 <div className="flex-1 flex flex-col items-center justify-center text-center">
                   <div className="w-16 h-16 bg-slate-50 dark:bg-slate-800 rounded-2xl flex items-center justify-center mb-4">
                     <AlertCircle className="w-8 h-8 text-amber-500" />
                   </div>
-                  <p className="font-bold text-slate-900 dark:text-white mb-1">Оценки не найдены</p>
-                  <p className="text-sm text-slate-500">Система не услышала имена или оценки из текущего списка студентов.</p>
+                  <p className="font-bold text-slate-900 dark:text-white mb-1">{t('gradebook.ui.voice.noneFound', 'Оценки не найдены')}</p>
+                  <p className="text-sm text-slate-500">{t('gradebook.ui.voice.noneFoundDesc', 'Система не услышала имена или оценки из текущего списка студентов.')}</p>
                 </div>
               ) : (
                 <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar space-y-2">
@@ -230,10 +229,10 @@ const VoiceGradeDictator: React.FC<VoiceGradeDictatorProps> = ({ isOpen, onClose
                              'border-indigo-500/20 text-indigo-600')
                           : 'border-indigo-500/20 dark:border-indigo-500/40 text-indigo-700 dark:text-indigo-400'}`}>
                           {mode === 'journal' 
-                            ? (g.status === 'present' ? 'Присутствует' :
-                               g.status === 'absent' ? 'Отсутствует' :
-                               g.status === 'late' ? 'Опоздал' :
-                               g.status === 'excused' ? 'По ув. причине' : '-')
+                            ? (g.status === 'present' ? t('journal.present', 'Присутствует') :
+                               g.status === 'absent' ? t('journal.absent', 'Отсутствует') :
+                               g.status === 'late' ? t('journal.late', 'Опоздал') :
+                               g.status === 'excused' ? t('gradebook.ui.voice.excusedShort', 'По ув. причине') : '-')
                             : (g.value !== null ? g.value : '-')}
                         </div>
                       </div>
@@ -247,7 +246,7 @@ const VoiceGradeDictator: React.FC<VoiceGradeDictatorProps> = ({ isOpen, onClose
                   onClick={() => setParsedGrades(null)}
                   className="flex-1 py-3 px-4 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold rounded-xl transition-colors text-sm"
                 >
-                  Перезаписать
+                  {t('gradebook.ui.voice.rerecord', 'Перезаписать')}
                 </button>
                 <button
                   onClick={() => {
@@ -258,7 +257,7 @@ const VoiceGradeDictator: React.FC<VoiceGradeDictatorProps> = ({ isOpen, onClose
                   className="flex-1 py-3 px-4 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl transition-all shadow-md active:scale-95 disabled:opacity-50 disabled:active:scale-100 flex items-center justify-center gap-2 text-sm"
                 >
                   <Check className="w-5 h-5" />
-                  Применить ко всем
+                  {t('gradebook.ui.voice.applyAll', 'Применить ко всем')}
                 </button>
               </div>
             </div>

@@ -16,6 +16,7 @@ import { uploadLessonCover, uploadLessonAttachment, deleteLessonAttachment } fro
 import type { LessonAttachment, Material, Group } from '../../types';
 import { orgGetMaterials, orgGetGroups } from '../../lib/api';
 import { getVideoEmbedUrl, isDirectVideoFile } from '../../utils/videoEmbed';
+import { intlLocale } from '../../lib/locale';
 
 import {
   Save, ArrowLeft, Bold, Italic, Strikethrough, Heading1, Heading2, List,
@@ -341,12 +342,12 @@ const LessonEditPage: React.FC = () => {
       {/* Header bar */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 sticky top-0 z-10 bg-slate-50/80 dark:bg-slate-900/80 backdrop-blur-md pb-4 pt-2 -mt-2">
         <div className="flex items-center gap-3">
-          <button onClick={() => { if (!isDirty || confirm('Есть несохранённые изменения. Покинуть страницу?')) navigate('/lessons'); }} className="p-2 bg-white dark:bg-slate-800 rounded-lg text-slate-500 hover:text-slate-900 dark:hover:text-white border border-slate-200 dark:border-slate-700 shadow-sm transition-all hover:shadow-md"><ArrowLeft className="w-4 h-4" /></button>
+          <button onClick={() => { if (!isDirty || confirm(t('lessons.editor.leaveConfirm', 'Есть несохранённые изменения. Покинуть страницу?'))) navigate('/lessons'); }} className="p-2 bg-white dark:bg-slate-800 rounded-lg text-slate-500 hover:text-slate-900 dark:hover:text-white border border-slate-200 dark:border-slate-700 shadow-sm transition-all hover:shadow-md"><ArrowLeft className="w-4 h-4" /></button>
           <h1 className="text-xl font-bold text-slate-900 dark:text-white">{isEdit ? t('lessons.editLesson', 'Редактировать урок') : t('lessons.newLesson', 'Новый урок')}</h1>
           {lastSaved && (
              <span className="text-xs text-slate-400 flex items-center gap-1 hidden sm:flex">
                 <CheckCircle2 className="w-3 h-3 text-emerald-500" />
-                Сохранено в {lastSaved.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                {t('lessons.editor.savedAt', 'Сохранено в {{time}}', { time: lastSaved.toLocaleTimeString(intlLocale(), {hour: '2-digit', minute:'2-digit'}) })}
              </span>
           )}
         </div>
@@ -359,7 +360,7 @@ const LessonEditPage: React.FC = () => {
           <button onClick={() => handleSave(false)} disabled={saving}
             className="btn-primary w-full sm:w-auto flex items-center justify-center gap-2">
             <Save className="w-4 h-4" />
-            {saving ? 'Сохранение...' : t('common.save', 'Сохранить')}
+            {saving ? t('common.saving', 'Сохранение...') : t('common.save', 'Сохранить')}
           </button>
         </div>
       </div>
@@ -374,13 +375,13 @@ const LessonEditPage: React.FC = () => {
                type="text" 
                value={title} 
                onChange={(e) => setTitle(e.target.value)}
-               placeholder="Введите название урока..."
+               placeholder={t('lessons.editor.titlePlaceholder', 'Введите название урока...')}
                className="w-full text-3xl sm:text-4xl font-extrabold text-slate-900 dark:text-white bg-transparent outline-none placeholder:text-slate-300 dark:placeholder:text-slate-700 mb-4 h-auto min-h-[50px] resize-none"
              />
              <textarea 
                value={description} 
                onChange={(e) => setDescription(e.target.value)}
-               placeholder="Добавьте краткое описание (о чём этот урок?)"
+               placeholder={t('lessons.editor.descPlaceholder', 'Добавьте краткое описание (о чём этот урок?)')}
                className="w-full text-base sm:text-lg text-slate-600 dark:text-slate-400 bg-transparent outline-none placeholder:text-slate-400 dark:placeholder:text-slate-600 min-h-[60px] resize-none border-none focus:ring-0 p-0"
              />
           </div>
@@ -389,42 +390,42 @@ const LessonEditPage: React.FC = () => {
           <div className="card overflow-hidden shadow-sm hover:shadow-md transition-shadow">
             <div className="bg-slate-50 dark:bg-slate-900/50 border-b border-slate-200 dark:border-slate-800 p-2 sm:p-3 flex flex-wrap items-center gap-1 sm:gap-2">
               <div className="flex items-center gap-0.5 bg-white dark:bg-slate-800 p-1 rounded-lg border border-slate-200 dark:border-slate-700 shadow-sm">
-                <button onClick={() => editor?.chain().focus().toggleBold().run()} className={tbtn(editor?.isActive('bold') ?? false)} title="Жирный шрифт"><Bold className="w-4 h-4" /></button>
-                <button onClick={() => editor?.chain().focus().toggleItalic().run()} className={tbtn(editor?.isActive('italic') ?? false)} title="Курсив"><Italic className="w-4 h-4" /></button>
-                <button onClick={() => editor?.chain().focus().toggleStrike().run()} className={tbtn(editor?.isActive('strike') ?? false)} title="Зачеркнутый"><Strikethrough className="w-4 h-4" /></button>
-                <button onClick={() => editor?.chain().focus().toggleCode().run()} className={tbtn(editor?.isActive('code') ?? false)} title="Код"><Code className="w-4 h-4" /></button>
+                <button onClick={() => editor?.chain().focus().toggleBold().run()} className={tbtn(editor?.isActive('bold') ?? false)} title={t('lessons.editor.bold', 'Жирный шрифт')}><Bold className="w-4 h-4" /></button>
+                <button onClick={() => editor?.chain().focus().toggleItalic().run()} className={tbtn(editor?.isActive('italic') ?? false)} title={t('lessons.editor.italic', 'Курсив')}><Italic className="w-4 h-4" /></button>
+                <button onClick={() => editor?.chain().focus().toggleStrike().run()} className={tbtn(editor?.isActive('strike') ?? false)} title={t('lessons.editor.strike', 'Зачеркнутый')}><Strikethrough className="w-4 h-4" /></button>
+                <button onClick={() => editor?.chain().focus().toggleCode().run()} className={tbtn(editor?.isActive('code') ?? false)} title={t('lessons.editor.code', 'Код')}><Code className="w-4 h-4" /></button>
               </div>
 
               <div className="flex items-center gap-0.5 bg-white dark:bg-slate-800 p-1 rounded-lg border border-slate-200 dark:border-slate-700 shadow-sm">
-                <button onClick={() => editor?.chain().focus().toggleHeading({ level: 1 }).run()} className={tbtn(editor?.isActive('heading', { level: 1 }) ?? false)} title="Заголовок 1"><Heading1 className="w-4 h-4" /></button>
-                <button onClick={() => editor?.chain().focus().toggleHeading({ level: 2 }).run()} className={tbtn(editor?.isActive('heading', { level: 2 }) ?? false)} title="Заголовок 2"><Heading2 className="w-4 h-4" /></button>
+                <button onClick={() => editor?.chain().focus().toggleHeading({ level: 1 }).run()} className={tbtn(editor?.isActive('heading', { level: 1 }) ?? false)} title={t('lessons.editor.h1', 'Заголовок 1')}><Heading1 className="w-4 h-4" /></button>
+                <button onClick={() => editor?.chain().focus().toggleHeading({ level: 2 }).run()} className={tbtn(editor?.isActive('heading', { level: 2 }) ?? false)} title={t('lessons.editor.h2', 'Заголовок 2')}><Heading2 className="w-4 h-4" /></button>
               </div>
 
               <div className="flex items-center gap-0.5 bg-white dark:bg-slate-800 p-1 rounded-lg border border-slate-200 dark:border-slate-700 shadow-sm">
-                <button onClick={() => editor?.chain().focus().toggleBulletList().run()} className={tbtn(editor?.isActive('bulletList') ?? false)} title="Маркированный список"><List className="w-4 h-4" /></button>
-                <button onClick={() => editor?.chain().focus().toggleOrderedList().run()} className={tbtn(editor?.isActive('orderedList') ?? false)} title="Нумерованный список"><ListOrdered className="w-4 h-4" /></button>
-                <button onClick={() => editor?.chain().focus().toggleBlockquote().run()} className={tbtn(editor?.isActive('blockquote') ?? false)} title="Цитата"><Quote className="w-4 h-4" /></button>
-                <button onClick={() => editor?.chain().focus().setHorizontalRule().run()} className={tbtn(false)} title="Разделитель"><Minus className="w-4 h-4" /></button>
+                <button onClick={() => editor?.chain().focus().toggleBulletList().run()} className={tbtn(editor?.isActive('bulletList') ?? false)} title={t('lessons.editor.bulletList', 'Маркированный список')}><List className="w-4 h-4" /></button>
+                <button onClick={() => editor?.chain().focus().toggleOrderedList().run()} className={tbtn(editor?.isActive('orderedList') ?? false)} title={t('lessons.editor.orderedList', 'Нумерованный список')}><ListOrdered className="w-4 h-4" /></button>
+                <button onClick={() => editor?.chain().focus().toggleBlockquote().run()} className={tbtn(editor?.isActive('blockquote') ?? false)} title={t('lessons.editor.quote', 'Цитата')}><Quote className="w-4 h-4" /></button>
+                <button onClick={() => editor?.chain().focus().setHorizontalRule().run()} className={tbtn(false)} title={t('lessons.editor.divider', 'Разделитель')}><Minus className="w-4 h-4" /></button>
               </div>
               
               <div className="flex items-center gap-0.5 bg-white dark:bg-slate-800 p-1 rounded-lg border border-slate-200 dark:border-slate-700 shadow-sm">
-                <button onClick={addLink} className={tbtn(editor?.isActive('link') ?? false)} title="Вставить ссылку"><LinkIcon className="w-4 h-4" /></button>
-                <button onClick={addImage} className={tbtn(editor?.isActive('image') ?? false)} title="Вставить картинку"><ImageIcon className="w-4 h-4" /></button>
-                <button onClick={addVideo} className={tbtn(editor?.isActive('youtube') ?? false)} title="Вставить YouTube"><YoutubeIcon className="w-4 h-4" /></button>
+                <button onClick={addLink} className={tbtn(editor?.isActive('link') ?? false)} title={t('lessons.editor.insertLink', 'Вставить ссылку')}><LinkIcon className="w-4 h-4" /></button>
+                <button onClick={addImage} className={tbtn(editor?.isActive('image') ?? false)} title={t('lessons.editor.insertImage', 'Вставить картинку')}><ImageIcon className="w-4 h-4" /></button>
+                <button onClick={addVideo} className={tbtn(editor?.isActive('youtube') ?? false)} title={t('lessons.editor.insertYoutube', 'Вставить YouTube')}><YoutubeIcon className="w-4 h-4" /></button>
               </div>
               
               {canAccess('ai') && (
                 <button
                   onClick={() => setAiOpen(true)}
                   className="ml-auto inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-semibold text-white bg-gradient-to-br from-violet-600 to-indigo-600 hover:opacity-90 shadow-sm transition-opacity"
-                  title="AI-помощник урока"
+                  title={t('lessons.editor.aiAssistant', 'AI-помощник урока')}
                 >
                   <Sparkles className="w-4 h-4" /> <span className="hidden sm:inline">AI</span>
                 </button>
               )}
               <div className={`flex items-center gap-0.5 bg-white dark:bg-slate-800 p-1 rounded-lg border border-slate-200 dark:border-slate-700 shadow-sm ${canAccess('ai') ? '' : 'ml-auto'}`}>
-                <button onClick={() => editor?.chain().focus().undo().run()} className={tbtn(false)} title="Отменить"><Undo className="w-4 h-4" /></button>
-                <button onClick={() => editor?.chain().focus().redo().run()} className={tbtn(false)} title="Повторить"><Redo className="w-4 h-4" /></button>
+                <button onClick={() => editor?.chain().focus().undo().run()} className={tbtn(false)} title={t('lessons.editor.undo', 'Отменить')}><Undo className="w-4 h-4" /></button>
+                <button onClick={() => editor?.chain().focus().redo().run()} className={tbtn(false)} title={t('lessons.editor.redo', 'Повторить')}><Redo className="w-4 h-4" /></button>
               </div>
             </div>
             
@@ -453,7 +454,7 @@ const LessonEditPage: React.FC = () => {
                       type="text" 
                       value={searchMaterial} 
                       onChange={(e) => setSearchMaterial(e.target.value)}
-                      placeholder="Поиск по базе знаний..." 
+                      placeholder={t('lessons.editor.searchKb', 'Поиск по базе знаний...')} 
                       className="w-full pl-9 pr-3 py-2 text-sm bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg focus:outline-none focus:border-primary-400 transition-colors"
                     />
                   </div>
@@ -462,9 +463,9 @@ const LessonEditPage: React.FC = () => {
                   {loadingMaterials ? (
                     <div className="flex justify-center p-4"><div className="w-5 h-5 border-2 border-slate-400 border-t-transparent rounded-full animate-spin" /></div>
                   ) : libMaterials.length === 0 ? (
-                    <div className="text-center p-4 text-sm text-slate-500">База знаний пуста</div>
+                    <div className="text-center p-4 text-sm text-slate-500">{t('lessons.editor.kbEmpty', 'База знаний пуста')}</div>
                   ) : libMaterials.filter(m => m.title.toLowerCase().includes(searchMaterial.toLowerCase())).length === 0 ? (
-                    <div className="text-center p-4 text-sm text-slate-500">Ничего не найдено</div>
+                    <div className="text-center p-4 text-sm text-slate-500">{t('finances.nothingFound', 'Ничего не найдено')}</div>
                   ) : (
                     libMaterials.filter(m => m.title.toLowerCase().includes(searchMaterial.toLowerCase())).map((m) => (
                       <div key={m.id} className="flex items-center gap-3 p-2 rounded-xl hover:bg-white dark:hover:bg-slate-700/50 transition-colors group cursor-pointer border border-transparent hover:border-slate-200 dark:hover:border-slate-600 shadow-sm" onClick={() => handleAddMaterial(m)}>
@@ -473,9 +474,9 @@ const LessonEditPage: React.FC = () => {
                          </div>
                          <div className="flex-1 min-w-0">
                            <p className="text-sm font-medium text-slate-900 dark:text-white truncate">{m.title}</p>
-                           <p className="text-[10px] text-slate-500 truncate">{m.type === 'link' ? 'Ссылка' : formatSize(m.sizeBytes || 0)}</p>
+                           <p className="text-[10px] text-slate-500 truncate">{m.type === 'link' ? t('lessons.editor.link', 'Ссылка') : formatSize(m.sizeBytes || 0)}</p>
                          </div>
-                         <button className="text-primary-600 dark:text-primary-400 opacity-0 group-hover:opacity-100 p-1.5 hover:bg-primary-50 dark:hover:bg-primary-900/20 rounded-lg transition-all shrink-0" title="Прикрепить">
+                         <button className="text-primary-600 dark:text-primary-400 opacity-0 group-hover:opacity-100 p-1.5 hover:bg-primary-50 dark:hover:bg-primary-900/20 rounded-lg transition-all shrink-0" title={t('lessons.editor.attach', 'Прикрепить')}>
                             <Upload className="w-4 h-4 ml-1" />
                          </button>
                       </div>
@@ -498,16 +499,16 @@ const LessonEditPage: React.FC = () => {
                    <Upload className={`w-6 h-6 ${isDragging ? 'text-primary-500' : 'text-slate-400 dark:text-slate-500'}`} />
                 </div>
                 <p className="text-sm font-bold text-slate-700 dark:text-slate-300 mb-1">
-                  {isDragging ? t('lessons.dropHere', 'Отпустите файлы') : 'Загрузить с устройства'}
+                  {isDragging ? t('lessons.dropHere', 'Отпустите файлы') : t('lessons.editor.uploadFromDevice', 'Загрузить с устройства')}
                 </p>
-                <p className="text-xs text-slate-500 dark:text-slate-400 max-w-[200px] mt-1 line-clamp-2">Перетащите файлы или нажмите (до 50MB).</p>
+                <p className="text-xs text-slate-500 dark:text-slate-400 max-w-[200px] mt-1 line-clamp-2">{t('lessons.editor.dropHint', 'Перетащите файлы или нажмите (до 50MB).')}</p>
                 
                 {uploading.length > 0 && (
                   <div className="mt-4 w-full max-w-[200px] space-y-2">
                     {uploading.map((u) => (
                       <div key={u} className="flex items-center justify-center gap-2 p-1.5 bg-white dark:bg-slate-800 rounded-lg shadow-sm border border-slate-100 dark:border-slate-700">
                         <div className="w-3.5 h-3.5 border-2 border-slate-300 border-t-slate-600 rounded-full animate-spin shrink-0" />
-                        <span className="text-[10px] font-medium text-slate-600 dark:text-slate-400 truncate">Загрузка...</span>
+                        <span className="text-[10px] font-medium text-slate-600 dark:text-slate-400 truncate">{t('lessons.uploading', 'Загрузка...')}</span>
                       </div>
                     ))}
                   </div>
@@ -518,7 +519,7 @@ const LessonEditPage: React.FC = () => {
             {/* List Array */}
             {attachments.length > 0 && (
               <div className="space-y-2">
-                <h4 className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-3">Прикреплено к уроку ({attachments.length})</h4>
+                <h4 className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-3">{t('lessons.editor.attachedCount', 'Прикреплено к уроку ({{count}})', { count: attachments.length })}</h4>
                 {attachments.map((att) => (
                   <div key={att.id} className="flex items-center gap-4 p-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl group hover:shadow-md hover:border-slate-300 dark:hover:border-slate-600 transition-all">
                     <div className="w-10 h-10 rounded-lg bg-slate-50 dark:bg-slate-700/50 flex items-center justify-center shrink-0">
@@ -527,13 +528,13 @@ const LessonEditPage: React.FC = () => {
                     <div className="flex-1 min-w-0 flex items-center gap-3">
                       <p className="text-sm text-slate-900 dark:text-white truncate font-medium">{att.name}</p>
                       {!att.storagePath && (
-                         <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-indigo-50 text-indigo-600 dark:bg-indigo-900/30 dark:text-indigo-400 uppercase tracking-wider shrink-0">Из базы знаний</span>
+                         <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-indigo-50 text-indigo-600 dark:bg-indigo-900/30 dark:text-indigo-400 uppercase tracking-wider shrink-0">{t('lessons.editor.fromKb', 'Из базы знаний')}</span>
                       )}
                     </div>
                     <div className="flex items-center gap-3 shrink-0">
                       <p className="text-xs text-slate-500">{formatSize(att.size)}</p>
                       <button onClick={() => handleDeleteAttachment(att)}
-                        className="p-2 text-slate-400 hover:text-white hover:bg-red-500 bg-slate-50 dark:bg-slate-700 dark:hover:bg-red-600 transition-all rounded-lg opacity-0 group-hover:opacity-100 focus:opacity-100 shadow-sm" title="Открепить">
+                        className="p-2 text-slate-400 hover:text-white hover:bg-red-500 bg-slate-50 dark:bg-slate-700 dark:hover:bg-red-600 transition-all rounded-lg opacity-0 group-hover:opacity-100 focus:opacity-100 shadow-sm" title={t('lessons.editor.detach', 'Открепить')}>
                         <Trash2 className="w-4 h-4" />
                       </button>
                     </div>
@@ -551,7 +552,7 @@ const LessonEditPage: React.FC = () => {
           {/* Lesson Settings Box */}
           <div className="card divide-y divide-slate-100 dark:divide-slate-700/50">
             <div className="p-5 bg-slate-50/50 dark:bg-slate-800/50">
-               <h3 className="text-sm font-bold text-slate-900 dark:text-white uppercase tracking-wider mb-4">Настройки урока</h3>
+               <h3 className="text-sm font-bold text-slate-900 dark:text-white uppercase tracking-wider mb-4">{t('lessons.editor.settings', 'Настройки урока')}</h3>
                
                <div className="space-y-4">
                   <div>
@@ -567,25 +568,25 @@ const LessonEditPage: React.FC = () => {
                     <div>
                       <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">{t('lessons.levelLabel', 'Уровень')}</label>
                       <select value={level} onChange={(e) => setLevel(e.target.value)} className="input text-sm">
-                        <option>{t('lessons.beginner', 'Beginner')}</option>
-                        <option>{t('lessons.intermediate', 'Intermediate')}</option>
-                        <option>{t('lessons.advanced', 'Advanced')}</option>
+                        <option value="Beginner">{t('lessons.beginner', 'Beginner')}</option>
+                        <option value="Intermediate">{t('lessons.intermediate', 'Intermediate')}</option>
+                        <option value="Advanced">{t('lessons.advanced', 'Advanced')}</option>
                       </select>
                     </div>
                   </div>
 
                    <div>
                     <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">{t('lessons.tagsLabel', 'Теги')}</label>
-                    <input value={tags} onChange={(e) => setTags(e.target.value)} className="input text-sm" placeholder="Грамматика, Аудирование..." />
+                    <input value={tags} onChange={(e) => setTags(e.target.value)} className="input text-sm" placeholder={t('lessons.editor.tagsPlaceholder', 'Грамматика, Аудирование...')} />
                   </div>
                </div>
             </div>
 
             {/* Group Linkage Section */}
             <div className="p-5 border-t border-slate-100 dark:border-slate-700/50">
-              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-3 uppercase tracking-wider">Привязка к группам</label>
+              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-3 uppercase tracking-wider">{t('lessons.editor.groupLink', 'Привязка к группам')}</label>
               {groups.length === 0 ? (
-                <p className="text-xs text-slate-500">Нет доступных групп</p>
+                <p className="text-xs text-slate-500">{t('lessons.editor.noGroups', 'Нет доступных групп')}</p>
               ) : (
                 <div className="space-y-2 max-h-[150px] overflow-y-auto custom-scrollbar pr-2">
                   {groups.map(group => (
@@ -619,10 +620,10 @@ const LessonEditPage: React.FC = () => {
               <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-2 truncate">{t('lessons.coverLabel', 'Обложка урока (Опционально)')}</label>
               {coverImageUrl ? (
                 <div className="relative group rounded-xl overflow-hidden aspect-video bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
-                  <img src={coverImageUrl} alt="Cover" className="w-full h-full object-cover" />
+                  <img src={coverImageUrl} alt={t('lessons.editor.cover', 'Обложка')} className="w-full h-full object-cover" />
                   <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
                      <label className="bg-white/20 hover:bg-white/30 text-white backdrop-blur px-3 py-1.5 rounded-lg text-sm cursor-pointer transition-colors font-medium">
-                       Заменить
+                       {t('lessons.editor.replace', 'Заменить')}
                        <input type="file" accept="image/*" onChange={handleCoverUpload} className="hidden" />
                      </label>
                      <button onClick={() => setCoverImageUrl('')} className="bg-red-500/80 hover:bg-red-500 text-white backdrop-blur p-1.5 rounded-lg transition-colors">
@@ -635,7 +636,7 @@ const LessonEditPage: React.FC = () => {
                    <div className="w-10 h-10 bg-white dark:bg-slate-700 shadow-sm rounded-full flex items-center justify-center mb-2 group-hover:bg-primary-100 dark:group-hover:bg-primary-900/40">
                      <Upload className="w-4 h-4 text-slate-400 group-hover:text-primary-500" />
                    </div>
-                   <span className="text-xs font-medium text-slate-500 group-hover:text-primary-600">Загрузить обложку</span>
+                   <span className="text-xs font-medium text-slate-500 group-hover:text-primary-600">{t('lessons.editor.uploadCover', 'Загрузить обложку')}</span>
                    <input type="file" accept="image/*" onChange={handleCoverUpload} className="hidden" />
                 </label>
               )}
@@ -644,7 +645,7 @@ const LessonEditPage: React.FC = () => {
             <div className="p-5">
               <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5 flex items-center gap-1.5">
                 <YoutubeIcon className="w-4 h-4 text-red-500" />
-                Видео-лекция (YouTube/Vimeo)
+                {t('lessons.editor.videoLecture', 'Видео-лекция (YouTube/Vimeo)')}
               </label>
               <input value={videoUrl} onChange={(e) => setVideoUrl(e.target.value)} className="input text-sm" placeholder="https://youtube.com/watch?v=..." />
               {videoUrl.trim() && (
@@ -670,8 +671,8 @@ const LessonEditPage: React.FC = () => {
                    <ClipboardList className="w-5 h-5" />
                  </div>
                  <div>
-                   <h3 className="text-sm font-bold text-slate-900 dark:text-white">Домашнее задание</h3>
-                   <p className="text-xs text-slate-500">{showHomework ? 'Включено' : 'Выключено'}</p>
+                   <h3 className="text-sm font-bold text-slate-900 dark:text-white">{t('lessons.homework', 'Домашнее задание')}</h3>
+                   <p className="text-xs text-slate-500">{showHomework ? t('lessons.editor.enabled', 'Включено') : t('lessons.editor.disabled', 'Выключено')}</p>
                  </div>
               </div>
               <div className={`w-10 h-6 rounded-full p-1 transition-colors ${showHomework ? 'bg-amber-500' : 'bg-slate-200 dark:bg-slate-700'}`}>
@@ -682,25 +683,25 @@ const LessonEditPage: React.FC = () => {
             {showHomework && (
               <div className="p-5 border-t border-amber-100 dark:border-amber-900/30 bg-white dark:bg-slate-800 space-y-4">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">Задание *</label>
+                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">{t('lessons.editor.task', 'Задание')} *</label>
                   <input value={homework.title} onChange={(e) => setHomework((h) => ({ ...h, title: e.target.value }))}
-                    className="input text-sm focus:border-amber-400 focus:ring-amber-400/20" placeholder="напр. Решить задачи 1-10" />
+                    className="input text-sm focus:border-amber-400 focus:ring-amber-400/20" placeholder={t('lessons.editor.taskPlaceholder', 'напр. Решить задачи 1-10')} />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">Подробное описание</label>
+                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">{t('lessons.editor.details', 'Подробное описание')}</label>
                   <textarea value={homework.description} onChange={(e) => setHomework((h) => ({ ...h, description: e.target.value }))}
-                    className="input min-h-[100px] text-sm focus:border-amber-400 focus:ring-amber-400/20" placeholder="Что конкретно нужно сделать студенту..." />
+                    className="input min-h-[100px] text-sm focus:border-amber-400 focus:ring-amber-400/20" placeholder={t('lessons.editor.detailsPlaceholder', 'Что конкретно нужно сделать студенту...')} />
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5 flex items-center gap-1.5">
-                      <Calendar className="w-3.5 h-3.5" /> Срок сдачи
+                      <Calendar className="w-3.5 h-3.5" /> {t('lessons.editor.dueDate', 'Срок сдачи')}
                     </label>
                     <input type="date" value={homework.dueDate} onChange={(e) => setHomework((h) => ({ ...h, dueDate: e.target.value }))} className="input text-sm focus:border-amber-400 focus:ring-amber-400/20" />
                   </div>
                   <div>
                     <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5 flex items-center gap-1.5">
-                      <Award className="w-3.5 h-3.5 text-amber-500" /> Баллы (XP)
+                      <Award className="w-3.5 h-3.5 text-amber-500" /> {t('lessons.editor.pointsXp', 'Баллы (XP)')}
                     </label>
                     <input type="number" value={homework.points || ''} onChange={(e) => setHomework((h) => ({ ...h, points: +e.target.value }))}
                       className="input text-sm font-bold text-amber-700 dark:text-amber-400 focus:border-amber-400 focus:ring-amber-400/20" min={0} placeholder="0" />

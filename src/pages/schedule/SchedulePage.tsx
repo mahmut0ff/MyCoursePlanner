@@ -14,6 +14,7 @@ import { useBranch } from '../../contexts/BranchContext';
 import BranchFilter from '../../components/ui/BranchFilter';
 import ClassroomSelect from '../../components/ui/ClassroomSelect';
 import ScheduleReviewModal from '../../components/ai/ScheduleReviewModal';
+import { intlLocale } from '../../lib/locale';
 
 const DAY_NAMES = ['Вс', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб'];
 
@@ -237,6 +238,7 @@ const SchedulePage: React.FC = () => {
         setSelectedEvent(null);
         setContextMenu(null);
         setShowPasteModal(false);
+        setClipboard(null);
       }
     };
     document.addEventListener('keydown', handleKeyboard);
@@ -503,13 +505,13 @@ const SchedulePage: React.FC = () => {
         const sameBranch = ((testEv as any).branchId || null) === (e.branchId || null);
         if (sameBranch && sameRoom(testEv as any, e)) {
           const label = e.classroomName || e.location;
-          return `Конфликт: Кабинет "${label}" уже занят занятием "${e.title}" (${e.startTime}-${e.endTime})`;
+          return t('schedule.conflict.room', 'Конфликт: Кабинет «{{room}}» уже занят занятием «{{title}}» ({{start}}-{{end}})', { room: label, title: e.title, start: e.startTime, end: e.endTime });
         }
         if (testEv.teacherId && e.teacherId && testEv.teacherId === e.teacherId) {
-          return `Конфликт: У преподавателя уже стоит занятие "${e.title}" (${e.startTime}-${e.endTime})`;
+          return t('schedule.conflict.teacher', 'Конфликт: У преподавателя уже стоит занятие «{{title}}» ({{start}}-{{end}})', { title: e.title, start: e.startTime, end: e.endTime });
         }
         if (testEv.groupId && e.groupId && testEv.groupId === e.groupId) {
-          return `Конфликт: У группы уже стоит занятие "${e.title}" (${e.startTime}-${e.endTime})`;
+          return t('schedule.conflict.group', 'Конфликт: У группы уже стоит занятие «{{title}}» ({{start}}-{{end}})', { title: e.title, start: e.startTime, end: e.endTime });
         }
       }
     }
@@ -856,6 +858,8 @@ const SchedulePage: React.FC = () => {
           )}
           <button
             onClick={(e) => { e.stopPropagation(); handleDelete(lesson.id, true); }}
+            title={t('common.delete', 'Удалить')}
+            aria-label={t('common.delete', 'Удалить')}
             className="p-1 rounded-md text-red-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/30 transition-all"
           >
             <Trash2 className="w-3 h-3" />
@@ -1114,7 +1118,7 @@ const SchedulePage: React.FC = () => {
         <div className="flex items-center justify-between">
           {canEdit && <GripVertical className="w-2 h-2 opacity-0 group-hover:opacity-40 mr-0.5 flex-shrink-0" />}
           <span className="font-bold truncate flex-1">{ev.title}</span>
-          <button onClick={(e) => { e.stopPropagation(); handleDelete(ev.id, false); }} className="opacity-0 group-hover:opacity-100 text-red-500 transition-opacity"><Trash2 className="w-2.5 h-2.5" /></button>
+          <button onClick={(e) => { e.stopPropagation(); handleDelete(ev.id, false); }} title={t('common.delete', 'Удалить')} aria-label={t('common.delete', 'Удалить')} className="opacity-0 group-hover:opacity-100 text-red-500 transition-opacity"><Trash2 className="w-2.5 h-2.5" /></button>
         </div>
         <div className="flex items-center gap-1.5 text-[8px] opacity-80 min-w-0">
           <span className="flex items-center gap-0.5 shrink-0"><Clock className="w-2 h-2" />{ev.startTime}</span>
@@ -1213,9 +1217,9 @@ const SchedulePage: React.FC = () => {
                 setAiReviewOpen(true);
               }}
               className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-[13px] font-semibold text-white bg-gradient-to-br from-violet-600 to-indigo-600 hover:opacity-90 transition-opacity shadow-sm shrink-0"
-              title="AI-анализ расписания"
+              title={t('schedule.aiReviewTitle', 'AI-анализ расписания')}
             >
-              <Sparkles className="w-4 h-4 shrink-0" /><span className="hidden sm:inline">AI-анализ</span>
+              <Sparkles className="w-4 h-4 shrink-0" /><span className="hidden sm:inline">{t('schedule.aiReview', 'AI-анализ')}</span>
             </button>
           )}
           <button onClick={() => openCreate()} className="flex items-center gap-1.5 px-3.5 py-1.5 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-xl text-[13px] font-semibold hover:bg-slate-800 dark:hover:bg-slate-100 transition-colors shrink-0 justify-center">
@@ -1247,7 +1251,7 @@ const SchedulePage: React.FC = () => {
           <button onClick={prevWeek} className="p-2.5 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors shadow-sm"><ChevronLeft className="w-4 h-4 text-slate-600 dark:text-slate-300" /></button>
           <button onClick={() => setCurrent(new Date())} className="px-4 py-2 text-sm font-bold text-slate-700 dark:text-slate-300 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-700/50 shadow-sm transition-colors">{t('org.schedule.today', 'Сегодня')}</button>
           <button onClick={nextWeek} className="p-2.5 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors shadow-sm"><ChevronRight className="w-4 h-4 text-slate-600 dark:text-slate-300" /></button>
-          <span className="text-sm font-medium text-slate-500 ml-2 bg-white/50 dark:bg-slate-800/30 px-3 py-1.5 rounded-lg border border-slate-200/50 dark:border-slate-700/50 backdrop-blur-sm">{weekDays[0].toLocaleDateString()} — {weekDays[6].toLocaleDateString()}</span>
+          <span className="text-sm font-medium text-slate-500 ml-2 bg-white/50 dark:bg-slate-800/30 px-3 py-1.5 rounded-lg border border-slate-200/50 dark:border-slate-700/50 backdrop-blur-sm">{weekDays[0].toLocaleDateString(intlLocale())} — {weekDays[6].toLocaleDateString(intlLocale())}</span>
         </div>
       )}
 
@@ -1481,7 +1485,7 @@ const SchedulePage: React.FC = () => {
                             <Copy className="w-4 h-4" />
                           </button>
                         )}
-                        <button onClick={() => handleDelete(ev.id, false)} className="p-2 bg-red-50 text-red-500 hover:bg-red-500 hover:text-white rounded-xl transition-all shadow-sm shrink-0">
+                        <button onClick={() => handleDelete(ev.id, false)} title={t('common.delete', 'Удалить')} aria-label={t('common.delete', 'Удалить')} className="p-2 bg-red-50 text-red-500 hover:bg-red-500 hover:text-white rounded-xl transition-all shadow-sm shrink-0">
                           <Trash2 className="w-4 h-4" />
                         </button>
                       </div>
@@ -1698,7 +1702,7 @@ const SchedulePage: React.FC = () => {
                 )}
 
                 <input 
-                  placeholder={form.groupId ? "Название подставилось автоматически" : "Например: Математика, 11-А"} 
+                  placeholder={form.groupId ? t('schedule.titleAutoPh', 'Название подставилось автоматически') : t('schedule.titlePh', 'Например: Математика, 11-А')} 
                   value={form.title}
                   onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
                   className="input bg-slate-50 dark:bg-slate-900/50" 
@@ -1741,7 +1745,7 @@ const SchedulePage: React.FC = () => {
                     <Repeat className="w-3 h-3 shrink-0" />
                     {form.days.length > 1
                       ? `${t('schedule.willRepeatEveryWeek', 'Уроки будут повторяться каждую неделю:')} ${[...form.days].sort((a, b) => a - b).map(d => dayNamesFull[d]?.toLowerCase()).join(', ')}`
-                      : `${t('schedule.willRepeatEvery', 'Урок будет повторяться каждый')} ${dayNamesFull[form.days[0]]?.toLowerCase() || ''}`}
+                      : `${t('schedule.willRepeatEvery', 'Урок будет повторяться еженедельно:')} ${dayNamesFull[form.days[0]]?.toLowerCase() || ''}`}
                   </p>
                 </div>
               ) : (

@@ -13,9 +13,15 @@ import { MemoryRouter, Routes, Route } from 'react-router-dom';
  * «был(а) в сети» вместо period-scoped lastActivityAt.
  */
 
-vi.mock('react-i18next', () => ({
-  useTranslation: () => ({ t: (_k: string, fb?: string) => fb ?? _k, i18n: { language: 'ru' } }),
-}));
+vi.mock('react-i18next', () => {
+  const fill = (s: string, v?: Record<string, unknown>) => s.replace(/\{\{(\w+)\}\}/g, (_, k) => String(v?.[k] ?? ''));
+  const t = (k: string, a?: string | Record<string, unknown>, b?: Record<string, unknown>) =>
+    typeof a === 'string' ? fill(a, b) : fill(String(a?.defaultValue ?? k), a);
+  return {
+    useTranslation: () => ({ t, i18n: { language: 'ru' } }),
+    initReactI18next: { type: '3rdParty', init: () => {} },
+  };
+});
 
 vi.mock('../../../lib/api', () => ({
   orgGetTeachers: vi.fn(),

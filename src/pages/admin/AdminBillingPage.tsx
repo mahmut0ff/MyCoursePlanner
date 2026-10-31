@@ -113,17 +113,17 @@ const AdminBillingPage: React.FC = () => {
       toast.success(t('common.saved', 'Сохранено'));
       setManage(null);
       load();
-    } catch (e: any) { toast.error(e?.message || 'Ошибка'); }
+    } catch (e: any) { toast.error(e?.message || t('common.error', 'Ошибка')); }
     finally { setSaving(false); }
   };
 
   const daysBadge = (s: any) => {
-    if (s.status === 'gifted') return <span className="text-xs text-violet-500">∞ подарен</span>;
+    if (s.status === 'gifted') return <span className="text-xs text-violet-500">∞ {t('admin.billing.giftedForever', 'подарен')}</span>;
     const d = daysLeft(s.paidUntil);
-    if (d === null) return <span className="text-xs text-slate-400">не задано</span>;
+    if (d === null) return <span className="text-xs text-slate-400">{t('admin.billing.notSet', 'не задано')}</span>;
     const date = new Date(s.paidUntil).toLocaleDateString();
     const cls = d < 0 ? 'text-red-600 dark:text-red-400' : d <= 3 ? 'text-amber-600 dark:text-amber-400' : 'text-slate-700 dark:text-slate-300';
-    const label = d < 0 ? `просрочено ${Math.abs(d)} дн.` : d === 0 ? 'сегодня' : `${d} дн.`;
+    const label = d < 0 ? t('admin.billing.overdueDays', { count: Math.abs(d) }) : d === 0 ? t('admin.billing.today', 'сегодня') : t('admin.billing.daysLeft', { count: d });
     return <span className={`text-xs font-medium ${cls}`}>{date} · {label}</span>;
   };
 
@@ -138,7 +138,7 @@ const AdminBillingPage: React.FC = () => {
       <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 mb-6">
         <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-4">
           <div className="flex items-center gap-2 mb-1"><Banknote className="w-4 h-4 text-emerald-500" /><span className="text-xs text-slate-500 dark:text-slate-400">{t('admin.billing.mrr')}</span></div>
-          <p className="text-2xl font-bold text-slate-900 dark:text-white">{totalMRR.toLocaleString()} сом</p>
+          <p className="text-2xl font-bold text-slate-900 dark:text-white">{t('admin.currencyAmount', '{{amount}} сом', { amount: totalMRR.toLocaleString() })}</p>
         </div>
         <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-4">
           <div className="flex items-center gap-2 mb-1"><CreditCard className="w-4 h-4 text-primary-500" /><span className="text-xs text-slate-500 dark:text-slate-400">{t('admin.billing.active')}</span></div>
@@ -185,7 +185,7 @@ const AdminBillingPage: React.FC = () => {
               <tr key={s.id} className="hover:bg-slate-50 dark:bg-slate-700/50">
                 <td className="px-4 py-3"><p className="text-sm font-medium text-slate-900 dark:text-white">{s.organizationName}</p><p className="text-xs text-slate-400 dark:text-slate-500">{s.organizationId?.slice(0, 12)}...</p></td>
                 <td className="px-4 py-3"><span className={`inline-flex px-2 py-0.5 rounded text-xs font-medium ${s.planId === 'enterprise' ? 'bg-amber-100 text-amber-800' : s.planId === 'professional' ? 'bg-violet-100 text-violet-800' : 'bg-blue-100 text-blue-800'}`}>{t(`admin.plans.${s.planId}`) as string}</span></td>
-                <td className="px-4 py-3 text-sm font-medium text-slate-900 dark:text-white">{(planPrice(s.planId)).toLocaleString()} сом/мес</td>
+                <td className="px-4 py-3 text-sm font-medium text-slate-900 dark:text-white">{t('admin.currencyPerMonth', '{{amount}} сом/мес', { amount: planPrice(s.planId).toLocaleString() })}</td>
                 <td className="px-4 py-3"><span className={`inline-flex px-2 py-0.5 rounded text-xs font-medium ${s.status === 'active' ? 'bg-emerald-100 text-emerald-700' : s.status === 'trial' ? 'bg-amber-100 text-amber-700' : s.status === 'gifted' ? 'bg-violet-100 text-violet-700' : 'bg-red-100 text-red-700'}`}>{t(`admin.statuses.${s.status}`) as string}</span></td>
                 <td className="px-4 py-3">{daysBadge(s)}</td>
                 <td className="px-4 py-3">
@@ -204,7 +204,7 @@ const AdminBillingPage: React.FC = () => {
       {manage && (
         <div className="fixed inset-0 bg-black/30 z-50 flex items-center justify-center p-4" onClick={() => setManage(null)}>
           <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 w-full max-w-md shadow-xl" onClick={(e) => e.stopPropagation()}>
-            <h3 className="font-semibold text-slate-900 dark:text-white mb-1">{t('admin.billing.manage', 'Управление подпиской')}</h3>
+            <h3 className="font-semibold text-slate-900 dark:text-white mb-1">{t('admin.billing.manageTitle', 'Управление подпиской')}</h3>
             <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">{manage.name}</p>
 
             <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">{t('admin.billing.plan')}</label>
@@ -217,8 +217,8 @@ const AdminBillingPage: React.FC = () => {
             <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">{t('admin.billing.paidUntil', 'Оплачено до')}</label>
             <input type="date" value={manage.date} onChange={(e) => setManage({ ...manage, date: e.target.value })} className="input mb-2" />
             <div className="flex gap-2 mb-4">
-              <button onClick={() => bumpDate(30)} className="btn-secondary text-xs py-1">+1 месяц</button>
-              <button onClick={() => bumpDate(7)} className="btn-secondary text-xs py-1">+1 неделя</button>
+              <button onClick={() => bumpDate(30)} className="btn-secondary text-xs py-1">{t('admin.billing.plusMonth', '+1 месяц')}</button>
+              <button onClick={() => bumpDate(7)} className="btn-secondary text-xs py-1">{t('admin.billing.plusWeek', '+1 неделя')}</button>
               <button onClick={() => setManage({ ...manage, date: '' })} className="btn-ghost text-xs py-1 text-slate-500">{t('common.clear', 'Очистить')}</button>
             </div>
 

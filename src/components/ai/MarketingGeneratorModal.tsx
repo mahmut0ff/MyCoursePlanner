@@ -2,18 +2,20 @@ import React, { useState } from 'react';
 import { X, Megaphone, Loader2, Copy, Check, Sparkles } from 'lucide-react';
 import { apiAIGenerate } from '../../lib/api';
 import toast from 'react-hot-toast';
+import { useTranslation } from 'react-i18next';
 
 interface Variant { caption: string; hashtags: string[] }
 
 const PLATFORMS = ['Instagram', 'Telegram', 'WhatsApp', 'Facebook'];
 const TONES = [
-  { id: 'friendly', label: 'Дружелюбный' },
-  { id: 'selling', label: 'Продающий' },
-  { id: 'official', label: 'Официальный' },
-  { id: 'fun', label: 'Молодёжный' },
+  { id: 'friendly', labelKey: 'ai.marketing.toneFriendly', label: 'Дружелюбный' },
+  { id: 'selling', labelKey: 'ai.marketing.toneSelling', label: 'Продающий' },
+  { id: 'official', labelKey: 'ai.marketing.toneOfficial', label: 'Официальный' },
+  { id: 'fun', labelKey: 'ai.marketing.toneFun', label: 'Молодёжный' },
 ];
 
 const MarketingGeneratorModal: React.FC<{ open: boolean; onClose: () => void }> = ({ open, onClose }) => {
+  const { t } = useTranslation();
   const [topic, setTopic] = useState('');
   const [platform, setPlatform] = useState('Instagram');
   const [tone, setTone] = useState('friendly');
@@ -24,18 +26,18 @@ const MarketingGeneratorModal: React.FC<{ open: boolean; onClose: () => void }> 
   if (!open) return null;
 
   const generate = async () => {
-    if (!topic.trim()) { toast.error('Опишите, о чём пост'); return; }
+    if (!topic.trim()) { toast.error(t('ai.marketing.describeTopic', 'Опишите, о чём пост')); return; }
     setLoading(true);
     setVariants([]);
     try {
-      const toneLabel = TONES.find(t => t.id === tone)?.label || tone;
+      const toneLabel = TONES.find(x => x.id === tone)?.label || tone;
       const prompt = `Платформа: ${platform}. Тон: ${toneLabel}. Тема/предложение: ${topic.trim()}`;
       const res = await apiAIGenerate({ type: 'marketing_post', prompt });
       const v = res?.data?.variants;
       setVariants(Array.isArray(v) ? v : []);
-      if (!Array.isArray(v) || v.length === 0) toast.error('Не удалось сгенерировать. Попробуйте ещё раз.');
+      if (!Array.isArray(v) || v.length === 0) toast.error(t('ai.generateFailedRetry', 'Не удалось сгенерировать. Попробуйте ещё раз.'));
     } catch (err: any) {
-      toast.error(err?.message || 'Ошибка генерации');
+      toast.error(err?.message || t('ai.generateError', 'Ошибка генерации'));
     } finally {
       setLoading(false);
     }
@@ -45,7 +47,7 @@ const MarketingGeneratorModal: React.FC<{ open: boolean; onClose: () => void }> 
     const text = `${v.caption}\n\n${(v.hashtags || []).map(h => (h.startsWith('#') ? h : `#${h}`)).join(' ')}`;
     navigator.clipboard.writeText(text);
     setCopied(i);
-    toast.success('Скопировано');
+    toast.success(t('support.copied', 'Скопировано'));
     setTimeout(() => setCopied(null), 2000);
   };
 
@@ -58,30 +60,30 @@ const MarketingGeneratorModal: React.FC<{ open: boolean; onClose: () => void }> 
               <Megaphone className="w-5 h-5" />
             </div>
             <div>
-              <h2 className="text-lg font-bold text-slate-900 dark:text-white">AI-маркетолог</h2>
-              <p className="text-xs text-slate-500 dark:text-slate-400">Посты для соцсетей о курсах и акциях</p>
+              <h2 className="text-lg font-bold text-slate-900 dark:text-white">{t('ai.marketing.title', 'AI-маркетолог')}</h2>
+              <p className="text-xs text-slate-500 dark:text-slate-400">{t('ai.marketing.subtitle', 'Посты для соцсетей о курсах и акциях')}</p>
             </div>
           </div>
-          <button onClick={onClose} className="p-2 -mr-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 rounded-lg transition-colors">
+          <button onClick={onClose} aria-label={t('common.close', 'Закрыть')} className="p-2 -mr-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 rounded-lg transition-colors">
             <X className="w-5 h-5" />
           </button>
         </div>
 
         <div className="p-6 space-y-4 overflow-y-auto">
           <div>
-            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">О чём пост?</label>
+            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">{t('ai.marketing.topicLabel', 'О чём пост?')}</label>
             <textarea
               value={topic}
               onChange={(e) => setTopic(e.target.value)}
               className="input w-full min-h-[80px] resize-y"
-              placeholder="Например: набор на курс английского для детей 8–12 лет, скидка 20% до конца месяца, первый урок бесплатно"
+              placeholder={t('ai.marketing.topicPh', 'Например: набор на курс английского для детей 8–12 лет, скидка 20% до конца месяца, первый урок бесплатно')}
               autoFocus
             />
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">Платформа</label>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">{t('ai.marketing.platform', 'Платформа')}</label>
               <div className="flex flex-wrap gap-1.5">
                 {PLATFORMS.map((p) => (
                   <button
@@ -95,7 +97,7 @@ const MarketingGeneratorModal: React.FC<{ open: boolean; onClose: () => void }> 
               </div>
             </div>
             <div>
-              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">Тон</label>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">{t('ai.marketing.tone', 'Тон')}</label>
               <div className="flex flex-wrap gap-1.5">
                 {TONES.map((tn) => (
                   <button
@@ -103,7 +105,7 @@ const MarketingGeneratorModal: React.FC<{ open: boolean; onClose: () => void }> 
                     onClick={() => setTone(tn.id)}
                     className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ${tone === tn.id ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/20 text-primary-700 dark:text-primary-400' : 'border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400'}`}
                   >
-                    {tn.label}
+                    {t(tn.labelKey, tn.label)}
                   </button>
                 ))}
               </div>
@@ -116,7 +118,7 @@ const MarketingGeneratorModal: React.FC<{ open: boolean; onClose: () => void }> 
             className="btn-primary w-full flex items-center justify-center gap-2"
           >
             {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
-            {loading ? 'Генерирую…' : 'Сгенерировать посты'}
+            {loading ? t('ai.generating', 'Генерирую…') : t('ai.marketing.generate', 'Сгенерировать посты')}
           </button>
 
           {variants.length > 0 && (
@@ -126,7 +128,7 @@ const MarketingGeneratorModal: React.FC<{ open: boolean; onClose: () => void }> 
                   <button
                     onClick={() => copy(v, i)}
                     className="absolute top-3 right-3 p-1.5 rounded-lg text-slate-400 hover:text-primary-600 hover:bg-white dark:hover:bg-slate-800 transition-colors"
-                    title="Скопировать"
+                    title={t('common.copy', 'Копировать')}
                   >
                     {copied === i ? <Check className="w-4 h-4 text-emerald-500" /> : <Copy className="w-4 h-4" />}
                   </button>

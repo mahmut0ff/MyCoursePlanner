@@ -302,7 +302,7 @@ const LiveSessionDashboard: React.FC = () => {
                 <h1 className="text-lg font-extrabold text-slate-900 dark:text-white">{session.quizTitle}</h1>
                 <div className="flex items-center gap-2 mt-0.5">
                   <Radio className="w-3 h-3 text-blue-500" />
-                  <span className="text-xs font-bold uppercase tracking-wide text-blue-600">LOBBY</span>
+                  <span className="text-xs font-bold uppercase tracking-wide text-blue-600">{t('quiz.lobby', 'Лобби')}</span>
                 </div>
               </div>
             </div>
@@ -490,7 +490,7 @@ const LiveSessionDashboard: React.FC = () => {
                 <div className={`planula-timer-display ${displayTimeLeft <= 5 ? 'danger' : ''} ${displayTimeLeft <= 3 ? 'critical' : ''}`}>
                   <Timer className="w-8 h-8 opacity-60" />
                   <span className="planula-timer-number">{displayTimeLeft}</span>
-                  <span className="planula-timer-label">сек</span>
+                  <span className="planula-timer-label">{t('quiz.sec', 'сек')}</span>
                 </div>
               </div>
 
@@ -557,7 +557,7 @@ const LiveSessionDashboard: React.FC = () => {
                 {t('quiz.scoreboard', 'Итоги раунда')}
               </h2>
               <p className="text-sm text-slate-500 dark:text-slate-400 font-bold">
-                {t('quiz.questionN', 'Вопрос')} {session.currentQuestionIndex + 1} / {session.totalQuestions}
+                {t('quiz.questionOf', 'Вопрос {{n}} / {{total}}', { n: session.currentQuestionIndex + 1, total: session.totalQuestions })}
               </p>
             </div>
 

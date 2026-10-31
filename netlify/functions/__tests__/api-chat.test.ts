@@ -163,7 +163,7 @@ function member(uid: string, role: string, name: string, extra: Record<string, a
   store.set(`orgMembers/${ORG}/members/${uid}`, {
     userId: uid, userName: name, role, status: 'active', branchIds: [], ...extra,
   });
-  store.set(`users/${uid}`, { displayName: name, avatarUrl: '' });
+  store.set(`users/${uid}`, { displayName: name, avatarUrl: '', email: `${uid}@a.test` });
 }
 
 beforeEach(() => {
@@ -251,6 +251,16 @@ describe('api-chat — справочник собеседников', () => {
     as(ADMIN);
     const entry = json(await call('directory', 'GET')).items.find((p: any) => p.uid === 'u_student');
     expect(Object.keys(entry).sort()).toEqual(['avatarUrl', 'name', 'role', 'uid']);
+  });
+
+  it('не показывает учеников без входа: писать им некуда', async () => {
+    member('u_offline', 'student', 'Без входа', { offlineStudent: true });
+    store.set('users/u_offline', { displayName: 'Без входа', offlineStudent: true });
+
+    as(ADMIN);
+    const uids = json(await call('directory', 'GET')).items.map((p: any) => p.uid);
+    expect(uids).not.toContain('u_offline');
+    expect(uids).toContain('u_student');
   });
 
   it('без права chat отказывает во всём', async () => {

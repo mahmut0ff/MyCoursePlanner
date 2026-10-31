@@ -2,7 +2,9 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { doc, onSnapshot } from 'firebase/firestore';
 import { db } from '../../lib/firebase';
 import { useAuth } from '../../contexts/AuthContext';
+import { useTranslation } from 'react-i18next';
 import { aiFeatureLabel } from '../../lib/aiFeatureLabels';
+import { intlLocale } from '../../lib/locale';
 
 const VISIBLE_ROWS = 6;
 
@@ -12,6 +14,7 @@ const VISIBLE_ROWS = 6;
  * stays legible at a glance and needs no colour key.
  */
 const AIUsagePanel: React.FC = () => {
+  const { t } = useTranslation();
   const { organizationId } = useAuth();
   const [total, setTotal] = useState(0);
   const [features, setFeatures] = useState<Record<string, number>>({});
@@ -35,14 +38,14 @@ const AIUsagePanel: React.FC = () => {
     () => Object.entries(features)
       .filter(([, v]) => v > 0)
       .map(([key, value]) => ({ key, value, label: aiFeatureLabel(key) }))
-      .sort((a, b) => b.value - a.value || a.label.localeCompare(b.label, 'ru')),
+      .sort((a, b) => b.value - a.value || a.label.localeCompare(b.label, intlLocale())),
     [features],
   );
 
   const max = rows.length ? rows[0].value : 1;
   const shown = expanded ? rows : rows.slice(0, VISIBLE_ROWS);
   const hidden = rows.length - shown.length;
-  const monthLabel = new Date().toLocaleDateString('ru-RU', { month: 'long', year: 'numeric' });
+  const monthLabel = new Date().toLocaleDateString(intlLocale(), { month: 'long', year: 'numeric' });
 
   return (
     <section
@@ -51,12 +54,11 @@ const AIUsagePanel: React.FC = () => {
     >
       <div className="flex items-baseline justify-between gap-3">
         <div className="min-w-0">
-          <h2 id="ai-usage-heading" className="font-semibold text-slate-900 dark:text-white">Что делал ИИ</h2>
+          <h2 id="ai-usage-heading" className="font-semibold text-slate-900 dark:text-white">{t('ai.usage.title', 'Что делал ИИ')}</h2>
           <p className="text-xs text-slate-500 dark:text-slate-400 first-letter:uppercase">{monthLabel}</p>
         </div>
         <p className="shrink-0 text-sm text-slate-500 dark:text-slate-400 tabular-nums">
-          <span className="text-slate-900 dark:text-white font-semibold">{total}</span>{' '}
-          {plural(total, 'запрос', 'запроса', 'запросов')}
+          {t('ai.usage.requests', { count: total })}
         </p>
       </div>
 
@@ -68,7 +70,7 @@ const AIUsagePanel: React.FC = () => {
         </div>
       ) : rows.length === 0 ? (
         <p className="mt-4 text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
-          В этом месяце ИИ ещё не работал. Задайте вопрос аналитику слева — это самый быстрый способ начать.
+          {t('ai.usage.empty', 'В этом месяце ИИ ещё не работал. Задайте вопрос аналитику слева — это самый быстрый способ начать.')}
         </p>
       ) : (
         <>
@@ -91,7 +93,7 @@ const AIUsagePanel: React.FC = () => {
               onClick={() => setExpanded(true)}
               className="mt-1 self-start inline-flex items-center min-h-[36px] px-2 -ml-2 rounded-lg text-xs font-medium text-primary-600 dark:text-primary-400 hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"
             >
-              Ещё {hidden} {plural(hidden, 'функция', 'функции', 'функций')}
+              {t('ai.usage.moreFeatures', { count: hidden })}
             </button>
           )}
         </>
@@ -99,13 +101,5 @@ const AIUsagePanel: React.FC = () => {
     </section>
   );
 };
-
-/** Russian numeric agreement — "1 запрос / 2 запроса / 5 запросов". */
-function plural(n: number, one: string, few: string, many: string): string {
-  const mod10 = n % 10, mod100 = n % 100;
-  if (mod10 === 1 && mod100 !== 11) return one;
-  if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) return few;
-  return many;
-}
 
 export default AIUsagePanel;

@@ -30,7 +30,7 @@ const EditStudentModal: React.FC<Props> = ({ student, onClose, onSaved }) => {
   const [saving, setSaving] = useState(false);
 
   const handleSave = async () => {
-    if (!form.displayName.trim()) { toast.error('Укажите ФИО'); return; }
+    if (!form.displayName.trim()) { toast.error(t('org.students.nameRequired', 'Укажите ФИО')); return; }
     const patch = {
       displayName: form.displayName.trim(),
       phone: form.phone.trim(),
@@ -44,7 +44,7 @@ const EditStudentModal: React.FC<Props> = ({ student, onClose, onSaved }) => {
       onSaved(patch);
       onClose();
     } catch (e: any) {
-      toast.error(e.message || 'Ошибка');
+      toast.error(e.message || t('common.error', 'Ошибка'));
     } finally {
       setSaving(false);
     }

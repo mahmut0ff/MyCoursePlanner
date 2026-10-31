@@ -6,6 +6,7 @@
 import type { Handler, HandlerEvent } from '@netlify/functions';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { adminDb } from './utils/firebase-admin';
+import { AI_MODEL } from './utils/ai';
 import { verifyAuth, isStaff, jsonResponse, unauthorized, badRequest, notFound, forbidden } from './utils/auth';
 
 const CORS_HEADERS = {
@@ -14,8 +15,6 @@ const CORS_HEADERS = {
 };
 
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY || '';
-
-const GEMINI_MODEL = 'gemini-2.5-flash';
 
 /**
  * Generates meaningful feedback from raw exam data when Gemini is unavailable.
@@ -177,7 +176,7 @@ ${categoryPrompt}
 
 Пиши по-русски. Будь конструктивным и объективным. Анализируй глубоко.`;
 
-    const selectedModel = GEMINI_MODEL;
+    const selectedModel = AI_MODEL;
     const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
     const model = genAI.getGenerativeModel({
       model: selectedModel,

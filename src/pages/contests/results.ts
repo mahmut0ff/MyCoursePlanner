@@ -6,6 +6,7 @@
  */
 import { buildCsv, downloadCsv } from '../../lib/csv';
 import { formatMoney } from '../../lib/money';
+import i18n from '../../i18n';
 import {
   rankCategory, juryForCategory, prizeLabel, round2,
   type ContestBundle, type RankedRow, type ContestCategory,
@@ -43,11 +44,13 @@ export const prizeFor = (cat: ContestCategory, place: number | null) =>
 /** Итоговая таблица всех категорий: места, баллы, средние по критериям и суммы каждого жюри. */
 export function exportResultsCsv(data: ContestBundle): void {
   const { contest, jury, scores } = data;
+  const t = i18n.t.bind(i18n);
   const headers = [
-    'Категория', 'Место', 'Номер', 'Проект', 'Авторы', 'Итоговый балл (среднее)', 'Сумма баллов', 'Оценили жюри',
-    ...contest.criteria.map((c) => `Ср.: ${c.name}`),
-    ...jury.map((j) => `Жюри: ${j.name}`),
-    'Приз', 'Статус итогов', 'Примечание',
+    t('contests.csv.category', 'Категория'), t('contests.csv.place', 'Место'), t('contests.csv.number', 'Номер'), t('contests.csv.project', 'Проект'),
+    t('contests.csv.authors', 'Авторы'), t('contests.csv.average', 'Итоговый балл (среднее)'), t('contests.csv.sum', 'Сумма баллов'), t('contests.csv.juryCount', 'Оценили жюри'),
+    ...contest.criteria.map((c) => t('contests.csv.criterionAvg', 'Ср.: {{name}}', { name: c.name })),
+    ...jury.map((j) => t('contests.csv.juryCol', 'Жюри: {{name}}', { name: j.name })),
+    t('contests.csv.prize', 'Приз'), t('contests.csv.resultsStatus', 'Статус итогов'), t('contests.csv.note', 'Примечание'),
   ];
   const lines: unknown[][] = [];
   for (const cat of contest.categories) {
@@ -57,10 +60,10 @@ export function exportResultsCsv(data: ContestBundle): void {
     for (const row of r.rows) {
       const place = r.approved ? approvedPlace.get(row.participantId) ?? null : row.place;
       const note = [
-        row.needsDecision ? 'требуется решение жюри' : '',
-        row.resolvedManually ? 'место определено решением жюри' : '',
-        row.tieBrokenBy ? `ничья разрешена по критерию «${row.tieBrokenBy}»` : '',
-        row.missingJuryUids.length ? `не оценили: ${row.missingJuryUids.map((u) => jury.find((j) => j.uid === u)?.name || u).join(', ')}` : '',
+        row.needsDecision ? t('contests.csv.needsDecision', 'требуется решение жюри') : '',
+        row.resolvedManually ? t('contests.resolvedManually', 'место определено решением жюри') : '',
+        row.tieBrokenBy ? t('contests.csv.tieBrokenBy', 'ничья разрешена по критерию «{{name}}»', { name: row.tieBrokenBy }) : '',
+        row.missingJuryUids.length ? t('contests.csv.notScoredBy', 'не оценили: {{names}}', { names: row.missingJuryUids.map((u) => jury.find((j) => j.uid === u)?.name || u).join(', ') }) : '',
       ].filter(Boolean).join('; ');
       lines.push([
         `${cat.code} (${cat.ageFrom}–${cat.ageTo})`, place ?? '', row.number, row.projectTitle, row.authors,
@@ -70,10 +73,10 @@ export function exportResultsCsv(data: ContestBundle): void {
           const s = scores.find((x) => x.participantId === row.participantId && x.juryUid === j.uid);
           return s ? round2(s.total) : '';
         }),
-        prizeFor(cat, place), r.approved ? 'утверждены' : 'предварительные', note,
+        prizeFor(cat, place), r.approved ? t('contests.csv.approved', 'утверждены') : t('contests.csv.preliminary', 'предварительные'), note,
       ]);
     }
   }
   const safe = contest.title.replace(/[^\p{L}\p{N}]+/gu, '_').replace(/^_|_$/g, '');
-  downloadCsv(`${safe || 'contest'}_итоги.csv`, buildCsv(headers, lines));
+  downloadCsv(`${safe || 'contest'}_${t('contests.csv.fileSuffix', 'итоги')}.csv`, buildCsv(headers, lines));
 }

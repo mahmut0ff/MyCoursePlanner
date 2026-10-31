@@ -1,22 +1,45 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { apiGetQuizSessions } from '../../lib/api';
+import toast from 'react-hot-toast';
+import { apiGetQuizSessions, apiCancelQuizSession } from '../../lib/api';
+import { useAuth } from '../../contexts/AuthContext';
+import ConfirmDialog from '../../components/ui/ConfirmDialog';
 import type { QuizSession } from '../../types';
-import { Radio, Users, Clock, BarChart3, Play, Gamepad2 } from 'lucide-react';
+import { intlLocale } from '../../lib/locale';
+import { Radio, Users, Clock, BarChart3, Play, Gamepad2, XCircle } from 'lucide-react';
 
 const STATUS_CONFIG: Record<string, { color: string; bg: string; label: string }> = {
-  lobby: { color: '#1368ce', bg: 'rgba(19,104,206,0.1)', label: 'Lobby' },
-  in_progress: { color: '#26890c', bg: 'rgba(38,137,12,0.1)', label: 'Live' },
-  paused: { color: '#d89e00', bg: 'rgba(216,158,0,0.1)', label: 'Paused' },
-  completed: { color: '#666', bg: 'rgba(100,100,100,0.1)', label: 'Completed' },
-  cancelled: { color: '#e21b3c', bg: 'rgba(226,27,60,0.1)', label: 'Cancelled' },
+  lobby: { color: '#1368ce', bg: 'rgba(19,104,206,0.1)', label: 'Ожидание' },
+  in_progress: { color: '#26890c', bg: 'rgba(38,137,12,0.1)', label: 'Идёт' },
+  paused: { color: '#d89e00', bg: 'rgba(216,158,0,0.1)', label: 'Пауза' },
+  completed: { color: '#666', bg: 'rgba(100,100,100,0.1)', label: 'Завершена' },
+  cancelled: { color: '#e21b3c', bg: 'rgba(226,27,60,0.1)', label: 'Закрыта' },
 };
 
 const SessionHistoryPage: React.FC = () => {
   const { t } = useTranslation();
   const [sessions, setSessions] = useState<QuizSession[]>([]);
   const [loading, setLoading] = useState(true);
+  const { firebaseUser, role } = useAuth();
+  const [cancelling, setCancelling] = useState<QuizSession | null>(null);
+  const [busy, setBusy] = useState(false);
+  // Сервер отменяет сессию хосту или админу/менеджеру её организации.
+  const canCancel = (s: QuizSession) =>
+    ['lobby', 'in_progress', 'paused'].includes(s.status) && (s.hostId === firebaseUser?.uid || role === 'admin' || role === 'manager');
+
+  const confirmCancel = async () => {
+    if (!cancelling) return;
+    setBusy(true);
+    try {
+      await apiCancelQuizSession(cancelling.id);
+      setSessions(prev => prev.map(x => x.id === cancelling.id ? { ...x, status: 'cancelled' as const } : x));
+      toast.success(t('quiz.sessionClosed', 'Сессия закрыта'));
+      setCancelling(null);
+    } catch (e: any) {
+      toast.error(e?.message || t('quiz.sessionCloseFailed', 'Не удалось закрыть сессию'));
+    } finally { setBusy(false); }
+  };
 
   useEffect(() => {
     apiGetQuizSessions().then((data: any) => setSessions(Array.isArray(data) ? data : []))
@@ -24,7 +47,7 @@ const SessionHistoryPage: React.FC = () => {
       .finally(() => setLoading(false));
   }, []);
 
-  const formatDate = (d?: string) => d ? new Date(d).toLocaleString() : '—';
+  const formatDate = (d?: string) => d ? new Date(d).toLocaleString(intlLocale()) : '—';
 
   if (loading) return (
     <div className="flex items-center justify-center py-20">
@@ -42,7 +65,7 @@ const SessionHistoryPage: React.FC = () => {
             </div>
             {t('quiz.sessions')}
           </h1>
-          <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">{sessions.length} {t('quiz.totalSessions')}</p>
+          <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">{t('quiz.sessionsTotal', 'Всего сессий: {{n}}', { n: sessions.length })}</p>
         </div>
       </div>
 
@@ -76,14 +99,36 @@ const SessionHistoryPage: React.FC = () => {
                 <div className="flex items-center gap-3 shrink-0">
                   {s.code && <span className="font-mono text-xs font-bold px-2.5 py-1 rounded-lg" style={{ color: 'var(--kahoot-purple)', backgroundColor: 'rgba(70,23,143,0.08)' }}>{s.code}</span>}
                   <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full text-white" style={{ backgroundColor: config.color }}>
-                    {config.label}
+                    {t(`quiz.sessionStatus.${STATUS_CONFIG[s.status] ? s.status : 'completed'}`, config.label)}
                   </span>
+                  {canCancel(s) && (
+                    <button
+                      type="button"
+                      onClick={(e) => { e.preventDefault(); e.stopPropagation(); setCancelling(s); }}
+                      title={t('quiz.closeSession', 'Закрыть сессию')}
+                      aria-label={t('quiz.closeSession', 'Закрыть сессию')}
+                      className="p-1.5 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/30 transition-colors"
+                    >
+                      <XCircle className="w-4 h-4" />
+                    </button>
+                  )}
                 </div>
               </Link>
             );
           })}
         </div>
       )}
+
+      <ConfirmDialog
+        open={!!cancelling}
+        title={t('quiz.closeSession', 'Закрыть сессию')}
+        message={t('quiz.closeSessionConfirm', 'Сессия будет отменена, участники больше не смогут войти по коду.')}
+        confirmLabel={t('quiz.closeSession', 'Закрыть сессию')}
+        danger
+        busy={busy}
+        onConfirm={confirmCancel}
+        onClose={() => setCancelling(null)}
+      />
     </div>
   );
 };

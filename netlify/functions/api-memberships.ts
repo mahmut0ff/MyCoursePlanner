@@ -53,18 +53,22 @@ async function getOrgRole(userId: string, orgId: string): Promise<string | null>
  * поэтому вызывающий её глотает — но число тронутых групп возвращается наверх,
  * чтобы факт был виден в ответе, а не только в базе.
  */
-async function detachTeacherFromGroups(orgId: string, userId: string): Promise<number> {
+async function detachTeacherFromGroups(
+  orgId: string,
+  userId: string,
+  field: 'teacherIds' | 'studentIds' = 'teacherIds',
+): Promise<number> {
   // Ровно та же пара фильтров, что уже работает в api-org (курсы преподавателя):
   // равенство по организации плюс array-contains. Ни диапазонов, ни orderBy —
   // composite-индексы в этом проекте не деплоятся.
   const snap = await adminDb.collection('groups')
     .where('organizationId', '==', orgId)
-    .where('teacherIds', 'array-contains', userId)
+    .where(field, 'array-contains', userId)
     .get();
   if (snap.empty) return 0;
   const batch = adminDb.batch();
   for (const doc of snap.docs) {
-    batch.update(doc.ref, { teacherIds: FieldValue.arrayRemove(userId), updatedAt: now() });
+    batch.update(doc.ref, { [field]: FieldValue.arrayRemove(userId), updatedAt: now() });
   }
   await batch.commit();
   return snap.size;
@@ -486,7 +490,9 @@ const handler: Handler = async (event: HandlerEvent) => {
       //
       // Поэтому спрашиваем: либо разберитесь со счетами, либо подтвердите
       // удаление — тогда нетронутые счета списываются, как при выходе из группы.
-      // Оплаченные частично не трогаем никогда: за ними стоят настоящие деньги.
+      // Частично оплаченные закрываем по факту оплаты (остаток — разовая скидка,
+      // как «оплачено полностью»): деньги остаются в истории, а долг человека,
+      // которого больше нет ни в одном списке, не висит в отчётах.
       const plansSnap = await adminDb.collection('studentPaymentPlans')
         .where('organizationId', '==', body.organizationId)
         .where('studentId', '==', body.userId)
@@ -497,7 +503,7 @@ const handler: Handler = async (event: HandlerEvent) => {
         return jsonResponse(409, {
           error: `У этого участника есть неоплаченные счета: ${debtPlans.length} на сумму ${debtTotal}. `
             + 'После удаления долг останется в отчётах, а закрыть его будет негде. '
-            + 'Примите оплату, спишите счета — или подтвердите удаление, и нетронутые счета спишутся автоматически.',
+            + 'Примите оплату, спишите счета — или подтвердите удаление: неоплаченные счета спишутся, а частично оплаченные закроются по внесённой сумме.',
           code: 'member_has_debt',
           debtPlans: debtPlans.length,
           debtTotal,
@@ -507,8 +513,21 @@ const handler: Handler = async (event: HandlerEvent) => {
         const writeOff = adminDb.batch();
         let cancelled = 0;
         for (const d of debtPlans) {
-          if (!isUntouchedPlan(d.data())) continue;
-          writeOff.update(d.ref, { status: 'cancelled', updatedAt: now() });
+          const plan = d.data();
+          if (isUntouchedPlan(plan)) {
+            writeOff.update(d.ref, { status: 'cancelled', updatedAt: now() });
+          } else {
+            // Тот же расчёт, что у settle в api-finance-plans.
+            const total = Number(plan.totalAmount) || 0;
+            const settled: Record<string, unknown> = {
+              totalAmount: Math.min(total, Math.max(0, Number(plan.paidAmount) || 0)),
+              status: 'paid',
+              settledByDiscount: true,
+              updatedAt: now(),
+            };
+            if (plan.listAmount === undefined) settled.listAmount = total;
+            writeOff.update(d.ref, settled);
+          }
           cancelled++;
         }
         if (cancelled > 0) await writeOff.commit().catch(console.error);
@@ -523,6 +542,9 @@ const handler: Handler = async (event: HandlerEvent) => {
       // самого. Так в базе и появлялись преподаватели-призраки: в организации их
       // нет, а в зарплате они есть.
       const groupsDetached = await detachTeacherFromGroups(body.organizationId, body.userId).catch(() => 0);
+      // Удалённый ученик тоже не должен оставаться в составе групп: страница группы
+      // его отфильтрует, а зарплата («N студ.») и прочие счётчики — нет.
+      await detachTeacherFromGroups(body.organizationId, body.userId, 'studentIds').catch(() => 0);
 
       await adminDb.collection('users').doc(body.userId)
         .collection('memberships').doc(body.organizationId).delete();

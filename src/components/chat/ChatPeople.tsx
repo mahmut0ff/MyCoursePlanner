@@ -43,6 +43,7 @@ export function ChatAvatar({ name, url, size = 'md' }: { name: string; url?: str
 
 /** Общая рамка обоих диалогов — вынесена, чтобы шапка и оверлей не разъезжались. */
 function Dialog({ title, onClose, children }: { title: string; onClose: () => void; children: React.ReactNode }) {
+  const { t } = useTranslation();
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
     document.addEventListener('keydown', onKey);
@@ -62,7 +63,7 @@ function Dialog({ title, onClose, children }: { title: string; onClose: () => vo
         <div className="flex items-center justify-between gap-3 px-4 py-3
           border-b border-slate-200 dark:border-slate-700">
           <h2 className="text-base font-semibold text-slate-900 dark:text-white">{title}</h2>
-          <button type="button" onClick={onClose}
+          <button type="button" onClick={onClose} aria-label={t('common.close', 'Закрыть')}
             className="p-1.5 rounded-lg text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700">
             <X className="w-4 h-4" />
           </button>

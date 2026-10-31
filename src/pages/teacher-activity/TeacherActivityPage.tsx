@@ -1,7 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { formatDistanceToNow } from 'date-fns';
-import { ru, enUS, type Locale } from 'date-fns/locale';
 import {
   Activity, GraduationCap, CalendarCheck, CheckSquare, FilePlus2,
   ClipboardList, Gamepad2, BookOpen, LogIn, Download, ArrowUpDown, X, Users, Zap, Trophy,
@@ -14,7 +13,8 @@ import { useOrgPresence } from '../../hooks/useOrgPresence';
 import { apiGetTeacherActivity, apiGetTeacherTimeline } from '../../lib/api';
 import { formatNumber } from '../../lib/money';
 import { buildCsv, downloadCsv } from '../../lib/csv';
-import { kyrgyz } from '../../lib/dateFnsKyrgyz';
+import { dateFnsLocale } from '../../lib/locale';
+import i18next from '../../i18n';
 import { PresenceDot } from '../../components/presence/PresenceBadge';
 import EmptyState from '../../components/ui/EmptyState';
 import { CardSkeleton } from '../../components/ui/Skeleton';
@@ -60,7 +60,6 @@ interface TimelineEvent {
   meta: Record<string, unknown> | null;
 }
 
-const DATE_LOCALES: Record<string, Locale> = { ru, en: enUS, kg: kyrgyz };
 
 // Метаданные типов действий — те же ключи, что ACTIVITY_WEIGHTS на сервере.
 const TYPE_META: Record<string, { label: string; icon: LucideIcon; color: string }> = {
@@ -92,7 +91,7 @@ const rosterOf = (r: KpiRow) => ROSTER_TYPES.reduce((s, t) => s + (r.counts[t] |
 
 /** Нагрузка человеческим языком — она же знаменатель KPI. */
 const workloadTitle = (r: KpiRow) =>
-  `${r.students || 0} учеников · ${r.groups || 0} групп — на них и делится объём действий`;
+  i18next.t('teacherActivity.workloadTitle', '{{students}} учеников · {{groups}} групп — на них и делится объём действий', { students: r.students || 0, groups: r.groups || 0 });
 
 /** Кого затронуло действие — денормализованные имена из события (см. logRoster на сервере). */
 function peopleOf(meta: Record<string, unknown> | null): { names: string[]; more: number } {
@@ -123,7 +122,7 @@ const TeacherActivityPage: React.FC = () => {
   const rel = useCallback(
     (iso: string | null) => {
       if (!iso) return '—';
-      const loc = DATE_LOCALES[i18n.language.split('-')[0]] ?? ru;
+      const loc = dateFnsLocale(i18n.language);
       try {
         return formatDistanceToNow(new Date(iso), { addSuffix: true, locale: loc });
       } catch {
@@ -177,8 +176,18 @@ const TeacherActivityPage: React.FC = () => {
 
   const exportCsv = () => {
     const headers = [
-      'Преподаватель', 'Учеников', 'Групп', 'Оценки', 'Посещаемость', 'Проверка ДЗ',
-      'Создано', 'Контингент', 'Входы', 'Активных дней', 'Вовлечённость, %', 'Стабильность, %', 'KPI',
+      t('teacherActivity.csv.teacher', 'Преподаватель'),
+      t('teacherActivity.csv.students', 'Учеников'),
+      t('teacherActivity.csv.groups', 'Групп'),
+      t('teacherActivity.csv.grades', 'Оценки'),
+      t('teacherActivity.csv.attendance', 'Посещаемость'),
+      t('teacherActivity.csv.hwChecked', 'Проверка ДЗ'),
+      t('teacherActivity.csv.created', 'Создано'),
+      t('teacherActivity.csv.roster', 'Контингент'),
+      t('teacherActivity.csv.logins', 'Входы'),
+      t('teacherActivity.csv.activeDays', 'Активных дней'),
+      t('teacherActivity.csv.engagement', 'Вовлечённость, %'),
+      t('teacherActivity.csv.consistency', 'Стабильность, %'), 'KPI',
     ];
     const body = sortedRows.map(r => [
       r.name, r.students || 0, r.groups || 0,
@@ -307,7 +316,7 @@ const TeacherActivityPage: React.FC = () => {
                                 <div className="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-700 flex items-center justify-center text-xs font-semibold text-slate-500 dark:text-slate-300">
                                   {initials(r.name)}
                                 </div>
-                                <PresenceDot online={online} className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5" title={online ? 'В сети' : undefined} />
+                                <PresenceDot online={online} className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5" title={online ? t('presence.online', 'В сети') : undefined} />
                               </div>
                               <div className="min-w-0">
                                 <p className="font-medium text-slate-900 dark:text-white truncate max-w-[180px]">{r.name}</p>
@@ -319,7 +328,7 @@ const TeacherActivityPage: React.FC = () => {
                           </td>
                           <td className="px-5 py-3.5 tabular-nums text-slate-500 dark:text-slate-400" title={workloadTitle(r)}>
                             {r.students || 0}
-                            <span className="text-slate-300 dark:text-slate-600"> · {r.groups || 0} гр.</span>
+                            <span className="text-slate-300 dark:text-slate-600"> · {t('courses.list.groupsShort', '{{count}} гр.', { count: r.groups || 0 })}</span>
                           </td>
                           <NumCell v={r.counts.grade_set || 0} />
                           <NumCell v={r.counts.attendance_marked || 0} />
@@ -330,7 +339,7 @@ const TeacherActivityPage: React.FC = () => {
                           <NumCell v={r.activeDays} />
                           <td
                             className="px-5 py-3.5"
-                            title={`вовлечённость ${r.engagementPct ?? 0}% · стабильность ${r.consistencyPct}%`}
+                            title={t('teachers.detail.engagementLine', 'вовлечённость {{engagement}}% · стабильность {{consistency}}%', { engagement: r.engagementPct ?? 0, consistency: r.consistencyPct })}
                           >
                             <div className="flex items-center gap-2">
                               <div className="w-14 h-1.5 rounded-full bg-slate-100 dark:bg-slate-700 overflow-hidden">
@@ -402,9 +411,9 @@ const TeacherDrawer: React.FC<{
     let alive = true;
     apiGetTeacherTimeline(row.teacherId, { period })
       .then((res: { events: TimelineEvent[] }) => { if (alive) setEvents(res?.events || []); })
-      .catch((e: any) => { if (alive) setTlError(e?.message || 'Ошибка'); });
+      .catch((e: any) => { if (alive) setTlError(e?.message || t('common.error', 'Ошибка')); });
     return () => { alive = false; };
-  }, [row.teacherId, period]);
+  }, [row.teacherId, period, t]);
 
   const breakdown = Object.keys(TYPE_META).map(type => ({ type, ...TYPE_META[type], value: row.counts[type] || 0 }));
   const tone = scoreTone(row.kpiScore);

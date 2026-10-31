@@ -1,4 +1,5 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 export const BADGE_DEFS: Record<string, { icon: string; title: string; description: string }> = {
   // --- Exams ---
   first_exam: { icon: '🎯', title: 'Первый экзамен', description: 'Сдали свой первый экзамен' },
@@ -32,6 +33,7 @@ export const BADGE_DEFS: Record<string, { icon: string; title: string; descripti
 };
 
 export const PinnedBadgesDisplay: React.FC<{ badges?: string[], className?: string, emptyPlaceholder?: boolean }> = ({ badges, className = '', emptyPlaceholder = false }) => {
+  const { t } = useTranslation();
   const validBadges = (badges || []).filter(id => BADGE_DEFS[id]);
 
   if (validBadges.length === 0 && !emptyPlaceholder) return null;
@@ -41,13 +43,13 @@ export const PinnedBadgesDisplay: React.FC<{ badges?: string[], className?: stri
       {validBadges.slice(0, 3).map(id => {
         const def = BADGE_DEFS[id];
         return (
-          <div key={id} className="w-6 h-6 rounded-full bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex items-center justify-center text-xs shadow-sm" title={def.title}>
+          <div key={id} className="w-6 h-6 rounded-full bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex items-center justify-center text-xs shadow-sm" title={t(`gamification.badgesList.${id}.title`, def.title)}>
             {def.icon}
           </div>
         );
       })}
       {emptyPlaceholder && validBadges.length < 3 && Array.from({ length: 3 - validBadges.length }).map((_, i) => (
-        <div key={`empty-${i}`} className="w-6 h-6 rounded-full border border-dashed border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 flex items-center justify-center opacity-50" title="Слот для бейджа" />
+        <div key={`empty-${i}`} className="w-6 h-6 rounded-full border border-dashed border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 flex items-center justify-center opacity-50" title={t('gamification.badgeSlot', 'Слот для бейджа')} />
       ))}
     </div>
   );

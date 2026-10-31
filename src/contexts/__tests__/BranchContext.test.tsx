@@ -107,6 +107,24 @@ describe('BranchContext', () => {
     expect(screen.getByTestId('canSwitch').textContent).toBe('false');
   });
 
+  it('does not force the only branch on a full-access director', async () => {
+    setAuth({ role: 'admin' });
+    (orgListBranches as any).mockResolvedValue([BRANCHES[0]]);
+
+    renderProvider();
+    await waitFor(() => expect(screen.getByTestId('loading').textContent).toBe('false'));
+    expect(screen.getByTestId('active').textContent).toBe('ALL');
+  });
+
+  it('keeps an explicit «Все филиалы» pick even with a single branch', async () => {
+    localStorage.setItem('mycourseplanner_active_branch', JSON.stringify({ orgId: 'org1', branchId: null }));
+    (orgListBranches as any).mockResolvedValue([BRANCHES[0]]);
+
+    renderProvider();
+    await waitFor(() => expect(screen.getByTestId('loading').textContent).toBe('false'));
+    expect(screen.getByTestId('active').textContent).toBe('ALL');
+  });
+
   it('drops inactive branches', async () => {
     (orgListBranches as any).mockResolvedValue([...BRANCHES, { id: 'b3', name: 'Закрытый', isActive: false }]);
 

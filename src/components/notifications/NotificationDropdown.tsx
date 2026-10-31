@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
+import type { TFunction } from 'i18next';
 import { useAuth } from '../../contexts/AuthContext';
 import { db } from '../../lib/firebase';
 import { collection, query, where, orderBy, limit, onSnapshot } from 'firebase/firestore';
@@ -31,15 +32,15 @@ const TYPE_CONFIG: Record<string, { icon: React.ReactNode; color: string }> = {
   plan_gifted:            { icon: <Gift className="w-4 h-4" />,          color: 'text-pink-500 bg-pink-500/10' },
 };
 
-function timeAgo(dateStr: string): string {
+function timeAgo(dateStr: string, t: TFunction): string {
   const diff = Date.now() - new Date(dateStr).getTime();
   const mins = Math.floor(diff / 60000);
-  if (mins < 1) return 'сейчас';
-  if (mins < 60) return `${mins} мин`;
+  if (mins < 1) return t('notifications.ago.now', 'сейчас');
+  if (mins < 60) return t('notifications.ago.minutes', '{{count}} мин', { count: mins });
   const hours = Math.floor(mins / 60);
-  if (hours < 24) return `${hours} ч`;
+  if (hours < 24) return t('notifications.ago.hours', '{{count}} ч', { count: hours });
   const days = Math.floor(hours / 24);
-  return `${days} д`;
+  return t('notifications.ago.days', '{{count}} д', { count: days });
 }
 
 const NotificationDropdown: React.FC = () => {
@@ -209,7 +210,7 @@ const NotificationDropdown: React.FC = () => {
                         {notif.title}
                       </p>
                       <p className="text-[11px] text-slate-400 dark:text-slate-500 mt-0.5 truncate">{notif.message}</p>
-                      <p className="text-[10px] text-slate-400 mt-1">{timeAgo(notif.createdAt)}</p>
+                      <p className="text-[10px] text-slate-400 mt-1">{timeAgo(notif.createdAt, t)}</p>
                     </div>
                     {!notif.read && (
                       <div className="w-2 h-2 rounded-full bg-primary-500 shrink-0 mt-1" />

@@ -1,9 +1,10 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
+import { AI_MODEL } from './ai';
 
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY || '';
 
 export function selectModel(): string {
-  return 'gemini-2.5-flash';
+  return AI_MODEL;
 }
 
 export function buildRuleBasedFeedback(

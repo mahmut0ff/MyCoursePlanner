@@ -90,6 +90,7 @@ const PWAInstallPrompt: React.FC = () => {
         {/* Close */}
         <button
           onClick={handleDismiss}
+          aria-label={t('common.close', 'Закрыть')}
           className="p-1 text-slate-300 hover:text-slate-500 dark:text-slate-600 dark:hover:text-slate-400 transition-colors shrink-0"
         >
           <X className="w-4 h-4" />

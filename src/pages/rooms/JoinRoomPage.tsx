@@ -46,7 +46,7 @@ const JoinRoomPage: React.FC = () => {
           <div className="w-20 h-20 mx-auto rounded-2xl bg-white/40 dark:bg-black/40 backdrop-blur-xl flex items-center justify-center mb-4 shadow-xl border border-white/50 dark:border-white/10">
             <Edit3 className="w-10 h-10 text-primary-700 dark:text-primary-300" />
           </div>
-          <h1 className="text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight">SabakHub Exam</h1>
+          <h1 className="text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight">{t('rooms.brandTitle', 'SabakHub Экзамен')}</h1>
         </div>
 
         {/* Input Card */}

@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import type { ChatMessage, ChatRoom, MessageAttachment } from '../../types';
 import { useAuth } from '../../contexts/AuthContext';
+import { intlLocale } from '../../lib/locale';
 import {
   useChatRooms, useChatMessages, useChatActions, useUnreadRooms,
   useTypingIndicator, useTypingStatus, chatRoomLabel, chatRoomCategory,
@@ -42,7 +43,7 @@ function relativeTime(v: any, t: Translate) {
   if (mins < 60) return String(t('chat.minsAgo', '{{n}} мин', { n: mins }));
   const hours = Math.floor(mins / 60);
   if (hours < 24) return String(t('chat.hoursAgo', '{{n}} ч', { n: hours }));
-  return d.toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit' });
+  return d.toLocaleDateString(intlLocale(), { day: '2-digit', month: '2-digit' });
 }
 
 function dayKey(v: any): string {
@@ -57,7 +58,7 @@ function dayLabel(v: any, t: Translate): string {
   const yesterday = new Date(today.getTime() - 86400000);
   if (d.toDateString() === today.toDateString()) return String(t('chat.today', 'Сегодня'));
   if (d.toDateString() === yesterday.toDateString()) return String(t('chat.yesterday', 'Вчера'));
-  return d.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' });
+  return d.toLocaleDateString(intlLocale(), { day: 'numeric', month: 'long' });
 }
 
 export default function ChatPage() {
@@ -418,7 +419,7 @@ export default function ChatPage() {
                   </div>
                   <div className="text-xs text-slate-500 dark:text-slate-400 truncate">
                     {selected.type === 'group'
-                      ? t('chat.membersCount', '{{n}} участников', { n: selected.participantIds.length })
+                      ? t('chat.membersCount', '{{n}} участников', { n: selected.participantIds.length, count: selected.participantIds.length })
                       : t('chat.directChat', 'Личная переписка')}
                     {selected.isArchived && ` · ${t('chat.archivedTag', 'в архиве')}`}
                   </div>

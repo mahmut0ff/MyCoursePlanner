@@ -117,7 +117,7 @@ const Sidebar: React.FC<{ open: boolean; onClose: () => void; isCollapsed?: bool
   return (
     <>
       {open && <div className="fixed inset-0 bg-black/50 z-30 lg:hidden" onClick={onClose} aria-hidden="true" />}
-      <aside role="navigation" aria-label={t('nav.mainNavigation', 'Main navigation')} className={`fixed top-0 left-0 bottom-0 w-60 ${isCollapsed ? 'lg:w-[72px]' : 'lg:w-60'} bg-white dark:bg-[#0f172a] border-r border-slate-200 dark:border-slate-700/50 z-40 transform transition-[width,transform] duration-300 lg:translate-x-0 ${open ? 'translate-x-0' : '-translate-x-full'} flex flex-col`} style={{ paddingTop: 'var(--safe-area-top)' }}>
+      <aside role="navigation" aria-label={t('nav.mainNavigation', 'Основная навигация')} className={`fixed top-0 left-0 bottom-0 w-60 ${isCollapsed ? 'lg:w-[72px]' : 'lg:w-60'} bg-white dark:bg-[#0f172a] border-r border-slate-200 dark:border-slate-700/50 z-40 transform transition-[width,transform] duration-300 lg:translate-x-0 ${open ? 'translate-x-0' : '-translate-x-full'} flex flex-col`} style={{ paddingTop: 'var(--safe-area-top)' }}>
 
         {/* ═══ Header ═══ */}
         {/* h-16 matches the Topbar so the two bottom borders line up across the fold. */}
@@ -132,7 +132,7 @@ const Sidebar: React.FC<{ open: boolean; onClose: () => void; isCollapsed?: bool
           {onToggleCollapse && (
             <button
               onClick={onToggleCollapse}
-              aria-label={isCollapsed ? t('nav.expandSidebar', 'Expand sidebar') : t('nav.collapseSidebar', 'Collapse sidebar')}
+              aria-label={isCollapsed ? t('nav.expandSidebar', 'Развернуть меню') : t('nav.collapseSidebar', 'Свернуть меню')}
               className="p-1.5 text-slate-400 hover:text-slate-900 hover:bg-slate-100 dark:text-slate-500 dark:hover:text-white dark:hover:bg-white/10 hidden lg:flex items-center justify-center transition-colors absolute -right-3 top-4 bg-white dark:bg-[#0f172a] border border-slate-200 dark:border-slate-700/50 shadow-lg z-50 rounded-full"
             >
               <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-300 ${isCollapsed ? '-rotate-90' : 'rotate-90'}`} />

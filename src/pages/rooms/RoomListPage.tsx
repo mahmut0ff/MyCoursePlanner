@@ -1,11 +1,13 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { getActiveRooms, getAllRooms } from '../../services/rooms.service';
+import toast from 'react-hot-toast';
+import { getActiveRooms, getAllRooms, closeRoom } from '../../services/rooms.service';
 import type { ExamRoom } from '../../types';
 import { formatDate } from '../../utils/grading';
-import { Radio, Users, Plus, Network, ChevronRight } from 'lucide-react';
+import { Radio, Users, Plus, Network, ChevronRight, XCircle } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
+import ConfirmDialog from '../../components/ui/ConfirmDialog';
 
 const RoomListPage: React.FC = () => {
   const { t } = useTranslation();
@@ -13,6 +15,21 @@ const RoomListPage: React.FC = () => {
   const [rooms, setRooms] = useState<ExamRoom[]>([]);
   const [loading, setLoading] = useState(true);
   const isStaff = role === 'admin' || role === 'manager' || role === 'teacher';
+  const [closing, setClosing] = useState<ExamRoom | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  const confirmClose = async () => {
+    if (!closing) return;
+    setBusy(true);
+    try {
+      await closeRoom(closing.id);
+      setRooms(prev => prev.map(r => r.id === closing.id ? { ...r, status: 'closed' as const } : r));
+      toast.success(t('rooms.closed', 'Комната закрыта'));
+      setClosing(null);
+    } catch (e: any) {
+      toast.error(e?.message || t('rooms.closeFailed', 'Не удалось закрыть комнату'));
+    } finally { setBusy(false); }
+  };
 
   useEffect(() => {
     (isStaff ? getAllRooms() : getActiveRooms())
@@ -32,7 +49,7 @@ const RoomListPage: React.FC = () => {
             <h1 className="text-3xl font-bold text-slate-900 dark:text-white tracking-tight">{t('rooms.title', 'Exam Rooms')}</h1>
           </div>
           <p className="text-sm text-slate-500 dark:text-slate-400 font-medium ml-1">
-            {rooms.filter(r => r.status !== 'closed').length} {t('rooms.activeRooms', 'Live Sessions')}
+            {t('rooms.activeRoomsCount', 'Активные сессии: {{count}}', { count: rooms.filter(r => r.status !== 'closed').length })}
           </p>
         </div>
         
@@ -82,7 +99,10 @@ const RoomListPage: React.FC = () => {
                       room.status === 'waiting' ? 'bg-amber-100 text-amber-700 border-amber-200 dark:bg-amber-900/30 dark:text-amber-400 dark:border-amber-800' :
                       'bg-slate-100 text-slate-600 border-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700'
                     }`}>
-                      {room.status === 'waiting' ? t('rooms.waiting', 'ОЖИДАНИЕ') : room.status}
+                      {room.status === 'waiting' ? t('rooms.waiting', 'ОЖИДАНИЕ')
+                        : room.status === 'active' ? t('rooms.statusActive', 'ИДЁТ')
+                        : room.status === 'closed' ? t('rooms.statusClosed', 'ЗАКРЫТА')
+                        : room.status}
                     </span>
                   </div>
                   <span className="font-mono text-sm font-bold tracking-widest text-slate-900 dark:text-white px-3 py-1 bg-slate-100 dark:bg-slate-800 rounded-md select-all">
@@ -110,6 +130,17 @@ const RoomListPage: React.FC = () => {
                       {formatDate(room.createdAt)}
                     </span>
                   </div>
+                  {isStaff && room.status !== 'closed' && (
+                    <button
+                      type="button"
+                      onClick={(e) => { e.preventDefault(); e.stopPropagation(); setClosing(room); }}
+                      title={t('rooms.closeRoom', 'Закрыть комнату')}
+                      aria-label={t('rooms.closeRoom', 'Закрыть комнату')}
+                      className="ml-auto mr-2 w-8 h-8 rounded-full flex items-center justify-center text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/30 transition-colors"
+                    >
+                      <XCircle className="w-4 h-4" />
+                    </button>
+                  )}
                   <div className="w-8 h-8 rounded-full bg-slate-50 dark:bg-slate-800 flex items-center justify-center text-slate-400 group-hover:bg-slate-900 group-hover:text-white dark:group-hover:bg-white dark:group-hover:text-slate-900 transition-colors">
                     <ChevronRight className="w-4 h-4 ml-0.5" />
                   </div>
@@ -119,6 +150,17 @@ const RoomListPage: React.FC = () => {
           ))}
         </div>
       )}
+
+      <ConfirmDialog
+        open={!!closing}
+        title={t('rooms.closeRoom', 'Закрыть комнату')}
+        message={t('rooms.closeConfirm', 'Ученики больше не смогут войти по коду. Результаты сохранятся.')}
+        confirmLabel={t('rooms.closeRoom', 'Закрыть комнату')}
+        danger
+        busy={busy}
+        onConfirm={confirmClose}
+        onClose={() => setClosing(null)}
+      />
     </div>
   );
 };

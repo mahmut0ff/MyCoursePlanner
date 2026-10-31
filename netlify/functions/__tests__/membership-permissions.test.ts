@@ -17,6 +17,9 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 const docs: Record<string, any> = {};
 const updated: Array<{ path: string; data: any }> = [];
 const deleted: string[] = [];
+/** Счета студентов (studentPaymentPlans) и то, что батч с ними сделал. */
+const plans: Array<{ id: string; data: any }> = [];
+const batchUpdates: Array<{ id: string; data: any }> = [];
 
 function docRef(path: string): any {
   return {
@@ -36,7 +39,11 @@ function collectionRef(path: string): any {
     limit: () => ref,
     // Ни один запрос в этих сценариях не должен ничего находить: ставок
     // преподавателя и счетов у тестовых участников нет.
-    get: async () => ({ docs: [], empty: true }),
+    get: async () => {
+      if (path !== 'studentPaymentPlans') return { docs: [], empty: true };
+      const list = plans.map(p => ({ id: p.id, ref: { id: p.id }, data: () => p.data }));
+      return { docs: list, empty: list.length === 0 };
+    },
   };
   return ref;
 }
@@ -45,7 +52,11 @@ vi.mock('../utils/firebase-admin', () => ({
   adminAuth: {},
   adminDb: {
     collection: (name: string) => collectionRef(name),
-    batch: () => ({ update: vi.fn(), delete: vi.fn(), commit: async () => {} }),
+    batch: () => ({
+      update: (ref: any, data: any) => { batchUpdates.push({ id: ref.id, data }); },
+      delete: vi.fn(),
+      commit: async () => {},
+    }),
   },
   getDocsByIds: vi.fn().mockResolvedValue({}),
 }));
@@ -84,11 +95,11 @@ function seedMember(uid: string, member: Record<string, any>) {
   docs[`orgMembers/${ORG}/members/${uid}`] = { status: 'active', ...member };
 }
 
-const post = (action: string, userId: string) => handler({
+const post = (action: string, userId: string, extra: Record<string, any> = {}) => handler({
   httpMethod: 'POST',
   queryStringParameters: { action },
   headers: {},
-  body: JSON.stringify({ userId, organizationId: ORG }),
+  body: JSON.stringify({ userId, organizationId: ORG, ...extra }),
 } as any, {} as any, () => {}) as Promise<any>;
 
 // Преподаватель-куратор: ведёт контингент всей организации и вправе отчислять.
@@ -98,6 +109,8 @@ beforeEach(() => {
   for (const k of Object.keys(docs)) delete docs[k];
   updated.length = 0;
   deleted.length = 0;
+  plans.length = 0;
+  batchUpdates.length = 0;
 });
 
 describe('remove (отчисление) — грант вместо названия роли', () => {
@@ -212,6 +225,24 @@ describe('delete (полное удаление)', () => {
     expect(res.statusCode).toBe(200);
     expect(deleted).toContain(`users/student-1/memberships/${ORG}`);
     expect(deleted).toContain(`orgMembers/${ORG}/members/student-1`);
+  });
+
+  it('с долгом — сначала 409, а с force закрывает счета: нетронутый списан, частичный закрыт по оплате', async () => {
+    (verifyAuth as any).mockResolvedValue(caller('teacher', CURATOR));
+    seedMember('student-1', { role: 'student', status: 'expelled' });
+    plans.push(
+      { id: 'untouched', data: { studentId: 'student-1', organizationId: ORG, status: 'pending', totalAmount: 3000, paidAmount: 0 } },
+      { id: 'partial', data: { studentId: 'student-1', organizationId: ORG, status: 'partial', totalAmount: 2500, paidAmount: 1000 } },
+    );
+
+    expect((await post('delete', 'student-1')).statusCode).toBe(409);
+    expect(deleted).toHaveLength(0);
+
+    expect((await post('delete', 'student-1', { force: true })).statusCode).toBe(200);
+    const byId = Object.fromEntries(batchUpdates.map(u => [u.id, u.data]));
+    expect(byId.untouched.status).toBe('cancelled');
+    // Деньги не трогаем: сумма к оплате опускается до внесённого, остаток — скидка.
+    expect(byId.partial).toMatchObject({ status: 'paid', totalAmount: 1000, listAmount: 2500, settledByDiscount: true });
   });
 
   it('без гранта — 403 и ни одного удаления', async () => {

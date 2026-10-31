@@ -120,7 +120,7 @@ export const LandingNav: React.FC<{ variant?: 'home' | 'page' }> = ({ variant = 
               <ChromeCta className={`hidden sm:inline-flex items-center text-sm font-semibold px-4 py-2 rounded-lg transition-colors ${overDark ? 'bg-white text-slate-900 hover:bg-slate-100' : 'bg-slate-900 text-white hover:bg-slate-800'}`}>{t('landing.heroCta')}</ChromeCta>
             </>
           )}
-          <button onClick={() => setOpen(!open)} className={`md:hidden p-2 -mr-2 transition-colors ${overDark ? 'text-white' : 'text-slate-700'}`} aria-label="Menu">
+          <button onClick={() => setOpen(!open)} className={`md:hidden p-2 -mr-2 transition-colors ${overDark ? 'text-white' : 'text-slate-700'}`} aria-label={t('landing.menu', 'Меню')}>
             {open ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
           </button>
         </div>

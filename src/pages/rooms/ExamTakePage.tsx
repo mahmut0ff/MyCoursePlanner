@@ -263,7 +263,7 @@ const ExamTakePage: React.FC = () => {
       if (retryCount < 3) {
         const delayMs = Math.pow(2, retryCount) * 1000; // 1s, 2s, 4s
         toast.error(
-          t('rooms.submitRetrying', `Network error. Retrying in ${delayMs / 1000}s... (attempt ${retryCount + 2}/4)`),
+          t('rooms.submitRetrying', 'Ошибка сети. Повтор через {{seconds}} с... (попытка {{attempt}}/4)', { seconds: delayMs / 1000, attempt: retryCount + 2 }),
           { duration: delayMs }
         );
         setSubmitting(false);
@@ -303,7 +303,7 @@ const ExamTakePage: React.FC = () => {
             <div className="flex items-center gap-2 text-sm text-slate-500 dark:text-slate-400 mt-2 bg-slate-50 dark:bg-slate-800 py-2 px-4 rounded-lg
 ">
               <Users className="w-4 h-4" />
-              <span>{(room.participants?.length || 0) + 1} {t('rooms.participantsReady', 'в зале ожидания')}</span>
+              <span>{t('rooms.inWaitingRoom', 'В зале ожидания: {{count}}', { count: (room.participants?.length || 0) + 1 })}</span>
             </div>
           </div>
         </div>
@@ -371,9 +371,9 @@ const ExamTakePage: React.FC = () => {
         <div className="w-full order-1">
           <div className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-md rounded-2xl border border-slate-200/50 dark:border-slate-800/50 p-4 shadow-sm">
             <div className="flex items-center justify-between mb-3">
-              <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">{t('rooms.questionsOverview', 'Question Navigator')}</h3>
+              <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">{t('rooms.questionsOverview', 'Навигация по вопросам')}</h3>
               <div className="text-xs text-slate-500 font-medium">
-                <span>{questions.length - answeredCount} {t('rooms.remaining', 'Remaining')}</span>
+                <span>{t('rooms.remainingCount', 'Осталось: {{count}}', { count: questions.length - answeredCount })}</span>
               </div>
             </div>
             
@@ -413,7 +413,7 @@ const ExamTakePage: React.FC = () => {
                 {t('rooms.question', 'Question')} {currentQ + 1} / {questions.length}
               </span>
               <span className="text-sm font-semibold text-slate-400 dark:text-slate-500">
-                {q.points} {q.points !== 1 ? t('rooms.points', 'pts') : t('rooms.point', 'pt')}
+                {t('rooms.pointsCount', { count: q.points, defaultValue: '{{count}} баллов' })}
               </span>
             </div>
 
@@ -422,7 +422,7 @@ const ExamTakePage: React.FC = () => {
             {/* Media Block */}
             {q.mediaUrl && (
               <div className="mb-8 rounded-2xl overflow-hidden border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50 flex items-center justify-center p-4 min-h-[200px]">
-                {q.mediaType === 'image' && <img src={q.mediaUrl} alt="Visual material for question" className="max-h-[400px] object-contain rounded-xl shadow-sm" />}
+                {q.mediaType === 'image' && <img src={q.mediaUrl} alt={t('rooms.questionMediaAlt', 'Иллюстрация к вопросу')} className="max-h-[400px] object-contain rounded-xl shadow-sm" />}
                 {q.mediaType === 'video' && <video src={q.mediaUrl} controls className="max-h-[400px] w-full max-w-2xl rounded-xl shadow-sm" />}
                 {q.mediaType === 'audio' && <audio src={q.mediaUrl} controls className="w-full max-w-md mx-auto" />}
               </div>
@@ -440,7 +440,7 @@ const ExamTakePage: React.FC = () => {
                   className="bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-900 dark:text-white px-5 py-2.5 rounded-xl font-bold flex items-center gap-2 transition-all shadow-sm exam-card-hover"
                 >
                   <Volume2 className="w-5 h-5 text-indigo-500" />
-                  {t('exam.listenQuestion', 'Listen Question')}
+                  {t('rooms.listenQuestion', 'Прослушать вопрос')}
                 </button>
               </div>
             )}
@@ -451,21 +451,21 @@ const ExamTakePage: React.FC = () => {
                 <div className="mb-8">
                   <StudentAudioRecorder 
                     onRecordingComplete={async (blob) => {
-                       toast.loading(t('common.uploading', 'Uploading recording...'), { id: 'upload-audio' });
+                       toast.loading(t('rooms.uploadingRecording', 'Загрузка записи...'), { id: 'upload-audio' });
                        try {
                          const ext = blob.type.split('/')[1]?.split(';')[0] || 'webm';
                          const url = await uploadFile(`assessments/audio/${room?.id}/${q.id}/${profile?.uid}.${ext}`, blob);
                          setAnswer(q.id, url);
-                         toast.success(t('common.success', 'Success'), { id: 'upload-audio' });
+                         toast.success(t('rooms.audioUploaded', 'Аудио загружено'), { id: 'upload-audio' });
                        } catch (e) {
-                         toast.error('Upload failed', { id: 'upload-audio' });
+                         toast.error(t('rooms.audioUploadFailed', 'Не удалось загрузить аудио'), { id: 'upload-audio' });
                        }
                     }} 
                   />
                   {answers[q.id] && (
                     <div className="mt-4 flex items-center justify-center text-sm font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/20 py-3 rounded-xl">
                       <CheckCircle2 className="w-5 h-5 mr-2" />
-                      {t('quiz.audioSaved', 'Audio Response Saved!')}
+                      {t('rooms.audioSaved', 'Аудиоответ сохранён!')}
                     </div>
                   )}
                 </div>
@@ -512,7 +512,7 @@ const ExamTakePage: React.FC = () => {
                       {selected && <div className="w-2.5 h-2.5 rounded-full bg-slate-900 dark:bg-white" />}
                     </div>
                     <span className={`text-lg sm:text-xl font-medium ${selected ? 'text-slate-900 dark:text-white' : 'text-slate-700 dark:text-slate-300'}`}>
-                      {opt === 'True' ? '✅ Верно (True)' : '❌ Неверно (False)'}
+                      {opt === 'True' ? `✅ ${t('exams.trueOption', 'Верно')}` : `❌ ${t('exams.falseOption', 'Неверно')}`}
                     </span>
                   </div>
                 );

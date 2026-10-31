@@ -5,6 +5,7 @@ import { CreditCard, Undo2, X } from 'lucide-react';
 import type { PayablePlan } from './AcceptPaymentModal';
 import RefundModal, { type RefundableTx } from './RefundModal';
 import { formatMoney, formatMoneySigned } from '../../lib/money';
+import { intlLocale } from '../../lib/locale';
 import { PAYMENT_METHODS } from '../../pages/finances/expenseCategories';
 
 interface Props {
@@ -134,7 +135,7 @@ const PaymentHistoryModal: React.FC<Props> = ({ plan, studentId, studentName, ca
                           )}
                         </p>
                         <p className="text-xs text-slate-500 truncate">
-                          {new Date(tx.date || tx.createdAt).toLocaleDateString()}
+                          {new Date(tx.date || tx.createdAt).toLocaleDateString(intlLocale())}
                           {tx.paymentMethod && <span className="ml-1.5">· {methodIcon(tx.paymentMethod)}</span>}
                           {tx.description && <span className="ml-1.5">· {tx.description}</span>}
                         </p>

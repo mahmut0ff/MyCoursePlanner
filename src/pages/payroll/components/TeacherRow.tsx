@@ -14,6 +14,7 @@ import {
   Wallet,
 } from 'lucide-react';
 import type { PayComponent, PayrollLine, PayrollPayout } from '../../../types';
+import { intlLocale } from '../../../lib/locale';
 import {
   describeComponents,
   formatMinor,
@@ -179,7 +180,7 @@ const describeBasis = (
 const formatPayoutDate = (raw: string): string => {
   const date = new Date(raw);
   if (Number.isNaN(date.getTime())) return raw || '—';
-  return date.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short', year: 'numeric' });
+  return date.toLocaleDateString(intlLocale(), { day: 'numeric', month: 'short', year: 'numeric' });
 };
 
 /**

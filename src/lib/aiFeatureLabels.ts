@@ -8,6 +8,9 @@
  *
  * Keep in sync with the recordAiUsage() call sites in netlify/functions.
  */
+import { trLabel as tr } from './trLabel';
+
+/** Русские подписи — фолбэк ключей `aiUsage.features.<key>`. */
 export const AI_FEATURE_LABELS: Record<string, string> = {
   // Staff copilot (api-ai-assistant)
   assistant: 'Помощник администратора',
@@ -60,8 +63,8 @@ export const AI_FEATURE_LABELS: Record<string, string> = {
  */
 export function aiFeatureLabel(key: string): string {
   const known = AI_FEATURE_LABELS[key];
-  if (known) return known;
+  if (known) return tr(`aiUsage.features.${key}`, known);
   const words = key.replace(/^generate_/, '').replace(/[_-]+/g, ' ').trim();
-  if (!words) return 'Прочее';
+  if (!words) return tr('aiUsage.other', 'Прочее');
   return words.charAt(0).toUpperCase() + words.slice(1);
 }

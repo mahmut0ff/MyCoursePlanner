@@ -1,5 +1,6 @@
 import type { Handler, HandlerEvent } from '@netlify/functions';
 import { GoogleGenerativeAI } from '@google/generative-ai';
+import { AI_MODEL } from './utils/ai';
 import { verifyAuth, isStaff, ok, unauthorized, forbidden, badRequest, jsonResponse } from './utils/auth';
 import { rateLimiters, getRateLimitKey } from './utils/rate-limiter';
 
@@ -35,7 +36,7 @@ const handler: Handler = async (event: HandlerEvent) => {
     const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
     // Use flash model, it optimally handles audio natively
     const model = genAI.getGenerativeModel({
-      model: 'gemini-2.5-flash',
+      model: AI_MODEL,
       generationConfig: {
         responseMimeType: 'application/json',
       },

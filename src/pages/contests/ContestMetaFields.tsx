@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { CONTEST_KIND_LABELS, JUDGING_MODE_LABELS, type ContestKind, type JudgingMode } from '../../lib/contests';
 import type { MetaForm } from './contestForm';
 import { Field, Label, Segmented } from './ui';
-import { inputCls } from './uiStyles';
+import { inputCls, kindLabel, judgingModeLabel } from './uiStyles';
 
 /** Поля «паспорта» конкурса — общие для создания и вкладки «Обзор». */
 const ContestMetaFields: React.FC<{ form: MetaForm; setForm: React.Dispatch<React.SetStateAction<MetaForm>>; disabled?: boolean }> = ({ form, setForm, disabled }) => {
@@ -12,12 +12,12 @@ const ContestMetaFields: React.FC<{ form: MetaForm; setForm: React.Dispatch<Reac
   return (
     <fieldset disabled={disabled} className="space-y-4">
       <Field label={t('contests.title', 'Название')}>
-        <input autoFocus value={form.title} onChange={set('title')} placeholder="Келечек инженерлери — 2026" className={inputCls} />
+        <input autoFocus value={form.title} onChange={set('title')} placeholder={t('contests.titlePh', 'Келечек инженерлери — 2026')} className={inputCls} />
       </Field>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <Field label={t('contests.kind', 'Тип')}>
           <select value={form.kind} onChange={set('kind')} className={inputCls}>
-            {(Object.keys(CONTEST_KIND_LABELS) as ContestKind[]).map((k) => <option key={k} value={k}>{CONTEST_KIND_LABELS[k]}</option>)}
+            {(Object.keys(CONTEST_KIND_LABELS) as ContestKind[]).map((k) => <option key={k} value={k}>{kindLabel(k)}</option>)}
           </select>
         </Field>
         <Field label={t('contests.season', 'Сезон / год')}>
@@ -48,8 +48,8 @@ const ContestMetaFields: React.FC<{ form: MetaForm; setForm: React.Dispatch<Reac
           options={(Object.keys(JUDGING_MODE_LABELS) as JudgingMode[]).map((m) => ({
             value: m,
             label: <>
-              <span className="block text-sm font-semibold text-slate-900 dark:text-white">{JUDGING_MODE_LABELS[m].title}</span>
-              <span className="block text-[12px] text-slate-500 dark:text-slate-400 mt-0.5">{JUDGING_MODE_LABELS[m].hint}</span>
+              <span className="block text-sm font-semibold text-slate-900 dark:text-white">{judgingModeLabel(m).title}</span>
+              <span className="block text-[12px] text-slate-500 dark:text-slate-400 mt-0.5">{judgingModeLabel(m).hint}</span>
             </>,
           }))}
           className="grid grid-cols-1 sm:grid-cols-2 gap-2"

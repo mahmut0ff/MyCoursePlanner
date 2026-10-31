@@ -1,5 +1,6 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
+import { intlLocale } from '../../lib/locale';
 import { Check, Loader2, AlertTriangle, Save } from 'lucide-react';
 import type { SaveQueueState } from '../../hooks/useSaveQueue';
 
@@ -14,7 +15,7 @@ interface Props {
 }
 
 /** «14:32» в часах организации не нуждается — это время СЕАНСА, а не запись в базе. */
-const clock = (ms: number) => new Date(ms).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+const clock = (ms: number) => new Date(ms).toLocaleTimeString(intlLocale(), { hour: '2-digit', minute: '2-digit' });
 
 /**
  * Состояние записи журнала: сохранено / сохраняется / не сохранено.

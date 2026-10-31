@@ -11,6 +11,7 @@ import BranchFilter from '../../components/ui/BranchFilter';
 import GroupScheduleSection from '../../components/schedule/GroupScheduleSection';
 import { usePermissions } from '../../contexts/PermissionsContext';
 import { canEditGroupSchedule } from '../../lib/rbac';
+import { intlLocale } from '../../lib/locale';
 
 // Lifecycle statuses a group can move between, with their badge/menu styling.
 const GROUP_STATUS_META: Record<GroupStatus, { label: string; icon: typeof PlayCircle; badge: string; dot: string }> = {
@@ -143,7 +144,7 @@ const GroupDetailPage: React.FC = () => {
       await orgUpdateGroup({ id: group.id, currentSyllabusItemId: next });
       setGroup({ ...group, currentSyllabusItemId: next || undefined });
     } catch (e: any) {
-      toast.error(e.message || 'Не удалось обновить прогресс');
+      toast.error(e.message || t('groups.detail.progressFailed', 'Не удалось обновить прогресс'));
     } finally {
       setSavingProgress(false);
     }
@@ -169,7 +170,7 @@ const GroupDetailPage: React.FC = () => {
       setIsEditingChat(false);
       toast.success(t('common.saved', 'Сохранено'));
     } catch (e: any) {
-      toast.error(e.message || 'Error saving chat link');
+      toast.error(e.message || t('groups.detail.chatSaveFailed', 'Не удалось сохранить ссылку на чат'));
     } finally {
       setSavingChat(false);
     }
@@ -200,7 +201,7 @@ const GroupDetailPage: React.FC = () => {
       setShowEditGroupModal(false);
       toast.success(t('common.saved', 'Сохранено'));
     } catch (e: any) {
-      toast.error(e.message || 'Error saving group');
+      toast.error(e.message || t('groups.detail.saveFailed', 'Не удалось сохранить группу'));
     } finally {
       setSavingGroup(false);
     }
@@ -213,9 +214,9 @@ const GroupDetailPage: React.FC = () => {
     try {
       await orgUpdateGroup({ id: group.id, status: next });
       setGroup({ ...group, status: next });
-      toast.success(`Статус: ${GROUP_STATUS_META[next].label}`);
+      toast.success(t('groups.detail.statusChanged', 'Статус: {{status}}', { status: t(`groups.status.${next}`, GROUP_STATUS_META[next].label) }));
     } catch (e: any) {
-      toast.error(e.message || 'Не удалось изменить статус');
+      toast.error(e.message || t('groups.detail.statusFailed', 'Не удалось изменить статус'));
     } finally {
       setChangingStatus(false);
     }
@@ -229,7 +230,7 @@ const GroupDetailPage: React.FC = () => {
       if (!currentIds.includes(selectedUserId)) {
         await orgUpdateGroup({ id: group.id, teacherIds: [...currentIds, selectedUserId] });
         setGroup({ ...group, teacherIds: [...currentIds, selectedUserId] });
-        toast.success('Преподаватель назначен!');
+        toast.success(t('groups.detail.teacherAssigned', 'Преподаватель назначен!'));
       }
       setShowAddTeacher(false);
       setSelectedUserId('');
@@ -249,7 +250,7 @@ const GroupDetailPage: React.FC = () => {
       if (!currentIds.includes(selectedUserId)) {
         await orgUpdateGroup({ id: group.id, studentIds: [...currentIds, selectedUserId] });
         setGroup({ ...group, studentIds: [...currentIds, selectedUserId] });
-        toast.success('Ученик добавлен!');
+        toast.success(t('groups.detail.studentAdded', 'Ученик добавлен!'));
       }
       setShowAddStudent(false);
       setSelectedUserId('');
@@ -262,13 +263,13 @@ const GroupDetailPage: React.FC = () => {
 
   const handleRemoveStudent = async (studentId: string) => {
     if (!group) return;
-    if (!window.confirm('Открепить ученика?')) return;
+    if (!window.confirm(t('groups.detail.removeStudentConfirm', 'Открепить ученика?'))) return;
     try {
       const currentIds = group.studentIds || [];
       const newIds = currentIds.filter(id => id !== studentId);
       await orgUpdateGroup({ id: group.id, studentIds: newIds });
       setGroup({ ...group, studentIds: newIds });
-      toast.success('Ученик откреплен');
+      toast.success(t('groups.detail.studentRemoved', 'Ученик откреплён'));
     } catch (e: any) {
       toast.error(e.message);
     }
@@ -289,14 +290,14 @@ const GroupDetailPage: React.FC = () => {
   };
 
   const handleIssuePassword = async () => {
-    if (!credStudent || credPw.length < 6) { toast.error('Пароль — минимум 6 символов'); return; }
+    if (!credStudent || credPw.length < 6) { toast.error(t('groups.detail.pwMin', 'Пароль — минимум 6 символов')); return; }
     setSavingCred(true);
     try {
       await orgResetStudentPassword(credStudent.uid, credPw);
       setIssuedPw(credPw);
-      toast.success('Новый пароль установлен');
+      toast.success(t('groups.detail.pwSet', 'Новый пароль установлен'));
     } catch (e: any) {
-      toast.error(e.message || 'Ошибка');
+      toast.error(e.message || t('common.error', 'Ошибка'));
     } finally {
       setSavingCred(false);
     }
@@ -357,7 +358,7 @@ const GroupDetailPage: React.FC = () => {
               <div className="flex items-center gap-3 mb-6">
                 <span className="px-3 py-1 text-[11px] font-bold uppercase tracking-wider rounded-lg border bg-violet-100 text-violet-700 border-violet-200 dark:bg-violet-900/30 dark:text-violet-400 dark:border-violet-800">
                   <Users className="w-3 h-3 inline-block mr-1.5 -mt-0.5" />
-                  Группа
+                  {t('groups.detail.badgeGroup', 'Группа')}
                 </span>
                 {courseName && (
                   <span className="px-3 py-1 text-[11px] font-bold uppercase tracking-wider bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400 rounded-lg border border-slate-200 dark:border-slate-700">
@@ -367,7 +368,7 @@ const GroupDetailPage: React.FC = () => {
                 )}
                 <span className={`px-3 py-1 text-[11px] font-bold uppercase tracking-wider rounded-lg border ${statusMeta.badge}`}>
                   <StatusIcon className="w-3 h-3 inline-block mr-1.5 -mt-0.5" />
-                  {statusMeta.label}
+                  {t(`groups.status.${status}`, statusMeta.label)}
                 </span>
               </div>
               
@@ -382,7 +383,7 @@ const GroupDetailPage: React.FC = () => {
                       setShowEditGroupModal(true);
                     }}
                     className="p-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-500 hover:text-violet-600 dark:hover:text-violet-400 rounded-xl transition-all shadow-sm hover:shadow"
-                    title="Редактировать группу"
+                    title={t('groups.detail.editGroup', 'Редактировать группу')}
                   >
                     <Edit2 className="w-5 h-5" />
                   </button>
@@ -394,10 +395,10 @@ const GroupDetailPage: React.FC = () => {
                       onClick={() => setShowStatusMenu(v => !v)}
                       disabled={changingStatus}
                       className="flex items-center gap-1.5 px-3 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-sm font-bold text-slate-600 dark:text-slate-300 hover:text-violet-600 dark:hover:text-violet-400 rounded-xl transition-all shadow-sm hover:shadow disabled:opacity-50"
-                      title="Изменить статус группы"
+                      title={t('groups.detail.changeStatus', 'Изменить статус группы')}
                     >
                       {changingStatus ? <Loader2 className="w-4 h-4 animate-spin" /> : <StatusIcon className={`w-4 h-4 ${statusMeta.dot}`} />}
-                      <span className="hidden sm:inline">{statusMeta.label}</span>
+                      <span className="hidden sm:inline">{t(`groups.status.${status}`, statusMeta.label)}</span>
                       <ChevronDown className="w-3.5 h-3.5" />
                     </button>
                     {showStatusMenu && (
@@ -416,7 +417,7 @@ const GroupDetailPage: React.FC = () => {
                                 className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-sm font-semibold text-left transition-colors disabled:opacity-50 ${isCurrent ? 'bg-slate-100 dark:bg-slate-700/50 text-slate-900 dark:text-white' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700/40'}`}
                               >
                                 <Icon className={`w-4 h-4 ${m.dot}`} />
-                                <span className="flex-1">{m.label}</span>
+                                <span className="flex-1">{t(`groups.status.${s}`, m.label)}</span>
                                 {isCurrent && <Check className="w-4 h-4 text-emerald-500" />}
                               </button>
                             );
@@ -432,7 +433,7 @@ const GroupDetailPage: React.FC = () => {
               {isEditingChat ? (
                  <div className="flex items-center gap-2 p-3 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200 dark:border-slate-700 max-w-md">
                     <div className="flex-1 space-y-2">
-                       <input value={chatForm.title} onChange={e => setChatForm(f => ({ ...f, title: e.target.value }))} placeholder="Название (Telegram, WhatsApp...)" className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 rounded-lg px-3 py-2 text-xs font-medium outline-none focus:border-violet-500" />
+                       <input value={chatForm.title} onChange={e => setChatForm(f => ({ ...f, title: e.target.value }))} placeholder={t('groups.detail.chatTitlePh', 'Название (Telegram, WhatsApp...)')} className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 rounded-lg px-3 py-2 text-xs font-medium outline-none focus:border-violet-500" />
                        <input value={chatForm.url} onChange={e => setChatForm(f => ({ ...f, url: e.target.value }))} placeholder="https://..." className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 rounded-lg px-3 py-2 text-xs font-medium outline-none focus:border-violet-500" />
                     </div>
                     <div className="flex flex-col gap-2 shrink-0">
@@ -444,11 +445,11 @@ const GroupDetailPage: React.FC = () => {
                  <div className="flex items-center gap-3">
                     {group.chatLinkUrl ? (
                       <a href={group.chatLinkUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 px-4 py-2 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 font-bold text-sm rounded-xl border border-blue-100 dark:border-blue-900/50 hover:bg-blue-100 dark:hover:bg-blue-900/40 transition-colors">
-                        <LinkIcon className="w-4 h-4" /> {group.chatLinkTitle || 'Чат группы'}
+                        <LinkIcon className="w-4 h-4" /> {group.chatLinkTitle || t('groups.detail.groupChat', 'Чат группы')}
                       </a>
                     ) : (
                       <div className="inline-flex items-center gap-2 px-4 py-2 bg-slate-50 dark:bg-slate-800/50 text-slate-400 font-bold text-sm rounded-xl border border-slate-200 dark:border-slate-700 border-dashed">
-                        Нет ссылки на чат
+                        {t('groups.detail.noChatLink', 'Нет ссылки на чат')}
                       </div>
                     )}
                     {canManageGroup && (
@@ -465,12 +466,12 @@ const GroupDetailPage: React.FC = () => {
               <div className="bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-700/50 p-4 rounded-2xl flex flex-col items-center justify-center text-center">
                 <GraduationCap className="w-6 h-6 text-emerald-500 mb-2" />
                 <span className="text-2xl font-bold text-slate-900 dark:text-white">{currentStudents.length}</span>
-                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Учеников</span>
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{t('groups.detail.statStudents', 'Учеников')}</span>
               </div>
               <div className="bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-700/50 p-4 rounded-2xl flex flex-col items-center justify-center text-center">
                 <Briefcase className="w-6 h-6 text-blue-500 mb-2" />
                 <span className="text-2xl font-bold text-slate-900 dark:text-white">{currentTeachers.length}</span>
-                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Учителей</span>
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{t('groups.detail.statTeachers', 'Учителей')}</span>
               </div>
               <div className="bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-700/50 p-4 rounded-2xl col-span-2 flex items-center justify-between text-left">
                 <div className="flex items-center gap-3">
@@ -479,7 +480,7 @@ const GroupDetailPage: React.FC = () => {
                   </div>
                   <div>
                     <span className="block text-sm font-bold text-slate-900 dark:text-white">
-                      {group.createdAt ? new Date(group.createdAt).toLocaleDateString() : '—'}
+                      {group.createdAt ? new Date(group.createdAt).toLocaleDateString(intlLocale()) : '—'}
                     </span>
                     <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider">{t('common.created', 'Создан')}</span>
                   </div>
@@ -499,36 +500,36 @@ const GroupDetailPage: React.FC = () => {
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h2 className="text-lg font-bold text-slate-900 dark:text-white">Силлабус (Учебная программа)</h2>
+                <h2 className="text-lg font-bold text-slate-900 dark:text-white">{t('groups.detail.syllabusTitle', 'Силлабус (Учебная программа)')}</h2>
                 {syllabus?.isMandatory && (
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-indigo-600 dark:text-indigo-400 bg-indigo-100 dark:bg-indigo-900/40 px-2 py-0.5 rounded-full">Обязательная</span>
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-indigo-600 dark:text-indigo-400 bg-indigo-100 dark:bg-indigo-900/40 px-2 py-0.5 rounded-full">{t('groups.detail.mandatory', 'Обязательная')}</span>
                 )}
               </div>
-              <p className="text-xs text-slate-500">Прогресс освоения курса группой</p>
+              <p className="text-xs text-slate-500">{t('groups.detail.syllabusDesc', 'Прогресс освоения курса группой')}</p>
             </div>
           </div>
           
           {!syllabus ? (
              <div className="bg-slate-50 dark:bg-slate-900/50 p-6 rounded-2xl border border-slate-100 dark:border-slate-700/50 text-center">
-                <p className="text-sm font-semibold text-slate-700 dark:text-slate-300">Силлабус для курса не настроен</p>
-                <p className="text-xs text-slate-500 mt-1 max-w-md mx-auto">Создайте программу курса, чтобы отслеживать прогресс группы по модулям и урокам.</p>
+                <p className="text-sm font-semibold text-slate-700 dark:text-slate-300">{t('groups.detail.noSyllabus', 'Силлабус для курса не настроен')}</p>
+                <p className="text-xs text-slate-500 mt-1 max-w-md mx-auto">{t('groups.detail.noSyllabusDesc', 'Создайте программу курса, чтобы отслеживать прогресс группы по модулям и урокам.')}</p>
                 {group?.courseId && (
                   <button onClick={() => navigate(`/courses/${group.courseId}`)} className="mt-3 inline-flex items-center gap-1.5 text-xs font-semibold text-indigo-600 dark:text-indigo-400 hover:underline">
-                    Перейти к курсу <ExternalLink className="w-3.5 h-3.5" />
+                    {t('groups.detail.goToCourse', 'Перейти к курсу')} <ExternalLink className="w-3.5 h-3.5" />
                   </button>
                 )}
              </div>
           ) : syllabusItems.length === 0 ? (
              <div className="bg-slate-50 dark:bg-slate-900/50 p-6 rounded-2xl border border-slate-100 dark:border-slate-700/50 text-center">
-                <p className="text-sm font-semibold text-slate-700 dark:text-slate-300">В силлабусе пока нет уроков</p>
-                <p className="text-xs text-slate-500 mt-1">Добавьте модули и темы в программу курса.</p>
+                <p className="text-sm font-semibold text-slate-700 dark:text-slate-300">{t('groups.detail.syllabusEmpty', 'В силлабусе пока нет уроков')}</p>
+                <p className="text-xs text-slate-500 mt-1">{t('groups.detail.syllabusEmptyDesc', 'Добавьте модули и темы в программу курса.')}</p>
              </div>
           ) : (
              <div className="space-y-4">
                 {/* Progress bar */}
                 <div className="bg-slate-50 dark:bg-slate-900/50 p-4 rounded-2xl border border-slate-100 dark:border-slate-700/50">
                    <div className="flex items-center justify-between mb-1.5">
-                      <span className="text-sm font-bold text-slate-700 dark:text-slate-300">Пройдено {progressPct}%</span>
+                      <span className="text-sm font-bold text-slate-700 dark:text-slate-300">{t('groups.detail.progressDone', 'Пройдено {{pct}}%', { pct: progressPct })}</span>
                       <span className="text-xs text-slate-500">{currentIdx >= 0 ? currentIdx + 1 : 0} / {syllabusItems.length}</span>
                    </div>
                    <div className="bg-slate-200 dark:bg-slate-700 h-2 w-full rounded-full overflow-hidden">
@@ -540,7 +541,7 @@ const GroupDetailPage: React.FC = () => {
                 <div className="space-y-3 max-h-80 overflow-y-auto pr-1 custom-scrollbar">
                    {syllabus.modules.map((mod, mi) => (
                      <div key={mod.id}>
-                        <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-1.5">Модуль {mi + 1}: {mod.title}</p>
+                        <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-1.5">{t('groups.detail.moduleN', 'Модуль {{n}}: {{title}}', { n: mi + 1, title: mod.title })}</p>
                         <div className="space-y-1">
                            {mod.items.map(item => {
                              const idx = syllabusItems.findIndex(i => i.id === item.id);
@@ -549,13 +550,13 @@ const GroupDetailPage: React.FC = () => {
                              const linkTo = item.type === 'exam' && item.examId ? `/exams/${item.examId}` : item.lessonPlanId ? `/lessons/${item.lessonPlanId}` : null;
                              return (
                                <div key={item.id} className={`flex items-center gap-2 px-2.5 py-1.5 rounded-lg border transition-colors ${isCurrent ? 'border-indigo-300 dark:border-indigo-700 bg-indigo-50 dark:bg-indigo-900/20' : 'border-transparent hover:bg-slate-100 dark:hover:bg-slate-700/40'}`}>
-                                  <button onClick={() => setCurrentItem(item.id)} disabled={savingProgress || !canEditProgress} title={!canEditProgress ? 'Прогресс отмечают преподаватели этой группы' : isCurrent ? 'Снять отметку «текущий»' : 'Отметить как текущий урок'} className="shrink-0 disabled:opacity-50 disabled:cursor-default">
+                                  <button onClick={() => setCurrentItem(item.id)} disabled={savingProgress || !canEditProgress} title={!canEditProgress ? t('groups.detail.progressTeachersOnly', 'Прогресс отмечают преподаватели этой группы') : isCurrent ? t('groups.detail.unmarkCurrent', 'Снять отметку «текущий»') : t('groups.detail.markCurrent', 'Отметить как текущий урок')} className="shrink-0 disabled:opacity-50 disabled:cursor-default">
                                      {done ? <CheckCircle2 className="w-4 h-4 text-emerald-500" /> : <Circle className="w-4 h-4 text-slate-300 dark:text-slate-600" />}
                                   </button>
                                   <span className={`flex-1 text-sm truncate ${done ? 'text-slate-700 dark:text-slate-200' : 'text-slate-500'} ${isCurrent ? 'font-semibold' : ''}`}>{item.title}</span>
-                                  {isCurrent && <span className="text-[10px] font-bold uppercase text-indigo-600 dark:text-indigo-400 bg-indigo-100 dark:bg-indigo-900/40 px-1.5 py-0.5 rounded shrink-0">Сейчас</span>}
+                                  {isCurrent && <span className="text-[10px] font-bold uppercase text-indigo-600 dark:text-indigo-400 bg-indigo-100 dark:bg-indigo-900/40 px-1.5 py-0.5 rounded shrink-0">{t('groups.detail.now', 'Сейчас')}</span>}
                                   {linkTo && (
-                                    <button onClick={() => navigate(linkTo)} className="p-1 text-slate-400 hover:text-indigo-500 shrink-0" title="Открыть"><ExternalLink className="w-3.5 h-3.5" /></button>
+                                    <button onClick={() => navigate(linkTo)} className="p-1 text-slate-400 hover:text-indigo-500 shrink-0" title={t('groups.detail.open', 'Открыть')}><ExternalLink className="w-3.5 h-3.5" /></button>
                                   )}
                                </div>
                              );
@@ -564,7 +565,7 @@ const GroupDetailPage: React.FC = () => {
                      </div>
                    ))}
                 </div>
-                <p className="text-[11px] text-slate-400">Отметьте текущий урок — прогресс пересчитается автоматически.</p>
+                <p className="text-[11px] text-slate-400">{t('groups.detail.markHint', 'Отметьте текущий урок — прогресс пересчитается автоматически.')}</p>
              </div>
           )}
         </div>
@@ -581,7 +582,7 @@ const GroupDetailPage: React.FC = () => {
                <div className="px-5 py-4 border-b border-slate-100 dark:border-slate-700 flex items-center justify-between">
                   <div className="flex items-center gap-2 text-slate-900 dark:text-white">
                      <GraduationCap className="w-5 h-5 text-emerald-500" />
-                     <h2 className="font-extrabold uppercase tracking-wider text-sm">Ученики ({currentStudents.length})</h2>
+                     <h2 className="font-extrabold uppercase tracking-wider text-sm">{t('groups.detail.studentsHeading', 'Ученики ({{count}})', { count: currentStudents.length })}</h2>
                   </div>
                   <div className="flex items-center gap-1">
                     {/* Раздать доступы перед экзаменом — работа преподавателя,
@@ -590,13 +591,13 @@ const GroupDetailPage: React.FC = () => {
                       <button
                         onClick={() => setShowGroupAccess(true)}
                         className="p-1 text-slate-400 hover:text-primary-500 hover:bg-primary-50 dark:hover:bg-primary-500/10 rounded transition-colors"
-                        title="Выдать логины и пароли группе"
+                        title={t('groups.detail.issueGroupAccess', 'Выдать логины и пароли группе')}
                       >
                         <KeyRound className="w-5 h-5" />
                       </button>
                     )}
                     {canManageGroup && (
-                      <button onClick={() => setShowAddStudent(true)} className="p-1 text-slate-400 hover:text-emerald-500 hover:bg-emerald-50 dark:hover:bg-emerald-500/10 rounded transition-colors" title="Добавить ученика">
+                      <button onClick={() => setShowAddStudent(true)} className="p-1 text-slate-400 hover:text-emerald-500 hover:bg-emerald-50 dark:hover:bg-emerald-500/10 rounded transition-colors" title={t('groups.detail.addStudent', 'Добавить ученика')}>
                          <Plus className="w-5 h-5" />
                       </button>
                     )}
@@ -605,7 +606,7 @@ const GroupDetailPage: React.FC = () => {
                <div className="divide-y divide-slate-50 dark:divide-slate-700/50">
                   {currentStudents.length === 0 ? (
                     <div className="p-8 text-center">
-                       <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Нет учеников</p>
+                       <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">{t('groups.detail.noStudents', 'Нет учеников')}</p>
                     </div>
                   ) : (
                     currentStudents.map(s => (
@@ -627,7 +628,7 @@ const GroupDetailPage: React.FC = () => {
                          </div>
                          <div className="flex items-center gap-1">
                            {canManageCreds && (
-                             <button onClick={(e) => { e.stopPropagation(); openCredentials(s); }} title="Логин и пароль" className="opacity-0 group-hover:opacity-100 p-2 text-slate-400 hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-500/10 rounded-lg transition-all">
+                             <button onClick={(e) => { e.stopPropagation(); openCredentials(s); }} title={t('groups.detail.loginPassword', 'Логин и пароль')} className="opacity-0 group-hover:opacity-100 p-2 text-slate-400 hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-500/10 rounded-lg transition-all">
                                <KeyRound className="w-4 h-4" />
                              </button>
                            )}
@@ -651,10 +652,10 @@ const GroupDetailPage: React.FC = () => {
                <div className="px-5 py-4 border-b border-slate-100 dark:border-slate-700 flex items-center justify-between">
                   <div className="flex items-center gap-2 text-slate-900 dark:text-white">
                      <Briefcase className="w-5 h-5 text-blue-500" />
-                     <h2 className="font-extrabold uppercase tracking-wider text-sm">Преподаватели ({currentTeachers.length})</h2>
+                     <h2 className="font-extrabold uppercase tracking-wider text-sm">{t('groups.detail.teachersHeading', 'Преподаватели ({{count}})', { count: currentTeachers.length })}</h2>
                   </div>
                   {canManageGroup && (
-                    <button onClick={() => setShowAddTeacher(true)} className="p-1 text-slate-400 hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-500/10 rounded transition-colors" title="Назначить преподавателя">
+                    <button onClick={() => setShowAddTeacher(true)} className="p-1 text-slate-400 hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-500/10 rounded transition-colors" title={t('groups.detail.assignTeacher', 'Назначить преподавателя')}>
                        <Plus className="w-5 h-5" />
                     </button>
                   )}
@@ -662,7 +663,7 @@ const GroupDetailPage: React.FC = () => {
                <div className="divide-y divide-slate-50 dark:divide-slate-700/50">
                   {currentTeachers.length === 0 ? (
                     <div className="p-8 text-center">
-                       <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Нет преподавателей</p>
+                       <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">{t('groups.detail.noTeachers', 'Нет преподавателей')}</p>
                     </div>
                   ) : (
                     currentTeachers.map(teacher => (
@@ -690,12 +691,12 @@ const GroupDetailPage: React.FC = () => {
       {showAddTeacher && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 shadow-2xl" onClick={() => setShowAddTeacher(false)}>
           <div className="bg-white dark:bg-slate-800 rounded-3xl p-6 w-full max-w-sm" onClick={e => e.stopPropagation()}>
-             <h2 className="text-lg font-extrabold text-slate-900 dark:text-white mb-2">Назначить преподавателя</h2>
-             <p className="text-xs font-medium text-slate-500 mb-5">Преподаватель получит доступ к группе и журналу.</p>
+             <h2 className="text-lg font-extrabold text-slate-900 dark:text-white mb-2">{t('groups.detail.assignTeacher', 'Назначить преподавателя')}</h2>
+             <p className="text-xs font-medium text-slate-500 mb-5">{t('groups.detail.assignTeacherDesc', 'Преподаватель получит доступ к группе и журналу.')}</p>
              
              {availableTeachers.length === 0 ? (
                <div className="bg-amber-50 text-amber-600 p-3 rounded-xl text-xs font-medium mb-4">
-                 Нет доступных преподавателей. 
+                 {t('groups.detail.noAvailableTeachers', 'Нет доступных преподавателей.')}
                </div>
              ) : (
                <select 
@@ -703,7 +704,7 @@ const GroupDetailPage: React.FC = () => {
                  onChange={e => setSelectedUserId(e.target.value)}
                  className="w-full bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-xl px-4 py-3 text-sm font-bold text-slate-900 dark:text-white outline-none focus:border-violet-500 mb-5"
                >
-                 <option value="">-- Выберите --</option>
+                 <option value="">{t('groups.detail.selectPh', '-- Выберите --')}</option>
                  {availableTeachers.map(t => (
                    <option key={t.uid} value={t.uid}>{t.displayName}</option>
                  ))}
@@ -712,14 +713,14 @@ const GroupDetailPage: React.FC = () => {
 
              <div className="flex justify-end gap-2">
                <button onClick={() => setShowAddTeacher(false)} className="px-4 py-2 font-bold text-xs text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-xl transition-colors">
-                 Отмена
+                 {t('common.cancel', 'Отмена')}
                </button>
                <button 
                  onClick={handleAddTeacher} 
                  disabled={!selectedUserId || addingUser}
                  className="bg-violet-500 hover:bg-violet-600 text-white px-5 py-2 rounded-xl font-bold text-xs disabled:opacity-50 transition-colors shadow-md shadow-violet-500/20"
                >
-                 {addingUser ? '...' : 'Назначить'}
+                 {addingUser ? '...' : t('groups.detail.assign', 'Назначить')}
                </button>
              </div>
           </div>
@@ -739,12 +740,12 @@ const GroupDetailPage: React.FC = () => {
       {showAddStudent && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 shadow-2xl" onClick={() => setShowAddStudent(false)}>
           <div className="bg-white dark:bg-slate-800 rounded-3xl p-6 w-full max-w-sm" onClick={e => e.stopPropagation()}>
-             <h2 className="text-lg font-extrabold text-slate-900 dark:text-white mb-2">Добавить ученика</h2>
-             <p className="text-xs font-medium text-slate-500 mb-5">Ученик получит доступ к этой группе.</p>
+             <h2 className="text-lg font-extrabold text-slate-900 dark:text-white mb-2">{t('groups.detail.addStudent', 'Добавить ученика')}</h2>
+             <p className="text-xs font-medium text-slate-500 mb-5">{t('groups.detail.addStudentDesc', 'Ученик получит доступ к этой группе.')}</p>
              
              {availableStudents.length === 0 ? (
                <div className="bg-amber-50 text-amber-600 p-3 rounded-xl text-xs font-medium mb-4">
-                 Все ученики уже в группе.
+                 {t('groups.detail.allInGroup', 'Все ученики уже в группе.')}
                </div>
              ) : (
                <select 
@@ -752,7 +753,7 @@ const GroupDetailPage: React.FC = () => {
                  onChange={e => setSelectedUserId(e.target.value)}
                  className="w-full bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-xl px-4 py-3 text-sm font-bold text-slate-900 dark:text-white outline-none focus:border-emerald-500 mb-5"
                >
-                 <option value="">-- Выберите --</option>
+                 <option value="">{t('groups.detail.selectPh', '-- Выберите --')}</option>
                  {availableStudents.map(s => (
                    <option key={s.uid} value={s.uid}>{s.displayName} ({s.email})</option>
                  ))}
@@ -761,14 +762,14 @@ const GroupDetailPage: React.FC = () => {
 
              <div className="flex justify-end gap-2">
                <button onClick={() => setShowAddStudent(false)} className="px-4 py-2 text-xs font-bold text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-xl transition-colors">
-                 Отмена
+                 {t('common.cancel', 'Отмена')}
                </button>
                <button 
                  onClick={handleAddStudent} 
                  disabled={!selectedUserId || addingUser}
                  className="bg-emerald-500 hover:bg-emerald-600 text-white px-5 py-2 rounded-xl text-xs font-bold disabled:opacity-50 transition-colors shadow-md shadow-emerald-500/20"
                >
-                 {addingUser ? '...' : 'Добавить'}
+                 {addingUser ? '...' : t('common.add', 'Добавить')}
                </button>
              </div>
           </div>
@@ -778,26 +779,26 @@ const GroupDetailPage: React.FC = () => {
       {showEditGroupModal && canManageGroup && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 shadow-2xl" onClick={() => setShowEditGroupModal(false)}>
           <div className="bg-white dark:bg-slate-800 rounded-3xl p-6 w-full max-w-sm" onClick={e => e.stopPropagation()}>
-             <h2 className="text-xl font-bold text-slate-900 dark:text-white mb-4">Редактировать группу</h2>
+             <h2 className="text-xl font-bold text-slate-900 dark:text-white mb-4">{t('groups.detail.editGroup', 'Редактировать группу')}</h2>
              
              <div className="space-y-4 mb-6">
                <div>
-                 <label className="text-xs font-semibold text-slate-500 mb-1 block">Название группы</label>
+                 <label className="text-xs font-semibold text-slate-500 mb-1 block">{t('groups.detail.groupName', 'Название группы')}</label>
                  <input 
                    value={editGroupForm.name} 
                    onChange={e => setEditGroupForm(f => ({ ...f, name: e.target.value }))}
-                   placeholder="Название группы" 
+                   placeholder={t('groups.detail.groupName', 'Название группы')} 
                    className="w-full bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-xl px-4 py-3 text-sm font-bold text-slate-900 dark:text-white outline-none focus:border-violet-500" 
                  />
                </div>
                <div>
-                 <label className="text-xs font-semibold text-slate-500 mb-1 block">Курс</label>
+                 <label className="text-xs font-semibold text-slate-500 mb-1 block">{t('groups.detail.course', 'Курс')}</label>
                  <select 
                    value={editGroupForm.courseId} 
                    onChange={e => setEditGroupForm(f => ({ ...f, courseId: e.target.value }))}
                    className="w-full bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-xl px-4 py-3 text-sm font-bold text-slate-900 dark:text-white outline-none focus:border-violet-500"
                  >
-                   <option value="">-- Без курса --</option>
+                   <option value="">{t('groups.detail.noCourseOpt', '-- Без курса --')}</option>
                    {courses.map(c => (
                      <option key={c.id} value={c.id}>{c.title}</option>
                    ))}
@@ -805,7 +806,7 @@ const GroupDetailPage: React.FC = () => {
                </div>
                <div>
                  <label className="text-xs font-semibold text-slate-500 mb-1 block flex items-center gap-1">
-                   <Building2 className="w-3.5 h-3.5" /> Филиал
+                   <Building2 className="w-3.5 h-3.5" /> {t('common.branch', 'Филиал')}
                  </label>
                  <BranchFilter
                    value={editGroupForm.branchId || null}
@@ -828,7 +829,7 @@ const GroupDetailPage: React.FC = () => {
                  disabled={!editGroupForm.name.trim() || savingGroup}
                  className="bg-violet-500 hover:bg-violet-600 text-white px-5 py-2 rounded-xl text-sm font-bold disabled:opacity-50 transition-colors shadow-md shadow-violet-500/20"
                >
-                 {savingGroup ? 'Сохранение...' : t('common.save')}
+                 {savingGroup ? t('common.saving', 'Сохранение...') : t('common.save')}
                </button>
              </div>
           </div>
@@ -841,67 +842,67 @@ const GroupDetailPage: React.FC = () => {
           <div className="bg-white dark:bg-slate-800 rounded-3xl p-6 w-full max-w-sm shadow-2xl" onClick={e => e.stopPropagation()}>
             <div className="flex items-center gap-2 mb-1">
               <KeyRound className="w-5 h-5 text-blue-500" />
-              <h2 className="text-lg font-extrabold text-slate-900 dark:text-white">Доступ ученика</h2>
+              <h2 className="text-lg font-extrabold text-slate-900 dark:text-white">{t('groups.detail.studentAccess', 'Доступ ученика')}</h2>
             </div>
             <p className="text-xs font-medium text-slate-500 mb-5">{credStudent.displayName}</p>
 
             {!credStudent.email ? (
               <div className="bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-400 p-3 rounded-xl text-xs font-medium leading-relaxed">
-                У этого ученика нет входа в систему — это запись для журнала. Логин может создать администратор при добавлении ученика.
+                {t('groups.detail.noLogin', 'У этого ученика нет входа в систему — это запись для журнала. Логин может создать администратор при добавлении ученика.')}
               </div>
             ) : (
               <div className="space-y-4">
                 {/* Login */}
                 <div>
-                  <label className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Логин</label>
+                  <label className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">{t('groups.detail.login', 'Логин')}</label>
                   <div className="flex items-center gap-2 bg-slate-50 dark:bg-slate-700/50 rounded-xl px-3 py-2.5 mt-1">
                     <span className="flex-1 text-sm font-mono font-semibold text-slate-900 dark:text-white truncate">{(credStudent as any).username || credStudent.email}</span>
-                    <button onClick={() => { navigator.clipboard.writeText((credStudent as any).username || credStudent.email || ''); toast.success('Скопировано'); }} className="p-1.5 text-slate-400 hover:text-slate-700 dark:hover:text-white hover:bg-slate-200/60 dark:hover:bg-slate-600 rounded-lg transition-colors shrink-0"><Copy className="w-4 h-4" /></button>
+                    <button onClick={() => { navigator.clipboard.writeText((credStudent as any).username || credStudent.email || ''); toast.success(t('support.copied', 'Скопировано')); }} className="p-1.5 text-slate-400 hover:text-slate-700 dark:hover:text-white hover:bg-slate-200/60 dark:hover:bg-slate-600 rounded-lg transition-colors shrink-0"><Copy className="w-4 h-4" /></button>
                   </div>
                 </div>
 
                 {issuedPw ? (
                   /* New password — shown once */
                   <div>
-                    <label className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Новый пароль</label>
+                    <label className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">{t('groups.detail.newPassword', 'Новый пароль')}</label>
                     <div className="flex items-center gap-2 bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/30 rounded-xl px-3 py-2.5 mt-1">
                       <span className="flex-1 text-sm font-mono font-semibold text-emerald-700 dark:text-emerald-300 truncate">{issuedPw}</span>
-                      <button onClick={() => { navigator.clipboard.writeText(issuedPw); toast.success('Скопировано'); }} className="p-1.5 text-emerald-600 hover:bg-emerald-100 dark:hover:bg-emerald-500/20 rounded-lg transition-colors shrink-0"><Copy className="w-4 h-4" /></button>
+                      <button onClick={() => { navigator.clipboard.writeText(issuedPw); toast.success(t('support.copied', 'Скопировано')); }} className="p-1.5 text-emerald-600 hover:bg-emerald-100 dark:hover:bg-emerald-500/20 rounded-lg transition-colors shrink-0"><Copy className="w-4 h-4" /></button>
                     </div>
                     <button
-                      onClick={() => { navigator.clipboard.writeText(`Логин: ${(credStudent as any).username || credStudent.email}\nПароль: ${issuedPw}`); toast.success('Скопировано'); }}
+                      onClick={() => { navigator.clipboard.writeText(t('groups.detail.credsClipboard', 'Логин: {{login}}\nПароль: {{password}}', { login: (credStudent as any).username || credStudent.email, password: issuedPw, interpolation: { escapeValue: false } })); toast.success(t('support.copied', 'Скопировано')); }}
                       className="w-full mt-2 flex items-center justify-center gap-2 px-4 py-2 rounded-xl text-xs font-bold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-500/10 hover:bg-blue-100 dark:hover:bg-blue-500/20 transition-colors"
                     >
-                      <Copy className="w-3.5 h-3.5" /> Скопировать логин и пароль
+                      <Copy className="w-3.5 h-3.5" /> {t('groups.detail.copyCreds', 'Скопировать логин и пароль')}
                     </button>
                     <p className="text-[11px] text-slate-500 leading-relaxed mt-3">
-                      Передайте эти данные ученику. Пароль показывается один раз — скопируйте его сейчас.
+                      {t('groups.detail.credsHint', 'Передайте эти данные ученику. Пароль показывается один раз — скопируйте его сейчас.')}
                     </p>
                     <div className="flex justify-end mt-4">
-                      <button onClick={() => setCredStudent(null)} className="px-5 py-2 text-xs font-bold text-white bg-blue-500 hover:bg-blue-600 rounded-xl transition-colors shadow-md shadow-blue-500/20">Готово</button>
+                      <button onClick={() => setCredStudent(null)} className="px-5 py-2 text-xs font-bold text-white bg-blue-500 hover:bg-blue-600 rounded-xl transition-colors shadow-md shadow-blue-500/20">{t('groups.detail.done', 'Готово')}</button>
                     </div>
                   </div>
                 ) : (
                   /* Issue a new password */
                   <div>
-                    <label className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Новый пароль</label>
+                    <label className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">{t('groups.detail.newPassword', 'Новый пароль')}</label>
                     <div className="flex items-center gap-2 mt-1">
                       <input
                         type="text" value={credPw} onChange={e => setCredPw(e.target.value)}
-                        placeholder="мин. 6 символов"
+                        placeholder={t('groups.detail.pwPh', 'мин. 6 символов')}
                         className="flex-1 bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-xl px-3 py-2.5 text-sm font-mono text-slate-900 dark:text-white outline-none focus:border-blue-500"
                       />
-                      <button onClick={() => setCredPw(genPassword())} title="Сгенерировать другой" className="p-2.5 text-slate-400 hover:text-blue-500 bg-slate-50 dark:bg-slate-700/50 hover:bg-blue-50 dark:hover:bg-blue-500/10 rounded-xl transition-colors shrink-0"><RefreshCw className="w-4 h-4" /></button>
+                      <button onClick={() => setCredPw(genPassword())} title={t('groups.detail.regenerate', 'Сгенерировать другой')} className="p-2.5 text-slate-400 hover:text-blue-500 bg-slate-50 dark:bg-slate-700/50 hover:bg-blue-50 dark:hover:bg-blue-500/10 rounded-xl transition-colors shrink-0"><RefreshCw className="w-4 h-4" /></button>
                     </div>
                     <p className="text-[11px] text-slate-500 leading-relaxed mt-3">
-                      Старый пароль показать нельзя — он хранится в зашифрованном виде. Задайте новый и передайте его ученику.
+                      {t('groups.detail.oldPwHint', 'Старый пароль показать нельзя — он хранится в зашифрованном виде. Задайте новый и передайте его ученику.')}
                     </p>
                     <div className="flex justify-end gap-2 mt-5">
-                      <button onClick={() => setCredStudent(null)} className="px-4 py-2 text-xs font-bold text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-xl transition-colors">Отмена</button>
+                      <button onClick={() => setCredStudent(null)} className="px-4 py-2 text-xs font-bold text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-xl transition-colors">{t('common.cancel', 'Отмена')}</button>
                       <button onClick={handleIssuePassword} disabled={savingCred || credPw.length < 6}
                         className="flex items-center gap-1.5 bg-blue-500 hover:bg-blue-600 text-white px-5 py-2 rounded-xl text-xs font-bold disabled:opacity-50 transition-colors shadow-md shadow-blue-500/20">
                         {savingCred ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <KeyRound className="w-3.5 h-3.5" />}
-                        Установить пароль
+                        {t('groups.detail.setPassword', 'Установить пароль')}
                       </button>
                     </div>
                   </div>

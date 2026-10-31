@@ -33,6 +33,8 @@ vi.mock('react-i18next', () => {
   const value = { t, i18n: { language: 'ru' } };
   return { useTranslation: () => value };
 });
+// Даты в тестах — по-русски, как и подписи из фолбэков; настоящий i18n не поднимаем.
+vi.mock('../../../lib/locale', () => ({ intlLocale: () => 'ru-RU' }));
 
 vi.mock('react-hot-toast', () => ({
   default: Object.assign(vi.fn(), { success: vi.fn(), error: vi.fn() }),

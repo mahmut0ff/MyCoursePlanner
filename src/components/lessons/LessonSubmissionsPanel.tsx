@@ -4,6 +4,8 @@ import { apiOrgGetHomeworks } from '../../lib/api';
 import type { HomeworkSubmission } from '../../types';
 import { Clock, CheckCircle, FileText, FileVideo, ImageIcon, FileAudio, FileArchive, Search } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { useTranslation } from 'react-i18next';
+import { intlLocale } from '../../lib/locale';
 
 interface LessonSubmissionsPanelProps {
   lessonId: string;
@@ -12,6 +14,7 @@ interface LessonSubmissionsPanelProps {
 
 export const LessonSubmissionsPanel: React.FC<LessonSubmissionsPanelProps> = ({ lessonId, organizationId }) => {
   const navigate = useNavigate();
+  const { t } = useTranslation();
   const [submissions, setSubmissions] = useState<HomeworkSubmission[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -24,7 +27,7 @@ export const LessonSubmissionsPanel: React.FC<LessonSubmissionsPanelProps> = ({ 
         setSubmissions(data || []);
       } catch (err: any) {
         console.error('Failed to fetch submissions', err);
-        toast.error('Не удалось загрузить списки работ');
+        toast.error(t('homework.panel.loadFailed', 'Не удалось загрузить списки работ'));
       } finally {
         setLoading(false);
       }
@@ -41,11 +44,11 @@ export const LessonSubmissionsPanel: React.FC<LessonSubmissionsPanelProps> = ({ 
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'graded':
-        return <span className="inline-flex items-center gap-1 bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400 px-2 py-1 rounded-lg text-[11px] font-bold uppercase tracking-wider"><CheckCircle className="w-3 h-3" /> Проверено</span>;
+        return <span className="inline-flex items-center gap-1 bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400 px-2 py-1 rounded-lg text-[11px] font-bold uppercase tracking-wider"><CheckCircle className="w-3 h-3" /> {t('homework.panel.graded', 'Проверено')}</span>;
       case 'reviewing':
-        return <span className="inline-flex items-center gap-1 bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 px-2 py-1 rounded-lg text-[11px] font-bold uppercase tracking-wider"><Clock className="w-3 h-3" /> На проверке</span>;
+        return <span className="inline-flex items-center gap-1 bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 px-2 py-1 rounded-lg text-[11px] font-bold uppercase tracking-wider"><Clock className="w-3 h-3" /> {t('lessons.view.statusReviewing', 'На проверке')}</span>;
       default:
-         return <span className="inline-flex items-center gap-1 bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 px-2 py-1 rounded-lg text-[11px] font-bold uppercase tracking-wider"><Clock className="w-3 h-3" /> Ожидает</span>;
+         return <span className="inline-flex items-center gap-1 bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 px-2 py-1 rounded-lg text-[11px] font-bold uppercase tracking-wider"><Clock className="w-3 h-3" /> {t('homework.panel.pending', 'Ожидает')}</span>;
     }
   };
 
@@ -65,22 +68,22 @@ export const LessonSubmissionsPanel: React.FC<LessonSubmissionsPanelProps> = ({ 
     <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm mt-8 overflow-hidden">
       <div className="px-6 py-5 border-b border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30 flex flex-wrap items-center justify-between gap-4">
         <div>
-           <h3 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">Сданные работы <span className="px-2 py-0.5 bg-primary-100 text-primary-700 dark:bg-primary-900/30 dark:text-primary-400 rounded-lg text-sm">{submissions.length}</span></h3>
-           <p className="text-[13px] text-slate-500 dark:text-slate-400 mt-1">Отслеживание и статистика выполнения заданий студентами.</p>
+           <h3 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">{t('homework.panel.title', 'Сданные работы')} <span className="px-2 py-0.5 bg-primary-100 text-primary-700 dark:bg-primary-900/30 dark:text-primary-400 rounded-lg text-sm">{submissions.length}</span></h3>
+           <p className="text-[13px] text-slate-500 dark:text-slate-400 mt-1">{t('homework.panel.desc', 'Отслеживание и статистика выполнения заданий студентами.')}</p>
         </div>
         <div className="flex items-center gap-3 w-full mt-2">
           <div className="relative flex-1 min-w-[120px]">
             <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
             <input 
               type="text" 
-              placeholder="Поиск по имени..." 
+              placeholder={t('homework.panel.searchByName', 'Поиск по имени...')} 
               value={search}
               onChange={e => setSearch(e.target.value)}
               className="w-full min-w-0 pl-9 pr-4 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 outline-none transition-all text-slate-900 dark:text-white"
             />
           </div>
           <button onClick={() => navigate('/homework')} className="btn-primary shrink-0 flex items-center justify-center gap-2 py-2 px-4 rounded-xl text-[13px] font-semibold whitespace-nowrap">
-            Проверить
+            {t('homework.panel.review', 'Проверить')}
           </button>
         </div>
       </div>
@@ -89,18 +92,18 @@ export const LessonSubmissionsPanel: React.FC<LessonSubmissionsPanelProps> = ({ 
         <table className="w-full text-left border-collapse">
           <thead>
             <tr className="bg-slate-50 dark:bg-slate-800/50 text-[11px] uppercase tracking-widest text-slate-500 dark:text-slate-400 font-bold border-b border-slate-200 dark:border-slate-800">
-              <th className="px-6 py-3 whitespace-nowrap">Полное Имя</th>
-              <th className="px-6 py-3 whitespace-nowrap">Дата загрузки</th>
-              <th className="px-6 py-3 whitespace-nowrap">Файлы</th>
-              <th className="px-6 py-3 whitespace-nowrap">Статус</th>
-              <th className="px-6 py-3 whitespace-nowrap text-right">Оценка</th>
+              <th className="px-6 py-3 whitespace-nowrap">{t('homework.panel.colName', 'Полное имя')}</th>
+              <th className="px-6 py-3 whitespace-nowrap">{t('homework.panel.colDate', 'Дата загрузки')}</th>
+              <th className="px-6 py-3 whitespace-nowrap">{t('homework.panel.colFiles', 'Файлы')}</th>
+              <th className="px-6 py-3 whitespace-nowrap">{t('common.status', 'Статус')}</th>
+              <th className="px-6 py-3 whitespace-nowrap text-right">{t('homework.panel.colGrade', 'Оценка')}</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100 dark:divide-slate-800/80">
             {filteredSubmissions.length === 0 ? (
               <tr>
                 <td colSpan={5} className="px-6 py-12 text-center text-slate-500 dark:text-slate-400 text-sm">
-                  {submissions.length === 0 ? 'Ни один студент еще не сдал работу.' : 'Студенты по вашему запросу не найдены.'}
+                  {submissions.length === 0 ? t('homework.panel.noneSubmitted', 'Ни один студент ещё не сдал работу.') : t('homework.panel.noMatches', 'Студенты по вашему запросу не найдены.')}
                 </td>
               </tr>
             ) : (
@@ -112,11 +115,11 @@ export const LessonSubmissionsPanel: React.FC<LessonSubmissionsPanelProps> = ({ 
                   </td>
                   <td className="px-6 py-4">
                     <span className="text-[13px] font-medium text-slate-600 dark:text-slate-300">
-                      {new Date(sub.submittedAt).toLocaleDateString()}
+                      {new Date(sub.submittedAt).toLocaleDateString(intlLocale())}
                     </span>
                     <br />
                     <span className="text-[11px] text-slate-400">
-                      {new Date(sub.submittedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      {new Date(sub.submittedAt).toLocaleTimeString(intlLocale(), { hour: '2-digit', minute: '2-digit' })}
                     </span>
                   </td>
                   <td className="px-6 py-4">
@@ -129,7 +132,7 @@ export const LessonSubmissionsPanel: React.FC<LessonSubmissionsPanelProps> = ({ 
                         ))}
                       </div>
                     ) : (
-                      <span className="text-[13px] text-slate-400 italic">Текст</span>
+                      <span className="text-[13px] text-slate-400 italic">{t('homework.panel.textOnly', 'Текст')}</span>
                     )}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">

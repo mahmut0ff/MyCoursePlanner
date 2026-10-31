@@ -352,7 +352,7 @@ const ImportPreviewCard: React.FC<{
                         <option value="">{t('assistant.import.pickCourse', 'Выберите курс…')}</option>
                         {catalog.courses.map(c => (
                           <option key={c.id} value={c.id}>
-                            {c.title}{c.price ? ` · ${c.price}${c.paymentFormat === 'one-time' ? '' : '/мес'}` : ''}
+                            {c.title}{c.price ? ` · ${c.price}${c.paymentFormat === 'one-time' ? '' : t('ai.perMonthSuffix', '/мес')}` : ''}
                           </option>
                         ))}
                       </select>

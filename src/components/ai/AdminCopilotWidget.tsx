@@ -307,7 +307,7 @@ const AdminCopilotWidget: React.FC = () => {
         setAction(msgId, idx, { status: 'error', resultMessage: `${res.message || ''}${conflictNote}` });
       }
     } catch (err: any) {
-      setAction(msgId, idx, { status: 'error', resultMessage: err?.message || 'Ошибка' });
+      setAction(msgId, idx, { status: 'error', resultMessage: err?.message || t('common.error', 'Ошибка') });
     }
   };
 

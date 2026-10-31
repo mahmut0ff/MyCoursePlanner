@@ -37,6 +37,9 @@ const CODE_TITLES: Record<string, { key: string; fallback: string }> = {
   rule_org_wide_skipped: { key: 'payroll.diagOrgWideSkipped', fallback: 'Ставки без филиала не вошли в расчёт' },
 };
 
+/** Коды, у которых `sample` — uid преподавателей: показываем имена, а не id. */
+const TEACHER_SAMPLE_CODES = new Set(['teacher_without_rule', 'teacher_without_groups']);
+
 /**
  * «Пропущенные записи» — это функция, а не лог ошибок.
  *
@@ -47,7 +50,9 @@ const CODE_TITLES: Record<string, { key: string; fallback: string }> = {
  * сворачивается по умолчанию.
  */
 const DiagnosticsPanel: React.FC<Props> = ({ diagnostics, teacherName }) => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  // Тексты диагностик собирает сервер по-русски; в других языках показываем перевод по коду.
+  const serverTextOk = (i18n.language || 'ru').startsWith('ru');
 
   // Диагностики приходят и построчные, и глобальные — одинаковые схлопываем,
   // иначе одна и та же причина повторится столько раз, сколько у неё строк.
@@ -104,7 +109,9 @@ const DiagnosticsPanel: React.FC<Props> = ({ diagnostics, teacherName }) => {
           <ul className="mt-3 space-y-2">
             {groups.map(group => {
               const title = CODE_TITLES[group.code];
-              const teachers = [...group.teachers].map(teacherName).filter(Boolean);
+              const teacherSample = TEACHER_SAMPLE_CODES.has(group.code);
+              const teacherIds = teacherSample ? [...group.teachers, ...group.sample] : [...group.teachers];
+              const teachers = [...new Set(teacherIds)].map(teacherName).filter(Boolean);
               return (
                 <li key={group.code} className="rounded-xl bg-white/70 dark:bg-slate-900/40 p-3">
                   <div className="flex items-center justify-between gap-3">
@@ -115,15 +122,19 @@ const DiagnosticsPanel: React.FC<Props> = ({ diagnostics, teacherName }) => {
                       {group.count}
                     </span>
                   </div>
-                  {[...group.messages].map((message, i) => (
+                  {serverTextOk ? [...group.messages].map((message, i) => (
                     <p key={i} className="text-xs text-amber-800/90 dark:text-amber-300/90 mt-1">{message}</p>
-                  ))}
+                  )) : (
+                    <p className="text-xs text-amber-800/90 dark:text-amber-300/90 mt-1">
+                      {t(`payroll.diagHint.${group.code}`, { defaultValue: [...group.messages][0] ?? '' })}
+                    </p>
+                  )}
                   {teachers.length > 0 && (
                     <p className="text-[11px] text-amber-700/80 dark:text-amber-400/80 mt-1">
                       {t('payroll.diagTeachers', 'Преподаватели: {{names}}', { names: teachers.join(', ') })}
                     </p>
                   )}
-                  {group.sample.size > 0 && (
+                  {!teacherSample && group.sample.size > 0 && (
                     <p className="text-[11px] text-amber-700/80 dark:text-amber-400/80 mt-1 break-all">
                       {t('payroll.diagSample', 'Примеры записей: {{ids}}', {
                         ids: [...group.sample].slice(0, 5).join(', '),

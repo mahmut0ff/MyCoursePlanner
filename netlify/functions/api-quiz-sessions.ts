@@ -394,7 +394,10 @@ const handler: Handler = async (event: HandlerEvent) => {
       if (!sessionId) return badRequest('sessionId required');
       const doc = await adminDb.collection(SESSIONS).doc(sessionId).get();
       if (!doc.exists) return notFound();
-      if (doc.data()!.hostId !== user.uid) return forbidden();
+      const data = doc.data()!;
+      // Админ/менеджер видит в списке все сессии организации — и закрыть зависшую может.
+      const orgAdmin = hasRole(user, 'admin', 'manager') && !!data.organizationId && data.organizationId === user.organizationId;
+      if (data.hostId !== user.uid && !orgAdmin) return forbidden();
 
       await adminDb.collection(SESSIONS).doc(sessionId).update({
         status: 'cancelled',

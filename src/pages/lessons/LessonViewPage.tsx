@@ -18,6 +18,8 @@ import Youtube from '@tiptap/extension-youtube';
 import FileViewerModal from '../../components/ui/FileViewerModal';
 import { HomeworkTelegramNotice } from '../../components/lessons/HomeworkTelegramNotice';
 import { LessonSubmissionsPanel } from '../../components/lessons/LessonSubmissionsPanel';
+import i18n from '../../i18n';
+import { intlLocale } from '../../lib/locale';
 import {
   ArrowLeft, Edit, Trash2, Clock, BookOpen, Paperclip, Download,
   FileText, Film, Image as LucideImage, FileSpreadsheet, ClipboardList,
@@ -42,13 +44,13 @@ const formatSize = (bytes: number): string => {
 };
 
 const getFileLabel = (type: string): string => {
-  if (type.startsWith('image/')) return 'Изображение';
-  if (type.startsWith('video/')) return 'Видео';
+  if (type.startsWith('image/')) return i18n.t('lessons.view.fileImage', 'Изображение');
+  if (type.startsWith('video/')) return i18n.t('lessons.view.fileVideo', 'Видео');
   if (type === 'application/pdf') return 'PDF';
   if (type.includes('word') || type.includes('document')) return 'Word';
   if (type.includes('presentation') || type.includes('powerpoint')) return 'PowerPoint';
   if (type.includes('spreadsheet') || type.includes('excel')) return 'Excel';
-  return 'Файл';
+  return i18n.t('lessons.view.fileGeneric', 'Файл');
 };
 
 const LessonViewPage: React.FC = () => {
@@ -124,7 +126,7 @@ const LessonViewPage: React.FC = () => {
         const fullLesson = await apiGetLesson(lesson.id!);
         // @ts-ignore
         const { id: _id, createdAt, updatedAt, ...rest } = fullLesson;
-        const newLessonData = { ...rest, title: `${rest.title} (Копия)`, status: 'draft' };
+        const newLessonData = { ...rest, title: t('lessons.copyTitle', '{{title}} (Копия)', { title: rest.title }), status: 'draft' };
         
         if (profile?.activeOrgId && !lesson.organizationId) {
           (newLessonData as any).organizationId = profile.activeOrgId;
@@ -135,7 +137,7 @@ const LessonViewPage: React.FC = () => {
         navigate(`/lessons/${newLesson}`); // переходим в копию
       }
     } catch (err: any) {
-      toast.error(err.message || 'Error duplicating');
+      toast.error(err.message || t('lessons.view.copyFailed', 'Ошибка копирования'));
     } finally {
       setDuplicating(false);
     }
@@ -143,7 +145,7 @@ const LessonViewPage: React.FC = () => {
 
   const handleCopyToOrgMaterials = async (att: any) => {
     if (!profile?.activeOrgId) {
-       toast.error('Необходимо выбрать организацию');
+       toast.error(t('lessons.view.selectOrg', 'Необходимо выбрать организацию'));
        return;
     }
     setCopyingAttachment(att.id);
@@ -154,12 +156,12 @@ const LessonViewPage: React.FC = () => {
         url: att.url,
         mimeType: att.type,
         sizeBytes: att.size,
-        category: 'Материалы из уроков',
-        description: `Добавлено из урока "${lesson?.title}"`
+        category: t('lessons.view.materialsCategory', 'Материалы из уроков'),
+        description: t('lessons.view.addedFromLesson', 'Добавлено из урока «{{title}}»', { title: lesson?.title })
       });
-      toast.success('Успешно скопировано в Материалы организации!');
+      toast.success(t('lessons.view.copiedToMaterials', 'Успешно скопировано в Материалы организации!'));
     } catch (err: any) {
-      toast.error(err.message || 'Ошибка копирования');
+      toast.error(err.message || t('lessons.view.copyFailed', 'Ошибка копирования'));
     } finally {
       setCopyingAttachment(null);
     }
@@ -183,7 +185,7 @@ const LessonViewPage: React.FC = () => {
       // but GamificationToasts already displays a nice popup.
     } catch (e: any) {
       console.error(e);
-      toast.error('Не удалось начислить баллы. Попробуйте ещё раз.');
+      toast.error(t('lessons.view.xpFailed', 'Не удалось начислить баллы. Попробуйте ещё раз.'));
       // DO NOT mark as completed — XP was not awarded
     } finally {
       setCompleting(false);
@@ -236,7 +238,7 @@ const LessonViewPage: React.FC = () => {
             onClick={() => setPresentationMode(!presentationMode)} 
             className="flex items-center gap-2 text-primary-600 hover:text-primary-700 dark:text-primary-400 font-medium text-sm transition-colors p-2 rounded-lg hover:bg-primary-50 dark:hover:bg-primary-900/20"
           >
-            {presentationMode ? <><Minimize className="w-4 h-4"/> Вернуться в систему</> : <><Maximize className="w-4 h-4" /> Режим презентации</>}
+            {presentationMode ? <><Minimize className="w-4 h-4"/> {t('lessons.view.exitPresentation', 'Вернуться в систему')}</> : <><Maximize className="w-4 h-4" /> {t('lessons.view.presentationMode', 'Режим презентации')}</>}
           </button>
 
 
@@ -263,7 +265,7 @@ const LessonViewPage: React.FC = () => {
             <div className="absolute inset-0 bg-gradient-to-t from-slate-900/60 to-transparent flex items-end p-6 sm:p-8">
                <div className="flex flex-wrap gap-2">
                  <span className="bg-primary-500/90 backdrop-blur text-white px-2.5 py-1 rounded-lg text-xs font-medium tracking-wide shadow-sm">{lesson.subject}</span>
-                 <span className="bg-white/20 backdrop-blur text-white px-2.5 py-1 rounded-lg text-xs font-medium tracking-wide">{lesson.level}</span>
+                 <span className="bg-white/20 backdrop-blur text-white px-2.5 py-1 rounded-lg text-xs font-medium tracking-wide">{t(`lessons.${String(lesson.level).toLowerCase()}`, lesson.level)}</span>
                </div>
             </div>
           </div>
@@ -273,7 +275,7 @@ const LessonViewPage: React.FC = () => {
           {!lesson.coverImageUrl && (
              <div className="flex items-center gap-2 mb-4 flex-wrap">
                <span className="badge-primary">{lesson.subject}</span>
-               <span className="badge-slate">{lesson.level}</span>
+               <span className="badge-slate">{t(`lessons.${String(lesson.level).toLowerCase()}`, lesson.level)}</span>
                {lesson.tags?.map((tag) => (
                  <span key={tag} className="badge-slate">{tag}</span>
                ))}
@@ -337,7 +339,7 @@ const LessonViewPage: React.FC = () => {
                 <div className="bg-slate-50 dark:bg-slate-800/80 rounded-2xl p-5 border border-slate-200/50 dark:border-slate-700/50">
                   <h2 className="text-sm font-bold text-slate-900 dark:text-white mb-4 flex items-center gap-2">
                     <Paperclip className="w-4 h-4 text-primary-500" />
-                    Материалы урока
+                    {t('lessons.view.materials', 'Материалы урока')}
                     <span className="bg-primary-100 text-primary-700 dark:bg-primary-900/30 dark:text-primary-400 px-2 py-0.5 rounded-full text-[10px] ml-1">{attachments.length}</span>
                   </h2>
                   <div className="space-y-2">
@@ -358,7 +360,7 @@ const LessonViewPage: React.FC = () => {
                                onClick={(e) => { e.stopPropagation(); handleCopyToOrgMaterials(att); }}
                                disabled={copyingAttachment === att.id}
                                className="p-2 text-slate-400 hover:text-primary-500 hover:bg-primary-50 dark:hover:bg-primary-900/20 rounded-lg transition-colors tooltip"
-                               data-tip="В Базу Знаний организации"
+                               data-tip={t('lessons.view.toOrgKb', 'В Базу Знаний организации')}
                             >
                                {copyingAttachment === att.id ? <span className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin block" /> : <Building2 className="w-4 h-4" />}
                             </button>
@@ -366,7 +368,7 @@ const LessonViewPage: React.FC = () => {
                           <a href={att.url} download={att.name} target="_blank" rel="noreferrer"
                              onClick={(e) => e.stopPropagation()}
                              className="p-2 text-slate-400 hover:text-emerald-500 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 rounded-lg transition-colors tooltip"
-                             data-tip="Скачать">
+                             data-tip={t('lessons.view.download', 'Скачать')}>
                             <Download className="w-4 h-4" />
                           </a>
                         </div>
@@ -380,19 +382,19 @@ const LessonViewPage: React.FC = () => {
                 <div className="bg-amber-50/50 dark:bg-amber-900/10 rounded-2xl p-5 border border-amber-200/50 dark:border-amber-700/30">
                   <h2 className="text-sm font-bold text-amber-900 dark:text-amber-100 mb-3 flex items-center gap-2">
                     <ClipboardList className="w-4 h-4 text-amber-500" />
-                    Домашнее задание
+                    {t('lessons.homework', 'Домашнее задание')}
                   </h2>
                   <h3 className="font-semibold text-slate-800 dark:text-slate-200 mb-2 text-[15px]">{hw.title}</h3>
                   {hw.description && <p className="text-sm text-slate-600 dark:text-slate-400 whitespace-pre-wrap mb-4 line-clamp-3">{hw.description}</p>}
                   <div className="flex flex-wrap items-center gap-3 text-xs font-medium">
                     {hw.dueDate && (
                       <span className="flex items-center gap-1.5 bg-white dark:bg-slate-800 shadow-sm border border-slate-100 dark:border-slate-700 text-slate-700 dark:text-slate-300 px-3 py-1.5 rounded-lg">
-                        <Calendar className="w-3.5 h-3.5 text-slate-400" /> Срок: {new Date(hw.dueDate).toLocaleDateString()}
+                        <Calendar className="w-3.5 h-3.5 text-slate-400" /> {t('lessons.view.due', 'Срок: {{date}}', { date: new Date(hw.dueDate).toLocaleDateString(intlLocale()) })}
                       </span>
                     )}
                     {hw.points && hw.points > 0 && (
                       <span className="flex items-center gap-1.5 bg-white dark:bg-slate-800 shadow-sm border border-violet-100 dark:border-violet-800/30 text-violet-700 dark:text-violet-300 px-3 py-1.5 rounded-lg">
-                        <Award className="w-3.5 h-3.5 text-violet-500" /> Оценка: {hw.points} {t('lessons.homeworkPoints', 'баллов')}
+                        <Award className="w-3.5 h-3.5 text-violet-500" /> {t('lessons.view.gradeLabel', 'Оценка:')} {t('lessons.view.points', { count: hw.points })}
                       </span>
                     )}
                   </div>
@@ -422,7 +424,7 @@ const LessonViewPage: React.FC = () => {
                           </div>
                           <div>
                             <h3 className="text-lg font-extrabold text-slate-900 dark:text-white">
-                              Домашнее задание сдано
+                              {t('lessons.view.submitted', 'Домашнее задание сдано')}
                             </h3>
                             <p className="text-[13px] text-slate-500 dark:text-slate-400">
                               {formatDate(submission.submittedAt)}
@@ -436,13 +438,13 @@ const LessonViewPage: React.FC = () => {
                               ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300'
                               : 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300'
                         }`}>
-                          {submission.status === 'graded' ? 'Оценено' : submission.status === 'reviewing' ? 'На проверке' : 'Ожидает проверки'}
+                          {submission.status === 'graded' ? t('lessons.view.statusGraded', 'Оценено') : submission.status === 'reviewing' ? t('lessons.view.statusReviewing', 'На проверке') : t('lessons.view.statusPending', 'Ожидает проверки')}
                         </span>
                       </div>
                       
                       {submission.status === 'graded' && typeof submission.finalScore === 'number' && (
                         <div className="mt-4 p-4 bg-indigo-50 dark:bg-indigo-900/10 border border-indigo-200/60 dark:border-indigo-700/30 rounded-xl">
-                          <p className="text-indigo-600 dark:text-indigo-300 font-semibold mb-2 text-[14px]">Оценка преподавателя: <span className="text-slate-900 dark:text-white text-xl font-extrabold ml-2">{submission.finalScore} / {submission.maxPoints || 10}</span></p>
+                          <p className="text-indigo-600 dark:text-indigo-300 font-semibold mb-2 text-[14px]">{t('lessons.view.teacherGrade', 'Оценка преподавателя:')} <span className="text-slate-900 dark:text-white text-xl font-extrabold ml-2">{submission.finalScore} / {submission.maxPoints || 10}</span></p>
                           {submission.teacherFeedback && (
                             <div className="text-indigo-700/80 dark:text-indigo-200/80 text-sm mt-2 italic bg-white/60 dark:bg-black/20 p-3 rounded-lg border-l-2 border-indigo-400">
                               "{submission.teacherFeedback}"
@@ -455,7 +457,7 @@ const LessonViewPage: React.FC = () => {
                       {submission.status !== 'graded' && (
                         <div className="mt-4 flex flex-col sm:flex-row items-center justify-between gap-3 p-3 bg-slate-50 dark:bg-slate-800/50 rounded-xl">
                           <p className="text-[13px] text-slate-600 dark:text-slate-400">
-                            Нужно дополнить работу? Пришлите файл боту — он добавит его к этой сдаче.
+                            {t('lessons.view.amendHint', 'Нужно дополнить работу? Пришлите файл боту — он добавит его к этой сдаче.')}
                           </p>
                           <HomeworkTelegramNotice compact />
                         </div>
@@ -472,13 +474,13 @@ const LessonViewPage: React.FC = () => {
                   <div className="w-16 h-16 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-500 rounded-full flex items-center justify-center ring-4 ring-emerald-50 dark:ring-emerald-900/10">
                     <CheckCircle className="w-8 h-8" />
                   </div>
-                  <h3 className="text-xl font-bold text-slate-900 dark:text-white">Урок успешно пройден!</h3>
-                  <p className="text-slate-500 dark:text-slate-400 text-sm">Вы великолепны. Продолжайте в том же духе.</p>
+                  <h3 className="text-xl font-bold text-slate-900 dark:text-white">{t('lessons.view.completedTitle', 'Урок успешно пройден!')}</h3>
+                  <p className="text-slate-500 dark:text-slate-400 text-sm">{t('lessons.view.completedDesc', 'Вы великолепны. Продолжайте в том же духе.')}</p>
                 </div>
               ) : (
                 <div className="text-center">
-                  <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-2">Прочитали весь материал?</h3>
-                  <p className="text-slate-500 dark:text-slate-400 text-sm mb-6 max-w-sm mx-auto">Отметьте урок как пройденный, чтобы заработать очки опыта и улучшить свой рейтинг!</p>
+                  <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-2">{t('lessons.view.readAll', 'Прочитали весь материал?')}</h3>
+                  <p className="text-slate-500 dark:text-slate-400 text-sm mb-6 max-w-sm mx-auto">{t('lessons.view.readAllDesc', 'Отметьте урок как пройденный, чтобы заработать очки опыта и улучшить свой рейтинг!')}</p>
                   <button 
                     onClick={handleCompleteLesson}
                     disabled={completing}
@@ -490,7 +492,7 @@ const LessonViewPage: React.FC = () => {
                     ) : (
                       <>
                         <PartyPopper className="w-6 h-6 animate-bounce" />
-                        Завершить урок
+                        {t('lessons.view.complete', 'Завершить урок')}
                       </>
                     )}
                   </button>
@@ -507,19 +509,19 @@ const LessonViewPage: React.FC = () => {
             <div className="bg-amber-50/50 dark:bg-amber-900/10 rounded-2xl p-5 border border-amber-200/50 dark:border-amber-700/30">
               <h2 className="text-sm font-bold text-amber-900 dark:text-amber-100 mb-3 flex items-center gap-2">
                 <ClipboardList className="w-4 h-4 text-amber-500" />
-                Домашнее задание
+                {t('lessons.homework', 'Домашнее задание')}
               </h2>
               <h3 className="font-semibold text-slate-800 dark:text-slate-200 mb-2 text-[15px]">{hw.title}</h3>
               {hw.description && <p className="text-sm text-slate-600 dark:text-slate-400 whitespace-pre-wrap mb-4">{hw.description}</p>}
               <div className="flex flex-wrap items-center gap-3 text-xs font-medium">
                 {hw.dueDate && (
                   <span className="flex items-center gap-1.5 bg-white dark:bg-slate-800 shadow-sm border border-slate-100 dark:border-slate-700 text-slate-700 dark:text-slate-300 px-3 py-1.5 rounded-lg">
-                    <Calendar className="w-3.5 h-3.5 text-slate-400" /> Срок: {new Date(hw.dueDate).toLocaleDateString()}
+                    <Calendar className="w-3.5 h-3.5 text-slate-400" /> {t('lessons.view.due', 'Срок: {{date}}', { date: new Date(hw.dueDate).toLocaleDateString(intlLocale()) })}
                   </span>
                 )}
                 {hw.points && hw.points > 0 && (
                   <span className="flex items-center gap-1.5 bg-white dark:bg-slate-800 shadow-sm border border-violet-100 dark:border-violet-800/30 text-violet-700 dark:text-violet-300 px-3 py-1.5 rounded-lg">
-                    <Award className="w-3.5 h-3.5 text-violet-500" /> {hw.points} баллов
+                    <Award className="w-3.5 h-3.5 text-violet-500" /> {t('lessons.view.points', { count: hw.points })}
                   </span>
                 )}
               </div>

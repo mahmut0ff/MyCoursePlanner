@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useTranslation, Trans } from 'react-i18next';
 import { X, KeyRound, Copy, Send, AlertTriangle, Loader2, CheckCircle2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { orgBulkGroupLogins, type BulkGroupLoginsResult } from '../../lib/api';
@@ -18,6 +19,7 @@ interface Props {
  * сможет подсмотреть старый пароль позже.
  */
 const GroupAccessModal: React.FC<Props> = ({ groupId, groupName, onClose }) => {
+  const { t } = useTranslation();
   const [resetExisting, setResetExisting] = useState(false);
   const [sendTelegram, setSendTelegram] = useState(true);
   const [busy, setBusy] = useState(false);
@@ -29,12 +31,12 @@ const GroupAccessModal: React.FC<Props> = ({ groupId, groupName, onClose }) => {
       const res = await orgBulkGroupLogins({ groupId, resetExisting, sendTelegram });
       setResult(res);
       if (res.issued.length === 0) {
-        toast.success('У всех учеников группы вход уже есть');
+        toast.success(t('org.students.groupAccess.allHaveLogin', 'У всех учеников группы вход уже есть'));
       } else {
-        toast.success(`Доступы выданы: ${res.issued.length}`);
+        toast.success(t('org.students.groupAccess.issuedCount', 'Доступы выданы: {{count}}', { count: res.issued.length }));
       }
     } catch (e: any) {
-      toast.error(e.message || 'Не удалось выдать доступы');
+      toast.error(e.message || t('org.students.groupAccess.issueFailed', 'Не удалось выдать доступы'));
     } finally {
       setBusy(false);
     }
@@ -42,12 +44,12 @@ const GroupAccessModal: React.FC<Props> = ({ groupId, groupName, onClose }) => {
 
   const asText = (): string =>
     (result?.issued || [])
-      .map(i => `${i.name} — логин: ${i.username} — пароль: ${i.password}`)
+      .map(i => t('org.students.groupAccess.copyLine', '{{name}} — логин: {{username}} — пароль: {{password}}', { name: i.name, username: i.username, password: i.password }))
       .join('\n');
 
   const copyAll = () => {
     navigator.clipboard.writeText(asText());
-    toast.success('Скопировано — сохраните, второй раз пароли не показать');
+    toast.success(t('org.students.groupAccess.copied', 'Скопировано — сохраните, второй раз пароли не показать'));
   };
 
   return (
@@ -56,9 +58,9 @@ const GroupAccessModal: React.FC<Props> = ({ groupId, groupName, onClose }) => {
         <div className="sticky top-0 flex items-center justify-between gap-3 px-6 py-4 bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700">
           <h2 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
             <KeyRound className="w-5 h-5 text-slate-400" />
-            Доступы группы {groupName}
+            {t('org.students.groupAccess.title', 'Доступы группы {{group}}', { group: groupName })}
           </h2>
-          <button onClick={onClose} aria-label="Закрыть" className="p-1.5 rounded-lg text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">
+          <button onClick={onClose} aria-label={t('common.close', 'Закрыть')} className="p-1.5 rounded-lg text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">
             <X className="w-5 h-5" />
           </button>
         </div>
@@ -67,8 +69,7 @@ const GroupAccessModal: React.FC<Props> = ({ groupId, groupName, onClose }) => {
           {!result ? (
             <>
               <p className="text-sm text-slate-600 dark:text-slate-300">
-                Ученикам без входа будут созданы логин и пароль — с ними они смогут зайти
-                в приложение и пройти экзамен.
+                {t('org.students.groupAccess.intro', 'Ученикам без входа будут созданы логин и пароль — с ними они смогут зайти в приложение и пройти экзамен.')}
               </p>
 
               <label className="mt-4 flex items-start gap-3 cursor-pointer">
@@ -79,9 +80,9 @@ const GroupAccessModal: React.FC<Props> = ({ groupId, groupName, onClose }) => {
                   className="mt-0.5 w-4 h-4 rounded accent-primary-600"
                 />
                 <span className="text-sm text-slate-700 dark:text-slate-200">
-                  Отправить каждому в Telegram
+                  {t('org.students.groupAccess.sendTelegram', 'Отправить каждому в Telegram')}
                   <span className="block text-xs text-slate-500 dark:text-slate-400">
-                    Дойдёт только тем, кто уже привязал бота. Остальным доступы придётся передать лично — список будет ниже.
+                    {t('org.students.groupAccess.sendTelegramHint', 'Дойдёт только тем, кто уже привязал бота. Остальным доступы придётся передать лично — список будет ниже.')}
                   </span>
                 </span>
               </label>
@@ -94,9 +95,9 @@ const GroupAccessModal: React.FC<Props> = ({ groupId, groupName, onClose }) => {
                   className="mt-0.5 w-4 h-4 rounded accent-primary-600"
                 />
                 <span className="text-sm text-slate-700 dark:text-slate-200">
-                  Сбросить пароль и тем, у кого вход уже есть
+                  {t('org.students.groupAccess.resetExisting', 'Сбросить пароль и тем, у кого вход уже есть')}
                   <span className="block text-xs text-slate-500 dark:text-slate-400">
-                    Их текущий пароль перестанет работать — включайте, только если ученики его забыли.
+                    {t('org.students.groupAccess.resetExistingHint', 'Их текущий пароль перестанет работать — включайте, только если ученики его забыли.')}
                   </span>
                 </span>
               </label>
@@ -106,7 +107,7 @@ const GroupAccessModal: React.FC<Props> = ({ groupId, groupName, onClose }) => {
                   onClick={onClose}
                   className="px-4 py-2.5 rounded-xl text-sm font-medium text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-700 transition-colors"
                 >
-                  Отмена
+                  {t('common.cancel', 'Отмена')}
                 </button>
                 <button
                   onClick={run}
@@ -114,7 +115,7 @@ const GroupAccessModal: React.FC<Props> = ({ groupId, groupName, onClose }) => {
                   className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold text-white bg-primary-600 hover:bg-primary-700 disabled:opacity-60 transition-colors"
                 >
                   {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <KeyRound className="w-4 h-4" />}
-                  {busy ? 'Выдаём…' : 'Выдать доступы'}
+                  {busy ? t('org.students.groupAccess.issuing', 'Выдаём…') : t('org.students.groupAccess.issue', 'Выдать доступы')}
                 </button>
               </div>
             </>
@@ -124,8 +125,7 @@ const GroupAccessModal: React.FC<Props> = ({ groupId, groupName, onClose }) => {
                 <div className="flex items-start gap-2.5 p-3 rounded-xl bg-amber-50 dark:bg-amber-900/20 text-amber-800 dark:text-amber-200 mb-4">
                   <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
                   <p className="text-[13px]">
-                    Пароли показываются <b>один раз</b> — сохраните их сейчас. Позже подсмотреть
-                    не получится, можно будет только выдать новые.
+                    <Trans i18nKey="org.students.groupAccess.onceWarning" defaults="Пароли показываются <b>один раз</b> — сохраните их сейчас. Позже подсмотреть не получится, можно будет только выдать новые." components={{ b: <b /> }} />
                   </p>
                 </div>
               )}
@@ -133,7 +133,7 @@ const GroupAccessModal: React.FC<Props> = ({ groupId, groupName, onClose }) => {
               {result.sentToTelegram > 0 && (
                 <p className="mb-3 text-sm text-emerald-700 dark:text-emerald-300 flex items-center gap-2">
                   <Send className="w-4 h-4" />
-                  Отправлено в Telegram: {result.sentToTelegram} из {result.issued.length}
+                  {t('org.students.groupAccess.sentTelegram', 'Отправлено в Telegram: {{sent}} из {{total}}', { sent: result.sentToTelegram, total: result.issued.length })}
                 </p>
               )}
 
@@ -142,9 +142,9 @@ const GroupAccessModal: React.FC<Props> = ({ groupId, groupName, onClose }) => {
                   <table className="w-full text-sm">
                     <thead className="bg-slate-50 dark:bg-slate-900/50 text-slate-500 text-xs">
                       <tr>
-                        <th className="px-3 py-2 text-left font-medium">Ученик</th>
-                        <th className="px-3 py-2 text-left font-medium">Логин</th>
-                        <th className="px-3 py-2 text-left font-medium">Пароль</th>
+                        <th className="px-3 py-2 text-left font-medium">{t('org.students.groupAccess.colStudent', 'Ученик')}</th>
+                        <th className="px-3 py-2 text-left font-medium">{t('org.students.access.login', 'Логин')}</th>
+                        <th className="px-3 py-2 text-left font-medium">{t('auth.password', 'Пароль')}</th>
                         <th className="px-3 py-2 text-center font-medium">TG</th>
                       </tr>
                     </thead>
@@ -166,13 +166,13 @@ const GroupAccessModal: React.FC<Props> = ({ groupId, groupName, onClose }) => {
                 </div>
               ) : (
                 <p className="text-sm text-slate-600 dark:text-slate-300">
-                  Новых доступов не понадобилось — вход есть у всех.
+                  {t('org.students.groupAccess.noneNeeded', 'Новых доступов не понадобилось — вход есть у всех.')}
                 </p>
               )}
 
               {result.skipped.length > 0 && (
                 <p className="mt-3 text-[13px] text-slate-500 dark:text-slate-400">
-                  Пропущены ({result.skipped.length}): {result.skipped.map(s => `${s.name} — ${s.reason.toLowerCase()}`).join('; ')}
+                  {t('org.students.groupAccess.skipped', 'Пропущены ({{count}}):', { count: result.skipped.length })} {result.skipped.map(s => `${s.name} — ${s.reason.toLowerCase()}`).join('; ')}
                 </p>
               )}
 
@@ -182,14 +182,14 @@ const GroupAccessModal: React.FC<Props> = ({ groupId, groupName, onClose }) => {
                     onClick={copyAll}
                     className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium text-slate-700 bg-slate-100 hover:bg-slate-200 dark:text-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 transition-colors"
                   >
-                    <Copy className="w-4 h-4" />Скопировать списком
+                    <Copy className="w-4 h-4" />{t('org.students.groupAccess.copyList', 'Скопировать списком')}
                   </button>
                 )}
                 <button
                   onClick={onClose}
                   className="px-4 py-2.5 rounded-xl text-sm font-semibold text-white bg-primary-600 hover:bg-primary-700 transition-colors"
                 >
-                  Готово
+                  {t('common.done', 'Готово')}
                 </button>
               </div>
             </>

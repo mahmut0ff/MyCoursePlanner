@@ -18,7 +18,7 @@ interface Cert {
 
 const MyCertificatesPage: React.FC = () => {
   const { t } = useTranslation();
-  const { profile } = useAuth();
+  const { profile, isStaff } = useAuth();
   const [certs, setCerts] = useState<Cert[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -45,10 +45,16 @@ const MyCertificatesPage: React.FC = () => {
     <div>
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-slate-900 dark:text-white">{t('certificate.title')}</h1>
-        <p className="text-slate-500 dark:text-slate-400 text-sm mt-1">{certs.length} {t('certificate.title').toLowerCase()}</p>
+        <p className="text-slate-500 dark:text-slate-400 text-sm mt-1">{t('certificate.count', '{{count}} сертификатов', { count: certs.length })}</p>
       </div>
 
-      {certs.length === 0 ? (
+      {certs.length === 0 && isStaff ? (
+        <EmptyState
+          icon={Award}
+          title={t('certificate.staffEmptyTitle', 'Личных сертификатов нет')}
+          description={t('certificate.staffEmptyDesc', 'Сертификаты выдаются ученикам автоматически, когда они сдают экзамен. Их видно в результатах экзаменов.')}
+        />
+      ) : certs.length === 0 ? (
         <EmptyState
           icon={Award}
           title={t('certificate.notFound')}

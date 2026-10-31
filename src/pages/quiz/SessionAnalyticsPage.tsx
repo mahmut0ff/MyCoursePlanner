@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
+import { intlLocale } from '../../lib/locale';
 import { apiGetSessionAnalytics } from '../../lib/api';
 import {
   BarChart3, Users, Trophy, CheckCircle, Clock, ArrowLeft,
@@ -52,7 +53,7 @@ const SessionAnalyticsPage: React.FC = () => {
           <div>
             <h1 className="text-xl font-extrabold text-slate-900 dark:text-white">{session?.quizTitle || t('quiz.analytics')}</h1>
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-              {session?.createdAt ? new Date(session.createdAt).toLocaleString() : ''} · {sorted.length} {t('quiz.participants')}
+              {session?.createdAt ? new Date(session.createdAt).toLocaleString(intlLocale()) : ''} · {sorted.length} {t('quiz.participants')}
             </p>
           </div>
         </div>
@@ -108,7 +109,7 @@ const SessionAnalyticsPage: React.FC = () => {
                   <div className="flex items-center justify-between mb-1.5">
                     <div className="flex items-center gap-2 flex-1 min-w-0">
                       <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-md text-white" style={{ backgroundColor: 'var(--kahoot-purple)' }}>Q{i + 1}</span>
-                      <p className="text-xs text-slate-700 dark:text-slate-300 truncate">{q.text || `Question ${i + 1}`}</p>
+                      <p className="text-xs text-slate-700 dark:text-slate-300 truncate">{q.text || t('quiz.questionNumber', 'Вопрос {{n}}', { n: i + 1 })}</p>
                     </div>
                     <span className={`text-xs font-extrabold ml-2 ${correctPct >= 70 ? 'text-green-600' : correctPct >= 40 ? 'text-yellow-600' : 'text-red-600'}`}>{correctPct}%</span>
                   </div>

@@ -71,7 +71,7 @@ const LeaderboardWidget: React.FC = () => {
         
         <div className="flex-1 min-w-0">
           <p className={`text-sm truncate font-bold ${isMe ? 'text-amber-700 dark:text-amber-500' : 'text-slate-900 dark:text-white'}`}>
-            {user.displayName} {isMe && <span className="text-[10px] bg-amber-100 text-amber-700 px-1.5 rounded-md ml-1 font-semibold dark:bg-amber-900/50 dark:text-amber-300">Вы</span>}
+            {user.displayName} {isMe && <span className="text-[10px] bg-amber-100 text-amber-700 px-1.5 rounded-md ml-1 font-semibold dark:bg-amber-900/50 dark:text-amber-300">{t('chat.you', 'Вы')}</span>}
           </p>
           <div className="flex items-center gap-1.5 text-xs text-slate-500">
             <span className="font-semibold text-amber-500">{user.xp} XP</span>
@@ -89,7 +89,7 @@ const LeaderboardWidget: React.FC = () => {
               const def = myStats.allBadgeDefs?.[badgeId];
               if (!def) return null;
               return (
-                <div key={badgeId} className="w-6 h-6 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-xs shadow-sm" title={def.title}>
+                <div key={badgeId} className="w-6 h-6 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-xs shadow-sm" title={t(`gamification.badgesList.${badgeId}.title`, def.title)}>
                    {def.icon}
                 </div>
               );
@@ -110,7 +110,7 @@ const LeaderboardWidget: React.FC = () => {
             </div>
             <div>
               <h3 className="text-lg font-extrabold text-slate-900 dark:text-white">{t('gamification.leaderboardTitle', 'Рейтинг Студентов')}</h3>
-              <p className="text-slate-500 text-xs text-left">Топ по организации</p>
+              <p className="text-slate-500 text-xs text-left">{t('gamification.topInOrg', 'Топ по организации')}</p>
             </div>
           </div>
         </div>
@@ -122,14 +122,14 @@ const LeaderboardWidget: React.FC = () => {
             </div>
           ) : (
              <div className="py-8 text-center text-slate-500 text-sm">
-               Пока нет данных для рейтинга
+               {t('gamification.noLeaderboardData', 'Пока нет данных для рейтинга')}
              </div>
           )}
         </div>
 
         <div className="p-3 bg-slate-50 dark:bg-slate-800/20 flex flex-col sm:flex-row items-center justify-between text-sm gap-3">
           {myRank > 0 ? (
-            <span className="text-slate-500">Ваше место: <strong className="text-slate-900 dark:text-white">#{myRank}</strong></span>
+            <span className="text-slate-500">{t('gamification.yourRank', 'Ваше место:')} <strong className="text-slate-900 dark:text-white">#{myRank}</strong></span>
           ) : (
             <span />
           )}
@@ -138,7 +138,7 @@ const LeaderboardWidget: React.FC = () => {
               onClick={() => setShowModal(true)}
               className="text-primary-600 hover:text-primary-700 dark:text-primary-400 dark:hover:text-primary-300 font-semibold flex items-center gap-1 transition-colors"
             >
-              Смотреть весь рейтинг
+              {t('gamification.viewFullLeaderboard', 'Смотреть весь рейтинг')}
               <ChevronRight className="w-4 h-4" />
             </button>
           )}
@@ -157,12 +157,13 @@ const LeaderboardWidget: React.FC = () => {
                   <Trophy className="w-5 h-5 text-amber-600 dark:text-amber-400" />
                 </div>
                 <div>
-                  <h3 className="text-lg font-bold text-slate-900 dark:text-white">Рейтинг Студентов</h3>
-                  <p className="text-slate-500 text-xs text-left">Топ {users.length} по организации</p>
+                  <h3 className="text-lg font-bold text-slate-900 dark:text-white">{t('gamification.leaderboardTitle', 'Рейтинг Студентов')}</h3>
+                  <p className="text-slate-500 text-xs text-left">{t('gamification.topNInOrg', 'Топ {{n}} по организации', { n: users.length })}</p>
                 </div>
               </div>
               <button 
                 onClick={() => setShowModal(false)}
+                aria-label={t('common.close', 'Закрыть')}
                 className="p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors"
               >
                 <X className="w-5 h-5" />
@@ -178,7 +179,7 @@ const LeaderboardWidget: React.FC = () => {
                 <div className="flex items-center gap-3">
                   <span className="font-bold text-slate-400 w-8 text-center">#{myRank}</span>
                   <div className="text-sm text-left">
-                    <p className="font-bold text-slate-900 dark:text-white">Ваш результат</p>
+                    <p className="font-bold text-slate-900 dark:text-white">{t('gamification.yourResult', 'Ваш результат')}</p>
                     <p className="text-amber-500 font-semibold">{myStats.xp} XP</p>
                   </div>
                 </div>

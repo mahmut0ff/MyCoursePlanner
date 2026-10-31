@@ -5,6 +5,7 @@ import { Undo2, X } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { CURRENCY_SUFFIX, formatMoney } from '../../lib/money';
 import { orgDayKey } from '../../lib/payment-plans';
+import { intlLocale } from '../../lib/locale';
 import { PAYMENT_METHODS } from '../../pages/finances/expenseCategories';
 
 /**
@@ -110,7 +111,7 @@ const RefundModal: React.FC<Props> = ({ tx, studentName, onClose, onSuccess }) =
     }
   };
 
-  const paidOn = new Date(tx.date || tx.createdAt || Date.now()).toLocaleDateString();
+  const paidOn = new Date(tx.date || tx.createdAt || Date.now()).toLocaleDateString(intlLocale());
 
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[60] flex items-center justify-center p-4" onClick={() => { if (!saving) onClose(); }}>

@@ -5,7 +5,7 @@
  * значение и куда ведёт клик. Каждый тест — конкретное расхождение, из-за
  * которого плитка показывала одно, а экран за ней — другое.
  */
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, beforeAll } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 
@@ -67,6 +67,10 @@ vi.mock('../../../lib/api', () => ({
 
 import AdminDashboard from '../AdminDashboard';
 import * as api from '../../../lib/api';
+import i18n from '../../../i18n';
+
+// Ожидания написаны на русском; jsdom по navigator выбрал бы en.
+beforeAll(async () => { await i18n.changeLanguage('ru'); });
 
 const renderDashboard = async () => {
   render(<MemoryRouter><AdminDashboard /></MemoryRouter>);

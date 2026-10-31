@@ -158,7 +158,7 @@ const OrganizationsDirectoryPage: React.FC = () => {
                 {loading
                   ? t('common.loading', 'Загрузка...')
                   : filtered.length > 0
-                  ? `${filtered.length} ${t('directory.orgs', 'организаций')} ${hasActiveFilters ? t('directory.matchFilter', 'по фильтру') : t('directory.available', 'доступно')}`
+                  ? `${t('directory.orgsCount', '{{count}} организаций', { count: filtered.length })} ${hasActiveFilters ? t('directory.matchFilter', 'по фильтру') : t('directory.available', 'доступно')}`
                   : t('directory.empty', 'Организации не найдены')}
               </p>
             </div>

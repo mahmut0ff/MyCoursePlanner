@@ -57,7 +57,7 @@ const ExamListPage: React.FC = () => {
       <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-6">
         <div>
           <h1 className="text-3xl font-extrabold text-slate-900 dark:text-white mb-2">{t('exams.title', 'Экзамены')}</h1>
-          <p className="text-slate-500 dark:text-slate-400 text-sm">{filtered.length} {t('exams.totalCount', 'доступных экзаменов')}</p>
+          <p className="text-slate-500 dark:text-slate-400 text-sm">{t('exams.availableCount', { count: filtered.length, defaultValue: '{{count}} доступных экзаменов' })}</p>
         </div>
 
         <div className="flex items-center gap-3 w-full sm:w-auto">
@@ -85,7 +85,7 @@ const ExamListPage: React.FC = () => {
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Поиск по названию или предмету..."
+            placeholder={t('exams.searchPlaceholder', 'Поиск по названию или предмету...')}
             className="input pl-9 w-full bg-slate-50 dark:bg-slate-900 border-none focus:ring-2 focus:ring-primary-500/20"
           />
         </div>
@@ -95,7 +95,7 @@ const ExamListPage: React.FC = () => {
             <div className="flex items-center gap-2 shrink-0">
               <Filter className="w-4 h-4 text-slate-400" />
               <select value={subjectFilter} onChange={(e) => setSubjectFilter(e.target.value)} className="input text-sm py-2 bg-slate-50 dark:bg-slate-900 border-none">
-                <option value="all">Все предметы</option>
+                <option value="all">{t('exams.allSubjects', 'Все предметы')}</option>
                 {uniqueSubjects.map(s => <option key={s} value={s}>{s}</option>)}
               </select>
             </div>
@@ -117,8 +117,8 @@ const ExamListPage: React.FC = () => {
       {filtered.length === 0 ? (
         <EmptyState
           icon={ClipboardList}
-          title={search || subjectFilter !== 'all' ? 'Ничего не найдено' : t('exams.noExams', 'Экзаменов пока нет')}
-          description={search || subjectFilter !== 'all' ? 'Попробуйте изменить фильтры поиска' : t('exams.createFirst', 'Создайте первый экзамен')}
+          title={search || subjectFilter !== 'all' ? t('directory.noResults', 'Ничего не найдено') : t('exams.noExams', 'Экзаменов пока нет')}
+          description={search || subjectFilter !== 'all' ? t('exams.tryChangeFilters', 'Попробуйте изменить фильтры поиска') : t('exams.createFirst', 'Создайте первый экзамен')}
           actionLabel={t('exams.create', 'Создать')}
           actionLink="/exams/new"
         />
@@ -126,11 +126,11 @@ const ExamListPage: React.FC = () => {
         <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl overflow-hidden">
           {/* Table header */}
           <div className="hidden md:grid grid-cols-[1fr_120px_100px_100px_90px] gap-3 px-5 py-3 border-b border-slate-100 dark:border-slate-700 bg-slate-50/80 dark:bg-slate-800/80 text-[11px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
-            <span>Название</span>
-            <span>Предмет</span>
-            <span>Вопросы</span>
-            <span>Длительность</span>
-            {isStaff && <span>Статус</span>}
+            <span>{t('exams.titleLabel', 'Название')}</span>
+            <span>{t('exams.subjectLabel', 'Предмет')}</span>
+            <span>{t('exams.questions', 'Вопросы')}</span>
+            <span>{t('exams.duration', 'Длительность')}</span>
+            {isStaff && <span>{t('common.status', 'Статус')}</span>}
           </div>
 
           {filtered.map((exam) => (
@@ -152,7 +152,7 @@ const ExamListPage: React.FC = () => {
                   <div className="flex items-center gap-2 mt-1 md:hidden flex-wrap">
                     {exam.subject && <span className="bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 px-1.5 py-0.5 rounded text-[10px] font-bold">{exam.subject}</span>}
                     <span className="text-[10px] text-slate-400 flex items-center gap-1"><HelpCircle className="w-3 h-3" />{exam.questionCount || 0}</span>
-                    <span className="text-[10px] text-slate-400 flex items-center gap-1"><Clock className="w-3 h-3" />{exam.durationMinutes} мин</span>
+                    <span className="text-[10px] text-slate-400 flex items-center gap-1"><Clock className="w-3 h-3" />{exam.durationMinutes} {t('exams.min', 'мин')}</span>
                     {isStaff && (
                       <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${exam.status === 'published' ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400' : exam.status === 'archived' ? 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-400' : 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400'}`}>
                         {exam.status === 'published' ? t('common.published') : exam.status === 'archived' ? t('common.archived', 'Архив') : t('common.draft')}
@@ -176,7 +176,7 @@ const ExamListPage: React.FC = () => {
               {/* Duration */}
               <div className="hidden md:flex items-center gap-1.5 text-[11px] text-slate-500 dark:text-slate-400">
                 <Clock className="w-3.5 h-3.5 text-slate-400" />
-                <span>{exam.durationMinutes} мин</span>
+                <span>{exam.durationMinutes} {t('exams.min', 'мин')}</span>
               </div>
 
               {/* Status (staff only) */}

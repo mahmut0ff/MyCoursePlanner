@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useParams, useNavigate, useSearchParams, useLocation } from 'react-router-dom';
-import { useTranslation } from 'react-i18next';
+import { useTranslation, Trans } from 'react-i18next';
+import type { TFunction } from 'i18next';
 import {
   orgGetStudents, orgGetResults, orgGetGroups, orgGetCourses, orgUpdateGroup, apiRemoveMember,
   apiRestoreStudent, apiGetPaymentPlans, apiGetTransactions, apiGetStudentTuitions,
@@ -40,6 +41,7 @@ import type { UserProfile, ExamAttempt, Group } from '../../types';
 import { PinnedBadgesDisplay } from '../../lib/badges';
 import { useStudentRisks } from '../../hooks/useStudentRisks';
 import toast from 'react-hot-toast';
+import { intlLocale } from '../../lib/locale';
 
 /**
  * Карточка студента — одна сводка, а не набор конкурирующих карточек.
@@ -89,28 +91,21 @@ const hasKnownTotal = (plan: any) => Number.isFinite(Number(plan?.totalAmount));
 const monthLabel = (key: string | null): string => {
   if (!key) return '';
   const [y, m] = key.split('-').map(Number);
-  const s = new Date(Date.UTC(y, m - 1, 1)).toLocaleDateString('ru-RU', { month: 'long', year: 'numeric', timeZone: 'UTC' });
+  const s = new Date(Date.UTC(y, m - 1, 1)).toLocaleDateString(intlLocale(), { month: 'long', year: 'numeric', timeZone: 'UTC' });
   return s.charAt(0).toUpperCase() + s.slice(1);
 };
 
 /** Синтетическая почта офлайн-студента — это не адрес, показывать её незачем. */
 const isSyntheticEmail = (email?: string) => !email || /@student\.sabakhub\.app$/i.test(email);
 
-const formatTime = (seconds: number) => {
-  if (seconds < 60) return `${seconds} с`;
-  if (seconds < 3600) return `${Math.floor(seconds / 60)} мин`;
-  return `${Math.floor(seconds / 3600)} ч ${Math.floor((seconds % 3600) / 60)} мин`;
+const formatTime = (t: TFunction, seconds: number) => {
+  if (seconds < 60) return t('org.students.time.sec', '{{s}} с', { s: seconds });
+  if (seconds < 3600) return t('org.students.time.min', '{{m}} мин', { m: Math.floor(seconds / 60) });
+  return t('org.students.time.hourMin', '{{h}} ч {{m}} мин', { h: Math.floor(seconds / 3600), m: Math.floor((seconds % 3600) / 60) });
 };
 
 /** «12 дней» с правильным окончанием — строка попадает в текст, а не в таблицу. */
-const plural = (n: number, one: string, few: string, many: string) => {
-  const mod10 = n % 10;
-  const mod100 = n % 100;
-  if (mod10 === 1 && mod100 !== 11) return one;
-  if (mod10 >= 2 && mod10 <= 4 && (mod100 < 10 || mod100 >= 20)) return few;
-  return many;
-};
-const daysWord = (n: number) => `${n} ${plural(n, 'день', 'дня', 'дней')}`;
+const daysWord = (t: TFunction, n: number) => t('org.students.days', { count: n });
 
 const StudentDetailPage: React.FC = () => {
   const { uid } = useParams<{ uid: string }>();
@@ -369,12 +364,12 @@ const StudentDetailPage: React.FC = () => {
       if (!ids.includes(uid)) {
         await orgUpdateGroup({ id: target.id, studentIds: [...ids, uid] });
         setAllGroups(prev => prev.map(g => (g.id === target.id ? { ...g, studentIds: [...ids, uid] } : g)));
-        toast.success('Ученик прикреплён к группе');
+        toast.success(t('org.students.detail.assigned', 'Ученик прикреплён к группе'));
       }
       setShowAssignModal(false);
       setSelectedGroupId('');
     } catch (e: any) {
-      toast.error(e.message || 'Не удалось прикрепить');
+      toast.error(e.message || t('org.students.detail.assignFailed', 'Не удалось прикрепить'));
     } finally {
       setAssigning(false);
     }
@@ -389,23 +384,23 @@ const StudentDetailPage: React.FC = () => {
         // Остаёмся на карточке: отчисление обратимо, и следующий вопрос почти
         // всегда «а долг?». Раньше страница молча выкидывала в список.
         setStudent({ ...student, status: 'expelled' } as UserProfile);
-        toast.success('Студент отчислен');
+        toast.success(t('org.students.expelled', 'Студент отчислен'));
       } else if (confirm.kind === 'unassign') {
         const target = allGroups.find(g => g.id === confirm.groupId);
         if (target) {
           const ids = (target.studentIds || []).filter(id => id !== uid);
           await orgUpdateGroup({ id: target.id, studentIds: ids });
           setAllGroups(prev => prev.map(g => (g.id === target.id ? { ...g, studentIds: ids } : g)));
-          toast.success('Ученик откреплён от группы');
+          toast.success(t('org.students.detail.unassigned', 'Ученик откреплён от группы'));
         }
       } else if (confirm.kind === 'revokeParent') {
         await import('../../lib/api').then(m => m.apiRevokeParentKey(student.uid));
         setStudent({ ...student, parentPortalKey: undefined });
-        toast.success('Ссылка сброшена');
+        toast.success(t('org.students.detail.linkRevoked', 'Ссылка сброшена'));
       }
       setConfirm(null);
     } catch (e: any) {
-      toast.error(e.message || 'Не удалось выполнить');
+      toast.error(e.message || t('org.students.detail.actionFailed', 'Не удалось выполнить'));
     } finally {
       setConfirmBusy(false);
     }
@@ -416,9 +411,9 @@ const StudentDetailPage: React.FC = () => {
     try {
       await apiRestoreStudent(student.uid, organizationId);
       setStudent({ ...student, status: 'active' } as UserProfile);
-      toast.success('Студент восстановлен');
+      toast.success(t('org.students.restored', 'Студент восстановлен'));
     } catch (e: any) {
-      toast.error(e.message || 'Не удалось восстановить');
+      toast.error(e.message || t('org.students.detail.restoreFailed', 'Не удалось восстановить'));
     }
   };
 
@@ -434,11 +429,11 @@ const StudentDetailPage: React.FC = () => {
       <div className="max-w-2xl mx-auto py-10">
         <EmptyState
           icon={Users}
-          title={branchScoped ? 'Студента нет в выбранном филиале' : 'Студент не найден'}
+          title={branchScoped ? t('org.students.detail.notInBranch', 'Студента нет в выбранном филиале') : t('org.students.detail.notFound', 'Студент не найден')}
           description={branchScoped
-            ? 'Запись может относиться к другому филиалу — покажите все филиалы, чтобы её увидеть.'
-            : 'Запись удалена или ссылка устарела.'}
-          actionLabel={branchScoped ? 'Показать все филиалы' : `К списку: ${backLabel.toLowerCase()}`}
+            ? t('org.students.detail.notInBranchDesc', 'Запись может относиться к другому филиалу — покажите все филиалы, чтобы её увидеть.')
+            : t('org.students.detail.notFoundDesc', 'Запись удалена или ссылка устарела.')}
+          actionLabel={branchScoped ? t('org.students.detail.showAllBranches', 'Показать все филиалы') : t('org.students.detail.backToList', 'К списку: {{list}}', { list: backLabel.toLowerCase() })}
           {...(branchScoped
             ? { onAction: () => setActiveBranch(null) }
             : { actionLink: backTo })}
@@ -450,31 +445,31 @@ const StudentDetailPage: React.FC = () => {
   /* ─── Меню редких действий ─── */
   const menuItems: RowMenuItem[] = [];
   if (canTakeMoney && !expelled) {
-    menuItems.push({ label: 'Выставить счёт', icon: Receipt, onSelect: () => setShowBillModal(true) });
+    menuItems.push({ label: t('org.students.menu.bill', 'Выставить счёт'), icon: Receipt, onSelect: () => setShowBillModal(true) });
   }
   if (canSeeMoney && paymentPlans.length > 0) {
-    menuItems.push({ label: 'История оплат', icon: History, onSelect: () => setShowHistory(true) });
+    menuItems.push({ label: t('finances.paymentHistory', 'История оплат'), icon: History, onSelect: () => setShowHistory(true) });
   }
   // Связаться — самое частое действие сразу после «увидел долг», поэтому без прав:
   // телефон и так напечатан строкой выше.
   const waPhone = (student.phone || '').replace(/\D/g, '');
   if (student.phone) {
-    menuItems.push({ label: 'Позвонить', icon: Phone, separated: menuItems.length > 0, onSelect: () => { window.location.href = `tel:${student.phone}`; } });
+    menuItems.push({ label: t('org.students.menu.call', 'Позвонить'), icon: Phone, separated: menuItems.length > 0, onSelect: () => { window.location.href = `tel:${student.phone}`; } });
     // Короткие номера без кода страны wa.me не откроет — не предлагаем.
     if (waPhone.length >= 10) {
-      menuItems.push({ label: 'Написать в WhatsApp', icon: MessageCircle, onSelect: () => window.open(`https://wa.me/${waPhone}`, '_blank', 'noopener') });
+      menuItems.push({ label: t('org.students.menu.whatsapp', 'Написать в WhatsApp'), icon: MessageCircle, onSelect: () => window.open(`https://wa.me/${waPhone}`, '_blank', 'noopener') });
     }
   }
   if (canEditRoster) {
     menuItems.push({ label: t('common.edit', 'Редактировать'), icon: Pencil, separated: menuItems.length > 0, onSelect: () => setShowEditModal(true) });
     if (!expelled) {
-      if (allGroups.length > 0) menuItems.push({ label: 'Перевести в группу', icon: UsersRound, onSelect: () => setMoveMode('group') });
-      if (branches.length > 0) menuItems.push({ label: 'Перевести в филиал', icon: Building2, onSelect: () => setMoveMode('branch') });
-      menuItems.push({ label: hasLogin ? 'Сменить пароль' : 'Выдать доступ', icon: KeyRound, onSelect: () => setShowAccessModal(true) });
+      if (allGroups.length > 0) menuItems.push({ label: t('roster.bulk.migrateToGroup', 'Перевести в группу'), icon: UsersRound, onSelect: () => setMoveMode('group') });
+      if (branches.length > 0) menuItems.push({ label: t('roster.bulk.migrateToBranch', 'Перевести в филиал'), icon: Building2, onSelect: () => setMoveMode('branch') });
+      menuItems.push({ label: hasLogin ? t('org.students.access.changePassword', 'Сменить пароль') : t('org.students.access.grant', 'Выдать доступ'), icon: KeyRound, onSelect: () => setShowAccessModal(true) });
     }
     // Восстановление — обычная правка карточки: возвращает статус 'active' и
     // ничего не разрушает.
-    if (expelled) menuItems.push({ label: 'Восстановить', icon: UserCheck, separated: true, onSelect: handleRestore });
+    if (expelled) menuItems.push({ label: t('org.students.menu.restore', 'Восстановить'), icon: UserCheck, separated: true, onSelect: handleRestore });
   }
   // Отчисление и полное удаление — одно право «Студенты: удаление»: так написано
   // в каталоге ролей («Удаление и отчисление студентов»), и так же считает сервер.
@@ -484,7 +479,7 @@ const StudentDetailPage: React.FC = () => {
     if (expelled) {
       menuItems.push({ label: t('common.delete', 'Удалить навсегда'), icon: Trash2, danger: true, separated: true, onSelect: () => navigate(backTo) });
     } else {
-      menuItems.push({ label: 'Отчислить', icon: UserMinus, danger: true, separated: true, onSelect: () => setConfirm({ kind: 'expel' }) });
+      menuItems.push({ label: t('org.students.menu.expel', 'Отчислить'), icon: UserMinus, danger: true, separated: true, onSelect: () => setConfirm({ kind: 'expel' }) });
     }
   }
 
@@ -530,7 +525,7 @@ const StudentDetailPage: React.FC = () => {
               </span>
             )}
             {(student as any).enrollmentDate && (
-              <><Dot />с {new Date((student as any).enrollmentDate).toLocaleDateString('ru-RU')}</>
+              <><Dot />{t('org.students.detail.since', 'с {{date}}', { date: new Date((student as any).enrollmentDate).toLocaleDateString(intlLocale()) })}</>
             )}
             {student.city && <><Dot />{student.city}</>}
             {!isSyntheticEmail(student.email) && <><Dot />{student.email}</>}
@@ -548,7 +543,7 @@ const StudentDetailPage: React.FC = () => {
                     href={`https://wa.me/${waPhone}`}
                     target="_blank"
                     rel="noopener noreferrer"
-                    aria-label={`Написать ${student.displayName} в WhatsApp`}
+                    aria-label={t('org.students.detail.whatsappAria', 'Написать {{name}} в WhatsApp', { name: student.displayName })}
                     className="text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors"
                   >
                     <MessageCircle className="w-4 h-4" />
@@ -567,16 +562,16 @@ const StudentDetailPage: React.FC = () => {
               className="hidden sm:inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold text-white bg-emerald-600 hover:bg-emerald-700 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-900"
             >
               <Wallet className="w-4 h-4" />
-              Принять оплату · <span className="tabular-nums">{formatMoney(money.total)}</span>
+              {t('finances.acceptPayment', 'Принять оплату')} · <span className="tabular-nums">{formatMoney(money.total)}</span>
             </button>
           )}
           {canAccess('ai') && (
             <button
               onClick={() => setReportOpen(true)}
-              title="AI-комментарий в табель"
+              title={t('org.students.detail.aiReportHint', 'AI-комментарий в табель')}
               className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-medium text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors"
             >
-              <Sparkles className="w-4 h-4" /><span className="hidden lg:inline">AI-отзыв</span>
+              <Sparkles className="w-4 h-4" /><span className="hidden lg:inline">{t('org.students.detail.aiReport', 'AI-отзыв')}</span>
             </button>
           )}
           <RowMenu items={menuItems} />
@@ -592,13 +587,13 @@ const StudentDetailPage: React.FC = () => {
               tone="rose"
               text={
                 <>
-                  Долг <span className="tabular-nums font-semibold">{formatMoney(money.total)}</span>
-                  {money.worstDays > 0 && <> · срок прошёл {daysWord(money.worstDays)}</>}
+                  {t('org.students.detail.debt', 'Долг')} <span className="tabular-nums font-semibold">{formatMoney(money.total)}</span>
+                  {money.worstDays > 0 && <> · {t('org.students.detail.overdueFor', 'срок прошёл {{days}}', { days: daysWord(t, money.worstDays) })}</>}
                 </>
               }
               action={canTakeMoney
-                ? { label: 'Принять оплату', onClick: () => setPayModalPlan(money.debtPlans[0]) }
-                : { label: 'В финансы', to: `/finances?tab=debts&student=${uid}` }}
+                ? { label: t('finances.acceptPayment', 'Принять оплату'), onClick: () => setPayModalPlan(money.debtPlans[0]) }
+                : { label: t('org.students.detail.toFinances', 'В финансы'), to: `/finances?tab=debts&student=${uid}` }}
             />
           )}
           {showEngagementProblem && (
@@ -606,10 +601,10 @@ const StudentDetailPage: React.FC = () => {
               tone={risk!.riskLevel === 'high' ? 'rose' : 'amber'}
               text={
                 risk!.hasActivity === false
-                  ? <>Ещё не начинал(а) заниматься — добавлен(а) {daysWord(risk!.daysSinceEnrolled ?? risk!.daysSinceLastActive)} назад</>
-                  : <>{risk!.reasons?.length ? risk!.reasons.join(' · ') : 'Показатели ниже нормы'} · посещаемость <span className="tabular-nums">{risk!.attendanceRate}%</span></>
+                  ? <>{t('org.students.detail.notStarted', 'Ещё не начинал(а) заниматься — добавлен(а) {{days}} назад', { days: daysWord(t, risk!.daysSinceEnrolled ?? risk!.daysSinceLastActive) })}</>
+                  : <>{risk!.reasons?.length ? risk!.reasons.join(' · ') : t('org.students.detail.belowNorm', 'Показатели ниже нормы')} · {t('org.students.detail.attendanceInline', 'посещаемость')} <span className="tabular-nums">{risk!.attendanceRate}%</span></>
               }
-              action={groups[0] ? { label: 'Открыть группу', to: `/groups/${groups[0].id}` } : undefined}
+              action={groups[0] ? { label: t('org.students.detail.openGroup', 'Открыть группу'), to: `/groups/${groups[0].id}` } : undefined}
             />
           )}
         </div>
@@ -620,38 +615,38 @@ const StudentDetailPage: React.FC = () => {
           ТОЛЬКО у проблемного студента: у здорового карточка молчала о главном. */}
       <dl className="grid grid-cols-2 md:grid-cols-4 rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 divide-x divide-y md:divide-y-0 divide-slate-200 dark:divide-slate-700 overflow-hidden mb-8">
         <Metric
-          label="Посещаемость"
+          label={t('org.students.detail.attendance', 'Посещаемость')}
           value={risk ? `${risk.attendanceRate}%` : '—'}
-          hint={risk?.missedLessons ? `пропущено ${risk.missedLessons}` : undefined}
+          hint={risk?.missedLessons ? t('org.students.detail.missed', 'пропущено {{count}}', { count: risk.missedLessons }) : undefined}
           alarming={!!risk && risk.attendanceRate < 70}
         />
         <Metric
-          label="Средний балл"
+          label={t('org.students.avgScore', 'Средний балл')}
           value={risk?.averageScore ? String(risk.averageScore) : '—'}
-          hint={risk?.scoreTrend === 'down' ? 'снижается' : risk?.scoreTrend === 'up' ? 'растёт' : undefined}
+          hint={risk?.scoreTrend === 'down' ? t('org.students.detail.trendDown', 'снижается') : risk?.scoreTrend === 'up' ? t('org.students.detail.trendUp', 'растёт') : undefined}
           trend={risk?.scoreTrend}
         />
         <Metric
-          label="Последняя активность"
-          value={risk ? (risk.daysSinceLastActive === 0 ? 'сегодня' : daysWord(risk.daysSinceLastActive)) : '—'}
-          hint={risk && risk.daysSinceLastActive > 0 ? 'назад' : undefined}
+          label={t('org.students.detail.lastActivity', 'Последняя активность')}
+          value={risk ? (risk.daysSinceLastActive === 0 ? t('org.students.detail.today', 'сегодня') : daysWord(t, risk.daysSinceLastActive)) : '—'}
+          hint={risk && risk.daysSinceLastActive > 0 ? t('org.students.detail.ago', 'назад') : undefined}
           alarming={!!risk && risk.daysSinceLastActive >= 14}
         />
         {canSeeMoney ? (
           <Metric
-            label="Долг"
-            value={money.total > 0 ? formatMoney(money.total) : 'нет'}
-            hint={money.overdue.length > 0 ? 'срок прошёл' : undefined}
+            label={t('org.students.detail.debt', 'Долг')}
+            value={money.total > 0 ? formatMoney(money.total) : t('org.students.detail.none', 'нет')}
+            hint={money.overdue.length > 0 ? t('finances.overdueTag', 'срок прошёл') : undefined}
             alarming={money.overdue.length > 0}
           />
         ) : (
-          <Metric label="Групп" value={String(groups.length)} />
+          <Metric label={t('org.students.detail.groupsCount', 'Групп')} value={String(groups.length)} />
         )}
       </dl>
 
       {/* ═══ Группы ═══ */}
       <section className="mb-8">
-        <SectionHeading title="Группы" />
+        <SectionHeading title={t('org.students.groups', 'Группы')} />
         <div className="flex flex-wrap items-center gap-2">
           {failed.groups && <LoadError onRetry={() => window.location.reload()} />}
           {!failed.groups && groups.map(g => (
@@ -662,7 +657,7 @@ const StudentDetailPage: React.FC = () => {
               {canEditRoster && (
                 <button
                   onClick={() => setConfirm({ kind: 'unassign', groupId: g.id, groupName: g.name })}
-                  aria-label={`Открепить от группы ${g.name}`}
+                  aria-label={t('org.students.detail.unassignAria', 'Открепить от группы {{group}}', { group: g.name })}
                   // Видно всегда, а не по hover: действие, доступное только наведением,
                   // недоступно с клавиатуры и с телефона. slate-500, а не 400:
                   // иконка — графический объект, ему нужен контраст ≥3:1.
@@ -674,14 +669,14 @@ const StudentDetailPage: React.FC = () => {
             </span>
           ))}
           {!failed.groups && groups.length === 0 && (
-            <span className="text-sm text-slate-500 dark:text-slate-400">Не состоит ни в одной группе</span>
+            <span className="text-sm text-slate-500 dark:text-slate-400">{t('org.students.detail.noGroups', 'Не состоит ни в одной группе')}</span>
           )}
           {canEditRoster && !expelled && (
             <button
               onClick={() => setShowAssignModal(true)}
               className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-sm font-medium border border-dashed border-slate-300 dark:border-slate-600 text-slate-500 hover:text-primary-600 hover:border-primary-400 dark:hover:text-primary-400 transition-colors"
             >
-              <Plus className="w-3.5 h-3.5" />Группа
+              <Plus className="w-3.5 h-3.5" />{t('org.students.groupCol', 'Группа')}
             </button>
           )}
         </div>
@@ -691,8 +686,8 @@ const StudentDetailPage: React.FC = () => {
       {canSeeMoney && (
         <section ref={registerSection('payments')} className="mb-8 scroll-mt-6">
           <SectionHeading
-            title="Оплаты"
-            action={{ label: 'Открыть в финансах', to: `/finances?tab=debts&student=${uid}` }}
+            title={t('org.students.detail.payments', 'Оплаты')}
+            action={{ label: t('org.students.detail.openInFinances', 'Открыть в финансах'), to: `/finances?tab=debts&student=${uid}` }}
           />
           {/* ── Стоимость обучения ──
               Отвечает на вопрос «сколько он платит», отдельно от «сколько уже
@@ -702,7 +697,7 @@ const StudentDetailPage: React.FC = () => {
             <div className="mb-3 rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 overflow-hidden">
               <div className="px-4 py-2.5 border-b border-slate-100 dark:border-slate-700 flex items-center gap-2">
                 <Tag className="w-3.5 h-3.5 text-slate-400" />
-                <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Стоимость обучения</p>
+                <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">{t('org.students.detail.tuition', 'Стоимость обучения')}</p>
               </div>
               <ul className="divide-y divide-slate-100 dark:divide-slate-700">
                 {tuitionRows.map(row => (
@@ -712,10 +707,10 @@ const StudentDetailPage: React.FC = () => {
                       <p className="text-[11px] text-slate-400">
                         {row.agreed ? (
                           <>
-                            <span className="text-emerald-600 dark:text-emerald-400 font-medium">своя цена</span>
-                            {row.price !== null && <> · цена курса <span className="tabular-nums">{formatMoney(row.price)}</span></>}
+                            <span className="text-emerald-600 dark:text-emerald-400 font-medium">{t('org.students.detail.ownPrice', 'своя цена')}</span>
+                            {row.price !== null && <> · {t('org.students.detail.coursePriceInline', 'цена курса')} <span className="tabular-nums">{formatMoney(row.price)}</span></>}
                           </>
-                        ) : row.price !== null ? 'по цене курса' : 'цена не задана'}
+                        ) : row.price !== null ? t('org.students.detail.byCoursePrice', 'по цене курса') : t('org.students.detail.noPrice', 'цена не задана')}
                       </p>
                     </div>
                     <div className="shrink-0 flex items-center gap-1.5">
@@ -725,8 +720,8 @@ const StudentDetailPage: React.FC = () => {
                       {canTakeMoney && !expelled && (
                         <button
                           onClick={() => setTuitionRow(row)}
-                          title="Изменить сумму оплаты"
-                          aria-label={`Изменить сумму оплаты: ${row.courseName}`}
+                          title={t('org.students.detail.editTuition', 'Изменить сумму оплаты')}
+                          aria-label={t('org.students.detail.editTuitionAria', 'Изменить сумму оплаты: {{course}}', { course: row.courseName })}
                           className="p-1 rounded-md text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"
                         >
                           <Pencil className="w-3.5 h-3.5" />
@@ -744,9 +739,9 @@ const StudentDetailPage: React.FC = () => {
               <div className="p-4"><LoadError onRetry={reloadFinances} /></div>
             ) : paymentPlans.length === 0 ? (
               <p className="px-4 py-6 text-sm text-slate-500 dark:text-slate-400 text-center">
-                Начислений пока нет
+                {t('org.students.detail.noCharges', 'Начислений пока нет')}
                 {canTakeMoney && !expelled && (
-                  <> · <button onClick={() => setShowBillModal(true)} className="font-medium text-primary-600 dark:text-primary-400 hover:underline">выставить счёт</button></>
+                  <> · <button onClick={() => setShowBillModal(true)} className="font-medium text-primary-600 dark:text-primary-400 hover:underline">{t('org.students.detail.billInline', 'выставить счёт')}</button></>
                 )}
               </p>
             ) : (
@@ -872,7 +867,7 @@ const StudentDetailPage: React.FC = () => {
                     {t('finances.paymentHistory', 'История оплат')}
                   </h4>
                   <button onClick={() => setShowHistory(true)} className="text-sm font-medium text-primary-600 dark:text-primary-400 hover:underline">
-                    Все операции
+                    {t('org.students.detail.allOperations', 'Все операции')}
                   </button>
                 </div>
                 <ul className="space-y-1.5">
@@ -885,7 +880,7 @@ const StudentDetailPage: React.FC = () => {
                         <span className="min-w-0 text-slate-600 dark:text-slate-300 truncate">
                           {/* Дата операции — когда деньги реально приняли (tx.date);
                               createdAt это лишь момент ввода в систему. */}
-                          {new Date(tx.date || tx.createdAt).toLocaleDateString('ru-RU')}
+                          {new Date(tx.date || tx.createdAt).toLocaleDateString(intlLocale())}
                           {refund && <span className="ml-1.5 text-xs font-medium text-rose-600 dark:text-rose-400">{t('finances.refundBadge', 'возврат')}</span>}
                           {forPlan && <span className="ml-1.5 text-slate-400 dark:text-slate-500">· {forPlan}</span>}
                         </span>
@@ -907,15 +902,15 @@ const StudentDetailPage: React.FC = () => {
           ширины и полтора экрана, у большинства академий — нулями. */}
       <section ref={registerSection('progress')} className="mb-8 scroll-mt-6">
         <SectionHeading
-          title="Онлайн-экзамены"
-          meta={results.length > 0 ? `${results.length} ${plural(results.length, 'попытка', 'попытки', 'попыток')} · средний ${stats.avgScore}%` : undefined}
+          title={t('org.students.detail.onlineExams', 'Онлайн-экзамены')}
+          meta={results.length > 0 ? `${t('org.students.detail.attempts', { count: results.length })} · ${t('org.students.detail.avgInline', 'средний {{score}}%', { score: stats.avgScore })}` : undefined}
         />
         <div className="rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 overflow-hidden">
           {failed.results ? (
             <div className="p-4"><LoadError onRetry={() => window.location.reload()} /></div>
           ) : sortedResults.length === 0 ? (
             <p className="px-4 py-6 text-sm text-slate-500 dark:text-slate-400 text-center">
-              Ученик ещё не проходил онлайн-экзамены
+              {t('org.students.detail.noExams', 'Ученик ещё не проходил онлайн-экзамены')}
             </p>
           ) : (
             <ul className="divide-y divide-slate-100 dark:divide-slate-700 max-h-96 overflow-y-auto">
@@ -940,10 +935,10 @@ const StudentDetailPage: React.FC = () => {
                         </div>
                       </div>
                       <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400 flex flex-wrap items-center gap-x-2">
-                        <span className="tabular-nums">{new Date(r.submittedAt).toLocaleDateString('ru-RU')}</span>
-                        {!!r.timeSpentSeconds && <><Dot />{formatTime(r.timeSpentSeconds)}</>}
+                        <span className="tabular-nums">{new Date(r.submittedAt).toLocaleDateString(intlLocale())}</span>
+                        {!!r.timeSpentSeconds && <><Dot />{formatTime(t, r.timeSpentSeconds)}</>}
                         {r.questionResults && (
-                          <><Dot /><span className="tabular-nums">{r.questionResults.filter(q => q.isCorrect).length}/{r.questionResults.length}</span> верных</>
+                          <><Dot /><span className="tabular-nums">{r.questionResults.filter(q => q.isCorrect).length}/{r.questionResults.length}</span> {t('org.students.detail.correctInline', 'верных')}</>
                         )}
                       </p>
                     </Link>
@@ -960,19 +955,19 @@ const StudentDetailPage: React.FC = () => {
           что видит родитель, какие у него роли. Раньше это были три отдельные
           карточки, конкурировавшие с деньгами за первый экран. */}
       <section ref={registerSection('access')} className="scroll-mt-6">
-        <SectionHeading title="Доступ и связи" />
+        <SectionHeading title={t('org.students.detail.accessSection', 'Доступ и связи')} />
         <div className="rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 divide-y divide-slate-100 dark:divide-slate-700">
           {/* Вход в систему */}
           {canManageAccess && (
             <div className="px-4 py-3.5 flex items-start justify-between gap-3 flex-wrap">
               <div className="min-w-0">
                 <p className="text-sm font-semibold text-slate-900 dark:text-white flex items-center gap-2">
-                  <KeyRound className="w-4 h-4 text-slate-400" />Вход в систему
+                  <KeyRound className="w-4 h-4 text-slate-400" />{t('org.students.detail.login', 'Вход в систему')}
                 </p>
                 <p className="mt-0.5 text-sm text-slate-500 dark:text-slate-400 break-all">
                   {hasLogin
                     ? ((student as any).username || student.email)
-                    : 'Ученик без входа — это запись для журнала и оплат.'}
+                    : t('org.students.detail.noLogin', 'Ученик без входа — это запись для журнала и оплат.')}
                 </p>
               </div>
               {!expelled && (
@@ -980,7 +975,7 @@ const StudentDetailPage: React.FC = () => {
                   onClick={() => setShowAccessModal(true)}
                   className="shrink-0 px-3.5 py-2 rounded-xl text-sm font-medium text-slate-700 bg-slate-100 hover:bg-slate-200 dark:text-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 transition-colors"
                 >
-                  {hasLogin ? 'Сменить пароль' : 'Выдать доступ'}
+                  {hasLogin ? t('org.students.access.changePassword', 'Сменить пароль') : t('org.students.access.grant', 'Выдать доступ')}
                 </button>
               )}
             </div>
@@ -991,10 +986,10 @@ const StudentDetailPage: React.FC = () => {
             <div className="flex items-start justify-between gap-3 flex-wrap">
               <div className="min-w-0">
                 <p className="text-sm font-semibold text-slate-900 dark:text-white flex items-center gap-2">
-                  <Shield className="w-4 h-4 text-slate-400" />Портал для родителей
+                  <Shield className="w-4 h-4 text-slate-400" />{t('org.students.detail.parentPortal', 'Портал для родителей')}
                 </p>
                 <p className="mt-0.5 text-sm text-slate-500 dark:text-slate-400">
-                  Ссылка на успеваемость без регистрации.
+                  {t('org.students.detail.parentPortalHint', 'Ссылка на успеваемость без регистрации.')}
                 </p>
               </div>
               {canEditRoster && !student.parentPortalKey && (
@@ -1003,12 +998,12 @@ const StudentDetailPage: React.FC = () => {
                     try {
                       const res = await import('../../lib/api').then(m => m.apiGenerateParentKey(student.uid));
                       setStudent({ ...student, parentPortalKey: res.parentPortalKey });
-                      toast.success('Ссылка создана');
-                    } catch { toast.error('Не удалось создать ссылку'); }
+                      toast.success(t('org.students.detail.linkCreated', 'Ссылка создана'));
+                    } catch { toast.error(t('org.students.detail.linkCreateFailed', 'Не удалось создать ссылку')); }
                   }}
                   className="shrink-0 inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 transition-colors"
                 >
-                  <ExternalLink className="w-4 h-4" />Создать ссылку
+                  <ExternalLink className="w-4 h-4" />{t('org.students.detail.createLink', 'Создать ссылку')}
                 </button>
               )}
             </div>
@@ -1023,18 +1018,18 @@ const StudentDetailPage: React.FC = () => {
                 <button
                   onClick={() => {
                     navigator.clipboard.writeText(`${window.location.origin}/parent/${student.parentPortalKey}`);
-                    toast.success('Ссылка скопирована');
+                    toast.success(t('org.students.detail.linkCopied', 'Ссылка скопирована'));
                   }}
                   className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-sm font-medium text-slate-700 bg-slate-100 hover:bg-slate-200 dark:text-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 transition-colors"
                 >
-                  <Copy className="w-4 h-4" />Копировать
+                  <Copy className="w-4 h-4" />{t('common.copy', 'Копировать')}
                 </button>
                 {canEditRoster && (
                   <button
                     onClick={() => setConfirm({ kind: 'revokeParent' })}
                     className="px-3.5 py-2 rounded-xl text-sm font-medium text-rose-700 bg-rose-50 hover:bg-rose-100 dark:text-rose-300 dark:bg-rose-900/20 dark:hover:bg-rose-900/40 transition-colors"
                   >
-                    Сбросить
+                    {t('org.students.detail.reset', 'Сбросить')}
                   </button>
                 )}
               </div>
@@ -1057,7 +1052,7 @@ const StudentDetailPage: React.FC = () => {
             onClick={() => setPayModalPlan(money.debtPlans[0])}
             className="w-full inline-flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-sm font-semibold text-white bg-emerald-600 hover:bg-emerald-700 transition-colors"
           >
-            <Wallet className="w-4 h-4" />Принять оплату · <span className="tabular-nums">{formatMoney(money.total)}</span>
+            <Wallet className="w-4 h-4" />{t('finances.acceptPayment', 'Принять оплату')} · <span className="tabular-nums">{formatMoney(money.total)}</span>
           </button>
         </div>
       )}
@@ -1156,24 +1151,24 @@ const StudentDetailPage: React.FC = () => {
       {showAssignModal && (
         <ConfirmDialog
           open
-          title="Прикрепить к группе"
-          confirmLabel={assigning ? 'Прикрепляем…' : 'Прикрепить'}
+          title={t('org.students.detail.assignTitle', 'Прикрепить к группе')}
+          confirmLabel={assigning ? t('org.students.detail.assigning', 'Прикрепляем…') : t('org.students.detail.assign', 'Прикрепить')}
           busy={assigning || !selectedGroupId}
           onConfirm={handleAssignGroup}
           onClose={() => { setShowAssignModal(false); setSelectedGroupId(''); }}
           message={
             <div>
-              <p className="mb-3">Выберите группу для ученика <b>{student.displayName}</b>.</p>
+              <p className="mb-3"><Trans i18nKey="org.students.detail.assignPrompt" defaults="Выберите группу для ученика <b>{{name}}</b>." values={{ name: student.displayName }} components={{ b: <b /> }} /></p>
               {allGroups.filter(g => !(g.studentIds || []).includes(uid!)).length === 0 ? (
-                <p className="text-amber-700 dark:text-amber-300">Свободных групп нет — все уже содержат этого ученика.</p>
+                <p className="text-amber-700 dark:text-amber-300">{t('org.students.detail.noFreeGroups', 'Свободных групп нет — все уже содержат этого ученика.')}</p>
               ) : (
                 <select
                   value={selectedGroupId}
                   onChange={e => setSelectedGroupId(e.target.value)}
-                  aria-label="Группа"
+                  aria-label={t('org.students.groupCol', 'Группа')}
                   className="w-full bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-xl px-4 py-2.5 text-sm font-medium text-slate-900 dark:text-white outline-none focus:border-primary-500"
                 >
-                  <option value="">— Выберите группу —</option>
+                  <option value="">{t('org.students.detail.chooseGroup', '— Выберите группу —')}</option>
                   {allGroups.filter(g => !(g.studentIds || []).includes(uid!)).map(g => (
                     <option key={g.id} value={g.id}>{g.name}{g.courseName ? ` (${g.courseName})` : ''}</option>
                   ))}
@@ -1188,11 +1183,11 @@ const StudentDetailPage: React.FC = () => {
         open={confirm?.kind === 'expel'}
         danger
         busy={confirmBusy}
-        title="Отчислить студента?"
-        confirmLabel="Отчислить"
+        title={t('org.students.detail.expelTitle', 'Отчислить студента?')}
+        confirmLabel={t('org.students.menu.expel', 'Отчислить')}
         // Формулировка та же, что в списке: одно действие не должно звучать
         // в двух местах по-разному, особенно необратимое на вид.
-        message={<>Отчислить <b>{student.displayName}</b>? Журнал и история оплат сохранятся — студента можно будет восстановить.</>}
+        message={<Trans i18nKey="org.students.detail.expelMessage" defaults="Отчислить <b>{{name}}</b>? Журнал и история оплат сохранятся — студента можно будет восстановить." values={{ name: student.displayName }} components={{ b: <b /> }} />}
         onConfirm={runConfirm}
         onClose={() => setConfirm(null)}
       />
@@ -1200,9 +1195,9 @@ const StudentDetailPage: React.FC = () => {
       <ConfirmDialog
         open={confirm?.kind === 'unassign'}
         busy={confirmBusy}
-        title="Открепить от группы?"
-        confirmLabel="Открепить"
-        message={<>Ученик перестанет числиться в группе <b>{confirm?.kind === 'unassign' ? confirm.groupName : ''}</b>. Отметки и оценки в журнале сохранятся.</>}
+        title={t('org.students.detail.unassignTitle', 'Открепить от группы?')}
+        confirmLabel={t('org.students.detail.unassign', 'Открепить')}
+        message={<Trans i18nKey="org.students.detail.unassignMessage" defaults="Ученик перестанет числиться в группе <b>{{group}}</b>. Отметки и оценки в журнале сохранятся." values={{ group: confirm?.kind === 'unassign' ? confirm.groupName : '' }} components={{ b: <b /> }} />}
         onConfirm={runConfirm}
         onClose={() => setConfirm(null)}
       />
@@ -1211,9 +1206,9 @@ const StudentDetailPage: React.FC = () => {
         open={confirm?.kind === 'revokeParent'}
         danger
         busy={confirmBusy}
-        title="Сбросить ссылку?"
-        confirmLabel="Сбросить"
-        message="Родитель больше не сможет открыть портал по текущей ссылке. Это действие необратимо."
+        title={t('org.students.detail.revokeTitle', 'Сбросить ссылку?')}
+        confirmLabel={t('org.students.detail.reset', 'Сбросить')}
+        message={t('org.students.detail.revokeMessage', 'Родитель больше не сможет открыть портал по текущей ссылке. Это действие необратимо.')}
         onConfirm={runConfirm}
         onClose={() => setConfirm(null)}
       />
@@ -1221,13 +1216,13 @@ const StudentDetailPage: React.FC = () => {
       <ReportCommentModal
         open={reportOpen}
         onClose={() => setReportOpen(false)}
-        studentName={student.displayName || 'Ученик'}
+        studentName={student.displayName || t('org.students.groupAccess.colStudent', 'Ученик')}
         stats={{
-          'Посещаемость': risk ? `${risk.attendanceRate}%` : '—',
-          'Средний балл': risk?.averageScore ? String(risk.averageScore) : '—',
-          'Сдано онлайн-экзаменов': results.length,
-          'Средний результат': `${stats.avgScore}%`,
-          'Верных ответов': stats.totalQuestions > 0 ? `${stats.totalCorrect}/${stats.totalQuestions}` : '0',
+          [t('org.students.detail.attendance', 'Посещаемость')]: risk ? `${risk.attendanceRate}%` : '—',
+          [t('org.students.avgScore', 'Средний балл')]: risk?.averageScore ? String(risk.averageScore) : '—',
+          [t('org.students.detail.statExams', 'Сдано онлайн-экзаменов')]: results.length,
+          [t('org.students.detail.statAvgResult', 'Средний результат')]: `${stats.avgScore}%`,
+          [t('org.students.detail.statCorrect', 'Верных ответов')]: stats.totalQuestions > 0 ? `${stats.totalCorrect}/${stats.totalQuestions}` : '0',
         }}
       />
     </div>
@@ -1302,21 +1297,26 @@ const ProblemRow: React.FC<{
   );
 };
 
-const LoadError: React.FC<{ onRetry: () => void }> = ({ onRetry }) => (
+const LoadError: React.FC<{ onRetry: () => void }> = ({ onRetry }) => {
+  const { t } = useTranslation();
   // Сбой обязан выглядеть как сбой. Пустой catch печатал 403 как «Начислений
   // пока нет» — то есть ошибка превращалась в факт про деньги.
+  return (
   <p className="text-sm text-slate-600 dark:text-slate-300 flex items-center gap-2">
     <AlertTriangle className="w-4 h-4 text-amber-500 shrink-0" aria-hidden />
-    Не удалось загрузить
+    {t('org.students.detail.loadFailed', 'Не удалось загрузить')}
     <button onClick={onRetry} className="inline-flex items-center gap-1 font-medium text-primary-600 dark:text-primary-400 hover:underline">
-      <RotateCcw className="w-3.5 h-3.5" />Повторить
+      <RotateCcw className="w-3.5 h-3.5" />{t('org.students.detail.retry', 'Повторить')}
     </button>
   </p>
-);
+  );
+};
 
 /** Скелет вместо спиннера: экран сразу показывает свою форму. */
-const DetailSkeleton: React.FC = () => (
-  <div className="max-w-5xl mx-auto" aria-busy="true" aria-label="Загрузка карточки студента">
+const DetailSkeleton: React.FC = () => {
+  const { t } = useTranslation();
+  return (
+  <div className="max-w-5xl mx-auto" aria-busy="true" aria-label={t('org.students.detail.loadingAria', 'Загрузка карточки студента')}>
     <Skeleton className="h-5 w-24 mb-5" />
     <div className="flex items-start gap-4 mb-6">
       <Skeleton className="w-14 h-14 rounded-2xl shrink-0" />
@@ -1331,6 +1331,7 @@ const DetailSkeleton: React.FC = () => (
     <Skeleton className="h-4 w-28 mb-2.5" />
     <Skeleton className="h-32 w-full rounded-2xl" />
   </div>
-);
+  );
+};
 
 export default StudentDetailPage;

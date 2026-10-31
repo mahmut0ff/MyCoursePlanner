@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { X, TrendingDown, Loader2, Phone, Lightbulb, Sparkles } from 'lucide-react';
 import { apiAIChurn } from '../../lib/api';
+import { useTranslation } from 'react-i18next';
 
 interface ChurnStudent {
   studentId: string;
@@ -16,6 +17,7 @@ const probColor = (p: number) =>
   : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400';
 
 const ChurnInsightsModal: React.FC<{ open: boolean; onClose: () => void }> = ({ open, onClose }) => {
+  const { t } = useTranslation();
   const [loading, setLoading] = useState(false);
   const [summary, setSummary] = useState('');
   const [students, setStudents] = useState<ChurnStudent[]>([]);
@@ -33,9 +35,9 @@ const ChurnInsightsModal: React.FC<{ open: boolean; onClose: () => void }> = ({ 
         setSummary(data.summary || '');
         setStudents(Array.isArray(data.students) ? data.students : []);
       })
-      .catch((err) => setError(err?.message || 'Не удалось получить анализ'))
+      .catch((err) => setError(err?.message || t('ai.churn.loadError', 'Не удалось получить анализ')))
       .finally(() => setLoading(false));
-  }, [open]);
+  }, [open, t]);
 
   if (!open) return null;
 
@@ -48,11 +50,11 @@ const ChurnInsightsModal: React.FC<{ open: boolean; onClose: () => void }> = ({ 
               <TrendingDown className="w-5 h-5" />
             </div>
             <div>
-              <h2 className="text-lg font-bold text-slate-900 dark:text-white">AI-анализ оттока</h2>
-              <p className="text-xs text-slate-500 dark:text-slate-400">Кто в зоне риска, почему и что делать</p>
+              <h2 className="text-lg font-bold text-slate-900 dark:text-white">{t('ai.churn.title', 'AI-анализ оттока')}</h2>
+              <p className="text-xs text-slate-500 dark:text-slate-400">{t('ai.churn.subtitle', 'Кто в зоне риска, почему и что делать')}</p>
             </div>
           </div>
-          <button onClick={onClose} className="p-2 -mr-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 rounded-lg transition-colors">
+          <button onClick={onClose} aria-label={t('common.close', 'Закрыть')} className="p-2 -mr-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 rounded-lg transition-colors">
             <X className="w-5 h-5" />
           </button>
         </div>
@@ -61,7 +63,7 @@ const ChurnInsightsModal: React.FC<{ open: boolean; onClose: () => void }> = ({ 
           {loading && (
             <div className="flex flex-col items-center justify-center py-12 text-slate-400">
               <Loader2 className="w-8 h-8 animate-spin mb-3" />
-              <p className="text-sm">AI анализирует поведение учеников…</p>
+              <p className="text-sm">{t('ai.churn.loading', 'AI анализирует поведение учеников…')}</p>
             </div>
           )}
 
@@ -79,7 +81,7 @@ const ChurnInsightsModal: React.FC<{ open: boolean; onClose: () => void }> = ({ 
               )}
 
               {students.length === 0 ? (
-                <div className="text-center py-8 text-slate-500 dark:text-slate-400 text-sm">Учеников в зоне риска не обнаружено 🎉</div>
+                <div className="text-center py-8 text-slate-500 dark:text-slate-400 text-sm">{t('ai.churn.empty', 'Учеников в зоне риска не обнаружено 🎉')}</div>
               ) : (
                 <div className="space-y-3">
                   {students.map((s) => (
@@ -87,17 +89,17 @@ const ChurnInsightsModal: React.FC<{ open: boolean; onClose: () => void }> = ({ 
                       <div className="flex items-center justify-between gap-3 mb-2">
                         <h4 className="font-semibold text-slate-900 dark:text-white truncate">{s.studentName}</h4>
                         <span className={`shrink-0 text-xs font-bold px-2.5 py-1 rounded-full ${probColor(s.churnProbability)}`}>
-                          риск {s.churnProbability}%
+                          {t('ai.churn.risk', 'риск {{pct}}%', { pct: s.churnProbability })}
                         </span>
                       </div>
                       <div className="space-y-1.5 text-sm">
                         <p className="flex items-start gap-2 text-slate-600 dark:text-slate-300">
                           <Lightbulb className="w-3.5 h-3.5 text-amber-500 shrink-0 mt-0.5" />
-                          <span><span className="font-medium">Причина:</span> {s.reason}</span>
+                          <span><span className="font-medium">{t('ai.churn.reason', 'Причина:')}</span> {s.reason}</span>
                         </p>
                         <p className="flex items-start gap-2 text-slate-600 dark:text-slate-300">
                           <Phone className="w-3.5 h-3.5 text-emerald-500 shrink-0 mt-0.5" />
-                          <span><span className="font-medium">Действие:</span> {s.action}</span>
+                          <span><span className="font-medium">{t('ai.churn.action', 'Действие:')}</span> {s.action}</span>
                         </p>
                       </div>
                     </div>

@@ -18,17 +18,12 @@ import {
   apiGetBranchAnalytics, apiGetOrganization, apiGetAIManagerSettings, orgGetDashboardStats,
   apiGetDashboardOverview, apiGetFinanceMetrics, orgGetTimetable, orgGetSchedule, apiAIInsightsAsk,
 } from '../../lib/api';
+import { intlLocale } from '../../lib/locale';
+import { formatMoney } from '../../lib/money';
 
 type Period = 'current_month' | 'last_month' | 'quarter' | 'year';
 
-const fmt = (n?: number | null) => Number(n || 0).toLocaleString('ru-RU');
-
-const plural = (n: number, one: string, few: string, many: string) => {
-  const m10 = n % 10, m100 = n % 100;
-  if (m10 === 1 && m100 !== 11) return one;
-  if (m10 >= 2 && m10 <= 4 && (m100 < 10 || m100 >= 20)) return few;
-  return many;
-};
+const fmt = (n?: number | null) => Number(n || 0).toLocaleString(intlLocale());
 
 /** App weekday convention: 0 = Mon … 6 = Sun (JS getDay is 0 = Sun). */
 const appDayOfWeek = (d = new Date()) => (d.getDay() + 6) % 7;
@@ -57,15 +52,16 @@ const CardTitle: React.FC<{ icon?: React.ElementType; iconClass?: string; childr
  * выглядела бы как «без изменений».
  */
 const PctDelta: React.FC<{ cur: number; prev: number; comparable?: boolean }> = ({ cur, prev, comparable = true }) => {
+  const { t } = useTranslation();
   if (!comparable) return null;
   if (!prev || prev <= 0) return null;
   const pct = Math.round(((cur - prev) / Math.abs(prev)) * 100);
-  if (pct === 0) return <span className="text-[11px] text-slate-400 font-medium">без изменений</span>;
+  if (pct === 0) return <span className="text-[11px] text-slate-400 font-medium">{t('dashboard.noChange', 'без изменений')}</span>;
   const up = pct > 0;
   const Icon = up ? ArrowUpRight : ArrowDownRight;
   return (
     <span className={`text-[11px] font-medium inline-flex items-center gap-0.5 ${up ? 'text-emerald-600' : 'text-rose-500'}`}>
-      <Icon className="w-3 h-3" /> {Math.abs(pct)}% к прошлому
+      <Icon className="w-3 h-3" /> {t('dashboard.vsPrevPct', '{{pct}}% к прошлому', { pct: Math.abs(pct) })}
     </span>
   );
 };
@@ -112,7 +108,7 @@ const Ring: React.FC<{ value: number | null; color: string; label: string }> = (
 // ───────────────────────────────── main component ─────────────────────────────────
 
 const AdminDashboard: React.FC = () => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { profile, organizationId, role } = useAuth();
   const { canRead } = usePermissions();
   const { canAccess, loading: planLoading } = usePlanGate();
@@ -200,18 +196,18 @@ const AdminDashboard: React.FC = () => {
   useEffect(() => {
     if (!organizationId || !overview) return;
     if (role !== 'admin' && role !== 'manager') return;
-    const key = `dash_focus_${organizationId}_${new Date().toISOString().slice(0, 10)}`;
+    const key = `dash_focus_${organizationId}_${new Date().toISOString().slice(0, 10)}_${i18n.language}`;
     const cached = localStorage.getItem(key);
     if (cached) { setAiFocus(cached); return; }
     let cancelled = false;
-    apiAIInsightsAsk('Сформулируй один короткий совет владельцу учебного центра: на чём сфокусироваться сегодня. 1–2 предложения, по делу, с конкретными цифрами из данных. Без вступлений.')
+    apiAIInsightsAsk(t('dashboard.aiFocusPrompt', 'Сформулируй один короткий совет владельцу учебного центра: на чём сфокусироваться сегодня. 1–2 предложения, по делу, с конкретными цифрами из данных. Без вступлений.'))
       .then((res: any) => {
         const a = res?.data?.answer;
         if (a && !cancelled) { localStorage.setItem(key, a); setAiFocus(a); }
       })
       .catch(() => {});
     return () => { cancelled = true; };
-  }, [organizationId, overview, role]);
+  }, [organizationId, overview, role, i18n.language]);
 
   if (loading || planLoading) return <DashboardSkeleton />;
 
@@ -238,7 +234,7 @@ const AdminDashboard: React.FC = () => {
     : hour < 18
     ? t('dashboard.goodAfternoon', 'Добрый день')
     : t('dashboard.goodEvening', 'Добрый вечер');
-  const dateLabel = new Date().toLocaleDateString('ru-RU', { weekday: 'long', day: 'numeric', month: 'long' });
+  const dateLabel = new Date().toLocaleDateString(intlLocale(), { weekday: 'long', day: 'numeric', month: 'long' });
 
   const studentsNew = overview?.students?.newThisMonth ?? 0;
   const studentsNewPrev = overview?.students?.newLastMonthToDate ?? overview?.students?.newLastMonth ?? 0;
@@ -250,16 +246,16 @@ const AdminDashboard: React.FC = () => {
     const risk = overview?.risk?.total || 0;
     const overdue = showFinance ? (financeCur?.overdueCount || 0) : 0;
     const newLeads = overview?.leads?.new || 0;
-    if (risk) parts.push(`${risk} ${plural(risk, 'ученик', 'ученика', 'учеников')} в зоне риска`);
-    if (overdue) parts.push(`${overdue} ${plural(overdue, 'просроченный платёж', 'просроченных платежа', 'просроченных платежей')}`);
-    if (!parts.length && newLeads) parts.push(`${newLeads} ${plural(newLeads, 'новая заявка ждёт', 'новые заявки ждут', 'новых заявок ждут')} ответа`);
+    if (risk) parts.push(t('dashboard.focusRisk', { count: risk, defaultValue: '{{count}} учеников в зоне риска' }));
+    if (overdue) parts.push(t('dashboard.focusOverdue', { count: overdue, defaultValue: '{{count}} просроченных платежей' }));
+    if (!parts.length && newLeads) parts.push(t('dashboard.focusLeads', { count: newLeads, defaultValue: '{{count}} новых заявок ждут ответа' }));
     let s = parts.length
-      ? `Стоит разобрать сегодня: ${parts.join(' и ')}.`
-      : 'Всё под контролем — критичных задач на сегодня нет.';
+      ? t('dashboard.focusToday', 'Стоит разобрать сегодня: {{items}}.', { items: parts.join(t('dashboard.focusJoin', ' и ')) })
+      : t('dashboard.focusAllClear', 'Всё под контролем — критичных задач на сегодня нет.');
     if (showFinance && prevComparable && prevIncome > 0) {
       const pct = Math.round(((financeCur.totalIncome - prevIncome) / prevIncome) * 100);
-      if (pct > 0) s += ` Выручка на ${pct}% выше, чем на эту дату в прошлом месяце.`;
-      else if (pct < 0) s += ` Выручка на ${Math.abs(pct)}% ниже, чем на эту дату в прошлом месяце.`;
+      if (pct > 0) s += ' ' + t('dashboard.focusRevenueUp', 'Выручка на {{pct}}% выше, чем на эту дату в прошлом месяце.', { pct });
+      else if (pct < 0) s += ' ' + t('dashboard.focusRevenueDown', 'Выручка на {{pct}}% ниже, чем на эту дату в прошлом месяце.', { pct: Math.abs(pct) });
     }
     return s;
   };
@@ -278,13 +274,13 @@ const AdminDashboard: React.FC = () => {
     // наступил). Директор кликал по «7 просроченных» и попадал в список из 40
     // строк — ровно то расхождение «плитка ≠ экран, куда она ведёт», которого
     // этот дашборд не должен допускать.
-    showFinance && (financeCur?.overdueCount || 0) > 0 && { icon: CreditCard, color: 'red', label: 'Просроченные платежи', count: financeCur.overdueCount, to: '/finances?tab=debts&overdue=1' },
+    showFinance && (financeCur?.overdueCount || 0) > 0 && { icon: CreditCard, color: 'red', label: t('dashboard.attnOverdue', 'Просроченные платежи'), count: financeCur.overdueCount, to: '/finances?tab=debts&overdue=1' },
     // `attention` (churn + debt), not `total` (churn only): this tile links to the
     // students list filtered by the same rule, so the two must show one number.
     // `risk === null` — у роли нет доступа к ростеру: плитки просто нет, а не «0».
-    (overview?.risk?.attention ?? overview?.risk?.total ?? 0) > 0 && { icon: AlertTriangle, color: 'orange', label: 'Ученики в зоне риска', count: overview.risk.attention ?? overview.risk.total, to: '/students?risk=1' },
-    (overview?.leads?.new || 0) > 0 && { icon: Inbox, color: 'blue', label: 'Новые заявки', count: overview.leads.new, to: '/leads' },
-    (overview?.pendingHomework || 0) > 0 && { icon: FileText, color: 'slate', label: 'Непроверенные ДЗ', count: overview.pendingHomework, to: '/homework/review' },
+    (overview?.risk?.attention ?? overview?.risk?.total ?? 0) > 0 && { icon: AlertTriangle, color: 'orange', label: t('dashboard.attnRisk', 'Ученики в зоне риска'), count: overview.risk.attention ?? overview.risk.total, to: '/students?risk=1' },
+    (overview?.leads?.new || 0) > 0 && { icon: Inbox, color: 'blue', label: t('dashboard.attnLeads', 'Новые заявки'), count: overview.leads.new, to: '/leads' },
+    (overview?.pendingHomework || 0) > 0 && { icon: FileText, color: 'slate', label: t('dashboard.attnHomework', 'Непроверенные ДЗ'), count: overview.pendingHomework, to: '/homework/review' },
   ].filter(Boolean) as { icon: React.ElementType; color: string; label: string; count: number; to: string }[];
 
   // ── Leads funnel ──
@@ -292,9 +288,9 @@ const AdminDashboard: React.FC = () => {
   const leads = overview?.leads || { new: 0, contacted: 0, resolved: 0, total: 0, unassignedBranch: 0 };
   const showFunnel = !!overview?.leads;
   const funnel = [
-    { label: 'Новые', v: leads.new, bar: 'bg-indigo-300 dark:bg-indigo-500/60' },
-    { label: 'В работе', v: leads.contacted, bar: 'bg-indigo-400 dark:bg-indigo-500/80' },
-    { label: 'Записаны', v: leads.resolved, bar: 'bg-indigo-600' },
+    { label: t('dashboard.funnelNew', 'Новые'), v: leads.new, bar: 'bg-indigo-300 dark:bg-indigo-500/60' },
+    { label: t('dashboard.funnelContacted', 'В работе'), v: leads.contacted, bar: 'bg-indigo-400 dark:bg-indigo-500/80' },
+    { label: t('dashboard.funnelEnrolled', 'Записаны'), v: leads.resolved, bar: 'bg-indigo-600' },
   ];
   const funnelMax = Math.max(leads.new, leads.contacted, leads.resolved, 1);
   const conversion = leads.total ? Math.round((leads.resolved / leads.total) * 100) : 0;
@@ -314,16 +310,16 @@ const AdminDashboard: React.FC = () => {
     subThisMonth: string,
   ): { value: string; sub: string } => {
     if (thisMonth != null) return { value: `${thisMonth}%`, sub: subThisMonth };
-    if (allTime != null) return { value: `${allTime}%`, sub: 'за всё время · в этом месяце данных нет' };
-    return { value: '—', sub: 'нет данных' };
+    if (allTime != null) return { value: `${allTime}%`, sub: t('dashboard.allTimeNoMonth', 'за всё время · в этом месяце данных нет') };
+    return { value: '—', sub: t('dashboard.noData', 'нет данных') };
   };
   const score = monthlyMetric(
     perf?.avgScoreThisMonth, perf?.avgScore,
-    `${perf?.attemptsThisMonth || 0} ${plural(perf?.attemptsThisMonth || 0, 'тест', 'теста', 'тестов')} в этом месяце`,
+    t('dashboard.testsThisMonth', { count: perf?.attemptsThisMonth || 0, defaultValue: '{{count}} тестов в этом месяце' }),
   );
   const attend = monthlyMetric(
     att?.rateThisMonth, att?.rateAvg,
-    `${att?.lessonsThisMonth || 0} ${plural(att?.lessonsThisMonth || 0, 'отметка', 'отметки', 'отметок')} в этом месяце`,
+    t('dashboard.marksThisMonth', { count: att?.lessonsThisMonth || 0, defaultValue: '{{count}} отметок в этом месяце' }),
   );
   // Кольца ниже подписываются тем же периодом, что и показанные в них значения.
   const ringsAreMonthly = perf?.avgScoreThisMonth != null || att?.rateThisMonth != null;
@@ -334,17 +330,17 @@ const AdminDashboard: React.FC = () => {
 
   const chartData = (chartPeriod === 'current_month' ? financeCur : chartMetrics)?.chartData || [];
   const PERIODS: { id: Period; label: string }[] = [
-    { id: 'current_month', label: 'Месяц' },
-    { id: 'last_month', label: 'Прошлый' },
-    { id: 'quarter', label: 'Квартал' },
-    { id: 'year', label: 'Год' },
+    { id: 'current_month', label: t('dashboard.periodMonth', 'Месяц') },
+    { id: 'last_month', label: t('dashboard.periodLast', 'Прошлый') },
+    { id: 'quarter', label: t('finances.periodQuarter', 'Квартал') },
+    { id: 'year', label: t('finances.periodYear', 'Год') },
   ];
 
   const FunnelCard = !showFunnel ? null : (
     <Card className="p-4 sm:p-5">
       <CardTitle icon={Target} iconClass="text-indigo-500"
-        right={<span className="text-[11px] text-slate-400">конверсия {conversion}%</span>}>
-        Воронка заявок
+        right={<span className="text-[11px] text-slate-400">{t('dashboard.conversion', 'конверсия {{pct}}%', { pct: conversion })}</span>}>
+        {t('dashboard.leadsFunnel', 'Воронка заявок')}
       </CardTitle>
       {leads.total === 0 ? (
         <p className="text-sm text-slate-400 py-6 text-center">
@@ -352,8 +348,8 @@ const AdminDashboard: React.FC = () => {
             // Заявки без филиала в филиальный срез не входят (то же правило, что
             // у денег). Молчаливый «нет заявок» под выбранным филиалом выглядел
             // бы поломкой — объясняем, куда они делись.
-            ? `В этом филиале заявок нет. Ещё ${leads.unassignedBranch} — без филиала, они видны в режиме «Все филиалы».`
-            : 'Заявок пока нет — подключите Telegram-бот для приёма лидов.'}
+            ? t('dashboard.noLeadsInBranch', 'В этом филиале заявок нет. Ещё {{n}} — без филиала, они видны в режиме «Все филиалы».', { n: leads.unassignedBranch })
+            : t('dashboard.noLeads', 'Заявок пока нет — подключите Telegram-бот для приёма лидов.')}
         </p>
       ) : (
         <div className="space-y-3 mt-1">
@@ -372,8 +368,8 @@ const AdminDashboard: React.FC = () => {
             {/* Воронка накопительная: она отвечает на «сколько заявок в каждой
                 стадии СЕЙЧАС», а не «сколько пришло за месяц». Подписываем — иначе
                 конверсия читается как месячная и выглядит застывшей. */}
-            за всё время · {leads.newThisMonth || 0} {plural(leads.newThisMonth || 0, 'новая заявка', 'новые заявки', 'новых заявок')} в этом месяце
-            {leads.unassignedBranch > 0 && activeBranchId ? ` · ещё ${leads.unassignedBranch} без филиала` : ''}
+            {t('dashboard.funnelAllTime', { count: leads.newThisMonth || 0, defaultValue: 'за всё время · {{count}} новых заявок в этом месяце' })}
+            {leads.unassignedBranch > 0 && activeBranchId ? ` · ${t('dashboard.funnelUnassigned', 'ещё {{n}} без филиала', { n: leads.unassignedBranch })}` : ''}
           </p>
         </div>
       )}
@@ -381,7 +377,7 @@ const AdminDashboard: React.FC = () => {
   );
 
   const quickLinks = [
-    { to: '/leads', icon: Bot, label: 'Заявки' },
+    { to: '/leads', icon: Bot, label: t('dashboard.quickLeads', 'Заявки') },
     { to: '/materials', icon: FileText, label: t('nav.materials', 'Материалы') },
     { to: '/quiz/library', icon: Gamepad2, label: t('nav.quizLibrary', 'Викторины') },
     { to: '/schedule', icon: CalendarClock, label: t('nav.schedule', 'Расписание') },
@@ -411,7 +407,7 @@ const AdminDashboard: React.FC = () => {
               <div className="mt-3 flex items-start gap-2 bg-slate-800/70 border border-slate-700/60 rounded-xl px-3.5 py-2.5 max-w-2xl">
                 <Sparkles className="w-3.5 h-3.5 text-indigo-400 mt-0.5 shrink-0" />
                 <p className="text-[13px] text-slate-300 leading-relaxed">
-                  <span className="text-indigo-400 font-medium">Фокус дня. </span>{focusLine}
+                  <span className="text-indigo-400 font-medium">{t('dashboard.focusOfDay', 'Фокус дня.')} </span>{focusLine}
                 </p>
               </div>
             </div>
@@ -421,7 +417,7 @@ const AdminDashboard: React.FC = () => {
                   onClick={() => { localStorage.removeItem('planula_onboarding_admin_dismissed'); window.location.reload(); }}
                   className="inline-flex items-center gap-2 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white px-3.5 py-2 rounded-xl text-sm font-medium transition-all border border-slate-700"
                 >
-                  <Sparkles className="w-3.5 h-3.5" /> Онбординг
+                  <Sparkles className="w-3.5 h-3.5" /> {t('dashboard.onboarding', 'Онбординг')}
                 </button>
               )}
               <Link to="/org-settings" className="inline-flex items-center gap-2 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white px-3.5 py-2 rounded-xl text-sm font-medium transition-all border border-slate-700">
@@ -451,34 +447,34 @@ const AdminDashboard: React.FC = () => {
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         {showFinance ? (
           <>
-            <KpiCard label="Выручка за месяц" value={`${fmt(financeCur.totalIncome)} с.`} icon={TrendingUp}
+            <KpiCard label={t('dashboard.kpiRevenue', 'Выручка за месяц')} value={formatMoney(financeCur.totalIncome)} icon={TrendingUp}
               iconBg="bg-emerald-50 text-emerald-600 dark:bg-emerald-900/30"
               sub={<PctDelta cur={financeCur.totalIncome} prev={prevIncome} comparable={prevComparable} />} />
-            <KpiCard label="Чистая прибыль" value={`${fmt(financeCur.netProfit)} с.`} icon={Wallet}
+            <KpiCard label={t('finances.profit', 'Чистая прибыль')} value={formatMoney(financeCur.netProfit)} icon={Wallet}
               iconBg="bg-blue-50 text-blue-600 dark:bg-blue-900/30"
               sub={<>
                 <PctDelta cur={financeCur.netProfit} prev={prevProfit} comparable={prevComparable} />
-                {financeCur.totalIncome > 0 && <span className="text-[11px] text-slate-400">маржа {Math.round((financeCur.netProfit / financeCur.totalIncome) * 100)}%</span>}
+                {financeCur.totalIncome > 0 && <span className="text-[11px] text-slate-400">{t('dashboard.margin', 'маржа {{pct}}%', { pct: Math.round((financeCur.netProfit / financeCur.totalIncome) * 100) })}</span>}
               </>} />
-            <KpiCard label="Новые ученики" value={fmt(studentsNew)} icon={UserPlus}
+            <KpiCard label={t('dashboard.kpiNewStudents', 'Новые ученики')} value={fmt(studentsNew)} icon={UserPlus}
               iconBg="bg-indigo-50 text-indigo-600 dark:bg-indigo-900/30"
               sub={studentsDelta !== 0
                 ? <span className={`text-[11px] font-medium inline-flex items-center gap-0.5 ${studentsDelta > 0 ? 'text-emerald-600' : 'text-rose-500'}`}>
-                    {studentsDelta > 0 ? <ArrowUpRight className="w-3 h-3" /> : <ArrowDownRight className="w-3 h-3" />} {studentsDelta > 0 ? '+' : ''}{studentsDelta} к прошлому
+                    {studentsDelta > 0 ? <ArrowUpRight className="w-3 h-3" /> : <ArrowDownRight className="w-3 h-3" />} {t('dashboard.vsPrevDelta', '{{delta}} к прошлому', { delta: `${studentsDelta > 0 ? '+' : ''}${studentsDelta}` })}
                   </span>
-                : <span className="text-[11px] text-slate-400">в этом месяце</span>} />
+                : <span className="text-[11px] text-slate-400">{t('dashboard.thisMonth', 'в этом месяце')}</span>} />
             {/* Плитка про долг ведёт сразу на «Долги», а не на «Обзор».
                 Число — ВСЯ непогашенная дебиторка (включая счета, чей срок ещё
                 не наступил), поэтому ссылка ведёт в «все неоплаченные»: она
                 открывает ровно то множество, которое здесь просуммировано.
                 Просрочка — отдельная подпись и отдельная ссылка. */}
-            <KpiCard label="Долги" value={`${fmt(financeCur.outstandingDebt)} с.`} icon={AlertTriangle} highlight to="/finances?tab=debts&unpaid=1"
+            <KpiCard label={t('finances.debts', 'Долги')} value={formatMoney(financeCur.outstandingDebt)} icon={AlertTriangle} highlight to="/finances?tab=debts&unpaid=1"
               iconBg="bg-amber-100 text-amber-600 dark:bg-amber-900/40"
               sub={<>
                 <span className="text-[11px] text-amber-700 dark:text-amber-500 font-medium">
                   {(financeCur.overdueCount || 0) > 0
-                    ? `из них ${financeCur.overdueCount} ${plural(financeCur.overdueCount, 'просрочка', 'просрочки', 'просрочек')}`
-                    : 'просрочек нет'}
+                    ? t('dashboard.overdueOfThem', { count: financeCur.overdueCount, defaultValue: 'из них {{count}} просрочек' })
+                    : t('dashboard.noOverdue', 'просрочек нет')}
                 </span>
                 <ChevronRight className="w-3.5 h-3.5 text-amber-600/70" />
               </>} />
@@ -492,18 +488,18 @@ const AdminDashboard: React.FC = () => {
                 ростер и тем же memberHoldsRole, что и список /students. */}
             <KpiCard label={t('dashboard.totalStudents', 'Студенты')} value={fmt(overview?.students?.active ?? dashStats?.totalStudents)} icon={GraduationCap}
               iconBg="bg-indigo-50 text-indigo-600 dark:bg-indigo-900/30"
-              sub={<span className="text-[11px] text-slate-400">{activeBranchId ? 'активных в филиале' : 'активных'}</span>} to="/students" />
-            <KpiCard label="Новые ученики" value={fmt(studentsNew)} icon={UserPlus}
+              sub={<span className="text-[11px] text-slate-400">{activeBranchId ? t('dashboard.activeInBranch', 'активных в филиале') : t('dashboard.active', 'активных')}</span>} to="/students" />
+            <KpiCard label={t('dashboard.kpiNewStudents', 'Новые ученики')} value={fmt(studentsNew)} icon={UserPlus}
               iconBg="bg-emerald-50 text-emerald-600 dark:bg-emerald-900/30"
               sub={studentsDelta !== 0
                 ? <span className={`text-[11px] font-medium inline-flex items-center gap-0.5 ${studentsDelta > 0 ? 'text-emerald-600' : 'text-rose-500'}`}>
-                    {studentsDelta > 0 ? <ArrowUpRight className="w-3 h-3" /> : <ArrowDownRight className="w-3 h-3" />} {studentsDelta > 0 ? '+' : ''}{studentsDelta} к прошлому
+                    {studentsDelta > 0 ? <ArrowUpRight className="w-3 h-3" /> : <ArrowDownRight className="w-3 h-3" />} {t('dashboard.vsPrevDelta', '{{delta}} к прошлому', { delta: `${studentsDelta > 0 ? '+' : ''}${studentsDelta}` })}
                   </span>
-                : <span className="text-[11px] text-slate-400">в этом месяце</span>} />
-            <KpiCard label="Средний балл" value={score.value} icon={BarChart3}
+                : <span className="text-[11px] text-slate-400">{t('dashboard.thisMonth', 'в этом месяце')}</span>} />
+            <KpiCard label={t('studentDashboard.avgScore', 'Средний балл')} value={score.value} icon={BarChart3}
               iconBg="bg-blue-50 text-blue-600 dark:bg-blue-900/30"
               sub={<span className="text-[11px] text-slate-400">{score.sub}</span>} />
-            <KpiCard label="Посещаемость" value={attend.value} icon={UsersRound}
+            <KpiCard label={t('rating.col.attendance', 'Посещаемость')} value={attend.value} icon={UsersRound}
               iconBg="bg-amber-50 text-amber-600 dark:bg-amber-900/30"
               sub={<span className="text-[11px] text-slate-400">{attend.sub}</span>} />
           </>
@@ -518,11 +514,11 @@ const AdminDashboard: React.FC = () => {
           Никогда не складываем и не вычитаем — только показываем рядом. */}
       {showFinance && !!activeBranchId && (unassignedIncome > 0 || unassignedDebt > 0) && (
         <p className="text-[11px] text-slate-400 -mt-2 px-1">
-          Не привязано к филиалу и потому не вошло в цифры выше:
-          {unassignedIncome > 0 && <> доход {fmt(unassignedIncome)} с.</>}
+          {t('dashboard.unassignedNote', 'Не привязано к филиалу и потому не вошло в цифры выше:')}
+          {unassignedIncome > 0 && <> {t('dashboard.unassignedIncome', 'доход {{amount}}', { amount: formatMoney(unassignedIncome) })}</>}
           {unassignedIncome > 0 && unassignedDebt > 0 && ' ·'}
-          {unassignedDebt > 0 && <> долг {fmt(unassignedDebt)} с.</>}
-          {' — видно в режиме «Все филиалы».'}
+          {unassignedDebt > 0 && <> {t('dashboard.unassignedDebt', 'долг {{amount}}', { amount: formatMoney(unassignedDebt) })}</>}
+          {' — ' + t('dashboard.unassignedTail', 'видно в режиме «Все филиалы».')}
         </p>
       )}
 
@@ -547,12 +543,12 @@ const AdminDashboard: React.FC = () => {
                     ))}
                   </div>
                 }>
-                Движение средств
+                {t('finances.cashFlow', 'Движение средств')}
               </CardTitle>
               {chartData.length === 0 ? (
                 <div className="h-64 flex flex-col items-center justify-center text-slate-400 text-sm gap-1">
                   <Wallet className="w-7 h-7 text-slate-300 dark:text-slate-600" />
-                  Нет операций за период
+                  {t('dashboard.noOperations', 'Нет операций за период')}
                 </div>
               ) : (
                 <div className="h-64">
@@ -571,7 +567,7 @@ const AdminDashboard: React.FC = () => {
                         contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)', background: '#1e293b', color: '#f8fafc' }}
                         itemStyle={{ fontSize: '13px', fontWeight: 600 }}
                         labelStyle={{ color: '#94a3b8', fontSize: '12px' }}
-                        formatter={(v: any, n: any) => [`${fmt(Number(v))} с.`, n === 'income' ? 'Доход' : 'Расход']} />
+                        formatter={(v: any, n: any) => [formatMoney(Number(v)), n === 'income' ? t('finances.chartIncome', 'Доход') : t('finances.chartExpense', 'Расход')]} />
                       <Area type="monotone" dataKey="income" stroke="#10b981" strokeWidth={2.5} fill="url(#dIncome)" name="income" />
                       <Area type="monotone" dataKey="expense" stroke="#f43f5e" strokeWidth={2.5} fill="url(#dExpense)" name="expense" />
                     </AreaChart>
@@ -588,11 +584,11 @@ const AdminDashboard: React.FC = () => {
         {/* Attention center */}
         <div className="flex-1 min-w-0">
           <Card className="p-4 sm:p-5 h-full">
-            <CardTitle icon={Bell} iconClass="text-amber-500">Требует внимания</CardTitle>
+            <CardTitle icon={Bell} iconClass="text-amber-500">{t('dashboard.needsAttention', 'Требует внимания')}</CardTitle>
             {attention.length === 0 ? (
               <div className="flex flex-col items-center justify-center text-center py-8 gap-2">
                 <CheckCircle2 className="w-8 h-8 text-emerald-500" />
-                <p className="text-sm text-slate-500 dark:text-slate-400">Всё под контролем.<br />Срочных задач нет.</p>
+                <p className="text-sm text-slate-500 dark:text-slate-400">{t('dashboard.allClear', 'Всё под контролем.')}<br />{t('dashboard.noUrgent', 'Срочных задач нет.')}</p>
               </div>
             ) : (
               <div className="space-y-1.5">
@@ -622,18 +618,18 @@ const AdminDashboard: React.FC = () => {
         {/* Today */}
         <Card className="p-4 sm:p-5">
           <CardTitle icon={CalendarClock} iconClass="text-indigo-500"
-            right={<Link to="/schedule" className="text-[11px] text-indigo-500 hover:text-indigo-600 font-medium">Всё →</Link>}>
-            Сегодня
+            right={<Link to="/schedule" className="text-[11px] text-indigo-500 hover:text-indigo-600 font-medium">{t('dashboard.viewAll', 'Все')} →</Link>}>
+            {t('schedule.today', 'Сегодня')}
           </CardTitle>
           {today.length === 0 ? (
-            <p className="text-sm text-slate-400 py-6 text-center">На сегодня занятий нет.</p>
+            <p className="text-sm text-slate-400 py-6 text-center">{t('dashboard.noLessonsToday', 'На сегодня занятий нет.')}</p>
           ) : (
             <div className="space-y-3 mt-1 max-h-[220px] overflow-y-auto">
               {today.slice(0, 6).map((e: any, i: number) => (
                 <div key={e.id || i} className="flex items-start gap-3">
                   <span className="text-[11px] font-semibold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/30 rounded-md px-2 py-1 shrink-0 tabular-nums">{e.startTime || '—'}</span>
                   <div className="min-w-0">
-                    <p className="text-[13px] font-medium text-slate-900 dark:text-white truncate">{e.title || 'Занятие'}</p>
+                    <p className="text-[13px] font-medium text-slate-900 dark:text-white truncate">{e.title || t('dashboard.lessonFallback', 'Занятие')}</p>
                     {(e.location || e.groupName || e.teacherName) && (
                       <p className="text-[11px] text-slate-400 truncate">{[e.location, e.groupName, e.teacherName].filter(Boolean).join(' · ')}</p>
                     )}
@@ -647,25 +643,25 @@ const AdminDashboard: React.FC = () => {
         {/* Learning metrics */}
         <Card className="p-4 sm:p-5">
           <CardTitle icon={GraduationCap} iconClass="text-slate-400"
-            right={<span className="text-[11px] text-slate-400">{ringsAreMonthly ? 'за этот месяц' : 'за всё время'}</span>}>
-            Показатели обучения
+            right={<span className="text-[11px] text-slate-400">{ringsAreMonthly ? t('dashboard.forThisMonth', 'за этот месяц') : t('dashboard.allTime', 'за всё время')}</span>}>
+            {t('dashboard.learningMetrics', 'Показатели обучения')}
           </CardTitle>
           {/* Кольца показывают ТОТ ЖЕ период, что и плитки выше, и период
               подписан в заголовке: раньше здесь молча висело всевременное
               среднее рядом со строкой «Тестов сдано в этом месяце». */}
           <div className="flex items-center justify-around mt-1">
-            <Ring value={perf?.avgScoreThisMonth ?? perf?.avgScore ?? null} color="#10b981" label="Средний балл" />
-            <Ring value={att?.rateThisMonth ?? att?.rateAvg ?? null} color="#3b82f6" label="Посещаемость" />
+            <Ring value={perf?.avgScoreThisMonth ?? perf?.avgScore ?? null} color="#10b981" label={t('studentDashboard.avgScore', 'Средний балл')} />
+            <Ring value={att?.rateThisMonth ?? att?.rateAvg ?? null} color="#3b82f6" label={t('rating.col.attendance', 'Посещаемость')} />
           </div>
           <div className="mt-3 pt-3 border-t border-slate-100 dark:border-slate-700/50 space-y-1.5">
             <div className="flex items-center justify-between text-xs">
-              <span className="text-slate-500 dark:text-slate-400">Тестов сдано в этом месяце</span>
+              <span className="text-slate-500 dark:text-slate-400">{t('dashboard.testsPassedMonth', 'Тестов сдано в этом месяце')}</span>
               <span className="font-semibold text-slate-900 dark:text-white">{perf?.attemptsThisMonth ?? 0}</span>
             </div>
             <div className="flex items-center justify-between text-xs">
               {/* Прогулы — только неуважительные пропуски; посещаемость выше
                   считает «уважительную» пропуском, но в это число она не идёт. */}
-              <span className="text-slate-500 dark:text-slate-400">Пропусков без причины в этом месяце</span>
+              <span className="text-slate-500 dark:text-slate-400">{t('dashboard.unexcusedMonth', 'Пропусков без причины в этом месяце')}</span>
               <span className="font-semibold text-slate-900 dark:text-white">{att?.absencesThisMonth ?? 0}</span>
             </div>
           </div>
@@ -681,7 +677,7 @@ const AdminDashboard: React.FC = () => {
             </div>
             <div>
               <h2 className="text-sm font-semibold text-slate-900 dark:text-white">{t('dashboard.branchAnalytics', 'Аналитика по филиалам')}</h2>
-              <p className="text-[11px] text-slate-400">{branchData.totalBranches} {t('dashboard.branches', 'филиалов')}</p>
+              <p className="text-[11px] text-slate-400">{t('dashboard.branchesCount', { count: branchData.totalBranches, defaultValue: '{{count}} филиалов' })}</p>
             </div>
           </div>
           <div className="overflow-x-auto">

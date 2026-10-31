@@ -66,10 +66,10 @@ const TeacherSettingsPage: React.FC = () => {
         phone: phone.trim(),
         language,
       });
-      setSuccess(t('common.saved') || 'Saved');
+      setSuccess(t('common.saved', 'Сохранено'));
       setTimeout(() => setSuccess(''), 3000);
     } catch (e: any) {
-      setError(e.message || 'Error');
+      setError(e.message || t('common.error', 'Ошибка'));
     } finally {
       setSaving(false);
     }
@@ -178,7 +178,7 @@ const TeacherSettingsPage: React.FC = () => {
                 <div className="relative group">
                   <div className="w-24 h-24 rounded-full overflow-hidden bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-3xl font-bold text-white shadow-lg shrink-0">
                     {avatarUrl ? (
-                      <img src={avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
+                      <img src={avatarUrl} alt={t('teacherSettings.avatarAlt', 'Аватар')} className="w-full h-full object-cover" />
                     ) : (
                       displayName?.[0]?.toUpperCase() || '?'
                     )}
@@ -245,7 +245,7 @@ const TeacherSettingsPage: React.FC = () => {
                   <option value="ru">🇷🇺 Русский</option>
                   <option value="en">🇬🇧 English</option>
                   <option value="kg">🇰🇬 Кыргызча</option>
-                  <option value="kk">🇰🇿 Қазақша</option>
+                  <option value="uz">🇺🇿 O'zbekcha</option>
                 </select>
               </div>
               <button onClick={handleSave} disabled={saving} className="mt-4 bg-primary-600 hover:bg-primary-700 text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2 transition-colors disabled:opacity-50">

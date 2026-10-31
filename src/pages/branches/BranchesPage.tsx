@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../contexts/AuthContext';
 import { usePermissions } from '../../contexts/PermissionsContext';
+import { useBranch } from '../../contexts/BranchContext';
 import { orgListBranches, orgCreateBranch, orgUpdateBranch, orgArchiveBranch } from '../../lib/api';
 import type { Branch } from '../../types';
 import { Building2, Plus, MapPin, Phone, Pencil, Archive, Check, Loader2, MessageCircle, User, Search, RefreshCw } from 'lucide-react';
@@ -13,6 +14,8 @@ const BranchesPage: React.FC = () => {
   const { t } = useTranslation();
   const { role } = useAuth();
   const { canWrite } = usePermissions();
+  // Сайдбар-переключатель держит свой список филиалов — без обновления новый филиал в нём не виден до перезагрузки.
+  const { refreshBranches } = useBranch();
 
   const [branches, setBranches] = useState<Branch[]>([]);
   const [loading, setLoading] = useState(true);
@@ -61,6 +64,7 @@ const BranchesPage: React.FC = () => {
       }
       resetForm();
       loadBranches();
+      refreshBranches();
     } catch (e: any) {
       toast.error(e.message || t('common.error'));
     } finally {
@@ -74,6 +78,7 @@ const BranchesPage: React.FC = () => {
       await orgArchiveBranch(id);
       toast.success(t('branches.archived', 'Филиал архивирован'));
       loadBranches();
+      refreshBranches();
     } catch (e: any) {
       toast.error(e.message || t('common.error'));
     }
@@ -118,7 +123,7 @@ const BranchesPage: React.FC = () => {
           <h1 className="text-3xl font-extrabold text-slate-900 dark:text-white mb-2">
             {t('nav.branches', 'Филиалы')}
           </h1>
-          <p className="text-slate-500 dark:text-slate-400 text-sm">{branches.length} всего</p>
+          <p className="text-slate-500 dark:text-slate-400 text-sm">{t('branches.totalCount', '{{count}} всего', { count: branches.length })}</p>
         </div>
         <div className="flex items-center gap-3 w-full sm:w-auto">
           <button onClick={loadBranches} className="p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-xl transition-colors">
@@ -263,7 +268,7 @@ const BranchesPage: React.FC = () => {
               {editingId ? t('branches.edit', 'Редактировать филиал') : t('branches.new', 'Новый филиал')}
             </h2>
             <p className="text-xs text-slate-500 mb-6">
-              {editingId ? 'Обновите данные филиала' : 'Заполните данные нового филиала'}
+              {editingId ? t('branches.editDesc', 'Обновите данные филиала') : t('branches.newDesc', 'Заполните данные нового филиала')}
             </p>
 
             <div className="space-y-4">
@@ -276,7 +281,7 @@ const BranchesPage: React.FC = () => {
                       className="w-full bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl pl-10 pr-4 py-3 text-sm focus:ring-2 focus:ring-slate-900 focus:border-slate-900 dark:focus:ring-white outline-none"
                       value={form.name}
                       onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
-                      placeholder="Центральный филиал"
+                      placeholder={t('branches.namePh', 'Центральный филиал')}
                       autoFocus
                     />
                   </div>
@@ -301,7 +306,7 @@ const BranchesPage: React.FC = () => {
                       className="w-full bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl pl-10 pr-4 py-3 text-sm focus:ring-2 focus:ring-slate-900 focus:border-slate-900 dark:focus:ring-white outline-none"
                       value={form.city}
                       onChange={e => setForm(f => ({ ...f, city: e.target.value }))}
-                      placeholder="Ош"
+                      placeholder={t('branches.cityPh', 'Ош')}
                     />
                   </div>
                 </div>
@@ -340,7 +345,7 @@ const BranchesPage: React.FC = () => {
                       className="w-full bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl pl-10 pr-4 py-3 text-sm focus:ring-2 focus:ring-slate-900 focus:border-slate-900 dark:focus:ring-white outline-none"
                       value={form.contactName || ''}
                       onChange={e => setForm(f => ({ ...f, contactName: e.target.value }))}
-                      placeholder="Менеджер Айгерим"
+                      placeholder={t('branches.contactPh', 'Менеджер Айгерим')}
                     />
                   </div>
                 </div>
@@ -352,18 +357,18 @@ const BranchesPage: React.FC = () => {
                   className="w-full bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-slate-900 focus:border-slate-900 dark:focus:ring-white outline-none"
                   value={form.address}
                   onChange={e => setForm(f => ({ ...f, address: e.target.value }))}
-                  placeholder="ул. Примерная, 123"
+                  placeholder={t('branches.addressPh', 'ул. Примерная, 123')}
                 />
               </div>
 
               {/* Coordinates */}
               <div className="bg-slate-50 dark:bg-slate-900/50 rounded-xl border border-slate-200 dark:border-slate-700 p-4">
                 <h4 className="text-xs font-semibold text-slate-700 dark:text-slate-300 mb-3 flex items-center gap-2">
-                  <MapPin className="w-3.5 h-3.5" /> Google Maps Координаты
+                  <MapPin className="w-3.5 h-3.5" /> {t('branches.coords', 'Координаты Google Maps')}
                 </h4>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-xs text-slate-500 mb-1">Широта</label>
+                    <label className="block text-xs text-slate-500 mb-1">{t('branches.latitude', 'Широта')}</label>
                     <input
                       type="number" step="any"
                       className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-sm outline-none focus:border-slate-900 dark:focus:border-white"
@@ -373,7 +378,7 @@ const BranchesPage: React.FC = () => {
                     />
                   </div>
                   <div>
-                    <label className="block text-xs text-slate-500 mb-1">Долгота</label>
+                    <label className="block text-xs text-slate-500 mb-1">{t('branches.longitude', 'Долгота')}</label>
                     <input
                       type="number" step="any"
                       className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-sm outline-none focus:border-slate-900 dark:focus:border-white"

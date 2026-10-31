@@ -1,6 +1,7 @@
 import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { MoreVertical } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 export interface RowMenuItem {
   label: string;
@@ -28,7 +29,9 @@ const ESTIMATED_ITEM_HEIGHT = 40;
  * Меню действий строки. Рисуется через портал: контейнер таблицы обрезан
  * `overflow-hidden`, внутри него выпадающий список был бы срезан.
  */
-const RowMenu: React.FC<Props> = ({ items, label = 'Действия', className = '', buttonClassName = 'p-1.5 rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors' }) => {
+const RowMenu: React.FC<Props> = ({ items, label: labelProp, className = '', buttonClassName = 'p-1.5 rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors' }) => {
+  const { t } = useTranslation();
+  const label = labelProp ?? t('common.actions', 'Действия');
   const [open, setOpen] = useState(false);
   const [pos, setPos] = useState<{ top: number; left: number } | null>(null);
   const btnRef = useRef<HTMLButtonElement>(null);

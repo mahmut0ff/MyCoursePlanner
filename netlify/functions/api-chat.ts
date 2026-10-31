@@ -215,6 +215,10 @@ async function resolveDirectory(
   for (const m of visible as any[]) {
     if (out.has(m.userId)) continue;
     const p: any = profiles[m.userId] || {};
+    // Запись без входа (журнал и оплаты) прочитать чат не может — писать ей некуда.
+    const canLogIn = p.hasLogin === true
+      || (!!(p.email || m.userEmail) && p.offlineStudent !== true && p.offlineTeacher !== true);
+    if (!canLogIn) continue;
     out.set(m.userId, {
       uid: m.userId,
       // Ни email, ни телефона: справочник чата — это «кому написать», а не выгрузка

@@ -15,9 +15,10 @@ import { minsToTime, freeGaps, timeToMins } from '../../lib/scheduleTime';
 import ConfirmDialog from '../../components/ui/ConfirmDialog';
 import EmptyState from '../../components/ui/EmptyState';
 import type { Classroom, Group, ScheduleEvent, UserProfile } from '../../types';
+import { intlLocale } from '../../lib/locale';
 
-const DAY_NAMES = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
-const DAY_FULL = ['Понедельник', 'Вторник', 'Среда', 'Четверг', 'Пятница', 'Суббота', 'Воскресенье'];
+const DAY_KEYS = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
+const DAY_FULL_RU = ['Понедельник', 'Вторник', 'Среда', 'Четверг', 'Пятница', 'Суббота', 'Воскресенье'];
 
 /** Рабочее окно, в котором считаем «свободно». */
 const DAY_START = 8 * 60;
@@ -98,7 +99,7 @@ const ClassroomsPage: React.FC = () => {
     return [...uids]
       .map(uid => teacherById.get(uid)?.displayName || null)
       .filter((n): n is string => !!n)
-      .sort((a, b) => a.localeCompare(b, 'ru'));
+      .sort((a, b) => a.localeCompare(b, intlLocale()));
   }, [groupById, teacherById]);
 
   const selected = useMemo(
@@ -168,7 +169,7 @@ const ClassroomsPage: React.FC = () => {
 
   const renderOccupancy = (c: Classroom) => {
     const events = eventsOf(c);
-    const byDay = DAY_NAMES.map((_, day) =>
+    const byDay = DAY_KEYS.map((_, day) =>
       events
         .filter(e => (e.dayOfWeek ?? -1) === day)
         .sort((a, b) => (timeToMins(a.startTime) ?? 0) - (timeToMins(b.startTime) ?? 0)));
@@ -182,7 +183,7 @@ const ClassroomsPage: React.FC = () => {
           return (
             <div key={day} className="rounded-2xl border border-slate-200 dark:border-slate-700 overflow-hidden">
               <p className="px-3 py-2 bg-slate-50 dark:bg-slate-900/40 text-[11px] font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400">
-                {DAY_FULL[day]}
+                {t(`schedule.${DAY_KEYS[day]}`, DAY_FULL_RU[day])}
               </p>
               <div className="p-2 space-y-1.5">
                 {list.length === 0 ? (
@@ -307,7 +308,7 @@ const ClassroomsPage: React.FC = () => {
                     <span className="inline-flex items-center gap-1">
                       <Clock className="w-3 h-3 shrink-0" />
                       {events.length
-                        ? t('classrooms.lessonsPerWeek', `${events.length} зан./нед.`)
+                        ? t('classrooms.lessonsPerWeek', '{{count}} зан./нед.', { count: events.length })
                         : t('classrooms.noLessons', 'нет занятий')}
                     </span>
                   </div>

@@ -59,7 +59,7 @@ export default function StudentGroupsPage() {
           <div>
             <h1 className="text-2xl font-bold text-slate-900 dark:text-white">{t('student.groups', 'Мои группы')}</h1>
             <p className="text-sm text-slate-500 dark:text-slate-400">
-              Группы, в которых вы состоите
+              {t('student.groupsPage.subtitle', 'Группы, в которых вы состоите')}
             </p>
           </div>
         </div>
@@ -77,10 +77,10 @@ export default function StudentGroupsPage() {
             <Users className="w-8 h-8 text-slate-400" />
           </div>
           <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-2">
-            Нет доступных групп
+            {t('student.groupsPage.emptyTitle', 'Нет доступных групп')}
           </h3>
           <p className="text-slate-500 dark:text-slate-400 max-w-sm mx-auto">
-            Вы пока не состоите ни в одной группе. Обратитесь к директору для добавления.
+            {t('student.groupsPage.emptyDesc', 'Вы пока не состоите ни в одной группе. Обратитесь к директору для добавления.')}
           </p>
         </div>
       ) : (
@@ -108,7 +108,7 @@ export default function StudentGroupsPage() {
                 <div className="flex gap-2 mb-6 mt-auto">
                   <div className="px-3 py-1.5 bg-slate-50 dark:bg-slate-700/50 rounded-lg border border-slate-100 dark:border-slate-600 flex items-center gap-1.5 text-xs font-medium text-slate-600 dark:text-slate-300">
                     <Users className="w-3.5 h-3.5" />
-                    {group.studentIds?.length || 0} ученик(ов)
+                    {t('student.groupsPage.students', { count: group.studentIds?.length || 0 })}
                   </div>
                 </div>
 
@@ -122,12 +122,12 @@ export default function StudentGroupsPage() {
                       className="w-full bg-[#1368CE] hover:bg-[#105ab3] text-white py-3 px-4 rounded-xl text-sm font-bold flex items-center justify-center gap-2 transition-all shadow-[0_4px_0_#0a4387] active:translate-y-[4px] active:shadow-[0_0px_0_#0a4387]"
                     >
                       <MessageCircle className="w-5 h-5" />
-                      {group.chatLinkTitle || 'Перейти в Чат'}
+                      {group.chatLinkTitle || t('student.groupsPage.openChat', 'Перейти в чат')}
                     </a>
                   ) : (
                     <div className="w-full bg-slate-100 dark:bg-slate-700/50 text-slate-400 dark:text-slate-500 py-3 px-4 rounded-xl text-sm font-medium flex items-center justify-center gap-2 cursor-not-allowed">
                       <MessageCircle className="w-5 h-5 opacity-50" />
-                      Чат не привязан
+                      {t('student.groupsPage.noChat', 'Чат не привязан')}
                     </div>
                   )}
                 </div>

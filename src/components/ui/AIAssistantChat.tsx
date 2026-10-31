@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Sparkles, X, Send, Loader2 } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { apiAIManagerChat } from '../../lib/api';
 import type { OrgAIManagerSettings } from '../../types';
 
@@ -15,6 +16,7 @@ interface Props {
 }
 
 export const AIAssistantChat: React.FC<Props> = ({ organizationId, settings }) => {
+  const { t } = useTranslation();
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputValue, setInputValue] = useState('');
@@ -26,7 +28,7 @@ export const AIAssistantChat: React.FC<Props> = ({ organizationId, settings }) =
     if (messages.length === 0 && settings.greetingMessage) {
       // Intercept the legacy English default that might be saved in existing database records
       const greeting = settings.greetingMessage === 'Hello! How can I help you today?' 
-        ? 'Здравствуйте! Чем я могу вам помочь?' 
+        ? t('aiChat.greeting', 'Здравствуйте! Чем я могу вам помочь?')
         : settings.greetingMessage;
 
       setMessages([{
@@ -35,7 +37,7 @@ export const AIAssistantChat: React.FC<Props> = ({ organizationId, settings }) =
         content: greeting
       }]);
     }
-  }, [settings.greetingMessage, messages.length]);
+  }, [settings.greetingMessage, messages.length, t]);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -64,17 +66,17 @@ export const AIAssistantChat: React.FC<Props> = ({ organizationId, settings }) =
       const aiMsg: Message = { 
         id: (Date.now() + 1).toString(), 
         role: 'assistant', 
-        content: res.reply || 'Sorry, I encountered an error answering that.' 
+        content: res.reply || t('aiChat.replyError', 'Не удалось получить ответ. Попробуйте ещё раз.')
       };
       setMessages(prev => [...prev, aiMsg]);
       
     } catch (err: any) {
       console.error('Chat error:', err);
-      const errorMsg = err?.message || 'Unknown error';
+      const errorMsg = err?.message || t('aiChat.unknownError', 'Неизвестная ошибка');
       setMessages(prev => [...prev, {
         id: (Date.now() + 1).toString(),
         role: 'assistant',
-        content: '⚠️ Ошибка: ' + errorMsg
+        content: t('aiChat.errorPrefix', '⚠️ Ошибка: {{msg}}', { msg: errorMsg })
       }]);
     } finally {
       setIsLoading(false);
@@ -89,9 +91,9 @@ export const AIAssistantChat: React.FC<Props> = ({ organizationId, settings }) =
   };
 
   const suggestedQuestions = settings.faq?.slice(0, 3).map(f => f.question) || [
-    'Какие курсы вы предлагаете?',
-    'Связь с менеджером',
-    'Где вы находитесь?'
+    t('aiChat.suggest1', 'Какие курсы вы предлагаете?'),
+    t('aiChat.suggest2', 'Связь с менеджером'),
+    t('aiChat.suggest3', 'Где вы находитесь?')
   ];
 
   if (!isOpen) {
@@ -99,7 +101,7 @@ export const AIAssistantChat: React.FC<Props> = ({ organizationId, settings }) =
       <button
         onClick={() => setIsOpen(true)}
         className="fixed bottom-6 right-6 w-14 h-14 bg-primary-600 hover:bg-primary-700 text-white rounded-full shadow-2xl flex items-center justify-center transition-transform hover:scale-105 z-50 animate-bounce"
-        aria-label="Open SabakHub AI"
+        aria-label={t('aiChat.open', 'Открыть SabakHub AI')}
       >
         <Sparkles className="w-7 h-7" />
       </button>
@@ -122,7 +124,7 @@ export const AIAssistantChat: React.FC<Props> = ({ organizationId, settings }) =
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
                 <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
               </span>
-              В сети
+              {t('presence.online', 'В сети')}
             </p>
           </div>
         </div>
@@ -203,7 +205,7 @@ export const AIAssistantChat: React.FC<Props> = ({ organizationId, settings }) =
             value={inputValue}
             onChange={(e) => setInputValue(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder="Введите сообщение..."
+            placeholder={t('aiChat.placeholder', 'Введите сообщение...')}
             className="w-full bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-600 rounded-full pl-4 pr-12 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 text-slate-900 dark:text-white"
             disabled={isLoading}
           />
@@ -216,7 +218,7 @@ export const AIAssistantChat: React.FC<Props> = ({ organizationId, settings }) =
           </button>
         </div>
         <div className="text-[10px] text-center text-slate-400 mt-2">
-          ИИ может допускать неточности. Уточняйте важную информацию у менеджеров.
+          {t('aiChat.disclaimer', 'ИИ может допускать неточности. Уточняйте важную информацию у менеджеров.')}
         </div>
       </div>
     </div>

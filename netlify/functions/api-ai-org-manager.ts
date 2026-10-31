@@ -1,5 +1,6 @@
 import type { Handler, HandlerEvent } from '@netlify/functions';
 import { adminDb } from './utils/firebase-admin';
+import { AI_MODEL } from './utils/ai';
 import { verifyAuth, jsonResponse, badRequest, unauthorized, forbidden, ok } from './utils/auth';
 import { notifyOrgAdmins } from './utils/notifications';
 import { planHasAIManager } from './utils/plan-limits';
@@ -208,7 +209,7 @@ ${branches.length ? branches.join('\n') : 'No public branches listed.'}
 ${isFirstMessage ? 'IMPORTANT: This is the first message from the user. You MUST reply by starting with the Configured Greeting Message exactly as written, then naturally address what they asked.' : ''}
 Review the Chat History and respond accurately to the final user message. Do NOT output raw generic JSON or code blocks.`;
 
-      const selectedModel = 'gemini-2.5-flash';
+      const selectedModel = AI_MODEL;
 
       console.log('AI Chat: using model:', selectedModel);
 

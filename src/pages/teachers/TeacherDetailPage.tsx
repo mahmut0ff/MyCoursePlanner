@@ -25,6 +25,11 @@ import ConfirmDialog from '../../components/ui/ConfirmDialog';
 import EmptyState from '../../components/ui/EmptyState';
 import { Skeleton } from '../../components/ui/Skeleton';
 import RowMenu, { type RowMenuItem } from '../../components/ui/RowMenu';
+import i18n from '../../i18n';
+import { intlLocale } from '../../lib/locale';
+
+// Логин без почты (`…@teacher.sabakhub.app`, `…@tg.sabakhub.app`) — не адрес для писем.
+const isSyntheticEmail = (email?: string) => /@[a-z]+\.sabakhub\.app$/i.test(email || '');
 
 /**
  * Карточка преподавателя — экран НАГРУЗКИ И АКТИВНОСТИ.
@@ -109,14 +114,6 @@ const scoreTone = (s: number) =>
     : s >= 40 ? 'text-amber-600 dark:text-amber-400'
       : 'text-rose-600 dark:text-rose-400';
 
-const plural = (n: number, one: string, few: string, many: string) => {
-  const mod10 = n % 10;
-  const mod100 = n % 100;
-  if (mod10 === 1 && mod100 !== 11) return one;
-  if (mod10 >= 2 && mod10 <= 4 && (mod100 < 10 || mod100 >= 20)) return few;
-  return many;
-};
-
 /** Короткие номера без кода страны wa.me не откроет — то же правило, что в списках. */
 const toWhatsappNumber = (phone?: string) => {
   const digits = (phone || '').replace(/\D/g, '');
@@ -126,9 +123,9 @@ const toWhatsappNumber = (phone?: string) => {
 const relativeDay = (iso: string | null): string => {
   if (!iso) return '—';
   const days = Math.floor((Date.now() - new Date(iso).getTime()) / 86_400_000);
-  if (days <= 0) return 'сегодня';
-  if (days === 1) return 'вчера';
-  return `${days} ${plural(days, 'день', 'дня', 'дней')} назад`;
+  if (days <= 0) return i18n.t('teachers.detail.today', 'сегодня');
+  if (days === 1) return i18n.t('teachers.detail.yesterday', 'вчера');
+  return i18n.t('teachers.detail.daysAgo', { count: days });
 };
 
 const TeacherDetailPage: React.FC = () => {
@@ -219,12 +216,12 @@ const TeacherDetailPage: React.FC = () => {
       if (!ids.includes(uid)) {
         await orgUpdateGroup({ id: target.id, teacherIds: [...ids, uid] });
         setAllGroups(prev => prev.map(g => (g.id === target.id ? { ...g, teacherIds: [...ids, uid] } : g)));
-        toast.success('Преподаватель назначен на группу');
+        toast.success(t('teachers.detail.assigned', 'Преподаватель назначен на группу'));
       }
       setShowAssign(false);
       setSelectedGroupId('');
     } catch (e: any) {
-      toast.error(e.message || 'Не удалось назначить');
+      toast.error(e.message || t('teachers.detail.assignFailed', 'Не удалось назначить'));
     } finally {
       setAssigning(false);
     }
@@ -239,11 +236,11 @@ const TeacherDetailPage: React.FC = () => {
         const ids = (target.teacherIds || []).filter(id => id !== uid);
         await orgUpdateGroup({ id: target.id, teacherIds: ids });
         setAllGroups(prev => prev.map(g => (g.id === target.id ? { ...g, teacherIds: ids } : g)));
-        toast.success('Преподаватель откреплён от группы');
+        toast.success(t('teachers.detail.unassigned', 'Преподаватель откреплён от группы'));
       }
       setUnassign(null);
     } catch (e: any) {
-      toast.error(e.message || 'Не удалось открепить');
+      toast.error(e.message || t('teachers.detail.unassignFailed', 'Не удалось открепить'));
     } finally {
       setUnassignBusy(false);
     }
@@ -257,11 +254,11 @@ const TeacherDetailPage: React.FC = () => {
       <div className="max-w-2xl mx-auto py-10">
         <EmptyState
           icon={Briefcase}
-          title={branchScoped ? 'Преподавателя нет в выбранном филиале' : 'Преподаватель не найден'}
+          title={branchScoped ? t('teachers.detail.notInBranch', 'Преподавателя нет в выбранном филиале') : t('teachers.detail.notFound', 'Преподаватель не найден')}
           description={branchScoped
-            ? 'Запись может относиться к другому филиалу — покажите все филиалы, чтобы её увидеть.'
-            : 'Запись удалена или ссылка устарела.'}
-          actionLabel={branchScoped ? 'Показать все филиалы' : 'К списку преподавателей'}
+            ? t('teachers.detail.notInBranchDesc', 'Запись может относиться к другому филиалу — покажите все филиалы, чтобы её увидеть.')
+            : t('teachers.detail.notFoundDesc', 'Запись удалена или ссылка устарела.')}
+          actionLabel={branchScoped ? t('teachers.detail.showAllBranches', 'Показать все филиалы') : t('teachers.detail.backToList', 'К списку преподавателей')}
           {...(branchScoped
             ? { onAction: () => setActiveBranch(null) }
             : { actionLink: '/teachers' })}
@@ -286,7 +283,7 @@ const TeacherDetailPage: React.FC = () => {
       onSelect: () => window.open(`https://wa.me/${waNumber}`, '_blank', 'noopener,noreferrer'),
     });
   }
-  if (teacher.email) {
+  if (teacher.email && !isSyntheticEmail(teacher.email)) {
     menuItems.push({
       label: t('common.writeEmail', 'Написать на почту'),
       icon: Mail,
@@ -297,7 +294,7 @@ const TeacherDetailPage: React.FC = () => {
     menuItems.push({
       label: t('common.copyPhone', 'Скопировать телефон'),
       icon: Copy,
-      onSelect: () => { navigator.clipboard.writeText(teacher.phone!); toast.success('Скопировано'); },
+      onSelect: () => { navigator.clipboard.writeText(teacher.phone!); toast.success(t('support.copied', 'Скопировано')); },
     });
   }
   if (canEditTeachers) {
@@ -310,7 +307,7 @@ const TeacherDetailPage: React.FC = () => {
   }
   if (canSeeActivity) {
     menuItems.push({
-      label: 'Открыть в «Активности»',
+      label: t('teachers.detail.openInActivity', 'Открыть в «Активности»'),
       icon: ExternalLink,
       separated: menuItems.length > 0,
       onSelect: () => { window.location.href = '/teacher-activity'; },
@@ -343,15 +340,15 @@ const TeacherDetailPage: React.FC = () => {
           <PresenceDot
             online={online}
             className="absolute -bottom-0.5 -right-0.5 w-3 h-3 ring-2 ring-white dark:ring-slate-900 rounded-full"
-            title={online ? 'В сети' : undefined}
+            title={online ? t('presence.online', 'В сети') : undefined}
           />
         </div>
 
         <div className="min-w-0 flex-1">
           <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">{teacher.displayName}</h1>
           <p className="mt-1 text-sm text-slate-500 dark:text-slate-400 flex flex-wrap items-center gap-x-2 gap-y-1">
-            <span>{online ? 'В сети' : lastSeenMs ? `Был(а) в сети ${relativeDay(new Date(lastSeenMs).toISOString())}` : 'Не в сети'}</span>
-            {teacher.email && <><Dot />{teacher.email}</>}
+            <span>{online ? t('presence.online', 'В сети') : lastSeenMs ? t('teachers.detail.lastSeenAgo', 'Был(а) в сети {{time}}', { time: relativeDay(new Date(lastSeenMs).toISOString()) }) : t('presence.offline', 'Не в сети')}</span>
+            {teacher.email && !isSyntheticEmail(teacher.email) && <><Dot />{teacher.email}</>}
             {teacher.phone && (
               <>
                 <Dot />
@@ -366,7 +363,7 @@ const TeacherDetailPage: React.FC = () => {
                     href={`https://wa.me/${waNumber}`}
                     target="_blank"
                     rel="noopener noreferrer"
-                    aria-label={`Написать ${teacher.displayName} в WhatsApp`}
+                    aria-label={t('teachers.detail.writeWhatsappTo', 'Написать {{name}} в WhatsApp', { name: teacher.displayName })}
                     className="text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors"
                   >
                     <MessageCircle className="w-4 h-4" />
@@ -397,30 +394,30 @@ const TeacherDetailPage: React.FC = () => {
           вдали от переключателя периода, их ноль читался как приговор
           преподавателю, а не как факт о двух выходных днях. */}
       <dl className="grid grid-cols-2 md:grid-cols-4 rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 divide-x divide-y md:divide-y-0 divide-slate-200 dark:divide-slate-700 overflow-hidden mb-8">
-        <Metric label="Групп" value={String(groups.length)} />
-        <Metric label="Курсов" value={String(courseCount)} />
+        <Metric label={t('teachers.detail.groupsMetric', 'Групп')} value={String(groups.length)} />
+        <Metric label={t('teachers.detail.coursesMetric', 'Курсов')} value={String(courseCount)} />
         <Metric
-          label="Учеников"
+          label={t('teachers.detail.studentsMetric', 'Учеников')}
           value={String(studentCount)}
-          hint={groups.length > 1 ? 'без повторов' : undefined}
+          hint={groups.length > 1 ? t('teachers.detail.noDuplicates', 'без повторов') : undefined}
         />
         <Metric
-          label="Был(а) в сети"
-          value={online ? 'сейчас' : lastSeenMs ? relativeDay(new Date(lastSeenMs).toISOString()) : '—'}
+          label={t('teachers.detail.lastSeen', 'Был(а) в сети')}
+          value={online ? t('teachers.detail.now', 'сейчас') : lastSeenMs ? relativeDay(new Date(lastSeenMs).toISOString()) : '—'}
         />
       </dl>
 
       {/* ═══ Нагрузка: группы ═══ */}
       <section className="mb-8">
-        <SectionHeading title="Группы" meta={groups.length > 0 ? `${groups.length}` : undefined} />
+        <SectionHeading title={t('teachers.detail.groups', 'Группы')} meta={groups.length > 0 ? `${groups.length}` : undefined} />
         <div className="rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 overflow-hidden">
           {failed.groups ? (
             <div className="p-4"><LoadError onRetry={() => window.location.reload()} /></div>
           ) : groups.length === 0 ? (
             <p className="px-4 py-6 text-sm text-slate-500 dark:text-slate-400 text-center">
-              Преподаватель не ведёт ни одной группы
+              {t('teachers.detail.noGroups', 'Преподаватель не ведёт ни одной группы')}
               {canEditTeachers && (
-                <> · <button onClick={() => setShowAssign(true)} className="font-medium text-primary-600 dark:text-primary-400 hover:underline">назначить</button></>
+                <> · <button onClick={() => setShowAssign(true)} className="font-medium text-primary-600 dark:text-primary-400 hover:underline">{t('teachers.detail.assignLower', 'назначить')}</button></>
               )}
             </p>
           ) : (
@@ -432,13 +429,13 @@ const TeacherDetailPage: React.FC = () => {
                       {g.name}
                     </p>
                     <p className="text-xs text-slate-500 dark:text-slate-400 truncate">
-                      {g.courseName || 'Без курса'} · <span className="tabular-nums">{(g.studentIds || []).length}</span> {plural((g.studentIds || []).length, 'ученик', 'ученика', 'учеников')}
+                      {g.courseName || t('teachers.detail.noCourse', 'Без курса')} · <span className="tabular-nums">{t('teachers.detail.students', { count: (g.studentIds || []).length })}</span>
                     </p>
                   </Link>
                   {canEditTeachers && (
                     <button
                       onClick={() => setUnassign({ id: g.id, name: g.name })}
-                      aria-label={`Открепить от группы ${g.name}`}
+                      aria-label={t('teachers.detail.unassignFrom', 'Открепить от группы {{name}}', { name: g.name })}
                       // Видно всегда, а не по hover: действие только по наведению
                       // недоступно с клавиатуры и с телефона. slate-500, а не 400:
                       // иконка — графический объект, ему нужен контраст ≥3:1.
@@ -457,7 +454,7 @@ const TeacherDetailPage: React.FC = () => {
                 onClick={() => setShowAssign(true)}
                 className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-sm font-medium border border-dashed border-slate-300 dark:border-slate-600 text-slate-500 hover:text-primary-600 hover:border-primary-400 dark:hover:text-primary-400 transition-colors"
               >
-                <Plus className="w-3.5 h-3.5" />Назначить группу
+                <Plus className="w-3.5 h-3.5" />{t('teachers.detail.assignGroup', 'Назначить группу')}
               </button>
             </div>
           )}
@@ -468,8 +465,8 @@ const TeacherDetailPage: React.FC = () => {
       {canSeeActivity && (
         <section className="mb-8">
           <SectionHeading
-            title="Активность"
-            action={{ label: 'Весь раздел', to: '/teacher-activity' }}
+            title={t('teachers.detail.activity', 'Активность')}
+            action={{ label: t('teachers.detail.wholeSection', 'Весь раздел'), to: '/teacher-activity' }}
           />
           <div className="rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 overflow-hidden">
             <div className="px-4 py-3 border-b border-slate-100 dark:border-slate-700 flex flex-wrap gap-1.5">
@@ -484,7 +481,7 @@ const TeacherDetailPage: React.FC = () => {
                       : 'text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600'
                   }`}
                 >
-                  {p.label}
+                  {t(`teacherActivity.period.${p.id}`, p.label)}
                 </button>
               ))}
             </div>
@@ -498,16 +495,16 @@ const TeacherDetailPage: React.FC = () => {
             {!failed.activity && (
               <dl className="grid grid-cols-3 divide-x divide-slate-200 dark:divide-slate-700 border-b border-slate-100 dark:border-slate-700">
                 <Metric
-                  label="KPI за период"
+                  label={t('teachers.detail.kpiPeriod', 'KPI за период')}
                   value={kpi ? String(kpi.kpiScore) : '—'}
                   valueClass={kpi && kpi.totalActions > 0 ? scoreTone(kpi.kpiScore) : undefined}
-                  hint="на ученика, к коллегам"
+                  hint={t('teachers.detail.kpiHint', 'на ученика, к коллегам')}
                 />
-                <Metric label="Активных дней" value={kpi ? String(kpi.activeDays) : '—'} />
+                <Metric label={t('teacherActivity.activeDaysShort', 'Активных дней')} value={kpi ? String(kpi.activeDays) : '—'} />
                 <Metric
-                  label="Действий"
+                  label={t('teachers.detail.actions', 'Действий')}
                   value={kpi ? String(kpi.totalActions) : '—'}
-                  hint={kpi ? `вовлечённость ${kpi.engagementPct ?? 0}% · стабильность ${kpi.consistencyPct}%` : undefined}
+                  hint={kpi ? t('teachers.detail.engagementLine', 'вовлечённость {{engagement}}% · стабильность {{consistency}}%', { engagement: kpi.engagementPct ?? 0, consistency: kpi.consistencyPct }) : undefined}
                 />
               </dl>
             )}
@@ -517,14 +514,14 @@ const TeacherDetailPage: React.FC = () => {
             ) : breakdown.length === 0 && (events?.length ?? 0) === 0 ? (
               <div className="px-4 py-6 text-center">
                 <p className="text-sm text-slate-500 dark:text-slate-400">
-                  За выбранный период действий не зафиксировано
+                  {t('teachers.detail.noActions', 'За выбранный период действий не зафиксировано')}
                 </p>
                 {period !== 'all' && (
                   <button
                     onClick={() => setPeriod('all')}
                     className="mt-1.5 text-sm font-medium text-primary-600 dark:text-primary-400 hover:underline"
                   >
-                    Посмотреть за всё время
+                    {t('teachers.detail.viewAllTime', 'Посмотреть за всё время')}
                   </button>
                 )}
               </div>
@@ -562,7 +559,7 @@ const TeacherDetailPage: React.FC = () => {
                             )}
                           </div>
                           <span className="shrink-0 text-xs text-slate-500 dark:text-slate-400 tabular-nums">
-                            {ev.createdAt ? new Date(ev.createdAt).toLocaleDateString('ru-RU') : ''}
+                            {ev.createdAt ? new Date(ev.createdAt).toLocaleDateString(intlLocale()) : ''}
                           </span>
                         </li>
                       );
@@ -578,7 +575,7 @@ const TeacherDetailPage: React.FC = () => {
       {/* ═══ Роли ═══ */}
       {isOrgAdmin && organizationId && (
         <section>
-          <SectionHeading title="Роли и доступ" />
+          <SectionHeading title={t('teachers.detail.rolesAccess', 'Роли и доступ')} />
           <div className="rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-4 py-3.5">
             <MemberRolesEditor uid={teacher.uid} orgId={organizationId} />
           </div>
@@ -597,26 +594,26 @@ const TeacherDetailPage: React.FC = () => {
       {showAssign && (
         <ConfirmDialog
           open
-          title="Назначить группу"
-          confirmLabel={assigning ? 'Назначаем…' : 'Назначить'}
+          title={t('teachers.detail.assignGroup', 'Назначить группу')}
+          confirmLabel={assigning ? t('teachers.detail.assigning', 'Назначаем…') : t('teachers.detail.assign', 'Назначить')}
           busy={assigning || !selectedGroupId}
           onConfirm={handleAssign}
           onClose={() => { setShowAssign(false); setSelectedGroupId(''); }}
           message={
             <div>
               <p className="mb-3">
-                Выберите группу для <b>{teacher.displayName}</b>. Преподаватель получит доступ к материалам курса.
+                {t('teachers.detail.assignPrompt', 'Выберите группу для {{name}}. Преподаватель получит доступ к материалам курса.', { name: teacher.displayName })}
               </p>
               {allGroups.filter(g => !(g.teacherIds || []).includes(uid!)).length === 0 ? (
-                <p className="text-amber-700 dark:text-amber-300">Свободных групп нет — во всех уже есть этот преподаватель.</p>
+                <p className="text-amber-700 dark:text-amber-300">{t('teachers.detail.noFreeGroups', 'Свободных групп нет — во всех уже есть этот преподаватель.')}</p>
               ) : (
                 <select
                   value={selectedGroupId}
                   onChange={e => setSelectedGroupId(e.target.value)}
-                  aria-label="Группа"
+                  aria-label={t('teachers.detail.group', 'Группа')}
                   className="w-full bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-xl px-4 py-2.5 text-sm font-medium text-slate-900 dark:text-white outline-none focus:border-primary-500"
                 >
-                  <option value="">— Выберите группу —</option>
+                  <option value="">{t('teachers.detail.selectGroup', '— Выберите группу —')}</option>
                   {allGroups.filter(g => !(g.teacherIds || []).includes(uid!)).map(g => (
                     <option key={g.id} value={g.id}>{g.name}{g.courseName ? ` (${g.courseName})` : ''}</option>
                   ))}
@@ -630,9 +627,9 @@ const TeacherDetailPage: React.FC = () => {
       <ConfirmDialog
         open={!!unassign}
         busy={unassignBusy}
-        title="Открепить от группы?"
-        confirmLabel="Открепить"
-        message={<>Преподаватель перестанет вести группу <b>{unassign?.name}</b> и потеряет доступ к её материалам. Журнал и оценки сохранятся.</>}
+        title={t('teachers.detail.unassignTitle', 'Открепить от группы?')}
+        confirmLabel={t('teachers.detail.unassign', 'Открепить')}
+        message={t('teachers.detail.unassignMessage', 'Преподаватель перестанет вести группу «{{name}}» и потеряет доступ к её материалам. Журнал и оценки сохранятся.', { name: unassign?.name })}
         onConfirm={runUnassign}
         onClose={() => setUnassign(null)}
       />
@@ -676,19 +673,22 @@ const Metric: React.FC<{
   </div>
 );
 
-const LoadError: React.FC<{ onRetry: () => void }> = ({ onRetry }) => (
+const LoadError: React.FC<{ onRetry: () => void }> = ({ onRetry }) => {
+  const { t } = useTranslation();
+  return (
   <p className="text-sm text-slate-600 dark:text-slate-300 flex items-center gap-2">
     <AlertTriangle className="w-4 h-4 text-amber-500 shrink-0" aria-hidden />
-    Не удалось загрузить
+    {t('teachers.detail.loadFailed', 'Не удалось загрузить')}
     <button onClick={onRetry} className="inline-flex items-center gap-1 font-medium text-primary-600 dark:text-primary-400 hover:underline">
-      <RotateCcw className="w-3.5 h-3.5" />Повторить
+      <RotateCcw className="w-3.5 h-3.5" />{t('finances.retry', 'Повторить')}
     </button>
   </p>
-);
+  );
+};
 
 /** Скелет вместо спиннера: экран сразу показывает свою форму. */
 const DetailSkeleton: React.FC = () => (
-  <div className="max-w-5xl mx-auto" aria-busy="true" aria-label="Загрузка карточки преподавателя">
+  <div className="max-w-5xl mx-auto" aria-busy="true" aria-label={i18n.t('teachers.detail.loadingCard', 'Загрузка карточки преподавателя')}>
     <Skeleton className="h-5 w-32 mb-5" />
     <div className="flex items-start gap-4 mb-6">
       <Skeleton className="w-14 h-14 rounded-2xl shrink-0" />

@@ -3,7 +3,7 @@
  */
 import type { Handler, HandlerEvent } from '@netlify/functions';
 import { adminDb } from './utils/firebase-admin';
-import { verifyAuth, isStaff, can, getOrgFilter, hasRole, ok, unauthorized, forbidden, badRequest, notFound, jsonResponse, logSecurityAudit } from './utils/auth';
+import { verifyAuth, isStaff, isSuperAdmin, can, getOrgFilter, hasRole, ok, unauthorized, forbidden, badRequest, notFound, jsonResponse, logSecurityAudit } from './utils/auth';
 import { notifyOrgStudents, createNotification } from './utils/notifications';
 
 const COLLECTION = 'examRooms';
@@ -40,9 +40,6 @@ const handler: Handler = async (event: HandlerEvent) => {
     }
 
     const orgFilter = getOrgFilter(user);
-    // Add isSuperAdmin from utils/auth
-    const { isSuperAdmin } = require('./utils/auth');
-
     let snap;
     if (isStaff(user)) {
       if (isSuperAdmin(user)) {
@@ -94,9 +91,17 @@ const handler: Handler = async (event: HandlerEvent) => {
       return ok({ joined: true });
     }
 
-    if (body.action === 'close') {
+    if (body.action === 'close' || body.action === 'start') {
       if (!isStaff(user) || !can(user, 'rooms', 'write')) return forbidden();
       if (!body.roomId) return badRequest('roomId required');
+      // Чужую комнату по id не трогаем: только своя организация или свой хост.
+      const room = (await adminDb.collection(COLLECTION).doc(body.roomId).get()).data();
+      if (!room) return notFound('Room not found');
+      const ownOrg = !!room.organizationId && room.organizationId === user.organizationId;
+      if (!isSuperAdmin(user) && !ownOrg && room.hostId !== user.uid) return forbidden();
+    }
+
+    if (body.action === 'close') {
       await adminDb.collection(COLLECTION).doc(body.roomId).update({ status: 'closed', closedAt: new Date().toISOString() });
       return ok({ closed: true });
     }

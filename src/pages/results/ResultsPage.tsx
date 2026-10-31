@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { intlLocale } from '../../lib/locale';
 import { useNavigate } from 'react-router-dom';
 import { orgGetResults, orgGetStudents } from '../../lib/api';
 import { Trophy, Search, Download, RefreshCw } from 'lucide-react';
@@ -29,7 +30,7 @@ const ResultsPage: React.FC = () => {
   const passRate = filtered.length > 0 ? Math.round((filtered.filter((r) => r.passed).length / filtered.length) * 100) : 0;
 
   const exportCSV = () => {
-    const rows = [`"${t('org.results.student')}","${t('org.results.exam')}","${t('org.results.score')}","${t('common.status')}","${t('org.results.date')}"`, ...filtered.map((r) => `"${r.studentName}","${r.examTitle}",${r.percentage}%,${r.passed ? t('org.results.passed') : t('org.results.failed')},${new Date(r.submittedAt).toLocaleDateString()}`)].join('\n');
+    const rows = [`"${t('org.results.student')}","${t('org.results.exam')}","${t('org.results.score')}","${t('common.status')}","${t('org.results.date')}"`, ...filtered.map((r) => `"${r.studentName}","${r.examTitle}",${r.percentage}%,${r.passed ? t('org.results.passed') : t('org.results.failed')},${new Date(r.submittedAt).toLocaleDateString(intlLocale())}`)].join('\n');
     const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([rows], { type: 'text/csv' })); a.download = 'results.csv'; a.click();
   };
 
@@ -38,15 +39,15 @@ const ResultsPage: React.FC = () => {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
         <div>
           <h1 className="text-2xl font-bold bg-gradient-to-r from-slate-900 to-slate-700 dark:from-white dark:to-slate-300 bg-clip-text text-transparent">{t('nav.results')}</h1>
-          <p className="text-sm font-medium text-slate-500 dark:text-slate-400 mt-1">{results.length} {t('org.results.total')}</p>
+          <p className="text-sm font-medium text-slate-500 dark:text-slate-400 mt-1">{t('results.totalCount', { count: results.length, defaultValue: '{{count}} результатов' })}</p>
         </div>
         <div className="flex items-center gap-2">
-          <button onClick={load} className="flex items-center justify-center p-2.5 text-slate-500 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-500/10 rounded-xl transition-all duration-200" title="Обновить">
+          <button onClick={load} className="flex items-center justify-center p-2.5 text-slate-500 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-500/10 rounded-xl transition-all duration-200" title={t('common.refresh', 'Обновить')}>
             <RefreshCw className="w-5 h-5" />
           </button>
           <button onClick={exportCSV} className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-white to-slate-50 dark:from-slate-800 dark:to-slate-800/80 border border-slate-200/80 dark:border-slate-700 rounded-xl text-sm font-semibold text-slate-700 dark:text-slate-200 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200">
             <Download className="w-4 h-4" />
-            Экспорт
+            {t('results.export', 'Экспорт')}
           </button>
         </div>
       </div>
@@ -117,7 +118,7 @@ const ResultsPage: React.FC = () => {
                       {r.passed ? t('org.results.passed') : t('org.results.failed')}
                     </span>
                   </td>
-                  <td className="px-6 py-4 text-sm font-medium text-slate-400 hidden md:table-cell">{new Date(r.submittedAt).toLocaleDateString()}</td>
+                  <td className="px-6 py-4 text-sm font-medium text-slate-400 hidden md:table-cell">{new Date(r.submittedAt).toLocaleDateString(intlLocale())}</td>
                 </tr>
               )})}
             </tbody>

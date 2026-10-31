@@ -75,7 +75,7 @@ export const AIGeneratorModal: React.FC<Props> = ({ isOpen, onClose, onSuccess, 
         setPrompt('');
         setFile(null);
       } else {
-        throw new Error('Invalid format returned');
+        throw new Error(t('ai.invalidFormat', 'ИИ вернул ответ в неверном формате'));
       }
     } catch (err: any) {
       console.error('AI Generation Error:', err);
@@ -129,12 +129,12 @@ export const AIGeneratorModal: React.FC<Props> = ({ isOpen, onClose, onSuccess, 
                   {isListening ? (
                     <>
                       <MicOff className="w-3.5 h-3.5" />
-                      {t('ai.stopListening', 'Стоп')}
+                      {t('ai.voice.stop', 'Стоп')}
                     </>
                   ) : (
                     <>
                       <Mic className="w-3.5 h-3.5" />
-                      {t('ai.startListening', 'Голос')}
+                      {t('ai.voice.voice', 'Голос')}
                     </>
                   )}
                 </button>
@@ -156,7 +156,7 @@ export const AIGeneratorModal: React.FC<Props> = ({ isOpen, onClose, onSuccess, 
                     <span className="animate-ping absolute h-full w-full rounded-full bg-red-400 opacity-75" />
                     <span className="relative rounded-full h-2.5 w-2.5 bg-red-500" />
                   </span>
-                  <span className="text-[10px] font-semibold text-red-500 uppercase tracking-wider">REC</span>
+                  <span className="text-[10px] font-semibold text-red-500 uppercase tracking-wider">{t('ai.voice.rec', 'Запись')}</span>
                 </div>
               )}
             </div>

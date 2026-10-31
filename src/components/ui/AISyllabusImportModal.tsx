@@ -1,6 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { Sparkles, X, FileText, UploadCloud, Loader2, Save, Trash2, Plus } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { useTranslation } from 'react-i18next';
 import { apiAIGenerateJob } from '../../lib/api';
 import { uploadAISource } from '../../services/storage.service';
 import type { SyllabusModule } from '../../types';
@@ -13,6 +14,7 @@ interface Props {
 }
 
 export const AISyllabusImportModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
+  const { t } = useTranslation();
   const [step, setStep] = useState<'upload' | 'preview'>('upload');
   const [file, setFile] = useState<File | null>(null);
   const [fileUrl, setFileUrl] = useState<string>('');
@@ -30,41 +32,41 @@ export const AISyllabusImportModal: React.FC<Props> = ({ isOpen, onClose, onSucc
 
   const handleGenerate = async () => {
     if (!file) {
-      toast.error('Пожалуйста, загрузите PDF или изображение.');
+      toast.error(t('ai.syllabus.pdfOrImage', 'Пожалуйста, загрузите PDF или изображение.'));
       return;
     }
 
     setLoading(true);
-    const toastId = toast.loading('Загрузка файла...');
-    setLoadingState('Загружаем файл в облако...');
+    const toastId = toast.loading(t('ai.syllabus.uploadingToast', 'Загрузка файла...'));
+    setLoadingState(t('ai.syllabus.stateUploading', 'Загружаем файл в облако...'));
 
     try {
       const uploadedUrl = await uploadAISource(file, 'syllabus-');
       setFileUrl(uploadedUrl);
 
-      setLoadingState('ИИ читает документ и извлекает структуру...');
-      toast.loading('ИИ анализирует силлабус...', { id: toastId });
+      setLoadingState(t('ai.syllabus.stateReading', 'ИИ читает документ и извлекает структуру...'));
+      toast.loading(t('ai.syllabus.analyzing', 'ИИ анализирует силлабус...'), { id: toastId });
       
       const res = await apiAIGenerateJob(
         { type: 'syllabus_extraction', fileUrl: uploadedUrl },
-        { onWait: (sec) => setLoadingState(`ИИ читает документ и извлекает структуру... ${sec} с`) },
+        { onWait: (sec) => setLoadingState(t('ai.syllabus.stateReadingSec', 'ИИ читает документ и извлекает структуру... {{sec}} с', { sec })) },
       );
       
       if (!res.data || !res.data.modules) {
-        throw new Error('ИИ вернул неполные данные');
+        throw new Error(t('ai.incompleteData', 'ИИ вернул неполные данные'));
       }
 
-      setSyllabusTitle(res.data.title || 'Новый силлабус');
+      setSyllabusTitle(res.data.title || t('ai.syllabus.newSyllabus', 'Новый силлабус'));
       setSyllabusDesc(res.data.description || '');
       
       // Map AI data to internal format with fresh IDs
       const mappedModules = (res.data.modules || []).map((mod: any, mIdx: number) => ({
         id: generateId(),
-        title: mod.title || `Модуль ${mIdx + 1}`,
+        title: mod.title || t('ai.syllabus.moduleN', 'Модуль {{n}}', { n: mIdx + 1 }),
         order: mod.order || mIdx,
         items: (mod.items || []).map((item: any, iIdx: number) => ({
           id: generateId(),
-          title: item.title || `Урок ${iIdx + 1}`,
+          title: item.title || t('ai.syllabus.lessonN', 'Урок {{n}}', { n: iIdx + 1 }),
           type: item.type === 'exam' || item.type === 'topic' ? item.type : 'lesson',
           order: item.order || iIdx
         }))
@@ -72,11 +74,11 @@ export const AISyllabusImportModal: React.FC<Props> = ({ isOpen, onClose, onSucc
 
       setModules(mappedModules);
       setStep('preview');
-      toast.success('Структура успешно извлечена!', { id: toastId });
+      toast.success(t('ai.syllabus.extracted', 'Структура успешно извлечена!'), { id: toastId });
 
     } catch (err: any) {
       console.error('Syllabus AI Error:', err);
-      toast.error(err.message || 'Ошибка распознавания силлабуса.', { id: toastId });
+      toast.error(err.message || t('ai.syllabus.recognizeFailed', 'Ошибка распознавания силлабуса.'), { id: toastId });
     } finally {
       setLoading(false);
       setLoadingState('');
@@ -85,11 +87,11 @@ export const AISyllabusImportModal: React.FC<Props> = ({ isOpen, onClose, onSucc
 
   const handleSave = () => {
     if (!syllabusTitle.trim()) {
-      toast.error('Введите название силлабуса');
+      toast.error(t('ai.syllabus.enterTitle', 'Введите название силлабуса'));
       return;
     }
     if (modules.length === 0) {
-      toast.error('Силлабус должен содержать хотя бы один модуль');
+      toast.error(t('ai.syllabus.needModule', 'Силлабус должен содержать хотя бы один модуль'));
       return;
     }
     
@@ -129,7 +131,7 @@ export const AISyllabusImportModal: React.FC<Props> = ({ isOpen, onClose, onSucc
       if (m.id !== modId) return m;
       return {
         ...m,
-        items: [...m.items, { id: generateId(), title: 'Новая тема', type: 'lesson', order: m.items.length }]
+        items: [...m.items, { id: generateId(), title: t('ai.syllabus.newTopic', 'Новая тема'), type: 'lesson', order: m.items.length }]
       };
     }));
   };
@@ -146,9 +148,9 @@ export const AISyllabusImportModal: React.FC<Props> = ({ isOpen, onClose, onSucc
                 <Sparkles className="w-5 h-5 animate-pulse" />
               </div>
               <div>
-                <h2 className="text-xl font-bold tracking-tight text-slate-900 dark:text-white">AI Импорт Силлабуса</h2>
+                <h2 className="text-xl font-bold tracking-tight text-slate-900 dark:text-white">{t('ai.syllabus.title', 'AI Импорт Силлабуса')}</h2>
                 <p className="text-xs font-medium text-blue-600 dark:text-blue-400">
-                  {step === 'upload' ? 'Извлечение структуры из PDF файлов' : 'Сверка распознанных данных'}
+                  {step === 'upload' ? t('ai.syllabus.subtitleUpload', 'Извлечение структуры из PDF файлов') : t('ai.syllabus.subtitlePreview', 'Сверка распознанных данных')}
                 </p>
               </div>
             </div>
@@ -162,7 +164,7 @@ export const AISyllabusImportModal: React.FC<Props> = ({ isOpen, onClose, onSucc
         {step === 'upload' && (
           <div className="p-6 space-y-5">
             <p className="text-sm text-slate-600 dark:text-slate-400">
-              Загрузите PDF файл с утвержденной учебной программой (силлабусом). Gemini проанализирует документ и автоматически составит план уроков по неделям.
+              {t('ai.syllabus.intro', 'Загрузите PDF файл с утвержденной учебной программой (силлабусом). Gemini проанализирует документ и автоматически составит план уроков по неделям.')}
             </p>
 
             <div className="bg-slate-50 dark:bg-slate-900/50 border border-dashed border-slate-300 dark:border-slate-700 rounded-xl p-6 flex flex-col items-center justify-center text-center transition-all hover:bg-slate-100 dark:hover:bg-slate-800/80 cursor-pointer" onClick={() => !file && fileInputRef.current?.click()}>
@@ -175,7 +177,7 @@ export const AISyllabusImportModal: React.FC<Props> = ({ isOpen, onClose, onSucc
                     <p className="font-semibold text-sm text-slate-900 dark:text-white truncate px-4">{file.name}</p>
                     <p className="text-xs text-slate-500 mb-3">{(file.size / 1024 / 1024).toFixed(2)} MB</p>
                     <button type="button" onClick={() => setFile(null)} className="text-xs text-red-500 font-medium hover:underline">
-                      Удалить и выбрать другой
+                      {t('ai.syllabus.removeAndPick', 'Удалить и выбрать другой')}
                     </button>
                   </div>
                 </div>
@@ -185,13 +187,13 @@ export const AISyllabusImportModal: React.FC<Props> = ({ isOpen, onClose, onSucc
                     <UploadCloud className="w-6 h-6 text-indigo-500" />
                   </div>
                   <h4 className="text-sm font-semibold text-slate-900 dark:text-white mb-1">
-                    Выберите PDF или Изображение
+                    {t('ai.syllabus.pickFile', 'Выберите PDF или Изображение')}
                   </h4>
-                  <p className="text-xs text-slate-500 mb-3">Максимальный размер: 10 MB</p>
-                  <span className="btn-secondary py-1.5 px-4 text-xs font-semibold">Обзор файлов</span>
+                  <p className="text-xs text-slate-500 mb-3">{t('ai.syllabus.maxSize', 'Максимальный размер: 10 MB')}</p>
+                  <span className="btn-secondary py-1.5 px-4 text-xs font-semibold">{t('ai.syllabus.browse', 'Обзор файлов')}</span>
                   <input type="file" className="hidden" accept="application/pdf,image/*" ref={fileInputRef} onChange={(e) => {
                     const f = e.target.files?.[0] || null;
-                    if (f && f.size > 10 * 1024 * 1024) { toast.error('Файл превышает 10 МБ. Выберите файл поменьше.'); return; }
+                    if (f && f.size > 10 * 1024 * 1024) { toast.error(t('ai.syllabus.tooLarge', 'Файл превышает 10 МБ. Выберите файл поменьше.')); return; }
                     setFile(f);
                   }} />
                 </>
@@ -207,10 +209,10 @@ export const AISyllabusImportModal: React.FC<Props> = ({ isOpen, onClose, onSucc
 
             <div className="flex gap-3 pt-2">
               <button type="button" onClick={onClose} className="btn-secondary flex-1" disabled={loading}>
-                Отмена
+                {t('common.cancel', 'Отмена')}
               </button>
               <button type="button" onClick={handleGenerate} disabled={loading || !file} className="btn-primary flex-[2] bg-indigo-600 hover:bg-indigo-700">
-                {loading ? 'Обработка...' : 'Извлечь Силлабус'}
+                {loading ? t('ai.syllabus.processing', 'Обработка...') : t('ai.syllabus.extract', 'Извлечь Силлабус')}
               </button>
             </div>
           </div>
@@ -222,21 +224,21 @@ export const AISyllabusImportModal: React.FC<Props> = ({ isOpen, onClose, onSucc
             {/* Left side: PDF Viewer */}
             <div className="w-1/2 border-r border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-900 p-4 flex flex-col hidden md:flex">
               <div className="mb-2 flex items-center justify-between">
-                <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-300">Оригинал документа</h3>
-                <span className="text-xs text-slate-500 px-2 py-1 bg-slate-200 dark:bg-slate-800 rounded-md">Только чтение</span>
+                <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-300">{t('ai.syllabus.original', 'Оригинал документа')}</h3>
+                <span className="text-xs text-slate-500 px-2 py-1 bg-slate-200 dark:bg-slate-800 rounded-md">{t('ai.syllabus.readOnly', 'Только чтение')}</span>
               </div>
               <div className="flex-1 bg-white dark:bg-slate-800 rounded-xl shadow-inner border border-slate-200 dark:border-slate-700 overflow-hidden">
-                <iframe src={`${fileUrl}#view=FitH`} className="w-full h-full border-0" title="PDF Preview" />
+                <iframe src={`${fileUrl}#view=FitH`} className="w-full h-full border-0" title={t('ai.syllabus.pdfPreview', 'Предпросмотр PDF')} />
               </div>
             </div>
 
             {/* Right side: Syllabus Builder Editor */}
             <div className="w-full md:w-1/2 flex flex-col bg-white dark:bg-slate-800">
               <div className="p-4 border-b border-slate-100 dark:border-slate-700">
-                <h3 className="text-sm font-semibold text-slate-900 dark:text-white mb-3">Распознанная структура</h3>
+                <h3 className="text-sm font-semibold text-slate-900 dark:text-white mb-3">{t('ai.syllabus.recognized', 'Распознанная структура')}</h3>
                 <div className="space-y-3">
                   <div>
-                    <label className="block text-xs font-medium text-slate-500 mb-1">Название курса / силлабуса</label>
+                    <label className="block text-xs font-medium text-slate-500 mb-1">{t('ai.syllabus.nameLabel', 'Название курса / силлабуса')}</label>
                     <input 
                       type="text" 
                       className="input py-1.5 text-sm font-semibold" 
@@ -245,7 +247,7 @@ export const AISyllabusImportModal: React.FC<Props> = ({ isOpen, onClose, onSucc
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-medium text-slate-500 mb-1">Описание</label>
+                    <label className="block text-xs font-medium text-slate-500 mb-1">{t('ai.syllabus.descLabel', 'Описание')}</label>
                     <textarea 
                       className="input py-1.5 text-sm min-h-[60px] resize-none" 
                       value={syllabusDesc} 
@@ -264,9 +266,9 @@ export const AISyllabusImportModal: React.FC<Props> = ({ isOpen, onClose, onSucc
                         value={mod.title} 
                         onChange={(e) => updateModuleTitle(mod.id, e.target.value)}
                         className="bg-transparent border-none p-0 focus:ring-0 text-sm font-bold text-slate-800 dark:text-slate-200 w-full"
-                        title="Нажмите чтобы отредактировать"
+                        title={t('ai.syllabus.clickToEdit', 'Нажмите чтобы отредактировать')}
                       />
-                      <span className="text-xs font-medium text-slate-400 shrink-0 ml-2">Модуль {mIndex + 1}</span>
+                      <span className="text-xs font-medium text-slate-400 shrink-0 ml-2">{t('ai.syllabus.moduleN', 'Модуль {{n}}', { n: mIndex + 1 })}</span>
                     </div>
                     <div className="p-2 space-y-1">
                       {mod.items.map((item) => (
@@ -285,25 +287,25 @@ export const AISyllabusImportModal: React.FC<Props> = ({ isOpen, onClose, onSucc
                       ))}
                       <button onClick={() => addItem(mod.id)} className="flex items-center gap-1.5 w-full py-1.5 px-2 text-xs font-medium text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-500/10 rounded-lg transition-colors mt-1">
                         <Plus className="w-3.5 h-3.5" />
-                        <span>Добавить тему</span>
+                        <span>{t('ai.syllabus.addTopic', 'Добавить тему')}</span>
                       </button>
                     </div>
                   </div>
                 ))}
                 {modules.length === 0 && (
                   <div className="text-center py-10 text-slate-500 text-sm">
-                    AI не распознал ни одного модуля. Заполните вручную или попробуйте другой документ.
+                    {t('ai.syllabus.noModules', 'AI не распознал ни одного модуля. Заполните вручную или попробуйте другой документ.')}
                   </div>
                 )}
               </div>
 
               <div className="p-4 border-t border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 flex gap-3 shrink-0">
                 <button type="button" onClick={() => setStep('upload')} className="btn-secondary">
-                  Назад к загрузке
+                  {t('ai.syllabus.backToUpload', 'Назад к загрузке')}
                 </button>
                 <button type="button" onClick={handleSave} className="btn-primary flex-1 bg-green-600 hover:bg-green-700 border-none shadow-md flex items-center justify-center gap-2">
                   <Save className="w-4 h-4" />
-                  Подтвердить структуру
+                  {t('ai.syllabus.confirm', 'Подтвердить структуру')}
                 </button>
               </div>
             </div>

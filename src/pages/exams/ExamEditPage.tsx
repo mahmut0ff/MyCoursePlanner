@@ -180,7 +180,7 @@ const ExamEditPage: React.FC = () => {
       if (isEdit && id) { await updateExam(id, examData); } else { examId = await createExam(examData as any); }
       await saveQuestions(examId!, questions.map((q, i) => ({ ...q, order: i })));
       navigate(`/exams/${examId}`);
-      toast.success(t('exams.savedSuccessfully', 'Exam saved successfully'));
+      toast.success(t('exams.savedSuccessfully', 'Экзамен сохранён'));
     } catch (e) { console.error(e); toast.error(t('exams.saveFailed', 'Failed to save exam')); }
     finally { setSaving(false); }
   };
@@ -398,7 +398,7 @@ const ExamEditPage: React.FC = () => {
                         <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">{t('quiz.mediaAttachment', 'Media Attachment')}</label>
                         {q.mediaUrl ? (
                           <div className="relative rounded-xl overflow-hidden border border-slate-200 dark:border-slate-700 bg-black/5 flex items-center justify-center min-h-[120px]">
-                            {q.mediaType === 'image' && <img src={q.mediaUrl} alt="Question Media" className="max-h-48 object-contain" />}
+                            {q.mediaType === 'image' && <img src={q.mediaUrl} alt={t('exams.questionMediaAlt', 'Медиа к вопросу')} className="max-h-48 object-contain" />}
                             {q.mediaType === 'video' && <video src={q.mediaUrl} controls className="max-h-48" />}
                             {q.mediaType === 'audio' && <audio src={q.mediaUrl} controls className="w-full mx-4" />}
                             <button onClick={() => updateQuestion(qIdx, { mediaUrl: undefined, mediaType: undefined })} className="absolute top-2 right-2 p-2 bg-red-500 text-white rounded-lg hover:bg-red-600 shadow-md transition-colors">
@@ -516,7 +516,7 @@ const ExamEditPage: React.FC = () => {
                             </div>
                           </div>
                           <span className={`text-sm font-semibold ${q.correctAnswer === opt ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-600 dark:text-slate-400'}`}>
-                            {opt === 'True' ? '✅ Верно (True)' : '❌ Неверно (False)'}
+                            {opt === 'True' ? `✅ ${t('exams.trueOption', 'Верно')}` : `❌ ${t('exams.falseOption', 'Неверно')}`}
                           </span>
                         </div>
                       ))}

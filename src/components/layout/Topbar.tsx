@@ -322,7 +322,7 @@ const Topbar: React.FC<TopbarProps> = ({ onMenuClick }) => {
           <button
             onClick={toggle}
             className="p-2 rounded-lg text-slate-400 hover:text-slate-600 dark:text-slate-500 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
-            title={isDark ? 'Light mode' : 'Dark mode'}
+            title={isDark ? t('common.lightMode', 'Светлая тема') : t('common.darkMode', 'Тёмная тема')}
           >
             {isDark ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
           </button>

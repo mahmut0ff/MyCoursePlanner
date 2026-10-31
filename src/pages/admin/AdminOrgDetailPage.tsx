@@ -20,21 +20,21 @@ const AdminOrgDetailPage: React.FC = () => {
   const load = async () => {
     if (!id) return;
     setLoading(true);
-    try { setOrg(await adminGetOrg(id)); } catch (e: any) { console.error(e); toast.error(e.message || 'Ошибка загрузки организации'); }
+    try { setOrg(await adminGetOrg(id)); } catch (e: any) { console.error(e); toast.error(e.message || t('admin.orgs.loadError', 'Ошибка загрузки организации')); }
     finally { setLoading(false); }
   };
   useEffect(() => { load(); }, [id]);
 
-  const handleSuspend = async () => { if (!confirm(t('admin.orgs.confirmSuspend'))) return; try { await adminSuspendOrg(id!); toast.success('Организация приостановлена'); load(); } catch (e: any) { toast.error(e.message || 'Ошибка'); } };
-  const handleActivate = async () => { try { await adminActivateOrg(id!); toast.success('Организация активирована'); load(); } catch (e: any) { toast.error(e.message || 'Ошибка'); } };
-  const handleDelete = async () => { if (!confirm(t('admin.orgs.confirmDelete'))) return; try { await adminDeleteOrg(id!); toast.success('Организация удалена'); navigate('/admin/organizations'); } catch (e: any) { toast.error(e.message || 'Ошибка'); } };
-  const handleChangePlan = async (planId: string) => { try { await adminChangePlan(id!, planId); toast.success(`Тариф изменён на ${t(`admin.plans.${planId}`)}`); load(); } catch (e: any) { toast.error(e.message || 'Ошибка'); } };
-  const handleAddNote = async () => { if (!noteText.trim() || !id) return; try { await adminAddOrgNote(id, noteText); setNoteText(''); toast.success('Заметка добавлена'); load(); } catch (e: any) { toast.error(e.message || 'Ошибка'); } };
+  const handleSuspend = async () => { if (!confirm(t('admin.orgs.confirmSuspend'))) return; try { await adminSuspendOrg(id!); toast.success(t('admin.orgs.suspendedToast', 'Организация приостановлена')); load(); } catch (e: any) { toast.error(e.message || t('common.error', 'Ошибка')); } };
+  const handleActivate = async () => { try { await adminActivateOrg(id!); toast.success(t('admin.orgs.activatedToast', 'Организация активирована')); load(); } catch (e: any) { toast.error(e.message || t('common.error', 'Ошибка')); } };
+  const handleDelete = async () => { if (!confirm(t('admin.orgs.confirmDelete'))) return; try { await adminDeleteOrg(id!); toast.success(t('admin.orgs.deletedToast', 'Организация удалена')); navigate('/admin/organizations'); } catch (e: any) { toast.error(e.message || t('common.error', 'Ошибка')); } };
+  const handleChangePlan = async (planId: string) => { try { await adminChangePlan(id!, planId); toast.success(t('admin.orgs.planChangedToast', 'Тариф изменён на {{plan}}', { plan: t(`admin.plans.${planId}`) })); load(); } catch (e: any) { toast.error(e.message || t('common.error', 'Ошибка')); } };
+  const handleAddNote = async () => { if (!noteText.trim() || !id) return; try { await adminAddOrgNote(id, noteText); setNoteText(''); toast.success(t('admin.orgs.noteAdded', 'Заметка добавлена')); load(); } catch (e: any) { toast.error(e.message || t('common.error', 'Ошибка')); } };
   const handleGiftPlan = async (planId: string) => {
     const planName = t(`admin.plans.${planId}`);
-    if (!confirm(`Подарить тариф «${planName}» бесплатно для организации «${org?.name}»?`)) return;
+    if (!confirm(t('admin.orgs.confirmGift', 'Подарить тариф «{{plan}}» бесплатно для организации «{{org}}»?', { plan: planName, org: org?.name }))) return;
     setGiftingPlan(planId);
-    try { await adminGiftPlan(id!, planId); toast.success(`🎁 Тариф «${planName}» подарен организации «${org?.name}»`); load(); } catch (e: any) { console.error(e); toast.error(e.message || 'Ошибка при подарке тарифа'); }
+    try { await adminGiftPlan(id!, planId); toast.success(t('admin.orgs.giftedToast', '🎁 Тариф «{{plan}}» подарен организации «{{org}}»', { plan: planName, org: org?.name })); load(); } catch (e: any) { console.error(e); toast.error(e.message || t('admin.orgs.giftError', 'Ошибка при подарке тарифа')); }
     finally { setGiftingPlan(null); }
   };
 
@@ -97,12 +97,12 @@ const AdminOrgDetailPage: React.FC = () => {
       <div className="bg-gradient-to-r from-emerald-50 to-teal-50 dark:from-emerald-900/20 dark:to-teal-900/20 border border-emerald-200 dark:border-emerald-800/50 rounded-xl p-5 mb-4">
         <div className="flex items-center gap-2 mb-3">
           <Gift className="w-4 h-4 text-emerald-600" />
-          <h2 className="text-sm font-semibold text-slate-900 dark:text-white">Подарить тариф бесплатно</h2>
+          <h2 className="text-sm font-semibold text-slate-900 dark:text-white">{t('admin.orgs.giftTitle', 'Подарить тариф бесплатно')}</h2>
           {org.subscription?.status === 'gifted' && (
-            <span className="ml-auto text-[10px] px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300 font-medium">🎁 Подарен</span>
+            <span className="ml-auto text-[10px] px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300 font-medium">{t('admin.orgs.giftedBadge', '🎁 Подарен')}</span>
           )}
         </div>
-        <p className="text-xs text-slate-500 dark:text-slate-400 mb-3">Организация получит тариф навсегда без оплаты</p>
+        <p className="text-xs text-slate-500 dark:text-slate-400 mb-3">{t('admin.orgs.giftDesc', 'Организация получит тариф навсегда без оплаты')}</p>
         <div className="flex gap-2">
           {['starter', 'professional', 'enterprise'].map((p) => (
             <button key={p} disabled={giftingPlan === p} onClick={() => handleGiftPlan(p)}
@@ -158,22 +158,22 @@ const AdminOrgDetailPage: React.FC = () => {
         <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-5 mt-4">
           <div className="flex items-center gap-2 mb-4">
             <History className="w-4 h-4 text-primary-500" />
-            <h2 className="text-sm font-semibold text-slate-900 dark:text-white">История организации</h2>
+            <h2 className="text-sm font-semibold text-slate-900 dark:text-white">{t('admin.orgs.history', 'История организации')}</h2>
           </div>
           <div className="space-y-3">
             {org.auditLogs.map((log: any) => (
               <div key={log.id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 border-b border-slate-100 dark:border-slate-700/50 pb-3 last:border-0 last:pb-0">
                 <div>
                   <p className="text-sm font-medium text-slate-800 dark:text-slate-200">
-                    {log.action === 'plan_gifted' ? 'Подарен тариф' : log.action === 'plan_changed' ? 'Изменен тариф' : log.action === 'org_updated' ? 'Организация обновлена' : log.action}
+                    {t(`admin.orgs.log.${log.action}`, log.action) as string}
                   </p>
                   {(log.after?.planId || log.before?.planId) && (
                     <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                      Тариф: {log.before?.planId || 'отсутствует'} → <span className="font-medium">{log.after?.planId}</span>
+                      {t('admin.orgs.plan', 'Тариф')}: {log.before?.planId || t('admin.orgs.planNone', 'отсутствует')} → <span className="font-medium">{log.after?.planId}</span>
                     </p>
                   )}
                   {log.metadata?.reason && (
-                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Причина: {log.metadata.reason}</p>
+                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">{t('admin.orgs.reason', 'Причина: {{reason}}', { reason: log.metadata.reason })}</p>
                   )}
                 </div>
                 <div className="text-left sm:text-right">

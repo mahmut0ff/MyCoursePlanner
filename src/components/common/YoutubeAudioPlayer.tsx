@@ -1,10 +1,12 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 
 interface Props {
   youtubeUrl: string;
 }
 
 const YoutubeAudioPlayer: React.FC<Props> = ({ youtubeUrl }) => {
+  const { t } = useTranslation();
   const getUrlParams = (url: string) => {
     try {
       if (!url) return null;
@@ -24,7 +26,7 @@ const YoutubeAudioPlayer: React.FC<Props> = ({ youtubeUrl }) => {
       <iframe
         className="absolute top-0 left-0 w-full h-full"
         src={`https://www.youtube.com/embed/${videoId}?autoplay=1&loop=1&playlist=${videoId}&controls=1`}
-        title="Background Study Music"
+        title={t('common.backgroundMusic', 'Фоновая музыка для учёбы')}
         frameBorder="0"
         allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
         allowFullScreen

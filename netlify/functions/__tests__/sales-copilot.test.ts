@@ -8,8 +8,8 @@ vi.mock('../utils/ai', () => ({
   generateWithFallback: vi.fn(),
   hasGeminiKey: vi.fn().mockReturnValue(true),
   recordAiUsage: vi.fn(),
-  AI_MODEL: 'gemini-2.5-flash',
-  AI_FALLBACK_MODEL: 'gemini-2.5-flash-lite',
+  AI_MODEL: 'gemini-3.8-flash',
+  AI_FALLBACK_MODEL: 'gemini-3.5-flash-lite',
 }));
 vi.mock('../utils/notifications', () => ({ notifyOrgAdmins: vi.fn() }));
 vi.mock('../utils/director-copilot', () => ({ toTelegramHtml: (s: string) => s }));

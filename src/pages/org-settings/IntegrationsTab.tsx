@@ -3,9 +3,11 @@ import { Save, Loader2, MessageCircle, Link2, Lock, HelpCircle } from 'lucide-re
 import { apiGetAIManagerSettings, apiUpdateAIManagerSettings } from '../../lib/api';
 import type { OrgAIManagerSettings } from '../../types';
 import toast from 'react-hot-toast';
+import { useTranslation, Trans } from 'react-i18next';
 import { usePlanGate } from '../../contexts/PlanContext';
 
 export const IntegrationsTab: React.FC<{ organizationId: string }> = ({ organizationId }) => {
+  const { t } = useTranslation();
   const [settings, setSettings] = useState<OrgAIManagerSettings | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -24,7 +26,7 @@ export const IntegrationsTab: React.FC<{ organizationId: string }> = ({ organiza
       .then((res) => setSettings(res.data))
       .catch((err) => {
         console.error(err);
-        toast.error('Не удалось загрузить интеграции');
+        toast.error(t('integrations.loadFailed', 'Не удалось загрузить интеграции'));
       })
       .finally(() => setLoading(false));
   }, [organizationId]);
@@ -38,10 +40,10 @@ export const IntegrationsTab: React.FC<{ organizationId: string }> = ({ organiza
     setSaving(true);
     try {
       await apiUpdateAIManagerSettings(settings);
-      toast.success('Интеграции сохранены (Telegram Webhook установлен)');
+      toast.success(t('integrations.saved', 'Интеграции сохранены (Telegram Webhook установлен)'));
     } catch (err: any) {
       console.error(err);
-      toast.error(err.message || 'Ошибка связи с API или Telegram');
+      toast.error(err.message || t('integrations.saveFailed', 'Ошибка связи с API или Telegram'));
     } finally {
       setSaving(false);
     }
@@ -56,7 +58,7 @@ export const IntegrationsTab: React.FC<{ organizationId: string }> = ({ organiza
   }
 
   if (!settings) {
-    return <div className="text-center py-12 text-slate-500">Не удалось загрузить интеграции.</div>;
+    return <div className="text-center py-12 text-slate-500">{t('integrations.loadFailedLong', 'Не удалось загрузить интеграции.')}</div>;
   }
 
   return (
@@ -67,9 +69,9 @@ export const IntegrationsTab: React.FC<{ organizationId: string }> = ({ organiza
             <div className="w-12 h-12 bg-amber-100 dark:bg-amber-900/30 text-amber-600 rounded-full flex items-center justify-center mb-4">
               <Lock className="w-6 h-6" />
             </div>
-            <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-2">Интеграции недоступны</h3>
+            <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-2">{t('integrations.unavailable', 'Интеграции недоступны')}</h3>
             <p className="text-sm text-slate-500 dark:text-slate-400 mb-6">
-              Ваш текущий тариф не поддерживает расширенные настройки интеграций и автоматизацию Telegram.
+              {t('integrations.unavailableDesc', 'Ваш текущий тариф не поддерживает расширенные настройки интеграций и автоматизацию Telegram.')}
             </p>
           </div>
         </div>
@@ -83,16 +85,17 @@ export const IntegrationsTab: React.FC<{ organizationId: string }> = ({ organiza
               <MessageCircle className="w-6 h-6" />
             </div>
             <div>
-              <h3 className="font-semibold text-slate-900 dark:text-white">Telegram Бот AI-ассистента</h3>
+              <h3 className="font-semibold text-slate-900 dark:text-white">{t('integrations.botTitle', 'Telegram Бот AI-ассистента')}</h3>
               <p className="text-sm text-slate-500 dark:text-slate-400">
-                Собственный Telegram-бот для автоматической поддержки ваших клиентов (Webhooks синхронизируются автоматически)
+                {t('integrations.botDesc', 'Собственный Telegram-бот для автоматической поддержки ваших клиентов (Webhooks синхронизируются автоматически)')}
               </p>
             </div>
           </div>
           <button 
             onClick={() => setShowHelp(!showHelp)} 
             className={`p-2 rounded-full transition-colors ${showHelp ? 'bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400' : 'text-slate-400 hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-slate-700'}`}
-            title="Как настроить бота?"
+            title={t('integrations.helpTitle', 'Как настроить бота?')}
+            aria-label={t('integrations.helpTitle', 'Как настроить бота?')}
           >
             <HelpCircle className="w-5 h-5" />
           </button>
@@ -101,16 +104,16 @@ export const IntegrationsTab: React.FC<{ organizationId: string }> = ({ organiza
         {showHelp && (
           <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-xl p-5 text-sm text-blue-900 dark:text-blue-100 animate-in fade-in slide-in-from-top-2">
             <h4 className="font-bold mb-3 flex items-center gap-2">
-              <MessageCircle className="w-4 h-4" /> Как создать своего бота?
+              <MessageCircle className="w-4 h-4" /> {t('integrations.howTo', 'Как создать своего бота?')}
             </h4>
             <ol className="list-decimal pl-5 space-y-2.5">
-              <li>Откройте Telegram и найдите официального бота <b><a href="https://t.me/BotFather" target="_blank" rel="noreferrer" className="underline hover:text-blue-600">@BotFather</a></b>.</li>
-              <li>Отправьте ему команду <code className="bg-white/50 dark:bg-black/20 px-1.5 py-0.5 rounded font-mono text-xs">/newbot</code>.</li>
-              <li>Придумайте <b>название бота</b> (оно будет отображаться в чатах над сообщениями, например: "AI Колледж").</li>
-              <li>Укажите <b>уникальное имя (username)</b>, которое обязательно должно заканчиваться на <code className="bg-white/50 dark:bg-black/20 px-1.5 py-0.5 rounded font-mono text-xs">bot</code> (например, <code>my_college_ai_bot</code>).</li>
-              <li>Скопируйте полученный <b>HTTP API Token</b> и вставьте его напрямую в поле ниже.</li>
+              <li><Trans i18nKey="integrations.step1" defaults="Откройте Telegram и найдите официального бота <b><a>@BotFather</a></b>." components={{ b: <b />, a: <a href="https://t.me/BotFather" target="_blank" rel="noreferrer" className="underline hover:text-blue-600" /> }} /></li>
+              <li><Trans i18nKey="integrations.step2" defaults="Отправьте ему команду <code>/newbot</code>." components={{ code: <code className="bg-white/50 dark:bg-black/20 px-1.5 py-0.5 rounded font-mono text-xs" /> }} /></li>
+              <li><Trans i18nKey="integrations.step3" defaults="Придумайте <b>название бота</b> (оно будет отображаться в чатах над сообщениями, например: «AI Колледж»)." components={{ b: <b /> }} /></li>
+              <li><Trans i18nKey="integrations.step4" defaults="Укажите <b>уникальное имя (username)</b>, которое обязательно должно заканчиваться на <code>bot</code> (например, <plain>my_college_ai_bot</plain>)." components={{ b: <b />, code: <code className="bg-white/50 dark:bg-black/20 px-1.5 py-0.5 rounded font-mono text-xs" />, plain: <code /> }} /></li>
+              <li><Trans i18nKey="integrations.step5" defaults="Скопируйте полученный <b>HTTP API Token</b> и вставьте его напрямую в поле ниже." components={{ b: <b /> }} /></li>
               <li className="pt-2 text-xs opacity-90 border-t border-blue-200/50 dark:border-blue-800/50">
-                <i>Совет:</i> Прямо в чате с @BotFather вы можете загрузить логотип бота (<code className="font-mono">/setuserpic</code>), короткое описание (<code className="font-mono">/setdescription</code>) и информацию о вашем учебном центре (<code className="font-mono">/setabouttext</code>). Это сделает профиль бота привлекательным и профессиональным.
+                <Trans i18nKey="integrations.tip" defaults="<i>Совет:</i> Прямо в чате с @BotFather вы можете загрузить логотип бота (<code>/setuserpic</code>), короткое описание (<code>/setdescription</code>) и информацию о вашем учебном центре (<code>/setabouttext</code>). Это сделает профиль бота привлекательным и профессиональным." components={{ i: <i />, code: <code className="font-mono" /> }} />
               </li>
             </ol>
           </div>
@@ -118,14 +121,14 @@ export const IntegrationsTab: React.FC<{ organizationId: string }> = ({ organiza
 
         <div>
           <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
-            Bot Token (API Ключ от @BotFather)
+            {t('integrations.tokenLabel', 'Bot Token (API Ключ от @BotFather)')}
           </label>
           <input
             type="text"
             value={settings.telegramBotToken || ''}
             onChange={e => update('telegramBotToken', e.target.value)}
             className="input"
-            placeholder="Например: 1234567890:AAH_XYZ..."
+            placeholder={t('integrations.tokenPh', 'Например: 1234567890:AAH_XYZ...')}
             disabled={!hasAccess}
           />
         </div>
@@ -134,7 +137,7 @@ export const IntegrationsTab: React.FC<{ organizationId: string }> = ({ organiza
           <div className="flex items-center gap-3 p-4 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400 border border-emerald-100 dark:border-emerald-800/30 rounded-xl">
             <Link2 className="w-5 h-5 flex-shrink-0" />
             <div className="text-sm">
-              <strong>Вебхук активен!</strong> Подключенный AI-ассистент: <a href={`https://t.me/${settings.telegramBotUsername}`} target="_blank" rel="noreferrer" className="font-bold hover:underline">@{settings.telegramBotUsername}</a>
+              <strong>{t('integrations.webhookActive', 'Вебхук активен!')}</strong> {t('integrations.connectedBot', 'Подключенный AI-ассистент:')} <a href={`https://t.me/${settings.telegramBotUsername}`} target="_blank" rel="noreferrer" className="font-bold hover:underline">@{settings.telegramBotUsername}</a>
             </div>
           </div>
         )}
@@ -144,7 +147,7 @@ export const IntegrationsTab: React.FC<{ organizationId: string }> = ({ organiza
       <div className="flex justify-end">
         <button onClick={handleSave} disabled={saving || !hasAccess} className="btn-primary flex items-center gap-2">
           {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-          Сохранить и активировать Webhook
+          {t('integrations.saveActivate', 'Сохранить и активировать Webhook')}
         </button>
       </div>
     </div>

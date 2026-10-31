@@ -1,4 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
+import { intlLocale } from '../../lib/locale';
 
 import { useAuth } from '../../contexts/AuthContext';
 import { orgGetCourses, orgGetGrades, orgGetJournal, orgGetGroups, apiGetOrgMembers } from '../../lib/api';
@@ -36,6 +38,7 @@ function getDaysForMonth(date: Date) {
 }
 
 export default function StudentDiaryPage() {
+  const { t } = useTranslation();
 
   const { profile } = useAuth();
   
@@ -94,7 +97,7 @@ export default function StudentDiaryPage() {
         if (Array.isArray(gradesRes)) {
           gradesRes.forEach((g: GradeEntry) => {
             if (!myCourseIds.has(g.courseId)) return;
-            const courseTitle = myCourses.find(c => c.id === g.courseId)?.title || 'Неизвестный курс';
+            const courseTitle = myCourses.find(c => c.id === g.courseId)?.title || t('student.diary.unknownCourse', 'Неизвестный курс');
             
             let resolvedDateStr: string | null = (g.lessonId || '').trim();
             
@@ -115,7 +118,7 @@ export default function StudentDiaryPage() {
         if (Array.isArray(journalRes)) {
           journalRes.forEach((j: JournalEntry) => {
             if (!myCourseIds.has(j.courseId)) return;
-            const courseTitle = myCourses.find(c => c.id === j.courseId)?.title || 'Неизвестный курс';
+            const courseTitle = myCourses.find(c => c.id === j.courseId)?.title || t('student.diary.unknownCourse', 'Неизвестный курс');
             const eventDate = (j.date || '').substring(0, 10);
             if (!eventDate || eventDate.length < 10) return;
             newEvents.push({ type: 'journal', id: `journal_${j.id}`, date: eventDate, data: j, courseTitle });
@@ -124,7 +127,7 @@ export default function StudentDiaryPage() {
 
         setEvents(newEvents);
       } catch (err: any) {
-         setError(err.message || 'Ошибка загрузки дневника');
+         setError(err.message || t('student.diary.loadError', 'Ошибка загрузки дневника'));
       } finally {
         setLoading(false);
       }
@@ -215,9 +218,9 @@ export default function StudentDiaryPage() {
       <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700/80 rounded-xl overflow-hidden shadow-sm">
         {/* Days of week header */}
         <div className="grid grid-cols-7 border-b border-slate-100 dark:border-slate-700/50 bg-slate-50/50 dark:bg-slate-900/30">
-          {['ПН', 'ВТ', 'СР', 'ЧТ', 'ПТ', 'СБ', 'ВС'].map((d) => (
-            <div key={d} className="py-3 text-center border-r border-slate-100 dark:border-slate-700/50 last:border-r-0">
-              <span className="text-[10px] sm:text-xs font-bold text-slate-500 uppercase tracking-wider">{d}</span>
+          {([['mon', 'Пн'], ['tue', 'Вт'], ['wed', 'Ср'], ['thu', 'Чт'], ['fri', 'Пт'], ['sat', 'Сб'], ['sun', 'Вс']] as const).map(([code, fb]) => (
+            <div key={code} className="py-3 text-center border-r border-slate-100 dark:border-slate-700/50 last:border-r-0">
+              <span className="text-[10px] sm:text-xs font-bold text-slate-500 uppercase tracking-wider">{t(`schedule.${code}`, fb)}</span>
             </div>
           ))}
         </div>
@@ -260,7 +263,7 @@ export default function StudentDiaryPage() {
                                {rec.grade ? (
                                   <span className="font-black text-[12px] ml-1.5 tracking-tight">{rec.grade.displayValue || rec.grade.value}</span>
                                ) : rec.journal ? (
-                                  <span className="font-black text-[11px] ml-1.5 opacity-80">{rec.journal.attendance === 'absent' ? 'Н' : rec.journal.attendance === 'late' ? 'ОПОЗД' : ''}</span>
+                                  <span className="font-black text-[11px] ml-1.5 opacity-80">{rec.journal.attendance === 'absent' ? t('student.diary.absentShort', 'Н') : rec.journal.attendance === 'late' ? t('student.diary.lateShort', 'ОПОЗД') : ''}</span>
                                ) : null}
                             </div>
                           </div>
@@ -283,9 +286,9 @@ export default function StudentDiaryPage() {
   };
 
   const currentMonthLabel = useMemo(() => {
-    const str = currentDate.toLocaleDateString('ru-RU', { month: 'long', year: 'numeric' });
+    const str = currentDate.toLocaleDateString(intlLocale(), { month: 'long', year: 'numeric' });
     return str.replace(' г.', '').replace(' г', '');
-  }, [currentDate]);
+  }, [currentDate, t]);
 
   return (
     <div className="max-w-[1400px] mx-auto pb-20 font-sans space-y-6 px-4 xl:px-0">
@@ -294,10 +297,10 @@ export default function StudentDiaryPage() {
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pt-6">
         <div>
           <h1 className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white uppercase tracking-tight">
-            Дневник
+            {t('student.diary.title', 'Дневник')}
           </h1>
           <p className="text-sm font-medium text-slate-500 mt-1">
-            Календарь оценок и посещаемости
+            {t('student.diary.subtitle', 'Календарь оценок и посещаемости')}
           </p>
         </div>
 
@@ -311,7 +314,7 @@ export default function StudentDiaryPage() {
                onChange={(e) => setSelectedCourseId(e.target.value)}
                className="bg-transparent pl-10 pr-8 py-2 text-sm font-bold text-slate-900 dark:text-white appearance-none outline-none w-full sm:w-[220px]"
              >
-               <option value="all" className="bg-white dark:bg-slate-800 text-slate-900 dark:text-white">Все предметы</option>
+               <option value="all" className="bg-white dark:bg-slate-800 text-slate-900 dark:text-white">{t('student.diary.allSubjects', 'Все предметы')}</option>
                {courses.map(c => (
                  <option key={c.id} value={c.id} className="bg-white dark:bg-slate-800 text-slate-900 dark:text-white">{c.title}</option>
                ))}

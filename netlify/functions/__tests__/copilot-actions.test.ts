@@ -8,7 +8,7 @@ vi.mock('../utils/ai', () => ({
   getModel: vi.fn(),
   hasGeminiKey: vi.fn().mockReturnValue(true),
   recordAiUsage: vi.fn(),
-  AI_MODEL: 'gemini-2.5-flash',
+  AI_MODEL: 'gemini-3.8-flash',
 }));
 vi.mock('../utils/notifications', () => ({ createNotification: vi.fn(), notifyOrgAdmins: vi.fn() }));
 vi.mock('../utils/onboarding', () => ({ createPendingInvite: vi.fn() }));

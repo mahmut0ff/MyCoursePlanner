@@ -11,14 +11,14 @@ import type { AuthUser } from './auth';
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY || '';
 
 /** Default model used across all AI features. */
-export const AI_MODEL = 'gemini-2.5-flash';
+export const AI_MODEL = 'gemini-3.8-flash';
 
 /**
  * Secondary model, tried automatically when the primary one errors — most
  * importantly a retired-model 404 (e.g. when Google sunsets a `-flash` revision).
  * Overridable via env so we can re-point it without a redeploy.
  */
-export const AI_FALLBACK_MODEL = process.env.GEMINI_FALLBACK_MODEL || 'gemini-2.5-flash-lite';
+export const AI_FALLBACK_MODEL = process.env.GEMINI_FALLBACK_MODEL || 'gemini-3.5-flash-lite';
 
 export function hasGeminiKey(): boolean {
   return !!GEMINI_API_KEY;

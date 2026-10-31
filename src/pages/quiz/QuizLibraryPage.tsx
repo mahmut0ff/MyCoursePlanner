@@ -15,11 +15,12 @@ import toast from 'react-hot-toast';
 type Tab = 'my' | 'shared' | 'discover';
 
 const DIFFICULTY_LABELS: Record<string, { label: string; color: string }> = {
-  easy: { label: 'Easy', color: '#26890c' },
-  medium: { label: 'Medium', color: '#d89e00' },
-  hard: { label: 'Hard', color: '#e21b3c' },
-  expert: { label: 'Expert', color: '#46178f' },
+  easy: { label: 'Лёгкая', color: '#26890c' },
+  medium: { label: 'Средняя', color: '#d89e00' },
+  hard: { label: 'Сложная', color: '#e21b3c' },
+  expert: { label: 'Экспертная', color: '#46178f' },
 };
+
 
 const QuizLibraryPage: React.FC = () => {
   const { t } = useTranslation();
@@ -110,10 +111,10 @@ const QuizLibraryPage: React.FC = () => {
             <div className="w-9 h-9 rounded-lg flex items-center justify-center" style={{ background: 'var(--kahoot-purple)' }}>
               <Gamepad2 className="w-5 h-5 text-white" />
             </div>
-            Kahoots
+            {t('quiz.libraryTitle', 'Викторины')}
           </h1>
           <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
-            {filtered.length} {t('quiz.quizzes')}
+            {t('quiz.nQuizzes', { count: filtered.length })}
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-3 sm:w-auto w-full">
@@ -266,7 +267,7 @@ const QuizLibraryPage: React.FC = () => {
                 </div>
                 {/* Question count */}
                 <div className="absolute bottom-2 left-2 bg-black/50 backdrop-blur-sm text-white text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1">
-                  <Zap className="w-3 h-3 text-yellow-400" />{quiz.questionCount || 0} {t('quiz.questions', 'Вопросов')}
+                  <Zap className="w-3 h-3 text-yellow-400" />{t('quiz.nQuestions', { count: quiz.questionCount || 0 })}
                 </div>
               </div>
 
@@ -285,14 +286,16 @@ const QuizLibraryPage: React.FC = () => {
                       className="text-[10px] font-bold px-2 py-0.5 rounded-full text-white shadow-sm"
                       style={{ backgroundColor: DIFFICULTY_LABELS[quiz.difficulty]?.color || '#999' }}
                     >
-                      {DIFFICULTY_LABELS[quiz.difficulty]?.label || quiz.difficulty}
+                      {t(`quiz.${quiz.difficulty}`, DIFFICULTY_LABELS[quiz.difficulty]?.label || quiz.difficulty)}
                     </span>
                   )}
                   <span className="text-[10px] font-bold text-slate-500 bg-slate-100 dark:bg-slate-700 dark:text-slate-300 px-2 py-0.5 rounded-full flex items-center gap-1">
                     {quiz.visibility === 'private' ? <Lock className="w-3 h-3" /> :
                      quiz.visibility === 'organization' ? <Building2 className="w-3 h-3" /> :
                      <Globe className="w-3 h-3" />}
-                    {quiz.visibility}
+                    {quiz.visibility === 'private' ? t('quiz.private', 'Приватная') :
+                     quiz.visibility === 'organization' ? t('quiz.orgShared', 'Организация') :
+                     t('quiz.visibilityPublic', 'Публичная')}
                   </span>
                 </div>
 
@@ -379,15 +382,15 @@ const QuizLibraryPage: React.FC = () => {
                           <h4 className="font-bold text-slate-900 dark:text-white group-hover:text-purple-600 dark:group-hover:text-purple-400 transition-colors">{quiz.title}</h4>
                           <div className="flex items-center gap-3 mt-1.5 flex-wrap">
                             <span className="text-xs font-bold text-slate-500 flex items-center gap-1">
-                              <Zap className="w-3.5 h-3.5" />{quiz.questionCount} {t('quiz.questions', 'вопросов')}
+                              <Zap className="w-3.5 h-3.5" />{t('quiz.nQuestions', { count: quiz.questionCount || 0 })}
                             </span>
                             {quiz.organizationId ? (
                               <span className="text-[10px] uppercase tracking-wider font-extrabold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full dark:bg-blue-900/30 dark:text-blue-400 border border-blue-200 dark:border-blue-800">
-                                Из другой организации
+                                {t('quiz.fromOtherOrg', 'Из другой организации')}
                               </span>
                             ) : (
                               <span className="text-[10px] uppercase tracking-wider font-extrabold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full dark:bg-emerald-900/30 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800">
-                                Личный черновик
+                                {t('quiz.personalDraft', 'Личный черновик')}
                               </span>
                             )}
                           </div>
@@ -395,12 +398,12 @@ const QuizLibraryPage: React.FC = () => {
                         <button
                           onClick={async () => {
                             try {
-                              toast.loading('Импорт...', { id: `import-${quiz.id}` });
+                              toast.loading(t('quiz.importing', 'Импорт...'), { id: `import-${quiz.id}` });
                               await apiDuplicateQuiz(quiz.id);
-                              toast.success('Успешно импортировано!', { id: `import-${quiz.id}` });
+                              toast.success(t('quiz.imported', 'Успешно импортировано!'), { id: `import-${quiz.id}` });
                               loadQuizzes();
                             } catch {
-                              toast.error('Ошибка импорта', { id: `import-${quiz.id}` });
+                              toast.error(t('quiz.importError', 'Ошибка импорта'), { id: `import-${quiz.id}` });
                             }
                           }}
                           className="shrink-0 flex items-center justify-center gap-2 px-4 py-2 rounded-lg font-bold text-sm bg-purple-100 text-purple-700 hover:bg-purple-200 dark:bg-purple-900/30 dark:text-purple-400 dark:hover:bg-purple-900/50 transition-colors"

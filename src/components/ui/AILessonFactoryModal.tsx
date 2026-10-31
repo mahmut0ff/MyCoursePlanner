@@ -58,33 +58,33 @@ export const AILessonFactoryModal: React.FC<Props> = ({ isOpen, onClose, onSucce
 
     setLoading(true);
     const toastId = toast.loading(t('ai.generatingFactory', '1/3 Изучаем материалы и генерируем структуру...'));
-    setLoadingState('Вдумчиво пишем текст урока и придумываем вопросы квиза... Это может занять до 15 секунд.');
+    setLoadingState(t('ai.factory.stateWriting', 'Вдумчиво пишем текст урока и придумываем вопросы квиза... Это может занять до 15 секунд.'));
 
     try {
       let fileUrl = '';
       if (file) {
-        setLoadingState('Загружаем файл для анализа ИИ...');
+        setLoadingState(t('ai.factory.stateUploading', 'Загружаем файл для анализа ИИ...'));
         fileUrl = await uploadAISource(file, 'factory-');
       }
 
-      setLoadingState('Генерация урока и 10 вопросов для квиза. Пожалуйста, подождите...');
+      setLoadingState(t('ai.factory.stateGenerating', 'Генерация урока и 10 вопросов для квиза. Пожалуйста, подождите...'));
       const res = await apiAIGenerateJob(
         { prompt, type: 'lesson_and_quiz', fileUrl },
-        { onWait: (sec) => setLoadingState(`Генерация урока и 10 вопросов для квиза... ${sec} с`) },
+        { onWait: (sec) => setLoadingState(t('ai.factory.stateGeneratingSec', 'Генерация урока и 10 вопросов для квиза... {{sec}} с', { sec })) },
       );
       
       if (!res.data || !res.data.lesson || !res.data.quiz) {
-        throw new Error('ИИ вернул неполные данные');
+        throw new Error(t('ai.incompleteData', 'ИИ вернул неполные данные'));
       }
 
       const { lesson, quiz } = res.data;
 
       // 1. Сборка Квиза
       toast.loading(t('ai.savingQuiz', '2/3 Сохранение интерактивного Квиза...'), { id: toastId });
-      setLoadingState('Сохраняем сгенерированный квиз...');
+      setLoadingState(t('ai.factory.stateSavingQuiz', 'Сохраняем сгенерированный квиз...'));
       const quizData = {
-        title: `${lesson.title} - Тест`,
-        subject: lesson.subject || 'Общее',
+        title: t('ai.factory.quizTitle', '{{title}} - Тест', { title: lesson.title }),
+        subject: lesson.subject || t('ai.factory.generalSubject', 'Общее'),
         status: 'draft',
         visibility: 'private'
       };
@@ -133,7 +133,7 @@ export const AILessonFactoryModal: React.FC<Props> = ({ isOpen, onClose, onSucce
 
       // 3. Формирование Урока и Инъекция Квиза
       toast.loading(t('ai.savingLesson', '3/3 Верстка Урока и привязка...'), { id: toastId });
-      setLoadingState('Собираем финальный урок...');
+      setLoadingState(t('ai.factory.stateAssembling', 'Собираем финальный урок...'));
       
       // Convert AI blocks into valid HTML string for Tiptap
       let htmlContent = '';
@@ -150,15 +150,15 @@ export const AILessonFactoryModal: React.FC<Props> = ({ isOpen, onClose, onSucce
 
       // Inject the generated Quiz at the end of the HTML document
       htmlContent += `<hr>`;
-      htmlContent += `<h2>🧠 Проверьте свои знания</h2>`;
-      htmlContent += `<p>После изучения материала мы предлагаем вам пройти интерактивный Квиз (10 вопросов), который был специально составлен ИИ по этому уроку!</p>`;
-      htmlContent += `<p><a href="/quiz/${createdQuiz.id}/play">👉 <strong>Начать тест: ${quizData.title}</strong></a></p>`;
+      htmlContent += `<h2>${escapeHtml(t('ai.factory.checkKnowledge', '🧠 Проверьте свои знания'))}</h2>`;
+      htmlContent += `<p>${escapeHtml(t('ai.factory.quizInvite', 'После изучения материала мы предлагаем вам пройти интерактивный Квиз (10 вопросов), который был специально составлен ИИ по этому уроку!'))}</p>`;
+      htmlContent += `<p><a href="/quiz/${createdQuiz.id}/play">👉 <strong>${t('ai.factory.startQuiz', 'Начать тест: {{title}}', { title: quizData.title })}</strong></a></p>`;
 
       const lessonData = {
-        title: lesson.title || 'Новый AI Урок',
+        title: lesson.title || t('ai.factory.newLesson', 'Новый AI Урок'),
         subject: lesson.subject || '',
         duration: lesson.duration || 10,
-        description: `Сгенерировано ИИ на тему: ${prompt ? prompt.slice(0, 50) + '...' : 'Материалы файла'}`,
+        description: t('ai.factory.generatedOn', 'Сгенерировано ИИ на тему: {{topic}}', { topic: prompt ? prompt.slice(0, 50) + '...' : t('ai.factory.fileMaterials', 'Материалы файла') }),
         level: 'B1',
         coverImageUrl: '',
         videoUrl: '',
@@ -196,8 +196,8 @@ export const AILessonFactoryModal: React.FC<Props> = ({ isOpen, onClose, onSucce
                 <Sparkles className="w-5 h-5 animate-pulse" />
               </div>
               <div>
-                <h2 className="text-xl font-bold tracking-tight text-slate-900 dark:text-white">AI Конструктор</h2>
-                <p className="text-xs font-medium text-primary-600 dark:text-primary-400">Автоматически создаст Урок + Квиз</p>
+                <h2 className="text-xl font-bold tracking-tight text-slate-900 dark:text-white">{t('ai.factory.title', 'AI Конструктор')}</h2>
+                <p className="text-xs font-medium text-primary-600 dark:text-primary-400">{t('ai.factory.subtitle', 'Автоматически создаст Урок + Квиз')}</p>
               </div>
             </div>
             <button onClick={onClose} className="p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 rounded-full hover:bg-white/50 dark:hover:bg-slate-700 transition-colors">
@@ -209,29 +209,29 @@ export const AILessonFactoryModal: React.FC<Props> = ({ isOpen, onClose, onSucce
         {/* Form Body */}
         <div className="p-6 space-y-5">
           <p className="text-sm text-slate-600 dark:text-slate-400">
-            Опишите тему, вставьте ссылку на YouTube или загрузите материал. Gemini 🔥 сгенерирует полноценный урок и тут же добавит к нему интерактивный тест на 10 вопросов.
+            {t('ai.factory.intro', 'Опишите тему, вставьте ссылку на YouTube или загрузите материал. Gemini 🔥 сгенерирует полноценный урок и тут же добавит к нему интерактивный тест на 10 вопросов.')}
           </p>
 
           <div>
             <div className="flex items-center justify-between mb-2">
               <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">
-                О чем будет урок?
+                {t('ai.factory.topicLabel', 'О чем будет урок?')}
               </label>
               {isSupported && (
                 <button
                   type="button"
                   onClick={toggleListening}
                   className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${isListening ? 'bg-red-50 text-red-600 ring-2 ring-red-200 animate-pulse' : 'bg-slate-100 text-slate-600 hover:bg-primary-50 hover:text-primary-600'}`}
-                  title={isListening ? 'Остановить запись' : 'Говорить голосом'}
+                  title={isListening ? t('ai.voice.stopRecording', 'Остановить запись') : t('ai.voice.speak', 'Говорить голосом')}
                 >
-                  {isListening ? <><MicOff className="w-3.5 h-3.5" /> Стоп</> : <><Mic className="w-3.5 h-3.5" /> Голос</>}
+                  {isListening ? <><MicOff className="w-3.5 h-3.5" /> {t('ai.voice.stop', 'Стоп')}</> : <><Mic className="w-3.5 h-3.5" /> {t('ai.voice.voice', 'Голос')}</>}
                 </button>
               )}
             </div>
             <div className="relative">
               <textarea
                 className={`input min-h-[100px] resize-y transition-all text-sm ${isListening ? 'ring-2 ring-red-300 border-red-300' : ''}`}
-                placeholder={isListening ? '🎙️ Слушаю...' : 'Например: Подробный урок про Французскую революцию, разбей на причины, ход событий и итоги.'}
+                placeholder={isListening ? t('ai.voice.listening', '🎙️ Слушаю...') : t('ai.factory.placeholder', 'Например: Подробный урок про Французскую революцию, разбей на причины, ход событий и итоги.')}
                 value={prompt}
                 onChange={(e) => setPrompt(e.target.value)}
               />
@@ -260,11 +260,11 @@ export const AILessonFactoryModal: React.FC<Props> = ({ isOpen, onClose, onSucce
                   <UploadCloud className="w-5 h-5 text-slate-400 text-primary-500" />
                 </div>
                 <h4 className="text-sm font-medium text-slate-900 dark:text-white mb-1">
-                  Материалы для ИИ (PDF, Изображение)
+                  {t('ai.factory.materials', 'Материалы для ИИ (PDF, Изображение)')}
                 </h4>
                 <input type="file" className="hidden" accept="application/pdf,image/*" ref={fileInputRef} onChange={(e) => setFile(e.target.files?.[0] || null)} />
                 <button type="button" onClick={() => fileInputRef.current?.click()} className="text-sm font-semibold text-primary-600 hover:text-primary-700 hover:underline">
-                  Загрузить файл
+                  {t('ai.factory.uploadFile', 'Загрузить файл')}
                 </button>
               </>
             )}
@@ -299,7 +299,7 @@ export const AILessonFactoryModal: React.FC<Props> = ({ isOpen, onClose, onSucce
               <span className="flex items-center gap-2">
                 <BookOpen className="w-4 h-4" />
                 <Sparkles className="w-4 h-4 group-hover:scale-110 transition-transform" />
-                Создать Урок + Квиз
+                {t('ai.factory.create', 'Создать Урок + Квиз')}
               </span>
             )}
             {!loading && <div className="absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/20 to-transparent group-hover:animate-[shimmer_1.5s_infinite]" />}

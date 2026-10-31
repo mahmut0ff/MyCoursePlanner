@@ -17,6 +17,7 @@ import TelegramLinkCard from '../../components/telegram/TelegramLinkCard';
 import ActiveRoleCard from '../../components/shared/ActiveRoleCard';
 import ActiveOrgCard from '../../components/shared/ActiveOrgCard';
 import SidebarCustomizerCard from '../../components/shared/SidebarCustomizerCard';
+import { UI_LANGUAGES } from '../../lib/locale';
 
 const StudentProfilePage: React.FC = () => {
   const { t } = useTranslation();
@@ -91,7 +92,7 @@ const StudentProfilePage: React.FC = () => {
       setPinnedBadges(prev => prev.filter(id => id !== badgeId));
     } else {
       if (pinnedBadges.length >= 3) {
-        toast.error('Можно закрепить не более 3 бейджей');
+        toast.error(t('profile.badgesMax', 'Можно закрепить не более 3 бейджей'));
         return;
       }
       setPinnedBadges(prev => [...prev, badgeId]);
@@ -153,7 +154,7 @@ const StudentProfilePage: React.FC = () => {
   const handleLanguageChange = (lang: string) => {
     i18n.changeLanguage(lang);
     localStorage.setItem('i18nextLng', lang);
-    toast.success(`${t('profile.language')}: ${lang === 'ru' ? 'Русский' : lang === 'en' ? 'English' : 'Кыргызча'}`);
+    toast.success(`${t('profile.language')}: ${UI_LANGUAGES.find(l => l.code === lang)?.label || lang}`);
   };
 
   if (loading) return <div className="flex items-center justify-center py-20"><Loader2 className="w-8 h-8 text-primary-600 animate-spin" /></div>;
@@ -285,8 +286,8 @@ const StudentProfilePage: React.FC = () => {
           {/* ----- Pinned Badges ----- */}
           {myBadges && myBadges.badges.length > 0 && (
             <div className="card p-5">
-              <h3 className="font-semibold text-slate-900 dark:text-white mb-2">Закрепленные бейджи</h3>
-              <p className="text-sm text-slate-500 mb-4">Выберите до 3 любимых бейджей, чтобы они отображались рядом с вашим аватаром.</p>
+              <h3 className="font-semibold text-slate-900 dark:text-white mb-2">{t('profile.pinnedBadges', 'Закрепленные бейджи')}</h3>
+              <p className="text-sm text-slate-500 mb-4">{t('profile.pinnedBadgesHint', 'Выберите до 3 любимых бейджей, чтобы они отображались рядом с вашим аватаром.')}</p>
               
               <div className="flex flex-wrap gap-3">
                 {myBadges.badgeDetails?.map(badge => {
@@ -314,7 +315,7 @@ const StudentProfilePage: React.FC = () => {
               </div>
               <div className="text-right mt-4">
                  <button onClick={handleUpdateProfile} disabled={saving} className="btn-primary flex items-center justify-center gap-2 ml-auto">
-                   <Save className="w-4 h-4" /> Сохранить
+                   <Save className="w-4 h-4" /> {t('profile.save', 'Сохранить')}
                  </button>
               </div>
             </div>
@@ -327,7 +328,7 @@ const StudentProfilePage: React.FC = () => {
               <h3 className="font-semibold text-slate-900 dark:text-white">{t('profile.language')}</h3>
             </div>
             <div className="flex gap-2">
-              {['ru', 'en', 'kg'].map(lang => (
+              {UI_LANGUAGES.map(({ code: lang, label, flag }) => (
                 <button
                   key={lang}
                   onClick={() => handleLanguageChange(lang)}
@@ -337,7 +338,7 @@ const StudentProfilePage: React.FC = () => {
                       : 'bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600'
                   }`}
                 >
-                  {lang === 'ru' ? '🇷🇺 Русский' : lang === 'en' ? '🇬🇧 English' : '🇰🇬 Кыргызча'}
+                  {flag} {label}
                 </button>
               ))}
             </div>

@@ -1,3 +1,6 @@
+import { intlLocale } from './locale';
+import { trLabel } from './trLabel';
+
 /**
  * Суффикс валюты для финансовых экранов и ростера. На биллинговых страницах
  * исторически пишется «сом» — там суффикс берётся из i18n-ключей
@@ -5,13 +8,15 @@
  */
 export const CURRENCY_SUFFIX = 'с.';
 
+/** Тот же суффикс на языке интерфейса (en/uz — «som»); до инициализации i18n (сервер, тесты) — «с.». */
+export const currencySuffix = (): string => trLabel('common.currencySuffix', CURRENCY_SUFFIX);
+
 /**
- * Локаль зафиксирована намеренно. AdminDashboard уже форматирует через
- * 'ru-RU', а вкладки финансов вызывали `.toLocaleString()` без локали — на
- * машине с en-US это давало «12,500» вместо «12 500». Пин делает вывод
- * одинаковым везде и байт-в-байт совпадающим с текущим финансовым UI.
+ * Локаль явная — по языку интерфейса, а не по локали машины: голый
+ * `.toLocaleString()` на машине с en-US давал «12,500» посреди русского UI.
+ * Без инициализированного i18n (сервер, тесты) это 'ru-RU', как и раньше.
  */
-const LOCALE = 'ru-RU';
+const LOCALE = (): string => intlLocale();
 
 /**
  * Число денег без валюты.
@@ -24,21 +29,21 @@ const LOCALE = 'ru-RU';
  */
 const formatAmount = (v: number): string =>
   Number.isInteger(v)
-    ? v.toLocaleString(LOCALE)
-    : v.toLocaleString(LOCALE, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    ? v.toLocaleString(LOCALE())
+    : v.toLocaleString(LOCALE(), { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
 export const formatMoney = (n?: number | null): string =>
-  `${formatAmount(Number(n || 0))} ${CURRENCY_SUFFIX}`;
+  `${formatAmount(Number(n || 0))} ${currencySuffix()}`;
 
 /** Для дельт: настоящий минус «−», как в истории платежей. */
 export const formatMoneySigned = (n?: number | null): string => {
   const v = Number(n || 0);
   const sign = v < 0 ? '−' : '+';
-  return `${sign}${formatAmount(Math.abs(v))} ${CURRENCY_SUFFIX}`;
+  return `${sign}${formatAmount(Math.abs(v))} ${currencySuffix()}`;
 };
 
 /** Счётчики (студенты, транзакции) — те же разделители, но без валюты. */
-export const formatNumber = (n?: number | null): string => Number(n || 0).toLocaleString(LOCALE);
+export const formatNumber = (n?: number | null): string => Number(n || 0).toLocaleString(LOCALE());
 
 /**
  * Изменение к прошлому периоду. Когда база нулевая, процент не определён —
@@ -83,7 +88,7 @@ export const formatDayKey = (value?: unknown): string => {
   const day = raw.slice(0, 10);
   if (!/^\d{4}-\d{2}-\d{2}$/.test(day)) return '—';
   const [y, m, d] = day.split('-').map(Number);
-  return new Date(Date.UTC(y, m - 1, d)).toLocaleDateString(LOCALE, {
+  return new Date(Date.UTC(y, m - 1, d)).toLocaleDateString(LOCALE(), {
     day: '2-digit', month: '2-digit', year: 'numeric', timeZone: 'UTC',
   });
 };
@@ -91,7 +96,7 @@ export const formatDayKey = (value?: unknown): string => {
 export const formatMonthKey = (key?: string | null): string => {
   if (!key || !/^\d{4}-\d{2}$/.test(key)) return '';
   const [y, m] = key.split('-').map(Number);
-  return new Date(Date.UTC(y, m - 1, 1)).toLocaleDateString(LOCALE, {
+  return new Date(Date.UTC(y, m - 1, 1)).toLocaleDateString(LOCALE(), {
     month: 'long', year: 'numeric', timeZone: 'UTC',
   });
 };

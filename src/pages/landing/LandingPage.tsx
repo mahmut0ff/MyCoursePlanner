@@ -398,7 +398,7 @@ const HomeNav: React.FC<{ onDemo: () => void }> = ({ onDemo }) => {
             type="button"
             onClick={() => setOpen(!open)}
             aria-expanded={open}
-            aria-label="Menu"
+            aria-label={t('landing.menu', 'Меню')}
             className={`-mr-1 rounded-lg p-2 text-ink lg:hidden ${focusRing}`}
           >
             {open ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}

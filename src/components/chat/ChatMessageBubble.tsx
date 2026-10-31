@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { CornerUpLeft, Trash2, FileText, Download } from 'lucide-react';
 import type { ChatMessage, MessageAttachment } from '../../types';
+import { intlLocale } from '../../lib/locale';
 
 interface Props {
   message: ChatMessage;
@@ -21,7 +22,7 @@ function formatTime(v: any) {
   if (!v) return '';
   const d = v?.toDate ? v.toDate() : new Date(v);
   if (isNaN(d.getTime())) return '';
-  return d.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+  return d.toLocaleTimeString(intlLocale(), { hour: '2-digit', minute: '2-digit' });
 }
 
 function formatSize(bytes: number) {

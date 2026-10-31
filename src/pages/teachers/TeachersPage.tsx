@@ -23,6 +23,9 @@ import { useOrgPresence } from '../../hooks/useOrgPresence';
 import { PresenceBadge, PresenceDot } from '../../components/presence/PresenceBadge';
 import TelegramIcon from '../../components/telegram/TelegramIcon';
 
+// Логин без почты (`…@teacher.sabakhub.app`, `…@tg.sabakhub.app`) — не адрес для писем.
+const isSyntheticEmail = (email?: string) => /@[a-z]+\.sabakhub\.app$/i.test(email || '');
+
 /**
  * Подключены ли преподавателю Telegram-уведомления. Сервер отдаёт только флаг
  * (`telegramLinked`) и только сотрудникам — в студенческой версии списка поля нет,
@@ -121,7 +124,7 @@ const TeachersPage: React.FC = () => {
       }
       setTeachers(teachersOnly);
     } catch (e: any) {
-      if (!silent) setError(e.message || 'Error');
+      if (!silent) setError(e.message || t('common.error', 'Ошибка'));
     } finally {
       if (!silent) setLoading(false);
     }
@@ -192,7 +195,7 @@ const TeachersPage: React.FC = () => {
     if (!organizationId) return;
     const name = teacher.displayName || t('nav.teachers');
     if (!window.confirm(
-      `Удалить ${name} из организации? Преподаватель будет исключён из всех групп. Аккаунт для входа сохранится — удалится только связь с организацией. Действие необратимо.`
+      t('teachers.list.deleteConfirm', 'Удалить {{name}} из организации? Преподаватель будет исключён из всех групп. Аккаунт для входа сохранится — удалится только связь с организацией. Действие необратимо.', { name })
     )) return;
 
     setDeletingId(teacher.uid);
@@ -202,7 +205,7 @@ const TeachersPage: React.FC = () => {
       setTeachers(prev => prev.filter(x => x.uid !== teacher.uid));
       setSelected(prev => { const n = new Set(prev); n.delete(teacher.uid); return n; });
     } catch (e: any) {
-      toast.error(e.message || 'Error');
+      toast.error(e.message || t('common.error', 'Ошибка'));
     } finally {
       setDeletingId(null);
     }
@@ -222,7 +225,7 @@ const TeachersPage: React.FC = () => {
         onSelect: () => window.open(`https://wa.me/${waNumber}`, '_blank', 'noopener,noreferrer'),
       });
     }
-    if (teacher.email) {
+    if (teacher.email && !isSyntheticEmail(teacher.email)) {
       items.push({
         label: t('common.writeEmail', 'Написать на почту'),
         icon: Mail,
@@ -301,7 +304,7 @@ const TeachersPage: React.FC = () => {
         resetCreateForm();
       }
     } catch (e: any) {
-      toast.error(e.message || 'Error');
+      toast.error(e.message || t('common.error', 'Ошибка'));
     } finally {
       setCreating(false);
     }
@@ -387,8 +390,8 @@ const TeachersPage: React.FC = () => {
           {filtered.length === 0 ? (
             <EmptyState
               icon={UserPlus}
-              title={search ? 'Преподаватели не найдены' : t('org.teachers.empty')}
-              description={search ? 'Попробуйте изменить поисковый запрос' : t('org.teachers.emptyDesc', 'Добавьте первого преподавателя')}
+              title={search ? t('teachers.list.notFound', 'Преподаватели не найдены') : t('org.teachers.empty')}
+              description={search ? t('teachers.list.tryOtherQuery', 'Попробуйте изменить поисковый запрос') : t('org.teachers.emptyDesc', 'Добавьте первого преподавателя')}
               actionLabel={mayAdd ? t('org.teachers.add', 'Добавить') : undefined}
               onAction={mayAdd ? () => setShowCreateModal(true) : undefined}
             />
@@ -454,7 +457,7 @@ const TeachersPage: React.FC = () => {
                       <h3 className="text-sm font-bold text-slate-900 dark:text-white truncate group-hover:text-primary-600 dark:group-hover:text-primary-400 transition-colors">{teacher.displayName}</h3>
                       {/* Mobile meta */}
                       <div className="flex items-center gap-2 mt-1 md:hidden flex-wrap">
-                        {teacher.email && <span className="text-[10px] text-slate-400 flex items-center gap-1"><Mail className="w-3 h-3" />{teacher.email}</span>}
+                        {teacher.email && !isSyntheticEmail(teacher.email) && <span className="text-[10px] text-slate-400 flex items-center gap-1"><Mail className="w-3 h-3" />{teacher.email}</span>}
                         <PresenceBadge online={online} lastSeenMs={lastSeenMs} />
                         {showTelegram && <TelegramStatus linked={!!teacher.telegramLinked} label={tgOn} off={tgOff} />}
                       </div>
@@ -464,7 +467,7 @@ const TeachersPage: React.FC = () => {
                   {/* Email */}
                   <div className="hidden md:flex items-center gap-1.5 text-[11px] text-slate-500 dark:text-slate-400 truncate">
                     <Mail className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                    <span className="truncate">{teacher.email}</span>
+                    <span className="truncate">{isSyntheticEmail(teacher.email) ? '' : teacher.email}</span>
                   </div>
 
                   {/* Phone */}

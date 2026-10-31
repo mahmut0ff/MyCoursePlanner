@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import QRCode from 'qrcode';
 import toast from 'react-hot-toast';
+import { useTranslation, Trans } from 'react-i18next';
 import { X, Copy, Download, Printer, Check, QrCode, ExternalLink, Loader2, Send, Lock, Unlock } from 'lucide-react';
 
 interface ExamShareModalProps {
@@ -23,6 +24,7 @@ interface ExamShareModalProps {
  * the exam as a guest. Results land in the org's Leads (Заявки) with an AI verdict.
  */
 const ExamShareModal: React.FC<ExamShareModalProps> = ({ examId, examTitle, published, acceptingResponses, onPublish, onToggleResponses, onClose }) => {
+  const { t } = useTranslation();
   const publicUrl = `${typeof window !== 'undefined' ? window.location.origin : ''}/test/${examId}`;
   const [qrDataUrl, setQrDataUrl] = useState('');
   const [copied, setCopied] = useState(false);
@@ -62,10 +64,10 @@ const ExamShareModal: React.FC<ExamShareModalProps> = ({ examId, examTitle, publ
     navigator.clipboard.writeText(publicUrl)
       .then(() => {
         setCopied(true);
-        toast.success('Ссылка скопирована');
+        toast.success(t('exams.share.linkCopied', 'Ссылка скопирована'));
         setTimeout(() => setCopied(false), 2000);
       })
-      .catch(() => toast.error('Не удалось скопировать ссылку'));
+      .catch(() => toast.error(t('exams.share.copyFailed', 'Не удалось скопировать ссылку')));
   };
 
   const downloadQR = () => {
@@ -98,12 +100,12 @@ const ExamShareModal: React.FC<ExamShareModalProps> = ({ examId, examTitle, publ
         </style>
       </head><body>
         <div class="poster">
-          <div class="badge">Онлайн-тестирование</div>
+          <div class="badge">${t('exams.share.posterBadge', 'Онлайн-тестирование')}</div>
           <h1>${examTitle}</h1>
-          <p class="desc">Отсканируйте QR-код камерой телефона, чтобы пройти тест</p>
+          <p class="desc">${t('exams.share.posterDesc', 'Отсканируйте QR-код камерой телефона, чтобы пройти тест')}</p>
           <div class="qr"><img src="${qrDataUrl}" /></div>
           <p class="url">${publicUrl}</p>
-          <div class="cta">Сканируйте, чтобы начать</div>
+          <div class="cta">${t('exams.share.posterCta', 'Сканируйте, чтобы начать')}</div>
         </div>
       </body></html>
     `);
@@ -117,7 +119,7 @@ const ExamShareModal: React.FC<ExamShareModalProps> = ({ examId, examTitle, publ
         <div className="flex items-center justify-between p-5 border-b border-slate-100 dark:border-slate-700/50">
           <div className="flex items-center gap-2">
             <QrCode className="w-5 h-5 text-indigo-500" />
-            <h3 className="font-bold text-lg text-slate-900 dark:text-white">Поделиться тестом</h3>
+            <h3 className="font-bold text-lg text-slate-900 dark:text-white">{t('exams.share.title', 'Поделиться тестом')}</h3>
           </div>
           <button onClick={onClose} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors">
             <X className="w-5 h-5" />
@@ -128,7 +130,7 @@ const ExamShareModal: React.FC<ExamShareModalProps> = ({ examId, examTitle, publ
           {!published && (
             <div className="mb-5 bg-amber-50 dark:bg-amber-900/20 p-3 rounded-xl border border-amber-200 dark:border-amber-800/30">
               <p className="text-sm text-amber-800 dark:text-amber-300 font-medium">
-                Экзамен в статусе <b>черновик</b>. Чтобы ссылка и QR-код заработали, его нужно опубликовать.
+                <Trans i18nKey="exams.share.draftNotice" defaults="Экзамен в статусе <b>черновик</b>. Чтобы ссылка и QR-код заработали, его нужно опубликовать." components={{ b: <b /> }} />
               </p>
               {onPublish && (
                 <button
@@ -137,7 +139,7 @@ const ExamShareModal: React.FC<ExamShareModalProps> = ({ examId, examTitle, publ
                   className="mt-3 w-full flex items-center justify-center gap-2 bg-amber-500 hover:bg-amber-600 text-white px-4 py-2 rounded-lg text-sm font-semibold transition-colors disabled:opacity-60"
                 >
                   {publishing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
-                  {publishing ? 'Публикация…' : 'Опубликовать сейчас'}
+                  {publishing ? t('exams.share.publishing', 'Публикация…') : t('exams.share.publishNow', 'Опубликовать сейчас')}
                 </button>
               )}
             </div>
@@ -147,11 +149,11 @@ const ExamShareModal: React.FC<ExamShareModalProps> = ({ examId, examTitle, publ
           <div className="flex justify-center mb-5">
             <div className={`bg-white p-4 rounded-2xl border border-slate-200 shadow-sm relative ${!liveLink ? 'opacity-40' : ''}`}>
               {qrDataUrl
-                ? <img src={qrDataUrl} alt="QR-код теста" className="w-52 h-52" />
-                : <div className="w-52 h-52 flex items-center justify-center text-slate-400 text-sm">Генерация…</div>}
+                ? <img src={qrDataUrl} alt={t('exams.share.qrAlt', 'QR-код теста')} className="w-52 h-52" />
+                : <div className="w-52 h-52 flex items-center justify-center text-slate-400 text-sm">{t('exams.share.generating', 'Генерация…')}</div>}
               {published && !isAccepting && (
                 <div className="absolute inset-0 flex items-center justify-center">
-                  <span className="bg-slate-900/80 text-white text-xs font-bold px-3 py-1.5 rounded-lg flex items-center gap-1.5"><Lock className="w-3.5 h-3.5" />Закрыто</span>
+                  <span className="bg-slate-900/80 text-white text-xs font-bold px-3 py-1.5 rounded-lg flex items-center gap-1.5"><Lock className="w-3.5 h-3.5" />{t('exams.share.closedBadge', 'Закрыто')}</span>
                 </div>
               )}
             </div>
@@ -163,23 +165,22 @@ const ExamShareModal: React.FC<ExamShareModalProps> = ({ examId, examTitle, publ
               <div className="min-w-0">
                 <p className="text-sm font-semibold text-slate-800 dark:text-white flex items-center gap-1.5">
                   {isAccepting ? <Unlock className="w-4 h-4 text-emerald-500" /> : <Lock className="w-4 h-4 text-slate-400" />}
-                  Приём ответов: {isAccepting ? 'открыт' : 'закрыт'}
+                  {isAccepting ? t('exams.share.responsesOpen', 'Приём ответов: открыт') : t('exams.share.responsesClosed', 'Приём ответов: закрыт')}
                 </p>
-                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Закройте после занятия, чтобы по старому QR больше нельзя было пройти тест.</p>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">{t('exams.share.closeHint', 'Закройте после занятия, чтобы по старому QR больше нельзя было пройти тест.')}</p>
               </div>
               <button
                 onClick={handleToggleResponses}
                 disabled={toggling}
                 className={`shrink-0 text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors disabled:opacity-60 ${isAccepting ? 'bg-rose-50 hover:bg-rose-100 text-rose-600 dark:bg-rose-900/30 dark:text-rose-400' : 'bg-emerald-50 hover:bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400'}`}
               >
-                {toggling ? '…' : (isAccepting ? 'Закрыть' : 'Открыть')}
+                {toggling ? '…' : (isAccepting ? t('exams.share.close', 'Закрыть') : t('exams.share.open', 'Открыть'))}
               </button>
             </div>
           )}
 
           <p className="text-center text-sm text-slate-500 dark:text-slate-400 mb-5 leading-relaxed">
-            Студент сканирует QR-код, вводит имя и телефон и проходит тест как гость.
-            Результат и вердикт ИИ появятся в разделе <b>«Заявки»</b>.
+            <Trans i18nKey="exams.share.howItWorks" defaults="Студент сканирует QR-код, вводит имя и телефон и проходит тест как гость. Результат и вердикт ИИ появятся в разделе <b>«Заявки»</b>." components={{ b: <b /> }} />
           </p>
 
           {/* Link row */}
@@ -187,7 +188,7 @@ const ExamShareModal: React.FC<ExamShareModalProps> = ({ examId, examTitle, publ
             <a href={publicUrl} target="_blank" rel="noopener noreferrer" className="flex-1 min-w-0 text-sm text-indigo-600 dark:text-indigo-400 truncate hover:underline flex items-center gap-1">
               {publicUrl}<ExternalLink className="w-3 h-3 shrink-0" />
             </a>
-            <button onClick={copyLink} className="shrink-0 p-2 rounded-lg hover:bg-white dark:hover:bg-slate-700 transition-colors" title="Скопировать ссылку">
+            <button onClick={copyLink} className="shrink-0 p-2 rounded-lg hover:bg-white dark:hover:bg-slate-700 transition-colors" title={t('exams.share.copyLink', 'Скопировать ссылку')}>
               {copied ? <Check className="w-4 h-4 text-emerald-500" /> : <Copy className="w-4 h-4 text-slate-500" />}
             </button>
           </div>
@@ -195,10 +196,10 @@ const ExamShareModal: React.FC<ExamShareModalProps> = ({ examId, examTitle, publ
           {/* Actions */}
           <div className="grid grid-cols-2 gap-3">
             <button onClick={downloadQR} disabled={!qrDataUrl || !liveLink} className="flex items-center justify-center gap-2 bg-slate-900 hover:bg-slate-800 text-white dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100 px-4 py-2.5 rounded-xl text-sm font-semibold transition-colors disabled:opacity-50">
-              <Download className="w-4 h-4" /> Скачать QR
+              <Download className="w-4 h-4" /> {t('exams.share.downloadQr', 'Скачать QR')}
             </button>
             <button onClick={printPoster} disabled={!qrDataUrl || !liveLink} className="flex items-center justify-center gap-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-800 dark:text-white px-4 py-2.5 rounded-xl text-sm font-semibold transition-colors disabled:opacity-50">
-              <Printer className="w-4 h-4" /> Печать
+              <Printer className="w-4 h-4" /> {t('exams.share.print', 'Печать')}
             </button>
           </div>
         </div>

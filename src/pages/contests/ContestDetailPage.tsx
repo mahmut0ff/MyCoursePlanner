@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import toast from 'react-hot-toast';
@@ -8,9 +8,10 @@ import { CardSkeleton } from '../../components/ui/Skeleton';
 import { usePermissions } from '../../contexts/PermissionsContext';
 import { apiContestAction, apiContestGet } from '../../lib/api';
 import { useContestLive } from '../../hooks/useContestLive';
-import { CONTEST_KIND_LABELS, formatContestDate, CONTEST_STATUS_LABELS, type ContestBundle, type ContestStatus } from '../../lib/contests';
+import { formatContestDate, type ContestBundle, type ContestStatus } from '../../lib/contests';
+import i18n from '../../i18n';
 import { ErrorNote, StatusBadge } from './ui';
-import { primaryBtn, secondaryBtn, errMessage } from './uiStyles';
+import { primaryBtn, secondaryBtn, errMessage, kindLabel, contestStatusLabel } from './uiStyles';
 import OverviewTab from './tabs/OverviewTab';
 import CategoriesTab from './tabs/CategoriesTab';
 import CriteriaTab from './tabs/CriteriaTab';
@@ -42,15 +43,16 @@ export interface ContestTabProps {
  * (категории → критерии → участники → жюри), в день конкурса живут на
  * «Мониторинге» и «Итогах». Ids стабильны — они в адресной строке.
  */
-const TAB_GROUPS: { label: string; tabs: { id: TabId; label: string }[] }[] = [
-  { label: 'Подготовка', tabs: [
+// label — русский фолбэк для t(`contests.tabs.${id}`).
+const TAB_GROUPS: { id: string; label: string; tabs: { id: TabId; label: string }[] }[] = [
+  { id: 'prep', label: 'Подготовка', tabs: [
     { id: 'overview', label: 'Обзор' },
     { id: 'categories', label: 'Категории и призы' },
     { id: 'criteria', label: 'Критерии' },
     { id: 'participants', label: 'Участники' },
     { id: 'jury', label: 'Жюри' },
   ] },
-  { label: 'День конкурса', tabs: [
+  { id: 'day', label: 'День конкурса', tabs: [
     { id: 'monitor', label: 'Мониторинг' },
     { id: 'results', label: 'Итоги' },
   ] },
@@ -66,11 +68,13 @@ const DEFAULT_TAB: Record<ContestStatus, TabId> = {
 };
 
 /** Следующий шаг конкурса: подпись кнопки и что она значит. */
-const STATUS_STEP: Record<ContestStatus, { next: ContestStatus; label: string; hint: string } | null> = {
-  draft: { next: 'registration', label: 'Открыть регистрацию', hint: 'Можно будет добавлять участников. Настройки остаются доступны.' },
-  registration: { next: 'judging', label: 'Начать день конкурса', hint: 'Откроется мониторинг: оценивание по категориям, вызов проектов, итоги. Критерии зафиксируются, как только откроется первая категория.' },
-  judging: { next: 'finished', label: 'Завершить конкурс', hint: 'Конкурс станет доступен только для просмотра. Открытые категории закроются. Убедитесь, что итоги всех категорий утверждены.' },
-  finished: null,
+const statusStep = (s: ContestStatus): { next: ContestStatus; label: string; hint: string } | null => {
+  switch (s) {
+    case 'draft': return { next: 'registration', label: i18n.t('contests.step.openRegistration', 'Открыть регистрацию'), hint: i18n.t('contests.step.openRegistrationHint', 'Можно будет добавлять участников. Настройки остаются доступны.') };
+    case 'registration': return { next: 'judging', label: i18n.t('contests.step.startDay', 'Начать день конкурса'), hint: i18n.t('contests.step.startDayHint', 'Откроется мониторинг: оценивание по категориям, вызов проектов, итоги. Критерии зафиксируются, как только откроется первая категория.') };
+    case 'judging': return { next: 'finished', label: i18n.t('contests.step.finish', 'Завершить конкурс'), hint: i18n.t('contests.step.finishHint', 'Конкурс станет доступен только для просмотра. Открытые категории закроются. Убедитесь, что итоги всех категорий утверждены.') };
+    default: return null;
+  }
 };
 
 const metaKey = (c: ContestBundle['contest']) =>
@@ -85,29 +89,30 @@ type Mark = { kind: 'warn' | 'live' | 'done' | 'count'; text?: string; title: st
 /** Индикатор на вкладке: что требует внимания, что идёт, что сделано. */
 function tabMark(id: TabId, d: ContestBundle): Mark {
   const { contest: c, participants, jury } = d;
+  const t = i18n.t.bind(i18n);
   switch (id) {
     case 'categories':
-      return c.categories.length ? null : { kind: 'warn', title: 'Категории не заданы' };
+      return c.categories.length ? null : { kind: 'warn', title: t('contests.noCategories', 'Категории не заданы') };
     case 'criteria':
-      return c.criteria.length ? null : { kind: 'warn', title: 'Критерии не заданы' };
+      return c.criteria.length ? null : { kind: 'warn', title: t('contests.noCriteria', 'Критерии не заданы') };
     case 'participants': {
       if (c.status === 'judging') {
         const waiting = participants.filter((p) => p.status === 'registered').length;
-        return waiting ? { kind: 'count', text: String(waiting), title: `Не отмечены пришедшими: ${waiting}` } : null;
+        return waiting ? { kind: 'count', text: String(waiting), title: t('contests.notMarkedArrived', 'Не отмечены пришедшими: {{n}}', { n: waiting }) } : null;
       }
       const n = participants.filter((p) => p.status !== 'withdrawn').length;
-      if (n) return { kind: 'count', text: String(n), title: `Участников: ${n}` };
-      return c.status === 'registration' ? { kind: 'warn', title: 'Участников пока нет' } : null;
+      if (n) return { kind: 'count', text: String(n), title: t('contests.participantsCount', 'Участников: {{n}}', { n }) };
+      return c.status === 'registration' ? { kind: 'warn', title: t('contests.noParticipants', 'Участников пока нет') } : null;
     }
     case 'jury':
-      if (jury.length) return { kind: 'count', text: String(jury.length), title: `Членов жюри: ${jury.length}` };
-      return c.status === 'draft' ? null : { kind: 'warn', title: 'Жюри не назначено' };
+      if (jury.length) return { kind: 'count', text: String(jury.length), title: t('contests.juryCount', 'Членов жюри: {{n}}', { n: jury.length }) };
+      return c.status === 'draft' ? null : { kind: 'warn', title: t('contests.noJury', 'Жюри не назначено') };
     case 'monitor':
-      return c.categories.some((x) => x.judging === 'open') ? { kind: 'live', title: 'Идёт оценивание' } : null;
+      return c.categories.some((x) => x.judging === 'open') ? { kind: 'live', title: t('contests.judging.open', 'Идёт оценивание') } : null;
     case 'results': {
-      if (c.categories.length && c.categories.every((x) => x.judging === 'approved')) return { kind: 'done', title: 'Итоги всех категорий утверждены' };
+      if (c.categories.length && c.categories.every((x) => x.judging === 'approved')) return { kind: 'done', title: t('contests.allApproved', 'Итоги всех категорий утверждены') };
       const closed = c.categories.filter((x) => x.judging === 'closed').length;
-      return closed ? { kind: 'warn', text: String(closed), title: `Ждут утверждения: ${closed}` } : null;
+      return closed ? { kind: 'warn', text: String(closed), title: t('contests.awaitingApproval', 'Ждут утверждения: {{n}}', { n: closed }) } : null;
     }
     default:
       return null;
@@ -199,12 +204,12 @@ const ContestDetailPage: React.FC = () => {
     tablistRef.current?.querySelector<HTMLElement>(`[data-tab="${next}"]`)?.focus();
   };
 
-  const step = useMemo(() => (contest ? STATUS_STEP[contest.status] : null), [contest]);
+  const step = contest ? statusStep(contest.status) : null;
 
   const changeStatus = async () => {
     if (!confirmStatus) return;
     setBusy(true);
-    const ok = await act('setStatus', { status: confirmStatus }, `Статус: ${CONTEST_STATUS_LABELS[confirmStatus]}`);
+    const ok = await act('setStatus', { status: confirmStatus }, t('contests.statusChanged', 'Статус: {{status}}', { status: contestStatusLabel(confirmStatus) }));
     setBusy(false);
     if (ok) {
       setConfirmStatus(null);
@@ -237,7 +242,7 @@ const ContestDetailPage: React.FC = () => {
     headerActions = (
       <div className="flex items-center gap-2">
         {tab !== 'monitor' && tab !== 'results' && (
-          <button onClick={() => goTab('monitor')} className={primaryBtn}><Activity className="w-4 h-4" />Мониторинг</button>
+          <button onClick={() => goTab('monitor')} className={primaryBtn}><Activity className="w-4 h-4" />{t('contests.tabs.monitor', 'Мониторинг')}</button>
         )}
         {step && <button onClick={() => setConfirmStatus(step.next)} className={secondaryBtn} title={step.hint}><Flag className="w-4 h-4" />{step.label}</button>}
       </div>
@@ -245,7 +250,7 @@ const ContestDetailPage: React.FC = () => {
   } else if (canEdit && step) {
     headerActions = <button onClick={() => setConfirmStatus(step.next)} className={primaryBtn}>{step.label}<ChevronRight className="w-4 h-4" /></button>;
   } else if (contest.status === 'finished' && tab !== 'results') {
-    headerActions = <button onClick={() => goTab('results')} className={secondaryBtn}><Trophy className="w-4 h-4" />Итоги</button>;
+    headerActions = <button onClick={() => goTab('results')} className={secondaryBtn}><Trophy className="w-4 h-4" />{t('contests.tabs.results', 'Итоги')}</button>;
   }
 
   return (
@@ -255,10 +260,10 @@ const ContestDetailPage: React.FC = () => {
         <header className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-3">
           <div className="min-w-0">
             <div className="flex items-center gap-2 flex-wrap text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-              <span>{CONTEST_KIND_LABELS[contest.kind]}{contest.season ? ` · ${contest.season}` : ''}</span>
+              <span>{kindLabel(contest.kind)}{contest.season ? ` · ${contest.season}` : ''}</span>
               <StatusBadge status={contest.status} />
               {dayOfContest && mode === 'live' && (
-                <span className="inline-flex items-center gap-1 text-emerald-600 dark:text-emerald-400 normal-case tracking-normal"><Radio className="w-3 h-3" />в реальном времени</span>
+                <span className="inline-flex items-center gap-1 text-emerald-600 dark:text-emerald-400 normal-case tracking-normal"><Radio className="w-3 h-3" />{t('contests.liveNow', 'в реальном времени')}</span>
               )}
             </div>
             <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white mt-1">{contest.title}</h1>
@@ -270,13 +275,13 @@ const ContestDetailPage: React.FC = () => {
         </header>
       </div>
 
-      <div ref={tablistRef} role="tablist" aria-label="Разделы конкурса" onKeyDown={onTabKey}
+      <div ref={tablistRef} role="tablist" aria-label={t('contests.sections', 'Разделы конкурса')} onKeyDown={onTabKey}
         className="flex items-stretch gap-1 bg-slate-100 dark:bg-slate-800 p-1 rounded-xl overflow-x-auto">
         {TAB_GROUPS.map((g, gi) => (
-          <React.Fragment key={g.label}>
+          <React.Fragment key={g.id}>
             {gi > 0 && <span aria-hidden className="w-px my-1.5 bg-slate-300 dark:bg-slate-600 shrink-0" />}
             <div className="flex items-center gap-0.5">
-              <span className="hidden md:block px-2 text-[10px] font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400 whitespace-nowrap select-none" aria-hidden>{g.label}</span>
+              <span className="hidden md:block px-2 text-[10px] font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400 whitespace-nowrap select-none" aria-hidden>{t(`contests.tabs.${g.id}`, g.label)}</span>
               {g.tabs.map((x) => {
                 const active = tab === x.id;
                 return (
@@ -285,7 +290,7 @@ const ContestDetailPage: React.FC = () => {
                     onClick={() => goTab(x.id)}
                     className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[13px] font-semibold whitespace-nowrap transition-colors ${active ? 'bg-white dark:bg-slate-700 shadow-sm text-slate-900 dark:text-white' : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200'}`}
                   >
-                    {x.label}<MarkDot mark={tabMark(x.id, data)} />
+                    {t(`contests.tabs.${x.id}`, x.label)}<MarkDot mark={tabMark(x.id, data)} />
                   </button>
                 );
               })}
@@ -310,9 +315,9 @@ const ContestDetailPage: React.FC = () => {
 
       <ConfirmDialog
         open={!!confirmStatus}
-        title={`${step?.label || 'Сменить статус'}?`}
+        title={`${step?.label || t('contests.changeStatus', 'Сменить статус')}?`}
         message={step?.hint || ''}
-        confirmLabel={confirmStatus === 'finished' ? 'Завершить' : 'Да, продолжить'}
+        confirmLabel={confirmStatus === 'finished' ? t('contests.finishBtn', 'Завершить') : t('contests.yesContinue', 'Да, продолжить')}
         danger={confirmStatus === 'finished'}
         busy={busy}
         onConfirm={changeStatus}

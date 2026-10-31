@@ -35,10 +35,10 @@ const MoveStudentModal: React.FC<Props> = ({ uid, studentName, mode, groups, bra
     ? groups.map(g => ({ id: g.id, name: g.name }))
     : branches.map(b => ({ id: b.id, name: b.name }));
 
-  const title = mode === 'group' ? 'Перевести в группу' : 'Перевести в филиал';
+  const title = mode === 'group' ? t('roster.bulk.migrateToGroup', 'Перевести в группу') : t('roster.bulk.migrateToBranch', 'Перевести в филиал');
   const hint = mode === 'group'
-    ? 'Студент будет исключён из остальных групп и добавлен в выбранную.'
-    : 'Текущий филиал будет заменён на выбранный.';
+    ? t('roster.move.groupHint', 'Студент будет исключён из остальных групп и добавлен в выбранную.')
+    : t('roster.move.branchHint', 'Текущий филиал будет заменён на выбранный.');
 
   const handleMove = async () => {
     if (!targetId) return;
@@ -50,11 +50,11 @@ const MoveStudentModal: React.FC<Props> = ({ uid, studentName, mode, groups, bra
       // moved === 0 означает, что сервер отказался трогать запись (чужой филиал,
       // снятые права) — молчаливый «успех» здесь врал бы.
       if ((res.moved ?? 0) > 0) {
-        toast.success(mode === 'group' ? 'Переведён в группу' : 'Переведён в филиал');
+        toast.success(mode === 'group' ? t('roster.move.movedToGroup', 'Переведён в группу') : t('roster.move.movedToBranch', 'Переведён в филиал'));
         onDone();
         onClose();
       } else {
-        toast.error('Не удалось перевести — нет доступа к этой записи');
+        toast.error(t('roster.move.noAccess', 'Не удалось перевести — нет доступа к этой записи'));
       }
     } catch (e: any) {
       toast.error(e.message || t('common.error', 'Ошибка'));
@@ -68,16 +68,16 @@ const MoveStudentModal: React.FC<Props> = ({ uid, studentName, mode, groups, bra
       <div className="bg-white dark:bg-slate-800 rounded-3xl p-6 w-full max-w-sm shadow-2xl" onClick={e => e.stopPropagation()}>
         <div className="flex items-start justify-between mb-1">
           <h2 className="text-lg font-bold text-slate-900 dark:text-white">{title}</h2>
-          <button onClick={onClose} className="p-1 text-slate-400 hover:text-slate-600"><X className="w-5 h-5" /></button>
+          <button onClick={onClose} aria-label={t('common.close', 'Закрыть')} className="p-1 text-slate-400 hover:text-slate-600"><X className="w-5 h-5" /></button>
         </div>
         <p className="text-xs text-slate-500 mb-4">
           <b className="text-slate-700 dark:text-slate-300">{studentName}</b>
-          {current.length > 0 && <> · сейчас: {current.join(', ')}</>}
+          {current.length > 0 && <> · {t('roster.move.currently', 'сейчас:')} {current.join(', ')}</>}
         </p>
 
         {options.length === 0 ? (
           <div className="bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400 p-3 rounded-xl text-xs font-medium mb-5 border border-amber-200/50">
-            {mode === 'group' ? 'В организации нет групп.' : 'В организации нет филиалов.'}
+            {mode === 'group' ? t('roster.move.noGroups', 'В организации нет групп.') : t('roster.move.noBranches', 'В организации нет филиалов.')}
           </div>
         ) : (
           <>
@@ -88,7 +88,7 @@ const MoveStudentModal: React.FC<Props> = ({ uid, studentName, mode, groups, bra
               autoFocus
               className="w-full bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 text-sm font-medium text-slate-900 dark:text-white outline-none focus:border-primary-500 mb-2"
             >
-              <option value="">— Выберите —</option>
+              <option value="">{t('roster.move.choose', '— Выберите —')}</option>
               {options.map(o => <option key={o.id} value={o.id}>{o.name}</option>)}
             </select>
             <p className="text-[11px] text-slate-400 mb-5">{hint}</p>
@@ -105,7 +105,7 @@ const MoveStudentModal: React.FC<Props> = ({ uid, studentName, mode, groups, bra
             className="bg-primary-600 hover:bg-primary-700 text-white px-5 py-2 rounded-xl text-xs font-bold disabled:opacity-40 transition-all flex items-center gap-2"
           >
             {busy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <ArrowRight className="w-3.5 h-3.5" />}
-            Перевести
+            {t('roster.bulk.migrate', 'Перевести')}
           </button>
         </div>
       </div>

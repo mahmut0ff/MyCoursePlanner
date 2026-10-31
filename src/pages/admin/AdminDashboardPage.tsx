@@ -318,9 +318,9 @@ const AdminDashboardPage: React.FC = () => {
     },
     {
       label: t('admin.dashboard.mrr'),
-      value: `${stats.mrr} сом`,
+      value: t('admin.currencyAmount', '{{amount}} сом', { amount: stats.mrr }),
       icon: DollarSign,
-      sub: `${t('admin.dashboard.arr')}: ${stats.arr} сом`,
+      sub: `${t('admin.dashboard.arr')}: ${t('admin.currencyAmount', '{{amount}} сом', { amount: stats.arr })}`,
       chg: change(0),
       glow: 'shadow-amber-500/20 dark:shadow-amber-500/30',
       iconBg: 'bg-amber-500/10 dark:bg-amber-500/20 text-amber-500',
@@ -349,7 +349,7 @@ const AdminDashboardPage: React.FC = () => {
   const insights = [
     { cls: 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30', icon: '📈', text: `${t('admin.dashboard.insightGrowth')} ${userGrowth >= 0 ? '+' : ''}${userGrowth}%` },
     { cls: 'bg-blue-500/20 text-blue-400 border-blue-500/30', icon: '🎯', text: `${t('admin.dashboard.insightExams')} ${stats.totalAttempts}` },
-    { cls: 'bg-amber-500/20 text-amber-400 border-amber-500/30', icon: '💰', text: `${t('admin.dashboard.insightMrr')} ${stats.mrr} сом` },
+    { cls: 'bg-amber-500/20 text-amber-400 border-amber-500/30', icon: '💰', text: `${t('admin.dashboard.insightMrr')} ${t('admin.currencyAmount', '{{amount}} сом', { amount: stats.mrr })}` },
   ];
 
   return (
@@ -366,7 +366,7 @@ const AdminDashboardPage: React.FC = () => {
           <button
             onClick={refresh}
             className={`p-2 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 transition-all ${updating ? 'animate-spin' : ''}`}
-            title="Refresh"
+            title={t('common.refresh', 'Обновить')}
           >
             <RefreshCw className="w-4 h-4" />
           </button>
@@ -432,9 +432,9 @@ const AdminDashboardPage: React.FC = () => {
         </div>
         <AreaChart
           datasets={[
-            { data: chartData.orgs, color: '#818cf8', label: 'Orgs' },
-            { data: chartData.users, color: '#34d399', label: 'Users' },
-            { data: chartData.revenue, color: '#fbbf24', label: 'Revenue' },
+            { data: chartData.orgs, color: '#818cf8', label: t('admin.dashboard.organizations') },
+            { data: chartData.users, color: '#34d399', label: t('admin.dashboard.totalUsers') },
+            { data: chartData.revenue, color: '#fbbf24', label: t('admin.dashboard.mrr') },
           ]}
           labels={chartData.labels}
         />
@@ -448,9 +448,9 @@ const AdminDashboardPage: React.FC = () => {
           </h3>
           <div className="space-y-4">
             {[
-              { name: t('admin.plans.starter'), price: '1990 сом', count: Number(stats.planDistribution?.starter) || 0, color: 'bg-blue-500', glow: '#3b82f6' },
-              { name: t('admin.plans.professional'), price: '4990 сом', count: Number(stats.planDistribution?.professional) || 0, color: 'bg-violet-500', glow: '#8b5cf6' },
-              { name: t('admin.plans.enterprise'), price: '14900 сом', count: Number(stats.planDistribution?.enterprise) || 0, color: 'bg-amber-500', glow: '#f59e0b' },
+              { name: t('admin.plans.starter'), price: t('admin.currencyAmount', '{{amount}} сом', { amount: 1990 }), count: Number(stats.planDistribution?.starter) || 0, color: 'bg-blue-500', glow: '#3b82f6' },
+              { name: t('admin.plans.professional'), price: t('admin.currencyAmount', '{{amount}} сом', { amount: 4990 }), count: Number(stats.planDistribution?.professional) || 0, color: 'bg-violet-500', glow: '#8b5cf6' },
+              { name: t('admin.plans.enterprise'), price: t('admin.currencyAmount', '{{amount}} сом', { amount: 14900 }), count: Number(stats.planDistribution?.enterprise) || 0, color: 'bg-amber-500', glow: '#f59e0b' },
             ].map((p) => {
               const totalItems = Number(stats.totalOrganizations) || 0;
               let pct = 0;

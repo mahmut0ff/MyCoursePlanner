@@ -1,18 +1,20 @@
 import React, { useEffect, useState } from 'react';
 import { X, CalendarClock, Loader2, Sparkles, AlertTriangle } from 'lucide-react';
 import { apiAIScheduleReview } from '../../lib/api';
+import { useTranslation } from 'react-i18next';
 
 interface Issue { type: string; detail: string; suggestion: string }
 
-const TYPE_CFG: Record<string, { label: string; cls: string }> = {
-  conflict: { label: 'Накладка', cls: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' },
-  overload: { label: 'Перегрузка', cls: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400' },
-  gap: { label: 'Окно', cls: 'bg-sky-100 text-sky-700 dark:bg-sky-900/30 dark:text-sky-400' },
-  balance: { label: 'Баланс', cls: 'bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-400' },
-  other: { label: 'Прочее', cls: 'bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300' },
+const TYPE_CFG: Record<string, { key: string; label: string; cls: string }> = {
+  conflict: { key: 'ai.scheduleReview.typeConflict', label: 'Накладка', cls: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' },
+  overload: { key: 'ai.scheduleReview.typeOverload', label: 'Перегрузка', cls: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400' },
+  gap: { key: 'ai.scheduleReview.typeGap', label: 'Окно', cls: 'bg-sky-100 text-sky-700 dark:bg-sky-900/30 dark:text-sky-400' },
+  balance: { key: 'ai.scheduleReview.typeBalance', label: 'Баланс', cls: 'bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-400' },
+  other: { key: 'ai.scheduleReview.typeOther', label: 'Прочее', cls: 'bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300' },
 };
 
 const ScheduleReviewModal: React.FC<{ open: boolean; onClose: () => void; events: any[] }> = ({ open, onClose, events }) => {
+  const { t } = useTranslation();
   const [loading, setLoading] = useState(false);
   const [summary, setSummary] = useState('');
   const [issues, setIssues] = useState<Issue[]>([]);
@@ -30,7 +32,7 @@ const ScheduleReviewModal: React.FC<{ open: boolean; onClose: () => void; events
         setSummary(d.summary || '');
         setIssues(Array.isArray(d.issues) ? d.issues : []);
       })
-      .catch((err) => setError(err?.message || 'Не удалось проанализировать расписание'))
+      .catch((err) => setError(err?.message || t('ai.scheduleReview.error', 'Не удалось проанализировать расписание')))
       .finally(() => setLoading(false));
   }, [open, events]);
 
@@ -45,11 +47,11 @@ const ScheduleReviewModal: React.FC<{ open: boolean; onClose: () => void; events
               <CalendarClock className="w-5 h-5" />
             </div>
             <div>
-              <h2 className="text-lg font-bold text-slate-900 dark:text-white">AI-анализ расписания</h2>
-              <p className="text-xs text-slate-500 dark:text-slate-400">Накладки, перегрузки и рекомендации</p>
+              <h2 className="text-lg font-bold text-slate-900 dark:text-white">{t('ai.scheduleReview.title', 'AI-анализ расписания')}</h2>
+              <p className="text-xs text-slate-500 dark:text-slate-400">{t('ai.scheduleReview.subtitle', 'Накладки, перегрузки и рекомендации')}</p>
             </div>
           </div>
-          <button onClick={onClose} className="p-2 -mr-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 rounded-lg transition-colors">
+          <button onClick={onClose} aria-label={t('common.close', 'Закрыть')} className="p-2 -mr-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 rounded-lg transition-colors">
             <X className="w-5 h-5" />
           </button>
         </div>
@@ -58,7 +60,7 @@ const ScheduleReviewModal: React.FC<{ open: boolean; onClose: () => void; events
           {loading && (
             <div className="flex flex-col items-center justify-center py-12 text-slate-400">
               <Loader2 className="w-8 h-8 animate-spin mb-3" />
-              <p className="text-sm">AI проверяет расписание…</p>
+              <p className="text-sm">{t('ai.scheduleReview.loading', 'AI проверяет расписание…')}</p>
             </div>
           )}
 
@@ -75,7 +77,7 @@ const ScheduleReviewModal: React.FC<{ open: boolean; onClose: () => void; events
                 </div>
               )}
               {issues.length === 0 ? (
-                <div className="text-center py-6 text-sm text-slate-500 dark:text-slate-400">Проблем не найдено — расписание выглядит сбалансированным 👍</div>
+                <div className="text-center py-6 text-sm text-slate-500 dark:text-slate-400">{t('ai.scheduleReview.empty', 'Проблем не найдено — расписание выглядит сбалансированным 👍')}</div>
               ) : (
                 <div className="space-y-3">
                   {issues.map((it, i) => {
@@ -83,7 +85,7 @@ const ScheduleReviewModal: React.FC<{ open: boolean; onClose: () => void; events
                     return (
                       <div key={i} className="bg-slate-50 dark:bg-slate-900/40 border border-slate-200 dark:border-slate-700 rounded-xl p-4">
                         <div className="flex items-center gap-2 mb-1.5">
-                          <span className={`text-[10px] font-bold uppercase tracking-wide px-2 py-0.5 rounded-md ${cfg.cls}`}>{cfg.label}</span>
+                          <span className={`text-[10px] font-bold uppercase tracking-wide px-2 py-0.5 rounded-md ${cfg.cls}`}>{t(cfg.key, cfg.label)}</span>
                         </div>
                         <p className="text-sm text-slate-700 dark:text-slate-200 flex items-start gap-2">
                           <AlertTriangle className="w-3.5 h-3.5 text-amber-500 shrink-0 mt-0.5" /> {it.detail}

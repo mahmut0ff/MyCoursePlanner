@@ -19,6 +19,7 @@
 import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import toast from 'react-hot-toast';
+import { useTranslation } from 'react-i18next';
 import {
   LogOut, ChevronLeft, ChevronRight, Search, CheckCircle2, Circle, Minus, Plus, Megaphone,
   WifiOff, Lock, Moon, Sun, Gavel, Trophy, CloudUpload,
@@ -45,6 +46,7 @@ const isNetworkError = (e: any) => !e?.status && (e instanceof TypeError || !nav
 const bigBtn = 'w-full flex items-center gap-3 rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-4 py-4 text-left active:scale-[0.99] transition-transform';
 
 const JudgePage: React.FC = () => {
+  const { t } = useTranslation();
   const { profile, firebaseUser } = useAuth();
   const { isDark, toggle } = useTheme();
   const uid = firebaseUser?.uid || '';
@@ -74,8 +76,8 @@ const JudgePage: React.FC = () => {
       const r = await apiJudgeMy();
       setContests(r.contests);
       setLoadError('');
-    } catch (e: any) { setLoadError(isNetworkError(e) ? 'Нет связи с сервером' : (e?.message || 'Ошибка загрузки')); }
-  }, []);
+    } catch (e: any) { setLoadError(isNetworkError(e) ? t('judge.err.noConnection', 'Нет связи с сервером') : (e?.message || t('judge.err.load', 'Ошибка загрузки'))); }
+  }, [t]);
   useEffect(() => { loadMy(); }, [loadMy]);
 
   // Один конкурс / одна категория — выбираем сами, без лишнего экрана.
@@ -111,8 +113,8 @@ const JudgePage: React.FC = () => {
     try {
       setBoard(await apiJudgeBoard(contestId, categoryId));
       setBoardError('');
-    } catch (e: any) { setBoardError(isNetworkError(e) ? 'Нет связи — показываю последнее загруженное' : (e?.message || 'Ошибка')); }
-  }, [contestId, categoryId]);
+    } catch (e: any) { setBoardError(isNetworkError(e) ? t('judge.err.offlineCached', 'Нет связи — показываю последнее загруженное') : (e?.message || t('judge.err.generic', 'Ошибка'))); }
+  }, [contestId, categoryId, t]);
   useEffect(() => { setBoard(null); loadBoard(); }, [loadBoard]);
   // Вернулись к списку — освежить отметки.
   useEffect(() => { if (!projectId) loadBoard(); }, [projectId, loadBoard]);
@@ -138,14 +140,14 @@ const JudgePage: React.FC = () => {
         sent++;
       } catch (e: any) {
         if (isNetworkError(e)) left.push(item);
-        else toast.error(`Оценка не принята: ${e?.message || 'ошибка'}`);
+        else toast.error(t('judge.scoreRejected', 'Оценка не принята: {{error}}', { error: e?.message || t('judge.err.generic', 'Ошибка') }));
       }
     }
     lsSet(queueKey(uid), left.length ? left : null);
     setQueue(left);
     flushing.current = false;
-    if (sent) { toast.success(`Отправлено оценок: ${sent}`); loadBoard(); }
-  }, [uid, loadBoard]);
+    if (sent) { toast.success(t('judge.sentCount', 'Отправлено оценок: {{n}}', { n: sent })); loadBoard(); }
+  }, [uid, loadBoard, t]);
 
   useEffect(() => {
     const on = () => { setOnline(true); flush(); };
@@ -174,8 +176,8 @@ const JudgePage: React.FC = () => {
     if (!callStamp || callStamp === seenCall.current || !called) return;
     seenCall.current = callStamp;
     if (called.id === projectId) return;
-    if (!dirty) { go({ p: called.id }); toast(`Ведущий открыл ${called.number}`, { icon: '📣' }); }
-  }, [board, live, callStamp, called, projectId, dirty, go]);
+    if (!dirty) { go({ p: called.id }); toast(t('judge.hostOpened', 'Ведущий открыл {{number}}', { number: called.number }), { icon: '📣' }); }
+  }, [board, live, callStamp, called, projectId, dirty, go, t]);
   // Плашка — только на экране ДРУГОГО проекта; в списке за это отвечает карточка «Сейчас на сцене».
   const callout = projectId && called && called.id !== projectId ? called : null;
 
@@ -188,51 +190,51 @@ const JudgePage: React.FC = () => {
         <div className="max-w-xl mx-auto px-4 h-14 flex items-center gap-2">
           {(contestId && (categoryId || (contests && contests.length > 1))) ? (
             <button onClick={() => (projectId ? go({ p: null }) : categoryId && contest && contest.categories.length > 1 ? go({ cat: null }) : contests && contests.length > 1 ? go({ c: null, cat: null }) : undefined)}
-              className="w-11 h-11 -ml-2 rounded-xl flex items-center justify-center active:bg-slate-100 dark:active:bg-slate-800" aria-label={projectId ? 'К списку проектов' : 'Назад'}><ChevronLeft className="w-6 h-6" /></button>
+              className="w-11 h-11 -ml-2 rounded-xl flex items-center justify-center active:bg-slate-100 dark:active:bg-slate-800" aria-label={projectId ? t('judge.backToProjects', 'К списку проектов') : t('common.back', 'Назад')}><ChevronLeft className="w-6 h-6" /></button>
           ) : <Gavel className="w-5 h-5 text-primary-500" aria-hidden />}
           <div className="flex-1 min-w-0">
-            <div className="text-[15px] font-bold truncate">{contest ? contest.title : 'Оценивание'}</div>
-            <div className="text-[12px] text-slate-600 dark:text-slate-400 truncate">{cat ? `Категория ${cat.code}${cat.name ? ` · ${cat.name}` : ''}` : name}</div>
+            <div className="text-[15px] font-bold truncate">{contest ? contest.title : t('judge.title', 'Оценивание')}</div>
+            <div className="text-[12px] text-slate-600 dark:text-slate-400 truncate">{cat ? `${t('judge.categoryCode', 'Категория {{code}}', { code: cat.code })}${cat.name ? ` · ${cat.name}` : ''}` : name}</div>
           </div>
           {/* Одно меню вместо двух соседних иконок: «Выйти» — за подтверждением, чтобы промах пальцем не выкинул из оценивания. */}
-          <RowMenu label="Меню" buttonClassName="w-11 h-11 -mr-2 rounded-xl flex items-center justify-center text-slate-600 dark:text-slate-300 active:bg-slate-100 dark:active:bg-slate-800" items={[
-            { label: isDark ? 'Светлая тема' : 'Тёмная тема', icon: isDark ? Sun : Moon, onSelect: toggle },
-            { label: 'Выйти из учётной записи', icon: LogOut, danger: true, separated: true, onSelect: () => setConfirmLogout(true) },
+          <RowMenu label={t('judge.menu', 'Меню')} buttonClassName="w-11 h-11 -mr-2 rounded-xl flex items-center justify-center text-slate-600 dark:text-slate-300 active:bg-slate-100 dark:active:bg-slate-800" items={[
+            { label: isDark ? t('judge.lightTheme', 'Светлая тема') : t('judge.darkTheme', 'Тёмная тема'), icon: isDark ? Sun : Moon, onSelect: toggle },
+            { label: t('judge.logout', 'Выйти из учётной записи'), icon: LogOut, danger: true, separated: true, onSelect: () => setConfirmLogout(true) },
           ]} />
         </div>
         {(!online || queue.length > 0) && (
           <div className={`px-4 py-2 text-[13px] font-medium flex items-center justify-center gap-2 ${online ? 'bg-sky-100 text-sky-800 dark:bg-sky-500/15 dark:text-sky-200' : 'bg-amber-100 text-amber-900 dark:bg-amber-500/15 dark:text-amber-200'}`}>
             {online ? <CloudUpload className="w-4 h-4" /> : <WifiOff className="w-4 h-4" />}
-            {online ? `Отправляю сохранённые оценки: ${queue.length}…` : queue.length ? `Нет связи. Не отправлено оценок: ${queue.length} — они на телефоне и уйдут сами` : 'Нет связи с интернетом'}
+            {online ? t('judge.sendingQueued', 'Отправляю сохранённые оценки: {{n}}…', { n: queue.length }) : queue.length ? t('judge.offlineQueued', 'Нет связи. Не отправлено оценок: {{n}} — они на телефоне и уйдут сами', { n: queue.length }) : t('judge.offline', 'Нет связи с интернетом')}
           </div>
         )}
         {callout && (
           <button onClick={() => go({ p: callout.id })} className="w-full min-h-[44px] px-4 py-2.5 bg-emerald-700 text-white text-[14px] font-semibold flex items-center justify-center gap-2">
-            <Megaphone className="w-4 h-4" aria-hidden />Ведущий открыл {callout.number} — перейти
+            <Megaphone className="w-4 h-4" aria-hidden />{t('judge.hostOpenedGo', 'Ведущий открыл {{number}} — перейти', { number: callout.number })}
           </button>
         )}
       </header>
 
       <ConfirmDialog
         open={confirmLogout}
-        title="Выйти из учётной записи?"
-        message={queue.length ? `Не отправлено оценок: ${queue.length}. Они останутся на этом телефоне и уйдут после следующего входа при наличии связи.` : 'Для входа снова понадобятся email и пароль, выданные организатором.'}
-        confirmLabel="Выйти" danger
+        title={t('judge.logoutConfirm', 'Выйти из учётной записи?')}
+        message={queue.length ? t('judge.logoutQueued', 'Не отправлено оценок: {{n}}. Они останутся на этом телефоне и уйдут после следующего входа при наличии связи.', { n: queue.length }) : t('judge.logoutHint', 'Для входа снова понадобятся email и пароль, выданные организатором.')}
+        confirmLabel={t('common.logout', 'Выйти')} danger
         onConfirm={() => signOut()}
         onClose={() => setConfirmLogout(false)}
       />
 
       <main className="max-w-xl mx-auto px-4 py-4 pb-40">
-        {loadError && !contests && <Notice tone="error">{loadError}<button onClick={loadMy} className="ml-2 underline">Повторить</button></Notice>}
+        {loadError && !contests && <Notice tone="error">{loadError}<button onClick={loadMy} className="ml-2 underline">{t('judge.retry', 'Повторить')}</button></Notice>}
         {!contests && !loadError && <Spinner />}
 
         {/* 1. Конкурсы */}
         {contests && !contestId && (
           contests.length === 0 ? (
-            <Empty icon={<Trophy className="w-8 h-8" />} title="Пока нет конкурсов для оценивания" text="Когда организатор откроет регистрацию или оценивание, конкурс появится здесь." />
+            <Empty icon={<Trophy className="w-8 h-8" />} title={t('judge.noContests', 'Пока нет конкурсов для оценивания')} text={t('judge.noContestsText', 'Когда организатор откроет регистрацию или оценивание, конкурс появится здесь.')} />
           ) : (
             <div className="space-y-3">
-              <h1 className="text-xl font-bold mb-1">Здравствуйте{name ? `, ${name}` : ''}!</h1>
+              <h1 className="text-xl font-bold mb-1">{name ? t('judge.helloName', 'Здравствуйте, {{name}}!', { name }) : t('judge.hello', 'Здравствуйте!')}</h1>
               {contests.map((c) => (
                 <button key={c.id} onClick={() => go({ c: c.id })} className={bigBtn}>
                   <Trophy className="w-6 h-6 text-primary-500 shrink-0" />
@@ -247,15 +249,15 @@ const JudgePage: React.FC = () => {
         {/* 2. Категории */}
         {contest && !categoryId && (
           <div className="space-y-3">
-            {contest.status !== 'judging' && <Notice tone="info">Оценивание ещё не началось. Организатор откроет категории в день конкурса.</Notice>}
-            <h1 className="text-xl font-bold">Выберите категорию</h1>
+            {contest.status !== 'judging' && <Notice tone="info">{t('judge.notStarted', 'Оценивание ещё не началось. Организатор откроет категории в день конкурса.')}</Notice>}
+            <h1 className="text-xl font-bold">{t('judge.pickCategory', 'Выберите категорию')}</h1>
             {contest.categories.map((c0) => {
               const c = liveCat(c0.id)!;
               return (
                 <button key={c.id} onClick={() => go({ cat: c.id })} className={bigBtn}>
                   <span className="w-12 h-12 rounded-xl bg-slate-900 text-white dark:bg-white dark:text-slate-900 flex items-center justify-center text-xl font-black shrink-0">{c.code}</span>
                   <span className="flex-1 min-w-0">
-                    <span className="block font-bold truncate">{c.name || `Категория ${c.code}`}</span>
+                    <span className="block font-bold truncate">{c.name || t('judge.categoryCode', 'Категория {{code}}', { code: c.code })}</span>
                     <JudgingLine state={c.judging} />
                   </span>
                   <ChevronRight className="w-5 h-5 text-slate-400" />
@@ -275,7 +277,7 @@ const JudgePage: React.FC = () => {
         {contest && cat && projectId && board && (() => {
           const idx = board.projects.findIndex((p) => p.id === projectId);
           const project = board.projects[idx];
-          if (!project) return <Notice tone="error">Проект не найден в категории. <button onClick={() => go({ p: null })} className="underline">К списку</button></Notice>;
+          if (!project) return <Notice tone="error">{t('judge.projectNotFound', 'Проект не найден в категории.')} <button onClick={() => go({ p: null })} className="underline">{t('judge.toList', 'К списку')}</button></Notice>;
           return (
             <ScoreForm
               key={project.id}
@@ -283,7 +285,7 @@ const JudgePage: React.FC = () => {
               contest={contest}
               project={project}
               open={cat.judging === 'open' && contest.status === 'judging'}
-              closedReason={cat.judging === 'approved' ? 'Итоги категории утверждены — оценки больше не меняются.' : 'Оценивание категории сейчас закрыто организатором. Ваши баллы сохранятся на телефоне — отправите, когда категорию откроют.'}
+              closedReason={cat.judging === 'approved' ? t('judge.closedApproved', 'Итоги категории утверждены — оценки больше не меняются.') : t('judge.closedByOrganizer', 'Оценивание категории сейчас закрыто организатором. Ваши баллы сохранятся на телефоне — отправите, когда категорию откроют.')}
               saved={board.mine[project.id]}
               next={board.projects[idx + 1]}
               prev={board.projects[idx - 1]}
@@ -309,8 +311,9 @@ const ProjectList: React.FC<{
   board: JudgeBoard | null; error: string; cat: { code: string; judging: JudgeBoard['category']['judging']; currentParticipantId: string | null };
   max: number; queue: Pending[]; hostMode: boolean; onOpen: (id: string) => void; onRetry: () => void;
 }> = ({ board, error, cat, max, queue, hostMode, onOpen, onRetry }) => {
+  const { t } = useTranslation();
   const [q, setQ] = useState('');
-  if (!board) return error ? <Notice tone="error">{error}<button onClick={onRetry} className="ml-2 underline">Повторить</button></Notice> : <Spinner />;
+  if (!board) return error ? <Notice tone="error">{error}<button onClick={onRetry} className="ml-2 underline">{t('judge.retry', 'Повторить')}</button></Notice> : <Spinner />;
   const done = board.projects.filter((p) => board.mine[p.id]).length;
   const queued = new Set(queue.map((x) => x.participantId));
   const norm = normalizeProjectNumber(q);
@@ -328,28 +331,28 @@ const ProjectList: React.FC<{
       {error && <Notice tone="warn">{error}</Notice>}
       <div className="flex items-center justify-between">
         <JudgingLine state={cat.judging} />
-        <span className="text-[13px] text-slate-600 dark:text-slate-300">Оценено <b className="text-slate-900 dark:text-white">{done}</b> из {board.projects.length}{left > 0 && done > 0 ? ` · осталось ${left}` : ''}</span>
+        <span className="text-[13px] text-slate-600 dark:text-slate-300">{t('judge.rated', 'Оценено')} <b className="text-slate-900 dark:text-white">{done}</b> {t('judge.ofTotal', 'из {{total}}', { total: board.projects.length })}{left > 0 && done > 0 ? t('judge.left', ' · осталось {{n}}', { n: left }) : ''}</span>
       </div>
-      <div className="h-2 rounded-full bg-slate-200 dark:bg-slate-800 overflow-hidden" role="progressbar" aria-valuenow={done} aria-valuemax={board.projects.length} aria-label="Оценено проектов">
+      <div className="h-2 rounded-full bg-slate-200 dark:bg-slate-800 overflow-hidden" role="progressbar" aria-valuenow={done} aria-valuemax={board.projects.length} aria-label={t('judge.ratedProjects', 'Оценено проектов')}>
         <div className="h-full bg-emerald-500 transition-all" style={{ width: `${board.projects.length ? (done / board.projects.length) * 100 : 0}%` }} />
       </div>
 
       {current && (
         <button onClick={() => onOpen(current.id)} className="w-full rounded-2xl bg-emerald-700 text-white px-4 py-3.5 flex items-center gap-3 text-left">
           <Megaphone className="w-5 h-5 shrink-0" aria-hidden />
-          <span className="flex-1 min-w-0"><span className="block text-[12px] text-emerald-100">Сейчас на сцене{board.mine[current.id] ? ' · вы уже оценили' : ''}</span><span className="block font-bold truncate">{current.number} · {current.projectTitle}</span></span>
+          <span className="flex-1 min-w-0"><span className="block text-[12px] text-emerald-100">{board.mine[current.id] ? t('judge.onStageRated', 'Сейчас на сцене · вы уже оценили') : t('judge.onStage', 'Сейчас на сцене')}</span><span className="block font-bold truncate">{current.number} · {current.projectTitle}</span></span>
           <ChevronRight className="w-5 h-5" aria-hidden />
         </button>
       )}
 
       <form onSubmit={(e) => { e.preventDefault(); if (exact) onOpen(exact.id); else if (list.length === 1) onOpen(list[0].id); }} className="relative">
         <Search className="w-5 h-5 text-slate-500 absolute left-3.5 top-1/2 -translate-y-1/2" aria-hidden />
-        <input value={q} onChange={(e) => setQ(e.target.value)} placeholder={`Номер, напр. ${cat.code}-03`} aria-label="Поиск по номеру проекта" enterKeyHint="go" autoCapitalize="characters"
+        <input value={q} onChange={(e) => setQ(e.target.value)} placeholder={t('judge.searchPlaceholder', 'Номер, напр. {{example}}', { example: `${cat.code}-03` })} aria-label={t('judge.searchAria', 'Поиск по номеру проекта')} enterKeyHint="go" autoCapitalize="characters"
           className="w-full h-14 rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 pl-11 pr-24 text-lg font-semibold focus:outline-none focus:ring-2 focus:ring-primary-500" />
-        {(exact || list.length === 1) && q && <button type="submit" className="absolute right-2 top-1/2 -translate-y-1/2 h-10 px-4 rounded-xl bg-slate-900 text-white dark:bg-white dark:text-slate-900 font-bold">Открыть</button>}
+        {(exact || list.length === 1) && q && <button type="submit" className="absolute right-2 top-1/2 -translate-y-1/2 h-10 px-4 rounded-xl bg-slate-900 text-white dark:bg-white dark:text-slate-900 font-bold">{t('judge.open', 'Открыть')}</button>}
       </form>
 
-      {!board.projects.length && <Empty icon={<Circle className="w-8 h-8" />} title="Проектов пока нет" text="Здесь появятся участники, отмеченные на месте." />}
+      {!board.projects.length && <Empty icon={<Circle className="w-8 h-8" />} title={t('judge.noProjects', 'Проектов пока нет')} text={t('judge.noProjectsText', 'Здесь появятся участники, отмеченные на месте.')} />}
 
       <ul className="space-y-2">
         {list.map((p) => {
@@ -359,12 +362,12 @@ const ProjectList: React.FC<{
             <li key={p.id}>
               <button onClick={() => onOpen(p.id)} className={`${bigBtn} py-3.5 ${hostMode && p.id === cat.currentParticipantId ? 'ring-2 ring-emerald-500' : ''}`}>
                 <span className="font-mono font-black text-lg w-16 shrink-0">{p.number}</span>
-                <span className="flex-1 min-w-0 font-medium truncate">{p.projectTitle || 'Без названия'}</span>
+                <span className="flex-1 min-w-0 font-medium truncate">{p.projectTitle || t('judge.untitled', 'Без названия')}</span>
                 {waiting
-                  ? <span className="flex items-center gap-1 text-amber-700 dark:text-amber-400 text-[13px] font-semibold"><WifiOff className="w-4 h-4" aria-hidden />не отправлено</span>
+                  ? <span className="flex items-center gap-1 text-amber-700 dark:text-amber-400 text-[13px] font-semibold"><WifiOff className="w-4 h-4" aria-hidden />{t('judge.notSent', 'не отправлено')}</span>
                   : mine
-                    ? <span className="flex items-center gap-1 text-emerald-700 dark:text-emerald-400 font-bold"><CheckCircle2 className="w-5 h-5" aria-hidden /><span className="sr-only">оценён, </span>{round2(mine.total)}<span className="text-slate-500 dark:text-slate-400 text-[12px] font-normal">/{max}</span></span>
-                    : <span className="flex items-center gap-1 text-slate-600 dark:text-slate-400 text-[13px]"><Circle className="w-5 h-5" aria-hidden />не оценён</span>}
+                    ? <span className="flex items-center gap-1 text-emerald-700 dark:text-emerald-400 font-bold"><CheckCircle2 className="w-5 h-5" aria-hidden /><span className="sr-only">{t('judge.ratedSr', 'оценён, ')}</span>{round2(mine.total)}<span className="text-slate-500 dark:text-slate-400 text-[12px] font-normal">/{max}</span></span>
+                    : <span className="flex items-center gap-1 text-slate-600 dark:text-slate-400 text-[13px]"><Circle className="w-5 h-5" aria-hidden />{t('judge.notRated', 'не оценён')}</span>}
               </button>
             </li>
           );
@@ -389,6 +392,7 @@ const ScoreForm: React.FC<{
   onSaved: (total: number, scores: Record<string, number>) => void;
   onQueued: (item: Pending) => void;
 }> = ({ uid, contest, project, open, closedReason, saved, next, prev, onDirty, onNavigate, onSaved, onQueued }) => {
+  const { t } = useTranslation();
   const criteria = contest.criteria;
   const dKey = draftKey(uid, contest.id, project.id);
   const fromSaved = useMemo(() => Object.fromEntries(criteria.map((c) => [c.id, saved?.scores?.[c.id] != null ? String(saved.scores[c.id]) : ''])), [criteria, saved]);
@@ -416,9 +420,9 @@ const ScoreForm: React.FC<{
     const raw = vals[c.id];
     if (raw === '' || raw === undefined) return [c.id, ''];
     const v = Number(raw);
-    if (!Number.isFinite(v) || v < 0) return [c.id, 'Некорректно'];
-    if (v > c.maxScore) return [c.id, `Не больше ${c.maxScore}`];
-    if (Math.round(v * 2) !== v * 2) return [c.id, 'Шаг 0,5'];
+    if (!Number.isFinite(v) || v < 0) return [c.id, t('judge.invalid', 'Некорректно')];
+    if (v > c.maxScore) return [c.id, t('judge.maxN', 'Не больше {{max}}', { max: c.maxScore })];
+    if (Math.round(v * 2) !== v * 2) return [c.id, t('judge.halfStep', 'Шаг 0,5')];
     return [c.id, ''];
   }));
   const filledCount = criteria.filter((c) => vals[c.id] !== '' && vals[c.id] !== undefined).length;
@@ -446,15 +450,15 @@ const ScoreForm: React.FC<{
       lsSet(dKey, null);
       onSaved(r.total, scores);
       setState('saved');
-      toast.success(`${project.number}: сохранено · ${round2(r.total)}`);
+      toast.success(t('judge.savedToast', '{{number}}: сохранено · {{total}}', { number: project.number, total: round2(r.total) }));
     } catch (e: any) {
       if (isNetworkError(e)) {
         onQueued({ contestId: contest.id, participantId: project.id, scores, at: new Date().toISOString() });
         setState('queued');
-        setMessage('Нет связи. Оценка сохранена на телефоне и отправится автоматически, когда появится интернет.');
+        setMessage(t('judge.queuedMsg', 'Нет связи. Оценка сохранена на телефоне и отправится автоматически, когда появится интернет.'));
       } else {
         setState('error');
-        setMessage(e?.message || 'Не удалось сохранить');
+        setMessage(e?.message || t('judge.saveFailed', 'Не удалось сохранить'));
       }
     }
   };
@@ -464,15 +468,15 @@ const ScoreForm: React.FC<{
       <section className="rounded-2xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-4">
         <div className="flex items-center gap-3">
           <span className="font-mono font-black text-2xl px-3 py-1 rounded-xl bg-slate-900 text-white dark:bg-white dark:text-slate-900">{project.number}</span>
-          {saved && <span className="text-[13px] text-emerald-600 font-semibold flex items-center gap-1"><CheckCircle2 className="w-4 h-4" />оценён · {round2(saved.total)}</span>}
+          {saved && <span className="text-[13px] text-emerald-600 font-semibold flex items-center gap-1"><CheckCircle2 className="w-4 h-4" />{t('judge.ratedTotal', 'оценён · {{total}}', { total: round2(saved.total) })}</span>}
         </div>
-        <h1 className="text-lg font-bold mt-3 leading-snug">{project.projectTitle || 'Без названия'}</h1>
+        <h1 className="text-lg font-bold mt-3 leading-snug">{project.projectTitle || t('judge.untitled', 'Без названия')}</h1>
         {project.authors.length > 0 && <p className="text-[14px] text-slate-600 dark:text-slate-300 mt-0.5">{project.authors.join(', ')}</p>}
         {project.projectDescription && (
           <div className="mt-2">
             <p ref={descRef} className={`text-[14px] text-slate-600 dark:text-slate-300 ${showDesc ? '' : 'line-clamp-2'}`}>{project.projectDescription}</p>
             {(clamped || showDesc) && (
-              <button onClick={() => setShowDesc((s) => !s)} aria-expanded={showDesc} className="mt-1 min-h-[36px] text-[14px] font-semibold text-primary-700 dark:text-primary-400">{showDesc ? 'Свернуть' : 'Читать полностью'}</button>
+              <button onClick={() => setShowDesc((s) => !s)} aria-expanded={showDesc} className="mt-1 min-h-[36px] text-[14px] font-semibold text-primary-700 dark:text-primary-400">{showDesc ? t('judge.collapse', 'Свернуть') : t('judge.readMore', 'Читать полностью')}</button>
             )}
           </div>
         )}
@@ -486,17 +490,17 @@ const ScoreForm: React.FC<{
           <section key={c.id} className={`rounded-2xl bg-white dark:bg-slate-800 border p-4 ${err ? 'border-rose-400' : 'border-slate-200 dark:border-slate-700'}`}>
             <div className="flex items-start justify-between gap-2">
               <h2 className="font-bold text-[16px] leading-snug">{i + 1}. {c.name}</h2>
-              <span className="text-[13px] text-slate-600 dark:text-slate-400 whitespace-nowrap">макс. {c.maxScore}</span>
+              <span className="text-[13px] text-slate-600 dark:text-slate-400 whitespace-nowrap">{t('judge.maxScore', 'макс. {{max}}', { max: c.maxScore })}</span>
             </div>
             {c.description && <p className="text-[14px] text-slate-600 dark:text-slate-400 mt-1">{c.description}</p>}
             <div className="flex items-center gap-2 mt-3">
-              <button onClick={() => step(c.id, -1, c.maxScore)} className="w-14 h-14 rounded-2xl bg-slate-100 dark:bg-slate-700 flex items-center justify-center active:scale-95" aria-label="Минус"><Minus className="w-6 h-6" /></button>
+              <button onClick={() => step(c.id, -1, c.maxScore)} className="w-14 h-14 rounded-2xl bg-slate-100 dark:bg-slate-700 flex items-center justify-center active:scale-95" aria-label={t('judge.minus', 'Минус')}><Minus className="w-6 h-6" /></button>
               <input
                 value={vals[c.id] ?? ''} onChange={(e) => setVal(c.id, e.target.value)}
                 inputMode="decimal" enterKeyHint="next" aria-label={c.name} placeholder="—"
                 className={`flex-1 min-w-0 h-14 rounded-2xl text-center text-3xl font-black bg-slate-50 dark:bg-slate-900 border-2 focus:outline-none ${err ? 'border-rose-400 text-rose-600' : 'border-transparent focus:border-primary-500'}`}
               />
-              <button onClick={() => step(c.id, 1, c.maxScore)} className="w-14 h-14 rounded-2xl bg-slate-100 dark:bg-slate-700 flex items-center justify-center active:scale-95" aria-label="Плюс"><Plus className="w-6 h-6" /></button>
+              <button onClick={() => step(c.id, 1, c.maxScore)} className="w-14 h-14 rounded-2xl bg-slate-100 dark:bg-slate-700 flex items-center justify-center active:scale-95" aria-label={t('judge.plus', 'Плюс')}><Plus className="w-6 h-6" /></button>
             </div>
             {err && <p role="alert" className="text-[13px] text-rose-700 dark:text-rose-400 font-semibold mt-1.5">{err}</p>}
           </section>
@@ -514,16 +518,16 @@ const ScoreForm: React.FC<{
           {message && <p role="alert" className={`text-[13px] font-medium mb-2 ${state === 'queued' ? 'text-amber-800 dark:text-amber-300' : 'text-rose-700 dark:text-rose-400'}`}>{message}</p>}
           <div className="flex items-center gap-3">
             <div className="shrink-0">
-              <div className="text-[12px] text-slate-600 dark:text-slate-400">Ваша сумма</div>
+              <div className="text-[12px] text-slate-600 dark:text-slate-400">{t('judge.yourTotal', 'Ваша сумма')}</div>
               <div className="text-2xl font-black leading-none">{round2(total)}<span className="text-[14px] text-slate-600 dark:text-slate-400 font-semibold">/{max}</span></div>
             </div>
             <button onClick={save} disabled={!valid || state === 'saving' || !open || (!isDirty && !!saved)}
               className={`flex-1 h-14 rounded-2xl text-lg font-bold transition-colors ${!isDirty && saved ? 'bg-emerald-600 text-white' : 'bg-slate-900 text-white dark:bg-white dark:text-slate-900 disabled:opacity-40'}`}>
-              {state === 'saving' ? 'Сохраняю…' : !isDirty && saved ? 'Сохранено ✓' : !filled ? `Заполнено ${filledCount} из ${criteria.length}` : saved ? 'Сохранить изменения' : 'Сохранить'}
+              {state === 'saving' ? t('judge.saving', 'Сохраняю…') : !isDirty && saved ? t('judge.savedCheck', 'Сохранено ✓') : !filled ? t('judge.filled', 'Заполнено {{n}} из {{total}}', { n: filledCount, total: criteria.length }) : saved ? t('judge.saveChanges', 'Сохранить изменения') : t('common.save', 'Сохранить')}
             </button>
           </div>
           {state === 'saved' && !isDirty && next && (
-            <button onClick={() => onNavigate(next.id)} className="w-full mt-2 h-11 rounded-xl text-[15px] font-semibold text-primary-700 dark:text-primary-400 flex items-center justify-center gap-1">Следующий проект: {next.number}<ChevronRight className="w-4 h-4" aria-hidden /></button>
+            <button onClick={() => onNavigate(next.id)} className="w-full mt-2 h-11 rounded-xl text-[15px] font-semibold text-primary-700 dark:text-primary-400 flex items-center justify-center gap-1">{t('judge.nextProject', 'Следующий проект: {{number}}', { number: next.number })}<ChevronRight className="w-4 h-4" aria-hidden /></button>
           )}
         </div>
       </div>
@@ -533,12 +537,13 @@ const ScoreForm: React.FC<{
 
 // ─── Мелочи ───
 const JudgingLine: React.FC<{ state: JudgeBoard['category']['judging'] }> = ({ state }) => {
+  const { t } = useTranslation();
   const map = {
-    pending: ['text-slate-600 dark:text-slate-400', 'Оценивание не началось'],
-    open: ['text-emerald-700 dark:text-emerald-400', 'Идёт оценивание'],
-    closed: ['text-amber-700 dark:text-amber-400', 'Оценивание закрыто'],
-    approved: ['text-primary-700 dark:text-primary-400', 'Итоги утверждены'],
-  } as const;
+    pending: ['text-slate-600 dark:text-slate-400', t('judge.state.pending', 'Оценивание не началось')],
+    open: ['text-emerald-700 dark:text-emerald-400', t('judge.state.open', 'Идёт оценивание')],
+    closed: ['text-amber-700 dark:text-amber-400', t('judge.state.closed', 'Оценивание закрыто')],
+    approved: ['text-primary-700 dark:text-primary-400', t('judge.state.approved', 'Итоги утверждены')],
+  };
   const [cls, label] = map[state];
   return <span className={`flex items-center gap-1.5 text-[13px] font-semibold ${cls}`}>{state === 'open' && <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />}{label}</span>;
 };
@@ -550,7 +555,7 @@ const Notice: React.FC<{ tone: 'error' | 'warn' | 'info'; children: React.ReactN
   return <div className={`rounded-2xl border px-4 py-3 text-[14px] ${cls}`}>{children}</div>;
 };
 
-const Spinner = () => <div className="flex justify-center py-16" role="status" aria-label="Загрузка"><div className="w-8 h-8 border-4 border-slate-200 border-t-slate-600 rounded-full animate-spin dark:border-slate-700 dark:border-t-slate-300" /></div>;
+const Spinner = () => { const { t } = useTranslation(); return <div className="flex justify-center py-16" role="status" aria-label={t('common.loading', 'Загрузка...')}><div className="w-8 h-8 border-4 border-slate-200 border-t-slate-600 rounded-full animate-spin dark:border-slate-700 dark:border-t-slate-300" /></div>; };
 
 const Empty: React.FC<{ icon: React.ReactNode; title: string; text: string }> = ({ icon, title, text }) => (
   <div className="text-center py-16 px-6">

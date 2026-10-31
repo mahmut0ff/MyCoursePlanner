@@ -30,6 +30,7 @@ import { useOrg } from '../../contexts/OrgContext';
 import { getInstitution } from '../../lib/terminology';
 import { makeDefaultSchema, describeSchema, entryNumericValue } from '../../lib/gradePresets';
 import { wasPresent } from '../../lib/attendance';
+import { intlLocale } from '../../lib/locale';
 
 
 function getLocalISODate(d: Date) {
@@ -49,6 +50,13 @@ const minDateFormatted = getLocalISODate(minDateObj);
 const maxDateObj = new Date(now);
 maxDateObj.setDate(now.getDate() + 14);
 const maxDateFormatted = getLocalISODate(maxDateObj);
+
+const ATTENDANCE_LABELS: Record<AttendanceStatus, string> = {
+  present: 'Присутствовал',
+  absent: 'Отсутствовал',
+  late: 'Опоздал',
+  excused: 'Уважительная причина',
+};
 
 const attendanceIcons: Record<AttendanceStatus, React.ReactNode> = {
   present: <CheckCircle2 className="w-5 h-5 text-emerald-500" />,
@@ -180,11 +188,11 @@ const JournalPage: React.FC = () => {
 
     return top5.map(val => {
       const d = new Date(val);
-      let label = d.toLocaleDateString('ru-RU', { weekday: 'short', day: 'numeric' });
-      if (val === todayFormatted) label = 'Сегодня';
+      let label = d.toLocaleDateString(intlLocale(), { weekday: 'short', day: 'numeric' });
+      if (val === todayFormatted) label = t('schedule.today', 'Сегодня');
       return { val, label };
     });
-  }, [courseJournalDates]);
+  }, [courseJournalDates, t]);
 
   // 1. Load initial static data (optimized)
   useEffect(() => {
@@ -242,7 +250,7 @@ const JournalPage: React.FC = () => {
     allGroups.forEach(g => {
       const key = g.courseId || '';
       if (!buckets.has(key)) {
-        buckets.set(key, { title: courses.find(c => c.id === key)?.title || 'Без курса', groups: [] });
+        buckets.set(key, { title: courses.find(c => c.id === key)?.title || t('journal.ui.noCourse', 'Без курса'), groups: [] });
       }
       buckets.get(key)!.groups.push(g);
     });
@@ -419,7 +427,7 @@ const JournalPage: React.FC = () => {
       setEntries(newEntries);
       toast.success(t('journal.lessonAttached', 'Урок прикреплен'));
     } catch(e: any) {
-      toast.error(e.message || 'Ошибка прикрепления урока');
+      toast.error(e.message || t('journal.ui.attachFailed', 'Ошибка прикрепления урока'));
     } finally {
       setBulking(false);
     }
@@ -618,7 +626,7 @@ const JournalPage: React.FC = () => {
       setEntries(newEntries);
       toast.success(t('journal.allMarkedPresent', 'Все студенты отмечены присутствующими'));
     } catch(e: any) {
-      toast.error(e.message || 'Ошибка массовой отметки');
+      toast.error(e.message || t('journal.ui.bulkFailed', 'Ошибка массовой отметки'));
     } finally {
       setBulking(false);
     }
@@ -673,12 +681,12 @@ const JournalPage: React.FC = () => {
               <h1 className="text-2xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
                 {t('nav.journal', 'Журнал')}
                 {!isDateValidForEditing && !isReadOnly && (
-                   <span className="text-xs bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400 px-2 py-0.5 rounded-lg font-bold">Архивный режим</span>
+                   <span className="text-xs bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400 px-2 py-0.5 rounded-lg font-bold">{t('journal.ui.archiveMode', 'Архивный режим')}</span>
                 )}
               </h1>
               <p className="text-sm text-slate-500 dark:text-slate-400">
                 {isReadOnly
-                  ? 'Режим только для чтения'
+                  ? t('journal.ui.readOnly', 'Режим только для чтения')
                   : t('journal.subtitle', 'Ежедневная перекличка и заметки')}
               </p>
             </div>
@@ -742,7 +750,8 @@ const JournalPage: React.FC = () => {
             <button
               onClick={loadContentAndGrades}
               className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors border border-transparent dark:hover:border-slate-700"
-              title="Refresh"
+              title={t('common.refresh', 'Обновить')}
+              aria-label={t('common.refresh', 'Обновить')}
             >
               <RefreshCcw className="w-4 h-4" />
             </button>
@@ -752,17 +761,17 @@ const JournalPage: React.FC = () => {
         <div className="flex flex-col sm:flex-row sm:items-center justify-between bg-slate-50 dark:bg-slate-800/50 p-4 rounded-xl border border-slate-200 dark:border-slate-700/50 gap-4">
           <div>
             <p className="text-sm font-medium text-slate-700 dark:text-slate-300">
-              Студентов в группе: <span className="font-bold">{groupStudents.length}</span>
+              {t('journal.ui.studentsInGroup', 'Студентов в группе:')} <span className="font-bold">{groupStudents.length}</span>
             </p>
             {canEdit && courseLessons.length > 0 && (
               <div className="mt-3 flex flex-wrap items-center gap-2">
-                 <span className="text-xs font-medium text-slate-500">Прикреплённый урок:</span>
+                 <span className="text-xs font-medium text-slate-500">{t('journal.ui.attachedLesson', 'Прикреплённый урок:')}</span>
                  <select 
                     className="text-sm border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-1 bg-white dark:bg-slate-900"
                     value={selectedLessonId || ''}
                     onChange={(e) => handleAttachLesson(e.target.value)}
                  >
-                    <option value="">— Без урока —</option>
+                    <option value="">{t('journal.ui.noLessonOpt', '— Без урока —')}</option>
                     {courseLessons.map(l => (
                       <option key={l.id} value={l.id}>{l.title}</option>
                     ))}
@@ -771,11 +780,11 @@ const JournalPage: React.FC = () => {
             )}
             {!canEdit && selectedLessonId && (
               <div className="mt-2 text-sm text-slate-600 dark:text-slate-400">
-                 Прикреплённый урок: <span className="font-medium">{courseLessons.find(l => l.id === selectedLessonId)?.title || selectedLessonId}</span>
+                 {t('journal.ui.attachedLesson', 'Прикреплённый урок:')} <span className="font-medium">{courseLessons.find(l => l.id === selectedLessonId)?.title || selectedLessonId}</span>
               </div>
             )}
             {!isDateValidForEditing && !isReadOnly && (
-               <p className="text-xs text-red-500 mt-1 font-medium">Редактирование блокировано. Можно изменять данные только в пределах последних 14-ти дней.</p>
+               <p className="text-xs text-red-500 mt-1 font-medium">{t('journal.ui.editLocked', 'Редактирование блокировано. Можно изменять данные только в пределах последних 14-ти дней.')}</p>
             )}
           </div>
           {canEdit && (
@@ -817,7 +826,7 @@ const JournalPage: React.FC = () => {
                   placeholder="—"
                   value={sessionDuration}
                   onChange={(e) => setSessionDuration(e.target.value)}
-                  title={t('journal.sessionDurationHint', 'Сколько минут фактически шло занятие')}
+                  title={t('journal.sessionDurationTitle', 'Фактическая длительность занятия')}
                   className="w-20 px-3 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-medium outline-none focus:border-primary-500 transition-colors shadow-sm"
                 />
               </div>
@@ -836,13 +845,13 @@ const JournalPage: React.FC = () => {
         {loadingData ? (
           <div className="flex flex-col items-center justify-center bg-white dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-2xl p-12">
             <div className="w-8 h-8 border-2 border-slate-400 border-t-transparent rounded-full animate-spin mb-4" />
-            <p className="text-sm font-medium text-slate-500 animate-pulse">Загрузка переклички...</p>
+            <p className="text-sm font-medium text-slate-500 animate-pulse">{t('journal.ui.loadingRoll', 'Загрузка переклички...')}</p>
           </div>
         ) : groupStudents.length === 0 ? (
           <div className="flex flex-col items-center justify-center bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-12 text-center shadow-sm">
             <AlertCircle className="w-12 h-12 text-slate-300 dark:text-slate-600 mb-3" />
-            <p className="font-medium text-slate-900 dark:text-white mb-1">Нет студентов</p>
-            <p className="text-sm text-slate-500">В выбранной группе пока нет студентов для переклички.</p>
+            <p className="font-medium text-slate-900 dark:text-white mb-1">{t('journal.ui.noStudents', 'Нет студентов')}</p>
+            <p className="text-sm text-slate-500">{t('journal.ui.noStudentsDesc', 'В выбранной группе пока нет студентов для переклички.')}</p>
           </div>
         ) : (
           <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl overflow-hidden shadow-sm">
@@ -850,17 +859,17 @@ const JournalPage: React.FC = () => {
               <table className="w-full text-left text-sm min-w-[960px]">
                 <thead className="bg-slate-50 dark:bg-slate-900/50 border-b border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400">
                   <tr>
-                    <th className="px-5 py-4 font-medium w-[250px]">Студент</th>
+                    <th className="px-5 py-4 font-medium w-[250px]">{t('journal.ui.colStudent', 'Студент')}</th>
                     <th className="px-5 py-4 font-medium text-center w-28 bg-primary-50/50 dark:bg-primary-900/10 border-r border-l border-slate-200 dark:border-slate-700">
                       <div className="flex flex-col items-center">
-                        <span>Оценка</span>
+                        <span>{t('journal.ui.colGrade', 'Оценка')}</span>
                         {schema && (
                           <span
                             className="text-[10px] bg-primary-100 text-primary-700 dark:bg-primary-900/30 dark:text-primary-400 px-1.5 py-0.5 rounded mt-1 font-semibold"
-                            title={`Шкала курса: ${describeSchema(schema)}. Настраивается в разделе «Оценки» → «Шкала».`}
+                            title={t('journal.ui.scaleHint', 'Шкала курса: {{scale}}. Настраивается в разделе «Оценки» → «Шкала».', { scale: describeSchema(schema) })}
                           >
                             {schema.gradingType === 'points' || schema.gradingType === 'percent'
-                              ? `М: ${schema.scale.max}`
+                              ? t('journal.ui.maxShort', 'М: {{max}}', { max: schema.scale.max })
                               : describeSchema(schema)}
                           </span>
                         )}
@@ -871,13 +880,13 @@ const JournalPage: React.FC = () => {
                         перестаёт помещаться по ширине. */}
                     <th
                       className="px-2 py-4 font-normal text-center w-40 text-slate-400"
-                      title="Работы приходят от учеников в Telegram-бот. Отметка и оценка за ДЗ не влияют на средний балл, но идут в KPI преподавателя."
+                      title={t('journal.ui.hwHint', 'Работы приходят от учеников в Telegram-бот. Отметка и оценка за ДЗ не влияют на средний балл, но идут в KPI преподавателя.')}
                     >
-                      ДЗ
+                      {t('teacherActivity.col.hw', 'ДЗ')}
                     </th>
-                    <th className="px-5 py-4 font-medium text-center w-48">Присутствие</th>
-                    <th className="px-5 py-4 font-medium text-center w-56">Участие</th>
-                    <th className="px-5 py-4 font-medium min-w-[200px]">Заметки</th>
+                    <th className="px-5 py-4 font-medium text-center w-48">{t('journal.ui.colAttendance', 'Присутствие')}</th>
+                    <th className="px-5 py-4 font-medium text-center w-56">{t('journal.ui.colParticipation', 'Участие')}</th>
+                    <th className="px-5 py-4 font-medium min-w-[200px]">{t('journal.ui.colNotes', 'Заметки')}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-700/50">
@@ -939,7 +948,7 @@ const JournalPage: React.FC = () => {
                                   <Link
                                     to="/homework/review"
                                     className="relative shrink-0 p-1 rounded-md text-primary-600 dark:text-primary-400 hover:bg-primary-50 dark:hover:bg-primary-900/20 transition-colors"
-                                    title={`Работа сдана ${new Date(submission.submittedAt).toLocaleString('ru-RU')}${submission.isLate ? ' — после срока' : ''}${attachments ? ` · файлов: ${attachments}` : ' · текстом'}`}
+                                    title={t('journal.ui.submittedAt', 'Работа сдана {{date}}', { date: new Date(submission.submittedAt).toLocaleString(intlLocale()) }) + (submission.isLate ? t('journal.ui.afterDeadline', ' — после срока') : '') + (attachments ? t('journal.ui.filesCount', ' · файлов: {{count}}', { count: attachments }) : t('journal.ui.asText', ' · текстом'))}
                                   >
                                     <Paperclip className="w-3.5 h-3.5" />
                                     {attachments > 1 && (
@@ -960,7 +969,7 @@ const JournalPage: React.FC = () => {
                                     const isActive = status === st;
                                     if (!canEdit && !isActive) return null;
                                     if (!canEdit && isActive) {
-                                      return <div key={st} className={`p-1 rounded-md ${meta.activeClass}`} title={meta.label}>{meta.icon}</div>;
+                                      return <div key={st} className={`p-1 rounded-md ${meta.activeClass}`} title={t(`journal.hw.${st}`, meta.label)}>{meta.icon}</div>;
                                     }
                                     return (
                                       <button
@@ -969,7 +978,7 @@ const JournalPage: React.FC = () => {
                                         // кнопках легко, а иначе её было бы не убрать.
                                         onClick={() => handleEntryChange(student.uid, 'homeworkStatus', isActive ? null : st)}
                                         className={`p-1 rounded-md transition-all ${isActive ? meta.activeClass : 'opacity-30 hover:opacity-100 hover:bg-slate-200/60 dark:hover:bg-slate-700'}`}
-                                        title={meta.label}
+                                        title={t(`journal.hw.${st}`, meta.label)}
                                       >
                                         {meta.icon}
                                       </button>
@@ -1016,7 +1025,8 @@ const JournalPage: React.FC = () => {
                                   key={status}
                                   onClick={() => handleEntryChange(student.uid, 'attendance', status)}
                                   className={`p-2 rounded-lg transition-all ${isActive ? 'bg-white dark:bg-slate-800 shadow-sm' : 'opacity-40 hover:opacity-100 hover:bg-slate-200/50 dark:hover:bg-slate-800'}`}
-                                  title={status}
+                                  title={t(`journal.attendance.${status}`, ATTENDANCE_LABELS[status])}
+                                  aria-label={t(`journal.attendance.${status}`, ATTENDANCE_LABELS[status])}
                                 >
                                   {attendanceIcons[status]}
                                 </button>
@@ -1040,7 +1050,7 @@ const JournalPage: React.FC = () => {
                                if (!canEdit && isActive) {
                                  return (
                                    <div key={level} className={`px-4 py-2 rounded-lg ${activeClass}`}>
-                                      {level.charAt(0).toUpperCase() + level.slice(1)}
+                                      {level === 'low' ? t('journal.participationLow', 'Низкая') : level === 'medium' ? t('journal.participationMedium', 'Средняя') : t('journal.participationHigh', 'Высокая')}
                                    </div>
                                  )
                                }
@@ -1051,7 +1061,7 @@ const JournalPage: React.FC = () => {
                                   onClick={() => handleEntryChange(student.uid, 'participation', level)}
                                   className={`px-4 py-2 rounded-lg transition-all ${isActive ? activeClass : 'text-slate-500 hover:text-slate-700 hover:bg-slate-200/50 dark:hover:bg-slate-800 dark:hover:text-slate-300'}`}
                                 >
-                                  {level.charAt(0).toUpperCase() + level.slice(1)}
+                                  {level === 'low' ? t('journal.participationLow', 'Низкая') : level === 'medium' ? t('journal.participationMedium', 'Средняя') : t('journal.participationHigh', 'Высокая')}
                                 </button>
                                )
                             })}
@@ -1062,7 +1072,7 @@ const JournalPage: React.FC = () => {
                         <td className="px-5 py-3 relative">
                           <input
                             type="text"
-                            placeholder={!canEdit ? (entry?.note ? '' : "—") : "Заметки (не видны студенту)..."}
+                            placeholder={!canEdit ? (entry?.note ? '' : "—") : t('journal.ui.notePh', 'Заметки (не видны студенту)...')}
                             readOnly={!canEdit}
                             className={`w-full px-3 py-2 pr-8 rounded-xl text-sm outline-none transition-colors ${!canEdit ? 'bg-transparent border-transparent px-0' : 'bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 focus:border-primary-500'}`}
                             value={entry?.note || ''}
@@ -1089,13 +1099,13 @@ const JournalPage: React.FC = () => {
         <div className="flex items-center gap-2 mb-4">
           <Trophy className="w-5 h-5 text-amber-500" />
           <h2 className="text-lg font-bold text-slate-900 dark:text-white">
-            Рейтинг студентов
+            {t('journal.ui.ratingTitle', 'Рейтинг студентов')}
           </h2>
         </div>
 
         {groupStudents.length === 0 ? (
           <div className="p-6 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200 dark:border-slate-700/50 text-center">
-            <p className="text-sm text-slate-500">Выберите группу со студентами.</p>
+            <p className="text-sm text-slate-500">{t('journal.ui.pickGroup', 'Выберите группу со студентами.')}</p>
           </div>
         ) : (
           <div className="space-y-2">
@@ -1182,11 +1192,11 @@ const JournalPage: React.FC = () => {
                           r.attendancePct >= 50 ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400' :
                           'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
                         }`}>
-                          {r.attendancePct}% посещ.
+                          {t('journal.ui.attShort', '{{pct}}% посещ.', { pct: r.attendancePct })}
                         </span>
                         {r.gradePct > 0 && (
                           <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-700 px-1.5 py-0.5 rounded">
-                            {r.sameScale ? `${r.avgGrade}/${r.maxGrade}` : `${r.gradePct}% успев.`}
+                            {r.sameScale ? `${r.avgGrade}/${r.maxGrade}` : t('journal.ui.gradeShort', '{{pct}}% успев.', { pct: r.gradePct })}
                           </span>
                         )}
                       </div>
@@ -1201,7 +1211,7 @@ const JournalPage: React.FC = () => {
                       }`}>
                         {r.overallScore}
                       </p>
-                      <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">балл</p>
+                      <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">{t('journal.ui.score', 'балл')}</p>
                     </div>
                   </div>
 
@@ -1224,10 +1234,10 @@ const JournalPage: React.FC = () => {
             <div className="mt-4 p-3 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200 dark:border-slate-700/50">
               <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2 flex items-center gap-1">
                 <TrendingUp className="w-3 h-3" />
-                Формула рейтинга
+                {t('journal.ui.formula', 'Формула рейтинга')}
               </p>
               <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">
-                40% посещаемость + 60% ср.оценка
+                {t('journal.ui.formulaValue', '40% посещаемость + 60% ср.оценка')}
               </p>
             </div>
           </div>

@@ -28,7 +28,7 @@ const TABS: { id: Tab; icon: React.ElementType; labelKey: string }[] = [
   { id: 'menu', icon: SlidersHorizontal, labelKey: 'sidebar.customize' },
   { id: 'academic', icon: GraduationCap, labelKey: 'org.settings.academic' },
   { id: 'visitcard', icon: QrCode, labelKey: 'org.settings.visitCardTab' },
-  { id: 'integrations', icon: Link, labelKey: 'Интеграции' },
+  { id: 'integrations', icon: Link, labelKey: 'org.settings.integrationsTab' },
   { id: 'notifications', icon: Bell, labelKey: 'org.settings.notifications' },
   { id: 'data', icon: Database, labelKey: 'org.settings.dataTab' },
   { id: 'limits', icon: BarChart3, labelKey: 'org.settings.limits' },
@@ -144,6 +144,7 @@ const GeneralTab: React.FC<{ settings: OrgSettings; update: (k: string, v: any) 
                 <option value="ru">🇷🇺 Русский</option>
                 <option value="en">🇬🇧 English</option>
                 <option value="kg">🇰🇬 Кыргызча</option>
+                <option value="uz">🇺🇿 O'zbekcha</option>
               </select>
             </div>
           </div>
@@ -244,11 +245,11 @@ const AcademicTab: React.FC<{ settings: OrgSettings; update: (k: string, v: any)
           </div>
           <div>
             <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1"><span className="flex items-center gap-1"><MapPin className="w-3 h-3" />{t('org.settings.address', 'Адрес')}</span></label>
-            <input type="text" value={settings.address || ''} onChange={(e) => update('address', e.target.value)} className="input" placeholder="г. Бишкек, ул. ..." />
+            <input type="text" value={settings.address || ''} onChange={(e) => update('address', e.target.value)} className="input" placeholder={t('org.settings.addressPh', 'г. Бишкек, ул. ...')} />
           </div>
           <div>
             <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1"><span className="flex items-center gap-1"><Clock className="w-3 h-3" />{t('org.settings.workingHours', 'Рабочие часы')}</span></label>
-            <input type="text" value={settings.workingHours || ''} onChange={(e) => update('workingHours', e.target.value)} className="input" placeholder="Пн-Пт 09:00-18:00, Сб 10:00-15:00" />
+            <input type="text" value={settings.workingHours || ''} onChange={(e) => update('workingHours', e.target.value)} className="input" placeholder={t('org.settings.workingHoursPh', 'Пн-Пт 09:00-18:00, Сб 10:00-15:00')} />
           </div>
         </div>
       </div>
@@ -514,7 +515,7 @@ const DataTab: React.FC = () => {
   const { t } = useTranslation();
 
   const handleMock = () => {
-    toast('Функция в разработке', { icon: '🚧' });
+    toast(t('org.settings.inDevelopment', 'Функция в разработке'), { icon: '🚧' });
   };
 
   return (

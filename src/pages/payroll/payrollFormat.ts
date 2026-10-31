@@ -9,6 +9,7 @@
  */
 import type { PayComponent, PayrollPeriodState } from '../../types';
 import { formatMoney } from '../../lib/money';
+import { intlLocale } from '../../lib/locale';
 
 /**
  * Подпись переводчика в том виде, в каком её зовёт весь репозиторий:
@@ -159,5 +160,5 @@ export const currentPeriodKey = (): string => {
 export const formatPeriodLabel = (period: string): string => {
   const [y, m] = String(period || '').split('-').map(Number);
   if (!Number.isFinite(y) || !Number.isFinite(m)) return period;
-  return new Date(y, m - 1, 1).toLocaleDateString('ru-RU', { month: 'long', year: 'numeric' });
+  return new Date(y, m - 1, 1).toLocaleDateString(intlLocale(), { month: 'long', year: 'numeric' });
 };

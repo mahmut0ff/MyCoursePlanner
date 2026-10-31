@@ -138,7 +138,7 @@ const RoomPage: React.FC = () => {
                     {a.cheatAttempts && a.cheatAttempts > 0 ? (
                       <span className="flex items-center gap-1.5 text-xs font-bold text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 px-2.5 py-1 rounded-md w-fit">
                         <AlertTriangle className="w-3.5 h-3.5" />
-                        {a.cheatAttempts} {t('rooms.times', 'раз')}
+                        {t('rooms.timesCount', { count: a.cheatAttempts, defaultValue: '{{count}} раз' })}
                       </span>
                     ) : (
                       <span className="text-xs text-slate-400 dark:text-slate-500">-</span>

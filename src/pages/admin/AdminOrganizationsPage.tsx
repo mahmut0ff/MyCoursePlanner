@@ -12,6 +12,7 @@ interface CreatedOrgInfo {
 }
 
 const CreateOrgModal: React.FC<{ onClose: () => void; onCreated: () => void }> = ({ onClose, onCreated }) => {
+  const { t } = useTranslation();
   const [name, setName] = useState('');
   const [ownerName, setOwnerName] = useState('');
   const [ownerEmail, setOwnerEmail] = useState('');
@@ -25,7 +26,7 @@ const CreateOrgModal: React.FC<{ onClose: () => void; onCreated: () => void }> =
     e.preventDefault();
     setError('');
     if (!name.trim() || !ownerName.trim() || !ownerEmail.trim()) {
-      setError('Заполните все поля'); return;
+      setError(t('admin.orgs.create.fillAll', 'Заполните все поля')); return;
     }
     setSubmitting(true);
     try {
@@ -33,13 +34,13 @@ const CreateOrgModal: React.FC<{ onClose: () => void; onCreated: () => void }> =
       setResult({ orgName: name.trim(), ownerEmail: ownerEmail.trim().toLowerCase(), tempPassword: res.tempPassword || '' });
       onCreated();
     } catch (e: any) {
-      setError(e?.message || 'Не удалось создать организацию');
+      setError(e?.message || t('admin.orgs.create.failed', 'Не удалось создать организацию'));
     } finally { setSubmitting(false); }
   };
 
   const copyCredentials = async () => {
     if (!result) return;
-    const text = `Учебный центр: ${result.orgName}\nEmail: ${result.ownerEmail}\nВременный пароль: ${result.tempPassword}\nВход: ${window.location.origin}/login`;
+    const text = t('admin.orgs.create.credentials', 'Учебный центр: {{org}}\nEmail: {{email}}\nВременный пароль: {{password}}\nВход: {{url}}', { org: result.orgName, email: result.ownerEmail, password: result.tempPassword, url: `${window.location.origin}/login` });
     await navigator.clipboard.writeText(text);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
@@ -50,7 +51,7 @@ const CreateOrgModal: React.FC<{ onClose: () => void; onCreated: () => void }> =
       <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-md max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between p-5 border-b border-slate-200 dark:border-slate-700">
           <h2 className="text-lg font-bold text-slate-900 dark:text-white">
-            {result ? 'Организация создана' : 'Новая организация'}
+            {result ? t('admin.orgs.create.created', 'Организация создана') : t('admin.orgs.create.newTitle', 'Новая организация')}
           </h2>
           <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700">
             <X className="w-4 h-4" />
@@ -63,59 +64,59 @@ const CreateOrgModal: React.FC<{ onClose: () => void; onCreated: () => void }> =
               <div className="flex items-start gap-3">
                 <ShieldAlert className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
                 <div>
-                  <p className="font-semibold text-amber-900 dark:text-amber-200 text-sm">Сохраните пароль сейчас</p>
+                  <p className="font-semibold text-amber-900 dark:text-amber-200 text-sm">{t('admin.orgs.create.savePassword', 'Сохраните пароль сейчас')}</p>
                   <p className="text-xs text-amber-700 dark:text-amber-300 mt-1">
-                    Этот пароль показывается ровно один раз. После закрытия окна его нельзя будет восстановить — только сбросить.
+                    {t('admin.orgs.create.passwordOnce', 'Этот пароль показывается ровно один раз. После закрытия окна его нельзя будет восстановить — только сбросить.')}
                   </p>
                 </div>
               </div>
             </div>
 
             <div className="rounded-xl bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-700 p-4 space-y-2 text-sm">
-              <div><span className="text-slate-500">Центр:</span> <span className="font-semibold text-slate-900 dark:text-white">{result.orgName}</span></div>
-              <div><span className="text-slate-500">Email:</span> <span className="font-mono text-slate-900 dark:text-white">{result.ownerEmail}</span></div>
-              <div><span className="text-slate-500">Пароль:</span> <span className="font-mono text-slate-900 dark:text-white select-all">{result.tempPassword}</span></div>
+              <div><span className="text-slate-500">{t('admin.orgs.create.center', 'Центр:')}</span> <span className="font-semibold text-slate-900 dark:text-white">{result.orgName}</span></div>
+              <div><span className="text-slate-500">{t('common.email', 'Email')}:</span> <span className="font-mono text-slate-900 dark:text-white">{result.ownerEmail}</span></div>
+              <div><span className="text-slate-500">{t('admin.orgs.create.password', 'Пароль:')}</span> <span className="font-mono text-slate-900 dark:text-white select-all">{result.tempPassword}</span></div>
             </div>
 
             <button onClick={copyCredentials} className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors text-sm font-semibold">
-              {copied ? <><Check className="w-4 h-4 text-emerald-600" /> Скопировано</> : <><Copy className="w-4 h-4" /> Скопировать данные</>}
+              {copied ? <><Check className="w-4 h-4 text-emerald-600" /> {t('support.copied', 'Скопировано')}</> : <><Copy className="w-4 h-4" /> {t('admin.orgs.create.copyData', 'Скопировать данные')}</>}
             </button>
             <button onClick={onClose} className="w-full py-2.5 rounded-xl bg-primary-600 hover:bg-primary-700 text-white font-semibold text-sm transition-colors">
-              Готово
+              {t('admin.orgs.create.done', 'Готово')}
             </button>
           </div>
         ) : (
           <form onSubmit={submit} className="p-5 space-y-4">
             <p className="text-sm text-slate-500 dark:text-slate-400">
-              Создаём организацию и аккаунт владельца. Сервер сгенерирует временный пароль — вы передадите его владельцу.
+              {t('admin.orgs.create.intro', 'Создаём организацию и аккаунт владельца. Сервер сгенерирует временный пароль — вы передадите его владельцу.')}
             </p>
             <div>
-              <label className="label">Название центра</label>
-              <input type="text" value={name} onChange={(e) => setName(e.target.value)} className="input" placeholder="Например, Билим Академия" autoFocus />
+              <label className="label">{t('admin.orgs.create.name', 'Название центра')}</label>
+              <input type="text" value={name} onChange={(e) => setName(e.target.value)} className="input" placeholder={t('admin.orgs.create.namePlaceholder', 'Например, Билим Академия')} autoFocus />
             </div>
             <div>
-              <label className="label">Имя владельца</label>
-              <input type="text" value={ownerName} onChange={(e) => setOwnerName(e.target.value)} className="input" placeholder="Айбек Турсунов" />
+              <label className="label">{t('admin.orgs.create.ownerName', 'Имя владельца')}</label>
+              <input type="text" value={ownerName} onChange={(e) => setOwnerName(e.target.value)} className="input" placeholder={t('admin.orgs.create.ownerNamePlaceholder', 'Айбек Турсунов')} />
             </div>
             <div>
-              <label className="label">Email владельца</label>
+              <label className="label">{t('admin.orgs.create.ownerEmail', 'Email владельца')}</label>
               <input type="email" value={ownerEmail} onChange={(e) => setOwnerEmail(e.target.value)} className="input" placeholder="aibek@example.kg" />
             </div>
             <div>
-              <label className="label">Тариф</label>
+              <label className="label">{t('admin.orgs.plan', 'Тариф')}</label>
               <select value={planId} onChange={(e) => setPlanId(e.target.value)} className="input">
-                <option value="starter">Starter (14 дней trial)</option>
-                <option value="professional">Professional (3 дня trial)</option>
-                <option value="enterprise">Enterprise (3 дня trial)</option>
+                <option value="starter">Starter ({t('admin.orgs.create.trialDays', { count: 14 })})</option>
+                <option value="professional">Professional ({t('admin.orgs.create.trialDays', { count: 3 })})</option>
+                <option value="enterprise">Enterprise ({t('admin.orgs.create.trialDays', { count: 3 })})</option>
               </select>
             </div>
             {error && <div className="text-sm text-red-600 dark:text-red-400">{error}</div>}
             <div className="flex gap-3 pt-2">
               <button type="button" onClick={onClose} className="flex-1 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 font-semibold text-sm transition-colors">
-                Отмена
+                {t('common.cancel', 'Отмена')}
               </button>
               <button type="submit" disabled={submitting} className="flex-1 py-2.5 rounded-xl bg-primary-600 hover:bg-primary-700 text-white font-semibold text-sm transition-colors disabled:opacity-60 flex items-center justify-center gap-2">
-                {submitting ? <><Loader2 className="w-4 h-4 animate-spin" /> Создаём…</> : 'Создать'}
+                {submitting ? <><Loader2 className="w-4 h-4 animate-spin" /> {t('admin.orgs.create.creating', 'Создаём…')}</> : t('common.create', 'Создать')}
               </button>
             </div>
           </form>
@@ -168,7 +169,7 @@ const AdminOrganizationsPage: React.FC = () => {
             onClick={() => setShowCreate(true)}
             className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-primary-600 hover:bg-primary-700 text-white font-semibold text-sm shadow-lg shadow-primary-500/20 transition-all"
           >
-            <Plus className="w-4 h-4" /> Создать организацию
+            <Plus className="w-4 h-4" /> {t('admin.orgs.create.button', 'Создать организацию')}
           </button>
         </div>
 

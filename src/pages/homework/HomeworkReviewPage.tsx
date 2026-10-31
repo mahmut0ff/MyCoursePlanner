@@ -5,6 +5,8 @@ import { apiOrgGetHomeworks, apiGradeHomework, apiAIGradeHomework, apiUpdateHome
 import type { HomeworkSubmission } from '../../types';
 import { Sparkles, CheckCircle, Clock, XCircle, GripVertical, FileVideo, ImageIcon, X, FileAudio, FileArchive, FileText, ArrowLeft, Search, Filter, BarChart3 } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { useTranslation } from 'react-i18next';
+import { intlLocale } from '../../lib/locale';
 import { DndContext, useSensor, useSensors, PointerSensor, DragOverlay, closestCorners } from '@dnd-kit/core';
 import type { DragEndEvent, DragStartEvent } from '@dnd-kit/core';
 import { useDroppable } from '@dnd-kit/core';
@@ -73,7 +75,7 @@ const KanbanCard: React.FC<{ sub: HomeworkSubmission; onClick: () => void; isAct
       )}
 
       <div className="flex items-center justify-between mt-2 pt-2 border-t border-slate-100 dark:border-slate-700/40">
-        <span className="text-[10px] text-slate-400 font-medium">{new Date(sub.submittedAt).toLocaleDateString()}</span>
+        <span className="text-[10px] text-slate-400 font-medium">{new Date(sub.submittedAt).toLocaleDateString(intlLocale())}</span>
         {sub.status === 'graded' && typeof sub.finalScore === 'number' && (
            <span className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/20 px-2 py-0.5 rounded-lg">
              {sub.finalScore}/{sub.maxPoints || 10}
@@ -87,10 +89,11 @@ const KanbanCard: React.FC<{ sub: HomeworkSubmission; onClick: () => void; isAct
 // ─── STATUS BADGE ───
 
 const StatusBadge: React.FC<{ status: string }> = ({ status }) => {
+  const { t } = useTranslation();
   const config = {
-    graded: { label: 'Оценено', cls: 'bg-emerald-500' },
-    reviewing: { label: 'Проверяется', cls: 'bg-amber-500' },
-    pending: { label: 'Ожидает', cls: 'bg-slate-400' },
+    graded: { label: t('lessons.view.statusGraded', 'Оценено'), cls: 'bg-emerald-500' },
+    reviewing: { label: t('homework.review.statusReviewing', 'Проверяется'), cls: 'bg-amber-500' },
+    pending: { label: t('homework.panel.pending', 'Ожидает'), cls: 'bg-slate-400' },
   }[status] || { label: status, cls: 'bg-slate-400' };
 
   return <span className={`px-2.5 py-1 rounded-full text-[10px] uppercase tracking-widest text-white font-bold ${config.cls}`}>{config.label}</span>;
@@ -99,6 +102,7 @@ const StatusBadge: React.FC<{ status: string }> = ({ status }) => {
 // ─── MAIN PAGE COMPONENT ───
 
 const HomeworkReviewPage: React.FC = () => {
+  const { t } = useTranslation();
   const { organizationId, role, profile } = useAuth();
   const { canAccess } = usePlanGate();
   
@@ -140,7 +144,7 @@ const HomeworkReviewPage: React.FC = () => {
       
       setSubmissions(filteredData);
     } catch (e) {
-      toast.error('Failed to load homework submissions');
+      toast.error(t('homework.panel.loadFailed', 'Не удалось загрузить списки работ'));
     } finally {
       setLoading(false);
     }
@@ -176,14 +180,14 @@ const HomeworkReviewPage: React.FC = () => {
       if (newStatus === 'graded' && typeof sub.finalScore !== 'number') {
          // Auto open detail panel so they can grade
          handleSelect({ ...sub, status: newStatus });
-         toast('Пожалуйста, выставьте оценку', { icon: '📝' });
+         toast(t('homework.review.setGradeFirst', 'Пожалуйста, выставьте оценку'), { icon: '📝' });
       } else {
-         toast.success('Статус обновлён');
+         toast.success(t('homework.review.statusUpdated', 'Статус обновлён'));
       }
     } catch (err: any) {
       // Revert on error
       setSubmissions(prev => prev.map(s => s.id === subId ? { ...s, status: sub.status } : s));
-      toast.error(err.message || 'Ошибка обновления статуса');
+      toast.error(err.message || t('homework.review.statusFailed', 'Ошибка обновления статуса'));
     }
   };
 
@@ -210,9 +214,9 @@ const HomeworkReviewPage: React.FC = () => {
       setGradeInput(aiData.grade);
       setFeedbackInput(aiData.suggestions);
       
-      toast.success('ИИ-проверка завершена!', { icon: '🤖' });
+      toast.success(t('homework.review.aiDone', 'ИИ-проверка завершена!'), { icon: '🤖' });
     } catch (e: any) {
-      toast.error(e.message || 'Ошибка нейросети');
+      toast.error(e.message || t('homework.review.aiFailed', 'Ошибка нейросети'));
     } finally {
       setIsAIGrading(false);
     }
@@ -226,12 +230,12 @@ const HomeworkReviewPage: React.FC = () => {
         finalScore: gradeInput,
         feedback: feedbackInput
       });
-      toast.success('Оценка сохранена');
+      toast.success(t('homework.review.gradeSaved', 'Оценка сохранена'));
       const updatedSub = { ...selectedSubmission, finalScore: gradeInput, teacherFeedback: feedbackInput, status: 'graded' as const };
       setSelectedSubmission(updatedSub);
       setSubmissions(prev => prev.map(p => p.id === updatedSub.id ? updatedSub : p));
     } catch (e: any) {
-      toast.error(e.message || 'Ошибка сохранения');
+      toast.error(e.message || t('homework.review.saveFailed', 'Ошибка сохранения'));
     } finally {
       setIsSaving(false);
     }
@@ -258,7 +262,7 @@ const HomeworkReviewPage: React.FC = () => {
   const gradedSubs = filtered.filter(s => s.status === 'graded');
   const avgScore = gradedSubs.length ? Math.round(gradedSubs.reduce((a, s) => a + (s.finalScore || 0), 0) / gradedSubs.length * 10) / 10 : 0;
 
-  if (loading) return <div className="h-full flex flex-col items-center justify-center p-12"><div className="w-10 h-10 border-4 border-accent-teal border-t-transparent rounded-full animate-spin"></div><p className="mt-4 text-slate-500 font-medium">Загрузка доски...</p></div>;
+  if (loading) return <div className="h-full flex flex-col items-center justify-center p-12"><div className="w-10 h-10 border-4 border-accent-teal border-t-transparent rounded-full animate-spin"></div><p className="mt-4 text-slate-500 font-medium">{t('homework.review.loading', 'Загрузка доски...')}</p></div>;
 
   return (
     <div className="flex flex-col h-[calc(100vh-80px)] max-w-[1800px] mx-auto">
@@ -267,8 +271,8 @@ const HomeworkReviewPage: React.FC = () => {
       <div className="px-6 pb-4 shrink-0 space-y-3">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-xl font-bold text-slate-900 dark:text-white">Доска проверки работ</h1>
-            <p className="text-slate-500 dark:text-slate-400 text-[13px] mt-0.5">Перетаскивайте карточки для изменения статуса</p>
+            <h1 className="text-xl font-bold text-slate-900 dark:text-white">{t('homework.review.title', 'Доска проверки работ')}</h1>
+            <p className="text-slate-500 dark:text-slate-400 text-[13px] mt-0.5">{t('homework.review.subtitle', 'Перетаскивайте карточки для изменения статуса')}</p>
           </div>
         </div>
 
@@ -293,7 +297,7 @@ const HomeworkReviewPage: React.FC = () => {
             <div className="relative">
               <Filter className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400 pointer-events-none" />
               <select value={groupFilter} onChange={e => setGroupFilter(e.target.value)} className="pl-8 pr-3 py-1.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-[12px] text-slate-700 dark:text-slate-300 appearance-none cursor-pointer focus:outline-none focus:ring-2 focus:ring-accent-teal/30">
-                <option value="all">Все группы</option>
+                <option value="all">{t('rating.allGroups', 'Все группы')}</option>
                 {groups.map(([id, name]) => <option key={id} value={id}>{name}</option>)}
               </select>
             </div>
@@ -304,7 +308,7 @@ const HomeworkReviewPage: React.FC = () => {
             <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400 pointer-events-none" />
             <input
               type="text"
-              placeholder="Поиск..."
+              placeholder={t('homework.review.searchPh', 'Поиск...')}
               value={searchQuery}
               onChange={e => setSearchQuery(e.target.value)}
               className="pl-8 pr-3 py-1.5 w-44 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-[12px] text-slate-700 dark:text-slate-300 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-accent-teal/30 transition-all"
@@ -321,19 +325,19 @@ const HomeworkReviewPage: React.FC = () => {
           <DndContext sensors={sensors} collisionDetection={closestCorners} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
             <div className="flex gap-4 h-full items-stretch min-w-max lg:min-w-0 lg:w-full">
               
-              <KanbanColumn id="pending" title="Ожидает проверки" count={pendingSubs.length} color="border-slate-400">
+              <KanbanColumn id="pending" title={t('lessons.view.statusPending', 'Ожидает проверки')} count={pendingSubs.length} color="border-slate-400">
                 {pendingSubs.map(s => <KanbanCard key={s.id} sub={s} onClick={() => handleSelect(s)} isActive={selectedSubmission?.id === s.id} />)}
-                {pendingSubs.length === 0 && <div className="text-center py-10 text-slate-400 border border-dashed border-slate-200 dark:border-slate-700/50 rounded-xl"><Clock className="w-6 h-6 mx-auto mb-2 opacity-40" /><p className="text-[12px] font-medium">Нет новых работ</p></div>}
+                {pendingSubs.length === 0 && <div className="text-center py-10 text-slate-400 border border-dashed border-slate-200 dark:border-slate-700/50 rounded-xl"><Clock className="w-6 h-6 mx-auto mb-2 opacity-40" /><p className="text-[12px] font-medium">{t('homework.review.noNew', 'Нет новых работ')}</p></div>}
               </KanbanColumn>
               
-              <KanbanColumn id="reviewing" title="На проверке" count={reviewingSubs.length} color="border-amber-400">
+              <KanbanColumn id="reviewing" title={t('lessons.view.statusReviewing', 'На проверке')} count={reviewingSubs.length} color="border-amber-400">
                  {reviewingSubs.map(s => <KanbanCard key={s.id} sub={s} onClick={() => handleSelect(s)} isActive={selectedSubmission?.id === s.id} />)}
-                 {reviewingSubs.length === 0 && <div className="text-center py-10 text-slate-400 border border-dashed border-slate-200 dark:border-slate-700/50 rounded-xl"><BarChart3 className="w-6 h-6 mx-auto mb-2 opacity-40" /><p className="text-[12px] font-medium">Перетащите сюда</p></div>}
+                 {reviewingSubs.length === 0 && <div className="text-center py-10 text-slate-400 border border-dashed border-slate-200 dark:border-slate-700/50 rounded-xl"><BarChart3 className="w-6 h-6 mx-auto mb-2 opacity-40" /><p className="text-[12px] font-medium">{t('homework.review.dropHere', 'Перетащите сюда')}</p></div>}
               </KanbanColumn>
 
-              <KanbanColumn id="graded" title="Оценено" count={gradedSubs.length} color="border-emerald-400">
+              <KanbanColumn id="graded" title={t('lessons.view.statusGraded', 'Оценено')} count={gradedSubs.length} color="border-emerald-400">
                  {gradedSubs.map(s => <KanbanCard key={s.id} sub={s} onClick={() => handleSelect(s)} isActive={selectedSubmission?.id === s.id} />)}
-                 {gradedSubs.length === 0 && <div className="text-center py-10 text-slate-400 border border-dashed border-slate-200 dark:border-slate-700/50 rounded-xl"><CheckCircle className="w-6 h-6 mx-auto mb-2 opacity-40" /><p className="text-[12px] font-medium">Оценённые работы</p></div>}
+                 {gradedSubs.length === 0 && <div className="text-center py-10 text-slate-400 border border-dashed border-slate-200 dark:border-slate-700/50 rounded-xl"><CheckCircle className="w-6 h-6 mx-auto mb-2 opacity-40" /><p className="text-[12px] font-medium">{t('homework.review.gradedWorks', 'Оценённые работы')}</p></div>}
               </KanbanColumn>
 
             </div>
@@ -343,7 +347,7 @@ const HomeworkReviewPage: React.FC = () => {
                 <div className="bg-white dark:bg-slate-800 rounded-xl p-3.5 shadow-2xl opacity-90 scale-105 border-2 border-accent-teal ring-4 ring-accent-teal/20 w-[280px]">
                    <h4 className="font-bold text-[13px] text-slate-900 dark:text-white truncate">{activeDragItem.studentName}</h4>
                    <p className="text-[11px] text-slate-500 truncate">{activeDragItem.lessonTitle}</p>
-                   <span className="text-[10px] text-slate-400 font-medium mt-2 inline-block">{new Date(activeDragItem.submittedAt).toLocaleDateString()}</span>
+                   <span className="text-[10px] text-slate-400 font-medium mt-2 inline-block">{new Date(activeDragItem.submittedAt).toLocaleDateString(intlLocale())}</span>
                 </div>
               ) : null}
             </DragOverlay>
@@ -356,7 +360,7 @@ const HomeworkReviewPage: React.FC = () => {
             
             {/* Detail Header */}
             <div className="flex items-center gap-3 px-5 py-4 border-b border-slate-100 dark:border-slate-800 shrink-0">
-               <button onClick={closeDetail} className="lg:hidden p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors" title="Назад">
+               <button onClick={closeDetail} className="lg:hidden p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors" title={t('common.back', 'Назад')}>
                   <ArrowLeft className="w-5 h-5" />
                </button>
                <div className="flex-1 min-w-0">
@@ -371,7 +375,7 @@ const HomeworkReviewPage: React.FC = () => {
                       className="flex items-center gap-1.5 px-3 py-2 bg-slate-900 hover:bg-slate-800 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-200 text-white rounded-lg text-[12px] font-semibold transition-all disabled:opacity-70 disabled:grayscale"
                     >
                       {isAIGrading ? <div className="w-3.5 h-3.5 border-2 border-current border-t-transparent rounded-full animate-spin" /> : <Sparkles className="w-3.5 h-3.5" />}
-                      {isAIGrading ? 'Думает...' : 'AI Оценка'}
+                      {isAIGrading ? t('homework.review.thinking', 'Думает...') : t('homework.review.aiGrade', 'AI Оценка')}
                     </button>
                  )}
                  <button onClick={closeDetail} className="hidden lg:flex p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors">
@@ -387,7 +391,7 @@ const HomeworkReviewPage: React.FC = () => {
                 {/* Info Bar */}
                 <div className="flex flex-wrap items-center gap-2.5 px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800/40 rounded-xl border border-slate-100 dark:border-slate-800">
                   <div className="flex items-center gap-1.5 text-[12px] text-slate-600 dark:text-slate-300">
-                    <Clock className="w-3.5 h-3.5 text-slate-400" /> {new Date(selectedSubmission.submittedAt).toLocaleString()}
+                    <Clock className="w-3.5 h-3.5 text-slate-400" /> {new Date(selectedSubmission.submittedAt).toLocaleString(intlLocale())}
                   </div>
                   <div className="w-px h-3.5 bg-slate-200 dark:bg-slate-700 hidden sm:block"></div>
                   <StatusBadge status={selectedSubmission.status} />
@@ -395,9 +399,9 @@ const HomeworkReviewPage: React.FC = () => {
 
                 {/* Text submission */}
                 <div>
-                  <h4 className="text-[11px] font-bold uppercase tracking-widest text-slate-400 mb-2">Текстовый ответ</h4>
+                  <h4 className="text-[11px] font-bold uppercase tracking-widest text-slate-400 mb-2">{t('homework.review.textAnswer', 'Текстовый ответ')}</h4>
                   <div className="p-4 bg-slate-50 dark:bg-slate-800/40 rounded-xl text-slate-800 dark:text-slate-300 text-[14px] whitespace-pre-wrap leading-relaxed border border-slate-100 dark:border-slate-800">
-                    {selectedSubmission.content || <span className="text-slate-400 italic text-[13px]">Студент не оставил текстового ответа</span>}
+                    {selectedSubmission.content || <span className="text-slate-400 italic text-[13px]">{t('homework.review.noText', 'Студент не оставил текстового ответа')}</span>}
                   </div>
                 </div>
 
@@ -405,7 +409,7 @@ const HomeworkReviewPage: React.FC = () => {
                 {selectedSubmission.attachments && selectedSubmission.attachments.length > 0 && (
                   <div>
                     <h4 className="text-[11px] font-bold uppercase tracking-widest text-slate-400 mb-2 flex items-center gap-2">
-                      Вложения <span className="bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-300 w-5 h-5 flex items-center justify-center rounded-md text-[10px] font-bold">{selectedSubmission.attachments.length}</span>
+                      {t('lessons.attachments', 'Вложения')} <span className="bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-300 w-5 h-5 flex items-center justify-center rounded-md text-[10px] font-bold">{selectedSubmission.attachments.length}</span>
                     </h4>
                     <div className="grid grid-cols-2 gap-3">
                        {selectedSubmission.attachments.map((att, i) => (
@@ -425,7 +429,7 @@ const HomeworkReviewPage: React.FC = () => {
                               <div className="aspect-square bg-slate-100 dark:bg-slate-900 relative flex flex-col items-center justify-center p-3 text-center group-hover:bg-slate-200 dark:group-hover:bg-slate-800 transition-colors">
                                 {att.type === 'archive' ? <FileArchive className="w-8 h-8 text-red-500 mb-2" /> : <FileText className="w-8 h-8 text-blue-500 mb-2" />}
                                 <p className="text-[10px] font-bold text-slate-700 dark:text-slate-300 break-all line-clamp-2">{att.name}</p>
-                                <span className="mt-1 px-2 py-0.5 bg-white dark:bg-slate-800 rounded-full text-[9px] font-bold text-accent-teal uppercase tracking-wider shadow-sm">Скачать</span>
+                                <span className="mt-1 px-2 py-0.5 bg-white dark:bg-slate-800 rounded-full text-[9px] font-bold text-accent-teal uppercase tracking-wider shadow-sm">{t('lessons.view.download', 'Скачать')}</span>
                               </div>
                             ) : (
                               <div className="aspect-square bg-slate-100 dark:bg-slate-900 relative">
@@ -444,20 +448,20 @@ const HomeworkReviewPage: React.FC = () => {
                   <div className="p-5 rounded-xl border border-indigo-200/80 dark:border-indigo-900/40 bg-indigo-50/30 dark:bg-indigo-900/5">
                     <div className="flex items-center gap-2 mb-3">
                       <Sparkles className="w-5 h-5 text-indigo-500" />
-                      <h4 className="text-[14px] font-bold text-slate-800 dark:text-white">Отчёт нейросети</h4>
+                      <h4 className="text-[14px] font-bold text-slate-800 dark:text-white">{t('homework.review.aiReport', 'Отчёт нейросети')}</h4>
                     </div>
 
                     <div className="space-y-2.5">
                       {/* Recommended grade */}
                       <div className="bg-white/60 dark:bg-slate-800/40 p-3.5 rounded-xl border border-slate-100 dark:border-slate-800">
-                        <p className="text-[10px] uppercase tracking-widest text-slate-500 font-bold mb-1">Рекомендуемый балл</p>
+                        <p className="text-[10px] uppercase tracking-widest text-slate-500 font-bold mb-1">{t('homework.review.suggestedScore', 'Рекомендуемый балл')}</p>
                         <p className="text-xl font-black text-indigo-600 dark:text-indigo-400">{selectedSubmission.aiAnalysis.grade} <span className="text-sm text-slate-400 font-medium">/ {selectedSubmission.maxPoints || 10}</span></p>
                       </div>
 
                       {/* Summary */}
                       {selectedSubmission.aiAnalysis.summary && (
                         <div className="bg-white/60 dark:bg-slate-800/40 p-3.5 rounded-xl border border-slate-100 dark:border-slate-800">
-                          <p className="text-[10px] uppercase tracking-widest text-slate-500 font-bold mb-1.5">Общая оценка</p>
+                          <p className="text-[10px] uppercase tracking-widest text-slate-500 font-bold mb-1.5">{t('homework.review.overall', 'Общая оценка')}</p>
                           <p className="text-[13px] text-slate-700 dark:text-slate-300 leading-relaxed">{selectedSubmission.aiAnalysis.summary}</p>
                         </div>
                       )}
@@ -467,7 +471,7 @@ const HomeworkReviewPage: React.FC = () => {
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                           {selectedSubmission.aiAnalysis.strengths && selectedSubmission.aiAnalysis.strengths.length > 0 && (
                             <div className="p-3.5 rounded-xl border border-emerald-200/70 dark:border-emerald-900/40 bg-emerald-50/40 dark:bg-emerald-900/10">
-                              <p className="text-[10px] uppercase tracking-widest text-emerald-600 dark:text-emerald-400 font-bold mb-2 flex items-center gap-1.5"><CheckCircle className="w-3.5 h-3.5" /> Плюсы</p>
+                              <p className="text-[10px] uppercase tracking-widest text-emerald-600 dark:text-emerald-400 font-bold mb-2 flex items-center gap-1.5"><CheckCircle className="w-3.5 h-3.5" /> {t('homework.review.pros', 'Плюсы')}</p>
                               <ul className="space-y-1.5">
                                 {selectedSubmission.aiAnalysis.strengths.map((s, i) => (
                                   <li key={i} className="text-[12.5px] text-slate-700 dark:text-slate-300 leading-snug flex gap-1.5"><span className="text-emerald-500 font-bold shrink-0">+</span>{s}</li>
@@ -477,7 +481,7 @@ const HomeworkReviewPage: React.FC = () => {
                           )}
                           {selectedSubmission.aiAnalysis.weaknesses && selectedSubmission.aiAnalysis.weaknesses.length > 0 && (
                             <div className="p-3.5 rounded-xl border border-amber-200/70 dark:border-amber-900/40 bg-amber-50/40 dark:bg-amber-900/10">
-                              <p className="text-[10px] uppercase tracking-widest text-amber-600 dark:text-amber-400 font-bold mb-2 flex items-center gap-1.5"><XCircle className="w-3.5 h-3.5" /> Минусы</p>
+                              <p className="text-[10px] uppercase tracking-widest text-amber-600 dark:text-amber-400 font-bold mb-2 flex items-center gap-1.5"><XCircle className="w-3.5 h-3.5" /> {t('homework.review.cons', 'Минусы')}</p>
                               <ul className="space-y-1.5">
                                 {selectedSubmission.aiAnalysis.weaknesses.map((s, i) => (
                                   <li key={i} className="text-[12.5px] text-slate-700 dark:text-slate-300 leading-snug flex gap-1.5"><span className="text-amber-500 font-bold shrink-0">−</span>{s}</li>
@@ -491,7 +495,7 @@ const HomeworkReviewPage: React.FC = () => {
                       {/* Grammar issues */}
                       {selectedSubmission.aiAnalysis.grammarIssues && selectedSubmission.aiAnalysis.grammarIssues.length > 0 && (
                         <div className="bg-white/60 dark:bg-slate-800/40 p-3.5 rounded-xl border border-slate-100 dark:border-slate-800">
-                          <p className="text-[10px] uppercase tracking-widest text-slate-500 font-bold mb-2">Замечания и правки ({selectedSubmission.aiAnalysis.grammarIssues.length})</p>
+                          <p className="text-[10px] uppercase tracking-widest text-slate-500 font-bold mb-2">{t('homework.review.issues', 'Замечания и правки ({{count}})', { count: selectedSubmission.aiAnalysis.grammarIssues.length })}</p>
                           <ul className="space-y-2.5">
                             {selectedSubmission.aiAnalysis.grammarIssues.map((g, i) => (
                               <li key={i} className="text-[12.5px] leading-snug">
@@ -508,7 +512,7 @@ const HomeworkReviewPage: React.FC = () => {
                       {/* Suggestions */}
                       {selectedSubmission.aiAnalysis.suggestions && (
                         <div className="bg-white/60 dark:bg-slate-800/40 p-3.5 rounded-xl border border-slate-100 dark:border-slate-800">
-                          <p className="text-[10px] uppercase tracking-widest text-slate-500 font-bold mb-1.5">Рекомендации</p>
+                          <p className="text-[10px] uppercase tracking-widest text-slate-500 font-bold mb-1.5">{t('homework.review.recommendations', 'Рекомендации')}</p>
                           <p className="text-[13px] text-slate-700 dark:text-slate-300 leading-relaxed">{selectedSubmission.aiAnalysis.suggestions}</p>
                         </div>
                       )}
@@ -522,7 +526,7 @@ const HomeworkReviewPage: React.FC = () => {
             <div className="p-5 border-t border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 shrink-0 space-y-3">
               {/* Score section */}
               <div>
-                <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-2">Балл</label>
+                <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-2">{t('homework.review.score', 'Балл')}</label>
                 <div className="flex items-center gap-3">
                   <input 
                     type="range"
@@ -558,11 +562,11 @@ const HomeworkReviewPage: React.FC = () => {
               
               {/* Feedback */}
               <div>
-                <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1.5">Отзыв</label>
+                <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1.5">{t('homework.review.feedback', 'Отзыв')}</label>
                 <textarea 
                   value={feedbackInput}
                   onChange={e => setFeedbackInput(e.target.value)}
-                  placeholder="Отличная работа, так держать!"
+                  placeholder={t('homework.review.feedbackPh', 'Отличная работа, так держать!')}
                   rows={2}
                   className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 focus:border-accent-teal focus:ring-2 focus:ring-accent-teal/10 rounded-xl text-[13px] text-slate-900 dark:text-white transition-all outline-none placeholder:text-slate-400 resize-none"
                 />
@@ -573,7 +577,7 @@ const HomeworkReviewPage: React.FC = () => {
                 disabled={isSaving}
                 className="w-full flex items-center justify-center gap-2 px-5 py-2.5 bg-accent-teal text-white rounded-xl font-bold shadow-[0_0_20px_rgba(45,212,191,0.2)] hover:shadow-[0_0_30px_rgba(45,212,191,0.4)] transition-all disabled:opacity-50 disabled:grayscale hover:-translate-y-0.5"
               >
-                {isSaving ? <><div className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" /> Сохранение...</> : <>Сохранить оценку <CheckCircle className="w-4 h-4" /></>}
+                {isSaving ? <><div className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" /> {t('common.saving', 'Сохранение...')}</> : <>{t('homework.review.saveGrade', 'Сохранить оценку')} <CheckCircle className="w-4 h-4" /></>}
               </button>
             </div>
             

@@ -1,4 +1,5 @@
 import { useMemo, useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useBranch } from '../../contexts/BranchContext';
 import {
   orgGetCourses,
@@ -14,16 +15,6 @@ import { entryNumericValue } from '../../lib/gradePresets';
 import { BarChart3, TrendingUp, GraduationCap, AlertTriangle, Download, ClipboardList, CheckCircle2, Filter, TrendingDown, BookOpen } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { wasPresent } from '../../lib/attendance';
-
-// ── Russian pluralization ──────────────────────────
-function pluralize(n: number, one: string, few: string, many: string): string {
-  const abs = Math.abs(n) % 100;
-  const last = abs % 10;
-  if (abs >= 11 && abs <= 19) return many;
-  if (last === 1) return one;
-  if (last >= 2 && last <= 4) return few;
-  return many;
-}
 
 type Period = 'all' | 'month' | 'quarter' | 'year';
 
@@ -45,6 +36,7 @@ function getPeriodStart(period: Period): Date {
 }
 
 export default function AdminGradebookAnalytics() {
+  const { t } = useTranslation();
   const { activeBranchId } = useBranch();
   const [loading, setLoading] = useState(true);
   const [students, setStudents] = useState<UserProfile[]>([]);
@@ -85,7 +77,7 @@ export default function AdminGradebookAnalytics() {
         ) as Record<string, GradeSchema>);
 
       } catch (err: any) {
-        toast.error(err.message || 'Ошибка загрузки аналитики');
+        toast.error(err.message || t('admin.analytics.loadError', 'Ошибка загрузки аналитики'));
       } finally {
         setLoading(false);
       }
@@ -195,12 +187,12 @@ export default function AdminGradebookAnalytics() {
   // ── CSV Export ──
   const handleExport = () => {
     if (!metrics) return;
-    const header = 'Студент,Email,Успеваемость %,Посещаемость %,Статус\n';
+    const header = t('admin.analytics.csvHeader', 'Студент,Email,Успеваемость %,Посещаемость %,Статус') + '\n';
     const rows = filteredData.students.map(s => {
       const stats = metrics.studentStats[s.uid];
       const gp = stats ? Math.round(stats.gradePercent) : '-';
       const ap = stats ? Math.round(stats.attPercent) : '-';
-      const risk = stats && (stats.gradePercent < 60 || stats.attPercent < 70) ? 'Зона риска' : 'Норма';
+      const risk = stats && (stats.gradePercent < 60 || stats.attPercent < 70) ? t('admin.analytics.riskZone', 'Зона риска') : t('admin.analytics.normal', 'Норма');
       return `"${s.displayName || ''}",${s.email || ''},${gp},${ap},${risk}`;
     }).join('\n');
     const blob = new Blob(['\uFEFF' + header + rows], { type: 'text/csv;charset=utf-8;' });
@@ -225,8 +217,8 @@ export default function AdminGradebookAnalytics() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Аналитика успеваемости</h1>
-          <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">Контроль качества обучения, посещаемости и активности</p>
+          <h1 className="text-2xl font-bold text-slate-900 dark:text-white">{t('admin.analytics.title', 'Аналитика успеваемости')}</h1>
+          <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">{t('admin.analytics.subtitle', 'Контроль качества обучения, посещаемости и активности')}</p>
         </div>
         <button
           onClick={handleExport}
@@ -234,7 +226,7 @@ export default function AdminGradebookAnalytics() {
           className="flex items-center gap-2 px-4 py-2.5 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-xl text-sm font-semibold hover:bg-slate-800 dark:hover:bg-slate-100 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
         >
           <Download className="w-4 h-4" />
-          Экспорт отчета
+          {t('admin.analytics.export', 'Экспорт отчета')}
         </button>
       </div>
 
@@ -242,7 +234,7 @@ export default function AdminGradebookAnalytics() {
       <div className="flex flex-wrap items-center gap-3">
         <div className="flex items-center gap-1.5 text-xs text-slate-500">
           <Filter className="w-3.5 h-3.5" />
-          Фильтры:
+          {t('admin.analytics.filters', 'Фильтры:')}
         </div>
         <div className="flex flex-wrap items-center gap-2">
           {PERIODS.map(p => (
@@ -255,7 +247,7 @@ export default function AdminGradebookAnalytics() {
                   : 'bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:hover:bg-slate-700'
               }`}
             >
-              {p.label}
+              {t(`admin.analytics.period.${p.id}`, p.label)}
             </button>
           ))}
         </div>
@@ -266,8 +258,8 @@ export default function AdminGradebookAnalytics() {
           <div className="w-16 h-16 bg-slate-100 dark:bg-slate-700/50 rounded-full flex items-center justify-center mx-auto mb-4">
             <BarChart3 className="w-8 h-8 text-slate-400" />
           </div>
-          <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-2">Нет данных для аналитики</h3>
-          <p className="text-slate-500 dark:text-slate-400 max-w-sm mx-auto">Оценки и данные о посещаемости пока отсутствуют.</p>
+          <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-2">{t('admin.analytics.noData', 'Нет данных для аналитики')}</h3>
+          <p className="text-slate-500 dark:text-slate-400 max-w-sm mx-auto">{t('admin.analytics.noDataDesc', 'Оценки и данные о посещаемости пока отсутствуют.')}</p>
         </div>
       ) : (
         <>
@@ -275,7 +267,7 @@ export default function AdminGradebookAnalytics() {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
             <div className="bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-200 dark:border-slate-700">
               <div className="flex items-center justify-between mb-3">
-                <p className="text-sm font-medium text-slate-500">Студентов</p>
+                <p className="text-sm font-medium text-slate-500">{t('admin.analytics.students', 'Студентов')}</p>
                 <div className="p-2 bg-slate-100 dark:bg-slate-700 rounded-lg">
                   <GraduationCap className="w-4 h-4 text-slate-600 dark:text-slate-400" />
                 </div>
@@ -285,7 +277,7 @@ export default function AdminGradebookAnalytics() {
 
             <div className="bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-200 dark:border-slate-700">
               <div className="flex items-center justify-between mb-3">
-                <p className="text-sm font-medium text-slate-500">Преподавателей</p>
+                <p className="text-sm font-medium text-slate-500">{t('admin.analytics.teachers', 'Преподавателей')}</p>
                 <div className="p-2 bg-slate-100 dark:bg-slate-700 rounded-lg">
                   <BookOpen className="w-4 h-4 text-slate-600 dark:text-slate-400" />
                 </div>
@@ -295,29 +287,29 @@ export default function AdminGradebookAnalytics() {
 
             <div className="bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-200 dark:border-slate-700">
               <div className="flex items-center justify-between mb-3">
-                <p className="text-sm font-medium text-slate-500">Средний балл</p>
+                <p className="text-sm font-medium text-slate-500">{t('admin.analytics.avgScore', 'Средний балл')}</p>
                 <div className="p-2 bg-emerald-50 dark:bg-emerald-900/30 rounded-lg">
                   <TrendingUp className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
                 </div>
               </div>
               <h3 className="text-3xl font-bold text-slate-900 dark:text-white">{Math.round(metrics.avgScore)}%</h3>
-              <p className="text-xs text-slate-400 mt-1">{metrics.gradesCount} {pluralize(metrics.gradesCount, 'оценка', 'оценки', 'оценок')}</p>
+              <p className="text-xs text-slate-400 mt-1">{t('admin.analytics.grades', { count: metrics.gradesCount })}</p>
             </div>
 
             <div className="bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-200 dark:border-slate-700">
               <div className="flex items-center justify-between mb-3">
-                <p className="text-sm font-medium text-slate-500">Посещаемость</p>
+                <p className="text-sm font-medium text-slate-500">{t('admin.analytics.attendance', 'Посещаемость')}</p>
                 <div className="p-2 bg-blue-50 dark:bg-blue-900/30 rounded-lg">
                   <ClipboardList className="w-4 h-4 text-blue-600 dark:text-blue-400" />
                 </div>
               </div>
               <h3 className="text-3xl font-bold text-slate-900 dark:text-white">{Math.round(metrics.attendanceRate)}%</h3>
-              <p className="text-xs text-slate-400 mt-1">{metrics.journalsCount} {pluralize(metrics.journalsCount, 'запись', 'записи', 'записей')}</p>
+              <p className="text-xs text-slate-400 mt-1">{t('admin.analytics.records', { count: metrics.journalsCount })}</p>
             </div>
 
             <div className="bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-200 dark:border-slate-700">
               <div className="flex items-center justify-between mb-3">
-                <p className="text-sm font-medium text-slate-500">Оценок</p>
+                <p className="text-sm font-medium text-slate-500">{t('admin.analytics.gradesTotal', 'Оценок')}</p>
                 <div className="p-2 bg-slate-100 dark:bg-slate-700 rounded-lg">
                   <BarChart3 className="w-4 h-4 text-slate-600 dark:text-slate-400" />
                 </div>
@@ -327,13 +319,13 @@ export default function AdminGradebookAnalytics() {
 
             <div className="bg-white dark:bg-slate-800 p-5 rounded-2xl border border-amber-200 dark:border-amber-900/50">
               <div className="flex items-center justify-between mb-3">
-                <p className="text-sm font-medium text-amber-600 dark:text-amber-500">В зоне риска</p>
+                <p className="text-sm font-medium text-amber-600 dark:text-amber-500">{t('admin.analytics.atRisk', 'В зоне риска')}</p>
                 <div className="p-2 bg-amber-50 dark:bg-amber-900/30 rounded-lg">
                   <AlertTriangle className="w-4 h-4 text-amber-600 dark:text-amber-500" />
                 </div>
               </div>
               <h3 className="text-3xl font-bold text-slate-900 dark:text-white">{metrics.atRiskCount || 0}</h3>
-              <p className="text-xs text-amber-500/70 mt-1">{metrics.atRiskCount > 0 ? 'Требуют внимания' : 'Все в норме'}</p>
+              <p className="text-xs text-amber-500/70 mt-1">{metrics.atRiskCount > 0 ? t('admin.analytics.needAttention', 'Требуют внимания') : t('admin.analytics.allGood', 'Все в норме')}</p>
             </div>
           </div>
 
@@ -346,8 +338,8 @@ export default function AdminGradebookAnalytics() {
                   <AlertTriangle className="w-4.5 h-4.5 text-amber-600 dark:text-amber-500" />
                 </div>
                 <div>
-                  <h3 className="text-base font-bold text-slate-900 dark:text-white leading-tight">Зона риска</h3>
-                  <p className="text-xs text-slate-500">Студенты, требующие внимания</p>
+                  <h3 className="text-base font-bold text-slate-900 dark:text-white leading-tight">{t('admin.analytics.riskZone', 'Зона риска')}</h3>
+                  <p className="text-xs text-slate-500">{t('admin.analytics.riskSubtitle', 'Студенты, требующие внимания')}</p>
                 </div>
               </div>
               
@@ -356,8 +348,8 @@ export default function AdminGradebookAnalytics() {
                   {metrics.atRiskStudents.map(student => {
                     const stats = (student as any).riskStats;
                     const reasons: string[] = [];
-                    if (stats.gradePercent < 60) reasons.push(`Успеваемость: ${Math.round(stats.gradePercent)}%`);
-                    if (stats.attPercent < 70) reasons.push(`Посещаемость: ${Math.round(stats.attPercent)}%`);
+                    if (stats.gradePercent < 60) reasons.push(t('admin.analytics.reasonPerformance', 'Успеваемость: {{value}}%', { value: Math.round(stats.gradePercent) }));
+                    if (stats.attPercent < 70) reasons.push(t('admin.analytics.reasonAttendance', 'Посещаемость: {{value}}%', { value: Math.round(stats.attPercent) }));
 
                     return (
                       <div key={student.uid} className="flex items-center gap-3 p-3 bg-slate-50 dark:bg-slate-900/50 border border-slate-100 dark:border-slate-700/50 rounded-xl">
@@ -387,8 +379,8 @@ export default function AdminGradebookAnalytics() {
                   <div className="w-14 h-14 bg-emerald-50 dark:bg-emerald-900/20 rounded-full flex items-center justify-center mb-3">
                     <CheckCircle2 className="w-7 h-7 text-emerald-500" />
                   </div>
-                  <p className="font-medium text-sm text-slate-700 dark:text-slate-300">Всё отлично!</p>
-                  <p className="text-xs text-slate-400">Нет студентов в зоне риска</p>
+                  <p className="font-medium text-sm text-slate-700 dark:text-slate-300">{t('admin.analytics.excellent', 'Всё отлично!')}</p>
+                  <p className="text-xs text-slate-400">{t('admin.analytics.noAtRisk', 'Нет студентов в зоне риска')}</p>
                 </div>
               )}
             </div>
@@ -400,8 +392,8 @@ export default function AdminGradebookAnalytics() {
                   <ClipboardList className="w-4.5 h-4.5 text-slate-600 dark:text-slate-400" />
                 </div>
                 <div>
-                  <h3 className="text-base font-bold text-slate-900 dark:text-white leading-tight">Активность учителей</h3>
-                  <p className="text-xs text-slate-500">Оценки и журналы</p>
+                  <h3 className="text-base font-bold text-slate-900 dark:text-white leading-tight">{t('admin.analytics.teacherActivity', 'Активность учителей')}</h3>
+                  <p className="text-xs text-slate-500">{t('admin.analytics.teacherActivityDesc', 'Оценки и журналы')}</p>
                 </div>
               </div>
               
@@ -432,7 +424,7 @@ export default function AdminGradebookAnalytics() {
                           <span className="font-medium text-slate-800 dark:text-slate-200">{teacher.displayName}</span>
                         </div>
                         <span className="text-xs font-medium text-slate-500 bg-slate-100 dark:bg-slate-700 px-2 py-0.5 rounded-md">
-                          {totalActions} {pluralize(totalActions, 'действие', 'действия', 'действий')}
+                          {t('admin.analytics.actions', { count: totalActions })}
                         </span>
                       </div>
                       <div className="h-2 w-full bg-slate-100 dark:bg-slate-700 rounded-full overflow-hidden">
@@ -447,7 +439,7 @@ export default function AdminGradebookAnalytics() {
                 })()}
                 {teachers.length === 0 && (
                   <div className="flex-1 flex flex-col items-center justify-center text-slate-400 h-full py-10">
-                    <p className="text-sm">Нет закрепленных учителей</p>
+                    <p className="text-sm">{t('admin.analytics.noTeachers', 'Нет закрепленных учителей')}</p>
                   </div>
                 )}
               </div>

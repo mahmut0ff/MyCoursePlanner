@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
+import type { TFunction } from 'i18next';
 import {
   ArrowLeft, Globe2, Atom, GitBranch, Server, Cloud,
   Database, FolderOpen, PlayCircle, ListChecks,
@@ -30,100 +31,100 @@ type Module = {
   subcards?: { icon: React.ComponentType<{ className?: string }>; title: string; text: string }[];
 };
 
-const MODULES: Module[] = [
+const getModules = (t: TFunction): Module[] => [
   {
     id: 'web-basics',
-    stage: 'Этап 1 · Основы',
-    title: 'Фронтенд и бэкенд',
-    duration: '~10 мин',
+    stage: t('landing.vibe.s1', 'Этап 1 · Основы'),
+    title: t('landing.vibe.m1Title', 'Фронтенд и бэкенд'),
+    duration: t('landing.vibe.minutes', '~{{n}} мин', { n: 10 }),
     icon: Globe2,
     accent: 'indigo',
     intro:
-      'С этого начинается понимание любого веб-приложения. Прежде чем писать код, нужно увидеть, из каких двух больших частей состоит любой сайт или сервис.',
-    video: { id: 'TttUb4f5Zyg', title: 'Что такое фронтенд и бэкенд' },
+      t('landing.vibe.m1Intro', 'С этого начинается понимание любого веб-приложения. Прежде чем писать код, нужно увидеть, из каких двух больших частей состоит любой сайт или сервис.'),
+    video: { id: 'TttUb4f5Zyg', title: t('landing.vibe.m1Video', 'Что такое фронтенд и бэкенд') },
     points: [
-      { term: 'Фронтенд', text: 'Всё, что видит и с чем взаимодействует пользователь: страницы, кнопки, формы. Работает в браузере.' },
-      { term: 'Бэкенд', text: 'Скрытая серверная часть: логика, база данных, обработка запросов. Пользователь её не видит.' },
-      { term: 'Как они общаются', text: 'Фронтенд отправляет запрос на бэкенд по сети, получает данные и показывает их пользователю.' },
+      { term: t('landing.vibe.p1aTerm', 'Фронтенд'), text: t('landing.vibe.p1a', 'Всё, что видит и с чем взаимодействует пользователь: страницы, кнопки, формы. Работает в браузере.') },
+      { term: t('landing.vibe.p1bTerm', 'Бэкенд'), text: t('landing.vibe.p1b', 'Скрытая серверная часть: логика, база данных, обработка запросов. Пользователь её не видит.') },
+      { term: t('landing.vibe.p1cTerm', 'Как они общаются'), text: t('landing.vibe.p1c', 'Фронтенд отправляет запрос на бэкенд по сети, получает данные и показывает их пользователю.') },
     ],
   },
   {
     id: 'react',
-    stage: 'Этап 2 · Фронтенд',
+    stage: t('landing.vibe.s2', 'Этап 2 · Фронтенд'),
     title: 'React',
-    duration: '~12 мин',
+    duration: t('landing.vibe.minutes', '~{{n}} мин', { n: 12 }),
     icon: Atom,
     accent: 'sky',
     intro:
-      'Фронтенд нашей платформы (SabakHub) написан на React — самой популярной библиотеке для построения пользовательских интерфейсов. Понимая React, ты понимаешь, как устроена видимая часть проекта.',
-    video: { id: '0q_bpnno7Ks', title: 'Что такое React' },
+      t('landing.vibe.m2Intro', 'Фронтенд нашей платформы (SabakHub) написан на React — самой популярной библиотеке для построения пользовательских интерфейсов. Понимая React, ты понимаешь, как устроена видимая часть проекта.'),
+    video: { id: '0q_bpnno7Ks', title: t('landing.vibe.m2Video', 'Что такое React') },
     points: [
-      { term: 'Компоненты', text: 'Интерфейс собирается из небольших переиспользуемых блоков — как из деталей конструктора.' },
-      { term: 'Состояние (state)', text: 'Данные, при изменении которых интерфейс автоматически перерисовывается.' },
-      { term: 'Почему именно React', text: 'Огромная экосистема, поддержка сообщества и именно на нём построена эта платформа.' },
+      { term: t('landing.vibe.p2aTerm', 'Компоненты'), text: t('landing.vibe.p2a', 'Интерфейс собирается из небольших переиспользуемых блоков — как из деталей конструктора.') },
+      { term: t('landing.vibe.p2bTerm', 'Состояние (state)'), text: t('landing.vibe.p2b', 'Данные, при изменении которых интерфейс автоматически перерисовывается.') },
+      { term: t('landing.vibe.p2cTerm', 'Почему именно React'), text: t('landing.vibe.p2c', 'Огромная экосистема, поддержка сообщества и именно на нём построена эта платформа.') },
     ],
   },
   {
     id: 'git',
-    stage: 'Этап 3 · Инструменты',
-    title: 'Git и GitHub',
-    duration: '~12 мин',
+    stage: t('landing.vibe.s3', 'Этап 3 · Инструменты'),
+    title: t('landing.vibe.m3Title', 'Git и GitHub'),
+    duration: t('landing.vibe.minutes', '~{{n}} мин', { n: 12 }),
     icon: GitBranch,
     accent: 'emerald',
     intro:
-      'Git — система контроля версий: она хранит историю всех изменений кода. GitHub — облачный сервис, где репозитории живут и где над ними работает команда. Для вайбкодера это страховка: любое рабочее состояние можно сохранить и вернуть.',
-    video: { id: 'EeARyFrZsnU', title: 'Что такое Git и GitHub' },
+      t('landing.vibe.m3Intro', 'Git — система контроля версий: она хранит историю всех изменений кода. GitHub — облачный сервис, где репозитории живут и где над ними работает команда. Для вайбкодера это страховка: любое рабочее состояние можно сохранить и вернуть.'),
+    video: { id: 'EeARyFrZsnU', title: t('landing.vibe.m3Video', 'Что такое Git и GitHub') },
     points: [
-      { term: 'Git (локально)', text: 'commit — сохранить состояние, ветки — параллельная работа, откат — вернуться назад.' },
-      { term: 'GitHub (облако)', text: 'Хранение репозитория, совместная работа, pull request — обсуждение изменений.' },
-      { term: 'Главное правило', text: 'Рабочая версия — в коммит. Сломал — откатился. Без Git вайбкодинг превращается в рулетку.' },
+      { term: t('landing.vibe.p3aTerm', 'Git (локально)'), text: t('landing.vibe.p3a', 'commit — сохранить состояние, ветки — параллельная работа, откат — вернуться назад.') },
+      { term: t('landing.vibe.p3bTerm', 'GitHub (облако)'), text: t('landing.vibe.p3b', 'Хранение репозитория, совместная работа, pull request — обсуждение изменений.') },
+      { term: t('landing.vibe.p3cTerm', 'Главное правило'), text: t('landing.vibe.p3c', 'Рабочая версия — в коммит. Сломал — откатился. Без Git вайбкодинг превращается в рулетку.') },
     ],
   },
   {
     id: 'serverless',
-    stage: 'Этап 4 · Бэкенд',
-    title: 'Бэкенд: serverless-функции на Node.js',
-    duration: '~8 мин чтения',
+    stage: t('landing.vibe.s4', 'Этап 4 · Бэкенд'),
+    title: t('landing.vibe.m4Title', 'Бэкенд: serverless-функции на Node.js'),
+    duration: t('landing.vibe.readMinutes', '~{{n}} мин чтения', { n: 8 }),
     icon: Server,
     accent: 'violet',
     intro:
-      'У нашего проекта тоже есть бэкенд — но устроен он современно. Это не один большой постоянно работающий сервер, а отдельные функции, которые запускаются «по требованию».',
+      t('landing.vibe.m4Intro', 'У нашего проекта тоже есть бэкенд — но устроен он современно. Это не один большой постоянно работающий сервер, а отдельные функции, которые запускаются «по требованию».'),
     body: [
-      'Вся платформа построена на Node.js — это среда, которая позволяет запускать JavaScript не в браузере, а на сервере. То есть один и тот же язык и на фронтенде, и на бэкенде.',
-      'Фронтенд (React) — это то, что видит пользователь. А наш бэкенд — это набор функций, которые выполняются на Netlify (их называют Netlify Functions).',
-      'Такие функции называют serverless («бессерверными»): тебе не нужно поднимать и обслуживать сервер. Функция «просыпается», когда приходит запрос, выполняет задачу — например, обрабатывает платёж или отправляет уведомление — и снова «засыпает».',
+      t('landing.vibe.m4Body1', 'Вся платформа построена на Node.js — это среда, которая позволяет запускать JavaScript не в браузере, а на сервере. То есть один и тот же язык и на фронтенде, и на бэкенде.'),
+      t('landing.vibe.m4Body2', 'Фронтенд (React) — это то, что видит пользователь. А наш бэкенд — это набор функций, которые выполняются на Netlify (их называют Netlify Functions).'),
+      t('landing.vibe.m4Body3', 'Такие функции называют serverless («бессерверными»): тебе не нужно поднимать и обслуживать сервер. Функция «просыпается», когда приходит запрос, выполняет задачу — например, обрабатывает платёж или отправляет уведомление — и снова «засыпает».'),
     ],
     points: [
-      { term: 'Node.js', text: 'JavaScript на сервере — на нём работает вся серверная логика проекта.' },
-      { term: 'Netlify Functions', text: 'Наши бэкенд-функции, которые запускаются по запросу с фронтенда.' },
-      { term: 'Serverless', text: 'Не нужно держать сервер постоянно — функция вызывается только когда нужна.' },
+      { term: 'Node.js', text: t('landing.vibe.p4a', 'JavaScript на сервере — на нём работает вся серверная логика проекта.') },
+      { term: 'Netlify Functions', text: t('landing.vibe.p4b', 'Наши бэкенд-функции, которые запускаются по запросу с фронтенда.') },
+      { term: 'Serverless', text: t('landing.vibe.p4c', 'Не нужно держать сервер постоянно — функция вызывается только когда нужна.') },
     ],
   },
   {
     id: 'cloud',
-    stage: 'Этап 5 · Инфраструктура',
-    title: 'Облачные сервисы: Netlify и Firebase',
-    duration: '~8 мин чтения',
+    stage: t('landing.vibe.s5', 'Этап 5 · Инфраструктура'),
+    title: t('landing.vibe.m5Title', 'Облачные сервисы: Netlify и Firebase'),
+    duration: t('landing.vibe.readMinutes', '~{{n}} мин чтения', { n: 8 }),
     icon: Cloud,
     accent: 'cyan',
     intro:
-      'Современные приложения почти не держат «своих» серверов — они используют облачные сервисы. Облако — это чужие серверы (дата-центры), которые ты используешь через интернет, не заботясь о железе, его обслуживании и обновлениях.',
+      t('landing.vibe.m5Intro', 'Современные приложения почти не держат «своих» серверов — они используют облачные сервисы. Облако — это чужие серверы (дата-центры), которые ты используешь через интернет, не заботясь о железе, его обслуживании и обновлениях.'),
     subcards: [
       {
         icon: Cloud,
         title: 'Netlify',
-        text: 'Сюда деплоится наш фронтенд и отсюда запускаются serverless-функции (бэкенд). По сути, это «дом» для всего нашего приложения в интернете.',
+        text: t('landing.vibe.m5Netlify', 'Сюда деплоится наш фронтенд и отсюда запускаются serverless-функции (бэкенд). По сути, это «дом» для всего нашего приложения в интернете.'),
       },
       {
         icon: Database,
         title: 'Google Firebase',
-        text: 'Backend-as-a-service от Google. В нашем проекте отвечает сразу за несколько вещей — база данных, вход пользователей и хранение файлов.',
+        text: t('landing.vibe.m5Firebase', 'Backend-as-a-service от Google. В нашем проекте отвечает сразу за несколько вещей — база данных, вход пользователей и хранение файлов.'),
       },
     ],
     points: [
-      { term: 'Firestore', text: 'Облачная база данных Firebase, где хранятся все данные платформы.' },
-      { term: 'Authentication', text: 'Вход и регистрация пользователей — Firebase берёт это на себя.' },
-      { term: 'Storage', text: 'Хранилище файлов: аватарки, документы, изображения.' },
+      { term: 'Firestore', text: t('landing.vibe.p5a', 'Облачная база данных Firebase, где хранятся все данные платформы.') },
+      { term: 'Authentication', text: t('landing.vibe.p5b', 'Вход и регистрация пользователей — Firebase берёт это на себя.') },
+      { term: 'Storage', text: t('landing.vibe.p5c', 'Хранилище файлов: аватарки, документы, изображения.') },
     ],
   },
 ];
@@ -151,7 +152,8 @@ const VideoEmbed: React.FC<{ id: string; title: string }> = ({ id, title }) => (
 
 const VibecoderPage: React.FC = () => {
   const { t } = useTranslation();
-  const [activeId, setActiveId] = useState<string>(MODULES[0].id);
+  const modules = getModules(t);
+  const [activeId, setActiveId] = useState<string>(modules[0].id);
 
   // Подсветка активного этапа в оглавлении
   useEffect(() => {
@@ -163,7 +165,7 @@ const VibecoderPage: React.FC = () => {
       },
       { rootMargin: '-25% 0px -65% 0px', threshold: 0 },
     );
-    MODULES.forEach((m) => {
+    modules.forEach((m) => {
       const el = document.getElementById(m.id);
       if (el) observer.observe(el);
     });
@@ -187,40 +189,36 @@ const VibecoderPage: React.FC = () => {
             <ArrowLeft className="w-4 h-4" /> {t('common.back')}
           </Link>
           <div className="flex items-center gap-2 text-primary-600 font-semibold text-sm mb-3">
-            <BookOpen className="w-4 h-4" /> Учебный путь
+            <BookOpen className="w-4 h-4" /> {t('landing.vibe.path', 'Учебный путь')}
           </div>
           <h1 className="text-3xl md:text-5xl font-extrabold tracking-tight mb-4">
-            Что должен знать вайбкодер
+            {t('landing.vibe.title', 'Что должен знать вайбкодер')}
           </h1>
           <p className="text-lg text-slate-600 leading-relaxed max-w-2xl">
-            Пошаговый маршрут: проходи этапы по порядку — от того, как вообще устроен веб,
-            до инфраструктуры, на которой работает эта платформа. Каждый этап — короткое видео
-            или разбор с ключевыми понятиями.
+            {t('landing.vibe.lead', 'Пошаговый маршрут: проходи этапы по порядку — от того, как вообще устроен веб, до инфраструктуры, на которой работает эта платформа. Каждый этап — короткое видео или разбор с ключевыми понятиями.')}
           </p>
         </header>
 
         {/* Программа курса */}
         <section className="mb-16 rounded-3xl border border-slate-200 bg-white shadow-sm p-8 md:p-10 vc-rise">
           <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-primary-50 text-primary-700 text-sm font-semibold mb-5">
-            <ClipboardList className="w-4 h-4" /> Программа курса
+            <ClipboardList className="w-4 h-4" /> {t('landing.vibe.program', 'Программа курса')}
           </div>
           <h2 className="text-2xl md:text-3xl font-extrabold text-slate-900 mb-3 leading-tight">
-            С нуля до продакшена за один месяц
+            {t('landing.vibe.programTitle', 'С нуля до продакшена за один месяц')}
           </h2>
           <p className="text-slate-600 text-lg leading-relaxed mb-8 max-w-3xl">
-            Мы проходим весь путь целиком — от первой строчки до готового сайта в интернете, которым
-            могут пользоваться реальные люди. За месяц студенты с помощью ИИ делают два завершённых
-            проекта, после которых уже могут принимать заказы и создавать сайты сами.
+            {t('landing.vibe.programText', 'Мы проходим весь путь целиком — от первой строчки до готового сайта в интернете, которым могут пользоваться реальные люди. За месяц студенты с помощью ИИ делают два завершённых проекта, после которых уже могут принимать заказы и создавать сайты сами.')}
           </p>
 
           {/* Чему научатся */}
-          <p className="text-sm font-bold text-slate-700 uppercase tracking-wider mb-4">Чему научатся</p>
+          <p className="text-sm font-bold text-slate-700 uppercase tracking-wider mb-4">{t('landing.vibe.learnTitle', 'Чему научатся')}</p>
           <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-10">
             {[
-              { icon: Users, title: 'Работа в команде', text: 'Совместная разработка, как в настоящих IT-проектах.' },
-              { icon: Zap, title: 'Современные технологии', text: 'Те же инструменты, что используют в индустрии сегодня.' },
-              { icon: UploadCloud, title: 'Публикация в интернете', text: 'Облачные сервисы, чтобы сайтом могли пользоваться другие.' },
-              { icon: Bot, title: 'Создание с ИИ', text: 'Строим реальные продукты в связке с искусственным интеллектом.' },
+              { icon: Users, title: t('landing.vibe.learn1Title', 'Работа в команде'), text: t('landing.vibe.learn1', 'Совместная разработка, как в настоящих IT-проектах.') },
+              { icon: Zap, title: t('landing.vibe.learn2Title', 'Современные технологии'), text: t('landing.vibe.learn2', 'Те же инструменты, что используют в индустрии сегодня.') },
+              { icon: UploadCloud, title: t('landing.vibe.learn3Title', 'Публикация в интернете'), text: t('landing.vibe.learn3', 'Облачные сервисы, чтобы сайтом могли пользоваться другие.') },
+              { icon: Bot, title: t('landing.vibe.learn4Title', 'Создание с ИИ'), text: t('landing.vibe.learn4', 'Строим реальные продукты в связке с искусственным интеллектом.') },
             ].map((s, i) => {
               const SIcon = s.icon;
               return (
@@ -234,26 +232,26 @@ const VibecoderPage: React.FC = () => {
           </div>
 
           {/* Два проекта */}
-          <p className="text-sm font-bold text-slate-700 uppercase tracking-wider mb-4">Два реальных проекта</p>
+          <p className="text-sm font-bold text-slate-700 uppercase tracking-wider mb-4">{t('landing.vibe.projectsTitle', 'Два реальных проекта')}</p>
           <div className="grid sm:grid-cols-2 gap-5">
             <div className="rounded-2xl border border-primary-100 bg-gradient-to-br from-primary-50 to-violet-50 p-6">
               <div className="flex items-center gap-3 mb-2">
                 <div className="w-10 h-10 rounded-xl bg-primary-600 text-white flex items-center justify-center shadow-md"><ShoppingCart className="w-5 h-5" /></div>
-                <h3 className="font-bold text-slate-900 text-lg">Интернет-магазин</h3>
+                <h3 className="font-bold text-slate-900 text-lg">{t('landing.vibe.shopTitle', 'Интернет-магазин')}</h3>
               </div>
-              <p className="text-slate-600 leading-relaxed">Первый проект для всех — полноценный магазин: каталог, корзина, оформление заказа.</p>
+              <p className="text-slate-600 leading-relaxed">{t('landing.vibe.shopText', 'Первый проект для всех — полноценный магазин: каталог, корзина, оформление заказа.')}</p>
             </div>
             <div className="rounded-2xl border border-slate-200 bg-white p-6">
               <div className="flex items-center gap-3 mb-2">
                 <div className="w-10 h-10 rounded-xl bg-violet-600 text-white flex items-center justify-center shadow-md"><LayoutGrid className="w-5 h-5" /></div>
-                <h3 className="font-bold text-slate-900 text-lg">Проект на выбор</h3>
+                <h3 className="font-bold text-slate-900 text-lg">{t('landing.vibe.choiceTitle', 'Проект на выбор')}</h3>
               </div>
-              <p className="text-slate-600 leading-relaxed">Второй проект студент выбирает сам из списка идей, который даёт преподаватель.</p>
+              <p className="text-slate-600 leading-relaxed">{t('landing.vibe.choiceText', 'Второй проект студент выбирает сам из списка идей, который даёт преподаватель.')}</p>
             </div>
           </div>
 
           <div className="mt-8 flex items-center gap-2 text-slate-500">
-            <Rocket className="w-4 h-4 text-primary-600 shrink-0" /> Оба проекта — завершённые сайты, готовые к показу заказчикам.
+            <Rocket className="w-4 h-4 text-primary-600 shrink-0" /> {t('landing.vibe.bothDone', 'Оба проекта — завершённые сайты, готовые к показу заказчикам.')}
           </div>
         </section>
 
@@ -261,9 +259,9 @@ const VibecoderPage: React.FC = () => {
           {/* Оглавление / роадмап */}
           <aside className="hidden lg:block">
             <div className="sticky top-24">
-              <p className="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-4 px-3">Программа</p>
+              <p className="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-4 px-3">{t('landing.vibe.programNav', 'Программа')}</p>
               <nav className="space-y-1">
-                {MODULES.map((m, i) => {
+                {modules.map((m, i) => {
                   const a = ACCENTS[m.accent];
                   const active = activeId === m.id;
                   return (
@@ -287,7 +285,7 @@ const VibecoderPage: React.FC = () => {
 
           {/* Модули */}
           <main className="space-y-16 min-w-0">
-            {MODULES.map((m, i) => {
+            {modules.map((m, i) => {
               const a = ACCENTS[m.accent];
               const Icon = m.icon;
               return (
@@ -318,7 +316,7 @@ const VibecoderPage: React.FC = () => {
                     {m.video && (
                       <div>
                         <div className="flex items-center gap-2 text-sm font-semibold text-slate-700 mb-3">
-                          <PlayCircle className={`w-5 h-5 ${a.text}`} /> Видео: {m.video.title}
+                          <PlayCircle className={`w-5 h-5 ${a.text}`} /> {t('landing.vibe.video', 'Видео: {{title}}', { title: m.video.title })}
                         </div>
                         <VideoEmbed id={m.video.id} title={m.video.title} />
                       </div>
@@ -357,7 +355,7 @@ const VibecoderPage: React.FC = () => {
                     {m.points && (
                       <div className="rounded-2xl border border-slate-100 bg-slate-50/60 p-5 sm:p-6">
                         <div className="flex items-center gap-2 text-sm font-bold text-slate-700 mb-4">
-                          <ListChecks className={`w-4 h-4 ${a.text}`} /> Ключевые понятия
+                          <ListChecks className={`w-4 h-4 ${a.text}`} /> {t('landing.vibe.keyConcepts', 'Ключевые понятия')}
                         </div>
                         <ul className="space-y-3">
                           {m.points.map((pt, j) => (
@@ -381,10 +379,9 @@ const VibecoderPage: React.FC = () => {
               <div className="rounded-2xl border border-dashed border-slate-200 bg-white p-6 flex items-start gap-4">
                 <FolderOpen className="w-6 h-6 text-slate-400 shrink-0 mt-0.5" />
                 <div>
-                  <p className="font-semibold text-slate-800 mb-1">Продолжение следует</p>
+                  <p className="font-semibold text-slate-800 mb-1">{t('landing.vibe.moreTitle', 'Продолжение следует')}</p>
                   <p className="text-sm text-slate-500 leading-relaxed">
-                    Это живой учебный материал — мы будем добавлять новые этапы и видео по ходу дела:
-                    базы данных, аутентификацию, безопасность и работу с ИИ.
+                    {t('landing.vibe.moreText', 'Это живой учебный материал — мы будем добавлять новые этапы и видео по ходу дела: базы данных, аутентификацию, безопасность и работу с ИИ.')}
                   </p>
                 </div>
               </div>

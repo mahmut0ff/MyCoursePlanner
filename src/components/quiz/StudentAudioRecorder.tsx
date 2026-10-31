@@ -51,7 +51,7 @@ export function StudentAudioRecorder({ onRecordingComplete, disabled }: Props) {
       }, 1000);
     } catch (err) {
       console.error('Mic error:', err);
-      alert('Could not access microphone. Please grant permissions.');
+      alert(t('quiz.micAccessError', 'Нет доступа к микрофону. Разрешите доступ в настройках браузера.'));
     }
   };
 

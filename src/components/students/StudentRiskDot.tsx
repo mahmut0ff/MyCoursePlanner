@@ -1,5 +1,6 @@
 import React from 'react';
 import type { StudentRiskProfile } from '../../types';
+import i18n from '../../i18n';
 
 /**
  * The at-risk marker that replaced the standalone "Светофор рисков" page.
@@ -23,8 +24,8 @@ export const riskDotClass = (level: StudentRiskProfile['riskLevel']): string =>
 /** "не был(а) 12 дн. · посещаемость 40%" — or a sane fallback. */
 export const riskSummary = (risk: StudentRiskProfile): string => {
   const parts = [...(risk.reasons || [])];
-  if (risk.hasOverduePayment) parts.push('просрочена оплата');
-  if (parts.length === 0) return risk.riskLevel === 'high' ? 'Требует внимания' : 'Стоит присмотреться';
+  if (risk.hasOverduePayment) parts.push(i18n.t('org.students.risk.overduePayment', 'просрочена оплата'));
+  if (parts.length === 0) return risk.riskLevel === 'high' ? i18n.t('org.students.risk.needsAttention', 'Требует внимания') : i18n.t('org.students.risk.watch', 'Стоит присмотреться');
   return parts.join(' · ');
 };
 
@@ -44,7 +45,7 @@ const StudentRiskDot: React.FC<Props> = ({ risk, className = '' }) => {
   return (
     <span
       title={riskSummary(risk)}
-      aria-label={`В зоне риска: ${riskSummary(risk)}`}
+      aria-label={i18n.t('org.students.risk.ariaLabel', 'В зоне риска: {{summary}}', { summary: riskSummary(risk) })}
       className={`w-3 h-3 rounded-full ring-2 ${riskDotClass(risk.riskLevel)} ${className}`}
     />
   );

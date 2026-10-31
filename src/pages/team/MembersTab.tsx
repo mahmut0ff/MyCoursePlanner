@@ -64,7 +64,8 @@ const MembersTab: React.FC<{ isAdmin: boolean }> = ({ isAdmin }) => {
   const [creating, setCreating] = useState(false);
 
   const CREATE_ROLE_LABELS: Record<string, string> = {
-    admin: 'Директор', manager: 'Менеджер', teacher: 'Преподаватель', student: 'Студент',
+    admin: t('team.roleDirector', 'Директор'), manager: t('roles.manager', 'Менеджер'),
+    teacher: t('roles.teacher', 'Преподаватель'), student: t('roles.student', 'Студент'),
   };
   const toggleCreateRole = (r: string) =>
     setCreateRoles(prev => prev.includes(r) ? prev.filter(x => x !== r) : [...prev, r]);
@@ -77,10 +78,10 @@ const MembersTab: React.FC<{ isAdmin: boolean }> = ({ isAdmin }) => {
   };
 
   const handleCreate = async () => {
-    if (!createForm.displayName.trim()) { toast.error('Укажите имя'); return; }
-    if (!createForm.username.trim() && !createForm.email.trim()) { toast.error('Укажите логин или email'); return; }
-    if (createForm.password.length < 6) { toast.error('Пароль минимум 6 символов'); return; }
-    if (createRoles.length === 0) { toast.error('Выберите хотя бы одну роль'); return; }
+    if (!createForm.displayName.trim()) { toast.error(t('team.create.nameRequired', 'Укажите имя')); return; }
+    if (!createForm.username.trim() && !createForm.email.trim()) { toast.error(t('team.create.loginRequired', 'Укажите логин или email')); return; }
+    if (createForm.password.length < 6) { toast.error(t('team.create.passwordShort', 'Пароль минимум 6 символов')); return; }
+    if (createRoles.length === 0) { toast.error(t('team.create.roleRequired', 'Выберите хотя бы одну роль')); return; }
     setCreating(true);
     try {
       const created: any = await orgCreateUser({
@@ -96,10 +97,10 @@ const MembersTab: React.FC<{ isAdmin: boolean }> = ({ isAdmin }) => {
         try {
           await apiAssignRole(created.uid, createRoleId);
         } catch (e: any) {
-          toast.error('Аккаунт создан, но роль доступа не назначена: ' + (e.message || 'ошибка'));
+          toast.error(t('team.create.roleAssignFailed', 'Аккаунт создан, но роль доступа не назначена: {{error}}', { error: e.message || t('common.error', 'Ошибка') }));
         }
       }
-      toast.success('Сотрудник создан');
+      toast.success(t('team.create.created', 'Сотрудник создан'));
       setShowCreate(false);
       await load();
     } catch (e: any) {
@@ -126,7 +127,7 @@ const MembersTab: React.FC<{ isAdmin: boolean }> = ({ isAdmin }) => {
     try {
       await apiAssignRole(member.uid, next);
       setMembers(prev => prev.map(m => m.uid === member.uid ? { ...m, roleId: next } : m));
-      toast.success(t('team.roleAssigned', 'Роль назначена'));
+      toast.success(next ? t('team.roleAssigned', 'Роль назначена') : t('team.roleCleared', 'Роль снята'));
     } catch (e: any) {
       toast.error(e.message || t('common.error', 'Ошибка'));
     } finally { setSavingUid(null); }
@@ -156,7 +157,7 @@ const MembersTab: React.FC<{ isAdmin: boolean }> = ({ isAdmin }) => {
     try {
       await Promise.all(ids.map(uid => apiAssignRole(uid, next)));
       setMembers(prev => prev.map(m => selected.has(m.uid) ? { ...m, roleId: next } : m));
-      toast.success(`${t('team.bulkAssigned', 'Роль назначена')} · ${ids.length}`);
+      toast.success(`${next ? t('team.bulkAssigned', 'Роль назначена') : t('team.roleCleared', 'Роль снята')} · ${ids.length}`);
       setSelected(new Set());
       setBulkRoleId('');
     } catch (e: any) {
@@ -314,7 +315,7 @@ const MembersTab: React.FC<{ isAdmin: boolean }> = ({ isAdmin }) => {
                         className="text-[10px] font-bold px-2 py-1 rounded-full"
                         style={{ background: `${rAccent}1a`, color: rAccent }}
                       >
-                        {BASE_ROLE_LABELS[r] || r}
+                        {BASE_ROLE_LABELS[r] ? t(`roles.${r}`, BASE_ROLE_LABELS[r]) : r}
                       </span>
                     );
                   })}
@@ -436,33 +437,33 @@ const MembersTab: React.FC<{ isAdmin: boolean }> = ({ isAdmin }) => {
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => { if (!creating) setShowCreate(false); }}>
           <div className="bg-white dark:bg-slate-800 rounded-3xl p-8 w-full max-w-md shadow-2xl max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
             <h2 className="text-xl font-bold text-slate-900 dark:text-white mb-1 flex items-center gap-2"><UserPlus className="w-5 h-5" /> {t('team.createStaff', 'Создать сотрудника')}</h2>
-            <p className="text-xs text-slate-500 mb-6">Создаёт аккаунт с логином и паролем. Выберите роли и, при необходимости, кастомную роль доступа (RBAC).</p>
+            <p className="text-xs text-slate-500 mb-6">{t('team.create.desc', 'Создаёт аккаунт с логином и паролем. Выберите роли и, при необходимости, кастомную роль доступа (RBAC).')}</p>
             <div className="space-y-4">
               <div>
-                <label className="text-xs font-semibold text-slate-500 mb-1 block">Имя *</label>
+                <label className="text-xs font-semibold text-slate-500 mb-1 block">{t('team.create.name', 'Имя')} *</label>
                 <input type="text" value={createForm.displayName} onChange={e => setCreateForm(f => ({ ...f, displayName: e.target.value }))}
                   className="input w-full" autoFocus />
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="text-xs font-semibold text-slate-500 mb-1 block">Логин</label>
+                  <label className="text-xs font-semibold text-slate-500 mb-1 block">{t('team.create.login', 'Логин')}</label>
                   <input type="text" value={createForm.username} onChange={e => setCreateForm(f => ({ ...f, username: e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, '') }))}
                     placeholder="john_doe" className="input w-full" />
                 </div>
                 <div>
-                  <label className="text-xs font-semibold text-slate-500 mb-1 block">Email <span className="text-slate-400 font-normal">(необяз.)</span></label>
+                  <label className="text-xs font-semibold text-slate-500 mb-1 block">{t('team.create.email', 'Email')} <span className="text-slate-400 font-normal">{t('team.create.optional', '(необяз.)')}</span></label>
                   <input type="email" value={createForm.email} onChange={e => setCreateForm(f => ({ ...f, email: e.target.value }))}
                     placeholder="user@example.com" className="input w-full" />
                 </div>
               </div>
-              <p className="text-[11px] text-slate-400 -mt-2">Укажите логин или email — по нему сотрудник будет входить.</p>
+              <p className="text-[11px] text-slate-400 -mt-2">{t('team.create.loginHint', 'Укажите логин или email — по нему сотрудник будет входить.')}</p>
               <div>
-                <label className="text-xs font-semibold text-slate-500 mb-1 block">Пароль *</label>
+                <label className="text-xs font-semibold text-slate-500 mb-1 block">{t('team.create.password', 'Пароль')} *</label>
                 <input type="text" value={createForm.password} onChange={e => setCreateForm(f => ({ ...f, password: e.target.value }))}
-                  placeholder="минимум 6 символов" className="input w-full font-mono" />
+                  placeholder={t('team.create.passwordPh', 'минимум 6 символов')} className="input w-full font-mono" />
               </div>
               <div>
-                <label className="text-xs font-semibold text-slate-500 mb-2 block">Роли *</label>
+                <label className="text-xs font-semibold text-slate-500 mb-2 block">{t('team.create.roles', 'Роли')} *</label>
                 <div className="flex gap-2 flex-wrap">
                   {(['admin', 'manager', 'teacher', 'student'] as const).map(r => {
                     const selectedRole = createRoles.includes(r);
@@ -478,7 +479,7 @@ const MembersTab: React.FC<{ isAdmin: boolean }> = ({ isAdmin }) => {
               </div>
               {roles.length > 0 && (
                 <div>
-                  <label className="text-xs font-semibold text-slate-500 mb-1 block">Роль доступа (RBAC) <span className="text-slate-400 font-normal">(необяз.)</span></label>
+                  <label className="text-xs font-semibold text-slate-500 mb-1 block">{t('team.create.rbacRole', 'Роль доступа (RBAC)')} <span className="text-slate-400 font-normal">{t('team.create.optional', '(необяз.)')}</span></label>
                   <select value={createRoleId} onChange={e => setCreateRoleId(e.target.value)} className="input w-full text-sm">
                     <option value="">{t('team.defaultForRole', 'По умолчанию для роли')}</option>
                     {roles.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
@@ -490,7 +491,7 @@ const MembersTab: React.FC<{ isAdmin: boolean }> = ({ isAdmin }) => {
               <button onClick={() => setShowCreate(false)} disabled={creating} className="px-5 py-2.5 rounded-xl text-sm font-semibold text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800 transition-colors disabled:opacity-50">{t('common.cancel', 'Отмена')}</button>
               <button onClick={handleCreate} disabled={creating || !createForm.displayName.trim() || createRoles.length === 0}
                 className="px-5 py-2.5 rounded-xl text-sm font-semibold bg-slate-900 text-white hover:bg-slate-800 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100 transition-all disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center gap-2">
-                {creating ? <><Loader2 className="w-4 h-4 animate-spin" /> Создание...</> : 'Создать'}
+                {creating ? <><Loader2 className="w-4 h-4 animate-spin" /> {t('team.create.creating', 'Создание...')}</> : t('common.create', 'Создать')}
               </button>
             </div>
           </div>

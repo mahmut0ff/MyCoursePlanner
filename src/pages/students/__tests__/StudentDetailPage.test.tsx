@@ -14,9 +14,17 @@ import { MemoryRouter, Routes, Route } from 'react-router-dom';
  *    у здорового карточка молчала о главном.
  */
 
-vi.mock('react-i18next', () => ({
-  useTranslation: () => ({ t: (_k: string, fb?: string) => fb ?? _k, i18n: { language: 'ru' } }),
-}));
+vi.mock('react-i18next', () => {
+  // Фолбэк — русский текст; подставляем {{переменные}}, чтобы тесты читали готовую строку.
+  const fill = (s: string, o?: Record<string, unknown>) => s.replace(/\{\{(\w+)\}\}/g, (_m, n) => String(o?.[n] ?? ''));
+  const t = (k: string, a?: string | Record<string, any>, b?: Record<string, unknown>) =>
+    typeof a === 'string' ? fill(a, b) : fill(a?.defaultValue ?? k, a);
+  return {
+    useTranslation: () => ({ t, i18n: { language: 'ru' } }),
+    Trans: ({ defaults, values }: { defaults: string; values?: Record<string, unknown> }) => fill(defaults.replace(/<\/?\w+>/g, ''), values),
+    initReactI18next: { type: '3rdParty', init: () => {} },
+  };
+});
 
 // Фабрика vi.mock поднимается наверх файла, поэтому моки объявляются прямо в ней,
 // а ссылки на них берутся ниже через импорт модуля.

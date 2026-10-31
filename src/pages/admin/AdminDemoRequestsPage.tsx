@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 import { adminGetDemoRequests, adminUpdateDemoRequest, adminDeleteDemoRequest } from '../../lib/api';
 import { Inbox, Send, CalendarCheck2, CheckCircle2, XCircle, Trash2, ExternalLink, Loader2 } from 'lucide-react';
 import toast from 'react-hot-toast';
@@ -29,6 +30,8 @@ const STATUS_META: Record<Status, { label: string; bg: string; text: string; ico
 const STATUS_ORDER: Status[] = ['new', 'contacted', 'scheduled', 'done', 'rejected'];
 
 const AdminDemoRequestsPage: React.FC = () => {
+  const { t } = useTranslation();
+  const statusLabel = (s: Status) => t(`admin.demo.status.${s}`, STATUS_META[s].label);
   const [items, setItems] = useState<DemoRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState<Status | 'all'>('all');
@@ -40,7 +43,7 @@ const AdminDemoRequestsPage: React.FC = () => {
       const res = await adminGetDemoRequests(statusFilter === 'all' ? undefined : statusFilter);
       setItems(res.items || []);
     } catch (e: any) {
-      toast.error(e?.message || 'Не удалось загрузить заявки');
+      toast.error(e?.message || t('admin.demo.loadFailed', 'Не удалось загрузить заявки'));
     } finally { setLoading(false); }
   }, [statusFilter]);
 
@@ -52,18 +55,18 @@ const AdminDemoRequestsPage: React.FC = () => {
       await adminUpdateDemoRequest({ id, status });
       setItems((prev) => prev.map((it) => (it.id === id ? { ...it, status } : it)));
     } catch (e: any) {
-      toast.error(e?.message || 'Не удалось обновить статус');
+      toast.error(e?.message || t('admin.demo.updateFailed', 'Не удалось обновить статус'));
     } finally { setBusyId(null); }
   };
 
   const remove = async (id: string) => {
-    if (!confirm('Удалить заявку безвозвратно?')) return;
+    if (!confirm(t('admin.demo.confirmDelete', 'Удалить заявку безвозвратно?'))) return;
     setBusyId(id);
     try {
       await adminDeleteDemoRequest(id);
       setItems((prev) => prev.filter((it) => it.id !== id));
     } catch (e: any) {
-      toast.error(e?.message || 'Не удалось удалить');
+      toast.error(e?.message || t('admin.demo.deleteFailed', 'Не удалось удалить'));
     } finally { setBusyId(null); }
   };
 
@@ -75,9 +78,9 @@ const AdminDemoRequestsPage: React.FC = () => {
   return (
     <div>
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Заявки на демо</h1>
+        <h1 className="text-2xl font-bold text-slate-900 dark:text-white">{t('admin.demo.title', 'Заявки на демо')}</h1>
         <p className="text-slate-500 dark:text-slate-400 text-sm">
-          Заявки с лендинга от владельцев учебных центров.
+          {t('admin.demo.subtitle', 'Заявки с лендинга от владельцев учебных центров.')}
         </p>
       </div>
 
@@ -91,7 +94,7 @@ const AdminDemoRequestsPage: React.FC = () => {
               : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700'
           }`}
         >
-          Все · {items.length}
+          {t('common.all', 'Все')} · {items.length}
         </button>
         {STATUS_ORDER.map((s) => {
           const meta = STATUS_META[s];
@@ -106,7 +109,7 @@ const AdminDemoRequestsPage: React.FC = () => {
                   : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700'
               }`}
             >
-              {meta.label} · {counts[s]}
+              {statusLabel(s)} · {counts[s]}
             </button>
           );
         })}
@@ -119,7 +122,7 @@ const AdminDemoRequestsPage: React.FC = () => {
       ) : items.length === 0 ? (
         <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl py-16 text-center text-slate-400 dark:text-slate-500">
           <Inbox className="w-10 h-10 mx-auto mb-3 opacity-50" />
-          <p>Заявок нет</p>
+          <p>{t('admin.demo.empty', 'Заявок нет')}</p>
         </div>
       ) : (
         <div className="grid gap-3">
@@ -133,7 +136,7 @@ const AdminDemoRequestsPage: React.FC = () => {
                     <div className="flex flex-wrap items-center gap-2 mb-1">
                       <h3 className="font-bold text-slate-900 dark:text-white text-lg truncate">{it.orgName}</h3>
                       <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold ${meta.bg} ${meta.text}`}>
-                        <Icon className="w-3.5 h-3.5" /> {meta.label}
+                        <Icon className="w-3.5 h-3.5" /> {statusLabel(STATUS_META[it.status] ? it.status : 'new')}
                       </span>
                     </div>
                     <p className="text-sm text-slate-500 dark:text-slate-400">
@@ -164,7 +167,7 @@ const AdminDemoRequestsPage: React.FC = () => {
                     className="input !py-1.5 !text-sm !w-auto"
                   >
                     {STATUS_ORDER.map((s) => (
-                      <option key={s} value={s}>{STATUS_META[s].label}</option>
+                      <option key={s} value={s}>{statusLabel(s)}</option>
                     ))}
                   </select>
                   <button
@@ -172,7 +175,7 @@ const AdminDemoRequestsPage: React.FC = () => {
                     disabled={busyId === it.id}
                     className="ml-auto inline-flex items-center gap-1.5 text-sm text-slate-400 hover:text-red-500 transition-colors disabled:opacity-50"
                   >
-                    <Trash2 className="w-4 h-4" /> Удалить
+                    <Trash2 className="w-4 h-4" /> {t('common.delete', 'Удалить')}
                   </button>
                 </div>
               </div>

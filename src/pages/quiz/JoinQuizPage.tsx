@@ -36,6 +36,7 @@ const JoinQuizPage: React.FC = () => {
       {/* Back Button */}
       <button 
         onClick={() => navigate('/dashboard')}
+        aria-label={t('common.back', 'Назад')}
         className="absolute top-4 left-4 sm:top-6 sm:left-6 w-12 h-12 bg-black/20 hover:bg-black/40 backdrop-blur-md rounded-full flex items-center justify-center text-white border border-white/20 transition-all z-20 group"
       >
         <ArrowLeft className="w-6 h-6 group-hover:-translate-x-1 transition-transform" />
@@ -62,7 +63,7 @@ const JoinQuizPage: React.FC = () => {
               value={code}
               onChange={(e) => setCode(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6))}
               onKeyDown={handleKeyDown}
-              placeholder="Game PIN"
+              placeholder={t('quiz.gamePin', 'PIN игры')}
               maxLength={6}
               className="w-full text-center text-3xl font-bold tracking-[0.3em] py-4 px-4 rounded-lg border-2 border-gray-200 bg-gray-50 text-gray-900 placeholder-gray-300 focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 outline-none transition-all kahoot-font"
               autoFocus

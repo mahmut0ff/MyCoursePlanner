@@ -216,6 +216,8 @@ const handler: Handler = async (event: HandlerEvent) => {
 
     // ═══ КАТЕГОРИИ, КРИТЕРИИ ═══
     if (action === 'saveCategories') {
+      const noAge = (Array.isArray(body.categories) ? body.categories : []).find((x: any) => !(Number(x?.ageTo) > 0));
+      if (noAge) return badRequest(`Категория ${noAge.code || ''}: возраст «до» должен быть больше нуля`);
       const c = await ownContest(body.id);
       if (isResp(c)) return c;
       const locked = editable(c); if (locked) return locked;

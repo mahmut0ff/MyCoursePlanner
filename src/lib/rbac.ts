@@ -5,14 +5,17 @@
 // netlify/functions/utils/rbac.ts — keep the ids in sync.
 // ============================================================
 
+import { localizeField, localizeMap } from './trLabel';
+
 export type RbacAction = 'read' | 'write' | 'delete';
 export const RBAC_ACTIONS: RbacAction[] = ['read', 'write', 'delete'];
 
-export const ACTION_LABELS: Record<RbacAction, string> = {
+// Подписи каталога — геттеры (lib/trLabel): переводятся при чтении, вместе со сменой языка.
+export const ACTION_LABELS: Record<RbacAction, string> = localizeMap({
   read: 'Просмотр',
   write: 'Изменение',
   delete: 'Удаление',
-};
+}, 'rbac.actions');
 
 /** A single resource grant inside a role. */
 export interface RolePermission {
@@ -62,7 +65,23 @@ export interface ResourceGroup {
 }
 
 // ─── Resource catalog (all platform modules) ───
-export const RESOURCE_GROUPS: ResourceGroup[] = [
+/** Стабильные ключи групп для переводов (подпись группы — русский фолбэк). */
+const RBAC_GROUP_IDS: Record<string, string> = {
+  'Люди': 'people', 'Обучение': 'learning', 'Оценивание': 'assessment', 'Управление': 'management', 'Организация': 'organization',
+};
+
+function localizeCatalog(groups: ResourceGroup[]): ResourceGroup[] {
+  for (const g of groups) {
+    localizeField(g, 'group', `rbac.groups.${RBAC_GROUP_IDS[g.group] ?? g.group}`);
+    for (const r of g.resources) {
+      localizeField(r, 'label', `rbac.res.${r.id}.label`);
+      (['read', 'write', 'delete', 'notes'] as const).forEach(f => localizeField(r.help, f, `rbac.res.${r.id}.${f}`));
+    }
+  }
+  return groups;
+}
+
+export const RESOURCE_GROUPS: ResourceGroup[] = localizeCatalog([
   {
     group: 'Люди',
     resources: [
@@ -276,7 +295,7 @@ export const RESOURCE_GROUPS: ResourceGroup[] = [
       } },
     ],
   },
-];
+]);
 
 /** Flat list of every resource id in the catalog. */
 export const ALL_RESOURCES: string[] = RESOURCE_GROUPS.flatMap(g => g.resources.map(r => r.id));
@@ -532,6 +551,10 @@ export const ACCESS_PRESETS: AccessPreset[] = [
     ],
   },
 ];
+ACCESS_PRESETS.forEach(p => {
+  localizeField(p, 'label', `rbac.presets.${p.id}.label`);
+  localizeField(p, 'description', `rbac.presets.${p.id}.description`);
+});
 
 /** Набор выдан целиком? (частично включённый пресет считается выключенным) */
 export function presetActive(set: Set<string>, preset: AccessPreset): boolean {

@@ -6,12 +6,12 @@ import { Plus, Trophy, CalendarDays, MapPin, Layers } from 'lucide-react';
 import EmptyState from '../../components/ui/EmptyState';
 import { usePermissions } from '../../contexts/PermissionsContext';
 import { apiContestCreate, apiContestsList } from '../../lib/api';
-import { CONTEST_KIND_LABELS, formatContestDate as formatDate, type Contest } from '../../lib/contests';
+import { formatContestDate as formatDate, type Contest } from '../../lib/contests';
 import ContestMetaFields from './ContestMetaFields';
 import { emptyMetaForm as emptyForm } from './contestForm';
 import { formatMoney } from '../../lib/money';
 import { Modal, ModalFooter, ErrorNote, StatusBadge } from './ui';
-import { primaryBtn, cardCls, errMessage } from './uiStyles';
+import { primaryBtn, cardCls, errMessage, kindLabel } from './uiStyles';
 
 
 const ContestsPage: React.FC = () => {
@@ -79,7 +79,7 @@ const ContestsPage: React.FC = () => {
           {list.map((c) => (
             <Link key={c.id} to={`/contests/${c.id}`} className={`${cardCls} p-5 hover:border-slate-300 dark:hover:border-slate-600 transition-colors block`}>
               <div className="flex items-center justify-between gap-2 mb-2">
-                <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">{CONTEST_KIND_LABELS[c.kind]}{c.season ? ` · ${c.season}` : ''}</span>
+                <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">{kindLabel(c.kind)}{c.season ? ` · ${c.season}` : ''}</span>
                 <StatusBadge status={c.status} />
               </div>
               <h2 className="font-bold text-slate-900 dark:text-white leading-snug">{c.title}</h2>

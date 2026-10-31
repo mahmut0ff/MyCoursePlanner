@@ -13,6 +13,7 @@ import { toast } from 'react-hot-toast';
 
 type StatusFilter = 'all' | 'published' | 'draft';
 
+
 const LessonListPage: React.FC = () => {
   const { t } = useTranslation();
   const { role, profile } = useAuth();
@@ -105,7 +106,7 @@ const LessonListPage: React.FC = () => {
         const fullLesson = await apiGetLesson(lesson.id!);
         // @ts-ignore
         const { id, createdAt, updatedAt, ...rest } = fullLesson;
-        const newLessonData = { ...rest, title: `${rest.title} (Копия)`, status: 'draft' };
+        const newLessonData = { ...rest, title: t('lessons.copyTitle', '{{title}} (Копия)', { title: rest.title }), status: 'draft' };
         
         // Если автор делает копию своего урока В организацию, добавляем orgId
         if (profile?.activeOrgId && !lesson.organizationId) {
@@ -117,7 +118,7 @@ const LessonListPage: React.FC = () => {
         loadLessons();
       }
     } catch (err: any) {
-      toast.error(err.message || 'Error duplicating');
+      toast.error(err.message || t('lessons.view.copyFailed', 'Ошибка копирования'));
     } finally {
       setDuplicatingId(null);
     }
@@ -162,7 +163,7 @@ const LessonListPage: React.FC = () => {
       <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-6">
         <div>
           <h1 className="text-3xl font-extrabold text-slate-900 dark:text-white mb-2">{t('lessons.title', 'Уроки')}</h1>
-          <p className="text-slate-500 dark:text-slate-400 text-sm">{filtered.length} доступных уроков</p>
+          <p className="text-slate-500 dark:text-slate-400 text-sm">{t('lessons.list.available', { count: filtered.length })}</p>
         </div>
         
         {isStaff && (
@@ -173,7 +174,7 @@ const LessonListPage: React.FC = () => {
                 className="flex-1 sm:flex-none btn-secondary flex justify-center items-center gap-2 border-violet-200 text-violet-700 bg-violet-50 hover:bg-violet-100 hover:border-violet-300 dark:border-violet-500/30 dark:bg-violet-500/10 dark:text-violet-300 dark:hover:bg-violet-500/20"
               >
                 <Sparkles className="w-4 h-4" /> 
-                <span>AI Конструктор</span>
+                <span>{t('lessons.list.aiBuilder', 'AI Конструктор')}</span>
               </button>
             )}
             <Link to="/lessons/new" className="flex-1 sm:flex-none bg-slate-900 hover:bg-slate-800 text-white dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100 px-4 py-2.5 rounded-xl text-sm font-semibold flex justify-center items-center gap-2 transition-all shadow-sm hover:shadow-md shrink-0">
@@ -192,7 +193,7 @@ const LessonListPage: React.FC = () => {
             type="text" 
             value={search} 
             onChange={(e) => setSearch(e.target.value)} 
-            placeholder="Поиск по названию или описанию..." 
+            placeholder={t('lessons.list.searchPlaceholder', 'Поиск по названию или описанию...')} 
             className="input pl-9 w-full bg-slate-50 dark:bg-slate-900 border-none focus:ring-2 focus:ring-primary-500/20" 
           />
         </div>
@@ -201,22 +202,22 @@ const LessonListPage: React.FC = () => {
           <div className="flex items-center gap-2 shrink-0">
             <Filter className="w-4 h-4 text-slate-400" />
             <select value={subjectFilter} onChange={(e) => setSubjectFilter(e.target.value)} className="input text-sm py-2 bg-slate-50 dark:bg-slate-900 border-none">
-              <option value="all">Все предметы</option>
+              <option value="all">{t('lessons.list.allSubjects', 'Все предметы')}</option>
               {uniqueSubjects.map(s => <option key={s} value={s}>{s}</option>)}
             </select>
           </div>
           
           <div className="flex items-center gap-2 shrink-0">
             <select value={levelFilter} onChange={(e) => setLevelFilter(e.target.value)} className="input text-sm py-2 bg-slate-50 dark:bg-slate-900 border-none">
-              <option value="all">Все уровни</option>
-              {uniqueLevels.map(l => <option key={l} value={l}>{l}</option>)}
+              <option value="all">{t('lessons.list.allLevels', 'Все уровни')}</option>
+              {uniqueLevels.map(l => <option key={l} value={l}>{t(`lessons.${String(l).toLowerCase()}`, l)}</option>)}
             </select>
           </div>
 
           {uniqueGroups.length > 0 && (
             <div className="flex items-center gap-2 shrink-0">
               <select value={groupFilter} onChange={(e) => setGroupFilter(e.target.value)} className="input text-sm py-2 bg-slate-50 dark:bg-slate-900 border-none">
-                <option value="all">Все группы</option>
+                <option value="all">{t('rating.allGroups', 'Все группы')}</option>
                 {uniqueGroups.map(([gid, gname]) => <option key={gid} value={gid}>{gname}</option>)}
               </select>
             </div>
@@ -238,8 +239,8 @@ const LessonListPage: React.FC = () => {
       {filtered.length === 0 ? (
         <EmptyState
           icon={BookOpen}
-          title={search || subjectFilter !== 'all' ? 'Ничего не найдено' : t('lessons.noLessons', 'Уроков пока нет')}
-          description={search || subjectFilter !== 'all' ? 'Попробуйте изменить фильтры поиска' : t('lessons.addFirst', 'Добавьте первый урок')}
+          title={search || subjectFilter !== 'all' ? t('finances.nothingFound', 'Ничего не найдено') : t('lessons.noLessons', 'Уроков пока нет')}
+          description={search || subjectFilter !== 'all' ? t('lessons.list.tryOtherFilters', 'Попробуйте изменить фильтры поиска') : t('lessons.addFirst', 'Добавьте первый урок')}
           actionLabel={isStaff ? t('lessons.create', 'Создать') : undefined}
           actionLink={isStaff ? '/lessons/new' : undefined}
         />
@@ -247,11 +248,11 @@ const LessonListPage: React.FC = () => {
         <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl overflow-hidden">
           {/* Table header */}
           <div className="hidden md:grid grid-cols-[1fr_120px_100px_100px_90px_60px] gap-3 px-5 py-3 border-b border-slate-100 dark:border-slate-700 bg-slate-50/80 dark:bg-slate-800/80 text-[11px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
-            <span>Название</span>
-            <span>Предмет / Уровень</span>
-            <span>Группы</span>
-            <span>Длительность</span>
-            {isStaff && <span>Статус</span>}
+            <span>{t('lessons.titleLabel', 'Название')}</span>
+            <span>{t('lessons.list.subjectLevel', 'Предмет / Уровень')}</span>
+            <span>{t('nav.groups', 'Группы')}</span>
+            <span>{t('exams.duration', 'Длительность')}</span>
+            {isStaff && <span>{t('common.status', 'Статус')}</span>}
             <span></span>
           </div>
 
@@ -281,8 +282,8 @@ const LessonListPage: React.FC = () => {
                     {/* Mobile-only meta */}
                     <div className="flex items-center gap-2 mt-1 md:hidden flex-wrap">
                       <span className="bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 px-1.5 py-0.5 rounded text-[10px] font-bold">{lesson.subject}</span>
-                      <span className="text-[10px] text-slate-400">{lesson.level}</span>
-                      <span className="text-[10px] text-slate-400 flex items-center gap-1"><Clock className="w-3 h-3" />{lesson.duration} мин</span>
+                      <span className="text-[10px] text-slate-400">{t(`lessons.${String(lesson.level).toLowerCase()}`, lesson.level)}</span>
+                      <span className="text-[10px] text-slate-400 flex items-center gap-1"><Clock className="w-3 h-3" />{lesson.duration} {t('common.minutes', 'мин')}</span>
                       {isStaff && (
                         <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${(lesson.status || 'draft') === 'published' ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400' : 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400'}`}>
                           {(lesson.status || 'draft') === 'published' ? t('common.published') : t('common.draft')}
@@ -295,7 +296,7 @@ const LessonListPage: React.FC = () => {
                 {/* Subject / Level */}
                 <div className="hidden md:flex flex-col gap-1 min-w-0">
                   <span className="bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider truncate text-center">{lesson.subject}</span>
-                  <span className="text-[10px] text-slate-400 text-center">{lesson.level}</span>
+                  <span className="text-[10px] text-slate-400 text-center">{t(`lessons.${String(lesson.level).toLowerCase()}`, lesson.level)}</span>
                 </div>
 
                 {/* Groups — labelled through the same resolver as the filter, so a
@@ -320,7 +321,7 @@ const LessonListPage: React.FC = () => {
                 {/* Duration */}
                 <div className="hidden md:flex items-center gap-1.5 text-[11px] text-slate-500 dark:text-slate-400">
                   <Clock className="w-3.5 h-3.5 text-slate-400" />
-                  <span>{lesson.duration} мин</span>
+                  <span>{lesson.duration} {t('common.minutes', 'мин')}</span>
                 </div>
 
                 {/* Status (staff only) */}
@@ -335,12 +336,12 @@ const LessonListPage: React.FC = () => {
                 {/* Actions */}
                 <div className="hidden md:flex items-center gap-1.5 justify-end">
                   {(lesson.attachments?.length || 0) > 0 && (
-                    <span className="flex items-center gap-0.5 text-slate-400 tooltip" data-tip="Вложения">
+                    <span className="flex items-center gap-0.5 text-slate-400 tooltip" data-tip={t('lessons.attachments', 'Вложения')}>
                       <Paperclip className="w-3.5 h-3.5" /> <span className="text-[10px]">{lesson.attachments!.length}</span>
                     </span>
                   )}
                   {lesson.homework?.title && (
-                    <span className="text-amber-500 tooltip" data-tip="Домашнее задание">
+                    <span className="text-amber-500 tooltip" data-tip={t('lessons.homework', 'Домашнее задание')}>
                       <ClipboardList className="w-3.5 h-3.5" />
                     </span>
                   )}
@@ -349,7 +350,7 @@ const LessonListPage: React.FC = () => {
                       onClick={(e) => handleDuplicate(e, lesson)}
                       disabled={duplicatingId === lesson.id}
                       className="p-1.5 text-slate-400 hover:text-primary-600 dark:hover:text-primary-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-all tooltip"
-                      data-tip="Копировать"
+                      data-tip={t('common.copy', 'Копировать')}
                     >
                       {duplicatingId === lesson.id ? <div className="w-3.5 h-3.5 rounded-full border-2 border-slate-400 border-t-transparent animate-spin"/> : <Copy className="w-3.5 h-3.5" /> }
                     </button>

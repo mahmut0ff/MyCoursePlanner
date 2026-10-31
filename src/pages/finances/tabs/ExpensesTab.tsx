@@ -466,7 +466,8 @@ const ExpensesTab: React.FC<Props> = ({ range, onRangeChange, filters, onFilters
                         </td>
                         <td className="px-5 py-3.5 font-bold text-rose-500">{formatMoneySigned(-(tx.amount || 0))}</td>
                         <td className="px-5 py-3.5 text-xs text-slate-500">{getMethodLabel(tx.paymentMethod, t)}</td>
-                        <td className="px-5 py-3.5 text-slate-500">{courseName(tx) || '—'}</td>
+                        {/* Зарплата по курсам не распределяется (см. «Прибыльность курсов»), поэтому и здесь курс не показываем. */}
+                        <td className="px-5 py-3.5 text-slate-500">{(!isPayrollManaged(tx) && courseName(tx)) || '—'}</td>
                         <td className="px-5 py-3.5 text-slate-500 max-w-[200px] truncate">{tx.description || '—'}</td>
                         <td className="px-5 py-3.5">
                           <div className="flex justify-end">

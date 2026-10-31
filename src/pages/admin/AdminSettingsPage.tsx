@@ -7,6 +7,7 @@ import {
   User, Users, Palette, Bell, Puzzle, CreditCard, Mail,
   Globe, Shield, Database, Save, Eye, EyeOff,
 } from 'lucide-react';
+import { UI_LANGUAGES } from '../../lib/locale';
 
 type Tab =
   | 'profile'
@@ -336,7 +337,7 @@ const BillingTab: React.FC = () => {
             {plans.map((p) => (
               <tr key={p.id} className="hover:bg-slate-50 dark:hover:bg-slate-700/30">
                 <td className="px-6 py-4 text-sm font-medium text-slate-900 dark:text-white">{p.name}</td>
-                <td className="px-6 py-4 text-sm text-slate-600 dark:text-slate-400">{p.price} сом/мес</td>
+                <td className="px-6 py-4 text-sm text-slate-600 dark:text-slate-400">{t('admin.currencyPerMonth', '{{amount}} сом/мес', { amount: p.price })}</td>
                 <td className="px-6 py-4 text-sm text-slate-600 dark:text-slate-400">{p.students === -1 ? '∞' : p.students}</td>
                 <td className="px-6 py-4 text-sm text-slate-600 dark:text-slate-400">{p.teachers === -1 ? '∞' : p.teachers}</td>
                 <td className="px-6 py-4 text-right"><button className="btn-secondary text-xs">{t('common.edit')}</button></td>
@@ -395,11 +396,7 @@ const LocalizationTab: React.FC = () => {
   const [currency, setCurrency] = useState('KGS');
   const [defaultLang, setDefaultLang] = useState(i18n.language || 'ru');
 
-  const langs = [
-    { code: 'ru', label: 'Русский', flag: '🇷🇺' },
-    { code: 'kg', label: 'Кыргызча', flag: '🇰🇬' },
-    { code: 'en', label: 'English', flag: '🇬🇧' },
-  ];
+  const langs = UI_LANGUAGES;
 
   return (
     <div className="space-y-6">
@@ -437,7 +434,7 @@ const LocalizationTab: React.FC = () => {
             <div>
               <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">{t('admin.settings.currency')}</label>
               <select value={currency} onChange={(e) => setCurrency(e.target.value)} className="input">
-                <option value="KGS">KGS (сом)</option>
+                <option value="KGS">KGS ({t('admin.currencyName', 'сом')})</option>
                 <option value="USD">USD ($)</option>
                 <option value="RUB">RUB (₽)</option>
                 <option value="KZT">KZT (₸)</option>

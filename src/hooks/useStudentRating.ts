@@ -13,6 +13,7 @@ import { useBranch } from '../contexts/BranchContext';
 import { apiGetStudentRating, orgGetCourses, orgGetGroups } from '../lib/api';
 import type { Course, Group } from '../types';
 import type { RatingResponse } from '../lib/student-rating';
+import { trLabel } from '../lib/trLabel';
 
 export const RATING_PERIODS = ['current_month', 'quarter', 'year', 'all'] as const;
 export type RatingPeriod = (typeof RATING_PERIODS)[number];
@@ -66,7 +67,7 @@ export function useStudentRating(period: RatingPeriod): StudentRatingState {
       })
       .catch((e: any) => {
         if (!alive) return;
-        setError(e?.message || 'Не удалось загрузить рейтинг');
+        setError(e?.message || trLabel('rating.loadFailed', 'Не удалось загрузить рейтинг'));
       })
       .finally(() => { if (alive) setLoading(false); });
     return () => { alive = false; };

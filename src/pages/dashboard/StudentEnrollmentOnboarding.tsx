@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { BookOpen, Users, CheckCircle2, ChevronRight, GraduationCap } from 'lucide-react';
 import { orgGetCourses, orgGetGroups, orgEnrollInGroup, apiAwardXP } from '../../lib/api';
 import toast from 'react-hot-toast';
+import { useTranslation } from 'react-i18next';
 import { showGamificationToasts } from '../../components/gamification/GamificationToasts';
 
 interface Props {
@@ -9,6 +10,7 @@ interface Props {
 }
 
 const StudentEnrollmentOnboarding: React.FC<Props> = ({ onComplete }) => {
+  const { t } = useTranslation();
   const [step, setStep] = useState<1 | 2>(1);
   const [courses, setCourses] = useState<any[]>([]);
   const [groups, setGroups] = useState<any[]>([]);
@@ -27,7 +29,7 @@ const StudentEnrollmentOnboarding: React.FC<Props> = ({ onComplete }) => {
       // Only show published courses that a student can join
       setCourses(data.filter((c: any) => c.status === 'published' || c.status === 'active' || !c.status));
     } catch (e: any) {
-      toast.error(e.message || 'Ошибка загрузки курсов');
+      toast.error(e.message || t('enrollment.loadCoursesError', 'Ошибка загрузки курсов'));
     } finally {
       setLoading(false);
     }
@@ -39,7 +41,7 @@ const StudentEnrollmentOnboarding: React.FC<Props> = ({ onComplete }) => {
       const data = await orgGetGroups(courseId);
       setGroups(data);
     } catch (e: any) {
-      toast.error(e.message || 'Ошибка загрузки групп');
+      toast.error(e.message || t('enrollment.loadGroupsError', 'Ошибка загрузки групп'));
     } finally {
       setLoading(false);
     }
@@ -64,10 +66,10 @@ const StudentEnrollmentOnboarding: React.FC<Props> = ({ onComplete }) => {
           .catch(() => {});
       }
 
-      toast.success('Вы успешно записались в группу!');
+      toast.success(t('enrollment.success', 'Вы успешно записались в группу!'));
       onComplete();
     } catch (e: any) {
-      toast.error(e.message || 'Ошибка при записи в группу');
+      toast.error(e.message || t('enrollment.enrollError', 'Ошибка при записи в группу'));
     } finally {
       setEnrolling(false);
     }
@@ -77,7 +79,7 @@ const StudentEnrollmentOnboarding: React.FC<Props> = ({ onComplete }) => {
     return (
       <div className="flex flex-col items-center justify-center py-20">
         <div className="w-8 h-8 border-[3px] border-slate-200 border-t-primary-500 rounded-full animate-spin"></div>
-        <p className="mt-4 text-slate-500 text-sm">Поиск доступных курсов...</p>
+        <p className="mt-4 text-slate-500 text-sm">{t('enrollment.searching', 'Поиск доступных курсов...')}</p>
       </div>
     );
   }
@@ -90,10 +92,10 @@ const StudentEnrollmentOnboarding: React.FC<Props> = ({ onComplete }) => {
           <GraduationCap className="w-8 h-8 text-white transform rotate-6" />
         </div>
         <h1 className="text-3xl font-extrabold text-slate-900 dark:text-white mb-3">
-          Добро пожаловать в обучение!
+          {t('enrollment.welcome', 'Добро пожаловать в обучение!')}
         </h1>
         <p className="text-slate-500 dark:text-slate-400 max-w-lg mx-auto">
-          Для начала обучения вам необходимо выбрать курс и присоединиться к учебной группе. 
+          {t('enrollment.intro', 'Для начала обучения вам необходимо выбрать курс и присоединиться к учебной группе.')}
         </p>
       </div>
 
@@ -101,14 +103,14 @@ const StudentEnrollmentOnboarding: React.FC<Props> = ({ onComplete }) => {
       <div className="flex items-center justify-center gap-4 mb-10">
         <div className={`flex items-center gap-2 ${step >= 1 ? 'text-primary-600 dark:text-primary-400' : 'text-slate-400'}`}>
           <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold border-2 ${step >= 1 ? 'border-primary-600 bg-primary-50 text-primary-700 dark:bg-primary-900/30' : 'border-slate-200'}`}>1</div>
-          <span className="font-semibold text-sm">Выбор курса</span>
+          <span className="font-semibold text-sm">{t('enrollment.stepCourse', 'Выбор курса')}</span>
         </div>
         <div className="w-12 h-[2px] bg-slate-200 dark:bg-slate-700">
           <div className={`h-full bg-primary-500 transition-all ${step >= 2 ? 'w-full' : 'w-0'}`}></div>
         </div>
         <div className={`flex items-center gap-2 ${step >= 2 ? 'text-primary-600 dark:text-primary-400' : 'text-slate-400'}`}>
           <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold border-2 ${step >= 2 ? 'border-primary-600 bg-primary-50 text-primary-700 dark:bg-primary-900/30' : 'border-slate-200 dark:border-slate-700'}`}>2</div>
-          <span className="font-semibold text-sm">Выбор группы</span>
+          <span className="font-semibold text-sm">{t('enrollment.stepGroup', 'Выбор группы')}</span>
         </div>
       </div>
 
@@ -117,11 +119,11 @@ const StudentEnrollmentOnboarding: React.FC<Props> = ({ onComplete }) => {
         {step === 1 && (
           <div>
             <h2 className="text-xl font-bold text-slate-900 dark:text-white mb-6 flex items-center gap-2">
-               <BookOpen className="w-5 h-5 text-primary-500" /> Выберите курс
+               <BookOpen className="w-5 h-5 text-primary-500" /> {t('enrollment.chooseCourse', 'Выберите курс')}
             </h2>
             {courses.length === 0 ? (
               <div className="text-center py-10 bg-slate-50 dark:bg-slate-900/50 rounded-2xl border border-dashed border-slate-200 dark:border-slate-700">
-                <p className="text-slate-500">Пока нет доступных курсов. Пожалуйста, обратитесь к директору.</p>
+                <p className="text-slate-500">{t('enrollment.noCourses', 'Пока нет доступных курсов. Пожалуйста, обратитесь к директору.')}</p>
               </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -137,7 +139,7 @@ const StudentEnrollmentOnboarding: React.FC<Props> = ({ onComplete }) => {
                           {c.title}
                         </h3>
                         <p className="text-sm text-slate-500 mt-1 line-clamp-2">
-                          {c.description || 'Описание курса...'}
+                          {c.description || t('enrollment.courseDescFallback', 'Описание курса...')}
                         </p>
                       </div>
                       <div className="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-700 flex items-center justify-center group-hover:bg-primary-100 dark:group-hover:bg-primary-900/30 transition-colors shrink-0">
@@ -157,17 +159,17 @@ const StudentEnrollmentOnboarding: React.FC<Props> = ({ onComplete }) => {
               <button 
                 onClick={() => setStep(1)}
                 className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
-                title="Назад"
+                title={t('common.back', 'Назад')}
               >
                 <ChevronRight className="w-5 h-5 rotate-180 text-slate-500" />
               </button>
               <h2 className="text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                <Users className="w-5 h-5 text-primary-500" /> Выберите группу
+                <Users className="w-5 h-5 text-primary-500" /> {t('enrollment.chooseGroup', 'Выберите группу')}
               </h2>
             </div>
             
             <div className="mb-6 px-4 py-3 bg-primary-50 dark:bg-primary-900/20 rounded-xl border border-primary-100 dark:border-primary-800/40">
-              <span className="text-sm text-primary-600 dark:text-primary-400">Курс:</span>
+              <span className="text-sm text-primary-600 dark:text-primary-400">{t('enrollment.courseLabel', 'Курс:')}</span>
               <span className="ml-2 font-bold text-primary-700 dark:text-primary-300">{selectedCourse?.title}</span>
             </div>
 
@@ -177,9 +179,9 @@ const StudentEnrollmentOnboarding: React.FC<Props> = ({ onComplete }) => {
               </div>
             ) : groups.length === 0 ? (
               <div className="text-center py-10 bg-slate-50 dark:bg-slate-900/50 rounded-2xl border border-dashed border-slate-200 dark:border-slate-700">
-                <p className="text-slate-500">В этом курсе пока нет доступных групп.</p>
+                <p className="text-slate-500">{t('enrollment.noGroups', 'В этом курсе пока нет доступных групп.')}</p>
                 <button onClick={() => setStep(1)} className="mt-4 text-sm text-primary-600 font-medium hover:underline">
-                  Вернуться к выбору курса
+                  {t('enrollment.backToCourses', 'Вернуться к выбору курса')}
                 </button>
               </div>
             ) : (
@@ -194,7 +196,9 @@ const StudentEnrollmentOnboarding: React.FC<Props> = ({ onComplete }) => {
                       <div>
                         <h3 className="font-bold text-slate-900 dark:text-white">{g.name}</h3>
                         <p className="text-xs text-slate-500 mt-0.5">
-                          {currentStudents} {capacity > 0 ? `/ ${capacity}` : ''} участников
+                          {capacity > 0
+                            ? t('enrollment.membersOfCapacity', '{{current}} / {{capacity}} участников', { current: currentStudents, capacity })
+                            : t('enrollment.members', { count: currentStudents, defaultValue: '{{count}} участников' })}
                         </p>
                       </div>
                       <button
@@ -202,8 +206,8 @@ const StudentEnrollmentOnboarding: React.FC<Props> = ({ onComplete }) => {
                         disabled={isFull || enrolling}
                         className={`text-sm font-semibold px-5 py-2 rounded-lg flex items-center gap-2 transition-all ${isFull ? 'bg-slate-200 text-slate-500 cursor-not-allowed' : 'bg-primary-600 hover:bg-primary-700 text-white shadow-md'}`}
                       >
-                        {isFull ? 'Мест нет' : enrolling ? 'Запись...' : (
-                          <><CheckCircle2 className="w-4 h-4" /> Выбрать</>
+                        {isFull ? t('enrollment.full', 'Мест нет') : enrolling ? t('enrollment.enrolling', 'Запись...') : (
+                          <><CheckCircle2 className="w-4 h-4" /> {t('common.select', 'Выбрать')}</>
                         )}
                       </button>
                     </div>

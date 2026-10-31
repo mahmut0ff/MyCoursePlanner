@@ -1,13 +1,6 @@
 import { useTranslation } from 'react-i18next';
 import { formatDistanceToNow } from 'date-fns';
-import { ru, enUS, type Locale } from 'date-fns/locale';
-import { kyrgyz } from '../../lib/dateFnsKyrgyz';
-
-const DATE_FNS_LOCALES: Record<string, Locale> = { ru, en: enUS, kg: kyrgyz };
-
-function localeFor(lang: string): Locale {
-  return DATE_FNS_LOCALES[lang.split('-')[0]] ?? ru;
-}
+import { dateFnsLocale, intlLocale } from '../../lib/locale';
 
 /**
  * Small colored status dot. Positioned absolutely by the caller when used as
@@ -49,12 +42,12 @@ export const PresenceBadge: React.FC<PresenceBadgeProps> = ({ online, lastSeenMs
 
   const relative =
     lastSeenMs != null
-      ? formatDistanceToNow(lastSeenMs, { addSuffix: true, locale: localeFor(i18n.language) })
+      ? formatDistanceToNow(lastSeenMs, { addSuffix: true, locale: dateFnsLocale(i18n.language) })
       : null;
 
   return (
     <span
-      title={lastSeenMs != null ? new Date(lastSeenMs).toLocaleString() : undefined}
+      title={lastSeenMs != null ? new Date(lastSeenMs).toLocaleString(intlLocale(i18n.language)) : undefined}
       className="inline-flex items-center gap-1.5 text-[11px] text-slate-500 dark:text-slate-400"
     >
       <span className="w-2 h-2 rounded-full bg-slate-300 dark:bg-slate-600 shrink-0" />

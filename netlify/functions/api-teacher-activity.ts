@@ -42,6 +42,7 @@ interface RawActivityDoc {
   dayKey?: string | null;
   createdAt?: string | null;
   meta?: Record<string, unknown> | null;
+  actorRole?: string | null;
 }
 
 function emptyTotals(): KpiTotals {
@@ -233,9 +234,12 @@ const handler: Handler = async (event: HandlerEvent) => {
     const rosterIds = new Set(roster.map(r => r.id));
 
     // Выбранный филиал → только события преподавателей в области; «Все филиалы»
-    // (scope === null) → все события, включая ушедших сотрудников и иные роли.
+    // (scope === null) → ещё и ушедшие преподаватели (по роли в событии или по
+    // группам). Директор/администратор без групп преподавателем не считается —
+    // иначе он попадал в «активных» и в лидеры KPI.
     const scopedEvents = scope === null
-      ? windowed
+      ? windowed.filter(e => e.actorId && (
+          rosterIds.has(e.actorId) || !!workload[e.actorId] || TEACHING_ROLES.includes(e.actorRole || '')))
       : windowed.filter(e => e.actorId && rosterIds.has(e.actorId));
 
     // Имена: ростер резолвим всегда (надёжно), события — только если не денормализовано.

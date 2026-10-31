@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { FolderOpen, Users, Calendar, Settings2, Layers, ChevronRight, CheckCircle2, X } from 'lucide-react';
 
 interface Props {
@@ -63,15 +64,16 @@ export function useOnboardingProgress(props: Props) {
 }
 
 const OnboardingWizard: React.FC<Props> = ({ orgData, orgCreatedAt, dashStats }) => {
+  const { t } = useTranslation();
   const [dismissed, setDismissed] = useState(false);
 
   const done = getOnboardingSteps(orgData, dashStats).map(s => s.done);
   const steps = [
-    { key: 'course', title: 'Создайте курс', desc: 'Например «Английский», «Математика» — с ценой и форматом оплаты', icon: FolderOpen, link: '/courses', color: 'text-indigo-500', bg: 'bg-indigo-500/10', done: done[0] },
-    { key: 'group', title: 'Добавьте группу', desc: 'Группа учеников внутри курса (поток, смена)', icon: Layers, link: '/groups', color: 'text-blue-500', bg: 'bg-blue-500/10', done: done[1] },
-    { key: 'students', title: 'Добавьте учеников', desc: 'Вручную, импортом из Excel или по ссылке-приглашению', icon: Users, link: '/students', color: 'text-emerald-500', bg: 'bg-emerald-500/10', done: done[2] },
-    { key: 'schedule', title: 'Составьте расписание', desc: 'Поставьте занятия группам в недельной сетке', icon: Calendar, link: '/schedule', color: 'text-amber-500', bg: 'bg-amber-500/10', done: done[3] },
-    { key: 'profile', title: 'Профиль и брендинг', desc: 'Тип заведения, название, логотип и цвета', icon: Settings2, link: '/org-settings?tab=general', color: 'text-violet-500', bg: 'bg-violet-500/10', done: done[4] },
+    { key: 'course', title: t('onboarding.admin.course.title', 'Создайте курс'), desc: t('onboarding.admin.course.desc', 'Например «Английский», «Математика» — с ценой и форматом оплаты'), icon: FolderOpen, link: '/courses', color: 'text-indigo-500', bg: 'bg-indigo-500/10', done: done[0] },
+    { key: 'group', title: t('onboarding.admin.group.title', 'Добавьте группу'), desc: t('onboarding.admin.group.desc', 'Группа учеников внутри курса (поток, смена)'), icon: Layers, link: '/groups', color: 'text-blue-500', bg: 'bg-blue-500/10', done: done[1] },
+    { key: 'students', title: t('onboarding.admin.students.title', 'Добавьте учеников'), desc: t('onboarding.admin.students.desc', 'Вручную, импортом из Excel или по ссылке-приглашению'), icon: Users, link: '/students', color: 'text-emerald-500', bg: 'bg-emerald-500/10', done: done[2] },
+    { key: 'schedule', title: t('onboarding.admin.schedule.title', 'Составьте расписание'), desc: t('onboarding.admin.schedule.desc', 'Поставьте занятия группам в недельной сетке'), icon: Calendar, link: '/schedule', color: 'text-amber-500', bg: 'bg-amber-500/10', done: done[3] },
+    { key: 'profile', title: t('onboarding.admin.profile.title', 'Профиль и брендинг'), desc: t('onboarding.admin.profile.desc', 'Тип заведения, название, логотип и цвета'), icon: Settings2, link: '/org-settings?tab=general', color: 'text-violet-500', bg: 'bg-violet-500/10', done: done[4] },
   ];
 
   const completedCount = steps.filter(s => s.done).length;
@@ -102,14 +104,14 @@ const OnboardingWizard: React.FC<Props> = ({ orgData, orgCreatedAt, dashStats })
           <div>
             <div className="w-fit inline-flex items-center gap-2 px-3 py-1 bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-lg text-xs font-semibold mb-5">
               <span className="text-sm">🚀</span>
-              Быстрый старт
+              {t('onboarding.admin.badge', 'Быстрый старт')}
             </div>
             
             <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-3">
-              Добро пожаловать в рабочее пространство
+              {t('onboarding.admin.title', 'Добро пожаловать в рабочее пространство')}
             </h2>
             <p className="text-slate-600 dark:text-slate-400 text-sm leading-relaxed mb-6">
-              Для успешного запуска платформы необходимо выполнить ряд базовых шагов. Мы подготовили для вас простой чек-лист.
+              {t('onboarding.admin.subtitle', 'Для успешного запуска платформы необходимо выполнить ряд базовых шагов. Мы подготовили для вас простой чек-лист.')}
             </p>
           </div>
 
@@ -121,7 +123,7 @@ const OnboardingWizard: React.FC<Props> = ({ orgData, orgCreatedAt, dashStats })
                     {progress}%
                   </span>
                 </div>
-                <span className="text-slate-500 text-xs font-medium uppercase tracking-wider mb-1">завершено</span>
+                <span className="text-slate-500 text-xs font-medium uppercase tracking-wider mb-1">{t('onboarding.admin.completed', 'завершено')}</span>
               </div>
               <div className="w-full bg-slate-200 dark:bg-slate-800 rounded-full h-2 overflow-hidden">
                 <div 
@@ -135,7 +137,7 @@ const OnboardingWizard: React.FC<Props> = ({ orgData, orgCreatedAt, dashStats })
               onClick={handleDismiss}
               className="mt-6 text-sm font-medium text-slate-500 hover:text-slate-800 dark:hover:text-slate-300 transition-colors flex items-center gap-1.5"
             >
-              Пропустить пока <ChevronRight className="w-4 h-4" />
+              {t('onboarding.admin.skip', 'Пропустить пока')} <ChevronRight className="w-4 h-4" />
             </button>
           </div>
         </div>
@@ -161,10 +163,10 @@ const OnboardingWizard: React.FC<Props> = ({ orgData, orgCreatedAt, dashStats })
                   {step.done ? <CheckCircle2 className="w-5 h-5" /> : <step.icon className="w-5 h-5" />}
                 </div>
                 <div className="flex items-center gap-1.5">
-                  <span className="text-[10px] uppercase font-bold text-slate-400">Шаг {i + 1}</span>
+                  <span className="text-[10px] uppercase font-bold text-slate-400">{t('onboarding.admin.step', 'Шаг {{n}}', { n: i + 1 })}</span>
                   {step.done && (
                     <span className="bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 text-[10px] uppercase font-bold px-2 py-0.5 rounded-md">
-                      Выполнено
+                      {t('onboarding.admin.stepDone', 'Выполнено')}
                     </span>
                   )}
                 </div>
@@ -182,11 +184,11 @@ const OnboardingWizard: React.FC<Props> = ({ orgData, orgCreatedAt, dashStats })
               <div className="mt-auto">
                 {!step.done ? (
                   <div className="text-xs font-semibold text-slate-600 dark:text-slate-400 flex items-center gap-1 group-hover:text-primary-600 dark:group-hover:text-primary-400 transition-colors">
-                    Приступить <ChevronRight className="w-3.5 h-3.5" />
+                    {t('onboarding.admin.start', 'Приступить')} <ChevronRight className="w-3.5 h-3.5" />
                   </div>
                 ) : (
                   <div className="text-xs font-semibold text-emerald-600 dark:text-emerald-500 flex items-center gap-1">
-                    Готово <CheckCircle2 className="w-3.5 h-3.5" />
+                    {t('onboarding.admin.ready', 'Готово')} <CheckCircle2 className="w-3.5 h-3.5" />
                   </div>
                 )}
               </div>

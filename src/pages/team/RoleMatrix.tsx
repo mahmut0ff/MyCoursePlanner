@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import type { TFunction } from 'i18next';
 import toast from 'react-hot-toast';
 import {
   Shield, ShieldCheck, Plus, X, Save, Trash2, Edit2,
@@ -17,16 +18,18 @@ import PermissionGrid from './PermissionGrid';
 import AccessPresets from './AccessPresets';
 
 // Synthetic, read-only reference roles derived from the base-role defaults.
-const SYSTEM_ROLES: (OrgRole & { full?: boolean })[] = [
-  { id: '__admin', name: 'Администратор', description: 'Полный доступ ко всем модулям организации', isSystem: true, full: true, permissions: [] },
-  { id: '__manager', name: 'Менеджер (по умолчанию)', description: 'Операционный доступ без финансов и настроек', isSystem: true, permissions: MANAGER_DEFAULT },
-  { id: '__teacher', name: 'Преподаватель', description: 'Уроки, экзамены, оценки и журнал', isSystem: true, permissions: TEACHER_DEFAULT },
+// Built at render so names follow the current UI language.
+const systemRoles = (t: TFunction): (OrgRole & { full?: boolean })[] => [
+  { id: '__admin', name: t('team.sys.admin', 'Администратор'), description: t('team.sys.adminDesc', 'Полный доступ ко всем модулям организации'), isSystem: true, full: true, permissions: [] },
+  { id: '__manager', name: t('team.sys.manager', 'Менеджер (по умолчанию)'), description: t('team.sys.managerDesc', 'Операционный доступ без финансов и настроек'), isSystem: true, permissions: MANAGER_DEFAULT },
+  { id: '__teacher', name: t('team.sys.teacher', 'Преподаватель'), description: t('team.sys.teacherDesc', 'Уроки, экзамены, оценки и журнал'), isSystem: true, permissions: TEACHER_DEFAULT },
 ];
 
 const FULL_COUNT = fullPermissionSet().size;
 
 const RoleMatrix: React.FC<{ isAdmin: boolean }> = ({ isAdmin }) => {
   const { t } = useTranslation();
+  const SYSTEM_ROLES = systemRoles(t);
   const [roles, setRoles] = useState<OrgRole[]>([]);
   const [counts, setCounts] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(true);
@@ -147,7 +150,7 @@ const RoleMatrix: React.FC<{ isAdmin: boolean }> = ({ isAdmin }) => {
   };
 
   const handleDelete = async (role: OrgRole) => {
-    if (!window.confirm(t('team.deleteConfirm', `Удалить роль «${role.name}»? Сотрудников нужно будет переназначить.`))) return;
+    if (!window.confirm(t('team.deleteConfirm', 'Удалить роль «{{name}}»? Сотрудников нужно будет переназначить.', { name: role.name }))) return;
     try {
       await apiDeleteRole(role.id);
       toast.success(t('team.roleDeleted', 'Роль удалена'));
@@ -239,7 +242,7 @@ const RoleMatrix: React.FC<{ isAdmin: boolean }> = ({ isAdmin }) => {
                 <div>
                   <label className="label text-xs">{t('team.roleName', 'Название')} <span className="text-red-500">*</span></label>
                   <input className="input text-sm" value={form.name} disabled={viewOnly}
-                    onChange={e => setForm({ ...form, name: e.target.value })} placeholder="напр. Администратор ресепшн" />
+                    onChange={e => setForm({ ...form, name: e.target.value })} placeholder={t('team.roleNamePh', 'напр. Администратор ресепшн')} />
                 </div>
                 <div>
                   <label className="label text-xs">{t('team.roleDesc', 'Описание')}</label>

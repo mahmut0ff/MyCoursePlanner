@@ -13,6 +13,7 @@ import { CSS } from '@dnd-kit/utilities';
 import type { Group, GroupStatus, Course, UserProfile } from '../../types';
 import { useGroupOrder } from '../../lib/groupOrderPrefs';
 import BranchFilter from '../../components/ui/BranchFilter';
+import { intlLocale } from '../../lib/locale';
 
 // Compact status pill for the table — only rendered for non-active groups so an
 // "active" group stays visually clean.
@@ -27,6 +28,7 @@ const GROUP_STATUS_PILL: Record<Exclude<GroupStatus, 'active'>, { label: string;
  * to it would turn every click into a potential drag.
  */
 const SortableGroupRow: React.FC<{ id: string; onClick: () => void; children: React.ReactNode }> = ({ id, onClick, children }) => {
+  const { t } = useTranslation();
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
   return (
     <tr
@@ -42,7 +44,7 @@ const SortableGroupRow: React.FC<{ id: string; onClick: () => void; children: Re
           {...listeners}
           onClick={(e) => e.stopPropagation()}
           className="touch-none p-1 -m-1 rounded-lg text-slate-300 dark:text-slate-600 hover:text-slate-500 dark:hover:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 cursor-grab active:cursor-grabbing opacity-0 group-hover/row:opacity-100 focus-visible:opacity-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-500/50 transition-all"
-          title="Перетащите, чтобы изменить порядок"
+          title={t('groups.list.dragHint', 'Перетащите, чтобы изменить порядок')}
         >
           <GripVertical className="w-4 h-4" />
         </button>
@@ -99,7 +101,7 @@ const GroupsPage: React.FC = () => {
       }
       setGroups(displayGroups); setCourses(c); setTeachers(t);
     })
-    .catch((e) => setError(e.message || 'Error'))
+    .catch((e) => setError(e.message || t('common.error', 'Ошибка')))
     .finally(() => setLoading(false));
   };
 
@@ -152,9 +154,9 @@ const GroupsPage: React.FC = () => {
           ? (g.teacherIds || []).filter(id => id !== profile.uid)
           : [...(g.teacherIds || []), profile.uid],
       } : g));
-    } catch (err: any) { setError(err.message || 'Error'); } finally { setTogglingId(null); }
+    } catch (err: any) { setError(err.message || t('common.error', 'Ошибка')); } finally { setTogglingId(null); }
   };
-  const courseName = (id: string) => courses.find((c) => c.id === id)?.title || 'Курс не найден';
+  const courseName = (id: string) => courses.find((c) => c.id === id)?.title || t('groups.list.courseNotFound', 'Курс не найден');
 
   const handleCreate = async () => {
     if (!form.name.trim() || !form.courseId) return;
@@ -168,7 +170,7 @@ const GroupsPage: React.FC = () => {
       setGroups((p) => [created, ...p]); 
       setShowModal(false); 
       setForm({ name: '', courseId: '', chatLinkTitle: '', chatLinkUrl: '', branchId: '' });
-    } catch (e: any) { setError(e.message || 'Error'); } finally { setSaving(false); }
+    } catch (e: any) { setError(e.message || t('common.error', 'Ошибка')); } finally { setSaving(false); }
   };
 
   const handleDelete = async (id: string) => {
@@ -184,7 +186,7 @@ const GroupsPage: React.FC = () => {
         <div>
           <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight">{t('nav.groups', 'Группы')}</h1>
           <p className="text-sm font-medium text-slate-500 dark:text-slate-400 mt-1 flex items-center gap-1.5">
-            <Users className="w-4 h-4" /> Всего групп: {filtered.length}
+            <Users className="w-4 h-4" /> {t('groups.list.total', 'Всего групп: {{count}}', { count: filtered.length })}
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -200,7 +202,7 @@ const GroupsPage: React.FC = () => {
           <button onClick={load} className="p-2 text-slate-400 hover:text-slate-700 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors"><RefreshCw className="w-5 h-5" /></button>
           {canCreate && (
             <button onClick={() => setShowModal(true)} className="bg-emerald-500 hover:bg-emerald-600 text-white px-5 py-2.5 rounded-xl text-sm font-bold flex items-center gap-2 transition-all shadow-md shadow-emerald-500/20 active:scale-95">
-              <Plus className="w-5 h-5" /> Создать группу
+              <Plus className="w-5 h-5" /> {t('groups.list.create', 'Создать группу')}
             </button>
           )}
         </div>
@@ -245,7 +247,7 @@ const GroupsPage: React.FC = () => {
           <p className="text-sm font-medium text-slate-500 mb-6 max-w-sm mx-auto">{t('org.groups.emptyDesc', 'Создайте первую группу, чтобы распределить учеников.')}</p>
           {canCreate && (
             <button onClick={() => setShowModal(true)} className="bg-emerald-500 hover:bg-emerald-600 text-white px-6 py-3 rounded-xl text-sm font-bold inline-flex items-center gap-2 shadow-lg shadow-emerald-500/25 transition-all hover:-translate-y-0.5 active:translate-y-0">
-              <Plus className="w-5 h-5" /> Создать группу
+              <Plus className="w-5 h-5" /> {t('groups.list.create', 'Создать группу')}
             </button>
           )}
         </div>
@@ -259,13 +261,13 @@ const GroupsPage: React.FC = () => {
                 <tr className="bg-slate-50 dark:bg-slate-900/50 border-b border-slate-200 dark:border-slate-700">
                   {/* Drag handle column — mirrors the grip cell below, or the column count drifts. */}
                   <th className="w-8 pl-4 pr-1" />
-                  <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Группа</th>
-                  <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Курс</th>
-                  <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Студенты</th>
-                  <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Учителя</th>
-                  <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Создана</th>
+                  <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">{t('groups.list.colGroup', 'Группа')}</th>
+                  <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">{t('groups.list.colCourse', 'Курс')}</th>
+                  <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">{t('groups.list.colStudents', 'Студенты')}</th>
+                  <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">{t('groups.list.colTeachers', 'Учителя')}</th>
+                  <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">{t('groups.list.colCreated', 'Создана')}</th>
                   {/* Mirrors the cell below exactly, or the column count drifts from the header. */}
-                  {(canDeleteGroups || role === 'teacher') && <th className="px-6 py-4 text-right text-xs font-bold text-slate-500 uppercase tracking-wider">{canDeleteGroups ? 'Действия' : 'Преподавание'}</th>}
+                  {(canDeleteGroups || role === 'teacher') && <th className="px-6 py-4 text-right text-xs font-bold text-slate-500 uppercase tracking-wider">{canDeleteGroups ? t('common.actions', 'Действия') : t('groups.list.colTeaching', 'Преподавание')}</th>}
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-200 dark:divide-slate-700">
@@ -296,7 +298,7 @@ const GroupsPage: React.FC = () => {
                               </p>
                               {g.status && g.status !== 'active' && (
                                 <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider ${GROUP_STATUS_PILL[g.status].className}`}>
-                                  {GROUP_STATUS_PILL[g.status].label}
+                                  {t(`groups.status.${g.status}`, GROUP_STATUS_PILL[g.status].label)}
                                 </span>
                               )}
                             </div>
@@ -338,14 +340,14 @@ const GroupsPage: React.FC = () => {
                         )}
                       </td>
                       <td className="px-6 py-4 text-sm font-medium text-slate-500 dark:text-slate-400">
-                        {g.createdAt ? new Date(g.createdAt).toLocaleDateString() : '—'}
+                        {g.createdAt ? new Date(g.createdAt).toLocaleDateString(intlLocale()) : '—'}
                       </td>
                       {canDeleteGroups ? (
                         <td className="px-6 py-4 text-right">
                           <button
                             onClick={(e) => { e.stopPropagation(); handleDelete(g.id); }}
                             className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-xl transition-colors opacity-0 group-hover/row:opacity-100"
-                            title="Удалить"
+                            title={t('common.delete', 'Удалить')}
                           >
                             <Trash2 className="w-4 h-4" />
                           </button>
@@ -387,13 +389,13 @@ const GroupsPage: React.FC = () => {
       {showModal && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => setShowModal(false)}>
           <div className="bg-white dark:bg-slate-800 rounded-3xl p-6 md:p-8 w-full max-w-md shadow-2xl" onClick={(e) => e.stopPropagation()}>
-            <h2 className="text-xl font-extrabold text-slate-900 dark:text-white mb-6">Создать новую группу</h2>
+            <h2 className="text-xl font-extrabold text-slate-900 dark:text-white mb-6">{t('groups.list.createNew', 'Создать новую группу')}</h2>
             
             <div className="space-y-4">
               <div>
                 <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">{t('common.name', 'Название')}</label>
                 <input 
-                  placeholder="Осенний интенсив..." 
+                  placeholder={t('groups.list.namePh', 'Осенний интенсив...')} 
                   value={form.name} 
                   onChange={(e) => setForm(f => ({ ...f, name: e.target.value }))} 
                   className="w-full bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-xl px-4 py-3 text-sm font-medium text-slate-900 dark:text-white outline-none focus:border-emerald-500 transition-colors" 
@@ -407,7 +409,7 @@ const GroupsPage: React.FC = () => {
                   onChange={(e) => setForm(f => ({ ...f, courseId: e.target.value }))} 
                   className="w-full bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-xl px-4 py-3 text-sm font-medium text-slate-900 dark:text-white outline-none focus:border-emerald-500 transition-colors cursor-pointer"
                 >
-                  <option value="">-- Выберите курс --</option>
+                  <option value="">{t('groups.list.selectCourse', '-- Выберите курс --')}</option>
                   {courses.map((c) => <option key={c.id} value={c.id}>{c.title}</option>)}
                 </select>
               </div>
@@ -425,11 +427,11 @@ const GroupsPage: React.FC = () => {
               
               <div className="grid grid-cols-2 gap-4 pt-4 border-t border-slate-100 dark:border-slate-700">
                 <div>
-                  <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1.5">Чат (Опционально)</label>
+                  <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1.5">{t('groups.list.chatOptional', 'Чат (Опционально)')}</label>
                   <input placeholder="Telegram" value={form.chatLinkTitle} onChange={(e) => setForm(f => ({ ...f, chatLinkTitle: e.target.value }))} className="w-full bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-xl px-3 py-2 text-xs font-medium text-slate-900 dark:text-white outline-none focus:border-blue-500 transition-colors" />
                 </div>
                 <div>
-                  <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1.5">Ссылка на чат</label>
+                  <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1.5">{t('groups.list.chatLink', 'Ссылка на чат')}</label>
                   <input placeholder="https://t.me/..." value={form.chatLinkUrl} onChange={(e) => setForm(f => ({ ...f, chatLinkUrl: e.target.value }))} className="w-full bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-xl px-3 py-2 text-xs font-medium text-slate-900 dark:text-white outline-none focus:border-blue-500 transition-colors" />
                 </div>
               </div>

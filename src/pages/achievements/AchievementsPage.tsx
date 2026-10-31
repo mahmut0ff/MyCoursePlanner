@@ -27,7 +27,7 @@ const AchievementsPage: React.FC = () => {
       <div className="grid grid-cols-4 gap-3 mb-8">
         {[
           { icon: <Zap className="w-5 h-5 text-indigo-500" />, value: data.xp, label: 'XP' },
-          { icon: <Star className="w-5 h-5 text-amber-500" />, value: `Lv.${data.level.level}`, label: t(`gamification.levels.${data.level.level}`, data.level.title) },
+          { icon: <Star className="w-5 h-5 text-amber-500" />, value: t('achievements.levelShort', 'Ур. {{level}}', { level: data.level.level }), label: t(`gamification.levels.${data.level.level}`, data.level.title) },
           { icon: <Flame className="w-5 h-5 text-orange-500" />, value: data.streak, label: t('gamification.streak') },
           { icon: <Trophy className="w-5 h-5 text-emerald-500" />, value: data.passedExams, label: t('gamification.passed') },
         ].map((s, i) => (
@@ -81,8 +81,8 @@ const AchievementsPage: React.FC = () => {
                   }`}
                 >
                   <span className="text-3xl block mb-2">{badge.icon}</span>
-                  <p className="text-xs font-semibold text-slate-900 dark:text-white">{t(`gamification.badges.${id}.title`, badge.title)}</p>
-                  <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">{t(`gamification.badges.${id}.description`, badge.description)}</p>
+                  <p className="text-xs font-semibold text-slate-900 dark:text-white">{t(`gamification.badgesList.${id}.title`, badge.title)}</p>
+                  <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">{t(`gamification.badgesList.${id}.description`, badge.description)}</p>
                   {!earned && <Lock className="w-3.5 h-3.5 text-slate-400 absolute top-2 right-2" />}
                 </div>
               );

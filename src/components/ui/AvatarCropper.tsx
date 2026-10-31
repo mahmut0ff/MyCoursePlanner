@@ -42,7 +42,7 @@ const AvatarCropper: React.FC<AvatarCropperProps> = ({ imageSrc, onCropCancel, o
         <div className="p-4 border-b border-slate-100 dark:border-slate-700/50 flex items-center justify-between">
           <h2 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
             <Camera className="w-4 h-4 text-primary-500" />
-            {t('common.cropAvatar', 'Position and Size')}
+            {t('common.cropAvatar', 'Положение и размер')}
           </h2>
           <button onClick={onCropCancel} className="p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 rounded-lg transition-colors">
             <X className="w-4 h-4" />
@@ -65,7 +65,7 @@ const AvatarCropper: React.FC<AvatarCropperProps> = ({ imageSrc, onCropCancel, o
 
         <div className="p-4 bg-white dark:bg-slate-800">
           <div className="flex items-center gap-3 mb-4">
-            <span className="text-xs text-slate-500 dark:text-slate-400">Zoom</span>
+            <span className="text-xs text-slate-500 dark:text-slate-400">{t('common.zoom', 'Масштаб')}</span>
             <input
               type="range"
               value={zoom}

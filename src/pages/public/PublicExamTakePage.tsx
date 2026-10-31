@@ -4,6 +4,7 @@ import { apiGetPublicExam, apiSubmitPublicExam } from '../../lib/api';
 import { Loader2, CheckCircle, Clock, Volume2, Mic, Award, Globe } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { shuffleArray, formatTime } from '../../utils/grading';
+import i18n from '../../i18n';
 
 interface PublicQuestion {
   id: string;
@@ -65,6 +66,7 @@ const STR: Record<Lang, Record<string, string>> = {
     closedDesc: 'Этот тест больше не принимает ответы. Обратитесь к организатору.',
     alreadySubmitted: 'Вы уже проходили этот тест с этого номера телефона.',
     responsesClosed: 'Приём ответов закрыт.',
+    mediaAlt: 'Материал к вопросу',
   },
   uz: {
     examNotFound: 'Imtihon topilmadi',
@@ -103,6 +105,7 @@ const STR: Record<Lang, Record<string, string>> = {
     closedDesc: 'Bu test endi javoblarni qabul qilmaydi. Tashkilotchiga murojaat qiling.',
     alreadySubmitted: 'Siz bu testni ushbu telefon raqami bilan allaqachon topshirgansiz.',
     responsesClosed: 'Javoblar qabuli yopilgan.',
+    mediaAlt: 'Savol uchun material',
   },
   en: {
     examNotFound: 'Exam not found',
@@ -141,6 +144,7 @@ const STR: Record<Lang, Record<string, string>> = {
     closedDesc: 'This test is no longer accepting responses. Please contact the organizer.',
     alreadySubmitted: 'You have already taken this test with this phone number.',
     responsesClosed: 'Responses are closed.',
+    mediaAlt: 'Question material',
   },
   kg: {
     examNotFound: 'Экзамен табылган жок',
@@ -179,6 +183,7 @@ const STR: Record<Lang, Record<string, string>> = {
     closedDesc: 'Бул тест мындан ары жоопторду кабыл албайт. Уюштуруучуга кайрылыңыз.',
     alreadySubmitted: 'Сиз бул тестти ушул телефон номери менен мурда тапшыргансыз.',
     responsesClosed: 'Жооптор кабыл алынбайт.',
+    mediaAlt: 'Суроого материал',
   },
 };
 
@@ -235,7 +240,10 @@ export default function PublicExamTakePage() {
   // UI language (interface only — not exam content)
   const [lang, setLang] = useState<Lang>(() => {
     const saved = (typeof localStorage !== 'undefined' && localStorage.getItem('publicExamLang')) as Lang | null;
-    return saved && STR[saved] ? saved : 'ru';
+    if (saved && STR[saved]) return saved;
+    // no explicit choice yet: follow the app UI language
+    const ui = (i18n.language || 'ru').slice(0, 2) as Lang;
+    return STR[ui] ? ui : 'ru';
   });
   const tr = STR[lang];
   const changeLang = (l: Lang) => {
@@ -518,7 +526,7 @@ export default function PublicExamTakePage() {
                 {/* Media attachment */}
                 {q.mediaUrl && (
                   <div className="mb-5 rounded-2xl overflow-hidden border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/40 flex items-center justify-center p-3">
-                    {q.mediaType === 'image' && <img src={q.mediaUrl} alt="Материал к вопросу" className="max-h-80 object-contain rounded-xl" />}
+                    {q.mediaType === 'image' && <img src={q.mediaUrl} alt={tr.mediaAlt} className="max-h-80 object-contain rounded-xl" />}
                     {q.mediaType === 'video' && <video src={q.mediaUrl} controls className="max-h-80 w-full rounded-xl" />}
                     {q.mediaType === 'audio' && <audio src={q.mediaUrl} controls className="w-full" />}
                   </div>

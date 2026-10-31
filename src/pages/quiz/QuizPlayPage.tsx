@@ -198,7 +198,7 @@ const QuizPlayPage: React.FC = () => {
           <div className="bg-white/10 backdrop-blur-md rounded-2xl p-6 border border-white/10 mb-6">
             <div className="flex items-center justify-center gap-2 mb-4">
               <Users className="w-5 h-5 text-white/80" />
-              <span className="kahoot-font text-lg font-bold text-white">{participants.length} {t('quiz.players')}</span>
+              <span className="kahoot-font text-lg font-bold text-white">{t('counts.players', { count: participants.length })}</span>
             </div>
             <div className="flex flex-wrap gap-2 justify-center max-h-40 overflow-y-auto">
               {participants.map(p => (
@@ -527,7 +527,7 @@ const QuizPlayPage: React.FC = () => {
               <p className="kahoot-font text-4xl font-extrabold text-white mb-2">{myParticipant.score} pts</p>
               <div className="flex items-center justify-center gap-5 text-sm text-white/70 kahoot-font">
                 <span className="flex items-center gap-1"><Trophy className="w-4 h-4 text-yellow-400" />#{myRank} {t('quiz.place')}</span>
-                <span className="flex items-center gap-1"><CheckCircle className="w-4 h-4 text-green-400" />{myParticipant.correctCount} {t('quiz.correct')}</span>
+                <span className="flex items-center gap-1"><CheckCircle className="w-4 h-4 text-green-400" />{t('counts.correct', { count: myParticipant.correctCount })}</span>
                 <span className="flex items-center gap-1"><Zap className="w-4 h-4 text-orange-400" />{myParticipant.streakBest} {t('quiz.bestStreak')}</span>
               </div>
             </div>

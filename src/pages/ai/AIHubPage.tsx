@@ -58,7 +58,7 @@ const GROUPS: ToolGroup[] = [
     label: 'Преподавание',
     tools: [
       { key: 'lesson-factory', title: 'Конструктор уроков', where: 'Уроки → «AI Конструктор»', icon: Wand2, action: 'navigate', to: '/lessons', gated: true },
-      { key: 'quiz-generator', title: 'Генератор викторин', where: 'Викторины → «AI Quiz Generator»', icon: Zap, action: 'navigate', to: '/quiz/library', gated: true },
+      { key: 'quiz-generator', title: 'Генератор викторин', where: 'Викторины → «Создать викторину» → «Сгенерировать ИИ»', icon: Zap, action: 'navigate', to: '/quiz/library', gated: true },
       { key: 'exam-generator', title: 'Генератор экзаменов', where: 'Экзамены → редактор → «AI»', icon: ClipboardList, action: 'navigate', to: '/exams', gated: true },
       { key: 'exam-feedback', title: 'Проверка работ', where: 'Экзамены → просмотр попытки', icon: FileText, action: 'navigate', to: '/exams', gated: true },
       { key: 'voice-grades', title: 'Голосовые оценки', where: 'Успеваемость → микрофон', icon: Mic, action: 'navigate', to: '/gradebook', gated: true },

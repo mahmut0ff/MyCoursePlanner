@@ -115,6 +115,16 @@ const handler: Handler = async (event: HandlerEvent) => {
 
     if (!isStaff(user) || !can(user, 'rooms', 'write')) return forbidden();
     if (!body.examId || !body.examTitle) return badRequest('examId and examTitle required');
+    // Рассылка всей организации — только администрации; преподаватель уведомляет
+    // лишь группы, которые ведёт. Проверяем до создания комнаты, чтобы не оставить полдела.
+    const orgWideNotify = isSuperAdmin(user) || hasRole(user, 'admin', 'manager');
+    if (!orgWideNotify && body.notifyOption === 'all') {
+      return forbidden('Уведомить всех учеников организации может только администрация');
+    }
+    if (!orgWideNotify && body.notifyOption === 'group' && body.notifyGroupId) {
+      const g = (await adminDb.collection('groups').doc(String(body.notifyGroupId)).get()).data();
+      if (!g || !(g.teacherIds || []).includes(user.uid)) return forbidden('Уведомлять можно только свои группы');
+    }
     const now = new Date().toISOString();
     const data = {
       examId: body.examId, examTitle: body.examTitle, code: generateCode(),
@@ -154,6 +164,22 @@ const handler: Handler = async (event: HandlerEvent) => {
     // 'none' does nothing
     
     return ok({ id: ref.id, ...data });
+  }
+
+  // DELETE — убрать закрытую комнату из списка (раньше они копились навсегда,
+  // в том числе от удалённых экзаменов). Только закрытую: живую сначала закрывают.
+  // Попытки учеников (examAttempts) не трогаем — результаты остаются.
+  if (event.httpMethod === 'DELETE') {
+    if (!isStaff(user) || !can(user, 'rooms', 'delete')) return forbidden();
+    if (!params.id) return badRequest('id required');
+    const ref = adminDb.collection(COLLECTION).doc(params.id);
+    const room = (await ref.get()).data();
+    if (!room) return notFound('Room not found');
+    const ownOrg = !!room.organizationId && room.organizationId === user.organizationId;
+    if (!isSuperAdmin(user) && !ownOrg && room.hostId !== user.uid) return forbidden();
+    if (room.status !== 'closed') return badRequest('Сначала закройте комнату');
+    await ref.delete();
+    return ok({ deleted: true });
   }
 
   return jsonResponse(405, { error: 'Method not allowed' });

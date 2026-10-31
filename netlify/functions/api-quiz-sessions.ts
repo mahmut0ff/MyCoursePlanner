@@ -131,6 +131,18 @@ const handler: Handler = async (event: HandlerEvent) => {
       const qSnap = await adminDb.collection(QUIZZES).doc(quizId)
         .collection('questions').orderBy('order').get();
       if (qSnap.empty) return badRequest('Quiz has no questions');
+      // Зеркало quizQuestionIssue (src/lib/examValidation.ts): вопрос без текста
+      // или с выбором без правильного ответа — играть нечем, отказываем сразу.
+      const CHOICE = ['single_choice', 'multiple_choice', 'multi_select', 'true_false', 'media_question'];
+      const broken = qSnap.docs.findIndex(d => {
+        const q = d.data() || {};
+        if (!String(q.text || '').trim() && !q.mediaUrl && !String(q.passageText || '').trim()) return true;
+        const opts = (Array.isArray(q.options) ? q.options : []).filter((o: any) => String(o?.text || '').trim() || o?.imageUrl);
+        if ((CHOICE.includes(q.type) || q.type === 'poll') && opts.length < 2) return true;
+        return CHOICE.includes(q.type)
+          && !(Array.isArray(q.correctAnswers) ? q.correctAnswers : []).some((a: string) => opts.some((o: any) => o.id === a));
+      });
+      if (broken >= 0) return badRequest(`Вопрос ${broken + 1} не заполнен: нужен текст, варианты и правильный ответ`);
 
       let questionOrder = qSnap.docs.map(d => d.id);
       const sessionSettings = {

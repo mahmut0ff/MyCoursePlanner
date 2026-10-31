@@ -99,11 +99,12 @@ describe('BranchContext', () => {
     await waitFor(() => expect(screen.getByTestId('active').textContent).toBe('b2'));
   });
 
-  it('auto-selects the only branch and reports canSwitch=false', async () => {
+  it('does not force the only branch on a non-director and reports canSwitch=false', async () => {
     (orgListBranches as any).mockResolvedValue([BRANCHES[0]]);
 
     renderProvider();
-    await waitFor(() => expect(screen.getByTestId('active').textContent).toBe('b1'));
+    await waitFor(() => expect(screen.getByTestId('loading').textContent).toBe('false'));
+    expect(screen.getByTestId('active').textContent).toBe('ALL');
     expect(screen.getByTestId('canSwitch').textContent).toBe('false');
   });
 

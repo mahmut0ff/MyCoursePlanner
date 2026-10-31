@@ -83,9 +83,8 @@ const Sidebar: React.FC<{ open: boolean; onClose: () => void; isCollapsed?: bool
   const handleSignOut = async () => { await signOut(); navigate('/login'); };
 
   const goProfile = () => {
-    // Резюме преподавателя удалено вместе со страницей /teacher-profile; всё, что
-    // преподаватель правит о себе, живёт в настройках.
-    navigate(role === 'teacher' ? '/teacher-settings' : '/profile');
+    // Профиль и настройки — один экран для всех ролей (/teacher-settings слит с ним).
+    navigate('/profile');
     if (window.innerWidth < 1024) onClose();
   };
 
@@ -213,7 +212,7 @@ const Sidebar: React.FC<{ open: boolean; onClose: () => void; isCollapsed?: bool
               </NavLink>
             )}
             {isTeacher && !isSuperAdmin && (
-              <NavLink to="/teacher-settings" className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 dark:text-slate-600 dark:hover:text-slate-300 dark:hover:bg-white/5 transition-colors" title={t('nav.settings')}>
+              <NavLink to="/profile" className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 dark:text-slate-600 dark:hover:text-slate-300 dark:hover:bg-white/5 transition-colors" title={t('nav.settings')}>
                 <Settings className="w-4 h-4" />
               </NavLink>
             )}

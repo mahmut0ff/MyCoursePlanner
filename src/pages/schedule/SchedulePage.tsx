@@ -14,7 +14,7 @@ import { useBranch } from '../../contexts/BranchContext';
 import BranchFilter from '../../components/ui/BranchFilter';
 import ClassroomSelect from '../../components/ui/ClassroomSelect';
 import ScheduleReviewModal from '../../components/ai/ScheduleReviewModal';
-import { intlLocale } from '../../lib/locale';
+import { numericDateLocale } from '../../lib/locale';
 
 const DAY_NAMES = ['Вс', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб'];
 
@@ -325,7 +325,8 @@ const SchedulePage: React.FC = () => {
       showToast(t('schedule.pasted', 'Занятие вставлено!'));
     } catch (e: any) {
       setError(e.message || t('common.error'));
-      if (!force) setConflictRetry('paste');
+      // «Поставить всё равно» — только для накладки (409); 403 и прочие ошибки им не обойти.
+      if (!force && e?.status === 409) setConflictRetry('paste');
     } finally {
       setSaving(false);
     }
@@ -520,6 +521,11 @@ const SchedulePage: React.FC = () => {
 
   const handleCreate = async (force = false) => {
     if (!form.title.trim()) return;
+    const endMins = timeToMins(form.endTime);
+    if (endMins !== null && endMins <= (timeToMins(form.startTime) ?? 0)) {
+      setError(t('common.endBeforeStart', 'Время окончания должно быть позже начала'));
+      return;
+    }
     // При правке вид занятия задан самой записью, а не открытой вкладкой:
     // недельный урок остаётся недельным, даже если смотреть на него из «Событий».
     const isRecurring = form.editingId ? !!form.editingRecurring : activeTab === 'timetable';
@@ -612,7 +618,7 @@ const SchedulePage: React.FC = () => {
       setError(e.message || t('common.error'));
       // The server runs the same check across the whole org, so it can reject what
       // the local week-scoped check passed. Offer the same override.
-      if (!force) setConflictRetry('create');
+      if (!force && e?.status === 409) setConflictRetry('create');
     }
     finally { setSaving(false); }
   };
@@ -1251,7 +1257,7 @@ const SchedulePage: React.FC = () => {
           <button onClick={prevWeek} className="p-2.5 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors shadow-sm"><ChevronLeft className="w-4 h-4 text-slate-600 dark:text-slate-300" /></button>
           <button onClick={() => setCurrent(new Date())} className="px-4 py-2 text-sm font-bold text-slate-700 dark:text-slate-300 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-700/50 shadow-sm transition-colors">{t('org.schedule.today', 'Сегодня')}</button>
           <button onClick={nextWeek} className="p-2.5 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors shadow-sm"><ChevronRight className="w-4 h-4 text-slate-600 dark:text-slate-300" /></button>
-          <span className="text-sm font-medium text-slate-500 ml-2 bg-white/50 dark:bg-slate-800/30 px-3 py-1.5 rounded-lg border border-slate-200/50 dark:border-slate-700/50 backdrop-blur-sm">{weekDays[0].toLocaleDateString(intlLocale())} — {weekDays[6].toLocaleDateString(intlLocale())}</span>
+          <span className="text-sm font-medium text-slate-500 ml-2 bg-white/50 dark:bg-slate-800/30 px-3 py-1.5 rounded-lg border border-slate-200/50 dark:border-slate-700/50 backdrop-blur-sm">{weekDays[0].toLocaleDateString(numericDateLocale())} — {weekDays[6].toLocaleDateString(numericDateLocale())}</span>
         </div>
       )}
 
@@ -1583,7 +1589,7 @@ const SchedulePage: React.FC = () => {
 
             <div className="space-y-4">
               <div>
-                <label className="text-[11px] font-bold text-slate-500 uppercase tracking-widest mb-1.5 block">{t('common.branch', 'Филиал')}</label>
+                {branches.length > 1 && <label className="text-[11px] font-bold text-slate-500 uppercase tracking-widest mb-1.5 block">{t('common.branch', 'Филиал')}</label>}
                 <BranchFilter 
                   value={pasteForm.branchId || null} 
                   onChange={(val) => setPasteForm(f => ({ ...f, branchId: val || undefined }))} 
@@ -1659,7 +1665,7 @@ const SchedulePage: React.FC = () => {
             </h2>
             <div className="space-y-4">
               <div>
-                <label className="text-[11px] font-bold text-slate-500 uppercase tracking-widest mb-1.5 block">{t('common.branch', 'Филиал')}</label>
+                {branches.length > 1 && <label className="text-[11px] font-bold text-slate-500 uppercase tracking-widest mb-1.5 block">{t('common.branch', 'Филиал')}</label>}
                 <BranchFilter
                   value={form.branchId || null}
                   // The group list below is filtered by branch, so a group from the old
@@ -1695,6 +1701,9 @@ const SchedulePage: React.FC = () => {
                     <option value="">{t('schedule.selectGroup', 'Выберите группу...')}</option>
                     {groups
                       .filter(g => !form.branchId || g.branchId === form.branchId)
+                      // Без права на всё расписание ставить можно только своим группам
+                      // (group_schedule) — чужие сервер всё равно отклонит 403.
+                      .filter(g => canEdit || (!!firebaseUser?.uid && (g.teacherIds || []).includes(firebaseUser.uid)))
                       .map(g => (
                       <option key={g.id} value={g.id}>{g.name}</option>
                     ))}

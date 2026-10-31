@@ -21,5 +21,11 @@ const lang = (code?: string) => (code || i18n.language || 'ru').slice(0, 2);
 /** BCP-47 тег для toLocaleDateString / Intl.* под текущий язык интерфейса. */
 export const intlLocale = (code?: string): string => INTL[lang(code)] || 'ru-RU';
 
+/**
+ * Тег для ЧИСЛОВЫХ дат (без названий месяцев). ICU у `ky-KG` даёт «2026-31-10»
+ * (y-dd-MM), а в Кыргызстане пишут 31.10.2026 — цифры языконезависимы, берём ru.
+ */
+export const numericDateLocale = (code?: string): string => (lang(code) === 'kg' ? 'ru-RU' : intlLocale(code));
+
 /** Локаль date-fns под текущий язык интерфейса. */
 export const dateFnsLocale = (code?: string): Locale => DATE_FNS[lang(code)] || ru;

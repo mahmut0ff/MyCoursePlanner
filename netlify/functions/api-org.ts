@@ -12,7 +12,7 @@ import {
   type AuthUser,
 } from './utils/auth';
 import { createNotification, notifyOrgAdmins, notifyGroupMembers } from './utils/notifications';
-import { issueStudentLogin } from './utils/onboarding';
+import { issueStudentLogin, isIssuedLoginEmail } from './utils/onboarding';
 import { sendTelegramToUser } from './utils/telegram';
 import { recordTeacherActivity } from './utils/teacher-activity';
 import { FieldValue } from 'firebase-admin/firestore';
@@ -37,6 +37,34 @@ function timeToMinutes(t?: string | null): number | null {
   const [h, m] = String(t).split(':').map(Number);
   if (Number.isNaN(h)) return null;
   return h * 60 + (Number.isNaN(m) ? 0 : m);
+}
+
+/**
+ * Ссылка на чат группы: пусто → '', без схемы → https://…, любая схема кроме
+ * http(s) (javascript:, data:) → null (отказ). Ссылка уходит в href у учеников.
+ */
+export function normalizeChatLink(raw: unknown): string | null {
+  const s = String(raw ?? '').trim();
+  if (!s) return '';
+  if (/^https?:\/\//i.test(s)) return s;
+  if (/^[a-z][a-z0-9+.-]*:/i.test(s)) return null;
+  return 'https://' + s;
+}
+
+/** Цена курса — неотрицательное число, название (если прислано) — не пустое. */
+export function courseFieldsError(f: { title?: unknown; price?: unknown }): string | null {
+  if (f.title !== undefined && !String(f.title ?? '').trim()) return 'title required';
+  if (f.price !== undefined && f.price !== null && f.price !== '') {
+    const p = Number(f.price);
+    if (!Number.isFinite(p) || p < 0) return 'Цена не может быть отрицательной';
+  }
+  return null;
+}
+
+/** Есть оба времени, и конец не позже начала (12:00–10:00 сохранялось с duration 5). */
+export function endsBeforeStart(start?: string | null, end?: string | null): boolean {
+  const s = timeToMinutes(start), e = timeToMinutes(end);
+  return s !== null && e !== null && e <= s;
 }
 
 /** Weekday in the app's convention (0=Mon … 6=Sun) from a YYYY-MM-DD string. */
@@ -405,10 +433,14 @@ async function canWriteEvent(
  *
  * Возвращает готовый отказ или null, если можно.
  */
+/** Распоряжается входом ЛЮБОГО ученика, в том числе с личной почтой. */
+const canManageAnyStudentLogin = (user: any): boolean =>
+  isRosterManager(user) && can(user, 'students', 'write');
+
 async function denyStudentAccessManagement(
   user: any, orgId: string, studentUids: string[],
 ): Promise<{ statusCode: number; body: string } | null> {
-  if (isRosterManager(user) && can(user, 'students', 'write')) return null;
+  if (canManageAnyStudentLogin(user)) return null;
   if (!hasRole(user, 'teacher')) return forbidden('Недостаточно прав для этого действия');
 
   const groupsSnap = await adminDb.collection('groups')
@@ -592,6 +624,8 @@ const handler: Handler = async (event: HandlerEvent) => {
           return tIds.includes(user.uid) || c.createdBy === user.uid || courseIdsFromGroups.has(c.id);
         });
       }
+      // Черновик курса — рабочий материал сотрудников, ученику его не показываем.
+      if (user.role === 'student') list = list.filter((c: any) => c.status !== 'draft');
       list.sort((a: any, b: any) => (b.createdAt || '').localeCompare(a.createdAt || ''));
       return ok(list);
     }
@@ -610,10 +644,12 @@ const handler: Handler = async (event: HandlerEvent) => {
       const err = requireOrgStaff(user); if (err) return err;
       if (!can(user, 'courses', 'write')) return forbidden('Недостаточно прав для этого действия');
       const body = JSON.parse(event.body || '{}');
-      if (!body.title) return badRequest('title required');
+      if (!String(body.title || '').trim()) return badRequest('title required');
+      const courseErr = courseFieldsError(body);
+      if (courseErr) return badRequest(courseErr);
       const data = {
         organizationId: orgId,
-        title: body.title,
+        title: String(body.title).trim(),
         description: body.description || '',
         subject: body.subject || '',
         teacherIds: body.teacherIds || [],
@@ -650,6 +686,9 @@ const handler: Handler = async (event: HandlerEvent) => {
       for (const key of ALLOWED_FIELDS) {
         if (body[key] !== undefined) fields[key] = body[key];
       }
+      const courseErr = courseFieldsError(fields);
+      if (courseErr) return badRequest(courseErr);
+      if (typeof fields.title === 'string') fields.title = fields.title.trim();
       await adminDb.collection('courses').doc(body.id).update(fields);
       const updated = await adminDb.collection('courses').doc(body.id).get();
       return ok({ id: body.id, ...updated.data() });
@@ -715,7 +754,9 @@ const handler: Handler = async (event: HandlerEvent) => {
         return forbidden('Создание групп недоступно для преподавателей');
       }
       const body = JSON.parse(event.body || '{}');
-      if (!body.name || !body.courseId) return badRequest('name and courseId required');
+      if (!String(body.name || '').trim() || !body.courseId) return badRequest('name and courseId required');
+      const chatLinkUrl = normalizeChatLink(body.chatLinkUrl);
+      if (chatLinkUrl === null) return badRequest('Ссылка на чат должна начинаться с http:// или https://');
       // A teacher who creates a group is teaching it — record ownership and make sure
       // they're on the teacher list so it lands in their "Мои" view and own-groups scope.
       const teacherIds: string[] = Array.isArray(body.teacherIds) ? [...body.teacherIds] : [];
@@ -725,12 +766,12 @@ const handler: Handler = async (event: HandlerEvent) => {
         branchId: body.branchId || null,
         courseId: body.courseId,
         courseName: body.courseName || '',
-        name: body.name,
+        name: String(body.name).trim(),
         studentIds: body.studentIds || [],
         teacherIds,
         createdBy: user.uid,
         chatLinkTitle: body.chatLinkTitle || '',
-        chatLinkUrl: body.chatLinkUrl || '',
+        chatLinkUrl,
         createdAt: now(), updatedAt: now(),
       };
       const ref = await adminDb.collection('groups').add(data);
@@ -803,6 +844,12 @@ const handler: Handler = async (event: HandlerEvent) => {
       const fields: Record<string, any> = { updatedAt: now() };
       for (const key of ALLOWED_FIELDS) {
         if (body[key] !== undefined) fields[key] = body[key];
+      }
+      if (fields.name !== undefined && !String(fields.name ?? '').trim()) return badRequest('name required');
+      if (fields.chatLinkUrl !== undefined) {
+        const link = normalizeChatLink(fields.chatLinkUrl);
+        if (link === null) return badRequest('Ссылка на чат должна начинаться с http:// или https://');
+        fields.chatLinkUrl = link;
       }
       await adminDb.collection('groups').doc(id).update(fields);
       const updated = await adminDb.collection('groups').doc(id).get();
@@ -1021,6 +1068,12 @@ const handler: Handler = async (event: HandlerEvent) => {
       const doc = await ref.get();
       if (!doc.exists || doc.data()?.organizationId !== orgId) return notFound();
       const joining = action === 'teacherJoinGroup';
+      // Вступив в группу, преподаватель получает её учеников: карточки, журнал,
+      // выдачу доступов. Поэтому вступать сам может только ведущий контингент,
+      // остальных в группу ставит администратор. Выйти можно всегда.
+      if (joining && !isRosterManager(user)) {
+        return forbidden('Вступить в группу может администратор или ведущий контингент');
+      }
       await ref.update({
         teacherIds: joining ? FieldValue.arrayUnion(user.uid) : FieldValue.arrayRemove(user.uid),
         updatedAt: now(),
@@ -1519,6 +1572,10 @@ const handler: Handler = async (event: HandlerEvent) => {
           skipped.push({ uid, name, username: p.username || '', reason: 'Вход уже есть' });
           continue;
         }
+        if (hasLogin && !canManageAnyStudentLogin(user) && !isIssuedLoginEmail(p.email)) {
+          skipped.push({ uid, name, username: p.username || '', reason: 'Личная почта — пароль меняет администратор' });
+          continue;
+        }
         try {
           const cred = await issueStudentLogin(uid, { displayName: name });
           let sent = false;
@@ -1568,6 +1625,11 @@ const handler: Handler = async (event: HandlerEvent) => {
       const data = userDoc.data() || {};
       if (data.offlineStudent === true || !data.email) {
         return badRequest('У этого ученика нет входа в систему. Создайте логин при добавлении или отправьте ссылку-приглашение.');
+      }
+      // Личная почта — это аккаунт самого человека, а не выданный центром логин:
+      // сменить ему пароль значит войти вместо него.
+      if (!canManageAnyStudentLogin(user) && !isIssuedLoginEmail(data.email)) {
+        return forbidden('Пароль ученика с личной почтой меняет администратор');
       }
       try {
         await adminAuth.updateUser(body.uid, { password: body.password });
@@ -2281,6 +2343,7 @@ const handler: Handler = async (event: HandlerEvent) => {
       }
       const isRecurring = body.recurring === true;
       if (!body.title || !body.startTime) return badRequest('title and startTime required');
+      if (endsBeforeStart(body.startTime, body.endTime)) return badRequest('Время окончания должно быть позже начала');
       if (!isRecurring && !body.date) return badRequest('date required for non-recurring events');
       if (isRecurring && (body.dayOfWeek === undefined || body.dayOfWeek === null)) return badRequest('dayOfWeek required for recurring events');
 
@@ -2335,6 +2398,9 @@ const handler: Handler = async (event: HandlerEvent) => {
       if (!(await canWriteEvent(user, orgId, [before.groupId, fields.groupId], 'write'))) {
         return forbidden('Недостаточно прав для этого действия');
       }
+      if (endsBeforeStart(fields.startTime ?? before.startTime, fields.endTime ?? before.endTime)) {
+        return badRequest('Время окончания должно быть позже начала');
+      }
 
       // Кабинет пересобираем, только если о нём вообще что-то прислали — иначе
       // правка времени обнулила бы аудиторию.
@@ -2381,6 +2447,7 @@ const handler: Handler = async (event: HandlerEvent) => {
           `Занятие «${title}» изменено. Новое время: ${when}.`,
           '/schedule',
           before.teacherId ? [before.teacherId] : [],
+          user.uid,
         ).catch(() => {});
       }
       return ok({ id, updated: true });
@@ -2407,6 +2474,7 @@ const handler: Handler = async (event: HandlerEvent) => {
           `Занятие «${ev.title}»${when ? ` (${when})` : ''} отменено.`,
           '/schedule',
           ev.teacherId ? [ev.teacherId] : [],
+          user.uid,
         ).catch(() => {});
       }
       return ok({ deleted: true });
@@ -2500,7 +2568,11 @@ const handler: Handler = async (event: HandlerEvent) => {
 
       // Fields that go to the public organizations doc
       const orgUpdate: Record<string, any> = { updatedAt: now() };
-      if (body.name) orgUpdate.name = body.name;
+      if (body.name !== undefined) {
+        const name = String(body.name ?? '').trim();
+        if (!name) return badRequest('Название организации не может быть пустым');
+        orgUpdate.name = name;
+      }
       if (body.logo !== undefined) orgUpdate.logo = body.logo;
       if (body.description !== undefined) orgUpdate.description = body.description;
       if (body.isOnline !== undefined) orgUpdate.isOnline = body.isOnline;

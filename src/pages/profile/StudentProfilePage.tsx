@@ -17,7 +17,9 @@ import TelegramLinkCard from '../../components/telegram/TelegramLinkCard';
 import ActiveRoleCard from '../../components/shared/ActiveRoleCard';
 import ActiveOrgCard from '../../components/shared/ActiveOrgCard';
 import SidebarCustomizerCard from '../../components/shared/SidebarCustomizerCard';
+import NotificationPreferencesCard from '../../components/notifications/NotificationPreferencesCard';
 import { UI_LANGUAGES } from '../../lib/locale';
+import { isPlausiblePhone } from '../../lib/phone';
 
 const StudentProfilePage: React.FC = () => {
   const { t } = useTranslation();
@@ -64,7 +66,10 @@ const StudentProfilePage: React.FC = () => {
   const [pwSaving, setPwSaving] = useState(false);
 
   const handleUpdateProfile = async () => {
-    if (!name.trim() || !auth.currentUser) return;
+    if (!auth.currentUser) return;
+    // Раньше пустое имя молча отбрасывало сохранение, а «abc» уходило в телефон.
+    if (!name.trim()) { toast.error(t('profile.nameRequired', 'Укажите имя')); return; }
+    if (!isPlausiblePhone(phone)) { toast.error(t('profile.phoneInvalid', 'Похоже, телефон введён с ошибкой: нужны цифры, 7–15 знаков')); return; }
     if (usernameStatus === 'taken') {
       toast.error(t('auth.usernameTaken', 'Этот никнейм уже занят'));
       return;
@@ -204,7 +209,7 @@ const StudentProfilePage: React.FC = () => {
                 <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">{t('auth.username', 'Никнейм')}</label>
                 <div className="relative mb-2">
                   <AtSign className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                  <input type="text" value={username} onChange={(e) => setUsername(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ''))} className="input pl-11 pr-11" placeholder="john_doe" />
+                  <input type="text" value={username} onChange={(e) => setUsername(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ''))} className="input pl-11 pr-11" placeholder={t('profile.usernamePlaceholder', 'aibek_7')} />
                   <div className="absolute right-3.5 top-1/2 -translate-y-1/2">
                     {usernameStatus === 'checking' && <Loader2 className="w-4 h-4 text-slate-400 animate-spin" />}
                     {usernameStatus === 'available' && <CheckCircle2 className="w-4 h-4 text-emerald-500" />}
@@ -346,6 +351,9 @@ const StudentProfilePage: React.FC = () => {
 
           {/* Telegram Link */}
           <TelegramLinkCard />
+
+          {/* Уведомления — тот же блок, что на /notifications; раньше жил ещё в /teacher-settings. */}
+          <NotificationPreferencesCard />
 
           {/* Password */}
           <div className="card p-5">

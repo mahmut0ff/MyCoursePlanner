@@ -24,6 +24,10 @@ const SessionHistoryPage: React.FC = () => {
   const { firebaseUser, role } = useAuth();
   const [cancelling, setCancelling] = useState<QuizSession | null>(null);
   const [busy, setBusy] = useState(false);
+  // Завершённые и закрытые не удаляются — уходят в архив вместе с результатами.
+  const [showArchive, setShowArchive] = useState(false);
+  const isArchived = (s: QuizSession) => s.status === 'completed' || s.status === 'cancelled';
+  const visible = sessions.filter(s => isArchived(s) === showArchive);
   // Сервер отменяет сессию хосту или админу/менеджеру её организации.
   const canCancel = (s: QuizSession) =>
     ['lobby', 'in_progress', 'paused'].includes(s.status) && (s.hostId === firebaseUser?.uid || role === 'admin' || role === 'manager');
@@ -69,7 +73,22 @@ const SessionHistoryPage: React.FC = () => {
         </div>
       </div>
 
-      {sessions.length === 0 ? (
+      <div className="flex gap-2 mb-4" role="tablist">
+        {[false, true].map(archive => (
+          <button
+            key={String(archive)}
+            role="tab"
+            aria-selected={showArchive === archive}
+            onClick={() => setShowArchive(archive)}
+            className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${showArchive === archive ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900' : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300'}`}
+          >
+            {archive ? t('common.archived', 'Архив') : t('org.students.statusActive', 'Активные')}
+            {' '}({sessions.filter(s => isArchived(s) === archive).length})
+          </button>
+        ))}
+      </div>
+
+      {visible.length === 0 ? (
         <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-14 text-center">
           <div className="w-16 h-16 mx-auto rounded-2xl flex items-center justify-center mb-4" style={{ background: 'var(--kahoot-purple)', opacity: 0.2 }}>
             <Gamepad2 className="w-8 h-8 text-white" />
@@ -79,7 +98,7 @@ const SessionHistoryPage: React.FC = () => {
         </div>
       ) : (
         <div className="space-y-3">
-          {sessions.map(s => {
+          {visible.map(s => {
             const config = STATUS_CONFIG[s.status] || STATUS_CONFIG.completed;
             return (
               <Link key={s.id} to={s.status === 'completed' ? `/quiz/analytics/${s.id}` : `/quiz/sessions/${s.id}`}

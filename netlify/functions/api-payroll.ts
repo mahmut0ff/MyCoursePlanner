@@ -1638,6 +1638,10 @@ const handler: Handler = async (event: HandlerEvent) => {
       const body = JSON.parse(event.body || '{}');
       const periodId = String(body.periodId || '').trim();
       if (!periodId) return badRequest('periodId обязателен');
+      // Выплата — расход в кассе: без способа оплаты запись в «Расходах» неполная.
+      if (!['cash', 'card', 'transfer'].includes(body.paymentMethod)) {
+        return badRequest('Укажите способ оплаты: наличные, карта или перевод');
+      }
 
       const period = await loadPeriod(periodId, orgFilter);
       if (!period) return notFound('Расчёт за этот месяц не найден');

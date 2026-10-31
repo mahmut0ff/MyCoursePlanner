@@ -15,6 +15,7 @@ import type { Material, LessonPlan } from '../../types';
 import FileViewerModal, { getViewerUrl } from '../../components/ui/FileViewerModal';
 import { toast } from 'react-hot-toast';
 import EmptyState from '../../components/ui/EmptyState';
+import { getVideoEmbedUrl, isDirectVideoFile } from '../../utils/videoEmbed';
 
 const TYPE_COLORS: Record<string, string> = {
   link: 'bg-blue-500/10 text-blue-500 border-blue-500/20', 
@@ -44,9 +45,17 @@ const formatBytes = (bytes?: number) => {
 // Старые материалы сохранены с категорией 'General' (или 'Общее') — показываем на языке интерфейса.
 const categoryLabel = (c?: string) => (c === 'General' || c === 'Общее' ? i18n.t('materials.categoryGeneral', 'Общее') : c);
 
+/** Вставленная ссылка сама выставляет формат: видео-хостинг или файл видео — «Видео», остальное — «Ссылка». */
+const guessLinkType = (url: string): Material['type'] =>
+  getVideoEmbedUrl(url) || isDirectVideoFile(url) ? 'video'
+    : /\.(pdf|docx?|pptx?|xlsx?)(\?|$)/i.test(url) ? 'document' : 'link';
+
 const MaterialsPage: React.FC = () => {
   const { t } = useTranslation();
-  const { profile } = useAuth();
+  const { profile, role } = useAuth();
+  // «Добавить в мой урок» — перенос в личный урок преподавателя с одобрением админа;
+  // директору (и прочим ролям) он не нужен.
+  const canAddToLesson = Boolean(profile?.activeOrgId) && role === 'teacher';
   const { canAccess } = usePlanGate();
   const { canWrite, canDelete } = usePermissions();
   // Delete used to be gated on `super_admin || manager`, which hid it from every
@@ -163,7 +172,9 @@ const MaterialsPage: React.FC = () => {
         description: form.description,
         url: downloadUrl,
         type: form.type,
-        category: form.category,
+        // Категория по умолчанию хранится ключом 'General', а не подписью на языке
+        // автора: иначе у коллег с другим языком в фильтре висело бы «Общее»/«Umumiy».
+        category: form.category.trim() === t('materials.categoryGeneral', 'Общее') ? 'General' : form.category,
         tags: form.tags,
         mimeType: form.mimeType,
         sizeBytes: form.sizeBytes
@@ -350,7 +361,7 @@ const MaterialsPage: React.FC = () => {
                   <a href={getViewerUrl(m.url, m.mimeType || 'unknown', m.title) || m.url} target="_blank" rel="noreferrer" onClick={e => e.stopPropagation()} className="p-2 bg-white text-slate-900 hover:text-emerald-500 rounded-full shadow-lg transition-transform hover:scale-110 tooltip" data-tip={t('materials.externalLink', 'Внешняя ссылка')} aria-label={t('materials.externalLink', 'Внешняя ссылка')}>
                     <ExternalLink className="w-4 h-4" />
                   </a>
-                  {profile?.activeOrgId && (
+                  {canAddToLesson && (
                     <button onClick={(e) => openTransferModal(e, m)} className="p-2 bg-white text-slate-900 hover:text-indigo-500 rounded-full shadow-lg transition-transform hover:scale-110 tooltip" data-tip={t('materials.addToMyLesson', 'Добавить в мой урок')} aria-label={t('materials.addToMyLesson', 'Добавить в мой урок')}>
                       <FolderPlus className="w-4 h-4" />
                     </button>
@@ -398,7 +409,7 @@ const MaterialsPage: React.FC = () => {
                   </td>
                   <td className="px-4 py-3 text-right">
                     <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                      {profile?.activeOrgId && (
+                      {canAddToLesson && (
                         <button onClick={(e) => openTransferModal(e, m)} className="p-1.5 text-slate-400 hover:text-indigo-500 hover:bg-slate-100 dark:hover:bg-slate-700 rounded transition-colors tooltip" data-tip={t('materials.addToMyLesson', 'Добавить в мой урок')} aria-label={t('materials.addToMyLesson', 'Добавить в мой урок')}>
                           <FolderPlus className="w-4 h-4" />
                         </button>
@@ -477,7 +488,7 @@ const MaterialsPage: React.FC = () => {
               {!form.file && (
                 <div>
                   <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1.5">{t('common.link', 'Ссылка (URL)')}</label>
-                  <input type="url" placeholder="https://..." value={form.url} onChange={(e) => setForm(f => ({ ...f, url: e.target.value }))}
+                  <input type="url" placeholder="https://..." value={form.url} onChange={(e) => setForm(f => ({ ...f, url: e.target.value, type: guessLinkType(e.target.value) }))}
                     className="w-full bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-sm outline-none focus:border-primary-500 focus:ring-1 focus:ring-primary-500 text-slate-900 dark:text-white transition-all" />
                 </div>
               )}

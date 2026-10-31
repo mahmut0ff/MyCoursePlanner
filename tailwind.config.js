@@ -27,10 +27,16 @@ export default {
         /* Marketing (landing) surface — warm paper/ink layer, deliberately
            not the app's cool slate. */
         paper: {
-          DEFAULT: '#f7f5f0',
-          deep: '#efece4',
+          DEFAULT: 'rgb(var(--mkt-paper) / <alpha-value>)',
+          deep: 'rgb(var(--mkt-paper-deep) / <alpha-value>)',
         },
-        ink: '#16141f',
+        ink: 'rgb(var(--mkt-ink) / <alpha-value>)',
+        /* surfaces of the marketing layer that don't flip with the theme
+           the way paper/ink do: raised cards, always-dark bands and the
+           light text on them (values in index.css) */
+        card: 'rgb(var(--mkt-card) / <alpha-value>)',
+        night: 'rgb(var(--mkt-night) / <alpha-value>)',
+        cream: 'rgb(var(--mkt-cream) / <alpha-value>)',
       },
       fontFamily: {
         sans: ['Inter', 'system-ui', '-apple-system', 'sans-serif'],

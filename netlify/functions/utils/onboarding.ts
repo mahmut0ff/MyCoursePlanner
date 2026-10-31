@@ -25,6 +25,14 @@ const now = () => new Date().toISOString();
  */
 export const TG_LOGIN_EMAIL_DOMAIN = 'tg.sabakhub.app';
 
+/**
+ * Логин, который выдал центр (`…@student.sabakhub.app`, `…@tg.sabakhub.app` и т.п.),
+ * а не личная почта человека. Такому входу пароль может сменить и преподаватель:
+ * это раздача доступов, а не захват чужого аккаунта.
+ */
+export const isIssuedLoginEmail = (email?: string | null): boolean =>
+  /@[a-z]+\.sabakhub\.app$/i.test(email || '');
+
 export type JoinRole = 'student' | 'teacher';
 
 export interface OrgOnboarding {

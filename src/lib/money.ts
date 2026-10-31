@@ -1,4 +1,4 @@
-import { intlLocale } from './locale';
+import { intlLocale, numericDateLocale } from './locale';
 import { trLabel } from './trLabel';
 
 /**
@@ -88,7 +88,7 @@ export const formatDayKey = (value?: unknown): string => {
   const day = raw.slice(0, 10);
   if (!/^\d{4}-\d{2}-\d{2}$/.test(day)) return '—';
   const [y, m, d] = day.split('-').map(Number);
-  return new Date(Date.UTC(y, m - 1, d)).toLocaleDateString(LOCALE(), {
+  return new Date(Date.UTC(y, m - 1, d)).toLocaleDateString(numericDateLocale(), {
     day: '2-digit', month: '2-digit', year: 'numeric', timeZone: 'UTC',
   });
 };

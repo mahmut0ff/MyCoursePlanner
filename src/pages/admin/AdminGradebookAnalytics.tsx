@@ -1,6 +1,7 @@
 import { useMemo, useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useBranch } from '../../contexts/BranchContext';
+import { usePermissions } from '../../contexts/PermissionsContext';
 import {
   orgGetCourses,
   orgGetStudents,
@@ -38,6 +39,10 @@ function getPeriodStart(period: Period): Date {
 export default function AdminGradebookAnalytics() {
   const { t } = useTranslation();
   const { activeBranchId } = useBranch();
+  // Сравнение сотрудников по действиям — это KPI, его видит только тот, кому
+  // открыт раздел «Активность» (`teacher_activity`), а не каждый с `analytics`.
+  const { canRead } = usePermissions();
+  const showTeacherActivity = canRead('teacher_activity');
   const [loading, setLoading] = useState(true);
   const [students, setStudents] = useState<UserProfile[]>([]);
   const [teachers, setTeachers] = useState<UserProfile[]>([]);
@@ -330,7 +335,7 @@ export default function AdminGradebookAnalytics() {
           </div>
 
           {/* Bottom 2-col */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className={`grid grid-cols-1 gap-6 ${showTeacherActivity ? 'lg:grid-cols-2' : ''}`}>
             {/* Risk Zone */}
             <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl border border-slate-200 dark:border-slate-700 flex flex-col min-h-[380px]">
               <div className="flex items-center gap-3 mb-5">
@@ -386,7 +391,7 @@ export default function AdminGradebookAnalytics() {
             </div>
             
             {/* Teacher Activity */}
-            <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl border border-slate-200 dark:border-slate-700 flex flex-col min-h-[380px]">
+            {showTeacherActivity && <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl border border-slate-200 dark:border-slate-700 flex flex-col min-h-[380px]">
               <div className="flex items-center gap-3 mb-5">
                 <div className="w-9 h-9 rounded-xl bg-slate-100 dark:bg-slate-700 flex items-center justify-center">
                   <ClipboardList className="w-4.5 h-4.5 text-slate-600 dark:text-slate-400" />
@@ -443,7 +448,7 @@ export default function AdminGradebookAnalytics() {
                   </div>
                 )}
               </div>
-            </div>
+            </div>}
           </div>
         </>
       )}

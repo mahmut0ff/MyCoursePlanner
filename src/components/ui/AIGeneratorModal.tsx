@@ -32,7 +32,6 @@ export const AIGeneratorModal: React.FC<Props> = ({ isOpen, onClose, onSuccess, 
   }, []);
 
   const { isListening, isSupported, toggleListening } = useSpeechToText({
-    lang: 'ru-RU',
     continuous: true,
     onTranscript: onSpeechTranscript,
   });

@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   emptyCounts, mergeCounts, sumCounts, computeMetrics, toneOf,
-  isNotAdmitted, admissionGap, admissionReason, buildRatingRows,
+  isNotAdmitted, admissionGap, admissionReason, buildRatingRows, competitionRanks,
   NO_ADMISSION_THRESHOLD,
   ATTENDANCE_WEIGHT, GRADE_WEIGHT,
   type RatingCounts, type RatingStudent, type RatingStat,
@@ -207,5 +207,14 @@ describe('buildRatingRows', () => {
     const stats = [st('a', 'c1', counts({ present: 1 }))];
     const rows = buildRatingRows({ students, stats, groups: [], branchName: new Map([['br1', 'Центр']]), sliceCourseId: null, activeGroup: null });
     expect(rows[0].branchNames).toEqual(['Центр']);
+  });
+});
+
+describe('competitionRanks', () => {
+  it('равные баллы делят место, следующее пропускается', () => {
+    expect(competitionRanks([100, 100, 90])).toEqual([1, 1, 3]);
+    expect(competitionRanks([90, 80, 80, 80, 70])).toEqual([1, 2, 2, 2, 5]);
+    expect(competitionRanks([0, 0, 0])).toEqual([1, 1, 1]);
+    expect(competitionRanks([])).toEqual([]);
   });
 });

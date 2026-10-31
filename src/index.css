@@ -19,6 +19,35 @@
   }
 }
 
+/* Marketing surface (landing, /features, /login) — warm paper/ink.
+   Dark theme flips paper and ink; night/cream bands stay dark in both. */
+:root {
+  --mkt-paper: 247 245 240;
+  --mkt-paper-deep: 239 236 228;
+  --mkt-ink: 22 20 31;
+  --mkt-card: 255 255 255;
+  --mkt-night: 22 20 31;
+  --mkt-cream: 247 245 240;
+}
+.dark {
+  --mkt-paper: 18 16 25;
+  --mkt-paper-deep: 30 27 40;
+  --mkt-ink: 241 238 231;
+  --mkt-card: 29 26 39;
+  --mkt-night: 34 31 47;
+  --mkt-cream: 247 245 240;
+}
+
+/* Scroll reveal for marketing sections (see Reveal in LandingKit). Content
+   is visible without JS; the class only appears once the observer runs. */
+.mkt-reveal { opacity: 0; transform: translateY(18px); transition: opacity 0.7s cubic-bezier(0.16, 1, 0.3, 1), transform 0.7s cubic-bezier(0.16, 1, 0.3, 1); }
+.mkt-reveal[data-shown] { opacity: 1; transform: none; }
+
+@keyframes mkt-float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-8px); }
+}
+
 /* Landing hero — staggered first-load reveal (pure CSS so it never ships blank;
    the reduced-motion rule above collapses it to an instant appearance). */
 @keyframes heroRise {

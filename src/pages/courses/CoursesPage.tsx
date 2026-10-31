@@ -72,10 +72,12 @@ const CoursesPage: React.FC = () => {
     e.stopPropagation();
     if (!profile?.uid || togglingId) return;
     const isMember = !!course.teacherIds?.includes(profile.uid);
+    if (isMember && !window.confirm(t('org.teach.leaveCourseConfirm', 'Выйти из курса «{{name}}»?', { name: course.title }))) return;
     setTogglingId(course.id);
     try {
       if (isMember) await orgTeacherLeaveCourse(course.id);
       else await orgTeacherJoinCourse(course.id);
+      toast.success(isMember ? t('org.teach.leftCourse', 'Вы вышли из курса') : t('org.teach.joinedCourse', 'Вы преподаёте этот курс'));
       setCourses(prev => prev.map(c => c.id === course.id ? {
         ...c,
         teacherIds: isMember
@@ -134,6 +136,7 @@ const CoursesPage: React.FC = () => {
 
   const handleSave = async () => {
     if (!form.title.trim()) return;
+    if (!(Number(form.price) >= 0)) { setError(t('common.priceNegative', 'Цена не может быть отрицательной')); return; }
     setSaving(true); setError('');
     try {
       if (editing) { const u = await orgUpdateCourse({ id: editing.id, ...form }); setCourses((p) => p.map((c) => c.id === editing.id ? { ...c, ...u } : c)); }
@@ -370,7 +373,7 @@ const CoursesPage: React.FC = () => {
             <h2 className="text-xl font-bold text-slate-900 dark:text-white mb-6">{editing ? t('common.edit') : t('org.courses.create')}</h2>
             <div className="space-y-4">
               <div>
-                <label className="text-xs font-semibold text-slate-500 mb-1 block">{t('common.name')}</label>
+                <label className="text-xs font-semibold text-slate-500 mb-1 block">{t('org.courses.titlePlaceholder')}</label>
                 <input placeholder={t('org.courses.titlePlaceholder')} value={form.title} onChange={(e) => setForm(f => ({ ...f, title: e.target.value }))} className="w-full bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-slate-900 focus:border-slate-900 dark:focus:ring-white outline-none" autoFocus />
               </div>
               <div>

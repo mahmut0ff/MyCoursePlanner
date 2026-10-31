@@ -50,7 +50,8 @@ function validateOperationDay(raw: unknown, now: Date = new Date()): string | nu
   const day = dayKeyOf(raw);
   if (!day) return 'Некорректная дата операции — ожидается формат ГГГГ-ММ-ДД';
   const today = orgDayKey(now);
-  if (day > today) return `Дата операции не может быть в будущем (сегодня ${today}). Деньги, которые ещё не поступили, — не доход.`;
+  // Сообщение общее для прихода и расхода — без «не доход»; дата в привычном ДД.ММ.ГГГГ.
+  if (day > today) return `Дата операции не может быть в будущем (сегодня ${today.split('-').reverse().join('.')}).`;
   const earliest = orgDayKey(new Date(now.getTime() - MAX_BACKDATE_DAYS * 86_400_000));
   if (day < earliest) {
     return `Дата операции не может быть раньше ${earliest} — задним числом можно провести не более ${MAX_BACKDATE_DAYS} дней. Более старая запись это исправление отчётности, а не касса.`;

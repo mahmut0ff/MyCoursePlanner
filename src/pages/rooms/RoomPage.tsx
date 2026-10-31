@@ -6,6 +6,7 @@ import { getAttemptsByRoom } from '../../services/attempts.service';
 import { useAuth } from '../../contexts/AuthContext';
 import type { ExamRoom, ExamAttempt } from '../../types';
 import { formatDate } from '../../utils/grading';
+import ConfirmDialog from '../../components/ui/ConfirmDialog';
 import { ArrowLeft, Copy, Users, XCircle, CheckCircle, Clock, Radio, Play, AlertTriangle } from 'lucide-react';
 
 const RoomPage: React.FC = () => {
@@ -43,17 +44,20 @@ const RoomPage: React.FC = () => {
     }
   };
 
-  const handleClose = async () => {
-    if (!id || !confirm(t('rooms.closeConfirm'))) return;
-    await closeRoom(id);
-    loadRoom();
+  // Модалка приложения вместо window.confirm — как удаление занятия в расписании.
+  const [pending, setPending] = useState<'start' | 'close' | null>(null);
+  const [busy, setBusy] = useState(false);
+  const runPending = async () => {
+    if (!id || !pending) return;
+    setBusy(true);
+    try {
+      await (pending === 'close' ? closeRoom(id) : startRoom(id));
+      setPending(null);
+      loadRoom();
+    } finally { setBusy(false); }
   };
-
-  const handleStart = async () => {
-    if (!id || !confirm(t('rooms.startConfirm', 'Начать экзамен для всех ожидающих учеников?'))) return;
-    await startRoom(id);
-    loadRoom();
-  };
+  const handleClose = () => setPending('close');
+  const handleStart = () => setPending('start');
 
   if (loading) return <div className="flex items-center justify-center py-20"><div className="w-8 h-8 border-4 border-slate-200 border-t-slate-600 rounded-full animate-spin dark:border-slate-700 dark:border-t-slate-400" /></div>;
   if (!room) return <div className="text-center py-20"><h3 className="text-lg font-medium text-slate-700 dark:text-slate-300">{t('common.notFound')}</h3></div>;
@@ -92,7 +96,9 @@ const RoomPage: React.FC = () => {
               {copied ? <CheckCircle className="w-5 h-5 text-emerald-500" /> : <Copy className="w-5 h-5" />}
             </button>
           </div>
-          <p className="text-sm text-slate-400 dark:text-slate-500 mt-3">{t('rooms.shareCode')}</p>
+          <p className="text-sm text-slate-400 dark:text-slate-500 mt-3">
+            {room.status === 'closed' ? t('rooms.closedHint', 'Комната закрыта — по этому коду больше не войти.') : t('rooms.shareCode')}
+          </p>
         </div>
       </div>
 
@@ -152,6 +158,16 @@ const RoomPage: React.FC = () => {
           </table>
         </div>
       )}
+      <ConfirmDialog
+        open={!!pending}
+        title={pending === 'close' ? t('rooms.close') : t('rooms.startExam', 'Запустить экзамен')}
+        message={pending === 'close' ? t('rooms.closeConfirm') : t('rooms.startConfirm', 'Начать экзамен для всех ожидающих учеников?')}
+        confirmLabel={pending === 'close' ? t('rooms.close') : t('rooms.startExam', 'Запустить экзамен')}
+        danger={pending === 'close'}
+        busy={busy}
+        onConfirm={runPending}
+        onClose={() => setPending(null)}
+      />
     </div>
   );
 };

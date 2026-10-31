@@ -3,6 +3,9 @@ import toast from 'react-hot-toast';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { getExam, getQuestions, deleteExam, duplicateExam, updateExam } from '../../services/exams.service';
+import { firstExamIssue } from '../../lib/examValidation';
+import { usePermissions } from '../../contexts/PermissionsContext';
+import ConfirmDialog from '../../components/ui/ConfirmDialog';
 import { createRoom } from '../../services/rooms.service';
 import { useAuth } from '../../contexts/AuthContext';
 import { orgGetGroups, orgGetResults, apiGradeAttempt } from '../../lib/api';
@@ -17,6 +20,10 @@ const ExamViewPage: React.FC = () => {
   const navigate = useNavigate();
   const { t } = useTranslation();
   const { profile, role } = useAuth();
+  // Уведомить всю организацию или любую группу — администрация; преподаватель — только свои группы.
+  const orgWideNotify = role === 'admin' || role === 'manager' || role === 'super_admin';
+  // Подсказка про «Заявки» — только тем, кому этот раздел открыт.
+  const { canRead } = usePermissions();
   const [exam, setExam] = useState<Exam | null>(null);
   const [questions, setQuestions] = useState<Question[]>([]);
   const [loading, setLoading] = useState(true);
@@ -84,14 +91,22 @@ const ExamViewPage: React.FC = () => {
     if (isStaff) loadPublicAttempts();
   }, [isStaff, loadPublicAttempts]);
 
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
   const handleDelete = async () => {
-    if (!id || !confirm(t('exams.confirmDelete', 'Удалить этот экзамен?'))) return;
+    if (!id) return;
     await deleteExam(id);
+    toast.success(t('exams.deleted', 'Экзамен удалён'));
     navigate('/exams');
   };
 
   const handleLaunchRoom = async () => {
     if (!exam || !profile) return;
+    const issue = firstExamIssue(questions);
+    if (issue) {
+      toast.error(t(`exams.validation.${issue.issue}`, { n: issue.n }));
+      setShowStartModal(false);
+      return;
+    }
     setStarting(true);
     try {
       const room = await createRoom(exam.id, exam.title, profile.uid, profile.displayName, notifyOption, notifyOption === 'group' ? selectedGroupId : undefined);
@@ -131,7 +146,7 @@ const ExamViewPage: React.FC = () => {
             </button>
             <Link to={`/exams/${id}/edit`} className="text-xs bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-300 px-2.5 py-1.5 rounded-lg flex items-center gap-1 transition-colors"><Edit className="w-3 h-3" />{t('common.edit')}</Link>
             <button onClick={handleDuplicate} className="text-xs bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-300 px-2.5 py-1.5 rounded-lg flex items-center gap-1 transition-colors"><Copy className="w-3 h-3" />{t('exams.duplicate')}</button>
-            <button onClick={handleDelete} className="text-xs text-red-500 hover:text-red-700 px-2 py-1.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 flex items-center gap-1 transition-colors"><Trash2 className="w-3 h-3" />{t('common.delete')}</button>
+            <button onClick={() => setConfirmingDelete(true)} className="text-xs text-red-500 hover:text-red-700 px-2 py-1.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 flex items-center gap-1 transition-colors"><Trash2 className="w-3 h-3" />{t('common.delete')}</button>
           </div>
         )}
       </div>
@@ -233,7 +248,7 @@ const ExamViewPage: React.FC = () => {
           {publicAttempts.length === 0 ? (
             <p className="text-xs text-slate-500 dark:text-slate-400 py-4 text-center">
               {t('exams.publicResultsEmpty', 'Пока никто не прошёл тест по ссылке/QR. Результаты появятся здесь автоматически, как только кто-то его сдаст.')}
-              <br />{t('exams.publicResultsLeadsHint', 'Полный список лидов с контактами — в разделе «Заявки».')}
+              {canRead('leads') && <><br />{t('exams.publicResultsLeadsHint', 'Полный список лидов с контактами — в разделе «Заявки».')}</>}
             </p>
           ) : (
             <div className="space-y-2">
@@ -397,7 +412,7 @@ const ExamViewPage: React.FC = () => {
                     onChange={(e) => setSelectedGroupId(e.target.value)}
                   >
                     <option value="" disabled>{t('exams.selectGroupOption', '-- Выберите группу --')}</option>
-                    {groups.map(g => (
+                    {groups.filter(g => orgWideNotify || (g.teacherIds || []).includes(profile?.uid || '')).map(g => (
                       <option key={g.id} value={g.id}>{g.name}</option>
                     ))}
                   </select>
@@ -424,13 +439,14 @@ const ExamViewPage: React.FC = () => {
                 </div>
               </label>
 
-              <label className={`flex items-start gap-3 p-3 rounded-xl border cursor-pointer border-transparent hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors ${notifyOption === 'all' ? 'bg-red-50 border-red-200 dark:bg-red-900/20 dark:border-red-800' : ''}`}>
+              {/* «Всем студентам организации» — только администрации (сервер: api-rooms). */}
+              {orgWideNotify && <label className={`flex items-start gap-3 p-3 rounded-xl border cursor-pointer border-transparent hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors ${notifyOption === 'all' ? 'bg-red-50 border-red-200 dark:bg-red-900/20 dark:border-red-800' : ''}`}>
                 <input type="radio" name="notify" value="all" checked={notifyOption === 'all'} onChange={() => setNotifyOption('all')} className="mt-0.5" />
                 <div>
                   <span className="block font-medium text-red-700 dark:text-red-400 text-sm">{t('exams.notifyAll', 'Всем студентам организации')}</span>
                   <span className="block text-xs text-slate-500 dark:text-slate-400">{t('exams.notifyAllHint', 'Внимание! Уведомление придет всем студентам всей школы')}</span>
                 </div>
-              </label>
+              </label>}
 
             </div>
 
@@ -460,6 +476,15 @@ const ExamViewPage: React.FC = () => {
           onClose={() => setShowGroupAccess(false)}
         />
       )}
+      <ConfirmDialog
+        open={confirmingDelete}
+        title={t('exams.confirmDelete', 'Удалить этот экзамен?')}
+        message={exam?.title || ''}
+        confirmLabel={t('common.delete', 'Удалить')}
+        danger
+        onConfirm={() => { setConfirmingDelete(false); void handleDelete(); }}
+        onClose={() => setConfirmingDelete(false)}
+      />
     </div>
   );
 };

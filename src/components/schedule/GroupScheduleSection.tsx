@@ -461,11 +461,14 @@ const GroupScheduleSection: React.FC<GroupScheduleSectionProps> = ({ group, canE
           onClick={() => setModalOpen(false)}
         >
           <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="group-lesson-dialog-title"
             className="bg-white dark:bg-slate-800 rounded-3xl p-6 w-full max-w-sm shadow-2xl border border-slate-200/50 dark:border-slate-700/50"
             onClick={e => e.stopPropagation()}
           >
             <div className="flex items-start justify-between mb-5">
-              <h3 className="text-lg font-bold text-slate-900 dark:text-white">
+              <h3 id="group-lesson-dialog-title" className="text-lg font-bold text-slate-900 dark:text-white">
                 {form.editingId
                   ? t('schedule.editLesson', 'Изменить занятие')
                   : form.recurring
@@ -474,6 +477,7 @@ const GroupScheduleSection: React.FC<GroupScheduleSectionProps> = ({ group, canE
               </h3>
               <button
                 onClick={() => setModalOpen(false)}
+                aria-label={t('common.close', 'Закрыть')}
                 className="p-1 rounded-lg text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
               >
                 <X className="w-4 h-4" />

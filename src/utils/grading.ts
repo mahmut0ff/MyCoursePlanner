@@ -1,4 +1,5 @@
 import type { Question, QuestionResult } from '../types';
+import { intlLocale } from '../lib/locale';
 
 /**
  * Grade a student's answers against the exam questions.
@@ -106,7 +107,8 @@ export function formatTime(seconds: number): string {
  * Format date string for display
  */
 export function formatDate(dateStr: string): string {
-  return new Date(dateStr).toLocaleDateString('ru-RU', {
+  // Язык интерфейса, а не жёсткий ru-RU: иначе в en/kg/uz месяц был русским.
+  return new Date(dateStr).toLocaleDateString(intlLocale(), {
     year: 'numeric',
     month: 'short',
     day: 'numeric',

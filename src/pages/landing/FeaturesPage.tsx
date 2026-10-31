@@ -1,384 +1,140 @@
 import React, { useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import { Wallet, ClipboardCheck, CalendarDays, Network, Send, Sparkles, Check, ArrowRight } from 'lucide-react';
+import RequestDemoModal from '../../components/landing/RequestDemoModal';
 import {
-  BookOpen, Brain, Shield,
-  Gamepad2, Layers, Users, Building2,
-  Sparkles, CheckCircle2,
-  Calendar, FileCheck2,
-  MessageCircle, Rocket, Zap, Crown, FileSpreadsheet,
-  Briefcase, ArrowRight, Bot, LineChart,
-  MapPin, ShieldCheck, Palette, CalendarDays,
-  Globe, Smartphone, PieChart, Timer
-} from 'lucide-react';
-import { useTranslation, Trans } from 'react-i18next';
-import { LandingNav, LandingFooter, ChromeCta } from '../../components/landing/LandingChrome';
+  Cta, MktNav, MktFooter, Reveal, focusRing, eyebrowCls, h2Cls, primaryBtn,
+} from '../../components/landing/LandingKit';
+
+/* ──────────────────────────────────────────────────────────────
+   /features — the module tour in the same paper/ink language as
+   the home page: one section per area of the center, each with
+   what it does in plain words.
+   ────────────────────────────────────────────────────────────── */
+
+const GROUPS = [
+  { n: 1, id: 'money', icon: Wallet, tone: 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300' },
+  { n: 2, id: 'study', icon: ClipboardCheck, tone: 'bg-primary-600/10 text-primary-600 dark:text-primary-300' },
+  { n: 3, id: 'schedule', icon: CalendarDays, tone: 'bg-amber-500/15 text-amber-700 dark:text-amber-300' },
+  { n: 4, id: 'team', icon: Network, tone: 'bg-sky-500/10 text-sky-700 dark:text-sky-300' },
+  { n: 5, id: 'parents', icon: Send, tone: 'bg-cyan-500/10 text-cyan-700 dark:text-cyan-300' },
+  { n: 6, id: 'ai', icon: Sparkles, tone: 'bg-violet-500/10 text-violet-700 dark:text-violet-300' },
+];
 
 const FeaturesPage: React.FC = () => {
   const { t } = useTranslation();
-  const [activeTab, setActiveTab] = useState('summary');
+  const [demoOpen, setDemoOpen] = useState(false);
+  const openDemo = () => setDemoOpen(true);
 
-  const featureTabs = [
-    { id: 'summary', label: t('landing.fpage.tabSummary', 'Всё в одном'), icon: PieChart, color: 'text-slate-500', bg: 'bg-slate-500/10' },
-    { id: 'ai', label: t('landing.fpage.tabAi', 'AI Magic'), icon: Brain, color: 'text-violet-500', bg: 'bg-violet-500/10' },
-    { id: 'teachers', label: t('landing.fpage.tabTeachers', 'Всё для Учителя'), icon: Users, color: 'text-emerald-500', bg: 'bg-emerald-500/10' },
-    { id: 'students', label: t('landing.fpage.tabStudents', 'Опыт Студента'), icon: Gamepad2, color: 'text-rose-500', bg: 'bg-rose-500/10' },
-    { id: 'b2b', label: t('landing.fpage.tabB2b', 'B2B Администрирование'), icon: Building2, color: 'text-blue-500', bg: 'bg-blue-500/10' },
-    { id: 'tools', label: t('landing.fpage.tabTools', 'Секретное оружие'), icon: Layers, color: 'text-amber-500', bg: 'bg-amber-500/10' }
+  const anchors = [
+    { href: '/#pricing', label: t('home.navPricing') },
+    { href: '/#faq', label: t('home.navFaq') },
+    { href: '/contact', label: t('landing.navContact') },
   ];
 
   return (
-    <div className="min-h-screen bg-[#f8fafc] text-slate-900 pb-20 font-sans selection:bg-primary-500/30">
-      
-      <LandingNav />
+    <div className="min-h-screen overflow-x-clip bg-paper font-marketing text-ink antialiased selection:bg-primary-600 selection:text-white">
+      <MktNav anchors={anchors} onDemo={openDemo} />
 
       {/* ═══ Hero ═══ */}
-      <div className="pt-36 pb-16 px-6 relative overflow-hidden bg-white border-b border-slate-200/60">
-        <div
-          aria-hidden
-          className="pointer-events-none absolute inset-0 bg-[linear-gradient(to_right,#e2e8f01a_1px,transparent_1px),linear-gradient(to_bottom,#e2e8f01a_1px,transparent_1px)] bg-[size:56px_56px]"
-          style={{ WebkitMaskImage: 'radial-gradient(ellipse 70% 60% at 50% 0%, #000 55%, transparent 100%)', maskImage: 'radial-gradient(ellipse 70% 60% at 50% 0%, #000 55%, transparent 100%)' }}
-        />
-        <div className="max-w-3xl mx-auto text-center relative z-10">
-          <p className="text-[0.8rem] font-semibold uppercase tracking-[0.18em] text-primary-600">{t('landing.navFeatures', 'Возможности')}</p>
-          <h1 className="mt-3 text-4xl sm:text-5xl md:text-6xl font-bold tracking-tight text-slate-900">
-            {t('landing.fpage.heroTitle', 'Энциклопедия возможностей')}
-          </h1>
-          <p className="mt-5 text-lg sm:text-xl text-slate-600 max-w-2xl mx-auto leading-relaxed">
-            <Trans i18nKey="landing.fpage.heroText" defaults="Мы спроектировали <b>100% покрытие</b> потребностей вашей школы — от автоматизации работы до геймификации, умных проверок ДЗ и биллинга. Это больше, чем LMS. Это <b>SabakHub</b>." components={{ b: <strong className="font-semibold text-slate-900" /> }} />
-          </p>
+      <header className="mx-auto max-w-[1240px] px-5 pb-10 pt-12 sm:px-8 sm:pt-16 lg:pt-[80px]">
+        <p className={`hero-rise ${eyebrowCls}`}>{t('landing.navFeatures')}</p>
+        <h1
+          className="hero-rise mt-[22px] max-w-[20ch] text-balance font-marketing-display text-[clamp(32px,4.4vw,60px)] font-bold leading-[1.08] tracking-[-0.01em]"
+          style={{ animationDelay: '0.06s' }}
+        >
+          {t('mkt.fpTitle')}
+        </h1>
+        <p className="hero-rise mt-6 max-w-[60ch] text-[17px] leading-[1.65] text-ink/70 sm:text-[19px]" style={{ animationDelay: '0.12s' }}>
+          {t('mkt.fpSub')}
+        </p>
+        <div className="hero-rise mt-9 flex flex-wrap items-center gap-3.5" style={{ animationDelay: '0.18s' }}>
+          <Cta onFallback={openDemo} className={primaryBtn}>
+            {t('home.ctaPrimary')} <ArrowRight aria-hidden className="h-[18px] w-[18px]" />
+          </Cta>
+          <a
+            href="/#pricing"
+            className={`inline-flex items-center gap-2.5 rounded-full border-[1.5px] border-ink/20 px-[26px] py-4 text-[17px] font-semibold text-ink transition-colors hover:border-ink ${focusRing}`}
+          >
+            {t('mkt.fpPricing')}
+          </a>
         </div>
-      </div>
+      </header>
 
-      <div className="max-w-7xl mx-auto px-6 mt-12 flex flex-col lg:flex-row gap-12 items-start relative">
-        
-        {/* ═══ Sticky Sidebar Navigation ═══ */}
-        <div className="hidden lg:block w-72 shrink-0 sticky top-28 space-y-2 relative z-20">
-          <div className="bg-white rounded-3xl p-4 border border-slate-200/60 shadow-xl shadow-slate-200/40">
-            <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-4 px-3">{t('common.navigate', 'Навигация')}</h3>
-            <div className="space-y-1">
-              {featureTabs.map((tab) => (
-                <button 
-                  key={tab.id}
-                  onClick={() => {
-                    setActiveTab(tab.id);
-                    document.getElementById(tab.id)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                  }}
-                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl transition-all font-medium text-sm text-left
-                    ${activeTab === tab.id ? 'bg-slate-900 text-white shadow-md' : 'text-slate-600 hover:bg-slate-100'}`}
-                >
-                  <tab.icon className={`w-5 h-5 ${activeTab === tab.id ? 'text-white' : tab.color}`} />
-                  {tab.label}
-                </button>
-              ))}
-            </div>
-          </div>
-        </div>
+      {/* ═══ Section index — sticky under the nav, scrolls sideways on phones ═══ */}
+      <nav
+        aria-label={t('mkt.fpSections')}
+        className="sticky top-[72px] z-40 border-y border-ink/[0.08] bg-paper/85 backdrop-blur-xl"
+      >
+        <ul className="mx-auto flex max-w-[1240px] gap-2 overflow-x-auto px-5 py-3 [scrollbar-width:none] sm:px-8 [&::-webkit-scrollbar]:hidden">
+          {GROUPS.map(({ n, id, icon: Icon }) => (
+            <li key={id} className="shrink-0">
+              <a
+                href={`#${id}`}
+                className={`inline-flex items-center gap-2 rounded-full border border-ink/10 bg-card px-4 py-2 text-sm font-semibold text-ink/75 transition-colors hover:border-ink/30 hover:text-ink ${focusRing}`}
+              >
+                <Icon aria-hidden className="h-4 w-4" />
+                {t(`mkt.g${n}Tab`)}
+              </a>
+            </li>
+          ))}
+        </ul>
+      </nav>
 
-        {/* ═══ Content Stream ═══ */}
-        <div className="flex-1 space-y-32">
-
-          {/* SECTION 0: SUMMARY */}
-          <section id="summary" className="scroll-mt-32">
-            <div className="bg-slate-900 rounded-[2rem] p-10 md:p-14 text-center relative overflow-hidden shadow-2xl">
-              <div className="absolute inset-0 bg-[url('/grid.svg')] opacity-10" />
-              <div className="relative z-10 flex flex-col items-center">
-                <div className="w-16 h-16 bg-white/10 backdrop-blur-md rounded-2xl flex items-center justify-center mb-6">
-                  <PieChart className="w-8 h-8 text-primary-400" />
-                </div>
-                <h2 className="text-3xl md:text-5xl font-extrabold text-white mb-6">{t('landing.fpage.summaryTitle', 'Одна платформа заменяет десять')}</h2>
-                <p className="text-lg text-slate-300 max-w-2xl leading-relaxed mb-8">{t('landing.fpage.summaryText', 'Забудьте про 10 разных подписок (Zoom, Google Docs, Kahoot, ChatGPT, Trello, Excel, CRM). Мы уместили лучший мировой опыт в одном чистом интерфейсе.')}</p>
-                <div className="flex flex-wrap justify-center gap-3">
-                  <span className="bg-white/10 text-white px-4 py-2 rounded-full text-sm font-medium border border-white/5">{t('landing.fpage.chipAnalytics', 'Аналитика')}</span>
-                  <span className="bg-white/10 text-white px-4 py-2 rounded-full text-sm font-medium border border-white/5">{t('landing.fpage.chipFinance', 'Финансы')}</span>
-                  <span className="bg-white/10 text-white px-4 py-2 rounded-full text-sm font-medium border border-white/5">{t('landing.fpage.chipChat', 'Чат')}</span>
-                  <span className="bg-white/10 text-white px-4 py-2 rounded-full text-sm font-medium border border-white/5">{t('landing.fpage.chipLms', 'Контент LMS')}</span>
-                  <span className="bg-white/10 text-white px-4 py-2 rounded-full text-sm font-medium border border-white/5">{t('landing.fpage.chipGamification', 'Gamification')}</span>
-                </div>
-              </div>
-            </div>
-          </section>
-          
-          {/* SECTION 1: AI MAGIC */}
-          <section id="ai" className="scroll-mt-32">
-            <div className="flex items-center gap-4 mb-8">
-              <div className="w-12 h-12 rounded-2xl bg-violet-500/10 flex items-center justify-center border border-violet-500/20">
-                <Brain className="w-6 h-6 text-violet-600" />
-              </div>
-              <h2 className="text-4xl font-extrabold text-slate-900 tracking-tight">{t('landing.fpage.tabAi', 'AI Magic')}</h2>
-            </div>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              
-              <div className="bg-white p-8 rounded-3xl border border-slate-200/60 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all">
-                <div className="w-12 h-12 rounded-2xl bg-violet-50 flex items-center justify-center mb-6 border border-violet-100">
-                  <Bot className="w-6 h-6 text-violet-500" />
-                </div>
-                <h3 className="text-2xl font-bold text-slate-900 mb-4">{t('landing.fpage.aiBotTitle', 'Автономный AI-Ассистент')}</h3>
-                <p className="text-slate-500 text-base leading-relaxed mb-6">{t('landing.fpage.aiBotText', 'Публичный бот на вашей странице-визитке отвечает лидам 24/7. Он обучается на документах, стоимости курсов и расписании Вашей организации. Никаких придуманных фактов или "галлюцинаций".')}</p>
-                <div className="bg-slate-50 p-5 rounded-2xl text-sm font-mono text-slate-700 border border-slate-100 shadow-inner">
-                  {t('landing.fpage.aiBotQ', '"Какая цена на курс IELTS?"')}<br/>
-                  <span className="text-violet-600 mt-2 block font-semibold flex gap-2">
-                    <ArrowRight className="w-4 h-4 mt-0.5 shrink-0" />
-                    {t('landing.fpage.aiBotA', '"IELTS интенсив длится 2 месяца и стоит 45 000 сом. Включены пробные тесты."')}
+      {/* ═══ Module sections ═══ */}
+      <main className="mx-auto max-w-[1240px] space-y-6 px-5 py-14 sm:px-8 sm:py-20">
+        {GROUPS.map(({ n, id, icon: Icon, tone }, i) => (
+          <section key={id} id={id} className="scroll-mt-[150px]">
+            <Reveal>
+              <div className="grid items-center gap-8 rounded-[28px] border border-ink/[0.06] bg-card p-6 sm:p-10 lg:grid-cols-2 lg:gap-14 lg:p-14">
+                <div className={i % 2 ? 'lg:order-2' : ''}>
+                  <span className={`inline-flex h-12 w-12 items-center justify-center rounded-2xl ${tone}`}>
+                    <Icon aria-hidden className="h-6 w-6" />
                   </span>
+                  <p className={`mt-6 ${eyebrowCls}`}>{t(`mkt.g${n}Tab`)}</p>
+                  <h2 className={`${h2Cls} !text-[clamp(24px,2.6vw,36px)]`}>{t(`mkt.g${n}Title`)}</h2>
+                  <p className="mt-4 max-w-[52ch] text-[17px] leading-[1.65] text-ink/70">{t(`mkt.g${n}Desc`)}</p>
                 </div>
-              </div>
-
-              <div className="bg-white p-8 rounded-3xl border border-slate-200/60 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all">
-                <div className="w-12 h-12 rounded-2xl bg-violet-50 flex items-center justify-center mb-6 border border-violet-100">
-                  <FileCheck2 className="w-6 h-6 text-violet-500" />
-                </div>
-                <h3 className="text-2xl font-bold text-slate-900 mb-4">{t('landing.fpage.hwTitle', 'Умная проверка ДЗ')}</h3>
-                <p className="text-slate-500 text-base leading-relaxed mb-6">{t('landing.fpage.hwText', 'ИИ автоматически проверяет письменные работы студентов. Он не просто ставит балл, но и находит плагиат, выделяет грамматические ошибки и пишет развернутый отзыв-совет для ученика.')}</p>
-                <ul className="text-sm space-y-3 text-slate-600 font-medium bg-emerald-50 p-4 rounded-xl border border-emerald-100">
-                  <li className="flex items-center gap-2"><CheckCircle2 className="w-5 h-5 text-emerald-500 shrink-0"/> {t('landing.fpage.hwPoint', 'Быстрый фидбек экономит до 15 часов/нед.')}</li>
+                <ul className="grid gap-3">
+                  {[1, 2, 3, 4].map((b) => (
+                    <li key={b} className="flex items-start gap-3.5 rounded-2xl bg-paper px-5 py-4">
+                      <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary-600 text-white">
+                        <Check aria-hidden className="h-3.5 w-3.5" strokeWidth={3} />
+                      </span>
+                      <span className="text-[15px] font-medium leading-snug">{t(`mkt.g${n}B${b}`)}</span>
+                    </li>
+                  ))}
                 </ul>
               </div>
-
-              <div className="bg-white p-8 rounded-3xl border border-slate-200/60 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all">
-                <div className="w-12 h-12 rounded-2xl bg-amber-50 flex items-center justify-center mb-6 border border-amber-100">
-                  <Sparkles className="w-6 h-6 text-amber-500" />
-                </div>
-                <h3 className="text-2xl font-bold text-slate-900 mb-4">{t('landing.fpage.genTitle', 'AI Генерация Контента')}</h3>
-                <p className="text-slate-500 text-base leading-relaxed">{t('landing.fpage.genText', 'Загрузите PDF файл или введите тему, и ИИ мгновенно сгенерирует набор вопросов с правильными и ложными ответами для проведения Kahoot-викторины.')}</p>
-              </div>
-
-              <div className="bg-white p-8 rounded-3xl border border-slate-200/60 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all">
-                <div className="w-12 h-12 rounded-2xl bg-sky-50 flex items-center justify-center mb-6 border border-sky-100">
-                  <MessageCircle className="w-6 h-6 text-sky-500" />
-                </div>
-                <h3 className="text-2xl font-bold text-slate-900 mb-4">{t('landing.fpage.voiceTitle', 'Voice-to-Text Speech')}</h3>
-                <p className="text-slate-500 text-base leading-relaxed">{t('landing.fpage.voiceText', 'Голосовой набор на любом экране (заметки к профилю, комментарии, чат). Нажмите иконку микрофона, и нейросеть расшифрует ваш голос с точной расстановкой запятых и точек.')}</p>
-              </div>
-
-            </div>
+            </Reveal>
           </section>
+        ))}
+      </main>
 
-          {/* SECTION 2: TEACHER HUB */}
-          <section id="teachers" className="scroll-mt-32">
-            <div className="flex items-center gap-4 mb-8">
-              <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 flex items-center justify-center border border-emerald-500/20">
-                <Users className="w-6 h-6 text-emerald-600" />
-              </div>
-              <h2 className="text-4xl font-extrabold text-slate-900 tracking-tight">{t('landing.fpage.teachersTitle', 'Рабочий стол Учителя')}</h2>
+      {/* ═══ CTA ═══ */}
+      <section className="mx-auto max-w-[1240px] px-5 pb-16 sm:px-8 sm:pb-[104px]">
+        <Reveal>
+          <div className="relative overflow-hidden rounded-[28px] bg-primary-600 p-7 text-white sm:rounded-[36px] sm:px-16 sm:py-[72px]">
+            <div aria-hidden className="absolute -right-20 -top-20 h-[340px] w-[340px] rounded-full bg-white/[0.08]" />
+            <div aria-hidden className="absolute -bottom-[120px] right-[60px] h-[260px] w-[260px] rounded-full bg-amber-500/25" />
+            <div className="relative max-w-[60ch]">
+              <h2 className="text-balance font-marketing-display text-[clamp(26px,3.2vw,44px)] font-bold leading-[1.12]">
+                {t('home.ctaTitle')}
+              </h2>
+              <p className="mt-5 text-[17px] leading-relaxed text-white/80">{t('home.ctaDesc')}</p>
+              <Cta
+                onFallback={openDemo}
+                className="mt-[34px] inline-flex items-center gap-2.5 rounded-full bg-white px-[30px] py-4 text-base font-bold text-[#16141f] transition-transform hover:scale-[1.03] focus:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-primary-600"
+              >
+                {t('home.ctaPrimary')} <ArrowRight aria-hidden className="h-[18px] w-[18px]" />
+              </Cta>
             </div>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              
-              <div className="col-span-1 md:col-span-2 bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-10 md:p-14 rounded-[2rem] shadow-xl relative overflow-hidden group hover:shadow-2xl transition-all">
-                <div className="absolute right-[-100px] top-[-100px] w-[500px] h-[500px] bg-emerald-500/10 rounded-full blur-[100px] group-hover:bg-emerald-500/20 transition-colors pointer-events-none" />
-                <div className="relative z-10">
-                  <div className="flex items-center gap-3 mb-6">
-                    <span className="bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-xs font-bold px-4 py-2 rounded-full flex items-center gap-2 uppercase tracking-wide"><LineChart className="w-4 h-4"/> {t('landing.fpage.killer', 'Killer Feature')}</span>
-                  </div>
-                  <h3 className="text-3xl md:text-5xl font-extrabold text-white mb-6 leading-tight">{t('landing.fpage.riskTitle', 'Светофор Рисков Студента')}<br />{t('landing.fpage.riskSubtitle', '(Student Retention System)')}</h3>
-                  <p className="text-slate-300 text-lg leading-relaxed max-w-3xl mb-8">
-                    {t('landing.fpage.riskText', 'Smart Dashboard анализирует посещаемость, активность на уроках и выполнение ДЗ. Студенты автоматически распределяются по доске риска: "Красный", "Желтый", "Зеленый". Действуйте проактивно и спасайте клиентов от оттока еще до того, как они заберут деньги!')}
-                  </p>
-                  
-                  <div className="flex flex-wrap gap-4 mt-8">
-                    <div className="bg-slate-800/80 border border-slate-700 backdrop-blur-sm px-5 py-3 rounded-2xl flex items-center gap-3">
-                      <div className="w-3.5 h-3.5 rounded-full bg-red-500 shadow-[0_0_12px_rgba(239,68,68,0.9)]" />
-                      <span className="text-slate-200 text-sm font-semibold">{t('landing.fpage.riskHigh', 'Высокий риск оттока')}</span>
-                    </div>
-                    <div className="bg-slate-800/80 border border-slate-700 backdrop-blur-sm px-5 py-3 rounded-2xl flex items-center gap-3">
-                      <div className="w-3.5 h-3.5 rounded-full bg-amber-500 shadow-[0_0_12px_rgba(245,158,11,0.9)]" />
-                      <span className="text-slate-200 text-sm font-semibold">{t('landing.fpage.riskWatch', 'Нужно наблюдение')}</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
+          </div>
+        </Reveal>
+      </section>
 
-              <div className="bg-white p-8 rounded-3xl border border-slate-200/60 shadow-sm hover:shadow-xl transition-shadow">
-                <div className="w-12 h-12 rounded-2xl bg-slate-100 flex items-center justify-center mb-6"><Calendar className="w-6 h-6 text-slate-700" /></div>
-                <h3 className="text-2xl font-bold text-slate-900 mb-4">{t('landing.fpage.journalTitle', 'Интерактивный Журнал')}</h3>
-                <p className="text-slate-500 text-base leading-relaxed mb-6">{t('landing.fpage.journalText', 'Мгновенное выставление оценок (A, B, C, F или 0-100) и отметка посещаемости. Присутствовал, опоздал, пропустил (уважительно/без). Быстрые комментарии к уроку видны ученикам.')}</p>
-              </div>
-
-              <div className="bg-white p-8 rounded-3xl border border-slate-200/60 shadow-sm hover:shadow-xl transition-shadow">
-                <div className="w-12 h-12 rounded-2xl bg-slate-100 flex items-center justify-center mb-6"><CalendarDays className="w-6 h-6 text-slate-700" /></div>
-                <h3 className="text-2xl font-bold text-slate-900 mb-4">{t('landing.fpage.schedTitle', 'Расписание и Сетки')}</h3>
-                <p className="text-slate-500 text-base leading-relaxed mb-6">{t('landing.fpage.schedText', 'Конструктор расписания уроков. Визуальная таблица занятий, проверка накладок по времени и аудиториям. Легкий перенос уроков кликом.')}</p>
-              </div>
-
-              <div className="col-span-1 md:col-span-2 bg-white p-8 rounded-3xl border border-slate-200/60 shadow-sm hover:shadow-xl transition-shadow flex flex-col md:flex-row gap-8 items-center">
-                <div className="flex-1">
-                  <div className="w-12 h-12 rounded-2xl bg-slate-100 flex items-center justify-center mb-6"><BookOpen className="w-6 h-6 text-slate-700" /></div>
-                  <h3 className="text-2xl font-bold text-slate-900 mb-4">{t('landing.fpage.lmsTitle', 'LMS Хранилище (Видео, PDF, Тесты)')}</h3>
-                  <p className="text-slate-500 text-base leading-relaxed">
-                    {t('landing.fpage.lmsText', 'Преподаватель загружает материалы прямо в структуру курса (Документы, YouTube-видео в плеере, Практические задания). У студента всё выстроено в логичную цепочку для самообучения. Никаких Google Drive и засорения Telegram чатов.')}
-                  </p>
-                </div>
-              </div>
-
-            </div>
-          </section>
-
-          {/* SECTION 3: GAMIFICATION */}
-          <section id="students" className="scroll-mt-32">
-            <div className="flex items-center gap-4 mb-8">
-              <div className="w-12 h-12 rounded-2xl bg-rose-500/10 flex items-center justify-center border border-rose-500/20">
-                <Gamepad2 className="w-6 h-6 text-rose-600" />
-              </div>
-              <h2 className="text-4xl font-extrabold text-slate-900 tracking-tight">{t('landing.fpage.studentsTitle', 'Опыт Студента & Геймификация')}</h2>
-            </div>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-
-              <div className="bg-white p-8 rounded-3xl border border-slate-200/60 shadow-sm hover:shadow-xl hover:shadow-rose-500/10 transition-shadow">
-                <div className="w-12 h-12 rounded-2xl bg-rose-50 flex items-center justify-center mb-6 border border-rose-100"><Zap className="w-6 h-6 text-rose-500" /></div>
-                <h3 className="text-xl font-bold text-slate-900 mb-4">{t('landing.fpage.streakTitle', 'Огненные Стрики 🔥')}</h3>
-                <p className="text-slate-500 text-sm leading-relaxed mb-6">{t('landing.fpage.streakText', 'Каждое посещение продлевает "огонь" непрерывного обучения. Пропуск или невыполнение ДЗ сжигает стрик. Это мотивирует студентов возвращаться на уроки каждый день.')}</p>
-              </div>
-
-              <div className="bg-white p-8 rounded-3xl border border-slate-200/60 shadow-sm hover:shadow-xl hover:shadow-amber-500/10 transition-shadow">
-                <div className="w-12 h-12 rounded-2xl bg-amber-50 flex items-center justify-center mb-6 border border-amber-100"><Crown className="w-6 h-6 text-amber-500" /></div>
-                <h3 className="text-xl font-bold text-slate-900 mb-4">{t('landing.fpage.xpTitle', 'Шкала XP и Ранги')}</h3>
-                <p className="text-slate-500 text-sm leading-relaxed mb-6">{t('landing.fpage.xpText', 'Сдача заданий вовремя дает очки Опыта (XP). Система прокачки переводит учеников с ранга "Студент" до "Мастера", создавая глобальный соревновательный Ladder (Лидерборд).')}</p>
-              </div>
-
-              <div className="bg-white p-8 rounded-3xl border border-slate-200/60 shadow-sm hover:shadow-xl hover:shadow-indigo-500/10 transition-shadow">
-                <div className="w-12 h-12 rounded-2xl bg-indigo-50 flex items-center justify-center mb-6 border border-indigo-100"><Gamepad2 className="w-6 h-6 text-indigo-500" /></div>
-                <h3 className="text-xl font-bold text-slate-900 mb-4">{t('landing.fpage.quizTitle', 'Аналог Kahoot (Live Quiz)')}</h3>
-                <p className="text-slate-500 text-sm leading-relaxed mb-6">{t('landing.fpage.quizText', 'Живые турниры в классе! Преподаватель запускает викторину на интерактивной доске, студенты присоединяются с телефонов. Турнирная таблица, таймеры и фан.')}</p>
-              </div>
-
-              <div className="bg-white p-8 rounded-3xl border border-slate-200/60 shadow-sm hover:shadow-xl transition-shadow">
-                <div className="w-12 h-12 rounded-2xl bg-blue-50 flex items-center justify-center mb-6 border border-blue-100"><PieChart className="w-6 h-6 text-blue-500" /></div>
-                <h3 className="text-xl font-bold text-slate-900 mb-4">{t('landing.fpage.radarTitle', 'Профиль и Радары Навыков')}</h3>
-                <p className="text-slate-500 text-sm leading-relaxed mb-6">{t('landing.fpage.radarText', 'Графики успеваемости в стиле RPG-игр. Студент наглядно видит, где он слабее (например Граматика, Аудирование) и может прокачивать целевые зоны.')}</p>
-              </div>
-
-              <div className="bg-white p-8 rounded-3xl border border-slate-200/60 shadow-sm hover:shadow-xl transition-shadow">
-                <div className="w-12 h-12 rounded-2xl bg-emerald-50 flex items-center justify-center mb-6 border border-emerald-100"><Smartphone className="w-6 h-6 text-emerald-500" /></div>
-                <h3 className="text-xl font-bold text-slate-900 mb-4">{t('landing.fpage.mobileTitle', 'Адаптивный Mobile UI')}</h3>
-                <p className="text-slate-500 text-sm leading-relaxed mb-6">{t('landing.fpage.mobileText', 'Интерфейс выглядит и ведет себя как нативное приложение (App) прямо в браузере Safari/Chrome смартфона. Не нужно скачивать приложение из сторов.')}</p>
-              </div>
-
-              <div className="bg-white p-8 rounded-3xl border border-slate-200/60 shadow-sm hover:shadow-xl transition-shadow">
-                <div className="w-12 h-12 rounded-2xl bg-cyan-50 flex items-center justify-center mb-6 border border-cyan-100"><Globe className="w-6 h-6 text-cyan-500" /></div>
-                <h3 className="text-xl font-bold text-slate-900 mb-4">{t('landing.fpage.langTitle', 'Мультиязычность')}</h3>
-                <p className="text-slate-500 text-sm leading-relaxed mb-6">{t('landing.fpage.langText', 'Вся система переведена на русский, кыргызский, узбекский и английский. Каждый пользователь может использовать комфортный для себя язык независимо от остальных.')}</p>
-              </div>
-
-            </div>
-          </section>
-
-          {/* SECTION 4: B2B CORE */}
-          <section id="b2b" className="scroll-mt-32">
-            <div className="flex items-center gap-4 mb-8">
-              <div className="w-12 h-12 rounded-2xl bg-blue-500/10 flex items-center justify-center border border-blue-500/20">
-                <Building2 className="w-6 h-6 text-blue-600" />
-              </div>
-              <h2 className="text-4xl font-extrabold text-slate-900 tracking-tight">{t('landing.fpage.b2bTitle', 'Ядро управления (B2B Admin)')}</h2>
-            </div>
-            
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-
-              <div className="bg-white p-8 rounded-3xl border border-slate-200/60 shadow-sm hover:shadow-xl transition-shadow">
-                <div className="w-12 h-12 rounded-2xl bg-slate-100 flex items-center justify-center mb-6"><Shield className="w-6 h-6 text-slate-700" /></div>
-                <h3 className="text-2xl font-bold text-slate-900 mb-4">{t('landing.fpage.isoTitle', 'Zero-Leak Изоляция')}</h3>
-                <p className="text-slate-500 text-base leading-relaxed">{t('landing.fpage.isoText', 'Данные вашей организации физически отрезаны от других центров на уровне БД. Ваша база клиентов 100% приватна и защищена ключами NoSQL.')}</p>
-              </div>
-
-              <div className="bg-white p-8 rounded-3xl border border-slate-200/60 shadow-sm hover:shadow-xl transition-shadow">
-                <div className="w-12 h-12 rounded-2xl bg-slate-100 flex items-center justify-center mb-6"><MapPin className="w-6 h-6 text-slate-700" /></div>
-                <h3 className="text-2xl font-bold text-slate-900 mb-4">{t('landing.fpage.branchTitle', 'Система Филиалов')}</h3>
-                <p className="text-slate-500 text-base leading-relaxed">{t('landing.fpage.branchText', 'Контролируйте сразу несколько точек в городе. Привязка учителей, студентов и аудиторий к конкретным филиалам и раздельная финансовая отчетность.')}</p>
-              </div>
-
-              <div className="bg-white p-8 rounded-3xl border border-slate-200/60 shadow-sm hover:shadow-xl transition-shadow">
-                <div className="w-12 h-12 rounded-2xl bg-slate-100 flex items-center justify-center mb-6"><ShieldCheck className="w-6 h-6 text-slate-700" /></div>
-                <h3 className="text-2xl font-bold text-slate-900 mb-4">{t('landing.fpage.auditTitle', 'Журнал Аудита (Security)')}</h3>
-                <p className="text-slate-500 text-base leading-relaxed">{t('landing.fpage.auditText', 'Ни одно редактирование оценки или оплаты не скроется. Система ведет Security Audit Trail: (Кто, Когда и Что изменил), чтобы предотвращать мошенничество персонала.')}</p>
-              </div>
-
-              <div className="col-span-1 md:col-span-3 bg-gradient-to-r from-blue-900 to-indigo-900 p-10 md:p-14 rounded-[2rem] shadow-xl relative overflow-hidden flex flex-col md:flex-row gap-8 items-center group">
-                <div className="absolute right-[-50px] top-[-50px] w-[300px] h-[300px] bg-indigo-500/20 rounded-full blur-[80px] pointer-events-none" />
-                <div className="flex-1 text-left relative z-10">
-                  <div className="inline-block bg-white/10 text-white border border-white/20 px-3 py-1 rounded-full text-xs font-bold mb-5 uppercase tracking-wide">{t('landing.fpage.enterprise', 'Enterprise Level')}</div>
-                  <h3 className="text-3xl font-bold text-white mb-4">{t('landing.fpage.finTitle', 'Финансовая Аналитика и Подписки')}</h3>
-                  <p className="text-blue-100/70 text-base leading-relaxed mb-6 max-w-2xl">
-                    {t('landing.fpage.finText', 'Жесткий биллинг в реальном времени: агрегация транзакций, графики прихода/расхода (Today, Week, Month). Для самой платформы встроен автоматический **Billing Guard**: умное отключение SaaS модулей арендаторов по истечении Trial/Pro периода с реалтайм таймерами и блокировками API на Backend-уровне.')}
-                  </p>
-                  <ul className="grid grid-cols-2 lg:grid-cols-4 gap-3 text-sm font-medium text-white/90 mt-8">
-                    <li className="flex items-center justify-center bg-white/10 px-4 py-3 rounded-xl border border-white/5 backdrop-blur-md">{t('landing.fpage.finIncome', 'Учет Доходов')}</li>
-                    <li className="flex items-center justify-center bg-white/10 px-4 py-3 rounded-xl border border-white/5 backdrop-blur-md">{t('landing.fpage.finTrial', 'Trial-Механика')}</li>
-                    <li className="flex items-center justify-center bg-white/10 px-4 py-3 rounded-xl border border-white/5 backdrop-blur-md">{t('landing.fpage.finStripe', 'Stripe Ready')}</li>
-                    <li className="flex items-center justify-center bg-white/10 px-4 py-3 rounded-xl border border-white/5 backdrop-blur-md">{t('landing.fpage.finReports', 'Отчетные Графики')}</li>
-                  </ul>
-                </div>
-              </div>
-
-            </div>
-          </section>
-
-          {/* SECTION 5: TOOLS */}
-          <section id="tools" className="scroll-mt-32">
-            <div className="flex items-center gap-4 mb-8">
-              <div className="w-12 h-12 rounded-2xl bg-amber-500/10 flex items-center justify-center border border-amber-500/20">
-                <Layers className="w-6 h-6 text-amber-600" />
-              </div>
-              <h2 className="text-4xl font-extrabold text-slate-900 tracking-tight">{t('landing.fpage.toolsTitle', 'Рабочие Инструменты')}</h2>
-            </div>
-            
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-
-              <div className="bg-white p-8 rounded-3xl border border-slate-200/60 hover:shadow-xl transition-shadow flex flex-col items-start gap-4">
-                <div className="w-12 h-12 rounded-xl bg-slate-50 flex items-center justify-center shrink-0 border border-slate-100"><Timer className="w-6 h-6 text-slate-600" /></div>
-                <div>
-                  <h3 className="text-lg font-bold text-slate-900 mb-3">{t('landing.fpage.cheatTitle', 'Anti-Cheat на Экзаменах')}</h3>
-                  <p className="text-sm text-slate-500 leading-relaxed">{t('landing.fpage.cheatText', 'Строгие экзамены с таймерами. Защита от списывания: система фиксирует смену вкладки и блокирует copy-paste.')}</p>
-                </div>
-              </div>
-
-              <div className="bg-white p-8 rounded-3xl border border-slate-200/60 hover:shadow-xl transition-shadow flex flex-col items-start gap-4">
-                <div className="w-12 h-12 rounded-xl bg-slate-50 flex items-center justify-center shrink-0 border border-slate-100"><FileSpreadsheet className="w-6 h-6 text-slate-600" /></div>
-                <div>
-                  <h3 className="text-lg font-bold text-slate-900 mb-3">{t('landing.fpage.certTitle', 'Генератор Сертификатов')}</h3>
-                  <p className="text-sm text-slate-500 leading-relaxed">{t('landing.fpage.certText', 'Платформа сама создает и подписывает PDF-сертификаты для выпускников, присваивая им QR-коды для проверки.')}</p>
-                </div>
-              </div>
-
-              <div className="bg-white p-8 rounded-3xl border border-slate-200/60 hover:shadow-xl transition-shadow flex flex-col items-start gap-4">
-                <div className="w-12 h-12 rounded-xl bg-slate-50 flex items-center justify-center shrink-0 border border-slate-100"><MessageCircle className="w-6 h-6 text-slate-600" /></div>
-                <div>
-                  <h3 className="text-lg font-bold text-slate-900 mb-3">{t('landing.fpage.chatTitle', 'Групповые Чаты')}</h3>
-                  <p className="text-sm text-slate-500 leading-relaxed">{t('landing.fpage.chatText', 'Внутренний мессенджер для коммуникации групп и преподавателей. Обмен файлами, упоминания, история переписки.')}</p>
-                </div>
-              </div>
-              
-              <div className="bg-white p-8 rounded-3xl border border-slate-200/60 hover:shadow-xl transition-shadow flex flex-col items-start gap-4">
-                <div className="w-12 h-12 rounded-xl bg-slate-50 flex items-center justify-center shrink-0 border border-slate-100"><Palette className="w-6 h-6 text-slate-600" /></div>
-                <div>
-                  <h3 className="text-lg font-bold text-slate-900 mb-3">{t('landing.fpage.wlTitle', 'White-Label Брендинг')}</h3>
-                  <p className="text-sm text-slate-500 leading-relaxed">{t('landing.fpage.wlText', 'Настраиваемый интерфейс: установите свой логотип и цвета организации, чтобы платформа смотрелась как ваше личное приложение.')}</p>
-                </div>
-              </div>
-
-              <div className="bg-white p-8 rounded-3xl border border-slate-200/60 hover:shadow-xl transition-shadow flex flex-col items-start gap-4">
-                <div className="w-12 h-12 rounded-xl bg-slate-50 flex items-center justify-center shrink-0 border border-slate-100"><Briefcase className="w-6 h-6 text-slate-600" /></div>
-                <div>
-                  <h3 className="text-lg font-bold text-slate-900 mb-3">{t('landing.fpage.jobsTitle', 'Каталог Вакансий (Mini-LinkedIn)')}</h3>
-                  <p className="text-sm text-slate-500 leading-relaxed">{t('landing.fpage.jobsText', 'Публикация партнёрских вакансий. Студенты-выпускники могут подавать резюме прямо из интерфейса школы.')}</p>
-                </div>
-              </div>
-
-              <div className="bg-gradient-to-br from-primary-600 to-indigo-600 p-8 rounded-3xl shadow-xl flex flex-col items-center justify-center gap-4 text-center group">
-                <Rocket className="w-12 h-12 text-white group-hover:-translate-y-2 transition-transform" />
-                <div>
-                  <h3 className="text-lg font-bold text-white mb-2">{t('landing.fpage.ctaTitle', 'Начнем работу?')}</h3>
-                  <p className="text-white/80 text-sm leading-relaxed mb-4">{t('landing.fpage.ctaText', 'Вам понравились возможности SabakHub?')}</p>
-                  <ChromeCta className="bg-white text-primary-700 px-6 py-2.5 rounded-xl font-bold hover:bg-slate-50 transition-colors inline-block shadow-lg">{t('landing.fpage.ctaBtn', 'Показать за 15 минут')}</ChromeCta>
-                </div>
-              </div>
-
-            </div>
-          </section>
-
-        </div>
-      </div>
-
-      <LandingFooter />
+      <MktFooter />
+      <RequestDemoModal open={demoOpen} onClose={() => setDemoOpen(false)} />
     </div>
   );
 };

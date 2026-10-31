@@ -2,7 +2,7 @@ import type { Handler, HandlerEvent } from '@netlify/functions';
 import { verifyAuth, isStaff, jsonResponse } from './utils/auth';
 import { adminDb } from './utils/firebase-admin';
 import { rateLimiters, getRateLimitKey } from './utils/rate-limiter';
-import { hasGeminiKey, recordAiUsage } from './utils/ai';
+import { hasGeminiKey, recordAiUsage, AI_UNAVAILABLE_MESSAGE } from './utils/ai';
 import { generateAIContent, AIGenerateError } from './utils/ai-generate';
 import { aiJobDocId, AI_JOB_ID_RE } from './utils/ai-jobs';
 
@@ -66,7 +66,7 @@ const handler: Handler = async (event: HandlerEvent) => {
       return fail('Слишком много запросов к ИИ. Подождите минуту и повторите.');
     }
 
-    if (!hasGeminiKey()) return fail('GEMINI_API_KEY не настроен на сервере.');
+    if (!hasGeminiKey()) return fail(AI_UNAVAILABLE_MESSAGE);
     if (!prompt && !fileUrl) return fail('Нужен промпт или файл.');
 
     const data = await generateAIContent({ prompt, type, fileUrl });

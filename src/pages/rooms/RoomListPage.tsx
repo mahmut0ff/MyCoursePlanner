@@ -31,6 +31,10 @@ const RoomListPage: React.FC = () => {
     } finally { setBusy(false); }
   };
 
+  // Закрытые комнаты не удаляются — уходят в архив вместе с результатами учеников.
+  const [showArchive, setShowArchive] = useState(false);
+  const visible = rooms.filter(r => (r.status === 'closed') === showArchive);
+
   useEffect(() => {
     (isStaff ? getAllRooms() : getActiveRooms())
       .then(setRooms)
@@ -62,9 +66,26 @@ const RoomListPage: React.FC = () => {
         )}
       </div>
 
+      {isStaff && (
+        <div className="flex gap-2 mb-5" role="tablist">
+          {[false, true].map(archive => (
+            <button
+              key={String(archive)}
+              role="tab"
+              aria-selected={showArchive === archive}
+              onClick={() => setShowArchive(archive)}
+              className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${showArchive === archive ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900' : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300'}`}
+            >
+              {archive ? t('common.archived', 'Архив') : t('org.students.statusActive', 'Активные')}
+              {' '}({rooms.filter(r => (r.status === 'closed') === archive).length})
+            </button>
+          ))}
+        </div>
+      )}
+
       {loading ? (
          <div className="flex items-center justify-center py-32"><div className="w-8 h-8 border-4 border-slate-200 border-t-slate-800 rounded-full animate-spin dark:border-slate-700 dark:border-t-white" /></div>
-      ) : rooms.length === 0 ? (
+      ) : visible.length === 0 ? (
         <div className="exam-slide-up bg-white/50 dark:bg-slate-900/50 backdrop-blur-sm border border-slate-200 dark:border-slate-800 rounded-3xl p-16 text-center max-w-2xl mx-auto shadow-sm">
           <div className="w-20 h-20 bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center mx-auto mb-6">
             <Radio className="w-10 h-10 text-slate-400 dark:text-slate-500" />
@@ -79,7 +100,7 @@ const RoomListPage: React.FC = () => {
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-          {rooms.map((room, i) => (
+          {visible.map((room, i) => (
             <Link 
               key={room.id} 
               to={`/rooms/${room.id}`} 

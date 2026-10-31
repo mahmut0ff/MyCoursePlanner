@@ -44,7 +44,7 @@ const MyCertificatesPage: React.FC = () => {
   return (
     <div>
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-slate-900 dark:text-white">{t('certificate.title')}</h1>
+        <h1 className="text-2xl font-bold text-slate-900 dark:text-white">{t('nav.certificates')}</h1>
         <p className="text-slate-500 dark:text-slate-400 text-sm mt-1">{t('certificate.count', '{{count}} сертификатов', { count: certs.length })}</p>
       </div>
 
@@ -57,7 +57,7 @@ const MyCertificatesPage: React.FC = () => {
       ) : certs.length === 0 ? (
         <EmptyState
           icon={Award}
-          title={t('certificate.notFound')}
+          title={t('certificate.noCertsTitle', 'Сертификатов пока нет')}
           description={t('certificate.noCertsDesc', 'Сдайте экзамен и получите свой первый сертификат!')}
           actionLabel={t('rooms.join')}
           actionLink="/join"

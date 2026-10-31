@@ -325,12 +325,22 @@ export function buildRatingRows(input: RatingRowsInput): RatingRow[] {
   // поиска и до сортировки по колонкам: «12-й в рейтинге» не должно меняться от
   // того, что список отсортировали по имени или нашли одного.
   const ranked = built.filter(r => r.metrics.hasData).sort((a, b) => b.metrics.score - a.metrics.score);
-  let lastScore = Number.NaN;
-  let lastRank = 0;
-  ranked.forEach((r, i) => {
-    if (r.metrics.score !== lastScore) { lastRank = i + 1; lastScore = r.metrics.score; }
-    r.rank = lastRank;
-  });
+  const ranks = competitionRanks(ranked.map(r => r.metrics.score));
+  ranked.forEach((r, i) => { r.rank = ranks[i]; });
 
   return built;
+}
+
+/**
+ * Места для баллов, отсортированных по убыванию: равный балл — одно место,
+ * следующее место пропускается (100, 100, 90 → 1, 1, 3). Одно правило для
+ * /rating, недопуска и мини-рейтинга в журнале.
+ */
+export function competitionRanks(sortedDesc: number[]): number[] {
+  let lastScore = Number.NaN;
+  let lastRank = 0;
+  return sortedDesc.map((score, i) => {
+    if (score !== lastScore) { lastRank = i + 1; lastScore = score; }
+    return lastRank;
+  });
 }

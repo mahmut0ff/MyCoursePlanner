@@ -603,6 +603,7 @@ const OrgSettingsPage: React.FC = () => {
 
   const handleSave = async () => {
     if (!settings) return;
+    if (!String(settings.name ?? '').trim()) { setError(t('common.orgNameRequired', 'Название организации не может быть пустым')); return; }
     setSaving(true); setError('');
     try {
       await orgUpdateSettings(settings);

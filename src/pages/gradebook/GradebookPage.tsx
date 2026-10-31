@@ -25,8 +25,9 @@ const GradebookPage: React.FC = () => {
   const { t } = useTranslation();
   const { role, profile } = useAuth();
   const { canWrite } = usePermissions();
-  const { institutionType } = useOrg();
-  const defaultPresetId = getInstitution(institutionType).defaultGradePresetId;
+  const { institutionType, orgData } = useOrg();
+  // Новые организации получают свою шкалу при создании (5 баллов), старые — по типу заведения.
+  const defaultPresetId = orgData?.defaultGradePresetId || getInstitution(institutionType).defaultGradePresetId;
   // Mirrors JournalPage: editing follows the resolved gradebook grant, not the base
   // role, so a viewer-only role sees the grid but cannot write — matching the API.
   const isReadOnly = !canWrite('gradebook');

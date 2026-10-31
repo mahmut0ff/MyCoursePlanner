@@ -53,7 +53,7 @@ const SessionAnalyticsPage: React.FC = () => {
           <div>
             <h1 className="text-xl font-extrabold text-slate-900 dark:text-white">{session?.quizTitle || t('quiz.analytics')}</h1>
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-              {session?.createdAt ? new Date(session.createdAt).toLocaleString(intlLocale()) : ''} · {sorted.length} {t('quiz.participants')}
+              {session?.createdAt ? new Date(session.createdAt).toLocaleString(intlLocale()) : ''} · {t('counts.participants', { count: sorted.length })}
             </p>
           </div>
         </div>

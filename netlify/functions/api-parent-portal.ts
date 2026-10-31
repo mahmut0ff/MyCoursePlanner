@@ -4,6 +4,8 @@ import { jsonResponse, badRequest, notFound } from './utils/auth';
 import { TELEGRAM_BOT_USERNAME } from './utils/telegram';
 import { rateLimiters, getRateLimitKey } from './utils/rate-limiter';
 import { getModel, parseJsonLoose, hasGeminiKey, recordAiUsage } from './utils/ai';
+import { planDebt, isDebtBearingPlan, isWrittenOffPlan, isPlanOverdue, planPeriodKey, planProgressKey, deadlineDayKey } from './utils/payment-plans';
+import { attendanceMark, attendanceRate, countAttendance, type AttendanceCounts } from './utils/attendance';
 
 export const handler: Handler = async (event: HandlerEvent) => {
   if (event.httpMethod === 'OPTIONS') return jsonResponse(204, '');
@@ -194,6 +196,48 @@ export const handler: Handler = async (event: HandlerEvent) => {
       }
     }
 
+    // 6. Оплаты и посещаемость — только чтение и только по ребёнку этой ссылки, в его
+    // текущей организации. Наружу — суммы и статусы, без id сотрудников и комментариев.
+    let payments: { totalDebt: number; hasOverdue: boolean; plans: any[] } | null = null;
+    let attendance: { rate: number | null; counts: AttendanceCounts; recent: any[] } | null = null;
+    if (orgId) {
+      const [plansSnap, journalSnap] = await Promise.all([
+        adminDb.collection('studentPaymentPlans').where('studentId', '==', userDoc.id).get(),
+        adminDb.collection('journal').where('studentId', '==', userDoc.id).get(),
+      ]);
+      const plans = plansSnap.docs.map(d => ({ id: d.id, ...(d.data() as any) }))
+        .filter(p => p.organizationId === orgId && !isWrittenOffPlan(p));
+      payments = {
+        totalDebt: plans.filter(isDebtBearingPlan).reduce((s, p) => s + planDebt(p), 0),
+        hasOverdue: plans.some(p => isPlanOverdue(p)),
+        plans: plans
+          .map(p => ({
+            id: p.id,
+            courseName: p.courseName || '',
+            period: planPeriodKey(p),
+            totalAmount: Number(p.totalAmount) || 0,
+            paidAmount: Number(p.paidAmount) || 0,
+            debt: planDebt(p),
+            progress: planProgressKey(p),
+            overdue: isPlanOverdue(p),
+            deadline: deadlineDayKey(p.deadline),
+          }))
+          .sort((a, b) => (b.period || '').localeCompare(a.period || ''))
+          .slice(0, 12),
+      };
+
+      const entries = journalSnap.docs.map(d => d.data() as any).filter(e => e.organizationId === orgId);
+      const recentEntries = [...entries].sort((a, b) => String(b.date || '').localeCompare(String(a.date || ''))).slice(0, 10);
+      const courseIds = [...new Set(recentEntries.map(e => e.courseId).filter(Boolean))] as string[];
+      const courseDocs = courseIds.length ? await adminDb.getAll(...courseIds.map(id => adminDb.collection('courses').doc(id))) : [];
+      const courseTitle = new Map(courseDocs.map(d => [d.id, (d.data() as any)?.title || '']));
+      attendance = {
+        rate: attendanceRate(entries),
+        counts: countAttendance(entries),
+        recent: recentEntries.map(e => ({ date: e.date || '', courseName: courseTitle.get(e.courseId) || '', mark: attendanceMark(e) })),
+      };
+    }
+
     return jsonResponse(200, {
       student: safeUser,
       organization,
@@ -204,7 +248,9 @@ export const handler: Handler = async (event: HandlerEvent) => {
         currentStreak,
         averageScore,
       },
-      recentResults
+      recentResults,
+      payments,
+      attendance,
     });
   } catch (error: any) {
     console.error('Parent Portal Error:', error);

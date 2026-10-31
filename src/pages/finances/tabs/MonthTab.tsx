@@ -122,7 +122,8 @@ function shiftMonth(key: string, delta: number): string {
 
 // Подпись месяца — общий форматтер (src/lib/money.ts): помесячный срез, выбор
 // счёта при приёме оплаты и история платежей обязаны называть месяц одинаково.
-const monthLabel = formatMonthKey;
+// Заглавная только у первой буквы: CSS `capitalize` давал «Октябрь 2026 Г.».
+const monthLabel = (key: string): string => { const s = formatMonthKey(key); return s.charAt(0).toUpperCase() + s.slice(1); };
 
 /**
  * Бейдж строки = ТОЛЬКО прогресс оплаты (planProgressKey). Просрочка — отдельная
@@ -562,7 +563,7 @@ const MonthTab: React.FC<Props> = ({
           <button onClick={() => onMonthChange(shiftMonth(month, -1))} aria-label={t('finances.prevMonth', 'Предыдущий месяц')} className="w-9 h-9 flex items-center justify-center rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">
             <ChevronLeft className="w-4 h-4" />
           </button>
-          <span className="px-3 text-sm font-bold text-slate-900 dark:text-white min-w-[130px] text-center capitalize">{monthLabel(month)}</span>
+          <span className="px-3 text-sm font-bold text-slate-900 dark:text-white min-w-[130px] text-center">{monthLabel(month)}</span>
           <button onClick={() => onMonthChange(shiftMonth(month, 1))} aria-label={t('finances.nextMonth', 'Следующий месяц')} className="w-9 h-9 flex items-center justify-center rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">
             <ChevronRight className="w-4 h-4" />
           </button>
@@ -795,7 +796,7 @@ const MonthTab: React.FC<Props> = ({
                       </th>
                     )}
                     <th className="px-5 py-3.5 font-medium text-slate-500">{t('finances.colStudent', 'Студент')}</th>
-                    <th className="px-5 py-3.5 font-medium text-slate-500">{t('finances.colGroup', 'Группа')}</th>
+                    <th className="px-5 py-3.5 font-medium text-slate-500">{t('finances.colCourse', 'Курс')}</th>
                     <th className="px-5 py-3.5 font-medium text-slate-500">{t('finances.colForMonth', 'За месяц')}</th>
                     <th className="px-5 py-3.5 font-medium text-slate-500 text-right">{t('finances.colActions', 'Действия')}</th>
                   </tr>

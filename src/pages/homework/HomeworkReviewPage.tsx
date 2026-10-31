@@ -6,7 +6,7 @@ import type { HomeworkSubmission } from '../../types';
 import { Sparkles, CheckCircle, Clock, XCircle, GripVertical, FileVideo, ImageIcon, X, FileAudio, FileArchive, FileText, ArrowLeft, Search, Filter, BarChart3 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useTranslation } from 'react-i18next';
-import { intlLocale } from '../../lib/locale';
+import { numericDateLocale } from '../../lib/locale';
 import { DndContext, useSensor, useSensors, PointerSensor, DragOverlay, closestCorners } from '@dnd-kit/core';
 import type { DragEndEvent, DragStartEvent } from '@dnd-kit/core';
 import { useDroppable } from '@dnd-kit/core';
@@ -75,7 +75,7 @@ const KanbanCard: React.FC<{ sub: HomeworkSubmission; onClick: () => void; isAct
       )}
 
       <div className="flex items-center justify-between mt-2 pt-2 border-t border-slate-100 dark:border-slate-700/40">
-        <span className="text-[10px] text-slate-400 font-medium">{new Date(sub.submittedAt).toLocaleDateString(intlLocale())}</span>
+        <span className="text-[10px] text-slate-400 font-medium">{new Date(sub.submittedAt).toLocaleDateString(numericDateLocale())}</span>
         {sub.status === 'graded' && typeof sub.finalScore === 'number' && (
            <span className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/20 px-2 py-0.5 rounded-lg">
              {sub.finalScore}/{sub.maxPoints || 10}
@@ -273,6 +273,8 @@ const HomeworkReviewPage: React.FC = () => {
           <div>
             <h1 className="text-xl font-bold text-slate-900 dark:text-white">{t('homework.review.title', 'Доска проверки работ')}</h1>
             <p className="text-slate-500 dark:text-slate-400 text-[13px] mt-0.5">{t('homework.review.subtitle', 'Перетаскивайте карточки для изменения статуса')}</p>
+            {/* ДЗ сдаётся только в Telegram-боте — без этой строки пустая доска не объясняет, откуда возьмутся работы. */}
+            <p className="text-slate-400 dark:text-slate-500 text-xs mt-0.5">{t('homework.review.telegramHint', 'Ученики сдают работы в Telegram-боте — они появятся здесь сами.')}</p>
           </div>
         </div>
 
@@ -280,13 +282,13 @@ const HomeworkReviewPage: React.FC = () => {
         <div className="flex items-center gap-3 flex-wrap">
           {/* Stats pills */}
           <div className="flex items-center gap-1.5 mr-auto">
-            <div className="flex items-center gap-1.5 px-2.5 py-1.5 bg-amber-50 dark:bg-amber-900/15 border border-amber-200/60 dark:border-amber-800/40 rounded-lg text-[11px] font-bold text-amber-700 dark:text-amber-300">
+            <div className="flex items-center gap-1.5 px-2.5 py-1.5 bg-amber-50 dark:bg-amber-900/15 border border-amber-200/60 dark:border-amber-800/40 rounded-lg text-[11px] font-bold text-amber-700 dark:text-amber-300" title={t('lessons.view.statusPending', 'Ожидает проверки')}>
               <Clock className="w-3 h-3" /> {pendingSubs.length}
             </div>
-            <div className="flex items-center gap-1.5 px-2.5 py-1.5 bg-blue-50 dark:bg-blue-900/15 border border-blue-200/60 dark:border-blue-800/40 rounded-lg text-[11px] font-bold text-blue-700 dark:text-blue-300">
+            <div className="flex items-center gap-1.5 px-2.5 py-1.5 bg-blue-50 dark:bg-blue-900/15 border border-blue-200/60 dark:border-blue-800/40 rounded-lg text-[11px] font-bold text-blue-700 dark:text-blue-300" title={t('lessons.view.statusReviewing', 'На проверке')}>
               <BarChart3 className="w-3 h-3" /> {reviewingSubs.length}
             </div>
-            <div className="flex items-center gap-1.5 px-2.5 py-1.5 bg-emerald-50 dark:bg-emerald-900/15 border border-emerald-200/60 dark:border-emerald-800/40 rounded-lg text-[11px] font-bold text-emerald-700 dark:text-emerald-300">
+            <div className="flex items-center gap-1.5 px-2.5 py-1.5 bg-emerald-50 dark:bg-emerald-900/15 border border-emerald-200/60 dark:border-emerald-800/40 rounded-lg text-[11px] font-bold text-emerald-700 dark:text-emerald-300" title={t('lessons.view.statusGraded', 'Оценено')}>
               <CheckCircle className="w-3 h-3" /> {gradedSubs.length}
             </div>
             {avgScore > 0 && <span className="text-[11px] text-slate-400 font-medium ml-1">Ø {avgScore}</span>}
@@ -347,7 +349,7 @@ const HomeworkReviewPage: React.FC = () => {
                 <div className="bg-white dark:bg-slate-800 rounded-xl p-3.5 shadow-2xl opacity-90 scale-105 border-2 border-accent-teal ring-4 ring-accent-teal/20 w-[280px]">
                    <h4 className="font-bold text-[13px] text-slate-900 dark:text-white truncate">{activeDragItem.studentName}</h4>
                    <p className="text-[11px] text-slate-500 truncate">{activeDragItem.lessonTitle}</p>
-                   <span className="text-[10px] text-slate-400 font-medium mt-2 inline-block">{new Date(activeDragItem.submittedAt).toLocaleDateString(intlLocale())}</span>
+                   <span className="text-[10px] text-slate-400 font-medium mt-2 inline-block">{new Date(activeDragItem.submittedAt).toLocaleDateString(numericDateLocale())}</span>
                 </div>
               ) : null}
             </DragOverlay>
@@ -391,7 +393,7 @@ const HomeworkReviewPage: React.FC = () => {
                 {/* Info Bar */}
                 <div className="flex flex-wrap items-center gap-2.5 px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800/40 rounded-xl border border-slate-100 dark:border-slate-800">
                   <div className="flex items-center gap-1.5 text-[12px] text-slate-600 dark:text-slate-300">
-                    <Clock className="w-3.5 h-3.5 text-slate-400" /> {new Date(selectedSubmission.submittedAt).toLocaleString(intlLocale())}
+                    <Clock className="w-3.5 h-3.5 text-slate-400" /> {new Date(selectedSubmission.submittedAt).toLocaleString(numericDateLocale())}
                   </div>
                   <div className="w-px h-3.5 bg-slate-200 dark:bg-slate-700 hidden sm:block"></div>
                   <StatusBadge status={selectedSubmission.status} />

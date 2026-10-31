@@ -4,7 +4,7 @@
  * because they lacked the organizationId filter required by hasOrgAccess().
  * Now all reads go through the backend API which properly handles org-scoping.
  */
-import { apiCreateRoom, apiJoinRoom, apiCloseRoom, apiStartRoom, apiGetRoomByCode, apiGetRoom, apiGetRooms } from '../lib/api';
+import { apiCreateRoom, apiJoinRoom, apiCloseRoom, apiStartRoom, apiGetRoomByCode, apiGetRoom, apiGetRooms, apiDeleteRoom } from '../lib/api';
 import type { ExamRoom } from '../types';
 
 export const createRoom = async (
@@ -45,9 +45,10 @@ export const getRoom = async (id: string): Promise<ExamRoom | null> => {
 };
 
 export const getActiveRooms = async (): Promise<ExamRoom[]> => {
-  // Backend returns only active rooms for students (non-staff)
+  // Сотруднику бэкенд отдаёт все комнаты организации, включая закрытые, —
+  // а «Идут сейчас» на дашборде должен показывать только живые.
   const rooms = await apiGetRooms();
-  return rooms as ExamRoom[];
+  return (rooms as ExamRoom[]).filter(r => r.status === 'active' || r.status === 'waiting');
 };
 
 export const getAllRooms = async (): Promise<ExamRoom[]> => {
@@ -62,6 +63,11 @@ export const joinRoom = async (roomId: string, _studentId: string): Promise<void
 
 export const closeRoom = async (roomId: string): Promise<void> => {
   await apiCloseRoom(roomId);
+};
+
+/** Убрать закрытую комнату из списка (попытки учеников остаются). */
+export const deleteRoom = async (roomId: string): Promise<void> => {
+  await apiDeleteRoom(roomId);
 };
 
 export const startRoom = async (roomId: string): Promise<void> => {

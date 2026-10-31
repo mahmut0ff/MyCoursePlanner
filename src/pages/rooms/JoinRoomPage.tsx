@@ -86,7 +86,7 @@ const JoinRoomPage: React.FC = () => {
         
         {/* Footer text */}
         <div className="text-center mt-6 text-slate-500 dark:text-slate-400 text-xs font-medium">
-          Protected by SabakHub Secure Assessment
+          {t('rooms.protectedBy', 'Защищено системой проверки SabakHub')}
         </div>
       </div>
     </div>

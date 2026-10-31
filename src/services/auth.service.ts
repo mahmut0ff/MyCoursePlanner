@@ -9,13 +9,19 @@ import {
   signInWithPopup,
   signInWithRedirect,
   getRedirectResult,
+  setPersistence,
+  browserLocalPersistence,
+  browserSessionPersistence,
   type User,
   type UserCredential,
 } from 'firebase/auth';
 import { auth } from '../lib/firebase';
 
-export const signIn = (email: string, password: string) =>
-  signInWithEmailAndPassword(auth, email, password);
+/** `remember: false` keeps the session only until the browser tab is closed. */
+export const signIn = async (email: string, password: string, remember = true) => {
+  await setPersistence(auth, remember ? browserLocalPersistence : browserSessionPersistence);
+  return signInWithEmailAndPassword(auth, email, password);
+};
 
 /** Passwordless sign-in with a Firebase custom token (Telegram bot login flow). */
 export const signInWithToken = (customToken: string) =>

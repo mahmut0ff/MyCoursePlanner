@@ -13,7 +13,7 @@ import type { Handler, HandlerEvent } from '@netlify/functions';
 import { adminDb } from './utils/firebase-admin';
 import { verifyAuth, ok, unauthorized, forbidden, badRequest, jsonResponse } from './utils/auth';
 import { rateLimiters, getRateLimitKey } from './utils/rate-limiter';
-import { getModel, parseJsonLoose, aiAllowed, hasGeminiKey, recordAiUsage } from './utils/ai';
+import { getModel, parseJsonLoose, aiAllowed, hasGeminiKey, recordAiUsage, AI_UNAVAILABLE_MESSAGE } from './utils/ai';
 // Shared with the Telegram student copilot so web + bot ground answers identically.
 import { buildLessonContext } from './utils/lessons';
 
@@ -24,7 +24,7 @@ export const handler: Handler = async (event: HandlerEvent) => {
   const user = await verifyAuth(event);
   if (!user) return unauthorized(event);
   if (!aiAllowed(user)) return forbidden('AI недоступен на вашем тарифе');
-  if (!hasGeminiKey()) return jsonResponse(500, { error: 'GEMINI_API_KEY is not configured on the server.' });
+  if (!hasGeminiKey()) return jsonResponse(500, { error: AI_UNAVAILABLE_MESSAGE });
 
   if (rateLimiters.ai.isLimited(getRateLimitKey(event, user.uid))) {
     return jsonResponse(429, { error: 'Слишком много запросов. Подождите немного.' });

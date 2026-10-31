@@ -7,7 +7,7 @@ import type { UserProfile } from '../../types';
 import { PinnedBadgesDisplay } from '../../lib/badges';
 import EmptyState from '../../components/ui/EmptyState';
 import { ListSkeleton } from '../../components/ui/Skeleton';
-import { intlLocale } from '../../lib/locale';
+import { numericDateLocale } from '../../lib/locale';
 import i18n from '../../i18n';
 
 const ROLE_COLORS: Record<string, string> = {
@@ -208,7 +208,7 @@ const OrgUsersPage: React.FC = () => {
 
               {/* Date */}
               <div className="hidden md:block text-[11px] text-slate-400">
-                {u.createdAt ? new Date(u.createdAt).toLocaleDateString(intlLocale()) : '—'}
+                {u.createdAt ? new Date(u.createdAt).toLocaleDateString(numericDateLocale()) : '—'}
               </div>
             </div>
           ))}

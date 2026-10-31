@@ -8,7 +8,7 @@ import { useBranch } from '../../contexts/BranchContext';
 import type { Course, Group } from '../../types';
 import toast from 'react-hot-toast';
 import { SyllabusBuilder } from '../../components/syllabuses/SyllabusBuilder';
-import { intlLocale } from '../../lib/locale';
+import { numericDateLocale } from '../../lib/locale';
 
 const CourseDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -237,7 +237,7 @@ const CourseDetailPage: React.FC = () => {
                 {(course.price && course.price > 0) ? (
                   <div className="flex items-center justify-center gap-2 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400 px-4 py-2 rounded-xl font-bold border border-emerald-100 dark:border-emerald-800/50">
                     <Coins className="w-5 h-5" />
-                    <span className="text-lg">{t('courses.detail.priceSom', '{{amount}} сом', { amount: course.price.toLocaleString(intlLocale()) })}</span>
+                    <span className="text-lg">{t('courses.detail.priceSom', '{{amount}} сом', { amount: course.price.toLocaleString(numericDateLocale()) })}</span>
                     <span className="text-xs font-medium opacity-70">
                       /{course.paymentFormat === 'monthly' ? t('courses.detail.perMonth', 'мес') : t('courses.detail.oneTimeShort', 'разово')}
                     </span>
@@ -263,12 +263,12 @@ const CourseDetailPage: React.FC = () => {
               <div className="bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-700/50 p-4 rounded-2xl flex flex-col items-center justify-center text-center">
                 <FileText className="w-6 h-6 text-blue-500 mb-2" />
                 <span className="text-2xl font-bold text-slate-900 dark:text-white">{groups.length}</span>
-                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{t('courses.detail.statGroups', 'Групп')}</span>
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{t('courses.detail.statGroups', 'Группы')}</span>
               </div>
               <div className="bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-700/50 p-4 rounded-2xl flex flex-col items-center justify-center text-center">
                 <Users className="w-6 h-6 text-violet-500 mb-2" />
                 <span className="text-2xl font-bold text-slate-900 dark:text-white">{new Set(groups.flatMap((g) => g.studentIds || [])).size}</span>
-                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{t('courses.detail.statStudents', 'Студентов')}</span>
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{t('courses.detail.statStudents', 'Студенты')}</span>
               </div>
               <div className="bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-700/50 p-4 rounded-2xl col-span-2 flex items-center justify-between text-left">
                 <div className="flex items-center gap-3">
@@ -277,7 +277,7 @@ const CourseDetailPage: React.FC = () => {
                   </div>
                   <div>
                     <span className="block text-sm font-bold text-slate-900 dark:text-white">
-                      {course.createdAt ? new Date(course.createdAt).toLocaleDateString(intlLocale()) : '—'}
+                      {course.createdAt ? new Date(course.createdAt).toLocaleDateString(numericDateLocale()) : '—'}
                     </span>
                     <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider">{t('common.created', 'Создан')}</span>
                   </div>

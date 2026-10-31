@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { intlLocale } from '../../lib/locale';
+import { numericDateLocale } from '../../lib/locale';
 import { useNavigate } from 'react-router-dom';
 import { orgGetResults, orgGetStudents } from '../../lib/api';
 import { Trophy, Search, Download, RefreshCw } from 'lucide-react';
@@ -30,7 +30,7 @@ const ResultsPage: React.FC = () => {
   const passRate = filtered.length > 0 ? Math.round((filtered.filter((r) => r.passed).length / filtered.length) * 100) : 0;
 
   const exportCSV = () => {
-    const rows = [`"${t('org.results.student')}","${t('org.results.exam')}","${t('org.results.score')}","${t('common.status')}","${t('org.results.date')}"`, ...filtered.map((r) => `"${r.studentName}","${r.examTitle}",${r.percentage}%,${r.passed ? t('org.results.passed') : t('org.results.failed')},${new Date(r.submittedAt).toLocaleDateString(intlLocale())}`)].join('\n');
+    const rows = [`"${t('org.results.student')}","${t('org.results.exam')}","${t('org.results.score')}","${t('common.status')}","${t('org.results.date')}"`, ...filtered.map((r) => `"${r.studentName}","${r.examTitle}",${r.percentage}%,${r.passed ? t('org.results.passed') : t('org.results.failed')},${new Date(r.submittedAt).toLocaleDateString(numericDateLocale())}`)].join('\n');
     const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([rows], { type: 'text/csv' })); a.download = 'results.csv'; a.click();
   };
 
@@ -118,7 +118,7 @@ const ResultsPage: React.FC = () => {
                       {r.passed ? t('org.results.passed') : t('org.results.failed')}
                     </span>
                   </td>
-                  <td className="px-6 py-4 text-sm font-medium text-slate-400 hidden md:table-cell">{new Date(r.submittedAt).toLocaleDateString(intlLocale())}</td>
+                  <td className="px-6 py-4 text-sm font-medium text-slate-400 hidden md:table-cell">{new Date(r.submittedAt).toLocaleDateString(numericDateLocale())}</td>
                 </tr>
               )})}
             </tbody>

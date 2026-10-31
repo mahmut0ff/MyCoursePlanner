@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { getLessonPlans } from '../../services/lessons.service';
 import { getExams } from '../../services/exams.service';
-import { getActiveRooms } from '../../services/rooms.service';
+import { getAllRooms } from '../../services/rooms.service';
 import {
   BookOpen, ClipboardList, Radio, ChevronRight,
 } from 'lucide-react';
@@ -36,7 +36,7 @@ const TeacherOnboardingWizard: React.FC = () => {
     Promise.all([
       getLessonPlans().catch(() => []),
       getExams().catch(() => []),
-      getActiveRooms().catch(() => []),
+      getAllRooms().catch(() => []), // шаг «запустить комнату» засчитан и после её закрытия
     ]).then(([l, e, r]) => {
       setLessons(l || []);
       setExams(e || []);

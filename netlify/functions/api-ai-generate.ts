@@ -1,7 +1,7 @@
 import type { Handler, HandlerEvent } from '@netlify/functions';
 import { verifyAuth, isStaff, ok, unauthorized, forbidden, badRequest, jsonResponse } from './utils/auth';
 import { rateLimiters, getRateLimitKey } from './utils/rate-limiter';
-import { hasGeminiKey, recordAiUsage } from './utils/ai';
+import { hasGeminiKey, recordAiUsage, AI_UNAVAILABLE_MESSAGE } from './utils/ai';
 import { generateAIContent, AIGenerateError } from './utils/ai-generate';
 
 /**
@@ -27,7 +27,7 @@ const handler: Handler = async (event: HandlerEvent) => {
   if (event.httpMethod !== 'POST') return jsonResponse(405, { error: 'Method not allowed' });
 
   if (!hasGeminiKey()) {
-    return jsonResponse(500, { error: 'GEMINI_API_KEY is not configured on the server.' });
+    return jsonResponse(500, { error: AI_UNAVAILABLE_MESSAGE });
   }
 
   try {

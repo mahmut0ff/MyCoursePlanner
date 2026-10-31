@@ -22,6 +22,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useBranch } from '../../contexts/BranchContext';
 import { usePermissions } from '../../contexts/PermissionsContext';
 import { hasRosterManagement } from '../../lib/rbac';
+import { isIssuedLoginEmail } from '../../lib/loginEmail';
 import { usePlanGate } from '../../contexts/PlanContext';
 import {
   planDebt, isDebtBearingPlan, isWrittenOffPlan, isPlanOverdue, planDiscount,
@@ -41,7 +42,7 @@ import type { UserProfile, ExamAttempt, Group } from '../../types';
 import { PinnedBadgesDisplay } from '../../lib/badges';
 import { useStudentRisks } from '../../hooks/useStudentRisks';
 import toast from 'react-hot-toast';
-import { intlLocale } from '../../lib/locale';
+import { intlLocale, numericDateLocale } from '../../lib/locale';
 
 /**
  * Карточка студента — одна сводка, а не набор конкурирующих карточек.
@@ -432,7 +433,10 @@ const StudentDetailPage: React.FC = () => {
           title={branchScoped ? t('org.students.detail.notInBranch', 'Студента нет в выбранном филиале') : t('org.students.detail.notFound', 'Студент не найден')}
           description={branchScoped
             ? t('org.students.detail.notInBranchDesc', 'Запись может относиться к другому филиалу — покажите все филиалы, чтобы её увидеть.')
-            : t('org.students.detail.notFoundDesc', 'Запись удалена или ссылка устарела.')}
+            // Преподавателю сервер отдаёт только учеников его групп — «удалена» здесь вводило в заблуждение.
+            : !isRosterManager
+              ? t('org.students.detail.notFoundTeacherDesc', 'Ученика нет в ваших группах, либо запись удалена.')
+              : t('org.students.detail.notFoundDesc', 'Запись удалена или ссылка устарела.')}
           actionLabel={branchScoped ? t('org.students.detail.showAllBranches', 'Показать все филиалы') : t('org.students.detail.backToList', 'К списку: {{list}}', { list: backLabel.toLowerCase() })}
           {...(branchScoped
             ? { onAction: () => setActiveBranch(null) }
@@ -525,7 +529,7 @@ const StudentDetailPage: React.FC = () => {
               </span>
             )}
             {(student as any).enrollmentDate && (
-              <><Dot />{t('org.students.detail.since', 'с {{date}}', { date: new Date((student as any).enrollmentDate).toLocaleDateString(intlLocale()) })}</>
+              <><Dot />{t('org.students.detail.since', 'с {{date}}', { date: new Date((student as any).enrollmentDate).toLocaleDateString(numericDateLocale()) })}</>
             )}
             {student.city && <><Dot />{student.city}</>}
             {!isSyntheticEmail(student.email) && <><Dot />{student.email}</>}
@@ -880,7 +884,7 @@ const StudentDetailPage: React.FC = () => {
                         <span className="min-w-0 text-slate-600 dark:text-slate-300 truncate">
                           {/* Дата операции — когда деньги реально приняли (tx.date);
                               createdAt это лишь момент ввода в систему. */}
-                          {new Date(tx.date || tx.createdAt).toLocaleDateString(intlLocale())}
+                          {new Date(tx.date || tx.createdAt).toLocaleDateString(numericDateLocale())}
                           {refund && <span className="ml-1.5 text-xs font-medium text-rose-600 dark:text-rose-400">{t('finances.refundBadge', 'возврат')}</span>}
                           {forPlan && <span className="ml-1.5 text-slate-400 dark:text-slate-500">· {forPlan}</span>}
                         </span>
@@ -935,7 +939,7 @@ const StudentDetailPage: React.FC = () => {
                         </div>
                       </div>
                       <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400 flex flex-wrap items-center gap-x-2">
-                        <span className="tabular-nums">{new Date(r.submittedAt).toLocaleDateString(intlLocale())}</span>
+                        <span className="tabular-nums">{new Date(r.submittedAt).toLocaleDateString(numericDateLocale())}</span>
                         {!!r.timeSpentSeconds && <><Dot />{formatTime(t, r.timeSpentSeconds)}</>}
                         {r.questionResults && (
                           <><Dot /><span className="tabular-nums">{r.questionResults.filter(q => q.isCorrect).length}/{r.questionResults.length}</span> {t('org.students.detail.correctInline', 'верных')}</>
@@ -970,7 +974,9 @@ const StudentDetailPage: React.FC = () => {
                     : t('org.students.detail.noLogin', 'Ученик без входа — это запись для журнала и оплат.')}
                 </p>
               </div>
-              {!expelled && (
+              {/* Личную почту меняет только ведущий контингент: сменить пароль на
+                  чужом аккаунте = войти вместо человека (сервер: resetStudentPassword). */}
+              {!expelled && (canEditRoster || !hasLogin || isIssuedLoginEmail(student.email)) && (
                 <button
                   onClick={() => setShowAccessModal(true)}
                   className="shrink-0 px-3.5 py-2 rounded-xl text-sm font-medium text-slate-700 bg-slate-100 hover:bg-slate-200 dark:text-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 transition-colors"

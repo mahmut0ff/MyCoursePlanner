@@ -1,4 +1,9 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
+import i18n from 'i18next';
+
+/** Тег для SpeechRecognition (у него свои коды: uz-UZ, а не uz-Latn-UZ, как в Intl). */
+const SPEECH_LANGS: Record<string, string> = { ru: 'ru-RU', en: 'en-US', kg: 'ky-KG', uz: 'uz-UZ' };
+const speechLang = () => SPEECH_LANGS[(i18n.language || 'ru').slice(0, 2)] || 'ru-RU';
 
 interface UseSpeechToTextOptions {
   /** Language code for speech recognition (default: 'ru-RU') */
@@ -29,7 +34,8 @@ interface UseSpeechToTextReturn {
  * Works on Chrome, Edge, Safari 14.1+, and most modern browsers.
  */
 export function useSpeechToText(options: UseSpeechToTextOptions = {}): UseSpeechToTextReturn {
-  const { lang = 'ru-RU', continuous = true, onTranscript } = options;
+  // По умолчанию — язык интерфейса: жёсткий ru-RU коверкал речь на kg/uz/en.
+  const { lang = speechLang(), continuous = true, onTranscript } = options;
   const [isListening, setIsListening] = useState(false);
   const [transcript, setTranscript] = useState('');
   const recognitionRef = useRef<any>(null);

@@ -29,7 +29,7 @@ const MyResultsPage: React.FC = () => {
     <div>
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-slate-900 dark:text-white">{t('results.title')}</h1>
-        <p className="text-slate-500 dark:text-slate-400 text-sm mt-1">{attempts.length} {t('results.attempts')}</p>
+        <p className="text-slate-500 dark:text-slate-400 text-sm mt-1">{t('counts.attempts', { count: attempts.length })}</p>
       </div>
 
       {attempts.length === 0 ? (

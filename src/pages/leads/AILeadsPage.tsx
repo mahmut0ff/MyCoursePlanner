@@ -4,6 +4,7 @@ import { db } from '../../lib/firebase';
 import { useAuth } from '../../contexts/AuthContext';
 import { Phone, MessageSquare, CheckCircle, Clock, Trash2, Plus, X, Inbox, Target, ChevronDown, Pencil } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { isPlausiblePhone } from '../../lib/phone';
 import { useTranslation } from 'react-i18next';
 import { format } from 'date-fns';
 
@@ -139,6 +140,10 @@ const AILeadsPage: React.FC = () => {
     if (!organizationId || !profile) return;
     if (!newName.trim() || !newPhone.trim()) {
       toast.error(t('leads.fillNamePhone', 'Пожалуйста, заполните имя и телефон'));
+      return;
+    }
+    if (!isPlausiblePhone(newPhone)) {
+      toast.error(t('common.invalidPhone', 'Проверьте номер телефона: только цифры, 7–15 знаков'));
       return;
     }
 

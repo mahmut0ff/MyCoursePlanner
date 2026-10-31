@@ -8,6 +8,7 @@ import { createExam, getExam, updateExam, saveQuestions, getQuestions } from '..
 import { uploadFile } from '../../services/storage.service';
 import type { Question, QuestionType } from '../../types';
 import { generateId } from '../../utils/grading';
+import { firstExamIssue } from '../../lib/examValidation';
 import { Save, ArrowLeft, Plus, Trash2, Sparkles, Settings, HelpCircle, GripVertical, ImageIcon, Volume2, Video, PlayCircle } from 'lucide-react';
 import { AIGeneratorModal } from '../../components/ui/AIGeneratorModal';
 
@@ -165,6 +166,14 @@ const ExamEditPage: React.FC = () => {
 
   const handleSave = async () => {
     if (!title || !subject) { toast.error(t('exams.titleSubjectRequired', 'Title and Subject are required')); return; }
+    // Черновик можно сохранить недоделанным, опубликовать — нет: по такому
+    // экзамену запускают комнату, и ученику достаётся вопрос без ответа.
+    const issue = firstExamIssue(questions);
+    if (issue && status === 'published') {
+      toast.error(t(`exams.validation.${issue.issue}`, { n: issue.n }));
+      return;
+    }
+    if (issue) toast(t(`exams.validation.${issue.issue}`, { n: issue.n }), { icon: '⚠️' });
     setSaving(true);
     try {
       const parseCsv = (s: string) => s.split(',').map(x => x.trim()).filter(Boolean);

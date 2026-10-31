@@ -223,7 +223,7 @@ export const SyllabusBuilder: React.FC<Props> = ({ courseId }) => {
             <UploadCloud className="w-8 h-8" />
           </div>
           <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-2">{t('syllabus.notSet', 'Силлабус не настроен')}</h3>
-          <p className="text-sm text-slate-500 dark:text-slate-400 max-w-sm mx-auto mb-6">{t('syllabus.notSetDesc', 'Создайте чёткую программу обучения (Syllabus), чтобы преподаватели следовали расписанию модулей и уроков.')}</p>
+          <p className="text-sm text-slate-500 dark:text-slate-400 max-w-sm mx-auto mb-6">{t('syllabus.notSetDesc', 'Создайте чёткую программу обучения, чтобы преподаватели следовали расписанию модулей и уроков.')}</p>
 
           <div className="flex justify-center gap-3">
             <button onClick={() => {

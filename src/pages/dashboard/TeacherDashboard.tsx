@@ -127,7 +127,7 @@ export const TeacherDashboardView: React.FC<TeacherDashboardViewProps> = ({
                     <div className="flex-1 min-w-0">
                       <p className="font-medium text-slate-900 dark:text-white text-sm truncate">{r.examTitle}</p>
                       <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 flex items-center gap-1">
-                        <Users className="w-3 h-3" />{r.participants.length} {t('teacherDashboard.participants')}
+                        <Users className="w-3 h-3" />{t('counts.participants', { count: r.participants.length })}
                       </p>
                     </div>
                     <span className="font-mono text-xs px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 shrink-0">{r.code}</span>
@@ -181,9 +181,9 @@ export const TeacherDashboardView: React.FC<TeacherDashboardViewProps> = ({
                     <Link key={e.id} to={`/exams/${e.id}`} className="block px-5 py-2.5 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors">
                       <div className="flex items-center justify-between gap-3">
                         <p className="font-medium text-slate-900 dark:text-white text-sm truncate">{e.title}</p>
-                        <span className={`${e.status === 'published' ? 'badge-green' : 'badge-yellow'} shrink-0`}>{t(`exams.${e.status}`)}</span>
+                        <span className={`${e.status === 'published' ? 'badge-green' : 'badge-yellow'} shrink-0`}>{e.status === 'archived' ? t('common.archived', 'Архив') : t(`exams.${e.status}`)}</span>
                       </div>
-                      <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 truncate">{e.subject} · {e.questionCount || 0} {t('exams.questions')}</p>
+                      <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 truncate">{e.subject} · {t('quiz.nQuestions', { count: e.questionCount || 0 })}</p>
                     </Link>
                   ))}
                   {exams.length === 0 && (

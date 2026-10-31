@@ -1,6 +1,6 @@
 import type { Handler, HandlerEvent } from '@netlify/functions';
 import { GoogleGenerativeAI } from '@google/generative-ai';
-import { AI_MODEL } from './utils/ai';
+import { AI_MODEL, AI_UNAVAILABLE_MESSAGE } from './utils/ai';
 import { verifyAuth, isStaff, ok, unauthorized, forbidden, badRequest, jsonResponse } from './utils/auth';
 import { rateLimiters, getRateLimitKey } from './utils/rate-limiter';
 
@@ -22,7 +22,7 @@ const handler: Handler = async (event: HandlerEvent) => {
   if (event.httpMethod !== 'POST') return jsonResponse(405, { error: 'Method not allowed' });
 
   if (!GEMINI_API_KEY) {
-    return jsonResponse(500, { error: 'GEMINI_API_KEY is not configured on the server.' });
+    return jsonResponse(500, { error: AI_UNAVAILABLE_MESSAGE });
   }
 
   try {

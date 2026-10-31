@@ -98,4 +98,7 @@ export const rateLimiters = {
   read: createRateLimiter({ windowMs: 60_000, max: 200 }),
   /** Auth endpoints — strict: 20 req/min (brute force protection) */
   auth: createRateLimiter({ windowMs: 60_000, max: 20 }),
+  /** Платформенная админка — уже аутентифицированный супер-админ; 20/мин (auth)
+   *  давали 429 при обычном переходе по 10 разделам. */
+  admin: createRateLimiter({ windowMs: 60_000, max: 120 }),
 };

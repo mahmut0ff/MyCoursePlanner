@@ -7,6 +7,12 @@
       "runtimeArgs": ["run", "dev"],
       "port": 5173,
       "autoPort": true
+    },
+    {
+      "name": "web-before",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["--prefix", "C:/Users/user/AppData/Local/Temp/claude/C--Users-user-Desktop-Projects-MyCoursePlanner/4047d916-1477-4a64-8951-73b9bc788633/scratchpad/before-tree", "run", "dev", "--", "--port", "5199", "--strictPort"],
+      "port": 5199
     }
   ]
 }

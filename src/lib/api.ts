@@ -227,6 +227,7 @@ export const apiJoinRoom = (roomId: string) => apiRequest('api-rooms', 'POST', {
 export const apiDeleteAuditLogs = () => apiRequest('api-audit', 'DELETE');
 export const apiCloseRoom = (roomId: string) => apiRequest('api-rooms', 'POST', { action: 'close', roomId });
 export const apiStartRoom = (roomId: string) => apiRequest('api-rooms', 'POST', { action: 'start', roomId });
+export const apiDeleteRoom = (roomId: string) => apiRequest('api-rooms', 'DELETE', undefined, { id: roomId });
 
 // ---- AI Generation ----
 export type AIGenerateType =

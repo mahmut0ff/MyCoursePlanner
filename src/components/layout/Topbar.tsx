@@ -54,7 +54,7 @@ const TEACHER_ITEMS = [
   { icon: ClipboardList, label: 'nav.journal', path: '/journal' },
   { icon: BarChart3, label: 'nav.gradebook', path: '/gradebook' },
   { icon: Puzzle, label: 'nav.quizLibrary', path: '/quiz/library' },
-  { icon: Settings, label: 'nav.settings', path: '/teacher-settings' },
+  { icon: Settings, label: 'nav.settings', path: '/profile' },
 ];
 
 const STUDENT_ITEMS = [

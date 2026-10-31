@@ -20,6 +20,7 @@ import {
 import { Users, Search, RefreshCw, CheckCircle, XCircle, UserPlus, Phone, Filter, X, SortAsc, SortDesc, Trash2, Plus, Lightbulb, Copy, BookOpen, UsersRound, Upload, KeyRound, Eye, EyeOff, Calendar, Building2, Wallet, Sparkles, Pencil, Receipt, UserMinus, UserCheck, History, MessageCircle } from 'lucide-react';
 import type { UserProfile, Group, Branch } from '../../types';
 import toast from 'react-hot-toast';
+import { isPlausiblePhone } from '../../lib/phone';
 import { PinnedBadgesDisplay } from '../../lib/badges';
 import { planDebt, isDebtBearingPlan, isPlanOverdue } from '../../lib/payment-plans';
 import { formatMoney } from '../../lib/money';
@@ -342,6 +343,7 @@ const StudentsPage: React.FC = () => {
 
   const handleCreateStudent = async () => {
     if (!createForm.displayName.trim()) return;
+    if (!isPlausiblePhone(createForm.phone)) { toast.error(t('common.invalidPhone', 'Проверьте номер телефона: только цифры, 7–15 знаков')); return; }
     if (giveLogin) {
       if (createForm.username.trim().length < 3) { toast.error(t('org.students.usernameTooShort', 'Логин — минимум 3 символа')); return; }
       if (createForm.password.length < 6) { toast.error(t('org.students.passwordTooShort', 'Пароль — минимум 6 символов')); return; }

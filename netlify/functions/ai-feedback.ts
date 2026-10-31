@@ -6,7 +6,7 @@
 import type { Handler, HandlerEvent } from '@netlify/functions';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { adminDb } from './utils/firebase-admin';
-import { AI_MODEL } from './utils/ai';
+import { AI_MODEL, AI_UNAVAILABLE_MESSAGE } from './utils/ai';
 import { verifyAuth, isStaff, jsonResponse, unauthorized, badRequest, notFound, forbidden } from './utils/auth';
 
 const CORS_HEADERS = {
@@ -121,7 +121,7 @@ const handler: Handler = async (event: HandlerEvent) => {
     attemptId = body.attemptId;
     if (!attemptId) return badRequest('attemptId required');
 
-    if (!GEMINI_API_KEY) return jsonResponse(500, { error: 'GEMINI_API_KEY not configured' });
+    if (!GEMINI_API_KEY) return jsonResponse(500, { error: AI_UNAVAILABLE_MESSAGE });
 
     const attemptDoc = await adminDb.collection('examAttempts').doc(attemptId).get();
     if (!attemptDoc.exists) return notFound('Attempt not found');

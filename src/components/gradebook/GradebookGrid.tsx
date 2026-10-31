@@ -5,6 +5,7 @@ import { Mic } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import type { GradeEntry, GradeSchema, UserProfile } from '../../types';
 import { entryNumericValue } from '../../lib/gradePresets';
+import { isIssuedLoginEmail } from '../../lib/loginEmail';
 
 export interface ColumnDef {
   id: string; // lessonId or date string
@@ -156,7 +157,7 @@ const GradebookGrid: React.FC<GradebookGridProps> = ({ students, columns, grades
                     )}
                     <div className="min-w-0">
                       <p className="font-semibold text-slate-900 dark:text-white truncate" title={student.displayName}>{student.displayName}</p>
-                      <p className="text-[11px] font-medium text-slate-500 truncate" title={student.email}>{student.email}</p>
+                      {!isIssuedLoginEmail(student.email) && <p className="text-[11px] font-medium text-slate-500 truncate" title={student.email}>{student.email}</p>}
                     </div>
                   </div>
                 </td>

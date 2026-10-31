@@ -599,7 +599,10 @@ function RoomRow({
         </div>
         <div className="flex items-center gap-1.5 mt-0.5">
           <span className="text-xs text-slate-500 dark:text-slate-400 truncate flex-1">
-            {room.lastMessagePreview || t('chat.noMessagesShort', 'Нет сообщений')}
+            {room.lastMessagePreview
+              // «📎» (и старое «📎 Вложение») в превью — вложение без текста: подпись на языке читателя.
+              ? room.lastMessagePreview.replace(/📎( Вложение)?$/u, `📎 ${t('chat.attachment', 'Вложение')}`)
+              : t('chat.noMessagesShort', 'Нет сообщений')}
           </span>
           {unread && <span className="w-2 h-2 rounded-full bg-primary-600 shrink-0" />}
           {room.isArchived && <Archive className="w-3 h-3 text-slate-400 shrink-0" />}

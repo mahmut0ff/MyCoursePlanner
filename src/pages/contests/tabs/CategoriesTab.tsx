@@ -125,7 +125,7 @@ const CategoriesTab: React.FC<ContestTabProps> = ({ data, act, canEdit, readOnly
                 {r.prizes.map((p, j) => (
                   <fieldset key={j} disabled={disabled} className="grid grid-cols-[44px_1fr_120px_32px] gap-2 items-center">
                     <span className="text-sm font-bold text-slate-600 dark:text-slate-300 text-center">{j + 1}</span>
-                    <input value={p.title} onChange={(e) => patchPrize(i, j, { title: e.target.value })} placeholder={t('contests.cat.prizePh', 'Кубок, диплом I степени')} className={inputCls} />
+                    <input value={p.title} onChange={(e) => patchPrize(i, j, { title: e.target.value })} placeholder={t('contests.cat.prizePh', 'Кубок, диплом {{place}} степени', { place: ['I', 'II', 'III'][j] ?? String(j + 1) })} className={inputCls} />
                     <input type="number" min={0} inputMode="numeric" value={p.amount || ''} onChange={(e) => patchPrize(i, j, { amount: Number(e.target.value) || 0 })} placeholder={t('contests.cat.amount', 'Сумма')} className={inputCls} />
                     {!disabled && (
                       <button onClick={() => patch(i, { prizes: r.prizes.filter((_, k) => k !== j) })} className={ghostBtn} aria-label={t('contests.cat.removePlace', 'Убрать место')}><Trash2 className="w-3.5 h-3.5" /></button>

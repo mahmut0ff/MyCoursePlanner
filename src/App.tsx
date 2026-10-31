@@ -92,7 +92,6 @@ const OrgSettingsPage = lazyRetry(() => import('./pages/org-settings/OrgSettings
 const BranchesPage = lazyRetry(() => import('./pages/branches/BranchesPage'));
 const TeacherInvitesPage = lazyRetry(() => import('./pages/invites/TeacherInvitesPage'));
 const NotificationsPage = lazyRetry(() => import('./pages/notifications/NotificationsPage'));
-const TeacherSettingsPage = lazyRetry(() => import('./pages/teacher-settings/TeacherSettingsPage'));
 const TeacherActivityPage = lazyRetry(() => import('./pages/teacher-activity/TeacherActivityPage'));
 const StudentRatingPage = lazyRetry(() => import('./pages/rating/StudentRatingPage'));
 const NoAdmissionPage = lazyRetry(() => import('./pages/rating/NoAdmissionPage'));
@@ -308,7 +307,8 @@ const App: React.FC = () => {
             {/* ═══ Teacher (global) ═══ */}
             <Route path="invites" element={<ProtectedRoute allowedRoles={['teacher']}><TeacherInvitesPage /></ProtectedRoute>} />
             <Route path="notifications" element={<ProtectedRoute allowedRoles={['admin', 'manager', 'teacher', 'student']}><NotificationsPage /></ProtectedRoute>} />
-            <Route path="teacher-settings" element={<ProtectedRoute allowedRoles={['teacher']}><TeacherSettingsPage /></ProtectedRoute>} />
+            {/* Настройки преподавателя слиты с /profile — старые ссылки и закладки ведут туда. */}
+            <Route path="teacher-settings" element={<Navigate to="/profile" replace />} />
 
             {/* ═══ Org Admin: Organization ═══ */}
             <Route path="schedule" element={<ProtectedRoute><PermissionRoute resource="schedule"><SchedulePage /></PermissionRoute></ProtectedRoute>} />

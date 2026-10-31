@@ -20,6 +20,13 @@ export const AI_MODEL = 'gemini-3.8-flash';
  */
 export const AI_FALLBACK_MODEL = process.env.GEMINI_FALLBACK_MODEL || 'gemini-3.5-flash-lite';
 
+/**
+ * Что видит пользователь, когда на сервере нет ключа Gemini. Имя переменной
+ * окружения — внутренняя кухня; раньше оно уходило в тост, да ещё то по-русски,
+ * то по-английски в зависимости от функции.
+ */
+export const AI_UNAVAILABLE_MESSAGE = 'AI временно недоступен. Попробуйте позже или напишите в поддержку.';
+
 export function hasGeminiKey(): boolean {
   return !!GEMINI_API_KEY;
 }

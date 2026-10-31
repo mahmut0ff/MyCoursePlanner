@@ -259,7 +259,9 @@ export async function notifyOrgStudents(
  * extra recipients. Used for schedule changes / lesson reminders.
  */
 export async function notifyGroupMembers(
-  orgId: string, groupId: string, type: NotificationType, title: string, message: string, link?: string, extraRecipientIds: string[] = []
+  orgId: string, groupId: string, type: NotificationType, title: string, message: string, link?: string, extraRecipientIds: string[] = [],
+  /** Кто сделал изменение: ему уведомление о собственном действии не нужно. */
+  actorId?: string,
 ): Promise<void> {
   const groupDoc = await adminDb.collection('groups').doc(groupId).get();
   if (!groupDoc.exists) return;
@@ -269,6 +271,7 @@ export async function notifyGroupMembers(
     ...(g.teacherIds || []),
     ...extraRecipientIds.filter(Boolean),
   ]);
+  if (actorId) recipients.delete(actorId);
   const promises = [...recipients].map(uid =>
     createNotification({ recipientId: uid, type, title, message, link, organizationId: orgId })
   );

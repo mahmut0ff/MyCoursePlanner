@@ -137,7 +137,7 @@ const VoiceGradeDictator: React.FC<VoiceGradeDictatorProps> = ({ isOpen, onClose
               <Mic className="w-5 h-5 text-indigo-500" />
               {t('gradebook.ui.voice.title', 'Голосовое выставление ({{column}})', { column: column?.title })}
             </h3>
-            <p className="text-xs font-medium text-slate-500 mt-0.5">Gemini Audio AI Intelligence</p>
+            <p className="text-xs font-medium text-slate-500 mt-0.5">{t('gradebook.ui.voice.subtitle', 'Продиктуйте оценки — AI разнесёт их по ученикам')}</p>
           </div>
           <button onClick={onClose} className="p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-200/50 dark:hover:bg-slate-700 rounded-xl transition-colors">
             <X className="w-5 h-5" />

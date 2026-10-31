@@ -86,13 +86,14 @@ const BranchGate: React.FC<{ children: React.ReactNode }> = ({ children }) => {
 };
 
 import { apiGetOrganization } from '../../lib/api';
+import { setStudentTermMode } from '../../lib/studentTerm';
 import PWAInstallPrompt from '../pwa/PWAInstallPrompt';
 import NetworkStatusBar from '../network/NetworkStatusBar';
 import AdminCopilotWidget from '../ai/AdminCopilotWidget';
 
 const AppLayout: React.FC = () => {
   const { isSuperAdmin, organizationId } = useAuth();
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const [orgData, setOrgData] = useState<any>(null);
 
   useEffect(() => {
@@ -109,6 +110,14 @@ const AppLayout: React.FC = () => {
       });
     }
   }, [organizationId, isSuperAdmin]);
+
+  // «студент»/«ученик» в текстах следует типу заведения; пересобрать открытые экраны
+  // через тот же сигнал, что и смена языка.
+  const institutionType = orgData ? (orgData.institutionType || 'center') : null;
+  useEffect(() => {
+    if (setStudentTermMode(institutionType)) i18n.emit('languageChanged', i18n.language);
+    return () => { setStudentTermMode(null); };
+  }, [institutionType, i18n]);
 
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(() => {

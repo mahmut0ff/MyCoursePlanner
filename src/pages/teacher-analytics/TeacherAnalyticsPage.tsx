@@ -134,7 +134,7 @@ const TeacherAnalyticsPage: React.FC = () => {
                     <div key={e.id} className="flex items-center justify-between text-sm">
                       <span className="text-slate-600 dark:text-slate-400 truncate flex-1">{e.title}</span>
                       <div className="flex items-center gap-2 ml-2 shrink-0">
-                        <span className="text-xs text-slate-400">{examAttempts.length} {t('teacherAnalytics.attempts')}</span>
+                        <span className="text-xs text-slate-400">{t('counts.attempts', { count: examAttempts.length })}</span>
                         <span className={`font-semibold ${avg >= 70 ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400'}`}>{avg}%</span>
                       </div>
                     </div>

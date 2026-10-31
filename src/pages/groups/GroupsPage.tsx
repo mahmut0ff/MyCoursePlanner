@@ -13,7 +13,9 @@ import { CSS } from '@dnd-kit/utilities';
 import type { Group, GroupStatus, Course, UserProfile } from '../../types';
 import { useGroupOrder } from '../../lib/groupOrderPrefs';
 import BranchFilter from '../../components/ui/BranchFilter';
-import { intlLocale } from '../../lib/locale';
+import { numericDateLocale } from '../../lib/locale';
+import { hasRosterManagement } from '../../lib/rbac';
+import toast from 'react-hot-toast';
 
 // Compact status pill for the table — only rendered for non-active groups so an
 // "active" group stays visually clean.
@@ -59,9 +61,12 @@ const SortableGroupRow: React.FC<{ id: string; onClick: () => void; children: Re
 const GroupsPage: React.FC = () => {
   const { t } = useTranslation();
   const { role, profile } = useAuth();
-  const { activeBranchId } = useBranch();
-  const { canDelete } = usePermissions();
+  const { activeBranchId, branches } = useBranch();
+  const { canDelete, can } = usePermissions();
   const isAdmin = role === 'admin' || role === 'manager' || role === 'super_admin';
+  // Вступить в чужую группу — значит получить её учеников, поэтому сам вступает
+  // только ведущий контингент (сервер: teacherJoinGroup). Выйти может любой.
+  const canSelfJoin = hasRosterManagement(role, can);
   // The delete button also needs the grant: a manager whose groups:delete was revoked
   // via per-member overrides used to see it and only learn on the 403.
   const canDeleteGroups = isAdmin && canDelete('groups');
@@ -144,10 +149,12 @@ const GroupsPage: React.FC = () => {
     e.stopPropagation();
     if (!profile?.uid || togglingId) return;
     const isMember = !!group.teacherIds?.includes(profile.uid);
+    if (isMember && !window.confirm(t('org.teach.leaveConfirm', 'Выйти из группы «{{name}}»?', { name: group.name }))) return;
     setTogglingId(group.id);
     try {
       if (isMember) await orgTeacherLeaveGroup(group.id);
       else await orgTeacherJoinGroup(group.id);
+      toast.success(isMember ? t('org.teach.left', 'Вы вышли из группы') : t('org.teach.joined', 'Вы ведёте эту группу'));
       setGroups(prev => prev.map(g => g.id === group.id ? {
         ...g,
         teacherIds: isMember
@@ -159,7 +166,10 @@ const GroupsPage: React.FC = () => {
   const courseName = (id: string) => courses.find((c) => c.id === id)?.title || t('groups.list.courseNotFound', 'Курс не найден');
 
   const handleCreate = async () => {
-    if (!form.name.trim() || !form.courseId) return;
+    if (!form.name.trim() || !form.courseId) {
+      toast.error(t('common.groupNameCourseRequired', 'Укажите название группы и курс'));
+      return;
+    }
     setSaving(true); setError('');
     try {
       const course = courses.find((c) => c.id === form.courseId);
@@ -170,7 +180,7 @@ const GroupsPage: React.FC = () => {
       setGroups((p) => [created, ...p]); 
       setShowModal(false); 
       setForm({ name: '', courseId: '', chatLinkTitle: '', chatLinkUrl: '', branchId: '' });
-    } catch (e: any) { setError(e.message || t('common.error', 'Ошибка')); } finally { setSaving(false); }
+    } catch (e: any) { toast.error(e.message || t('common.error', 'Ошибка')); } finally { setSaving(false); }
   };
 
   const handleDelete = async (id: string) => {
@@ -199,7 +209,7 @@ const GroupsPage: React.FC = () => {
               <ListRestart className="w-5 h-5" />
             </button>
           )}
-          <button onClick={load} className="p-2 text-slate-400 hover:text-slate-700 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors"><RefreshCw className="w-5 h-5" /></button>
+          <button onClick={load} aria-label={t('common.refresh', 'Обновить')} title={t('common.refresh', 'Обновить')} className="p-2 text-slate-400 hover:text-slate-700 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors"><RefreshCw className="w-5 h-5" /></button>
           {canCreate && (
             <button onClick={() => setShowModal(true)} className="bg-emerald-500 hover:bg-emerald-600 text-white px-5 py-2.5 rounded-xl text-sm font-bold flex items-center gap-2 transition-all shadow-md shadow-emerald-500/20 active:scale-95">
               <Plus className="w-5 h-5" /> {t('groups.list.create', 'Создать группу')}
@@ -340,7 +350,7 @@ const GroupsPage: React.FC = () => {
                         )}
                       </td>
                       <td className="px-6 py-4 text-sm font-medium text-slate-500 dark:text-slate-400">
-                        {g.createdAt ? new Date(g.createdAt).toLocaleDateString(intlLocale()) : '—'}
+                        {g.createdAt ? new Date(g.createdAt).toLocaleDateString(numericDateLocale()) : '—'}
                       </td>
                       {canDeleteGroups ? (
                         <td className="px-6 py-4 text-right">
@@ -355,13 +365,13 @@ const GroupsPage: React.FC = () => {
                       ) : role === 'teacher' ? (
                         <td className="px-6 py-4 text-right">
                           <div className="flex items-center justify-end gap-2">
-                            <button
+                            {(isMemberOfGroup || canSelfJoin) && <button
                               onClick={(e) => toggleTeachGroup(g, e)}
                               disabled={togglingId === g.id}
                               className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors disabled:opacity-50 ${isMemberOfGroup ? 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-500/10' : 'bg-emerald-500 text-white hover:bg-emerald-600'}`}
                             >
                               {isMemberOfGroup ? <><LogOut className="w-3.5 h-3.5" />{t('org.teach.leave', 'Выйти')}</> : <><UserPlus className="w-3.5 h-3.5" />{t('org.teach.teach', 'Вести')}</>}
-                            </button>
+                            </button>}
                             {canDeleteOwn && (
                               <button
                                 onClick={(e) => { e.stopPropagation(); handleDelete(g.id); }}
@@ -414,9 +424,11 @@ const GroupsPage: React.FC = () => {
                 </select>
               </div>
               <div>
-                <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5 flex items-center gap-1">
-                  <Building2 className="w-3.5 h-3.5" /> {t('common.branch', 'Филиал')}
-                </label>
+                {branches.length > 1 && (
+                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5 flex items-center gap-1">
+                    <Building2 className="w-3.5 h-3.5" /> {t('common.branch', 'Филиал')}
+                  </label>
+                )}
                 <BranchFilter
                   value={form.branchId || null}
                   onChange={(id) => setForm(f => ({ ...f, branchId: id || '' }))}

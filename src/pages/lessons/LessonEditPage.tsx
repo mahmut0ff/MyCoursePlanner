@@ -86,6 +86,7 @@ const LessonEditPage: React.FC = () => {
   const [contentVersion, setContentVersion] = useState(0);
   const [isDirty, setIsDirty] = useState(false);
   const skipNextAutosave = useRef(true);
+  const savedSignature = useRef<string | null>(null);
 
   const editor = useEditor({
     extensions: [
@@ -182,7 +183,7 @@ const LessonEditPage: React.FC = () => {
           uploadedAt: new Date().toISOString(),
         };
         setAttachments((p) => [...p, attachment]);
-        toast.success(`${file.name} ${t('lessons.uploaded', 'загружен')}`);
+        toast.success(t('lessons.fileUploaded', 'Файл «{{name}}» загружен', { name: file.name }));
       } catch (err) {
         console.error('Upload failed:', err);
         toast.error(`${file.name}: ${t('common.error', 'Ошибка')}`);
@@ -242,6 +243,12 @@ const LessonEditPage: React.FC = () => {
     if (url && editor) editor.chain().focus().setYoutubeVideo({ src: url }).run();
   };
 
+  /** Снимок всего, что уходит в сохранение: автосохранение срабатывает только на его изменение. */
+  const formSignature = () => JSON.stringify([
+    title, description, subject, level, duration, tags, videoUrl, coverImageUrl, status,
+    attachments, homework, showHomework, selectedGroups, editor?.getJSON() ?? null,
+  ]);
+
   const handleSave = async (silent = false) => {
     if (silent && saving) return; // don't autosave over an in-flight save
     if (!title || !subject) {
@@ -294,6 +301,7 @@ const LessonEditPage: React.FC = () => {
 
 
       setLastSaved(new Date());
+      savedSignature.current = formSignature();
       setIsDirty(false);
       if (!silent) toast.success(t('common.saved', 'Успешно сохранено'));
       if (!isEdit && !silent && savedLessonId) navigate(`/lessons/${savedLessonId}/edit`, { replace: true });
@@ -312,7 +320,16 @@ const LessonEditPage: React.FC = () => {
   // Debounced autosave (existing lessons only) + unsaved-changes tracking.
   useEffect(() => {
     if (loading) return;
-    if (skipNextAutosave.current) { skipNextAutosave.current = false; return; }
+    // Сравниваем с последним сохранённым снимком, а не просто пропускаем первый
+    // прогон: при открытии гидратация и setContent редактора дают несколько
+    // прогонов подряд, и второй уходил в PUT без единой правки.
+    const sig = formSignature();
+    if (skipNextAutosave.current || savedSignature.current === null) {
+      skipNextAutosave.current = false;
+      savedSignature.current = sig;
+      return;
+    }
+    if (sig === savedSignature.current) return;
     setIsDirty(true);
     if (!isEdit || !title || !subject) return; // new lessons: tracked as dirty, saved manually
     const tid = setTimeout(() => { void handleSaveRef.current?.(true); }, 4000);
@@ -650,10 +667,10 @@ const LessonEditPage: React.FC = () => {
               <input value={videoUrl} onChange={(e) => setVideoUrl(e.target.value)} className="input text-sm" placeholder="https://youtube.com/watch?v=..." />
               {videoUrl.trim() && (
                  getVideoEmbedUrl(videoUrl) || isDirectVideoFile(videoUrl) ? (
-                   <p className="text-[10px] text-slate-400 mt-1.5">Видео будет встроено в начало урока.</p>
+                   <p className="text-[10px] text-slate-400 mt-1.5">{t('lessons.editor.videoEmbedded', 'Видео будет встроено в начало урока.')}</p>
                  ) : (
                    <p className="text-[10px] text-amber-600 dark:text-amber-500 mt-1.5">
-                     Встроить такую ссылку нельзя — в уроке она откроется как ссылка. Плеером показываются YouTube и Vimeo.
+                     {t('lessons.editor.videoNotEmbeddable', 'Встроить такую ссылку нельзя — в уроке она откроется как ссылка. Плеером показываются YouTube и Vimeo.')}
                    </p>
                  )
               )}
@@ -698,6 +715,10 @@ const LessonEditPage: React.FC = () => {
                       <Calendar className="w-3.5 h-3.5" /> {t('lessons.editor.dueDate', 'Срок сдачи')}
                     </label>
                     <input type="date" value={homework.dueDate} onChange={(e) => setHomework((h) => ({ ...h, dueDate: e.target.value }))} className="input text-sm focus:border-amber-400 focus:ring-amber-400/20" />
+                    {/* Прошедший срок не запрещаем (урок могут оформлять задним числом), но видно сразу. */}
+                    {homework.dueDate && homework.dueDate < new Date().toLocaleDateString('sv-SE') && (
+                      <p className="text-[10px] text-amber-600 dark:text-amber-500 mt-1.5">{t('lessons.editor.duePast', 'Срок уже прошёл — ученики увидят задание просроченным.')}</p>
+                    )}
                   </div>
                   <div>
                     <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5 flex items-center gap-1.5">

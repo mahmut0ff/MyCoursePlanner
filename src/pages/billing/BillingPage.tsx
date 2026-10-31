@@ -4,7 +4,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { usePlanGate } from '../../contexts/PlanContext';
 import { apiGetSubscription, apiGetBillingHistory, apiCancelSubscription, apiReactivateSubscription } from '../../lib/api';
 import toast from 'react-hot-toast';
-import { intlLocale } from '../../lib/locale';
+import { intlLocale, numericDateLocale } from '../../lib/locale';
 import { Check, Crown, BookOpen, Shield, Clock, AlertTriangle, Receipt, History, Gift, RefreshCw, Zap } from 'lucide-react';
 
 const BillingPage: React.FC = () => {
@@ -124,7 +124,7 @@ const BillingPage: React.FC = () => {
           <div>
             <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-1">{t('billing.monthly', 'В месяц')}</p>
             <p className="text-lg font-bold text-slate-900 dark:text-white">
-              {isGifted ? t('billing.free', 'Бесплатно') : `${(currentPlanData?.price || 0).toLocaleString(intlLocale())} ${cur}`}
+              {isGifted ? t('billing.free', 'Бесплатно') : `${(currentPlanData?.price || 0).toLocaleString(numericDateLocale())} ${cur}`}
             </p>
           </div>
 
@@ -136,9 +136,9 @@ const BillingPage: React.FC = () => {
             <p className={`text-lg font-bold ${daysUntilDue !== null && daysUntilDue < 0 ? 'text-red-600 dark:text-red-400' : 'text-slate-900 dark:text-white'}`}>
               {isGifted ? '∞' :
                 isTrialing && subscription?.trialEndsAt
-                  ? new Date(subscription.trialEndsAt).toLocaleDateString(intlLocale())
+                  ? new Date(subscription.trialEndsAt).toLocaleDateString(numericDateLocale())
                   : paidUntil
-                    ? new Date(paidUntil).toLocaleDateString(intlLocale())
+                    ? new Date(paidUntil).toLocaleDateString(numericDateLocale())
                     : '—'}
             </p>
           </div>
@@ -148,7 +148,7 @@ const BillingPage: React.FC = () => {
             <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-1">{t('billing.lastPayment', 'Посл. оплата')}</p>
             <p className={`text-lg font-bold ${lastPayment ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-400'}`}>
               {lastPayment
-                ? `${new Date(lastPayment.createdAt).toLocaleDateString(intlLocale())}`
+                ? `${new Date(lastPayment.createdAt).toLocaleDateString(numericDateLocale())}`
                 : '—'}
             </p>
           </div>
@@ -184,7 +184,7 @@ const BillingPage: React.FC = () => {
             </p>
           ) : (
             <p className={`text-sm font-semibold ${daysUntilDue <= 3 ? 'text-amber-600 dark:text-amber-400' : 'text-slate-900 dark:text-white'}`}>
-              {t('billing.paidUntil', 'Оплачено до')} {new Date(paidUntil).toLocaleDateString(intlLocale())} · {t('billing.daysLeft', 'осталось')} {t('billing.daysShort', '{{count}} дн.', { count: daysUntilDue })}
+              {t('billing.paidUntil', 'Оплачено до')} {new Date(paidUntil).toLocaleDateString(numericDateLocale())} · {t('billing.daysLeft', 'осталось')} {t('billing.daysShort', '{{count}} дн.', { count: daysUntilDue })}
             </p>
           )}
           {/* Progress bar (30-day window) */}
@@ -290,7 +290,7 @@ const BillingPage: React.FC = () => {
 
                 {/* Price */}
                 <div className="mb-4">
-                  <span className="text-2xl font-extrabold text-slate-900 dark:text-white">{plan.price.toLocaleString(intlLocale())}</span>
+                  <span className="text-2xl font-extrabold text-slate-900 dark:text-white">{plan.price.toLocaleString(numericDateLocale())}</span>
                   <span className="text-sm text-slate-400 ml-1">{cur}/{t('landing.perMonth', 'мес')}</span>
                   <p className="text-[10px] text-slate-400 mt-0.5">{Math.round(plan.price / 30)} {cur}/{t('billing.perDay', 'день')}</p>
                 </div>
@@ -360,9 +360,9 @@ const BillingPage: React.FC = () => {
                   <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
                     {billingHistory.payments.map((p: any) => (
                       <tr key={p.id} className="hover:bg-slate-50 dark:hover:bg-slate-700/30 transition-colors">
-                        <td className="px-5 py-3 text-slate-700 dark:text-slate-300">{new Date(p.createdAt).toLocaleDateString(intlLocale())} <span className="text-slate-400 text-[10px]">{new Date(p.createdAt).toLocaleTimeString(intlLocale())}</span></td>
+                        <td className="px-5 py-3 text-slate-700 dark:text-slate-300">{new Date(p.createdAt).toLocaleDateString(numericDateLocale())} <span className="text-slate-400 text-[10px]">{new Date(p.createdAt).toLocaleTimeString(intlLocale())}</span></td>
                         <td className="px-5 py-3 capitalize font-medium text-slate-800 dark:text-slate-200">{p.planId}</td>
-                        <td className="px-5 py-3 font-semibold text-slate-900 dark:text-white">{Number(p.amount).toLocaleString(intlLocale())} {p.currency || 'KGS'}</td>
+                        <td className="px-5 py-3 font-semibold text-slate-900 dark:text-white">{Number(p.amount).toLocaleString(numericDateLocale())} {p.currency || 'KGS'}</td>
                         <td className="px-5 py-3">
                           <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium capitalize ${statusColor(p.status)}`}>{p.status === 'completed' ? t('billing.paid', 'Оплачено') : p.status === 'pending' ? t('billing.pendingStatus', 'Ожидание') : t('billing.failedStatus', 'Ошибка')}</span>
                         </td>
@@ -393,7 +393,7 @@ const BillingPage: React.FC = () => {
                         {log.action === 'plan_changed' ? t('billing.planChanged', 'Смена тарифа') : log.action === 'plan_gifted' ? '🎁 ' + t('billing.planGifted', 'Тариф подарен') : t('billing.subCancelled', 'Отмена подписки')}
                         {log.metadata?.newPlan && <span className="font-medium capitalize ml-1">→ {log.metadata.newPlan}</span>}
                       </span>
-                      <span className="ml-auto text-[10px] text-slate-400">{log.actorName} · {new Date(log.createdAt).toLocaleDateString(intlLocale())}</span>
+                      <span className="ml-auto text-[10px] text-slate-400">{log.actorName} · {new Date(log.createdAt).toLocaleDateString(numericDateLocale())}</span>
                     </div>
                   ))}
                 </div>

@@ -12,7 +12,7 @@ const ContestMetaFields: React.FC<{ form: MetaForm; setForm: React.Dispatch<Reac
   return (
     <fieldset disabled={disabled} className="space-y-4">
       <Field label={t('contests.title', 'Название')}>
-        <input autoFocus value={form.title} onChange={set('title')} placeholder={t('contests.titlePh', 'Келечек инженерлери — 2026')} className={inputCls} />
+        <input autoFocus value={form.title} onChange={set('title')} placeholder={t('contests.titlePh', 'Инженеры будущего — 2026')} className={inputCls} />
       </Field>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <Field label={t('contests.kind', 'Тип')}>

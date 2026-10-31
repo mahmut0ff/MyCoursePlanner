@@ -34,7 +34,7 @@ vi.mock('react-i18next', () => {
   return { useTranslation: () => value };
 });
 // Даты в тестах — по-русски, как и подписи из фолбэков; настоящий i18n не поднимаем.
-vi.mock('../../../lib/locale', () => ({ intlLocale: () => 'ru-RU' }));
+vi.mock('../../../lib/locale', () => ({ intlLocale: () => 'ru-RU', numericDateLocale: () => 'ru-RU' }));
 
 vi.mock('react-hot-toast', () => ({
   default: Object.assign(vi.fn(), { success: vi.fn(), error: vi.fn() }),
@@ -389,11 +389,17 @@ describe('PayrollPage', () => {
     expect(within(dialog).getByText(/Бакыт получит 10 000 с\./)).toBeInTheDocument();
     expect(apiMock.apiPayPayroll).not.toHaveBeenCalled();
 
+    // Без способа оплаты выплата не уходит: расход в кассе был бы неполным.
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Выплатить и записать в расходы' }));
+    expect(apiMock.apiPayPayroll).not.toHaveBeenCalled();
+
+    fireEvent.change(within(dialog).getByRole('combobox'), { target: { value: 'card' } });
     fireEvent.click(within(dialog).getByRole('button', { name: 'Выплатить и записать в расходы' }));
 
     await waitFor(() => expect(apiMock.apiPayPayroll).toHaveBeenCalledWith({
       periodId: SHEET_ID,
       teacherIds: ['bakyt'],
+      paymentMethod: 'card',
     }));
     // Без teacherIds сервер платит ВСЕМ — лишнего вызова здесь быть не может.
     expect(apiMock.apiPayPayroll).toHaveBeenCalledTimes(1);

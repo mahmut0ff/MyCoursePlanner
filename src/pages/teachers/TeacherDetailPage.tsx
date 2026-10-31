@@ -26,7 +26,7 @@ import EmptyState from '../../components/ui/EmptyState';
 import { Skeleton } from '../../components/ui/Skeleton';
 import RowMenu, { type RowMenuItem } from '../../components/ui/RowMenu';
 import i18n from '../../i18n';
-import { intlLocale } from '../../lib/locale';
+import { numericDateLocale } from '../../lib/locale';
 
 // Логин без почты (`…@teacher.sabakhub.app`, `…@tg.sabakhub.app`) — не адрес для писем.
 const isSyntheticEmail = (email?: string) => /@[a-z]+\.sabakhub\.app$/i.test(email || '');
@@ -559,7 +559,7 @@ const TeacherDetailPage: React.FC = () => {
                             )}
                           </div>
                           <span className="shrink-0 text-xs text-slate-500 dark:text-slate-400 tabular-nums">
-                            {ev.createdAt ? new Date(ev.createdAt).toLocaleDateString(intlLocale()) : ''}
+                            {ev.createdAt ? new Date(ev.createdAt).toLocaleDateString(numericDateLocale()) : ''}
                           </span>
                         </li>
                       );

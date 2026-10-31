@@ -6,7 +6,7 @@ import { ArrowLeft, Mail, Calendar, Users } from 'lucide-react';
 import type { UserProfile } from '../../types';
 import { useAuth } from '../../contexts/AuthContext';
 import MemberRolesEditor from '../../components/shared/MemberRolesEditor';
-import { intlLocale } from '../../lib/locale';
+import { numericDateLocale } from '../../lib/locale';
 
 const OrgUserDetailPage: React.FC = () => {
   const { uid } = useParams<{ uid: string }>();
@@ -57,7 +57,7 @@ const OrgUserDetailPage: React.FC = () => {
           </div>
           <div className="flex items-center gap-3">
             <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${roleBadge(user.role)}`}>{t(`orgUsers.role.${user.role}`, user.role)}</span>
-            {user.createdAt && <span className="text-[10px] text-slate-400 flex items-center gap-1"><Calendar className="w-3 h-3" />{t('org.users.joined')}: {new Date(user.createdAt).toLocaleDateString(intlLocale())}</span>}
+            {user.createdAt && <span className="text-[10px] text-slate-400 flex items-center gap-1"><Calendar className="w-3 h-3" />{t('org.users.joined')}: {new Date(user.createdAt).toLocaleDateString(numericDateLocale())}</span>}
           </div>
         </div>
       </div>

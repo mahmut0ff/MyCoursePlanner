@@ -41,7 +41,6 @@ export const AILessonFactoryModal: React.FC<Props> = ({ isOpen, onClose, onSucce
   }, []);
 
   const { isListening, isSupported, toggleListening } = useSpeechToText({
-    lang: 'ru-RU',
     continuous: true,
     onTranscript: onSpeechTranscript,
   });

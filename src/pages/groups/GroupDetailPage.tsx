@@ -10,8 +10,10 @@ import { useAuth } from '../../contexts/AuthContext';
 import BranchFilter from '../../components/ui/BranchFilter';
 import GroupScheduleSection from '../../components/schedule/GroupScheduleSection';
 import { usePermissions } from '../../contexts/PermissionsContext';
-import { canEditGroupSchedule } from '../../lib/rbac';
-import { intlLocale } from '../../lib/locale';
+import { canEditGroupSchedule, hasRosterManagement } from '../../lib/rbac';
+import { isIssuedLoginEmail } from '../../lib/loginEmail';
+import AccessDenied from '../../components/ui/AccessDenied';
+import { numericDateLocale } from '../../lib/locale';
 
 // Lifecycle statuses a group can move between, with their badge/menu styling.
 const GROUP_STATUS_META: Record<GroupStatus, { label: string; icon: typeof PlayCircle; badge: string; dot: string }> = {
@@ -322,11 +324,23 @@ const GroupDetailPage: React.FC = () => {
   // A teacher who OWNS this group (and whose org enabled the policy) gets the full
   // editor — rename/move it, manage the roster, delete it — mirroring the backend.
   const isOwner = role === 'teacher' && teacherCanManage && !!myUid && group.createdBy === myUid;
+  // Чужая группа: сервер не отдаёт ни учеников, ни занятий, и карточка выглядела
+  // пустой («0 учеников, нет расписания»). Честнее сказать, что группа не своя.
+  if (role === 'teacher' && !isMyGroup && !isOwner && !hasRosterManagement(role, can)) {
+    return <AccessDenied
+      title={t('groups.detail.notYourGroupTitle', 'Это не ваша группа')}
+      description={t('groups.detail.notYourGroupDesc', 'Учеников, журнал и расписание группы видят её преподаватели. Чтобы вести группу, попросите администратора добавить вас.')}
+    />;
+  }
   const canManageGroup = isAdmin || isOwner;
   // Archiving / status changes: admins & owners always; a teacher who teaches the
   // group only when the org enabled the status policy. Mirrors the backend whitelist.
   const canChangeStatus = isAdmin || isOwner || (isMyGroup && teacherCanChangeStatus);
   const canManageCreds = isAdmin || isMyGroup;
+  // Ученику с личной почтой пароль меняет только тот, кто ведёт весь контингент:
+  // иначе смена пароля = вход вместо человека (сервер: resetStudentPassword).
+  const canResetAnyLogin = isAdmin || (hasRosterManagement(role, can) && can('students', 'write'));
+  const canResetLogin = (s: UserProfile) => canManageCreds && (canResetAnyLogin || isIssuedLoginEmail(s.email));
   // Syllabus progress is the one group field teachers may write — and only on
   // their own groups. The backend enforces the same own-groups scope, so keep the
   // toggle read-only for teachers viewing a group they don't teach.
@@ -480,7 +494,7 @@ const GroupDetailPage: React.FC = () => {
                   </div>
                   <div>
                     <span className="block text-sm font-bold text-slate-900 dark:text-white">
-                      {group.createdAt ? new Date(group.createdAt).toLocaleDateString(intlLocale()) : '—'}
+                      {group.createdAt ? new Date(group.createdAt).toLocaleDateString(numericDateLocale()) : '—'}
                     </span>
                     <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider">{t('common.created', 'Создан')}</span>
                   </div>
@@ -623,11 +637,11 @@ const GroupDetailPage: React.FC = () => {
                             )}
                             <div>
                                <p className="text-sm font-bold text-slate-900 dark:text-white group-hover:text-emerald-600 transition-colors">{s.displayName}</p>
-                               <p className="text-xs text-slate-500">{s.email}</p>
+                               {!isIssuedLoginEmail(s.email) && <p className="text-xs text-slate-500">{s.email}</p>}
                             </div>
                          </div>
                          <div className="flex items-center gap-1">
-                           {canManageCreds && (
+                           {canResetLogin(s) && (
                              <button onClick={(e) => { e.stopPropagation(); openCredentials(s); }} title={t('groups.detail.loginPassword', 'Логин и пароль')} className="opacity-0 group-hover:opacity-100 p-2 text-slate-400 hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-500/10 rounded-lg transition-all">
                                <KeyRound className="w-4 h-4" />
                              </button>
@@ -677,7 +691,7 @@ const GroupDetailPage: React.FC = () => {
                          )}
                          <div>
                             <p className="text-sm font-bold text-slate-900 dark:text-white">{teacher.displayName}</p>
-                            <p className="text-xs text-slate-500">{teacher.email}</p>
+                            {!isIssuedLoginEmail(teacher.email) && <p className="text-xs text-slate-500">{teacher.email}</p>}
                          </div>
                       </div>
                     ))
@@ -755,7 +769,7 @@ const GroupDetailPage: React.FC = () => {
                >
                  <option value="">{t('groups.detail.selectPh', '-- Выберите --')}</option>
                  {availableStudents.map(s => (
-                   <option key={s.uid} value={s.uid}>{s.displayName} ({s.email})</option>
+                   <option key={s.uid} value={s.uid}>{s.displayName}{s.email && !isIssuedLoginEmail(s.email) ? ` (${s.email})` : ''}</option>
                  ))}
                </select>
              )}
@@ -899,7 +913,7 @@ const GroupDetailPage: React.FC = () => {
                     </p>
                     <div className="flex justify-end gap-2 mt-5">
                       <button onClick={() => setCredStudent(null)} className="px-4 py-2 text-xs font-bold text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-xl transition-colors">{t('common.cancel', 'Отмена')}</button>
-                      <button onClick={handleIssuePassword} disabled={savingCred || credPw.length < 6}
+                      <button onClick={handleIssuePassword} disabled={savingCred}
                         className="flex items-center gap-1.5 bg-blue-500 hover:bg-blue-600 text-white px-5 py-2 rounded-xl text-xs font-bold disabled:opacity-50 transition-colors shadow-md shadow-blue-500/20">
                         {savingCred ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <KeyRound className="w-3.5 h-3.5" />}
                         {t('groups.detail.setPassword', 'Установить пароль')}

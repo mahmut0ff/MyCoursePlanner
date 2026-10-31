@@ -320,7 +320,7 @@ const TeachersPage: React.FC = () => {
         <div>
           <h1 className="text-3xl font-extrabold text-slate-900 dark:text-white mb-2">{t('nav.teachers')}</h1>
           <p className="text-slate-500 dark:text-slate-400 text-sm">
-            {`${teachers.length} ${t('org.teachers.total')}`}
+            {t('common.teachersCount', '{{count}} преподавателей', { count: teachers.length })}
           </p>
         </div>
         <div className="flex items-center gap-3 w-full sm:w-auto">

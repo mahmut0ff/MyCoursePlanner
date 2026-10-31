@@ -215,7 +215,9 @@ const BillMonthModal: React.FC<Props> = ({ period, periodLabel, candidates, onCl
                         type="number"
                         min="0"
                         value={r.amountText}
-                        onChange={e => patch(r.key, { amountText: e.target.value })}
+                        // Минус не принимаем: отрицательная строка молча выпадала из «Выбрано»
+                        // и показывала «Скидку» больше цены курса.
+                        onChange={e => patch(r.key, { amountText: e.target.value.replace('-', '') })}
                         placeholder="0"
                         className="w-24 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-1.5 text-sm text-right font-medium dark:text-white"
                       />

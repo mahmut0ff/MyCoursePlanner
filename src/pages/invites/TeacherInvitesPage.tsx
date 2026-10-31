@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { intlLocale } from '../../lib/locale';
+import { numericDateLocale } from '../../lib/locale';
 import { useAuth } from '../../contexts/AuthContext';
 import { apiGetMyInvites, apiAcceptInvite, apiDeclineInvite } from '../../lib/api';
 import { CheckCircle, XCircle, Building2, RefreshCw, Inbox, Loader2 } from 'lucide-react';
@@ -97,7 +97,7 @@ const TeacherInvitesPage: React.FC = () => {
                   </p>
                   <div className="flex items-center gap-2 mt-1">
                     <span className="text-[10px] px-2 py-0.5 bg-violet-500/10 text-violet-600 dark:text-violet-400 rounded-full font-medium capitalize">{invite.role}</span>
-                    <span className="text-[10px] text-slate-400">{new Date(invite.createdAt).toLocaleDateString(intlLocale())}</span>
+                    <span className="text-[10px] text-slate-400">{new Date(invite.createdAt).toLocaleDateString(numericDateLocale())}</span>
                   </div>
                 </div>
                 <div className="flex items-center gap-2 shrink-0">

@@ -11,7 +11,7 @@ import type { Handler, HandlerEvent } from '@netlify/functions';
 import { adminDb, getDocsByIds } from './utils/firebase-admin';
 import { verifyAuth, can, ok, unauthorized, forbidden, badRequest, jsonResponse, hasRole, memberHoldsRole, resolveBranchFilter, memberInBranchScope, recordInBranchScope } from './utils/auth';
 import { rateLimiters, getRateLimitKey } from './utils/rate-limiter';
-import { getModel, parseJsonLoose, aiAllowed, hasGeminiKey, recordAiUsage } from './utils/ai';
+import { getModel, parseJsonLoose, aiAllowed, hasGeminiKey, recordAiUsage, AI_UNAVAILABLE_MESSAGE } from './utils/ai';
 import { computeStudentRisk } from './utils/risk';
 import { isDebtBearingPlan, planDebt, isPlanOverdue, orgDayKey } from './utils/payment-plans';
 import { attendanceRate, wasAbsent } from './utils/attendance';
@@ -262,7 +262,7 @@ export const handler: Handler = async (event: HandlerEvent) => {
   if (!hasRole(user, 'admin', 'manager', 'super_admin')) return forbidden('Only owners and managers can use AI insights');
   if (!aiAllowed(user)) return forbidden('AI is not available on your plan');
   if (!user.organizationId) return badRequest('No organization context');
-  if (!hasGeminiKey()) return jsonResponse(500, { error: 'GEMINI_API_KEY is not configured on the server.' });
+  if (!hasGeminiKey()) return jsonResponse(500, { error: AI_UNAVAILABLE_MESSAGE });
 
   if (rateLimiters.ai.isLimited(getRateLimitKey(event, user.uid))) {
     return jsonResponse(429, { error: 'Слишком много запросов. Подождите немного.' });

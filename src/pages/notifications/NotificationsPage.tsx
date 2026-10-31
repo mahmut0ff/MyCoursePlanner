@@ -8,6 +8,7 @@ import { Bell, Check, ExternalLink, ShieldCheck, XCircle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
 import NotificationPreferencesCard from '../../components/notifications/NotificationPreferencesCard';
+import { numericDateLocale } from '../../lib/locale';
 
 interface AppNotification {
   id: string;
@@ -62,13 +63,13 @@ const NotificationsPage: React.FC = () => {
     e.stopPropagation();
     try {
       await apiTransferResolve({ notificationId: n.id, decision });
-      toast.success(decision === 'approve' ? 'Запрос одобрен' : 'Запрос отклонен');
+      toast.success(decision === 'approve' ? t('notifications.transfer.approvedToast', 'Запрос одобрен') : t('notifications.transfer.rejectedToast', 'Запрос отклонён'));
       // Оптимистичное обновление
       setNotifications(prev => prev.map(item => 
          item.id === n.id ? { ...item, metadata: { ...item.metadata, status: decision === 'approve' ? 'approved' : 'rejected' } } : item
       ));
     } catch (err: any) {
-      toast.error(err.message || 'Ошибка обработки запроса');
+      toast.error(err.message || t('notifications.transfer.failed', 'Не удалось обработать запрос'));
     }
   };
 
@@ -85,7 +86,7 @@ const NotificationsPage: React.FC = () => {
         <div>
           <h1 className="text-xl font-bold text-slate-900 dark:text-white">{t('notifications.title')}</h1>
           <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">
-            {unreadCount > 0 ? `${unreadCount} ${t('notifications.unread')}` : t('notifications.subtitle')}
+            {unreadCount > 0 ? t('notifications.unreadCount', '{{count}} непрочитанных', { count: unreadCount }) : t('notifications.subtitle')}
           </p>
         </div>
         {unreadCount > 0 && (
@@ -132,23 +133,23 @@ const NotificationsPage: React.FC = () => {
                         onClick={(e) => handleResolve(e, n, 'approve')}
                         className="px-3 py-1.5 text-xs font-semibold bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg transition-colors flex items-center gap-1.5"
                       >
-                        <ShieldCheck className="w-3.5 h-3.5" /> Одобрить
+                        <ShieldCheck className="w-3.5 h-3.5" /> {t('notifications.transfer.approve', 'Одобрить')}
                       </button>
                       <button 
                         onClick={(e) => handleResolve(e, n, 'reject')}
                         className="px-3 py-1.5 text-xs font-semibold bg-slate-100 hover:bg-red-50 text-slate-600 hover:text-red-500 rounded-lg transition-colors flex items-center gap-1.5"
                       >
-                        <XCircle className="w-3.5 h-3.5" /> Отклонить
+                        <XCircle className="w-3.5 h-3.5" /> {t('notifications.transfer.reject', 'Отклонить')}
                       </button>
                     </div>
                   )}
                   {n.type === 'transfer_request' && n.metadata?.status !== 'pending' && (
                     <div className="mt-2 inline-block px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider rounded-md bg-slate-100 dark:bg-slate-700 text-slate-500">
-                      {n.metadata?.status === 'approved' ? 'Одобрено' : 'Отклонено'}
+                      {n.metadata?.status === 'approved' ? t('notifications.transfer.approved', 'Одобрено') : t('notifications.transfer.rejected', 'Отклонено')}
                     </div>
                   )}
 
-                  <p className="text-[10px] text-slate-400 mt-2">{new Date(n.createdAt).toLocaleString()}</p>
+                  <p className="text-[10px] text-slate-400 mt-2">{new Date(n.createdAt).toLocaleString(numericDateLocale(), { dateStyle: 'short', timeStyle: 'short' })}</p>
                 </div>
               </div>
             </div>

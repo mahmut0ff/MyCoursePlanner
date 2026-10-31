@@ -8,7 +8,7 @@ import {
   apiStartQuizSession, apiNextQuestion, apiPauseQuizSession,
   apiResumeQuizSession, apiEndQuizSession, apiKickParticipant,
   apiLockQuizSession, apiUnlockQuizSession, apiGetQuizSession,
-  apiRestartQuizSession, apiGetGamification
+  apiRestartQuizSession, apiGetGamification, apiCancelQuizSession
 } from '../../lib/api';
 import type { QuizSession, SessionParticipant, SessionAnswer } from '../../types';
 import {
@@ -257,6 +257,11 @@ const LiveSessionDashboard: React.FC = () => {
     doAction(() => apiEndQuizSession(sessionId!), 'end');
   };
 
+  const handleCancelLobby = () => {
+    if (!confirm(t('quiz.cancelLobbyConfirm', 'Отменить игру? Ученики в лобби увидят, что сессия закрыта.'))) return;
+    doAction(async () => { await apiCancelQuizSession(sessionId!); navigate('/quiz/library'); }, 'cancel');
+  };
+
   const handleSkipScoreboard = () => {
     if (!sessionId) return;
     doAction(() => apiNextQuestion(sessionId), 'next');
@@ -393,7 +398,13 @@ const LiveSessionDashboard: React.FC = () => {
               </div>
               
               <div className="flex items-center gap-3">
+                {/* Из лобби раньше нельзя было уйти: только «Начать игру», а сессия висела в списке. */}
+                <button onClick={handleCancelLobby} disabled={!!actionLoading}
+                  className="px-5 py-3 rounded-2xl font-bold text-slate-700 dark:text-slate-200 bg-white/90 dark:bg-slate-800/90 backdrop-blur-md border border-slate-200/50 dark:border-slate-700/50 hover:bg-slate-50 dark:hover:bg-slate-700 transition-all shadow-sm disabled:opacity-50">
+                  {t('quiz.cancelLobby', 'Отменить игру')}
+                </button>
                 <button onClick={() => doAction(() => (session as any).locked ? apiUnlockQuizSession(sessionId!) : apiLockQuizSession(sessionId!), 'lock')}
+                  aria-label={(session as any).locked ? t('quiz.unlockLobby', 'Открыть вход') : t('quiz.lockLobby', 'Закрыть вход')}
                   className="flex items-center justify-center p-3 rounded-2xl text-slate-600 dark:text-slate-300 bg-white/90 dark:bg-slate-800/90 backdrop-blur-md border border-slate-200/50 dark:border-slate-700/50 hover:bg-slate-50 transition-all shadow-sm w-12 h-12">
                   {(session as any).locked ? <Unlock className="w-5 h-5" /> : <Lock className="w-5 h-5" />}
                 </button>

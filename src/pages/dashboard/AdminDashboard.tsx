@@ -18,12 +18,12 @@ import {
   apiGetBranchAnalytics, apiGetOrganization, apiGetAIManagerSettings, orgGetDashboardStats,
   apiGetDashboardOverview, apiGetFinanceMetrics, orgGetTimetable, orgGetSchedule, apiAIInsightsAsk,
 } from '../../lib/api';
-import { intlLocale } from '../../lib/locale';
+import { intlLocale, numericDateLocale } from '../../lib/locale';
 import { formatMoney } from '../../lib/money';
 
 type Period = 'current_month' | 'last_month' | 'quarter' | 'year';
 
-const fmt = (n?: number | null) => Number(n || 0).toLocaleString(intlLocale());
+const fmt = (n?: number | null) => Number(n || 0).toLocaleString(numericDateLocale());
 
 /** App weekday convention: 0 = Mon … 6 = Sun (JS getDay is 0 = Sun). */
 const appDayOfWeek = (d = new Date()) => (d.getDay() + 6) % 7;
@@ -714,7 +714,7 @@ const AdminDashboard: React.FC = () => {
                 ))}
                 {branchData.unassigned && (branchData.unassigned.students > 0 || branchData.unassigned.teachers > 0) && (
                   <tr className="bg-slate-50/80 dark:bg-slate-700/10">
-                    <td className="px-4 py-2.5"><span className="text-sm font-medium text-slate-500 dark:text-slate-400">{branchData.unassigned.branchName}</span></td>
+                    <td className="px-4 py-2.5"><span className="text-sm font-medium text-slate-500 dark:text-slate-400">{t('dashboard.branchUnassigned', 'Без филиала')}</span></td>
                     <td className="px-4 py-2.5 text-[11px] text-slate-400">—</td>
                     <td className="px-4 py-2.5 text-center"><span className="text-sm font-semibold text-slate-500">{branchData.unassigned.students}</span></td>
                     <td className="px-4 py-2.5 text-center"><span className="text-sm font-semibold text-slate-500">{branchData.unassigned.teachers}</span></td>

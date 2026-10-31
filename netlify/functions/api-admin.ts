@@ -74,9 +74,9 @@ const handler: Handler = async (event: HandlerEvent) => {
   if (!user) return unauthorized(event);
   if (!isSuperAdmin(user)) return forbidden();
 
-  // Rate limit: 20 admin requests per minute
+  // Rate limit: 120 admin requests per minute
   const rlKey = getRateLimitKey(event, user.uid);
-  if (rateLimiters.auth.isLimited(rlKey)) {
+  if (rateLimiters.admin.isLimited(rlKey)) {
     return jsonResponse(429, { error: 'Too many requests. Please wait a moment.' });
   }
 
@@ -230,6 +230,9 @@ const handler: Handler = async (event: HandlerEvent) => {
         studentsCount: 0,
         teachersCount: 0,
         examsCount: 0,
+        // Шкала по умолчанию для курсов без своей схемы. Ставится только новым
+        // организациям: у старых поля нет, и их курсы остаются на прежнем дефолте.
+        defaultGradePresetId: 'five_point',
         createdAt: now,
         updatedAt: now,
       };

@@ -348,7 +348,9 @@ export function useChatActions() {
       const roomRef = doc(db, 'chatRooms', roomId);
       const preview = text
         ? (text.length > 60 ? text.slice(0, 60) + '…' : text)
-        : (attachments?.length ? '📎 Вложение' : '');
+        // Только значок: превью хранится в базе и видно всем участникам, а слово
+        // подставляет ChatPage на языке читателя (attachmentPreview).
+        : (attachments?.length ? '📎' : '');
       await updateDoc(roomRef, {
         lastMessageAt: serverTimestamp(),
         lastMessagePreview: `${senderName}: ${preview}`,

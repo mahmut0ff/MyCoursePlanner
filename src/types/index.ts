@@ -145,6 +145,8 @@ export interface Organization {
   planId: PlanId;
   status: OrgStatus;
   institutionType?: InstitutionType;
+  /** Шкала курсов без своей схемы (id из lib/gradePresets). Есть только у организаций, созданных после 31.10.2026. */
+  defaultGradePresetId?: string;
   studentsCount: number;
   teachersCount: number;
   examsCount: number;

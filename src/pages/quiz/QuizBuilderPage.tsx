@@ -16,6 +16,7 @@ import { AIGeneratorModal } from '../../components/ui/AIGeneratorModal';
 import FileViewerModal from '../../components/ui/FileViewerModal';
 import { uploadFile } from '../../services/storage.service';
 import i18n from '../../i18n';
+import { firstQuizIssue } from '../../lib/examValidation';
 
 const QUESTION_TYPES: { type: QuizQuestionType; label: string; icon: string }[] = [
   { type: 'single_choice', label: 'Один ответ', icon: '🔘' },
@@ -159,6 +160,14 @@ const QuizBuilderPage: React.FC = () => {
 
   const handleSave = async () => {
     if (!quiz.title?.trim()) { toast.error(t('quiz.titleRequired')); return; }
+    // Черновик сохраняем как есть, но предупреждаем: запустить игру с таким
+    // вопросом сервер не даст. Опубликованную викторину — только целой.
+    const issue = firstQuizIssue(questions);
+    if (issue) {
+      setActiveQuestion(issue.n - 1);
+      if (quiz.status === 'published') { toast.error(t(`exams.validation.${issue.issue}`, { n: issue.n })); return; }
+      toast(t(`exams.validation.${issue.issue}`, { n: issue.n }), { icon: '⚠️' });
+    }
     setSaving(true);
     try {
       let quizId = id;

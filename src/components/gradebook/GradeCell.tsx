@@ -4,6 +4,7 @@ import type { GradeEntry, GradeSchema, GradeStatus } from '../../types';
 import { Loader2, Check, Eraser } from 'lucide-react';
 import { schemaChoices, choiceNumericValue } from '../../lib/gradePresets';
 import { useTranslation } from 'react-i18next';
+import toast from 'react-hot-toast';
 
 interface GradeCellProps {
   studentId: string;
@@ -98,6 +99,12 @@ const GradeCell: React.FC<GradeCellProps> = ({ studentId, itemId, value, schema,
       const parsed = parseFloat(valToCommit.replace(',', '.'));
       if (!isNaN(parsed)) {
         numVal = Math.min(Math.max(parsed, schema.scale.min), schema.scale.max);
+        // Раньше «150» при шкале до 100 молча становилось 100 — теперь видно, что поправили.
+        if (numVal !== parsed) {
+          toast(t('gradebook.clamped', 'Оценка вне шкалы {{min}}–{{max}}: поставлено {{value}}', {
+            min: schema.scale.min, max: schema.scale.max, value: numVal,
+          }), { icon: '⚠️' });
+        }
       }
     } else if (schema.gradingType === 'letter') {
       dispVal = valToCommit.toUpperCase();

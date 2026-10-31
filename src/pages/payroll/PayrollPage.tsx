@@ -35,6 +35,7 @@ import { formatDayKey } from '../../lib/money';
 import { orgDayKey } from '../../lib/payment-plans';
 import type { PayrollLine, PayrollPayout, PayrollPeriod, PayrollPeriodState } from '../../types';
 import DefaultRateCard from './components/DefaultRateCard';
+import { PAYMENT_METHODS } from '../finances/expenseCategories';
 import DiagnosticsPanel from './components/DiagnosticsPanel';
 import type { PayrollDiagnostic } from './components/DiagnosticsPanel';
 import LineAmountModal from './components/LineAmountModal';
@@ -137,6 +138,8 @@ const PayrollPage: React.FC = () => {
   const [confirmPay, setConfirmPay] = useState(false);
   /** Кому выплачиваем поштучно; null — диалог закрыт. */
   const [payFor, setPayFor] = useState<OverviewTeacher | null>(null);
+  /** Способ оплаты выплаты: без него расход в кассе неполный, поэтому выбор обязателен. */
+  const [payMethod, setPayMethod] = useState('');
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -420,9 +423,10 @@ const PayrollPage: React.FC = () => {
       await load();
       return;
     }
+    if (!payMethod) { toast.error(t('payroll.payMethodRequired', 'Выберите способ оплаты')); return; }
     setBusy(true);
     try {
-      const res: any = await apiPayPayroll({ periodId: sheet.id });
+      const res: any = await apiPayPayroll({ periodId: sheet.id, paymentMethod: payMethod });
       // 207: часть строк не записалась. Сервер намеренно оставляет период
       // неоплаченным, чтобы повтор дописал остаток — говорим это вслух.
       if (Array.isArray(res?.failed) && res.failed.length) {
@@ -453,9 +457,10 @@ const PayrollPage: React.FC = () => {
       return;
     }
     const name = payFor.teacherName || payFor.teacherId;
+    if (!payMethod) { toast.error(t('payroll.payMethodRequired', 'Выберите способ оплаты')); return; }
     setBusy(true);
     try {
-      const res: any = await apiPayPayroll({ periodId: sheet.id, teacherIds: [payFor.teacherId] });
+      const res: any = await apiPayPayroll({ periodId: sheet.id, teacherIds: [payFor.teacherId], paymentMethod: payMethod });
       if (Array.isArray(res?.failed) && res.failed.length) {
         toast.error(t('payroll.payPartial', 'Записано строк: {{ok}}, не прошло: {{bad}}. Повторите выплату — уже выплаченное не задвоится.', {
           ok: res.written ?? 0,
@@ -564,6 +569,18 @@ const PayrollPage: React.FC = () => {
     </div>
   );
 
+  const payMethodField = (
+    <label className="block mt-3">
+      <span className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1">{t('payroll.payMethod', 'Способ оплаты')}</span>
+      <select value={payMethod} onChange={e => setPayMethod(e.target.value)} required className="input text-sm">
+        <option value="">{t('payroll.payMethodPick', '— выберите —')}</option>
+        {PAYMENT_METHODS.map(m => (
+          <option key={m.id} value={m.id}>{m.icon} {t(m.labelKey, m.fallback)}</option>
+        ))}
+      </select>
+    </label>
+  );
+
   return (
     <div className="space-y-5">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -668,7 +685,7 @@ const PayrollPage: React.FC = () => {
             icon={Banknote}
             label={t('payroll.payAll', 'Выплатить всем')}
             primary={state === 'approved'}
-            onClick={() => setConfirmPay(true)}
+            onClick={() => { setPayMethod(''); setConfirmPay(true); }}
           />
         </div>
 
@@ -770,7 +787,7 @@ const PayrollPage: React.FC = () => {
                       onAddManual={source => setManualFor({ teacher, source })}
                       onEditAmount={line => setEditingLine(line)}
                       onDeleteLine={line => setPendingLineDelete(line)}
-                      onPayTeacher={() => setPayFor(teacher)}
+                      onPayTeacher={() => { setPayMethod(''); setPayFor(teacher); }}
                     />
                   ))}
                 </div>
@@ -908,6 +925,7 @@ const PayrollPage: React.FC = () => {
                 )}
               </p>
             )}
+            {payMethodField}
           </div>
         )}
         confirmLabel={t('payroll.payConfirmLabel', 'Выплатить и записать в расходы')}
@@ -923,13 +941,20 @@ const PayrollPage: React.FC = () => {
         danger
         busy={busy}
         title={t('payroll.payOne', 'Выплатить')}
-        message={t(
-          'payroll.payOneConfirm',
-          '{{name}} получит {{amount}}. Деньги уйдут расходом в «Финансы» — отменить отсюда нельзя.',
-          {
-            name: payFor?.teacherName || payFor?.teacherId || '',
-            amount: formatMinor(payFor?.remainingMinor ?? 0),
-          },
+        message={(
+          <div>
+            <p>
+              {t(
+                'payroll.payOneConfirm',
+                '{{name}} получит {{amount}}. Деньги уйдут расходом в «Финансы» — отменить отсюда нельзя.',
+                {
+                  name: payFor?.teacherName || payFor?.teacherId || '',
+                  amount: formatMinor(payFor?.remainingMinor ?? 0),
+                },
+              )}
+            </p>
+            {payMethodField}
+          </div>
         )}
         confirmLabel={t('payroll.payConfirmLabel', 'Выплатить и записать в расходы')}
         onConfirm={runPayTeacher}

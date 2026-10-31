@@ -122,6 +122,9 @@ const ExamTakePage: React.FC = () => {
         const remaining = Math.max(0, e.durationMinutes * 60 - elapsedSec);
         setTimeLeft(remaining);
       }
+    } catch {
+      // Экзамен комнаты удалён (404) или комната недоступна — экран «не найдено», а не необработанная ошибка.
+      setErrorStr('rooms.errors.notFound');
     } finally {
       setLoading(false);
     }

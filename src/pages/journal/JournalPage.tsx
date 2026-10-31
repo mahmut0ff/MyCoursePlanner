@@ -31,6 +31,8 @@ import { getInstitution } from '../../lib/terminology';
 import { makeDefaultSchema, describeSchema, entryNumericValue } from '../../lib/gradePresets';
 import { wasPresent } from '../../lib/attendance';
 import { intlLocale } from '../../lib/locale';
+import { isIssuedLoginEmail } from '../../lib/loginEmail';
+import { competitionRanks } from '../../lib/student-rating';
 
 
 function getLocalISODate(d: Date) {
@@ -83,10 +85,11 @@ const JournalPage: React.FC = () => {
   const { role, profile } = useAuth();
   const { activeBranchId } = useBranch();
   const { canWrite } = usePermissions();
-  const { institutionType } = useOrg();
+  const { institutionType, orgData } = useOrg();
   // Same fallback the gradebook uses, so a course with no saved schema shows one
   // scale in both places instead of a hard-coded 0–100 here.
-  const defaultPresetId = getInstitution(institutionType).defaultGradePresetId;
+  // Новые организации получают свою шкалу при создании (5 баллов), старые — по типу заведения.
+  const defaultPresetId = orgData?.defaultGradePresetId || getInstitution(institutionType).defaultGradePresetId;
   // Read-only is driven by the resolved gradebook grant, not the base role — a manager
   // (or custom role) with gradebook:write can mark attendance/grades, matching the backend.
   const isReadOnly = !canWrite('gradebook');
@@ -321,7 +324,10 @@ const JournalPage: React.FC = () => {
     if (!selectedGroupId) return [];
     const group = allGroups.find(g => g.id === selectedGroupId);
     if (!group) return [];
-    return allStudents.filter(s => group.studentIds.includes(s.uid));
+    // По алфавиту: на перекличке ученика ищут глазами по имени, а не по дате записи.
+    return allStudents
+      .filter(s => group.studentIds.includes(s.uid))
+      .sort((a, b) => (a.displayName || '').localeCompare(b.displayName || '', intlLocale()));
   }, [selectedGroupId, allGroups, allStudents]);
 
   // Преподаватели выбранной группы (uid → профиль) для селектора «Кто вёл занятие?».
@@ -856,8 +862,10 @@ const JournalPage: React.FC = () => {
         ) : (
           <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl overflow-hidden shadow-sm">
             <div className="overflow-x-auto">
-              <table className="w-full text-left text-sm min-w-[960px]">
-                <thead className="bg-slate-50 dark:bg-slate-900/50 border-b border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400">
+              {/* На телефоне та же таблица раскладывается в карточку на ученика:
+                  имя, крупные кнопки посещаемости, оценка, ДЗ, участие, заметка. */}
+              <table className="block md:table w-full text-left text-sm md:min-w-[960px]">
+                <thead className="hidden md:table-header-group bg-slate-50 dark:bg-slate-900/50 border-b border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400">
                   <tr>
                     <th className="px-5 py-4 font-medium w-[250px]">{t('journal.ui.colStudent', 'Студент')}</th>
                     <th className="px-5 py-4 font-medium text-center w-28 bg-primary-50/50 dark:bg-primary-900/10 border-r border-l border-slate-200 dark:border-slate-700">
@@ -889,15 +897,15 @@ const JournalPage: React.FC = () => {
                     <th className="px-5 py-4 font-medium min-w-[200px]">{t('journal.ui.colNotes', 'Заметки')}</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-100 dark:divide-slate-700/50">
+                <tbody className="block md:table-row-group divide-y divide-slate-100 dark:divide-slate-700/50">
                   {groupStudents.map((student) => {
                     const entry = entries[student.uid];
                     const isMarked = !!entry;
                     
                     return (
-                      <tr key={student.uid} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/50 transition-colors">
+                      <tr key={student.uid} className="flex flex-col gap-3 p-4 md:p-0 md:table-row hover:bg-slate-50/50 dark:hover:bg-slate-800/50 transition-colors">
                         {/* Student Info */}
-                        <td className="px-5 py-3">
+                        <td className="order-1 md:order-none md:table-cell md:px-5 md:py-3">
                           <div className="flex items-center gap-3">
                             {student.avatarUrl ? (
                               <img src={student.avatarUrl} alt="" className="w-9 h-9 rounded-full object-cover shrink-0 border border-slate-200 dark:border-slate-700" />
@@ -908,13 +916,15 @@ const JournalPage: React.FC = () => {
                             )}
                             <div className="overflow-hidden">
                               <p className="font-bold text-slate-900 dark:text-white truncate" title={student.displayName}>{student.displayName}</p>
-                              <p className="text-[11px] text-slate-500 truncate" title={student.email}>{student.email}</p>
+                              {!isIssuedLoginEmail(student.email) && <p className="hidden md:block text-[11px] text-slate-500 truncate" title={student.email}>{student.email}</p>}
                             </div>
                           </div>
                         </td>
 
                         {/* Grade */}
-                        <td className="p-0 border-r border-l border-slate-200 dark:border-slate-700 bg-primary-50/30 dark:bg-primary-900/10 min-w-[112px] relative z-10">
+                        <td className="order-3 md:order-none flex items-center gap-3 md:table-cell p-0 md:border-r md:border-l border-slate-200 dark:border-slate-700 md:bg-primary-50/30 md:dark:bg-primary-900/10 md:min-w-[112px] relative z-10">
+                           <span className="md:hidden w-24 shrink-0 text-xs text-slate-500">{t('journal.ui.colGrade', 'Оценка')}</span>
+                           <div className="flex-1 md:contents rounded-xl overflow-hidden border md:border-0 border-slate-200 dark:border-slate-700">
                            {canEdit ? (
                              <GradeCell
                                 studentId={student.uid}
@@ -929,12 +939,14 @@ const JournalPage: React.FC = () => {
                                 {grades[`${student.uid}_${selectedLessonId || date}`]?.displayValue || grades[`${student.uid}_${selectedLessonId || date}`]?.value || <span className="opacity-50">—</span>}
                              </div>
                            )}
+                           </div>
                         </td>
 
                         {/* ДЗ: сдача, отметка и оценка — одной компактной строкой.
                             Колонка намеренно тише «Оценки»: ни подложки, ни рамок,
                             иконки мельче, оценка — узкое поле, а не полноценная ячейка. */}
-                        <td className="px-2 py-3">
+                        <td className="order-4 md:order-none flex items-center gap-3 md:table-cell md:px-2 md:py-3">
+                          <span className="md:hidden w-24 shrink-0 text-xs text-slate-500">{t('teacherActivity.col.hw', 'ДЗ')}</span>
                           {(() => {
                             const hwKey = `${student.uid}_${selectedLessonId || date}`;
                             const submission = submissions[student.uid];
@@ -942,7 +954,7 @@ const JournalPage: React.FC = () => {
                             const attachments = submission?.attachments?.length || 0;
                             const hwGrade = homeworkGrades[hwKey];
                             return (
-                              <div className="flex items-center justify-center gap-1.5">
+                              <div className="flex items-center md:justify-center gap-1.5">
                                 {/* Что прислал ученик — только иконка: подпись съедала полколонки */}
                                 {submission ? (
                                   <Link
@@ -1010,8 +1022,8 @@ const JournalPage: React.FC = () => {
                         </td>
 
                         {/* Attendance */}
-                        <td className="px-5 py-3 text-center">
-                          <div className={`inline-flex gap-1 rounded-xl p-1 border ${!canEdit ? 'bg-transparent border-transparent' : 'bg-slate-100 dark:bg-slate-900 border-slate-200 dark:border-slate-700'}`}>
+                        <td className="order-2 md:order-none md:table-cell md:px-5 md:py-3 text-center">
+                          <div className={`grid grid-cols-4 w-full md:w-auto md:inline-flex gap-1 rounded-xl p-1 border ${!canEdit ? 'bg-transparent border-transparent' : 'bg-slate-100 dark:bg-slate-900 border-slate-200 dark:border-slate-700'}`}>
                             {(['present', 'absent', 'late', 'excused'] as AttendanceStatus[]).map(status => {
                               const isActive = isMarked && entry.attendance === status;
                               if (!canEdit && !isActive) return null; // Show only marked in read-only
@@ -1024,7 +1036,7 @@ const JournalPage: React.FC = () => {
                                 <button
                                   key={status}
                                   onClick={() => handleEntryChange(student.uid, 'attendance', status)}
-                                  className={`p-2 rounded-lg transition-all ${isActive ? 'bg-white dark:bg-slate-800 shadow-sm' : 'opacity-40 hover:opacity-100 hover:bg-slate-200/50 dark:hover:bg-slate-800'}`}
+                                  className={`flex items-center justify-center min-h-11 md:min-h-0 p-2 rounded-lg transition-all ${isActive ? 'bg-white dark:bg-slate-800 shadow-sm' : 'opacity-40 hover:opacity-100 hover:bg-slate-200/50 dark:hover:bg-slate-800'}`}
                                   title={t(`journal.attendance.${status}`, ATTENDANCE_LABELS[status])}
                                   aria-label={t(`journal.attendance.${status}`, ATTENDANCE_LABELS[status])}
                                 >
@@ -1036,8 +1048,8 @@ const JournalPage: React.FC = () => {
                         </td>
 
                         {/* Participation */}
-                        <td className="px-5 py-3 text-center">
-                          <div className={`inline-flex gap-1 rounded-xl p-1 border text-xs font-medium ${!canEdit ? 'bg-transparent border-transparent' : 'bg-slate-100 dark:bg-slate-900 border-slate-200 dark:border-slate-700'}`}>
+                        <td className="order-5 md:order-none md:table-cell md:px-5 md:py-3 text-center">
+                          <div className={`flex md:inline-flex gap-1 rounded-xl p-1 border text-xs font-medium ${!canEdit ? 'bg-transparent border-transparent' : 'bg-slate-100 dark:bg-slate-900 border-slate-200 dark:border-slate-700'}`}>
                             {(['low', 'medium', 'high'] as ParticipationLevel[]).map(level => {
                                const isActive = isMarked && entry.participation === level;
                                if (!canEdit && !isActive) return null;
@@ -1059,7 +1071,7 @@ const JournalPage: React.FC = () => {
                                 <button
                                   key={level}
                                   onClick={() => handleEntryChange(student.uid, 'participation', level)}
-                                  className={`px-4 py-2 rounded-lg transition-all ${isActive ? activeClass : 'text-slate-500 hover:text-slate-700 hover:bg-slate-200/50 dark:hover:bg-slate-800 dark:hover:text-slate-300'}`}
+                                  className={`flex-1 md:flex-none min-h-11 md:min-h-0 px-4 py-2 rounded-lg transition-all ${isActive ? activeClass : 'text-slate-500 hover:text-slate-700 hover:bg-slate-200/50 dark:hover:bg-slate-800 dark:hover:text-slate-300'}`}
                                 >
                                   {level === 'low' ? t('journal.participationLow', 'Низкая') : level === 'medium' ? t('journal.participationMedium', 'Средняя') : t('journal.participationHigh', 'Высокая')}
                                 </button>
@@ -1069,7 +1081,7 @@ const JournalPage: React.FC = () => {
                         </td>
 
                         {/* Note */}
-                        <td className="px-5 py-3 relative">
+                        <td className="order-6 md:order-none md:table-cell md:px-5 md:py-3 relative">
                           <input
                             type="text"
                             placeholder={!canEdit ? (entry?.note ? '' : "—") : t('journal.ui.notePh', 'Заметки (не видны студенту)...')}
@@ -1166,19 +1178,21 @@ const JournalPage: React.FC = () => {
                 'from-amber-600 to-orange-700',    // bronze
               ];
 
+              // Равный балл — одно место (1, 1, 3), как на /rating.
+              const places = competitionRanks(ranked.map(r => r.overallScore));
               return ranked.map((r, i) => (
                 <div key={r.student.uid} className={`p-3.5 rounded-xl border transition-all ${
-                  i === 0 ? 'bg-gradient-to-r from-amber-50 to-yellow-50 border-amber-200 dark:from-amber-900/10 dark:to-yellow-900/10 dark:border-amber-800/50' :
+                  places[i] === 1 ? 'bg-gradient-to-r from-amber-50 to-yellow-50 border-amber-200 dark:from-amber-900/10 dark:to-yellow-900/10 dark:border-amber-800/50' :
                   'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600'
                 }`}>
                   <div className="flex items-center gap-3">
                     {/* Rank */}
                     <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 text-sm font-extrabold ${
-                      i < 3 
-                        ? `bg-gradient-to-br ${medalColors[i]} text-white shadow-sm`
+                      places[i] <= 3
+                        ? `bg-gradient-to-br ${medalColors[places[i] - 1]} text-white shadow-sm`
                         : 'bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400'
                     }`}>
-                      {i + 1}
+                      {places[i]}
                     </div>
 
                     {/* Avatar + Name */}

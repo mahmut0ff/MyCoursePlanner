@@ -81,7 +81,7 @@ const BranchContext = createContext<BranchContextValue>({
 export const useBranch = () => useContext(BranchContext);
 
 export const BranchProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { organizationId, isSuperAdmin, primaryBranchId, role, loading: authLoading } = useAuth();
+  const { organizationId, isSuperAdmin, primaryBranchId, loading: authLoading } = useAuth();
   const [branches, setBranches] = useState<Branch[]>([]);
   const [activeBranchId, setActiveBranchIdState] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -116,17 +116,15 @@ export const BranchProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       // trigger a scope violation.
       const stored = readStored(organizationId);
       let next: string | null = null;
-      // Директор видит и записи без филиала, поэтому единственный филиал ему не
-      // навязываем — это прятало весь старый контингент («Студенты: 0»).
-      const fullAccess = role === 'admin';
+      // Единственный филиал никому не навязываем: строгий фильтр прятал всё без
+      // branchId («Студенты: 0», у учителя — «Групп пока нет»). При «Все филиалы»
+      // сервер сам сужает выдачу до филиалов участника (resolveBranchFilter).
       if (stored && list.some(b => b.id === stored)) {
         next = stored;
       } else if (stored === null) {
         next = null;
       } else if (primaryBranchId && list.some(b => b.id === primaryBranchId)) {
         next = primaryBranchId;
-      } else if (list.length === 1 && !fullAccess) {
-        next = list[0].id;
       }
       applySelection(organizationId, next);
     } catch {
@@ -137,7 +135,7 @@ export const BranchProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     } finally {
       setLoading(false);
     }
-  }, [organizationId, isSuperAdmin, primaryBranchId, role, applySelection]);
+  }, [organizationId, isSuperAdmin, primaryBranchId, applySelection]);
 
   useEffect(() => {
     try { localStorage.removeItem(LEGACY_STORAGE_KEY); } catch { /* ignore */ }

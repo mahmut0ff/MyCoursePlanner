@@ -132,8 +132,8 @@ export function useNavModel(instType?: string, opts?: NavModelOptions): NavSecti
   const { canAccess } = usePlanGate();
   const { canRead } = usePermissions();
   // `canSwitch` (more than one branch) — not just `activeBranchId` — because a
-  // single-branch org auto-selects that branch and one with no branches can only
-  // ever be null. Scoping either would permanently amputate half their menu for
+  // single-branch org has nothing to switch between and one with no branches can
+  // only ever be null. Scoping either would permanently amputate half their menu for
   // a distinction they cannot make.
   const { activeBranchId, canSwitch } = useBranch();
   // planId comes from the org document, not PlanContext: PlanContext skips the

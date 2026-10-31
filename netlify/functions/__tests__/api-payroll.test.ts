@@ -475,9 +475,19 @@ describe('api-payroll — ведомость общая, филиал тольк
     // общей. Деньги уходят в pay — там и обязан стоять второй рубеж.
     db.set('payrollPeriods', legacyBranchSheet('paid'));
 
-    const res = await handler(event('POST', { action: 'pay' }, { periodId }), {} as any, () => {}) as any;
+    const res = await handler(event('POST', { action: 'pay' }, { paymentMethod: 'cash', periodId }), {} as any, () => {}) as any;
     expect(res.statusCode).toBe(409);
     expect(JSON.parse(res.body).code).toBe('period_coverage_conflict');
+    expect(db.rows('financeTransactions').filter((t) => t.categoryId === 'salary')).toHaveLength(0);
+  });
+
+  it('выплата без способа оплаты — 400 и ни одного расхода', async () => {
+    await calculate();
+    const periodId = db.rows('payrollPeriods')[0].id;
+    await handler(event('POST', { action: 'approve' }, { periodId }), {} as any, () => {});
+
+    const res = await handler(event('POST', { action: 'pay' }, { periodId }), {} as any, () => {}) as any;
+    expect(res.statusCode).toBe(400);
     expect(db.rows('financeTransactions').filter((t) => t.categoryId === 'salary')).toHaveLength(0);
   });
 
@@ -698,7 +708,7 @@ describe('api-payroll pay — идемпотентность и расходы �
   });
 
   const pay = (body: any = {}) =>
-    handler(event('POST', { action: 'pay' }, { periodId, ...body }), {} as any, () => {}) as any;
+    handler(event('POST', { action: 'pay' }, { paymentMethod: 'cash', periodId, ...body }), {} as any, () => {}) as any;
 
   const salaryRows = () => db.rows('financeTransactions').filter((t) => t.categoryId === 'salary');
 
@@ -829,7 +839,7 @@ describe('api-payroll pay — идемпотентность и расходы �
       {} as any, () => {},
     );
     await handler(event('POST', { action: 'approve' }, { periodId: pid }), {} as any, () => {});
-    const res = await handler(event('POST', { action: 'pay' }, { periodId: pid }), {} as any, () => {}) as any;
+    const res = await handler(event('POST', { action: 'pay' }, { paymentMethod: 'cash', periodId: pid }), {} as any, () => {}) as any;
     expect(res.statusCode).toBe(200);
 
     const rows = db.rows('financeTransactions').filter((t) => t.categoryId === 'salary');
@@ -903,7 +913,7 @@ describe('api-payroll pay — разворот строки в расходы п
     await handler(event('POST', { action: 'approve' }, { periodId }), {} as any, () => {});
   });
 
-  const pay = () => handler(event('POST', { action: 'pay' }, { periodId }), {} as any, () => {}) as any;
+  const pay = () => handler(event('POST', { action: 'pay' }, { paymentMethod: 'cash', periodId }), {} as any, () => {}) as any;
   const salaryRows = () => db.rows('financeTransactions').filter((t) => t.categoryId === 'salary');
 
   it('одна строка даёт ДВА расхода с разными филиалами, а их сумма равна выплате', async () => {
@@ -981,7 +991,7 @@ describe('api-payroll pay — пустой branchId не должен ронят
     await handler(event('POST', { action: 'approve' }, { periodId }), {} as any, () => {});
   });
 
-  const pay = () => handler(event('POST', { action: 'pay' }, { periodId }), {} as any, () => {}) as any;
+  const pay = () => handler(event('POST', { action: 'pay' }, { paymentMethod: 'cash', periodId }), {} as any, () => {}) as any;
   const salaryRows = () => db.rows('financeTransactions').filter((t) => t.categoryId === 'salary');
 
   // Откат нормализации (`g.branchId ?? null` вместо `|| null`): доля унесла бы
@@ -1061,7 +1071,7 @@ describe('api-payroll pay — пустой branchId не должен ронят
     db = makeDb(seed);
     (verifyAuth as any).mockResolvedValue(staff(['payroll:write', 'payroll:read']));
 
-    const res = await handler(event('POST', { action: 'pay' }, { periodId: 'sheetOld' }), {} as any, () => {}) as any;
+    const res = await handler(event('POST', { action: 'pay' }, { paymentMethod: 'cash', periodId: 'sheetOld' }), {} as any, () => {}) as any;
     expect(res.statusCode).toBe(200);
 
     const rows = salaryRows();
@@ -1097,7 +1107,7 @@ describe('api-payroll pay — выплата выборочно, по одном
   });
 
   const pay = (body: any = {}) =>
-    handler(event('POST', { action: 'pay' }, { periodId, ...body }), {} as any, () => {}) as any;
+    handler(event('POST', { action: 'pay' }, { paymentMethod: 'cash', periodId, ...body }), {} as any, () => {}) as any;
 
   const salaryRows = () =>
     db.rows('financeTransactions')
@@ -1186,7 +1196,7 @@ describe('api-payroll pay — выплата выборочно, по одном
     await handler(event('POST', { action: 'approve' }, { periodId: pid }), {} as any, () => {});
 
     const res = await handler(
-      event('POST', { action: 'pay' }, { periodId: pid, teacherIds: ['t1'] }),
+      event('POST', { action: 'pay' }, { paymentMethod: 'cash', periodId: pid, teacherIds: ['t1'] }),
       {} as any, () => {},
     ) as any;
     expect(res.statusCode).toBe(200);
@@ -1238,7 +1248,7 @@ describe('api-payroll payouts — история выплат', () => {
     await handler(event('POST', { action: 'approve' }, { periodId }), {} as any, () => {});
     // Зарплата за ИЮЛЬ, выданная в АВГУСТЕ — обычный случай, а не исключение.
     await handler(
-      event('POST', { action: 'pay' }, { periodId, teacherIds: ['t1'], date: '2026-08-05' }),
+      event('POST', { action: 'pay' }, { paymentMethod: 'cash', periodId, teacherIds: ['t1'], date: '2026-08-05' }),
       {} as any, () => {},
     );
     payoutTxId = db.rows('financeTransactions').find((t) => t.payrollLineId)!.id;
@@ -1473,7 +1483,7 @@ describe('api-payroll overview — экран не расходится с ра�
     // И это не «удобное» число: выплата действительно создаёт один расход без
     // филиала — экран и касса обязаны говорить одно и то же.
     await handler(event('POST', { action: 'approve' }, { periodId: 'sheetJuly' }), {} as any, () => {});
-    const paid = await handler(event('POST', { action: 'pay' }, { periodId: 'sheetJuly' }), {} as any, () => {}) as any;
+    const paid = await handler(event('POST', { action: 'pay' }, { paymentMethod: 'cash', periodId: 'sheetJuly' }), {} as any, () => {}) as any;
     expect(paid.statusCode).toBe(200);
 
     const salary = db.rows('financeTransactions').filter((t) => t.categoryId === 'salary');
@@ -1490,7 +1500,7 @@ describe('api-payroll overview — экран не расходится с ра�
     await calculate();
     const periodId = db.rows('payrollPeriods')[0].id;
     await handler(event('POST', { action: 'approve' }, { periodId }), {} as any, () => {});
-    await handler(event('POST', { action: 'pay' }, { periodId, teacherIds: ['t1'] }), {} as any, () => {});
+    await handler(event('POST', { action: 'pay' }, { paymentMethod: 'cash', periodId, teacherIds: ['t1'] }), {} as any, () => {});
 
     const res = await overview();
     expect(res.statusCode).toBe(200);
@@ -1699,7 +1709,7 @@ describe('api-payroll balance — начислено минус выдано', (
     expect(owed[0].paidMinor).toBe(0);
     expect(owed[0].balanceMinor).toBe(3200000);
 
-    await handler(event('POST', { action: 'pay' }, { periodId }), {} as any, () => {});
+    await handler(event('POST', { action: 'pay' }, { paymentMethod: 'cash', periodId }), {} as any, () => {});
 
     const settled = JSON.parse((await balance()).body);
     expect(settled[0].paidMinor).toBe(3200000);
